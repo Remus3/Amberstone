@@ -1,10 +1,10 @@
-"""Phase 2 sender — scans the memory dir for cross_project: true memories,
+"""Phase 2 sender - scans the memory dir for cross_project: true memories,
 builds kind=lesson envelopes per the Phase 1 schema, dedupes against
 ops/runtime/lessons_sent.jsonl, and POSTs each via core.bridge.send().
 
 Entry points (thin CLI wrappers in tools/):
-  dry_run()   — scan + categorise without sending; writes would_send.jsonl
-  send_now()  — fire new eligible lessons; appends to lessons_sent.jsonl
+  dry_run()   - scan + categorise without sending; writes would_send.jsonl
+  send_now()  - fire new eligible lessons; appends to lessons_sent.jsonl
 
 Schema reference: docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md
 """
@@ -263,7 +263,7 @@ def send_now(memory_dir: Path = MEMORY_DIR,
     (basename match against memory_dir). Useful for first-lesson smoke.
     Returns a per-memory result list.
     """
-    from core import bridge  # lazy — keeps dry-run path import-light
+    from core import bridge  # lazy - keeps dry-run path import-light
 
     if not bridge.is_configured():
         return {"ok": False, "reason": "bridge_not_configured", "results": []}

@@ -1,4 +1,4 @@
-"""Phase 2 step 2 + Phase 4 thin slice — auto-attack DPS with conditionals.
+"""Phase 2 step 2 + Phase 4 thin slice - auto-attack DPS with conditionals.
 
 Reads ``snapshot.scenarios(champion_id)`` (early/mid/late phases × rotations
 with weights, durations, basic-attack counts) and convolves with the
@@ -7,7 +7,7 @@ applies ``aram_modifiers.aramDamageDealt`` for ARAM. Target armor uses
 the standard League formula.
 
 Phase 4 thin slice (2026-05-03): ``effects.ITEM_EFFECTS`` layers
-per-item conditionals on top of the stat math — Infinity Edge bumps the
+per-item conditionals on top of the stat math - Infinity Edge bumps the
 crit-damage multiplier, Kraken Slayer adds an every-3rd-attack physical
 proc, Stormrazor adds an every-4-second magic proc. Magical procs use
 target MR (not armor); physical procs share the auto-attack armor curve.
@@ -15,12 +15,12 @@ target MR (not armor); physical procs share the auto-attack armor curve.
 Phase 4 batch 5 (2026-05-04): ``target_max_hp`` is plumbed into
 ``CallContext`` so %-target-HP procs (BotRK Mist's Edge, Eclipse Ever
 Rising Moon) resolve. Same caller-supplied shape as ``target_armor`` /
-``target_mr`` — defaults to 0.0, lolmath scenarios don't carry HP.
+``target_mr`` - defaults to 0.0, lolmath scenarios don't carry HP.
 
 Phase 4 batch 6 (2026-05-04): caster HP layer. ``caster_max_hp`` and
 ``caster_bonus_hp`` are derived from the resolved build (``stats["hp"]``
 and ``stats["hp"] - base_stats["hp"]`` respectively) and fed into
-``CallContext``. Engine-internal — no caller param — since the engine
+``CallContext``. Engine-internal - no caller param - since the engine
 always knows the caster's exact HP. Unlocks Titanic Hydra Cleave
 (1.5% bonus HP) and Heartsteel Colossal Consumption (6% max HP).
 
@@ -31,7 +31,7 @@ Cleave-to-others procs (Ravenous Hydra) read ``max(0, n-1)`` from it;
 single-target procs ignore the field. AoE-incl-primary procs (Sunfire
 Immolate, when added) would use ``n`` directly.
 
-Ability damage is **not** included — spell formulas aren't in the
+Ability damage is **not** included - spell formulas aren't in the
 snapshot. Only the basic-attack portion of each rotation is scored;
 rotation duration includes the time spent casting abilities, so longer
 rotations naturally dilute auto-attack DPS.
@@ -94,7 +94,7 @@ class DpsResult:
     avg_attack_dmg: float          # per-attack avg post-armor + mode
     raw_attack_dps: float          # AD * AS * crit avg, no scenario / no resists
     mode_multiplier: float         # aramDamageDealt or 1.0
-    # Phase 5.6 (s188, 2026-05-13): per-attack on-hit proc damage —
+    # Phase 5.6 (s188, 2026-05-13): per-attack on-hit proc damage -
     # amortized sum of every-n-attacks procs (Wit's End magic damage,
     # BotRK Mist's Edge HP%, Statikk Shiv stacks etc.), post-mit + post-mode
     # + post-amps. Used by burst.py to give each AA token in a combo a
@@ -102,7 +102,7 @@ class DpsResult:
     # builds with non-attack-cadence procs only also 0.0. Note: Spellblade
     # items (Trinity Force / Lich Bane / ER / Iceborn / Dusk+Dawn / Divine
     # Sunderer / Sheen / Bloodsong) are time-based (every_n_seconds) so
-    # they DON'T contribute here — they live in ``spellblade_per_proc_damage``
+    # they DON'T contribute here - they live in ``spellblade_per_proc_damage``
     # below, which burst.py arms per-spell-cast.
     per_attack_on_hit_damage: float = 0.0
     # Phase 5.7 (s189, 2026-05-13): Spellblade per-proc damage. Spellblade
@@ -112,7 +112,7 @@ class DpsResult:
     # Sunderer, Sheen, Bloodsong (+ Arena mirrors). ``collect_effects``
     # already dedups via the unique-passive key, so at most one Spellblade
     # survives into ``item_effects``. The per-proc damage value here is
-    # the post-mit / post-mode / post-amp damage from ONE proc — burst.py
+    # the post-mit / post-mode / post-amp damage from ONE proc - burst.py
     # walks the combo with a spellblade_armed flag and adds this value to
     # each AA that consumes an armed Spellblade. Empty for builds without
     # a Spellblade-family item.
@@ -120,7 +120,7 @@ class DpsResult:
     spellblade_item_name: str = ""        # informational; "" when no spellblade
     # Phase 5.8 (s190, 2026-05-13): Lightshield Strike per-proc damage.
     # Sundered Sky (6610 + Arena mirror 226610) carries the only
-    # "Lightshield Strike" proc in the engine — explicitly distinct from
+    # "Lightshield Strike" proc in the engine - explicitly distinct from
     # spellblade (different label, 8s vs 1.5s CD, no dedup family). Same
     # arm-consume model as Spellblade in burst.py, but capped at 1 proc
     # per combo because the 8s CD greatly exceeds typical burst window.
@@ -157,8 +157,8 @@ class DpsResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode} — phase {self.phase}"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode} - phase {self.phase}"
         )
         rows = [head, "-" * len(head)]
         if self.item_ids:
@@ -227,7 +227,7 @@ def _periodic_proc_dps(
     against ``call_ctx``; constants pass through unchanged.
 
     Phase 4 batch 34 (2026-05-04): ``magic_amp`` (from
-    ``total_magic_amp_multiplier``) is applied only to magical procs —
+    ``total_magic_amp_multiplier``) is applied only to magical procs -
     models target-debuff auras (Abyssal Mask Unmake) that increase magic
     damage taken without affecting physical auto-attack damage.
     """
@@ -266,13 +266,13 @@ def _lightshield_strike_per_proc_damage(
 ) -> tuple[float, str]:
     """Per-proc damage from Sundered Sky's Lightshield Strike (if any).
 
-    Identified by ``PeriodicProc.name == "Lightshield Strike"`` — the
+    Identified by ``PeriodicProc.name == "Lightshield Strike"`` - the
     schema explicitly keeps Lightshield Strike OUT of the spellblade
     unique-passive family (different in-game label, 8s CD vs 1.5s, no
     dedup). Currently only Sundered Sky (6610) + its Arena mirror
     (226610) carry this proc.
 
-    Returns ``(per_proc_damage, item_name)`` — first match wins (Arena
+    Returns ``(per_proc_damage, item_name)`` - first match wins (Arena
     mirror dedup is informational only; no game mode lets you stack two
     Sundered Skys). Damage applies the standard pipeline:
     ``resolve_damage(call_ctx)`` → ``_armor_factor`` against the
@@ -281,7 +281,7 @@ def _lightshield_strike_per_proc_damage(
     ``(0.0, "")``.
 
     Phase 5.8 (s190, 2026-05-13): consumed by ``burst.py``'s combo
-    walker on the AA following the first ability cast — same arm-consume
+    walker on the AA following the first ability cast - same arm-consume
     pattern as Spellblade, but capped at 1 proc per combo because the
     real CD (8s) far exceeds a typical burst window (2-3s). Different
     state variable (``lightshield_strike_armed``) so a build with both
@@ -316,7 +316,7 @@ def _spellblade_per_proc_damage(
     """Per-proc damage from the build's active Spellblade (if any).
 
     Identifies Spellblade-family items by ``unique_passive_key="spellblade"``
-    — Trinity Force / Lich Bane / Essence Reaver / Iceborn Gauntlet /
+    - Trinity Force / Lich Bane / Essence Reaver / Iceborn Gauntlet /
     Dusk+Dawn / Divine Sunderer / Sheen / Bloodsong (+ Arena mirrors).
     ``collect_effects`` enforces the unique-passive dedup upstream (first-
     seen-wins), so iterating ``effects`` yields at most one Spellblade
@@ -334,7 +334,7 @@ def _spellblade_per_proc_damage(
     next AA, attributing this per-proc damage to that ComboCast row.
     Differs from ``_per_attack_proc_damage`` (which handles every-AA
     on-hit) in that Spellblade fires once per ability-then-AA transition
-    rather than once per AA — the model matches in-game behavior in a
+    rather than once per AA - the model matches in-game behavior in a
     single-combo window where the 1.5s internal CD is irrelevant.
     """
     for e in effects:
@@ -368,7 +368,7 @@ def _per_attack_proc_damage(
     semantic instead of per-second: each ``every_n_attacks`` proc
     contributes ``1 / every_n_attacks`` of its damage per AA, amortized
     across the burst window. Time-based procs (``every_n_seconds``) are
-    skipped — they don't fit a single-attack window cleanly and are
+    skipped - they don't fit a single-attack window cleanly and are
     already captured at the rotation level in ``_periodic_proc_dps``.
 
     Used by ``burst.compute_burst_damage`` (Phase 5.6, s188) so each AA
@@ -377,7 +377,7 @@ def _per_attack_proc_damage(
     (5% target current HP), Statikk Shiv (4-stack proc), Triforce
     Spellblade (off base_ad), Lich Bane (AP-scaling spellblade), etc.
 
-    Returns the total on-hit damage a single AA contributes — already
+    Returns the total on-hit damage a single AA contributes - already
     armor/MR-mitigated, mode-multiplied, magic-amp-applied for magical
     procs, and wrapped in ``damage_amp`` to match the rotation pipeline.
     """
@@ -413,7 +413,7 @@ def _rotation_attack_dps(
     ``total_attacks = basic + basicTime * AS``. Each attack lands ``AD``
     pre-resists, scaled by crit average and the mode damage multiplier,
     then divided by full rotation duration (which includes time spent
-    casting abilities — auto DPS is naturally diluted in cast-heavy
+    casting abilities - auto DPS is naturally diluted in cast-heavy
     rotations). ``target_armor_for_physical`` already has reduction +
     pen applied at the caller. Conditional procs from items add on top
     via ``_periodic_proc_dps``.
@@ -421,11 +421,11 @@ def _rotation_attack_dps(
     Phase 4 batch 14 (2026-05-04): ``damage_amp`` is the build's
     multiplicative damage-amp factor (Riftmaker Void Corruption,
     future Conqueror-style amps). Applied to both base AA and proc
-    DPS — in-game amps don't discriminate damage type. Default 1.0
+    DPS - in-game amps don't discriminate damage type. Default 1.0
     keeps pre-batch behavior unchanged.
 
     Phase 4 batch 34 (2026-05-04): ``magic_amp`` applies only to magical
-    proc DPS inside ``_periodic_proc_dps`` — does NOT touch base AA
+    proc DPS inside ``_periodic_proc_dps`` - does NOT touch base AA
     (physical). Default 1.0 keeps pre-batch behavior unchanged.
     """
     duration = float(rotation.get("duration", 0) or 0)
@@ -491,7 +491,7 @@ def _phase_rotations(snapshot: DataSnapshot, champion_id: str) -> dict[str, list
     """Pull the first scenario block's per-phase rotations.
 
     Champions in the snapshot all expose at least one scenario record (the
-    extractor's coverage check pins this). We use index 0 by convention —
+    extractor's coverage check pins this). We use index 0 by convention -
     matches lolmath's UI default. Future revisions may add named scenario
     variants; pick by name then.
     """
@@ -576,7 +576,7 @@ def compute_dps(
 
     # Build call context once per compute_dps. base_ad comes from the
     # leveled champion base (pre-items); bonus_ad is total - base. Same
-    # base/bonus split for HP (Phase 4 batch 6, 2026-05-04) — Titanic
+    # base/bonus split for HP (Phase 4 batch 6, 2026-05-04) - Titanic
     # Hydra scales off bonus HP, Heartsteel scales off max HP, so we
     # surface both. Engine-derived (unlike target_max_hp): the engine
     # always knows the caster's exact HP from the build.
@@ -587,12 +587,12 @@ def compute_dps(
     base_hp = float(resolved.base_stats.get("hp", 0.0)) if resolved.base_stats else 0.0
     caster_max_hp = float(stats.get("hp", 0.0))
     caster_bonus_hp = max(0.0, caster_max_hp - base_hp)
-    # Phase 4 batch 58 (2026-05-04): caster bonus armor — item-contributed
+    # Phase 4 batch 58 (2026-05-04): caster bonus armor - item-contributed
     # armor above the champion's leveled base. Same base/bonus split as
     # caster_bonus_hp. Required for Darksteel Talons' Gash (+ 20% bonus armor).
     base_armor = float(resolved.base_stats.get("armor", 0.0)) if resolved.base_stats else 0.0
     caster_bonus_armor = max(0.0, float(stats.get("armor", 0.0)) - base_armor)
-    # Phase 4 batch 59 (2026-05-04): caster raw lethality — sum of all items'
+    # Phase 4 batch 59 (2026-05-04): caster raw lethality - sum of all items'
     # lethality values (un-scaled, before level conversion). Required for
     # Bastionbreaker's Shaped Charge (15 + 0.75 × lethality true damage / 45s).
     caster_lethality = sum(e.lethality for e in item_effects)
@@ -601,7 +601,7 @@ def compute_dps(
     # target_amp from batch 19). Resolved here because caster_max_hp is needed.
     giant_slayer_amp = total_giant_slayer_multiplier(item_effects, target_max_hp, caster_max_hp)
     damage_amp *= giant_slayer_amp
-    # Phase 4 batch 27 (2026-05-04): caster max mana — needed for Manamune /
+    # Phase 4 batch 27 (2026-05-04): caster max mana - needed for Manamune /
     # Muramana's Awe (already folded into ad_flat by build_champion) and
     # Muramana's Shock proc (per-attack 1.2% max mana physical). Manaless
     # champions and pre-batch-27 builds carry stats["mp"]=0 → 0 contribution.
@@ -609,13 +609,13 @@ def compute_dps(
     # Phase 4 batch 15 (2026-05-04): cross-derived AP from caster bonus
     # HP (Riftmaker's Void Infusion). Added to ap before CallContext
     # is built so AP-scaling procs (Lich Bane, Nashor's Tooth) see the
-    # converted total. Stays out of resolved.stats — /stats reflects
+    # converted total. Stays out of resolved.stats - /stats reflects
     # raw stat blocks; /dps reflects converted totals.
     ap_from_hp = total_bonus_ap_from_hp(item_effects, caster_bonus_hp)
     ap += ap_from_hp
     # Phase 4 batch 54 (2026-05-04): stacked AP from kill-stack passives
     # (Mejai's Glory). Inserted BEFORE ap_amp so Rabadon's Magical Opus
-    # amplifies the full AP total including stacked AP — Glory AP is real
+    # amplifies the full AP total including stacked AP - Glory AP is real
     # AP. Raw stat blocks (/stats) unchanged; only CallContext.ap sees it.
     stacked_ap = total_stacked_ap(item_effects)
     ap += stacked_ap
@@ -629,7 +629,7 @@ def compute_dps(
     # Phase 4 batch 56 (2026-05-04): caster HP-scaled multiplicative AP amp.
     # Demonic Embrace (444637 Arena) Sinister Pact: +1.5% AP per 100 HP,
     # capped at 45%. Applied AFTER Rabadon's (ap_amp) so the amplified AP
-    # feeds into this second multiplicative layer — consistent with League's
+    # feeds into this second multiplicative layer - consistent with League's
     # buff-system stacking: each multiplier applies to the running total.
     hp_ap_amp = total_caster_hp_scaled_ap_amp(item_effects, caster_max_hp)
     if hp_ap_amp != 1.0:
@@ -642,7 +642,7 @@ def compute_dps(
     # flows through both the rotation auto-attack crit calc (via
     # ``stats_for_rotation``) and CallContext.crit_chance (read by ER
     # Spellblade's lambda + future crit-scaling procs). /stats endpoint
-    # output is unchanged — same separation as batch 15's HP→AP cross-
+    # output is unchanged - same separation as batch 15's HP→AP cross-
     # derivation. ``crit_from_effects`` is 0.0 when no item carries
     # either crit_chance_bonus field, so pre-batch-26 builds pass
     # through behaviorally identical.
@@ -656,7 +656,7 @@ def compute_dps(
         stats_for_rotation = stats
     crit_chance_ctx = crit_total
     # Phase 4 batch 54 (2026-05-04): conditional bonus AS (Yun Tal Flurry).
-    # Added to stats_for_rotation["as"] alongside crit_from_effects — both
+    # Added to stats_for_rotation["as"] alongside crit_from_effects - both
     # are DPS-time cross-derivations that don't appear in /stats. The AS
     # value is uptime-weighted (0.08 for Yun Tal at ~27% uptime).
     cond_as = total_conditional_as(item_effects)
@@ -712,10 +712,10 @@ def compute_dps(
     raw_attack_dps = ad * eff_as * (1 + crit * crit_bonus)
     # Phase 5.6 (s188, 2026-05-13): per-attack on-hit proc damage. Used
     # by burst.compute_burst_damage to score AA tokens richer than raw
-    # AD-on-armor — captures Wit's End / BotRK / Statikk contributions
+    # AD-on-armor - captures Wit's End / BotRK / Statikk contributions
     # to a single AA hit. Falls out of compute_dps so the AA scorer in
     # burst.py doesn't need to re-derive call_ctx / effects. Spellblade
-    # is NOT included here (it's time-based, not attack-based) — see
+    # is NOT included here (it's time-based, not attack-based) - see
     # ``spellblade_per_proc_damage`` below.
     per_attack_on_hit_damage = _per_attack_proc_damage(
         item_effects, target_armor_eff, target_mr_eff, mode_mult,
@@ -725,13 +725,13 @@ def compute_dps(
     # to burst.py separately from per_attack_on_hit_damage because
     # Spellblade fires once per ability-then-AA transition (not once per
     # AA). collect_effects dedups the spellblade family via
-    # unique_passive_key — at most one Spellblade item survives, so the
+    # unique_passive_key - at most one Spellblade item survives, so the
     # helper returns one (damage, name) tuple.
     spellblade_per_proc, spellblade_name = _spellblade_per_proc_damage(
         item_effects, target_armor_eff, target_mr_eff, mode_mult,
         call_ctx, magic_amp=magic_amp, damage_amp=damage_amp,
     )
-    # Phase 5.8 (s190, 2026-05-13): Lightshield Strike per-proc damage —
+    # Phase 5.8 (s190, 2026-05-13): Lightshield Strike per-proc damage -
     # Sundered Sky's distinct mechanic (different name, 8s CD, no dedup
     # with the spellblade family). Tracked separately so a build with
     # both Sundered Sky + Trinity Force fires BOTH on the same AA.
@@ -807,7 +807,7 @@ def compute_dps(
         # Phase 4 batch 26 (2026-05-04): surface item-effect-contributed
         # crit so /dps clients can see when crit was lifted off raw stats
         # alone (Yun Tal pin / Atma HP-scaled). When raw + bonus > 1.0
-        # the effective value is clamped at 1.0 — surface both the raw
+        # the effective value is clamped at 1.0 - surface both the raw
         # contribution and the post-clamp final to make the cap visible.
         notes.append(
             f"crit chance lifted by items: +{crit_from_effects * 100:.1f}% "
@@ -822,14 +822,14 @@ def compute_dps(
     if lightshield_strike_per_proc > 0:
         notes.append(
             f"Lightshield Strike ({lightshield_strike_name}) per-proc "
-            f"{lightshield_strike_per_proc:.1f} (Sundered Sky 8s CD — fires once per "
+            f"{lightshield_strike_per_proc:.1f} (Sundered Sky 8s CD - fires once per "
             "burst combo on the AA after first spell cast; distinct from spellblade)"
         )
     for e in item_effects:
         if e.note:
             notes.append(e.note)
     if not any(rotations_by_phase.values()):
-        notes.append("no scenarios in snapshot for this champion — DPS=0")
+        notes.append("no scenarios in snapshot for this champion - DPS=0")
     elif not rotations_by_phase[selected_phase]:
         notes.append(f"no rotations defined for phase={selected_phase!r}")
 
@@ -860,7 +860,7 @@ def compute_dps(
 
 
 # Phase 6 step 7 (2026-05-10): per-level DPS curve helper. Coaches read this
-# to hint power-spike levels — "Lulu peaks at lvl 6, falls off at 11" style.
+# to hint power-spike levels - "Lulu peaks at lvl 6, falls off at 11" style.
 # Default sample levels chosen for power-spike granularity: level 1 (lane
 # start), 6 (ult unlock), 11 (mid-game spike), 16 (full kit), 18 (cap).
 DPS_CURVE_LEVELS: tuple[int, ...] = (1, 6, 11, 16, 18)
@@ -908,12 +908,12 @@ def compute_dps_curve(
     :data:`DPS_CURVE_LEVELS` = 1/6/11/16/18) and returns the points in
     input order. All build parameters (items, mode, target resists,
     augments) are threaded through unchanged so the curve reflects the
-    SAME build at each level — useful for "when does this build come
+    SAME build at each level - useful for "when does this build come
     online" coaching prompts.
 
     Levels outside ``[1, 18]`` raise via the underlying ``clamp_level``
     in ``compute_dps``. Duplicate levels in the input list are honored
-    (no dedup) — caller can request a denser sample around a phase
+    (no dedup) - caller can request a denser sample around a phase
     boundary by repeating a level.
     """
     target_levels = tuple(levels) if levels is not None else DPS_CURVE_LEVELS

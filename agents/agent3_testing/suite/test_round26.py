@@ -1,4 +1,4 @@
-"""Round 26 — KDA trends helper + /api/trending endpoint."""
+"""Round 26 - KDA trends helper + /api/trending endpoint."""
 from __future__ import annotations
 
 import json
@@ -87,7 +87,7 @@ def test_kda_trends_missing_mode_returns_empty(tmp_path: Path, monkeypatch) -> N
     import agents.agent2_backend.db_schema as dbs
     monkeypatch.setattr(dbs, "DB_DIR", tmp_path)
     monkeypatch.setattr(adaptation_hint, "DB_DIR", tmp_path)
-    # Don't create a DB — kda_trends must not crash.
+    # Don't create a DB - kda_trends must not crash.
     out = adaptation_hint.kda_trends("aram")
     assert out == {"mode": "aram", "hot": [], "cold": []}
 

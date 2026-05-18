@@ -1,11 +1,11 @@
 /* ─────────────────────────────────────────────────────────────────────
- * AUDIT 2026-04-28 — proposals 3.2, 3.3, 3.4, 3.5, 3.6
+ * AUDIT 2026-04-28 - proposals 3.2, 3.3, 3.4, 3.5, 3.6
  * Card primitive, sticky-header compression, contrast bump, win-pct
  * 5-band gradient, loading skeletons.
  * ───────────────────────────────────────────────────────────────────── */
 
-/* 3.4 — bump dead-state placeholder contrast (#666 reads as background
- * at iPad viewing distance). Apply to "—" inside .home-empty + value
+/* 3.4 - bump dead-state placeholder contrast (#666 reads as background
+ * at iPad viewing distance). Apply to "-" inside .home-empty + value
  * cells that currently render as text-faint. */
 .home-empty,
 .home-card .home-today-val,
@@ -14,7 +14,7 @@
   color: #989aaa !important;  /* ≈ #888 on the cool palette */
 }
 
-/* 3.5 — five-band win-pct gradient. Existing four bands kept for back-
+/* 3.5 - five-band win-pct gradient. Existing four bands kept for back-
  * compat; the new .win-pill.win-lead sits between strong and even. */
 .win-pill.win-lead {
   background: #2A4035;
@@ -27,7 +27,7 @@
   color:      var(--gold);
 }
 
-/* 3.2 — .rc-card design primitive in three sizes. Use this for any new
+/* 3.2 - .rc-card design primitive in three sizes. Use this for any new
  * panel rather than re-implementing padding/radius/shadow per feature.
  * Migration target: home/lobby/cs cards adopt over time; existing
  * declarations are NOT mass-replaced (avoiding visual churn).
@@ -61,7 +61,7 @@
   gap: 6px;
 }
 
-/* 3.3 — sticky header that compresses on scroll. JS toggles
+/* 3.3 - sticky header that compresses on scroll. JS toggles
  * <header data-compressed="1"> at scroll-Y > 200 (see dashboard.js). */
 header[data-compressed="1"] {
   height: 44px !important;
@@ -74,8 +74,8 @@ header[data-compressed="1"] .header-row.header-row-1 {
 }
 header { transition: height 180ms ease; }
 
-/* 3.6 — loading skeletons. Drop .rc-skel on any block during the first
- * 500 ms after game-start to replace the "—" placeholder with a subtle
+/* 3.6 - loading skeletons. Drop .rc-skel on any block during the first
+ * 500 ms after game-start to replace the "-" placeholder with a subtle
  * shimmer. JS adds + removes the class. */
 .rc-skel {
   position: relative;
@@ -87,7 +87,7 @@ header { transition: height 180ms ease; }
   );
   background-size: 220% 100%;
   animation: rc-skel-shimmer 1.4s ease-in-out infinite;
-  color: transparent !important;       /* hide the underlying "—" */
+  color: transparent !important;       /* hide the underlying "-" */
   border-radius: var(--radius-sm);
 }
 @keyframes rc-skel-shimmer {
@@ -95,7 +95,7 @@ header { transition: height 180ms ease; }
   100% { background-position: -100% 0; }
 }
 
-/* AUDIT 2026-04-28 — proposal 2.1 cost tile + 2.2 coach toggles +
+/* AUDIT 2026-04-28 - proposal 2.1 cost tile + 2.2 coach toggles +
  * 2.5 trace tab. These pieces live in the ops/diagnostics view and
  * are therefore wrapped in their own selector prefix to avoid colliding
  * with the existing diagnostics-card styles. */
@@ -137,7 +137,7 @@ header { transition: height 180ms ease; }
 .health-dot.red    { background: var(--bad);  box-shadow: 0 0 6px rgba(240,126,139,0.65); }
 
 /* ─────────────────────────────────────────────────────────────────────
- * AUDIT 2026-04-28 — suggestion 2.3 replay scrubber.
+ * AUDIT 2026-04-28 - suggestion 2.3 replay scrubber.
  * Layout: 2-column (match list left, scrubber+grid right).
  * ───────────────────────────────────────────────────────────────────── */
 

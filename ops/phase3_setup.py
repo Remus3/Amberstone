@@ -11,7 +11,7 @@ Creates:
   - agents/state/lockfile (empty)
   - agents/state/resolved_decisions.json (atomic write)
 
-Idempotent — safe to re-run. Existing files are left untouched unless they are
+Idempotent - safe to re-run. Existing files are left untouched unless they are
 part of the locked-register atomic rewrite for resolved_decisions.json.
 """
 from __future__ import annotations
@@ -186,7 +186,7 @@ def main() -> int:
             p.mkdir(parents=True, exist_ok=True)
             created.append(rel)
 
-    # Empty state files — touch without truncation if already present.
+    # Empty state files - touch without truncation if already present.
     state = ROOT / "agents" / "state"
     for name in ("task_queue.jsonl", "lockfile"):
         f = state / name
@@ -196,7 +196,7 @@ def main() -> int:
         else:
             skipped.append(f"agents/state/{name}")
 
-    # Atomic write of resolved_decisions.json (always rewrite — locked register).
+    # Atomic write of resolved_decisions.json (always rewrite - locked register).
     atomic_write_json(state / "resolved_decisions.json", RESOLVED_DECISIONS)
     created.append("agents/state/resolved_decisions.json")
 

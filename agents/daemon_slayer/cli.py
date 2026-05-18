@@ -1,4 +1,4 @@
-"""Daemon Slayer CLI — Phase 2 (stats/dps/rank/beam) + Phase 3 (serve).
+"""Daemon Slayer CLI - Phase 2 (stats/dps/rank/beam) + Phase 3 (serve).
 
 Subcommands:
   stats   resolve a champion's stats at a level with items equipped
@@ -203,7 +203,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
 def _cmd_not_implemented(name: str, phase: str):
     def _run(_args: argparse.Namespace) -> int:
-        print(f"{name}: not implemented yet — scheduled for {phase}", file=sys.stderr)
+        print(f"{name}: not implemented yet - scheduled for {phase}", file=sys.stderr)
         return 64
     return _run
 

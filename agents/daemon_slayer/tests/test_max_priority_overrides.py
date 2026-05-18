@@ -1,4 +1,4 @@
-"""Phase 4d (s185, 2026-05-13) — per-champion max_priority override tests.
+"""Phase 4d (s185, 2026-05-13) - per-champion max_priority override tests.
 
 Tests the ``champion_max_priority.json`` registry loader plus its
 integration with ``compute_ability_dps`` / ``rank_items_by_ability_dps``
@@ -94,7 +94,7 @@ class LoaderCacheTests(unittest.TestCase):
         a = _load_max_priority_table()
         reset_max_priority_cache()
         b = _load_max_priority_table()
-        # New parse — equal contents but distinct object identity.
+        # New parse - equal contents but distinct object identity.
         self.assertEqual(a, b)
         self.assertIsNot(a, b)
 
@@ -164,7 +164,7 @@ class ResolveMaxPriorityTests(unittest.TestCase):
 
 
 class RankAtLevelOverrideTests(unittest.TestCase):
-    """The actual rank math should shift when priority changes — that's
+    """The actual rank math should shift when priority changes - that's
     the whole point of this feature."""
 
     def test_default_q_first_at_lvl9(self) -> None:
@@ -212,7 +212,7 @@ class ComputeAbilityDpsOverrideTests(unittest.TestCase):
 
     def test_override_changes_dps(self) -> None:
         """Cassiopeia's total DPS should differ when E-Q-W (override) vs
-        Q-W-E (forced default) because E is her spam spell — at lvl 9
+        Q-W-E (forced default) because E is her spam spell - at lvl 9
         E sits at rank 4 vs rank 0."""
         with_override = compute_ability_dps(
             self.snap, "Cassiopeia", level=9, mode="SR", target_mr=30.0,
@@ -356,7 +356,7 @@ class ServerRouteSourceTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _post(self, path: str, body: dict) -> dict:

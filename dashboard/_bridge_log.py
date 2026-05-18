@@ -11,14 +11,14 @@ JSONL backup that survives RC restarts.
 Schema (2026-04-24): the original {source, summary} form is preserved
 as `kind: "note"` (default) for back-compat with existing
 Stop/UserPromptSubmit hooks. Additional kinds:
-  kind: "task"   — a job dispatched to the other side. Carries `id`
+  kind: "task"   - a job dispatched to the other side. Carries `id`
                    (uuid), `target` ("legion" | "gamepc"), and `body`
                    (free-form JSON the receiver knows how to execute,
                    typically {prompt, command, timeout_s, context}).
-  kind: "result" — a response to a task. Same fields, plus
+  kind: "result" - a response to a task. Same fields, plus
                    `in_reply_to: <task-id>` so the originator can pair
                    it.
-Server doesn't interpret task/result content — that's the Claude on the
+Server doesn't interpret task/result content - that's the Claude on the
 other side. It just stores + filters by kind/target so the polling
 script can ask "give me pending tasks targeted at me".
 """
@@ -67,7 +67,7 @@ def bridge_hydrate_from_disk() -> None:
         lines = BRIDGE_LOG_PATH.read_text(encoding="utf-8").splitlines()
     except OSError:
         return
-    # Re-rotate on disk if too long — trim to last 1000.
+    # Re-rotate on disk if too long - trim to last 1000.
     if len(lines) > BRIDGE_LOG_DISK_MAX:
         try:
             tmp = BRIDGE_LOG_PATH.with_suffix(".jsonl.tmp")
@@ -95,7 +95,7 @@ def bridge_maybe_rotate(force: bool = False) -> None:
         if not BRIDGE_LOG_PATH.exists():
             return
         # Cheap line count via a single read. The file is JSONL bounded
-        # at ~1 MB at the trim point — affordable.
+        # at ~1 MB at the trim point - affordable.
         text = BRIDGE_LOG_PATH.read_text(encoding="utf-8")
         lines = text.splitlines()
         if len(lines) <= BRIDGE_LOG_DISK_MAX and not force:

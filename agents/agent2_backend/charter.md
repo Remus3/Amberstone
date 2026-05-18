@@ -1,10 +1,10 @@
-# Agent 2 — Backend (Charter)
+# Agent 2 - Backend (Charter)
 
 Model: `claude-sonnet-4-6`. Substrate: ephemeral per task.
 
 ## Mandate
 Own the backend of the Phase 3 framework:
-- WebSocket relay (`agents/agent2_backend/ws_server.py`) — `/ingest` and `/push`.
+- WebSocket relay (`agents/agent2_backend/ws_server.py`) - `/ingest` and `/push`.
 - Mode databases (`agents/agent2_backend/db_schema.py` + `data/db/*.db`).
 - Rewind migration (`migration_rewind.py`).
 - Cross-machine push (`smb_push.py`), Forwarder restart signalling.

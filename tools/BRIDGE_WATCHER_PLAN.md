@@ -1,4 +1,4 @@
-# Bridge Watcher — Multi-Node Plan
+# Bridge Watcher - Multi-Node Plan
 
 > Cross-Claude bridge watcher daemon. Eliminates per-tick UI noise from
 > interactive Claude sessions on Legion, Game-PC, and Peer while keeping
@@ -75,7 +75,7 @@ ops/
   runtime/
     bridge_inbox_pending.json       # escalation queue (operator-visible)
 
-dashboard/  (Legion only — Game-PC + Peer don't have RC dashboard)
+dashboard/  (Legion only - Game-PC + Peer don't have RC dashboard)
   routes_bridge_pending.py          # GET /api/bridge/pending, POST dismiss
 ```
 
@@ -132,7 +132,7 @@ Defined in `bridge_watcher_config.json` per node:
 }
 ```
 
-### Game-PC (`config.gamepc`) — revised after peer review
+### Game-PC (`config.gamepc`) - revised after peer review
 ```json
 {
   "auto_read_patterns": [
@@ -165,7 +165,7 @@ Legion-side source path). `schtasks /Run /TN *` enables agent restart
 via scheduled task; `wmic process *` is the reliable PID lookup on
 this node (`Get-CimInstance` fails for py processes).
 
-### Peer (`config.peer`) — revised after peer review
+### Peer (`config.peer`) - revised after peer review
 ```json
 {
   "auto_read_patterns": [
@@ -194,11 +194,11 @@ this node (`Get-CimInstance` fails for py processes).
 ```
 Per Peer: timeout bumped 60→90s (Flask + envelope cold-import tax on
 first invocation after idle). `auto_ops_verbs` populated (was empty in
-v1) — Peer has natural safe ops via the AgentLifecycle proxy
+v1) - Peer has natural safe ops via the AgentLifecycle proxy
 (`ops/runtime/agent_cmd/<name>.cmd`). **`escalate_always` list is the
 single critical rule**: any prompt mentioning `restart_trigger.txt`
-ALWAYS escalates — those writes affect Main and must never auto-action.
-`no_dashboard_routes` flag dropped — Peer's `dashboards/dev_dashboard.py`
+ALWAYS escalates - those writes affect Main and must never auto-action.
+`no_dashboard_routes` flag dropped - Peer's `dashboards/dev_dashboard.py`
 on `:8890` could host `/api/bridge/pending`, but operator works the
 Claude REPL on the same host (no second device), so the
 UserPromptSubmit one-liner is the real surface; dashboard route is
@@ -228,10 +228,10 @@ sub-Claude to:
    ```json
    {"status": "ok|error|escalate", "summary": "<≤80 chars>", "body": {...}}
    ```
-3. NEVER ask the operator for input — escalate instead.
+3. NEVER ask the operator for input - escalate instead.
 4. If a tool isn't in the allowlist, return `escalate` immediately.
 5. Soft cap on output: **16 KB body** (revised from 4 KB after Peer
-   feedback — Peer envelopes alone are 12-19 KB; 4 KB would force every
+   feedback - Peer envelopes alone are 12-19 KB; 4 KB would force every
    diagnostic to truncate). Outputs >16 KB write to
    `ops/runtime/bridge_action_artifacts/<task_id>.json` and the bridge
    body carries `{"body_path": "<path>", "truncated": true,
@@ -296,7 +296,7 @@ Schema:
 ```
 
 Atomic-write via the same `core.atomic_write_json` helper RC uses
-(retry-with-backoff for WinError 5 — see
+(retry-with-backoff for WinError 5 - see
 `reference_os_replace_winerror5` memory).
 
 **Claim lock** (per Peer ask, §12.5 resolution): when either the watcher's
@@ -350,10 +350,10 @@ hour per node. Notifications include task summary + `from`.
 
 RC's `/api/health/all` (Legion) gains a `bridge_watcher` block reading
 this file. Game-PC + Peer expose health via existing inbound bridge
-heartbeats (`bridge_heartbeat.py` already exists — extend it to include
+heartbeats (`bridge_heartbeat.py` already exists - extend it to include
 watcher state).
 
-Scheduled task (Legion) — mirrors `RC-Supervisor` shape:
+Scheduled task (Legion) - mirrors `RC-Supervisor` shape:
 - Name: `RC-BridgeWatcher`
 - Trigger: at logon, Administrator, HIGHEST priority
 - Action: `pythonw.exe ops/bridge_watcher.py`
@@ -385,7 +385,7 @@ Installer (idempotent):
 5. Verifies first poll succeeds + heartbeat written
 6. Cancels any existing `/loop /process-bridge-tasks` cron in the
    interactive Claude session (operator runs `/loop list` then
-   `/loop delete <id>` — installer prints the instruction; can't
+   `/loop delete <id>` - installer prints the instruction; can't
    reach into the Claude session itself)
 
 ### Peer
@@ -393,7 +393,7 @@ Same one-liner with `--target peer` config selection.
 
 ## 11. Rollout phases
 
-### MVP — Phase 0 (1-2 days work, ships first)
+### MVP - Phase 0 (1-2 days work, ships first)
 - `bridge_watcher.py` daemon (poll + classify + escalate, NO auto-action)
 - `bridge_inbox_pending.json` + `/api/bridge/pending` route on Legion
 - Scheduled task on Legion only
@@ -403,30 +403,30 @@ Same one-liner with `--target peer` config selection.
   hour in operator's interactive session; 100% of inbound tasks land
   in pending queue within 30s of arrival.
 
-### Phase 1 — Game-PC + Peer rollout
+### Phase 1 - Game-PC + Peer rollout
 - `bridge_watcher_install.ps1` shipped via `/agent/`
 - Game-PC + Peer install + run
 - UserPromptSubmit one-line hook on those nodes (no dashboard)
 - **Acceptance criterion**: all 3 nodes silent on empty bridge.
 
-### Phase 2 — Auto-action: read-only
+### Phase 2 - Auto-action: read-only
 - `bridge_watcher_actions.py` + classification expanded
 - Headless `claude --print` for read patterns
 - Token cap enforcement (per-node USD/day from config)
 - **Acceptance criterion**: 90%+ success rate on read-only tasks; if
   lower, downgrade specific patterns back to escalate.
 
-### Phase 3 — Auto-action: standard ops
+### Phase 3 - Auto-action: standard ops
 - Restart RC, regen cert, agent restart, etc.
 - Bash gated by per-task allowlist regex
 - **Acceptance criterion**: 95%+ success rate AND zero frozen-file
   modifications AND zero unrequested side effects (e.g. accidental
   git pushes).
 
-### Phase 4 (maybe never) — fan-out push notifs
+### Phase 4 (maybe never) - fan-out push notifs
 - If operator runs multiple Claude sessions across nodes, decide
   routing: canonical session only? all sessions? user-pinned session?
-- Likely YAGNI — start with canonical-session-only.
+- Likely YAGNI - start with canonical-session-only.
 
 ## 12. Open questions
 
@@ -438,7 +438,7 @@ Same one-liner with `--target peer` config selection.
 
 2. **Bridge unreachable vs empty**: `bridge_pull_tasks.py` returns
    `count: 0` for both. Watcher needs a separate ping
-   (`bridge_ping.py` exists — use it) to distinguish. If unreachable,
+   (`bridge_ping.py` exists - use it) to distinguish. If unreachable,
    stop posting "alive" heartbeats; let RC health surface degraded
    state.
 
@@ -448,7 +448,7 @@ Same one-liner with `--target peer` config selection.
    queue + count; let them see N pending when they come back.
 
 4. **Frozen-file regex**: today the safety gate is "does the prompt
-   mention any frozen-file path string". This is naïve — a prompt
+   mention any frozen-file path string". This is naïve - a prompt
    asking "explain main.py" is read-only but trips the gate. Maybe
    gate on intent verbs (Edit/Write/replace) near the path, not on
    path mentions alone. Defer to Phase 2 design.
@@ -469,7 +469,7 @@ Same one-liner with `--target peer` config selection.
 - Watcher does NOT modify frozen files even via auto-action. Hard gate.
 - Watcher does NOT loop on its own decisions. Each task: one classify,
   one action, one result. No retry logic in MVP.
-- Watcher does NOT touch `restart_trigger.txt` directly — restart
+- Watcher does NOT touch `restart_trigger.txt` directly - restart
   tasks call into the same trigger RC already owns.
 - Watcher does NOT decide what to escalate based on operator presence.
   If operator's away, escalations queue; they don't auto-promote to

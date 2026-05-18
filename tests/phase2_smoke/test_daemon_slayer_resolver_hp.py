@@ -1,9 +1,9 @@
 """
 tests/phase2_smoke/test_daemon_slayer_resolver_hp.py
-Phase 4 batch 19 wire-in (s73) — bonus_hp_for_id / total_bonus_hp.
+Phase 4 batch 19 wire-in (s73) - bonus_hp_for_id / total_bonus_hp.
 
 Pins the lazy-loaded HP table built from DDragon items.json. Uses the
-real patch-current snapshot — the resolver's job IS to read it, so the
+real patch-current snapshot - the resolver's job IS to read it, so the
 test surface is "given live DDragon, do the lookups produce the
 documented numbers". HP values can drift on patch bumps; assertions
 key on items whose HP has been stable for many patches (LDR=0,
@@ -23,7 +23,7 @@ class BonusHpForIdTests(unittest.TestCase):
     """Per-id HP lookup against the patch-current DDragon snapshot."""
 
     def test_unknown_id_returns_zero(self) -> None:
-        # Defensive: no exception, no log noise blocking — caller treats
+        # Defensive: no exception, no log noise blocking - caller treats
         # 0 as "no signal" same as a missing item.
         self.assertEqual(ds_res.bonus_hp_for_id("999999"), 0.0)
 
@@ -31,7 +31,7 @@ class BonusHpForIdTests(unittest.TestCase):
         self.assertEqual(ds_res.bonus_hp_for_id(""), 0.0)
 
     def test_ldr_has_no_hp(self) -> None:
-        # LDR (3036) is a pure crit/AD/pen item — no HP component.
+        # LDR (3036) is a pure crit/AD/pen item - no HP component.
         # Pinning this verifies the lookup distinguishes "0 HP" from
         # "unknown id" cleanly.
         self.assertEqual(ds_res.bonus_hp_for_id("3036"), 0.0)

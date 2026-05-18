@@ -1,12 +1,12 @@
 # ADR-008: Unified asset-hash for cache-busting + auto-reload
 
 **Date:** 2026-05-12
-**Status:** Accepted (s171.8 — shipped 2026-05-12 in commits `1aba0da` + `876fd01`)
+**Status:** Accepted (s171.8 - shipped 2026-05-12 in commits `1aba0da` + `876fd01`)
 
 ## Context
 
 The dashboard at `:8888` has two cache-busting mechanisms that should
-answer the same question — *"did any served asset change?"* — and act
+answer the same question - *"did any served asset change?"* - and act
 together so a single asset edit reaches the operator's browser:
 
 1. **`dashboard/_static.compute_asset_hash()`** drives the `?v=<hash>`
@@ -24,9 +24,9 @@ Each function independently maintained its own file allow-list:
 - `compute_asset_hash` walked **6 root files**: `index.html`,
   `css/dashboard.css`, `js/dashboard.js`, `js/main.js`, `js/sim.js`,
   `js/ws_client.js`.
-- `_serve_ui_version` walked a **different 4-file list** — `index.html`,
+- `_serve_ui_version` walked a **different 4-file list** - `index.html`,
   `css/dashboard.css`, `js/dashboard.js`, and *one of* the older root
-  scripts — and did **not** include `js/main.js` (the s133 ESM
+  scripts - and did **not** include `js/main.js` (the s133 ESM
   entrypoint) or anything under `web/{js,css}/panels/`.
 
 The two lists agreed by coincidence in 2026-04 because everything still
@@ -39,14 +39,14 @@ edited those panel files but the auto-reload poller never noticed.
 
 The operator-visible failure mode: between s164 (2026-05-10) and s171.7
 (2026-05-12), every `champ_select.js` edit was invisible. The
-`?v=<hash>` rewrite caught the index-load case — so opening a fresh
-page picked up new code — but the 4 s auto-reload poller never fired
+`?v=<hash>` rewrite caught the index-load case - so opening a fresh
+page picked up new code - but the 4 s auto-reload poller never fired
 because the hash it watched didn't include the panel files. Operators
 who left the dashboard open through a session never got the panel
 updates, and silently served pre-s171.7 `champ_select.js` (which still
 gated the champ-select view on opt-in `?cs=1`). The menu route
 `applyView` was a direct caller and bypassed the gate, masking the
-symptom — operators could click into the new view from the menu, but
+symptom - operators could click into the new view from the menu, but
 the actual `phase=ChampSelect` LCU push routed to the legacy
 `cs-overlay` because the runtime code was stale.
 
@@ -62,7 +62,7 @@ share **one** parts list, computed once and cached for 2 s:
   - `web/js/panels/*.js`
   - `web/js/lib/*.js`
 
-The hash is `sha1("|".join(f"{rel}:{int(mtime)}" for each part))` —
+The hash is `sha1("|".join(f"{rel}:{int(mtime)}" for each part))` -
 first 10 hex chars. Computed in `dashboard/_static.compute_asset_hash`;
 both `inject_asset_hash` and `_serve_ui_version` call this single
 function.
@@ -89,7 +89,7 @@ function.
   cache-miss. Cached for 2 s already, so repeated index hits within a
   burst stat nothing.
 - **Cache hash changes whenever any of the additional files change.**
-  This is the entire point — the previous behaviour silently elided
+  This is the entire point - the previous behaviour silently elided
   panel changes. The operator-facing effect is a 1-RTT reload, which
   is exactly the design intent.
 - **`OSError` on a missing subdir is swallowed.** If `web/js/panels/`
@@ -102,9 +102,9 @@ function.
 
 Accepted, shipped 2026-05-12.
 
-- `1aba0da` — expanded `compute_asset_hash` to walk
+- `1aba0da` - expanded `compute_asset_hash` to walk
   `web/{js,css}/panels/*` + `web/js/lib/*`.
-- `876fd01` — `/api/ui-version` now delegates to
+- `876fd01` - `/api/ui-version` now delegates to
   `compute_asset_hash` so the two cache-busting paths share one
   source of truth.
 

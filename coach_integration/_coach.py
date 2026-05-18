@@ -1,4 +1,4 @@
-# arch: CoachIntegration — SR coaching class (Haiku + cache + DS) | section=coaching | frozen=no
+# arch: CoachIntegration - SR coaching class (Haiku + cache + DS) | section=coaching | frozen=no
 """CoachIntegration: SR coaching dispatch, budget gating, CacheEngine, atomic writers."""
 
 import os
@@ -48,7 +48,7 @@ class CoachIntegration:
 
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         if not api_key:
-            logger.warning("ANTHROPIC_API_KEY not set — auto-coaching disabled")
+            logger.warning("ANTHROPIC_API_KEY not set - auto-coaching disabled")
         self._client = anthropic.Anthropic(api_key=api_key) if (api_key and anthropic) else None
 
         db_path = Path(__file__).parent.parent / "data" / "decisions.db"
@@ -84,7 +84,7 @@ class CoachIntegration:
         t.start()
 
     def request_now(self, game_state: dict):
-        """Force immediate coaching call — from context menu."""
+        """Force immediate coaching call - from context menu."""
         if not self._client or not game_state:
             return
         self._last_coach_time = time.time()
@@ -134,7 +134,7 @@ class CoachIntegration:
             for k in keys:
                 v = coach_state.get(k)
                 # Bucket continuous values to absorb noise.
-                # _convert outputs my_hp_pct (0.0-1.0), my_gold, my_level —
+                # _convert outputs my_hp_pct (0.0-1.0), my_gold, my_level -
                 # fix key names to match; hp_pct was the old wrong fallback.
                 if k == "hp_bucket" and v is None:
                     v = int(coach_state.get("my_hp_pct", 0) * 10)
@@ -202,7 +202,7 @@ class CoachIntegration:
         t0 = time.time()
         coach_state = self._convert(game_state)
         self._last_state = coach_state
-        # Stash the raw game_state too — _write_fields needs unprefixed
+        # Stash the raw game_state too - _write_fields needs unprefixed
         # live stats (kda / cs / level / gold / game_time_s) to populate
         # the dashboard top-bar pills, which read from coaching_data.json
         # via the WS /push channel (raw file content, no liveclient
@@ -245,7 +245,7 @@ class CoachIntegration:
             except Exception:
                 profile = GENERIC_PROFILE
         game_mode  = game_state.get("game_mode", "CLASSIC")
-        # SrAramWorker only submits CLASSIC/RANKED — always SR path.
+        # SrAramWorker only submits CLASSIC/RANKED - always SR path.
         # ARAM/KIWI/Arena/Brawl coaching is owned by dedicated mode coaches.
         sr_rune_rec  = _load_sr_rune_rec(champion)
         sr_build_note = _load_sr_build_note(champion)
@@ -287,7 +287,7 @@ class CoachIntegration:
             )
             _owned_ids = _ds_resolve_inventory(game_state.get("items", []), mode="sr")
             _lvl = int(game_state.get("level", 1)) or 1
-            # s170: replaces hardcoded target_armor=80.0 — DS now sees a
+            # s170: replaces hardcoded target_armor=80.0 - DS now sees a
             # level-scaled armor/MR/hp target instead of the SR-mid-game
             # anchor regardless of game time. ``bonus_hp_override`` not
             # supplied here because SR coach didn't have an item-aware
@@ -332,7 +332,7 @@ class CoachIntegration:
 
         # AUDIT 2026-04-28 (5.7): if the coach-relevant slice of state is
         # byte-identical to the last submitted slice, the previous response
-        # is already correct — skip the API call entirely.
+        # is already correct - skip the API call entirely.
         sig = self._state_signature(coach_state)
         if sig and sig == getattr(self, "_last_sig", None):
             logger.debug("Coach skip: state signature unchanged (%s)", sig[:16])
@@ -342,7 +342,7 @@ class CoachIntegration:
             from core.cost_tracker import get_tracker as _gt
             if not _gt().allow_call():
                 logger.warning("Coach call blocked: daily budget exceeded")
-                self._write_status_field("daily budget — paused until midnight")
+                self._write_status_field("daily budget - paused until midnight")
                 return
         except Exception:
             pass
@@ -403,9 +403,9 @@ class CoachIntegration:
                 logger.debug("coach_trace append: %s", _exc)
             self._last_sig = sig
         except _APITimeoutError:
-            logger.warning("Claude API timeout after %ds — will retry at next trigger", self._timeout_s)
+            logger.warning("Claude API timeout after %ds - will retry at next trigger", self._timeout_s)
             self._last_coach_time = time.time() - self._debounce_s + 2.0
-            self._write_status_field("Timeout — retrying next trigger")
+            self._write_status_field("Timeout - retrying next trigger")
             return
         except _APIConnectionError:
             logger.error("Claude API unreachable")
@@ -526,7 +526,7 @@ class CoachIntegration:
         # PREVIOUS match's enemy comp for the first ~5 minutes of every
         # new game (until the coach engine eventually surfaces fresh
         # advice that names the actual current opponents). Use direct
-        # assignment (not setdefault) — these MUST trump whatever's on
+        # assignment (not setdefault) - these MUST trump whatever's on
         # disk every tick.
         for _k in ("ally_comp", "enemy_comp"):
             _v = ls.get(_k)
@@ -535,7 +535,7 @@ class CoachIntegration:
 
         # Mirror live game stats from the raw gs so the dashboard top-bar
         # pills (CS / level / gold / KDA / game time) populate. Coaching
-        # JSON is what file_ingest broadcasts to the WS /push channel —
+        # JSON is what file_ingest broadcasts to the WS /push channel -
         # without these keys, the pills hide via the dashboard JS's
         # `if (typeof p.cs === "number")` guards. /api/state already does
         # this via state-builder's liveclient overlay, but the WS push
@@ -579,7 +579,7 @@ class CoachIntegration:
                     _pending_ds = getattr(self, "_last_ds_rows", None)
                     if _pending_ds is not None:
                         # s182: _pending_ds is now already in display_rows shape
-                        # ({id, name, delta_dps, gold, delta, scorer}) — written
+                        # ({id, name, delta_dps, gold, delta, scorer}) - written
                         # directly. Empty list -> empty list (no picks this tick).
                         current["daemon_slayer_picks"] = list(_pending_ds)
 

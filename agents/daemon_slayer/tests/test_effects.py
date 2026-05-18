@@ -1,4 +1,4 @@
-"""Phase 4 thin slice tests — per-item conditional effects."""
+"""Phase 4 thin slice tests - per-item conditional effects."""
 
 import unittest
 
@@ -52,7 +52,7 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(ids, ["3031", "6672"])
 
     def test_collect_effects_keeps_duplicates(self) -> None:
-        # Engine doesn't enforce per-item uniqueness — ensure effect aggregation
+        # Engine doesn't enforce per-item uniqueness - ensure effect aggregation
         # mirrors that. Two IEs => two entries in the effects list.
         out = collect_effects(["3031", "3031"])
         self.assertEqual(len(out), 2)
@@ -135,7 +135,7 @@ class StormrazorMagicProcTests(unittest.TestCase):
         # reduced by target MR. Concretely: stormrazor with 100 armor / 0 MR
         # should exceed stormrazor with 0 armor / 100 MR (because the proc is
         # full-damage in the first case but halved in the second; the auto-
-        # attack portion is symmetric — full vs halved respectively).
+        # attack portion is symmetric - full vs halved respectively).
         # We verify the proc contribution itself by comparing two cases that
         # only differ in target MR.
         no_mr = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3097"])
@@ -149,7 +149,7 @@ class StormrazorMagicProcTests(unittest.TestCase):
 
     def test_stormrazor_proc_unaffected_by_target_armor(self) -> None:
         # Set MR to 0 so only armor varies. Stormrazor proc is magical, so it
-        # ignores armor — but the auto-attack portion DOES scale with armor.
+        # ignores armor - but the auto-attack portion DOES scale with armor.
         # We want the auto-attack scale to differ, but the proc to stay flat.
         # Easiest assertion: with high armor, the difference between Stormrazor
         # builds and naked builds should still include the full proc contribution.
@@ -167,7 +167,7 @@ class StormrazorMagicProcTests(unittest.TestCase):
 
 
 class DefensiveOnlyItemTests(unittest.TestCase):
-    """BT and Shieldbow are tagged defensive_only — no DPS contribution beyond
+    """BT and Shieldbow are tagged defensive_only - no DPS contribution beyond
     their stat blocks. Ensures the schema entry is exercised end-to-end without
     accidentally adding DPS via a stale `periodic` field."""
 
@@ -197,7 +197,7 @@ class DefensiveOnlyItemTests(unittest.TestCase):
 
 class UnmodeledItemRegressionTests(unittest.TestCase):
     """Items without an ITEM_EFFECTS entry must keep producing the same DPS
-    they did before Phase 4 — the conditionals layer is purely additive."""
+    they did before Phase 4 - the conditionals layer is purely additive."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -218,7 +218,7 @@ class UnmodeledItemRegressionTests(unittest.TestCase):
 
 class EffectAggregationTests(unittest.TestCase):
     """Effects are aggregated, not just last-wins. Stack 1 IE + 1 Stormrazor +
-    1 Kraken — all three should fire together."""
+    1 Kraken - all three should fire together."""
 
     @classmethod
     def setUpClass(cls) -> None:

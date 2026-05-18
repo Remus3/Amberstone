@@ -1,5 +1,5 @@
-// Active Match panel module (s159 — step 1 scaffold, s170 — step 2/3 wiring,
-//   s171 — step 4 map overlay).
+// Active Match panel module (s159 - step 1 scaffold, s170 - step 2/3 wiring,
+//   s171 - step 4 map overlay).
 //
 // Step 1 (s159) shipped the empty render shell wired into the main dispatcher.
 // Step 2/3 (s170) adds per-tick DS rerank by POSTing to /api/ds-preview.
@@ -46,7 +46,7 @@ function _dsRerankKey(champion, mode, level, items) {
 
 // Returns the most recent rank_for() result for the current inputs,
 // scheduling a refetch in the background if the inputs changed or the
-// cooldown has elapsed. Non-blocking — caller renders with whatever's
+// cooldown has elapsed. Non-blocking - caller renders with whatever's
 // already cached. The next render() call will pick up the new rows
 // once the POST completes.
 function _maybeRefreshDsPicks(champion, mode, level, items) {
@@ -100,7 +100,7 @@ function _dsTargetStatsCaption() {
 }
 
 // s171: opt-OUT (was opt-in). Active Match is the default in-game
-// surface — it renders coach action/immediate/objective/next + DS
+// surface - it renders coach action/immediate/objective/next + DS
 // live rerank + the static map with enemy dots. Operator opts OUT via
 // ``?am=0`` or ``localStorage.activeMatch === '0'`` to fall back to
 // the legacy MAP STATE / RIGHT NOW / NEXT / STATS panels in last-match.
@@ -129,14 +129,14 @@ export function renderActiveMatch(payload, ctx) {
   // Defensive: every getter is null-safe so a missing pane in DOM
   // (older HTML cache) doesn't crash the dispatcher chain.
   const p = payload || {};
-  const mode = (ctx && ctx.mode) || "—";
-  const phase = (ctx && ctx.lcuPhase) || "—";
+  const mode = (ctx && ctx.mode) || "-";
+  const phase = (ctx && ctx.lcuPhase) || "-";
 
   // s171.2: freshness gate. The coach payload (state.coach.*) lives in
-  // memory across games — when a game ends, the previous game's
+  // memory across games - when a game ends, the previous game's
   // immediate/action/objective/next stay populated until the next
   // game's coach tick overwrites them. Without a gate, the active-
-  // match view shows stale "Recall now—Ryze respawn 47s" prompts from
+  // match view shows stale "Recall now-Ryze respawn 47s" prompts from
   // the previous game while the operator is in champ-select for a new
   // one. Treat anything other than phase=InProgress as "between games"
   // and clear the coach panes so the operator isn't misled.
@@ -145,8 +145,8 @@ export function renderActiveMatch(payload, ctx) {
   const sub = _AM.sub();
   if (sub) {
     if (isLive) {
-      const champ = p.champion || "—";
-      const time = p.game_time || "—";
+      const champ = p.champion || "-";
+      const time = p.game_time || "-";
       sub.textContent = `${mode.toUpperCase()} · ${champ} · ${time} · phase ${phase}`;
     } else {
       // Champ-select / loading / between games: no live coach yet.
@@ -156,7 +156,7 @@ export function renderActiveMatch(payload, ctx) {
     }
   }
 
-  // Step 1 placeholders — surface a few raw fields so the user can
+  // Step 1 placeholders - surface a few raw fields so the user can
   // confirm data is reaching the view before steps 2-4 fill in the
   // curated layout. Plain text only; no DOM scaffolding promised by
   // the final design (CALL fold, DS icons, static map) yet.
@@ -167,17 +167,17 @@ export function renderActiveMatch(payload, ctx) {
       // champ-select / loading / aftergame.
       call.innerHTML = "";
       call.appendChild(_line("RIGHT NOW",
-        phase === "ChampSelect" ? "champ select — no in-game prompts yet"
-        : phase === "GameStart" ? "loading screen — game starts soon"
-        : "no in-game session — waiting for next game"));
+        phase === "ChampSelect" ? "champ select - no in-game prompts yet"
+        : phase === "GameStart" ? "loading screen - game starts soon"
+        : "no in-game session - waiting for next game"));
       return;
     }
     const action = p.action || "";
     const immediate = p.immediate || "";
     const next = p.next || "";
     const objective = p.objective || "";
-    // s171: ``immediate`` is the most actionable field — the coach's
-    // RIGHT NOW prompt (e.g. "Recall now — Ryze + Yi respawn ~47s").
+    // s171: ``immediate`` is the most actionable field - the coach's
+    // RIGHT NOW prompt (e.g. "Recall now - Ryze + Yi respawn ~47s").
     // It was being dropped from the active-match render even though
     // every coach tick populates it. Now leads the panel above
     // ACTION/OBJECTIVE/NEXT so the operator sees the imminent call
@@ -191,7 +191,7 @@ export function renderActiveMatch(payload, ctx) {
     } else {
       // Empty coach payload → surface that we're waiting rather than
       // leave the panel blank. Operator's complaint "no coach prompts
-      // because it doesn't know I'm in game" was partly this — the
+      // because it doesn't know I'm in game" was partly this - the
       // panel rendered nothing while coach tick was lagging.
       call.innerHTML = "";
       call.appendChild(_line("RIGHT NOW", "waiting for coach tick…"));
@@ -221,7 +221,7 @@ export function renderActiveMatch(payload, ctx) {
       picks.slice(0, 5).forEach((r) => {
         strip.appendChild(_dsIcon(r, ownedSet));
       });
-      // s171.4: live target-stats caption — shows the operator what
+      // s171.4: live target-stats caption - shows the operator what
       // armor/MR/HP profile the DS ranker is computing against, so
       // they can see when the rankings shift due to enemy itemization.
       const tgtCaption = _dsTargetStatsCaption();
@@ -258,7 +258,7 @@ export function renderActiveMatch(payload, ctx) {
       }
     }
     if (!picks.length && !owned.length) {
-      // Empty pane shouldn't be blank — surface that we're waiting.
+      // Empty pane shouldn't be blank - surface that we're waiting.
       build.appendChild(_line("DS ENGINE", "waiting for live data…"));
     }
   }
@@ -266,7 +266,7 @@ export function renderActiveMatch(payload, ctx) {
   const map = _AM.mapBody();
   if (map) {
     // Step 4: render the mode's static base image + champion-dot
-    // overlay from /api/vision-state. _renderAmMap is idempotent —
+    // overlay from /api/vision-state. _renderAmMap is idempotent -
     // re-attaches the shell only on mode change, redraws the canvas
     // every tick.
     const modeLow = String((ctx && ctx.mode) || "sr").toLowerCase();
@@ -299,7 +299,7 @@ const _AM_MAP_WORLD = {
 // whole map is visible to both teams. Suppress the dot overlay but
 // still surface the summary line (N visible / N dead).
 const _AM_SHARED_VISION = new Set(["ARAM", "KIWI"]);
-// MIA threshold (s) — render the badge when missing_for_s exceeds this.
+// MIA threshold (s) - render the badge when missing_for_s exceeds this.
 const _AM_MIA_THRESHOLD = 12;
 // Gank-warning threshold (s) for enemy JG missing outside their jungle.
 const _AM_GANK_THRESHOLD = 20;
@@ -363,7 +363,7 @@ function _renderAmMap(host, mode, payload) {
 function _amStartMapPolling() {
   if (_AM_MAP.pollHandle != null) return;
   const tick = () => {
-    // Only poll while the active-match view is current — otherwise we
+    // Only poll while the active-match view is current - otherwise we
     // burn CPU + bandwidth on hidden surfaces.
     const view = document.body.dataset.view;
     if (view !== "active-match") return;
@@ -375,7 +375,7 @@ function _amStartMapPolling() {
           _amDrawOverlay(vs);
         }
       })
-      .catch(() => { /* swallow — next tick retries */ });
+      .catch(() => { /* swallow - next tick retries */ });
   };
   tick();   // fire immediately so the first draw isn't 500ms late
   _AM_MAP.pollHandle = setInterval(tick, _AM_TICK_MS);
@@ -409,7 +409,7 @@ function _amDrawOverlay(vs) {
   const gameModeUp = String((vs && vs.game_mode) || "").toUpperCase();
   const shared = _AM_SHARED_VISION.has(gameModeUp);
 
-  // Status line — visible/missing/dead summary.
+  // Status line - visible/missing/dead summary.
   if (status) {
     const visible = summary.visible_count | 0;
     const missing = summary.missing_count | 0;
@@ -481,7 +481,7 @@ function _amDrawOverlay(vs) {
           && (e.last_seen_zone === "ENEMY_JUNGLE"
               || e.last_seen_zone === "RIVER"
               || e.last_seen_zone === null)) {
-        gankAlert = `${name} missing ${Math.round(missing)}s — ward / back off`;
+        gankAlert = `${name} missing ${Math.round(missing)}s - ward / back off`;
       }
     }
   }
@@ -563,7 +563,7 @@ function _dsIcon(r, ownedSet) {
   return wrap;
 }
 
-// s171.6: defensive pick icon — like _dsIcon but the caption is the
+// s171.6: defensive pick icon - like _dsIcon but the caption is the
 // item's category (lifeline / armor / mr / sustain / tenacity) +
 // reason tooltip instead of a +Ndps delta. Amber border so they
 // visually distinguish from the offensive DS strip.
@@ -578,7 +578,7 @@ function _defIcon(rec, ownedSet) {
     const img = document.createElement("img");
     img.src = `/data/ddragon/${ver}/img/item/${id}.png`;
     img.alt = name;
-    img.title = `${name} — ${rec.reason || rec.category || ""}`;
+    img.title = `${name} - ${rec.reason || rec.category || ""}`;
     img.style.cssText = "width:44px;height:44px;border-radius:6px;border:2px solid #f59e0b;display:block;margin:0 auto;";
     img.onerror = () => {
       if (!img.dataset.cdnRetry) {

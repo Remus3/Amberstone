@@ -1,15 +1,15 @@
-"""Tests for the s220 carried surrender-tag slice — `_enrich_from_lcu`
+"""Tests for the s220 carried surrender-tag slice - `_enrich_from_lcu`
 surfacing `ended_in_surrender` / `ended_in_early_surrender`.
 
 The LCU /lol-match-history/v1/games/{gameId} payload already carries
 `gameEndedInSurrender` + `gameEndedInEarlySurrender` on every
-participant's stats block (same value game-wide). Surfacing-only — no
-new fetch — so the Post Game Review hero can distinguish an FF'd loss
+participant's stats block (same value game-wide). Surfacing-only - no
+new fetch - so the Post Game Review hero can distinguish an FF'd loss
 from a played-out one and badge a remake. Backward-compat: pre-existing
 ingested matches lack the keys → both flags must default False (never
 KeyError, never None).
 
-Synthetic-only — no DB, no live LCU.
+Synthetic-only - no DB, no live LCU.
 """
 from __future__ import annotations
 

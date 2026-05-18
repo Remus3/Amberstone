@@ -769,7 +769,7 @@ class TftCoachEngine:
             tmp.write_text(json.dumps(output, indent=2), encoding="utf-8")
             tmp.replace(self._data_file)
             logger.debug("TFT coaching data written (%d fields)", len(fields))
-            # arch: phase 3 step 1.1 — write TFT coaching timestamp only after payload write succeeds
+            # arch: phase 3 step 1.1 - write TFT coaching timestamp only after payload write succeeds
             # Mirrors SR/ARAM/Arena/Brawl successful-write semantics.
             try:
                 from core.coaching_timestamps import write_coaching_ts as _wcts

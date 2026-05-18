@@ -140,7 +140,7 @@ class SelfMonitor:
     Supervisor after start_app() + write_status() have established current-run
     state.  Call start() to begin monitoring; call stop() to shut down.
 
-    Phase 0 (FROZEN) — do not change health semantics without an explicit request.
+    Phase 0 (FROZEN) - do not change health semantics without an explicit request.
 
     Health classification (_check_health returns one of three states):
       "healthy"   All of the following hold simultaneously:
@@ -194,7 +194,7 @@ class SelfMonitor:
         # status is established. Empty string means no binding (legacy/test mode).
         self._supervisor_run_id: str = supervisor_run_id
 
-        # arch: phase 0.13 — bounded bootstrap window.
+        # arch: phase 0.13 - bounded bootstrap window.
         # _seen_current_supervisor_status: flips True the first time _check_health()
         #   reads a status.json whose supervisor_run_id matches self._supervisor_run_id.
         #   After that, missing/invalid/stale status is no longer tolerated.
@@ -233,7 +233,7 @@ class SelfMonitor:
         self._stop_event     = threading.Event()
         self._threads:       List[threading.Thread] = []
 
-        # arch: phase 0.3 — monotonic timestamp when worker first seen dead (fix 3)
+        # arch: phase 0.3 - monotonic timestamp when worker first seen dead (fix 3)
         # Used for client-mode grace-period detection in _check_health().
         self._worker_dead_since: Optional[float] = None
 
@@ -335,7 +335,7 @@ class SelfMonitor:
         self._maybe_write_summary(profile)
 
         # -- Health check -------------------------------------------------------
-        # arch: phase 0.9 — _check_health() returns a (state, detail) tuple
+        # arch: phase 0.9 - _check_health() returns a (state, detail) tuple
         # state is "healthy", "tolerated", or "unhealthy".
         #   healthy   - verified good, reset ladder
         #   tolerated - startup grace / pid mismatch within grace;
@@ -517,7 +517,7 @@ class SelfMonitor:
         return None
 
     def _supervisor_awaiting_first_heartbeat(self) -> bool:
-        """[legacy — not called internally; retained for external introspection]
+        """[legacy - not called internally; retained for external introspection]
         True if supervisor status.json says awaiting_first_heartbeat=True."""
         status = self._read_supervisor_status()
         if status is None:
@@ -525,7 +525,7 @@ class SelfMonitor:
         return bool(status.get("awaiting_first_heartbeat", False))
 
     def _supervisor_expected_pid(self) -> Optional[int]:
-        """[legacy — not called internally; retained for external introspection]
+        """[legacy - not called internally; retained for external introspection]
         Return expected_pid from supervisor status.json, or None if unavailable."""
         status = self._read_supervisor_status()
         if status is None:
@@ -534,7 +534,7 @@ class SelfMonitor:
         return int(v) if v is not None else None
 
     def _supervisor_state_str(self) -> str:
-        """[legacy — not called internally; retained for external introspection]
+        """[legacy - not called internally; retained for external introspection]
         Return supervisor_state string from status.json, or '' if unavailable."""
         status = self._read_supervisor_status()
         if status is None:
@@ -543,11 +543,11 @@ class SelfMonitor:
 
     # ── Health check ──────────────────────────────────────────────────────────
     #
-    # arch: phase 0.9 — _check_health() returns 3-value state string instead of plain bool
+    # arch: phase 0.9 - _check_health() returns 3-value state string instead of plain bool
     # so _tick() can distinguish:
-    #   "healthy"  — verified healthy; resets ladder
-    #   "tolerated" — startup grace / identity mismatch within grace; NO ladder reset
-    #   "unhealthy" — genuine failure; escalate ladder
+    #   "healthy"  - verified healthy; resets ladder
+    #   "tolerated" - startup grace / identity mismatch within grace; NO ladder reset
+    #   "unhealthy" - genuine failure; escalate ladder
     #
     # The public interface is kept as tuple[str, str] = (state, detail).
 
@@ -555,7 +555,7 @@ class SelfMonitor:
         """
         Return (state: str, detail: str) where state is one of:
 
-          "healthy"   — ALL of the following are simultaneously true:
+          "healthy"   - ALL of the following are simultaneously true:
                         - Bootstrap guard passed: supervisor status.json is
                           present, readable, and belongs to this supervisor run
                         - supervisor process_running=True
@@ -566,13 +566,13 @@ class SelfMonitor:
                         - supervisor_state == "healthy_ready"
                         - subsystem checks pass (provider, ui_loop, game_poll_worker)
 
-          "tolerated" — do NOT escalate, do NOT reset ladder. Returned when:
+          "tolerated" - do NOT escalate, do NOT reset ladder. Returned when:
                         - bootstrap guard: status.json missing, invalid, or stale
-                          run_id — but still within the 60-second bootstrap window
+                          run_id - but still within the 60-second bootstrap window
                         - startup grace: health.json missing, stale, booting=True,
                           or wrong-pid while supervisor reports tolerated_startup_wait
 
-          "unhealthy" — genuine failure requiring remediation. Returned when:
+          "unhealthy" - genuine failure requiring remediation. Returned when:
                         - bootstrap guard fails AFTER bootstrap window closes, OR
                           after current supervisor status has been seen at least once
                         - any health check (0-8) fails outside of startup grace
@@ -717,7 +717,7 @@ class SelfMonitor:
                 return "tolerated", "startup_grace: health_file_missing"
             return "unhealthy", "health_file_missing"
 
-        # ── 2. Read file (always — we need pid/run_id to classify correctly) ──────────
+        # ── 2. Read file (always - we need pid/run_id to classify correctly) ──────────
         # NOTE: The stale-age rejection (age > max_heartbeat_age) is applied AFTER the
         # startup-grace and identity checks below. This ensures a stale previous-run
         # health file during supervisor startup grace returns "tolerated" (not "unhealthy")

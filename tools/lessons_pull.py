@@ -1,4 +1,4 @@
-"""lessons_pull.py — fetch unhandled kind=lesson envelopes targeted at RC.
+"""lessons_pull.py - fetch unhandled kind=lesson envelopes targeted at RC.
 
 Mirrors bridge_pull_tasks.py for lessons. Runs the cheap auto-gates
 (schema_version, does_not_apply_when) inline and prints the remainder

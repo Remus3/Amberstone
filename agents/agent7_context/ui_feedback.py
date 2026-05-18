@@ -1,8 +1,8 @@
-"""Round 42 — Agent 7 UI-feedback intent.
+"""Round 42 - Agent 7 UI-feedback intent.
 
 Sim-mode dashboard chat: the iPad's input bar, when the page loaded
 with ``?sim=<fixture>``, routes here instead of the general
-:class:`InputParser`. Scope is strictly *dashboard UI* — CSS, HTML,
+:class:`InputParser`. Scope is strictly *dashboard UI* - CSS, HTML,
 layout, colors, and dashboard JS behavior. Coach output, analyzer
 logic, agent framework code, secrets: all out of scope (refused with
 a pointer to normal flow).
@@ -12,7 +12,7 @@ Every proposed edit is whitelist-guarded against
 that list causes an immediate refusal, *even if the user explicitly
 asks for it*. Bypass flow: ``bypass dev: <text>`` on the user side
 sets ``user_override=True`` on the filed task so it dispatches without
-approval — but the whitelist still applies.
+approval - but the whitelist still applies.
 
 Two-stage parse, mirroring :class:`InputParser`:
   1. Fast rule-based handlers for common requests (font size, color
@@ -39,7 +39,7 @@ logger = logging.getLogger("agent7.ui_feedback")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
-# Messages clearly outside UI scope — refuse with pointer.
+# Messages clearly outside UI scope - refuse with pointer.
 _RE_OFF_TOPIC = re.compile(
     r"\b(analyzer|kda\s+threshold|coach\s+prompt|ingest|reconcile|"
     r"scheduler|agent\s*[024567]|claude|llm|haiku|sonnet|supervisor|"
@@ -47,11 +47,11 @@ _RE_OFF_TOPIC = re.compile(
     re.IGNORECASE,
 )
 
-# Direct-apply bypass token — stripped from text; caller notified via
+# Direct-apply bypass token - stripped from text; caller notified via
 # ``bypass_dev=True`` in the result.
 _RE_BYPASS = re.compile(r"^\s*bypass\s+dev\s*[:\-]?\s*", re.IGNORECASE)
 
-# Rule-based handlers — each returns (reply, changes or []) if it can
+# Rule-based handlers - each returns (reply, changes or []) if it can
 # handle the text, or (None, []) to pass through.
 
 _RE_FONT_BUMP = re.compile(
@@ -115,7 +115,7 @@ class UIFeedbackParser:
                 reply="(empty input)", intent="ui_feedback_empty",
             )
 
-        # Bypass-dev prefix — strip and flag.
+        # Bypass-dev prefix - strip and flag.
         bypass = False
         m_bypass = _RE_BYPASS.match(text)
         if m_bypass:
@@ -123,12 +123,12 @@ class UIFeedbackParser:
             bypass = True
             if not text:
                 return UIProposalResult(
-                    reply="(bypass dev prefix with no request — nothing to do)",
+                    reply="(bypass dev prefix with no request - nothing to do)",
                     intent="ui_feedback_empty",
                     bypass_dev=True,
                 )
 
-        # Off-topic guard — refuse before any rule tries to match.
+        # Off-topic guard - refuse before any rule tries to match.
         off = _RE_OFF_TOPIC.search(text)
         if off:
             r = _refusal(f"detected non-UI scope keyword {off.group(0)!r}")
@@ -145,7 +145,7 @@ class UIFeedbackParser:
             result = self._try_llm_fallback(text, history or [], sim_fixture)
 
         if result is None:
-            # Couldn't produce a proposal — file a diagnostic task so we
+            # Couldn't produce a proposal - file a diagnostic task so we
             # see what's missing in the rule set, but don't apply anything.
             tid = self._scheduler.file_task(
                 op="ui-feedback-unhandled",
@@ -167,7 +167,7 @@ class UIFeedbackParser:
                 bypass_dev=bypass,
             )
 
-        # Pre-flight whitelist — should already be clean from the rules,
+        # Pre-flight whitelist - should already be clean from the rules,
         # but double-check so a bad LLM answer never slips through.
         bad = [c for c in result.proposed_changes
                if not _is_path_allowed(c.get("file", ""))]
@@ -177,7 +177,7 @@ class UIFeedbackParser:
 
         # File the proposal. Without bypass, this is a standard ready
         # task (deterministic ui-proposal) that the supervisor auto-
-        # dispatches because ui-proposal is in DETERMINISTIC_OPS —
+        # dispatches because ui-proposal is in DETERMINISTIC_OPS -
         # BUT without ``user_override`` the scheduler may still gate
         # on category=1/frozen-file. With bypass_dev, we set the
         # override so the task ships straight through.
@@ -229,7 +229,7 @@ class UIFeedbackParser:
         if abs(new_base - old_base) < 0.5:
             return UIProposalResult(
                 reply=(
-                    f"Font base is already ~{old_base:.0f}px — {pct}% change "
+                    f"Font base is already ~{old_base:.0f}px - {pct}% change "
                     f"lands within 0.5 px. No-op."
                 ),
                 intent="ui_feedback_noop",
@@ -248,7 +248,7 @@ class UIFeedbackParser:
         return UIProposalResult(
             reply=(
                 f"Scaling every font-size token {verb} by {pct}% "
-                f"(base {old_base:.0f}px → {int(new_base)}px). Proposed — "
+                f"(base {old_base:.0f}px → {int(new_base)}px). Proposed - "
                 f"review + approve to apply."
             ),
             proposed_changes=[{
@@ -277,7 +277,7 @@ class UIFeedbackParser:
             css = css_path.read_text(encoding="utf-8")
         except OSError:
             return None
-        # Pattern inside :root block only — avoid touching media-query overrides.
+        # Pattern inside :root block only - avoid touching media-query overrides.
         new_css, n = re.subn(
             rf"(--{re.escape(var)}\s*:\s*)[^;]+;",
             rf"\g<1>{val};",
@@ -286,12 +286,12 @@ class UIFeedbackParser:
         )
         if n == 0:
             return UIProposalResult(
-                reply=f"No CSS var `--{var}` found in dashboard.css — check the name.",
+                reply=f"No CSS var `--{var}` found in dashboard.css - check the name.",
                 intent="ui_feedback_noop",
             )
         return UIProposalResult(
             reply=(
-                f"Changing `--{var}` → `{val}` in dashboard.css. Proposed — "
+                f"Changing `--{var}` → `{val}` in dashboard.css. Proposed - "
                 f"review + approve to apply."
             ),
             proposed_changes=[{
@@ -321,12 +321,12 @@ class UIFeedbackParser:
                 "You are the UI-feedback channel for a dashboard. Scope is "
                 "CSS/HTML/layout/color + dashboard JS behavior ONLY. Return "
                 "JSON with either:\n"
-                "  {\"reply\": \"prose\"}  — conversational answer\n"
+                "  {\"reply\": \"prose\"}  - conversational answer\n"
                 "  or {\"reply\": \"...\", \"changes\": [{\"file\": \"<path>\", "
                 "\"content\": \"<FULL new file content>\", \"summary\": \"...\"}]}\n"
                 f"Only these files may be proposed: {allow_list}.\n"
                 "Never modify coach logic, analyzer, scheduler, API keys, or "
-                "anything outside the whitelist — refuse with reply only."
+                "anything outside the whitelist - refuse with reply only."
             ),
             "spawn_budget_usd": 0.15,
             "spawn_timeout_sec": 60,

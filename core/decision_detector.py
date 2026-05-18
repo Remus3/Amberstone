@@ -1,8 +1,8 @@
 """
-core/decision_detector.py — coachable-moment detection + recording.
+core/decision_detector.py - coachable-moment detection + recording.
 
 Watches live game state (Live Client snapshots via the relay + vision_tracker
-output) and emits "decisions" — moments where the player has a meaningful
+output) and emits "decisions" - moments where the player has a meaningful
 choice to make (contest/give an objective, force/disengage a fight, etc.).
 The dashboard surfaces pending decisions and records the player's choice
 for later postmortem.
@@ -18,14 +18,14 @@ Architecture
 - DecisionLoop: daemon thread that polls state every ~1s, evaluates
   detectors, dedupes by decision id, writes the pending list.
 
-V1 ships with one detector: `detect_objective_contest_with_missing` —
+V1 ships with one detector: `detect_objective_contest_with_missing` -
 fires when an objective spawns within ~60s and ≥2 enemies are missing.
 
 2-PC dependency note
 --------------------
 Live Client data arrives via the Legion-local relay endpoint
 http://127.0.0.1:8889/latest-liveclient. The relay is fed by the Game-PC
-liveclient agent (TODO: hard 2-PC dependency — if Game-PC goes offline,
+liveclient agent (TODO: hard 2-PC dependency - if Game-PC goes offline,
 detectors stop firing because the snapshot ages out). Vision state is
 read from data/vision_state.json on Legion (same path). No Game-PC paths
 are referenced from this module.
@@ -47,7 +47,7 @@ import portalocker
 _log = logging.getLogger("rc.decision_detector")
 _APP_DIR = Path(__file__).parent.parent
 
-# Stale-snapshot threshold — anything older than this is treated as
+# Stale-snapshot threshold - anything older than this is treated as
 # "no game" and clears any pending decisions.
 _RELAY_MAX_AGE_S  = 8.0
 _VISION_STATE     = _APP_DIR / "data" / "vision_state.json"
@@ -56,7 +56,7 @@ _LOG_PATH         = _APP_DIR / "data" / "decisions_log.jsonl"
 _LOCK_PATH        = _APP_DIR / "ops" / "runtime" / "decisions.lock"
 # ADR-007 (s169): heartbeat is file-backed because the DecisionLoop lives
 # in the Phase 3 supervisor process while the dashboard reads it from the
-# RC main process — same cross-process pattern as DecisionStore.
+# RC main process - same cross-process pattern as DecisionStore.
 _HEARTBEAT_PATH   = _APP_DIR / "data" / "decisions_heartbeat.json"
 
 _DEFAULT_POLL_S   = 1.0
@@ -65,7 +65,7 @@ _LOCK_TIMEOUT_S   = 2.0
 # Tier 3 #15 (2026-05-01): the DecisionLoop now runs in agents/supervisor.py
 # while record_choice() is invoked from the dashboard handler in the RC
 # main process. The threading.Lock alone no longer serializes the two
-# read-modify-write paths on data/decisions_pending.json — pair it with
+# read-modify-write paths on data/decisions_pending.json - pair it with
 # a portalocker file lock for cross-process safety. Same best-effort
 # pattern as core.coaching_data_lock: 2s timeout, fall through with TL
 # only if the file lock can't be acquired.
@@ -100,7 +100,7 @@ def _decisions_critical_section() -> Iterator[None]:
 # Global rate cap (per-game): never spam more than _MAX_PER_GAME total
 # decisions, never less than _MIN_GAP_S between two NEW decision ids
 # entering the pending list. Re-fires of an id already in pending don't
-# count — those just keep the existing decision alive.
+# count - those just keep the existing decision alive.
 _MAX_PER_GAME     = 5
 _MIN_GAP_S        = 30.0
 
@@ -144,7 +144,7 @@ def register_detector(fn: DetectorFn) -> DetectorFn:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 # Approximate spawn timings for SR (2026 patch). First-spawn / respawn pairs.
-# Atakhan currently replaces Herald — skipped here pending mode-aware logic.
+# Atakhan currently replaces Herald - skipped here pending mode-aware logic.
 
 _DRAGON_FIRST_S    = 300.0
 _DRAGON_RESPAWN_S  = 300.0
@@ -183,7 +183,7 @@ def detect_objective_contest_with_missing(
     game_time = float(game_data.get("gameTime", 0.0))
     events = (snapshot.get("events") or {}).get("Events") or []
 
-    # Skip non-SR modes — Dragon/Baron only exist there.
+    # Skip non-SR modes - Dragon/Baron only exist there.
     mode = str(game_data.get("gameMode", "")).upper()
     if mode and mode != "CLASSIC":
         return None
@@ -225,7 +225,7 @@ def detect_objective_contest_with_missing(
         return None
 
     when = "spawning now" if time_to_spawn <= 0 else f"in {int(time_to_spawn)}s"
-    title = f"{name} {when} — {len(missing)} enemies missing"
+    title = f"{name} {when} - {len(missing)} enemies missing"
     subtitle = "Missing: " + ", ".join(missing)
 
     return Decision(
@@ -304,7 +304,7 @@ def detect_low_hp_backable(
     return Decision(
         id=f"low_hp_back:{bucket}",
         type="low_hp_back",
-        title=f"{pct_int}% HP — back or stay?",
+        title=f"{pct_int}% HP - back or stay?",
         subtitle=f"alive {int(alive_for)}s since last death",
         options=["back", "push"],
         created_at_unix=time.time(),
@@ -335,7 +335,7 @@ def detect_lane_roam_window(
         return None     # ARAM has no roams
 
     # If a major objective is in the contest window, the contest detector
-    # owns this signal — don't double-prompt.
+    # owns this signal - don't double-prompt.
     events = (snapshot.get("events") or {}).get("Events") or []
     for name, first_at, respawn, kill_event in (
         ("Dragon", _DRAGON_FIRST_S, _DRAGON_RESPAWN_S, "DragonKill"),
@@ -364,7 +364,7 @@ def detect_lane_roam_window(
     return Decision(
         id=f"lane_roam:{bucket}",
         type="lane_roam",
-        title=f"{len(missing_long)} enemies missing — roam or push?",
+        title=f"{len(missing_long)} enemies missing - roam or push?",
         subtitle="Missing: " + ", ".join(missing_long),
         options=["roam", "push"],
         created_at_unix=time.time(),
@@ -452,7 +452,7 @@ def detect_postfight_objective(
     return Decision(
         id=f"postfight_objective:{int(last_event_t)}",
         type="postfight_objective",
-        title=f"+{diff} fight, {obj_name} live — take or cross-map?",
+        title=f"+{diff} fight, {obj_name} live - take or cross-map?",
         subtitle=f"ally kill diff {diff:+d} in last 20s · {obj_name} window open",
         options=["take", "cross-map"],
         created_at_unix=time.time(),
@@ -480,7 +480,7 @@ def _enemy_has_smite(p: dict) -> bool:
 
 def _is_enemy_jungle_zone(zone: str, enemy_team: str) -> bool:
     """SR only. Order team's jungle is blue_*; CHAOS is red_*. Callers
-    gate on mode (CLASSIC) — ARAM has no jungle, Arena/Brawl have
+    gate on mode (CLASSIC) - ARAM has no jungle, Arena/Brawl have
     unrelated layouts. A zone is the enemy's own jungle when the prefix
     matches their team."""
     z = (zone or "").lower()
@@ -489,7 +489,7 @@ def _is_enemy_jungle_zone(zone: str, enemy_team: str) -> bool:
         return z.startswith("blue_") and "jungle" in z
     if t == "CHAOS":   # enemy is on Chaos team → their jungle is red_
         return z.startswith("red_") and "jungle" in z
-    # Unknown team: treat any *_jungle as enemy-side (conservative — won't fire).
+    # Unknown team: treat any *_jungle as enemy-side (conservative - won't fire).
     return False
 
 
@@ -499,12 +499,12 @@ def detect_jungler_gank_likely(
 ) -> Optional[Decision]:
     """ADR-007 s169: enemy jungler missing ≥20s AND last seen outside their
     own jungle quadrant (likely pathing to a lane). Identifies the JG by
-    Smite summoner spell. SR only — ARAM has no jungle, Arena/Brawl have
+    Smite summoner spell. SR only - ARAM has no jungle, Arena/Brawl have
     no Smite.
 
     Bucketed to 90-second windows so a stationary missing JG doesn't
     re-fire every tick. Skips while a major objective is in the contest
-    window — `detect_objective_contest_with_missing` owns that case."""
+    window - `detect_objective_contest_with_missing` owns that case."""
     game_data = snapshot.get("gameData") or {}
     game_time = float(game_data.get("gameTime", 0.0))
     mode = str(game_data.get("gameMode", "")).upper()
@@ -576,7 +576,7 @@ def detect_jungler_gank_likely(
     return Decision(
         id=f"jungler_gank:{bucket}",
         type="jungler_gank",
-        title=f"Enemy JG missing {int(missing_for)}s — gank or invade?",
+        title=f"Enemy JG missing {int(missing_for)}s - gank or invade?",
         subtitle=f"{jg.get('champion') or 'Jungler'} last seen {last_zone}",
         options=["safe", "punish"],
         created_at_unix=time.time(),
@@ -601,10 +601,10 @@ def detect_throwing_lead(
     cluster (≤45s between first and last). Bucketed to 120s windows.
 
     Stateless: relies only on the events list in `snapshot`. Doesn't need
-    a gold-history tracker — death-cluster IS the throwing signal."""
+    a gold-history tracker - death-cluster IS the throwing signal."""
     game_data = snapshot.get("gameData") or {}
     game_time = float(game_data.get("gameTime", 0.0))
-    if game_time < 480:   # 8 min — early-game deaths happen, not "throwing"
+    if game_time < 480:   # 8 min - early-game deaths happen, not "throwing"
         return None
 
     active = snapshot.get("activePlayer") or {}
@@ -630,14 +630,14 @@ def detect_throwing_lead(
     my_deaths_t.sort()
     spread = my_deaths_t[-1] - my_deaths_t[0]
     if spread > 45:
-        # Two deaths >45s apart isn't a cluster — just bad luck.
+        # Two deaths >45s apart isn't a cluster - just bad luck.
         return None
 
     bucket = int(game_time // 120)
     return Decision(
         id=f"throwing_lead:{bucket}",
         type="throwing_lead",
-        title=f"{len(my_deaths_t)} deaths in {int(spread)}s — reset?",
+        title=f"{len(my_deaths_t)} deaths in {int(spread)}s - reset?",
         subtitle="Two deaths inside a 45s window. Stop chasing, freeze lane,"
                  " group with team.",
         options=["reset", "force"],
@@ -660,7 +660,7 @@ class DecisionStore:
     `reconcile()` and `record_choice()` use `_decisions_critical_section()`
     (threading.Lock + portalocker file lock) because the loop runs in the
     Phase 3 supervisor process while record_choice runs in the RC dashboard
-    handler — see Tier 3 #15."""
+    handler - see Tier 3 #15."""
 
     def __init__(self, pending_path: Path = _PENDING_PATH,
                  log_path: Path = _LOG_PATH):
@@ -690,7 +690,7 @@ class DecisionStore:
           - keep any pending decision whose id appears in `fresh` (still triggering)
           - drop pending decisions whose expires_at_game_time < game_time
           - drop pending decisions whose id no longer appears in `fresh`
-            (condition lifted — e.g., enemies became visible again)
+            (condition lifted - e.g., enemies became visible again)
           - add new ids from `fresh`
         """
         fresh_ids = {d.id for d in fresh}
@@ -758,7 +758,7 @@ class DecisionLoop:
         self._game_decisions = 0
         self._last_new_t = 0.0          # unix time of most recent NEW emit
         self._prev_game_time = 0.0      # for new-game detection
-        # ADR-007 (s169): heartbeat counter — increments on each successful
+        # ADR-007 (s169): heartbeat counter - increments on each successful
         # eval-with-fresh-state, resets when a new game is detected. Exposed
         # via heartbeat() for the dashboard #trigger-pill so the operator
         # can glance over and confirm the loop is alive even when it's
@@ -812,7 +812,7 @@ class DecisionLoop:
         now = time.time()
         for d in fresh:
             if d.id in existing_ids:
-                kept.append(d)            # already pending — pass through
+                kept.append(d)            # already pending - pass through
                 continue
             if self._game_decisions >= _MAX_PER_GAME:
                 _log.debug("rate-cap: dropping %s (per-game max)", d.id)
@@ -830,7 +830,7 @@ class DecisionLoop:
             try:
                 snap, age = self._fetch_snapshot()
                 if snap is None or age > _RELAY_MAX_AGE_S:
-                    # No game (or stale) — clear any stale pending and idle.
+                    # No game (or stale) - clear any stale pending and idle.
                     if self._store.list_pending():
                         self._store.reconcile([], game_time=10**9)
                     self._stop.wait(self._poll_s)
@@ -888,7 +888,7 @@ class DecisionLoop:
             counter:         eval cycles in current match (resets on new game)
             last_eval_unix:  wall-clock time of most recent eval
             age_s:           seconds since last eval (None if never ran)
-            alive:           bool — true when age_s < 5
+            alive:           bool - true when age_s < 5
             game_time:       last observed game_time (0 when no game)
             detectors:       count of registered detectors
         """
@@ -922,7 +922,7 @@ def get_loop() -> DecisionLoop:
 
 def read_heartbeat() -> dict:
     """ADR-007 (s169): file-backed heartbeat read for the dashboard
-    handler (RC main process — separate from the Phase 3 supervisor
+    handler (RC main process - separate from the Phase 3 supervisor
     process that owns the loop singleton).
 
     Returns the same shape as DecisionLoop.heartbeat(); when the file

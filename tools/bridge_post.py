@@ -1,5 +1,5 @@
-# arch: Stop-hook poster — extract last assistant message and post | section=bridge | frozen=no
-"""bridge_post.py — Phase 6 shim. Real code lives in tools/bridge_cli.py.
+# arch: Stop-hook poster - extract last assistant message and post | section=bridge | frozen=no
+"""bridge_post.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 Stop-hook entrypoint. Reads the Stop-hook payload JSON from stdin, extracts
 the last assistant message text, and posts a one-line summary to the bridge.

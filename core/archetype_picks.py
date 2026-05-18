@@ -1,15 +1,15 @@
 # arch: cs archetype pick storage + DDragon-tag default resolver | section=core | frozen=no
-"""Phase 3 (s176, 2026-05-12) — champ-select scorer-picker storage layer.
+"""Phase 3 (s176, 2026-05-12) - champ-select scorer-picker storage layer.
 
 The Daemon Slayer engine ships six scorer archetypes per
 ``NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md``:
 
-* ``carry``     — auto-attack DPS         (ds.dps, shipped)
-* ``bruiser``   — combined DPS + EHP      (ds.hybrid, s175)
-* ``tank``      — Effective HP            (ds.ehp, s174)
-* ``mage``      — ability DPS             (ds.ability, Phase 4 future)
-* ``assassin``  — single-combo burst      (ds.burst, Phase 5 future)
-* ``enchanter`` — heal/shield throughput  (ds.hps, Phase 6 future)
+* ``carry``     - auto-attack DPS         (ds.dps, shipped)
+* ``bruiser``   - combined DPS + EHP      (ds.hybrid, s175)
+* ``tank``      - Effective HP            (ds.ehp, s174)
+* ``mage``      - ability DPS             (ds.ability, Phase 4 future)
+* ``assassin``  - single-combo burst      (ds.burst, Phase 5 future)
+* ``enchanter`` - heal/shield throughput  (ds.hps, Phase 6 future)
 
 Each champion has a *primary* archetype (the scorer the coach reads each
 tick) and a *secondary* archetype (the alt-view in the CS panel, frozen
@@ -36,7 +36,7 @@ This module owns three things:
 Phase 3 deliberately ships only the data layer + REST endpoint + picker
 UI. Coach integration (each coach reading
 ``state.cs_archetype_pick.primary`` and dispatching to the matching
-scorer) lands in a follow-up session — same shape as the s174 ``Phase 1
+scorer) lands in a follow-up session - same shape as the s174 ``Phase 1
 deferrals`` pattern.
 """
 from __future__ import annotations
@@ -53,7 +53,7 @@ from typing import Optional
 _log = logging.getLogger("rc.archetype_picks")
 
 # Canonical archetype names. Order matters: UI renders left→right in
-# this order. Keep stable — localStorage + the persisted JSON file key
+# this order. Keep stable - localStorage + the persisted JSON file key
 # off these strings.
 ARCHETYPES: tuple[str, ...] = (
     "carry", "bruiser", "tank", "mage", "assassin", "enchanter",
@@ -109,7 +109,7 @@ _PICKS_LOCK = threading.Lock()
 def tag_to_archetype(tag: str) -> str:
     """Map a single DDragon tag to the canonical archetype name.
 
-    Returns "carry" for unknown tags — safest fallback (auto-attack DPS
+    Returns "carry" for unknown tags - safest fallback (auto-attack DPS
     is the most-tested scorer). Callers that want strict behavior should
     check ``tag.lower() in _TAG_TO_ARCHETYPE`` first.
     """
@@ -144,7 +144,7 @@ def _load_champion_tags() -> dict[str, list[str]]:
                     out[key.replace(" ", "")] = tags
                     out[key.replace("'", "").replace(" ", "")] = tags
         except FileNotFoundError:
-            _log.warning("archetype_picks: %s missing — defaults will use carry", _CHAMPS_PATH)
+            _log.warning("archetype_picks: %s missing - defaults will use carry", _CHAMPS_PATH)
         except Exception as exc:
             _log.warning("archetype_picks: tags load failed: %s", exc)
         _TAGS_CACHE = out
@@ -178,7 +178,7 @@ def default_for_champion(champion: str) -> tuple[str, str]:
 def _fallback_secondary(primary: str) -> str:
     """When DDragon gives only one tag, pick a sensible alt-view.
 
-    Heuristic mappings — not load-bearing; operator overrides via UI.
+    Heuristic mappings - not load-bearing; operator overrides via UI.
     """
     return {
         "carry":     "bruiser",
@@ -203,7 +203,7 @@ def _load_picks() -> dict[str, dict]:
                     _PICKS_CACHE = data
                     return _PICKS_CACHE
                 _log.warning(
-                    "archetype_picks: %s not a dict (%s) — ignoring",
+                    "archetype_picks: %s not a dict (%s) - ignoring",
                     _PICKS_PATH, type(data).__name__,
                 )
         except Exception as exc:
@@ -246,7 +246,7 @@ def save_archetype_pick(
     """Persist an operator-chosen pick. Returns the stored entry.
 
     Raises ``ValueError`` on invalid archetype/source. Caller is expected
-    to validate ``champion`` is non-empty before calling — we don't store
+    to validate ``champion`` is non-empty before calling - we don't store
     blank-key entries.
     """
     if not champion or not champion.strip():
@@ -264,7 +264,7 @@ def save_archetype_pick(
             f"source must be one of {sorted(VALID_SOURCES)}, got {source!r}"
         )
 
-    # Resolve secondary if not provided — keep the default semantics.
+    # Resolve secondary if not provided - keep the default semantics.
     if secondary is None:
         _, default_secondary = default_for_champion(champion)
         secondary = default_secondary if default_secondary != primary else _fallback_secondary(primary)
@@ -289,7 +289,7 @@ def save_archetype_pick(
 
 def _read_picks_locked() -> dict[str, dict]:
     """Pull picks from disk while holding ``_PICKS_LOCK``. Helper for
-    save_archetype_pick — we can't call ``_load_picks`` recursively
+    save_archetype_pick - we can't call ``_load_picks`` recursively
     because it acquires the same lock."""
     try:
         if _PICKS_PATH.exists():
@@ -344,7 +344,7 @@ def get_archetype_for(champion: str) -> dict:
 
 
 def list_archetype_picks() -> dict[str, dict]:
-    """Return a copy of the full persisted map. Read-only — callers
+    """Return a copy of the full persisted map. Read-only - callers
     that mutate this won't affect the persisted file (we re-read on save)."""
     return dict(_load_picks())
 

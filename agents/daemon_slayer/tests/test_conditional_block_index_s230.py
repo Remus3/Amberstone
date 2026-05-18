@@ -1,39 +1,39 @@
-"""Phase 5.9.30 (s230, 2026-05-16) — pure-data conditional seed-expansion
+"""Phase 5.9.30 (s230, 2026-05-16) - pure-data conditional seed-expansion
 on the stable 2-term vocab. Continues the s207->s215/s217 / s228->s229
 schema->pure-data cadence; NO vocab change (s227's "don't over-expand"
-lesson — both new entries reuse the existing ``target_no_setup`` term).
+lesson - both new entries reuse the existing ``target_no_setup`` term).
 
 1 NEW key (a real correctness fix, NOT a no-op) + 1 CONVERSION (provable
 Part-1 no-op). Verified per-rank vs Meraki 16.10.1 + live A/B :8893.
 
   * Fiddlesticks Q "Terrify" = {"default": [2, 3], "target_no_setup":
-        [0, 1]} — the FIRST registry conditional whose branches are
+        [0, 1]} - the FIRST registry conditional whose branches are
         list[int] (combines the s207 sum-of-blocks list schema with the
-        s228 conditional schema; zero engine change —
+        s228 conditional schema; zero engine change -
         ``_normalize_block_index_value`` already recursively normalizes
         each branch and only rejects a *nested* dict). Filtered damage
         blocks (raw[0]/raw[3] are duration, dropped by the
         attribute_kind=='damage' filter): fidx0 target_current_hp_pct
         [4..6], fidx1 base [40..120], fidx2 = EXACTLY 2.0x fidx0,
-        fidx3 = EXACTLY 2.0x fidx1 — the classic Terrify
+        fidx3 = EXACTLY 2.0x fidx1 - the classic Terrify
         double-damage-vs-feared discrete pair. ``default``=[2,3]
-        (feared/amped, operator-commits canonical — Fiddle's kit
+        (feared/amped, operator-commits canonical - Fiddle's kit
         revolves around fear), ``target_no_setup``=[0,1] (un-amped vs
         a not-yet-feared target). Pre-s230 the engine scored Q at
         filtered-block-0 ONLY (un-amped %HP, missing the un-amped base
-        AND the fear-amp) — a real ~+200% Q-dps fix.
+        AND the fear-amp) - a real ~+200% Q-dps fix.
   * Cassiopeia E "Twin Fang" int 1 -> {"default": 1, "target_no_setup":
-        0} — provable Part-1 no-op (default == prior int 1,
+        0} - provable Part-1 no-op (default == prior int 1,
         byte-identical). Enhanced vs a poisoned target (Cassi's own
         Q/W poison is the setup). RESOLVES the s229 "irregular
-        18-element Meraki array — defer until investigated"
+        18-element Meraki array - defer until investigated"
         carry-forward: the array is block 1's base scaling, rank-indexed
         by ``_evaluate_block`` exactly as since s191; the conditional
         conversion is orthogonal (Part-1 always resolves to default=1).
 
-Closed carry-forwards: Lux Illumination (PHANTOM — Lux P is Meraki
+Closed carry-forwards: Lux Illumination (PHANTOM - Lux P is Meraki
 parse_status=no_damage with zero damage_blocks; Q/E/R each single-block;
-no discrete pair exists anywhere in Lux's kit — never met the rigor
+no discrete pair exists anywhere in Lux's kit - never met the rigor
 bar). Aatrox W stays deferred (positional escaped-chain is NOT an
 operator-applied target-state setup).
 """
@@ -64,7 +64,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── vocab unchanged (s227 "don't over-build" — no new condition) ────────────
+# ─── vocab unchanged (s227 "don't over-build" - no new condition) ────────────
 
 
 class VocabUnchangedTests(unittest.TestCase):
@@ -130,7 +130,7 @@ class S230RegistryShapeTests(unittest.TestCase):
 
 
 class FiddleQImprovementTests(unittest.TestCase):
-    """Unlike the s229 conversions, Fiddle Q is a *new* key — under
+    """Unlike the s229 conversions, Fiddle Q is a *new* key - under
     Part-1 default resolution it strictly improves on the engine's
     pre-s230 block_strategy='first' baseline (which scored only the
     un-amped %HP block, missing the un-amped base AND the fear-amp)."""
@@ -227,7 +227,7 @@ class CassiopeiaEConversionTests(unittest.TestCase):
 
     def test_default_is_load_bearing_vs_block_0(self) -> None:
         # default (block 1, vs-poisoned enhanced) strictly exceeds the
-        # non-poisoned block 0 downgrade — the conditional is not a
+        # non-poisoned block 0 downgrade - the conditional is not a
         # no-op vs the un-mapped baseline (only vs the prior int 1).
         reg, _ = self._spell("Cassiopeia", "E")
         b0, _ = self._spell(

@@ -1,4 +1,4 @@
-"""Agent 7 warm-session manager — persistent Haiku conversation handle.
+"""Agent 7 warm-session manager - persistent Haiku conversation handle.
 
 Replaces the per-request ephemeral ``claude`` subprocess invocation for
 ``/api/input`` traffic when the user is actively at the UI. Typical
@@ -13,7 +13,7 @@ Lifecycle (per Agent 7 charter):
 
 Thread-safety: the SDK client is threadsafe for independent calls, but
 we serialise ``send()`` under an internal lock because we're editing a
-shared ``messages`` list. Concurrent /api/input POSTs block briefly —
+shared ``messages`` list. Concurrent /api/input POSTs block briefly -
 acceptable for an interactive NL parser.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ from typing import Any
 
 logger = logging.getLogger("agent7.warm_session")
 
-# Charter defaults — overridable per-instance if we ever need them.
+# Charter defaults - overridable per-instance if we ever need them.
 IDLE_TIMEOUT_SEC = 30 * 60     # 30 min
 DEFAULT_MODEL = "claude-haiku-4-5"
 MAX_HISTORY_TURNS = 20         # trim past this to keep token cost bounded
@@ -60,13 +60,13 @@ def _load_charter() -> str:
 
 class WarmSessionError(RuntimeError):
     """Raised when the warm session cannot make progress (missing key,
-    SDK unavailable, etc.) — callers should fall back to ephemeral CLI."""
+    SDK unavailable, etc.) - callers should fall back to ephemeral CLI."""
 
 
 class WarmAgent7Session:
     """Persistent Haiku-backed NL conversation for Agent 7 dispatch.
 
-    Not a singleton per se — the supervisor owns one instance. Imports
+    Not a singleton per se - the supervisor owns one instance. Imports
     the Anthropic SDK lazily so importing this module from tests or
     from environments without the SDK doesn't crash.
     """
@@ -117,7 +117,7 @@ class WarmAgent7Session:
             return False
         if time.monotonic() - self._last_activity < self._idle_timeout:
             return False
-        logger.info("warm session idle %.0fs — resetting history",
+        logger.info("warm session idle %.0fs - resetting history",
                     time.monotonic() - self._last_activity)
         self._messages.clear()
         self._last_activity = 0.0

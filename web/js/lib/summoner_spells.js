@@ -43,7 +43,7 @@ export function sumImg(spellId) {
   return slug ? `/icons/spells/${slug}.png` : "";
 }
 
-// Returns "Flash" / "Heal" / etc. — empty string for unknown spell IDs.
+// Returns "Flash" / "Heal" / etc. - empty string for unknown spell IDs.
 export function sumName(spellId) {
   return SUM_NAMES[spellId | 0] || "";
 }

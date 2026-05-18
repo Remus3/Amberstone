@@ -1,4 +1,4 @@
-"""Round 17 — champ-select warm-prime coverage."""
+"""Round 17 - champ-select warm-prime coverage."""
 from __future__ import annotations
 
 import asyncio

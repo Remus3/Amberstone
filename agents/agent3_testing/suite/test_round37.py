@@ -1,4 +1,4 @@
-"""Round 37 — coaching_digest bundler."""
+"""Round 37 - coaching_digest bundler."""
 from __future__ import annotations
 
 import json

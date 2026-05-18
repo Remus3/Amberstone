@@ -37,7 +37,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from statistics import mean
 
-# Per-row weighting by provenance tier. Coach-confidence scaling — see
+# Per-row weighting by provenance tier. Coach-confidence scaling - see
 # memory feedback_metric_provenance_tagging. source_truth = 1.0 baseline,
 # inferred rows contribute less to the aggregate.
 PROVENANCE_WEIGHTS = {
@@ -83,7 +83,7 @@ def _first_int(s: str) -> int | None:
 
 def _percentiles(values: list[tuple[float, float]]) -> dict:
     """Percentile + weighted mean from (value, weight) tuples. Percentiles
-    are computed on raw values (unweighted — so p50 still reflects the
+    are computed on raw values (unweighted - so p50 still reflects the
     true sample midpoint); avg is provenance-weighted."""
     if not values:
         return {}
@@ -111,7 +111,7 @@ def _percentiles(values: list[tuple[float, float]]) -> dict:
 
 def main() -> int:
     if not METRICS_DB.exists():
-        print(f"ERROR: {METRICS_DB} doesn't exist — run retrofill_match_metrics.py first")
+        print(f"ERROR: {METRICS_DB} doesn't exist - run retrofill_match_metrics.py first")
         return 2
 
     conn = sqlite3.connect(f"file:{METRICS_DB}?mode=ro", uri=True)
@@ -146,7 +146,7 @@ def main() -> int:
                 champ_buckets.setdefault(key, {}).setdefault(metric_key, []).append((float(v), weight))
         elif metric_key in TEXT_FREQ_METRICS:
             tv = (metric_value or "").strip()
-            if tv and tv != "—":
+            if tv and tv != "-":
                 text_buckets.setdefault(key, {}).setdefault(metric_key, {})
                 text_buckets[key][metric_key][tv] = text_buckets[key][metric_key].get(tv, 0) + 1
 
@@ -181,7 +181,7 @@ def main() -> int:
     print(f"champions with data: {len(out['champions'])}")
     print(f"wrote {OUT} ({OUT.stat().st_size // 1024} KB)")
 
-    # Spot-check — print Tristana sr_ranked summary
+    # Spot-check - print Tristana sr_ranked summary
     t = out["champions"].get("Tristana|sr_ranked")
     if t:
         print()

@@ -1,10 +1,10 @@
-// Trigger pill — ADR-007 (s169) decision_detector heartbeat surface.
+// Trigger pill - ADR-007 (s169) decision_detector heartbeat surface.
 //
 // Polls /api/decisions/heartbeat at ~2 Hz, updates #trigger-pill in
 // header row 2 with eval counter + green/amber/grey alive indicator.
 // Also peeks /api/decisions for pending count so the pill outlines
 // blue when something is actively asking for a choice (the actual
-// A/B banner lives in panels/bridge_pending.js — this is just status).
+// A/B banner lives in panels/bridge_pending.js - this is just status).
 //
 // Hidden by CSS on client/tft modes; render still runs so the pill
 // is up-to-date the moment the operator drops into a game.
@@ -12,7 +12,7 @@ import { el } from '../lib/helpers.js';
 
 const TP = {
   pill: el("trigger-pill"),
-  intervalMs: 500,   // 2 Hz — matches ds-pill cadence
+  intervalMs: 500,   // 2 Hz - matches ds-pill cadence
 };
 
 let _lastSig = "";
@@ -24,7 +24,7 @@ async function _tick() {
   try {
     const r = await fetch("/api/decisions/heartbeat");
     if (r.ok) hb = await r.json();
-  } catch (_) { /* swallow — pill will go grey */ }
+  } catch (_) { /* swallow - pill will go grey */ }
   try {
     const r = await fetch("/api/decisions");
     if (r.ok) {
@@ -41,15 +41,15 @@ async function _tick() {
   const gameTime = hb && typeof hb.game_time === "number" ? hb.game_time : 0;
 
   // Color tier:
-  //   alive  — last eval <5s   → green
-  //   stale  — last eval 5-15s → amber
-  //   dead   — >15s or never   → grey
+  //   alive  - last eval <5s   → green
+  //   stale  - last eval 5-15s → amber
+  //   dead   - >15s or never   → grey
   let tier;
   if (alive) tier = "alive";
   else if (ageS !== null && ageS < 15) tier = "stale";
   else tier = "dead";
 
-  // Idempotency — skip DOM write when nothing changed.
+  // Idempotency - skip DOM write when nothing changed.
   const sig = `${tier}|${counter}|${pendingCount}|${detectors}`;
   if (sig === _lastSig) return;
   _lastSig = sig;
@@ -66,7 +66,7 @@ async function _tick() {
 
   // Tooltip carries the diagnostic detail.
   const ageStr = ageS === null ? "never" : `${ageS.toFixed(1)}s ago`;
-  const gtStr = gameTime > 0 ? `${Math.floor(gameTime / 60)}:${String(Math.floor(gameTime % 60)).padStart(2, "0")}` : "—";
+  const gtStr = gameTime > 0 ? `${Math.floor(gameTime / 60)}:${String(Math.floor(gameTime % 60)).padStart(2, "0")}` : "-";
   TP.pill.title = (
     `decision_detector heartbeat\n` +
     `evals this match: ${counter}\n` +

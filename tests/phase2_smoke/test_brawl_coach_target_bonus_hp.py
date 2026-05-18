@@ -1,6 +1,6 @@
 """
 tests/phase2_smoke/test_brawl_coach_target_bonus_hp.py
-s75 — brawl_coach._estimate_target_bonus_hp + DS mode routing.
+s75 - brawl_coach._estimate_target_bonus_hp + DS mode routing.
 
 Brawl coach is the umbrella for BRAWL / NEXUSBLITZ / URF / OFA modes.
 DS mode routing splits BRAWL (map 35) from the SR-on-other-map modes
@@ -70,7 +70,7 @@ class DsModeRoutingTests(unittest.TestCase):
         self.assertEqual(c._ds_engine_mode(""), "SR")
 
     def test_brawl_substring_match(self) -> None:
-        # "BRAWL" should match even when LCU adds suffixes — matches
+        # "BRAWL" should match even when LCU adds suffixes - matches
         # 'in BRAWL' style game_mode strings if they ever appear.
         c = _StubCoach()
         self.assertEqual(c._ds_resolver_mode("BRAWL_RANKED"), "brawl")

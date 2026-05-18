@@ -1,8 +1,8 @@
-// Shared pure-utility functions — no DOM side-effects, no module state.
+// Shared pure-utility functions - no DOM side-effects, no module state.
 // Import specific exports; tree-shake unused helpers as needed.
 
 // 12-hour clock. Accepts a Date or "HH:MM"/"HH:MM:SS" string.
-// Duration formats (game time, cooldowns) stay as-is — only wall-clock.
+// Duration formats (game time, cooldowns) stay as-is - only wall-clock.
 export function _to12(input) {
   let h, m, s = null;
   if (input instanceof Date) {
@@ -47,7 +47,7 @@ export function fitText(elm, text, { max = 48, min = 16, step = 2, lines = null 
   if (elm.dataset.fitKey === fitKey) return;
   elm.dataset.fitKey = fitKey;
   elm.textContent = text;
-  if (!text || text === "—") return;
+  if (!text || text === "-") return;
   elm.style.fontSize = max + "px";
   let size = max;
   const budget = () => lines
@@ -102,7 +102,7 @@ export function _opGlyph(op) {
 
 // Human-readable relative age from a Unix timestamp (seconds).
 export function _formatRelativeAge(unixSec) {
-  if (!unixSec) return "—";
+  if (!unixSec) return "-";
   const ageS = Math.max(0, (Date.now() / 1000) - unixSec);
   if (ageS < 60)    return `${Math.round(ageS)}s ago`;
   if (ageS < 3600)  return `${Math.round(ageS / 60)}m ago`;

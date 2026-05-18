@@ -15,7 +15,7 @@ from core.tft_worker import TftWorker, TftWorkerResult
 
 
 class FakeLiveAnalysis:
-    """Stub TftLiveAnalysis — records set_ai_bar calls, no Tk."""
+    """Stub TftLiveAnalysis - records set_ai_bar calls, no Tk."""
     def __init__(self):
         self._ai_bar = None
         self.started = False
@@ -27,7 +27,7 @@ class FakeLiveAnalysis:
 
 
 class FakeEngine:
-    """Stub TftCoachEngine — records submit calls."""
+    """Stub TftCoachEngine - records submit calls."""
     def __init__(self):
         self.submitted = []
         self._last_call = 0
@@ -37,7 +37,7 @@ class FakeEngine:
 
 
 class FakeReader:
-    """Stub TftStateReader — returns canned states then None."""
+    """Stub TftStateReader - returns canned states then None."""
     def __init__(self, states):
         self._states = list(states)
         self._idx = 0
@@ -49,7 +49,7 @@ class FakeReader:
 
 
 class FakeAiBarProxy:
-    """Minimal proxy stub — no Tk widgets."""
+    """Minimal proxy stub - no Tk widgets."""
     def set_scanning(self, pct=0): pass
     def set_done(self): pass
     def notify_scan_scheduled(self, t): pass

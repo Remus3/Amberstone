@@ -1,5 +1,5 @@
 """
-scripts/db_size_monitor.py — track RC's local-data growth.
+scripts/db_size_monitor.py - track RC's local-data growth.
 
 Walks the key SQLite + JSONL files under data/ and writes the
 results to data/coach_reference/db_sizes.json. Exit code is 0 when

@@ -4,24 +4,24 @@
 // POST /api/build-order (core/build_order.py plan_build_order). Two
 // surfaces:
 //   (B) a collapsible "Build Order" block inside the champ-select My Pick
-//       card — mode-agnostic (sr/aram/arena), since a build order matters
+//       card - mode-agnostic (sr/aram/arena), since a build order matters
 //       just as much in ARAM/Arena. buildOrderCardHtml() returns an HTML
 //       string; champ_select.js injects it after the build chooser,
 //       passing the DDragon ver + its rAF re-render callback.
-//   (C) the in-game #ds-pill glance — buildOrderPill(state) returns the
+//   (C) the in-game #ds-pill glance - buildOrderPill(state) returns the
 //       next-2-in-order + a full-order rich tooltip; item_build.js (which
 //       owns #ds-pill) consumes it and falls back to its top-pick render
 //       when this returns null.
 //
 // Cost discipline: the route is N sequential engine calls (opt-in / NOT
-// per-tick — see the plan + archetype_dispatch.with_build_order). A build
+// per-tick - see the plan + archetype_dispatch.with_build_order). A build
 // order is a full-game plan, not a per-level snapshot, so we cache per
 // (champion|dsMode|archetype) at a FIXED planning level. Net = exactly one
-// fetch per champ+mode+arch per session — mirrors champ_select.js's
+// fetch per champ+mode+arch per session - mirrors champ_select.js's
 // _csvFetchDsBuilds caching discipline (presence-guarded, inflight-gated).
 //
 // The hard no-double rule (never two items sharing a unique passive) is
-// engine-authoritative — the route already enforces it; this module only
+// engine-authoritative - the route already enforces it; this module only
 // renders `unique_passive_safe` + any per-slot excluded_family signal.
 
 const BO_PLAN_LEVEL = 13; // full-build planning level (matches the plan's curl example)
@@ -97,7 +97,7 @@ export function getCachedBuildOrder(champion, dsMode, archetype) {
 // there's no champion yet so the card simply doesn't appear.
 export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
   opts = opts || {};
-  if (!champion || champion === "—" || !dsMode) return "";
+  if (!champion || champion === "-" || !dsMode) return "";
   const key = _boKey(champion, dsMode, archetype);
   const data = _BO_CACHE[key];
   if (!data) {
@@ -123,25 +123,25 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
   const ctxLine = ctxBits.length ? `vs ${ctxBits.join(" · ")}` : "";
 
   const safeChip = data.unique_passive_safe
-    ? `<span class="bo-safe" title="no two items share a unique passive — engine-enforced">no-double ✓</span>`
-    : `<span class="bo-unsafe" title="unique-passive collision — engine guard did not hold">⚠ double</span>`;
+    ? `<span class="bo-safe" title="no two items share a unique passive - engine-enforced">no-double ✓</span>`
+    : `<span class="bo-unsafe" title="unique-passive collision - engine guard did not hold">⚠ double</span>`;
 
-  // Full numbered order + per-slot math — also the collapsed-line hover
+  // Full numbered order + per-slot math - also the collapsed-line hover
   // (so the dense default still gives the operator the deeper math).
   const fullTip =
     order
       .map(
         (o) =>
-          `${o.slot}. ${_esc(o.item_name)} — ${_esc(_deltaTxt(o))}, ${o.gold || 0}g` +
+          `${o.slot}. ${_esc(o.item_name)} - ${_esc(_deltaTxt(o))}, ${o.gold || 0}g` +
           (o.excluded_family ? ` · locks ${_esc(o.excluded_family)}` : ""),
       )
       .join("<br>") +
     (ctxLine ? `<br>${_esc(ctxLine)}` : "");
 
-  // Collapsed (default) — ONE dense line: tag · ordered-name chain
+  // Collapsed (default) - ONE dense line: tag · ordered-name chain
   // (ellipsis-clips, full order in the tooltip) · no-double chip ·
   // expander. This is the density-optimal default for the tight My Pick
-  // card (trim content, not font — feedback_font_size_viewing_distance).
+  // card (trim content, not font - feedback_font_size_viewing_distance).
   if (!_boExpanded) {
     const chain = order.map((o) => _esc(o.item_name)).join(" → ");
     return `
@@ -155,7 +155,7 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
     </div>`;
   }
 
-  // Expanded — full numbered vertical list, readable fonts, per-slot
+  // Expanded - full numbered vertical list, readable fonts, per-slot
   // delta + excluded-family signal + a deeper-math tooltip per slot.
   const rows = order
     .map((o) => {
@@ -166,7 +166,7 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
           `</div>`
         : "";
       const tip =
-        `Slot ${o.slot}: ${_esc(o.item_name)} — ${_esc(dt)}, ${o.gold || 0}g` +
+        `Slot ${o.slot}: ${_esc(o.item_name)} - ${_esc(dt)}, ${o.gold || 0}g` +
         (ctxLine ? ` (${_esc(ctxLine)})` : "") +
         (o.scorer ? ` · scorer ${_esc(o.scorer)}` : "") +
         (o.excluded_family
@@ -199,7 +199,7 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
 
 // One delegated click handler for the expander. The card HTML is
 // re-injected on every champ-select render, so a per-element listener
-// won't survive — delegate on document, wired once at module load (same
+// won't survive - delegate on document, wired once at module load (same
 // idiom as archetype_nudge_chip.js's X-button). champ_select.js listens
 // for the dispatched event and schedules a re-render.
 document.addEventListener("click", (ev) => {
@@ -222,10 +222,10 @@ export function buildOrderPill(stateObj) {
     stateObj.champion ||
     (stateObj.coach && stateObj.coach.champion) ||
     "";
-  if (!champ || champ === "—") return null;
+  if (!champ || champ === "-") return null;
   // In-game we don't have the CS queue id; map from mode flags. Default
   // SR (the route is still valid; the card (B) is the mode-correct
-  // planned-build surface — this pill is the glance companion).
+  // planned-build surface - this pill is the glance companion).
   let dsMode = "SR";
   if (stateObj.aram_mode) dsMode = "ARAM";
   else if (stateObj.arena_mode) dsMode = "ARENA";
@@ -238,7 +238,7 @@ export function buildOrderPill(stateObj) {
   const order = Array.isArray(data.order) ? data.order : [];
   if (!order.length) return null;
   // Advance the cursor past items already owned (client-side; v1 plans
-  // from empty — live re-derivation is the plan's Phase 4).
+  // from empty - live re-derivation is the plan's Phase 4).
   const owned = Array.isArray(stateObj.owned_item_ids)
     ? stateObj.owned_item_ids.map((x) => String(x))
     : [];
@@ -257,7 +257,7 @@ export function buildOrderPill(stateObj) {
   return { html, tt };
 }
 
-// Test/diagnostic helper — clears caches + collapses the card so the next
+// Test/diagnostic helper - clears caches + collapses the card so the next
 // render fetches + writes unconditionally (mirrors _resetArchetypeNudgeSig).
 export function _resetBuildOrder() {
   for (const k of Object.keys(_BO_CACHE)) delete _BO_CACHE[k];

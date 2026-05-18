@@ -3,18 +3,18 @@
 
 Split out of moon_vision_server.py during Phase 2.4. Combines the plan's
 ``sonnet_escalation.py`` (vision API calls) and ``tier_routes.py`` (OCR
-endpoints) — both run inside HTTP request handlers and feed the same stats
+endpoints) - both run inside HTTP request handlers and feed the same stats
 ring + cost tracker, so keeping them adjacent avoids a needless boundary.
 
 Owns:
-- ``_VISION_PROMPT`` — TFT analysis system prompt (cached via ``cache_control:
+- ``_VISION_PROMPT`` - TFT analysis system prompt (cached via ``cache_control:
   ephemeral`` on subsequent calls).
-- ``_parse_json`` — best-effort fenced/raw/braces JSON extraction.
-- ``_crop_to_primary`` — halves Sonnet input area on stitched dual-monitor
+- ``_parse_json`` - best-effort fenced/raw/braces JSON extraction.
+- ``_crop_to_primary`` - halves Sonnet input area on stitched dual-monitor
   frames (RC_VISION_NO_CROP=1 disables).
-- ``_record_to_cost_tracker`` — best-effort hook into ``core.cost_tracker``.
-- ``handle_vision`` / ``handle_coach`` — Anthropic Messages API.
-- ``handle_ocr`` — Tesseract over base64 crops.
+- ``_record_to_cost_tracker`` - best-effort hook into ``core.cost_tracker``.
+- ``handle_vision`` / ``handle_coach`` - Anthropic Messages API.
+- ``handle_ocr`` - Tesseract over base64 crops.
 """
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
     by ~50% (image area) → roughly halves latency and cost.
 
     Returns (cropped_b64, media_type). On any decode/encode failure, returns
-    the original b64 + best-guess media type — the worst case is "we burned
+    the original b64 + best-guess media type - the worst case is "we burned
     3.6 s instead of 1.8 s on this one call".
 
     Disable via env: RC_VISION_NO_CROP=1.
@@ -81,7 +81,7 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
         raw = base64.b64decode(img_b64)
         img = Image.open(_io.BytesIO(raw))
         w, h = img.size
-        # Already small? Skip — this is a non-stitched frame from a
+        # Already small? Skip - this is a non-stitched frame from a
         # single-monitor capture (or a future cropped agent).
         if w <= 1920 and h <= 1080:
             mt = "image/jpeg" if img_b64.startswith("/9j/") else "image/png"
@@ -97,7 +97,7 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
                   len(raw) // 1024, len(buf.getvalue()) // 1024)
         return out, "image/jpeg"
     except Exception as exc:
-        log.warning("Vision crop failed (%s) — sending original frame", exc)
+        log.warning("Vision crop failed (%s) - sending original frame", exc)
         mt = "image/jpeg" if img_b64.startswith("/9j/") else "image/png"
         return img_b64, mt
 
@@ -135,7 +135,7 @@ def handle_vision(body: bytes) -> dict:
     t0 = time.time()
     try:
         # AUDIT 2026-04-29 (gap E): _VISION_PROMPT is identical for every
-        # vision call this session — promote to a cache_control:ephemeral
+        # vision call this session - promote to a cache_control:ephemeral
         # system block instead of repeating it in user content. Cuts the
         # text-portion input cost ~90% on subsequent calls.
         resp = _get_client().messages.create(
@@ -219,7 +219,7 @@ def handle_ocr(body: bytes) -> dict:
         img = img.resize((w * scale, h * scale), Image.LANCZOS)
         return ImageEnhance.Contrast(img).enhance(2.5)
 
-    # AUDIT (2026-04-22): specific exception classes — pytesseract raises
+    # AUDIT (2026-04-22): specific exception classes - pytesseract raises
     # pytesseract.TesseractError / EnvironmentError / OSError on tool
     # failures; PIL raises PIL.UnidentifiedImageError / OSError on crop
     # decode. Keep the silent-continue behaviour (OCR is best-effort) but

@@ -1,5 +1,5 @@
 """
-scripts/patch_champion.py — Modular champion data patcher for aram_champion_builds.json
+scripts/patch_champion.py - Modular champion data patcher for aram_champion_builds.json
 
 Usage:
     python patch_champion.py --list                          # show all champions + tiers
@@ -45,7 +45,7 @@ BANNED_COMPONENTS = {
 # Items that are mutually exclusive
 MUTEX_PAIRS = [
     ("Lord Dominik's Regards", "Mortal Reminder"),
-    ("Kraken Slayer", "Lord Dominik's Regards"),  # soft conflict — both anti-tank
+    ("Kraken Slayer", "Lord Dominik's Regards"),  # soft conflict - both anti-tank
 ]
 
 # Crit items (Season 16)
@@ -145,7 +145,7 @@ def cmd_validate(args) -> None:
                 log.warning("  - %s", issue)
             total_issues += len(issues)
     if total_issues == 0:
-        log.info("All builds validated — no issues found")
+        log.info("All builds validated - no issues found")
     else:
         log.warning("Total issues: %d", total_issues)
 
@@ -165,7 +165,7 @@ def cmd_apply(args) -> None:
     # Validate before applying
     issues = validate_build(champ, patch)
     if issues and not getattr(args, "force", False):
-        log.error("Validation failed for %s — use --force to override:", champ)
+        log.error("Validation failed for %s - use --force to override:", champ)
         for issue in issues:
             log.error("  - %s", issue)
         sys.exit(1)

@@ -1,5 +1,5 @@
 # arch: cs archetype pick rest endpoints | section=dashboard | frozen=no
-"""Phase 3 (s176, 2026-05-12) — REST endpoints for the CS archetype picker.
+"""Phase 3 (s176, 2026-05-12) - REST endpoints for the CS archetype picker.
 
 Mirror of ``routes_lobby_aux`` shape: GET reads, POST writes, with atomic
 file persistence under the hood via ``core.archetype_picks``. The picker
@@ -18,7 +18,7 @@ Routes:
     Body: ``{ champion, primary, secondary?, source? }``.
     Returns the canonicalized entry.
 
-* ``DELETE`` via POST with ``{ champion, clear: true }`` — falls back
+* ``DELETE`` via POST with ``{ champion, clear: true }`` - falls back
     to default. No separate DELETE method to keep the dispatch table
     simple; the picker UI calls POST+clear when the operator resets.
 """
@@ -130,7 +130,7 @@ def _serve_archetype_post(h, payload) -> None:
 
 
 def _serve_archetype_nudge_get(h) -> None:
-    """Diagnostic GET — returns the current in-memory nudge state.
+    """Diagnostic GET - returns the current in-memory nudge state.
 
     Not security-sensitive (already exposed via /api/state); the dedicated
     endpoint just makes manual probing easier. Operator can curl it to
@@ -144,9 +144,9 @@ def _serve_archetype_nudge_get(h) -> None:
 
 
 def _serve_archetype_nudge_dismiss(h, payload) -> None:
-    """POST /api/archetype-nudge/dismiss — operator clicked the chip's X.
+    """POST /api/archetype-nudge/dismiss - operator clicked the chip's X.
 
-    Body: ``{ champion: "<name>" }``. Idempotent — re-dismissing an
+    Body: ``{ champion: "<name>" }``. Idempotent - re-dismissing an
     already-dismissed nudge is fine. Returns ``{ok, dismissed: bool}``.
     """
     if not isinstance(payload, dict):

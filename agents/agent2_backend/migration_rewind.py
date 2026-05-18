@@ -57,7 +57,7 @@ QUEUE_TO_MODE: dict[int, str] = {
     1900: "sr_draft",  # URF pick
 }
 
-# arch: phase 3 — rewind timeline_events → match_events migration (coach-decision moments per §9)
+# arch: phase 3 - rewind timeline_events → match_events migration (coach-decision moments per §9)
 TRACKED_EVENT_TYPES = (
     "CHAMPION_KILL",
     "ITEM_PURCHASED",
@@ -170,7 +170,7 @@ def _insert_events(
     inserted = 0
     for e in rows:
         et = e["event_type"]
-        # Relevance filter — keep events involving tracked player, plus team macro events.
+        # Relevance filter - keep events involving tracked player, plus team macro events.
         relevant = False
         if tracked_participant_id is not None:
             if e["participant_id"] == tracked_participant_id:
@@ -256,7 +256,7 @@ def migrate(dry_run: bool = False, include_events: bool = False) -> dict:
             if not parts:
                 stats[mode]["skipped"] += 1
                 continue
-            # Audit M2: don't guess blue/red when tracked_team_id is null —
+            # Audit M2: don't guess blue/red when tracked_team_id is null -
             # the ally/enemy split would be scrambled for every red-side
             # game. Skip instead so Agent 4 isn't trained on garbage comps.
             if m["tracked_team_id"] is None:

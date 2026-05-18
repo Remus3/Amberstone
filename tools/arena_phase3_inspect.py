@@ -7,7 +7,7 @@ import codecs
 p = Path(r"C:/Riot Commander/data/meta_build/refresh_2026-05-02/_phase3_html/Akali.html")
 b = p.read_text(encoding="utf-8", errors="replace")
 
-# Pull every self.__next_f.push([N,"..."])  — the inner string is JS-string-escaped
+# Pull every self.__next_f.push([N,"..."])  - the inner string is JS-string-escaped
 # Use a non-greedy capture between the two outer quotes after [1, (or similar idx)
 pat = re.compile(r'self\.__next_f\.push\(\[\d+,\s*"', re.S)
 chunks: list[str] = []

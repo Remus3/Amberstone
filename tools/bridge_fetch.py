@@ -1,5 +1,5 @@
-# arch: UserPromptSubmit hook — print recent peer activity | section=bridge | frozen=no
-"""bridge_fetch.py — Phase 6 shim. Real code lives in tools/bridge_cli.py.
+# arch: UserPromptSubmit hook - print recent peer activity | section=bridge | frozen=no
+"""bridge_fetch.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 UserPromptSubmit hook entrypoint:
     py C:\\Riot Commander\\tools\\bridge_fetch.py

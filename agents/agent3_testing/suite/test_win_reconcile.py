@@ -1,4 +1,4 @@
-"""Round 21 — win-signal reconciler (postgame_stats.db → mode DB)."""
+"""Round 21 - win-signal reconciler (postgame_stats.db → mode DB)."""
 from __future__ import annotations
 
 import sqlite3
@@ -136,7 +136,7 @@ def test_reconcile_skips_no_candidate(wired: Path) -> None:
         wired / "db" / "aram.db", "Ahri",
         datetime(2026, 4, 22, 16, 0, tzinfo=timezone.utc),
     )
-    # postgame_stats is empty for this champion — no match.
+    # postgame_stats is empty for this champion - no match.
     result = reconcile_mode("aram")
     assert result["scanned"] == 1
     assert result["patched"] == 0
@@ -189,7 +189,7 @@ def test_reconcile_idempotent_does_not_overwrite_existing(wired: Path) -> None:
             ((ended - timedelta(seconds=1200)).isoformat(), ended.isoformat()),
         )
         conn.commit()
-    # Postgame says LOSS — but we should NOT overwrite the existing 1.
+    # Postgame says LOSS - but we should NOT overwrite the existing 1.
     _insert_postgame_stats(
         wired / "postgame_stats.db", "aram_player_stats",
         "Ahri", ended, "LOSS",
@@ -207,7 +207,7 @@ def test_reconcile_outside_window_no_match(wired: Path) -> None:
     from agents.agent2_backend.win_reconcile import reconcile_mode
     ended = datetime(2026, 4, 22, 16, 0, tzinfo=timezone.utc)
     _insert_live_match(wired / "db" / "aram.db", "Ahri", ended)
-    # Postgame row is an hour later — well outside the 10-min window.
+    # Postgame row is an hour later - well outside the 10-min window.
     _insert_postgame_stats(
         wired / "postgame_stats.db", "aram_player_stats",
         "Ahri", ended + timedelta(hours=1), "WIN",
@@ -220,7 +220,7 @@ def test_reconcile_ambiguous_two_close_diff_results(wired: Path) -> None:
     from agents.agent2_backend.win_reconcile import reconcile_mode
     ended = datetime(2026, 4, 22, 16, 0, tzinfo=timezone.utc)
     _insert_live_match(wired / "db" / "aram.db", "Ahri", ended)
-    # Two postgame rows 2s apart with conflicting team_result — bail out.
+    # Two postgame rows 2s apart with conflicting team_result - bail out.
     _insert_postgame_stats(
         wired / "postgame_stats.db", "aram_player_stats",
         "Ahri", ended + timedelta(seconds=10), "WIN",

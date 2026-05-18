@@ -1,4 +1,4 @@
-"""Phase 4b (s178, 2026-05-12) — spell cast-rate plumbing tests.
+"""Phase 4b (s178, 2026-05-12) - spell cast-rate plumbing tests.
 
 Covers ``ult_rates.get_spell_casts_per_sec`` + the file fallback chain
 + backward compat of ``get_ult_casts_per_sec``. The Phase 4b extension
@@ -87,7 +87,7 @@ class SpellCastRateLookupTests(unittest.TestCase):
         )
 
     def test_aatrox_arena_falls_through_to_global(self) -> None:
-        # Aatrox only has "global" — no SR / ARAM / ARENA.
+        # Aatrox only has "global" - no SR / ARAM / ARENA.
         self.assertAlmostEqual(
             ult_rates.get_spell_casts_per_sec("Aatrox", "Q", "SR"), 0.08
         )
@@ -126,7 +126,7 @@ class UltRateBackwardCompatTests(unittest.TestCase):
         self.tmp_root = Path(self.tmp.name)
         self.ult_file = self.tmp_root / "ult_cast_rates.json"
         self.spell_file = self.tmp_root / "spell_cast_rates.json"
-        # Legacy ult file shape — flat float per mode + global_fallback float.
+        # Legacy ult file shape - flat float per mode + global_fallback float.
         self.ult_file.write_text(json.dumps({
             "by_champ_mode": {
                 "Veigar": {"SR": 0.012, "ARAM": 0.015, "global": 0.013},

@@ -1,6 +1,6 @@
-# arch: Brawl mode coach — DS-before-Haiku | section=coaching | frozen=no
+# arch: Brawl mode coach - DS-before-Haiku | section=coaching | frozen=no
 """
-coaches/brawl_coach.py  — v2  (ARCH-002 BaseCoach inheritance)
+coaches/brawl_coach.py  - v2  (ARCH-002 BaseCoach inheritance)
 
 Nexus Blitz / URF / ARURF / One For All coaching engine.
 Inherits lifecycle from coaches.BaseCoach.
@@ -8,7 +8,7 @@ Self-polls Riot API every 1.5s.
 Vision fires every 12s for event detection (Nexus Blitz).
 Writes: data/brawl_coaching_data.json
 
-ARCH-002 (full) — 2026-04-18
+ARCH-002 (full) - 2026-04-18
 """
 
 import os
@@ -53,10 +53,10 @@ Prize Fight (center): group fast after nearest wave crash; dive their carry firs
 Final City: NEVER split. One fight. Your damage source goes in second, not first.
 
 ═══ LANE + ROTATION RULES ═══
-Win lane first — then look for event rotation
+Win lane first - then look for event rotation
 Rotate to event: ONLY if your wave is crashed AND travel time < 15s
 Do NOT abandon a winning trade to chase an event you won't reach in time
-After event win: crash nearest wave — THEN push objective
+After event win: crash nearest wave - THEN push objective
 After event loss: defensive recall, buy, come back stronger
 
 ═══ OBJECTIVES ═══
@@ -66,9 +66,9 @@ Nexus: group + dive in order (tank first, carry second, mop up third)
 
 NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T]
 
-OUTPUT FORMAT — exactly 8 fields, NO markdown:
+OUTPUT FORMAT - exactly 8 fields, NO markdown:
 Champion build: {brawl_meta}
-Action: <1-3 WORDS ALL-CAPS — GROUP MID / PUSH BOT / CONTEST EVENT / FIGHT NOW / BASE>
+Action: <1-3 WORDS ALL-CAPS - GROUP MID / PUSH BOT / CONTEST EVENT / FIGHT NOW / BASE>
 Immediate: <what to do RIGHT NOW, [A]/[E] tags, max 15 words>
 Event: <event name + action + [T]timer[/T] + lane location>
 Fight rule: <engage condition [E] carry + exact mechanic, max 20 words>
@@ -83,29 +83,29 @@ You are coaching a challenger player in URF (Ultra Rapid Fire). No CD limits. Sp
 CHAMPION: {profile}
 {adaptation_hint}
 ═══ URF PRIORITIES ═══
-1. Ability spam — your strongest abilities should be firing on every CD
-2. Anti-heal — Grievous Wounds is mandatory vs any sustain; buy it by item 2
-3. Positioning — URF burst is massive; stay at max range and never tank
-4. Snowball — first death matters; URF games end fast; deny early kills
-5. Objective speed — objectives die fast; always rotate for free turrets after kill
+1. Ability spam - your strongest abilities should be firing on every CD
+2. Anti-heal - Grievous Wounds is mandatory vs any sustain; buy it by item 2
+3. Positioning - URF burst is massive; stay at max range and never tank
+4. Snowball - first death matters; URF games end fast; deny early kills
+5. Objective speed - objectives die fast; always rotate for free turrets after kill
 
 ═══ URF COMBAT RULES ═══
 ALL-IN: only when you have full combo available + enemy key escape/burst is down
-POKE: spam your longest range ability every CD — chip them to 60% then all-in
+POKE: spam your longest range ability every CD - chip them to 60% then all-in
 ANTI-POKE: dodge the first ability then punish the re-cast window
-CHASE: abilities are faster than movement — use dashes/slows aggressively
+CHASE: abilities are faster than movement - use dashes/slows aggressively
 
 ═══ URF ITEMS ═══
-Build damage over utility — healing is reduced, damage is NOT
+Build damage over utility - healing is reduced, damage is NOT
 AP carries: Luden's Companion → Shadowflame → Rabadon's → Void Staff
 AD carries: Trinity Force → Navori Flickerblades → The Collector (crit path)
 On-hit: Nashor's Tooth → Guinsoo's Rageblade → Kraken Slayer
-Anti-heal by item 2 vs ANY sustain — Mortal Reminder replaces last damage item
+Anti-heal by item 2 vs ANY sustain - Mortal Reminder replaces last damage item
 Champion-specific build notes are in the CHAMPION BUILD field below
 
 NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T]
 
-OUTPUT FORMAT — 8 fields, NO markdown:
+OUTPUT FORMAT - 8 fields, NO markdown:
 Action: <1-3 WORDS ALL-CAPS>
 Immediate: <what to do RIGHT NOW, max 15 words>
 Fight rule: <engage/disengage with [E] tags>
@@ -113,7 +113,7 @@ Wave: <shove or freeze>
 Reset / item: <next spike + gold check>
 Objective: <rotate or hold>
 Risk: <specific [E] spell to dodge>
-Comp analysis: <your damage type vs enemy — exploit their weakness>
+Comp analysis: <your damage type vs enemy - exploit their weakness>
 """
 
 _OFA_SYSTEM_PROMPT = """\
@@ -121,20 +121,20 @@ You are coaching a challenger player in One For All (all 5 players play the same
 CHAMPION: {champion} x5
 {adaptation_hint}
 ═══ ONE FOR ALL PRIORITIES ═══
-1. Exploit champion multiplier — 5x the same kit = 5x the same synergy. Stack it.
-2. CC chains — if your champion has CC, chain with teammates for infinite stuns
-3. Dive or poke — your champion does one well; commit to that strategy
-4. Spread if assassin — don't all 5 clump vs AOE; spread and pick 1v1
-5. Stack actives — if items have active abilities, use them simultaneously for burst windows
+1. Exploit champion multiplier - 5x the same kit = 5x the same synergy. Stack it.
+2. CC chains - if your champion has CC, chain with teammates for infinite stuns
+3. Dive or poke - your champion does one well; commit to that strategy
+4. Spread if assassin - don't all 5 clump vs AOE; spread and pick 1v1
+5. Stack actives - if items have active abilities, use them simultaneously for burst windows
 
 ═══ FIGHT RULE ═══
 ENGAGE: wait for all 5 to have key ability up, then hard engage simultaneously
 DISENGAGE: if more than 2 allies are dead or CC'd, do NOT engage
-OBJECTIVE: fight for every objective — 5 same champions = predictable burst timing
+OBJECTIVE: fight for every objective - 5 same champions = predictable burst timing
 
-NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T] — use in all fields.
+NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T] - use in all fields.
 
-OUTPUT FORMAT — 7 fields, NO markdown:
+OUTPUT FORMAT - 7 fields, NO markdown:
 Action: <1-3 WORDS ALL-CAPS>
 Immediate: <right now, max 15 words>
 Fight rule: <stack condition + timing>
@@ -174,11 +174,11 @@ def _load_brawl_build_note(champion: str, mode: str = "") -> str:
         build_str = ", ".join(fb) if fb else ""
         mode_upper = mode.upper()
         if "URF" in mode_upper:
-            urf_note = (f"{tier} tier — URF: abilities spam freely; rush damage items. "
+            urf_note = (f"{tier} tier - URF: abilities spam freely; rush damage items. "
                         f"Build: {build_str}. {note[:120] if note else ''}")
             return urf_note[:300]
         else:
-            result = f"{tier} tier — {note}" if tier and note else note or tier
+            result = f"{tier} tier - {note}" if tier and note else note or tier
             if build_str:
                 result += f" | Build: {build_str}"
             return result[:280]
@@ -187,13 +187,13 @@ def _load_brawl_build_note(champion: str, mode: str = "") -> str:
 
 
 class Coach(BaseCoach):
-    """Brawl coach — handles NEXUSBLITZ, ULTBOOK (URF), GAMEMODEX (OFA/etc)."""
+    """Brawl coach - handles NEXUSBLITZ, ULTBOOK (URF), GAMEMODEX (OFA/etc)."""
 
     GAME_MODES     = ("NEXUSBLITZ", "ULTBOOK", "GAMEMODEX")
     _MODE_NAME     = "brawl"
     _DATA_FILENAME = "brawl_coaching_data.json"
 
-    # Brawl is faster — tighter debounce, lower HP threshold.
+    # Brawl is faster - tighter debounce, lower HP threshold.
     # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 12→18 /
     # DEBOUNCE 3.5→7 / FAST_PATH 1.5→3 to halve the API call rate.
     _VISION_INTERVAL   = 18.0
@@ -269,7 +269,7 @@ class Coach(BaseCoach):
     # NEXUSBLITZ, URF/ULTBOOK, ONEFORALL/GAMEMODEX). Only "BRAWL" is on
     # DDragon map 35. The others ride on map 11 (SR) or map 21 (Nexus
     # Blitz; not in the resolver). We route resolver mode='brawl' for
-    # actual Brawl, 'sr' otherwise — SR base IDs are valid for all those
+    # actual Brawl, 'sr' otherwise - SR base IDs are valid for all those
     # modes' item pools. Engine mode follows the same split: 'BRAWL'
     # becomes engine identity-mode (no aram_modifiers) which is correct
     # because Brawl doesn't have aramAttackSpeed-style tweaks.
@@ -281,14 +281,14 @@ class Coach(BaseCoach):
     def _ds_engine_mode(game_mode_upper: str) -> str:
         return "BRAWL" if "BRAWL" in (game_mode_upper or "") else "SR"
 
-    # ── Target-bonus-HP estimator (s75 — Phase 4 batch 19 wire-in) ──────────
+    # ── Target-bonus-HP estimator (s75 - Phase 4 batch 19 wire-in) ──────────
 
     def _estimate_target_bonus_hp(self, state: dict | None = None) -> float:
         """Estimate enemy bonus HP from items. Brawl port of aram_coach's
         s74 estimator. Same shape: walks ``state['enemies']``, filters
         alive opponents, sums HP per opponent, returns MAX clamped at
         1500 (LDR cap). No round-count fallback (Brawl modes don't have
-        rounds either) — vision gap returns 0.0 = "no signal".
+        rounds either) - vision gap returns 0.0 = "no signal".
 
         Resolver mode routes via ``_ds_resolver_mode`` so BRAWL game mode
         gets map-35 items and the SR-on-other-map modes (URF/OFA/Nexus
@@ -614,7 +614,7 @@ def _parse_brawl_state(raw: dict) -> dict:
         if isinstance(it, dict) and it.get("displayName")
     ]
 
-    # s75 — structured per-enemy entries for daemon_slayer
+    # s75 - structured per-enemy entries for daemon_slayer
     # target_bonus_hp estimator (mirrors ARAM coach's s74 shape).
     enemies_struct: list[dict] = []
     for _e in enemies:
@@ -655,7 +655,7 @@ def _parse_brawl_state(raw: dict) -> dict:
             if a.get("championName") != (me or {}).get("championName")
         ],
         "enemy_comp":    [e.get("championName", "?") for e in enemies],
-        "enemies":       enemies_struct,  # s75 — structured per-enemy {name,is_dead,items}
+        "enemies":       enemies_struct,  # s75 - structured per-enemy {name,is_dead,items}
         "dead_enemies":     [e.get("championName", "?") for e in enemies if e.get("isDead")],
         "alive_enemies":    [e.get("championName", "?") for e in enemies if not e.get("isDead")],
         "dead_respawn_str": raw.get("dead_respawn_str", ""),

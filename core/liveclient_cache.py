@@ -1,8 +1,8 @@
 """
-core/liveclient_cache.py — process-wide shared cache for the Live Client snapshot.
+core/liveclient_cache.py - process-wide shared cache for the Live Client snapshot.
 
 Pre-2026-05-01 each consumer (4 mode coaches, vision_tracker, decision_detector)
-hit http://127.0.0.1:8889/latest-liveclient on its own thread/cadence — ~6-8
+hit http://127.0.0.1:8889/latest-liveclient on its own thread/cadence - ~6-8
 HTTP polls per second, idle. This module collapses them into one background
 poll at 0.5s; consumers call `get()` and read the cached Snapshot.
 
@@ -41,10 +41,10 @@ _DEFAULT_POLL_S = 0.5
 class Snapshot:
     """Immutable snapshot of the latest relay fetch.
 
-    `data`     — parsed /allgamedata dict, or None if no game / fetch failed.
-    `ts`       — unix time the relay claims its data was current (from wrap.ts).
-    `fetched_at` — unix time the cache last attempted a fetch.
-    `no_game`  — True iff the most recent fetch saw an authoritative 404 from
+    `data`     - parsed /allgamedata dict, or None if no game / fetch failed.
+    `ts`       - unix time the relay claims its data was current (from wrap.ts).
+    `fetched_at` - unix time the cache last attempted a fetch.
+    `no_game`  - True iff the most recent fetch saw an authoritative 404 from
                  the relay (no game running on Game-PC). Distinct from a
                  transient network error so callers can skip wasteful
                  fallbacks (mirrors game_reader._relay_says_no_game).

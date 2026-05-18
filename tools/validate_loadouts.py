@@ -1,5 +1,5 @@
 """
-tools/validate_loadouts.py — sanity-check data/champion_loadouts.json.
+tools/validate_loadouts.py - sanity-check data/champion_loadouts.json.
 
 Walks every champion+variant, runs the resolver, and reports:
   - rune misses (unknown keystone/tree)
@@ -70,7 +70,7 @@ def main() -> int:
                     print(f"  [FAIL] {champ}/{vkey}/{mode_key}: rune resolution failed "
                           f"(keystone={v.get('runes',{}).get('keystone')!r})")
                     issues += 1
-                # Item check — count name misses
+                # Item check - count name misses
                 raw = v.get("items") or []
                 resolved_ids = []
                 for blk in (resolved.get("item_cmd") or {}).get("blocks", []):

@@ -2,12 +2,12 @@
 """Frame upload + cache.
 
 Split out of moon_vision_server.py during Phase 2.4. Owns:
-- ``_latest_frame`` — single-slot mirror of the most recent upload.
-- ``_frames_by_source`` — per-source slots so secondary captures (e.g. dashboard
+- ``_latest_frame`` - single-slot mirror of the most recent upload.
+- ``_frames_by_source`` - per-source slots so secondary captures (e.g. dashboard
   UI debug) don't clobber the primary League frame the coaches read.
-- ``handle_upload_frame(body)`` — POST /upload-frame with magic-byte validation
+- ``handle_upload_frame(body)`` - POST /upload-frame with magic-byte validation
   and ~7 MB b64 payload cap.
-- ``get_latest_frame(source)`` — GET /latest-frame[?source=...].
+- ``get_latest_frame(source)`` - GET /latest-frame[?source=...].
 """
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def handle_upload_frame(body: bytes) -> dict:
     # 2026-04-25: Magic-byte validation. Catches a corrupt / truncated /
     # non-image payload at upload time so coaches don't get garbage at the
     # /latest-frame fetch and waste a Sonnet call analyzing it. Cost is one
-    # base64 decode of the leading 16 bytes — negligible vs the ~150 KB
+    # base64 decode of the leading 16 bytes - negligible vs the ~150 KB
     # frame we're about to cache.
     try:
         head = _b64.b64decode(img[:64], validate=False)[:8]
@@ -76,7 +76,7 @@ def handle_upload_frame(body: bytes) -> dict:
                     "size": len(img)}
     except Exception as _exc:
         log.debug("frame magic check failed: %s", _exc)
-        # Don't fail-closed on validation glitches — let the frame through so
+        # Don't fail-closed on validation glitches - let the frame through so
         # a corner-case base64 layout doesn't blackhole real captures.
     src = d.get("source", "unknown")
     primary = bool(d.get("primary", True))

@@ -1,4 +1,4 @@
-# Riot Commander — Claude Code launcher
+# Riot Commander - Claude Code launcher
 # Verifies background agents are up, then launches Claude in this project.
 
 # Self-elevate if not running as admin
@@ -70,7 +70,7 @@ if ($p3) {
     Write-Host "  RC-Phase3-Supervisor: TASK NOT FOUND -- run ops\phase3_install.ps1" -ForegroundColor Red
 }
 
-# 5. RC-BridgeWatcher (bridge escalation monitor — should always be Running)
+# 5. RC-BridgeWatcher (bridge escalation monitor - should always be Running)
 $bw = Get-ScheduledTask -TaskName "RC-BridgeWatcher" -ErrorAction SilentlyContinue
 if ($bw) {
     if ($bw.State -ne "Running") {

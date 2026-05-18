@@ -1,4 +1,4 @@
-"""Phase 5.8 (s190, 2026-05-13) — Sundered Sky Lightshield Strike in burst.
+"""Phase 5.8 (s190, 2026-05-13) - Sundered Sky Lightshield Strike in burst.
 
 Covers the new ``DpsResult.lightshield_strike_per_proc_damage`` /
 ``DpsResult.lightshield_strike_item_name`` fields and the
@@ -6,7 +6,7 @@ Covers the new ``DpsResult.lightshield_strike_per_proc_damage`` /
 Lightshield Strike on ability cast, consumes on the next AA, capped at
 1 proc per combo (Sundered Sky's 8s real CD vs typical 2-3s burst window).
 
-Independent of Spellblade — a build with both Sundered Sky + Trinity
+Independent of Spellblade - a build with both Sundered Sky + Trinity
 Force gets BOTH procs on the AA following the first ability cast
 (separate state machines).
 """
@@ -128,13 +128,13 @@ class LightshieldHelperTests(unittest.TestCase):
         dmg_amp, _ = _lightshield_strike_per_proc_damage(
             effects, 0.0, 0.0, 1.0, self._ctx(), magic_amp=1.20,
         )
-        # Sundered Sky's Lightshield Strike is PHYSICAL — magic_amp must
+        # Sundered Sky's Lightshield Strike is PHYSICAL - magic_amp must
         # not affect it.
         self.assertAlmostEqual(dmg_amp, dmg_base, places=2)
 
     def test_lightshield_independent_of_spellblade(self) -> None:
         """A build with [Trinity Force, Sundered Sky] must surface BOTH
-        procs separately — TF via spellblade helper, Sundered Sky via
+        procs separately - TF via spellblade helper, Sundered Sky via
         lightshield helper. No dedup family overlap."""
         effects = collect_effects([TRINITY_FORCE, SUNDERED_SKY])
         ls_dmg, ls_name = _lightshield_strike_per_proc_damage(
@@ -142,7 +142,7 @@ class LightshieldHelperTests(unittest.TestCase):
         )
         self.assertGreater(ls_dmg, 0.0)
         self.assertEqual(ls_name, "Sundered Sky")
-        # Order reversed — still independent.
+        # Order reversed - still independent.
         effects2 = collect_effects([SUNDERED_SKY, TRINITY_FORCE])
         ls_dmg2, ls_name2 = _lightshield_strike_per_proc_damage(
             effects2, 0.0, 0.0, 1.0, self._ctx(),
@@ -248,7 +248,7 @@ class BurstLightshieldIntegrationTests(unittest.TestCase):
         self.assertGreater(with_ss.total_burst_damage, naked.total_burst_damage)
 
     def test_capped_at_one_proc_per_combo(self) -> None:
-        """Q-AA-W-AA combo — Sundered Sky fires ONCE, not twice (8s CD).
+        """Q-AA-W-AA combo - Sundered Sky fires ONCE, not twice (8s CD).
         Spellblade in same combo would fire twice, but Lightshield Strike
         is capped."""
         r = compute_burst_damage(
@@ -315,7 +315,7 @@ class BurstLightshieldIntegrationTests(unittest.TestCase):
 
     def test_sundered_sky_plus_trinity_force_stack_on_same_aa(self) -> None:
         """A build with both items lands both procs on the AA following
-        the first ability cast — independent state machines, no dedup."""
+        the first ability cast - independent state machines, no dedup."""
         r = compute_burst_damage(
             self.snap, "Aatrox", level=11,
             item_ids=[TRINITY_FORCE, SUNDERED_SKY],
@@ -377,7 +377,7 @@ class BurstLightshieldIntegrationTests(unittest.TestCase):
 
     def test_lightshield_plus_per_attack_on_hit_stack(self) -> None:
         """Wit's End (per-AA on-hit) + Sundered Sky (Lightshield Strike)
-        both contribute independently — different mechanics, no overlap."""
+        both contribute independently - different mechanics, no overlap."""
         wits_only = compute_burst_damage(
             self.snap, "Aatrox", level=11,
             item_ids=[WITS_END],
@@ -418,7 +418,7 @@ class ServerBurstRouteLightshieldTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _post(self, path: str, body: dict) -> dict:

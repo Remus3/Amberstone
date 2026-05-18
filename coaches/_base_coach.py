@@ -1,12 +1,12 @@
 """
-coaches/_base_coach.py — AUDIT-PHASE-2-ARCH-002
+coaches/_base_coach.py - AUDIT-PHASE-2-ARCH-002
 
 Shared utilities AND base class for ARAM, Arena, and Brawl coaches.
 
 Section 1: Utility functions (unchanged from Phase 2 session 4-5)
-Section 2: BaseCoach ABC — full lifecycle base for all non-TFT coaches
+Section 2: BaseCoach ABC - full lifecycle base for all non-TFT coaches
 
-ARCH-002 (full) — 2026-04-18 (T2 #6 update — overlay methods removed 2026-05-01)
+ARCH-002 (full) - 2026-04-18 (T2 #6 update - overlay methods removed 2026-05-01)
   Extracted: __init__, submit_state, reset_state, shutdown,
              _poll_loop, _vision_loop, _maybe_coach,
              _ensure_data, _write_blank_artifact, _fetch_game_data
@@ -35,7 +35,7 @@ _APP_DIR = Path(__file__).parent.parent
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SECTION 1 — Utility functions
+# SECTION 1 - Utility functions
 # ══════════════════════════════════════════════════════════════════════════════
 
 def read_api_key(app_dir: Path = _APP_DIR) -> str:
@@ -98,7 +98,7 @@ def mirror_live_stats(payload: dict, state: dict) -> None:
 
     None-skip semantics: only writes keys actually present on `state`,
     so absent fields don't overwrite anything. Mode coaches use
-    `game_seconds` while dashboard JS reads `game_time_s` — mapped here.
+    `game_seconds` while dashboard JS reads `game_time_s` - mapped here.
     """
     for k in ("cs", "kda", "level", "gold"):
         v = state.get(k)
@@ -158,12 +158,12 @@ def make_ssl_ctx() -> ssl.SSLContext:
 def _silence_chatty_loggers() -> None:
     """Damp PIL DEBUG (~3500/4700 lines/day) + lcu_client lockfile INFO
     spam (~1/sec post-migration; LCU lives on Game-PC not Legion).
-    Idempotent — safe to call multiple times. Module-level call below
+    Idempotent - safe to call multiple times. Module-level call below
     runs once at first import."""
     import logging as _lg
     for name in ("PIL", "PIL.PngImagePlugin", "PIL.Image", "PIL.JpegImagePlugin"):
         _lg.getLogger(name).setLevel(_lg.WARNING)
-    # lcu_client.py spams "LCU lockfile not found — client may not be running"
+    # lcu_client.py spams "LCU lockfile not found - client may not be running"
     # at INFO every poll. Bump to WARNING so the message only surfaces if
     # something actually goes wrong (the WARNING level on this logger covers
     # the real failures we'd want to see).
@@ -190,7 +190,7 @@ def fetch_game_data(ssl_ctx: "ssl.SSLContext | None" = None) -> "dict | None":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SECTION 2 — BaseCoach ABC
+# SECTION 2 - BaseCoach ABC
 # ══════════════════════════════════════════════════════════════════════════════
 
 def fmt_abilities(abilities: dict) -> str:
@@ -219,7 +219,7 @@ def fmt_abilities(abilities: dict) -> str:
 
 class BaseCoach(abc.ABC):
     """
-    AUDIT-PHASE-2-ARCH-002 (full) — 2026-04-18
+    AUDIT-PHASE-2-ARCH-002 (full) - 2026-04-18
 
     Shared lifecycle base for ARAM, Arena, and Brawl coaches.
     Owns: __init__, poll/vision loops, debounce, overlay polling, teardown.
@@ -380,7 +380,7 @@ class BaseCoach(abc.ABC):
             await asyncio.sleep(3.0)
 
     def _maybe_coach(self, state: dict) -> None:
-        # AUDIT 2026-04-28 (2.2): per-mode kill switch — toggled from the
+        # AUDIT 2026-04-28 (2.2): per-mode kill switch - toggled from the
         # dashboard ops tab via /api/coach/toggle.
         try:
             from core.cost_tracker import get_tracker as _gt
@@ -406,7 +406,7 @@ class BaseCoach(abc.ABC):
             return
 
         # _lock guards only the spawn-decision moment (last_coach update +
-        # task spawn). It is NOT held across the actual coaching call —
+        # task spawn). It is NOT held across the actual coaching call -
         # _run_coach is dispatched to a worker thread via asyncio.to_thread
         # and may take seconds. Real serialization comes from the debounce
         # check on _last_coach above; the lock just prevents two near-
@@ -494,7 +494,7 @@ class BaseCoach(abc.ABC):
                            purpose: "str | None" = None,
                            extra: "dict | None" = None) -> None:
         """AUDIT 2026-04-29 (in-game audit gap A): wire mode-coach
-        Anthropic responses into the same telemetry the SR coach uses —
+        Anthropic responses into the same telemetry the SR coach uses -
         cost ledger (5.8) + coach trace (2.5). Subclasses call this
         immediately after `resp = self._client.messages.create(...)`.
 
@@ -521,7 +521,7 @@ class BaseCoach(abc.ABC):
                 _log.debug("cost_tracker record_call: %s", exc)
             try:
                 from core.coach_trace import append as _trace_append
-                # Pull response text defensively — content may be empty.
+                # Pull response text defensively - content may be empty.
                 resp_text = ""
                 content = getattr(resp, "content", None) or []
                 if content and hasattr(content[0], "text"):

@@ -4757,7 +4757,7 @@
           "alt": [
             "Guardbreaker"
           ],
-          "note": "Standard Zed — no HA. Weaker than Mirror Mayhem."
+          "note": "Standard Zed - no HA. Weaker than Mirror Mayhem."
         },
         "Master Yi": {
           "bis": [
@@ -5561,7 +5561,7 @@
       "top4_pct": 55,
       "avg_placement": 3.8,
       "play_rate": 7,
-      "heuristic_note": "Ornn is the unique mechanic — tank items on him always.",
+      "heuristic_note": "Ornn is the unique mechanic - tank items on him always.",
       "source": "aggregator C + TFT guide site Y patch 17.1",
       "display_source": "moba",
       "lv9": [
@@ -5697,7 +5697,7 @@
         "Karma": 2
       },
       "level_plan": "fast_9",
-      "gameplan": "Skip level 8 if possible — go directly to 9. Kindred + Lucian dual AD carry.",
+      "gameplan": "Skip level 8 if possible - go directly to 9. Kindred + Lucian dual AD carry.",
       "augments_best": [
         "Divine Duelist Emblem",
         "Challenger Emblem",
@@ -5710,7 +5710,7 @@
       "top4_pct": 53,
       "avg_placement": 4.0,
       "play_rate": 5,
-      "heuristic_note": "Situational — wants to skip lv8. Strong at lv9, weak on lv8 interim.",
+      "heuristic_note": "Situational - wants to skip lv8. Strong at lv9, weak on lv8 interim.",
       "source": "TFT guide site Y patch 17.1",
       "display_source": "moba",
       "lv9": [
@@ -6834,7 +6834,7 @@
       "top4_pct": 46,
       "avg_placement": 4.3,
       "play_rate": 4,
-      "heuristic_note": "Summoner comp — power scales with total star level on board.",
+      "heuristic_note": "Summoner comp - power scales with total star level on board.",
       "source": "aggregator C patch 17.1",
       "board_placement": [
         {
@@ -7410,7 +7410,7 @@
           "Loot Subscription"
         ]
       },
-      "double_up_note": "Partner: Space Groove vertical. Shared units: Sona, Nami (partner holds both). Your units: LeBlanc, Karma, Aatrox, Fiora, Morgana, Akali — no overlap."
+      "double_up_note": "Partner: Space Groove vertical. Shared units: Sona, Nami (partner holds both). Your units: LeBlanc, Karma, Aatrox, Fiora, Morgana, Akali - no overlap."
     },
     "NOVA Marauders": {
       "tier": "A",
@@ -7493,7 +7493,7 @@
         "NOVA",
         "Marauder"
       ],
-      "heuristic_note": "Ornn tank forge mechanic — give him tank items always.",
+      "heuristic_note": "Ornn tank forge mechanic - give him tank items always.",
       "top4_pct": 56,
       "avg_placement": 3.7,
       "play_rate": 9,
@@ -7806,7 +7806,7 @@
         "Cards",
         "Challenger"
       ],
-      "heuristic_note": "Roll at 3-1 for TF 3-star. Don't overspend — need gold for 8.",
+      "heuristic_note": "Roll at 3-1 for TF 3-star. Don't overspend - need gold for 8.",
       "top4_pct": 55,
       "avg_placement": 3.8,
       "play_rate": 8,
@@ -7958,7 +7958,7 @@
       "emblem_value": [
         "Vanguard"
       ],
-      "heuristic_note": "Requires Guinsoo on LeBlanc — same core requirement as Vanguard LeBlanc.",
+      "heuristic_note": "Requires Guinsoo on LeBlanc - same core requirement as Vanguard LeBlanc.",
       "top4_pct": 49,
       "avg_placement": 4.1,
       "play_rate": 6,
@@ -8121,7 +8121,7 @@
       "emblem_value": [
         "Channeler"
       ],
-      "heuristic_note": "Miss Fortune Channeler mode is default — gives her a trait based on choice.",
+      "heuristic_note": "Miss Fortune Channeler mode is default - gives her a trait based on choice.",
       "top4_pct": 48,
       "avg_placement": 4.2,
       "play_rate": 5,
@@ -8569,7 +8569,7 @@
         "Veigar": 2
       },
       "level_plan": "fast_8",
-      "gameplan": "Psionic trait Yi + Veigar AP. Inconsistent — needs specific Psionic items.",
+      "gameplan": "Psionic trait Yi + Veigar AP. Inconsistent - needs specific Psionic items.",
       "augments_best": [
         "Psionic Emblem",
         "Titanic Force",
@@ -8755,7 +8755,7 @@
       "top4_pct": 72,
       "avg_placement": 3.37,
       "play_rate": 24,
-      "heuristic_note": "Roll at 3-1 for Lissandra 3-star. Do NOT level before hitting 3-star. Viktor is the cap — find him after Lissandra locked in.",
+      "heuristic_note": "Roll at 3-1 for Lissandra 3-star. Do NOT level before hitting 3-star. Viktor is the cap - find him after Lissandra locked in.",
       "ext_avg": 3.37,
       "ext_top4": 72,
       "display_source": "overlay app E",
@@ -9534,7 +9534,7 @@
           "alt": [
             "Dragons Claw"
           ],
-          "note": "Ornn forges 1 item/fight. Give tank items — forge upgrades them."
+          "note": "Ornn forges 1 item/fight. Give tank items - forge upgrades them."
         },
         "Samira": {
           "bis": [
@@ -9575,7 +9575,7 @@
       "top4_pct": 63,
       "avg_placement": 3.87,
       "play_rate": 16,
-      "heuristic_note": "Ornn forge is the core mechanic. Tank items on Ornn always — they get upgraded.",
+      "heuristic_note": "Ornn forge is the core mechanic. Tank items on Ornn always - they get upgraded.",
       "ext_avg": 3.87,
       "ext_top4": 63,
       "display_source": "overlay app E",
@@ -9882,7 +9882,7 @@
             "Nashors Tooth",
             "Blue Buff"
           ],
-          "note": "LATE-GAME carry. DS6 Supermassive black hole pulls whole board at 6DS. Don't hold items waiting for her — Kai'Sa uses them until Lv8. JG + Rabadon + Archangel BiS. Blue Buff works if Archangel missing."
+          "note": "LATE-GAME carry. DS6 Supermassive black hole pulls whole board at 6DS. Don't hold items waiting for her - Kai'Sa uses them until Lv8. JG + Rabadon + Archangel BiS. Blue Buff works if Archangel missing."
         },
         "Jhin": {
           "bis": [
@@ -9920,28 +9920,28 @@
             "Kraken Slayer",
             "Bloodthirster"
           ],
-          "note": "Mid-game CARRY. Rageblade → AS converts to stacks, Giant Slayer destroys tanks. Give items early — she carries Stage 4-5 while waiting for Karma. When Karma arrives at Lv8, keep Rageblade on Kai'Sa, move JG/Rabadon to Karma."
+          "note": "Mid-game CARRY. Rageblade → AS converts to stacks, Giant Slayer destroys tanks. Give items early - she carries Stage 4-5 while waiting for Karma. When Karma arrives at Lv8, keep Rageblade on Kai'Sa, move JG/Rabadon to Karma."
         }
       },
       "level_plan": "reroll_1cost",
-      "gameplan": "TWO-STAGE carry plan. Stage 1: Kai'Sa 3★ carry. Stage 2: Karma upgrade. EARLY: Reroll at 3-2 on 50g+ for Cho 3★ + Lissandra 3★. Fill frontline with Maokai. MID: After 3-stars hit, level to 5 → slot Kai'Sa + Vex for DS4. Give Rageblade + Giant Slayer to Kai'Sa immediately — she IS your carry now. Level 6 at 3-5/4-1 → add Morgana (DS5 + Fateweaver 3 = shop roll bonus). OPTIONAL: If Kai'Sa is at 2+ copies at Lv6, slow-roll for Kai'Sa 3★ before pushing to Lv7. Level 7 at 4-2 → add Shen (DS still 5 or 6 if Karma in hand). Level 8 ONLY when Karma 2★ is in shop or bench — slot her and give JG/Rabadon. DS6 Karma Supermassive is the power ceiling but NOT required. Kai'Sa 3★ + DS5 + Fateweaver 3 wins fights on its own through Stage 5.",
+      "gameplan": "TWO-STAGE carry plan. Stage 1: Kai'Sa 3★ carry. Stage 2: Karma upgrade. EARLY: Reroll at 3-2 on 50g+ for Cho 3★ + Lissandra 3★. Fill frontline with Maokai. MID: After 3-stars hit, level to 5 → slot Kai'Sa + Vex for DS4. Give Rageblade + Giant Slayer to Kai'Sa immediately - she IS your carry now. Level 6 at 3-5/4-1 → add Morgana (DS5 + Fateweaver 3 = shop roll bonus). OPTIONAL: If Kai'Sa is at 2+ copies at Lv6, slow-roll for Kai'Sa 3★ before pushing to Lv7. Level 7 at 4-2 → add Shen (DS still 5 or 6 if Karma in hand). Level 8 ONLY when Karma 2★ is in shop or bench - slot her and give JG/Rabadon. DS6 Karma Supermassive is the power ceiling but NOT required. Kai'Sa 3★ + DS5 + Fateweaver 3 wins fights on its own through Stage 5.",
       "rolldown": {
-        "3-2": "Main rolldown — 50g+. Cho 3★ first (HP engine), then Lissandra 3★.",
+        "3-2": "Main rolldown - 50g+. Cho 3★ first (HP engine), then Lissandra 3★.",
         "4-1": "Secondary roll if 3-stars not hit yet. Do NOT level 6 until Cho + Liss locked.",
         "lv5/6 optional": "If Kai'Sa at 2 copies after 3-stars, slow-roll lv6 for Kai'Sa 3★ before pushing Lv7.",
-        "lv7": "4-2 — after Cho 3★ + Lissandra 3★ confirmed. Shen slot in.",
+        "lv7": "4-2 - after Cho 3★ + Lissandra 3★ confirmed. Shen slot in.",
         "lv8": "Push lv8 ONLY when Karma 2★ is available. Roll for Karma 2★ here.",
         "lv9": "Only if healthy HP (45+) and Jhin available. Not mandatory."
       },
       "level_ups": {
         "2-1": "Level 4",
         "3-1": "Level 5",
-        "3-2": "ROLL — Cho 3★ + Lissandra 3★ at 50g+",
-        "3-5 or 4-1": "Level 6 — add Vex + Kai'Sa (DS4 online)",
+        "3-2": "ROLL - Cho 3★ + Lissandra 3★ at 50g+",
+        "3-5 or 4-1": "Level 6 - add Vex + Kai'Sa (DS4 online)",
         "4-1 optional": "Slow-roll lv6 if Kai'Sa at 2 copies",
-        "4-2 post 3-stars": "Level 7 — add Shen",
-        "4-5 / 5-1": "Level 8 — ONLY when Karma 2★ ready",
-        "5-3+": "Level 9 if 70g+ and healthy — Jhin cap"
+        "4-2 post 3-stars": "Level 7 - add Shen",
+        "4-5 / 5-1": "Level 8 - ONLY when Karma 2★ ready",
+        "5-3+": "Level 9 if 70g+ and healthy - Jhin cap"
       },
       "augment_advice": {
         "prismatic": [
@@ -9971,7 +9971,7 @@
       "top4_pct": 58,
       "avg_placement": 4.1,
       "play_rate": 8,
-      "heuristic_note": "Kai'Sa 3★ is the MID-GAME CARRY. Give her Rageblade + Giant Slayer at stage 3-4. DS5 + Fateweaver 3 (Liss + Vex + Morgana) is the stable mid-game board. Karma is an UPGRADE at Lv8, not a requirement. Vex and Morgana are interchangeable — both are DS + Fateweaver. Do NOT leave items on bench waiting for Karma — Kai'Sa uses them productively until then. Top-4 path: Cho3 + Liss3 + KaiSa3 rerolled, DS5 + FW3 stable board. Top-1 path: same + Karma 2★ at Lv8 for DS6 Supermassive.",
+      "heuristic_note": "Kai'Sa 3★ is the MID-GAME CARRY. Give her Rageblade + Giant Slayer at stage 3-4. DS5 + Fateweaver 3 (Liss + Vex + Morgana) is the stable mid-game board. Karma is an UPGRADE at Lv8, not a requirement. Vex and Morgana are interchangeable - both are DS + Fateweaver. Do NOT leave items on bench waiting for Karma - Kai'Sa uses them productively until then. Top-4 path: Cho3 + Liss3 + KaiSa3 rerolled, DS5 + FW3 stable board. Top-1 path: same + Karma 2★ at Lv8 for DS6 Supermassive.",
       "board_placement": [
         {
           "champion": "Cho'Gath",
@@ -10029,11 +10029,11 @@
         }
       ],
       "board_carry": "Karma",
-      "board_notes": "Kai'Sa row 2 col 6 — protected but in auto range, AS carry position. Karma D3 back-center — Supermassive covers full board at DS6. Jhin D6 far corner — 4th shot burst. Cho'Gath A1 front-left — HP snowball anchor. Shen A4 + Aatrox A6 — DS frontline wall with Darkin.",
+      "board_notes": "Kai'Sa row 2 col 6 - protected but in auto range, AS carry position. Karma D3 back-center - Supermassive covers full board at DS6. Jhin D6 far corner - 4th shot burst. Cho'Gath A1 front-left - HP snowball anchor. Shen A4 + Aatrox A6 - DS frontline wall with Darkin.",
       "team_code": "0204504604e02002202303b01d000000TFTSet17",
       "substitutes": {
         "Vex": [
-          "Morgana (if Vex missing — same DS+Fateweaver)"
+          "Morgana (if Vex missing - same DS+Fateweaver)"
         ],
         "Morgana": [
           "Vex (perfect swap, same traits)"
@@ -10985,7 +10985,7 @@
   "_note": "Live server data path -- used when comp_state.json pbe=false",
   "_patch": "17.2",
   "_patch_notes_17.1": {
-    "carousel": "REMOVED — replaced by Realm of the Gods",
+    "carousel": "REMOVED - replaced by Realm of the Gods",
     "realm_of_gods": "Stage X-4 = God offering. Stage 4-7 = God Boon armory.",
     "keywords": {
       "Chill": "Slow",
@@ -11007,7 +11007,7 @@
     "items_nerfed_AP": {
       "Nashors Tooth": "AP 18->15"
     },
-    "encounters": "NOT in 17.1 — returning in 17.2",
+    "encounters": "NOT in 17.1 - returning in 17.2",
     "targeting": "Carries stay on target better (1-hex follow cap)"
   },
   "_bm_source": "TFT guide author X/meta/ patch 17.1",

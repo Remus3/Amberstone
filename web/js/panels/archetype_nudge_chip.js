@@ -5,14 +5,14 @@
 // lives in core/archetype_mismatch.py + dashboard/routes_archetype.py
 // (s184); this module is purely a render + dismiss wire-in.
 //
-// Reads /api/state.archetype_nudge — which the state-builder stamps via
+// Reads /api/state.archetype_nudge - which the state-builder stamps via
 // compute_nudge_payload() on every poll. Mode-gating mirrors #ds-pill
 // (hidden in client/tft modes via CSS so the header row doesn't shift
 // when a game starts). JS additionally hides when phase != "fired" so
 // dismissed / pending / no_mismatch states stay invisible.
 //
 // Dismiss path is idempotent + restart-wipes (matches the backend cache
-// lifecycle) — fire-and-forget POST is fine, no need to retry on failure.
+// lifecycle) - fire-and-forget POST is fine, no need to retry on failure.
 
 import { el } from '../lib/helpers.js';
 
@@ -38,7 +38,7 @@ async function _dismiss(champion) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ champion }),
     });
-  } catch (_) { /* swallow — backend cache restart-wipes anyway */ }
+  } catch (_) { /* swallow - backend cache restart-wipes anyway */ }
   _hideChip();
 }
 
@@ -76,7 +76,7 @@ export function renderArchetypeNudge(stateObj) {
   const expected = Array.isArray(n.expected_items) ? n.expected_items : [];
   const message = String(n.message || "");
 
-  // Idempotency — skip DOM writes when the signature is unchanged. The
+  // Idempotency - skip DOM writes when the signature is unchanged. The
   // chip lives on a 2s poll cadence; without this guard the X-button's
   // hover state would tear down + recreate on every tick.
   const sig = `${champion}|${primary}|${firstItem}|${expected.join(",")}`;
@@ -91,6 +91,6 @@ export function renderArchetypeNudge(stateObj) {
   NC.chip.hidden = false;
 }
 
-// Test/diagnostic helper — lets external callers reset the dedup
+// Test/diagnostic helper - lets external callers reset the dedup
 // signature so the next render call writes to the DOM unconditionally.
 export function _resetArchetypeNudgeSig() { _lastSig = ""; }

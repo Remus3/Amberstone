@@ -1,6 +1,6 @@
 # arch: RC entry point; starts supervisor + RC process | section=orchestration | frozen=yes
 """
-main.py — Riot Commander entry point.
+main.py - Riot Commander entry point.
 
 Handles:
 - Argument parsing (--debug)
@@ -18,12 +18,12 @@ import os
 import argparse
 from pathlib import Path
 
-# — Resolve app directory
+# - Resolve app directory
 APP_DIR = Path(__file__).parent.resolve()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-# — Parse arguments
+# - Parse arguments
 def _parse_args():
     p = argparse.ArgumentParser(prog="Riot Commander", add_help=False)
     p.add_argument("--debug", action="store_true", default=False,
@@ -35,13 +35,13 @@ def _parse_args():
 
 args = _parse_args()
 
-# — Logging (must come before any other import that logs)
+# - Logging (must come before any other import that logs)
 from core.log_setup import setup as _log_setup, get as _log_get
 _log_setup(APP_DIR, debug=args.debug)
 _log = _log_get("main")
 _log.info("Riot Commander starting  debug=%s  python=%s", args.debug, sys.version.split()[0])
 
-# — API key
+# - API key
 def _load_api_key():
     key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if key.startswith("sk-ant-"):
@@ -61,7 +61,7 @@ def _load_api_key():
 
 _load_api_key()
 
-# — Config validation (Phase 1 Step 1)
+# - Config validation (Phase 1 Step 1)
 # Non-fatal: logs results but never aborts startup.
 try:
     from core.config_validator import validate_all as _validate_configs
@@ -69,12 +69,12 @@ try:
 except Exception as _e:
     _log.warning("Config validation skipped (non-fatal): %s", _e)
 
-# — Resource manager
+# - Resource manager
 from core.resource_manager import ResourceManager
 rm = ResourceManager(APP_DIR)
 rm.start_memory_watchdog(interval_s=60.0)
 
-# — DevRuntime (heartbeat + hot-reload + file-based commands)
+# - DevRuntime (heartbeat + hot-reload + file-based commands)
 _dev_runtime = None
 try:
     # Item 6: load ops/rc_config.json as the single authoritative source
@@ -101,7 +101,7 @@ try:
 except Exception as e:
     _log.warning("DevRuntime init failed (non-fatal): %s", e)
 
-# — Asyncio scheduler (T2 #8 C4, 2026-05-01)
+# - Asyncio scheduler (T2 #8 C4, 2026-05-01)
 # Construct the AppLoop singleton early so the module pollers below
 # (metrics_cache, liveclient_cache, log_retention, vision_tracker via
 # the dashboard, obs_publisher via the dashboard) can spawn_task on it
@@ -113,7 +113,7 @@ try:
 except Exception as _e:
     _log.warning("ensure_loop failed (non-fatal, modules will use thread fallback): %s", _e)
 
-# — Metrics cache (Phase 1 Step 2)
+# - Metrics cache (Phase 1 Step 2)
 # Background thread reads runtime artifacts every 5s.
 # Uses the same runtime_dir authority as DevRuntime: resolved from _rc_cfg,
 # relative paths resolved against APP_DIR, absolute paths used as-is.
@@ -131,7 +131,7 @@ try:
 except Exception as _e:
     _log.warning("MetricsCache start failed (non-fatal): %s", _e)
 
-# — Live Client snapshot cache (Tier 1 #2, 2026-05-01)
+# - Live Client snapshot cache (Tier 1 #2, 2026-05-01)
 # One shared 0.5s background poll feeds 4 mode coaches + vision_tracker +
 # decision_detector. Pre-refactor each consumer hit the relay on its own
 # thread (~6-8 polls/sec idle); now ~2/sec total.
@@ -141,7 +141,7 @@ try:
 except Exception as _e:
     _log.warning("liveclient_cache start failed (non-fatal): %s", _e)
 
-# — Log retention (Tier 1 #3, 2026-05-01)
+# - Log retention (Tier 1 #3, 2026-05-01)
 # log_setup.py prunes >30d files only at boot; on a long-lived RC the dir
 # grew to 191 MB. Hourly sweep deletes >14d *.log* and caps total at 100 MB.
 try:
@@ -150,14 +150,14 @@ try:
 except Exception as _e:
     _log.warning("log_retention start failed (non-fatal): %s", _e)
 
-# — Web dashboard (iPad extended display via Duet to Game-PC)
+# - Web dashboard (iPad extended display via Duet to Game-PC)
 try:
     from web_dashboard import start_dashboard as _start_dash
     _start_dash(APP_DIR)
 except Exception as _e:
     _log.warning("Web dashboard start failed (non-fatal): %s", _e)
 
-# — Bridge monitor (RC mirror of Peer's bridge_monitor sidecar, 2026-05-02)
+# - Bridge monitor (RC mirror of Peer's bridge_monitor sidecar, 2026-05-02)
 # Polls dashboard._bridge_log every 2s; auto-pongs `kind=task summary=ping
 # target=rc` so Peer can probe RC's half of the channel. State persisted to
 # ops/runtime/bridge_monitor_state.json. Spec: docs io RC peer/
@@ -168,11 +168,11 @@ try:
 except Exception as _e:
     _log.warning("bridge_monitor start failed (non-fatal): %s", _e)
 
-# — Coach integration
+# - Coach integration
 import coach_integration as _ci
 _ci._APP_DIR = APP_DIR
 
-# — Launch overlay
+# - Launch overlay
 def main():
     _log.info("Starting overlay application")
     try:
@@ -191,7 +191,7 @@ def main():
         _orig_quit = _ov.OverlayApp._quit
 
         def _patched_quit(self_app):
-            _log.info("OverlayApp._quit — triggering ResourceManager")
+            _log.info("OverlayApp._quit - triggering ResourceManager")
             if _dev_runtime:
                 _dev_runtime.stop()
             rm.shutdown()
@@ -201,7 +201,7 @@ def main():
 
         app = _ov.OverlayApp()
 
-        # — Wire DevRuntime state provider + reload callbacks (Items 2, 4, 6)
+        # - Wire DevRuntime state provider + reload callbacks (Items 2, 4, 6)
         if _dev_runtime:
             # Item 4: state provider uses real health pulse values
             _dev_runtime.set_state_provider(app.get_health_state)
@@ -219,7 +219,7 @@ def main():
 
         _log.info("Overlay running")
 
-        # — LCU auto-accept (always starts; self-heals when League opens)
+        # - LCU auto-accept (always starts; self-heals when League opens)
         try:
             from lcu.lcu_client import LcuClient
             _lcu = LcuClient()
@@ -228,7 +228,7 @@ def main():
             if _lcu._port:
                 _log.info("LCU auto-accept ENABLED (port %s)", _lcu._port)
             else:
-                _log.info("LCU auto-accept ARMED (League not open yet — will connect when lockfile appears)")
+                _log.info("LCU auto-accept ARMED (League not open yet - will connect when lockfile appears)")
             # AUDIT-PHASE-2-API-WIRE: pass LcuClient to ClientPanel for rune page display
             try:
                 _panel = app.client_windows.get("main")
@@ -242,8 +242,8 @@ def main():
                 from lcu.lcu_rune_writer import RuneWriter as _RuneWriter
                 _rune_writer = _RuneWriter(_lcu)
                 _rune_writer.start()
-                _log.info("RuneWriter started — rune auto-apply active (replaces Overlay App E)")
-                # POSTGAME: end-of-game stats collector (isolated — not used for coaching)
+                _log.info("RuneWriter started - rune auto-apply active (replaces Overlay App E)")
+                # POSTGAME: end-of-game stats collector (isolated - not used for coaching)
                 try:
                     from lcu.lcu_postgame_collector import init_collector as _init_pgc
                     _init_pgc(_lcu)
@@ -265,7 +265,7 @@ def main():
             _dev_runtime.write_fatal(tb)
         raise
     finally:
-        _log.info("Overlay exited — running final cleanup")
+        _log.info("Overlay exited - running final cleanup")
         if _dev_runtime:
             _dev_runtime.stop()
         if _metrics_cache:

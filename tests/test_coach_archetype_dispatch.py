@@ -5,7 +5,7 @@ dispatcher (`core.daemon_slayer_client.rank_for_primary_archetype`) +
 formatting for the coach's LLM prompt + the `daemon_slayer_picks`
 payload shape.
 
-Engine calls are mocked at the dispatcher boundary — no live DS server
+Engine calls are mocked at the dispatcher boundary - no live DS server
 needed.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from coach_integration.archetype_dispatch import (
 
 
 class _Stats:
-    """Stub for coach_integration.enemy_stats.EnemyStats — duck-typed by
+    """Stub for coach_integration.enemy_stats.EnemyStats - duck-typed by
     the helper via getattr(..., 'armor'/'mr'/'max_hp'/'bonus_hp')."""
     def __init__(self, armor=80.0, mr=30.0, max_hp=2000.0, bonus_hp=500.0):
         self.armor = armor
@@ -118,7 +118,7 @@ class DispatchTankScorerTests(unittest.TestCase):
         self.assertEqual(result.picks_str,
                          "Randuin's Omen(+520ehp,2700g) > Sunfire Aegis(+440ehp,2900g)")
         # display_rows.delta_dps carries the EHP value (mislabeled key, but
-        # numerically correct — scorer field disambiguates).
+        # numerically correct - scorer field disambiguates).
         self.assertEqual(result.display_rows[0]["delta_dps"], 520.0)
         self.assertEqual(result.display_rows[0]["scorer"], "ehp")
 

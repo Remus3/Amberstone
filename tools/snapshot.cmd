@@ -1,7 +1,7 @@
 @echo off
 :: tools\snapshot.cmd
 :: Creates a timestamped git checkpoint commit of the current repo state.
-:: Safe to run at any time — no-op if nothing has changed.
+:: Safe to run at any time - no-op if nothing has changed.
 :: Run from C:\Riot Commander
 
 setlocal

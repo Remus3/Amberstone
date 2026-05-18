@@ -1,4 +1,4 @@
-"""Round 18 — frozen-file guardrail + insight_card helper."""
+"""Round 18 - frozen-file guardrail + insight_card helper."""
 from __future__ import annotations
 
 import json
@@ -71,7 +71,7 @@ def test_non_frozen_file_reference_still_ready(tmp_path: Path) -> None:
 
 
 def test_frozen_file_with_backslashes(tmp_path: Path) -> None:
-    """Path separator normalization — Windows-style paths should match."""
+    """Path separator normalization - Windows-style paths should match."""
     s = Scheduler(queue_log=tmp_path / "q.jsonl")
     t = s.file_task(
         op="edit-app",

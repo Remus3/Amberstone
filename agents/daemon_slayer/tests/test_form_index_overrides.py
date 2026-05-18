@@ -1,4 +1,4 @@
-"""Phase 4e (s187, 2026-05-13) — per-(champion, key) form_index override tests.
+"""Phase 4e (s187, 2026-05-13) - per-(champion, key) form_index override tests.
 
 Tests the ``champion_form_index.json`` registry loader plus its integration
 with ``compute_ability_dps`` / ``rank_items_by_ability_dps`` and
@@ -57,16 +57,16 @@ class RegistryShapeTests(unittest.TestCase):
 
     def test_known_champion_overrides(self) -> None:
         champions = self.table["champions"]
-        # Phase 4e (s187) — initial seed of 5 multi-form champions
+        # Phase 4e (s187) - initial seed of 5 multi-form champions
         self.assertEqual(champions["Nidalee"], {"Q": 1, "W": 1, "E": 1})
         self.assertEqual(champions["Elise"], {"Q": 1})
         self.assertEqual(champions["Jayce"], {"Q": 1})
         self.assertEqual(champions["Hwei"], {"Q": 1, "W": 3, "E": 1})
         self.assertEqual(champions["LeeSin"], {"Q": 1})
-        # Phase 5.9.17 (s204) — Riven form_index seed (closes the s203
+        # Phase 5.9.17 (s204) - Riven form_index seed (closes the s203
         # carry-forward 'Riven form_index registry seed needed').
         self.assertEqual(champions["Riven"], {"R": 1})
-        # Phase 5.9.18 (s205) — Qiyana / AurelionSol / Renekton form_index
+        # Phase 5.9.18 (s205) - Qiyana / AurelionSol / Renekton form_index
         # seeds (closes the s204 carry-forward 'Qiyana Q form_index seed
         # expansion still pending'). Third instance of form_index +
         # block_index NET-damage composition after s203 LeeSin Q + s204
@@ -148,7 +148,7 @@ class ResolveFormIndexTests(unittest.TestCase):
         self.assertEqual(source, "override")
 
     def test_explicit_merges_with_registry(self) -> None:
-        # Operator overrides Nidalee Q but not W/E — registry fills the gaps.
+        # Operator overrides Nidalee Q but not W/E - registry fills the gaps.
         mapping, source = _resolve_form_index_overrides("Nidalee", {"Q": 0})
         self.assertEqual(mapping, {"Q": 0, "W": 1, "E": 1})
         self.assertEqual(source, "override")
@@ -190,7 +190,7 @@ class ComputeAbilityDpsFormIndexTests(unittest.TestCase):
         self.assertEqual(r.form_index_resolved, {"Q": 0, "W": 1, "E": 1})
 
     def test_hwei_dps_with_registry_exceeds_zero(self) -> None:
-        """Hwei form 0 for each key has zero damage blocks — without the
+        """Hwei form 0 for each key has zero damage blocks - without the
         registry override the ability DPS would collapse to 0. Registry
         flips to first damaging form."""
         r = compute_ability_dps(
@@ -326,7 +326,7 @@ class ServerRouteSourceTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _post(self, path: str, body: dict) -> dict:

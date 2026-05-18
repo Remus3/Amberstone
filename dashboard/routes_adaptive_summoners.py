@@ -9,7 +9,7 @@ GET /api/champ-select/adaptive-summoners
 Recommends the summoner spell pair for the operator's pick against the
 locked-in enemy comp. The decision tree is deliberately small:
 
-  - Flash always stays primary (slot D = id 4) — only edge case is jungle
+  - Flash always stays primary (slot D = id 4) - only edge case is jungle
     on Smite-required queues, but the LCU rejects no-Smite picks so we
     keep Flash on as a safety net.
   - Secondary swaps to **Cleanse** (id 1) when ≥2 hard-CC enemies are
@@ -21,7 +21,7 @@ locked-in enemy comp. The decision tree is deliberately small:
     Barrier mitigates the one-shot window Heal can't.
   - Otherwise the secondary stays at the variant's stored value (usually
     Heal id 7 for BOT, Teleport id 12 for TOP/MID, Smite id 11 for
-    JUNGLE) — no swap.
+    JUNGLE) - no swap.
 
 The endpoint is read-only and stateless. The apply path
 (``/api/loadout/apply``) accepts an ``override_summoners: [d, f]``
@@ -65,13 +65,13 @@ _BARRIER_ELIGIBLE_ROLES: frozenset[str] = frozenset({
     "BOT", "BOTTOM", "ADC", "MID", "MIDDLE", "SUP", "SUPPORT", "UTILITY",
 })
 
-# Cleanse only really pays off for the carries — Top has Teleport,
+# Cleanse only really pays off for the carries - Top has Teleport,
 # Jungle has Smite, those are non-negotiable slots in serious play.
 _CLEANSE_ELIGIBLE_ROLES: frozenset[str] = frozenset({
     "BOT", "BOTTOM", "ADC", "MID", "MIDDLE",
 })
 
-# Score thresholds — these get tuned as we collect real-game data.
+# Score thresholds - these get tuned as we collect real-game data.
 _CC_SWAP_THRESHOLD    = 4.0   # 0-10 scale; 4 ≈ 2 hard-CC on a 5-team
 _BURST_SWAP_THRESHOLD = 6.0   # 0-10 scale; 6 ≈ assassin-heavy comp
 
@@ -146,7 +146,7 @@ def _load_id_to_name() -> dict[int, str]:
 
 def _resolve_enemy_names(enemy_ids: list[int]) -> list[str]:
     """Convert champion-ids to display names via the DDragon index.
-    Returns empty string for ids we can't resolve — the threat-profile
+    Returns empty string for ids we can't resolve - the threat-profile
     classifier tolerates "" silently."""
     idx = _load_id_to_name()
     return [str(idx.get(int(cid)) or "") for cid in enemy_ids]
@@ -163,7 +163,7 @@ def _compute_cc_score(enemy_names: list[str]) -> float:
 
 def _compute_threat(enemy_names: list[str]) -> dict:
     """Wraps core.defensive_picks.compute_threat_profile + adds cc_threat.
-    Defensive against import failures (engine not installed) — returns a
+    Defensive against import failures (engine not installed) - returns a
     zero-threat profile so the route still answers."""
     try:
         from core.defensive_picks import compute_threat_profile
@@ -252,7 +252,7 @@ def _serve_adaptive_summoners(h) -> None:
                 "application/json")
 
 
-# Route table — imported by dashboard/_dispatch.py at module load.
+# Route table - imported by dashboard/_dispatch.py at module load.
 def _equals(p: str):
     def m(path: str) -> bool: return path.split("?", 1)[0] == p
     return m

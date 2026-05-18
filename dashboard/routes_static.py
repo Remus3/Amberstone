@@ -31,7 +31,7 @@ def _serve_index(h) -> None:
             new_index = (APP_DIR / "web" / "index.html").read_bytes()
             # AUDIT 2026-04-28 (proposal 3.1): replace the manual
             # ?v=YYYYMMDDNN cache-bust query with a content hash.
-            # Computed once per request from CSS/JS mtimes — same
+            # Computed once per request from CSS/JS mtimes - same
             # signal /api/ui-version uses, so reload behaviour is
             # consistent. No human has to bump a counter.
             new_index = inject_asset_hash(new_index)
@@ -98,7 +98,7 @@ def _make_icon_handler(subdir: str):
     return _handler
 
 
-# /icons/items/* lives under data/icons/aram_items/ (legacy name) — see
+# /icons/items/* lives under data/icons/aram_items/ (legacy name) - see
 # the slug-naming convention in modes/aram_overlay._load_icon.
 def _serve_icon_items_route(h):
     try:
@@ -153,7 +153,7 @@ def _serve_agent_file(h) -> None:
     if name not in _AGENT_ALLOWED:
         h._send(404, b"not found", "text/plain"); return
     try:
-        # Stream-read with 4 MiB cap — same defensive pattern as
+        # Stream-read with 4 MiB cap - same defensive pattern as
         # the MCP `tool_read_file` fix from cycle 2. Allowlisted
         # files today are <50 KB so the cap doesn't truncate, but
         # it future-proofs if logs/larger artifacts ever land in

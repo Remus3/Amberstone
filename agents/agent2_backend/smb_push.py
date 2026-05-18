@@ -1,4 +1,4 @@
-"""Cross-machine SMB push — the only path from Legion → Game-PC for file writes.
+"""Cross-machine SMB push - the only path from Legion → Game-PC for file writes.
 
 Every Legion→Game-PC file op goes through ``push()``. Anything else bypasses
 Agent 0's evaluator and is a bug.
@@ -15,7 +15,7 @@ Contract (§11.4, §7):
   * Fail-closed: if the share is unreachable, raise ``SmbUnavailable`` so the
     scheduler can retry the task.
 
-Also exposes ``trigger_forwarder_restart()`` — writes the current ISO timestamp
+Also exposes ``trigger_forwarder_restart()`` - writes the current ISO timestamp
 to ``forwarder/restart_trigger.txt``. Forwarder Agent on Game-PC polls that
 file's mtime and self-restarts on change.
 """

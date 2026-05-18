@@ -1,9 +1,9 @@
 surface,endpoint,file,line,snippet
 internal,/api/analyze,audit-notes.md,259,"- **Fix:** Added `elif self.path == ""/api/analyze"":` POST handler in web_dashboard.py that forwards body to `http://127.0.0.1:8890/api/analyze` and streams the "
-lcu,/lol-gameflow/v1/session,CLAUDE.md,155,17. ✅ **Mode-flicker chain + DS resolver + LCU agent fixes** — shipped s153/s154/s155/s156/s157/s158 (2026-05-10). s153 (`96bf4ee`) + s157 (`0e3d87a`) mirror th
-lcu,/lol-gameflow/v1,CLAUDE.md,155,17. ✅ **Mode-flicker chain + DS resolver + LCU agent fixes** — shipped s153/s154/s155/s156/s157/s158 (2026-05-10). s153 (`96bf4ee`) + s157 (`0e3d87a`) mirror th
-lcu,/lol-cherry/v1,CLAUDE.md,161,23. ✅ **Phase B — LCU agent handlers + champ-select state population** — shipped s166 (2026-05-10). 5 new command handlers in `tools/gamepc_lcu_agent.py` (set_b
-liveclient,/liveclientdata/allgamedata,README.md,83,"1. **Live Client snapshot** — fast-path. Many fields (gold, KDA, level) come from `:2999/liveclientdata/allgamedata` on Game-PC and travel as JSON; no vision ca"
+lcu,/lol-gameflow/v1/session,CLAUDE.md,155,17. ✅ **Mode-flicker chain + DS resolver + LCU agent fixes** - shipped s153/s154/s155/s156/s157/s158 (2026-05-10). s153 (`96bf4ee`) + s157 (`0e3d87a`) mirror th
+lcu,/lol-gameflow/v1,CLAUDE.md,155,17. ✅ **Mode-flicker chain + DS resolver + LCU agent fixes** - shipped s153/s154/s155/s156/s157/s158 (2026-05-10). s153 (`96bf4ee`) + s157 (`0e3d87a`) mirror th
+lcu,/lol-cherry/v1,CLAUDE.md,161,23. ✅ **Phase B - LCU agent handlers + champ-select state population** - shipped s166 (2026-05-10). 5 new command handlers in `tools/gamepc_lcu_agent.py` (set_b
+liveclient,/liveclientdata/allgamedata,README.md,83,"1. **Live Client snapshot** - fast-path. Many fields (gold, KDA, level) come from `:2999/liveclientdata/allgamedata` on Game-PC and travel as JSON; no vision ca"
 internal,/api/queue,agents/supervisor.py,388,"if self.path == ""/api/queue"":"
 internal,/api/adaptation,agents/supervisor.py,390,"if self.path.startswith(""/api/adaptation""):"
 internal,/api/env,agents/supervisor.py,392,"if self.path == ""/api/env"":"
@@ -132,10 +132,10 @@ internal,/api/time-of-day,dashboard/_handler.py,62,"""/api/time-of-day"","
 internal,/api/trending,dashboard/_handler.py,63,"""/api/trending"","
 lcu,/lol-matchmaking/v1/ready-check/auto-accept,docs/history_notes.md,155,- `lobby.local_member.auto_accept` (LCU `/lol-matchmaking/v1/ready-check/auto-accept`)
 lcu,/lol-matchmaking/v1,docs/history_notes.md,155,- `lobby.local_member.auto_accept` (LCU `/lol-matchmaking/v1/ready-check/auto-accept`)
-lcu,/lol-chat/v1/friends,docs/history_notes.md,157,"- `top8` enrichment (online status from `/lol-chat/v1/friends`, games count + role from rewind_history.db) — Phase A reads operator-curated localStorage list"
-lcu,/lol-chat/v1,docs/history_notes.md,157,"- `top8` enrichment (online status from `/lol-chat/v1/friends`, games count + role from rewind_history.db) — Phase A reads operator-curated localStorage list"
-lcu,/lol-gameflow/v1/session.gameData.queue.id,docs/history_notes.md,204,- **s154 (`3a3bf58`)** — queue_id fallback to `/lol-gameflow/v1/session.gameData.queue.id` when the CS-session endpoint omits `gameData` during BAN_PICK. Withou
-lcu,/lol-gameflow/v1,docs/history_notes.md,204,- **s154 (`3a3bf58`)** — queue_id fallback to `/lol-gameflow/v1/session.gameData.queue.id` when the CS-session endpoint omits `gameData` during BAN_PICK. Withou
+lcu,/lol-chat/v1/friends,docs/history_notes.md,157,"- `top8` enrichment (online status from `/lol-chat/v1/friends`, games count + role from rewind_history.db) - Phase A reads operator-curated localStorage list"
+lcu,/lol-chat/v1,docs/history_notes.md,157,"- `top8` enrichment (online status from `/lol-chat/v1/friends`, games count + role from rewind_history.db) - Phase A reads operator-curated localStorage list"
+lcu,/lol-gameflow/v1/session.gameData.queue.id,docs/history_notes.md,204,- **s154 (`3a3bf58`)** - queue_id fallback to `/lol-gameflow/v1/session.gameData.queue.id` when the CS-session endpoint omits `gameData` during BAN_PICK. Withou
+lcu,/lol-gameflow/v1,docs/history_notes.md,204,- **s154 (`3a3bf58`)** - queue_id fallback to `/lol-gameflow/v1/session.gameData.queue.id` when the CS-session endpoint omits `gameData` during BAN_PICK. Withou
 internal,/api/activity,docs io RC peer/RC_FILE_BUNDLE_FOR_ATX.md,605,"""/api/activity"","
 internal,/api/adaptation,docs io RC peer/RC_FILE_BUNDLE_FOR_ATX.md,606,"""/api/adaptation"","
 internal,/api/advisories,docs io RC peer/RC_FILE_BUNDLE_FOR_ATX.md,607,"""/api/advisories"","
@@ -211,8 +211,8 @@ lcu,/lol-champ-select/v1/session/bench/swap/{championId},lcu/lcu_pregame.py,192,
 lcu,/lol-champ-select/v1,lcu/lcu_pregame.py,192,POST /lol-champ-select/v1/session/bench/swap/{championId}
 lcu,/lol-champ-select/v1/session/bench/swap/{champion_id},lcu/lcu_pregame.py,196,"f""/lol-champ-select/v1/session/bench/swap/{champion_id}"","
 lcu,/lol-champ-select/v1,lcu/lcu_pregame.py,196,"f""/lol-champ-select/v1/session/bench/swap/{champion_id}"","
-lcu,/lol-champ-select/v1/session/my-selection,lcu/lcu_pregame.py,213,PATCH /lol-champ-select/v1/session/my-selection — but only when
-lcu,/lol-champ-select/v1,lcu/lcu_pregame.py,213,PATCH /lol-champ-select/v1/session/my-selection — but only when
+lcu,/lol-champ-select/v1/session/my-selection,lcu/lcu_pregame.py,213,PATCH /lol-champ-select/v1/session/my-selection - but only when
+lcu,/lol-champ-select/v1,lcu/lcu_pregame.py,213,PATCH /lol-champ-select/v1/session/my-selection - but only when
 lcu,/lol-champ-select/v1/session/my-selection,lcu/lcu_pregame.py,244,"""/lol-champ-select/v1/session/my-selection"","
 lcu,/lol-champ-select/v1,lcu/lcu_pregame.py,244,"""/lol-champ-select/v1/session/my-selection"","
 lcu,/lol-gameflow/v1/phase,lcu/lcu_pregame.py,260,"result = self._request(""GET"", ""/lol-gameflow/v1/phase"")"
@@ -267,7 +267,7 @@ internal,/api/health,tools/bridge_watcher_config.json,8,"""git diff"", ""/api/he
 internal,/api/state,tools/bridge_watcher_config.json,8,"""git diff"", ""/api/health"", ""/api/state"""
 internal,/api/health,tools/BRIDGE_WATCHER_PLAN.md,119,"""git diff"", ""/api/health"", ""/api/state"""
 internal,/api/state,tools/BRIDGE_WATCHER_PLAN.md,119,"""git diff"", ""/api/health"", ""/api/state"""
-liveclient,/liveclientdata/allgamedata,tools/GAMEPC_CLAUDE.md,113,`http_code: 000` on `https://127.0.0.1:2999/liveclientdata/allgamedata` — even
+liveclient,/liveclientdata/allgamedata,tools/GAMEPC_CLAUDE.md,113,`http_code: 000` on `https://127.0.0.1:2999/liveclientdata/allgamedata` - even
 liveclient,/liveclientdata/allgamedata,tools/GAMEPC_CLAUDE.md,141,"curl.exe -k --max-time 5 https://127.0.0.1:2999/liveclientdata/allgamedata | Select-String -SimpleMatch '""gameTime""'"
 lcu,/lol-gameflow/v1/gameflow-phase,tools/gamepc_lcu_agent.py,338,"phase, _ = lcu_request(""GET"", ""/lol-gameflow/v1/gameflow-phase"")"
 lcu,/lol-gameflow/v1,tools/gamepc_lcu_agent.py,338,"phase, _ = lcu_request(""GET"", ""/lol-gameflow/v1/gameflow-phase"")"
@@ -463,7 +463,7 @@ internal,/api/duration,web/js/sim.js,67,"[""/api/duration"",    ""duration""],"
 internal,/api/insight-card,web/js/sim.js,68,"[""/api/insight-card"", ""insight_card""],"
 internal,/api/task/,web/js/sim.js,69,"[""/api/task/"",       ""task_detail""],"
 internal,/api/analyze,web/js/sim.js,70,"[""/api/analyze"",     ""analyze_ack""],"
-internal,/api/sim,web/js/sim.js,110,"""/api/sim"",          // fixture loader — keep hitting real server"
+internal,/api/sim,web/js/sim.js,110,"""/api/sim"",          // fixture loader - keep hitting real server"
 internal,/api/ui-version,web/js/sim.js,111,"""/api/ui-version"",   // auto-reload hash"
 internal,/api/sim/_manifest,web/js/sim.js,239,"const resp = await _origFetch(""/api/sim/_manifest"");"
 internal,/api/decisions,web/js/panels/bridge_pending.js,115,"const r = await fetch(""/api/decisions"");"
@@ -492,7 +492,7 @@ internal,/api/loadout/list,web/js/panels/item_build.js,405,"fetch(""/api/loadout
 internal,/api/digest,web/js/panels/right_now.js,144,"fetch(""/api/digest"", { cache: ""no-store"" })"
 internal,/api/team-context/refresh,tests/fu02_team_context/test_team_context.py,182,"self.assertIn(""/api/team-context/refresh"", _REQUEST_MODELS)"
 internal,/api/team-context/refresh,tests/fu02_team_context/test_team_context.py,183,"self.assertIs(_REQUEST_MODELS[""/api/team-context/refresh""],"
-liveclient,/liveclientdata/allgamedata,tests/phase2_smoke/test_coach_state_parsing.py,24,# These mirror the shape of /liveclientdata/allgamedata — not the processed
+liveclient,/liveclientdata/allgamedata,tests/phase2_smoke/test_coach_state_parsing.py,24,# These mirror the shape of /liveclientdata/allgamedata - not the processed
 internal,/api/input,tests/phase4_dispatch_validate/test_dispatch_validate.py,20,"""/api/input"","
 internal,/api/command,tests/phase4_dispatch_validate/test_dispatch_validate.py,21,"""/api/command"","
 internal,/api/ds-preview,tests/phase4_dispatch_validate/test_dispatch_validate.py,22,"""/api/ds-preview"","

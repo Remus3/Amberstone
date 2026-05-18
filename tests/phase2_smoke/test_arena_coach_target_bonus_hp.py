@@ -1,6 +1,6 @@
 """
 tests/phase2_smoke/test_arena_coach_target_bonus_hp.py
-Phase 4 batch 19 wire-in — arena_coach._estimate_target_bonus_hp.
+Phase 4 batch 19 wire-in - arena_coach._estimate_target_bonus_hp.
 
 The estimator is a pure function of self._event_round_count. Tested
 via a stub class (mirrors test_arena_augment_hud's pattern) to avoid
@@ -45,7 +45,7 @@ class EstimateTargetBonusHpCurveTests(unittest.TestCase):
         self.assertAlmostEqual(c._estimate_target_bonus_hp(), 166.667, places=2)
 
     def test_round_five_at_quarter_cap_ish(self) -> None:
-        # (5-1) * 1500 / 9 = 666.67 — about 1 HP item by mid-arena.
+        # (5-1) * 1500 / 9 = 666.67 - about 1 HP item by mid-arena.
         c = _StubCoach(5)
         self.assertAlmostEqual(c._estimate_target_bonus_hp(), 666.667, places=2)
 
@@ -55,7 +55,7 @@ class EstimateTargetBonusHpCurveTests(unittest.TestCase):
         self.assertAlmostEqual(c._estimate_target_bonus_hp(), 1500.0, places=2)
 
     def test_round_above_cap_clamps(self) -> None:
-        # Late Arena (round 15+) — past LDR's saturation.
+        # Late Arena (round 15+) - past LDR's saturation.
         c = _StubCoach(15)
         self.assertEqual(c._estimate_target_bonus_hp(), 1500.0)
 
@@ -76,7 +76,7 @@ class EstimateTargetBonusHpCurveTests(unittest.TestCase):
 
 
 class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
-    """Phase 4 batch 19 wire-in (s73) — primary path: item-summed HP.
+    """Phase 4 batch 19 wire-in (s73) - primary path: item-summed HP.
 
     When teams[] carries enemy items, the estimator resolves names →
     DDragon HP and uses MAX across alive opponents. Heuristic only
@@ -94,13 +94,13 @@ class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
         self.assertAlmostEqual(c._estimate_target_bonus_hp(), 666.667, places=2)
 
     def test_empty_teams_uses_round_fallback(self) -> None:
-        # Pre-game state — no enemies parsed yet.
+        # Pre-game state - no enemies parsed yet.
         c = _StubCoach(5)
         result = c._estimate_target_bonus_hp(self._state_with_teams([]))
         self.assertAlmostEqual(result, 666.667, places=2)
 
     def test_all_opps_dead_uses_round_fallback(self) -> None:
-        # Mid-round-transition state — all enemies dead. Fall back to
+        # Mid-round-transition state - all enemies dead. Fall back to
         # round count rather than emitting 0 (player still wants Giant
         # Slayer recommendations for next round).
         c = _StubCoach(5)
@@ -130,7 +130,7 @@ class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
         self.assertAlmostEqual(result, 1050.0, places=1)
 
     def test_multi_opps_uses_max_not_avg(self) -> None:
-        # Two alive enemies — one tanky (1050 HP from Heart+Rift),
+        # Two alive enemies - one tanky (1050 HP from Heart+Rift),
         # one squishy (0 HP from LDR alone). Estimator picks 1050,
         # not the avg (525). LDR Giant Slayer recommendation should
         # escalate against the tanky enemy specifically.
@@ -144,7 +144,7 @@ class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
         self.assertAlmostEqual(result, 1050.0, places=1)
 
     def test_all_opps_have_no_hp_items_falls_back(self) -> None:
-        # Both alive enemies built pure-AD pen — total bonus HP is 0
+        # Both alive enemies built pure-AD pen - total bonus HP is 0
         # despite items being present. Estimator should fall back to
         # round count rather than emit 0.
         c = _StubCoach(5)
@@ -159,10 +159,10 @@ class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
 
     def test_caps_at_engine_saturation_point(self) -> None:
         # Hypothetical 5-HP-item build sums above 1500. Estimator must
-        # clamp to match Giant Slayer's 1500 saturation point — past
+        # clamp to match Giant Slayer's 1500 saturation point - past
         # that, the engine amp is at full 15% so precision stops
         # mattering and we shouldn't pretend to know more.
-        c = _StubCoach(15)  # round count high — fallback also caps
+        c = _StubCoach(15)  # round count high - fallback also caps
         teams = [
             {"name": "You", "is_you": True, "items": []},
             {"name": "BigTank", "items": [
@@ -174,7 +174,7 @@ class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
         self.assertEqual(result, 1500.0)
 
     def test_skips_self_and_partner(self) -> None:
-        # Tanky teammate + tanky partner — neither should count toward
+        # Tanky teammate + tanky partner - neither should count toward
         # enemy bonus HP. Only the alive opponent's items matter.
         c = _StubCoach(5)
         teams = [
@@ -185,7 +185,7 @@ class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
             {"name": "Enemy1", "items": ["Sunfire Aegis"]},  # 350 HP arena
         ]
         result = c._estimate_target_bonus_hp(self._state_with_teams(teams))
-        # Just Sunfire's 350 — neither self nor partner counts.
+        # Just Sunfire's 350 - neither self nor partner counts.
         self.assertAlmostEqual(result, 350.0, places=1)
 
 

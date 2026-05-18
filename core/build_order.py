@@ -3,7 +3,7 @@
 
 Closes the long-standing "always the same items, not match-specific"
 complaint and enforces the hard rule: **never recommend two items that
-share a unique passive** (Sheen/Spellblade family — Trinity Force +
+share a unique passive** (Sheen/Spellblade family - Trinity Force +
 Essence Reaver invalid together; also Lifeline and Immolate families).
 
 Why the old path produced "always the same items"
@@ -13,16 +13,16 @@ underlying ``rank_items_by_*`` scorers) does *greedy single-item
 marginal* scoring: for a fixed ``item_ids`` it scores every candidate's
 delta when added *alone*, sorts, returns a flat top-N. Coaches surface
 that flat list (``coach_integration.archetype_dispatch.display_rows``).
-There is no *sequenced* build anywhere — with a near-naked champion the
+There is no *sequenced* build anywhere - with a near-naked champion the
 #1 item is deterministic per (champion, level), so every game shows the
 same item. And because dedup only filters candidates colliding with an
 *already-owned* item, the flat list can itself contain Trinity Force
-**and** Essence Reaver (both ``unique_passive_key="spellblade"``) — a
+**and** Essence Reaver (both ``unique_passive_key="spellblade"``) - a
 forbidden double the moment the list is read as a build.
 
 How this layer fixes both
 -------------------------
-Pure orchestration over the existing, tested engine — *no engine change*:
+Pure orchestration over the existing, tested engine - *no engine change*:
 
 1. **Order = iterative forward selection.** Call the ranker once per
    slot, appending the chosen item to ``item_ids`` before the next call.
@@ -50,7 +50,7 @@ return ``None`` so callers fall back to "unavailable" without writing
 partial state.
 
 Headless-testable: inject ``rank_fn`` (defaults to the real dispatcher)
-so the planner can be exercised with a fake engine — no live DS server.
+so the planner can be exercised with a fake engine - no live DS server.
 """
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ _UNIT_SUFFIX: dict[str, str] = {
 
 @dataclass(frozen=True)
 class BuildStep:
-    """One slot in the planned order (counts NEW picks only — owned items
+    """One slot in the planned order (counts NEW picks only - owned items
     are excluded from the sequence)."""
 
     slot: int                 # 1-based position among the new picks
@@ -92,7 +92,7 @@ class BuildStep:
     unit: str                 # display unit for ``delta``
     # Family of a candidate the engine *excluded* at this slot because its
     # unique passive was already taken (engine-supplied via dead_unique_key
-    # — populated opportunistically, never fabricated). Empty when nothing
+    # - populated opportunistically, never fabricated). Empty when nothing
     # was excluded for a family reason at this slot.
     excluded_family: str = ""
     excluded_example: str = ""
@@ -120,7 +120,7 @@ class BuildOrderResult:
     level: int
     owned: list[str]
     order: list[BuildStep] = field(default_factory=list)
-    # The enemy context actually used — proves the order is match-specific
+    # The enemy context actually used - proves the order is match-specific
     # (flip these and the order changes; see tests).
     context: dict = field(default_factory=dict)
     # True iff every accepted pick had shares_dead_unique == False, i.e.
@@ -130,7 +130,7 @@ class BuildOrderResult:
     notes: list[str] = field(default_factory=list)
 
     def order_str(self) -> str:
-        """Compact ``Item1 > Item2 > ...`` with per-step delta + gold —
+        """Compact ``Item1 > Item2 > ...`` with per-step delta + gold -
         the form a coach prompt / dashboard pill wants."""
         if not self.order:
             return "none"
@@ -207,7 +207,7 @@ def plan_build_order(
     Returns ``None`` when the engine is unreachable or ``champion`` is
     blank (mirrors ``dispatch_for_coach``). An engine that is up but has
     nothing left to recommend yields a result with a short ``order`` and
-    an explanatory note — not ``None``.
+    an explanatory note - not ``None``.
 
     ``rank_fn`` defaults to
     ``core.daemon_slayer_client.rank_for_primary_archetype`` and is
@@ -251,7 +251,7 @@ def plan_build_order(
     remaining = int(slots) - len(owned)
     if remaining <= 0:
         result.notes.append(
-            f"build already full ({len(owned)}/{slots}) — no order to plan"
+            f"build already full ({len(owned)}/{slots}) - no order to plan"
         )
         return result
 
@@ -290,7 +290,7 @@ def plan_build_order(
 
         if out is None:
             if slot_i == 1:
-                # Engine unreachable before any pick — same contract as
+                # Engine unreachable before any pick - same contract as
                 # dispatch_for_coach: signal None so callers fall back.
                 return None
             result.notes.append(
@@ -309,7 +309,7 @@ def plan_build_order(
         if not rows:
             result.notes.append(
                 f"no further legal items after slot {slot_i - 1} "
-                f"(scorer={scorer}) — order complete at "
+                f"(scorer={scorer}) - order complete at "
                 f"{len(result.order)} new item(s)"
             )
             break
@@ -318,16 +318,16 @@ def plan_build_order(
         if chosen is None:
             result.notes.append(
                 f"slot {slot_i}: all candidates collide with a locked "
-                f"unique passive — order complete"
+                f"unique passive - order complete"
             )
             break
         if chosen.get("shares_dead_unique"):
-            # Should be impossible (filter on) — record + stop rather
+            # Should be impossible (filter on) - record + stop rather
             # than emit a rule-violating pick.
             result.unique_passive_safe = False
             result.notes.append(
                 f"slot {slot_i}: engine returned only dead-unique rows "
-                f"despite filter — aborting to honor no-double rule"
+                f"despite filter - aborting to honor no-double rule"
             )
             break
 

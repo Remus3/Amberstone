@@ -68,7 +68,7 @@ def _port_open(host: str, port: int, timeout: float = 0.5) -> bool:
 @pytest.mark.timeout(30)
 def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
     """Spawn supervisor as subprocess; confirm :8890 and :8891 accept connections."""
-    # Make sure no lockfile stops us — checked by supervisor itself.
+    # Make sure no lockfile stops us - checked by supervisor itself.
     env = os.environ.copy()
     proc = subprocess.Popen(
         [str(PY), "-m", "agents.supervisor"],
@@ -91,7 +91,7 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
         assert web_ok, "web port 8890 never opened"
         assert ws_ok, "ws port 8891 never opened"
 
-        # Heartbeat interval is 5s — give 15s to witness at least one
+        # Heartbeat interval is 5s - give 15s to witness at least one
         # distinct post-startup refresh.
         lock = _PROJECT_ROOT / "agents" / "state" / "lockfile"
         first_hb: str | None = None
@@ -103,12 +103,12 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
                     if first_hb is None:
                         first_hb = hb
                     elif hb != first_hb:
-                        break  # second distinct heartbeat — loop is alive
+                        break  # second distinct heartbeat - loop is alive
             time.sleep(1)
         else:
             pytest.fail("lockfile heartbeat never refreshed to a second value")
     finally:
-        # Hard kill — spec forbids Stop-Process, use taskkill.
+        # Hard kill - spec forbids Stop-Process, use taskkill.
         if sys.platform.startswith("win"):
             subprocess.run(["taskkill", "/F", "/PID", str(proc.pid)], capture_output=True, timeout=10)
         else:

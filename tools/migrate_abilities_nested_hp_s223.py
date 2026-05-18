@@ -1,9 +1,9 @@
-"""s223 — deterministic in-place migration: promote nested-conditional
+"""s223 - deterministic in-place migration: promote nested-conditional
 "% of target's <missing|current|maximum> health" modifiers that were
 trapped in ``unparsed_modifiers`` into their typed scaling fields.
 
 Why a migration and not a re-fetch: ``daemon_slayer_abilities_extract``
-pulls Meraki's mutable ``latest`` endpoint — re-running it would risk a
+pulls Meraki's mutable ``latest`` endpoint - re-running it would risk a
 patch bump and smear unrelated upstream churn into the diff. This script
 re-applies ONLY the new nested-paren canonicalization to the EXISTING
 snapshot's ``unparsed_modifiers`` (which preserve the original
@@ -36,7 +36,7 @@ from tools.daemon_slayer_abilities_extract import (  # noqa: E402
 _META_KEYS = {"attribute", "attribute_kind", "unparsed_modifiers", "raw_modifiers"}
 
 # The exact change set audited from the pre-migration snapshot (s223). The
-# migration asserts it touches precisely these (champion, key) pairs — any
+# migration asserts it touches precisely these (champion, key) pairs - any
 # drift means Meraki shifted under us and the run aborts without writing.
 _EXPECTED_CHAMPS = {
     "Amumu", "Chogath", "Elise", "Evelynn", "KSante",
@@ -154,14 +154,14 @@ def main(argv: list[str]) -> int:
         print(f"  {t[0]}.{t[1]} form{t[2]} block{t[3]} "
               f"'{t[4]}'  {t[5]!r} -> {t[6]}={t[7]}")
 
-    # Hard audit gate — abort if the change set drifted from the s223 audit.
+    # Hard audit gate - abort if the change set drifted from the s223 audit.
     if champs_touched != _EXPECTED_CHAMPS:
-        print("\n!! CHANGE SET DRIFT — expected exactly "
+        print("\n!! CHANGE SET DRIFT - expected exactly "
               f"{sorted(_EXPECTED_CHAMPS)}, got {sorted(champs_touched)}")
         print("   Aborting without write (Meraki snapshot changed?).")
         return 2
     if len(touched) != 22:
-        print(f"\n!! expected 22 promotions, got {len(touched)} — aborting.")
+        print(f"\n!! expected 22 promotions, got {len(touched)} - aborting.")
         return 2
 
     snap["coverage"] = _coverage_summary(data)

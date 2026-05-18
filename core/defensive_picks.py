@@ -1,13 +1,13 @@
 # arch: defensive item ranker | section=core | frozen=no
 """Threat-aware defensive item recommendations.
 
-The DS engine (``agents/daemon_slayer``) optimises offense — items that
+The DS engine (``agents/daemon_slayer``) optimises offense - items that
 make YOUR damage faster. It doesn't surface defensive picks even when
 the operator is being one-shot by a fed assassin. This module fills
 that gap: classify the enemy team's damage profile + burst threat,
 then recommend defensive items keyed to the threat.
 
-Phase 1 (s174, 2026-05-12) — ``recommend_defensive_items_via_ehp()``
+Phase 1 (s174, 2026-05-12) - ``recommend_defensive_items_via_ehp()``
 layers the curated catalog on top of ``agents/daemon_slayer/ehp.py``'s
 math-driven ranker. Option B from the s174 design conversation: the
 curated catalog stays the operator-vetted pool, EHP math drives order
@@ -19,7 +19,7 @@ Threat profile inputs:
                    'Lulu', 'Caitlyn', 'Nautilus'])
   enemy_items:     list of item-id lists per enemy (live inventory).
                    Currently used to detect crit / lethality / armor-pen
-                   stacking — not just stat sums.
+                   stacking - not just stat sums.
 
 Output:
   {
@@ -39,7 +39,7 @@ Recommendation output:
     ...
   ]
 
-Both functions are deterministic + pure — no network calls, no LCU. The
+Both functions are deterministic + pure - no network calls, no LCU. The
 threat profile is recomputed every tick from the live state; the
 recommendation list is filtered against the operator's owned_items so
 nothing already-bought is recommended.
@@ -87,14 +87,14 @@ def _load_champ_info() -> dict[str, dict]:
                 out[key.replace(" ", "")] = slim          # Miss Fortune → MissFortune
                 out[key.replace("'", "").replace(" ", "")] = slim
     except FileNotFoundError:
-        _log.warning("defensive_picks: %s missing — using empty index", _CHAMPS_PATH)
+        _log.warning("defensive_picks: %s missing - using empty index", _CHAMPS_PATH)
     except Exception as exc:
         _log.warning("defensive_picks: champ info load failed: %s", exc)
     _CHAMP_INFO = out
     return out
 
 
-# Champions known to one-shot squishies — bumps burst_threat regardless
+# Champions known to one-shot squishies - bumps burst_threat regardless
 # of DDragon info.magic/attack scores (which are average-state, not
 # late-game-fed-state).
 _KNOWN_BURSTERS = {
@@ -110,7 +110,7 @@ _KNOWN_BURSTERS = {
 
 # Curated defensive item catalog. Each entry: id, name, category,
 # stats summary, reason template. Categories drive the threat→item
-# match. SR-tier 4-digit ids — the catalog file (ddragon_items.json)
+# match. SR-tier 4-digit ids - the catalog file (ddragon_items.json)
 # has both these AND the 6-digit ARAM variants under the same names.
 _DEFENSIVE_ITEMS = [
     # ARMOR / vs AD
@@ -125,7 +125,7 @@ _DEFENSIVE_ITEMS = [
     {"id": "3075", "name": "Thornmail", "category": "armor",
      "tags": ["grievous"], "reason": "70 armor + reflects + Grievous on AAs (vs lifesteal)"},
     {"id": "6665", "name": "Jak'Sho, The Protean", "category": "armor",
-     "tags": ["hybrid"], "reason": "armor+MR scaling + heal — hybrid resist"},
+     "tags": ["hybrid"], "reason": "armor+MR scaling + heal - hybrid resist"},
     # MR / vs AP
     {"id": "3111", "name": "Mercury's Treads", "category": "mr",
      "tags": ["boots", "tenacity"], "reason": "+25 MR + 30% tenacity vs CC"},
@@ -139,7 +139,7 @@ _DEFENSIVE_ITEMS = [
      "tags": ["sustain"], "reason": "40 MR + 450 HP + 20% bonus healing"},
     # BURST DEFENSE / LIFELINE
     {"id": "3026", "name": "Guardian Angel", "category": "lifeline",
-     "tags": ["revive"], "reason": "revives once after fatal hit — anti-burst classic"},
+     "tags": ["revive"], "reason": "revives once after fatal hit - anti-burst classic"},
     {"id": "3814", "name": "Edge of Night", "category": "lifeline",
      "tags": ["spellshield", "lethality"], "reason": "spell shield + lethality vs ability-burst"},
     {"id": "3156", "name": "Maw of Malmortius", "category": "lifeline",
@@ -309,9 +309,9 @@ def recommend_defensive_items(threat: dict,
     return scored[:top_n]
 
 
-# Phase 1 (s174, 2026-05-12) — EHP-driven defensive picks. Option B layering:
+# Phase 1 (s174, 2026-05-12) - EHP-driven defensive picks. Option B layering:
 # curated catalog is the whitelist, math drives order. Soft dep on the DS
-# engine (HTTP :8893) — falls back to ``recommend_defensive_items`` heuristic
+# engine (HTTP :8893) - falls back to ``recommend_defensive_items`` heuristic
 # when the engine is unreachable so the dashboard never goes dark.
 
 def _threat_to_damage_shares(threat: dict) -> tuple[float, float]:
@@ -319,7 +319,7 @@ def _threat_to_damage_shares(threat: dict) -> tuple[float, float]:
 
     Normalizes ``ad_threat`` (0..10) and ``ap_threat`` (0..10) to shares
     summing to ≤ 1.0. When both signals are strong (>=6 each) reserves
-    ~10% true-damage share — real teams have at least some true damage
+    ~10% true-damage share - real teams have at least some true damage
     (Talon E, Wukong R, Cho ult, item procs) that the blended_ehp shouldn't
     over-fit to one resist for.
     """
@@ -363,12 +363,12 @@ def recommend_defensive_items_via_ehp(
         return recommend_defensive_items(
             threat, my_champion, my_owned_items, top_n=top_n,
         )
-    # Lazy import — keeps ``defensive_picks`` import-clean for callers that
+    # Lazy import - keeps ``defensive_picks`` import-clean for callers that
     # don't need the EHP path (and avoids any circular-import risk with
     # other core modules).
     try:
         from core.daemon_slayer_client import is_engine_up, rank_tank_for
-    except ImportError:  # pragma: no cover — defensive
+    except ImportError:  # pragma: no cover - defensive
         return recommend_defensive_items(
             threat, my_champion, my_owned_items, top_n=top_n,
         )

@@ -73,7 +73,7 @@ def main() -> int:
     n2 = s.next_ready()
     check("dispatch#2 op", n2.op if n2 else None, "push-web-ui")  # t3 priority 30
 
-    # Persistence — rebuild scheduler from same log, verify state restored
+    # Persistence - rebuild scheduler from same log, verify state restored
     s2 = Scheduler(queue_log=tmp, agent0_evaluate=evaluate)
     check("restore t1 status", s2.get(t.id).status, TaskStatus.IN_PROGRESS)
     check("restore t4 status", s2.get(t4.id).status, TaskStatus.DEAD_LETTER)

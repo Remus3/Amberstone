@@ -120,7 +120,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* Inline sparkline inside hero chip — small, sits next to the value */
+/* Inline sparkline inside hero chip - small, sits next to the value */
 .home-hero-spark {
   width: 60px; height: 18px;
   flex: none;
@@ -163,7 +163,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   transition: border-color 0.12s, transform 0.12s;
 }
 /* s218: end-of-match item strip on each Recent 5 card.
- * PLACEHOLDER — slots are empty/dummy until ingest captures items[]. */
+ * PLACEHOLDER - slots are empty/dummy until ingest captures items[]. */
 .home-recent-items {
   display: inline-flex;
   gap: 4px;
@@ -308,7 +308,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   fill: var(--gold);
 }
 
-/* ── V3 coach row (suggestions #1 + #4) — Tonight's Pick now lives
+/* ── V3 coach row (suggestions #1 + #4) - Tonight's Pick now lives
  * inside .home-combo (with sparklines). Last Build is its own row
  * below, hidden until postgame_stats data exists. ────────────────── */
 .home-coach-pick,
@@ -355,7 +355,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-pick-tip-row {
   display: grid;
   /* s218 v3: tightened from 110px → 88px so "The Good/Bad/Ugly"
-   * labels sit closer to the "—" value (operator: was too far). */
+   * labels sit closer to the "-" value (operator: was too far). */
   grid-template-columns: 88px 1fr;
   gap: 16px;
   align-items: baseline;
@@ -416,7 +416,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-size: 23px; font-weight: 800; color: var(--info);
   letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  /* s218 v7: clickable — routes to History filtered by this champion. */
+  /* s218 v7: clickable - routes to History filtered by this champion. */
   cursor: pointer;
   transition: color 0.12s;
 }
@@ -466,7 +466,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 /* s218 v4: Home-unique Find Match picker. Inherits .lq-mode-menu's
  * surface + column styling; overrides position to render as a fixed
  * centered popover over the Home page (the lobby-view variant uses
- * absolute positioning relative to its trigger button — wrong anchor
+ * absolute positioning relative to its trigger button - wrong anchor
  * for Home). */
 .home-find-match-picker.lq-mode-menu {
   position: fixed;
@@ -486,7 +486,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-size: 16px;
   padding: 12px 8px;
 }
-/* Dimmer behind the picker — keeps focus on the queue choice. */
+/* Dimmer behind the picker - keeps focus on the queue choice. */
 .home-find-match-backdrop {
   position: fixed;
   inset: 0;
@@ -495,7 +495,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-find-match-backdrop.hidden { display: none; }
 
-/* ── V2 quick-action tiles row (suggestion #3) — s218: 7 equal tiles ── */
+/* ── V2 quick-action tiles row (suggestion #3) - s218: 7 equal tiles ── */
 .home-actions {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -512,7 +512,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   text-align: center;
   transition: border-color 0.12s, transform 0.12s, background 0.12s;
 }
-/* s218 v7: Find Match is the primary action of this row — accent it
+/* s218 v7: Find Match is the primary action of this row - accent it
  * with an info-tinted gradient + soft info border so the eye lands
  * there first post-greeting. Other tiles stay neutral. */
 .home-action-tile[data-flow="find-match-launch"] {
@@ -570,7 +570,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   gap: 10px;
   align-items: center;
   padding: 6px 8px 6px 11px;
-  /* s218 v7: visually demoted — transparent bg + bottom-only border so
+  /* s218 v7: visually demoted - transparent bg + bottom-only border so
    * rows read as a list, not as cards (was background: surface-head +
    * 1px all-around border). The grade-tint signal moves to a 3px left
    * stripe so the hue spectrum is preserved without card-style chrome. */
@@ -633,7 +633,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-week-bar-kda-raw {
   /* s218 v7: bumped 13→14px to separate it clearly from the 15px
-   * ratio pill — was sitting at the tertiary floor next to a primary
+   * ratio pill - was sitting at the tertiary floor next to a primary
    * value and reading ambiguous in the hierarchy. */
   font-size: 14px;
   font-weight: 600;
@@ -902,7 +902,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .lobby-queue-select:hover { border-color: var(--clock); }
 
-/* Lobby member list — full-width row of party-member cards under the
+/* Lobby member list - full-width row of party-member cards under the
  * action row. Scaffolded; data feed is a follow-up (Game-PC LCU
  * agent forwarding lcu.lobby.members[]). */
 .lobby-members {

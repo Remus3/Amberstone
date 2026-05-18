@@ -65,7 +65,7 @@
 .build-value.highlight { color: var(--gold); font-weight: 700; }
 
 /* Icon tile row: icon on top, 2-line centered name below. Horizontal
- * scroll on overflow — keeps OWNED and RECOMMENDED on one row each so
+ * scroll on overflow - keeps OWNED and RECOMMENDED on one row each so
  * the panel doesn't clip downstream sections. Gaps tightened 2026-04-24
  * so more tiles fit before the row clips + horizontal scroll appears. */
 .item-tiles {
@@ -78,7 +78,7 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
   padding-bottom: 4px;
-  /* 64 icon + 6 gap + ~22 2-line label — preserves row; the "need 3444"
+  /* 64 icon + 6 gap + ~22 2-line label - preserves row; the "need 3444"
    * cost pill sits as a tag on the icon so it doesn't add tile height. */
   min-height: 92px;
 }
@@ -127,14 +127,14 @@
   color: var(--text);
   font-weight: 700;
   letter-spacing: 0.01em;
-  /* Clamp to 2 lines with ellipsis — tight but readable at 3ft.
+  /* Clamp to 2 lines with ellipsis - tight but readable at 3ft.
    * `word-break: normal` + `overflow-wrap: break-word` so multi-word
    * names break at the space first; only single tokens longer than
    * the tile width fall through to a mid-word break.
    * (2026-04-25) Font 12 → 13 + no artificial max-width cap. The
    * 13px bump alone is enough to push "Doran's Ring", "Mortal
    * Reminder", "Refillable Potion" etc. to natural 2-line wraps
-   * within the 70px tile width — earlier 56px cap was too narrow
+   * within the 70px tile width - earlier 56px cap was too narrow
    * and forced mid-word breaks like "Refillabl / e Potion". */
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -189,7 +189,7 @@
 /* Reserve space at the top of any tile-row that contains a next-up
  * tile so the relocated cost-pill (top: -20) doesn't clip against the
  * Item Build panel-body's overflow:hidden. Owned tile rows (no next-up)
- * stay flush — :has scopes the padding to recommended only. */
+ * stay flush - :has scopes the padding to recommended only. */
 .item-tiles:has(.item-tile.next-up) {
   padding-top: 22px;
 }
@@ -205,7 +205,7 @@
   0%,100% { box-shadow: 0 0 0 2px var(--good), 0 0 12px rgba(127,209,154,0.4); }
   50%     { box-shadow: 0 0 0 3px var(--good), 0 0 24px rgba(127,209,154,0.75); }
 }
-/* (2026-04-25) Arrows between recommended-path tiles hidden per user —
+/* (2026-04-25) Arrows between recommended-path tiles hidden per user -
  * tile order communicates sequence on its own. JS still inserts them so
  * a CSS un-hide is one-line if we want them back. */
 .item-arrow { display: none; }
@@ -232,7 +232,7 @@
 .kv span:first-child { color: var(--text-faint); letter-spacing: 0.1em; font-size: 14px; text-transform: uppercase; font-weight: 700; padding-top: 5px; }
 .kv span:last-child  { color: var(--text); white-space: pre-wrap; word-break: break-word; font-weight: 700; }
 
-/* (2026-04-25) Right Now + Next panel kv rows — tighter label-to-value
+/* (2026-04-25) Right Now + Next panel kv rows - tighter label-to-value
  * spacing per user feedback: 170 px fixed label column wasted ~120 px
  * of dead space after short labels like "RISK" or "RESET". Switching
  * to a max-content label column with a 10 px gap puts the value
@@ -243,7 +243,7 @@
   grid-template-columns: 56px 1fr;
   gap: 10px;
 }
-/* (2026-04-25) Next panel — fixed label column so OBJECTIVE / POSITION /
+/* (2026-04-25) Next panel - fixed label column so OBJECTIVE / POSITION /
  * WAVE STATE values all start at the same X. Width = "WAVE STATE" at
  * 13 px caps + 0.1em letter-spacing ≈ 90 px. Trade-off vs Right Now:
  * here vertical alignment beats max-tightness because the eye scans
@@ -253,7 +253,7 @@
   gap: 10px;
 }
 
-/* (2026-04-25) Wave-state percentage colors — match coach-prompt
+/* (2026-04-25) Wave-state percentage colors - match coach-prompt
  * trigger thresholds so the visual reads the same as the advice the
  * coach would emit at that wave position. Used by `_renderWaveState`
  * in the Next panel for SR (per-lane TOP/MID/BOT lines) and ARAM/
@@ -263,7 +263,7 @@
  * marker is a fixed-width slot so TOP/MID/BOT labels align by column
  * whether or not the ▶ is shown. Font + weight inherit from .kv body
  * so all three lines (and the colored .wave-pct value) render at the
- * exact same size — earlier some lines looked smaller because the
+ * exact same size - earlier some lines looked smaller because the
  * inline rendering allowed sub-pixel rendering quirks.
  * #nx-wave override below disables the parent .panel-next .kv
  * span:last-child's `-webkit-box-orient: vertical` because that flex-
@@ -313,7 +313,7 @@
   right: calc(100% + 4px);            /* just left of the lane label */
   top: 50%;
   transform: translateY(-50%);        /* vertically centered on text */
-  color: #F5FF00;                     /* fluorescent yellow — your-lane pip */
+  color: #F5FF00;                     /* fluorescent yellow - your-lane pip */
   font-size: 14px !important;         /* shrunk vs 19px body text */
   font-weight: 700;
   line-height: 1;
@@ -333,7 +333,7 @@
   text-transform: none;
   color: inherit;
 }
-/* Four fixed-width column slots — label / pct / arrow / verb — so each
+/* Four fixed-width column slots - label / pct / arrow / verb - so each
  * column lands at the same X across all rows regardless of value
  * length. Sized so the worst-case "100%" fills the pct slot without
  * pushing the arrow. */
@@ -353,7 +353,7 @@
 #nx-wave .wave-arrow {
   display: inline-block;
   width: 2ch;
-  margin: 0 1ch;       /* even gap on both sides — locks verb column */
+  margin: 0 1ch;       /* even gap on both sides - locks verb column */
   text-align: center;
 }
 #nx-wave .wave-verb {
@@ -407,11 +407,11 @@
   text-shadow: 0 0 10px rgba(127, 209, 154, 0.45);
 }
 
-/* Objective progress bar — slim fill under each .kv row, colored per
+/* Objective progress bar - slim fill under each .kv row, colored per
  * objective type. Width comes from --pct custom property set by JS. */
 .minimap-grid .kv {
   position: relative;
-  /* Labels here are short (Dragon/Baron/Herald/Atakhan) — reclaim the slack
+  /* Labels here are short (Dragon/Baron/Herald/Atakhan) - reclaim the slack
    * from the default 170px column so "1-0 (Cloud taken 12:04) · in 1:44
    * Infernal" lays out on two lines instead of spilling to a clipped third. */
   grid-template-columns: 110px 1fr;

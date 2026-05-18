@@ -1,9 +1,9 @@
-"""Phase 4b + 4c (s178/s179, 2026-05-12) — Mage ability DPS scorer.
+"""Phase 4b + 4c (s178/s179, 2026-05-12) - Mage ability DPS scorer.
 
 Sibling of ``dps.py``. ``compute_ability_dps()`` returns the caster's
 per-spell ability DPS (and total) for a resolved build at a given level.
 ``rank_items_by_ability_dps()`` (Phase 4c, s179) drives the ``/rank-mage``
-ranker — same candidate-filtering pipeline as the DPS/EHP/hybrid
+ranker - same candidate-filtering pipeline as the DPS/EHP/hybrid
 scorers, but each candidate is scored by total ability-DPS gain over
 the baseline rather than by auto-attack DPS or blended EHP.
 
@@ -12,7 +12,7 @@ For each of the four active spell keys (Q/W/E/R):
 1. Resolve the rank at the given champion level using a canonical
    max-priority order (default Q > W > E; R unlocks at lvl 6/11/16).
 2. Evaluate the first damage block of the canonical ability form via the
-   Phase 4a ``DamageBlock`` schema — sums ``base`` plus each scaling
+   Phase 4a ``DamageBlock`` schema - sums ``base`` plus each scaling
    field times its corresponding caster/target stat from the resolved
    build / caller-supplied context.
 3. Apply mode damage multiplier (``aramDamageDealt`` for ARAM).
@@ -27,13 +27,13 @@ Block-strategy notes
 ~~~~~~~~~~~~~~~~~~~~
 
 Most damage-dealing mages (Veigar, Lux, Annie, Brand, Syndra, Xerath)
-expose a single ``damage`` block per ability key — straightforward to
+expose a single ``damage`` block per ability key - straightforward to
 evaluate. A minority of champions (Aatrox Q's chain variants, Aphelios's
 weapon stances, Ezreal's R splash component) ship multiple damage blocks
-per form. Phase 4b uses ``block_strategy="first"`` by default — only the
+per form. Phase 4b uses ``block_strategy="first"`` by default - only the
 first damage block of the canonical form_index=0 contributes. Phase 5.9
 (s191, 2026-05-14) layered a per-(champion, key) ``block_index_overrides``
-registry on top — ``champion_block_index.json`` ships defaults for
+registry on top - ``champion_block_index.json`` ships defaults for
 Cassiopeia E (poisoned-target enhanced), Anivia E (chilled-target
 enhanced), Diana W (all-orbs total), Veigar R (executed-target maximum),
 Brand W (CC'd-target increased), etc. When a key is in the resolved
@@ -41,16 +41,16 @@ override map, the engine switches to the new ``"indexed"`` strategy with
 that specific block; keys without an entry honor the global strategy.
 
 Phase 4b deliberate omissions (deferred):
-* Passive (P) ability damage — needs different rank model (level-scaled
+* Passive (P) ability damage - needs different rank model (level-scaled
   rather than rank-locked); typically on-hit which ``compute_dps`` covers.
 * Multi-form abilities (Aphelios weapons, Jayce stance, Sylas-stolen ult)
-  — ``form_index=0`` only. Operator can pass ``form_index_overrides`` to
+  - ``form_index=0`` only. Operator can pass ``form_index_overrides`` to
   pick a different form per key.
 * Item-level ability haste, on-cast triggers, ability-amp items like
-  Liandry's ramp damage — modeled at the rotation level in ``dps.py``,
+  Liandry's ramp damage - modeled at the rotation level in ``dps.py``,
   not at per-cast level here. Items that pump ``ap`` flow through to
   ability DPS naturally via the resolved stat block.
-* Conditional damage amps (Ahri R-into-Q, Zoe E-into-Q) — single
+* Conditional damage amps (Ahri R-into-Q, Zoe E-into-Q) - single
   per-cast scoring with no combo-multiplier. Champion-specific.
 """
 
@@ -95,7 +95,7 @@ from .rank import (
 from .stats import clamp_level
 from .ult_rates import get_spell_casts_per_sec
 
-# Canonical 4-active-spell set. Passive (P) is intentionally excluded —
+# Canonical 4-active-spell set. Passive (P) is intentionally excluded -
 # the ``compute_dps`` auto-attack scorer covers on-hit passives, and
 # level-scaled passive damage doesn't fit the per-rank model.
 SPELL_KEYS: tuple[str, ...] = ("Q", "W", "E", "R")
@@ -109,15 +109,15 @@ _PRIORITY_TABLES: dict[str, tuple[int, ...]] = {
     "priority_1": (-1, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4),
     "priority_2": (-1, -1, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 4, 4, 4, 4, 4, 4),
     "priority_3": (-1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3, 4),
-    # R unlocks at 6/11/16 — three ranks total.
+    # R unlocks at 6/11/16 - three ranks total.
     "ultimate":   (-1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2),
 }
 
 DEFAULT_MAX_PRIORITY: tuple[str, str, str] = ("Q", "W", "E")
 
-# Phase 4d (s185, 2026-05-13) — per-champion max_priority override registry.
+# Phase 4d (s185, 2026-05-13) - per-champion max_priority override registry.
 # Sibling of ``hybrid._load_archetype_weights``; same lazy-cache pattern. The
-# JSON file lives next to this module and is shipped with the engine — not
+# JSON file lives next to this module and is shipped with the engine - not
 # patch-versioned, since the override reflects a champion's kit identity not
 # a patch-time stat tweak.
 _MAX_PRIORITY_PATH = Path(__file__).resolve().parent / "champion_max_priority.json"
@@ -142,7 +142,7 @@ def _load_max_priority_table() -> dict:
 
 
 def reset_max_priority_cache() -> None:
-    """Clear the singleton cache — for tests that mutate the on-disk file."""
+    """Clear the singleton cache - for tests that mutate the on-disk file."""
     global _MAX_PRIORITY_CACHE
     with _MAX_PRIORITY_LOCK:
         _MAX_PRIORITY_CACHE = None
@@ -183,9 +183,9 @@ def _resolve_max_priority(
     """Resolve max_priority from caller input + override registry.
 
     Returns ``(priority_tuple, source)`` where source is:
-      * ``"override"`` — caller passed an explicit value
-      * ``"champion"`` — override table had an entry for the champion
-      * ``"default"`` — fell back to the table default ("Q", "W", "E")
+      * ``"override"`` - caller passed an explicit value
+      * ``"champion"`` - override table had an entry for the champion
+      * ``"default"`` - fell back to the table default ("Q", "W", "E")
     """
     if explicit is not None:
         keys = tuple(str(k).upper() for k in explicit)
@@ -197,7 +197,7 @@ def _resolve_max_priority(
     return get_max_priority_for(champion_id)
 
 
-# Phase 4e (s187, 2026-05-13) — per-(champion, key) form_index registry.
+# Phase 4e (s187, 2026-05-13) - per-(champion, key) form_index registry.
 # Multi-form champions (Nidalee cougar, Elise spider, Jayce cannon, Hwei
 # damage forms, LeeSin Q-recast) need a non-zero form_index by default
 # because their form 0 either has no damage blocks (Hwei "Subject:" stance
@@ -224,7 +224,7 @@ def _load_form_index_table() -> dict:
 
 
 def reset_form_index_cache() -> None:
-    """Clear the singleton cache — for tests that mutate the on-disk file."""
+    """Clear the singleton cache - for tests that mutate the on-disk file."""
     global _FORM_INDEX_CACHE
     with _FORM_INDEX_LOCK:
         _FORM_INDEX_CACHE = None
@@ -259,9 +259,9 @@ def _resolve_form_index_overrides(
     Registry provides the per-champion default; caller's dict (if any) is
     merged in with caller winning per-key. Returns ``(merged, source)``:
 
-      * ``"override"`` — caller passed any explicit value
-      * ``"champion"`` — registry entry used, caller passed None
-      * ``"default"`` — empty dict, no registry entry, no caller input
+      * ``"override"`` - caller passed any explicit value
+      * ``"champion"`` - registry entry used, caller passed None
+      * ``"default"`` - empty dict, no registry entry, no caller input
     """
     registry_map, registry_source = get_form_index_for(champion_id)
     if explicit is None:
@@ -273,7 +273,7 @@ def _resolve_form_index_overrides(
     return (merged, "override")
 
 
-# Phase 5.9 (s191, 2026-05-14) — per-(champion, key) block_index registry.
+# Phase 5.9 (s191, 2026-05-14) - per-(champion, key) block_index registry.
 # A minority of champions have a later damage block that represents the
 # realistic burst-window value: Cassi E block1 "Total Enhanced" (vs
 # poisoned), Anivia E block1 "Enhanced" (vs chilled), Diana W block2
@@ -302,19 +302,19 @@ def _load_block_index_table() -> dict:
 
 
 def reset_block_index_cache() -> None:
-    """Clear the singleton cache — for tests that mutate the on-disk file."""
+    """Clear the singleton cache - for tests that mutate the on-disk file."""
     global _BLOCK_INDEX_CACHE
     with _BLOCK_INDEX_LOCK:
         _BLOCK_INDEX_CACHE = None
 
 
-# Phase 5.9.28 (s228, 2026-05-16) — conditional-target-state schema lift
+# Phase 5.9.28 (s228, 2026-05-16) - conditional-target-state schema lift
 # (operator sign-off: option B, the multi-session lift; Part 1 = schema +
 # validator + resolver + flagship seeds, Part 2 = live liveclient
 # HP%/CC plumbing). A block_index value may now ALSO be a conditional
 # dict mapping a target-state condition → int|list[int]. ``"default"`` is
 # the REQUIRED operator-commits / canonical-amped branch (the ranking
-# assumption — same model s191 established for "assume the amped
+# assumption - same model s191 established for "assume the amped
 # condition is met"). Every other key is a positive live-target-state
 # descriptor selecting a *downgrade* (never a more optimistic block than
 # ``"default"``). Part 1 (s228) resolves to ``"default"``
@@ -331,13 +331,13 @@ _BLOCK_INDEX_DEFAULT_KEY = "default"
 # debuff *type*: the operator's own ability applied an amp-enabling target
 # state; the amped block is the operator-commits/canonical assumption, the
 # downgrade is when that state is absent. Naming it after "CC" was a
-# false narrowing — 5+ concrete uses → the honest general term.
+# false narrowing - 5+ concrete uses → the honest general term.
 _BLOCK_INDEX_CONDITIONS: frozenset[str] = frozenset({
     "target_full_hp",    # live target above the execute/low-HP threshold →
                           # pick the non-execute block (Kindred E 5% vs 7.5%
                           # missing-HP, Veigar/Morgana-class HP-threshold amps)
-    "target_no_setup",   # the operator's amp-enabling target state — CC /
-                          # sleep / charm / chill / ablaze / poison / mark —
+    "target_no_setup",   # the operator's amp-enabling target state - CC /
+                          # sleep / charm / chill / ablaze / poison / mark -
                           # is NOT present → pick the un-amped block (Zoe E
                           # sleep, Evelynn Q charm, Anivia E chill, Brand W
                           # ablaze). Type-agnostic by design.
@@ -351,12 +351,12 @@ def _normalize_block_index_value(
     conditional dict.
 
     Phase 5.9.20 (s207): int (single block) or list[int] (sum-of-blocks
-    — Camille W / Malphite W / Heimerdinger W / Katarina R).
+    - Camille W / Malphite W / Heimerdinger W / Katarina R).
     Phase 5.9.28 (s228): also a conditional ``dict`` mapping a
     target-state condition → int|list[int]. The dict MUST contain a
     ``"default"`` key; every other key MUST be in
     ``_BLOCK_INDEX_CONDITIONS``; nested values are themselves normalized
-    to int|list[int] (one level only — no nested conditional dicts).
+    to int|list[int] (one level only - no nested conditional dicts).
     Validates shape; raises ValueError on anything else.
     """
     if isinstance(v, bool):
@@ -445,9 +445,9 @@ def _resolve_block_index_overrides(
     (if any) is merged in with caller winning per-key. Returns
     ``(merged, source)``:
 
-      * ``"override"`` — caller passed any explicit value
-      * ``"champion"`` — registry entry used, caller passed None
-      * ``"default"`` — empty dict, no registry entry, no caller input
+      * ``"override"`` - caller passed any explicit value
+      * ``"champion"`` - registry entry used, caller passed None
+      * ``"default"`` - empty dict, no registry entry, no caller input
 
     Phase 5.9.20 (s207): caller values may be int OR list[int]; both
     pass through ``_normalize_block_index_value`` for validation.
@@ -464,7 +464,7 @@ def _resolve_block_index_overrides(
 
 # Damage-block scaling fields and the CallContext-style attribute they
 # multiply against. ``factor`` is the value stored in the damage block
-# (treated as a percentage when >0 — ap_pct=50.0 means 50% of AP, so we
+# (treated as a percentage when >0 - ap_pct=50.0 means 50% of AP, so we
 # divide by 100 before multiplying).
 #
 # Maps to ``DamageBlock`` field names (Phase 4a snapshot schema).
@@ -484,7 +484,7 @@ _SCALING_TARGETS: tuple[tuple[str, str], ...] = (
     ("caster_max_mp_pct", "caster_max_mp"),
 )
 
-# Valid block-strategies. Phase 5.9 (s191) added ``"indexed"`` — pick a
+# Valid block-strategies. Phase 5.9 (s191) added ``"indexed"`` - pick a
 # specific damage-block index per spell key via ``block_index_overrides``.
 # The ``compute_*`` callers transparently switch to ``"indexed"`` for keys
 # present in the resolved override map; keys without an entry fall back to
@@ -530,7 +530,7 @@ class AbilityContext:
         """Build a context from a resolved champion's ``stats`` dict.
 
         ``target_current_hp_pct`` is the assumed fraction of target's max
-        HP they're sitting at — defaults to 1.0 (full HP). Operators can
+        HP they're sitting at - defaults to 1.0 (full HP). Operators can
         override for ``target_missing_hp_pct`` / ``target_current_hp_pct``
         damage blocks (Eve's R is full at low HP, etc.).
         """
@@ -582,7 +582,7 @@ def rank_at_level(
     is maxed second, third is maxed third. ``R`` is always treated as
     the ultimate and unlocks at lvl 6/11/16.
 
-    Returns ``-1`` when the spell is not yet unlocked at that level —
+    Returns ``-1`` when the spell is not yet unlocked at that level -
     consumers treat as zero damage.
 
     ``key='P'`` is treated as level-scaled passive: returns ``level - 1``
@@ -597,7 +597,7 @@ def rank_at_level(
     if key not in {"Q", "W", "E"}:
         raise ValueError(f"unknown ability key: {key!r}")
     if key not in max_priority:
-        # Operator passed an unusual priority list — fall back to a
+        # Operator passed an unusual priority list - fall back to a
         # safe rank-0 unlock at lvl 1 (treat as priority_3).
         return _PRIORITY_TABLES["priority_3"][level]
     idx = list(max_priority).index(key)
@@ -610,7 +610,7 @@ def _mitigation_factor(damage_type: str | None, target_armor: float, target_mr: 
 
     Mirrors ``dps._armor_factor`` for both resists. MIXED splits 50/50
     armor/MR (rare; mostly utility abilities). TRUE bypasses all resists.
-    Unknown / None defaults to MAGIC routing — most multi-block abilities
+    Unknown / None defaults to MAGIC routing - most multi-block abilities
     without a form-level damage_type are magical.
     """
     def _resist_factor(resist: float) -> float:
@@ -670,7 +670,7 @@ def _select_blocks(
 
     Phase 5.9.20 (s207, 2026-05-14): ``block_index`` may now be an int OR
     a sequence of ints. When a sequence is supplied under ``"indexed"``
-    strategy, the evaluated damage at each (clamped) index is summed —
+    strategy, the evaluated damage at each (clamped) index is summed -
     used to express "operator commits to landing every component" cases
     where the realistic single-target damage is the sum across multiple
     Meraki blocks (Camille W base + outer-cone, Malphite W active cast
@@ -681,7 +681,7 @@ def _select_blocks(
     Phase 5.9.28 (s228, 2026-05-16): ``block_index`` may now also be a
     conditional ``dict`` (target-state schema lift, operator-signed-off
     option B). Part 1 resolves it to its ``"default"`` branch
-    unconditionally — the operator-commits/canonical block, byte-identical
+    unconditionally - the operator-commits/canonical block, byte-identical
     to an equivalent unconditional int/list entry. Live target-state
     predicate evaluation (selecting a downgrade branch from real
     liveclient HP%/CC) is Part 2 (B-2 plumbing); the int/list paths stay
@@ -697,7 +697,7 @@ def _select_blocks(
         if isinstance(bi, dict):
             # Phase 5.9.28 (s228): conditional schema. Part 1 resolves to
             # the operator-commits / canonical "default" branch
-            # unconditionally — live target-state predicate evaluation
+            # unconditionally - live target-state predicate evaluation
             # (Part 2 / B-2) selects downgrade branches from real
             # liveclient HP%/CC. ``"default"`` is guaranteed present by
             # ``_normalize_block_index_value``; the ``.get(..., 0)``
@@ -735,13 +735,13 @@ def _form_cooldown_at_rank(
 
     Phase 5.9.19 (s206, 2026-05-14): when ``form`` has no per-rank CD data
     (Meraki snapshots set ``cooldown=None`` for every non-form-0 entry of a
-    form-swap ability — Riven R / Renekton E / AurelionSol R / Qiyana Q
+    form-swap ability - Riven R / Renekton E / AurelionSol R / Qiyana Q
     etc.), inherit from ``fallback_form`` (typically form 0) which carries
     the canonical CD list. Form-swap mechanics share the actual game CD
     with their parent form, so inheritance is correct.
 
     Final fallback: 60s generic default (preserves pre-s206 behavior when
-    no fallback is available — single-form abilities with malformed CD).
+    no fallback is available - single-form abilities with malformed CD).
     """
     if form.cooldown:
         if rank < 0:
@@ -782,7 +782,7 @@ def _mana_uptime_factor(
     HP-cost users return 1.0 (no economy constraint).
 
     Returns a value in (0, 1]. Used only by the fallback path that
-    doesn't have measured rewind data — measured casts/sec already
+    doesn't have measured rewind data - measured casts/sec already
     encodes mana downtime.
     """
     if resource != "MANA":
@@ -899,8 +899,8 @@ class AbilityDpsResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}  [MAGE]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [MAGE]"
         )
         rows = [head, "-" * len(head)]
         if self.item_ids:
@@ -969,7 +969,7 @@ def _classify_primary_scaling(per_spell: Sequence[AbilitySpellDps],
     scores = {"AP": ap_score, "AD": ad_score, "HP": hp_score}
     top = max(scores, key=lambda k: scores[k])
     if scores[top] <= 0:
-        # No scaling found — could be all-base or unparsed.
+        # No scaling found - could be all-base or unparsed.
         return "MIXED"
     if scores[top] < 1.5 * sum(v for k, v in scores.items() if k != top):
         return "MIXED"
@@ -999,8 +999,8 @@ def compute_ability_dps(
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
-    Mirror of ``compute_dps``'s contract — same ``snapshot``, ``mode``,
-    ``target_*``, and ``augments`` plumbing — but the result decomposes by
+    Mirror of ``compute_dps``'s contract - same ``snapshot``, ``mode``,
+    ``target_*``, and ``augments`` plumbing - but the result decomposes by
     spell key instead of by rotation phase.
 
     Parameters
@@ -1010,24 +1010,24 @@ def compute_ability_dps(
         (default 1.0 = full HP). Affects ``target_missing_hp_pct`` /
         ``target_current_hp_pct`` blocks only.
     abilities_snapshot:
-        Optional override — defaults to the lazy-cached snapshot from
+        Optional override - defaults to the lazy-cached snapshot from
         ``abilities.load_default()``. Test fixtures pass synthetic ones.
     max_priority:
         Optional three ability keys (e.g. ``("E", "Q", "W")``) describing
-        max order — first key is maxed first, third last. When ``None``,
+        max order - first key is maxed first, third last. When ``None``,
         the per-champion override registry (``champion_max_priority.json``)
         is consulted; falls back to Q-W-E for unmapped champions.
     block_strategy:
-        Global strategy for multi-block abilities — ``"first"`` (default),
+        Global strategy for multi-block abilities - ``"first"`` (default),
         ``"sum"``, ``"max"``, or ``"indexed"``. Per-key overrides via
         ``block_index_overrides`` switch a specific key to ``"indexed"``
         with the supplied block_index; keys without an entry fall back to
         the global strategy. See module docstring for rationale.
     form_index_overrides:
-        Per-key form index overrides — e.g. ``{"Q": 2}`` to evaluate
+        Per-key form index overrides - e.g. ``{"Q": 2}`` to evaluate
         Aphelios's Q with the 3rd weapon stance. Default 0 for all keys.
     block_index_overrides:
-        Per-key damage-block index overrides — e.g. ``{"E": 1}`` to evaluate
+        Per-key damage-block index overrides - e.g. ``{"E": 1}`` to evaluate
         Cassiopeia E's "Total Enhanced Damage" block instead of the default
         "Bonus Magic Damage" block0. When ``None``, the per-champion override
         registry (``champion_block_index.json``) is consulted; falls back
@@ -1060,7 +1060,7 @@ def compute_ability_dps(
             abil_snap = load_default()
         except AbilitiesNotFound as e:
             # Surface a structured 0-result with a single note rather than
-            # crashing — the server can return a body explaining the missing
+            # crashing - the server can return a body explaining the missing
             # snapshot.
             return _empty_result(
                 snapshot, champion_id, level, item_ids, mode,
@@ -1080,7 +1080,7 @@ def compute_ability_dps(
         augments=augments,
     )
 
-    # Mode damage multiplier (ARAM aramDamageDealt only — EHP scorer uses
+    # Mode damage multiplier (ARAM aramDamageDealt only - EHP scorer uses
     # aramDamageTaken on the receiving side).
     champ_rec = snapshot.champion(resolved.champion_id)
     aram = ((champ_rec.get("lolmath") or {}).get("aram_modifiers") or {})
@@ -1102,7 +1102,7 @@ def compute_ability_dps(
     # Mirror the AP cross-derivations + damage amps that ``compute_dps``
     # applies (Phase 4 batches 14/15/19/32/34/38/54/56). Without this,
     # Rabadon's 30% AP amp / Liandry's 6% damage amp / Abyssal Mask
-    # magic amp would be invisible to the ability scorer — making item
+    # magic amp would be invisible to the ability scorer - making item
     # rankings disagree with the auto-attack DPS scorer for no good
     # reason. All amps preserve the same precedence as compute_dps:
     #   ap += ap_from_hp + stacked_ap
@@ -1125,10 +1125,10 @@ def compute_ability_dps(
     if hp_ap_amp != 1.0:
         ap_total *= hp_ap_amp
     # Replace ctx with a copy carrying the boosted AP. AbilityContext is
-    # frozen — use dataclasses.replace.
+    # frozen - use dataclasses.replace.
     ctx = replace(ctx, ap=ap_total)
 
-    # Build-wide damage amps applied at per-cast level (not per-spell —
+    # Build-wide damage amps applied at per-cast level (not per-spell -
     # amps don't discriminate between Q and W). Folded into ``damage_amp``
     # which multiplies the post-mitigation per-cast damage.
     damage_amp = total_damage_amp_multiplier(item_effects)
@@ -1146,7 +1146,7 @@ def compute_ability_dps(
     target_mr_eff = effective_target_mr(target_mr, item_effects)
 
     # Resolve forms for Q/W/E/R. Champions may lack a key in the snapshot
-    # — surface a zero spell rather than raising so partial coverage is
+    # - surface a zero spell rather than raising so partial coverage is
     # tolerated.
     if not abil_snap.has_champion(resolved.champion_id):
         return _empty_result(
@@ -1171,7 +1171,7 @@ def compute_ability_dps(
         forms = per_key_forms.get(key, ())
         if not forms:
             per_spell.append(_zero_spell(key, "missing", -1, notes=(
-                f"no {key} ability recorded for {resolved.champion_id} — skipped",
+                f"no {key} ability recorded for {resolved.champion_id} - skipped",
             )))
             continue
         form_idx = overrides.get(key, 0)
@@ -1250,7 +1250,7 @@ def compute_ability_dps(
     if n_missing:
         notes.append(
             f"{n_missing}/4 spells had no measured cast rate AND no cooldown "
-            "fallback — DPS contribution is 0"
+            "fallback - DPS contribution is 0"
         )
     n_theoretical = sum(1 for s in per_spell if s.casts_per_sec_source == "theoretical_with_mana_uptime")
     if n_theoretical:
@@ -1401,7 +1401,7 @@ def _empty_result(
 @dataclass(frozen=True)
 class AbilityDpsRankedItem:
     """Phase 4c sibling of ``RankedItem`` / ``EhpRankedItem`` /
-    ``HybridRankedItem`` — one row of the mage ranker output.
+    ``HybridRankedItem`` - one row of the mage ranker output.
 
     ``delta_ability_dps`` is the raw total-ability-DPS gain over the
     baseline. ``ability_dps_per_1k_gold`` zeroes out on regressions so
@@ -1435,7 +1435,7 @@ class AbilityDpsRankedItem:
 
 @dataclass(frozen=True)
 class AbilityDpsRankResult:
-    """Phase 4c — output of ``rank_items_by_ability_dps``."""
+    """Phase 4c - output of ``rank_items_by_ability_dps``."""
     champion_id: str
     champion_name: str
     level: int
@@ -1497,8 +1497,8 @@ class AbilityDpsRankResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}  [MAGE]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [MAGE]"
         )
         rows = [head, "-" * len(head)]
         if self.current_item_ids:
@@ -1571,17 +1571,17 @@ def rank_items_by_ability_dps(
 
     Phase 4c sibling of ``rank_items`` (DPS), ``rank_items_by_ehp`` (EHP),
     and ``rank_items_by_hybrid`` (bruiser). Same candidate-filtering
-    pipeline — purchasable + mode-legal + optional whitelist + budget +
+    pipeline - purchasable + mode-legal + optional whitelist + budget +
     terminal-only + dead-unique dedup. Only the scoring function changes:
     each candidate's total ability DPS via ``compute_ability_dps`` is
     compared to the baseline.
 
     Sort keys:
-      * ``delta``       — absolute ability-DPS gain (default)
-      * ``efficiency``  — ability-DPS gain per 1000 gold
+      * ``delta``       - absolute ability-DPS gain (default)
+      * ``efficiency``  - ability-DPS gain per 1000 gold
 
     ``filter_shared_uniques=True`` drops candidates whose unique passive
-    key collides with one already in ``current_item_ids`` — matches the
+    key collides with one already in ``current_item_ids`` - matches the
     other scorers' behavior so the mage ranker stays consistent with the
     rest of the engine.
 
@@ -1704,13 +1704,13 @@ def rank_items_by_ability_dps(
     notes.append(f"primary_scaling={baseline.primary_scaling}")
     if stripped_trinkets:
         notes.append(
-            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} "
+            f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} "
             f"from current_item_ids"
         )
     if include_components:
-        notes.append("include_components=True — non-terminal items in the ranking")
+        notes.append("include_components=True - non-terminal items in the ranking")
     if budget is not None:
-        notes.append(f"budget={budget}g — items over budget filtered")
+        notes.append(f"budget={budget}g - items over budget filtered")
     if only_ids is not None:
         notes.append(f"only_item_ids restricted to {len(only_ids)} whitelisted ids")
     if baseline.mode_multiplier != 1.0:
@@ -1719,7 +1719,7 @@ def rank_items_by_ability_dps(
         )
     if baseline.total_ability_dps == 0.0:
         notes.append(
-            "baseline ability DPS is 0 — champion may be missing from the "
+            "baseline ability DPS is 0 - champion may be missing from the "
             "abilities snapshot or have no measured cast rates"
         )
 

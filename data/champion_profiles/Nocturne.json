@@ -3,6 +3,6 @@
   "role": "assassin",
   "mana": true,
   "sustain": true,
-  "mechanic": "W spellshield blocks one ability. E fear. R global — removes vision and gaps close.",
+  "mechanic": "W spellshield blocks one ability. E fear. R global - removes vision and gaps close.",
   "aram": "W block the key CC, then fear and kill. Build attack speed for sustained damage."
 }

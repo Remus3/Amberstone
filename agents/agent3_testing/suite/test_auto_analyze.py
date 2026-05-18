@@ -1,4 +1,4 @@
-"""Round 15 — auto-analyze schedule + cancellation test."""
+"""Round 15 - auto-analyze schedule + cancellation test."""
 from __future__ import annotations
 
 import asyncio
@@ -54,13 +54,13 @@ def test_auto_analyze_fires_after_idle() -> None:
 
 @pytest.mark.timeout(10)
 def test_game_to_game_transition_does_not_cancel_nothing() -> None:
-    """Sanity — transitioning game→in_progress (an intra-game label
+    """Sanity - transitioning game→in_progress (an intra-game label
     change) mustn't error just because there's no pending task."""
     from agents.supervisor import Supervisor
 
     sup = Supervisor()
     assert sup._auto_analyze_task is None
-    # Directly call the cancel path — exercises the "no pending" branch.
+    # Directly call the cancel path - exercises the "no pending" branch.
     sup._cancel_pending_auto_analyze("test")    # no raise
     # And call _on_mode_transition from a running loop so the
     # loop.call_soon_threadsafe path doesn't error.

@@ -1,7 +1,7 @@
-"""Phase 5.9.23 (s223, 2026-05-16) — nested missing/current/maximum-HP
+"""Phase 5.9.23 (s223, 2026-05-16) - nested missing/current/maximum-HP
 parser fix + Kindred E execute entry + registry-saturation guard.
 
-PART 1 — the extractor's ``_normalize_modifiers`` gained
+PART 1 - the extractor's ``_normalize_modifiers`` gained
 ``_canonicalize_unit()`` which strips Meraki's nested conditional
 ``(+ ...)`` parentheticals (innermost-first, so doubly-nested K'Sante
 strings collapse) before the ``_UNIT_TO_FIELD`` lookup. A deterministic
@@ -9,12 +9,12 @@ zero-re-fetch in-place migration promoted exactly 22 such modifiers
 across 10 champions whose entire % target-health damage component had
 been silently dropped since Phase 4a.
 
-PART 2 — one new block_index entry: Kindred E=1 ("Enhanced damage below
-threshold", 7.5% missing-HP vs block 0's 5%) — the canonical
+PART 2 - one new block_index entry: Kindred E=1 ("Enhanced damage below
+threshold", 7.5% missing-HP vs block 0's 5%) - the canonical
 Kindred-E-as-execute case. Monotone ≥ block 0, strictly greater at any
 sub-100% target HP, exact no-op at full HP.
 
-PART 3 — the s191→s217 single-int/list registry is provably saturated:
+PART 3 - the s191→s217 single-int/list registry is provably saturated:
 the 47 not-yet-covered champions yielded zero clean candidates (residue
 is single-block kits / block-0-already-max / upstream data gaps). This
 file pins a few representative "stays unmapped" guards so a future
@@ -50,7 +50,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── PART 1a — _canonicalize_unit unit tests ─────────────────────────────────
+# ─── PART 1a - _canonicalize_unit unit tests ─────────────────────────────────
 
 
 class CanonicalizeUnitTests(unittest.TestCase):
@@ -79,7 +79,7 @@ class CanonicalizeUnitTests(unittest.TestCase):
         )
 
     def test_recursively_nested_parens_stripped(self) -> None:
-        """Kindred E block 1 has a paren INSIDE a paren — innermost-first
+        """Kindred E block 1 has a paren INSIDE a paren - innermost-first
         iteration must collapse it fully."""
         self.assertEqual(
             _canonicalize_unit(
@@ -101,7 +101,7 @@ class CanonicalizeUnitTests(unittest.TestCase):
             self.assertEqual(_UNIT_TO_FIELD[_canonicalize_unit(raw)], field)
 
 
-# ─── PART 1b — _normalize_modifiers integration ──────────────────────────────
+# ─── PART 1b - _normalize_modifiers integration ──────────────────────────────
 
 
 class NormalizeModifiersNestedTests(unittest.TestCase):
@@ -133,7 +133,7 @@ class NormalizeModifiersNestedTests(unittest.TestCase):
         self.assertEqual(len(unparsed), 1)
 
 
-# ─── PART 1c — migration applied to the live 16.10.1 snapshot ────────────────
+# ─── PART 1c - migration applied to the live 16.10.1 snapshot ────────────────
 
 
 class SnapshotMigrationTests(unittest.TestCase):
@@ -185,7 +185,7 @@ class SnapshotMigrationTests(unittest.TestCase):
 
     def test_promoted_blocks_drop_the_resolved_unparsed_entry(self) -> None:
         """The migration removes the now-typed modifier from
-        unparsed_modifiers — Kindred E blocks each had exactly one
+        unparsed_modifiers - Kindred E blocks each had exactly one
         unparsed mod (the missing-HP clause), so it must now be empty."""
         for blk in (0, 1):
             b = self._block("Kindred", "E", 0, blk)
@@ -196,7 +196,7 @@ class SnapshotMigrationTests(unittest.TestCase):
             self.assertIsNotNone(b.target_missing_hp_pct)
 
 
-# ─── PART 2 — Kindred E registry entry + A/B ─────────────────────────────────
+# ─── PART 2 - Kindred E registry entry + A/B ─────────────────────────────────
 
 
 class KindredEEntryTests(unittest.TestCase):
@@ -209,7 +209,7 @@ class KindredEEntryTests(unittest.TestCase):
         m, src = get_block_index_for("Kindred")
         self.assertEqual(src, "champion")
         # s228 Phase 5.9.28 converted Kindred E from int 1 to a conditional
-        # dict: default=1 (the s223 execute block — operator commits to
+        # dict: default=1 (the s223 execute block - operator commits to
         # E'ing low-HP targets), downgrade to 0 vs a full-HP target. Part 1
         # resolves to "default" so every other test in this class (the
         # s223 semantic guarantees) still passes unchanged.
@@ -225,7 +225,7 @@ class KindredEEntryTests(unittest.TestCase):
         return next(p for p in out.per_spell if p.key == "E")
 
     def test_full_hp_is_exact_noop(self) -> None:
-        """At full HP, missing-HP term = 0 so block 1 == block 0 — the
+        """At full HP, missing-HP term = 0 so block 1 == block 0 - the
         entry is provably harmless in the engine's default model."""
         reg = self._e(hp_pct=1.0)
         b0 = self._e(hp_pct=1.0, forced=0)
@@ -255,7 +255,7 @@ class KindredEEntryTests(unittest.TestCase):
         self.assertGreater(low, half)
 
 
-# ─── PART 3 — saturation guards + backward-compat ────────────────────────────
+# ─── PART 3 - saturation guards + backward-compat ────────────────────────────
 
 
 class SaturationAndBackwardCompatTests(unittest.TestCase):
@@ -264,7 +264,7 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
         reset_block_index_cache()
 
     def test_representative_uncovered_champions_stay_unmapped(self) -> None:
-        """The s223 5-way scan proved these have no clean candidate —
+        """The s223 5-way scan proved these have no clean candidate -
         pin them so an accidental future entry trips here."""
         for champ in ("Caitlyn", "Jinx", "Zed", "Yone", "Aphelios",
                       "Mordekaiser", "Orianna", "TwistedFate"):
@@ -277,7 +277,7 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
         already parsed". s224's unmapped-key pre-filter proved that
         reasoning incomplete: the engine still DEFAULTS to block 0
         (8-dmg per-takedown bonus), not the 200-dmg recast nuke (block
-        1, 25% missing-HP) — so an explicit entry IS required. s224
+        1, 25% missing-HP) - so an explicit entry IS required. s224
         added Bel'Veth R=1 (kept E=2). Kayle E stays correctly unmapped:
         its only unparsed bit is a genuine second-order "% per 100 AP"
         amp (not a health-pct), so no entry is warranted."""
@@ -288,12 +288,12 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
 
     def test_prior_entries_unchanged(self) -> None:
         """Migration touched several covered champions' snapshot blocks
-        but their registry entries are pure JSON — must be byte-stable."""
+        but their registry entries are pure JSON - must be byte-stable."""
         self.assertEqual(get_block_index_for("Chogath")[0].get("E"), 1)
         self.assertEqual(get_block_index_for("Sett")[0].get("Q"), 1)
         self.assertEqual(get_block_index_for("Shen")[0].get("Q"), 1)
         # Cassi E was int 1 through s223; s230 Phase 5.9.30 converted it
-        # to a conditional (default=1 == the int — provable Part-1
+        # to a conditional (default=1 == the int - provable Part-1
         # no-op, the s223 snapshot migration is still byte-stable).
         self.assertEqual(
             get_block_index_for("Cassiopeia")[0].get("E"),
@@ -309,7 +309,7 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
             .read_text(encoding="utf-8")
         )
         # s228 converts 3 entries in-place (Zoe E / Evelynn Q / Kindred E)
-        # to conditional dicts — no new champions, count stays 125.
+        # to conditional dicts - no new champions, count stays 125.
         self.assertEqual(len(reg["champions"]), 125)
         self.assertEqual(
             reg["champions"]["Kindred"],

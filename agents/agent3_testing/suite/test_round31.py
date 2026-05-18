@@ -1,4 +1,4 @@
-"""Round 31 — cold-streak detector."""
+"""Round 31 - cold-streak detector."""
 from __future__ import annotations
 
 import json
@@ -64,7 +64,7 @@ def test_fires_on_significant_cold_streak(tmp_path: Path, monkeypatch) -> None:
     summary = detect_and_file(sched, modes=("aram",))
     assert len(summary["filed"]) == 1
     assert sched.filed[0]["op"] == "cold-streak-advisory"
-    assert sched.filed[0]["owner_agent"] == "1"   # deterministic — no LLM spawn
+    assert sched.filed[0]["owner_agent"] == "1"   # deterministic - no LLM spawn
     assert sched.filed[0]["payload"]["champion"] == "Jinx"
     assert sched.filed[0]["payload"]["delta"] == -1.5
 
@@ -135,7 +135,7 @@ def test_custom_cooldown_hours_respected(tmp_path: Path, monkeypatch) -> None:
     _init(tmp_path, monkeypatch)
     _seed_cold(tmp_path / "aram.db", "Jinx", delta=-1.5)
 
-    # Fresh filing — no prior cooldown.
+    # Fresh filing - no prior cooldown.
     sched = FakeScheduler()
     detect_and_file(sched, modes=("aram",))
     assert len(sched.filed) == 1
@@ -145,7 +145,7 @@ def test_custom_cooldown_hours_respected(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_cooldown_survives_corrupt_file(tmp_path: Path, monkeypatch) -> None:
-    """A corrupt cooldown file mustn't block detection — treat as empty."""
+    """A corrupt cooldown file mustn't block detection - treat as empty."""
     from agents.agent4_coach_mentor.cold_streak_detector import detect_and_file
     _init(tmp_path, monkeypatch)
     (tmp_path / "cold_advisories.json").write_text(

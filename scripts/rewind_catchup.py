@@ -13,7 +13,7 @@ timeline for each missing match, and writes into the existing 5-table
 schema (matches, participants, teams, timeline_frames, timeline_events).
 
 Idempotent + resumable:
-  * INSERT OR IGNORE on all writes — existing rows survive.
+  * INSERT OR IGNORE on all writes - existing rows survive.
   * Progress sentinel at ``data/rewind_catchup.state.json`` records the
     last seen ``game_creation_ts`` and next page cursor; safe to Ctrl+C
     and re-run.
@@ -82,7 +82,7 @@ def newest_creation_ts(conn: sqlite3.Connection) -> int:
 
 
 def operator_puuid_from_db(conn: sqlite3.Connection) -> str:
-    """Pick the PUUID with the most rows in participants — the player the DB tracks.
+    """Pick the PUUID with the most rows in participants - the player the DB tracks.
 
     May be a STALE PUUID (Riot rotates PUUIDs on certain account events).
     Use ``resolve_current_puuid`` to refresh via Account-V1 before hitting
@@ -97,7 +97,7 @@ def operator_puuid_from_db(conn: sqlite3.Connection) -> str:
     """).fetchone()
     if not row or not row[0]:
         raise SystemExit(
-            "rewind_history.db has no participants — cannot infer operator PUUID. "
+            "rewind_history.db has no participants - cannot infer operator PUUID. "
             "Pass --puuid or --riot-id explicitly."
         )
     return row[0]
@@ -167,7 +167,7 @@ def resolve_current_puuid(
         return fresh
 
     stale = operator_puuid_from_db(conn)
-    print(f"  No Riot ID in DB — using stale DB PUUID {stale[:24]}… (may fail)")
+    print(f"  No Riot ID in DB - using stale DB PUUID {stale[:24]}… (may fail)")
     return stale
 
 
@@ -253,15 +253,15 @@ def write_match(
         tracked.get("kills", 0) if tracked else 0,
         tracked.get("deaths", 0) if tracked else 0,
         tracked.get("assists", 0) if tracked else 0,
-        0,  # tracked_kp — derived in the legacy DB from the history list;
+        0,  # tracked_kp - derived in the legacy DB from the history list;
             # not directly in Match-V5. Leave 0; the new column is a
             # convenience cache, not a source of truth.
-        0,  # tracked_lane — same; legacy enum, not in V5 detail directly
+        0,  # tracked_lane - same; legacy enum, not in V5 detail directly
         "100" if (tracked and tracked.get("teamId", 0) == 100)
               else ("200" if tracked else ""),
         "",  # tracked_ff
         "",  # tracked_ttmga_t
-        1,   # has_stats — by definition true here, we just fetched detail
+        1,   # has_stats - by definition true here, we just fetched detail
         1 if timeline else 0,
         time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     ))
@@ -312,7 +312,7 @@ def collect_new_match_ids(
             print(f"    page {page}: API call returned None (rate-limited or key issue)")
             break
         if not ids:
-            print(f"    page {page}: empty — end of window")
+            print(f"    page {page}: empty - end of window")
             break
         page_new = [m for m in ids if m not in existing]
         new_ids.extend(page_new)

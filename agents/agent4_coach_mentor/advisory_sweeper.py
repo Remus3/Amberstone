@@ -1,4 +1,4 @@
-"""Round 39 — auto-dismiss stale advisory tasks.
+"""Round 39 - auto-dismiss stale advisory tasks.
 
 Advisory tasks (cold-streak + coaching-insight) are filed as READY and
 stay READY forever unless the user dismisses them via the dashboard.
@@ -6,7 +6,7 @@ Over time this pollutes the queue with days-old signals that have
 already been acted on (or superseded). This sweeper runs on the
 auto-analyze cycle and completes advisories older than
 ``max_age_hours`` with a ``{source: "auto-stale"}`` result marker
-(preserving audit trail — nothing is deleted).
+(preserving audit trail - nothing is deleted).
 
 Only READY advisories are touched. Completed / failed / in-progress
 tasks are left alone. Non-advisory ops are never swept.
@@ -42,7 +42,7 @@ def sweep_stale(
 
     Returns ``{dismissed: [...], inspected: N}`` where ``dismissed``
     is a list of ``{task_id, op, age_hours}`` entries. Safe to call
-    repeatedly — already-completed tasks are untouched.
+    repeatedly - already-completed tasks are untouched.
     """
     cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
     dismissed: list[dict] = []

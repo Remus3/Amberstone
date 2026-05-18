@@ -6,7 +6,7 @@ already holds the mapping, normalized as ``byName[lower-no-punct] -> id``.
 
 Lazy-loaded singleton with mtime-based refresh (cheap; the index file
 changes only on patch refresh). ``resolve_many`` skips unknown names
-silently — Phase 7 tolerates partial resolution rather than failing the
+silently - Phase 7 tolerates partial resolution rather than failing the
 whole tick.
 
 Phase 4 batch 19 wire-in (s73, 2026-05-04): also exposes
@@ -15,7 +15,7 @@ patch-current DDragon ``items.json``. Coach-side estimators
 (arena_coach._estimate_target_bonus_hp) sum HP across the next
 opponent's items to feed the engine's Giant Slayer amp deterministically.
 
-s74 (2026-05-04) — mode-aware lookup. ``items_index.json``'s ``byName``
+s74 (2026-05-04) - mode-aware lookup. ``items_index.json``'s ``byName``
 picks the 22XXXX-prefixed Arena alias (e.g. ``Heartsteel`` → ``223084``)
 because of a ``setdefault`` first-seen-wins quirk during pipeline build
 (see ``reference_items_index_alias_ids``). For Arena coach this is
@@ -34,7 +34,7 @@ mode str    map  notes
 
 ``mode=None`` resolves via ``items_index.json`` byName. As of commit 41c87bc
 that index sorts by ID length so canonical 4-digit IDs win over 22XXXX Arena
-aliases — the legacy alias quirk is gone; mode=None now returns base IDs.
+aliases - the legacy alias quirk is gone; mode=None now returns base IDs.
 """
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ _hp_cache: dict[str, float] = {}
 _hp_cache_mtime: float = 0.0
 _hp_cache_patch: str = ""
 
-# s74 — mode-aware byName cache. Keyed by mode short name → normalized-name
+# s74 - mode-aware byName cache. Keyed by mode short name → normalized-name
 # → item id. Populated in the same pass as ``_hp_cache`` (one load of the
 # patch-current DDragon items.json builds both). Map IDs from DDragon's
 # ``maps`` field per item.
@@ -121,7 +121,7 @@ def name_to_id(name: str, mode: Optional[str] = None) -> Optional[str]:
             hit = mode_idx.get(_normalize(name))
             if hit:
                 return hit
-            # No mode hit — fall through to legacy index. Items missing a
+            # No mode hit - fall through to legacy index. Items missing a
             # ``maps`` block in DDragon (rare) still resolve via the
             # patch-build mapping; preserves prior coverage.
     _load_if_stale()
@@ -165,7 +165,7 @@ NON_INVENTORY_IDS = frozenset({
 
 
 def resolve_inventory(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
-    """Like ``resolve_many`` but drops trinkets and consumables — items
+    """Like ``resolve_many`` but drops trinkets and consumables - items
     that don't compete for the 6 inventory slots the DS engine ranks.
 
     Use this from coach loops that feed ``current_item_ids`` to
@@ -279,7 +279,7 @@ def _load_hp_if_stale() -> None:
 def bonus_hp_for_id(item_id: str) -> float:
     """Bonus HP contribution from an item ID. 0.0 if unknown / no HP stat.
 
-    "Bonus HP" in the LCU sense — the HP component the item adds on top
+    "Bonus HP" in the LCU sense - the HP component the item adds on top
     of champion base. DDragon's ``FlatHPPoolMod`` is exactly this number
     (LCU's ``items[*].rawDescription`` tags it as bonus HP, not max HP
     overlap). Items without a ``FlatHPPoolMod`` return 0.0 (no signal).

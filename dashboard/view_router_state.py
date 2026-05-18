@@ -1,9 +1,9 @@
-"""View-router state machine — Python mirror of `web/js/main.js:_viewAutoDerive`.
+"""View-router state machine - Python mirror of `web/js/main.js:_viewAutoDerive`.
 
-**TEST MIRROR — NOT IMPORTED AT RUNTIME.** The JS function in `main.js`
+**TEST MIRROR - NOT IMPORTED AT RUNTIME.** The JS function in `main.js`
 remains the canonical runtime implementation. This module exists so the
 pure state-transition logic can be exercised under pytest without
-spinning up a headless browser. If you change one, change both — both
+spinning up a headless browser. If you change one, change both - both
 should agree on the same transition table.
 
 The state machine has two layers:
@@ -36,7 +36,7 @@ VIEW_IDS = (
 
 IN_GAME_MODES = frozenset({"sr", "aram", "arena", "brawl", "tft"})
 
-# Stable post-game phases — once observed after in-progress, clear sticky.
+# Stable post-game phases - once observed after in-progress, clear sticky.
 _POSTGAME_PHASES = frozenset({
     "EndOfGame", "PreEndOfGame", "WaitingForStats", "TerminatedInError", "Lobby",
 })
@@ -86,7 +86,7 @@ def update_game_started(
             return None
         return prior
 
-    # s209 sticky-guard inference: ChampSelect ended but phase not stable —
+    # s209 sticky-guard inference: ChampSelect ended but phase not stable -
     # must be the gap between CS ending and InProgress firing. Advance to
     # "in-progress" so the gap renders active-match.
     if prior == "champ-select" and not phase:
@@ -143,7 +143,7 @@ def derive_view(
 
 
 def is_urgent(target_view: str) -> bool:
-    """Mirror of `_viewIsUrgent` — auto-promotes past manual selection.
+    """Mirror of `_viewIsUrgent` - auto-promotes past manual selection.
 
     s209: dropped "loading"; replaced with "active-match".
     """

@@ -7,7 +7,7 @@
     "keystone": "Lethal Tempo",
     "primary_tree": "Precision",
     "secondary_tree": "Domination",
-    "coaching_note": "Stack Tempo early — don't all-in until 4+ stacks. Condemn into walls for W proc."
+    "coaching_note": "Stack Tempo early - don't all-in until 4+ stacks. Condemn into walls for W proc."
   },
   "Jinx": {
     "keystone": "Lethal Tempo",
@@ -31,7 +31,7 @@
     "keystone": "Lethal Tempo",
     "primary_tree": "Precision",
     "secondary_tree": "Resolve",
-    "coaching_note": "You take poke walking in — Resolve secondary reduces that tax. Tempo in extended trades."
+    "coaching_note": "You take poke walking in - Resolve secondary reduces that tax. Tempo in extended trades."
   },
   "Miss Fortune": {
     "keystone": "Arcane Comet",
@@ -49,7 +49,7 @@
     "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Inspiration",
-    "coaching_note": "Safe poke lane — Comet on every Q. Never be in auto range."
+    "coaching_note": "Safe poke lane - Comet on every Q. Never be in auto range."
   },
   "Brand": {
     "keystone": "Arcane Comet",
@@ -67,7 +67,7 @@
     "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Domination",
-    "coaching_note": "Root into Comet is the core trade. Plants tank skillshots — position them as shields."
+    "coaching_note": "Root into Comet is the core trade. Plants tank skillshots - position them as shields."
   },
   "Heimerdinger": {
     "keystone": "Arcane Comet",
@@ -175,7 +175,7 @@
     "keystone": "Lethal Tempo",
     "primary_tree": "Precision",
     "secondary_tree": "Sorcery",
-    "coaching_note": "Q procs Spellblade AND Tempo — Q-auto-auto pattern stacks Tempo instantly."
+    "coaching_note": "Q procs Spellblade AND Tempo - Q-auto-auto pattern stacks Tempo instantly."
   },
   "Varus": {
     "keystone": "Lethal Tempo",
@@ -205,7 +205,7 @@
     "keystone": "Fleet Footwork",
     "primary_tree": "Precision",
     "secondary_tree": "Sorcery",
-    "coaching_note": "4th shot crit heals with Fleet — saves life in ARAM fights. No CDR needed."
+    "coaching_note": "4th shot crit heals with Fleet - saves life in ARAM fights. No CDR needed."
   },
   "Xayah": {
     "keystone": "Lethal Tempo",
@@ -223,7 +223,7 @@
     "keystone": "Conqueror",
     "primary_tree": "Precision",
     "secondary_tree": "Resolve",
-    "coaching_note": "Style rank S unlocks R — Conqueror stacks fastest during combo chains."
+    "coaching_note": "Style rank S unlocks R - Conqueror stacks fastest during combo chains."
   },
   "Aphelios": {
     "keystone": "Lethal Tempo",
@@ -271,7 +271,7 @@
     "keystone": "Fleet Footwork",
     "primary_tree": "Precision",
     "secondary_tree": "Domination",
-    "coaching_note": "Revive passive needs survival — Fleet sustain keeps him alive for W revive."
+    "coaching_note": "Revive passive needs survival - Fleet sustain keeps him alive for W revive."
   },
   "Taliyah": {
     "keystone": "Arcane Comet",
@@ -313,7 +313,7 @@
     "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Resolve",
-    "coaching_note": "Ice chain + Comet. R self-stasis is a free Zhonya — Comet after R return."
+    "coaching_note": "Ice chain + Comet. R self-stasis is a free Zhonya - Comet after R return."
   },
   "Morgana": {
     "keystone": "Arcane Comet",
@@ -343,7 +343,7 @@
     "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Domination",
-    "coaching_note": "Sleep doubles next damage — Comet into sleep = massive burst. Long-range consistent proc."
+    "coaching_note": "Sleep doubles next damage - Comet into sleep = massive burst. Long-range consistent proc."
   },
   "Vex": {
     "keystone": "Arcane Comet",
@@ -499,7 +499,7 @@
     "keystone": "Conqueror",
     "primary_tree": "Precision",
     "secondary_tree": "Resolve",
-    "coaching_note": "Grand Challenge R reveals all Vitals — full Conqueror during R = massive heal + damage."
+    "coaching_note": "Grand Challenge R reveals all Vitals - full Conqueror during R = massive heal + damage."
   },
   "Riven": {
     "keystone": "Conqueror",
@@ -565,7 +565,7 @@
     "keystone": "Grasp of the Undying",
     "primary_tree": "Resolve",
     "secondary_tree": "Sorcery",
-    "coaching_note": "R heals % max HP — Grasp + R = infinite sustain. More HP = more Grasp healing."
+    "coaching_note": "R heals % max HP - Grasp + R = infinite sustain. More HP = more Grasp healing."
   },
   "Sion": {
     "keystone": "Grasp of the Undying",
@@ -583,7 +583,7 @@
     "keystone": "Conqueror",
     "primary_tree": "Precision",
     "secondary_tree": "Resolve",
-    "coaching_note": "Subjugate (R) steals enemy stats — full Conqueror during R = insane damage amplification."
+    "coaching_note": "Subjugate (R) steals enemy stats - full Conqueror during R = insane damage amplification."
   },
   "Warwick": {
     "keystone": "Conqueror",

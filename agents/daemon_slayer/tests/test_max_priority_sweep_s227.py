@@ -1,4 +1,4 @@
-"""Phase 5.9.27 (s227, 2026-05-16) — max_priority coverage audit.
+"""Phase 5.9.27 (s227, 2026-05-16) - max_priority coverage audit.
 Iteration 5 of the self-paced DS loop.
 
 `tools/ds_max_priority_prefilter.py` A/B'd all 6 (Q,W,E) max orderings
@@ -10,19 +10,19 @@ ds.ability/ds.burst-archetype champions AND cross-checking established
 meta, exactly 3 had a universally-known non-default order the registry
 genuinely missed:
 
-  Brand        W-E-Q  (Pillar of Flame — Brand's primary dmg+waveclear;
+  Brand        W-E-Q  (Pillar of Flame - Brand's primary dmg+waveclear;
                        maxed W-first for years. The original s185 _meta
-                       wrongly listed Brand as 'default is fine' — fixed)
-  Talon        W-Q-E  (Rake — canonical Talon max-first)
-  Fiddlesticks W-E-Q  (Bountiful Harvest drain — standard jungle max)
+                       wrongly listed Brand as 'default is fine' - fixed)
+  Talon        W-Q-E  (Rake - canonical Talon max-first)
+  Fiddlesticks W-E-Q  (Bountiful Harvest drain - standard jungle max)
 
 Live A/B (lvl 11): Brand +18.7%, Fiddlesticks +16.4%, Talon +12.0%.
 
 The sibling combo_sequence registry was assessed in the same iteration
 and found ADEQUATE for its stated reset/shadow/chain-cast purpose: the
-assassin-archetype champs genuinely NOT in it (Shaco/Ekko — Fizz +
+assassin-archetype champs genuinely NOT in it (Shaco/Ekko - Fizz +
 Katarina ARE curated) have no such mechanic the default Q-W-E-AA-R-AA
-misses — a valid negative result, no additions.
+misses - a valid negative result, no additions.
 
 ENGINE_VERSION 0.98.0 → 0.99.0 pinned.
 """
@@ -87,7 +87,7 @@ class MaxPriorityRegistryShapeTests(unittest.TestCase):
 
     def test_over_flag_finding_azir_not_shipped(self) -> None:
         """The pre-filter flagged Azir W-first, but real Azir maxes Q
-        universally — assert we did NOT auto-ship the numeric optimum
+        universally - assert we did NOT auto-ship the numeric optimum
         (the documented over-flag guard)."""
         m, src = get_max_priority_for("Azir")
         self.assertEqual(src, "default")
@@ -123,13 +123,13 @@ class MaxPriorityABTests(unittest.TestCase):
         self,
     ) -> None:
         # s227 SHIPPED Fiddlesticks ["W","E","Q"] on REAL-META grounds
-        # (Bountiful Harvest drain is the standard jungle max) — the
+        # (Bountiful Harvest drain is the standard jungle max) - the
         # lvl-11 numeric A/B was only the *discovery* method, not the
         # durable property. s230 Phase 5.9.30 added a Fiddle Q
         # block_index entry (Terrify double-vs-feared, +200% Q-dps);
         # because Q was under-counted at s227, the numeric lvl-11 A/B
         # now FAVORS Q-first (ratio ~0.85, no longer >1.10). This is
-        # precisely the s227 hand-off's stated lesson — max_priority is
+        # precisely the s227 hand-off's stated lesson - max_priority is
         # a meta-curated registry, NOT numeric-sweepable; a correctness
         # fix elsewhere must not silently revert a real-meta decision.
         # Guard the DECISION (registry entry + resolution), not the
@@ -154,7 +154,7 @@ class MaxPriorityABTests(unittest.TestCase):
 
     def test_registry_default_resolution_uses_override(self) -> None:
         """With no explicit max_priority arg the engine must pick up the
-        registry entry — Brand scored via the registry == Brand scored
+        registry entry - Brand scored via the registry == Brand scored
         with the explicit W-E-Q list."""
         reg = compute_ability_dps(
             self.snap, "Brand", level=11, item_ids=[], mode="SR",
@@ -171,7 +171,7 @@ class MaxPriorityABTests(unittest.TestCase):
 
 
 class CombosAdequateNegativeResultTests(unittest.TestCase):
-    """s227 assessed combo_sequence and found it adequate — the
+    """s227 assessed combo_sequence and found it adequate - the
     unmapped assassins have no reset/chain mechanic the default misses.
     Pin that they stay unmapped (a guard against a future unjustified
     numeric expansion)."""
@@ -208,7 +208,7 @@ class BackwardCompatS227Tests(unittest.TestCase):
 
     def test_fiddlesticks_carries_all_three_registries(self) -> None:
         """Fiddlesticks now exercises max_priority (W-E-Q, s227) +
-        block_index ({R:1,W:3}, s193/s199) — orthogonal registries."""
+        block_index ({R:1,W:3}, s193/s199) - orthogonal registries."""
         self.assertEqual(list(get_max_priority_for("Fiddlesticks")[0]),
                          ["W", "E", "Q"])
         bi, _ = get_block_index_for("Fiddlesticks")

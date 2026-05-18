@@ -1,6 +1,6 @@
 # arch: zero-dep Counter/Gauge/Histogram | section=core | frozen=no
 """
-core/prom_metrics.py — hand-rolled Prometheus exposition (T3 #12).
+core/prom_metrics.py - hand-rolled Prometheus exposition (T3 #12).
 
 Zero-dep instrumentation pass. Exposes a `/metrics` endpoint emitting
 Prometheus text format 0.0.4 so anything Prom-compatible can scrape RC's
@@ -9,15 +9,15 @@ task; this module only produces the exposition body.
 
 Three primitives:
 
-    Counter   — monotonic. `.inc(amount=1.0, **labels)`.
-    Gauge     — arbitrary value. `.set(value, **labels)`.
-    Histogram — observation distribution. `.observe(value, **labels)`.
+    Counter   - monotonic. `.inc(amount=1.0, **labels)`.
+    Gauge     - arbitrary value. `.set(value, **labels)`.
+    Histogram - observation distribution. `.observe(value, **labels)`.
                 Bucket counts are stored cumulatively, so render is just
                 a per-bucket emit (no re-summation).
 
 Each metric registers itself on construction; `render_all()` walks the
 registry to produce the full text body. Concurrency is serialized by a
-single module-level lock — the hot path is one dict lookup + one
+single module-level lock - the hot path is one dict lookup + one
 arithmetic op per emit.
 
 Labels are passed as kwargs to `inc/set/observe`. Label names are fixed
@@ -213,11 +213,11 @@ def render_all() -> str:
 # `core/bridge_monitor.py`, future watcher refactors) can record without
 # each module re-declaring its own counters.
 #
-# Per-process counters reset across CLI invocations — these accumulate
+# Per-process counters reset across CLI invocations - these accumulate
 # usefully only inside long-running processes (the dashboard, the watcher
 # daemon, anything that imports `core.bridge.send`). For one-shot
 # `py tools/bridge_cli.py task ...` invocations the counts are emitted
-# but die with the process. That's by design — no shared state file to
+# but die with the process. That's by design - no shared state file to
 # coordinate across processes, no metrics daemon.
 class BridgeMetrics:
     """Namespace of bridge-related Prometheus metrics."""

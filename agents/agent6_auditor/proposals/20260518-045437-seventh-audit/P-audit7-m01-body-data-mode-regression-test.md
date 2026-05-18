@@ -1,4 +1,4 @@
-# P-audit7-m01 — `body[data-mode]` flap regression test
+# P-audit7-m01 - `body[data-mode]` flap regression test
 
 **Target agent:** Agent 3 (testing)
 **Severity:** MEDIUM
@@ -19,7 +19,7 @@ No regression test landed alongside the fix.
 `tests/preflip_mode/test_body_data_mode_no_flap.py`:
 
 ```python
-"""Regression: e4b08ba — body[data-mode] must not flap during lobby preflip.
+"""Regression: e4b08ba - body[data-mode] must not flap during lobby preflip.
 
 If the LCU has flipped to ChampSelect but the liveclient hasn't yet
 caught up, build_state() must emit a stable mode-key on consecutive
@@ -32,7 +32,7 @@ from dashboard._state_builder import build_state
 class BodyDataModeNoFlapTests(unittest.TestCase):
     def test_consecutive_calls_in_preflip_window_emit_same_mode(self):
         # Construct a state shape where LCU is ChampSelect but
-        # liveclient is still null — the exact preflip window.
+        # liveclient is still null - the exact preflip window.
         lcu_snapshot = {"phase": "ChampSelect", "champ_select": {...}}
         liveclient_snapshot = None  # not yet visible
 
@@ -64,7 +64,7 @@ preflip tests; the shape above is illustrative.)
 The dual-write s153/s157 pattern means *any* future change to either
 HTTP or WS state-builder path can re-introduce the flap silently. The
 e4b08ba commit shows it has happened once already after 6 months of
-stable behavior — the regression risk is real.
+stable behavior - the regression risk is real.
 
 ## Acceptance
 
@@ -76,6 +76,6 @@ stable behavior — the regression risk is real.
 ## Note
 
 The untracked `tests/preflip_mode/test_file_ingest_mirror.py` at session
-start may be the operator's WIP for this exact test — Agent 3 should
+start may be the operator's WIP for this exact test - Agent 3 should
 check before writing a duplicate. Audit7-L-01 flags that as a separate
 matter for operator decision.

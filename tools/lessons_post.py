@@ -1,4 +1,4 @@
-"""lessons_post.py — finalize one inbound lesson with a Claude-decided
+"""lessons_post.py - finalize one inbound lesson with a Claude-decided
 outcome. Writes the provenance memory, updates MEMORY.md, appends a
 ledger entry, and sends the ack back to the peer.
 
@@ -7,12 +7,12 @@ Usage:
         --rationale "<one-line>" [--notes "<receiver notes>"]
 
 Decision semantics (per Phase 1 §4):
-  applied    — tooling/infra/config pattern; provenance memory written
+  applied    - tooling/infra/config pattern; provenance memory written
                with status: applied; appears in MEMORY.md immediately.
-  queued     — discipline / process / architecture-adjacent; provenance
+  queued     - discipline / process / architecture-adjacent; provenance
                memory written with status: pending_apply; surfaces in
                WAKEUP_NOTES until operator flips status to applied.
-  discarded  — domain-bound (slipped past sender filter); no memory
+  discarded  - domain-bound (slipped past sender filter); no memory
                file is written; ledger records the rationale.
 
 `reject` is auto-only (schema-version mismatch); `skipped_neg_match` is

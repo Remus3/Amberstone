@@ -1,4 +1,4 @@
-"""Round 16 — auto-analyze exposure + 30-day recency bucketing."""
+"""Round 16 - auto-analyze exposure + 30-day recency bucketing."""
 from __future__ import annotations
 
 import json
@@ -31,7 +31,7 @@ def test_auto_analyze_stats_pending_shows_fires_in() -> None:
     stats = sup.auto_analyze_stats()
     assert stats["state"] == "pending"
     assert stats["fires_in_sec"] is not None
-    # Default IDLE is 120s — so ~110s remaining.
+    # Default IDLE is 120s - so ~110s remaining.
     assert 100 < stats["fires_in_sec"] < 120
 
 

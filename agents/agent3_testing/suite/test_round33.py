@@ -1,4 +1,4 @@
-"""Round 33 — session_games timeline + /api/session-games + --games CLI."""
+"""Round 33 - session_games timeline + /api/session-games + --games CLI."""
 from __future__ import annotations
 
 import json
@@ -76,7 +76,7 @@ def test_session_games_null_kda_yields_none_ratio(tmp_path: Path, monkeypatch) -
 
 
 def test_session_games_limit_takes_tail(tmp_path: Path, monkeypatch) -> None:
-    """With a limit, we want the most-recent games — the tail."""
+    """With a limit, we want the most-recent games - the tail."""
     from coaches.adaptation_hint import session_games
     _init(tmp_path, monkeypatch)
     now = datetime.now(timezone.utc)

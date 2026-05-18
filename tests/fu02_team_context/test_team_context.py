@@ -1,4 +1,4 @@
-"""FU02 panel-stub tests — `routes_team_context` + payload schema +
+"""FU02 panel-stub tests - `routes_team_context` + payload schema +
 state-builder splice + dispatch registry.
 
 The panel stub ships ahead of `core/riot_api.py`; these tests pin the
@@ -127,7 +127,7 @@ class TestModels(unittest.TestCase):
 
     def test_validate_coaching_payload_with_team_context(self, ):
         # validate_coaching_payload should not warn on a valid SR payload
-        # carrying a team_context — proves the splice survives the soft
+        # carrying a team_context - proves the splice survives the soft
         # validator that wraps build_state().
         payload = {
             "mode":   "sr",
@@ -250,7 +250,7 @@ class TestRoutes(unittest.TestCase):
 
     def test_post_refresh_400_on_roster_too_large(self):
         h = _FakeHandler(headers={"Authorization": "Bearer test-secret"})
-        # 11 slots — over the 10-player champ-select cap.
+        # 11 slots - over the 10-player champ-select cap.
         roster = [_full_roster_slot() for _ in range(11)]
         RTC._serve_refresh_post(h, {"queue_id": 420, "roster": roster})
         self.assertEqual(h.captured["code"], 400)
@@ -273,7 +273,7 @@ class TestRoutes(unittest.TestCase):
         self.assertTrue(body["ok"])
         self.assertEqual(body["stored"]["allies"], 2)
         self.assertEqual(body["stored"]["enemies"], 2)
-        # Cache is now hot — get should return the same payload shape.
+        # Cache is now hot - get should return the same payload shape.
         cache = RTC.get_team_context()
         self.assertIsNotNone(cache)
         assert cache is not None  # mypy/type-narrow
@@ -281,7 +281,7 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(len(cache["allies"]), 2)
         self.assertEqual(len(cache["enemies"]), 2)
         self.assertTrue(cache["partial"])
-        # Each entry has the FU02-ticket shape — empty enrichment fields
+        # Each entry has the FU02-ticket shape - empty enrichment fields
         # set to soft-fail defaults.
         ally = cache["allies"][0]
         self.assertEqual(ally["locked_champion"], "Camille")

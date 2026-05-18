@@ -1,16 +1,16 @@
-"""Phase 2 step 3 — item ranker.
+"""Phase 2 step 3 - item ranker.
 
 Score every purchasable, mode-legal item in the snapshot by the DPS it
 would add to a champion's current build. Filter via ``maps`` (mode
 validity), ``gold.total`` (must be a real purchase), and ``into`` (skip
-non-terminal components by default — ranking Long Sword above Bloodthirster
+non-terminal components by default - ranking Long Sword above Bloodthirster
 is rarely useful). Sort by absolute ``delta_dps`` (default) or by
 ``dps_per_gold``.
 
-This is pure Python on top of ``compute_dps`` — N×DPS where N is the
+This is pure Python on top of ``compute_dps`` - N×DPS where N is the
 filtered candidate count (≈125-175 in 16.9.1 for the common modes).
 Sub-second on a warm snapshot. No conditional effects (passives,
-on-hit) — those live in Phase 4 alongside ability damage.
+on-hit) - those live in Phase 4 alongside ability damage.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ DEFAULT_SLOT_COUNT = 6
 DEFAULT_TOP_N = 20
 SORT_KEYS: tuple[str, ...] = ("delta", "efficiency")
 
-# Arena gives every player Arcane Sweeper as a trinket — it occupies the
+# Arena gives every player Arcane Sweeper as a trinket - it occupies the
 # trinket slot, not an item slot, but the live game's inventory polling
 # returns it alongside the 6 build slots. Strip these from current_item_ids
 # when mode=ARENA so the slot-count check passes and the baseline DPS
@@ -69,10 +69,10 @@ class RankedItem:
     delta_dps: float            # weighted_dps with item - baseline
     new_dps: float              # weighted_dps with item
     dps_per_1k_gold: float      # delta_dps / (gold/1000); 0 when delta<=0
-    is_terminal: bool           # `into` is empty — final-tier item
+    is_terminal: bool           # `into` is empty - final-tier item
     tags: tuple[str, ...]
     # Phase 6 step 8 (2026-05-12): candidate's unique passive collides with an
-    # item already in current_item_ids — the proc/pen contribution would be
+    # item already in current_item_ids - the proc/pen contribution would be
     # zeroed by collect_effects() dedup. Stat block still contributes (the
     # delta_dps reflects this honestly) but the operator gets no value from
     # the unique itself. Default-filter is on in ``rank_items``; consumers
@@ -140,8 +140,8 @@ class RankResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode} — phase {self.phase}"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode} - phase {self.phase}"
         )
         rows = [head, "-" * len(head)]
         if self.current_item_ids:
@@ -183,7 +183,7 @@ def _is_purchasable(item: dict) -> bool:
 
 
 def _is_terminal(item: dict) -> bool:
-    """Final-tier item — has no ``into`` upgrade path.
+    """Final-tier item - has no ``into`` upgrade path.
 
     DDragon represents an empty/missing ``into`` as ``None`` or ``[]``.
     """
@@ -212,7 +212,7 @@ def _filter_candidates(
 
     Filters applied (in order):
       * already-equipped items skipped (``current_ids``)
-      * ``only_ids`` whitelist — restrict to caller-selected ids when set
+      * ``only_ids`` whitelist - restrict to caller-selected ids when set
       * purchasable + ``gold.total`` > 0
       * mode validity via ``maps`` (only when mode is known)
       * terminal-only (``into`` empty) unless ``include_components``
@@ -265,8 +265,8 @@ def rank_items(
     baseline. Results are clipped to ``top_n`` after sorting.
 
     Sort keys:
-      * ``delta``       — absolute DPS gained (default)
-      * ``efficiency``  — DPS gained per 1000 gold spent
+      * ``delta``       - absolute DPS gained (default)
+      * ``efficiency``  - DPS gained per 1000 gold spent
 
     ``include_components=True`` keeps non-terminal items in the ranking
     (useful when the player is mid-recipe and just bought a Long Sword).
@@ -275,7 +275,7 @@ def rank_items(
 
     ``filter_shared_uniques=True`` (default) drops candidates whose
     ``unique_passive_key`` matches a unique already in
-    ``current_item_ids`` — operator gets no value from the second proc
+    ``current_item_ids`` - operator gets no value from the second proc
     even though stat-only delta_dps would be positive (Trinity → ER,
     Sterak's → Maw, Sunfire → Hollow Radiance). Pass ``False`` to surface
     them with ``shares_dead_unique=True`` set on the result.
@@ -289,7 +289,7 @@ def rank_items(
     current_set = set(current_ids)
     # Collect every unique_passive_key already locked in by the current build.
     # Candidates sharing one of these keys would have their proc/pen effect
-    # zeroed by ``collect_effects`` — surface that to consumers via the flag
+    # zeroed by ``collect_effects`` - surface that to consumers via the flag
     # on RankedItem, and filter by default.
     current_unique_keys: set[str] = set()
     for iid in current_ids:
@@ -358,7 +358,7 @@ def rank_items(
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
         delta = scored.weighted_dps - baseline.weighted_dps
         # Efficiency in DPS per 1000 gold so the column stays in a readable range.
-        # Negative or zero deltas zero-out — they're not "efficient", they're regressions.
+        # Negative or zero deltas zero-out - they're not "efficient", they're regressions.
         eff = (delta / (gold / 1000.0)) if (gold > 0 and delta > 0) else 0.0
         ranked.append(
             RankedItem(
@@ -387,18 +387,18 @@ def rank_items(
     if mode in MODE_MAP_ID:
         notes.append(f"mode={mode} → maps id {MODE_MAP_ID[mode]}")
     else:
-        notes.append(f"mode={mode} not in MODE_MAP_ID — no per-mode item filter applied")
+        notes.append(f"mode={mode} not in MODE_MAP_ID - no per-mode item filter applied")
     if stripped_trinkets:
         notes.append(
-            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} from current_item_ids"
+            f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} from current_item_ids"
         )
     if include_components:
-        notes.append("include_components=True — non-terminal items in the ranking")
+        notes.append("include_components=True - non-terminal items in the ranking")
     if budget is not None:
-        notes.append(f"budget={budget}g — items over budget filtered")
+        notes.append(f"budget={budget}g - items over budget filtered")
     if baseline.mode_multiplier == 0.0:
         notes.append(
-            "baseline mode_multiplier=0 — all DPS deltas will be 0 (e.g. Yunara in ARAM)"
+            "baseline mode_multiplier=0 - all DPS deltas will be 0 (e.g. Yunara in ARAM)"
         )
 
     return RankResult(

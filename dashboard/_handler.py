@@ -5,19 +5,19 @@ Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
 `Handler` is the `BaseHTTPRequestHandler` subclass driving every
 :8888 request. It owns:
 
-  * `do_GET`  — delegates to `dashboard._dispatch.dispatch_get`,
+  * `do_GET`  - delegates to `dashboard._dispatch.dispatch_get`,
                 falls through to the agents-supervisor proxy for
                 paths only :8890 implements, else 404
-  * `do_POST` — same-origin CSRF guard, 1-MiB body cap, JSON
+  * `do_POST` - same-origin CSRF guard, 1-MiB body cap, JSON
                 decode, then delegates to `dashboard._dispatch.
                 dispatch_post`, else 404
-  * `_send`   — TLS-aware response writer; sets HSTS only when
+  * `_send`   - TLS-aware response writer; sets HSTS only when
                 the connection itself is wrapped (matches the
                 2026-04-29 audit)
-  * `_csrf_ok` — same-origin guard rejecting cross-origin POSTs
+  * `_csrf_ok` - same-origin guard rejecting cross-origin POSTs
                 with browser-side Origin/Referer mismatches; script
                 callers without those headers pass cleanly
-  * `_proxy_to_supervisor` — forwards the active GET to
+  * `_proxy_to_supervisor` - forwards the active GET to
                 127.0.0.1:8890 and streams the response back so the
                 dashboard's side panels (adaptation, activity,
                 minimap-crop, etc.) populate over the :8888 origin
@@ -90,7 +90,7 @@ class Handler(BaseHTTPRequestHandler):
                 ctype = r.headers.get("Content-Type", "application/octet-stream")
                 self._send(r.status, body, ctype)
         except _ue.HTTPError as e:
-            # Forward the non-2xx response — 404 from supervisor should
+            # Forward the non-2xx response - 404 from supervisor should
             # still look like 404 to the dashboard, not 500 here.
             try:
                 body = e.read() or b""
@@ -109,11 +109,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         # AUDIT 2026-04-29: Strict-Transport-Security so any browser that
         # touches the dashboard once over HTTPS never falls back to plain
-        # HTTP for this origin again — eliminates the original Game-PC
+        # HTTP for this origin again - eliminates the original Game-PC
         # "http://… not connecting" symptom permanently. 1-year max-age is
         # standard. We don't include preload / includeSubDomains because
         # this is LAN-only and we don't own the rest of the IP space.
-        # Only set when the connection itself is TLS — when wrap_socket
+        # Only set when the connection itself is TLS - when wrap_socket
         # is in play, the underlying request socket has an .cipher() attr.
         try:
             sock = self.connection
@@ -151,7 +151,7 @@ class Handler(BaseHTTPRequestHandler):
         own scripts) typically send neither and are allowed.
 
         Rule: if Origin or Referer is present, its hostname must match
-        the request's Host header — OR the origin must itself be a local
+        the request's Host header - OR the origin must itself be a local
         loopback address (127.0.0.1 / localhost) coming from a script on
         the same machine. Absent both headers → allow (script caller).
         """
@@ -177,12 +177,12 @@ class Handler(BaseHTTPRequestHandler):
                 src_hp = (p.hostname or "").lower()
                 if not src_hp:
                     return False
-                # Same hostname is fine (port may differ — e.g. dashboard
+                # Same hostname is fine (port may differ - e.g. dashboard
                 # opened via localhost vs LAN IP from same machine).
                 if src_hp == host_h:
                     continue
                 # Origin from local loopback when request host is the LAN
-                # bind is also fine — script callers, dev probes.
+                # bind is also fine - script callers, dev probes.
                 if src_hp in local_aliases and host_h not in local_aliases:
                     continue
                 if host_h in local_aliases and src_hp in local_aliases:
@@ -191,13 +191,13 @@ class Handler(BaseHTTPRequestHandler):
                 return False
             return True
         except Exception:
-            # Don't block POSTs on parse errors — fail open with a log.
+            # Don't block POSTs on parse errors - fail open with a log.
             log.debug("csrf_ok parse failed; allowing")
             return True
 
     def do_POST(self):
         # 2026-04-27 audit: cap POST body at 1 MiB. RC is LAN-only and the
-        # legitimate inputs (chat text, /api/bridge messages) are tiny —
+        # legitimate inputs (chat text, /api/bridge messages) are tiny -
         # an unbounded read on Content-Length: 999999999 would let a LAN
         # attacker (or a misbehaving tab) allocate a multi-GB buffer per
         # request. Also: don't echo the exception message back to the

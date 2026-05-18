@@ -1,4 +1,4 @@
-"""Phase 8 step 5 — POST /api/sr-draft/apply route smoke tests.
+"""Phase 8 step 5 - POST /api/sr-draft/apply route smoke tests.
 
 Mirrors the routes_sr_draft profile-route test pattern: stub `_send`
 to capture the response, mock the LCU-cmd HTTP enqueue (urllib.request)
@@ -101,7 +101,7 @@ class TestApplyRoute(unittest.TestCase):
         b = _build_page_name("Tristana", "alt")
         c = _build_page_name("Tristana", "experimental")
         self.assertEqual(len({a, b, c}), 3)
-        # Format check — used by the apply route's response field too.
+        # Format check - used by the apply route's response field too.
         self.assertEqual(a, "RC: Tristana primary (SR)")
         self.assertEqual(b, "RC: Tristana alt (SR)")
 

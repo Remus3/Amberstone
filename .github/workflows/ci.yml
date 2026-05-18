@@ -25,7 +25,7 @@ jobs:
       - name: Install minimal test deps
         run: |
           python -m pip install --upgrade pip
-          # Test runner + linter only — RC's runtime stack (anthropic/PIL/pytesseract)
+          # Test runner + linter only - RC's runtime stack (anthropic/PIL/pytesseract)
           # is intentionally not installed; tests that import it must guard
           # for ImportError or be marked phase2_smoke / snapshot_regressions
           # which are pure-Python.

@@ -1,6 +1,6 @@
-# arch: Arena mode coach — DS-before-Haiku | section=coaching | frozen=no
+# arch: Arena mode coach - DS-before-Haiku | section=coaching | frozen=no
 """
-coaches/arena_coach.py  — v2  (ARCH-002 BaseCoach inheritance)
+coaches/arena_coach.py  - v2  (ARCH-002 BaseCoach inheritance)
 
 Arena (2v2v2v2) full coaching engine.
 Inherits lifecycle from coaches.BaseCoach.
@@ -8,7 +8,7 @@ Self-polls Riot API every 1.5s.
 Vision fires every 12s (Sonnet): augment choices, item anvil, round phase.
 Writes: data/arena_coaching_data.json
 
-ARCH-002 (full) — 2026-04-18
+ARCH-002 (full) - 2026-04-18
 Also fixes: _parse_fields called without keys (silent TypeError → no coaching output)
 """
 
@@ -46,18 +46,18 @@ CHAMPION: {profile}
 Champion build guide: {arena_meta}
 {adaptation_hint}
 ═══ ARENA PRIORITY DECISION TREE ═══
-Opponent HP > 70%: standard fight — do NOT overcommit; trade efficiently and kite
+Opponent HP > 70%: standard fight - do NOT overcommit; trade efficiently and kite
 Opponent HP 40-70%: all-in when your burst combo is up + escape ready
-Opponent HP < 40%: play safe — they will desperate all-in; kite and poke to close
+Opponent HP < 40%: play safe - they will desperate all-in; kite and poke to close
 Your HP < 25%: NEVER all-in; kite, disengage, survive to next camp phase
-Your HP > 70%: aggressive — you can afford to make plays and take risks
+Your HP > 70%: aggressive - you can afford to make plays and take risks
 
 ═══ ROUND FIGHT RULES ═══
 Your pair: stay within 300 units of your partner. Peel for each other.
 Engage when: BOTH abilities are off cooldown + carry is isolated + escape path clear
 Disengage when: you or partner HP < 20% OR enemy pair has both CC abilities ready
 Target priority: 1) [E] carry (lowest HP, highest threat), 2) [E] CC holder, 3) tank last
-Augment active: use EVERY fight — never save for "perfect" moment
+Augment active: use EVERY fight - never save for "perfect" moment
 Kiting: orbwalk every single auto. Never stand still during fights.
 Anvil phase: ALWAYS take. Complete carry item first, then defensive stat stick.
 
@@ -75,13 +75,13 @@ Best for tanks: Bone Plating, Grasp, Shield Bash, Unflinching
 
 NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T]
 
-OUTPUT FORMAT — exactly 7 fields, NO markdown:
-Action: <1-3 WORDS ALL-CAPS — e.g. ALL IN / KITE BACK / BUY ITEMS / FOCUS CARRY / CAMP PHASE>
+OUTPUT FORMAT - exactly 7 fields, NO markdown:
+Action: <1-3 WORDS ALL-CAPS - e.g. ALL IN / KITE BACK / BUY ITEMS / FOCUS CARRY / CAMP PHASE>
 Round strategy: <opponent HP + your HP + correct approach, use [E] tag, max 20 words>
 Fight rule: <exact engage condition with [E] carry + specific ability window, max 20 words>
-Augment advice: <if augment select: take X — why. Else: play your current augment this way>
+Augment advice: <if augment select: take X - why. Else: play your current augment this way>
 Anvil advice: <if anvil open: take X to complete Y. Else: next component to build>
-Target priority: <kill [E]name[/E] first — why — then who>
+Target priority: <kill [E]name[/E] first - why - then who>
 Risk: <[E]ability[/E] to dodge + when it's up>
 """
 
@@ -116,7 +116,7 @@ AUGMENT CHOICES:
 
 NO markdown. Output exactly:
 Take: <augment name>
-Why: <one sentence — why it works for this champion + round>
+Why: <one sentence - why it works for this champion + round>
 Gameplan: <how to fight differently because of this augment>
 """
 
@@ -137,7 +137,7 @@ def _augment_name_map() -> dict[str, str]:
     apiName→apiName self-mapping is also installed so a Haiku response that
     happens to return the apiName resolves cleanly.
 
-    Returns ``{}`` if the snapshot is missing — caller treats that as
+    Returns ``{}`` if the snapshot is missing - caller treats that as
     "no resolver available" and skips augment persistence on that tick.
     """
     global _AUG_NAME_MAP_CACHE
@@ -180,7 +180,7 @@ def _resolve_augment_apiname(display: str) -> str | None:
 # ── data-driven augment ranking (CLAUDE #88) ──────────────────────────────────
 # Parallel to the Haiku augment pick, not a fallback: vision-OCR says *what's
 # offered*, the recommender says *which to take* by historical win-rate
-# (own match history blended toward an external Mayhem prior — Option B).
+# (own match history blended toward an external Mayhem prior - Option B).
 
 _RECO_MODE_BY_GAMEMODE = {"KIWI": "mayhem", "CHERRY": "arena", "ARENA": "arena"}
 
@@ -194,7 +194,7 @@ def _reco_mode_for(game_mode) -> str:
 
 def _parse_stage(round_val) -> int | None:
     """Mayhem augment stage 1–5 from the coach's ``~N`` round string.
-    None outside that range — stage priors only sharpen Mayhem; Arena
+    None outside that range - stage priors only sharpen Mayhem; Arena
     rounds are not Mayhem stages."""
     import re
     m = re.search(r"\d+", str(round_val or ""))
@@ -279,7 +279,7 @@ def _load_arena_build_note(champion: str) -> str:
         vh   = entry.get("vs_healing", "")
         build_str = ", ".join(fb) if fb else ""
         # Arena framing: carry item first, no health packs context
-        result = f"{tier} tier — {note}" if tier and note else note or tier
+        result = f"{tier} tier - {note}" if tier and note else note or tier
         if build_str:
             result += f" | Full build: {build_str}"
         if vt:
@@ -298,7 +298,7 @@ class Coach(BaseCoach):
     _MODE_NAME     = "arena"
     _DATA_FILENAME = "arena_coaching_data.json"
 
-    # Tunable overrides — Arena is faster-paced, shorter debounce.
+    # Tunable overrides - Arena is faster-paced, shorter debounce.
     # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 12→20 / DEBOUNCE
     # 4→8 / FAST_PATH 1.5→3.0 to halve API call rate. Pre-bump rates were
     # firing ~450 coach calls per 30-min arena game; new rates ~225 calls.
@@ -373,7 +373,7 @@ class Coach(BaseCoach):
 
     def _update_round_from_events(self, state: dict) -> str:
         """
-        Stateful round tracker — increments only when cumulative combat-event
+        Stateful round tracker - increments only when cumulative combat-event
         count grows. Returns labeled "~N" (approximate) string.
         API has no native Arena round counter.
         """
@@ -394,7 +394,7 @@ class Coach(BaseCoach):
         resolves them to IDs and looks up ``FlatHPPoolMod`` from the
         patch-current DDragon snapshot. We pick MAX across alive
         opponents (not avg) because LDR Giant Slayer is "vs high-bonus-HP
-        targets" — the engine should escalate the recommendation when
+        targets" - the engine should escalate the recommendation when
         ANY enemy is tanky, not when the average is.
 
         Fallback path (s72): linear ramp 0→1500 across rounds 2..10
@@ -403,11 +403,11 @@ class Coach(BaseCoach):
         precision stops mattering past round 10.
 
         Returns 0.0 when neither signal is available (collapses to "no
-        signal" in the engine — procs no-op).
+        signal" in the engine - procs no-op).
         """
         state = state or {}
         teams = state.get("teams") or []
-        # Worst-case alive opponent — not is_you, not is_partner, not dead.
+        # Worst-case alive opponent - not is_you, not is_partner, not dead.
         opp_items: list[list[str]] = [
             (t.get("items") or []) for t in teams
             if not t.get("is_you")
@@ -460,7 +460,7 @@ class Coach(BaseCoach):
             if state.get("anvil_choices"):
                 self._handle_anvil(state)
             # v2: panel is gone, so HUD slots are the canonical augment record.
-            # Only overrides when ALL slots resolve — partial reads keep Haiku's list.
+            # Only overrides when ALL slots resolve - partial reads keep Haiku's list.
             self._reconcile_augment_hud(state)
         except Exception as exc:
             logger.debug("Arena vision run: %s", exc)
@@ -507,7 +507,7 @@ class Coach(BaseCoach):
             vs = self._vision_state
             vision_ctx = ""
             if vs.get("camp_phase"):
-                vision_ctx = "CAMP PHASE ACTIVE — buy/upgrade items and heal now."
+                vision_ctx = "CAMP PHASE ACTIVE - buy/upgrade items and heal now."
             elif vs.get("anvil_choices"):
                 vision_ctx = f"ITEM ANVIL available: {', '.join(vs.get('anvil_choices', []))}"
 
@@ -582,7 +582,7 @@ class Coach(BaseCoach):
             import time as _time_a
             _t0 = _time_a.perf_counter()
             # AUDIT 2026-04-29 (gap E): cache_control: ephemeral on the
-            # system prompt — system prompt is reused every tick.
+            # system prompt - system prompt is reused every tick.
             resp = self._client.messages.create(
                 model="claude-haiku-4-5-20251001", max_tokens=650,
                 system=[{"type": "text", "text": system,
@@ -596,7 +596,7 @@ class Coach(BaseCoach):
                                     model="claude-haiku-4-5-20251001",
                                     purpose="arena_coach")
             raw    = resp.content[0].text
-            # ARCH-002 bug fix: pass keys argument (was missing — caused silent TypeError)
+            # ARCH-002 bug fix: pass keys argument (was missing - caused silent TypeError)
             fields = parse_fields(raw, _OUTPUT_KEYS)
             if not fields:
                 logger.warning("Arena: no fields parsed")
@@ -673,7 +673,7 @@ class Coach(BaseCoach):
         gs      = self._last_state
         choices = vision_state.get("augment_choices", [])
         # Data-driven ranking, parallel to Haiku (CLAUDE #88). Conditioned
-        # on the picks made in PRIOR rounds — snapshot before the Haiku
+        # on the picks made in PRIOR rounds - snapshot before the Haiku
         # block appends this round's pick. Offline + never raises.
         picked_before = list(self._picked_augments)
         reco_fields   = _augment_recommendation(gs, choices, picked_before)
@@ -713,7 +713,7 @@ class Coach(BaseCoach):
                 "augment_choices": choices,
                 # Persist the apiName list so the dashboard / postgame
                 # collector can see what the engine was given. Source is
-                # the Haiku recommendation — see project_arena_augments_not_persisted.
+                # the Haiku recommendation - see project_arena_augments_not_persisted.
                 "augments_picked": list(self._picked_augments),
                 "augments_source": "haiku_rec",
                 **reco_fields,
@@ -721,7 +721,7 @@ class Coach(BaseCoach):
             safe_write(self._out, current)
         except Exception as exc:
             logger.error("Arena augment select: %s", exc)
-            # The recommender is a parallel signal (§5) — persist it even
+            # The recommender is a parallel signal (§5) - persist it even
             # when the Haiku call fails, so the data-driven ranking still
             # surfaces during an LLM outage.
             if reco_fields:
@@ -762,7 +762,7 @@ class Coach(BaseCoach):
                 resolved.append(api)
                 seen.add(api)
         if resolved == self._picked_augments:
-            # Vision confirmed Haiku's picks — still tag source so the
+            # Vision confirmed Haiku's picks - still tag source so the
             # artifact reflects the upgrade in confidence.
             try:
                 current = load_json(self._out)
@@ -811,7 +811,7 @@ class Coach(BaseCoach):
                                     purpose="arena_anvil")
             raw     = resp.content[0].text
             current = load_json(self._out)
-            current["anvil_advice"] = f"Take: {parse_field(raw, 'Take')} — {parse_field(raw, 'Why')}"
+            current["anvil_advice"] = f"Take: {parse_field(raw, 'Take')} - {parse_field(raw, 'Why')}"
             safe_write(self._out, current)
         except Exception as exc:
             logger.error("Arena anvil: %s", exc)

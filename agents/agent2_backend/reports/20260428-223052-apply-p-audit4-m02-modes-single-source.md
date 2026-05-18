@@ -1,4 +1,4 @@
-# Report: apply P-audit4-m02 — mode list single source-of-truth
+# Report: apply P-audit4-m02 - mode list single source-of-truth
 
 **Task:** `t-4be5ae557e67`
 **Proposal:** `P-audit4-m02-modes-single-source`
@@ -19,8 +19,8 @@ This change introduces `lib/modes.py` as the single source of truth, derived at 
 
 ### New file: `lib/modes.py`
 - Reads `agents/state/resolved_decisions.json` at import time.
-- Exports `PHASE3_MODES: tuple[str, ...]` — mode names with `.db` suffix stripped.
-- Exports `verify_modes()` — re-reads the JSON at supervisor startup and raises `RuntimeError` on
+- Exports `PHASE3_MODES: tuple[str, ...]` - mode names with `.db` suffix stripped.
+- Exports `verify_modes()` - re-reads the JSON at supervisor startup and raises `RuntimeError` on
   drift (belt-and-suspenders; the tuple is already dynamic but catches future hardcoding attempts).
 
 ### `coaches/adaptation_hint.py` line 37
@@ -87,4 +87,4 @@ JSON array type that `test_resolved_decisions_written` compares against.
 
 ## Status
 
-COMPLETE — no frozen files touched, no restart required.
+COMPLETE - no frozen files touched, no restart required.

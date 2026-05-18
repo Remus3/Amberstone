@@ -1,4 +1,4 @@
-"""Phase 3 (s176, 2026-05-12) — dashboard/routes_archetype.py tests.
+"""Phase 3 (s176, 2026-05-12) - dashboard/routes_archetype.py tests.
 
 Exercises the GET / POST handlers via a stub handler. Persistence is
 patched to a tempdir so the real ``data/cs_archetype_picks.json`` stays

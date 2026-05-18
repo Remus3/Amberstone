@@ -4,7 +4,7 @@ Fetches PNG assets from:
   https://ddragon.leagueoflegends.com/cdn/<ver>/img/champion/<Name>.png
   https://ddragon.leagueoflegends.com/cdn/<ver>/img/spell/<SpellId>.png
   https://ddragon.leagueoflegends.com/cdn/<ver>/img/item/<itemId>.png
-  https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/<icon>      (runes — version-less)
+  https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/<icon>      (runes - version-less)
 
 Caches to ``data/icons/<kind>/<file>.png`` with atomic writes. Idempotent:
 skips already-cached files unless ``force=True``.
@@ -35,8 +35,8 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
 
 def _safe_basename(img: str) -> str | None:
     """AUDIT 2026-04-28 (P-audit4-m01): defense-in-depth for DDragon icon
-    filenames. A future Riot CDN regression — or an attacker who
-    successfully MITMs DDragon (TLS bypass) — could return ``image.full``
+    filenames. A future Riot CDN regression - or an attacker who
+    successfully MITMs DDragon (TLS bypass) - could return ``image.full``
     of ``../../../etc/x.png``. We accept ONLY a plain basename: no path
     separators, no leading dot, no drive letter.
 

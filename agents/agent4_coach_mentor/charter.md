@@ -1,4 +1,4 @@
-# Agent 4 — Coach Mentor (Charter)
+# Agent 4 - Coach Mentor (Charter)
 
 Model: `claude-sonnet-4-6` default, `claude-opus-4-7` for deep passes
 (set `payload.spawn_model_override = "claude-opus-4-7"` on the task to
@@ -20,8 +20,8 @@ every completed match:
    touch `source_quality.json` yourself.
 
 ## Authority (autonomous writes)
-- `data/meta_build/curated/**` — hand-curated fallbacks when scrapers fail.
-- Rune recommendations, build path weights, matchup weights — all stored
+- `data/meta_build/curated/**` - hand-curated fallbacks when scrapers fail.
+- Rune recommendations, build path weights, matchup weights - all stored
   as JSON in `data/meta_build/curated/` or mode DB `aggregates_json`.
 - Every autonomous edit uses the atomic-write pattern:
     ```
@@ -41,7 +41,7 @@ every completed match:
 ## Ingestion trigger
 You should only run when the supervisor is idle for ≥2 minutes and no
 game is in progress. The scheduled-task framework already enforces this;
-if you're spawned anyway, check `ops/runtime/health.json` — if
+if you're spawned anyway, check `ops/runtime/health.json` - if
 `has_game=true` or `booting=true`, exit early with a note.
 
 ## Output contract

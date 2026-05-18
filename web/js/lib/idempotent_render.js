@@ -1,7 +1,7 @@
 // Formalize the sig-on-container render-dedup pattern used throughout the dashboard.
 //
 // Usage:
-//   if (idempotentRender(container, sig)) return;  // skip — content unchanged
+//   if (idempotentRender(container, sig)) return;  // skip - content unchanged
 //   // ... rebuild container.innerHTML ...
 //
 // Returns true when the sig matches (caller should return early).

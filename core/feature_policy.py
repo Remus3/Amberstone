@@ -1,6 +1,6 @@
 """
 core/feature_policy.py
-Phase 1 Step 7 / 7.1 / Phase 2 Step 2 — Runtime feature policy matrix with hot-reload.
+Phase 1 Step 7 / 7.1 / Phase 2 Step 2 - Runtime feature policy matrix with hot-reload.
 
 Public API
 ----------
@@ -148,7 +148,7 @@ class _PolicyCache:
     def _initial_load(self) -> None:
         if not self._path.exists():
             self._status = _STATUS_MISSING
-            _log.info("feature_policy: %s not found — using safe defaults", self._path)
+            _log.info("feature_policy: %s not found - using safe defaults", self._path)
             return
         data, err = self._try_load()
         if data is not None:
@@ -161,7 +161,7 @@ class _PolicyCache:
         else:
             self._status      = _STATUS_INVALID_RELOAD
             self._last_warning = f"Initial load failed: {err}"
-            _log.error("feature_policy: initial load failed: %s — using safe defaults", err)
+            _log.error("feature_policy: initial load failed: %s - using safe defaults", err)
 
     # ── Hot-reload ────────────────────────────────────────────────────────
 
@@ -170,7 +170,7 @@ class _PolicyCache:
         try:
             current_mtime = self._get_mtime()
         except Exception:
-            # File disappeared after prior load — keep last-known-good
+            # File disappeared after prior load - keep last-known-good
             if self._lkg_matrix:
                 if self._status != _STATUS_LAST_KNOWN_GOOD:
                     self._status       = _STATUS_LAST_KNOWN_GOOD
@@ -182,7 +182,7 @@ class _PolicyCache:
         if current_mtime == self._mtime:
             return  # unchanged
 
-        # File changed — attempt reload
+        # File changed - attempt reload
         data, err = self._try_load()
         if data is not None:
             self._matrix     = data
@@ -193,11 +193,11 @@ class _PolicyCache:
             self._last_warning = None
             _log.info("feature_policy: hot-reloaded from %s", self._path)
         else:
-            # Invalid reload — keep last-known-good
+            # Invalid reload - keep last-known-good
             self._matrix       = self._lkg_matrix
             self._mtime        = current_mtime  # advance mtime so we don't re-try every call
             self._status       = _STATUS_INVALID_RELOAD
-            self._last_warning = f"Hot-reload failed: {err} — retaining last-known-good"
+            self._last_warning = f"Hot-reload failed: {err} - retaining last-known-good"
             _log.warning("feature_policy: %s", self._last_warning)
 
     # ── Helpers ───────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ class _PolicyCache:
             if key.startswith("_"):
                 continue  # metadata keys
             if key not in _KNOWN_FEATURES:
-                # Unknown mode — warn but still accept (forward-compatible)
+                # Unknown mode - warn but still accept (forward-compatible)
                 _log.warning("feature_policy: unknown mode %r in config", key)
                 continue
             if not isinstance(block, dict):
@@ -247,10 +247,10 @@ class _PolicyCache:
         Never raises. Called from MetricsCache background thread.
 
         Keys:
-          policy_source_status  : str — one of the _STATUS_* values
-          policy_last_reload_ts : str | None — ISO-8601 UTC of last successful load
-          policy_last_warning   : str | None — last warning text (last-one-wins)
-          effective_decisions   : dict — {mode: {feature: "allow"|"disabled"|"default"}}
+          policy_source_status  : str - one of the _STATUS_* values
+          policy_last_reload_ts : str | None - ISO-8601 UTC of last successful load
+          policy_last_warning   : str | None - last warning text (last-one-wins)
+          effective_decisions   : dict - {mode: {feature: "allow"|"disabled"|"default"}}
         """
         try:
             decisions: Dict[str, Dict[str, str]] = {}
@@ -322,12 +322,12 @@ def is_allowed(mode: str, feature: str) -> bool:
     mode_key = mode.lower().strip()
 
     if mode_key not in _KNOWN_FEATURES:
-        _log.warning("feature_policy: unknown mode %r — defaulting to allow", mode_key)
+        _log.warning("feature_policy: unknown mode %r - defaulting to allow", mode_key)
         return True
 
     if feature not in _KNOWN_FEATURES[mode_key]:
         _log.warning(
-            "feature_policy: unknown feature %r for mode %r — defaulting to allow",
+            "feature_policy: unknown feature %r for mode %r - defaulting to allow",
             feature, mode_key,
         )
         return True
@@ -342,7 +342,7 @@ def is_allowed(mode: str, feature: str) -> bool:
 
     if decision not in _VALID_DECISIONS:
         _log.warning(
-            "feature_policy: malformed decision %r for %s.%s — defaulting to allow",
+            "feature_policy: malformed decision %r for %s.%s - defaulting to allow",
             decision, mode_key, feature,
         )
         return True
@@ -382,7 +382,7 @@ def write_disabled_placeholder(mode: str, feature: Optional[str] = None,
 
     artifact_root: optional test-only override for the output root directories.
       When None (default): writes to the real production paths (_PROJECT_DIR
-      and _DATA_DIR) — production behavior is fully preserved.
+      and _DATA_DIR) - production behavior is fully preserved.
       When set: sr artifact → artifact_root/coaching_data.json;
                 data/* artifacts → artifact_root/data/<name>.
       Tests should always pass artifact_root pointing to a temp directory.

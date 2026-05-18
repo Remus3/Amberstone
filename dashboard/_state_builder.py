@@ -3,7 +3,7 @@
 
 Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
 
-`build_state()` is the canonical /api/state payload assembler — it picks
+`build_state()` is the canonical /api/state payload assembler - it picks
 the active coaching artifact based on `ops/runtime/health.json`, overlays
 fresh Live Client API fields on top so the dashboard placeholders
 (game_time, kda, level, gold, hp, mana, cs) populate immediately, and
@@ -44,8 +44,8 @@ MODE_TO_FILE = {
 
 # Deduped list of artifact paths the modes resolve to (preserves
 # insertion order via dict.fromkeys). Callers that want to scan
-# "whichever coaching JSON is freshest" — e.g. the supervisor's
-# post-game summary picker — should use this instead of hardcoding
+# "whichever coaching JSON is freshest" - e.g. the supervisor's
+# post-game summary picker - should use this instead of hardcoding
 # their own list. Source-of-truth pattern per ADR-008.
 MODE_FILES: tuple[str, ...] = tuple(dict.fromkeys(MODE_TO_FILE.values()))
 
@@ -85,9 +85,9 @@ def resolve_mode_key(health: dict, lcu_snapshot: dict | None) -> tuple[str, bool
     """Return (mode_key, preflip_active).
 
     Same priority order as ``build_state``:
-      1. LiveClient flags (aram/arena/tft/has_game) — authoritative once
+      1. LiveClient flags (aram/arena/tft/has_game) - authoritative once
          the game is actually running.
-      2. LCU lobby/champ-select queue_id pre-flip — so the dashboard
+      2. LCU lobby/champ-select queue_id pre-flip - so the dashboard
          switches to the right mode panel before the in-game match.
       3. ``health.mode`` fallback (legacy code paths).
       4. ``"client"`` default.
@@ -108,7 +108,7 @@ def apply_preflip_mirror(health: dict, mode_key: str, preflip_active: bool) -> d
 
     Without this, the dashboard's ``onHealth`` resolver recomputes
     ``tag="client"`` every health tick from the still-False health.json
-    flags and races ``onState``'s pre-flipped mode — flapping the mode
+    flags and races ``onState``'s pre-flipped mode - flapping the mode
     pill, augments pill, and win% pill in lockstep on every cadence cycle.
     Used by both ``build_state`` (HTTP /api/state) and
     ``agents.agent2_backend.file_ingest`` (WS /push) so both paths agree.
@@ -125,16 +125,16 @@ def _active_champion(coach: dict, lc: dict | None, lcu_snapshot: dict | None) ->
     """Resolve the operator's currently-active champion across signals.
 
     Priority order (most → least authoritative):
-      1. ``liveclient.champion`` — in-game, derived from LiveClient
+      1. ``liveclient.champion`` - in-game, derived from LiveClient
          ``allPlayers[]`` matched on summoner name. Single source of truth
          once the game is running.
-      2. ``coach.champion`` — the coach JSON's persisted field (ARAM /
+      2. ``coach.champion`` - the coach JSON's persisted field (ARAM /
          Arena / Brawl / TFT shapes carry it; SR's ``coaching_data.json``
-         doesn't — falls through).
-      3. ``lcu.champ_select.local_pick.champion_name`` — pre-game.
+         doesn't - falls through).
+      3. ``lcu.champ_select.local_pick.champion_name`` - pre-game.
       4. Empty string when nothing resolves.
 
-    Used by ``build_state`` to stamp ``state.cs_archetype_pick`` — purely
+    Used by ``build_state`` to stamp ``state.cs_archetype_pick`` - purely
     decorative for the dashboard's archetype-picker UI. Coaches resolve
     champion independently from their own upstream state.
     """
@@ -195,7 +195,7 @@ def build_state() -> dict:
     # and falls back to skeleton rows when fields are empty.
     coach["team_context"] = get_team_context()
 
-    # s182 (2026-05-13) — surface the operator's effective archetype pick
+    # s182 (2026-05-13) - surface the operator's effective archetype pick
     # for the active champion. Resolves DDragon-tag default + persisted
     # override; empty champion produces empty dict so dashboard JS can
     # branch on ``state.cs_archetype_pick.champion`` truthiness without
@@ -211,7 +211,7 @@ def build_state() -> dict:
     except Exception:
         cs_archetype_pick = {}
 
-    # s184 (2026-05-13) — first-purchase archetype-mismatch nudge. Reads
+    # s184 (2026-05-13) - first-purchase archetype-mismatch nudge. Reads
     # ``cs_archetype_pick`` + liveclient owned_item_ids; if operator's
     # first non-trivial completed item isn't in the dispatcher's top-15
     # for their picked archetype, surface a soft chip on the dashboard.

@@ -1,6 +1,6 @@
 """
 coaches/__init__.py
-Dynamic coach loader — only imports the module needed for the active game mode.
+Dynamic coach loader - only imports the module needed for the active game mode.
 Supports PBE toggle for TFT Set 17 via config/coach_settings.json {"tft_pbe": true}.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ _MODE_MAP = {
     "ONEFORALL":        "coaches.brawl_coach",
     "URF":              "coaches.brawl_coach",
     "ARURF":            "coaches.brawl_coach",
-    # TFT — all variants use the same TFT coach (mode variant detected internally)
+    # TFT - all variants use the same TFT coach (mode variant detected internally)
     "TFT":              "coaches.tft_coach",
     "TFT_RANKED":       "coaches.tft_coach",
     "TFT_UNRANKED":     "coaches.tft_coach",
@@ -82,7 +82,7 @@ def load_coach(game_mode: str, data_file, debug: bool = False):
     # PBE override: if TFT mode and pbe flag is set, use PBE coach
     if module_path == "coaches.tft_coach" and _is_tft_pbe():
         module_path = "coaches.tft_pbe_coach"
-        _log.info("TFT PBE mode enabled — using Set 17 coach")
+        _log.info("TFT PBE mode enabled - using Set 17 coach")
 
     if module_path in _loaded:
         return _loaded[module_path]

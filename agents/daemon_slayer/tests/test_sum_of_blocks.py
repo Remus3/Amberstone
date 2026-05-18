@@ -1,7 +1,7 @@
-"""Phase 5.9.20 (s207, 2026-05-14) — sum-of-blocks block_index_overrides.
+"""Phase 5.9.20 (s207, 2026-05-14) - sum-of-blocks block_index_overrides.
 
 Closes the s205 + s206 carry-forward "sum-of-blocks bucket warranted soon
-— 10+ candidates queued". Schema lift: ``block_index_overrides`` value
+- 10+ candidates queued". Schema lift: ``block_index_overrides`` value
 type widens from ``int`` to ``int | list[int]``. When a list is supplied
 under the ``"indexed"`` strategy, the evaluated damage at each (clamped)
 index is summed. Used to express "operator commits to landing every
@@ -10,20 +10,20 @@ across multiple Meraki damage blocks.
 
 Engine surface:
   * ``_select_blocks(... block_index: int | Sequence[int] = 0, ...)``
-    — int path unchanged; list path loops + sums per-element.
-  * ``_normalize_block_index_value(v)`` — rejects non-int, non-list[int]
+    - int path unchanged; list path loops + sums per-element.
+  * ``_normalize_block_index_value(v)`` - rejects non-int, non-list[int]
     payloads with ValueError; preserves bool-as-int rejection.
   * ``get_block_index_for(champion_id) -> tuple[dict[str, int | list[int]], str]``
-    — registry value type widens.
+    - registry value type widens.
   * ``_resolve_block_index_overrides(champion_id, explicit) -> tuple[dict[str, int | list[int]], str]``
-    — caller value type widens; same caller-wins-per-key merge.
-  * Server ``_parse_block_index`` — accepts JSON arrays alongside ints.
+    - caller value type widens; same caller-wins-per-key merge.
+  * Server ``_parse_block_index`` - accepts JSON arrays alongside ints.
 
 Seed entries (4):
-  * Camille W=[0, 1]      — Tactical Sweep base + Outer Cone Bonus
-  * Malphite W=[2, 3]     — active cast + first empowered AA
-  * Heimerdinger W=[0,1,1,1,1] — Initial + 4× Subsequent rockets
-  * Katarina R=[1, 3]     — full Death Lotus single-target totals
+  * Camille W=[0, 1]      - Tactical Sweep base + Outer Cone Bonus
+  * Malphite W=[2, 3]     - active cast + first empowered AA
+  * Heimerdinger W=[0,1,1,1,1] - Initial + 4× Subsequent rockets
+  * Katarina R=[1, 3]     - full Death Lotus single-target totals
 
 Backward-compat: existing single-int entries unchanged; single-int callers
 retain identical pre-s207 behavior. Existing tests in
@@ -64,7 +64,7 @@ def _snap() -> DataSnapshot:
 
 
 def _block(base: list[float]) -> DamageBlock:
-    """Minimal damage-only fixture for unit tests — base scalar at every rank."""
+    """Minimal damage-only fixture for unit tests - base scalar at every rank."""
     return DamageBlock(
         attribute="Test",
         attribute_kind="damage",
@@ -73,7 +73,7 @@ def _block(base: list[float]) -> DamageBlock:
 
 
 def _ctx() -> AbilityContext:
-    """Zero-stat context — _evaluate_block reads via getattr-with-default,
+    """Zero-stat context - _evaluate_block reads via getattr-with-default,
     but the dataclass needs all fields constructed."""
     return AbilityContext(
         base_ad=0.0, total_ad=0.0, bonus_ad=0.0, ap=0.0,
@@ -101,7 +101,7 @@ class NormalizeBlockIndexValueTests(unittest.TestCase):
         self.assertEqual(_normalize_block_index_value([0, 1, 1, 1, 1]), [0, 1, 1, 1, 1])
 
     def test_empty_list_allowed(self) -> None:
-        # Empty list returns empty list — _select_blocks handles it (returns 0.0).
+        # Empty list returns empty list - _select_blocks handles it (returns 0.0).
         self.assertEqual(_normalize_block_index_value([]), [])
 
     def test_list_returns_defensive_copy(self) -> None:
@@ -198,7 +198,7 @@ class SelectBlocksListTests(unittest.TestCase):
         )
 
 
-# ─── Registry shape — 4 seed entries ─────────────────────────────────────────
+# ─── Registry shape - 4 seed entries ─────────────────────────────────────────
 
 
 class RegistrySeedEntriesTests(unittest.TestCase):
@@ -238,13 +238,13 @@ class ResolveBlockIndexListMergeTests(unittest.TestCase):
         reset_block_index_cache()
 
     def test_caller_int_wins_over_registry_list(self) -> None:
-        # Caller passes Camille W=0 (single block) — wins over registry [0,1].
+        # Caller passes Camille W=0 (single block) - wins over registry [0,1].
         merged, src = _resolve_block_index_overrides("Camille", {"W": 0})
         self.assertEqual(src, "override")
         self.assertEqual(merged.get("W"), 0)
 
     def test_caller_list_wins_over_registry_int(self) -> None:
-        # Veigar registry has R=1; caller passes R=[0,1] — wins.
+        # Veigar registry has R=1; caller passes R=[0,1] - wins.
         merged, src = _resolve_block_index_overrides("Veigar", {"R": [0, 1]})
         self.assertEqual(src, "override")
         self.assertEqual(merged.get("R"), [0, 1])
@@ -261,7 +261,7 @@ class ResolveBlockIndexListMergeTests(unittest.TestCase):
         self.assertEqual(merged.get("Q"), [0, 1])
 
 
-# ─── compute_ability_dps integration — 4 seed entries ────────────────────────
+# ─── compute_ability_dps integration - 4 seed entries ────────────────────────
 
 
 class AbilityDpsSumOfBlocksTests(unittest.TestCase):
@@ -385,7 +385,7 @@ class BurstSumOfBlocksTests(unittest.TestCase):
         self.assertGreater(c_sum.raw_damage, c_forced2.raw_damage)
 
 
-# ─── Backward-compat — single-int registry entries unchanged ─────────────────
+# ─── Backward-compat - single-int registry entries unchanged ─────────────────
 
 
 class BackwardCompatIntEntriesTests(unittest.TestCase):
@@ -396,14 +396,14 @@ class BackwardCompatIntEntriesTests(unittest.TestCase):
         reset_block_index_cache()
 
     def test_veigar_R_still_int(self) -> None:
-        # s191 seed, never touched — should still be int.
+        # s191 seed, never touched - should still be int.
         m, _ = get_block_index_for("Veigar")
         self.assertEqual(m.get("R"), 1)
         self.assertIsInstance(m.get("R"), int)
 
     def test_cassiopeia_E_converted_to_conditional_s230(self) -> None:
         # Was an int exemplar through s207; s230 Phase 5.9.30 converted
-        # Cassi E to a conditional dict (default=1 == the s191 int —
+        # Cassi E to a conditional dict (default=1 == the s191 int -
         # provable Part-1 no-op). Veigar R remains this class's
         # untouched-int exemplar.
         m, _ = get_block_index_for("Cassiopeia")
@@ -427,7 +427,7 @@ class ServerRouteSumOfBlocksTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _ability_dps(self, champion: str, **extra) -> dict:
@@ -477,7 +477,7 @@ class ServerRouteSumOfBlocksTests(unittest.TestCase):
         )
 
     def test_route_rejects_malformed_block_index_silently(self) -> None:
-        # Garbage value is skipped per defensive policy — route still
+        # Garbage value is skipped per defensive policy - route still
         # returns a valid response (using registry default).
         s = self._spell("Camille", "W", block_index={"W": "not-an-int"})
         # Falls through to registry [0, 1] sum, NOT the default int 0.

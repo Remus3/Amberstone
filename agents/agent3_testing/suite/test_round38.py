@@ -1,4 +1,4 @@
-"""Round 38 — insight_detector: digest-driven advisory filer."""
+"""Round 38 - insight_detector: digest-driven advisory filer."""
 from __future__ import annotations
 
 import json
@@ -97,7 +97,7 @@ def test_skips_below_floor(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_skips_cold_streak_type(tmp_path: Path, monkeypatch) -> None:
-    """Cold-streak advisories are owned by cold_streak_detector —
+    """Cold-streak advisories are owned by cold_streak_detector -
     insight_detector must not duplicate them."""
     from agents.agent4_coach_mentor.insight_detector import detect_insights_and_file
     _init(tmp_path, monkeypatch)
@@ -157,7 +157,7 @@ def test_cooldown_expires(tmp_path: Path, monkeypatch) -> None:
 
 def test_cooldown_keys_include_scope(tmp_path: Path, monkeypatch) -> None:
     """Two different insight scopes (e.g. different hours) must each
-    get their own cooldown — one shouldn't block the other."""
+    get their own cooldown - one shouldn't block the other."""
     from agents.agent4_coach_mentor.insight_detector import _cooldown_key
     key_a = _cooldown_key({
         "type": "worst_hour", "mode": "aram",

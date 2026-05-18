@@ -1,4 +1,4 @@
-// Item Build panel — owned/recommended tiles, DS picks, in-game build switcher.
+// Item Build panel - owned/recommended tiles, DS picks, in-game build switcher.
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList } from '../lib/items_index.js';
@@ -14,7 +14,7 @@ const IB = {
   // Augments element lives in the header now (#augments-pill), not in the
   // Item Build panel, to keep info-panel layout stable across modes.
   augments: el("augments-pill"),
-  // DS pill (header) — peripheral-vision surface for the engine's top
+  // DS pill (header) - peripheral-vision surface for the engine's top
   // pick. Populated alongside the in-panel #ib-ds-picks chips so the
   // operator can read the call without scanning down to Item Build.
   dsPill: el("ds-pill"),
@@ -42,10 +42,10 @@ function renderItemTiles(container, names, opts) {
   container.dataset.tilesSig = sig;
   container.innerHTML = "";
   if (!names.length) {
-    container.textContent = "—";
+    container.textContent = "-";
     return;
   }
-  const CAP = opts.cap || 6;   // glance-read cap — extra tiles summarized as "+N"
+  const CAP = opts.cap || 6;   // glance-read cap - extra tiles summarized as "+N"
   const shown = names.slice(0, CAP);
   const extra = names.length - shown.length;
   const ver = ITEMS.version;
@@ -54,7 +54,7 @@ function renderItemTiles(container, names, opts) {
     tile.className = "item-tile";
     const iid = _resolveItemId(name);
     // Tooltip: item name + cost + (if provided) coach's reason for the
-    // build choice. Reasons are looked up from opts.reasons[name] — the
+    // build choice. Reasons are looked up from opts.reasons[name] - the
     // coach populates this via p.item_build_reasons (or equivalent)
     // when available; otherwise the tooltip just shows name + cost.
     const reason = opts.reasons && opts.reasons[name];
@@ -62,7 +62,7 @@ function renderItemTiles(container, names, opts) {
     const parts = [name];
     if (cost) parts.push(cost);
     if (reason) parts.push(reason);
-    tile.title = parts.join(" — ");
+    tile.title = parts.join(" - ");
     const iconWrap = document.createElement("div");
     iconWrap.className = "item-icon";
     if (iid) {
@@ -105,7 +105,7 @@ function renderItemTiles(container, names, opts) {
         if (pct >= 1) tile.classList.add("can-afford");
         // Gold caption: "need N" = remaining gold to complete the buy.
         // TODO: subtract owned sub-item values once items_recipes.json is
-        // generated — for now N = cost − currentGold, clamped to 0 for
+        // generated - for now N = cost − currentGold, clamped to 0 for
         // the can-afford case.
         const need = Math.max(0, Math.round(cost - opts.currentGold));
         const cap = document.createElement("div");
@@ -188,13 +188,13 @@ function renderItemBuild(p) {
   const arena = isArenaPayload(p);
   // Update header label with champion + active variant.
   _updateItemBuildHeader(p.champion, state.mode);
-  // In-game multi-build picker (2026-04-26 user request) — mirrors the
+  // In-game multi-build picker (2026-04-26 user request) - mirrors the
   // cs-build-list inside ITEM BUILD, lets the user hot-swap the item
   // set mid-game. Runes + summoners are locked at game start so we
   // only push items; the LCU agent updates the recommended shop order.
   _ibMaybeRenderBuilds(p);
   const owned = _splitItemList(p.items_display || p.items || p.owned_items, false);
-  // SR coach doesn't emit item_build — fall back to sr_items (liveclient-derived
+  // SR coach doesn't emit item_build - fall back to sr_items (liveclient-derived
   // build path overlaid by _state_builder) when available.
   const _srItemPath = Array.isArray(p.sr_items)
     ? p.sr_items.filter(i => i && i.next).map(i => i.name)
@@ -220,18 +220,18 @@ function renderItemBuild(p) {
   // Coach can emit per-item reasons via p.item_build_reasons (a map from
   // item name → short one-liner). Passed to the Recommended tiles so
   // hover shows the "why this next" coaching note. Owned tiles just
-  // show name + cost (no reason — it's already bought).
+  // show name + cost (no reason - it's already bought).
   const itemReasons = (p && p.item_build_reasons) || {};
   renderItemTiles(IB.owned, owned, { withArrows: false });
   renderItemTiles(IB.recommended, pathDedup, {
     withArrows: true, currentGold: p.gold, reasons: itemReasons,
   });
-  // Augments pill (header row 2) — always-visible per the static-pill
+  // Augments pill (header row 2) - always-visible per the static-pill
   // rule. Content = comma-separated list of augments the player
   // currently possesses (not advice). Mode-gated:
   //   arena → always has augments (3 picks per game)
   //   aram  → assumes Mayhem (user's default ARAM; internal mode code is
-  //           KIWI — see core/game_snapshot.py where KIWI → MODE_ARAM)
+  //           KIWI - see core/game_snapshot.py where KIWI → MODE_ARAM)
   //   tft   → Set 17+ adds gods + augments; gated later when TFT returns
   //   other → static "Mode does not support Augments" placeholder
   if (IB.augments) {
@@ -248,10 +248,10 @@ function renderItemBuild(p) {
     IB.augments.textContent = content;
     IB.augments.classList.toggle("hidden", !modeSupportsAugments);
     IB.augments.classList.toggle("no-support", !modeSupportsAugments);
-    // Data-driven ranking (CLAUDE #88) surfaces in the tooltip — visible
+    // Data-driven ranking (CLAUDE #88) surfaces in the tooltip - visible
     // pill text stays the owned-augments glance (static-pill / no-reflow
     // rule). Confidence = blend weight (how much own-history is trusted;
-    // low early by design — external Mayhem prior dominates cold-start).
+    // low early by design - external Mayhem prior dominates cold-start).
     let augTitle = "";
     if (modeSupportsAugments && Array.isArray(p.aug_reco) && p.aug_reco.length) {
       const conf = Math.round((p.aug_reco_conf || 0) * 100);
@@ -260,14 +260,14 @@ function renderItemBuild(p) {
         + (p.aug_reco_stage ? ` · stage ${p.aug_reco_stage}` : "")
         + ` · ${p.aug_reco_n_matches || 0} own games`;
       const rows = p.aug_reco.slice(0, 4).map((r, i) => {
-        const ext = (r.ext_wr == null) ? "—" : `${Math.round(r.ext_wr * 100)}%`;
+        const ext = (r.ext_wr == null) ? "-" : `${Math.round(r.ext_wr * 100)}%`;
         return `${i + 1}. ${r.name}  ${r.score}  own ${Math.round(r.own_wr * 100)}% / ext ${ext} (n${r.n_own})`;
       });
       augTitle = [head, meta, ...rows].join("\n");
     }
     IB.augments.title = modeSupportsAugments ? augTitle : content;
   }
-  // DS Engine picks — daemon_slayer_picks: [{id, name, delta_dps, gold, scorer?}, ...]
+  // DS Engine picks - daemon_slayer_picks: [{id, name, delta_dps, gold, scorer?}, ...]
   // scorer (s182+) flips the unit suffix per archetype (dps/ehp/%/adps/burst/hps).
   const dsPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
   if (IB.dsBlock) {
@@ -285,7 +285,7 @@ function renderItemBuild(p) {
   // Header DS pill. (C) plan §6b: when an in-game build ORDER is cached,
   // show the next-2-in-order + a full-order rich tooltip; otherwise fall
   // back to the flat top-pick render. build_order.js owns the order
-  // fetch + cache — this only consumes it. Mode-gated to in-game via CSS
+  // fetch + cache - this only consumes it. Mode-gated to in-game via CSS
   // (hidden client/tft); JS hides when there's nothing to show. The
   // "BO|" sig prefix guarantees a DOM rewrite when switching modes.
   if (IB.dsPill) {
@@ -324,7 +324,7 @@ function renderItemBuild(p) {
 // champ-select overlay). Pre-game variant selection persists in
 // localStorage so this chooser highlights the same row by default.
 // Mid-game pushes items only (runes + summoners are locked at game
-// start). Declared here so the helpers below can reach it — moved out
+// start). Declared here so the helpers below can reach it - moved out
 // of panels/champ_select.js where the const was orphaned post-split
 // (referenced only from this module, throwing ReferenceError on every
 // SR/ARAM/Brawl state push).
@@ -375,7 +375,7 @@ function _ibRenderRows(variants, chosen) {
     meta.appendChild(label);
     const runes = document.createElement("div");
     runes.className = "cs-build-runes";
-    runes.textContent = (v.keystone || "—");
+    runes.textContent = (v.keystone || "-");
     meta.appendChild(runes);
     row.appendChild(meta);
     const items = document.createElement("div");
@@ -448,7 +448,7 @@ function _ibFetchAndRender(champion, mode) {
       const block = document.getElementById("ib-builds-block");
       if (!data || !data.variants || data.variants.length < 2) {
         // <2 variants is uninteresting (just "default + experimental")
-        // — hide rather than clutter the small panel.
+        // - hide rather than clutter the small panel.
         if (block) block.hidden = true;
         return;
       }

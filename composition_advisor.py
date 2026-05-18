@@ -3,10 +3,10 @@ composition_advisor.py
 Analyzes team compositions to validate and recommend items.
 
 Key functions:
-  enemy_damage_profile()   — % AD vs % AP of the enemy team
-  validate_item()          — flags bad purchases (Collector vs tanks, MR vs AD team, etc.)
-  suggest_items()          — ordered list of recommended items with reason
-  aram_item_priority()     — ARAM-specific item priorities
+  enemy_damage_profile()   - % AD vs % AP of the enemy team
+  validate_item()          - flags bad purchases (Collector vs tanks, MR vs AD team, etc.)
+  suggest_items()          - ordered list of recommended items with reason
+  aram_item_priority()     - ARAM-specific item priorities
 
 Used by item_advisor.py for context-aware build advice.
 """
@@ -18,7 +18,7 @@ from champion_profiles import (
 
 # ── Item property maps ─────────────────────────────────────────────────────────
 
-# Items that provide MR — buying these vs AD-heavy team is inefficient
+# Items that provide MR - buying these vs AD-heavy team is inefficient
 MR_ITEMS = {
     "Abyssal Mask", "Banshee's Veil", "Force of Nature", "Hollow Radiance",
     "Kaenic Rookern", "Mercury's Treads", "Maw of Malmortius",
@@ -26,14 +26,14 @@ MR_ITEMS = {
     "Spirit Visage", "Sterak's Gage",
 }
 
-# Items that provide armor — buying these vs AP-heavy team is inefficient
+# Items that provide armor - buying these vs AP-heavy team is inefficient
 ARMOR_ITEMS = {
     "Bramble Vest", "Chain Vest", "Dead Man's Plate", "Frozen Heart",
     "Gargoyle Stoneplate", "Plated Steelcaps", "Randuin's Omen",
     "Sunfire Aegis", "Thornmail", "Warden's Mail", "Warmog's Armor",
 }
 
-# Items with lethality (armor pen) — poor vs HP-stacking / low-armor targets
+# Items with lethality (armor pen) - poor vs HP-stacking / low-armor targets
 LETHALITY_ITEMS = {
     "Axiom Arc", "Duskblade of Draktharr", "Edge of Night",
     "Ghostblade", "Opportunity", "Profane Hydra",
@@ -47,7 +47,7 @@ ARMOR_PEN_ITEMS = {
     "Last Whisper", "Void Staff",  # Void Staff is % magic pen
 }
 
-# Items that provide mana — usually bad on non-mana champions
+# Items that provide mana - usually bad on non-mana champions
 MANA_ITEMS = {
     "Archangel's Staff", "Banshee's Veil", "Catalyst of Aeons",
     "Caulfield's Warhammer", "Essence Reaver", "Frozen Heart",
@@ -137,7 +137,7 @@ def validate_item(item_name: str, champion: str,
         needs_mana = champ_data.get("mana", True)  # default True if unknown
         if not needs_mana:
             return False, (
-                f"{champion} doesn't use mana — {item_name} wastes its mana stats. "
+                f"{champion} doesn't use mana - {item_name} wastes its mana stats. "
                 f"Replace with a stat-efficient alternative."
             )
 
@@ -145,7 +145,7 @@ def validate_item(item_name: str, champion: str,
     if any(m.lower() in item_lower for m in MR_ITEMS):
         if ad_pct >= 0.75:
             return False, (
-                f"Enemy team is {ad_pct:.0%} AD — {item_name} provides MR with minimal value. "
+                f"Enemy team is {ad_pct:.0%} AD - {item_name} provides MR with minimal value. "
                 f"Build armor (Thornmail, Randuin's, Frozen Heart) instead."
             )
 
@@ -153,7 +153,7 @@ def validate_item(item_name: str, champion: str,
     if any(m.lower() in item_lower for m in ARMOR_ITEMS) and item_name not in ("Warmog's Armor",):
         if ap_pct >= 0.75:
             return False, (
-                f"Enemy team is {ap_pct:.0%} AP — {item_name} provides armor with minimal value. "
+                f"Enemy team is {ap_pct:.0%} AP - {item_name} provides armor with minimal value. "
                 f"Build MR (Banshee's, Force of Nature, Spirit Visage) instead."
             )
 
@@ -161,12 +161,12 @@ def validate_item(item_name: str, champion: str,
     if any(m.lower() in item_lower for m in LETHALITY_ITEMS):
         if tanks >= 3:
             return False, (
-                f"{item_name} has lethality (flat armor pen) — poor vs {tanks} tanks. "
+                f"{item_name} has lethality (flat armor pen) - poor vs {tanks} tanks. "
                 f"Build Last Whisper, Black Cleaver, or Void Staff for % armor penetration instead."
             )
 
     # ── No Grievous Wounds vs heavy healing ─────────────────────────────
-    # (Not a flag but a reminder — handled in suggestions)
+    # (Not a flag but a reminder - handled in suggestions)
 
     # ── ARAM: mana items double-check ──────────────────────────────────
     if is_aram and any(m.lower() in item_lower for m in {"Tear of the Goddess", "Manamune", "Archangel's Staff"}):
@@ -174,7 +174,7 @@ def validate_item(item_name: str, champion: str,
         if not needs_mana:
             return False, (
                 f"ARAM: {item_name} is a mana item but {champion} doesn't use mana. "
-                f"Every slot matters in ARAM — pick a combat-relevant item."
+                f"Every slot matters in ARAM - pick a combat-relevant item."
             )
 
     return True, ""
@@ -186,7 +186,7 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
                   current_items: list, gold: int,
                   game_mode: str = "CLASSIC") -> list:
     """
-    Returns list of (item_name, reason) tuples — ordered by priority.
+    Returns list of (item_name, reason) tuples - ordered by priority.
     These are suggestions based on what's missing given the composition.
     """
     profile    = enemy_damage_profile(enemy_champs)
@@ -209,20 +209,20 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
     if has_sustain and not has_gw:
         if dmg in ("ad", "hybrid"):
             suggestions.append(("Mortal Reminder",
-                f"Enemy has {profile['sustain_count']} healing champions — Grievous Wounds is mandatory"))
+                f"Enemy has {profile['sustain_count']} healing champions - Grievous Wounds is mandatory"))
         else:
             suggestions.append(("Shadowflame",
-                f"Enemy has {profile['sustain_count']} healing champions — Grievous Wounds is mandatory"))
+                f"Enemy has {profile['sustain_count']} healing champions - Grievous Wounds is mandatory"))
 
     # ── Anti-tank items ─────────────────────────────────────────────────
     if tanks >= 2:
         if dmg in ("ad", "hybrid") and not any("lord" in i or "mortal" in i or "black cleaver" in i
                                                  for i in owned_lower):
             suggestions.append(("Last Whisper / Lord Dominik's Regards",
-                f"{tanks} tanks in enemy comp — % armor penetration is required"))
+                f"{tanks} tanks in enemy comp - % armor penetration is required"))
         elif dmg == "ap" and not any("void staff" in i for i in owned_lower):
             suggestions.append(("Void Staff",
-                f"{tanks} tanks in enemy comp — % magic penetration is required"))
+                f"{tanks} tanks in enemy comp - % magic penetration is required"))
 
     # ── Defensive items based on enemy damage type ──────────────────────
     if ap_pct >= 0.6 and role not in ("marksman", "assassin"):
@@ -276,16 +276,16 @@ def comp_context_str(champion: str, current_items: list,
 
     # Damage profile
     if ad_pct >= 0.75:
-        lines.append(f"Enemy: {ad_pct:.0%} AD — prioritize armor items")
+        lines.append(f"Enemy: {ad_pct:.0%} AD - prioritize armor items")
     elif ap_pct >= 0.75:
-        lines.append(f"Enemy: {ap_pct:.0%} AP — prioritize MR items")
+        lines.append(f"Enemy: {ap_pct:.0%} AP - prioritize MR items")
     else:
         lines.append(f"Enemy: mixed {ad_pct:.0%} AD / {ap_pct:.0%} AP")
 
     if tanks >= 3:
-        lines.append(f"  {tanks} tanks — % armor/magic pen is required")
+        lines.append(f"  {tanks} tanks - % armor/magic pen is required")
     if sustain >= 2:
-        lines.append(f"  {sustain} healing champions — Grievous Wounds needed")
+        lines.append(f"  {sustain} healing champions - Grievous Wounds needed")
 
     # Item validation on current build
     warnings = []

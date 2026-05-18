@@ -119,7 +119,7 @@ class CacheEngine:
 
     def set(self, state, response):
         # game_state_json column is preserved for schema back-compat but
-        # written empty — a grep across the codebase confirms it's never
+        # written empty - a grep across the codebase confirms it's never
         # read by get() or any analyzer. Saves a few KB per cache row at
         # scale.
         key = make_cache_key(state)
@@ -144,7 +144,7 @@ class CacheEngine:
             conn.execute("UPDATE decisions SET confidence=confidence*0.5 WHERE cache_key=?", (key,))
 
     def bump_confidence(self, state, multiplier: float, *, flag: str = "graded"):
-        """Apply a confidence multiplier to a cache entry — closes the
+        """Apply a confidence multiplier to a cache entry - closes the
         positive end of the feedback loop. Confidence is clamped to
         [0.0, 1.0]. Used by `coaches/feedback.py` after a graded match.
 
@@ -173,5 +173,5 @@ class CacheEngine:
         logger.info("Bad advice flagged key=%s", key[:8])
 
     def close(self):
-        """No persistent connection to close — WAL connections are per-call."""
-        logger.debug("CacheEngine.close() called — no-op (connection-per-call mode)")
+        """No persistent connection to close - WAL connections are per-call."""
+        logger.debug("CacheEngine.close() called - no-op (connection-per-call mode)")

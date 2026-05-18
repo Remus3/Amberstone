@@ -1,4 +1,4 @@
-"""Phase 6 (s181, 2026-05-13) — Enchanter healing throughput scorer.
+"""Phase 6 (s181, 2026-05-13) - Enchanter healing throughput scorer.
 
 Sibling of ``dps.py`` / ``ehp.py`` / ``ability_dps.py`` / ``burst.py``.
 ``compute_hps()`` returns the caster's total healing + shielding + ally-
@@ -7,7 +7,7 @@ ally model. ``rank_items_by_hps()`` scores every purchasable mode-legal
 item by how much total throughput it adds (same candidate-filtering
 pipeline as the DPS / EHP / hybrid / ability / burst scorers).
 
-Phase 6 is the lowest-fidelity tier in the archetype expansion plan — by
+Phase 6 is the lowest-fidelity tier in the archetype expansion plan - by
 design. The DS engine has zero ally-state plumbing (no positions, no
 current HP, no buff-uptime tracking). The "average teammate" model is:
 
@@ -19,7 +19,7 @@ current HP, no buff-uptime tracking). The "average teammate" model is:
 * Proc rate for passives = curated per-item (Helia Soul Siphon ≈ 0.4/s;
   Moonstone chain rides whatever the caster heals/shields)
 
-Formulas live in ``data/daemon_slayer/<patch>/enchanter_items.json`` — a
+Formulas live in ``data/daemon_slayer/<patch>/enchanter_items.json`` - a
 hand-curated registry of 9 enchanter items. The engine reads it via
 :class:`EnchanterFormulasSnapshot` (singleton, mirroring ``abilities.py``).
 
@@ -39,14 +39,14 @@ Vow rankable next to direct-heal items. Phase 6.5 may overhaul this with
 real ally-state plumbing, but it's not blocking.
 
 Phase 6 deliberate omissions (Phase 6.5+):
-* Real ally-state plumbing (positions, HP, ability casts) — by design
+* Real ally-state plumbing (positions, HP, ability casts) - by design
 * Champion-spell healing throughput (Soraka W, Lulu E shield, Janna E
-  shield) — only ITEM throughput is scored; champion abilities are out
+  shield) - only ITEM throughput is scored; champion abilities are out
   of scope for v1
-* Heal/shield-power scaling on champion abilities — the amp_multiplier
+* Heal/shield-power scaling on champion abilities - the amp_multiplier
   applies only to item throughput here (a Soraka with Redemption sees
   her R amp via the in-game system, not this scorer)
-* ARAM aramShieldsHealing modifier — applied if present on the champion
+* ARAM aramShieldsHealing modifier - applied if present on the champion
   but not all enchanter champions have it; default mode_mult=1.0
 
 Phase 6 ALSO models per-target multiplier overrides via
@@ -225,7 +225,7 @@ def _aram_healing_modifier(
     """Pull ``aramShieldsHealing`` from the snapshot. 1.0 outside ARAM.
 
     Not all champions have an ``aramShieldsHealing`` modifier (most don't).
-    Returns 1.0 when missing — the multiplicative identity. Operator can
+    Returns 1.0 when missing - the multiplicative identity. Operator can
     override by setting ``mode_mult`` on the API call.
     """
     if mode != "ARAM":
@@ -325,8 +325,8 @@ class HpsResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}  [ENCHANTER]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [ENCHANTER]"
         )
         rows = [head, "-" * len(head)]
         if self.item_ids:
@@ -418,12 +418,12 @@ def compute_hps(
 
     Items not in the curated enchanter formulas registry contribute zero
     (they're treated as non-enchanter items). Items in the registry but
-    with zero formulas (e.g. Moonstone has no direct heal — it only amps)
+    with zero formulas (e.g. Moonstone has no direct heal - it only amps)
     contribute zero direct throughput but participate in the amp product.
 
     ``targets_per_proc_override`` replaces the curated per-item
     ``heal_targets_per_proc`` / ``shield_targets_per_proc`` values for ALL
-    items in the build — useful for Arena (2v2 → override=1) or solo-lane
+    items in the build - useful for Arena (2v2 → override=1) or solo-lane
     pre-grouping scenarios. None preserves the per-item curated defaults.
     """
     level = clamp_level(level)
@@ -505,7 +505,7 @@ def compute_hps(
     notes_out: list[str] = []
     if matched_count == 0:
         notes_out.append(
-            "no enchanter formulas matched current items — total throughput is 0"
+            "no enchanter formulas matched current items - total throughput is 0"
         )
     if mode == "ARAM" and mode_mult != 1.0:
         notes_out.append(
@@ -610,8 +610,8 @@ class HpsRankResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}  [ENCHANTER]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [ENCHANTER]"
         )
         rows = [head, "-" * len(head)]
         if self.current_item_ids:
@@ -668,16 +668,16 @@ def rank_items_by_hps(
 
     Mirror of ``rank.rank_items`` for the HPS scorer. Same candidate-filter
     pipeline (purchasable + mode-legal + optional whitelist + budget +
-    terminal-only) — only the scoring function differs.
+    terminal-only) - only the scoring function differs.
 
     ``enchanter_only=True`` (default) restricts the candidate pool to items
-    in the curated enchanter formulas registry — there's no point evaluating
+    in the curated enchanter formulas registry - there's no point evaluating
     every item in the snapshot when 95% contribute zero HPS. Set False to
     score every candidate (most will rank delta=0 and tie at the bottom).
 
     Sort keys:
-      * ``delta``       — absolute throughput gained (default)
-      * ``efficiency``  — throughput gained per 1000 gold
+      * ``delta``       - absolute throughput gained (default)
+      * ``efficiency``  - throughput gained per 1000 gold
 
     Same dead-unique dedup logic as ``rank.rank_items``.
     """
@@ -789,20 +789,20 @@ def rank_items_by_hps(
     notes: list[str] = []
     if stripped_trinkets:
         notes.append(
-            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} "
+            f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} "
             f"from current_item_ids"
         )
     if include_components:
-        notes.append("include_components=True — non-terminal items in the ranking")
+        notes.append("include_components=True - non-terminal items in the ranking")
     if budget is not None:
-        notes.append(f"budget={budget}g — items over budget filtered")
+        notes.append(f"budget={budget}g - items over budget filtered")
     if only_item_ids is not None:
         notes.append(
             f"only_item_ids restricted to {len(only_ids or ())} whitelisted ids"
         )
     elif enchanter_only:
         notes.append(
-            f"enchanter_only=True — candidate pool restricted to "
+            f"enchanter_only=True - candidate pool restricted to "
             f"{len(only_ids or ())} curated enchanter items + mode mirrors"
         )
     if targets_per_proc_override is not None:

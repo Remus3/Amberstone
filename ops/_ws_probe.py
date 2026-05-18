@@ -1,4 +1,4 @@
-"""Quick WS probe — connects to Phase 3 /push for 7s, dumps frame summary."""
+"""Quick WS probe - connects to Phase 3 /push for 7s, dumps frame summary."""
 import asyncio
 import json
 import sys

@@ -62,9 +62,9 @@ def wait_for_heartbeat(
         The run_id that was active BEFORE the deploy.  If None, only
         mtime+alive is checked (legacy / no run_id in health.json).
     allow_new_run
-        False (default) — only accept the SAME run_id recovering in-place.
+        False (default) - only accept the SAME run_id recovering in-place.
             Use for hot-reload deploys: the process should not have restarted.
-        True — also accept a DIFFERENT run_id that is alive.
+        True - also accept a DIFFERENT run_id that is alive.
             Use for force-restart deploys: supervisor killed and relaunched the app.
 
     Acceptance rules
@@ -96,7 +96,7 @@ def wait_for_heartbeat(
                 continue
             # File is newer and alive=True.  Now check run_id context.
             if expected_run_id is None:
-                return True   # no run_id tracking — mtime+alive is sufficient
+                return True   # no run_id tracking - mtime+alive is sufficient
             current_run_id = str(payload.get("run_id") or "")
             if not current_run_id:
                 return True   # health.json has no run_id field (old format)

@@ -1,4 +1,4 @@
-"""Unit tests for Agent 4 analyzer — per-champion aggregates + matchup
+"""Unit tests for Agent 4 analyzer - per-champion aggregates + matchup
 activation against a tmp SQLite DB with known inputs."""
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def seeded_db(tmp_path: Path, monkeypatch) -> Path:
                  json.dumps(enemies),
                  1200 + i * 60, win),
             )
-        # Lux: 2 games, 1 win — not enough for matchup activation.
+        # Lux: 2 games, 1 win - not enough for matchup activation.
         for win in [1, 0]:
             conn.execute(
                 """
@@ -109,18 +109,18 @@ def test_matchup_activates_at_threshold(seeded_db: Path) -> None:
 
     by_opp = {r["opponent_signature"]: dict(r) for r in rows}
 
-    # Ahri vs Darius — 5 samples → activated.
+    # Ahri vs Darius - 5 samples → activated.
     ahri_darius = by_opp["Darius"]
     assert ahri_darius["sample_count"] == 5
     assert ahri_darius["activated"] == 1
     assert ahri_darius["sample_count"] >= MATCHUP_ACTIVATE_THRESHOLD
     mj = json.loads(ahri_darius["modifier_json"])
-    # Ahri won 4/5 games when Darius was enemy — higher than baseline.
+    # Ahri won 4/5 games when Darius was enemy - higher than baseline.
     assert mj["observed_wr"] == 0.8
     assert mj["sample"] == 5
     assert mj["delta"] > 0
 
-    # Ahri vs Fizz — only 1 sample → not activated.
+    # Ahri vs Fizz - only 1 sample → not activated.
     ahri_fizz = by_opp["Fizz"]
     assert ahri_fizz["sample_count"] == 1
     assert ahri_fizz["activated"] == 0
@@ -131,7 +131,7 @@ def test_analyze_is_idempotent(seeded_db: Path) -> None:
     Analyzer("aram").analyze()     # re-run
     with sqlite3.connect(seeded_db) as conn:
         n = conn.execute("SELECT COUNT(*) FROM adaptation_buckets").fetchone()[0]
-    assert n == 2     # no duplicate rows — UPSERT is correct
+    assert n == 2     # no duplicate rows - UPSERT is correct
 
 
 def test_unknown_mode_rejected() -> None:

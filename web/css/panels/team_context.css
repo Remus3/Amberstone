@@ -153,7 +153,7 @@
   white-space: nowrap;
 }
 
-/* Skeleton — values not yet populated by FU02 fan-out. Dashed underline
+/* Skeleton - values not yet populated by FU02 fan-out. Dashed underline
  * so it reads "data pending" rather than "no data". Visually-quiet
  * enough that a fully-populated card doesn't look like a downgrade. */
 .skel {
@@ -162,7 +162,7 @@
   text-underline-offset: 2px;
 }
 
-/* Narrow-screen fallback — stack the two team blocks vertically on
+/* Narrow-screen fallback - stack the two team blocks vertically on
  * cramped viewports (1920×1080 in Chrome windowed is fine; zoom-in
  * or half-screen layouts cut it close). */
 @media (max-width: 1100px) {

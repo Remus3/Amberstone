@@ -1,9 +1,9 @@
-# start_gamepc_claude.ps1 — idempotent launcher for Game-PC's interactive
+# start_gamepc_claude.ps1 - idempotent launcher for Game-PC's interactive
 # Claude session.
 #
 # Behavior:
 #   1. Checks for an existing window titled "Game-PC bridge". If one exists,
-#      exits silently (idempotent — safe to run from boot script + scheduled
+#      exits silently (idempotent - safe to run from boot script + scheduled
 #      task + manual shortcut click).
 #   2. Otherwise spawns a visible Windows Terminal window in C:\RC-Agent\
 #      running a plain interactive Claude session:
@@ -11,7 +11,7 @@
 #      Bridge-task processing is handled automatically by RC-BridgeDaemon
 #      (gamepc_boot.ps1 step 6), which polls Legion every 30s and invokes
 #      claude --print /process-bridge-tasks only when tasks are pending.
-#      No /loop needed here — that would burn idle cycles for nothing.
+#      No /loop needed here - that would burn idle cycles for nothing.
 #
 # Called from gamepc_boot.ps1 at the end of the boot sequence. Can also be
 # run standalone:

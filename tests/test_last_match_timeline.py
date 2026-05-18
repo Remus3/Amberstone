@@ -1,4 +1,4 @@
-"""Tests for s220 Item E phase 1 — `_enrich_match_timeline` in
+"""Tests for s220 Item E phase 1 - `_enrich_match_timeline` in
 dashboard/builders.py.
 
 The parser turns a Riot Match-V5 timeline payload (which nests frames
@@ -7,7 +7,7 @@ the per-minute gold/XP/CS differential series + objective ribbon the
 Post Game Review "Timeline" tab renders. Diffs are ally_total −
 enemy_total (positive = operator's team ahead).
 
-Synthetic-only — no DB, no live Riot API. The numbers are hand-chosen
+Synthetic-only - no DB, no live Riot API. The numbers are hand-chosen
 so the per-frame aggregation + event team-attribution assert exactly.
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ from dashboard.builders import _enrich_match_timeline
 
 
 def _detail(my_team=100):
-    """10 participants — pids 1-5 team 100, 6-10 team 200."""
+    """10 participants - pids 1-5 team 100, 6-10 team 200."""
     parts = []
     for pid in range(1, 11):
         parts.append({"participantId": pid,

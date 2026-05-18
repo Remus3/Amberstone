@@ -11,12 +11,12 @@ the defensive backstop, this is the server-side correctness path).
 The live failure that motivated this test was a *deployment* problem
 (the long-running supervisor process predated the keystone 3eb2e2d
 commit that taught queue_modes about queue 2400, so its imported code
-couldn't resolve the ARAM Mayhem lobby) — a restart fixed that. These
+couldn't resolve the ARAM Mayhem lobby) - a restart fixed that. These
 tests instead pin the *logic* wiring so a future refactor of
 _check_one that drops/breaks the mirror call is caught in CI:
 
   - _PREFLIP_AVAILABLE must be True (the dashboard import from the
-    agents context is load-bearing — a False silently disables the
+    agents context is load-bearing - a False silently disables the
     whole feature)
   - an ARAM/Arena lobby snapshot must produce a mirrored health
     envelope (aram_mode/arena_mode flipped True)
@@ -65,7 +65,7 @@ class PreflipAvailableTests(unittest.TestCase):
         self.assertTrue(
             _PREFLIP_AVAILABLE,
             "dashboard._liveclient / dashboard._state_builder failed to "
-            "import from the agents context — the WS health mirror is "
+            "import from the agents context - the WS health mirror is "
             "silently disabled",
         )
 
@@ -96,7 +96,7 @@ class FileIngestMirrorTests(unittest.IsolatedAsyncioTestCase):
         return env["payload"]
 
     async def test_aram_mayhem_lobby_mirrors_aram_mode(self) -> None:
-        # queue 2400 = ARAM Mayhem (KIWI) — the exact live repro.
+        # queue 2400 = ARAM Mayhem (KIWI) - the exact live repro.
         payload = await self._broadcast_health(
             {"phase": "Lobby", "lobby": {"queue_id": 2400, "is_custom": False}}
         )

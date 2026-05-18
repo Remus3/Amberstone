@@ -1,4 +1,4 @@
-"""Shared HTTP client — every outbound call from Phase 3 code goes through here.
+"""Shared HTTP client - every outbound call from Phase 3 code goes through here.
 
 Enforces: polite UA, <=1 req/sec per hostname, blocklist, circuit breaker.
 """

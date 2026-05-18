@@ -1,4 +1,4 @@
-// Dev panel — settings, diagnostics, dev/sim fixture viewer, replay scrubber.
+// Dev panel - settings, diagnostics, dev/sim fixture viewer, replay scrubber.
 import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
@@ -34,7 +34,7 @@ function _settingsRefresh() {
   }
   // s220: Post Game Review knobs. Rank-tier writes the SAME
   // localStorage key the PGR page's inline dropdown uses
-  // (rc-pgr-rank-tier) — Settings is the canonical home, the two stay
+  // (rc-pgr-rank-tier) - Settings is the canonical home, the two stay
   // in sync via the shared key. Baseline window (rc-pgr-baseline) is
   // read by last_match.js and passed to /api/last-match?baseline=.
   const pgrTier = document.getElementById("set-pgr-rank-tier");
@@ -60,7 +60,7 @@ function _settingsRefresh() {
 
   // PRE-GAME LOBBY: party-type default. Remembered preference only
   // (rc-lobby-party-default), shared with the lobby Party toggle via the
-  // same key — last-write-wins, survives reload. Per the operator's
+  // same key - last-write-wins, survives reload. Per the operator's
   // choice this is NOT auto-pushed to LCU on lobby entry; it's just the
   // persisted preference. (The lobby Auto Accept checkbox in this same
   // card is agent-CONFIG-backed and wired in main.js, not here.)
@@ -70,7 +70,7 @@ function _settingsRefresh() {
     lpd.addEventListener("change", () => { setLS("rc-lobby-party-default", lpd.value); });
   }
 
-  // Live metrics status (read-only — env var)
+  // Live metrics status (read-only - env var)
   fetch("/api/diagnostics", { cache: "no-store" })
     .then((r) => (r && r.ok ? r.json() : null))
     .then((d) => {
@@ -271,7 +271,7 @@ function _replayViewRefresh() {
         li.dataset.matchId = m.match_id;
         const champ = (m.tracked && m.tracked.champion_name) || "?";
         const verdict = m.tracked && m.tracked.win === true ? "W" :
-                        m.tracked && m.tracked.win === false ? "L" : "—";
+                        m.tracked && m.tracked.win === false ? "L" : "-";
         const top = document.createElement("div");
         top.className = "replay-match-top";
         const span1 = document.createElement("span");
@@ -351,9 +351,9 @@ function _replayRenderSnapshot(idx) {
       ["replay-col-team",   p.team_id === 200 ? "R" : "B"],
       ["replay-col-champ",  null, _replayChampIconUrl(p.champion_name), p.champion_name],
       ["replay-col-name",   p.summoner_name || ""],
-      ["replay-col-num",    e.level != null ? String(e.level) : "—"],
-      ["replay-col-num",    e.total_gold != null ? e.total_gold.toLocaleString() : "—"],
-      ["replay-col-num",    e.cs != null ? String(e.cs) : "—"],
+      ["replay-col-num",    e.level != null ? String(e.level) : "-"],
+      ["replay-col-num",    e.total_gold != null ? e.total_gold.toLocaleString() : "-"],
+      ["replay-col-num",    e.cs != null ? String(e.cs) : "-"],
     ];
     for (const c of cells) {
       const td = document.createElement("td");

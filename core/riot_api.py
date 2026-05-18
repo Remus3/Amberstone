@@ -3,14 +3,14 @@
 
 Single permitted module for Riot Web API access per ADR-006. Wraps:
 
-  Account-V1                — get_account_by_riot_id
-  Match-V5                  — get_recent_matches, get_match, get_match_timeline
-  League-V4                 — get_summoner_rank
-  Champion-Mastery-V4       — get_champion_mastery
+  Account-V1                - get_account_by_riot_id
+  Match-V5                  - get_recent_matches, get_match, get_match_timeline
+  League-V4                 - get_summoner_rank
+  Champion-Mastery-V4       - get_champion_mastery
 
 Rate limiting is per-process: a dual token bucket sized to Personal-tier
 headline limits (20/s + 100/2min). Method-level limits surfaced by Riot
-in `X-Method-Rate-Limit-Count` are tracked best-effort — on a 429 the
+in `X-Method-Rate-Limit-Count` are tracked best-effort - on a 429 the
 endpoint is skipped (caller decides retry; the dashboard renders partial
 data anyway). Live-coaching loop must NOT call this module per ADR-006;
 the only consumers are champ-select team-context fan-out + post-game
@@ -23,7 +23,7 @@ Soft-fail invariants:
     is a fetch-and-store wrapper.
   - The rate limiter shares state across all endpoints (bucket exhaustion
     on Match-V5 still blocks League-V4). Method-specific tracking is
-    informational, not enforced — Riot's response headers are the
+    informational, not enforced - Riot's response headers are the
     canonical signal.
 
 Region routing: Account-V1 + Match-V5 use the regional cluster
@@ -160,7 +160,7 @@ class DualBucket:
             time.sleep(0.05)
 
     def note_429(self, retry_after_s: float) -> None:
-        """Caller observed a 429 — pause acquires until retry_after passes."""
+        """Caller observed a 429 - pause acquires until retry_after passes."""
         with self._lock:
             self._cooldown_until = time.monotonic() + max(0.0, float(retry_after_s))
 
@@ -189,7 +189,7 @@ _BUCKET = DualBucket(short_n=20, short_window_s=1.0,
 
 
 def _reset_bucket_for_tests() -> None:
-    """Test helper — clear the module bucket between cases."""
+    """Test helper - clear the module bucket between cases."""
     global _BUCKET
     _BUCKET = DualBucket(short_n=20, short_window_s=1.0,
                          long_n=100, long_window_s=120.0)
@@ -219,7 +219,7 @@ def _bump_metric(endpoint: str, outcome: str) -> None:
         snap = _BUCKET.snapshot()
         _M_BUCKET_SHORT.set(snap["short_used"])
         _M_BUCKET_LONG.set(snap["long_used"])
-    except Exception:    # pragma: no cover — metrics must never fault callers
+    except Exception:    # pragma: no cover - metrics must never fault callers
         pass
 
 
@@ -241,7 +241,7 @@ def _http_get(url: str, api_key: str, timeout_s: float = _HTTP_TIMEOUT_S) -> _Ht
     """One-shot HTTPS GET to a Riot endpoint.
 
     Encapsulated so tests can monkey-patch the function rather than
-    intercepting urllib internals. Always returns an `_HttpResp` —
+    intercepting urllib internals. Always returns an `_HttpResp` -
     network errors are caller's responsibility to catch.
     """
     req = urllib.request.Request(
@@ -275,11 +275,11 @@ def _call(
     """Rate-limited HTTPS GET returning parsed JSON or None on any failure.
 
     Outcome metrics (`outcome` label):
-      no_key       — API key file missing/invalid; nothing fired
-      rate_limited — bucket full for `rate_limit_timeout_s`
-      429          — Riot returned 429; caller should back off
-      error        — network exception, non-2xx, or JSON parse failure
-      ok           — 200 with parsed body
+      no_key       - API key file missing/invalid; nothing fired
+      rate_limited - bucket full for `rate_limit_timeout_s`
+      429          - Riot returned 429; caller should back off
+      error        - network exception, non-2xx, or JSON parse failure
+      ok           - 200 with parsed body
     """
     key = _get_api_key()
     if key is None:
@@ -318,7 +318,7 @@ def _call(
         return None
     if resp.status in (401, 403):
         log.warning(
-            "riot_api: %s returned %d — key may be invalid or revoked. "
+            "riot_api: %s returned %d - key may be invalid or revoked. "
             "Check %s and re-issue if needed.",
             endpoint_label, resp.status, _API_KEY_FILE,
         )
@@ -338,7 +338,7 @@ def get_account_by_riot_id(
 ) -> Optional[dict]:
     """Account-V1: PUUID lookup by Riot ID (game-name + tag-line).
 
-    Cached in the immutable cache — Riot IDs map stably to PUUIDs.
+    Cached in the immutable cache - Riot IDs map stably to PUUIDs.
     """
     name_e = urllib.parse.quote(name, safe="")
     tag_e = urllib.parse.quote(tag, safe="")
@@ -369,7 +369,7 @@ def get_recent_matches(
 ) -> Optional[list]:
     """Match-V5: list of recent match IDs for a PUUID.
 
-    Not cached — the list mutates every game. Caller decides cadence.
+    Not cached - the list mutates every game. Caller decides cadence.
 
     ``start`` (0-based) + ``count`` (1..100) drive Riot's pagination.
     ``start_time_unix_s`` / ``end_time_unix_s`` filter the window; both
@@ -412,7 +412,7 @@ def get_match(
     match_id: str,
     region: str = "americas",
 ) -> Optional[dict]:
-    """Match-V5: full match detail. Immutable cache — match data never changes."""
+    """Match-V5: full match detail. Immutable cache - match data never changes."""
     if not match_id:
         return None
     cache_key = f"match:v5:{match_id}"
@@ -461,7 +461,7 @@ def get_summoner_rank(
 ) -> Optional[list]:
     """League-V4: ranked entries for a PUUID. TTL-cached (5 min).
 
-    Riot's league/v4/entries/by-puuid returns a list — one entry per
+    Riot's league/v4/entries/by-puuid returns a list - one entry per
     queue (RANKED_SOLO_5x5 / RANKED_FLEX_SR / etc.). Empty list = unranked.
     """
     if not puuid:
@@ -603,7 +603,7 @@ def summarize_recent(
     last7_w = 0
     last7_l = 0
     seen = 0
-    # Match IDs are returned newest-first — first 7 are the streak window.
+    # Match IDs are returned newest-first - first 7 are the streak window.
     for idx, mid in enumerate(match_ids):
         match = get_match(mid, region=region)
         if not isinstance(match, dict):

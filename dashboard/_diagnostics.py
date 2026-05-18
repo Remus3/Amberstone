@@ -3,7 +3,7 @@
 Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
 
 `_build_diagnostics()` (in `dashboard.builders`) fans out to several
-heavy probes — DB introspection, log tail, RC + vision health — and
+heavy probes - DB introspection, log tail, RC + vision health - and
 sustains ~2 s. The dashboard hits `/api/diagnostics` on view-activate
 and nothing polls it, so a 30 s TTL feels instant on repeat opens
 without staling the data.

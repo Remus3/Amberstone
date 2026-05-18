@@ -1,10 +1,10 @@
-# Task Report — P-audit3-m01: Supervisor charter-fail-loud
+# Task Report - P-audit3-m01: Supervisor charter-fail-loud
 
 - **Task id:** `t-2854f3be403b`
 - **Operation:** `apply-proposal-p-audit3-m01-charter-fail-loud`
 - **Agent:** agent2 (Backend / Charter)
 - **Completed:** 2026-04-22T14:22:47Z
-- **Result:** NO-OP — fix already applied
+- **Result:** NO-OP - fix already applied
 
 ## Finding
 
@@ -15,7 +15,7 @@ session) and includes:
 1. **Audit comment** (lines 476–479) explicitly citing P-audit3-m01 and the
    rationale (missing-charter spawns silently widen authority, burn budget).
 
-2. **`EphemeralStubNotWired` raise — file missing** (lines 483–486):
+2. **`EphemeralStubNotWired` raise - file missing** (lines 483–486):
    ```python
    if not charter_path.exists():
        raise EphemeralStubNotWired(
@@ -23,7 +23,7 @@ session) and includes:
        )
    ```
 
-3. **`EphemeralStubNotWired` raise — file unreadable** (lines 489–492):
+3. **`EphemeralStubNotWired` raise - file unreadable** (lines 489–492):
    ```python
    except OSError as e:
        raise EphemeralStubNotWired(
@@ -31,7 +31,7 @@ session) and includes:
        ) from e
    ```
 
-4. **`EphemeralStubNotWired` raise — file empty** (lines 493–496):
+4. **`EphemeralStubNotWired` raise - file empty** (lines 493–496):
    ```python
    if not charter.strip():
        raise EphemeralStubNotWired(
@@ -54,4 +54,4 @@ silently completing or spawning without scope constraint.
 
 ## Status
 
-**CLOSED — already shipped.** No code changes required in this session.
+**CLOSED - already shipped.** No code changes required in this session.

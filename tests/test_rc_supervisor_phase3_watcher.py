@@ -1,4 +1,4 @@
-"""Unit tests for ops/rc_supervisor.py:_Phase3Watcher — the subordinate
+"""Unit tests for ops/rc_supervisor.py:_Phase3Watcher - the subordinate
 watch that detects Phase 3 supervisor death / heartbeat staleness and
 re-launches the RC-Phase3-Supervisor scheduled task.
 
@@ -163,7 +163,7 @@ class UnhealthyTriggerTests(unittest.TestCase):
                 "pid": 9999, "heartbeat_at": hb, "host": "X",
             }), encoding="utf-8")
             r = w.check()
-        # Heartbeat is essentially "now" — should be healthy
+        # Heartbeat is essentially "now" - should be healthy
         self.assertEqual(r["state"], "healthy")
         self.assertFalse(r["acted"])
 
@@ -179,7 +179,7 @@ class CooldownGateTests(unittest.TestCase):
             r1 = w.check()
             self.assertTrue(r1["acted"])
 
-            # Advance only 10s — still inside the 30s cooldown
+            # Advance only 10s - still inside the 30s cooldown
             clk.advance(10.0)
             # Lockfile is still stale (we haven't updated it)
             r2 = w.check()
@@ -287,7 +287,7 @@ class LoggingTests(unittest.TestCase):
 class StaleCodeDetectionTests(unittest.TestCase):
     """2026-05-18: an otherwise-healthy Phase-3 process whose started_at
     predates the newest import-chain mtime must be restarted (it's
-    serving stale code — the 2026-05-17 WS-mirror incident). Backward
+    serving stale code - the 2026-05-17 WS-mirror incident). Backward
     compatible: a lockfile without started_at (old supervisor) is never
     false-restarted."""
 

@@ -1,4 +1,4 @@
-"""GET/POST /api/bridge/cadence — bridge-watcher polling-mode sentinel.
+"""GET/POST /api/bridge/cadence - bridge-watcher polling-mode sentinel.
 
 The watcher reads ops/runtime/bridge_watcher_mode.json each poll cycle to
 decide its next sleep interval:
@@ -6,8 +6,8 @@ decide its next sleep interval:
   sleep   → _SLEEP_POLL_S   (300s)
   auto    → 15s while tasks arrive; drops to 300s after 15 min idle
 
-GET  /api/bridge/cadence     — return current sentinel (or default if absent)
-POST /api/bridge/cadence     — body {"mode": "active"|"sleep"|"auto"}
+GET  /api/bridge/cadence     - return current sentinel (or default if absent)
+POST /api/bridge/cadence     - body {"mode": "active"|"sleep"|"auto"}
                                writes sentinel atomically; watcher picks it
                                up on its next poll cycle
 

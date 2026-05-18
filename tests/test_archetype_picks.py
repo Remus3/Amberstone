@@ -1,4 +1,4 @@
-"""Phase 3 (s176, 2026-05-12) — core/archetype_picks tests.
+"""Phase 3 (s176, 2026-05-12) - core/archetype_picks tests.
 
 Tag → archetype resolver, persistence round-trip, default fallbacks,
 validation. Uses tempdir to avoid clobbering the real
@@ -36,7 +36,7 @@ class TagToArchetypeTests(unittest.TestCase):
 
 class DefaultForChampionTests(unittest.TestCase):
     """Exercises against the real ddragon_champions.json snapshot. These
-    pins assume the canonical 2026-05 DDragon shape — they'll redden if
+    pins assume the canonical 2026-05 DDragon shape - they'll redden if
     a patch retags champions, which is the right signal."""
 
     def test_aatrox_is_bruiser_with_tank_secondary(self):
@@ -80,7 +80,7 @@ class DefaultForChampionTests(unittest.TestCase):
         # Display name should resolve via the same map (champion-summary
         # has both name and id keyed).
         primary, secondary = archetype_picks.default_for_champion("Wukong")
-        # Wukong's name in DDragon may not be "Wukong" — id is MonkeyKing,
+        # Wukong's name in DDragon may not be "Wukong" - id is MonkeyKing,
         # display name is "Wukong". Either way the tags should resolve.
         self.assertIn(primary, ("bruiser", "carry"))  # carry = unknown fallback
 

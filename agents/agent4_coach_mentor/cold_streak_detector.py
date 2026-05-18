@@ -1,4 +1,4 @@
-"""Round 31 — autonomous cold-streak advisory filer.
+"""Round 31 - autonomous cold-streak advisory filer.
 
 After each analyze pass completes, scan ``kda_trends`` for every mode.
 For any champion whose last-10 KDA has tanked meaningfully relative to
@@ -6,14 +6,14 @@ the all-time baseline (``|delta_ratio| ≥ COLD_DELTA_FLOOR`` and sample
 size ≥ ``COLD_SAMPLE_FLOOR``), file a ``cold-streak-advisory`` task so
 the user sees it in the dashboard queue/activity feed.
 
-**No LLM dispatch** — these are notifications, not audits. Owner agent
+**No LLM dispatch** - these are notifications, not audits. Owner agent
 is ``"1"`` (deterministic lead) so the task sits in READY state until
 the user acts on it. A content-addressed cooldown (24 h by default,
 keyed on ``mode:champion``) prevents the same advisory firing every
 two minutes after the analyze pass. The cooldown map lives at
 ``data/cold_advisories.json`` and is atomically rewritten.
 
-The detector never raises on scheduler errors — it logs and keeps
+The detector never raises on scheduler errors - it logs and keeps
 going so a flaky filer can't break the analyze loop.
 """
 from __future__ import annotations
@@ -138,7 +138,7 @@ def detect_and_file(
             try:
                 t = scheduler.file_task(
                     op="cold-streak-advisory",
-                    owner_agent="1",       # deterministic lead — no LLM dispatch
+                    owner_agent="1",       # deterministic lead - no LLM dispatch
                     priority=70,
                     categories=[4],        # coaching insight
                     payload=payload,

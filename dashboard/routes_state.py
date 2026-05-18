@@ -1,7 +1,7 @@
 """State / health / version routes.
 
 Slice 2C (2026-05-01): handlers carved out of web_dashboard._Handler.
-Group 2 — state-shaped GETs that the dashboard polls frequently.
+Group 2 - state-shaped GETs that the dashboard polls frequently.
 
 Each route receives the BaseHTTPRequestHandler (`h`) as its sole
 argument and uses `h._send(code, body, ctype)` to write the response.
@@ -37,7 +37,7 @@ _BRIDGE_ALERT_S = 3600
 # Each peer POSTs its watcher heartbeat ~every 60s to /api/health/peer.
 # WARN (300s = 5 missed posts) preserves the prior hardcoded `stale`
 # boundary; ALERT (1800s = 30 min silent) is "publisher almost
-# certainly dead while the bridge task loop may still be alive" — the
+# certainly dead while the bridge task loop may still be alive" - the
 # false-confidence shape the audit flagged. <=WARN green, <=ALERT
 # yellow, >ALERT red.
 _PEER_HEALTH_WARN_S = 300
@@ -46,7 +46,7 @@ _PEER_HEALTH_ALERT_S = 1800
 
 def _peer_health_status(age_s: float) -> str:
     """Graded peer health-publisher status from heartbeat age (seconds).
-    <=WARN green · <=ALERT yellow · >ALERT red. Pure — unit-tested."""
+    <=WARN green · <=ALERT yellow · >ALERT red. Pure - unit-tested."""
     if age_s <= _PEER_HEALTH_WARN_S:
         return "green"
     if age_s <= _PEER_HEALTH_ALERT_S:
@@ -56,7 +56,7 @@ def _peer_health_status(age_s: float) -> str:
 log = logging.getLogger("rc.web_dashboard")
 
 
-# /api/state cache — populated lazily on first hit; declared at module
+# /api/state cache - populated lazily on first hit; declared at module
 # scope so the request handler can rebind it. 1.0 s TTL absorbs
 # high-frequency dashboard polls (5+ tabs polling tightly would
 # otherwise duplicate the vision-relay round-trip in _build_state).
@@ -80,7 +80,7 @@ def _serve_state(h) -> None:
         h._send(500, b'{"error":"state_build_failed"}', "application/json")
 
 
-# /api/state-stream SSE — Tier 4 #16 (2026-05-01). Pushes /api/state
+# /api/state-stream SSE - Tier 4 #16 (2026-05-01). Pushes /api/state
 # payload on change + heartbeat every _SSE_HEARTBEAT_S so the dashboard
 # can skip its dedicated LCU poller and HTTP-fallback /api/state polls
 # while a stream is connected. EventSource on the client auto-reconnects
@@ -105,7 +105,7 @@ def _serve_state_stream(h) -> None:
             return
         _sse_count += 1
     try:
-        # Send the SSE response headers manually — `_send` sets a
+        # Send the SSE response headers manually - `_send` sets a
         # Content-Length, which would terminate the response after
         # the first chunk.
         h.send_response(200)
@@ -184,7 +184,7 @@ def _serve_health_all(h) -> None:
             rollup["daemon_slayer"] = {"alive": False, "error": str(e)[:120]}
         try:
             sup = read_json("ops/runtime/supervisor.pid")
-            # AUDIT 2026-04-29: also surface oslock state — when the
+            # AUDIT 2026-04-29: also surface oslock state - when the
             # .oslock sidecar exists, the OS-level msvcrt byte-range
             # lock is held by the supervisor process.
             oslock_path = APP_DIR / "ops" / "runtime" / "supervisor.pid.oslock"
@@ -225,7 +225,7 @@ def _serve_health_all(h) -> None:
             }
         except Exception as e:
             rollup["bridge"] = {"error": str(e)[:120], "status": "unknown"}
-        # (2026-05-03) Peer bridge_watcher heartbeats — published by the
+        # (2026-05-03) Peer bridge_watcher heartbeats - published by the
         # sidecar tools/bridge_watcher_health_publisher.py on each peer
         # via POST /api/health/peer/<node>. Stale = no heartbeat in 5+
         # minutes. No-data = peer hasn't been deployed yet.
@@ -260,14 +260,14 @@ def _serve_health_all(h) -> None:
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
         ds_ok = bool(rollup.get("daemon_slayer", {}).get("alive"))
         cost_ok = rollup.get("cost", {}).get("banner") != "over"
-        # Bridge silence does not flip overall to red — RC + coaching keep
+        # Bridge silence does not flip overall to red - RC + coaching keep
         # working without it. Cap the bridge contribution at yellow so a
         # dead bridge auto-flow doesn't drown out actual RC/vision down
         # signals.
         bridge_status = (rollup.get("bridge") or {}).get("status")
         bridge_degraded = bridge_status in ("yellow", "red")
         # Audit7 H-01: a stale peer health-publisher is an observability
-        # gap, not an RC outage — cap at yellow (same philosophy as
+        # gap, not an RC outage - cap at yellow (same philosophy as
         # bridge silence) so the primary top-right dot flips instead of
         # staying falsely green while a publisher is dead for hours.
         peers_block = rollup.get("peers") or {}
@@ -301,7 +301,7 @@ def _serve_ui_version(h) -> None:
     # as a watched asset. The previous 4-file allow-list silently
     # excluded js/main.js + js/panels/* + css/panels/*, which meant
     # edits to ESM panel modules and per-panel CSS never triggered
-    # the auto-reload — operator's browser served stale champ_select.js
+    # the auto-reload - operator's browser served stale champ_select.js
     # through the entire s164 → s171.7 window.
     try:
         from dashboard._static import compute_asset_hash
@@ -369,7 +369,7 @@ def _serve_command_post(h, payload) -> None:
 
 
 # /api/console-error server-side throttle (10 Hz cap, all clients combined).
-# Migrated from web_dashboard._CE_LAST_TS/_CE_DROPPED in slice 2C-7a — nothing
+# Migrated from web_dashboard._CE_LAST_TS/_CE_DROPPED in slice 2C-7a - nothing
 # outside this handler reads the counters.
 _CE_LAST_TS: float = 0.0
 _CE_DROPPED: int   = 0
@@ -489,9 +489,9 @@ def _serve_ds_preview_post(h, payload) -> None:
 def _resolve_enemy_champions(payload: dict) -> list:
     """Resolve enemy champion names for the defensive-pick ranker.
     Priority:
-      1. payload["enemies"] — explicit list of names (champ-select
+      1. payload["enemies"] - explicit list of names (champ-select
          what-if exploration).
-      2. live liveclient relay — pull non-active-team champion names
+      2. live liveclient relay - pull non-active-team champion names
          from data.allPlayers[i].championName.
       3. empty list (skip the defensive ranker).
     """
@@ -523,11 +523,11 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
 
     Priority:
       1. Explicit ``target_armor`` / ``target_mr`` / etc. in the request
-         body — caller has pre-computed (e.g. champ-select preview with
+         body - caller has pre-computed (e.g. champ-select preview with
          a synthetic profile).
       2. Live enemy items from the liveclient relay (in-game).
       3. ``compute_enemy_stats(mode, level)`` mode/level scaled curve
-         (s170) — used when no live data + no explicit overrides.
+         (s170) - used when no live data + no explicit overrides.
 
     Returns a dict with the 4 target_* float fields plus diagnostic
     ``source`` / ``n_enemies`` / ``aggregator`` keys for the caller's
@@ -543,7 +543,7 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
             "target_bonus_hp": float(payload.get("target_bonus_hp") or 0.0),
             "n_enemies":       0,
             "source":          "explicit-override",
-            "aggregator":      "—",
+            "aggregator":      "-",
         }
     # Path 2: live enemy items from the relay.
     try:
@@ -577,7 +577,7 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
             "target_bonus_hp": float(getattr(es, "bonus_hp", 0.0) or 0.0),
             "n_enemies":       0,
             "source":          "mode-level-curve",
-            "aggregator":      "—",
+            "aggregator":      "-",
         }
     except Exception as exc:
         log.debug("ds-preview mode-level-curve resolve: %s", exc)
@@ -586,12 +586,12 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
     return {
         "target_armor": 0.0, "target_mr": 0.0,
         "target_max_hp": 0.0, "target_bonus_hp": 0.0,
-        "n_enemies": 0, "source": "default-zero", "aggregator": "—",
+        "n_enemies": 0, "source": "default-zero", "aggregator": "-",
     }
 
 
 def _serve_analyze_post(h, payload) -> None:
-    # Dashboard's "Analyze Now" button — forward POST to the supervisor
+    # Dashboard's "Analyze Now" button - forward POST to the supervisor
     # at :8890. Synchronous: returns supervisor's response. timeout=30
     # because analysis runs are multi-second (default 4 would lop them off).
     try:
@@ -662,7 +662,7 @@ def _serve_build_order_post(h, payload) -> None:
     against the accumulated build + enemy context. The unique-passive
     no-double rule (Trinity Force + Essence Reaver invalid together;
     also lifeline / immolate families) is enforced engine-side via the
-    iterate-with-accumulated-item_ids design — no two same-passive items
+    iterate-with-accumulated-item_ids design - no two same-passive items
     can appear in the order. Read-only; the UI seam the dashboard build
     chooser will consume.
     """

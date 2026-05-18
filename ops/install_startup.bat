@@ -1,7 +1,7 @@
 @echo off
 :: install_startup.bat
 :: Adds rc_league_watcher.ps1 to Windows startup so it runs automatically
-:: on login — hidden, no window. Run this ONCE.
+:: on login - hidden, no window. Run this ONCE.
 
 echo ========================================
 echo  Riot Commander - Startup Installer

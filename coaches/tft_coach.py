@@ -1,15 +1,15 @@
 # arch: TFT Set 17 mode coach | section=coaching | frozen=no
 """
 coaches/tft_coach.py
-Phase 1 Step 5 — TFT coach facade (post-T2 #6 dashboard-only).
+Phase 1 Step 5 - TFT coach facade (post-T2 #6 dashboard-only).
 
 This module is a thin facade. Runtime polling, coaching orchestration, and
-TftLiveAnalysis are owned by core/tft_worker.TftWorker — not this class.
+TftLiveAnalysis are owned by core/tft_worker.TftWorker - not this class.
 
 Responsibilities retained here:
   - _force_refresh_all() right-click callback (delegates to worker)
-  - reset_state() — clears data files and engine/live state via worker refs
-  - shutdown() — clears worker reference and resets data (app.py owns TftWorker lifecycle)
+  - reset_state() - clears data files and engine/live state via worker refs
+  - shutdown() - clears worker reference and resets data (app.py owns TftWorker lifecycle)
 
 Responsibilities that moved to TftWorker:
   - TftStateReader ownership
@@ -86,7 +86,7 @@ def _coach_board_to_placement(board_text):
 
 class Coach:
     """
-    TFT coach facade — manages overlay Tk lifecycle only.
+    TFT coach facade - manages overlay Tk lifecycle only.
 
     The runtime poll loop, TftCoachEngine, TftLiveAnalysis, and
     TftStateReader are owned by TftWorker (core/tft_worker.py).
@@ -102,7 +102,7 @@ class Coach:
         self._last_data: dict = {}
         self._tft_data_file  = self._data_file.parent / "tft_coaching_data.json"
         self._live_data_file = self._data_file.parent / "tft_live_data.json"
-        # TftWorker reference — set by app.py via set_worker() after construction
+        # TftWorker reference - set by app.py via set_worker() after construction
         self._worker = None
         self._ensure_data_files()
         self.reset_state()
@@ -158,17 +158,17 @@ class Coach:
                 path.write_text(_j.dumps(default, indent=2), encoding="utf-8")
             except Exception:
                 pass
-        logger.info("TFT state reset — data files cleared")
+        logger.info("TFT state reset - data files cleared")
 
     def shutdown(self) -> None:
         """
         Reset facade state at game end.
 
         Phase 1 Step 5.1: app.py is the sole owner of TftWorker lifecycle.
-        This method does NOT call self._worker.shutdown() — that is done
+        This method does NOT call self._worker.shutdown() - that is done
         exclusively by app.py._on_game_end() to avoid dual shutdown paths.
         """
-        # Clear worker reference without shutting it down — app.py owns that
+        # Clear worker reference without shutting it down - app.py owns that
         self._worker = None
         # Clear data files so lobby shows blank, not last game's data
         self.reset_state()

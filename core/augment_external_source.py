@@ -1,5 +1,5 @@
 """
-core/augment_external_source.py — external Mayhem/Arena augment win-rate prior.
+core/augment_external_source.py - external Mayhem/Arena augment win-rate prior.
 
 Cold-start substrate for the augment recommender (CLAUDE.md #88, plan
 `Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md` §4, Option B).
@@ -10,7 +10,7 @@ RC's own ingested augment history is extremely sparse (Task-1 audit
 bootstraps from an external per-augment marginal win-rate prior and blends
 toward own-history as ingest grows (`w = n_own/(n_own+K)`).
 
-Source (validated + LOCKED 2026-05-17 — do not re-research): Overlay App E's
+Source (validated + LOCKED 2026-05-17 - do not re-research): Overlay App E's
 unauthenticated data backend. Plain GET, no params, public cert, BunnyCDN
 ~1h. The `overlay app E` HTML is bot-protected; this data host is not.
 
@@ -302,7 +302,7 @@ def _load_degraded(mode: str) -> AugmentPriorTable:
 def get_priors(mode: str = "mayhem", *, force_refresh: bool = False) -> AugmentPriorTable:
     """Process-cached accessor for the recommender. mtime-gated against the
     current-patch snapshot so a background refresh / patch flip is picked up
-    without a restart. Never raises — degrades to empty on every failure."""
+    without a restart. Never raises - degrades to empty on every failure."""
     if mode not in _ENDPOINTS:
         return AugmentPriorTable(mode=mode)
     patch = _current_patch()
@@ -338,7 +338,7 @@ def get_priors(mode: str = "mayhem", *, force_refresh: bool = False) -> AugmentP
 # ── augment metadata (id → name / rarity / icon) ────────────────────────
 #
 # CommunityDragon mirror of the static LCU asset
-# `/lol-game-data/assets/v1/cherry-augments.json` — authoritative
+# `/lol-game-data/assets/v1/cherry-augments.json` - authoritative
 # id→{nameTRA, rarity, icon} for the whole Cherry/Mayhem augment universe
 # (568 entries; rarity as kSilver/kGold/kPrismatic/kEventChoice/kBronze).
 # Complements RC's existing per-patch `arena_augments.json` (220 entries,
@@ -559,7 +559,7 @@ def get_augment_meta(*, force_refresh: bool = False) -> AugmentMetaTable:
 
 
 def reset_cache() -> None:
-    """Test hook — clear both process caches (WR prior + metadata)."""
+    """Test hook - clear both process caches (WR prior + metadata)."""
     global _meta_cache, _meta_cache_mtime
     with _lock:
         _cache.clear()

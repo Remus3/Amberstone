@@ -102,7 +102,7 @@ class ItemImpactTests(unittest.TestCase):
     def test_berserkers_raises_dps_via_as(self) -> None:
         naked = compute_dps(self.snap, "Aatrox", level=1)
         zerks = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3006"])
-        # AS scales basicTime portion only — DPS climbs but not by AS factor flat.
+        # AS scales basicTime portion only - DPS climbs but not by AS factor flat.
         self.assertGreater(zerks.weighted_dps, naked.weighted_dps)
 
     def test_infinity_edge_raises_dps_via_ad_and_crit(self) -> None:
@@ -162,7 +162,7 @@ class ModeMultiplierTests(unittest.TestCase):
         self.assertTrue(any("aramDamageDealt" in n for n in aram.notes))
 
     def test_yunara_aram_zero_multiplier_zeros_dps(self) -> None:
-        # Yunara aramDamageDealt = 0 in 16.9.1 — hard ARAM disable
+        # Yunara aramDamageDealt = 0 in 16.9.1 - hard ARAM disable
         aram = compute_dps(self.snap, "Yunara", level=11, mode="ARAM")
         self.assertEqual(aram.mode_multiplier, 0.0)
         self.assertEqual(aram.weighted_dps, 0.0)
@@ -203,7 +203,7 @@ class SerializationTests(unittest.TestCase):
 
 
 class DpsCurveTests(unittest.TestCase):
-    """Phase 6 step 7 — per-level DPS curve helper."""
+    """Phase 6 step 7 - per-level DPS curve helper."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -239,7 +239,7 @@ class DpsCurveTests(unittest.TestCase):
 
     def test_dps_at_18_with_ie_exceeds_naked_lvl_1(self) -> None:
         # Sanity: lvl 18 + Infinity Edge is strictly higher DPS than
-        # lvl 1 naked. (Not testing the whole curve is monotonic — late-
+        # lvl 1 naked. (Not testing the whole curve is monotonic - late-
         # phase rotations weight differently, so weighted DPS can dip on
         # phase transitions; this is the safe inequality.)
         curve = compute_dps_curve(self.snap, "Aatrox", item_ids=["3031"])
@@ -293,7 +293,7 @@ class DpsCurveTests(unittest.TestCase):
         self.assertIn("ad", d["stats"])
 
     def test_duplicate_levels_honored(self) -> None:
-        # No dedup — caller controls sample density.
+        # No dedup - caller controls sample density.
         curve = compute_dps_curve(self.snap, "Aatrox", levels=(6, 6, 11))
         self.assertEqual(len(curve), 3)
         self.assertAlmostEqual(curve[0].weighted_dps, curve[1].weighted_dps)

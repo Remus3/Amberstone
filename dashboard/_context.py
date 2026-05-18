@@ -1,7 +1,7 @@
 """Shared context for dashboard builders/routes.
 
 Module-level state used by `dashboard.builders` and (later) the
-`dashboard.routes_*` handlers. Self-initialising — APP_DIR derives
+`dashboard.routes_*` handlers. Self-initialising - APP_DIR derives
 from this file's location, the per-thread sqlite cache spins up on
 first use, no init() required.
 """
@@ -24,7 +24,7 @@ log = logging.getLogger("rc.web_dashboard")
 # init's the parser) across every request served by the same thread.
 # Each conn is pinned to its owning thread (sqlite3 default).
 # Safe because: (a) all consumers use ?mode=ro, (b) the DBs are
-# append-only — writers add rows without rename/replace, so cached RO
+# append-only - writers add rows without rename/replace, so cached RO
 # conns see new rows on subsequent queries.
 DB_CONN_LOCAL = threading.local()
 
@@ -32,7 +32,7 @@ DB_CONN_LOCAL = threading.local()
 def ro_conn(db_path: Path):
     """Per-thread read-only sqlite connection for db_path, opened
     lazily on first call per thread and reused thereafter. Returns
-    None if the DB file is missing — caller decides the fallback."""
+    None if the DB file is missing - caller decides the fallback."""
     if not db_path.exists():
         return None
     cache = getattr(DB_CONN_LOCAL, "conns", None)

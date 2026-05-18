@@ -366,7 +366,7 @@ class TestDerivedCompatibilitySurfaces(unittest.TestCase):
     def test_rift_raw_state_is_input_dict(self):
         """RiftSnapshot.raw_state mirrors the dict passed to from_state_dict.
         Audit 2026-04-28 (deferred-frozen): producer-side defensive copy
-        means raw_state is now value-equal but not identity-equal — that
+        means raw_state is now value-equal but not identity-equal - that
         is the safety contract."""
         s = RiftSnapshot.from_state_dict(SR_STATE)
         self.assertEqual(s.raw_state, SR_STATE)

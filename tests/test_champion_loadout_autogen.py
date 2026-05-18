@@ -1,4 +1,4 @@
-"""s215 (2026-05-15) — champion_loadout_autogen tests.
+"""s215 (2026-05-15) - champion_loadout_autogen tests.
 
 Verifies the 3-variant fill policy, hand-curated preservation, mode
 isolation, key-stability semantics, and the archetype-triplet
@@ -341,7 +341,7 @@ class EnsureDefaultPerModeTests(unittest.TestCase):
         self.assertEqual(entry["default_per_mode"]["sr"], "auto-sr-primary-bruiser")
 
     def test_preserves_existing_default(self):
-        # Operator already set a default — do not overwrite
+        # Operator already set a default - do not overwrite
         entry = {
             "default_per_mode": {"sr": "custom-bruiser"},
             "variants": {

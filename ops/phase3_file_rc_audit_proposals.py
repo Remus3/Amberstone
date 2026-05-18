@@ -7,7 +7,7 @@ Frozen per CLAUDE.md §Hard rules:
   app/_remediation.py, app/_state_authority.py, app/_overlay_manager.py,
   app/_game_lifecycle.py.
 
-Idempotent — reruns skip already-queued proposals.
+Idempotent - reruns skip already-queued proposals.
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ PROPOSALS = [
         "lcu_client.py: urlopen without context manager",
         "lcu/lcu_client.py:71 opens a response via urlopen() without "
         "`with`; if json parsing raises mid-read, the socket is not "
-        "guaranteed to close until GC runs. Wrap in `with` — two-line "
-        "change. FROZEN file — needs explicit user approval before edit.",
+        "guaranteed to close until GC runs. Wrap in `with` - two-line "
+        "change. FROZEN file - needs explicit user approval before edit.",
     ),
     (
         "medium", "P-rc-frozen-moon_proxy-except-breadth", "2",
@@ -55,7 +55,7 @@ PROPOSALS = [
         "low", "P-rc-frozen-claude-md-path-typo", "2",
         "CLAUDE.md lists frozen `core/rc_dev_runtime.py` but file is at ops/",
         "CLAUDE.md §Hard rules frozen list says `core/rc_dev_runtime.py` "
-        "— the actual file lives at `ops/rc_dev_runtime.py`. Documentation "
+        "- the actual file lives at `ops/rc_dev_runtime.py`. Documentation "
         "inconsistency. Propose editing CLAUDE.md to match filesystem. "
         "Not a code change.",
     ),

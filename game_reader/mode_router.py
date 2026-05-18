@@ -1,7 +1,7 @@
 # arch: queue/map → mode-key routing + TFT early-exit | section=vision | frozen=no
-"""game_reader.mode_router — TFT detection + mode-keyed helpers.
+"""game_reader.mode_router - TFT detection + mode-keyed helpers.
 
-Module-level functions (not a mixin) — called from
+Module-level functions (not a mixin) - called from
 `_NormalizerMixin._process_game` to short-circuit the TFT branch and to
 size SR-vs-ARAM tower counts. Keep this small; it is the natural place to
 add new mode-routing logic (queue-id heuristics, ARAM Mayhem variants, etc.).
@@ -38,7 +38,7 @@ def tft_minimal_state(game_mode: str, active: dict, game_info: dict,
     present (caller should treat as game-over, same as SR/ARAM path).
 
     TFT has a different data structure; the dedicated TFT coach handles
-    full state parsing via tft_state_reader.py — this just emits enough
+    full state parsing via tft_state_reader.py - this just emits enough
     fields for the overlay to detect TFT mode and route there.
     """
     for ev in events:

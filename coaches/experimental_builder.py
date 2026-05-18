@@ -1,8 +1,8 @@
-"""coaches/experimental_builder.py — auto-adapting experimental ARAM builds.
+"""coaches/experimental_builder.py - auto-adapting experimental ARAM builds.
 
 Generates and persistently iterates on off-meta "funky" builds for each
 champion in ARAM Mayhem (and ARAM). The user opts in via the variant
-dropdown — picking "⚗ Experimental" applies whatever this module's
+dropdown - picking "⚗ Experimental" applies whatever this module's
 current iteration says. After the game ends, the user's grade feeds
 back here and the module either keeps the build (good result) or
 generates the next iteration (poor result), exploring different
@@ -75,10 +75,10 @@ _SUMMONERS = {
     "smite": 11, "clarity": 13,
 }
 
-_SYSTEM_PROMPT = """You design EXPERIMENTAL ARAM Mayhem builds — off-meta
+_SYSTEM_PROMPT = """You design EXPERIMENTAL ARAM Mayhem builds - off-meta
 but coherent. Goal: leverage the champion's underused stats / ability
 quirks / item synergies in a way that explores territory the standard
-build doesn't. Break the meta idea but stay grounded — the build must
+build doesn't. Break the meta idea but stay grounded - the build must
 be playable, not parody.
 
 ARAM Mayhem context: faster respawns, ult haste buff, Mark/Snowball
@@ -86,12 +86,12 @@ required as one summoner, no recall. Favor snowballing/early-power
 items; slightly less defensive than standard ARAM.
 
 If prior attempts are listed with their results:
-- A grade-S or grade-A result MEANS that direction worked — propose
+- A grade-S or grade-A result MEANS that direction worked - propose
   refinements (swap one item, try a different secondary tree).
 - A grade-B result MEANS keep most of it, change 1-2 items.
-- A grade-C/D MEANS the premise was off — try a substantially different
+- A grade-C/D MEANS the premise was off - try a substantially different
   approach (different damage profile or playstyle).
-- A grade-F MEANS the build was broken — pick a completely different
+- A grade-F MEANS the build was broken - pick a completely different
   premise from the failed one.
 - Do NOT repeat a build that already failed at C-or-worse.
 
@@ -101,7 +101,7 @@ Rationale: <one short sentence on the premise>
 Keystone: <one from the allowed list>
 Primary: <one tree from Precision|Domination|Sorcery|Inspiration|Resolve>
 Secondary: <one tree, different from Primary>
-Summoners: <D, F — two names from: Flash, Snowball, Heal, Ignite, Exhaust, Cleanse, Ghost, Barrier, Teleport>
+Summoners: <D, F - two names from: Flash, Snowball, Heal, Ignite, Exhaust, Cleanse, Ghost, Barrier, Teleport>
 Items: <6 item display names, comma-separated, in build order>"""
 
 
@@ -116,7 +116,7 @@ def _load() -> dict:
 
 
 def _save(data: dict) -> None:
-    """Atomic write — overlays may poll mid-write."""
+    """Atomic write - overlays may poll mid-write."""
     _BUILDS_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = _BUILDS_PATH.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -173,7 +173,7 @@ def _parse_haiku(raw: str) -> dict:
 def _build_history_block(history: list[dict]) -> str:
     """Format prior attempts compactly so Haiku can reason about them."""
     if not history:
-        return "  (none — this is the first attempt)"
+        return "  (none - this is the first attempt)"
     lines = []
     for entry in history[-6:]:           # last 6 attempts is plenty of context
         it = entry.get("iteration", "?")
@@ -225,15 +225,15 @@ def _call_haiku(champion: str, history: list[dict], api_key: str) -> dict | None
 def generate(champion: str, api_key: str | None) -> dict | None:
     """Generate the FIRST experimental build for a champion. No history."""
     if not api_key:
-        logger.info("experimental: no API key — skipping generation for %s", champion)
+        logger.info("experimental: no API key - skipping generation for %s", champion)
         return None
     return _create_iteration(champion, history=[], api_key=api_key, premise="initial")
 
 
 def adapt(champion: str, api_key: str | None) -> dict | None:
-    """Generate the NEXT iteration — Haiku considers full history."""
+    """Generate the NEXT iteration - Haiku considers full history."""
     if not api_key:
-        logger.info("experimental: no API key — skipping adapt for %s", champion)
+        logger.info("experimental: no API key - skipping adapt for %s", champion)
         return None
     history = get_history(champion)
     return _create_iteration(champion, history=history, api_key=api_key, premise="adapt")
@@ -296,7 +296,7 @@ def record_result(champion: str, grade: str, game_state: dict | None,
     champ_entry.setdefault("history", []).append(archived)
 
     if verdict == "validated":
-        # Lock the current build — don't touch it on next pickup
+        # Lock the current build - don't touch it on next pickup
         champ_entry["current"]["validated"] = True
         out["verdict"] = "validated"
         _save(data)

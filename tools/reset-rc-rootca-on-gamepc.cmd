@@ -23,7 +23,7 @@ REM Run elevated. Right-click → Run as administrator.
 REM ============================================================
 
 echo.
-echo === RC dashboard root CA — hard reset ===
+echo === RC dashboard root CA - hard reset ===
 echo.
 
 net session >nul 2>&1
@@ -55,7 +55,7 @@ if "%CERT%"=="" (
 echo Cert source: %CERT%
 echo.
 
-REM Resolve the cert thumbprint we expect — we delete by thumbprint to
+REM Resolve the cert thumbprint we expect - we delete by thumbprint to
 REM avoid wiping unrelated CAs that happen to match a substring search.
 for /f "tokens=*" %%H in ('certutil -dump "%CERT%" ^| findstr /I /C:"Cert Hash(sha1)"') do (
     set HASHLINE=%%H
@@ -70,7 +70,7 @@ echo.
 echo === Step 1: removing every mkcert copy from all stores ===
 echo.
 
-REM PowerShell sweep — finds and deletes by issuer-substring AND thumbprint
+REM PowerShell sweep - finds and deletes by issuer-substring AND thumbprint
 REM across every common store on both LocalMachine and CurrentUser.
 REM 2026-04-28: previous version built the Remove-Item path manually from
 REM PSParentPath which produced a malformed string ('Cert:\:\CurrentUser\…')

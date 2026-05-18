@@ -1,14 +1,14 @@
-"""Phase 5.9.21 (s215, 2026-05-15) — sum-of-blocks data batch.
+"""Phase 5.9.21 (s215, 2026-05-15) - sum-of-blocks data batch.
 
 First pure-data batch consuming the s207 sum-of-blocks schema lift.
 Adds 4 new (champion, key) entries from s207's queued candidate list:
 
-  * Thresh.E    = [1, 2]               — Maximum Bonus Magic (full Souls)
+  * Thresh.E    = [1, 2]               - Maximum Bonus Magic (full Souls)
                                           + canonical Magic Damage
-  * Sona.Q      = [0, 1]               — active Magic Damage
+  * Sona.Q      = [0, 1]               - active Magic Damage
                                           + Power Chord empowered AA
-  * Kalista.E   = [0, 1, 1, 1, 1]      — base Rend + 4× additional stacks
-  * Malzahar.R  = [0, 2]               — Total Magic channel
+  * Kalista.E   = [0, 1, 1, 1, 1]      - base Rend + 4× additional stacks
+  * Malzahar.R  = [0, 2]               - Total Magic channel
                                           + Total Max-HP% bonus
 
 Mirrors the s207 test structure: registry shape assertions + arithmetic
@@ -47,7 +47,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── Registry shape — 4 new entries ──────────────────────────────────────────
+# ─── Registry shape - 4 new entries ──────────────────────────────────────────
 
 
 class Phase599_21RegistrySeedTests(unittest.TestCase):
@@ -84,7 +84,7 @@ class Phase599_21RegistrySeedTests(unittest.TestCase):
         self.assertEqual(m.get("R"), [0, 2])
 
 
-# ─── Arithmetic parity — sum == sum of forced singletons ─────────────────────
+# ─── Arithmetic parity - sum == sum of forced singletons ─────────────────────
 
 
 class Phase599_21AbilityDpsTests(unittest.TestCase):
@@ -178,7 +178,7 @@ class Phase599_21AbilityDpsTests(unittest.TestCase):
     def test_malzahar_R_sum_exceeds_block_0_alone(self) -> None:
         s_sum = self._spell("Malzahar", "R")
         s_forced = self._spell_forced("Malzahar", "R", 0)
-        # Block 2 carries the 10/15/20% target max HP bonus — on a
+        # Block 2 carries the 10/15/20% target max HP bonus - on a
         # 2000-HP target at rank 2 that's +300 damage on top of block 0.
         self.assertGreater(s_sum.raw_damage_per_cast, s_forced.raw_damage_per_cast)
 
@@ -193,7 +193,7 @@ class Phase599_21AbilityDpsTests(unittest.TestCase):
         )
 
 
-# ─── Backward-compat — s207 seed entries preserved ───────────────────────────
+# ─── Backward-compat - s207 seed entries preserved ───────────────────────────
 
 
 class Phase599_21BackwardCompatTests(unittest.TestCase):
@@ -233,7 +233,7 @@ class Phase599_21BackwardCompatTests(unittest.TestCase):
 
     def test_unmapped_champion_still_returns_empty(self) -> None:
         # Annie is not in the block_index registry (uses default 0 for
-        # all keys — her abilities are single-block per Meraki snapshot
+        # all keys - her abilities are single-block per Meraki snapshot
         # so no override needed).
         m, src = get_block_index_for("Annie")
         self.assertEqual(m, {})

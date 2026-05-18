@@ -17,13 +17,13 @@ PROPOSALS = [
         "any segment equal to '..' or '%2e%2e'. Invoke at the top of "
         "Evaluator.evaluate() with REASON_DESTINATION (criterion 3) so the "
         "rejection label reads 'destination_traversal'. Rolls in M3 subdir "
-        "substring-match tightening — require subdir to immediately follow "
+        "substring-match tightening - require subdir to immediately follow "
         "RCClient\\.",
     ),
     (
         "high", "P-audit-h2", "2",
         "Process-level lock on task_queue.jsonl",
-        "Scheduler._append_log uses threading.RLock only — concurrent Python "
+        "Scheduler._append_log uses threading.RLock only - concurrent Python "
         "processes can interleave. Add msvcrt.locking(f.fileno(), "
         "msvcrt.LK_NBLCK, 1) with a ~100ms retry loop when another writer "
         "holds it. Windows-only; Linux equivalent via fcntl if ever needed.",
@@ -37,7 +37,7 @@ PROPOSALS = [
         "{'substrate': 'stub_no_op'} and the dispatcher must call "
         "scheduler.fail(task_id, 'stub_no_op') instead of complete(). "
         "Prevents silent false-positive completions for ALL LLM-agent "
-        "work — including the audit task itself.",
+        "work - including the audit task itself.",
     ),
     (
         "medium", "P-audit-m1", "3",
@@ -52,7 +52,7 @@ PROPOSALS = [
         "medium", "P-audit-m2", "2",
         "Migration: skip rows with null tracked_team_id",
         "migration_rewind._split_comp currently falls back to "
-        "'tracked_team_id or 100', defaulting null to blue side — that "
+        "'tracked_team_id or 100', defaulting null to blue side - that "
         "silently corrupts the ally/enemy split for rows where the "
         "tracked player was on red. Skip the match entirely when "
         "tracked_team_id is null; log at DEBUG with match_id.",

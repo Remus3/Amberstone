@@ -1,7 +1,7 @@
 {
   "champion": "Ezreal",
   "aram_tier": "A",
-  "build_note": "Trinity Force first — Spellblade procs every Q for massive empowered auto. Muramana stacks fast with Q spam, dramatically increases sustained DPS mid-game. Never build pure crit on Ezreal — his Q autos proc on-hit effects. Ult across the map hits every grouped ARAM fight for free poke damage.",
+  "build_note": "Trinity Force first - Spellblade procs every Q for massive empowered auto. Muramana stacks fast with Q spam, dramatically increases sustained DPS mid-game. Never build pure crit on Ezreal - his Q autos proc on-hit effects. Ult across the map hits every grouped ARAM fight for free poke damage.",
   "core_items": ["Trinity Force", "Manamune", "Serylda's Grudge"],
   "full_build": [
     "Sorcerer's Shoes",
@@ -11,9 +11,9 @@
     "Lord Dominik's Regards",
     "Bloodthirster"
   ],
-  "vs_tanks": "Lord Dominik's Regards + Serylda's Grudge — double armor pen stack",
-  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-  "vs_burst": "Immortal Shieldbow replaces Bloodthirster — shields during E blink escape",
-  "kit_notes": "Q (Mystic Shot) applies Sheen/Spellblade AND applies on-hit effects (Muramana bonus). Stack Manamune to Muramana by spamming Q. Arcane Shift (E) is both gap-close and escape — time it carefully. W (Essence Flux) marks enemies for increased Q damage. R (Trueshot Barrage) is free damage on grouped ARAM fights — throw it early every fight.",
-  "aram_specific": "Poke freely with Q — it has 1150 range and minimal mana cost after Muramana stacks. Ult at grouped enemies through walls and across map at start of every fight. Never be in melee range. Use E backward when engaged, not forward."
+  "vs_tanks": "Lord Dominik's Regards + Serylda's Grudge - double armor pen stack",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies - never run both",
+  "vs_burst": "Immortal Shieldbow replaces Bloodthirster - shields during E blink escape",
+  "kit_notes": "Q (Mystic Shot) applies Sheen/Spellblade AND applies on-hit effects (Muramana bonus). Stack Manamune to Muramana by spamming Q. Arcane Shift (E) is both gap-close and escape - time it carefully. W (Essence Flux) marks enemies for increased Q damage. R (Trueshot Barrage) is free damage on grouped ARAM fights - throw it early every fight.",
+  "aram_specific": "Poke freely with Q - it has 1150 range and minimal mana cost after Muramana stacks. Ult at grouped enemies through walls and across map at start of every fight. Never be in melee range. Use E backward when engaged, not forward."
 }

@@ -1,7 +1,7 @@
 /* ───── 2×3 panel grid ─────────────────────────────────────────── */
 /* (2026-04-25) Layout swap: NEXT+STATS moved from right column to left,
  * MAP STATE moved from left to right. (2026-04-26) MAP STATE column
- * widened to 1fr per user — matches the NEXT/STATS column on the left
+ * widened to 1fr per user - matches the NEXT/STATS column on the left
  * (its original sizing before the swap). Center column kept at 1.1fr
  * for the wider RIGHT NOW / ITEM BUILD copy. */
 main {
@@ -27,12 +27,12 @@ main {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-y: auto;     /* left-column panel spans 2 rows — content can exceed height */
+  overflow-y: auto;     /* left-column panel spans 2 rows - content can exceed height */
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
 
-/* Match-phase strip — three colored segments (early/mid/late) + a
+/* Match-phase strip - three colored segments (early/mid/late) + a
  * marker showing where in the typical 40-min match arc we are. */
 .phase-strip {
   position: relative;
@@ -91,7 +91,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   border-left-color: var(--good);
   background: var(--good-soft);
 }
-/* Heartbeat dot inside the state line — pulses on every state poll so
+/* Heartbeat dot inside the state line - pulses on every state poll so
  * the user can read "this is live" peripherally instead of staring at
  * static text. The .pulse class is added by JS each render and removed
  * on animationend so the next render re-fires the animation. */
@@ -128,7 +128,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   flex-direction: column;
   gap: 1px;
 }
-/* Gold diff bar — horizontal track, centered at 50%, fill extends right
+/* Gold diff bar - horizontal track, centered at 50%, fill extends right
  * (we're ahead / mint) or left (we're behind / coral). Clamped ±10k. */
 .gold-diff {
   margin-bottom: 10px;
@@ -213,7 +213,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   background: var(--surface-alt);
   border-radius: var(--radius-sm);
 }
-/* Backdrop map — uses ::before so the filter doesn't cascade to the ZOI
+/* Backdrop map - uses ::before so the filter doesn't cascade to the ZOI
  * canvas or position-dot canvas layered on top. */
 .mm-canvas-stack::before {
   content: "";
@@ -268,7 +268,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   pointer-events: none;
   z-index: 4;
   border-radius: inherit;
-  /* Very subtle vignette — just enough to frame the corners without
+  /* Very subtle vignette - just enough to frame the corners without
    * dimming the near-edge region where Dragon / Baron markers sit.
    * (2026-04-24: softened with the map size bump so the larger minimap
    * reads cleaner and closer to the live in-game minimap aesthetic.) */
@@ -284,7 +284,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
 #mm-img {
   display: block;
   width: 100%;
-  max-width: 460px;    /* matches .mm-canvas-stack — kept in sync 2026-04-24 */
+  max-width: 460px;    /* matches .mm-canvas-stack - kept in sync 2026-04-24 */
   margin: 0 auto;
   image-rendering: pixelated;
   border-radius: var(--radius-sm);

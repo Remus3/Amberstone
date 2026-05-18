@@ -1,4 +1,4 @@
-// Phase 3 WS stub — subscribes to /push and paints the last frame.
+// Phase 3 WS stub - subscribes to /push and paints the last frame.
 // Real UI is Agent 5's deliverable.
 (function () {
   const WS_HOST = location.hostname || "legion-pc.local";

@@ -1,4 +1,4 @@
-"""Round 24 — recent-window KDA trend + dashboard surface."""
+"""Round 24 - recent-window KDA trend + dashboard surface."""
 from __future__ import annotations
 
 import json
@@ -31,7 +31,7 @@ def test_recent_kda_surfaces_when_sample_sufficient(tmp_path: Path, monkeypatch)
     dbs.init_mode("aram")
 
     db = tmp_path / "aram.db"
-    # 15 rows — older games are strong (KDA ~4), recent 10 drop to ~2.
+    # 15 rows - older games are strong (KDA ~4), recent 10 drop to ~2.
     older = [(10, 2, 8)] * 5      # ratio (10+8)/2 = 9.0
     recent = [(4, 8, 6)] * 10     # ratio (4+6)/8 = 1.25
     _seed_matches(db, older + recent)

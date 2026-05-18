@@ -4,7 +4,7 @@ tooltip lookups client-side.
 
 The dashboard's existing /data/ static route only serves web/data/.
 The DDragon dictionary files live at data/meta/ddragon_items.json +
-data/meta/ddragon_runes.json (project root) — these are version-pinned
+data/meta/ddragon_runes.json (project root) - these are version-pinned
 to whatever patch the daemon_slayer pipeline is on (currently 16.10.1).
 
 GET /api/dictionary/items → ddragon_items.json (item.json from DDragon)

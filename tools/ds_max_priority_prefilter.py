@@ -6,14 +6,14 @@ at a given level. Wrong for champions whose primary damage spell is W
 or E (Cassiopeia E, Karthus Q, Leblanc W, …). Objective oracle: try all
 6 (Q,W,E) orderings, compute total ability_dps at level 11; the order
 that maximises total is the one that ranks the highest-marginal-DPS
-spell first — i.e. the champion's real damage-max order. Flag every
+spell first - i.e. the champion's real damage-max order. Flag every
 champion NOT already in the registry whose best order beats the default
 Q-W-E by >MARGIN AND whose best != default (so the registry omission is
 materially mis-scoring it).
 
 Judgment still required: confirm the numeric best matches the
 champion's real in-game max order (most damage mages max their highest
-spell first, but a few max utility/CD — don't blindly ship those).
+spell first, but a few max utility/CD - don't blindly ship those).
 
 Usage:  py tools/ds_max_priority_prefilter.py [--margin 1.10]
 """

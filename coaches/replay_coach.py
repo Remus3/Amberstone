@@ -1,5 +1,5 @@
 """
-coaches/replay_coach.py — postgame coaching from rewind_history.db.
+coaches/replay_coach.py - postgame coaching from rewind_history.db.
 
 Bridges the gap between "I just finished a match" and "what should I
 have done differently". Pulls the participant + timeline rows for a
@@ -7,7 +7,7 @@ given match_id from `rewind_history.db` (2846 matches indexed) and
 asks Haiku for a structured writeup.
 
 This is a scaled-down version of the speculative "replay coaching"
-roadmap item — proper .rofl parsing requires Riot's encrypted replay
+roadmap item - proper .rofl parsing requires Riot's encrypted replay
 format, which is non-public. We use the timeline_events table instead,
 which is rich enough for "what happened and why" analysis.
 
@@ -42,13 +42,13 @@ data (no live vision, no real-time advice). Produce structured insight.
 
 Format your reply as:
 Summary: <one-paragraph result + key story of the match>
-Moment 1: <minute:sec> — <what happened, why it mattered>
-Moment 2: <minute:sec> — <what happened, why it mattered>
-Moment 3: <minute:sec> — <what happened, why it mattered>
+Moment 1: <minute:sec> - <what happened, why it mattered>
+Moment 2: <minute:sec> - <what happened, why it mattered>
+Moment 3: <minute:sec> - <what happened, why it mattered>
 Suggestion 1: <one specific lesson the player should take away>
 Suggestion 2: <one specific lesson the player should take away>
 
-Keep each line under 220 chars. Be concrete — reference times, names,
+Keep each line under 220 chars. Be concrete - reference times, names,
 items where relevant. Don't fabricate details not in the data."""
 
 
@@ -79,7 +79,7 @@ def _load_match(match_id: str) -> dict[str, Any] | None:
 
 
 def _format_for_prompt(blob: dict[str, Any]) -> str:
-    """Compact text representation — keep within Haiku context budget."""
+    """Compact text representation - keep within Haiku context budget."""
     m = blob["match"]
     parts = blob["participants"]
     events = blob["events"]
@@ -178,7 +178,7 @@ def analyze_match(match_id: str, *, api_key: str | None) -> dict[str, Any]:
         "key_moments": [], "suggestions": [], "raw": "", "elapsed_ms": 0,
     }
     if not api_key:
-        out["summary"] = "(API key missing — coach disabled)"
+        out["summary"] = "(API key missing - coach disabled)"
         return out
     blob = _load_match(match_id)
     if blob is None:

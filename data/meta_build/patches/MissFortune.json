@@ -1,7 +1,7 @@
 {
   "champion": "Miss Fortune",
   "aram_tier": "S",
-  "build_note": "Collector first for early lethality + execute. LDR is the default armor pen (mandatory vs Malphite/Amumu/Rammus). IE requires 60% crit — with Collector (25%) + LDR (0%) = only 25% before IE. Fix: add Galeforce or RFC as 3rd item for crit before IE. Bullet Time into grouped ARAM = free penta potential every fight.",
+  "build_note": "Collector first for early lethality + execute. LDR is the default armor pen (mandatory vs Malphite/Amumu/Rammus). IE requires 60% crit - with Collector (25%) + LDR (0%) = only 25% before IE. Fix: add Galeforce or RFC as 3rd item for crit before IE. Bullet Time into grouped ARAM = free penta potential every fight.",
   "core_items": ["The Collector", "Lord Dominik's Regards", "Galeforce"],
   "full_build": [
     "Berserker's Greaves",
@@ -11,9 +11,9 @@
     "Infinity Edge",
     "Bloodthirster"
   ],
-  "vs_tanks": "Lord Dominik's Regards mandatory — Collector (25%) + Galeforce (20%) = 45% before IE; LDR has 0% crit",
-  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-  "vs_burst": "Immortal Shieldbow replaces Galeforce if 3+ divers — delays IE but shields during ult",
-  "kit_notes": "Double Up (Q) bounces off enemies hit by E-marked targets for double damage. Love Tap passive: alternate between targets for bonus damage. Strut (W) — fully charge before every fight by staying out of combat 5s. Bullet Time channels through frontline — position at 30-45 degree angle to hit 3+ enemies.",
-  "aram_specific": "Pre-channel position: find 30-45 degree angle so Bullet Time hits 3+ grouped enemies. Never ult into a single target. Strut is free movement speed if you don't get hit in lane brush — stay behind minions to farm Strut stacks freely."
+  "vs_tanks": "Lord Dominik's Regards mandatory - Collector (25%) + Galeforce (20%) = 45% before IE; LDR has 0% crit",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies - never run both",
+  "vs_burst": "Immortal Shieldbow replaces Galeforce if 3+ divers - delays IE but shields during ult",
+  "kit_notes": "Double Up (Q) bounces off enemies hit by E-marked targets for double damage. Love Tap passive: alternate between targets for bonus damage. Strut (W) - fully charge before every fight by staying out of combat 5s. Bullet Time channels through frontline - position at 30-45 degree angle to hit 3+ enemies.",
+  "aram_specific": "Pre-channel position: find 30-45 degree angle so Bullet Time hits 3+ grouped enemies. Never ult into a single target. Strut is free movement speed if you don't get hit in lane brush - stay behind minions to farm Strut stacks freely."
 }

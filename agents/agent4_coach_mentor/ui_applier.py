@@ -1,11 +1,11 @@
-"""Round 42 — deterministic applier for UI proposals filed by Agent 7.
+"""Round 42 - deterministic applier for UI proposals filed by Agent 7.
 
 Consumes ``ui-proposal`` tasks produced by
 ``agents.agent7_context.ui_feedback.UIFeedbackParser``. Each proposal
 names one or more files under a hard whitelist (dashboard CSS / JS /
 HTML + sim fixtures) and carries the replacement content. This module
 validates the paths, runs a ``py_compile`` guard on any ``.js`` file
-(syntactic sanity only — browsers don't run Python but the guard
+(syntactic sanity only - browsers don't run Python but the guard
 catches gross ``.js`` truncation), atomically writes the new content,
 and reports the result back to the task.
 
@@ -37,7 +37,7 @@ ALLOWED_PATHS: frozenset[str] = frozenset({
 ALLOWED_PREFIXES: tuple[str, ...] = ("data/sim/",)
 ALLOWED_SIM_SUFFIX = ".json"
 
-MAX_FILE_BYTES = 512 * 1024     # 512 KiB cap — dashboard.js is ~60 KiB currently
+MAX_FILE_BYTES = 512 * 1024     # 512 KiB cap - dashboard.js is ~60 KiB currently
 
 
 class UIApplyError(RuntimeError):
@@ -49,7 +49,7 @@ def _is_path_allowed(rel_path: str) -> bool:
         return True
     for prefix in ALLOWED_PREFIXES:
         if rel_path.startswith(prefix):
-            # data/sim/*.json only — no sub-subdirs, no exotic suffixes.
+            # data/sim/*.json only - no sub-subdirs, no exotic suffixes.
             remainder = rel_path[len(prefix):]
             if "/" in remainder or "\\" in remainder:
                 return False
@@ -88,7 +88,7 @@ def _atomic_write(target: Path, content: bytes) -> None:
 
 def _validate_js_sanity(content: str, rel_path: str) -> None:
     """Cheap guards against obvious damage on .js files."""
-    # Balanced braces + parens — a smoke test, not full parse.
+    # Balanced braces + parens - a smoke test, not full parse.
     open_c, close_c = content.count("{"), content.count("}")
     if abs(open_c - close_c) > 2:
         raise UIApplyError(
@@ -99,7 +99,7 @@ def _validate_js_sanity(content: str, rel_path: str) -> None:
         raise UIApplyError(
             f"{rel_path}: unbalanced parens (open={open_p} close={close_p})"
         )
-    # Detect accidental truncation — a dashboard.js without "use strict"
+    # Detect accidental truncation - a dashboard.js without "use strict"
     # etc. is fine, but an empty file or one under 200 chars is suspicious.
     if rel_path.endswith("/dashboard.js") and len(content) < 2_000:
         raise UIApplyError(
@@ -121,7 +121,7 @@ def _validate_content(rel_path: str, content: str) -> None:
         _validate_js_sanity(content, rel_path)
     elif rel_path.endswith(".json"):
         _validate_json(content, rel_path)
-    # .css / .html — trust the parser / browser tolerance.
+    # .css / .html - trust the parser / browser tolerance.
 
 
 def apply_ui_proposal(payload: dict[str, Any]) -> dict[str, Any]:
@@ -137,7 +137,7 @@ def apply_ui_proposal(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
     Each change carries FULL file content (not a diff). Simpler to
-    validate and roll back than textual patches — the parser is
+    validate and roll back than textual patches - the parser is
     responsible for producing correct complete files. Tasks with zero
     or >4 changes are rejected (sanity bound).
 
@@ -149,7 +149,7 @@ def apply_ui_proposal(payload: dict[str, Any]) -> dict[str, Any]:
             f"proposal must carry 1-4 changes, got {len(changes)}"
         )
 
-    # Validate EVERYTHING before writing anything — so we never half-apply.
+    # Validate EVERYTHING before writing anything - so we never half-apply.
     validated: list[tuple[Path, str, str]] = []   # (target, rel_path, content)
     for i, ch in enumerate(changes):
         if not isinstance(ch, dict):

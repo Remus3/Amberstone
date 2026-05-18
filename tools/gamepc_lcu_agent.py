@@ -19,7 +19,7 @@ Endpoints used on Legion:
 
 The agent maintains a local config (auto_accept on/off, summoner override,
 etc.) that's mirrored from dashboard via 'set_config' command. Default is
-auto_accept=off (s171, 2026-05-12) — previously True, which meant the
+auto_accept=off (s171, 2026-05-12) - previously True, which meant the
 dashboard's Auto Accept toggle was visual-only and the agent silently
 accepted every queue pop regardless of the UI state. The toggle now
 pushes set_config + auto_accept on click.
@@ -74,7 +74,7 @@ def _resolve_bridge_secret() -> str:
       3. local_paths.json sibling file ({"bridge_shared_secret": "..."})
 
     Returns "" when nothing is configured. Callers MUST treat empty as
-    "skip the POST" — there is no historical default to fall back to,
+    "skip the POST" - there is no historical default to fall back to,
     and an unauthenticated POST would 401 anyway.
     """
     env = _os_tok.environ.get("RC_BRIDGE_SECRET")
@@ -102,13 +102,13 @@ INTERVAL      = 1.0   # state-push cadence (slow during in-game; OK)
 AUTO_INTERVAL = 0.5   # ready-check / summoner-override poll cadence
 CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence
 # Min seconds between team-context POSTs while still in champ-select.
-# The route is idempotent — re-posting just refreshes the cache, but no
+# The route is idempotent - re-posting just refreshes the cache, but no
 # point hammering it on every 1s state-push cycle.
 TEAM_CONTEXT_REPOST_S = 3.0
 
 # ARAM-family queue IDs. Mirror of the aram keys in
 # core/queue_modes.QUEUE_ID_TO_MODE_KEY (this agent runs standalone on
-# Game-PC and can't import core.*, so it's a hand-kept mirror — keep
+# Game-PC and can't import core.*, so it's a hand-kept mirror - keep
 # the two in sync). 2400 = ARAM Mayhem (KIWI gameMode); its absence
 # here is why is_aram was False for Mayhem → the dashboard's
 # _csvDetectMode fell through to "sr" and the bench / quick-swap UI
@@ -206,7 +206,7 @@ def lcu_request(method, path, body=None):
 # was only forwarding queueId + game_mode + map_id; everything member-shaped
 # in the panel was running on placeholders. This block extracts what LCU
 # already publishes on /lol-lobby/v2/lobby + the local matchmaking search
-# endpoint. Legion enriches with rank / games-with-me / online status —
+# endpoint. Legion enriches with rank / games-with-me / online status -
 # the agent is forwarder-only.
 
 # queue_id → human-readable name. Dashboard falls back to ("queue " + id)
@@ -243,7 +243,7 @@ _LOBBY_QUEUE_NAMES = {
     1840: "Swarm (Trio)",
     1850: "Swarm (Quad)",
     1900: "URF",
-    2400: "ARAM Mayhem",  # KIWI gameMode — queueId confirmed s220 (920 = Poro King). Brawl (2300) retired from rotation s214.
+    2400: "ARAM Mayhem",  # KIWI gameMode - queueId confirmed s220 (920 = Poro King). Brawl (2300) retired from rotation s214.
 }
 
 
@@ -260,7 +260,7 @@ def _lookup_summoner_by_id(sid: int):
     """Fetch summoner profile by summonerId; cached with TTL.
 
     Returns the LCU summoner dict (with gameName/tagLine/summonerName/
-    summonerLevel/puuid) or None when unreachable. Quiet failure —
+    summonerLevel/puuid) or None when unreachable. Quiet failure -
     callers must tolerate missing data and emit empty strings.
     """
     if not sid:
@@ -284,7 +284,7 @@ def _slim_lobby_member(m, *, local_summoner_id: int | None = None,
                       enrich: bool = False) -> dict | None:
     """Distil one LCU lobby-member entry into the dashboard's wire shape.
 
-    LCU fields vary by client version — older builds emit ``summonerName``
+    LCU fields vary by client version - older builds emit ``summonerName``
     only; newer builds emit ``gameName`` + ``tagLine``. We forward both so
     Legion's panel can pick whichever it prefers and so the riot_id
     composition (``GameName#TagLine``) is available when possible.
@@ -387,10 +387,10 @@ def _derive_search_state(phase: str, search_payload) -> str:
 # Priority 8 (2026-05-10): pull the operator's full champion-mastery list
 # directly from LCU at /lol-collections/v1/inventories/<sid>/champion-mastery.
 # Free + instant, no Riot Web API rate limit, no PUUID lookup needed.
-# Refreshed lazily — first capture_state() after ChampSelect entry, then
+# Refreshed lazily - first capture_state() after ChampSelect entry, then
 # at most once every MASTERY_TTL_S to avoid spamming LCU.
 
-MASTERY_TTL_S = 300.0  # 5 min — mastery doesn't shift faster than that
+MASTERY_TTL_S = 300.0  # 5 min - mastery doesn't shift faster than that
 
 _mastery_cache: dict = {
     "summoner_id": None,
@@ -403,7 +403,7 @@ def _resolve_local_summoner_id() -> int | None:
     """Get the local player's summonerId from /lol-summoner/v1/current-summoner.
 
     Cached in ``_mastery_cache["summoner_id"]`` after the first successful
-    resolve — League's current-summoner doesn't change between client
+    resolve - League's current-summoner doesn't change between client
     sessions, so a single hit per agent boot is enough.
     """
     cached = _mastery_cache.get("summoner_id")
@@ -424,7 +424,7 @@ def _maybe_refresh_mastery() -> dict | None:
 
     Returns ``{championId: {level, points, last_play_time}}`` or None when
     LCU isn't reachable or the response shape is unexpected. Quiet failure
-    is fine — callers degrade to Riot Web fan-out for teammates anyway.
+    is fine - callers degrade to Riot Web fan-out for teammates anyway.
     """
     now = time.time()
     if (
@@ -540,7 +540,7 @@ def _arena_teams(sess: dict) -> list[dict]:
 
     LCU emits one entry per sub-team in 2v2v2v2; we forward id, name, an
     ``is_me`` flag (subteam id matches the local cell's subteam id), and
-    a slim members list (cellId + championId only — the dashboard already
+    a slim members list (cellId + championId only - the dashboard already
     has summoner names in ``my_team``/``their_team``).
 
     Returns an empty list when the session is not in a subteamed queue
@@ -642,11 +642,11 @@ def capture_state():
 
     # KNOWN-BUG diagnostic breadcrumb (2026-05-17): the operator's
     # ARAM / ARAM Mayhem / Arena champ-select view kept rendering blank.
-    # raw_phase is the unmodified gameflow-phase string — capturing it
+    # raw_phase is the unmodified gameflow-phase string - capturing it
     # every cycle lets a `/api/state` curl during the next live
     # no-draft champ-select reveal exactly what phase Mayhem reports
     # during its bench window (the open question: does it ever report
-    # "ChampSelect", or flip straight to "InProgress"?). Free — phase
+    # "ChampSelect", or flip straight to "InProgress"?). Free - phase
     # is already fetched. Enriched below with the champ-select session
     # shape when that block runs. Rides the existing 1s push → cached
     # on Legion's vision server → no Game-PC console / screen capture
@@ -689,7 +689,7 @@ def capture_state():
                         for rm in raw_members)
                        if m is not None]
             local_member = next((m for m in members if m.get("is_self")), None)
-            # /lol-matchmaking/v1/search may 404 when not actively queueing —
+            # /lol-matchmaking/v1/search may 404 when not actively queueing -
             # that's fine, _derive_search_state falls back to phase mapping.
             search, _ = lcu_request("GET", "/lol-matchmaking/v1/search")
             state["lobby"] = {
@@ -714,7 +714,7 @@ def capture_state():
         # the open question is whether the agent ever sees a populated
         # champ-select session at all. The full queue object (id /
         # mapId / gameMode / type) is the robust signal a future
-        # is_aram could key off instead of a brittle queue-id list —
+        # is_aram could key off instead of a brittle queue-id list -
         # capture its real shape live rather than guessing it now.
         state["cs_debug"]["cs_session_is_dict"] = isinstance(sess, dict)
         if isinstance(sess, dict):
@@ -738,7 +738,7 @@ def capture_state():
             # 2026-05-09 (s154): /lol-champ-select/v1/session frequently omits
             # gameData during BAN_PICK, leaving queue_id=0. The dashboard's
             # sr_draft gate (is_sr_draft_queue) then evaluates False and the
-            # entire DS engine-profile chooser block stays hidden — no champion
+            # entire DS engine-profile chooser block stays hidden - no champion
             # hints during draft. Fall back to /lol-gameflow/v1/session, which
             # carries gameData.queue.id reliably from queue-pop onward.
             if not queue_id:
@@ -772,7 +772,7 @@ def capture_state():
                         "summonerName": p.get("summonerInternalName") or p.get("displayName") or "",
                         # FU02 team-context refresh needs PUUIDs to fan out
                         # to Riot Web API. theirTeam may carry empty puuid
-                        # before reveal in some queue types — that's fine,
+                        # before reveal in some queue types - that's fine,
                         # the route's worker skips entries with no puuid.
                         "puuid":       p.get("puuid") or "",
                         "completed":   p.get("completed", False),
@@ -785,14 +785,14 @@ def capture_state():
                     })
                 return out
             # s171 hover fix: my_champion = locked OR hovered. The lock
-            # button visibility on the dashboard depends on this — if
+            # button visibility on the dashboard depends on this - if
             # the operator is hovering Vayne, my_champion should be 67
             # so the lock button activates.
             _my_locked = (my_pick or {}).get("championId", 0) or 0
             _my_intent = (my_pick or {}).get("championPickIntent", 0) or 0
             # s171.3: my_completed needs to come from the actions array,
             # not myTeam[i]. myTeam[i] doesn't have a 'completed' field
-            # in LCU's schema — it's always returning False here, which
+            # in LCU's schema - it's always returning False here, which
             # made the dashboard show "HOVERING" forever even after lock.
             # The true lock state is sess.actions[N][M].completed for
             # the local cell's pick action with type == "pick".
@@ -818,7 +818,7 @@ def capture_state():
                 # s171.3: local_cell exposed so the dashboard's role
                 # resolver (_csvResolveRole) can find my_team[i] by
                 # cellId == local_cell to read assignedPosition. Without
-                # this the role stays "—" and the P&B fetch never fires.
+                # this the role stays "-" and the P&B fetch never fires.
                 "local_cell":   local_cell if isinstance(local_cell, int) else -1,
                 "my_champion":  _my_locked or _my_intent,
                 "my_champion_locked":  _my_locked,
@@ -839,7 +839,7 @@ def capture_state():
                     for t in (sess.get("trades") or [])
                     if isinstance(t, dict)
                 ],
-                # Swap candidate lists. Mirror trades — slim id/cellId/state
+                # Swap candidate lists. Mirror trades - slim id/cellId/state
                 # so the dashboard can render the SWAP popup and the
                 # request_position_swap / request_pick_order_swap handlers
                 # below resolve cell_id → swap id without a 2nd LCU GET.
@@ -855,7 +855,7 @@ def capture_state():
             # animation, members[cellId, championId]); the dashboard
             # consumes ``arena_teams`` as a flat list. Augment intent +
             # options need /lol-cherry/v1/* discovery against a live
-            # Arena game — until then we only forward the subteam roster
+            # Arena game - until then we only forward the subteam roster
             # so allies + enemies render correctly; augments stays an
             # empty scaffold and ``set_augment_intent`` no-ops.
             if queue_id in (1700, 1710):
@@ -1020,7 +1020,7 @@ def execute_command(cmd):
             return {"ok": False, "err": err}
         return {"ok": True, "action_id": aid, "championId": cid}
     if name == "request_position_swap":
-        # Send a lane-swap offer to the cell. Mirror of trade_request —
+        # Send a lane-swap offer to the cell. Mirror of trade_request -
         # resolve cell_id → swap id via session.positionSwaps[]. LCU
         # returns 204 on success; any other state means the offer is
         # busy / invalid / already-sent on the receiving side.
@@ -1079,14 +1079,14 @@ def execute_command(cmd):
         # Arena/Cherry augment selection. The dashboard's augment chooser
         # fires this with ``augment_id`` for the active round slot. The
         # exact LCU endpoint (under /lol-cherry/v1/*) needs to be confirmed
-        # against a live Arena lobby — Cherry's REST surface isn't well
+        # against a live Arena lobby - Cherry's REST surface isn't well
         # documented. Until then, queue it as a no-op so the agent doesn't
         # crash on unknown-cmd and the dashboard surfaces "not yet wired"
         # rather than a phantom error.
         aug_id = int(cmd.get("augment_id", 0))
         if aug_id <= 0:
             return {"ok": False, "err": "no augment_id"}
-        print(f"[cmd] set_augment_intent augment={aug_id} (no-op — "
+        print(f"[cmd] set_augment_intent augment={aug_id} (no-op - "
               "LCU /lol-cherry/v1/* endpoint TBD)", flush=True)
         return {"ok": False, "err": "augment_intent_unsupported",
                 "note": "needs /lol-cherry/v1/* discovery vs. live Arena",
@@ -1181,7 +1181,7 @@ def execute_command(cmd):
         # Need to know action ID - fetch session first
         sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
         if not isinstance(sess, dict): return {"ok": False, "err": "no session"}
-        # 2026-05-09 (s155): cast to int explicitly — some LCU builds emit
+        # 2026-05-09 (s155): cast to int explicitly - some LCU builds emit
         # actorCellId / localPlayerCellId as JSON strings depending on the
         # patch, which made the equality check silently miss.
         try:
@@ -1190,7 +1190,7 @@ def execute_command(cmd):
             local_cell = -1
         # Walk every pick action for the local cell. Track BOTH the pending
         # action id (the one we'd PATCH) AND whether the user is already
-        # locked on the requested champion — the dashboard lock button can
+        # locked on the requested champion - the dashboard lock button can
         # race the in-game lock button (user clicks one then the other; or
         # apply_runes/apply_item_set serialize ahead of lock_pick and push
         # us past the active-pick window). If the LCU already shows the
@@ -1254,7 +1254,7 @@ def execute_command(cmd):
         return {"ok": err is None, "err": err, "party_type": pt}
     if name == "lobby.invite_player":
         # POST a lobby invitation. LCU accepts an array of invitee
-        # descriptors — we send one. The dashboard provides riot_id
+        # descriptors - we send one. The dashboard provides riot_id
         # ("Name#TAG") which is converted to summoner_id via lookup.
         rid = str(cmd.get("riot_id") or "").strip()
         sid = cmd.get("summoner_id")
@@ -1343,7 +1343,7 @@ def execute_command(cmd):
                 "riot_id": rid, "summoner_id": target_sid}
     if name == "lobby.create_practice_tool":
         # Practice Tool uses queue_id 0 + customGameLobby config.
-        # The minimal create payload — Riot does most of the work.
+        # The minimal create payload - Riot does most of the work.
         body = {
             "customGameLobby": {
                 "configuration": {
@@ -1440,7 +1440,7 @@ _CHAMP_NAME_CACHE_LOADED = False
 
 
 def _maybe_load_champion_names():
-    """Populate _CHAMP_NAME_CACHE from LCU static data. Single-shot —
+    """Populate _CHAMP_NAME_CACHE from LCU static data. Single-shot -
     once a non-empty mapping lands, never re-fetches. Soft-fails on
     network/parse errors; caller may retry next cycle."""
     global _CHAMP_NAME_CACHE_LOADED
@@ -1467,7 +1467,7 @@ def _maybe_load_champion_names():
 
 def _champion_name_for(cid) -> str:
     """Display name for a champion id, or "" when unknown. Empty is
-    correct for the route — better a blank cell than a numeric id."""
+    correct for the route - better a blank cell than a numeric id."""
     try:
         cid = int(cid or 0)
     except (TypeError, ValueError):
@@ -1528,7 +1528,7 @@ def _build_team_context_body(cs: dict) -> dict:
 
 def post_team_context_refresh(body: dict):
     """POST roster snapshot to Legion's team-context endpoint. Returns
-    (ok, detail). Never raises — bridge auth missing or dashboard
+    (ok, detail). Never raises - bridge auth missing or dashboard
     offline both surface as (False, "<reason>")."""
     if not BRIDGE_SECRET:
         return (False, "no_bridge_secret")
@@ -1571,10 +1571,10 @@ def _maybe_refresh_team_context(state: dict) -> None:
             _team_context_state["last_post_at"] = 0.0
         return
 
-    # Bridge secret missing — warn once, never spam the log.
+    # Bridge secret missing - warn once, never spam the log.
     if not BRIDGE_SECRET:
         if not _team_context_state["warned_no_secret"]:
-            print("[team-context] bridge secret unset — skipping refresh "
+            print("[team-context] bridge secret unset - skipping refresh "
                   "POST. Set RC_BRIDGE_SECRET env or drop bridge_secret.txt.",
                   flush=True)
             _team_context_state["warned_no_secret"] = True
@@ -1604,7 +1604,7 @@ def _maybe_refresh_team_context(state: dict) -> None:
               f"roster={len(body['roster'])} entry={is_entry}",
               flush=True)
     else:
-        # Don't latch sig on failure — next cycle will retry.
+        # Don't latch sig on failure - next cycle will retry.
         print(f"[team-context] refresh failed: {detail}", flush=True)
 
 
@@ -1641,7 +1641,7 @@ INGEST_STATE_FILE = Path(os.environ.get(
 
 def _load_ingest_state() -> None:
     """Restore last_game_id_ingested from disk on agent boot. Safe to call
-    even if the file is missing or malformed — empty state means
+    even if the file is missing or malformed - empty state means
     everything will look uningested + recovery will fire."""
     try:
         if not INGEST_STATE_FILE.exists():
@@ -1678,17 +1678,17 @@ def _recover_missed_ingest() -> None:
     it doesn't match our persisted last_game_id_ingested. Handles the
     "Game-PC crashed right at game end" case where the agent died
     before /api/last-match/ingest was POSTed. Also catches "agent was
-    offline when game ended" — operator restarts agent later, we
+    offline when game ended" - operator restarts agent later, we
     auto-recover.
 
     Skipped silently when LCU is unreachable (operator hasn't launched
-    League yet) — the regular state-push loop will retry as soon as
+    League yet) - the regular state-push loop will retry as soon as
     LCU comes up. Skipped silently when latest gameId matches the
     persisted one (already shipped)."""
     if _post_match_ingest_state["startup_recovery_done"]:
         return
     try:
-        # Probe LCU reachability — silent return if not up yet.
+        # Probe LCU reachability - silent return if not up yet.
         summ, status = lcu_request("GET", "/lol-summoner/v1/current-summoner")
         if not isinstance(summ, dict):
             return
@@ -1712,10 +1712,10 @@ def _recover_missed_ingest() -> None:
         last = _post_match_ingest_state["last_game_id_ingested"]
         if last == gid:
             print(f"[ingest-recovery] latest gameId={gid} matches persisted "
-                  f"— no recovery needed", flush=True)
+                  f"- no recovery needed", flush=True)
             _post_match_ingest_state["startup_recovery_done"] = True
             return
-        # Mismatch — fetch full detail + POST.
+        # Mismatch - fetch full detail + POST.
         detail, _ = lcu_request("GET", f"/lol-match-history/v1/games/{gid}")
         if not isinstance(detail, dict):
             print(f"[ingest-recovery] couldn't fetch detail for gameId={gid}; "
@@ -1728,7 +1728,7 @@ def _recover_missed_ingest() -> None:
             _save_ingest_state()
             _post_match_ingest_state["startup_recovery_done"] = True
             print(f"[ingest-recovery] shipped gameId={gid} on agent boot "
-                  f"(persisted={last!r}, latest={gid}) — crash-recovery "
+                  f"(persisted={last!r}, latest={gid}) - crash-recovery "
                   f"path engaged", flush=True)
         else:
             print(f"[ingest-recovery] POST failed: {status}; will retry "
@@ -1739,7 +1739,7 @@ def _recover_missed_ingest() -> None:
 
 def _fetch_latest_match_for_ingest():
     """Returns (puuid, gameId, match_detail_dict) or (None, None, None)
-    on any failure. Never raises — caller treats triple-None as 'try
+    on any failure. Never raises - caller treats triple-None as 'try
     again later'."""
     summ, _ = lcu_request("GET", "/lol-summoner/v1/current-summoner")
     if not isinstance(summ, dict):
@@ -1747,7 +1747,7 @@ def _fetch_latest_match_for_ingest():
     puuid = (summ.get("puuid") or "").strip()
     if not puuid:
         return (None, None, None)
-    # Latest 1 match summary — gives us the gameId.
+    # Latest 1 match summary - gives us the gameId.
     ml, _ = lcu_request("GET",
         f"/lol-match-history/v1/products/lol/{puuid}/matches"
         f"?begIndex=0&endIndex=1")
@@ -1759,7 +1759,7 @@ def _fetch_latest_match_for_ingest():
     gid = games[0].get("gameId")
     if not gid:
         return (None, None, None)
-    # Full detail (the actual goldmine — 10 participants + teams + items + runes).
+    # Full detail (the actual goldmine - 10 participants + teams + items + runes).
     detail, _ = lcu_request("GET", f"/lol-match-history/v1/games/{gid}")
     if not isinstance(detail, dict):
         return (None, None, None)
@@ -1768,7 +1768,7 @@ def _fetch_latest_match_for_ingest():
 
 def post_last_match_ingest(tracked_puuid: str, match_detail: dict):
     """POST the LCU match detail to Legion. Returns (ok, detail).
-    No auth header — /api/last-match/ingest is LAN-trust only for now
+    No auth header - /api/last-match/ingest is LAN-trust only for now
     (matches existing convention for /upload-lcu)."""
     url = f"{LEGION_DASHBOARD}/api/last-match/ingest"
     body = json.dumps({
@@ -1812,7 +1812,7 @@ def _maybe_ingest_last_match(state: dict) -> None:
     _post_match_ingest_state["last_phase"] = phase
 
     # We fire on (transition INTO EndOfGame) OR (sitting in EndOfGame and
-    # haven't ingested yet — covers agent-restart-mid-EOG). Once shipped,
+    # haven't ingested yet - covers agent-restart-mid-EOG). Once shipped,
     # the gameId guard prevents re-fire.
     if phase != "EndOfGame":
         return
@@ -1823,7 +1823,7 @@ def _maybe_ingest_last_match(state: dict) -> None:
 
     puuid, gid, detail = _fetch_latest_match_for_ingest()
     if not (puuid and gid and detail):
-        # LCU may not have finalized the match record yet — try again
+        # LCU may not have finalized the match record yet - try again
         # next cycle. Don't update last_post_at so we don't back off.
         return
     if _post_match_ingest_state["last_game_id_ingested"] == gid:
@@ -1860,7 +1860,7 @@ def _state_push_loop():
                 print(f"  [push err {consecutive_fail}x] {e}", flush=True)
             # FU02 last-mile: edge-fire team-context refresh on
             # ChampSelect entry + on lock/swap. Independent of the
-            # vision-relay push above — failure here MUST NOT bump
+            # vision-relay push above - failure here MUST NOT bump
             # consecutive_fail or affect the upload-lcu cadence.
             try:
                 _maybe_refresh_team_context(state)

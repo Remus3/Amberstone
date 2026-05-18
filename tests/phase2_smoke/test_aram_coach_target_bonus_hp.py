@@ -1,9 +1,9 @@
 """
 tests/phase2_smoke/test_aram_coach_target_bonus_hp.py
-s74 — aram_coach._estimate_target_bonus_hp wire-in.
+s74 - aram_coach._estimate_target_bonus_hp wire-in.
 
 ARAM port of arena_coach's s73 estimator. Differs in two ways:
-1. No round-count fallback — ARAM has no rounds. Vision gap → 0.0
+1. No round-count fallback - ARAM has no rounds. Vision gap → 0.0
    (engine treats as "no signal", no escalation).
 2. Resolves with mode='aram' → SR base item IDs (3084 not 223084),
    so HP values are SR base (900 Heartsteel) not Arena alias (700).
@@ -38,7 +38,7 @@ class EstimateTargetBonusHpTests(unittest.TestCase):
 
     def test_no_enemies_returns_zero(self) -> None:
         c = _StubCoach()
-        # No enemies key — vision gap or pre-game.
+        # No enemies key - vision gap or pre-game.
         self.assertEqual(c._estimate_target_bonus_hp({"enemies": []}), 0.0)
 
     def test_all_enemies_dead_returns_zero(self) -> None:
@@ -72,7 +72,7 @@ class EstimateTargetBonusHpTests(unittest.TestCase):
 
     def test_max_across_alive_enemies_not_avg(self) -> None:
         # 5 enemies; only Sett is tanky. MAX wins, not avg.
-        # Avg would be 1250 / 5 = 250 (wrong — would miss LDR escalation).
+        # Avg would be 1250 / 5 = 250 (wrong - would miss LDR escalation).
         c = _StubCoach()
         state = {"enemies": [
             {"name": "Sett",   "is_dead": False, "items": ["Heartsteel", "Riftmaker"]},

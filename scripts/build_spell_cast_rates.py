@@ -1,9 +1,9 @@
-"""Phase 4b (s178, 2026-05-12) — Derive per-spell cast rates from rewind_history.db.
+"""Phase 4b (s178, 2026-05-12) - Derive per-spell cast rates from rewind_history.db.
 
 Generates ``data/daemon_slayer/spell_cast_rates.json`` carrying median casts/sec
 for each of the 4 active spells (Q/W/E/R) per champion × mode. Phase 4b's
 ``compute_ability_dps()`` reads this to scale per-cast damage into per-spell
-ability DPS — a measured cast rate already encodes mana/cooldown downtime, so
+ability DPS - a measured cast rate already encodes mana/cooldown downtime, so
 no separate uptime modeling is needed at the consumer level.
 
 Mirror of the (undocumented) s145 ad-hoc query that built
@@ -25,7 +25,7 @@ Schema (output)::
     "global_fallback": {"Q": 0.110, "W": 0.080, "E": 0.060, "R": 0.012},
     "generated_at": "2026-05-12",
     "source": "data/rewind_history.db (NNNN matches, spell[1-4]_casts / game_duration_s)",
-    "note": "Casts/sec — measured median across all observed games per champion × mode."
+    "note": "Casts/sec - measured median across all observed games per champion × mode."
   }
 
 Mode mapping (queue_id → bucket):
@@ -120,7 +120,7 @@ def main() -> int:
         if dur is None or dur <= 0:
             continue
         bucket = _bucket(queue_id)
-        # Always record into "global" — sample size is best when not partitioned.
+        # Always record into "global" - sample size is best when not partitioned.
         targets: list[str] = ["global"]
         if bucket:
             targets.append(bucket)
@@ -156,7 +156,7 @@ def main() -> int:
         if reduced_per_mode:
             reduced[champ] = reduced_per_mode
 
-    # Global fallback — median of medians per spell across champions' "global".
+    # Global fallback - median of medians per spell across champions' "global".
     global_fallback: dict[str, float] = {}
     for k in SPELL_KEYS:
         vals = [
@@ -175,7 +175,7 @@ def main() -> int:
             f"spell[1-4]_casts / game_duration_s)"
         ),
         "note": (
-            "Casts/sec — measured median across observed games per "
+            "Casts/sec - measured median across observed games per "
             "champion × mode. Q=spell1, W=spell2, E=spell3, R=spell4. "
             "Used by daemon_slayer.cast_rates.get_spell_casts_per_sec(). "
             "Mode-specific buckets require >= "
@@ -189,7 +189,7 @@ def main() -> int:
     tmp.replace(OUTPUT)
 
     print(
-        f"wrote {OUTPUT.relative_to(ROOT)} — {len(reduced)} champs, "
+        f"wrote {OUTPUT.relative_to(ROOT)} - {len(reduced)} champs, "
         f"{n_buckets_kept} buckets kept, {n_buckets_dropped} dropped "
         f"(< {MIN_SAMPLES} samples)",
         file=sys.stderr,

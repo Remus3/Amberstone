@@ -47,7 +47,7 @@ try:
         existing_file.write_text(json.dumps(merged, indent=2, sort_keys=True))
         print(f"\nMerged {len(codes)} CDragon codes into {len(merged)} total")
     else:
-        print("  No Set17 champions found — checking structure...")
+        print("  No Set17 champions found - checking structure...")
         if isinstance(data, list) and data:
             print(f"  First entry: {data[0]}")
         elif isinstance(data, dict):

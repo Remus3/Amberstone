@@ -1,4 +1,4 @@
-// Bridge Pending panel — coach decisions banner, recent coach calls log,
+// Bridge Pending panel - coach decisions banner, recent coach calls log,
 // bridge task pending display. setIntervals start at module load.
 import { el, safe, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
@@ -20,7 +20,7 @@ function renderCoachDecisions(pending) {
   const C = COACH_DECISIONS;
   if (!C.section || !C.list) return;
   if (!Array.isArray(pending) || pending.length === 0) {
-    // Don't hide while animating — would yank the row mid-animation.
+    // Don't hide while animating - would yank the row mid-animation.
     if (C.resolving.size === 0) C.section.hidden = true;
     C.list.innerHTML = "";
     return;
@@ -98,7 +98,7 @@ async function recordChoice(id, choice, li, actions) {
     COACH_DECISIONS.resolving.delete(id);
     return;
   }
-  // Success — let CSS finish the fade, then remove + clear resolving.
+  // Success - let CSS finish the fade, then remove + clear resolving.
   setTimeout(() => {
     try { li.remove(); } catch (_) {}
     COACH_DECISIONS.resolving.delete(id);
@@ -183,7 +183,7 @@ setInterval(pollRecentCoachCalls, RECENT_CALLS.intervalMs);
 pollRecentCoachCalls();
 
 // ── Bridge Pending escalations (2026-05-03) ────────────────────────
-// Reads /api/bridge/pending every 20s — the bridge_watcher writes
+// Reads /api/bridge/pending every 20s - the bridge_watcher writes
 // the queue, this only displays it. Render is idempotent (sig
 // change-detection) to avoid flicker. Menu badge shows depth so the
 // operator sees pending work without navigating; sub-page shows full

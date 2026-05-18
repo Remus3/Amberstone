@@ -1,6 +1,6 @@
 """
 core/metrics_cache.py
-Phase 1 Step 2 — Internal observability surface for Riot Commander.
+Phase 1 Step 2 - Internal observability surface for Riot Commander.
 
 Runs a background thread that reads existing runtime artifacts on a fixed
 interval and caches a small derived MetricsSummary.  Consumers call
@@ -16,11 +16,11 @@ Design rules:
   - Python 3.9 compatible: no X|Y unions, no walrus operator, no match.
 
 Input files (all under ops/runtime/):
-  status.json              — supervisor state (may predate Phase 0.13a fields)
-  monitor_state.json       — SelfMonitor internal state
-  health.json              — DevRuntime heartbeat (app liveness + mode)
-  incident_log.jsonl       — structured incident entries (may not exist)
-  last_coaching_ts.json    — SR coaching timestamp artifact (Phase 2 Step 1)
+  status.json              - supervisor state (may predate Phase 0.13a fields)
+  monitor_state.json       - SelfMonitor internal state
+  health.json              - DevRuntime heartbeat (app liveness + mode)
+  incident_log.jsonl       - structured incident entries (may not exist)
+  last_coaching_ts.json    - SR coaching timestamp artifact (Phase 2 Step 1)
 
 Tail-reading strategy for incident_log.jsonl:
   Only the last INCIDENT_TAIL_BYTES bytes of the file are read on each
@@ -60,30 +60,30 @@ class MetricsSummary:
     All fields may be None/"unknown" if the source file was unavailable.
 
     Fields:
-      supervisor_state        str | None  — "healthy_ready" | "tolerated_startup_wait" |
+      supervisor_state        str | None  - "healthy_ready" | "tolerated_startup_wait" |
                                             "unhealthy_restart_required" | None
-      process_running         bool | None — supervisor's _app_alive() result
+      process_running         bool | None - supervisor's _app_alive() result
       awaiting_first_heartbeat bool | None
-      stable_ticks            int | None  — NOT in status.json; always None in Step 2
-      consecutive_fails       int | None  — from monitor_state.json
-      ladder_idx              int | None  — from monitor_state.json ("ladder_index" key)
-      circuit_breaker_tripped bool | None — from monitor_state.json
-      current_mode            str | None  — from health.json "mode" field
-      last_coaching_ts        str | None  — ISO-8601 UTC timestamp of last successful
+      stable_ticks            int | None  - NOT in status.json; always None in Step 2
+      consecutive_fails       int | None  - from monitor_state.json
+      ladder_idx              int | None  - from monitor_state.json ("ladder_index" key)
+      circuit_breaker_tripped bool | None - from monitor_state.json
+      current_mode            str | None  - from health.json "mode" field
+      last_coaching_ts        str | None  - ISO-8601 UTC timestamp of last successful
                                             SR coaching write; None if not yet written
                                             (Phase 2 Step 1: SR-path only in this pass)
-      last_5_incidents        list        — list of compact incident dicts (may be empty)
-      refreshed_at            str         — ISO-8601 UTC timestamp of last refresh
-      refresh_error           str | None  — last error message if refresh raised
-      policy_source_status    str | None  — default|loaded|last_known_good|invalid_reload_retained|missing
-      policy_last_reload_ts   str | None  — ISO-8601 UTC of last successful policy load
-      policy_last_warning     str | None  — last-one-wins policy warning text
-      policy_sr_live_coaching      str | None  — effective decision for sr.live_coaching
-      policy_aram_live_coaching    str | None  — effective decision for aram.live_coaching
-      policy_arena_live_coaching   str | None  — effective decision for arena.live_coaching
-      policy_brawl_live_coaching   str | None  — effective decision for brawl.live_coaching
-      policy_tft_live_coaching     str | None  — effective decision for tft.live_coaching
-      policy_tft_vision_analysis   str | None  — effective decision for tft.tft_vision_analysis
+      last_5_incidents        list        - list of compact incident dicts (may be empty)
+      refreshed_at            str         - ISO-8601 UTC timestamp of last refresh
+      refresh_error           str | None  - last error message if refresh raised
+      policy_source_status    str | None  - default|loaded|last_known_good|invalid_reload_retained|missing
+      policy_last_reload_ts   str | None  - ISO-8601 UTC of last successful policy load
+      policy_last_warning     str | None  - last-one-wins policy warning text
+      policy_sr_live_coaching      str | None  - effective decision for sr.live_coaching
+      policy_aram_live_coaching    str | None  - effective decision for aram.live_coaching
+      policy_arena_live_coaching   str | None  - effective decision for arena.live_coaching
+      policy_brawl_live_coaching   str | None  - effective decision for brawl.live_coaching
+      policy_tft_live_coaching     str | None  - effective decision for tft.live_coaching
+      policy_tft_vision_analysis   str | None  - effective decision for tft.tft_vision_analysis
     """
 
     __slots__ = (
@@ -199,7 +199,7 @@ class MetricsCache:
         if (self._thread and self._thread.is_alive()) or self._task is not None:
             return
         self._stop_event.clear()
-        # Immediate first refresh — matches the behavior the thread loop
+        # Immediate first refresh - matches the behavior the thread loop
         # provided (it called _refresh() before the first wait).
         self._refresh()
         try:
@@ -327,7 +327,7 @@ class MetricsCache:
         data = self._load_json("status.json")
         if data is None:
             return
-        # arch: phase 0.7 — supervisor_state added to status.json; tolerate absence in older files
+        # arch: phase 0.7 - supervisor_state added to status.json; tolerate absence in older files
         raw_state = data.get("supervisor_state")
         s.supervisor_state = str(raw_state) if raw_state is not None else None
         # process_running always present
@@ -336,7 +336,7 @@ class MetricsCache:
         # awaiting_first_heartbeat
         afh = data.get("awaiting_first_heartbeat")
         s.awaiting_first_heartbeat = bool(afh) if afh is not None else None
-        # stable_ticks is NOT in status.json — would need a new supervisor field
+        # stable_ticks is NOT in status.json - would need a new supervisor field
         s.stable_ticks = None
 
     def _read_monitor_state(self, s: MetricsSummary) -> None:
@@ -365,11 +365,11 @@ class MetricsCache:
             to avoid surfacing a stale mode value from a dead-process heartbeat.
           - If health.json is missing or invalid, current_mode is None.
           - If status.json was missing/invalid (process_running is None),
-            current_mode is also None — cannot trust the heartbeat without
+            current_mode is also None - cannot trust the heartbeat without
             knowing process state.
         """
         # Gate on process_running before reading health.json at all.
-        # None means status.json was unavailable — treat as conservative.
+        # None means status.json was unavailable - treat as conservative.
         if s.process_running is not True:
             s.current_mode = None
             return
@@ -411,7 +411,7 @@ class MetricsCache:
     def _read_policy_state(self, s: MetricsSummary) -> None:
         """
         Read effective policy state from core.feature_policy.get_policy_state().
-        Phase 2 Step 2 — MetricsCache is read-only; feature_policy owns the matrix.
+        Phase 2 Step 2 - MetricsCache is read-only; feature_policy owns the matrix.
         Non-fatal: any import or call error leaves policy fields as None.
         """
         try:

@@ -1,6 +1,6 @@
 """Queue the post-setup first task: agent6-full-audit-pass (§11.14).
 
-Priority 0 (highest — lowest number wins heap order) and flagged as
+Priority 0 (highest - lowest number wins heap order) and flagged as
 ``blocks_all_subsequent`` so Agent 1's future dispatch logic can refuse to
 hand out any work until this audit completes.
 
@@ -19,7 +19,7 @@ AUDIT_OP = "agent6-full-audit-pass"
 def main() -> int:
     s = Scheduler()
 
-    # Idempotency — skip if this op already exists in any non-terminal state.
+    # Idempotency - skip if this op already exists in any non-terminal state.
     existing = [
         t for t in s.list_by_status(TaskStatus.READY) + s.list_by_status(TaskStatus.IN_PROGRESS)
         if t.op == AUDIT_OP
@@ -33,7 +33,7 @@ def main() -> int:
         op=AUDIT_OP,
         owner_agent="6",                     # Opus 4.7 per AGENT_MODELS
         priority=0,                          # highest
-        categories=[],                        # ungated (agent 6 is category 6 — ungated in §7)
+        categories=[],                        # ungated (agent 6 is category 6 - ungated in §7)
         payload={
             "scope": "full-phase3-repo-audit",
             "target_paths": [

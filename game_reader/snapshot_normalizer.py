@@ -1,5 +1,5 @@
 # arch: raw liveclient JSON → coaching state dict + derived fields | section=vision | frozen=no
-"""game_reader.snapshot_normalizer — turns Riot Live Client JSON into the
+"""game_reader.snapshot_normalizer - turns Riot Live Client JSON into the
 coaching state dict consumed by the dashboard and per-mode coaches.
 
 Holds `_process_game` (the orchestrator, ~350 LOC) plus all derivation
@@ -102,7 +102,7 @@ class _NormalizerMixin:
         game_info = raw.get("gameData", {})
         if not isinstance(game_info, dict):
             game_info = {}
-        # Filter to dicts only — list elements can be strings when API is in a transitional state
+        # Filter to dicts only - list elements can be strings when API is in a transitional state
         raw_players = raw.get("allPlayers", [])
         all_players = [p for p in (raw_players if isinstance(raw_players, list) else [])
                        if isinstance(p, dict)]
@@ -125,16 +125,16 @@ class _NormalizerMixin:
         secs = int(game_time % 60)
         time_str = f"{mins}:{secs:02d}"
 
-        # ── TFT early exit — return minimal state so overlay detects TFT mode
+        # ── TFT early exit - return minimal state so overlay detects TFT mode
         if is_tft_mode(game_mode):
             return tft_minimal_state(game_mode, active, game_info, events,
                                      time_str, game_time)
 
-        # ── Detect GameEnd event — return None immediately so the overlay
+        # ── Detect GameEnd event - return None immediately so the overlay
         # exits game mode without waiting for the 30-second grace period ──────
         for ev in events:
             if isinstance(ev, dict) and ev.get("EventName") == "GameEnd":
-                _log.info("GameEnd event detected — signalling game over")
+                _log.info("GameEnd event detected - signalling game over")
                 return None
 
         # ── Robust player name matching ──────────────────────────────────
@@ -546,7 +546,7 @@ class _NormalizerMixin:
             nxt = last_dragon_time + DRAGON_RESPAWN
             if nxt > game_time:
                 remain = int(nxt - game_time)
-                soul_note = f" [SOUL — {dragon_num} kills]" if dragon_num >= 3 else ""
+                soul_note = f" [SOUL - {dragon_num} kills]" if dragon_num >= 3 else ""
                 lines.append(f"Drake #{dragon_num + 1} in {remain // 60}:{remain % 60:02d}{soul_note}")
             else:
                 soul_note = f" [{dragon_num} kills]" if dragon_num >= 2 else ""
@@ -753,7 +753,7 @@ class _NormalizerMixin:
         return suggestions[0] if suggestions else ""
 
     # AUDIT-PHASE-2-GR-002: refreshed jungle champion set
-    # Used as a last-resort fallback only — Smite detection (_has_smite) is
+    # Used as a last-resort fallback only - Smite detection (_has_smite) is
     # checked first and is authoritative for any champion. This list only
     # fires when summoner-spell data is absent (relay warm-up frames, etc.).
     _JUNGLE_CHAMPS = {
@@ -801,14 +801,14 @@ class _NormalizerMixin:
                 break
 
         if not enemy_jg_name:
-            # Tier 2: Smite detection — accurate for any champion, no list to maintain.
+            # Tier 2: Smite detection - accurate for any champion, no list to maintain.
             for e in enemies:
                 if self._has_smite(e):
                     enemy_jg_name = e.get("championName", "?")
                     enemy_jg_data = self._enemy_last_seen.get(enemy_jg_name, {})
                     break
         if not enemy_jg_name:
-            # Tier 3: champion-name heuristic — last resort when Smite data absent.
+            # Tier 3: champion-name heuristic - last resort when Smite data absent.
             for e in enemies:
                 name = e.get("championName", "?")
                 if name in self._JUNGLE_CHAMPS:
@@ -816,32 +816,32 @@ class _NormalizerMixin:
                     enemy_jg_data = self._enemy_last_seen.get(name, {})
                     break
 
-        threat = "Unknown — no jungler identified"
+        threat = "Unknown - no jungler identified"
         if enemy_jg_name:
             zone     = enemy_jg_data.get("zone", "unknown")
             last_t   = enemy_jg_data.get("time", 0)
             is_dead  = enemy_jg_data.get("dead", False)
             if last_t == 0:
                 if game_time < 180:
-                    threat = f"LOW — {enemy_jg_name} not yet spotted (early game, likely starting camps)"
+                    threat = f"LOW - {enemy_jg_name} not yet spotted (early game, likely starting camps)"
                 elif game_time < 480:
-                    threat = f"MEDIUM — {enemy_jg_name} untracked, assume near scuttle or bot side"
+                    threat = f"MEDIUM - {enemy_jg_name} untracked, assume near scuttle or bot side"
                 else:
-                    threat = f"HIGH — {enemy_jg_name} untracked, play safe until spotted"
+                    threat = f"HIGH - {enemy_jg_name} untracked, play safe until spotted"
             else:
                 time_ago = int(game_time - last_t)
                 if is_dead:
-                    threat = f"SAFE — {enemy_jg_name} is dead"
+                    threat = f"SAFE - {enemy_jg_name} is dead"
                 elif zone in ("jg bot", "bot side", "bot lane") and time_ago < 12:
-                    threat = f"HIGH — {enemy_jg_name} in jg-bot {time_ago}s ago, likely ganking"
+                    threat = f"HIGH - {enemy_jg_name} in jg-bot {time_ago}s ago, likely ganking"
                 elif zone in ("top lane", "top side", "jg top") and time_ago < 20:
-                    threat = f"LOW — {enemy_jg_name} top side ({time_ago}s ago)"
+                    threat = f"LOW - {enemy_jg_name} top side ({time_ago}s ago)"
                 elif time_ago < 25:
-                    threat = f"MEDIUM — {enemy_jg_name} @ {zone} {time_ago}s ago"
+                    threat = f"MEDIUM - {enemy_jg_name} @ {zone} {time_ago}s ago"
                 elif time_ago < 60:
-                    threat = f"HIGH — {enemy_jg_name} MIA {time_ago}s (last: {zone})"
+                    threat = f"HIGH - {enemy_jg_name} MIA {time_ago}s (last: {zone})"
                 else:
-                    threat = f"EXTREME — {enemy_jg_name} MIA {min(time_ago, 120)}s, no info"
+                    threat = f"EXTREME - {enemy_jg_name} MIA {min(time_ago, 120)}s, no info"
 
         ally_jg = None
         for a in allies:
@@ -866,9 +866,9 @@ class _NormalizerMixin:
                 dist = self._walk_time(apos, my_pos) if my_pos else None
                 if dist is not None:
                     if dist <= 8:
-                        friendly = f"{aname} @ {zone} — CLOSE, gank ready"
+                        friendly = f"{aname} @ {zone} - CLOSE, gank ready"
                     elif dist <= 20:
-                        friendly = f"{aname} @ {zone} ~{dist}s — can gank soon"
+                        friendly = f"{aname} @ {zone} ~{dist}s - can gank soon"
                     else:
                         friendly = f"{aname} @ {zone} ~{dist}s away"
                 else:
@@ -877,7 +877,7 @@ class _NormalizerMixin:
                 if game_time < 300:
                     friendly = f"{aname} likely at first camps (not yet visible)"
                 else:
-                    friendly = f"{aname} position unknown — ward river for gank setup"
+                    friendly = f"{aname} position unknown - ward river for gank setup"
         else:
             friendly = "Jungler not identified"
 
@@ -894,14 +894,14 @@ class _NormalizerMixin:
 
         if my_team == "ORDER":
             if x > 11000 or (x > 9500 and z > 6000):
-                issues.append("OVEREXTENDED past enemy T1 — extreme gank risk")
+                issues.append("OVEREXTENDED past enemy T1 - extreme gank risk")
             elif x > 9000:
-                issues.append("Deep in enemy territory — ward before advancing further")
+                issues.append("Deep in enemy territory - ward before advancing further")
         else:
             if x < 4000 or (x < 5500 and z < 4000):
-                issues.append("OVEREXTENDED past enemy T1 — extreme gank risk")
+                issues.append("OVEREXTENDED past enemy T1 - extreme gank risk")
             elif x < 5500:
-                issues.append("Deep in enemy territory — ward before advancing further")
+                issues.append("Deep in enemy territory - ward before advancing further")
 
         my_champ = me.get("championName", "") if me else ""
         support = None
@@ -918,9 +918,9 @@ class _NormalizerMixin:
                     break
 
         if support is None and zone in ("bot lane", "bot side"):
-            issues.append("Support not nearby — do not trade without peel")
+            issues.append("Support not nearby - do not trade without peel")
         elif support and support[1] > 8:
-            issues.append(f"Support {support[0]} ~{support[1]}s away — reduce exposure")
+            issues.append(f"Support {support[0]} ~{support[1]}s away - reduce exposure")
 
         return " | ".join(issues) if issues else ""
 
@@ -931,19 +931,19 @@ class _NormalizerMixin:
         hints = []
 
         if 2.5 * 60 < game_time < 3.5 * 60:
-            hints.append("Ward river NOW — scuttle fight at 3:15")
+            hints.append("Ward river NOW - scuttle fight at 3:15")
         elif dragon_t is not None and 0 < dragon_t < 90:
-            hints.append(f"Ward drake pit entrance — spawns in {dragon_t}s")
+            hints.append(f"Ward drake pit entrance - spawns in {dragon_t}s")
         elif baron_t is not None and 0 < baron_t < 90:
-            hints.append(f"Ward baron pit mouth — spawns in {baron_t}s")
+            hints.append(f"Ward baron pit mouth - spawns in {baron_t}s")
 
         if mins > 2 and not hints:
             if mins < 5:
-                hints.append("Buy control ward on next recall — place river tri-brush")
+                hints.append("Buy control ward on next recall - place river tri-brush")
             elif mins < 15:
-                hints.append("Refresh river ward on next recall — deny gank angles")
+                hints.append("Refresh river ward on next recall - deny gank angles")
             else:
-                hints.append("Deep ward enemy jg on next recall — track rotations")
+                hints.append("Deep ward enemy jg on next recall - track rotations")
 
         return hints[0] if hints else ""
 
@@ -974,7 +974,7 @@ class _NormalizerMixin:
         """
         Fetch /activeplayerrunes and return a compact string:
         "Keystone | PrimaryPath / SecondaryPath"
-        Returns "" on any failure — never raises.
+        Returns "" on any failure - never raises.
         """
         try:
             data = self._get(f"{LIVE_API}/activeplayerrunes")
@@ -995,7 +995,7 @@ class _NormalizerMixin:
     def _read_enemy_runes(self, enemies: list) -> dict:
         """
         Fetch /playermainrunes?summonerName=X for each enemy.
-        Returns {championName: "Keystone | PrimaryPath"} — partial results OK.
+        Returns {championName: "Keystone | PrimaryPath"} - partial results OK.
         Silently skips failures.
         """
         result = {}
@@ -1049,7 +1049,7 @@ class _NormalizerMixin:
             return {}
 
     # ------------------------------------------------------------------
-    # arch: phase 1 step 3 — snapshot factory helpers (to_rift_snapshot, to_aram_snapshot)
+    # arch: phase 1 step 3 - snapshot factory helpers (to_rift_snapshot, to_aram_snapshot)
     # ------------------------------------------------------------------
 
     @staticmethod

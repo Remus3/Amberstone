@@ -10,7 +10,7 @@ Data sources (no auth required):
 
 Output: C:\\Riot Commander\\data\\rewind_history.db  (SEPARATE from postgame_stats.db)
 
-Resumable — skips matches already stored. Safe to Ctrl+C and re-run.
+Resumable - skips matches already stored. Safe to Ctrl+C and re-run.
 
 Usage:
   python scripts\\rewind_scraper.py
@@ -37,7 +37,7 @@ REGION   = "NA"
 USERNAME = "SamplePlayer#Vayne"
 BASE     = "https://rewind.lol"
 
-# Polite rate limiting — seconds between requests
+# Polite rate limiting - seconds between requests
 REQUEST_DELAY   = 1.2   # baseline delay
 RETRY_DELAY     = 8.0   # wait after 429/503
 MAX_RETRIES     = 3
@@ -58,7 +58,7 @@ def fetch_json(url: str, retries: int = MAX_RETRIES) -> dict | list | None:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                return None                      # not found — not an error
+                return None                      # not found - not an error
             if e.code in (429, 503):
                 wait = RETRY_DELAY * (2 ** attempt)
                 print(f"    Rate-limited ({e.code}), waiting {wait:.0f}s...")
@@ -257,7 +257,7 @@ CREATE INDEX IF NOT EXISTS idx_participants_match ON participants(match_id);
 CREATE INDEX IF NOT EXISTS idx_participants_champion ON participants(champion_name);
 CREATE INDEX IF NOT EXISTS idx_participants_puuid ON participants(puuid);
 
--- Team-level data (objectives, bans) — one row per team per match
+-- Team-level data (objectives, bans) - one row per team per match
 CREATE TABLE IF NOT EXISTS teams (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id        TEXT NOT NULL,
@@ -770,7 +770,7 @@ def main():
             insert_rows(conn, "teams", team_rows)
 
         else:
-            # No stats available — insert minimal match row from history
+            # No stats available - insert minimal match row from history
             conn.execute("""
                 INSERT OR IGNORE INTO matches
                 (match_id, platform, queue_id, patch, game_duration_s,

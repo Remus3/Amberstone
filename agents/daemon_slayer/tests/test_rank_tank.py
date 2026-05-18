@@ -1,4 +1,4 @@
-"""Phase 1 (s174, 2026-05-12) — Tank item ranker tests.
+"""Phase 1 (s174, 2026-05-12) - Tank item ranker tests.
 
 Mirrors ``test_rank`` shape but exercises the EHP scorer side. The
 filter-pipeline tests already live in ``test_rank`` (same helpers); these
@@ -153,7 +153,7 @@ class SharedUniqueFilterTests(unittest.TestCase):
     def test_sterak_then_maw_filtered_by_default(self) -> None:
         # Both Sterak's (3053) and Maw of Malmortius (3156) share the
         # "lifeline" unique_passive_key. With Sterak's already built,
-        # Maw's lifeline shield is dead — default filter drops the
+        # Maw's lifeline shield is dead - default filter drops the
         # candidate from the rank.
         r = rank_items_by_ehp(
             self.snap, "Aatrox", level=11,
@@ -182,7 +182,7 @@ class EnemyShareSensitivityTests(unittest.TestCase):
 
     def test_pure_ap_enemy_prefers_mr_items(self) -> None:
         # Force of Nature (4401) should outrank Thornmail (3075) when
-        # enemy_ap_share=1.0 — magical EHP dominates blended_ehp.
+        # enemy_ap_share=1.0 - magical EHP dominates blended_ehp.
         r = rank_items_by_ehp(
             self.snap, "Malphite", level=11,
             enemy_ad_share=0.0, enemy_ap_share=1.0,

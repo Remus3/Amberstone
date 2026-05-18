@@ -1,4 +1,4 @@
-"""Round 14 coverage — HEAD routing + first-legendary aggregate + hint surfacing."""
+"""Round 14 coverage - HEAD routing + first-legendary aggregate + hint surfacing."""
 from __future__ import annotations
 
 import json
@@ -17,7 +17,7 @@ import pytest
 @pytest.mark.timeout(30)
 def test_head_on_api_env_returns_200(tmp_path: Path) -> None:
     """HEAD /api/env should route through do_GET (real status, no body).
-    Uses a spawned supervisor — exercises the full HTTP stack."""
+    Uses a spawned supervisor - exercises the full HTTP stack."""
     import os
     import sys
     _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -86,7 +86,7 @@ def seeded_with_events(tmp_path: Path, monkeypatch):
             (0, 3000, 320),     # itemA n=5 w=4
             (0, 3001, 250),
             (0, 3001, 260),
-            (0, 3001, 255),     # itemB n=3 w=0 — below ITEM_MIN_SAMPLE=5
+            (0, 3001, 255),     # itemB n=3 w=0 - below ITEM_MIN_SAMPLE=5
         ]
         for i, (win, first_iid, ts) in enumerate(matchups):
             cur = conn.execute(

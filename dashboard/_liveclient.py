@@ -8,8 +8,8 @@ snapshots pushed by the Game-PC agents (`gamepc_lcu_agent.py`,
 `gamepc_liveclient_relay.py`). Each summary is a best-effort cheap
 shape used by the dashboard:
 
-  lcu_summary()        — champ-select / lobby / queue context
-  liveclient_summary() — in-game derived fields (game_time, kda,
+  lcu_summary()        - champ-select / lobby / queue context
+  liveclient_summary() - in-game derived fields (game_time, kda,
                          hp/mana/level/gold/cs) plus the SR build path
                          + owned-items list rendered by the icon grid
 
@@ -23,7 +23,7 @@ inside the same Legion process). Token is sourced via
 
 `liveclient_summary()` enriches the raw frame with a curated build
 path via `item_advisor.resolve_build` (+ boots phase + redundancy
-filter). The import is hoisted to module scope — `item_advisor` is
+filter). The import is hoisted to module scope - `item_advisor` is
 pure-Python data dicts at load time with no expensive side effects.
 """
 from __future__ import annotations
@@ -108,7 +108,7 @@ def liveclient_summary() -> dict:
             out["cs"]  = s.get("creepScore", 0)
             out["champion"] = me_pl.get("championName")
             owned_items = [it.get("displayName", "") for it in (me_pl.get("items") or [])]
-            # s184 — parallel item-id list so server-side consumers
+            # s184 - parallel item-id list so server-side consumers
             # (archetype_mismatch nudge) don't need a name → id resolver
             # for the operator's own inventory. Same order as owned_items.
             owned_item_ids = [str(it.get("itemID", "")) for it in (me_pl.get("items") or [])]
@@ -121,7 +121,7 @@ def liveclient_summary() -> dict:
         out["owned_items"] = owned_items
         out["owned_item_ids"] = owned_item_ids
         out["enemy_team"]  = enemy_team
-        # s184 — surface liveclient's gameId for per-game dedup tokens
+        # s184 - surface liveclient's gameId for per-game dedup tokens
         # (archetype-nudge state). Live Client doesn't always expose this
         # at gameData root; fall back to "" so callers detect absence.
         gid = gd.get("gameId") or gd.get("gameID") or ""
@@ -136,7 +136,7 @@ def liveclient_summary() -> dict:
                 norm_owned = {x.lower().strip() for x in owned_items}
                 build_lc = {x.lower().strip() for x in build}
                 items_view = []
-                # 1. Owned items first (green) — skip trinket since it never sells.
+                # 1. Owned items first (green) - skip trinket since it never sells.
                 for it in owned_items:
                     if not it: continue
                     if it.lower().strip() in {"farsight alteration", "stealth ward",

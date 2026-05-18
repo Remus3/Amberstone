@@ -1,6 +1,6 @@
 # arch: OCR pipeline (Tesseract) | section=vision | frozen=no
 """
-core/vision_tesseract.py — Local Tesseract OCR for cheap League fields.
+core/vision_tesseract.py - Local Tesseract OCR for cheap League fields.
 
 Replaces Sonnet vision for fields that are just numbers or fixed-format text
 (gold, HP, mana, level, timer, CS, KDA). Drops latency from ~2s+cost to
@@ -74,7 +74,7 @@ def _regions() -> dict:
                 if not k.startswith("_") and isinstance(v, (list, tuple))
             }
         except Exception as exc:
-            _log.warning("vision_regions.json load failed: %s — using defaults", exc)
+            _log.warning("vision_regions.json load failed: %s - using defaults", exc)
             _REGIONS_CACHE = dict(_DEFAULT_REGIONS)
             _BASE_CACHE = (BASE_W, BASE_H)
     else:
@@ -231,7 +231,7 @@ def _ally_ults_strip(img, slots: int = 4) -> Optional[list]:
     check the center sub-square for saturated/bright pixels. Returns a
     list of bools of length N, True = ult ready (icon lit), False = on CD
     or icon dim. Robust against the rectangular HP/mana bars that may
-    bleed into the strip — those are excluded by sampling only the
+    bleed into the strip - those are excluded by sampling only the
     center 60% width of each slot's vertical band (icons are circular,
     bars span the full width)."""
     rgb = img.convert("RGB")
@@ -399,7 +399,7 @@ def _has_text_signal(crop, threshold: int = 180, min_lit_pct: float = 0.02) -> b
 
 
 def _parse_field(name: str, crop, hp_known: Optional[int] = None):
-    """Single-field parse logic — extracted so it can run in a thread pool."""
+    """Single-field parse logic - extracted so it can run in a thread pool."""
     if name == "timer":
         return _ocr_timer(crop)
     if name == "kda":
@@ -424,12 +424,12 @@ def _parse_field(name: str, crop, hp_known: Optional[int] = None):
         v = _ocr_int(crop)
         return v if v is not None and 0 <= v <= 99999 else None
     if name.endswith("_cd"):
-        # Skip if no text signal — icon is off-cooldown.
+        # Skip if no text signal - icon is off-cooldown.
         if not _has_text_signal(crop):
             return None
         return _ocr_cooldown(crop)
     if name == "death_timer":
-        # Skip if alive (hp_known > 0) — death timer only renders when dead.
+        # Skip if alive (hp_known > 0) - death timer only renders when dead.
         if hp_known is not None and hp_known > 0:
             return None
         if not _has_text_signal(crop, threshold=150):

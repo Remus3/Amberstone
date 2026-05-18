@@ -1,4 +1,4 @@
-# bridge_setup.ps1 — one-shot bootstrap for Game-PC bridge tooling.
+# bridge_setup.ps1 - one-shot bootstrap for Game-PC bridge tooling.
 # Downloads bridge_fetch / bridge_ping / bridge_heartbeat from Legion,
 # then runs the ping validator so the user sees PASS/FAIL immediately.
 #

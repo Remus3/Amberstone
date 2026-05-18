@@ -11,7 +11,7 @@ ROOT = pathlib.Path(__file__).parent.parent
 SRC = ROOT / "web/css/dashboard.css"
 PANELS_DIR = ROOT / "web/css/panels"
 
-# (filename, start_line, end_line) — 1-based, inclusive
+# (filename, start_line, end_line) - 1-based, inclusive
 # Lines 1-11 (file comment + Google Fonts @import) stay in dashboard.css header.
 SECTIONS = [
     ("base.css",            12,   117),   # :root, reset, tooltip, game-phase
@@ -49,7 +49,7 @@ def _check_mode(lines: list[str]) -> int:
         print("MISSING:", ", ".join(missing))
         print("Run: python scripts/extract_css_panels.py")
         return 1
-    print("OK — all CSS panel files present and dashboard.css is @import router")
+    print("OK - all CSS panel files present and dashboard.css is @import router")
     return 0
 
 
@@ -57,7 +57,7 @@ def main(check: bool = False) -> int:
     raw = SRC.read_bytes()
     lines = raw.decode("utf-8").splitlines(keepends=True)
     total = len(lines)
-    print(f"Source: {SRC.name} — {total} lines")
+    print(f"Source: {SRC.name} - {total} lines")
 
     if check:
         return _check_mode(lines)

@@ -333,7 +333,7 @@ def _new_id() -> str:
 # Watches agents/state/lockfile (written by agents.supervisor every 5s, see
 # agents/supervisor.py HEARTBEAT_INTERVAL). Restarts the
 # RC-Phase3-Supervisor scheduled task via `schtasks /Run` (preserves the
-# task's run-as-Admin + HIGHEST run-level context — don't Popen
+# task's run-as-Admin + HIGHEST run-level context - don't Popen
 # `pythonw -m agents.supervisor` directly from here).
 
 
@@ -343,12 +343,12 @@ class _Phase3Watcher:
     Supervisor's _record_incident + status.json.
 
     Default thresholds:
-      - heartbeat staleness: 30s (~6 missed 5s heartbeats — tolerates
+      - heartbeat staleness: 30s (~6 missed 5s heartbeats - tolerates
         event-loop pauses, GC, startup grace, transient I/O blocks)
       - per-attempt cooldown: 30s (new instance needs ~3-5s to write its
         first heartbeat; cooldown prevents re-fire while booting)
       - CircuitBreaker: max 5 restarts in 120s, then 300s lockout (same
-        defaults as main app's breaker but a separate budget — Phase 3
+        defaults as main app's breaker but a separate budget - Phase 3
         flapping must not affect main-app restart credit)
     """
 
@@ -358,7 +358,7 @@ class _Phase3Watcher:
 
     # Stale-code detection (2026-05-18). `python -m agents.supervisor`
     # imports its code once at process start and has no restart_trigger
-    # equivalent — a deploy that doesn't stall its heartbeat leaves it
+    # equivalent - a deploy that doesn't stall its heartbeat leaves it
     # running old code indefinitely (2026-05-17 incident: a ~27h process
     # never picked up keystone 3eb2e2d, silently broadcasting un-mirrored
     # WS health). When the process is otherwise healthy but its
@@ -429,7 +429,7 @@ class _Phase3Watcher:
     def _started_at_epoch(data: Optional[Dict[str, Any]]) -> Optional[float]:
         """Epoch seconds for the lockfile's ``started_at``, or None when
         absent/unparseable. Absent = an old supervisor predating the
-        2026-05-18 heartbeat change — the stale-code check then no-ops
+        2026-05-18 heartbeat change - the stale-code check then no-ops
         (it will gain the field the first time it restarts for any
         reason), so this is backward-compatible by construction."""
         if not isinstance(data, dict):
@@ -471,7 +471,7 @@ class _Phase3Watcher:
                         continue
                     if newest is None or m > newest:
                         newest = m
-        except Exception:  # noqa: BLE001 — scan must never raise
+        except Exception:  # noqa: BLE001 - scan must never raise
             return None
         return newest
 
@@ -514,7 +514,7 @@ class _Phase3Watcher:
         # Stale-code upgrade: an otherwise-healthy process (alive +
         # fresh heartbeat) that imported its code before a later deploy
         # touched its import chain. Reuses the same cooldown + budget +
-        # restarter path below. Fully guarded — any failure to determine
+        # restarter path below. Fully guarded - any failure to determine
         # started_at or scan mtimes SKIPS the check (never false-restart);
         # absent started_at = an old supervisor, also skipped.
         if not unhealthy:
@@ -526,7 +526,7 @@ class _Phase3Watcher:
                             and newest > started_epoch + self._STALE_CODE_GRACE_S):
                         state = "stale_code"
                         unhealthy = True
-            except Exception:  # noqa: BLE001 — never crash the watcher
+            except Exception:  # noqa: BLE001 - never crash the watcher
                 pass
 
         self._last_pid = pid or None
@@ -630,10 +630,10 @@ class Supervisor:
         )  # max seconds to wait for first healthy heartbeat after start
 
         # Launch identity: binds heartbeat acceptance to the specific spawned process.
-        # _expected_pid       — the PID Popen returned (or the adopted pid).
-        # _launch_mtime_floor — wall-clock time just before Popen; any valid health.json
+        # _expected_pid       - the PID Popen returned (or the adopted pid).
+        # _launch_mtime_floor - wall-clock time just before Popen; any valid health.json
         #                       for THIS launch must have mtime >= this value.
-        # _observed_pid       — the PID the child actually reports in health.json,
+        # _observed_pid       - the PID the child actually reports in health.json,
         #                       latched on first valid heartbeat. Peer-VIP 2026-05-02
         #                       surfaced that pythonw.exe under a venv is a launcher
         #                       stub: Popen returns the stub pid but the real child
@@ -670,7 +670,7 @@ class Supervisor:
             d.mkdir(parents=True, exist_ok=True)
 
         # Subordinate watch for the Phase 3 supervisor (agents.supervisor).
-        # Additive sidecar — see _Phase3Watcher docstring. Does not touch
+        # Additive sidecar - see _Phase3Watcher docstring. Does not touch
         # any main-app lifecycle path.
         self._phase3_watcher = _Phase3Watcher(
             project_root=self.project_root,
@@ -772,7 +772,7 @@ class Supervisor:
             self.last_restart_reason = "adopted_existing"
             # Adoption: identity is known immediately from the live health file.
             # _observed_pid is set to the same pid since adoption already validated
-            # this is the live process — there's no stub-indirection question,
+            # this is the live process - there's no stub-indirection question,
             # we read pid straight from the freshly-mtimed health.json.
             self._expected_pid         = pid
             self._observed_pid         = pid
@@ -909,7 +909,7 @@ class Supervisor:
     def _is_current_launch_heartbeat(self, health: dict, mtime: float) -> tuple:
         """
         Return (is_current: bool, reject_reason: str).
-        Used during startup grace only — establishes whether a freshly
+        Used during startup grace only - establishes whether a freshly
         appearing health.json belongs to the launch we just kicked off.
 
         Peer-VIP 2026-05-02 surfaced that pythonw.exe inside a venv is a
@@ -923,7 +923,7 @@ class Supervisor:
         Adoption sets _launch_mtime_floor=None (already-validated freshness),
         so the floor check is skipped in that case.
 
-        We do NOT check pid here — _observed_pid is latched on first valid
+        We do NOT check pid here - _observed_pid is latched on first valid
         heartbeat in _on_first_heartbeat() and enforced thereafter.
         """
         if self._expected_pid is None:
@@ -999,7 +999,7 @@ class Supervisor:
 
             # File is from our process. Now check liveness.
             if health.get("alive") and not health.get("booting"):
-                # First healthy heartbeat received — clear grace window
+                # First healthy heartbeat received - clear grace window
                 self._awaiting_first_heartbeat = False
                 self._startup_mono_ts          = None
                 self._on_first_heartbeat(health)
@@ -1045,7 +1045,7 @@ class Supervisor:
 
     def _on_first_heartbeat(self, health: Dict[str, Any]) -> None:
         """Update owned identity from a live heartbeat payload."""
-        # Latch the pid the child actually reports — this may differ from
+        # Latch the pid the child actually reports - this may differ from
         # _expected_pid (Popen pid) when pythonw.exe is a launcher stub.
         # Only set on the FIRST valid heartbeat; subsequent calls are no-ops
         # so a foreign or stale-runtime heartbeat can't overwrite our anchor.
@@ -1057,7 +1057,7 @@ class Supervisor:
                     self.log("observed_pid_diverged_from_expected:"
                              " expected=" + str(self._expected_pid)
                              + " observed=" + str(reported_pid)
-                             + " (pythonw stub indirection — expected on venvs)")
+                             + " (pythonw stub indirection - expected on venvs)")
 
         reported_run_id     = str(health.get("run_id") or "")
         reported_session_id = str(health.get("session_id") or "")
@@ -1104,7 +1104,7 @@ class Supervisor:
         Use this for: deploy guards, stable_ticks, circuit-breaker credit.
         Use heartbeat_stale() for: restart decisions only.
         """
-        # Process must be alive — catches dead process before reading stale file
+        # Process must be alive - catches dead process before reading stale file
         if not self._app_alive():
             return False
         if not self.health_file.exists():
@@ -1134,9 +1134,9 @@ class Supervisor:
         Return a single string describing the supervisor's current health view.
         Used in write_status() for unambiguous observability.
 
-          healthy_ready            — app is fully healthy, valid heartbeat
-          tolerated_startup_wait   — awaiting first heartbeat, within grace
-          unhealthy_restart_required — app dead, stale heartbeat, or grace expired
+          healthy_ready            - app is fully healthy, valid heartbeat
+          tolerated_startup_wait   - awaiting first heartbeat, within grace
+          unhealthy_restart_required - app dead, stale heartbeat, or grace expired
         """
         if not self._app_alive():
             return "unhealthy_restart_required"
@@ -1478,11 +1478,11 @@ class Supervisor:
 
         try:
             # Bootstrap order (Phase 0.12):
-            # 1. start_app() first — establishes _expected_pid, _launch_mtime_floor,
+            # 1. start_app() first - establishes _expected_pid, _launch_mtime_floor,
             #    awaiting_first_heartbeat, and calls write_status() internally.
             # 2. write_status() explicitly to guarantee status.json is on disk with
             #    the current supervisor_run_id before SelfMonitor reads it.
-            # 3. _start_self_monitor() last — SelfMonitor's bootstrap guard will
+            # 3. _start_self_monitor() last - SelfMonitor's bootstrap guard will
             #    immediately find matching status.json and proceed normally.
             self.start_app(reason="supervisor_boot")
             self.write_status()   # ensure current-run status is on disk before monitor starts

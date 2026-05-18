@@ -1,15 +1,15 @@
-"""Phase 4b (s178, 2026-05-12) — ability DPS evaluator tests.
+"""Phase 4b (s178, 2026-05-12) - ability DPS evaluator tests.
 
 Coverage split into seven groups:
 
-* ``RankAtLevelTests`` — pin the max-priority rank tables (Q/W/E + R).
-* ``AbilityContextTests`` — base/bonus splits, current/missing HP.
-* ``MitigationFactorTests`` — physical/magic/true/mixed routing.
-* ``BlockEvaluationTests`` — sum / first / max strategies; per-rank.
-* ``ComputeAbilityDpsTests`` — end-to-end on Veigar/Aatrox/Ezreal with
+* ``RankAtLevelTests`` - pin the max-priority rank tables (Q/W/E + R).
+* ``AbilityContextTests`` - base/bonus splits, current/missing HP.
+* ``MitigationFactorTests`` - physical/magic/true/mixed routing.
+* ``BlockEvaluationTests`` - sum / first / max strategies; per-rank.
+* ``ComputeAbilityDpsTests`` - end-to-end on Veigar/Aatrox/Ezreal with
   varied builds, modes, and AP/AD/damage amps.
-* ``CastRateIntegrationTests`` — measured vs theoretical fallback.
-* ``ServerRouteTests`` — POST /ability-dps + GET equivalent.
+* ``CastRateIntegrationTests`` - measured vs theoretical fallback.
+* ``ServerRouteTests`` - POST /ability-dps + GET equivalent.
 """
 from __future__ import annotations
 
@@ -364,7 +364,7 @@ class ComputeAbilityDpsTests(unittest.TestCase):
     def test_veigar_q_rank_correct_at_level(self) -> None:
         r = compute_ability_dps(self.snap, "Veigar", 11, mode="SR")
         q = next(s for s in r.per_spell if s.key == "Q")
-        # Q maxes at lvl 9 with priority 1 — rank 4 at lvl 11.
+        # Q maxes at lvl 9 with priority 1 - rank 4 at lvl 11.
         self.assertEqual(q.rank, 4)
 
     def test_veigar_r_locked_at_level_5(self) -> None:
@@ -382,7 +382,7 @@ class ComputeAbilityDpsTests(unittest.TestCase):
         # mitigation). post_mit should be 240.
         self.assertAlmostEqual(q_no.post_mitigation_damage_per_cast, 240.0, places=1)
 
-    # ---------- Aatrox (PHYSICAL Q — armor routing)
+    # ---------- Aatrox (PHYSICAL Q - armor routing)
 
     def test_aatrox_q_is_physical(self) -> None:
         r = compute_ability_dps(self.snap, "Aatrox", 11, mode="SR",
@@ -412,14 +412,14 @@ class ComputeAbilityDpsTests(unittest.TestCase):
         r = compute_ability_dps(self.snap, "Ezreal", 11, mode="SR",
                                 target_mr=30.0, target_armor=30.0)
         q = next(s for s in r.per_spell if s.key == "Q")
-        # Ezreal Q is PHYSICAL — uses armor mitigation.
+        # Ezreal Q is PHYSICAL - uses armor mitigation.
         self.assertEqual(q.damage_type, "PHYSICAL")
         self.assertGreater(q.post_mitigation_damage_per_cast, 0)
 
     # ---------- ARAM mode multiplier
 
     def test_aram_damage_dealt_applied_to_per_cast(self) -> None:
-        # Veigar's aramDamageDealt < 1.0 — per-cast damage is reduced by
+        # Veigar's aramDamageDealt < 1.0 - per-cast damage is reduced by
         # exactly that multiplier. We don't check totals because ARAM has
         # higher measured cast rates (more fights/team time) which can
         # offset the per-cast reduction in aggregate.
@@ -432,7 +432,7 @@ class ComputeAbilityDpsTests(unittest.TestCase):
         # raw_damage_per_cast is pre-mode; should be identical at the
         # same level + no items.
         self.assertAlmostEqual(sr_q.raw_damage_per_cast, aram_q.raw_damage_per_cast)
-        # post_mode = raw * mode_mult — check the ratio matches.
+        # post_mode = raw * mode_mult - check the ratio matches.
         expected = sr_q.raw_damage_per_cast * aram.mode_multiplier
         self.assertAlmostEqual(aram_q.post_mode_damage_per_cast, expected, places=2)
         # And mode_mult on Veigar is < 1.0 (canonical ARAM-nerfed AP).
@@ -442,14 +442,14 @@ class ComputeAbilityDpsTests(unittest.TestCase):
 
     def test_liandrys_damage_amp_flows_through(self) -> None:
         # 6653 = Liandry's Torment in patch 16.9.1 (was 3151 in older patches).
-        # Ships with damage_amp_pct=0.06 — Suffering's sustained 6% amp.
+        # Ships with damage_amp_pct=0.06 - Suffering's sustained 6% amp.
         base = compute_ability_dps(self.snap, "Veigar", 11, mode="SR",
                                    target_mr=30.0)
         with_liandry = compute_ability_dps(self.snap, "Veigar", 11,
                                            item_ids=["6653"], mode="SR",
                                            target_mr=30.0)
         # Liandry adds AP too, so total goes up for two reasons. Just
-        # check it goes up — the AP amp tests verify the multiplier path.
+        # check it goes up - the AP amp tests verify the multiplier path.
         self.assertGreater(with_liandry.total_ability_dps, base.total_ability_dps)
 
     # ---------- coverage / structure
@@ -507,7 +507,7 @@ class CastRateIntegrationTests(unittest.TestCase):
 
     def test_high_cast_rate_yields_higher_dps_than_low(self) -> None:
         # Veigar Q has a much higher measured cast rate than R, so Q DPS
-        # should be higher per-cast-damage-normalized — but at minimum,
+        # should be higher per-cast-damage-normalized - but at minimum,
         # the Q DPS should be positive while R-locked spells are zero.
         r = compute_ability_dps(self.snap, "Veigar", 4)  # R locked
         q = next(s for s in r.per_spell if s.key == "Q")

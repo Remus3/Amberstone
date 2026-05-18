@@ -1,4 +1,4 @@
-"""Round 27 — dashboard KDA streaks strip."""
+"""Round 27 - dashboard KDA streaks strip."""
 from __future__ import annotations
 
 from pathlib import Path

@@ -1,5 +1,5 @@
 """
-core/replay_history.py — read-only access to data/rewind_history.db for
+core/replay_history.py - read-only access to data/rewind_history.db for
 the replay-scrubber dashboard view.
 
 AUDIT 2026-04-28 (suggestion 2.3): rewind_history.db has 2846 matches
@@ -42,7 +42,7 @@ _id_to_champ: dict[int, str] = {}
 _idx_lock = threading.Lock()
 
 # AUDIT 2026-04-29 (item 8): LRU cache for match_detail(). Matches are
-# immutable once recorded — no invalidation needed. 8 entries × ~75 KB
+# immutable once recorded - no invalidation needed. 8 entries × ~75 KB
 # JSON ≈ 600 KB RAM. Returning to a previously-viewed match is now ~0
 # ms instead of 7 ms warm / 100 ms cold-after-idle.
 import collections as _collections
@@ -83,7 +83,7 @@ def _open() -> Optional[sqlite3.Connection]:
 
 def list_matches(limit: int = 25, queue_filter: Optional[int] = None) -> list[dict]:
     """Recent matches sorted by game_creation_ts desc. Returns the metadata
-    needed for the dashboard match picker — no per-frame data."""
+    needed for the dashboard match picker - no per-frame data."""
     _load_champ_index()
     c = _open()
     if c is None:
@@ -187,7 +187,7 @@ def match_detail(match_id: str, *, max_frames: int = 60) -> Optional[dict]:
     with _match_cache_lock:
         cached = _MATCH_DETAIL_CACHE.get(cache_key)
         if cached is not None:
-            # touch — move to end of OrderedDict (most-recent)
+            # touch - move to end of OrderedDict (most-recent)
             _MATCH_DETAIL_CACHE.move_to_end(cache_key)
             return cached
     _load_champ_index()

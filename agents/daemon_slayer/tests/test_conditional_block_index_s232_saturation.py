@@ -1,8 +1,8 @@
-"""Phase 5.9.32 (s232, 2026-05-16) — conditional pure-data vein
+"""Phase 5.9.32 (s232, 2026-05-16) - conditional pure-data vein
 SATURATION PROOF (no registry/engine change; ENGINE stays 1.3.0).
 
 Operator chose "Accept loop complete" after s232's rigorous scan showed
-the autonomous pure-data conditional-seed-expansion vein is exhausted —
+the autonomous pure-data conditional-seed-expansion vein is exhausted -
 the same conclusion the s223→s227 pure-data registry sweep reached for
 the unconditional registries. This file is the s223-style machine-
 checked saturation guard so no future session re-mines an empty vein,
@@ -16,14 +16,14 @@ tools/ds_execute_prefilter.py, both kept as durable per-patch tools):
     executes were Evelynn R + KogMaw R (s231) and Kindred E (s228). The
     ONLY other true target_missing_hp_pct / target_current_hp_pct pairs
     are cases where the engine-default block 0 ALREADY carries the
-    higher coefficient (Jinx R: block 0 = 25-35% missing-HP, the max —
+    higher coefficient (Jinx R: block 0 = 25-35% missing-HP, the max -
     s217's determination) or are deliberately R-entangled skips (Varus
-    W blocks 5/6 — s225 chose block 2 to keep W's score R-independent).
+    W blocks 5/6 - s225 chose block 2 to keep W's score R-independent).
     No unaddressed clean execute candidate remains.
   * ``target_no_setup`` (self-applied-debuff amp) vein: the one genuine
     correctness fix was Fiddlesticks Q (s230). Everything else the pair
     scanner finds is already correctly plain-int mapped to the amped
-    block — converting those to conditionals is a pure Part-1 no-op
+    block - converting those to conditionals is a pure Part-1 no-op
     that adds zero ranking value until a Part-2 live-advisory surface
     consumes the downgrade branch (deliberately not built; s229
     reframed per-tick B-2 as a mis-feature for item ranking).
@@ -33,7 +33,7 @@ tools/ds_execute_prefilter.py, both kept as durable per-patch tools):
     already mapped-correctly.
 
 The high-ROI remaining DS work is Part-2 (live target-state plumbing)
-— architectural, wants operator sign-off, NOT autonomous pure-data.
+- architectural, wants operator sign-off, NOT autonomous pure-data.
 """
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ from agents.daemon_slayer.ability_dps import (
 )
 from agents.daemon_slayer.data_loader import DataSnapshot
 
-# Every conditional shipped s228→s231 — the terminal set of the
+# Every conditional shipped s228→s231 - the terminal set of the
 # autonomous pure-data conditional vein.
 _SHIPPED_CONDITIONALS = {
     ("Kindred", "E"): {"default": 1, "target_full_hp": 0},      # s228
@@ -117,7 +117,7 @@ class DocumentedExecuteSkipsTests(unittest.TestCase):
     def test_jinx_R_unmapped_block0_is_canonical_max_missing_hp(self) -> None:
         # Engine default = block 0. s217 determined block 0 is the
         # canonical max-distance primary-target value AND it carries
-        # the HIGHEST missing-HP coefficient — so no entry is needed.
+        # the HIGHEST missing-HP coefficient - so no entry is needed.
         m, _ = get_block_index_for("Jinx")
         self.assertNotIn("R", m)
         reset_default_cache()
@@ -152,7 +152,7 @@ class MissingHpExecuteVeinSaturationGuard(unittest.TestCase):
     with two same-shape filtered damage blocks differing (monotone) in
     a true execute coefficient (target_missing_hp_pct /
     target_current_hp_pct), and assert each (champ,key) is ACCOUNTED
-    FOR — already a conditional, OR engine-default block 0 already
+    FOR - already a conditional, OR engine-default block 0 already
     holds the higher coefficient, OR a documented skip. A NEW unaccounted
     clean execute pair (e.g. from a future Meraki re-extract) trips this
     test → the signal to revisit the vein.
@@ -172,9 +172,9 @@ class MissingHpExecuteVeinSaturationGuard(unittest.TestCase):
     # session that established it). Anything NOT here that surfaces a
     # clean execute pair fails the guard.
     _DOCUMENTED_NON_CONDITIONAL = {
-        ("Jinx", "R"),    # s217 — block 0 is canonical max missing-HP
-        ("Varus", "W"),   # s225 — blocks 5/6 R-entangled; block 2 chosen
-        ("Veigar", "R"),  # s229/s231 — deferred stable-int fixture
+        ("Jinx", "R"),    # s217 - block 0 is canonical max missing-HP
+        ("Varus", "W"),   # s225 - blocks 5/6 R-entangled; block 2 chosen
+        ("Veigar", "R"),  # s229/s231 - deferred stable-int fixture
     }
 
     @classmethod
@@ -217,7 +217,7 @@ class MissingHpExecuteVeinSaturationGuard(unittest.TestCase):
                                 for f in self._EXEC_FIELDS
                             ):
                                 continue
-                            # found a clean execute pair — must be
+                            # found a clean execute pair - must be
                             # accounted for.
                             m, _ = get_block_index_for(champ)
                             cur = m.get(key)
@@ -242,7 +242,7 @@ class MissingHpExecuteVeinSaturationGuard(unittest.TestCase):
                                 f"{i}->{j} {sorted(sh)}")
         self.assertEqual(
             offenders, [],
-            "Unaccounted clean execute pair(s) — the conditional vein "
+            "Unaccounted clean execute pair(s) - the conditional vein "
             "is NOT saturated anymore; investigate + either add a "
             "conditional or document the skip:\n  "
             + "\n  ".join(sorted(set(offenders))),
@@ -253,9 +253,9 @@ class EngineVersionUnchangedS232Tests(unittest.TestCase):
     def test_engine_version_unchanged(self) -> None:
         from agents import daemon_slayer
 
-        # s232 is a saturation-proof + tooling + docs commit ONLY — no
+        # s232 is a saturation-proof + tooling + docs commit ONLY - no
         # registry/engine behavior changed, so ENGINE stays at s231's
-        # 1.3.0 (NOT bumped — there is nothing to version).
+        # 1.3.0 (NOT bumped - there is nothing to version).
         self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.3.0")
 
 

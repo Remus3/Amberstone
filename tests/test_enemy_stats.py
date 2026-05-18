@@ -1,4 +1,4 @@
-"""s170 (2026-05-11) — coach_integration.enemy_stats heuristic tests.
+"""s170 (2026-05-11) - coach_integration.enemy_stats heuristic tests.
 
 Validates the level-aware enemy aggregate stats helper that replaces the
 hardcoded ``target_armor=80.0`` in all four coaches' DS rank_for calls.
@@ -26,7 +26,7 @@ class TestEnemyStatsBasics(unittest.TestCase):
     def test_returns_enemy_stats_dataclass(self):
         s = compute_enemy_stats("sr", level=11)
         self.assertIsInstance(s, EnemyStats)
-        # Frozen — attempts to mutate must raise.
+        # Frozen - attempts to mutate must raise.
         with self.assertRaises(FrozenInstanceError):
             s.armor = 999.0  # type: ignore[misc]
 
@@ -49,7 +49,7 @@ class TestEnemyStatsBasics(unittest.TestCase):
 
 
 class TestModeDifferentiation(unittest.TestCase):
-    """The whole point of s170 — DS now sees different targets per mode."""
+    """The whole point of s170 - DS now sees different targets per mode."""
 
     def test_arena_armor_higher_than_sr_at_same_level(self):
         # Arena rounds compress build time; aggregate gold is high.
@@ -65,7 +65,7 @@ class TestModeDifferentiation(unittest.TestCase):
         self.assertGreater(s_aram.armor, s_sr.armor)
 
     def test_brawl_close_to_sr(self):
-        # Brawl is "SR but compressed" — should be in the same neighborhood.
+        # Brawl is "SR but compressed" - should be in the same neighborhood.
         s_sr    = compute_enemy_stats("sr", level=11)
         s_brawl = compute_enemy_stats("brawl", level=11)
         # Within 15 armor of each other at the same level.
@@ -95,7 +95,7 @@ class TestLevelDerivation(unittest.TestCase):
         self.assertEqual(s.armor, 130.0)
 
     def test_game_seconds_fallback(self):
-        # ~1 level per 90s — 9 minutes = ~7 levels.
+        # ~1 level per 90s - 9 minutes = ~7 levels.
         s = compute_enemy_stats("sr", game_seconds=540)
         # Effective level ~7, armor = 40 + 5*7 = 75
         self.assertAlmostEqual(s.armor, 75.0, places=0)
@@ -132,7 +132,7 @@ class TestBonusHpOverride(unittest.TestCase):
         self.assertNotEqual(s_override.bonus_hp, s_default.bonus_hp)
 
     def test_zero_override_falls_back_to_heuristic(self):
-        # Coach passes 0 when item-aware estimator finds no signal —
+        # Coach passes 0 when item-aware estimator finds no signal -
         # the heuristic value should win in that case (not stay at 0).
         s_default = compute_enemy_stats("sr", level=11)
         s_zero    = compute_enemy_stats("sr", level=11, bonus_hp_override=0.0)
@@ -152,7 +152,7 @@ class TestBonusHpOverride(unittest.TestCase):
 class TestCaps(unittest.TestCase):
     def test_armor_caps_at_220(self):
         # Level cap is 18, so check the arena anchor at lvl 18:
-        # armor = 40 + 8*18 = 184 — under the 220 cap.
+        # armor = 40 + 8*18 = 184 - under the 220 cap.
         s = compute_enemy_stats("arena", level=18)
         self.assertLessEqual(s.armor, 220.0)
 
@@ -181,12 +181,12 @@ class TestPreservesPreviousBehavior(unittest.TestCase):
     """
 
     def test_sr_lvl_8_close_to_80(self):
-        # SR @ lvl 8: armor = 40 + 5*8 = 80 — matches the prior anchor.
+        # SR @ lvl 8: armor = 40 + 5*8 = 80 - matches the prior anchor.
         s = compute_enemy_stats("sr", level=8)
         self.assertEqual(s.armor, 80.0)
 
     def test_sr_lvl_11_close_to_old_80(self):
-        # SR @ lvl 11: armor = 95 — modest bump from prior 80, still
+        # SR @ lvl 11: armor = 95 - modest bump from prior 80, still
         # reasonable (mid-game enemies usually have a giant's-belt +
         # bramble vest by lvl 11 anyway).
         s = compute_enemy_stats("sr", level=11)

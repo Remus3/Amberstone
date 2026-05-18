@@ -2,7 +2,7 @@
 """Pydantic v2 models for data/{mode}_coaching_data.json.
 
 Each model uses extra="allow" so new fields added by coaches never cause
-validation failures — only declared fields are type-checked.
+validation failures - only declared fields are type-checked.
 validate_coaching_payload() logs warnings for wrong-type fields but never
 raises; coaches keep working even if the schema drifts.
 
@@ -108,7 +108,7 @@ class TeamContextEntry(_Base):
     """One slot in the 5+5 champ-select roster enrichment.
 
     Populated progressively by `core/riot_api.py` fan-out (FU02).
-    Empty/zero values are the soft-fail signal — the dashboard renders
+    Empty/zero values are the soft-fail signal - the dashboard renders
     skeleton rows until each field arrives.
     """
     puuid: str = ""
@@ -196,7 +196,7 @@ def validate_coaching_payload(data: dict) -> bool:
     mode = data.get("mode", "")
     model_cls = _MODE_TO_MODEL.get(mode)
     if model_cls is None:
-        # Unknown mode is not a hard error — idle/lobby states may omit mode.
+        # Unknown mode is not a hard error - idle/lobby states may omit mode.
         return True
     try:
         model_cls.model_validate(data)

@@ -91,7 +91,7 @@ for display, fmts in MISSING.items():
                     # Check for collision with known code
                     collision = [k for k, v in results.items() if v == num]
                     if collision:
-                        print(f"  {display}: code {num} via {fmt} — COLLISION with {collision}")
+                        print(f"  {display}: code {num} via {fmt} - COLLISION with {collision}")
                     else:
                         results[display] = num
                         print(f"  {display}: {num} (0x{prefix}) via {fmt}")

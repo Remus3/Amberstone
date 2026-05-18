@@ -1,4 +1,4 @@
-"""FU02 last-mile — Game-PC LCU agent → /api/team-context/refresh wiring.
+"""FU02 last-mile - Game-PC LCU agent → /api/team-context/refresh wiring.
 
 Pins the contract for the new helpers added to `tools/gamepc_lcu_agent.py`:
   - bridge-secret resolver (env → bridge_secret.txt → local_paths.json → "")
@@ -117,7 +117,7 @@ class TestPicksSignature(unittest.TestCase):
                             agent._picks_signature(cs1))
 
     def test_signature_handles_missing_arrays(self):
-        # Both teams missing — must not raise; signature is empty tuples.
+        # Both teams missing - must not raise; signature is empty tuples.
         sig = agent._picks_signature({})
         self.assertEqual(sig, ((), ()))
 
@@ -301,7 +301,7 @@ class TestPostTeamContextRefresh(unittest.TestCase):
 
 
 class TestMaybeRefreshTeamContext(unittest.TestCase):
-    """Edge-trigger semantics — POST exactly when entering CS or when
+    """Edge-trigger semantics - POST exactly when entering CS or when
     pick set changes; rate-limited otherwise; reset on leave."""
 
     def setUp(self):
@@ -402,7 +402,7 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
              mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(True, "ok")) as m, \
              mock.patch.object(agent, "TEAM_CONTEXT_REPOST_S", 999.0):
-            agent._maybe_refresh_team_context(cs1)   # entry — POST
+            agent._maybe_refresh_team_context(cs1)   # entry - POST
             agent._maybe_refresh_team_context(cs2)   # picks changed but
                                                       # rate-limited → no POST
         self.assertEqual(m.call_count, 1)

@@ -15,7 +15,7 @@ chip into the live dashboard:
 A future refactor that accidentally drops one of these (e.g. an ESM
 split that forgets to re-export, an index.html rebuild that misses the
 chip block, a main.js cleanup that orphans the import) would silently
-break the chip. These tests are grep-based smoke checks — cheap and
+break the chip. These tests are grep-based smoke checks - cheap and
 fast, but enough to catch a missing wire.
 """
 from __future__ import annotations
@@ -78,7 +78,7 @@ class PanelJsTests(unittest.TestCase):
         cls.text = _read(PANEL_JS)
 
     def test_render_export_present(self) -> None:
-        # ES module export — main.js imports by name.
+        # ES module export - main.js imports by name.
         self.assertIn("export function renderArchetypeNudge", self.text)
 
     def test_dismiss_endpoint_hardcoded(self) -> None:
@@ -133,7 +133,7 @@ class CssTests(unittest.TestCase):
         self.assertIn(".archetype-nudge-chip-x", self.text)
 
     def test_mode_gated_like_ds_pill(self) -> None:
-        # Same hide rules as .ds-pill — collapses in client / tft / no-mode.
+        # Same hide rules as .ds-pill - collapses in client / tft / no-mode.
         for selector in (
             'body[data-mode="client"] .archetype-nudge-chip',
             'body[data-mode="tft"]    .archetype-nudge-chip',
