@@ -43,6 +43,8 @@ import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from core import smoothed_rates as _sr
+
 log = logging.getLogger("rc.web_dashboard")
 
 _REWIND_DB = Path("data") / "rewind_history.db"
@@ -377,6 +379,40 @@ def _query_performance_new(conn: sqlite3.Connection, puuid: str, role: str,
     return out
 
 
+# s238 (CLAUDE.md #90): the synergy mood was the locked example of
+# "pick/ban synergy - today only a raw recent-form proxy". It now ranks
+# by the shared Laplace/Beta-smoothed primitive instead of raw
+# wins/games, so a 2-0 record no longer outranks a proven 14-8 one. The
+# displayed `wr_pct` stays the RAW observed rate (what the operator sees,
+# "100% WR"); only the ranking key is smoothed. The `HAVING games >= 2`
+# hard floor in the SQL is kept - smoothing softens small-n bias, the
+# floor still excludes single-game flukes outright.
+def _rank_by_smoothed_wr(raw_rows, reason_suffix: str, top: int) -> list[dict]:
+    """(champion_id, champion_name, games, wins) tuples -> ranked row
+    dicts (same shape every mood emits). Primary sort = smoothed WR via
+    ``core.smoothed_rates.laplace_rate``; secondary = more games (more
+    trust); tertiary = champion_id (stable)."""
+    scored: list[tuple[float, int, int, dict]] = []
+    for champ_id, champ_name, games, wins in raw_rows:
+        games = int(games)
+        wins = int(wins)
+        wr_pct = int(round(100 * wins / games)) if games else 0
+        smoothed = _sr.laplace_rate(wins, games)
+        scored.append((
+            smoothed, games, int(champ_id),
+            {
+                "champId":   int(champ_id),
+                "champName": str(champ_name or "?"),
+                "games":     games,
+                "wins":      wins,
+                "wr_pct":    wr_pct,
+                "reason":    f"{wr_pct}% WR · {games} games {reason_suffix}",
+            },
+        ))
+    scored.sort(key=lambda t: (-t[0], -t[1], t[2]))
+    return [d for _, _, _, d in scored[:max(1, top)]]
+
+
 def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
                                queue_ids: tuple[int, ...],
                                exclude_ids: tuple[int, ...] = (),
@@ -424,23 +460,15 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
               )
             GROUP BY op.champion_id
             HAVING games >= 2
-            ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC
-            LIMIT ?
             """,
-            (puuid, role, *queue_ids, *excl_params, *ally_ids, top),
+            (puuid, role, *queue_ids, *excl_params, *ally_ids),
         )
-        out: list[dict] = []
-        for champ_id, champ_name, games, wins in cur.fetchall():
-            wr_pct = int(round(100 * wins / games)) if games else 0
-            out.append({
-                "champId":   int(champ_id),
-                "champName": str(champ_name or "?"),
-                "games":     int(games),
-                "wins":      int(wins),
-                "wr_pct":    wr_pct,
-                "reason":    f"{wr_pct}% WR · {games} games alongside locked allies · comp fit",
-            })
-        return out
+        # s238: smoothed re-rank in Python via the shared primitive
+        # (replaces the SQL `ORDER BY raw-WR ... LIMIT`).
+        return _rank_by_smoothed_wr(
+            cur.fetchall(),
+            "alongside locked allies · comp fit (smoothed)", top,
+        )
     # Recent-form fallback (pre-s214 behavior, kept for empty-allies path).
     cutoff_ms = int((time.time() - _SYNERGY_WINDOW_DAYS * 86400) * 1000)
     cur = conn.execute(
@@ -457,23 +485,14 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
           {excl_sql.replace("champion_id", "p.champion_id")}
         GROUP BY p.champion_id
         HAVING games >= 2
-        ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC
-        LIMIT ?
         """,
-        (puuid, role, *queue_ids, cutoff_ms, *excl_params, top),
+        (puuid, role, *queue_ids, cutoff_ms, *excl_params),
     )
-    out: list[dict] = []
-    for champ_id, champ_name, games, wins in cur.fetchall():
-        wr_pct = int(round(100 * wins / games)) if games else 0
-        out.append({
-            "champId":   int(champ_id),
-            "champName": str(champ_name or "?"),
-            "games":     int(games),
-            "wins":      int(wins),
-            "wr_pct":    wr_pct,
-            "reason":    f"{wr_pct}% WR · {games} games last {_SYNERGY_WINDOW_DAYS}d · recent form",
-        })
-    return out
+    # s238: smoothed re-rank in Python via the shared primitive.
+    return _rank_by_smoothed_wr(
+        cur.fetchall(),
+        f"last {_SYNERGY_WINDOW_DAYS}d · recent form (smoothed)", top,
+    )
 
 
 # Mood → query dispatcher. Unknown moods fall through to comfort.

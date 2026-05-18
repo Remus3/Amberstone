@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from core import augment_external_source as _ext
+from core import smoothed_rates as _sr
 
 _log = logging.getLogger("rc.augment_recommender")
 
@@ -51,9 +52,13 @@ _MODE_FILTERS = {
     "arena": ("CHERRY", {1700, 1710}),
 }
 
-DEFAULT_ALPHA = 1.0          # Laplace/Beta prior strength (→ 0.5 baseline)
-DEFAULT_K = 5.0              # n/(n+K) shrinkage (plan's n/(n+5) family)
-DEFAULT_SYNERGY_WEIGHT = 1.0  # λ on the (already-shrunk) synergy term
+# Smoothed-rate family defaults sourced from the shared primitive so
+# the augment recommender, pick/ban synergy, and the PGR score stay
+# statistically coherent (CLAUDE.md #90). Re-exported under the
+# recommender's long-standing public names for callers/tests.
+DEFAULT_ALPHA = _sr.DEFAULT_ALPHA   # Laplace/Beta prior strength (-> 0.5)
+DEFAULT_K = _sr.DEFAULT_K           # n/(n+K) shrinkage (the n/(n+5) family)
+DEFAULT_SYNERGY_WEIGHT = 1.0        # lambda on the (already-shrunk) synergy term
 
 _lock = threading.Lock()
 _own_cache: dict[str, "OwnHistory"] = {}
@@ -255,14 +260,15 @@ def load_own_history(mode: str = "mayhem", *, db_path: Optional[Path] = None) ->
 def _own_wr(hist: OwnHistory, a: int, alpha: float) -> float:
     g = hist.games.get(a, 0)
     w = hist.wins.get(a, 0)
-    return (w + alpha) / (g + 2 * alpha)
+    return _sr.laplace_rate(w, g, alpha)
 
 
 def _pair_wr(hist: OwnHistory, a: int, b: int, alpha: float) -> tuple[float, int]:
     key = (a, b) if a < b else (b, a)
     m = hist.pair_games.get(key, 0)
     w = hist.pair_wins.get(key, 0)
-    return (w + alpha) / (m + 2 * alpha), m
+    # Beta-smoothed pairwise == Laplace on the pair counts.
+    return _sr.laplace_rate(w, m, alpha), m
 
 
 def recommend(
@@ -312,11 +318,11 @@ def recommend(
 
         if ext is not None:
             used_external = True
-            w = n / (n + k) if (n + k) > 0 else 0.0
-            base = w * own + (1.0 - w) * ext
+            w = _sr.shrink(n, k)
+            base = _sr.blend(own, ext, w)
             conf = w
         elif n > 0:
-            w = n / (n + k) if (n + k) > 0 else 0.0
+            w = _sr.shrink(n, k)
             base = own            # own-only (no external prior for this id)
             conf = w
         else:
@@ -331,7 +337,7 @@ def recommend(
                 if p == a:
                     continue
                 pwr, m = _pair_wr(hist, a, p, alpha)
-                shrink = m / (m + k) if (m + k) > 0 else 0.0
+                shrink = _sr.shrink(m, k)
                 contribs.append(shrink * (pwr - own))
             if contribs:
                 syn = sum(contribs) / len(contribs)
