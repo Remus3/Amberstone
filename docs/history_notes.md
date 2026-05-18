@@ -6,6 +6,21 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 (done) - HARD RULE: no em/en-dashes anywhere + repo-wide purge (3rd/4th "continue")
+
+Operator hard rule (Legion/Game-PC/Peer, all authored text incl. .md/writeups). Now a **CLAUDE.md Hard rule** + memory `feedback_no_em_dashes.md` (self-enforced per-session regardless of memory).
+
+- **Why it matters (not just style):** the 2026-05-18 `gamepc_boot.ps1` step-5b bug was exactly this - WinPS 5.1 `ParseFile` ANSI-decodes a no-BOM `.ps1`, turning a UTF-8 em-dash in a *double-quoted* string into a U+201D smart-quote the tokenizer treats as a string terminator -> cascading parse failure. ASCII-only authored content prevents the whole class.
+- **Purge:** new reusable `tools/strip_em_dashes.py` (git-tracked enumeration so gitignored runtime/.pyc/DDragon-mirror auto-excluded; explicit carve-outs: `_archive`, any `*.log[.N]`, `.jsonl` ledgers, binaries, self). Flat U+2014 -> `-` (one global swap keeps the functional `"-"` no-data sentinel consistent on BOTH sides automatically - the `grade or "..."` producers AND the `val == "..."` consumer in `core/match_metrics.py`, plus test assertions). **820 files / 14,120 occ, 0 residual.** Operator chose "full purge incl. code sentinel" (a verified behavior change: empty dashboard cells now render `-`). Memory dir also swept (70 files / 400 occ).
+- **En-dash follow-up (operator "yes"):** `strip_em_dashes.py` generalized to em **+ en** dash (U+2014+U+2013 -> `-`; script itself switched to `chr()` so it is now 7-bit ASCII). 2nd sweep: **51 files / 204 occ, 0 residual** (mostly prose .md + code comments; full suite still 3508/0). Memory dir +8 files/15.
+- **Scope note (don't "fix" as regressions):** logs + rotated `*.log.N` + `docs/_archive/**` + `.jsonl` ledgers deliberately NOT swept (standing don't-rewrite-history rule). **Smart quotes** (U+201C/D, U+2018/9) + arrows (`→`) + `×`/`≈`/`≤`/`≠` are NOT swept - rule bans smart-quotes going-forward but a retroactive smart-quote sweep is a separate operator-gated pass (higher functional-risk in code string literals); arrows/math glyphs are out of scope entirely.
+- **Verified (both sweeps):** py_compile 520/521 .py + JSON 287 + node 26 .js + ps1 14 all clean; **full suite 3508 passed / 0 failed** (sentinel swap globally consistent); RC reloaded clean; live `/api/health/all` + `/api/home/summary` dash-free, sentinel serves `-`, H-01 Part A intact.
+- **Propagation DONE + CONFIRMED:** Legion = CLAUDE.md Hard rule + memory + repo/memory purge. Game-PC = reads RC CLAUDE.md + `/agent/`-served files auto-refresh on boot (no lesson - expected, lesson bridge schema is rc<->peer only). Peer = `kind=lesson` `lesson-d8dacac36ace-...` **queued -> applied -> acked** (bridge activity 01:42-01:43; Peer saved its own `feedback_no_em_dashes.md`).
+- **Operator feedback (NEW open follow-up, NOT fixed):** `/process-bridge-tasks` + inbound-lesson drain do NOT reliably **auto-invoke** on Peer/Game-PC - operator had to manually type "see what is on the bridge" on each peer to make tasks/lessons land. Delivery + daemons work; only peer-side *consumption* auto-trigger is flaky. Memory `project_bridge_skill_peer_autoinvoke_unreliable.md` written. Distinct from the Legion `RC-WatcherHealthPublisher` fix earlier today. **NEXT session:** investigate peer cron/`/loop`/SessionStart wiring that should auto-fire the skill; don't assume fixed until live-verified on both peers.
+- **NEXT (optional, operator-gated):** retroactive smart-quote sweep (rule already bans them going-forward; higher functional risk in code string literals so gated). `tools/strip_em_dashes.py` is the reusable em+en drift-check + extension point.
+
+---
+
 # 2026-05-18 (done, pushed) - Audit7 H-01: bridge health-publisher staleness detection + escalation + live outage remediated
 
 Seventh-audit cron (`t-f4d6c8cfb697`, 04:54 UTC) filed 2 proposals; H-01 (HIGH) **was** the live session-start anomaly (gamepc health publisher stale ~3h). Operator chose "full incl. Part B".
