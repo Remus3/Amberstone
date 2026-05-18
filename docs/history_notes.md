@@ -6,6 +6,19 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 (done) - header-row-2 pill flicker: full bug-chain closed (e4b08ba c114e5b 00277c4 2329ebf, pushed)
+
+Operator: "in pgl the 2nd row pills are switching on and off / occurs in other pages as well."
+
+- **Root cause (don't re-investigate):** `body[data-mode]` flapped aram↔client ~1×/sec on the shared header. `/api/state.mode_key=aram` (correct s150 ARAM-lobby preflip via build_state.resolve_mode_key) drove `onState`→setMode("aram"); the WS `:8891/push` health envelope was **un-mirrored** (`aram_mode=False`) so `onHealth`→setMode("client"). Independent JS tasks → flap → every mode-gated row-2 pill flickered on every view.
+- **`e4b08ba`** client fix: `onHealth` defers its "client" downgrade while `onState` recently asserted a preflip/in-game mode_key (8s staleness bound). `state.lastStateMode`/`Ts` added. Resilient regardless of server mirror. Replay: 41 flips/20 cycles → 1.
+- **Server-side half:** the WS mirror (`file_ingest`) was dead because **RC-Phase3-Supervisor pid 5400 ran ~27h of pre-keystone-`3eb2e2d` code** (couldn't resolve queue 2400). Supervisor was *healthy*, not crash-looping - the anomaly's non-zero LastResult was a stale scheduled-task code. **Manually restarted it (pid 5400→17160); WS health now 17/17 mirrored.** `c114e5b` = file_ingest mirror regression test.
+- **Regression (operator reported mid-session):** flap-fix made mode stably "aram" in lobby (by design), but the 4 row-2 pills were only mode-gated → showed on every page. **`00277c4`** view-gates ds/augments/trigger/nudge to `active-match` only (the s162 pattern, never extended to these 4).
+- **Systemic gap fixed (frozen ops/rc_supervisor.py - operator-authorized):** **`2329ebf`** - `agents/supervisor.py` heartbeat now re-stamps a stable `started_at`; `_Phase3Watcher` restarts Phase-3 when `started_at` predates the newest import-chain mtime (agents/**/*.py + 4 cross-pkg files), via the existing cooldown+CircuitBreaker+schtasks path. Backward-compat (no started_at→skip), self-limiting, guarded. 24 watcher tests; verified vs live tree.
+- **NEXT / activation:** `2329ebf` activates on the next RC-Supervisor restart (main watchdog) + next RC-Phase3-Supervisor restart (writes started_at). Acute issue already cleared (pid 17160). **Don't restart the top-level supervisor just to activate** - preventive + backward-compat; lands naturally on reboot/next deploy. Don't re-investigate the flap root cause or re-pitch a server-only fix; the client deferral is the durable backstop. Memory `reference_phase3_supervisor_stale_code.md` written.
+
+---
+
 # 2026-05-18 (done) - Mayhem augment recommender SHIPPED (10aa944, pushed)
 
 CLAUDE #88 plan executed end-to-end (`Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md`). #88 flipped ✅ in CLAUDE.md + ROADMAP.
