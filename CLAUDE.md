@@ -3,7 +3,7 @@
 Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard on Game-PC's secondary display. RC is tkinter-free; Daemon Slayer (`:8893`) computes real DPS math per champion.
 
 > **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md` · `docs/API.md`
-> **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine · 547 items · ENGINE_VERSION 0.94.0 · all 6 archetype scorers wired) · `docs/AGENTS.md` (Phase 3 framework) · `BACKLOG.md` (aspirational)
+> **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine · 547 items · ENGINE_VERSION 1.3.0 · all 6 archetype scorers wired) · `docs/AGENTS.md` (Phase 3 framework) · `BACKLOG.md` (aspirational)
 > **Architectural decisions:** `docs/adr/` - before re-litigating a past choice, check here first.
 > **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
 
