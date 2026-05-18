@@ -1,7 +1,17 @@
-"""Round 42 - UI-feedback Agent 7 channel + ui_applier deterministic op."""
+"""Round 42 - UI-feedback Agent 7 channel + ui_applier deterministic op.
+
+s236 (dashboard.js quarantine): the agent7 -> agent4 UI-feedback
+channel was repointed off the dead web/js/dashboard.js +
+web/css/dashboard.css aggregator + web/js/sim.js (sim removed s218)
+onto the live UI - web/index.html, web/js/main.js, and the per-panel
+web/js/panels/*.js + web/css/panels/*.css modules. The dead
+dashboard.js *content* tests (sim_context / inline-diff / streak
+binders) were deleted: a test pinning a removed file's bytes is not a
+regression guard. The applier + parser tests below now exercise the
+live targets.
+"""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -12,19 +22,62 @@ import pytest
 def test_applier_accepts_whitelisted_css(tmp_path: Path, monkeypatch) -> None:
     import agents.agent4_coach_mentor.ui_applier as ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
-    css_target = tmp_path / "web" / "css" / "dashboard.css"
+    css_target = tmp_path / "web" / "css" / "panels" / "base.css"
     css_target.parent.mkdir(parents=True)
     css_target.write_text(":root { --canvas: #000; }\n", encoding="utf-8")
 
     result = ui_applier.apply_ui_proposal({
         "changes": [{
-            "file": "web/css/dashboard.css",
+            "file": "web/css/panels/base.css",
             "content": ":root { --canvas: #222; }\n",
         }],
     })
     assert result["applied"] is True
     assert result["count"] == 1
     assert css_target.read_text(encoding="utf-8") == ":root { --canvas: #222; }\n"
+
+
+def test_applier_accepts_panel_js(tmp_path: Path, monkeypatch) -> None:
+    """Live per-panel ESM modules are prefix-allowed."""
+    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
+    js_target = tmp_path / "web" / "js" / "panels" / "champ_select.js"
+    js_target.parent.mkdir(parents=True)
+    js_target.write_text("export function x() { return 1; }\n", encoding="utf-8")
+    result = ui_applier.apply_ui_proposal({
+        "changes": [{
+            "file": "web/js/panels/champ_select.js",
+            "content": "export function x() { return 2; }\n",
+        }],
+    })
+    assert result["applied"] is True
+
+
+def test_applier_rejects_dead_dashboard_targets(tmp_path: Path, monkeypatch) -> None:
+    """s236 invariant: the quarantined / removed legacy targets are no
+    longer writable through this channel."""
+    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
+    for dead in (
+        "web/js/dashboard.js",
+        "web/css/dashboard.css",
+        "web/js/sim.js",
+        "data/sim/aram_blitz.json",
+    ):
+        with pytest.raises(ui_applier.UIApplyError):
+            ui_applier.apply_ui_proposal({
+                "changes": [{"file": dead, "content": "x" * 50}],
+            })
+
+
+def test_applier_rejects_nested_panel_subdir(tmp_path: Path, monkeypatch) -> None:
+    """panels/ is flat - no sub-subdirs."""
+    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
+    with pytest.raises(ui_applier.UIApplyError):
+        ui_applier.apply_ui_proposal({
+            "changes": [{"file": "web/js/panels/sub/x.js", "content": "x" * 50}],
+        })
 
 
 def test_applier_rejects_out_of_whitelist(tmp_path: Path, monkeypatch) -> None:
@@ -66,38 +119,24 @@ def test_applier_rejects_too_many_changes(tmp_path: Path, monkeypatch) -> None:
     with pytest.raises(ui_applier.UIApplyError):
         ui_applier.apply_ui_proposal({
             "changes": [
-                {"file": "web/css/dashboard.css", "content": "a"},
-                {"file": "web/js/dashboard.js", "content": "b"},
-                {"file": "web/js/sim.js", "content": "c"},
-                {"file": "web/index.html", "content": "d"},
-                {"file": "data/sim/aram_blitz.json", "content": "{}"},
+                {"file": "web/css/panels/base.css", "content": "a"},
+                {"file": "web/css/panels/header.css", "content": "b"},
+                {"file": "web/js/main.js", "content": "c" * 2500},
+                {"file": "web/js/panels/next.js", "content": "d"},
+                {"file": "web/index.html", "content": "e"},
             ],
         })
 
 
-def test_applier_rejects_invalid_json(tmp_path: Path, monkeypatch) -> None:
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
-    monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
-    (tmp_path / "data" / "sim").mkdir(parents=True)
-    with pytest.raises(ui_applier.UIApplyError) as exc:
-        ui_applier.apply_ui_proposal({
-            "changes": [{
-                "file": "data/sim/test_fixture.json",
-                "content": "{not valid",
-            }],
-        })
-    assert "JSON" in str(exc.value)
-
-
-def test_applier_rejects_truncated_dashboard_js(tmp_path: Path, monkeypatch) -> None:
-    """Dashboard.js under 2 KB is suspiciously short."""
+def test_applier_rejects_truncated_main_js(tmp_path: Path, monkeypatch) -> None:
+    """main.js under 2 KB is suspiciously short (truncated write)."""
     import agents.agent4_coach_mentor.ui_applier as ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     (tmp_path / "web" / "js").mkdir(parents=True)
     with pytest.raises(ui_applier.UIApplyError) as exc:
         ui_applier.apply_ui_proposal({
             "changes": [{
-                "file": "web/js/dashboard.js",
+                "file": "web/js/main.js",
                 "content": "/* just a stub */\n",
             }],
         })
@@ -107,49 +146,33 @@ def test_applier_rejects_truncated_dashboard_js(tmp_path: Path, monkeypatch) -> 
 def test_applier_atomic_no_tmp_lingering(tmp_path: Path, monkeypatch) -> None:
     import agents.agent4_coach_mentor.ui_applier as ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
-    css = tmp_path / "web" / "css" / "dashboard.css"
+    css = tmp_path / "web" / "css" / "panels" / "base.css"
     css.parent.mkdir(parents=True)
     css.write_text("a", encoding="utf-8")
     ui_applier.apply_ui_proposal({
-        "changes": [{"file": "web/css/dashboard.css", "content": "b" * 100}],
+        "changes": [{"file": "web/css/panels/base.css", "content": "b" * 100}],
     })
     siblings = list(css.parent.iterdir())
     assert len(siblings) == 1   # no .tmp leftover
-    assert siblings[0].name == "dashboard.css"
+    assert siblings[0].name == "base.css"
 
 
 def test_applier_validates_all_before_writing_any(tmp_path: Path, monkeypatch) -> None:
     """All-or-nothing: one bad change cancels the whole batch."""
     import agents.agent4_coach_mentor.ui_applier as ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
-    css = tmp_path / "web" / "css" / "dashboard.css"
+    css = tmp_path / "web" / "css" / "panels" / "base.css"
     css.parent.mkdir(parents=True)
     css.write_text("original", encoding="utf-8")
     with pytest.raises(ui_applier.UIApplyError):
         ui_applier.apply_ui_proposal({
             "changes": [
-                {"file": "web/css/dashboard.css", "content": "changed"},
+                {"file": "web/css/panels/base.css", "content": "changed"},
                 {"file": "not/allowed.py", "content": "bad"},
             ],
         })
     # First file must NOT have been written despite being individually valid.
     assert css.read_text(encoding="utf-8") == "original"
-
-
-def test_applier_allows_new_sim_fixture(tmp_path: Path, monkeypatch) -> None:
-    """New file creation inside data/sim/ must work."""
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
-    monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
-    result = ui_applier.apply_ui_proposal({
-        "changes": [{
-            "file": "data/sim/brand_new.json",
-            "content": json.dumps({"meta": {"name": "brand_new"},
-                                   "health": {"type": "health"},
-                                   "state": {"type": "state", "payload": {}}}),
-        }],
-    })
-    assert result["applied"] is True
-    assert (tmp_path / "data" / "sim" / "brand_new.json").exists()
 
 
 # ── ui_feedback parser: refusal + rules ─────────────────────────────
@@ -191,15 +214,15 @@ def test_parser_strips_bypass_dev_prefix(tmp_path: Path) -> None:
 def test_parser_font_bump_produces_proposal(tmp_path: Path, monkeypatch) -> None:
     from agents.agent1_lead import Scheduler
     import agents.agent7_context.ui_feedback as ufb
-    # Need to point the parser at a minimal dashboard.css - it reads the
+    # Need to point the parser at a minimal live base.css - it reads the
     # real file on disk to compute the new content. Our test monkey-
     # patches _PROJECT_ROOT on BOTH the parser and the applier so the
     # same sandbox is consulted throughout.
     monkeypatch.setattr(ufb, "_PROJECT_ROOT", tmp_path)
-    css = tmp_path / "web" / "css" / "dashboard.css"
+    css = tmp_path / "web" / "css" / "panels" / "base.css"
     css.parent.mkdir(parents=True)
     css.write_text(
-        "html, body { font-size: 18px; font-weight: 700; }\n"
+        "body {\n  font-size: 18px; font-weight: 700;\n}\n"
         ".title { font-size: 22px; }\n",
         encoding="utf-8",
     )
@@ -208,8 +231,8 @@ def test_parser_font_bump_produces_proposal(tmp_path: Path, monkeypatch) -> None
     r = p.parse("make the font 25% bigger")
     assert r.proposed_changes, "expected a proposed change"
     change = r.proposed_changes[0]
-    assert change["file"] == "web/css/dashboard.css"
-    # 18 * 1.25 = 22.5 → 22 or 23. Verify some font token got bumped.
+    assert change["file"] == "web/css/panels/base.css"
+    # 18 * 1.25 = 22.5 -> 22 or 23. Verify some font token got bumped.
     assert "font-size: 18px" not in change["content"]
     assert r.filed, "expected task to be filed"
 
@@ -218,7 +241,7 @@ def test_parser_color_var_swap(tmp_path: Path, monkeypatch) -> None:
     from agents.agent1_lead import Scheduler
     import agents.agent7_context.ui_feedback as ufb
     monkeypatch.setattr(ufb, "_PROJECT_ROOT", tmp_path)
-    css = tmp_path / "web" / "css" / "dashboard.css"
+    css = tmp_path / "web" / "css" / "panels" / "base.css"
     css.parent.mkdir(parents=True)
     css.write_text(
         ":root {\n  --canvas: #2B2721;\n  --text: #E8DFD3;\n}\n",
@@ -236,7 +259,7 @@ def test_parser_unhandled_files_diagnostic(tmp_path: Path) -> None:
     from agents.agent7_context.ui_feedback import UIFeedbackParser
 
     s = Scheduler(queue_log=tmp_path / "q.jsonl")
-    p = UIFeedbackParser(scheduler=s)    # no llm_spawn → only rule path
+    p = UIFeedbackParser(scheduler=s)    # no llm_spawn -> only rule path
     r = p.parse("rearrange the minimap to the right side")
     assert r.intent == "ui_feedback_unhandled"
     assert r.filed  # diagnostic task filed
@@ -289,33 +312,3 @@ def test_supervisor_routes_sim_context() -> None:
     assert "UIFeedbackParser" in sup
     assert "proposed_changes" in sup
     assert "refused" in sup
-
-
-# ── dashboard JS wiring ────────────────────────────────────────────
-
-def test_dashboard_js_sends_sim_context() -> None:
-    js = Path("web/js/dashboard.js").read_text(encoding="utf-8")
-    assert "SIM_ACTIVE" in js
-    assert "sim_context" in js
-    assert "sim_fixture" in js
-    assert "SIM_THREAD" in js
-
-
-def test_dashboard_js_polls_and_reloads() -> None:
-    js = Path("web/js/dashboard.js").read_text(encoding="utf-8")
-    assert "_pollTaskUntilDone" in js
-    assert "window.location.reload" in js
-
-
-def test_dashboard_js_renders_inline_diff() -> None:
-    js = Path("web/js/dashboard.js").read_text(encoding="utf-8")
-    assert "ui-proposal-diff" in js
-    assert "proposed_changes" in js
-
-
-def test_css_has_proposal_styles() -> None:
-    css = Path("web/css/dashboard.css").read_text(encoding="utf-8")
-    assert ".ui-proposal-diff" in css
-    assert ".ui-proposal-snippet" in css
-    assert ".ui-proposal-status" in css
-    assert ".turn-refused" in css

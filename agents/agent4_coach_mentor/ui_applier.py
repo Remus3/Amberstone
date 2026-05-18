@@ -2,20 +2,26 @@
 
 Consumes ``ui-proposal`` tasks produced by
 ``agents.agent7_context.ui_feedback.UIFeedbackParser``. Each proposal
-names one or more files under a hard whitelist (dashboard CSS / JS /
-HTML + sim fixtures) and carries the replacement content. This module
-validates the paths, runs a ``py_compile`` guard on any ``.js`` file
-(syntactic sanity only - browsers don't run Python but the guard
-catches gross ``.js`` truncation), atomically writes the new content,
-and reports the result back to the task.
+names one or more files under a hard whitelist (the live dashboard
+shell + the per-panel JS/CSS ESM modules) and carries the replacement
+content. This module validates the paths, runs a brace/paren sanity
+smoke test on any ``.js`` file (catches gross truncation - browsers,
+not Python, run the file), atomically writes the new content, and
+reports the result back to the task.
 
 Out of scope by design: anything that isn't pixel/layout/behavioral UI.
 The whitelist is intentionally narrow so a misfired ``ui_feedback``
 intent can never touch coach logic, analyzer code, or secrets.
+
+s236 (dashboard.js quarantine): the allowlist was repointed off the
+dead ``web/js/dashboard.js`` / ``web/css/dashboard.css`` aggregator /
+``web/js/sim.js`` (sim removed s218) onto the live UI - ``index.html``,
+the ``main.js`` ESM entrypoint, and the per-panel ``web/js/panels/*``
++ ``web/css/panels/*`` modules (s133 ESM split; ``panels/base.css``
+holds the ``:root`` palette + base font tokens).
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 from pathlib import Path
@@ -25,19 +31,21 @@ logger = logging.getLogger("agent4.ui_applier")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
-# Strict whitelist per round 42 scope decision. Paths are relative to
-# the project root. data/sim/*.json is included so the sim fixtures
-# themselves can be edited via this channel.
+# Strict whitelist per round 42 scope decision, repointed to the live
+# UI (s236). Paths are relative to the project root. Exact files first;
+# the per-panel module dirs are prefix-allowed (flat, one extension).
 ALLOWED_PATHS: frozenset[str] = frozenset({
-    "web/css/dashboard.css",
-    "web/js/dashboard.js",
-    "web/js/sim.js",
     "web/index.html",
+    "web/js/main.js",
 })
-ALLOWED_PREFIXES: tuple[str, ...] = ("data/sim/",)
-ALLOWED_SIM_SUFFIX = ".json"
+# (prefix, required-suffix) for the live per-panel ESM/CSS modules. The
+# panels dirs are flat (no sub-subdirs) - _is_path_allowed enforces it.
+ALLOWED_DIR_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("web/js/panels/", ".js"),
+    ("web/css/panels/", ".css"),
+)
 
-MAX_FILE_BYTES = 512 * 1024     # 512 KiB cap - dashboard.js is ~60 KiB currently
+MAX_FILE_BYTES = 512 * 1024     # 512 KiB cap - main.js is the largest live target
 
 
 class UIApplyError(RuntimeError):
@@ -47,15 +55,15 @@ class UIApplyError(RuntimeError):
 def _is_path_allowed(rel_path: str) -> bool:
     if rel_path in ALLOWED_PATHS:
         return True
-    for prefix in ALLOWED_PREFIXES:
+    for prefix, suffix in ALLOWED_DIR_PREFIXES:
         if rel_path.startswith(prefix):
-            # data/sim/*.json only - no sub-subdirs, no exotic suffixes.
+            # Flat module dir only - no sub-subdirs, single fixed suffix.
             remainder = rel_path[len(prefix):]
             if "/" in remainder or "\\" in remainder:
                 return False
-            if not remainder.endswith(ALLOWED_SIM_SUFFIX):
+            if not remainder.endswith(suffix):
                 return False
-            stem = remainder.removesuffix(ALLOWED_SIM_SUFFIX)
+            stem = remainder[: -len(suffix)]
             if not stem or len(stem) > 64:
                 return False
             if not all(c.isalnum() or c in "-_" for c in stem):
@@ -99,19 +107,14 @@ def _validate_js_sanity(content: str, rel_path: str) -> None:
         raise UIApplyError(
             f"{rel_path}: unbalanced parens (open={open_p} close={close_p})"
         )
-    # Detect accidental truncation - a dashboard.js without "use strict"
-    # etc. is fine, but an empty file or one under 200 chars is suspicious.
-    if rel_path.endswith("/dashboard.js") and len(content) < 2_000:
+    # Detect accidental truncation of the main ESM entrypoint - it is
+    # always well over 2 KB, so a tiny payload means a truncated write.
+    # Small per-panel modules legitimately exist, so this guard is
+    # scoped to main.js only.
+    if rel_path.endswith("/main.js") and len(content) < 2_000:
         raise UIApplyError(
             f"{rel_path}: suspiciously short ({len(content)} bytes)"
         )
-
-
-def _validate_json(content: str, rel_path: str) -> None:
-    try:
-        json.loads(content)
-    except json.JSONDecodeError as e:
-        raise UIApplyError(f"{rel_path}: invalid JSON ({e})")
 
 
 def _validate_content(rel_path: str, content: str) -> None:
@@ -119,8 +122,6 @@ def _validate_content(rel_path: str, content: str) -> None:
         raise UIApplyError(f"{rel_path}: exceeds {MAX_FILE_BYTES} bytes")
     if rel_path.endswith(".js"):
         _validate_js_sanity(content, rel_path)
-    elif rel_path.endswith(".json"):
-        _validate_json(content, rel_path)
     # .css / .html - trust the parser / browser tolerance.
 
 
@@ -131,7 +132,7 @@ def apply_ui_proposal(payload: dict[str, Any]) -> dict[str, Any]:
 
         {
           "changes": [
-            {"file": "web/css/dashboard.css", "content": "...full new file..."},
+            {"file": "web/css/panels/base.css", "content": "...full new file..."},
             ...
           ]
         }
@@ -180,7 +181,7 @@ def apply_ui_proposal(payload: dict[str, Any]) -> dict[str, Any]:
             "delta_bytes": (new_size - (prev_size or 0)),
         })
         logger.info(
-            "ui_applier wrote %s (%s → %s bytes)",
+            "ui_applier wrote %s (%s -> %s bytes)",
             rel, prev_size, new_size,
         )
     return {

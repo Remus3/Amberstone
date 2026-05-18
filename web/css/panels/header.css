@@ -233,7 +233,7 @@ footer .voice-picker {
   letter-spacing: 0.06em;
 }
 /* prefs-chip ("ZEN:OFF") sits between voice-picker and mode-pill in
- * the footer (insertion point set by _refreshPrefsChip in dashboard.js).
+ * the footer (insertion point set by the dashboard JS prefs-chip renderer).
  * Match the in-footer pill scale so it doesn't look like a runt. */
 footer .prefs-chip {
   font-size: 12px;
