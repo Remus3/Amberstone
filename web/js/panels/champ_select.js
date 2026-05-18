@@ -79,7 +79,7 @@ const _csLoadout = {
 function _csNormalizeMode(cs) {
   if (!cs) return "sr";
   const q = cs.queue_id | 0;
-  if (q === 450 || q === 920 || cs.is_aram) return "aram";
+  if (q === 450 || q === 920 || q === 2400 || cs.is_aram) return "aram";
   if (q === 1700 || q === 1710) return "arena";
   if (q === 400) return "sr";  // SR draft
   if (q === 420 || q === 430 || q === 440) return "sr";  // SR ranked / blind
@@ -657,9 +657,10 @@ function handleChampSelect(lcu) {
   const bench = (cs.bench || [])
     .map((id) => CHAMPS.byId[String(id)])
     .filter(Boolean);
-  // Map queue_id to adaptation mode. ARAM = 450/920, Arena = 1700, etc.
+  // Map queue_id to adaptation mode. ARAM-family = 450 (Classic) /
+  // 920 (Poro King) / 2400 (Mayhem); Arena = 1700, etc.
   const modeMap = {
-    450: "aram", 920: "aram",        // ARAM + ARAM Mayhem
+    450: "aram", 920: "aram", 2400: "aram",   // ARAM Classic / Poro King / Mayhem
     1700: "arena", 1710: "arena",    // Arena + variants
     400: "sr_draft", 420: "sr_ranked", 430: "sr_ranked", 440: "sr_ranked",
     830: "sr_ranked", 840: "sr_ranked", 850: "sr_ranked",   // co-op vs AI
@@ -872,14 +873,14 @@ let _csvActiveRound = null;
 // Mode classifier for the champ-select view. SR draft is the historical
 // default; ARAM (450/920), Arena (1700/1710) get distinct central +
 // enemies layouts because the LCU surface they expose differs
-// structurally — ARAM has a bench but no roles/bans, Arena has 2v2v2v2
+// structurally — ARAM has a bench but no roles/bans, Arena has 6 teams of 3
 // + augments and no enemy-team field. s214 v2: Brawl mode retired from
 // the live League rotation; brawl branches dropped from this classifier.
 function _csvDetectMode(cs) {
   if (!cs) return "sr";
   const q = (cs.queue_id | 0);
   if (q === 1700 || q === 1710) return "arena";
-  if (cs.is_aram || q === 450 || q === 920) return "aram";
+  if (cs.is_aram || q === 450 || q === 920 || q === 2400) return "aram";
   return "sr";
 }
 
@@ -898,12 +899,13 @@ const _CSV_QUEUE_NAMES = {
   490:  "Quickplay",
   700:  "Clash",
   900:  "URF",
-  920:  "ARAM Mayhem",
+  920:  "Poro King",
   1020: "One for All",
   1300: "Nexus Blitz",
   1400: "Ultimate Spellbook",
   1700: "Arena",
   1710: "Arena",
+  2400: "ARAM Mayhem",
 };
 function _csvQueueLabel(queueId) {
   const q = queueId | 0;
@@ -1174,19 +1176,20 @@ export function renderChampSelectView(lcu) {
     _csvActiveRound = null;
   }
 
-  // Allies render — Arena renders only 2 cells (me + duo); SR/ARAM
-  // render 5. ARAM also suppresses the (guess) tag and role pip since
-  // there are no role assignments to display.
+  // Allies render — Arena renders 3 cells (me + 2 teammates; s234/#89:
+  // Arena is now 6 teams of 3, was 8×2); SR/ARAM render 5. ARAM also
+  // suppresses the (guess) tag and role pip since there are no role
+  // assignments to display.
   const allyOpts = (mode === "arena")
-    ? { cellCount: 2, showGuess: false, allowRolePip: false }
+    ? { cellCount: 3, showGuess: false, allowRolePip: false }
     : (mode === "aram")
       ? { cellCount: 5, showGuess: false, allowRolePip: false }
       : { cellCount: 5, showGuess: true,  allowRolePip: true };
   _csvRenderTeam("csv-allies-list", cs.my_team, myCid, timerEndMs, showPickOrder, allyOpts);
 
-  // Enemies render — Arena uses a dedicated 3-team layout (3 enemy
-  // duos stacked vertically). SR keeps the 5-cell list with (guess);
-  // ARAM renders 5 cells but suppresses (guess) + role pip.
+  // Enemies render — Arena stacks the 5 other sub-teams vertically
+  // (s234/#89: 6 teams of 3 total). SR keeps the 5-cell list with
+  // (guess); ARAM renders 5 cells but suppresses (guess) + role pip.
   if (mode === "arena") {
     _csvRenderEnemiesArena(cs, timerEndMs);
   } else {
@@ -2528,20 +2531,24 @@ function _csvWireBuildVariants(scope) {
   });
 }
 
-// Arena central pane: duo header (me + partner) + 3 augment slots
-// (silver/gold/prismatic) + the current-round augment options.
+// Arena central pane: team header (me + up to 2 teammates; s234/#89:
+// Arena is 6 teams of 3, was 8×2) + 3 augment slots (silver/gold/
+// prismatic) + the current-round augment options.
 function _csvArenaPaneHtml(cs, myCid, myName) {
   const teams = (cs && Array.isArray(cs.arena_teams)) ? cs.arena_teams : [];
   const myTeam = teams.find((t) => t && t.is_me) || (cs.my_team ? { cells: cs.my_team } : null);
   const cells = (myTeam && Array.isArray(myTeam.cells)) ? myTeam.cells : (cs.my_team || []);
   const me = cells.find((c) => (c && c.championId) === myCid) || cells[0] || null;
-  const partner = cells.find((c) => c && c.championId && c.championId !== myCid) || null;
+  // s234 (#89): Arena sub-teams are 3 players → render me + up to 2
+  // teammates (was a single "partner" when Arena was 8×2).
+  const partners = cells.filter((c) => c && c !== me).slice(0, 2);
+  while (partners.length < 2) partners.push(null);
   const ver = CHAMPS.version || "latest";
   const cellHtml = (c, isMe) => {
     if (!c || !c.championId) {
       return `<div class="csv-duo-cell is-empty">
         <div class="csv-duo-cell-icon">?</div>
-        <div class="csv-duo-cell-tag">${isMe ? "ME" : "DUO"}</div>
+        <div class="csv-duo-cell-tag">${isMe ? "ME" : "ALLY"}</div>
         <div class="csv-duo-cell-name">waiting…</div>
       </div>`;
     }
@@ -2552,7 +2559,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
     const lockCls = c.completed ? "locked" : "hovering";
     return `<div class="csv-duo-cell ${lockCls}${isMe ? " is-me" : ""}">
       <div class="csv-duo-cell-icon">${img}</div>
-      <div class="csv-duo-cell-tag">${isMe ? "ME" : "DUO"}</div>
+      <div class="csv-duo-cell-tag">${isMe ? "ME" : "ALLY"}</div>
       <div class="csv-duo-cell-name">${nm}</div>
       <div class="csv-duo-cell-summ">${(c.summonerName || "").slice(0, 22) || "—"}</div>
     </div>`;
@@ -2583,7 +2590,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
   return `
     <div class="csv-duo-row">
       ${cellHtml(me, true)}
-      ${cellHtml(partner, false)}
+      ${partners.map((p) => cellHtml(p, false)).join("")}
     </div>
     <div class="csv-augments">
       <div class="csv-augments-title">My augments</div>
@@ -2609,22 +2616,23 @@ function _csvWireArenaAugments(scope, cs) {
   });
 }
 
-// Arena enemies: 3 sub-team cards stacked vertically inside the enemies
-// column. Each sub-team shows its 2 champion cells side-by-side.
+// Arena enemies: the 5 other sub-team cards stacked vertically inside
+// the enemies column (s234/#89: Arena is 6 teams of 3, was 8×2). Each
+// sub-team shows its 3 champion cells side-by-side.
 function _csvRenderEnemiesArena(cs, timerEndMs) {
   const list = document.getElementById("csv-enemies-list");
   if (!list) return;
   list.innerHTML = "";
   const teams = (cs && Array.isArray(cs.arena_teams)) ? cs.arena_teams : [];
-  const others = teams.filter((t) => t && !t.is_me).slice(0, 3);
-  while (others.length < 3) others.push(null);
+  const others = teams.filter((t) => t && !t.is_me).slice(0, 5);
+  while (others.length < 5) others.push(null);
   const ver = CHAMPS.version || "latest";
   others.forEach((t, idx) => {
     const li = document.createElement("li");
     li.className = "csv-arena-team";
     const label = (t && t.label) || `TEAM ${idx + 2}`;
-    const cells = (t && Array.isArray(t.cells)) ? t.cells.slice(0, 2) : [];
-    while (cells.length < 2) cells.push(null);
+    const cells = (t && Array.isArray(t.cells)) ? t.cells.slice(0, 3) : [];
+    while (cells.length < 3) cells.push(null);
     const cellsHtml = cells.map((c) => {
       if (!c || !c.championId) {
         return `<div class="csv-arena-cell is-empty">
@@ -2733,10 +2741,13 @@ const _ROLE_FROM_LCU = {
 };
 
 function _csvResolveRole(cs) {
-  // Mode-specific labels for non-SR queues.
+  // Mode-specific labels for non-SR queues. s234 (#89 follow-up): ARAM
+  // Mayhem is queue 2400 (KIWI), not 920 — 920 is Legend of the Poro
+  // King (ARAM-family). Real Mayhem games were falling through to the
+  // SR position logic and never showing the MAYHEM badge.
   if (cs.queue_id === 1700 || cs.queue_id === 1710) return "ARENA";
-  if (cs.queue_id === 450) return "ARAM";
-  if (cs.queue_id === 920) return "MAYHEM";
+  if (cs.queue_id === 450 || cs.queue_id === 920) return "ARAM";
+  if (cs.queue_id === 2400) return "MAYHEM";
   // SR: read assignedPosition from my local cell.
   const myCell = cs.local_cell;
   const me = (cs.my_team || []).find((p) => p && p.cellId === myCell);
