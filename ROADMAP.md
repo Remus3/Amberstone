@@ -99,7 +99,7 @@ _Now + Next only. Full history in `docs/history_notes.md`. Aspirational in `BACK
 - **Vision regions calibration** — tune `data/vision_regions.json` bboxes. Blocked on live game for calibration frame.
 - **DS calibration pipeline** — analyzes operator's actual DS pick outcomes vs game results to tune item-curve weights. Blocked on `rewind_history.db` freshness: newest match is 2025-12-16 and operator's play cadence is sparse (5 games since Dec). Pipeline (`scripts/postmortem_analyze.py` envisioned in ADR-007 phase 2) waits on ~20+ real-game samples before it can produce a calibration delta.
 - **Bridge Watcher acceptance-criteria** — need 50+ real-traffic auto-action samples (currently synthetic only). Watch `auto_ok_since_boot` vs `auto_err_since_boot` on RC heartbeat.
-- **gamepc_boot.ps1 hardening** — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence; currently missing (must be `Start-ScheduledTask`'d manually after socket exhaustion events).
+- ✅ **gamepc_boot.ps1 hardening** — DONE 2026-05-18 (`4da19b0`, Audit7 H-01). Root cause was config not start-sequence: both tasks shipped with `ExecutionTimeLimit=PT72H` (72h force-kill of infinite daemons) + logon-only trigger. Fixed live (Set-ScheduledTask: `PT0S` + 10-min self-heal repetition + `StartWhenAvailable`) AND in `gamepc_boot.ps1` step 5b (every-boot ensure-block mirroring RC-BridgeDaemon; served live via Legion `/agent/`, no redeploy). Detection/escalation half also shipped (`68ff0c7`): `/api/health/all` graded peer status + rollup flip + Phase-3 watchdog files a deduped Agent-1 task.
 
 ## Open items — Medium priority
 
