@@ -1413,7 +1413,7 @@
               <span class="lm-hero-stat-value" id="lm-tank-dmg">-</span>
             </div>
 
-            <!-- Row 2: KP%, Damage, CS/min, Healing+Shielding -->
+            <!-- Row 2: KP%, Damage, CS/min, Sustain (heal + shield to teammates) -->
             <div class="lm-hero-stat" data-tt="Kill participation - share of team kills you took part in.">
               <span class="lm-hero-stat-label">KP%</span>
               <span class="lm-hero-stat-value" id="lm-kp">-</span>
@@ -1426,8 +1426,8 @@
               <span class="lm-hero-stat-label">CS/min</span>
               <span class="lm-hero-stat-value" id="lm-cs-per-min">-</span>
             </div>
-            <div class="lm-hero-stat" data-tt="Healing + shielding contributed to teammates (excludes self-heal).">
-              <span class="lm-hero-stat-label">Heal+Shield</span>
+            <div class="lm-hero-stat" data-tt="Sustain - healing + shielding contributed to teammates (excludes self-heal).">
+              <span class="lm-hero-stat-label">Sustain</span>
               <span class="lm-hero-stat-value" id="lm-healing">-</span>
             </div>
           </div>
@@ -1436,7 +1436,7 @@
             <!-- s220: 4-column grid mirroring section 2 exactly.
                  col1 = selector (r1) over KDA+KP% pair (r2);
                  col2 = Vision/Damage; col3 = CS/CS-min;
-                 col4 = Tanked/Heal+Shield. Areas defined in CSS. -->
+                 col4 = Tanked/Sustain. Areas defined in CSS. -->
             <div class="lm-rank-compare-head" style="grid-area: selector;">
               <select class="lm-rank-select" id="lm-rank-select"
                       data-tt="Pick a rank tier to compare this match against the typical expected values at that tier (Mode + Tier-averaged stats).">
@@ -1485,8 +1485,8 @@
               <span class="lm-rank-cell-label">CS/min</span>
               <span class="lm-rank-cell-value" id="lm-rank-cspm">-</span>
             </div>
-            <div class="lm-rank-cell" style="grid-area: heal-avg;" data-tt="Tier-average heal + shield contribution.">
-              <span class="lm-rank-cell-label">Heal+Shield</span>
+            <div class="lm-rank-cell" style="grid-area: heal-avg;" data-tt="Tier-average Sustain (heal + shield contribution).">
+              <span class="lm-rank-cell-label">Sustain</span>
               <span class="lm-rank-cell-value" id="lm-rank-heal">-</span>
             </div>
           </div>
