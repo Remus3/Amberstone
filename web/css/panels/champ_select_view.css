@@ -7,10 +7,14 @@
 .csv-grid {
   display: grid;
   grid-template-columns: 1fr 1.2fr 1fr;
-  /* Row 2 has an explicit floor so pickban content (role + 3 picks +
-   * mood + gaps + header chrome ≈ 354px) always fits - independent of
-   * the live viewport height. No more section-level scrollbar. */
-  grid-template-rows: auto minmax(354px, 1fr);
+  /* Row 2 has an explicit floor so pickban content always fits
+   * independent of the live viewport height (no section scrollbar).
+   * s239: floor raised 354 -> 460 to budget the new foregrounded
+   * "YOUR RECORD" headline (~100px when fully populated: title +
+   * champ line + WITH row + VS row) ABOVE the role + 3 picks + mood
+   * (~354). Only binds on short viewports; on the 1080 baseline the
+   * 1fr already exceeds this so nothing below is crushed. */
+  grid-template-rows: auto minmax(460px, 1fr);
   /* s210: Enemies sits in row 1 (matching Allies); the new Suggestions
    * panel sits in row 2 right (matching Pick & Ban). Pre-s210 Enemies
    * spanned both rows on the right. */
@@ -756,6 +760,89 @@
   overflow: hidden;
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* s239: foregrounded per-user "YOUR RECORD" headline. Sits at the top
+ * of #csv-pickban-body, above the mood recs. Lavender left-accent +
+ * lifted background so the per-user model reads as THE headline of
+ * this (otherwise header-hidden) card, not buried filler. Font floors
+ * respected (>=13px content) - density comes from trimming, not
+ * shrinking. WR tint semantics are uniform: green = high operator WR
+ * (good synergy / good vs that enemy), red = low (ban-worthy vs). */
+.csv-pr {
+  border-left: 3px solid #a78bfa;
+  background: #181b22;
+  border-radius: 4px;
+  padding: 7px 9px;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+.csv-pr-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: #a78bfa;
+}
+.csv-pr-champ {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.csv-pr-champ-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: #e8eaed;
+  letter-spacing: 0.02em;
+}
+.csv-pr-champ-wr   { font-size: 18px; font-weight: 800; }
+.csv-pr-champ-sub  { font-size: 13px; color: #8b909a; }
+.csv-pr-champ-role { font-size: 13px; color: #b8bdc7; }
+.csv-pr-champ.is-new   { color: #8b909a; }
+.csv-pr-champ.is-new em { font-style: italic; font-size: 13px; }
+.csv-pr-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.csv-pr-tag {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.06em;
+  min-width: 34px;
+}
+.csv-pr-chip {
+  font-size: 14px;
+  line-height: 1.2;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #21252e;
+  color: #d4d7dd;
+  white-space: nowrap;
+}
+.csv-pr-chip b  { margin-left: 5px; font-weight: 800; }
+.csv-pr-chip em { margin-left: 5px; font-style: normal; color: #8b909a; font-size: 13px; }
+.csv-pr-chip.is-good { background: #16331f; color: #d6f5de; }
+.csv-pr-chip.is-good b { color: #4ade80; }
+.csv-pr-chip.is-mid  { background: #33290f; color: #f6eccf; }
+.csv-pr-chip.is-mid b  { color: #fbbf24; }
+.csv-pr-chip.is-bad  { background: #331717; color: #f6d6d6; }
+.csv-pr-chip.is-bad b  { color: #f87171; }
+.csv-pr-chip.is-new {
+  background: transparent;
+  border: 1px dashed #3a3f48;
+  color: #6b7280;
+}
+.csv-pr-chip.is-new em { margin-left: 5px; color: #6b7280; }
+.csv-pr-hint {
+  font-size: 13px;
+  font-style: italic;
+  color: #6b7280;
 }
 
 .csv-pb-role-row {
