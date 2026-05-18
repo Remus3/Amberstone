@@ -139,6 +139,24 @@ body:not([data-view="active-match"]):not([data-view="last-match"]) header .ult-p
 body:not([data-view="active-match"]):not([data-view="last-match"]) header .win-pill {
   display: none !important;
 }
+/* (2026-05-18) Same view-scoped principle as the s162 block above, but
+ * active-match ONLY (no last-match exception). The four row-2 pills are
+ * live-game surfaces — DS in-game pick glance, currently-owned augments,
+ * decision_detector heartbeat, first-item archetype mismatch — that are
+ * meaningless on lobby/home/champ-select/Post-Game-Review. They were
+ * only ever mode-gated (client/tft) on the assumption mode=="client"
+ * whenever not in a game; but mode is legitimately "aram"/"arena" during
+ * the s150 lobby/CS pre-flip (primes the coach panels for the upcoming
+ * game), so mode-gating alone leaked them onto every pre-game page once
+ * the body[data-mode] flap was fixed. View-gate them like the s162
+ * telemetry pills so they show on the active game page only. JS still
+ * populates them so they're current the instant the game starts. */
+body:not([data-view="active-match"]) header .ds-pill,
+body:not([data-view="active-match"]) header .augments-pill,
+body:not([data-view="active-match"]) header .trigger-pill,
+body:not([data-view="active-match"]) header .archetype-nudge-chip {
+  display: none !important;
+}
 /* (2026-04-26) Win% pill is in-game-only — outcome is known by the
  * time post-match lobby renders, so the live probability has no
  * meaning. Hide outside in-game modes (covers any view-router state
