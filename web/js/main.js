@@ -26,6 +26,7 @@ import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _upda
 import { handleChampSelect, renderChampSelectCoach, renderChampSelectView } from './panels/champ_select.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
+import { renderScreenRead } from './panels/screen_read.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
@@ -5755,6 +5756,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
           renderArchetypeNudge(st);
+          renderScreenRead(st);
         }
       } catch (_) { /* ignore - WS may come back */ }
     }
@@ -5789,6 +5791,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           if (st.lcu) handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
           renderArchetypeNudge(st);
+          renderScreenRead(st);
         } catch (_) { /* malformed event - skip */ }
       };
       es.onerror = () => {
@@ -5820,7 +5823,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         if (r.ok) {
           const st = await r.json();
           if (st && st.lcu) handleLcuEnvelope(st.lcu);
-          if (st) { renderTeamContext(st); renderArchetypeNudge(st); }
+          if (st) { renderTeamContext(st); renderArchetypeNudge(st); renderScreenRead(st); }
         }
       } catch (_) { /* silent */ }
       finally { inflight = false; }
