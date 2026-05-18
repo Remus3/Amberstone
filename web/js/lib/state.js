@@ -13,6 +13,12 @@ export const state = {
   },
   latest: {},          // mode → latest coaching payload cache
   lastSseTs: 0,        // ms timestamp of last SSE event (dedup vs. HTTP fallback)
+  // /api/state.mode_key is the canonical preflip/in-game resolver
+  // (resolve_mode_key + cs_retention). onState records it here so
+  // onHealth can defer to it instead of flapping body[data-mode] when
+  // its own health source isn't preflip-mirrored. See onHealth in main.js.
+  lastStateMode: "",   // last env.mode (mode_key) seen by onState
+  lastStateModeTs: 0,  // ms timestamp of that observation
   spellCds: {},        // champion|spell → {remaining, anchor} cooldown state
   deadUntil: 0,        // ms timestamp when respawn timer expires
 };
