@@ -150,7 +150,44 @@ _DETERMINISTIC_RECORDKEEPING_OPS = frozenset({
     "user-destructive-request",
     "user-unparsed",
     "ui-feedback-unhandled",
+    "bridge-publisher-stale",   # Audit7 H-01 — filing IS the alarm
 })
+
+# Audit7 H-01 (2026-05-18) — bridge health-publisher staleness alarm.
+# Peers POST their watcher heartbeat ~every 60s to /api/health/peer/<node>,
+# persisted at ops/runtime/peer_health/<node>.json. When that file goes
+# silent the bridge *task loop* may still be alive (only the publisher
+# sub-process died) — a false-confidence shape the rc_facts probe
+# rendered but nothing escalated (2026-05-18: gamepc silent ~2.7h while
+# peer was fresh at 25s). The watchdog files a deduped Agent-1 triage
+# task on threshold cross.
+_BRIDGE_PUB_PEERS = ("gamepc", "peer")
+_BRIDGE_PUB_ALERT_S = 1800.0            # 30 min silent → escalate
+_BRIDGE_PUB_CHECK_INTERVAL_S = 300.0    # poll cadence (publisher posts ~60s)
+_BRIDGE_PUB_REFILE_COOLDOWN_S = 21600.0  # one task per node per 6h outage
+
+
+def _bridge_pub_should_file(
+    age_s: float,
+    prev_fired_mono: "float | None",
+    now_mono: float,
+    *,
+    alert_s: float = _BRIDGE_PUB_ALERT_S,
+    cooldown_s: float = _BRIDGE_PUB_REFILE_COOLDOWN_S,
+) -> "tuple[bool, bool]":
+    """Pure dedup decision for the bridge-publisher watchdog (Audit7
+    H-01). Returns ``(should_file, rearm)``:
+
+      - healthy (age <= alert): ``(False, True)`` — publisher recovered;
+        clear the node's fired_at so a fresh outage re-alarms.
+      - stale, within re-file cooldown of the last filing: ``(False, False)``
+      - stale, never filed or cooldown elapsed: ``(True, False)``
+    """
+    if age_s <= alert_s:
+        return (False, True)
+    if prev_fired_mono is not None and (now_mono - prev_fired_mono) < cooldown_s:
+        return (False, False)
+    return (True, False)
 
 
 def _iso_now() -> str:
@@ -1578,6 +1615,7 @@ class Supervisor:
         asyncio.create_task(self._heartbeat_loop())
         asyncio.create_task(self._dispatch_loop())
         asyncio.create_task(self._warm_ui_watchdog())
+        asyncio.create_task(self._bridge_publisher_watchdog())  # Audit7 H-01
 
         # Decision detector loop (T3 #15, 2026-05-01) — relocated from
         # dashboard/server.py. Polls the Live Client relay + vision_state
@@ -1666,6 +1704,84 @@ class Supervisor:
                     )
                     self._warm_agent7.close()
                     zero_since = None
+        except asyncio.CancelledError:
+            pass
+
+    # ---- bridge health-publisher watchdog (Audit7 H-01) --------------
+    async def _bridge_publisher_watchdog(self) -> None:
+        """Detect a silent peer bridge health-publisher and file a
+        deduped Agent-1 triage task. The bridge task loop can be alive
+        while only the publisher sub-process is dead (2026-05-18: gamepc
+        silent ~2.7h, peer fresh at 25s) — the rc_facts probe rendered it
+        but nothing escalated. Fully guarded: any read/scheduler fault
+        is swallowed so the loop never dies.
+
+        Dedup: one task per node per outage. ``fired_at`` records the
+        monotonic time of the last filing; a node is re-armed the moment
+        its publisher recovers (age back under threshold), and a still-
+        ongoing outage only re-files after ``_BRIDGE_PUB_REFILE_COOLDOWN_S``
+        so a multi-hour outage doesn't spam the queue. Mirrors the
+        proposal's dedup_key intent ("re-files only when aged out").
+        """
+        peer_dir = _PROJECT_ROOT / "ops" / "runtime" / "peer_health"
+        fired_at: dict[str, float] = {}
+        try:
+            while not self._stop.is_set():
+                await asyncio.sleep(_BRIDGE_PUB_CHECK_INTERVAL_S)
+                if self._scheduler is None:
+                    continue
+                now_mono = time.monotonic()
+                for node in _BRIDGE_PUB_PEERS:
+                    try:
+                        rec_path = peer_dir / f"{node}.json"
+                        if not rec_path.exists():
+                            continue  # never deployed — not an alarm
+                        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+                        recv = rec.get("received_at") or 0
+                        age_s = max(0.0, time.time() - recv)
+                    except Exception as e:  # noqa: BLE001
+                        log.debug("bridge-pub watchdog read %s: %s", node, e)
+                        continue
+                    should_file, rearm = _bridge_pub_should_file(
+                        age_s, fired_at.get(node), now_mono)
+                    if rearm:
+                        fired_at.pop(node, None)  # recovered → re-arm
+                    if not should_file:
+                        continue
+                    try:
+                        self._scheduler.file_task(
+                            op="bridge-publisher-stale",
+                            owner_agent="1",
+                            priority=50,
+                            payload={
+                                "node": node,
+                                "age_s": int(age_s),
+                                "threshold_s": int(_BRIDGE_PUB_ALERT_S),
+                                "detail": (
+                                    f"{node} bridge health-publisher silent "
+                                    f"{int(age_s)}s — bridge task loop may "
+                                    f"still be alive (only the publisher "
+                                    f"sub-process). False-confidence shape."
+                                ),
+                                "suggested_action": (
+                                    f"Restart the {node} health publisher via "
+                                    f"tools/gamepc_boot.ps1 "
+                                    f"(RC-WatcherHealthPublisher-{node}); see "
+                                    f"the s167 boot-hardening deferral."
+                                ),
+                                "source": "bridge_publisher_watchdog",
+                            },
+                        )
+                        fired_at[node] = now_mono
+                        log.warning(
+                            "bridge-pub watchdog: filed Agent-1 task for "
+                            "%s (age=%ds)", node, int(age_s),
+                        )
+                    except Exception as e:  # noqa: BLE001
+                        log.warning(
+                            "bridge-pub watchdog: file_task for %s "
+                            "failed: %s", node, e,
+                        )
         except asyncio.CancelledError:
             pass
 

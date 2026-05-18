@@ -33,6 +33,26 @@ from dashboard._writers import (
 _BRIDGE_WARN_S = 600
 _BRIDGE_ALERT_S = 3600
 
+# Peer bridge health-publisher staleness (Audit7 H-01, 2026-05-18).
+# Each peer POSTs its watcher heartbeat ~every 60s to /api/health/peer.
+# WARN (300s = 5 missed posts) preserves the prior hardcoded `stale`
+# boundary; ALERT (1800s = 30 min silent) is "publisher almost
+# certainly dead while the bridge task loop may still be alive" — the
+# false-confidence shape the audit flagged. <=WARN green, <=ALERT
+# yellow, >ALERT red.
+_PEER_HEALTH_WARN_S = 300
+_PEER_HEALTH_ALERT_S = 1800
+
+
+def _peer_health_status(age_s: float) -> str:
+    """Graded peer health-publisher status from heartbeat age (seconds).
+    <=WARN green · <=ALERT yellow · >ALERT red. Pure — unit-tested."""
+    if age_s <= _PEER_HEALTH_WARN_S:
+        return "green"
+    if age_s <= _PEER_HEALTH_ALERT_S:
+        return "yellow"
+    return "red"
+
 log = logging.getLogger("rc.web_dashboard")
 
 
@@ -220,9 +240,11 @@ def _serve_health_all(h) -> None:
                 recv = rec.get("received_at") or 0
                 age_s = max(0.0, time.time() - recv)
                 hb = rec.get("heartbeat") or {}
+                peer_status = _peer_health_status(age_s)
                 peers[node] = {
                     "age_s":          round(age_s, 1),
-                    "stale":          age_s > 300,
+                    "stale":          age_s > _PEER_HEALTH_WARN_S,
+                    "status":         peer_status,
                     "watcher_alive":  bool(hb.get("alive")),
                     "watcher_pid":    hb.get("pid"),
                     "queue_depth":    hb.get("queue_depth"),
@@ -244,12 +266,22 @@ def _serve_health_all(h) -> None:
         # signals.
         bridge_status = (rollup.get("bridge") or {}).get("status")
         bridge_degraded = bridge_status in ("yellow", "red")
+        # Audit7 H-01: a stale peer health-publisher is an observability
+        # gap, not an RC outage — cap at yellow (same philosophy as
+        # bridge silence) so the primary top-right dot flips instead of
+        # staying falsely green while a publisher is dead for hours.
+        peers_block = rollup.get("peers") or {}
+        peer_degraded = any(
+            isinstance(v, dict) and v.get("status") in ("yellow", "red")
+            for v in peers_block.values()
+        )
         if not rc_ok or not vis_ok:
             rollup["status"] = "red"
         elif (not cost_ok
               or not ds_ok
               or rollup.get("cost", {}).get("banner") == "warn"
-              or bridge_degraded):
+              or bridge_degraded
+              or peer_degraded):
             rollup["status"] = "yellow"
         else:
             rollup["status"] = "green"
