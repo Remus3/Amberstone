@@ -133,6 +133,72 @@ def _serve_champion_tags(h) -> None:
         h._send(500, b'{"error":"champion_tags_failed"}', "application/json")
 
 
+# s-PGR-S2: per-player augment icons for the Post Game Review roster
+# (ARAM Mayhem / Arena). The augment id -> {name, rarity, icon} table
+# is the patch-versioned cherry_augments.json snapshot that
+# core.augment_external_source already builds + consumes; the stored
+# `icon` is the raw LCU virtual path, so we transform it here to the
+# CommunityDragon raw mirror (same base as that module's
+# CHERRY_AUGMENTS_URL) so the client just gets a fetchable URL.
+_DS_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
+_CDRAGON_GAMEDATA_BASE = (
+    "https://raw.communitydragon.org/latest/plugins/"
+    "rcp-be-lol-game-data/global/default/"
+)
+
+
+def _current_ds_patch() -> str:
+    try:
+        return (_DS_DATA_DIR / "current.txt").read_text(encoding="utf-8").strip()
+    except Exception:
+        return ""
+
+
+def _cdragon_icon_url(icon_path: str) -> str:
+    """LCU virtual asset path -> CommunityDragon raw mirror URL.
+
+    cherry_augments.json stores
+    `/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/X_small.png`;
+    CommunityDragon serves it under the rcp-be-lol-game-data plugin
+    root, lowercased. Empty in -> empty out (client hides the img)."""
+    p = (icon_path or "").strip()
+    if not p:
+        return ""
+    low = p.lstrip("/").lower()
+    marker = "lol-game-data/"
+    if low.startswith(marker):
+        low = low[len(marker):]
+    return _CDRAGON_GAMEDATA_BASE + low
+
+
+def _serve_augments(h) -> None:
+    """Compact id -> {name, icon_url, rarity} for roster augment icons.
+    Built from the current-patch cherry_augments.json. Long-lived
+    client cache - only changes on an operator-triggered patch refresh."""
+    patch = _current_ds_patch()
+    src = (_DS_DATA_DIR / patch / "cherry_augments.json") if patch else None
+    if src is None or not src.is_file():
+        h._send(404, b'{"error":"cherry_augments.json missing"}', "application/json")
+        return
+    try:
+        raw = _json.loads(src.read_text(encoding="utf-8"))
+        augs = raw.get("augments") or {}
+        out: dict = {}
+        for aid, row in augs.items():
+            if not isinstance(row, dict):
+                continue
+            out[str(aid)] = {
+                "name":     row.get("name") or "",
+                "rarity":   row.get("rarity") or "",
+                "icon_url": _cdragon_icon_url(row.get("icon") or ""),
+            }
+        body = _json.dumps({"patch": patch, "augments": out}).encode("utf-8")
+        h._send(200, body, "application/json; charset=utf-8")
+    except Exception as exc:
+        log.warning("dictionary augments: %s", exc)
+        h._send(500, b'{"error":"augments_read_failed"}', "application/json")
+
+
 def _equals(p: str):
     def m(path: str) -> bool: return path.split("?", 1)[0] == p
     return m
@@ -142,5 +208,6 @@ GET_ROUTES = [
     (_equals("/api/dictionary/items"),         _serve_items),
     (_equals("/api/dictionary/runes"),         _serve_runes),
     (_equals("/api/dictionary/champion-tags"), _serve_champion_tags),
+    (_equals("/api/dictionary/augments"),      _serve_augments),
 ]
 POST_ROUTES: list = []
