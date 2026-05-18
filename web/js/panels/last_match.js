@@ -112,6 +112,55 @@ let _wired = false;
 // re-render once the DDragon item-description fetch resolves.
 let _lastData = null;
 
+// s-PGR-S2 (#9 augments): id -> {name, icon_url, rarity} from
+// /api/dictionary/augments (the patch-versioned cherry_augments
+// snapshot). Async like CHAMPS.byId - empty until the fetch lands;
+// _loadAugments() re-renders once so the roster picks up icons. Only
+// ARAM Mayhem (KIWI) / Arena (CHERRY) rosters carry non-zero ids;
+// SR roster augments are all 0 so nothing renders + the grid stays
+// the pre-S2 8-column layout (byte-identical).
+let _AUGMENTS = {};
+let _augLoaded = false;
+
+function _loadAugments() {
+  if (_augLoaded) return;
+  fetch("/api/dictionary/augments", { headers: { "Accept": "application/json" } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      _AUGMENTS = (d && d.augments) || {};
+      _augLoaded = true;
+      if (_lastData) renderLastMatch(_lastData);
+    })
+    .catch(() => { _augLoaded = true; });  // give up quietly; rows just omit augments
+}
+
+function _augRarityShort(rarity) {
+  // cherry rarity is kBronze/kSilver/kGold/kPrismatic/kEventChoice.
+  const r = String(rarity || "").replace(/^k/, "");
+  return r === "EventChoice" ? "Event" : r;
+}
+
+// Per-player augment icon strip. Filters the trailing 0s the LCU
+// pads playerAugment{1..6} with; skips ids missing from the dict
+// (Mayhem-only ids occasionally absent from the Arena cherry set) so
+// an unknown id degrades to nothing rather than a broken image.
+function _augIconsHtml(augArr) {
+  if (!_augLoaded || !Array.isArray(augArr)) return "";
+  const ids = augArr.filter((x) => Number(x) > 0);
+  if (!ids.length) return "";
+  const cells = ids.map((id) => {
+    const info = _AUGMENTS[String(id)];
+    if (!info || !info.icon_url) return "";
+    const rar = _augRarityShort(info.rarity);
+    const nm = info.name || `augment ${id}`;
+    const title = rar ? `${nm} (${rar})` : nm;
+    return `<img class="lm-tc-aug" src="${info.icon_url}" alt=""` +
+      ` title="${_escHtml(title)}" data-rarity="${_escHtml(rar.toLowerCase())}"` +
+      ` loading="lazy" onerror="this.style.display='none'">`;
+  }).join("");
+  return cells;
+}
+
 // s219 v6: rank-tier comparison sample averages per game mode.
 // Hand-curated placeholder data - backend aggregates from
 // rewind_history.db are a future settings page follow-up. Keys are
@@ -152,6 +201,9 @@ export function wireLastMatchOnce() {
   // first mount so the first Comp-tab render already has tooltips.
   // Idempotent - no-op once the cache is ready.
   preloadLolDescriptions();
+  // s-PGR-S2 (#9): warm the augment id->icon dict so the first roster
+  // render already shows augment icons (ARAM Mayhem / Arena).
+  _loadAugments();
 
   const champEl = document.getElementById("lm-champion-name");
   if (champEl) {
@@ -468,6 +520,14 @@ function _setTeamComp(enriched) {
   const ally  = roster.filter((r) => r.team_id === myTeamId);
   const enemy = roster.filter((r) => r.team_id !== myTeamId);
 
+  // s-PGR-S2 (#9): only widen the row grid to an augments column when
+  // the dict is loaded AND someone actually has augments (Mayhem /
+  // Arena). SR rosters (all-0 augments) keep the pre-S2 8-col layout
+  // exactly - data-aug drives the CSS grid-template + the cell emit.
+  const hasAug = _augLoaded
+    && roster.some((r) => Array.isArray(r.augments) && r.augments.some((x) => Number(x) > 0));
+  table.dataset.aug = hasAug ? "1" : "";
+
   // Win/loss per team (enriched.teams is more reliable than per-row win).
   const teamWin = {};
   (enriched.teams || []).forEach((t) => { teamWin[t.team_id] = !!t.win; });
@@ -495,8 +555,8 @@ function _setTeamComp(enriched) {
   const metaFor = (r) =>
     ((r.team_id === myTeamId ? allyMeta : enemyMeta)[r.participant_id])
     || { badge: "", rank: 0, score: 0 };
-  allyList.innerHTML  = ally.map((r)  => _renderTcRow(r, metaFor(r))).join("")  || `<li class="lm-tc-empty">-</li>`;
-  enemyList.innerHTML = enemy.map((r) => _renderTcRow(r, metaFor(r))).join("") || `<li class="lm-tc-empty">-</li>`;
+  allyList.innerHTML  = ally.map((r)  => _renderTcRow(r, metaFor(r), hasAug)).join("")  || `<li class="lm-tc-empty">-</li>`;
+  enemyList.innerHTML = enemy.map((r) => _renderTcRow(r, metaFor(r), hasAug)).join("") || `<li class="lm-tc-empty">-</li>`;
 
   const myWin = teamWin[myTeamId];
   if (myWin != null && allyResult) {
@@ -515,7 +575,7 @@ function _setTeamComp(enriched) {
   }
 }
 
-function _renderTcRow(r, sm) {
+function _renderTcRow(r, sm, showAug) {
   // Resolve championId → name via CHAMPS.byId (async-hydrated by items_index.js)
   const slug = (CHAMPS && CHAMPS.byId && CHAMPS.byId[String(r.champion_id)]) || "";
   const portrait = slug ? `/icons/champions/${slug}.png` : "";
@@ -541,6 +601,13 @@ function _renderTcRow(r, sm) {
   const scoreCell = m.badge
     ? `<span class="lm-tc-score" data-kind="${m.badge.toLowerCase()}" data-tt="${m.badge === "MVP" ? "MVP - best on the winning side" : "SVP - best on the losing side"} (overall score ${sVal}/100)">${m.badge}</span>`
     : `<span class="lm-tc-score" data-kind="rank" data-tt="Lobby rank by overall score ${sVal}/100 - blend of KDA, damage, gold, CS, vision, tanked">#${m.rank || "-"}</span>`;
+  // s-PGR-S2 (#9): augment strip between summoners + CS, emitted only
+  // when the table is in augment mode (showAug) so the grid column
+  // count stays uniform across every row + both panels. Empty <div>
+  // for a player with no augments keeps alignment.
+  const augCell = showAug
+    ? `<div class="lm-tc-augs">${_augIconsHtml(r.augments)}</div>`
+    : "";
   // s220 (#H): champ level shows just the number (no "L" prefix).
   // s220 (#F): summoner spells now sit before CS (swapped).
   return `<li class="lm-tc-row${meRow}" data-team="${r.team_id}">
@@ -550,6 +617,7 @@ function _renderTcRow(r, sm) {
     <span class="lm-tc-lvl" title="champion level">${r.champ_level || 0}</span>
     <span class="lm-tc-kda" title="kills / deaths / assists">${kda}</span>
     <div class="lm-tc-summs">${summHtml}</div>
+    ${augCell}
     <span class="lm-tc-cs" title="creep score">${r.cs || 0} CS</span>
     <div class="lm-tc-items">${itemsHtml}</div>
   </li>`;
@@ -887,7 +955,7 @@ function _setEmptyState(errMsg) {
   const actual = document.getElementById("lm-actual-build");
   if (actual) actual.hidden = true;
   const tcTable = document.getElementById("lm-tc-table");
-  if (tcTable) tcTable.hidden = true;
+  if (tcTable) { tcTable.hidden = true; tcTable.dataset.aug = ""; }
   const chartWrap = document.getElementById("lm-chart-wrap");
   if (chartWrap) chartWrap.hidden = true;
   const tlWrap = document.getElementById("lm-tl-wrap");
