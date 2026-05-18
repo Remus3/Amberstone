@@ -359,6 +359,13 @@ def _serve_command_post(h, payload) -> None:
                 atomic_write_json("coaching_data.json", d)
         elif cmd == "clear_pregame":
             set_pregame("")
+        elif cmd == "screen_read":
+            # s240: on-demand VLM coach. Non-blocking - writes a pending
+            # marker + spawns the Sonnet pass on a daemon thread; the
+            # result lands on /api/state.screen_read for the dashboard
+            # pill. In-flight dedupe lives in trigger_screen_read().
+            from dashboard._screen_read import trigger_screen_read
+            trigger_screen_read()
         else:
             h._send(400, b'{"error":"unknown_command"}', "application/json"); return
         log.info("dashboard command: %s", cmd)

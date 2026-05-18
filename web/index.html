@@ -513,6 +513,14 @@
         <div class="kv">
           <span>Base</span><span id="rn-reset">-</span>
         </div>
+        <!-- s240: on-demand VLM coach. One click -> one Sonnet pass over
+             the frame RC already holds -> a tactical one-liner on the
+             dedicated pill below (does NOT clobber #rn-immediate). -->
+        <div class="rn-screenread">
+          <button type="button" id="rn-sr-btn" class="rn-sr-btn"
+                  title="Ask the VLM coach: one Sonnet pass over the current game screen, one tactical one-liner. Needs a live game (uses the frame RC already holds - no new capture).">SCREEN READ</button>
+          <span class="rn-sr-pill" id="rn-sr-pill" hidden></span>
+        </div>
       </div>
     </section>
 
