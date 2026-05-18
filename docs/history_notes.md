@@ -6,6 +6,19 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-17 (done) — known-carry wakeup_prune FIXED + ROADMAP medium #3/#4 closed + lobby-bug hand-off staged
+
+Three threads, all shipped. Code = `ef30b6f`; docs-sync commit follows.
+
+- **wakeup_prune.py FIXED (the known-carry — closed, don't re-investigate).** Root cause confirmed empirically: `SESSION_RE` matched only legacy `# sNNN wrap`; recent dated/pinned headings tail-dumped into `extras`, inverting newest/oldest → crash at moved_ids (a lucky guard vs mis-archiving the newest sessions + un-pinning RESOLVED). Fix: widen regex to dated `# YYYY-MM-DD`, position-aware leading-pin fold into header, hardened moved_ids label. TDD +7 (20 total); phase7_polish 43 green. Executed the real prune (5 oldest → history_notes; pin retained).
+- **ROADMAP medium #3 CLOSED.** Resilient `_log_startup`: ProgramData fallback + stderr echo + never-raise. **Deliberately rejected** the SYSTEM→Admin+logon ops change (DS not supervisor-watched → unattended-reboot regression) — don't redo it. TDD +10, live-smoked.
+- **ROADMAP medium #4 CLOSED (verified not-a-bug, don't re-investigate).** Externally-reported bonus-AD-zeroing augment: Maw / Death's Dance / Endless Hunger all `defensive_only`/non-DPS in `effects.py`; Sterak's Claws keyed off base AD; EHP shield throughput is the Phase-1.5 deferral → nothing to over-rank.
+- ROADMAP medium #1/#2 left BLOCKED (Phase-3 auto-action gate uncleared, 0 samples); #5 deferred (own scoped session, CLAUDE #88).
+
+**NEXT SESSION FIRST:** lobby "change mode" button half-wired — Practice Tool / ARAM Mayhem / Arena won't switch (standard queues fine). Full recon + per-mode root causes + the 2 patch-structural changes (Brawl removed; Arena 2v8→3x6) are in **CLAUDE #89** + ROADMAP High-priority top. Recon is done — don't re-grep cold; needs a live client to verify.
+
+---
+
 # 2026-05-17 (late) — KEYSTONE champ-select/Mayhem FIXED+proven live · s220 surrender slice · reframe plan locked
 
 Operator-driven, off the "start the next item" → keystone → "start what is
