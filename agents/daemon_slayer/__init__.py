@@ -1222,6 +1222,20 @@ Phase 5.7 (s189, 2026-05-13 - Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   block reports per-combo fired count + total damage; surfaces an idle
   diagnostic when the build has Spellblade but the combo template
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
+
+Phase 4(d) (2026-05-18 - candidate unique_passive_key exposure, ENGINE_VERSION 1.4.0):
+
+* All 6 ranker ``*RankedItem`` dataclasses gain ``unique_passive_key:
+  str = ""`` (+ ``to_dict()``), populated unconditionally from the
+  candidate's own ``cand_eff.unique_passive_key`` - not just on dead
+  collision like ``dead_unique_key``. Surfaces the positive "this item
+  locks the <family>" signal. Additive + backward-compatible (default
+  "", existing consumers ignore the new key, no math touched).
+* Mirrored in the 6 ``core/daemon_slayer_client.py`` client dataclasses
+  (field + ``from_dict``) and the 6 ``rank_for_primary_archetype``
+  envelope branches. ``core/build_order.BuildStep`` gains
+  ``locked_family`` (consumes the new key) - the positive counterpart
+  to its existing ``excluded_family``.
 """
 
-ENGINE_VERSION = "1.3.0"
+ENGINE_VERSION = "1.4.0"
