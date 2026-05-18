@@ -83,8 +83,10 @@ class BridgeMonitor:
         if self._thread:
             self._thread.join(timeout=3)
         if self._task is not None:
-            try: self._task.cancel()
-            except Exception: pass
+            try:
+                self._task.cancel()
+            except Exception as e:  # noqa: BLE001 - teardown, must not raise
+                _log.debug("bridge_monitor task cancel failed on stop: %s", e)
             self._task = None
 
     # ── State ─────────────────────────────────────────────────────────────
