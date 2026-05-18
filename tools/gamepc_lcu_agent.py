@@ -226,7 +226,7 @@ _LOBBY_QUEUE_NAMES = {
     840: "Co-op vs AI Beginner",
     850: "Co-op vs AI Intermediate",
     900: "URF",
-    920: "ARAM Mayhem",
+    920: "Poro King",
     1020: "One for All",
     1090: "TFT Normal",
     1100: "TFT Ranked",
@@ -243,7 +243,7 @@ _LOBBY_QUEUE_NAMES = {
     1840: "Swarm (Trio)",
     1850: "Swarm (Quad)",
     1900: "URF",
-    2300: "Brawl",
+    2400: "ARAM Mayhem",  # KIWI gameMode — queueId confirmed s220 (920 = Poro King). Brawl (2300) retired from rotation s214.
 }
 
 

@@ -2616,13 +2616,29 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           e.stopPropagation();
           const qid = parseInt(item.dataset.hfmQid, 10) || 0;
           const special = item.dataset.hfmSpecial || "";
+          // s234 (#89): poll the LCU result + surface failures via the
+          // lobby-view error channel (we route there next). Previously the
+          // result was swallowed (`() => {}` / fire-and-forget), so Practice
+          // Tool / ARAM Mayhem / Arena failed silently — the operator had no
+          // signal to capture. _lvQueueChangeError is module-scope.
           if (special === "practice") {
-            try { lcuCmd({ cmd: "lobby.create_practice_tool" }); } catch (_) {}
+            try {
+              lcuCmd({ cmd: "lobby.create_practice_tool" }).then((res) => {
+                if (typeof lcuPollResult === "function") {
+                  lcuPollResult(res && res.id, (r) => {
+                    if (r && r.ok === false)
+                      _lvQueueChangeError("Practice Tool: " + (r.err || "failed"));
+                  });
+                }
+              });
+            } catch (_) {}
           } else if (qid > 0) {
             try {
               lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
                 if (typeof lcuPollResult === "function") {
-                  lcuPollResult(res && res.id, () => {});
+                  lcuPollResult(res && res.id, (r) => {
+                    if (r && r.ok === false) _lvQueueChangeError(r.err);
+                  });
                 }
               });
             } catch (_) {}
@@ -3654,7 +3670,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     450:  ["Bench-swap is instant via the LCU API (5s client cooldown bypassed).",
            "Snowball + Flash is the standard summoner combo.",
            "ARAM Mayhem? Coach treats KIWI mode as ARAM — same loadouts apply."],
-    920:  ["ARAM Mayhem rolls 2-3 champions per slot — pick from the champ-select view.",
+    2400: ["ARAM Mayhem rolls 2-3 champions per slot — pick from the champ-select view.",
            "Augments roll mid-game; the panel surfaces them in the header pill.",
            "Score 1-100 for a win, not 0 deaths — fight more often."],
     400:  ["Normal Draft — 6 bans per side, hover before lock.",
@@ -3662,7 +3678,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     420:  ["Ranked Solo — match decides LP. Don't dodge unless griefed.",
            "Ban on what enemy team comp / role threats."],
     440:  ["Ranked Flex — premade up to 5; matchmaking pools differ from solo."],
-    1700: ["Arena 2v2v2v2 — pick a synergy duo.",
+    1700: ["Arena — 6 teams of 3. Pick a synergy trio.",
            "Anvil decisions matter more than build path. Read the augment."],
   };
   // s162 v2: status text removed from the lobby card per operator. Stub
@@ -3831,8 +3847,17 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           const qid = parseInt(item.dataset.qid, 10);
           const special = item.dataset.special;
           if (special === "practice") {
-            // Practice Tool: needs a different LCU command. Phase B.
-            lcuCmd({ cmd: "lobby.create_practice_tool" });
+            // Practice Tool: needs a different LCU command (customGameLobby
+            // PRACTICETOOL). s234 (#89): surface failures via lcuPollResult
+            // like the change_queue_type sibling below — the practice
+            // create can fail (e.g. must leave a matchmade lobby first) and
+            // the operator needs that error visible, not swallowed.
+            lcuCmd({ cmd: "lobby.create_practice_tool" }).then((res) => {
+              lcuPollResult(res && res.id, (r) => {
+                if (r && r.ok === false)
+                  _lvQueueChangeError("Practice Tool: " + (r.err || "failed"));
+              });
+            });
           } else if (qid > 0) {
             // s171: surface failures via lcuPollResult so non-leader
             // 400s and "already in matchmaking" rejections don't vanish.
