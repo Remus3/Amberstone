@@ -1174,6 +1174,31 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
 
+    def _drain_request_body(self) -> None:
+        """Consume and discard any unread request body.
+
+        Must be called on every early-return path that responds WITHOUT
+        going through ``_read_json_body`` (the unknown-POST-route 404).
+        If the body is left in the socket receive buffer, closing the
+        connection makes Windows send a TCP RST instead of a clean FIN,
+        and the client sees ``ConnectionResetError`` /
+        ``ConnectionAbortedError`` instead of the 4xx we just wrote (the
+        intermittent test_server flake). With keep-alive it desyncs the
+        stream and corrupts the next response on the connection.
+        Read in bounded chunks so a bogus huge Content-Length cannot
+        wedge the handler.
+        """
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except (TypeError, ValueError):
+            length = 0
+        remaining = length
+        while remaining > 0:
+            chunk = self.rfile.read(min(remaining, 65536))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+
     def _read_json_body(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
         if length <= 0:
@@ -1251,6 +1276,11 @@ class Handler(BaseHTTPRequestHandler):
         path = url.path
         try:
             if path not in _POST_ROUTES:
+                # Drain first - returning with an unread body in the
+                # socket buffer makes Windows RST the connection on
+                # close (the intermittent flake) instead of delivering
+                # this 404 cleanly.
+                self._drain_request_body()
                 self._send_error(404, f"no such route: {path}")
                 return
             body = self._read_json_body()
