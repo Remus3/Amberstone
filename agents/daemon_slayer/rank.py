@@ -26,10 +26,20 @@ from .stats import clamp_level
 # Mode → DDragon map id. Items whose ``maps[map_id]`` is False are unbuyable
 # in that mode (e.g. ARAM bans non-completed components like Phage). Modes
 # without a wired map id pass through with no validity filter.
+#
+# BRAWL is DDragon map 35. coaches/brawl_coach.py._ds_engine_mode("BRAWL")
+# returns the literal "BRAWL" (URF/NexusBlitz/etc ride the SR identity;
+# only true Brawl is map 35 - see tests/test_cross_mode_ds_p1l6.py
+# CrossModeBrawlRoutingTests), so rank_items genuinely receives
+# mode="BRAWL" for real Brawl games. Without this entry _is_legal_in_mode
+# was a silent no-op for the entire mode, admitting ~281 map-35-illegal
+# items (Doran's, jungle companions, the 22-prefixed Arena-mirror set)
+# into Brawl recommendations (audit P1-L23).
 MODE_MAP_ID: dict[str, str] = {
     "SR": "11",
     "ARAM": "12",
     "ARENA": "30",
+    "BRAWL": "35",
 }
 
 DEFAULT_SLOT_COUNT = 6
