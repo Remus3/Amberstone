@@ -51,6 +51,7 @@ import json
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import FrozenInstanceError
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -225,11 +226,11 @@ class SharedCacheNonAliasingTests(unittest.TestCase):
         PeriodicProc) - attribute assignment must raise."""
         self.assertTrue(ITEM_EFFECTS, "ITEM_EFFECTS unexpectedly empty")
         sample = next(iter(ITEM_EFFECTS.values()))
-        with self.assertRaises(Exception):
+        with self.assertRaises(FrozenInstanceError):
             sample.name = "tampered"  # type: ignore[misc]
         for eff in ITEM_EFFECTS.values():
             for proc in eff.periodics:
-                with self.assertRaises(Exception):
+                with self.assertRaises(FrozenInstanceError):
                     proc.name = "tampered"  # type: ignore[misc]
 
     def test_registry_resolvers_return_fresh_maps(self) -> None:

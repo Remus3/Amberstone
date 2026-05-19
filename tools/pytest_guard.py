@@ -48,8 +48,8 @@ def main() -> int:
     paths = _collect_paths(payload)
     # Unknown shape -> do not skip (fail safe: still run the suite).
     if paths and all(_is_docs_only(p) for p in paths):
-        print("[pytest_guard] docs-only edit (%s) - suite skipped"
-              % ", ".join(paths))
+        joined = ", ".join(paths)
+        print(f"[pytest_guard] docs-only edit ({joined}) - suite skipped")
         return 0
 
     proc = subprocess.run(
