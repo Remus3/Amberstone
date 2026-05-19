@@ -17,7 +17,7 @@ Companion to ``test_effects.py`` (thin slice). New coverage:
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot
-from agents.daemon_slayer.dps import compute_dps
+from agents.daemon_slayer.dps import _armor_factor, compute_dps
 from agents.daemon_slayer.effects import (
     ITEM_EFFECTS,
     CallContext,
@@ -6370,13 +6370,27 @@ class FlatArmorShredTests(unittest.TestCase):
         result = effective_target_armor(100.0, [flat_shred, bc])
         self.assertAlmostEqual(result, 49.0, places=3)
 
-    def test_flat_shred_floors_at_zero(self) -> None:
+    def test_flat_shred_can_drive_armor_negative(self) -> None:
+        # League rule: armor REDUCTION can take armor below zero (only
+        # PENETRATION floors at 0). 80 - 200 flat reduction = -120, and
+        # a negative resist amplifies physical damage. Corrected from
+        # the pre-fix "floors at zero" pin (P1-L1 enemy-item audit) -
+        # the old behavior discarded the negative-resist damage amp.
         flat_shred = ItemEffect(item_id="x", name="x", armor_reduction_flat=200.0)
-        self.assertEqual(effective_target_armor(80.0, [flat_shred]), 0.0)
+        got = effective_target_armor(80.0, [flat_shred])
+        self.assertAlmostEqual(got, -120.0, places=9)
+        # Negative effective armor must amplify (factor > 1).
+        self.assertGreater(_armor_factor(got), 1.0)
 
-    def test_flat_shred_no_op_on_zero_armor(self) -> None:
+    def test_flat_shred_on_zero_armor_goes_negative(self) -> None:
+        # 0 - 30 flat reduction = -30 (reduction, not pen) -> target
+        # takes amplified physical damage. Corrected pin (P1-L1).
         flat_shred = ItemEffect(item_id="x", name="x", armor_reduction_flat=30.0)
-        self.assertEqual(effective_target_armor(0.0, [flat_shred]), 0.0)
+        got = effective_target_armor(0.0, [flat_shred])
+        self.assertAlmostEqual(got, -30.0, places=9)
+        self.assertAlmostEqual(
+            _armor_factor(got), 2.0 - 100.0 / (100.0 - (-30.0)), places=9
+        )
 
     def test_mr_flat_shred_reduces_before_pct(self) -> None:
         # 80 MR, 30 flat shred → 50, then 30% Bloodletter's pct → 35.
