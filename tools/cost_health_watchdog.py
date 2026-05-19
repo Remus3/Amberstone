@@ -8,11 +8,14 @@ Runs every 15 minutes (RC-CostHealthWatchdog scheduled task). Probes:
   - tracked API spend     (data/spend/YYYY-MM-DD.json) vs a trailing baseline
 
 Detects a cost breach (today > 1.5x trailing-median baseline, with an absolute
-floor so an idle day cannot false-positive against a near-zero baseline) or a
-daemon flap (>=2 pid changes inside the rolling window, or alive=false, or
-last_reload_ok=false). On either, it CLASSIFIES the hot spend purpose to the
-Sonnet/Haiku caller file (from docs/COST_TRACE.md) and emits a concrete
-remediation proposal (debounce / interval / pythonw).
+floor so an idle day cannot false-positive against a near-zero baseline), a
+per-lane cost escalation (a purpose lane whose mean USD/call >= 2x its
+trailing-baseline cost/call week-over-week - the disk proxy for the
+rc_coach_cost_usd_per_call p95 doubling), or a daemon flap (>=2 pid changes
+inside the rolling window, or alive=false, or last_reload_ok=false). On any of
+these it CLASSIFIES the hot spend purpose to the Sonnet/Haiku caller file (from
+docs/COST_TRACE.md) and emits a concrete remediation proposal (debounce /
+interval / pythonw / prompt-size+cache review).
 
 It NEVER silently restarts or edits code. Cron mode only detects + logs +
 proposes. --remediate (opt-in, never used by the cron) may apply ONE bounded,
@@ -44,6 +47,9 @@ FLOOR_ABS_USD = 0.50          # below this, never call it a breach (idle noise)
 FLAP_WINDOW_S = 3600.0        # rolling window for pid-change counting
 FLAP_PID_CHANGES = 2          # >=2 pid changes in window == flap
 VISION_RATE_FLOOR = 3.0       # --remediate will not push below this
+P95_DOUBLE_MULT = 2.0         # per-lane p95-cost >= 2x trailing baseline == signal
+P95_FLOOR_USD = 0.002         # ignore lanes whose p95 is below this (sub-cent noise)
+P95_MIN_CALLS = 20            # need this many calls today for a stable p95
 
 # purpose -> (tier, primary caller file) from docs/COST_TRACE.md.
 PURPOSE_MAP = {
@@ -135,6 +141,93 @@ def spend_baseline(spend_dir: Path, today: str) -> dict:
     }
 
 
+def percentile(samples, pct: float) -> float:
+    """Nearest-rank percentile of `samples` (0 < pct <= 100).
+
+    Pure, dependency-free. rank = ceil(pct/100 * N), 1-indexed into the
+    sorted sample list (clamped to [1, N]). Hand-checkable: for the 20-value
+    list 1..20, p95 -> ceil(0.95*20)=19 -> sorted[18] == 19; p50 ->
+    ceil(0.50*20)=10 -> sorted[9] == 10. Empty -> 0.0.
+    """
+    vals = sorted(float(s) for s in samples)
+    n = len(vals)
+    if n == 0:
+        return 0.0
+    if pct <= 0:
+        return vals[0]
+    if pct >= 100:
+        return vals[-1]
+    import math
+    rank = math.ceil((pct / 100.0) * n)
+    rank = max(1, min(rank, n))
+    return vals[rank - 1]
+
+
+def _lane_mean_cost(doc: dict) -> dict:
+    """{purpose -> mean usd/call} for one day's ledger doc. Lanes with 0
+    calls are skipped (no meaningful per-call cost)."""
+    out = {}
+    for name, pb in (doc.get("by_purpose") or {}).items():
+        calls = float(pb.get("calls", 0) or 0)
+        usd = float(pb.get("usd", 0.0) or 0.0)
+        if calls > 0:
+            out[name] = usd / calls
+    return out
+
+
+def lane_cost_signals(spend_dir: Path, today: str) -> dict:
+    """Per-lane week-over-week cost-per-call escalation.
+
+    The ledger keeps per-day per-lane (usd, calls) aggregates, not per-call
+    samples, so the stable available proxy for "p95 cost on this lane" is the
+    lane's mean cost per call for the day; we compare today's per-lane mean
+    against the trailing-median of prior days' per-lane means and flag any
+    lane that has at least P95_MIN_CALLS calls today, a today-cost above
+    P95_FLOOR_USD, a positive baseline, and today >= P95_DOUBLE_MULT x
+    baseline. `percentile()` is exposed for callers that DO have a per-call
+    sample (e.g. scraping the rc_coach_cost_usd_per_call histogram buckets);
+    this aggregate path is what the cron can compute from disk.
+    """
+    today_doc = _read_json(spend_dir / (today + ".json"), {})
+    today_means = _lane_mean_cost(today_doc)
+    today_calls = {
+        name: float((today_doc.get("by_purpose") or {})
+                    .get(name, {}).get("calls", 0) or 0)
+        for name in today_means
+    }
+    prior_series: dict = {}
+    for f in sorted(spend_dir.glob("*.json")):
+        if f.stem == today:
+            continue
+        for name, mean in _lane_mean_cost(_read_json(f, {})).items():
+            prior_series.setdefault(name, []).append(mean)
+    flagged = []
+    lanes = {}
+    for name, today_mean in sorted(today_means.items()):
+        prior = prior_series.get(name, [])[-7:]
+        baseline = statistics.median(prior) if prior else 0.0
+        doubled = (
+            today_calls.get(name, 0) >= P95_MIN_CALLS
+            and today_mean > P95_FLOOR_USD
+            and baseline > 0
+            and today_mean >= P95_DOUBLE_MULT * baseline
+        )
+        lanes[name] = {
+            "today_cost_per_call": round(today_mean, 8),
+            "baseline_cost_per_call": round(baseline, 8),
+            "samples": len(prior),
+            "calls_today": int(today_calls.get(name, 0)),
+            "doubled": doubled,
+        }
+        if doubled:
+            flagged.append(name)
+    return {
+        "p95_doubled": bool(flagged),
+        "flagged_lanes": flagged,
+        "lanes": lanes,
+    }
+
+
 def detect_flap(prev_state: dict, health: dict, now: float) -> dict:
     """Track pid changes in a rolling window. Flap = >=N changes, or
     alive=false, or last_reload_ok=false."""
@@ -209,20 +302,38 @@ def main(argv=None) -> int:
     health = probe_health()
     bridge = probe_bridge()
     spend = spend_baseline(Path(args.spend_dir), date.today().isoformat())
+    lanes = lane_cost_signals(Path(args.spend_dir), date.today().isoformat())
     flap = detect_flap(prev, health, now)
-    if spend["breach"] or flap["flap"]:
+    if spend["breach"] or flap["flap"] or lanes["p95_doubled"]:
         cls = classify(spend["by_purpose"])
+        if lanes["p95_doubled"]:
+            ln = ", ".join(lanes["flagged_lanes"])
+            tier, fil = next(
+                (PURPOSE_MAP.get(p, ("UNKNOWN", "unmapped"))
+                 for p in lanes["flagged_lanes"]
+                 if p in PURPOSE_MAP),
+                ("UNKNOWN", "unmapped"))
+            cls["p95_proposal"] = (
+                "per-call cost on lane(s) [" + ln + "] >= "
+                + str(P95_DOUBLE_MULT) + "x the trailing baseline cost/call "
+                "(week-over-week escalation; primary " + tier + " "
+                + fil + "). Inspect prompt/token growth on that lane: a "
+                "fatter system prompt, lost cache_control ephemeral marker, "
+                "or larger context per call. Detect+log only; propose a "
+                "prompt-size / cache-hit review, do not auto-restart")
     else:
         cls = {"hot_purpose": None, "tier": None, "file": None,
                "proposal": None}
 
-    breached = bool(spend["breach"] or flap["flap"])
+    breached = bool(spend["breach"] or flap["flap"] or lanes["p95_doubled"])
     incidents = list(prev.get("incidents", []))[-49:]
     if breached:
         incident = {
             "at": datetime.now(timezone.utc).isoformat(),
             "cost_breach": spend["breach"],
             "flap": flap["flap"],
+            "p95_doubled": lanes["p95_doubled"],
+            "p95_flagged_lanes": lanes["flagged_lanes"],
             "today_usd": spend["today_usd"],
             "baseline_usd": spend["baseline_usd"],
             "pid_changes_in_window": flap["pid_changes_in_window"],
@@ -246,9 +357,12 @@ def main(argv=None) -> int:
         incidents.append(incident)
         _log_line("BREACH " + json.dumps({
             "cost": spend["breach"], "flap": flap["flap"],
+            "p95_doubled": lanes["p95_doubled"],
+            "p95_flagged_lanes": lanes["flagged_lanes"],
             "today_usd": spend["today_usd"],
             "baseline_usd": spend["baseline_usd"],
-            "proposal": cls["proposal"]}))
+            "proposal": cls["proposal"],
+            "p95_proposal": cls.get("p95_proposal")}))
 
     state = {
         "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -257,6 +371,7 @@ def main(argv=None) -> int:
         "health": health,
         "bridge": bridge,
         "spend": {k: v for k, v in spend.items() if k != "by_purpose"},
+        "lane_cost": lanes,
         "breached": breached,
         "incidents": incidents,
     }
@@ -266,11 +381,14 @@ def main(argv=None) -> int:
         "breached": breached,
         "cost_breach": spend["breach"],
         "flap": flap["flap"],
+        "p95_doubled": lanes["p95_doubled"],
+        "p95_flagged_lanes": lanes["flagged_lanes"],
         "today_usd": spend["today_usd"],
         "baseline_usd": spend["baseline_usd"],
         "health_alive": health["alive"],
         "bridge_alive": bridge["alive"],
         "proposal": cls["proposal"],
+        "p95_proposal": cls.get("p95_proposal"),
     }))
     return 1 if breached else 0
 
