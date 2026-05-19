@@ -174,7 +174,17 @@ class EnchanterFormulasSnapshot:
                 f"Enchanter formulas snapshot missing: {path}"
             )
         doc = json.loads(path.read_text(encoding="utf-8"))
-        items = doc.get("items") or {}
+        # Integrity gate (mirrors data_loader): valid JSON with a
+        # missing/empty 'items' container is a corrupt or partially
+        # written snapshot. Fail LOUDLY rather than returning a
+        # formula-less snapshot that would silently drop every
+        # enchanter-item HPS contribution to 0.
+        items = doc.get("items") if isinstance(doc, dict) else None
+        if not isinstance(items, dict) or not items:
+            raise EnchanterFormulasNotFound(
+                f"Enchanter formulas snapshot {path} missing/empty 'items' "
+                f"container (snapshot {patch}) - corrupt or partially written"
+            )
         formulas: dict[str, EnchanterItemFormula] = {}
         for iid, payload in items.items():
             if not isinstance(payload, dict):
