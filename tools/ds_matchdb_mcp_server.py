@@ -77,6 +77,7 @@ Configure local Claude Code .mcp.json (or settings.json mcpServers):
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import http.server
 import json
 import logging
@@ -110,6 +111,32 @@ PORT = 8894
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "ds-matchdb-mcp"
 SERVER_VERSION = "0.1.0"
+
+# -- Hung-tool watchdog -----------------------------------------------------
+# Every tool handler runs under a bounded timeout enforced by a single
+# shared thread pool (NOT one thread per call - a bounded executor so a
+# burst of calls cannot explode the thread count). On timeout the caller
+# gets a structured MCP error result instead of a hung connection; the
+# server stays responsive to the next request. The timed-out future is
+# abandoned (we never read its result), so a slow handler cannot corrupt
+# the response of a later call.
+#
+# Default is deliberately generous (a backstop, not a latency throttle):
+# the underlying core helpers (engine HTTP, sqlite) already carry their
+# own short timeouts, so this only trips on a genuine hang.
+DISPATCH_TIMEOUT_S = float(os.environ.get("RC_MCP_DISPATCH_TIMEOUT_S", "45"))
+# Per-tool overrides for handlers that legitimately run long and govern
+# themselves with a tighter internal timeout. The watchdog must sit
+# ABOVE that internal ceiling so it never preempts the tool's own
+# bound (no double-wrapping / no shortening). ds-matchdb tools are all
+# fast, so this is empty here; gamepc_mcp_server uses it for
+# run_powershell (subprocess timeout, own 600 s ceiling).
+TOOL_TIMEOUT_OVERRIDES: dict[str, float] = {}
+# Bounded worker pool. max_workers caps concurrent in-flight handlers;
+# the ThreadingHTTPServer already serialises per-connection so this is a
+# safety ceiling, not the primary concurrency model.
+_DISPATCH_POOL = concurrent.futures.ThreadPoolExecutor(
+    max_workers=8, thread_name_prefix="mcp-dispatch")
 
 DS_HEALTH_URL = "http://127.0.0.1:8893/health"
 _MATCH_DB_PATH = _PROJECT_ROOT / "data" / "match_history.db"
@@ -472,15 +499,43 @@ def handle_tools_list(_params: dict) -> dict:
     return {"tools": TOOLS_SCHEMA}
 
 
-def handle_tools_call(params: dict) -> dict:
-    name = params.get("name", "")
-    args = params.get("arguments", {}) or {}
-    fn = TOOL_FUNCS.get(name)
-    if not fn:
-        return {"isError": True,
-                "content": [{"type": "text", "text": f"unknown tool: {name}"}]}
+def _timeout_for(name: str) -> float:
+    """Per-tool dispatch timeout: a long-running tool can opt into a
+    higher ceiling via TOOL_TIMEOUT_OVERRIDES so this watchdog never
+    preempts the tool's own internal bound."""
+    return float(TOOL_TIMEOUT_OVERRIDES.get(name, DISPATCH_TIMEOUT_S))
+
+
+def _dispatch_tool(name: str, fn, args: dict) -> dict:
+    """Run one tool handler under the bounded-pool watchdog.
+
+    Returns the raw handler result dict on success, or a structured MCP
+    error dict (always carrying ``isError``) on bad args / handler
+    exception / timeout. Never raises, never blocks past the per-tool
+    timeout: on timeout the future is abandoned (its thread keeps running
+    in the bounded pool but its result is discarded so it cannot corrupt
+    a later response) and a structured error is returned immediately so
+    the server stays responsive.
+    """
+    timeout_s = _timeout_for(name)
+    fut = _DISPATCH_POOL.submit(fn, **args)
     try:
-        result = fn(**args)
+        return fut.result(timeout=timeout_s)
+    except concurrent.futures.TimeoutError:
+        # Best-effort cancel (a thread already executing cannot be
+        # force-killed in CPython; cancel() only helps if still queued).
+        # Either way we abandon the future and return now - the pool is
+        # bounded so a stuck worker degrades throughput but never
+        # explodes the thread count or wedges the server.
+        fut.cancel()
+        log.warning("tool %s exceeded dispatch timeout %.1fs - abandoned",
+                    name, timeout_s)
+        return {"isError": True,
+                "content": [{"type": "text",
+                             "text": f"tool '{name}' timed out after "
+                                     f"{timeout_s:.0f}s (dispatch watchdog); "
+                                     f"abandoned to keep server responsive"}],
+                "_timeout": True}
     except TypeError as e:
         return {"isError": True,
                 "content": [{"type": "text", "text": f"bad arguments: {e}"}]}
@@ -489,6 +544,20 @@ def handle_tools_call(params: dict) -> dict:
                 "content": [{"type": "text",
                              "text": f"{type(e).__name__}: {e}\n"
                                      + traceback.format_exc(limit=3)}]}
+
+
+def handle_tools_call(params: dict) -> dict:
+    name = params.get("name", "")
+    args = params.get("arguments", {}) or {}
+    fn = TOOL_FUNCS.get(name)
+    if not fn:
+        return {"isError": True,
+                "content": [{"type": "text", "text": f"unknown tool: {name}"}]}
+    result = _dispatch_tool(name, fn, args)
+    # Structured error envelopes (bad args / exception / timeout) are
+    # already MCP-shaped - pass them straight through.
+    if isinstance(result, dict) and result.get("isError"):
+        return result
     text = json.dumps(result, indent=2, default=str)
     return {"content": [{"type": "text", "text": text}]}
 
