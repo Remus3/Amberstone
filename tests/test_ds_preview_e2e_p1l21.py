@@ -202,9 +202,9 @@ class TestNoEngineSplitBrain(unittest.TestCase):
                     offenders.append(node.module or "")
         self.assertEqual(
             offenders, [],
-            "routes_state.py imports the engine in-process %r - split-brain "
-            "risk vs the live :8893 server. Route MUST go via "
-            "core.daemon_slayer_client (HTTP)." % offenders,
+            f"routes_state.py imports the engine in-process {offenders!r} - "
+            "split-brain risk vs the live :8893 server. Route MUST go via "
+            "core.daemon_slayer_client (HTTP).",
         )
 
     def test_ds_client_targets_8893_http_not_inprocess(self):
