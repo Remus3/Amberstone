@@ -2,6 +2,23 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - Universal_files 1-5 update (off-repo, NO RC commits)
+
+OFF-REPO doc maintenance only. Updated `C:/Users/Administrator/Desktop/Universal_files/` 1-5 from v2026-05-18 -> v2026-05-19 to capture procedure changes from sessions s244..s248:
+- caveman ULTRA = fleet SessionStart default (was full); hook + override mechanism documented
+- `.gitattributes *.py text eol=lf` guard (root cause of the 2026-05-19 `\r\r\n` 21-file incident); explicit "NEVER Edit/Write to fix EOL - go through Python `write_bytes`" rule
+- PostToolUse docs-skip lever (`run_post_edit_tests.py`) so `.md`-only edits do not pay the full-pytest latency
+- 6 new universal commands installed at bootstrap: `/sync-all-md`, `/ship-batch`, `/test-first-autopilot`, `/process-bridge-tasks`, `/consolidate-memory`, `/sleep` + `/wake`
+- New 3_MASTER Part 14.5 "Monitoring Loops" cataloguing the 9-task scheduled-task set (Supervisor + Phase3-Supervisor + Phase3-PeriodicAudit + BridgeWatcher + CostHealthWatchdog + DaemonSlayer + VisionServer + PatchRefresh + VerifyBridgeRoundtrip-Once); Phase3-Supervisor stale-code note + `0x800710E0` false-anomaly note
+- Hard rules 9 (LF EOL guard) and 10 (.ps1 ASCII-or-BOM) added to Part 14
+- 1_ENV_CHECK adds Check 13 (em-dash/smart-quote/BOM/`.gitattributes` probes, ASCII-safe via `[char]0x2014` hex escapes); ASCII-clean verified across all 5 updated files
+
+NO commits in `C:/Riot Commander` repo - this session edited files outside the repo. Only `_scratch/` is untracked (pre-existing, NOT authored this session). RC live throughout: pid=16648 alive=True last_reload_ok=True mode=client.
+
+NEXT: nothing carried. Peers (Peer, Game-PC) still hold the older v2026-05-18 universal files on their Desktops if a fleet sync is wanted - operator-gated, NOT auto-dispatched.
+
+**Don't-redo:** the Universal_files are intentional + ASCII-clean; do NOT re-edit them to put literal Unicode-dash characters into the detector patterns (the hex-escape `[char]0x2014` form is deliberate so the files themselves stay 7-bit ASCII).
+
 # 2026-05-19 - OVERNIGHT AUTONOMOUS RUN (NEXT_SESSION_QUEUE.md, Phase 0-3) - COMPLETE
 
 SESSION CLOSE: all 4 phases done, 49 commits (`9d1d8de`..`f6d0e02`) pushed, CI GREEN at final HEAD, RC pid=16648 alive, :8893 ENGINE 1.9.0. Phase 0 7/7 setup tasks. Phase 1 DS audit: 8 iters / 24 lanes / 8 real bugs fixed (effects neg-resist, pickban ORDER BY, enemy_aware base-resist, server socket-RST, AS 2.5-cap, loader fail-loud, routes_state coercion+JS, rank.py BRAWL map-id), ENGINE 1.5.0->1.9.0, DS tests 2283->2668, closed by documented saturation judgment (literal streak 1/10, operator-overridable - intent met via exhaustive 24-lane + golden-e2e coverage). Phase 2: 3 backlog items shipped. Phase 3: CI break (my run, ruff) diagnosed+fixed+confirmed green, conventions signed off, docs synced. NEXT SESSION: nothing carried/blocking; operator-gated follow-ups flagged in the Phase-3 entry below (pre-existing non-ASCII retro-sweep; P2-B main.py memory-hook wire; P2-C MCP-server restarts; deferred type-hint pass) - do NOT auto-action these, they are deliberately gated. Per-phase detail in the entries below.
