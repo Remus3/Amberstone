@@ -7,7 +7,7 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 
 ## Bridge Watcher hardening
 
-- **Per-call cost histogram**: track median/p95 cost per lane in Prometheus; alert if p95 doubles week-over-week.
+- ~~**Per-call cost histogram**~~: shipped 2026-05-19 (Phase 2) - `rc_coach_cost_usd_per_call` Histogram in `core/cost_tracker.record_call` (model+purpose labels, USD buckets), rendered at `/metrics`; week-over-week p95-doubling lane signal folded into the existing `tools/cost_health_watchdog.py` (no second cron; detect+log+propose only).
 - **`bridge_watcher_install.ps1` self-update**: detect stale local copy and prompt to re-pull when a new watcher ships.
 - ~~**Bridge contract v1**~~: shipped - `core/bridge_envelope.py` (Phase 4.2, s129) defines `body_path` / `claimed_by` / `ttl_at` / `suggestions`; `tools/bridge_cli.py` (Phase 6, s144) consolidates the 7 small CLIs over it. Watcher daemon refactor (bigger envelope-aware rewrite) deferred separately.
 
@@ -24,7 +24,7 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 
 ## Platform / observability
 
-- **Memory watchdog remediation wiring**: `ResourceManager` logs at 500 MB but doesn't trigger a coach restart. Wire to `app/_remediation.py` (frozen-file, needs owner approval).
+- ~~**Memory watchdog remediation wiring**~~: shipped 2026-05-19 (Phase 2) - `core/resource_manager.py` `set_remediation_hook` dependency-injection (did NOT edit frozen `app/_remediation.py`); sustained 3-consecutive-500MB-breach + 600s cooldown latched-before-hook + structured log. Hook defaults None (live behavior unchanged); the one-line `main.py` wire to `RemediationService.restart_game_poll` is the remaining OPERATOR-GATED step.
 - **Streaming vision**: delta-encoded frames instead of full JPEG every 2s. ~5× bandwidth reduction.
 - **Mobile-native dashboard**: current PWA adds ~2s touch latency. Native iOS/Android would reduce that.
 
@@ -41,7 +41,7 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 
 ## Reliability / hardening
 
-- **MCP server hung-tool watchdog**: `concurrent.futures` watchdog at the MCP server tier. Currently `run_powershell` has subprocess timeout; broader dispatch is uncovered.
+- ~~**MCP server hung-tool watchdog**~~: shipped 2026-05-19 (Phase 2) - bounded `ThreadPoolExecutor` dispatch watchdog (45s default, `RC_MCP_DISPATCH_TIMEOUT_S`) in `tools/ds_matchdb_mcp_server.py` + `tools/gamepc_mcp_server.py`; structured MCP timeout error, future abandoned/cancelled; `run_powershell` backstopped at 630s (its own subprocess timeout still governs, not double-wrapped). NOTE: those MCP servers need their own restart to run the new code (operator-gated; not RC-process).
 - ~~**`MatchDB` thread-safety validation**~~: moot - `core/match_db.py` was refactored 2026-04-28 (audit proposal 1.2) from RLock to WAL + per-thread connections. FIX-021 lock no longer exists; serialization is now SQLite WAL.
 - **`/api/analyze` streaming response**: current 30s timeout fine for ARAM (sub-second); may need SSE if full-mode analyses scale.
 
