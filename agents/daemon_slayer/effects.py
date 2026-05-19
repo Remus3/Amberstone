@@ -321,12 +321,19 @@ def effective_target_armor(
 ) -> float:
     """Apply armor reduction → % pen → flat pen pipeline.
 
-    Mirrors League's order: ``armor_reduction_pct`` (Black Cleaver
-    stacks) reduces target armor first; then ``armor_pen_pct`` (LDR /
-    Mortal Reminder / Serylda's) reduces what's left; then flat pen
-    (``armor_pen_flat`` raw + ``lethality`` level-scaled) subtracts.
-    Result floors at zero - physical damage against zero-armor uses
-    the ``armor=0`` factor (1.0).
+    Mirrors League's order: ``armor_reduction_flat`` then
+    ``armor_reduction_pct`` (Black Cleaver stacks) reduce target armor
+    first; then ``armor_pen_pct`` (LDR / Mortal Reminder / Serylda's)
+    reduces what's left; then flat pen (``armor_pen_flat`` raw +
+    ``lethality`` level-scaled) subtracts.
+
+    League distinguishes the two rules: REDUCTION can take armor below
+    zero (a negative resist amplifies incoming damage via
+    ``dps._armor_factor``'s ``2 - 100/(100-R)`` branch); PENETRATION
+    cannot push armor below zero and is a no-op on an already
+    non-positive post-reduction value. Only the penetration tail floors
+    at zero - physical damage against exactly-zero armor uses the
+    ``armor=0`` factor (1.0).
 
     Phase 4 batch 30 (2026-05-04): ``level`` is the caster's champion
     level. When provided, lethality contributions are folded into the
@@ -359,23 +366,38 @@ def effective_target_armor(
         # Pen / reduction is a no-op on already-negative armor - items
         # don't amplify beyond what the shred already gave.
         return target_armor
-    armor = target_armor - red_flat       # flat shred first (League order)
+    # League rule: armor REDUCTION (flat then %) is applied first and
+    # CAN take armor below zero - a negative resist amplifies incoming
+    # damage via _armor_factor's ``2 - 100/(100-R)`` branch. Armor
+    # PENETRATION (% then flat) is applied next and CANNOT push armor
+    # below zero; on an already non-positive post-reduction value it is
+    # a pure no-op (you neither penetrate negative armor further nor
+    # heal it back toward 0). Flooring the WHOLE pipeline at zero would
+    # discard the reduction-driven negative-resist amp (e.g. Flesheater
+    # 30 flat armor reduction vs a ~27-armor squishy = -3 effective,
+    # ~1.03x physical) - conflating the two distinct League rules.
+    armor = target_armor - red_flat       # flat reduction (League order)
     armor = armor * (1.0 - red_pct)      # % reduction (Black Cleaver)
+    if armor <= 0.0:
+        # Reduction alone already crossed zero - penetration is a no-op.
+        return armor
     armor = armor * (1.0 - pen_pct)      # % penetration (LDR / Serylda's)
     armor = armor - pen_flat             # flat penetration (lethality)
-    return max(0.0, armor)
+    return max(0.0, armor)               # pen cannot go below zero
 
 
 def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> float:
     """Apply MR reduction → % magic pen → flat magic pen pipeline.
 
-    Mirrors League's order on the magic side: ``mr_reduction_pct``
-    (Bloodletter's Curse Vile Decay - Phase 4 batch 39) reduces MR
-    first; then ``magic_pen_pct`` (Void Staff, Cryptbloom) reduces
-    what remains; then ``magic_pen_flat`` (Sorcerer's Shoes,
-    Shadowflame) subtracts. Result floors at zero - magic damage
-    against zero-MR uses the ``armor=0`` factor (1.0) via
-    ``_armor_factor`` (shared between damage types).
+    Mirrors League's order on the magic side: ``mr_reduction_flat``
+    then ``mr_reduction_pct`` (Bloodletter's Curse Vile Decay -
+    Phase 4 batch 39) reduce MR first; then ``magic_pen_pct`` (Void
+    Staff, Cryptbloom) reduces what remains; then ``magic_pen_flat``
+    (Sorcerer's Shoes, Shadowflame) subtracts. Same two-rule split as
+    the armor side: REDUCTION can take MR below zero (negative MR
+    amplifies magic damage via ``_armor_factor``'s negative branch);
+    PENETRATION cannot and is a no-op on an already non-positive
+    post-reduction value. Only the penetration tail floors at zero.
 
     Effects without magic-pen or MR-reduction modifiers contribute
     nothing here. Negative MR passes through unchanged - pen and
@@ -390,8 +412,18 @@ def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> floa
         return target_mr
     if target_mr < 0:
         return target_mr
-    mr = target_mr - red_flat            # flat shred first (League order)
+    # Symmetric to effective_target_armor: MR REDUCTION (flat then %)
+    # is applied first and CAN take MR below zero (negative MR amplifies
+    # magic damage via _armor_factor's negative branch). MR PENETRATION
+    # (% then flat) cannot push MR below zero and is a no-op on an
+    # already non-positive post-reduction value. Flesheater carries a
+    # pure 30 flat MR reduction (no magic pen), so a low-MR squishy can
+    # legitimately go negative.
+    mr = target_mr - red_flat            # flat reduction (League order)
     mr = mr * (1.0 - red_pct)           # % reduction (Bloodletter's Curse)
+    if mr <= 0.0:
+        # Reduction alone already crossed zero - penetration is a no-op.
+        return mr
     mr = mr * (1.0 - pen_pct)           # % penetration (Void Staff)
     mr = mr - pen_flat                   # flat penetration (Sorcerer's Shoes)
-    return max(0.0, mr)
+    return max(0.0, mr)                  # pen cannot go below zero
