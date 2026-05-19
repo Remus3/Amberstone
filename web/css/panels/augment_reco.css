@@ -1,0 +1,155 @@
+/* Augment recommendation block (CLAUDE #88 foregrounding, 2026-05-18).
+ *
+ * Lives inside #item-build as a self-contained toggled .build-section
+ * (mirrors #ib-ds-block) so it never reflows the static info panels -
+ * the reason augments were moved off item-build to the header pill in
+ * the first place. Hidden until the arena coach stamps p.aug_reco;
+ * `.is-active` adds a draw-the-eye accent while the in-game augment
+ * panel is genuinely open (p.augment_select === true).
+ *
+ * Colours/spacing reuse the base.css design tokens; rarity dot colours
+ * match the champ-select augment tiers (silver/gold/prismatic). */
+
+.ib-aug-reco-block[hidden] { display: none !important; }
+
+.ib-aug-reco-block {
+  border-left: 3px solid transparent;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+/* Augment panel is open right now - this is the single most actionable
+ * thing on the dashboard. Lavender = info/intent in the design system. */
+.ib-aug-reco-block.is-active {
+  border-left-color: var(--info);
+  background: var(--info-soft);
+}
+
+/* ── Top pick headline ──────────────────────────────────────────── */
+.ib-aug-reco-block .ar-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.ib-aug-reco-block .ar-top-cue {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  flex: 0 0 auto;
+}
+
+.ib-aug-reco-block.is-active .ar-top-cue {
+  color: var(--canvas);
+  background: var(--info);
+}
+
+.ib-aug-reco-block .ar-top-name {
+  font-size: 23px;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1.1;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ib-aug-reco-block .ar-top-conf {
+  font-size: 13px;
+  color: var(--text-dim);
+  flex: 0 0 auto;
+  cursor: help;
+}
+
+/* ── Ranked rows ────────────────────────────────────────────────── */
+.ib-aug-reco-block .ar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 8px;
+}
+
+.ib-aug-reco-block .ar-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 56px 96px 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  color: var(--text-dim);
+}
+
+.ib-aug-reco-block .ar-row.is-top {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.ib-aug-reco-block .ar-rank {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-align: center;
+}
+.ib-aug-reco-block .ar-row.is-top .ar-rank { color: var(--gold); }
+
+.ib-aug-reco-block .ar-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ib-aug-reco-block .ar-rar {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--text-faint);
+}
+.ib-aug-reco-block .ar-rar.silver    { background: #6b7280; }
+.ib-aug-reco-block .ar-rar.gold      { background: #b88410; }
+.ib-aug-reco-block .ar-rar.prismatic { background: #a855f7; }
+
+.ib-aug-reco-block .ar-score {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  text-align: right;
+  color: var(--text);
+}
+
+.ib-aug-reco-block .ar-wr {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  text-align: right;
+  color: var(--text-dim);
+}
+.ib-aug-reco-block .ar-wr .ar-sep {
+  color: var(--text-faint);
+  padding: 0 3px;
+}
+
+.ib-aug-reco-block .ar-syn {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+.ib-aug-reco-block .ar-syn.pos { color: var(--good); }
+.ib-aug-reco-block .ar-syn.neg { color: var(--bad); }
+
+/* ── Meta caption ───────────────────────────────────────────────── */
+.ib-aug-reco-block .ar-meta {
+  margin-top: 7px;
+  font-size: 13px;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}

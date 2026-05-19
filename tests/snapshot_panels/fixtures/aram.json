@@ -29,6 +29,21 @@
     "wave_pct": 55,
     "hp_packs": [],
     "augments": "",
+    "augment_select": true,
+    "aug_reco": [
+      {"id": 203, "name": "Sudden Impact", "rarity": "silver", "score": 0.571, "conf": 0.0, "n_own": 0, "ext_wr": 0.571, "own_wr": 0.5, "syn": 0.0},
+      {"id": 218, "name": "Cut Down", "rarity": "gold", "score": 0.559, "conf": 0.14, "n_own": 3, "ext_wr": 0.542, "own_wr": 0.58, "syn": 0.022},
+      {"id": 241, "name": "Jack Of All Trades", "rarity": "prismatic", "score": 0.537, "conf": 0.0, "n_own": 0, "ext_wr": 0.537, "own_wr": 0.5, "syn": 0.0},
+      {"id": 199, "name": "Bread And Butter", "rarity": "silver", "score": 0.512, "conf": 0.07, "n_own": 1, "ext_wr": 0.519, "own_wr": 0.5, "syn": -0.008},
+      {"id": 230, "name": "Big Brain", "rarity": "gold", "score": 0.498, "conf": 0.0, "n_own": 0, "ext_wr": 0.498, "own_wr": 0.5, "syn": 0.0}
+    ],
+    "aug_reco_top": "Sudden Impact",
+    "aug_reco_top_score": 0.571,
+    "aug_reco_conf": 0.0,
+    "aug_reco_mode": "mayhem",
+    "aug_reco_stage": 2,
+    "aug_reco_n_matches": 4,
+    "aug_reco_external": true,
     "level": 10,
     "gold": 2200
   }
