@@ -10,7 +10,9 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 |---|---|
 | `__init__.py` | `ENGINE_VERSION` constant; `start_server()` entry point |
 | `server.py` | Stdlib `ThreadingHTTPServer`; `/rank`, `/dps`, `/health`, `/snapshot`, `/beam`, `/ehp`, `/rank-tank`, `/hybrid`, `/rank-bruiser`, `/ability-dps`, `/rank-mage`, `/burst`, `/rank-assassin`, `/hps`, `/rank-enchanter` endpoints |
-| `effects.py` | `ItemEffect` registry - 547 entries, DDragon purchasable coverage COMPLETE |
+| `effects.py` | Re-export facade (s246 split) - the 14 effect-aggregation logic fns (`collect_effects`, `total_*`, `effective_target_armor/mr`) + full public-surface re-export. Logic only |
+| `_effects_types.py` | **s246** - schema types + damage-type constants (`CallContext`, `DamageFn`, `PeriodicProc`, `ItemEffect`, `PHYSICAL/MAGICAL/TRUE`). Zero deps |
+| `_effects_data.py` | **s246** - the `ItemEffect` registry: 547 entries, DDragon purchasable coverage COMPLETE. Patch-pinned per `current.txt`; refresh on patch bump |
 | `dps.py` | `CallContext` dataclass + `compute_dps()` - stat walk, armor/MR pen, on-hit, periodic procs, damage amps |
 | `ehp.py` | **Phase 1 (s174)** - `compute_ehp()` + `EhpResult` + `rank_items_by_ehp()` + `EhpRankResult` - Tank EHP scorer; HP / armor_factor math with caller-supplied AD/AP/true enemy shares; ARAM `aramDamageTaken` modifier folded in |
 | `hybrid.py` | **Phase 2 (s175)** - `compute_hybrid()` + `HybridResult` + `rank_items_by_hybrid()` - Bruiser hybrid scorer; composes `compute_dps` × `compute_ehp` weighted by per-champion (α,β) from `archetype_weights.json`; normalized-percentage-delta sort keeps weights intuitive across the ~10× DPS/EHP magnitude gap |

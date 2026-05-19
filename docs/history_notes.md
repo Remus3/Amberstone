@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-19 - s243: supervisor.py freeze RESOLVED + 2312->966 LOC facade split (`ca30daa`, pushed)
+
+Operator picked "resolve supervisor.py freeze" from the s5 menu; on the resolution they chose "do the split now". Full vertical slice, end-to-end.
+
+- **Freeze RESOLVED (the operator-gated blocker, now closed - do NOT re-litigate):** `agents/supervisor.py` is **NOT frozen**. CLAUDE.md hard-list contains `ops/rc_supervisor.py` (the *main* supervisor), not this (Phase-3). Decisive tell: the audit's 4.C "extract `_Phase3Watcher`+`CircuitBreaker`" target + s238's "FROZEN" label both conflate the frozen sibling - those 2 classes are `ops/rc_supervisor.py:210`/`:340`, NOT in agents/supervisor.py at all. Edited routinely w/o frozen-auth s168/s171.8/s173/s218/s236. Persisted: ROADMAP corrected + memory `reference_two_supervisors.md` updated (+description) so it stops propagating through hand-offs.
+- **`ca30daa` - split (s237/s242 byte-verbatim facade pattern).** facade 2312->966; `_supervisor_http.py` (925: _QuietHandler/_WebServer/start_web_server) + `_supervisor_ephemeral.py` (250) + `_supervisor_common.py` (364: constants/leaf-helpers/`log`). `Supervisor`+`_run`/`main` stay in the facade BY DESIGN (tests patch `agents.supervisor.{IDLE_ANALYZE_SEC,WARM_UI_*}` + reassign `sup_mod.{_PROJECT_ROOT,LOG_ROOT}`, read by Supervisor methods - s242 monkeypatch lesson). F401 ignored project-wide -> facade keeps original import block verbatim so `agents.supervisor.shutil`/`.subprocess` resolve for `test_supervisor_stub`. Acyclic `_common <- _ephemeral <- _http <- facade`. AST self-check: 48 top-level nodes byte-identical (throwaway script deleted). 10 structural-pin tests (`test_round26/29/32/33/34/35/36/37/38/42`) repointed to the handler's new home.
+- **Verified:** full `tests/` **1405 / 30 subtests / 0** (exact s242 baseline) + agent3 **356 / 0**; `ruff check .` + compile-all clean. **Phase-3 elevated bar CLEARED:** s236 mtime-watcher auto-restarted as predicted; controlled End+Run -> pid 15068, `status.json.phase3.last_state=healthy`, `:8890`/`:8891` up, `GET /api/env` 200 (moved `_QuietHandler` <-> facade `Supervisor` proven live). No ENGINE bump / no DS restart.
+- **Don't-redo:** split done + behavior-proven; `agents.supervisor` is a facade, callers import unchanged; `Supervisor` MUST stay in the facade (monkeypatch contract) - do NOT move it to a sibling; freeze CLOSED (only `ops/rc_supervisor.py` is frozen).
+- **NEXT (AUTONOMOUS_AUDIT s5):** remaining 4.C `effects.py` (5692) = engine-core, reviewed-only-never-autonomous. Autonomous-safe: product opportunity #4 (augment recommender foregrounding) or #6 (local DS+matchDB MCP :8893). Optional data: one-off 101.qq.com Game-PC CDN capture. DS conditional arc operator-CLOSED (s232).
+
+---
+
 # 2026-05-18 - s242: adaptation_hint.py 1602 LOC split (4.C) + view_router cross-link (4.D) (`35566e5` + `5843c93`, pushed)
 
 Recovered an interrupted s241 /done (operator sent /clear mid-ritual): only the WAKEUP rotation was left uncommitted - committed `35998e9` (the s240 feature `306f5f3` + the s241 archival `e4d541b` were already pushed; just the rotation remained). Then pushed the two named autonomous-safe NEXT items.
