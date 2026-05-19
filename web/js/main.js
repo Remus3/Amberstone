@@ -481,6 +481,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     _VIEW.manual = id;
   }
   // Auto-derive view from observed state. Returns one of VIEW_IDS.
+  // MIRROR: dashboard/view_router_state.py is a pytest-only Python mirror
+  // of this transition table (audit #11 / 4.D). If you change the logic
+  // here, change it there too - both must agree on the same table.
   function _viewAutoDerive(lcu, mode) {
     const phase = lcu && lcu.phase;
     // s171 post-CS sticky guard: once we've entered ChampSelect, the
