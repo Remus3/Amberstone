@@ -171,6 +171,8 @@ def test_cli_text_empty_games(tmp_path: Path, monkeypatch, capsys) -> None:
 # ── supervisor endpoint registration ────────────────────────────────
 
 def test_supervisor_registers_session_games_route() -> None:
-    sup = Path("agents/supervisor.py").read_text(encoding="utf-8")
+    # s243: handler split byte-verbatim into _supervisor_http.py
+    # (supervisor.py is now a facade); runtime routing unchanged.
+    sup = Path("agents/_supervisor_http.py").read_text(encoding="utf-8")
     assert "/api/session-games" in sup
     assert "_handle_session_games" in sup
