@@ -256,10 +256,10 @@ class EngineVersionUnchangedS232Tests(unittest.TestCase):
         # s232 itself was a saturation-proof + tooling + docs commit ONLY
         # (no registry/engine change of its own). This pin tracks the
         # live ENGINE_VERSION stamp, which later milestones legitimately
-        # bump - it is 1.7.0 as of the P1-L1 negative-resist fix
+        # bump - it is 1.8.0 as of the P1-L12 attack-speed-cap fix
         # (the Riot stat-growth quadratic fix was 1.5.0)
         # (quadratic per-level base-stat scaling).
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.7.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.8.0")
 
 
 if __name__ == "__main__":
