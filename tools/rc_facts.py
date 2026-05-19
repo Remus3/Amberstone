@@ -236,7 +236,15 @@ def main() -> int:
             r = t.get("last_result")
             # 267014 = shutdown-terminated (VisionServer in-process popen exit) - expected
             # RC-DaemonSlayer result=1: suppress if /api/health/all confirms ds alive
-            suppress = n == "RC-DaemonSlayer" and r == 1 and ds_alive
+            # 2147946720 = 0x800710E0 "operator/admin refused the request": for an
+            #   IgnoreNew singleton daemon (e.g. RC-Phase3-Supervisor) this is Task
+            #   Scheduler correctly refusing a duplicate launch while the boot
+            #   instance is still alive. state==Running proves the daemon is up, so
+            #   the refused-duplicate code is benign, not a failure.
+            running_now = str(s) in ("Running", "4")
+            suppress = (n == "RC-DaemonSlayer" and r == 1 and ds_alive) or (
+                r == 2147946720 and running_now
+            )
             mark = "" if r in (0, 267009, 267011, 267014) or suppress else f"  ⚠ result={r}"
             out.append(f"  - {n}: state={s}{mark}")
             if r not in (0, 267009, 267011, 267014, None) and not suppress:
