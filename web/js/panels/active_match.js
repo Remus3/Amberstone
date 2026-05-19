@@ -99,7 +99,7 @@ function _dsTargetStatsCaption() {
   // the live itemization path; match either with a prefix test so the
   // base-layer variant doesn't fall through and render the raw literal.
   const tag = (typeof t.source === "string" && t.source.indexOf("live-items") === 0)
-                ? `live · ${n} enemies`
+                ? `live - ${n} enemies`
             : t.source === "explicit-override" ? "synthetic"
             : t.source === "mode-level-curve" ? "mode curve" : t.source;
   return `vs ${a} armor · ${m} mr · ${hp} hp · ${tag}`;

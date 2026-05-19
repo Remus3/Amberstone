@@ -97,7 +97,7 @@ class ResourceManager:
         with self._lock:
             self._threads.append(weakref.ref(t))
 
-    # ── High-memory remediation wiring ───────────────────────────────────────
+    # --- High-memory remediation wiring ---------------------------------------
 
     # Cooldown between two memory-triggered remediations. A flapping process
     # that climbs back over the limit immediately after a restart must NOT
