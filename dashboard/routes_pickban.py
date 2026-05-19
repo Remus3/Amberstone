@@ -217,10 +217,14 @@ def _resolve_operator_puuid(conn: sqlite3.Connection) -> str | None:
     keeps the endpoint self-contained - no env var, no cross-module
     dependency on ``core.riot_api``.
     """
+    # ``puuid`` is the stable tertiary so a COUNT(*) tie resolves the
+    # same way every call (otherwise SQLite ORDER BY ties are undefined
+    # and "who is the operator" - hence every downstream rec - could
+    # flip between requests).
     cur = conn.execute(
         "SELECT puuid FROM participants "
         "GROUP BY puuid "
-        "ORDER BY COUNT(*) DESC LIMIT 1"
+        "ORDER BY COUNT(*) DESC, puuid ASC LIMIT 1"
     )
     row = cur.fetchone()
     return row[0] if row else None
@@ -274,7 +278,7 @@ def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
           {excl_sql}
         GROUP BY champion_id
         HAVING games >= ?
-        ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC
+        ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC, champion_id ASC
         LIMIT ?
         """,
         (puuid, role, *queue_ids, *excl_params, _MIN_GAMES_PICK, top),
@@ -317,7 +321,7 @@ def _query_performance_limit(conn: sqlite3.Connection, puuid: str, role: str,
           {excl_sql}
         GROUP BY champion_id
         HAVING games BETWEEN ? AND ?
-        ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC
+        ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC, champion_id ASC
         LIMIT ?
         """,
         (puuid, role, *queue_ids, *excl_params,
@@ -361,7 +365,7 @@ def _query_performance_new(conn: sqlite3.Connection, puuid: str, role: str,
           )
           {excl_sql}
         GROUP BY champion_id
-        ORDER BY pool_games DESC
+        ORDER BY pool_games DESC, champion_id ASC
         LIMIT ?
         """,
         (role, *queue_ids, puuid, role, *excl_params, top),
@@ -558,7 +562,8 @@ def _query_bans(conn: sqlite3.Connection, puuid: str, role: str,
           )
         GROUP BY enemy.champion_id
         HAVING encounters >= ?
-        ORDER BY (CAST(losses AS REAL) / encounters) DESC, encounters DESC
+        ORDER BY (CAST(losses AS REAL) / encounters) DESC, encounters DESC,
+                 enemy.champion_id ASC
         LIMIT 3
         """,
         (puuid, role, *queue_ids, _MIN_GAMES_BAN),
