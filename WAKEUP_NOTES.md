@@ -2,6 +2,20 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - bridge watchers fleet-wide OAuth switch (Claude CLI claude.ai Max login; drops ANTHROPIC_API_KEY inject)
+
+Three-machine fleet now on Claude CLI OAuth (claude.ai Max session) for the bridge auto-action + push-notification subprocesses. Was: each watcher read `API-Key-Claude.txt` and injected `ANTHROPIC_API_KEY` into the child env so `claude --print` used the sk-ant key.
+
+- **Peer:** shipped in a prior session (operator confirmed at the top of this thread - "peer just did it").
+- **Legion:** `247a4eb` - `tools/bridge_watcher_actions.py` `_run_subprocess` + `tools/bridge_watcher.py` `_send_push_notification`. Removed both `if api_key_path and api_key_path.exists(): env[...] = ...` blocks (5 lines each) AND added `env.pop("ANTHROPIC_API_KEY", None)` immediately after `os.environ.copy()` because the User-level env var ANTHROPIC_API_KEY is still set on Legion (the inherited value would otherwise leak to the child and the CLI prefers sk-ant over OAuth). Frozen-file hard-rule satisfied by the operator's explicit dispatch in-session. `RC-BridgeWatcher` restarted pid=15324.
+- **Game-PC:** dispatched via Legion-local `/api/bridge` POST as `task-a0cde8a55094` (after the first attempt `task-09732a91a4b7` got blocked correctly by the OAuth precondition gate - Game-PC `claude` CLI wasn't logged in yet). Game-PC Claude applied: env.pop in _run_subprocess + env_extra={} replacing the inject block in bridge_watcher_actions.py; bridge_watcher.py on Game-PC had no inject block (different code surface there); py_compile OK; RC-BridgeWatcher-GamePC restarted pid=11568.
+
+**Discovered bug + memory write:** `core.bridge.send(target='gamepc', ...)` returns `(True, 'ok')` but silently misroutes - it always POSTs to `remote_url()` = Peer inbox, ignoring the `target` field. Correct Legion->Game-PC path = direct POST to Legion's own `https://127.0.0.1:8888/api/bridge` with an explicit `id` (the local POST handler does NOT auto-stamp, and `bridge_pull_tasks.py` filters id-less entries). One misroute orphan `task-66a13fbaab37` sits on Peer's log; audit-note posted `in_reply_to` so Peer knows not to action. New memory `reference_bridge_dispatch_target_paths.md` indexed.
+
+**Precondition gate worked as designed:** the dispatched prompt told Game-PC Claude to probe `claude --print` with `ANTHROPIC_API_KEY` unset BEFORE editing; on "Not logged in", post `exit_code=2` and stop. That fired exactly once on `task-09732a91a4b7`; operator did `claude /login` on Game-PC; resend succeeded on the second try. Keep this gate pattern for any future fleet dispatch that depends on a precondition.
+
+**Don't-redo:** OAuth switch is shipped on all three machines + verified live; both bridge watchers restarted clean; do NOT revert. The `env.pop(ANTHROPIC_API_KEY)` defense MUST stay on Legion because the User-env still holds the sk-ant key (other tools/scripts still consume that env var; popping is scoped to the bridge-watcher subprocess only, not the user env).
+
 # 2026-05-19 - P2-B memory-watchdog activation (operator-gated follow-up; main.py frozen-file edit AUTHORIZED)
 
 ONE-LINE WIRE shipped. After the overnight Phase 0-3 run closed with the activation deferred (operator-gated), operator picked P2-B from the gated-follow-up menu and authorized the `main.py` edit (frozen-file hard-rule satisfied by the explicit selection).
