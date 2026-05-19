@@ -51,7 +51,7 @@ from agents.daemon_slayer.rank import rank_items
 
 def _aram_mods(snap: DataSnapshot, champ: str) -> dict:
     rec = snap.champion(champ)
-    return dict(((rec.get("lolmath") or {}).get("aram_modifiers") or {}))
+    return dict((rec.get("lolmath") or {}).get("aram_modifiers") or {})
 
 
 # Champions chosen for clean isolation of the damage multiplier from the
