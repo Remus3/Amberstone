@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-19 - DS stat-growth fix: linear -> Riot quadratic (`fd80bf3` + docs-sync `17c782e`, pushed)
+
+Found cross-checking DS math vs lolmath `@lolmath/calc`. Focused TDD session in an isolated worktree (now removed; branch `fix/ds-stat-growth` FF-merged to main).
+
+- **Bug:** `agents/daemon_slayer/stats.py` scaled champion per-level base stats LINEARLY (`base + perlevel*(level-1)`); Riot is QUADRATIC (`base + perlevel*(level-1)*(0.7025 + 0.0175*(level-1))`). Coincides with linear ONLY at level 1 (mult 0) + level 18 (mult exactly 17.0); over-stated every per-level stat (hp/mp/regen/armor/mr/ad) at levels 2-17. Real bug, not a modeling choice.
+- **Fix:** new `growth_multiplier()` + `scaled()`; 8 `CHAMPION_SCALING_RULES` repointed off the deleted `linear`. AS math (`attack_speed_scaling`) was already correct Riot math - untouched. ENGINE_VERSION 1.4.0 -> 1.5.0 + 14 version pins. Adjacent: corrected the stale/backwards pen-pipeline comment in `ability_dps.py:1142` (no pen code touched).
+- **Proof-first (DON'T redo):** engine hand-proven correct BEFORE rebaseline - 16 stat curves (Garen/Lux/Aatrox/Malphite x hp/ad/armor/mr @ L1/6/11/13/18) + DPS/EHP pipeline traces match the formula exactly; Garen/Lux HP match known in-game. Only 6 DS tests drifted: 4 genuine mid-level pins rebaselined + 2 pre-existing fragile exact-float assertions made tolerant - all INTENDED, do not re-investigate.
+- **Verified:** DS 2283/748/0, wider RC 1457/0. Production :8893 restarted via RC-DaemonSlayer task -> serves 1.5.0; Garen L11=1549.95 (in-game 1550), L18=2356 (unchanged endpoint). Docs synced `17c782e` (ENGINE 1.5.0 + DS tests 2283 across CLAUDE/DAEMON_SLAYER/README/BRIEF).
+- **Flagged, not blocking:** (a) DAEMON_SLAYER champ-coverage prose "196/125, 73%" + BRIEF "2,851 matches" left as prior-batch state - NOT affected by this fix; a correct recompute is a DS-batch session's own docs-sync job (the 4 registries use a nested `_meta`/`default`/overrides schema; a flat count mis-parses it - don't trust an ad-hoc one-liner). (b) Pre-existing broken ref `docs/_archive/CHANGELOG.md` (3 cites) + `.claude/commands` vs `tools/` sync-all-md.md drift - unrelated, operator decision pending. (c) Local branch `fix/ds-stat-growth` retained (merged+pushed; delete anytime).
+
+---
+
 # 2026-05-18 - s246: effects.py engine-core facade split (`34da8d1`, pushed)
 
 Operator picked "effects.py split" from the s245-NEXT fork (over live-game-gated s220 PGR / one-off 101.qq.com). The **final AUTONOMOUS_AUDIT 4.C item** - the last oversized engine-core module. Full vertical slice, end-to-end.

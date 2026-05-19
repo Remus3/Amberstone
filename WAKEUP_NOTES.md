@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-05-19 - RC-Phase3-Supervisor false-anomaly fix + repo EOL guard (`399fe89` `d893797`, pushed)
+
+Operator asked "whats up next", then picked the session-start Phase3-Supervisor anomaly: "how can we fix this so its a non-issue in the future". (The latency-lever option was explicitly dropped - do NOT resurface unless asked.)
+
+- **Root cause:** `RC-Phase3-Supervisor last_result=2147946720` = `0x800710E0` "the operator or administrator has refused the request" (Win32 4320). Task XML has `MultipleInstancesPolicy=IgnoreNew` + a `LogonTrigger` launching a long-lived `pythonw -m agents.supervisor` (`ExecutionTimeLimit=PT0S`). A re-trigger while the boot instance is alive (PID listening :8890/:8891) makes Task Scheduler CORRECTLY refuse the duplicate and record 0x800710E0. The task config is right (IgnoreNew is correct for a singleton daemon); the defect was `tools/rc_facts.py` treating every nonzero `LastTaskResult` as "probably failing".
+- **`d893797`** - fix: suppress `2147946720` only when `state==Running` (healthy singleton, duplicate launch refused). Self-validating (a genuinely crashed/refused task is NOT Running -> still fires), no extra probe, generalizes to any future IgnoreNew daemon. DaemonSlayer suppress + all other codes unchanged. Verified: probe emits `- RC-Phase3-Supervisor: state=Running` with no warning / no Anomalies entry; py_compile OK. `rc_facts.py` not frozen; hook re-reads fresh each SessionStart - no RC restart.
+- **`399fe89`** (landed FIRST, separate BY DESIGN) - while committing, found HEAD's `tools/rc_facts.py` was stored with corrupted CR-CR-LF (`\r\r\n`, 723 CR / 361 doubled) from `core.autocrlf=true` re-adding an already-CRLF blob; every tool write mismatched HEAD so the 9-line fix kept rendering as a 730-line full-file churn. Normalized rc_facts.py to clean LF (ZERO content change - `git diff -w` empty) and added `*.py text eol=lf` to `.gitattributes` so .py stays LF in repo + worktree, overriding autocrlf.
+- **Don't-redo:** the 2-commit split is intentional - `399fe89` is pure-EOL normalization (message-explained, NOT pollution), `d893797` is the pure 9/1 logic fix. Do NOT try to "clean up" the 370/362 churn in `399fe89`. The `.gitattributes` guard is the durable fix - do NOT revert it.
+- **FLAGGED (operator-gated, NOT done):** 20 other tracked .py carry the same `\r\r\n` rot, **13 FROZEN**: `main.py`, `app/__init__.py`, `app/_game_lifecycle.py`, `app/_health_monitor.py`, `app/_loop.py`, `app/_overlay_manager.py`, `app/_remediation.py`, `app/_state_authority.py`, `core/game_snapshot.py`, `core/log_setup.py`, `core/moon_proxy.py`, `lcu/lcu_client.py`, `dashboard/routes_bridge_pending.py`; + 7 non-frozen: `coaches/brawl_coach.py`, `coaches/tft_coach.py`, `core/vision_tesseract.py`, `dashboard/routes_health_peer.py`, `dashboard/routes_metrics.py`, `tools/bridge_watcher.py` (also frozen), `tools/rc_facts.py` (now fixed). Left untouched (frozen-file rule + scope). The `*.py eol=lf` guard renormalizes each on its next legit edit, OR a separate operator-gated `git add --renormalize` pass clears all at once (needs sign-off - frozen files involved).
+- **NEXT:** no specific item carried. ROADMAP/CLAUDE active priorities; operator-gated pending unchanged: s220 aggregator G PGR reframe (live game), 101.qq.com one-off capture. New: the 20-file `\r\r\n` renormalization pass (frozen files involved).
+
+---
+
 # 2026-05-19 - caveman fleet default + CLAUDE.md ledger prune (`ae07bdf` `85624c3`, pushed)
 
 Operator: review the caveman ecosystem (caveman/cavemem/cavekit/cavegemma), implement fleet-wide default-on; then do the latency lever, then /done.
@@ -25,15 +38,3 @@ Operator housekeeping batch: 4 items off one terse message. No code, no RC/DS re
 - **Memory:** new `feedback_ds_coverage_prose_recompute` + MEMORY.md index - DS champ-coverage %/match-row prose must NOT be recomputed in a non-DS sync (nested registry schema; flat count mis-parses). Operator-confirmed scope rule this session.
 - **Don't-redo:** the sync-all-md self-refute is fixed - do NOT re-flag the CHANGELOG ref or re-investigate the §9 drift. draft tool L (the community fork) is triaged - do NOT re-research (see BACKLOG). The DS coverage/match-row recompute is a DS-batch job, not a bug.
 - **NEXT:** operator said "continue whats next" post-/clear - no specific item carried; resume from ROADMAP/CLAUDE active priorities. Operator-gated pending: s220 aggregator G PGR reframe (live game), 101.qq.com one-off capture.
-
----
-
-# 2026-05-19 - DS stat-growth fix: linear -> Riot quadratic (`fd80bf3` + docs-sync `17c782e`, pushed)
-
-Found cross-checking DS math vs lolmath `@lolmath/calc`. Focused TDD session in an isolated worktree (now removed; branch `fix/ds-stat-growth` FF-merged to main).
-
-- **Bug:** `agents/daemon_slayer/stats.py` scaled champion per-level base stats LINEARLY (`base + perlevel*(level-1)`); Riot is QUADRATIC (`base + perlevel*(level-1)*(0.7025 + 0.0175*(level-1))`). Coincides with linear ONLY at level 1 (mult 0) + level 18 (mult exactly 17.0); over-stated every per-level stat (hp/mp/regen/armor/mr/ad) at levels 2-17. Real bug, not a modeling choice.
-- **Fix:** new `growth_multiplier()` + `scaled()`; 8 `CHAMPION_SCALING_RULES` repointed off the deleted `linear`. AS math (`attack_speed_scaling`) was already correct Riot math - untouched. ENGINE_VERSION 1.4.0 -> 1.5.0 + 14 version pins. Adjacent: corrected the stale/backwards pen-pipeline comment in `ability_dps.py:1142` (no pen code touched).
-- **Proof-first (DON'T redo):** engine hand-proven correct BEFORE rebaseline - 16 stat curves (Garen/Lux/Aatrox/Malphite x hp/ad/armor/mr @ L1/6/11/13/18) + DPS/EHP pipeline traces match the formula exactly; Garen/Lux HP match known in-game. Only 6 DS tests drifted: 4 genuine mid-level pins rebaselined + 2 pre-existing fragile exact-float assertions made tolerant - all INTENDED, do not re-investigate.
-- **Verified:** DS 2283/748/0, wider RC 1457/0. Production :8893 restarted via RC-DaemonSlayer task -> serves 1.5.0; Garen L11=1549.95 (in-game 1550), L18=2356 (unchanged endpoint). Docs synced `17c782e` (ENGINE 1.5.0 + DS tests 2283 across CLAUDE/DAEMON_SLAYER/README/BRIEF).
-- **Flagged, not blocking:** (a) DAEMON_SLAYER champ-coverage prose "196/125, 73%" + BRIEF "2,851 matches" left as prior-batch state - NOT affected by this fix; a correct recompute is a DS-batch session's own docs-sync job (the 4 registries use a nested `_meta`/`default`/overrides schema; a flat count mis-parses it - don't trust an ad-hoc one-liner). (b) Pre-existing broken ref `docs/_archive/CHANGELOG.md` (3 cites) + `.claude/commands` vs `tools/` sync-all-md.md drift - unrelated, operator decision pending. (c) Local branch `fix/ds-stat-growth` retained (merged+pushed; delete anytime).
