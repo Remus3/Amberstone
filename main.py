@@ -201,6 +201,8 @@ def main():
 
         app = _ov.OverlayApp()
 
+        rm.set_remediation_hook(app.remediate.restart_game_poll)
+
         # - Wire DevRuntime state provider + reload callbacks (Items 2, 4, 6)
         if _dev_runtime:
             # Item 4: state provider uses real health pulse values
