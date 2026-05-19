@@ -1139,10 +1139,11 @@ def compute_ability_dps(
     )
     magic_amp = total_magic_amp_multiplier(item_effects)
 
-    # Effective resists: pre-reduction-and-pen pipeline mirrors compute_dps
-    # (armor reduction → flat pen → % pen). Lethality flows through
-    # ``effective_target_armor`` via per-item ``lethality`` fields. Magic
-    # has the symmetric pipeline (Void Staff %, Sorcerer's Shoes flat).
+    # Effective resists: armor pipeline mirrors compute_dps via
+    # ``effective_target_armor`` - flat reduction -> % reduction -> %
+    # pen -> flat pen (lethality is level-scaled into the flat-pen
+    # term). Magic has the symmetric pipeline (Void Staff %,
+    # Sorcerer's Shoes flat).
     target_armor_eff = effective_target_armor(target_armor, item_effects, level)
     target_mr_eff = effective_target_mr(target_mr, item_effects)
 

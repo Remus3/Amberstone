@@ -60,9 +60,10 @@ class BuildChampionTests(unittest.TestCase):
 
     def test_eclipse_ad_adds_to_aatrox(self) -> None:
         r = build_champion(self.snap, "Aatrox", level=11, item_ids=["6692"])
-        # Aatrox base AD 60, perlevel 5 (Meraki backfill, Phase 1.5).
-        # lvl 11 → 60 + 10*5 = 110. + Eclipse 60 = 170.
-        self.assertEqual(r.stats["ad"], 170)
+        # Aatrox base AD 60, perlevel 5. Riot stat growth (not linear):
+        # lvl 11 -> 60 + 5 * growth_multiplier(11) = 60 + 5*8.775 = 103.875.
+        # + Eclipse 60 AD = 163.875 (the +60 item delta is unchanged).
+        self.assertAlmostEqual(r.stats["ad"], 163.875, places=4)
 
     def test_unknown_champion_raises(self) -> None:
         with self.assertRaises(KeyError):
