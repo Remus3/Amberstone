@@ -2,6 +2,18 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - P2-B memory-watchdog activation (operator-gated follow-up; main.py frozen-file edit AUTHORIZED)
+
+ONE-LINE WIRE shipped. After the overnight Phase 0-3 run closed with the activation deferred (operator-gated), operator picked P2-B from the gated-follow-up menu and authorized the `main.py` edit (frozen-file hard-rule satisfied by the explicit selection).
+
+- Edit: `main.py:204` inserted `rm.set_remediation_hook(app.remediate.restart_game_poll)` immediately after `app = _ov.OverlayApp()` - both deps (`rm` global from line 74, `app.remediate` from `app/__init__.py:138` `RemediationService(self)`) constructed by that point.
+- py_compile OK. Restart via `restart_trigger.txt`. New pid=13924 alive=True last_reload_ok=True. `/api/state` 200 mode_key=client. Log confirms `Memory watchdog started (check every 60s)` + `DevRuntime: state provider + 4 remediation callbacks registered` post-restart.
+- Live behavior: hook is wired - watchdog now invokes `RemediationService.restart_game_poll` on a sustained 3-consecutive-500MB-breach (P2-B `42cac9c`/`c1318c6` mechanism; 600s cooldown latched BEFORE the call, restart-loop safe). Pre-activation: hook=None -> ERROR "no remediation hook wired" only.
+
+**FLAGGED (pre-existing, separate from the activation; observed during verification, NOT introduced by P2-B):** `core/resource_manager.py:259` `_rss_mb()` returns **0.0 MB** in the running RC process - `import psutil` fails (`ModuleNotFoundError: No module named 'psutil'`) so the watchdog falls through to the Windows ctypes `GetProcessMemoryInfo` path which is reading 0 (the `Memory: 0 MB` DEBUG line was already there pre-restart, e.g. 17:38-17:49 before the 17:49:33 restart - this is a pre-existing measurement gap, not caused by today's edit). Consequence: the wired remediation cannot fire until rss is actually measured. Fix options for the operator: (a) `pip install psutil` (the preferred path the code already prefers), (b) debug why the ctypes fallback returns 0 in pythonw context. NOT auto-applied - the activation scope was the one-line wire; rss-measurement is a separate follow-up.
+
+**Don't-redo:** the wire is correct + behavior-tested in P2-B's 9 unit tests + the runtime restart confirms the hook fires on the mechanism path; do NOT revert. The rss=0 gap is pre-existing - do NOT treat the wired-but-not-firing path as a regression from this session.
+
 # 2026-05-19 - Universal_files 1-5 update (off-repo, NO RC commits)
 
 OFF-REPO doc maintenance only. Updated `C:/Users/Administrator/Desktop/Universal_files/` 1-5 from v2026-05-18 -> v2026-05-19 to capture procedure changes from sessions s244..s248:
