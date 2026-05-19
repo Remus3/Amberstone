@@ -3,8 +3,8 @@
 Speaks the MCP JSON-RPC protocol over HTTP on port 8892. LAN-only access
 between Legion (192.168.8.230) and Game-PC (192.168.8.237); auth via
 `Authorization: Bearer <token>`. Token resolution mirrors the screen
-agent: env RC_MCP_TOKEN → tools/mcp_token.txt → tools/vision_token.txt
-→ hardcoded fallback.
+agent: env RC_MCP_TOKEN -> tools/mcp_token.txt -> tools/vision_token.txt
+-> hardcoded fallback.
 
 Tools exposed:
   run_powershell(command, timeout_s=60)
@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import concurrent.futures
 import ctypes
 import http.server
 import io
@@ -79,7 +80,31 @@ PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "gamepc-mcp"
 SERVER_VERSION = "0.1.0"
 SAFE_PS_LIMIT = 60       # default timeout for PS execution
+PS_HARD_CEILING = 600    # tool_run_powershell clamps timeout_s to this
 MAX_FILE_BYTES = 1 << 22  # 4 MiB hard cap on read/write
+
+# -- Hung-tool watchdog -----------------------------------------------------
+# Every tool handler runs under a bounded timeout enforced by a single
+# shared thread pool (a bounded executor - NOT one thread per call - so a
+# burst of calls cannot explode the thread count). On timeout the caller
+# gets a structured MCP error result instead of a hung connection and the
+# server stays responsive; the timed-out future is abandoned so a stuck
+# handler cannot corrupt a later call's response.
+#
+# run_powershell already governs itself with a subprocess timeout (own
+# hard ceiling PS_HARD_CEILING). The watchdog must sit ABOVE that so it
+# never preempts / shortens / double-wraps run_powershell's own bound -
+# it is a pure backstop there. Every other handler (read_file on a slow
+# path, capture_monitor, list_dir, ...) has NO timeout today; that is the
+# gap this closes.
+DISPATCH_TIMEOUT_S = float(os.environ.get("RC_MCP_DISPATCH_TIMEOUT_S", "45"))
+TOOL_TIMEOUT_OVERRIDES: dict[str, float] = {
+    # run_powershell's own subprocess timeout (<= PS_HARD_CEILING) fires
+    # first; this only catches a hang in subprocess machinery itself.
+    "run_powershell": float(PS_HARD_CEILING) + 30.0,
+}
+_DISPATCH_POOL = concurrent.futures.ThreadPoolExecutor(
+    max_workers=8, thread_name_prefix="mcp-dispatch")
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(message)s")
@@ -88,7 +113,7 @@ log = logging.getLogger("gamepc-mcp")
 _START = time.time()
 
 
-# ── Auth token resolution ──────────────────────────────────────────────────
+# -- Auth token resolution --------------------------------------------------
 def _resolve_token() -> str:
     env = os.environ.get("RC_MCP_TOKEN")
     if env:
@@ -110,7 +135,7 @@ def _resolve_token() -> str:
 AUTH_TOKEN = _resolve_token()
 
 
-# ── Monitor enumeration (Win32) ────────────────────────────────────────────
+# -- Monitor enumeration (Win32) --------------------------------------------
 def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
     rects: list[tuple[int, int, int, int]] = []
     MonitorEnumProc = ctypes.WINFUNCTYPE(
@@ -127,7 +152,7 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
     return rects
 
 
-# ── Tool implementations ───────────────────────────────────────────────────
+# -- Tool implementations ---------------------------------------------------
 def tool_run_powershell(command: str, timeout_s: int = SAFE_PS_LIMIT) -> dict:
     if not isinstance(command, str) or not command.strip():
         return {"error": "empty command"}
@@ -380,7 +405,7 @@ TOOLS_SCHEMA = [
 ]
 
 
-# ── MCP protocol handlers ──────────────────────────────────────────────────
+# -- MCP protocol handlers --------------------------------------------------
 def handle_initialize(_params: dict) -> dict:
     return {
         "protocolVersion": PROTOCOL_VERSION,
@@ -393,15 +418,39 @@ def handle_tools_list(_params: dict) -> dict:
     return {"tools": TOOLS_SCHEMA}
 
 
-def handle_tools_call(params: dict) -> dict:
-    name = params.get("name", "")
-    args = params.get("arguments", {}) or {}
-    fn = TOOL_FUNCS.get(name)
-    if not fn:
-        return {"isError": True,
-                "content": [{"type": "text", "text": f"unknown tool: {name}"}]}
+def _timeout_for(name: str) -> float:
+    """Per-tool dispatch timeout. A self-governing long tool (e.g.
+    run_powershell with its own subprocess timeout) opts into a higher
+    ceiling via TOOL_TIMEOUT_OVERRIDES so this watchdog never preempts
+    its own bound."""
+    return float(TOOL_TIMEOUT_OVERRIDES.get(name, DISPATCH_TIMEOUT_S))
+
+
+def _dispatch_tool(name: str, fn, args: dict):
+    """Run one tool handler under the bounded-pool watchdog.
+
+    Returns the raw handler result on success, or a structured MCP error
+    dict (always carrying ``isError``) on bad args / handler exception /
+    timeout. Never raises and never blocks past the per-tool timeout: on
+    timeout the future is abandoned (the worker thread keeps running in
+    the bounded pool but its result is discarded so it cannot corrupt a
+    later response) and a structured error is returned immediately so the
+    server stays responsive.
+    """
+    timeout_s = _timeout_for(name)
+    fut = _DISPATCH_POOL.submit(fn, **args)
     try:
-        result = fn(**args)
+        return fut.result(timeout=timeout_s)
+    except concurrent.futures.TimeoutError:
+        fut.cancel()  # only helps if still queued; running threads run on
+        log.warning("tool %s exceeded dispatch timeout %.1fs - abandoned",
+                    name, timeout_s)
+        return {"isError": True,
+                "content": [{"type": "text",
+                             "text": f"tool '{name}' timed out after "
+                                     f"{timeout_s:.0f}s (dispatch watchdog); "
+                                     f"abandoned to keep server responsive"}],
+                "_timeout": True}
     except TypeError as e:
         return {"isError": True,
                 "content": [{"type": "text", "text": f"bad arguments: {e}"}]}
@@ -410,6 +459,21 @@ def handle_tools_call(params: dict) -> dict:
                 "content": [{"type": "text",
                              "text": f"{type(e).__name__}: {e}\n"
                                      + traceback.format_exc(limit=3)}]}
+
+
+def handle_tools_call(params: dict) -> dict:
+    name = params.get("name", "")
+    args = params.get("arguments", {}) or {}
+    fn = TOOL_FUNCS.get(name)
+    if not fn:
+        return {"isError": True,
+                "content": [{"type": "text", "text": f"unknown tool: {name}"}]}
+    result = _dispatch_tool(name, fn, args)
+    # Structured error envelopes (bad args / exception / timeout) are
+    # already MCP-shaped - pass them straight through (skip the
+    # capture_monitor image-wrap + the default text envelope).
+    if isinstance(result, dict) and result.get("isError"):
+        return result
     # capture_monitor returns binary image data - wrap as MCP image
     # content so Claude Code renders it inline instead of dumping a
     # base64 blob into a text block. Metadata (monitor index, dims,
@@ -438,7 +502,7 @@ METHOD_HANDLERS = {
 }
 
 
-# ── HTTP server ────────────────────────────────────────────────────────────
+# -- HTTP server ------------------------------------------------------------
 class _Handler(http.server.BaseHTTPRequestHandler):
     server_version = f"{SERVER_NAME}/{SERVER_VERSION}"
 
@@ -544,7 +608,7 @@ def main() -> int:
     finally:
         try: probe.close()
         except Exception: pass
-    log.info("gamepc-mcp listening on %s:%d (tools=%d, token=…%s)",
+    log.info("gamepc-mcp listening on %s:%d (tools=%d, token=...%s)",
              args.host, args.port, len(TOOL_FUNCS), AUTH_TOKEN[-4:])
     log.info("monitors: %s",
              [f"{r[2]-r[0]}x{r[3]-r[1]}@({r[0]},{r[1]})"

@@ -13,8 +13,10 @@ Plus a TOOLS_SCHEMA<->TOOL_FUNCS parity guard and an ASCII-only guard
 """
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import threading
+import time
 from http.server import ThreadingHTTPServer
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -409,3 +411,134 @@ def test_authored_files_are_ascii(rel):
     data = (root / rel).read_bytes()
     bad = [(i, hex(b)) for i, b in enumerate(data) if b > 127]
     assert not bad, f"{rel} has non-ASCII bytes: {bad[:5]}"
+
+
+# --------------------------------------------------------------------------
+# 5. Hung-tool dispatch watchdog
+# --------------------------------------------------------------------------
+def test_fast_tool_returns_normally_under_watchdog(monkeypatch):
+    """A fast handler is unaffected: same result, no latency regression,
+    no isError envelope."""
+    monkeypatch.setattr(mod, "_is_engine_up", lambda timeout=1.0: False)
+    t0 = time.perf_counter()
+    r = mod.handle_tools_call({"name": "ds_health", "arguments": {}})
+    elapsed = time.perf_counter() - t0
+    assert "isError" not in r
+    payload = json.loads(r["content"][0]["text"])
+    assert payload["engine_up"] is False
+    assert elapsed < 1.0  # nowhere near the dispatch timeout
+
+
+def test_slow_tool_hits_watchdog_timeout(monkeypatch):
+    """A deliberately-slow stub tool trips the watchdog and returns the
+    structured MCP error within ~the timeout - it does NOT hang for the
+    full (much longer) sleep."""
+    started = threading.Event()
+
+    def _hang(**kw):
+        started.set()
+        time.sleep(30)          # far longer than the tiny test timeout
+        return {"never": "returned"}
+
+    monkeypatch.setitem(mod.TOOL_FUNCS, "ds_health", _hang)
+    monkeypatch.setitem(mod.TOOL_TIMEOUT_OVERRIDES, "ds_health", 0.3)
+
+    t0 = time.perf_counter()
+    r = mod.handle_tools_call({"name": "ds_health", "arguments": {}})
+    elapsed = time.perf_counter() - t0
+
+    assert started.is_set()                    # handler really ran
+    assert r["isError"] is True
+    assert r.get("_timeout") is True
+    assert "timed out" in r["content"][0]["text"]
+    # Returned promptly at ~the 0.3s timeout, NOT after the 30s sleep.
+    assert elapsed < 5.0
+
+
+def test_server_responsive_after_a_timeout(monkeypatch):
+    """After a tool times out the dispatch path still serves the next
+    call normally (the abandoned future does not wedge the server or
+    corrupt the next response)."""
+    def _hang(**kw):
+        time.sleep(30)
+        return {"x": 1}
+
+    monkeypatch.setitem(mod.TOOL_FUNCS, "ds_health", _hang)
+    monkeypatch.setitem(mod.TOOL_TIMEOUT_OVERRIDES, "ds_health", 0.2)
+    bad = mod.handle_tools_call({"name": "ds_health", "arguments": {}})
+    assert bad.get("_timeout") is True
+
+    # A different, fast tool immediately afterwards still works.
+    monkeypatch.setattr(mod, "_get_match_db", lambda: None)
+    ok = mod.handle_tools_call({"name": "match_tft_streak",
+                                "arguments": {}})
+    assert "isError" not in ok
+    payload = json.loads(ok["content"][0]["text"])
+    assert "not found" in payload["error"]
+
+
+def test_timeout_override_default_and_lookup():
+    """Unlisted tool gets the default; an override wins."""
+    assert mod._timeout_for("ds_health") == mod.DISPATCH_TIMEOUT_S
+    assert mod.DISPATCH_TIMEOUT_S >= 1.0  # sane backstop default
+
+
+def test_dispatch_pool_is_bounded_and_reused():
+    """The watchdog reuses one bounded executor - it does NOT spawn an
+    unbounded thread per call."""
+    assert isinstance(mod._DISPATCH_POOL,
+                      concurrent.futures.ThreadPoolExecutor)
+    assert mod._DISPATCH_POOL._max_workers <= 16
+
+    before = mod._DISPATCH_POOL
+    for _ in range(25):
+        mod._dispatch_tool("ds_archetype_for",
+                           lambda **k: {"primary": "carry"}, {})
+    # Same pool object after many dispatches (reuse, not per-call create).
+    assert mod._DISPATCH_POOL is before
+
+
+def test_dispatch_tool_propagates_structured_errors():
+    """Bad-args and handler-exception paths still produce the structured
+    isError envelope through the watchdog wrapper (behavior preserved)."""
+    def _boom(**k):
+        raise RuntimeError("kaboom")
+
+    r = mod._dispatch_tool("x", _boom, {})
+    assert r["isError"] is True
+    assert "RuntimeError: kaboom" in r["content"][0]["text"]
+
+    def _needs_arg(required):
+        return {"ok": required}
+
+    r2 = mod._dispatch_tool("x", _needs_arg, {"wrong": 1})
+    assert r2["isError"] is True
+    assert "bad arguments" in r2["content"][0]["text"]
+
+
+def test_http_slow_tool_times_out_then_server_serves_next(monkeypatch,
+                                                          server):
+    """End-to-end over the real HTTP server: a hung tool returns the
+    structured timeout error (not a dropped connection), and the very
+    next request on the same server is served normally."""
+    base, tok = server
+
+    def _hang(**kw):
+        time.sleep(30)
+        return {"x": 1}
+
+    monkeypatch.setitem(mod.TOOL_FUNCS, "ds_health", _hang)
+    monkeypatch.setitem(mod.TOOL_TIMEOUT_OVERRIDES, "ds_health", 0.3)
+
+    _, env = _post(base, tok, {"jsonrpc": "2.0", "id": 1,
+                               "method": "tools/call",
+                               "params": {"name": "ds_health",
+                                          "arguments": {}}})
+    assert env["result"]["isError"] is True
+    assert env["result"].get("_timeout") is True
+
+    # Server is still up: initialize round-trips fine right after.
+    st, env2 = _post(base, tok, {"jsonrpc": "2.0", "id": 2,
+                                 "method": "initialize"})
+    assert st == 200
+    assert env2["result"]["serverInfo"]["name"] == "ds-matchdb-mcp"
