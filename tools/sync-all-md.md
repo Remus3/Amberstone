@@ -85,7 +85,7 @@ If the README's structural claims (modes covered, what the engine does, two-mach
 
 For every LIVING doc, extract every relative link `](path)` and every backticked file path, and verify the target exists.
 
-- **Referenced-but-missing** → report each (path, the doc(s) citing it). Canonical known case: `docs/_archive/CHANGELOG.md` is cited by `ROADMAP.md` and `CLAUDE.md` (×2) but does not exist. Either the references should point at `docs/history_notes.md` (the real archive) or a `CHANGELOG.md` should exist. **Do not silently rewrite the references** - surface the decision to the operator with both options; only apply if the operator already has a standing preference in memory/CLAUDE.md.
+- **Referenced-but-missing** → report each (path, the doc(s) citing it). **Resolved historical case - do NOT re-flag or repoint:** `docs/_archive/CHANGELOG.md` never existed; its real cross-references were repointed to `docs/history_notes.md` in s222 (the live `Completed work:` pointer in `CLAUDE.md` is already correct). Every remaining match is a *narrative mention inside a session-ledger entry* (CLAUDE.md / ROADMAP.md Active-priorities prose - some literally describing the s222 fix). Those are history: rewriting them is a `feedback_no_history_rewrite` violation for zero benefit and does not stop the re-flag. Treat the CHANGELOG string as closed; only report a genuinely-new missing ref. For other missing refs: **do not silently rewrite** - surface the decision with options; only apply if the operator has a standing preference in memory/CLAUDE.md.
 - **Orphaned** → a LIVING-looking doc that nothing links to and that isn't in the §2 living set → §7.
 - Broken anchors / renamed files → list them.
 
@@ -107,10 +107,10 @@ Before any write, re-confirm the target is in the LIVING set. If a fact is wrong
 ### 9. Self-congruence
 
 This skill ships as two files that MUST stay byte-identical (house pattern, like `done.md`):
-- `.claude/commands/sync-all-md.md` (operative slash command)
-- `tools/sync-all-md.md` (canonical mirror)
+- `tools/sync-all-md.md` - the **tracked canonical** (committed; survives `/clear`)
+- `.claude/commands/sync-all-md.md` - the operative slash command, **gitignored local runtime** (regenerated per machine)
 
-Diff them. If they differ, the operative `.claude/commands/` copy wins - re-mirror to `tools/`. Report the action. (A doc-sync skill that lets its own two copies drift is self-refuting.)
+Diff them. If they differ, the **tracked canonical `tools/` copy wins** - re-mirror it onto `.claude/commands/`. Never re-mirror the other direction: the gitignored runtime copy can predate a repo-wide pass (e.g. the s244 em-dash purge) and pushing it onto `tools/` would re-introduce rule-violating content into a tracked file. Before reporting "identical", also confirm BOTH copies satisfy the no-em-dash / no-smart-quote hard rule - that (not structural drift) was the only legitimate divergence this skill itself ever caused. Report the action + direction. (A doc-sync skill that lets its own two copies drift, or that re-injects banned glyphs into the repo, is self-refuting.)
 
 ### 10. Final report banner
 
@@ -125,13 +125,13 @@ Print exactly this shape:
   living docs edited : <list of files + one-line what-changed each>
   facts reconciled   : <N stale numbers/versions fixed across M docs>
   readme             : <numbers-only | +1 structural line | unchanged>
-  broken refs        : <N>  (e.g. docs/_archive/CHANGELOG.md ←3 cites)
+  broken refs        : <N>  (genuinely-missing only; CHANGELOG = closed, see 6)
   orphans / stale    : <N flagged>  deprecation moves proposed: <N>
   history protected  : <N stale-in-ledger noted, not edited>
   self-congruence    : <identical | re-mirrored tools/ copy>
   commit             : <none | docs: sync living docs - <topic> (SHA)>
 ══════════════════════════════════════════════════════════════════
-  Decisions needing operator: <CHANGELOG.md target, deprecations, …>
+  Decisions needing operator: <broken-ref resolutions, deprecation moves, …>
 ══════════════════════════════════════════════════════════════════
 ```
 
