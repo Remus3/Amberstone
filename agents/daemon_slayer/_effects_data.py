@@ -39,22 +39,38 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Stormrazor",
         periodics=(PeriodicProc(
             name="Energized Bolt",
-            bonus_damage=120.0,
+            # Meraki bulk items (patch 16.10.1) "Bolt": fully Energized
+            # next basic deals 100 bonus magic damage on-hit. Was 120
+            # (stale magnitude).
+            bonus_damage=100.0,
             damage_type=MAGICAL,
             every_n_seconds=4.0,
         ),),
-        note="Stormrazor: Energized ~120 magic dmg every ~4s",
+        note="Stormrazor: Energized Bolt +100 bonus magic dmg every ~4s",
     ),
     "6672": ItemEffect(
         item_id="6672",
         name="Kraken Slayer",
         periodics=(PeriodicProc(
             name="Bring It Down",
-            bonus_damage=100.0,
+            # Meraki bulk items (patch 16.10.1) "Bring It Down": every
+            # 3rd basic (2 stacks build, 3rd consumes) deals a melee
+            # base of cdragon ramp "150 + (200-150)/10*(x-1) for 13" -
+            # i.e. 150 at L1, +5 per level, capped after 10 steps
+            # (level 11) at 200; the "for 13" only bounds the level
+            # range. Was a flat 100 (stale magnitude). Engine uses the
+            # melee value (same convention as Hullbreaker / the Bring
+            # It Down family). The target's-missing-HP amplifier
+            # (0-75%) stays unmodeled - it is a target-state proc, same
+            # deliberate clamp as BotRK's %-current-HP.
+            bonus_damage=lambda c: 150.0 + 5.0 * (min(c.level, 11) - 1),
             damage_type=PHYSICAL,
             every_n_attacks=3,
         ),),
-        note="Kraken Slayer: Bring It Down ~100 physical dmg every 3rd attack",
+        note=(
+            "Kraken Slayer: Bring It Down 150 (L1) -> 200 (L11+) physical "
+            "every 3rd attack"
+        ),
     ),
     "6673": ItemEffect(
         item_id="6673",
@@ -89,36 +105,45 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Rapid Firecannon",
         periodics=(PeriodicProc(
             name="Sharpshooter",
-            bonus_damage=120.0,
+            # Meraki bulk items (patch 16.10.1) "Sharpshooter": fully
+            # Energized next basic deals 40 bonus magic damage on-hit.
+            # Was 120 (stale magnitude).
+            bonus_damage=40.0,
             damage_type=MAGICAL,
             every_n_seconds=3.0,
         ),),
-        note="Rapid Firecannon: Energized critical strike ~120 magic dmg every ~3s",
+        note="Rapid Firecannon: Sharpshooter +40 bonus magic dmg every ~3s",
     ),
     "3091": ItemEffect(
         item_id="3091",
         name="Wit's End",
         periodics=(PeriodicProc(
             name="Fray",
-            # 15 magic at lvl 1 → 80 at lvl 18, linear by level.
-            bonus_damage=lambda c: 15.0 + (c.level - 1) * (65.0 / 17.0),
+            # Meraki bulk items (patch 16.10.1): "Basic attacks deal 45
+            # bonus magic damage on-hit." Flat and level-independent in
+            # the current patch - the old 15->80 level ramp was a stale
+            # formula from an earlier Wit's End iteration.
+            bonus_damage=45.0,
             damage_type=MAGICAL,
             every_n_attacks=1,
         ),),
-        note="Wit's End: Fray on-hit magic dmg scales 15→80 by level",
+        note="Wit's End: Fray +45 bonus magic damage on-hit (flat, every AA)",
     ),
     "3085": ItemEffect(
         item_id="3085",
         name="Runaan's Hurricane",
         periodics=(PeriodicProc(
             name="Wind's Fury",
-            # Two extra bolts at 30% bonus AD each = 60% bonus AD per shot.
-            # Approximation: assumes both bolts find a target.
-            bonus_damage=lambda c: 0.60 * c.bonus_ad,
+            # Meraki bulk items (patch 16.10.1) "Wind's Fury": fires up
+            # to 2 extra bolts, each dealing 55% AD physical (Riot "AD"
+            # is TOTAL AD = base + bonus). Old model (0.60 * bonus_ad)
+            # was wrong on both the coefficient and the base. Still
+            # assumes both bolts find a target (max-uptime convention).
+            bonus_damage=lambda c: 2.0 * 0.55 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
-        note="Runaan's Hurricane: 2 extra bolts on-hit, ~60% bonus AD per shot",
+        note="Runaan's Hurricane: 2 extra bolts on-hit, 55% total AD each",
     ),
     "3078": ItemEffect(
         item_id="3078",
@@ -2889,14 +2914,22 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     ),
     "226672": ItemEffect(
         item_id="226672",
-        name="Navori Flickerblade",
+        # DDragon 226672 == "Kraken Slayer" (Arena mirror of 6672), NOT
+        # Navori Flickerblade - the prior name/note/formula were a
+        # mislabel (Navori 6675's passive is Transcendence CDR, it has
+        # no Bring It Down proc). Corrected to mirror SR 6672 exactly.
+        name="Kraken Slayer",
         periodics=(PeriodicProc(
             name="Bring It Down",
             every_n_attacks=3,
-            bonus_damage=lambda c: min(168.0, 120.0 + 4.0 * (c.level - 1)),
+            # Same melee ramp as SR 6672: 150 (L1) -> 200 (L11+).
+            bonus_damage=lambda c: 150.0 + 5.0 * (min(c.level, 11) - 1),
             damage_type=PHYSICAL,
         ),),
-        note="Navori Flickerblade (Arena 226672): same as SR 6675 - Bring It Down 120→168 every 3rd attack",
+        note=(
+            "Kraken Slayer (Arena 226672): same as SR 6672 - Bring It "
+            "Down 150 (L1) -> 200 (L11+) every 3rd attack"
+        ),
     ),
     "226692": ItemEffect(
         item_id="226692",
@@ -3436,11 +3469,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Runaan's Hurricane",
         periodics=(PeriodicProc(
             name="Wind's Fury",
-            bonus_damage=lambda c: 0.60 * c.bonus_ad,
+            # Mirrors SR 3085 - Meraki: 2 extra bolts, each 55% TOTAL
+            # AD physical (was 0.60 * bonus_ad, wrong coefficient+base).
+            bonus_damage=lambda c: 2.0 * 0.55 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
-        note="Runaan's Hurricane (Arena 223085): same as SR 3085 - Wind's Fury 60% bonus AD on-hit (2 bolts)",
+        note="Runaan's Hurricane (Arena 223085): same as SR 3085 - Wind's Fury 55% total AD x2 bolts",
     ),
     "223087": ItemEffect(
         item_id="223087",
@@ -3464,22 +3499,26 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Wit's End",
         periodics=(PeriodicProc(
             name="Fray",
-            bonus_damage=lambda c: 15.0 + (c.level - 1) * (65.0 / 17.0),
+            # Mirrors SR 3091 - Meraki flat 45 bonus magic on-hit
+            # (level-independent in patch 16.10.1).
+            bonus_damage=45.0,
             damage_type=MAGICAL,
             every_n_attacks=1,
         ),),
-        note="Wit's End (Arena 223091): same as SR 3091 - Fray on-hit magic 15→80 by level",
+        note="Wit's End (Arena 223091): same as SR 3091 - Fray +45 bonus magic on-hit",
     ),
     "223094": ItemEffect(
         item_id="223094",
         name="Rapid Firecannon",
         periodics=(PeriodicProc(
             name="Sharpshooter",
-            bonus_damage=120.0,
+            # Mirrors SR 3094 - Meraki 40 bonus magic on-hit when fully
+            # Energized (was 120).
+            bonus_damage=40.0,
             damage_type=MAGICAL,
             every_n_seconds=3.0,
         ),),
-        note="Rapid Firecannon (Arena 223094): same as SR 3094 - Sharpshooter Energized 120 magic every ~3s",
+        note="Rapid Firecannon (Arena 223094): same as SR 3094 - Sharpshooter +40 magic every ~3s",
     ),
     "223100": ItemEffect(
         item_id="223100",
