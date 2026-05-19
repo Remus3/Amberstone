@@ -93,7 +93,13 @@ function _dsTargetStatsCaption() {
   const m = Math.round(t.target_mr || 0);
   const hp = Math.round(t.target_max_hp || 0);
   const n = t.n_enemies | 0;
-  const tag = t.source === "live-items" ? `live · ${n} enemies`
+  // P1-L21: the backend's live-enemy path emits source="live-items"
+  // (legacy item-only) OR "live-items+base" (P1-L4 champion-base layer
+  // active - the in-game default once enemy champions resolve). Both are
+  // the live itemization path; match either with a prefix test so the
+  // base-layer variant doesn't fall through and render the raw literal.
+  const tag = (typeof t.source === "string" && t.source.indexOf("live-items") === 0)
+                ? `live · ${n} enemies`
             : t.source === "explicit-override" ? "synthetic"
             : t.source === "mode-level-curve" ? "mode curve" : t.source;
   return `vs ${a} armor · ${m} mr · ${hp} hp · ${tag}`;
