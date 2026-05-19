@@ -238,6 +238,7 @@ def _augment_recommendation(gs: dict, choices: list, picked_apinames: list) -> d
                     "n_own":  s.n_own,
                     "ext_wr": None if s.ext_wr is None else round(s.ext_wr, 3),
                     "own_wr": round(s.own_wr, 3),
+                    "syn":    round(s.synergy, 4),
                 }
                 for s in res.ranked
             ],

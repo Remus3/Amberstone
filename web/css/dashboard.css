@@ -20,6 +20,7 @@
 @import './panels/right_now.css';
 @import './panels/next.css';
 @import './panels/item_build.css';
+@import './panels/augment_reco.css';
 @import './panels/input_activity.css';
 @import './panels/champ_select_view.css';
 @import './panels/loading_view.css';

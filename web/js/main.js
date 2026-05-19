@@ -23,6 +23,7 @@ import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, rend
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
+import { renderAugmentReco } from './panels/augment_reco.js';
 import { handleChampSelect, renderChampSelectCoach, renderChampSelectView } from './panels/champ_select.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
@@ -1155,6 +1156,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     renderRightNow(p);
     renderNext(p);
     renderItemBuild(p);
+    renderAugmentReco(p);
     renderMinimap(p);
     // s159: feed the Active Match scaffold on every state envelope so
     // the pane stays current when the view is active. Cheap pass - the

@@ -575,7 +575,20 @@
           <div class="cs-build-list" id="ib-build-list"></div>
         </div>
         <!-- Augments moved to header (#augments-pill) 2026-04-23 so info panels
-             don't reflow when arena augments appear/disappear. -->
+             don't reflow when arena augments appear/disappear. The owned
+             glance stays on the header pill; the data-driven *recommendation*
+             (CLAUDE #88) is foregrounded here as a self-contained toggled
+             block - it only renders during Arena/Mayhem (presence of
+             p.aug_reco is the gate) so it shows/hides as a whole, like
+             #ib-ds-block, without reflowing the static info panels. -->
+        <div class="build-section ib-aug-reco-block" id="ib-aug-reco-block" hidden>
+          <div class="build-label">
+            <span>Augment pick · win-rate ranked</span>
+          </div>
+          <div class="ar-top" id="ib-aug-reco-top"></div>
+          <div class="ar-list" id="ib-aug-reco-list"></div>
+          <div class="ar-meta" id="ib-aug-reco-meta"></div>
+        </div>
       </div>
     </section>
 
