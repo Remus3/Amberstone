@@ -1,0 +1,96 @@
+"""Boot launcher for the local DS + match-DB MCP server on :8894.
+
+Wrapper around ``tools.ds_matchdb_mcp_server.serve_forever`` that pins
+``cwd`` to the project root before importing - scheduled tasks invoke us
+with whatever working directory the scheduler hands over
+(``C:\\Windows\\System32`` for SYSTEM-context tasks), and the server's
+core.* imports + match_history.db lookup resolve relative to the project
+root.
+
+Used by the ``RC-DS-MatchDB-MCP`` scheduled task. Manual invocation works
+too - ``py tools/start_ds_matchdb_mcp.py``. Mirrors
+tools/start_daemon_slayer.py (same logging + port-preflight contract).
+"""
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+os.chdir(_PROJECT_ROOT)
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+import datetime  # noqa: E402
+import socket  # noqa: E402
+import traceback  # noqa: E402
+
+from tools.ds_matchdb_mcp_server import serve_forever  # noqa: E402
+
+_LOG_FILE = _PROJECT_ROOT / "logs" / "ds_matchdb_mcp_startup.log"
+# The scheduled task may run as SYSTEM; appends under _PROJECT_ROOT can
+# fail there, and pythonw.exe (no console) makes sys.stderr unusable too.
+# ProgramData is always SYSTEM-writable - fall back to it so a boot-time
+# failure still leaves a trace instead of vanishing into a swallowed OSError.
+_FALLBACK_LOG_FILE = (
+    Path(os.environ.get("ProgramData") or r"C:\ProgramData")
+    / "RiotCommander" / "ds_matchdb_mcp_startup.log"
+)
+
+
+def _write_log_line(target: Path, line: str) -> bool:
+    """Append one line to ``target``. True on success, False on OSError."""
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("a", encoding="utf-8") as f:
+            f.write(line)
+        return True
+    except OSError:
+        return False
+
+
+def _log_startup(msg: str) -> Path | None:
+    """Append a timestamped startup line; return the Path written, or None.
+
+    Tries the canonical logs/ file, then the SYSTEM-writable ProgramData
+    fallback, and always echoes to stderr (best-effort). Never raises:
+    boot-time traceability must not itself crash the launcher.
+    """
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"{ts}  {msg}\n"
+    written: Path | None = None
+    for target in (_LOG_FILE, _FALLBACK_LOG_FILE):
+        if _write_log_line(target, line):
+            written = target
+            break
+    try:
+        sys.stderr.write(line)
+        sys.stderr.flush()
+    except Exception:
+        pass
+    return written
+
+
+if __name__ == "__main__":
+    # If port is already bound (task re-triggered while still running),
+    # exit 0 so the scheduled task doesn't record a failure.
+    s = socket.socket()
+    try:
+        s.bind(("127.0.0.1", 8894))
+        s.close()
+    except OSError:
+        s.close()
+        _log_startup("port 8894 already bound - skipping (exit 0)")
+        sys.exit(0)
+
+    _log_startup("starting serve_forever()")
+    try:
+        code = serve_forever()
+    except Exception:
+        tb = traceback.format_exc()
+        _log_startup(f"UNHANDLED EXCEPTION (exit 1):\n{tb}")
+        sys.exit(1)
+    _log_startup(f"serve_forever() returned {code}")
+    sys.exit(code)
