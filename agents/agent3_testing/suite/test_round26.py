@@ -129,6 +129,8 @@ def test_trending_handler_parses_args(tmp_path: Path, monkeypatch) -> None:
 def test_supervisor_registers_trending_route() -> None:
     """Cheap static-analysis check: the route dispatcher must know about
     /api/trending so the handler can be reached."""
-    sup = Path("agents/supervisor.py").read_text(encoding="utf-8")
+    # s243: handler split byte-verbatim into _supervisor_http.py
+    # (supervisor.py is now a facade); runtime routing unchanged.
+    sup = Path("agents/_supervisor_http.py").read_text(encoding="utf-8")
     assert "/api/trending" in sup
     assert "_handle_trending" in sup

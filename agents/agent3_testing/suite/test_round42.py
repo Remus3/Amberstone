@@ -307,7 +307,9 @@ def test_supervisor_adds_ui_proposal_to_deterministic() -> None:
 
 
 def test_supervisor_routes_sim_context() -> None:
-    sup = Path("agents/supervisor.py").read_text(encoding="utf-8")
+    # s243: _handle_input split byte-verbatim into _supervisor_http.py
+    # (supervisor.py is now a facade); sim-context routing unchanged.
+    sup = Path("agents/_supervisor_http.py").read_text(encoding="utf-8")
     assert "sim_context" in sup
     assert "UIFeedbackParser" in sup
     assert "proposed_changes" in sup

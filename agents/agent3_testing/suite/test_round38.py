@@ -213,7 +213,9 @@ def test_filed_payload_has_insight_fields(tmp_path: Path, monkeypatch) -> None:
 # ── supervisor /api/advisories surface ──────────────────────────────
 
 def test_api_advisories_whitelists_new_op() -> None:
-    sup = Path("agents/supervisor.py").read_text(encoding="utf-8")
+    # s243: _handle_advisories split byte-verbatim into _supervisor_http.py
+    # (supervisor.py is now a facade); the whitelist branch is unchanged.
+    sup = Path("agents/_supervisor_http.py").read_text(encoding="utf-8")
     assert '"coaching-insight-advisory"' in sup
     # Shape-differentiation branch must exist for the new op.
     assert 'op == "coaching-insight-advisory"' in sup

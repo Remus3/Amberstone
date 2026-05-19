@@ -163,6 +163,8 @@ def test_cli_weekday_cross_mode_default(tmp_path: Path, monkeypatch, capsys) -> 
 # ── supervisor route ────────────────────────────────────────────────
 
 def test_supervisor_registers_day_of_week_route() -> None:
-    sup = Path("agents/supervisor.py").read_text(encoding="utf-8")
+    # s243: handler split byte-verbatim into _supervisor_http.py
+    # (supervisor.py is now a facade); runtime routing unchanged.
+    sup = Path("agents/_supervisor_http.py").read_text(encoding="utf-8")
     assert "/api/day-of-week" in sup
     assert "_handle_day_of_week" in sup
