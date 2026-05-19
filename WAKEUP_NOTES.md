@@ -2,6 +2,15 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - OVERNIGHT AUTONOMOUS RUN (NEXT_SESSION_QUEUE.md, Phase 0-3) - IN PROGRESS
+
+Single-prompt headless run, caveman ultra, operator-authorized full read/write incl. all frozen files. Running entry, appended as units complete.
+
+## Phase 0
+
+- **P0.1 DONE - pytest PostToolUse docs-skip lever.** New tracked `tools/pytest_guard.py` (ASCII, LF, py_compile OK): reads the PostToolUse stdin JSON, skips the full suite when every touched path is `*.md`/`*.txt`/under `docs/`, otherwise runs `python -m pytest -x --ff -q` and tails 20 lines, always exit 0 (same informational semantics as the old inline hook). Unit-verified: classify/collect/skip/run branches all correct (docs-only -> skip no pytest spawn; `.py`/`.js`/`.json`/`.ps1` -> runs; mixed multi-edit with any code path -> runs; unknown payload shape -> runs, fail-safe).
+  - **Gitignored machine-local change (`.claude/settings.json`, not committable):** `hooks.PostToolUse[0].hooks[0].command` changed from `python -m pytest -x --ff -q 2>&1 | tail -20` to `py "C:\Riot Commander\tools\pytest_guard.py"`. JSON re-validated. The gate logic lives in the tracked `tools/pytest_guard.py` so it is committable; only the one-line hook redirect is in the gitignored file. To replicate on another machine: point that PostToolUse command at `tools/pytest_guard.py`.
+
 # 2026-05-19 - corrected /insights regen + overnight-run prep (queue doc + this entry committed; no code, no restart)
 
 Operator ran /insights; its narrative was frozen on the s100-s185 window (claimed ENGINE 0.9.x->0.25.0, tests 161->929, 611 commits, from 2026-04-22). Reviewed the full repo + every .md, verified live, wrote a corrected sibling report (LOCAL artifact, NOT in repo, original report.html untouched): `C:\Users\Administrator\.claude\usage-data\report-corrected-2026-05-19.html`. Then operator queued a single-prompt overnight autonomous run.
