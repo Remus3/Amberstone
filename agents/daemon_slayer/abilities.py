@@ -240,8 +240,19 @@ class AbilitiesSnapshot:
             raise AbilitiesNotFound(f"Abilities snapshot missing: {path}")
 
         doc = json.loads(path.read_text(encoding="utf-8"))
+        # Integrity gate (mirrors data_loader): valid JSON with a
+        # missing/empty 'data' container is a corrupt or partially
+        # written snapshot, not a champion-less game. Fail LOUDLY rather
+        # than returning a zero-champion AbilitiesSnapshot that would
+        # surface downstream as spurious "unknown champion" KeyErrors.
+        data_block = doc.get("data") if isinstance(doc, dict) else None
+        if not isinstance(data_block, dict) or not data_block:
+            raise AbilitiesNotFound(
+                f"Abilities snapshot {path} missing/empty 'data' container "
+                f"(snapshot {patch}) - corrupt or partially written"
+            )
         champions: dict[str, dict[str, tuple[AbilityForm, ...]]] = {}
-        for cid, keymap in (doc.get("data") or {}).items():
+        for cid, keymap in data_block.items():
             if not isinstance(keymap, dict):
                 continue
             per_key: dict[str, tuple[AbilityForm, ...]] = {}

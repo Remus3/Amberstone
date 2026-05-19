@@ -63,6 +63,35 @@ class DataSnapshot:
         champions_doc = _read("champions.json")
         items_doc = _read("items.json")
         scenarios_doc = _read("scenarios.json")
+
+        # Integrity gate: a vendored file can be valid JSON yet
+        # structurally wrong (truncated atomic-write, partial re-extract,
+        # upstream schema change). Without this, ``.get("data", {})``
+        # below would yield a degenerate ZERO-champion / ZERO-item /
+        # ZERO-scenario snapshot silently - every downstream KeyError
+        # would then masquerade as "unknown champion" instead of
+        # "corrupt snapshot". Fail LOUDLY with the module's defined error
+        # (a real 16.10.1 snapshot always has populated containers).
+        def _require_nonempty(doc: Any, key: str, fname: str) -> dict:
+            container = doc.get(key) if isinstance(doc, dict) else None
+            if not isinstance(container, dict) or not container:
+                raise SnapshotNotFound(
+                    f"Snapshot file {fname} missing/empty {key!r} container "
+                    f"(snapshot {patch}) - corrupt or partially written"
+                )
+            return container
+
+        champions_data = _require_nonempty(
+            champions_doc, "data", "champions.json"
+        )
+        items_data = _require_nonempty(items_doc, "data", "items.json")
+        scenarios_by_id = _require_nonempty(
+            scenarios_doc, "byDDragonId", "scenarios.json"
+        )
+        scenarios_by_lolmath = _require_nonempty(
+            scenarios_doc, "byLolmathKey", "scenarios.json"
+        )
+
         # arena_augments.json is Phase 6 - older snapshots predate it; tolerate absence.
         augments_doc = _read_optional("arena_augments.json") or {"augments": []}
         augs = augments_doc.get("augments") or []
@@ -72,10 +101,10 @@ class DataSnapshot:
         return cls(
             patch=patch,
             manifest=manifest,
-            champions=champions_doc.get("data", {}),
-            items=items_doc.get("data", {}),
-            scenarios_by_id=scenarios_doc.get("byDDragonId", {}),
-            scenarios_by_lolmath=scenarios_doc.get("byLolmathKey", {}),
+            champions=champions_data,
+            items=items_data,
+            scenarios_by_id=scenarios_by_id,
+            scenarios_by_lolmath=scenarios_by_lolmath,
             arena_augments_by_id=augs_by_id,
             arena_augments_by_api=augs_by_api,
             data_root=root,
