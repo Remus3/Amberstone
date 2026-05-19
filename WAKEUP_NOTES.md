@@ -2,6 +2,17 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - P2-C MCP watchdog activation (operator-gated follow-up; both sites live)
+
+Two standalone MCP servers restarted so the bounded-dispatch hung-tool watchdog from `e77820d` (P2-C) runs in their live processes:
+
+- **Game-PC `tools/gamepc_mcp_server.py`:** restarted via Legion-local bridge dispatch (`task-79ee7a68aa8b`); Game-PC Claude actioned, new pid=15728, :8892 /health 200 with watchdog loaded.
+- **Legion `tools/ds_matchdb_mcp_server.py`:** operator authorized creating the `RC-DS-MatchDB-MCP` scheduled task per s245 ROADMAP item 13 ("yes per s245"). Registered via `Register-ScheduledTask` (path-safe over schtasks /Create which choked on the spaced project root): trigger=AtLogOn (current user), LogonType=Interactive, RunLevel=Highest, ExecutionTimeLimit=PT0S, StartWhenAvailable. /Run -> state Running, last_result=267009 (running marker). pid=8812 pythonw.exe; :8894 /health (Bearer 8e8f131e2...) 200 with all 8 tools listed (ds_health, ds_rank_items, ds_build_order, ds_archetype_for, match_recent, match_mode_stats, match_tft_comps, match_tft_streak).
+
+**Status flip vs ROADMAP-13:** s245 entry said "the `RC-DS-MatchDB-MCP` scheduled task is documented but NOT created". That history fact is still accurate, but the current state is now created + running. `docs/OPERATIONS.md` already documents the exact create command; no doc edit needed (the operator-gated note remains the correct narrative for future fresh installs).
+
+**Don't-redo:** the watchdog is live in both MCP processes. Game-PC restart was via taskkill+relaunch (no scheduled task on Game-PC for this; bridge dispatch handled it). Legion now persists across reboots via the new scheduled task. Do NOT revert the scheduled task without operator approval.
+
 # 2026-05-19 - bridge watchers fleet-wide OAuth switch (Claude CLI claude.ai Max login; drops ANTHROPIC_API_KEY inject)
 
 Three-machine fleet now on Claude CLI OAuth (claude.ai Max session) for the bridge auto-action + push-notification subprocesses. Was: each watcher read `API-Key-Claude.txt` and injected `ANTHROPIC_API_KEY` into the child env so `claude --print` used the sk-ant key.
