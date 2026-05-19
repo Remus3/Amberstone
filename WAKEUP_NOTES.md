@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-05-19 - DS stat-growth fix: linear -> Riot quadratic (`fd80bf3` + docs-sync `17c782e`, pushed)
+
+Found cross-checking DS math vs lolmath `@lolmath/calc`. Focused TDD session in an isolated worktree (now removed; branch `fix/ds-stat-growth` FF-merged to main).
+
+- **Bug:** `agents/daemon_slayer/stats.py` scaled champion per-level base stats LINEARLY (`base + perlevel*(level-1)`); Riot is QUADRATIC (`base + perlevel*(level-1)*(0.7025 + 0.0175*(level-1))`). Coincides with linear ONLY at level 1 (mult 0) + level 18 (mult exactly 17.0); over-stated every per-level stat (hp/mp/regen/armor/mr/ad) at levels 2-17. Real bug, not a modeling choice.
+- **Fix:** new `growth_multiplier()` + `scaled()`; 8 `CHAMPION_SCALING_RULES` repointed off the deleted `linear`. AS math (`attack_speed_scaling`) was already correct Riot math - untouched. ENGINE_VERSION 1.4.0 -> 1.5.0 + 14 version pins. Adjacent: corrected the stale/backwards pen-pipeline comment in `ability_dps.py:1142` (no pen code touched).
+- **Proof-first (DON'T redo):** engine hand-proven correct BEFORE rebaseline - 16 stat curves (Garen/Lux/Aatrox/Malphite x hp/ad/armor/mr @ L1/6/11/13/18) + DPS/EHP pipeline traces match the formula exactly; Garen/Lux HP match known in-game. Only 6 DS tests drifted: 4 genuine mid-level pins rebaselined + 2 pre-existing fragile exact-float assertions made tolerant - all INTENDED, do not re-investigate.
+- **Verified:** DS 2283/748/0, wider RC 1457/0. Production :8893 restarted via RC-DaemonSlayer task -> serves 1.5.0; Garen L11=1549.95 (in-game 1550), L18=2356 (unchanged endpoint). Docs synced `17c782e` (ENGINE 1.5.0 + DS tests 2283 across CLAUDE/DAEMON_SLAYER/README/BRIEF).
+- **Flagged, not blocking:** (a) DAEMON_SLAYER champ-coverage prose "196/125, 73%" + BRIEF "2,851 matches" left as prior-batch state - NOT affected by this fix; a correct recompute is a DS-batch session's own docs-sync job (the 4 registries use a nested `_meta`/`default`/overrides schema; a flat count mis-parses it - don't trust an ad-hoc one-liner). (b) Pre-existing broken ref `docs/_archive/CHANGELOG.md` (3 cites) + `.claude/commands` vs `tools/` sync-all-md.md drift - unrelated, operator decision pending. (c) Local branch `fix/ds-stat-growth` retained (merged+pushed; delete anytime).
+
+---
+
 # 2026-05-18 - s246: effects.py engine-core facade split (`34da8d1`, pushed)
 
 Operator picked "effects.py split" from the s245-NEXT fork (over live-game-gated s220 PGR / one-off 101.qq.com). The **final AUTONOMOUS_AUDIT 4.C item** - the last oversized engine-core module. Full vertical slice, end-to-end.
@@ -28,15 +40,3 @@ Operator picked "#6 local DS+matchDB MCP" from the s244-NEXT autonomous-safe for
 - **OPERATOR-GATED (flagged, NOT blocking):** (a) the `RC-DS-MatchDB-MCP` scheduled task is documented but NOT created - it is a new always-on listener; register only when a local Claude is actually pointed at it. (b) `.mcp.json` client wiring is NOT done - editing it would change a live Claude session's own tool surface (operator's call when/if to consume it). Neither is required for the slice to be complete - the server + launcher + tests + docs are done + behavior-proven.
 - **Don't-redo:** server+launcher+tests+docs done + live-proven; the localhost-only + zero-dep + gamepc-mirror architecture is deliberate - do NOT re-pitch a FastMCP/SDK rewrite or LAN exposure. Engine reporting `1.4.0` is pre-existing live state unrelated to this slice (the MCP just proxies whatever `/health` says) - not a regression, do not chase.
 - **NEXT (AUTONOMOUS_AUDIT s5):** the only remaining 4.C is `effects.py` (5692) engine-core = reviewed-only-never-autonomous (operator-gated). Autonomous-safe refactor work is largely exhausted across s237-s245; the big pending non-engine item is the **s220 aggregator-G-style Post Game Review reframe** (UI; needs a live standard-queue game + the per-page UI-audit ritual). Optional data: the one-off 101.qq.com Game-PC CDN capture. DS conditional arc operator-CLOSED (s232).
-
----
-
-# 2026-05-18 - s244: #4 Arena/Mayhem augment recommender FOREGROUNDED (`d7f6033`, pushed)
-
-Operator picked "#4 Augment pillar" from the s243-NEXT autonomous-safe fork (over #6 local MCP / effects.py). Full vertical slice, end-to-end.
-
-- **`d7f6033` (pushed `cb6c8dd..d7f6033`).** The data-driven recommender (`core/augment_recommender.py` + `augment_external_source.py`) shipped+tested at #88 but its ONLY surface was the invisible `#augments-pill` `title` hover tooltip. Now a prominent `#ib-aug-reco-block` INSIDE `#item-build` (new `web/js/panels/augment_reco.js` + `web/css/panels/augment_reco.css` + dashboard.css @import + main.js wire after `renderItemBuild`). Surfaces the causal "why": own WR vs external Mayhem prior, synergy, confidence, sample size. `coaches/arena_coach.py` `_augment_recommendation` gained per-row `"syn"` (additive).
-- **Design decisions (don't re-litigate):** (1) toggled build-section block inside #item-build mirroring `#ib-ds-block` - NOT a new grid panel (deliberate: zero layout risk, matches the established no-reflow pattern; that's WHY augments moved to the header pill in 2026-04-23). (2) Presence of `p.aug_reco` IS the mode gate - module is decoupled from the mode authority by design. (3) `#augments-pill` + its tooltip left UNCHANGED (no regression).
-- **Verified:** full `tests/` **1421 / 30 subtests / 0** (s243 baseline 1405 + 16 new: 14 DOM-wiring guards `test_augment_reco_panel_dom.py` + 2 Playwright snapshot tests arena+Mayhem); snapshot suite 13/13; node --check + ruff + py_compile clean. Asset hash flipped LIVE to `1819f07ef8` (ADR-008 auto-reload - **no RC restart needed**), confirmed via Game-PC DISPLAY5 capture (clean Home load, footer shows new hash, block correctly absent in CLIENT/no-game). No ENGINE bump.
-- **Session-start anomaly RESOLVED = FALSE POSITIVE (don't re-investigate):** "RC-Phase3-Supervisor failing result=2147946720" - that's `0x800710E0` (task-terminated), residue of s243's controlled End+Run. :8890/:8891 listen on **pid 15068** = the exact process s243 verified healthy. s243 split did NOT break Phase-3.
-- **NEXT:** (a) **operator-gated** - live Arena/Mayhem augment-select render proven only by snapshot fixtures (no game ran this session; LCU offline); validates for real on next Arena/Mayhem game. (b) `arena_coach` `syn` activates on next coach reload - JS degrades gracefully (synergy column hidden) until then; non-urgent, no restart triggered. (c) Remaining autonomous-safe: #6 local DS+matchDB MCP, or effects.py split (operator-gated engine session).
