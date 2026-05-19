@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 - s244: #4 Arena/Mayhem augment recommender FOREGROUNDED (`d7f6033`, pushed)
+
+Operator picked "#4 Augment pillar" from the s243-NEXT autonomous-safe fork (over #6 local MCP / effects.py). Full vertical slice, end-to-end.
+
+- **`d7f6033` (pushed `cb6c8dd..d7f6033`).** The data-driven recommender (`core/augment_recommender.py` + `augment_external_source.py`) shipped+tested at #88 but its ONLY surface was the invisible `#augments-pill` `title` hover tooltip. Now a prominent `#ib-aug-reco-block` INSIDE `#item-build` (new `web/js/panels/augment_reco.js` + `web/css/panels/augment_reco.css` + dashboard.css @import + main.js wire after `renderItemBuild`). Surfaces the causal "why": own WR vs external Mayhem prior, synergy, confidence, sample size. `coaches/arena_coach.py` `_augment_recommendation` gained per-row `"syn"` (additive).
+- **Design decisions (don't re-litigate):** (1) toggled build-section block inside #item-build mirroring `#ib-ds-block` - NOT a new grid panel (deliberate: zero layout risk, matches the established no-reflow pattern; that's WHY augments moved to the header pill in 2026-04-23). (2) Presence of `p.aug_reco` IS the mode gate - module is decoupled from the mode authority by design. (3) `#augments-pill` + its tooltip left UNCHANGED (no regression).
+- **Verified:** full `tests/` **1421 / 30 subtests / 0** (s243 baseline 1405 + 16 new: 14 DOM-wiring guards `test_augment_reco_panel_dom.py` + 2 Playwright snapshot tests arena+Mayhem); snapshot suite 13/13; node --check + ruff + py_compile clean. Asset hash flipped LIVE to `1819f07ef8` (ADR-008 auto-reload - **no RC restart needed**), confirmed via Game-PC DISPLAY5 capture (clean Home load, footer shows new hash, block correctly absent in CLIENT/no-game). No ENGINE bump.
+- **Session-start anomaly RESOLVED = FALSE POSITIVE (don't re-investigate):** "RC-Phase3-Supervisor failing result=2147946720" - that's `0x800710E0` (task-terminated), residue of s243's controlled End+Run. :8890/:8891 listen on **pid 15068** = the exact process s243 verified healthy. s243 split did NOT break Phase-3.
+- **NEXT:** (a) **operator-gated** - live Arena/Mayhem augment-select render proven only by snapshot fixtures (no game ran this session; LCU offline); validates for real on next Arena/Mayhem game. (b) `arena_coach` `syn` activates on next coach reload - JS degrades gracefully (synergy column hidden) until then; non-urgent, no restart triggered. (c) Remaining autonomous-safe: #6 local DS+matchDB MCP, or effects.py split (operator-gated engine session).
+
+---
+
 # 2026-05-19 - s243: supervisor.py freeze RESOLVED + 2312->966 LOC facade split (`ca30daa`, pushed)
 
 Operator picked "resolve supervisor.py freeze" from the s5 menu; on the resolution they chose "do the split now". Full vertical slice, end-to-end.
