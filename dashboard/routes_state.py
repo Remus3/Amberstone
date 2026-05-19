@@ -525,6 +525,29 @@ def _resolve_enemy_champions(payload: dict) -> list:
         return []
 
 
+def _enemy_champions_for_target(liveclient_data: dict, exclude_team) -> list:
+    """Enemy champion names positionally aligned with
+    ``enemy_aware_stats.enemy_items_from_liveclient``.
+
+    MUST mirror that function's player iteration exactly so
+    ``enemy_champions[i]`` is the champion whose items are
+    ``enemy_items[i]``: same ``allPlayers`` order, skip non-dict, skip
+    ``exclude_team``, one entry per remaining player. A missing
+    ``championName`` yields ``""`` (the base layer treats unknown as
+    zero base, degrading to item-only for that one enemy).
+    """
+    if not isinstance(liveclient_data, dict):
+        return []
+    out: list = []
+    for p in (liveclient_data.get("allPlayers") or []):
+        if not isinstance(p, dict):
+            continue
+        if exclude_team and p.get("team") == exclude_team:
+            continue
+        out.append(str(p.get("championName") or ""))
+    return out
+
+
 def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
     """Pick the right target_armor / target_mr / target_max_hp source.
 
@@ -567,7 +590,19 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
             # filters to opponents.
             enemy_items = enemy_items_from_liveclient(snap.data, exclude_team=my_team)
             if enemy_items:
-                stats = compute_target_stats_from_items(enemy_items, aggregator="avg")
+                # P1-L4 fix: pass the enemy champions + level so the
+                # champion base resist/HP-by-level is added (the engine
+                # treats target_* as absolute, not an item-only delta).
+                # _enemy_champions_for_target aligns names positionally
+                # with enemy_items (same exclude_team filter + slot
+                # order); a name-resolution miss degrades to item-only
+                # for that enemy, never raises.
+                enemy_champs = _enemy_champions_for_target(snap.data, my_team)
+                stats = compute_target_stats_from_items(
+                    enemy_items, aggregator="avg",
+                    enemy_champions=enemy_champs or None,
+                    level=int(level) if enemy_champs else None,
+                )
                 if stats.get("n_enemies", 0) > 0:
                     return stats
     except Exception as exc:
