@@ -259,11 +259,7 @@ def _send_push_notification(summary: str, source: str, node: str,
         "-p", msg,
     ]
     env_vars = dict(os.environ)
-    if api_key_path and api_key_path.exists():
-        try:
-            env_vars["ANTHROPIC_API_KEY"] = api_key_path.read_text(encoding="utf-8").strip()
-        except OSError:
-            pass
+    env_vars.pop("ANTHROPIC_API_KEY", None)
     import subprocess
     try:
         proc = subprocess.run(
