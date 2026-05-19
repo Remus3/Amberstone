@@ -23,3 +23,11 @@ _archive/**                       linguist-vendored=true
 # (d) Local data caches that occasionally get tracked
 data/icons/**                     linguist-vendored=true
 data/meta/ddragon_*.json          linguist-generated=true
+
+# EOL policy - prevent CR-CR-LF / CRLF corruption of Python sources.
+# core.autocrlf=true on the Windows fleet, combined with tools that
+# re-add an already-CRLF blob, produced doubled-CR line endings in 21
+# tracked .py files (2026-05-19 rc_facts.py incident). Forcing eol=lf
+# keeps .py LF in the repo AND the working tree, overriding autocrlf
+# so the corruption cannot recur fleet-wide.
+*.py text eol=lf
