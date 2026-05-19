@@ -2,6 +2,16 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - corrected /insights regen + overnight-run prep (queue doc + this entry committed; no code, no restart)
+
+Operator ran /insights; its narrative was frozen on the s100-s185 window (claimed ENGINE 0.9.x->0.25.0, tests 161->929, 611 commits, from 2026-04-22). Reviewed the full repo + every .md, verified live, wrote a corrected sibling report (LOCAL artifact, NOT in repo, original report.html untouched): `C:\Users\Administrator\.claude\usage-data\report-corrected-2026-05-19.html`. Then operator queued a single-prompt overnight autonomous run.
+
+- Verified live 2026-05-19: ENGINE_VERSION 1.5.0 (`agents/daemon_slayer/__init__.py:1265`, /health :8893), DS 2283/748/0, RC 1457/0, 760 commits (first 2026-04-26 20:23), 547 buildable / 705 loaded items, 172 champions, patch 16.10.1, 6 archetype scorers wired no fallbacks.
+- NEXT SESSION = execute `NEXT_SESSION_QUEUE.md` end to end: Phase 0 = 7 setup tasks in order (PostToolUse-hook docs-skip lever; ship-batch one-pass extension; LLM-cost tier trace+reconcile; corrected-report re-verify; parallel multi-batch worktree pipeline; self-healing cost/health watchdog; test-first autopilot). Phase 1 = >=4h iterative DS audit (all engine math, every wireable sim, pick/ban vs itself + interacting systems, enemy-team 1-6 item variations across timeframes/levels, scope+apply trivial nuances). Phase 2 = backlog drain, stop DS loop only after 10+ consecutive no-change iterations, track+report streak. Phase 3 = full every-line/every-doc/every-trail conventions audit.
+- Operator AUTHORIZED full permissions to ALL files INCLUDING frozen for this run (the queue header carries the explicit grant). Caveman ultra stays (headless). py_compile + atomic-write + restart_trigger + health-verify discipline unchanged.
+- Kickoff prompt to paste next session: see the operator hand-off (or reconstruct from `NEXT_SESSION_QUEUE.md` "Run-wide authorization" + Phases 0-3).
+- Don't-redo: this is a prep session, not drift - `NEXT_SESSION_QUEUE.md` is intentional and authoritative for the next run; do not treat its presence as stale.
+---
 # 2026-05-19 - Phase3 false-anomaly fix + repo \r\r\n EOL purge + caveman full->ultra (`399fe89` `d893797` `e3b8b02` `eb904dd` `b7c23c6`, pushed)
 
 Operator "whats up next" -> picked the session-start Phase3 anomaly; expanded into a full EOL-corruption purge + the caveman ultra flip. No RC restart (rc_facts/caveman are hooks; renorm is EOL-only; reload is restart_trigger-based not source-mtime; RC pid=13328 alive unchanged throughout).
