@@ -21,9 +21,26 @@ LEVEL_MAX = 18
 
 # ----- per-level scaling formulas ---------------------------------------------
 
-def linear(base: float, perlevel: float, level: int) -> float:
-    """Linear stat scaling - current League math for hp/mp/armor/mr/ad/regen."""
-    return base + perlevel * (level - 1)
+def growth_multiplier(level: int) -> float:
+    """Riot champion stat-growth coefficient for a given level.
+
+    ``(n - 1) * (0.7025 + 0.0175 * (n - 1))`` - the canonical
+    Riot/League-wiki per-level growth multiplier. It equals the naive
+    linear ``(n - 1)`` ONLY at level 1 (multiplier 0) and level 18
+    (multiplier exactly 17.0); for every level 2..17 it is strictly
+    lower. The pre-fix engine used the linear multiplier and therefore
+    over-stated every per-level base stat between the two endpoints.
+    """
+    return (level - 1) * (0.7025 + 0.0175 * (level - 1))
+
+
+def scaled(base: float, perlevel: float, level: int) -> float:
+    """Per-level base-stat scaling - current League math.
+
+    Applies to hp/mp/hpregen/mpregen/armor/mr/ad (and crit, whose
+    ``critperlevel`` is 0 for every champion, so it stays flat).
+    """
+    return base + perlevel * growth_multiplier(level)
 
 
 def attack_speed_scaling(base_as: float, perlevel_pct: float, level: int) -> float:
@@ -48,14 +65,14 @@ class ScalingRule:
 
 
 CHAMPION_SCALING_RULES: tuple[ScalingRule, ...] = (
-    ScalingRule("hp",       "hp",            "hpperlevel",            linear),
-    ScalingRule("mp",       "mp",            "mpperlevel",            linear),
-    ScalingRule("hpregen",  "hpregen",       "hpregenperlevel",       linear),
-    ScalingRule("mpregen",  "mpregen",       "mpregenperlevel",       linear),
-    ScalingRule("armor",    "armor",         "armorperlevel",         linear),
-    ScalingRule("mr",       "spellblock",    "spellblockperlevel",    linear),
-    ScalingRule("ad",       "attackdamage",  "attackdamageperlevel",  linear),
-    ScalingRule("crit",     "crit",          "critperlevel",          linear),
+    ScalingRule("hp",       "hp",            "hpperlevel",            scaled),
+    ScalingRule("mp",       "mp",            "mpperlevel",            scaled),
+    ScalingRule("hpregen",  "hpregen",       "hpregenperlevel",       scaled),
+    ScalingRule("mpregen",  "mpregen",       "mpregenperlevel",       scaled),
+    ScalingRule("armor",    "armor",         "armorperlevel",         scaled),
+    ScalingRule("mr",       "spellblock",    "spellblockperlevel",    scaled),
+    ScalingRule("ad",       "attackdamage",  "attackdamageperlevel",  scaled),
+    ScalingRule("crit",     "crit",          "critperlevel",          scaled),
     ScalingRule(
         "as",
         "attackspeed",

@@ -1236,6 +1236,30 @@ Phase 4(d) (2026-05-18 - candidate unique_passive_key exposure, ENGINE_VERSION 1
   envelope branches. ``core/build_order.BuildStep`` gains
   ``locked_family`` (consumes the new key) - the positive counterpart
   to its existing ``excluded_family``.
+
+Stat-growth correctness fix (2026-05-19 - Riot quadratic per-level
+scaling, ENGINE_VERSION 1.5.0):
+
+* ``stats.py`` scaled champion per-level base stats LINEARLY
+  (``base + perlevel * (level - 1)``); Riot's in-game growth is
+  QUADRATIC: ``base + perlevel * growth_multiplier(level)`` where
+  ``growth_multiplier(n) = (n - 1) * (0.7025 + 0.0175 * (n - 1))``.
+  The two coincide ONLY at level 1 (multiplier 0) and level 18
+  (multiplier exactly 17.0); for levels 2..17 the old code over-stated
+  every per-level base stat (hp/mp/regen/armor/mr/ad). Real bug, not a
+  modeling choice - cross-checked vs the canonical Riot/League-wiki
+  formula and lolmath's growth() primitive.
+* New ``stats.growth_multiplier(level)`` + ``stats.scaled(base,
+  perlevel, level)``; the 8 ``CHAMPION_SCALING_RULES`` entries
+  (hp/mp/hpregen/mpregen/armor/mr/ad/crit) repointed from the deleted
+  ``linear`` to ``scaled``. Attack speed (``attack_speed_scaling``)
+  was already correct Riot AS math and is untouched. Single
+  application point (``engine._scale_champion_base``) - no double
+  scaling. Per-level ability lambdas in ``_effects_data.py`` are
+  intentionally linear ability scalings and are unaffected.
+* Level-1 and level-18 numeric pins are stable (endpoint identity);
+  mid-level DPS/EHP/burst/stats pins shift lower and were rebaselined
+  to the corrected, hand-proven engine output.
 """
 
-ENGINE_VERSION = "1.4.0"
+ENGINE_VERSION = "1.5.0"
