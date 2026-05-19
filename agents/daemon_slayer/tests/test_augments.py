@@ -154,7 +154,11 @@ class EngineIntegrationTests(unittest.TestCase):
             self.snap, "Garen", level=11, mode="ARENA",
             augments=["CelestialBody"],
         )
-        self.assertEqual(with_aug.stats["hp"] - bare.stats["hp"], 1000.0)
+        # CelestialBody adds exactly 1000 HP. The Riot quadratic
+        # stat-growth path makes the leveled HP float-imprecise, so the
+        # subtraction carries sub-ULP noise (~1e-13); assert the augment
+        # delta with float tolerance, not exact equality.
+        self.assertAlmostEqual(with_aug.stats["hp"] - bare.stats["hp"], 1000.0, places=6)
 
     def test_multiple_augments_stack(self) -> None:
         from agents.daemon_slayer.engine import build_champion
