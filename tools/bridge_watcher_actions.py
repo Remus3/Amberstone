@@ -237,6 +237,7 @@ def _run_subprocess(argv: list[str], *, timeout_s: int,
                     env_extra: Optional[dict] = None) -> Tuple[int, str, str]:
     """Run subprocess, capture stdout/stderr/rc. Never raises."""
     env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
     if env_extra:
         env.update(env_extra)
     try:
@@ -385,11 +386,6 @@ def run_action(*, envelope: dict, lane: str, node_config: dict,
     timeout_s = int(node_config.get("timeout_s") or 60)
     max_turns = int(node_config.get("max_turns") or 4)
     env_extra = {}
-    if api_key_path and api_key_path.exists():
-        try:
-            env_extra["ANTHROPIC_API_KEY"] = api_key_path.read_text(encoding="utf-8").strip()
-        except OSError:
-            pass
 
     argv = _build_claude_argv(
         task_prompt=prompt,
