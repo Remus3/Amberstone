@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-05-18 - s244: #4 Arena/Mayhem augment recommender FOREGROUNDED (`d7f6033`, pushed)
+
+Operator picked "#4 Augment pillar" from the s243-NEXT autonomous-safe fork (over #6 local MCP / effects.py). Full vertical slice, end-to-end.
+
+- **`d7f6033` (pushed `cb6c8dd..d7f6033`).** The data-driven recommender (`core/augment_recommender.py` + `augment_external_source.py`) shipped+tested at #88 but its ONLY surface was the invisible `#augments-pill` `title` hover tooltip. Now a prominent `#ib-aug-reco-block` INSIDE `#item-build` (new `web/js/panels/augment_reco.js` + `web/css/panels/augment_reco.css` + dashboard.css @import + main.js wire after `renderItemBuild`). Surfaces the causal "why": own WR vs external Mayhem prior, synergy, confidence, sample size. `coaches/arena_coach.py` `_augment_recommendation` gained per-row `"syn"` (additive).
+- **Design decisions (don't re-litigate):** (1) toggled build-section block inside #item-build mirroring `#ib-ds-block` - NOT a new grid panel (deliberate: zero layout risk, matches the established no-reflow pattern; that's WHY augments moved to the header pill in 2026-04-23). (2) Presence of `p.aug_reco` IS the mode gate - module is decoupled from the mode authority by design. (3) `#augments-pill` + its tooltip left UNCHANGED (no regression).
+- **Verified:** full `tests/` **1421 / 30 subtests / 0** (s243 baseline 1405 + 16 new: 14 DOM-wiring guards `test_augment_reco_panel_dom.py` + 2 Playwright snapshot tests arena+Mayhem); snapshot suite 13/13; node --check + ruff + py_compile clean. Asset hash flipped LIVE to `1819f07ef8` (ADR-008 auto-reload - **no RC restart needed**), confirmed via Game-PC DISPLAY5 capture (clean Home load, footer shows new hash, block correctly absent in CLIENT/no-game). No ENGINE bump.
+- **Session-start anomaly RESOLVED = FALSE POSITIVE (don't re-investigate):** "RC-Phase3-Supervisor failing result=2147946720" - that's `0x800710E0` (task-terminated), residue of s243's controlled End+Run. :8890/:8891 listen on **pid 15068** = the exact process s243 verified healthy. s243 split did NOT break Phase-3.
+- **NEXT:** (a) **operator-gated** - live Arena/Mayhem augment-select render proven only by snapshot fixtures (no game ran this session; LCU offline); validates for real on next Arena/Mayhem game. (b) `arena_coach` `syn` activates on next coach reload - JS degrades gracefully (synergy column hidden) until then; non-urgent, no restart triggered. (c) Remaining autonomous-safe: #6 local DS+matchDB MCP, or effects.py split (operator-gated engine session).
+
+---
+
 # 2026-05-19 - s243: supervisor.py freeze RESOLVED + 2312->966 LOC facade split (`ca30daa`, pushed)
 
 Operator picked "resolve supervisor.py freeze" from the s5 menu; on the resolution they chose "do the split now". Full vertical slice, end-to-end.
@@ -28,15 +40,3 @@ Recovered an interrupted s241 /done (operator sent /clear mid-ritual): only the 
 - **No ENGINE bump / no DS restart** - non-engine, behavior-neutral (ROADMAP item-85 / s237 / s238 precedent).
 - **Don't-redo:** the split is done + behavior-proven; `coaches.adaptation_hint` is a facade, all callers import unchanged - do NOT re-split or "clean up" the modules. The `DB_DIR`-via-`sys.modules` indirection in `_db` is load-bearing for the test contract - do NOT inline it back. 4.D is a comment - done.
 - **NEXT (AUTONOMOUS_AUDIT s5):** the remaining 4.C are operator-gated - `agents/supervisor.py` (2312) is operator-flagged FROZEN (needs explicit approval; the audit's "verify NOT frozen" conflicts with s238's explicit "FROZEN" note - operator must resolve), `effects.py` (5692) is engine-core reviewed-only-never-autonomous. Autonomous-safe but larger: product opportunity #4 (Arena/Mayhem augment recommender foregrounding - `core/augment_recommender.py` ships, needs the marketing-pillar UI surface) or #6 (local MCP exposing Daemon Slayer + match DB on :8893). Optional data enrichment: the one-off 101.qq.com Game-PC CDN capture. DS conditional arc stays operator-CLOSED (s232).
-
----
-
-# 2026-05-18 - s241: repo-root + Desktop hand-off-artifact archival (`e4d541b`, pushed)
-
-Pure repo-hygiene session (operator-driven file-by-file triage). No code/behavior change, no ENGINE bump, no RC restart.
-
-- **`e4d541b` (pushed `1cab42d..e4d541b`).** 10 consumed dated artifacts -> docs/_archive/ (gitignored but force-tracked: history preserved, ripgrep-excluded). git-mv (history kept): NEXT_SESSION_PLAN_2026-05-{10,11}.md, HEADLESS_BRIEF_2026-05-12_{AUDIT,DOCS_TESTS}.md, RC_Tutor_Business_Plan.txt, run_lan_bridge.bat. force-add (Desktop-origin, untracked): AUTONOMOUS_AUDIT_2026-05-18, BUILD_ORDER_PLAN_2026-05-17, DASHBOARD_JS_QUARANTINE_SPEC_2026-05-18, MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.
-- **Verdicts evidence-backed:** 8 doc/plan/brief artifacts confirmed consumed (work shipped: dashboard.js quarantine s236, build-order #85/#86, augment recommender #88, s171.8 docs-backfill, s167 backend sweep, s173 anti-drift). `run_lan_bridge.bat` = dead orphan (target lan_bridge.py archived 2026-05-01; `shared_vision.py` says it "was never a functioning client").
-- **Flagged NOT-archivable - kept in place, do NOT re-litigate:** `moon_sync_inbox/` = LIVE vision-server runtime dir (`vision_server/_config.py:39-40` SYNC_DIR mkdir-on-startup + `_http.py` /sync list|get|PUT API; empty + gitignored, archiving self-reverts on RC restart). `.anthropic-usage.key` = live MCP credential (gitignored `*.key`). `docs io RC peer/` = live RC<->Peer bridge contract + Phase1 lesson schema (CLAUDE.md:104, docs/BRIDGE.md:136, frozen main.py:163, tools/sync-all-md.md:82). `install/start/restart_clean/start_debug/kill.bat` = live portable-build + dev_cli launcher set (build_portable.py _ROOT_BAT_FILES; main.py:59). `bootstrap_riot_commander_dev.{cmd,ps1}` = dormant dev-box provisioning (Legion-migration may need it).
-- **Don't-redo:** archive triage complete + committed; do NOT re-archive or "clean up" moon_sync_inbox / *.key / docs io RC peer / the .bat launcher set - all confirmed live this session.
-- **NEXT (unchanged from s240, AUTONOMOUS_AUDIT s5):** autonomous-safe 4.C `coaches/adaptation_hint.py` (1602) split; or product opportunity #4 (augment recommender foregrounding) / #6 (local DS+matchDB MCP). DS conditional arc operator-CLOSED (s232).

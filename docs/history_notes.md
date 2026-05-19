@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 - s241: repo-root + Desktop hand-off-artifact archival (`e4d541b`, pushed)
+
+Pure repo-hygiene session (operator-driven file-by-file triage). No code/behavior change, no ENGINE bump, no RC restart.
+
+- **`e4d541b` (pushed `1cab42d..e4d541b`).** 10 consumed dated artifacts -> docs/_archive/ (gitignored but force-tracked: history preserved, ripgrep-excluded). git-mv (history kept): NEXT_SESSION_PLAN_2026-05-{10,11}.md, HEADLESS_BRIEF_2026-05-12_{AUDIT,DOCS_TESTS}.md, RC_Tutor_Business_Plan.txt, run_lan_bridge.bat. force-add (Desktop-origin, untracked): AUTONOMOUS_AUDIT_2026-05-18, BUILD_ORDER_PLAN_2026-05-17, DASHBOARD_JS_QUARANTINE_SPEC_2026-05-18, MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.
+- **Verdicts evidence-backed:** 8 doc/plan/brief artifacts confirmed consumed (work shipped: dashboard.js quarantine s236, build-order #85/#86, augment recommender #88, s171.8 docs-backfill, s167 backend sweep, s173 anti-drift). `run_lan_bridge.bat` = dead orphan (target lan_bridge.py archived 2026-05-01; `shared_vision.py` says it "was never a functioning client").
+- **Flagged NOT-archivable - kept in place, do NOT re-litigate:** `moon_sync_inbox/` = LIVE vision-server runtime dir (`vision_server/_config.py:39-40` SYNC_DIR mkdir-on-startup + `_http.py` /sync list|get|PUT API; empty + gitignored, archiving self-reverts on RC restart). `.anthropic-usage.key` = live MCP credential (gitignored `*.key`). `docs io RC peer/` = live RC<->Peer bridge contract + Phase1 lesson schema (CLAUDE.md:104, docs/BRIDGE.md:136, frozen main.py:163, tools/sync-all-md.md:82). `install/start/restart_clean/start_debug/kill.bat` = live portable-build + dev_cli launcher set (build_portable.py _ROOT_BAT_FILES; main.py:59). `bootstrap_riot_commander_dev.{cmd,ps1}` = dormant dev-box provisioning (Legion-migration may need it).
+- **Don't-redo:** archive triage complete + committed; do NOT re-archive or "clean up" moon_sync_inbox / *.key / docs io RC peer / the .bat launcher set - all confirmed live this session.
+- **NEXT (unchanged from s240, AUTONOMOUS_AUDIT s5):** autonomous-safe 4.C `coaches/adaptation_hint.py` (1602) split; or product opportunity #4 (augment recommender foregrounding) / #6 (local DS+matchDB MCP). DS conditional arc operator-CLOSED (s232).
+
+---
+
 # 2026-05-18 - s240: on-demand VLM coach (SCREEN READ) (`306f5f3`, pushed)
 
 Operator-directed off the AUTONOMOUS_AUDIT s5 order - picked competitive opportunity #3 (the on-demand VLM coach). Full vertical slice with a dedicated pill (operator chose recommended scope).
