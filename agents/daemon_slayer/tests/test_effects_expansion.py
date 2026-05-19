@@ -1795,11 +1795,12 @@ class UniquePassiveTests(unittest.TestCase):
         self.assertEqual(effects[2].item_id, "3071")
 
     def test_sunfire_solo_unchanged(self) -> None:
-        # Single-item Sunfire DPS must be unchanged from batch 9 - dedup
-        # only fires when the same key appears twice.
+        # Single-item Sunfire DPS must be unchanged - dedup only fires
+        # when the same key appears twice.
         r = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068"])
-        # Batch 9 verified 64.32 dps for this exact probe.
-        self.assertAlmostEqual(r.weighted_dps, 64.32, places=2)
+        # Rebaselined for Riot quadratic stat growth (was 64.32 under the
+        # old linear scaling; Aatrox lvl-11 base AD is now correctly lower).
+        self.assertAlmostEqual(r.weighted_dps, 61.695515625, places=4)
 
     def test_sunfire_plus_hollow_radiance_no_double_count(self) -> None:
         # The whole point of this batch: building both should NOT add
@@ -1892,15 +1893,18 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
         self.assertEqual(effects[0].item_id, "3100")
 
     def test_triforce_solo_unchanged(self) -> None:
-        # Single-item TF DPS must equal pre-batch-11 baseline (regression
-        # guard). Ahri lvl 11 + TF was 85.08 before tagging.
+        # Single-item TF DPS regression guard. Rebaselined for Riot
+        # quadratic stat growth (was 85.08 on Ahri lvl 11 under the old
+        # linear scaling; lvl-11 base AD is now correctly lower).
         r = compute_dps(self.snap, "Ahri", level=11, item_ids=["3078"])
-        self.assertAlmostEqual(r.weighted_dps, 85.08, places=2)
+        self.assertAlmostEqual(r.weighted_dps, 81.71458333333334, places=4)
 
     def test_lich_bane_solo_unchanged(self) -> None:
-        # Lich Bane alone unchanged: 58.17 on Ahri lvl 11.
+        # Lich Bane alone regression guard. Rebaselined for Riot
+        # quadratic stat growth (was 58.17 on Ahri lvl 11 under the old
+        # linear scaling).
         r = compute_dps(self.snap, "Ahri", level=11, item_ids=["3100"])
-        self.assertAlmostEqual(r.weighted_dps, 58.17, places=2)
+        self.assertAlmostEqual(r.weighted_dps, 56.32916666666666, places=4)
 
     def test_triforce_plus_lich_bane_no_double_count(self) -> None:
         # Pre-fix this build was 122.50 dps (sum of solo deltas =
@@ -4796,8 +4800,11 @@ class Batch37TrueDamageTests(unittest.TestCase):
         )
         drop_true_item = dps_no_armor.weighted_dps - dps_high_armor.weighted_dps
         drop_physical_item = dps_kraken_no_armor.weighted_dps - dps_kraken_high_armor.weighted_dps
-        # True item loses less to armor than a similar physical item
-        self.assertLessEqual(drop_true_item, drop_physical_item)
+        # True item loses no more to armor than a similar physical item.
+        # The two drops can be mathematically equal here; the quadratic
+        # stat-growth path introduces sub-ULP float noise, so compare
+        # with a tiny tolerance rather than a strict float inequality.
+        self.assertLessEqual(drop_true_item, drop_physical_item + 1e-9)
 
     def test_darksteel_talons_dps_lift(self) -> None:
         from agents.daemon_slayer.dps import compute_dps
@@ -7683,7 +7690,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.4.0")
+        self.assertEqual(ENGINE_VERSION, "1.5.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7744,7 +7751,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.4.0")
+        self.assertEqual(ENGINE_VERSION, "1.5.0")
 
 
 if __name__ == "__main__":
