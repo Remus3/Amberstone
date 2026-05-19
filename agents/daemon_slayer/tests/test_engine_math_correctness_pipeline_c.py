@@ -3,7 +3,7 @@
 These are property / derivation tests: every expected value is recomputed
 from the Riot formula in-test (no hardcoded magic numbers, no fragile
 cross-item comparison asserts). They harden the suite against silent
-regressions in the five audit areas below. As of ENGINE_VERSION 1.5.0
+regressions in the five audit areas below. As of ENGINE_VERSION 1.6.0
 all five are believed correct; this file proves it and trips loudly if
 any one drifts.
 
