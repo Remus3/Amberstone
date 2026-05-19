@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from core.polled_json import atomic_write_json, read_json_dict
-from core.prom_metrics import Counter
+from core.prom_metrics import Counter, Histogram
 
 _log = logging.getLogger("rc.cost_tracker")
 
@@ -49,6 +49,21 @@ _M_COACH_COST_USD = Counter(
     "rc_coach_cost_usd_total",
     "Estimated USD spend on Anthropic API calls (per local pricing table).",
     labelnames=("model",),
+)
+# Per-call USD cost distribution (BACKLOG: per-call cost histogram). Observed
+# once per record_call at the same chokepoint as the counters above so every
+# Anthropic call lands in exactly one of these buckets, keyed by the cost
+# "lane" (model x purpose). Lets a scrape compute median/p95 cost per lane and
+# alert when p95 doubles week-over-week. USD buckets span a sub-tenth-cent
+# Haiku tick up to a $1 Sonnet/vision call.
+COST_PER_CALL_BUCKETS = (
+    0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0,
+)
+_M_COACH_COST_PER_CALL = Histogram(
+    "rc_coach_cost_usd_per_call",
+    "Per-call estimated USD cost distribution, by model and purpose lane.",
+    buckets=COST_PER_CALL_BUCKETS,
+    labelnames=("model", "purpose"),
 )
 _M_VISION_TOKEN_GRANTED = Counter(
     "rc_vision_token_granted_total",
@@ -196,6 +211,11 @@ class CostTracker:
                 _M_COACH_TOKENS.inc(cache_write, model=model, kind="cache_write")
             if total_usd > 0:
                 _M_COACH_COST_USD.inc(total_usd, model=model)
+            # Every call (including $0 ones) lands in the per-call cost
+            # histogram so p50/p95-per-lane are computed over the full call
+            # population, not just the billed subset.
+            _M_COACH_COST_PER_CALL.observe(
+                total_usd, model=model, purpose=purpose_lbl)
         except Exception as exc:
             _log.debug("prom_metrics record_call: %s", exc)
         with self._lock:

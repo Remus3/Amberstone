@@ -2,8 +2,9 @@
 
 Covers the breach boundary (exactly 1.5x), the idle-floor false-positive
 guard, flap detection (pid churn / alive / reload), purpose->tier
-classification, and the hard invariant that cron mode never edits config
-or code.
+classification, the nearest-rank percentile helper + per-lane
+p95-cost-doubling signal, and the hard invariant that cron mode never edits
+config or code (including on a p95-only breach).
 """
 import importlib.util
 import json
@@ -24,6 +25,10 @@ def _write(p: Path, total_usd, by_purpose=None):
         "total_usd": total_usd,
         "by_purpose": by_purpose or {},
     }), encoding="utf-8")
+
+
+def _lane(usd, calls):
+    return {"usd": usd, "calls": calls}
 
 
 class SpendBaselineTests(unittest.TestCase):
@@ -151,6 +156,161 @@ class CronModeInvariantTests(unittest.TestCase):
         self.assertEqual(src_before, src_after)       # code untouched
         st = json.loads(state.read_text(encoding="utf-8"))
         self.assertTrue(st["breached"])
+        self.assertEqual(st["incidents"][-1]["remediated"], False)
+
+
+class PercentileTests(unittest.TestCase):
+    """Nearest-rank percentile, hand-derived (no magic numbers)."""
+
+    def test_p95_of_1_to_20(self):
+        # N=20, rank = ceil(0.95*20) = ceil(19.0) = 19 -> sorted[18] == 19.
+        self.assertEqual(chw.percentile(list(range(1, 21)), 95), 19)
+
+    def test_p50_of_1_to_20(self):
+        # rank = ceil(0.50*20) = 10 -> sorted[9] == 10.
+        self.assertEqual(chw.percentile(list(range(1, 21)), 50), 10)
+
+    def test_p95_of_1_to_10(self):
+        # rank = ceil(0.95*10) = ceil(9.5) = 10 -> sorted[9] == 10 (max).
+        self.assertEqual(chw.percentile(list(range(1, 11)), 95), 10)
+
+    def test_unsorted_input_is_sorted_first(self):
+        self.assertEqual(chw.percentile([9, 1, 5, 3, 7], 50), 5)
+
+    def test_empty_is_zero(self):
+        self.assertEqual(chw.percentile([], 95), 0.0)
+
+    def test_clamps_at_bounds(self):
+        self.assertEqual(chw.percentile([2, 4, 6], 100), 6)
+        self.assertEqual(chw.percentile([2, 4, 6], 0), 2)
+
+
+class LaneCostSignalTests(unittest.TestCase):
+    """Per-lane mean-cost/call escalation (week-over-week p95 proxy)."""
+
+    def _dir(self):
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        # 3 prior days: aram_coach steady at 0.01 usd/call (100 calls, $1).
+        for v in ("01", "02", "03"):
+            _write(d / f"2026-05-{v}.json", 1.0,
+                   {"aram_coach": _lane(1.0, 100)})
+        return d
+
+    def test_flags_lane_when_cost_per_call_doubles(self):
+        d = self._dir()
+        # today: same call count but 2.2x the per-call cost (0.022 vs 0.01).
+        _write(d / "2026-05-09.json", 2.2,
+               {"aram_coach": _lane(2.2, 100)})
+        r = chw.lane_cost_signals(d, "2026-05-09")
+        self.assertTrue(r["p95_doubled"])
+        self.assertIn("aram_coach", r["flagged_lanes"])
+        self.assertEqual(r["lanes"]["aram_coach"]["baseline_cost_per_call"],
+                         0.01)
+        self.assertAlmostEqual(
+            r["lanes"]["aram_coach"]["today_cost_per_call"], 0.022)
+
+    def test_no_flag_just_below_2x(self):
+        d = self._dir()
+        # 1.9x the per-call cost - below the 2.0 multiplier.
+        _write(d / "2026-05-09.json", 1.9,
+               {"aram_coach": _lane(1.9, 100)})
+        r = chw.lane_cost_signals(d, "2026-05-09")
+        self.assertFalse(r["p95_doubled"])
+        self.assertEqual(r["flagged_lanes"], [])
+
+    def test_low_call_count_suppresses_signal(self):
+        d = self._dir()
+        # cost/call quadrupled but only 5 calls today (< P95_MIN_CALLS=20):
+        # one expensive call must not trip a week-over-week alert.
+        _write(d / "2026-05-09.json", 0.2,
+               {"aram_coach": _lane(0.2, 5)})
+        r = chw.lane_cost_signals(d, "2026-05-09")
+        self.assertFalse(r["p95_doubled"])
+
+    def test_sub_floor_lane_ignored(self):
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        # baseline 0.0005/call, today 0.0015/call (3x) but both below the
+        # P95_FLOOR_USD=0.002 sub-cent noise floor -> ignored.
+        for v in ("01", "02"):
+            _write(d / f"2026-05-{v}.json", 0.05,
+                   {"sr_coach": _lane(0.05, 100)})
+        _write(d / "2026-05-09.json", 0.15,
+               {"sr_coach": _lane(0.15, 100)})
+        r = chw.lane_cost_signals(d, "2026-05-09")
+        self.assertFalse(r["p95_doubled"])
+
+    def test_no_prior_no_signal(self):
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        _write(d / "2026-05-09.json", 9.0,
+               {"aram_coach": _lane(9.0, 100)})
+        r = chw.lane_cost_signals(d, "2026-05-09")
+        self.assertFalse(r["p95_doubled"])
+        self.assertEqual(r["lanes"]["aram_coach"]["baseline_cost_per_call"],
+                         0.0)
+
+
+class P95BreachCronInvariantTests(unittest.TestCase):
+    def test_p95_only_breach_detects_logs_proposes_no_mutation(self):
+        """A p95-only escalation (daily total NOT breached) must still
+        trip rc=1, classify + propose, and never touch config/code in
+        cron mode."""
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        today = chw.date.today().isoformat()
+        # Daily totals are FLAT (no spend_baseline breach): ~$1/day every
+        # day. But today's vision_relay cost/call tripled vs the prior
+        # baseline (0.03 vs 0.01) -> p95 signal only.
+        for v in ("01", "02", "03"):
+            _write(d / f"2026-05-{v}.json", 1.0,
+                   {"vision_relay": _lane(1.0, 100)})
+        _write(d / (today + ".json"), 1.0,
+               {"vision_relay": _lane(3.0, 100)})
+        state = d / "state.json"
+        cfg_before = (chw._COACH_CFG.read_bytes()
+                      if chw._COACH_CFG.exists() else None)
+        src_before = Path(chw.__file__).read_bytes()
+        rc = chw.main(["--spend-dir", str(d), "--state", str(state)])
+        cfg_after = (chw._COACH_CFG.read_bytes()
+                     if chw._COACH_CFG.exists() else None)
+        src_after = Path(chw.__file__).read_bytes()
+        self.assertEqual(rc, 1)                       # breach via p95 only
+        self.assertEqual(cfg_before, cfg_after)       # config untouched
+        self.assertEqual(src_before, src_after)       # code untouched
+        st = json.loads(state.read_text(encoding="utf-8"))
+        self.assertTrue(st["breached"])
+        self.assertFalse(st["spend"]["breach"])       # NOT a daily-total breach
+        inc = st["incidents"][-1]
+        self.assertTrue(inc["p95_doubled"])
+        self.assertIn("vision_relay", inc["p95_flagged_lanes"])
+        self.assertEqual(inc["remediated"], False)
+        self.assertIn("p95_proposal", inc["classification"])
+        self.assertIn("vision_relay",
+                      inc["classification"]["p95_proposal"])
+
+    def test_remediate_not_triggered_by_p95_only(self):
+        """--remediate only debounces on a SONNET daily-cost breach; a
+        p95-only signal must NOT mutate config even with --remediate."""
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        today = chw.date.today().isoformat()
+        for v in ("01", "02", "03"):
+            _write(d / f"2026-05-{v}.json", 1.0,
+                   {"vision_relay": _lane(1.0, 100)})
+        _write(d / (today + ".json"), 1.0,
+               {"vision_relay": _lane(3.0, 100)})
+        state = d / "state.json"
+        cfg_before = (chw._COACH_CFG.read_bytes()
+                      if chw._COACH_CFG.exists() else None)
+        rc = chw.main(["--remediate", "--spend-dir", str(d),
+                       "--state", str(state)])
+        cfg_after = (chw._COACH_CFG.read_bytes()
+                     if chw._COACH_CFG.exists() else None)
+        self.assertEqual(rc, 1)
+        self.assertEqual(cfg_before, cfg_after)       # p95-only != remediable
+        st = json.loads(state.read_text(encoding="utf-8"))
         self.assertEqual(st["incidents"][-1]["remediated"], False)
 
 
