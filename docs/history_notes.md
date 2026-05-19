@@ -6,6 +6,21 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 - s242: adaptation_hint.py 1602 LOC split (4.C) + view_router cross-link (4.D) (`35566e5` + `5843c93`, pushed)
+
+Recovered an interrupted s241 /done (operator sent /clear mid-ritual): only the WAKEUP rotation was left uncommitted - committed `35998e9` (the s240 feature `306f5f3` + the s241 archival `e4d541b` were already pushed; just the rotation remained). Then pushed the two named autonomous-safe NEXT items.
+
+- **`35566e5` - AUTONOMOUS_AUDIT 4.C `coaches/adaptation_hint.py` split, behavior-preserving (the s237 builders.py facade pattern).** 1602-line monolith -> 7 modules: new `_adaptation_common.py` (shared DB-path / mode-set / threshold internals + `_db` + `_start_of_today_iso`) + 6 concern siblings (`_champion` = the coach hot-path, `_aggregates`, `_session`, `_temporal`, `_digest`, `_cli`). `adaptation_hint.py` is now a pure facade: preserved docstring + split note, re-exports the full 33-name public/semi-public surface, keeps the `__main__` guard.
+- **Key design - the DB_DIR monkeypatch contract:** ~17 test files do `monkeypatch.setattr(coaches.adaptation_hint, "DB_DIR", tmp)` (+ test_round14's direct `ah.DB_DIR=`). `_db()` (in common) resolves the base dir off the facade at call time via `sys.modules.get("coaches.adaptation_hint")` (NOT an import - zero circular-import risk, never raises). Every test keeps working with ZERO test edits. Acyclic graph: common <- siblings <- facade; the only common->facade reference is that runtime sys.modules read inside `_db`.
+- **Byte-verbatim guarantee:** extraction was an AST-span slice with a self-check asserting all 25 def/assign nodes byte-identical to the original before any write (throwaway script, deleted). Function bodies are unchanged; only `_db` gained the facade-indirection (the one necessary, test-proven behavior-preserving change).
+- **`5843c93` - AUTONOMOUS_AUDIT 4.D (audit #11): cross-link `web/js/main.js:_viewAutoDerive` -> `dashboard/view_router_state.py`.** The Python mirror already carried a "change both" header; the JS side had no reciprocal pointer (an editor of `_viewAutoDerive` wouldn't know a pytest mirror exists). 3-line comment, zero runtime change, zero test impact (node --check clean).
+- **Verified (equivalence proof = unchanged tests):** 162/162 `test_adaptation_hint` + `test_round{14,16,18,23,24,25,26,28,29,31,33,34,35,36,37,38}` (incl. every DB_DIR monkeypatch + the direct-assign case); full `tests/` **1405 passed / 30 subtests / 0 failed** (the 8 production importers - supervisor / aram-arena-brawl coaches / coach_integration / agent4 - unaffected); ruff + py_compile clean on all 8 files; CLI (`--help/--trends/--session/--champion`) works through the facade. RC reloaded clean (pid 3184 -> 13328, last_reload_ok=true) - the new structure loads under the live supervisor.
+- **No ENGINE bump / no DS restart** - non-engine, behavior-neutral (ROADMAP item-85 / s237 / s238 precedent).
+- **Don't-redo:** the split is done + behavior-proven; `coaches.adaptation_hint` is a facade, all callers import unchanged - do NOT re-split or "clean up" the modules. The `DB_DIR`-via-`sys.modules` indirection in `_db` is load-bearing for the test contract - do NOT inline it back. 4.D is a comment - done.
+- **NEXT (AUTONOMOUS_AUDIT s5):** the remaining 4.C are operator-gated - `agents/supervisor.py` (2312) is operator-flagged FROZEN (needs explicit approval; the audit's "verify NOT frozen" conflicts with s238's explicit "FROZEN" note - operator must resolve), `effects.py` (5692) is engine-core reviewed-only-never-autonomous. Autonomous-safe but larger: product opportunity #4 (Arena/Mayhem augment recommender foregrounding - `core/augment_recommender.py` ships, needs the marketing-pillar UI surface) or #6 (local MCP exposing Daemon Slayer + match DB on :8893). Optional data enrichment: the one-off 101.qq.com Game-PC CDN capture. DS conditional arc stays operator-CLOSED (s232).
+
+---
+
 # 2026-05-18 - s241: repo-root + Desktop hand-off-artifact archival (`e4d541b`, pushed)
 
 Pure repo-hygiene session (operator-driven file-by-file triage). No code/behavior change, no ENGINE bump, no RC restart.
