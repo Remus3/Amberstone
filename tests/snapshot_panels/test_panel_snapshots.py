@@ -151,6 +151,82 @@ def test_adversarial(fixture_name, mock_server, pw_browser):
     assert not errors, f"JS errors [{fixture_name}]: {errors[:3]}"
 
 
+@pytest.mark.parametrize("fixture_name", ["arena", "aram"])
+def test_augment_reco_panel(fixture_name, mock_server, pw_browser):
+    """CLAUDE #88 foregrounding: the in-game augment-recommendation block
+    must render prominently (not just the #augments-pill tooltip) when the
+    coach payload carries aug_reco.
+
+    The arena + aram fixtures now ship a populated aug_reco list with
+    augment_select=true, so #ib-aug-reco-block must be visible, surface
+    the top pick name, and render at least one ranked row. Other game
+    fixtures (sr/tft/brawl) have no aug_reco - covered implicitly by
+    test_panels which would catch a JS error if the renderer mishandled
+    their absent field.
+    """
+    mock_server.set_fixture(fixture_name)
+
+    from tests.snapshot_panels.conftest import _WS_STUB
+    ctx = pw_browser.new_context(ignore_https_errors=True)
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+
+    try:
+        url = mock_server.url + "/#last-match"
+        page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+        page.add_style_tag(content="""
+          body[data-view="last-match"] main { display: block !important; }
+          body[data-view="last-match"] #view-last-match { display: none !important; }
+        """)
+        # Wait for the recommender block to un-hide (renderAugmentReco
+        # flips [hidden] off once it sees a non-empty aug_reco).
+        page.wait_for_function(
+            "!document.querySelector('#ib-aug-reco-block')?.hidden",
+            timeout=8_000,
+        )
+
+        block = page.locator("#ib-aug-reco-block")
+        assert block.is_visible(), (
+            f"#ib-aug-reco-block not visible (fixture={fixture_name})"
+        )
+
+        # Top pick headline must carry the recommended augment name.
+        top = page.locator("#ib-aug-reco-top").inner_text()
+        fixture = mock_server._store["data"]["coach"]
+        expected_top = fixture["aug_reco_top"]
+        assert expected_top in top, (
+            f"top pick {expected_top!r} not in #ib-aug-reco-top "
+            f"{top!r} (fixture={fixture_name})"
+        )
+
+        # At least one ranked row, and the #1 row flagged is-top.
+        rows = page.locator("#ib-aug-reco-list .ar-row")
+        assert rows.count() >= 1, (
+            f"no .ar-row rendered (fixture={fixture_name})"
+        )
+        assert page.locator("#ib-aug-reco-list .ar-row.is-top").count() == 1, (
+            f"exactly one .is-top row expected (fixture={fixture_name})"
+        )
+
+        # Active-state emphasis (augment_select=true in both fixtures).
+        assert "is-active" in (block.get_attribute("class") or ""), (
+            f"is-active class missing with augment_select=true "
+            f"(fixture={fixture_name})"
+        )
+
+        SCREENSHOTS.mkdir(exist_ok=True)
+        block.screenshot(
+            path=str(SCREENSHOTS / f"aug-reco_{fixture_name}.png")
+        )
+    finally:
+        page.close()
+        ctx.close()
+
+    assert not errors, f"JS errors [{fixture_name}]: {errors[:3]}"
+
+
 def test_mode_transition(mock_server, pw_browser):
     """Hot-swap the SSE fixture across modes; renderer must not leak DOM state.
 
