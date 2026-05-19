@@ -184,6 +184,8 @@ def test_cli_hourly_cross_mode_default(tmp_path: Path, monkeypatch, capsys) -> N
 # ── supervisor endpoint ─────────────────────────────────────────────
 
 def test_supervisor_registers_time_of_day_route() -> None:
-    sup = Path("agents/supervisor.py").read_text(encoding="utf-8")
+    # s243: handler split byte-verbatim into _supervisor_http.py
+    # (supervisor.py is now a facade); runtime routing unchanged.
+    sup = Path("agents/_supervisor_http.py").read_text(encoding="utf-8")
     assert "/api/time-of-day" in sup
     assert "_handle_time_of_day" in sup

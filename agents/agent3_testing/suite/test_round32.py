@@ -211,7 +211,11 @@ def test_dismiss_malformed_url_rejected(fresh_scheduler) -> None:
 # ── supervisor route registration ───────────────────────────────────
 
 def test_supervisor_registers_advisory_routes() -> None:
-    sup = Path("agents/supervisor.py").read_text(encoding="utf-8")
+    # s243: the _QuietHandler web layer was split out of supervisor.py
+    # (now a facade) into agents/_supervisor_http.py byte-verbatim. Route
+    # registration is unchanged at runtime (the bound-method tests above
+    # prove it); this structural pin follows the handler to its new home.
+    sup = Path("agents/_supervisor_http.py").read_text(encoding="utf-8")
     assert "/api/advisories" in sup
     assert "_handle_advisories" in sup
     assert "_handle_task_dismiss" in sup
