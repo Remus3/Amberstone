@@ -1262,4 +1262,4 @@ scaling, ENGINE_VERSION 1.5.0):
   to the corrected, hand-proven engine output.
 """
 
-ENGINE_VERSION = "1.8.0"
+ENGINE_VERSION = "1.9.0"
