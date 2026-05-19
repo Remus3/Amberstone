@@ -566,11 +566,22 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
     # Path 1: explicit override.
     if any(k in payload for k in
            ("target_armor", "target_mr", "target_max_hp", "target_bonus_hp")):
+        # P1-L21: coerce defensively. The bare ``float(... or 0.0)`` form
+        # handled None / 0 / "" but raised ValueError on a non-numeric
+        # string (a malformed champ-select synthetic profile would 500
+        # the whole /api/ds-preview + /api/build-order call). A garbage
+        # override degrades to a sane 0.0 for that field instead - the
+        # same graceful-degrade contract paths 2 and 3 already honor.
+        def _f(key: str) -> float:
+            try:
+                return float(payload.get(key) or 0.0)
+            except (TypeError, ValueError):
+                return 0.0
         return {
-            "target_armor":    float(payload.get("target_armor")    or 0.0),
-            "target_mr":       float(payload.get("target_mr")       or 0.0),
-            "target_max_hp":   float(payload.get("target_max_hp")   or 0.0),
-            "target_bonus_hp": float(payload.get("target_bonus_hp") or 0.0),
+            "target_armor":    _f("target_armor"),
+            "target_mr":       _f("target_mr"),
+            "target_max_hp":   _f("target_max_hp"),
+            "target_bonus_hp": _f("target_bonus_hp"),
             "n_enemies":       0,
             "source":          "explicit-override",
             "aggregator":      "-",
