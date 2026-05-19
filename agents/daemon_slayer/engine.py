@@ -103,6 +103,12 @@ def _scale_champion_base(champ_stats: dict, level: int) -> tuple[dict[str, float
     return scaled, raw_base
 
 
+# League hard-caps attack speed at 2.5 attacks/sec. Mirrors the existing
+# crit clamp to 1.0 - a build that stacks past 2.5 AS gets no further
+# attacks in-game, so the engine must not credit DPS for the excess.
+ATTACK_SPEED_CAP = 2.5
+
+
 def _combine_items(
     scaled: dict[str, float],
     raw_base: dict[str, float],
@@ -151,6 +157,8 @@ def _combine_items(
 
     if out.get("crit", 0.0) > 1.0:
         out["crit"] = 1.0
+    if out.get("as", 0.0) > ATTACK_SPEED_CAP:
+        out["as"] = ATTACK_SPEED_CAP
 
     return out
 
@@ -308,6 +316,8 @@ def build_champion(
             final[k] = final.get(k, 0.0) + v
         if final.get("crit", 0.0) > 1.0:
             final["crit"] = 1.0
+        if final.get("as", 0.0) > ATTACK_SPEED_CAP:
+            final["as"] = ATTACK_SPEED_CAP
     final, mode_notes = _apply_mode_modifiers(final, raw_base, mode, champ)
 
     notes: list[str] = list(mode_notes)

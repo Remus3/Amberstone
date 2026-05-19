@@ -663,7 +663,12 @@ def compute_dps(
     if cond_as > 0:
         if stats_for_rotation is stats:
             stats_for_rotation = dict(stats)
-        stats_for_rotation["as"] = stats_for_rotation.get("as", 0.0) + cond_as
+        # League hard-caps attack speed at 2.5 (literal mirrors the crit
+        # min(..., 1.0) clamp in this module; the engine caps base+item AS,
+        # this re-clamps after conditional AS is folded in).
+        stats_for_rotation["as"] = min(
+            2.5, stats_for_rotation.get("as", 0.0) + cond_as
+        )
     # Phase 4 batch 63 (2026-05-05): per-champion ult cast rate for
     # ability-triggered items (Malignance Hatefog). Looked up from
     # ult_cast_rates.json derived from rewind_history.db spell4_casts.

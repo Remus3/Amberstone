@@ -36,14 +36,15 @@ still a DEFINED, deterministic error, which this lane accepts as correct
 hardening behavior (the contract is "clamp OR defined error", not "must
 clamp").
 
-FLAGGED ROBUSTNESS GAP (documented as xfail; engine edits are owned by a
-parallel lane, this lane is test-only):
+ROBUSTNESS GAP FOUND BY THIS FUZZ - NOW FIXED (P1 iter4 integration):
 
-  Attack speed is NOT capped at League's 2.5 hard cap. A reachable 6-item
-  attack-speed build yields ``stats['as'] ~= 3.47`` and ``compute_dps``
-  consumes it raw at ``dps.py:436`` / ``dps.py:708`` with no ``min(2.5, ...)``,
-  inflating DPS past anything achievable in-game. Output is finite but not
-  sanely bounded to game reality. See ``XXX_FlaggedRobustnessGaps``.
+  Attack speed was NOT capped at League's 2.5 hard cap. A reachable 6-item
+  attack-speed build yielded ``stats['as'] ~= 3.47`` and ``compute_dps``
+  consumed it raw, inflating DPS past anything achievable in-game. Fixed via
+  ``engine.ATTACK_SPEED_CAP`` (clamped in ``_combine_items`` + the
+  ``build_champion`` augment block, plus a defensive re-clamp after
+  conditional AS in ``dps.py``). ``XXX_FlaggedRobustnessGaps`` is now the
+  passing regression lock for the cap.
 """
 
 import math
@@ -587,13 +588,17 @@ class RankItemsBoundaryTests(_SnapBase):
 # the engine owner can act on it.
 # --------------------------------------------------------------------------
 class XXX_FlaggedRobustnessGaps(_SnapBase):
-    """Known-unfixed robustness gaps. xfail keeps the full DS suite green
-    while still asserting the desired post-fix invariant, so the moment the
-    engine owner adds the cap these flip to xpass and surface."""
+    """Robustness gaps surfaced by the P1-L12 fuzz. The 2.5 attack-speed
+    cap gap was FIXED in the P1 iter4 integration; the test below is now a
+    passing regression lock that guards the cap from re-regressing."""
 
-    @unittest.expectedFailure
     def test_attack_speed_must_be_capped_at_2_5(self) -> None:
-        """FLAG: no League 2.5 attack-speed hard cap.
+        """REGRESSION LOCK: League 2.5 attack-speed hard cap.
+
+        Was a P1-L12 flagged gap; FIXED in the P1 iter4 integration
+        (engine.ATTACK_SPEED_CAP applied in _combine_items + the
+        build_champion augment block, plus a defensive re-clamp after
+        conditional AS in dps.py). This now passes and guards the cap.
 
         Repro: ``build_champion('Aatrox', level=18, item_ids=['3046']*6)``
         (six Phantom Dancers - a reachable 6-slot build) resolves
@@ -622,8 +627,8 @@ class XXX_FlaggedRobustnessGaps(_SnapBase):
         rs = build_champion(
             self.snap, CARRY, level=18, item_ids=[PHANTOM_DANCER] * 6
         )
-        # This assertion FAILS today (as ~= 3.47 > 2.5) -> xfail. When the
-        # engine owner adds the cap it will pass -> xpass -> visible signal.
+        # Six Phantom Dancers resolves ~3.47 AS uncapped; the engine now
+        # clamps it to 2.5 (mirrors the crit -> 1.0 clamp).
         self.assertLessEqual(
             rs.stats.get("as", 0.0),
             2.5 + 1e-9,
