@@ -6,6 +6,21 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 - s238: shared smoothed-rate primitive built + 2 consumers wired (`3f4902d`, pushed)
+
+Operator-directed off the AUTONOMOUS_AUDIT s5 fork (item 4). Picked the LOCKED, zero-open-decision engineering session: CLAUDE.md #90 decision (2), the shared smoothed-rate primitive.
+
+- **`3f4902d` (pushed).** New `core/smoothed_rates.py` - ONE module owning the Laplace/Beta family RC had reimplemented 3x: `laplace_rate(w,g,alpha)=(w+a)/(g+2a)` (Beta == Laplace on pair counts, one primitive serves own + pairwise), `shrink(n,k)=n/(n+k)` (exact original `(n+k)>0 else 0.0` guard), `blend(own,prior,w)=w*own+(1-w)*prior`. Pure/stateless/never-raises. TDD: 25 unit tests incl. guard edges + the exact augment_recommender parity vectors.
+- **Consumer 1 - `augment_recommender.py` refactored onto it, provably byte-identical.** `_own_wr`/`_pair_wr`/the blend-weight + synergy-shrink lines now call the primitive; `DEFAULT_ALPHA/K` sourced from it. Equivalence proof = the unchanged `tests/test_augment_recommender.py` (SmoothingMath/BlendRegime/Synergy, exact numeric pins like 2/6, 3/4, 2/7) staying green. Every caller passes alpha=1.0 so the laplace zero-guard is unreachable for real inputs - the extraction cannot shift output.
+- **Consumer 2 - `routes_pickban.py` synergy mood** (the locked "today only a raw recent-form proxy" example). New `_rank_by_smoothed_wr` helper; both synergy sub-paths (ally-joint + recent-form fallback) drop the SQL `ORDER BY raw-WR ... LIMIT` and rank in Python via the primitive. A 2-0 no longer outranks a proven 14-8. **Invariant kept:** displayed `wr_pct` is the RAW observed rate (operator sees real WR); only the ranking key is smoothed. `HAVING games>=2` floor kept; comfort/limit/new untouched (out of the locked "pick/ban synergy" scope - changing them is creep). +5 s238 characterization tests pinning the behavior change + the raw-wr_pct invariant; reason text gains a "(smoothed)" transparency marker (existing `assertIn` tests still hold).
+- **Consumer 3 (c) NOT wired by design:** the s220 PGR Morello-style 0-100 score is ROADMAP-S3, **not built**. The API is shaped to serve it; there is no consumer to wire. Fold the `noaboa07/Morello` (MIT) reference in when S3 ships - do NOT pre-build it here.
+- **Verified:** full `tests/` **1344 passed / 30 subtests / 0 failed** (s237 1314 + 30 new). ruff + py_compile clean; pre-commit hooks green (py_compile + archmap). RC reloaded clean (pid 11020 -> 20488, last_reload_ok=true). Live: synergy no-allies correctly falls back to comfort (`fell_back=True`) because `rewind_history.db` is stale (newest 2025-12-16, 0 matches in the 60d window - **pre-existing**, CLAUDE.md item 14, NOT a regression: my change only reorders non-empty sets, the selection SQL + dispatcher fallback are untouched); synergy **ally-path** (`allies=234` Viego, 16 joint games) verified end-to-end - real smoothed path, `fell_back=None`, "(smoothed)" marker live, raw `wr_pct` correct.
+- **No ENGINE_VERSION bump / no DS restart** - behavior-preserving extraction + non-engine consumer (ROADMAP item-85 precedent for behavior-neutral work).
+- **Don't-redo:** the primitive + the 2 wired consumers are done + proven; do NOT re-extract or re-derive the math. The augment refactor is byte-identical (locked by the unchanged test_augment_recommender suite). PGR consumer (c) is correctly deferred to S3 - not incomplete.
+- **NEXT:** back to the AUTONOMOUS_AUDIT s5 order - product-level competitive opportunity #2 (per-user pick-ban foregrounding) or #3 (on-demand VLM coach), operator-directed; OR the autonomous-safe 4.C `coaches/adaptation_hint.py` (1602) split (`agents/supervisor.py` is FROZEN, `effects.py` is engine reviewed-only-never-autonomous). Optional pick/ban data enrichment: the one-off 101.qq.com Game-PC CDN capture (ROADMAP 🔵). DS conditional arc stays operator-CLOSED (s232).
+
+---
+
 # 2026-05-18 - s237: builders.py payload-boundary split + _enrich_from_lcu coverage (`2d1993c`, pushed)
 
 Executed the s236 next-priority order (AUTONOMOUS_AUDIT s5): 4.E then 4.C, paired so the split is provably behavior-preserving.
