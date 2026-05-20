@@ -241,6 +241,19 @@ def build_state() -> dict:
     except Exception:
         screen_read = {}
 
+    # 2026-05-20 - summoner + ult cooldown ledger. Backend ships per-player
+    # blocks (d/f spell + ult, sorted by next-up ascending). The Live
+    # Client API doesn't expose summoner-cast events so the panel renders
+    # everything as READY today; the wire is here so a future event
+    # source (decision_detector OCR, LCU plugin) can light up the
+    # remaining-cd column without UI/transport churn. Null when no game.
+    summoner_cooldowns: list | None = None
+    try:
+        from dashboard._state_cooldowns import compute_state_cooldowns
+        summoner_cooldowns = compute_state_cooldowns(lc)
+    except Exception:
+        summoner_cooldowns = None
+
     return {
         "mode_key": mode_key,
         "coach_source": coach_file,
@@ -267,6 +280,7 @@ def build_state() -> dict:
         "cs_archetype_pick": cs_archetype_pick,
         "archetype_nudge": archetype_nudge,
         "screen_read": screen_read,
+        "summoner_cooldowns": summoner_cooldowns,
     }
 
 
