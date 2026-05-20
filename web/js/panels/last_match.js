@@ -56,17 +56,17 @@ const SUMMONER_SPELL_BY_ID = {
 };
 
 function _ddragonVersion() {
-  // Unpinned s219 v3: local mirror was bumped to 16.10.1 (cloned from
-  // 16.8.1 since item icons rarely change between minor patches; new
-  // items in 16.10.1 fall back to the live CDN via onerror).
+  // Unpinned s219 v3: local mirror auto-refreshes via tools/ddragon_mirror_refresh.py
+  // (item 101, RC-DDragonMirrorRefresh daily); ITEMS.version drives all asset
+  // URLs. Hardcoded fallback only fires before items_index.json loads.
   return (ITEMS && ITEMS.version) || "16.10.1";
 }
 
 // onerror chain: try local at current ITEMS.version first; on 404 fall
 // back to the official DDragon CDN at the same version. Mirrors the
-// active_match.js cdnRetry pattern. Important because the local
-// /data/ddragon/<ver>/img/item/ mirror sometimes lags the live patch
-// (e.g. ITEMS.version=16.10.1 but on-disk dir is 16.8.1).
+// active_match.js cdnRetry pattern. Stays in place as a safety net for
+// the gap between a new patch on DDragon and the next RC-DDragonMirrorRefresh
+// run (daily 03:30).
 function _onErrCdnFallback(ver, kind, id) {
   // kind = "item" | "spell" - only used to build the CDN url
   const cdnUrl = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/${kind}/${id}.png`;

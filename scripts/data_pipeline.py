@@ -175,6 +175,153 @@ def cmd_items_index(force: bool = False) -> bool:
     return True
 
 
+def cmd_champions_index(force: bool = False) -> bool:
+    """Regenerate web/data/champions_index.json from data/meta/ddragon_champions.json.
+
+    Output schema (matches web/js/lib/items_index.js consumer):
+      {
+        "version": "<patch>",
+        "byId":   { "<numeric-key>": "<DDragon-id>", ... },
+        "byName": { "<normalized-id>": "<DDragon-id>", ... },
+      }
+
+    byName normalizes the DDragon id (lowercase, strip non-alnum); display-name
+    renames like Wukong/Kha'Zix/etc are handled separately via
+    /data/champion_aliases.json (loaded async in items_index.js).
+    No-op if dest already matches the bundle patch (unless force=True).
+    """
+    src = META / "ddragon_champions.json"
+    dest = ROOT / "web" / "data" / "champions_index.json"
+    if not src.exists():
+        log.error("ddragon_champions.json missing - run `data_pipeline.py ddragon` first")
+        return False
+    try:
+        d = json.loads(src.read_text(encoding="utf-8"))
+    except Exception as e:
+        log.error("ddragon_champions.json parse failed: %s", e)
+        return False
+
+    version = d.get("version", "")
+    champs  = d.get("data", {}) or {}
+
+    if dest.exists() and not force:
+        try:
+            existing = json.loads(dest.read_text(encoding="utf-8"))
+            if existing.get("version") == version:
+                log.info("champions_index.json already at patch %s - skipping (use force=True)", version)
+                return True
+        except Exception:
+            pass
+
+    by_id:   dict[str, str] = {}
+    by_name: dict[str, str] = {}
+    for cid in sorted(champs.keys()):
+        info = champs[cid]
+        key  = str(info.get("key", "")).strip()
+        if not key:
+            continue
+        by_id[key] = cid
+        norm = "".join(c for c in cid.lower() if c.isalnum())
+        by_name[norm] = cid
+
+    payload = {"version": version, "byId": by_id, "byName": by_name}
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(dest)
+    log.info("champions_index.json: %d champs, patch %s - written to %s",
+             len(by_id), version, dest)
+    return True
+
+
+def cmd_spells_index(force: bool = False) -> bool:
+    """Regenerate web/data/spells_index.json from data/meta/ddragon_summoner_spells.json.
+
+    Output schema (matches web/js/lib/items_index.js consumer):
+      {
+        "version": "<patch>",
+        "byName": {
+          "<normalized-name-or-id>": {"id":..., "name":..., "img":..., "cd":...},
+          ...,
+          "tp": {... SummonerTeleport entry ...}  # hand alias
+        }
+      }
+
+    Iteration order = spells sorted by numeric .key ascending so canonical
+    Riot ordering (Flash=4 wins 'flash' over CherryFlash=2202; Snowball=32
+    wins 'mark' over SnowURFSnowball_Mark=39). setdefault means first-seen
+    wins on display-name collisions. Hand alias 'tp' -> SummonerTeleport.
+    """
+    src = META / "ddragon_summoner_spells.json"
+    dest = ROOT / "web" / "data" / "spells_index.json"
+    if not src.exists():
+        log.error("ddragon_summoner_spells.json missing - run `data_pipeline.py ddragon` first")
+        return False
+    try:
+        d = json.loads(src.read_text(encoding="utf-8"))
+    except Exception as e:
+        log.error("ddragon_summoner_spells.json parse failed: %s", e)
+        return False
+
+    version = d.get("version", "")
+    spells  = d.get("data", {}) or {}
+
+    if dest.exists() and not force:
+        try:
+            existing = json.loads(dest.read_text(encoding="utf-8"))
+            if existing.get("version") == version:
+                log.info("spells_index.json already at patch %s - skipping (use force=True)", version)
+                return True
+        except Exception:
+            pass
+
+    def _norm(s: str) -> str:
+        return "".join(c for c in s.lower() if c.isalnum())
+
+    def _entry(sid: str, info: dict) -> dict:
+        cd_list = info.get("cooldown") or [0]
+        try:
+            cd = cd_list[0]
+        except (IndexError, TypeError):
+            cd = 0
+        return {
+            "id":   sid,
+            "name": info.get("name", ""),
+            "img":  (info.get("image", {}) or {}).get("full", ""),
+            "cd":   cd,
+        }
+
+    # Sort by numeric .key ascending; iteration order drives setdefault wins.
+    sorted_ids = sorted(spells.keys(), key=lambda s: int(spells[s].get("key", 0) or 0))
+
+    by_name: dict[str, dict] = {}
+    for sid in sorted_ids:
+        info  = spells[sid]
+        entry = _entry(sid, info)
+        nname = _norm(info.get("name", ""))
+        nid   = _norm(sid)
+        if nname:
+            by_name.setdefault(nname, entry)
+        if nid:
+            by_name.setdefault(nid, entry)
+
+    # Hand alias: 'tp' is a common shorthand for Teleport that doesn't fall
+    # out of any normalization rule.
+    if "SummonerTeleport" in spells:
+        by_name["tp"] = _entry("SummonerTeleport", spells["SummonerTeleport"])
+
+    payload = {"version": version, "byName": by_name}
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".tmp")
+    # Match the existing compact-on-one-line layout.
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                   encoding="utf-8")
+    tmp.replace(dest)
+    log.info("spells_index.json: %d entries, patch %s - written to %s",
+             len(by_name), version, dest)
+    return True
+
+
 def cmd_meta():
     """Print current version state without downloading anything."""
     cached = _get_cached_version()
@@ -459,6 +606,8 @@ def cmd_all():
     ok = True
     ok &= cmd_ddragon()
     ok &= cmd_items_index()
+    ok &= cmd_champions_index()
+    ok &= cmd_spells_index()
     ok &= cmd_runes()
     ok &= cmd_icons()
     ok &= cmd_aram_builds()
@@ -472,13 +621,15 @@ def cmd_all():
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 COMMANDS = {
-    "ddragon":     cmd_ddragon,
-    "items_index": cmd_items_index,
-    "runes":       cmd_runes,
-    "icons":       cmd_icons,
-    "meta":        cmd_meta,
-    "aram_builds": cmd_aram_builds,
-    "all":         cmd_all,
+    "ddragon":         cmd_ddragon,
+    "items_index":     cmd_items_index,
+    "champions_index": cmd_champions_index,
+    "spells_index":    cmd_spells_index,
+    "runes":           cmd_runes,
+    "icons":           cmd_icons,
+    "meta":            cmd_meta,
+    "aram_builds":     cmd_aram_builds,
+    "all":             cmd_all,
 }
 
 if __name__ == "__main__":
