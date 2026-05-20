@@ -6,6 +6,16 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-19/20 - overnight autonomous run Phases 1-2 (15-commit mid-run summary; superseded by 2026-05-20 end-to-end consolidated entry)
+
+15-commit mid-run hand-off written before the run continued. Operator's blanket frozen-file grant was honored by NOT needing to touch any frozen file. The full end-to-end 31-commit run (1.9.0 -> 1.17.0) is in the consolidated WAKEUP_NOTES top entry + CLAUDE.md item 108; this entry is the original mid-run snapshot preserved for the timeline.
+
+**Commits (first 15 of the run):** `021c6c4` ASCII retro-sweep 5 files; `3013500` DS iter 1 %-pen multiplicative compose (ENGINE 1.9.0 -> 1.9.1); `7767126` fleet view removal (step 5 sub-unit; remaining count 5 -> 3); `08c6e03` DS iter 2 lethality V14.1 1:1 (1.9.1 -> 1.10.0); `c6327d8` shaper backend primitive (`core/shaper.py` + 57 property tests); `0d04829` champ-select threat tags UX-1 (`/api/personal-vs`); `0ff658a` DS iter 3 `hydra_cleave` unique-passive family (1.10.0 -> 1.10.1); `97c29f5` cooldown ledger backend (`core/summoner_cooldowns.py`); `c7698d9` UX-2 backend `/api/damage-mix`; `ca07e9f` UX-spike backend `/api/spike-curve`; `3e5c5b0` sync 14 stale engine pins; `54c40a8` DS iter 7 BotRK 8% -> 9% melee (1.10.1 -> 1.10.2); `7cdc681` wire `summoner_cooldowns` into `/api/state`; `a9a0bb9` DS iter 8 Immolate + Titanic Cleave Meraki drift (1.10.2 -> 1.11.0); `de4a2c0` UX-2 frontend threat-donut wire.
+
+DS at mid-run: **2703 passed / 1 xfailed / 1664 subtests**, ENGINE 1.11.0 live. The remaining 16 commits + iterations 9-18 continued past this hand-off through to `98e059c` with ENGINE 1.17.0 final state - see the consolidated end-to-end entry.
+
+---
+
 # 2026-05-19 - DS stat-growth fix: linear -> Riot quadratic (`fd80bf3` + docs-sync `17c782e`, pushed)
 
 Found cross-checking DS math vs lolmath `@lolmath/calc`. Focused TDD session in an isolated worktree (now removed; branch `fix/ds-stat-growth` FF-merged to main).
