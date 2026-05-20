@@ -13,6 +13,9 @@ python-embed/
 # Audit-cleanup quarantine (move-not-delete pattern; safe to rm after stability confirmed)
 _archive/
 
+# Scratch / session-debug logs (pytest output, wakeup snapshots, iter loggings)
+_scratch/
+
 # Match-history + decisions databases (1.8 GB, mostly rewind_history.db)
 # Recursive - earlier `data/*.db` only caught direct children, not data/db/*.db
 **/*.db
