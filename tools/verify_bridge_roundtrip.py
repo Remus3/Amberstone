@@ -1,8 +1,9 @@
 """verify_bridge_roundtrip.py - one-shot verifier for the Legion /loop pattern.
 
 Issued task target=legion source=gamepc → expects Legion's /loop /process-
-bridge-tasks (registered in claude-rc.ps1 spawn) to pick it up, execute the
-prompt, and post a kind=result via bridge_post_result.py --reply-to gamepc.
+bridge-tasks (running in any open Claude Code session on Legion) to pick it
+up, execute the prompt, and post a kind=result via bridge_post_result.py
+--reply-to gamepc.
 Result lands on Legion's local /api/bridge log, observable from this script.
 
 Source=gamepc is chosen deliberately: --reply-to gamepc routes through the
