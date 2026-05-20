@@ -29,4 +29,5 @@
 @import './panels/primitives.css';
 @import './panels/active_match.css';
 @import './panels/cd_ledger.css';
+@import './panels/spike_curve.css';
 @import './panels/last_match.css';
