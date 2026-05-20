@@ -264,8 +264,13 @@ class DefensiveOnlyExpansionTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_collector_no_periodic(self) -> None:
+        # Iter 10 (2026-05-20): promoted off defensive_only via the
+        # lethality plumbing - 10 Lethality stat block contributes to
+        # the rest of the rotation; the Death execute is still a finisher
+        # (no per-rotation DPS proc) so periodics stays (). Pin both.
         e = ITEM_EFFECTS["6676"]
-        self.assertTrue(e.defensive_only)
+        self.assertFalse(e.defensive_only)
+        self.assertAlmostEqual(e.lethality, 10.0, places=2)
         self.assertEqual(e.periodics, ())
 
     def test_phantom_dancer_no_periodic(self) -> None:
@@ -3554,6 +3559,26 @@ class Batch29DefensiveOnlyCoverageTests(unittest.TestCase):
         self.assertTrue(e.defensive_only)
         self.assertEqual(e.periodics, ())
         self.assertIn("spelldance", e.note.lower())
+
+    def test_the_collector_present_with_lethality(self) -> None:
+        # Iter 10 lethality lane audit (2026-05-20): cross-checked the
+        # full lethality + flat-pen + magic-pen audit set vs Community
+        # Dragon 16.10 ground truth and found one drift: The Collector
+        # (6676) carries 10 Lethality in the stat block but the engine
+        # had defensive_only=True with lethality=0.0 because the entry
+        # was originally tagged for the Death execute (which is NOT a
+        # per-rotation DPS proc; the note is correct) but the lethality
+        # plumbing batch (30) never promoted Collector off defensive
+        # the way it did Hubris / Youmuu's / etc. The execute stays
+        # zero-rotation-DPS; the 10 Lethality stat block contributes
+        # to the rest of the rotation and must be pinned. CD 16.10:
+        # 50 AD + 10 Lethality + 25% Crit + Death execute + Taxes gold.
+        e = ITEM_EFFECTS["6676"]
+        self.assertEqual(e.name, "The Collector")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertAlmostEqual(e.lethality, 10.0, places=2)
+        self.assertIn("execute", e.note.lower())
 
 
 class LiandrysSufferingTests(unittest.TestCase):
@@ -7739,7 +7764,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.11.0")
+        self.assertEqual(ENGINE_VERSION, "1.12.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7800,7 +7825,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.11.0")
+        self.assertEqual(ENGINE_VERSION, "1.12.0")
 
 
 if __name__ == "__main__":
