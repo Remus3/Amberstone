@@ -418,6 +418,83 @@ function _csvHumanPhase(phase) {
 // (default true). ARAM passes `showGuess: false` since roles are
 // random and the (guess) annotation is meaningless; Arena uses a
 // dedicated 2-cell ally renderer instead.
+// Personal-vs threat tag cache. Keyed by champId; values are
+// {ts, payload|null|"pending"}. TTL matches the backend cache (60s)
+// so repeat renders inside a single champ-select tick are free.
+const _csvThreatCache = new Map();
+const _CSV_THREAT_TTL_MS = 60 * 1000;
+const _CSV_THREAT_DAYS = 30;
+
+function _csvThreatBandCls(band) {
+  // Defensive: trust the backend but coerce unknowns to "unknown" so
+  // an unexpected value doesn't strip the placeholder styling.
+  if (band === "red" || band === "amber" || band === "green") return band;
+  return "unknown";
+}
+
+function _csvThreatTagApply(el, payload, champNm) {
+  if (!el || !payload || !payload.ok) {
+    if (el) {
+      el.className = "csv-team-cell-threat csv-team-cell-threat--unknown";
+      el.textContent = "n/a";
+      el.title = "no data for " + (champNm || "this champion");
+    }
+    return;
+  }
+  const band = _csvThreatBandCls(payload.threat_band);
+  el.className = "csv-team-cell-threat csv-team-cell-threat--" + band;
+  const n = payload.sample_n | 0;
+  if (n <= 0) {
+    el.textContent = "0g";
+    el.title = "no games vs " + (payload.champ_name || champNm)
+             + " in last " + (payload.days | 0) + "d";
+    return;
+  }
+  // "5-2 (71%)" - explicit W-L is more readable than just a percentage
+  // when the sample is small (the band already encodes WR colour).
+  el.textContent = (payload.wins | 0) + "-" + (payload.losses | 0)
+                 + " (" + (payload.wr_pct | 0) + "%)";
+  el.title = "personal record vs " + (payload.champ_name || champNm)
+           + " - last " + (payload.days | 0) + "d ("
+           + (payload.wins | 0) + "W " + (payload.losses | 0) + "L)";
+}
+
+function _csvThreatTagFetch(champId, champNm, el) {
+  if (!champId || champId <= 0 || !el) return;
+  const cached = _csvThreatCache.get(champId);
+  const now = Date.now();
+  if (cached && cached.payload && (now - cached.ts) < _CSV_THREAT_TTL_MS) {
+    _csvThreatTagApply(el, cached.payload, champNm);
+    return;
+  }
+  if (cached && cached.payload === "pending") {
+    // Already in flight - leave placeholder text; the in-flight resolver
+    // will paint this DOM node too because it stamps every live element
+    // with the matching data-champ-id.
+    return;
+  }
+  _csvThreatCache.set(champId, { ts: now, payload: "pending" });
+  const url = "/api/personal-vs?champ_id=" + (champId | 0)
+            + "&days=" + _CSV_THREAT_DAYS;
+  fetch(url, { credentials: "same-origin", cache: "no-store" })
+    .then((r) => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
+    .then((data) => {
+      _csvThreatCache.set(champId, { ts: Date.now(), payload: data });
+      // Paint every live element for this champion. _csvRenderTeam may
+      // have re-rendered the cell since the fetch fired, so query by
+      // data-champ-id rather than holding a stale reference.
+      document
+        .querySelectorAll(".csv-team-cell-threat[data-champ-id='" + (champId | 0) + "']")
+        .forEach((node) => _csvThreatTagApply(node, data, champNm));
+    })
+    .catch(() => {
+      _csvThreatCache.set(champId, { ts: Date.now(), payload: null });
+      document
+        .querySelectorAll(".csv-team-cell-threat[data-champ-id='" + (champId | 0) + "']")
+        .forEach((node) => _csvThreatTagApply(node, null, champNm));
+    });
+}
+
 function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
   const list = document.getElementById(listId);
   if (!list) return;
@@ -537,6 +614,18 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
                     : (confPct >= 80) ? "LCU role guess - pick not yet committed"
                     : "no role assigned yet";
       li.appendChild(confEl);
+
+      // Personal-vs threat tag (UX win): inline pill showing operator's
+      // lifetime record vs this enemy champion, color-coded by win-rate
+      // band. Fetches in parallel per cell and slots the result into the
+      // already-rendered placeholder via _csvThreatTagApply.
+      const threatEl = document.createElement("span");
+      threatEl.className = "csv-team-cell-threat csv-team-cell-threat--unknown";
+      threatEl.textContent = "...";
+      threatEl.title = "personal record vs " + champNm + " - loading";
+      threatEl.dataset.champId = String(cid);
+      li.appendChild(threatEl);
+      _csvThreatTagFetch(cid, champNm, threatEl);
     }
     list.appendChild(li);
   });
