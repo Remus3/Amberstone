@@ -197,3 +197,263 @@ class BotRKMistsEdgeRateTests(unittest.TestCase):
                 base_ad=60.0, bonus_ad=0.0, level=11, target_max_hp=tgt_hp,
             )
             self.assertAlmostEqual(proc.resolve_damage(ctx), want, places=6)
+
+
+# ---------------------------------------------------------------------------
+# Iter 8 (2026-05-19): Immolate family + Titanic Cleave Meraki drift fixes.
+# ---------------------------------------------------------------------------
+#
+# The iter-7 BotRK fix found a stale percentage. Widening the audit to every
+# `* c.<stat>_(hp|ad|ap)` site against Meraki bulk items (16.10.1) caught
+# four more drifts in the same shape - Immolate family + Titanic Hydra
+# Cleave. The engine's 2026-05-04 numbers no longer line up with current
+# Meraki text, which is the authoritative source per CLAUDE.md.
+#
+# * Sunfire Aegis (3068): Meraki "20 + 1% bonus health" - was "12 + 1.5%".
+#   Base 12 -> 20, scale 1.5% -> 1.0% bonus_hp.
+# * Hollow Radiance (6664): Meraki "15 + 1% bonus health" - was "12 + 1.5%".
+#   Base 12 -> 15, scale 1.5% -> 1.0% bonus_hp.
+# * Bami's Cinder (6660): Meraki flat "15 magic damage" (no HP scaling at
+#   this tier) - was "12 + 1.0% bonus_hp". Base 12 -> 15, drop bonus_hp.
+# * Titanic Hydra (3748) Cleave primary: Meraki "1% maximum health" - was
+#   "5 + 1.5% bonus health". Drop flat 5, switch bonus_hp -> max_hp,
+#   coefficient 1.5% -> 1.0%.
+# * Titanic Hydra (3748) Cleave to nearby: Meraki "3% maximum health to
+#   others" - was "40% total AD to nearby". Switch AD coefficient to
+#   max_hp; 0.40*(base+bonus AD) -> 0.03*max_hp.
+#
+# Arena mirrors (223068, 226664, 226660, 223748) carry the same SR
+# coefficients - one Meraki source of truth per item family.
+
+def _titanic_procs(item_id: str):
+    e = ITEM_EFFECTS[item_id]
+    # Titanic carries (primary, cleave-to-nearby) - both periodic, the only
+    # multi-proc Immolate-family entry in scope.
+    assert len(e.periodics) == 2, f"{item_id} expected exactly two periodics"
+    return e.periodics[0], e.periodics[1]
+
+
+class SunfireImmolateMagnitudeTests(unittest.TestCase):
+    """Meraki Sunfire Aegis Immolate: 20 + 1% bonus_hp magic per second.
+
+    Engine prior: 12 + 1.5% caster_bonus_hp (multi-proc-mult by n).
+    Fix is base 12 -> 20 and bonus_hp coefficient 1.5% -> 1.0%.
+    """
+
+    def _expected(self, bonus_hp: float, n: float) -> float:
+        return n * (20.0 + 0.010 * bonus_hp)
+
+    def test_base_3068_zero_bonus_hp_flat_20(self) -> None:
+        proc = _proc("3068")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=0.0, targets_in_rotation=1.0,
+        )
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 20.0, places=6)
+
+    def test_base_3068_thousand_bonus_hp(self) -> None:
+        proc = _proc("3068")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=1000.0, targets_in_rotation=1.0,
+        )
+        # 1.0 * (20 + 0.010 * 1000) = 30
+        self.assertAlmostEqual(
+            proc.resolve_damage(ctx), self._expected(1000.0, 1.0), places=6,
+        )
+
+    def test_base_3068_aoe_n3_scales(self) -> None:
+        proc = _proc("3068")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=1000.0, targets_in_rotation=3.0,
+        )
+        # 3.0 * (20 + 10) = 90
+        self.assertAlmostEqual(
+            proc.resolve_damage(ctx), self._expected(1000.0, 3.0), places=6,
+        )
+
+    def test_arena_223068_mirrors_sr(self) -> None:
+        proc = _proc("223068")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=800.0, targets_in_rotation=1.0,
+        )
+        # 1.0 * (20 + 0.010 * 800) = 28
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 28.0, places=6)
+
+
+class HollowRadianceImmolateMagnitudeTests(unittest.TestCase):
+    """Meraki Hollow Radiance Immolate: 15 + 1% bonus_hp magic per second.
+
+    Engine prior: 12 + 1.5% caster_bonus_hp. Fix base 12 -> 15 and 1.5%
+    -> 1.0%. Note: Desolate (eruption on kill) still not modeled - this
+    iter only touches the Immolate magnitude.
+    """
+
+    def test_base_6664_zero_bonus_hp_flat_15(self) -> None:
+        proc = _proc("6664")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=0.0, targets_in_rotation=1.0,
+        )
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 15.0, places=6)
+
+    def test_base_6664_thousand_bonus_hp(self) -> None:
+        proc = _proc("6664")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=1000.0, targets_in_rotation=1.0,
+        )
+        # 1.0 * (15 + 10) = 25
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 25.0, places=6)
+
+    def test_arena_226664_mirrors_sr(self) -> None:
+        proc = _proc("226664")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=500.0, targets_in_rotation=2.0,
+        )
+        # 2.0 * (15 + 0.010 * 500) = 2.0 * 20 = 40
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 40.0, places=6)
+
+
+class BamisCinderImmolateMagnitudeTests(unittest.TestCase):
+    """Meraki Bami's Cinder Immolate: flat 15 magic damage per second.
+
+    Engine prior: 12 + 1.0% caster_bonus_hp. Fix: base 12 -> 15 and DROP
+    the bonus_hp coefficient entirely (Cinder is the components-tier
+    Immolate; HP scaling only kicks in at the upgraded items, Sunfire/
+    Hollow Radiance).
+    """
+
+    def test_base_6660_zero_bonus_hp_flat_15(self) -> None:
+        proc = _proc("6660")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=0.0, targets_in_rotation=1.0,
+        )
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 15.0, places=6)
+
+    def test_base_6660_bonus_hp_does_not_scale(self) -> None:
+        # The whole point: Bami's must NOT scale with bonus_hp. Same flat
+        # 15 at zero and at 2000 bonus_hp.
+        proc = _proc("6660")
+        ctx_low = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=0.0, targets_in_rotation=1.0,
+        )
+        ctx_high = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=2000.0, targets_in_rotation=1.0,
+        )
+        self.assertAlmostEqual(
+            proc.resolve_damage(ctx_low),
+            proc.resolve_damage(ctx_high),
+            places=6,
+        )
+
+    def test_arena_226660_mirrors_sr(self) -> None:
+        proc = _proc("226660")
+        ctx = CallContext(
+            base_ad=0.0, bonus_ad=0.0, level=11,
+            caster_bonus_hp=1500.0, targets_in_rotation=2.0,
+        )
+        # 2.0 * 15 = 30 (bonus_hp ignored)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 30.0, places=6)
+
+
+class TitanicHydraCleaveMagnitudeTests(unittest.TestCase):
+    """Meraki Titanic Hydra Cleave: 1% max_hp primary + 3% max_hp to nearby.
+
+    Engine prior: 5 + 1.5% caster_bonus_hp primary; 40% total AD to
+    nearby. Fixes are large enough to be shape-changes (bonus_hp ->
+    max_hp; AD coefficient -> max_hp coefficient) but the schema
+    (2 PeriodicProcs, both PHYSICAL on_attack) stays unchanged.
+
+    Meraki text (16.10.1): "Basic attacks on-hit deal 1%|0.5% maximum
+    health bonus physical damage to the target and 3%|1.5% maximum
+    health physical damage to other enemies in a cone in the direction
+    of the primary target." Engine pins melee values (1% / 3%) per the
+    convention that fixed the BotRK / Eclipse / Hullbreaker / Kraken
+    items in iter 7.
+    """
+
+    def test_3748_primary_one_percent_max_hp(self) -> None:
+        primary, _ = _titanic_procs("3748")
+        ctx = CallContext(
+            base_ad=80.0, bonus_ad=40.0, level=11,
+            caster_max_hp=3000.0, caster_bonus_hp=1200.0,
+            targets_in_rotation=1.0,
+        )
+        # 0.01 * 3000 = 30; AD totally unused.
+        self.assertAlmostEqual(primary.resolve_damage(ctx), 30.0, places=6)
+
+    def test_3748_primary_independent_of_bonus_hp_and_ad(self) -> None:
+        # Sanity: changing AD or bonus_hp at fixed max_hp must NOT shift
+        # primary damage (max_hp is the binding variable).
+        primary, _ = _titanic_procs("3748")
+        a = CallContext(
+            base_ad=60.0, bonus_ad=0.0, level=11,
+            caster_max_hp=2500.0, caster_bonus_hp=0.0,
+            targets_in_rotation=1.0,
+        )
+        b = CallContext(
+            base_ad=120.0, bonus_ad=80.0, level=11,
+            caster_max_hp=2500.0, caster_bonus_hp=1500.0,
+            targets_in_rotation=1.0,
+        )
+        self.assertAlmostEqual(
+            primary.resolve_damage(a),
+            primary.resolve_damage(b),
+            places=6,
+        )
+        self.assertAlmostEqual(primary.resolve_damage(a), 25.0, places=6)
+
+    def test_3748_cleave_to_nearby_three_percent_max_hp_scales(self) -> None:
+        _, cleave = _titanic_procs("3748")
+        ctx_n1 = CallContext(
+            base_ad=80.0, bonus_ad=40.0, level=11,
+            caster_max_hp=3000.0, targets_in_rotation=1.0,
+        )
+        ctx_n3 = CallContext(
+            base_ad=80.0, bonus_ad=40.0, level=11,
+            caster_max_hp=3000.0, targets_in_rotation=3.0,
+        )
+        # n=1: max(0, 0) * anything = 0
+        self.assertAlmostEqual(cleave.resolve_damage(ctx_n1), 0.0, places=6)
+        # n=3: max(0, 2) * 0.03 * 3000 = 180
+        self.assertAlmostEqual(cleave.resolve_damage(ctx_n3), 180.0, places=6)
+
+    def test_3748_cleave_independent_of_ad(self) -> None:
+        # Was 40% total AD; now max_hp%. Changing AD must NOT shift the
+        # cleave value at fixed max_hp.
+        _, cleave = _titanic_procs("3748")
+        a = CallContext(
+            base_ad=60.0, bonus_ad=0.0, level=11,
+            caster_max_hp=2400.0, targets_in_rotation=3.0,
+        )
+        b = CallContext(
+            base_ad=160.0, bonus_ad=100.0, level=11,
+            caster_max_hp=2400.0, targets_in_rotation=3.0,
+        )
+        self.assertAlmostEqual(
+            cleave.resolve_damage(a),
+            cleave.resolve_damage(b),
+            places=6,
+        )
+        # Both: max(0, 2) * 0.03 * 2400 = 144
+        self.assertAlmostEqual(cleave.resolve_damage(a), 144.0, places=6)
+
+    def test_arena_223748_mirrors_sr_shape(self) -> None:
+        # Both procs present, both max_hp-scaled, no AD coefficient.
+        primary, cleave = _titanic_procs("223748")
+        ctx = CallContext(
+            base_ad=100.0, bonus_ad=50.0, level=11,
+            caster_max_hp=3500.0, caster_bonus_hp=1500.0,
+            targets_in_rotation=2.0,
+        )
+        # Primary: 0.01 * 3500 = 35
+        self.assertAlmostEqual(primary.resolve_damage(ctx), 35.0, places=6)
+        # Cleave: max(0, 1) * 0.03 * 3500 = 105
+        self.assertAlmostEqual(cleave.resolve_damage(ctx), 105.0, places=6)

@@ -1557,11 +1557,14 @@ class MultiProcSchemaTests(unittest.TestCase):
 
     def test_titanic_cleave_to_others_scales_with_n(self) -> None:
         cleave_others = ITEM_EFFECTS["3748"].periodics[1]
-        # Total AD = 120, n=3 → max(0, 3-1) * 0.40 * 120 = 96
+        # Iter 8 (2026-05-19): Meraki cleave-to-others = 3% max_hp per
+        # extra target (was 40% total AD). With caster_max_hp=2000 and
+        # n=3: max(0, 3-1) * 0.03 * 2000 = 120.
         ctx = CallContext(
-            base_ad=80, bonus_ad=40, level=11, targets_in_rotation=3.0,
+            base_ad=80, bonus_ad=40, level=11,
+            caster_max_hp=2000, targets_in_rotation=3.0,
         )
-        self.assertAlmostEqual(cleave_others.resolve_damage(ctx), 96.0, places=3)
+        self.assertAlmostEqual(cleave_others.resolve_damage(ctx), 120.0, places=3)
 
     def test_titanic_primary_proc_fires_on_single_target(self) -> None:
         # On Aatrox (all-n=1 rotations), Titanic's primary proc fires
@@ -1573,15 +1576,16 @@ class MultiProcSchemaTests(unittest.TestCase):
 
     def test_engine_iterates_both_titanic_procs(self) -> None:
         # End-to-end test that the engine actually sums BOTH procs (not
-        # just the first). Construct two builds, identical except one
-        # uses an item-id that doesn't exist (engine ignores it), and
-        # compare. Easier path: directly compute proc DPS via the
-        # internal helper and assert magnitudes.
+        # just the first). Iter 8 (2026-05-19): Meraki Cleave 1%/3%
+        # caster MAX HP (was 5+1.5% bonus_hp primary + 40% total AD to
+        # nearby). Ctx pinned with explicit max_hp so the post-fix
+        # numbers are derivable from the formula.
         from agents.daemon_slayer.dps import _periodic_proc_dps
         from agents.daemon_slayer.effects import collect_effects
         ctx = CallContext(
             base_ad=80, bonus_ad=40, level=11,
-            caster_bonus_hp=600, targets_in_rotation=3.0,
+            caster_max_hp=2500, caster_bonus_hp=600,
+            targets_in_rotation=3.0,
         )
         effects = collect_effects(["3748"])
         # 1.0 attack, 1.0 second rotation (so DPS == per-attack damage).
@@ -1590,19 +1594,21 @@ class MultiProcSchemaTests(unittest.TestCase):
             target_armor_for_physical=0.0, target_mr=0.0,
             mode_dmg_mult=1.0, call_ctx=ctx,
         )
-        # Primary proc damage: 5 + 0.015*600 = 14
-        # Cleave-to-others damage: max(0, 3-1) * 0.40 * 120 = 96
-        # Sum: 110. With armor_factor=1.0 and mode_mult=1.0, dps = 110/1 = 110.
-        self.assertAlmostEqual(dps, 110.0, places=3)
+        # Primary proc damage: 0.01 * 2500 = 25
+        # Cleave-to-others damage: max(0, 3-1) * 0.03 * 2500 = 150
+        # Sum: 175. With armor_factor=1.0 and mode_mult=1.0, dps = 175/1.
+        self.assertAlmostEqual(dps, 175.0, places=3)
 
     def test_engine_titanic_single_target_only_primary_fires(self) -> None:
-        # Same harness as above but n=1.0 → cleave-to-others = 0.
-        # Result should be primary-only = 14 dps.
+        # Same harness as above but n=1.0 -> cleave-to-others = 0. Iter 8
+        # (2026-05-19): Meraki primary 1% max_hp - result is primary-only
+        # = 0.01 * 2500 = 25 dps.
         from agents.daemon_slayer.dps import _periodic_proc_dps
         from agents.daemon_slayer.effects import collect_effects
         ctx = CallContext(
             base_ad=80, bonus_ad=40, level=11,
-            caster_bonus_hp=600, targets_in_rotation=1.0,
+            caster_max_hp=2500, caster_bonus_hp=600,
+            targets_in_rotation=1.0,
         )
         effects = collect_effects(["3748"])
         dps = _periodic_proc_dps(
@@ -1610,7 +1616,7 @@ class MultiProcSchemaTests(unittest.TestCase):
             target_armor_for_physical=0.0, target_mr=0.0,
             mode_dmg_mult=1.0, call_ctx=ctx,
         )
-        self.assertAlmostEqual(dps, 14.0, places=3)
+        self.assertAlmostEqual(dps, 25.0, places=3)
 
 
 class ImmolateItemTests(unittest.TestCase):
@@ -1650,34 +1656,36 @@ class ImmolateItemTests(unittest.TestCase):
         self.assertIn("immolate", proc.name.lower())
 
     def test_immolate_resolves_with_bonus_hp_and_n_equals_1(self) -> None:
-        # Single-target rotation, 1000 bonus HP →
-        # 1.0 * (12 + 0.015 * 1000) = 27 per second.
+        # Iter 8 (2026-05-19): Sunfire Immolate corrected to Meraki
+        # 16.10.1 - 20 + 1% bonus_hp. Single-target rotation, 1000 bonus
+        # HP -> 1.0 * (20 + 0.010 * 1000) = 30 per second.
         proc = ITEM_EFFECTS["3068"].periodics[0]
         ctx = CallContext(
             base_ad=0, bonus_ad=0, level=11,
             caster_bonus_hp=1000.0, targets_in_rotation=1.0,
         )
-        self.assertAlmostEqual(proc.resolve_damage(ctx), 27.0, places=3)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 30.0, places=3)
 
     def test_immolate_aoe_incl_primary_multiplier(self) -> None:
-        # 3-target rotation, 1000 bonus HP →
-        # 3.0 * (12 + 0.015 * 1000) = 81 per second.
+        # Iter 8 (2026-05-19): 3-target rotation, 1000 bonus HP ->
+        # 3.0 * (20 + 0.010 * 1000) = 90 per second.
         proc = ITEM_EFFECTS["3068"].periodics[0]
         ctx = CallContext(
             base_ad=0, bonus_ad=0, level=11,
             caster_bonus_hp=1000.0, targets_in_rotation=3.0,
         )
-        self.assertAlmostEqual(proc.resolve_damage(ctx), 81.0, places=3)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 90.0, places=3)
 
     def test_immolate_zero_bonus_hp_floor(self) -> None:
-        # No HP items in the build → flat 12 dps per second per target.
-        # Single target → 12 per second.
+        # Iter 8 (2026-05-19): Sunfire base raised 12 -> 20. No HP items
+        # in the build -> flat 20 dps per second per target. Single
+        # target -> 20 per second.
         proc = ITEM_EFFECTS["3068"].periodics[0]
         ctx = CallContext(
             base_ad=0, bonus_ad=0, level=11,
             caster_bonus_hp=0.0, targets_in_rotation=1.0,
         )
-        self.assertAlmostEqual(proc.resolve_damage(ctx), 12.0, places=3)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 20.0, places=3)
 
     def test_sunfire_lifts_dps_on_tank_champion(self) -> None:
         # Sunfire's stat block alone contributes zero DPS (350 HP, 50 armor -
@@ -1698,8 +1706,9 @@ class ImmolateItemTests(unittest.TestCase):
 
     def test_immolate_engine_per_second_tick(self) -> None:
         # End-to-end test that the engine does the per-second math right.
-        # 1.0 second rotation duration with the Sunfire effect, 1000 bonus
-        # HP, n=1: should emit 27 dps (1 second × 27 damage/second).
+        # Iter 8 (2026-05-19): Sunfire 20 + 1% bonus_hp. 1.0 second
+        # rotation duration with Sunfire, 1000 bonus HP, n=1: should
+        # emit 30 dps (1 second * 30 damage/second).
         from agents.daemon_slayer.dps import _periodic_proc_dps
         from agents.daemon_slayer.effects import collect_effects
         ctx = CallContext(
@@ -1708,16 +1717,17 @@ class ImmolateItemTests(unittest.TestCase):
         )
         effects = collect_effects(["3068"])
         # No basic attacks; the proc fires on the seconds-track (every_n_seconds=1.0).
-        # 1.0 second / 1.0 = 1 proc, damage 27 → 27 dps.
+        # 1.0 second / 1.0 = 1 proc, damage 30 -> 30 dps.
         dps = _periodic_proc_dps(
             effects, total_attacks=0.0, duration=1.0,
             target_armor_for_physical=0.0, target_mr=0.0,
             mode_dmg_mult=1.0, call_ctx=ctx,
         )
-        self.assertAlmostEqual(dps, 27.0, places=3)
+        self.assertAlmostEqual(dps, 30.0, places=3)
 
     def test_immolate_engine_aoe_uplift_in_rotation(self) -> None:
-        # Same harness, n=3: 3 nearby enemies each take 27 dps → 81 dps total.
+        # Iter 8 (2026-05-19): Same harness, n=3: 3 nearby enemies each
+        # take 30 dps -> 90 dps total.
         from agents.daemon_slayer.dps import _periodic_proc_dps
         from agents.daemon_slayer.effects import collect_effects
         ctx = CallContext(
@@ -1730,12 +1740,12 @@ class ImmolateItemTests(unittest.TestCase):
             target_armor_for_physical=0.0, target_mr=0.0,
             mode_dmg_mult=1.0, call_ctx=ctx,
         )
-        self.assertAlmostEqual(dps, 81.0, places=3)
+        self.assertAlmostEqual(dps, 90.0, places=3)
 
     def test_immolate_uses_target_mr_not_armor(self) -> None:
-        # Magic-typed proc → MR resists, not armor. With target_mr=100,
-        # damage is halved (factor 100/(100+100) = 0.5). Bonus HP=1000,
-        # n=1 → 27 raw, 13.5 post-MR.
+        # Magic-typed proc -> MR resists, not armor. With target_mr=100,
+        # damage is halved (factor 100/(100+100) = 0.5). Iter 8: Sunfire
+        # 20 + 1% bonus_hp at 1000 bonus_hp, n=1 -> 30 raw, 15 post-MR.
         from agents.daemon_slayer.dps import _periodic_proc_dps
         from agents.daemon_slayer.effects import collect_effects
         ctx = CallContext(
@@ -1749,7 +1759,7 @@ class ImmolateItemTests(unittest.TestCase):
             target_armor_for_physical=0.0, target_mr=100.0,
             mode_dmg_mult=1.0, call_ctx=ctx,
         )
-        self.assertAlmostEqual(dps, 13.5, places=3)
+        self.assertAlmostEqual(dps, 15.0, places=3)
 
 
 class UniquePassiveTests(unittest.TestCase):
@@ -1803,12 +1813,14 @@ class UniquePassiveTests(unittest.TestCase):
         self.assertEqual(effects[2].item_id, "3071")
 
     def test_sunfire_solo_unchanged(self) -> None:
-        # Single-item Sunfire DPS must be unchanged - dedup only fires
-        # when the same key appears twice.
-        r = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068"])
-        # Rebaselined for Riot quadratic stat growth (was 64.32 under the
-        # old linear scaling; Aatrox lvl-11 base AD is now correctly lower).
-        self.assertAlmostEqual(r.weighted_dps, 61.695515625, places=4)
+        # Single-item Sunfire DPS regression guard. Iter 8 (2026-05-19):
+        # rebaselined for the Meraki 16.10.1 Immolate fix - 20 + 1%
+        # bonus_hp (was 12 + 1.5% bonus_hp). Aatrox L11 with Sunfire
+        # 350 bonus HP -> per-tick 20 + 0.010 * 350 = 23.5 (was 17.25).
+        self.assertAlmostEqual(
+            compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068"]).weighted_dps,
+            67.945515625, places=4,
+        )
 
     def test_sunfire_plus_hollow_radiance_no_double_count(self) -> None:
         # The whole point of this batch: building both should NOT add
@@ -1817,15 +1829,16 @@ class UniquePassiveTests(unittest.TestCase):
         # not a second Immolate tick.
         sunfire_only = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068"])
         both = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068", "6664"])
-        # Bonus HP rises from 350 → 750 (Sunfire 350 + HR 400). Sunfire's
-        # Immolate proc damage = 12 + 0.015 * 750 = 23.25 per second per
-        # target (vs 17.25 with Sunfire alone). So delta should be
-        # 23.25 - 17.25 = 6.0 dps. NOT 23.25 + 18.0 (double-count) =
-        # 41.25 over solo, which would be the regression case.
+        # Iter 8 (2026-05-19): post-Meraki-fix coefficient is 1% bonus_hp
+        # (was 1.5%). Bonus HP rises from 350 -> 750 (Sunfire 350 + HR
+        # 400). Sunfire's Immolate proc damage = 20 + 0.010 * 750 = 27.5
+        # per second per target (vs 23.5 with Sunfire alone). So delta
+        # should be 27.5 - 23.5 = 4.0 dps. NOT 27.5 + 25 (double-count)
+        # = ~52.5 over solo, which would be the regression case.
         delta = both.weighted_dps - sunfire_only.weighted_dps
-        # 6.0 dps from HR's HP raising Sunfire's proc; floor below the
-        # double-count signal at ~24 dps.
-        self.assertAlmostEqual(delta, 6.0, places=1)
+        # 4.0 dps from HR's HP raising Sunfire's proc; floor below the
+        # double-count signal at ~25 dps.
+        self.assertAlmostEqual(delta, 4.0, places=1)
         self.assertLess(delta, 12.0,
             "Double-count regression: HR added a second Immolate tick")
 
@@ -5874,10 +5887,13 @@ class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
         self.assertEqual(len(e.periodics), 1)
 
     def test_6660_bamis_cinder_immolate_formula(self) -> None:
-        """Immolate component: 12 + 1% bonus HP (full items upgrade to 1.5%)."""
+        """Immolate component: flat 15 (Meraki 16.10.1 - components tier has
+        no HP scaling; Sunfire upgrades to 20+1% bonus_hp, Hollow Radiance
+        to 15+1% bonus_hp). Iter 8 (2026-05-19) corrected Bami's from the
+        engine's prior 12+1% bonus_hp model."""
         ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=10, caster_bonus_hp=2000.0)
         dmg = ITEM_EFFECTS["6660"].periodics[0].resolve_damage(ctx)
-        self.assertAlmostEqual(dmg, 1.0 * (12.0 + 0.010 * 2000.0), places=2)
+        self.assertAlmostEqual(dmg, 15.0, places=2)
         sunfire = ITEM_EFFECTS["3068"].periodics[0].resolve_damage(ctx)
         self.assertLess(dmg, sunfire)
 
@@ -7723,7 +7739,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.10.2")
+        self.assertEqual(ENGINE_VERSION, "1.11.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7784,7 +7800,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.10.2")
+        self.assertEqual(ENGINE_VERSION, "1.11.0")
 
 
 if __name__ == "__main__":
