@@ -23,6 +23,8 @@
   color: rgba(255, 255, 255, 0.85);
   user-select: none;
   cursor: default;
+  /* Anchor for the per-row contribution hover strip. */
+  position: relative;
 }
 
 .draft-elo-chip[data-de-state="empty"] {
@@ -70,4 +72,118 @@
 .draft-elo-chip .de-sample-high {
   color: #80e090;
   background: rgba(110, 201, 119, 0.08);
+}
+
+/* Per-row contribution hover strip (2026-05-20 BACKLOG/ROADMAP 109(b),
+ * Draft Tool L pair-list + Diff15 pattern).
+ *
+ * HOVER-ONLY by design: CSS :hover toggles display - there is NO JS
+ * state, NO click-to-pin, NO persistent sidebar. The field consensus
+ * per the multi-agent research wave is that persistent sidebars
+ * clutter at 1920x1080; the overlay vanishes the moment the pointer
+ * leaves the chip.
+ */
+.draft-elo-chip .draft-elo-contributions {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 6px 8px 5px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  background: rgba(14, 16, 24, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.88);
+  pointer-events: none; /* the overlay is not interactive */
+}
+
+.draft-elo-chip:hover .draft-elo-contributions {
+  display: block;
+}
+
+.draft-elo-chip .de-contrib-head {
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 4px;
+}
+
+.draft-elo-chip .de-contrib-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.draft-elo-chip .de-contrib-row + .de-contrib-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.draft-elo-chip .de-contrib-kind {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.65);
+  min-width: 42px;
+  text-align: center;
+}
+
+.draft-elo-chip .de-contrib-row[data-kind="ally-pair"] .de-contrib-kind {
+  background: rgba(110, 201, 119, 0.10);
+  color: #80e090;
+}
+
+.draft-elo-chip .de-contrib-row[data-kind="enemy-pair"] .de-contrib-kind {
+  background: rgba(255, 80, 80, 0.10);
+  color: #ff8080;
+}
+
+.draft-elo-chip .de-contrib-row[data-kind="matchup"] .de-contrib-kind {
+  background: rgba(241, 200, 120, 0.10);
+  color: #f1c878;
+}
+
+.draft-elo-chip .de-portrait {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.draft-elo-chip .de-portrait-fallback {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  font-size: 9px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.draft-elo-chip .de-contrib-delta {
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.draft-elo-chip .de-contrib-delta.de-contrib-up   { color: #80e090; }
+.draft-elo-chip .de-contrib-delta.de-contrib-down { color: #ff8080; }
+
+.draft-elo-chip .de-contrib-n {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 400;
 }

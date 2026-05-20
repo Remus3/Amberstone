@@ -103,6 +103,101 @@ class HappyPathTests(unittest.TestCase):
         self.assertEqual(payload["queue_ids"], [420])
 
 
+class BreakdownQueryParamTests(unittest.TestCase):
+    """Tests for the ?breakdown=1 hover-strip query param (2026-05-20
+    BACKLOG/ROADMAP 109(b))."""
+
+    def setUp(self):
+        routes_draft_elo._reset_caches()
+
+    def test_no_breakdown_omits_field(self):
+        h = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99")
+        routes_draft_elo._serve_draft_elo(h)
+        self.assertEqual(h.sent_status, 200)
+        payload = json.loads(h.sent_body)
+        self.assertNotIn("top_contributions", payload)
+
+    def test_breakdown_truthy_includes_field(self):
+        h = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99&breakdown=1")
+        routes_draft_elo._serve_draft_elo(h)
+        self.assertEqual(h.sent_status, 200)
+        payload = json.loads(h.sent_body)
+        self.assertIn("top_contributions", payload)
+        # Top-3 limit enforced at the route layer.
+        self.assertLessEqual(len(payload["top_contributions"]), 3)
+
+    def test_breakdown_shape(self):
+        h = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99&breakdown=1")
+        routes_draft_elo._serve_draft_elo(h)
+        payload = json.loads(h.sent_body)
+        entries = payload.get("top_contributions") or []
+        # At least one entry expected for a realistic draft (10
+        # ally-pair + 10 enemy-pair + 25 matchup rows feed the sort).
+        self.assertTrue(entries, "expected at least one contribution row")
+        first = entries[0]
+        self.assertIn(first["kind"], ("ally-pair", "enemy-pair", "matchup"))
+        self.assertIsInstance(first["a"], int)
+        self.assertIsInstance(first["b"], int)
+        self.assertIsInstance(first["delta"], (int, float))
+        self.assertIsInstance(first["n"], int)
+
+    def test_breakdown_sorted_by_abs_delta_desc(self):
+        h = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99&breakdown=1")
+        routes_draft_elo._serve_draft_elo(h)
+        payload = json.loads(h.sent_body)
+        entries = payload.get("top_contributions") or []
+        if len(entries) >= 2:
+            for i in range(len(entries) - 1):
+                self.assertGreaterEqual(
+                    abs(entries[i]["delta"]),
+                    abs(entries[i + 1]["delta"]),
+                    msg=f"contribution {i} should have larger abs(delta)",
+                )
+
+    def test_breakdown_falsy_omits_field(self):
+        h = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99&breakdown=0")
+        routes_draft_elo._serve_draft_elo(h)
+        payload = json.loads(h.sent_body)
+        self.assertNotIn("top_contributions", payload)
+
+    def test_breakdown_cached_path_strips_field(self):
+        """The cache always stores the full payload; a NO-breakdown
+        request must still strip the field even on a cache HIT."""
+        # Prime the cache with a breakdown=1 request.
+        h1 = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99&breakdown=1")
+        routes_draft_elo._serve_draft_elo(h1)
+        # Now hit the cache without breakdown.
+        h2 = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99")
+        routes_draft_elo._serve_draft_elo(h2)
+        payload = json.loads(h2.sent_body)
+        self.assertTrue(payload.get("cached"))
+        self.assertNotIn("top_contributions", payload)
+
+    def test_breakdown_cached_path_returns_field(self):
+        """Reverse: prime without breakdown, then ask for it - the
+        cached payload retains the field internally so the breakdown
+        request still gets the top-3."""
+        h1 = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99")
+        routes_draft_elo._serve_draft_elo(h1)
+        h2 = _RouteHarness("ally=22,64,55,89,12&enemy=42,67,69,33,99&breakdown=1")
+        routes_draft_elo._serve_draft_elo(h2)
+        payload = json.loads(h2.sent_body)
+        self.assertTrue(payload.get("cached"))
+        self.assertIn("top_contributions", payload)
+
+    def test_breakdown_truthy_variants(self):
+        """``1``, ``true``, ``yes``, ``on`` all enable the breakdown."""
+        for raw in ("1", "true", "TRUE", "yes", "on"):
+            routes_draft_elo._reset_caches()
+            h = _RouteHarness(
+                f"ally=22,64,55,89,12&enemy=42,67,69,33,99&breakdown={raw}"
+            )
+            routes_draft_elo._serve_draft_elo(h)
+            payload = json.loads(h.sent_body)
+            self.assertIn("top_contributions", payload,
+                          msg=f"breakdown={raw!r} should enable the field")
+
+
 class DegradedDbTests(unittest.TestCase):
     def setUp(self):
         routes_draft_elo._reset_caches()
