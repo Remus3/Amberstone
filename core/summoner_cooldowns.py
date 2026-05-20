@@ -8,21 +8,29 @@ with `cd_remaining_s`, sorted by next-up-ascending (READY entries on top).
 The panel JS that consumes this is a separate follow-up; this module is
 deliberately route-agnostic and pure-Python (no IO, no time.time()).
 
-CDR sources (all confirmed against League of Legends wiki + patch 16.10
-balance pages):
-  * Cosmic Insight (Inspiration rune, id 8347): -18 percent.
-  * Ionian Boots of Lucidity (item 3158): -10 percent. The boots apply
-    to BOTH summoner spells AND the ultimate (the wiki labels this
-    "Ability Haste 12" on the ult side; expressed as a flat -10 percent
-    CD reduction here to match the request spec).
-  * Magical Footwear (rune): -10 percent on the boots (only fires if
-    the participant actually owns id 3158; tracked separately so we
-    don't double-count when both Cosmic AND boots are in play).
+Haste sources (patch 16.10.1; values are Riot's documented Summoner
+Spell Haste / Ability Haste, additive in haste units then applied via
+the canonical haste formula ``eff_cd = base / (1 + haste / 100)``):
+
+Summoner-spell haste (applied to D + F slots):
+  * Cosmic Insight (Inspiration rune, id 8347): +18 SSH.
+  * Ionian Boots of Lucidity (item 3158): +18 SSH.
+  * Magical Footwear (rune): +10 SSH ADDITIONAL when the participant
+    actually owns id 3158 (the rune grants free boots but the haste
+    boost only fires once the boots are itemized).
   * Ultimate Hat (retired): skipped.
 
-Stacking is ADDITIVE (Cosmic + boots = -28 percent), NOT multiplicative.
-This matches the League wiki's "Summoner Spell Haste" formula which
-sums percent reductions before applying.
+Ability haste (applied to the ultimate):
+  * Ionian Boots of Lucidity (item 3158): +12 AH.
+  * Hextech Drake stack: +5 AH per stack (live patch 16.10.1; per-
+    participant ``hextech_drakes`` field on the participant dict).
+  * Future: item AH (Black Cleaver, Sterak's, etc.) once the engine
+    grows an item-AH table; for now items=[] outside boots contribute 0.
+
+Haste is ADDITIVE in haste units (Cosmic 18 + Boots 18 = 36 SSH),
+then the haste formula compresses the reduction (36 SSH -> 26.5%
+reduction = base / 1.36). This replaces the pre-2026-05-20
+percent-additive model that double-counted high-stack scenarios.
 
 Sort key: min(d_cd_remaining_s, f_cd_remaining_s, ult.cd_remaining_s).
 Ties broken by participant order (stable sort).
@@ -70,49 +78,57 @@ DEFAULT_ULT_BASE_CD = 100.0
 
 # Rune + item IDs (League of Legends wiki).
 COSMIC_INSIGHT_RUNE_ID = 8347
-COSMIC_INSIGHT_REDUCTION = 0.18
+COSMIC_INSIGHT_SSH = 18  # Summoner Spell Haste
 
 IONIAN_BOOTS_LUCIDITY_ITEM_ID = 3158
-IONIAN_LUCIDITY_REDUCTION = 0.10
+LUCIDITY_SSH = 18        # Summoner Spell Haste (D + F slots)
+LUCIDITY_AH = 12         # Ability Haste (ult slot)
 
 MAGICAL_FOOTWEAR_RUNE_ID = 8304  # Wiki: Inspiration tree, free boots
-MAGICAL_FOOTWEAR_REDUCTION = 0.10
+MAGICAL_FOOTWEAR_SSH = 10        # Additional SSH bonus when boots itemized
+
+# Hextech Drake (per stack). Soul tier (4+ stacks of any element) doesn't
+# add extra AH; only the per-drake stack count matters for haste.
+HEXTECH_DRAKE_AH_PER_STACK = 5
 
 
-def _cdr_summs(runes: list[int], items: list[int]) -> float:
-    """Additive CDR fraction applied to summoner spells. Range [0, 1)."""
-    cdr = 0.0
+def _summoner_haste(runes: list[int], items: list[int]) -> float:
+    """Total Summoner Spell Haste from runes + items. Range [0, inf)."""
+    h = 0.0
     if COSMIC_INSIGHT_RUNE_ID in runes:
-        cdr += COSMIC_INSIGHT_REDUCTION
+        h += COSMIC_INSIGHT_SSH
     if IONIAN_BOOTS_LUCIDITY_ITEM_ID in items:
-        cdr += IONIAN_LUCIDITY_REDUCTION
+        h += LUCIDITY_SSH
         # Magical Footwear only stacks if the player ALSO ran the rune
         # AND has the boots itemized; the rune alone gives boots-for-
-        # free but no extra CDR until purchase.
+        # free but no extra haste until purchase.
         if MAGICAL_FOOTWEAR_RUNE_ID in runes:
-            cdr += MAGICAL_FOOTWEAR_REDUCTION
-    return cdr
+            h += MAGICAL_FOOTWEAR_SSH
+    return h
 
 
-def _cdr_ult(items: list[int]) -> float:
-    """Additive CDR fraction applied to the ultimate. Range [0, 1).
+def _ability_haste(items: list[int], hextech_drakes: int = 0) -> float:
+    """Total Ability Haste applied to the ultimate. Range [0, inf).
 
-    Ionian Boots reduces ult CD by 10 percent (per request spec, matches
-    the wiki's "Ability Haste 12 -> roughly 10 percent" interpretation).
+    Items: Ionian Boots contribute 12 AH (separate from the 18 SSH).
+    Hextech Drake stacks: 5 AH per stack (capped at 4 by Riot's drake
+    cap, but we honor whatever the caller passes).
     """
-    cdr = 0.0
+    h = 0.0
     if IONIAN_BOOTS_LUCIDITY_ITEM_ID in items:
-        cdr += IONIAN_LUCIDITY_REDUCTION
-    return cdr
+        h += LUCIDITY_AH
+    h += max(0, int(hextech_drakes)) * HEXTECH_DRAKE_AH_PER_STACK
+    return h
 
 
-def _effective_cd(base_cd: float, cdr_fraction: float) -> float:
-    """Apply additive CDR fraction to a base cooldown. Clamps at 0."""
-    if cdr_fraction >= 1.0:
-        return 0.0
-    if cdr_fraction <= 0.0:
-        return float(base_cd)
-    return float(base_cd) * (1.0 - cdr_fraction)
+def _effective_cd(base_cd: float, haste: float) -> float:
+    """Apply Riot's haste formula to a base cooldown.
+
+    eff_cd = base_cd / (1 + haste / 100). Haste<=0 returns the base
+    unchanged. Negative haste (event modes with -SSH/-AH penalties)
+    increases the effective CD as expected by the same formula.
+    """
+    return float(base_cd) / (1.0 + float(haste) / 100.0)
 
 
 def _events_for_participant(
@@ -186,13 +202,13 @@ def _last_ult_use(
 def _spell_block(
     spell_id: int | None,
     base_cd: float,
-    cdr: float,
+    haste: float,
     last_use_s: float | None,
     now_s: float,
     prefix: str,
 ) -> dict[str, Any]:
     """Render a per-spell sub-dict with the d_/f_ key prefix."""
-    eff_cd = _effective_cd(base_cd, cdr)
+    eff_cd = _effective_cd(base_cd, haste)
     if last_use_s is None:
         ready_at = 0.0
         remaining = 0.0
@@ -212,11 +228,11 @@ def _spell_block(
 def _ult_block(
     ult_id: int | None,
     base_cd: float,
-    cdr: float,
+    haste: float,
     last_use_s: float | None,
     now_s: float,
 ) -> dict[str, Any]:
-    eff_cd = _effective_cd(base_cd, cdr)
+    eff_cd = _effective_cd(base_cd, haste)
     if last_use_s is None:
         ready_at = 0.0
         remaining = 0.0
@@ -268,8 +284,9 @@ def compute_cooldowns(
     for idx, p in enumerate(participants):
         runes = list(p.get("runes") or [])
         items = list(p.get("items") or [])
-        cdr_s = _cdr_summs(runes, items)
-        cdr_u = _cdr_ult(items)
+        drakes = int(p.get("hextech_drakes") or 0)
+        ssh = _summoner_haste(runes, items)
+        ah = _ability_haste(items, hextech_drakes=drakes)
 
         puuid = p.get("puuid")
         summ_name = p.get("summoner_name")
@@ -287,11 +304,15 @@ def compute_cooldowns(
         f_last = _last_use_time(my_events, f_id) if f_id is not None else None
         ult_last = _last_ult_use(events, puuid, summ_name)
 
-        d_block = _spell_block(d_id, d_base, cdr_s, d_last, now_s, "d")
-        f_block = _spell_block(f_id, f_base, cdr_s, f_last, now_s, "f")
+        d_block = _spell_block(d_id, d_base, ssh, d_last, now_s, "d")
+        f_block = _spell_block(f_id, f_base, ssh, f_last, now_s, "f")
         # Merge d_ + f_ into one summs dict per the spec.
         summs = {**d_block, **f_block}
-        ult = _ult_block(ult_id, ult_base, cdr_u, ult_last, now_s)
+        # Expose the haste totals on the summs dict so the panel can
+        # tooltip-show why a given effective CD is what it is.
+        summs["summoner_haste"] = ssh
+        ult = _ult_block(ult_id, ult_base, ah, ult_last, now_s)
+        ult["ability_haste"] = ah
 
         row = {
             "puuid": puuid,
