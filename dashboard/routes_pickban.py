@@ -26,7 +26,7 @@ Response shape (matches the JS placeholder structure):
     "performance": {
       "champId": int, "champName": str,
       "games": int, "wins": int, "wr_pct": int,
-      "reason": str   (e.g. "67% WR · 6 games · highest WR with ≥3 games")
+      "reason": str   (e.g. "67% WR - 6 games - highest WR with >=3 games")
     } | None,
     "performance_bans": [
       {"champId": int, "name": str,
@@ -86,7 +86,7 @@ def _load_counters_index() -> dict:
 
 
 def _load_champ_name_to_id() -> dict[str, int]:
-    """Normalized name → numeric id. Keys via `_norm_name` so any case +
+    """Normalized name -> numeric id. Keys via `_norm_name` so any case +
     spacing variant resolves cleanly."""
     global _CHAMP_NAME_TO_ID
     if _CHAMP_NAME_TO_ID is not None:
@@ -111,7 +111,7 @@ def _load_champ_name_to_id() -> dict[str, int]:
                 if variant:
                     out[_norm_name(variant)] = cid
     except Exception as exc:
-        log.debug("pickban: champ name→id load failed: %s", exc)
+        log.debug("pickban: champ name->id load failed: %s", exc)
     _CHAMP_NAME_TO_ID = out
     return out
 
@@ -131,13 +131,13 @@ def _load_champ_id_to_name() -> dict[int, str]:
                 except (TypeError, ValueError):
                     continue
     except Exception as exc:
-        log.debug("pickban: champ id→name load failed: %s", exc)
+        log.debug("pickban: champ id->name load failed: %s", exc)
     _CHAMP_ID_TO_NAME = out
     return out
 
 
 def _counters_for_champion(name: str) -> list[dict]:
-    """Resolve hardcoded counters → list of {champId, name, pct} dicts.
+    """Resolve hardcoded counters -> list of {champId, name, pct} dicts.
     `pct` is a static "high counter pressure" value (75) - we don't have
     win-rate data to drive it yet."""
     if not name:
@@ -184,7 +184,7 @@ _MIN_GAMES_BAN  = 2
 # mood toggle that pre-s209 just persisted to sessionStorage with no
 # downstream effect. Each mood reshapes the `performance` query:
 #
-#   comfort - operator's highest-WR pick at this role (≥3 games). Default.
+#   comfort - operator's highest-WR pick at this role (>=3 games). Default.
 #             "Safe pick - proven track record".
 #   limit   - operator's highest-WR pick within the 1-5 games band. Hits
 #             the "I've tried this a few times and it's working" sweet
@@ -234,7 +234,7 @@ def _normalize_role(raw: str) -> str | None:
     return _ROLE_ALIASES.get((raw or "").upper())
 
 
-# ────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------
 # s214: query helpers refactored to return LISTS of picks instead of
 # single dicts, so the LIMIT / NEW / SYNERGY moods can populate all 3
 # panel rows with cascade-filtered same-mood picks. Each query takes
@@ -242,7 +242,7 @@ def _normalize_role(raw: str) -> str | None:
 # + already-shown ids to skip; SQL builds a NOT IN clause when present.
 # Each query takes ``top`` for the result list length (default 1 for
 # back-compat with the single-row endpoint shape).
-# ────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------
 
 
 def _exclude_clause(exclude_ids: tuple[int, ...]) -> tuple[str, tuple[int, ...]]:
@@ -260,7 +260,7 @@ def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
                                exclude_ids: tuple[int, ...] = (),
                                top: int = 1) -> list[dict]:
     """Operator's top-N highest-WR champions at this role with
-    ≥_MIN_GAMES_PICK games. Ties broken by higher game count (more
+    >=_MIN_GAMES_PICK games. Ties broken by higher game count (more
     reliable signal). ``exclude_ids`` skips banned + already-shown ids."""
     placeholders = ",".join("?" * len(queue_ids))
     excl_sql, excl_params = _exclude_clause(exclude_ids)
@@ -292,7 +292,7 @@ def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
             "games":     int(games),
             "wins":      int(wins),
             "wr_pct":    wr_pct,
-            "reason":    f"{wr_pct}% WR · {games} games · safe pick",
+            "reason":    f"{wr_pct}% WR - {games} games - safe pick",
         })
     return out
 
@@ -336,7 +336,7 @@ def _query_performance_limit(conn: sqlite3.Connection, puuid: str, role: str,
             "games":     int(games),
             "wins":      int(wins),
             "wr_pct":    wr_pct,
-            "reason":    f"{wr_pct}% WR · {games} games · growth pick - small sample",
+            "reason":    f"{wr_pct}% WR - {games} games - growth pick (small sample)",
         })
     return out
 
@@ -378,7 +378,7 @@ def _query_performance_new(conn: sqlite3.Connection, puuid: str, role: str,
             "games":     0,
             "wins":      0,
             "wr_pct":    0,
-            "reason":    f"never played in role · {pool_games} games in the pool · try them",
+            "reason":    f"never played in role - {pool_games} games in the pool - try them",
         })
     return out
 
@@ -410,7 +410,7 @@ def _rank_by_smoothed_wr(raw_rows, reason_suffix: str, top: int) -> list[dict]:
                 "games":     games,
                 "wins":      wins,
                 "wr_pct":    wr_pct,
-                "reason":    f"{wr_pct}% WR · {games} games {reason_suffix}",
+                "reason":    f"{wr_pct}% WR - {games} games {reason_suffix}",
             },
         ))
     scored.sort(key=lambda t: (-t[0], -t[1], t[2]))
@@ -430,7 +430,7 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
     new path: when the panel passes the operator's locked allies via
     ``allies=cid,cid,...``, we score each candidate by how often the
     operator won games where they played that candidate AND at least one
-    of the locked allies was on their team. ``games_with_allies≥2``
+    of the locked allies was on their team. ``games_with_allies>=2``
     threshold filters out single-game flukes.
 
     Falls back to the recent-form proxy when ``ally_ids`` is empty (early
@@ -471,7 +471,7 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
         # (replaces the SQL `ORDER BY raw-WR ... LIMIT`).
         return _rank_by_smoothed_wr(
             cur.fetchall(),
-            "alongside locked allies · comp fit (smoothed)", top,
+            "alongside locked allies - comp fit (smoothed)", top,
         )
     # Recent-form fallback (pre-s214 behavior, kept for empty-allies path).
     cutoff_ms = int((time.time() - _SYNERGY_WINDOW_DAYS * 86400) * 1000)
@@ -495,11 +495,11 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
     # s238: smoothed re-rank in Python via the shared primitive.
     return _rank_by_smoothed_wr(
         cur.fetchall(),
-        f"last {_SYNERGY_WINDOW_DAYS}d · recent form (smoothed)", top,
+        f"last {_SYNERGY_WINDOW_DAYS}d - recent form (smoothed)", top,
     )
 
 
-# Mood → query dispatcher. Unknown moods fall through to comfort.
+# Mood -> query dispatcher. Unknown moods fall through to comfort.
 _PERFORMANCE_QUERIES = {
     "comfort": _query_performance_comfort,
     "limit":   _query_performance_limit,
@@ -587,7 +587,7 @@ def _query_bans(conn: sqlite3.Connection, puuid: str, role: str,
     return out
 
 
-# ────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------
 # s239 (AUTONOMOUS_AUDIT opportunity #2): the per-user CONTEXTUAL read.
 # The mood queries above RECOMMEND picks; these REPORT the operator's
 # actual personal record against the champions already on the board in
@@ -610,7 +610,7 @@ def _query_bans(conn: sqlite3.Connection, puuid: str, role: str,
 #                     despite rewind_history.db recency staleness;
 #                     lifetime head-to-head is the meaningful per-user
 #                     signal and is recency-independent by design.
-# ────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------
 
 
 def _query_champ_record(conn: sqlite3.Connection, puuid: str, champ_id: int,
@@ -757,7 +757,7 @@ def _query_vs_enemy(conn: sqlite3.Connection, puuid: str, enemy_id: int,
 
 
 def _parse_csv_ints(raw: str) -> tuple[int, ...]:
-    """Parse "1,2,3" → (1,2,3). Silently drops blanks + non-int tokens
+    """Parse "1,2,3" -> (1,2,3). Silently drops blanks + non-int tokens
     so a malformed param doesn't 400 the whole endpoint."""
     if not raw:
         return ()
@@ -784,8 +784,8 @@ def _serve_pickban_recs(h) -> None:
                     "application/json")
             return
 
-        # Queue filter: ?queue=420 → (420,); ?queue=400,420 → (400, 420);
-        # omitted → default SR queue set.
+        # Queue filter: ?queue=420 -> (420,); ?queue=400,420 -> (400, 420);
+        # omitted -> default SR queue set.
         queue_raw = (qs.get("queue") or [""])[0]
         if queue_raw:
             try:

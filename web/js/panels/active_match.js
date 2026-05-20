@@ -10,7 +10,7 @@
 //
 // Auto-promote behavior (gating in main.js _viewAutoDerive):
 //   activeMatchEnabled() AND mode in {sr, aram, arena, brawl}
-//     → "active-match"
+//     -> "active-match"
 // Otherwise the existing in-game default ("last-match") wins, so
 // nothing changes for users who haven't opted in.
 
@@ -102,7 +102,7 @@ function _dsTargetStatsCaption() {
                 ? `live - ${n} enemies`
             : t.source === "explicit-override" ? "synthetic"
             : t.source === "mode-level-curve" ? "mode curve" : t.source;
-  return `vs ${a} armor · ${m} mr · ${hp} hp · ${tag}`;
+  return `vs ${a} armor - ${m} mr - ${hp} hp - ${tag}`;
 }
 
 // s171: opt-OUT (was opt-in). Active Match is the default in-game
@@ -153,12 +153,12 @@ export function renderActiveMatch(payload, ctx) {
     if (isLive) {
       const champ = p.champion || "-";
       const time = p.game_time || "-";
-      sub.textContent = `${mode.toUpperCase()} · ${champ} · ${time} · phase ${phase}`;
+      sub.textContent = `${mode.toUpperCase()} - ${champ} - ${time} - phase ${phase}`;
     } else {
       // Champ-select / loading / between games: no live coach yet.
       sub.textContent = phase
-        ? `${mode.toUpperCase()} · phase ${phase} · waiting for in-game data`
-        : `${mode.toUpperCase()} · waiting for in-game data`;
+        ? `${mode.toUpperCase()} - phase ${phase} - waiting for in-game data`
+        : `${mode.toUpperCase()} - waiting for in-game data`;
     }
   }
 
@@ -195,12 +195,12 @@ export function renderActiveMatch(payload, ctx) {
       if (objective) call.appendChild(_line("OBJECTIVE", objective));
       if (next)      call.appendChild(_line("NEXT",      next));
     } else {
-      // Empty coach payload → surface that we're waiting rather than
+      // Empty coach payload -> surface that we're waiting rather than
       // leave the panel blank. Operator's complaint "no coach prompts
       // because it doesn't know I'm in game" was partly this - the
       // panel rendered nothing while coach tick was lagging.
       call.innerHTML = "";
-      call.appendChild(_line("RIGHT NOW", "waiting for coach tick…"));
+      call.appendChild(_line("RIGHT NOW", "waiting for coach tick..."));
     }
   }
 
@@ -231,12 +231,12 @@ export function renderActiveMatch(payload, ctx) {
       // armor/MR/HP profile the DS ranker is computing against, so
       // they can see when the rankings shift due to enemy itemization.
       const tgtCaption = _dsTargetStatsCaption();
-      const label = tgtCaption ? `DS ENGINE · ${tgtCaption}` : "DS ENGINE";
+      const label = tgtCaption ? `DS ENGINE - ${tgtCaption}` : "DS ENGINE";
       build.appendChild(_line(label, ""));
       build.appendChild(strip);
     }
     if (owned.length) {
-      build.appendChild(_line("OWNED", owned.join(" · ")));
+      build.appendChild(_line("OWNED", owned.join(" - ")));
     }
     // s171.6: defensive-pick row. Renders only when enemy team's
     // threat score crosses the "worth recommending defense" line:
@@ -253,7 +253,7 @@ export function renderActiveMatch(payload, ctx) {
       const pt = +threat.ap_threat || 0;
       const surface = (bt >= 5) || (at >= 7) || (pt >= 7);
       if (surface) {
-        const defLabel = `DEFENSE · ${threat.summary || "threat detected"}`;
+        const defLabel = `DEFENSE - ${threat.summary || "threat detected"}`;
         build.appendChild(_line(defLabel, ""));
         const defStrip = document.createElement("div");
         defStrip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
@@ -265,7 +265,7 @@ export function renderActiveMatch(payload, ctx) {
     }
     if (!picks.length && !owned.length) {
       // Empty pane shouldn't be blank - surface that we're waiting.
-      build.appendChild(_line("DS ENGINE", "waiting for live data…"));
+      build.appendChild(_line("DS ENGINE", "waiting for live data..."));
     }
   }
 
@@ -280,7 +280,7 @@ export function renderActiveMatch(payload, ctx) {
   }
 }
 
-// ── s171 step 4: map pane ────────────────────────────────────────────
+// --- s171 step 4: map pane ------------------------------------------
 
 // Static base image per mode. Falls back to /api/minimap-crop?mode=<x>
 // when the static asset 404s (Arena/Brawl on builds without local
@@ -351,7 +351,7 @@ function _renderAmMap(host, mode, payload) {
     const status = document.createElement("div");
     status.id = "am-map-status";
     status.style.cssText = "position:absolute;left:8px;top:8px;font-size:11px;color:#9ca3af;background:rgba(0,0,0,0.55);padding:3px 8px;border-radius:4px;letter-spacing:0.4px;text-transform:uppercase;font-weight:700;";
-    status.textContent = "loading vision…";
+    status.textContent = "loading vision...";
     shell.appendChild(status);
     const ganker = document.createElement("div");
     ganker.id = "am-map-gank";
@@ -421,8 +421,8 @@ function _amDrawOverlay(vs) {
     const missing = summary.missing_count | 0;
     const dead    = summary.dead_count | 0;
     status.textContent = shared
-      ? `${visible} on bridge · ${dead} dead`
-      : `${visible} visible · ${missing} MIA · ${dead} dead`;
+      ? `${visible} on bridge - ${dead} dead`
+      : `${visible} visible - ${missing} MIA - ${dead} dead`;
   }
 
   // Shared-vision (ARAM/Brawl-on-bridge): no position data, skip dots.
@@ -433,7 +433,7 @@ function _amDrawOverlay(vs) {
 
   const mapSize = _AM_MAP_WORLD[gameModeUp] || 14800;
   function project(x, z) {
-    // Game origin = bottom-left, z grows up. Canvas y grows down → flip.
+    // Game origin = bottom-left, z grows up. Canvas y grows down -> flip.
     return [(x / mapSize) * w, h - (z / mapSize) * h];
   }
 
@@ -494,7 +494,7 @@ function _amDrawOverlay(vs) {
 
   if (ganker) {
     if (gankAlert) {
-      ganker.textContent = "⚠ " + gankAlert;
+      ganker.textContent = "WARN " + gankAlert;
       ganker.style.display = "block";
     } else {
       ganker.style.display = "none";

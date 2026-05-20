@@ -85,7 +85,7 @@ class ResourceManager:
         except Exception:
             pass
 
-    # ── Registration ─────────────────────────────────────────────────────────
+    # --- Registration -------------------------------------------------------
 
     def register(self, obj):
         """Register any object that has a shutdown() method."""
@@ -208,7 +208,7 @@ class ResourceManager:
             )
         return True
 
-    # ── Memory watchdog ──────────────────────────────────────────────────────
+    # --- Memory watchdog ----------------------------------------------------
 
     def start_memory_watchdog(self, interval_s: float = 30.0):
         """Start background thread that monitors process RSS every interval_s."""
@@ -287,7 +287,7 @@ class ResourceManager:
         except Exception:
             return 0.0
 
-    # ── Shutdown ─────────────────────────────────────────────────────────────
+    # --- Shutdown -----------------------------------------------------------
 
     def _signal_handler(self, signum, frame):
         _log.info("Signal %d received - shutting down", signum)
