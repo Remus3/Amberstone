@@ -6,12 +6,19 @@ team-vs-team draft layer the existing pickban backend lacks. Composes
 history queries) over ``core.smoothed_rates`` (Laplace smoothing).
 
 Request shape:
-  GET /api/draft-elo?ally=22,64,55,22,12&enemy=42,67,69,22,89[&queue=420]
+  GET /api/draft-elo?ally=22,64,55,22,12&enemy=42,67,69,22,89[&queue=420][&breakdown=1]
 
-  ally  : 5 ally champion ids (Riot integer ``key``), comma-separated.
-  enemy : 5 enemy champion ids.
-  queue : optional queue id; defaults to the SR ranked set
-          (400/420/430/440/490).
+  ally      : 5 ally champion ids (Riot integer ``key``), comma-separated.
+  enemy     : 5 enemy champion ids.
+  queue     : optional queue id; defaults to the SR ranked set
+              (400/420/430/440/490).
+  breakdown : optional flag (any truthy: ``1``, ``true``, ``yes``).
+              When set, the response carries an additional
+              ``top_contributions`` list (top-3 contributions by
+              absolute Elo-rating delta) - used by the frontend hover
+              strip to surface which ally-pair / enemy-pair / matchup
+              moved predicted WR the most. Without the flag the field
+              is omitted to keep payload small.
 
 Response shape:
   {
@@ -25,6 +32,14 @@ Response shape:
     "predicted_wr":    0.0..1.0,   # logistic of team_score
     "sample":          {"min_solo": N, "min_pair": N, "min_matchup": N},
     "queue_ids":       [...],
+    "top_contributions": [          # only when ?breakdown=1
+        {"kind": "ally-pair"|"enemy-pair"|"matchup",
+         "a":    <champ_id>,
+         "b":    <champ_id>,
+         "delta": <signed_rating>,  # ally-team perspective
+         "n":    <sample_games>},
+        ...up to 3 entries...
+    ],
     "cached":          false,
     "elapsed_ms":      N,
   }
@@ -88,11 +103,23 @@ def _parse_queues(raw: str) -> tuple[tuple[int, ...] | None, str | None]:
 
 def _cache_key(ally: list[int], enemy: list[int],
                queues: tuple[int, ...] | None) -> tuple:
+    # ``breakdown`` is NOT part of the cache key. The breakdown list is
+    # always computed (cheap pure-Python aggregate over data we already
+    # pulled) and stripped before serving when the caller did not ask
+    # for it. This keeps the cache hit rate identical across the two
+    # request shapes - a hover-strip-curious client does not invalidate
+    # the cache for the bulk consumer next door.
     return (
         tuple(sorted(ally)),
         tuple(sorted(enemy)),
         tuple(sorted(queues)) if queues else None,
     )
+
+
+def _truthy(raw: str) -> bool:
+    if not raw:
+        return False
+    return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
 def _compute(ally: list[int], enemy: list[int],
@@ -156,6 +183,23 @@ def _compute(ally: list[int], enemy: list[int],
         min_pair = min(r[1] for r in ally_pair_data + enemy_pair_data) if ally_pair_data or enemy_pair_data else 0
         min_matchup = min(r[1] for r in matchup_data) if matchup_data else 0
 
+        # Top-3 contributions to team_score by abs(delta) for the
+        # hover-strip overlay. Always computed (cheap aggregate over
+        # data we already pulled); the serve layer strips the field
+        # when ``?breakdown=1`` was not requested.
+        contributions = draft_elo.top_contributions(
+            ally_pairs=ally_pairs,
+            enemy_pairs=enemy_pairs,
+            matchup_cross=cross,
+            ally_pair_ratings=ally_pair_ratings,
+            enemy_pair_ratings=enemy_pair_ratings,
+            matchup_ratings=matchup_ratings,
+            ally_pair_counts=[r[1] for r in ally_pair_data],
+            enemy_pair_counts=[r[1] for r in enemy_pair_data],
+            matchup_counts=[r[1] for r in matchup_data],
+            limit=3,
+        )
+
         return {
             "ok":    True,
             "ally":  {
@@ -181,6 +225,11 @@ def _compute(ally: list[int], enemy: list[int],
                 "min_matchup": min_matchup,
             },
             "queue_ids":    list(qids),
+            "top_contributions": [
+                {"kind": c.kind, "a": c.a, "b": c.b,
+                 "delta": c.delta, "n": c.n}
+                for c in contributions
+            ],
         }
     finally:
         try:
@@ -196,6 +245,7 @@ def _serve_draft_elo(h) -> None:
         ally_raw = (qs.get("ally") or [""])[0].strip()
         enemy_raw = (qs.get("enemy") or [""])[0].strip()
         queue_raw = (qs.get("queue") or [""])[0].strip()
+        breakdown = _truthy((qs.get("breakdown") or [""])[0])
 
         ally_ids, err = _parse_int_list(ally_raw, 5)
         if err:
@@ -221,6 +271,8 @@ def _serve_draft_elo(h) -> None:
                 payload = dict(cached[1])
                 payload["cached"] = True
                 payload["elapsed_ms"] = int((time.time() - t0) * 1000)
+                if not breakdown:
+                    payload.pop("top_contributions", None)
                 h._send(200, json.dumps(payload).encode("utf-8"),
                         "application/json")
                 return
@@ -242,6 +294,9 @@ def _serve_draft_elo(h) -> None:
             cacheable.pop("cached", None)
             cacheable.pop("elapsed_ms", None)
             _CACHE[key] = (now, cacheable)
+
+        if not breakdown:
+            payload.pop("top_contributions", None)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
