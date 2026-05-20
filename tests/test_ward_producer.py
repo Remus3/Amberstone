@@ -324,5 +324,85 @@ class MalformedInputTests(ProducerBase):
         self.assertEqual(ward_producer.snapshot_size(), 0)
 
 
+class TickFromSnapshotTests(ProducerBase):
+    """Adapter tests for ``tick_from_snapshot``."""
+
+    def _snap(self, data):
+        class S:
+            pass
+        s = S()
+        s.data = data
+        s.ts = 100.0
+        return s
+
+    def test_none_snapshot_returns_zero(self):
+        class S:
+            pass
+        s = S()
+        s.data = None
+        s.ts = 0.0
+        self.assertEqual(ward_producer.tick_from_snapshot(s), 0)
+
+    def test_non_dict_data_returns_zero(self):
+        self.assertEqual(ward_producer.tick_from_snapshot(self._snap("nope")), 0)
+        self.assertEqual(ward_producer.tick_from_snapshot(self._snap(123)), 0)
+
+    def test_missing_allplayers_returns_zero(self):
+        self.assertEqual(
+            ward_producer.tick_from_snapshot(self._snap({"foo": "bar"})),
+            0,
+        )
+
+    def test_routes_through_tick(self):
+        # First tick seeds baseline (returns 0); second tick produces an event.
+        snap_t1 = self._snap({
+            "activePlayer": {"summonerName": "Alice"},
+            "allPlayers": [
+                _player("Alice", items=[_ward_item(2055, count=2)]),
+            ],
+        })
+        self.assertEqual(ward_producer.tick_from_snapshot(snap_t1), 0)
+        snap_t2 = self._snap({
+            "activePlayer": {"summonerName": "Alice"},
+            "allPlayers": [
+                _player("Alice", items=[_ward_item(2055, count=1)]),
+            ],
+        })
+        n = ward_producer.tick_from_snapshot(snap_t2)
+        self.assertEqual(n, 1)
+
+    def test_no_active_player_block(self):
+        snap = self._snap({
+            "allPlayers": [_player("Alice", items=[])],
+        })
+        # 0 events but does not crash on missing activePlayer.
+        self.assertEqual(ward_producer.tick_from_snapshot(snap), 0)
+
+
+class InstallListenerTests(ProducerBase):
+    """install_liveclient_listener idempotency + registration."""
+
+    def setUp(self):
+        super().setUp()
+        # Hard reset: clear any registration from a prior test.
+        from core import liveclient_cache
+        liveclient_cache.clear_listeners()
+        # Reset the module-level installed flag.
+        ward_producer._LISTENER_INSTALLED = False
+
+    def test_install_returns_true_first_time_false_after(self):
+        self.assertTrue(ward_producer.install_liveclient_listener())
+        self.assertFalse(ward_producer.install_liveclient_listener())
+
+    def test_install_registers_tick_callback(self):
+        from core import liveclient_cache
+        before = len(liveclient_cache._listeners)
+        ward_producer.install_liveclient_listener()
+        after = len(liveclient_cache._listeners)
+        self.assertEqual(after, before + 1)
+        # The registered callable is tick_from_snapshot itself.
+        self.assertIn(ward_producer.tick_from_snapshot, liveclient_cache._listeners)
+
+
 if __name__ == "__main__":
     unittest.main()

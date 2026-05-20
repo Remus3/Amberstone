@@ -315,3 +315,49 @@ def snapshot_size() -> int:
     """Number of players currently tracked. Debug helper."""
     with _state_lock:
         return len(_state)
+
+
+def tick_from_snapshot(snap) -> int:
+    """Adapter for ``core.liveclient_cache.add_listener``.
+
+    Pulls ``allPlayers`` and the active summoner from a Snapshot's
+    ``data`` dict (the parsed /allgamedata payload) and calls ``tick``.
+    Fail-soft - any missing field returns 0 with no state change.
+
+    Returns the number of placements recorded on this tick.
+    """
+    data = getattr(snap, "data", None)
+    if not isinstance(data, dict):
+        return 0
+    allplayers = data.get("allPlayers")
+    if not isinstance(allplayers, list):
+        return 0
+    active = None
+    ap = data.get("activePlayer")
+    if isinstance(ap, dict):
+        nm = ap.get("summonerName")
+        if isinstance(nm, str) and nm:
+            active = nm
+    ts = getattr(snap, "ts", None) or None
+    return tick(allplayers, ts=ts, active_summoner=active)
+
+
+_LISTENER_INSTALLED = False
+
+
+def install_liveclient_listener() -> bool:
+    """Idempotent: register tick_from_snapshot on liveclient_cache.
+
+    Returns True on first install, False if already installed (or if
+    liveclient_cache could not be imported for any reason - fail-soft).
+    """
+    global _LISTENER_INSTALLED
+    if _LISTENER_INSTALLED:
+        return False
+    try:
+        from core import liveclient_cache
+        liveclient_cache.add_listener(tick_from_snapshot)
+        _LISTENER_INSTALLED = True
+        return True
+    except Exception:
+        return False
