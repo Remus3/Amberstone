@@ -1055,6 +1055,21 @@
                    "Suggestions" card head + post-phase per-row visual
                    already communicate the bans context without the
                    redundant SUGGESTED BANS / CURRENT BANS title. -->
+              <!-- 2026-05-20 (item 109 carry-forward (a)): HURTS-THEM
+                   / HELPS-US toggle block. Surfaces the dual-score
+                   ban-suggest backend (dashboard/routes_ban_suggest.py
+                   ship 6e7b7e5) as an explicit logic chip. Visible at
+                   ALL TIMES during ban phase so the operator can see
+                   which logic the candidate scores reflect. -->
+              <div class="csv-sugg-section bs-toggle-block"
+                   id="csv-sugg-bs-toggle"
+                   hidden>
+                <div class="bs-mode-chip"
+                     id="csv-sugg-bs-mode"
+                     data-bs-mode="hurts_them"></div>
+                <div class="bs-list" id="csv-sugg-bs-list"
+                     data-bs-state="empty"></div>
+              </div>
               <div class="csv-sugg-section csv-sugg-bans"
                    id="csv-sugg-bans">
                 <div class="csv-sugg-bans-grid" id="csv-sugg-bans-grid">

@@ -13,6 +13,10 @@ import {
   _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice,
 } from './item_build.js';
 import { buildOrderCardHtml } from './build_order.js';
+import {
+  fetchBanSuggest, getCachedBanSuggest, getBanSuggestCacheCount,
+  renderBanSuggestModeChip, renderBanSuggestList,
+} from './ban_suggest_toggle.js';
 
 // ── LCU command helper (used by champ-select + build chooser) ──────
 function lcuCmd(cmdObj) {
@@ -923,6 +927,14 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
       } else {
         bansGrid.innerHTML = '<div class="csv-sugg-empty">loading global top bans…</div>';
       }
+      // 2026-05-20 (item 109 carry-forward): HURTS-THEM / HELPS-US
+      // toggle. Renders the dual-score ban-suggest backend ship
+      // 6e7b7e5 inline above the legacy global-top-bans grid. Uses
+      // the same global-top-bans candidate pool (cached) - dual-
+      // scores each candidate vs the operator's current ally + enemy
+      // roster, then renders a sortable list. The mode chip is
+      // visible the moment the cached candidate list lands.
+      _csvRenderBanSuggestToggle(cs, cached);
     }
   }
   // ---- Row 3: pick-order tips (no header label per s213 v3) ----
@@ -1269,6 +1281,10 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   // s210: ban-suggestions cache state - count keys so the Suggestions
   // panel re-renders when the global top-bans fetch lands.
   const banSuggCount = Object.keys(_CSV_BANSUGG_CACHE).length;
+  // 2026-05-20 (item 109 carry-forward): ban-suggest dual-score cache
+  // state - same pattern, count keys so the HURTS-THEM / HELPS-US
+  // toggle re-renders when the /api/ban-suggest fetch lands.
+  const banSuggDualCount = getBanSuggestCacheCount();
   return [
     cs.phase || "",
     myCid | 0,
@@ -1281,7 +1297,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}`,
   ].join("|");
 }
 
@@ -1376,6 +1392,46 @@ function _csvFetchBanSuggestions(excludedIds) {
       }
     })
     .catch(() => { _CSV_BANSUGG_INFLIGHT[key] = false; });
+}
+
+// 2026-05-20 (item 109 carry-forward (a)): HURTS-THEM / HELPS-US toggle
+// wire. Uses the cached global-top-bans list (`bansCached.suggestions`,
+// already filtered against already-banned ids) as the candidate pool,
+// then calls /api/ban-suggest to enrich each candidate with the dual
+// HURTS-THEM / HELPS-US ratings against the operator's current ally +
+// enemy roster. The mode chip + sortable list mount inside the
+// #csv-sugg-bs-toggle block (declared in web/index.html).
+function _csvRenderBanSuggestToggle(cs, bansCached) {
+  const block = document.getElementById("csv-sugg-bs-toggle");
+  if (!block) return;
+  // Need at least one ally locked + a candidate pool to score.
+  const allyIds = (cs.my_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (!allyIds.length) { block.hidden = true; return; }
+  const candidatesMeta = (bansCached && Array.isArray(bansCached.suggestions))
+    ? bansCached.suggestions : [];
+  if (!candidatesMeta.length) { block.hidden = true; return; }
+  block.hidden = false;
+  const enemyIds = (cs.their_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  const candidateIds = candidatesMeta
+    .map((m) => (m && (m.champId | 0)) || 0)
+    .filter((x) => x > 0);
+  const queue = (cs.queue_id | 0) || null;
+
+  fetchBanSuggest(allyIds, enemyIds, candidateIds, queue, _csvScheduleRender);
+
+  const chipEl = document.getElementById("csv-sugg-bs-mode");
+  const listEl = document.getElementById("csv-sugg-bs-list");
+  if (chipEl) {
+    renderBanSuggestModeChip(chipEl, () => _csvScheduleRender());
+  }
+  if (listEl) {
+    const payload = getCachedBanSuggest(allyIds, enemyIds, candidateIds, queue);
+    renderBanSuggestList(listEl, payload, candidatesMeta);
+  }
 }
 
 function _csvAdaptKey(champion, enemyIds, baseSummoners, role) {
