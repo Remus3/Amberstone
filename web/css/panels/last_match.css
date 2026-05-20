@@ -573,6 +573,73 @@
   padding: 4px 0;
 }
 
+/* s220 PGR S2: phases-that-mattered (WPA) cards. Same visual tone as
+   the timeline ribbon - the panel sits underneath it so consistency
+   matters. data-side drives the left-border color; data-sign drives
+   the wpa-delta color so a positive WPA from an ally and a negative
+   WPA from the enemy both read GREEN to the operator. */
+.lm-wpa-wrap {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 12px;
+}
+.lm-wpa-head {
+  font-size: 17px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.lm-wpa-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.lm-wpa-row {
+  display: grid;
+  grid-template-columns: 32px 56px 1fr 70px 1fr 60px;
+  align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--text-dim);
+  border-radius: 4px;
+  font-size: 16px;
+}
+.lm-wpa-row[data-side="ally"]    { border-left-color: var(--ok,  #8ce5a8); }
+.lm-wpa-row[data-side="enemy"]   { border-left-color: var(--bad, #e07a7a); }
+.lm-wpa-row[data-side="neutral"] { border-left-color: var(--text-dim); }
+.lm-wpa-rank {
+  font-weight: 700; font-size: 18px;
+  color: var(--text-faint, var(--text-dim));
+  font-variant-numeric: tabular-nums;
+}
+.lm-wpa-clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim); font-weight: 600;
+}
+.lm-wpa-label { color: var(--text); font-weight: 600; }
+.lm-wpa-wpa {
+  font-weight: 700; text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint, var(--text-dim));
+}
+.lm-wpa-row[data-sign="pos"] .lm-wpa-wpa { color: var(--ok,  #8ce5a8); }
+.lm-wpa-row[data-sign="neg"] .lm-wpa-wpa { color: var(--bad, #e07a7a); }
+.lm-wpa-prob {
+  color: var(--text-dim); font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.lm-wpa-side {
+  font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-faint, var(--text-dim));
+  text-align: right;
+}
+.lm-wpa-row[data-side="ally"]  .lm-wpa-side { color: var(--ok,  #8ce5a8); }
+.lm-wpa-row[data-side="enemy"] .lm-wpa-side { color: var(--bad, #e07a7a); }
+.lm-wpa-foot {
+  font-size: 13px; color: var(--text-faint, var(--text-dim));
+  font-style: italic;
+}
+
 /* ── Section wrappers (build / team / quick review) ─────────────────── */
 .lm-section {
   background: var(--surface);
