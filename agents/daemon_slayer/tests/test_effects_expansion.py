@@ -1207,11 +1207,18 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
         self.assertEqual(proc.name, "Cleave")
         self.assertIn("cleave", e.note.lower())
 
-    def test_profane_hydra_not_tagged_unique_passive(self) -> None:
-        # Tiamat-tree exclusivity is build-legality, not unique-passive.
-        # The other hydras (Stridebreaker, Ravenous) carry no key either.
+    def test_profane_hydra_tagged_hydra_cleave_iter3(self) -> None:
+        # Iter 3 (2026-05-19): the original assertion that Tiamat-tree
+        # exclusivity is "build-legality, not unique-passive" was wrong -
+        # the ranker's _filter_candidates has no Tiamat-tree awareness,
+        # so a 2-hydra build double-counted Cleave both in DPS and in
+        # recommendations. Profane and its 3 SR siblings + 4 Arena
+        # mirrors now carry unique_passive_key="hydra_cleave" so the
+        # existing collect_effects first-seen-wins dedup handles both
+        # layers. See test_hydra_cleave_unique_iter3.py for the full
+        # contract + DPS proofs.
         e = ITEM_EFFECTS["6698"]
-        self.assertEqual(e.unique_passive_key, "")
+        self.assertEqual(e.unique_passive_key, "hydra_cleave")
 
     def test_profane_hydra_zero_proc_on_single_target_champion(self) -> None:
         # Aatrox's rotations are all n=1 - cleave resolves to zero on
