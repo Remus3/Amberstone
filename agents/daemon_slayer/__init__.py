@@ -1321,7 +1321,30 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.13.0"
+ENGINE_VERSION = "1.14.0"
+# 1.14.0 (Iter 12, 2026-05-20): Energized + spellblade + on-hit + cleave +
+# anti-tank family audit vs Meraki / DDragon 16.10.1. Cross-checked Statikk
+# Shiv / Rapid Firecannon / Stormrazor / Voltaic Cyclosword / Trinity Force
+# / Lich Bane / Essence Reaver / Sundered Sky / Iceborn Gauntlet / Wit's End
+# / Nashor's Tooth / Kraken Slayer / Runaan's Hurricane / Guinsoo's Rageblade
+# / Terminus / Blade of the Ruined King / Stridebreaker / Profane Hydra /
+# Giant Slayer (LDR + Bork). One drift fixed: Guinsoo's Rageblade was
+# missing its Wrath flat-magic on-hit (DDragon 16.10.1 entry 3124 SR: "Wrath:
+# Attacks deal 30 bonus magic damage on-hit" - permanent, every AA, separate
+# from Phantom Hit every-3rd proc). Added as a 2nd PeriodicProc entry on
+# 3124. Voltaic Cyclosword (4s charge), Statikk Shiv (180 magic / 10s),
+# Rapid Firecannon (40 magic / ~3s), Stormrazor (100 magic / 4s), Lich Bane
+# (75% base AD + 50% AP magic), Trinity Force (200% base AD), Essence Reaver
+# (125% base AD + crit lerp), Iceborn (150% base AD), Sundered Sky (20 + 200%
+# base AD / 8s), Nashor's (15 + 20% AP magic on-hit), Kraken (Bring It Down
+# 150->200 every 3rd AA, level-stepped), Runaan's (2x 55% total AD bolts),
+# Terminus (30 magic on-hit + 10/10 pen), Bork (9% target HP on-hit melee),
+# Wit's End (45 magic on-hit), Stridebreaker / Profane Hydra (40% AD cleave),
+# Giant Slayer LDR (15% / 1500 bonus HP) all already on Meraki 16.10.1
+# values. Old Tiamat (id 3077) is currently a stat-only assassin component,
+# no DPS proc to model (the cleave moved to Tiamat upgrades like
+# Stridebreaker / Titanic Hydra / Profane Hydra). Vampiric Scepter (1053)
+# and Cull (1083) are early components, defensive-side only.
 # 1.13.0 (Iter 11, 2026-05-20): Level-scaling-formula audit lane vs Meraki
 # 16.10.1. Walked every "level"-keyed lambda in _effects_data.py and cross-
 # checked Statikk Shiv / Rapid Firecannon / Stormrazor / Voltaic Cyclosword

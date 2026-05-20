@@ -212,17 +212,32 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3124": ItemEffect(
         item_id="3124",
         name="Guinsoo's Rageblade",
-        periodics=(PeriodicProc(
-            name="Phantom Hit",
-            # Every 3rd attack triggers an extra on-hit. Approximated as
-            # 50% bonus AD physical - under-counts on-hit stacking with
-            # other items (BotRK, Wit's End) but those self-stack via
-            # their own periodic entries.
-            bonus_damage=lambda c: 0.50 * c.bonus_ad,
-            damage_type=PHYSICAL,
-            every_n_attacks=3,
-        ),),
-        note="Guinsoo's Rageblade: Phantom Hit every 3rd attack, ~50% bonus AD physical",
+        periodics=(
+            PeriodicProc(
+                name="Wrath",
+                # Iter 12 (2026-05-20): Wrath flat-magic on-hit was
+                # missing. DDragon 16.10.1 entry 3124 SR description:
+                # "Wrath: Attacks deal 30 bonus magic damage on-hit."
+                # Permanent passive, every AA, flat 30 magic - distinct
+                # from Phantom Hit. Was unmodeled pre-iter-12 (only
+                # Phantom Hit fired); a real drift, not a modeling
+                # choice. Adds ~30 magic per attack at every level.
+                bonus_damage=30.0,
+                damage_type=MAGICAL,
+                every_n_attacks=1,
+            ),
+            PeriodicProc(
+                name="Phantom Hit",
+                # Every 3rd attack triggers an extra on-hit. Approximated as
+                # 50% bonus AD physical - under-counts on-hit stacking with
+                # other items (BotRK, Wit's End) but those self-stack via
+                # their own periodic entries.
+                bonus_damage=lambda c: 0.50 * c.bonus_ad,
+                damage_type=PHYSICAL,
+                every_n_attacks=3,
+            ),
+        ),
+        note="Guinsoo's Rageblade: Wrath +30 magic on-hit every AA + Phantom Hit every 3rd attack ~50% bonus AD physical",
     ),
 
     # ── Phase 4 expansion: armor pen / reduction ──
