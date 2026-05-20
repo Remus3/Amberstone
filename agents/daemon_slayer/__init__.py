@@ -1321,7 +1321,21 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.20.0"
+ENGINE_VERSION = "1.21.0"
+# 1.21.0 (UX-headless iter 4 / DS audit lane: AP-scaling on-hit family,
+# 2026-05-20): Nashor's Tooth Icathian Bite AP coefficient corrected
+# 20% -> 15% per Meraki bulk 16.10.1 ("Basic attacks deal 15 (+ 15% AP)
+# bonus magic damage on-hit"). Both 3115 (SR) and 223115 (Arena mirror)
+# corrected. New pinned test test_nashors_tooth_meraki_16_10_1_coef
+# guards the value (closed-form: at ap=100 the proc damage is 30.0).
+#
+# Other AP-scaling on-hit family members verified clean:
+#   Lich Bane Spellblade (1.20.0) = 75% base AD + 40% AP magic
+#   Guinsoo's Wrath (1.14.0) = 30 flat magic on-hit
+#   Terminus Shadow (existing) = 30 magic on-hit constant
+#
+# No production callsite affected outside the registry.
+
 # 1.20.0 (UX-headless iter 3 / DS audit lane: Spellblade family,
 # 2026-05-20): Lich Bane Spellblade AP coefficient corrected 50% -> 40%
 # per Meraki bulk 16.10.1 (the engine had drifted; current League math

@@ -435,6 +435,18 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
         self.assertEqual(e.periodics[0].damage_type, MAGICAL)
         self.assertEqual(e.periodics[0].every_n_attacks, 1)
 
+    def test_nashors_tooth_meraki_16_10_1_coef(self) -> None:
+        """Lock in the 15 + 15% AP Meraki bulk 16.10.1 coefficient.
+
+        Pre-2026-05-20 the engine had 20% AP - drifted. Guard against
+        regression by computing the closed-form damage at ap=100:
+          15 + 0.15 * 100 = 30
+        """
+        e = ITEM_EFFECTS["3115"]
+        proc = e.periodics[0]
+        ctx = CallContext(base_ad=60.0, bonus_ad=0, level=11, ap=100.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 30.0, places=4)
+
     def test_nashors_tooth_raises_dps(self) -> None:
         bare = compute_dps(self.snap, "Aatrox", level=11)
         with_nt = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115"])
@@ -7784,7 +7796,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.20.0")
+        self.assertEqual(ENGINE_VERSION, "1.21.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7845,7 +7857,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.20.0")
+        self.assertEqual(ENGINE_VERSION, "1.21.0")
 
 
 if __name__ == "__main__":
