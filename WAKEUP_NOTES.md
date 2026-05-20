@@ -1,6 +1,21 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary archived to docs/history_notes.md. Only the last 3 sessions kept here (2026-05-20 housekeeping batch + 2026-05-19/20 overnight FULL RUN + 2026-05-20 second headless run).
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary archived to docs/history_notes.md. Only the last 3 sessions kept here (2026-05-20 3-agent parallel BACKLOG NOW drain + 2026-05-20 fleet bridge daemon symmetry + 2026-05-20 housekeeping batch).
+---
+# 2026-05-20 - 3-agent parallel BACKLOG NOW lane drain (4 commits; ENGINE 1.21.0 -> 1.22.0; no frozen edits; DS restart)
+
+Operator-driven "start what is next on backlog in parallel". 3 worktree agents dispatched concurrent on 3 independent NOW-lane items, merged + pushed + DS restarted.
+
+**Agent A `c965167` + `583a3bc` feat(ds) - cdragon mFormulaParts typed-part formula evaluator (ENGINE 1.21.0 -> 1.22.0).** NEW `agents/daemon_slayer/augment_formula_eval.py` interprets the 4 typed cdragon formula parts (`NamedDataValueCalculationPart` / `StatByNamedDataValueCalculationPart` / `StatByCoefficientCalculationPart` / `NumberCalculationPart`) wrapped by optional `mMultiplier`, composes via sum-of-parts. Out-of-scope shapes (`ByCharLevelInterpolation` etc.) return 0.0 via unknown-shape sentinel - never raise. Wired into `agents/daemon_slayer/augments.py:compute_augment_stats` as PREFERRED path with `_AUGMENT_STAT_OVERLAYS` registry fallback. `STAT_GRANT_CALC_KEYS` displacement seam is INTENTIONALLY EMPTY at cdragon 16.10.1 (all 82 unique calc keys are damage/heal/shield/conversion, none are stat grants) - production behavior byte-identical today. +47 tests; +13 ENGINE pin syncs.
+
+**Agent B `a250416` feat(pgr) - WPA phases-that-mattered for Post Game Review S2.** NEW `core/post_game_score.py` pure-Python LR via batch gradient descent (no sklearn/numpy dep) + `data/post_game_wpa_model.json` trained checkpoint (200 most-recent SR matches, 800 samples, weights gold_diff +1.32 / xp_diff +0.65) + NEW `dashboard/routes_post_game_wpa.py` GET `/api/post-game-wpa?match_id=<id>` + NEW `web/js/panels/post_game_phases.js` stacked card list mounted in last-match view + dispatch registration. +68 tests. Live `GET /api/post-game-wpa?match_id=NA1_5439050124` -> ok=true event_count=86 elapsed_ms=2 top-3 CHAMPION_KILL phases t=60/65/73s WPA +2.3% each.
+
+**Agent C `e0eec7e` feat(cooldowns) - wire Hextech Drake count from Live Client events.** Extended `dashboard/_state_cooldowns.py` with NEW `_hextech_drakes_by_team()` helper that watches `gameData.events.Events` for `EventName="DragonKill"` + `DragonType="Hextech"`, maps `KillerName` to team via `allPlayers[].summonerName -> .team` lookup, tallies per team. Per-participant `hextech_drakes` field wired into the participant build loop - feeds the s110 `58d1e87` haste-formula compute (`HEXTECH_DRAKE_AH_PER_STACK=5`). +10 tests. Closes the s110 carry-forward (c).
+
+**Merge `21657eb`:** no conflicts (3 agents touched disjoint files). DS suite 2777 passed (+47); wider RC 2253 passed (+86). DS :8893 restarted (taskkill + relaunch start_daemon_slayer.py per `reference_ds_server_not_supervisor_watched`); `/health` -> engine_version=1.22.0.
+
+**Don't-redo:** all 3 BACKLOG NOW items SHIPPED; cdragon formula evaluator's empty seam INTENTIONAL; pure-Python LR (no numpy dep) on purpose; the new `summs.summoner_haste` / `ult.ability_haste` / `hextech_drakes` keys are forward-compatible additions. **Carries forward:** seam populates when Arena S2 patch 26.09 schema break lands; aramAH/Tenacity engine consumption still queued for DS cooldown math (NOT PGR); WPA model retraining cadence operator-gated; post-game-phases live-game smoke pending; bridge/vision/DDragon items 110 carryforward unchanged. Frozen-file grant NOT used - 3 agents routed entirely around the frozen list.
+
 ---
 # 2026-05-20 - fleet bridge daemon symmetry + autonomous cadence verified (3 commits; non-engine; 1 frozen edit operator-approved)
 
