@@ -213,6 +213,25 @@ This pulls `/agent/_watcher_manifest.json` (sha256+size for the 7-file watcher r
 
 The manifest covers the full runtime fileset the watcher imports at module load (`bridge_watcher.py` + `classify` + `actions` + `history` + the config json + hook ps1 + action prompt md), which is wider than the original `bridge_watcher_install.ps1` 4-file pull set - drift in any of the 7 is caught.
 
+### Fresh peer install ritual (2-step)
+
+`bridge_watcher_install.ps1` is frozen (CLAUDE.md hard-rule) and only pulls 4 of the 7 files the daemon imports at module load. A fresh peer install on Game-PC or Peer therefore needs a second step to fill the gap (`bridge_watcher_actions.py`, `bridge_watcher_history.py`, `bridge_watcher_action_prompt.md`) before the watcher will boot.
+
+```
+# Step 1: installer (4 files + scheduled task + heartbeat verify)
+iex (iwr -UseBasicParsing `
+  https://legion-rc:8888/agent/bridge_watcher_install.ps1).Content
+
+# Step 2: drift-check -Apply (catches + pulls the missing 3, no-op if covered)
+iex (iwr -UseBasicParsing `
+  https://legion-rc:8888/agent/bridge_watcher_update_check.ps1).Content `
+  -Apply -Restart
+```
+
+Step 2 is idempotent: re-running it on an already-up-to-date peer exits 0 with no writes. The `-Restart` flag bounces the freshly-installed scheduled task so it picks up the 3 just-pulled files in the same shell. Without Step 2 the watcher's `bridge_watcher.py` import of `bridge_watcher_actions` / `bridge_watcher_history` would crash at module load (hard imports, not try/except).
+
+Re-run `bridge_watcher_update_check.ps1` (no flags) periodically or from cron to verify the install stays in sync with the canonical Legion copy.
+
 ---
 
 ## TLS certificate
