@@ -5568,7 +5568,8 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
             "226657": "Rod of Ages",
             "226665": "Jak'Sho, The Protean",
             "226675": "Navori Flickerblades",
-            "226676": "The Collector",
+            # 226676 The Collector promoted off defensive_only in iter 14
+            # (mirrors iter-10 SR 6676 - lethality=10.0 feeds the rotation)
             "226695": "Serpent's Fang",
         }
         for iid, name in expected.items():
@@ -7764,7 +7765,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.14.0")
+        self.assertEqual(ENGINE_VERSION, "1.15.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7825,7 +7826,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.14.0")
+        self.assertEqual(ENGINE_VERSION, "1.15.0")
 
 
 if __name__ == "__main__":

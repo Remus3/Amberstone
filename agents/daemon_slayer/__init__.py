@@ -1321,7 +1321,17 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.14.0"
+ENGINE_VERSION = "1.15.0"
+# 1.15.0 (Iter 14, 2026-05-20): Arena mirror audit - synced two arena variants
+# to their already-fixed SR base entries. (a) 226676 The Collector promoted off
+# defensive_only and given lethality=10.0 to mirror iter-10 SR 6676 fix. (b)
+# 223124 Guinsoo's Rageblade gained the Wrath +30 magic on-hit every-AA proc to
+# mirror iter-12 SR 3124 fix; Phantom Hit untouched. Audited 14 SR/Arena pairs
+# total (sunfire 223068 / dead-mans 223742 / titanic 223748 / hollow-radiance
+# 226664 / nashor 223115 / wits-end 223091 / opportunity 226701 / LDR 223036 /
+# horizon 224628 / riftmaker 224633 / crown 224644 / statikk 223087) - parity
+# held on all except the two SR-recently-fixed items above. Endless Hunger
+# 222517 verified defensive_only with no DPS contribution.
 # 1.14.0 (Iter 12, 2026-05-20): Energized + spellblade + on-hit + cleave +
 # anti-tank family audit vs Meraki / DDragon 16.10.1. Cross-checked Statikk
 # Shiv / Rapid Firecannon / Stormrazor / Voltaic Cyclosword / Trinity Force
