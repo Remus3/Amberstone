@@ -14,7 +14,7 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 ## Cross-Claude infrastructure
 
 - **Cross-Claude lessons Phase 4**: confidence scoring, symmetry check, auto-revert (Phases 1-3 shipped 2026-05-06).
-- **Bridge MCP tool wrapper**: REPL-style access to `/api/bridge` query params from any Claude session.
+- ~~**Bridge MCP tool wrapper**~~: shipped 2026-05-19 - new `tools/bridge_mcp_server.py` + `tools/start_bridge_mcp.py` (boot launcher) on `:8895`, localhost-only, Bearer auth (same token chain as the other RC MCP servers). 7 tools: `bridge_search` (filter by since/hours/kind/target/source/limit), `bridge_post_note`, `bridge_post_task` (auto-stamps task-<uuid> when id blank, matches the auto-stamp behavior of `/api/bridge/inbox`), `bridge_post_result`, `bridge_post_lesson`, `bridge_pending` (reads `ops/runtime/bridge_inbox_pending.json` directly so a pure status probe never needs the dashboard up), `bridge_status`. Writes shuttle to `POST https://127.0.0.1:8888/api/bridge` with self-signed cert skip (mirrors `tools/bridge_cli.py`); dashboard-down degrades to a structured `error` dict (URLError -> "unreachable", HTTPError -> http_status + response_body). +46 tests in `tests/test_bridge_mcp_server.py` mirroring `test_ds_matchdb_mcp_server.py` (pure tool fns, MCP protocol handlers, real ThreadingHTTPServer auth/JSON-RPC contract, ASCII guard, hung-tool watchdog). `docs/OPERATIONS.md` "Local cross-Claude bridge MCP (:8895)" section + `RC-Bridge-MCP` scheduled-task row. Operator-gated: scheduled task NOT created (new always-on listener; register only when a local Claude points at it) + `.mcp.json` wiring NOT done (live-session edit).
 
 ## Coaching depth
 
