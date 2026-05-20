@@ -269,6 +269,35 @@ Step 2 is idempotent: re-running it on an already-up-to-date peer exits 0 with n
 
 Re-run `bridge_watcher_update_check.ps1` (no flags) periodically or from cron to verify the install stays in sync with the canonical Legion copy.
 
+### Cross-Claude lessons (Phase 4 surface)
+
+Lesson sync status (sender ledger + per-(peer, mem_type) smoothed confidence):
+```
+curl -k https://127.0.0.1:8888/api/lessons/status         # JSON (refreshes acks first)
+curl -k "https://127.0.0.1:8888/api/lessons/status?refresh=0"  # snapshot only, skip bridge
+```
+
+CLI equivalent (also pokes the bridge for any new acks):
+```
+py tools/lessons_status.py            # JSON
+py tools/lessons_status.py --plain    # tabular per-bucket view
+py tools/lessons_status.py --no-refresh
+```
+
+Apply-with-revert wrapper (Claude/operator-driven; the receiver still
+auto-handles only schema-reject + neg-match):
+```
+py -m core.lessons_revert <lesson_id> --commit-sha <sha> --tests tests/test_x.py
+```
+On post-apply test failure + commit_sha given: runs `git revert <sha>
+--no-edit` and sends a follow-up `kind=result` ack with
+`auto_reverted=true`. Without commit_sha the fallback is to queue the
+lesson (no apply ack-took claim).
+
+Auto-revert is intentionally NOT a daemon - it is a safety net invoked
+by Claude when an applied lesson lands in a commit (vision section 5
+Phase 4 framing).
+
 ---
 
 ## TLS certificate
