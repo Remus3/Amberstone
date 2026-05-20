@@ -77,7 +77,7 @@ _CACHE_LOCK = threading.Lock()
 def _parse_int_list(raw: str, min_count: int, max_count: int
                     ) -> tuple[list[int], str | None]:
     if not raw:
-        return ([], f"missing required ids")
+        return ([], "missing required ids")
     parts = [p.strip() for p in raw.split(",") if p.strip()]
     if len(parts) < min_count or len(parts) > max_count:
         return ([], f"expected {min_count}-{max_count} ids, got {len(parts)}")
