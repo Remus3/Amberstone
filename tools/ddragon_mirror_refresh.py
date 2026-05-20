@@ -38,7 +38,9 @@ import json
 import logging
 import os
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,7 +57,8 @@ DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 VERSIONS_URL = f"{DDRAGON_BASE}/api/versions.json"
 USER_AGENT = "RiotCommander/3.0 ddragon-mirror-refresh"
 DEFAULT_TIMEOUT = 20.0
-MIN_INTERVAL_SEC = 0.05  # be polite but DDragon serves from CloudFront
+MIN_INTERVAL_SEC = 0.05  # bundle-pull cadence; asset fetches use a worker pool
+DEFAULT_WORKERS = 8       # parallel asset fetches against CloudFront
 
 # Maps used by the dashboard. DDragon ships map11.png (SR), map12.png (ARAM),
 # map30.png (Cherry/Arena). Brawl (35) is map11 reskin and has no DDragon asset.
@@ -497,7 +500,8 @@ def fetch_one(asset: Asset, dest: Path, *, manifest_entry: dict | None,
 
 
 def run(version: str, *, dry_run: bool, check_changed: bool, force: bool,
-        rate_limit: float = MIN_INTERVAL_SEC) -> PlanStats:
+        rate_limit: float = MIN_INTERVAL_SEC,
+        workers: int = DEFAULT_WORKERS) -> PlanStats:
     manifest = read_manifest(version)
     bundles: dict[str, Any] = {}
     for name in BUNDLE_NAMES:
@@ -517,41 +521,52 @@ def run(version: str, *, dry_run: bool, check_changed: bool, force: bool,
             stats.bump(a.cls, "total")
         return stats
 
-    last_call = 0.0
-    for a in assets:
-        stats.bump(a.cls, "total")
+    manifest_lock = threading.Lock()
+    stats_lock = threading.Lock()
+
+    def _work(a: Asset) -> None:
         dest = version_dir / a.rel_dest
-        me = manifest["assets"].get(a.rel_dest)
-        # rate-limit politeness
-        delta = time.monotonic() - last_call
-        if delta < rate_limit:
-            time.sleep(rate_limit - delta)
+        with manifest_lock:
+            me = manifest["assets"].get(a.rel_dest)
+        with stats_lock:
+            stats.bump(a.cls, "total")
         try:
             status, new_entry = fetch_one(a, dest, manifest_entry=me,
                                           check_changed=check_changed, force=force)
         except Exception as e:  # noqa: BLE001 - network anomalies are heterogeneous
             logger.warning("fetch %s failed: %s", a.url, e)
-            stats.failed += 1
-            stats.bump(a.cls, "fail")
-            last_call = time.monotonic()
-            continue
-        last_call = time.monotonic()
-        if status == "skip_present":
-            stats.skipped_present += 1
-        elif status == "new":
-            stats.fetched_new += 1
-            stats.bump(a.cls, "new")
-            if new_entry is not None:
+            with stats_lock:
+                stats.failed += 1
+                stats.bump(a.cls, "fail")
+            return
+        with stats_lock:
+            if status == "skip_present":
+                stats.skipped_present += 1
+            elif status == "new":
+                stats.fetched_new += 1
+                stats.bump(a.cls, "new")
+            elif status == "changed":
+                stats.fetched_changed += 1
+                stats.bump(a.cls, "changed")
+            elif status.startswith("fail"):
+                stats.failed += 1
+                stats.bump(a.cls, "fail")
+                logger.warning("fetch %s -> %s", a.url, status)
+        if new_entry is not None and status in ("new", "changed"):
+            with manifest_lock:
                 manifest["assets"][a.rel_dest] = new_entry
-        elif status == "changed":
-            stats.fetched_changed += 1
-            stats.bump(a.cls, "changed")
-            if new_entry is not None:
-                manifest["assets"][a.rel_dest] = new_entry
-        elif status.startswith("fail"):
-            stats.failed += 1
-            stats.bump(a.cls, "fail")
-            logger.warning("fetch %s -> %s", a.url, status)
+
+    stats.total = len(assets)
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
+        futures = [ex.submit(_work, a) for a in assets]
+        # Drain via as_completed for prompt error visibility; result is None.
+        for fut in as_completed(futures):
+            try:
+                fut.result()
+            except Exception as e:  # noqa: BLE001
+                logger.warning("worker raised: %s", e)
+                with stats_lock:
+                    stats.failed += 1
 
     write_manifest(version, manifest)
     return stats
@@ -598,6 +613,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="ignore manifest, re-fetch every asset")
     p.add_argument("--version", default=None,
                    help="pin a specific patch version (default = CDN latest)")
+    p.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
+                   help=f"parallel asset fetchers (default {DEFAULT_WORKERS})")
     p.add_argument("--log-level", default="INFO",
                    choices=("DEBUG", "INFO", "WARNING", "ERROR"))
     args = p.parse_args(argv)
@@ -621,7 +638,7 @@ def main(argv: list[str] | None = None) -> int:
                 "check-changed" if args.check_changed else "default")
 
     stats = run(latest, dry_run=args.dry_run, check_changed=args.check_changed,
-                force=args.full)
+                force=args.full, workers=args.workers)
 
     print(render_stats_table(stats))
 
