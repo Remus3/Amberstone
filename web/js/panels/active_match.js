@@ -20,6 +20,7 @@ import { renderThreatDonut } from './threat_donut.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
 import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
 import { renderWardHeat, fetchWardHeat, getCachedWardHeat } from './ward_heat.js';
+import { renderDraftElo, fetchDraftElo, getCachedDraftElo } from './draft_elo.js';
 
 const _AM = {
   sub:        () => document.getElementById("am-sub"),
@@ -29,6 +30,7 @@ const _AM = {
   cdBody:     () => document.getElementById("cd-ledger-body"),
   spikeCurve: () => document.getElementById("am-spike-curve"),
   wardHeat:   () => document.getElementById("am-ward-heat"),
+  draftElo:   () => document.getElementById("am-draft-elo"),
 };
 
 // Mode -> spike-curve backend mode. The backend supports SR/ARAM/ARENA/BRAWL;
@@ -253,6 +255,11 @@ export function renderActiveMatch(payload, ctx) {
   // -> faint placeholder; lanes with zero recent friendly wards get a
   // red outline ("uncovered").
   _renderWardHeatTick();
+
+  // Draft Elo chip (UX wave 2, 2026-05-20). One-shot per 5+5 lock:
+  // backend's 5-min cache absorbs re-fetches. Sample-density band +
+  // WR color band signal calibrated trust.
+  _renderDraftEloFromCtx(ctx);
 
   const build = _AM.buildBody();
   if (build) {
@@ -716,6 +723,81 @@ function _renderWardHeatTick() {
   fetchWardHeat();
   const cached = getCachedWardHeat();
   renderWardHeat(mount, cached);
+}
+
+// Draft Elo chip (UX wave 2, 2026-05-20). Pulls 5+5 champion ids from
+// the liveclient block, fetches /api/draft-elo once per (sorted ally +
+// sorted enemy + queue) tuple (5-min cache on both ends), renders a
+// compact chip in the BUILD pane head. Skips silently when:
+//   - mount node missing (older HTML cache)
+//   - liveclient missing or allPlayers length != 10
+//   - mode unsupported (only SR/ARAM 5v5 produce a useful draft prior;
+//     ARAM is still a valid 5v5 prior over the same DB)
+//   - any champion fails to resolve to a numeric key
+function _renderDraftEloFromCtx(ctx) {
+  const mount = _AM.draftElo();
+  if (!mount) return;
+  const lc = (ctx && ctx.liveclient) || null;
+  const modeLow = String((ctx && ctx.mode) || "").toLowerCase();
+  // Only enable in 5v5 modes where the cross-team / pair priors mean
+  // anything. Skip TFT/Arena/Brawl (different cross-section).
+  const enabled = (modeLow === "sr" || modeLow === "classic" || modeLow === "aram");
+  if (!enabled) {
+    if (mount.dataset.deState !== "hidden") {
+      mount.dataset.deState = "hidden";
+      mount.style.display = "none";
+      mount.innerHTML = "";
+    }
+    return;
+  }
+  mount.style.display = "";
+  if (!lc || !Array.isArray(lc.allPlayers) || lc.allPlayers.length !== 10) {
+    renderDraftElo(mount, null);
+    return;
+  }
+  const myTeam = _resolveMyTeam(lc);
+  if (!myTeam) {
+    renderDraftElo(mount, null);
+    return;
+  }
+  if (!CHAMPS.byId || !Object.keys(CHAMPS.byId).length) {
+    renderDraftElo(mount, null);
+    return;
+  }
+  if (!_SPK_NAME_TO_KEY.ready || _SPK_NAME_TO_KEY.version !== CHAMPS.version) {
+    _SPK_NAME_TO_KEY.map = {};
+    for (const [keyStr, slug] of Object.entries(CHAMPS.byId)) {
+      const numKey = parseInt(keyStr, 10);
+      if (!numKey || !slug) continue;
+      const norm = String(slug).toLowerCase().replace(/[^a-z0-9]/g, "");
+      _SPK_NAME_TO_KEY.map[norm] = numKey;
+    }
+    _SPK_NAME_TO_KEY.version = CHAMPS.version;
+    _SPK_NAME_TO_KEY.ready = true;
+  }
+  const allyIds = [];
+  const enemyIds = [];
+  for (const pl of lc.allPlayers) {
+    if (!pl || typeof pl !== "object") continue;
+    const champ = pl.championName || pl.rawChampionName || "";
+    if (!champ) continue;
+    const norm = String(champ).toLowerCase().replace(/[^a-z0-9]/g, "");
+    const numKey = _SPK_NAME_TO_KEY.map[norm] || 0;
+    if (!numKey) continue;
+    if (pl.team === myTeam) allyIds.push(numKey);
+    else                    enemyIds.push(numKey);
+  }
+  if (allyIds.length !== 5 || enemyIds.length !== 5) {
+    renderDraftElo(mount, null);
+    return;
+  }
+  const cached = getCachedDraftElo(allyIds, enemyIds, null);
+  if (!cached) {
+    fetchDraftElo(allyIds, enemyIds, null, null);
+    renderDraftElo(mount, null);
+    return;
+  }
+  renderDraftElo(mount, cached);
 }
 
 // UX-2 (2026-05-20): liveclient team-of-active-player resolver. Mirrors
