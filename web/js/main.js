@@ -6226,10 +6226,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
               // Bridge line: "bridge ok · last 12s ago" / "bridge silent
               // 14m ago" / "bridge dead 2h ago" / "bridge no-data".
               let bridgeLine;
-              if (bridge.status === "unknown" || bridge.age_s == null) {
+              if (bridge.status === "unknown" || bridge.gamepc_result_age_s == null) {
                 bridgeLine = "bridge no-data";
               } else {
-                const a = bridge.age_s;
+                const a = bridge.gamepc_result_age_s;
                 const ago = a < 60 ? `${Math.round(a)}s`
                           : a < 3600 ? `${Math.round(a/60)}m`
                           : `${(a/3600).toFixed(1)}h`;

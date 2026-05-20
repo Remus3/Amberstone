@@ -252,8 +252,12 @@ def _send_push_notification(summary: str, source: str, node: str,
         _log.debug("push notif throttled (>=%d in last hour)", _PUSH_MAX_PER_HR)
         return False
     msg = f"[bridge-watcher/{node}] new escalation from {source}: {summary}"
+    # Use _actions._resolve_claude_executable() instead of bare "claude": on
+    # Windows the CLI is claude.cmd (npm shim) and subprocess.run won't
+    # auto-append .cmd, so bare "claude" raised WinError 2 ("claude not in
+    # PATH?") and push-notif silently failed fleet-wide. Fixed 2026-05-20.
     argv = [
-        "claude", "--print",
+        _actions._resolve_claude_executable(), "--print",
         "--dangerously-skip-permissions",
         "--allowed-tools", "PushNotification",
         "-p", msg,
