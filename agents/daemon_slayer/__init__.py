@@ -1321,7 +1321,54 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.22.0"
+ENGINE_VERSION = "1.23.0"
+# 1.23.0 (aramAbilityHaste + aramTenacity engine consumption, 2026-05-20):
+# Closes the half-shipped state from ENGINE 1.19.0 (`6bba097` exposed
+# the two ARAM modifier keys via the resolved stats dict but no scorer
+# read them). The cooldown lane in
+# ``agents/daemon_slayer/ability_dps.py`` now CONSUMES the
+# ``aram_ability_haste`` delta via Riot's canonical haste formula
+# ``eff_cd = base_cd / (1 + total_AH / 100)`` (mirrors
+# ``core/summoner_cooldowns.py`` shipped 2026-05-20 `58d1e87` for
+# summoner spells). 22 champs carry non-zero aramAbilityHaste in
+# 16.10.1 - the consumer is now real, not a TODO:
+# * positive deltas shorten the rotation (Soraka +10, Katarina +10,
+#   Azir +20, Aurora/Camille/Hecarim/Irelia/Lucian/Naafiri/Rakan +10,
+#   Leblanc +20)
+# * negative deltas lengthen it (Seraphine -20, Teemo -15, Ziggs -20,
+#   Corki -20, Brand/Mel/Milio/Sion/Smolder/Zyra -10)
+# New helpers in ``ability_dps.py``:
+#   * ``_effective_ability_cd(base_cd, total_haste)`` - the haste formula
+#     primitive (denominator floor 0.01 against extreme negative haste).
+#   * ``_total_ability_haste(scaled_stats, mode, base_ah=0)`` - mode-gated
+#     read of the engine-exposed aram_ability_haste delta. SR + every
+#     non-ARAM mode return base_ah unchanged; ARAM folds in the delta.
+#     ``base_ah`` is reserved for the future item-AH lane - currently 0.
+# Schema lift on ``AbilitySpellDps``:
+#   * ``base_cooldown`` - pre-haste rank cooldown (back-compat: identity
+#     to old ``cooldown`` field in SR + zero-haste-ARAM cases).
+#   * ``total_ability_haste`` - the haste sum used in the formula.
+# Schema lift on ``AbilityDpsResult``:
+#   * ``aram_ability_haste`` - the consumed haste delta (0.0 outside ARAM).
+#   * ``aram_tenacity_mult`` - forwarded for a future EHP-side enemy-CC
+#     consumer; NOT consumed in this slice (the consumption point is in
+#     a future EHP scorer that ingests enemy CC durations applied
+#     against the receiving champion). Marker is in place so when that
+#     scorer ships, the data is already on the result.
+# Existing ``cooldown`` field on ``AbilitySpellDps`` now stores the
+# EFFECTIVE post-haste cooldown. SR mode + most ARAM champions (those
+# with aramAbilityHaste=0) see identity - the field is backward
+# compatible. Forty-two test files in the DS test suite assert on
+# ``.cooldown`` values for SR-mode builds (e.g.
+# ``test_cooldown_inheritance.py``); all preserved because total_ah=0
+# at SR. +26 new value-pinned tests in
+# ``test_aram_ability_haste_consumption.py`` covering haste formula
+# math, mode-gated composition, live snapshot consumption (Soraka Q
+# 6.0 -> 5.4545 at +10 AH, Azir E 22.0 -> 18.333 at +20 AH, Seraphine
+# Q lengthened at -20 AH, Teemo Q lengthened at -15 AH, Veigar
+# zero-haste identity), tenacity forwarding, to_dict round-trip,
+# backward-compat on Riven R / Qiyana Q / Veigar W SR baselines.
+#
 # 1.22.0 (cdragon-arena calculations formula evaluator, 2026-05-20):
 # Phase 6 step 3 of the cdragon-arena `dataValues + calculations`
 # enrichment closes the half-shipped state (dataclass layer landed

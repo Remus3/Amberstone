@@ -46,12 +46,52 @@ Phase 4b deliberate omissions (deferred):
 * Multi-form abilities (Aphelios weapons, Jayce stance, Sylas-stolen ult)
   - ``form_index=0`` only. Operator can pass ``form_index_overrides`` to
   pick a different form per key.
-* Item-level ability haste, on-cast triggers, ability-amp items like
-  Liandry's ramp damage - modeled at the rotation level in ``dps.py``,
-  not at per-cast level here. Items that pump ``ap`` flow through to
-  ability DPS naturally via the resolved stat block.
+* On-cast triggers, ability-amp items like Liandry's ramp damage -
+  modeled at the rotation level in ``dps.py``, not at per-cast level
+  here. Items that pump ``ap`` flow through to ability DPS naturally
+  via the resolved stat block.
 * Conditional damage amps (Ahri R-into-Q, Zoe E-into-Q) - single
   per-cast scoring with no combo-multiplier. Champion-specific.
+
+ENGINE 1.23.0 (2026-05-20) - ability-haste consumption
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Closes the half-shipped state from ENGINE 1.19.0: the engine layer
+exposes ``scaled["aram_ability_haste"]`` (flat delta; default 0) and
+``scaled["aram_tenacity_mult"]`` (multiplier; default 1.0) via
+``engine._apply_mode_modifiers``; this module now CONSUMES the haste
+delta to shorten per-spell effective cooldowns using Riot's canonical
+haste formula ``eff_cd = base_cd / (1 + total_AH / 100)`` (mirrors
+``core/summoner_cooldowns.py`` shipped 2026-05-20 ``58d1e87``).
+
+The total ability-haste plumbed into the formula is the sum of:
+
+* the per-spell ``base_ah`` caller param (defaults to 0; reserved for
+  the future item-AH lane - the dataclass shape in ``_effects_types.py``
+  does not yet ship an ``ability_haste_flat`` field, so item-AH source
+  is currently always 0 and the only non-zero source is the ARAM delta);
+* ``scaled.get("aram_ability_haste", 0.0)`` when ``mode == "ARAM"``
+  (SR and other modes strip the delta defensively even if a caller
+  pre-populates the key).
+
+Per-spell ``AbilitySpellDps`` grows two new fields:
+
+* ``base_cooldown`` - the pre-haste rank cooldown from
+  ``_form_cooldown_at_rank`` (back-compat: same value as the pre-1.23
+  ``cooldown`` in SR mode with no haste sources).
+* ``total_ability_haste`` - the haste sum used in the formula (0.0
+  outside ARAM, the aramAbilityHaste delta inside ARAM).
+
+The ``cooldown`` field becomes the EFFECTIVE post-haste value (identity
+to ``base_cooldown`` when total haste is 0, the natural case for SR
+and most ARAM champions). Result top-level grows ``aram_ability_haste``
+and ``aram_tenacity_mult`` for downstream consumer visibility.
+
+TODO (future EHP-side enemy-CC consumer): ``aram_tenacity_mult`` is
+plumbed forward but NOT consumed in this slice - the consumption point
+is in a future EHP scorer that ingests enemy CC durations applied
+against the receiving champion. The marker is in place so when that
+scorer ships, the data is already on the result.
 """
 
 from __future__ import annotations
@@ -759,6 +799,68 @@ def _form_cooldown_at_rank(
     return 60.0
 
 
+def _effective_ability_cd(base_cd: float, total_haste: float) -> float:
+    """Apply Riot's canonical haste formula to an ability base cooldown.
+
+    ENGINE 1.23.0 (2026-05-20): mirrors ``core.summoner_cooldowns._effective_cd``
+    so the engine + summoner-CD ledger use the same math (the summoner
+    module landed 2026-05-20 ``58d1e87``; this helper is the ability-side
+    sibling).
+
+    Formula: ``eff_cd = base_cd / (1 + total_haste / 100)``.
+      * ``total_haste = 0`` -> identity (eff_cd == base_cd).
+      * ``total_haste > 0`` -> shorter eff_cd.
+      * ``total_haste < 0`` (event-mode penalties; Seraphine -20, Teemo
+        -15, Ziggs -20 etc) -> longer eff_cd via the same formula.
+
+    Defensive floor on the denominator: a hypothetical
+    ``total_haste <= -100`` would otherwise divide by zero / invert. The
+    helper clamps the denominator to a 0.01 floor so result stays
+    finite + monotone-increasing as haste approaches -100 from above.
+    Real engine values never approach this edge but the floor keeps the
+    helper robust against caller-supplied test extremes.
+
+    A ``base_cd`` of 0 returns 0 regardless of haste (locked spells,
+    pre-rank states).
+    """
+    if base_cd <= 0:
+        return 0.0
+    denom = 1.0 + float(total_haste) / 100.0
+    if denom < 0.01:
+        denom = 0.01
+    return float(base_cd) / denom
+
+
+def _total_ability_haste(
+    scaled_stats: dict[str, float],
+    mode: str,
+    base_ah: float = 0.0,
+) -> float:
+    """Sum the total ability-haste applied to per-spell cooldowns.
+
+    ENGINE 1.23.0 (2026-05-20): mode-gated read of the engine-exposed
+    ``aram_ability_haste`` delta (engine.py line ~210). SR + every
+    non-ARAM mode strip the delta defensively even if a caller
+    pre-populates the key (the engine's _apply_mode_modifiers gates
+    on mode == "ARAM"; this helper double-gates so a malformed
+    scaled-dict can't leak ARAM haste into SR rankings).
+
+    ``base_ah`` is the caller-supplied baseline (defaults 0). Reserved
+    for the future item-AH lane - once the schema in
+    ``_effects_types.ItemEffect`` grows an ``ability_haste_flat`` field
+    + the matching ``total_ability_haste(effects)`` summer in
+    ``effects.py``, ``compute_ability_dps`` will pass the item-side
+    total here. Today the lane is empty.
+
+    Negative deltas (Seraphine -20, Teemo -15, etc) pass through; the
+    haste formula handles them via ``_effective_ability_cd``.
+    """
+    if mode != "ARAM":
+        return float(base_ah)
+    aram_ah = float(scaled_stats.get("aram_ability_haste", 0.0))
+    return float(base_ah) + aram_ah
+
+
 def _form_cost_at_rank(form: AbilityForm, rank: int) -> float:
     """Return mana/resource cost at rank, or 0.0 when None / empty."""
     if form.cost is None or not form.cost:
@@ -807,22 +909,31 @@ def _mana_uptime_factor(
 
 @dataclass(frozen=True)
 class AbilitySpellDps:
-    """Per-spell-key breakdown returned by ``compute_ability_dps``."""
+    """Per-spell-key breakdown returned by ``compute_ability_dps``.
+
+    ENGINE 1.23.0 (2026-05-20): added ``base_cooldown`` + ``total_ability_haste``
+    fields. The existing ``cooldown`` field now stores the EFFECTIVE
+    post-haste cooldown (``base_cooldown / (1 + total_ability_haste / 100)``).
+    SR mode + most ARAM champions (those with aramAbilityHaste=0) see
+    identity: ``cooldown == base_cooldown``.
+    """
     key: str
     form_name: str
     form_index: int
     rank: int
-    cooldown: float
+    cooldown: float                     # effective post-haste cooldown
     cost: float
     damage_type: str | None
     resource: str | None
     raw_damage_per_cast: float          # base + all scaling, pre-mode, pre-mitigation
-    post_mode_damage_per_cast: float    # × mode_multiplier
+    post_mode_damage_per_cast: float    # x mode_multiplier
     post_mitigation_damage_per_cast: float
     casts_per_sec: float                # measured (if available) or theoretical
     casts_per_sec_source: str           # "measured" | "theoretical_with_mana_uptime" | "missing"
     mana_uptime_factor: float
     dps: float
+    base_cooldown: float = 0.0          # pre-haste rank cooldown (ENGINE 1.23.0)
+    total_ability_haste: float = 0.0    # haste sum used in haste formula (ENGINE 1.23.0)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
@@ -842,13 +953,21 @@ class AbilitySpellDps:
             "casts_per_sec_source": self.casts_per_sec_source,
             "mana_uptime_factor": self.mana_uptime_factor,
             "dps": self.dps,
+            "base_cooldown": self.base_cooldown,
+            "total_ability_haste": self.total_ability_haste,
             "notes": list(self.notes),
         }
 
 
 @dataclass(frozen=True)
 class AbilityDpsResult:
-    """Top-level result from ``compute_ability_dps``."""
+    """Top-level result from ``compute_ability_dps``.
+
+    ENGINE 1.23.0 (2026-05-20): added ``aram_ability_haste`` (consumed
+    by the per-spell cooldown haste formula) and ``aram_tenacity_mult``
+    (forwarded for a future EHP-side enemy-CC consumer; not consumed in
+    this slice - see module-level TODO).
+    """
     champion_id: str
     champion_name: str
     level: int
@@ -870,6 +989,8 @@ class AbilityDpsResult:
     block_index_source: str = "default"             # "override" | "champion" | "default"
     block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]" = field(default_factory=dict)
     stats: dict[str, float] = field(default_factory=dict)
+    aram_ability_haste: float = 0.0                 # consumed haste delta (ENGINE 1.23.0)
+    aram_tenacity_mult: float = 1.0                 # forwarded for future EHP consumer (ENGINE 1.23.0)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
@@ -895,6 +1016,8 @@ class AbilityDpsResult:
             "block_index_source": self.block_index_source,
             "block_index_resolved": dict(self.block_index_resolved),
             "stats": dict(self.stats),
+            "aram_ability_haste": self.aram_ability_haste,
+            "aram_tenacity_mult": self.aram_tenacity_mult,
             "notes": list(self.notes),
         }
 
@@ -1147,6 +1270,19 @@ def compute_ability_dps(
     target_armor_eff = effective_target_armor(target_armor, item_effects, level)
     target_mr_eff = effective_target_mr(target_mr, item_effects)
 
+    # ENGINE 1.23.0 (2026-05-20) - ability-haste consumption.
+    # Read the engine-exposed aramAbilityHaste delta (stripped to 0
+    # outside ARAM mode by ``_total_ability_haste``). The item-AH lane
+    # is currently empty - ``_effects_types.ItemEffect`` does not yet
+    # carry an ability-haste field, so ``base_ah`` defaults to 0. When
+    # that lane lands, ``base_ah`` will become a sum over item_effects.
+    # Single haste-total applies uniformly to all 4 spell keys (Q/W/E/R)
+    # at the engine layer - per-spell amplifiers are out of scope.
+    total_ah = _total_ability_haste(resolved.stats, mode, base_ah=0.0)
+    # Forward the tenacity multiplier for downstream EHP consumers.
+    # NOT consumed in this slice - see module-level TODO.
+    aram_tenacity_mult = float(resolved.stats.get("aram_tenacity_mult", 1.0))
+
     # Resolve forms for Q/W/E/R. Champions may lack a key in the snapshot
     # - surface a zero spell rather than raising so partial coverage is
     # tolerated.
@@ -1192,7 +1328,12 @@ def compute_ability_dps(
         # so non-form-0 entries with cooldown=None inherit from the parent
         # form's CD list (Riven R / Renekton E / AurelionSol R / Qiyana Q).
         fallback = forms[0] if form_idx != 0 else None
-        cooldown = _form_cooldown_at_rank(form, rank, fallback_form=fallback)
+        base_cooldown = _form_cooldown_at_rank(form, rank, fallback_form=fallback)
+        # ENGINE 1.23.0 - apply haste formula to the rank cooldown so
+        # the theoretical fallback rate + the surfaced .cooldown field
+        # reflect the operator's true rotation cadence. Identity for
+        # total_ah == 0 (SR mode + most ARAM champions).
+        cooldown = _effective_ability_cd(base_cooldown, total_ah)
         cost = _form_cost_at_rank(form, rank)
         # Phase 5.9 (s191): if this key has a block_index override (caller
         # or per-(champion, key) registry), switch to "indexed" strategy
@@ -1240,6 +1381,8 @@ def compute_ability_dps(
             casts_per_sec_source=cps_source,
             mana_uptime_factor=mana_uptime,
             dps=dps,
+            base_cooldown=base_cooldown,
+            total_ability_haste=total_ah,
         ))
 
     total_dps = sum(s.dps for s in per_spell)
@@ -1304,6 +1447,14 @@ def compute_ability_dps(
             + ", ".join(f"{k}={block_overrides[k]}" for k in sorted(block_overrides))
         )
 
+    # ENGINE 1.23.0: surface a note when haste actually shortened or
+    # lengthened the rotation so consumers can see the consumed delta.
+    if total_ah != 0.0:
+        notes.append(
+            f"ARAM aramAbilityHaste={total_ah:+.0f} on per-spell cooldowns "
+            f"(eff_cd = base / (1 + AH/100))"
+        )
+
     return AbilityDpsResult(
         champion_id=resolved.champion_id,
         champion_name=resolved.champion_name,
@@ -1326,6 +1477,8 @@ def compute_ability_dps(
         block_index_source=block_index_source,
         block_index_resolved=dict(block_index_overrides),
         stats=dict(resolved.stats),
+        aram_ability_haste=total_ah,
+        aram_tenacity_mult=aram_tenacity_mult,
         notes=tuple(notes),
     )
 
