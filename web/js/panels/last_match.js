@@ -32,6 +32,8 @@ import { CHAMPS, ITEMS } from '../lib/items_index.js';
 // Item C (s220): rich DDragon item tooltips via the shared app-wide
 // data-tt-html plumbing - same lib champ_select.js uses (s213).
 import { itemTooltipHtml, preloadLolDescriptions } from '../lib/lol_descriptions.js';
+// s220 PGR S2: phases-that-mattered (WPA decomposition of the timeline).
+import { fetchAndRenderPhases, clearPhases } from './post_game_phases.js';
 
 // Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
 // set; Arena (CHERRY) spell ids are not in this map and fall back to a
@@ -324,6 +326,7 @@ function renderLastMatch(data) {
   _setTeamComp(enriched);
   _setChart(enriched);
   _setTimeline(enriched);
+  _setPhases(m, enriched);
   _setQuickReview(qr);
   _setReviewButton(m);
   _setMeta(m, data.history_count, enriched);
@@ -897,6 +900,26 @@ function _fmtSigned(v, thousands) {
   const abs = Math.abs(n);
   const body = thousands ? _fmtThousands(abs) : String(Math.round(abs));
   return `${sign}${body}`;
+}
+
+function _setPhases(m, enriched) {
+  // s220 PGR S2: trigger the WPA fetch for this match. The match id
+  // comes from /api/last-match (m.id). operator's side may live on
+  // m.tracked_side or enriched.tracked_side - check both.
+  const matchId = (m && m.id) || (enriched && enriched.match_id) || "";
+  let operatorTeam = 0;
+  if (m && (m.tracked_side === 100 || m.tracked_side === 200)) {
+    operatorTeam = m.tracked_side;
+  } else if (enriched && (enriched.tracked_side === 100 || enriched.tracked_side === 200)) {
+    operatorTeam = enriched.tracked_side;
+  }
+  // Skip non-SR modes - the WPA model is trained on SR timelines.
+  const mode = (m && m.mode) || "";
+  if (mode && !/CLASSIC|SR|RANKED|DRAFT|NORMAL/i.test(mode)) {
+    clearPhases();
+    return;
+  }
+  fetchAndRenderPhases(matchId, operatorTeam);
 }
 
 function _setQuickReview(qr) {
