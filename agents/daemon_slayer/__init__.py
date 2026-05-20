@@ -1321,7 +1321,31 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.16.0"
+ENGINE_VERSION = "1.17.0"
+# 1.17.0 (Iter 16, 2026-05-20): Structural-drift resolution lane vs Meraki
+# bulk items 16.10.1 - the 2 items flagged by iter 15 closed in two
+# different ways. (a) Sundered Sky 6610 + Arena 226610 Lightshield
+# Strike recalibrated from pre-rework "20 + 200% base_ad" to
+# "70 + 80% (base_ad + bonus_ad)" - same long-CD periodic shape and
+# 8s cadence, but constants tracked to the 16.10.1 spec
+# "60-80 bonus damage + 80% total critical damage modifier on the
+# next-AA empowered crit" (70 = midpoint of the 60-80 band; 0.8 *
+# total_AD approximates the empowered-crit delta-vs-normal-AA when
+# the 80% total-crit-modifier applies). Full re-encoding as a true
+# crit-guarantee burst proc deferred (would touch burst.py +
+# dps.py + CallContext crit-damage field). (b) Dead Man's Plate
+# 3742 + Arena 223742 Shipwrecker flipped to defensive_only - the
+# Meraki 16.10.1 dual-track formula "0.4 * stacks (cap 40) +
+# stacks% (cap 100%) * base_ad" requires a Momentum stack
+# accumulation model the engine's periodic-proc schema doesn't
+# support yet. Principled deferral: Dead Man's is a TANK pick
+# where DPS contribution is incidental; defensive_only flip is
+# safer than carrying a stale flat-magnitude estimate. Test delta:
+# 5 lightshield-burst-harness expected values rebaselined (140 ->
+# 118, 70 -> 59 with armor); 5 DeadMansPlateShipwreckerTests rewritten
+# from active-periodic shape assertions to defensive_only + no-DPS-lift
+# assertions. defensive_only count crosses both thresholds upward
+# (assertGreaterEqual passes both s-31 >=40 and s-34 >=53 gates).
 # 1.16.0 (Iter 15, 2026-05-20): Damage-magnitude lane audit vs Meraki bulk
 # items 16.10.1 - 16 hardcoded item proc constants cross-checked.
 # Two clean magnitude drifts fixed: (a) Hextech Alternator (3145) Revved
