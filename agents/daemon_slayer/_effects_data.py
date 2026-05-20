@@ -756,12 +756,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Nashor's Tooth",
         periodics=(PeriodicProc(
             name="Icathian Bite",
-            # 15 + 20% AP bonus magic per basic. Per-attack proc (every_n=1).
-            bonus_damage=lambda c: 15.0 + 0.20 * c.ap,
+            # 15 + 15% AP bonus magic per basic. Per-attack proc (every_n=1).
+            # AP coefficient verified against Meraki bulk 16.10.1 (the
+            # engine had drifted to 20% AP; current League math is 15% AP).
+            bonus_damage=lambda c: 15.0 + 0.15 * c.ap,
             damage_type=MAGICAL,
             every_n_attacks=1,
         ),),
-        note="Nashor's Tooth: Icathian Bite on-hit ~15 + 20% AP magic per attack",
+        note="Nashor's Tooth: Icathian Bite on-hit ~15 + 15% AP magic per attack",
     ),
 
     "3146": ItemEffect(
@@ -3658,11 +3660,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Nashor's Tooth",
         periodics=(PeriodicProc(
             name="Icathian Bite",
-            bonus_damage=lambda c: 15.0 + 0.20 * c.ap,
+            # Arena mirror inherits the SR 15 + 15% AP Meraki shape
+            # (2026-05-20 fix - pre-fix was 20% AP across both 3115 and
+            # the Arena mirror).
+            bonus_damage=lambda c: 15.0 + 0.15 * c.ap,
             damage_type=MAGICAL,
             every_n_attacks=1,
         ),),
-        note="Nashor's Tooth (Arena 223115): same as SR 3115 - Icathian Bite 15+20% AP magic on-hit",
+        note="Nashor's Tooth (Arena 223115): same as SR 3115 - Icathian Bite 15+15% AP magic on-hit",
     ),
     "223124": ItemEffect(
         item_id="223124",

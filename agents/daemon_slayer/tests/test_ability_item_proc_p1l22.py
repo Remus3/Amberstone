@@ -184,7 +184,7 @@ class SpellbladeIsAbilityTriggeredNotAttackTriggeredTests(unittest.TestCase):
         is ability-cadence and AP-scaled - confirm both pieces.
 
         AP coefficient corrected from 50% to 40% per Meraki bulk 16.10.1
-        (2026-05-20 ENGINE 1.20.0 fix).
+        (2026-05-20 ENGINE 1.21.0 fix).
         """
         base_ad, ap = 60.0, 120.0
         ctx = _ctx(base_ad=base_ad, ap=ap)
