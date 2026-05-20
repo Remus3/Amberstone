@@ -1,0 +1,73 @@
+/* Draft Elo chip panel (UX wave 2 ship, 2026-05-20).
+ *
+ * Compact inline chip: DRAFT label + WR percentage in band color +
+ * Elo delta + sample-density indicator. Designed to sit next to the
+ * spike-curve sparkline in the BUILD pane, or inline in the active
+ * match header.
+ *
+ * Color bands match the s106 personal_vs threat band convention.
+ */
+
+.draft-elo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.85);
+  user-select: none;
+  cursor: default;
+}
+
+.draft-elo-chip[data-de-state="empty"] {
+  color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+.draft-elo-chip .de-label {
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.draft-elo-chip .de-wr {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.draft-elo-chip .de-wr.de-band-red    { color: #ff5050; }
+.draft-elo-chip .de-wr.de-band-amber  { color: #f1b04a; }
+.draft-elo-chip .de-wr.de-band-green  { color: #6ec977; }
+
+.draft-elo-chip .de-score {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.draft-elo-chip .de-sample {
+  font-size: 9px;
+  font-weight: 500;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.draft-elo-chip .de-sample-low {
+  color: #ff8080;
+  background: rgba(255, 80, 80, 0.10);
+}
+
+.draft-elo-chip .de-sample-mid {
+  color: #f1c878;
+  background: rgba(241, 200, 120, 0.08);
+}
+
+.draft-elo-chip .de-sample-high {
+  color: #80e090;
+  background: rgba(110, 201, 119, 0.08);
+}
