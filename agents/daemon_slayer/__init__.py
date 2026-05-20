@@ -1285,6 +1285,40 @@ Multi-source percent-pen / percent-reduction composition fix
 * No existing DS test required rebaseline (the prior fixture builds
   carried at most one %-pen item per build path; the test_rank_assassin
   3-pen sentinel was a "raises" path, not a math assertion).
+
+Lethality 1:1 conversion fix (2026-05-19 - audit lane 6,
+ENGINE_VERSION 1.10.0):
+
+* Prior ``effects.effective_target_armor`` folded lethality into the
+  flat-pen sum at the pre-V14.1 scaling ``lethality * (0.6 + 0.4 *
+  level / 18)`` (62.22% at L1 ramping to 100% at L18). Riot V14.1
+  (2024-01) REMOVED that level scaling - lethality now grants its
+  full value as flat armor pen at every caster level. The engine
+  sits on patch 16.10.x (well past V14.1) so the 1:1 rule is the
+  correct math. The pre-V14.1 formula UNDER-applied lethality at
+  every level except 18, max 37.78 percentage points at L1; this
+  systematically under-scored every lethality item in the engine
+  rank/build for early-to-mid-game champion levels.
+* ``effects.py`` lethality fold simplified: when ``level`` is
+  supplied and ``lethality_total > 0``, the contribution is now
+  ``pen_flat += lethality_total`` (1.0 factor at every level). The
+  ``level`` parameter is retained on the signature for back-compat
+  with the original Phase 4 batch 30 contract and for the
+  "level=None means lethality contributes nothing" invariant on
+  the non-DPS path.
+* +1 RED-then-GREEN audit test
+  (``ArmorPenPipelineOrderTests.test_lethality_is_one_to_one_flat_pen_post_v14_1``)
+  pinning the 1:1 rule at L1/L6/L11/L18. 9 existing tests pinned
+  to the pre-V14.1 formula were rebaselined to the 1:1 rule:
+  4 in ``LethalityScalingTests``, 2 in ``LethalityEngineWireInTests``,
+  1 in ``SpectralCutlassLethality``, 1 in
+  ``Batch32LethAllyPromotionsTests``, 1 in ``Batch38ActiveItemTests``
+  (renamed _scales_with_level -> _level_invariant_post_v14_1), 1 in
+  ``LethalityLevelScaledDerivation`` wireable sim (renamed
+  _scales_with_caster_level -> _one_to_one_post_v14_1). Source:
+  League wiki Armor_penetration "Lethality now grants the full amount
+  as flat armor penetration at all levels with no scaling. ... In
+  V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.9.1"
+ENGINE_VERSION = "1.10.0"
