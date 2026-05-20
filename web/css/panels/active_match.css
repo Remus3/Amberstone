@@ -86,3 +86,45 @@
   align-items: center;
   justify-content: center;
 }
+
+/* UX-2 (2026-05-20): per-enemy threat donut. The donut module
+ * (web/js/panels/threat_donut.js) renders a 28x28 inline SVG showing
+ * physical/magical/true/on-hit mix from /api/damage-mix. Lives next
+ * to each enemy's champion portrait in the active_match BUILD pane's
+ * THREATS strip.
+ *
+ * Inline-block + middle vertical-align so the donut sits flush against
+ * a champion-portrait baseline. 4px left margin separates it from the
+ * portrait without forcing the row into a column layout when the strip
+ * is on a single line.
+ */
+.threat-donut {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
+  line-height: 0;
+}
+
+.threat-donut svg {
+  display: block;
+}
+
+.threat-donut-empty,
+.threat-donut-loading {
+  opacity: 0.85;
+}
+
+#view-active-match .threat-strip .threat-row {
+  /* Tighter row padding than the DS-icon strip; the donut is the
+   * visual heavy here, not the portrait. */
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: var(--surface-2, #1d1d28);
+}
+
+#view-active-match .threat-strip .threat-portrait {
+  /* Override the inline style's hard 28px so a wider portrait can be
+   * theme-overridden by a sibling stylesheet without touching the JS.
+   * Inline styles still win at runtime, but this keeps the door open. */
+  background: var(--surface, #14141c);
+}
