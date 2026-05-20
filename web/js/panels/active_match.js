@@ -16,6 +16,7 @@
 
 import { ITEMS } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
+import { renderThreatDonut } from './threat_donut.js';
 
 const _AM = {
   sub:        () => document.getElementById("am-sub"),
@@ -263,6 +264,27 @@ export function renderActiveMatch(payload, ctx) {
         build.appendChild(defStrip);
       }
     }
+
+    // UX-2 (2026-05-20): THREATS strip - per-enemy champion portrait +
+    // inline damage-mix donut driven by /api/damage-mix. Reads from
+    // ctx.liveclient.allPlayers + activePlayer.team (the active player's
+    // team is excluded so we only see enemies). Skips silently when
+    // liveclient is missing, when there are no enemy entries, or in
+    // shared-vision modes where the operator already has full info.
+    const lc = (ctx && ctx.liveclient) || null;
+    if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
+      const myTeam = _resolveMyTeam(lc);
+      const enemies = lc.allPlayers.filter((pl) => pl && pl.team && pl.team !== myTeam);
+      if (enemies.length) {
+        build.appendChild(_line("THREATS", ""));
+        const strip = document.createElement("div");
+        strip.className = "threat-strip";
+        strip.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;align-items:center;";
+        enemies.forEach((pl) => strip.appendChild(_threatRow(pl, mode, level)));
+        build.appendChild(strip);
+      }
+    }
+
     if (!picks.length && !owned.length) {
       // Empty pane shouldn't be blank - surface that we're waiting.
       build.appendChild(_line("DS ENGINE", "waiting for live data..."));
@@ -500,6 +522,76 @@ function _amDrawOverlay(vs) {
       ganker.style.display = "none";
     }
   }
+}
+
+// UX-2 (2026-05-20): liveclient team-of-active-player resolver. Mirrors
+// core.enemy_aware_stats.active_player_team. The riotIdGameName form
+// "Name#Tag" matches both the bare and the suffixed shapes that show
+// up across summoner-name vs riotId payloads.
+function _resolveMyTeam(lc) {
+  if (!lc || typeof lc !== "object") return null;
+  const ap = lc.activePlayer || {};
+  const me = ap.summonerName || ap.riotIdGameName || "";
+  if (!me) return null;
+  const all = lc.allPlayers || [];
+  for (const pl of all) {
+    if (!pl || typeof pl !== "object") continue;
+    const rid = pl.riotIdGameName || pl.summonerName || "";
+    if (rid === me
+        || me.startsWith(rid + "#")
+        || rid === me.split("#", 1)[0]) {
+      return pl.team || null;
+    }
+  }
+  return null;
+}
+
+// UX-2 (2026-05-20): one enemy row = portrait + donut + champ name. The
+// donut is appended via renderThreatDonut so the cache + fetch lifecycle
+// is owned by the donut module. Item ids exclude slot >= 6 (trinket)
+// since trinkets don't contribute to damage mix - matches the
+// `enemy_items_from_liveclient` exclusion.
+function _threatRow(pl, mode, level) {
+  const row = document.createElement("div");
+  row.className = "threat-row";
+  row.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
+
+  const champ = pl.championName || pl.rawChampionName || "?";
+  const portrait = document.createElement("img");
+  portrait.className = "threat-portrait";
+  portrait.alt = champ;
+  portrait.title = champ;
+  const ver = (ITEMS && ITEMS.version) || "16.10.1";
+  // DDragon champion-square id is the championName (no spaces / apostrophes
+  // for most; rawChampionName has the canonical id form when present).
+  const champId = (pl.rawChampionName || champ).replace(/[^a-zA-Z0-9]/g, "");
+  portrait.src = `/data/ddragon/${ver}/img/champion/${champId}.png`;
+  portrait.style.cssText = "width:28px;height:28px;border-radius:50%;border:1px solid #303040;display:inline-block;vertical-align:middle;";
+  portrait.onerror = () => {
+    if (!portrait.dataset.cdnRetry) {
+      portrait.dataset.cdnRetry = "1";
+      portrait.src = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/champion/${champId}.png`;
+    } else {
+      portrait.style.display = "none";
+    }
+  };
+  row.appendChild(portrait);
+
+  // Build the item-id list for /api/damage-mix. Same slot < 6 filter as
+  // core.enemy_aware_stats.enemy_items_from_liveclient. Skip non-objects
+  // and zero/missing item ids.
+  const itemIds = [];
+  const liveItems = Array.isArray(pl.items) ? pl.items : [];
+  for (const it of liveItems) {
+    if (!it || typeof it !== "object") continue;
+    const slot = it.slot;
+    if (slot != null && slot >= 6) continue;
+    const iid = it.itemID || it.itemId || 0;
+    if (iid) itemIds.push(String(iid));
+  }
+
+  renderThreatDonut(row, champId, itemIds, { level: level | 0 || 11, mode: String(mode || "SR").toUpperCase() });
+  return row;
 }
 
 function _line(label, value) {

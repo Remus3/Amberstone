@@ -1166,6 +1166,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     renderActiveMatch(p, {
       mode: state.mode,
       lcuPhase: (state.latest && state.latest.lcu && state.latest.lcu.phase) || "",
+      // UX-2 (2026-05-20): thread the raw liveclient block so the
+      // active_match build pane can render per-enemy threat donuts
+      // sourced from /api/damage-mix. Null-safe; renderActiveMatch
+      // skips the THREATS strip when liveclient is missing/empty.
+      liveclient: (state.latest && state.latest.liveclient) || null,
     });
     // s164: re-fire champ-select view on every state envelope when it's
     // active. lcu envelopes are one-shot from FakeSocket, so a render
