@@ -220,7 +220,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: url("/data/ddragon/16.8.1/img/map/map11.png") center/100% 100% no-repeat;
+  background: url("/data/ddragon/16.10.1/img/map/map11.png") center/100% 100% no-repeat;
   filter: saturate(0.55) brightness(0.7);
   z-index: 0;
   pointer-events: none;
@@ -235,7 +235,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   display: none;
 }
 .panel-minimap.mode-aram .mm-canvas-stack::before {
-  background-image: url("/data/ddragon/16.8.1/img/map/map12.png");
+  background-image: url("/data/ddragon/16.10.1/img/map/map12.png");
 }
 .mm-canvas-stack.hidden { display: none; }
 

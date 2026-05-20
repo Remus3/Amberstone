@@ -286,8 +286,8 @@ export function renderActiveMatch(payload, ctx) {
 // when the static asset 404s (Arena/Brawl on builds without local
 // asset prefetch).
 const _AM_MAP_IMG = {
-  sr:    "/data/ddragon/16.8.1/img/map/map11.png",
-  aram:  "/data/ddragon/16.8.1/img/map/map12.png",
+  sr:    "/data/ddragon/16.10.1/img/map/map11.png",
+  aram:  "/data/ddragon/16.10.1/img/map/map12.png",
   arena: "/api/minimap-crop?mode=arena",
   brawl: "/api/minimap-crop?mode=brawl",
 };

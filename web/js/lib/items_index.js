@@ -3,9 +3,9 @@
 // Callers that need to re-render after load should listen to the custom
 // events: "rc:items-ready", "rc:champs-ready", "rc:spells-ready".
 
-export const ITEMS = { ready: false, version: "16.8.1", byName: {}, byId: {} };
+export const ITEMS = { ready: false, version: "16.10.1", byName: {}, byId: {} };
 export const ITEM_COSTS = { ready: false, byId: {} };
-export const CHAMPS = { ready: false, version: "16.8.1", byName: {}, byId: {} };
+export const CHAMPS = { ready: false, version: "16.10.1", byName: {}, byId: {} };
 export const SPELLS = { ready: false, byName: {} };
 
 export const _itemResolveCache = new Map();
