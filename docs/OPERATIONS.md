@@ -53,6 +53,7 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
 | `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
+| `RC-RewindCatchup` | Weekly Sunday 04:00 | Administrator | `scripts/rewind_catchup.py` (pull new Match-V5 records into rewind_history.db) |
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
 | `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
 | `RC-Phase3-PeriodicAudit` | Scheduled | Administrator | Phase 3 periodic audit |
@@ -150,6 +151,35 @@ powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_DDrag
 Augment icons are NOT in DDragon; CommunityDragon serves them via
 `cherry-augments.json`. Out of scope for this task - flagged for a separate
 cdragon adapter.
+
+---
+
+## Rewind history catchup (`RC-RewindCatchup`)
+
+Pulls new Match-V5 records into `data/rewind_history.db` (5-table schema:
+matches / participants / teams / timeline_frames / timeline_events). The
+catchup paginates `/lol/match/v5/matches/by-puuid/{puuid}/ids` forward
+from the newest `game_creation_ts` in the DB, fetches detail + timeline
+for each missing match. Idempotent (INSERT OR IGNORE) and resumable via
+`data/rewind_catchup.state.json`. Auto-resolves the current PUUID through
+Account-V1 by Riot ID (handles PUUID rotation).
+
+```powershell
+py scripts\rewind_catchup.py                # full catch-up
+py scripts\rewind_catchup.py --dry-run      # list IDs only, no writes
+py scripts\rewind_catchup.py --limit 50     # cap detail fetches
+py scripts\rewind_catchup.py --no-timeline  # skip timeline (faster)
+py scripts\rewind_catchup.py --puuid X      # override operator PUUID
+```
+
+Install the weekly Sunday 04:00 task (elevated PowerShell):
+
+```
+powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_RewindCatchup.ps1"
+```
+
+Operator's play cadence is sparse (`5 games / 5 months 2026-05`), so a
+weekly cadence is enough. ExecutionTimeLimit caps each run at 20 minutes.
 
 ---
 
