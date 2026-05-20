@@ -1,0 +1,56 @@
+/* Spike Curve panel (2026-05-20).
+ *
+ * 40px-tall sparkline that sits above the BUILD pane body inside the
+ * active_match view. Pure presentation - no layout-affecting widths
+ * (the SVG scales to 100% of the container).
+ *
+ * Authoring baseline: 1920x1080 Chrome windowed (usable ~1920x920).
+ * Container is full-width within the BUILD pane (~660px at the
+ * 1.1fr/2fr/280px active_match grid columns).
+ */
+
+.spike-curve-container {
+  width: 100%;
+  height: 40px;
+  margin: 0 0 6px 0;
+  padding: 0;
+  position: relative;
+  border-bottom: 1px solid var(--border-soft, #2a2a35);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.spike-curve-container .spk-svg {
+  display: block;
+  width: 100%;
+  height: 40px;
+  max-width: 100%;
+}
+
+.spike-curve-container .spk-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-faint, #9ca3af);
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* Legend chip - tiny inline marker so the operator knows which line is
+ * which without hovering. Rendered as a sibling caption row above the
+ * SVG when the chrome is desired; the default is no legend (40px is
+ * too short for inline text). Kept here so a future iteration can wire
+ * it via a data-attribute on the container. */
+.spike-curve-container[data-spk-legend="1"]::before {
+  content: "ally vs enemy power";
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-faint, #9ca3af);
+  text-transform: uppercase;
+  padding: 0 4px 2px;
+}
