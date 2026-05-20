@@ -14,10 +14,11 @@
 // Otherwise the existing in-game default ("last-match") wins, so
 // nothing changes for users who haven't opted in.
 
-import { ITEMS } from '../lib/items_index.js';
+import { ITEMS, CHAMPS } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
+import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
 
 const _AM = {
   sub:        () => document.getElementById("am-sub"),
@@ -25,6 +26,34 @@ const _AM = {
   buildBody:  () => document.getElementById("am-build-body"),
   mapBody:    () => document.getElementById("am-map-body"),
   cdBody:     () => document.getElementById("cd-ledger-body"),
+  spikeCurve: () => document.getElementById("am-spike-curve"),
+};
+
+// Mode -> spike-curve backend mode. The backend supports SR/ARAM/ARENA/BRAWL;
+// any other mode (TFT, KIWI variants, etc.) is skipped silently.
+const _SPK_MODE_MAP = {
+  sr:    "SR",
+  classic: "SR",
+  aram:  "ARAM",
+  arena: "ARENA",
+  cherry: "ARENA",
+  brawl: "BRAWL",
+};
+
+// Item-completion checkpoints. Mirror of dashboard/routes_spike_curve.py
+// _ITEM_COMPLETE_MINUTES. The frontend only needs these to render the
+// thin vertical tick marks on the sparkline; the backend's curve math
+// is independent.
+const _SPK_ITEM_MINUTES = [8, 15, 22, 29, 35, 40];
+
+// Memoized normalized-slug -> numeric-key map, derived from CHAMPS.byId
+// once per CHAMPS.version. The liveclient championName form ("LeeSin",
+// "Kha'Zix") needs the same lowercase + strip-non-alphanumeric pass
+// _resolveChampId uses so we hit on names with spaces / apostrophes.
+const _SPK_NAME_TO_KEY = {
+  ready: false,
+  version: "",
+  map: {},
 };
 
 // s170 (step 2): per-tick DS rerank cache. Keyed by a coarse "input
@@ -206,6 +235,15 @@ export function renderActiveMatch(payload, ctx) {
       call.appendChild(_line("RIGHT NOW", "waiting for coach tick..."));
     }
   }
+
+  // Spike-curve sparkline (UX win 2026-05-20). Pulls 5+5 champion ids
+  // from the liveclient block, maps the current mode to a backend
+  // spike-curve mode, and fetches the per-minute team-power curves
+  // once per (sorted ids + mode) tuple. Cache is module-scope in
+  // spike_curve.js, so re-mounts during a single CS session don't
+  // refetch. Skips silently in TFT / lobby / pre-game (mode not in
+  // _SPK_MODE_MAP or no liveclient).
+  _renderSpikeCurveFromCtx(ctx);
 
   const build = _AM.buildBody();
   if (build) {
@@ -541,6 +579,121 @@ function _amDrawOverlay(vs) {
       ganker.style.display = "none";
     }
   }
+}
+
+// Spike-curve sparkline render helper (UX win 2026-05-20). Pulls 5+5
+// champion ids from liveclient allPlayers, splits by team-of-active-
+// player, looks up each champ's DDragon `key` integer via the champ
+// index loaded by main.js (window.CHAMP_INDEX, name -> {key, id}),
+// fetches /api/spike-curve, and renders. Skips silently when:
+//   - mount node missing (older HTML cache)
+//   - mode not supported (TFT / KIWI variants that aren't SR/ARAM)
+//   - liveclient missing or allPlayers length != 10
+//   - any champion name fails to resolve to a numeric key
+//
+// Re-fetch policy: spike_curve.js memoizes by (sorted ally + enemy ids,
+// mode). One champ-select lock + same mode = one network call.
+function _renderSpikeCurveFromCtx(ctx) {
+  const mount = _AM.spikeCurve();
+  if (!mount) return;
+  const lc = (ctx && ctx.liveclient) || null;
+  const modeLow = String((ctx && ctx.mode) || "").toLowerCase();
+  const spkMode = _SPK_MODE_MAP[modeLow];
+  if (!spkMode) {
+    // Unsupported mode (TFT / lobby / unknown). Hide the container so
+    // it doesn't reserve 40px of empty space.
+    if (mount.dataset.spkState !== "hidden") {
+      mount.dataset.spkState = "hidden";
+      mount.style.display = "none";
+      mount.innerHTML = "";
+    }
+    return;
+  }
+  mount.style.display = "";
+
+  if (!lc || !Array.isArray(lc.allPlayers) || lc.allPlayers.length !== 10) {
+    // No liveclient yet, or wrong-shape team (sub-5v5 modes are not
+    // wired through the spike-curve backend). Render the unavailable
+    // placeholder; the existing fail-soft path in renderSpikeCurve
+    // handles this.
+    renderSpikeCurve(mount, null, null, null, null, {});
+    return;
+  }
+
+  const myTeam = _resolveMyTeam(lc);
+  if (!myTeam) {
+    renderSpikeCurve(mount, null, null, null, null, {});
+    return;
+  }
+
+  // Lookup champion numeric key from the CHAMPS index (loaded by
+  // items_index.js from /data/champions_index.json). CHAMPS.byId is
+  // {numericKey -> Slug}; we want the reverse (Slug -> numericKey) +
+  // matching by the liveclient championName which may carry spaces
+  // / apostrophes ("Lee Sin", "Kha'Zix") that the slug strips. Memoized
+  // module-scope so re-renders during one CS session don't re-build it.
+  if (!CHAMPS.byId || !Object.keys(CHAMPS.byId).length) {
+    renderSpikeCurve(mount, null, null, null, null, {});
+    return;
+  }
+  if (!_SPK_NAME_TO_KEY.ready || _SPK_NAME_TO_KEY.version !== CHAMPS.version) {
+    _SPK_NAME_TO_KEY.map = {};
+    for (const [keyStr, slug] of Object.entries(CHAMPS.byId)) {
+      const numKey = parseInt(keyStr, 10);
+      if (!numKey || !slug) continue;
+      const norm = String(slug).toLowerCase().replace(/[^a-z0-9]/g, "");
+      _SPK_NAME_TO_KEY.map[norm] = numKey;
+    }
+    _SPK_NAME_TO_KEY.version = CHAMPS.version;
+    _SPK_NAME_TO_KEY.ready = true;
+  }
+
+  const allyIds = [];
+  const enemyIds = [];
+  for (const pl of lc.allPlayers) {
+    if (!pl || typeof pl !== "object") continue;
+    const champ = pl.championName || pl.rawChampionName || "";
+    if (!champ) continue;
+    const norm = String(champ).toLowerCase().replace(/[^a-z0-9]/g, "");
+    const numKey = _SPK_NAME_TO_KEY.map[norm] || 0;
+    if (!numKey) continue;
+    if (pl.team === myTeam) {
+      allyIds.push(numKey);
+    } else {
+      enemyIds.push(numKey);
+    }
+  }
+
+  if (allyIds.length !== 5 || enemyIds.length !== 5) {
+    renderSpikeCurve(mount, null, null, null, null, {});
+    return;
+  }
+
+  // Live game time in seconds -> minutes (rounded). The liveclient
+  // gameData.gameTime field is the canonical clock. Falls back to 0
+  // (sparkline still renders the curves; just no "now" marker).
+  let nowMinute = 0;
+  if (lc.gameData && typeof lc.gameData.gameTime === "number") {
+    nowMinute = Math.min(40, Math.max(0, Math.round(lc.gameData.gameTime / 60)));
+  }
+
+  // Cache-or-fetch. fetchSpikeCurve memoizes; the next state tick will
+  // see the lookup populated.
+  const cached = getCachedSpikeCurve(allyIds, enemyIds, spkMode);
+  if (!cached) {
+    fetchSpikeCurve(allyIds, enemyIds, spkMode, null);
+    renderSpikeCurve(mount, null, null, null, nowMinute, {});
+    return;
+  }
+
+  renderSpikeCurve(
+    mount,
+    cached.ally,
+    cached.enemy,
+    cached.peaks,
+    nowMinute,
+    { item_minutes: _SPK_ITEM_MINUTES },
+  );
 }
 
 // UX-2 (2026-05-20): liveclient team-of-active-player resolver. Mirrors
