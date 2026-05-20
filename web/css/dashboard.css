@@ -31,4 +31,5 @@
 @import './panels/cd_ledger.css';
 @import './panels/spike_curve.css';
 @import './panels/ward_heat.css';
+@import './panels/draft_elo.css';
 @import './panels/last_match.css';
