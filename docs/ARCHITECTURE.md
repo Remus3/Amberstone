@@ -90,9 +90,12 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |
 | `dashboard/routes_archetype.py` | cs archetype pick rest endpoints |
 | `dashboard/routes_bridge_pending.py` | GET /api/bridge/pending - escalation queue [FROZEN] |
+| `dashboard/routes_damage_mix.py` | GET /api/damage-mix - per-enemy threat-donut backend (UX-2) |
 | `dashboard/routes_health_peer.py` | GET /api/health/peer + /api/health/all |
 | `dashboard/routes_lobby_aux.py` | top8 + mains backend |
 | `dashboard/routes_metrics.py` | /metrics Prometheus endpoint |
+| `dashboard/routes_personal_vs.py` | GET /api/personal-vs - operator's lifetime WR vs champ (champ-select threat tag) |
+| `dashboard/routes_spike_curve.py` | GET /api/spike-curve - team power-curve backend (UX-spike) |
 | `dashboard/routes_team_context.py` | GET /api/team-context + POST /api/team-context/refresh |
 | `web_dashboard.py` | :8888 HTTPS dashboard server entry |
 
@@ -101,6 +104,8 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 |---|---|
 | `core/archetype_mismatch.py` | first-purchase archetype mismatch nudge |
 | `core/archetype_picks.py` | cs archetype pick storage + DDragon-tag default resolver |
+| `core/shaper.py` | Interactive Item Shaper backend primitive (UI deferred); pure-function archetype-weight nudge |
+| `core/summoner_cooldowns.py` | per-enemy summoner-spell CD ledger; surfaced via state.summoner_cooldowns |
 | `core/bridge_envelope.py` | pydantic v2 schema for the cross-Claude bridge wire envelope |
 | `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
 | `core/defensive_picks.py` | defensive item ranker |
@@ -149,7 +154,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 
 ## Daemon Slayer (`:8893`)
 
-`agents/daemon_slayer/` - 547 item effects, ENGINE_VERSION 0.92.0, 2022 tests, patch 16.10.1. All 4 coach modes DS-before-Haiku. **Six archetype scorers** dispatch via `rank_for_primary_archetype()` in `core/daemon_slayer_client.py` (no fallbacks): carry → `ds.dps`, tank → `ds.ehp`, bruiser → `ds.hybrid` (α·dps + β·ehp; per-champion weights in `archetype_weights.json`), mage → `ds.ability` (per-spell DPS via `ability_dps.py` + measured cast rates from `spell_cast_rates.json`), assassin → `ds.burst` (combo-window evaluator in `burst.py`), enchanter → `ds.hps` (curated formulas in `data/daemon_slayer/<patch>/enchanter_items.json`). CS archetype-picker UI lives in the champ-select view (My Pick card 6-button grid) + `core/archetype_picks.py` storage + `dashboard/routes_archetype.py`. Coach integration via `coach_integration/archetype_dispatch.py` resolves the archetype via `core.archetype_picks.get_archetype_for` + dispatches to the right scorer; all 4 mode coaches consume the helper. State-builder stamps `state.cs_archetype_pick` for the active champion (decorative for picker UI). First-purchase mismatch nudge live (`/api/archetype-nudge` + chip renderer in dashboard). Per-(champion, key) override registries: `champion_max_priority.json`, `champion_combo_sequences.json`, `champion_form_index.json`, `champion_block_index.json` (185 entries across 118 champions, 69% roster coverage). Dead-unique candidates (Trinity→ER etc.) filtered by default. See `docs/DAEMON_SLAYER.md`.
+`agents/daemon_slayer/` - 547 item effects, ENGINE_VERSION 1.11.0, 2703 tests, patch 16.10.1. All 4 coach modes DS-before-Haiku. **Six archetype scorers** dispatch via `rank_for_primary_archetype()` in `core/daemon_slayer_client.py` (no fallbacks): carry → `ds.dps`, tank → `ds.ehp`, bruiser → `ds.hybrid` (α·dps + β·ehp; per-champion weights in `archetype_weights.json`), mage → `ds.ability` (per-spell DPS via `ability_dps.py` + measured cast rates from `spell_cast_rates.json`), assassin → `ds.burst` (combo-window evaluator in `burst.py`), enchanter → `ds.hps` (curated formulas in `data/daemon_slayer/<patch>/enchanter_items.json`). CS archetype-picker UI lives in the champ-select view (My Pick card 6-button grid) + `core/archetype_picks.py` storage + `dashboard/routes_archetype.py`. Coach integration via `coach_integration/archetype_dispatch.py` resolves the archetype via `core.archetype_picks.get_archetype_for` + dispatches to the right scorer; all 4 mode coaches consume the helper. State-builder stamps `state.cs_archetype_pick` for the active champion (decorative for picker UI). First-purchase mismatch nudge live (`/api/archetype-nudge` + chip renderer in dashboard). Per-(champion, key) override registries: `champion_max_priority.json`, `champion_combo_sequences.json`, `champion_form_index.json`, `champion_block_index.json` (185 entries across 118 champions, 69% roster coverage). Dead-unique candidates (Trinity→ER etc.) filtered by default. See `docs/DAEMON_SLAYER.md`.
 
 ---
 
