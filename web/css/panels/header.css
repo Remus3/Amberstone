@@ -608,7 +608,6 @@ body[data-view="settings"] main,
 body[data-view="diagnostics"] main,
 body[data-view="coach-calls"] main,
 body[data-view="bridge-pending"] main,
-body[data-view="fleet"] main,
 body[data-view="champ-select"] main,
 body[data-view="last-match"] main,
 body[data-view="replay"] main { display: none; }
@@ -638,7 +637,6 @@ body[data-view="settings"]       #view-settings,
 body[data-view="diagnostics"]    #view-diagnostics,
 body[data-view="coach-calls"]    #view-coach-calls,
 body[data-view="bridge-pending"] #view-bridge-pending,
-body[data-view="fleet"]          #view-fleet,
 body[data-view="replay"]         #view-replay { display: block; }
 /* Hide home + lobby overlays when a non-default view is active.
  * In lobby view specifically, the inline #lobby-overlay strip is
@@ -651,7 +649,6 @@ body[data-view="settings"]       #home-overlay,
 body[data-view="diagnostics"]    #home-overlay,
 body[data-view="coach-calls"]    #home-overlay,
 body[data-view="bridge-pending"] #home-overlay,
-body[data-view="fleet"]          #home-overlay,
 body[data-view="replay"]         #home-overlay,
 body[data-view="last-match"]     #home-overlay,
 body[data-view="active-match"]   #home-overlay,
