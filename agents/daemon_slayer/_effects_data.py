@@ -707,10 +707,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Lich Bane",
         periodics=(PeriodicProc(
             name="Spellblade",
-            # 75% base AD + 50% AP bonus magic on next basic after ability.
+            # 75% base AD + 40% AP bonus magic on next basic after ability.
             # Real CD 1.5s; rotation cadence approx ~3s same as Trinity Force
             # spellblade (gated by ability cast frequency, not item CD).
-            bonus_damage=lambda c: 0.75 * c.base_ad + 0.50 * c.ap,
+            # AP coefficient verified against Meraki bulk 16.10.1
+            # (pre-2026-05-20 the engine had 50% AP - drifted).
+            bonus_damage=lambda c: 0.75 * c.base_ad + 0.40 * c.ap,
             damage_type=MAGICAL,
             every_n_seconds=3.0,
         ),),
@@ -720,7 +722,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # building [LB, TF] keeps LB's. Both are reasonable approximations
         # of a single in-game spellblade firing.
         unique_passive_key="spellblade",
-        note="Lich Bane: Spellblade ~75% base AD + 50% AP magic, ~once per 3s in rotation",
+        note="Lich Bane: Spellblade ~75% base AD + 40% AP magic, ~once per 3s in rotation",
     ),
     "6662": ItemEffect(
         item_id="6662",
@@ -3641,12 +3643,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Lich Bane",
         periodics=(PeriodicProc(
             name="Spellblade",
-            bonus_damage=lambda c: 0.75 * c.base_ad + 0.50 * c.ap,
+            # Arena mirror inherits the SR 75% base AD + 40% AP Meraki shape
+            # (2026-05-20 fix - pre-fix was 50% AP across both 3100 and the
+            # Arena mirror).
+            bonus_damage=lambda c: 0.75 * c.base_ad + 0.40 * c.ap,
             damage_type=MAGICAL,
             every_n_seconds=3.0,
         ),),
         unique_passive_key="spellblade",
-        note="Lich Bane (Arena 223100): same as SR 3100 - Spellblade 75% base AD + 50% AP magical every ~3s, spellblade-key",
+        note="Lich Bane (Arena 223100): same as SR 3100 - Spellblade 75% base AD + 40% AP magical every ~3s, spellblade-key",
     ),
     "223115": ItemEffect(
         item_id="223115",
