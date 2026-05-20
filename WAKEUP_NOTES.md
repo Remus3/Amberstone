@@ -2,6 +2,31 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - cross-Claude lessons Phase 4 (BACKLOG drain)
+
+Single discrete unit shipped autonomous in caveman ultra. Operator AskUserQuestion-picked "Cross-Claude lessons Phase 4 (Recommended)" from a 4-option fork (over: streaming vision delta-frames / research triage / OBS publisher wiring).
+
+**`77e3437` feat(lessons): Phase 4 - ack-watcher + confidence scoring + auto-revert.** BACKLOG Cross-Claude infrastructure item. Three sub-units shipped in one slice, all read-only against the existing Phase 1-3 wire format.
+
+- **(a) `core/lessons_ack_watcher.py`** (~220 LOC). Polls `/api/bridge?kind=result` over HTTPS shuttle (skip cert verify, mirrors lessons_receiver), indexes envelopes by `in_reply_to`, merges latest-by-ts ack body into matching `lessons_sent.jsonl` rows, atomic-rewrite via tmp+replace. Fail-soft fetch (URLError/HTTPError/timeout/malformed JSON -> []). Idempotent: rows already carrying `ack_received=true` are skipped. `summarize()` snapshot + `update_sent_acks()` polling entry + `WatcherReport` dataclass.
+- **(b) `core/lessons_confidence.py`** (~250 LOC). Reads both ledgers, derives `mem_type` from filename prefix (sender path / receiver memory_path), buckets by `<peer>:<mem_type>`, computes `apply_rate = laplace_rate(applied, decided)` + `took_rate = laplace_rate(took, acked)` + `confidence = shrink(decided + acked) * apply_rate * took_rate` via `core/smoothed_rates.py` - composes on the shared statistical primitive (CLAUDE.md #90 decision). `confidence_for(peer, mem_type)` single-number lookup with 0.0 unknown-bucket fallback.
+- **(c) `core/lessons_revert.py`** (~345 LOC). `apply_with_revert(lesson_id, commit_sha=None, *, tests, timeout_s, peer)` wraps `lessons_receiver.post_decision`. 3 branches: tests pass -> applied + no follow-up ack (post_decision already acks); tests fail no commit_sha -> queued fallback; tests fail with commit_sha -> `git revert <sha> --no-edit` + grab new HEAD sha + finalize as applied with auto-revert annotations in receiver_notes + follow-up `kind=result` ack carrying `auto_reverted=True` + `took=False` so origin's ack-watcher flips the took flag. Intentionally NOT daemon-wired - safety net for Claude-driven applies. CLI exit codes: 0=applied-clean, 1=queued, 2=applied+reverted.
+
+**Surfaces:** `tools/lessons_status.py` (JSON + `--plain` tabular, runs ack-watcher refresh + prints summary + confidence buckets) and `GET /api/lessons/status?refresh=0|1` (new `dashboard/routes_lessons.py`, registered in `_dispatch.py` between health_peer + loadout).
+
+**+60 tests across 4 new files:** `tests/test_lessons_ack_watcher.py` (29 tests: fail-soft fetch contract, index-by-reply latest-wins, idempotent merge, atomic rewrite, summarize), `test_lessons_confidence.py` (16 tests: empty ledgers, mem_type derivation, sent/received aggregation, merge, smoothed-rate composition, totals, alpha/k passthrough), `test_lessons_revert.py` (15 tests: _tail trimming, 3 branches, git revert failure, pytest timeout, LookupError catch, CLI exit codes), `test_lessons_status_route.py` (12 tests: build_report shape, --plain/--no-refresh/--json CLI, route registration, refresh query param, fail-soft 500).
+
+**Wider RC suite: 1771 passed / 61 subtests / 0 failed** (s103 baseline 1705 + 66 new). py_compile + ruff clean; pure ASCII (3 stray section-sign chars caught + replaced before commit).
+
+**Live-verified end-to-end:** RC restarted clean (pid 10824 -> 6768, reload_ok=true); `GET /api/lessons/status?refresh=0` returns the 2 existing real buckets (`peer:reference` 1/1 took 1.0; `peer:unknown` 4 discarded); CLI `--plain` renders the tabular view inline. No DS restart (non-engine).
+
+**Docs sync (same commit):** BACKLOG entry flipped to ~~shipped~~ with the full one-liner; `docs/OPERATIONS.md` gained "Cross-Claude lessons (Phase 4 surface)" subsection under Bridge operations covering the curl endpoints, CLI invocation, and the `py -m core.lessons_revert <lesson_id> --commit-sha <sha>` shell.
+
+**Don't-redo:** all 3 modules + CLI + route + 60 tests + docs are real + behavior-proven + live-verified. The "auto-revert is NOT a daemon, it's a Claude-invoked safety net" framing is deliberate (vision section 5 Phase 4 wording); do NOT re-pitch a daemon-fired auto-apply pipeline - that crosses the §6 "lean conservative" constraint. The `mem_type from path basename` derivation is the agreed schema-recovery path (sender path is `memory/<type>_*.md`, receiver memory_path is `<type>_synced_<peer>_*.md`); do NOT add explicit mem_type fields to the existing jsonl rows. The follow-up ack on auto-revert is in ADDITION to post_decision's ack, not a replacement - both fire so the peer sees the timeline; do NOT consolidate into one ack. The HTTPS shuttle (`https://legion-rc:8888/api/bridge`) is the single-source-of-truth boundary; do NOT in-process import `dashboard._bridge_log` (same s245/s105 lesson). pytest tail trimmed to 1.2 KB with line-boundary preference - do NOT widen, the bridge body has a size cap.
+
+**Carries forward:** nothing blocking. The `RC-Bridge-MCP` scheduled task / `.mcp.json` client wiring from item 105 are STILL operator-gated (new always-on listener; register only when a local Claude is pointed at it). The 2 standing Phase-3-flagged operator-gated follow-ups (pre-existing non-ASCII retro-sweep + deferred type-hint/`ruff --unsafe-fixes` pass) are STILL operator-gated.
+
+---
 # 2026-05-19 - bridge MCP server + install ritual doc (2 BACKLOG drains)
 
 Two discrete units shipped autonomous in caveman ultra. Both AskUserQuestion-picked Recommended first option of 4-option forks.
