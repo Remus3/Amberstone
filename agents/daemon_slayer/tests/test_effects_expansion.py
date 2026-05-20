@@ -3927,45 +3927,55 @@ class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
 
 
 class DeadMansPlateShipwreckerTests(unittest.TestCase):
-    """Phase 4 batch 31 - Dead Man's Plate Shipwrecker partial promotion.
+    """Dead Man's Plate Shipwrecker - iter 16 (2026-05-20) defensive_only flip.
 
-    Shipwrecker fires every ~4 attacks at full Momentum (100 stacks, 20 bonus MS,
-    damage = 100 + 0.45*20 = 109 physical). Approximation assumes continuous
-    movement in combat; capped Momentum is the sustained-DPS steady state.
+    Original Phase 4 batch 31 modeling encoded Shipwrecker as a flat 109
+    physical every ~4 attacks (full-Momentum approximation). Meraki 16.10.1
+    has a REWORKED dual-track formula:
+        0.4 * stacks (capped at 40 flat) +
+        stacks% (capped at 100%) of base_ad bonus physical on-hit
+    requiring a Momentum stack model the engine doesn't yet support.
+    Iter 16 flips Dead Man's to defensive_only as a principled deferral
+    (the item is a TANK pick where DPS contribution is incidental).
+    Full re-encoding is a separate Phase-2 session.
     """
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    def test_entry_present_and_proc_shape(self) -> None:
+    def test_entry_present_and_defensive_only(self) -> None:
         eff = ITEM_EFFECTS.get("3742")
         self.assertIsNotNone(eff)
-        self.assertFalse(eff.defensive_only)
-        self.assertEqual(len(eff.periodics), 1)
-        proc = eff.periodics[0]
-        self.assertEqual(proc.every_n_attacks, 4)
-        self.assertEqual(proc.damage_type, "physical")
-
-    def test_shipwrecker_damage_value(self) -> None:
-        eff = ITEM_EFFECTS["3742"]
-        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11)
-        self.assertAlmostEqual(eff.periodics[0].resolve_damage(ctx), 109.0, places=1)
+        self.assertTrue(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 0)
 
     def test_no_unique_passive_key(self) -> None:
         self.assertEqual(ITEM_EFFECTS["3742"].unique_passive_key, "")
 
-    def test_dps_lift_on_tank_champ(self) -> None:
-        # Sett lvl 11 with Dead Man's vs bare Sett - Shipwrecker should lift DPS.
+    def test_defensive_only_has_deferral_note(self) -> None:
+        # Note documents the Momentum stack model deferral so future
+        # passes can find this entry when the schema lands.
+        eff = ITEM_EFFECTS["3742"]
+        self.assertTrue(len(eff.note) > 0)
+        self.assertIn("Momentum", eff.note)
+
+    def test_dps_no_lift_when_defensive(self) -> None:
+        # Sett with Dead Man's vs bare Sett: stat block (HP/armor) does
+        # not push DPS, so a defensive_only item should not lift it
+        # (HP+armor are tankiness contributors, not DPS sources).
         bare = compute_dps(self.snap, "Sett", level=11, item_ids=[])
         with_dmp = compute_dps(self.snap, "Sett", level=11, item_ids=["3742"])
-        self.assertGreater(with_dmp.weighted_dps, bare.weighted_dps)
+        self.assertAlmostEqual(with_dmp.weighted_dps, bare.weighted_dps, places=1)
 
-    def test_note_surfaces_with_shipwrecker(self) -> None:
-        result = compute_dps(self.snap, "Sett", level=11, item_ids=["3742"])
-        notes = " ".join(result.notes)
-        self.assertIn("Shipwrecker", notes)
-        self.assertIn("109", notes)
+    def test_no_active_shipwrecker_proc_in_dps(self) -> None:
+        # defensive_only items still surface their note (documents the
+        # deferral) but contribute no active proc damage to DPS.
+        bare = compute_dps(self.snap, "Sett", level=11, item_ids=[])
+        with_dmp = compute_dps(self.snap, "Sett", level=11, item_ids=["3742"])
+        # No periodic damage delta - DPS is identical (stat block alone
+        # adds tankiness, not damage, on a defensive_only entry).
+        self.assertAlmostEqual(with_dmp.weighted_dps, bare.weighted_dps, places=1)
 
 
 class SpectralCutlassLethality(unittest.TestCase):
@@ -7772,7 +7782,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.16.0")
+        self.assertEqual(ENGINE_VERSION, "1.17.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7833,7 +7843,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.16.0")
+        self.assertEqual(ENGINE_VERSION, "1.17.0")
 
 
 if __name__ == "__main__":
