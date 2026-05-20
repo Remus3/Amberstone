@@ -135,6 +135,180 @@ class SmoothedRatesCompositionTests(unittest.TestCase):
         self.assertEqual(draft_elo.winrate_to_rating(rate), 0.0)
 
 
+class TopContributionsTests(unittest.TestCase):
+    """top_contributions: signed delta + sort by abs(delta).
+
+    Sign convention (ally-team perspective):
+      ally-pair  delta = +rating
+      enemy-pair delta = -rating  (positive enemy rating SUBTRACTS from
+                                   team_score, so it shows as negative)
+      matchup    delta = +rating
+    """
+
+    def test_ally_pair_positive_rating_helps_ally(self):
+        c = draft_elo.top_contributions(
+            ally_pairs=[(1, 2)],
+            enemy_pairs=[],
+            matchup_cross=[],
+            ally_pair_ratings=(50.0,),
+            enemy_pair_ratings=(),
+            matchup_ratings=(),
+            ally_pair_counts=[10],
+            enemy_pair_counts=[],
+            matchup_counts=[],
+        )
+        self.assertEqual(len(c), 1)
+        self.assertEqual(c[0].kind, "ally-pair")
+        self.assertEqual(c[0].a, 1)
+        self.assertEqual(c[0].b, 2)
+        self.assertEqual(c[0].delta, 50.0)
+        self.assertEqual(c[0].n, 10)
+
+    def test_enemy_pair_positive_rating_hurts_ally(self):
+        """Enemy team's positive rating subtracts from team_score - the
+        contribution delta is the FLIPPED sign so the hover row reads
+        as a negative for ally."""
+        c = draft_elo.top_contributions(
+            ally_pairs=[],
+            enemy_pairs=[(3, 4)],
+            matchup_cross=[],
+            ally_pair_ratings=(),
+            enemy_pair_ratings=(80.0,),
+            matchup_ratings=(),
+            ally_pair_counts=[],
+            enemy_pair_counts=[7],
+            matchup_counts=[],
+        )
+        self.assertEqual(len(c), 1)
+        self.assertEqual(c[0].kind, "enemy-pair")
+        self.assertEqual(c[0].delta, -80.0)
+        self.assertEqual(c[0].n, 7)
+
+    def test_matchup_rating_credit_ally(self):
+        c = draft_elo.top_contributions(
+            ally_pairs=[],
+            enemy_pairs=[],
+            matchup_cross=[(1, 10)],
+            ally_pair_ratings=(),
+            enemy_pair_ratings=(),
+            matchup_ratings=(25.0,),
+            ally_pair_counts=[],
+            enemy_pair_counts=[],
+            matchup_counts=[42],
+        )
+        self.assertEqual(len(c), 1)
+        self.assertEqual(c[0].kind, "matchup")
+        self.assertEqual(c[0].a, 1)
+        self.assertEqual(c[0].b, 10)
+        self.assertEqual(c[0].delta, 25.0)
+        self.assertEqual(c[0].n, 42)
+
+    def test_sort_by_abs_delta_descending(self):
+        """Mixed kinds - the top entry is the LARGEST absolute delta
+        regardless of sign or source kind."""
+        c = draft_elo.top_contributions(
+            ally_pairs=[(1, 2), (3, 4)],
+            enemy_pairs=[(5, 6)],
+            matchup_cross=[(7, 8)],
+            # ally-pair (1,2) delta=+10 ; (3,4) delta=+100
+            # enemy-pair (5,6) delta=-30
+            # matchup (7,8) delta=-50
+            # Expected sort by abs: (3,4)=100, (7,8)=50, (5,6)=30, (1,2)=10
+            ally_pair_ratings=(10.0, 100.0),
+            enemy_pair_ratings=(30.0,),
+            matchup_ratings=(-50.0,),
+            ally_pair_counts=[1, 2],
+            enemy_pair_counts=[3],
+            matchup_counts=[4],
+            limit=10,
+        )
+        self.assertEqual(len(c), 4)
+        self.assertEqual(c[0].a, 3)
+        self.assertEqual(c[0].b, 4)
+        self.assertEqual(c[0].delta, 100.0)
+        self.assertEqual(c[1].kind, "matchup")
+        self.assertEqual(abs(c[1].delta), 50.0)
+        self.assertEqual(c[2].kind, "enemy-pair")
+        self.assertEqual(abs(c[2].delta), 30.0)
+        self.assertEqual(c[3].delta, 10.0)
+
+    def test_top_3_limit(self):
+        """Default limit=3. Caller passes 5 entries -> returns top 3."""
+        c = draft_elo.top_contributions(
+            ally_pairs=[(1, 2), (3, 4), (5, 6), (7, 8), (9, 10)],
+            enemy_pairs=[],
+            matchup_cross=[],
+            ally_pair_ratings=(10.0, 20.0, 30.0, 40.0, 50.0),
+            enemy_pair_ratings=(),
+            matchup_ratings=(),
+            ally_pair_counts=[1] * 5,
+            enemy_pair_counts=[],
+            matchup_counts=[],
+        )
+        self.assertEqual(len(c), 3)
+        self.assertEqual(c[0].delta, 50.0)
+        self.assertEqual(c[1].delta, 40.0)
+        self.assertEqual(c[2].delta, 30.0)
+
+    def test_limit_zero_returns_all(self):
+        c = draft_elo.top_contributions(
+            ally_pairs=[(1, 2), (3, 4)],
+            enemy_pairs=[],
+            matchup_cross=[],
+            ally_pair_ratings=(10.0, 20.0),
+            enemy_pair_ratings=(),
+            matchup_ratings=(),
+            ally_pair_counts=[1, 1],
+            enemy_pair_counts=[],
+            matchup_counts=[],
+            limit=0,
+        )
+        self.assertEqual(len(c), 2)
+
+    def test_empty_input_returns_empty_list(self):
+        c = draft_elo.top_contributions(
+            ally_pairs=[],
+            enemy_pairs=[],
+            matchup_cross=[],
+            ally_pair_ratings=(),
+            enemy_pair_ratings=(),
+            matchup_ratings=(),
+            ally_pair_counts=[],
+            enemy_pair_counts=[],
+            matchup_counts=[],
+        )
+        self.assertEqual(c, [])
+
+    def test_length_mismatch_silently_zips_shortest(self):
+        """Defensive: a future schema drift that passes shorter counts
+        than ratings should not crash - zip stops at shortest."""
+        c = draft_elo.top_contributions(
+            ally_pairs=[(1, 2), (3, 4)],
+            enemy_pairs=[],
+            matchup_cross=[],
+            ally_pair_ratings=(10.0, 20.0),
+            enemy_pair_ratings=(),
+            matchup_ratings=(),
+            ally_pair_counts=[5],  # shorter than ratings
+            enemy_pair_counts=[],
+            matchup_counts=[],
+            limit=10,
+        )
+        # Only the entry that matches all 3 inputs survives.
+        self.assertEqual(len(c), 1)
+        self.assertEqual(c[0].a, 1)
+
+    def test_contribution_dataclass_is_frozen(self):
+        """The Contribution dataclass is frozen for safe pass-through to
+        the JSON layer."""
+        import dataclasses
+        c = draft_elo.Contribution(
+            kind="ally-pair", a=1, b=2, delta=10.0, n=5,
+        )
+        with self.assertRaises(dataclasses.FrozenInstanceError):
+            c.delta = 999.0  # frozen dataclass refuses mutation
+
+
 class DraftEloDbReadOnlyTests(unittest.TestCase):
     """Live-data smoke tests against rewind_history.db.
 

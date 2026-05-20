@@ -148,3 +148,86 @@ def cross_pairs(ally: tuple[int, ...], enemy: tuple[int, ...]) -> list[tuple[int
     lane-pairing decision lives in the consumer.
     """
     return [(a, e) for a in ally for e in enemy]
+
+
+# Per-row contribution breakdown for the draft Elo hover strip (BACKLOG
+# Draft Tool L pair-list + Diff15 pattern, ROADMAP carry-forward 109(b)).
+#
+# Each entry decomposes one rating-source's signed contribution to the
+# final team_score so the frontend can render a top-N "why this WR"
+# overlay. Signs are normalized to the ALLY perspective:
+#
+#   ally-pair  delta = +rating  (positive helps ally)
+#   enemy-pair delta = -rating  (positive enemy rating SUBTRACTS from
+#                                team_score; see team_score() above)
+#   matchup    delta = +rating  (already ally-perspective)
+#
+# Sample density ``n`` is the raw game count for the underlying pair or
+# matchup query, surfaced verbatim so the frontend can render the
+# confidence band (matches the shrink-style "n=N" indicator on the
+# top-level chip).
+
+
+@dataclass(frozen=True)
+class Contribution:
+    """One signed contribution to the team_score, sortable by abs(delta).
+
+    ``kind`` is "ally-pair" / "enemy-pair" / "matchup". ``a`` is the
+    first champion id (lower-id ally, lower-id enemy, or the ally champ
+    of the matchup). ``b`` is the second. ``delta`` is the signed
+    Elo-rating credit to the ALLY team_score. ``n`` is the raw game
+    count from the underlying smoothed-rate query.
+    """
+    kind: str
+    a: int
+    b: int
+    delta: float
+    n: int
+
+
+def top_contributions(
+    *,
+    ally_pairs: list[tuple[int, int]],
+    enemy_pairs: list[tuple[int, int]],
+    matchup_cross: list[tuple[int, int]],
+    ally_pair_ratings: tuple[float, ...],
+    enemy_pair_ratings: tuple[float, ...],
+    matchup_ratings: tuple[float, ...],
+    ally_pair_counts: list[int],
+    enemy_pair_counts: list[int],
+    matchup_counts: list[int],
+    limit: int = 3,
+) -> list[Contribution]:
+    """Return the top-N contributions to team_score by abs(delta).
+
+    Pure aggregation over the same inputs ``team_score()`` already
+    consumes - no new math, just the decomposed view. Sign convention
+    is normalized to the ally-team perspective so a hover row's
+    +/-arrow reads correctly regardless of which side carries the
+    edge.
+
+    Lengths must agree (the caller built them from the same
+    enumerators); a mismatch is silently ignored (only the prefix
+    that matches is considered). This is defensive against a future
+    schema drift; real callers always pass coherent triples.
+    """
+    out: list[Contribution] = []
+    # Ally pairs: positive rating helps ally.
+    for (a, b), r, n in zip(ally_pairs, ally_pair_ratings, ally_pair_counts):
+        out.append(Contribution(kind="ally-pair", a=int(a), b=int(b),
+                                delta=float(r), n=int(n)))
+    # Enemy pairs: positive rating subtracts from team_score; flip sign.
+    for (a, b), r, n in zip(enemy_pairs, enemy_pair_ratings, enemy_pair_counts):
+        out.append(Contribution(kind="enemy-pair", a=int(a), b=int(b),
+                                delta=-float(r), n=int(n)))
+    # Matchups: already ally-perspective rating.
+    for (a, b), r, n in zip(matchup_cross, matchup_ratings, matchup_counts):
+        out.append(Contribution(kind="matchup", a=int(a), b=int(b),
+                                delta=float(r), n=int(n)))
+    # Sort by abs(delta) descending. Stable sort keeps ally-pair before
+    # enemy-pair before matchup on ties, which makes the test pin
+    # deterministic without affecting the top-N for any real input.
+    out.sort(key=lambda c: -abs(c.delta))
+    if limit and limit > 0:
+        return out[:limit]
+    return out
