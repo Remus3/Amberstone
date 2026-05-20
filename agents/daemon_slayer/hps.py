@@ -229,20 +229,54 @@ def reset_formulas_cache() -> None:
 # ─── ARAM modifier helper ───────────────────────────────────────────────
 
 
+def _aram_heal_shield_modifiers(
+    snapshot: DataSnapshot, champion_id: str, mode: str
+) -> tuple[float, float]:
+    """Pull ARAM heal + shield modifiers from the snapshot.
+
+    Returns ``(heal_mult, shield_mult)``. Outside ARAM both are 1.0.
+
+    Meraki bulk carries TWO independent keys on the champion blob:
+      * ``aramHealing``   - applied to outgoing healing only
+      * ``aramShielding`` - applied to outgoing shields only
+
+    24 champions in the 16.10.1 snapshot carry different values for the
+    two keys (e.g. Camille 1.20 / 1.10, LeeSin 1.10 / 1.20, Milio 0.95 /
+    0.90, Nunu 1.10 / 1.20, Ahri 0.90 / 1.00...). Collapsing them into
+    a single ``aramShieldsHealing`` (the legacy field this engine used)
+    under-models all 24. Pre-2026-05-20 the engine read
+    ``aramShieldsHealing`` with a fallback to ``aramHealing``, so the
+    shield half was wrong for every split champ.
+
+    Legacy fallback: if only the singular ``aramShieldsHealing`` is
+    present (old snapshots before the bulk schema split), use it for
+    both halves so the older data still scores.
+    """
+    if mode != "ARAM":
+        return (1.0, 1.0)
+    champ = snapshot.champion(champion_id)
+    aram = ((champ.get("lolmath") or {}).get("aram_modifiers") or {})
+    if "aramHealing" in aram and "aramShielding" in aram:
+        return (float(aram["aramHealing"]), float(aram["aramShielding"]))
+    if "aramShieldsHealing" in aram:
+        v = float(aram["aramShieldsHealing"])
+        return (v, v)
+    # Either key alone (the snapshot can carry just one when the other
+    # defaults to 1.0).
+    heal = float(aram.get("aramHealing", 1.0))
+    shield = float(aram.get("aramShielding", 1.0))
+    return (heal, shield)
+
+
 def _aram_healing_modifier(
     snapshot: DataSnapshot, champion_id: str, mode: str
 ) -> float:
-    """Pull ``aramShieldsHealing`` from the snapshot. 1.0 outside ARAM.
+    """Backward-compat single-value modifier. Returns the heal half.
 
-    Not all champions have an ``aramShieldsHealing`` modifier (most don't).
-    Returns 1.0 when missing - the multiplicative identity. Operator can
-    override by setting ``mode_mult`` on the API call.
+    Deprecated for new call sites - prefer
+    ``_aram_heal_shield_modifiers`` so the shield half isn't lost.
     """
-    if mode != "ARAM":
-        return 1.0
-    champ = snapshot.champion(champion_id)
-    aram = ((champ.get("lolmath") or {}).get("aram_modifiers") or {})
-    return float(aram.get("aramShieldsHealing", aram.get("aramHealing", 1.0)))
+    return _aram_heal_shield_modifiers(snapshot, champion_id, mode)[0]
 
 
 # ─── Result types ───────────────────────────────────────────────────────
@@ -299,10 +333,11 @@ class HpsResult:
     shielding_hps_raw: float       # sum of per-item shield × proc × targets
     # Multipliers:
     amp_multiplier: float          # product(1 + heal_shield_amp_pct)
-    mode_multiplier: float         # aramShieldsHealing; 1.0 outside ARAM
+    heal_mult: float               # aramHealing; 1.0 outside ARAM
+    shield_mult: float             # aramShielding; 1.0 outside ARAM
     # Final score components:
-    healing_hps: float             # healing_hps_raw × amp × mode_mult
-    shielding_hps: float           # shielding_hps_raw × amp × mode_mult
+    healing_hps: float             # healing_hps_raw × amp × heal_mult
+    shielding_hps: float           # shielding_hps_raw × amp × shield_mult
     direct_throughput: float       # healing_hps + shielding_hps
     ally_buff_credit: float        # sum of ally_buff_credit_per_second
     total_throughput: float        # direct_throughput + ally_buff_credit
@@ -310,6 +345,18 @@ class HpsResult:
     items: tuple[HpsItemContribution, ...]
     notes: tuple[str, ...] = field(default_factory=tuple)
     targets_per_proc_override: Optional[float] = None
+
+    @property
+    def mode_multiplier(self) -> float:
+        """Backward-compat alias: returns ``heal_mult``.
+
+        Pre-split this field was the single combined ARAM healing/shield
+        modifier (``aramShieldsHealing``). The 2026-05-20 fix splits
+        the heal and shield halves; this alias preserves callers that
+        only inspect the heal-side ratio (e.g.
+        ``healing_hps(ARAM) / healing_hps(SR) == mode_multiplier``).
+        """
+        return self.heal_mult
 
     def to_dict(self) -> dict:
         return {
@@ -322,6 +369,8 @@ class HpsResult:
             "healing_hps_raw": self.healing_hps_raw,
             "shielding_hps_raw": self.shielding_hps_raw,
             "amp_multiplier": self.amp_multiplier,
+            "heal_mult": self.heal_mult,
+            "shield_mult": self.shield_mult,
             "mode_multiplier": self.mode_multiplier,
             "healing_hps": self.healing_hps,
             "shielding_hps": self.shielding_hps,
@@ -347,11 +396,12 @@ class HpsResult:
         rows.append("")
         rows.append(f"  healing_hps_raw     {self.healing_hps_raw:7.2f}")
         rows.append(f"  shielding_hps_raw   {self.shielding_hps_raw:7.2f}")
-        rows.append(f"  amp_multiplier      ×{self.amp_multiplier:.3f}")
-        if self.mode_multiplier != 1.0:
+        rows.append(f"  amp_multiplier      x{self.amp_multiplier:.3f}")
+        if self.heal_mult != 1.0 or self.shield_mult != 1.0:
             rows.append(
-                f"  mode_multiplier     ×{self.mode_multiplier:.3f}  "
-                f"(aramShieldsHealing)"
+                f"  heal_mult           x{self.heal_mult:.3f}  "
+                f"shield_mult         x{self.shield_mult:.3f}  "
+                f"(aramHealing / aramShielding)"
             )
         rows.append("")
         rows.append(f"  healing_hps         {self.healing_hps:7.2f}")
@@ -390,7 +440,8 @@ def _empty_result(
     item_ids: tuple[str, ...],
     mode: str,
     ap: float,
-    mode_mult: float,
+    heal_mult: float,
+    shield_mult: float,
     notes: tuple[str, ...],
 ) -> HpsResult:
     return HpsResult(
@@ -403,7 +454,8 @@ def _empty_result(
         healing_hps_raw=0.0,
         shielding_hps_raw=0.0,
         amp_multiplier=1.0,
-        mode_multiplier=mode_mult,
+        heal_mult=heal_mult,
+        shield_mult=shield_mult,
         healing_hps=0.0,
         shielding_hps=0.0,
         direct_throughput=0.0,
@@ -445,8 +497,11 @@ def compute_hps(
     stats = resolved.stats
     ap = float(stats.get("ap", 0.0))
 
-    mode_mult = _aram_healing_modifier(snapshot, resolved.champion_id, mode)
-    safe_mode_mult = mode_mult if mode_mult > 0 else 1.0
+    heal_mult, shield_mult = _aram_heal_shield_modifiers(
+        snapshot, resolved.champion_id, mode,
+    )
+    safe_heal_mult = heal_mult if heal_mult > 0 else 1.0
+    safe_shield_mult = shield_mult if shield_mult > 0 else 1.0
 
     snap_formulas = formulas if formulas is not None else load_default_formulas()
 
@@ -507,8 +562,8 @@ def compute_hps(
             notes=formula.notes,
         ))
 
-    healing_hps = healing_raw * amp_factor * safe_mode_mult
-    shielding_hps = shielding_raw * amp_factor * safe_mode_mult
+    healing_hps = healing_raw * amp_factor * safe_heal_mult
+    shielding_hps = shielding_raw * amp_factor * safe_shield_mult
     direct = healing_hps + shielding_hps
     total = direct + buff_credit
 
@@ -517,9 +572,10 @@ def compute_hps(
         notes_out.append(
             "no enchanter formulas matched current items - total throughput is 0"
         )
-    if mode == "ARAM" and mode_mult != 1.0:
+    if mode == "ARAM" and (heal_mult != 1.0 or shield_mult != 1.0):
         notes_out.append(
-            f"ARAM aramShieldsHealing={mode_mult:.3f} applied to healing+shielding"
+            f"ARAM aramHealing={heal_mult:.3f} aramShielding={shield_mult:.3f} "
+            f"applied per-side"
         )
     if targets_per_proc_override is not None:
         notes_out.append(
@@ -537,7 +593,8 @@ def compute_hps(
         healing_hps_raw=healing_raw,
         shielding_hps_raw=shielding_raw,
         amp_multiplier=amp_factor,
-        mode_multiplier=mode_mult,
+        heal_mult=heal_mult,
+        shield_mult=shield_mult,
         healing_hps=healing_hps,
         shielding_hps=shielding_hps,
         direct_throughput=direct,
@@ -825,10 +882,10 @@ def rank_items_by_hps(
             f"targets_per_proc_override={targets_per_proc_override} applied "
             f"to all items"
         )
-    if baseline.mode_multiplier != 1.0:
+    if baseline.heal_mult != 1.0 or baseline.shield_mult != 1.0:
         notes.append(
-            f"ARAM aramShieldsHealing={baseline.mode_multiplier:.3f} folded "
-            f"into all HPS values"
+            f"ARAM aramHealing={baseline.heal_mult:.3f} "
+            f"aramShielding={baseline.shield_mult:.3f} folded into HPS values"
         )
 
     return HpsRankResult(
