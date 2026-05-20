@@ -2,6 +2,24 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - DDragon mirror auto-refresh shipped (BACKLOG drain)
+
+Operator picked "DDragon mirror auto-refresh" from the next-lane fork after the prior overnight queue closed clean. End-to-end vertical slice:
+
+- **`tools/ddragon_mirror_refresh.py` (new, ~430 LOC)** - resolves the latest patch via `https://ddragon.leagueoflegends.com/api/versions.json`, pulls 5 bundle JSONs + per-champion detail (champion summary lacks `spells`/`passive`; the per-Name detail JSON is the only source), enumerates every asset URL, fetches deltas with atomic writes into `web/data/ddragon/<patch>/img/{champion,passive,spell,item,profileicon,map,perk-images}/`. Per-asset ETag + Content-Length stored in `data/meta_build/ddragon/<patch>/_assets_manifest.json` so `--check-changed` does HEAD probe + If-None-Match conditional GET (mid-patch revisions caught without re-downloading unchanged bodies). `_safe_basename` / `_safe_relpath` defense-in-depth filters mirror `lib/icons/downloader.py`'s pattern (reject `..`, backslashes, drive letters, control chars). Stdlib-only network (urllib); does NOT route through `lib.http` because that 1-req/sec-per-host floor is too slow for ~6.7k sequential small fetches against CloudFront. Modes: `--check-only` (exit 1 if flip pending), `--dry-run`, default (idempotent skip-present), `--check-changed`, `--full`, `--version <pin>`.
+- **`tests/test_ddragon_mirror_refresh.py` (new, 38 tests)** - safe-path filters, asset enumeration shape (champion / passive / spell / item / profileicon / map / rune classes all present, rune URLs version-LESS, traversal payloads rejected per-field not per-record, summoner+ability spell paths deduped), manifest round-trip + corrupt-recovery, fetch_one decision tree (skip_present, new, changed, 304, 404, force), index helpers, check-only exit codes, stats rendering. All 38 pass; ~0.06s.
+- **`ops/install_RC_DDragonMirror.ps1` (new)** - `Register-ScheduledTask` (path-safe over `schtasks /Create` which choked on the spaced project root, per s245 pattern). Daily 03:30 trigger, `--check-changed`, Highest run-level, Interactive logon, AllowStartIfOnBatteries, ExecutionTimeLimit 30min. Idempotent (unregisters any existing task with the same name first).
+- **`docs/OPERATIONS.md` synced** - new task row in the scheduled-tasks table + a "DDragon mirror refresh (`RC-DDragonMirrorRefresh`)" section between MCP and Bridge sections covering all 6 modes + install command.
+- **`BACKLOG.md` synced** - DDragon mirror entry flipped from open to shipped with the full description (file paths, mode list, augment-deferral note).
+- **Live first refresh in progress on Legion** - `py tools/ddragon_mirror_refresh.py` running in background. Enumerates 6767 assets across 7 classes (champion 172, item 705, spell 706, passive 172, profileicon 4942, map 3, rune 67). Per-champion detail pull 172/172 OK in ~55s. Cold-fetch ETA ~10-30 min sequential against CloudFront. `_index.json.latest_pulled` flips 16.8.1 -> 16.10.1 on a zero-failure run; held at 16.8.1 if any fetch fails so retries are safe.
+
+**Augments NOT in scope** - DDragon does not ship augment icons; CommunityDragon serves them via `/lol-game-data/assets/v1/cherry-augments.json`. The BACKLOG entry conflated DDragon + augments but the data sources are distinct vendors with different URL shapes. Augment mirror is flagged for a separate cdragon-adapter task.
+
+**Don't-redo:** the script + tests + install PS + doc-sync are real + py_compile-clean (38/38 tests green); do NOT revert. The `lib.http` 1-req/sec-per-host floor is intentionally bypassed (~6.7k fetches would take ~2 hours instead of ~10 min); the in-script `MIN_INTERVAL_SEC=0.05` is the polite-CloudFront pace. The dashboard JS hardcoded `/data/ddragon/16.8.1/img/...` paths in `web/js/main.js` + `web/js/panels/active_match.js` + `web/css/panels/grid.css` are PRE-EXISTING (s149/s218) and were NOT touched in this run - flipping consumers to 16.10.1 is a separate UI-pass concern. The scheduled task is INSTALLED-but-not-yet-registered: the `install_RC_DDragonMirror.ps1` needs an elevated PowerShell run by the operator (or via the bridge dispatch pattern); the script is idempotent.
+
+**Carries forward:** verify the live fetch completed cleanly (final stats table + `_index.json.latest_pulled=16.10.1`); register the scheduled task; optionally trigger the first scheduled run via `Start-ScheduledTask -TaskName RC-DDragonMirrorRefresh` to prove the daily lane.
+
+---
 # 2026-05-19 - P2-C MCP watchdog activation (operator-gated follow-up; both sites live)
 
 Two standalone MCP servers restarted so the bounded-dispatch hung-tool watchdog from `e77820d` (P2-C) runs in their live processes:
