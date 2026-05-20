@@ -202,11 +202,18 @@ def main() -> None:
                 # Run from project root so /process-bridge-tasks finds
                 # tools/bridge_*.py and CLAUDE.md.
                 try:
+                    # CREATE_NO_WINDOW prevents a conhost window from flashing
+                    # on each cadence: claude is a .cmd npm shim on Windows
+                    # and a pythonw parent cannot suppress the conhost spawn
+                    # via STARTUPINFO alone. Cross-platform safe via the
+                    # win32 guard.
+                    _flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
                     subprocess.run(
                         [claude, "--dangerously-skip-permissions",
                          "-p", "/process-bridge-tasks"],
                         cwd=str(PROJECT_ROOT),
                         timeout=180,
+                        creationflags=_flags,
                     )
                 except subprocess.TimeoutExpired:
                     _log.warning("claude --print timed out after 180s")
