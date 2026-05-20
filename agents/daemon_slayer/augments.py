@@ -190,7 +190,25 @@ def compute_augment_stats(
     lands in :data:`_AUGMENT_STAT_OVERLAYS`. This is intentional: we
     progressively add stat-bearing augments without breaking calls that
     pass a full augment list.
+
+    Resolution order per augment:
+      1. If the augment ships non-empty ``calculations`` AND any calc key
+         maps to a canonical stat grant via the formula-evaluator's
+         ``STAT_GRANT_CALC_KEYS`` registry, evaluate via
+         ``stat_overlay_from_calculations``. This is the seam that, once
+         populated, displaces the hand-maintained overlay registry for the
+         augment in question. At cdragon 16.10.1 no calc keys are
+         stat-named so this path returns ``{}`` for every augment.
+      2. Otherwise fall back to ``_AUGMENT_STAT_OVERLAYS`` (the
+         hand-maintained registry, today the source of truth for 11/220
+         augments + the 137/220 augments that ship empty calculations).
+      3. If neither path produces an overlay, the augment is silently
+         skipped.
     """
+    # Local import to keep the evaluator decoupled from augments.py at
+    # module-load time; both modules are pure and the import is cheap.
+    from .augment_formula_eval import stat_overlay_from_calculations
+
     totals: dict[str, float] = {}
     for entry in augments:
         if isinstance(entry, Augment):
@@ -205,10 +223,15 @@ def compute_augment_stats(
             aug = Augment.from_record(rec)
         else:
             continue
-        fn = _AUGMENT_STAT_OVERLAYS.get(aug.api_name)
-        if fn is None:
-            continue
-        for k, v in fn(aug).items():
+        # Path 1: formula evaluator (preferred when calc keys are stat-named).
+        overlay = stat_overlay_from_calculations(aug) if aug.calculations else {}
+        # Path 2: hand-maintained registry fallback.
+        if not overlay:
+            fn = _AUGMENT_STAT_OVERLAYS.get(aug.api_name)
+            if fn is None:
+                continue
+            overlay = fn(aug)
+        for k, v in overlay.items():
             if not v:
                 continue
             totals[k] = totals.get(k, 0.0) + float(v)

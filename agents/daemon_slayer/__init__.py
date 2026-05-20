@@ -1321,7 +1321,41 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.21.0"
+ENGINE_VERSION = "1.22.0"
+# 1.22.0 (cdragon-arena calculations formula evaluator, 2026-05-20):
+# Phase 6 step 3 of the cdragon-arena `dataValues + calculations`
+# enrichment closes the half-shipped state (dataclass layer landed
+# `8f7a71b` 2026-05-20). New module
+# ``agents/daemon_slayer/augment_formula_eval.py`` interprets the 4 cdragon
+# `mFormulaParts` typed-part shapes (NumberCalculationPart /
+# NamedDataValueCalculationPart / StatByNamedDataValueCalculationPart /
+# StatByCoefficientCalculationPart) with the optional `mMultiplier`
+# wrapper, composing via sum-of-parts. The evaluator is pure-function
+# and PRE-WIRED into ``compute_augment_stats``: when an augment ships
+# non-empty `calculations` AND any calc key maps to a canonical stat
+# grant via ``STAT_GRANT_CALC_KEYS``, the evaluator displaces the
+# hand-maintained ``_AUGMENT_STAT_OVERLAYS`` entry for that augment;
+# otherwise the registry remains the source of truth. At cdragon 16.10.1
+# NO augment ships a stat-named calc key (every key is damage / heal /
+# shield / conversion - Typhoon "Damage" = 0.2 * AD, UndyingGuard
+# "TotalDamage" = BaseDamage + 1.0*bonus_AD + 1.1*bonus_HP, etc.), so the
+# ``STAT_GRANT_CALC_KEYS`` map is empty and the live behavior is
+# unchanged. The seam exists for the next-patch slice when Riot ships a
+# stat-named calculation (e.g. Arena S2 Augment Level-Up patch 26.09).
+# Out of scope for this slice (return zero-contribution today; future
+# evaluator extensions): ByCharLevelInterpolationCalculationPart,
+# ByCharLevelBreakpointsCalculationPart, BuffCounterByCoefficient,
+# SumOfSubParts, ProductOfSubParts, AbilityResourceByCoefficient,
+# GameCalculationModified, hash-name parts (e.g. ``{b22609db}``). None
+# carry stat-grant semantics at the current patch.
+# +N tests in ``test_augment_formula_eval.py`` covering each typed-part
+# shape, mMultiplier wrapping, part-sum composition, real-augment value
+# extraction (Typhoon Damage = 0.2*AD, ServeBeyondDeath {85d7d7f0} =
+# 10 * 0.25 = 2.5, UndyingGuard TotalDamage at bonus_ad=100/bonus_hp=200,
+# JeweledGauntlet CritGranted), and the overlay-registry fallback. The
+# evaluator is non-load-bearing for production callsites today; the
+# ENGINE bump is the architecture seam that future patches consume.
+#
 # 1.21.0 (UX-headless iter 4 / DS audit lane: AP-scaling on-hit family,
 # 2026-05-20): Nashor's Tooth Icathian Bite AP coefficient corrected
 # 20% -> 15% per Meraki bulk 16.10.1 ("Basic attacks deal 15 (+ 15% AP)
