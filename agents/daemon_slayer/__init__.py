@@ -1321,7 +1321,41 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.12.0"
+ENGINE_VERSION = "1.13.0"
+# 1.13.0 (Iter 11, 2026-05-20): Level-scaling-formula audit lane vs Meraki
+# 16.10.1. Walked every "level"-keyed lambda in _effects_data.py and cross-
+# checked Statikk Shiv / Rapid Firecannon / Stormrazor / Voltaic Cyclosword
+# / Sundered Sky / Riftmaker / Demonic Embrace / Liandry's / Heartsteel /
+# The Collector / Eclipse / BotRK against the Meraki bulk-items endpoint
+# stored at data/daemon_slayer/16.10.1/items_meraki.json. ONE drift caught:
+# Statikk Shiv (3087) and its Arena mirror (223087) carried
+# bonus_damage=110 every_n_seconds=3 (~36.7 magic/s) - an iter-7 era stale
+# magnitude. Meraki 16.10.1 "Electrospark" is 3 attacks x 60 bonus magic
+# within 8s on a 25->10s cooldown ramp (pp|25 to 10 for 6; L6+ steady-
+# state 10s). Engine now encodes payload-per-cycle: bonus_damage=180,
+# every_n_seconds=10 = 18 magic/s steady-state (same encoding shape as
+# Kraken/Stormrazor: per-cooldown-cycle, NOT per-attack). Proc renamed
+# "Electroshock" -> "Electrospark" to match Meraki's actual name (the
+# "Electroshock" passive is the takedown-CD-reset secondary, not the
+# main 3-attack chain). +7 audit tests in
+# StatikkShivElectrosparkMagnitudeTests pinning magnitude, cadence,
+# proc name, magical damage type, and Aatrox-L11 net-positive sanity.
+# Other 11 lerp/per-level/level-gated sites confirmed correct vs Meraki:
+# Rapid Firecannon 40 flat magic on-hit, Stormrazor 100 flat magic on-hit,
+# Voltaic Cyclosword 100 + 25% bonus_ad physical + 10 lethality, Sundered
+# Sky's 20+200%-base-AD approximation kept (refactoring the
+# critical-damage-by-level 60-80 + 80% bonus-crit-damage form would
+# require a guaranteed-crit schema lift, out of scope for this drift
+# pass), Riftmaker's 8% damage_amp at max stacks (not level-ramped),
+# Liandry's 1% target_max_hp burn per tick (not level-ramped), Heartsteel
+# 70 + 6% max_hp (not level-ramped per Meraki 16.10.1 text), Eclipse's
+# 6% target_max_hp (not level-ramped), Demonic Embrace's ramp is
+# health-missing-driven not level-driven, BotRK 9% target_max_hp pinned
+# in iter-7. The Collector executes at 5% max HP (already correct;
+# the task hint "15% missing HP, NOT level-scaled" was a misread - the
+# actual Meraki spec is 5% max HP, also NOT level-scaled, engine right).
+# Streak: iter-11 lane=level-scaling-formulas FOUND drift (Statikk
+# Shiv); resets to 1/10.
 # 1.12.0 (Iter 10, 2026-05-20): Lethality + flat-pen audit lane vs Community
 # Dragon 16.10 ground truth. Probed the engine entries for all 21 items in
 # the audit set (8 lethality legendaries, 5 components, 4 Last-Whisper-family

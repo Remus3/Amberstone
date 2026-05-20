@@ -457,3 +457,67 @@ class TitanicHydraCleaveMagnitudeTests(unittest.TestCase):
         self.assertAlmostEqual(primary.resolve_damage(ctx), 35.0, places=6)
         # Cleave: max(0, 1) * 0.03 * 3500 = 105
         self.assertAlmostEqual(cleave.resolve_damage(ctx), 105.0, places=6)
+
+
+class StatikkShivElectrosparkMagnitudeTests(unittest.TestCase):
+    """Meraki: Electrospark = next 3 basic attacks within 8s deal 60
+    bonus magic damage each on-hit; cooldown ramps 25s at L1 down to 10s
+    at L6+ (pp|25 to 10 for 6). Engine pins the L6+ steady-state
+    cooldown (10s) and the per-cycle payload (3 * 60 = 180 magic),
+    encoded as bonus_damage=180 every_n_seconds=10 (same shape as the
+    Kraken / Stormrazor energized-family encoding: payload-per-cycle,
+    NOT per-attack). Was bonus_damage=110 every 3s (~36.7/s; iter-7 era
+    stale magnitude, ~2x too high vs the 16.10.1 Electrospark spec).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_base_3087_electrospark_is_180_per_cycle(self) -> None:
+        proc = _proc("3087")
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11)
+        self.assertEqual(proc.resolve_damage(ctx), 180.0)
+        self.assertEqual(proc.every_n_seconds, 10.0)
+
+    def test_base_3087_proc_named_electrospark(self) -> None:
+        proc = _proc("3087")
+        # Renamed off the stale "Electroshock" - Meraki's actual proc
+        # name for the 3-attack chain is "Electrospark"; "Electroshock"
+        # is the takedown-reset secondary passive.
+        self.assertEqual(proc.name, "Electrospark")
+
+    def test_base_3087_steady_state_magic_per_sec_is_18(self) -> None:
+        # 180 magic per 10s cycle = 18 magic/s steady-state. Roughly
+        # half the prior 110/3s = ~36.67/s (the iter-7 stale rate).
+        proc = _proc("3087")
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11)
+        self.assertAlmostEqual(
+            proc.resolve_damage(ctx) / proc.every_n_seconds, 18.0, places=6
+        )
+
+    def test_arena_223087_electrospark_mirrors_sr(self) -> None:
+        proc = _proc("223087")
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11)
+        self.assertEqual(proc.resolve_damage(ctx), 180.0)
+        self.assertEqual(proc.every_n_seconds, 10.0)
+        self.assertEqual(proc.name, "Electrospark")
+
+    def test_3087_proc_uses_magical_damage_type(self) -> None:
+        # MR-resisted, not armor (Meraki: "bonus magic damage"); guards
+        # the iter-7 stale rate fix from accidentally flipping the
+        # damage type during refactor.
+        from agents.daemon_slayer.effects import MAGICAL
+
+        self.assertEqual(_proc("3087").damage_type, MAGICAL)
+        self.assertEqual(_proc("223087").damage_type, MAGICAL)
+
+    def test_statikk_still_raises_dps_at_corrected_rate(self) -> None:
+        # End-to-end sanity: the corrected magnitude is still net
+        # positive on Aatrox L11, just smaller than before (engine-level
+        # check, no exact magnitude assert to stay robust to adjacent
+        # math drift). Confirms the test_statikk_shiv_raises_dps invariant
+        # in test_effects_expansion.py still holds post-iter-11.
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        with_ss = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3087"])
+        self.assertGreater(with_ss.weighted_dps, bare.weighted_dps)
