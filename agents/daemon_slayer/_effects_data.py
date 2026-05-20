@@ -93,12 +93,23 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3087",
         name="Statikk Shiv",
         periodics=(PeriodicProc(
-            name="Electroshock",
-            bonus_damage=110.0,
+            name="Electrospark",
+            # Meraki bulk items (patch 16.10.1) "Electrospark": next 3
+            # basic attacks within 8s deal 60 bonus magic damage on-hit
+            # each (85 vs non-champions, chained to up to 5 targets).
+            # Cooldown ramps 25s at L1 down to 10s at L6+ (pp|25 to 10
+            # for 6). Engine pins the L6+ steady-state cooldown (10s)
+            # and the per-cycle payload (3 * 60 = 180 magic), modeled as
+            # 180 every 10s = 18 magic/s (same convention as the
+            # Kraken / Stormrazor energized-family encoding: payload-
+            # per-cooldown-cycle, NOT per-attack). Was bonus_damage=110
+            # every 3s (~36.7/s; iter-7 era stale magnitude that pre-
+            # dated the Meraki 16.10.1 Electrospark spec, ~2x too high).
+            bonus_damage=180.0,
             damage_type=MAGICAL,
-            every_n_seconds=3.0,
+            every_n_seconds=10.0,
         ),),
-        note="Statikk Shiv: Energized chain lightning ~110 magic dmg every ~3s",
+        note="Statikk Shiv: Electrospark 3x60 bonus magic dmg per 10s cooldown cycle (Meraki 16.10.1)",
     ),
     "3094": ItemEffect(
         item_id="3094",
@@ -3530,12 +3541,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223087",
         name="Statikk Shiv",
         periodics=(PeriodicProc(
-            name="Electroshock",
-            bonus_damage=110.0,
+            name="Electrospark",
+            # Mirrors SR 3087 - Meraki 16.10.1 Electrospark: 3 attacks x
+            # 60 magic per 10s cooldown cycle (was 110 magic every 3s).
+            bonus_damage=180.0,
             damage_type=MAGICAL,
-            every_n_seconds=3.0,
+            every_n_seconds=10.0,
         ),),
-        note="Statikk Shiv (Arena 223087): same as SR 3087 - Electroshock 110 magic every ~3s Energized",
+        note="Statikk Shiv (Arena 223087): same as SR 3087 - Electrospark 3x60 magic per 10s cycle",
     ),
     "223089": ItemEffect(
         item_id="223089",
