@@ -34,6 +34,35 @@ class AugmentDataLayerTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             self.snap.arena_augment("NotARealAugment")
 
+    def test_from_record_captures_calculations(self) -> None:
+        # UndyingGuard has both dataValues and a non-empty calculations dict
+        # in cdragon 16.10.1; assert both round-trip through from_record so
+        # downstream formula evaluators can read them.
+        rec = self.snap.arena_augment("UndyingGuard")
+        a = Augment.from_record(rec)
+        self.assertIn("BaseDamage", a.data_values)
+        self.assertIsInstance(a.calculations, dict)
+        # "TotalDamage" is the calculation key Riot ships for this augment.
+        self.assertIn("TotalDamage", a.calculations)
+        self.assertIn("TotalDamage", a.calculation_keys)
+
+    def test_from_record_missing_calculations_defaults_empty(self) -> None:
+        # Augments without a calculations field should land an empty dict,
+        # not None, so callers can safely iterate.
+        a = Augment.from_record({"id": 999, "apiName": "x", "rarity": 0})
+        self.assertEqual(a.calculations, {})
+        self.assertEqual(a.calculation_keys, [])
+
+    def test_calculations_population_is_non_trivial(self) -> None:
+        # Smoke check: a meaningful fraction of arena augments ship
+        # calculations (83/220 at cdragon 16.10.1). Floor at 30 to allow
+        # some patch drift without silently regressing to "we drop them all."
+        with_calcs = [
+            rec for rec in self.snap.arena_augments_by_id.values()
+            if rec.get("calculations")
+        ]
+        self.assertGreaterEqual(len(with_calcs), 30)
+
     def test_rarity_split(self) -> None:
         silver = list_augments_by_rarity(self.snap, RARITY_SILVER)
         gold = list_augments_by_rarity(self.snap, RARITY_GOLD)
