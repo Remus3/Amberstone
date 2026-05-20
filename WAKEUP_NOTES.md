@@ -1,6 +1,40 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary archived to docs/history_notes.md. Only the last 3 sessions kept here (2026-05-19/20 overnight FULL RUN + 2026-05-19 lessons Phase 4 + 2026-05-19 bridge MCP/install-ritual).
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary archived to docs/history_notes.md. Only the last 3 sessions kept here (2026-05-20 housekeeping batch + 2026-05-19/20 overnight FULL RUN + 2026-05-20 second headless run).
+---
+# 2026-05-20 - housekeeping batch (7 commits; non-engine; no DS bump)
+
+User-driven scoped session: 4 picked off the menu, 3 carries from earlier. **7 commits `1a8e0bf`..`58d1e87`**, all pushed.
+
+**Branch + worktree cleanup:**
+- `gh pr list` empty; 4 local + 1 remote stale branches deleted (`worktree-agent-a6af6d373393c54c3` + `fix/ds-stat-growth` + `claude/brave-curran-2597b1` + `origin/fix/ds-stat-growth`); they were all 0-ahead of main.
+- Locked worktree `worktree-agent-a7da71cb6830f84fc` (107MB, commit 18589ab on main) unlocked + force-removed; corresponding branch deleted.
+
+**Desktop shortcut Claude RC.lnk repointed** to launch Claude Desktop (MS Store AUMID `Claude_pzs8sxrjxfjjc!Claude` via `explorer.exe shell:AppsFolder\...`) instead of the CLI tools/claude-rc.ps1; smoke-launched pid 1368 "Claude" window. **`tools/claude-rc.ps1` deleted** + docstring ref in `tools/verify_bridge_roundtrip.py` updated (`3571e1b`).
+
+**Dated docs archive (`3571e1b`):** 4 of 6 dated 2026-05-02 `docs io RC peer/` artifacts moved to `docs/_archive/2026-05-02-rc-peer/` per CLAUDE.md convention; 3 doc-only ref updates in `core/lessons_{ack_watcher,confidence,revert}.py`. 2 files LEFT IN PLACE because of frozen-file refs (main.py for `PEER_VIP_BRIDGE_MONITOR_FOR_RC_2026-05-02.md`, sync-all-md.md for `RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`).
+
+**`943d2e0` fix(ddragon): retry-with-backoff on transient HTTP errors.** RC-DDragonMirrorRefresh exit_code=2 root cause was 1/6767 assets timing out per cron tick (profileicon/5668.png in the 03:30 run). `_http()` now retries `URLError` (incl. socket.timeout) + HTTPError 429/500/502/503/504 with 1s+2s backoffs (max 2 retries). HTTPError 4xx is NOT retried. +4 tests. Live-verified: prior run hit 1 timeout -> exit 2; re-run with retry -> 0 fails, exit 0.
+
+**`4808f64` chore(gitignore): exclude `_scratch/`** (~1MB of pytest output + iter logs from prior headless run; mirrors `_archive/` quarantine pattern).
+
+**`8f7a71b` feat(ds): expose cdragon calculations on Augment dataclass.** Item 109 carry (d) phase 1. `Augment.calculations: dict` field + `__post_init__` None->{} default + `calculation_keys` property; `from_record()` now captures the cdragon `calculations` formula defs (was being trimmed at the Augment boundary; upstream extractor `tools/daemon_slayer_extract.py:762` already captured them). 83/220 augments at cdragon 16.10.1 ship non-empty calculations (UndyingGuard/Typhoon/ServeBeyondDeath...). NO ENGINE bump - dataclass-layer only, no scorer change, no DS restart. +3 tests. **Still owed:** the formula-evaluator that consumes `mFormulaParts` typed-part interpreter to displace the hand-maintained `_AUGMENT_STAT_OVERLAYS` registry; separate slice.
+
+**`94fe721` + `8d1c28e` docs(backlog): prune + clarify.** BACKLOG 125 -> 105 lines, 0 strikethrough remaining. Dropped 14 shipped entries + dropped the stale `hps_split_aram_heal_shield_mults` entry (was actually shipped iter 17 `816ab4a` in item 109; BACKLOG drift). Rewrote `aramAbilityHaste`/`aramTenacity` entry to reflect actual state: exposure shipped (engine.py:210-221), CONSUMPTION still owed because the DS engine has no ability-haste model at all (`ability_dps.py:49` comment).
+
+**`58d1e87` feat(coach): haste-formula cycle math for summoner cooldown ledger.** Replaced additive-percent CDR in `core/summoner_cooldowns.py` with Riot's canonical haste formula `eff_cd = base / (1 + h/100)` (the additive model double-counted at high stacks: Cosmic+Boots showed -28% when 36 SSH actually compresses to -26.5%). New constants `COSMIC_INSIGHT_SSH=18` / `LUCIDITY_SSH=18` / `LUCIDITY_AH=12` / `MAGICAL_FOOTWEAR_SSH=10` / `HEXTECH_DRAKE_AH_PER_STACK=5`. New helpers `_summoner_haste(runes, items)` / `_ability_haste(items, hextech_drakes=0)`; old `_cdr_summs` / `_cdr_ult` / cdr-fraction `_effective_cd` deleted. Participant dict: new optional `hextech_drakes: int` (defaults 0). Output: +`summs.summoner_haste` + `ult.ability_haste` for panel tooltips. Test suite 14 -> 29 tests (+4 Hextech Drake +3 haste-totals shape +1 negative-haste extreme). Flash @ Cosmic+Boots pin: 216s -> 220.59s (correct compression).
+
+**Verified:** wider RC suite 2096 passed + 67 subtests; py_compile + ruff clean; ASCII-clean. No ENGINE bump (non-engine). No DS restart. No frozen-file edits. CI: not yet observed for the latest commits but local gates all green.
+
+**Don't-redo:** all 7 commits real + pushed. The dated-docs archive deliberately left 2 files in place (`PEER_VIP_BRIDGE_MONITOR_FOR_RC_2026-05-02.md` + `RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`) because moving them requires editing frozen `main.py` + `tools/sync-all-md.md`; the operator's frozen-file grant from item 109 does NOT carry forward. cdragon-arena calculations enrichment is HALF SHIPPED (dataclass-layer only); the formula-evaluator that turns `mFormulaParts` into per-augment stat overlays is the next slice and that will ENGINE-bump. CD ledger output now carries 2 NEW keys (`summoner_haste`, `ability_haste`) - dashboard panel was already forward-compatible since it reads `d_cd_remaining_s` etc., but the new keys can be tooltip-rendered.
+
+**Carries forward:**
+- (a) **`aramAbilityHaste` + `aramTenacity` engine CONSUMPTION** still queued in BACKLOG - exposure shipped iter 17 but no scorer reads them. Requires baseline ability-haste model in DS engine first (currently NONE per `ability_dps.py:49`).
+- (b) **cdragon `calculations` formula evaluator** queued - the `mFormulaParts` typed-part interpreter (`NamedDataValueCalculationPart`/`StatByNamedDataValueCalculationPart`/`StatByCoefficientCalculationPart`/`NumberCalculationPart` + `mMultiplier`) to displace `_AUGMENT_STAT_OVERLAYS`. ENGINE bump owed when it lands.
+- (c) **CD ledger Live Client wire for Hextech drake count** - `dashboard/_state_cooldowns.py` doesn't yet count Hextech drakes from `gameData.events.Events` (DragonKill with DragonType="Hextech"). Phase-2 wire.
+- (d) Item 109 carries: HURTS-THEM/HELPS-US frontend, Per-row hover contribution strip, LoLytics WPA framework, Arena S2 Augment Level-Up (gated on patch 26.09 PBE), ward-heat frontend liveclient wire, shaper UI gated on 100% DS coverage, live-game UX validation, standing operator-gated ruff/type-hint pass.
+- (e) The locked worktree pattern: when a Claude Code Agent worktree gets locked + abandoned, the cleanup is `git worktree unlock <path>; git worktree remove --force <path>; git branch -D <branch>`. Safe when the commit is already on main (verify with `git branch --contains <sha>`).
+
 ---
 # 2026-05-20 - second headless run (UX waves 1+2 + research wave + DS audit iter 17-19; 12 commits; ENGINE 1.17.0 -> 1.21.0)
 
