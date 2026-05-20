@@ -217,12 +217,35 @@ def _serve_health_all(h) -> None:
                 bridge_status = "yellow"
             else:
                 bridge_status = "red"
-            rollup["bridge"] = {
-                "age_s":   round(age, 1) if age is not None else None,
-                "status":  bridge_status,
-                "warn_s":  _BRIDGE_WARN_S,
-                "alert_s": _BRIDGE_ALERT_S,
+            # gamepc_result_age_s only tracks kind=result + source=gamepc
+            # entries, NOT generic bridge activity. Prior schema exposed
+            # this as bridge.age_s which was misleading; renamed to
+            # bridge.gamepc_result_age_s 2026-05-20. legion_daemon block
+            # surfaces the new Legion-side autonomous /process-bridge-tasks
+            # sentinel (tools/legion_bridge_daemon.py) symmetrically.
+            bridge_block = {
+                "gamepc_result_age_s": round(age, 1) if age is not None else None,
+                "status":              bridge_status,
+                "warn_s":              _BRIDGE_WARN_S,
+                "alert_s":             _BRIDGE_ALERT_S,
             }
+            ld_path = APP_DIR / "ops" / "runtime" / "legion_bridge_daemon_health.json"
+            if ld_path.exists():
+                try:
+                    ld = json.loads(ld_path.read_text(encoding="utf-8"))
+                    last_check = ld.get("last_check_ts") or 0
+                    bridge_block["legion_daemon"] = {
+                        "status":                  ld.get("status"),
+                        "pid":                     ld.get("pid"),
+                        "invocations_since_boot":  ld.get("invocations_since_boot"),
+                        "last_task_ts":            ld.get("last_task_ts"),
+                        "last_check_age_s":        round(max(0.0, time.time() - last_check), 1) if last_check else None,
+                    }
+                except Exception as _e:
+                    bridge_block["legion_daemon"] = {"error": str(_e)[:120]}
+            else:
+                bridge_block["legion_daemon"] = {"status": "no_data"}
+            rollup["bridge"] = bridge_block
         except Exception as e:
             rollup["bridge"] = {"error": str(e)[:120], "status": "unknown"}
         # (2026-05-03) Peer bridge_watcher heartbeats - published by the
