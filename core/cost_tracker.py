@@ -166,7 +166,7 @@ class CostTracker:
         # Frame-dedup cache: key -> (result, expires_monotonic_s)
         self._dedupe: Dict[str, tuple] = {}
 
-    # ── Config ────────────────────────────────────────────────────────────
+    # --- Config -----------------------------------------------------------
 
     def _cfg(self) -> dict:
         try:
@@ -178,7 +178,7 @@ class CostTracker:
     def _spend_path(self) -> Path:
         return self._spend_dir / f"{_today_str()}.json"
 
-    # ── Recording (5.8) ───────────────────────────────────────────────────
+    # --- Recording (5.8) --------------------------------------------------
 
     def record_call(
         self,
@@ -251,7 +251,7 @@ class CostTracker:
     def daily_spend(self) -> dict:
         return read_json_dict(self._spend_path(), default=_empty_ledger())
 
-    # ── Spend cap (5.4) ───────────────────────────────────────────────────
+    # --- Spend cap (5.4) --------------------------------------------------
 
     def allow_call(self) -> bool:
         budget = self._cfg().get(CFG_DAILY_BUDGET_USD)
@@ -272,7 +272,7 @@ class CostTracker:
             return "warn"
         return "ok"
 
-    # ── Vision rate limit (5.1) ───────────────────────────────────────────
+    # --- Vision rate limit (5.1) ------------------------------------------
 
     def acquire_vision_token(self) -> bool:
         """Token bucket: refills at `vision_calls_per_min`/60 per second up
@@ -298,7 +298,7 @@ class CostTracker:
             _log.debug("prom_metrics vision_token: %s", exc)
         return granted
 
-    # ── Frame dedupe (5.5) ────────────────────────────────────────────────
+    # --- Frame dedupe (5.5) -----------------------------------------------
 
     def vision_dedupe_get(self, key: str) -> Any:
         if not key:
@@ -332,7 +332,7 @@ class CostTracker:
                 now = time.monotonic()
                 self._dedupe = {k: v for k, v in self._dedupe.items() if v[1] > now}
 
-    # ── Coach kill-switches (2.2) ─────────────────────────────────────────
+    # --- Coach kill-switches (2.2) ----------------------------------------
 
     def coach_disabled(self, mode: str) -> bool:
         modes = self._cfg().get(CFG_COACH_DISABLED_MODES, []) or []
@@ -355,7 +355,7 @@ class CostTracker:
         return cur
 
 
-# ── Singleton ────────────────────────────────────────────────────────────
+# --- Singleton ------------------------------------------------------------
 
 _singleton: Optional[CostTracker] = None
 _singleton_lock = threading.Lock()
