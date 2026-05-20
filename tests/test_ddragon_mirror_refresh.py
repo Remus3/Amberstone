@@ -369,3 +369,97 @@ def test_render_stats_table_lists_each_class():
     assert "item" in out
     assert "TOTAL" in out
     assert "new=2 chg=1 skip=7" in out
+
+
+# ---------------------------------------------------------------------------
+# _http retry-with-backoff (transient errors should not flake the cron)
+
+def test_http_retries_on_url_error_then_succeeds(monkeypatch):
+    import urllib.error as ue
+    from io import BytesIO
+
+    class _FakeResp:
+        status = 200
+        headers = {"etag": '"ok"'}
+        def read(self): return b"BODY"
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    calls = []
+    def fake_open(req, timeout):
+        calls.append(req.full_url)
+        if len(calls) == 1:
+            raise ue.URLError("timed out")
+        return _FakeResp()
+
+    sleeps = []
+    monkeypatch.setattr(ddr.urllib_request, "urlopen", fake_open)
+    monkeypatch.setattr(ddr.time, "sleep", lambda s: sleeps.append(s))
+
+    res = ddr._http("GET", "https://example/asset.png")
+    assert res.status == 200
+    assert res.body == b"BODY"
+    assert len(calls) == 2
+    assert sleeps == [ddr.RETRY_BACKOFFS[0]]
+
+
+def test_http_gives_up_after_max_retries(monkeypatch):
+    import urllib.error as ue
+
+    calls = []
+    def always_fail(req, timeout):
+        calls.append(req.full_url)
+        raise ue.URLError("timed out")
+
+    monkeypatch.setattr(ddr.urllib_request, "urlopen", always_fail)
+    monkeypatch.setattr(ddr.time, "sleep", lambda s: None)
+
+    with pytest.raises(ue.URLError):
+        ddr._http("GET", "https://example/dead.png")
+    assert len(calls) == len(ddr.RETRY_BACKOFFS) + 1
+
+
+def test_http_retries_on_5xx_then_succeeds(monkeypatch):
+    import urllib.error as ue
+
+    class _FakeResp:
+        status = 200
+        headers = {}
+        def read(self): return b"OK"
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    calls = []
+    def flaky(req, timeout):
+        calls.append(req.full_url)
+        if len(calls) == 1:
+            raise ue.HTTPError(req.full_url, 503, "down", {}, None)
+        return _FakeResp()
+
+    sleeps = []
+    monkeypatch.setattr(ddr.urllib_request, "urlopen", flaky)
+    monkeypatch.setattr(ddr.time, "sleep", lambda s: sleeps.append(s))
+
+    res = ddr._http("GET", "https://example/asset.png")
+    assert res.status == 200
+    assert res.body == b"OK"
+    assert len(calls) == 2
+    assert sleeps == [ddr.RETRY_BACKOFFS[0]]
+
+
+def test_http_does_not_retry_on_404(monkeypatch):
+    import urllib.error as ue
+
+    calls = []
+    def four_oh_four(req, timeout):
+        calls.append(req.full_url)
+        raise ue.HTTPError(req.full_url, 404, "gone", {}, None)
+
+    monkeypatch.setattr(ddr.urllib_request, "urlopen", four_oh_four)
+    sleeps = []
+    monkeypatch.setattr(ddr.time, "sleep", lambda s: sleeps.append(s))
+
+    res = ddr._http("GET", "https://example/missing.png")
+    assert res.status == 404
+    assert len(calls) == 1
+    assert sleeps == []

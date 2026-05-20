@@ -59,6 +59,11 @@ USER_AGENT = "RiotCommander/3.0 ddragon-mirror-refresh"
 DEFAULT_TIMEOUT = 20.0
 MIN_INTERVAL_SEC = 0.05  # bundle-pull cadence; asset fetches use a worker pool
 DEFAULT_WORKERS = 8       # parallel asset fetches against CloudFront
+# Retry sleeps for transient errors (URLError / timeout / HTTP 429+5xx).
+# len() of this tuple == max retry count; one timeout per cron tick is the
+# operational symptom we observed (item 109 carry).
+RETRY_BACKOFFS = (1.0, 2.0)
+TRANSIENT_HTTP_CODES = frozenset({429, 500, 502, 503, 504})
 
 # Maps used by the dashboard. DDragon ships map11.png (SR), map12.png (ARAM),
 # map30.png (Cherry/Arena). Brawl (35) is map11 reskin and has no DDragon asset.
@@ -92,14 +97,27 @@ def _http(method: str, url: str, *, headers: dict[str, str] | None = None,
     h = {"User-Agent": USER_AGENT}
     if headers:
         h.update(headers)
-    req = urllib_request.Request(url, headers=h, method=method)
-    try:
-        with urllib_request.urlopen(req, timeout=timeout) as r:
-            body = b"" if method == "HEAD" else r.read()
-            return HttpResult(r.status, {k.lower(): v for k, v in r.headers.items()}, body)
-    except urllib_error.HTTPError as e:
-        body = b"" if method == "HEAD" else (e.read() or b"")
-        return HttpResult(e.code, {k.lower(): v for k, v in (e.headers or {}).items()}, body)
+    last_url_err: urllib_error.URLError | None = None
+    for attempt in range(len(RETRY_BACKOFFS) + 1):
+        req = urllib_request.Request(url, headers=h, method=method)
+        try:
+            with urllib_request.urlopen(req, timeout=timeout) as r:
+                body = b"" if method == "HEAD" else r.read()
+                return HttpResult(r.status, {k.lower(): v for k, v in r.headers.items()}, body)
+        except urllib_error.HTTPError as e:
+            if e.code in TRANSIENT_HTTP_CODES and attempt < len(RETRY_BACKOFFS):
+                time.sleep(RETRY_BACKOFFS[attempt])
+                continue
+            body = b"" if method == "HEAD" else (e.read() or b"")
+            return HttpResult(e.code, {k.lower(): v for k, v in (e.headers or {}).items()}, body)
+        except urllib_error.URLError as e:
+            last_url_err = e
+            if attempt < len(RETRY_BACKOFFS):
+                time.sleep(RETRY_BACKOFFS[attempt])
+                continue
+            raise
+    # Unreachable: the loop above either returns or raises on the last attempt.
+    raise last_url_err if last_url_err else RuntimeError("unreachable")
 
 
 def http_get(url: str, headers: dict[str, str] | None = None) -> HttpResult:
