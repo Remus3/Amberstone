@@ -17,12 +17,14 @@
 import { ITEMS } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
+import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
 
 const _AM = {
   sub:        () => document.getElementById("am-sub"),
   callBody:   () => document.getElementById("am-call-body"),
   buildBody:  () => document.getElementById("am-build-body"),
   mapBody:    () => document.getElementById("am-map-body"),
+  cdBody:     () => document.getElementById("cd-ledger-body"),
 };
 
 // s170 (step 2): per-tick DS rerank cache. Keyed by a coarse "input
@@ -299,6 +301,23 @@ export function renderActiveMatch(payload, ctx) {
     // every tick.
     const modeLow = String((ctx && ctx.mode) || "sr").toLowerCase();
     _renderAmMap(map, modeLow, p);
+  }
+
+  // UX-3 (2026-05-20): right-rail CD ledger. Reads the
+  // summoner_cooldowns array threaded via ctx (top-level /api/state
+  // field; backend computes it in dashboard/_state_cooldowns.py and
+  // returns null when no live game is running). Render is null-safe
+  // and idempotent - sig-based dedup keeps the DOM stable across
+  // sub-second tick churn. attachCooldownLedgerHandlers is idempotent
+  // too (dataset.cdBound gate), safe to call every tick.
+  const cdBody = _AM.cdBody();
+  if (cdBody) {
+    const cooldowns = (ctx && ctx.cooldowns) || null;
+    renderCooldownLedger(cdBody, cooldowns, {
+      liveclient: (ctx && ctx.liveclient) || null,
+      version:    (ITEMS && ITEMS.version) || "16.10.1",
+    });
+    attachCooldownLedgerHandlers();
   }
 }
 
