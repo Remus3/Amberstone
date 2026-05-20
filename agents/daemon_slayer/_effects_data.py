@@ -820,22 +820,27 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         periodics=(
             PeriodicProc(
                 name="Cleave (primary)",
-                # Melee: 5 + 1.5% caster bonus HP physical to primary on
-                # every basic. Ranged variant (3 + 0.75%) under-counted -
-                # Titanic is almost exclusively a melee item.
-                bonus_damage=lambda c: 5.0 + 0.015 * c.caster_bonus_hp,
+                # Iter 8 (2026-05-19): Meraki bulk items (patch 16.10.1):
+                # "Basic attacks on-hit deal 1% (ranged 0.5%) maximum
+                # health bonus physical damage to the target". Engine
+                # prior: 5 + 1.5% caster_bonus_hp - drifted on three
+                # axes (flat 5 -> 0, bonus_hp -> max_hp, 1.5% -> 1.0%).
+                # Engine pins the melee value (1%), same convention as
+                # BotRK 9% / Eclipse 6% / Hullbreaker / Kraken.
+                bonus_damage=lambda c: 0.01 * c.caster_max_hp,
                 damage_type=PHYSICAL,
                 every_n_attacks=1,
             ),
-            # Phase 4 batch 8 (2026-05-04): cleave-to-others piece -
-            # 40% of total AD physical to enemies behind the target. The
-            # multi-proc-per-item schema lets this co-exist with the
-            # primary on-hit proc. Multiplier max(0, n-1) - same shape
-            # as Ravenous Hydra in batch 7.
+            # Iter 8 (2026-05-19): Meraki bulk items (patch 16.10.1):
+            # "... and 3% (ranged 1.5%) maximum health physical damage
+            # to other enemies in a cone". Engine prior was 40% total
+            # AD - reshaped to 3% maximum health (melee). Multiplier
+            # max(0, n-1) keeps the "extra targets only" shape; the
+            # primary target already takes the primary-proc damage.
             PeriodicProc(
                 name="Cleave (to nearby)",
                 bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
-                    * 0.40 * (c.base_ad + c.bonus_ad),
+                    * 0.03 * c.caster_max_hp,
                 damage_type=PHYSICAL,
                 every_n_attacks=1,
             ),
@@ -846,7 +851,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # nearby pieces of the same Cleave; only the FIRST hydra in the
         # build keeps both, the rest are dropped).
         unique_passive_key="hydra_cleave",
-        note="Titanic Hydra: Cleave ~5 + 1.5% bonus HP on-hit primary + ~40% AD to nearby (melee values)",
+        note="Titanic Hydra: Cleave 1% max HP primary on-hit + 3% max HP to nearby (Meraki 16.10.1 melee values)",
     ),
 
     # ── Phase 4 batch 7 (2026-05-04): multi-target rotations ──
@@ -901,28 +906,38 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Sunfire Aegis",
         periodics=(PeriodicProc(
             name="Immolate",
+            # Iter 8 (2026-05-19): Meraki bulk items (patch 16.10.1) -
+            # "Deal 20 (+ 1% bonus health) magic damage per second".
+            # Engine prior: 12 + 1.5% bonus_hp - stale magnitude on both
+            # the base (12 -> 20) and the bonus_hp coefficient
+            # (1.5% -> 1.0%).
             bonus_damage=lambda c: c.targets_in_rotation
-                * (12.0 + 0.015 * c.caster_bonus_hp),
+                * (20.0 + 0.010 * c.caster_bonus_hp),
             damage_type=MAGICAL,
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
-        note="Sunfire Aegis: Immolate ~12 + 1.5% bonus HP magic per second to nearby (melee values)",
+        note="Sunfire Aegis: Immolate 20 + 1% bonus HP magic per second to nearby (Meraki 16.10.1)",
     ),
     "6664": ItemEffect(
         item_id="6664",
         name="Hollow Radiance",
         periodics=(PeriodicProc(
             name="Immolate",
+            # Iter 8 (2026-05-19): Meraki bulk items (patch 16.10.1) -
+            # "Deal 15 (+ 1% bonus health) magic damage per second".
+            # Engine prior: 12 + 1.5% bonus_hp - stale magnitude on both
+            # the base (12 -> 15) and the bonus_hp coefficient
+            # (1.5% -> 1.0%).
             bonus_damage=lambda c: c.targets_in_rotation
-                * (12.0 + 0.015 * c.caster_bonus_hp),
+                * (15.0 + 0.010 * c.caster_bonus_hp),
             damage_type=MAGICAL,
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
         note=(
-            "Hollow Radiance: Immolate ~12 + 1.5% bonus HP magic per second "
-            "to nearby (Desolate execute-on-kill not modeled - conditional)"
+            "Hollow Radiance: Immolate 15 + 1% bonus HP magic per second "
+            "to nearby (Meraki 16.10.1; Desolate execute-on-kill not modeled - conditional)"
         ),
     ),
 
@@ -2929,13 +2944,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Hollow Radiance",
         periodics=(PeriodicProc(
             name="Immolate",
+            # Iter 8 (2026-05-19): mirrors SR 6664 corrected to Meraki
+            # 16.10.1 - 15 + 1% bonus_hp (was 12 + 1.5% bonus_hp).
             bonus_damage=lambda c: c.targets_in_rotation
-                * (12.0 + 0.015 * c.caster_bonus_hp),
+                * (15.0 + 0.010 * c.caster_bonus_hp),
             damage_type=MAGICAL,
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
-        note="Hollow Radiance (Arena 226664): same as SR 6664 - Immolate 12+1.5% bonus HP per second",
+        note="Hollow Radiance (Arena 226664): same as SR 6664 - Immolate 15+1% bonus HP per second (Meraki 16.10.1)",
     ),
     "226672": ItemEffect(
         item_id="226672",
@@ -3441,13 +3458,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Sunfire Aegis",
         periodics=(PeriodicProc(
             name="Immolate",
+            # Iter 8 (2026-05-19): mirrors SR 3068 corrected to Meraki
+            # 16.10.1 - 20 + 1% bonus_hp (was 12 + 1.5% bonus_hp).
             bonus_damage=lambda c: c.targets_in_rotation
-                * (12.0 + 0.015 * c.caster_bonus_hp),
+                * (20.0 + 0.010 * c.caster_bonus_hp),
             damage_type=MAGICAL,
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
-        note="Sunfire Aegis (Arena 223068): same as SR 3068 - Immolate 12+1.5% bonus HP magic/s, immolate-key",
+        note="Sunfire Aegis (Arena 223068): same as SR 3068 - Immolate 20+1% bonus HP magic/s (Meraki 16.10.1), immolate-key",
     ),
     "223071": ItemEffect(
         item_id="223071",
@@ -3674,20 +3693,26 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         periodics=(
             PeriodicProc(
                 name="Cleave (primary)",
-                bonus_damage=lambda c: 5.0 + 0.015 * c.caster_bonus_hp,
+                # Iter 8 (2026-05-19): mirrors SR 3748 corrected to
+                # Meraki 16.10.1 - 1% caster_max_hp (was 5 + 1.5%
+                # caster_bonus_hp).
+                bonus_damage=lambda c: 0.01 * c.caster_max_hp,
                 damage_type=PHYSICAL,
                 every_n_attacks=1,
             ),
             PeriodicProc(
                 name="Cleave (to nearby)",
+                # Iter 8 (2026-05-19): mirrors SR 3748 corrected to
+                # Meraki 16.10.1 - 3% caster_max_hp per extra target
+                # (was 40% total AD).
                 bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
-                    * 0.40 * (c.base_ad + c.bonus_ad),
+                    * 0.03 * c.caster_max_hp,
                 damage_type=PHYSICAL,
                 every_n_attacks=1,
             ),
         ),
         unique_passive_key="hydra_cleave",
-        note="Titanic Hydra (Arena 223748): same as SR 3748 - Cleave 5+1.5% bonus HP primary + 40% AD to nearby",
+        note="Titanic Hydra (Arena 223748): same as SR 3748 - Cleave 1% max HP primary + 3% max HP to nearby (Meraki 16.10.1)",
     ),
     "223814": ItemEffect(
         item_id="223814",
@@ -3901,12 +3926,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Bami's Cinder",
         periodics=(PeriodicProc(
             name="Immolate",
-            bonus_damage=lambda c: c.targets_in_rotation * (12.0 + 0.010 * c.caster_bonus_hp),
+            # Iter 8 (2026-05-19): Meraki bulk items (patch 16.10.1) -
+            # "Deal 15 magic damage per second" (FLAT - no bonus_hp at
+            # the components tier; HP scaling kicks in at the upgraded
+            # items, Sunfire 20 + 1% bonus_hp / Hollow Radiance 15 + 1%
+            # bonus_hp). Engine prior: 12 + 1% bonus_hp - both the base
+            # (12 -> 15) and the bonus_hp coefficient (1% -> 0) drifted.
+            bonus_damage=lambda c: c.targets_in_rotation * 15.0,
             damage_type=MAGICAL,
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
-        note="Bami's Cinder (6660): Immolate 12+1% bonus HP magic/s (component; Sunfire/Hollow upgrade to 1.5%); immolate-key",
+        note="Bami's Cinder (6660): Immolate flat 15 magic/s (no HP scaling at component tier; Meraki 16.10.1); immolate-key",
     ),
     "6677": ItemEffect(
         item_id="6677",
@@ -4158,12 +4189,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Bami's Cinder",
         periodics=(PeriodicProc(
             name="Immolate",
-            bonus_damage=lambda c: c.targets_in_rotation * (12.0 + 0.010 * c.caster_bonus_hp),
+            # Iter 8 (2026-05-19): mirrors SR 6660 corrected to Meraki
+            # 16.10.1 - flat 15 magic/s (was 12 + 1% bonus_hp).
+            bonus_damage=lambda c: c.targets_in_rotation * 15.0,
             damage_type=MAGICAL,
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
-        note="Bami's Cinder (Arena 226660): same as SR 6660 - Immolate 12+1% bonus HP/s; shares immolate-key",
+        note="Bami's Cinder (Arena 226660): same as SR 6660 - Immolate flat 15 magic/s (Meraki 16.10.1); shares immolate-key",
     ),
     "226691": ItemEffect(
         item_id="226691",
