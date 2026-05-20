@@ -260,19 +260,22 @@ class ItemEffect:
     # at the effect-layer (Archangel transforms INTO Seraph's in real
     # League; build-legality is ranker-owned per the s81 pattern).
     bonus_ap_pct_bonus_mp: float = 0.0
-    # Phase 4 batch 30 (2026-05-04): lethality - level-scaled flat armor
-    # pen. Distinct from ``armor_pen_flat`` (a raw constant) because real
-    # League scales lethality by caster level: actual flat pen =
-    # ``lethality × (0.6 + 0.4 × level / 18)``. At lvl 1: 60% effective;
-    # at lvl 18: 100%. The pipeline-position is the same as
-    # ``armor_pen_flat`` (last in line: reduction → % pen → flat pen);
-    # the level scaling is the only difference. ``effective_target_armor``
-    # accepts an optional ``level`` parameter and folds the scaled
-    # lethality into the pen_flat sum when provided. Pre-batch-30 callers
-    # that omit level get the existing armor_pen_flat-only behavior.
-    # Default 0.0 → no contribution. NOT a unique passive at the
-    # effect-layer (multiple lethality items stack their flat pen
-    # additively in current League - same call as the % pen layer).
+    # Phase 4 batch 30 (2026-05-04) introduced this field; ENGINE 1.10.0
+    # (2026-05-19, audit-lethality) corrects the conversion to the
+    # post-V14.1 (Riot 2024-01) rule: lethality grants flat armor pen
+    # 1:1 at EVERY caster level. The historical pre-V14.1 scaling
+    # ``lethality * (0.6 + 0.4 * level / 18)`` was REMOVED in V14.1 and
+    # is OBSOLETE - do NOT re-introduce it (it under-applied lethality
+    # at every level except 18, max 37.78 pp at L1). Pipeline-position
+    # is the same as ``armor_pen_flat`` (last in line: reduction ->
+    # % pen -> flat pen). ``effective_target_armor`` accepts an
+    # optional ``level`` parameter; on the modern engine it is only
+    # the "lethality contributes nothing" sentinel for non-DPS
+    # callers (level=None). Pre-batch-30 callers that omit level get
+    # the existing armor_pen_flat-only behavior. Default 0.0 -> no
+    # contribution. NOT a unique passive at the effect-layer (multiple
+    # lethality items stack their flat pen additively in current League
+    # - same call as the % pen layer).
     lethality: float = 0.0
     # Phase 4 batch 26 (2026-05-04): item-effect-contributed crit chance.
     # Two flavors composing additively into a single per-build sum that

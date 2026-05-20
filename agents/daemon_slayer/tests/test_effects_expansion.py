@@ -3661,11 +3661,12 @@ class StormsurgeMagicPenTests(unittest.TestCase):
 
 
 class LethalityScalingTests(unittest.TestCase):
-    """Phase 4 batch 30 - lethality × (0.6 + 0.4 × level/18) formula.
-
-    Pins the level-scaling math: 60% effective at lvl 1, 100% at lvl 18,
-    linear in between. Pre-batch callers that omit ``level`` see no
-    lethality contribution (backward-compat invariant).
+    """Post-V14.1 (ENGINE 1.10.0) - lethality grants flat armor pen 1:1
+    at ALL caster levels. The historical 0.6 + 0.4*level/18 scaling was
+    REMOVED by Riot in V14.1 (2024-01); engine sits on patch 16.10.x so
+    the 1:1 rule is the correct math. Pre-batch-30 backward-compat
+    invariant kept: ``level=None`` -> lethality contributes nothing
+    (non-DPS callers).
     """
 
     def test_lethality_zero_when_level_omitted(self) -> None:
@@ -3675,28 +3676,28 @@ class LethalityScalingTests(unittest.TestCase):
         self.assertEqual(effective_target_armor(100.0, [e]), 100.0)
 
     def test_lethality_at_level_1(self) -> None:
-        # Wiki formula: factor = 0.6 + 0.4 × level/18. At level=1 the
-        # factor is 0.6 + 0.4/18 = 0.6222 (NOT a flat 0.6 - the "60%
-        # at lvl 1" wiki shorthand rounds the lower bound). 18 × 0.6222
-        # = 11.2 effective flat pen; 100 - 11.2 = 88.8.
+        # Post-V14.1 1:1 rule: 18 lethality at L1 = 18 full flat pen;
+        # 100 - 18 = 82. The historical 0.6222-at-L1 factor is obsolete.
         e = ItemEffect(item_id="x", name="x", lethality=18.0)
         self.assertAlmostEqual(
-            effective_target_armor(100.0, [e], level=1), 88.8, places=1,
+            effective_target_armor(100.0, [e], level=1), 82.0, places=2,
         )
 
     def test_lethality_full_at_level_18(self) -> None:
-        # 18 lethality at lvl 18 → full 18 effective flat pen.
+        # 18 lethality at lvl 18 -> 18 full flat pen (unchanged by V14.1
+        # since the old formula already hit 1.0 at L18).
         e = ItemEffect(item_id="x", name="x", lethality=18.0)
         self.assertAlmostEqual(
             effective_target_armor(100.0, [e], level=18), 82.0, places=2,
         )
 
     def test_lethality_at_level_11_intermediate(self) -> None:
-        # Lvl 11 → factor = 0.6 + 0.4 × 11/18 = 0.844; 18 × 0.844 = 15.2.
+        # Post-V14.1: 18 lethality is 1:1 flat pen at every level
+        # including L11. 100 - 18 = 82, same as L1 and L18.
         e = ItemEffect(item_id="x", name="x", lethality=18.0)
         self.assertAlmostEqual(
             effective_target_armor(100.0, [e], level=11),
-            100.0 - 15.2,
+            82.0,
             places=2,
         )
 
@@ -3717,13 +3718,14 @@ class LethalityScalingTests(unittest.TestCase):
         )
 
     def test_lethality_lands_after_pct_pen(self) -> None:
-        # Pipeline: 100 armor × (1 - 0.35 LDR) = 65. Then -15.2 lethality
-        # (Hubris at lvl 11) = 49.8. Pin the order.
+        # Pipeline post-V14.1: 100 armor * (1 - 0.35 LDR) = 65. Then
+        # -18 lethality (Hubris 1:1 at any level) = 47.0. Pin the order
+        # AND the 1:1 rule.
         ldr = ITEM_EFFECTS["3036"]
         hubris = ITEM_EFFECTS["6697"]
         self.assertAlmostEqual(
             effective_target_armor(100.0, [ldr, hubris], level=11),
-            49.8, places=2,
+            47.0, places=2,
         )
 
 
@@ -3799,14 +3801,13 @@ class LethalityEngineWireInTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    def test_higher_level_caster_gets_more_lethality(self) -> None:
-        # Same Hubris build, lvl 1 vs lvl 18 - the higher level caster
-        # gets more effective flat pen, so vs the same armored target
-        # the DPS is higher (controlling for stat scaling).
-        # Aatrox lvl 1 has lower base AD, so we can't use raw DPS; use
-        # the resolved target_armor_eff in DpsResult (engine-internal).
-        # Actually, target_armor is unchanged in the result - we need
-        # to inspect the notes for the effective armor pin.
+    def test_lethality_is_level_invariant_post_v14_1(self) -> None:
+        # Post-V14.1: lethality is 1:1 flat pen at EVERY caster level.
+        # Same Hubris (18 leth) build, lvl 1 vs lvl 18 - effective armor
+        # should be IDENTICAL (82.0). The pre-V14.1 invariant ("higher
+        # level caster gets more lethality") is OBSOLETE - the level
+        # parameter is now only the "lethality contributes nothing"
+        # sentinel for non-DPS callers.
         with_lvl1 = compute_dps(
             self.snap, "Aatrox", level=1, item_ids=["6697"], target_armor=100.0,
         )
@@ -3817,7 +3818,10 @@ class LethalityEngineWireInTests(unittest.TestCase):
         import re
         def eff_armor(r):
             for n in r.notes:
-                m = re.search(r"effective target armor [\d.]+\s*→\s*([\d.]+)", n)
+                # Engine emits the U+2192 RIGHTWARDS ARROW glyph here
+                # (pre-existing across dps.py / ability_dps.py / burst.py);
+                # flagged for the operator-gated ASCII retro-sweep.
+                m = re.search("effective target armor [\\d.]+\\s*→\\s*([\\d.]+)", n)
                 if m:
                     return float(m.group(1))
             return None
@@ -3825,22 +3829,23 @@ class LethalityEngineWireInTests(unittest.TestCase):
         eff_lvl18 = eff_armor(with_lvl18)
         self.assertIsNotNone(eff_lvl1)
         self.assertIsNotNone(eff_lvl18)
-        # Wiki formula 0.6 + 0.4 × level/18:
-        # Lvl 1 factor 0.6222 → 18 × 0.6222 = 11.2 → 100 - 11.2 = 88.8.
-        # Lvl 18 factor 1.0    → 18 × 1.0    = 18.0 → 100 - 18.0 = 82.0.
-        self.assertAlmostEqual(eff_lvl1, 88.8, places=1)
+        # 1:1 rule: 18 leth = 18 flat pen at every level; 100 - 18 = 82.
+        self.assertAlmostEqual(eff_lvl1, 82.0, places=1)
         self.assertAlmostEqual(eff_lvl18, 82.0, places=1)
+        # Stronger: identity, not just both equal-to-82.
+        self.assertAlmostEqual(eff_lvl1, eff_lvl18, places=2)
 
     def test_pen_pipeline_composes_pct_then_lethality(self) -> None:
-        # LDR (35% pen) + Hubris (18 leth) at lvl 11:
-        # 100 × 0.65 = 65, then 65 - 18 × 0.844 = 49.8.
+        # Post-V14.1: LDR (35% pen) + Hubris (18 leth 1:1) at lvl 11:
+        # 100 * 0.65 = 65, then 65 - 18 = 47.0. Pin the order AND the
+        # 1:1 lethality rule.
         with_combo = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3036", "6697"],
             target_armor=100.0,
         )
         joined = " ".join(with_combo.notes)
         self.assertIn("effective target armor", joined)
-        self.assertIn("49.8", joined)
+        self.assertIn("47.0", joined)
 
 
 class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
@@ -3941,12 +3946,13 @@ class SpectralCutlassLethality(unittest.TestCase):
         )
 
     def test_pen_pipeline_at_lvl11(self) -> None:
-        # At lvl 11, factor = 0.6 + 0.4*11/18 = 0.844.
-        # 15 × 0.844 = 12.67 flat pen → effective_armor(100) = 87.3.
+        # Post-V14.1 (ENGINE 1.10.0): 15 lethality is 1:1 flat pen at
+        # every level -> effective_armor(100) = 85.0 at lvl 11 (and at
+        # any other level). The pre-V14.1 0.844 factor is obsolete.
         result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4004"],
                              target_armor=100.0)
         notes = " ".join(result.notes)
-        self.assertIn("87.3", notes)
+        self.assertIn("85.0", notes)
 
 
 class Batch31DefensiveOnlyCoverageTests(unittest.TestCase):
@@ -4113,12 +4119,12 @@ class Batch32LethAllyPromotionsTests(unittest.TestCase):
                 self.assertEqual(eff.name, self.EXPECTED_NAMES[iid])
 
     def test_pen_pipeline_applied_at_lvl11(self) -> None:
-        # lvl 11: factor = 0.6 + 0.4*(11/18) = 0.844
-        # Prowler's 22 * 0.844 = 18.58 flat pen -> effective_armor(50) = 50 - 18.58 = 31.4
+        # Post-V14.1: Prowler's 22 lethality is 1:1 flat pen at any level
+        # including L11 -> effective_armor(50) = 50 - 22 = 28.0
         from agents.daemon_slayer.effects import collect_effects, effective_target_armor
         effects = collect_effects(["6693"])
         eff_armor = effective_target_armor(50.0, effects, level=11)
-        self.assertAlmostEqual(eff_armor, 50.0 - 22.0 * (0.6 + 0.4 * 11 / 18), places=1)
+        self.assertAlmostEqual(eff_armor, 50.0 - 22.0, places=1)
 
 
 class OverlordsBloodmailStatWalkTests(unittest.TestCase):
@@ -5063,13 +5069,18 @@ class Batch38ActiveItemTests(unittest.TestCase):
                                target_armor=80.0)
         self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
 
-    def test_deathblade_lethality_scales_with_level(self) -> None:
+    def test_deathblade_lethality_level_invariant_post_v14_1(self) -> None:
+        # Post-V14.1: Deathblade lethality (Arena 228003) is 1:1 flat
+        # pen at every caster level - effective armor is IDENTICAL at
+        # L1 vs L18. The pre-V14.1 "more pen at higher level" invariant
+        # is obsolete.
         from agents.daemon_slayer.effects import effective_target_armor
         effs = [ITEM_EFFECTS["228003"]]
         armor_l1 = effective_target_armor(100.0, effs, level=1)
         armor_l18 = effective_target_armor(100.0, effs, level=18)
-        # At level 18 lethality is fully effective → lower effective armor
-        self.assertLess(armor_l18, armor_l1)
+        self.assertAlmostEqual(armor_l18, armor_l1, places=4)
+        # Sanity: lethality contribution actually fires (effective < raw).
+        self.assertLess(armor_l1, 100.0)
 
     # ── Obsidian Cleaver (228005) ──
 
@@ -7704,7 +7715,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.9.1")
+        self.assertEqual(ENGINE_VERSION, "1.10.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7765,7 +7776,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.9.1")
+        self.assertEqual(ENGINE_VERSION, "1.10.0")
 
 
 if __name__ == "__main__":
