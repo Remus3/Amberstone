@@ -34,16 +34,18 @@ Pure orchestration over the existing, tested engine - *no engine change*:
 2. **No-double rule is engine-authoritative.** ``rank_for_primary_
    archetype`` threads ``filter_shared_uniques=True`` (its default) to
    the DS server, whose ``collect_effects`` / ``current_unique_keys``
-   dedup is the source of truth for the 3 unique-passive families
-   (spellblade / lifeline / immolate, incl. Arena mirrors). Once slot 1
-   is e.g. Trinity Force and it is in ``item_ids``, *every* later slot's
-   ranking has ``spellblade`` locked → all other spellblade candidates
-   are filtered server-side. Enforcing iteratively means we inherit that
-   guarantee for the whole sequence without duplicating the family map
-   here (which would invite the s173 anti-drift trap). A planner-side
-   belt-and-suspenders skip of any ``shares_dead_unique`` row covers the
-   off-default (``filter_shared_uniques=False``) caller too, and the
-   ``unique_passive_safe`` invariant is then True by construction.
+   dedup is the source of truth for the 7 unique-passive families:
+   spellblade, lifeline, immolate, hydra_cleave (Iter 3, 2026-05-19),
+   fiendhunter_barrage, hellfire_char, innervating_fill - each spans
+   SR + Arena (CHERRY) mirrors. Once slot 1 is e.g. Trinity Force and
+   it is in ``item_ids``, *every* later slot's ranking has
+   ``spellblade`` locked - all other spellblade candidates are filtered
+   server-side. Enforcing iteratively means we inherit that guarantee
+   for the whole sequence without duplicating the family map here
+   (which would invite the s173 anti-drift trap). A planner-side
+   belt-and-suspenders skip of any ``shares_dead_unique`` row covers
+   the off-default (``filter_shared_uniques=False``) caller too, and
+   the ``unique_passive_safe`` invariant is then True by construction.
 
 Engine-down / empty-champion semantics mirror ``dispatch_for_coach``:
 return ``None`` so callers fall back to "unavailable" without writing
