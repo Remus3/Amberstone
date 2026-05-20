@@ -1171,6 +1171,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       // sourced from /api/damage-mix. Null-safe; renderActiveMatch
       // skips the THREATS strip when liveclient is missing/empty.
       liveclient: (state.latest && state.latest.liveclient) || null,
+      // UX-3 (2026-05-20): thread the summoner_cooldowns array (or null)
+      // so the active_match view's right-rail CD ledger picks it up.
+      // Computed backend-side in dashboard/_state_cooldowns.py + sorted
+      // by next-up ascending in core/summoner_cooldowns.compute_cooldowns.
+      cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
     });
     // s164: re-fire champ-select view on every state envelope when it's
     // active. lcu envelopes are one-shot from FakeSocket, so a render
