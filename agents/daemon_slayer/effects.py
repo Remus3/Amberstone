@@ -344,13 +344,34 @@ def effective_target_armor(
     Production caller (compute_dps) always passes the resolved level.
 
     Effects without armor modifiers contribute nothing here. Order
-    among items in ``effects`` doesn't matter - sums commute, and
-    the multiplicative layers are applied in fixed order.
+    among items in ``effects`` doesn't matter for the FLAT terms (sums
+    commute), and for the percent terms because we compose them as the
+    product ``Pi (1 - p_i)`` which is also order-independent. The four
+    layers (flat-red, pct-red, pct-pen, flat-pen) are then applied in
+    fixed order.
+
+    Percent composition rule (ENGINE_VERSION 1.5.1, audit-multi-pen):
+    multiple ``armor_pen_pct`` sources compose MULTIPLICATIVELY per
+    League's documented mechanic, NOT additively. Two 35% pen items
+    yield ``1 - 0.65*0.65 = 0.5775`` (57.75%), not 0.70. The same rule
+    applies to multiple ``armor_reduction_pct`` sources. Single-source
+    builds are unaffected (composition of one factor is the factor).
     """
     eff_list = list(effects)
     red_flat = sum(e.armor_reduction_flat for e in eff_list)
-    red_pct = sum(e.armor_reduction_pct for e in eff_list)
-    pen_pct = sum(e.armor_pen_pct for e in eff_list)
+    # Percent reduction composes MULTIPLICATIVELY across sources per
+    # League rule (e.g. Black Cleaver + Obsidian Cleaver). The naive
+    # sum would overshoot, e.g. 0.30 + 0.35 = 0.65 vs the real
+    # 1 - 0.70*0.65 = 0.545.
+    red_pct = 1.0 - _composed_keep_factor(
+        e.armor_reduction_pct for e in eff_list
+    )
+    # Percent armor penetration also composes multiplicatively (LDR
+    # 0.35 + Serylda 0.35 = 0.5775 effective pen, NOT 0.70). Pre-1.5.1
+    # this was an additive sum which over-penetrated multi-pen builds.
+    pen_pct = 1.0 - _composed_keep_factor(
+        e.armor_pen_pct for e in eff_list
+    )
     pen_flat = sum(e.armor_pen_flat for e in eff_list)
     if level is not None:
         lethality_total = sum(e.lethality for e in eff_list)
@@ -377,11 +398,11 @@ def effective_target_armor(
     # 30 flat armor reduction vs a ~27-armor squishy = -3 effective,
     # ~1.03x physical) - conflating the two distinct League rules.
     armor = target_armor - red_flat       # flat reduction (League order)
-    armor = armor * (1.0 - red_pct)      # % reduction (Black Cleaver)
+    armor = armor * (1.0 - red_pct)      # % reduction (Black Cleaver) - composed
     if armor <= 0.0:
         # Reduction alone already crossed zero - penetration is a no-op.
         return armor
-    armor = armor * (1.0 - pen_pct)      # % penetration (LDR / Serylda's)
+    armor = armor * (1.0 - pen_pct)      # % penetration (LDR / Serylda's) - composed
     armor = armor - pen_flat             # flat penetration (lethality)
     return max(0.0, armor)               # pen cannot go below zero
 
@@ -402,11 +423,21 @@ def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> floa
     Effects without magic-pen or MR-reduction modifiers contribute
     nothing here. Negative MR passes through unchanged - pen and
     reduction are no-ops on already-negative MR.
+
+    Percent composition rule (ENGINE_VERSION 1.5.1, audit-multi-pen):
+    multiple ``magic_pen_pct`` sources (Void Staff + Cryptbloom) and
+    multiple ``mr_reduction_pct`` sources compose MULTIPLICATIVELY per
+    League's documented mechanic, NOT additively. Mirrors the armor-side
+    fix in ``effective_target_armor``.
     """
     eff_list = list(effects)
     red_flat = sum(e.mr_reduction_flat for e in eff_list)
-    red_pct = sum(e.mr_reduction_pct for e in eff_list)
-    pen_pct = sum(e.magic_pen_pct for e in eff_list)
+    red_pct = 1.0 - _composed_keep_factor(
+        e.mr_reduction_pct for e in eff_list
+    )
+    pen_pct = 1.0 - _composed_keep_factor(
+        e.magic_pen_pct for e in eff_list
+    )
     pen_flat = sum(e.magic_pen_flat for e in eff_list)
     if not (red_flat or red_pct or pen_pct or pen_flat):
         return target_mr
@@ -420,10 +451,38 @@ def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> floa
     # pure 30 flat MR reduction (no magic pen), so a low-MR squishy can
     # legitimately go negative.
     mr = target_mr - red_flat            # flat reduction (League order)
-    mr = mr * (1.0 - red_pct)           # % reduction (Bloodletter's Curse)
+    mr = mr * (1.0 - red_pct)           # % reduction (Bloodletter's Curse) - composed
     if mr <= 0.0:
         # Reduction alone already crossed zero - penetration is a no-op.
         return mr
-    mr = mr * (1.0 - pen_pct)           # % penetration (Void Staff)
+    mr = mr * (1.0 - pen_pct)           # % penetration (Void Staff) - composed
     mr = mr - pen_flat                   # flat penetration (Sorcerer's Shoes)
     return max(0.0, mr)                  # pen cannot go below zero
+
+
+def _composed_keep_factor(pcts: Iterable[float]) -> float:
+    """Return the multiplicative product of ``(1 - p)`` over all sources.
+
+    Empty iterable returns 1.0 (identity / no-op). Single source returns
+    ``1 - p`` (unchanged from prior additive behavior for the common
+    one-pen-item case). Multiple sources compose multiplicatively per
+    League's percent-pen / percent-reduction rule.
+
+    Examples
+    --------
+    LDR (35%) alone:          keep = 1 - 0.35 = 0.65; pen layer = 0.35
+    LDR + Serylda (35%+35%):  keep = 0.65 * 0.65 = 0.4225;
+                              effective pen = 0.5775 (NOT 0.70)
+    Void + Cryptbloom (40%+30%):  keep = 0.60 * 0.70 = 0.42;
+                                  effective pen = 0.58 (NOT 0.70)
+
+    Negative or > 1.0 inputs are not expected from the registry (the
+    schema documents pen as 0..1 fractions); they are passed through
+    arithmetically so a bad data row produces a sane (if wrong) number
+    rather than a divide-by-zero or NaN.
+    """
+    keep = 1.0
+    for p in pcts:
+        if p:
+            keep *= (1.0 - p)
+    return keep
