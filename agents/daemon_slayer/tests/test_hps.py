@@ -17,6 +17,7 @@ from agents.daemon_slayer.hps import (
     EnchanterItemFormula,
     HpsItemContribution,
     HpsResult,
+    _aram_heal_shield_modifiers,
     _aram_healing_modifier,
     compute_hps,
     load_default_formulas,
@@ -322,6 +323,81 @@ class ModeMultiplierTests(unittest.TestCase):
         if sr.healing_hps > 0:
             ratio = aram.healing_hps / sr.healing_hps
             self.assertAlmostEqual(ratio, aram.mode_multiplier, places=4)
+
+
+class HealShieldSplitModifierTests(unittest.TestCase):
+    """Iter-17 carry-forward fix: aramHealing / aramShielding are
+    independent Meraki keys. 24 champs in 16.10.1 have split values.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_modifier_outside_aram_is_one(self) -> None:
+        h, s = _aram_heal_shield_modifiers(self.snap, "Soraka", "SR")
+        self.assertEqual(h, 1.0)
+        self.assertEqual(s, 1.0)
+
+    def test_split_champ_camille(self) -> None:
+        """Camille: aramHealing 1.20, aramShielding 1.10."""
+        h, s = _aram_heal_shield_modifiers(self.snap, "Camille", "ARAM")
+        self.assertAlmostEqual(h, 1.20, places=2)
+        self.assertAlmostEqual(s, 1.10, places=2)
+
+    def test_split_champ_lee_sin(self) -> None:
+        """LeeSin: aramHealing 1.10, aramShielding 1.20 (heal LESS than shield)."""
+        h, s = _aram_heal_shield_modifiers(self.snap, "LeeSin", "ARAM")
+        self.assertAlmostEqual(h, 1.10, places=2)
+        self.assertAlmostEqual(s, 1.20, places=2)
+
+    def test_split_champ_milio(self) -> None:
+        """Milio: aramHealing 0.95, aramShielding 0.90 (both downwards)."""
+        h, s = _aram_heal_shield_modifiers(self.snap, "Milio", "ARAM")
+        self.assertAlmostEqual(h, 0.95, places=2)
+        self.assertAlmostEqual(s, 0.90, places=2)
+
+    def test_split_champ_nunu(self) -> None:
+        """Nunu: aramHealing 1.10, aramShielding 1.20."""
+        h, s = _aram_heal_shield_modifiers(self.snap, "Nunu", "ARAM")
+        self.assertAlmostEqual(h, 1.10, places=2)
+        self.assertAlmostEqual(s, 1.20, places=2)
+
+    def test_split_applied_in_compute_hps(self) -> None:
+        """The two-modifier split must reach the per-side throughput.
+
+        Camille has heal_mult 1.20 vs shield_mult 1.10. With a build that
+        carries both heal and shield procs (Moonstone here), the
+        healing_hps should scale up 1.20 and shielding_hps 1.10 from
+        the SR baseline.
+        """
+        sr = compute_hps(self.snap, "Camille", level=11, item_ids=["6617"], mode="SR")
+        aram = compute_hps(self.snap, "Camille", level=11, item_ids=["6617"], mode="ARAM")
+        self.assertAlmostEqual(aram.heal_mult, 1.20, places=2)
+        self.assertAlmostEqual(aram.shield_mult, 1.10, places=2)
+        if sr.healing_hps > 0:
+            self.assertAlmostEqual(
+                aram.healing_hps / sr.healing_hps, 1.20, places=3,
+            )
+        if sr.shielding_hps > 0:
+            self.assertAlmostEqual(
+                aram.shielding_hps / sr.shielding_hps, 1.10, places=3,
+            )
+
+    def test_backward_compat_mode_multiplier_returns_heal_mult(self) -> None:
+        """``HpsResult.mode_multiplier`` is the heal-side alias post-split."""
+        r = compute_hps(self.snap, "Camille", level=11, item_ids=["6617"], mode="ARAM")
+        self.assertEqual(r.mode_multiplier, r.heal_mult)
+
+    def test_legacy_aramshieldshealing_only_falls_through(self) -> None:
+        """If a synthetic snapshot has only the legacy aramShieldsHealing
+        key, both halves get that value."""
+        class FakeSnap:
+            def champion(self, _):
+                return {"lolmath": {"aram_modifiers": {"aramShieldsHealing": 0.85}}}
+        h, s = _aram_heal_shield_modifiers(FakeSnap(), "X", "ARAM")
+        self.assertEqual(h, 0.85)
+        self.assertEqual(s, 0.85)
 
 
 # ─── targets override ──────────────────────────────────────────────────
