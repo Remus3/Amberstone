@@ -135,7 +135,7 @@ class ModeModifierHookTests(unittest.TestCase):
 
 
 class AramAbilityHasteExposureTests(unittest.TestCase):
-    """ENGINE 1.19.0+: aramAbilityHaste delta exposed via
+    """ENGINE 1.20.0+: aramAbilityHaste delta exposed via
     ``scaled['aram_ability_haste']`` regardless of consumer presence."""
 
     def test_aram_ah_positive_delta_exposed(self) -> None:
@@ -164,7 +164,7 @@ class AramAbilityHasteExposureTests(unittest.TestCase):
 
 
 class AramTenacityExposureTests(unittest.TestCase):
-    """ENGINE 1.19.0+: aramTenacity multiplier exposed via
+    """ENGINE 1.20.0+: aramTenacity multiplier exposed via
     ``scaled['aram_tenacity_mult']`` (default 1.0)."""
 
     def test_aram_tenacity_above_one_exposed(self) -> None:

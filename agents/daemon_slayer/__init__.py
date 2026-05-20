@@ -1321,7 +1321,28 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.19.0"
+ENGINE_VERSION = "1.20.0"
+# 1.20.0 (UX-headless iter 3 / DS audit lane: Spellblade family,
+# 2026-05-20): Lich Bane Spellblade AP coefficient corrected 50% -> 40%
+# per Meraki bulk 16.10.1 (the engine had drifted; current League math
+# is 75% base AD + 40% AP, not + 50% AP). 16.10.1 Meraki verifies:
+# "deals 75% base AD (+ 40% AP) bonus magic damage". Both 3100 (SR) and
+# 223100 (Arena mirror) corrected; spellblade unique-passive family
+# membership unchanged (still shares the key with Trinity Force /
+# Iceborn / Sheen / Essence Reaver).
+#
+# Other spellblade family members verified clean against Meraki:
+#   Trinity Force 3078 = 200% base AD physical (correct)
+#   Sheen 3057        = 100% base AD physical (correct)
+#   Essence Reaver 3508 = 125% base AD + 0.5/crit% physical (correct)
+#   Iceborn Gauntlet 6662 = 150% base AD physical (correct)
+#
+# Spot-check Lich Bane drift on Ahri lvl 11 lone-item: weighted_dps 56.33
+# -> 52.996 (-5.9%; the AP term contributes less per proc); test pins
+# rebaselined in test_effects_expansion.py + test_spellblade_burst.py +
+# test_ability_item_proc_p1l22.py. No callsite outside the registry
+# affected.
+
 # 1.19.0 (UX-headless iter 2, 2026-05-20): aramAbilityHaste +
 # aramTenacity exposure lane. Pre-fix the engine ignored both keys (a
 # comment in _apply_mode_modifiers said they "belong in their respective
