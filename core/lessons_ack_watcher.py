@@ -14,7 +14,7 @@ Phase 1 schema) becomes operator-visible via `tools/lessons_status.py` /
 bridge log.
 
 Schema reference: docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md
-Vision Phase 4 reference: docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md section 5
+Vision Phase 4 reference: docs/_archive/2026-05-02-rc-peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md section 5
 
 Designed read-only w.r.t. the bridge (HTTP GET only; the ack itself
 was already posted by the peer's receiver). Fail-soft: bridge down

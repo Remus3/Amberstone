@@ -21,7 +21,7 @@ it. Phase 4 ships the surface; whether to actually shift the gate is an
 operator decision (the matrix lives in lessons_receiver._is_inbound_lesson
 + post_decision; no automatic gate-flip from this module).
 
-Vision section 5 Phase 4 reference: docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md
+Vision section 5 Phase 4 reference: docs/_archive/2026-05-02-rc-peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md
 """
 from __future__ import annotations
 

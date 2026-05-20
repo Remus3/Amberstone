@@ -20,7 +20,7 @@ auto-handles only schema-reject + neg-match (per section 4); the apply path
 remains a Claude-driven decision. Auto-revert is a safety net for that
 decision, not a daemon-fired action.
 
-Vision section 5 Phase 4 reference: docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md
+Vision section 5 Phase 4 reference: docs/_archive/2026-05-02-rc-peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md
 """
 from __future__ import annotations
 
