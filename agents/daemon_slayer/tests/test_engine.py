@@ -134,6 +134,85 @@ class ModeModifierHookTests(unittest.TestCase):
         self.assertEqual(notes, [])
 
 
+class AramAbilityHasteExposureTests(unittest.TestCase):
+    """ENGINE 1.19.0+: aramAbilityHaste delta exposed via
+    ``scaled['aram_ability_haste']`` regardless of consumer presence."""
+
+    def test_aram_ah_positive_delta_exposed(self) -> None:
+        champion = {"lolmath": {"aram_modifiers": {"aramAbilityHaste": 20}}}
+        out, notes = _apply_mode_modifiers({}, {}, "ARAM", champion)
+        self.assertEqual(out["aram_ability_haste"], 20.0)
+        self.assertTrue(any("aramAbilityHaste=+20" in n for n in notes))
+
+    def test_aram_ah_negative_delta_exposed(self) -> None:
+        champion = {"lolmath": {"aram_modifiers": {"aramAbilityHaste": -15}}}
+        out, notes = _apply_mode_modifiers({}, {}, "ARAM", champion)
+        self.assertEqual(out["aram_ability_haste"], -15.0)
+        self.assertTrue(any("aramAbilityHaste=-15" in n for n in notes))
+
+    def test_aram_ah_default_zero_no_note(self) -> None:
+        champion = {"lolmath": {"aram_modifiers": {}}}
+        out, notes = _apply_mode_modifiers({}, {}, "ARAM", champion)
+        self.assertEqual(out["aram_ability_haste"], 0.0)
+        self.assertFalse(any("aramAbilityHaste" in n for n in notes))
+
+    def test_sr_mode_does_not_inject_aram_ah(self) -> None:
+        champion = {"lolmath": {"aram_modifiers": {"aramAbilityHaste": 20}}}
+        out, notes = _apply_mode_modifiers({}, {}, "SR", champion)
+        self.assertNotIn("aram_ability_haste", out)
+        self.assertEqual(notes, [])
+
+
+class AramTenacityExposureTests(unittest.TestCase):
+    """ENGINE 1.19.0+: aramTenacity multiplier exposed via
+    ``scaled['aram_tenacity_mult']`` (default 1.0)."""
+
+    def test_aram_tenacity_above_one_exposed(self) -> None:
+        champion = {"lolmath": {"aram_modifiers": {"aramTenacity": 1.20}}}
+        out, notes = _apply_mode_modifiers({}, {}, "ARAM", champion)
+        self.assertAlmostEqual(out["aram_tenacity_mult"], 1.20)
+        self.assertTrue(any("aramTenacity=1.20" in n for n in notes))
+
+    def test_aram_tenacity_default_one_no_note(self) -> None:
+        champion = {"lolmath": {"aram_modifiers": {}}}
+        out, notes = _apply_mode_modifiers({}, {}, "ARAM", champion)
+        self.assertEqual(out["aram_tenacity_mult"], 1.0)
+        self.assertFalse(any("aramTenacity" in n for n in notes))
+
+    def test_sr_mode_does_not_inject_aram_tenacity(self) -> None:
+        champion = {"lolmath": {"aram_modifiers": {"aramTenacity": 1.20}}}
+        out, notes = _apply_mode_modifiers({}, {}, "SR", champion)
+        self.assertNotIn("aram_tenacity_mult", out)
+
+
+class AramAhTenacityLiveSnapshotTests(unittest.TestCase):
+    """Verify exposure via the full build_champion path with live data."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_live_soraka_aram_ah_plus_10(self) -> None:
+        r = build_champion(self.snap, "Soraka", level=6, mode="ARAM")
+        self.assertEqual(r.stats.get("aram_ability_haste"), 10.0)
+        self.assertEqual(r.stats.get("aram_tenacity_mult"), 1.0)
+
+    def test_live_katarina_aram_tenacity_plus_20(self) -> None:
+        r = build_champion(self.snap, "Katarina", level=6, mode="ARAM")
+        self.assertAlmostEqual(r.stats.get("aram_tenacity_mult"), 1.2)
+        # Katarina also has aramAbilityHaste +10 in 16.10.1.
+        self.assertEqual(r.stats.get("aram_ability_haste"), 10.0)
+
+    def test_live_seraphine_aram_ah_minus_20(self) -> None:
+        r = build_champion(self.snap, "Seraphine", level=6, mode="ARAM")
+        self.assertEqual(r.stats.get("aram_ability_haste"), -20.0)
+
+    def test_sr_mode_strips_aram_fields(self) -> None:
+        r = build_champion(self.snap, "Soraka", level=6, mode="SR")
+        self.assertNotIn("aram_ability_haste", r.stats)
+        self.assertNotIn("aram_tenacity_mult", r.stats)
+
+
 class WukongAliasTest(unittest.TestCase):
     """Sanity check the DDragon-id aliases from the extractor still resolve."""
 

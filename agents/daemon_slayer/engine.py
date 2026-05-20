@@ -171,23 +171,55 @@ def _apply_mode_modifiers(
 ) -> tuple[dict[str, float], list[str]]:
     """Phase 2 step 2 hook - apply mode-specific stat multipliers.
 
-    Currently: ARAM ``aramAttackSpeed`` (multiplier on bonus AS). Damage
-    multipliers (``aramDamageDealt``) live in the DPS layer, not here -
-    they don't change AD/AP, only output. Other ARAM modifiers
-    (Tenacity / Healing / Shielding / DamageTaken / AbilityHaste) are
-    intentionally not applied at the stat layer; they belong in their
-    respective consumers (sustain calc, EHP calc, AH lookup).
+    ARAM modifiers applied here:
+      * ``aramAttackSpeed`` - multiplier on bonus AS. Lifts effective AS.
+      * ``aramAbilityHaste`` - integer flat delta in ability-haste points.
+        Surfaced into ``scaled["aram_ability_haste"]`` (default 0). Not
+        folded into ``scaled["ability_haste"]`` yet (no engine consumer
+        for ability-haste exists in the current scorer suite); the value
+        is exposed so downstream callers can compose cooldown math on it
+        once the consumer ships.
+      * ``aramTenacity`` - multiplier on effective CC duration applied
+        against THIS champion. Surfaced into
+        ``scaled["aram_tenacity_mult"]`` (default 1.0). Same exposure-only
+        posture as the AH delta; an EHP-side scorer that ingests enemy CC
+        duration can read this value directly to amortize it.
+
+    aramHealing / aramShielding / aramDamageDealt / aramDamageTaken are
+    NOT applied here - they remain in their dedicated consumers (HPS,
+    DPS, EHP) where the per-side math lives.
     """
     notes: list[str] = []
-    if mode == "ARAM":
-        lolmath = champion.get("lolmath", {}) or {}
-        aram = lolmath.get("aram_modifiers", {}) or {}
-        aram_as = float(aram.get("aramAttackSpeed", 1.0))
-        if aram_as != 1.0:
-            base_as = raw_base.get("as", 0.0)
-            bonus_as = scaled.get("as", 0.0) - base_as
-            scaled["as"] = base_as + bonus_as * aram_as
-            notes.append(f"ARAM aramAttackSpeed={aram_as:.2f} on bonus AS")
+    if mode != "ARAM":
+        return scaled, notes
+    lolmath = champion.get("lolmath", {}) or {}
+    aram = lolmath.get("aram_modifiers", {}) or {}
+
+    aram_as = float(aram.get("aramAttackSpeed", 1.0))
+    if aram_as != 1.0:
+        base_as = raw_base.get("as", 0.0)
+        bonus_as = scaled.get("as", 0.0) - base_as
+        scaled["as"] = base_as + bonus_as * aram_as
+        notes.append(f"ARAM aramAttackSpeed={aram_as:.2f} on bonus AS")
+
+    # ARAM ability-haste delta (22 champs non-zero in 16.10.1 - Aurora +10,
+    # Azir +20, Brand -10, Camille +10, Corki -20, Hecarim +10, Irelia +20,
+    # Katarina +10, Leblanc +20, Lucian +10, Mel -10, Milio -10, Naafiri +10,
+    # Rakan +10, Seraphine -20, Sion -10, Smolder -10, Soraka +10, Syndra +5,
+    # Teemo -15, Ziggs -20, Zyra -10). Exposure-only; no scorer reads it yet.
+    aram_ah = float(aram.get("aramAbilityHaste", 0.0))
+    scaled["aram_ability_haste"] = aram_ah
+    if aram_ah != 0.0:
+        notes.append(f"ARAM aramAbilityHaste={aram_ah:+.0f}")
+
+    # ARAM tenacity (17 champs non-1.0 in 16.10.1 - all assassin-shaped
+    # +20% / +10% values). Exposure-only; EHP scorer can read this once
+    # it ingests enemy CC duration.
+    aram_ten = float(aram.get("aramTenacity", 1.0))
+    scaled["aram_tenacity_mult"] = aram_ten
+    if aram_ten != 1.0:
+        notes.append(f"ARAM aramTenacity={aram_ten:.2f}x effective CC duration")
+
     return scaled, notes
 
 
