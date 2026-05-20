@@ -538,11 +538,11 @@ class CritClampEdge(_SnapBase):
 
 
 class LethalityLevelScaledDerivation(_SnapBase):
-    def test_lethality_flat_pen_scales_with_caster_level(self) -> None:
-        # Youmuu's 3142 carries lethality. effective_target_armor folds
-        # lethality * (0.6 + 0.4*level/18) into flat pen. Verify the
-        # post-pen weighted DPS matches the hand-derived armor factor at
-        # two levels (the scale differs, so the effective armor differs).
+    def test_lethality_flat_pen_one_to_one_post_v14_1(self) -> None:
+        # Post-V14.1: Youmuu's 3142 lethality folds 1:1 into flat pen
+        # at EVERY caster level. effective_target_armor returns the
+        # same value at L6 and L18. Verify post-pen weighted DPS matches
+        # the hand-derived armor factor under the 1:1 rule.
         eff = ITEM_EFFECTS["3142"]
         leth = eff.lethality
         self.assertGreater(leth, 0.0)
@@ -550,8 +550,8 @@ class LethalityLevelScaledDerivation(_SnapBase):
         for lv in (6, 18):
             r = compute_dps(self.snap, "Aatrox", level=lv,
                             item_ids=["3142"], target_armor=target_armor)
-            scale = 0.6 + 0.4 * lv / 18.0
-            eff_armor = max(0.0, target_armor - leth * scale)
+            # Post-V14.1: scale is 1.0 at every level.
+            eff_armor = max(0.0, target_armor - leth)
             # Recompute expected weighted DPS from the resolved stats.
             phase = r.phase
             expected = _early_weighted_dps_from_stats(
@@ -563,11 +563,9 @@ class LethalityLevelScaledDerivation(_SnapBase):
             if expected is not None:
                 self.assertAlmostEqual(r.weighted_dps, expected, places=2,
                                        msg=f"level={lv}")
-            # At lvl 18 the scale is larger -> more effective pen ->
-            # lower effective armor -> strictly higher DPS than lvl 6
-            # *for the armor portion*; assert effective armor monotone.
-            self.assertGreaterEqual(target_armor - leth * (0.6 + 0.4 * 6 / 18.0),
-                                    target_armor - leth * (0.6 + 0.4 * 18 / 18.0))
+        # 1:1 invariant: identical effective armor at L6 and L18.
+        self.assertAlmostEqual(target_armor - leth,
+                               target_armor - leth, places=9)
 
 
 # === WIREABLE INPUT: damage_amp_pct (Riftmaker) ============================
