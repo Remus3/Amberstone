@@ -1,0 +1,94 @@
+/* Ward Coverage Heat Strip (UX wave 1 ship, 2026-05-20).
+ *
+ * 22px stacked strip - ally row above, enemy row below - sitting between
+ * the MAP pane head and the map body inside the active_match grid.
+ * Cells encode rolling-window ward counts per lane via color intensity.
+ *
+ * Authoring baseline: 1920x1080 Chrome windowed; main flex-grows.
+ */
+
+.ward-heat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 0 4px 0;
+  padding: 0;
+  border-bottom: 1px solid var(--border-soft, #2a2a35);
+  overflow: hidden;
+  flex: 0 0 auto;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.ward-heat-container[data-wh-state="empty"] {
+  height: 22px;
+}
+
+.ward-heat-container .wh-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 22px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-faint, #9ca3af);
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.ward-heat-container .wh-row {
+  display: grid;
+  grid-template-columns: 36px repeat(4, 1fr);
+  gap: 1px;
+  height: 11px;
+  align-items: stretch;
+}
+
+.ward-heat-container .wh-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  font-size: 8px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-faint, #9ca3af);
+}
+
+.ward-heat-container .wh-row.wh-ally .wh-side {
+  color: #80b8ff;
+}
+
+.ward-heat-container .wh-row.wh-enemy .wh-side {
+  color: #ff8080;
+}
+
+.ward-heat-container .wh-cell {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: default;
+  transition: background 240ms ease-out;
+}
+
+.ward-heat-container .wh-cell[data-uncov="1"] {
+  outline: 1px solid rgba(255, 48, 48, 0.55);
+  outline-offset: -1px;
+}
+
+.ward-heat-container .wh-cell .wh-lane {
+  font-weight: 600;
+}
+
+.ward-heat-container .wh-cell .wh-count {
+  font-weight: 700;
+  font-size: 9px;
+  padding-left: 4px;
+  color: rgba(255, 255, 255, 0.95);
+}

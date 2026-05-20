@@ -141,6 +141,16 @@ try:
 except Exception as _e:
     _log.warning("liveclient_cache start failed (non-fatal): %s", _e)
 
+# - Ward producer wire (UX wave 1, ward-heat strip 2026-05-20)
+# Listener fires after every liveclient_cache fetch, diffs allPlayers
+# inventory, calls ward_events.record_ward for each detected placement.
+# Idempotent + fail-soft.
+try:
+    from core.ward_producer import install_liveclient_listener as _ward_install
+    _ward_install()
+except Exception as _e:
+    _log.warning("ward_producer wire failed (non-fatal): %s", _e)
+
 # - Log retention (Tier 1 #3, 2026-05-01)
 # log_setup.py prunes >30d files only at boot; on a long-lived RC the dir
 # grew to 191 MB. Hourly sweep deletes >14d *.log* and caps total at 100 MB.

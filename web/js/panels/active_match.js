@@ -19,6 +19,7 @@ import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
 import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
+import { renderWardHeat, fetchWardHeat, getCachedWardHeat } from './ward_heat.js';
 
 const _AM = {
   sub:        () => document.getElementById("am-sub"),
@@ -27,6 +28,7 @@ const _AM = {
   mapBody:    () => document.getElementById("am-map-body"),
   cdBody:     () => document.getElementById("cd-ledger-body"),
   spikeCurve: () => document.getElementById("am-spike-curve"),
+  wardHeat:   () => document.getElementById("am-ward-heat"),
 };
 
 // Mode -> spike-curve backend mode. The backend supports SR/ARAM/ARENA/BRAWL;
@@ -244,6 +246,13 @@ export function renderActiveMatch(payload, ctx) {
   // refetch. Skips silently in TFT / lobby / pre-game (mode not in
   // _SPK_MODE_MAP or no liveclient).
   _renderSpikeCurveFromCtx(ctx);
+
+  // Ward-Coverage Heat Strip (UX wave 1, 2026-05-20). Pulls a 90s
+  // rolling window of inferred ward placements per side x lane. Polls
+  // /api/ward-heat at 4s, renders into the MAP head row. Empty buffer
+  // -> faint placeholder; lanes with zero recent friendly wards get a
+  // red outline ("uncovered").
+  _renderWardHeatTick();
 
   const build = _AM.buildBody();
   if (build) {
@@ -694,6 +703,19 @@ function _renderSpikeCurveFromCtx(ctx) {
     nowMinute,
     { item_minutes: _SPK_ITEM_MINUTES },
   );
+}
+
+// Ward Coverage Heat Strip tick (UX wave 1, 2026-05-20). Fetches a 90s
+// rolling window from /api/ward-heat (client-side polled at 4s) and
+// renders the cached payload. Cache + sig-dedup live in ward_heat.js.
+function _renderWardHeatTick() {
+  const mount = _AM.wardHeat();
+  if (!mount) return;
+  // Schedule a background refresh (returns immediately if a fetch is
+  // in flight or the cache is fresh).
+  fetchWardHeat();
+  const cached = getCachedWardHeat();
+  renderWardHeat(mount, cached);
 }
 
 // UX-2 (2026-05-20): liveclient team-of-active-player resolver. Mirrors

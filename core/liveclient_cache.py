@@ -67,6 +67,51 @@ _task: Optional[Any] = None  # asyncio.Task or concurrent.futures.Future
 _stop = threading.Event()
 _start_lock = threading.Lock()
 
+# Snapshot listeners (UX wave 1, ward-heat producer wire). Each listener
+# is called after every successful fetch with the new Snapshot. Listeners
+# must be cheap and fail-soft; any exception is logged at debug and
+# swallowed so a noisy listener never stalls the poll loop.
+_listeners: list = []
+_listeners_lock = threading.Lock()
+
+
+def add_listener(fn) -> None:
+    """Register a snapshot listener. Called after every fetch.
+
+    The listener receives the new Snapshot. Idempotent: a listener
+    already registered is not added again (compared by identity).
+    """
+    with _listeners_lock:
+        for existing in _listeners:
+            if existing is fn:
+                return
+        _listeners.append(fn)
+
+
+def remove_listener(fn) -> None:
+    """Remove a listener if present. Idempotent."""
+    with _listeners_lock:
+        try:
+            _listeners.remove(fn)
+        except ValueError:
+            pass
+
+
+def clear_listeners() -> None:
+    """Drop all listeners. Test helper."""
+    with _listeners_lock:
+        _listeners.clear()
+
+
+def _fire_listeners(snap: Snapshot) -> None:
+    with _listeners_lock:
+        listeners = list(_listeners)
+    for fn in listeners:
+        try:
+            fn(snap)
+        except Exception as exc:
+            _log.debug("liveclient_cache listener %r: %s", fn, exc)
+
 
 def _auth_headers() -> dict:
     try:
@@ -103,6 +148,7 @@ def _loop(poll_s: float) -> None:
     while not _stop.is_set():
         try:
             _snapshot = _fetch_once()
+            _fire_listeners(_snapshot)
         except Exception as exc:
             _log.debug("liveclient_cache loop: %s", exc)
         _stop.wait(poll_s)
@@ -115,6 +161,7 @@ async def _loop_async(poll_s: float) -> None:
     while not _stop.is_set():
         try:
             _snapshot = await asyncio.to_thread(_fetch_once)
+            _fire_listeners(_snapshot)
         except Exception as exc:
             _log.debug("liveclient_cache loop: %s", exc)
         try:
