@@ -138,6 +138,7 @@ py tools\ddragon_mirror_refresh.py                    # default - idempotent fet
 py tools\ddragon_mirror_refresh.py --check-changed    # mid-patch HEAD probe
 py tools\ddragon_mirror_refresh.py --full             # ignore manifest, refetch all
 py tools\ddragon_mirror_refresh.py --version 16.10.1  # pin a version
+py tools\ddragon_mirror_refresh.py --workers 8        # default 8 parallel fetchers
 ```
 
 Install the daily 03:30 task (elevated PowerShell):
