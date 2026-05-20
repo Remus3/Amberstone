@@ -203,6 +203,16 @@ curl -k -X POST https://127.0.0.1:8888/api/bridge/cadence  # POST - toggle activ
 
 Or use `/sleep` and `/wake` skills from the Claude session.
 
+Peer watcher drift check (Game-PC / Peer side):
+```
+iex (iwr -UseBasicParsing `
+  https://legion-rc:8888/agent/bridge_watcher_update_check.ps1).Content
+```
+
+This pulls `/agent/_watcher_manifest.json` (sha256+size for the 7-file watcher runtime set), diffs against the local install copy, prints any stale or missing files, and exits 0 (up-to-date), 1 (stale), 2 (manifest fetch failed), or 3 (install dir not found). Pass `-Apply` to re-pull stale files, `-Restart` to bounce the watcher's scheduled task, or `-Quiet` for cron-friendly output. Auto-detects install dir from `C:\RC-Agent` (Game-PC) or `.\tools` (Peer) when not passed explicitly.
+
+The manifest covers the full runtime fileset the watcher imports at module load (`bridge_watcher.py` + `classify` + `actions` + `history` + the config json + hook ps1 + action prompt md), which is wider than the original `bridge_watcher_install.ps1` 4-file pull set - drift in any of the 7 is caught.
+
 ---
 
 ## TLS certificate
