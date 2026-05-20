@@ -2,6 +2,21 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - dashboard 16.10.1 flip (closes s101 mirror loop)
+
+Operator AskUserQuestion-picked "Flip live consumer to 16.10.1" from the next-unit fork. Single discrete unit, no live game needed, no frozen-file. Closes the loop on item 101 (DDragon mirror auto-refresh): the mirror serves 16.10.1 but the dashboard was still labelling its index payloads as 16.8.1 and falling back to the 16.8.1 asset path on cold load.
+
+- **`web/data/champions_index.json` + `spells_index.json`:** version field 16.8.1 -> 16.10.1. Content unchanged structurally - bundle diff confirmed zero champs/spells added between 16.8.1 and 16.10.1 (172 champs both, 18 spells both -> 35 byName entries both). Champ index has a 2-line line-swap (DrMundo/Draven) because the regenerator uses Python default string sort (case-sensitive, 'r' < 'r' then EOS < 'a' so "DrMundo" < "Draven") while the prior file used some case-insensitive natural sort; functionally invariant, lookups unchanged.
+- **`web/js/main.js` (4 spots), `web/js/lib/items_index.js` (2 spots), `web/js/panels/active_match.js` (2 spots), `web/css/panels/grid.css` (2 spots), `web/js/panels/last_match.js` (1 comment block):** hardcoded "16.8.1" fallbacks bumped to "16.10.1". The `last_match.js` comment block also rewritten to reflect that the local mirror now auto-refreshes via `RC-DDragonMirrorRefresh` daily 03:30 (so the prior "cloned from 16.8.1 since item icons rarely change" note no longer applies).
+- **`scripts/data_pipeline.py`:** new `cmd_champions_index` + `cmd_spells_index` mirror the existing `cmd_items_index` pattern. Reads from `data/meta/ddragon_champions.json` + `ddragon_summoner_spells.json` (already at 16.10.1 from the prior pipeline run). Wired into `COMMANDS` + `cmd_all` so the next `data_pipeline.py ddragon` (or `data_pipeline.py all`) auto-syncs ALL THREE indexes instead of just items_index. Patch-version guard skips the rewrite when already current (use `force=True` to override). Spells regenerator sorts spells by numeric `.key` ascending so canonical Riot ordering wins on display-name collisions (Flash key=4 wins 'flash' over CherryFlash key=2202; Snowball key=32 wins 'mark' over SnowURFSnowball_Mark key=39); hand-aliased 'tp' -> SummonerTeleport preserved.
+
+**Verified live (chrome-devtools-mcp navigate to https://127.0.0.1:8888/):** dashboard renders cleanly with the new ui-hash `11233b67ce` (asset-hash bumped, auto-reload poller will pick up); every `/data/ddragon/16.10.1/img/...` request 200s (champion portraits Velkoz/Kaisa/Blitzcrank/Yasuo/Lulu/Draven, item icons 3153/3006/3031/3036/1042/3084/3083/6665/1028/1033/3078/1036/3097/6675/3091/6672/3124 etc, map11/map12); zero new console errors. The 2 pre-existing console 404s are `loading_view.css` + `favicon.ico`, neither related to this work.
+
+**Don't-redo:** the version-flip + the JS/CSS fallback bump + the 2 new regenerator cmds are real + the dashboard is live-verified. Do NOT revert. The Draven/DrMundo line-swap in champions_index.json is intentional (deterministic Python sort) - do NOT re-order to match the prior file. The `last_match.js` `_onErrCdnFallback` chain (try local first, fall back to CDN on 404) stays in place as a safety net for the gap between a new DDragon patch dropping and the next 03:30 mirror refresh - that retry path is NOT dead code despite the mirror now being auto-refreshing.
+
+**Carries forward:** nothing blocking. The 2 standing Phase-3-flagged operator-gated follow-ups (pre-existing non-ASCII retro-sweep + deferred type-hint/`ruff --unsafe-fixes` pass) are STILL operator-gated. ADR-007 phase 2 postmortem-analyze remains blocked on operator playing ~20+ SR games (item 101 catchup task keeps the DB fresh for whenever that happens).
+
+---
 # 2026-05-19 - rewind_history.db ongoing freshness scheduled (ROADMAP drain)
 
 Operator picked "rewind_history.db schedule" from the next-lane fork. Concrete + contained ROADMAP high-priority open item flipped to shipped.
