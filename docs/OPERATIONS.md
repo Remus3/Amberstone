@@ -52,6 +52,7 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-BridgeWatcher` | At logon | Administrator | Silent bridge poll daemon |
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
+| `RC-Bridge-MCP` | At logon (operator-gated) | Administrator | Local cross-Claude bridge MCP (:8895) |
 | `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
 | `RC-RewindCatchup` | Weekly Sunday 04:00 | Administrator | `scripts/rewind_catchup.py` (pull new Match-V5 records into rewind_history.db) |
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
@@ -117,6 +118,42 @@ token from `--show-token`. Full snippet in the server-file docstring.
 Token resolution mirrors the Game-PC MCP (env `RC_MCP_TOKEN` ->
 `tools/mcp_token.txt` -> `tools/vision_token.txt` -> dev fallback) so one
 token covers both RC MCP servers.
+
+---
+
+## Local cross-Claude bridge MCP (:8895)
+
+Localhost-only MCP server (`tools/bridge_mcp_server.py`) that wraps the
+local `/api/bridge` surface and `ops/runtime/bridge_inbox_pending.json` as
+MCP tools for a local Claude / agent: `bridge_search`, `bridge_post_note`,
+`bridge_post_task`, `bridge_post_result`, `bridge_post_lesson`,
+`bridge_pending`, `bridge_status`. Reads via GET shuttle to
+`https://127.0.0.1:8888/api/bridge`; `bridge_pending` reads the JSON file
+directly so a pure status probe never requires the dashboard process to
+be up. Writes shuttle to POST `/api/bridge` (the deque + JSONL backup
+are kept in sync there); dashboard-down degrades to a structured error
+dict, never crashes.
+
+```powershell
+py tools\bridge_mcp_server.py --show-token             # token for client config
+py tools\start_bridge_mcp.py                            # launch (boot wrapper)
+curl http://127.0.0.1:8895/health -H "Authorization: Bearer <token>"
+```
+
+Persistence (operator-gated - new always-on listener; only register once
+a local Claude is actually pointed at it):
+
+```
+schtasks /Create /TN "RC-Bridge-MCP" /SC ONLOGON /RL HIGHEST /F ^
+  /TR "pythonw C:\Riot Commander\tools\start_bridge_mcp.py"
+```
+
+Client wiring (operator-gated; same caveat as RC-DS-MatchDB-MCP): add an
+`mcpServers` entry with `"type": "http"`,
+`"url": "http://127.0.0.1:8895/mcp"`, and the bearer token from
+`--show-token`. Full snippet in the server-file docstring. Token chain is
+the same as the two existing RC MCP servers so one `RC_MCP_TOKEN` covers
+all three.
 
 ---
 
