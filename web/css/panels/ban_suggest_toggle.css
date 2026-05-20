@@ -1,0 +1,187 @@
+/* HURTS-THEM / HELPS-US ban-suggest toggle panel (item 109 carry-forward).
+ *
+ * Mounts inside the Suggestions card (.csv-card-suggestions) above the
+ * legacy global-top-bans grid. Always visible during ban phase so the
+ * operator can see which logic the candidate scores reflect.
+ *
+ * Band colors mirror s106 personal_vs / draft_elo conventions:
+ *   red    = strong score (large absolute rating, +50 or more)
+ *   amber  = mid score
+ *   green  = weak score (below 0)
+ *
+ * Sample-density bands (low / mid / high) mirror draft_elo.css.
+ */
+
+.bs-toggle-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* -- Mode chip ---------------------------------------------------- */
+
+.bs-mode-chip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 3px;
+  user-select: none;
+}
+
+.bs-mode-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  font-family: inherit;
+}
+
+.bs-mode-opt:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.bs-mode-opt[data-bs-active="1"] {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fff;
+}
+
+.bs-mode-chip[data-bs-mode="helps_us"] .bs-mode-opt[data-bs-active="1"] {
+  background: rgba(74, 222, 128, 0.18);
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
+.bs-mode-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bs-mode-sub {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: none;
+}
+
+.bs-mode-opt[data-bs-active="1"] .bs-mode-sub {
+  color: rgba(255, 255, 255, 0.70);
+}
+
+/* -- Candidate list ----------------------------------------------- */
+
+.bs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.bs-list[data-bs-state="empty"] {
+  padding: 8px 4px;
+}
+
+.bs-empty {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  text-align: center;
+}
+
+.bs-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 48px 38px 56px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(26, 29, 35, 0.85);
+  border: 1px solid #2a2f37;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.bs-row:hover {
+  border-color: #ef4444;
+  background: rgba(40, 44, 52, 0.95);
+}
+
+.bs-row-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  overflow: hidden;
+}
+
+.bs-row-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bs-row-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bs-row-active {
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bs-row-active.bs-band-red    { color: #ff5050; }
+.bs-row-active.bs-band-amber  { color: #f1b04a; }
+.bs-row-active.bs-band-green  { color: #6ec977; }
+
+.bs-row-other {
+  font-size: 10px;
+  font-weight: 600;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.40);
+  font-variant-numeric: tabular-nums;
+}
+
+.bs-row-sample {
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bs-row-sample.bs-sample-low {
+  color: #ff8080;
+  background: rgba(255, 80, 80, 0.10);
+}
+
+.bs-row-sample.bs-sample-mid {
+  color: #f1c878;
+  background: rgba(241, 200, 120, 0.08);
+}
+
+.bs-row-sample.bs-sample-high {
+  color: #80e090;
+  background: rgba(110, 201, 119, 0.08);
+}
