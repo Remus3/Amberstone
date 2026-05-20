@@ -204,13 +204,32 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Sundered Sky",
         periodics=(PeriodicProc(
             name="Lightshield Strike",
-            # Every 8s, next basic deals (20 + 200% base AD) bonus physical.
-            # Long CD makes this rare in DPS terms but a big single hit.
-            bonus_damage=lambda c: 20.0 + 2.0 * c.base_ad,
+            # Iter 16 (2026-05-20) recalibration vs Meraki 16.10.1:
+            # Meraki text: "next basic attack against a champion is
+            # empowered to critically strike for 60-80 bonus damage +
+            # 80% total critical damage". Old encoding "20 + 200%
+            # base_ad" was the pre-rework flat-magnitude estimate.
+            # New encoding tracks the empowered-crit delta-vs-normal-AA:
+            #   70 flat (midpoint of the 60-80 bonus damage band)
+            #   + 80% of TOTAL AD (the 80% total-crit-damage modifier
+            #     applied to the AA hit). At default 175% crit damage,
+            #     a guaranteed crit on a 1.0 total_AD AA does 1.75x
+            #     damage; +80% of that is ~ 0.8 * total_AD additional
+            #     above the normal-AA baseline that compute_dps
+            #     already counts. This is a CALIBRATION fix - same
+            #     periodic shape, same 8s cadence; structural
+            #     re-encoding as a crit-guarantee proc on the burst
+            #     side is deferred (would touch burst.py + dps.py +
+            #     CallContext crit-damage field).
+            bonus_damage=lambda c: 70.0 + 0.8 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_seconds=8.0,
         ),),
-        note="Sundered Sky: Lightshield Strike ~200% base AD bonus on guaranteed crit, every ~8s",
+        note=(
+            "Sundered Sky: Lightshield Strike ~70 + 80% total AD bonus on "
+            "guaranteed-crit empowered AA, every ~8s (calibrated to "
+            "Meraki 16.10.1 60-80 + 80% total-crit-damage)"
+        ),
     ),
     "3124": ItemEffect(
         item_id="3124",
@@ -1276,31 +1295,38 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # or-ability-bound passives that don't fit the basic-auto DPS model.
     # Defensive_only count: 21 → 40.
 
-    # ─── Dead Man's Plate - Shipwrecker partial promotion ───────────────────
+    # --- Dead Man's Plate - defensive_only (iter 16 structural deferral) ---
     # 350 HP + 55 armor + 4% MS stat block. Two passives:
-    # - Shipwrecker: while moving, build Momentum stacks (7/0.25s = 28/s,
-    #   cap 100 stacks in ~3.57s). Next attack consumes all stacks to deal
-    #   100 + 45% of built-up bonus MS (max 20 bonus MS at 100 stacks)
-    #   bonus physical damage. Damage at full Momentum = 100 + 0.45×20 = 109.
-    #   Approximated as every_n_attacks=4 (3.57s build-up at 1.0 AS melee
-    #   cadence; assumes continuous movement in combat).
-    # - Unsinkable: 15% slow resistance - utility, not modeled.
-    # Approximation caveats: ignores other sources of bonus MS (champions with
-    # high MS or MS-stacking builds get more damage); assumes full stacks on
-    # discharge (fair for standard melee rotations where movement is continuous).
+    # - Shipwrecker (REWORKED): while moving, build Momentum stacks
+    #   (7/0.25s = 28/s, cap 100 stacks in ~3.57s; grants up to 20 bonus
+    #   MS). Basic attacks consume all stacks to deal:
+    #     0.4 * stacks (capped at 40 flat) + stacks% (capped at 100%) of
+    #     base AD bonus physical damage.
+    #   Meraki 16.10.1 spec is a DUAL-TRACK formula: stack-scaled flat
+    #   damage PLUS stack-scaled %-base-AD modifier, both driven by a
+    #   per-tick Momentum state that depends on caster movement.
+    # - Unsinkable: 15% slow resistance - utility.
+    #
+    # Iter 16 (2026-05-20) structural drift resolution: the engine cannot
+    # cleanly model the Momentum stack accumulation + MS state machine
+    # within the periodic-proc schema (CallContext has no MS field, no
+    # tick-level stack model, and Dead Man's is a TANK item where DPS
+    # contribution is incidental). Pre-iter-16 encoding "109 flat every 4
+    # attacks" was the pre-rework full-stack approximation but the rework
+    # decoupled the flat and %-base-AD tracks. Flipped to defensive_only
+    # rather than carry a stale flat-magnitude estimate; a full
+    # re-encoding requires a dedicated Phase-2 session to add Momentum
+    # stack modeling to the engine (out of scope for this iter, low
+    # priority because Dead Man's is rarely picked for DPS contribution).
     "3742": ItemEffect(
         item_id="3742",
         name="Dead Man's Plate",
-        periodics=(PeriodicProc(
-            name="Shipwrecker",
-            bonus_damage=109.0,  # 100 + 0.45 × 20 bonus MS at full Momentum stacks
-            damage_type=PHYSICAL,
-            every_n_attacks=4,
-        ),),
+        defensive_only=True,
         note=(
-            "Dead Man's Plate: Shipwrecker ~109 physical (100 + 45% max Momentum "
-            "bonus MS) every ~4 attacks (assumes full stacks at discharge; "
-            "Unsinkable slow resist not modeled)"
+            "Dead Man's Plate: Shipwrecker 0.4*stacks(cap 40) + stacks%(cap "
+            "100%)*base_ad bonus physical on-hit, dual-track Momentum stack "
+            "model not yet supported; defensive_only pending Phase-2 stacks "
+            "schema (iter 16, 2026-05-20)"
         ),
     ),
 
@@ -2934,11 +2960,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Sundered Sky",
         periodics=(PeriodicProc(
             name="Lightshield Strike",
-            bonus_damage=lambda c: 20.0 + 2.0 * c.base_ad,
+            # Iter 16 (2026-05-20): mirrors SR 6610 recalibration vs
+            # Meraki 16.10.1 - "70 + 80% total AD" tracks the
+            # empowered-crit delta on the next AA.
+            bonus_damage=lambda c: 70.0 + 0.8 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_seconds=8.0,
         ),),
-        note="Sundered Sky (Arena 226610): same as SR 6610 - Lightshield Strike 200% base AD, every 8s",
+        note="Sundered Sky (Arena 226610): same as SR 6610 - Lightshield Strike 70 + 80% total AD, every 8s",
     ),
     "226631": ItemEffect(
         item_id="226631",
@@ -3731,13 +3760,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223742": ItemEffect(
         item_id="223742",
         name="Dead Man's Plate",
-        periodics=(PeriodicProc(
-            name="Shipwrecker",
-            bonus_damage=109.0,
-            damage_type=PHYSICAL,
-            every_n_attacks=4,
-        ),),
-        note="Dead Man's Plate (Arena 223742): same as SR 3742 - Shipwrecker ~109 physical every ~4 attacks at full Momentum",
+        defensive_only=True,
+        # Iter 16 (2026-05-20): mirrors SR 3742 defensive_only flip - dual-
+        # track Momentum stack model (0.4*stacks cap 40 + stacks% cap 100%
+        # of base_ad) not yet supported by the periodic-proc schema.
+        note="Dead Man's Plate (Arena 223742): same as SR 3742 - defensive_only pending Momentum stacks schema",
     ),
     "223748": ItemEffect(
         item_id="223748",

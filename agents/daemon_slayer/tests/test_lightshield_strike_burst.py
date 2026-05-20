@@ -85,20 +85,22 @@ class LightshieldHelperTests(unittest.TestCase):
 
     def test_sundered_sky_returns_physical_proc(self) -> None:
         effects = collect_effects([SUNDERED_SKY])
-        # Sundered Sky: 20 + 2.0 × base_ad physical, no armor → 20+120=140.
+        # Iter 16 (2026-05-20) recalibration: 70 + 0.8 * (base_ad +
+        # bonus_ad) physical, no armor. base_ad=60, bonus_ad=0 ->
+        # 70 + 0.8 * 60 = 70 + 48 = 118.
         dmg, name = _lightshield_strike_per_proc_damage(
             effects, 0.0, 0.0, 1.0, self._ctx(),
         )
-        self.assertAlmostEqual(dmg, 140.0, places=1)
+        self.assertAlmostEqual(dmg, 118.0, places=1)
         self.assertEqual(name, "Sundered Sky")
 
     def test_sundered_sky_armor_mitigation(self) -> None:
         effects = collect_effects([SUNDERED_SKY])
-        # With 100 armor: factor 0.5; 140 × 0.5 = 70.
+        # With 100 armor: factor 0.5; 118 x 0.5 = 59.
         dmg, _ = _lightshield_strike_per_proc_damage(
             effects, 100.0, 0.0, 1.0, self._ctx(),
         )
-        self.assertAlmostEqual(dmg, 70.0, places=1)
+        self.assertAlmostEqual(dmg, 59.0, places=1)
 
     def test_sundered_sky_damage_amp_applies(self) -> None:
         effects = collect_effects([SUNDERED_SKY])
