@@ -1321,7 +1321,30 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.17.0"
+ENGINE_VERSION = "1.18.0"
+# 1.18.0 (UX-headless iter 1, 2026-05-20): HPS split aramHealing /
+# aramShielding into per-side multipliers. Pre-fix the engine read
+# aramShieldsHealing with a fallback to aramHealing and applied that one
+# value to BOTH the healing_hps and shielding_hps lanes. The 16.10.1
+# Meraki bulk carries the two keys independently; 24 champions in the
+# snapshot have split values (Camille 1.20/1.10, LeeSin 1.10/1.20,
+# Milio 0.95/0.90, Nunu 1.10/1.20, Ahri 0.90/1.00, Alistar 0.80/1.00,
+# Annie 1.00/0.90, Bard 1.20/1.00, Briar 1.15/1.00, DrMundo 0.90/1.00,
+# Hecarim 1.20/1.00, Illaoi 0.80/1.00, Ivern 1.00/0.90, Janna 0.90/1.00,
+# Kayn 0.80/1.00, Khazix 1.20/1.00, Lux 1.00/0.90, Nocturne 1.20/1.00,
+# Rell 1.00/0.90, Renekton 1.10/1.00, Swain 0.80/1.00, Tryndamere
+# 1.20/1.00, Vladimir 0.90/1.00, Zac 1.10/1.00). The collapsed single-
+# value mis-modeled the shield half on all 24. HpsResult gains heal_mult
+# and shield_mult fields; the prior single mode_multiplier is preserved
+# as a backward-compat property aliasing heal_mult so the healing-ratio
+# invariant test still holds. +9 deterministic tests pinning the 4
+# illustrative champ pairs from BACKLOG (Camille/LeeSin/Milio/Nunu),
+# the per-side application inside compute_hps, the SR/ARAM ratio match,
+# the mode_multiplier alias, and the legacy aramShieldsHealing-only
+# fallback for older snapshots. Source: Meraki bulk
+# /champions.json[name]/lolmath/aram_modifiers/{aramHealing,
+# aramShielding} 16.10.1 snapshot.
+
 # 1.17.0 (Iter 16, 2026-05-20): Structural-drift resolution lane vs Meraki
 # bulk items 16.10.1 - the 2 items flagged by iter 15 closed in two
 # different ways. (a) Sundered Sky 6610 + Arena 226610 Lightshield
