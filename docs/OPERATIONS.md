@@ -52,6 +52,7 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-BridgeWatcher` | At logon | Administrator | Silent bridge poll daemon |
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
+| `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
 | `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
 | `RC-Phase3-PeriodicAudit` | Scheduled | Administrator | Phase 3 periodic audit |
@@ -115,6 +116,39 @@ token from `--show-token`. Full snippet in the server-file docstring.
 Token resolution mirrors the Game-PC MCP (env `RC_MCP_TOKEN` ->
 `tools/mcp_token.txt` -> `tools/vision_token.txt` -> dev fallback) so one
 token covers both RC MCP servers.
+
+---
+
+## DDragon mirror refresh (`RC-DDragonMirrorRefresh`)
+
+Keeps `web/data/ddragon/<patch>/img/{champion,passive,spell,item,profileicon,map,perk-images}/`
+synced with the live CDN so the dashboard never depends on the network during
+a match. `tools/ddragon_mirror_refresh.py` resolves the latest version from
+`https://ddragon.leagueoflegends.com/api/versions.json`, pulls the bundle
+JSONs (champion summary + per-champion detail + item + summoner + runesReforged
++ profileicon), and downloads any deltas with atomic writes. Per-asset ETag /
+Content-Length stored in `data/meta_build/ddragon/<patch>/_assets_manifest.json`
+so `--check-changed` only re-fetches mid-patch revisions; first cold run on a
+new patch fetches ~6.7k files (~30 MB).
+
+```powershell
+py tools\ddragon_mirror_refresh.py --check-only       # exit 1 = flip pending
+py tools\ddragon_mirror_refresh.py --dry-run          # plan, no writes
+py tools\ddragon_mirror_refresh.py                    # default - idempotent fetch
+py tools\ddragon_mirror_refresh.py --check-changed    # mid-patch HEAD probe
+py tools\ddragon_mirror_refresh.py --full             # ignore manifest, refetch all
+py tools\ddragon_mirror_refresh.py --version 16.10.1  # pin a version
+```
+
+Install the daily 03:30 task (elevated PowerShell):
+
+```
+powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_DDragonMirror.ps1"
+```
+
+Augment icons are NOT in DDragon; CommunityDragon serves them via
+`cherry-augments.json`. Out of scope for this task - flagged for a separate
+cdragon adapter.
 
 ---
 

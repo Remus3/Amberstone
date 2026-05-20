@@ -64,6 +64,13 @@ data/*.db.bak-*
 data/meta_build/scraped/
 data/rewind_cache/
 
+# DDragon mirror runtime artifacts (re-fetchable). The 5 top-level bundle
+# JSONs in data/meta_build/ddragon/<ver>/ stay tracked as a diffable snapshot;
+# the per-champion detail bundles (~172/patch) + the per-asset manifest are
+# regenerable by tools/ddragon_mirror_refresh.py and would just inflate diffs.
+data/meta_build/ddragon/*/champion_detail/
+data/meta_build/ddragon/*/_assets_manifest.json
+
 # TLS / debug screenshots + frame captures committed during dev
 ops/tls/*.png
 ops/tls/*.jpg
