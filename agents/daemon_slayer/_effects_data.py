@@ -407,16 +407,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Blade of The Ruined King",
         periodics=(PeriodicProc(
             name="Mist's Edge",
-            # 8% target current HP on-hit (melee value; ranged is 5%).
-            # Steady-state DPS approximation: current_hp ≈ max_hp at the
-            # start of a fight, so we model with target_max_hp. Slight
-            # over-count as the target gets chunked through the rotation;
-            # an explicit current_hp_pct field is a future batch.
-            bonus_damage=lambda c: 0.08 * c.target_max_hp,
+            # 9% target current HP on-hit (Meraki 16.10.1 melee value; ranged
+            # is 6%). Pipeline-A audit (2026-05-19) caught this stale 8%/5%
+            # comment; engine pins to the melee value the same way Eclipse
+            # 6% / Kraken / Hullbreaker do. Steady-state DPS approximation:
+            # current_hp ~ max_hp at the start of a fight, so we model with
+            # target_max_hp - slight over-count as the target gets chunked
+            # through the rotation, explicit current_hp_pct field is a
+            # future batch. Riot's 100 cap vs minions/monsters is not
+            # modeled (champion DPS only).
+            bonus_damage=lambda c: 0.09 * c.target_max_hp,
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
-        note="Blade of the Ruined King: Mist's Edge ~8% target HP on-hit (melee, steady-state approx)",
+        note="Blade of the Ruined King: Mist's Edge 9% target HP on-hit (Meraki melee, steady-state approx)",
     ),
     "3302": ItemEffect(
         item_id="3302",
@@ -3611,11 +3615,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Blade of The Ruined King",
         periodics=(PeriodicProc(
             name="Mist's Edge",
-            bonus_damage=lambda c: 0.08 * c.target_max_hp,
+            bonus_damage=lambda c: 0.09 * c.target_max_hp,
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
-        note="Blade of the Ruined King (Arena 223153): same as SR 3153 - Mist's Edge 8% target max HP on-hit",
+        note="Blade of the Ruined King (Arena 223153): same as SR 3153 - Mist's Edge 9% target max HP on-hit (Meraki melee value)",
     ),
     "223181": ItemEffect(
         item_id="223181",
