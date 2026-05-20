@@ -1260,6 +1260,31 @@ scaling, ENGINE_VERSION 1.5.0):
 * Level-1 and level-18 numeric pins are stable (endpoint identity);
   mid-level DPS/EHP/burst/stats pins shift lower and were rebaselined
   to the corrected, hand-proven engine output.
+
+Multi-source percent-pen / percent-reduction composition fix
+(2026-05-19 - audit lane 1, ENGINE_VERSION 1.9.1):
+
+* Prior ``effects.effective_target_armor`` /
+  ``effective_target_mr`` summed ``armor_pen_pct`` /
+  ``magic_pen_pct`` / ``armor_reduction_pct`` / ``mr_reduction_pct``
+  directly across all items. League's documented rule is
+  MULTIPLICATIVE composition: two 35% pen sources yield
+  ``1 - 0.65 * 0.65 = 0.5775`` (57.75%) effective pen, NOT 0.70. The
+  additive bug OVER-penetrated multi-pen builds (LDR + Serylda's,
+  LDR + Mortal Reminder + Serylda's, Void Staff + Cryptbloom, Black
+  Cleaver + Obsidian Cleaver). Single-pen-item builds are unaffected
+  (composition of one factor is the factor); zero-pen builds are
+  unaffected (empty product is 1.0).
+* New private helper ``effects._composed_keep_factor(pcts)`` returns
+  ``Pi (1 - p_i)``; the four % layers are now ``1 - keep_factor``.
+  Pipeline order unchanged (flat-red -> %-red -> %-pen -> flat-pen).
+  +8 audit tests in ``test_engine_math_correctness_pipeline_c.py``
+  ``MultiplicativePenCompositionTests`` (RED-then-GREEN; 6 of 8
+  failed pre-fix, all 8 pass post-fix; the 2 unchanged single-source
+  / zero-source cases are explicit anti-regression guards).
+* No existing DS test required rebaseline (the prior fixture builds
+  carried at most one %-pen item per build path; the test_rank_assassin
+  3-pen sentinel was a "raises" path, not a math assertion).
 """
 
-ENGINE_VERSION = "1.9.0"
+ENGINE_VERSION = "1.9.1"

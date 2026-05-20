@@ -621,5 +621,170 @@ class BuildOrderFamilyRuleCrossCheckTests(unittest.TestCase):
         )
 
 
+# --------------------------------------------------------------------------
+# Area 1b (audit gap): MULTIPLICATIVE composition of percent pen / reduction
+# --------------------------------------------------------------------------
+class MultiplicativePenCompositionTests(unittest.TestCase):
+    """League's documented rule for percent armor / MR penetration AND
+    percent armor / MR REDUCTION is MULTIPLICATIVE composition across
+    sources, NOT additive summation.
+
+    Concretely, two %-pen items at 35% and 30% should combine as
+    ``1 - (1-0.35)*(1-0.30) = 0.545`` (54.5% effective pen), NOT as
+    ``0.35 + 0.30 = 0.65`` (65%). Same rule on the magic side for
+    Void Staff + Cryptbloom etc.
+
+    The bug shape this catches: prior code summed ``armor_pen_pct`` /
+    ``magic_pen_pct`` / ``armor_reduction_pct`` / ``mr_reduction_pct``
+    directly across all effects, which OVERPENETRATES when more than
+    one source carries the layer. With LDR (35%) + Serylda's (35%) the
+    additive bug computes 70% pen instead of the real 57.75%.
+
+    Single-source builds (one pen item) are unaffected - the
+    multiplicative composition of a single factor is just that factor.
+    Zero-source builds are unaffected too.
+    """
+
+    def test_two_armor_pen_pct_items_compose_multiplicatively(self) -> None:
+        # LDR + Serylda's: each 35% pen. Expected effective pen =
+        # 1 - 0.65*0.65 = 0.5775, not 0.70.
+        eff = [
+            ItemEffect(item_id="ldr", name="LDR", armor_pen_pct=0.35),
+            ItemEffect(item_id="ser", name="Serylda", armor_pen_pct=0.35),
+        ]
+        target_armor = 100.0
+        # Multiplicative composition over the two sources, then the
+        # documented pipeline order applies it to post-reduction armor.
+        composed_pen = 1.0 - (1.0 - 0.35) * (1.0 - 0.35)
+        expected = max(0.0, target_armor * (1.0 - composed_pen))
+        got = effective_target_armor(target_armor, eff, level=None)
+        self.assertAlmostEqual(
+            got, expected, places=9,
+            msg="two %-pen items must compose multiplicatively per "
+            "League rule - additive summation OVERPENETRATES.",
+        )
+        # Explicit anti-regression: the additive answer is wrong.
+        wrong_additive = max(0.0, target_armor * (1.0 - (0.35 + 0.35)))
+        self.assertNotAlmostEqual(got, wrong_additive, places=3)
+
+    def test_three_armor_pen_pct_items_compose_multiplicatively(self) -> None:
+        # LDR + Mortal Reminder + Serylda's (the test_rank_assassin
+        # "full build raises" sentinel uses exactly this trio). Engine
+        # MUST NOT collapse to 100% pen (additive 0.35+0.30+0.35 = 1.00
+        # would negate all armor); real value is 1 - 0.65*0.7*0.65.
+        eff = [
+            ItemEffect(item_id="ldr", name="LDR", armor_pen_pct=0.35),
+            ItemEffect(item_id="mr", name="MortalReminder",
+                       armor_pen_pct=0.30),
+            ItemEffect(item_id="ser", name="Serylda",
+                       armor_pen_pct=0.35),
+        ]
+        target_armor = 80.0
+        composed = 1.0 - (1.0 - 0.35) * (1.0 - 0.30) * (1.0 - 0.35)
+        expected = max(0.0, target_armor * (1.0 - composed))
+        got = effective_target_armor(target_armor, eff, level=None)
+        self.assertAlmostEqual(got, expected, places=9)
+        # Anti-regression: additive sum reaches 100% and zeros armor -
+        # if a future "fix" reintroduces additive sum, this trips.
+        self.assertGreater(
+            got, 0.0,
+            msg="3x %-pen must NOT additively collapse to zero armor",
+        )
+
+    def test_two_magic_pen_pct_items_compose_multiplicatively(self) -> None:
+        # Void Staff (40%) + Cryptbloom (30%). Real composition:
+        # 1 - 0.60*0.70 = 0.58, not 0.70.
+        eff = [
+            ItemEffect(item_id="void", name="VoidStaff",
+                       magic_pen_pct=0.40),
+            ItemEffect(item_id="cryp", name="Cryptbloom",
+                       magic_pen_pct=0.30),
+        ]
+        target_mr = 90.0
+        composed = 1.0 - (1.0 - 0.40) * (1.0 - 0.30)
+        expected = max(0.0, target_mr * (1.0 - composed))
+        got = effective_target_mr(target_mr, eff)
+        self.assertAlmostEqual(got, expected, places=9)
+        wrong_additive = max(0.0, target_mr * (1.0 - (0.40 + 0.30)))
+        self.assertNotAlmostEqual(got, wrong_additive, places=3)
+
+    def test_two_armor_reduction_pct_items_compose_multiplicatively(self) -> None:
+        # Black Cleaver (30%) + Obsidian Cleaver (35%) (Arena pair).
+        # Real composition: 1 - 0.70*0.65 = 0.545, not 0.65.
+        eff = [
+            ItemEffect(item_id="bc", name="BlackCleaver",
+                       armor_reduction_pct=0.30),
+            ItemEffect(item_id="oc", name="ObsidianCleaver",
+                       armor_reduction_pct=0.35),
+        ]
+        target_armor = 100.0
+        composed = 1.0 - (1.0 - 0.30) * (1.0 - 0.35)
+        expected = target_armor * (1.0 - composed)
+        # Armor reduction CAN take armor below zero; here it stays
+        # positive (target 100 -> ~45.5) so floor at 0 does not bite.
+        got = effective_target_armor(target_armor, eff, level=None)
+        self.assertAlmostEqual(got, expected, places=9)
+
+    def test_two_mr_reduction_pct_items_compose_multiplicatively(self) -> None:
+        # Symmetric magic-side reduction composition.
+        eff = [
+            ItemEffect(item_id="a", name="MrRedA", mr_reduction_pct=0.30),
+            ItemEffect(item_id="b", name="MrRedB", mr_reduction_pct=0.20),
+        ]
+        target_mr = 100.0
+        composed = 1.0 - (1.0 - 0.30) * (1.0 - 0.20)
+        expected = target_mr * (1.0 - composed)
+        got = effective_target_mr(target_mr, eff)
+        self.assertAlmostEqual(got, expected, places=9)
+
+    def test_single_pct_pen_item_unchanged(self) -> None:
+        # Single-source builds must keep identical numbers - the
+        # multiplicative composition of a single factor is the factor.
+        # This is a regression guard against breaking the common path.
+        for pen in (0.18, 0.30, 0.35, 0.40):
+            eff = [ItemEffect(item_id="s", name="s", armor_pen_pct=pen)]
+            got = effective_target_armor(100.0, eff, level=None)
+            expected = 100.0 * (1.0 - pen)
+            self.assertAlmostEqual(got, expected, places=9)
+            eff_m = [ItemEffect(item_id="m", name="m",
+                                magic_pen_pct=pen)]
+            got_m = effective_target_mr(100.0, eff_m)
+            expected_m = 100.0 * (1.0 - pen)
+            self.assertAlmostEqual(got_m, expected_m, places=9)
+
+    def test_no_pct_pen_items_passthrough_unchanged(self) -> None:
+        # Zero-source builds passthrough (the empty-product is 1.0;
+        # composed pen = 0). Verifies the new code does not perturb
+        # the no-op path.
+        eff = [ItemEffect(item_id="z", name="z",
+                          armor_pen_flat=10.0)]
+        got = effective_target_armor(100.0, eff, level=None)
+        # Only the flat-pen applies; %-pen layer is the identity.
+        self.assertAlmostEqual(got, 100.0 - 10.0, places=9)
+
+    def test_pct_pen_compounds_correctly_with_full_pipeline(self) -> None:
+        # End-to-end: reduction layer, then composed %-pen, then flat.
+        # Derive expected from first principles.
+        target_armor = 200.0
+        eff = [
+            ItemEffect(item_id="rf", name="rf",
+                       armor_reduction_flat=20.0),
+            ItemEffect(item_id="rp", name="rp",
+                       armor_reduction_pct=0.10),
+            ItemEffect(item_id="pp1", name="pp1", armor_pen_pct=0.35),
+            ItemEffect(item_id="pp2", name="pp2", armor_pen_pct=0.30),
+            ItemEffect(item_id="pf", name="pf", armor_pen_flat=8.0),
+        ]
+        # Documented order with multiplicative %-pen composition:
+        a = target_armor - 20.0           # 180
+        a = a * (1.0 - 0.10)             # 162
+        composed_pen = 1.0 - (1.0 - 0.35) * (1.0 - 0.30)  # 0.545
+        a = a * (1.0 - composed_pen)     # 162 * 0.455 = 73.71
+        a = a - 8.0                       # 65.71
+        expected = max(0.0, a)
+        got = effective_target_armor(target_armor, eff, level=None)
+        self.assertAlmostEqual(got, expected, places=9)
+
+
 if __name__ == "__main__":
     unittest.main()
