@@ -594,6 +594,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
+        # Iter 3 (2026-05-19): "Unique - Cleave" family. In live League a
+        # build with 2+ Tiamat-tree items only procs Cleave once per AA
+        # (highest-priority hydra wins). The previous comment claimed
+        # ranker build-legality checks enforced this; they do not - the
+        # ranker has no Tiamat-tree dedup. Tag the family so the existing
+        # ``collect_effects`` first-seen-wins dedup + the ranker's
+        # ``shares_dead_unique`` filter handle both layers in one shot.
+        unique_passive_key="hydra_cleave",
         note="Stridebreaker: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets)",
     ),
     # Phase 4 batch 24 (2026-05-04): Profane Hydra (6698) added to
@@ -606,10 +614,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # to match Stridebreaker's call. Heretical Cleave active (~80% AD
     # AoE) stays not-modeled - Meraki bulk has its cooldown null and
     # actives-without-CD-pin are deferred per the s77/s78 hand-off rule.
-    # Tiamat-tree exclusivity (only one of Strider/Ravenous/Profane/
-    # Titanic owned at once) is enforced by the ranker's build legality
-    # checks, not by unique_passive_key here - same pattern as the
-    # other hydras.
+    # Iter 3 (2026-05-19): Tiamat-tree exclusivity ("Unique - Cleave") is
+    # NOW enforced by ``unique_passive_key="hydra_cleave"`` so
+    # ``collect_effects`` first-seen-wins drops the second hydra's proc
+    # and the ranker filters double-hydra recommendations. The original
+    # claim that this was "enforced by the ranker's build legality
+    # checks" was wishful thinking - those checks (terminal / purchasable
+    # / mode-legal / budget) have no Tiamat-tree awareness.
     "6698": ItemEffect(
         item_id="6698",
         name="Profane Hydra",
@@ -625,6 +636,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
+        unique_passive_key="hydra_cleave",
         note="Profane Hydra: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets)",
     ),
 
@@ -824,6 +836,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 every_n_attacks=1,
             ),
         ),
+        # Iter 3 (2026-05-19): hydra_cleave family - see Stridebreaker.
+        # Both Titanic Cleave procs share one in-game passive ("Sterak
+        # of Bork": Titanic's two-proc shape models primary + cleave-to-
+        # nearby pieces of the same Cleave; only the FIRST hydra in the
+        # build keeps both, the rest are dropped).
+        unique_passive_key="hydra_cleave",
         note="Titanic Hydra: Cleave ~5 + 1.5% bonus HP on-hit primary + ~40% AD to nearby (melee values)",
     ),
 
@@ -847,6 +865,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
+        # Iter 3 (2026-05-19): hydra_cleave family - see Stridebreaker.
+        unique_passive_key="hydra_cleave",
         note="Ravenous Hydra: Cleave ~35% AD physical to nearby enemies (melee, scales with rotation targets)",
     ),
 
@@ -2879,6 +2899,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
+        unique_passive_key="hydra_cleave",
         note="Stridebreaker (Arena 226631): same as SR 6631 - Cleave 40% AD to other enemies",
     ),
     "226653": ItemEffect(
@@ -2976,6 +2997,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
+        unique_passive_key="hydra_cleave",
         note="Profane Hydra (Arena 226698): same as SR 6698 - Cleave 40% AD to other enemies",
     ),
     "226699": ItemEffect(
@@ -3439,6 +3461,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
+        unique_passive_key="hydra_cleave",
         note="Ravenous Hydra (Arena 223074): same as SR 3074 - Cleave 35% AD to other enemies",
     ),
     "223078": ItemEffect(
@@ -3659,6 +3682,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 every_n_attacks=1,
             ),
         ),
+        unique_passive_key="hydra_cleave",
         note="Titanic Hydra (Arena 223748): same as SR 3748 - Cleave 5+1.5% bonus HP primary + 40% AD to nearby",
     ),
     "223814": ItemEffect(
