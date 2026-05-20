@@ -3155,8 +3155,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226676": ItemEffect(
         item_id="226676",
         name="The Collector",
-        defensive_only=True,
-        note="The Collector (Arena 226676): Execute below 5% HP - single-proc, not per-rotation DPS",
+        lethality=10.0,
+        note="The Collector (Arena 226676): mirrors SR 6676 - 50 AD + 10 Lethality + 25% Crit; "
+             "Iter 14 (2026-05-20): synced arena variant to iter-10 SR fix - promoted off "
+             "defensive_only and exposed lethality=10.0 so the stat feeds the rotation. "
+             "Death execute below 5% HP is a finisher (not per-rotation DPS) and Taxes (25g) "
+             "is out-of-combat - both correctly excluded.",
     ),
     "226695": ItemEffect(
         item_id="226695",
@@ -3623,13 +3627,24 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223124": ItemEffect(
         item_id="223124",
         name="Guinsoo's Rageblade",
-        periodics=(PeriodicProc(
-            name="Phantom Hit",
-            bonus_damage=lambda c: 0.50 * c.bonus_ad,
-            damage_type=PHYSICAL,
-            every_n_attacks=3,
-        ),),
-        note="Guinsoo's Rageblade (Arena 223124): same as SR 3124 - Phantom Hit 50% bonus AD every 3rd attack",
+        periodics=(
+            PeriodicProc(
+                name="Wrath",
+                # Iter 14 (2026-05-20): mirrors iter-12 SR 3124 fix - Wrath
+                # flat 30 magic on-hit every AA was missing on the arena
+                # variant. DDragon 16.10.1 description applies on both maps.
+                bonus_damage=30.0,
+                damage_type=MAGICAL,
+                every_n_attacks=1,
+            ),
+            PeriodicProc(
+                name="Phantom Hit",
+                bonus_damage=lambda c: 0.50 * c.bonus_ad,
+                damage_type=PHYSICAL,
+                every_n_attacks=3,
+            ),
+        ),
+        note="Guinsoo's Rageblade (Arena 223124): mirrors SR 3124 - Wrath +30 magic on-hit every AA + Phantom Hit every 3rd ~50% bonus AD",
     ),
     "223135": ItemEffect(
         item_id="223135",
