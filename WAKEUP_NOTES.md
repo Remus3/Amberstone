@@ -2,6 +2,20 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-19 - rewind_history.db ongoing freshness scheduled (ROADMAP drain)
+
+Operator picked "rewind_history.db schedule" from the next-lane fork. Concrete + contained ROADMAP high-priority open item flipped to shipped.
+
+- **`ops/install_RC_RewindCatchup.ps1` (new)** - `Register-ScheduledTask` weekly Sundays 04:00 trigger, `pythonw.exe scripts/rewind_catchup.py` (idempotent + resumable; INSERT OR IGNORE writes + `data/rewind_catchup.state.json` resume sentinel + PUUID-rotation handled via Account-V1 by Riot ID). Settings: AllowStartIfOnBatteries, StartWhenAvailable, ExecutionTimeLimit 20 min, MultipleInstances=IgnoreNew (set via property after construction; same PS-5.1 workaround as install_RC_DDragonMirror.ps1). Idempotent: unregisters any existing task before re-creating.
+- **`docs/OPERATIONS.md` synced** - new task row + a "Rewind history catchup (`RC-RewindCatchup`)" section between the DDragon-mirror and Bridge-operations sections covering all 5 catchup modes + install command + cadence rationale.
+- **`ROADMAP.md` `rewind_history.db ongoing freshness` item flipped to shipped** - was 🟡 pending; the ROADMAP entry had a `schtasks /Create /TN "RC-RewindCatchup" /SC HOURLY` hint that the actual implementation deliberately overrides to **WEEKLY** (~168x cheaper for the operator's sparse-cadence reality - the dry-run probe today confirmed zero new matches since 2025-12-16 i.e. 5 months gap).
+- **Live-registered + verified** - `Get-ScheduledTaskInfo RC-RewindCatchup`: State=Ready, NextRunTime=2026-05-24T04:00:00 (this Sunday), LastTaskResult=267011 (SCHED_S_TASK_HAS_NOT_RUN, expected pre-first-run). `py scripts/rewind_catchup.py --dry-run` end-to-end: PUUID rotation detected (`v8HzkOaP3OKe_AyiM7Dccg8z` -> `jVoxvNpcLTzDsInREghNEdcM` via Account-V1), Account-V1 auto-refreshed, `Newest match in DB: 2025-12-16 04:47:11 UTC`, `Already in DB: 2,851 matches`, page 0 returned 1 id 0 new -> "No new matches. DB is up to date." (exit 0). Match-V5 + rewind-catchup wire is healthy + the API-Key-Riot.txt key file is intact + the operator's Riot ID SamplePlayer#Vayne resolves correctly.
+
+**Don't-redo:** the install PS + the OPERATIONS section + the ROADMAP flip are real + the task is LIVE on Legion (not just documented). Do NOT revert. The weekly-not-hourly cadence is the deliberate operator-cadence-aware decision (the old ROADMAP hint said HOURLY but that pre-dated the 5-month-sparse reality); if play cadence picks up later, the cadence is one `New-ScheduledTaskTrigger` line in the install PS to adjust. The PUUID-rotation handling at the script-start is the catchup's own design (s149/s171.8 era), this session did not touch it.
+
+**Carries forward:** nothing blocking. ADR-007 phase 2 postmortem-analyze remains blocked on the same "freshness" question - the catchup task now keeps the DB current so phase 2 unblocks ITSELF the moment the operator plays ~20+ SR games (the documented threshold for the per-player-death-pattern miner to produce a calibration delta).
+
+---
 # 2026-05-19 - DDragon mirror auto-refresh shipped (BACKLOG drain)
 
 Operator picked "DDragon mirror auto-refresh" from the next-lane fork after the prior overnight queue closed clean. End-to-end vertical slice:
