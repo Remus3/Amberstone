@@ -1931,11 +1931,13 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
         self.assertAlmostEqual(r.weighted_dps, 81.71458333333334, places=4)
 
     def test_lich_bane_solo_unchanged(self) -> None:
-        # Lich Bane alone regression guard. Rebaselined for Riot
-        # quadratic stat growth (was 58.17 on Ahri lvl 11 under the old
-        # linear scaling).
+        # Lich Bane alone regression guard. Rebaselined for the 2026-05-20
+        # AP coefficient correction (50% -> 40% per Meraki 16.10.1; the
+        # solo value drops because the AP term contributes less per proc).
+        # Prior baselines on Ahri lvl 11: 58.17 (linear stat growth, AP 50%),
+        # 56.329 (post-1.5.0 quadratic growth + AP 50%), 52.996 (AP 40%).
         r = compute_dps(self.snap, "Ahri", level=11, item_ids=["3100"])
-        self.assertAlmostEqual(r.weighted_dps, 56.32916666666666, places=4)
+        self.assertAlmostEqual(r.weighted_dps, 52.99583333333334, places=4)
 
     def test_triforce_plus_lich_bane_no_double_count(self) -> None:
         # Pre-fix this build was 122.50 dps (sum of solo deltas =
@@ -7782,7 +7784,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.19.0")
+        self.assertEqual(ENGINE_VERSION, "1.20.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7843,7 +7845,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.19.0")
+        self.assertEqual(ENGINE_VERSION, "1.20.0")
 
 
 if __name__ == "__main__":

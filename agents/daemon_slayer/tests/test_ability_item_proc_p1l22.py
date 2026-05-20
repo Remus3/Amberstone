@@ -180,14 +180,18 @@ class SpellbladeIsAbilityTriggeredNotAttackTriggeredTests(unittest.TestCase):
         self.assertAlmostEqual(sb, 2.00 * base_ad, places=4)
 
     def test_lich_bane_scales_with_ap_not_attacks(self) -> None:
-        """Lich Bane Spellblade = 75% base AD + 50% AP magic. The proc
-        is ability-cadence and AP-scaled - confirm both pieces."""
+        """Lich Bane Spellblade = 75% base AD + 40% AP magic. The proc
+        is ability-cadence and AP-scaled - confirm both pieces.
+
+        AP coefficient corrected from 50% to 40% per Meraki bulk 16.10.1
+        (2026-05-20 ENGINE 1.20.0 fix).
+        """
         base_ad, ap = 60.0, 120.0
         ctx = _ctx(base_ad=base_ad, ap=ap)
         effects = collect_effects([LICH_BANE])
         sb, name = _spellblade_per_proc_damage(effects, 0.0, 0.0, 1.0, ctx)
         self.assertEqual(name, "Lich Bane")
-        self.assertAlmostEqual(sb, 0.75 * base_ad + 0.50 * ap, places=4)
+        self.assertAlmostEqual(sb, 0.75 * base_ad + 0.40 * ap, places=4)
 
 
 # --- (2) Malignance Hatefog rides the ULT cadence, not the AA cadence. ------

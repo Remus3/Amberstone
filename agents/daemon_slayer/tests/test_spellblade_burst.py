@@ -105,12 +105,13 @@ class SpellbladeHelperTests(unittest.TestCase):
 
     def test_lich_bane_uses_mr_for_magic(self) -> None:
         effects = collect_effects([LICH_BANE])
-        # LB: 0.75 × base_ad + 0.50 × ap → 0.75×60 + 0.50×100 = 45 + 50 = 95
-        # MR 100 → factor 0.5 → 47.5.
+        # LB: 0.75 x base_ad + 0.40 x ap -> 0.75*60 + 0.40*100 = 45 + 40 = 85
+        # MR 100 -> factor 0.5 -> 42.5.
+        # (AP coefficient corrected from 50% -> 40% per Meraki bulk 16.10.1.)
         dmg, name = _spellblade_per_proc_damage(
             effects, 0.0, 100.0, 1.0, self._ctx(ap=100.0),
         )
-        self.assertAlmostEqual(dmg, 47.5, places=1)
+        self.assertAlmostEqual(dmg, 42.5, places=1)
         self.assertEqual(name, "Lich Bane")
 
     def test_lich_bane_magic_amp_applies(self) -> None:
@@ -172,8 +173,9 @@ class SpellbladeHelperTests(unittest.TestCase):
             effects_lb_first, 0.0, 0.0, 1.0, self._ctx(ap=100.0),
         )
         self.assertEqual(name2, "Lich Bane")
-        # 0.75×60 + 0.50×100 = 95, no MR.
-        self.assertAlmostEqual(dmg2, 95.0, places=1)
+        # 0.75 x 60 + 0.40 x 100 = 85, no MR.
+        # (AP coefficient corrected from 50% -> 40% per Meraki bulk 16.10.1.)
+        self.assertAlmostEqual(dmg2, 85.0, places=1)
 
 
 # ─── DpsResult new fields ────────────────────────────────────────────────────
