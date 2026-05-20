@@ -46,8 +46,12 @@ def main() -> int:
         payload = {}
 
     paths = _collect_paths(payload)
-    # Unknown shape -> do not skip (fail safe: still run the suite).
-    if paths and all(_is_docs_only(p) for p in paths):
+    # Empty / unknown payload -> skip (no code identifiable to test).
+    if not paths:
+        print("[pytest_guard] no edit paths in payload - suite skipped")
+        return 0
+    # All paths are docs/text -> skip.
+    if all(_is_docs_only(p) for p in paths):
         joined = ", ".join(paths)
         print(f"[pytest_guard] docs-only edit ({joined}) - suite skipped")
         return 0
