@@ -770,11 +770,12 @@ class TargetHpItemTests(unittest.TestCase):
         self.assertGreater(with_hp.weighted_dps, no_hp.weighted_dps)
 
     def test_botrk_per_basic_outpaces_eclipse_per_2nd(self) -> None:
-        # BotRK fires every basic at 8% HP; Eclipse fires every 2nd at
-        # 6% HP. Same target_max_hp, BotRK should score higher on the
-        # proc piece. (Stat blocks differ - BotRK has AS/lifesteal,
-        # Eclipse has lethality - but at zero target_armor the AS bonus
-        # makes BotRK win regardless.)
+        # BotRK fires every basic at 9% HP (Meraki melee, pipeline-A
+        # follow-up 2026-05-20); Eclipse fires every 2nd at 6% HP. Same
+        # target_max_hp, BotRK should score higher on the proc piece.
+        # (Stat blocks differ - BotRK has AS/lifesteal, Eclipse has
+        # lethality - but at zero target_armor the AS bonus makes BotRK
+        # win regardless.)
         botrk = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3153"],
             target_max_hp=2000.0,
@@ -7722,7 +7723,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.10.1")
+        self.assertEqual(ENGINE_VERSION, "1.10.2")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7783,7 +7784,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.10.1")
+        self.assertEqual(ENGINE_VERSION, "1.10.2")
 
 
 if __name__ == "__main__":

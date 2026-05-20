@@ -159,3 +159,41 @@ class KrakenBringItDownRampTests(unittest.TestCase):
         l11 = compute_dps(self.snap, "Aatrox", level=11, item_ids=["6672"])
         self.assertGreater(l11.weighted_dps, l1.weighted_dps)
         self.assertTrue(any("Kraken Slayer" in n for n in l11.notes))
+
+
+class BotRKMistsEdgeRateTests(unittest.TestCase):
+    """Meraki: Mist's Edge is 9% melee / 6% ranged of target's current HP
+    (cap 100 vs minions/monsters; cap not modeled for champion DPS).
+
+    Pipeline-A pass corrected 5 items vs Meraki on 2026-05-19; BotRK was
+    missed - it still carried an 8% rate. Engine convention is to pin
+    melee values (the stronger side, same as Eclipse 6% / Hullbreaker /
+    Kraken). Per-target current_hp is a deliberate `target_max_hp`
+    steady-state approximation (documented at the proc site, untouched
+    here); this fix is the magnitude only.
+    """
+
+    def test_base_3153_mists_edge_is_9pct_target_max_hp(self) -> None:
+        proc = _proc("3153")
+        ctx = CallContext(
+            base_ad=60.0, bonus_ad=0.0, level=11, target_max_hp=2000.0,
+        )
+        # 9% * 2000 = 180.0
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 180.0, places=6)
+
+    def test_arena_223153_mists_edge_is_9pct_target_max_hp(self) -> None:
+        proc = _proc("223153")
+        ctx = CallContext(
+            base_ad=60.0, bonus_ad=0.0, level=11, target_max_hp=2500.0,
+        )
+        # 9% * 2500 = 225.0
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 225.0, places=6)
+
+    def test_3153_scales_linearly_at_corrected_rate(self) -> None:
+        # Three different target HP values, exact 9% multiplier on each.
+        proc = _proc("3153")
+        for tgt_hp, want in ((1000.0, 90.0), (1750.0, 157.5), (3000.0, 270.0)):
+            ctx = CallContext(
+                base_ad=60.0, bonus_ad=0.0, level=11, target_max_hp=tgt_hp,
+            )
+            self.assertAlmostEqual(proc.resolve_damage(ctx), want, places=6)
