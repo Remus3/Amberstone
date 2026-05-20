@@ -109,12 +109,13 @@ class ComputeStateCooldownsAdapterTests(unittest.TestCase):
         self.assertEqual(
             set(s.keys()),
             {"d_id", "d_name", "d_used_at_s", "d_ready_at_s", "d_cd_remaining_s",
-             "f_id", "f_name", "f_used_at_s", "f_ready_at_s", "f_cd_remaining_s"},
+             "f_id", "f_name", "f_used_at_s", "f_ready_at_s", "f_cd_remaining_s",
+             "summoner_haste"},
         )
         u = row0["ult"]
         self.assertEqual(
             set(u.keys()),
-            {"id", "used_at_s", "ready_at_s", "cd_remaining_s"},
+            {"id", "used_at_s", "ready_at_s", "cd_remaining_s", "ability_haste"},
         )
 
     def test_spell_names_map_to_riot_ids(self):
