@@ -1321,7 +1321,24 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.10.2"
+ENGINE_VERSION = "1.11.0"
+# 1.11.0 (Iter 8, 2026-05-20): Immolate family + Titanic Hydra Cleave drift vs
+# Meraki 16.10.1. Iter 7 BotRK fix triggered a wider audit of every
+# percentage-of-stat hit (`* c.<stat>_(hp|ad|ap)`). Four more drifts caught:
+# (1) Sunfire Aegis 3068 Immolate "12 + 1.5% bonus_hp" -> Meraki "20 + 1%
+# bonus_hp"; (2) Hollow Radiance 6664 "12 + 1.5% bonus_hp" -> "15 + 1%
+# bonus_hp"; (3) Bami's Cinder 6660 "12 + 1% bonus_hp" -> flat 15 (no HP
+# scaling at component tier - upgrades carry the HP scaling); (4) Titanic
+# Hydra 3748 Cleave "5 + 1.5% bonus_hp" primary + "40% total AD" cleave-
+# to-nearby -> "1% max_hp" primary + "3% max_hp" to nearby (shape change:
+# bonus_hp -> max_hp; AD-coefficient -> max_hp-coefficient). Engine pins
+# the melee value, same convention as Iter 7 BotRK / Eclipse / Hullbreaker
+# / Kraken. All four SR items + their four Arena mirrors (223068, 226664,
+# 226660, 223748) patched in lockstep. Schemas unchanged - dedup keys
+# (immolate, hydra_cleave), every_n_seconds/attacks, periodics arity all
+# stay - only the lambda magnitudes shift. +15 new audit tests in
+# test_meraki_formula_audit_pipeline_a.py and 12 existing tests
+# rebaselined to the corrected values. py_compile + ruff clean.
 # 1.10.2 (Iter 7, 2026-05-20): BotRK Mist's Edge magnitude vs Meraki 16.10.1
 # - was 8% target_max_hp (stale comment claimed "melee value; ranged 5%"),
 # Meraki actually carries 9% melee / 6% ranged. Pipeline-A audit on
