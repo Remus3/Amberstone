@@ -1321,7 +1321,16 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.10.1"
+ENGINE_VERSION = "1.10.2"
+# 1.10.2 (Iter 7, 2026-05-20): BotRK Mist's Edge magnitude vs Meraki 16.10.1
+# - was 8% target_max_hp (stale comment claimed "melee value; ranged 5%"),
+# Meraki actually carries 9% melee / 6% ranged. Pipeline-A audit on
+# 2026-05-19 corrected 5 items vs Meraki but missed BotRK; this is the
+# follow-up. Both SR 3153 and Arena mirror 223153 patched. Engine still
+# pins to the melee value (convention shared with Eclipse, Kraken,
+# Hullbreaker). target_max_hp steady-state approximation unchanged
+# (deliberate, documented at proc site). Riot's 100 damage cap vs
+# minions/monsters not modeled - champion DPS only.
 # 1.10.1 (Iter 3, 2026-05-19): hydra_cleave unique-passive family. All 4
 # SR Tiamat-tree items (Ravenous Hydra 3074, Titanic Hydra 3748,
 # Stridebreaker 6631, Profane Hydra 6698) + their 4 Arena mirrors
