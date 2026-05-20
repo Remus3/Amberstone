@@ -281,8 +281,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6676": ItemEffect(
         item_id="6676",
         name="The Collector",
-        defensive_only=True,
-        note="The Collector: Execute below 5% HP - fires once at low HP, not a per-rotation DPS proc",
+        lethality=10.0,
+        note="The Collector: 50 AD + 10 Lethality + 25% Crit stat block; "
+             "Death execute below 5% HP is a finisher, not a per-rotation DPS proc; "
+             "Taxes passive (25g per kill) is out-of-combat. The lethality stat "
+             "feeds the rest of the rotation; iter-10 audit promote off defensive_only.",
     ),
     "3142": ItemEffect(
         item_id="3142",

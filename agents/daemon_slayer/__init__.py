@@ -1321,7 +1321,29 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.11.0"
+ENGINE_VERSION = "1.12.0"
+# 1.12.0 (Iter 10, 2026-05-20): Lethality + flat-pen audit lane vs Community
+# Dragon 16.10 ground truth. Probed the engine entries for all 21 items in
+# the audit set (8 lethality legendaries, 5 components, 4 Last-Whisper-family
+# %-armor-pen, 5 magic-pen items, Hextech Alternator component) plus the
+# 2 Arena IDs (Deathblade 228003, Spectral Cutlass 4004) and pulled CD's
+# 16.10 description blob for every one. 20 of 21 match exactly: Hubris,
+# Youmuu's, Edge of Night, Voltaic Cyclosword (10 with Firmament active is
+# correct), Axiom Arc, Umbral Glaive, Duskblade, Serrated Dirk all at
+# 18/15/10/18/18/18/10 lethality; Long Sword 0; Last Whisper 18%, LDR /
+# Serylda's 35%, Mortal Reminder 30% (NOT 35 - wiki recall was wrong, CD
+# confirms 30); Sorc Shoes 12 flat MP, Void Staff 40% MP pen, Shadowflame
+# 15 flat MP, Hextech Alternator 0 (component, no pen); Spectral Cutlass
+# 15, Deathblade 20. ONE drift: The Collector (6676) carries 10 Lethality
+# in the stat block but had defensive_only=True with lethality=0.0 - the
+# original entry was tagged for the Death execute (correctly NOT a per-
+# rotation DPS proc) but the lethality plumbing batch (30) never promoted
+# Collector off defensive_only the way it did Hubris / Youmuu's. The
+# execute stays zero-rotation-DPS; the 10 Lethality stat block contributes
+# to the rest of the rotation. Fix: promote off defensive_only, pin
+# lethality=10.0, expand the note. +1 test in test_effects_expansion.py
+# (Batch29DefensiveOnlyCoverageTests). Streak update: iter-10 lane=lethality
+# -and-flat-pen FOUND drift (not no-change), streak resets to 1/10.
 # 1.11.0 (Iter 8, 2026-05-20): Immolate family + Titanic Hydra Cleave drift vs
 # Meraki 16.10.1. Iter 7 BotRK fix triggered a wider audit of every
 # percentage-of-stat hit (`* c.<stat>_(hp|ad|ap)`). Four more drifts caught:
