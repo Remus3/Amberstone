@@ -21,11 +21,17 @@
    * pin BUILD to that height and let CALL take the remainder
    * (per user note s160 "give the call panel a solid permanent
    * panel size"). */
-  grid-template-columns: 1.1fr 2fr;
+  /* 2026-05-20: added a compact 280px right rail for the CD ledger
+   * panel (web/js/panels/cd_ledger.js). The rail spans both rows so
+   * it shows the full 10-player ledger; collapsing it via the rail
+   * header chevron is a CSS-only toggle (.cd-collapsed hides body).
+   * On narrow viewports (< 1600 CSS px), the rail can be hidden via
+   * localStorage.cdLedgerCollapsed=1 without re-flow. */
+  grid-template-columns: 1.1fr 2fr 280px;
   grid-template-rows: 1fr 1fr;
   grid-template-areas:
-    "call  map"
-    "build map";
+    "call  map  cd"
+    "build map  cd";
   gap: 14px;
   align-items: stretch;
   /* Match the height behavior of the rest of view-section so the
@@ -37,6 +43,7 @@
 #view-active-match .am-pane-call  { grid-area: call; }
 #view-active-match .am-pane-build { grid-area: build; }
 #view-active-match .am-pane-map   { grid-area: map; }
+#view-active-match .am-pane-cd    { grid-area: cd; }
 
 #view-active-match .am-pane {
   display: flex;

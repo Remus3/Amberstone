@@ -1,0 +1,205 @@
+/* CD Ledger panel (2026-05-20).
+ *
+ * Right rail on the active_match view. Compact 280px-wide column to
+ * the right of the MAP pane, scrollable when 10 rows + chips exceed
+ * the pane height. Collapsible via the head chevron (+ / -).
+ *
+ * Authoring baseline: 1920x1080 Chrome windowed (usable ~1920x920).
+ * The active_match grid was 1.1fr/2fr (call+build column / map column);
+ * we add a third 280px column for this rail.
+ */
+
+#view-active-match .am-pane-cd {
+  grid-area: cd;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-head);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  min-height: 0;
+  overflow: hidden;
+}
+
+#view-active-match .am-pane-cd .am-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+#view-active-match .am-pane-cd .am-pane-head .cd-chev {
+  font-weight: 900;
+  font-size: 16px;
+  color: var(--text-faint);
+  margin-left: 8px;
+}
+
+#view-active-match .am-pane-cd.cd-collapsed .am-pane-body {
+  display: none;
+}
+
+#view-active-match .am-pane-cd .am-pane-body {
+  padding: 8px 6px;
+}
+
+/* Ledger list - one row per player, max 10 rows, scrollable. */
+.cd-ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cd-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--surface-2, #1d1d28);
+  border-left: 3px solid transparent;
+  min-height: 32px;
+}
+
+.cd-row-blue {
+  border-left-color: #5b8dff;
+}
+
+.cd-row-red {
+  border-left-color: #f07e8b;
+}
+
+.cd-row-portrait {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.cd-row-portrait-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #303040;
+  display: block;
+  object-fit: cover;
+}
+
+.cd-row-initial {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #2a2a36;
+  color: #cfd2dc;
+  font-weight: 700;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cd-row-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #e5e7eb);
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cd-row-blue .cd-row-name {
+  color: #9fbcff;
+}
+
+.cd-row-red .cd-row-name {
+  color: #ffa5af;
+}
+
+.cd-row-chips {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+/* One CD chip: spell icon + countdown label. */
+.cd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: #14141c;
+  border: 1px solid #2a2a36;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint, #9ca3af);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  min-width: 38px;
+  justify-content: center;
+}
+
+.cd-chip-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  display: block;
+}
+
+.cd-chip-sigil {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: #2a2a36;
+  color: #cfd2dc;
+  font-size: 9px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cd-chip-text {
+  font-variant-numeric: tabular-nums;
+}
+
+/* READY chip: green pill. Wins over the default chip background. */
+.cd-chip-ready {
+  background: #1a3a24;
+  border-color: #2a6a3a;
+  color: #7be39a;
+}
+
+.cd-chip-ready .cd-chip-sigil {
+  background: #2a6a3a;
+  color: #d6f5e0;
+}
+
+/* Ult chip is visually distinct from summoner chips so the operator
+ * scans the row left-to-right as D / F / R. */
+.cd-chip-ult:not(.cd-chip-ready) {
+  background: #1a1a2c;
+  border-color: #3a3a52;
+  color: #d3bfff;
+}
+
+.cd-chip-ult:not(.cd-chip-ready) .cd-chip-sigil {
+  background: #3a3a52;
+  color: #d3bfff;
+}
+
+/* Empty placeholder when no live game / null cooldowns. */
+.cd-empty {
+  color: var(--text-faint, #9ca3af);
+  font-size: 12px;
+  text-align: center;
+  padding: 12px 8px;
+  font-style: italic;
+}
