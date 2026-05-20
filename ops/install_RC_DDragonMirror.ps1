@@ -36,8 +36,10 @@ $settings  = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes 30) `
-    -MultipleInstancesPolicy IgnoreNew
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+# -MultipleInstancesPolicy is not exposed on New-ScheduledTaskSettingsSet
+# in Windows PowerShell 5.1; set it via the property after construction.
+$settings.MultipleInstances = "IgnoreNew"
 
 Register-ScheduledTask `
     -TaskName    $TaskName `
