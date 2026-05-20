@@ -39,6 +39,12 @@ Live Client realities baked in:
      and the default 100 s base CD; the panel renders an ult row with the
      conservative midgame cd. A future patch can plug champion->ult-id
      resolution.
+  6. Hextech Drake stacks ARE derived from ``gameData.events.Events``
+     (the relay surfaces it as ``data.events.Events``). Each ``DragonKill``
+     with ``DragonType == "Hextech"`` increments the killer-team count;
+     each participant's ult ledger receives THEIR team's count, so an
+     enemy ult cd reflects enemy-team drakes (not ally drakes). Wired
+     via ``_hextech_drakes_by_team``.
 
 Returns ``None`` when no live game (lc empty), otherwise the list returned
 by ``compute_cooldowns`` (length matches the number of resolvable players,
@@ -83,6 +89,64 @@ def _side_for(team: str | None) -> str:
     return ""
 
 
+def _hextech_drakes_by_team(data: dict) -> dict[str, int]:
+    """Count Hextech Drake kills per team from the Live Client event log.
+
+    Live Client emits ``DragonKill`` events into ``gameData.events.Events``
+    (note: relay flattens to ``data.events.Events``) of shape::
+
+        {"EventID": int, "EventName": "DragonKill",
+         "DragonType": "Hextech"|"Earth"|"Air"|"Fire"|"Water"|"Elder",
+         "KillerName": "<summoner>", "EventTime": <float>}
+
+    The killer's team is resolved by matching ``KillerName`` against
+    ``allPlayers[].summonerName``; the team string (``ORDER`` / ``CHAOS``)
+    on that player is incremented. Returns a dict keyed by team string;
+    callers do ``counts.get(p["team"], 0)`` per participant.
+
+    Hextech is the only dragon type that grants Ability Haste (5 AH per
+    stack per Riot patch 16.10.1); other dragon types are filtered out.
+    Soul-tier (4+ stacks) does NOT add extra AH on top - only raw stack
+    count matters for haste, matching the engine constant.
+
+    Malformed events (missing EventName, wrong DragonType, unresolved
+    KillerName, non-dict entries) are dropped silently.
+    """
+    counts: dict[str, int] = {}
+    events_block = data.get("events") or {}
+    if not isinstance(events_block, dict):
+        return counts
+    events_list = events_block.get("Events") or []
+    if not isinstance(events_list, list):
+        return counts
+
+    all_players = data.get("allPlayers") or []
+    name_to_team: dict[str, str] = {}
+    for p in all_players:
+        if not isinstance(p, dict):
+            continue
+        name = p.get("summonerName")
+        team = p.get("team")
+        if name and team:
+            name_to_team[str(name)] = str(team)
+
+    for ev in events_list:
+        if not isinstance(ev, dict):
+            continue
+        if ev.get("EventName") != "DragonKill":
+            continue
+        if ev.get("DragonType") != "Hextech":
+            continue
+        killer = ev.get("KillerName")
+        if not killer:
+            continue
+        team = name_to_team.get(str(killer))
+        if not team:
+            continue
+        counts[team] = counts.get(team, 0) + 1
+    return counts
+
+
 def _participants_from_liveclient(data: dict) -> list[dict]:
     """Build the participants list ``compute_cooldowns`` expects.
 
@@ -112,6 +176,11 @@ def _participants_from_liveclient(data: dict) -> list[dict]:
                     except (TypeError, ValueError):
                         pass
 
+    # Per-team Hextech Drake counts (used for ability_haste on each
+    # participant's ult). Each player's own team count flows in so an
+    # enemy ult ledger reflects enemy team drakes, not ally drakes.
+    drakes_by_team = _hextech_drakes_by_team(data)
+
     out: list[dict] = []
     for p in all_players:
         if not isinstance(p, dict):
@@ -139,19 +208,22 @@ def _participants_from_liveclient(data: dict) -> list[dict]:
 
         is_me = bool(me_name) and p.get("summonerName") == me_name
         runes = active_rune_ids if is_me else []
+        team_raw = p.get("team")
+        team_drakes = drakes_by_team.get(str(team_raw), 0) if team_raw else 0
 
         out.append({
             "puuid": None,                                     # Live Client lacks it.
             "summoner_name": p.get("summonerName") or "",
             "champion_id": None,                               # Resolve later if needed.
             "champion_name": p.get("championName") or "",      # Useful for the panel.
-            "side": _side_for(p.get("team")),
+            "side": _side_for(team_raw),
             "d_spell_id": _name_to_id(d_name),
             "f_spell_id": _name_to_id(f_name),
             "ult_id": None,                                    # Champion->ult-id TBD.
             "ult_base_cd": 100.0,                              # Conservative default.
             "runes": runes,
             "items": item_ids,
+            "hextech_drakes": team_drakes,
         })
     return out
 
