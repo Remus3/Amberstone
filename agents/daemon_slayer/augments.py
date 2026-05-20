@@ -40,11 +40,28 @@ class Augment:
     rarity: int
     desc: str
     data_values: dict
+    # cdragon `calculations` formula defs (Riot's GameCalculation struct).
+    # Each key is a calculation name (e.g. "Damage", "TotalDamage"); value
+    # carries `mFormulaParts` + optional `mMultiplier`. Captured here so
+    # downstream formula evaluators can compute real scaling instead of
+    # relying on the hand-maintained `_AUGMENT_STAT_OVERLAYS` registry.
+    # 83/220 augments ship non-empty calculations as of cdragon 16.10.1.
+    calculations: dict = None  # populated in __post_init__ when None
     tooltip: str = ""
+
+    def __post_init__(self) -> None:
+        # frozen dataclass: bypass setattr for the default-None case.
+        if self.calculations is None:
+            object.__setattr__(self, "calculations", {})
 
     @property
     def rarity_label(self) -> str:
         return RARITY_LABEL.get(self.rarity, f"r{self.rarity}")
+
+    @property
+    def calculation_keys(self) -> list[str]:
+        """Names of formula entries available for this augment (may be empty)."""
+        return list(self.calculations.keys())
 
     @classmethod
     def from_record(cls, rec: dict) -> "Augment":
@@ -56,6 +73,7 @@ class Augment:
             desc=str(rec.get("desc", "")),
             tooltip=str(rec.get("tooltip", "")),
             data_values=dict(rec.get("dataValues") or {}),
+            calculations=dict(rec.get("calculations") or {}),
         )
 
 
