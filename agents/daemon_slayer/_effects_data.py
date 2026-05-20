@@ -182,9 +182,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Voltaic Cyclosword",
         periodics=(PeriodicProc(
             name="Firmament",
-            # Energized release: 100 + 25% bonus AD physical (slow utility
-            # not modeled). Charges over 4s of moving / attacking.
-            bonus_damage=lambda c: 100.0 + 0.25 * c.bonus_ad,
+            # Iter 15 (2026-05-20): Meraki bulk items 16.10.1 - Firmament
+            # is now a flat 100 bonus physical damage, the 25% bonus AD
+            # scaling clause is stale (it was a pre-rework formula).
+            # Slow utility unchanged + unmodeled. Charges over 4s of
+            # moving / attacking.
+            bonus_damage=100.0,
             damage_type=PHYSICAL,
             every_n_seconds=4.0,
         ),),
@@ -194,7 +197,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # lists it. Pipeline now accounts for the level-scaled flat pen
         # alongside the existing Energized periodic proc.
         lethality=10.0,
-        note="Voltaic Cyclosword: Energized release ~100 + 25% bonus AD physical every ~4s + 10 Lethality (level-scaled flat pen)",
+        note="Voltaic Cyclosword: Energized release 100 flat bonus physical every ~4s + 10 Lethality (level-scaled flat pen)",
     ),
     "6610": ItemEffect(
         item_id="6610",
@@ -3055,12 +3058,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Voltaic Cyclosword",
         periodics=(PeriodicProc(
             name="Firmament",
-            bonus_damage=lambda c: 100.0 + 0.25 * c.bonus_ad,
+            # Iter 15 (2026-05-20): mirror SR 6699 - Firmament is now
+            # flat 100 bonus physical (Meraki 16.10.1), 25% bonus AD
+            # scaling clause stripped.
+            bonus_damage=100.0,
             damage_type=PHYSICAL,
             every_n_seconds=4.0,
         ),),
         lethality=10.0,
-        note="Voltaic Cyclosword (Arena 226699): same as SR 6699 - Energized 100+25% bonus AD, 10 lethality",
+        note="Voltaic Cyclosword (Arena 226699): same as SR 6699 - Energized 100 flat bonus physical, 10 lethality",
     ),
     "226701": ItemEffect(
         item_id="226701",
@@ -3961,11 +3967,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Hextech Alternator",
         periodics=(PeriodicProc(
             name="Revved",
-            bonus_damage=75.0,
+            # Iter 15 (2026-05-20): Meraki bulk items 16.10.1 -
+            # "Damaging an enemy champion deals 65 bonus magic damage."
+            # Was 75 (stale magnitude from a prior patch).
+            bonus_damage=65.0,
             damage_type=MAGICAL,
             every_n_seconds=5.0,
         ),),
-        note="Hextech Alternator (3145): Revved 75 bonus magic damage, 5s ICD",
+        note="Hextech Alternator (3145): Revved 65 bonus magic damage, 5s ICD (Meraki 16.10.1)",
     ),
     "6660": ItemEffect(
         item_id="6660",

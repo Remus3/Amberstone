@@ -201,18 +201,23 @@ class EnergizedFamilyTests(unittest.TestCase):
         with_rf = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3094"])
         self.assertGreater(with_rf.weighted_dps, bare.weighted_dps)
 
-    def test_voltaic_cyclosword_scales_with_bonus_ad(self) -> None:
-        # Voltaic proc = 100 + 25% bonus_AD physical. With more bonus AD
-        # (stack a BF Sword 3057... wait, just stack two Voltaics for
-        # max bonus AD demonstration since 3057 may not be in items).
-        # Easier: compare Voltaic alone vs Voltaic + Bloodthirster (huge bonus AD).
+    def test_voltaic_cyclosword_flat_proc(self) -> None:
+        # Iter 15 (2026-05-20): Meraki bulk items 16.10.1 - Firmament is
+        # now flat 100 bonus physical (the 25% bonus AD scaling clause
+        # was a pre-rework formula; stripped in this iter). Voltaic +
+        # Bloodthirster still raises DPS via AA bonus AD contribution
+        # alone - same final assertion, the proc itself no longer
+        # contributes the bonus AD lift.
         v_only = compute_dps(self.snap, "Aatrox", level=11, item_ids=["6699"])
         v_bt = compute_dps(self.snap, "Aatrox", level=11, item_ids=["6699", "3072"])
-        # BT adds 80 AD as bonus → Voltaic proc gains 0.25*80=20 per fire.
-        # v_bt should exceed v_only by more than just the BT auto-attack
-        # contribution alone - but proving that cleanly is hard. Cheaper
-        # assertion: BT lifts DPS, period.
         self.assertGreater(v_bt.weighted_dps, v_only.weighted_dps)
+        # Direct proc check: bonus_ad does NOT alter the Firmament damage.
+        from agents.daemon_slayer.effects import ITEM_EFFECTS, CallContext
+        proc = ITEM_EFFECTS["6699"].periodics[0]
+        d0 = proc.resolve_damage(CallContext(base_ad=60.0, bonus_ad=0.0, level=11))
+        d100 = proc.resolve_damage(CallContext(base_ad=60.0, bonus_ad=100.0, level=11))
+        self.assertAlmostEqual(d0, 100.0, places=2)
+        self.assertAlmostEqual(d100, 100.0, places=2)
 
     def test_sundered_sky_raises_dps(self) -> None:
         bare = compute_dps(self.snap, "Aatrox", level=11)
@@ -5900,7 +5905,9 @@ class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
         self.assertEqual(e.periodics[0].name, "Revved")
         ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=8)
         dmg = e.periodics[0].resolve_damage(ctx)
-        self.assertAlmostEqual(dmg, 75.0, places=2)
+        # Iter 15 (2026-05-20): Meraki bulk items 16.10.1 = 65 flat
+        # magic; was stale 75 from a prior patch.
+        self.assertAlmostEqual(dmg, 65.0, places=2)
 
     def test_3145_hextech_alternator_dps_lift(self) -> None:
         base = compute_dps(self.snap, "Lux", level=8, item_ids=[])
@@ -7765,7 +7772,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.15.0")
+        self.assertEqual(ENGINE_VERSION, "1.16.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7826,7 +7833,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.15.0")
+        self.assertEqual(ENGINE_VERSION, "1.16.0")
 
 
 if __name__ == "__main__":

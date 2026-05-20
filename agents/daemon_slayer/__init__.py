@@ -1321,7 +1321,29 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.15.0"
+ENGINE_VERSION = "1.16.0"
+# 1.16.0 (Iter 15, 2026-05-20): Damage-magnitude lane audit vs Meraki bulk
+# items 16.10.1 - 16 hardcoded item proc constants cross-checked.
+# Two clean magnitude drifts fixed: (a) Hextech Alternator (3145) Revved
+# 75 -> 65 bonus magic (Meraki: "Damaging an enemy champion deals 65
+# bonus magic damage"); (b) Voltaic Cyclosword Firmament (6699 + Arena
+# 226699) "100 + 25% bonus_ad" -> flat 100 bonus physical (Meraki:
+# "next basic attack deals 100 bonus physical damage on-hit"; the 25%
+# bonus AD scaling clause was a pre-rework formula). Two structural
+# drifts FLAGGED but NOT fixed in this lane: (i) Sundered Sky 6610
+# Lightshield Strike now reads "60-80 critical damage + 80% total
+# crit damage modifier" - structurally different from the engine's
+# "20 + 200% base AD" pre-rework formula. (ii) Dead Man's Plate 3742
+# Shipwrecker new spec is "0.4 phys per Momentum stack, cap 40" plus
+# "+ 0-100% bonus MS modifier", dual-track vs engine's "100 + 45% * 20"
+# pre-rework formula. Both flagged for a follow-up structural-drift
+# iteration (next session). 12 items confirmed MATCH (Stormrazor 3097,
+# Kraken 6672 ramp, Statikk 3087, Rapid Firecannon 3094, Wit's End
+# 3091, Guinsoo 3124 Wrath, Rageknife 6677, Recurve Bow 1043, Fated
+# Ashes 2508, Runaan 3085, Trinity 3078 Spellblade, Bami 6660 - all
+# verified against Meraki bulk effects strings). Test delta: 2 tests
+# updated (test_3145_hextech_alternator_revved_proc 75 -> 65; new
+# direct flat-proc assertion in test_voltaic_cyclosword_flat_proc).
 # 1.15.0 (Iter 14, 2026-05-20): Arena mirror audit - synced two arena variants
 # to their already-fixed SR base entries. (a) 226676 The Collector promoted off
 # defensive_only and given lethality=10.0 to mirror iter-10 SR 6676 fix. (b)
