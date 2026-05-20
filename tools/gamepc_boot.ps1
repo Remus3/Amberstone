@@ -218,58 +218,46 @@ Write-Host ''
 Write-Host '=== agents up ===' -ForegroundColor Cyan
 Write-Host ''
 
-# 6. Open the Claude Code Desktop app (operator: the shortcut opens the app,
-#    not a CLI window). Resolve the NEWEST installed Claude Code at launch
-#    time so a Claude Code self-update doesn't silently regress to the CLI
-#    (the version dir, e.g. 2.1.138, changes on every update). Order:
-#    6a dynamic newest -> 6b claude_code_app.txt marker (manual override /
-#    last-known fallback) -> 6c legacy CLI launcher (last resort).
-$ccRoot    = 'C:\Users\Administrator\AppData\Roaming\Claude\claude-code'
+# 6. Open Claude Desktop (operator decision 2026-05-20: shortcut opens the
+#    Squirrel-installed Claude Desktop chat app, NOT the Claude Code CLI).
+#    Prior section 6a resolved AppData\Roaming\Claude\claude-code\<ver>\claude.exe
+#    which IS the CLI native installer (comment was wrong) - that launch path
+#    was the cause of the auth-conflict warning (ANTHROPIC_API_KEY + claude.ai
+#    OAuth both visible to the CLI). The chat app reads neither, so opening it
+#    sidesteps the conflict entirely. CLI fallback removed: operator does NOT
+#    want the CLI launched here under any circumstance.
+$ccDesktop = 'C:\Users\Administrator\AppData\Local\AnthropicClaude\claude.exe'
 $ccMarker  = Join-Path $dest 'claude_code_app.txt'
-$ccProject = 'C:\RC-Agent'
 $launched  = $false
 
-# 6a. Dynamic: newest claude-code\<version>\claude.exe. Sort by [version]
-#     (lexical sort is wrong: 2.1.9 vs 2.1.138); fall back to most-recently
-#     -written dir if no version-parseable names.
-if (Test-Path $ccRoot) {
-    $verDirs = Get-ChildItem $ccRoot -Directory -ErrorAction SilentlyContinue
-    $pick = $verDirs | Where-Object { $_.Name -as [version] } | Sort-Object { [version]$_.Name } | Select-Object -Last 1
-    if (-not $pick) { $pick = $verDirs | Sort-Object LastWriteTime | Select-Object -Last 1 }
-    if ($pick) {
-        $ccExe = Join-Path $pick.FullName 'claude.exe'
-        if (Test-Path $ccExe) {
-            try {
-                Write-Host "Opening Claude Code Desktop app ($($pick.Name))..." -ForegroundColor Cyan
-                Start-Process -FilePath $ccExe -ArgumentList $ccProject
-                $launched = $true
-            } catch { Write-Host "  Claude Code launch failed: $($_.Exception.Message)" -ForegroundColor Yellow }
-        }
-    }
+# 6a. Primary: Squirrel-installed Claude Desktop (AnthropicClaude\claude.exe).
+#     The Squirrel stub auto-resolves the newest app-<ver>\ subdir, so we do
+#     not need to enumerate versions ourselves.
+if (Test-Path $ccDesktop) {
+    try {
+        Write-Host 'Opening Claude Desktop...' -ForegroundColor Cyan
+        Start-Process -FilePath $ccDesktop
+        $launched = $true
+    } catch { Write-Host "  Claude Desktop launch failed: $($_.Exception.Message)" -ForegroundColor Yellow }
 }
 
-# 6b. Fallback: claude_code_app.txt marker (manual override / last-known).
+# 6b. Fallback: claude_code_app.txt marker (manual override). Kept for the
+#     rare case where Claude Desktop is reinstalled to a non-standard path.
+#     Operator-edited file; if absent, this branch is a no-op.
 if (-not $launched -and (Test-Path $ccMarker)) {
     $cc = Get-Content -Raw $ccMarker -ErrorAction SilentlyContinue
     if ($cc) { $cc = $cc.Trim() }
     if ($cc) {
         try {
-            Write-Host '  dynamic resolve missed - using claude_code_app.txt marker' -ForegroundColor Yellow
+            Write-Host '  primary Desktop path missed - using claude_code_app.txt marker' -ForegroundColor Yellow
             Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', $cc -WindowStyle Hidden
             $launched = $true
         } catch { Write-Host "  marker launch failed: $($_.Exception.Message)" -ForegroundColor Yellow }
     }
 }
 
-# 6c. Last resort: legacy CLI launcher.
 if (-not $launched) {
-    $legacy = Join-Path $dest 'start_gamepc_claude.ps1'
-    if (Test-Path $legacy) {
-        Write-Host '  no Claude Code app found - using legacy CLI launcher' -ForegroundColor Yellow
-        try { & $legacy } catch { Write-Host "  legacy launch warning: $($_.Exception.Message)" -ForegroundColor Yellow }
-    } else {
-        Write-Host '  no Claude launcher available' -ForegroundColor Red
-    }
+    Write-Host '  Claude Desktop not found - skipping launch (CLI fallback intentionally removed)' -ForegroundColor Red
 }
 
 Write-Host ''
