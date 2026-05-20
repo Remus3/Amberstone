@@ -69,6 +69,7 @@ def _gather_get() -> list:
                                routes_pickban, routes_adaptive_summoners,
                                routes_ban_suggestions, routes_dictionary,
                                routes_personal_vs,
+                               routes_spike_curve,
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context,
                                routes_archetype, routes_last_match)
@@ -91,6 +92,7 @@ def _gather_get() -> list:
                       + list(routes_ban_suggestions.GET_ROUTES)
                       + list(routes_dictionary.GET_ROUTES)
                       + list(routes_personal_vs.GET_ROUTES)
+                      + list(routes_spike_curve.GET_ROUTES)
                       + list(routes_sr_draft.GET_ROUTES)
                       + list(routes_sr_user_builds.GET_ROUTES)
                       + list(routes_team_context.GET_ROUTES)
