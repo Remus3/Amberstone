@@ -327,19 +327,23 @@ class ArmorPenPipelineOrderTests(unittest.TestCase):
         self.assertAlmostEqual(got, documented, places=9)
         self.assertNotAlmostEqual(got, wrong_all_flat_first, places=3)
 
-    def test_lethality_is_level_scaled_into_flat_pen(self) -> None:
-        # lethality folds into the flat-pen term at 0.6 + 0.4*level/18,
-        # i.e. 60% at L1, 100% at L18 (linear). Derive at three levels.
+    def test_lethality_is_one_to_one_flat_pen_post_v14_1(self) -> None:
+        # Post-V14.1 (Riot 2024-01) lethality grants its full value as
+        # flat armor pen at ALL caster levels - the prior level-scaling
+        # (0.6 + 0.4*level/18) was REMOVED. Wiki Armor_penetration:
+        # "Lethality now grants the full amount as flat armor penetration
+        # at all levels with no scaling."
+        # RC engine sits on patch 16.10.x (well past V14.1) so the 1:1
+        # rule is the correct math; the level=None back-compat passthrough
+        # is preserved for non-DPS callers.
         target_armor = 80.0
         lethality = 20.0
         eff = [ItemEffect(item_id="L1", name="leth", lethality=lethality)]
-        for level, scale in ((1, 0.6 + 0.4 * 1 / 18.0),
-                             (11, 0.6 + 0.4 * 11 / 18.0),
-                             (18, 1.0)):
-            expected = max(0.0, target_armor - lethality * scale)
+        for level in (1, 6, 11, 18):
+            expected = max(0.0, target_armor - lethality)  # 1:1 at every level
             got = effective_target_armor(target_armor, eff, level=level)
             self.assertAlmostEqual(got, expected, places=9,
-                                   msg=f"lethality level-scale wrong @L{level}")
+                                   msg=f"lethality 1:1 rule wrong @L{level}")
 
     def test_floors_at_zero(self) -> None:
         eff = [ItemEffect(item_id="b1", name="big", armor_pen_flat=999.0)]

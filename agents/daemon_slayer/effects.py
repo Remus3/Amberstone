@@ -335,13 +335,22 @@ def effective_target_armor(
     at zero - physical damage against exactly-zero armor uses the
     ``armor=0`` factor (1.0).
 
-    Phase 4 batch 30 (2026-05-04): ``level`` is the caster's champion
-    level. When provided, lethality contributions are folded into the
-    flat-pen sum at their level-scaled value: ``lethality × (0.6 + 0.4
-    × level / 18)``. Pre-batch-30 callers (tests + any direct caller
-    that doesn't have a level) omit ``level`` and lethality contributes
-    nothing - preserves backward-compatibility for the non-DPS path.
-    Production caller (compute_dps) always passes the resolved level.
+    Phase 4 batch 30 (2026-05-04, original): ``level`` is the caster's
+    champion level. When provided, lethality contributions are folded
+    into the flat-pen sum. ENGINE_VERSION 1.10.0 (2026-05-19,
+    audit-lethality): the Riot V14.1 (2024-01) change REMOVED the
+    historical level-scaling on lethality - it now grants 1:1 flat armor
+    pen at every champion level. The engine reflects that: when a
+    ``level`` is supplied, lethality folds in at its full value (the
+    factor is 1.0 at every level). The ``level`` parameter is kept on
+    the signature for back-compat with the original Phase 4 batch 30
+    contract and to honor the "level=None means lethality contributes
+    nothing (non-DPS path)" invariant; production caller (compute_dps)
+    always passes the resolved level. The pre-V14.1 scaling formula
+    ``lethality * (0.6 + 0.4 * level / 18)`` is OBSOLETE - do not
+    re-introduce it (it under-applied lethality at every level except
+    18, max 37.78 pp under-pen at L1). See League wiki "Armor
+    penetration" + V14.1 patch notes.
 
     Effects without armor modifiers contribute nothing here. Order
     among items in ``effects`` doesn't matter for the FLAT terms (sums
@@ -376,9 +385,12 @@ def effective_target_armor(
     if level is not None:
         lethality_total = sum(e.lethality for e in eff_list)
         if lethality_total > 0:
-            # 60% effective at lvl 1, 100% at lvl 18 (linear).
-            scale = 0.6 + 0.4 * level / 18.0
-            pen_flat += lethality_total * scale
+            # Post-V14.1 (Riot 2024-01): lethality = flat pen 1:1 at all
+            # caster levels. The historical (0.6 + 0.4*level/18) scaling
+            # was removed in that patch. Engine is on patch 16.10.x so
+            # the 1:1 rule is the correct math. ``level`` is retained
+            # only as the "lethality contributes nothing" sentinel.
+            pen_flat += lethality_total
     if not (red_flat or red_pct or pen_pct or pen_flat):
         # Passthrough - preserves negative armor inputs (external shred,
         # tests of the armor curve itself).
