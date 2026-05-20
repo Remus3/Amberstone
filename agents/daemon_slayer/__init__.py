@@ -1321,7 +1321,26 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.18.0"
+ENGINE_VERSION = "1.19.0"
+# 1.19.0 (UX-headless iter 2, 2026-05-20): aramAbilityHaste +
+# aramTenacity exposure lane. Pre-fix the engine ignored both keys (a
+# comment in _apply_mode_modifiers said they "belong in their respective
+# consumers" but no scorer ever wired them). 22 champs carry non-zero
+# aramAbilityHaste in 16.10.1 (Soraka +10, Katarina +10, Azir +20,
+# Seraphine -20, Teemo -15, etc); 17 carry non-1.0 aramTenacity
+# (assassin-shaped +20% / +10% on Akali/Belveth/Ekko/Elise/Evelynn/Fizz/
+# Katarina/Kayn/Khazix/Lucian/Nunu/Pyke/Qiyana/Quinn/Rengar/Talon/Zed).
+# Both values now surface in the resolved stats dict via
+# ``scaled['aram_ability_haste']`` (flat delta, default 0) and
+# ``scaled['aram_tenacity_mult']`` (multiplier, default 1.0). Mode notes
+# carry the values when non-baseline. Exposure-only - no downstream
+# scorer consumes them yet; the data lane is now visible for the next
+# scorer iteration (a cooldown-cycle modifier in burst.py / ability_dps
+# or an effective-CC-duration term in an EHP-side enemy comp model).
+# Additive (no existing scorer math changes), 11 new tests pinning the
+# multiplier paths + SR-mode strip + live snapshot probes (Soraka +10,
+# Katarina +10/1.2, Seraphine -20).
+
 # 1.18.0 (UX-headless iter 1, 2026-05-20): HPS split aramHealing /
 # aramShielding into per-side multipliers. Pre-fix the engine read
 # aramShieldsHealing with a fallback to aramHealing and applied that one
