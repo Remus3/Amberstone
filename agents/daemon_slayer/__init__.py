@@ -1321,4 +1321,22 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.10.0"
+ENGINE_VERSION = "1.10.1"
+# 1.10.1 (Iter 3, 2026-05-19): hydra_cleave unique-passive family. All 4
+# SR Tiamat-tree items (Ravenous Hydra 3074, Titanic Hydra 3748,
+# Stridebreaker 6631, Profane Hydra 6698) + their 4 Arena mirrors
+# (223074 / 223748 / 226631 / 226698) now declare
+# unique_passive_key="hydra_cleave" so collect_effects's first-seen-wins
+# dedup and the ranker's shares_dead_unique filter handle both layers
+# in one shot. Previously the comment on Profane Hydra claimed
+# "Tiamat-tree exclusivity is enforced by the ranker's build legality
+# checks", but rank._filter_candidates has no such check - the engine
+# was double-counting the Cleave proc on any 2+ hydra build and the
+# ranker happily recommended a second hydra. Live League marks Cleave
+# as a "Unique" passive (only one procs per AA). +9 tests in
+# test_hydra_cleave_unique_iter3.py covering schema, collect_effects
+# dedup, DPS no-double-count, and ranker filter behavior; 1 stale
+# negative-assertion test flipped (test_profane_hydra_not_tagged
+# _unique_passive -> _tagged_hydra_cleave_iter3). Build-order planner
+# docstring updated 3-family -> 7-family count for accuracy. No
+# rebaselines outside the flipped test.
