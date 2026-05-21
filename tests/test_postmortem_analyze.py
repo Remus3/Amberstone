@@ -17,10 +17,16 @@ from scripts.postmortem_analyze import (  # noqa: E402
     DeathEvent,
     PATTERN_KEYS,
     PATTERN_META,
+    _CANONICAL_ROLES,
+    _TEAM_POSITION_TO_ROLE,
+    _TIER_ORDER,
     _classify_death,
+    _median,
+    aggregate_role_grades,
     build_report,
     classify_all,
     iter_deaths,
+    iter_role_grades,
     main,
     write_atomic,
 )
@@ -49,7 +55,15 @@ def _build_fixture_db(path: pathlib.Path) -> dict:
             riot_id_game_name TEXT,
             riot_id_tagline TEXT,
             champion_id INTEGER,
-            champion_name TEXT
+            champion_name TEXT,
+            team_position TEXT,
+            kills INTEGER,
+            deaths INTEGER,
+            assists INTEGER,
+            total_minions_killed INTEGER,
+            neutral_minions_killed INTEGER,
+            vision_score INTEGER,
+            total_damage_dealt_to_champs INTEGER
         );
         CREATE TABLE timeline_events (
             id INTEGER PRIMARY KEY,
@@ -76,18 +90,32 @@ def _build_fixture_db(path: pathlib.Path) -> dict:
     )
     cur.executemany(
         """INSERT INTO participants
-           (match_id, participant_id, team_id, puuid, riot_id_game_name, riot_id_tagline, champion_id, champion_name)
-           VALUES (?,?,?,?,?,?,?,?)""",
+           (match_id, participant_id, team_id, puuid, riot_id_game_name, riot_id_tagline,
+            champion_id, champion_name, team_position,
+            kills, deaths, assists, total_minions_killed, neutral_minions_killed,
+            vision_score, total_damage_dealt_to_champs)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         [
-            (match_a, 1, 100, self_puuid,  "x", "T", 1, "Annie"),
-            (match_a, 2, 100, ally_puuid,  "a", "T", 2, "Olaf"),
-            (match_a, 6, 200, enemy_puuid, "e", "T", 6, "Urgot"),
-            (match_a, 7, 200, "PUUID-Z",   "z", "T", 7, "Vayne"),
-            (match_a, 8, 200, "PUUID-Y",   "y", "T", 8, "Yasuo"),
-            (match_a, 9, 200, "PUUID-X",   "x2", "T", 9, "Xin"),
-            (match_b, 1, 100, self_puuid,  "x", "T", 1, "Annie"),
-            (match_b, 2, 100, ally_puuid,  "a", "T", 2, "Olaf"),
-            (match_b, 6, 200, enemy_puuid, "e", "T", 6, "Urgot"),
+            # match_a: SR match, self is MIDDLE; ally TOP; 4 enemies with positions
+            (match_a, 1, 100, self_puuid,  "x", "T", 1, "Annie",  "MIDDLE",
+             7, 4, 8, 180, 0, 22, 22000),
+            (match_a, 2, 100, ally_puuid,  "a", "T", 2, "Olaf",   "TOP",
+             3, 5, 4, 150, 30, 14, 14000),
+            (match_a, 6, 200, enemy_puuid, "e", "T", 6, "Urgot",  "TOP",
+             5, 3, 6, 160, 0, 12, 18000),
+            (match_a, 7, 200, "PUUID-Z",   "z", "T", 7, "Vayne",  "BOTTOM",
+             0, 0, 0, 0, 0, 0, 0),
+            (match_a, 8, 200, "PUUID-Y",   "y", "T", 8, "Yasuo",  "MIDDLE",
+             0, 0, 0, 0, 0, 0, 0),
+            (match_a, 9, 200, "PUUID-X",   "x2", "T", 9, "Xin",    "JUNGLE",
+             0, 0, 0, 0, 0, 0, 0),
+            # match_b: ARAM-shaped row, self team_position is blank (event mode)
+            (match_b, 1, 100, self_puuid,  "x", "T", 1, "Annie",  "",
+             10, 6, 12, 200, 0, 0, 30000),
+            (match_b, 2, 100, ally_puuid,  "a", "T", 2, "Olaf",   "",
+             0, 0, 0, 0, 0, 0, 0),
+            (match_b, 6, 200, enemy_puuid, "e", "T", 6, "Urgot",  "",
+             0, 0, 0, 0, 0, 0, 0),
         ],
     )
     events = [
@@ -328,7 +356,7 @@ class BuildReportTests(unittest.TestCase):
 
     def test_report_carries_schema_version_and_iso_ts(self):
         report = build_report([], dict.fromkeys(PATTERN_KEYS, 0), ["X"])
-        self.assertEqual(report["schema_version"], 1)
+        self.assertEqual(report["schema_version"], 2)
         self.assertTrue(report["generated_at"].endswith("Z"))
         self.assertEqual(report["puuids"], ["X"])
 
@@ -404,8 +432,9 @@ class MainTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertTrue(out.exists())
             data = json.loads(out.read_text(encoding="utf-8"))
-            self.assertEqual(data["schema_version"], 1)
+            self.assertEqual(data["schema_version"], 2)
             self.assertGreater(data["total_deaths"], 0)
+            self.assertIn("role_grades", data)
         finally:
             import shutil
             shutil.rmtree(tmpdir, ignore_errors=True)
@@ -435,6 +464,239 @@ class AsciiHygieneTests(unittest.TestCase):
         body = path.read_bytes()
         for i, b in enumerate(body):
             self.assertLess(b, 128, f"non-ASCII byte 0x{b:02x} at offset {i}")
+
+
+class MedianHelperTests(unittest.TestCase):
+    """The plain-median helper is the single source of truth for the
+    role_grades median_score field. Boundary cases pinned here."""
+
+    def test_empty_returns_zero(self):
+        self.assertEqual(_median([]), 0.0)
+
+    def test_single_value(self):
+        self.assertEqual(_median([42.5]), 42.5)
+
+    def test_odd_count(self):
+        self.assertEqual(_median([10.0, 30.0, 20.0]), 20.0)
+
+    def test_even_count_averages_middle_pair(self):
+        self.assertEqual(_median([10.0, 20.0, 30.0, 40.0]), 25.0)
+
+
+class RoleNormalizationTests(unittest.TestCase):
+    """team_position values from Match-V5 canonicalize to ADC/SUP/JG/MID/TOP.
+
+    Blank / unknown / event-mode rows are SKIPPED upstream (iter_role_grades
+    filters before calling _TEAM_POSITION_TO_ROLE.get). This guards against
+    the rubric's _normalize_role fallback to MID hiding event-mode data.
+    """
+
+    def test_bottom_maps_to_adc(self):
+        self.assertEqual(_TEAM_POSITION_TO_ROLE["BOTTOM"], "ADC")
+
+    def test_utility_maps_to_sup(self):
+        self.assertEqual(_TEAM_POSITION_TO_ROLE["UTILITY"], "SUP")
+
+    def test_jungle_maps_to_jg(self):
+        self.assertEqual(_TEAM_POSITION_TO_ROLE["JUNGLE"], "JG")
+
+    def test_middle_maps_to_mid(self):
+        self.assertEqual(_TEAM_POSITION_TO_ROLE["MIDDLE"], "MID")
+
+    def test_top_maps_to_top(self):
+        self.assertEqual(_TEAM_POSITION_TO_ROLE["TOP"], "TOP")
+
+    def test_canonical_roles_are_5(self):
+        self.assertEqual(set(_CANONICAL_ROLES), {"ADC", "SUP", "JG", "MID", "TOP"})
+
+
+class IterRoleGradesTests(unittest.TestCase):
+    """iter_role_grades reads participants joined to matches; skips blank
+    team_position rows so event-mode ARAM/Arena matches don't pollute the
+    role aggregation."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="postmortem_rg_")
+        self.db_path = pathlib.Path(self.tmpdir) / "rewind.db"
+        self.fixture = _build_fixture_db(self.db_path)
+
+    def tearDown(self):
+        try:
+            os.remove(self.db_path)
+        except OSError:
+            pass
+        os.rmdir(self.tmpdir)
+
+    def test_returns_one_per_non_blank_team_position(self):
+        conn = sqlite3.connect(str(self.db_path))
+        grades = iter_role_grades(conn, [self.fixture["self_puuid"]])
+        conn.close()
+        # match_a self team_position=MIDDLE -> MID grade; match_b is "" -> skipped
+        self.assertEqual(len(grades), 1)
+        self.assertEqual(grades[0]["role"], "MID")
+
+    def test_blank_team_position_is_skipped(self):
+        # Sanity: confirm match_b's self row exists with blank team_position
+        # so the iter_role_grades skip path is the reason for len==1, not
+        # missing data.
+        conn = sqlite3.connect(str(self.db_path))
+        cur = conn.execute(
+            "SELECT team_position FROM participants WHERE puuid = ? ORDER BY match_id",
+            (self.fixture["self_puuid"],),
+        )
+        positions = [r[0] for r in cur]
+        conn.close()
+        self.assertEqual(positions, ["MIDDLE", ""])
+
+    def test_grade_carries_total_score_and_percentile(self):
+        conn = sqlite3.connect(str(self.db_path))
+        grades = iter_role_grades(conn, [self.fixture["self_puuid"]])
+        conn.close()
+        g = grades[0]
+        self.assertIn("total_score", g)
+        self.assertIn("percentile_grade", g)
+        self.assertIsInstance(g["total_score"], float)
+        self.assertIn(g["percentile_grade"], ("S+", "S", "A", "B", "C", "D"))
+
+    def test_empty_puuid_list_returns_empty(self):
+        conn = sqlite3.connect(str(self.db_path))
+        grades = iter_role_grades(conn, [])
+        conn.close()
+        self.assertEqual(grades, [])
+
+    def test_unknown_puuid_returns_empty(self):
+        conn = sqlite3.connect(str(self.db_path))
+        grades = iter_role_grades(conn, ["PUUID-NOPE"])
+        conn.close()
+        self.assertEqual(grades, [])
+
+
+class AggregateRoleGradesTests(unittest.TestCase):
+    """aggregate_role_grades buckets per-match grades by canonical role +
+    overall; emits tier_distribution + median_score + count for each."""
+
+    def test_empty_input_returns_zero_buckets(self):
+        out = aggregate_role_grades([])
+        self.assertEqual(out["total_matches_scored"], 0)
+        self.assertEqual(out["overall"]["count"], 0)
+        self.assertEqual(out["overall"]["median_score"], 0)
+        for role in _CANONICAL_ROLES:
+            self.assertEqual(out["by_role"][role]["count"], 0)
+            self.assertEqual(out["by_role"][role]["median_score"], 0)
+
+    def test_canonical_role_keys_always_present(self):
+        # Even when a role has 0 matches, the bucket exists so frontend
+        # iteration is deterministic.
+        out = aggregate_role_grades([
+            {"role": "ADC", "total_score": 50.0, "percentile_grade": "B"},
+        ])
+        self.assertEqual(set(out["by_role"].keys()), set(_CANONICAL_ROLES))
+
+    def test_buckets_by_role(self):
+        grades = [
+            {"role": "ADC", "total_score": 80.0, "percentile_grade": "S"},
+            {"role": "ADC", "total_score": 60.0, "percentile_grade": "B"},
+            {"role": "MID", "total_score": 70.0, "percentile_grade": "A"},
+        ]
+        out = aggregate_role_grades(grades)
+        self.assertEqual(out["by_role"]["ADC"]["count"], 2)
+        self.assertEqual(out["by_role"]["MID"]["count"], 1)
+        self.assertEqual(out["by_role"]["SUP"]["count"], 0)
+
+    def test_median_score_per_role(self):
+        grades = [
+            {"role": "TOP", "total_score": 10.0, "percentile_grade": "D"},
+            {"role": "TOP", "total_score": 50.0, "percentile_grade": "B"},
+            {"role": "TOP", "total_score": 90.0, "percentile_grade": "S+"},
+        ]
+        out = aggregate_role_grades(grades)
+        self.assertEqual(out["by_role"]["TOP"]["median_score"], 50)
+
+    def test_overall_aggregates_across_roles(self):
+        grades = [
+            {"role": "ADC", "total_score": 30.0, "percentile_grade": "D"},
+            {"role": "MID", "total_score": 70.0, "percentile_grade": "A"},
+        ]
+        out = aggregate_role_grades(grades)
+        self.assertEqual(out["overall"]["count"], 2)
+        self.assertEqual(out["overall"]["median_score"], 50)
+        self.assertEqual(out["total_matches_scored"], 2)
+
+    def test_tier_distribution_per_role(self):
+        grades = [
+            {"role": "JG", "total_score": 90.0, "percentile_grade": "S+"},
+            {"role": "JG", "total_score": 80.0, "percentile_grade": "S"},
+            {"role": "JG", "total_score": 80.0, "percentile_grade": "S"},
+        ]
+        out = aggregate_role_grades(grades)
+        tier = out["by_role"]["JG"]["tier_distribution"]
+        self.assertEqual(tier["S+"], 1)
+        self.assertEqual(tier["S"], 2)
+        self.assertEqual(tier["A"], 0)
+
+    def test_tier_distribution_carries_all_6_tiers(self):
+        out = aggregate_role_grades([
+            {"role": "SUP", "total_score": 50.0, "percentile_grade": "B"},
+        ])
+        self.assertEqual(set(out["by_role"]["SUP"]["tier_distribution"].keys()), set(_TIER_ORDER))
+        self.assertEqual(set(out["overall"]["tier_distribution"].keys()), set(_TIER_ORDER))
+
+    def test_unknown_role_is_dropped(self):
+        # If iter_role_grades emits an unexpected role string, the
+        # aggregator skips it rather than crashing or creating a new
+        # canonical bucket.
+        out = aggregate_role_grades([
+            {"role": "GHOST", "total_score": 50.0, "percentile_grade": "B"},
+            {"role": "ADC", "total_score": 50.0, "percentile_grade": "B"},
+        ])
+        self.assertEqual(out["total_matches_scored"], 1)
+        self.assertEqual(out["by_role"]["ADC"]["count"], 1)
+        self.assertNotIn("GHOST", out["by_role"])
+
+    def test_unknown_tier_string_demotes_to_d(self):
+        out = aggregate_role_grades([
+            {"role": "MID", "total_score": 50.0, "percentile_grade": "ZZZ"},
+        ])
+        self.assertEqual(out["by_role"]["MID"]["tier_distribution"]["D"], 1)
+
+
+class BuildReportSchemaV2Tests(unittest.TestCase):
+    """build_report still ships schema_version=2 even when the role_grades
+    section is added in main() (not in build_report itself). The schema
+    bump propagates to all downstream consumers."""
+
+    def test_schema_version_is_2(self):
+        report = build_report([], dict.fromkeys(PATTERN_KEYS, 0), [])
+        self.assertEqual(report["schema_version"], 2)
+
+
+class MainRoleGradesIntegrationTests(unittest.TestCase):
+    """main() writes the role_grades envelope to the JSON output."""
+
+    def test_main_writes_role_grades_section(self):
+        tmpdir = pathlib.Path(tempfile.mkdtemp(prefix="postmortem_rg_main_"))
+        try:
+            db = tmpdir / "rewind.db"
+            fixture = _build_fixture_db(db)
+            out = tmpdir / "out.json"
+            rc = main([
+                "--db", str(db),
+                "--puuid", fixture["self_puuid"],
+                "--output", str(out),
+            ])
+            self.assertEqual(rc, 0)
+            data = json.loads(out.read_text(encoding="utf-8"))
+            self.assertIn("role_grades", data)
+            rg = data["role_grades"]
+            self.assertIn("total_matches_scored", rg)
+            self.assertIn("overall", rg)
+            self.assertIn("by_role", rg)
+            self.assertEqual(rg["total_matches_scored"], 1)
+            self.assertEqual(rg["by_role"]["MID"]["count"], 1)
+            self.assertEqual(rg["by_role"]["ADC"]["count"], 0)
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 if __name__ == "__main__":

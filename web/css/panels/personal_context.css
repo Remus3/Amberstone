@@ -130,3 +130,158 @@
 .personal-context-empty[hidden] {
   display: none;
 }
+
+/* Role-grade card (item 131 Slice A consumer; postmortem schema_version=2).
+ * Mounts BELOW the top-3 death-pattern cards; renders a big overall
+ * median score + S+/S/A/B/C/D tier strip + per-role mini-rows.
+ */
+.personal-context-rolegrade {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.personal-context-rolegrade[hidden] {
+  display: none;
+}
+
+.personal-context-rolegrade-head {
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--signal-dim, #8a8e9c);
+}
+
+.personal-context-rolegrade-overall {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.personal-context-rolegrade-score {
+  font-size: var(--fs-lg, 22px);
+  font-weight: 700;
+  color: inherit;
+}
+
+.personal-context-rolegrade-score[data-tier="S+"],
+.personal-context-rolegrade-score[data-tier="S"] {
+  color: var(--signal-good, #4cd964);
+}
+
+.personal-context-rolegrade-score[data-tier="A"] {
+  color: var(--signal-info, #8a8cf0);
+}
+
+.personal-context-rolegrade-score[data-tier="B"] {
+  color: inherit;
+}
+
+.personal-context-rolegrade-score[data-tier="C"] {
+  color: var(--signal-warn, #f1b04a);
+}
+
+.personal-context-rolegrade-score[data-tier="D"] {
+  color: var(--signal-bad, #f06b6b);
+}
+
+.personal-context-rolegrade-count {
+  font-size: var(--fs-xs, 11px);
+  color: var(--signal-dim, #8a8e9c);
+}
+
+.personal-context-rolegrade-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.personal-context-rolegrade-tier {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: var(--fs-xs, 11px);
+}
+
+.personal-context-rolegrade-tier[data-tier="S+"],
+.personal-context-rolegrade-tier[data-tier="S"] {
+  color: var(--signal-good, #4cd964);
+}
+
+.personal-context-rolegrade-tier[data-tier="A"] {
+  color: var(--signal-info, #8a8cf0);
+}
+
+.personal-context-rolegrade-tier[data-tier="C"] {
+  color: var(--signal-warn, #f1b04a);
+}
+
+.personal-context-rolegrade-tier[data-tier="D"] {
+  color: var(--signal-bad, #f06b6b);
+}
+
+.personal-context-rolegrade-tier-label {
+  font-weight: 700;
+}
+
+.personal-context-rolegrade-byrole {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.personal-context-rolegrade-byrole:empty {
+  display: none;
+}
+
+.personal-context-rolegrade-role {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: var(--fs-xs, 11px);
+}
+
+.personal-context-rolegrade-role-name {
+  font-weight: 700;
+  color: var(--signal-dim, #8a8e9c);
+}
+
+.personal-context-rolegrade-role-score {
+  text-align: left;
+  font-weight: 700;
+}
+
+.personal-context-rolegrade-role[data-tier="S+"] .personal-context-rolegrade-role-score,
+.personal-context-rolegrade-role[data-tier="S"] .personal-context-rolegrade-role-score {
+  color: var(--signal-good, #4cd964);
+}
+
+.personal-context-rolegrade-role[data-tier="A"] .personal-context-rolegrade-role-score {
+  color: var(--signal-info, #8a8cf0);
+}
+
+.personal-context-rolegrade-role[data-tier="C"] .personal-context-rolegrade-role-score {
+  color: var(--signal-warn, #f1b04a);
+}
+
+.personal-context-rolegrade-role[data-tier="D"] .personal-context-rolegrade-role-score {
+  color: var(--signal-bad, #f06b6b);
+}
+
+.personal-context-rolegrade-role-count {
+  text-align: right;
+  color: var(--signal-dim, #8a8e9c);
+}

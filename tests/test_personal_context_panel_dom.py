@@ -181,5 +181,120 @@ class AsciiHygieneTests(unittest.TestCase):
         )
 
 
+class RoleGradeCardMountTests(unittest.TestCase):
+    """The role-grade card (item 131 Slice A consumer) mounts BELOW the
+    top-3 death-pattern cards, inside the same personal-context section."""
+
+    def test_rolegrade_section_mount(self):
+        html = _read(INDEX_HTML)
+        self.assertIn('id="personal-context-rolegrade"', html)
+
+    def test_rolegrade_starts_hidden(self):
+        html = _read(INDEX_HTML)
+        block = html.split('id="personal-context-rolegrade"', 1)[1].split(">", 1)[0]
+        self.assertIn("hidden", block)
+
+    def test_rolegrade_lives_inside_personal_context_section(self):
+        html = _read(INDEX_HTML)
+        # The personal-context section contains both the top-3 list and the
+        # role-grade card; the latter is mounted before the section closes.
+        section_start = html.find('id="personal-context-section"')
+        section = html[section_start:]
+        rg_pos = section.find('id="personal-context-rolegrade"')
+        self.assertGreater(rg_pos, 0,
+                           "role-grade card must live inside #personal-context-section")
+
+    def test_rolegrade_score_mount(self):
+        html = _read(INDEX_HTML)
+        self.assertIn('id="personal-context-rolegrade-score"', html)
+
+    def test_rolegrade_count_mount(self):
+        html = _read(INDEX_HTML)
+        self.assertIn('id="personal-context-rolegrade-count"', html)
+
+    def test_rolegrade_tiers_mount(self):
+        html = _read(INDEX_HTML)
+        self.assertIn('id="personal-context-rolegrade-tiers"', html)
+
+    def test_rolegrade_byrole_mount(self):
+        html = _read(INDEX_HTML)
+        self.assertIn('id="personal-context-rolegrade-byrole"', html)
+
+    def test_rolegrade_after_list_in_dom_order(self):
+        # The role-grade card is mounted AFTER the death-pattern list so the
+        # top-3 stays the primary visual signal.
+        html = _read(INDEX_HTML)
+        list_idx = html.find('id="personal-context-list"')
+        rg_idx = html.find('id="personal-context-rolegrade"')
+        self.assertGreater(rg_idx, list_idx)
+
+
+class RoleGradeRenderHelpersTests(unittest.TestCase):
+    """The panel JS exports the renderer + tier helper main.js consumes."""
+
+    def test_score_tier_helper_present(self):
+        js = _read(PANEL_JS)
+        self.assertIn("function _scoreTier", js)
+
+    def test_render_role_grades_present(self):
+        js = _read(PANEL_JS)
+        self.assertIn("function _renderRoleGrades", js)
+
+    def test_render_role_grades_called_from_render(self):
+        js = _read(PANEL_JS)
+        self.assertIn("_renderRoleGrades(data.role_grades)", js)
+
+    def test_tier_order_constant_present(self):
+        js = _read(PANEL_JS)
+        # All 6 tiers must be present in the iteration order.
+        for tier in ('"S+"', '"S"', '"A"', '"B"', '"C"', '"D"'):
+            self.assertIn(tier, js)
+
+    def test_canonical_roles_constant_present(self):
+        js = _read(PANEL_JS)
+        # The 5 canonical role keys.
+        for role in ('"TOP"', '"JG"', '"MID"', '"ADC"', '"SUP"'):
+            self.assertIn(role, js)
+
+    def test_role_row_html_helper_present(self):
+        js = _read(PANEL_JS)
+        self.assertIn("function _roleRowHtml", js)
+
+
+class RoleGradeCssTests(unittest.TestCase):
+    """CSS rules + hidden-state selectors for the role-grade card."""
+
+    def test_rolegrade_card_rule_present(self):
+        css = _read(PANEL_CSS)
+        self.assertIn(".personal-context-rolegrade", css)
+
+    def test_rolegrade_hidden_rule_present(self):
+        css = _read(PANEL_CSS)
+        # display: none on the [hidden] selector so the card cleanly hides
+        # when there's no data even though the parent flex layout would
+        # otherwise reserve space.
+        self.assertIn(".personal-context-rolegrade[hidden]", css)
+
+    def test_rolegrade_tier_variants_present(self):
+        css = _read(PANEL_CSS)
+        # Tier-attribute variants drive color tinting on the overall score
+        # block + the per-tier chips.
+        for tier in ('"S+"', '"S"', '"A"', '"C"', '"D"'):
+            self.assertIn(f'data-tier={tier}', css)
+
+
+class RoleGradeEmptyStateTests(unittest.TestCase):
+    """When role_grades is absent or empty, the card stays hidden."""
+
+    def test_render_role_grades_hides_on_null(self):
+        js = _read(PANEL_JS)
+        # The renderer must guard against missing data.
+        self.assertIn('if (!rg || typeof rg !== "object")', js)
+
+    def test_render_role_grades_hides_on_zero_count(self):
+        js = _read(PANEL_JS)
+        self.assertIn("totalScored <= 0", js)
+
+
 if __name__ == "__main__":
     unittest.main()

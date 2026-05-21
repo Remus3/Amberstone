@@ -11,7 +11,11 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.death_patterns_loader import personal_context_block, top_patterns  # noqa: E402
+from core.death_patterns_loader import (  # noqa: E402
+    personal_context_block,
+    role_grades_summary,
+    top_patterns,
+)
 
 
 def _write(tmp: pathlib.Path, data: dict) -> pathlib.Path:
@@ -97,6 +101,90 @@ class FormatTests(unittest.TestCase):
                 "patterns": {"solo_pickoff": {"label": "Solo pickoffs", "description": "x", "count": 1}},
             })
             self.assertTrue(personal_context_block(p).startswith("\n"))
+        finally:
+            import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+
+class RoleGradesSummaryTests(unittest.TestCase):
+    """role_grades_summary returns the role_grades envelope from the
+    postmortem JSON; fail-soft when the section is absent (schema v1) or
+    the file is missing/malformed."""
+
+    def test_missing_file_returns_empty(self):
+        self.assertEqual(role_grades_summary(pathlib.Path("nonexistent.json")), {})
+
+    def test_malformed_json_returns_empty(self):
+        tmp = pathlib.Path(tempfile.mkdtemp(prefix="dpl_rg_"))
+        try:
+            p = tmp / "bad.json"
+            p.write_text("not json {", encoding="utf-8")
+            self.assertEqual(role_grades_summary(p), {})
+        finally:
+            import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_schema_v1_without_role_grades_returns_empty(self):
+        tmp = pathlib.Path(tempfile.mkdtemp(prefix="dpl_rg_"))
+        try:
+            p = _write(tmp, {"schema_version": 1, "top3": [], "patterns": {}})
+            self.assertEqual(role_grades_summary(p), {})
+        finally:
+            import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_populated_returns_envelope(self):
+        tmp = pathlib.Path(tempfile.mkdtemp(prefix="dpl_rg_"))
+        try:
+            payload = {
+                "schema_version": 2,
+                "top3": [],
+                "patterns": {},
+                "role_grades": {
+                    "total_matches_scored": 7,
+                    "overall": {
+                        "count": 7,
+                        "median_score": 42,
+                        "tier_distribution": {"S+": 0, "S": 1, "A": 1, "B": 2, "C": 1, "D": 2},
+                    },
+                    "by_role": {
+                        "ADC": {"count": 3, "median_score": 60, "tier_distribution": {"S+": 0, "S": 0, "A": 1, "B": 2, "C": 0, "D": 0}},
+                        "SUP": {"count": 0, "median_score": 0, "tier_distribution": {"S+": 0, "S": 0, "A": 0, "B": 0, "C": 0, "D": 0}},
+                        "JG": {"count": 0, "median_score": 0, "tier_distribution": {"S+": 0, "S": 0, "A": 0, "B": 0, "C": 0, "D": 0}},
+                        "MID": {"count": 4, "median_score": 30, "tier_distribution": {"S+": 0, "S": 1, "A": 0, "B": 0, "C": 1, "D": 2}},
+                        "TOP": {"count": 0, "median_score": 0, "tier_distribution": {"S+": 0, "S": 0, "A": 0, "B": 0, "C": 0, "D": 0}},
+                    },
+                },
+            }
+            p = _write(tmp, payload)
+            rg = role_grades_summary(p)
+            self.assertEqual(rg["total_matches_scored"], 7)
+            self.assertEqual(rg["overall"]["median_score"], 42)
+            self.assertEqual(rg["by_role"]["ADC"]["count"], 3)
+        finally:
+            import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_role_grades_not_dict_returns_empty(self):
+        tmp = pathlib.Path(tempfile.mkdtemp(prefix="dpl_rg_"))
+        try:
+            p = _write(tmp, {"schema_version": 2, "role_grades": "broken"})
+            self.assertEqual(role_grades_summary(p), {})
+        finally:
+            import shutil; shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_no_isolation_from_top_patterns(self):
+        """role_grades_summary + top_patterns read the SAME file without
+        either helper holding any state - calling order is irrelevant."""
+        tmp = pathlib.Path(tempfile.mkdtemp(prefix="dpl_rg_"))
+        try:
+            p = _write(tmp, {
+                "schema_version": 2,
+                "top3": ["solo_pickoff"],
+                "patterns": {"solo_pickoff": {"label": "Solo pickoffs", "description": "x", "count": 5}},
+                "role_grades": {"total_matches_scored": 2, "overall": {"count": 2, "median_score": 50, "tier_distribution": {}}, "by_role": {}},
+            })
+            # call in both orders to confirm no shared mutable state
+            self.assertEqual(len(top_patterns(p)), 1)
+            self.assertEqual(role_grades_summary(p)["total_matches_scored"], 2)
+            self.assertEqual(role_grades_summary(p)["total_matches_scored"], 2)
+            self.assertEqual(len(top_patterns(p)), 1)
         finally:
             import shutil; shutil.rmtree(tmp, ignore_errors=True)
 
