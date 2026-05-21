@@ -1537,24 +1537,31 @@
           </div>
         </div>
 
-        <!-- s219 v5: TEAM COMPOSITION title swapped for a tabbed panel
-             (Comp / Chart / Review). Quick Review folded in as the
-             Review tab so the panel uses one shared box. Deep Review
-             button sits in the tab nav right side, always visible. -->
+        <!-- s220 PGR S4: tab nav reframed 4 -> 3 (Build / Graph / AI
+             Analysis) per the aggregator G pattern. Build = rosters with
+             per-player items (was Comp); Graph = team-aggregate bars +
+             per-minute differential sparklines + objective ribbon (was
+             Chart + the visuals half of Timeline); AI Analysis = WPA
+             "Phases that mattered" + 3-column Quick Review (was the
+             heuristic-insights half of Timeline + Insights). Review
+             nav button stays - it routes out to the deep-review page,
+             not a sibling panel. Legacy localStorage values (comp /
+             chart / timeline / insights) migrate to the new ids in
+             last_match.js wireLastMatchOnce. -->
         <div class="lm-section lm-tabbed-section" id="lm-tabbed-section">
           <nav class="lm-tabs-nav">
             <div class="lm-tabs-strip">
-              <button type="button" class="lm-tab is-active" data-tab="comp">Comp</button>
-              <button type="button" class="lm-tab"          data-tab="chart">Chart</button>
-              <button type="button" class="lm-tab"          data-tab="timeline">Timeline</button>
-              <button type="button" class="lm-tab"          data-tab="insights">Insights</button>
+              <button type="button" class="lm-tab is-active" data-tab="build">Build</button>
+              <button type="button" class="lm-tab"          data-tab="graph">Graph</button>
+              <button type="button" class="lm-tab"          data-tab="ai-analysis">AI Analysis</button>
               <button type="button" class="lm-tab lm-tab-nav" id="lm-go-to-review"
                       data-tt="Open the deeper step-by-step Review page for this match">Review →</button>
             </div>
           </nav>
 
-          <!-- COMP tab - ally + enemy rosters side-by-side -->
-          <div class="lm-tab-panel is-active" data-tab-panel="comp">
+          <!-- BUILD tab - ally + enemy rosters side-by-side (full items
+               + summoners + augments per row). Was "Comp" in S3. -->
+          <div class="lm-tab-panel is-active" data-tab-panel="build">
             <div class="lm-tc-table lm-row-half" id="lm-tc-table" hidden>
               <div class="lm-tc-group lm-tc-ally" data-side="ally">
                 <div class="lm-tc-group-head">
@@ -1583,42 +1590,42 @@
             </div>
           </div>
 
-          <!-- CHART tab - team comparison bars (ally vs enemy aggregates) -->
-          <div class="lm-tab-panel" data-tab-panel="chart" hidden>
+          <!-- GRAPH tab - team-aggregate bars + per-minute differential
+               sparklines + objective ribbon. Merges the s219 Chart tab +
+               the visuals half of the s220 Timeline tab. -->
+          <div class="lm-tab-panel" data-tab-panel="graph" hidden>
             <div class="lm-chart-wrap" id="lm-chart-wrap" hidden>
               <ul class="lm-chart-list" id="lm-chart-list"></ul>
             </div>
-            <div class="lm-pending" id="lm-chart-pending">
-              Chart pending - populates from LCU enrichment alongside the Comp roster.
-            </div>
-          </div>
-
-          <!-- TIMELINE tab - per-minute gold/XP/CS differential + objective
-               ribbon (s220 Item E phase 1). Phase 2 reuses the same
-               ingested timeline for an interactive replay minimap. -->
-          <div class="lm-tab-panel" data-tab-panel="timeline" hidden>
             <div class="lm-tl-wrap" id="lm-tl-wrap" hidden>
               <div class="lm-tl-charts" id="lm-tl-charts"></div>
               <div class="lm-tl-ribbon-head">Objectives</div>
               <ul class="lm-tl-ribbon" id="lm-tl-ribbon"></ul>
             </div>
-            <!-- s220 PGR S2: phases-that-mattered. WPA decomposition of
-                 the rewind_history.db timeline. Mounts inside the same
-                 Timeline tab so the operator sees objectives + WPA next
-                 to each other. -->
+            <!-- s220 PGR S4: single shared placeholder for the merged
+                 Graph panel. Pre-S4 the Chart + Timeline tabs each
+                 carried their own pending block; in the merged panel
+                 that surfaced as a stray "Timeline unavailable" banner
+                 under the Chart bars whenever LCU enrichment landed
+                 but Match-V5 timeline didn't (event modes, pre-key
+                 imports). _setTimeline still references lm-tl-pending
+                 by id - the lookup just no-ops when absent. -->
+            <div class="lm-pending" id="lm-chart-pending">
+              Graph pending - team-aggregate bars populate from LCU enrichment; per-minute sparklines + objective ribbon load when the Riot Match-V5 timeline lands.
+            </div>
+          </div>
+
+          <!-- AI ANALYSIS tab - WPA "Phases that mattered" (heuristic
+               decomposition of the rewind_history.db timeline) + the
+               3-column Quick Review. Merges the analysis half of the
+               s220 Timeline tab + the s219 Insights tab. -->
+          <div class="lm-tab-panel" data-tab-panel="ai-analysis" hidden>
+            <!-- s220 PGR S2: phases-that-mattered. WPA decomposition. -->
             <div class="lm-wpa-wrap" id="lm-wpa-wrap" hidden>
               <div class="lm-wpa-head">Phases that mattered</div>
               <ol class="lm-wpa-list" id="lm-wpa-list"></ol>
               <div class="lm-wpa-foot" id="lm-wpa-foot"></div>
             </div>
-            <div class="lm-pending" id="lm-tl-pending">
-              Timeline unavailable - gold / XP / CS deltas + objective events load from the Riot Match-V5 timeline once a valid Riot API key is configured.
-            </div>
-          </div>
-
-          <!-- INSIGHTS tab - the 3-column Quick Review folded in. (The
-               "Review" tab is a nav button → deep-review page, no panel.) -->
-          <div class="lm-tab-panel" data-tab-panel="insights" hidden>
             <div class="lm-tab-panel-hint">hover any row for the data behind it</div>
             <div class="lm-qr-cols">
               <div class="lm-qr-col lm-qr-col-right">
