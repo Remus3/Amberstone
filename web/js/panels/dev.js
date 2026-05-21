@@ -2,6 +2,9 @@
 import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
+// s220 PGR S5: Match-V5 timeline event ribbon for the Replay view.
+// Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
+import { loadReplayEvents, wireReplayEventsOnce } from './replay_events.js';
 
 // ── Settings view (2026-04-26) ───────────────────────────────────
 function _settingsRefresh() {
@@ -252,6 +255,15 @@ function _replayLoadItemsIndex() {
     .catch(() => null);
 }
 function _replayViewRefresh() {
+  // s220 PGR S5: auto-select the focused match when arriving from
+  // PGR's "Review ->" button. The button stashes the match id to
+  // sessionStorage.rc-replay-focus-match; we consume + clear it so
+  // a later manual selection isn't overridden on the next view nav.
+  let focusMatchId = null;
+  try {
+    focusMatchId = sessionStorage.getItem("rc-replay-focus-match") || null;
+    if (focusMatchId) sessionStorage.removeItem("rc-replay-focus-match");
+  } catch (_) {}
   fetch("/api/replay/matches?limit=30")
     .then(r => r.ok ? r.json() : null)
     .then(j => {
@@ -263,6 +275,7 @@ function _replayViewRefresh() {
         ul.innerHTML = '<li class="home-empty">no matches in rewind_history.db</li>';
         return;
       }
+      let focusRow = null;
       for (const m of items) {
         const li = document.createElement("li");
         li.className = "replay-match-row";
@@ -290,6 +303,13 @@ function _replayViewRefresh() {
         li.append(top, bot);
         li.addEventListener("click", () => _replayLoadMatch(m.match_id, li));
         ul.appendChild(li);
+        if (focusMatchId && m.match_id === focusMatchId) focusRow = li;
+      }
+      // s220 PGR S5: auto-load the focused match (from PGR Review ->).
+      // Fires AFTER all rows are mounted so .active highlighting works.
+      if (focusRow) {
+        _replayLoadMatch(focusMatchId, focusRow);
+        try { focusRow.scrollIntoView({ block: "nearest" }); } catch (_) {}
       }
     })
     .catch(e => console.warn("replay matches:", e));
@@ -300,6 +320,10 @@ function _replayLoadMatch(matchId, rowEl) {
   if (rowEl) rowEl.classList.add("active");
   const meta = document.getElementById("replay-meta");
   if (meta) meta.textContent = "loading " + matchId + "…";
+  // s220 PGR S5: fire the Match-V5 timeline event ribbon fetch in
+  // parallel with the per-frame snapshot fetch below. Both target
+  // the same matchId so the ribbon + scrubber are coherent.
+  try { loadReplayEvents(matchId); } catch (_) {}
   fetch("/api/replay/match/" + encodeURIComponent(matchId))
     .then(r => r.ok ? r.json() : null)
     .then(d => {
@@ -397,6 +421,8 @@ function _replayViewWireOnce() {
       _replayRenderSnapshot(_REPLAY.snapshotIdx);
     });
   }
+  // s220 PGR S5: wire the event-ribbon filter checkboxes once.
+  try { wireReplayEventsOnce(); } catch (_) {}
 }
 
 export {
