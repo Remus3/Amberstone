@@ -626,6 +626,13 @@
   border-top: 1px solid var(--border-soft);
   margin-top: 12px;
 }
+/* s220 PGR S4: hide the wrap completely when renderPhases sets
+ * wrap.hidden = true (no timeline / no phases). Pre-S4 this was
+ * inside the Timeline tab which itself was hidden, so the missing
+ * [hidden] selector never surfaced; in S4 the WPA wrap lives at the
+ * top of the AI Analysis tab and the Phases-that-mattered heading
+ * bled through. Mirrors the existing .lm-tl-wrap[hidden] pattern. */
+.lm-wpa-wrap[hidden] { display: none; }
 .lm-wpa-head {
   font-size: 17px; font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;
