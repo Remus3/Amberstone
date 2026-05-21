@@ -504,6 +504,12 @@
       <div class="panel-body">
         <div class="action" id="rn-action">-</div>
         <div class="immediate" id="rn-immediate">awaiting coach output…</div>
+        <!-- A/B tutoring choices (item 119). When state.coach.choices is
+             non-empty, web/js/panels/coach_choices.js paints 2-3 chip
+             buttons here; otherwise the mount stays hidden + the prose
+             stream below is unchanged. Click logs to decisions_log.jsonl
+             via /api/coach-choice. -->
+        <div id="rn-choices" hidden></div>
         <div class="kv">
           <span>Watch</span><span id="rn-risk">-</span>
         </div>

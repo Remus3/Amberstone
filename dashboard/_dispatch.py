@@ -117,6 +117,7 @@ def _gather_post() -> list:
                                routes_diag, routes_coach, routes_bridge,
                                routes_bridge_pending, routes_bridge_cadence,
                                routes_bridge_pending_actions,
+                               routes_coach_choice,
                                routes_health_peer,
                                routes_loadout, routes_lobby_aux, routes_metrics,
                                routes_sr_draft, routes_sr_user_builds,
@@ -131,6 +132,7 @@ def _gather_post() -> list:
                        + list(routes_bridge_pending.POST_ROUTES)
                        + list(routes_bridge_cadence.POST_ROUTES)
                        + list(routes_bridge_pending_actions.POST_ROUTES)
+                       + list(routes_coach_choice.POST_ROUTES)
                        + list(routes_health_peer.POST_ROUTES)
                        + list(routes_loadout.POST_ROUTES)
                        + list(routes_lobby_aux.POST_ROUTES)
