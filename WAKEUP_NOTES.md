@@ -3,6 +3,92 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-20/21 - HEADLESS UPGRADE RUN (6h, 23:22 CST -> 05:22 CST): /headless-upgrade skill collapse + A/B tutoring coach + rewind DB live writer + design tokens + champ_select prompt-cache + dict cache + UI polish sweep + 3-no-change DS audit pass
+
+Operator-authorized 6-hour autonomous run with full authority + no user gating (20-day 100% acceptance pattern). Frozen-file edits permitted this run only.
+
+**Scope reorientation:** collapse /done /clear /continue /compact /memory /audit /test /iterate /new-tech into one /headless-upgrade. Skill removes specific lever names + reorients to find cost+latency wins without product degradation. Up to 24 parallel worktree agents per task; orchestrator (this Claude) merges + resolves conflicts.
+
+**8 commits, all pushed, all green CI:**
+- `642d43b` chore(headless): /headless-upgrade skill rewrite + dict cache + alert poll
+- `045d5fc` feat(coach): A/B tutoring choice block (chip buttons + read-only journal)
+- `3d39ae7` Merge worktree D (design tokens)
+- `0dbe5c9` Merge worktree B (rewind live writer)
+- `a5efe11` fix(tests): ruff B017 - assertRaises(Exception) -> AttributeError
+- `4064f87` perf(coach): apply prompt cache markers on champ_select_coach.py
+- merge worktree F (UI polish: tabular-nums + text-wrap balance + .action pulse + draft_elo ESC)
+- final docs sync commit (this commit)
+
+**1. /headless-upgrade skill** (`tools/headless-upgrade.md` + `.claude/commands/headless-upgrade.md` mirror): 16 sections, full authority no-gating, max 24 parallel agents. Orchestrator pattern; design tokens; cost+latency lever sweep; UI/UX deep dive checklist (8px grid + 4-tier fs + semantic colors + widget unification + overlay design); A/B tutoring section; DS audit rule (11-no-change halt); rewind DB live wire; interrupt protocol; ASCII hygiene; anti-patterns; final-banner format.
+
+**2. A/B tutoring coach choice block.** Reframes coach output from prose-only to optional A/B/C micro-decisions per tick. Each choice = key letter, label, expected outcome, confidence band (low/mid/high), source tag.
+ - `core/coach_choices.py`: CoachChoice frozen dataclass; parse_choices forgiving parser; synthesize_simple_choices pure-Python fallback (Contest/Concede, Engage/Disengage, Push/Freeze, Recall/Stay, Ward/Skip, Rotate/Hold, Siege/Disengage).
+ - `dashboard/_state_builder.py`: stamps coach.choices (parse > synth > []) on every /api/state envelope.
+ - `dashboard/routes_coach_choice.py` POST /api/coach-choice -> `DecisionStore.record_coach_choice` in `core/decision_detector.py` -> appends type="coach_choice" to data/decisions_log.jsonl.
+ - `web/js/panels/coach_choices.js` + `web/css/panels/coach_choices.css` + `<div id="rn-choices" hidden>` mount between #rn-immediate and Watch row in RIGHT NOW. Chips dedup via signature; click sets selected-class + POSTs.
+ - Cost gate: native-emit rides existing per-tick coach call; synthesizer is zero-LLM bootstrap fallback. Read-only-first (no input wire, no auto-apply).
+ - Live curl: POST /api/coach-choice 200 + entry in decisions_log.jsonl confirms end-to-end.
+ - +51 tests across 3 files (parser safety + synth + serialization + ASCII + DOM mount + route validation + dispatch inclusion + 500 path).
+
+**3. Rewind DB live writer (worktree B).** Streams new matches into rewind_history.db post-gameEnd (90s delay) instead of waiting for Sunday cron.
+ - NEW `lib/rewind_live_writer.py` (347 LOC): schedule_live_insert(app) -> threading.Timer(90.0, daemon=True). Reuses scripts/rewind_scraper:insert_rows + scripts/rewind_catchup:write_match.
+ - Hook = `app/_game_lifecycle.py::on_game_end()` (frozen file, +10 LOC under run grant) - isolated try/except after the existing postgame collector trigger. Fire-and-forget.
+ - Failure modes silent: 404 (event mode), 403 (Personal-key), PUUID rotated, DC, gameDuration < 180s. 1 retry after 60s; abandons.
+ - Idempotency: matches.match_id PRIMARY KEY + INSERT OR IGNORE. Pre-write probe skips Match-V5 round-trip.
+ - +29 tests (Scheduler / PuuidResolver / Idempotency / FailureModes / WireSeam).
+ - Weekly RC-RewindCatchup cron STAYS as resume sentinel.
+
+**4. Design tokens (worktree D).** NEW `web/css/tokens.css` declares semantic palette + 4-tier font scale + 8px spacing grid + coach pulse keyframes.
+ - `--signal-good/warn/bad/dim/info/gold` + `--*-soft` variants (rgba 0.18).
+ - `--fs-xs/sm/md/lg/xl` (11/13/15/20/27px) - reserved for future consumption.
+ - `--space-1..6` (4/8/12/16/24/32px) - reserved.
+ - `@keyframes coach-pulse-good/warn/bad` (0.8s ease box-shadow glow).
+ - `.tabular-nums` utility class.
+ - dashboard.css `@import './tokens.css'` first.
+ - 3-panel sweep: draft_elo / ban_suggest_toggle / right_now CSS swap hardcoded hex -> var(). Additive only.
+ - +22 contract tests pinning shape.
+
+**5. Champ-select prompt cache (worktree E).** `coaches/champ_select_coach.py:118` was string-form `system=_SYSTEM_PROMPT` (uncached). Flipped to explicit-block list with `cache_control={"type":"ephemeral"}` mirroring aram_coach.py:743-750. Real cost win on cache_read amortization. +5 pinning tests.
+
+**6. Dictionary cache.** `dashboard/_handler.py:_send` gains optional cache_control kwarg (default "no-store" preserves all existing routes). `dashboard/routes_dictionary.py` opts the 4 dictionary endpoints (items/runes/champion-tags/augments) into `public, max-age=86400, immutable`. The docstring already promised this; implementation was missing. +3 CacheControlTests.
+
+**7. Home alert poll downshift.** `web/js/main.js:2718` home alerts mirror 2000ms -> 5000ms (60% poll-cost drop on idle home view; data updates on user-trigger cadence, not real-time).
+
+**8. UI polish sweep (worktree F).**
+ - tabular-nums across 8 panels (right_now / next / item_build / team_context / augment_reco / spike_curve / ward_heat / draft_elo already).
+ - text-wrap: balance on `.action` + `.action-mid` + `.lm-tc-mvp-name` + `.replay-events-chip-text`.
+ - Coach prompt pulse-glow on .action when text changes between ticks: urgent->bad / fight->warn / good->good, 800ms keyframe dismissal, empty band silent.
+ - draft_elo overlay ESC dismiss (document-level keydown; preserves HoverOnlyContractTests guard - no click handler, no pinned class).
+ - +19 grep-style contract tests (test_ui_polish_2026_05_20.py).
+
+**9. DS audit iter 27/28/29 NO-CHANGE (worktree C).** Statikk Shiv 3087, Rageknife 6677, Trinity Force 3078 Spellblade all verified against live Meraki bulk; engine values match. Streak now 10 consecutive (iter 20-29); 1 short of 11-iter halt rule. ENGINE 1.24.0 unchanged.
+
+**Verified:** all touched files py_compile + ruff + ASCII clean; full RC suite 2533 passed; DS suite 2822 passed (+1 xfailed); CI green across the run (1 ruff B017 fix mid-run); RC :8888 restarted once (route + state builder edits) pid=14824 last_reload_ok=True.
+
+**Memories saved (3 new):**
+- `reference_ab_tutoring_coach.md` - chip wire + cost contract + don't-redo
+- `reference_rewind_live_writer.md` - 90s delay + failure modes + idempotency
+- `reference_design_tokens_css.md` - token palette + opt-in pattern
+
+**Don't-redo (durable):**
+- A/B coach `choices` field is expected on every /api/state envelope (empty list when no synthesizer match); do NOT remove the synthesizer fallback.
+- Rewind live-writer hook is fire-and-forget Timer (daemon=True); do NOT block on_game_end on it.
+- Dict-cache `public, max-age=86400, immutable` is calibrated to patch-refresh cadence.
+- Statikk Shiv no-change was based on live Meraki bulk; do NOT pre-ship rumored buffs - only Meraki-confirmed drift.
+- Design tokens 4-tier font scale + 8px spacing are RESERVED for future consumption; do NOT bump existing selectors without operator approval.
+- HoverOnlyContractTests guards draft_elo against click-to-pin; the ESC handler is the only addition allowed - do NOT add click handler.
+- The orchestrator-merge pattern (worktree agents -> Claude merges sequentially) is the durable template for future headless-upgrade runs.
+
+**Carries forward:**
+- (a) Coach prompt per-mode tuning to emit native `choices` arrays (no LLM cost; prompt engineering across aram/arena/brawl/sr coaches).
+- (b) DS audit streak is at 10 - 1 more no-change halts the cycle (operator-gated whether to do 11th confirmation pass or declare halt).
+- (c) Arena S2 patch 26.09 reconnaissance + CSS anchor-positioning lift remain operator-gated.
+- (d) Prompt-cache marker pattern from worktree E should be 1-grep'd against any OTHER coach not already using it.
+- (e) All item 118 / 117 / 116 / 115 carries forward unchanged.
+
+Frozen-file grant used minimally (1 line in app/_game_lifecycle.py); grant does NOT carry forward.
+
+---
 # 2026-05-20 - s220 PGR S5 follow-ups: participant-name join + lm-build-pending dead-id cleanup (1 commit pending, will push; non-engine; no frozen edits; RC restarted once for route module edit)
 
 Closes the two carries-forward from item 117 / s220 S5 per the NEXT_SESSION_QUEUE the prior session left in this file. Operator-authorized scope: non-frozen-files only; commits + pushes allowed; RC restart for route-module edits.
