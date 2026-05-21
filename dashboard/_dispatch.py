@@ -69,6 +69,7 @@ def _gather_get() -> list:
                                routes_loadout, routes_lobby_aux, routes_metrics,
                                routes_pickban, routes_adaptive_summoners,
                                routes_ban_suggestions, routes_dictionary,
+                               routes_personal_context,
                                routes_personal_vs,
                                routes_post_game_wpa,
                                routes_replay_events,
@@ -97,6 +98,7 @@ def _gather_get() -> list:
                       + list(routes_adaptive_summoners.GET_ROUTES)
                       + list(routes_ban_suggestions.GET_ROUTES)
                       + list(routes_dictionary.GET_ROUTES)
+                      + list(routes_personal_context.GET_ROUTES)
                       + list(routes_personal_vs.GET_ROUTES)
                       + list(routes_post_game_wpa.GET_ROUTES)
                       + list(routes_replay_events.GET_ROUTES)
