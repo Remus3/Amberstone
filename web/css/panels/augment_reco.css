@@ -95,6 +95,8 @@
   font-weight: 700;
   color: var(--text-faint);
   text-align: center;
+  /* Tabular-nums so the #1..#N rank digits stay column-aligned. */
+  font-variant-numeric: tabular-nums;
 }
 .ib-aug-reco-block .ar-row.is-top .ar-rank { color: var(--gold); }
 
@@ -152,4 +154,7 @@
   font-size: 13px;
   color: var(--text-faint);
   letter-spacing: 0.02em;
+  /* Meta carries sample-density digits (n=N games) + minor stats;
+   * tabular-nums keeps the digit run aligned in the footer line. */
+  font-variant-numeric: tabular-nums;
 }

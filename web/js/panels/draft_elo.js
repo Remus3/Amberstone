@@ -223,6 +223,43 @@ export function _resetDraftElo() {
   for (const k of Object.keys(_DE_SIG)) delete _DE_SIG[k];
 }
 
+// 2026-05-20 UI polish: ESC dismisses any visible
+// .draft-elo-contributions overlay. The CSS contract is hover-only
+// per HoverOnlyContractTests in tests/test_draft_elo_panel_dom.py
+// (no click-to-pin, no pinned class, no click-event bindings;
+// pointer-events:none on overlay so it cannot be clicked anyway).
+// ESC is an orthogonal escape hatch for the operator who hovered
+// over the chip while reading the rest of the page and wants the
+// overlay gone without moving the cursor.
+//
+// Mechanism: ESC walks every .draft-elo-contributions and sets inline
+// style.display = "none". Inline style wins over the :hover stylesheet
+// rule via the cascade. On the chip's next mouseleave we clear the
+// inline style so the hover-to-show contract resumes on the next
+// hover cycle. This adds no click bindings, no pinned class, and
+// no persistent JS state - the existing contract guards stay green.
+if (typeof document !== "undefined" && !document.__deEscBound) {
+  document.__deEscBound = true;
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" && e.code !== "Escape") return;
+    const overlays = document.querySelectorAll(".draft-elo-contributions");
+    overlays.forEach((o) => {
+      if (getComputedStyle(o).display === "none") return;
+      o.style.display = "none";
+      // Clear the inline override on mouseleave of the parent chip so
+      // the next hover cycle reveals the overlay again. one-shot.
+      const chip = o.closest(".draft-elo-chip");
+      if (chip) {
+        const clear = () => {
+          o.style.display = "";
+          chip.removeEventListener("mouseleave", clear);
+        };
+        chip.addEventListener("mouseleave", clear);
+      }
+    });
+  });
+}
+
 export const __test = {
   _cacheKey,
   _signature,
