@@ -1,6 +1,20 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+# NEXT SESSION AUTHORIZED QUEUE (operator approved 2026-05-20, post-S5)
+
+Operator going to play an ARAM. Authorized me to continue autonomously on TWO carries-forward from item 117 / s220 S5:
+
+1. **Participant-name join in /api/replay/events** - currently the event ribbon shows `P1..P10` chips. Join against `participants.summoner_name` + `champion_name` (already populated for the match per the per-frame snapshot fetch) so each event row surfaces real names. Payload bloat acceptable per operator. Touches `dashboard/routes_replay_events.py` (add join + actor_name / actor_champion / victim_name / victim_champion fields) + `web/js/panels/replay_events.js` (consume new fields) + tests/test_routes_replay_events.py (pin new fields).
+
+2. **Pre-existing `lm-build-pending` dead-id cleanup in `_setEmptyState`** - flagged by S4 audit + S5 carry-forward. The id is in the forEach loop at `web/js/panels/last_match.js` `_setEmptyState`; the element doesn't exist in index.html (only `lm-tc-pending` does). `getElementById` returns null + the forEach no-ops; safe to remove. Single-line cleanup.
+
+**OBS video overlay = SEPARATE session** (operator-deferred). Do NOT start it autonomously.
+
+**Authorization scope:** non-frozen-files only (same constraint as items 115/116/117); commits + pushes allowed; RC restart only if a new dashboard route module is added (participant-name join does NOT add a new module - just edits the existing one). Same parallel-audit pattern as S5: dispatch background audit subagent while implementation in-flight.
+
 ---
 # 2026-05-20 - s220 PGR S5 Replay scaffold + Match-V5 timeline events ribbon (1 commit 7870124, pushed; non-engine; no frozen edits; RC restarted once for new route module)
 
