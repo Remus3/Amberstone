@@ -16,6 +16,7 @@ from agents.daemon_slayer.ehp import (
     _armor_factor,
     _aram_damage_taken,
     compute_ehp,
+    effective_cc_duration,
 )
 
 
@@ -410,6 +411,150 @@ class NotesTests(unittest.TestCase):
     def test_sr_mode_no_aram_note(self) -> None:
         r = compute_ehp(self.snap, "Aatrox", level=11, mode="SR")
         self.assertFalse(any("aramDamageTaken" in n for n in r.notes))
+
+
+class EffectiveCcDurationHelperTests(unittest.TestCase):
+    """ENGINE 1.25.0 - the seam consumers call to apply ARAM tenacity to a
+    base CC duration. Pure math; no snapshot needed."""
+
+    def test_identity_at_tenacity_one(self) -> None:
+        self.assertAlmostEqual(effective_cc_duration(1.0, 1.0), 1.0)
+        self.assertAlmostEqual(effective_cc_duration(2.5, 1.0), 2.5)
+
+    def test_shortener_below_one(self) -> None:
+        # 0.80 multiplier -> 1.0s CC becomes 0.80s.
+        self.assertAlmostEqual(effective_cc_duration(1.0, 0.80), 0.80)
+        self.assertAlmostEqual(effective_cc_duration(2.0, 0.50), 1.0)
+
+    def test_lengthener_above_one(self) -> None:
+        # ARAM assassin tenacity > 1.0 means longer CC duration imposed.
+        self.assertAlmostEqual(effective_cc_duration(1.0, 1.20), 1.20)
+        self.assertAlmostEqual(effective_cc_duration(1.5, 1.10), 1.65)
+
+    def test_zero_base_cc_returns_zero(self) -> None:
+        # Edge case: 0s CC stays 0s regardless of tenacity.
+        self.assertEqual(effective_cc_duration(0.0, 1.20), 0.0)
+        self.assertEqual(effective_cc_duration(0.0, 0.80), 0.0)
+
+    def test_negative_base_cc_returns_zero(self) -> None:
+        # Defensive: a malformed caller never gets a negative duration back.
+        self.assertEqual(effective_cc_duration(-1.0, 1.0), 0.0)
+
+    def test_negative_tenacity_floored_at_zero(self) -> None:
+        # Pathological input is clamped; CC duration cannot be negative.
+        self.assertEqual(effective_cc_duration(2.0, -0.5), 0.0)
+
+
+class AramTenacityForwardTests(unittest.TestCase):
+    """ENGINE 1.25.0 - EhpResult.aram_tenacity_mult surfaces the value from
+    the resolved stats dict so downstream consumers (fight-sim, coach
+    prompts) can call effective_cc_duration without re-reading stats."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_aram_assassin_carries_1_2_tenacity(self) -> None:
+        # Zed is one of the 17 ARAM tenacity-modified champs at 1.20.
+        r = compute_ehp(self.snap, "Zed", level=11, mode="ARAM")
+        self.assertAlmostEqual(r.aram_tenacity_mult, 1.20, places=4)
+
+    def test_aram_non_modified_champion_carries_1_0(self) -> None:
+        # Aatrox has no ARAM tenacity modifier - falls through to 1.0.
+        r = compute_ehp(self.snap, "Aatrox", level=11, mode="ARAM")
+        self.assertAlmostEqual(r.aram_tenacity_mult, 1.0, places=4)
+
+    def test_sr_mode_strips_tenacity_to_one(self) -> None:
+        # Even for a champ with non-1.0 ARAM tenacity, SR mode reads 1.0
+        # because engine._apply_mode_modifiers only writes the key when
+        # mode == "ARAM".
+        r = compute_ehp(self.snap, "Zed", level=11, mode="SR")
+        self.assertAlmostEqual(r.aram_tenacity_mult, 1.0, places=4)
+
+    def test_to_dict_includes_tenacity(self) -> None:
+        r = compute_ehp(self.snap, "Akali", level=11, mode="ARAM")
+        d = r.to_dict()
+        self.assertIn("aram_tenacity_mult", d)
+        self.assertAlmostEqual(d["aram_tenacity_mult"], 1.20, places=4)
+
+    def test_aram_tenacity_note_surfaced_when_non_one(self) -> None:
+        # ARAM + non-1.0 tenacity champ -> notes carries the line.
+        r = compute_ehp(self.snap, "Zed", level=11, mode="ARAM")
+        self.assertTrue(
+            any("aramTenacity" in n for n in r.notes),
+            f"expected aramTenacity note, got: {r.notes}",
+        )
+
+    def test_sr_mode_no_tenacity_note(self) -> None:
+        # SR mode never emits the tenacity note even for a tenacity-modified champ.
+        r = compute_ehp(self.snap, "Zed", level=11, mode="SR")
+        self.assertFalse(any("aramTenacity" in n for n in r.notes))
+
+    def test_aram_unmodified_champion_no_tenacity_note(self) -> None:
+        # ARAM but tenacity == 1.0 -> no note (parallel to mode_multiplier rule).
+        r = compute_ehp(self.snap, "Aatrox", level=11, mode="ARAM")
+        self.assertFalse(any("aramTenacity" in n for n in r.notes))
+
+    def test_format_table_renders_tenacity_when_non_one(self) -> None:
+        r = compute_ehp(self.snap, "Zed", level=11, mode="ARAM")
+        out = r.format_table()
+        self.assertIn("tenacity_mult", out)
+
+    def test_format_table_omits_tenacity_when_one(self) -> None:
+        r = compute_ehp(self.snap, "Aatrox", level=11, mode="SR")
+        out = r.format_table()
+        self.assertNotIn("tenacity_mult", out)
+
+    def test_blended_ehp_unchanged_by_tenacity(self) -> None:
+        # The wire is exposure-only on the EHP side; blended_ehp depends
+        # ONLY on HP / armor / mr / mode_multiplier (aramDamageTaken).
+        # Tenacity is a separate axis (CC duration) the consumer pairs
+        # via effective_cc_duration. Verify by computing EHP with
+        # tenacity=1.20 (Zed in ARAM) and confirming the math is
+        # consistent with the inputs without any tenacity-mediated
+        # multiplier.
+        r = compute_ehp(self.snap, "Zed", level=11, mode="ARAM")
+        self.assertAlmostEqual(r.aram_tenacity_mult, 1.20, places=4)
+        # Phys EHP = HP / (armor_factor * mode_mult)
+        expected_phys = r.hp / (_armor_factor(r.armor) * r.mode_multiplier)
+        self.assertAlmostEqual(r.physical_ehp, expected_phys, places=2)
+
+
+class ConsumerComposition125Tests(unittest.TestCase):
+    """ENGINE 1.25.0 - integration sanity: the helper composes correctly
+    when handed the value from EhpResult.aram_tenacity_mult."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_end_to_end_zed_aram_1s_root_becomes_1_2s(self) -> None:
+        r = compute_ehp(self.snap, "Zed", level=11, mode="ARAM")
+        # Caller assumes a 1.0s base root -> in ARAM Zed takes 1.20s.
+        eff = effective_cc_duration(1.0, r.aram_tenacity_mult)
+        self.assertAlmostEqual(eff, 1.20, places=4)
+
+    def test_end_to_end_zed_sr_1s_root_stays_1s(self) -> None:
+        r = compute_ehp(self.snap, "Zed", level=11, mode="SR")
+        eff = effective_cc_duration(1.0, r.aram_tenacity_mult)
+        self.assertAlmostEqual(eff, 1.0, places=4)
+
+    def test_end_to_end_fizz_aram_1s_stun_becomes_1_1s(self) -> None:
+        # Fizz is one of two 1.10 tenacity champs in 16.10.1.
+        r = compute_ehp(self.snap, "Fizz", level=11, mode="ARAM")
+        eff = effective_cc_duration(1.0, r.aram_tenacity_mult)
+        self.assertAlmostEqual(eff, 1.10, places=4)
+
+
+class EngineVersionCurrentTests(unittest.TestCase):
+    """Pin the current ENGINE_VERSION so a future audit catches an
+    accidental revert of the 1.25.0 aram_tenacity_mult wire OR the
+    1.26.0 stacks-schema lift. Updated together with bulk pin sync
+    on every ENGINE bump."""
+
+    def test_engine_version_current(self) -> None:
+        import agents.daemon_slayer as ds
+        self.assertEqual(ds.ENGINE_VERSION, "1.26.0")
 
 
 if __name__ == "__main__":

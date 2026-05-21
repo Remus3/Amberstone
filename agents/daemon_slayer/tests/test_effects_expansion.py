@@ -3941,55 +3941,61 @@ class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
 
 
 class DeadMansPlateShipwreckerTests(unittest.TestCase):
-    """Dead Man's Plate Shipwrecker - iter 16 (2026-05-20) defensive_only flip.
+    """Dead Man's Plate Shipwrecker - ENGINE 1.26.0 (2026-05-21) stack-ramp
+    schema lift.
 
-    Original Phase 4 batch 31 modeling encoded Shipwrecker as a flat 109
-    physical every ~4 attacks (full-Momentum approximation). Meraki 16.10.1
-    has a REWORKED dual-track formula:
-        0.4 * stacks (capped at 40 flat) +
-        stacks% (capped at 100%) of base_ad bonus physical on-hit
-    requiring a Momentum stack model the engine doesn't yet support.
-    Iter 16 flips Dead Man's to defensive_only as a principled deferral
-    (the item is a TANK pick where DPS contribution is incidental).
-    Full re-encoding is a separate Phase-2 session.
+    Pre-1.26.0 history: Phase 4 batch 31 first encoded Shipwrecker as flat
+    109 physical every ~4 attacks (the pre-rework full-Momentum
+    approximation). Iter 16 (2026-05-20) flipped to defensive_only when
+    Meraki 16.10.1 surfaced the dual-track formula
+    ``0.4*stacks(cap 40) + stacks%(cap 100%)*base_ad`` and no schema fit.
+    ENGINE 1.26.0 added ``PeriodicProc.stack_ramp_seconds`` - the
+    stack-accumulation -> discharge family extension - and re-encoded
+    Shipwrecker as ``40 + base_ad`` PHYSICAL on first attack post-3.57s
+    ramp (sustained model fires once per max(ramp, attack_period)). The
+    detailed contract is pinned in test_stack_ramp_schema_126.py; the
+    tests below verify the historical pivot didn't regress the entry
+    presence + that DPS lift now exists where it didn't pre-1.26.0.
     """
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    def test_entry_present_and_defensive_only(self) -> None:
+    def test_entry_present_and_has_shipwrecker_proc(self) -> None:
         eff = ITEM_EFFECTS.get("3742")
         self.assertIsNotNone(eff)
-        self.assertTrue(eff.defensive_only)
-        self.assertEqual(len(eff.periodics), 0)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        self.assertEqual(eff.periodics[0].name, "Shipwrecker")
 
     def test_no_unique_passive_key(self) -> None:
         self.assertEqual(ITEM_EFFECTS["3742"].unique_passive_key, "")
 
-    def test_defensive_only_has_deferral_note(self) -> None:
-        # Note documents the Momentum stack model deferral so future
-        # passes can find this entry when the schema lands.
+    def test_note_documents_stacks_schema(self) -> None:
+        # Note documents the ENGINE 1.26.0 stack-ramp schema so future
+        # passes can find this entry as the canonical reference for the
+        # stack-accumulation -> discharge pattern.
         eff = ITEM_EFFECTS["3742"]
         self.assertTrue(len(eff.note) > 0)
-        self.assertIn("Momentum", eff.note)
+        self.assertIn("Shipwrecker", eff.note)
 
-    def test_dps_no_lift_when_defensive(self) -> None:
-        # Sett with Dead Man's vs bare Sett: stat block (HP/armor) does
-        # not push DPS, so a defensive_only item should not lift it
-        # (HP+armor are tankiness contributors, not DPS sources).
+    def test_dps_lifts_with_dead_mans_post_lift(self) -> None:
+        # ENGINE 1.26.0 reversal of the pre-lift "no DPS lift" pin: the
+        # stack-ramp discharge now contributes real DPS (sustained model).
+        # Tank-class champ Sett is a fine fixture - the stat block adds
+        # HP+armor (defense) AND the proc adds DPS (the schema lift).
         bare = compute_dps(self.snap, "Sett", level=11, item_ids=[])
         with_dmp = compute_dps(self.snap, "Sett", level=11, item_ids=["3742"])
-        self.assertAlmostEqual(with_dmp.weighted_dps, bare.weighted_dps, places=1)
+        self.assertGreater(with_dmp.weighted_dps, bare.weighted_dps)
 
-    def test_no_active_shipwrecker_proc_in_dps(self) -> None:
-        # defensive_only items still surface their note (documents the
-        # deferral) but contribute no active proc damage to DPS.
-        bare = compute_dps(self.snap, "Sett", level=11, item_ids=[])
-        with_dmp = compute_dps(self.snap, "Sett", level=11, item_ids=["3742"])
-        # No periodic damage delta - DPS is identical (stat block alone
-        # adds tankiness, not damage, on a defensive_only entry).
-        self.assertAlmostEqual(with_dmp.weighted_dps, bare.weighted_dps, places=1)
+    def test_shipwrecker_proc_active_in_dps(self) -> None:
+        # Sibling of the lift test - assert by ITEM_EFFECTS shape that
+        # the proc is non-defensive and has the expected schema fields.
+        eff = ITEM_EFFECTS["3742"]
+        proc = eff.periodics[0]
+        self.assertEqual(proc.every_n_attacks, 1)
+        self.assertAlmostEqual(proc.stack_ramp_seconds, 3.57, places=4)
 
 
 class SpectralCutlassLethality(unittest.TestCase):
@@ -7796,7 +7802,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.24.0")
+        self.assertEqual(ENGINE_VERSION, "1.26.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7857,7 +7863,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.24.0")
+        self.assertEqual(ENGINE_VERSION, "1.26.0")
 
 
 if __name__ == "__main__":
