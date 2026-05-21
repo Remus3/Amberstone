@@ -8,9 +8,9 @@ read that file at startup and inject the top-3 as PERSONAL CONTEXT so advice
 is calibrated to the operator's actual recurring mistakes instead of a
 generic checklist.
 
-Output schema (v1):
+Output schema (v2):
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "generated_at": "<utc iso>",
       "puuids": [...],
       "total_deaths": N,
@@ -24,7 +24,15 @@ Output schema (v1):
           "description": "what it means + how to avoid"
         }, ...
       },
-      "top3": ["<key>", "<key>", "<key>"]
+      "top3": ["<key>", "<key>", "<key>"],
+      "role_grades": {
+        "total_matches_scored": int,
+        "overall": {"count": N, "median_score": int, "tier_distribution": {...}},
+        "by_role": {
+          "ADC": {"count": N, "median_score": int, "tier_distribution": {...}},
+          ...
+        }
+      }
     }
 
 Patterns (8; all computable from existing schema, no derived data layer):
@@ -36,6 +44,12 @@ Patterns (8; all computable from existing schema, no derived data layer):
   - solo_pickoff:     no ally CHAMPION_KILL within 8s before this death
   - late_throw:       died after 25:00 in-game (late-game positioning errors)
   - rapid_repeat:     died <=60s after a previous death by the same victim (tilt cluster)
+
+Role grades section is the 2nd live consumer of core/post_game_rubric.py
+(shipped item 131 Slice A). Computes a per-match per-role grade for every
+operator participant row carrying a non-empty team_position, aggregates by
+canonical role (ADC/SUP/JG/MID/TOP) + overall via median + tier distribution.
+Event-mode rows (ARAM, Arena, etc., team_position blank) are skipped.
 """
 from __future__ import annotations
 
@@ -53,6 +67,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.post_game_rubric import compute_role_grade  # noqa: E402
 from core.smoothed_rates import laplace_rate, shrink  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "rewind_history.db"
@@ -274,13 +289,149 @@ def build_report(deaths: list[DeathEvent], counts: dict[str, int], puuids: list[
     top3 = sorted(PATTERN_KEYS, key=lambda k: (-patterns_out[k]["count"], k))[:3]
     top3 = [k for k in top3 if patterns_out[k]["count"] > 0]
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "puuids": list(puuids),
         "total_deaths": total,
         "total_matches": matches,
         "patterns": patterns_out,
         "top3": top3,
+    }
+
+
+# Canonical role keys + Match-V5 TeamPosition alias map. Mirrors
+# core/post_game_rubric._ROLE_ALIASES so the postmortem-side normalization
+# matches the rubric's _normalize_role contract exactly.
+_CANONICAL_ROLES = ("ADC", "SUP", "JG", "MID", "TOP")
+_TEAM_POSITION_TO_ROLE: dict[str, str] = {
+    "TOP": "TOP",
+    "JUNGLE": "JG",
+    "MIDDLE": "MID",
+    "BOTTOM": "ADC",
+    "UTILITY": "SUP",
+}
+
+# Tier order matches the rubric bucket order so the rendered tier strip stays
+# in a stable S+/S/A/B/C/D ordering regardless of dict iteration semantics.
+_TIER_ORDER = ("S+", "S", "A", "B", "C", "D")
+
+
+def _empty_tier_distribution() -> dict[str, int]:
+    return {tier: 0 for tier in _TIER_ORDER}
+
+
+def _median(values: list[float]) -> float:
+    """Plain median; returns 0.0 on empty input (fail-soft contract)."""
+    if not values:
+        return 0.0
+    sorted_values = sorted(values)
+    n = len(sorted_values)
+    mid = n // 2
+    if n % 2 == 1:
+        return sorted_values[mid]
+    return (sorted_values[mid - 1] + sorted_values[mid]) / 2.0
+
+
+def iter_role_grades(conn: sqlite3.Connection, puuids: list[str]) -> list[dict]:
+    """Compute a role grade per operator participant row with non-blank team_position.
+
+    Each entry: {role, total_score, percentile_grade}. Event-mode rows
+    (ARAM, Arena - team_position blank) are SKIPPED. Reads game_duration_s
+    off the matches row; falls back to 0 (which compute_role_grade then
+    fail-soft handles).
+    """
+    if not puuids:
+        return []
+    placeholders = ",".join("?" * len(puuids))
+    sql = f"""
+        SELECT
+            p.team_position,
+            p.kills, p.deaths, p.assists,
+            p.total_minions_killed, p.neutral_minions_killed,
+            p.vision_score, p.total_damage_dealt_to_champs,
+            m.game_duration_s
+        FROM participants p
+        LEFT JOIN matches m ON p.match_id = m.match_id
+        WHERE p.puuid IN ({placeholders})
+          AND p.team_position IS NOT NULL
+          AND p.team_position != ''
+    """
+    out: list[dict] = []
+    for row in conn.execute(sql, puuids):
+        team_pos = row[0]
+        role = _TEAM_POSITION_TO_ROLE.get(team_pos)
+        if role is None:
+            continue
+        kills = int(row[1] or 0)
+        deaths = int(row[2] or 0)
+        assists = int(row[3] or 0)
+        cs_minions = int(row[4] or 0)
+        cs_neutral = int(row[5] or 0)
+        vision = int(row[6] or 0)
+        damage = int(row[7] or 0)
+        duration_s = int(row[8] or 0)
+        stats = {
+            "kills": kills,
+            "deaths": deaths,
+            "assists": assists,
+            "cs": cs_minions + cs_neutral,
+            "game_time_s": duration_s,
+            "vision_score": vision,
+            "damage_dealt_to_champions": damage,
+        }
+        grade = compute_role_grade(stats, role)
+        out.append({
+            "role": grade["role"],
+            "total_score": grade["total_score"],
+            "percentile_grade": grade["percentile_grade"],
+        })
+    return out
+
+
+def aggregate_role_grades(grades: list[dict]) -> dict:
+    """Bucket per-match grades by canonical role + overall.
+
+    Returns the role_grades envelope:
+      {total_matches_scored, overall: {...}, by_role: {ADC: {...}, ...}}
+    where each bucket carries {count, median_score, tier_distribution}.
+
+    Buckets with count==0 are still emitted with empty tier distribution so
+    the frontend can iterate canonical role keys deterministically without
+    presence-checks.
+    """
+    by_role_scores: dict[str, list[float]] = {role: [] for role in _CANONICAL_ROLES}
+    by_role_tiers: dict[str, dict[str, int]] = {role: _empty_tier_distribution() for role in _CANONICAL_ROLES}
+    overall_scores: list[float] = []
+    overall_tiers: dict[str, int] = _empty_tier_distribution()
+    for g in grades:
+        role = g.get("role")
+        if role not in by_role_scores:
+            continue
+        score = float(g.get("total_score", 0.0))
+        tier = g.get("percentile_grade", "D")
+        if tier not in overall_tiers:
+            tier = "D"
+        by_role_scores[role].append(score)
+        by_role_tiers[role][tier] += 1
+        overall_scores.append(score)
+        overall_tiers[tier] += 1
+    by_role_out: dict[str, dict] = {}
+    for role in _CANONICAL_ROLES:
+        scores = by_role_scores[role]
+        by_role_out[role] = {
+            "count": len(scores),
+            "median_score": int(round(_median(scores))),
+            "tier_distribution": by_role_tiers[role],
+        }
+    overall_out = {
+        "count": len(overall_scores),
+        "median_score": int(round(_median(overall_scores))),
+        "tier_distribution": overall_tiers,
+    }
+    return {
+        "total_matches_scored": len(overall_scores),
+        "overall": overall_out,
+        "by_role": by_role_out,
     }
 
 
@@ -324,6 +475,8 @@ def main(argv: list[str] | None = None) -> int:
         deaths = iter_deaths(conn, puuids)
         counts = classify_all(conn, deaths)
         report = build_report(deaths, counts, puuids)
+        grades = iter_role_grades(conn, puuids)
+        report["role_grades"] = aggregate_role_grades(grades)
     finally:
         conn.close()
 
@@ -335,6 +488,8 @@ def main(argv: list[str] | None = None) -> int:
     write_atomic(out, report)
     print(f"wrote {out} ({report['total_deaths']} deaths / {report['total_matches']} matches)")
     print(f"top3: {report['top3']}")
+    rg = report.get("role_grades", {})
+    print(f"role_grades: {rg.get('total_matches_scored', 0)} matches scored / overall median {rg.get('overall', {}).get('median_score', 0)}")
     return 0
 
 
