@@ -75,10 +75,15 @@ Phase 6 deliberate omissions (deferred to Phase 6.5+):
   heals on post-armor damage, so this over-credits by ~30-40% vs a
   60-90 armor target. Consistent with the rest of EHP's no-enemy-pen
   posture (Phase 1 omission still in force).
-* Sundered Sky 6% missing-HP additive on the heal piece - requires a
-  current-HP-share assumption distinct from the steady-state full-HP
-  convention used elsewhere; the base AD piece is the dominant
-  contributor.
+* Sundered Sky 6% missing-HP additive - SHIPPED in Phase 6.5
+  (ENGINE 1.28.0+, 2026-05-21). The
+  ``_MISSING_HP_SHARE_FOR_HEALS = 0.5`` module constant introduces a
+  single mid-fight HP-share assumption (50% missing HP) distinct from
+  the full-HP steady-state convention used elsewhere in the scorer.
+  Lightshield Strike fires mid-fight so this is a reasonable approx-
+  imation; operator can adjust if calibration data suggests
+  otherwise. The base AD piece remains the dominant contributor
+  (~103 hp on Aatrox L11 vs ~62 hp from the missing-HP piece).
 """
 
 from __future__ import annotations
@@ -188,12 +193,27 @@ this window - the per-trigger heal magnitude IS the per-fight heal.
 """
 
 
+_MISSING_HP_SHARE_FOR_HEALS = 0.5
+"""Phase 6.5 mid-fight HP-share assumption for items whose heal piece
+scales with missing HP.
+
+The EHP scorer's normal convention is full-HP steady-state (no missing
+HP). Items like Sundered Sky 6610 carry a 6% missing-HP additive on
+their heal piece; this constant introduces a single Phase-6.5 mid-fight
+assumption (50% HP missing -> heal scales against 50% of total HP).
+Operator can adjust if calibration data suggests a different mid-fight
+share. 0.5 is a reasonable mid-fight approximation matching the heal
+trigger model (Lightshield Strike fires mid-fight, not at full HP).
+"""
+
+
 def _collect_heals(
     item_ids: Iterable[str],
     base_ad: float,
     bonus_hp: float,
     bonus_ad: float,
     is_ranged: bool,
+    missing_hp: float = 0.0,
 ) -> tuple[float, tuple[tuple[str, float], ...]]:
     """Resolve every ``ItemHeal`` across the equipped items.
 
@@ -206,6 +226,13 @@ def _collect_heals(
     convention - the per-trigger magnitude IS the per-fight heal (no
     fight-window scaling for item-passive heals; that scaling applies
     only to the lifesteal-derived heal).
+
+    Phase 6.5 (2026-05-21): ``missing_hp`` is the absolute missing-HP
+    value (in HP units, NOT a share) that gets threaded into each
+    ``ItemHeal.resolve_magnitude`` call. ``compute_ehp`` derives this
+    once via ``total_hp * _MISSING_HP_SHARE_FOR_HEALS`` and passes it
+    here; items whose heal carries ``missing_hp_pct=0`` (the 99%
+    default case) are unaffected.
 
     Items without a ``heal`` field (the ~99% case) contribute nothing
     and are silently skipped.
@@ -220,6 +247,7 @@ def _collect_heals(
             base_ad=base_ad,
             bonus_hp=bonus_hp,
             bonus_ad=bonus_ad,
+            missing_hp=missing_hp,
             is_ranged=is_ranged,
         )
         if magnitude <= 0:
@@ -567,12 +595,20 @@ def compute_ehp(
     # combined pool. The post-amp total is value-additive to EHP at the
     # top of the damage stack - heals don't discriminate by damage type
     # in League's model, so the heal pool acts like an ANY shield.
+    # Phase 6.5 (2026-05-21): missing-HP additive piece on item heals
+    # (Sundered Sky 6% missing HP) is wired by deriving the mid-fight
+    # missing_hp once here from the resolved total HP and threading
+    # it through _collect_heals. The full-HP steady-state convention
+    # used elsewhere in the scorer is preserved by gating this only
+    # on items that opt in via ItemHeal.missing_hp_pct > 0.
+    missing_hp = hp * _MISSING_HP_SHARE_FOR_HEALS
     heal_item_total, heal_sources = _collect_heals(
         resolved.item_ids,
         base_ad=base_ad,
         bonus_hp=bonus_hp,
         bonus_ad=bonus_ad,
         is_ranged=is_ranged,
+        missing_hp=missing_hp,
     )
     heal_lifesteal = _lifesteal_heal(
         lifesteal_pct=float(stats.get("lifesteal", 0.0)),
