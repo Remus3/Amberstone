@@ -10,8 +10,10 @@ extractor manifest is the trigger), exactly as before the split.
 from __future__ import annotations
 
 from ._effects_types import (
+    ANY,
     CallContext,
     ItemEffect,
+    ItemShield,
     MAGICAL,
     PHYSICAL,
     PeriodicProc,
@@ -84,6 +86,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Lifeline item gets a DPS proc later, the order-dependence
         # gating from batch 11 (Essence Reaver) applies - re-evaluate.
         unique_passive_key="lifeline",
+        # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput. Meraki
+        # 16.10.1 "400 to 700 for 11 levels" with levels=1;9 to 18 -
+        # holds at 400 from L1-L8, ramps 400 -> 700 across L9-L18.
+        # Ranged is 80% of melee (Meraki: "400*0.8 to 700*0.8"). Damage
+        # type ANY: absorbs all 3 components.
+        shield=ItemShield(
+            damage_type=ANY,
+            flat=400.0,
+            level_lerp_low=9,
+            level_lerp_high=18,
+            level_lerp_high_value=700.0,
+            ranged_modifier=0.80,
+            note="Immortal Shieldbow Lifeline (Meraki 16.10.1)",
+        ),
         note="Immortal Shieldbow: Lifeline (low-HP shield); no DPS contribution",
     ),
 
@@ -391,6 +407,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Engine still treats the item as having a non-DPS lifeline
         # piece + a DPS-positive Claws piece, both modeled correctly.
         bonus_ad_pct_base_ad=0.45,
+        # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput.
+        # Meraki 16.10.1: "absorbs damage equal to 60% of bonus
+        # health". Damage type ANY (lifeline absorbs all 3 components).
+        # No ranged modifier (Sterak's is melee-only practically; the
+        # scaling is pure bonus_hp share).
+        shield=ItemShield(
+            damage_type=ANY,
+            bonus_hp_scaling=0.60,
+            note="Sterak's Gage Lifeline 60% bonus HP (Meraki 16.10.1)",
+        ),
         note=(
             "Sterak's Gage: The Claws that Catch +45% base AD as bonus AD "
             "(stat layer) + Lifeline (low-HP shield, deduped)"
@@ -401,6 +427,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Maw of Malmortius",
         defensive_only=True,
         unique_passive_key="lifeline",
+        # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput.
+        # Meraki 16.10.1: melee 200 + 150% bonus AD; ranged 150 + 112.5%
+        # bonus AD (ratio 0.75 across both terms). Magic-only damage
+        # absorption - landed only into magical_ehp.
+        shield=ItemShield(
+            damage_type=MAGICAL,
+            flat=200.0,
+            bonus_ad_scaling=1.50,
+            ranged_modifier=0.75,
+            note="Maw of Malmortius Lifeline magic shield (Meraki 16.10.1)",
+        ),
         note="Maw of Malmortius: Lifeline magic shield; no DPS contribution",
     ),
     "3181": ItemEffect(
@@ -2940,6 +2977,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Hexdrinker",
         defensive_only=True,
         unique_passive_key="lifeline",
+        # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput.
+        # Meraki 16.10.1: melee "110 to 280 for 11 levels" with levels=
+        # 1;9 to 18 - same shape as Shieldbow / Maw family. Below L9 =
+        # 110, lerp L9 -> L18 ramps 110 -> 280. Ranged is 75% (82.5 to
+        # 210). Magic-only damage absorption.
+        shield=ItemShield(
+            damage_type=MAGICAL,
+            flat=110.0,
+            level_lerp_low=9,
+            level_lerp_high=18,
+            level_lerp_high_value=280.0,
+            ranged_modifier=0.75,
+            note="Hexdrinker Lifeline magic shield (Meraki 16.10.1)",
+        ),
         note=(
             "Hexdrinker: Lifeline - when magic damage would drop HP below 30%, "
             "grants magic damage shield. Joins lifeline unique-passive family "
