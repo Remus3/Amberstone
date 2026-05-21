@@ -18,6 +18,14 @@ MAGICAL = "magical"
 TRUE = "true"
 _DAMAGE_TYPES = frozenset({PHYSICAL, MAGICAL, TRUE})
 
+# ENGINE 1.27.0 (2026-05-21): shield damage-type set. Mirrors the proc
+# damage-type values but adds ``ANY`` for type-agnostic shields (Sterak's
+# Lifeline, Immortal Shieldbow). Kept separate from _DAMAGE_TYPES so
+# PeriodicProc.damage_type cannot accidentally become "any" (proc damage
+# always has a real type; "any" only applies to shield absorption).
+ANY = "any"
+_SHIELD_TYPES = frozenset({PHYSICAL, MAGICAL, TRUE, ANY})
+
 
 @dataclass(frozen=True)
 class CallContext:
@@ -191,6 +199,100 @@ class PeriodicProc:
         if callable(self.bonus_damage):
             return float(self.bonus_damage(ctx))
         return float(self.bonus_damage)
+
+
+@dataclass(frozen=True)
+class ItemShield:
+    """A shield contribution to EHP (ENGINE 1.27.0, Phase 1.5).
+
+    Closes the ``ehp.py:21`` Phase-1.5 omission "Shield throughput
+    (Sterak's lifeline, Doran's Shield, Bloodthirster) - needs uptime
+    modeling". Phase 1.5 ships the four LIFELINE-style shields (single
+    trigger per fight, value-additive to the effective-HP pool at top of
+    the damage stack): Sterak's Gage 3053, Immortal Shieldbow 6673, Maw
+    of Malmortius 3156, Hexdrinker 3155. Bloodthirster's ichor-shield is
+    intentionally DEFERRED to Phase 6 (with lifesteal modeling) - it
+    requires overheal accrual rather than a single-trigger threshold.
+
+    Magnitude resolves as ``flat + bonus_hp_scaling * bonus_hp +
+    bonus_ad_scaling * bonus_ad`` then multiplied by ``ranged_modifier``
+    when the wielder is ranged. The ``flat`` value lerps linearly with
+    level when ``level_lerp_high_value`` differs from ``flat`` (or
+    equivalently when ``level_lerp_low != level_lerp_high``); the lerp
+    is between ``level_lerp_low`` (value = ``flat``) and
+    ``level_lerp_high`` (value = ``level_lerp_high_value``). Level
+    clamps OUTSIDE the lerp window: below ``level_lerp_low`` use
+    ``flat``; at/above ``level_lerp_high`` use
+    ``level_lerp_high_value``.
+
+    ``damage_type`` controls which EHP component absorbs:
+      * ``"any"`` - all 3 components benefit (Sterak, Shieldbow)
+      * ``"magical"`` - only magical_ehp benefits (Maw, Hexdrinker)
+      * ``"physical"`` - only physical_ehp (no current items)
+      * ``"true"`` - only true_ehp (no current items)
+    """
+    damage_type: str = ANY
+    flat: float = 0.0
+    bonus_hp_scaling: float = 0.0
+    bonus_ad_scaling: float = 0.0
+    level_lerp_low: int = 1
+    level_lerp_high: int = 1
+    level_lerp_high_value: float = 0.0
+    ranged_modifier: float = 1.0
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        if self.damage_type not in _SHIELD_TYPES:
+            raise ValueError(
+                f"ItemShield.damage_type must be one of "
+                f"{sorted(_SHIELD_TYPES)}, got {self.damage_type!r}"
+            )
+        if self.level_lerp_low < 1 or self.level_lerp_high < 1:
+            raise ValueError(
+                f"ItemShield level_lerp_low/high must be >= 1, got "
+                f"low={self.level_lerp_low}, high={self.level_lerp_high}"
+            )
+        if self.level_lerp_high < self.level_lerp_low:
+            raise ValueError(
+                f"ItemShield.level_lerp_high must be >= level_lerp_low, "
+                f"got high={self.level_lerp_high} < low={self.level_lerp_low}"
+            )
+        if self.ranged_modifier < 0:
+            raise ValueError(
+                f"ItemShield.ranged_modifier must be >= 0, got "
+                f"{self.ranged_modifier!r}"
+            )
+
+    def resolve_magnitude(
+        self,
+        level: int,
+        bonus_hp: float = 0.0,
+        bonus_ad: float = 0.0,
+        is_ranged: bool = False,
+    ) -> float:
+        """Resolve the shield value at the given context.
+
+        ``level`` is clamped to ``[1, 18]`` implicitly by the lerp's
+        outside-window logic. Negative result is floored at 0.
+        """
+        if self.level_lerp_low == self.level_lerp_high:
+            level_value = self.flat
+        elif level <= self.level_lerp_low:
+            level_value = self.flat
+        elif level >= self.level_lerp_high:
+            level_value = self.level_lerp_high_value
+        else:
+            span = self.level_lerp_high - self.level_lerp_low
+            t = (level - self.level_lerp_low) / span
+            level_value = self.flat + (self.level_lerp_high_value - self.flat) * t
+        total = (
+            level_value
+            + self.bonus_hp_scaling * max(0.0, bonus_hp)
+            + self.bonus_ad_scaling * max(0.0, bonus_ad)
+        )
+        if is_ranged and self.ranged_modifier != 1.0:
+            total *= self.ranged_modifier
+        return max(0.0, float(total))
 
 
 @dataclass(frozen=True)
@@ -422,3 +524,13 @@ class ItemEffect:
     # unchanged. Add a key only when stacking the same effect across
     # multiple items would over-count.
     unique_passive_key: str = ""
+    # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput (closes the
+    # ehp.py:21 deliberate omission). Single ``ItemShield`` per item;
+    # ``None`` = no shield contribution (today's behavior for every item
+    # except the 4 wired lifelines). The EHP scorer reads this field via
+    # ``ehp.compute_ehp -> _collect_shields`` and folds it into
+    # ``physical_ehp`` / ``magical_ehp`` / ``true_ehp`` at the top of the
+    # damage stack. Lifeline-shield items share
+    # ``unique_passive_key="lifeline_shield"`` so build planner picks at
+    # most one (the rank.py dead-unique filter; see EhpRankedItem docs).
+    shield: "ItemShield | None" = None
