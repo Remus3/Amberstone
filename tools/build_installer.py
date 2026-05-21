@@ -133,7 +133,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: The ZIP expands into RiotCommander-portable\; find it
+:: The ZIP expands into RiotCommander-portable\\; find it
 set APP_DIR=%INSTALL_DIR%\\RiotCommander-portable
 if not exist "%APP_DIR%" (
     echo  [FAIL] Expected folder not found: %APP_DIR%

@@ -1,4 +1,4 @@
-﻿"""
+"""
 scripts/team_planner_sync.py
 
 Pre-loads ALL S/A-tier comps into the Riot client Team Planner with matching names.
