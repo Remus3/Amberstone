@@ -34,7 +34,7 @@ Coverage classes:
 * ``BTPlusLifelineStacksTests`` - BT shield + Sterak shield both apply
   (BT does NOT share unique_passive_key="lifeline" so compute_ehp adds
   both magnitudes; rank.py dedup is upstream and unaffected here).
-* ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.28.0.
+* ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.29.0.
 """
 from __future__ import annotations
 
@@ -523,8 +523,8 @@ class BTPlusLifelineStacksTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    def test_engine_version_at_1_28_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.28.0")
+    def test_engine_version_at_1_29_0(self) -> None:
+        self.assertEqual(ENGINE_VERSION, "1.29.0")
 
 
 if __name__ == "__main__":
