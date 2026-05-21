@@ -228,22 +228,123 @@ class FailSoftTests(unittest.TestCase):
                 self.assertEqual(m, {"Real": 1.20})
 
 
+class EnemyAramTenacityLineTests(unittest.TestCase):
+    def test_one_modified_enemy_renders_line(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(["Zed", "Garen", "Lux"], "ARAM")
+        self.assertIn("Enemy ARAM tenacity", line)
+        self.assertIn("Zed 1.20x", line)
+        self.assertNotIn("Garen", line)
+        self.assertNotIn("Lux", line)
+
+    def test_multiple_modified_enemies_listed(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(
+            ["Zed", "Talon", "Aatrox", "Garen", "Lux"], "ARAM"
+        )
+        self.assertIn("Zed 1.20x", line)
+        self.assertIn("Talon 1.20x", line)
+        self.assertNotIn("Aatrox", line)
+
+    def test_descending_mult_then_alpha_sort(self) -> None:
+        # Fizz (1.10) + Zed (1.20) -> Zed first, Fizz second.
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(["Fizz", "Zed"], "ARAM")
+        # Confirm order by index of substrings in the rendered line.
+        i_zed = line.index("Zed")
+        i_fizz = line.index("Fizz")
+        self.assertLess(i_zed, i_fizz)
+
+    def test_equal_mult_alphabetical_tiebreaker(self) -> None:
+        # Two 1.20x champs should sort alphabetical.
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(["Zed", "Akali"], "ARAM")
+        self.assertLess(line.index("Akali"), line.index("Zed"))
+
+    def test_kiwi_mode_renders_line(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(["Zed"], "KIWI")
+        self.assertIn("Zed 1.20x", line)
+
+    def test_sr_mode_renders_empty(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        self.assertEqual(
+            enemy_aram_tenacity_line(["Zed", "Akali"], "SR"), ""
+        )
+
+    def test_no_modified_enemies_renders_empty(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        self.assertEqual(
+            enemy_aram_tenacity_line(["Aatrox", "Garen", "Lux"], "ARAM"),
+            "",
+        )
+
+    def test_empty_enemies_renders_empty(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        self.assertEqual(enemy_aram_tenacity_line([], "ARAM"), "")
+
+    def test_none_enemies_renders_empty(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        self.assertEqual(enemy_aram_tenacity_line(None, "ARAM"), "")
+
+    def test_none_mode_renders_empty(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        self.assertEqual(enemy_aram_tenacity_line(["Zed"], None), "")
+
+    def test_skips_blank_and_none_entries(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(
+            [None, "", "Zed", None, "Aatrox"], "ARAM"
+        )
+        self.assertIn("Zed 1.20x", line)
+        # Does not include extra commas or trailing whitespace artifacts.
+        self.assertNotIn(", ,", line)
+        self.assertFalse(line.endswith(", "))
+
+    def test_skips_unknown_champion_names(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(["NOPE", "Zed"], "ARAM")
+        self.assertIn("Zed 1.20x", line)
+        self.assertNotIn("NOPE", line)
+
+    def test_tuple_input_accepted(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(("Zed", "Talon"), "ARAM")
+        self.assertIn("Zed 1.20x", line)
+        self.assertIn("Talon 1.20x", line)
+
+    def test_line_is_single_line(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(["Zed", "Talon", "Akali"], "ARAM")
+        self.assertNotIn("\n", line)
+
+    def test_line_is_ascii(self) -> None:
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        line = enemy_aram_tenacity_line(["Zed", "Akali"], "ARAM")
+        line.encode("ascii")
+
+
 class AramCoachWireTests(unittest.TestCase):
-    """The ARAM coach imports the helper and threads it into _USER_TMPL."""
+    """The ARAM coach imports the helpers and threads them into _USER_TMPL."""
 
     def test_user_template_has_aram_tenacity_field(self) -> None:
         from coaches.aram_coach import _USER_TMPL
         self.assertIn("{aram_tenacity}", _USER_TMPL)
 
+    def test_user_template_has_enemy_aram_tenacity_field(self) -> None:
+        from coaches.aram_coach import _USER_TMPL
+        self.assertIn("{enemy_aram_tenacity}", _USER_TMPL)
+
     def test_coach_imports_helper(self) -> None:
         import coaches.aram_coach as mod
         self.assertTrue(hasattr(mod, "aram_tenacity_line"))
 
+    def test_coach_imports_enemy_helper(self) -> None:
+        import coaches.aram_coach as mod
+        self.assertTrue(hasattr(mod, "enemy_aram_tenacity_line"))
+
     def test_user_template_format_supports_field(self) -> None:
-        # Smoke that .format(aram_tenacity=...) does not raise KeyError.
         from coaches.aram_coach import _USER_TMPL
-        # Minimal fill; we just need to confirm the placeholder is consumed.
-        # Use all the known fields.
         out = _USER_TMPL.format(
             game_time="0:00", mayhem_tag="", hp=100, mp=100, gold=0,
             lv=1, kda="0/0/0", items="none", allies="-", enemies="-",
@@ -251,6 +352,7 @@ class AramCoachWireTests(unittest.TestCase):
             dead_resp="-", my_t=100, en_t=100, augs="-", packs="-",
             wave_pct=50, my_abilities="-", my_runes="-", enemy_runes="-",
             aram_tenacity="",
+            enemy_aram_tenacity="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("ARAM", out)
@@ -265,9 +367,29 @@ class AramCoachWireTests(unittest.TestCase):
             dead_resp="-", my_t=100, en_t=100, augs="-", packs="-",
             wave_pct=50, my_abilities="-", my_runes="-", enemy_runes="-",
             aram_tenacity=aram_tenacity_line("Zed", "ARAM"),
+            enemy_aram_tenacity="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("ARAM tenacity: 1.20x", out)
+
+    def test_user_template_renders_enemy_tenacity_when_provided(self) -> None:
+        from coaches.aram_coach import _USER_TMPL
+        from core.aram_tenacity_context import enemy_aram_tenacity_line
+        out = _USER_TMPL.format(
+            game_time="0:00", mayhem_tag="", hp=100, mp=100, gold=0,
+            lv=1, kda="0/0/0", items="none", allies="-", enemies="-",
+            enemy_items="-", matchup_ctx="-", dead="-", alive="-",
+            dead_resp="-", my_t=100, en_t=100, augs="-", packs="-",
+            wave_pct=50, my_abilities="-", my_runes="-", enemy_runes="-",
+            aram_tenacity="",
+            enemy_aram_tenacity=enemy_aram_tenacity_line(
+                ["Zed", "Talon"], "ARAM"
+            ),
+            ds_picks="-", ds_label="-", event_line="-",
+        )
+        self.assertIn("Enemy ARAM tenacity", out)
+        self.assertIn("Zed 1.20x", out)
+        self.assertIn("Talon 1.20x", out)
 
 
 if __name__ == "__main__":
