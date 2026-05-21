@@ -3,6 +3,36 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-21 - BACKLOG drain: aram_tenacity_mult EHP wire + Dead Man's Plate stacks-schema lift + ROADMAP/BACKLOG sweep (ENGINE 1.24.0 -> 1.26.0)
+
+Operator asked "what is next" - identified item-AH lane + ward-heat frontend as ALREADY SHIPPED (paths-stale BACKLOG entries; verified via git log: f273acb f4938af). Pivoted to 3 genuine NOW items, all 3 shipped.
+
+**Commits (3 + 2 from start-of-day pass-3+4 earlier):**
+- `e9bf6b3` docs(roadmap+backlog): sweep stale SHIPPED from open-high (3 headless-upgrade entries) + coaching-depth (2 SHIPPED notes + item-AH queued + ward-heat queued).
+- `ce563c4` feat(ds): aram_tenacity_mult EHP wire + Dead Man's Plate stacks-schema lift (ENGINE 1.24.0 -> 1.26.0).
+
+**(1) ENGINE 1.25.0 - aram_tenacity_mult EHP wire:** EhpResult gains `aram_tenacity_mult` field; NEW `effective_cc_duration(base_cc_s, tenacity_mult)` helper in `ehp.py` returns `base_cc_s * max(0.0, tenacity_mult)`. 17 ARAM champs carry non-1.0 tenacity (Akali/Belveth/Ekko/Elise/Evelynn/Fizz/Katarina/Kayn/Khazix/Lucian/Nunu/Pyke/Qiyana/Quinn/Rengar/Talon/Zed; mostly 1.20, Elise/Fizz 1.10). The helper is the seam any future fight-sim / coach-prompt / EHP-vs-CC consumer reads. Blended EHP math UNCHANGED - CC duration vs HP pool is a separate axis. SR + non-ARAM modes degenerate to identity. +19 tests in test_ehp.py.
+
+**(2) ENGINE 1.26.0 - Dead Man's Plate Momentum stacks-schema lift:** NEW `PeriodicProc.stack_ramp_seconds` field is the family extension for the stack-accumulation -> discharge pattern. Default 0.0 (backward-compat). Consumer in `_periodic_proc_dps` fires at `max(stack_ramp_seconds, every_n_attacks * attack_period_s)`. Burst path (`_per_attack_proc_damage`) skips ramp-gated procs. Dead Man's 3742 + Arena 223742 re-encoded: Shipwrecker = lambda c: 40 + c.base_ad PHYSICAL, every_n_attacks=1, stack_ramp_seconds=3.57. Math verified exact: Aatrox L11 vs 100-armor target delta = (40 + 103.875)/3.57 * 0.5 = 20.15 DPS. +18 stacks-schema tests in NEW test_stack_ramp_schema_126.py; 5 existing DeadMansPlate tests rewritten for post-lift state. Other items can adopt the same schema in future iterations.
+
+**Stale entries swept:** ROADMAP "Open items - High priority" shed 3 headless-upgrade entries (items 119/120/121 - paths-stale duplicates of CLAUDE.md ledger). BACKLOG "Coaching depth" shed 4 entries: aramAbilityHaste SHIPPED note (4e5d818) + augment formula evaluator SHIPPED note (21657eb) + item-AH "queued" entry (actually shipped f273acb) + ward-heat frontend "queued" entry (actually shipped f4938af).
+
+**Verified:** DS suite 2823 -> 2860 / 1 xfailed (+37); RC suite 2661 -> 2662 / 0 failed (+1); ruff + py_compile + ASCII-clean on additions. DS :8893 restarted TWICE via taskkill + schtasks /Run RC-DaemonSlayer; live /health serves 1.26.0. RC :8888 not restarted (engine wire is DS-side; RC consumes over HTTP).
+
+**Don't-redo:**
+- DS item-AH lane is SHIPPED (`f273acb` feat(ds): per-item flat AH wired) - the registry path was chosen over the originally-proposed `ItemEffect.ability_haste_flat` field but the OUTCOME is equivalent; do NOT re-pitch the field+extractor approach.
+- Ward-Coverage Heat Strip frontend is SHIPPED (`f4938af`) - `core/ward_producer.py:install_liveclient_listener` wired in `main.py:149`; do NOT re-pitch a frontend-wire follow-up.
+- `aram_tenacity_mult` on EhpResult is FORWARD-MARKER for fight-sim consumers; the EHP blended_ehp math is intentionally unchanged. Use `effective_cc_duration(base_s, tenacity_mult)` as the seam; the helper is the ONLY downstream contract.
+- `PeriodicProc.stack_ramp_seconds` is mutually exclusive with `every_n_seconds` (the seconds-based path has no ramp semantics - ramp is implicit). __post_init__ enforces; tests pin.
+- The burst path intentionally skips stack-ramp-gated procs - tank items with sustained-only DPS. Do NOT special-case Dead Man's in burst (a 3.57s ramp doesn't fit a 2-3s burst window).
+- 5 DeadMansPlateShipwreckerTests in test_effects_expansion.py were rewritten for the post-lift state; do NOT re-add `defensive_only=True` assertions.
+
+**Carries forward:**
+- (a) Dead Man's stack-ramp schema is the canonical example for future stack-discharge items. Sterak's Lifeline + hypothetical future ramp items can adopt the same field. No items queued today.
+- (b) `effective_cc_duration` has no live consumer yet - the fight-sim / coach-prompt consumer is still future. The seam is in place.
+- (c) Standing operator-gated items unchanged: 101.qq.com one-off capture (ROADMAP med); Arena S2 patch 26.09 reconnaissance + CSS anchor-positioning lift; per-page UI audit ritual after a live game.
+
+---
 # 2026-05-21 - HEADLESS UPGRADE PASS 3 + PASS 4: design tokens sweep + log spam extension + ALL 4 coaches native choices emit
 
 Operator re-extended scope: each /headless-upgrade re-run strips done items + folds in more DS work. No user gating.
