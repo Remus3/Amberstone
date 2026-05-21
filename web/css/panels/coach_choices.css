@@ -1,0 +1,110 @@
+/* A/B tutoring coach choices.
+ *
+ * Mount: #rn-choices, sits between #rn-immediate and the .kv Watch row.
+ * Hidden when no choices array on state.coach. Each chip carries:
+ * a key letter (A/B/C), a label, a 3-segment confidence bar, and an
+ * optional source-tag pill.
+ *
+ * Colors reference the tokens.css semantic palette (--signal-good /
+ * --signal-warn / --signal-bad / --signal-dim / --signal-info). Falls
+ * back to inherit when tokens.css hasn't loaded yet (graceful).
+ */
+
+#rn-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+#rn-choices[hidden] {
+  display: none;
+}
+
+.rc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease, border-color 0.12s ease,
+              transform 0.06s ease;
+}
+
+.rc-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.rc-chip:active {
+  transform: translateY(1px);
+}
+
+.rc-chip.rc-selected {
+  background: var(--signal-good-soft, rgba(110, 201, 119, 0.18));
+  border-color: var(--signal-good, #6ec977);
+}
+
+.rc-key {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--signal-good, inherit);
+  font-variant-numeric: tabular-nums;
+  min-width: 12px;
+  text-align: center;
+}
+
+.rc-chip[data-key="B"] .rc-key {
+  color: var(--signal-warn, inherit);
+}
+
+.rc-chip[data-key="C"] .rc-key {
+  color: var(--signal-info, inherit);
+}
+
+.rc-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.rc-band {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.rc-band-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.rc-band-dot.filled {
+  background: var(--signal-good, #6ec977);
+}
+
+.rc-band-low  .rc-band-dot.filled { background: var(--signal-bad,  #ff5050); }
+.rc-band-mid  .rc-band-dot.filled { background: var(--signal-warn, #f1b04a); }
+.rc-band-high .rc-band-dot.filled { background: var(--signal-good, #6ec977); }
+
+.rc-src {
+  font-size: 10px;
+  color: var(--signal-dim, #8a8e9c);
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  font-variant-numeric: tabular-nums;
+  text-transform: lowercase;
+}
