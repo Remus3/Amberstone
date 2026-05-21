@@ -1,0 +1,85 @@
+/* Design tokens layer.
+ *
+ * Wave-1 UI/UX audit produced 3 findings this file addresses:
+ *   - hardcoded #ff5050 / #f1b04a / #6ec977 across right_now /
+ *     ban_suggest_toggle / draft_elo panels (semantic-color sprawl);
+ *   - 24+ font-size declarations across panels (no shared scale);
+ *   - off-grid paddings 2/4/5/6/7px instead of 8px multiples.
+ *
+ * This file is ADDITIVE. It does NOT replace the existing primitives
+ * layer (which owns --bg / --fg / --canvas / --text / --good / --bad /
+ * --gold and the panel chrome). The semantic-* / fs-* / space-* / pulse-*
+ * tokens below are net-new and consumed by panels that opt in.
+ *
+ * The 4-tier font scale (xs/sm/md/lg/xl - 5 sizes spanning the audit's
+ * 4 tiers from chip metadata through hero headlines) and the 8px
+ * spacing grid are reserved for FUTURE consumption; sweeping existing
+ * font-size declarations is out of scope for this slice.
+ *
+ * Coach prompt pulse keyframes are exposed here so the running-coach
+ * fresh-update affordance can light up consistently when the operator
+ * sees a state transition (good / warn / bad) in the .action headline
+ * or any panel that opts in.
+ */
+
+:root {
+  /* Semantic colors (additive to existing palette; do NOT replace
+   * --bg / --fg / --good / --bad / --gold which the primitives layer
+   * already owns). */
+  --signal-good: #6ec977;
+  --signal-warn: #f1b04a;
+  --signal-bad:  #ff5050;
+  --signal-dim:  #8a8e9c;
+  --signal-info: #8a8cf0;
+  --signal-gold: #f5b87c;
+  --signal-good-soft: rgba(110, 201, 119, 0.18);
+  --signal-warn-soft: rgba(241, 176, 74, 0.18);
+  --signal-bad-soft:  rgba(255, 80, 80, 0.18);
+
+  /* 4-tier font-size scale (5 sizes: xs/sm/md/lg/xl spans the 4 tiers
+   * the audit recommends - chip metadata through hero headlines).
+   * Floors per the viewing-distance feedback memory: 13/15/18px. */
+  --fs-xs: 11px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 20px;
+  --fs-xl: 27px;
+
+  /* 8px spacing grid (replaces off-grid 2/4/5/6/7px paddings caught in
+   * the wave-1 audit; existing panel paddings are NOT auto-swept). */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Fresh-update affordance (coach prompt glow) - tints calibrated
+   * against the panel canvas background so the pulse reads at 1920x1080
+   * across Game-PC's secondary display. */
+  --pulse-good: 0 0 12px rgba(110, 201, 119, 0.35);
+  --pulse-warn: 0 0 12px rgba(241, 176, 74, 0.35);
+  --pulse-bad:  0 0 12px rgba(255, 80, 80, 0.35);
+}
+
+/* Tabular-nums utility (additive; opt-in via class on numeric cells).
+ * Stats columns (draft_elo .de-score / .de-wr, augment_reco rating
+ * cells, etc.) should add this class so digit columns stay aligned. */
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Coach prompt fresh-update pulse (consumed by .action when state
+ * changes - e.g. when classifyAction() flips good/warn/bad). The
+ * animation is 1.2s steady ease-in-out so a single tick reads as
+ * "something just updated" without distracting mid-game. */
+@keyframes coach-pulse-good {
+  0%, 100% { box-shadow: none; }
+  50%      { box-shadow: var(--pulse-good); }
+}
+@keyframes coach-pulse-warn {
+  0%, 100% { box-shadow: none; }
+  50%      { box-shadow: var(--pulse-warn); }
+}
+@keyframes coach-pulse-bad {
+  0%, 100% { box-shadow: none; }
+  50%      { box-shadow: var(--pulse-bad); }
+}
