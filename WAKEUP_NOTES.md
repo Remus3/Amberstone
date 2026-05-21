@@ -3,17 +3,51 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
-# NEXT SESSION AUTHORIZED QUEUE (operator approved 2026-05-20, post-S5)
+# 2026-05-20 - s220 PGR S5 follow-ups: participant-name join + lm-build-pending dead-id cleanup (1 commit pending, will push; non-engine; no frozen edits; RC restarted once for route module edit)
 
-Operator going to play an ARAM. Authorized me to continue autonomously on TWO carries-forward from item 117 / s220 S5:
+Closes the two carries-forward from item 117 / s220 S5 per the NEXT_SESSION_QUEUE the prior session left in this file. Operator-authorized scope: non-frozen-files only; commits + pushes allowed; RC restart for route-module edits.
 
-1. **Participant-name join in /api/replay/events** - currently the event ribbon shows `P1..P10` chips. Join against `participants.summoner_name` + `champion_name` (already populated for the match per the per-frame snapshot fetch) so each event row surfaces real names. Payload bloat acceptable per operator. Touches `dashboard/routes_replay_events.py` (add join + actor_name / actor_champion / victim_name / victim_champion fields) + `web/js/panels/replay_events.js` (consume new fields) + tests/test_routes_replay_events.py (pin new fields).
+**(1) Participant-name join in /api/replay/events.** Backend `dashboard/routes_replay_events.py`:
+- NEW `_participant_meta(conn, match_id) -> dict[int, (summoner_name, champion_name)]` helper joins the `participants` table, blank strings normalized to None for null-parity.
+- Each event dict gains 6 fields: `actor_name`, `actor_champion`, `victim_name`, `victim_champion`, `assists_names: list[str|None]`, `assists_champs: list[str|None]`. Empty strings normalize to None (audit refinement).
+- Cache key gains `_CACHE_SCHEMA = "v2-participant-join"` sentinel so stale pre-join entries evict on first hit (audit refinement) - not on TTL expiry.
+- Module docstring updated with new event shape.
 
-2. **Pre-existing `lm-build-pending` dead-id cleanup in `_setEmptyState`** - flagged by S4 audit + S5 carry-forward. The id is in the forEach loop at `web/js/panels/last_match.js` `_setEmptyState`; the element doesn't exist in index.html (only `lm-tc-pending` does). `getElementById` returns null + the forEach no-ops; safe to remove. Single-line cleanup.
+Frontend `web/js/panels/replay_events.js`:
+- NEW `_portraitUrl(champ)` mirrors `cd_ledger.js:74-79` alphanum-strip pattern (load-bearing for Kai'Sa/Cho'Gath punctuation). CHAMPS import from items_index.js for version.
+- `_actorText`/`_victimText` REFACTORED to `_actorChip`/`_victimChip` returning HTML with DDragon portrait `<img>` + name text. NEW `_chipHtml(pid, champ, name, prefix)` builds the 3-tier fallback chain: champion portrait + champ text -> summoner_name only -> P<id> (kept as ultimate fallback for event-mode esoterica with null champion).
+- `<img onerror="this.style.display='none'">` collapses cleanly on a 404.
 
-**OBS video overlay = SEPARATE session** (operator-deferred). Do NOT start it autonomously.
+CSS `web/css/panels/replay_events.css`:
+- Row grid widened `52px 1fr 60px 80px` -> `52px 1fr 110px 130px` to fit champion names.
+- NEW `.replay-events-portrait` (18px square, flex-shrink:0, object-fit:cover).
+- NEW `.replay-events-chip-text` (white-space:nowrap, ellipsis overflow, min-width:0).
+- `.replay-events-victim` text-align:right -> `justify-content: flex-end` to honor new flex container.
 
-**Authorization scope:** non-frozen-files only (same constraint as items 115/116/117); commits + pushes allowed; RC restart only if a new dashboard route module is added (participant-name join does NOT add a new module - just edits the existing one). Same parallel-audit pattern as S5: dispatch background audit subagent while implementation in-flight.
+**(2) `lm-build-pending` dead-id cleanup.** Single-line edit at `web/js/panels/last_match.js:1132`: forEach array in `_setEmptyState` no longer carries the dead id. Was a no-op `getElementById` return null fall-through; only `lm-tc-pending` + `lm-chart-pending` + `lm-tl-pending` exist in index.html. The 2 guarded `if (pending) ...` references in `_setEnrichedBuild` are LEFT ALONE - safe dead code per operator's "single-line cleanup" scope.
+
+**Parallel audit (S5 pattern continued):** general-purpose subagent dispatched in BACKGROUND with the design intent + just-edited code. 5 findings returned during the test cycle, 3 actionable refinements applied in the SAME commit: (a) null-parity for assists_names/champs (was: empty strings), (b) DDragon portrait icon via `cd_ledger.js:74-79` pattern, (e) cache schema sentinel for stale-eviction. Findings (c) GPL cleanroom + (d) payload size verified safe - no action needed.
+
+**+12 tests across 3 files:**
+- `tests/test_routes_replay_events.py` +5: test_champion_kill_carries_participant_names_and_champs / test_assist_names_use_null_parity_for_unknown_pid / test_non_actor_event_has_null_names / test_cache_key_carries_schema_sentinel.
+- `tests/test_replay_events_panel_dom.py` +6: ParticipantJoinConsumptionTests (5: CHAMPS import + alphanum-strip portrait URL + new-field consumption + chip helpers + P-id fallback) + CssGridWidenedForNamesTests (1).
+- `tests/test_last_match_tabs_reframe_dom.py` +1: test_set_empty_state_does_not_reference_dead_id.
+
+**Verified:** py_compile + ruff + ASCII clean across all 7 touched files; full RC suite **2401 passed / 67 subtests / 0 failed** (+12 over post-S5 2389). RC :8888 restarted (restart_trigger.txt because route module edited): pid=13016 alive=True last_reload_ok=True. Live curl proof on NA1_4683461559 (older match with summoner_name populated): CHAMPION_KILL t=140 actor=Sona/Forniami -> Lucian/Eisstrahl assists_names=['shaodw'] - the join works end-to-end. Live curl NA1_5560540832 (operator's recent match, summoner_name blank in DB): event=Jax actor_name=None - the null fallback handles cleanly, portrait + champion-text renders. Cache hit on second curl returned cached=True count=82. ADR-008 asset-hash auto-bumps cover JS/CSS; no DS restart; no ENGINE bump; no frozen-file edits.
+
+**Don't-redo:**
+- Participant join is FORWARD-COMPATIBLE - summoner_name is blank for newer matches in rewind_history.db; the chip's 3-tier fallback handles cleanly. Do NOT pretend the field is always populated.
+- `_portraitUrl` alphanum-strip is LOAD-BEARING for Kai'Sa/Cho'Gath display-name punctuation - do NOT remove.
+- `_CACHE_SCHEMA = "v2-participant-join"` sentinel is the durable mechanism for breaking-shape cache evictions - bump the sentinel string in the SAME commit as any future event-dict shape change.
+- The 3-tier chip fallback (champ-portrait+text -> name only -> P<id>) is intentional.
+- CSS grid widening 60/80 -> 110/130 is pinned by `CssGridWidenedForNamesTests::test_css_actor_victim_columns_widened` - do NOT shrink back.
+- `_setEnrichedBuild`'s 2 `if (pending)` lm-build-pending guards are LEFT ALONE per operator's single-line scope; they no-op safely. Do NOT fold them into a wider sweep without operator approval.
+
+**Carries forward:**
+- S5 OBS video overlay remains operator-deferred (its own ADR + dependency decision per ADR-009 "Watch for").
+- Future polish: (a) portrait-only chips for ultra-compact ribbon (currently portrait + name text); (b) hover-tooltip click-to-deep-link to participant detail view in a future PGR drilldown.
+- All item 117/116/115 carries-forward unchanged.
+- Frozen-file grant NOT used; does not carry forward.
 
 ---
 # 2026-05-20 - s220 PGR S5 Replay scaffold + Match-V5 timeline events ribbon (1 commit 7870124, pushed; non-engine; no frozen edits; RC restarted once for new route module)

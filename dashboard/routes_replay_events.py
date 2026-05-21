@@ -11,15 +11,21 @@ which already returns per-minute *snapshots* (state); this serves the
 Returned event shape per row:
 
     {
-      "clock_s":   int,      # timestamp_ms // 1000
-      "type":      str,      # CHAMPION_KILL | BUILDING_KILL | ...
-      "team":      int|None, # 100 / 200 / None for neutral events
-      "actor":     int|None, # participant_id (killer for kills)
-      "victim":    int|None, # participant_id (victim for kills)
-      "assists":   list[int],# participant_ids
-      "subtype":   str|None, # DRAGON / BARON / HERALD / NEXUS_TURRET / ...
-      "lane":      str|None, # TOP / MID / BOT / NONE
-      "pos":       [x,y]|null
+      "clock_s":         int,      # timestamp_ms // 1000
+      "type":            str,      # CHAMPION_KILL | BUILDING_KILL | ...
+      "team":            int|None, # 100 / 200 / None for neutral events
+      "actor":           int|None, # participant_id (killer for kills)
+      "actor_name":      str|None, # summoner_name joined from participants
+      "actor_champion":  str|None, # champion_name joined from participants
+      "victim":          int|None, # participant_id (victim for kills)
+      "victim_name":     str|None, # summoner_name joined from participants
+      "victim_champion": str|None, # champion_name joined from participants
+      "assists":         list[int],          # participant_ids
+      "assists_names":   list[str|None],     # summoner_name per id (null parity)
+      "assists_champs":  list[str|None],     # champion_name per id (null parity)
+      "subtype":         str|None, # DRAGON / BARON / HERALD / NEXUS_TURRET / ...
+      "lane":            str|None, # TOP / MID / BOT / NONE
+      "pos":             [x,y]|null
     }
 
 Defaults to the "strong" event types only (CHAMPION_KILL +
@@ -68,7 +74,11 @@ log = logging.getLogger("rc.web_dashboard")
 
 _REWIND_DB = _APP_DIR / "data" / "rewind_history.db"
 
-# Cache: {(match_id, include_set_frozen): (timestamp, payload)}
+# Cache: {(match_id, include_set_frozen, schema): (timestamp, payload)}
+# The schema sentinel bumps when the event-dict shape changes so old
+# entries (e.g. cached pre-participant-join payloads) evict on first hit
+# without waiting out the 5-min TTL.
+_CACHE_SCHEMA = "v2-participant-join"
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_TTL_S = 300.0
 _CACHE_MAX = 128
@@ -148,6 +158,28 @@ def _team_by_participant(conn: sqlite3.Connection, match_id: str) -> dict[int, i
     return out
 
 
+def _participant_meta(conn: sqlite3.Connection, match_id: str) -> dict[int, tuple[str | None, str | None]]:
+    """Return {participant_id: (summoner_name, champion_name)}.
+    Carry-forward from s220 S5: the ribbon previously surfaced P1..P10
+    chips; the join lets the ribbon paint real names + champion icons.
+    Payload bloat ~10 bytes/event x ~200 events = ~2 KB acceptable per
+    operator's authorization scope."""
+    out: dict[int, tuple[str | None, str | None]] = {}
+    cur = conn.execute(
+        "SELECT participant_id, summoner_name, champion_name "
+        "FROM participants WHERE match_id=?",
+        (match_id,),
+    )
+    for pid, sn, cn in cur.fetchall():
+        if pid is None:
+            continue
+        out[int(pid)] = (
+            (sn if isinstance(sn, str) and sn else None),
+            (cn if isinstance(cn, str) and cn else None),
+        )
+    return out
+
+
 def _row_team(row: sqlite3.Row, team_by_pid: dict[int, int]) -> int | None:
     """Best-effort team resolution. BUILDING_KILL carries team_id
     directly (it is the team that LOST the building - we flip to the
@@ -214,7 +246,7 @@ def _serve_replay_events(h) -> None:
             return
 
         t0 = time.time()
-        cache_key = (match_id, include)
+        cache_key = (match_id, include, _CACHE_SCHEMA)
         cached = _cache_get(cache_key)
         if cached is not None:
             payload = dict(cached)
@@ -237,6 +269,7 @@ def _serve_replay_events(h) -> None:
                 return
 
             team_by_pid = _team_by_participant(conn, match_id)
+            meta_by_pid = _participant_meta(conn, match_id)
             types = _event_types_for(include)
             if types is None:
                 cur = conn.execute(
@@ -254,18 +287,38 @@ def _serve_replay_events(h) -> None:
                 )
             events: list[dict] = []
             for row in cur.fetchall():
+                actor = (row["killer_id"]
+                         if row["killer_id"] not in (None, 0)
+                         else (row["participant_id"]
+                               if row["participant_id"] not in (None, 0) else None))
+                victim = row["victim_id"] if row["victim_id"] not in (None, 0) else None
+                assists = _assists(row)
+                actor_name, actor_champion = (meta_by_pid.get(actor, (None, None))
+                                              if actor is not None else (None, None))
+                victim_name, victim_champion = (meta_by_pid.get(victim, (None, None))
+                                                if victim is not None else (None, None))
+                assists_names: list[str] = []
+                assists_champs: list[str] = []
+                for aid in assists:
+                    sn, cn = meta_by_pid.get(aid, (None, None))
+                    assists_names.append(sn)
+                    assists_champs.append(cn)
                 events.append({
-                    "clock_s": int((row["timestamp_ms"] or 0) // 1000),
-                    "type":    row["event_type"],
-                    "team":    _row_team(row, team_by_pid),
-                    "actor":   row["killer_id"] if row["killer_id"] not in (None, 0)
-                                else (row["participant_id"]
-                                      if row["participant_id"] not in (None, 0) else None),
-                    "victim":  row["victim_id"] if row["victim_id"] not in (None, 0) else None,
-                    "assists": _assists(row),
-                    "subtype": _row_subtype(row),
-                    "lane":    row["lane_type"] or None,
-                    "pos":     _pos(row),
+                    "clock_s":         int((row["timestamp_ms"] or 0) // 1000),
+                    "type":            row["event_type"],
+                    "team":            _row_team(row, team_by_pid),
+                    "actor":           actor,
+                    "actor_name":      actor_name,
+                    "actor_champion":  actor_champion,
+                    "victim":          victim,
+                    "victim_name":     victim_name,
+                    "victim_champion": victim_champion,
+                    "assists":         assists,
+                    "assists_names":   assists_names,
+                    "assists_champs":  assists_champs,
+                    "subtype":         _row_subtype(row),
+                    "lane":            row["lane_type"] or None,
+                    "pos":             _pos(row),
                 })
         finally:
             conn.close()
