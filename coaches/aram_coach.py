@@ -27,7 +27,10 @@ from coaches._base_coach import (
     parse_fields,
     read_api_key,
 )
-from core.aram_tenacity_context import aram_tenacity_line
+from core.aram_tenacity_context import (
+    aram_tenacity_line,
+    enemy_aram_tenacity_line,
+)
 from core.death_patterns_loader import personal_context_block
 from core.mayhem_detect import is_mayhem
 
@@ -276,6 +279,7 @@ My abilities (Q/W/E/R): {my_abilities}
 My runes: {my_runes}
 Enemy keystones: {enemy_runes}
 {aram_tenacity}
+{enemy_aram_tenacity}
 DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {event_line}
 """
@@ -727,6 +731,10 @@ class Coach(BaseCoach):
                 ) or "unknown",
                 aram_tenacity = aram_tenacity_line(
                     state.get("champion"), state.get("game_mode", "ARAM")
+                ),
+                enemy_aram_tenacity = enemy_aram_tenacity_line(
+                    state.get("enemy_comp", []),
+                    state.get("game_mode", "ARAM"),
                 ),
                 ds_picks    = _ds_picks_str,
                 ds_label    = _ds_label,

@@ -125,7 +125,59 @@ def aram_tenacity_line(champion: str | None, mode: str | None) -> str:
     )
 
 
+def enemy_aram_tenacity_line(
+    enemies: list[str | None] | tuple[str | None, ...] | None,
+    mode: str | None,
+) -> str:
+    """Render a one-line ENEMY tenacity context for the coach user prompt.
+
+    Symmetric to ``aram_tenacity_line`` but for the enemy team: when an
+    enemy carries a non-1.0 ``aramTenacity`` multiplier, the operator's
+    CC on that enemy follows the same multiplier (longer CC sticks
+    longer; the operator-facing value is "your CC on them lasts X.XXx
+    base"). For the 17 modified champs at 16.10.1 the multipliers are
+    all > 1.0 so this is unambiguously a follow-up window for the
+    operator's team.
+
+    Returns an empty string when:
+      * mode is not ARAM / ARAM Mayhem (KIWI)
+      * ``enemies`` is None / empty / contains only default-tenacity champs
+      * all entries are missing or default-1.0
+
+    For one or more modified enemies, returns a single line like:
+
+        Enemy ARAM tenacity (your CC on them lasts longer): Zed 1.20x, Talon 1.20x
+
+    Sort order is descending multiplier then alphabetical so the highest-
+    value follow-up target sorts first; this keeps the line readable when
+    only one enemy is modified (the common case).
+    """
+    if not mode:
+        return ""
+    if mode not in _ARAM_MODES and mode.upper() not in _ARAM_MODES:
+        return ""
+    if not enemies:
+        return ""
+    modified: list[tuple[str, float]] = []
+    for name in enemies:
+        if not name:
+            continue
+        mult = _TENACITY_MAP.get(name)
+        if mult is None:
+            continue
+        modified.append((name, mult))
+    if not modified:
+        return ""
+    modified.sort(key=lambda nm: (-nm[1], nm[0]))
+    chunks = [f"{name} {mult:.2f}x" for name, mult in modified]
+    return (
+        "Enemy ARAM tenacity (your CC on them lasts longer): "
+        + ", ".join(chunks)
+    )
+
+
 __all__ = [
     "aram_tenacity_line",
+    "enemy_aram_tenacity_line",
     "get_tenacity_mult",
 ]
