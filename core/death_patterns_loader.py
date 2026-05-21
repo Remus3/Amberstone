@@ -28,7 +28,13 @@ def _safe_load(path: pathlib.Path) -> dict:
 
 
 def top_patterns(path: pathlib.Path | None = None) -> list[dict]:
-    """Return the top-3 patterns as a list of {key, label, description, count}.
+    """Return the top-3 patterns as a list of dicts.
+
+    Each entry carries {key, label, description, count, rate, confidence}.
+    The rate/confidence keys are present in the source JSON (written by
+    scripts/postmortem_analyze.build_report); when absent (older schema or
+    malformed entry) they default to 0.0 so consumers can render without
+    None-guards.
 
     Empty list when the JSON is missing/malformed or no patterns fired.
     """
@@ -42,12 +48,48 @@ def top_patterns(path: pathlib.Path | None = None) -> list[dict]:
         meta = patterns.get(key)
         if not isinstance(meta, dict):
             continue
+        try:
+            rate = float(meta.get("rate", 0.0))
+        except (TypeError, ValueError):
+            rate = 0.0
+        try:
+            conf = float(meta.get("confidence", 0.0))
+        except (TypeError, ValueError):
+            conf = 0.0
         out.append({
             "key": key,
             "label": meta.get("label", key),
             "description": meta.get("description", ""),
             "count": int(meta.get("count", 0)),
+            "rate": rate,
+            "confidence": conf,
         })
+    return out
+
+
+def report_summary(path: pathlib.Path | None = None) -> dict:
+    """Return the report envelope fields {generated_at, total_deaths, total_matches}.
+
+    Empty dict when the JSON is missing/malformed. Companion to
+    top_patterns() so route consumers can present the top-3 alongside the
+    raw cohort totals without re-reading the file or duplicating fail-soft
+    logic.
+    """
+    data = _safe_load(path or _DEFAULT_PATH)
+    if not isinstance(data, dict) or not data:
+        return {}
+    out: dict = {}
+    gen = data.get("generated_at")
+    if isinstance(gen, str) and gen:
+        out["generated_at"] = gen
+    try:
+        out["total_deaths"] = int(data.get("total_deaths", 0))
+    except (TypeError, ValueError):
+        out["total_deaths"] = 0
+    try:
+        out["total_matches"] = int(data.get("total_matches", 0))
+    except (TypeError, ValueError):
+        out["total_matches"] = 0
     return out
 
 

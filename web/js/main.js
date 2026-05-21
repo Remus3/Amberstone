@@ -21,6 +21,7 @@ import { idempotentRender, makeSig } from './lib/idempotent_render.js';
 // ── Panel modules ─────────────────────────────────────────────────────────
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
 import { renderCoachChoices } from './panels/coach_choices.js';
+import { startPersonalContextPolling } from './panels/personal_context.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
@@ -2720,6 +2721,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     setInterval(_homeFetchAndRender, _HOME.intervalMs);
     setInterval(_homeMirrorAlerts, 5000);
     _homeMirrorAlerts();
+    // Personal context (item 124): top-3 recurring death patterns from
+    // rewind_history.db, mounted inside the Right Now panel body.
+    // 60s polling with mtime-keyed backend cache.
+    startPersonalContextPolling();
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _homeWireStartup);
