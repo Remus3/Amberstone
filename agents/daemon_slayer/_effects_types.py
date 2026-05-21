@@ -308,6 +308,17 @@ class ItemHeal:
         50% base AD ranged per empowered AA, 10s CD per target -> 1
         trigger per typical fight)
 
+    ENGINE 1.28.0+ (Phase 6.5, 2026-05-21): ``missing_hp_pct`` extends
+    the dataclass to support item heal pieces that scale with the
+    wielder's missing HP. Sundered Sky's heal carries a 6% missing-HP
+    additive on top of the base AD scaling per Meraki 16.10.1. The
+    consumer (``ehp.py``) supplies the missing_hp value derived from
+    the mid-fight HP-share convention (see
+    ``_MISSING_HP_SHARE_FOR_HEALS``); this dataclass stays
+    convention-agnostic - it just composes the additive piece into the
+    pre-ranged-modifier total. The EHP scorer's normal full-HP
+    steady-state convention sits at the consumer site, not here.
+
     Lifesteal-derived heals are NOT modeled via ItemHeal - they're
     stat-driven (``stats["lifesteal"] * stats["ad"] * stats["as"] *
     _FIGHT_WINDOW_S``) and computed inline in ``compute_ehp``.
@@ -320,11 +331,11 @@ class ItemHeal:
     builds the shield between fights at base/walking).
 
     Magnitude resolves as ``flat + base_ad_scaling * base_ad +
-    bonus_hp_scaling * bonus_hp + bonus_ad_scaling * bonus_ad`` then
-    multiplied by ``ranged_modifier`` when the wielder is ranged. NO
-    level lerp (Phase 6 heal items in scope are all stat-scaled
-    directly; the level-scaling magnitudes today belong to the shield
-    pipeline).
+    bonus_hp_scaling * bonus_hp + bonus_ad_scaling * bonus_ad +
+    missing_hp_pct * missing_hp`` then multiplied by ``ranged_modifier``
+    when the wielder is ranged. NO level lerp (Phase 6 heal items in
+    scope are all stat-scaled directly; the level-scaling magnitudes
+    today belong to the shield pipeline).
 
     The fight-window assumption (6.0s default) gates lifesteal
     accumulation only; item-passive heals use the one-trigger-per-fight
@@ -334,6 +345,7 @@ class ItemHeal:
     base_ad_scaling: float = 0.0
     bonus_hp_scaling: float = 0.0
     bonus_ad_scaling: float = 0.0
+    missing_hp_pct: float = 0.0
     ranged_modifier: float = 1.0
     note: str = ""
 
@@ -343,25 +355,34 @@ class ItemHeal:
                 f"ItemHeal.ranged_modifier must be >= 0, got "
                 f"{self.ranged_modifier!r}"
             )
+        if self.missing_hp_pct < 0:
+            raise ValueError(
+                f"ItemHeal.missing_hp_pct must be >= 0, got "
+                f"{self.missing_hp_pct!r}"
+            )
 
     def resolve_magnitude(
         self,
         base_ad: float = 0.0,
         bonus_hp: float = 0.0,
         bonus_ad: float = 0.0,
+        missing_hp: float = 0.0,
         is_ranged: bool = False,
     ) -> float:
         """Resolve the per-trigger heal value at the given context.
 
         Negative result is floored at 0. Stat inputs are clamped at 0 -
         a malformed champion record cannot drive heal magnitudes below
-        zero via negative bonus AD or HP.
+        zero via negative bonus AD or HP. ``missing_hp`` is the absolute
+        missing-HP value in HP units (NOT a share); the dataclass is
+        consumer-convention-agnostic.
         """
         total = (
             self.flat
             + self.base_ad_scaling * max(0.0, base_ad)
             + self.bonus_hp_scaling * max(0.0, bonus_hp)
             + self.bonus_ad_scaling * max(0.0, bonus_ad)
+            + self.missing_hp_pct * max(0.0, missing_hp)
         )
         if is_ranged and self.ranged_modifier != 1.0:
             total *= self.ranged_modifier
