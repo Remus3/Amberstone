@@ -28,6 +28,7 @@ from coaches._base_coach import (
 )
 from core import daemon_slayer_client as _ds_client
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+from core.death_patterns_loader import personal_context_block
 
 logger = logging.getLogger("rc.coaches.brawl")
 
@@ -77,7 +78,7 @@ Reset / item: <recall/base condition + next item spike>
 Objective: <structure target + rotate timing [T]>
 Risk: <[E]ability[/E] to respect + cooldown context>
 Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "event-rotate", "siege-call". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
-"""
+""" + personal_context_block()
 
 _URF_SYSTEM_PROMPT = """\
 You are coaching a challenger player in URF (Ultra Rapid Fire). No CD limits. Spamming is the meta.
@@ -116,7 +117,7 @@ Objective: <rotate or hold>
 Risk: <specific [E] spell to dodge>
 Comp analysis: <your damage type vs enemy - exploit their weakness>
 Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "spam-poke", "all-in". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
-"""
+""" + personal_context_block()
 
 _OFA_SYSTEM_PROMPT = """\
 You are coaching a challenger player in One For All (all 5 players play the same champion).
@@ -145,7 +146,7 @@ Reset / item: <next item>
 Objective: <take/hold>
 Risk: <enemy exploit vs your champion weakness>
 Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "stack-combo", "ofa-burst". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
-"""
+""" + personal_context_block()
 
 _NB_OUTPUT_KEYS  = ["action", "immediate", "event", "fight rule", "wave", "reset / item", "objective", "risk", "choices"]
 _URF_OUTPUT_KEYS = ["action", "immediate", "fight rule", "wave", "reset / item", "objective", "risk", "comp analysis", "choices"]

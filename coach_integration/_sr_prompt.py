@@ -7,6 +7,8 @@ import logging
 from collections import deque
 from pathlib import Path
 
+from core.death_patterns_loader import personal_context_block
+
 logger = logging.getLogger("coach")
 
 # Points to project root (parent of this package dir).
@@ -122,7 +124,7 @@ Fight rule: <specific condition using [A]/[E] tags + exact mechanic, max 12 word
 Reset / item: <item name + exact gold check, max 8 words>
 Risk: <specific threat using [E] tag + mechanic to watch, max 12 words>
 Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "lane-state", "rotate-ward", "team-fight", "wave-tempo", "objective-call". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
-"""
+""" + personal_context_block()
 # \u2500\u2500 ARAM / ARAM Mayhem system prompt \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 ARAM_SYSTEM_PROMPT = """\
