@@ -34,17 +34,26 @@ class SuppressLogPathsConstantTests(unittest.TestCase):
         for p in _handler._SUPPRESS_LOG_PATHS:
             self.assertIsInstance(p, str)
 
-    def test_constant_contains_three_high_frequency_paths(self):
-        # The exact suppressed set is load-bearing - widening it costs
-        # diagnostic signal; narrowing it costs cost-saving.
-        self.assertEqual(
-            _handler._SUPPRESS_LOG_PATHS,
-            (
-                "GET /api/decisions ",
-                "GET /api/decisions/heartbeat ",
-                "GET /api/vision-state ",
-            ),
-        )
+    def test_constant_contains_high_frequency_paths(self):
+        # The suppressed set is load-bearing - widening it costs
+        # diagnostic signal; narrowing it costs cost-saving. Pass-3
+        # extended it from the original 3 (decisions / heartbeat /
+        # vision-state at 2Hz) to 8 by adding 5 lower-cadence pollers
+        # (asset-stamp / ui-version / activity / env / locked-champion)
+        # each at ~5-15s cadence but cumulative still high-volume.
+        expected = {
+            "GET /api/decisions ",
+            "GET /api/decisions/heartbeat ",
+            "GET /api/vision-state ",
+            "GET /api/asset-stamp ",
+            "GET /api/ui-version ",
+            "GET /api/activity ",
+            "GET /api/env ",
+            "GET /api/locked-champion ",
+        }
+        self.assertEqual(set(_handler._SUPPRESS_LOG_PATHS), expected)
+        # Ordering is preserved as declared in the source for readability.
+        self.assertEqual(len(_handler._SUPPRESS_LOG_PATHS), len(expected))
 
 
 class LogMessageSuppressionTests(unittest.TestCase):
