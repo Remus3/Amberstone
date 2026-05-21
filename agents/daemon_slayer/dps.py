@@ -239,7 +239,22 @@ def _periodic_proc_dps(
             if proc.every_n_attacks > 0:
                 if total_attacks <= 0:
                     continue
-                procs = total_attacks / proc.every_n_attacks
+                # ENGINE 1.26.0 (2026-05-21): stack-ramp-gated procs (Dead
+                # Man's Plate Shipwrecker, future stack-discharge items).
+                # When stack_ramp_seconds > 0, the effective period is
+                # gated by the LATER of the attack-counted period and the
+                # ramp. Each rotation tick: one stack-ramp + one attack
+                # to discharge. Default stack_ramp_seconds=0.0 leaves
+                # existing every_n_attacks procs unchanged (max(a, 0)=a).
+                if proc.stack_ramp_seconds > 0:
+                    attack_period_s = duration / total_attacks
+                    eff_period_s = max(
+                        proc.stack_ramp_seconds,
+                        attack_period_s * proc.every_n_attacks,
+                    )
+                    procs = duration / eff_period_s
+                else:
+                    procs = total_attacks / proc.every_n_attacks
             else:  # every_n_seconds > 0 enforced by PeriodicProc.__post_init__
                 procs = duration / proc.every_n_seconds
             is_physical = proc.damage_type == PHYSICAL
@@ -385,6 +400,17 @@ def _per_attack_proc_damage(
     for e in effects:
         for proc in e.periodics:
             if proc.every_n_attacks <= 0:
+                continue
+            # ENGINE 1.26.0 (2026-05-21): stack-ramp-gated procs (Dead
+            # Man's Plate Shipwrecker; future stack-discharge items) do
+            # NOT contribute meaningfully to a burst-window per-attack
+            # tally - the ramp typically exceeds the burst window (2-3s
+            # vs 3.57s ramp for Dead Man's), and these are tank items
+            # whose DPS contribution is sustained-only. Skip in burst
+            # to avoid over-attributing per-AA on items whose proc
+            # cannot have accumulated by attack #1. Sustained DPS still
+            # captures the contribution via _periodic_proc_dps.
+            if proc.stack_ramp_seconds > 0:
                 continue
             procs_per_aa = 1.0 / proc.every_n_attacks
             is_physical = proc.damage_type == PHYSICAL

@@ -1299,7 +1299,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # or-ability-bound passives that don't fit the basic-auto DPS model.
     # Defensive_only count: 21 → 40.
 
-    # --- Dead Man's Plate - defensive_only (iter 16 structural deferral) ---
+    # --- Dead Man's Plate - Shipwrecker stack-ramp discharge (ENGINE 1.26.0) ---
     # 350 HP + 55 armor + 4% MS stat block. Two passives:
     # - Shipwrecker (REWORKED): while moving, build Momentum stacks
     #   (7/0.25s = 28/s, cap 100 stacks in ~3.57s; grants up to 20 bonus
@@ -1307,30 +1307,44 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     #     0.4 * stacks (capped at 40 flat) + stacks% (capped at 100%) of
     #     base AD bonus physical damage.
     #   Meraki 16.10.1 spec is a DUAL-TRACK formula: stack-scaled flat
-    #   damage PLUS stack-scaled %-base-AD modifier, both driven by a
-    #   per-tick Momentum state that depends on caster movement.
+    #   damage PLUS stack-scaled %-base-AD modifier.
     # - Unsinkable: 15% slow resistance - utility.
     #
-    # Iter 16 (2026-05-20) structural drift resolution: the engine cannot
-    # cleanly model the Momentum stack accumulation + MS state machine
-    # within the periodic-proc schema (CallContext has no MS field, no
-    # tick-level stack model, and Dead Man's is a TANK item where DPS
-    # contribution is incidental). Pre-iter-16 encoding "109 flat every 4
-    # attacks" was the pre-rework full-stack approximation but the rework
-    # decoupled the flat and %-base-AD tracks. Flipped to defensive_only
-    # rather than carry a stale flat-magnitude estimate; a full
-    # re-encoding requires a dedicated Phase-2 session to add Momentum
-    # stack modeling to the engine (out of scope for this iter, low
-    # priority because Dead Man's is rarely picked for DPS contribution).
+    # ENGINE 1.26.0 (2026-05-21) - closes the iter-16 (2026-05-20) deferral
+    # via the new ``PeriodicProc.stack_ramp_seconds`` schema lift. Sustained
+    # model: Momentum ramps to 100 stacks in ~3.57s of movement; the next
+    # basic attack consumes all stacks for a full-stack discharge; ramp
+    # restarts. In sustained combat the discharge fires once per
+    # ``max(stack_ramp_seconds=3.57, attack_period_s)`` interval - the
+    # _periodic_proc_dps consumer enforces this gate. Full-stack discharge
+    # damage = ``0.4 * 100 (cap 40) + 1.0 * base_ad = 40 + base_ad``
+    # (PHYSICAL, since Meraki spec says "physical damage"). The burst path
+    # (``_per_attack_proc_damage``) intentionally skips stack-ramp-gated
+    # procs (3.57s ramp vs 2-3s burst window; this is a tank item with
+    # incidental DPS - the sustained model is what matters). Other items
+    # that would benefit from the same schema in future iterations: any
+    # build-up -> discharge passive that ramps over seconds of movement
+    # or in-combat state without per-tick stack tracking (e.g. Sterak's
+    # Lifeline once an EHP-vs-CC sim lands, hypothetical future ramp
+    # items). The ``every_n_attacks=1`` keeps the model honest: each
+    # attack discharges WHATEVER stacks have accumulated; the ramp gate
+    # ensures sustained model fires at most once per ramp interval.
     "3742": ItemEffect(
         item_id="3742",
         name="Dead Man's Plate",
-        defensive_only=True,
+        periodics=(
+            PeriodicProc(
+                name="Shipwrecker",
+                bonus_damage=lambda c: 40.0 + c.base_ad,
+                damage_type=PHYSICAL,
+                every_n_attacks=1,
+                stack_ramp_seconds=3.57,
+            ),
+        ),
         note=(
-            "Dead Man's Plate: Shipwrecker 0.4*stacks(cap 40) + stacks%(cap "
-            "100%)*base_ad bonus physical on-hit, dual-track Momentum stack "
-            "model not yet supported; defensive_only pending Phase-2 stacks "
-            "schema (iter 16, 2026-05-20)"
+            "Dead Man's Plate: Shipwrecker full-stack discharge 40 + "
+            "base_ad physical on first attack post-ramp; stack_ramp=3.57s "
+            "(ENGINE 1.26.0 stack-ramp schema)"
         ),
     ),
 
@@ -3770,11 +3784,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223742": ItemEffect(
         item_id="223742",
         name="Dead Man's Plate",
-        defensive_only=True,
-        # Iter 16 (2026-05-20): mirrors SR 3742 defensive_only flip - dual-
-        # track Momentum stack model (0.4*stacks cap 40 + stacks% cap 100%
-        # of base_ad) not yet supported by the periodic-proc schema.
-        note="Dead Man's Plate (Arena 223742): same as SR 3742 - defensive_only pending Momentum stacks schema",
+        # ENGINE 1.26.0 (2026-05-21): mirrors SR 3742 Shipwrecker stack-
+        # ramp discharge encoding. Arena map 30 keeps same passive math
+        # as SR; full-stack discharge 40 + base_ad physical on first
+        # attack post-ramp.
+        periodics=(
+            PeriodicProc(
+                name="Shipwrecker",
+                bonus_damage=lambda c: 40.0 + c.base_ad,
+                damage_type=PHYSICAL,
+                every_n_attacks=1,
+                stack_ramp_seconds=3.57,
+            ),
+        ),
+        note="Dead Man's Plate (Arena 223742): same as SR 3742 - Shipwrecker full-stack discharge (ENGINE 1.26.0)",
     ),
     "223748": ItemEffect(
         item_id="223748",
