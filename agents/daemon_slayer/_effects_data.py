@@ -268,20 +268,22 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Strike heal piece. Meraki 16.10.1: "heal you for 100% base AD melee
         # / 50% base AD ranged (+ 6% missing health) (10s cooldown per
         # target)". One-trigger-per-fight model (10s CD per target > typical
-        # 6s fight window). Missing-HP piece intentionally NOT modeled in
-        # Phase 6 (would need a current-HP-share assumption distinct from
-        # the steady-state full-HP convention used elsewhere in EHP); the
-        # base AD piece is the dominant contributor.
+        # 6s fight window). Phase 6.5 (2026-05-21): missing-HP additive
+        # wired via ItemHeal.missing_hp_pct + ehp.py's
+        # _MISSING_HP_SHARE_FOR_HEALS=0.5 mid-fight convention. Closes the
+        # Phase 6 deliberate-omission (4) on Sundered Sky.
         heal=ItemHeal(
             base_ad_scaling=1.0,
+            missing_hp_pct=0.06,
             ranged_modifier=0.5,
-            note="Sundered Sky Lightshield Strike base AD heal",
+            note="Sundered Sky Lightshield Strike base AD heal + 6% missing HP",
         ),
         note=(
             "Sundered Sky: Lightshield Strike ~70 + 80% total AD bonus on "
             "guaranteed-crit empowered AA, every ~8s (calibrated to "
             "Meraki 16.10.1 60-80 + 80% total-crit-damage) + 100% base AD "
-            "heal melee / 50% ranged per trigger"
+            "heal melee / 50% ranged + 6% missing HP per trigger "
+            "(mid-fight 50% HP share assumption at consumer site)"
         ),
     ),
     "3124": ItemEffect(
@@ -3086,16 +3088,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - Arena
         # mirror of SR 6610 Lightshield Strike heal. 100% base AD melee /
-        # 50% base AD ranged per trigger.
+        # 50% base AD ranged per trigger. Phase 6.5 (2026-05-21): missing-
+        # HP additive 6% (mirror of SR 6610).
         heal=ItemHeal(
             base_ad_scaling=1.0,
+            missing_hp_pct=0.06,
             ranged_modifier=0.5,
-            note="Sundered Sky Arena Lightshield Strike base AD heal",
+            note="Sundered Sky Arena Lightshield Strike base AD heal + 6% missing HP",
         ),
         note=(
             "Sundered Sky (Arena 226610): same as SR 6610 - Lightshield "
             "Strike 70 + 80% total AD damage every 8s + 100% base AD heal "
-            "melee / 50% ranged per trigger"
+            "melee / 50% ranged + 6% missing HP per trigger"
         ),
     ),
     "226631": ItemEffect(
