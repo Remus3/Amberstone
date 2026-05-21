@@ -13,6 +13,7 @@ from ._effects_types import (
     ANY,
     CallContext,
     ItemEffect,
+    ItemHeal,
     ItemShield,
     MAGICAL,
     PHYSICAL,
@@ -34,7 +35,29 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3072",
         name="Bloodthirster",
         defensive_only=True,
-        note="Bloodthirster: Ichorshield (excess lifesteal → shield); no DPS contribution",
+        # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - BT's
+        # Ichorshield modeled as a steady-state ANY shield (overheal from
+        # lifesteal builds the shield between fights; full-cap is the
+        # sustained-fight assumption mirroring the engine's other full-
+        # stack approximations). Meraki 16.10.1 "Ichorshield: shield up
+        # to 165 + (315-165)/10*(x-1) for 1;9 to 20 by 1" -> L1 hold at
+        # 165, L9-L18 ramp 165 -> 315. Same lerp convention as Immortal
+        # Shieldbow 6673 (anchor at flat, ramp from level_lerp_low to
+        # level_lerp_high). NO ``unique_passive_key="lifeline"`` - BT's
+        # Ichorshield is a DIFFERENT unique passive (overheal/lifesteal
+        # accrual, not low-HP trigger) and can stack with any single
+        # lifeline shield in real builds.
+        shield=ItemShield(
+            damage_type=ANY,
+            flat=165.0,
+            level_lerp_low=9,
+            level_lerp_high=18,
+            level_lerp_high_value=315.0,
+        ),
+        note=(
+            "Bloodthirster: Ichorshield 165 (L1) -> 315 (L18) ANY shield "
+            "(overheal full-cap steady-state); no DPS contribution"
+        ),
     ),
     "3097": ItemEffect(
         item_id="3097",
@@ -241,10 +264,24 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_seconds=8.0,
         ),),
+        # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - Lightshield
+        # Strike heal piece. Meraki 16.10.1: "heal you for 100% base AD melee
+        # / 50% base AD ranged (+ 6% missing health) (10s cooldown per
+        # target)". One-trigger-per-fight model (10s CD per target > typical
+        # 6s fight window). Missing-HP piece intentionally NOT modeled in
+        # Phase 6 (would need a current-HP-share assumption distinct from
+        # the steady-state full-HP convention used elsewhere in EHP); the
+        # base AD piece is the dominant contributor.
+        heal=ItemHeal(
+            base_ad_scaling=1.0,
+            ranged_modifier=0.5,
+            note="Sundered Sky Lightshield Strike base AD heal",
+        ),
         note=(
             "Sundered Sky: Lightshield Strike ~70 + 80% total AD bonus on "
             "guaranteed-crit empowered AA, every ~8s (calibrated to "
-            "Meraki 16.10.1 60-80 + 80% total-crit-damage)"
+            "Meraki 16.10.1 60-80 + 80% total-crit-damage) + 100% base AD "
+            "heal melee / 50% ranged per trigger"
         ),
     ),
     "3124": ItemEffect(
@@ -1226,7 +1263,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # (heal/shield amp 25%) is non-DPS - engine doesn't model healing
         # output. Pure defensive.
         defensive_only=True,
-        note="Spirit Visage: Boundless Vitality (heal/shield +25%); no DPS contribution",
+        # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - "Boundless
+        # Vitality" +25% self-heal/regen amp. Applied multiplicatively in
+        # ``compute_ehp`` via _total_heal_amp() to the heal pool ONLY (item-
+        # passive heals + lifesteal-derived heal). Phase 1.5 shield pipeline
+        # (Sterak/Shieldbow/Maw/Hexdrinker/BT) is NOT amped in this engine -
+        # see _effects_types.py ItemEffect.heal_amp_pct docstring for the
+        # deferred-to-Phase-6.5 boundary rationale.
+        heal_amp_pct=0.25,
+        note=(
+            "Spirit Visage: Boundless Vitality (heal/shield +25%; engine "
+            "amps heal pool only, Phase 1.5 shields deferred to 6.5)"
+        ),
     ),
 
     "2504": ItemEffect(
@@ -3036,7 +3084,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_seconds=8.0,
         ),),
-        note="Sundered Sky (Arena 226610): same as SR 6610 - Lightshield Strike 70 + 80% total AD, every 8s",
+        # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - Arena
+        # mirror of SR 6610 Lightshield Strike heal. 100% base AD melee /
+        # 50% base AD ranged per trigger.
+        heal=ItemHeal(
+            base_ad_scaling=1.0,
+            ranged_modifier=0.5,
+            note="Sundered Sky Arena Lightshield Strike base AD heal",
+        ),
+        note=(
+            "Sundered Sky (Arena 226610): same as SR 6610 - Lightshield "
+            "Strike 70 + 80% total AD damage every 8s + 100% base AD heal "
+            "melee / 50% ranged per trigger"
+        ),
     ),
     "226631": ItemEffect(
         item_id="226631",
@@ -3914,13 +3974,35 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223065",
         name="Spirit Visage",
         defensive_only=True,
-        note="Spirit Visage (Arena 223065): Boundless Vitality healing amp - defensive, no DPS proc",
+        # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - Arena
+        # mirror of SR 3065 Boundless Vitality. +25% to heal pool only;
+        # Phase 1.5 shield amp deferred per ItemEffect.heal_amp_pct docs.
+        heal_amp_pct=0.25,
+        note=(
+            "Spirit Visage (Arena 223065): Boundless Vitality +25% heal "
+            "amp (heal pool only; Phase 1.5 shields deferred to 6.5); "
+            "no DPS proc"
+        ),
     ),
     "223072": ItemEffect(
         item_id="223072",
         name="Bloodthirster",
         defensive_only=True,
-        note="Bloodthirster (Arena 223072): Sanguine Shield overheal bubble - sustain, no DPS proc",
+        # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - Arena
+        # mirror of SR 3072 Ichorshield. Same level lerp 165 (L1) -> 315
+        # (L18), ANY damage type, full-cap steady-state.
+        shield=ItemShield(
+            damage_type=ANY,
+            flat=165.0,
+            level_lerp_low=9,
+            level_lerp_high=18,
+            level_lerp_high_value=315.0,
+        ),
+        note=(
+            "Bloodthirster (Arena 223072): Sanguine Shield overheal bubble "
+            "165 (L1) -> 315 (L18) ANY shield (full-cap steady-state); "
+            "no DPS proc"
+        ),
     ),
     "223073": ItemEffect(
         item_id="223073",

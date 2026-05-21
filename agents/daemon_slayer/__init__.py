@@ -1321,7 +1321,43 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.27.0"
+ENGINE_VERSION = "1.28.0"
+# 1.28.0 (Phase 6 EHP healing throughput, 2026-05-21):
+# Closes the ehp.py:23 deliberate Phase-1 omission "Healing throughput
+# (lifesteal, Spirit Visage amp) - fits Phase 6". Three contributions
+# now feed an EHP heal pool:
+#   (a) item-passive heals via NEW ``ItemHeal`` dataclass +
+#       ``ItemEffect.heal`` field: Sundered Sky 6610 / Arena 226610
+#       "Lightshield Strike" 100% base AD melee / 50% base AD ranged
+#       per one-trigger-per-fight (10s CD per target > 6s fight window).
+#   (b) lifesteal-derived heal: ``stats.lifesteal * stats.ad * stats.as
+#       * _FIGHT_WINDOW_S (6.0)`` accumulated over the standard fight
+#       window. Pre-mitigation approximation (consistent with EHP's
+#       no-enemy-pen Phase-1 posture).
+#   (c) multiplicative heal amp via NEW ``ItemEffect.heal_amp_pct``
+#       field: Spirit Visage 3065 / Arena 223065 "Boundless Vitality"
+#       +25%. Multiple amp items stack multiplicatively per the
+#       buff-system doctrine (batch 14).
+# Bloodthirster 3072 / Arena 223072 "Ichorshield" rides the Phase 1.5
+# ItemShield pipeline (full-cap steady-state assumption: 165 L1 -> 315
+# L18, ANY damage type; overheal builds the shield between fights at
+# base/walking). NO ``unique_passive_key="lifeline"`` - BT's Ichorshield
+# is a distinct unique passive and can stack with any single lifeline
+# shield in real builds.
+# EhpResult gains heal_item_total / heal_lifesteal / heal_amp_mult /
+# heal_total / heal_sources fields; compute_ehp folds heal_total into
+# physical_ehp / magical_ehp / true_ehp at the top of the damage stack
+# (heals don't discriminate by damage type, so the heal pool acts like
+# an ANY shield).
+# Deliberate Phase-6 omissions (deferred to Phase 6.5+):
+#   * Death's Dance Defy heal-on-takedown (75% bonus AD over 2s) - the
+#     takedown-rate assumption is uncertain; stays defensive_only.
+#   * Spirit Visage amp on Phase 1.5 SHIELDS - the engine ships
+#     heal-pipeline amp only. Builds pairing Spirit Visage with a
+#     lifeline item under-credit by ~15% on the shield piece.
+#   * Sundered Sky 6% missing-HP additive - requires a current-HP-share
+#     assumption distinct from the steady-state full-HP convention.
+#
 # 1.27.0 (Phase 1.5 EHP shield throughput, 2026-05-21):
 # Closes the ehp.py:21 deliberate Phase-1 omission "Shield throughput
 # (Sterak's lifeline, Doran's Shield, Bloodthirster) - needs uptime
