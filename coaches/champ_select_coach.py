@@ -113,9 +113,18 @@ def coach_pick(state: dict, api_key: str | None) -> dict[str, Any]:
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
+        # Mark the static system prompt with cache_control=ephemeral so
+        # subsequent champ-select ticks reuse the cached prefix at ~10% of
+        # input-token cost. Per-tick coaches (aram/arena/brawl/sr) have
+        # this since batch 5; champ-select was missed at first ship.
+        # The user message (champion picks, hovered champ, etc.) varies
+        # per tick and goes uncached.
         resp = client.messages.create(
             model=_MODEL, max_tokens=_MAX_TOKENS,
-            system=_SYSTEM_PROMPT,
+            system=[
+                {"type": "text", "text": _SYSTEM_PROMPT,
+                 "cache_control": {"type": "ephemeral"}},
+            ],
             messages=[{"role": "user", "content": prompt}],
             timeout=12,
         )
