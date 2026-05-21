@@ -2,6 +2,31 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-20 - s220 PGR S4 tabs reframe 4 -> 3 (1 commit d199f30, pushed; non-engine; no frozen edits; no RC restart needed)
+
+Stage S4 of the s220 aggregator-G-style Post Game Review reframe. Operator: "for the PGR page start next: S4 (tabs reframe)" + "do these edits and audits in parallel when possible".
+
+Tab strip flipped 4 -> 3 per the aggregator G pattern:
+- **Build** = was Comp (rosters with full per-player items + MVP/SVP card from S3)
+- **Graph** = was Chart (team bars) MERGED with Timeline visuals (sparklines + objective ribbon)
+- **AI Analysis** = was Insights (Quick Review 3-col) MERGED with Timeline heuristics (WPA Phases)
+- **Review** nav button stays (routes to deep-review page).
+
+Legacy localStorage migration via NEW `_migrateLegacyTab(saved)` in `wireLastMatchOnce`: `comp -> build` / `chart -> graph` / `timeline -> graph` (visuals home) / `insights -> ai-analysis`. Migrated value writes back in a one-shot so subsequent loads see new id verbatim. NEW `_VALID_TABS = ["build", "graph", "ai-analysis"]` allowlist gates `_activateTab`. Inner element IDs unchanged - CSS attr-selectors stay agnostic, JS doesn't have to rewire.
+
+**Parallel audit win:** UI-audit subagent dispatched in BACKGROUND with the design intent + just-edited code while implementation was in-flight. Audit returned during the test/verify cycle. Findings: 1 real minor (stray "Timeline unavailable" banner in merged Graph) + 2 doc nits + (caught visually) 1 pre-existing CSS gap (`.lm-wpa-wrap` had `display: flex` but no `[hidden]` rule, so the Phases head bled through). All 3 fixed in the SAME commit, not a separate slice. Matches operator's "edits and audits in parallel" instruction directly.
+
+NEW `tests/test_last_match_tabs_reframe_dom.py` +15 grep-based DOM-contract tests across 5 classes: TabStrip (4) + PanelMount (4) + LegacyMigration (5) + CssNoLegacySelectors (1) + AsciiHygiene (1). Pins 3 canonical tab ids + Build-default-active + legacy-id absence + Review-nav-button kept + Build/Graph/AI-Analysis mount locations + WPA-above-Quick-Review ordering + each legacy-id mapping case + writeback gate + legacy-array absence + CSS legacy selectors absence.
+
+**Verified:** py_compile + ruff + ASCII clean across all 5 touched files (`web/index.html` + `web/js/panels/last_match.js` + `web/js/panels/post_game_phases.js` + `web/css/panels/last_match.css` + `tests/test_last_match_tabs_reframe_dom.py`); full RC suite **2350 passed / 67 subtests / 0 failed** (+15 over post-S3 2335 baseline); live Playwright @ `https://127.0.0.1:8888/#last-match` on operator's ARAM Vel'Koz 4/9/25 across all 3 tabs - Build = MVP cards + rosters (hero 48 BAD + SVP bliv 64 OK + MVP GenieInTheLamp 77 GOOD persisting); Graph = team-aggregate bars NO stray banner; AI Analysis = Quick Review 3-col with WPA hidden cleanly when no Match-V5 timeline.
+
+ADR-008 asset-hash auto-bumps cover JS/CSS; index.html picks up on next page nav. No RC restart. No DS restart. No ENGINE bump. No frozen-file edits.
+
+**Don't-redo:** the 3-tab reframe is final - do NOT re-add Comp/Chart/Timeline/Insights (`TabStripTests::test_legacy_tab_ids_removed` guards). `_migrateLegacyTab` writeback is INTENTIONAL one-shot - do NOT remove. `_VALID_TABS` allowlist gates `_activateTab` against malformed values - do NOT relax. WPA is ABOVE Quick Review in AI Analysis (heuristic-insights ordering) - `PanelMountTests::test_ai_analysis_hosts_wpa_then_quick_review` pins. `.lm-wpa-wrap[hidden] { display: none }` is LOAD-BEARING - the `display: flex` declaration on the base rule would otherwise re-leak the head. Single shared Graph placeholder replaces 2 pre-S4 placeholders; `_setTimeline`'s `lm-tl-pending` lookup no-ops cleanly when the element is absent. The audit-in-parallel pattern (dispatch UI-audit subagent in background while implementation in-flight) is durable - matches operator's "edits and audits in parallel" instruction.
+
+**Carries forward:** S5 (Replay page scaffold + Match-V5 timeline + league_record GPLv3 cleanroom reference) still operator-gated; the s220 reframe chain continues stage-by-stage with the per-page UI-audit ritual between sessions. Pre-existing `lm-build-pending` dead-id in `_setEmptyState` (s107-era) flagged by audit but NOT touched here (out of scope, no-op `getElementById` already returns null). Item 115 carries unchanged. Frozen-file grant NOT used this session.
+
+---
 # 2026-05-20 - s220 PGR S3 aggregator G score+MVP polish (1 commit 92c6a0f, pushed; non-engine; no frozen edits; no RC restart needed)
 
 Stage S3 of the s220 aggregator-G-style Post Game Review reframe. Operator picked "S3 aggregator G score+MVP polish (Recommended)" from a 4-option fork (over UI-audit-first / S4 tabs reframe / S5 Replay scaffold). Three aggregator-G-pattern affordances added to the Last Match view, all sourcing from the existing `_rosterScores` 100-point heuristic in `web/js/panels/last_match.js` so the three numbers stay mutually consistent. No new backend, no schema change, no ENGINE bump.
