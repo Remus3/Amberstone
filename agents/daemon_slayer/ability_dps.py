@@ -110,6 +110,7 @@ from .abilities import (
 )
 from .data_loader import DataSnapshot
 from .dps import _armor_factor
+from .ehp import effective_cc_duration
 from .effects import (
     ITEM_EFFECTS,
     collect_effects,
@@ -864,6 +865,66 @@ def _total_ability_haste(
     return float(base_ah) + aram_ah
 
 
+# ENGINE 1.29.0 (2026-05-21) - per-spell CC duration extractor seam.
+# Closes the item 129 carry-forward (a): 2nd consumer of the
+# ``effective_cc_duration`` helper shipped 1.25.0 (item 122). The helper
+# itself lives in ``ehp.py`` (free function imported above); this slice
+# exposes the downstream-consumer surface at the per-spell AbilityDps
+# layer so a future EHP-vs-CC blended scorer (or fight-sim) can read
+# per-rank base CC durations + the matching post-tenacity values without
+# re-resolving the champion.
+#
+# Mirrors the empty ``STAT_GRANT_CALC_KEYS`` seam pattern from item 112
+# (cdragon mFormulaParts evaluator): the registry stays EMPTY at 1.29.0
+# so production behavior is byte-identical to pre-slice (every spell's
+# ``cc_duration_s`` and ``cc_duration_post_tenacity`` are ``()`` empty
+# tuples). When a downstream consumer needs the data, future patches
+# populate the registry; today's value is ``()`` per spell which
+# collapses cleanly through ``effective_cc_duration`` to ``()``.
+#
+# Schema:
+#   _PER_SPELL_CC_DURATIONS[champion_id][spell_key] = (cc_s_r1, ..., cc_s_r5)
+# where ``champion_id`` is the DDragon id (e.g. ``"Annie"``), ``spell_key``
+# is one of ``{"Q","W","E","R"}``, and the tuple is per-rank base CC
+# duration in seconds. Per-rank tuples are typically length 5 for Q/W/E
+# and length 3 for R, but the engine treats them as length-flexible
+# (consumer reads the rank slot).
+_PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {}
+
+
+def _per_spell_cc_for(champion_id: str, spell_key: str) -> tuple[float, ...]:
+    """Read a champion+spell base CC duration tuple from the registry.
+
+    Returns ``()`` when the champion is absent, the spell is absent, or
+    the registry entry is empty. Forward-marker: the registry is empty
+    at 1.29.0 by design so all calls return ``()``; tests inject a
+    monkey-patched entry to exercise consumer math.
+    """
+    champ_entry = _PER_SPELL_CC_DURATIONS.get(champion_id, {})
+    return tuple(champ_entry.get(spell_key, ()))
+
+
+def _apply_tenacity_to_cc_tuple(
+    base_cc: tuple[float, ...], tenacity_mult: float,
+) -> tuple[float, ...]:
+    """Apply ``effective_cc_duration`` element-wise to a base-CC tuple.
+
+    Free-function wrapper around ``ehp.effective_cc_duration`` (the
+    helper shipped 1.25.0). Routed through this module-local helper so
+    the call site is grep-able and the engine layer stays read-only
+    against ``ehp.py``. Returns an empty tuple when the input is empty.
+
+    Floors at 0.0 per-element via the underlying helper. SR + non-ARAM
+    modes with ``tenacity_mult == 1.0`` return identity values (the
+    tuple is byte-equal to the input modulo float casting).
+    """
+    if not base_cc:
+        return ()
+    return tuple(
+        effective_cc_duration(float(s), float(tenacity_mult)) for s in base_cc
+    )
+
+
 def _form_cost_at_rank(form: AbilityForm, rank: int) -> float:
     """Return mana/resource cost at rank, or 0.0 when None / empty."""
     if form.cost is None or not form.cost:
@@ -919,6 +980,19 @@ class AbilitySpellDps:
     post-haste cooldown (``base_cooldown / (1 + total_ability_haste / 100)``).
     SR mode + most ARAM champions (those with aramAbilityHaste=0) see
     identity: ``cooldown == base_cooldown``.
+
+    ENGINE 1.29.0 (2026-05-21): added ``cc_duration_s`` +
+    ``cc_duration_post_tenacity`` per-spell tuples (2nd consumer of the
+    ``effective_cc_duration`` helper shipped 1.25.0). Both default to
+    ``()`` empty tuple because the ``_PER_SPELL_CC_DURATIONS`` registry
+    is empty at 1.29.0 by design (forward-marker; future patches
+    populate it when a downstream EHP-vs-CC blended scorer / fight-sim
+    consumer ships). When populated, ``cc_duration_s`` is the per-rank
+    base (length 5 for Q/W/E, length 3 for R) and
+    ``cc_duration_post_tenacity`` is the same shape after element-wise
+    ``effective_cc_duration(base, aram_tenacity_mult)`` - identity in
+    SR + non-ARAM modes; lengthened in ARAM for the 15 champs with
+    aramTenacity > 1.0.
     """
     key: str
     form_name: str
@@ -937,6 +1011,8 @@ class AbilitySpellDps:
     dps: float
     base_cooldown: float = 0.0          # pre-haste rank cooldown (ENGINE 1.23.0)
     total_ability_haste: float = 0.0    # haste sum used in haste formula (ENGINE 1.23.0)
+    cc_duration_s: tuple[float, ...] = ()                # per-rank base CC duration (ENGINE 1.29.0)
+    cc_duration_post_tenacity: tuple[float, ...] = ()    # cc_duration_s x aram_tenacity_mult (ENGINE 1.29.0)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
@@ -958,6 +1034,8 @@ class AbilitySpellDps:
             "dps": self.dps,
             "base_cooldown": self.base_cooldown,
             "total_ability_haste": self.total_ability_haste,
+            "cc_duration_s": list(self.cc_duration_s),
+            "cc_duration_post_tenacity": list(self.cc_duration_post_tenacity),
             "notes": list(self.notes),
         }
 
@@ -1372,6 +1450,15 @@ def compute_ability_dps(
             cps_source = "theoretical_with_mana_uptime" if theoretical > 0 else "missing"
 
         dps = post_mit * measured
+        # ENGINE 1.29.0 (2026-05-21) - per-spell CC duration extractor.
+        # Reads ``_PER_SPELL_CC_DURATIONS`` (empty at 1.29.0, forward-marker
+        # for a future EHP-vs-CC blended scorer / fight-sim consumer). The
+        # post-tenacity tuple is the same shape with each element passed
+        # through ``effective_cc_duration(base, aram_tenacity_mult)``;
+        # identity in SR + non-ARAM modes; lengthened in ARAM for 15
+        # champs with aramTenacity > 1.0.
+        cc_base = _per_spell_cc_for(resolved.champion_id, key)
+        cc_post_ten = _apply_tenacity_to_cc_tuple(cc_base, aram_tenacity_mult)
         per_spell.append(AbilitySpellDps(
             key=key,
             form_name=form.name,
@@ -1390,6 +1477,8 @@ def compute_ability_dps(
             dps=dps,
             base_cooldown=base_cooldown,
             total_ability_haste=total_ah,
+            cc_duration_s=cc_base,
+            cc_duration_post_tenacity=cc_post_ten,
         ))
 
     total_dps = sum(s.dps for s in per_spell)

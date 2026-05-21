@@ -1321,7 +1321,44 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.28.0"
+ENGINE_VERSION = "1.29.0"
+# 1.29.0 (per-spell CC duration extractor seam, 2026-05-21):
+# Closes the item 129 carry-forward (a): 2nd consumer of the
+# ``effective_cc_duration`` helper shipped 1.25.0 (item 122). The helper
+# itself lives in ``ehp.py`` (free function); this slice exposes the
+# downstream-consumer surface at the per-spell AbilityDps layer so a
+# future EHP-vs-CC blended scorer (or fight-sim) can read per-rank base
+# CC durations + the matching post-tenacity values without re-resolving
+# the champion.
+# NEW ``AbilitySpellDps.cc_duration_s: tuple[float, ...]`` field
+# (defaults ``()`` empty tuple) - per-rank base CC duration in seconds.
+# NEW ``AbilitySpellDps.cc_duration_post_tenacity: tuple[float, ...]``
+# field - same shape after element-wise
+# ``effective_cc_duration(base, aram_tenacity_mult)``; identity in SR
+# + non-ARAM modes; lengthened in ARAM for the 15 champs with
+# aramTenacity > 1.0.
+# NEW ``_PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]]``
+# module-level registry seam (in ``ability_dps.py``). EMPTY at 1.29.0
+# by design (mirror of item 112's ``STAT_GRANT_CALC_KEYS`` empty-seam
+# pattern): production behavior is byte-identical to pre-slice because
+# the registry returns ``()`` for every (champion, spell) lookup;
+# ``_apply_tenacity_to_cc_tuple(())`` short-circuits to ``()``. Future
+# patches populate per-champion + per-spell entries when a downstream
+# consumer (fight-sim / coach-prompt / EHP-vs-CC) needs the data.
+# NEW free helpers ``_per_spell_cc_for(champion_id, spell_key)`` +
+# ``_apply_tenacity_to_cc_tuple(base, tenacity_mult)`` (the latter
+# wraps ``ehp.effective_cc_duration`` element-wise). Imported via
+# ``from .ehp import effective_cc_duration`` at the top of
+# ``ability_dps.py`` - no circular (``ehp.py`` does not import
+# ``ability_dps``).
+# This bump is a forward-marker engine seam, NOT a math change - the
+# ``cooldown``, ``base_cooldown``, ``total_ability_haste``,
+# ``raw_damage_per_cast``, ``post_mode_damage_per_cast``,
+# ``post_mitigation_damage_per_cast``, ``dps``, and all other existing
+# fields are byte-identical to 1.28.0 output. The 2 new fields default
+# to ``()`` so existing consumers (rank.py, coach prompts, /api/state)
+# remain forward-compatible.
+#
 # 1.28.0 (Phase 6 EHP healing throughput, 2026-05-21):
 # Closes the ehp.py:23 deliberate Phase-1 omission "Healing throughput
 # (lifesteal, Spirit Visage amp) - fits Phase 6". Three contributions
