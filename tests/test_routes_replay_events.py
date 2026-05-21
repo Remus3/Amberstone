@@ -222,6 +222,72 @@ class StrongEventsTests(_DbPatchedCase):
         # actor 2 is on team 100 (allies) - ribbon paints by destroyer side.
         self.assertEqual(kill["team"], 100)
 
+    def test_champion_kill_carries_participant_names_and_champs(self):
+        """s220 carry-forward: events join participants table so the
+        ribbon paints real summoner_name + champion_name instead of
+        P<id> chips."""
+        h = _FakeHandler("/api/replay/events?match_id=NA1_TEST_001")
+        routes._serve_replay_events(h)
+        _, body, _ = h.last
+        kill = body["events"][0]
+        # actor pid=2 on team 100 -> Ally2 + Champ2 (per _seed_db).
+        self.assertEqual(kill["actor_name"], "Ally2")
+        self.assertEqual(kill["actor_champion"], "Champ2")
+        # victim pid=8 on team 200 -> Enemy3 (8-5=3) + Champ8.
+        self.assertEqual(kill["victim_name"], "Enemy3")
+        self.assertEqual(kill["victim_champion"], "Champ8")
+        # assists pid=[3, 5] -> Ally3 + Ally5 + Champ3 + Champ5.
+        self.assertEqual(kill["assists_names"], ["Ally3", "Ally5"])
+        self.assertEqual(kill["assists_champs"], ["Champ3", "Champ5"])
+
+    def test_assist_names_use_null_parity_for_unknown_pid(self):
+        """assists_names + assists_champs preserve list length parity
+        with assists; missing meta rows surface as None (NOT ""), to
+        match the actor_name/victim_name null convention."""
+        h = _FakeHandler("/api/replay/events?match_id=NA1_TEST_001")
+        routes._serve_replay_events(h)
+        _, body, _ = h.last
+        # Synthesize an event with an unknown assist via direct DB poke,
+        # bust the cache, then re-fetch.
+        import sqlite3
+        conn = sqlite3.connect(str(routes._REWIND_DB))
+        try:
+            conn.execute(
+                "INSERT INTO timeline_events(match_id, timestamp_ms, event_type, "
+                "killer_id, victim_id, assisting_ids_json) "
+                "VALUES (?, 240000, 'CHAMPION_KILL', 1, 6, '[7, 99]')",
+                ("NA1_TEST_001",),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        routes._CACHE.clear()
+        h2 = _FakeHandler("/api/replay/events?match_id=NA1_TEST_001")
+        routes._serve_replay_events(h2)
+        _, body2, _ = h2.last
+        kills = [e for e in body2["events"] if e["clock_s"] == 240]
+        self.assertEqual(len(kills), 1)
+        synth = kills[0]
+        # assist 7 -> Enemy2; assist 99 -> unknown -> None (null parity)
+        self.assertEqual(synth["assists"], [7, 99])
+        self.assertEqual(synth["assists_names"], ["Enemy2", None])
+        self.assertEqual(synth["assists_champs"], ["Champ7", None])
+
+    def test_non_actor_event_has_null_names(self):
+        """ELITE_MONSTER_KILL with no killer_id and no participant_id
+        should surface actor_name/champion as null, not ''."""
+        h = _FakeHandler("/api/replay/events?match_id=NA1_TEST_001")
+        routes._serve_replay_events(h)
+        _, body, _ = h.last
+        drake = next(e for e in body["events"] if e["type"] == "ELITE_MONSTER_KILL")
+        # killer_id=4 on team 100 -> Ally4 + Champ4
+        self.assertEqual(drake["actor_name"], "Ally4")
+        self.assertEqual(drake["actor_champion"], "Champ4")
+        # No victim on monster kills.
+        self.assertIsNone(drake["victim"])
+        self.assertIsNone(drake["victim_name"])
+        self.assertIsNone(drake["victim_champion"])
+
     def test_building_kill_team_is_destroyer_not_owner(self):
         """BUILDING_KILL.team_id stores the team that LOST the
         building; the ribbon should paint by DESTROYER for correct
@@ -346,6 +412,22 @@ class CacheTests(_DbPatchedCase):
         # Different cache key -> first hit miss, not the strong-only payload.
         self.assertFalse(body2["cached"])
         self.assertEqual(body2["count"], 5)  # 4 strong + 1 item
+
+    def test_cache_key_carries_schema_sentinel(self):
+        """The cache key includes _CACHE_SCHEMA so a shape change
+        (e.g. participant-name join) evicts stale pre-shape entries on
+        first hit, not on TTL expiry."""
+        self.assertTrue(routes._CACHE_SCHEMA)
+        # Stage a stale entry under an OLD-shape key (sans schema).
+        old_key = ("NA1_TEST_001", frozenset())
+        import time as _t
+        routes._CACHE[old_key] = (_t.time(), {"ok": True, "stale": True})
+        h = _FakeHandler("/api/replay/events?match_id=NA1_TEST_001")
+        routes._serve_replay_events(h)
+        _, body, _ = h.last
+        # The new-shape key MISSES the stale old-shape entry -> fresh.
+        self.assertFalse(body["cached"])
+        self.assertNotIn("stale", body)
 
 
 class CleanroomDocPresenceTests(unittest.TestCase):
