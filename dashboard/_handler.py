@@ -65,10 +65,26 @@ SUPERVISOR_ORIGIN = "http://127.0.0.1:8890"
 
 _MAX_POST_BYTES = 1 << 20
 
+# High-frequency dashboard pollers - the dashboard hits these at 2Hz across
+# every open tab and they make up ~90% of log_message volume (~7100 lines/hr
+# in a 2.5h sample). Suppress at the BaseHTTPRequestHandler request-trace
+# hook only; do not suppress lower-frequency endpoints (they retain
+# diagnostic value when something breaks). Error/info log calls elsewhere
+# in the handler are unaffected.
+_SUPPRESS_LOG_PATHS = (
+    "GET /api/decisions ",
+    "GET /api/decisions/heartbeat ",
+    "GET /api/vision-state ",
+)
+
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *a):
-        log.debug("HTTP " + fmt, *a)
+        msg = "HTTP " + (fmt % a if a else fmt)
+        for needle in _SUPPRESS_LOG_PATHS:
+            if needle in msg:
+                return
+        log.debug(msg)
 
     def _proxy_to_supervisor(self):
         """Forward the current GET to 127.0.0.1:8890 and stream the
