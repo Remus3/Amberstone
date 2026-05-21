@@ -192,11 +192,18 @@ def main() -> None:
                     # via STARTUPINFO alone. Cross-platform safe via the
                     # win32 guard.
                     _flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                    # Force OAuth: strip any raw sk-ant-api03 env var so the
+                    # claude CLI falls through to ~/.claude/.credentials.json.
+                    # Defense-in-depth - the registry should already be clean
+                    # post fleet OAuth migration 2026-05-20.
+                    _env = os.environ.copy()
+                    _env.pop("ANTHROPIC_API_KEY", None)
                     subprocess.run(
                         [claude, "--dangerously-skip-permissions",
                          "-p", "/process-bridge-tasks"],
                         timeout=180,
                         creationflags=_flags,
+                        env=_env,
                     )
                 except subprocess.TimeoutExpired:
                     _log.warning("claude --print timed out after 180s")
