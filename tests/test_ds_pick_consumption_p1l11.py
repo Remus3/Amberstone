@@ -139,6 +139,7 @@ def _aram_prompt_inject(picks_str: str, label: str) -> str:
         alive="all", dead_resp="none", my_t="?", en_t="?", augs="none",
         packs="none", wave_pct=50, my_abilities="none",
         my_runes="unknown", enemy_runes="unknown",
+        aram_tenacity="",
         ds_picks=picks_str, ds_label=label, event_line="",
     )
 
