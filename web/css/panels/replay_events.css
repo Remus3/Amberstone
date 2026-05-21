@@ -68,7 +68,7 @@
 }
 .replay-events-row {
   display: grid;
-  grid-template-columns: 52px 1fr 60px 80px;
+  grid-template-columns: 52px 1fr 110px 130px;
   align-items: center;
   gap: 10px;
   padding: 5px 10px;
@@ -97,8 +97,22 @@
   font-size: 12px;
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; gap: 5px;
+  overflow: hidden;
 }
-.replay-events-victim { text-align: right; }
+.replay-events-victim { justify-content: flex-end; }
+.replay-events-portrait {
+  width: 18px; height: 18px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.replay-events-chip-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 
 /* kind-based label tints. team-tint owns the left border (above);
  * kind-tint owns the label text + a subtle right-side accent. */

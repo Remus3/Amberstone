@@ -21,7 +21,20 @@
  * until _replayLoadMatch resolves to a valid match id.
  */
 
+import { CHAMPS } from '../lib/items_index.js';
+
 const _LS_INCLUDE_KEY = "rc-replay-events-include";
+
+// Resolve DDragon champion portrait URL. Mirrors cd_ledger.js:74-79
+// alphanum-strip pattern - load-bearing for punctuation in display
+// names (Kai'Sa -> KaiSa, Cho'Gath -> Chogath). CHAMPS.version is
+// async-hydrated from /data/champions_index.json; default 16.10.1.
+function _portraitUrl(champName) {
+  const ver = (CHAMPS && CHAMPS.version) || "16.10.1";
+  const clean = String(champName || "").replace(/[^a-zA-Z0-9]/g, "");
+  if (!clean) return "";
+  return `/data/ddragon/${ver}/img/champion/${clean}.png`;
+}
 
 // Mutable per-mount state. Mirrors the per-view pattern of the
 // existing Replay scrubber so a route change tears it down cleanly.
@@ -101,21 +114,42 @@ function _kindFor(type) {
   }
 }
 
-function _actorText(e) {
-  // The events table carries participant_ids (1..10); a richer join
-  // against participants.summoner_name + champion lives in
-  // /api/replay/match/<id> response so we keep this side lean. The
-  // ribbon shows P<id> chips by default; the operator can hover the
-  // Replay grid + ribbon at the same time to correlate.
-  const a = e && e.actor;
-  if (!a) return "";
-  return `P${a}`;
+// Build a chip's portrait + text HTML. Three-tier fallback chain:
+// champion_name (portrait + champ-text) -> summoner_name only ->
+// P<id> only -> empty. Portrait <img> uses onerror hide so a 404 on
+// an unmapped champion (event-mode esoterica) collapses cleanly.
+function _chipHtml(pid, champ, name, prefix) {
+  if (!pid) return { html: "", title: "" };
+  const safePrefix = prefix ? `${prefix} ` : "";
+  if (champ) {
+    const src = _portraitUrl(champ);
+    const img = src
+      ? `<img class="replay-events-portrait" src="${_escHtml(src)}" alt="" onerror="this.style.display='none'">`
+      : "";
+    const html = `${img}<span class="replay-events-chip-text">${_escHtml(safePrefix + champ)}</span>`;
+    const title = name ? `${name} (P${pid})` : `P${pid}`;
+    return { html, title };
+  }
+  if (name) {
+    return {
+      html:  `<span class="replay-events-chip-text">${_escHtml(safePrefix + name)}</span>`,
+      title: `P${pid}`,
+    };
+  }
+  return {
+    html:  `<span class="replay-events-chip-text">${_escHtml(safePrefix + "P" + pid)}</span>`,
+    title: "",
+  };
 }
 
-function _victimText(e) {
-  const v = e && e.victim;
-  if (!v) return "";
-  return `vs P${v}`;
+function _actorChip(e) {
+  if (!e) return { html: "", title: "" };
+  return _chipHtml(e.actor, e.actor_champion, e.actor_name, "");
+}
+
+function _victimChip(e) {
+  if (!e) return { html: "", title: "" };
+  return _chipHtml(e.victim, e.victim_champion, e.victim_name, "vs");
 }
 
 function _loadInclude() {
@@ -156,15 +190,17 @@ function _renderEvents() {
     const label   = _typeLabel(e.type, e.subtype);
     const kind    = _kindFor(e.type);
     const team    = (e.team === 100 || e.team === 200) ? e.team : 0;
-    const actor   = _actorText(e);
-    const victim  = _victimText(e);
+    const actor   = _actorChip(e);
+    const victim  = _victimChip(e);
     const sub     = e.subtype ? ` ${_escHtml(e.subtype)}` : "";
     const lane    = e.lane ? ` ${_escHtml(e.lane)}` : "";
+    const aTitle  = actor.title  ? ` title="${_escHtml(actor.title)}"`  : "";
+    const vTitle  = victim.title ? ` title="${_escHtml(victim.title)}"` : "";
     return `<li class="replay-events-row" data-kind="${kind}" data-team="${team}">
       <span class="replay-events-clock">${_escHtml(clock)}</span>
       <span class="replay-events-label">${_escHtml(label)}${sub}${lane}</span>
-      <span class="replay-events-actor">${_escHtml(actor)}</span>
-      <span class="replay-events-victim">${_escHtml(victim)}</span>
+      <span class="replay-events-actor"${aTitle}>${actor.html}</span>
+      <span class="replay-events-victim"${vTitle}>${victim.html}</span>
     </li>`;
   }).join("");
   list.innerHTML = rows;

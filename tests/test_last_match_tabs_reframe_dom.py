@@ -159,6 +159,17 @@ class LegacyMigrationTests(unittest.TestCase):
         js = _read(PANEL_JS)
         self.assertNotIn('"comp", "chart", "timeline", "insights"', js)
 
+    def test_set_empty_state_does_not_reference_dead_id(self):
+        """s220 S5 carry-forward: lm-build-pending was a dead id in the
+        _setEmptyState forEach loop (no matching element in index.html;
+        getElementById no-ops). Single-line cleanup pins the forEach to
+        only the 3 live pending ids."""
+        js = _read(PANEL_JS)
+        ses = js.split("function _setEmptyState(", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn(
+            '["lm-tc-pending","lm-chart-pending","lm-tl-pending"]', ses)
+        self.assertNotIn("lm-build-pending", ses)
+
 
 class CssNoLegacySelectorsTests(unittest.TestCase):
     """No CSS rule may hard-code the old data-tab-panel="comp" /

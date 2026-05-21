@@ -139,6 +139,67 @@ class ReplayEventsPanelJsTests(unittest.TestCase):
         self.assertIn("/api/replay/events?match_id=", js)
 
 
+class ParticipantJoinConsumptionTests(unittest.TestCase):
+    """s220 carry-forward: the panel consumes the new actor_name /
+    actor_champion / victim_name / victim_champion fields from
+    /api/replay/events and renders a champion portrait + name chip
+    instead of the pre-join P<id> placeholder."""
+
+    def test_panel_imports_champs_for_version(self):
+        js = _read(EVENTS_JS)
+        self.assertIn("import { CHAMPS } from '../lib/items_index.js'", js)
+
+    def test_panel_renders_portrait_url_with_alphanum_strip(self):
+        """Mirrors cd_ledger.js:74-79 alphanum strip - load-bearing
+        for punctuation in display names like Kai'Sa / Cho'Gath."""
+        js = _read(EVENTS_JS)
+        self.assertIn("_portraitUrl(", js)
+        self.assertIn("replace(/[^a-zA-Z0-9]/g", js)
+        self.assertIn("/data/ddragon/", js)
+        self.assertIn("/img/champion/", js)
+
+    def test_panel_consumes_new_name_fields(self):
+        js = _read(EVENTS_JS)
+        for field in ("actor_champion", "actor_name",
+                      "victim_champion", "victim_name"):
+            self.assertIn(field, js, f"panel must reference {field}")
+
+    def test_panel_uses_chip_helpers_not_label_helpers(self):
+        """The label helpers are refactored to _chipHtml +
+        _actorChip + _victimChip to emit portrait+text HTML."""
+        js = _read(EVENTS_JS)
+        self.assertIn("_actorChip", js)
+        self.assertIn("_victimChip", js)
+        # The pre-refactor _actorText returning bare strings is gone.
+        self.assertNotIn("function _actorText(", js)
+        self.assertNotIn("function _victimText(", js)
+
+    def test_panel_three_tier_fallback_p_id(self):
+        """Numeric P<id> stays as the ultimate fallback when neither
+        champion_name nor summoner_name is populated."""
+        js = _read(EVENTS_JS)
+        self.assertIn('"P" + pid', js)
+
+    def test_css_portrait_class_present(self):
+        css = _read(EVENTS_CSS)
+        self.assertIn(".replay-events-portrait", css)
+
+
+class CssGridWidenedForNamesTests(unittest.TestCase):
+    """Champion + summoner names are wider than P<id>; the actor +
+    victim grid columns need room. Pre-join template was 60px + 80px;
+    post-join template widens to ~110px + ~130px."""
+
+    def test_css_actor_victim_columns_widened(self):
+        css = _read(EVENTS_CSS)
+        # The grid template line for a row must declare wider columns
+        # than the pre-join 60/80 to fit the portrait + champion name.
+        # We assert the new columns are present and the old narrow
+        # combo is gone.
+        self.assertIn("grid-template-columns: 52px 1fr 110px 130px", css)
+        self.assertNotIn("grid-template-columns: 52px 1fr 60px 80px", css)
+
+
 class CleanroomBoundaryTests(unittest.TestCase):
     """The league_record (GPLv3) cleanroom boundary is documented in
     ADR-009 + pointer-referenced from the panel + route modules."""
