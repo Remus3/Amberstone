@@ -1,0 +1,119 @@
+/* s220 PGR S5: Replay timeline event ribbon.
+ *
+ * Sits under the per-frame scrubber in the Replay view. Each row is
+ * a compact event with clock + colored type badge + team-tinted
+ * left-border + actor/victim chips. Filter checkboxes in the header
+ * widen the include set (items / skills / wards) without re-issuing
+ * the per-frame snapshot fetch.
+ *
+ * Cleanroom boundary: see docs/adr/ADR-009-replay-events-cleanroom.md.
+ * league_record (GPLv3) is the methodology reference - sidecar shape
+ * + future video-overlay direction - do NOT vendor its source.
+ */
+
+.replay-events-section {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.replay-events-section[hidden] { display: none; }
+
+.replay-events-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.replay-events-title {
+  font-size: 16px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.replay-events-filters {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+.replay-events-filter {
+  display: flex; align-items: center; gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.replay-events-filter input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent, #8a8cf0);
+}
+.replay-events-count {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint, var(--text-dim));
+  padding: 2px 8px;
+  background: var(--surface-2, #1a1a22);
+  border-radius: 3px;
+  min-width: 26px; text-align: center;
+}
+
+.replay-events-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+  gap: 3px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.replay-events-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 60px 80px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--text-dim);
+  border-radius: 3px;
+  font-size: 14px;
+}
+.replay-events-row[data-team="100"] { border-left-color: var(--ok,  #8ce5a8); }
+.replay-events-row[data-team="200"] { border-left-color: var(--bad, #e07a7a); }
+
+.replay-events-clock {
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim); font-weight: 600;
+}
+.replay-events-label {
+  color: var(--text); font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.replay-events-actor,
+.replay-events-victim {
+  font-size: 12px;
+  color: var(--text-faint, var(--text-dim));
+  font-variant-numeric: tabular-nums;
+}
+.replay-events-victim { text-align: right; }
+
+/* kind-based label tints. team-tint owns the left border (above);
+ * kind-tint owns the label text + a subtle right-side accent. */
+.replay-events-row[data-kind="kill"]      .replay-events-label { color: var(--bad,    #e07a7a); }
+.replay-events-row[data-kind="structure"] .replay-events-label { color: var(--warn,   #e8a86d); }
+.replay-events-row[data-kind="objective"] .replay-events-label { color: var(--grade-s,#f5b87c); }
+.replay-events-row[data-kind="ward"]      .replay-events-label { color: var(--ok,     #8ce5a8); }
+.replay-events-row[data-kind="item"]      .replay-events-label { color: var(--accent, #8a8cf0); }
+.replay-events-row[data-kind="skill"]     .replay-events-label { color: var(--text-dim); }
+.replay-events-row[data-kind="other"]     .replay-events-label { color: var(--text-faint, var(--text-dim)); }
+
+.replay-events-empty {
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-faint, var(--text-dim));
+  padding: 12px 4px;
+}
+.replay-events-empty[hidden] { display: none; }
