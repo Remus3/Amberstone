@@ -527,6 +527,17 @@
                   title="Ask the VLM coach: one Sonnet pass over the current game screen, one tactical one-liner. Needs a live game (uses the frame RC already holds - no new capture).">SCREEN READ</button>
           <span class="rn-sr-pill" id="rn-sr-pill" hidden></span>
         </div>
+        <!-- Personal context: top-3 recurring death patterns from
+             rewind_history.db, mined by scripts/postmortem_analyze.py
+             and surfaced here so the operator sees what the mode coaches
+             already inject into their prompts. Hidden when no data.
+             Loaded on home view and refreshed every 60s by
+             web/js/panels/personal_context.js. -->
+        <div id="personal-context-section" class="personal-context-section" hidden>
+          <div class="personal-context-head">PERSONAL CONTEXT</div>
+          <div id="personal-context-list" class="personal-context-list"></div>
+          <div id="personal-context-empty" class="personal-context-empty" hidden></div>
+        </div>
       </div>
     </section>
 
