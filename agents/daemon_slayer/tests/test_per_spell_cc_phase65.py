@@ -1,21 +1,21 @@
-"""ENGINE 1.29.0 (2026-05-21) - per-spell CC duration extractor seam.
+"""ENGINE 1.29.0 -> 1.30.0 (2026-05-21) - per-spell CC duration seam.
 
-Closes the item 129 carry-forward (a): the 2nd consumer of the
-``effective_cc_duration`` helper shipped 1.25.0 (item 122). The helper
-itself lives in ``ehp.py`` (free function); this slice exposes the
-downstream-consumer surface at the per-spell AbilityDps layer so a
-future EHP-vs-CC blended scorer (or fight-sim) can read per-rank base
-CC durations + the matching post-tenacity values without re-resolving
-the champion.
+Closes the item 129 carry-forward (a) at 1.29.0 (the EMPTY seam) +
+the item 130 carry-forward (b) at 1.30.0 (REGISTRY SEEDED with 30
+starter entries across 24 champions). 2nd consumer of the
+``effective_cc_duration`` helper shipped 1.25.0 (item 122). The
+helper itself lives in ``ehp.py`` (free function); this slice exposes
+the downstream-consumer surface at the per-spell AbilityDps layer so
+a future EHP-vs-CC blended scorer (or fight-sim) can read per-rank
+base CC durations + the matching post-tenacity values without
+re-resolving the champion.
 
-Forward-marker contract:
+Contract:
 
 * ``_PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]]``
-  module-level registry seam in ``ability_dps.py`` is EMPTY at 1.29.0
-  by design - mirror of item 112's ``STAT_GRANT_CALC_KEYS`` empty-seam
-  pattern; production behavior is byte-identical to pre-slice because
-  every ``_per_spell_cc_for(champ, key)`` lookup returns ``()`` which
-  collapses cleanly through ``_apply_tenacity_to_cc_tuple`` to ``()``.
+  module-level registry seam in ``ability_dps.py``. EMPTY at 1.29.0,
+  SEEDED at 1.30.0 (30 entries across 24 champions; full pin in
+  ``test_per_spell_cc_registry_seed.py``).
 * ``AbilitySpellDps.cc_duration_s`` defaults to ``()`` (per-rank base
   CC tuple from the registry).
 * ``AbilitySpellDps.cc_duration_post_tenacity`` defaults to ``()`` (the
@@ -25,17 +25,19 @@ Coverage classes:
 
 * ``CcDurationFieldsSchemaTests`` - dataclass shape, default empty
   tuple, to_dict carries both fields, frozen-dataclass enforcement.
-* ``RegistrySeamTests`` - the registry exists as a dict, is empty at
-  1.29.0, unknown champion returns identity (empty tuples).
-* ``EffectiveCcDurationConsumerTests`` - hypothetical registry entries
-  exercised via monkey-patch; tenacity=1.0 identity, tenacity=1.20
-  scales, tenacity=0.0 zeros, missing champion empty, partial spell
-  coverage (only some spells populated), SR mode identity, multi-rank
-  tuple order preserved, post-tuple length matches base.
-* ``EmptySeamBehaviorTests`` - with the registry empty, a live
-  ``compute_ability_dps`` call shows every spell carries ``()`` on
-  both fields. Production byte-identical-to-pre-slice.
-* ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.29.0.
+* ``RegistrySeamTests`` - the registry exists as a dict, is non-empty
+  at 1.30.0, unknown champion returns identity (empty tuples).
+* ``EffectiveCcDurationConsumerTests`` - registry entries exercised
+  via monkey-patch (registry cleared in setUp); tenacity=1.0 identity,
+  tenacity=1.20 scales, tenacity=0.0 zeros, missing champion empty,
+  partial spell coverage (only some spells populated), SR mode
+  identity, multi-rank tuple order preserved, post-tuple length
+  matches base.
+* ``EmptySeamBehaviorTests`` - with the registry cleared in setUp,
+  a live ``compute_ability_dps`` call shows every spell carries ``()``
+  on both fields. Production byte-identical to a pre-1.30.0 unseeded
+  state, restored in tearDown.
+* ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.30.0.
 """
 from __future__ import annotations
 
@@ -132,22 +134,24 @@ class RegistrySeamTests(unittest.TestCase):
     def test_registry_is_a_dict(self) -> None:
         self.assertIsInstance(_PER_SPELL_CC_DURATIONS, dict)
 
-    def test_registry_is_empty_at_1_29_0(self) -> None:
-        # Forward-marker: empty by design at 1.29.0; future patches
-        # populate per-champion + per-spell entries.
-        self.assertEqual(_PER_SPELL_CC_DURATIONS, {})
+    def test_registry_is_non_empty_at_1_30_0(self) -> None:
+        # ENGINE 1.30.0 seeded the registry; ``test_registry_seed_size`` in
+        # ``test_per_spell_cc_registry_seed.py`` pins the exact counts.
+        self.assertGreater(len(_PER_SPELL_CC_DURATIONS), 0)
 
     def test_unknown_champion_returns_empty_tuple(self) -> None:
         self.assertEqual(_per_spell_cc_for("UnknownChamp_xyz", "Q"), ())
 
     def test_unknown_spell_for_known_pattern_returns_empty(self) -> None:
         # Even with a monkey-patched champ entry, an unknown key returns ().
+        # Use a synthetic champion id that does not collide with the
+        # ENGINE 1.30.0 registry seed.
         try:
-            _PER_SPELL_CC_DURATIONS["Annie"] = {"Q": (1.0,)}
-            self.assertEqual(_per_spell_cc_for("Annie", "W"), ())
-            self.assertEqual(_per_spell_cc_for("Annie", "Q"), (1.0,))
+            _PER_SPELL_CC_DURATIONS["AnnieTest_xyz"] = {"Q": (1.0,)}
+            self.assertEqual(_per_spell_cc_for("AnnieTest_xyz", "W"), ())
+            self.assertEqual(_per_spell_cc_for("AnnieTest_xyz", "Q"), (1.0,))
         finally:
-            _PER_SPELL_CC_DURATIONS.pop("Annie", None)
+            _PER_SPELL_CC_DURATIONS.pop("AnnieTest_xyz", None)
 
 
 # ---------------- consumer math (monkey-patched registry) ----------------
@@ -276,17 +280,21 @@ class EffectiveCcDurationConsumerTests(unittest.TestCase):
 
 
 class EmptySeamBehaviorTests(unittest.TestCase):
-    """With ``_PER_SPELL_CC_DURATIONS`` empty (its 1.29.0 default state),
-    every spell's two new fields are ``()`` empty tuples.
-    Production-byte-identical-to-pre-slice."""
+    """Pins the empty-registry contract from ENGINE 1.29.0 (when the seam
+    shipped empty). Each test setUp clears the registry, runs the case,
+    and tearDown restores the live 1.30.0 seed - the empty-registry
+    contract remains exercised even though the live registry is now
+    populated. Production behavior with the registry populated is pinned
+    by ``test_per_spell_cc_registry_seed.py``."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
     def setUp(self) -> None:
-        # Force the registry to its true 1.29.0 state for this test
-        # class even if a previous test leaked entries.
+        # Force the registry to the empty state for this test class
+        # even if a previous test leaked entries (and over the live
+        # ENGINE 1.30.0 seed).
         self._registry_backup = dict(_PER_SPELL_CC_DURATIONS)
         _PER_SPELL_CC_DURATIONS.clear()
 
@@ -362,8 +370,8 @@ class HelpersExposedTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    def test_engine_version_at_1_29_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.29.0")
+    def test_engine_version_at_1_30_0(self) -> None:
+        self.assertEqual(ENGINE_VERSION, "1.30.0")
 
 
 if __name__ == "__main__":
