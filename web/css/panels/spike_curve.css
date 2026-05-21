@@ -18,6 +18,10 @@
   border-bottom: 1px solid var(--border-soft, #2a2a35);
   overflow: hidden;
   flex: 0 0 auto;
+  /* Tabular-nums on the container so any future inline level labels
+   * (1/6/11/16/18) or hover-tooltip numerics render with aligned
+   * digit columns. The SVG sparkline path itself is unaffected. */
+  font-variant-numeric: tabular-nums;
 }
 
 .spike-curve-container .spk-svg {
