@@ -82,7 +82,7 @@ class TestNameEnrichment(unittest.TestCase):
     def test_enrich_fills_missing_names(self):
         responses = {
             ("GET", "/lol-summoner/v1/summoners/12345"): {
-                "gameName": "SamplePlayer", "tagLine": "Vayne",
+                "gameName": "SamplePlayer", "tagLine": "Trist",
                 "displayName": "SamplePlayer", "summonerLevel": 487,
             },
         }
@@ -91,8 +91,8 @@ class TestNameEnrichment(unittest.TestCase):
             raw = {"summonerId": 12345, "puuid": "p1"}
             m = agent._slim_lobby_member(raw, enrich=True)
         self.assertEqual(m["game_name"], "SamplePlayer")
-        self.assertEqual(m["tag_line"], "Vayne")
-        self.assertEqual(m["riot_id"], "SamplePlayer#Vayne")
+        self.assertEqual(m["tag_line"], "Trist")
+        self.assertEqual(m["riot_id"], "SamplePlayer#Trist")
         self.assertEqual(m["summoner_level"], 487)
 
     def test_enrich_no_op_when_names_already_present(self):
@@ -155,7 +155,7 @@ class TestSlimLobbyMember(unittest.TestCase):
             "summonerId": 12345,
             "summonerName": "Moonbeam",
             "gameName": "SamplePlayer",
-            "tagLine": "Vayne",
+            "tagLine": "Trist",
             "isLeader": True,
             "isLocalMember": True,
             "isOwner": True,
@@ -167,9 +167,9 @@ class TestSlimLobbyMember(unittest.TestCase):
         m = agent._slim_lobby_member(raw)
         self.assertEqual(m["puuid"], "abc123")
         self.assertEqual(m["summoner_id"], 12345)
-        self.assertEqual(m["riot_id"], "SamplePlayer#Vayne")
+        self.assertEqual(m["riot_id"], "SamplePlayer#Trist")
         self.assertEqual(m["game_name"], "SamplePlayer")
-        self.assertEqual(m["tag_line"], "Vayne")
+        self.assertEqual(m["tag_line"], "Trist")
         self.assertTrue(m["is_leader"])
         self.assertTrue(m["is_self"])
         self.assertTrue(m["is_owner"])
@@ -296,7 +296,7 @@ class TestCaptureStateLobby(unittest.TestCase):
         members = members if members is not None else [
             {
                 "puuid": "self-puuid",
-                "summonerId": 1, "gameName": "SamplePlayer", "tagLine": "Vayne",
+                "summonerId": 1, "gameName": "SamplePlayer", "tagLine": "Trist",
                 "isLeader": True, "isLocalMember": True, "summonerLevel": 487,
                 "firstPositionPreference": "BOTTOM", "secondPositionPreference": "MIDDLE",
             },
@@ -340,7 +340,7 @@ class TestCaptureStateLobby(unittest.TestCase):
         self.assertTrue(lobby["is_leader"])  # local member is leader
         self.assertEqual(lobby["search_state"], "Idle")  # phase=Lobby, no search payload
         self.assertEqual(len(lobby["members"]), 2)
-        self.assertEqual(lobby["members"][0]["riot_id"], "SamplePlayer#Vayne")
+        self.assertEqual(lobby["members"][0]["riot_id"], "SamplePlayer#Trist")
         self.assertEqual(lobby["members"][1]["riot_id"], "Fren#NA1")
 
     def test_local_member_identified(self):
@@ -350,7 +350,7 @@ class TestCaptureStateLobby(unittest.TestCase):
             state = agent.capture_state()
         lm = state["lobby"]["local_member"]
         self.assertIsNotNone(lm)
-        self.assertEqual(lm["riot_id"], "SamplePlayer#Vayne")
+        self.assertEqual(lm["riot_id"], "SamplePlayer#Trist")
         self.assertTrue(lm["is_self"])
         self.assertEqual(lm["position_preferences"]["first_preference"], "BOTTOM")
         self.assertEqual(lm["position_preferences"]["second_preference"], "MIDDLE")
