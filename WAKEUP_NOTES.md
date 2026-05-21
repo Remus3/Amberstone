@@ -3,6 +3,36 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-21 - postmortem follow-up 4-slice drain SHIPPED (4 commits `50c83ac` `6d22e2e` `3cfea90` + 2 merges)
+
+Operator: "continue what is next to do". Per item 124 carry-forward sweep + AskUserQuestion (4 options, operator picked "all 4 in parallel"). 4 slices shipped end-to-end; 2 via parallel worktree agents + 2 inline. RC restarted clean pid 5972 -> 2640; cadence task LIVE NextRun 2026-05-24T04:15.
+
+**Slice B `50c83ac` feat(coach):** 2 new death patterns. `small_skirmish` (assists in {1,2}; fills gap between caught_4plus assists>=3 and solo_1v1_loss assists==0; assist-band elif chain) + `midgame_collapse` (game_time 8:00-15:00; independent if-block following early_pre_3min/late_throw time-band convention). PATTERN_META + classify_death + 10 NewPatternThresholdsTests (assist-band + time-window edge cases). Live regen on 28236 deaths: NEW top-3 = solo_pickoff (59%) / small_skirmish (49%) / caught_4plus (44%) - small_skirmish DISPLACED rapid_repeat from top-3. midgame_collapse fires on 36% of deaths (10275). Assist-band mutual-exclusion intact (small_skirmish + caught_4plus + solo_1v1_loss sum to 100%).
+
+**Slice C `6d22e2e` feat(dash):** /api/personal-context route + frontend panel. NEW `dashboard/routes_personal_context.py` (60s mtime-keyed cache; returns ok=false reason=no_data on missing file with HTTP 200 not 404 so panel renders empty state). NEW `web/js/panels/personal_context.js` + `web/css/panels/personal_context.css` (3-card vertical stack inside Right Now panel body: label + count chip + rate% chip + truncated description; data-kind border tints by pattern key). Loader `core/death_patterns_loader.py` extended `top_patterns()` with rate/confidence + NEW `report_summary()` so the route reads via the loader (single source-of-truth). Wired in `_homeWireStartup` next to existing home poller. +31 tests (12 route + 19 DOM). Live curl `/api/personal-context` returns ok=True with the post-slice-B top-3.
+
+**Slice A `3cfea90` feat(ops):** cadence task. NEW `ops/install_RC_PostmortemAnalyze.ps1` registers `RC-PostmortemAnalyze` weekly Sundays 04:15 (15 min after RC-RewindCatchup at 04:00 so new matches land first). NEW `ops/run_postmortem_with_restart.ps1` wrapper - runs analyzer, logs stdout/stderr to `logs/postmortem_analyze.YYYY-MM-DD.log`, writes `restart_trigger.txt` ONLY on clean exit so coach prompts reload PERSONAL CONTEXT at module import. Pattern mirrors `install_RC_RewindCatchup.ps1` + `install_RC_DDragonMirror.ps1` (PowerShell 5.1 `MultipleInstances=IgnoreNew` property-after-construction workaround). Task registered LIVE in this session: NextRun=2026-05-24T04:15:15 LastTaskResult=267011 (=0x41303 "task not yet run", expected on fresh register).
+
+**Slice D `3cfea90` docs:** ROADMAP.md line 70 PGR aggregator-G-style reframe flipped 🟡 -> ✅. All S2-S5 shipped per CLAUDE.md items 115-118 (S2 `23e36d3` / S3 `92c6a0f` / S4 `d199f30` / S5 `7870124` + S5 follow-up). Compact summary replaces the 800+ char carry-forward prose; full per-stage detail stays in the CLAUDE.md ledger. Other open ROADMAP/BACKLOG entries verified current (BACKLOG line 15 SR records "blocked on new records" still TRUE - 0 SR records in `data/ds_calibration.jsonl`).
+
+**Tests:** full RC suite 2692 -> **2733 passed / 0 failed** (+41: 10 slice B + 31 slice C). Slice A is .ps1-only (no pytest coverage; PowerShell parse-clean verified via `[System.Management.Automation.Language.Parser]::ParseFile`).
+
+**Don't-redo:**
+- `small_skirmish` is assist-band elif (mutually exclusive with caught_4plus + solo_1v1_loss); `midgame_collapse` is independent if-block (co-exists with assist-band tags; mirrors early/late convention). The agent's precedence call to use independent-if for midgame matches the existing classifier shape - do NOT collapse to a single elif chain.
+- `/api/personal-context` returns HTTP 200 with `ok=false, reason="no_data"` on missing JSON (NOT 404). The panel needs to render an empty state, not a fetch error.
+- Cache key on the route is FILE MTIME (not wall-clock TTL); 60s window. The loader stays single-source-of-truth - the route does NOT duplicate file-reading logic.
+- Personal-context panel mounts INSIDE Right Now panel body (after SCREEN READ block); supplementary to live coach output. Do NOT move to its own sibling panel without operator approval.
+- RC-PostmortemAnalyze is LIVE NextRun 2026-05-24T04:15. Wrapper writes `restart_trigger.txt` only on clean exit (analyzer exit 0). Log to `logs/postmortem_analyze.YYYY-MM-DD.log`. The 15-min offset after RC-RewindCatchup is load-bearing - rewind must complete first or the analyzer reads stale matches.
+- ROADMAP line 70 is now ✅ SHIPPED; CLAUDE.md items 115-118 hold the per-stage detail. Do NOT re-pitch a new PGR stage - the full S2-S5 chain is closed.
+
+**Carries forward:**
+- ADR-007 phase 3 (prose-coach deprecation) STILL gated on operator playing 20+ SR games per the ADR. Unchanged from item 124.
+- Live ARAM/SR smoke STILL pending (need a real game to confirm coach output references the new patterns when situationally relevant).
+- 2026-05-24 04:15 first scheduled run is the live test of the cadence wire - check `logs/postmortem_analyze.2026-05-24.log` + `Get-ScheduledTaskInfo -TaskName RC-PostmortemAnalyze` for LastTaskResult=0.
+- BACKLOG line 15 (rewind_history.db SR records with game_id) still blocked on zero SR records in `data/ds_calibration.jsonl` (1251 total lines, 0 SR).
+- Item 124 + 123 + 122 carries unchanged.
+
+---
 # 2026-05-21 - ADR-007 phase 2 postmortem-analyze SHIPPED (1 commit `b3cd60b`)
 
 Operator: "continue what is next to work on". Work-surface check: engine 1.26.0 ceiling per item 123, cost/latency exhausted, UI/UX live-game-gated. Path-stale-checked BACKLOG NOW lane via DB probe (28k CHAMPION_KILL events vs operator PUUIDs) -> ADR-007 phase 2 genuinely unbuilt + deferred since s169 (10 days). Operator AskUserQuestion-picked it from a 4-option fork. Full vertical slice shipped.
