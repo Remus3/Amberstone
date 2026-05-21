@@ -296,6 +296,79 @@ class ItemShield:
 
 
 @dataclass(frozen=True)
+class ItemHeal:
+    """An item-passive heal contribution to EHP throughput (ENGINE 1.28.0,
+    Phase 6).
+
+    Closes the ``ehp.py:23`` Phase-6 deliberate omission "Healing
+    throughput (lifesteal, Spirit Visage amp) - fits Phase 6". Phase 6
+    ships the item-passive heal sources that fit a one-trigger-per-fight
+    model:
+      * Sundered Sky 6610 Lightshield Strike (100% base AD melee /
+        50% base AD ranged per empowered AA, 10s CD per target -> 1
+        trigger per typical fight)
+
+    Lifesteal-derived heals are NOT modeled via ItemHeal - they're
+    stat-driven (``stats["lifesteal"] * stats["ad"] * stats["as"] *
+    _FIGHT_WINDOW_S``) and computed inline in ``compute_ehp``.
+
+    Death's Dance Defy heal (75% bonus AD on takedown over 2s) is
+    DEFERRED to Phase 6.5: the takedown-rate assumption is uncertain
+    enough that a Phase 6 first-pass would over- or under-credit it.
+    Bloodthirster ichor-shield ships as an ``ItemShield`` (Phase 1.5
+    pipeline) using the full-cap steady-state assumption (overheal
+    builds the shield between fights at base/walking).
+
+    Magnitude resolves as ``flat + base_ad_scaling * base_ad +
+    bonus_hp_scaling * bonus_hp + bonus_ad_scaling * bonus_ad`` then
+    multiplied by ``ranged_modifier`` when the wielder is ranged. NO
+    level lerp (Phase 6 heal items in scope are all stat-scaled
+    directly; the level-scaling magnitudes today belong to the shield
+    pipeline).
+
+    The fight-window assumption (6.0s default) gates lifesteal
+    accumulation only; item-passive heals use the one-trigger-per-fight
+    convention and are NOT scaled by the fight window.
+    """
+    flat: float = 0.0
+    base_ad_scaling: float = 0.0
+    bonus_hp_scaling: float = 0.0
+    bonus_ad_scaling: float = 0.0
+    ranged_modifier: float = 1.0
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        if self.ranged_modifier < 0:
+            raise ValueError(
+                f"ItemHeal.ranged_modifier must be >= 0, got "
+                f"{self.ranged_modifier!r}"
+            )
+
+    def resolve_magnitude(
+        self,
+        base_ad: float = 0.0,
+        bonus_hp: float = 0.0,
+        bonus_ad: float = 0.0,
+        is_ranged: bool = False,
+    ) -> float:
+        """Resolve the per-trigger heal value at the given context.
+
+        Negative result is floored at 0. Stat inputs are clamped at 0 -
+        a malformed champion record cannot drive heal magnitudes below
+        zero via negative bonus AD or HP.
+        """
+        total = (
+            self.flat
+            + self.base_ad_scaling * max(0.0, base_ad)
+            + self.bonus_hp_scaling * max(0.0, bonus_hp)
+            + self.bonus_ad_scaling * max(0.0, bonus_ad)
+        )
+        if is_ranged and self.ranged_modifier != 1.0:
+            total *= self.ranged_modifier
+        return max(0.0, float(total))
+
+
+@dataclass(frozen=True)
 class ItemEffect:
     item_id: str
     name: str
@@ -534,3 +607,29 @@ class ItemEffect:
     # ``unique_passive_key="lifeline_shield"`` so build planner picks at
     # most one (the rank.py dead-unique filter; see EhpRankedItem docs).
     shield: "ItemShield | None" = None
+    # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput - item-passive
+    # heal contribution (closes the ehp.py:23 deliberate omission). Single
+    # ``ItemHeal`` per item; ``None`` = no item-passive heal contribution
+    # (today's behavior for every item except Sundered Sky in the initial
+    # Phase 6 wire). The EHP scorer reads this field via
+    # ``ehp.compute_ehp -> _collect_heals`` and folds the total into the
+    # heal pool at the top of the damage stack (same place as shields,
+    # post-amp via ``heal_amp_pct``). Death's Dance Defy heal is DEFERRED
+    # to Phase 6.5 (takedown-rate uncertain); Bloodthirster's Ichorshield
+    # ships in the ``shield`` field (Phase 1.5 pipeline with full-cap
+    # steady-state assumption); lifesteal-derived heals are stat-driven
+    # and computed inline in ``compute_ehp``, NOT via ItemHeal.
+    heal: "ItemHeal | None" = None
+    # ENGINE 1.28.0 (2026-05-21): Phase 6 self-heal/regen amplifier.
+    # Spirit Visage 3065 "Boundless Vitality" carries 0.25 (+25% to all
+    # self-heal/regen). Applied multiplicatively to the heal pool in
+    # ``compute_ehp`` via ``_total_heal_amp(item_ids)`` -> product of
+    # (1 + heal_amp_pct). NOT applied to the Phase 1.5 shield pipeline
+    # in this engine - Riot's tooltip "increases all heal AND shielding"
+    # would apply to Sterak/Shieldbow/Maw/Hexdrinker/BT shields too, but
+    # amping Phase 1.5 magnitudes retroactively is deferred to Phase 6.5
+    # (the deliberate scope boundary: Phase 6 ships heal-pipeline amp
+    # only, shield-pipeline amp comes later when a real player build
+    # pairs Spirit Visage with a lifeline item). Default 0.0 -> no
+    # contribution.
+    heal_amp_pct: float = 0.0
