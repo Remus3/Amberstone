@@ -6,6 +6,43 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-21 - EHP Phase 6 healing throughput SHIPPED (1 commit `5018e9f`; ENGINE 1.27.0 -> 1.28.0)
+
+Operator AskUserQuestion-picked "EHP Phase 6 healing throughput" from a 4-option fork (Phase 6 / per-spell CC / postmortem pre-flight / housekeeping). The natural follow-up per item 128 carry-forward (a). RC not restarted (DS engine slice, RC consumes over HTTP); DS :8893 restarted once for engine bump. Pushed + CI green; no frozen-file edits.
+
+**Commit `5018e9f` feat(ds):** Closes `ehp.py:23` deliberate Phase-1 omission "Healing throughput (lifesteal, Spirit Visage amp) - fits Phase 6". Three contributions feed an EHP heal pool: (a) item-passive heals via NEW `ItemHeal` dataclass + `ItemEffect.heal` field - Sundered Sky 6610 / Arena 226610 Lightshield Strike (100% base AD melee / 50% ranged, one-trigger-per-fight under 10s/target CD); (b) lifesteal-derived heal `stats.lifesteal * stats.ad * stats.as * _FIGHT_WINDOW_S (6.0)` over standard fight window (pre-mitigation approximation matching EHP's no-enemy-pen Phase-1 posture); (c) multiplicative heal amp via NEW `ItemEffect.heal_amp_pct` field - Spirit Visage 3065 / Arena 223065 Boundless Vitality +25% (stacks multiplicatively per buff-system doctrine). Bloodthirster 3072 / Arena 223072 Ichorshield ships in the Phase 1.5 ItemShield pipeline (full-cap steady-state: 165 L1 -> 315 L18, ANY damage type). NO `unique_passive_key="lifeline"` - BT's Ichorshield is a distinct unique passive and stacks with any single lifeline shield.
+
+**EhpResult new fields:** heal_item_total / heal_lifesteal / heal_amp_mult / heal_total / heal_sources. compute_ehp folds heal_total into physical_ehp / magical_ehp / true_ehp at top of damage stack (heals don't discriminate by damage type, so heal pool acts like an ANY shield).
+
+**Deliberate Phase 6 omissions (deferred to Phase 6.5+):**
+- Death's Dance Defy heal-on-takedown (75% bonus AD over 2s) - takedown-rate uncertain; 6333 + 226333 stay defensive_only.
+- Spirit Visage amp on Phase 1.5 SHIELDS - engine ships heal-pipeline amp only; SV + lifeline-item under-credits the shield piece by ~15% (60% bonus_hp shield * 0.25 amp lost on a Sterak example).
+- Sundered Sky 6% missing-HP additive - needs current-HP-share assumption distinct from full-HP convention.
+
+**Tests:** +56 in NEW `tests/test_ehp_heal_phase6.py` across 11 classes: ItemHealSchemaTests (9: construction + scaling composition + ranged modifier + edge cases), CollectHealsTests (5), TotalHealAmpTests (6), LifestealHealTests (7), BTIchorshieldTests (8: level lerp + non-lifeline unique + EHP lift), SunderedSkyHealTests (4: melee/ranged + Arena mirror + periodic preserved), SpiritVisageAmpTests (5: amp pool only, NOT Phase 1.5 shields), EhpResultHealFieldsTests (4: to_dict + format_table + notes), DeathsDanceDeferredTests (3), BTPlusLifelineStacksTests (2: both shields aggregate at engine layer), EngineVersionCurrentTests (1). +15 stale ENGINE pin syncs across 14 DS test files (1.27.0 -> 1.28.0).
+
+**Verified:** DS suite 2906 -> 2962 / 1 skipped / 1 xfailed / 1663 subtests. Wider RC 2780/0 (phase8_smoke flipped pass post-DS-restart). py_compile + ruff + ASCII clean on all 5 touched source files (0 non-ASCII added). DS :8893 restarted via taskkill PID 8564 + schtasks /Run RC-DaemonSlayer ritual; /health returns engine_version=1.28.0 patch=16.10.1.
+
+**Math verified end-to-end:** Aatrox L11 + Sundered Sky + Spirit Visage = base AD 103.875 * 1.25 amp = 129.84 heal_total exactly. Aatrox L11 + BT alone: shield_any=198.33 (165 + 2/9 * 150 at L11) + heal_lifesteal=134.67 (0.15 * 183.88 AD * 0.8137 AS * 6).
+
+**Don't-redo:** BT shield does NOT share `unique_passive_key="lifeline"` (distinct Ichorshield unique - stacks alongside Sterak/Shieldbow/Maw/Hexdrinker at the engine layer; rank.py upstream dedup is separate). Spirit Visage amp applies to HEAL pool ONLY in this engine (deliberate Phase 6 boundary; SpiritVisageAmpTests.test_spirit_visage_does_not_amp_phase15_shields pins). Lifesteal heal uses PRE-mitigation AD (EHP scorer is enemy-state-agnostic; over-credits by ~30-40% vs 60-90 armor - consistent with the no-enemy-pen Phase 1 omission still in force). Sundered Sky preserves its existing PeriodicProc damage proc - heal field is ADDED, not replacing. The `_FIGHT_WINDOW_S = 6.0` constant matches existing sustained/burst boundary in the DPS layer. DD 6333 stays defensive_only - the Defy heal-on-takedown rate is genuinely uncertain; do NOT pre-wire with a constant takedown probability.
+
+---
+
+# 2026-05-21 - DS 3-slice drain SHIPPED (3 commits `c36446b` `13eb869` `d854951`; ENGINE 1.26.0 -> 1.27.0)
+
+Operator: "continue ds" -> 3 scoped slices, each AskUserQuestion-framed. RC restarted 2x (coach prompt edits); DS :8893 restarted once for engine bump. All 3 pushed + CI green; no frozen-file edits.
+
+**Slice 126 `c36446b` feat(coach):** EHP enemy-CC coach consumer (ARAM tenacity). First live consumer of `effective_cc_duration` helper (shipped 1.25.0 with zero consumers). NEW `core/aram_tenacity_context.py` loads `data/daemon_slayer/<patch>/champions.json` once at module-import -> `_TENACITY_MAP` of 17 non-1.0 champs (15 at 1.20x + 2 at 1.10x). `aram_tenacity_line(champion, mode) -> str` renders the prompt line. Wired into `coaches/aram_coach.py` `_USER_TMPL` between `Enemy keystones` and `DS top items`. Cached `_SYSTEM` unchanged (cache-prefix preservation). `tests/test_ds_pick_consumption_p1l11.py` fixture +1 line. +29 tests. RC 2733 -> 2762.
+
+**Slice 127 `13eb869` feat(coach):** Per-enemy ARAM tenacity wire. Symmetric extension of 126 - aramTenacity is the multiplier on ANY CC on that champion (operator's CC on enemy lasts longer too). NEW `enemy_aram_tenacity_line(enemies, mode) -> str` renders `"Enemy ARAM tenacity (your CC on them lasts longer): Talon 1.20x, Zed 1.20x"`, sorted desc-mult then alpha. Wired next to `{aram_tenacity}`. +18 tests. RC 2762 -> 2780.
+
+**Slice 128 `d854951` feat(ds):** EHP Phase 1.5 shield throughput. Closes `ehp.py:21` deliberate Phase-1 omission. 4 LIFELINE-style shields (Sterak 3053 60% bonus_hp ANY; Shieldbow 6673 400->700 ANY ranged x0.80; Maw 3156 200+150% bonus_ad MAGICAL ranged x0.75; Hexdrinker 3155 110->280 MAGICAL ranged x0.75). NEW `ItemShield` dataclass in `_effects_types.py` + `ItemEffect.shield` field + `ANY` constant + `_SHIELD_TYPES`. EhpResult gains shield_any/phys/mag/true/sources fields; `compute_ehp` folds totals at top of damage stack (shields share armor/MR factor with HP per League's damage model). NEW `_is_ranged` (threshold 250) + `_collect_shields` aggregator. Bloodthirster ichor-shield + Doran's Shield block-per-source DEFERRED to Phase 6. ENGINE 1.26.0 -> 1.27.0; +15 stale ENGINE pin syncs across 14 test files. +46 tests. DS 2860 -> 2906; RC 2780 unchanged. DS server taskkill + schtasks /Run RC-DaemonSlayer -> /health 1.27.0 live.
+
+**Don't-redo:** all 4 lifeline items use EXISTING `unique_passive_key="lifeline"` (Phase 4 batch 12). Shields share SAME armor/MR factor as HP (NOT un-resisted). `compute_ehp` does NOT apply unique_passive dedup itself - rank.py's `shares_dead_unique` is upstream. The 17-champ tenacity map is patch-data-driven via `champions.json` -> `lolmath.aram_modifiers.aramTenacity`; do NOT hardcode. Per-call injection via `_USER_TMPL` (cache-prefix preservation); do NOT migrate to system-prompt suffix. Only ARAM coach is wired; Brawl/Arena/SR coaches do NOT have aramTenacity in their modes.
+
+---
+
 # 2026-05-20 - housekeeping batch (7 commits `1a8e0bf`..`58d1e87`; non-engine; no DS bump)
 
 User-driven scoped session: branch+worktree cleanup (4 stale + 1 locked 107MB worktree); Desktop shortcut Claude RC.lnk repointed to MS Store Claude Desktop; 4 dated 2026-05-02 `docs io RC peer/` artifacts archived to `docs/_archive/2026-05-02-rc-peer/` (2 left in place blocked on frozen main.py + sync-all-md.md refs); **`943d2e0` fix(ddragon)** retry-with-backoff for transient HTTP errors (RC-DDragonMirrorRefresh exit_code=2 root cause); **`4808f64` chore(gitignore)** `_scratch/` quarantine; **`8f7a71b` feat(ds)** cdragon `calculations` exposed on Augment dataclass (83/220 augments, no ENGINE bump - dataclass-layer only); **`94fe721`+`8d1c28e` docs(backlog)** 125->105 lines prune; **`58d1e87` feat(coach)** haste-formula cycle math for `core/summoner_cooldowns.py` (additive CDR -> `eff_cd = base / (1 + h/100)`; new `summs.summoner_haste`+`ult.ability_haste` output keys; 14->29 tests). Wider RC 2096/0. **Don't-redo:** cdragon calculations is HALF SHIPPED (dataclass-layer only; formula-evaluator is next slice + ENGINE bump); dated-docs left 2 files in place because frozen refs.
