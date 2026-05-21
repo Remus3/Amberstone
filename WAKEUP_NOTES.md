@@ -3,6 +3,45 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-21 - HEADLESS UPGRADE PASS 2: DS audit HALT (streak 13) + close prompt-cache carries + log spam lever
+
+Operator-extended scope: each /headless-upgrade re-run strips items already shipped + folds in more DS work and DS expansion under the same guidelines; no user gating; best-recommended choice + audit + test + iterate.
+
+**Single commit `bb30e92`:** close prompt-cache carries (experimental_builder + replay_coach) + suppress high-frequency HTTP-request log spam. Pushed; CI green.
+
+**Wave-2 (4 worktree agents parallel in 1 message):**
+- DS-A Black Cleaver 3071 Carve - NO-CHANGE (Meraki 16.10.1 confirms 6%/stack = 30% max; engine correct). **Streak 10 -> 11 = HALT criterion reached per stop rule.**
+- DS-B Voltaic Cyclosword 6699 Firmament - NO-CHANGE (100 flat phys + 10 lethality matches Meraki; no AD scaling - that was pre-rework formula).
+- DS-C Eclipse 6692 Ever Rising Moon - NO-CHANGE (6% target max HP matches Meraki melee value).
+- COACH+LOG combined slice - SHIPPED.
+
+**Combined slice details:**
+1. `coaches/experimental_builder.py:209` + `coaches/replay_coach.py:194` flipped from uncached `system=_SYSTEM_PROMPT` string-form to explicit-block list with `cache_control={"type":"ephemeral"}`. Closes pass-1 carry-forward (d). Marker pattern now CONSISTENT across all 8 messages.create() coach callers (aram_coach + arena_coach + brawl_coach + sr/coach_integration + champ_select_coach + aram_team_analyzer + experimental_builder + replay_coach).
+2. `dashboard/_handler.py` NEW `_SUPPRESS_LOG_PATHS` tuple + rewrite `Handler.log_message` to skip 3 high-frequency 2Hz-poll endpoints (`GET /api/decisions ` + `GET /api/decisions/heartbeat ` + `GET /api/vision-state `). Sample log volume was ~7100 lines/hour (~90% of today's log file); suppression preserves error/info logging via separate log.warning/log.info calls (log_message is BaseHTTPRequestHandler's request-trace hook only; not a general logging filter).
+
+**+17 tests across 3 NEW files:**
+- tests/test_experimental_builder_cache.py (4): explicit-block + cache_control marker + text-carried + block-before-messages ordering
+- tests/test_replay_coach_cache.py (4): same shape, system constant is _PROMPT
+- tests/test_handler_log_spam_suppress.py (9): exact constant pinned + each of 3 paths suppressed + /api/state logged + POST /api/bridge/inbox logged + error-path call sites still present + log.warning bypasses suppression
+
+**DS audit HALT milestone:** streak 13 consecutive no-changes (iter 20-32). Engine 1.24.0 declared formally Meraki-coherent at patch 16.10.1. Future DS work goes ONLY on Meraki-confirmed drift (no rumor-driven bumps; no exhaustive sweep churn).
+
+**Verified:** py_compile + ruff + ASCII clean; CI green on `bb30e92` (1m20s). RC :8888 restarted via restart_trigger.txt -> pid 5844 alive=True last_reload_ok=True. Log spam suppression live; the 3 high-frequency endpoints stop emitting DEBUG lines immediately.
+
+**Don't-redo:**
+- DS audit cycle has HALTED at engine 1.24.0; do NOT pre-launch another exhaustive sweep absent Meraki-confirmed drift signal.
+- Prompt-cache marker pattern is now CONSISTENT across all 8 messages.create() coach callers; the only callers WITHOUT a marker are the ones that don't pass a static system prompt at all.
+- The 3-substring suppression set in `_handler.py:_SUPPRESS_LOG_PATHS` is calibrated to the 2Hz pollers - do NOT add to it without confirming the new path has > 1 log-line/sec steady-state.
+- The log_message override is BaseHTTPRequestHandler's request-trace hook ONLY; error paths emit via log.warning/log.info elsewhere and are unaffected.
+
+**Carries forward:**
+- (a) coach prompt per-mode tuning to emit native `choices` arrays (queued; prompt engineering across aram/arena/brawl/sr coaches; zero LLM cost).
+- (b) Arena S2 patch 26.09 reconnaissance + CSS anchor-positioning lift remain operator-gated.
+- (c) all item 119 carries unchanged.
+
+No frozen edits this pass. The pass-1 rewind-wire frozen edit was already merged.
+
+---
 # 2026-05-20/21 - HEADLESS UPGRADE RUN (6h, 23:22 CST -> 05:22 CST): /headless-upgrade skill collapse + A/B tutoring coach + rewind DB live writer + design tokens + champ_select prompt-cache + dict cache + UI polish sweep + 3-no-change DS audit pass
 
 Operator-authorized 6-hour autonomous run with full authority + no user gating (20-day 100% acceptance pattern). Frozen-file edits permitted this run only.
