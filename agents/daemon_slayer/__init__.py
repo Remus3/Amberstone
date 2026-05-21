@@ -1321,7 +1321,30 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.23.0"
+ENGINE_VERSION = "1.24.0"
+# 1.24.0 (per-item flat AH wired into compute_ability_dps, 2026-05-21):
+# Closes BACKLOG item "DS item-level ability_haste lane". DDragon
+# items.json's structured ``stats`` block strips ``AbilityHaste`` (only
+# carries it in ``tags``); the numeric value lives in the localized
+# description as ``<attention>N</attention> Ability Haste`` inside the
+# leading ``<stats>...</stats>`` block. Meraki bulk strips per-item
+# stats. NEW ``agents/daemon_slayer/_item_ability_haste.py`` ships a
+# static 220-entry registry parsed from items.json description text
+# at patch 16.10.1, with ``total_item_ability_haste(item_ids)``
+# summer. Wired into ``compute_ability_dps`` as ``base_ah`` -> threaded
+# through the existing 1.23.0 ``_total_ability_haste`` +
+# ``_effective_ability_cd`` haste-formula consumer. SR + ARAM both
+# benefit (ARAM additionally folds ``aram_ability_haste`` on top).
+# Example: SR Black Cleaver (20) + Cosmic Drive (25) + Sorc Shoes (0)
+# + Lich Bane (10) + Rabadon (0) + Zhonya (0) = 55 AH -> 7s base CD ->
+# 7 / 1.55 = 4.52s effective. Pre-1.24.0 the engine pinned base CDs
+# regardless of build AH (floor case ``base_ah=0.0``).
+#
+# Regeneration on new patches: re-parse items.json description text;
+# subsequent matches (Mythic-passive AH grants, on-takedown procs) are
+# intentionally ignored - the static lane carries only the build-time
+# base stat.
+#
 # 1.23.0 (aramAbilityHaste + aramTenacity engine consumption, 2026-05-20):
 # Closes the half-shipped state from ENGINE 1.19.0 (`6bba097` exposed
 # the two ARAM modifier keys via the resolved stats dict but no scorer

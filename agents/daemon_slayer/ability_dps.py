@@ -125,6 +125,7 @@ from .effects import (
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
+from ._item_ability_haste import total_item_ability_haste
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -845,12 +846,14 @@ def _total_ability_haste(
     on mode == "ARAM"; this helper double-gates so a malformed
     scaled-dict can't leak ARAM haste into SR rankings).
 
-    ``base_ah`` is the caller-supplied baseline (defaults 0). Reserved
-    for the future item-AH lane - once the schema in
-    ``_effects_types.ItemEffect`` grows an ``ability_haste_flat`` field
-    + the matching ``total_ability_haste(effects)`` summer in
-    ``effects.py``, ``compute_ability_dps`` will pass the item-side
-    total here. Today the lane is empty.
+    ``base_ah`` is the caller-supplied baseline (defaults 0). ENGINE
+    1.24.0 (2026-05-21) wired the item-AH lane via
+    ``_item_ability_haste.total_item_ability_haste(item_ids)`` -
+    ``compute_ability_dps`` now passes the sum of per-item flat AH
+    here. The registry covers patch 16.10.1's 220 AH-carrying items
+    (parsed from DDragon items.json description text). Test/CLI
+    callers passing builds with no AH items see the floor case
+    (base_ah=0.0, identity).
 
     Negative deltas (Seraphine -20, Teemo -15, etc) pass through; the
     haste formula handles them via ``_effective_ability_cd``.
@@ -1272,13 +1275,17 @@ def compute_ability_dps(
 
     # ENGINE 1.23.0 (2026-05-20) - ability-haste consumption.
     # Read the engine-exposed aramAbilityHaste delta (stripped to 0
-    # outside ARAM mode by ``_total_ability_haste``). The item-AH lane
-    # is currently empty - ``_effects_types.ItemEffect`` does not yet
-    # carry an ability-haste field, so ``base_ah`` defaults to 0. When
-    # that lane lands, ``base_ah`` will become a sum over item_effects.
-    # Single haste-total applies uniformly to all 4 spell keys (Q/W/E/R)
-    # at the engine layer - per-spell amplifiers are out of scope.
-    total_ah = _total_ability_haste(resolved.stats, mode, base_ah=0.0)
+    # outside ARAM mode by ``_total_ability_haste``).
+    # ENGINE 1.24.0 (2026-05-21) - item-AH lane wired via
+    # ``_item_ability_haste`` registry. ``base_ah`` is the sum of flat
+    # AH across the build's item ids (DDragon items.json strips AH from
+    # the structured ``stats`` block, so the registry carries the
+    # parsed-from-description values). SR Black Cleaver + Cosmic Drive
+    # = 20 + 25 = 45 AH -> 7s base CD -> 4.83s effective. Single
+    # haste-total applies uniformly to all 4 spell keys (Q/W/E/R) at
+    # the engine layer - per-spell amplifiers are out of scope.
+    base_ah = total_item_ability_haste(resolved.item_ids)
+    total_ah = _total_ability_haste(resolved.stats, mode, base_ah=base_ah)
     # Forward the tenacity multiplier for downstream EHP consumers.
     # NOT consumed in this slice - see module-level TODO.
     aram_tenacity_mult = float(resolved.stats.get("aram_tenacity_mult", 1.0))
