@@ -45,6 +45,7 @@ import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from core.obj_participation import compute_obj_participation
 from core.post_game_rubric import _DEFAULT_WEIGHTS, _normalize_role, compute_role_grade
 
 log = logging.getLogger("rc.web_dashboard")
@@ -130,6 +131,12 @@ def _fetch_match_and_row(conn: sqlite3.Connection, match_id: str,
         if row is None:
             continue
         cs = int(row[5] or 0) + int(row[6] or 0)
+        # Composes on core.obj_participation: derives the participation
+        # ratio from the operator's row + team total (dragon_kills +
+        # baron_kills + objectives_stolen + objectives_stolen_assists +
+        # first_tower_kill + first_tower_assist). Fail-soft to 0.0 on
+        # any schema-shape surprise.
+        obj_participation_pct = compute_obj_participation(conn, match_id, row[0])
         return True, {
             "puuid": row[0],
             "team_position": row[1] or "",
@@ -140,6 +147,7 @@ def _fetch_match_and_row(conn: sqlite3.Connection, match_id: str,
             "vision_score": int(row[7] or 0),
             "damage_dealt_to_champions": int(row[8] or 0),
             "game_duration_s": game_duration_s,
+            "obj_participation_pct": obj_participation_pct,
         }
     return True, None
 
@@ -217,10 +225,10 @@ def _serve_post_game_rubric(h) -> None:
         # core.post_game_rubric.compute_role_grade expects game_time_s
         # (NOT game_duration_minutes - the spec wording diverged from the
         # shipped module API; the module is the source of truth).
-        # obj_participation_pct is not stored as a column - kept at 0
-        # for the initial slice; future enrichment can fold in
-        # objectives_stolen / dragon_kills / baron_kills for a rough
-        # participation proxy.
+        # obj_participation_pct comes from core.obj_participation, which
+        # sums the operator's dragon/baron/objectives_stolen/first_tower
+        # contributions over the team total. Fail-soft to 0.0 on a
+        # zero-objective game (rubric correctly under-scores).
         stats = {
             "kills": row["kills"],
             "deaths": row["deaths"],
@@ -229,7 +237,7 @@ def _serve_post_game_rubric(h) -> None:
             "game_time_s": row["game_duration_s"],
             "vision_score": row["vision_score"],
             "damage_dealt_to_champions": row["damage_dealt_to_champions"],
-            "obj_participation_pct": 0.0,
+            "obj_participation_pct": row["obj_participation_pct"],
         }
         result = compute_role_grade(stats, row["team_position"])
 
