@@ -20,17 +20,20 @@ from dashboard import routes_dictionary as rd
 
 
 class _Handler:
-    """Stub HTTP handler capturing _send(status, body, content_type)."""
+    """Stub HTTP handler capturing _send(status, body, content_type, cache_control)."""
 
     def __init__(self) -> None:
         self.status = 0
         self.body = b""
         self.content_type = ""
+        self.cache_control: str | None = None
 
-    def _send(self, status: int, body: bytes, content_type: str) -> None:
+    def _send(self, status: int, body: bytes, content_type: str,
+              cache_control: str | None = None) -> None:
         self.status = status
         self.body = body
         self.content_type = content_type
+        self.cache_control = cache_control
 
     def json(self) -> dict:
         return json.loads(self.body.decode())
@@ -86,6 +89,34 @@ class ServeAugmentsTests(unittest.TestCase):
         with mock.patch.object(rd, "_current_ds_patch", return_value=""):
             rd._serve_augments(h)
         self.assertEqual(h.status, 404)
+
+
+class CacheControlTests(unittest.TestCase):
+    """Patch-pinned DDragon dumps + cherry_augments rarely change between
+    operator-triggered refreshes. The dictionary routes opt out of the
+    default `no-store` and serve `public, max-age=86400, immutable` so
+    the browser can short-circuit subsequent loads. Saves a measurable
+    number of /api/dictionary/* hits per dashboard session."""
+
+    def test_serve_augments_sets_long_cache(self):
+        h = _Handler()
+        rd._serve_augments(h)
+        self.assertEqual(h.status, 200)
+        self.assertEqual(h.cache_control, rd._DICT_CACHE_CONTROL)
+        self.assertIn("max-age=86400", h.cache_control)
+        self.assertIn("immutable", h.cache_control)
+
+    def test_serve_champion_tags_sets_long_cache(self):
+        h = _Handler()
+        rd._serve_champion_tags(h)
+        if h.status == 200:
+            self.assertEqual(h.cache_control, rd._DICT_CACHE_CONTROL)
+
+    def test_constant_value(self):
+        self.assertEqual(
+            rd._DICT_CACHE_CONTROL,
+            "public, max-age=86400, immutable",
+        )
 
 
 class RouteRegistrationTests(unittest.TestCase):

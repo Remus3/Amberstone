@@ -2716,7 +2716,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // Initial fetch + recurring tick + alerts mirror.
     _homeFetchAndRender();
     setInterval(_homeFetchAndRender, _HOME.intervalMs);
-    setInterval(_homeMirrorAlerts, 2000);
+    setInterval(_homeMirrorAlerts, 5000);
     _homeMirrorAlerts();
   }
   if (document.readyState === "loading") {
