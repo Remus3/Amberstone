@@ -1,4 +1,4 @@
-﻿"""
+"""
 tft/tft_coach_engine.py
 
 Challenger-level TFT coaching engine.

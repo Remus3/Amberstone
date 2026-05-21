@@ -1,4 +1,4 @@
-﻿"""
+"""
 ops/rc_self_monitor.py  â€”  Phase 0.1 corrective rewrite
 
 Changes vs Phase 0:
