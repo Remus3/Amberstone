@@ -13,7 +13,10 @@ under-scored that axis by ~5-10 points on participation-heavy roles.
 Standard League definition of "objective participation":
     (operator's involvement in team objectives) / (team total objectives).
 
-Closest approximation from rewind_history.db ``participants`` columns:
+Closest approximation from rewind_history.db ``participants`` columns
+(7-column model; item 133 carry (b) lifts from the original 6-column
+approximation by reading ``riftHeraldTakedowns`` from
+``participants.challenges_json``):
 
     numerator   = dragon_kills
                 + baron_kills
@@ -21,18 +24,21 @@ Closest approximation from rewind_history.db ``participants`` columns:
                 + objectives_stolen_assists
                 + first_tower_kill
                 + first_tower_assist
-    denominator = sum of those same columns across all 5 teammates
+                + riftHeraldTakedowns       # from challenges_json
+    denominator = sum of those same 7 columns across all 5 teammates
                   (matched by participants.team_id)
 
 Edge case: if the team total is 0 (no objectives taken whole match),
 return 0.0. The rubric correctly scores that as zero contribution to a
 zero-base game; we do NOT pretend the operator got "100% of nothing".
 
-Fail-soft contract: missing match_id, blank puuid, malformed schema, or
+Fail-soft contract: missing match_id, blank puuid, malformed schema,
+malformed challenges_json (non-JSON / missing key / non-numeric), or
 any sqlite error returns 0.0. Never raises.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 
 # Columns summed to form numerator + denominator. Order is load-bearing
@@ -51,6 +57,12 @@ _OBJ_COLUMNS = (
 # schema) still produce a sane numeric.
 _ROW_SUM_SQL = " + ".join(f"COALESCE({c}, 0)" for c in _OBJ_COLUMNS)
 
+# The 7th objective contribution lives inside the participants
+# ``challenges_json`` blob (Match-V5 challenges). Older schemas may not
+# carry this column; the SELECT widening below uses a try/except SQL
+# error path so the fail-soft contract still holds.
+_HERALD_KEY = "riftHeraldTakedowns"
+
 
 def _coerce_float(value) -> float:
     """Best-effort float coercion. Returns 0.0 on any failure."""
@@ -62,12 +74,37 @@ def _coerce_float(value) -> float:
         return 0.0
 
 
+def _herald_from_challenges(blob) -> float:
+    """Extract ``riftHeraldTakedowns`` from a challenges_json blob.
+
+    Fail-soft on every degenerate shape: None, empty string, non-string,
+    malformed JSON, non-dict parse result, missing key, non-numeric
+    value. All return 0.0.
+    """
+    if not blob:
+        return 0.0
+    if not isinstance(blob, (str, bytes, bytearray)):
+        return 0.0
+    try:
+        parsed = json.loads(blob)
+    except (ValueError, TypeError):
+        return 0.0
+    if not isinstance(parsed, dict):
+        return 0.0
+    return _coerce_float(parsed.get(_HERALD_KEY))
+
+
 def compute_obj_participation(
     conn: sqlite3.Connection,
     match_id: str,
     puuid: str,
 ) -> float:
     """Compute objective participation for the operator's row in ``match_id``.
+
+    7-column model (item 133 carry (b)): the original 6 SQL columns plus
+    ``riftHeraldTakedowns`` parsed from ``participants.challenges_json``.
+    The herald counter is added to BOTH numerator (operator's own row)
+    and denominator (team-wide sum) so the ratio stays normalized.
 
     Args:
         conn: open sqlite3 connection (caller owns lifecycle; we never
@@ -81,6 +118,8 @@ def compute_obj_participation(
           - no matching participants row
           - team total is 0 (rubric correctly under-scores a no-objectives game)
           - any sqlite error or unexpected schema shape
+          - malformed challenges_json (handled per-row; the SQL trip
+            still succeeds and other rows contribute normally)
     """
     if not match_id or not puuid:
         return 0.0
@@ -88,32 +127,61 @@ def compute_obj_participation(
         return 0.0
 
     try:
-        # Fetch operator row's team_id + per-row obj sum.
-        operator_sql = (
-            f"SELECT team_id, ({_ROW_SUM_SQL}) AS row_sum "
-            "FROM participants "
-            "WHERE match_id = ? AND puuid = ? LIMIT 1"
+        # Fetch the operator row's team_id in one trip (separate from the
+        # team-wide pull so we can short-circuit on unknown puuid before
+        # paying for the WHERE team_id scan).
+        cur = conn.execute(
+            "SELECT team_id FROM participants "
+            "WHERE match_id = ? AND puuid = ? LIMIT 1",
+            (match_id, puuid),
         )
-        cur = conn.execute(operator_sql, (match_id, puuid))
         op_row = cur.fetchone()
         if op_row is None:
             return 0.0
         team_id = op_row[0]
-        numerator = _coerce_float(op_row[1])
         if team_id is None:
             return 0.0
 
-        # Team-wide total (all participants on the same team_id).
-        team_sql = (
-            f"SELECT COALESCE(SUM({_ROW_SUM_SQL}), 0) "
-            "FROM participants "
-            "WHERE match_id = ? AND team_id = ?"
-        )
-        cur = conn.execute(team_sql, (match_id, team_id))
-        team_row = cur.fetchone()
-        denominator = _coerce_float(team_row[0]) if team_row else 0.0
+        # Pull every team row's 6-col sum AND the puuid + challenges_json
+        # so we can tally herald in Python and identify the operator row
+        # without a second query. Try the widened SELECT first (modern
+        # schema). On OperationalError (legacy schema without
+        # challenges_json), fall back to the 6-column SELECT.
+        try:
+            team_sql = (
+                f"SELECT puuid, ({_ROW_SUM_SQL}) AS row_sum, challenges_json "
+                "FROM participants "
+                "WHERE match_id = ? AND team_id = ?"
+            )
+            cur = conn.execute(team_sql, (match_id, team_id))
+            rows = cur.fetchall()
+            has_challenges = True
+        except sqlite3.OperationalError:
+            # Legacy schema (no challenges_json column). Degrade to the
+            # 6-column model; the test
+            # FailSoftWithMissingObjColumnsTests::test_legacy_schema_without_obj_cols_falls_back_to_zero
+            # pins this contract through to the route layer.
+            team_sql = (
+                f"SELECT puuid, ({_ROW_SUM_SQL}) AS row_sum "
+                "FROM participants "
+                "WHERE match_id = ? AND team_id = ?"
+            )
+            cur = conn.execute(team_sql, (match_id, team_id))
+            rows = cur.fetchall()
+            has_challenges = False
     except sqlite3.Error:
         return 0.0
+
+    numerator = 0.0
+    denominator = 0.0
+    for row in rows:
+        row_puuid = row[0]
+        row_sum6 = _coerce_float(row[1])
+        herald = _herald_from_challenges(row[2]) if has_challenges else 0.0
+        row_total = row_sum6 + herald
+        denominator += row_total
+        if row_puuid == puuid:
+            numerator = row_total
 
     if denominator <= 0:
         return 0.0

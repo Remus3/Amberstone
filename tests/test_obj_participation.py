@@ -7,9 +7,14 @@ Closes the item-132 carry-forward (c). Validates:
   - Fail-soft on blank inputs / unknown match / unknown puuid /
     zero-denominator / malformed schema / sqlite errors
   - No exceptions raised on any of the above
+  - 7th objective column (item 133 carry (b)):
+    ``riftHeraldTakedowns`` extracted from
+    ``participants.challenges_json`` participates in numerator +
+    denominator.
 """
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import sqlite3
@@ -22,56 +27,108 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.obj_participation import (  # noqa: E402
+    _HERALD_KEY,
     _OBJ_COLUMNS,
     _ROW_SUM_SQL,
     _coerce_float,
+    _herald_from_challenges,
     compute_obj_participation,
 )
 
 
-def _seed_db(path: pathlib.Path, rows: list[dict]) -> None:
-    """Build a minimal participants-shaped DB with the 6 objective columns.
+def _seed_db(path: pathlib.Path, rows: list[dict], legacy: bool = False) -> None:
+    """Build a participants-shaped DB.
 
     Each row dict supplies match_id, team_id, puuid + any subset of the
-    six objective columns; missing keys default to 0.
+    six SQL objective columns + optional ``challenges_json`` (raw string
+    OR dict that will be json.dumps'd). Missing keys default to 0.
+
+    When ``legacy=True`` the table is created WITHOUT a challenges_json
+    column - exercises the OperationalError fallback path in
+    compute_obj_participation.
     """
     conn = sqlite3.connect(str(path))
     cur = conn.cursor()
-    cur.executescript(
-        """
-        CREATE TABLE participants (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            match_id TEXT,
-            team_id INTEGER,
-            puuid TEXT,
-            dragon_kills INTEGER,
-            baron_kills INTEGER,
-            objectives_stolen INTEGER,
-            objectives_stolen_assists INTEGER,
-            first_tower_kill INTEGER,
-            first_tower_assist INTEGER
-        );
-        """
-    )
-    for r in rows:
-        cur.execute(
-            """INSERT INTO participants
-               (match_id, team_id, puuid,
-                dragon_kills, baron_kills, objectives_stolen,
-                objectives_stolen_assists, first_tower_kill, first_tower_assist)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (
-                r["match_id"],
-                r["team_id"],
-                r["puuid"],
-                r.get("dragon_kills", 0),
-                r.get("baron_kills", 0),
-                r.get("objectives_stolen", 0),
-                r.get("objectives_stolen_assists", 0),
-                r.get("first_tower_kill", 0),
-                r.get("first_tower_assist", 0),
-            ),
+    if legacy:
+        cur.executescript(
+            """
+            CREATE TABLE participants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT,
+                team_id INTEGER,
+                puuid TEXT,
+                dragon_kills INTEGER,
+                baron_kills INTEGER,
+                objectives_stolen INTEGER,
+                objectives_stolen_assists INTEGER,
+                first_tower_kill INTEGER,
+                first_tower_assist INTEGER
+            );
+            """
         )
+    else:
+        cur.executescript(
+            """
+            CREATE TABLE participants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT,
+                team_id INTEGER,
+                puuid TEXT,
+                dragon_kills INTEGER,
+                baron_kills INTEGER,
+                objectives_stolen INTEGER,
+                objectives_stolen_assists INTEGER,
+                first_tower_kill INTEGER,
+                first_tower_assist INTEGER,
+                challenges_json TEXT
+            );
+            """
+        )
+    for r in rows:
+        if legacy:
+            cur.execute(
+                """INSERT INTO participants
+                   (match_id, team_id, puuid,
+                    dragon_kills, baron_kills, objectives_stolen,
+                    objectives_stolen_assists, first_tower_kill,
+                    first_tower_assist)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (
+                    r["match_id"],
+                    r["team_id"],
+                    r["puuid"],
+                    r.get("dragon_kills", 0),
+                    r.get("baron_kills", 0),
+                    r.get("objectives_stolen", 0),
+                    r.get("objectives_stolen_assists", 0),
+                    r.get("first_tower_kill", 0),
+                    r.get("first_tower_assist", 0),
+                ),
+            )
+        else:
+            cj = r.get("challenges_json")
+            if isinstance(cj, dict):
+                cj = json.dumps(cj)
+            cur.execute(
+                """INSERT INTO participants
+                   (match_id, team_id, puuid,
+                    dragon_kills, baron_kills, objectives_stolen,
+                    objectives_stolen_assists, first_tower_kill,
+                    first_tower_assist, challenges_json)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    r["match_id"],
+                    r["team_id"],
+                    r["puuid"],
+                    r.get("dragon_kills", 0),
+                    r.get("baron_kills", 0),
+                    r.get("objectives_stolen", 0),
+                    r.get("objectives_stolen_assists", 0),
+                    r.get("first_tower_kill", 0),
+                    r.get("first_tower_assist", 0),
+                    cj,
+                ),
+            )
     conn.commit()
     conn.close()
 
@@ -166,7 +223,9 @@ def _build_full_team_match(
 class ModuleSchemaTests(unittest.TestCase):
     """Pin the public surface of the module."""
 
-    def test_obj_columns_tuple_holds_six_entries(self):
+    def test_obj_columns_tuple_holds_six_sql_entries(self):
+        # The SQL column tuple is still 6; the 7th (riftHeraldTakedowns)
+        # lives inside challenges_json, not as a top-level SQL column.
         self.assertEqual(len(_OBJ_COLUMNS), 6)
 
     def test_obj_columns_includes_dragons_and_barons(self):
@@ -187,6 +246,19 @@ class ModuleSchemaTests(unittest.TestCase):
 
     def test_compute_obj_participation_is_callable(self):
         self.assertTrue(callable(compute_obj_participation))
+
+    def test_herald_key_constant_is_canonical(self):
+        # Match-V5 challenges blob uses ``riftHeraldTakedowns`` (camelCase
+        # per Riot's challenges schema).
+        self.assertEqual(_HERALD_KEY, "riftHeraldTakedowns")
+
+    def test_module_docstring_mentions_seven_column_model(self):
+        # Pins the model count in the docstring so future readers see the
+        # 7-column approximation framing.
+        path = ROOT / "core" / "obj_participation.py"
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("7-column", text)
+        self.assertIn("riftHeraldTakedowns", text)
 
 
 class CoerceFloatTests(unittest.TestCase):
@@ -533,6 +605,285 @@ class FailSoftTests(unittest.TestCase):
             )
         finally:
             conn.close()
+
+
+class HeraldFromChallengesTests(unittest.TestCase):
+    """The challenges_json parser is fail-soft on every degenerate shape."""
+
+    def test_extracts_integer_herald(self):
+        blob = json.dumps({"riftHeraldTakedowns": 2})
+        self.assertEqual(_herald_from_challenges(blob), 2.0)
+
+    def test_extracts_float_herald(self):
+        blob = json.dumps({"riftHeraldTakedowns": 1.5})
+        self.assertEqual(_herald_from_challenges(blob), 1.5)
+
+    def test_zero_herald_returns_zero(self):
+        blob = json.dumps({"riftHeraldTakedowns": 0})
+        self.assertEqual(_herald_from_challenges(blob), 0.0)
+
+    def test_blob_without_key_returns_zero(self):
+        blob = json.dumps({"other_key": 99})
+        self.assertEqual(_herald_from_challenges(blob), 0.0)
+
+    def test_empty_string_returns_zero(self):
+        self.assertEqual(_herald_from_challenges(""), 0.0)
+
+    def test_none_returns_zero(self):
+        self.assertEqual(_herald_from_challenges(None), 0.0)
+
+    def test_non_string_blob_returns_zero(self):
+        # Future caller mis-passing an int / dict directly must NOT raise.
+        self.assertEqual(_herald_from_challenges(42), 0.0)
+        self.assertEqual(_herald_from_challenges({"riftHeraldTakedowns": 1}), 0.0)
+
+    def test_malformed_json_returns_zero(self):
+        self.assertEqual(_herald_from_challenges("{not json"), 0.0)
+        self.assertEqual(_herald_from_challenges("null"), 0.0)
+        self.assertEqual(_herald_from_challenges("[]"), 0.0)
+
+    def test_non_numeric_value_returns_zero(self):
+        blob = json.dumps({"riftHeraldTakedowns": "two"})
+        self.assertEqual(_herald_from_challenges(blob), 0.0)
+
+    def test_accepts_bytes_blob(self):
+        # sqlite3 occasionally returns bytes for TEXT columns; the parser
+        # should accept them.
+        blob = json.dumps({"riftHeraldTakedowns": 3}).encode("utf-8")
+        self.assertEqual(_herald_from_challenges(blob), 3.0)
+
+
+class HeraldEnrichmentMathTests(unittest.TestCase):
+    """Herald takedowns participate in numerator + denominator
+    (item 133 carry (b))."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="obj_herald_")
+        self.db_path = pathlib.Path(self.tmpdir) / "rewind.db"
+
+    def tearDown(self):
+        try:
+            os.remove(self.db_path)
+        except OSError:
+            pass
+        try:
+            os.rmdir(self.tmpdir)
+        except OSError:
+            pass
+
+    def test_operator_solo_herald_lifts_ratio_to_one(self):
+        # Operator solo gets the only herald takedown on the team.
+        # No 6-col objectives. Ratio = 1/1 = 1.0.
+        rows = [
+            {
+                "match_id": "MH1", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {"riftHeraldTakedowns": 1},
+            },
+            {
+                "match_id": "MH1", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "MH1", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)
+
+    def test_teammate_herald_adds_to_denominator_only(self):
+        # Operator: 0 herald + 1 dragon (=1 total).
+        # Teammate gets the herald takedown (1 herald + 0 sql cols).
+        # Team total = 2, operator = 1, ratio = 0.5.
+        rows = [
+            {
+                "match_id": "MH2", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+            {
+                "match_id": "MH2", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"riftHeraldTakedowns": 1},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "MH2", "SELF")
+        finally:
+            conn.close()
+        self.assertAlmostEqual(ratio, 0.5)
+
+    def test_mixed_objectives_and_herald_compose(self):
+        # Operator: 2 dragon + 1 herald = 3 total
+        # Allies (combined): 1 dragon + 2 herald = 3 total
+        # Team total = 6, operator = 3, ratio = 0.5.
+        rows = [
+            {
+                "match_id": "MH3", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 2,
+                "challenges_json": {"riftHeraldTakedowns": 1},
+            },
+            {
+                "match_id": "MH3", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 1,
+                "challenges_json": {"riftHeraldTakedowns": 1},
+            },
+            {
+                "match_id": "MH3", "team_id": 100, "puuid": "A2",
+                "challenges_json": {"riftHeraldTakedowns": 1},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "MH3", "SELF")
+        finally:
+            conn.close()
+        self.assertAlmostEqual(ratio, 0.5)
+
+    def test_teammate_herald_lowers_operator_share(self):
+        # When a teammate gets the herald and the operator does not, the
+        # operator's share DROPS because the denominator grows by 1 but
+        # the numerator stays flat. Pre-enrichment (6-col): 4 / 8 = 0.5.
+        # Post-enrichment (7-col): 4 / 9 ~ 0.444.
+        rows = [
+            {
+                "match_id": "MATCH_X", "team_id": 100, "puuid": "OP",
+                "dragon_kills": 2, "baron_kills": 1, "first_tower_kill": 1,
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+            {
+                "match_id": "MATCH_X", "team_id": 100, "puuid": "A1",
+                "first_tower_assist": 1,
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+            {
+                "match_id": "MATCH_X", "team_id": 100, "puuid": "A2",
+                "dragon_kills": 1, "objectives_stolen_assists": 1,
+                "first_tower_assist": 1,
+                "challenges_json": {"riftHeraldTakedowns": 1},
+            },
+            {
+                "match_id": "MATCH_X", "team_id": 100, "puuid": "A3",
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+            {
+                "match_id": "MATCH_X", "team_id": 100, "puuid": "A4",
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "MATCH_X", "OP")
+        finally:
+            conn.close()
+        # Operator 6-col sum: 2+1+1=4, herald=0 -> 4 (numerator)
+        # A1: 1 (first_tower_assist) + 0 herald = 1
+        # A2: 1+1+1=3 (6-col) + 1 herald = 4
+        # A3+A4: 0 + 0 = 0
+        # Team total = 4 + 1 + 4 + 0 + 0 = 9
+        # Ratio = 4 / 9 ~ 0.4444 (vs 6-col 4/8 = 0.5)
+        self.assertAlmostEqual(ratio, 4.0 / 9.0)
+
+    def test_null_challenges_json_treats_herald_as_zero(self):
+        # NULL challenges_json on every row is the legacy-data shape
+        # (older matches scraped before the column was populated). The
+        # SQL still runs because the column exists; the parser fails
+        # soft to 0.
+        rows = [
+            {
+                "match_id": "MH_NULL", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+                "challenges_json": None,
+            },
+            {
+                "match_id": "MH_NULL", "team_id": 100, "puuid": "A1",
+                "challenges_json": None,
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "MH_NULL", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)  # 1 / (1 + 0) = 1.0
+
+    def test_malformed_challenges_json_treats_herald_as_zero(self):
+        # One teammate's JSON is corrupt; that row contributes 0 herald
+        # but its 6-col still counts; OTHER rows process normally.
+        rows = [
+            {
+                "match_id": "MH_BAD", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+                "challenges_json": '{"riftHeraldTakedowns":1}',
+            },
+            {
+                "match_id": "MH_BAD", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 1,
+                "challenges_json": "{not valid json",
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "MH_BAD", "SELF")
+        finally:
+            conn.close()
+        # Operator: 1 dragon + 1 herald = 2
+        # A1: 1 dragon + 0 (parse failed) = 1
+        # Team total = 3, ratio = 2/3.
+        self.assertAlmostEqual(ratio, 2.0 / 3.0)
+
+    def test_enemy_team_herald_does_not_pollute(self):
+        # Herald is per-team-id like the 6 SQL columns; enemy herald
+        # MUST NOT count.
+        rows = [
+            {
+                "match_id": "MH_ENM", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {"riftHeraldTakedowns": 1},
+            },
+            {
+                "match_id": "MH_ENM", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+            {
+                "match_id": "MH_ENM", "team_id": 200, "puuid": "E1",
+                "challenges_json": {"riftHeraldTakedowns": 99},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "MH_ENM", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)
+
+    def test_legacy_schema_without_challenges_column_falls_soft(self):
+        # OperationalError fallback path: a pre-challenges DB schema
+        # should still return a 6-column ratio cleanly.
+        rows = [
+            {
+                "match_id": "LEG", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+            },
+            {
+                "match_id": "LEG", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 1,
+            },
+        ]
+        _seed_db(self.db_path, rows, legacy=True)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "LEG", "SELF")
+        finally:
+            conn.close()
+        # 6-col only: 1 / 2 = 0.5. No raise.
+        self.assertAlmostEqual(ratio, 0.5)
 
 
 class ReadOnlyConnectionTests(unittest.TestCase):
