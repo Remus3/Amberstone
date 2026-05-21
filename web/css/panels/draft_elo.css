@@ -41,15 +41,17 @@
 .draft-elo-chip .de-wr {
   font-size: 13px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.draft-elo-chip .de-wr.de-band-red    { color: #ff5050; }
-.draft-elo-chip .de-wr.de-band-amber  { color: #f1b04a; }
-.draft-elo-chip .de-wr.de-band-green  { color: #6ec977; }
+.draft-elo-chip .de-wr.de-band-red    { color: var(--signal-bad); }
+.draft-elo-chip .de-wr.de-band-amber  { color: var(--signal-warn); }
+.draft-elo-chip .de-wr.de-band-green  { color: var(--signal-good); }
 
 .draft-elo-chip .de-score {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.65);
+  font-variant-numeric: tabular-nums;
 }
 
 .draft-elo-chip .de-sample {
