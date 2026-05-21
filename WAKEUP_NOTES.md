@@ -3,6 +3,50 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-21 - HEADLESS UPGRADE PASS 3 + PASS 4: design tokens sweep + log spam extension + ALL 4 coaches native choices emit
+
+Operator re-extended scope: each /headless-upgrade re-run strips done items + folds in more DS work. No user gating.
+
+**Pass-3 (3 commits):**
+- `385f5e8` extend log spam suppression 3 -> 8 endpoints. Pass-2 covered the 2Hz pollers (~81% of log volume). Pass-3 adds asset-stamp + ui-version + activity + env + locked-champion (5-15s cadence each but cumulative ~1400 lines/hr extra). Total suppression now ~95% of log_message volume.
+- `5cefe30` design tokens consumption sweep on item_build.css + team_context.css + bridge_pending.css. 9 hex swaps to var(--signal-*). 4 outliers intentionally preserved with rationale (wave-state thresholds, Riot tier colors, team tints, salmon brand).
+- `6b92382` ARAM coach native choices emit (worktree H). Appended `Choices: <OPTIONAL...>` to OUTPUT FORMAT block at aram_coach.py:257 + JSON passthrough at lines 817-833 + `cur["choices"] = _choices_list` at line 842. +16 tests.
+
+**Pass-4 (2 commits):**
+- `14737a7` Arena coach native choices emit (worktree I). Mirrors ARAM at arena_coach.py:86 + _OUTPUT_KEYS gains "choices" at 123-126 + passthrough at 606-623 + cur.update key at 634. +23 tests.
+- `58b7d20` Brawl + SR coaches native choices emit (worktree J in ONE commit). Brawl has 3 prompts (NB/URF/OFA) each gain Choices + 3 _OUTPUT_KEYS lists + shared passthrough. SR has split structure: coach_integration/_sr_prompt.py SR_SYSTEM_PROMPT gains Choices after Risk + coach_integration/_coach.py `_parse_response field_map` gains "choices":"choices" entry + passthrough mutates `fields["choices"]` from string to list BEFORE `current.update(fields)` (structural deviation pinned by tests). ARAM_SYSTEM_PROMPT in _sr_prompt.py intentionally untouched (ARAM owns its own prompt in coaches/aram_coach.py). +49 tests.
+
+**ALL 4 per-mode coaches now emit native A/B/C choices arrays:** ARAM + Arena + Brawl (NB/URF/OFA) + SR. The dashboard's `_state_builder.py` prefers `core.coach_choices.parse_choices(coach)` (native) and falls back to `synthesize_simple_choices(coach)` (pure-Python A/B from action prose) when native is absent. Synthesizer stays as bootstrap + safety net.
+
+**Cost contract:** zero extra LLM calls. Native emit rides existing per-tick coach call (LLM returns prose + choices in ONE response). Cache prefix preserved (Choices APPENDED to OUTPUT FORMAT, never mid-block).
+
+**Schema (mirrors core.coach_choices.CoachChoice):** `{key:"A|B|C", label:"<3-5 word>", expected_outcome:"<one sentence>", confidence:"low|mid|high", source_tag:"<3-10 char>"}`. Max 3 entries. Per-mode source_tag suggestions in each coach prompt: ARAM (fight-trade/pack-grab/scaling/siege-call/augment-pivot), Arena (augment-pick/round-trade/duo-rotate), Brawl (fight-trade/respawn-window/objective-pace), SR (lane-state/rotate-ward/team-fight).
+
+**+88 tests total across passes 3+4** (16 ARAM + 23 Arena + 28 Brawl + 21 SR). All emit-test files share the pattern: PromptShapeTests (prompt contains Choices + schema + key letters + confidence enum) + ParserPassthroughTests (valid passthrough + missing -> empty + malformed -> empty no crash) + CachePreservedTests (Choices APPENDED to end of OUTPUT FORMAT) + JsonDecodeBehaviorTests.
+
+**Memory saved:** `reference_coach_choices_native_emit.md` - per-mode pattern + SR deviation + source_tag suggestions + don't-redo.
+
+**Verified:** py_compile + ruff + ASCII clean on all touched files; CI green on all 4 commits (`385f5e8` + `5cefe30` + `6b92382` + `14737a7` + `58b7d20`); RC :8888 restarted once after pass-2 handler edit + pass-3 handler extension hot-reloaded on next request; coach prompt changes pick up on next coaching tick (no RC restart needed).
+
+**DS audit cycle status:** HALTED at streak 13 from pass-2 (Black Cleaver 3071 + Voltaic 6699 + Eclipse 6692 all NO-CHANGE). Engine 1.24.0 formally Meraki-coherent.
+
+**Don't-redo:**
+- ALL 4 per-mode coaches now natively emit; do NOT pitch a 5th pass for the same task.
+- The Choices line is APPENDED to OUTPUT FORMAT block, never mid-block (cache prefix preservation; CachePreservedTests in each emit-test pin this).
+- Do NOT remove the synthesizer fallback in `_state_builder.py` - it's the bootstrap path AND the safety net.
+- The SR coach's split-module structure + passthrough that mutates `fields["choices"]` from string to list BEFORE update is the only structural deviation - pinned by test_sr_coach_choices_emit.py.
+- Log spam set (8 paths in `dashboard/_handler.py:_SUPPRESS_LOG_PATHS`) is calibrated to dashboard pollers; do NOT add without confirming > 1 log-line/sec steady-state.
+- 4 panel-CSS outliers (wave-state thresholds / Riot brand tiers / team tints / salmon brand) intentionally preserved - they're domain-specific palette not semantic; do NOT swap to var().
+
+**Carries forward:**
+- (a) per-page UI audit ritual after operator plays a live game (the choices field will surface real LLM-generated A/B selections instead of the synthesizer heuristic; operator can review tutoring quality + tighten coach prompts if needed).
+- (b) Arena S2 patch 26.09 reconnaissance + CSS anchor-positioning lift remain operator-gated.
+- (c) any future game mode that adds a coach should follow the same Choices-emit pattern.
+- (d) all item 120 carries unchanged.
+
+No frozen edits this pass either. The pass-1 rewind-wire frozen edit remains the only frozen edit of the full headless-upgrade run.
+
+---
 # 2026-05-21 - HEADLESS UPGRADE PASS 2: DS audit HALT (streak 13) + close prompt-cache carries + log spam lever
 
 Operator-extended scope: each /headless-upgrade re-run strips items already shipped + folds in more DS work and DS expansion under the same guidelines; no user gating; best-recommended choice + audit + test + iterate.
