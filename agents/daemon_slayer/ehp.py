@@ -17,10 +17,16 @@ HP scales by ``1/0.95`` for ALL damage types (including true).
 enemy damage shares. ``enemy_ad_share + enemy_ap_share <= 1.0``; remainder
 is true-damage share.
 
-Phase 1 deliberate omissions (deferred to Phase 1.5):
+Phase 1 deliberate omissions:
 * Shield throughput (Sterak's lifeline, Doran's Shield, Bloodthirster) -
-  needs uptime modeling
-* Healing throughput (lifesteal, Spirit Visage amp) - fits Phase 6
+  Phase 1.5 (ENGINE 1.27.0, 2026-05-21) shipped lifeline shields;
+  Phase 6 (ENGINE 1.28.0, 2026-05-21) added BT Ichorshield via the
+  same pipeline. Doran's Shield block-per-source still DEFERRED to
+  Phase 6.5+
+* Healing throughput (lifesteal, Spirit Visage amp) - Phase 6
+  (ENGINE 1.28.0, 2026-05-21) shipped via ItemHeal + heal_amp_pct +
+  lifesteal-derived heal pool. Death's Dance Defy heal-on-takedown
+  still DEFERRED to Phase 6.5 (takedown-rate uncertain)
 * Caster-side enemy pen/reduction (Black Cleaver shred ON the tank,
   Void Staff %MR pen ON the tank) - needs enemy build plumbing
 
@@ -40,6 +46,39 @@ fight-sim or coach-prompt consumer reads; EHP's primary blended_ehp
 math is unchanged (CC-duration vs HP-pool is a fundamentally different
 axis - the consumer must pair tenacity_mult with their own CC
 assumption).
+
+ENGINE 1.28.0 (2026-05-21) - Phase 6 healing throughput. Closes the
+``ehp.py:23`` deliberate Phase-6 omission "Healing throughput
+(lifesteal, Spirit Visage amp)". Three contributions feed the heal
+pool: (a) item-passive heals (Sundered Sky 6610 Lightshield Strike,
+100% base AD melee / 50% base AD ranged per one-trigger-per-fight),
+(b) lifesteal-derived heal accumulated over the 6s fight window
+(``stats.lifesteal * stats.ad * stats.as * 6.0``), (c) the
+multiplicative heal amp (Spirit Visage 3065 / Arena 223065 +25%).
+Bloodthirster's Ichorshield (3072 / 223072) rides the Phase 1.5 shield
+pipeline (full-cap steady-state assumption: 165 L1 -> 315 L18, ANY
+damage type). The post-amp heal pool is value-additive at the top of
+the damage stack (same place as shields), absorbing all damage types
+(heals don't discriminate by damage type in League's model).
+
+Phase 6 deliberate omissions (deferred to Phase 6.5+):
+* Death's Dance Defy heal-on-takedown (75% bonus AD over 2s) - the
+  takedown-rate assumption is uncertain enough that a first-pass would
+  over- or under-credit; stays defensive_only.
+* Spirit Visage amp on Phase 1.5 SHIELDS (Sterak / Shieldbow / Maw /
+  Hexdrinker / BT) - Riot's tooltip amps "all heal AND shielding +25%"
+  but Phase 6 ships heal-pipeline amp only. Builds pairing Spirit
+  Visage with a lifeline item are under-credited by ~15% (60% bonus HP
+  shield * 0.25 amp lost on a Sterak's example).
+* Lifesteal post-mitigation accuracy - the lifesteal heal model uses
+  pre-armor AD (the EHP scorer is enemy-state-agnostic). Real lifesteal
+  heals on post-armor damage, so this over-credits by ~30-40% vs a
+  60-90 armor target. Consistent with the rest of EHP's no-enemy-pen
+  posture (Phase 1 omission still in force).
+* Sundered Sky 6% missing-HP additive on the heal piece - requires a
+  current-HP-share assumption distinct from the steady-state full-HP
+  convention used elsewhere; the base AD piece is the dominant
+  contributor.
 """
 
 from __future__ import annotations
@@ -135,6 +174,111 @@ def _collect_shields(
     return totals, tuple(sources)
 
 
+_FIGHT_WINDOW_S = 6.0
+"""Phase 6 healing throughput fight-window constant (seconds).
+
+The lifesteal-derived heal pool accumulates over this window:
+``lifesteal_pct * total_AD * attack_speed * _FIGHT_WINDOW_S``. 6.0s
+matches the engine's existing sustained/burst boundary (compute_dps
+weights burst against the ~3s burst window with sustained DPS taking
+over after; 6s is a representative full-engagement window for EHP
+throughput purposes). Item-passive heals (Sundered Sky Lightshield
+Strike) use a one-trigger-per-fight convention and are NOT scaled by
+this window - the per-trigger heal magnitude IS the per-fight heal.
+"""
+
+
+def _collect_heals(
+    item_ids: Iterable[str],
+    base_ad: float,
+    bonus_hp: float,
+    bonus_ad: float,
+    is_ranged: bool,
+) -> tuple[float, tuple[tuple[str, float], ...]]:
+    """Resolve every ``ItemHeal`` across the equipped items.
+
+    ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput.
+
+    Returns ``(total_heal_hp, sources)`` where ``sources`` is a tuple of
+    ``(item_id, heal_hp)`` pairs in stable iteration order. The total
+    is the pre-amp sum (Spirit Visage's amp is applied later in
+    ``compute_ehp`` via ``_total_heal_amp``). One-trigger-per-fight
+    convention - the per-trigger magnitude IS the per-fight heal (no
+    fight-window scaling for item-passive heals; that scaling applies
+    only to the lifesteal-derived heal).
+
+    Items without a ``heal`` field (the ~99% case) contribute nothing
+    and are silently skipped.
+    """
+    total = 0.0
+    sources: list[tuple[str, float]] = []
+    for item_id in item_ids:
+        eff = ITEM_EFFECTS.get(str(item_id))
+        if eff is None or eff.heal is None:
+            continue
+        magnitude = eff.heal.resolve_magnitude(
+            base_ad=base_ad,
+            bonus_hp=bonus_hp,
+            bonus_ad=bonus_ad,
+            is_ranged=is_ranged,
+        )
+        if magnitude <= 0:
+            continue
+        total += magnitude
+        sources.append((str(item_id), magnitude))
+    return total, tuple(sources)
+
+
+def _total_heal_amp(item_ids: Iterable[str]) -> float:
+    """Sum the multiplicative heal-amp factor across the equipped items.
+
+    ENGINE 1.28.0 (2026-05-21): returns the ``(1 + heal_amp_pct)``
+    product across all items with ``heal_amp_pct > 0`` (today only
+    Spirit Visage 3065 / Arena 223065 at 0.25). Multiple amp items
+    stack multiplicatively per League's buff-system semantics (same
+    doctrine as ``damage_amp_pct`` / Phase 4 batch 14). Default ``1.0``
+    when no amp items are equipped (identity multiplier).
+    """
+    factor = 1.0
+    for item_id in item_ids:
+        eff = ITEM_EFFECTS.get(str(item_id))
+        if eff is None or eff.heal_amp_pct <= 0:
+            continue
+        factor *= (1.0 + eff.heal_amp_pct)
+    return factor
+
+
+def _lifesteal_heal(
+    lifesteal_pct: float,
+    ad: float,
+    attack_speed: float,
+    fight_window_s: float = _FIGHT_WINDOW_S,
+) -> float:
+    """Convert lifesteal stat into per-fight heal magnitude.
+
+    ENGINE 1.28.0 (2026-05-21): pre-amp lifesteal heal pool for the
+    EHP scorer. Formula:
+    ``lifesteal_pct * ad * attack_speed * fight_window_s``. This is a
+    PRE-mitigation approximation - lifesteal in-game heals on post-
+    armor damage, but the EHP scorer doesn't model enemy armor (it's
+    the wielder's EHP, not the enemy's). The over-credit is bounded
+    (~30-40% against a 60-90 armor target) and consistent with the
+    rest of the EHP scorer's enemy-state-agnostic posture (no enemy
+    pen modeling either - Phase 1 deliberate omission).
+
+    All inputs clamped at 0; negative result floored at 0.
+    """
+    if fight_window_s <= 0:
+        return 0.0
+    raw = (
+        max(0.0, lifesteal_pct)
+        * max(0.0, ad)
+        * max(0.0, attack_speed)
+        * fight_window_s
+    )
+    return max(0.0, raw)
+
+
 def effective_cc_duration(base_cc_s: float, tenacity_mult: float) -> float:
     """Apply ARAM tenacity multiplier to a base CC duration.
 
@@ -216,6 +360,25 @@ class EhpResult:
     shield_mag: float = 0.0
     shield_true: float = 0.0
     shield_sources: tuple[tuple[str, str, float], ...] = field(default_factory=tuple)
+    # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput. Heal pool
+    # is value-additive at the top of the damage stack (same place as
+    # shields). ``heal_item_total`` = sum of item-passive heal triggers
+    # (Sundered Sky one-shot per fight); ``heal_lifesteal`` = lifesteal-
+    # derived heal accumulated over ``_FIGHT_WINDOW_S`` (default 6s);
+    # ``heal_amp_mult`` is the multiplicative amp (Spirit Visage 1.25);
+    # ``heal_total`` is the POST-amp sum that the EHP math actually
+    # consumes (``(heal_item_total + heal_lifesteal) * heal_amp_mult``).
+    # ``heal_sources`` is the per-item breakdown (pre-amp magnitudes
+    # for transparency in format_table). The physical_ehp / magical_ehp
+    # / true_ehp / blended_ehp fields above ALREADY include the heal
+    # contribution. The heal pool absorbs all damage types (ANY-type
+    # like a lifeline shield - heals don't discriminate by damage type
+    # in League's model).
+    heal_item_total: float = 0.0
+    heal_lifesteal: float = 0.0
+    heal_amp_mult: float = 1.0
+    heal_total: float = 0.0
+    heal_sources: tuple[tuple[str, float], ...] = field(default_factory=tuple)
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -245,6 +408,14 @@ class EhpResult:
             "shield_sources": [
                 {"item_id": iid, "damage_type": dt, "shield_hp": hp}
                 for iid, dt, hp in self.shield_sources
+            ],
+            "heal_item_total": self.heal_item_total,
+            "heal_lifesteal": self.heal_lifesteal,
+            "heal_amp_mult": self.heal_amp_mult,
+            "heal_total": self.heal_total,
+            "heal_sources": [
+                {"item_id": iid, "heal_hp": hp}
+                for iid, hp in self.heal_sources
             ],
             "stats": dict(self.stats),
             "notes": list(self.notes),
@@ -292,6 +463,16 @@ class EhpResult:
             if self.shield_true:
                 shield_bits.append(f"true={self.shield_true:.0f}")
             rows.append("  shield_hp     " + "  ".join(shield_bits))
+        if self.heal_total > 0:
+            heal_bits = []
+            if self.heal_item_total > 0:
+                heal_bits.append(f"item={self.heal_item_total:.0f}")
+            if self.heal_lifesteal > 0:
+                heal_bits.append(f"lifesteal={self.heal_lifesteal:.0f}")
+            if self.heal_amp_mult != 1.0:
+                heal_bits.append(f"amp=x{self.heal_amp_mult:.3f}")
+            heal_bits.append(f"total={self.heal_total:.0f}")
+            rows.append("  heal_hp       " + "  ".join(heal_bits))
         if self.notes:
             rows.append("")
             for n in self.notes:
@@ -365,6 +546,7 @@ def compute_ehp(
     base = resolved.base_stats
     bonus_hp = max(0.0, hp - float(base.get("hp", 0.0)))
     bonus_ad = max(0.0, float(stats.get("ad", 0.0)) - float(base.get("ad", 0.0)))
+    base_ad = float(base.get("ad", 0.0))
     is_ranged = _is_ranged(base)
     shield_totals, shield_sources = _collect_shields(
         resolved.item_ids,
@@ -378,13 +560,36 @@ def compute_ehp(
     shield_mag = shield_totals.get(MAGICAL, 0.0)
     shield_true = shield_totals.get(TRUE, 0.0)
 
-    # Shields sit at the top of the damage stack: each damage_type sees
-    # ``hp + shield_any + shield_<type>`` effective HP before the
-    # armor/MR curve. Shields are NOT reduced separately by resistances
-    # in League's damage model - they share the same factor as HP.
-    physical_ehp = (hp + shield_any + shield_phys) / (_armor_factor(armor) * safe_mult)
-    magical_ehp = (hp + shield_any + shield_mag) / (_armor_factor(mr) * safe_mult)
-    true_ehp = (hp + shield_any + shield_true) / safe_mult
+    # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput. Heal pool
+    # accumulates from (a) item-passive heals (Sundered Sky Lightshield
+    # Strike, one trigger per fight) and (b) lifesteal stat over the
+    # fight window. Spirit Visage's amp applies multiplicatively to the
+    # combined pool. The post-amp total is value-additive to EHP at the
+    # top of the damage stack - heals don't discriminate by damage type
+    # in League's model, so the heal pool acts like an ANY shield.
+    heal_item_total, heal_sources = _collect_heals(
+        resolved.item_ids,
+        base_ad=base_ad,
+        bonus_hp=bonus_hp,
+        bonus_ad=bonus_ad,
+        is_ranged=is_ranged,
+    )
+    heal_lifesteal = _lifesteal_heal(
+        lifesteal_pct=float(stats.get("lifesteal", 0.0)),
+        ad=float(stats.get("ad", 0.0)),
+        attack_speed=float(stats.get("as", 0.0)),
+    )
+    heal_amp_mult = _total_heal_amp(resolved.item_ids)
+    heal_total = (heal_item_total + heal_lifesteal) * heal_amp_mult
+
+    # Shields + heal sit at the top of the damage stack: each damage_type
+    # sees ``hp + shield_any + shield_<type> + heal_total`` effective HP
+    # before the armor/MR curve. Shields + heals are NOT reduced
+    # separately by resistances in League's damage model - they share
+    # the same factor as HP.
+    physical_ehp = (hp + shield_any + shield_phys + heal_total) / (_armor_factor(armor) * safe_mult)
+    magical_ehp = (hp + shield_any + shield_mag + heal_total) / (_armor_factor(mr) * safe_mult)
+    true_ehp = (hp + shield_any + shield_true + heal_total) / safe_mult
 
     enemy_true_share = max(0.0, 1.0 - enemy_ad_share - enemy_ap_share)
     blended_ehp = (
@@ -410,6 +615,23 @@ def compute_ehp(
         notes.append(
             f"shield: {item_label} contributes {sh_hp:.0f} hp ({damage_type})"
         )
+    for item_id, heal_hp in heal_sources:
+        eff = ITEM_EFFECTS.get(item_id)
+        item_label = eff.name if eff is not None else item_id
+        notes.append(
+            f"heal: {item_label} contributes {heal_hp:.0f} hp per fight "
+            f"(pre-amp)"
+        )
+    if heal_lifesteal > 0:
+        notes.append(
+            f"heal: lifesteal {heal_lifesteal:.0f} hp over "
+            f"{_FIGHT_WINDOW_S:.0f}s window (pre-amp)"
+        )
+    if heal_amp_mult != 1.0:
+        notes.append(
+            f"heal: amp x{heal_amp_mult:.3f} applied multiplicatively "
+            f"(Spirit Visage Boundless Vitality and similar)"
+        )
 
     return EhpResult(
         champion_id=resolved.champion_id,
@@ -434,6 +656,11 @@ def compute_ehp(
         shield_mag=shield_mag,
         shield_true=shield_true,
         shield_sources=shield_sources,
+        heal_item_total=heal_item_total,
+        heal_lifesteal=heal_lifesteal,
+        heal_amp_mult=heal_amp_mult,
+        heal_total=heal_total,
+        heal_sources=heal_sources,
         stats=dict(stats),
         notes=tuple(notes),
     )
