@@ -1321,7 +1321,50 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.24.0"
+ENGINE_VERSION = "1.26.0"
+# 1.26.0 (Dead Man's Plate Momentum stacks-schema lift, 2026-05-21):
+# Closes BACKLOG "Dead Man's Plate Momentum stacks-schema" queued from
+# overnight 2026-05-20 iter 15-16 (where the item was flipped to
+# defensive_only because the dual-track Meraki formula didn't fit any
+# existing schema). NEW ``PeriodicProc.stack_ramp_seconds`` field
+# (default 0.0; backward-compat) - the family extension for the
+# stack-accumulation -> discharge pattern. When > 0 alongside
+# every_n_attacks > 0, the sustained model in ``_periodic_proc_dps``
+# fires the proc once per ``max(stack_ramp_seconds,
+# every_n_attacks * attack_period_s)`` - typically the ramp dominates
+# (3.57s > 1/AS for non-attack-speed-stacked builds). The burst path
+# (``_per_attack_proc_damage``) skips stack-ramp-gated procs because
+# the burst window (2-3s) is shorter than typical ramps and these are
+# tank/utility items whose DPS contribution is sustained-only.
+# Dead Man's Plate (3742 + Arena mirror 223742) re-encoded:
+# ``Shipwrecker`` proc = lambda c: 40.0 + c.base_ad PHYSICAL,
+# every_n_attacks=1, stack_ramp_seconds=3.57. Full-stack discharge
+# matches Meraki 16.10.1 spec: ``0.4 * 100 (cap 40) + 1.0 * base_ad``.
+# Verified: Aatrox L11 + 3742 vs no items vs 100 armor target = 20.15
+# DPS delta = (40 + 103.875) / 3.57 * 0.5 exactly. Other items can
+# adopt the same schema in future iterations (Sterak's Lifeline once
+# the EHP-vs-CC sim lands; hypothetical future ramp-discharge items).
+# Schema is mutually exclusive with every_n_seconds (no ramp semantics
+# in time-based path; ramp is implicit in the period).
+#
+# 1.25.0 (aram_tenacity_mult consumer wired into EHP, 2026-05-21):
+# Closes BACKLOG "Future EHP enemy-CC model for aram_tenacity_mult"
+# carry from item 113 (the field was forward-marker-stored on
+# AbilityDpsResult in 1.23.0 but had no EHP-side surfacer or consumer
+# helper). EhpResult now surfaces ``aram_tenacity_mult`` (default 1.0)
+# read from ``resolved.stats.get("aram_tenacity_mult", 1.0)``. NEW
+# module-level helper ``effective_cc_duration(base_cc_s, tenacity_mult)``
+# returns ``base_cc_s * max(0.0, tenacity_mult)`` - the seam any future
+# fight-sim / coach-prompt / EHP-vs-CC consumer reads to convert a base
+# CC duration into the post-tenacity value. 17 ARAM champs carry
+# non-1.0 aramTenacity in 16.10.1 (assassin-shaped +20% / +10%
+# lengthening + a handful of shorteners). EHP's blended_ehp math is
+# UNCHANGED - CC duration vs HP pool is a separate axis; consumers
+# must pair tenacity_mult with their own base-CC assumption. SR + every
+# non-ARAM mode degenerate to identity (tenacity_mult = 1.0; helper
+# returns base_cc_s unchanged). format_table renders the tenacity line
+# only when non-1.0 (parallel to mode_multiplier).
+#
 # 1.24.0 (per-item flat AH wired into compute_ability_dps, 2026-05-21):
 # Closes BACKLOG item "DS item-level ability_haste lane". DDragon
 # items.json's structured ``stats`` block strips ``AbilityHaste`` (only

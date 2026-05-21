@@ -130,12 +130,30 @@ class PeriodicProc:
     ``bonus_damage`` may be a float (constant) or a callable that takes
     a ``CallContext`` and returns a float - used for stat-scaling procs
     where the constant approximation would be too lossy.
+
+    ENGINE 1.26.0 (2026-05-21) added ``stack_ramp_seconds`` - the family
+    extension for the stack-accumulation -> discharge schema lift queued
+    by BACKLOG (Dead Man's Plate Momentum, iter 16 deferral). Set this
+    field > 0 ALONGSIDE ``every_n_attacks > 0`` to model an item passive
+    that needs ``stack_ramp_seconds`` to fully accumulate stacks and then
+    discharges on the next basic attack. Sustained-DPS effective period
+    in ``_periodic_proc_dps``:
+    ``max(stack_ramp_seconds, every_n_attacks * attack_period_s)``.
+    The ``bonus_damage`` value (or callable) is the FULL-STACK discharge
+    magnitude (the engine's sustained model assumes the discharge fires
+    at full ramp). Default 0.0 -> no ramp gate (today's behavior).
+    Mutually exclusive with ``every_n_seconds`` (the seconds-based path
+    has no ramp semantics; ramp is implicit in the period).
     """
     name: str
     bonus_damage: DamageFn
     damage_type: str
     every_n_attacks: int = 0
     every_n_seconds: float = 0.0
+    # ENGINE 1.26.0 (2026-05-21): stack-accumulation ramp gate. See class
+    # docstring above. Default 0.0 = no ramp (backward-compat). Only
+    # meaningful when every_n_attacks > 0 (XOR with every_n_seconds).
+    stack_ramp_seconds: float = 0.0
 
     def __post_init__(self) -> None:
         if self.damage_type not in _DAMAGE_TYPES:
@@ -149,6 +167,17 @@ class PeriodicProc:
             raise ValueError(
                 "PeriodicProc must set exactly one of every_n_attacks "
                 "(>0) or every_n_seconds (>0)"
+            )
+        if self.stack_ramp_seconds < 0:
+            raise ValueError(
+                f"PeriodicProc.stack_ramp_seconds must be >= 0, got "
+                f"{self.stack_ramp_seconds!r}"
+            )
+        if self.stack_ramp_seconds > 0 and seconds_set:
+            raise ValueError(
+                "PeriodicProc.stack_ramp_seconds only valid with "
+                "every_n_attacks > 0 (the seconds-based path has no "
+                "ramp semantics; ramp is implicit in the period)"
             )
 
     def resolve_damage(self, ctx: CallContext) -> float:
