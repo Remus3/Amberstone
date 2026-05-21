@@ -75,6 +75,11 @@ _SUPPRESS_LOG_PATHS = (
     "GET /api/decisions ",
     "GET /api/decisions/heartbeat ",
     "GET /api/vision-state ",
+    "GET /api/asset-stamp ",
+    "GET /api/ui-version ",
+    "GET /api/activity ",
+    "GET /api/env ",
+    "GET /api/locked-champion ",
 )
 
 
