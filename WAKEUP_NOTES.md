@@ -3,6 +3,21 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-21 - DS 3-slice drain SHIPPED (3 commits `c36446b` `13eb869` `d854951`; ENGINE 1.26.0 -> 1.27.0)
+
+Operator: "continue ds" -> 3 scoped slices, each AskUserQuestion-framed. RC restarted 2x (coach prompt edits); DS :8893 restarted once for engine bump. All 3 pushed + CI green; no frozen-file edits.
+
+**Slice 126 `c36446b` feat(coach):** EHP enemy-CC coach consumer (ARAM tenacity). First live consumer of `effective_cc_duration` helper (shipped 1.25.0 with zero consumers). NEW `core/aram_tenacity_context.py` loads `data/daemon_slayer/<patch>/champions.json` once at module-import -> `_TENACITY_MAP` of 17 non-1.0 champs (15 at 1.20x + 2 at 1.10x). `aram_tenacity_line(champion, mode) -> str` renders the prompt line. Wired into `coaches/aram_coach.py` `_USER_TMPL` between `Enemy keystones` and `DS top items`. Cached `_SYSTEM` unchanged (cache-prefix preservation). `tests/test_ds_pick_consumption_p1l11.py` fixture +1 line. +29 tests. RC 2733 -> 2762.
+
+**Slice 127 `13eb869` feat(coach):** Per-enemy ARAM tenacity wire. Symmetric extension of 126 - aramTenacity is the multiplier on ANY CC on that champion (operator's CC on enemy lasts longer too). NEW `enemy_aram_tenacity_line(enemies, mode) -> str` renders `"Enemy ARAM tenacity (your CC on them lasts longer): Talon 1.20x, Zed 1.20x"`, sorted desc-mult then alpha. Wired next to `{aram_tenacity}`. +18 tests. RC 2762 -> 2780.
+
+**Slice 128 `d854951` feat(ds):** EHP Phase 1.5 shield throughput. Closes `ehp.py:21` deliberate Phase-1 omission. 4 LIFELINE-style shields (Sterak 3053 60% bonus_hp ANY; Shieldbow 6673 400->700 ANY ranged x0.80; Maw 3156 200+150% bonus_ad MAGICAL ranged x0.75; Hexdrinker 3155 110->280 MAGICAL ranged x0.75). NEW `ItemShield` dataclass in `_effects_types.py` + `ItemEffect.shield` field + `ANY` constant + `_SHIELD_TYPES`. EhpResult gains shield_any/phys/mag/true/sources fields; `compute_ehp` folds totals at top of damage stack (shields share armor/MR factor with HP per League's damage model). NEW `_is_ranged` (threshold 250) + `_collect_shields` aggregator. Bloodthirster ichor-shield + Doran's Shield block-per-source DEFERRED to Phase 6. ENGINE 1.26.0 -> 1.27.0; +15 stale ENGINE pin syncs across 14 test files. +46 tests. DS 2860 -> 2906; RC 2780 unchanged. DS server taskkill + schtasks /Run RC-DaemonSlayer -> /health 1.27.0 live.
+
+**Don't-redo:** all 4 lifeline items use EXISTING `unique_passive_key="lifeline"` (Phase 4 batch 12). Shields share SAME armor/MR factor as HP (NOT un-resisted). `compute_ehp` does NOT apply unique_passive dedup itself - rank.py's `shares_dead_unique` is upstream. The 17-champ tenacity map is patch-data-driven via `champions.json` -> `lolmath.aram_modifiers.aramTenacity`; do NOT hardcode. Per-call injection via `_USER_TMPL` (cache-prefix preservation); do NOT migrate to system-prompt suffix. Only ARAM coach is wired; Brawl/Arena/SR coaches do NOT have aramTenacity in their modes.
+
+**Next session:** (a) Phase 6 healing throughput (lifesteal + Spirit Visage + Death's Dance + Bloodthirster ichor-shield) - natural follow-up. (b) Per-spell CC duration extractor as a 2nd consumer of the tenacity wire (engine-side). (c) live ARAM smoke still pending - operator must play modified-tenacity champ or face them. (d) RC-PostmortemAnalyze first cron 2026-05-24 04:15 - verify LastTaskResult=0 next session.
+
+---
 # 2026-05-21 - postmortem follow-up 4-slice drain SHIPPED (4 commits `50c83ac` `6d22e2e` `3cfea90` + 2 merges)
 
 Operator: "continue what is next to do". Per item 124 carry-forward sweep + AskUserQuestion (4 options, operator picked "all 4 in parallel"). 4 slices shipped end-to-end; 2 via parallel worktree agents + 2 inline. RC restarted clean pid 5972 -> 2640; cadence task LIVE NextRun 2026-05-24T04:15.
