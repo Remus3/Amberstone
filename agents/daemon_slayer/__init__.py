@@ -1321,7 +1321,34 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.29.0"
+ENGINE_VERSION = "1.30.0"
+# 1.30.0 (per-spell CC duration registry seeded, 2026-05-21):
+# Closes the item 130 carry-forward (b): the engine-side fight-sim
+# consumer that reads ``_PER_SPELL_CC_DURATIONS`` for math is still
+# FUTURE work, but this slice seeds the DATA so it is available on the
+# wire (AbilitySpellDps.cc_duration_s + cc_duration_post_tenacity)
+# for future composition + direct API inspection.
+# Registry seeded with 30 starter entries across 24 champions (Q/W/E/R
+# per-spell CC base durations from patch 16.10 tooltips). All entries
+# are FIRST-ORDER CC (stuns / roots / suspensions / knock-ups / charms
+# / suppressions / polymorphs / sleeps / taunts). Slows are NOT encoded
+# (different math). Conditional CC (e.g. Brand R 3rd-stack, charged
+# variants requiring fight-sim observer) is skipped where base semantic
+# is unclear without a fight-sim.
+# Champions seeded (24): Ahri, Annie, Ashe, Blitzcrank, Cassiopeia,
+# Galio, Leona, Lissandra, Lulu, Malzahar, Maokai, MonkeyKing (Wukong),
+# Morgana, Nautilus, Pantheon, Rakan, Renekton, Sejuani, Sona, Thresh,
+# Veigar, Vi, Yasuo, Zoe.
+# This bump is a DATA-LAYER seed, NOT a math change - the ``cooldown``,
+# ``base_cooldown``, ``total_ability_haste``, ``raw_damage_per_cast``,
+# ``post_mode_damage_per_cast``, ``post_mitigation_damage_per_cast``,
+# ``dps``, and all other existing fields are byte-identical to 1.29.0
+# output for every (champion, spell, mode) tuple. Only the 2 cc_*
+# tuple fields now carry non-empty values for the 30 seeded entries.
+# This is the 2nd consumer of ``effective_cc_duration`` helper shipped
+# 1.25.0 (item 122). Engine-side math consumption (fight-sim) is still
+# FUTURE work per the BACKLOG carry.
+#
 # 1.29.0 (per-spell CC duration extractor seam, 2026-05-21):
 # Closes the item 129 carry-forward (a): 2nd consumer of the
 # ``effective_cc_duration`` helper shipped 1.25.0 (item 122). The helper
