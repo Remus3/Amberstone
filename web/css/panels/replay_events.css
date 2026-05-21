@@ -112,6 +112,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  /* text-wrap: balance is a no-op under white-space: nowrap; declared
+   * so a future iteration that lifts the nowrap clamp (e.g. ultra-
+   * wide ribbon at >120px column) inherits balanced wrap by default. */
+  text-wrap: balance;
 }
 
 /* kind-based label tints. team-tint owns the left border (above);

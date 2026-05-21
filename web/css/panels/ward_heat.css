@@ -91,4 +91,7 @@
   font-size: 9px;
   padding-left: 4px;
   color: rgba(255, 255, 255, 0.95);
+  /* Tabular-nums so the per-lane ward counts (0..9) stay column-
+   * aligned across ally + enemy rows even when counts roll over. */
+  font-variant-numeric: tabular-nums;
 }
