@@ -52,13 +52,13 @@
 }
 
 .bs-mode-opt[data-bs-active="1"] {
-  background: rgba(239, 68, 68, 0.18);
+  background: var(--signal-bad-soft);
   border-color: rgba(239, 68, 68, 0.45);
   color: #fff;
 }
 
 .bs-mode-chip[data-bs-mode="helps_us"] .bs-mode-opt[data-bs-active="1"] {
-  background: rgba(74, 222, 128, 0.18);
+  background: var(--signal-good-soft);
   border-color: rgba(74, 222, 128, 0.45);
 }
 
@@ -150,9 +150,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.bs-row-active.bs-band-red    { color: #ff5050; }
-.bs-row-active.bs-band-amber  { color: #f1b04a; }
-.bs-row-active.bs-band-green  { color: #6ec977; }
+.bs-row-active.bs-band-red    { color: var(--signal-bad); }
+.bs-row-active.bs-band-amber  { color: var(--signal-warn); }
+.bs-row-active.bs-band-green  { color: var(--signal-good); }
 
 .bs-row-other {
   font-size: 10px;
