@@ -197,8 +197,10 @@ def main() -> None:
                 _write_health("invoking", count, last_task_ts, invocations)
                 _log.info("invoking claude --print /process-bridge-tasks  "
                           "(invocation #%d)", invocations)
-                # Mirror gamepc/peer: inherit env, no manual env.pop here;
-                # OAuth login on this machine is what authenticates the CLI.
+                # Strip raw sk-ant-api03 from env so the spawned claude CLI
+                # falls through to OAuth credentials. Defense-in-depth: the
+                # canonical injection vectors were closed 2026-05-20 (item
+                # post-100 fleet OAuth migration), this stays as a backstop.
                 # Run from project root so /process-bridge-tasks finds
                 # tools/bridge_*.py and CLAUDE.md.
                 try:
@@ -208,12 +210,15 @@ def main() -> None:
                     # via STARTUPINFO alone. Cross-platform safe via the
                     # win32 guard.
                     _flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                    _env = os.environ.copy()
+                    _env.pop("ANTHROPIC_API_KEY", None)
                     subprocess.run(
                         [claude, "--dangerously-skip-permissions",
                          "-p", "/process-bridge-tasks"],
                         cwd=str(PROJECT_ROOT),
                         timeout=180,
                         creationflags=_flags,
+                        env=_env,
                     )
                 except subprocess.TimeoutExpired:
                     _log.warning("claude --print timed out after 180s")
