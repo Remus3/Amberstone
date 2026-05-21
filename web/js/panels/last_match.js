@@ -251,16 +251,26 @@ export function wireLastMatchOnce() {
     });
   }
 
-  // s219 v5: Tab nav (Comp / Chart / Review). Defaults to Comp on first
-  // render; persists active tab to localStorage so the operator's last
-  // choice survives a reload.
+  // s220 PGR S4: Tab nav (Build / Graph / AI Analysis + Review-nav).
+  // Defaults to Build on first render; persists active tab to
+  // localStorage so the operator's last choice survives a reload.
+  // Legacy values (pre-S4: comp / chart / timeline / insights) migrate
+  // via _migrateLegacyTab below.
   const tabsRoot = document.getElementById("lm-tabbed-section");
   if (tabsRoot) {
     try {
       const saved = localStorage.getItem(_TAB_LS_KEY);
-      // "review" is a nav tab (→ deep-review page), not a persistable panel.
-      if (saved && ["comp", "chart", "timeline", "insights"].includes(saved)) {
-        _activateTab(saved);
+      // s220 PGR S4: tabs reframed 4 -> 3 (build / graph / ai-analysis).
+      // Map legacy values so an operator who last viewed "timeline"
+      // lands on the new panel that hosts those visuals (graph) rather
+      // than blanking out. "review" is a nav tab (-> deep-review page),
+      // never a persistable panel.
+      const migrated = _migrateLegacyTab(saved);
+      if (migrated && _VALID_TABS.includes(migrated)) {
+        _activateTab(migrated);
+        if (migrated !== saved) {
+          try { localStorage.setItem(_TAB_LS_KEY, migrated); } catch (_) {}
+        }
       }
     } catch (_) {}
     tabsRoot.querySelectorAll(".lm-tab[data-tab]").forEach((btn) => {
@@ -274,6 +284,23 @@ export function wireLastMatchOnce() {
 }
 
 const _TAB_LS_KEY = "rc-pgr-tab";
+// s220 PGR S4: canonical tab ids. Update _migrateLegacyTab in lock-step
+// when adding a new tab or splitting an existing one.
+const _VALID_TABS = ["build", "graph", "ai-analysis"];
+
+// s220 PGR S4: legacy localStorage migration. Pre-S4 saved values were
+// comp / chart / timeline / insights. The S4 reframe folds Chart +
+// Timeline into Graph and Insights + Timeline-WPA into AI Analysis.
+function _migrateLegacyTab(saved) {
+  if (!saved) return null;
+  switch (saved) {
+    case "comp":     return "build";
+    case "chart":    return "graph";
+    case "timeline": return "graph";         // visuals half landed in Graph
+    case "insights": return "ai-analysis";
+    default:         return saved;            // already a new id or unknown
+  }
+}
 
 function _activateTab(which) {
   const tabsRoot = document.getElementById("lm-tabbed-section");

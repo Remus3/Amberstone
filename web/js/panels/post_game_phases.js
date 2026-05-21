@@ -5,8 +5,9 @@
  * by core.post_game_score over the Match-V5 timeline cached in
  * rewind_history.db. Backend endpoint: GET /api/post-game-wpa.
  *
- * The panel mounts inside #lm-wpa-wrap which lives under the Timeline
- * tab of the Last Match (Post Game Review) view. Stays hidden until a
+ * The panel mounts inside #lm-wpa-wrap which lives under the AI
+ * Analysis tab of the Last Match (Post Game Review) view (s220 S4
+ * reframe; pre-S4 it was the Timeline tab). Stays hidden until a
  * non-empty response lands - the route fails-soft to ok=false on
  * matches without timeline coverage (event modes, very old matches,
  * pre-Match-V5 imports), in which case the panel stays out of the way.
