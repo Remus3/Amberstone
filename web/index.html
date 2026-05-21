@@ -537,6 +537,19 @@
           <div class="personal-context-head">PERSONAL CONTEXT</div>
           <div id="personal-context-list" class="personal-context-list"></div>
           <div id="personal-context-empty" class="personal-context-empty" hidden></div>
+          <!-- Role-grade distribution from core/post_game_rubric.py (item 131
+               Slice A). Empty when no SR / lane matches in the postmortem
+               output. Mounts BELOW the death-pattern cards so the top-3
+               stays the primary signal. -->
+          <div id="personal-context-rolegrade" class="personal-context-rolegrade" hidden>
+            <div class="personal-context-rolegrade-head">Recent role grades</div>
+            <div class="personal-context-rolegrade-overall">
+              <span id="personal-context-rolegrade-score" class="personal-context-rolegrade-score tabular-nums">0</span>
+              <span id="personal-context-rolegrade-count" class="personal-context-rolegrade-count tabular-nums">0 matches</span>
+            </div>
+            <div id="personal-context-rolegrade-tiers" class="personal-context-rolegrade-tiers"></div>
+            <div id="personal-context-rolegrade-byrole" class="personal-context-rolegrade-byrole"></div>
+          </div>
         </div>
       </div>
     </section>
