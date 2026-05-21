@@ -76,6 +76,7 @@ Wave: <freeze/slow/crash/bounce + reason>
 Reset / item: <recall/base condition + next item spike>
 Objective: <structure target + rotate timing [T]>
 Risk: <[E]ability[/E] to respect + cooldown context>
+Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "event-rotate", "siege-call". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """
 
 _URF_SYSTEM_PROMPT = """\
@@ -114,6 +115,7 @@ Reset / item: <next spike + gold check>
 Objective: <rotate or hold>
 Risk: <specific [E] spell to dodge>
 Comp analysis: <your damage type vs enemy - exploit their weakness>
+Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "spam-poke", "all-in". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """
 
 _OFA_SYSTEM_PROMPT = """\
@@ -142,11 +144,12 @@ Wave: <shove or hold>
 Reset / item: <next item>
 Objective: <take/hold>
 Risk: <enemy exploit vs your champion weakness>
+Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "stack-combo", "ofa-burst". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """
 
-_NB_OUTPUT_KEYS  = ["action", "immediate", "event", "fight rule", "wave", "reset / item", "objective", "risk"]
-_URF_OUTPUT_KEYS = ["action", "immediate", "fight rule", "wave", "reset / item", "objective", "risk", "comp analysis"]
-_OFA_OUTPUT_KEYS = ["action", "immediate", "fight rule", "wave", "reset / item", "objective", "risk"]
+_NB_OUTPUT_KEYS  = ["action", "immediate", "event", "fight rule", "wave", "reset / item", "objective", "risk", "choices"]
+_URF_OUTPUT_KEYS = ["action", "immediate", "fight rule", "wave", "reset / item", "objective", "risk", "comp analysis", "choices"]
+_OFA_OUTPUT_KEYS = ["action", "immediate", "fight rule", "wave", "reset / item", "objective", "risk", "choices"]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -454,6 +457,24 @@ class Coach(BaseCoach):
                 logger.warning("Brawl: no fields parsed")
                 return
 
+            # Passthrough for the optional native-emit `choices` JSON array.
+            # The model returns a single-line JSON list (per the OUTPUT FORMAT
+            # block); parse_fields stores it as a string. Decode here and
+            # write a real Python list into the artifact so the dashboard's
+            # state builder picks it up via core.coach_choices.parse_choices.
+            # On any failure: silently swallow and let the synthesizer
+            # fallback in _state_builder cover the tick. The choices field
+            # is OPTIONAL by contract.
+            _choices_list: list = []
+            _choices_raw = fields.get("choices", "").strip()
+            if _choices_raw:
+                try:
+                    _parsed = json.loads(_choices_raw)
+                    if isinstance(_parsed, list):
+                        _choices_list = _parsed
+                except Exception:
+                    pass
+
             current = load_json(self._out)
             _champ = state.get("champion", "")
             current.update({
@@ -466,6 +487,7 @@ class Coach(BaseCoach):
                 "objective":     fields.get("objective",    ""),
                 "risk":          fields.get("risk",         ""),
                 "comp_analysis": fields.get("comp analysis",""),
+                "choices":       _choices_list,
                 "game_time_s":   state.get("game_seconds",  0),
                 "hp_pct":        state.get("hp_pct",        100),
                 "kda":           state.get("kda",           "0/0/0"),
