@@ -28,6 +28,18 @@ Bonus HP amps (Jak'Sho's Voidborne Resilience +6% bonus resists fully
 stacked, Cinderhulk +15% bonus HP) flow through ``build_champion`` already
 via the existing stat schema - no new field needed; EHP picks them up
 automatically because ``stats["hp"]/["armor"]/["mr"]`` reflect the amp.
+
+ENGINE 1.25.0 (2026-05-21) - aram_tenacity_mult consumer wired (closes the
+BACKLOG "Future EHP enemy-CC model" carry from item 113). 17 ARAM champs
+carry a non-1.0 ``aramTenacity`` multiplier (engine.py exposes it as
+``scaled["aram_tenacity_mult"]`` since 1.19.0). EhpResult now surfaces
+the value + ``effective_cc_duration(base_cc_s, tenacity_mult)`` helper
+returns the post-tenacity CC duration (tenacity_mult < 1.0 -> shorter
+CC; tenacity_mult > 1.0 -> longer CC). The helper is the seam any future
+fight-sim or coach-prompt consumer reads; EHP's primary blended_ehp
+math is unchanged (CC-duration vs HP-pool is a fundamentally different
+axis - the consumer must pair tenacity_mult with their own CC
+assumption).
 """
 
 from __future__ import annotations
@@ -60,6 +72,30 @@ def _armor_factor(resist: float) -> float:
     if resist >= 0:
         return 100.0 / (100.0 + resist)
     return 2.0 - 100.0 / (100.0 - resist)
+
+
+def effective_cc_duration(base_cc_s: float, tenacity_mult: float) -> float:
+    """Apply ARAM tenacity multiplier to a base CC duration.
+
+    ENGINE 1.25.0 (2026-05-21): the seam any consumer (coach prompt
+    builder, future fight-sim, EHP-vs-CC blended model) reads to convert
+    a base CC duration into the post-tenacity value. ``tenacity_mult``
+    comes from ``EhpResult.aram_tenacity_mult`` (or directly from
+    ``resolved.stats.get("aram_tenacity_mult", 1.0)``).
+
+    Formula: ``eff_cc_s = base_cc_s * tenacity_mult``.
+      * ``tenacity_mult == 1.0`` -> identity (no ARAM tenacity modifier).
+      * ``tenacity_mult < 1.0`` -> shorter CC (most ARAM assassins: 0.80
+        means 1.0s root becomes 0.80s).
+      * ``tenacity_mult > 1.0`` -> longer CC (rare: ARAM imposes longer
+        CC on a few champs as a balance lever).
+
+    Negative or zero base_cc_s returns 0.0. Tenacity floored at 0.0 (a
+    pathological future value cannot make CC negative).
+    """
+    if base_cc_s <= 0:
+        return 0.0
+    return float(base_cc_s) * max(0.0, float(tenacity_mult))
 
 
 def _aram_damage_taken(snapshot: DataSnapshot, champion_id: str, mode: str) -> float:
@@ -95,6 +131,15 @@ class EhpResult:
     enemy_ap_share: float
     enemy_true_share: float      # derived: 1 - ad_share - ap_share
     mode_multiplier: float       # aramDamageTaken; 1.0 outside ARAM
+    # ENGINE 1.25.0 (2026-05-21): ARAM tenacity multiplier on incoming CC
+    # duration. 17 ARAM champs carry non-1.0 values (assassin-shaped +20%
+    # / +10% lengthening, plus a handful of shorteners). 1.0 outside ARAM
+    # (engine.py only writes the scaled["aram_tenacity_mult"] key when
+    # mode == "ARAM" via _apply_mode_modifiers). The blended_ehp math
+    # above does NOT consume this value - CC duration vs HP pool is a
+    # different axis; downstream consumers pair this with their own base
+    # CC assumption via the module-level ``effective_cc_duration`` helper.
+    aram_tenacity_mult: float = 1.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -116,6 +161,7 @@ class EhpResult:
             "enemy_ap_share": self.enemy_ap_share,
             "enemy_true_share": self.enemy_true_share,
             "mode_multiplier": self.mode_multiplier,
+            "aram_tenacity_mult": self.aram_tenacity_mult,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -146,6 +192,10 @@ class EhpResult:
         if self.mode_multiplier != 1.0:
             rows.append(
                 f"  mode_mult      {self.mode_multiplier:.3f}  (aramDamageTaken)"
+            )
+        if self.aram_tenacity_mult != 1.0:
+            rows.append(
+                f"  tenacity_mult  {self.aram_tenacity_mult:.3f}  (aramTenacity x CC duration)"
             )
         if self.notes:
             rows.append("")
@@ -203,6 +253,13 @@ def compute_ehp(
     # Division-safety: never let a future data corruption pin
     # aramDamageTaken to 0 and explode the EHP math.
     safe_mult = mode_mult if mode_mult > 0 else 1.0
+    # ENGINE 1.25.0 (2026-05-21): ARAM tenacity multiplier exposed via
+    # the resolved stats dict (engine._apply_mode_modifiers gates on
+    # mode == "ARAM"; SR + every non-ARAM mode get 1.0 by default).
+    # Forwarded to EhpResult so consumers can call
+    # ``effective_cc_duration(base_s, tenacity_mult)``. Blended EHP math
+    # is unchanged - CC duration is a separate axis from HP pool.
+    aram_tenacity_mult = float(resolved.stats.get("aram_tenacity_mult", 1.0))
 
     physical_ehp = hp / (_armor_factor(armor) * safe_mult)
     magical_ehp = hp / (_armor_factor(mr) * safe_mult)
@@ -219,7 +276,12 @@ def compute_ehp(
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(
             f"ARAM aramDamageTaken={mode_mult:.3f} on all incoming damage "
-            f"(EHP scaled by ×{1.0 / safe_mult:.3f})"
+            f"(EHP scaled by x{1.0 / safe_mult:.3f})"
+        )
+    if mode == "ARAM" and aram_tenacity_mult != 1.0:
+        notes.append(
+            f"ARAM aramTenacity={aram_tenacity_mult:.3f}x effective CC duration "
+            f"(consumers via effective_cc_duration helper)"
         )
 
     return EhpResult(
@@ -239,6 +301,7 @@ def compute_ehp(
         enemy_ap_share=enemy_ap_share,
         enemy_true_share=enemy_true_share,
         mode_multiplier=mode_mult,
+        aram_tenacity_mult=aram_tenacity_mult,
         stats=dict(stats),
         notes=tuple(notes),
     )
