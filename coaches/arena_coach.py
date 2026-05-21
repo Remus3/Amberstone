@@ -31,6 +31,7 @@ from coaches._base_coach import (
 from coaches._arena_item_advisor import recompute_arena_build
 from core import daemon_slayer_client as _ds_client
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+from core.death_patterns_loader import personal_context_block
 
 logger = logging.getLogger("rc.coaches.arena")
 
@@ -84,7 +85,7 @@ Anvil advice: <if anvil open: take X to complete Y. Else: next component to buil
 Target priority: <kill [E]name[/E] first - why - then who>
 Risk: <[E]ability[/E] to dodge + when it's up>
 Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "augment-pick", "round-trade", "duo-rotate", "anvil-buy", "fight-trade". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
-"""
+""" + personal_context_block()
 
 _USER_TEMPLATE = """\
 === Arena Round {round} ===

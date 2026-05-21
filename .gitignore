@@ -47,6 +47,7 @@ data/ds_calibration.jsonl
 data/placement_heatmap.json
 data/tft_live_data.json
 data/rewind_catchup.state.json
+data/coaching/death_patterns.json
 data/decisions_heartbeat.json
 data/top8_list.json
 data/cs_archetype_picks.json
