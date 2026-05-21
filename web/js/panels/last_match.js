@@ -324,6 +324,11 @@ function renderLastMatch(data) {
   // live in the Team Composition card (operator's own row); DS picks
   // belong on champ-select + active-match, not post-game.
   _setTeamComp(enriched);
+  // s220 PGR S3: aggregator-G-style operator 0-100 match-score block in the
+  // hero. Runs after _setTeamComp so the roster + scores are computed;
+  // _setHeroScore reuses _rosterScores so the number is consistent
+  // with the per-row chip + MVP card.
+  _setHeroScore(m, enriched);
   _setChart(enriched);
   _setTimeline(enriched);
   _setPhases(m, enriched);
@@ -550,16 +555,25 @@ function _setTeamComp(enriched) {
         ? { badge: won ? "MVP" : "SVP", rank: 1, score: sc }
         : { badge: "", rank: i + 1, score: sc };
     });
-    return meta;
+    // s220 PGR S3: surface the top entry so _renderMvpCard can paint
+    // a dedicated MVP/SVP card above the roster list (aggregator G pattern).
+    return { meta, top: sorted[0] || null };
   };
   const enemyTid  = enemy.length ? enemy[0].team_id : null;
-  const allyMeta  = rankSide(ally,  !!teamWin[myTeamId]);
-  const enemyMeta = rankSide(enemy, enemyTid != null ? !!teamWin[enemyTid] : false);
+  const allySide  = rankSide(ally,  !!teamWin[myTeamId]);
+  const enemySide = rankSide(enemy, enemyTid != null ? !!teamWin[enemyTid] : false);
+  const allyMeta  = allySide.meta;
+  const enemyMeta = enemySide.meta;
   const metaFor = (r) =>
     ((r.team_id === myTeamId ? allyMeta : enemyMeta)[r.participant_id])
     || { badge: "", rank: 0, score: 0 };
   allyList.innerHTML  = ally.map((r)  => _renderTcRow(r, metaFor(r), hasAug)).join("")  || `<li class="lm-tc-empty">-</li>`;
   enemyList.innerHTML = enemy.map((r) => _renderTcRow(r, metaFor(r), hasAug)).join("") || `<li class="lm-tc-empty">-</li>`;
+  // s220 PGR S3: per-side MVP / SVP card above each roster.
+  _renderMvpCard("lm-tc-ally-mvp",  allySide.top,
+    allySide.top  ? allyMeta[allySide.top.participant_id]   : null);
+  _renderMvpCard("lm-tc-enemy-mvp", enemySide.top,
+    enemySide.top ? enemyMeta[enemySide.top.participant_id] : null);
 
   const myWin = teamWin[myTeamId];
   if (myWin != null && allyResult) {
@@ -599,11 +613,21 @@ function _renderTcRow(r, sm, showAug) {
   // s220: score / MVP-SVP cell, left of level. The single best player
   // per side shows MVP (won) / SVP (lost); everyone else shows their
   // lobby rank. Underlying score + factors live in the hover tooltip.
+  // s220 PGR S3: cell stacks the badge/rank text + the numeric 0-100
+  // score, so each row shows its score directly instead of hiding it
+  // inside the tooltip (aggregator G pattern).
   const m = sm || { badge: "", rank: 0, score: 0 };
   const sVal = (typeof m.score === "number") ? m.score.toFixed(1) : "0.0";
+  const sNum = (typeof m.score === "number") ? Math.round(m.score) : 0;
   const scoreCell = m.badge
-    ? `<span class="lm-tc-score" data-kind="${m.badge.toLowerCase()}" data-tt="${m.badge === "MVP" ? "MVP - best on the winning side" : "SVP - best on the losing side"} (overall score ${sVal}/100)">${m.badge}</span>`
-    : `<span class="lm-tc-score" data-kind="rank" data-tt="Lobby rank by overall score ${sVal}/100 - blend of KDA, damage, gold, CS, vision, tanked">#${m.rank || "-"}</span>`;
+    ? `<div class="lm-tc-score" data-kind="${m.badge.toLowerCase()}" data-tt="${m.badge === "MVP" ? "MVP - best on the winning side" : "SVP - best on the losing side"} (overall score ${sVal}/100)">
+         <span class="lm-tc-score-badge">${m.badge}</span>
+         <span class="lm-tc-score-value">${sNum}</span>
+       </div>`
+    : `<div class="lm-tc-score" data-kind="rank" data-tt="Lobby rank by overall score ${sVal}/100 - blend of KDA, damage, gold, CS, vision, tanked">
+         <span class="lm-tc-score-badge">#${m.rank || "-"}</span>
+         <span class="lm-tc-score-value">${sNum}</span>
+       </div>`;
   // s-PGR-S2 (#9): augment strip between summoners + CS, emitted only
   // when the table is in augment mode (showAug) so the grid column
   // count stays uniform across every row + both panels. Empty <div>
@@ -624,6 +648,85 @@ function _renderTcRow(r, sm, showAug) {
     <span class="lm-tc-cs" title="creep score">${r.cs || 0} CS</span>
     <div class="lm-tc-items">${itemsHtml}</div>
   </li>`;
+}
+
+// s220 PGR S3: score-tier mapping for the hero 0-100 score. Thresholds
+// chosen so a typical OK match lands "OK" + a real carry game lands
+// "Excellent" - calibrated against the existing _rosterScores 100-point
+// scale. data-tier attribute drives the color in last_match.css.
+function _scoreTier(score) {
+  const n = Number(score) || 0;
+  if (n >= 80) return { label: "Excellent", key: "excellent" };
+  if (n >= 65) return { label: "Good",      key: "good" };
+  if (n >= 50) return { label: "OK",        key: "ok" };
+  return            { label: "Bad",       key: "bad" };
+}
+
+// s220 PGR S3: paint the operator's 0-100 match score in the hero.
+// Source: _rosterScores - same heuristic as the per-row chip + MVP
+// card so the three numbers are mutually consistent. Hidden when
+// LCU enrichment is absent (no roster -> no score).
+function _setHeroScore(m, enriched) {
+  const wrap    = document.getElementById("lm-hero-score");
+  const valueEl = document.getElementById("lm-hero-score-value");
+  const tierEl  = document.getElementById("lm-hero-score-tier");
+  if (!wrap || !valueEl || !tierEl) return;
+  const roster = enriched && enriched.roster;
+  if (!roster || !roster.length) {
+    wrap.hidden = true; wrap.dataset.tier = "";
+    valueEl.textContent = "-"; tierEl.textContent = "-";
+    return;
+  }
+  const me = roster.find((r) => r && r.is_me);
+  if (!me) {
+    wrap.hidden = true; wrap.dataset.tier = "";
+    valueEl.textContent = "-"; tierEl.textContent = "-";
+    return;
+  }
+  const scores = _rosterScores(roster);
+  const sc = scores[me.participant_id] || 0;
+  const tier = _scoreTier(sc);
+  valueEl.textContent = String(Math.round(sc));
+  tierEl.textContent  = tier.label;
+  wrap.dataset.tier   = tier.key;
+  wrap.hidden = false;
+}
+
+// s220 PGR S3: render a aggregator-G-style MVP / SVP card above one team's
+// roster list. `top` is the highest-scoring row on that side; `sm` is
+// its meta (badge/rank/score) from rankSide. data-kind drives the
+// visual flavor (mvp -> gold-tinted, svp -> accent-tinted). Hidden
+// when there is no top entry or no badge (defensive).
+function _renderMvpCard(cardId, top, sm) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  if (!top || !sm || !sm.badge) {
+    card.hidden = true; card.dataset.kind = ""; card.innerHTML = "";
+    return;
+  }
+  const slug = (CHAMPS && CHAMPS.byId && CHAMPS.byId[String(top.champion_id)]) || "";
+  const portrait = slug ? `/icons/champions/${slug}.png` : "";
+  const score = Math.round(Number(sm.score) || 0);
+  const name  = _escHtml(top.game_name || "-");
+  const kind  = sm.badge.toLowerCase();
+  const tier  = _scoreTier(score);
+  card.innerHTML = `
+    <img class="lm-tc-mvp-portrait" src="${portrait}" alt="" loading="lazy"
+         onerror="this.style.visibility='hidden'" />
+    <svg class="lm-tc-mvp-crown" viewBox="0 0 24 16" aria-hidden="true">
+      <path d="M2 14 L4 4 L8 9 L12 2 L16 9 L20 4 L22 14 Z"></path>
+    </svg>
+    <div class="lm-tc-mvp-meta">
+      <span class="lm-tc-mvp-badge">${sm.badge}</span>
+      <span class="lm-tc-mvp-name">${name}</span>
+    </div>
+    <div class="lm-tc-mvp-score" data-tier="${tier.key}">
+      <span class="lm-tc-mvp-score-value">${score}</span>
+      <span class="lm-tc-mvp-score-tier">${tier.label}</span>
+    </div>
+  `;
+  card.hidden = false;
+  card.dataset.kind = kind;
 }
 
 // s220: per-player overall score → { participant_id: score } map.
@@ -973,6 +1076,17 @@ function _setEmptyState(errMsg) {
   });
   const result = document.getElementById("lm-result-badge");
   if (result) { result.hidden = true; result.dataset.result = ""; }
+  // s220 PGR S3: clear the hero match-score block + the MVP/SVP cards.
+  const heroScore = document.getElementById("lm-hero-score");
+  if (heroScore) { heroScore.hidden = true; heroScore.dataset.tier = ""; }
+  const heroScoreVal  = document.getElementById("lm-hero-score-value");
+  const heroScoreTier = document.getElementById("lm-hero-score-tier");
+  if (heroScoreVal)  heroScoreVal.textContent  = "-";
+  if (heroScoreTier) heroScoreTier.textContent = "-";
+  ["lm-tc-ally-mvp", "lm-tc-enemy-mvp"].forEach((id) => {
+    const c = document.getElementById(id);
+    if (c) { c.hidden = true; c.dataset.kind = ""; c.innerHTML = ""; }
+  });
   const dsRoot = document.getElementById("lm-ds-picks");
   if (dsRoot) dsRoot.innerHTML = '<span class="lm-empty">no match yet</span>';
   const actual = document.getElementById("lm-actual-build");
