@@ -170,6 +170,84 @@ class ClassifierTests(unittest.TestCase):
         self.assertNotIn("rapid_repeat", tags)
 
 
+class NewPatternThresholdsTests(unittest.TestCase):
+    """Boundary tests for small_skirmish (assists 1-2) + midgame_collapse (8-15min window).
+
+    Precedence notes:
+      - small_skirmish lives in the assist-band elif chain BETWEEN caught_4plus (>=3)
+        and solo_1v1_loss (==0), so n_assists in {1, 2} is mutually exclusive with both.
+      - midgame_collapse is an independent (set-additive) time-band check, mirroring
+        the existing early_pre_3min and late_throw convention; it co-exists with
+        whichever assist-band tag fires for the same death.
+    """
+
+    def test_small_skirmish_fires_on_assists_1(self):
+        d = DeathEvent("m", 600_000, 1, 6, (7,))
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("small_skirmish", tags)
+        self.assertNotIn("solo_1v1_loss", tags)
+        self.assertNotIn("caught_4plus", tags)
+
+    def test_small_skirmish_fires_on_assists_2(self):
+        d = DeathEvent("m", 600_000, 1, 6, (7, 8))
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("small_skirmish", tags)
+        self.assertNotIn("caught_4plus", tags)
+        self.assertNotIn("solo_1v1_loss", tags)
+
+    def test_small_skirmish_does_not_fire_on_3_assists(self):
+        d = DeathEvent("m", 600_000, 1, 6, (7, 8, 9))
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("caught_4plus", tags)
+        self.assertNotIn("small_skirmish", tags)
+
+    def test_small_skirmish_does_not_fire_on_zero_assists(self):
+        d = DeathEvent("m", 600_000, 1, 6, ())
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("solo_1v1_loss", tags)
+        self.assertNotIn("small_skirmish", tags)
+
+    def test_midgame_collapse_fires_inside_window(self):
+        # t=600000 (10:00) sits inside the 8:00-15:00 window. Use 3 assists so the
+        # assist-band tag is caught_4plus (and small_skirmish does NOT fire), proving
+        # midgame_collapse is independent of the assist-band elif chain.
+        d = DeathEvent("m", 600_000, 1, 6, (7, 8, 9))
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("midgame_collapse", tags)
+        self.assertIn("caught_4plus", tags)
+        self.assertNotIn("early_pre_3min", tags)
+        self.assertNotIn("late_throw", tags)
+
+    def test_midgame_collapse_fires_on_low_boundary(self):
+        d = DeathEvent("m", 480_000, 1, 6, ())  # exactly 8:00
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("midgame_collapse", tags)
+
+    def test_midgame_collapse_fires_on_high_boundary(self):
+        d = DeathEvent("m", 900_000, 1, 6, ())  # exactly 15:00
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("midgame_collapse", tags)
+
+    def test_midgame_collapse_excludes_early_window(self):
+        d = DeathEvent("m", 120_000, 1, 6, ())  # 2:00 - early, not midgame
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("early_pre_3min", tags)
+        self.assertNotIn("midgame_collapse", tags)
+
+    def test_midgame_collapse_excludes_late_throw_window(self):
+        d = DeathEvent("m", 1_600_000, 1, 6, ())  # >25:00 - late, not midgame
+        tags = _classify_death(d, prior_ally_deaths=[], prior_self_death_ts_ms=None)
+        self.assertIn("late_throw", tags)
+        self.assertNotIn("midgame_collapse", tags)
+
+    def test_pattern_count_is_eight(self):
+        self.assertEqual(len(PATTERN_KEYS), 8)
+        for key in ("small_skirmish", "midgame_collapse"):
+            self.assertIn(key, PATTERN_META)
+            self.assertIn("label", PATTERN_META[key])
+            self.assertIn("description", PATTERN_META[key])
+
+
 class IterDeathsTests(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp(prefix="postmortem_")

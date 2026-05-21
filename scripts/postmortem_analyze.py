@@ -27,13 +27,15 @@ Output schema (v1):
       "top3": ["<key>", "<key>", "<key>"]
     }
 
-Patterns (6; all computable from existing schema, no derived data layer):
-  - caught_4plus:    died with >=4 enemies involved (assists>=3); severe positioning
-  - solo_1v1_loss:   died with 0 assists (lost a clean 1v1)
-  - early_pre_3min:  died before 3:00 in-game (invade / first-wave)
-  - solo_pickoff:    no ally CHAMPION_KILL within 8s before this death
-  - late_throw:      died after 25:00 in-game (late-game positioning errors)
-  - rapid_repeat:    died <=60s after a previous death by the same victim (tilt cluster)
+Patterns (8; all computable from existing schema, no derived data layer):
+  - caught_4plus:     died with >=4 enemies involved (assists>=3); severe positioning
+  - small_skirmish:   died with 1-2 assists; 2v1/3v2 trade lost
+  - solo_1v1_loss:    died with 0 assists (lost a clean 1v1)
+  - early_pre_3min:   died before 3:00 in-game (invade / first-wave)
+  - midgame_collapse: died in 8:00-15:00 window (early-mid transition errors)
+  - solo_pickoff:     no ally CHAMPION_KILL within 8s before this death
+  - late_throw:       died after 25:00 in-game (late-game positioning errors)
+  - rapid_repeat:     died <=60s after a previous death by the same victim (tilt cluster)
 """
 from __future__ import annotations
 
@@ -61,11 +63,19 @@ EARLY_THRESHOLD_MS = 3 * 60 * 1000
 LATE_THRESHOLD_MS = 25 * 60 * 1000
 SOLO_PICKOFF_WINDOW_MS = 8 * 1000
 RAPID_REPEAT_WINDOW_MS = 60 * 1000
+MIDGAME_LOW_THRESHOLD_MS = 8 * 60 * 1000
+MIDGAME_HIGH_THRESHOLD_MS = 15 * 60 * 1000
+SMALL_SKIRMISH_MIN_ASSISTS = 1
+SMALL_SKIRMISH_MAX_ASSISTS = 2
 
 PATTERN_META = {
     "caught_4plus": {
         "label": "Caught by 4+",
         "description": "died with 4+ enemies on you; positioning error, watch minimap for missing enemies before stepping up",
+    },
+    "small_skirmish": {
+        "label": "Small skirmish loss",
+        "description": "died in a 2v1/3v2-style trade with limited team support; reconsider engage timing or rotate with the full team",
     },
     "solo_1v1_loss": {
         "label": "Lost 1v1",
@@ -74,6 +84,10 @@ PATTERN_META = {
     "early_pre_3min": {
         "label": "Early-game deaths",
         "description": "died before 3 min; respect level-1 invade pathing and first-wave trade-windows",
+    },
+    "midgame_collapse": {
+        "label": "Mid-game collapse",
+        "description": "died during the 8-15 minute window; this is the transition where roams and objective pace flip the game - keep wards refreshed and avoid solo skirmishes off-objective",
     },
     "solo_pickoff": {
         "label": "Solo pickoffs",
@@ -131,14 +145,23 @@ def _resolve_participant_ids(
 
 
 def _classify_death(death: DeathEvent, prior_ally_deaths: list[int], prior_self_death_ts_ms: int | None) -> set[str]:
-    """Pure classifier. `prior_ally_deaths` = ally death timestamps strictly before `death.timestamp_ms`."""
+    """Pure classifier. `prior_ally_deaths` = ally death timestamps strictly before `death.timestamp_ms`.
+
+    Assist-band patterns are mutually exclusive via elif (caught_4plus / small_skirmish /
+    solo_1v1_loss); time-band + window patterns are independent set-additive checks.
+    """
     tags: set[str] = set()
-    if len(death.assists) >= 3:
+    n_assists = len(death.assists)
+    if n_assists >= 3:
         tags.add("caught_4plus")
-    elif len(death.assists) == 0:
+    elif SMALL_SKIRMISH_MIN_ASSISTS <= n_assists <= SMALL_SKIRMISH_MAX_ASSISTS:
+        tags.add("small_skirmish")
+    elif n_assists == 0:
         tags.add("solo_1v1_loss")
     if death.timestamp_ms < EARLY_THRESHOLD_MS:
         tags.add("early_pre_3min")
+    if MIDGAME_LOW_THRESHOLD_MS <= death.timestamp_ms <= MIDGAME_HIGH_THRESHOLD_MS:
+        tags.add("midgame_collapse")
     if death.timestamp_ms >= LATE_THRESHOLD_MS:
         tags.add("late_throw")
     window_start = death.timestamp_ms - SOLO_PICKOFF_WINDOW_MS
