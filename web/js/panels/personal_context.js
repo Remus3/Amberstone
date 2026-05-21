@@ -15,6 +15,14 @@
 const SECTION_ID = "personal-context-section";
 const LIST_ID    = "personal-context-list";
 const EMPTY_ID   = "personal-context-empty";
+const RG_SECTION_ID  = "personal-context-rolegrade";
+const RG_SCORE_ID    = "personal-context-rolegrade-score";
+const RG_COUNT_ID    = "personal-context-rolegrade-count";
+const RG_TIERS_ID    = "personal-context-rolegrade-tiers";
+const RG_BYROLE_ID   = "personal-context-rolegrade-byrole";
+
+const RG_TIER_ORDER = ["S+", "S", "A", "B", "C", "D"];
+const RG_CANONICAL_ROLES = ["TOP", "JG", "MID", "ADC", "SUP"];
 
 const REFRESH_INTERVAL_MS = 60 * 1000;
 
@@ -83,7 +91,83 @@ function _cardHtml(p) {
 function _signature(data) {
   if (!data || !data.ok) return data && data.reason ? "empty:" + data.reason : "";
   const top3 = Array.isArray(data.top3) ? data.top3 : [];
-  return top3.map((p) => `${p.key}:${p.count}:${p.rate}`).join("|");
+  const top3Sig = top3.map((p) => `${p.key}:${p.count}:${p.rate}`).join("|");
+  const rg = data.role_grades;
+  if (!rg || typeof rg !== "object") return top3Sig;
+  const overall = rg.overall || {};
+  const byRole = rg.by_role || {};
+  const rolesSig = RG_CANONICAL_ROLES
+    .map((r) => `${r}:${(byRole[r] && byRole[r].count) || 0}:${(byRole[r] && byRole[r].median_score) || 0}`)
+    .join(",");
+  const rgSig = `rg:${rg.total_matches_scored || 0}:${overall.median_score || 0}:${rolesSig}`;
+  return `${top3Sig}::${rgSig}`;
+}
+
+function _scoreTier(score) {
+  if (typeof score !== "number" || isNaN(score)) return "D";
+  if (score >= 85) return "S+";
+  if (score >= 75) return "S";
+  if (score >= 65) return "A";
+  if (score >= 50) return "B";
+  if (score >= 35) return "C";
+  return "D";
+}
+
+function _tierChipHtml(tier, count) {
+  const safeTier = String(tier);
+  const safeCount = typeof count === "number" ? count : 0;
+  return `<span class="personal-context-rolegrade-tier" data-tier="${_escape(safeTier)}">
+    <span class="personal-context-rolegrade-tier-label">${_escape(safeTier)}</span>
+    <span class="personal-context-rolegrade-tier-count tabular-nums">${_escape(String(safeCount))}</span>
+  </span>`;
+}
+
+function _roleRowHtml(role, bucket) {
+  const count = (bucket && typeof bucket.count === "number") ? bucket.count : 0;
+  const score = (bucket && typeof bucket.median_score === "number") ? bucket.median_score : 0;
+  const tier = _scoreTier(score);
+  return `<div class="personal-context-rolegrade-role" data-role="${_escape(role)}" data-tier="${_escape(tier)}">
+    <span class="personal-context-rolegrade-role-name">${_escape(role)}</span>
+    <span class="personal-context-rolegrade-role-score tabular-nums">${_escape(String(score))}</span>
+    <span class="personal-context-rolegrade-role-count tabular-nums">${_escape(String(count))}</span>
+  </div>`;
+}
+
+function _renderRoleGrades(rg) {
+  const section = document.getElementById(RG_SECTION_ID);
+  if (!section) return;
+  if (!rg || typeof rg !== "object") {
+    section.hidden = true;
+    return;
+  }
+  const overall = rg.overall || {};
+  const totalScored = overall.count || rg.total_matches_scored || 0;
+  if (totalScored <= 0) {
+    section.hidden = true;
+    return;
+  }
+  const scoreEl = document.getElementById(RG_SCORE_ID);
+  const countEl = document.getElementById(RG_COUNT_ID);
+  const tiersEl = document.getElementById(RG_TIERS_ID);
+  const byRoleEl = document.getElementById(RG_BYROLE_ID);
+  if (!scoreEl || !countEl || !tiersEl || !byRoleEl) return;
+  const medianScore = typeof overall.median_score === "number" ? overall.median_score : 0;
+  scoreEl.textContent = String(medianScore);
+  scoreEl.setAttribute("data-tier", _scoreTier(medianScore));
+  countEl.textContent = totalScored === 1 ? "1 match" : `${totalScored} matches`;
+  const tiers = overall.tier_distribution || {};
+  tiersEl.innerHTML = RG_TIER_ORDER
+    .map((t) => _tierChipHtml(t, tiers[t] || 0))
+    .join("");
+  const byRole = rg.by_role || {};
+  const rows = RG_CANONICAL_ROLES
+    .filter((role) => {
+      const bucket = byRole[role];
+      return bucket && typeof bucket.count === "number" && bucket.count > 0;
+    })
+    .map((role) => _roleRowHtml(role, byRole[role]));
+  byRoleEl.innerHTML = rows.join("");
+  section.hidden = false;
 }
 
 export function renderPersonalContext(data) {
@@ -112,6 +196,7 @@ export function renderPersonalContext(data) {
       list.innerHTML = "";
       empty.hidden = true;
     }
+    _renderRoleGrades(null);
     return;
   }
 
@@ -120,11 +205,13 @@ export function renderPersonalContext(data) {
     section.hidden = true;
     list.innerHTML = "";
     empty.hidden = true;
+    _renderRoleGrades(null);
     return;
   }
   list.innerHTML = top3.map(_cardHtml).join("");
   empty.hidden = true;
   section.hidden = false;
+  _renderRoleGrades(data.role_grades);
 }
 
 export async function loadPersonalContext() {
@@ -161,6 +248,13 @@ export const _internals = {
   SECTION_ID,
   LIST_ID,
   EMPTY_ID,
+  RG_SECTION_ID,
+  RG_SCORE_ID,
+  RG_COUNT_ID,
+  RG_TIERS_ID,
+  RG_BYROLE_ID,
+  RG_TIER_ORDER,
+  RG_CANONICAL_ROLES,
   REFRESH_INTERVAL_MS,
   KIND_BY_KEY,
   _cardHtml,
@@ -168,4 +262,8 @@ export const _internals = {
   _formatPct,
   _formatCount,
   _kindFor,
+  _scoreTier,
+  _tierChipHtml,
+  _roleRowHtml,
+  _renderRoleGrades,
 };

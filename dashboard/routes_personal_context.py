@@ -25,8 +25,22 @@ Response shape (populated):
           "confidence": 0.9997
         },
         ...
-      ]
+      ],
+      "role_grades": {
+        "total_matches_scored": 624,
+        "overall": {"count": 624, "median_score": 41,
+                    "tier_distribution": {"S+": 0, "S": 8, "A": 56, ...}},
+        "by_role": {
+          "ADC": {"count": 177, "median_score": 41,
+                  "tier_distribution": {...}},
+          ...
+        }
+      }
     }
+
+The role_grades block is OMITTED from the payload when schema_version=1
+files (no role_grades section) are loaded. Frontend treats missing key
+the same as zero-count.
 
 Response shape (empty / missing data):
 
@@ -48,7 +62,11 @@ import logging
 import time
 from pathlib import Path
 
-from core.death_patterns_loader import report_summary, top_patterns
+from core.death_patterns_loader import (
+    report_summary,
+    role_grades_summary,
+    top_patterns,
+)
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -84,6 +102,9 @@ def _build_payload() -> dict:
         payload["generated_at"] = summary["generated_at"]
     payload["total_deaths"] = summary.get("total_deaths", 0)
     payload["total_matches"] = summary.get("total_matches", 0)
+    rg = role_grades_summary(_DEATH_PATTERNS_PATH)
+    if rg:
+        payload["role_grades"] = rg
     return payload
 
 

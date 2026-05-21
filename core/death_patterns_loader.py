@@ -93,6 +93,30 @@ def report_summary(path: pathlib.Path | None = None) -> dict:
     return out
 
 
+def role_grades_summary(path: pathlib.Path | None = None) -> dict:
+    """Return the role_grades envelope from the postmortem JSON.
+
+    Shape mirrors scripts/postmortem_analyze.aggregate_role_grades output:
+
+        {total_matches_scored, overall, by_role}
+
+    Empty dict when the JSON is missing/malformed or the section is absent
+    (older schema_version=1 files). Same fail-soft contract as
+    top_patterns / report_summary.
+
+    Companion to top_patterns + report_summary so the route consumer can
+    surface the role-grade distribution alongside the death-pattern top-3
+    without re-reading the file.
+    """
+    data = _safe_load(path or _DEFAULT_PATH)
+    if not isinstance(data, dict) or not data:
+        return {}
+    rg = data.get("role_grades")
+    if not isinstance(rg, dict):
+        return {}
+    return rg
+
+
 def personal_context_block(path: pathlib.Path | None = None) -> str:
     """Format the top-3 patterns as a system-prompt-ready string block.
 
