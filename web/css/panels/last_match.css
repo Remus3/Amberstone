@@ -1001,6 +1001,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.1;
+  /* text-wrap: balance is harmless under white-space: nowrap (single-
+   * line clamp) but is the correct decl when a future iteration
+   * relaxes the clamp + lets the MVP/SVP name wrap to a second line. */
+  text-wrap: balance;
 }
 .lm-tc-mvp-score {
   display: flex; flex-direction: column;

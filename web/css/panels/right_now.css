@@ -20,12 +20,26 @@
   margin-bottom: 4px;
   word-break: break-word;
   line-height: 1.1;
+  /* Visual balance for multi-line wrap: balance avoids a single
+   * orphaned word on the second line of a 2-line coach headline. */
+  text-wrap: balance;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Coach prompt fresh-update pulse (2026-05-20 UI polish sweep). Wired
+ * by right_now.js renderAction(): when p.action differs from the
+ * previously-rendered value, a one-shot rn-pulse-{good,warn,bad} class
+ * lands on .action and is dropped 800ms later. The keyframes are
+ * declared in tokens.css so any panel can opt in - this is the .action
+ * consumer. Band selection mirrors classifyAction() (urgent -> bad,
+ * fight -> warn, good -> good). */
+.action.rn-pulse-good { animation: coach-pulse-good 0.8s ease-in-out; }
+.action.rn-pulse-warn { animation: coach-pulse-warn 0.8s ease-in-out; }
+.action.rn-pulse-bad  { animation: coach-pulse-bad  0.8s ease-in-out; }
 /* Color semantics based on classifyAction() verdict. */
 .action.action-urgent { color: var(--bad); }
 .action.action-fight  { color: var(--gold); }
