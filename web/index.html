@@ -1431,6 +1431,15 @@
             </div>
             <div class="lm-hero-result" id="lm-result-badge" data-result="" hidden>-</div>
             <div class="lm-hero-grade" id="lm-grade-badge" data-grade="">-</div>
+            <!-- s220 PGR S3: aggregator-G-style 0-100 match score for the
+                 operator. Computed by core/roster score heuristic in
+                 last_match.js (_rosterScores); tier label drives the
+                 color. RC heuristic only - no Claude/Riot API. -->
+            <div class="lm-hero-score" id="lm-hero-score" data-tier="" hidden
+                 data-tt="Match score 0-100 - blend of KDA 30%, damage 28%, gold 16%, CS 12%, vision 8%, tanked 6%, each normalized to the lobby max. RC heuristic.">
+              <span class="lm-hero-score-value" id="lm-hero-score-value">-</span>
+              <span class="lm-hero-score-tier" id="lm-hero-score-tier">-</span>
+            </div>
           </div>
 
           <div class="lm-hero-stats-grid">
@@ -1552,6 +1561,12 @@
                   <span class="lm-tc-group-label">ALLY</span>
                   <span class="lm-tc-group-result" id="lm-tc-ally-result">-</span>
                 </div>
+                <!-- s220 PGR S3: per-side MVP / SVP card (aggregator G style).
+                     Populated by last_match.js _renderMvpCard from the
+                     same _rosterScores top entry that drives the per-row
+                     badge. data-kind="mvp" (winning-side top) or "svp"
+                     (losing-side top) tints the card. -->
+                <div class="lm-tc-mvp" id="lm-tc-ally-mvp" data-kind="" hidden></div>
                 <ul class="lm-tc-list" id="lm-tc-ally-list"></ul>
               </div>
               <div class="lm-tc-group lm-tc-enemy" data-side="enemy">
@@ -1559,6 +1574,7 @@
                   <span class="lm-tc-group-label">ENEMY</span>
                   <span class="lm-tc-group-result" id="lm-tc-enemy-result">-</span>
                 </div>
+                <div class="lm-tc-mvp" id="lm-tc-enemy-mvp" data-kind="" hidden></div>
                 <ul class="lm-tc-list" id="lm-tc-enemy-list"></ul>
               </div>
             </div>

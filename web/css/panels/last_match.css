@@ -33,10 +33,52 @@
 }
 .lm-hero-identity {
   display: grid;
-  grid-template-columns: 72px auto auto auto auto;
+  /* s220 PGR S3: 6th column is the new match-score block (0-100 + tier). */
+  grid-template-columns: 72px auto auto auto auto auto;
   align-items: center;
   gap: 14px;
 }
+
+/* s220 PGR S3: aggregator-G-style match-score block for the operator's
+ * 0-100 score. Sits alongside the grade letter; tier-tinted via the
+ * data-tier attribute (excellent/good/ok/bad). Score factors live in
+ * the parent's data-tt tooltip. */
+.lm-hero-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 14px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  min-width: 70px;
+  cursor: help;
+}
+.lm-hero-score[hidden] { display: none; }
+.lm-hero-score-value {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.lm-hero-score-tier {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.lm-hero-score[data-tier="excellent"] .lm-hero-score-value,
+.lm-hero-score[data-tier="excellent"] .lm-hero-score-tier { color: var(--grade-s, #f5b87c); }
+.lm-hero-score[data-tier="good"]      .lm-hero-score-value,
+.lm-hero-score[data-tier="good"]      .lm-hero-score-tier { color: var(--ok,      #8ce5a8); }
+.lm-hero-score[data-tier="ok"]        .lm-hero-score-value,
+.lm-hero-score[data-tier="ok"]        .lm-hero-score-tier { color: var(--accent,  #8a8cf0); }
+.lm-hero-score[data-tier="bad"]       .lm-hero-score-value,
+.lm-hero-score[data-tier="bad"]       .lm-hero-score-tier { color: var(--bad,     #e07a7a); }
 
 /* W/L pill - visible only when LCU enrichment carries a real win flag. */
 .lm-hero-result {
@@ -814,7 +856,8 @@
    * columns stay fixed-width so ally + enemy panels align
    * column-for-column (separate grid contexts). CS stays right-aligned
    * + vertically in sync across both panels - operator's #3 ask. */
-  grid-template-columns: 40px 144px 46px 32px 84px 60px 70px 1fr;
+  /* s220 PGR S3: score col bumped 46 -> 56px to fit stacked badge + 0-100 value. */
+  grid-template-columns: 40px 144px 56px 32px 84px 60px 70px 1fr;
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
@@ -852,10 +895,14 @@
 /* s220: per-player score / MVP-SVP cell (left of level). MVP = best on
  * the winning side (gold, ties to the S-grade hue); SVP = best on the
  * losing side (accent indigo); everyone else shows their lobby rank
- * (#1..#10) muted. Underlying score + factors are in the hover tip. */
+ * (#1..#10) muted. Underlying score + factors are in the hover tip.
+ * s220 PGR S3: the cell now stacks the MVP/SVP/#rank badge over the
+ * 0-100 numeric score so each row carries its score directly. */
 .lm-tc-score {
-  font-size: 18px;
-  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
   text-align: center;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -863,9 +910,118 @@
   cursor: help;
   color: var(--text-faint, var(--text-dim));
 }
-.lm-tc-score[data-kind="rank"] { color: var(--text-dim); font-weight: 700; }
+.lm-tc-score[data-kind="rank"] { color: var(--text-dim); }
 .lm-tc-score[data-kind="mvp"]  { color: var(--grade-s, #f5b87c); }
 .lm-tc-score[data-kind="svp"]  { color: var(--accent, #8a8cf0); }
+.lm-tc-score-badge {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.lm-tc-score[data-kind="rank"] .lm-tc-score-badge { font-weight: 700; }
+.lm-tc-score-value {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* s220 PGR S3: per-side MVP / SVP card above the roster list. Aggregator G
+ * pattern - portrait + crown SVG + name + score. data-kind="mvp" lands
+ * the gold-tinted variant (winning side top); data-kind="svp" lands
+ * the accent variant (losing side top). Hidden when there is no
+ * roster + no badge holder. */
+.lm-tc-mvp {
+  display: grid;
+  grid-template-columns: 44px 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 12px 6px 8px;
+  margin-bottom: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--text-dim);
+  border-radius: var(--radius-sm);
+}
+.lm-tc-mvp[hidden] { display: none; }
+.lm-tc-mvp[data-kind="mvp"] {
+  background: rgba(138, 140, 240, 0.10);
+  border-color: var(--accent, #8a8cf0);
+  border-left-color: var(--grade-s, #f5b87c);
+}
+.lm-tc-mvp[data-kind="svp"] {
+  background: rgba(138, 140, 240, 0.05);
+  border-left-color: var(--accent, #8a8cf0);
+}
+.lm-tc-mvp-portrait {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  object-fit: cover;
+}
+.lm-tc-mvp-crown {
+  width: 22px; height: 15px;
+  fill: var(--grade-s, #f5b87c);
+}
+.lm-tc-mvp[data-kind="svp"] .lm-tc-mvp-crown {
+  fill: var(--accent, #8a8cf0);
+  opacity: 0.7;
+}
+.lm-tc-mvp-meta {
+  display: flex; flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+.lm-tc-mvp-badge {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--grade-s, #f5b87c);
+  line-height: 1;
+}
+.lm-tc-mvp[data-kind="svp"] .lm-tc-mvp-badge {
+  color: var(--accent, #8a8cf0);
+}
+.lm-tc-mvp-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+.lm-tc-mvp-score {
+  display: flex; flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.lm-tc-mvp-score-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+}
+.lm-tc-mvp-score-tier {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.lm-tc-mvp-score[data-tier="excellent"] .lm-tc-mvp-score-value,
+.lm-tc-mvp-score[data-tier="excellent"] .lm-tc-mvp-score-tier { color: var(--grade-s, #f5b87c); }
+.lm-tc-mvp-score[data-tier="good"]      .lm-tc-mvp-score-value,
+.lm-tc-mvp-score[data-tier="good"]      .lm-tc-mvp-score-tier { color: var(--ok,      #8ce5a8); }
+.lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-value,
+.lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-tier { color: var(--accent,  #8a8cf0); }
+.lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-value,
+.lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-tier { color: var(--bad,     #e07a7a); }
 
 .lm-tc-lvl,
 .lm-tc-kda,
@@ -914,7 +1070,8 @@
  * 8-column template untouched. Both ally + enemy <ul> live under
  * #lm-tc-table so the id-scoped override aligns both panels. */
 #lm-tc-table[data-aug="1"] .lm-tc-row {
-  grid-template-columns: 40px 144px 46px 32px 84px 60px auto 70px 1fr;
+  /* s220 PGR S3: score col bumped 46 -> 56px (matches the SR row template). */
+  grid-template-columns: 40px 144px 56px 32px 84px 60px auto 70px 1fr;
 }
 .lm-tc-augs {
   display: flex;
