@@ -49,6 +49,7 @@ from agents.daemon_slayer._effects_types import (
 from agents.daemon_slayer.effects import ITEM_EFFECTS
 from agents.daemon_slayer.ehp import (
     _FIGHT_WINDOW_S,
+    _MISSING_HP_SHARE_FOR_HEALS,
     _collect_heals,
     _lifesteal_heal,
     _total_heal_amp,
@@ -327,12 +328,16 @@ class SunderedSkyHealTests(unittest.TestCase):
         self.assertEqual(ss.heal.ranged_modifier, 0.5)
 
     def test_aatrox_l11_sundered_sky_melee_heal(self) -> None:
-        # Aatrox L11 base AD ~ 103.875 -> heal_item_total ~ 103.875
+        # Aatrox L11 base AD = 103.875, total HP = 2050.35.
+        # Phase 6.5 (ENGINE 1.28.0+, 2026-05-21): missing-HP additive
+        # piece (6%) wired with _MISSING_HP_SHARE_FOR_HEALS=0.5 ->
+        # missing_hp = 1025.175 -> additive piece = 0.06 * 1025.175 =
+        # 61.51. Total heal_item_total ~ 103.875 + 61.51 = 165.39 melee.
         r = compute_ehp(
             self.snap, "Aatrox", 11, item_ids=["6610"], mode="SR"
         )
-        self.assertGreater(r.heal_item_total, 100)
-        self.assertLess(r.heal_item_total, 110)
+        self.assertGreater(r.heal_item_total, 160)
+        self.assertLess(r.heal_item_total, 170)
 
     def test_caitlyn_l11_sundered_sky_ranged_heal_halved(self) -> None:
         # Caitlyn is ranged, gets 0.5x base AD heal.
@@ -386,10 +391,24 @@ class SpiritVisageAmpTests(unittest.TestCase):
         r_amped = compute_ehp(
             self.snap, "Aatrox", 11, item_ids=["6610", "3065"], mode="SR"
         )
-        # heal_total scales by 1.25
+        # heal_amp_mult = 1.25 (Spirit Visage)
+        self.assertEqual(r_amped.heal_amp_mult, 1.25)
+        # Phase 6.5 (ENGINE 1.28.0+, 2026-05-21): SV adds 400 HP which
+        # also bumps missing_hp (0.5 * 400 = 200 more), so heal_total
+        # is amped AND lifted by the additional missing-HP contribution.
+        # Verify the amp piece works: heal_total_amped = 1.25 * heal_item
+        # where heal_item reflects the AMPED-build's missing_hp.
+        amped_heal_item_expected = r_amped.heal_item_total
         self.assertAlmostEqual(
-            r_amped.heal_total, r_alone.heal_total * 1.25, places=2
+            r_amped.heal_total, amped_heal_item_expected * 1.25, places=2
         )
+        # And the amped build's heal_total exceeds the pure amp of the
+        # alone-build by exactly the missing-HP-from-SV-HP delta * 1.25.
+        # SV adds 400 HP -> +200 missing_hp -> +0.06 * 200 = 12 heal
+        # (pre-amp) -> 12 * 1.25 = 15 heal (post-amp) more than
+        # heal_alone * 1.25.
+        delta = r_amped.heal_total - (r_alone.heal_total * 1.25)
+        self.assertAlmostEqual(delta, 15.0, places=1)
 
     def test_spirit_visage_does_not_amp_phase15_shields(self) -> None:
         # Deliberate Phase 6 boundary: SV amp applies to heal pool only,
@@ -525,6 +544,141 @@ class BTPlusLifelineStacksTests(unittest.TestCase):
 class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_at_1_28_0(self) -> None:
         self.assertEqual(ENGINE_VERSION, "1.28.0")
+
+
+# ---------------- Phase 6.5: missing-HP additive on item heals ----------------
+
+
+class MissingHpAdditiveTests(unittest.TestCase):
+    """ItemHeal.missing_hp_pct schema + resolve_magnitude composition.
+
+    Phase 6.5 (2026-05-21): Sundered Sky's Lightshield Strike heal piece
+    carries a 6% missing-HP additive in addition to the base AD scaling
+    per Meraki 16.10.1. The dataclass exposes ``missing_hp_pct`` and
+    threads ``missing_hp`` through ``resolve_magnitude`` so the EHP
+    scorer can compose the mid-fight HP-share convention at the
+    consumer site.
+    """
+
+    def test_item_heal_default_missing_hp_pct_is_zero(self) -> None:
+        h = ItemHeal()
+        self.assertEqual(h.missing_hp_pct, 0.0)
+
+    def test_resolve_magnitude_with_missing_hp_zero_returns_base(self) -> None:
+        # Even if missing_hp_pct > 0, missing_hp=0 means no additive
+        # contribution.
+        h = ItemHeal(missing_hp_pct=0.06)
+        self.assertEqual(h.resolve_magnitude(missing_hp=0.0), 0.0)
+        h2 = ItemHeal(base_ad_scaling=1.0, missing_hp_pct=0.06)
+        self.assertEqual(
+            h2.resolve_magnitude(base_ad=100, missing_hp=0.0), 100.0
+        )
+
+    def test_resolve_magnitude_with_missing_hp_adds_pct_times_missing_hp(self) -> None:
+        # Pure missing-HP shape: 6% of 1000 missing HP = 60.
+        h = ItemHeal(missing_hp_pct=0.06)
+        self.assertEqual(h.resolve_magnitude(missing_hp=1000), 60.0)
+
+    def test_resolve_magnitude_with_missing_hp_plus_base_ad(self) -> None:
+        # Composition: base AD + missing-HP piece.
+        # 1.0 * 100 + 0.06 * 1000 = 100 + 60 = 160.
+        h = ItemHeal(base_ad_scaling=1.0, missing_hp_pct=0.06)
+        self.assertEqual(
+            h.resolve_magnitude(base_ad=100, missing_hp=1000), 160.0
+        )
+
+    def test_resolve_magnitude_ranged_modifier_applies_to_missing_hp_too(self) -> None:
+        # Ranged modifier applies AFTER the missing-HP piece is added
+        # to the total (mirrors the existing ranged-modifier behavior).
+        # 0.06 * 1000 = 60; ranged 0.5 -> 30.
+        h = ItemHeal(missing_hp_pct=0.06, ranged_modifier=0.5)
+        self.assertEqual(
+            h.resolve_magnitude(missing_hp=1000, is_ranged=True), 30.0
+        )
+
+    def test_negative_missing_hp_floored_to_zero(self) -> None:
+        # Defensive: negative missing_hp returns base only (additive
+        # piece floored at 0).
+        h = ItemHeal(base_ad_scaling=1.0, missing_hp_pct=0.06)
+        self.assertEqual(
+            h.resolve_magnitude(base_ad=100, missing_hp=-500), 100.0
+        )
+
+    def test_negative_missing_hp_pct_rejected_by_post_init(self) -> None:
+        with self.assertRaises(ValueError):
+            ItemHeal(missing_hp_pct=-0.01)
+
+    def test_missing_hp_share_constant_is_one_half(self) -> None:
+        # Pin the Phase 6.5 mid-fight HP-share convention.
+        self.assertEqual(_MISSING_HP_SHARE_FOR_HEALS, 0.5)
+
+
+class SunderedSkyMissingHpTests(unittest.TestCase):
+    """Phase 6.5 wire of Sundered Sky's 6% missing-HP additive heal piece.
+
+    Closes the Phase 6 deliberate-omission (4) on Sundered Sky.
+    """
+
+    def setUp(self) -> None:
+        self.snap = DataSnapshot.load()
+
+    def test_sundered_sky_now_carries_missing_hp_pct_006(self) -> None:
+        ss = ITEM_EFFECTS["6610"]
+        self.assertEqual(ss.heal.missing_hp_pct, 0.06)
+
+    def test_arena_226610_mirror_carries_missing_hp_pct_006(self) -> None:
+        ss = ITEM_EFFECTS["226610"]
+        self.assertEqual(ss.heal.missing_hp_pct, 0.06)
+
+    def test_sundered_sky_heal_at_full_hp_unchanged(self) -> None:
+        # When missing_hp=0 (full HP), the heal piece is identical to
+        # the pre-Phase-6.5 base AD contribution: 100% base AD melee.
+        # Aatrox L11 base AD = 103.875.
+        ss = ITEM_EFFECTS["6610"]
+        heal = ss.heal.resolve_magnitude(
+            base_ad=103.875, missing_hp=0.0, is_ranged=False
+        )
+        self.assertAlmostEqual(heal, 103.875, places=3)
+
+    def test_sundered_sky_heal_at_mid_fight_50pct_includes_additive(self) -> None:
+        # Aatrox L11: hp = 2050.35, base_ad = 103.875. Mid-fight
+        # missing_hp = 0.5 * 2050.35 = 1025.175. Missing-HP piece =
+        # 0.06 * 1025.175 = 61.5105. Total heal = 103.875 + 61.5105 =
+        # 165.3855.
+        r = compute_ehp(
+            self.snap, "Aatrox", 11, item_ids=["6610"], mode="SR"
+        )
+        expected_total = 103.875 + 0.06 * (r.hp * 0.5)
+        self.assertAlmostEqual(r.heal_item_total, expected_total, places=3)
+        self.assertAlmostEqual(r.heal_item_total, 165.3855, places=3)
+
+    def test_sundered_sky_ranged_user_halves_missing_hp_piece_too(self) -> None:
+        # Caitlyn L11 ranged: heal = 0.5 * (base_ad + 0.06 * missing_hp).
+        # Caitlyn L11 base_ad = 95.345, hp = 1918.925, missing_hp =
+        # 959.463 -> pre-ranged = 95.345 + 57.568 = 152.913 -> ranged
+        # = 76.456.
+        r = compute_ehp(
+            self.snap, "Caitlyn", 11, item_ids=["6610"], mode="SR"
+        )
+        expected = 0.5 * (95.345 + 0.06 * (r.hp * 0.5))
+        self.assertAlmostEqual(r.heal_item_total, expected, places=2)
+        self.assertAlmostEqual(r.heal_item_total, 76.456, places=2)
+
+    def test_sundered_sky_ehp_lift_at_full_hp_vs_mid_fight(self) -> None:
+        # At full HP (missing_hp=0): heal = 103.875.
+        # At mid-fight (missing_hp = 0.5*hp): heal = 103.875 + 0.06 *
+        # (0.5*hp). The lift over the full-HP baseline is exactly
+        # 0.06 * 0.5 * hp.
+        r = compute_ehp(
+            self.snap, "Aatrox", 11, item_ids=["6610"], mode="SR"
+        )
+        # Phase 6.5 mid-fight: heal_item_total reflects the additive.
+        expected_lift_over_base_only = 0.06 * (r.hp * 0.5)
+        # heal_item_total - base_only_heal (103.875)
+        actual_lift = r.heal_item_total - 103.875
+        self.assertAlmostEqual(
+            actual_lift, expected_lift_over_base_only, places=3
+        )
 
 
 if __name__ == "__main__":
