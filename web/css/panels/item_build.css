@@ -26,7 +26,7 @@
 }
 .ds-chip em {
   font-style: normal;
-  color: #44ff88;
+  color: var(--signal-good);
   font-size: 11px;
 }
 /* In-game build chooser block: tighter row spacing than the cs panel
@@ -44,7 +44,7 @@
   margin-left: auto; font-size: 11px; color: var(--label);
   letter-spacing: 0.5px; text-transform: none;
 }
-.ib-builds-status.ok    { color: #44ff88; }
+.ib-builds-status.ok    { color: var(--signal-good); }
 .ib-builds-status.err   { color: var(--bad); }
 .ib-builds-status.busy  { color: var(--clock); }
 .build-label {
