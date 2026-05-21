@@ -712,6 +712,32 @@ class DecisionStore:
                     kept.append(d.to_dict())
             self._write_pending(kept)
 
+    def record_coach_choice(self, *, choice_key: str, choice_label: str,
+                            confidence: str, source_tag: str,
+                            game_context: dict | None = None) -> dict:
+        """Append a coach A/B tutoring choice to the decision log.
+
+        Coach choices have no pending-state lifecycle (the user clicks one
+        and it is logged immediately for post-game replay); they share the
+        same JSONL ledger as objective-contest decisions, distinguished by
+        ``type="coach_choice"``. Returns the recorded entry."""
+        entry = {
+            "type": "coach_choice",
+            "ts_unix": time.time(),
+            "choice_key": choice_key,
+            "choice_label": choice_label,
+            "confidence": confidence,
+            "source_tag": source_tag,
+            "game_context": game_context or {},
+        }
+        try:
+            self._log_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._log_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry) + "\n")
+        except Exception as exc:
+            _log.warning("coach_choice log append failed: %s", exc)
+        return entry
+
     def record_choice(self, decision_id: str, choice: str,
                       extra: Optional[dict] = None) -> Optional[dict]:
         """Move a pending decision to the log with the player's choice.

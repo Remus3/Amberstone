@@ -254,6 +254,21 @@ def build_state() -> dict:
     except Exception:
         summoner_cooldowns = None
 
+    # A/B tutoring choices (item 119): prefer the coach dict's native-emit
+    # `choices` array (when the per-mode prompt has been tuned to return
+    # it); fall back to a conservative synthesizer that derives a single
+    # A/B from the existing action prose. Empty list when nothing
+    # meaningful can be surfaced - the frontend's render path is a no-op
+    # in that case so the prose stream is unchanged.
+    try:
+        from core.coach_choices import (
+            parse_choices, synthesize_simple_choices, to_jsonable,
+        )
+        _cc_native = parse_choices(coach)
+        coach["choices"] = to_jsonable(_cc_native or synthesize_simple_choices(coach))
+    except Exception:
+        coach["choices"] = []
+
     return {
         "mode_key": mode_key,
         "coach_source": coach_file,
