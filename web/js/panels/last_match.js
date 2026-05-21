@@ -19,8 +19,10 @@
  * (mirrors the s218 Home Tonight's Pick "Jinx" name behavior).
  *
  * Deep Review button: stashes the match id to
- * sessionStorage.rc-review-focus-match and routes to view-review (placeholder
- * for the future deep-analysis page).
+ * sessionStorage.rc-replay-focus-match and routes to view-replay so
+ * the Replay page auto-selects this match. The Replay view itself
+ * is the s220 S5 "deep review" target (per-frame scrubber + event
+ * ribbon over Match-V5 timeline).
  */
 
 // CHAMPS.byId is async-hydrated from /data/champions_index.json by
@@ -227,11 +229,14 @@ export function wireLastMatchOnce() {
   if (reviewBtn) {
     reviewBtn.addEventListener("click", () => {
       const mid = reviewBtn.dataset.matchId || "";
+      // s220 S5: stash + route to the existing Replay view (VIEW_IDS
+      // contains "replay", not "review" - the pre-S5 wire targeted
+      // a never-built "review" id and silently fell back to home).
       if (mid) {
-        try { sessionStorage.setItem("rc-review-focus-match", mid); } catch (_) {}
+        try { sessionStorage.setItem("rc-replay-focus-match", mid); } catch (_) {}
       }
-      try { location.hash = "#review"; } catch (_) {}
-      if (typeof window._viewSaveManual === "function") window._viewSaveManual("review");
+      try { location.hash = "#replay"; } catch (_) {}
+      if (typeof window._viewSaveManual === "function") window._viewSaveManual("replay");
       if (typeof window._viewResolveAndApply === "function") window._viewResolveAndApply();
     });
   }
