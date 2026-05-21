@@ -32,7 +32,7 @@
 .coach-decision-title {
   font-weight: 700;
   font-size: 17px;
-  color: #F5B87C;
+  color: var(--signal-gold);
   margin: 0 0 2px;
 }
 .coach-decision-sub {
@@ -57,7 +57,7 @@
   font-family: inherit;
 }
 .coach-decision-btn[data-choice="contest"] { color: #F07E8B; }
-.coach-decision-btn[data-choice="give"]    { color: #8A8CF0; }
+.coach-decision-btn[data-choice="give"]    { color: var(--signal-info); }
 .coach-decision-btn[data-choice="skip"]    { color: var(--text-faint); }
 .coach-decision-btn:hover     { background: rgba(255, 255, 255, 0.08); }
 .coach-decision-btn:active    { transform: translateY(1px); }
@@ -126,7 +126,7 @@
   border: 1px solid currentColor;
 }
 .rcc-choice-contest .rcc-choice { color: #F07E8B; }
-.rcc-choice-give    .rcc-choice { color: #8A8CF0; }
+.rcc-choice-give    .rcc-choice { color: var(--signal-info); }
 .rcc-choice-skip    .rcc-choice { color: var(--text-faint); }
 
 /* Bridge Pending sub-page (2026-05-03) - escalation queue from
@@ -249,8 +249,8 @@
 }
 .bp-btn:hover     { background: var(--info-soft); color: var(--info); }
 .bp-btn:disabled  { opacity: 0.4; cursor: wait; }
-.bp-btn-accept:hover  { color: #6FD080; border-color: #6FD080; }
-.bp-btn-defer:hover   { color: #8A8CF0; border-color: #8A8CF0; }
+.bp-btn-accept:hover  { color: var(--signal-good); border-color: var(--signal-good); }
+.bp-btn-defer:hover   { color: var(--signal-info); border-color: var(--signal-info); }
 .bp-btn-dismiss:hover { color: #F07E8B; border-color: #F07E8B; }
 .bp-btn-busy { opacity: 0.6; }
 .bp-btn-err  { color: #F07E8B; border-color: #F07E8B; }
