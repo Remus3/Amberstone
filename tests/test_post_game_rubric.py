@@ -300,5 +300,43 @@ class AsciiHygieneTests(unittest.TestCase):
         )
 
 
+class NoOverrideFileDefaultPreservationTests(unittest.TestCase):
+    """When no override file exists, default weights match the documented
+    starting calibration values exactly. Pins the post-loader state so an
+    accidental override during test runs (e.g. a stray file on disk) would
+    surface as a test failure rather than silently shifting scores.
+    """
+
+    def test_no_override_file_in_tree(self):
+        # The override file is gitignored personal calibration data; the
+        # repo tree should not carry a checked-in copy. If a future
+        # contributor commits a calibration file by accident, this guard
+        # fires.
+        override = pathlib.Path("data/post_game_rubric_weights.json")
+        self.assertFalse(
+            override.exists(),
+            f"{override} should NOT exist in the repo tree (gitignored personal data)",
+        )
+
+    def test_adc_default_weights_unchanged(self):
+        # Pins the ADC starting calibration. If the override loader silently
+        # changes these (e.g. via a stray file in the test environment),
+        # this fires.
+        w = pgr._DEFAULT_WEIGHTS["ADC"]
+        self.assertEqual(w.kda, 2.1)
+        self.assertEqual(w.cs_per_min, 0.85)
+        self.assertEqual(w.obj_participation, 0.50)
+        self.assertEqual(w.vision_score, 0.30)
+        self.assertEqual(w.damage_per_min, 0.85)
+
+    def test_sup_default_weights_unchanged(self):
+        w = pgr._DEFAULT_WEIGHTS["SUP"]
+        self.assertEqual(w.kda, 2.5)
+        self.assertEqual(w.cs_per_min, 0.0)
+        self.assertEqual(w.obj_participation, 0.10)
+        self.assertEqual(w.vision_score, 1.5)
+        self.assertEqual(w.damage_per_min, 0.20)
+
+
 if __name__ == "__main__":
     unittest.main()
