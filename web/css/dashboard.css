@@ -12,6 +12,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap");
 
 
+@import './tokens.css';
 @import './panels/base.css';
 @import './panels/header.css';
 @import './panels/grid.css';

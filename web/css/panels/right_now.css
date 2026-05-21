@@ -143,16 +143,16 @@
 }
 .rn-sr-pill[hidden] { display: none; }
 .rn-sr-pill.is-pending {
-  color: #fbbf24;
+  color: var(--signal-warn);
   font-style: italic;
-  border-left-color: #fbbf24;
+  border-left-color: var(--signal-warn);
 }
 .rn-sr-pill.is-ok {
   color: var(--text);
-  border-left-color: #4ade80;
+  border-left-color: var(--signal-good);
 }
 .rn-sr-pill.is-error {
-  color: #f0a3a3;
+  color: var(--signal-bad);
   border-left-color: #f87171;
   font-size: 13px;
 }
