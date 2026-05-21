@@ -49,6 +49,7 @@ from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
 from .effects import ITEM_EFFECTS
+from ._effects_types import ANY, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
 from .rank import (
     DEFAULT_SLOT_COUNT,
@@ -72,6 +73,66 @@ def _armor_factor(resist: float) -> float:
     if resist >= 0:
         return 100.0 / (100.0 + resist)
     return 2.0 - 100.0 / (100.0 - resist)
+
+
+_RANGED_ATTACKRANGE_THRESHOLD = 250.0
+
+
+def _is_ranged(base_stats: dict) -> bool:
+    """Detect ranged-champion status by base attackrange.
+
+    ENGINE 1.27.0 (2026-05-21): used by the shield-throughput scorer to
+    pick the ``ItemShield.ranged_modifier`` (Maw / Shieldbow / Hexdrinker
+    have ranged shields at 75-80% of melee values per Meraki 16.10.1).
+    Threshold 250 separates melee (Yasuo 175 / Aatrox 175 / Sett 125)
+    from ranged (Caitlyn 650 / Ezreal 550 / Lux 550). Aphelios and
+    similar shifting-form champs default to their base attackrange.
+    """
+    try:
+        return float(base_stats.get("attackrange", 0.0)) > _RANGED_ATTACKRANGE_THRESHOLD
+    except (TypeError, ValueError):
+        return False
+
+
+def _collect_shields(
+    item_ids: Iterable[str],
+    level: int,
+    bonus_hp: float,
+    bonus_ad: float,
+    is_ranged: bool,
+) -> tuple[dict[str, float], tuple[tuple[str, str, float], ...]]:
+    """Resolve every ``ItemShield`` across the equipped items.
+
+    Returns a tuple of (totals, sources) where:
+
+    * ``totals`` is a dict keyed by shield damage type
+      (``"any"``/``"physical"``/``"magical"``/``"true"``) mapping to the
+      summed shield_hp; missing keys = 0.0.
+    * ``sources`` is a tuple of ``(item_id, damage_type, shield_hp)``
+      triples in stable iteration order; used by EhpResult.format_table
+      and to_dict for surfacing per-item contributions.
+
+    Items without a ``shield`` field (the 99% case) contribute nothing
+    and are silently skipped.
+    """
+    totals: dict[str, float] = {ANY: 0.0, PHYSICAL: 0.0, MAGICAL: 0.0, TRUE: 0.0}
+    sources: list[tuple[str, str, float]] = []
+    for item_id in item_ids:
+        eff = ITEM_EFFECTS.get(str(item_id))
+        if eff is None or eff.shield is None:
+            continue
+        shield = eff.shield
+        hp = shield.resolve_magnitude(
+            level=level,
+            bonus_hp=bonus_hp,
+            bonus_ad=bonus_ad,
+            is_ranged=is_ranged,
+        )
+        if hp <= 0:
+            continue
+        totals[shield.damage_type] = totals.get(shield.damage_type, 0.0) + hp
+        sources.append((str(item_id), shield.damage_type, hp))
+    return totals, tuple(sources)
 
 
 def effective_cc_duration(base_cc_s: float, tenacity_mult: float) -> float:
@@ -140,6 +201,21 @@ class EhpResult:
     # different axis; downstream consumers pair this with their own base
     # CC assumption via the module-level ``effective_cc_duration`` helper.
     aram_tenacity_mult: float = 1.0
+    # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput. Aggregated
+    # shield_hp by damage type (closes ehp.py:21 deliberate omission).
+    # ``shield_any`` is type-agnostic (Sterak / Shieldbow lifelines) -
+    # absorbs all 3 damage components. ``shield_phys`` / ``shield_mag``
+    # / ``shield_true`` are type-gated (Maw / Hexdrinker are magic-only).
+    # ``shield_sources`` is the per-item breakdown for format_table and
+    # to_dict transparency. The physical_ehp / magical_ehp / true_ehp /
+    # blended_ehp fields above ALREADY include the shield contribution
+    # (added at the top of the damage stack per League's shield-then-HP
+    # absorption order); these fields surface the magnitude separately.
+    shield_any: float = 0.0
+    shield_phys: float = 0.0
+    shield_mag: float = 0.0
+    shield_true: float = 0.0
+    shield_sources: tuple[tuple[str, str, float], ...] = field(default_factory=tuple)
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -162,6 +238,14 @@ class EhpResult:
             "enemy_true_share": self.enemy_true_share,
             "mode_multiplier": self.mode_multiplier,
             "aram_tenacity_mult": self.aram_tenacity_mult,
+            "shield_any": self.shield_any,
+            "shield_phys": self.shield_phys,
+            "shield_mag": self.shield_mag,
+            "shield_true": self.shield_true,
+            "shield_sources": [
+                {"item_id": iid, "damage_type": dt, "shield_hp": hp}
+                for iid, dt, hp in self.shield_sources
+            ],
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -197,6 +281,17 @@ class EhpResult:
             rows.append(
                 f"  tenacity_mult  {self.aram_tenacity_mult:.3f}  (aramTenacity x CC duration)"
             )
+        if self.shield_any or self.shield_phys or self.shield_mag or self.shield_true:
+            shield_bits = []
+            if self.shield_any:
+                shield_bits.append(f"any={self.shield_any:.0f}")
+            if self.shield_phys:
+                shield_bits.append(f"phys={self.shield_phys:.0f}")
+            if self.shield_mag:
+                shield_bits.append(f"mag={self.shield_mag:.0f}")
+            if self.shield_true:
+                shield_bits.append(f"true={self.shield_true:.0f}")
+            rows.append("  shield_hp     " + "  ".join(shield_bits))
         if self.notes:
             rows.append("")
             for n in self.notes:
@@ -261,9 +356,35 @@ def compute_ehp(
     # is unchanged - CC duration is a separate axis from HP pool.
     aram_tenacity_mult = float(resolved.stats.get("aram_tenacity_mult", 1.0))
 
-    physical_ehp = hp / (_armor_factor(armor) * safe_mult)
-    magical_ehp = hp / (_armor_factor(mr) * safe_mult)
-    true_ehp = hp / safe_mult
+    # ENGINE 1.27.0 (2026-05-21): Phase 1.5 shield throughput. Bonus
+    # stats are item-side deltas from the champion's base block (stats
+    # - base_stats); shields scale off these (Sterak's 60% bonus_hp;
+    # Maw 200 + 150% bonus_ad). Ranged-vs-melee picks the
+    # ItemShield.ranged_modifier (Meraki: Maw/Shieldbow/Hexdrinker at
+    # 75-80% for ranged).
+    base = resolved.base_stats
+    bonus_hp = max(0.0, hp - float(base.get("hp", 0.0)))
+    bonus_ad = max(0.0, float(stats.get("ad", 0.0)) - float(base.get("ad", 0.0)))
+    is_ranged = _is_ranged(base)
+    shield_totals, shield_sources = _collect_shields(
+        resolved.item_ids,
+        level=level,
+        bonus_hp=bonus_hp,
+        bonus_ad=bonus_ad,
+        is_ranged=is_ranged,
+    )
+    shield_any = shield_totals.get(ANY, 0.0)
+    shield_phys = shield_totals.get(PHYSICAL, 0.0)
+    shield_mag = shield_totals.get(MAGICAL, 0.0)
+    shield_true = shield_totals.get(TRUE, 0.0)
+
+    # Shields sit at the top of the damage stack: each damage_type sees
+    # ``hp + shield_any + shield_<type>`` effective HP before the
+    # armor/MR curve. Shields are NOT reduced separately by resistances
+    # in League's damage model - they share the same factor as HP.
+    physical_ehp = (hp + shield_any + shield_phys) / (_armor_factor(armor) * safe_mult)
+    magical_ehp = (hp + shield_any + shield_mag) / (_armor_factor(mr) * safe_mult)
+    true_ehp = (hp + shield_any + shield_true) / safe_mult
 
     enemy_true_share = max(0.0, 1.0 - enemy_ad_share - enemy_ap_share)
     blended_ehp = (
@@ -282,6 +403,12 @@ def compute_ehp(
         notes.append(
             f"ARAM aramTenacity={aram_tenacity_mult:.3f}x effective CC duration "
             f"(consumers via effective_cc_duration helper)"
+        )
+    for item_id, damage_type, sh_hp in shield_sources:
+        eff = ITEM_EFFECTS.get(item_id)
+        item_label = eff.name if eff is not None else item_id
+        notes.append(
+            f"shield: {item_label} contributes {sh_hp:.0f} hp ({damage_type})"
         )
 
     return EhpResult(
@@ -302,6 +429,11 @@ def compute_ehp(
         enemy_true_share=enemy_true_share,
         mode_multiplier=mode_mult,
         aram_tenacity_mult=aram_tenacity_mult,
+        shield_any=shield_any,
+        shield_phys=shield_phys,
+        shield_mag=shield_mag,
+        shield_true=shield_true,
+        shield_sources=shield_sources,
         stats=dict(stats),
         notes=tuple(notes),
     )

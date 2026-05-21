@@ -1321,7 +1321,31 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.26.0"
+ENGINE_VERSION = "1.27.0"
+# 1.27.0 (Phase 1.5 EHP shield throughput, 2026-05-21):
+# Closes the ehp.py:21 deliberate Phase-1 omission "Shield throughput
+# (Sterak's lifeline, Doran's Shield, Bloodthirster) - needs uptime
+# modeling". Ships the four LIFELINE-style shields (single trigger per
+# fight, value-additive to the effective-HP pool at top of the damage
+# stack):
+#   * Sterak's Gage 3053 - any-damage, 60% bonus_hp
+#   * Immortal Shieldbow 6673 - any-damage, 400 L1-L8 -> 700 L18,
+#     ranged x0.80
+#   * Maw of Malmortius 3156 - magical, 200 + 150% bonus_ad, ranged x0.75
+#   * Hexdrinker 3155 - magical, 110 L1-L8 -> 280 L18, ranged x0.75
+# NEW ``ItemShield`` dataclass in _effects_types.py + ``ItemEffect.shield``
+# field. EhpResult gains shield_any / shield_phys / shield_mag /
+# shield_true / shield_sources fields; compute_ehp folds the shield_hp
+# into physical_ehp / magical_ehp / true_ehp at the top of the damage
+# stack (shields share the same armor/MR factor as HP per League's
+# damage model). 4 lifeline items share unique_passive_key="lifeline"
+# so rank.py's shares_dead_unique filter picks at most one in any
+# generated build (compute_ehp itself does NOT apply dedup - the data
+# layer carries the values, the planner decides which to keep).
+# Bloodthirster's ichor-shield is intentionally DEFERRED to Phase 6
+# (with the lifesteal model) - it requires overheal accrual rather
+# than a single-trigger threshold.
+#
 # 1.26.0 (Dead Man's Plate Momentum stacks-schema lift, 2026-05-21):
 # Closes BACKLOG "Dead Man's Plate Momentum stacks-schema" queued from
 # overnight 2026-05-20 iter 15-16 (where the item was flipped to
