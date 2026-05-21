@@ -65,11 +65,6 @@ Phase 6 deliberate omissions (deferred to Phase 6.5+):
 * Death's Dance Defy heal-on-takedown (75% bonus AD over 2s) - the
   takedown-rate assumption is uncertain enough that a first-pass would
   over- or under-credit; stays defensive_only.
-* Spirit Visage amp on Phase 1.5 SHIELDS (Sterak / Shieldbow / Maw /
-  Hexdrinker / BT) - Riot's tooltip amps "all heal AND shielding +25%"
-  but Phase 6 ships heal-pipeline amp only. Builds pairing Spirit
-  Visage with a lifeline item are under-credited by ~15% (60% bonus HP
-  shield * 0.25 amp lost on a Sterak's example).
 * Lifesteal post-mitigation accuracy - the lifesteal heal model uses
   pre-armor AD (the EHP scorer is enemy-state-agnostic). Real lifesteal
   heals on post-armor damage, so this over-credits by ~30-40% vs a
@@ -79,6 +74,24 @@ Phase 6 deliberate omissions (deferred to Phase 6.5+):
   current-HP-share assumption distinct from the steady-state full-HP
   convention used elsewhere; the base AD piece is the dominant
   contributor.
+
+ENGINE 1.29.0 (2026-05-21) - Phase 6.5 closes the deliberate Phase 6
+boundary "Spirit Visage amp on Phase 1.5 SHIELDS". Riot's tooltip on
+Spirit Visage 3065 / Arena 223065 Boundless Vitality reads "increases
+self-healing and shielding by 25%". The Phase 6 wire amped the heal
+pool only; Phase 6.5 extends the SAME multiplier to the shield pool
+(Sterak / Shieldbow / Maw / Hexdrinker / BT Ichorshield). The amp is
+applied at the EHP-math site (top of damage stack) - the shield_any /
+shield_phys / shield_mag / shield_true EhpResult fields stay PRE-amp
+for transparency (matching the heal_item_total / heal_lifesteal pre-
+amp convention); ``shield_amp_mult`` surfaces the multiplier alongside
+``heal_amp_mult``. The two amps are SIBLINGS at the EHP-math top of
+the stack, NOT nested (a build with SV + BT does NOT double-amp the
+heal pool via the shield amp - heal_total is amped exactly once by
+heal_amp_mult; shield_any is amped exactly once by shield_amp_mult;
+the two products are added). Same multiplier value (today: only
+Spirit Visage at 1.25) but conceptually independent fields so future
+heal-only or shield-only amp items stay representable.
 """
 
 from __future__ import annotations
@@ -360,6 +373,17 @@ class EhpResult:
     shield_mag: float = 0.0
     shield_true: float = 0.0
     shield_sources: tuple[tuple[str, str, float], ...] = field(default_factory=tuple)
+    # ENGINE 1.29.0 (2026-05-21): Phase 6.5 shield-amp closure. Same
+    # multiplier value as ``heal_amp_mult`` today (Spirit Visage 3065 /
+    # Arena 223065 amps "all heal AND shielding +25%" per Riot tooltip)
+    # but conceptually a sibling field so a future heal-only or shield-
+    # only amp item stays representable. Applied multiplicatively at the
+    # EHP-math site to ``shield_any`` / ``shield_phys`` / ``shield_mag``
+    # / ``shield_true``. The shield_* fields above are PRE-amp for
+    # transparency (matching ``heal_item_total`` / ``heal_lifesteal``
+    # pre-amp convention); the physical_ehp / magical_ehp / true_ehp /
+    # blended_ehp fields ALREADY include the post-amp shield contribution.
+    shield_amp_mult: float = 1.0
     # ENGINE 1.28.0 (2026-05-21): Phase 6 healing throughput. Heal pool
     # is value-additive at the top of the damage stack (same place as
     # shields). ``heal_item_total`` = sum of item-passive heal triggers
@@ -409,6 +433,7 @@ class EhpResult:
                 {"item_id": iid, "damage_type": dt, "shield_hp": hp}
                 for iid, dt, hp in self.shield_sources
             ],
+            "shield_amp_mult": self.shield_amp_mult,
             "heal_item_total": self.heal_item_total,
             "heal_lifesteal": self.heal_lifesteal,
             "heal_amp_mult": self.heal_amp_mult,
@@ -462,6 +487,8 @@ class EhpResult:
                 shield_bits.append(f"mag={self.shield_mag:.0f}")
             if self.shield_true:
                 shield_bits.append(f"true={self.shield_true:.0f}")
+            if self.shield_amp_mult != 1.0:
+                shield_bits.append(f"amp=x{self.shield_amp_mult:.3f}")
             rows.append("  shield_hp     " + "  ".join(shield_bits))
         if self.heal_total > 0:
             heal_bits = []
@@ -582,14 +609,30 @@ def compute_ehp(
     heal_amp_mult = _total_heal_amp(resolved.item_ids)
     heal_total = (heal_item_total + heal_lifesteal) * heal_amp_mult
 
+    # ENGINE 1.29.0 (2026-05-21): Phase 6.5 - Spirit Visage's Boundless
+    # Vitality amps "all heal AND shielding +25%" per Riot's tooltip.
+    # The Phase 6 wire amped only the heal pool; Phase 6.5 closes the
+    # boundary by applying the SAME multiplier to the shield pool at
+    # the top of the damage stack. The two amps are SIBLINGS, not
+    # nested: heal_total is amped once (above); shield_any/phys/mag/true
+    # are amped once (below); both products sum into the EHP math. Same
+    # multiplier value (today: Spirit Visage at 1.25) but conceptually a
+    # sibling field so future heal-only or shield-only amp items stay
+    # representable.
+    shield_amp_mult = heal_amp_mult
+    shield_any_amped = shield_any * shield_amp_mult
+    shield_phys_amped = shield_phys * shield_amp_mult
+    shield_mag_amped = shield_mag * shield_amp_mult
+    shield_true_amped = shield_true * shield_amp_mult
+
     # Shields + heal sit at the top of the damage stack: each damage_type
-    # sees ``hp + shield_any + shield_<type> + heal_total`` effective HP
-    # before the armor/MR curve. Shields + heals are NOT reduced
-    # separately by resistances in League's damage model - they share
-    # the same factor as HP.
-    physical_ehp = (hp + shield_any + shield_phys + heal_total) / (_armor_factor(armor) * safe_mult)
-    magical_ehp = (hp + shield_any + shield_mag + heal_total) / (_armor_factor(mr) * safe_mult)
-    true_ehp = (hp + shield_any + shield_true + heal_total) / safe_mult
+    # sees ``hp + shield_any_amped + shield_<type>_amped + heal_total``
+    # effective HP before the armor/MR curve. Shields + heals are NOT
+    # reduced separately by resistances in League's damage model - they
+    # share the same factor as HP.
+    physical_ehp = (hp + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(armor) * safe_mult)
+    magical_ehp = (hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(mr) * safe_mult)
+    true_ehp = (hp + shield_any_amped + shield_true_amped + heal_total) / safe_mult
 
     enemy_true_share = max(0.0, 1.0 - enemy_ad_share - enemy_ap_share)
     blended_ehp = (
@@ -632,6 +675,12 @@ def compute_ehp(
             f"heal: amp x{heal_amp_mult:.3f} applied multiplicatively "
             f"(Spirit Visage Boundless Vitality and similar)"
         )
+    if shield_amp_mult != 1.0 and (shield_any or shield_phys or shield_mag or shield_true):
+        notes.append(
+            f"shield: amp x{shield_amp_mult:.3f} applied multiplicatively "
+            f"to shield pool (Spirit Visage Boundless Vitality amps "
+            f"heal AND shielding +25%)"
+        )
 
     return EhpResult(
         champion_id=resolved.champion_id,
@@ -656,6 +705,7 @@ def compute_ehp(
         shield_mag=shield_mag,
         shield_true=shield_true,
         shield_sources=shield_sources,
+        shield_amp_mult=shield_amp_mult,
         heal_item_total=heal_item_total,
         heal_lifesteal=heal_lifesteal,
         heal_amp_mult=heal_amp_mult,
