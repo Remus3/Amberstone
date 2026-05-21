@@ -1,0 +1,132 @@
+/* Personal context surface.
+ *
+ * Mount: #personal-context-section inside the Right Now panel body.
+ * Renders the same top-3 recurring death patterns the mode coaches
+ * inject into their system prompts (ADR-007 phase 2 / item 124).
+ *
+ * Each card stacks a header row (label + count chip + rate% chip) over
+ * a single-line muted description. Border tint derives from a data-kind
+ * attr on the card (warn / info / dim / default) - keys to the
+ * tokens.css semantic palette and falls back to inherit gracefully when
+ * tokens.css hasn't loaded yet.
+ */
+
+.personal-context-section {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.personal-context-section[hidden] {
+  display: none;
+}
+
+.personal-context-head {
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal-dim, #8a8e9c);
+}
+
+.personal-context-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.personal-context-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  min-height: 56px;
+}
+
+.personal-context-card[data-kind="warn"] {
+  border-left-color: var(--signal-warn, #f1b04a);
+}
+
+.personal-context-card[data-kind="info"] {
+  border-left-color: var(--signal-info, #8a8cf0);
+}
+
+.personal-context-card[data-kind="dim"] {
+  border-left-color: var(--signal-dim, #8a8e9c);
+}
+
+.personal-context-card[data-kind="default"] {
+  border-left-color: rgba(255, 255, 255, 0.18);
+}
+
+.personal-context-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.personal-context-label {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: inherit;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.personal-context-count {
+  font-size: var(--fs-xs, 11px);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--signal-dim, #8a8e9c);
+  flex: 0 0 auto;
+}
+
+.personal-context-rate {
+  font-size: var(--fs-xs, 11px);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--signal-info, #8a8cf0);
+  flex: 0 0 auto;
+  min-width: 36px;
+  text-align: right;
+}
+
+.personal-context-card[data-kind="warn"] .personal-context-rate {
+  color: var(--signal-warn, #f1b04a);
+}
+
+.personal-context-card[data-kind="dim"] .personal-context-rate {
+  color: var(--signal-dim, #8a8e9c);
+}
+
+.personal-context-desc {
+  font-size: var(--fs-xs, 11px);
+  color: var(--signal-dim, #8a8e9c);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.personal-context-empty {
+  font-size: var(--fs-xs, 11px);
+  color: var(--signal-dim, #8a8e9c);
+  padding: 6px 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.personal-context-empty[hidden] {
+  display: none;
+}
