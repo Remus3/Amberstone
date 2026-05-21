@@ -160,7 +160,10 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
         client = anthropic.Anthropic(api_key=api_key)
         resp = client.messages.create(
             model=_MODEL, max_tokens=_MAX_TOKENS,
-            system=_SYSTEM_PROMPT,
+            system=[
+                {"type": "text", "text": _SYSTEM_PROMPT,
+                 "cache_control": {"type": "ephemeral"}},
+            ],
             messages=[{"role": "user", "content": prompt}],
             timeout=12,
         )
