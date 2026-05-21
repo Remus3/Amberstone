@@ -1,7 +1,7 @@
 """
 scripts/rewind_scraper.py
 ─────────────────────────
-Scrapes match history from rewind.lol for SamplePlayer#Vayne (NA).
+Scrapes match history from rewind.lol for SamplePlayer#Trist (NA).
 
 Data sources (no auth required):
   History list:  GET /get_data/NA/{username}/history  → 15MB JSON, 2846 matches
@@ -34,7 +34,7 @@ DB_PATH  = ROOT / "data" / "rewind_history.db"
 CACHE_DIR = ROOT / "data" / "rewind_cache"
 
 REGION   = "NA"
-USERNAME = "SamplePlayer#Vayne"
+USERNAME = "SamplePlayer#Trist"
 BASE     = "https://rewind.lol"
 
 # Polite rate limiting - seconds between requests
