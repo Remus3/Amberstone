@@ -29,7 +29,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #F5B87C;
+  color: var(--signal-gold);
 }
 .tc-status {
   font-size: 13px;
@@ -114,7 +114,7 @@
 .tc-slot-rank {
   font-size: 12px;
   font-weight: 700;
-  color: #F5B87C;
+  color: var(--signal-gold);
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
