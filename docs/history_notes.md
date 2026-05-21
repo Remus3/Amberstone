@@ -2,7 +2,37 @@
 
 Sessions older than the last 2-3 full sessions are progressively compacted here.
 Current WAKEUP_NOTES.md keeps only the most recent 2-3 sessions.
-Compaction rule: 3+ sessions old → 1-2 line summary entry below.
+Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
+
+---
+
+# 2026-05-20 - housekeeping batch (7 commits `1a8e0bf`..`58d1e87`; non-engine; no DS bump)
+
+User-driven scoped session: branch+worktree cleanup (4 stale + 1 locked 107MB worktree); Desktop shortcut Claude RC.lnk repointed to MS Store Claude Desktop; 4 dated 2026-05-02 `docs io RC peer/` artifacts archived to `docs/_archive/2026-05-02-rc-peer/` (2 left in place blocked on frozen main.py + sync-all-md.md refs); **`943d2e0` fix(ddragon)** retry-with-backoff for transient HTTP errors (RC-DDragonMirrorRefresh exit_code=2 root cause); **`4808f64` chore(gitignore)** `_scratch/` quarantine; **`8f7a71b` feat(ds)** cdragon `calculations` exposed on Augment dataclass (83/220 augments, no ENGINE bump - dataclass-layer only); **`94fe721`+`8d1c28e` docs(backlog)** 125->105 lines prune; **`58d1e87` feat(coach)** haste-formula cycle math for `core/summoner_cooldowns.py` (additive CDR -> `eff_cd = base / (1 + h/100)`; new `summs.summoner_haste`+`ult.ability_haste` output keys; 14->29 tests). Wider RC 2096/0. **Don't-redo:** cdragon calculations is HALF SHIPPED (dataclass-layer only; formula-evaluator is next slice + ENGINE bump); dated-docs left 2 files in place because frozen refs.
+
+---
+
+# 2026-05-20 - second headless run (12 commits `f4938af`..`9f356a3`; ENGINE 1.17.0 -> 1.21.0; CI 12/12 green)
+
+UX wave 1 closed `f4938af` (ward-heat frontend + producer wire to `core/liveclient_cache` via NEW listener API). UX wave 2 shipped `ab3f553`+`00051f3` (Elo log-odds team-vs-team draft aggregator + frontend chip with n= sample-density indicator). HURTS-THEM/HELPS-US ban-suggest backend `6e7b7e5` (frontend deferred to operator-gated polish session). Multi-agent research wave (5 parallel slice agents); triage LOCKED in BACKLOG. DS audit iter 17-19 (3 ENGINE bumps): iter 17 `816ab4a` hps_split_aram_heal_shield_mults (item-108 carry-forward (a)); iter 17 `6bba097` aramAbilityHaste + aramTenacity exposure (item-108 carry-forward (b)); iter 18 `74d2ba6` Lich Bane Spellblade AP 50%->40% Meraki; iter 19 `9f356a3` Nashor's Tooth AP 20%->15% Meraki; iter 20-26 NO-CHANGE. /headless-upgrade skill `b007783` (11-section autonomous-run skill). DS 2730/0 (+20). Wider RC 2167/0 (+50). Living synopsis at `C:\Users\Administrator\Desktop\RC_HEADLESS_SYNOPSIS_2026-05-20.md`. CLAUDE.md item 109 full ledger. **Don't-redo:** all ENGINE iterations Meraki-grounded; `mode_multiplier` @property backward-compat alias for heal_mult; AH/Tenacity exposure-only intentional (no scorer reads yet); research-wave CLOSED list authoritative (MobaHinted dead, Arena win-rates Riot-banned).
+
+---
+
+# 2026-05-19/20 - overnight autonomous run END-TO-END Phases 1-3 (31 commits `021c6c4`..`98e059c`; ENGINE 1.9.0 -> 1.17.0; CI 31/31 green)
+
+Single overnight autonomous run in caveman ultra. **DS audit: 18 iterations, 8 real bugs caught + fixed (8 ENGINE bumps).** Iter 1 multi-source %-pen multiplicative compose; iter 2 lethality V14.1 1:1 flat pen; iter 3 hydra_cleave unique-passive family; iter 7 BotRK Mist's Edge melee 9% target HP; iter 8 Immolate family + Titanic Cleave Meraki drift; iter 10 The Collector lethality drift; iter 11 Statikk Shiv Electrospark 180/10s; iter 12 Guinsoo's Wrath flat 30 magic on-hit; iter 14 Arena mirror audit; iter 15 Hextech Alternator + Voltaic Firmament; iter 16 structural-drift resolution (Sundered Sky calibrated + Dead Man's defensive_only flip). **5 UX backends shipped, 4 with frontends:** threat tags `/api/personal-vs` + damage-mix donut + spike-curve sparkline + CD ledger + ward-heat (frontend deferred). Shaper backend primitive `c6327d8` (gated on 100% DS coverage). pytest_guard docs-skip fix. Active Match step 5 sub-unit shipped. ASCII retro-sweep. DS 2710/0. Wider RC ~2087/0. Off-repo synopsis at `C:\Users\Administrator\Desktop\RC_OVERNIGHT_SYNOPSIS_2026-05-20.md`. CLAUDE.md item 108 full ledger.
+
+---
+
+# 2026-05-19 - cross-Claude lessons Phase 4 (`77e3437`; BACKLOG drain)
+
+3 sub-units shipped in one slice: (a) `core/lessons_ack_watcher.py` polls `/api/bridge?kind=result` via HTTPS shuttle, merges ack body into `lessons_sent.jsonl` atomic-rewrite; (b) `core/lessons_confidence.py` per-(peer, mem_type) buckets via `core/smoothed_rates.laplace_rate`+`shrink` (composes on CLAUDE.md #90 shared primitive); (c) `core/lessons_revert.py` `apply_with_revert()` 3-branch tests-pass / queued-fallback / git-revert + auto_reverted=True follow-up ack. Surfaces: `tools/lessons_status.py` (JSON + `--plain`) + `GET /api/lessons/status?refresh=0|1`. +60 tests. Wider RC 1771/0. Live-verified `/api/lessons/status?refresh=0` returns 2 real buckets (peer:reference 1/1 took, peer:unknown 4 discarded). **Don't-redo:** "auto-revert is NOT a daemon, Claude-invoked safety net" framing is deliberate (vision section 5 + section 6 lean-conservative constraint); mem_type-from-path derivation is the agreed schema-recovery path; HTTPS shuttle is the single-source-of-truth boundary.
+
+---
+
+# 2026-05-19 - bridge MCP server + install ritual doc (`d4f6140`+`8c2a200`; 2 BACKLOG drains)
+
+(a) `d4f6140` install ritual doc fix - documented "Fresh peer install ritual (2-step)" in `docs/OPERATIONS.md` to fill the frozen `bridge_watcher_install.ps1` 4-of-7 file gap via `bridge_watcher_update_check.ps1 -Apply -Restart`. (b) `8c2a200` local cross-Claude bridge MCP server (:8895) - `tools/bridge_mcp_server.py` + `tools/start_bridge_mcp.py` mirrors s245 ds_matchdb_mcp pattern; 7 tools (bridge_search/post_note/post_task with auto-uuid/post_result/post_lesson/pending/status); HTTPS shuttle to `127.0.0.1:8888/api/bridge`; same RC_MCP_TOKEN chain. +46 tests. Wider RC 1705/0. Live-verified launcher binds clean, /health 200 with 7 tools, bridge_search returned 3 recent messages. **Operator-gated:** `RC-Bridge-MCP` scheduled task NOT created (gate at first ship); `.mcp.json` client wiring NOT done.
 
 ---
 
