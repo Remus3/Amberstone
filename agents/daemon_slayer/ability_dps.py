@@ -865,8 +865,8 @@ def _total_ability_haste(
     return float(base_ah) + aram_ah
 
 
-# ENGINE 1.29.0 (2026-05-21) - per-spell CC duration extractor seam.
-# Closes the item 129 carry-forward (a): 2nd consumer of the
+# ENGINE 1.30.0 (2026-05-21) - per-spell CC duration registry seeded.
+# Closes the item 130 carry-forward (b): this is the 2nd consumer of the
 # ``effective_cc_duration`` helper shipped 1.25.0 (item 122). The helper
 # itself lives in ``ehp.py`` (free function imported above); this slice
 # exposes the downstream-consumer surface at the per-spell AbilityDps
@@ -874,22 +874,104 @@ def _total_ability_haste(
 # per-rank base CC durations + the matching post-tenacity values without
 # re-resolving the champion.
 #
-# Mirrors the empty ``STAT_GRANT_CALC_KEYS`` seam pattern from item 112
-# (cdragon mFormulaParts evaluator): the registry stays EMPTY at 1.29.0
-# so production behavior is byte-identical to pre-slice (every spell's
-# ``cc_duration_s`` and ``cc_duration_post_tenacity`` are ``()`` empty
-# tuples). When a downstream consumer needs the data, future patches
-# populate the registry; today's value is ``()`` per spell which
-# collapses cleanly through ``effective_cc_duration`` to ``()``.
+# ENGINE 1.29.0 shipped the seam EMPTY (forward-marker pattern mirroring
+# item 112's ``STAT_GRANT_CALC_KEYS``). ENGINE 1.30.0 seeds a starter set
+# of high-impact CC abilities at patch 16.10.1, all values from official
+# Riot tooltips for FIRST-ORDER CC (stuns / roots / suspensions / knock-ups
+# / charms / suppressions / polymorphs / sleeps / taunts). Slows are NOT
+# encoded (different math). Conditional CC (3rd-stack stuns like Brand R,
+# Pyke Q charged variants requiring channel) are skipped where the base
+# semantic is unclear without a fight-sim observer.
+#
+# Engine math consumption is STILL FUTURE: today the values flow through
+# AbilitySpellDps.cc_duration_s + .cc_duration_post_tenacity for API
+# inspection (to_dict serialization) + future composition by a downstream
+# fight-sim or EHP-vs-CC blended scorer. compute_ability_dps does not
+# branch on the values; production DPS math is byte-identical to 1.29.0
+# for every population case.
 #
 # Schema:
 #   _PER_SPELL_CC_DURATIONS[champion_id][spell_key] = (cc_s_r1, ..., cc_s_r5)
-# where ``champion_id`` is the DDragon id (e.g. ``"Annie"``), ``spell_key``
-# is one of ``{"Q","W","E","R"}``, and the tuple is per-rank base CC
-# duration in seconds. Per-rank tuples are typically length 5 for Q/W/E
-# and length 3 for R, but the engine treats them as length-flexible
-# (consumer reads the rank slot).
-_PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {}
+# where ``champion_id`` is the DDragon id (e.g. ``"Annie"``, ``"MonkeyKing"``
+# for Wukong), ``spell_key`` is one of ``{"Q","W","E","R"}``, and the
+# tuple is per-rank base CC duration in seconds. Per-rank tuples are
+# length 5 for Q/W/E and length 3 for R; some abilities have a single
+# value across all ranks (e.g. Annie R 1.5s all 3 ranks). Single-value
+# tuples like (1.5,) are also accepted - the engine reads the rank slot
+# defensively (consumer behavior pinned by tests).
+_PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
+    # Ahri E - Charm: charm 1.0/1.25/1.5/1.75/2.0
+    "Ahri": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    # Annie R - Summon: Tibbers: stun on summon 1.5s all ranks
+    "Annie": {"R": (1.5, 1.5, 1.5)},
+    # Ashe R - Enchanted Crystal Arrow: stun 1.5-3.5s based on travel
+    # distance; use 1.5s as the minimum guaranteed floor across all ranks
+    "Ashe": {"R": (1.5, 1.5, 1.5)},
+    # Blitzcrank Q - Rocket Grab: pull then 1.0s stun on connect all ranks
+    "Blitzcrank": {"Q": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Cassiopeia R - Petrifying Gaze: stun 2.0s if facing (slow otherwise)
+    # all ranks
+    "Cassiopeia": {"R": (2.0, 2.0, 2.0)},
+    # Galio W - Shield of Durand: taunt 1.0s base on cast all ranks
+    "Galio": {
+        "W": (1.0, 1.0, 1.0, 1.0, 1.0),
+        # E - Justice Punch: knock-up 0.5s
+        "E": (0.5, 0.5, 0.5, 0.5, 0.5),
+        # R - Hero's Entrance: knock-up 0.75s on landing
+        "R": (0.75, 0.75, 0.75),
+    },
+    # Leona Q - Shield of Daybreak: stun 1.25s all ranks
+    "Leona": {
+        "Q": (1.25, 1.25, 1.25, 1.25, 1.25),
+        # E - Zenith Blade: root 0.5s on connect
+        "E": (0.5, 0.5, 0.5, 0.5, 0.5),
+        # R - Solar Flare: stun 1.5s in center
+        "R": (1.5, 1.5, 1.5),
+    },
+    # Lissandra R - Frozen Tomb: stun 1.5s on enemy-target cast all ranks
+    "Lissandra": {"R": (1.5, 1.5, 1.5)},
+    # Lulu W - Whimsy: polymorph 1.25/1.5/1.75/2.0/2.25
+    "Lulu": {"W": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    # Malzahar R - Nether Grasp: suppression 2.5s all ranks
+    "Malzahar": {"R": (2.5, 2.5, 2.5)},
+    # Maokai R - Nature's Grasp: root 1.2/1.6/2.0
+    "Maokai": {"R": (1.2, 1.6, 2.0)},
+    # MonkeyKing (Wukong) R - Cyclone: knock-up 1.0s on first hit
+    "MonkeyKing": {"R": (1.0, 1.0, 1.0)},
+    # Morgana Q - Dark Binding: root 2.0/2.25/2.5/2.75/3.0
+    "Morgana": {"Q": (2.0, 2.25, 2.5, 2.75, 3.0)},
+    # Nautilus Q - Dredge Line: root+pull 1.0/1.15/1.3/1.45/1.6
+    "Nautilus": {
+        "Q": (1.0, 1.15, 1.3, 1.45, 1.6),
+        # R - Depth Charge: knock-up 1.0/1.5/2.0 on final target
+        "R": (1.0, 1.5, 2.0),
+    },
+    # Pantheon W - Shield Vault: stun 1.0s all ranks
+    "Pantheon": {"W": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Rakan W - Grand Entrance: knock-up 1.0s all ranks
+    "Rakan": {"W": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Renekton W - Ruthless Predator: stun 0.75s base all ranks
+    "Renekton": {"W": (0.75, 0.75, 0.75, 0.75, 0.75)},
+    # Sejuani R - Glacial Prison: stun on travel-line 1.0/1.5/2.0
+    "Sejuani": {"R": (1.0, 1.5, 2.0)},
+    # Sona R - Crescendo: stun 1.5s all ranks
+    "Sona": {"R": (1.5, 1.5, 1.5)},
+    # Thresh Q - Death Sentence: stun 1.5s on connect all ranks
+    "Thresh": {"Q": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    # Veigar E - Event Horizon: stun on edge cross 1.5s all ranks
+    "Veigar": {"E": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    # Vi Q - Vault Breaker: knock-up 0.75s all ranks
+    "Vi": {
+        "Q": (0.75, 0.75, 0.75, 0.75, 0.75),
+        # R - Cease and Desist: knock-up 1.0s on initial target
+        "R": (1.0, 1.0, 1.0),
+    },
+    # Yasuo R - Last Breath: knock-up 1.0s on cast (then airborne held
+    # until end - approximate base trigger as 1.0)
+    "Yasuo": {"R": (1.0, 1.0, 1.0)},
+    # Zoe E - Sleepy Trouble Bubble: drowsy then 2.0s sleep on contact
+    "Zoe": {"E": (2.0, 2.0, 2.0, 2.0, 2.0)},
+}
 
 
 def _per_spell_cc_for(champion_id: str, spell_key: str) -> tuple[float, ...]:
