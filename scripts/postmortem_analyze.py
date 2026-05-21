@@ -67,6 +67,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.obj_participation import compute_obj_participation  # noqa: E402
 from core.post_game_rubric import compute_role_grade  # noqa: E402
 from core.smoothed_rates import laplace_rate, shrink  # noqa: E402
 
@@ -339,12 +340,20 @@ def iter_role_grades(conn: sqlite3.Connection, puuids: list[str]) -> list[dict]:
     (ARAM, Arena - team_position blank) are SKIPPED. Reads game_duration_s
     off the matches row; falls back to 0 (which compute_role_grade then
     fail-soft handles).
+
+    obj_participation_pct is computed per-row via
+    ``core.obj_participation.compute_obj_participation`` using the same
+    open connection. Closes the item-132 carry-forward (c) - the rubric
+    weights this axis (0.50 ADC / 0.70 JG / 0.30 MID / 0.25 TOP / 0.10
+    SUP) and 0.0 always under-scored participation-heavy roles by ~5-10
+    points.
     """
     if not puuids:
         return []
     placeholders = ",".join("?" * len(puuids))
     sql = f"""
         SELECT
+            p.match_id, p.puuid,
             p.team_position,
             p.kills, p.deaths, p.assists,
             p.total_minions_killed, p.neutral_minions_killed,
@@ -358,18 +367,21 @@ def iter_role_grades(conn: sqlite3.Connection, puuids: list[str]) -> list[dict]:
     """
     out: list[dict] = []
     for row in conn.execute(sql, puuids):
-        team_pos = row[0]
+        match_id = row[0]
+        row_puuid = row[1]
+        team_pos = row[2]
         role = _TEAM_POSITION_TO_ROLE.get(team_pos)
         if role is None:
             continue
-        kills = int(row[1] or 0)
-        deaths = int(row[2] or 0)
-        assists = int(row[3] or 0)
-        cs_minions = int(row[4] or 0)
-        cs_neutral = int(row[5] or 0)
-        vision = int(row[6] or 0)
-        damage = int(row[7] or 0)
-        duration_s = int(row[8] or 0)
+        kills = int(row[3] or 0)
+        deaths = int(row[4] or 0)
+        assists = int(row[5] or 0)
+        cs_minions = int(row[6] or 0)
+        cs_neutral = int(row[7] or 0)
+        vision = int(row[8] or 0)
+        damage = int(row[9] or 0)
+        duration_s = int(row[10] or 0)
+        obj_pct = compute_obj_participation(conn, match_id, row_puuid)
         stats = {
             "kills": kills,
             "deaths": deaths,
@@ -378,6 +390,7 @@ def iter_role_grades(conn: sqlite3.Connection, puuids: list[str]) -> list[dict]:
             "game_time_s": duration_s,
             "vision_score": vision,
             "damage_dealt_to_champions": damage,
+            "obj_participation_pct": obj_pct,
         }
         grade = compute_role_grade(stats, role)
         out.append({
