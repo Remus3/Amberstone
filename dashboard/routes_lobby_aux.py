@@ -14,7 +14,7 @@ Schema (``data/top8_list.json``):
 
     [
       {
-        "riot_id":      "SamplePlayer#Vayne",   # full Riot ID, name#tag
+        "riot_id":      "SamplePlayer#Trist",   # full Riot ID, name#tag
         "summoner_name": "SamplePlayer",        # legacy alias (pre-Riot-ID)
         "note":          "duo, last 12 games",
         "rank":          { "tier": "DIAMOND", "division": "II", "lp": 67 },
