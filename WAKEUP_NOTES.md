@@ -3,6 +3,37 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-21 - ADR-007 phase 2 postmortem-analyze SHIPPED (1 commit `b3cd60b`)
+
+Operator: "continue what is next to work on". Work-surface check: engine 1.26.0 ceiling per item 123, cost/latency exhausted, UI/UX live-game-gated. Path-stale-checked BACKLOG NOW lane via DB probe (28k CHAMPION_KILL events vs operator PUUIDs) -> ADR-007 phase 2 genuinely unbuilt + deferred since s169 (10 days). Operator AskUserQuestion-picked it from a 4-option fork. Full vertical slice shipped.
+
+**Commit `b3cd60b` feat(coach):** 4 NEW files (`scripts/postmortem_analyze.py` + `core/death_patterns_loader.py` + 2 tests) + 6 prompts in 4 coach modules + `.gitignore` add + ROADMAP/CLAUDE sync. +875 -7 LOC.
+
+**(a) `scripts/postmortem_analyze.py`** mines `data/rewind_history.db` for tracked PUUIDs (auto-resolves current + stale from `rewind_catchup.state.json`). 6 patterns: `caught_4plus` (assists>=3) / `solo_1v1_loss` (assists==0; mutually exclusive with caught) / `early_pre_3min` / `solo_pickoff` (no ally death in 8s window; team-filtered via participants.team_id) / `late_throw` (>=25min) / `rapid_repeat` (<=60s after prior self-death; per-match tracking). Laplace-smoothed rates via `core/smoothed_rates.py`. Atomic tmp+replace write to `data/coaching/death_patterns.json` (gitignored - personal data + PUUIDs).
+
+**Live run:** 28,236 deaths / 2,838 matches / 0.04s. **Top-3: solo_pickoff (16595, 59%) / caught_4plus (12345, 44%) / rapid_repeat (6165, 22%).** Genuinely actionable.
+
+**(b) `core/death_patterns_loader.py`** fail-soft reader + `personal_context_block()` formatter. Empty string when no top-3.
+
+**(c) 6 coach prompts wired:** appended after the closing triple-quote of each (NEVER mid-block - cache-prefix preservation per [[reference_coach_choices_native_emit]]). aram_coach `_SYSTEM` / arena_coach `_SYSTEM_PROMPT` / brawl_coach 3 prompts (NB/URF/OFA) / coach_integration._sr_prompt `SR_SYSTEM_PROMPT`. `ARAM_SYSTEM_PROMPT` inside `_sr_prompt.py` DELIBERATELY left untouched (legacy, test-pinned not-modified).
+
+**Tests:** RC 2662 -> 2692 (+30: 24 analyzer + 6 loader). 87 existing coach-choices-emit still green. py_compile + ruff + ASCII clean on all 8 touched files. CI green.
+
+**Don't-redo:**
+- 6 pattern thresholds operator-tuned away from noise (caught_4plus at >=3 NOT >=1 which fired on 92% of all deaths; solo_1v1_loss at ==0 mutually exclusive via elif)
+- personal_context_block APPENDED after closing `"""` - do NOT refactor to f-string substitution or inline insertion (cache-prefix preservation)
+- ARAM_SYSTEM_PROMPT in `_sr_prompt.py` is legacy + test-pinned not-modified; active ARAM owns its own prompt under `coaches/aram_coach.py`
+- solo_pickoff filters ally deaths by participants.team_id (NOT all prior CHAMPION_KILLs); do NOT regress to team-blind
+- data/coaching/death_patterns.json is gitignored (personal data + PUUIDs); do NOT commit
+- Module-load caching is intentional; regenerate via `py scripts/postmortem_analyze.py && echo restart > restart_trigger.txt`
+
+**Carries forward:**
+- Cadence: analyzer is MANUAL. Optional weekly cron alongside RC-RewindCatchup (Sundays 04:00) is operator-gated.
+- Live ARAM/SR smoke: prompts carry PERSONAL CONTEXT but Live Client games needed to verify coach output references patterns when situationally relevant.
+- ADR-007 phase 3 (prose-coach deprecation) is the next logical follow-up but DELIBERATELY out-of-scope per the ADR's explicit "defer until phase-1 detectors prove out in real games" gate.
+- All item 123/122/121 carries unchanged.
+
+---
 # 2026-05-21 - headless-upgrade run: ASCII drift catch (1 commit `b56f156`)
 
 Short autonomous /headless-upgrade run; work surface EXHAUSTED at engine 1.26.0 ceiling.
