@@ -138,6 +138,9 @@
   flex-wrap: wrap;
   font-size: 12px;
   color: var(--text-faint);
+  /* Tabular-nums so the WR % + last-7 streak digits in the tail row
+   * stay aligned across player cards (ally vs enemy panels). */
+  font-variant-numeric: tabular-nums;
 }
 .tc-slot-mains {
   flex: 1;
@@ -145,12 +148,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Mains carry mastery point digits + game counts; tabular-nums keeps
+   * the digit columns aligned even though the labels vary. */
+  font-variant-numeric: tabular-nums;
 }
 .tc-slot-wr,
 .tc-slot-streak {
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
+  /* WR + streak are pure numeric tokens; tabular-nums is a clean win. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Skeleton - values not yet populated by FU02 fan-out. Dashed underline
