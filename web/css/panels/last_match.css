@@ -33,8 +33,9 @@
 }
 .lm-hero-identity {
   display: grid;
-  /* s220 PGR S3: 6th column is the new match-score block (0-100 + tier). */
-  grid-template-columns: 72px auto auto auto auto auto;
+  /* s220 PGR S3 + item 131 Slice A wire: 7th column is the per-role
+   * grade block (S+/S/A/B/C/D + role label). */
+  grid-template-columns: 72px auto auto auto auto auto auto;
   align-items: center;
   gap: 14px;
 }
@@ -79,6 +80,61 @@
 .lm-hero-score[data-tier="ok"]        .lm-hero-score-tier { color: var(--accent,  #8a8cf0); }
 .lm-hero-score[data-tier="bad"]       .lm-hero-score-value,
 .lm-hero-score[data-tier="bad"]       .lm-hero-score-tier { color: var(--bad,     #e07a7a); }
+
+/* Item 131 Slice A wire: per-role grading rubric block. Mirrors the
+ * .lm-hero-score visual but with an S+/S/A/B/C/D tier and the role
+ * label (ADC / SUP / JG / MID / TOP). Hidden until the
+ * /api/post-game-rubric fetch lands. */
+.lm-hero-role-grade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 14px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  min-width: 70px;
+  cursor: help;
+}
+.lm-hero-role-grade[hidden] { display: none; }
+.lm-hero-role-grade-role {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.lm-hero-role-grade-value {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.lm-hero-role-grade-tier {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+/* Tier coloring: S+/S/A = good (gold/green/accent), B = neutral,
+ * C/D = bad. Matches the calibration from compute_role_grade. */
+.lm-hero-role-grade[data-tier="S+"] .lm-hero-role-grade-value,
+.lm-hero-role-grade[data-tier="S+"] .lm-hero-role-grade-tier { color: var(--grade-s, #f5b87c); }
+.lm-hero-role-grade[data-tier="S"]  .lm-hero-role-grade-value,
+.lm-hero-role-grade[data-tier="S"]  .lm-hero-role-grade-tier { color: var(--ok,      #8ce5a8); }
+.lm-hero-role-grade[data-tier="A"]  .lm-hero-role-grade-value,
+.lm-hero-role-grade[data-tier="A"]  .lm-hero-role-grade-tier { color: var(--accent,  #8a8cf0); }
+.lm-hero-role-grade[data-tier="B"]  .lm-hero-role-grade-value,
+.lm-hero-role-grade[data-tier="B"]  .lm-hero-role-grade-tier { color: var(--text); }
+.lm-hero-role-grade[data-tier="C"]  .lm-hero-role-grade-value,
+.lm-hero-role-grade[data-tier="C"]  .lm-hero-role-grade-tier { color: var(--warn, #e0b06f); }
+.lm-hero-role-grade[data-tier="D"]  .lm-hero-role-grade-value,
+.lm-hero-role-grade[data-tier="D"]  .lm-hero-role-grade-tier { color: var(--bad,  #e07a7a); }
 
 /* W/L pill - visible only when LCU enrichment carries a real win flag. */
 .lm-hero-result {
