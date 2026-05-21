@@ -38,8 +38,24 @@ class _FakeHandler:
         return status, json.loads(body), ct
 
 
+_ROLE_GRADES_FIXTURE = {
+    "total_matches_scored": 624,
+    "overall": {
+        "count": 624,
+        "median_score": 41,
+        "tier_distribution": {"S+": 0, "S": 8, "A": 56, "B": 164, "C": 159, "D": 237},
+    },
+    "by_role": {
+        "ADC": {"count": 177, "median_score": 41, "tier_distribution": {"S+": 0, "S": 0, "A": 31, "B": 37, "C": 48, "D": 61}},
+        "SUP": {"count": 79, "median_score": 57, "tier_distribution": {"S+": 0, "S": 8, "A": 14, "B": 29, "C": 8, "D": 20}},
+        "JG": {"count": 52, "median_score": 32, "tier_distribution": {"S+": 0, "S": 0, "A": 0, "B": 14, "C": 10, "D": 28}},
+        "MID": {"count": 80, "median_score": 44, "tier_distribution": {"S+": 0, "S": 0, "A": 11, "B": 16, "C": 33, "D": 20}},
+        "TOP": {"count": 236, "median_score": 37, "tier_distribution": {"S+": 0, "S": 0, "A": 0, "B": 68, "C": 60, "D": 108}},
+    },
+}
+
 _POPULATED = {
-    "schema_version": 1,
+    "schema_version": 2,
     "generated_at": "2026-05-21T03:14:15Z",
     "puuids": ["abc"],
     "total_deaths": 28236,
@@ -75,6 +91,7 @@ _POPULATED = {
         },
     },
     "top3": ["solo_pickoff", "caught_4plus", "rapid_repeat"],
+    "role_grades": _ROLE_GRADES_FIXTURE,
 }
 
 
@@ -226,6 +243,65 @@ class CacheTests(_FsCase):
         routes._serve_personal_context(h2)
         _, body2, _ = h2.last
         self.assertTrue(body2["ok"])
+
+
+class RoleGradesPayloadTests(_FsCase):
+    """The /api/personal-context payload carries the role_grades envelope
+    when schema_version=2 + role_grades is present in the JSON file."""
+
+    def test_role_grades_present_in_response(self):
+        self._write(_POPULATED)
+        h = _FakeHandler()
+        routes._serve_personal_context(h)
+        _, body, _ = h.last
+        self.assertTrue(body["ok"])
+        self.assertIn("role_grades", body)
+
+    def test_role_grades_overall_carries_count_median_tiers(self):
+        self._write(_POPULATED)
+        h = _FakeHandler()
+        routes._serve_personal_context(h)
+        _, body, _ = h.last
+        rg = body["role_grades"]
+        self.assertEqual(rg["total_matches_scored"], 624)
+        self.assertEqual(rg["overall"]["count"], 624)
+        self.assertEqual(rg["overall"]["median_score"], 41)
+        self.assertEqual(rg["overall"]["tier_distribution"]["B"], 164)
+
+    def test_role_grades_by_role_canonical_keys(self):
+        self._write(_POPULATED)
+        h = _FakeHandler()
+        routes._serve_personal_context(h)
+        _, body, _ = h.last
+        rg = body["role_grades"]
+        self.assertEqual(set(rg["by_role"].keys()), {"ADC", "SUP", "JG", "MID", "TOP"})
+        self.assertEqual(rg["by_role"]["TOP"]["count"], 236)
+        self.assertEqual(rg["by_role"]["JG"]["median_score"], 32)
+
+    def test_role_grades_omitted_when_schema_v1(self):
+        # An older schema v1 file (no role_grades section) -> the field is
+        # OMITTED from the payload (not present as {}). Frontend treats the
+        # missing key the same as zero-count.
+        v1 = dict(_POPULATED)
+        v1.pop("role_grades")
+        v1["schema_version"] = 1
+        self._write(v1)
+        h = _FakeHandler()
+        routes._serve_personal_context(h)
+        _, body, _ = h.last
+        self.assertTrue(body["ok"])
+        self.assertNotIn("role_grades", body)
+
+    def test_role_grades_cached_with_payload(self):
+        # The same cache slot holds top3 + role_grades; a single hit
+        # returns the full envelope.
+        self._write(_POPULATED)
+        h1 = _FakeHandler()
+        routes._serve_personal_context(h1)
+        h2 = _FakeHandler()
+        routes._serve_personal_context(h2)
+        _, body2, _ = h2.last
+        self.assertIn("role_grades", body2)
 
 
 class RouteRegistrationTests(unittest.TestCase):
