@@ -156,6 +156,16 @@ class GameLifecycleManager:
                     _pgc.trigger(_gm)
             except Exception as _pgc_exc:
                 _log.debug("postgame trigger error: %s", _pgc_exc)
+        # Live rewind-DB writer (item 119): post-gameEnd, fire-and-forget
+        # schedule Match-V5 + timeline fetch + INSERT OR IGNORE into
+        # rewind_history.db so the operator's "what did I just play"
+        # surface is fresh without waiting for the Sunday cron. Frozen-
+        # file 1-line wire under headless-upgrade grant.
+        try:
+            from lib.rewind_live_writer import schedule_live_insert
+            schedule_live_insert(app)
+        except Exception as _rlw_exc:
+            _log.debug("rewind live-writer trigger error: %s", _rlw_exc)
         _sp = app._tft_mode or app._arena_mode or app._brawl_mode or app._aram_mode
         if _sp:
             if HAS_TRACKER:
