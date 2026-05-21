@@ -136,7 +136,7 @@ class SerializationTests(unittest.TestCase):
 
     def test_frozen_dataclass(self):
         c = cc.CoachChoice(key="A", label="X")
-        with self.assertRaises(Exception):
+        with self.assertRaises(AttributeError):
             c.label = "mutated"
 
 
