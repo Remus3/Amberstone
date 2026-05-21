@@ -463,6 +463,7 @@ class CoachIntegration:
             "fight rule":   "fight_rule",
             "reset / item": "reset_item",
             "risk":         "risk",
+            "choices":      "choices",
         }
         fields = {}
         current_key = None
@@ -501,6 +502,25 @@ class CoachIntegration:
             import re as _re
             plain = _re.sub(r'\[/?[AET]\]', '', fields["action"]).strip()
             fields["action"] = plain.upper()
+
+        # Passthrough for the optional native-emit `choices` JSON array.
+        # The model returns a single-line JSON list (per the OUTPUT FORMAT
+        # block); _parse_response stores it as a string. Decode here and
+        # write a real Python list into the artifact so the dashboard's
+        # state builder picks it up via core.coach_choices.parse_choices.
+        # On any failure: silently swallow and let the synthesizer
+        # fallback in _state_builder cover the tick. The choices field
+        # is OPTIONAL by contract.
+        _choices_list: list = []
+        _choices_raw = fields.get("choices", "").strip()
+        if _choices_raw:
+            try:
+                _parsed = json.loads(_choices_raw)
+                if isinstance(_parsed, list):
+                    _choices_list = _parsed
+            except Exception:
+                pass
+        fields["choices"] = _choices_list
 
         # (audit cycle 10) Mirror ARAM/Arena/Brawl pattern: surface
         # champion + ally_spells from _last_state so the dashboard
