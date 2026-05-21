@@ -83,6 +83,7 @@ Augment advice: <if augment select: take X - why. Else: play your current augmen
 Anvil advice: <if anvil open: take X to complete Y. Else: next component to build>
 Target priority: <kill [E]name[/E] first - why - then who>
 Risk: <[E]ability[/E] to dodge + when it's up>
+Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "augment-pick", "round-trade", "duo-rotate", "anvil-buy", "fight-trade". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """
 
 _USER_TEMPLATE = """\
@@ -122,7 +123,7 @@ Gameplan: <how to fight differently because of this augment>
 
 _OUTPUT_KEYS = [
     "action", "round strategy", "fight rule",
-    "augment advice", "anvil advice", "target priority", "risk",
+    "augment advice", "anvil advice", "target priority", "risk", "choices",
 ]
 
 
@@ -603,6 +604,24 @@ class Coach(BaseCoach):
                 logger.warning("Arena: no fields parsed")
                 return
 
+            # Passthrough for the optional native-emit `choices` JSON array.
+            # The model returns a single-line JSON list (per the OUTPUT FORMAT
+            # block); parse_fields stores it as a string. Decode here and
+            # write a real Python list into the artifact so the dashboard's
+            # state builder picks it up via core.coach_choices.parse_choices.
+            # On any failure: silently swallow and let the synthesizer
+            # fallback in _state_builder cover the tick. The choices field
+            # is OPTIONAL by contract.
+            _choices_list: list = []
+            _choices_raw = fields.get("choices", "").strip()
+            if _choices_raw:
+                try:
+                    _parsed = json.loads(_choices_raw)
+                    if isinstance(_parsed, list):
+                        _choices_list = _parsed
+                except Exception:
+                    pass
+
             current = load_json(self._out)
             current.update({
                 "action":          fields.get("action",          "").upper(),
@@ -612,6 +631,7 @@ class Coach(BaseCoach):
                 "anvil_advice":    fields.get("anvil advice",    ""),
                 "target_priority": fields.get("target priority", ""),
                 "risk":            fields.get("risk",            ""),
+                "choices":       _choices_list,
                 "teams":           teams,
                 "round":           state.get("round",        0),
                 "rank":            state.get("rank",         "?"),
