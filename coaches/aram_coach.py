@@ -27,6 +27,7 @@ from coaches._base_coach import (
     parse_fields,
     read_api_key,
 )
+from core.death_patterns_loader import personal_context_block
 from core.mayhem_detect import is_mayhem
 
 logger = logging.getLogger("rc.coaches.aram")
@@ -255,7 +256,7 @@ Item build: <comma-separated FULL COMPLETED items ONLY, 4-6 items - NO component
 Item extra: <ONLY if no 7th item: "Pot: X" for potion boots OR "Shard: X" for rune shard - else omit>
 Item reasons: <per-item one-liner (max 6 words each), semicolon-separated, format "ItemName=reason"; e.g. "Liandry's=anti-tank HP burn; Zhonya's=vs Zed R; Rylai's=kite slow" - only for items in Item build>
 Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "pack-grab", "scaling", "siege-call", "augment-pivot". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
-"""
+""" + personal_context_block()
 
 _USER_TMPL = """\
 === {game_time} | ARAM{mayhem_tag} ===
