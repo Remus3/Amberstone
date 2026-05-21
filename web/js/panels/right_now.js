@@ -437,7 +437,8 @@ function renderRightNow(p) {
   // Detect content change for fresh-state flash - only pulse when the
   // headline actually changes, not on every re-emit of the same text.
   const prevAction = RN.action.dataset.raw || "";
-  if (hasAction && rawAction !== prevAction) {
+  const isFreshAction = hasAction && rawAction !== prevAction;
+  if (isFreshAction) {
     RN.root.classList.remove("rn-fresh");
     void RN.root.offsetWidth;
     RN.root.classList.add("rn-fresh");
@@ -445,6 +446,23 @@ function renderRightNow(p) {
   }
   RN.action.dataset.raw = rawAction;
   RN.action.className = "action action-" + klass;
+  // 2026-05-20 UI polish: per-band pulse on the .action element itself
+  // when the headline text changes. classifyAction() bands map to the
+  // tokens.css coach-pulse-{good,warn,bad} keyframes. "empty" stays
+  // silent (no headline -> nothing to pulse). The pulse class is
+  // dropped 800ms later so a stable headline does not retain it.
+  if (isFreshAction) {
+    const pulseMap = { urgent: "rn-pulse-bad",
+                       fight:  "rn-pulse-warn",
+                       good:   "rn-pulse-good" };
+    const pulseClass = pulseMap[klass];
+    if (pulseClass) {
+      RN.action.classList.remove("rn-pulse-good", "rn-pulse-warn", "rn-pulse-bad");
+      void RN.action.offsetWidth;
+      RN.action.classList.add(pulseClass);
+      setTimeout(() => RN.action.classList.remove(pulseClass), 800);
+    }
+  }
   // Priority glyph prefix - a quick shape-read for peripheral vision.
   // Skip the glyph when we have no action text to avoid a lonely "►".
   // Also skip if the fixture/coach already starts the string with a
