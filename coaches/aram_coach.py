@@ -254,6 +254,7 @@ Risk: <single most dangerous enemy ability, max 10 words>
 Item build: <comma-separated FULL COMPLETED items ONLY, 4-6 items - NO components (no Dagger, Long Sword, Pickaxe, B.F. Sword, etc.); omit boots unless critical; prefix 7th item with "+" if excess gold warrants it>
 Item extra: <ONLY if no 7th item: "Pot: X" for potion boots OR "Shard: X" for rune shard - else omit>
 Item reasons: <per-item one-liner (max 6 words each), semicolon-separated, format "ItemName=reason"; e.g. "Liandry's=anti-tank HP burn; Zhonya's=vs Zed R; Rylai's=kite slow" - only for items in Item build>
+Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "pack-grab", "scaling", "siege-call", "augment-pivot". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """
 
 _USER_TMPL = """\
@@ -764,7 +765,7 @@ class Coach(BaseCoach):
             flds = parse_fields(raw, [
                 "action", "immediate", "fight rule",
                 "reset / item", "risk", "item build", "item extra",
-                "item reasons",
+                "item reasons", "choices",
             ])
             if not flds:
                 logger.warning("ARAM: no fields parsed (raw len=%d)", len(raw or ""))
@@ -813,6 +814,24 @@ class Coach(BaseCoach):
                 _imm_raw = _re.sub(
                     r'\bfountain\s+now\b', 'fall back', _imm_raw, flags=_re.I,
                 )
+            # Passthrough for the optional native-emit `choices` JSON array.
+            # The model returns a single-line JSON list (per the OUTPUT FORMAT
+            # block); parse_fields stores it as a string. Decode here and
+            # write a real Python list into the artifact so the dashboard's
+            # state builder picks it up via core.coach_choices.parse_choices.
+            # On any failure: silently swallow and let the synthesizer
+            # fallback in _state_builder cover the tick. The choices field
+            # is OPTIONAL by contract.
+            _choices_list: list = []
+            _choices_raw = flds.get("choices", "").strip()
+            if _choices_raw:
+                try:
+                    _parsed = json.loads(_choices_raw)
+                    if isinstance(_parsed, list):
+                        _choices_list = _parsed
+                except Exception:
+                    pass
+
             cur = load_json(self._out)
             cur.update({
                 "action":        _action_raw.upper(),
@@ -822,6 +841,7 @@ class Coach(BaseCoach):
                 "reset_item":    flds.get("reset / item", ""),
                 "objective":     flds.get("objective", ""),
                 "risk":          flds.get("risk", ""),
+                "choices":       _choices_list,
                 "game_time":     state.get("game_time",    "0:00"),
                 "game_time_s":   state.get("game_seconds",  0),
                 "hp_pct":        state.get("hp_pct",        100),
