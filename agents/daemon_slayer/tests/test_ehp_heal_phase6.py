@@ -26,7 +26,10 @@ Coverage classes:
   pipeline (NOT an ItemHeal); shield_any populated at the right magnitude.
 * ``SunderedSkyHealTests`` - melee/ranged base AD scaling per trigger.
 * ``SpiritVisageAmpTests`` - heal pool multiplied by 1.25; pure-shield
-  builds unaffected; lifesteal-only builds amped correctly.
+  builds were unaffected in Phase 6 (ENGINE 1.28.0) but Phase 6.5
+  (ENGINE 1.29.0, ``test_spirit_visage_amps_phase15_shields_at_125``)
+  extends the amp to the shield pool too per Riot's tooltip wording
+  "increases self-healing and shielding by 25%".
 * ``EhpResultHealFieldsTests`` - new heal_* fields present in to_dict
   + format_table renders heal row when non-zero.
 * ``DeathsDanceDeferredTests`` - DD 6333 stays defensive_only (Defy heal
@@ -391,25 +394,52 @@ class SpiritVisageAmpTests(unittest.TestCase):
             r_amped.heal_total, r_alone.heal_total * 1.25, places=2
         )
 
-    def test_spirit_visage_does_not_amp_phase15_shields(self) -> None:
-        # Deliberate Phase 6 boundary: SV amp applies to heal pool only,
-        # NOT to Phase 1.5 shield magnitudes. Sterak's bonus_hp shield
-        # is unchanged by adding SV.
+    def test_spirit_visage_amps_phase15_shields_at_125(self) -> None:
+        # Phase 6.5 (ENGINE 1.29.0) closes the Phase 6 deliberate
+        # boundary: Riot's tooltip on Spirit Visage 3065 reads
+        # "increases self-healing and shielding by 25%". The Phase 6
+        # wire amped only the heal pool; Phase 6.5 extends the same
+        # multiplier to the shield pool too.
+        #
+        # The ``shield_any`` / ``shield_phys`` / ``shield_mag`` /
+        # ``shield_true`` fields stay PRE-amp for transparency (matching
+        # the ``heal_item_total`` / ``heal_lifesteal`` pre-amp convention);
+        # ``shield_amp_mult`` exposes the multiplier; the EHP-math at
+        # ``compute_ehp`` line ~590 applies the amp at the top of the
+        # damage stack. The two amps (heal_amp_mult and shield_amp_mult)
+        # are SIBLINGS, not nested - same multiplier value today but
+        # conceptually independent fields.
         r_sterak = compute_ehp(
             self.snap, "Aatrox", 11, item_ids=["3053"], mode="SR"
         )
         r_sterak_sv = compute_ehp(
             self.snap, "Aatrox", 11, item_ids=["3053", "3065"], mode="SR"
         )
-        # Same shield magnitude on both (within float epsilon; HP changes
-        # slightly because SV adds 400 HP -> bonus_hp goes up -> Sterak's
-        # 60% scaling reacts. But the SHIELD value itself isn't amped by
-        # the heal_amp_pct multiplier; it just scales with bonus_hp).
-        # So delta should equal 0.60 * 400 = 240 (Sterak's reaction to
-        # SV's HP), NOT 0.60 * 400 * 1.25 = 300 (which would be the case
-        # if amp were applied).
-        delta = r_sterak_sv.shield_any - r_sterak.shield_any
-        self.assertAlmostEqual(delta, 240.0, places=0)
+        # shield_any pre-amp value still reacts to SV's bonus_hp pickup
+        # (60% of 400 = 240); delta on the PRE-amp field is unchanged
+        # from Phase 6.
+        delta_pre_amp = r_sterak_sv.shield_any - r_sterak.shield_any
+        self.assertAlmostEqual(delta_pre_amp, 240.0, places=0)
+        # shield_amp_mult flips to 1.25 (was 1.0 pre-Phase-6.5).
+        self.assertAlmostEqual(r_sterak.shield_amp_mult, 1.0, places=4)
+        self.assertAlmostEqual(r_sterak_sv.shield_amp_mult, 1.25, places=4)
+        # physical_ehp lift is now LARGER than Phase 6 by exactly the
+        # shield-amp contribution: (shield_any_with_sv * 0.25) /
+        # (armor_factor(armor) * mode_mult). Verified end-to-end with
+        # Aatrox L11 armor base + Sterak's HP grant.
+        armor = r_sterak_sv.armor
+        armor_factor = 100.0 / (100.0 + armor)
+        shield_amp_lift = (r_sterak_sv.shield_any * 0.25) / armor_factor
+        phase6_lift = r_sterak_sv.physical_ehp - r_sterak.physical_ehp
+        # Phase 6 would have given a smaller lift (no shield amp); the
+        # Phase 6.5 delta exceeds the Phase-6 expected delta by exactly
+        # the shield_amp_lift (within float tolerance). We pin the post-
+        # amp physical_ehp directly: must include the amped shield.
+        expected_phys_ehp = (r_sterak_sv.hp + r_sterak_sv.shield_any * 1.25) / armor_factor
+        self.assertAlmostEqual(r_sterak_sv.physical_ehp, expected_phys_ehp, places=1)
+        # Sanity: the shield_amp_lift is strictly positive.
+        self.assertGreater(shield_amp_lift, 0.0)
+        self.assertGreater(phase6_lift, shield_amp_lift)
 
 
 # ---------------- EhpResult new fields ----------------
