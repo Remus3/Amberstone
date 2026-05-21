@@ -3,6 +3,29 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-21 - headless-upgrade run: ASCII drift catch (1 commit `b56f156`)
+
+Short autonomous /headless-upgrade run; work surface EXHAUSTED at engine 1.26.0 ceiling.
+
+**Phase 0:** baseline gathered (DS 2860 / RC 2662 / CI 6/6 green / ENGINE 1.26.0 / DDragon cron 03:30:30 LastResult=0 = item 110 retry-with-backoff fix proven live).
+
+**Phase 1 (only shipped phase):** `b56f156` chore(ascii): strip UTF-8 BOM from 4 non-frozen `.py` (ops/rc_self_monitor.py + ops/rc_state_validator.py + scripts/team_planner_sync.py + tft/tft_coach_engine.py) + close 2 Python SyntaxWarnings (tools/build_installer.py:136 `\;` -> `\\;` runtime byte-identical; tools/extract_panels.py:1-4 docstring -> r-string + U+2192 arrow -> ASCII `->`). py_compile + ruff + ASCII clean. No behavior change. No test changes. No frozen edits. CI green (1m26s).
+
+**Phases 2/3 skipped (honest verdict):** DS audit halted at 1.26.0 streak 13 per item 122; cost/latency lever surface exhausted (prompt-cache fully covered item 120; log spam 8 endpoints item 121; polling sane); UI/UX live-game-gated.
+
+**ops/rc_supervisor.py BOM left alone:** frozen file + retroactive non-ASCII sweep is operator-gated per CLAUDE.md. Don't auto-action.
+
+**New memory:** `feedback_backlog_path_stale_check.md` - before recommending "next NOW-lane item", grep proposed paths against live codebase; generalizes [[feedback_verify_generated_reports]] from API output to source state. Catches the same way item 122 caught 4 stale BACKLOG entries.
+
+**Don't-redo:**
+- engine 1.26.0 Meraki-coherent ceiling; no DS audit work without Meraki-confirmed drift
+- ops/rc_supervisor.py BOM is operator-gated retroactive (not a current-run frozen-edit candidate)
+- ASCII drift now clean across non-frozen .py; the recheck (`py -c "import ast,pathlib;..."`) is the durable detector
+- aram_tenacity_mult end-consumer is intentionally a forward-marker per BACKLOG; do NOT speculatively wire
+
+**Carries forward:** all item 122 / 121 / 119 carries unchanged. None new.
+
+---
 # 2026-05-21 - BACKLOG drain: aram_tenacity_mult EHP wire + Dead Man's Plate stacks-schema lift + ROADMAP/BACKLOG sweep (ENGINE 1.24.0 -> 1.26.0)
 
 Operator asked "what is next" - identified item-AH lane + ward-heat frontend as ALREADY SHIPPED (paths-stale BACKLOG entries; verified via git log: f273acb f4938af). Pivoted to 3 genuine NOW items, all 3 shipped.
