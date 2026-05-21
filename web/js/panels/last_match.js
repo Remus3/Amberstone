@@ -361,6 +361,10 @@ function renderLastMatch(data) {
   // _setHeroScore reuses _rosterScores so the number is consistent
   // with the per-row chip + MVP card.
   _setHeroScore(m, enriched);
+  // Item 131 Slice A: per-role grade chip - fetches the operator's
+  // S+/S/A/B/C/D grade for this match from /api/post-game-rubric
+  // (sibling to _rosterScores; role-aware vs lobby-relative).
+  _setHeroRoleGrade(m);
   _setChart(enriched);
   _setTimeline(enriched);
   _setPhases(m, enriched);
@@ -722,6 +726,46 @@ function _setHeroScore(m, enriched) {
   tierEl.textContent  = tier.label;
   wrap.dataset.tier   = tier.key;
   wrap.hidden = false;
+}
+
+// Item 131 Slice A wire: per-role grading rubric chip. Fetches
+// /api/post-game-rubric for the operator's row in this match, paints
+// the S+/S/A/B/C/D grade alongside the role label. The grade is
+// role-aware (sourced from core/post_game_rubric.py); the existing
+// _setHeroScore is lobby-relative. The two compose visually.
+function _setHeroRoleGrade(m) {
+  const wrap    = document.getElementById("lm-hero-role-grade");
+  const roleEl  = document.getElementById("lm-hero-role-grade-role");
+  const valueEl = document.getElementById("lm-hero-role-grade-value");
+  const tierEl  = document.getElementById("lm-hero-role-grade-tier");
+  if (!wrap || !roleEl || !valueEl || !tierEl) return;
+  const matchId = (m && m.id) || "";
+  if (!matchId) {
+    wrap.hidden = true; wrap.dataset.tier = "";
+    roleEl.textContent = "-"; valueEl.textContent = "-"; tierEl.textContent = "-";
+    return;
+  }
+  const url = `/api/post-game-rubric?match_id=${encodeURIComponent(matchId)}`;
+  fetch(url, { headers: { "Accept": "application/json" } })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data || !data.ok) {
+        wrap.hidden = true; wrap.dataset.tier = "";
+        return;
+      }
+      const score = Math.round(Number(data.total_score) || 0);
+      const grade = String(data.percentile_grade || "-");
+      const role  = String(data.role || "-");
+      roleEl.textContent  = role;
+      valueEl.textContent = String(score);
+      tierEl.textContent  = grade;
+      wrap.dataset.tier   = grade;
+      wrap.hidden = false;
+    })
+    .catch((err) => {
+      try { console.warn("[post-game-rubric] fetch failed:", err); } catch (_) {}
+      wrap.hidden = true; wrap.dataset.tier = "";
+    });
 }
 
 // s220 PGR S3: render a aggregator-G-style MVP / SVP card above one team's
@@ -1115,6 +1159,14 @@ function _setEmptyState(errMsg) {
   const heroScoreTier = document.getElementById("lm-hero-score-tier");
   if (heroScoreVal)  heroScoreVal.textContent  = "-";
   if (heroScoreTier) heroScoreTier.textContent = "-";
+  // Item 131 Slice A: clear the per-role grade chip.
+  const heroRole = document.getElementById("lm-hero-role-grade");
+  if (heroRole) { heroRole.hidden = true; heroRole.dataset.tier = ""; }
+  ["lm-hero-role-grade-role", "lm-hero-role-grade-value",
+   "lm-hero-role-grade-tier"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "-";
+  });
   ["lm-tc-ally-mvp", "lm-tc-enemy-mvp"].forEach((id) => {
     const c = document.getElementById(id);
     if (c) { c.hidden = true; c.dataset.kind = ""; c.innerHTML = ""; }
