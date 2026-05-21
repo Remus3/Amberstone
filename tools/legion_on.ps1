@@ -1,0 +1,63 @@
+# legion_on.ps1 - start all Legion RC processes + launch Claude Desktop.
+# Idempotent: re-run while everything is up = no duplicates (IgnoreNew + singleton checks).
+
+$ErrorActionPreference = 'SilentlyContinue'
+Write-Host "=== Legion ON ==="
+
+# 1. Start AtStartup tasks first (SYSTEM context - infra), then AtLogon tasks (app-level)
+$tasks = @(
+  'RC-VisionServer',
+  'RC-Supervisor',
+  'RC-BridgeDaemon',
+  'RC-BridgeWatcher',
+  'RC-Phase3-Supervisor',
+  'RC-DS-MatchDB-MCP'
+)
+foreach ($t in $tasks) {
+  $task = Get-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue
+  if ($null -eq $task) { Write-Host "[on] $t : MISSING (task not registered)"; continue }
+  if ($task.State -eq 'Running') {
+    Write-Host "[on] $t : already Running"
+  } else {
+    Start-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
+    $now = (Get-ScheduledTask -TaskName $t).State
+    Write-Host "[on] $t : started (state=$now)"
+  }
+}
+
+# 2. DS server :8893 - not supervisor-watched per memory; launch manually if absent
+$dsListening = Get-NetTCPConnection -LocalPort 8893 -State Listen -ErrorAction SilentlyContinue
+if ($dsListening) {
+  Write-Host "[on] DS server :8893 already listening (pid $($dsListening[0].OwningProcess))"
+} else {
+  $py = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
+  $ds = 'C:\Riot Commander\tools\start_daemon_slayer.py'
+  if ((Test-Path $py) -and (Test-Path $ds)) {
+    Start-Process -FilePath $py -ArgumentList "`"$ds`"" -WorkingDirectory 'C:\Riot Commander' -WindowStyle Hidden
+    Write-Host "[on] DS server launching (start_daemon_slayer.py)"
+    Start-Sleep -Seconds 5
+    $dsListening = Get-NetTCPConnection -LocalPort 8893 -State Listen -ErrorAction SilentlyContinue
+    if ($dsListening) { Write-Host "[on] DS server :8893 up (pid $($dsListening[0].OwningProcess))" }
+    else { Write-Host "[on] WARN: DS server did not bind :8893 within 5s" }
+  } else {
+    Write-Host "[on] WARN: DS launcher or python not found"
+  }
+}
+
+# 3. Launch Claude Desktop (Squirrel singleton - 2nd launch focuses existing window)
+Start-Process -FilePath 'C:\Windows\explorer.exe' -ArgumentList 'shell:AppsFolder\Claude_pzs8sxrjxfjjc!Claude'
+Write-Host "[on] Claude Desktop launched"
+
+# 4. Status snapshot
+Start-Sleep -Seconds 1
+$ports = @{8888='dashboard'; 8889='vision'; 8890='phase3-prod'; 8891='phase3-dev'; 8893='ds'; 8894='ds-matchdb-mcp'}
+foreach ($p in ($ports.Keys | Sort-Object)) {
+  $c = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue
+  if ($c) { Write-Host "[on] :$p ($($ports[$p])) listening pid=$($c[0].OwningProcess)" }
+  else    { Write-Host "[on] :$p ($($ports[$p])) NOT listening" }
+}
+
+Write-Host "=== Legion ON complete ==="
+Write-Host "Press any key to close..."
+$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
