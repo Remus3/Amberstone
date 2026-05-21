@@ -4,9 +4,43 @@ Calibration reference: https://www.unrankedsmurfs.com/blog/what-is-riot-algorith
 The unrankedsmurfs writeup is the single public source for the per-role weight
 vectors Riot uses internally to compute end-of-game S/A/B/C/D letter grades.
 The numbers reproduced below are STARTING calibration values derived from
-that public rubric source; the operator can tune them later via per-role
-JSON overrides (the loader seam is documented but NOT built today - drop
-a JSON next to data/post_game_wpa_model.json when it becomes useful).
+that public rubric source.
+
+Per-role JSON override loader
+-----------------------------
+
+Loader implementation: `_load_weights_overrides` (reads the file) +
+`_apply_overrides` (composes onto defaults via dataclasses.replace).
+
+The operator can tune the per-role weights without modifying source by
+dropping a JSON file at `data/post_game_rubric_weights.json` (gitignored
+as personal calibration data alongside `data/coaching/death_patterns.json`).
+
+Schema (per-role partial overrides allowed; missing axes keep the default):
+
+    {
+      "ADC": {"kda": 2.5, "obj_participation": 0.6},
+      "SUP": {"vision_score": 1.8}
+    }
+
+Fail-soft semantics:
+
+  * Missing file -> defaults preserved (no error, no warning).
+  * Empty `{}` -> defaults preserved.
+  * Malformed JSON -> defaults preserved (one WARNING log at module load).
+  * Unknown role keys silently ignored (forward-compatible with future roles).
+  * Unknown axis keys silently ignored (forward-compatible with future axes).
+  * Negative weights floored to 0.0 (a negative score weight is nonsense).
+  * Non-numeric values silently ignored (default kept for that axis).
+  * Non-dict role values silently ignored (a top-level role key whose value
+    is not a JSON object cannot carry axis overrides).
+
+The override file is read ONCE at module import. To re-apply after editing,
+restart RC via `restart_trigger.txt` (matches the cache-discipline pattern
+the coach prompts use for `data/coaching/death_patterns.json`).
+
+Sibling module note
+-------------------
 
 This module is a SIBLING to core/post_game_score.py (PGR S2 WPA framework).
 WPA scores a per-event delta given the rolling match state. The rubric here
@@ -34,7 +68,17 @@ Damage-per-min weight: ADC 0.85, MID 0.80, JG 0.55, TOP 0.45, SUP 0.20.
 """
 from __future__ import annotations
 
+import dataclasses
+import json
+import logging
 from dataclasses import dataclass
+from pathlib import Path
+
+_LOG = logging.getLogger(__name__)
+
+# Per-role JSON override file. See module docstring for schema. Operator-tunable;
+# missing/malformed file is fail-soft. Gitignored.
+_OVERRIDES_PATH = Path("data") / "post_game_rubric_weights.json"
 
 
 @dataclass(frozen=True)
@@ -55,8 +99,9 @@ class RoleWeights:
 
 
 # Starting calibration values derived from the public rubric source. See the
-# module docstring for the per-role rationale. Operator-tunable via a future
-# per-role JSON override; do NOT load JSON here today.
+# module docstring for the per-role rationale. Operator-tunable via the JSON
+# override loader (see _OVERRIDES_PATH + _load_weights_overrides below); the
+# defaults below are what ships when no override file is present.
 _DEFAULT_WEIGHTS: dict[str, RoleWeights] = {
     "ADC": RoleWeights(
         role="ADC",
@@ -99,6 +144,102 @@ _DEFAULT_WEIGHTS: dict[str, RoleWeights] = {
         damage_per_min=0.45,
     ),
 }
+
+
+# Numeric axes that the override loader is allowed to set. Unknown axes are
+# silently dropped at apply time (forward-compatible with future RoleWeights
+# fields - a future axis only needs to be listed here to be operator-tunable).
+_OVERRIDE_AXES: frozenset[str] = frozenset(
+    {"kda", "cs_per_min", "obj_participation", "vision_score", "damage_per_min"}
+)
+
+
+def _load_weights_overrides() -> dict[str, dict]:
+    """Read per-role weight overrides from _OVERRIDES_PATH.
+
+    Returns an empty dict when the file is missing or malformed. Never raises;
+    a single WARNING is logged on malformed JSON so the operator gets a hint
+    without the dashboard crashing.
+
+    Schema is documented in the module docstring. Top-level keys are role
+    names (ADC/SUP/JG/MID/TOP); values are dicts of axis -> numeric weight.
+    Non-dict role values are silently dropped at the loader layer so the
+    apply function only sees well-shaped {role: {axis: float}} input.
+    """
+    try:
+        raw = _OVERRIDES_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {}
+    except OSError:
+        # Permission errors, parent-not-a-directory, etc. - fail-soft.
+        return {}
+    if not raw.strip():
+        return {}
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        _LOG.warning(
+            "post_game_rubric: malformed JSON at %s; defaults preserved",
+            _OVERRIDES_PATH,
+        )
+        return {}
+    if not isinstance(data, dict):
+        # Top-level must be a JSON object.
+        return {}
+    cleaned: dict[str, dict] = {}
+    for role, axes in data.items():
+        if not isinstance(role, str):
+            continue
+        if not isinstance(axes, dict):
+            continue
+        cleaned[role] = axes
+    return cleaned
+
+
+def _apply_overrides(
+    defaults: dict[str, RoleWeights],
+    overrides: dict[str, dict],
+) -> dict[str, RoleWeights]:
+    """Compose overrides onto defaults via dataclasses.replace.
+
+    Unknown role keys are silently dropped (forward-compatible with future
+    roles). Unknown axis keys are silently dropped (forward-compatible with
+    future axes). Negative weights are floored to 0.0. Non-numeric values are
+    silently dropped (the default axis weight is kept for that role).
+
+    Returns a NEW dict; the input `defaults` mapping is not mutated.
+    """
+    if not overrides:
+        return dict(defaults)
+    result: dict[str, RoleWeights] = dict(defaults)
+    for role, axes in overrides.items():
+        base = defaults.get(role)
+        if base is None:
+            # Unknown role - forward-compatible silent drop.
+            continue
+        fields: dict[str, float] = {}
+        for axis, value in axes.items():
+            if axis not in _OVERRIDE_AXES:
+                # Unknown axis - forward-compatible silent drop.
+                continue
+            # bool is a subclass of int in Python; reject so True/False do
+            # not silently become 1.0/0.0.
+            if isinstance(value, bool):
+                continue
+            if not isinstance(value, (int, float)):
+                continue
+            numeric = float(value)
+            if numeric < 0.0:
+                numeric = 0.0
+            fields[axis] = numeric
+        if fields:
+            result[role] = dataclasses.replace(base, **fields)
+    return result
+
+
+# Apply overrides at module load. compute_role_grade and any consumer that
+# reads _DEFAULT_WEIGHTS see the post-override values without further work.
+_DEFAULT_WEIGHTS = _apply_overrides(_DEFAULT_WEIGHTS, _load_weights_overrides())
 
 
 # Per-role baselines (per-game medians at ~32 min). A 1.0-normalized
