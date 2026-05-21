@@ -2,6 +2,35 @@
 
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch archived to docs/history_notes.md. Only the last 3 sessions kept here.
 ---
+# 2026-05-20 - s220 PGR S5 Replay scaffold + Match-V5 timeline events ribbon (1 commit 7870124, pushed; non-engine; no frozen edits; RC restarted once for new route module)
+
+**FINAL S2-S5 stage of the s220 aggregator-G-style Post Game Review reframe.** Operator: "start next: s5 (Replay page scaffold + Match-V5 timeline + league_record GPLv3 cleanroom reference)". s220 chain is now COMPLETE end-to-end.
+
+The existing Replay view (per-frame scrubber over `rewind_history.db.timeline_frames`) gains a sidecar **Match-V5 timeline event ribbon** under the scrubber. Default ribbon (~80-160 events for a 35-min SR match) shows CHAMPION_KILL + BUILDING_KILL + ELITE_MONSTER_KILL + TURRET_PLATE_DESTROYED; `[items][skills][wards]` checkboxes opt-in for ITEM_PURCHASED / SKILL_LEVEL_UP / LEVEL_UP / WARD_PLACED / WARD_KILL.
+
+**Backend NEW `dashboard/routes_replay_events.py`:** GET `/api/replay/events?match_id=<id>[&include=items,skills,wards,all]`. Server-side event_type filter keeps payloads 5-15 KB. 5min TTL cache keyed on `(match_id, include_set)`. Fail-soft 400/404/503. BUILDING_KILL.team_id stores OWNER that LOST the building - the route FLIPS to destroyer-side so the ribbon paints by actor.
+
+**Frontend NEW `web/js/panels/replay_events.js` + CSS:** vertical scrolling list mounted under `#replay-events-section` inside `view-replay` `<main class="replay-main-pane">`. Team-tinted left borders (ally=green / enemy=red) + kind-tinted labels (kill=red, structure=warn, objective=gold, ward=ok, item=accent). Filter checkboxes persist via `localStorage[rc-replay-events-include]`.
+
+**PGR Review button routing FIX (pre-S5 broken):** pre-S5 wire routed to `#review` (not in VIEW_IDS) which silently fell back to Home. S5 routes to `#replay` + renames sessionStorage key `rc-review-focus-match` -> `rc-replay-focus-match`. `_replayViewRefresh` consumes+clears the focus id; `_replayLoadMatch` auto-fires on the focused row.
+
+**Pre-existing CSS bug fix exposed by S5:** `header.css:613` had `body[data-view="replay"] main { display: none }` intended to hide the top-level dashboard `<main>`. The selector unintentionally also hid the nested `<main class="replay-main-pane">` - so the entire Replay scrubber + grid + events ribbon were invisible. Pre-S5 nobody clicked deep enough to notice. Surgical un-hide: `body[data-view="replay"] main.replay-main-pane { display: flex }` (class-targeted specificity wins).
+
+**NEW `docs/adr/ADR-009-replay-events-cleanroom.md`** captures the league_record (GPLv3) cleanroom boundary: methodology reference for future OBS video overlay; do NOT vendor source (GPL incompatible). `.rofl` parsing dead-end (2026-05-17 fraxiinus/roflxd confirmation) - do not re-pitch.
+
+**Parallel-audit pattern (operator's "edits and audits in parallel" instruction):** architecture-review subagent dispatched in BACKGROUND with design intent + repo state while the route was being written. Audit returned 4 refinements that landed in this commit: keep #replay not #review + rename sessionStorage key; server-side filter; ADR not just comment; no pre-split of routes_coach.py.
+
+NEW `tests/test_routes_replay_events.py` (17 tests across 5 classes) + `tests/test_replay_events_panel_dom.py` (22 tests across 6 classes). Pins default strong-set + clock order + actor/victim/pos + BUILDING destroyer-flip + include widening + fail-soft + cache + ADR + #replay routing + sessionStorage key + cleanroom + ASCII.
+
+**Verified:** py_compile + ruff + ASCII clean across all 12 touched files; full RC suite **2389 passed / 67 subtests / 0 failed** (+39 over post-S4 2350 baseline); live curl `/api/replay/events?match_id=NA1_5439050124` ok=true count=100 elapsed_ms=1 cached=false / cached=true on rehit; live Playwright @ /#replay on operator's most recent match NA1_5560540832 (Kai'Sa, May 14, 44:47 Normal Draft, Loss) showed 211 events strong-only with chronological order (3:50 Kill / 4:49 Plate TOP / 8:43 Grubs HORDE / 9:28 Dragon HEXTECH_DRAGON / 9:47 Kill / ...).
+
+ADR-008 asset-hash auto-bumps cover JS/CSS; dashboard restarted ONCE to register the new route module. No DS restart. No ENGINE bump. No frozen-file edits.
+
+**Don't-redo:** Match-V5 timeline events from `timeline_events` is the CANONICAL event source - do NOT re-pitch `.rofl` parsing. `league_record` (GPLv3) is methodology-only - do NOT vendor source; tests + ADR guard. BUILDING_KILL.team_id is FLIPPED to destroyer-side server-side. PGR Review button routes to `#replay` not `#review`. The `body[data-view="replay"] main.replay-main-pane { display: flex }` un-hide is LOAD-BEARING - do NOT remove without refactoring the broader selector. Server-side filter default (strong-only) is deliberate - WARD_PLACED (284k) + ITEM_PURCHASED (528k) would drown signal. Cache key is `(match_id, include_set)` not match_id alone. Audit-in-parallel pattern is durable.
+
+**Carries forward:** S2-S5 of the s220 aggregator G PGR reframe are now ALL SHIPPED end-to-end. Future operator-gated slices: (a) OBS video overlay keyed to LCU game-lifecycle (its own ADR + dependency); (b) participant join for real summoner names in events (currently P1..P10 chips); (c) pre-existing `lm-build-pending` dead-id in `_setEmptyState` (S4 audit flagged, still out of scope). Item 116 + 115 carries unchanged. Frozen-file grant NOT used this session.
+
+---
 # 2026-05-20 - s220 PGR S4 tabs reframe 4 -> 3 (1 commit d199f30, pushed; non-engine; no frozen edits; no RC restart needed)
 
 Stage S4 of the s220 aggregator-G-style Post Game Review reframe. Operator: "for the PGR page start next: S4 (tabs reframe)" + "do these edits and audits in parallel when possible".
