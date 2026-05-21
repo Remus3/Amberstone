@@ -26,12 +26,16 @@ _RUNES_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddrago
 _CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_champions.json"
 
 
+_DICT_CACHE_CONTROL = "public, max-age=86400, immutable"
+
+
 def _serve_file(h, path: Path) -> None:
     if not path.is_file():
         h._send(404, b'{"error":"dictionary file missing"}', "application/json")
         return
     try:
-        h._send(200, path.read_bytes(), "application/json; charset=utf-8")
+        h._send(200, path.read_bytes(), "application/json; charset=utf-8",
+                cache_control=_DICT_CACHE_CONTROL)
     except Exception as exc:
         log.warning("dictionary serve %s: %s", path.name, exc)
         h._send(500, b'{"error":"dictionary_read_failed"}', "application/json")
@@ -127,7 +131,8 @@ def _serve_champion_tags(h) -> None:
             out[name.replace("'", "").replace(" ", "")] = tags_entry
             if slug:
                 out[slug] = tags_entry
-        h._send(200, _json.dumps(out).encode("utf-8"), "application/json; charset=utf-8")
+        h._send(200, _json.dumps(out).encode("utf-8"), "application/json; charset=utf-8",
+                cache_control=_DICT_CACHE_CONTROL)
     except Exception as exc:
         log.warning("dictionary champion-tags: %s", exc)
         h._send(500, b'{"error":"champion_tags_failed"}', "application/json")
@@ -193,7 +198,8 @@ def _serve_augments(h) -> None:
                 "icon_url": _cdragon_icon_url(row.get("icon") or ""),
             }
         body = _json.dumps({"patch": patch, "augments": out}).encode("utf-8")
-        h._send(200, body, "application/json; charset=utf-8")
+        h._send(200, body, "application/json; charset=utf-8",
+                cache_control=_DICT_CACHE_CONTROL)
     except Exception as exc:
         log.warning("dictionary augments: %s", exc)
         h._send(500, b'{"error":"augments_read_failed"}', "application/json")
