@@ -69,7 +69,8 @@ def _build_fixture_db(path: pathlib.Path) -> dict:
             objectives_stolen INTEGER DEFAULT 0,
             objectives_stolen_assists INTEGER DEFAULT 0,
             first_tower_kill INTEGER DEFAULT 0,
-            first_tower_assist INTEGER DEFAULT 0
+            first_tower_assist INTEGER DEFAULT 0,
+            challenges_json TEXT
         );
         CREATE TABLE timeline_events (
             id INTEGER PRIMARY KEY,
@@ -733,6 +734,32 @@ def _populate_match_a_objectives(
         conn.close()
 
 
+def _populate_match_a_herald(
+    db_path: pathlib.Path,
+    self_puuid: str,
+    ally_puuid: str,
+    self_herald: int = 0,
+    ally_herald: int = 0,
+) -> None:
+    """Stamp challenges_json for match_a with riftHeraldTakedowns counts
+    on the operator + one ally (item 133 carry (b))."""
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute(
+            "UPDATE participants SET challenges_json=? "
+            "WHERE match_id='NA1_TEST_A' AND puuid=?",
+            (json.dumps({"riftHeraldTakedowns": int(self_herald)}), self_puuid),
+        )
+        conn.execute(
+            "UPDATE participants SET challenges_json=? "
+            "WHERE match_id='NA1_TEST_A' AND puuid=?",
+            (json.dumps({"riftHeraldTakedowns": int(ally_herald)}), ally_puuid),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 class ObjParticipationWireTests(unittest.TestCase):
     """Closes item-132 carry-forward (c): iter_role_grades now passes real
     obj_participation_pct (was: 0.0 always) through compute_role_grade.
@@ -885,6 +912,118 @@ class ObjParticipationWireTests(unittest.TestCase):
             conn.close()
         self.assertEqual(len(grades), 1)
         self.assertEqual(grades[0]["role"], "MID")
+
+
+class HeraldEnrichmentWireTests(unittest.TestCase):
+    """Closes item 133 carry (b): challenges_json riftHeraldTakedowns
+    flows through iter_role_grades -> compute_role_grade as the 7th
+    objective contribution."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="postmortem_herald_")
+        self.db_path = pathlib.Path(self.tmpdir) / "rewind.db"
+        self.fixture = _build_fixture_db(self.db_path)
+
+    def tearDown(self):
+        try:
+            os.remove(self.db_path)
+        except OSError:
+            pass
+        try:
+            os.rmdir(self.tmpdir)
+        except OSError:
+            pass
+
+    def test_solo_herald_lifts_total_score_above_zero_obj_baseline(self):
+        # Read baseline first - operator has zero objectives.
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            baseline = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        # Operator gets 2 herald takedowns; ally gets 0. Team total now
+        # 2; operator share = 1.0.
+        _populate_match_a_herald(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_herald=2,
+            ally_herald=0,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            populated = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # MID weight for obj_participation is 0.30 - non-zero lift.
+        self.assertGreater(populated["total_score"], baseline["total_score"])
+        self.assertEqual(populated["role"], baseline["role"])
+
+    def test_herald_composes_with_sql_objectives(self):
+        # Combined: SQL objectives + herald. The two contributions
+        # should compose additively in numerator + denominator.
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+        # Now operator: 2 sql, ally: 1 sql. Team sql total = 3.
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            sql_only = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        # Add herald: operator 1, ally 0. Operator 3, team 4, share 0.75
+        # (vs sql-only operator 2, team 3, share ~0.667).
+        _populate_match_a_herald(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_herald=1,
+            ally_herald=0,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            combined = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # Operator's share rose -> total_score also rises.
+        self.assertGreater(combined["total_score"], sql_only["total_score"])
+
+    def test_teammate_herald_lowers_operator_share(self):
+        # SQL: operator 2, ally 1. Team total 3 -> operator share 2/3.
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            without_ally_herald = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        # Add herald=1 to ally only. Operator 2, team 4 -> share 0.5
+        # (lower than 0.667 pre-enrichment).
+        _populate_match_a_herald(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_herald=0,
+            ally_herald=1,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            with_ally_herald = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # Operator's share fell -> total_score also fell.
+        self.assertLess(
+            with_ally_herald["total_score"],
+            without_ally_herald["total_score"],
+        )
 
 
 if __name__ == "__main__":
