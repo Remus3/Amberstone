@@ -63,7 +63,13 @@ def _build_fixture_db(path: pathlib.Path) -> dict:
             total_minions_killed INTEGER,
             neutral_minions_killed INTEGER,
             vision_score INTEGER,
-            total_damage_dealt_to_champs INTEGER
+            total_damage_dealt_to_champs INTEGER,
+            dragon_kills INTEGER DEFAULT 0,
+            baron_kills INTEGER DEFAULT 0,
+            objectives_stolen INTEGER DEFAULT 0,
+            objectives_stolen_assists INTEGER DEFAULT 0,
+            first_tower_kill INTEGER DEFAULT 0,
+            first_tower_assist INTEGER DEFAULT 0
         );
         CREATE TABLE timeline_events (
             id INTEGER PRIMARY KEY,
@@ -697,6 +703,188 @@ class MainRoleGradesIntegrationTests(unittest.TestCase):
         finally:
             import shutil
             shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def _populate_match_a_objectives(
+    db_path: pathlib.Path,
+    self_puuid: str,
+    ally_puuid: str,
+) -> None:
+    """Stamp objective columns on match_a so iter_role_grades sees a
+    non-zero obj_participation_pct.
+
+    Operator owns 1 dragon + 1 first_tower = 2; ally owns 1 dragon = 1.
+    Team total = 3 -> operator share = 2/3 ~ 0.667.
+    """
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute(
+            "UPDATE participants SET dragon_kills=1, first_tower_kill=1 "
+            "WHERE match_id='NA1_TEST_A' AND puuid=?",
+            (self_puuid,),
+        )
+        conn.execute(
+            "UPDATE participants SET dragon_kills=1 "
+            "WHERE match_id='NA1_TEST_A' AND puuid=?",
+            (ally_puuid,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+class ObjParticipationWireTests(unittest.TestCase):
+    """Closes item-132 carry-forward (c): iter_role_grades now passes real
+    obj_participation_pct (was: 0.0 always) through compute_role_grade.
+
+    The fixture's match_a is MIDDLE for self (-> MID role); MID weights
+    obj_participation at 0.30 (compared to 0.0 / no obj baseline). The
+    delta in total_score between zero-obj and populated-obj is the
+    signature we pin.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="postmortem_obj_")
+        self.db_path = pathlib.Path(self.tmpdir) / "rewind.db"
+        self.fixture = _build_fixture_db(self.db_path)
+
+    def tearDown(self):
+        try:
+            os.remove(self.db_path)
+        except OSError:
+            pass
+        try:
+            os.rmdir(self.tmpdir)
+        except OSError:
+            pass
+
+    def test_baseline_with_zero_objectives(self):
+        # Zero objectives at fixture seed -> obj_participation = 0.0
+        # and total_score has NO obj_participation contribution.
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            grades = iter_role_grades(conn, [self.fixture["self_puuid"]])
+        finally:
+            conn.close()
+        self.assertEqual(len(grades), 1)
+        self.assertEqual(grades[0]["role"], "MID")
+        baseline_score = grades[0]["total_score"]
+        self.assertGreaterEqual(baseline_score, 0.0)
+        self.assertLessEqual(baseline_score, 100.0)
+
+    def test_populated_objectives_raise_total_score(self):
+        # Read baseline first.
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            baseline = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            populated = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # Same KDA / CS / vision / DPM - only the obj_participation axis
+        # differs. MID weight is 0.30, so the lift is positive.
+        self.assertGreater(populated["total_score"], baseline["total_score"])
+        self.assertEqual(populated["role"], baseline["role"])
+
+    def test_legacy_schema_without_obj_columns_fails_soft(self):
+        # Simulate an older DB shape: drop the 6 obj columns from a fresh
+        # build and confirm iter_role_grades returns the same length of
+        # grades (obj just becomes 0.0 via the fail-soft in
+        # core.obj_participation).
+        legacy_db = pathlib.Path(self.tmpdir) / "legacy.db"
+        conn = sqlite3.connect(str(legacy_db))
+        cur = conn.cursor()
+        cur.executescript(
+            """
+            CREATE TABLE matches (
+                match_id TEXT PRIMARY KEY,
+                queue_id INTEGER,
+                game_mode TEXT,
+                game_duration_s INTEGER
+            );
+            CREATE TABLE participants (
+                id INTEGER PRIMARY KEY,
+                match_id TEXT,
+                participant_id INTEGER,
+                team_id INTEGER,
+                puuid TEXT,
+                team_position TEXT,
+                kills INTEGER,
+                deaths INTEGER,
+                assists INTEGER,
+                total_minions_killed INTEGER,
+                neutral_minions_killed INTEGER,
+                vision_score INTEGER,
+                total_damage_dealt_to_champs INTEGER
+            );
+            INSERT INTO matches VALUES ('LEG', 400, 'CLASSIC', 1800);
+            INSERT INTO participants
+              (match_id, participant_id, team_id, puuid, team_position,
+               kills, deaths, assists, total_minions_killed,
+               neutral_minions_killed, vision_score,
+               total_damage_dealt_to_champs)
+              VALUES ('LEG', 1, 100, 'X', 'MIDDLE', 5, 3, 8, 150, 0, 18, 20000);
+            """
+        )
+        conn.commit()
+        try:
+            grades = iter_role_grades(conn, ["X"])
+            self.assertEqual(len(grades), 1)
+            self.assertEqual(grades[0]["role"], "MID")
+            # No crash + a real score - confirms fail-soft on missing
+            # objective columns.
+            self.assertGreaterEqual(grades[0]["total_score"], 0.0)
+        finally:
+            conn.close()
+
+    def test_main_run_with_populated_objectives_writes_role_grades(self):
+        # End-to-end: main() drives iter_role_grades -> aggregate ->
+        # write_atomic. obj enrichment flows all the way.
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+        out = pathlib.Path(self.tmpdir) / "out.json"
+        rc = main([
+            "--db", str(self.db_path),
+            "--puuid", self.fixture["self_puuid"],
+            "--output", str(out),
+        ])
+        self.assertEqual(rc, 0)
+        data = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(data["schema_version"], 2)
+        rg = data["role_grades"]
+        self.assertEqual(rg["by_role"]["MID"]["count"], 1)
+        # Median score reflects the obj-enriched grade.
+        self.assertGreaterEqual(rg["by_role"]["MID"]["median_score"], 0)
+        self.assertLessEqual(rg["by_role"]["MID"]["median_score"], 100)
+
+    def test_iter_role_grades_uses_match_id_and_puuid_per_row(self):
+        # Smoke test that the SELECT still works after the widened
+        # column list (now includes p.match_id + p.puuid).
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            grades = iter_role_grades(conn, [self.fixture["self_puuid"]])
+        finally:
+            conn.close()
+        self.assertEqual(len(grades), 1)
+        self.assertEqual(grades[0]["role"], "MID")
 
 
 if __name__ == "__main__":
