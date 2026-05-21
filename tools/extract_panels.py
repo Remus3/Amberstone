@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
+r"""
 One-shot extractor: splits web/js/main.js into 7 panel ES modules.
-Run from C:\Riot Commander\  →  python tools/extract_panels.py
+Run from C:\Riot Commander\  ->  python tools/extract_panels.py
 """
 import os
 

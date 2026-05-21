@@ -1,4 +1,4 @@
-﻿"""
+"""
 ops/rc_state_validator.py
 
 Low-rate validator that compares coaching_data.json and tft_live_data.json
