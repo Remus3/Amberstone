@@ -611,6 +611,15 @@ body[data-view="bridge-pending"] main,
 body[data-view="champ-select"] main,
 body[data-view="last-match"] main,
 body[data-view="replay"] main { display: none; }
+/* s220 PGR S5: the broad `body[data-view="replay"] main` selector
+ * above unintentionally also hid the nested <main class="replay-main-
+ * pane"> inside view-replay (a <main> tag inside the view section,
+ * not the top-level coaching-panels <main>). Pre-S5 this was masked
+ * because nobody clicked into the Replay view long enough to notice
+ * the empty right pane. Surgical un-hide preserves the original
+ * intent (hide the top-level dashboard main) while letting the
+ * Replay scaffold render. */
+body[data-view="replay"] main.replay-main-pane { display: flex; }
 
 /* s219: hide live-game pills on Post Game Review - operator doesn't
  * want CS / Vision / ZOI / level / ult / gold / win cluttering the top
