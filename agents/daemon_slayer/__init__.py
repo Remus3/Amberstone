@@ -1321,7 +1321,21 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.31.0"
+ENGINE_VERSION = "1.32.0"
+# 1.32.0 (cc_pressure aggregator, 2026-05-22):
+# First consumer of the _PER_SPELL_CC_DURATIONS registry seeded at
+# ENGINE 1.30.0 + extended at 1.31.0. NEW module agents/daemon_slayer/
+# cc_pressure.py exposes compute_cc_pressure(champion, mode) ->
+# CcPressureResult aggregating max-rank CC durations across registered
+# spells with per-mode aramTenacity applied through
+# ehp.effective_cc_duration. Empty result for unknown champions; SR
+# mode identity. The seam any future EHP-vs-CC blended scorer or
+# coach-prompt renderer reads from. Engine math UNCHANGED from 1.31.0
+# for every (champion, item, mode) tuple - this is a NEW aggregator
+# module, not a math change to compute_dps / compute_ability_dps /
+# compute_ehp / compute_hps. Existing per-spell cc_duration_s +
+# cc_duration_post_tenacity fields on AbilitySpellDps unchanged.
+#
 # 1.31.0 (per-spell CC duration registry wave 2, 2026-05-21):
 # Closes item 134 carry-forward (h) data-side: extends the
 # ``_PER_SPELL_CC_DURATIONS`` registry shipped 1.30.0 with 23 additional
