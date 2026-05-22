@@ -63,6 +63,7 @@ def _gather_get() -> list:
                                routes_diag, routes_coach, routes_bridge,
                                routes_ban_suggest,
                                routes_bridge_pending, routes_bridge_cadence,
+                               routes_cc_blended_ehp_threat,
                                routes_damage_mix, routes_draft_elo,
                                routes_health_peer,
                                routes_lessons,
@@ -88,6 +89,7 @@ def _gather_get() -> list:
                       + list(routes_bridge_pending.GET_ROUTES)
                       + list(routes_bridge_cadence.GET_ROUTES)
                       + list(routes_ban_suggest.GET_ROUTES)
+                      + list(routes_cc_blended_ehp_threat.GET_ROUTES)
                       + list(routes_damage_mix.GET_ROUTES)
                       + list(routes_draft_elo.GET_ROUTES)
                       + list(routes_health_peer.GET_ROUTES)
