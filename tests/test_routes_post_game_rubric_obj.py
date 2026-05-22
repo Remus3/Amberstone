@@ -1,15 +1,19 @@
 """Smoke tests for /api/post-game-rubric obj_participation enrichment.
 
-Closes item-132 carry-forward (c). Pins:
+Closes item-132 carry-forward (c) + item 133 carry (b) +
+item 134 carry (g). Pins:
   - Match with NO operator objectives yields obj_participation == 0.0
     in components (and total_score is the pre-enrichment baseline).
   - Match WITH operator objectives yields a non-zero obj_participation
     component, lifting total_score above the no-objectives baseline.
+  - Herald takedowns from challenges_json fold into the 7th lane.
+  - voidMonsterKill (Voidgrubs) from challenges_json folds into the
+    8th lane (item 134 carry (g)).
 
 Mirror of tests/test_routes_post_game_rubric.py fixture style (the
 schema there is intentionally a tiny subset; this file widens the seed
-table to carry the 6 objective columns + team_id needed by
-core.obj_participation).
+table to carry the 6 objective columns + team_id + challenges_json
+needed by core.obj_participation).
 """
 from __future__ import annotations
 
@@ -43,9 +47,12 @@ def _seed_obj_db(
     ally_objectives: dict | None = None,
     operator_herald: int = 0,
     ally_herald: int = 0,
+    operator_void: int = 0,
+    ally_void: int = 0,
 ) -> None:
-    """Widened seed: 6 objective columns + challenges_json (7-column model
-    per item 133 carry (b))."""
+    """Widened seed: 6 objective columns + challenges_json (8-column model
+    per item 134 carry (g)). challenges_json now carries BOTH
+    riftHeraldTakedowns + voidMonsterKill."""
     operator_objectives = operator_objectives or {}
     ally_objectives = ally_objectives or {}
 
@@ -94,8 +101,14 @@ def _seed_obj_db(
             d.get("first_tower_assist", 0),
         )
 
-    op_challenges = json.dumps({"riftHeraldTakedowns": int(operator_herald)})
-    ally_challenges = json.dumps({"riftHeraldTakedowns": int(ally_herald)})
+    op_challenges = json.dumps({
+        "riftHeraldTakedowns": int(operator_herald),
+        "voidMonsterKill": int(operator_void),
+    })
+    ally_challenges = json.dumps({
+        "riftHeraldTakedowns": int(ally_herald),
+        "voidMonsterKill": int(ally_void),
+    })
 
     # Operator row
     conn.execute(
@@ -425,6 +438,199 @@ class HeraldEnrichmentRouteTests(unittest.TestCase):
             payload = json.loads(resp[0][1])
             self.assertTrue(payload["ok"])
             # Operator 1 dragon + ally 0 -> ratio 1.0 (no herald).
+            self.assertGreater(payload["components"]["obj_participation"], 0.0)
+
+
+class VoidEnrichmentRouteTests(unittest.TestCase):
+    """The route now reads voidMonsterKill from challenges_json
+    (item 134 carry (g)) and folds it into the 8-column model."""
+
+    def setUp(self):
+        rpgr._CACHE.clear()
+
+    def _serve(self, path: str, db_path: Path, state_path: Path):
+        with mock.patch.object(rpgr, "_REWIND_DB", db_path):
+            with mock.patch.object(rpgr, "_STATE_JSON", state_path):
+                h = _StubHandler(path)
+                rpgr._serve_post_game_rubric(h)
+                return h.responses
+
+    def test_void_enrichment_lifts_total_score(self):
+        """Same KDA + same SQL-obj content; only voidgrubs differ. The
+        void-enriched run should land a strictly higher total_score
+        when the ratio is NOT already saturated at 1.0."""
+        with tempfile.TemporaryDirectory() as td:
+            db_no_void = Path(td) / "rh_no.db"
+            db_void = Path(td) / "rh_yes.db"
+            state = Path(td) / "state.json"
+            _seed_state(state)
+            # Ally has 3 dragons so the no-void baseline ratio is
+            # 1/4 = 0.25 (sub-saturated). Operator's void=3 then lifts
+            # ratio to 4/7 ~ 0.571.
+            op_obj = {"dragon_kills": 1}
+            ally_obj = {"dragon_kills": 3}
+            _seed_obj_db(db_no_void, match_id="VM",
+                         operator_objectives=op_obj,
+                         ally_objectives=ally_obj,
+                         operator_void=0, ally_void=0)
+            _seed_obj_db(db_void, match_id="VM",
+                         operator_objectives=op_obj,
+                         ally_objectives=ally_obj,
+                         operator_void=3, ally_void=0)
+            rpgr._CACHE.clear()
+            r1 = self._serve("/api/post-game-rubric?match_id=VM", db_no_void, state)
+            rpgr._CACHE.clear()
+            r2 = self._serve("/api/post-game-rubric?match_id=VM", db_void, state)
+            p1 = json.loads(r1[0][1])
+            p2 = json.loads(r2[0][1])
+            self.assertGreater(p2["total_score"], p1["total_score"])
+            self.assertGreater(
+                p2["components"]["obj_participation"],
+                p1["components"]["obj_participation"],
+            )
+
+    def test_void_with_herald_compose(self):
+        # Both blob keys contribute together. Operator: 1 dragon + 1
+        # herald + 2 void = 4. Ally: 1 dragon + 0 herald + 0 void = 1.
+        # Team total = 5, ratio = 0.8. Non-saturated.
+        with tempfile.TemporaryDirectory() as td:
+            db = Path(td) / "rh.db"
+            state = Path(td) / "state.json"
+            _seed_state(state)
+            _seed_obj_db(
+                db, match_id="VHC",
+                operator_objectives={"dragon_kills": 1},
+                ally_objectives={"dragon_kills": 1},
+                operator_herald=1, ally_herald=0,
+                operator_void=2, ally_void=0,
+            )
+            resp = self._serve("/api/post-game-rubric?match_id=VHC", db, state)
+            payload = json.loads(resp[0][1])
+            self.assertTrue(payload["ok"])
+            # ADC weight 0.50 on obj axis. The component must be > 0
+            # AND below the saturation cap (which would be ~ weight * 1.0 / 0.55).
+            self.assertGreater(payload["components"]["obj_participation"], 0.0)
+
+    def test_void_only_no_herald(self):
+        # Pure voidgrub contribution: no SQL objectives, no herald.
+        # Operator 2 void / team 2 void = 1.0 ratio.
+        with tempfile.TemporaryDirectory() as td:
+            db = Path(td) / "rh.db"
+            state = Path(td) / "state.json"
+            _seed_state(state)
+            _seed_obj_db(
+                db, match_id="VONLY",
+                operator_objectives={},
+                ally_objectives={},
+                operator_herald=0, ally_herald=0,
+                operator_void=2, ally_void=0,
+            )
+            resp = self._serve("/api/post-game-rubric?match_id=VONLY", db, state)
+            payload = json.loads(resp[0][1])
+            self.assertTrue(payload["ok"])
+            self.assertGreater(payload["components"]["obj_participation"], 0.0)
+
+    def test_teammate_void_pulls_share_down(self):
+        # Operator owns dragon (=1); teammate grabs voidgrubs (=2).
+        # Pre-void: 1/1 = 1.0. Post-void: 1/3 ~ 0.333.
+        with tempfile.TemporaryDirectory() as td:
+            db_no_void = Path(td) / "no_void.db"
+            db_void = Path(td) / "with_void.db"
+            state = Path(td) / "state.json"
+            _seed_state(state)
+            _seed_obj_db(
+                db_no_void, match_id="TV",
+                operator_objectives={"dragon_kills": 1},
+                ally_objectives={},
+                operator_void=0, ally_void=0,
+            )
+            _seed_obj_db(
+                db_void, match_id="TV",
+                operator_objectives={"dragon_kills": 1},
+                ally_objectives={},
+                operator_void=0, ally_void=2,
+            )
+            rpgr._CACHE.clear()
+            r_pre = self._serve("/api/post-game-rubric?match_id=TV", db_no_void, state)
+            rpgr._CACHE.clear()
+            r_post = self._serve("/api/post-game-rubric?match_id=TV", db_void, state)
+            p_pre = json.loads(r_pre[0][1])
+            p_post = json.loads(r_post[0][1])
+            # Component drops because the denominator grew by 2.
+            self.assertGreater(
+                p_pre["components"]["obj_participation"],
+                p_post["components"]["obj_participation"],
+            )
+
+    def test_legacy_schema_no_challenges_json_void_falls_back(self):
+        # OperationalError fallback path: pre-challenges DB schema
+        # should still return a 6-column ratio cleanly without crashing
+        # on the missing voidgrub key.
+        with tempfile.TemporaryDirectory() as td:
+            db = Path(td) / "rh.db"
+            state = Path(td) / "state.json"
+            _seed_state(state)
+            # Build a legacy-shape DB (no challenges_json column at all).
+            conn = sqlite3.connect(str(db))
+            conn.executescript(
+                """
+                CREATE TABLE matches (
+                    match_id TEXT PRIMARY KEY,
+                    game_duration_s INTEGER
+                );
+                CREATE TABLE participants (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    match_id TEXT,
+                    team_id INTEGER,
+                    puuid TEXT,
+                    team_position TEXT,
+                    kills INTEGER,
+                    deaths INTEGER,
+                    assists INTEGER,
+                    total_minions_killed INTEGER,
+                    neutral_minions_killed INTEGER,
+                    vision_score INTEGER,
+                    total_damage_dealt_to_champs INTEGER,
+                    dragon_kills INTEGER,
+                    baron_kills INTEGER,
+                    objectives_stolen INTEGER,
+                    objectives_stolen_assists INTEGER,
+                    first_tower_kill INTEGER,
+                    first_tower_assist INTEGER
+                );
+                INSERT INTO matches(match_id, game_duration_s)
+                  VALUES ('LEGV', 1800);
+                INSERT INTO participants
+                  (match_id, team_id, puuid, team_position,
+                   kills, deaths, assists,
+                   total_minions_killed, neutral_minions_killed,
+                   vision_score, total_damage_dealt_to_champs,
+                   dragon_kills, baron_kills, objectives_stolen,
+                   objectives_stolen_assists, first_tower_kill,
+                   first_tower_assist)
+                  VALUES
+                  ('LEGV', 100, 'OPER', 'BOTTOM', 8, 3, 10,
+                   180, 0, 18, 22000, 2, 1, 0, 0, 1, 0);
+                INSERT INTO participants
+                  (match_id, team_id, puuid, team_position,
+                   kills, deaths, assists,
+                   total_minions_killed, neutral_minions_killed,
+                   vision_score, total_damage_dealt_to_champs,
+                   dragon_kills, baron_kills, objectives_stolen,
+                   objectives_stolen_assists, first_tower_kill,
+                   first_tower_assist)
+                  VALUES
+                  ('LEGV', 100, 'ALLY_A', 'TOP', 3, 5, 4,
+                   150, 30, 14, 14000, 1, 0, 0, 0, 0, 0);
+                """
+            )
+            conn.commit()
+            conn.close()
+            resp = self._serve("/api/post-game-rubric?match_id=LEGV", db, state)
+            self.assertEqual(resp[0][0], 200)
+            payload = json.loads(resp[0][1])
+            self.assertTrue(payload["ok"])
+            # 6-column 4/5 = 0.8 -> non-zero component.
             self.assertGreater(payload["components"]["obj_participation"], 0.0)
 
 
