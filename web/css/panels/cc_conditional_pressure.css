@@ -1,0 +1,144 @@
+/* CC-conditional pressure balance chip (item 144 - 5th overall
+ * consumer of the cc_conditional ecosystem; FIRST dashboard UI
+ * consumer).
+ *
+ * Mounts inside the Suggestions card (.csv-card-suggestions) just
+ * below the existing cc-blended-ehp-threat chip during champ-select.
+ * Surfaces the ally-vs-enemy CONDITIONAL CC ratio so the operator
+ * can see at a glance whether enemy conditional CC threatens to
+ * land more lockdown on them than ally conditional CC will land on
+ * enemies.
+ *
+ * Backend: dashboard/routes_cc_conditional_pressure.py
+ *   GET /api/cc-conditional-pressure?ally=...&enemy=...&mode=ARAM
+ *
+ * Tier-tinted via data-cc-cond-tier attribute (mirrors the
+ * cc_blended_ehp_threat chip's data-cc-tier pattern for visual
+ * coherence; separate attr so the two chips do not collide in CSS
+ * selector matching):
+ *   good = ally conditional CC threat exceeds enemy's (ratio >= 1.05)
+ *   warn = even balance (0.95 <= ratio < 1.05) OR zero on both sides
+ *   bad  = enemy conditional CC threat exceeds ally's (ratio < 0.95)
+ *
+ * Uses the semantic-color tokens from web/css/tokens.css so the chip
+ * stays in sync with the dashboard's tier palette.
+ */
+
+.cc-conditional-pressure {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.cc-conditional-pressure[hidden] {
+  display: none;
+}
+
+/* Tier-tinted left border + soft background. Body stays neutral; only
+ * the accent color shifts so the chip remains readable against the
+ * Suggestions card background. */
+.cc-conditional-pressure[data-cc-cond-tier="good"] {
+  border-left-color: var(--signal-good, #6ec977);
+  background: var(--signal-good-soft, rgba(110, 201, 119, 0.12));
+}
+
+.cc-conditional-pressure[data-cc-cond-tier="warn"] {
+  border-left-color: var(--signal-warn, #f1b04a);
+  background: var(--signal-warn-soft, rgba(241, 176, 74, 0.12));
+}
+
+.cc-conditional-pressure[data-cc-cond-tier="bad"] {
+  border-left-color: var(--signal-bad, #ff5050);
+  background: var(--signal-bad-soft, rgba(255, 80, 80, 0.12));
+}
+
+/* Header row: tier label badge + chip title. */
+.cc-conditional-pressure-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cc-conditional-pressure-tier {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.cc-conditional-pressure[data-cc-cond-tier="good"] .cc-conditional-pressure-tier {
+  background: var(--signal-good, #6ec977);
+  color: rgba(20, 22, 30, 0.95);
+}
+
+.cc-conditional-pressure[data-cc-cond-tier="warn"] .cc-conditional-pressure-tier {
+  background: var(--signal-warn, #f1b04a);
+  color: rgba(20, 22, 30, 0.95);
+}
+
+.cc-conditional-pressure[data-cc-cond-tier="bad"] .cc-conditional-pressure-tier {
+  background: var(--signal-bad, #ff5050);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Per-side line stack. Ally / enemy each get one row with the average
+ * conditional CC seconds. The total + per-entry breakdown could be
+ * surfaced via a hover tooltip in a future polish pass; for now the
+ * single number is the headline value. */
+.cc-conditional-pressure-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.78);
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-conditional-pressure-row-label {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.70);
+}
+
+.cc-conditional-pressure-row-value {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Ratio summary line. */
+.cc-conditional-pressure-ratio {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-conditional-pressure-ratio-value {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.cc-conditional-pressure[data-cc-cond-tier="good"] .cc-conditional-pressure-ratio-value {
+  color: var(--signal-good, #6ec977);
+}
+
+.cc-conditional-pressure[data-cc-cond-tier="bad"] .cc-conditional-pressure-ratio-value {
+  color: var(--signal-bad, #ff5050);
+}
