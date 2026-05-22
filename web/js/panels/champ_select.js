@@ -22,6 +22,11 @@ import {
   getCcBlendedEhpThreatCacheCount,
   renderCcBlendedEhpThreat, resolveChampNames,
 } from './cc_blended_ehp_threat.js';
+import {
+  fetchCcConditionalPressure, getCachedCcConditionalPressure,
+  getCcConditionalPressureCacheCount,
+  renderCcConditionalPressure,
+} from './cc_conditional_pressure.js';
 
 // ── LCU command helper (used by champ-select + build chooser) ──────
 function lcuCmd(cmdObj) {
@@ -948,6 +953,13 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // glance whether enemy CC threatens to erode their team faster
   // than ally CC erodes the enemy team.
   _csvRenderCcBlendedEhpThreat(cs);
+  // 2026-05-22 (item 144): FIRST dashboard UI consumer of cc_conditional
+  // (5th overall consumer of the cc_conditional ecosystem). Sibling
+  // chip to cc-blended-ehp-threat; surfaces the probability-weighted
+  // CONDITIONAL CC seconds totals so the operator can see at a glance
+  // whether enemy conditional CC threatens to land more lockdown than
+  // ally conditional CC will land on enemies.
+  _csvRenderCcConditionalPressure(cs);
   // ---- Row 3: pick-order tips (no header label per s213 v3) ----
   // Static advisory keyed on operator's assigned role. 3 tips per role
   // - the third row is the "consider" / strategic depth tip beyond
@@ -1300,6 +1312,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   // - same pattern, count keys so the threat chip re-renders when
   // /api/cc-blended-ehp-threat lands.
   const ccBlendedCount = getCcBlendedEhpThreatCacheCount();
+  const ccCondCount = getCcConditionalPressureCacheCount();
   return [
     cs.phase || "",
     myCid | 0,
@@ -1312,7 +1325,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}`,
   ].join("|");
 }
 
@@ -1492,6 +1505,49 @@ function _csvRenderCcBlendedEhpThreat(cs) {
   fetchCcBlendedEhpThreat(allyNames, enemyNames, mode, _csvScheduleRender);
   const payload = getCachedCcBlendedEhpThreat(allyNames, enemyNames, mode);
   renderCcBlendedEhpThreat(block, payload);
+}
+
+// 2026-05-22 (item 144): FIRST dashboard UI consumer of cc_conditional
+// (5th overall ecosystem consumer). Calls /api/cc-conditional-pressure
+// with the operator's current ally + enemy rosters, then renders the
+// conditional-CC threat-balance chip inside the
+// #csv-sugg-cc-conditional-pressure block. Mirrors the
+// _csvRenderCcBlendedEhpThreat structure exactly so the two chips
+// stay behaviourally coherent. Chip is hidden until at least one
+// ally + one enemy is committed so it doesn't render premature
+// noise.
+function _csvRenderCcConditionalPressure(cs) {
+  const block = document.getElementById("csv-sugg-cc-conditional-pressure");
+  if (!block) return;
+  const allyNumericIds = (cs.my_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  const enemyNumericIds = (cs.their_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (!allyNumericIds.length || !enemyNumericIds.length) {
+    block.hidden = true;
+    return;
+  }
+  const allyNames = resolveChampNames(allyNumericIds);
+  const enemyNames = resolveChampNames(enemyNumericIds);
+  if (!allyNames.length || !enemyNames.length) {
+    // CHAMPS index not yet loaded - keep hidden, will resolve on the
+    // next render tick after the rc:champs-ready event fires.
+    block.hidden = true;
+    return;
+  }
+  // Map queue_id to mode (same mapping as _csvRenderCcBlendedEhpThreat).
+  let mode = "ARAM";
+  const q = cs.queue_id | 0;
+  if (q === 2400) mode = "KIWI";
+  else if (q === 1700 || q === 1710) mode = "ARENA";
+  else if (q === 420 || q === 400 || q === 430 || q === 700) mode = "SR";
+  else if (q === 450 || q === 920) mode = "ARAM";
+
+  fetchCcConditionalPressure(allyNames, enemyNames, mode, _csvScheduleRender);
+  const payload = getCachedCcConditionalPressure(allyNames, enemyNames, mode);
+  renderCcConditionalPressure(block, payload);
 }
 
 function _csvAdaptKey(champion, enemyIds, baseSummoners, role) {
