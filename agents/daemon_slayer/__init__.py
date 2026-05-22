@@ -1321,7 +1321,57 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.37.0"
+ENGINE_VERSION = "1.38.0"
+# 1.38.0 (cc_conditional FIRST consumer wire + wave 1 registry expansion,
+# 2026-05-22):
+# Two parallel-slice additions composing on item 141 carries-forward (h).
+#
+# Slice A - cc_conditional FIRST consumer wire in cc_pressure.py.
+# Closes item 141 carry (h): the conditional CC schema lift shipped at
+# 1.37.0 as a FORWARD-MARKER seam with no consumer wires; this slice
+# wires the FIRST authorized consumer. ``compute_cc_pressure(champion,
+# mode, *, include_conditional=False)`` gains an opt-in kwarg. When
+# False (the default), behavior is BYTE-IDENTICAL to 1.37.0 for the 4
+# existing consumers (compute_ehp / enemy_cc_threat_line /
+# compute_hybrid / routes_cc_blended_ehp_threat). When True, the
+# function reads ``get_conditional_entries(champion)`` + computes a
+# probability-weighted sum via ``get_total_conditional_cc_seconds``
+# (apply_probability=True default), applies ARAM tenacity via
+# ``effective_cc_duration(conditional_total, tenacity_mult)`` so the
+# math seam stays unified, and folds the post-tenacity conditional
+# total into ``total_cc_seconds`` while exposing the SEPARATE
+# contribution on the NEW ``conditional_cc_seconds`` field. The NEW
+# ``conditional_entries: tuple[ConditionalCcEntry, ...] = ()`` field
+# surfaces the registered conditional entries for transparency.
+# ``test_cc_conditional_forward_marker.py`` was updated in the same
+# slice: ``_ALLOWED_SOURCE_FILES = {"cc_pressure.py"}`` allow-lists
+# the FIRST consumer; every OTHER file under ``agents/daemon_slayer/``
+# still triggers the no-consumer-wire guard.
+#
+# Slice B - cc_conditional wave 1 expansion (10 -> 18 entries).
+# Extends the seed shipped at 1.37.0 with 8 additional canonical
+# conditional CC entries across 8 new champions, all sourced from the
+# wave 4/5/6/7 REJECT lists: Bard Q Cosmic Binding (terrain 0.3 -
+# wall-bounce 1.5/1.75/2.0/2.25/2.5s); Karma W Focused Resolve
+# (channel 0.4 - full-tether 1.5/1.625/1.75/1.875/2.0s); Taliyah W
+# Seismic Shove (channel 0.5 - recast 0.75s knockup); Kennen E
+# Lightning Rush (nth_hit 0.6 - Mark of the Storm 3-stack stun 1.25s);
+# KSante Q Ntofo Strikes (nth_hit 0.7 - 3rd-cast root 0.75s; coexists
+# with KSante R wave 5); Ornn Q Volcanic Rupture (debuffed 0.5 -
+# post-Brittle knockup 1.5s; coexists with Ornn R wave 7); Xayah E
+# Bladecaller (nth_hit 0.6 - 3+ feathers root 1.25s); Fiora W Riposte
+# (debuffed 0.4 - parry-stun 1.5s). REGISTRY_TOTAL_CHAMPIONS goes
+# 10 -> 18; REGISTRY_TOTAL_ENTRIES goes 10 -> 18. No new condition
+# tags (uses only the 10 existing tags). 8 candidates REJECTED with
+# reason: Aurora R (uncertain), Briar Q+R (frenzy-state-gated needs
+# new tag), Sylas E2 (range-conditional needs new tag), Renata R +
+# Aphelios Q (no first-order CC), Lissandra E (mis-described - direct
+# skillshot), Volibear R (turret-only), Swain E (deferred).
+#
+# Consumer math: byte-identical to 1.37.0 for ALL existing callers via
+# the default ``include_conditional=False`` contract; Slice B is
+# data-lane only.
+#
 # 1.37.0 (per-spell CC registry wave 7 + conditional CC axis schema lift,
 # 2026-05-22):
 # Two parallel-slice additions composing on item 140 carries-forward.
