@@ -32,6 +32,7 @@ from coaches._arena_item_advisor import recompute_arena_build
 from core import daemon_slayer_client as _ds_client
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
 from core.death_patterns_loader import personal_context_block
+from core.enemy_cc_threat_context import enemy_cc_threat_line
 
 logger = logging.getLogger("rc.coaches.arena")
 
@@ -102,6 +103,7 @@ Team health rankings:
 
 Active augments: {augments}
 My abilities: {my_abilities}
+{enemy_cc_threats}
 DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {vision_context}
 """
@@ -562,6 +564,15 @@ class Coach(BaseCoach):
                 except Exception:
                     pass
 
+            # Arena enemy roster: every team-name that is not me, not my
+            # partner, alive or dead - drive enemy_cc_threat_line off it.
+            # Skips champion-mode placeholders ("Player0" etc) by length:
+            # championName-derived names are always non-empty alphanumerics.
+            _arena_enemies = [
+                t.get("name")
+                for t in teams
+                if not t.get("is_you") and not t.get("is_partner")
+            ]
             user = _USER_TEMPLATE.format(
                 round         = state.get("round", 0),
                 champion      = champ,
@@ -577,6 +588,10 @@ class Coach(BaseCoach):
                 team_rankings = rankings,
                 augments      = augments,
                 my_abilities  = fmt_abilities(state.get("my_abilities", {})),
+                enemy_cc_threats = enemy_cc_threat_line(
+                    _arena_enemies,
+                    state.get("game_mode", "CHERRY"),
+                ),
                 ds_picks      = _ds_picks_str,
                 ds_label      = _ds_label,
                 vision_context = vision_ctx,

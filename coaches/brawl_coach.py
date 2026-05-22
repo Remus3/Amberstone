@@ -29,6 +29,7 @@ from coaches._base_coach import (
 from core import daemon_slayer_client as _ds_client
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
 from core.death_patterns_loader import personal_context_block
+from core.enemy_cc_threat_context import enemy_cc_threat_line
 
 logger = logging.getLogger("rc.coaches.brawl")
 
@@ -418,6 +419,12 @@ class Coach(BaseCoach):
                     pass
 
             _resp = state.get("dead_respawn_str", "")
+            # Empty string when no registered CC; trimmed below if so.
+            _cc_line = enemy_cc_threat_line(
+                state.get("enemy_comp", []),
+                state.get("game_mode", mode),
+            )
+            _cc_segment = f"\n{_cc_line}" if _cc_line else ""
             user = (
                 f"=== {state.get('game_time','0:00')} | {mode} ===\n"
                 f"HP: {state.get('hp_pct',100)}%  Mana: {state.get('mana_pct',100)}%"
@@ -426,7 +433,8 @@ class Coach(BaseCoach):
                 f"My abilities: {fmt_abilities(state.get('my_abilities', {}))}\n"
                 f"Items: {', '.join(state.get('items', [])) or 'none'}\n"
                 f"Your team: {', '.join(state.get('ally_comp', [])) or 'unknown'}\n"
-                f"Enemy team: {', '.join(state.get('enemy_comp', [])) or 'unknown'}\n"
+                f"Enemy team: {', '.join(state.get('enemy_comp', [])) or 'unknown'}"
+                f"{_cc_segment}\n"
                 f"Dead enemies: {', '.join(state.get('dead_enemies', [])) or 'none'}{(' Respawns: ' + _resp) if _resp else ''}"
                 f"{event_ctx}\n"
                 + (
