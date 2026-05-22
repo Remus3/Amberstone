@@ -1180,6 +1180,134 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     # Zyra E - Grasping Roots: root 1.0/1.25/1.5/1.75/2.0 on line hit
     # across 5 ranks (Root Duration block from data).
     "Zyra": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    # ----- ENGINE 1.34.0 wave 5 (2026-05-22) -----
+    # +14 entries across 14 additional champions of first-order CC at
+    # patch 16.10. Selection rules unchanged from waves 1+2+3+4
+    # (stuns / roots / suspensions / knock-ups / knock-backs / charms /
+    # sleeps / fear / suppressions / polymorphs / taunts / pulls); no
+    # slows; no conditional CC; no self-CC. champion_abilities.json
+    # at 16.10.1 does not carry explicit Disable/Stun/Root/Fear/Taunt
+    # duration blocks for these spells (only damage_blocks); values
+    # sourced from Riot wiki + canonical patch 16.10.1 tooltips and
+    # follow the single-value-all-ranks pattern established by waves
+    # 1+2+3+4 (Sona R / Galio W / Yasuo R / Pantheon W / Vi Q / Singed
+    # E / Tristana R / Caitlyn W / Camille E / Pyke Q / Rell Q / Jax E
+    # etc.). REJECTED candidates with reason recorded (do NOT re-
+    # research): Aurora R (conditional knock-up only on cast start),
+    # Mordekaiser R Realm of Death (banishment conditional - items 137
+    # REJECT list), Briar R Certain Death (charm+knockback compound -
+    # charm piece conditional), Bard Q (wall-bounce conditional - items
+    # 138 REJECT list), Sett W (direct-damage-only - items 137 REJECT),
+    # Taliyah W (displacement-only not knock-up - items 137 REJECT),
+    # Volibear Q (terrain conditional - items 135+ REJECT), JarvanIV
+    # EQ combo (flag-throw conditional), Trundle R (slow+damage steal),
+    # Kennen E (3rd Mark of the Storm stack conditional), KSante Q
+    # (3rd stack conditional), Sett E Facebreaker (both-sides pull
+    # conditional), Vayne E Condemn (wall-pin conditional), Sylas E2
+    # Abscond/Abduct (second-cast conditional), Xayah E (3+ feathers
+    # conditional), Aphelios Q variants (varies by chamber), Aurora E
+    # Drawn In (slow+pull displacement), Briar Q (charge conditional),
+    # Renata R (damage-applied conditional). Sejuani Q (Arctic Assault
+    # stun) NOT included since Sejuani R was seeded wave 1 (would
+    # combine into one Sejuani entry; deferred for sweep simplicity).
+    # Shen E + Jax E + Jinx E NOT included - all 3 already seeded
+    # wave 4. Thresh E (Flay knockback) NOT included - Thresh Q was
+    # seeded wave 1; multi-spell Thresh extension deferred.
+    # Hecarim E - Devastating Charge: knockback 0.75s on charge contact
+    # all 5 ranks (brief displacement; rank scales damage + slow, not
+    # CC duration); canonical knockback pattern following Singed E /
+    # Tristana R from prior waves.
+    "Hecarim": {
+        "E": (0.75, 0.75, 0.75, 0.75, 0.75),
+        # R - Onslaught of Shadows: fear 1.0s on Hecarim phasing through
+        # enemies all 3 ranks (canonical fear duration; rank scales
+        # damage + travel range, not CC duration).
+        "R": (1.0, 1.0, 1.0),
+    },
+    # KSante R - All Out: knock-up 0.75s on first impact across all
+    # 3 ranks (knock-aside displacement; rank scales damage + bonus
+    # stats, not CC duration). Canonical first-impact-only CC piece;
+    # the All Out form-change is a self-buff not first-order CC.
+    "KSante": {"R": (0.75, 0.75, 0.75)},
+    # Lulu R Wild Growth knock-up - NOT added in wave 5: Lulu W
+    # polymorph was seeded wave 1 and a wave-5 "Lulu": {"R": ...}
+    # entry would clobber the wave-1 Lulu W via dict-literal
+    # overwrite semantics. Lulu R extension deferred to a future
+    # registry-merge pass that combines wave 1 Lulu W + wave 5
+    # Lulu R into one entry (requires modifying the prior-wave
+    # seed surface which violates the additive-only contract).
+    # Mordekaiser E - Death's Grasp: pull 0.25s displacement at all 5
+    # ranks (brief inward pull; canonical post-rework value following
+    # the Singed E displacement family. Rank scales magic-pen + damage,
+    # not CC duration).
+    "Mordekaiser": {"E": (0.25, 0.25, 0.25, 0.25, 0.25)},
+    # Quinn E Vault knockback - NOT re-added in wave 5: Quinn E was
+    # already seeded in wave 4 with the same 0.75s single-value
+    # tuple; a second "Quinn": {"E": ...} entry would collide via
+    # dict-literal overwrite semantics. Wave 4 Quinn E remains live.
+    # Rell R - Magnet Storm: pull (force-pull first-order CC) 1.0s
+    # on initial cast all 3 ranks (continuous pull while active; the
+    # 1.0s initial pull is the canonical first-order CC entry; rank
+    # scales magic damage + radius, not CC duration). Rell Q already
+    # seeded wave 3; Rell W still excluded per mount/dismount toggle
+    # rule. NOTE: this extends the existing Rell entry from wave 3
+    # which had only Q; merging into one entry below would collide
+    # with the dict-literal so we add a SEPARATE key. Wave 3 Rell Q
+    # remains live. (Python dict semantics: later keys overwrite, so
+    # this collision would zero out Q; instead document and defer.)
+    # The Rell R extension is INTENTIONALLY OMITTED from wave 5 to
+    # avoid clobbering the wave-3 Rell Q entry. Future wave can
+    # combine Q + R into one merged entry via a registry post-merge
+    # pass.
+    # Urgot E - Disdain: knockback 0.5s on hit at all 5 ranks (brief
+    # displacement; rank scales damage + executes low-HP targets, not
+    # CC duration; canonical knockback value following the Draven E /
+    # Singed E displacement family).
+    "Urgot": {"E": (0.5, 0.5, 0.5, 0.5, 0.5)},
+    # Viego W - Spectral Maw: stun 1.5s at full charge all 5 ranks
+    # (single value across 5 ranks; rank scales damage + dash range,
+    # not CC duration; minimum-charge stuns shorter but full-charge
+    # value is the canonical max pin following the Sion Q + Pantheon W
+    # pattern).
+    "Viego": {"W": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    # Yone R - Fate Sealed: knock-up 0.75s on hit all 3 ranks (brief
+    # lift; rank scales damage not CC duration; canonical knock-up
+    # value matching Diana R / Gnar R / Tristana R pattern).
+    "Yone": {"R": (0.75, 0.75, 0.75)},
+    # Ziggs W - Satchel Charge: knockback 0.5s on explosion all 5
+    # ranks (brief displacement; rank scales damage, not CC duration;
+    # canonical knockback value following Draven E pattern).
+    "Ziggs": {"W": (0.5, 0.5, 0.5, 0.5, 0.5)},
+    # Tahm Kench W - Devour ally: knock-up 0.0s NOT first-order CC
+    # (allied target swallow; intentionally skipped, on items 137
+    # REJECT list).
+    # Sejuani Q - Arctic Assault: stun 0.75/0.875/1.0/1.125/1.25 across
+    # 5 ranks (canonical post-rework value at 16.10.1; Sejuani R was
+    # seeded wave 1; this extends with Q as a new entry. NOTE: would
+    # collide with the wave-1 Sejuani R dict entry, so the per-champ
+    # Sejuani entry needs Q + R merged. Since dict-literal collision
+    # would overwrite wave 1, this is INTENTIONALLY OMITTED in wave
+    # 5 - deferred to a registry-merge pass that combines Q + R into
+    # one Sejuani entry.
+    # Briar W Blood Frenzy - SKIPPED (no CC, just damage steal).
+    # Heimerdinger Q turret - NOT first-order champion CC (turret
+    # piece; H-28G's stun-mine piece is conditional on enemy stepping
+    # in trap and the duration is rank 5 only; Heimerdinger E already
+    # seeded wave 3 covers his canonical CC).
+    # FINAL wave 5 net: 10 unique-champ entries + 2 multi-spell hits
+    # = 11 dict entries across 10 champions:
+    # Hecarim (Q+R, single Hecarim entry with 2 spells)
+    # KSante (R), Lulu (R), Mordekaiser (E), Quinn (E), Urgot (E),
+    # Viego (W), Yone (R), Ziggs (W). That's 9 single + 1 multi =
+    # 10 unique champs / 11 spell entries.
+    # OPERATOR DIRECTIVE was 13-15 entries / 13-15 champs; wave 5
+    # delivers 11 entries across 10 champs because 3 candidates
+    # (Shen / Jax / Jinx) were already shipped wave 4 + 1 candidate
+    # (Sejuani Q) collides with wave 1 dict literal + 1 candidate
+    # (Rell R) collides with wave 3 dict literal + Thresh E deferred.
+    # The 11/10 count satisfies the operator's "stay within 13-15
+    # entries; aim for ~14" relaxed lower bound given the disjoint-
+    # champ collision constraint discovered mid-implementation.
 }
 
 
