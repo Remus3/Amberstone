@@ -368,15 +368,17 @@ class RegistryGrowthTests(unittest.TestCase):
     def test_registry_floor_at_95_entries(self) -> None:
         # Wave 1 = 30, wave 2 = +23 = 53, wave 3 = +14 = 67,
         # wave 4 = +15 = 82, wave 5 = +8 = 90, wave 6 = +5 = 95.
+        # Floor pin: total >= 95 (wave 7 may add more entries).
         total = sum(len(s) for s in _PER_SPELL_CC_DURATIONS.values())
-        self.assertEqual(total, 95)
+        self.assertGreaterEqual(total, 95)
 
     def test_registry_floor_at_82_champions(self) -> None:
         # Wave 1 = 24, wave 2 = +20 = 44, wave 3 = +14 = 58,
         # wave 4 = +15 = 73, wave 5 = +7 = 80, wave 6 = +2 new
         # (Bard / Lillia; Lulu / Sejuani / Thresh stay at 1 champ
         # each via multi-wave augmentation) = 82.
-        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 82)
+        # Floor pin: total >= 82 (wave 7 may add more champions).
+        self.assertGreaterEqual(len(_PER_SPELL_CC_DURATIONS), 82)
 
     def test_wave_six_new_champs_disjoint_from_prior(self) -> None:
         # Bard + Lillia are genuinely NEW; they must not collide
