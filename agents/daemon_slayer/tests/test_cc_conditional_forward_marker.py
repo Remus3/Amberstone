@@ -40,6 +40,7 @@ _REPO_ROOT = _DS_PACKAGE.parent.parent   # repo root
 _ALLOWED_TEST_FILES = {
     "test_cc_conditional.py",
     "test_cc_conditional_forward_marker.py",
+    "test_cc_conditional_wave1.py",
 }
 
 
