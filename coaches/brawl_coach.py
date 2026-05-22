@@ -29,6 +29,9 @@ from coaches._base_coach import (
 from core import daemon_slayer_client as _ds_client
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
 from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
+from core.cc_conditional_impact_context import (
+    cc_conditional_impact_line,
+)
 from core.death_patterns_loader import personal_context_block
 from core.enemy_cc_threat_context import enemy_cc_threat_line
 
@@ -435,6 +438,20 @@ class Coach(BaseCoach):
             _cc_blended_segment = (
                 f"\n{_cc_blended_line}" if _cc_blended_line else ""
             )
+            # Aggregate enemy CONDITIONAL CC -> blended-EHP impact
+            # (item 143 follow-up; first coach-prompt consumer of the
+            # cc_conditional registry shipped item 141 Slice B
+            # `7233568`). Same fail-soft contract as `_cc_blended_line`
+            # - returns "" when no enemy carries a registered
+            # conditional CC entry (the common case at 23/172 champs).
+            _cc_conditional_line = cc_conditional_impact_line(
+                state.get("enemy_comp", []),
+                state.get("game_mode", mode),
+            )
+            _cc_conditional_segment = (
+                f"\n{_cc_conditional_line}"
+                if _cc_conditional_line else ""
+            )
             user = (
                 f"=== {state.get('game_time','0:00')} | {mode} ===\n"
                 f"HP: {state.get('hp_pct',100)}%  Mana: {state.get('mana_pct',100)}%"
@@ -444,7 +461,7 @@ class Coach(BaseCoach):
                 f"Items: {', '.join(state.get('items', [])) or 'none'}\n"
                 f"Your team: {', '.join(state.get('ally_comp', [])) or 'unknown'}\n"
                 f"Enemy team: {', '.join(state.get('enemy_comp', [])) or 'unknown'}"
-                f"{_cc_segment}{_cc_blended_segment}\n"
+                f"{_cc_segment}{_cc_blended_segment}{_cc_conditional_segment}\n"
                 f"Dead enemies: {', '.join(state.get('dead_enemies', [])) or 'none'}{(' Respawns: ' + _resp) if _resp else ''}"
                 f"{event_ctx}\n"
                 + (

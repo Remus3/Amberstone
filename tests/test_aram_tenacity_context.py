@@ -355,6 +355,7 @@ class AramCoachWireTests(unittest.TestCase):
             enemy_aram_tenacity="",
             enemy_cc_threats="",
             cc_blended_ehp_impact="",
+            cc_conditional_impact="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("ARAM", out)
@@ -372,6 +373,7 @@ class AramCoachWireTests(unittest.TestCase):
             enemy_aram_tenacity="",
             enemy_cc_threats="",
             cc_blended_ehp_impact="",
+            cc_conditional_impact="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("ARAM tenacity: 1.20x", out)
@@ -391,6 +393,7 @@ class AramCoachWireTests(unittest.TestCase):
             ),
             enemy_cc_threats="",
             cc_blended_ehp_impact="",
+            cc_conditional_impact="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("Enemy ARAM tenacity", out)

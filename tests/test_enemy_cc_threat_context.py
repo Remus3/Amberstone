@@ -518,6 +518,7 @@ class CoachWireTests(unittest.TestCase):
             aram_tenacity="", enemy_aram_tenacity="",
             enemy_cc_threats="Enemy CC threats: Morgana 3.0s root (Q)",
             cc_blended_ehp_impact="",
+            cc_conditional_impact="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("Morgana", out)
@@ -539,6 +540,7 @@ class CoachWireTests(unittest.TestCase):
             my_abilities="none",
             enemy_cc_threats="Enemy CC threats: Annie 1.5s stun (R)",
             cc_blended_ehp_impact="",
+            cc_conditional_impact="",
             ds_picks="-", ds_label="-", vision_context="",
         )
         self.assertIn("Annie", out)
