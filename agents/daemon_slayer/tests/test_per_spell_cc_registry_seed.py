@@ -97,14 +97,14 @@ class RegistrySeedShapeTests(unittest.TestCase):
 
     def test_registry_has_expected_champion_count(self) -> None:
         # ENGINE 1.30.0 = 24 champs; 1.31.0 wave 2 = +20 = 44 total;
-        # 1.33.0 wave 3 = +14 = 58 total.
-        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 58)
+        # 1.33.0 wave 3 = +14 = 58 total; 1.34.0 wave 4 = +15 = 73 total.
+        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 73)
 
     def test_registry_has_expected_total_spell_entries(self) -> None:
         # ENGINE 1.30.0 = 30 entries; 1.31.0 wave 2 = +23 = 53 total;
-        # 1.33.0 wave 3 = +14 = 67 total.
+        # 1.33.0 wave 3 = +14 = 67 total; 1.34.0 wave 4 = +15 = 82 total.
         total = sum(len(s) for s in _PER_SPELL_CC_DURATIONS.values())
-        self.assertEqual(total, 67)
+        self.assertEqual(total, 82)
 
     def test_each_value_is_tuple_of_floats(self) -> None:
         for champ, spells in _PER_SPELL_CC_DURATIONS.items():
@@ -521,7 +521,7 @@ class RegistryAsciiContractTests(unittest.TestCase):
 
 class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_at_1_31_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.33.0")
+        self.assertEqual(ENGINE_VERSION, "1.34.0")
 
 
 if __name__ == "__main__":
