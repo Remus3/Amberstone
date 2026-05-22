@@ -1321,7 +1321,34 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.35.0"
+ENGINE_VERSION = "1.36.0"
+# 1.36.0 (per-spell CC registry schema lift + wave 6, 2026-05-22):
+# Closes item 139 carry (j): the future registry-merge pass owed to
+# enable multi-wave augmentation of single-champion spell maps. Lifts
+# the _PER_SPELL_CC_DURATIONS registry from a single dict literal (which
+# clobbered prior-wave entries when a later wave added a new spell to
+# the same champion) to a module-level builder function
+# _build_per_spell_cc_durations() that uses
+# ``registry.setdefault(champ, {})[spell] = tuple`` so multiple waves
+# can contribute spells to the same champion without clobbering.
+# Production behavior of all 90 pre-1.36.0 entries is byte-identical
+# (value pins preserved); the schema lift only changes the construction
+# shape.
+#
+# Wave 6 ships 5 NEW entries unblocked by the schema lift:
+# * Lulu R Wild Growth knock-up 1.0s all 3 ranks (multi-wave: Lulu W
+#   polymorph was seeded wave 1; now coexists).
+# * Sejuani Q Arctic Assault stun 0.75/0.875/1.0/1.125/1.25 across 5
+#   ranks (multi-wave: Sejuani R was seeded wave 1; now coexists).
+# * Thresh E Flay knockback 0.4s all 5 ranks (multi-wave: Thresh Q
+#   was seeded wave 1; now coexists).
+# * Bard R Tempered Fate stasis 2.5s all 3 ranks (NEW champion;
+#   stasis added to first-order CC scope).
+# * Lillia R Lilting Lullaby sleep 2.0s all 3 ranks (NEW champion).
+#
+# Registry total: 95 entries across 82 champions. Consumer math
+# byte-identical to 1.35.0 for all existing entries.
+#
 # 1.35.0 (compute_hybrid enemy_champions kwarg + cc_blended_ehp scoring
 # + CC registry wave 5, 2026-05-22):
 # Two feature additions shipped in the same parallel orchestrator drain
