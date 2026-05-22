@@ -5,6 +5,14 @@ ENGINE 1.30.0 + extended at 1.31.0. Walks the registry, picks max-
 rank base durations per registered spell, applies ARAM tenacity
 through ``ehp.effective_cc_duration``, returns ``CcPressureResult``.
 
+ENGINE 1.38.0 (2026-05-22) - dataclass gained 2 new fields for the
+``cc_conditional`` consumer wire (``conditional_cc_seconds`` +
+``conditional_entries``). The ``test_cc_pressure_result_field_names``
+pin in ``ContractTests`` was extended in the same commit; behavior
+tests in this file remain pinned at the unconditional axis (default
+``include_conditional=False``). Consumer-wire behavior is pinned in
+``test_cc_conditional_consumer_pressure.py``.
+
 Test surface:
 * ``ContractTests`` - dataclass shapes (frozen=True, field defaults,
   schema contract).
@@ -18,7 +26,7 @@ Test surface:
 * ``TenacityIntegrationTests`` - SR mode identity; ARAM mode lift
   composed via ``ehp.effective_cc_duration``.
 * ``AsciiHygieneTest`` - module is pure 7-bit ASCII.
-* ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.32.0.
+* ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.38.0.
 """
 
 from __future__ import annotations
@@ -82,6 +90,9 @@ class ContractTests(unittest.TestCase):
                 "total_cc_seconds",
                 "spells",
                 "tenacity_mult",
+                # ENGINE 1.38.0 fields - new conditional CC axis
+                "conditional_cc_seconds",
+                "conditional_entries",
             },
         )
 
@@ -409,10 +420,10 @@ class AsciiHygieneTest(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """Pin ENGINE_VERSION at 1.32.0 for this slice."""
+    """Pin ENGINE_VERSION at 1.38.0 for the cc_conditional consumer wire slice."""
 
-    def test_engine_version_is_1_32_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.37.0")
+    def test_engine_version_is_1_38_0(self) -> None:
+        self.assertEqual(ENGINE_VERSION, "1.38.0")
 
 
 if __name__ == "__main__":
