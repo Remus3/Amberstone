@@ -1,26 +1,34 @@
-"""ENGINE 1.37.0 (2026-05-22) - cc_conditional FORWARD-MARKER guard.
+"""ENGINE 1.39.0 (2026-05-22) - cc_conditional FORWARD-MARKER guard.
 
 The ``cc_conditional`` module shipped at ENGINE 1.37.0 as a
 FORWARD-MARKER seam: it carries the schema + machinery + a 10-entry
-seed. At ENGINE 1.38.0 (2026-05-22), the FIRST authorized consumer
-wire landed in ``cc_pressure.py`` as the ``include_conditional=False``
-kwarg path. This test now allow-lists ``cc_pressure.py`` as the
-explicitly-authorized first consumer while continuing to block any
+seed (extended to 18 entries / 18 champions at the same version).
+At ENGINE 1.38.0 (2026-05-22), the FIRST authorized consumer wire
+landed in ``cc_pressure.py`` as the ``include_conditional=False``
+kwarg path. At ENGINE 1.39.0 (2026-05-22), the SECOND authorized
+consumer wire landed in ``ehp.py`` - ``compute_ehp`` gains an
+``include_conditional`` kwarg that propagates through to the per-
+enemy ``compute_cc_pressure`` calls.
+
+This test now allow-lists ``cc_pressure.py`` + ``ehp.py`` as the
+explicitly-authorized consumers while continuing to block any
 OTHER file under ``agents/daemon_slayer/`` from importing the module
-(``ehp.py`` / ``ability_dps.py`` / ``engine.py`` / etc. all stay
-pinned to no-import - the operator gate must be crossed before each
-new consumer wire ships).
+(``ability_dps.py`` / ``engine.py`` / etc. all stay pinned to no-
+import - the operator gate must be crossed before each new consumer
+wire ships).
 
 This mirrors the pre-1.32.0 state of ``_PER_SPELL_CC_DURATIONS``
 (seeded at 1.30.0 with no consumer until ``compute_cc_pressure``
 shipped at 1.32.0). The conditional axis was operator-gated through
-items 138/139/140/141 carries; the cc_pressure consumer wire is the
-slice authorized at ENGINE 1.38.0.
+items 138/139/140/141 carries; the cc_pressure consumer wire was the
+slice authorized at ENGINE 1.38.0 and the compute_ehp consumer wire
+is the slice authorized at ENGINE 1.39.0.
 
 Coverage classes:
   * ``NoConsumerWireTests`` - no file in ``agents/daemon_slayer/``
     other than the test files + the explicitly-allowed
-    ``cc_pressure.py`` consumer imports from ``cc_conditional``.
+    ``cc_pressure.py`` + ``ehp.py`` consumers imports from
+    ``cc_conditional``.
   * ``DocstringStatesForwardMarkerTests`` - the module docstring
     declares the forward-marker contract so future readers know
     not to wire ADDITIONAL consumers without operator gating.
@@ -52,6 +60,7 @@ _ALLOWED_TEST_FILES = {
     "test_cc_conditional_wave1.py",
     "test_cc_conditional_wave2.py",
     "test_cc_conditional_consumer_pressure.py",
+    "test_cc_conditional_consumer_ehp.py",
 }
 _ALLOWED_SOURCE_FILES = {
     "cc_pressure.py",
@@ -158,11 +167,17 @@ class NoConsumerWireTests(unittest.TestCase):
             "back-out.",
         )
 
-    def test_ehp_does_not_import_cc_conditional(self) -> None:
-        # ehp.py is another natural consumer (EHP-vs-CC blended); the
-        # seam is explicitly NOT here. Future consumer wires here
-        # would close out item 141 carry (h) part 2 with an operator
-        # gate per slice.
+    def test_ehp_does_not_directly_import_cc_conditional(self) -> None:
+        # ENGINE 1.39.0 (2026-05-22): ``compute_ehp`` is the SECOND
+        # authorized consumer of cc_conditional but ONLY INDIRECTLY:
+        # the ``include_conditional`` kwarg flows through to the per-
+        # enemy ``compute_cc_pressure(enemy, mode, include_conditional=...)``
+        # calls. ehp.py itself does NOT import the conditional registry
+        # directly - it composes ON TOP of cc_pressure.py which is the
+        # FIRST authorized consumer (ENGINE 1.38.0). This pin guards
+        # against an accidental future direct import; the consumer
+        # wire stays one indirection layer away to preserve the
+        # single-source-of-truth boundary on the cc_pressure aggregator.
         self._assert_no_import(_DS_PACKAGE / "ehp.py", "ehp.py")
 
     def test_ability_dps_does_not_import_cc_conditional(self) -> None:
