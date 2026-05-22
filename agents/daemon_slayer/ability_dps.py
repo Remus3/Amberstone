@@ -1462,6 +1462,85 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     # Volibear E / Zac R). 7 of the 8 are NEW champions; Zac R is a
     # multi-wave augmentation (Zac E was seeded wave 2). Total registry:
     # 103 entries across 89 champs.
+    # ----- ENGINE 1.42.0 wave 8 (2026-05-22) -----
+    # +3 entries / 0 new champions / 3 multi-wave augmentations. The
+    # unconditional first-order CC at patch 16.10.1 is approaching
+    # saturation - per item 145 don't-redo: "most remaining champions
+    # either have no first-order CC OR carry conditional-only CC". The
+    # wave 8 audit walked every champion+spell duration block in
+    # data/daemon_slayer/16.10.1/champion_abilities.json + cross-checked
+    # against the wave-1-through-7 entries + the cc_conditional 33-entry
+    # registry. Net new unconditional candidates: 3 (all multi-wave
+    # augmentations of champions already partially seeded).
+    # Selection rules unchanged from waves 1-7: first-order CC only
+    # (stuns / roots / suspensions / knock-ups / knock-backs / charms /
+    # sleeps / fear / suppressions / polymorphs / taunts / pulls /
+    # stasis); no slows; no conditional CC; no self-CC; canonical
+    # DDragon ids.
+    # Lissandra W - Ring of Frost: root 1.25/1.35/1.45/1.55/1.65 across
+    # 5 ranks (canonical 16.10.1 Meraki value via Root Duration block in
+    # champion_abilities.json). AOE-on-cast around Lissandra; enemies
+    # in radius are rooted unconditionally. Multi-wave augmentation:
+    # Lissandra R stun was seeded wave 1; the setdefault builder allows
+    # Lissandra W to coexist on the same champion's spell map.
+    registry.setdefault("Lissandra", {})["W"] = (1.25, 1.35, 1.45, 1.55, 1.65)
+    # Maokai W - Twisted Advance: root 1.0/1.1/1.2/1.3/1.4 across 5
+    # ranks (canonical 16.10.1 Meraki value via Root Duration block).
+    # Targeted dash + root on enemy hit; the root applies on contact
+    # unconditionally once W is cast. Multi-wave augmentation: Maokai R
+    # Nature's Grasp was seeded wave 1; setdefault allows W to coexist.
+    # NOTE: Maokai Q Bramble Smash terrain-stun is conditional (already
+    # cc_conditional wave 2 entry) and stays REJECTED here per the
+    # no-conditional-CC selection rule.
+    registry.setdefault("Maokai", {})["W"] = (1.0, 1.1, 1.2, 1.3, 1.4)
+    # Rakan R - The Quickness: charm 1.0/1.25/1.5 across 3 ranks
+    # (canonical 16.10.1 Meraki value via Disable Duration block).
+    # Rakan dashes around an area for up to 4s; enemies he touches
+    # during the dash are charmed. The charm-on-touch is unconditional
+    # once R is cast (the dash IS the cast). Multi-wave augmentation:
+    # Rakan W Grand Entrance knock-up was seeded wave 1; setdefault
+    # allows R to coexist.
+    registry.setdefault("Rakan", {})["R"] = (1.0, 1.25, 1.5)
+    # Wave 8 REJECTED candidates (with reason recorded so future audits
+    # do NOT re-research):
+    # * Bard Q Cosmic Binding: already in cc_conditional wave 1 entry
+    #   (terrain-bounce double-stun conditional axis).
+    # * Evelynn W Allure: charm/stun is detonation-on-Eve-attack
+    #   conditional (target must be auto-attacked by Eve to apply the
+    #   charm); REJECT - belongs in cc_conditional if added later.
+    # * Karma W Focused Resolve: already in cc_conditional wave 1
+    #   (channel-completion full-tether root).
+    # * Morgana R Soul Shackles: stun fires on tether expiry which
+    #   requires target staying in range for 3s OR dying mid-tether;
+    #   channel-completion-conditional axis; REJECT - belongs in
+    #   cc_conditional if added later (parallel to Karma W).
+    # * Seraphine E Beat Drop: stun OR root duration is the same value
+    #   but which CC fires is conditional on target state (still target
+    #   gets root, moving/slowed target gets stun); REJECT per item 138
+    #   conditional-CC rule (target state is a conditional axis).
+    # * TwistedFate W Pick a Card: already in cc_conditional wave 1
+    #   (gold-card selection conditional stun).
+    # * Volibear R Stormbringer: 2/3/4s Turret Disable Duration - the
+    #   disable is on STRUCTURES (turrets), not on champion CC; carryover
+    #   from items 138 REJECT list.
+    # * Zilean Q Time Bomb: already in cc_conditional wave 2 (double-
+    #   bomb stack conditional stun).
+    # * Senna W Last Embrace: ALREADY in wave 4 (item 145's REJECT-list
+    #   note "Senna W (unconditional)" matched the existing wave-4 entry;
+    #   verified via grep on ability_dps.py - line 1182 has Senna W
+    #   root 1.25/1.5/1.75/2.0/2.25 seeded item 138 wave 4).
+    # * Tristana W Rocket Jump landing: REJECT per item 140 wave 6 list
+    #   (the landing applies a small slow not a discrete knockback at
+    #   16.10.1; only the Tristana R buster-shot knockback is canonical
+    #   and was seeded wave 3).
+    # * Aatrox W Infernal Chains: already in cc_conditional wave 4
+    #   (debuffed-target persistence pull-back root).
+    # * Skarner Q Shattered Earth + Upheaval: already in cc_conditional
+    #   wave 2 (nth-hit knockup).
+    # FINAL wave 8 net: 3 spell entries / 0 NEW champions / 3 multi-
+    # wave augmentations (Lissandra W + Maokai W + Rakan R). Total
+    # registry: 106 entries across 89 champs (unchanged champ count
+    # because all 3 augmentations are on existing champions).
     return registry
 
 
