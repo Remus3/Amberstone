@@ -14,6 +14,24 @@ spells - the simplest correct first-pass aggregator for downstream
 fight-sim / EHP-vs-CC blended scorer / coach-prompt renderer
 consumers.
 
+ENGINE 1.38.0 (2026-05-22) - FIRST conditional CC consumer wire.
+``compute_cc_pressure(champion, mode, include_conditional=False)``
+gains an optional kwarg that folds probability-weighted conditional CC
+contributions (from the ``cc_conditional`` registry shipped at ENGINE
+1.37.0 as a forward-marker seam) into the aggregate. The default
+``include_conditional=False`` preserves byte-identical 1.37.0 behavior
+for the 4 existing consumers (engine ``compute_ehp`` cc_blended_ehp
+math + coach prompt ``enemy_cc_threat_line`` + DS scorer
+``compute_hybrid`` + dashboard threat-balance route). When True,
+conditional contributions ALSO flow through
+``ehp.effective_cc_duration`` so the ARAM tenacity math seam stays
+unified between unconditional + conditional axes. The conditional
+contribution is exposed separately via the NEW
+``conditional_cc_seconds`` + ``conditional_entries`` fields on
+``CcPressureResult`` for transparency; the combined post-tenacity
+total appears in ``total_cc_seconds`` so a single caller sees one
+number.
+
 Empty result (``total_cc_seconds=0.0`` + empty ``spells`` tuple) for:
   * champion not in registry (44 of 172 champs at 1.31.0; 128 absent)
   * registry has no spell entries for the champion (defensive)
@@ -48,6 +66,11 @@ from dataclasses import dataclass, field
 from typing import Dict
 
 from .ability_dps import _PER_SPELL_CC_DURATIONS
+from .cc_conditional import (
+    ConditionalCcEntry,
+    get_conditional_entries,
+    get_total_conditional_cc_seconds,
+)
 from .ehp import effective_cc_duration
 
 _DATA_DIR = (
@@ -85,8 +108,13 @@ class CcPressureResult:
     """Aggregate CC pressure for a single champion in a given mode.
 
     ``total_cc_seconds`` is the sum of ``duration_post_tenacity_s``
-    across all registered spells (max-rank post-tenacity). Returns
-    0.0 for unregistered champions / empty registries.
+    across all registered spells (max-rank post-tenacity). When
+    ``include_conditional=True`` was passed to ``compute_cc_pressure``,
+    this field ALSO includes the post-tenacity probability-weighted
+    contribution from the conditional CC registry; the separate
+    contribution is broken out in ``conditional_cc_seconds`` for
+    transparency. Returns 0.0 for unregistered champions / empty
+    registries.
 
     ``spells`` is a tuple of ``CcSpellEntry`` in canonical Q-W-E-R
     order over the SUBSET of spells the champion has registered (Galio
@@ -97,6 +125,17 @@ class CcPressureResult:
     KIWI; the ``aramTenacity`` value from ``champions.json`` in
     ARAM / KIWI mode (1.0 default for the 155 non-modified champs;
     1.10 / 1.20 for the 17 modified assassins at 16.10.1).
+
+    ``conditional_cc_seconds`` (ENGINE 1.38.0) is the post-tenacity
+    probability-weighted total from the ``cc_conditional`` registry
+    for this champion when ``include_conditional=True`` was passed.
+    Equals 0.0 when ``include_conditional=False`` (the default) OR
+    the champion has no conditional entries.
+
+    ``conditional_entries`` (ENGINE 1.38.0) is the ordered tuple of
+    ``ConditionalCcEntry`` for this champion from the conditional
+    registry in canonical Q-W-E-R order. Populated only when
+    ``include_conditional=True`` was passed. Empty tuple otherwise.
     """
 
     champion: str
@@ -104,6 +143,10 @@ class CcPressureResult:
     total_cc_seconds: float
     spells: tuple[CcSpellEntry, ...] = field(default_factory=tuple)
     tenacity_mult: float = 1.0
+    conditional_cc_seconds: float = 0.0
+    conditional_entries: tuple[ConditionalCcEntry, ...] = field(
+        default_factory=tuple
+    )
 
 
 def _load_tenacity_map() -> Dict[str, float]:
@@ -163,7 +206,12 @@ def _is_aram_mode(mode: str | None) -> bool:
     return mode in _ARAM_MODES or mode.upper() in _ARAM_MODES
 
 
-def compute_cc_pressure(champion: str, mode: str = "SR") -> CcPressureResult:
+def compute_cc_pressure(
+    champion: str,
+    mode: str = "SR",
+    *,
+    include_conditional: bool = False,
+) -> CcPressureResult:
     """Aggregate first-order CC durations for a champion across registered spells.
 
     Reads ``_PER_SPELL_CC_DURATIONS`` from ``ability_dps``. Returns an
@@ -182,6 +230,18 @@ def compute_cc_pressure(champion: str, mode: str = "SR") -> CcPressureResult:
 
     The returned ``spells`` tuple is sorted in canonical Q-W-E-R order
     over the subset of spells the champion has registered.
+
+    When ``include_conditional=True`` (ENGINE 1.38.0), the conditional
+    CC registry is ALSO consulted: each entry's max-rank duration is
+    multiplied by its operator-tunable midpoint probability via
+    ``get_total_conditional_cc_seconds(champion, apply_probability=True)``,
+    then post-tenacity-applied via ``effective_cc_duration`` and folded
+    into ``total_cc_seconds``. The same probability-weighted post-
+    tenacity total is exposed separately via
+    ``conditional_cc_seconds`` for transparency, alongside the ordered
+    ``conditional_entries`` tuple. The default
+    ``include_conditional=False`` preserves byte-identical 1.37.0
+    behavior for all existing consumers.
     """
     safe_mode = mode if mode else "SR"
     if not champion:
@@ -191,6 +251,8 @@ def compute_cc_pressure(champion: str, mode: str = "SR") -> CcPressureResult:
             total_cc_seconds=0.0,
             spells=(),
             tenacity_mult=1.0,
+            conditional_cc_seconds=0.0,
+            conditional_entries=(),
         )
     # Mode-gated tenacity: only ARAM-family modes pull non-1.0 mult.
     if _is_aram_mode(safe_mode):
@@ -198,13 +260,32 @@ def compute_cc_pressure(champion: str, mode: str = "SR") -> CcPressureResult:
     else:
         tenacity_mult = 1.0
     spells_dict = _PER_SPELL_CC_DURATIONS.get(champion, {}) or {}
+    # ---------------- conditional axis (ENGINE 1.38.0) ----------------
+    # The conditional registry path is gated behind include_conditional
+    # so the default produces byte-identical output to ENGINE 1.37.0
+    # for the 4 existing consumers. When True, the probability-weighted
+    # raw sum is also passed through ``effective_cc_duration`` so the
+    # tenacity math seam is unified across both axes.
+    conditional_entries: tuple[ConditionalCcEntry, ...] = ()
+    conditional_post_tenacity = 0.0
+    if include_conditional:
+        conditional_entries = get_conditional_entries(champion)
+        if conditional_entries:
+            conditional_raw = get_total_conditional_cc_seconds(
+                champion, apply_probability=True
+            )
+            conditional_post_tenacity = effective_cc_duration(
+                conditional_raw, tenacity_mult
+            )
     if not spells_dict:
         return CcPressureResult(
             champion=champion,
             mode=safe_mode,
-            total_cc_seconds=0.0,
+            total_cc_seconds=conditional_post_tenacity,
             spells=(),
             tenacity_mult=tenacity_mult,
+            conditional_cc_seconds=conditional_post_tenacity,
+            conditional_entries=conditional_entries,
         )
     entries: list[CcSpellEntry] = []
     total = 0.0
@@ -226,9 +307,11 @@ def compute_cc_pressure(champion: str, mode: str = "SR") -> CcPressureResult:
     return CcPressureResult(
         champion=champion,
         mode=safe_mode,
-        total_cc_seconds=total,
+        total_cc_seconds=total + conditional_post_tenacity,
         spells=tuple(entries),
         tenacity_mult=tenacity_mult,
+        conditional_cc_seconds=conditional_post_tenacity,
+        conditional_entries=conditional_entries,
     )
 
 
