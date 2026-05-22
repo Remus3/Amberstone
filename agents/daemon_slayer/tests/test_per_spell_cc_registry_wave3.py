@@ -360,7 +360,7 @@ class WaveThreeNoDuplicatesTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """Branch ENGINE_VERSION pins the wave-4 ship state (1.34.0).
+    """Branch ENGINE_VERSION pins the wave-5 ship state (1.35.0).
 
     Wave 3 originally shipped under ENGINE 1.33.0. Wave 4 bumps to
     1.34.0 (item 137 carry / data-side broadening). The wave-3 surface
@@ -368,7 +368,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """
 
     def test_engine_version_at_1_34_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.34.0")
+        self.assertEqual(ENGINE_VERSION, "1.35.0")
 
 
 # ---------------- ASCII hygiene contract ----------------
