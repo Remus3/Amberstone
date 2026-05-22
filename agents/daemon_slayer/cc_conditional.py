@@ -11,12 +11,19 @@ with the schema + machinery + a seed of 10 canonical examples drawn
 from the wave 4/5/6 REJECT lists in CLAUDE.md items 138/139/140 plus
 wave 1 expansion of +8 entries across +8 new champions drawn from the
 same REJECT lists (CLAUDE.md items 138/139/140/141), bringing the
-registry to 18 entries across 18 champions.
-No consumer wires to it yet. Future consumers populate via
-probability-weighted aggregation in ``compute_cc_pressure`` or a
-sibling fight-sim that wants to credit (probability * duration) per
-conditional entry alongside the unconditional first-order entries
-already in ``_PER_SPELL_CC_DURATIONS``.
+registry to 18 entries across 18 champions. Wave 2 (2026-05-22 / ENGINE
+1.39.0) adds +5 entries across +5 new champions sourced from the wave
+4-7 REJECT lists + the wave 1 REJECT carry-forward, bringing the
+registry to 23 entries across 23 champions.
+At initial ship (ENGINE 1.37.0) no consumer wires were attached and the
+module was a strict forward marker. The first consumer wire ships via
+``compute_cc_pressure(include_conditional=False)`` (item 142 / ENGINE
+1.38.0); the kwarg defaults to False so the 4 prior consumers
+(compute_ehp / enemy_cc_threat_line / compute_hybrid /
+routes_cc_blended_ehp_threat) are byte-identical. Future consumers
+opt in by passing include_conditional=True to credit (probability *
+duration) per conditional entry alongside the unconditional first-
+order entries already in ``_PER_SPELL_CC_DURATIONS``.
 
 Mirrors the empty-seam pattern shipped at:
   * ENGINE 1.22.0 - ``STAT_GRANT_CALC_KEYS`` empty registry in
@@ -555,6 +562,117 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
             "champion ability or AA, target is stunned 1.5s. Parry "
             "outcome depends on enemy cast timing into Fiora's window; "
             "probability mid-low because parry timing is hard."
+        ),
+    )
+
+    # ============================================================
+    # === wave 2 expansion (2026-05-22) - 5 entries / 5 new champs
+    # === Drawn from wave 4/5/6/7 REJECT lists across items
+    # === 138/139/140/141 + the wave 1 REJECT carry-forward in
+    # === item 142. Uses only existing condition tags - no new tag
+    # === constants (operator-gated). Conservative per-entry
+    # === probabilities, defaulting to tag midpoint unless mechanic
+    # === justifies departure.
+    # ============================================================
+
+    # Maokai Q Bramble Smash: dash + knockback line. Base hit is a
+    # short knockback (~0.25s); if the target is pushed into terrain,
+    # the impact extends into a ~1.0s stun. Standalone hit with no
+    # terrain behind the target = damage + brief knockback only.
+    # Terrain-positioning conditional with low probability because
+    # operator must aim into geometry.
+    registry.setdefault("Maokai", {})["Q"] = ConditionalCcEntry(
+        champion="Maokai",
+        spell="Q",
+        cc_kind="stun",
+        durations_s=(1.0,),
+        condition=COND_TERRAIN,
+        probability=0.3,
+        notes=(
+            "Q knocks back; if target collides with terrain, stun "
+            "extends to ~1.0s. Standalone hit with no wall behind is "
+            "brief knockback only. Terrain-positioning conditional; "
+            "probability mid-low because aim is geometry-dependent."
+        ),
+    )
+
+    # Pyke E Phantom Undertow: Pyke dashes leaving a knife behind; the
+    # knife returns to Pyke after a delay (~1.25s) and stuns enemies it
+    # passes through for the rank duration. Standalone dash with no
+    # return path through enemies = damage on dash only. The stun
+    # fires only when the return-path completes through a target.
+    # Channel-completion conditional (the recall delay must elapse).
+    registry.setdefault("Pyke", {})["E"] = ConditionalCcEntry(
+        champion="Pyke",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(1.25,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=0.5,
+        notes=(
+            "E leaves a knife on dash path; knife returns ~1.25s post-"
+            "cast and stuns enemies it passes through for the rank "
+            "duration. Channel-completion conditional; mid probability "
+            "because return path is predictable but dodgeable."
+        ),
+    )
+
+    # Swain E Nevermove: launches a damage zone outward; the zone then
+    # returns to Swain along the same line. Targets hit by the RETURN
+    # wave are rooted for the rank duration. Outbound hit is damage
+    # only. Channel-completion conditional - the return wave only fires
+    # if Swain remains stationary + the wave is not cleansed mid-flight.
+    registry.setdefault("Swain", {})["E"] = ConditionalCcEntry(
+        champion="Swain",
+        spell="E",
+        cc_kind="root",
+        durations_s=(1.5, 1.625, 1.75, 1.875, 2.0),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=0.5,
+        notes=(
+            "E damage zone returns to Swain; targets hit by RETURN "
+            "wave rooted 1.5-2.0s across ranks. Outbound hit is damage "
+            "only. Channel-completion conditional - return path takes "
+            "~1.5s + dodgeable; probability midpoint."
+        ),
+    )
+
+    # Skarner Q Shattered Earth / Upheaval: Q has 3 charges. The 3rd
+    # cast in the cycle creates a terrain pillar; enemies caught
+    # between Skarner's path + the pillar are knocked up ~0.75s.
+    # First 2 casts are damage only. nth_hit conditional on the 3-cast
+    # cycle completing within the fight window.
+    registry.setdefault("Skarner", {})["Q"] = ConditionalCcEntry(
+        champion="Skarner",
+        spell="Q",
+        cc_kind="knockup",
+        durations_s=(0.75,),
+        condition=COND_NTH_HIT,
+        probability=0.7,
+        notes=(
+            "Q is a 3-charge cycle; 3rd cast creates terrain pillar + "
+            "knocks up 0.75s. First 2 casts are damage only. 3-cycle "
+            "achievability is high given Q's low cooldown."
+        ),
+    )
+
+    # Zilean Q Time Bomb: places delayed bomb that detonates ~3s
+    # later. If 2 bombs land on the same target before either
+    # detonates, both detonate immediately + stun the target 2.0s.
+    # Single-bomb hit is damage only. nth_hit conditional on the
+    # 2-bomb stack landing on the same enemy in sequence.
+    registry.setdefault("Zilean", {})["Q"] = ConditionalCcEntry(
+        champion="Zilean",
+        spell="Q",
+        cc_kind="stun",
+        durations_s=(2.0,),
+        condition=COND_NTH_HIT,
+        probability=0.7,
+        notes=(
+            "Q places delayed bomb (3s); if 2 bombs land on same target "
+            "before either detonates, both pop + target stunned 2.0s. "
+            "Single bomb is damage only. 2-stack achievability high in "
+            "a 6s fight with Q cooldown reset."
         ),
     )
 
