@@ -1,23 +1,29 @@
 """ENGINE 1.37.0 (2026-05-22) - cc_conditional FORWARD-MARKER guard.
 
-The ``cc_conditional`` module ships at 1.37.0 as a FORWARD-MARKER
-seam: it carries the schema + machinery + a 10-entry seed but NO
-consumer wires to it. These tests pin that boundary so future
-agents do not silently wire a consumer in the same engine bump that
-ships new conditional CC entries (the operator gate is between the
-data lane and the consumer lane).
+The ``cc_conditional`` module shipped at ENGINE 1.37.0 as a
+FORWARD-MARKER seam: it carries the schema + machinery + a 10-entry
+seed. At ENGINE 1.38.0 (2026-05-22), the FIRST authorized consumer
+wire landed in ``cc_pressure.py`` as the ``include_conditional=False``
+kwarg path. This test now allow-lists ``cc_pressure.py`` as the
+explicitly-authorized first consumer while continuing to block any
+OTHER file under ``agents/daemon_slayer/`` from importing the module
+(``ehp.py`` / ``ability_dps.py`` / ``engine.py`` / etc. all stay
+pinned to no-import - the operator gate must be crossed before each
+new consumer wire ships).
 
 This mirrors the pre-1.32.0 state of ``_PER_SPELL_CC_DURATIONS``
 (seeded at 1.30.0 with no consumer until ``compute_cc_pressure``
-shipped at 1.32.0). The conditional axis is operator-gated through
-items 138/139/140 carries; the consumer wire is a separate slice.
+shipped at 1.32.0). The conditional axis was operator-gated through
+items 138/139/140/141 carries; the cc_pressure consumer wire is the
+slice authorized at ENGINE 1.38.0.
 
 Coverage classes:
   * ``NoConsumerWireTests`` - no file in ``agents/daemon_slayer/``
-    other than the test files imports from ``cc_conditional``.
+    other than the test files + the explicitly-allowed
+    ``cc_pressure.py`` consumer imports from ``cc_conditional``.
   * ``DocstringStatesForwardMarkerTests`` - the module docstring
     declares the forward-marker contract so future readers know
-    not to wire consumers without operator gating.
+    not to wire ADDITIONAL consumers without operator gating.
 """
 
 from __future__ import annotations
@@ -34,12 +40,19 @@ _DS_PACKAGE = _THIS_FILE.parent.parent  # agents/daemon_slayer/
 _REPO_ROOT = _DS_PACKAGE.parent.parent   # repo root
 
 
-# Test files allowed to import from cc_conditional. Any other
-# .py file under agents/daemon_slayer/ that imports the module
-# is a NEW consumer wire and the operator gate has been crossed.
+# Files explicitly allowed to import from cc_conditional. Test
+# files for the module itself, the forward-marker guard test, the
+# new ENGINE 1.38.0 consumer wire test, and the FIRST authorized
+# consumer (``cc_pressure.py``). Any OTHER .py file under
+# ``agents/daemon_slayer/`` that imports the module is a NEW
+# consumer wire and the operator gate has been crossed.
 _ALLOWED_TEST_FILES = {
     "test_cc_conditional.py",
     "test_cc_conditional_forward_marker.py",
+    "test_cc_conditional_consumer_pressure.py",
+}
+_ALLOWED_SOURCE_FILES = {
+    "cc_pressure.py",
 }
 
 
@@ -85,6 +98,13 @@ class NoConsumerWireTests(unittest.TestCase):
             # Skip allowed test files.
             if py_file.name in _ALLOWED_TEST_FILES:
                 continue
+            # Skip explicitly-allowed consumer source files (ENGINE
+            # 1.38.0 allow-lists cc_pressure.py as the FIRST authorized
+            # consumer; future consumers must be added here in the
+            # SAME commit that wires them with an operator-approved
+            # CLAUDE.md ledger entry explaining the gate).
+            if py_file.name in _ALLOWED_SOURCE_FILES:
+                continue
             text = py_file.read_text(encoding="utf-8")
             if any(sig in text for sig in import_signatures):
                 offenders.append(py_file.relative_to(_REPO_ROOT))
@@ -116,13 +136,31 @@ class NoConsumerWireTests(unittest.TestCase):
                 "this wire ships",
             )
 
-    def test_cc_pressure_does_not_import_cc_conditional(self) -> None:
-        # cc_pressure.py is the most likely future consumer.
-        # Pin its current state until the operator authorizes the wire.
-        self._assert_no_import(_DS_PACKAGE / "cc_pressure.py", "cc_pressure.py")
+    def test_cc_pressure_is_authorized_first_consumer(self) -> None:
+        # cc_pressure.py is the FIRST authorized consumer wire that
+        # landed at ENGINE 1.38.0 (2026-05-22). Pin that the import
+        # exists so a future refactor that accidentally removes the
+        # wire is caught immediately. cc_pressure.py is in
+        # ``_ALLOWED_SOURCE_FILES`` above so the broader scan still
+        # passes; this test inverts the pin from the pre-1.38.0
+        # ``test_cc_pressure_does_not_import_cc_conditional``.
+        path = _DS_PACKAGE / "cc_pressure.py"
+        self.assertTrue(path.exists(), "cc_pressure.py missing")
+        text = path.read_text(encoding="utf-8")
+        self.assertIn(
+            "from .cc_conditional import",
+            text,
+            "cc_pressure.py no longer imports cc_conditional; the "
+            "FIRST authorized consumer wire at ENGINE 1.38.0 has been "
+            "removed without a CLAUDE.md ledger entry explaining the "
+            "back-out.",
+        )
 
     def test_ehp_does_not_import_cc_conditional(self) -> None:
-        # ehp.py is the other natural consumer (EHP-vs-CC blended).
+        # ehp.py is another natural consumer (EHP-vs-CC blended); the
+        # seam is explicitly NOT here. Future consumer wires here
+        # would close out item 141 carry (h) part 2 with an operator
+        # gate per slice.
         self._assert_no_import(_DS_PACKAGE / "ehp.py", "ehp.py")
 
     def test_ability_dps_does_not_import_cc_conditional(self) -> None:
