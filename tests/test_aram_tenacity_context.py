@@ -353,6 +353,7 @@ class AramCoachWireTests(unittest.TestCase):
             wave_pct=50, my_abilities="-", my_runes="-", enemy_runes="-",
             aram_tenacity="",
             enemy_aram_tenacity="",
+            enemy_cc_threats="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("ARAM", out)
@@ -368,6 +369,7 @@ class AramCoachWireTests(unittest.TestCase):
             wave_pct=50, my_abilities="-", my_runes="-", enemy_runes="-",
             aram_tenacity=aram_tenacity_line("Zed", "ARAM"),
             enemy_aram_tenacity="",
+            enemy_cc_threats="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("ARAM tenacity: 1.20x", out)
@@ -385,6 +387,7 @@ class AramCoachWireTests(unittest.TestCase):
             enemy_aram_tenacity=enemy_aram_tenacity_line(
                 ["Zed", "Talon"], "ARAM"
             ),
+            enemy_cc_threats="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("Enemy ARAM tenacity", out)
