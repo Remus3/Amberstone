@@ -1,4 +1,4 @@
-"""ENGINE 1.40.0 (2026-05-22) - cc_conditional wave 3 expansion.
+"""ENGINE 1.41.0 (2026-05-22) - cc_conditional wave 3 expansion.
 
 Tests the wave 3 expansion of the conditional CC registry: +5 entries
 across +5 new champions drawn from the 3-cast Q-cycle terminal knockup
@@ -38,9 +38,9 @@ Coverage classes:
     Aatrox + Leblanc have no unconditional entries.
   * ``AggregatorWaveThreeTests`` - aggregator returns expected
     weighted + raw totals for new entries.
-  * ``EngineVersionCurrentTests`` - ENGINE pinned at >= 1.40.0
-    (the orchestrator bumps to 1.40.0 at merge; this slice ships
-    on 1.40.0 and orchestrator-bump is post-merge).
+  * ``EngineVersionCurrentTests`` - ENGINE pinned at >= 1.41.0
+    (the orchestrator bumps to 1.41.0 at merge; this slice ships
+    on 1.41.0 and orchestrator-bump is post-merge).
   * ``AsciiHygieneTests`` - module + this test file pure ASCII.
 """
 
@@ -582,16 +582,16 @@ class AggregatorWaveThreeTests(unittest.TestCase):
 class EngineVersionCurrentTests(unittest.TestCase):
     """Pin ENGINE_VERSION at current bumped state.
 
-    Wave 3 ships at ENGINE 1.40.0 after orchestrator bump.
-    The slice itself is committed at 1.40.0 because the orchestrator
-    handles the bump at merge time. Either way, ENGINE >= 1.40.0 must
+    Wave 3 ships at ENGINE 1.41.0 after orchestrator bump.
+    The slice itself is committed at 1.41.0 because the orchestrator
+    handles the bump at merge time. Either way, ENGINE >= 1.41.0 must
     hold for the wave-3 test surface to be valid.
     """
 
     def test_engine_version_at_least_1_39_0(self) -> None:
-        # Wave 3 ships at ENGINE >= 1.40.0 (orchestrator may bump
-        # to 1.40.0 at merge). Future bumps must keep this at
-        # >= 1.40.0 so the wave-3 entry test surface stays valid.
+        # Wave 3 ships at ENGINE >= 1.41.0 (orchestrator may bump
+        # to 1.41.0 at merge). Future bumps must keep this at
+        # >= 1.41.0 so the wave-3 entry test surface stays valid.
         parts = tuple(int(x) for x in ENGINE_VERSION.split("."))
         self.assertGreaterEqual(parts, (1, 39, 0))
 

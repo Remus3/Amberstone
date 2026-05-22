@@ -1,9 +1,9 @@
-"""ENGINE 1.40.0 (2026-05-22) - compute_hybrid consumer wire for cc_conditional.
+"""ENGINE 1.41.0 (2026-05-22) - compute_hybrid consumer wire for cc_conditional.
 
 The ``cc_conditional`` module shipped at ENGINE 1.37.0 (2026-05-22)
 as a FORWARD-MARKER seam. ENGINE 1.38.0 (item 142 Slice A) wired
 ``compute_cc_pressure(include_conditional=False)`` as the FIRST
-authorized consumer. ENGINE 1.40.0 (item 143 Slice B) wires
+authorized consumer. ENGINE 1.41.0 (item 143 Slice B) wires
 ``compute_hybrid(include_conditional=False)`` as the THIRD
 authorized consumer (Slice A is compute_ehp as the SECOND consumer).
 
@@ -35,7 +35,7 @@ Test surface (7 classes):
     contribution; enemy_champions field carries through; ehp field
     still PRE-CC blended_ehp.
   * EngineVersionCurrentTests (1) - pin ENGINE_VERSION (orchestrator
-    syncs to 1.40.0 at merge).
+    syncs to 1.41.0 at merge).
   * AsciiHygieneTests (2) - pure 7-bit ASCII on this file + the
     hybrid.py edit zone.
 """
@@ -469,14 +469,14 @@ class HybridResultFieldsTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """Pin ENGINE_VERSION (orchestrator syncs to 1.40.0 at merge)."""
+    """Pin ENGINE_VERSION (orchestrator syncs to 1.41.0 at merge)."""
 
     def test_engine_version_is_current(self) -> None:
         # DO NOT change this string in this slice; the orchestrator
         # syncs all ENGINE pin sites at merge. Current pre-merge
         # state on main is 1.38.0 (item 142 cf5f509). Orchestrator
-        # bumps to 1.40.0 post-merge of Slice A + Slice B.
-        self.assertEqual(ENGINE_VERSION, "1.40.0")
+        # bumps to 1.41.0 post-merge of Slice A + Slice B.
+        self.assertEqual(ENGINE_VERSION, "1.41.0")
 
 
 # --------------------------------------------------- ASCII hygiene

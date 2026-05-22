@@ -1067,7 +1067,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(0.5,),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.5,
+        probability=_p("Nunu", "R", 0.5),
         notes=(
             "R is a 3s channel that explodes on completion + knocks "
             "up enemies in the AOE for 0.5s. Channel-interruption by "
@@ -1090,7 +1090,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="root",
         durations_s=(1.75,),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.4,
+        probability=_p("Yuumi", "Q", 0.4),
         notes=(
             "Q is a long-travel skillshot; root fires only at max "
             "projectile distance for 1.75s. Short-range hit is damage "
@@ -1116,7 +1116,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.0,),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.5,
+        probability=_p("Pantheon", "Q", 0.5),
         notes=(
             "Q tap-cast is a short-range damage spear; empowered "
             "long-cast (hold + release) becomes a long-range thrown "
@@ -1144,7 +1144,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="root",
         durations_s=(1.75,),
         condition=COND_TARGET_DEBUFFED,
-        probability=0.5,
+        probability=_p("Aatrox", "W", 0.5),
         notes=(
             "W chain hits + applies chain debuff for 1.75s; if target "
             "is still inside the zone when timer expires, they are "
@@ -1173,7 +1173,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.0,),
         condition=COND_TERRAIN,
-        probability=0.3,
+        probability=_p("Briar", "Q", 0.3),
         notes=(
             "Q dash; if target is knocked into terrain at end of dash, "
             "stun 1.0s. No-terrain hit is damage only. terrain "
