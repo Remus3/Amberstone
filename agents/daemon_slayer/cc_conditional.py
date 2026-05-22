@@ -14,7 +14,10 @@ same REJECT lists (CLAUDE.md items 138/139/140/141), bringing the
 registry to 18 entries across 18 champions. Wave 2 (2026-05-22 / ENGINE
 1.39.0) adds +5 entries across +5 new champions sourced from the wave
 4-7 REJECT lists + the wave 1 REJECT carry-forward, bringing the
-registry to 23 entries across 23 champions.
+registry to 23 entries across 23 champions. Wave 3 (2026-05-22 / ENGINE
+1.40.0) adds +5 entries across +5 new champions, all 3-cast-cycle
+knock-up sweetspot triggers + Leblanc full-tether snare, bringing the
+registry to 28 entries across 28 champions.
 At initial ship (ENGINE 1.37.0) no consumer wires were attached and the
 module was a strict forward marker. The first consumer wire ships via
 ``compute_cc_pressure(include_conditional=False)`` (item 142 / ENGINE
@@ -673,6 +676,143 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
             "before either detonates, both pop + target stunned 2.0s. "
             "Single bomb is damage only. 2-stack achievability high in "
             "a 6s fight with Q cooldown reset."
+        ),
+    )
+
+    # ============================================================
+    # === wave 3 expansion (2026-05-22) - 5 entries / 5 new champs
+    # === 4 of 5 entries are 3-cast Q-cycle terminal knockups
+    # === (Aatrox / Riven / Yasuo / Yone) sourced via the durable
+    # === multi-cast windup pattern at 16.10.1. The 5th is the
+    # === Leblanc full-tether root (Karma W parallel). All entries
+    # === re-use existing condition tags; no new tag constants.
+    # === None of the wave 3 champions appear in waves 1/2 or in
+    # === the unconditional ``_PER_SPELL_CC_DURATIONS`` registry
+    # === for their wave-3 spell slot (Riven W is unconditional
+    # === but Riven Q is the wave-3 conditional slot; Renekton W
+    # === / Camille E base-stun extension paths were intentionally
+    # === REJECTED to keep wave 3 entries semantically symmetric
+    # === to existing entries which encode full conditional CC
+    # === durations rather than over-base extensions).
+    # ============================================================
+
+    # Aatrox Q3 The Darkin Blade sweetspot knockup: Q is a 3-cast
+    # cycle (line / cone / circle). The 3rd cast's inner sweetspot
+    # circle deals bonus damage AND knocks up enemies inside it for
+    # 0.5s. Outside the sweetspot ring on cast 3 = damage + brief
+    # knockback (not first-order CC). nth_hit conditional on the
+    # 3-cycle reaching cast 3 within the fight window. Aatrox has
+    # no unconditional ``_PER_SPELL_CC_DURATIONS`` entry today; this
+    # is the first registered Aatrox first-order CC.
+    registry.setdefault("Aatrox", {})["Q"] = ConditionalCcEntry(
+        champion="Aatrox",
+        spell="Q",
+        cc_kind="knockup",
+        durations_s=(0.5,),
+        condition=COND_NTH_HIT,
+        probability=0.7,
+        notes=(
+            "Q is a 3-cast cycle; 3rd cast's inner sweetspot circle "
+            "knocks up enemies hit for 0.5s. Outside the sweetspot is "
+            "damage + brief knockback (not first-order CC). 3-cycle "
+            "achievability high in a 6s fight given Q's short windup "
+            "between casts."
+        ),
+    )
+
+    # Riven Q3 Broken Wings third-dash terminal knockup: Q is a
+    # 3-dash cycle. The 3rd dash ends with a small AOE knockup of
+    # 0.75s on impact. Casts 1 + 2 are damage + dash only. nth_hit
+    # conditional on the 3-cycle reaching cast 3. Riven W is the
+    # unconditional stun (already in ``_PER_SPELL_CC_DURATIONS``);
+    # Riven Q (this wave 3) is the conditional knockup that coexists
+    # on the same champion via setdefault.
+    registry.setdefault("Riven", {})["Q"] = ConditionalCcEntry(
+        champion="Riven",
+        spell="Q",
+        cc_kind="knockup",
+        durations_s=(0.75,),
+        condition=COND_NTH_HIT,
+        probability=0.7,
+        notes=(
+            "Q is a 3-dash cycle; 3rd dash impact AOE knocks up "
+            "enemies 0.75s. Casts 1 + 2 are damage + dash only. "
+            "3-cycle achievability high given Q's short cooldown "
+            "and dash reset cadence."
+        ),
+    )
+
+    # Yasuo Q3 Steel Tempest tornado knockup: Q is a 3-cast cycle
+    # (line slash x2 + ranged tornado). The 3rd cast becomes a
+    # ranged tornado that knocks up enemies hit for 1.0s. Casts 1
+    # + 2 are damage + brief knockback (single-target dash). nth_hit
+    # conditional on the 3-cycle reaching cast 3 within the fight
+    # window. Yasuo R is the unconditional knockup (already in
+    # ``_PER_SPELL_CC_DURATIONS``); Yasuo Q (this wave 3) is the
+    # conditional knockup that coexists on the same champion via
+    # setdefault.
+    registry.setdefault("Yasuo", {})["Q"] = ConditionalCcEntry(
+        champion="Yasuo",
+        spell="Q",
+        cc_kind="knockup",
+        durations_s=(1.0,),
+        condition=COND_NTH_HIT,
+        probability=0.7,
+        notes=(
+            "Q is a 3-cast cycle; 3rd cast becomes a ranged tornado "
+            "that knocks up enemies hit for 1.0s. Casts 1 + 2 are "
+            "damage only (no first-order CC). 3-cycle achievability "
+            "high in a 6s fight given Q is core combo + bonus AS "
+            "from passive."
+        ),
+    )
+
+    # Yone Q3 Mortal Steel tornado knockup: mirror of Yasuo Q
+    # mechanic. Q is a 3-cast cycle; 3rd cast becomes a ranged
+    # tornado that knocks up enemies hit for 0.75s (Yone's tornado
+    # is slightly shorter knockup than Yasuo's). Casts 1 + 2 are
+    # damage only. Yone R is the unconditional knockup (already in
+    # ``_PER_SPELL_CC_DURATIONS``); Yone Q (this wave 3) is the
+    # conditional knockup that coexists on the same champion via
+    # setdefault.
+    registry.setdefault("Yone", {})["Q"] = ConditionalCcEntry(
+        champion="Yone",
+        spell="Q",
+        cc_kind="knockup",
+        durations_s=(0.75,),
+        condition=COND_NTH_HIT,
+        probability=0.7,
+        notes=(
+            "Q is a 3-cast cycle mirror of Yasuo's; 3rd cast becomes "
+            "a ranged tornado that knocks up enemies hit for 0.75s. "
+            "Casts 1 + 2 are damage only (no first-order CC). 3-cycle "
+            "achievability high given Q's short cooldown."
+        ),
+    )
+
+    # Leblanc E Ethereal Chains full-tether root: E projectile
+    # applies a tether debuff on hit. If the tether persists for
+    # the full duration (~1.5s) without Leblanc breaking range or
+    # the target breaking LoS, target is rooted for 1.5s. Tether-
+    # breaking = damage only (no first-order CC). channel_completion
+    # conditional (the tether duration is the channel). Mirrors the
+    # Karma W full-tether pattern from wave 1. Leblanc has no
+    # unconditional ``_PER_SPELL_CC_DURATIONS`` entry today; this is
+    # the first registered Leblanc first-order CC.
+    registry.setdefault("Leblanc", {})["E"] = ConditionalCcEntry(
+        champion="Leblanc",
+        spell="E",
+        cc_kind="root",
+        durations_s=(1.5,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=0.5,
+        notes=(
+            "E applies tether on hit; root fires only if tether "
+            "persists for the full duration (~1.5s) without Leblanc "
+            "leaving range or target breaking LoS. Tether-breaking = "
+            "damage only. Probability midpoint matches the Karma W "
+            "full-tether pattern from wave 1; tether is frequently "
+            "cancelled in mid-fight."
         ),
     )
 
