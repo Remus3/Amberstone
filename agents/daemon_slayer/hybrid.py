@@ -201,6 +201,7 @@ def compute_hybrid(
     phase: Optional[str] = None,
     augments: Optional[Iterable] = None,
     enemy_champions: Iterable[str] = (),
+    include_conditional: bool = False,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
 ) -> HybridResult:
@@ -228,6 +229,19 @@ def compute_hybrid(
     is empty. The ``ehp`` field on ``HybridResult`` keeps its
     ``blended_ehp`` semantics (PRE-CC) for transparency; the new
     ``cc_blended_ehp`` field surfaces the POST-CC value alongside.
+
+    ENGINE 1.39.0 (item 143 Slice B): ``include_conditional`` propagates
+    through to ``compute_ehp`` which threads it down to
+    ``compute_cc_pressure``. When True, the conditional CC registry
+    (operator-tunable probability midpoints) folds into the cc_blended_ehp
+    discount; ``HybridResult.cc_blended_ehp`` reflects the larger
+    post-CC-erosion discount automatically. Default ``False`` preserves
+    byte-identical behavior with item 138 / ENGINE 1.35.0 callers - the
+    kwarg flow is indirect (hybrid -> ehp -> cc_pressure) so this module
+    has no direct dependency on the conditional CC registry. The 4
+    existing consumers of compute_hybrid (ranker baseline, ranker
+    per-candidate, direct callers, dashboard) keep byte-identical
+    math at the default.
     """
     level = clamp_level(level)
     if alpha is None or beta is None:
@@ -264,6 +278,15 @@ def compute_hybrid(
         phase=phase,
         augments=augments,
     )
+    # ENGINE 1.39.0 (item 143 Slice B): pass include_conditional through
+    # to compute_ehp ONLY when True. This preserves byte-identical
+    # behavior with all pre-Slice-A-merge callers (compute_ehp does not
+    # yet accept the kwarg in main; Slice A adds it). Once Slice A
+    # merges, the **kwargs threading is byte-identical to threading the
+    # kwarg unconditionally because the default is False.
+    _ehp_kwargs = {}
+    if include_conditional:
+        _ehp_kwargs["include_conditional"] = True
     ehp_result = compute_ehp(
         snapshot,
         champion_id=champion_id,
@@ -274,6 +297,7 @@ def compute_hybrid(
         enemy_ap_share=enemy_ap_share,
         augments=augments,
         enemy_champions=enemy_champions_tuple,
+        **_ehp_kwargs,
     )
 
     # When enemy_champions is empty, ehp_result.cc_blended_ehp ==
@@ -526,6 +550,7 @@ def rank_items_by_hybrid(
     sort_by: str = "delta",
     augments: Optional[Iterable] = None,
     enemy_champions: Iterable[str] = (),
+    include_conditional: bool = False,
     filter_shared_uniques: bool = True,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
@@ -593,6 +618,11 @@ def rank_items_by_hybrid(
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         phase=phase, augments=augments,
     )
+    # ENGINE 1.39.0 (item 143 Slice B): pass include_conditional through
+    # only when True (same pattern as compute_hybrid above).
+    _ehp_kwargs_baseline = {}
+    if include_conditional:
+        _ehp_kwargs_baseline["include_conditional"] = True
     baseline_ehp_result = compute_ehp(
         snapshot,
         champion_id=champion_id, level=level,
@@ -600,6 +630,7 @@ def rank_items_by_hybrid(
         enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
         augments=augments,
         enemy_champions=enemy_champions_tuple,
+        **_ehp_kwargs_baseline,
     )
     baseline_dps = baseline_dps_result.weighted_dps
     # baseline_ehp keeps the blended_ehp semantics for the
@@ -641,6 +672,11 @@ def rank_items_by_hybrid(
                 target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
                 phase=phase, augments=augments,
             )
+            # ENGINE 1.39.0 (item 143 Slice B): same conditional kwarg
+            # threading pattern as the baseline call above.
+            _ehp_kwargs_scored = {}
+            if include_conditional:
+                _ehp_kwargs_scored["include_conditional"] = True
             ehp_scored = compute_ehp(
                 snapshot,
                 champion_id=champion_id, level=level,
@@ -648,6 +684,7 @@ def rank_items_by_hybrid(
                 enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
                 augments=augments,
                 enemy_champions=enemy_champions_tuple,
+                **_ehp_kwargs_scored,
             )
         except (KeyError, ValueError):
             continue
