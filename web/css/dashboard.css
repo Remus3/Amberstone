@@ -34,6 +34,7 @@
 @import './panels/ward_heat.css';
 @import './panels/draft_elo.css';
 @import './panels/ban_suggest_toggle.css';
+@import './panels/cc_blended_ehp_threat.css';
 @import './panels/last_match.css';
 @import './panels/replay_events.css';
 @import './panels/coach_choices.css';
