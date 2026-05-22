@@ -303,15 +303,19 @@ class WaveOneThroughFourPreservedTests(unittest.TestCase):
             )
 
     def test_lulu_w_polymorph_preserved(self) -> None:
-        # Critical regression guard: wave 1 Lulu W polymorph must NOT
-        # be overwritten by a wave 5 Lulu R entry (the dict-literal
-        # would clobber it). Wave 5 docstring records the deliberate
-        # Lulu R rejection.
+        # Critical regression guard: wave 1 Lulu W polymorph is preserved
+        # post-schema-lift (wave 6, ENGINE 1.36.0). The wave-5 docstring
+        # recorded a deferral of Lulu R due to dict-literal collision; the
+        # 1.36.0 schema lift to the setdefault builder unblocks that
+        # multi-wave augmentation. Wave 6 added Lulu R; this guard now
+        # verifies both spells coexist (Lulu W from wave 1 + Lulu R from
+        # wave 6).
         self.assertEqual(
             _per_spell_cc_for("Lulu", "W"),
             (1.25, 1.5, 1.75, 2.0, 2.25),
         )
-        self.assertEqual(_per_spell_cc_for("Lulu", "R"), ())
+        # Lulu R wave 6 entry coexists thanks to the schema lift.
+        self.assertEqual(_per_spell_cc_for("Lulu", "R"), (1.0, 1.0, 1.0))
 
     def test_quinn_e_preserved_from_wave_4(self) -> None:
         # Wave 4 Quinn E knockback must not be re-overwritten by a
@@ -434,16 +438,15 @@ class WaveFiveNoDuplicatesTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """ENGINE_VERSION pin at wave-5 ship state (1.35.0).
+    """ENGINE_VERSION pin at wave-6 ship state (1.36.0).
 
-    Wave 5 is a data-lane add on top of wave 4 (1.34.0); orchestrator
-    bumps ENGINE_VERSION at merge time. This test pins the current
-    bump-floor; if orchestrator decides to bump to 1.35.0 the
-    expected value updates in the merge commit.
+    Wave 5 originally shipped under ENGINE 1.35.0. Wave 6 schema lift
+    bumps to 1.36.0. The wave-5 surface itself is unchanged; this pin
+    moves forward with the registry.
     """
 
-    def test_engine_version_at_1_34_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.35.0")
+    def test_engine_version_at_1_36_0(self) -> None:
+        self.assertEqual(ENGINE_VERSION, "1.36.0")
 
 
 # ---------------- ASCII hygiene contract ----------------
