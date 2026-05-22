@@ -482,24 +482,35 @@ class RegistryGrowthTests(unittest.TestCase):
     """The public counters match the seed."""
 
     def test_registry_seed_champion_count(self) -> None:
-        # Seed ships 10 distinct champions; pin to detect regressions.
-        self.assertEqual(REGISTRY_TOTAL_CHAMPIONS, 10)
-        self.assertEqual(len(_PER_SPELL_CC_CONDITIONAL), 10)
+        # Seed ships 10 distinct champions; future waves add more.
+        # Relaxed from assertEqual to assertGreaterEqual so wave 1+
+        # expansion does not require updating this pin (mirrors the
+        # wave 6 relaxation pattern from CLAUDE.md item 141).
+        self.assertGreaterEqual(REGISTRY_TOTAL_CHAMPIONS, 10)
+        self.assertGreaterEqual(len(_PER_SPELL_CC_CONDITIONAL), 10)
 
     def test_registry_seed_entry_count(self) -> None:
         # Seed ships 10 entries (1 per champion). Future waves add
-        # more; this pin alerts if a wave forgets to update the test
-        # or accidentally removes a seed entry.
-        self.assertEqual(REGISTRY_TOTAL_ENTRIES, 10)
+        # more; this pin alerts only if a wave accidentally removes a
+        # seed entry. Relaxed to assertGreaterEqual for future-wave
+        # compatibility.
+        self.assertGreaterEqual(REGISTRY_TOTAL_ENTRIES, 10)
         live = sum(
             len(spells) for spells in _PER_SPELL_CC_CONDITIONAL.values()
         )
-        self.assertEqual(live, 10)
+        self.assertGreaterEqual(live, 10)
 
     def test_seed_champ_set_matches_expected(self) -> None:
+        # The seed champ set is a SUBSET of the live registry; future
+        # waves add more champs (relaxed from strict equality so wave
+        # 1+ does not require updating this pin).
         expected_champs = set(SEED_EXPECTED.keys())
         live_champs = set(_PER_SPELL_CC_CONDITIONAL.keys())
-        self.assertEqual(expected_champs, live_champs)
+        self.assertTrue(
+            expected_champs.issubset(live_champs),
+            f"seed champ missing from registry: "
+            f"{expected_champs - live_champs}",
+        )
 
 
 # ---------------- default probability map coverage ----------------
