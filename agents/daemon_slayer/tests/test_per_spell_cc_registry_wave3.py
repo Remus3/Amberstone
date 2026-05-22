@@ -360,16 +360,15 @@ class WaveThreeNoDuplicatesTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """Branch ENGINE_VERSION should remain at 1.32.0 pre-merge.
+    """Branch ENGINE_VERSION pins the wave-4 ship state (1.34.0).
 
-    Orchestrator bumps to 1.33.0 at merge (per the parallel-slice
-    orchestrator pattern from items 134/135/136). This test pins the
-    branch state explicitly.
+    Wave 3 originally shipped under ENGINE 1.33.0. Wave 4 bumps to
+    1.34.0 (item 137 carry / data-side broadening). The wave-3 surface
+    itself is unchanged; this pin moves forward with the registry.
     """
 
-    def test_engine_version_at_1_32_0_pre_merge(self) -> None:
-        # If this fails post-orchestrator-merge, update to 1.33.0.
-        self.assertEqual(ENGINE_VERSION, "1.33.0")
+    def test_engine_version_at_1_34_0(self) -> None:
+        self.assertEqual(ENGINE_VERSION, "1.34.0")
 
 
 # ---------------- ASCII hygiene contract ----------------

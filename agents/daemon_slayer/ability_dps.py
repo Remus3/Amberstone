@@ -1105,6 +1105,81 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     # 3rd-strike attack at end of pull-line all 5 ranks (canonical
     # value; the pull setup scales damage not the CC duration).
     "XinZhao": {"W": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # ----- ENGINE 1.34.0 wave 4 (2026-05-22) -----
+    # +15 entries across 15 additional champions of first-order CC at
+    # patch 16.10. Selection rules unchanged from waves 1 + 2 + 3
+    # (stuns / roots / suspensions / knock-ups / knock-backs / charms
+    # / sleeps / fear / suppressions / polymorphs / taunts); no slows;
+    # no conditional CC (Bard Q wall-bounce / TF W Gold Card / Evelynn W
+    # detonation-on-Eve-attack / Karma W channel-completion / Syndra E
+    # via Dark Sphere / Swain E return-wave / Seraphine E slowed-target /
+    # Zilean Q double-bomb / Hwei E compound-cast); no self-CC. Values
+    # sourced from data/daemon_slayer/16.10.1/champion_abilities.json
+    # for the explicit per-rank duration entries; the knock-up / knock-back
+    # / direct-stun single-value entries follow the wave 1+2+3 convention
+    # for displacements not encoded as duration blocks.
+    # Draven E - Stand Aside: knock-back 0.5s on contact all 5 ranks
+    # (brief displacement followed by slow; pin canonical knockback
+    # value following the Singed E / Tristana R pattern from wave 2+3).
+    "Draven": {"E": (0.5, 0.5, 0.5, 0.5, 0.5)},
+    # Ekko W - Parallel Convergence: stun 2.25s on enemies inside the
+    # anomaly when it expires after delay (single value across 5 ranks;
+    # rank scales shield strength, not CC duration). Universal-zone
+    # pattern (enemies inside at expiry get the CC) mirrors Soraka E
+    # Equinox + Anivia Q from wave 2.
+    "Ekko": {"W": (2.25, 2.25, 2.25, 2.25, 2.25)},
+    # Janna Q - Howling Gale: knock-up 1.0s at full charge across all
+    # 5 ranks (rank scales damage; knock-up duration scales with the
+    # tornado's charge time NOT with rank; pin canonical full-charge
+    # value per the wave-1 Vi Q / wave-3 Tristana R single-value
+    # convention).
+    "Janna": {"Q": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Jax E - Counter Strike: stun 1.0s AOE on dodge counterattack at
+    # all 5 ranks (rank scales damage not CC duration).
+    "Jax": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Jinx E - Flame Chompers: root 1.5s on triggered chomper at all
+    # 5 ranks (rank scales damage + cooldown, not CC duration).
+    "Jinx": {"E": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    # Mel E - Solar Snare: root 1.25/1.5/1.75/2.0/2.25 on orb expiry
+    # across 5 ranks (Orb Root Duration block from champion_abilities
+    # data at 16.10.1).
+    "Mel": {"E": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    # Nocturne E - Unspeakable Horror: fear 1.25/1.5/1.75/2.0/2.25
+    # across 5 ranks (Disable Duration block from data; the channel
+    # is the application timer not a conditional gate - the fear
+    # applies as soon as the channel completes which is universal).
+    "Nocturne": {"E": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    # Quinn E - Vault: knock-back 0.75s on dash hit at all 5 ranks
+    # (brief displacement following Singed E / Tristana R pattern).
+    "Quinn": {"E": (0.75, 0.75, 0.75, 0.75, 0.75)},
+    # Rammus E - Frenzying Taunt: taunt 1.2/1.4/1.6/1.8/2.0 across
+    # 5 ranks (Taunt Duration block from data).
+    "Rammus": {"E": (1.2, 1.4, 1.6, 1.8, 2.0)},
+    # Senna W - Last Embrace: root 1.25/1.5/1.75/2.0/2.25 across 5
+    # ranks (Root Duration block from data; delayed root after the
+    # ~1s travel delay - the timer is universal not conditional,
+    # mirrors the Nautilus Q / Caitlyn W expiry-root pattern).
+    "Senna": {"W": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    # Seraphine R - Encore: stun 1.25/1.5/1.75 across 3 ranks
+    # (Disable Duration block from data; primary AOE wave stuns
+    # enemies hit; bounce-back extension is universal).
+    "Seraphine": {"R": (1.25, 1.5, 1.75)},
+    # Shaco W - Jack in the Box: fear 0.5/0.75/1.0/1.25/1.5 across
+    # 5 ranks (Fear Duration block from data; box trigger fires the
+    # fear on enemies in radius unconditionally).
+    "Shaco": {"W": (0.5, 0.75, 1.0, 1.25, 1.5)},
+    # Shen E - Shadow Dash: taunt 1.5s on dash hit at all 5 ranks
+    # (canonical post-rework value; rank scales damage + energy
+    # restore, not CC duration; description "dashing in a direction,
+    # taunting enemies in his path" from cdragon).
+    "Shen": {"E": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    # Soraka E - Equinox: root 1.0/1.25/1.5/1.75/2.0 on enemies inside
+    # at zone expiry across 5 ranks (Root Duration block from data;
+    # universal-zone pattern mirroring Ekko W + Anivia Q).
+    "Soraka": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    # Zyra E - Grasping Roots: root 1.0/1.25/1.5/1.75/2.0 on line hit
+    # across 5 ranks (Root Duration block from data).
+    "Zyra": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
 }
 
 
