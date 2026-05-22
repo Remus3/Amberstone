@@ -220,6 +220,28 @@ trigger model (Lightshield Strike fires mid-fight, not at full HP).
 """
 
 
+_CC_EFFECTIVENESS_FACTOR = 0.5
+"""ENGINE 1.33.0 (2026-05-22) EHP-vs-CC blended scorer coefficient.
+
+CC pressure summed across enemy champions does not perfectly translate
+into operator EHP loss - CC is interrupted by gaps between casts,
+cleansed by QSS / Mercurial / Mikael's, dodged via Flash / dash, and
+not perfectly chained inside a 6s fight window. This factor calibrates
+the discount applied to ``blended_ehp`` per second of summed enemy
+CC pressure.
+
+Math: ``cc_blended_ehp = blended_ehp * (1.0 - cc_pressure_fraction * 0.5)``
+where ``cc_pressure_fraction = min(enemy_cc_pressure_s / _FIGHT_WINDOW_S, 1.0)``.
+
+A conservative midpoint - 1.0s of summed enemy CC pressure erodes
+0.5s of operator fight-time effectiveness. Operator-tunable via a
+single module constant (parallels ``_MISSING_HP_SHARE_FOR_HEALS = 0.5``
+Phase 6.5 discipline). Future calibration data from live games may
+warrant adjustment; do NOT vary per-enemy or per-spell - the factor
+is a coarse aggregate model by design.
+"""
+
+
 def _collect_heals(
     item_ids: Iterable[str],
     base_ad: float,
@@ -431,6 +453,29 @@ class EhpResult:
     heal_amp_mult: float = 1.0
     heal_total: float = 0.0
     heal_sources: tuple[tuple[str, float], ...] = field(default_factory=tuple)
+    # ENGINE 1.33.0 (2026-05-22): EHP-vs-CC blended scorer. Second
+    # engine math consumer of ``compute_cc_pressure`` (the first was
+    # the coach-prompt-side ``core/enemy_cc_threat_context.py`` per
+    # CLAUDE.md item 136 Slice B; this slice closes item 136 carry (a)
+    # by consuming the registry inside the engine math layer).
+    #
+    # ``enemy_cc_pressure_s`` is the sum of ``total_cc_seconds`` from
+    # ``compute_cc_pressure(enemy, mode)`` over the ``enemy_champions``
+    # iterable. ``cc_pressure_fraction`` is the bounded share of the
+    # ``_FIGHT_WINDOW_S`` (6.0s) consumed by enemy CC, clamped at 1.0
+    # so a 20s burst of summed CC saturates to a single fight window.
+    # ``cc_blended_ehp`` is the conservative-discount EHP after the
+    # ``_CC_EFFECTIVENESS_FACTOR=0.5`` midpoint adjustment.
+    #
+    # Empty ``enemy_champions`` (default) leaves all three fields at
+    # their identity defaults (0.0 / 0.0 / equal to ``blended_ehp``).
+    # The existing physical_ehp / magical_ehp / true_ehp / blended_ehp
+    # fields ABOVE are NOT discounted - the CC blend sits ON TOP of
+    # the per-type EHP math as a sibling discount layer applied only
+    # to ``cc_blended_ehp``.
+    enemy_cc_pressure_s: float = 0.0
+    cc_pressure_fraction: float = 0.0
+    cc_blended_ehp: float = 0.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -470,6 +515,9 @@ class EhpResult:
                 {"item_id": iid, "heal_hp": hp}
                 for iid, hp in self.heal_sources
             ],
+            "enemy_cc_pressure_s": self.enemy_cc_pressure_s,
+            "cc_pressure_fraction": self.cc_pressure_fraction,
+            "cc_blended_ehp": self.cc_blended_ehp,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -528,6 +576,12 @@ class EhpResult:
                 heal_bits.append(f"amp=x{self.heal_amp_mult:.3f}")
             heal_bits.append(f"total={self.heal_total:.0f}")
             rows.append("  heal_hp       " + "  ".join(heal_bits))
+        if self.enemy_cc_pressure_s > 0:
+            rows.append(
+                f"  cc_pressure   total_s={self.enemy_cc_pressure_s:.1f}  "
+                f"fraction={self.cc_pressure_fraction:.2f}  "
+                f"blended_ehp={self.cc_blended_ehp:.0f} (after CC discount)"
+            )
         if self.notes:
             rows.append("")
             for n in self.notes:
@@ -544,17 +598,29 @@ def compute_ehp(
     enemy_ad_share: float = 0.5,
     enemy_ap_share: float = 0.5,
     augments: Optional[Iterable] = None,
+    enemy_champions: Iterable[str] = (),
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
     ``enemy_ad_share`` and ``enemy_ap_share`` are floats in ``[0.0, 1.0]``
-    summing to ≤ 1.0; the remainder is true-damage share. Defaults to
+    summing to <= 1.0; the remainder is true-damage share. Defaults to
     50/50 AD/AP - a reasonable "no info" baseline. Operator-facing
     callers (``core/defensive_picks.py``) derive these shares from the
     threat profile.
 
     Caster armor/MR come straight from the resolved stat block; no
     enemy-pen modeling in Phase 1.
+
+    ENGINE 1.33.0 (2026-05-22): ``enemy_champions`` keyword is the
+    second engine math consumer of ``compute_cc_pressure`` (closes item
+    136 carry (a)). Pass an iterable of enemy champion ids (canonical
+    DDragon ids like "Annie", "Morgana", "MonkeyKing") to compute
+    ``enemy_cc_pressure_s`` summed across registered CC spells (44 of
+    172 champs at 1.32.0). Default ``()`` leaves all 3 new fields at
+    identity (0.0 / 0.0 / equal to ``blended_ehp``), preserving full
+    back-compat for all existing callers. Empty / None / unknown
+    entries within the iterable are silently skipped (mirrors
+    ``compute_cc_pressure`` fail-soft contract).
     """
     level = clamp_level(level)
     if not (0.0 <= enemy_ad_share <= 1.0):
@@ -677,6 +743,39 @@ def compute_ehp(
         + true_ehp * enemy_true_share
     )
 
+    # ENGINE 1.33.0 (2026-05-22): EHP-vs-CC blended scorer. Second
+    # engine math consumer of ``compute_cc_pressure`` (the first was
+    # the coach-prompt-side ``core/enemy_cc_threat_context.py`` per
+    # item 136 Slice B). Default-empty ``enemy_champions`` leaves all
+    # three new fields at identity (0.0 / 0.0 / equal to ``blended_ehp``)
+    # so all existing callers stay byte-identical in their EHP math.
+    #
+    # Lazy import of ``compute_cc_pressure`` avoids a module-load
+    # circular import: ``cc_pressure.py`` imports ``effective_cc_duration``
+    # from this module, so we cannot eagerly import the reverse at the
+    # top of ``ehp.py`` (Python would see a partial module). Lazy import
+    # inside the function is safe - by call time both modules are fully
+    # loaded.
+    enemy_cc_pressure_s = 0.0
+    cc_pressure_fraction = 0.0
+    cc_blended_ehp = blended_ehp  # identity for the empty enemy_champions case
+    if enemy_champions:
+        from .cc_pressure import compute_cc_pressure
+
+        cc_total = 0.0
+        for enemy in enemy_champions:
+            if not enemy:
+                continue
+            cc_total += compute_cc_pressure(enemy, mode).total_cc_seconds
+        enemy_cc_pressure_s = cc_total
+        if enemy_cc_pressure_s > 0:
+            cc_pressure_fraction = min(
+                enemy_cc_pressure_s / _FIGHT_WINDOW_S, 1.0
+            )
+            cc_blended_ehp = blended_ehp * (
+                1.0 - cc_pressure_fraction * _CC_EFFECTIVENESS_FACTOR
+            )
+
     notes = list(resolved.notes)
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(
@@ -717,6 +816,14 @@ def compute_ehp(
             f"to shield pool (Spirit Visage Boundless Vitality amps "
             f"heal AND shielding +25%)"
         )
+    if enemy_cc_pressure_s > 0:
+        notes.append(
+            f"enemy_cc: {enemy_cc_pressure_s:.2f}s summed post-tenacity "
+            f"(fraction={cc_pressure_fraction:.2f}) - blended_ehp "
+            f"discounted by "
+            f"{cc_pressure_fraction * _CC_EFFECTIVENESS_FACTOR * 100:.0f}% "
+            f"via _CC_EFFECTIVENESS_FACTOR=0.5"
+        )
 
     return EhpResult(
         champion_id=resolved.champion_id,
@@ -747,6 +854,9 @@ def compute_ehp(
         heal_amp_mult=heal_amp_mult,
         heal_total=heal_total,
         heal_sources=heal_sources,
+        enemy_cc_pressure_s=enemy_cc_pressure_s,
+        cc_pressure_fraction=cc_pressure_fraction,
+        cc_blended_ehp=cc_blended_ehp,
         stats=dict(stats),
         notes=tuple(notes),
     )
