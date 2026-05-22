@@ -1321,7 +1321,69 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.39.0"
+ENGINE_VERSION = "1.40.0"
+# 1.40.0 (cc_conditional FOURTH + FIFTH consumer wires (coach prompt +
+# dashboard UI) + wave 3 registry expansion, 2026-05-22):
+#
+# Three parallel-slice additions composing on item 143 carries-forward (a).
+# The cc_conditional ecosystem is now COMPLETE across 5 consumer surfaces
+# (engine math: cc_pressure / compute_ehp / compute_hybrid + coach prompt
+# + dashboard UI).
+#
+# Slice A - cc_conditional FOURTH consumer (FIRST coach prompt) via NEW
+# core/cc_conditional_impact_context.py cc_conditional_impact_line().
+# Sibling of core/cc_blended_ehp_context.py item 138 Slice A `738c005`.
+# Reads compute_cc_pressure(name, mode, include_conditional=True) and
+# isolates the .conditional_cc_seconds contribution; aggregates across
+# all enemies into one summary line. Defaults
+# _FIGHT_WINDOW_S = 6.0 + _CC_EFFECTIVENESS_FACTOR = 0.5 match ehp.py
+# constants exactly. ImportError fallback stub mirrors
+# enemy_cc_threat_context.py pattern. Wired into all 4 active mode coach
+# prompts (aram / arena / brawl 3 NB+URF+OFA / coach_integration sr)
+# APPEND-only per cache-prefix preservation. +53 tests in NEW
+# tests/test_cc_conditional_impact_context.py. NO ENGINE math change.
+#
+# Slice B - cc_conditional FIFTH consumer (FIRST dashboard UI) via NEW
+# dashboard/routes_cc_conditional_pressure.py + frontend chip. Sibling
+# of dashboard/routes_cc_blended_ehp_threat.py item 140 Slice A
+# `3b6cc4b`. GET /api/cc-conditional-pressure?ally=&enemy=&mode= returns
+# ally vs enemy conditional_cc_seconds averages + ratio + tier (good /
+# warn / bad) via symmetric construction (ally side feeds ENEMY roster
+# as enemy_champions to compute_cc_pressure(include_conditional=True),
+# vice versa). Tier bands ratio >= 1.05 = good (enemy carries more
+# conditional CC = follow-up window); 0.95-1.05 = warn; <0.95 = bad.
+# 5-min TTL mode-aware in-process cache. NEW web/js/panels/
+# cc_conditional_pressure.js + cc_conditional_pressure.css chip
+# mounted between #csv-sugg-cc-blended-ehp-threat and
+# #csv-sugg-pickorder, tier-tinted via data-cc-cond-tier attr. +42
+# tests across NEW test_routes_cc_conditional_pressure.py + NEW
+# test_cc_conditional_pressure_panel_dom.py. NO ENGINE math change.
+#
+# Slice C - cc_conditional wave 3 registry expansion (23 -> 28 entries
+# / 23 -> 28 champions). Uses the _build_per_spell_cc_conditional
+# setdefault builder pattern. 5 new entries / 5 new champions:
+#   - Aatrox Q3 knockup 0.5s nth_hit 0.7 (3rd-cast within combo)
+#   - Riven Q3 knockup 0.75s nth_hit 0.7 (3rd Broken Wings stage)
+#   - Yasuo Q3 knockup 1.0s nth_hit 0.7 (Steel Tempest 3rd stack)
+#   - Yone Q3 knockup 0.75s nth_hit 0.7 (mirror of Yasuo Q3)
+#   - Leblanc E root 1.5s channel_completion 0.5 (Ethereal Chains
+#     full-tether)
+# Uses only the 10 EXISTING condition tags (no new tags).
+# REGISTRY_TOTAL_CHAMPIONS=28 / REGISTRY_TOTAL_ENTRIES=28. All wave 1+2
+# entries preserved byte-identical via setdefault. +59 tests in NEW
+# test_cc_conditional_wave3.py + 2 wave2 assertEqual -> assertGreaterEqual
+# count-pin relaxations + 1 forward-marker test allowlist update.
+#
+# Slice D - cost/latency CLEAN sweep (11th consecutive CLEAN run since
+# item 134). 7 levers surveyed (prompt-cache / route TTL / polling
+# cadences / log spam / model tier / scheduled tasks / bundle size); all
+# CLEAN; product-fidelity lever-lane exhausted.
+#
+# Consumer math BYTE-IDENTICAL to 1.39.0 for all default
+# include_conditional=False callers. The 5 wave-3 entries surface
+# via include_conditional=True opt-in through the SHIPPED cc_pressure
+# kwarg. The cc_conditional ecosystem is now fully consumer-wired.
+#
 # 1.39.0 (cc_conditional SECOND + THIRD consumer wires + wave 2 registry
 # expansion, 2026-05-22):
 #
