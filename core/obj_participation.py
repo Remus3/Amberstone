@@ -14,9 +14,10 @@ Standard League definition of "objective participation":
     (operator's involvement in team objectives) / (team total objectives).
 
 Closest approximation from rewind_history.db ``participants`` columns
-(7-column model; item 133 carry (b) lifts from the original 6-column
-approximation by reading ``riftHeraldTakedowns`` from
-``participants.challenges_json``):
+(8-column model; item 134 carry (g) lifts from the prior 7-column
+approximation by reading ``voidMonsterKill`` (Voidgrubs) from
+``participants.challenges_json`` alongside the already-wired
+``riftHeraldTakedowns``):
 
     numerator   = dragon_kills
                 + baron_kills
@@ -25,7 +26,8 @@ approximation by reading ``riftHeraldTakedowns`` from
                 + first_tower_kill
                 + first_tower_assist
                 + riftHeraldTakedowns       # from challenges_json
-    denominator = sum of those same 7 columns across all 5 teammates
+                + voidMonsterKill           # from challenges_json (Voidgrubs)
+    denominator = sum of those same 8 columns across all 5 teammates
                   (matched by participants.team_id)
 
 Edge case: if the team total is 0 (no objectives taken whole match),
@@ -57,11 +59,12 @@ _OBJ_COLUMNS = (
 # schema) still produce a sane numeric.
 _ROW_SUM_SQL = " + ".join(f"COALESCE({c}, 0)" for c in _OBJ_COLUMNS)
 
-# The 7th objective contribution lives inside the participants
+# The 7th + 8th objective contributions live inside the participants
 # ``challenges_json`` blob (Match-V5 challenges). Older schemas may not
 # carry this column; the SELECT widening below uses a try/except SQL
 # error path so the fail-soft contract still holds.
 _HERALD_KEY = "riftHeraldTakedowns"
+_VOID_KEY = "voidMonsterKill"
 
 
 def _coerce_float(value) -> float:
@@ -74,24 +77,51 @@ def _coerce_float(value) -> float:
         return 0.0
 
 
-def _herald_from_challenges(blob) -> float:
-    """Extract ``riftHeraldTakedowns`` from a challenges_json blob.
+def _challenges_objectives(blob) -> tuple[float, float]:
+    """Extract (riftHeraldTakedowns, voidMonsterKill) from one challenges_json
+    blob in a SINGLE parse trip.
 
-    Fail-soft on every degenerate shape: None, empty string, non-string,
-    malformed JSON, non-dict parse result, missing key, non-numeric
-    value. All return 0.0.
+    Returning a tuple from one parse avoids double-parsing the blob (a
+    sibling _void_from_challenges helper would re-call json.loads per
+    row). Fail-soft on every degenerate shape: None, empty string,
+    non-string, malformed JSON, non-dict parse result, missing key,
+    non-numeric value. Each missing/bad value contributes 0.0 to its
+    slot independently.
     """
     if not blob:
-        return 0.0
+        return (0.0, 0.0)
     if not isinstance(blob, (str, bytes, bytearray)):
-        return 0.0
+        return (0.0, 0.0)
     try:
         parsed = json.loads(blob)
     except (ValueError, TypeError):
-        return 0.0
+        return (0.0, 0.0)
     if not isinstance(parsed, dict):
-        return 0.0
-    return _coerce_float(parsed.get(_HERALD_KEY))
+        return (0.0, 0.0)
+    return (
+        _coerce_float(parsed.get(_HERALD_KEY)),
+        _coerce_float(parsed.get(_VOID_KEY)),
+    )
+
+
+def _herald_from_challenges(blob) -> float:
+    """Extract ``riftHeraldTakedowns`` from a challenges_json blob.
+
+    Kept as a thin wrapper around ``_challenges_objectives`` for backward
+    compatibility with any external caller; new code in this module
+    should prefer the tuple-returning helper to avoid double-parsing.
+    """
+    herald, _void = _challenges_objectives(blob)
+    return herald
+
+
+def _void_from_challenges(blob) -> float:
+    """Extract ``voidMonsterKill`` (Voidgrubs) from a challenges_json blob.
+
+    Companion to ``_herald_from_challenges``. Same fail-soft contract.
+    """
+    _herald, void = _challenges_objectives(blob)
+    return void
 
 
 def compute_obj_participation(
@@ -101,10 +131,11 @@ def compute_obj_participation(
 ) -> float:
     """Compute objective participation for the operator's row in ``match_id``.
 
-    7-column model (item 133 carry (b)): the original 6 SQL columns plus
-    ``riftHeraldTakedowns`` parsed from ``participants.challenges_json``.
-    The herald counter is added to BOTH numerator (operator's own row)
-    and denominator (team-wide sum) so the ratio stays normalized.
+    8-column model (item 134 carry (g)): the original 6 SQL columns plus
+    ``riftHeraldTakedowns`` AND ``voidMonsterKill`` (Voidgrubs) parsed
+    from ``participants.challenges_json``. Both blob counters are added
+    to BOTH numerator (operator's own row) and denominator (team-wide
+    sum) so the ratio stays normalized.
 
     Args:
         conn: open sqlite3 connection (caller owns lifecycle; we never
@@ -143,10 +174,10 @@ def compute_obj_participation(
             return 0.0
 
         # Pull every team row's 6-col sum AND the puuid + challenges_json
-        # so we can tally herald in Python and identify the operator row
-        # without a second query. Try the widened SELECT first (modern
-        # schema). On OperationalError (legacy schema without
-        # challenges_json), fall back to the 6-column SELECT.
+        # so we can tally herald + voidgrubs in Python and identify the
+        # operator row without a second query. Try the widened SELECT
+        # first (modern schema). On OperationalError (legacy schema
+        # without challenges_json), fall back to the 6-column SELECT.
         try:
             team_sql = (
                 f"SELECT puuid, ({_ROW_SUM_SQL}) AS row_sum, challenges_json "
@@ -177,8 +208,14 @@ def compute_obj_participation(
     for row in rows:
         row_puuid = row[0]
         row_sum6 = _coerce_float(row[1])
-        herald = _herald_from_challenges(row[2]) if has_challenges else 0.0
-        row_total = row_sum6 + herald
+        # Parse challenges_json ONCE per row and extract both herald +
+        # voidgrubs in one trip. Order is (herald, void) but the sum
+        # below is symmetric.
+        if has_challenges:
+            herald, void = _challenges_objectives(row[2])
+        else:
+            herald, void = (0.0, 0.0)
+        row_total = row_sum6 + herald + void
         denominator += row_total
         if row_puuid == puuid:
             numerator = row_total
