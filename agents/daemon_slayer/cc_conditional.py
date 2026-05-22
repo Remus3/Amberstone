@@ -6,6 +6,56 @@ fight-window EHP-vs-CC scorer would over- or under-credit these if
 they were modeled as unconditional, so they live in a separate registry
 with explicit probability + condition tags.
 
+JSON override loader
+--------------------
+
+Loader implementation: ``_load_overrides`` (reads the file) +
+``_apply_default_probability_overrides`` (composes onto the per-tag
+midpoints) + ``_apply_per_entry_overrides`` (returns the lookup map
+threaded into each ConditionalCcEntry at builder time).
+
+The operator can tune the 10 per-tag probability midpoints AND the 28
+per-entry probabilities without modifying source by dropping a JSON
+file at ``data/cc_conditional_calibration.json`` (gitignored as
+personal calibration data alongside ``data/post_game_rubric_weights.json``
+and ``data/coaching/death_patterns.json``).
+
+Schema (both top-level keys optional; missing keys keep the defaults):
+
+    {
+      "default_condition_probability": {
+        "nth_hit": 0.65,
+        "channel_completion": 0.55
+      },
+      "per_entry_probability": {
+        "Brand:R": 0.75,
+        "Maokai:Q": 0.35
+      }
+    }
+
+Fail-soft semantics:
+
+  * Missing file -> defaults preserved (no error, no warning).
+  * Empty file / whitespace-only -> defaults preserved.
+  * Malformed JSON -> defaults preserved (one WARNING log at module load).
+  * Non-dict top-level -> defaults preserved.
+  * Unknown condition tag keys silently dropped (forward-compatible
+    with future tag constants).
+  * Unknown ``<champion>:<spell>`` keys silently dropped (forward-
+    compatible with future registry entries).
+  * Malformed entry keys without exactly one colon silently dropped.
+  * Out-of-range [0.0, 1.0] values silently DROPPED (NOT clamped) so a
+    nonsense override does not subtly distort the ConditionalCcEntry
+    construction; the default value stays in force for that key.
+  * Bool values dropped (Python bool is int subclass; True/False MUST
+    NOT silently become 1.0/0.0).
+  * Non-numeric values dropped (str / null / list / dict ignored).
+
+The override file is read ONCE at module import. To re-apply after
+editing, restart RC via ``restart_trigger.txt`` (matches the cache-
+discipline pattern the coach prompts use for
+``data/coaching/death_patterns.json``).
+
 This module ships at ENGINE 1.37.0 (2026-05-22) as a FORWARD-MARKER seam
 with the schema + machinery + a seed of 10 canonical examples drawn
 from the wave 4/5/6 REJECT lists in CLAUDE.md items 138/139/140 plus
@@ -65,8 +115,20 @@ its calibrated midpoint.
 
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Tuple
+
+
+_LOG = logging.getLogger(__name__)
+
+
+# Per-tag + per-entry probability override file. See module docstring
+# for schema. Operator-tunable; missing/malformed file is fail-soft.
+# Gitignored as personal calibration data.
+_OVERRIDES_PATH = Path("data") / "cc_conditional_calibration.json"
 
 
 # ---------------- condition tag taxonomy ----------------
@@ -140,6 +202,147 @@ _DEFAULT_CONDITION_PROBABILITY: Dict[str, float] = {
     COND_DUAL_ENEMY: 0.6,
     COND_MODE_GATED: 1.0,
 }
+
+
+# ---------------- JSON override loader ----------------
+
+
+def _load_overrides() -> dict:
+    """Read per-tag + per-entry overrides from _OVERRIDES_PATH.
+
+    Returns an empty dict when the file is missing or malformed. Never
+    raises; a single WARNING is logged on malformed JSON so the
+    operator gets a hint without the dashboard crashing.
+
+    Schema is documented in the module docstring. Top-level dict with
+    optional ``default_condition_probability`` (tag -> float) and
+    ``per_entry_probability`` (``<champion>:<spell>`` -> float) keys.
+    Anything else at top-level returns ``{}`` so the apply functions
+    only see well-shaped input.
+    """
+    try:
+        raw = _OVERRIDES_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {}
+    except OSError:
+        # Permission errors, parent-not-a-directory, etc. - fail-soft.
+        return {}
+    if not raw.strip():
+        return {}
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        _LOG.warning(
+            "cc_conditional: malformed JSON at %s; defaults preserved",
+            _OVERRIDES_PATH,
+        )
+        return {}
+    if not isinstance(data, dict):
+        # Top-level must be a JSON object.
+        return {}
+    return data
+
+
+def _apply_default_probability_overrides(
+    defaults: Dict[str, float],
+    overrides: dict,
+) -> Dict[str, float]:
+    """Compose per-tag probability overrides onto the default midpoints.
+
+    Unknown tag keys are silently dropped (forward-compatible with
+    future condition tag constants). Non-float values are silently
+    dropped (the default tag midpoint is kept). Out-of-range values
+    (negative or > 1.0) are silently DROPPED (not clamped) so a
+    nonsense override does not subtly distort downstream construction.
+
+    Returns a NEW dict; the input ``defaults`` mapping is not mutated.
+    """
+    if not overrides:
+        return dict(defaults)
+    section = overrides.get("default_condition_probability")
+    if not isinstance(section, dict):
+        return dict(defaults)
+    result: Dict[str, float] = dict(defaults)
+    for tag, value in section.items():
+        if not isinstance(tag, str):
+            continue
+        if tag not in defaults:
+            # Unknown tag - forward-compatible silent drop.
+            continue
+        # bool is a subclass of int in Python; reject so True/False do
+        # not silently become 1.0/0.0.
+        if isinstance(value, bool):
+            continue
+        if not isinstance(value, (int, float)):
+            continue
+        numeric = float(value)
+        # Out-of-range values DROPPED (not clamped). The defaults stay
+        # in force. Pinned by ApplyDefaultProbabilityOverridesTests.
+        if numeric < 0.0 or numeric > 1.0:
+            continue
+        result[tag] = numeric
+    return result
+
+
+def _apply_per_entry_overrides(overrides: dict) -> Dict[Tuple[str, str], float]:
+    """Build the per-entry probability override lookup map.
+
+    Reads the ``per_entry_probability`` block of the overrides dict.
+    Returns a dict keyed by ``(champion, spell)`` tuples (matching the
+    builder's setdefault key shape). Non-conformant entries are
+    silently dropped:
+
+      * Key without exactly one colon (cannot split into champ:spell).
+      * Empty champion or spell after split.
+      * Non-float value.
+      * Bool value.
+      * Out-of-range [0.0, 1.0] value.
+
+    The builder reads this lookup via ``.get((champion, spell), tag_default)``
+    when constructing each ConditionalCcEntry. Unknown
+    ``<champion>:<spell>`` keys are not validated against the seed
+    here - they are silently dropped at builder lookup time when
+    ``.get()`` returns the tag default.
+    """
+    if not overrides:
+        return {}
+    section = overrides.get("per_entry_probability")
+    if not isinstance(section, dict):
+        return {}
+    result: Dict[Tuple[str, str], float] = {}
+    for key, value in section.items():
+        if not isinstance(key, str):
+            continue
+        # Key shape: ``<champion>:<spell>`` (exactly one colon).
+        parts = key.split(":")
+        if len(parts) != 2:
+            continue
+        champion, spell = parts[0].strip(), parts[1].strip()
+        if not champion or not spell:
+            continue
+        # bool defense (must come before int/float check).
+        if isinstance(value, bool):
+            continue
+        if not isinstance(value, (int, float)):
+            continue
+        numeric = float(value)
+        if numeric < 0.0 or numeric > 1.0:
+            continue
+        result[(champion, spell)] = numeric
+    return result
+
+
+# Apply overrides at module load. The builder reads the post-override
+# _DEFAULT_CONDITION_PROBABILITY for tag-default lookups and the per-
+# entry map for per-(champion, spell) override lookups. Both default
+# to no-op when the override file is absent or malformed.
+_OVERRIDES_RAW = _load_overrides()
+_DEFAULT_CONDITION_PROBABILITY = _apply_default_probability_overrides(
+    _DEFAULT_CONDITION_PROBABILITY, _OVERRIDES_RAW
+)
+_PER_ENTRY_PROBABILITY_OVERRIDES: Dict[Tuple[str, str], float] = (
+    _apply_per_entry_overrides(_OVERRIDES_RAW)
+)
 
 
 # ---------------- ConditionalCcEntry schema ----------------
@@ -218,8 +421,22 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
     Seed: 10 canonical examples from the wave 4/5/6 REJECT lists in
     CLAUDE.md items 138/139/140. Future waves populate further as
     consumer logic ships and operator-calibrates probabilities.
+
+    Per-entry probabilities pass through ``_p(champion, spell, default)``
+    which honors any ``per_entry_probability`` override loaded from
+    ``data/cc_conditional_calibration.json``. Default is the canonical
+    seed value (or tag midpoint if the seed picks the midpoint).
     """
     registry: Dict[str, Dict[str, ConditionalCcEntry]] = {}
+
+    def _p(champion: str, spell: str, default: float) -> float:
+        """Resolve per-entry probability with operator override.
+
+        Reads ``_PER_ENTRY_PROBABILITY_OVERRIDES.get((champion, spell), default)``
+        so the operator's calibration JSON file flows through to every
+        registered entry without per-entry boilerplate.
+        """
+        return _PER_ENTRY_PROBABILITY_OVERRIDES.get((champion, spell), default)
 
     # === seed wave 1 - canonical examples from wave 4/5/6 REJECTs ===
 
@@ -232,7 +449,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(2.0,),
         condition=COND_NTH_HIT,
-        probability=0.7,
+        probability=_p("Brand", "R", 0.7),
         notes=(
             "Brand passive Blaze stuns target at 3 stacks (2.0s); R "
             "Pyroclasm bounces multiple times so it is the most likely "
@@ -249,7 +466,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.5,),
         condition=COND_GOLD_CARD,
-        probability=0.4,
+        probability=_p("TwistedFate", "W", 0.4),
         notes=(
             "Pick a Card cycles R/Y/B; Gold (Yellow) stuns 1.5s. "
             "Probability assumes TF locks Gold before engage; not all "
@@ -267,7 +484,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(1.0,),
         condition=COND_TERRAIN,
-        probability=0.5,
+        probability=_p("JarvanIV", "E", 0.5),
         notes=(
             "E places flag; Q dashes to flag and knocks enemies up "
             "1.0s along the path. Conditional on flag-placement "
@@ -285,7 +502,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="suppression",
         durations_s=(1.0,),
         condition=COND_DEVOUR_TARGET,
-        probability=0.4,
+        probability=_p("TahmKench", "R", 0.4),
         notes=(
             "Devour requires 3 stacks of Tongue Lash (Q) on the enemy. "
             "While devoured, target is effectively suppressed; can be "
@@ -303,7 +520,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockback",
         durations_s=(0.75,),
         condition=COND_TERRAIN,
-        probability=0.3,
+        probability=_p("Volibear", "Q", 0.3),
         notes=(
             "Q dashes; if collision with terrain occurs while target "
             "is hit, target is knocked aside 0.75s. Standalone Q is "
@@ -321,7 +538,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="suppression",
         durations_s=(1.5, 1.75, 2.0),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.5,
+        probability=_p("Warwick", "R", 0.5),
         notes=(
             "R suppresses target for channel duration. Cleanseable; "
             "interruptible by hard CC on Warwick. Probability assumes "
@@ -339,7 +556,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.5,),
         condition=COND_NTH_HIT,
-        probability=0.6,
+        probability=_p("Viktor", "W", 0.6),
         notes=(
             "Field deals slow + stacks; enemy at 3 stacks (~1.5s in "
             "field) is stunned 1.5s. Probability assumes Viktor zones "
@@ -360,7 +577,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="banishment",
         durations_s=(7.0,),
         condition=COND_MODE_GATED,
-        probability=1.0,
+        probability=_p("Mordekaiser", "R", 1.0),
         notes=(
             "Banishes target to Death Realm 7s on cast. Once cast and "
             "landed, banishment is unconditional; probability=1.0. The "
@@ -378,7 +595,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.0,),
         condition=COND_DUAL_ENEMY,
-        probability=0.6,
+        probability=_p("Sett", "E", 0.6),
         notes=(
             "E pulls enemies inward; stuns 1.0s only when 2+ enemies "
             "are caught and snap together. Teamfight conditional; in "
@@ -396,7 +613,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="fear",
         durations_s=(1.0, 1.125, 1.25, 1.375, 1.5),
         condition=COND_TARGET_DEBUFFED,
-        probability=0.5,
+        probability=_p("Vex", "E", 0.5),
         notes=(
             "Personal Space deals damage + applies fear when target is "
             "Doom-marked (from R or passive). Standalone E is damage "
@@ -425,7 +642,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.5, 1.75, 2.0, 2.25, 2.5),
         condition=COND_TERRAIN,
-        probability=0.3,
+        probability=_p("Bard", "Q", 0.3),
         notes=(
             "Q stuns on bounce off wall or pass-through second target. "
             "Single-target hit with no wall behind is slow-only. "
@@ -445,7 +662,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="root",
         durations_s=(1.5, 1.625, 1.75, 1.875, 2.0),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.4,
+        probability=_p("Karma", "W", 0.4),
         notes=(
             "W tethers target; root fires only if tether persists for "
             "the full channel (~2s). Movement / dash / LoS break can "
@@ -464,7 +681,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(0.75,),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.5,
+        probability=_p("Taliyah", "W", 0.5),
         notes=(
             "W zone fires after delay; knockup direction set by "
             "Taliyah's recast input. Single value 0.75s across all "
@@ -482,7 +699,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.25,),
         condition=COND_NTH_HIT,
-        probability=0.6,
+        probability=_p("Kennen", "E", 0.6),
         notes=(
             "E applies Mark of the Storm. At 3 stacks (Q + W + E + AA "
             "combo or similar) target is stunned 1.25s. E is the mid-"
@@ -501,7 +718,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="root",
         durations_s=(0.75,),
         condition=COND_NTH_HIT,
-        probability=0.7,
+        probability=_p("KSante", "Q", 0.7),
         notes=(
             "Q is a 3-cast cycle; 3rd cast roots for 0.75s. First 2 "
             "casts are damage + slow only. 3-cast achievability is "
@@ -520,7 +737,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(1.5,),
         condition=COND_TARGET_DEBUFFED,
-        probability=0.5,
+        probability=_p("Ornn", "Q", 0.5),
         notes=(
             "Q knocks up only when target has Brittle stack from auto "
             "or W. Standalone Q is damage + slow. Probability midpoint "
@@ -538,7 +755,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="root",
         durations_s=(1.25,),
         condition=COND_NTH_HIT,
-        probability=0.6,
+        probability=_p("Xayah", "E", 0.6),
         notes=(
             "E recalls feathers; root fires only if 3+ feathers hit "
             "the same target. 1-2 feather hit is damage only. Probability "
@@ -559,7 +776,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.5,),
         condition=COND_TARGET_DEBUFFED,
-        probability=0.4,
+        probability=_p("Fiora", "W", 0.4),
         notes=(
             "W parries within a 0.75s window; if it blocks an enemy "
             "champion ability or AA, target is stunned 1.5s. Parry "
@@ -590,7 +807,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.0,),
         condition=COND_TERRAIN,
-        probability=0.3,
+        probability=_p("Maokai", "Q", 0.3),
         notes=(
             "Q knocks back; if target collides with terrain, stun "
             "extends to ~1.0s. Standalone hit with no wall behind is "
@@ -611,7 +828,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(1.25,),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.5,
+        probability=_p("Pyke", "E", 0.5),
         notes=(
             "E leaves a knife on dash path; knife returns ~1.25s post-"
             "cast and stuns enemies it passes through for the rank "
@@ -631,7 +848,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="root",
         durations_s=(1.5, 1.625, 1.75, 1.875, 2.0),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.5,
+        probability=_p("Swain", "E", 0.5),
         notes=(
             "E damage zone returns to Swain; targets hit by RETURN "
             "wave rooted 1.5-2.0s across ranks. Outbound hit is damage "
@@ -651,7 +868,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(0.75,),
         condition=COND_NTH_HIT,
-        probability=0.7,
+        probability=_p("Skarner", "Q", 0.7),
         notes=(
             "Q is a 3-charge cycle; 3rd cast creates terrain pillar + "
             "knocks up 0.75s. First 2 casts are damage only. 3-cycle "
@@ -670,7 +887,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="stun",
         durations_s=(2.0,),
         condition=COND_NTH_HIT,
-        probability=0.7,
+        probability=_p("Zilean", "Q", 0.7),
         notes=(
             "Q places delayed bomb (3s); if 2 bombs land on same target "
             "before either detonates, both pop + target stunned 2.0s. "
@@ -710,7 +927,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(0.5,),
         condition=COND_NTH_HIT,
-        probability=0.7,
+        probability=_p("Aatrox", "Q", 0.7),
         notes=(
             "Q is a 3-cast cycle; 3rd cast's inner sweetspot circle "
             "knocks up enemies hit for 0.5s. Outside the sweetspot is "
@@ -733,7 +950,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(0.75,),
         condition=COND_NTH_HIT,
-        probability=0.7,
+        probability=_p("Riven", "Q", 0.7),
         notes=(
             "Q is a 3-dash cycle; 3rd dash impact AOE knocks up "
             "enemies 0.75s. Casts 1 + 2 are damage + dash only. "
@@ -757,7 +974,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(1.0,),
         condition=COND_NTH_HIT,
-        probability=0.7,
+        probability=_p("Yasuo", "Q", 0.7),
         notes=(
             "Q is a 3-cast cycle; 3rd cast becomes a ranged tornado "
             "that knocks up enemies hit for 1.0s. Casts 1 + 2 are "
@@ -781,7 +998,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="knockup",
         durations_s=(0.75,),
         condition=COND_NTH_HIT,
-        probability=0.7,
+        probability=_p("Yone", "Q", 0.7),
         notes=(
             "Q is a 3-cast cycle mirror of Yasuo's; 3rd cast becomes "
             "a ranged tornado that knocks up enemies hit for 0.75s. "
@@ -805,7 +1022,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         cc_kind="root",
         durations_s=(1.5,),
         condition=COND_CHANNEL_COMPLETION,
-        probability=0.5,
+        probability=_p("Leblanc", "E", 0.5),
         notes=(
             "E applies tether on hit; root fires only if tether "
             "persists for the full duration (~1.5s) without Leblanc "
@@ -921,8 +1138,13 @@ __all__ = [
     "REGISTRY_TOTAL_CHAMPIONS",
     "REGISTRY_TOTAL_ENTRIES",
     "_DEFAULT_CONDITION_PROBABILITY",
+    "_OVERRIDES_PATH",
+    "_PER_ENTRY_PROBABILITY_OVERRIDES",
     "_PER_SPELL_CC_CONDITIONAL",
+    "_apply_default_probability_overrides",
+    "_apply_per_entry_overrides",
     "_build_per_spell_cc_conditional",
+    "_load_overrides",
     "get_conditional_entries",
     "get_total_conditional_cc_seconds",
 ]
