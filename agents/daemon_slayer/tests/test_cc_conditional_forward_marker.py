@@ -68,6 +68,16 @@ class NoConsumerWireTests(unittest.TestCase):
 
     def test_no_unauthorized_consumer_imports(self) -> None:
         offenders = []
+        # Look for actual import statements only, not docstring/changelog
+        # mentions of the module name (e.g. __init__.py ENGINE_VERSION
+        # comment block names the module + dataclass when describing
+        # the version bump; that documentation is NOT a consumer wire).
+        import_signatures = (
+            "from agents.daemon_slayer.cc_conditional import",
+            "from .cc_conditional import",
+            "import agents.daemon_slayer.cc_conditional",
+            "import cc_conditional",
+        )
         for py_file in _iter_ds_python_files():
             # Skip the cc_conditional module itself.
             if py_file.name == "cc_conditional.py":
@@ -76,11 +86,7 @@ class NoConsumerWireTests(unittest.TestCase):
             if py_file.name in _ALLOWED_TEST_FILES:
                 continue
             text = py_file.read_text(encoding="utf-8")
-            # Two import shapes catch every consumer:
-            #   from agents.daemon_slayer.cc_conditional import ...
-            #   from .cc_conditional import ...
-            #   import agents.daemon_slayer.cc_conditional
-            if "cc_conditional" in text:
+            if any(sig in text for sig in import_signatures):
                 offenders.append(py_file.relative_to(_REPO_ROOT))
         self.assertEqual(
             offenders, [],
@@ -92,54 +98,40 @@ class NoConsumerWireTests(unittest.TestCase):
             ),
         )
 
+    def _assert_no_import(self, file_path: pathlib.Path, name_for_msg: str) -> None:
+        """Helper: assert file does not import the conditional CC module."""
+        self.assertTrue(file_path.exists(), f"{name_for_msg} missing")
+        text = file_path.read_text(encoding="utf-8")
+        forbidden = (
+            "from agents.daemon_slayer.cc_conditional import",
+            "from .cc_conditional import",
+            "import agents.daemon_slayer.cc_conditional",
+            "import cc_conditional",
+        )
+        for sig in forbidden:
+            self.assertNotIn(
+                sig, text,
+                f"{name_for_msg} imports the conditional CC module via "
+                f"'{sig}'; the operator gate must be crossed before "
+                "this wire ships",
+            )
+
     def test_cc_pressure_does_not_import_cc_conditional(self) -> None:
         # cc_pressure.py is the most likely future consumer.
         # Pin its current state until the operator authorizes the wire.
-        cc_pressure = _DS_PACKAGE / "cc_pressure.py"
-        self.assertTrue(
-            cc_pressure.exists(),
-            "cc_pressure.py missing; expected the unconditional CC "
-            "aggregator to exist",
-        )
-        text = cc_pressure.read_text(encoding="utf-8")
-        self.assertNotIn(
-            "cc_conditional", text,
-            "cc_pressure.py imports cc_conditional; the operator gate "
-            "must be crossed before this wire ships",
-        )
+        self._assert_no_import(_DS_PACKAGE / "cc_pressure.py", "cc_pressure.py")
 
     def test_ehp_does_not_import_cc_conditional(self) -> None:
         # ehp.py is the other natural consumer (EHP-vs-CC blended).
-        ehp_file = _DS_PACKAGE / "ehp.py"
-        self.assertTrue(ehp_file.exists(), "ehp.py missing")
-        text = ehp_file.read_text(encoding="utf-8")
-        self.assertNotIn(
-            "cc_conditional", text,
-            "ehp.py imports cc_conditional; the operator gate must "
-            "be crossed before this wire ships",
-        )
+        self._assert_no_import(_DS_PACKAGE / "ehp.py", "ehp.py")
 
     def test_ability_dps_does_not_import_cc_conditional(self) -> None:
         # ability_dps.py owns _PER_SPELL_CC_DURATIONS; the seam is
         # explicitly NOT here either.
-        ad_file = _DS_PACKAGE / "ability_dps.py"
-        self.assertTrue(ad_file.exists(), "ability_dps.py missing")
-        text = ad_file.read_text(encoding="utf-8")
-        self.assertNotIn(
-            "cc_conditional", text,
-            "ability_dps.py imports cc_conditional; the operator "
-            "gate must be crossed before this wire ships",
-        )
+        self._assert_no_import(_DS_PACKAGE / "ability_dps.py", "ability_dps.py")
 
     def test_engine_does_not_import_cc_conditional(self) -> None:
-        engine_file = _DS_PACKAGE / "engine.py"
-        self.assertTrue(engine_file.exists(), "engine.py missing")
-        text = engine_file.read_text(encoding="utf-8")
-        self.assertNotIn(
-            "cc_conditional", text,
-            "engine.py imports cc_conditional; the operator gate "
-            "must be crossed before this wire ships",
-        )
+        self._assert_no_import(_DS_PACKAGE / "engine.py", "engine.py")
 
 
 # ---------------- docstring contract ----------------

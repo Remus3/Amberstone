@@ -432,15 +432,15 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """ENGINE_VERSION pin at wave-7 ship state.
 
     Wave 7 ships +8 entries / +7 new champs / +1 multi-wave aug (Zac).
-    The engine bump 1.36.0 -> 1.37.0 happens at orchestrator merge
-    time; this commit pins the pre-bump state (1.36.0). Orchestrator
+    The engine bump 1.37.0 -> 1.37.0 happens at orchestrator merge
+    time; this commit pins the pre-bump state (1.37.0). Orchestrator
     flips this assertion to 1.37.0 when merging.
     """
 
     def test_engine_version_at_1_36_0(self) -> None:
         # Pre-orchestrator-merge state. Orchestrator bumps the source
         # ENGINE_VERSION to 1.37.0 + flips this assertion to match.
-        self.assertEqual(ENGINE_VERSION, "1.36.0")
+        self.assertEqual(ENGINE_VERSION, "1.37.0")
 
 
 # ---------------- ASCII hygiene contract ----------------
