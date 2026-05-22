@@ -1321,7 +1321,28 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.30.0"
+ENGINE_VERSION = "1.31.0"
+# 1.31.0 (per-spell CC duration registry wave 2, 2026-05-21):
+# Closes item 134 carry-forward (h) data-side: extends the
+# ``_PER_SPELL_CC_DURATIONS`` registry shipped 1.30.0 with 23 additional
+# first-order CC entries across 20 additional champions of patch 16.10.
+# Total registry now 53 entries across 44 champions (was 30 / 24 at
+# 1.30.0). Consumer math is BYTE-IDENTICAL to 1.30.0; this is a pure
+# data lane lift - the values flow through AbilitySpellDps.cc_duration_s
+# + cc_duration_post_tenacity for API inspection only.
+# New champions seeded (20): Alistar (Q + W), Amumu (Q + R), Anivia (Q),
+# Braum (R), Chogath (Q), Fiddlesticks (Q), Gnar (R), Gragas (E),
+# Jhin (W), Lux (Q), Nami (Q), Neeko (E + R), Orianna (R), Poppy (E),
+# Riven (W), Singed (E), Skarner (R), Varus (R), Xerath (E), Zac (E).
+# Selection rules followed from 1.30.0: first-order CC only (stuns /
+# roots / suspensions / knock-ups / knock-backs / charms / sleeps /
+# fear / suppressions). No slows. No conditional CC (e.g. Bard Q
+# wall-bounce, Tahm Kench Q 3rd-stack). Canonical DDragon ids
+# (Chogath, Wukong=MonkeyKing pre-existing).
+# The engine-side fight-sim consumer that reads the registry for math
+# is STILL FUTURE work per the BACKLOG carry. This bump is a DATA seed
+# only.
+#
 # 1.30.0 (per-spell CC duration registry seeded, 2026-05-21):
 # Closes the item 130 carry-forward (b): the engine-side fight-sim
 # consumer that reads ``_PER_SPELL_CC_DURATIONS`` for math is still
