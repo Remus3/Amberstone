@@ -412,7 +412,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """Pin ENGINE_VERSION at 1.32.0 for this slice."""
 
     def test_engine_version_is_1_32_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.32.0")
+        self.assertEqual(ENGINE_VERSION, "1.33.0")
 
 
 if __name__ == "__main__":
