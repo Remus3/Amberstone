@@ -538,7 +538,7 @@ class NoOverrideFileDefaultPreservationTests(unittest.TestCase):
         # Re-run the builder with an EMPTY per-entry override map and
         # pin a few canonical seed probabilities. This is a behavior
         # contract: the canonical seed values stay byte-equal between
-        # ENGINE 1.40.0 and 1.41.0 unless operator-approved.
+        # ENGINE 1.41.0 and 1.41.0 unless operator-approved.
         saved = dict(ccc._PER_ENTRY_PROBABILITY_OVERRIDES)
         ccc._PER_ENTRY_PROBABILITY_OVERRIDES.clear()
         try:

@@ -440,7 +440,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_at_1_36_0(self) -> None:
         # Pre-orchestrator-merge state. Orchestrator bumps the source
         # ENGINE_VERSION to 1.37.0 + flips this assertion to match.
-        self.assertEqual(ENGINE_VERSION, "1.40.0")
+        self.assertEqual(ENGINE_VERSION, "1.41.0")
 
 
 # ---------------- ASCII hygiene contract ----------------
