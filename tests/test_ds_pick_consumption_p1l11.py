@@ -143,6 +143,7 @@ def _aram_prompt_inject(picks_str: str, label: str) -> str:
         enemy_aram_tenacity="",
         enemy_cc_threats="",
         cc_blended_ehp_impact="",
+        cc_conditional_impact="",
         ds_picks=picks_str, ds_label=label, event_line="",
     )
 
@@ -157,6 +158,7 @@ def _arena_prompt_inject(picks_str: str, label: str) -> str:
         alive="4", next_opp="?", team_rankings="-", augments="none",
         my_abilities="none", enemy_cc_threats="",
         cc_blended_ehp_impact="",
+        cc_conditional_impact="",
         ds_picks=picks_str, ds_label=label,
         vision_context="",
     )
