@@ -1,4 +1,4 @@
-"""ENGINE 1.34.0 (2026-05-22) - compute_hybrid enemy_champions kwarg.
+"""ENGINE 1.35.0 (2026-05-22) - compute_hybrid enemy_champions kwarg.
 
 Item 138 carry (a) engine-consumer slice. ``compute_hybrid`` is the
 FIRST DS-engine SCORER consumer of ``cc_blended_ehp`` (the field shipped
@@ -8,7 +8,7 @@ hybrid_score reads cc_blended_ehp in place of blended_ehp.
 
 Contract:
   * Default (empty tuple) preserves byte-identical behavior with all
-    pre-1.34.0 callers (compute_ehp identity contract: empty
+    pre-1.35.0 callers (compute_ehp identity contract: empty
     enemy_champions -> cc_blended_ehp == blended_ehp).
   * Non-empty enemy_champions -> hybrid_score uses the CC-discounted
     EHP value; the delta is exactly beta * (blended_ehp - cc_blended_ehp).
@@ -18,7 +18,7 @@ Contract:
 Test surface:
   * IdentityContractTests - default kwarg / empty tuple / None / empty
     list all return cc_blended_ehp == ehp == blended_ehp; hybrid_score
-    unchanged from pre-1.34.0 math.
+    unchanged from pre-1.35.0 math.
   * EnemyChampionsScoringTests - lift direction (more CC = lower
     hybrid_score), exact delta magnitude, cc_blended_ehp + enemy_champions
     field semantics, mode-agnostic SR identity.
@@ -59,12 +59,12 @@ _SNAPSHOT = DataSnapshot.load()
 
 
 class IdentityContractTests(unittest.TestCase):
-    """Default behavior must be byte-identical with pre-1.34.0."""
+    """Default behavior must be byte-identical with pre-1.35.0."""
 
     def test_default_enemy_champions_preserves_identity(self) -> None:
         # Without the kwarg the new field stays at the cc_blended_ehp ==
         # ehp identity (via the compute_ehp item 137 contract). The
-        # hybrid_score is unchanged from pre-1.34.0 math.
+        # hybrid_score is unchanged from pre-1.35.0 math.
         r = compute_hybrid(_SNAPSHOT, "Aatrox", level=11, mode="SR")
         self.assertEqual(r.cc_blended_ehp, r.ehp)
         self.assertEqual(r.enemy_champions, ())
@@ -452,8 +452,8 @@ class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_is_current(self) -> None:
         # DO NOT change this string in this slice; the orchestrator
         # syncs all ENGINE pin sites at merge. Current pre-merge state
-        # on main is 1.34.0.
-        self.assertEqual(ENGINE_VERSION, "1.34.0")
+        # on main is 1.35.0.
+        self.assertEqual(ENGINE_VERSION, "1.35.0")
 
 
 # --------------------------------------------------- ASCII hygiene
