@@ -1,9 +1,9 @@
-"""ENGINE 1.39.0 (2026-05-22) - compute_ehp consumer wire for cc_conditional.
+"""ENGINE 1.40.0 (2026-05-22) - compute_ehp consumer wire for cc_conditional.
 
 The ``cc_conditional`` module shipped at ENGINE 1.37.0 (2026-05-22)
 as a FORWARD-MARKER seam. ENGINE 1.38.0 shipped the FIRST authorized
 consumer via ``compute_cc_pressure(include_conditional=False)``.
-ENGINE 1.39.0 ships the SECOND authorized consumer: ``compute_ehp``
+ENGINE 1.40.0 ships the SECOND authorized consumer: ``compute_ehp``
 gains an optional ``include_conditional`` kwarg that propagates
 through to the per-enemy ``compute_cc_pressure`` calls, so the
 ``cc_blended_ehp`` field absorbs the additional discount when
@@ -24,7 +24,7 @@ Test surface (8 classes):
   * ``AramTenacityAppliesToConditionalEhpTests`` (3) - ARAM tenacity
     flows through compute_cc_pressure's effective_cc_duration seam
     into the cc_blended_ehp discount.
-  * ``EngineVersionCurrentTests`` (1) - pin ENGINE_VERSION at 1.39.0.
+  * ``EngineVersionCurrentTests`` (1) - pin ENGINE_VERSION at 1.40.0.
   * ``AsciiHygieneTests`` (2) - module + this test file are pure ASCII.
 
 The conditional contribution does NOT add new EhpResult fields - the
@@ -378,9 +378,9 @@ class AramTenacityAppliesToConditionalEhpTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """Pin ENGINE_VERSION at 1.39.0 for this slice.
+    """Pin ENGINE_VERSION at 1.40.0 for this slice.
 
-    The orchestrator bumps to 1.39.0 at merge; while the slice is being
+    The orchestrator bumps to 1.40.0 at merge; while the slice is being
     written, the branch carries 1.38.0 from the base. This test asserts
     the post-bump target so the orchestrator can sync this single pin
     along with the other 27+ stale ENGINE pin sites across DS test
@@ -388,7 +388,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """
 
     def test_engine_version_pin(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.39.0")
+        self.assertEqual(ENGINE_VERSION, "1.40.0")
 
 
 # ---------------- 5. AsciiHygieneTests ----------------
