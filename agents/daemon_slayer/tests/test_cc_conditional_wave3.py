@@ -497,9 +497,12 @@ class AggregatorWaveThreeTests(unittest.TestCase):
     """get_total_conditional_cc_seconds returns expected values."""
 
     def test_aatrox_q_weighted_max_rank(self) -> None:
-        # Aatrox Q = 0.5 * 0.7 = 0.35
-        total = get_total_conditional_cc_seconds("Aatrox")
-        self.assertAlmostEqual(total, 0.35, places=4)
+        # Aatrox Q (wave 3) = 0.5 * 0.7 = 0.35. Wave 4 added Aatrox
+        # W on the same champion via setdefault; check the Q entry
+        # itself directly rather than the aggregator total.
+        entry = _PER_SPELL_CC_CONDITIONAL["Aatrox"]["Q"]
+        weighted = entry.durations_s[-1] * entry.probability
+        self.assertAlmostEqual(weighted, 0.35, places=4)
 
     def test_riven_q_weighted_max_rank(self) -> None:
         # Riven Q = 0.75 * 0.7 = 0.525
@@ -522,11 +525,12 @@ class AggregatorWaveThreeTests(unittest.TestCase):
         self.assertAlmostEqual(total, 0.75, places=4)
 
     def test_aatrox_q_raw_max_rank(self) -> None:
-        # Aatrox Q raw (apply_probability=False) = 0.5
-        total = get_total_conditional_cc_seconds(
-            "Aatrox", apply_probability=False
-        )
-        self.assertAlmostEqual(total, 0.5, places=4)
+        # Aatrox Q raw (apply_probability=False) = 0.5. Wave 4
+        # added Aatrox W on the same champion via setdefault; check
+        # the Q entry's raw max-rank duration directly rather than
+        # the aggregator total which now sums Q + W.
+        entry = _PER_SPELL_CC_CONDITIONAL["Aatrox"]["Q"]
+        self.assertAlmostEqual(entry.durations_s[-1], 0.5, places=4)
 
     def test_yasuo_q_raw_max_rank(self) -> None:
         # Yasuo Q raw = 1.0
@@ -543,9 +547,13 @@ class AggregatorWaveThreeTests(unittest.TestCase):
         self.assertAlmostEqual(total, 1.5, places=4)
 
     def test_get_conditional_entries_returns_q_for_aatrox(self) -> None:
+        # Wave 4 added Aatrox W on the same champion via setdefault.
+        # The Q entry remains present; check that Q is in the
+        # returned tuple rather than asserting tuple length == 1.
         entries = get_conditional_entries("Aatrox")
-        self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0].spell, "Q")
+        self.assertGreaterEqual(len(entries), 1)
+        spells = [e.spell for e in entries]
+        self.assertIn("Q", spells)
 
     def test_get_conditional_entries_returns_q_for_riven(self) -> None:
         entries = get_conditional_entries("Riven")
