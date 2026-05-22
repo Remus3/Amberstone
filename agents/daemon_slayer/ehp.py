@@ -599,6 +599,7 @@ def compute_ehp(
     enemy_ap_share: float = 0.5,
     augments: Optional[Iterable] = None,
     enemy_champions: Iterable[str] = (),
+    include_conditional: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -621,6 +622,19 @@ def compute_ehp(
     back-compat for all existing callers. Empty / None / unknown
     entries within the iterable are silently skipped (mirrors
     ``compute_cc_pressure`` fail-soft contract).
+
+    ENGINE 1.39.0 (2026-05-22): ``include_conditional`` (default False)
+    is the SECOND authorized consumer wire of the ``cc_conditional``
+    registry (the FIRST was ``compute_cc_pressure`` at ENGINE 1.38.0).
+    When True, the kwarg is propagated through to the per-enemy
+    ``compute_cc_pressure(enemy, mode, include_conditional=True)``
+    calls so each enemy's ``total_cc_seconds`` includes the
+    probability-weighted post-tenacity conditional contribution from
+    the 18-entry / 18-champion conditional registry. The resulting
+    ``cc_blended_ehp`` field absorbs the additional discount when
+    conditional CC is present on at least one enemy. Default
+    ``include_conditional=False`` preserves BYTE-IDENTICAL behavior
+    for every existing caller; the conditional axis is opt-in.
     """
     level = clamp_level(level)
     if not (0.0 <= enemy_ad_share <= 1.0):
@@ -766,7 +780,17 @@ def compute_ehp(
         for enemy in enemy_champions:
             if not enemy:
                 continue
-            cc_total += compute_cc_pressure(enemy, mode).total_cc_seconds
+            # ENGINE 1.39.0 (2026-05-22): SECOND authorized consumer
+            # wire of the cc_conditional registry. The
+            # ``include_conditional`` kwarg flows through to each
+            # per-enemy compute_cc_pressure call so the conditional
+            # post-tenacity contribution lands inside total_cc_seconds.
+            # Default False preserves byte-identical 1.38.0 behavior for
+            # every existing caller (the 4 cc_blended_ehp consumers stay
+            # unchanged unless an explicit opt-in flows in).
+            cc_total += compute_cc_pressure(
+                enemy, mode, include_conditional=include_conditional
+            ).total_cc_seconds
         enemy_cc_pressure_s = cc_total
         if enemy_cc_pressure_s > 0:
             cc_pressure_fraction = min(
