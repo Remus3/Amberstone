@@ -572,8 +572,8 @@ class BTPlusLifelineStacksTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    def test_engine_version_at_1_30_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.30.0")
+    def test_engine_version_at_1_31_0(self) -> None:
+        self.assertEqual(ENGINE_VERSION, "1.31.0")
 
 
 # ---------------- Phase 6.5: missing-HP additive on item heals ----------------
