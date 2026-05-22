@@ -1,4 +1,4 @@
-"""ENGINE 1.36.0 (2026-05-22) - per-spell CC duration registry wave 6
+"""ENGINE 1.37.0 (2026-05-22) - per-spell CC duration registry wave 6
 + schema lift to setdefault builder.
 
 Closes item 139 carry (j): the future registry-merge pass owed to
@@ -56,7 +56,7 @@ Coverage classes:
 * ``SchemaLiftBuilderTests`` - the schema lift's builder function is
   exposed + callable + idempotent + supports multi-wave augmentation.
 * ``EngineVersionCurrentTests`` - ENGINE_VERSION pin at wave-6 ship
-  state (1.36.0 - schema lift + 5 new entries).
+  state (1.37.0 - schema lift + 5 new entries).
 * ``AsciiHygieneTests`` - the wave 6 registry block + this test file
   are pure-ASCII (no em-dashes / smart quotes per CLAUDE.md hard
   rule).
@@ -413,7 +413,7 @@ class RegistryGrowthTests(unittest.TestCase):
 
 
 class SchemaLiftBuilderTests(unittest.TestCase):
-    """The 1.36.0 schema lift exposes the builder function.
+    """The 1.37.0 schema lift exposes the builder function.
 
     The dict.setdefault pattern is what unblocks multi-wave
     augmentation. Pin its presence + idempotence + the multi-wave
@@ -463,13 +463,13 @@ class SchemaLiftBuilderTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """ENGINE_VERSION pin at wave-6 ship state (1.36.0).
+    """ENGINE_VERSION pin at wave-6 ship state (1.37.0).
 
-    Wave 6 schema lift + 5 new entries. Engine bump 1.35.0 -> 1.36.0.
+    Wave 6 schema lift + 5 new entries. Engine bump 1.35.0 -> 1.37.0.
     """
 
     def test_engine_version_at_1_36_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.36.0")
+        self.assertEqual(ENGINE_VERSION, "1.37.0")
 
 
 # ---------------- ASCII hygiene contract ----------------
