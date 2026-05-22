@@ -31,6 +31,7 @@ from coaches._base_coach import (
 from coaches._arena_item_advisor import recompute_arena_build
 from core import daemon_slayer_client as _ds_client
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
 from core.death_patterns_loader import personal_context_block
 from core.enemy_cc_threat_context import enemy_cc_threat_line
 
@@ -104,6 +105,7 @@ Team health rankings:
 Active augments: {augments}
 My abilities: {my_abilities}
 {enemy_cc_threats}
+{cc_blended_ehp_impact}
 DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {vision_context}
 """
@@ -589,6 +591,10 @@ class Coach(BaseCoach):
                 augments      = augments,
                 my_abilities  = fmt_abilities(state.get("my_abilities", {})),
                 enemy_cc_threats = enemy_cc_threat_line(
+                    _arena_enemies,
+                    state.get("game_mode", "CHERRY"),
+                ),
+                cc_blended_ehp_impact = cc_blended_ehp_impact_line(
                     _arena_enemies,
                     state.get("game_mode", "CHERRY"),
                 ),

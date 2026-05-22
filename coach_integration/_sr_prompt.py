@@ -7,6 +7,7 @@ import logging
 from collections import deque
 from pathlib import Path
 
+from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
 from core.death_patterns_loader import personal_context_block
 from core.enemy_cc_threat_context import enemy_cc_threat_line
 
@@ -381,6 +382,12 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     _cc_line = enemy_cc_threat_line(enemy_list, game_mode)
     if _cc_line:
         lines.append(_cc_line)
+    # Aggregate enemy CC -> blended-EHP impact (item 137 carry a coach
+    # consumer of agents.daemon_slayer.ehp.compute_ehp cc_blended_ehp
+    # math model). Empty string when no enemy carries CC - zero bloat.
+    _cc_blended_line = cc_blended_ehp_impact_line(enemy_list, game_mode)
+    if _cc_blended_line:
+        lines.append(_cc_blended_line)
     if enemy_lane:
         lines.append(f"Enemy bot lane (your lane opponents): {enemy_lane}")
     elif enemy_list:
