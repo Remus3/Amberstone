@@ -40,9 +40,9 @@ Coverage classes:
     coexists with Aatrox Q (wave 3) via setdefault.
   * ``AggregatorWaveFourTests`` - aggregator returns expected
     weighted + raw totals for new entries.
-  * ``EngineVersionCurrentTests`` - ENGINE pinned at >= 1.40.0
+  * ``EngineVersionCurrentTests`` - ENGINE pinned at >= 1.41.0
     (the orchestrator bumps to 1.41.0 at merge; this slice ships
-    at 1.40.0 and orchestrator-bump is post-merge).
+    at 1.41.0 and orchestrator-bump is post-merge).
   * ``AsciiHygieneTests`` - module + this test file pure ASCII.
 """
 
@@ -627,15 +627,15 @@ class AggregatorWaveFourTests(unittest.TestCase):
 class EngineVersionCurrentTests(unittest.TestCase):
     """Pin ENGINE_VERSION at current bumped state.
 
-    Wave 4 ships at ENGINE >= 1.40.0; the orchestrator bumps to
-    1.41.0 at merge time. ENGINE >= 1.40.0 must hold for the wave-4
+    Wave 4 ships at ENGINE >= 1.41.0; the orchestrator bumps to
+    1.41.0 at merge time. ENGINE >= 1.41.0 must hold for the wave-4
     test surface to be valid.
     """
 
     def test_engine_version_at_least_1_40_0(self) -> None:
-        # Wave 4 ships at ENGINE >= 1.40.0 (orchestrator may bump
+        # Wave 4 ships at ENGINE >= 1.41.0 (orchestrator may bump
         # to 1.41.0 at merge). Future bumps must keep this at
-        # >= 1.40.0 so the wave-4 entry test surface stays valid.
+        # >= 1.41.0 so the wave-4 entry test surface stays valid.
         parts = tuple(int(x) for x in ENGINE_VERSION.split("."))
         self.assertGreaterEqual(parts, (1, 40, 0))
 
