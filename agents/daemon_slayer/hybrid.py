@@ -101,8 +101,8 @@ class HybridResult:
     beta: float                        # EHP weight
     alpha_source: str                  # "champion" or "default" or "override"
     dps: float                         # weighted_dps from compute_dps
-    ehp: float                         # blended_ehp from compute_ehp
-    hybrid_score: float                # alpha * dps + beta * ehp (raw scalar; units mixed)
+    ehp: float                         # blended_ehp from compute_ehp (PRE-CC discount)
+    hybrid_score: float                # alpha * dps + beta * ehp_for_score (raw scalar; units mixed)
     target_armor: float                # passed through to compute_dps
     target_mr: float
     target_max_hp: float
@@ -113,6 +113,15 @@ class HybridResult:
     phase: str                         # from compute_dps result
     mode_multiplier_dps: float         # aramDamageDealt; 1.0 outside ARAM
     mode_multiplier_ehp: float         # aramDamageTaken; 1.0 outside ARAM
+    # ENGINE 1.34.0 (item 138 carry (a)) - first DS-engine SCORER
+    # consumer of cc_blended_ehp. When enemy_champions is non-empty,
+    # hybrid_score reads from cc_blended_ehp (not blended_ehp), and the
+    # two new fields surface the cc-aware value + the input tuple.
+    # Default (empty tuple) preserves byte-identical behavior with all
+    # pre-1.34.0 callers because compute_ehp returns
+    # cc_blended_ehp == blended_ehp under that identity contract.
+    cc_blended_ehp: float = 0.0        # blended_ehp * (1 - cc_fraction * 0.5) when enemies provided
+    enemy_champions: tuple[str, ...] = ()
     notes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
@@ -138,6 +147,8 @@ class HybridResult:
             "phase": self.phase,
             "mode_multiplier_dps": self.mode_multiplier_dps,
             "mode_multiplier_ehp": self.mode_multiplier_ehp,
+            "cc_blended_ehp": self.cc_blended_ehp,
+            "enemy_champions": list(self.enemy_champions),
             "notes": list(self.notes),
         }
 
@@ -189,6 +200,7 @@ def compute_hybrid(
     enemy_ap_share: float = 0.5,
     phase: Optional[str] = None,
     augments: Optional[Iterable] = None,
+    enemy_champions: Iterable[str] = (),
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
 ) -> HybridResult:
@@ -203,6 +215,19 @@ def compute_hybrid(
     units (DPS + EHP). It exists for completeness; the ranker uses a
     normalized percentage-delta formulation that handles the unit
     mismatch - see ``rank_items_by_hybrid``.
+
+    ENGINE 1.34.0 (item 138 carry (a)): ``enemy_champions`` is the first
+    DS-engine SCORER consumer of ``cc_blended_ehp`` (the field shipped
+    item 137 / ENGINE 1.33.0 via ``compute_ehp``). When non-empty, the
+    same iterable is threaded to ``compute_ehp`` and the
+    ``hybrid_score`` consumes ``ehp_result.cc_blended_ehp`` in place of
+    ``ehp_result.blended_ehp``. Empty tuple (default) preserves
+    byte-identical behavior with all pre-1.34.0 callers - by the
+    identity contract pinned in item 137 ``ContractTests``, compute_ehp
+    returns ``cc_blended_ehp == blended_ehp`` when ``enemy_champions``
+    is empty. The ``ehp`` field on ``HybridResult`` keeps its
+    ``blended_ehp`` semantics (PRE-CC) for transparency; the new
+    ``cc_blended_ehp`` field surfaces the POST-CC value alongside.
     """
     level = clamp_level(level)
     if alpha is None or beta is None:
@@ -221,6 +246,10 @@ def compute_hybrid(
         alpha_source = "override"
 
     item_list = tuple(str(i) for i in (item_ids or ()))
+    # Mirror item_list normalization pattern: coerce to tuple-of-str
+    # once at the top so both the compute_ehp call AND the HybridResult
+    # surface field see the same value. ``or ()`` handles a None input.
+    enemy_champions_tuple = tuple(str(e) for e in (enemy_champions or ()))
 
     dps_result = compute_dps(
         snapshot,
@@ -244,14 +273,28 @@ def compute_hybrid(
         enemy_ad_share=enemy_ad_share,
         enemy_ap_share=enemy_ap_share,
         augments=augments,
+        enemy_champions=enemy_champions_tuple,
     )
 
-    hybrid_score = alpha_resolved * dps_result.weighted_dps + beta_resolved * ehp_result.blended_ehp
+    # When enemy_champions is empty, ehp_result.cc_blended_ehp ==
+    # ehp_result.blended_ehp by the item 137 identity contract, so this
+    # branch is a no-op for all pre-1.34.0 call sites. The explicit
+    # branch keeps the intent legible.
+    ehp_for_score = (
+        ehp_result.cc_blended_ehp if enemy_champions_tuple else ehp_result.blended_ehp
+    )
+    hybrid_score = alpha_resolved * dps_result.weighted_dps + beta_resolved * ehp_for_score
 
     notes: list[str] = []
     notes.append(
         f"α={alpha_resolved:.2f} / β={beta_resolved:.2f} ({alpha_source})"
     )
+    if enemy_champions_tuple and ehp_result.enemy_cc_pressure_s > 0.0:
+        notes.append(
+            f"enemy CC pressure {ehp_result.enemy_cc_pressure_s:.1f}s "
+            f"(fraction {ehp_result.cc_pressure_fraction:.2f}) -> "
+            f"cc_blended_ehp {ehp_result.cc_blended_ehp:.0f}"
+        )
 
     return HybridResult(
         champion_id=dps_result.champion_id,
@@ -275,6 +318,8 @@ def compute_hybrid(
         phase=dps_result.phase,
         mode_multiplier_dps=dps_result.mode_multiplier,
         mode_multiplier_ehp=ehp_result.mode_multiplier,
+        cc_blended_ehp=ehp_result.cc_blended_ehp,
+        enemy_champions=enemy_champions_tuple,
         notes=tuple(notes),
     )
 
@@ -480,6 +525,7 @@ def rank_items_by_hybrid(
     only_item_ids: Optional[Iterable[str | int]] = None,
     sort_by: str = "delta",
     augments: Optional[Iterable] = None,
+    enemy_champions: Iterable[str] = (),
     filter_shared_uniques: bool = True,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
@@ -520,6 +566,9 @@ def rank_items_by_hybrid(
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
     current_set = set(current_ids)
+    # ENGINE 1.34.0 - shared enemy_champions tuple flows into BOTH the
+    # baseline + the scored compute_ehp calls so deltas are consistent.
+    enemy_champions_tuple = tuple(str(e) for e in (enemy_champions or ()))
     current_unique_keys: set[str] = set()
     for iid in current_ids:
         eff = ITEM_EFFECTS.get(iid)
@@ -550,10 +599,21 @@ def rank_items_by_hybrid(
         item_ids=current_ids, mode=mode,
         enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
         augments=augments,
+        enemy_champions=enemy_champions_tuple,
     )
     baseline_dps = baseline_dps_result.weighted_dps
+    # baseline_ehp keeps the blended_ehp semantics for the
+    # _hybrid_delta_pct percentage-normalizer below (the ranker compares
+    # apples-to-apples: blended_ehp delta over blended_ehp baseline).
+    # The cc_blended_ehp value influences the baseline_hybrid scalar via
+    # the same ehp_for_score branch as compute_hybrid.
     baseline_ehp = baseline_ehp_result.blended_ehp
-    baseline_hybrid = alpha_resolved * baseline_dps + beta_resolved * baseline_ehp
+    baseline_ehp_for_score = (
+        baseline_ehp_result.cc_blended_ehp
+        if enemy_champions_tuple
+        else baseline_ehp_result.blended_ehp
+    )
+    baseline_hybrid = alpha_resolved * baseline_dps + beta_resolved * baseline_ehp_for_score
 
     candidates = _filter_candidates(
         snapshot,
@@ -587,6 +647,7 @@ def rank_items_by_hybrid(
                 item_ids=new_build, mode=mode,
                 enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
                 augments=augments,
+                enemy_champions=enemy_champions_tuple,
             )
         except (KeyError, ValueError):
             continue
@@ -597,9 +658,14 @@ def rank_items_by_hybrid(
             delta_dps, delta_ehp, baseline_dps, baseline_ehp,
             alpha_resolved, beta_resolved,
         )
+        ehp_scored_for_score = (
+            ehp_scored.cc_blended_ehp
+            if enemy_champions_tuple
+            else ehp_scored.blended_ehp
+        )
         new_hybrid_score = (
             alpha_resolved * dps_scored.weighted_dps
-            + beta_resolved * ehp_scored.blended_ehp
+            + beta_resolved * ehp_scored_for_score
         )
         # Efficiency: weighted percentage gain per 1000 gold.
         # Zero or negative deltas zero out - regression isn't "efficient".
