@@ -1106,6 +1106,18 @@
                   <div class="csv-sugg-empty">waiting for champ-select…</div>
                 </div>
               </div>
+              <!-- 2026-05-22 (item 139 carry (a)): FIRST dashboard UI
+                   consumer of cc_blended_ehp. Compares ally vs enemy
+                   CC-blended EHP ratio so the operator can see at a
+                   glance whether enemy CC threatens to erode their
+                   team faster than ally CC erodes the enemy team.
+                   Tier-tinted via data-cc-tier (good / warn / bad).
+                   Hidden until at least one ally + one enemy is
+                   committed in champ-select. -->
+              <div class="csv-sugg-section cc-blended-ehp-threat"
+                   id="csv-sugg-cc-blended-ehp-threat"
+                   data-cc-tier="warn"
+                   hidden></div>
               <div class="csv-sugg-section csv-sugg-pickorder"
                    id="csv-sugg-pickorder">
                 <!-- s213 v3: "SUGGESTED PICK ORDER" label removed per
