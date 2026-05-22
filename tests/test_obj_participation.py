@@ -11,6 +11,10 @@ Closes the item-132 carry-forward (c). Validates:
     ``riftHeraldTakedowns`` extracted from
     ``participants.challenges_json`` participates in numerator +
     denominator.
+  - 8th objective column (item 134 carry (g)):
+    ``voidMonsterKill`` (Voidgrubs) also extracted from
+    ``participants.challenges_json`` participates in numerator +
+    denominator alongside herald takedowns.
 """
 from __future__ import annotations
 
@@ -30,8 +34,11 @@ from core.obj_participation import (  # noqa: E402
     _HERALD_KEY,
     _OBJ_COLUMNS,
     _ROW_SUM_SQL,
+    _VOID_KEY,
+    _challenges_objectives,
     _coerce_float,
     _herald_from_challenges,
+    _void_from_challenges,
     compute_obj_participation,
 )
 
@@ -252,13 +259,26 @@ class ModuleSchemaTests(unittest.TestCase):
         # per Riot's challenges schema).
         self.assertEqual(_HERALD_KEY, "riftHeraldTakedowns")
 
+    def test_void_key_constant_is_canonical(self):
+        # Match-V5 challenges blob uses ``voidMonsterKill`` (camelCase
+        # per Riot's challenges schema; canonical Voidgrub takedown
+        # counter present in 200/200 (100%) sampled rows post-2024).
+        self.assertEqual(_VOID_KEY, "voidMonsterKill")
+
     def test_module_docstring_mentions_seven_column_model(self):
-        # Pins the model count in the docstring so future readers see the
-        # 7-column approximation framing.
+        # Pins the prior 7-column framing in the docstring so future
+        # readers see the historical lineage even after item 134's lift.
         path = ROOT / "core" / "obj_participation.py"
         text = path.read_text(encoding="utf-8")
         self.assertIn("7-column", text)
         self.assertIn("riftHeraldTakedowns", text)
+
+    def test_module_docstring_mentions_eight_column_model(self):
+        # Pins the current 8-column model framing post item 134 carry (g).
+        path = ROOT / "core" / "obj_participation.py"
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("8-column", text)
+        self.assertIn("voidMonsterKill", text)
 
 
 class CoerceFloatTests(unittest.TestCase):
@@ -884,6 +904,517 @@ class HeraldEnrichmentMathTests(unittest.TestCase):
             conn.close()
         # 6-col only: 1 / 2 = 0.5. No raise.
         self.assertAlmostEqual(ratio, 0.5)
+
+
+class VoidFromChallengesTests(unittest.TestCase):
+    """The challenges_json void parser is fail-soft (item 134 carry (g))."""
+
+    def test_extracts_integer_void(self):
+        blob = json.dumps({"voidMonsterKill": 4})
+        self.assertEqual(_void_from_challenges(blob), 4.0)
+
+    def test_extracts_float_void(self):
+        blob = json.dumps({"voidMonsterKill": 2.5})
+        self.assertEqual(_void_from_challenges(blob), 2.5)
+
+    def test_zero_void_returns_zero(self):
+        blob = json.dumps({"voidMonsterKill": 0})
+        self.assertEqual(_void_from_challenges(blob), 0.0)
+
+    def test_blob_without_void_key_returns_zero(self):
+        # Herald present but void missing - common in legacy / pre-2024
+        # Match-V5 timeline rows.
+        blob = json.dumps({"riftHeraldTakedowns": 1})
+        self.assertEqual(_void_from_challenges(blob), 0.0)
+
+    def test_empty_string_returns_zero(self):
+        self.assertEqual(_void_from_challenges(""), 0.0)
+
+    def test_none_returns_zero(self):
+        self.assertEqual(_void_from_challenges(None), 0.0)
+
+    def test_non_string_blob_returns_zero(self):
+        self.assertEqual(_void_from_challenges(42), 0.0)
+        self.assertEqual(_void_from_challenges({"voidMonsterKill": 1}), 0.0)
+
+    def test_malformed_json_returns_zero(self):
+        self.assertEqual(_void_from_challenges("{not json"), 0.0)
+        self.assertEqual(_void_from_challenges("null"), 0.0)
+        self.assertEqual(_void_from_challenges("[]"), 0.0)
+
+    def test_non_numeric_value_returns_zero(self):
+        blob = json.dumps({"voidMonsterKill": "three"})
+        self.assertEqual(_void_from_challenges(blob), 0.0)
+
+    def test_accepts_bytes_blob(self):
+        blob = json.dumps({"voidMonsterKill": 6}).encode("utf-8")
+        self.assertEqual(_void_from_challenges(blob), 6.0)
+
+
+class ChallengesObjectivesParseOnceTests(unittest.TestCase):
+    """The dual-extractor helper parses ONCE per row and returns
+    (herald, void) tuple."""
+
+    def test_extracts_both_keys(self):
+        blob = json.dumps({"riftHeraldTakedowns": 2, "voidMonsterKill": 5})
+        self.assertEqual(_challenges_objectives(blob), (2.0, 5.0))
+
+    def test_missing_void_only_herald_present(self):
+        blob = json.dumps({"riftHeraldTakedowns": 1})
+        self.assertEqual(_challenges_objectives(blob), (1.0, 0.0))
+
+    def test_missing_herald_only_void_present(self):
+        blob = json.dumps({"voidMonsterKill": 3})
+        self.assertEqual(_challenges_objectives(blob), (0.0, 3.0))
+
+    def test_empty_blob_returns_zero_tuple(self):
+        self.assertEqual(_challenges_objectives(""), (0.0, 0.0))
+        self.assertEqual(_challenges_objectives(None), (0.0, 0.0))
+
+    def test_malformed_json_returns_zero_tuple(self):
+        self.assertEqual(_challenges_objectives("{not json"), (0.0, 0.0))
+
+    def test_non_dict_parse_returns_zero_tuple(self):
+        # JSON list at top level - not a dict.
+        self.assertEqual(_challenges_objectives("[1, 2]"), (0.0, 0.0))
+        self.assertEqual(_challenges_objectives("null"), (0.0, 0.0))
+
+    def test_herald_wrapper_uses_dual_helper(self):
+        # Pin that the legacy single-key wrapper still returns the herald
+        # piece of the tuple (no regression on existing callers).
+        blob = json.dumps({"riftHeraldTakedowns": 7, "voidMonsterKill": 99})
+        self.assertEqual(_herald_from_challenges(blob), 7.0)
+
+
+class VoidMonsterTests(unittest.TestCase):
+    """voidMonsterKill (Voidgrubs) participates in numerator + denominator
+    (item 134 carry (g))."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="obj_void_")
+        self.db_path = pathlib.Path(self.tmpdir) / "rewind.db"
+
+    def tearDown(self):
+        try:
+            os.remove(self.db_path)
+        except OSError:
+            pass
+        try:
+            os.rmdir(self.tmpdir)
+        except OSError:
+            pass
+
+    def test_void_only_in_blob_lifts_score(self):
+        # Operator gets 3 voidgrubs solo, no SQL objectives, no herald.
+        # Team total = 3, operator = 3, ratio = 1.0.
+        rows = [
+            {
+                "match_id": "V1", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {"voidMonsterKill": 3},
+            },
+            {
+                "match_id": "V1", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"voidMonsterKill": 0},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V1", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)
+
+    def test_void_zero_default_when_key_missing(self):
+        # Operator has 1 dragon; void key absent on every row.
+        # Behavior identical to pre-void enrichment: 1 / 1 = 1.0.
+        rows = [
+            {
+                "match_id": "V2", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+            {
+                "match_id": "V2", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"riftHeraldTakedowns": 0},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V2", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)
+
+    def test_void_null_value_treated_as_zero(self):
+        # JSON `null` for voidMonsterKill should fail-soft to 0.
+        rows = [
+            {
+                "match_id": "V3", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+                "challenges_json": '{"voidMonsterKill": null}',
+            },
+            {
+                "match_id": "V3", "team_id": 100, "puuid": "A1",
+                "challenges_json": '{"voidMonsterKill": null}',
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V3", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)  # 1 dragon / (1 + 0) = 1.0
+
+    def test_void_string_value_coerced(self):
+        # Riot is unlikely to send string-typed ints in challenges_json,
+        # but coerce_float should accept them gracefully.
+        rows = [
+            {
+                "match_id": "V4", "team_id": 100, "puuid": "SELF",
+                "challenges_json": '{"voidMonsterKill": "2"}',
+            },
+            {
+                "match_id": "V4", "team_id": 100, "puuid": "A1",
+                "challenges_json": '{"voidMonsterKill": "0"}',
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V4", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)  # "2" coerces to 2.0 -> 2/2=1.0
+
+    def test_void_negative_value_floored_via_clamp(self):
+        # Negative voidMonsterKill would be a data corruption; coerce
+        # passes negative through but the final ratio clamp keeps the
+        # result in [0, 1]. With operator -3 + ally 2, team total = -1,
+        # which triggers the denominator <= 0 fail-soft to 0.0.
+        rows = [
+            {
+                "match_id": "V5", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {"voidMonsterKill": -3},
+            },
+            {
+                "match_id": "V5", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"voidMonsterKill": 2},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V5", "SELF")
+        finally:
+            conn.close()
+        # Team total = -3 + 2 = -1 (<= 0). Function returns 0.0 cleanly.
+        self.assertEqual(ratio, 0.0)
+
+    def test_malformed_void_json_falls_back_to_zero(self):
+        # One row's JSON is corrupt; that row contributes 0 herald + 0
+        # void; OTHER rows process normally.
+        rows = [
+            {
+                "match_id": "V6", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+                "challenges_json": '{"voidMonsterKill":2}',
+            },
+            {
+                "match_id": "V6", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 1,
+                "challenges_json": "{not valid json",
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V6", "SELF")
+        finally:
+            conn.close()
+        # Operator: 1 dragon + 0 herald + 2 void = 3
+        # A1: 1 dragon + 0 herald + 0 void (parse failed) = 1
+        # Team total = 4, ratio = 3/4 = 0.75.
+        self.assertAlmostEqual(ratio, 0.75)
+
+    def test_void_with_herald_both_contribute(self):
+        # Operator: 1 herald + 2 void = 3; ally: 1 herald + 0 void = 1.
+        # Team total = 4, ratio = 3/4 = 0.75.
+        rows = [
+            {
+                "match_id": "V7", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {
+                    "riftHeraldTakedowns": 1, "voidMonsterKill": 2,
+                },
+            },
+            {
+                "match_id": "V7", "team_id": 100, "puuid": "A1",
+                "challenges_json": {
+                    "riftHeraldTakedowns": 1, "voidMonsterKill": 0,
+                },
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V7", "SELF")
+        finally:
+            conn.close()
+        self.assertAlmostEqual(ratio, 0.75)
+
+    def test_void_with_six_sql_cols_aggregates_correctly(self):
+        # Operator: 2 dragons + 1 baron + 1 herald + 3 void = 7.
+        # Allies combined: 1 dragon + 2 herald + 2 void = 5.
+        # Team total = 12, ratio = 7/12 ~ 0.583.
+        rows = [
+            {
+                "match_id": "V8", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 2, "baron_kills": 1,
+                "challenges_json": {
+                    "riftHeraldTakedowns": 1, "voidMonsterKill": 3,
+                },
+            },
+            {
+                "match_id": "V8", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 1,
+                "challenges_json": {
+                    "riftHeraldTakedowns": 2, "voidMonsterKill": 0,
+                },
+            },
+            {
+                "match_id": "V8", "team_id": 100, "puuid": "A2",
+                "challenges_json": {
+                    "riftHeraldTakedowns": 0, "voidMonsterKill": 2,
+                },
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V8", "SELF")
+        finally:
+            conn.close()
+        self.assertAlmostEqual(ratio, 7.0 / 12.0)
+
+    def test_team_void_normalization_when_operator_zero(self):
+        # Operator gets 0 void; teammates carry all the grubs. Operator
+        # share drops to 0.0 (no other objectives anywhere).
+        rows = [
+            {
+                "match_id": "V9", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {"voidMonsterKill": 0},
+            },
+            {
+                "match_id": "V9", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"voidMonsterKill": 3},
+            },
+            {
+                "match_id": "V9", "team_id": 100, "puuid": "A2",
+                "challenges_json": {"voidMonsterKill": 3},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V9", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 0.0)
+
+    def test_team_void_normalization_when_teammate_only(self):
+        # Operator has 1 dragon; teammate grabs all 3 voidgrubs.
+        # Pre-void enrichment: 1 / 1 = 1.0.
+        # Post-void enrichment: 1 / (1 + 3) = 0.25.
+        rows = [
+            {
+                "match_id": "V10", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+                "challenges_json": {"voidMonsterKill": 0},
+            },
+            {
+                "match_id": "V10", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"voidMonsterKill": 3},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V10", "SELF")
+        finally:
+            conn.close()
+        self.assertAlmostEqual(ratio, 0.25)
+
+    def test_legacy_schema_no_challenges_json_void_falls_back(self):
+        # OperationalError fallback path: pre-challenges schema returns
+        # the 6-col ratio cleanly, never raising on missing voidgrub key.
+        rows = [
+            {
+                "match_id": "V_LEG", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 2,
+            },
+            {
+                "match_id": "V_LEG", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 1,
+            },
+        ]
+        _seed_db(self.db_path, rows, legacy=True)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_LEG", "SELF")
+        finally:
+            conn.close()
+        # 6-col only: 2 / 3 ~ 0.667. No raise.
+        self.assertAlmostEqual(ratio, 2.0 / 3.0)
+
+    def test_void_added_to_both_numerator_and_denominator(self):
+        # Direct symmetry check: same operator share before + after
+        # adding equal void counts to operator + ally. Ratio stays
+        # constant when void is symmetric across the team.
+        rows_before = [
+            {
+                "match_id": "V_SYM_A", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 2,
+                "challenges_json": {"voidMonsterKill": 0},
+            },
+            {
+                "match_id": "V_SYM_A", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 2,
+                "challenges_json": {"voidMonsterKill": 0},
+            },
+        ]
+        _seed_db(self.db_path, rows_before)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            before = compute_obj_participation(conn, "V_SYM_A", "SELF")
+        finally:
+            conn.close()
+
+        # Now bump both rows by the same void count.
+        os.remove(self.db_path)
+        rows_after = [
+            {
+                "match_id": "V_SYM_B", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 2,
+                "challenges_json": {"voidMonsterKill": 2},
+            },
+            {
+                "match_id": "V_SYM_B", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 2,
+                "challenges_json": {"voidMonsterKill": 2},
+            },
+        ]
+        _seed_db(self.db_path, rows_after)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            after = compute_obj_participation(conn, "V_SYM_B", "SELF")
+        finally:
+            conn.close()
+        # Operator's relative share unchanged: both got equal slices.
+        self.assertAlmostEqual(before, after)
+        self.assertAlmostEqual(before, 0.5)
+
+    def test_void_clamped_at_team_total_when_operator_alone(self):
+        # Operator solo collects every team objective + every void grub.
+        # Ratio = 1.0 (clamped exactly to ceiling).
+        rows = [
+            {
+                "match_id": "V_CAP", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 4, "baron_kills": 1,
+                "challenges_json": {"voidMonsterKill": 6},
+            },
+            {
+                "match_id": "V_CAP", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"voidMonsterKill": 0},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_CAP", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)
+        self.assertGreaterEqual(ratio, 0.0)
+        self.assertLessEqual(ratio, 1.0)
+
+    def test_void_does_not_overcount_when_herald_also_present(self):
+        # Operator: 1 herald + 1 void = 2.
+        # Ally: 1 herald + 1 void = 2.
+        # Team total = 4, ratio = 2/4 = 0.5. Confirms the two blob
+        # values flow as SEPARATE contributions (no double-counting; no
+        # accidental conflation of herald with void in the helper).
+        rows = [
+            {
+                "match_id": "V_BOTH", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {
+                    "riftHeraldTakedowns": 1, "voidMonsterKill": 1,
+                },
+            },
+            {
+                "match_id": "V_BOTH", "team_id": 100, "puuid": "A1",
+                "challenges_json": {
+                    "riftHeraldTakedowns": 1, "voidMonsterKill": 1,
+                },
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_BOTH", "SELF")
+        finally:
+            conn.close()
+        self.assertAlmostEqual(ratio, 0.5)
+
+    def test_void_helper_handles_non_dict_parse(self):
+        # Defense-in-depth: a JSON top-level that parses to a list (not
+        # dict) should fail-soft to 0.0 for void.
+        rows = [
+            {
+                "match_id": "V_LIST", "team_id": 100, "puuid": "SELF",
+                "dragon_kills": 1,
+                "challenges_json": "[1, 2, 3]",
+            },
+            {
+                "match_id": "V_LIST", "team_id": 100, "puuid": "A1",
+                "dragon_kills": 1,
+                "challenges_json": "[]",
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_LIST", "SELF")
+        finally:
+            conn.close()
+        # 1 / (1 + 1) = 0.5. Both blob parses returned (0.0, 0.0).
+        self.assertAlmostEqual(ratio, 0.5)
+
+    def test_enemy_team_void_does_not_pollute(self):
+        # voidgrubs on enemy team must NOT count in operator team total.
+        rows = [
+            {
+                "match_id": "V_ENM", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {"voidMonsterKill": 2},
+            },
+            {
+                "match_id": "V_ENM", "team_id": 100, "puuid": "A1",
+                "challenges_json": {"voidMonsterKill": 0},
+            },
+            {
+                "match_id": "V_ENM", "team_id": 200, "puuid": "E1",
+                "challenges_json": {"voidMonsterKill": 99},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_ENM", "SELF")
+        finally:
+            conn.close()
+        # Operator 2 / team 2 = 1.0 (enemy 99 should be ignored).
+        self.assertEqual(ratio, 1.0)
 
 
 class ReadOnlyConnectionTests(unittest.TestCase):
