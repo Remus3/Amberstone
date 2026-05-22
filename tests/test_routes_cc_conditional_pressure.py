@@ -168,12 +168,15 @@ class MathTests(_Base):
         self.assertGreater(body["enemy_total_cc_seconds"], 0.0)
 
     def test_zero_cc_both_sides_returns_balanced_warn(self) -> None:
-        # Annie / Galio vs Aatrox / Garen - none of these carry
+        # Annie / Galio vs Garen / Caitlyn - none of these carry
         # CONDITIONAL CC in the registry (only unconditional). Both
         # sides total_cc_seconds = 0.0; tier clamps to warn (the chip
-        # is about CONDITIONAL CC threat balance specifically).
+        # is about CONDITIONAL CC threat balance specifically). Note:
+        # Aatrox is NOT a safe pick post-wave-3 (Aatrox Q3 nth_hit
+        # conditional landed ENGINE 1.40.0); Garen + Caitlyn remain
+        # unconditional-only at patch 16.10.1.
         h = _do("/api/cc-conditional-pressure?ally=Annie,Galio"
-                "&enemy=Aatrox,Garen&mode=ARAM")
+                "&enemy=Garen,Caitlyn&mode=ARAM")
         body = h.parsed()
         self.assertTrue(body["ok"])
         self.assertEqual(body["tier"], "warn")

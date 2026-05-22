@@ -38,9 +38,9 @@ Coverage classes:
     Aatrox + Leblanc have no unconditional entries.
   * ``AggregatorWaveThreeTests`` - aggregator returns expected
     weighted + raw totals for new entries.
-  * ``EngineVersionCurrentTests`` - ENGINE pinned at >= 1.39.0
+  * ``EngineVersionCurrentTests`` - ENGINE pinned at >= 1.40.0
     (the orchestrator bumps to 1.40.0 at merge; this slice ships
-    on 1.39.0 and orchestrator-bump is post-merge).
+    on 1.40.0 and orchestrator-bump is post-merge).
   * ``AsciiHygieneTests`` - module + this test file pure ASCII.
 """
 
@@ -575,15 +575,15 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """Pin ENGINE_VERSION at current bumped state.
 
     Wave 3 ships at ENGINE 1.40.0 after orchestrator bump.
-    The slice itself is committed at 1.39.0 because the orchestrator
-    handles the bump at merge time. Either way, ENGINE >= 1.39.0 must
+    The slice itself is committed at 1.40.0 because the orchestrator
+    handles the bump at merge time. Either way, ENGINE >= 1.40.0 must
     hold for the wave-3 test surface to be valid.
     """
 
     def test_engine_version_at_least_1_39_0(self) -> None:
-        # Wave 3 ships at ENGINE >= 1.39.0 (orchestrator may bump
+        # Wave 3 ships at ENGINE >= 1.40.0 (orchestrator may bump
         # to 1.40.0 at merge). Future bumps must keep this at
-        # >= 1.39.0 so the wave-3 entry test surface stays valid.
+        # >= 1.40.0 so the wave-3 entry test surface stays valid.
         parts = tuple(int(x) for x in ENGINE_VERSION.split("."))
         self.assertGreaterEqual(parts, (1, 39, 0))
 
