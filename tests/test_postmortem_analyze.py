@@ -760,6 +760,44 @@ def _populate_match_a_herald(
         conn.close()
 
 
+def _populate_match_a_objectives_blob(
+    db_path: pathlib.Path,
+    self_puuid: str,
+    ally_puuid: str,
+    self_herald: int = 0,
+    ally_herald: int = 0,
+    self_void: int = 0,
+    ally_void: int = 0,
+) -> None:
+    """Stamp challenges_json with BOTH riftHeraldTakedowns and
+    voidMonsterKill (item 134 carry (g)). Mirrors the herald helper but
+    populates both blob keys atomically per row so the 8-column model is
+    exercised end-to-end."""
+    conn = sqlite3.connect(str(db_path))
+    try:
+        op_blob = json.dumps({
+            "riftHeraldTakedowns": int(self_herald),
+            "voidMonsterKill": int(self_void),
+        })
+        ally_blob = json.dumps({
+            "riftHeraldTakedowns": int(ally_herald),
+            "voidMonsterKill": int(ally_void),
+        })
+        conn.execute(
+            "UPDATE participants SET challenges_json=? "
+            "WHERE match_id='NA1_TEST_A' AND puuid=?",
+            (op_blob, self_puuid),
+        )
+        conn.execute(
+            "UPDATE participants SET challenges_json=? "
+            "WHERE match_id='NA1_TEST_A' AND puuid=?",
+            (ally_blob, ally_puuid),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 class ObjParticipationWireTests(unittest.TestCase):
     """Closes item-132 carry-forward (c): iter_role_grades now passes real
     obj_participation_pct (was: 0.0 always) through compute_role_grade.
@@ -1023,6 +1061,119 @@ class HeraldEnrichmentWireTests(unittest.TestCase):
         self.assertLess(
             with_ally_herald["total_score"],
             without_ally_herald["total_score"],
+        )
+
+
+class VoidEnrichmentWireTests(unittest.TestCase):
+    """Closes item 134 carry (g): challenges_json voidMonsterKill
+    (Voidgrubs) flows through iter_role_grades -> compute_role_grade as
+    the 8th objective contribution."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="postmortem_void_")
+        self.db_path = pathlib.Path(self.tmpdir) / "rewind.db"
+        self.fixture = _build_fixture_db(self.db_path)
+
+    def tearDown(self):
+        try:
+            os.remove(self.db_path)
+        except OSError:
+            pass
+        try:
+            os.rmdir(self.tmpdir)
+        except OSError:
+            pass
+
+    def test_void_enrichment_widens_obj_pct(self):
+        # Read baseline first - operator has zero objectives.
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            baseline = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        # Operator gets 3 voidgrubs; ally gets 0. Operator share = 1.0.
+        _populate_match_a_objectives_blob(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_herald=0, ally_herald=0,
+            self_void=3, ally_void=0,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            populated = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # MID weight for obj_participation is 0.30 - non-zero lift.
+        self.assertGreater(populated["total_score"], baseline["total_score"])
+        self.assertEqual(populated["role"], baseline["role"])
+
+    def test_void_in_role_grades_lift_with_herald_and_sql(self):
+        # Stack the wins: SQL objectives + herald + voidgrubs all
+        # contribute to operator's score.
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+        # SQL-only baseline: operator 2 sql + 0 blob = 2; ally 1 sql.
+        # Team total = 3, share 0.667.
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            sql_only = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        # Add herald=1 + void=2 on operator; ally clean. Operator total
+        # = 2 + 1 + 2 = 5; team = 5 + 1 = 6 -> 0.833 share (up from 0.667).
+        _populate_match_a_objectives_blob(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_herald=1, ally_herald=0,
+            self_void=2, ally_void=0,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            combined = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        self.assertGreater(combined["total_score"], sql_only["total_score"])
+
+    def test_teammate_void_lowers_operator_share(self):
+        # SQL: operator 2, ally 1. Team total 3 -> operator share 2/3.
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            without_ally_void = iter_role_grades(
+                conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        # Add void=3 to ally only. Operator 2, team 6 -> share 0.333
+        # (down from 0.667 pre-enrichment).
+        _populate_match_a_objectives_blob(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_herald=0, ally_herald=0,
+            self_void=0, ally_void=3,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            with_ally_void = iter_role_grades(
+                conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # Operator's share fell -> total_score also fell.
+        self.assertLess(
+            with_ally_void["total_score"],
+            without_ally_void["total_score"],
         )
 
 
