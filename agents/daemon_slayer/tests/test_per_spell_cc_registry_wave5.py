@@ -304,9 +304,9 @@ class WaveOneThroughFourPreservedTests(unittest.TestCase):
 
     def test_lulu_w_polymorph_preserved(self) -> None:
         # Critical regression guard: wave 1 Lulu W polymorph is preserved
-        # post-schema-lift (wave 6, ENGINE 1.36.0). The wave-5 docstring
+        # post-schema-lift (wave 6, ENGINE 1.37.0). The wave-5 docstring
         # recorded a deferral of Lulu R due to dict-literal collision; the
-        # 1.36.0 schema lift to the setdefault builder unblocks that
+        # 1.37.0 schema lift to the setdefault builder unblocks that
         # multi-wave augmentation. Wave 6 added Lulu R; this guard now
         # verifies both spells coexist (Lulu W from wave 1 + Lulu R from
         # wave 6).
@@ -438,15 +438,15 @@ class WaveFiveNoDuplicatesTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """ENGINE_VERSION pin at wave-6 ship state (1.36.0).
+    """ENGINE_VERSION pin at wave-6 ship state (1.37.0).
 
     Wave 5 originally shipped under ENGINE 1.35.0. Wave 6 schema lift
-    bumps to 1.36.0. The wave-5 surface itself is unchanged; this pin
+    bumps to 1.37.0. The wave-5 surface itself is unchanged; this pin
     moves forward with the registry.
     """
 
     def test_engine_version_at_1_36_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.36.0")
+        self.assertEqual(ENGINE_VERSION, "1.37.0")
 
 
 # ---------------- ASCII hygiene contract ----------------

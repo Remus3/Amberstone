@@ -414,15 +414,15 @@ class WaveFourNoDuplicatesTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """ENGINE_VERSION pin at wave-6 ship state (1.36.0).
+    """ENGINE_VERSION pin at wave-6 ship state (1.37.0).
 
     Wave 4 originally shipped under ENGINE 1.34.0. Wave 5 bumped to
-    1.35.0, wave 6 schema lift to 1.36.0. The wave-4 surface itself
+    1.35.0, wave 6 schema lift to 1.37.0. The wave-4 surface itself
     is unchanged; this pin moves forward with the registry.
     """
 
     def test_engine_version_at_1_36_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.36.0")
+        self.assertEqual(ENGINE_VERSION, "1.37.0")
 
 
 # ---------------- ASCII hygiene contract ----------------
