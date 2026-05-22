@@ -1321,7 +1321,68 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.36.0"
+ENGINE_VERSION = "1.37.0"
+# 1.37.0 (per-spell CC registry wave 7 + conditional CC axis schema lift,
+# 2026-05-22):
+# Two parallel-slice additions composing on item 140 carries-forward.
+#
+# Slice A - _PER_SPELL_CC_DURATIONS wave 7 (data lane via setdefault
+# builder). Extends the 95-entry / 82-champion registry shipped 1.36.0
+# with 8 additional first-order CC entries across 7 new champions of
+# patch 16.10.1. New champions seeded: Irelia E Flawless Duet stun
+# 0.75/0.85/0.95/1.05/1.15 across 5 ranks; Kalista R Fate's Call
+# knockup 1.0s all 3 ranks; Ornn R Call of the Forge God knockup 0.5s
+# all 3 ranks; Shyvana R Dragon's Descent knockback 1.0s all 3 ranks;
+# Smolder R Mountain Breaker knockup 1.25s all 3 ranks; Vayne E Condemn
+# knockback 0.5s all 5 ranks; Zac R Let's Bounce knockup 1.0s all 3
+# ranks; multi-wave augmentation Zac R (Zac E was wave 2; now coexists
+# via setdefault). Volibear E Sky Splitter airborne 0.25s all 5 ranks
+# adds the airborne CC kind. Selection rules unchanged from waves
+# 1-6: first-order CC only; no slows; no conditional CC; canonical
+# DDragon ids. 15+ REJECT candidates documented (Darius E pull+slow /
+# Yorick R Mist Walkers / AurelionSol Q / Aurora W/E/R / Ambessa all
+# spells / Pyke E damage / Fiora W parry / Vex E mark / Ornn Q Brittle /
+# Renata R berserk-axis / Volibear Q terrain / Sett W/E / TahmKench R
+# ally swallow). Registry total: 103 entries across 89 champions
+# (+8 entries / +7 new champs / +1 multi-wave coexistence).
+#
+# Slice B - conditional CC axis schema lift via NEW
+# agents/daemon_slayer/cc_conditional.py module. Forward-marker pattern
+# mirroring s112 STAT_GRANT_CALC_KEYS empty seam shipped at 1.22.0 and
+# _PER_SPELL_CC_DURATIONS pre-130 empty seam. Ships the schema +
+# machinery + seed of 10 canonical conditional CC entries from the
+# wave 4/5/6 REJECT lists (Brand R 3rd-stack stun / TwistedFate W
+# Gold Card / JarvanIV E terrain knockup / TahmKench R Devour
+# suppression / Volibear Q terrain knockback / Warwick R channel-
+# completion suppression / Viktor W 3rd-charge stun / Mordekaiser R
+# banishment / Sett E dual-enemy stun / Vex E debuffed fear). NEW
+# ConditionalCcEntry frozen dataclass + condition tags enum
+# (COND_NTH_HIT / COND_GOLD_CARD / COND_TERRAIN / COND_CHANNEL_COMPLETION
+# / COND_DREAM_STACK / COND_DEVOUR_TARGET / COND_TARGET_HP_BELOW /
+# COND_TARGET_DEBUFFED / COND_DUAL_ENEMY / COND_MODE_GATED) + NEW
+# _DEFAULT_CONDITION_PROBABILITY map of 10 operator-tunable midpoints
+# (e.g. nth_hit=0.7 / gold_card=0.4 / terrain=0.3 / channel=0.5 /
+# devour=0.4 / mode_gated=1.0) + NEW _build_per_spell_cc_conditional()
+# setdefault builder + NEW get_conditional_entries(champion) lookup +
+# NEW get_total_conditional_cc_seconds(champion, apply_probability,
+# rank_index) probability-weighted aggregator. REGISTRY_TOTAL_CHAMPIONS
+# = 10 / REGISTRY_TOTAL_ENTRIES = 10. Forward-marker boundary pinned
+# by NoConsumerWireTests (5 tests) verifying NO file in
+# agents/daemon_slayer/ outside the new test files imports from
+# cc_conditional. cc_pressure.py / ehp.py / ability_dps.py / engine.py
+# all explicitly tested. DocstringStatesForwardMarkerTests (3 tests)
+# verify module docstring declares FORWARD-MARKER + no-consumer-wires
+# + references prior STAT_GRANT_CALC_KEYS empty seam. Future consumers
+# populate via probability-weighted aggregation in compute_cc_pressure
+# or a sibling fight-sim. Production behavior of every existing
+# consumer is byte-identical to 1.36.0 (the new module is dead-code
+# at the consumer layer).
+#
+# +59 tests across NEW test_cc_conditional.py (47 across 7 classes)
+# + NEW test_cc_conditional_forward_marker.py (12 across 2 classes).
+# +37 tests in NEW test_per_spell_cc_registry_wave7.py. Total DS
+# suite delta from 1.36.0: +96.
+#
 # 1.36.0 (per-spell CC registry schema lift + wave 6, 2026-05-22):
 # Closes item 139 carry (j): the future registry-merge pass owed to
 # enable multi-wave augmentation of single-champion spell maps. Lifts

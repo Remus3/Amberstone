@@ -98,7 +98,7 @@ class RegistrySeedShapeTests(unittest.TestCase):
     def test_registry_has_expected_champion_count(self) -> None:
         # ENGINE 1.30.0 = 24 champs; 1.31.0 wave 2 = +20 = 44 total;
         # 1.33.0 wave 3 = +14 = 58 total; 1.34.0 wave 4 = +15 = 73 total;
-        # 1.35.0 wave 5 = +7 = 80 total; 1.36.0 wave 6 = +2 new champs
+        # 1.35.0 wave 5 = +7 = 80 total; 1.37.0 wave 6 = +2 new champs
         # (Bard / Lillia) = 82 total. Lulu / Sejuani / Thresh added a
         # second spell each via the schema lift (multi-wave augmentation
         # without dict-literal clobber) but stayed at 1 champ each.
@@ -113,7 +113,7 @@ class RegistrySeedShapeTests(unittest.TestCase):
         # 1.33.0 wave 3 = +14 = 67 total; 1.34.0 wave 4 = +15 = 82 total;
         # 1.35.0 wave 5 = +8 = 90 total (Hecarim has 2 spell entries
         # E + R, contributing 1 champ + 2 entries to the wave 5 delta);
-        # 1.36.0 wave 6 = +5 entries = 95 total (Lulu R + Sejuani Q +
+        # 1.37.0 wave 6 = +5 entries = 95 total (Lulu R + Sejuani Q +
         # Thresh E multi-wave augmentations + 2 new champs Bard R +
         # Lillia R).
         # 1.37.0 wave 7 = +8 entries = 103 total (Irelia E / Kalista R /
@@ -492,7 +492,7 @@ class RegistryAsciiContractTests(unittest.TestCase):
         )
         src = src_path.read_text(encoding="utf-8")
         # The seeded registry builder lives between these markers.
-        # ENGINE 1.36.0 schema lift moved the registry from a single
+        # ENGINE 1.37.0 schema lift moved the registry from a single
         # dict literal to a module-level builder function; the marker
         # spans the full builder body + the post-function module
         # assignment.
@@ -541,7 +541,7 @@ class RegistryAsciiContractTests(unittest.TestCase):
 
 class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_at_1_36_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.36.0")
+        self.assertEqual(ENGINE_VERSION, "1.37.0")
 
 
 if __name__ == "__main__":
