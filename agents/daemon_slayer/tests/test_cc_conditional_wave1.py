@@ -357,19 +357,21 @@ class RegistryGrowthTests(unittest.TestCase):
     """Wave 1 grows registry from 10/10 to 18/18."""
 
     def test_registry_total_champions_18(self) -> None:
-        self.assertEqual(REGISTRY_TOTAL_CHAMPIONS, 18)
-        self.assertEqual(len(_PER_SPELL_CC_CONDITIONAL), 18)
+        # Wave 1 ships >= 18 champs; future waves expand. Mirrors
+        # wave 6/7 _PER_SPELL_CC_DURATIONS pattern (item 141 Slice A
+        # relaxation). Pin lower bound only.
+        self.assertGreaterEqual(REGISTRY_TOTAL_CHAMPIONS, 18)
+        self.assertGreaterEqual(len(_PER_SPELL_CC_CONDITIONAL), 18)
 
     def test_registry_total_entries_18(self) -> None:
-        # Each champion has exactly one entry today; 18 entries
-        # across 18 champions. This pin signals future regressions
-        # (e.g. a wave forgets to add a champion OR adds 2 spells
-        # for a champion without updating this count).
-        self.assertEqual(REGISTRY_TOTAL_ENTRIES, 18)
+        # Wave 1 ships >= 18 entries; future waves expand. Mirrors
+        # wave 6/7 _PER_SPELL_CC_DURATIONS pattern (item 141 Slice A
+        # relaxation). Pin lower bound only.
+        self.assertGreaterEqual(REGISTRY_TOTAL_ENTRIES, 18)
         live = sum(
             len(spells) for spells in _PER_SPELL_CC_CONDITIONAL.values()
         )
-        self.assertEqual(live, 18)
+        self.assertGreaterEqual(live, 18)
 
     def test_wave_one_adds_8_champions_over_seed(self) -> None:
         seed_champs = set(PRE_WAVE_SEED_EXPECTED.keys())

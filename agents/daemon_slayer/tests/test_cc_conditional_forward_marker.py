@@ -50,6 +50,7 @@ _ALLOWED_TEST_FILES = {
     "test_cc_conditional.py",
     "test_cc_conditional_forward_marker.py",
     "test_cc_conditional_wave1.py",
+    "test_cc_conditional_wave2.py",
     "test_cc_conditional_consumer_pressure.py",
 }
 _ALLOWED_SOURCE_FILES = {
