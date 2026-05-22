@@ -32,6 +32,9 @@ from core.aram_tenacity_context import (
     enemy_aram_tenacity_line,
 )
 from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
+from core.cc_conditional_impact_context import (
+    cc_conditional_impact_line,
+)
 from core.enemy_cc_threat_context import enemy_cc_threat_line
 from core.death_patterns_loader import personal_context_block
 from core.mayhem_detect import is_mayhem
@@ -284,6 +287,7 @@ Enemy keystones: {enemy_runes}
 {enemy_aram_tenacity}
 {enemy_cc_threats}
 {cc_blended_ehp_impact}
+{cc_conditional_impact}
 DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {event_line}
 """
@@ -745,6 +749,10 @@ class Coach(BaseCoach):
                     state.get("game_mode", "ARAM"),
                 ),
                 cc_blended_ehp_impact = cc_blended_ehp_impact_line(
+                    state.get("enemy_comp", []),
+                    state.get("game_mode", "ARAM"),
+                ),
+                cc_conditional_impact = cc_conditional_impact_line(
                     state.get("enemy_comp", []),
                     state.get("game_mode", "ARAM"),
                 ),
