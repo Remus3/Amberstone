@@ -31,6 +31,7 @@ from core.aram_tenacity_context import (
     aram_tenacity_line,
     enemy_aram_tenacity_line,
 )
+from core.enemy_cc_threat_context import enemy_cc_threat_line
 from core.death_patterns_loader import personal_context_block
 from core.mayhem_detect import is_mayhem
 
@@ -280,6 +281,7 @@ My runes: {my_runes}
 Enemy keystones: {enemy_runes}
 {aram_tenacity}
 {enemy_aram_tenacity}
+{enemy_cc_threats}
 DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {event_line}
 """
@@ -733,6 +735,10 @@ class Coach(BaseCoach):
                     state.get("champion"), state.get("game_mode", "ARAM")
                 ),
                 enemy_aram_tenacity = enemy_aram_tenacity_line(
+                    state.get("enemy_comp", []),
+                    state.get("game_mode", "ARAM"),
+                ),
+                enemy_cc_threats = enemy_cc_threat_line(
                     state.get("enemy_comp", []),
                     state.get("game_mode", "ARAM"),
                 ),
