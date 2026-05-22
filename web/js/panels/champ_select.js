@@ -17,6 +17,11 @@ import {
   fetchBanSuggest, getCachedBanSuggest, getBanSuggestCacheCount,
   renderBanSuggestModeChip, renderBanSuggestList,
 } from './ban_suggest_toggle.js';
+import {
+  fetchCcBlendedEhpThreat, getCachedCcBlendedEhpThreat,
+  getCcBlendedEhpThreatCacheCount,
+  renderCcBlendedEhpThreat, resolveChampNames,
+} from './cc_blended_ehp_threat.js';
 
 // ── LCU command helper (used by champ-select + build chooser) ──────
 function lcuCmd(cmdObj) {
@@ -937,6 +942,12 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
       _csvRenderBanSuggestToggle(cs, cached);
     }
   }
+  // 2026-05-22 (item 139 carry (a)): FIRST dashboard UI consumer of
+  // cc_blended_ehp. Renders the ally-vs-enemy CC-blended EHP balance
+  // chip beside the legacy bans grid so the operator can see at a
+  // glance whether enemy CC threatens to erode their team faster
+  // than ally CC erodes the enemy team.
+  _csvRenderCcBlendedEhpThreat(cs);
   // ---- Row 3: pick-order tips (no header label per s213 v3) ----
   // Static advisory keyed on operator's assigned role. 3 tips per role
   // - the third row is the "consider" / strategic depth tip beyond
@@ -1285,6 +1296,10 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   // state - same pattern, count keys so the HURTS-THEM / HELPS-US
   // toggle re-renders when the /api/ban-suggest fetch lands.
   const banSuggDualCount = getBanSuggestCacheCount();
+  // 2026-05-22 (item 139 carry (a)): cc-blended-ehp threat cache state
+  // - same pattern, count keys so the threat chip re-renders when
+  // /api/cc-blended-ehp-threat lands.
+  const ccBlendedCount = getCcBlendedEhpThreatCacheCount();
   return [
     cs.phase || "",
     myCid | 0,
@@ -1297,7 +1312,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}`,
   ].join("|");
 }
 
@@ -1432,6 +1447,51 @@ function _csvRenderBanSuggestToggle(cs, bansCached) {
     const payload = getCachedBanSuggest(allyIds, enemyIds, candidateIds, queue);
     renderBanSuggestList(listEl, payload, candidatesMeta);
   }
+}
+
+// 2026-05-22 (item 139 carry (a)): FIRST dashboard UI consumer of
+// cc_blended_ehp. Calls /api/cc-blended-ehp-threat with the operator's
+// current ally + enemy rosters, then renders the threat-balance chip
+// inside the #csv-sugg-cc-blended-ehp-threat block. The mode parameter
+// is derived from cs.queue_id (ARAM/Mayhem are the modes whose
+// aramTenacity actually moves the cc_pressure value; SR computes
+// cleanly at identity tenacity). Chip is hidden until at least one
+// ally + one enemy is committed so it doesn't render premature noise.
+function _csvRenderCcBlendedEhpThreat(cs) {
+  const block = document.getElementById("csv-sugg-cc-blended-ehp-threat");
+  if (!block) return;
+  const allyNumericIds = (cs.my_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  const enemyNumericIds = (cs.their_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (!allyNumericIds.length || !enemyNumericIds.length) {
+    block.hidden = true;
+    return;
+  }
+  const allyNames = resolveChampNames(allyNumericIds);
+  const enemyNames = resolveChampNames(enemyNumericIds);
+  if (!allyNames.length || !enemyNames.length) {
+    // CHAMPS index not yet loaded - keep hidden, will resolve on the
+    // next render tick after the rc:champs-ready event fires.
+    block.hidden = true;
+    return;
+  }
+  // Map queue_id to mode. ARAM (450), KIWI/Mayhem (2400), Arena
+  // (1700/1710) all benefit from the chip; SR (420 ranked / 400
+  // normal) computes cleanly at identity tenacity. The backend
+  // accepts any of these and defaults to ARAM if absent.
+  let mode = "ARAM";
+  const q = cs.queue_id | 0;
+  if (q === 2400) mode = "KIWI";
+  else if (q === 1700 || q === 1710) mode = "ARENA";
+  else if (q === 420 || q === 400 || q === 430 || q === 700) mode = "SR";
+  else if (q === 450 || q === 920) mode = "ARAM";
+
+  fetchCcBlendedEhpThreat(allyNames, enemyNames, mode, _csvScheduleRender);
+  const payload = getCachedCcBlendedEhpThreat(allyNames, enemyNames, mode);
+  renderCcBlendedEhpThreat(block, payload);
 }
 
 function _csvAdaptKey(champion, enemyIds, baseSummoners, role) {
