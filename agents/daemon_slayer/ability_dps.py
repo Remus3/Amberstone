@@ -875,13 +875,17 @@ def _total_ability_haste(
 # re-resolving the champion.
 #
 # ENGINE 1.29.0 shipped the seam EMPTY (forward-marker pattern mirroring
-# item 112's ``STAT_GRANT_CALC_KEYS``). ENGINE 1.30.0 seeds a starter set
-# of high-impact CC abilities at patch 16.10.1, all values from official
-# Riot tooltips for FIRST-ORDER CC (stuns / roots / suspensions / knock-ups
-# / charms / suppressions / polymorphs / sleeps / taunts). Slows are NOT
-# encoded (different math). Conditional CC (3rd-stack stuns like Brand R,
-# Pyke Q charged variants requiring channel) are skipped where the base
-# semantic is unclear without a fight-sim observer.
+# item 112's ``STAT_GRANT_CALC_KEYS``). ENGINE 1.30.0 seeded a starter set
+# of high-impact CC abilities at patch 16.10.1 (30 entries / 24 champs).
+# ENGINE 1.31.0 (2026-05-21) extends the seed with wave 2: 23 additional
+# entries across 20 additional champions, same first-order CC scope.
+# Total: 53 entries across 44 champions.
+# All values from official Riot tooltips for FIRST-ORDER CC (stuns /
+# roots / suspensions / knock-ups / knock-backs / charms / suppressions
+# / polymorphs / sleeps / fear / taunts). Slows are NOT encoded
+# (different math). Conditional CC (3rd-stack stuns like Brand R, Bard Q
+# wall-bounce variant, Tahm Kench Q 3rd-stack stun) are skipped where
+# the base semantic is unclear without a fight-sim observer.
 #
 # Engine math consumption is STILL FUTURE: today the values flow through
 # AbilitySpellDps.cc_duration_s + .cc_duration_post_tenacity for API
@@ -971,6 +975,70 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     "Yasuo": {"R": (1.0, 1.0, 1.0)},
     # Zoe E - Sleepy Trouble Bubble: drowsy then 2.0s sleep on contact
     "Zoe": {"E": (2.0, 2.0, 2.0, 2.0, 2.0)},
+    # ----- ENGINE 1.31.0 wave 2 (2026-05-21) -----
+    # +23 entries across 20 new champions of first-order CC at patch 16.10.
+    # Selection rules unchanged from wave 1 (stuns / roots / suspensions
+    # / knock-ups / knock-backs / charms / sleeps / fear / suppressions);
+    # no slows; no conditional CC (e.g. Tahm Kench Q 3rd-stack, Bard Q
+    # wall-bounce variant). Values sourced from Riot wiki + cdragon
+    # champion JSONs for patch 16.10.
+    # Alistar Q - Pulverize: knock-up 1.0s all ranks
+    "Alistar": {
+        "Q": (1.0, 1.0, 1.0, 1.0, 1.0),
+        # W - Headbutt: knock-back 0.5s on contact all ranks
+        "W": (0.5, 0.5, 0.5, 0.5, 0.5),
+    },
+    # Amumu Q - Bandage Toss: stun 1.0/1.1/1.2/1.3/1.4 on pull
+    "Amumu": {
+        "Q": (1.0, 1.1, 1.2, 1.3, 1.4),
+        # R - Curse of the Sad Mummy: stun 1.5/1.75/2.0 AOE
+        "R": (1.5, 1.75, 2.0),
+    },
+    # Anivia Q - Flash Frost: stun 1.25s on detonation all ranks
+    "Anivia": {"Q": (1.25, 1.25, 1.25, 1.25, 1.25)},
+    # Braum R - Glacial Fissure: knock-up 1.0s at center line all ranks
+    "Braum": {"R": (1.0, 1.0, 1.0)},
+    # Chogath Q - Rupture: knock-up 1.0s on detonation all ranks
+    "Chogath": {"Q": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Fiddlesticks Q - Terrify: fear 1.25/1.5/1.75/2.0/2.25
+    "Fiddlesticks": {"Q": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    # Gnar R - GNAR!: knock-back 0.75s base displacement all ranks
+    "Gnar": {"R": (0.75, 0.75, 0.75)},
+    # Gragas E - Body Slam: stun 1.0s on contact all ranks
+    "Gragas": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Jhin W - Deadly Flourish: root 0.75/1.0/1.25/1.5/1.75 on marked
+    "Jhin": {"W": (0.75, 1.0, 1.25, 1.5, 1.75)},
+    # Lux Q - Light Binding: root 2.0/2.25/2.5/2.75/3.0 first target
+    "Lux": {"Q": (2.0, 2.25, 2.5, 2.75, 3.0)},
+    # Nami Q - Aqua Prison: stun 1.5s all ranks
+    "Nami": {"Q": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    # Neeko E - Tangle-Barbs: root 0.75/1.0/1.25/1.5/1.75
+    "Neeko": {
+        "E": (0.75, 1.0, 1.25, 1.5, 1.75),
+        # R - Pop Blossom: stun 1.25s on activation all ranks
+        "R": (1.25, 1.25, 1.25),
+    },
+    # Orianna R - Command: Shockwave: knock-up 1.0s all ranks
+    "Orianna": {"R": (1.0, 1.0, 1.0)},
+    # Poppy E - Heroic Charge: stun 0.5s base on contact (wall stun
+    # 1.5s is conditional on terrain - base 0.5s always fires)
+    "Poppy": {"E": (0.5, 0.5, 0.5, 0.5, 0.5)},
+    # Rell W (Ferromancy: Crash Down) intentionally NOT modeled here -
+    # the W toggle has a non-standard rank progression (split mount /
+    # dismount semantics; knock-up duration scales with dash distance).
+    # Riven W - Ki Burst: stun 0.75s AOE all ranks
+    "Riven": {"W": (0.75, 0.75, 0.75, 0.75, 0.75)},
+    # Singed E - Fling: knock-back 1.0s displacement all ranks
+    "Singed": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Skarner R - Impale: suppression 1.75/2.0/2.25 on grabbed target
+    "Skarner": {"R": (1.75, 2.0, 2.25)},
+    # Varus R - Chain of Corruption: root 2.0s on root spread all ranks
+    "Varus": {"R": (2.0, 2.0, 2.0)},
+    # Xerath E - Shocking Orb: stun 1.0/1.25/1.5/1.75/2.0 at min range
+    # (longer with distance; floor pin for closest-target hit)
+    "Xerath": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    # Zac E - Elastic Slingshot: knock-up 1.0s on landing all ranks
+    "Zac": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
 }
 
 
