@@ -1321,7 +1321,52 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.34.0"
+ENGINE_VERSION = "1.35.0"
+# 1.35.0 (compute_hybrid enemy_champions kwarg + cc_blended_ehp scoring
+# + CC registry wave 5, 2026-05-22):
+# Two feature additions shipped in the same parallel orchestrator drain
+# composing on item 138 carries-forward.
+#
+# Slice A - compute_hybrid enemy_champions kwarg + cc_blended_ehp
+# scoring. FIRST DS-engine SCORER consumer of cc_blended_ehp (the
+# field shipped item 137 ENGINE 1.33.0). compute_hybrid() in
+# agents/daemon_slayer/hybrid.py:178 gains a new
+# ``enemy_champions: Iterable[str] = ()`` kwarg threaded through to
+# all 3 internal compute_ehp(...) call sites (lines 238 / 547 / 584).
+# When enemy_champions is non-empty, the hybrid_score uses
+# ``ehp_result.cc_blended_ehp`` (POST-CC-erosion EHP) instead of the
+# pre-CC ``blended_ehp`` for the scoring component. Default empty
+# tuple preserves byte-identical hybrid_score with all pre-1.35.0
+# callers via the item 137 compute_ehp identity contract
+# (cc_blended_ehp == blended_ehp when enemy_champions=()).
+# HybridResult dataclass gains 2 new fields for surface visibility:
+# cc_blended_ehp: float = 0.0 + enemy_champions: tuple[str, ...] = ().
+# The ehp field on HybridResult keeps blended_ehp semantics (PRE-CC)
+# for transparency; cc_blended_ehp is the NEW surface alongside.
+# +22 tests in test_hybrid_enemy_champions.py. Math verified live:
+# Aatrox L11 SR + (Annie/Morgana/Malzahar) summed CC clamps fraction
+# 1.0 -> cc_blended_ehp = blended * 0.5 -> hybrid_score delta = beta
+# * (blended_ehp - cc_blended_ehp) matches expected to 4 decimal places.
+#
+# Slice B - _PER_SPELL_CC_DURATIONS wave 5 (data lane). Extends the
+# 82-entry / 73-champion registry shipped 1.34.0 with 8 additional
+# first-order CC entries across 7 new champions of patch 16.10.1
+# (Hecarim brings 2 spell entries). Total registry now 90 entries
+# across 80 champions. New champs: Hecarim (E+R), KSante (R),
+# Mordekaiser (E), Urgot (E), Viego (W), Yone (R), Ziggs (W).
+# Mid-implementation collision discovery REJECTED 9 candidates that
+# clobbered prior-wave dict keys (Lulu R, Quinn E, Shen E, Jax E,
+# Jinx E, Janna Q, Sejuani Q, Rell R, Thresh E - all prior-wave
+# champion-spell dict keys). The dict-literal cannot represent
+# multi-wave augmentation of a single champion spell map; a future
+# registry-merge pass is owed to enable these without clobbering.
+# Conditional CC candidates REJECTED with reason in commit body
+# (Aurora R / Mordekaiser R / Briar R / Bard Q / Sett W / Taliyah W /
+# Volibear Q / JarvanIV EQ / Trundle R / Kennen E / KSante Q / Sett E /
+# Vayne E / Sylas E2 / Xayah E / Aphelios Q / Aurora E / Briar Q /
+# Renata R - all operator-gated schema lift). Consumer math is
+# BYTE-IDENTICAL to 1.34.0 (data lane only).
+#
 # 1.34.0 (per-spell CC duration registry wave 4, 2026-05-22):
 # Closes the item 137 carry / data-side broadening: extends the
 # 67-entry / 58-champion registry shipped 1.33.0 with 15 additional

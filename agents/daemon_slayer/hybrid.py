@@ -113,12 +113,12 @@ class HybridResult:
     phase: str                         # from compute_dps result
     mode_multiplier_dps: float         # aramDamageDealt; 1.0 outside ARAM
     mode_multiplier_ehp: float         # aramDamageTaken; 1.0 outside ARAM
-    # ENGINE 1.34.0 (item 138 carry (a)) - first DS-engine SCORER
+    # ENGINE 1.35.0 (item 138 carry (a)) - first DS-engine SCORER
     # consumer of cc_blended_ehp. When enemy_champions is non-empty,
     # hybrid_score reads from cc_blended_ehp (not blended_ehp), and the
     # two new fields surface the cc-aware value + the input tuple.
     # Default (empty tuple) preserves byte-identical behavior with all
-    # pre-1.34.0 callers because compute_ehp returns
+    # pre-1.35.0 callers because compute_ehp returns
     # cc_blended_ehp == blended_ehp under that identity contract.
     cc_blended_ehp: float = 0.0        # blended_ehp * (1 - cc_fraction * 0.5) when enemies provided
     enemy_champions: tuple[str, ...] = ()
@@ -216,13 +216,13 @@ def compute_hybrid(
     normalized percentage-delta formulation that handles the unit
     mismatch - see ``rank_items_by_hybrid``.
 
-    ENGINE 1.34.0 (item 138 carry (a)): ``enemy_champions`` is the first
+    ENGINE 1.35.0 (item 138 carry (a)): ``enemy_champions`` is the first
     DS-engine SCORER consumer of ``cc_blended_ehp`` (the field shipped
     item 137 / ENGINE 1.33.0 via ``compute_ehp``). When non-empty, the
     same iterable is threaded to ``compute_ehp`` and the
     ``hybrid_score`` consumes ``ehp_result.cc_blended_ehp`` in place of
     ``ehp_result.blended_ehp``. Empty tuple (default) preserves
-    byte-identical behavior with all pre-1.34.0 callers - by the
+    byte-identical behavior with all pre-1.35.0 callers - by the
     identity contract pinned in item 137 ``ContractTests``, compute_ehp
     returns ``cc_blended_ehp == blended_ehp`` when ``enemy_champions``
     is empty. The ``ehp`` field on ``HybridResult`` keeps its
@@ -278,7 +278,7 @@ def compute_hybrid(
 
     # When enemy_champions is empty, ehp_result.cc_blended_ehp ==
     # ehp_result.blended_ehp by the item 137 identity contract, so this
-    # branch is a no-op for all pre-1.34.0 call sites. The explicit
+    # branch is a no-op for all pre-1.35.0 call sites. The explicit
     # branch keeps the intent legible.
     ehp_for_score = (
         ehp_result.cc_blended_ehp if enemy_champions_tuple else ehp_result.blended_ehp
@@ -566,7 +566,7 @@ def rank_items_by_hybrid(
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
     current_set = set(current_ids)
-    # ENGINE 1.34.0 - shared enemy_champions tuple flows into BOTH the
+    # ENGINE 1.35.0 - shared enemy_champions tuple flows into BOTH the
     # baseline + the scored compute_ehp calls so deltas are consistent.
     enemy_champions_tuple = tuple(str(e) for e in (enemy_champions or ()))
     current_unique_keys: set[str] = set()

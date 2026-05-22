@@ -417,7 +417,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """ENGINE_VERSION pin at wave-4 ship state (1.34.0)."""
 
     def test_engine_version_at_1_34_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.34.0")
+        self.assertEqual(ENGINE_VERSION, "1.35.0")
 
 
 # ---------------- ASCII hygiene contract ----------------
