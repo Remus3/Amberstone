@@ -516,6 +516,7 @@ class CoachWireTests(unittest.TestCase):
                 "Enemy CC pressure: 3.0s over 6s fight = "
                 "50% saturation, blended-EHP impact -25%"
             ),
+            cc_conditional_impact="",
             ds_picks="-", ds_label="-", event_line="-",
         )
         self.assertIn("blended-EHP impact -25%", out)
@@ -540,6 +541,7 @@ class CoachWireTests(unittest.TestCase):
                 "Enemy CC pressure: 1.5s over 6s fight = "
                 "25% saturation, blended-EHP impact -12%"
             ),
+            cc_conditional_impact="",
             ds_picks="-", ds_label="-", vision_context="",
         )
         self.assertIn("blended-EHP impact", out)
