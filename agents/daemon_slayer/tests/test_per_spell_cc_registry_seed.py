@@ -102,7 +102,11 @@ class RegistrySeedShapeTests(unittest.TestCase):
         # (Bard / Lillia) = 82 total. Lulu / Sejuani / Thresh added a
         # second spell each via the schema lift (multi-wave augmentation
         # without dict-literal clobber) but stayed at 1 champ each.
-        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 82)
+        # 1.37.0 wave 7 = +7 NEW champs (Irelia / Kalista / Ornn /
+        # Shyvana / Smolder / Vayne / Volibear). Zac was already in
+        # wave 2 (Zac E); wave 7 adds Zac R as a multi-wave augmentation
+        # at the spell level (Zac stays at 1 champ entry). 82 + 7 = 89.
+        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 89)
 
     def test_registry_has_expected_total_spell_entries(self) -> None:
         # ENGINE 1.30.0 = 30 entries; 1.31.0 wave 2 = +23 = 53 total;
@@ -112,8 +116,11 @@ class RegistrySeedShapeTests(unittest.TestCase):
         # 1.36.0 wave 6 = +5 entries = 95 total (Lulu R + Sejuani Q +
         # Thresh E multi-wave augmentations + 2 new champs Bard R +
         # Lillia R).
+        # 1.37.0 wave 7 = +8 entries = 103 total (Irelia E / Kalista R /
+        # Ornn R / Shyvana R / Smolder R / Vayne E / Volibear E / Zac R;
+        # all 8 are new champions, no multi-wave augmentations).
         total = sum(len(s) for s in _PER_SPELL_CC_DURATIONS.values())
-        self.assertEqual(total, 95)
+        self.assertEqual(total, 103)
 
     def test_each_value_is_tuple_of_floats(self) -> None:
         for champ, spells in _PER_SPELL_CC_DURATIONS.items():
