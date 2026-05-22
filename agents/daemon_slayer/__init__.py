@@ -1321,7 +1321,65 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.38.0"
+ENGINE_VERSION = "1.39.0"
+# 1.39.0 (cc_conditional SECOND + THIRD consumer wires + wave 2 registry
+# expansion, 2026-05-22):
+#
+# Three parallel-slice additions composing on item 142 carries-forward (h).
+#
+# Slice A - cc_conditional SECOND consumer wire in ehp.py.
+#   compute_ehp gains `include_conditional: bool = False` kwarg AFTER
+#   `enemy_champions`. When True, propagates to internal
+#   compute_cc_pressure(enemy, mode, include_conditional=True) calls.
+#   Default False preserves byte-identical behavior with item 137 EHP
+#   contract; cc_blended_ehp now reflects conditional contribution when
+#   opted in. INDIRECT wire - ehp.py has no direct dependency on the
+#   conditional CC registry; the kwarg flow is
+#   ehp -> cc_pressure -> conditional registry.
+#   The forward-marker scan in test_cc_conditional_forward_marker.py
+#   keeps `_ALLOWED_SOURCE_FILES = {"cc_pressure.py"}` (ehp.py is an
+#   indirect kwarg-only consumer; not on the allowlist). +16 tests in
+#   NEW test_cc_conditional_consumer_ehp.py.
+#
+# Slice B - cc_conditional THIRD consumer wire in hybrid.py.
+#   compute_hybrid gains `include_conditional: bool = False` kwarg AFTER
+#   `enemy_champions`. Threads through ALL 3 internal compute_ehp call
+#   sites via `**_ehp_kwargs` gating (passes the kwarg ONLY when True).
+#   HybridResult.cc_blended_ehp reflects conditional contribution
+#   automatically through the ehp -> cc_pressure chain. Default False
+#   preserves byte-identical behavior with item 139 hybrid contract.
+#   INDIRECT wire - hybrid.py has no direct dependency on the
+#   conditional CC registry.
+#   +18 tests in NEW test_cc_conditional_consumer_hybrid.py.
+#
+# Slice C - cc_conditional wave 2 registry expansion (18/18 -> 23/23;
+# +5 entries / +5 new champs). Uses the _build_per_spell_cc_conditional
+# setdefault builder pattern. New entries:
+#   - Maokai Q Bramble Smash (terrain 0.3, stun 1.0s) - coexists with
+#     Maokai R unconditional via setdefault
+#   - Pyke E Phantom Undertow (channel_completion 0.5, stun 1.25s) -
+#     coexists with Pyke Q wave 3 unconditional
+#   - Swain E Nevermove (channel_completion 0.5, root
+#     1.5/1.625/1.75/1.875/2.0s across 5 ranks)
+#   - Skarner Q Shattered Earth + Upheaval (nth_hit 0.7, knockup 0.75s)
+#     - coexists with Skarner R wave 3 unconditional
+#   - Zilean Q Time Bomb (nth_hit 0.7, stun 2.0s)
+# Uses only the 10 EXISTING condition tags (no new tags). All wave 1
+# entries preserved byte-identical via setdefault. +55 tests in NEW
+# test_cc_conditional_wave2.py.
+#
+# Slice D - BACKLOG stale-sweep wave 8 + cost/latency CLEAN (10th
+# consecutive CLEAN run since item 134). One BACKLOG entry flipped to
+# reflect cc_pressure SHIPPED as FIRST consumer at ENGINE 1.38.0 + the
+# 18/18 wave 1 registry; surface natural NEXT wires (compute_ehp +
+# compute_hybrid) which this run ships.
+#
+# Consumer math BYTE-IDENTICAL to 1.38.0 for all default
+# include_conditional=False callers (the existing 4+ consumers of
+# compute_ehp / compute_hybrid). When opted-in, cc_blended_ehp absorbs
+# the conditional contribution through the unified effective_cc_duration
+# seam (ARAM tenacity flows through automatically).
+#
 # 1.38.0 (cc_conditional FIRST consumer wire + wave 1 registry expansion,
 # 2026-05-22):
 # Two parallel-slice additions composing on item 141 carries-forward (h).
