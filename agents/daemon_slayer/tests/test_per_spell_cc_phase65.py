@@ -1,21 +1,23 @@
-"""ENGINE 1.29.0 -> 1.30.0 (2026-05-21) - per-spell CC duration seam.
+"""ENGINE 1.29.0 -> 1.31.0 (2026-05-21) - per-spell CC duration seam.
 
 Closes the item 129 carry-forward (a) at 1.29.0 (the EMPTY seam) +
 the item 130 carry-forward (b) at 1.30.0 (REGISTRY SEEDED with 30
-starter entries across 24 champions). 2nd consumer of the
-``effective_cc_duration`` helper shipped 1.25.0 (item 122). The
-helper itself lives in ``ehp.py`` (free function); this slice exposes
-the downstream-consumer surface at the per-spell AbilityDps layer so
-a future EHP-vs-CC blended scorer (or fight-sim) can read per-rank
-base CC durations + the matching post-tenacity values without
-re-resolving the champion.
+starter entries across 24 champions) + item 134 carry-forward (h) at
+1.31.0 (registry wave 2, +23 entries / +20 champs = 53 / 44 total).
+2nd consumer of the ``effective_cc_duration`` helper shipped 1.25.0
+(item 122). The helper itself lives in ``ehp.py`` (free function); this
+slice exposes the downstream-consumer surface at the per-spell
+AbilityDps layer so a future EHP-vs-CC blended scorer (or fight-sim)
+can read per-rank base CC durations + the matching post-tenacity
+values without re-resolving the champion.
 
 Contract:
 
 * ``_PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]]``
   module-level registry seam in ``ability_dps.py``. EMPTY at 1.29.0,
-  SEEDED at 1.30.0 (30 entries across 24 champions; full pin in
-  ``test_per_spell_cc_registry_seed.py``).
+  SEEDED at 1.30.0 (30/24), EXTENDED 1.31.0 wave 2 (53/44 total;
+  full pin split between ``test_per_spell_cc_registry_seed.py`` and
+  ``test_per_spell_cc_registry_wave2.py``).
 * ``AbilitySpellDps.cc_duration_s`` defaults to ``()`` (per-rank base
   CC tuple from the registry).
 * ``AbilitySpellDps.cc_duration_post_tenacity`` defaults to ``()`` (the
@@ -26,7 +28,8 @@ Coverage classes:
 * ``CcDurationFieldsSchemaTests`` - dataclass shape, default empty
   tuple, to_dict carries both fields, frozen-dataclass enforcement.
 * ``RegistrySeamTests`` - the registry exists as a dict, is non-empty
-  at 1.30.0, unknown champion returns identity (empty tuples).
+  at 1.30.0+ (1.31.0 wave 2 = 53 entries), unknown champion returns
+  identity (empty tuples).
 * ``EffectiveCcDurationConsumerTests`` - registry entries exercised
   via monkey-patch (registry cleared in setUp); tenacity=1.0 identity,
   tenacity=1.20 scales, tenacity=0.0 zeros, missing champion empty,
@@ -37,7 +40,7 @@ Coverage classes:
   a live ``compute_ability_dps`` call shows every spell carries ``()``
   on both fields. Production byte-identical to a pre-1.30.0 unseeded
   state, restored in tearDown.
-* ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.30.0.
+* ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.31.0.
 """
 from __future__ import annotations
 
@@ -370,8 +373,8 @@ class HelpersExposedTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    def test_engine_version_at_1_30_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.30.0")
+    def test_engine_version_at_1_31_0(self) -> None:
+        self.assertEqual(ENGINE_VERSION, "1.31.0")
 
 
 if __name__ == "__main__":
