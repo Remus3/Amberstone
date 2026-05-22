@@ -3,6 +3,46 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-22 - item 136 3-slice parallel drain (_PER_SPELL_CC_DURATIONS first ENGINE consumer + RC coach prompt wire + ROADMAP stale-sweep) SHIPPED (3 worktree agents + 3 merge commits, pushed; ENGINE 1.31.0 -> 1.32.0; non-frozen; RC :8888 unchanged pid 7540; DS :8893 restarted serves 1.32.0)
+
+Operator `/headless-upgrade` long-run authorized with frozen-file grant + parallel orchestrator. 3 worktree agents dispatched concurrent on item 135 carry (h) - the open seam from the registry seed. All 3 merged + green + pushed. RC suite **3046 -> 3096 / 67 subtests / 0 failed** (+50 from Slice B); DS suite **3120 -> 3164 / 1 skipped / 1 xfailed / 1666 subtests passed** (+44 from Slice A).
+
+**Slice A `81cf8a3` feat(ds) - compute_cc_pressure aggregator (closes item 135 carry (h) ENGINE-CONSUMER):** NEW `agents/daemon_slayer/cc_pressure.py` (~240 LOC) is the FIRST aggregator consumer of the 53-entry / 44-champ registry. NEW `CcSpellEntry` + `CcPressureResult` frozen dataclasses + `compute_cc_pressure(champion, mode="SR") -> CcPressureResult` aggregates max-rank CC durations across registered Q/W/E/R spells with per-mode aramTenacity applied through `ehp.effective_cc_duration` (unified math seam from ENGINE 1.25.0). Empty result for unknown / blank / None champions. SR mode identity; ARAM lengthens. Q-W-E-R canonical spell order regardless of registry insertion order. ENGINE 1.31.0 -> 1.32.0 in `__init__.py` with full changelog block. +44 tests in NEW `test_cc_pressure.py` (8 classes). +15 stale ENGINE pin syncs.
+
+**Slice B `6aff49f` feat(coach) - enemy_cc_threat_line (FIRST coach-prompt consumer):** NEW `core/enemy_cc_threat_context.py` (~201 LOC) reads Slice A's `compute_cc_pressure` per enemy + mode, renders `"Enemy CC threats: Morgana 3.0s root (Q), Malzahar 2.5s suppress (R), Annie 1.5s stun (R)"` sorted desc by total_cc_seconds (alphabetical tiebreak), limit=3 default. NEW `_CC_KIND_HINTS` table with 53 entries matching registry breadth (stun/root/charm/suppress/fear/silence/knockup/knockback/sleep/polymorph/taunt); missing-key fallback "CC". Empty (zero token overhead) when no enemies have registered CC. Wired into all 4 active mode coach prompts (ARAM/Arena/Brawl 3-variant/SR) as APPEND placeholders preserving cache prefix per CLAUDE.md item 121. Stub fallback import for parallel slice ship robustness. +50 tests in NEW `test_enemy_cc_threat_context.py`. 2 fixture updates.
+
+**Slice C `b063c9e` docs(roadmap) - stale-entry sweep per [[feedback_backlog_path_stale_check]]:** ROADMAP.md L156 DS calibration pipeline reframed (stale "envisioned in ADR-007 phase 2" -> SHIPPED-clarified); L203 Fleet status DS row bumped (stale ENGINE 0.90.0 / 547 items / 1953 tests -> live 1.31.0 / 705 / 3120 / 172 champs). BACKLOG.md sweep CLEAN (zero entries flipped - prior sweeps caught everything genuinely stale).
+
+**Merge order:** A first (22 files DS-side), B second (8 files RC-side), C third (1 file). 0 merge conflicts (entirely disjoint surfaces). 3 worktrees + 3 branches cleaned up.
+
+**Verified:** Wider RC **3096 passed / 67 subtests / 0 failed** (phase8_smoke `test_live_three_profiles` flipped pass post-DS-restart). DS suite **3164 passed / 1 skipped / 1 xfailed / 1666 subtests**. py_compile + ruff + ASCII clean across all 30 touched files. DS :8893 restarted via taskkill PID 15428 + `schtasks /Run /TN RC-DaemonSlayer` -> /health serves engine_version=1.32.0. RC :8888 unchanged (no route module edits; coach modules reload prompts on next coaching tick per cached system prompt discipline). DS audit iter SPOT-CHECK (14 items Sunfire/Wit's End/Lich Bane/Nashor/Trinity/Sheen/Sundered Sky/Bloodthirster/Spirit Visage/Statikk/Guinsoo/Eclipse/Voltaic/Opportunity) NO drift vs Meraki 16.10.1; engine remains coherent at 1.32.0. Cost/latency lever sweep CLEAN. UI/UX live-game-gated.
+
+**Don't-redo:**
+- `cc_pressure.compute_cc_pressure` is the FIRST aggregator consumer of `_PER_SPELL_CC_DURATIONS` - the seam any future EHP-vs-CC blended scorer / fight-sim reads from. Do NOT duplicate aggregation in any caller.
+- `CcSpellEntry` + `CcPressureResult` dataclasses are FROZEN; use replace if a future axis is wanted.
+- Q-W-E-R canonical spell order enforced inside `compute_cc_pressure`; do NOT assume registry insertion order.
+- SR mode tenacity_mult=1.0 ALWAYS (identity); ARAM/KIWI reads per-champ aramTenacity from champions.json via `ehp.effective_cc_duration` seam.
+- `_CC_KIND_HINTS` table has 53 entries exactly matching registry breadth - when a future registry add ships, the hint table owes a matching entry or the chunk degrades to generic "CC".
+- Cache-prefix preservation per CLAUDE.md item 121: enemy_cc_threats placeholders APPEND-only in coach prompts; never insert mid-prefix.
+- Each coach reads `state.get("enemy_comp", [])` (ARAM/Brawl/SR) or `state.get("enemies", [])` (Arena); do NOT collapse to one key.
+- Fallback ImportError stub in enemy_cc_threat_context.py is for parallel-slice ship robustness; stub returns None so renderer skips silently.
+- ROADMAP L156 + L203 reframes are canonical SHIPPED state; do NOT re-pitch.
+- BACKLOG sweep clean is the valid outcome; do NOT re-pitch a sweep next session unless new shipped work has landed without doc sync.
+
+**Carries forward:**
+- (a) The EHP-vs-CC BLENDED SCORER is the natural next consumer; seam is now in place; operator-gated whether to ship NOW or wait for live-game validation of the coach-prompt consumer first.
+- (b) Item 135 carry (a) Death's Dance Defy heal-on-takedown STILL deferred.
+- (c) Live ARAM/SR smoke STILL pending - operator must play a real game with one of the 44 registered CC champs to verify "Enemy CC threats: ..." appears in coach output.
+- (d) RC-PostmortemAnalyze first scheduled run 2026-05-24 04:15 - verify LastTaskResult=0 next session.
+- (e) `_MISSING_HP_SHARE_FOR_HEALS = 0.5` calibration operator-gated unchanged.
+- (f) Item 133 carry (c) personal calibration via `data/post_game_rubric_weights.json` STILL operator-gated.
+- (g) obj_participation widening of the 4 overlapping challenges_json fields STILL operator-gated.
+- (h) Conditional CC axis schema lift (Brand R / TF W / Tahm Q / Lillia R / Volibear Q / Urgot R / Rell W) STILL operator-gated.
+- (i) UI/UX live-game audit ritual owed once operator plays a real game.
+
+Frozen-file grant authorized this run but NOT used - all 3 agents routed entirely around the frozen list. Grant does NOT carry forward.
+
+---
 # 2026-05-22 - item 135 2-slice parallel drain (voidMonsterKill enrichment + _PER_SPELL_CC_DURATIONS wave 2) SHIPPED (2 worktree agents + 2 merge commits, pushed; ENGINE 1.30.0 -> 1.31.0; non-frozen; RC restarted clean pid 12492 -> 7540 last_reload_ok=True; DS :8893 restarted serves 1.31.0)
 
 Operator "continue wakeup_notes and backlog with multi agents in parallel - commit and push for a /done and /clear - notify when done". 2 worktree agents dispatched parallel on 2 disjoint slices composing on item 134 carries (g) + (h). Both merged + green + pushed. RC suite **3004 -> 3046 / 67 subtests / 0 failed** (+42 from Slice A); DS suite **3080 -> 3120 / 1 skipped / 1 xfailed / 1666 subtests passed** (+40 from Slice B).
