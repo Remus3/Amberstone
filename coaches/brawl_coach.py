@@ -28,6 +28,7 @@ from coaches._base_coach import (
 )
 from core import daemon_slayer_client as _ds_client
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
 from core.death_patterns_loader import personal_context_block
 from core.enemy_cc_threat_context import enemy_cc_threat_line
 
@@ -425,6 +426,15 @@ class Coach(BaseCoach):
                 state.get("game_mode", mode),
             )
             _cc_segment = f"\n{_cc_line}" if _cc_line else ""
+            # Aggregate enemy CC -> blended-EHP impact (item 137 carry a
+            # coach consumer). Same fail-soft contract as _cc_line.
+            _cc_blended_line = cc_blended_ehp_impact_line(
+                state.get("enemy_comp", []),
+                state.get("game_mode", mode),
+            )
+            _cc_blended_segment = (
+                f"\n{_cc_blended_line}" if _cc_blended_line else ""
+            )
             user = (
                 f"=== {state.get('game_time','0:00')} | {mode} ===\n"
                 f"HP: {state.get('hp_pct',100)}%  Mana: {state.get('mana_pct',100)}%"
@@ -434,7 +444,7 @@ class Coach(BaseCoach):
                 f"Items: {', '.join(state.get('items', [])) or 'none'}\n"
                 f"Your team: {', '.join(state.get('ally_comp', [])) or 'unknown'}\n"
                 f"Enemy team: {', '.join(state.get('enemy_comp', [])) or 'unknown'}"
-                f"{_cc_segment}\n"
+                f"{_cc_segment}{_cc_blended_segment}\n"
                 f"Dead enemies: {', '.join(state.get('dead_enemies', [])) or 'none'}{(' Respawns: ' + _resp) if _resp else ''}"
                 f"{event_ctx}\n"
                 + (
