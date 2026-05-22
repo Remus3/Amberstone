@@ -1371,6 +1371,97 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     #   lists (operator-gated schema lift for the conditional axis).
     # FINAL wave 6 net: 5 spell entries across 5 distinct champions
     # (Lulu R / Sejuani Q / Thresh E / Bard R / Lillia R).
+    # ----- ENGINE 1.37.0 wave 7 (2026-05-22) -----
+    # +8 entries across +7 new champions + 1 multi-wave augmentation
+    # (Zac R; Zac E was wave 2) of first-order CC at patch 16.10.1.
+    # Selection rules unchanged from waves 1-6: first-order CC only
+    # (stuns / roots / suspensions / knock-ups / knock-backs / charms /
+    # sleeps / fear / suppressions / polymorphs / taunts / pulls /
+    # stasis); no slows; no conditional CC; no self-CC; canonical DDragon
+    # ids. Values sourced from Riot wiki + canonical patch 16.10.1
+    # tooltips (Meraki bulk + champion_abilities.json damage_blocks do
+    # NOT carry per-spell CC duration data; same sourcing convention as
+    # waves 1-6 for the wiki-tooltip lookups). Wave 7 picks broaden
+    # remaining first-order-CC coverage across champions NOT yet seeded.
+    # Irelia E - Flawless Duet: stun 0.75/0.85/0.95/1.05/1.15 across
+    # 5 ranks (canonical post-rework value at 16.10.1; rank scales the
+    # stun duration). The 2 daggers must connect for the stun to fire,
+    # but the stun itself is unconditional once both connect.
+    registry.setdefault("Irelia", {})["E"] = (0.75, 0.85, 0.95, 1.05, 1.15)
+    # Kalista R - Fate's Call: knock-up 1.0s on enemies hit by the
+    # ally-cannonball at all 3 ranks (rank scales bonus dash range +
+    # damage, not CC duration; canonical value following the Sona R /
+    # Diana R / Yone R single-value-all-ranks pattern from prior waves).
+    registry.setdefault("Kalista", {})["R"] = (1.0, 1.0, 1.0)
+    # Ornn R - Call of the Forge God: knock-up 0.5s on first-impact of
+    # the elemental ram all 3 ranks (canonical primary first-hit knockup;
+    # rank scales damage + ram range, not CC duration; the second-cast
+    # knockup with Brittle is conditional on the target carrying a
+    # Brittle stack from other Ornn abilities, intentionally skipped).
+    registry.setdefault("Ornn", {})["R"] = (0.5, 0.5, 0.5)
+    # Shyvana R - Dragon's Descent: knock-back 1.0s on dragon-form
+    # contact with first enemy all 3 ranks (canonical post-rework
+    # displacement; rank scales bonus stats + damage, not CC duration).
+    registry.setdefault("Shyvana", {})["R"] = (1.0, 1.0, 1.0)
+    # Smolder R - Mountain Breaker: knock-up 1.25s on enemies hit by
+    # the dive landing all 3 ranks (canonical first-order knockup; rank
+    # scales damage + slow piece, the slow is intentionally skipped as
+    # a separate axis per the no-slows wave convention).
+    registry.setdefault("Smolder", {})["R"] = (1.25, 1.25, 1.25)
+    # Vayne E - Condemn: knock-back 0.5s on hit at all 5 ranks (the
+    # universal knockback displacement; rank scales damage, not CC
+    # duration; the wall-pin stun is conditional on terrain contact
+    # and is intentionally REJECTED per the no-conditional-CC rule).
+    # Canonical knockback following the Singed E / Tristana R / Draven E
+    # / Thresh E displacement family.
+    registry.setdefault("Vayne", {})["E"] = (0.5, 0.5, 0.5, 0.5, 0.5)
+    # Volibear E - Sky Splitter: airborne 0.25s on enemies under the
+    # landing zone at all 5 ranks (brief lift-up on the lightning strike
+    # landing; rank scales damage + bonus MR shred, not CC duration;
+    # this is the brief disable component, distinct from the conditional
+    # Volibear Q terrain-stun which stays REJECTED).
+    registry.setdefault("Volibear", {})["E"] = (0.25, 0.25, 0.25, 0.25, 0.25)
+    # Zac R - Let's Bounce: knock-up 1.0s on enemies hit by Zac's bounce
+    # contact all 3 ranks (canonical knockup; rank scales bounce count +
+    # damage, not CC duration; the slow piece on bounces is intentionally
+    # skipped per the no-slows wave convention).
+    registry.setdefault("Zac", {})["R"] = (1.0, 1.0, 1.0)
+    # Wave 7 REJECTED candidates (with reason recorded so future audits
+    # do NOT re-research):
+    # * Darius E Apprehend: pure pull + slow (no first-order stun).
+    # * Draven E Stand Aside: already wave 4.
+    # * Ekko W Parallel Convergence: already wave 4.
+    # * Yorick R Eulogy of the Isles: no first-order CC (Mist Walker
+    #   summons; Yorick W Dark Procession is a wall summon, not champ-CC).
+    # * AurelionSol Q / Q': no CC (Breath of Light beam damage).
+    # * Aurora W Across the Veil: no CC (dash + invisibility).
+    # * Aurora E The Weirding: pull + slow conditional (REJECT - matches
+    #   wave 6 Aurora E carryover).
+    # * Ambessa Q / W / E / R: no first-order CC at 16.10.1 (cunning
+    #   weave / dash / line damage / executes); all stays inert until
+    #   a future audit surfaces a canonical CC value.
+    # * Pyke E Phantom Undertow: damage on path-return only (no CC);
+    #   Pyke Q stun was already wave 3.
+    # * Veigar E Event Horizon: already wave 1.
+    # * Fiora W Riposte: parry/stun on parry is conditional on enemy
+    #   targeted-damage timing (REJECT - conditional axis).
+    # * Vex E Looming Darkness: fear conditional on Vex E-passive mark
+    #   (REJECT - conditional axis).
+    # * Ornn Q Volcanic Rupture: knockup conditional on Brittle second-
+    #   cast Q (REJECT - conditional axis).
+    # * Renata R Hostile Takeover: berserk effect (forces enemies to
+    #   attack each other) but no first-order CC duration in the wiki
+    #   tooltip in the canonical-disable sense (REJECT - berserk is a
+    #   different mechanic axis, queued for a future schema lift).
+    # * Volibear Q Thundering Smash: terrain-conditional stun (REJECT
+    #   carryover from waves 5+6).
+    # * TahmKench R Devour: ally-target swallow (REJECT carryover).
+    # * Aurora R Between Worlds: zone effect, no first-order CC.
+    # FINAL wave 7 net: 8 spell entries across 8 distinct champions
+    # (Irelia E / Kalista R / Ornn R / Shyvana R / Smolder R / Vayne E /
+    # Volibear E / Zac R). 7 of the 8 are NEW champions; Zac R is a
+    # multi-wave augmentation (Zac E was seeded wave 2). Total registry:
+    # 103 entries across 89 champs.
     return registry
 
 
