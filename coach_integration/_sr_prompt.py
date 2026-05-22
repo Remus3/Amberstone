@@ -8,6 +8,7 @@ from collections import deque
 from pathlib import Path
 
 from core.death_patterns_loader import personal_context_block
+from core.enemy_cc_threat_context import enemy_cc_threat_line
 
 logger = logging.getLogger("coach")
 
@@ -374,6 +375,12 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     ]
     if dead_info:  # enemy respawn timers - critical for macro decisions
         lines.append(f"Enemy respawns: {dead_info}")
+    # Enemy per-spell CC threat surface (item 136 carry h consumer of
+    # agents.daemon_slayer.cc_pressure). Empty string when no enemy
+    # carries a registered first-order CC spell - no line bloat.
+    _cc_line = enemy_cc_threat_line(enemy_list, game_mode)
+    if _cc_line:
+        lines.append(_cc_line)
     if enemy_lane:
         lines.append(f"Enemy bot lane (your lane opponents): {enemy_lane}")
     elif enemy_list:
