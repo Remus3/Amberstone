@@ -17,7 +17,11 @@ registry to 18 entries across 18 champions. Wave 2 (2026-05-22 / ENGINE
 registry to 23 entries across 23 champions. Wave 3 (2026-05-22 / ENGINE
 1.40.0) adds +5 entries across +5 new champions, all 3-cast-cycle
 knock-up sweetspot triggers + Leblanc full-tether snare, bringing the
-registry to 28 entries across 28 champions.
+registry to 28 entries across 28 champions. Wave 4 (2026-05-22 /
+ENGINE 1.41.0) adds +5 entries across +4 new champions + 1 multi-
+wave coexistence (Aatrox W chain-root coexists with Aatrox Q3
+knockup from wave 3), bringing the registry to 33 entries across 32
+champions.
 At initial ship (ENGINE 1.37.0) no consumer wires were attached and the
 module was a strict forward marker. The first consumer wire ships via
 ``compute_cc_pressure(include_conditional=False)`` (item 142 / ENGINE
@@ -813,6 +817,152 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
             "damage only. Probability midpoint matches the Karma W "
             "full-tether pattern from wave 1; tether is frequently "
             "cancelled in mid-fight."
+        ),
+    )
+
+    # ============================================================
+    # === wave 4 expansion (2026-05-22) - 5 entries / 4 new champs
+    # === + 1 multi-wave coexistence (Aatrox W chain-root coexists
+    # === with Aatrox Q3 knockup from wave 3). Uses only the 10
+    # === existing condition tags - no new tag constants.
+    # === Conservative per-entry probabilities, defaulting to tag
+    # === midpoint unless mechanic justifies departure.
+    # === REJECTs documented in commit body: Senna W (already
+    # === unconditional wave 1), Aurora E (mechanic-uncertain at
+    # === 16.10.1), Briar W / Naafiri R / Akali R / Jhin R / Pyke R
+    # === / Sett R (no first-order CC), Heimerdinger R-Q (no
+    # === additional CC beyond base E already unconditional),
+    # === Galio Q / Galio R (Galio W+E+R already unconditional),
+    # === Lillia E + R (R already unconditional wave 6).
+    # ============================================================
+
+    # Nunu R Absolute Zero: 3s channel that on completion explodes
+    # in an AOE, knocking up enemies caught in the radius for 0.5s.
+    # Channel can be interrupted by hard CC OR Nunu moving out of
+    # range; standalone partial-channel = damage only (no AOE
+    # knockup). channel_completion conditional - the full 3s
+    # channel is required for the knockup payload. Nunu has no
+    # unconditional ``_PER_SPELL_CC_DURATIONS`` entry today; this
+    # is the first registered Nunu first-order CC.
+    registry.setdefault("Nunu", {})["R"] = ConditionalCcEntry(
+        champion="Nunu",
+        spell="R",
+        cc_kind="knockup",
+        durations_s=(0.5,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=0.5,
+        notes=(
+            "R is a 3s channel that explodes on completion + knocks "
+            "up enemies in the AOE for 0.5s. Channel-interruption by "
+            "hard CC or Nunu moving out of range cancels the knockup. "
+            "Probability midpoint - channels are frequently cancelled "
+            "in teamfights but Nunu can use terrain to break LoS."
+        ),
+    )
+
+    # Yuumi Q Prowling Projectile: long-travel skillshot that roots
+    # at max-distance impact. Short-range hit = damage only. The
+    # root duration scales with distance traveled; at max travel the
+    # root is 1.75s. channel_completion conditional - the projectile
+    # must travel its full distance to apply the root. Yuumi has no
+    # unconditional ``_PER_SPELL_CC_DURATIONS`` entry today; this
+    # is the first registered Yuumi first-order CC.
+    registry.setdefault("Yuumi", {})["Q"] = ConditionalCcEntry(
+        champion="Yuumi",
+        spell="Q",
+        cc_kind="root",
+        durations_s=(1.75,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=0.4,
+        notes=(
+            "Q is a long-travel skillshot; root fires only at max "
+            "projectile distance for 1.75s. Short-range hit is damage "
+            "only. Probability mid-low because Yuumi must aim from "
+            "far back to land the max-distance root; teamfight "
+            "positioning often does not allow this."
+        ),
+    )
+
+    # Pantheon Q Comet Spear empowered: tap-cast Q is a short-range
+    # damage spear; the long-cast (hold) empowered version becomes
+    # a long-range thrown spear that stuns enemies hit for 1.0s.
+    # Standalone tap-cast = damage only. channel_completion
+    # conditional - the windup (charge-up to empowered cast) is the
+    # channel that must complete to gain the stun payload. Pantheon
+    # W is already in ``_PER_SPELL_CC_DURATIONS`` (unconditional
+    # stun 1.0s); Pantheon Q (this wave 4) is the conditional
+    # empowered-cast stun that coexists on the same champion via
+    # setdefault on a different spell slot.
+    registry.setdefault("Pantheon", {})["Q"] = ConditionalCcEntry(
+        champion="Pantheon",
+        spell="Q",
+        cc_kind="stun",
+        durations_s=(1.0,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=0.5,
+        notes=(
+            "Q tap-cast is a short-range damage spear; empowered "
+            "long-cast (hold + release) becomes a long-range thrown "
+            "spear with 1.0s stun on champion hit. channel_completion "
+            "conditional - the windup-channel must complete. Coexists "
+            "with Pantheon W unconditional stun on a different spell "
+            "slot via setdefault."
+        ),
+    )
+
+    # Aatrox W Infernal Chains: skillshot that hits + applies a
+    # chain debuff on champion targets for 1.75s. If the target is
+    # still inside the chain's zone when the duration expires, they
+    # are rooted briefly + pulled back to the cast origin. The pull-
+    # back movement IS the first-order CC; target who walks out of
+    # the zone before the timer expires takes damage only. target_
+    # debuffed conditional - the chain debuff must persist on the
+    # target through the full 1.75s window. Aatrox Q (wave 3) is
+    # the conditional knockup; Aatrox W (this wave 4) is the
+    # conditional pull-back root that coexists on the same champion
+    # via setdefault on a different spell slot.
+    registry.setdefault("Aatrox", {})["W"] = ConditionalCcEntry(
+        champion="Aatrox",
+        spell="W",
+        cc_kind="root",
+        durations_s=(1.75,),
+        condition=COND_TARGET_DEBUFFED,
+        probability=0.5,
+        notes=(
+            "W chain hits + applies chain debuff for 1.75s; if target "
+            "is still inside the zone when timer expires, they are "
+            "pulled back + briefly rooted. Walking out of the zone "
+            "before expiry = damage + slow only. target_debuffed "
+            "conditional - the chain debuff must persist through the "
+            "full window. Coexists with Aatrox Q wave 3 conditional "
+            "knockup on a different spell slot via setdefault."
+        ),
+    )
+
+    # Briar Q Head Rush: dash to target dealing damage. If the
+    # target is knocked into terrain at the end of the dash (or
+    # Briar collides with terrain mid-dash) the target is stunned
+    # for 1.0s. Standalone dash with no terrain in path = damage
+    # only. terrain conditional - the terrain-positioning must
+    # align with Briar's dash trajectory. Briar has no unconditional
+    # ``_PER_SPELL_CC_DURATIONS`` entry today; this is the first
+    # registered Briar first-order CC. (The Briar Q + R frenzy-
+    # state-gated variants flagged in items 142/143 carry-forwards
+    # still require a new condition tag schema lift - not landed
+    # here. This entry encodes the terrain-only path.)
+    registry.setdefault("Briar", {})["Q"] = ConditionalCcEntry(
+        champion="Briar",
+        spell="Q",
+        cc_kind="stun",
+        durations_s=(1.0,),
+        condition=COND_TERRAIN,
+        probability=0.3,
+        notes=(
+            "Q dash; if target is knocked into terrain at end of dash, "
+            "stun 1.0s. No-terrain hit is damage only. terrain "
+            "conditional. Frenzy-state-gated variants (Q+R during "
+            "Frenzy) carry forward operator-gated - they need a new "
+            "condition tag schema lift not in this wave."
         ),
     )
 
