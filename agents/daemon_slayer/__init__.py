@@ -1321,7 +1321,32 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.33.0"
+ENGINE_VERSION = "1.34.0"
+# 1.34.0 (per-spell CC duration registry wave 4, 2026-05-22):
+# Closes the item 137 carry / data-side broadening: extends the
+# 67-entry / 58-champion registry shipped 1.33.0 with 15 additional
+# first-order CC entries across 15 new champions of patch 16.10.1.
+# Total registry now 82 entries across 73 champions.
+# New champions seeded (15): Draven (E knock-back), Ekko (W zone-expiry
+# stun), Janna (Q knock-up), Jax (E counter-strike stun), Jinx (E
+# Flame Chompers root), Mel (E Solar Snare orb root), Nocturne (E
+# Unspeakable Horror fear), Quinn (E Vault knock-back), Rammus (E
+# Frenzying Taunt), Senna (W Last Embrace root), Seraphine (R Encore
+# stun), Shaco (W Jack in the Box fear), Shen (E Shadow Dash taunt),
+# Soraka (E Equinox root), Zyra (E Grasping Roots root). Selection
+# rules unchanged from waves 1+2+3: first-order CC only; no slows;
+# no conditional CC (Bard Q wall-bounce / Evelynn W detonation-on-
+# Eve-attack / Hwei E compound-cast / Karma W channel-completion /
+# Seraphine E slowed-target / Swain E return-wave / Syndra E via
+# Dark Sphere / TwistedFate W Gold Card / Zilean Q double-bomb -
+# all REJECTED with reason recorded); canonical DDragon ids.
+# Consumer math is BYTE-IDENTICAL to 1.33.0 for every (champion, item,
+# mode) tuple - this is a pure data lane lift; the cc_pressure
+# aggregator (item 136 Slice A) + AbilitySpellDps.cc_duration_s /
+# cc_duration_post_tenacity fields read the 15 new entries transparently.
+# The EHP-vs-CC blended scorer (item 137 Slice A) also reads through
+# cc_pressure with no math change.
+#
 # 1.33.0 (EHP-vs-CC blended scorer + CC registry wave 3, 2026-05-22):
 # Closes item 136 carry (a). Two engine consumers shipped in the same
 # parallel orchestrator drain.
