@@ -8,7 +8,10 @@ with explicit probability + condition tags.
 
 This module ships at ENGINE 1.37.0 (2026-05-22) as a FORWARD-MARKER seam
 with the schema + machinery + a seed of 10 canonical examples drawn
-from the wave 4/5/6 REJECT lists in CLAUDE.md items 138/139/140.
+from the wave 4/5/6 REJECT lists in CLAUDE.md items 138/139/140 plus
+wave 1 expansion of +8 entries across +8 new champions drawn from the
+same REJECT lists (CLAUDE.md items 138/139/140/141), bringing the
+registry to 18 entries across 18 champions.
 No consumer wires to it yet. Future consumers populate via
 probability-weighted aggregation in ``compute_cc_pressure`` or a
 sibling fight-sim that wants to credit (probability * duration) per
@@ -388,6 +391,170 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
             "Personal Space deals damage + applies fear when target is "
             "Doom-marked (from R or passive). Standalone E is damage "
             "only; the fear requires the Doom mark."
+        ),
+    )
+
+    # ============================================================
+    # === wave 1 expansion (2026-05-22) - 8 entries / 8 new champs
+    # === Drawn from wave 4/5/6/7 REJECT lists in CLAUDE.md items
+    # === 138/139/140/141. Uses only existing condition tags - no
+    # === new tag constants (operator-gated). Conservative per-entry
+    # === probabilities, defaulting to tag midpoint unless mechanic
+    # === justifies departure.
+    # ============================================================
+
+    # Bard Q Cosmic Binding: ranged skillshot that stuns first target
+    # only if it bounces off a wall OR passes through a second enemy.
+    # Single-target line-up with no wall behind = damage + slow only.
+    # The wall-bounce / dual-enemy stun is positioning-conditional;
+    # using COND_TERRAIN as the primary tag since wall geometry is the
+    # most common bounce trigger.
+    registry.setdefault("Bard", {})["Q"] = ConditionalCcEntry(
+        champion="Bard",
+        spell="Q",
+        cc_kind="stun",
+        durations_s=(1.5, 1.75, 2.0, 2.25, 2.5),
+        condition=COND_TERRAIN,
+        probability=0.3,
+        notes=(
+            "Q stuns on bounce off wall or pass-through second target. "
+            "Single-target hit with no wall behind is slow-only. "
+            "Terrain-positioning conditional; probability mid-low "
+            "because Bard must aim into geometry."
+        ),
+    )
+
+    # Karma W Focused Resolve: tether + delayed root. If the tether
+    # is maintained for the full duration (Karma stays in range +
+    # target does not break LoS), target is rooted for the rank
+    # duration. Cleanseable by movement / dash / LoS break, so
+    # mid-probability.
+    registry.setdefault("Karma", {})["W"] = ConditionalCcEntry(
+        champion="Karma",
+        spell="W",
+        cc_kind="root",
+        durations_s=(1.5, 1.625, 1.75, 1.875, 2.0),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=0.4,
+        notes=(
+            "W tethers target; root fires only if tether persists for "
+            "the full channel (~2s). Movement / dash / LoS break can "
+            "cancel; probability mid-low vs full midpoint because tether "
+            "is frequently cancelled in fights."
+        ),
+    )
+
+    # Taliyah W Seismic Shove: places a delayed shove zone; the zone
+    # fires after a short delay (~1s). Standalone W on cast is a slow.
+    # The knockup direction depends on Taliyah's recast input within
+    # the delay window. Recast-during-delay is the trigger surface.
+    registry.setdefault("Taliyah", {})["W"] = ConditionalCcEntry(
+        champion="Taliyah",
+        spell="W",
+        cc_kind="knockup",
+        durations_s=(0.75,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=0.5,
+        notes=(
+            "W zone fires after delay; knockup direction set by "
+            "Taliyah's recast input. Single value 0.75s across all "
+            "ranks. Probability midpoint - recast cadence varies."
+        ),
+    )
+
+    # Kennen E Lightning Rush: damage + speed dash, applies Mark of
+    # the Storm stack on each champion hit (passive). At 3 stacks the
+    # target is stunned 1.25s. E is a key applicator - mark stack
+    # accumulation via Q + W + E + auto-attack is the nth_hit gate.
+    registry.setdefault("Kennen", {})["E"] = ConditionalCcEntry(
+        champion="Kennen",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(1.25,),
+        condition=COND_NTH_HIT,
+        probability=0.6,
+        notes=(
+            "E applies Mark of the Storm. At 3 stacks (Q + W + E + AA "
+            "combo or similar) target is stunned 1.25s. E is the mid-"
+            "fight applicator; probability mid because Kennen needs "
+            "full combo to land the third stack."
+        ),
+    )
+
+    # KSante Q Ntofo Strikes: 3-cast spell where the 3rd cast roots.
+    # First 2 casts are damage + slow only. The 3-cast cycle within
+    # a fight window is the nth_hit trigger. KSante R already in
+    # unconditional wave-5 registry - this Q coexists on same champ.
+    registry.setdefault("KSante", {})["Q"] = ConditionalCcEntry(
+        champion="KSante",
+        spell="Q",
+        cc_kind="root",
+        durations_s=(0.75,),
+        condition=COND_NTH_HIT,
+        probability=0.7,
+        notes=(
+            "Q is a 3-cast cycle; 3rd cast roots for 0.75s. First 2 "
+            "casts are damage + slow only. 3-cast achievability is "
+            "high in a 6s fight given Q's short cooldown."
+        ),
+    )
+
+    # Ornn Q Volcanic Rupture: damage + slow on direct cast.
+    # Knockup-on-Brittle-stack target if Ornn has applied Brittle
+    # (from auto-attack passive or W damage). Brittle pre-application
+    # is the debuff prerequisite. Ornn R already in unconditional
+    # wave-7 registry; Q coexists on same champ via setdefault.
+    registry.setdefault("Ornn", {})["Q"] = ConditionalCcEntry(
+        champion="Ornn",
+        spell="Q",
+        cc_kind="knockup",
+        durations_s=(1.5,),
+        condition=COND_TARGET_DEBUFFED,
+        probability=0.5,
+        notes=(
+            "Q knocks up only when target has Brittle stack from auto "
+            "or W. Standalone Q is damage + slow. Probability midpoint "
+            "because Brittle application is part of Ornn fight rhythm."
+        ),
+    )
+
+    # Xayah E Bladecaller: recall feathers from Q / R / auto-attack;
+    # feathers root if 3+ feathers hit the same target in the recall.
+    # 1 or 2 feathers = damage only. Multi-feather hit requires Xayah
+    # to set up the feather pattern via Q + auto-attacks first.
+    registry.setdefault("Xayah", {})["E"] = ConditionalCcEntry(
+        champion="Xayah",
+        spell="E",
+        cc_kind="root",
+        durations_s=(1.25,),
+        condition=COND_NTH_HIT,
+        probability=0.6,
+        notes=(
+            "E recalls feathers; root fires only if 3+ feathers hit "
+            "the same target. 1-2 feather hit is damage only. Probability "
+            "mid because feather setup needs prior Q + auto chain."
+        ),
+    )
+
+    # Fiora W Riposte: parries the next champion ability or auto-attack
+    # within a 0.75s window. If the parry blocks an enemy ability /
+    # auto, the enemy is stunned (or slowed) for 1.5s. Standalone W
+    # with no enemy ability incoming is a pure spell-shield with no
+    # stun on Fiora's targets. The stun fires only when the enemy is
+    # actively attacking through the parry window (debuffed = enemy
+    # casting state).
+    registry.setdefault("Fiora", {})["W"] = ConditionalCcEntry(
+        champion="Fiora",
+        spell="W",
+        cc_kind="stun",
+        durations_s=(1.5,),
+        condition=COND_TARGET_DEBUFFED,
+        probability=0.4,
+        notes=(
+            "W parries within a 0.75s window; if it blocks an enemy "
+            "champion ability or AA, target is stunned 1.5s. Parry "
+            "outcome depends on enemy cast timing into Fiora's window; "
+            "probability mid-low because parry timing is hard."
         ),
     )
 
