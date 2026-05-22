@@ -8,6 +8,9 @@ from collections import deque
 from pathlib import Path
 
 from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
+from core.cc_conditional_impact_context import (
+    cc_conditional_impact_line,
+)
 from core.death_patterns_loader import personal_context_block
 from core.enemy_cc_threat_context import enemy_cc_threat_line
 
@@ -388,6 +391,16 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     _cc_blended_line = cc_blended_ehp_impact_line(enemy_list, game_mode)
     if _cc_blended_line:
         lines.append(_cc_blended_line)
+    # Aggregate enemy CONDITIONAL CC -> blended-EHP impact (item 143
+    # follow-up; first coach-prompt consumer of the cc_conditional
+    # registry shipped item 141 Slice B `7233568`). Empty string when
+    # no enemy carries a registered conditional CC entry (the common
+    # case at 23/172 champs at ENGINE 1.39.0).
+    _cc_conditional_line = cc_conditional_impact_line(
+        enemy_list, game_mode
+    )
+    if _cc_conditional_line:
+        lines.append(_cc_conditional_line)
     if enemy_lane:
         lines.append(f"Enemy bot lane (your lane opponents): {enemy_lane}")
     elif enemy_list:
