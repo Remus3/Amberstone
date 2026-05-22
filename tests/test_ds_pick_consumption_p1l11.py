@@ -141,6 +141,7 @@ def _aram_prompt_inject(picks_str: str, label: str) -> str:
         my_runes="unknown", enemy_runes="unknown",
         aram_tenacity="",
         enemy_aram_tenacity="",
+        enemy_cc_threats="",
         ds_picks=picks_str, ds_label=label, event_line="",
     )
 
@@ -153,7 +154,8 @@ def _arena_prompt_inject(picks_str: str, label: str) -> str:
         round="1", champion="Caitlyn", partner="Lux", hp_pct=100,
         gold=0, level=1, kda="0/0/0", items="none", rank="1",
         alive="4", next_opp="?", team_rankings="-", augments="none",
-        my_abilities="none", ds_picks=picks_str, ds_label=label,
+        my_abilities="none", enemy_cc_threats="",
+        ds_picks=picks_str, ds_label=label,
         vision_context="",
     )
 
