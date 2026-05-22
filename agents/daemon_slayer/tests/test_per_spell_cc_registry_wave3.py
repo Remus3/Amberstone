@@ -369,7 +369,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
 
     def test_engine_version_at_1_32_0_pre_merge(self) -> None:
         # If this fails post-orchestrator-merge, update to 1.33.0.
-        self.assertEqual(ENGINE_VERSION, "1.32.0")
+        self.assertEqual(ENGINE_VERSION, "1.33.0")
 
 
 # ---------------- ASCII hygiene contract ----------------

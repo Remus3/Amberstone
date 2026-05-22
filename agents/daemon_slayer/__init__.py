@@ -1321,7 +1321,44 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.32.0"
+ENGINE_VERSION = "1.33.0"
+# 1.33.0 (EHP-vs-CC blended scorer + CC registry wave 3, 2026-05-22):
+# Closes item 136 carry (a). Two engine consumers shipped in the same
+# parallel orchestrator drain.
+#
+# Slice A - EHP-vs-CC blended scorer (compute_ehp). Second engine math
+# consumer of compute_cc_pressure (after the coach-prompt-side consumer
+# at 1.32.0 - core/enemy_cc_threat_context.py). compute_ehp() gains an
+# optional enemy_champions kwarg defaulting to (). When non-empty, the
+# scorer computes enemy CC pressure from the registry via
+# compute_cc_pressure(enemy, mode) per entry, sums total_cc_seconds
+# across enemies, derives cc_pressure_fraction = min(sum /
+# _FIGHT_WINDOW_S, 1.0), and computes cc_blended_ehp = blended_ehp *
+# (1.0 - cc_pressure_fraction * _CC_EFFECTIVENESS_FACTOR) where
+# _CC_EFFECTIVENESS_FACTOR = 0.5 (conservative midpoint - 1s of summed
+# enemy CC pressure erodes 0.5s of operator fight-time effectiveness;
+# CC is not perfectly chained, QSS/Cleanse/Flash mitigate, etc.).
+# EhpResult gains 3 new fields (enemy_cc_pressure_s, cc_pressure_fraction,
+# cc_blended_ehp); to_dict + format_table + notes carry them. Default
+# call (enemy_champions=()) leaves cc_blended_ehp == blended_ehp -
+# back-compat for every existing call site across the engine + the
+# dashboard. The blended_ehp / physical_ehp / magical_ehp / true_ehp
+# fields are UNCHANGED when enemy_champions is provided - the discount
+# lives ONLY in the new cc_blended_ehp field. ARAM tenacity flows
+# through transparently via the existing compute_cc_pressure wiring.
+#
+# Slice B - _PER_SPELL_CC_DURATIONS wave 3 (data registry expansion).
+# Extends the 53-entry / 44-champion seed (wave 1 + wave 2) with 14
+# additional first-order CC entries across 14 new champions at patch
+# 16.10.1. Total registry now 67 entries across 58 champions.
+# New champions (14): AurelionSol R, Caitlyn W, Camille E, Diana R,
+# Elise E, Heimerdinger E, Ivern Q, Malphite R, Pyke Q, Rell Q, Ryze W,
+# Sion Q, Tristana R, XinZhao W. Selection rules unchanged from waves
+# 1+2: first-order CC only; no slows; no conditional CC; canonical
+# DDragon ids. Consumer math BYTE-IDENTICAL to 1.32.0 - data lane only;
+# cc_pressure aggregator + AbilitySpellDps cc_duration_s fields read
+# the registry transparently for the new entries.
+#
 # 1.32.0 (cc_pressure aggregator, 2026-05-22):
 # First consumer of the _PER_SPELL_CC_DURATIONS registry seeded at
 # ENGINE 1.30.0 + extended at 1.31.0. NEW module agents/daemon_slayer/
