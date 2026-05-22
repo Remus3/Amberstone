@@ -1180,7 +1180,7 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     # Zyra E - Grasping Roots: root 1.0/1.25/1.5/1.75/2.0 on line hit
     # across 5 ranks (Root Duration block from data).
     "Zyra": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
-    # ----- ENGINE 1.34.0 wave 5 (2026-05-22) -----
+    # ----- ENGINE 1.35.0 wave 5 (2026-05-22) -----
     # +14 entries across 14 additional champions of first-order CC at
     # patch 16.10. Selection rules unchanged from waves 1+2+3+4
     # (stuns / roots / suspensions / knock-ups / knock-backs / charms /

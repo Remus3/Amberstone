@@ -1,4 +1,4 @@
-"""ENGINE 1.34.0 (2026-05-22) - per-spell CC duration registry wave 5.
+"""ENGINE 1.35.0 (2026-05-22) - per-spell CC duration registry wave 5.
 
 Extends the 82-entry / 73-champion registry shipped 1.34.0 wave 4 with
 8 additional first-order CC entries across 7 additional champions of
@@ -51,7 +51,7 @@ Coverage classes:
 * ``WaveFiveNoDuplicatesTests`` - the wave 5 champion ids do not
   collide with waves 1+2+3+4 sets.
 * ``EngineVersionCurrentTests`` - ENGINE_VERSION pin at wave-5 ship
-  state (still 1.34.0 - data-lane add, no engine math change).
+  state (1.35.0 - data-lane add, no engine math change).
 * ``AsciiHygieneTests`` - the wave 5 registry block + this test file
   are pure-ASCII (no em-dashes / smart quotes per CLAUDE.md hard
   rule).
@@ -434,7 +434,7 @@ class WaveFiveNoDuplicatesTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    """ENGINE_VERSION pin at wave-5 ship state (still 1.34.0).
+    """ENGINE_VERSION pin at wave-5 ship state (1.35.0).
 
     Wave 5 is a data-lane add on top of wave 4 (1.34.0); orchestrator
     bumps ENGINE_VERSION at merge time. This test pins the current
@@ -443,7 +443,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """
 
     def test_engine_version_at_1_34_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.34.0")
+        self.assertEqual(ENGINE_VERSION, "1.35.0")
 
 
 # ---------------- ASCII hygiene contract ----------------
@@ -457,7 +457,7 @@ class AsciiHygieneTests(unittest.TestCase):
             pathlib.Path(__file__).resolve().parent.parent / "ability_dps.py"
         )
         src = src_path.read_text(encoding="utf-8")
-        start_marker = "ENGINE 1.34.0 wave 5"
+        start_marker = "ENGINE 1.35.0 wave 5"
         end_marker = "def _per_spell_cc_for"
         start = src.find(start_marker)
         end = src.find(end_marker)
