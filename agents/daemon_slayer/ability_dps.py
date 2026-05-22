@@ -882,7 +882,14 @@ def _total_ability_haste(
 # ENGINE 1.33.0 (2026-05-22) extends the seed with wave 3: 14 additional
 # entries across 14 additional champions of first-order CC at patch
 # 16.10.1, same selection rules.
-# Total: 67 entries across 58 champions.
+# ENGINE 1.34.0 (2026-05-22) extends the seed with wave 4: 15 additional
+# entries across 15 additional champions, same selection rules.
+# ENGINE 1.35.0 (2026-05-22) extends the seed with wave 5: 8 additional
+# entries across 7 additional champions, same selection rules.
+# ENGINE 1.36.0 (2026-05-22) schema lift to dict.setdefault builder
+# pattern + wave 6: 5 additional entries (3 multi-wave augmentations of
+# existing champion spell maps + 2 new champions). Total: 95 entries
+# across 82 champions.
 # All values from official Riot tooltips for FIRST-ORDER CC (stuns /
 # roots / suspensions / knock-ups / knock-backs / charms / suppressions
 # / polymorphs / sleeps / fear / taunts). Slows are NOT encoded
@@ -906,78 +913,95 @@ def _total_ability_haste(
 # value across all ranks (e.g. Annie R 1.5s all 3 ranks). Single-value
 # tuples like (1.5,) are also accepted - the engine reads the rank slot
 # defensively (consumer behavior pinned by tests).
-_PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
+#
+# ENGINE 1.36.0 SCHEMA LIFT: the registry is now constructed via a
+# module-level builder function ``_build_per_spell_cc_durations`` which
+# uses ``dict.setdefault(champ, {})[spell] = tuple`` to allow multi-wave
+# augmentation of a single champion's spell map without dict-literal
+# collision. Prior to 1.36.0 the registry was a single dict literal
+# which clobbered prior-wave entries when a later wave added a new
+# spell to the same champion. This blocked Lulu R + Sejuani Q + Thresh
+# E (all rejected from wave 5 due to clobber). The builder runs ONCE
+# at module import and assigns the result to _PER_SPELL_CC_DURATIONS
+# below; consumer code reads the dict transparently.
+def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
+    """Build the per-spell CC duration registry via setdefault.
+
+    Returns a fresh dict of champion_id -> spell_key -> per-rank tuple.
+
+    Uses ``setdefault(champ, {})[spell] = tuple`` so multiple waves can
+    contribute spells to the same champion without clobbering prior-wave
+    entries. The builder pattern replaces the single dict literal used
+    1.30.0 through 1.35.0; production behavior of all 90 pre-1.36.0
+    entries is byte-identical (value pins preserved).
+    """
+    registry: dict[str, dict[str, tuple[float, ...]]] = {}
+    # ----- ENGINE 1.30.0 wave 1 (2026-05-21) -----
+    # Initial seed: 30 entries across 24 champions of first-order CC at
+    # patch 16.10. All values from Riot wiki + cdragon tooltips.
     # Ahri E - Charm: charm 1.0/1.25/1.5/1.75/2.0
-    "Ahri": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    registry.setdefault("Ahri", {})["E"] = (1.0, 1.25, 1.5, 1.75, 2.0)
     # Annie R - Summon: Tibbers: stun on summon 1.5s all ranks
-    "Annie": {"R": (1.5, 1.5, 1.5)},
+    registry.setdefault("Annie", {})["R"] = (1.5, 1.5, 1.5)
     # Ashe R - Enchanted Crystal Arrow: stun 1.5-3.5s based on travel
     # distance; use 1.5s as the minimum guaranteed floor across all ranks
-    "Ashe": {"R": (1.5, 1.5, 1.5)},
+    registry.setdefault("Ashe", {})["R"] = (1.5, 1.5, 1.5)
     # Blitzcrank Q - Rocket Grab: pull then 1.0s stun on connect all ranks
-    "Blitzcrank": {"Q": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Blitzcrank", {})["Q"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Cassiopeia R - Petrifying Gaze: stun 2.0s if facing (slow otherwise)
     # all ranks
-    "Cassiopeia": {"R": (2.0, 2.0, 2.0)},
+    registry.setdefault("Cassiopeia", {})["R"] = (2.0, 2.0, 2.0)
     # Galio W - Shield of Durand: taunt 1.0s base on cast all ranks
-    "Galio": {
-        "W": (1.0, 1.0, 1.0, 1.0, 1.0),
-        # E - Justice Punch: knock-up 0.5s
-        "E": (0.5, 0.5, 0.5, 0.5, 0.5),
-        # R - Hero's Entrance: knock-up 0.75s on landing
-        "R": (0.75, 0.75, 0.75),
-    },
+    registry.setdefault("Galio", {})["W"] = (1.0, 1.0, 1.0, 1.0, 1.0)
+    # Galio E - Justice Punch: knock-up 0.5s
+    registry.setdefault("Galio", {})["E"] = (0.5, 0.5, 0.5, 0.5, 0.5)
+    # Galio R - Hero's Entrance: knock-up 0.75s on landing
+    registry.setdefault("Galio", {})["R"] = (0.75, 0.75, 0.75)
     # Leona Q - Shield of Daybreak: stun 1.25s all ranks
-    "Leona": {
-        "Q": (1.25, 1.25, 1.25, 1.25, 1.25),
-        # E - Zenith Blade: root 0.5s on connect
-        "E": (0.5, 0.5, 0.5, 0.5, 0.5),
-        # R - Solar Flare: stun 1.5s in center
-        "R": (1.5, 1.5, 1.5),
-    },
+    registry.setdefault("Leona", {})["Q"] = (1.25, 1.25, 1.25, 1.25, 1.25)
+    # Leona E - Zenith Blade: root 0.5s on connect
+    registry.setdefault("Leona", {})["E"] = (0.5, 0.5, 0.5, 0.5, 0.5)
+    # Leona R - Solar Flare: stun 1.5s in center
+    registry.setdefault("Leona", {})["R"] = (1.5, 1.5, 1.5)
     # Lissandra R - Frozen Tomb: stun 1.5s on enemy-target cast all ranks
-    "Lissandra": {"R": (1.5, 1.5, 1.5)},
+    registry.setdefault("Lissandra", {})["R"] = (1.5, 1.5, 1.5)
     # Lulu W - Whimsy: polymorph 1.25/1.5/1.75/2.0/2.25
-    "Lulu": {"W": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    registry.setdefault("Lulu", {})["W"] = (1.25, 1.5, 1.75, 2.0, 2.25)
     # Malzahar R - Nether Grasp: suppression 2.5s all ranks
-    "Malzahar": {"R": (2.5, 2.5, 2.5)},
+    registry.setdefault("Malzahar", {})["R"] = (2.5, 2.5, 2.5)
     # Maokai R - Nature's Grasp: root 1.2/1.6/2.0
-    "Maokai": {"R": (1.2, 1.6, 2.0)},
+    registry.setdefault("Maokai", {})["R"] = (1.2, 1.6, 2.0)
     # MonkeyKing (Wukong) R - Cyclone: knock-up 1.0s on first hit
-    "MonkeyKing": {"R": (1.0, 1.0, 1.0)},
+    registry.setdefault("MonkeyKing", {})["R"] = (1.0, 1.0, 1.0)
     # Morgana Q - Dark Binding: root 2.0/2.25/2.5/2.75/3.0
-    "Morgana": {"Q": (2.0, 2.25, 2.5, 2.75, 3.0)},
+    registry.setdefault("Morgana", {})["Q"] = (2.0, 2.25, 2.5, 2.75, 3.0)
     # Nautilus Q - Dredge Line: root+pull 1.0/1.15/1.3/1.45/1.6
-    "Nautilus": {
-        "Q": (1.0, 1.15, 1.3, 1.45, 1.6),
-        # R - Depth Charge: knock-up 1.0/1.5/2.0 on final target
-        "R": (1.0, 1.5, 2.0),
-    },
+    registry.setdefault("Nautilus", {})["Q"] = (1.0, 1.15, 1.3, 1.45, 1.6)
+    # Nautilus R - Depth Charge: knock-up 1.0/1.5/2.0 on final target
+    registry.setdefault("Nautilus", {})["R"] = (1.0, 1.5, 2.0)
     # Pantheon W - Shield Vault: stun 1.0s all ranks
-    "Pantheon": {"W": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Pantheon", {})["W"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Rakan W - Grand Entrance: knock-up 1.0s all ranks
-    "Rakan": {"W": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Rakan", {})["W"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Renekton W - Ruthless Predator: stun 0.75s base all ranks
-    "Renekton": {"W": (0.75, 0.75, 0.75, 0.75, 0.75)},
+    registry.setdefault("Renekton", {})["W"] = (0.75, 0.75, 0.75, 0.75, 0.75)
     # Sejuani R - Glacial Prison: stun on travel-line 1.0/1.5/2.0
-    "Sejuani": {"R": (1.0, 1.5, 2.0)},
+    registry.setdefault("Sejuani", {})["R"] = (1.0, 1.5, 2.0)
     # Sona R - Crescendo: stun 1.5s all ranks
-    "Sona": {"R": (1.5, 1.5, 1.5)},
+    registry.setdefault("Sona", {})["R"] = (1.5, 1.5, 1.5)
     # Thresh Q - Death Sentence: stun 1.5s on connect all ranks
-    "Thresh": {"Q": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    registry.setdefault("Thresh", {})["Q"] = (1.5, 1.5, 1.5, 1.5, 1.5)
     # Veigar E - Event Horizon: stun on edge cross 1.5s all ranks
-    "Veigar": {"E": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    registry.setdefault("Veigar", {})["E"] = (1.5, 1.5, 1.5, 1.5, 1.5)
     # Vi Q - Vault Breaker: knock-up 0.75s all ranks
-    "Vi": {
-        "Q": (0.75, 0.75, 0.75, 0.75, 0.75),
-        # R - Cease and Desist: knock-up 1.0s on initial target
-        "R": (1.0, 1.0, 1.0),
-    },
+    registry.setdefault("Vi", {})["Q"] = (0.75, 0.75, 0.75, 0.75, 0.75)
+    # Vi R - Cease and Desist: knock-up 1.0s on initial target
+    registry.setdefault("Vi", {})["R"] = (1.0, 1.0, 1.0)
     # Yasuo R - Last Breath: knock-up 1.0s on cast (then airborne held
     # until end - approximate base trigger as 1.0)
-    "Yasuo": {"R": (1.0, 1.0, 1.0)},
+    registry.setdefault("Yasuo", {})["R"] = (1.0, 1.0, 1.0)
     # Zoe E - Sleepy Trouble Bubble: drowsy then 2.0s sleep on contact
-    "Zoe": {"E": (2.0, 2.0, 2.0, 2.0, 2.0)},
+    registry.setdefault("Zoe", {})["E"] = (2.0, 2.0, 2.0, 2.0, 2.0)
     # ----- ENGINE 1.31.0 wave 2 (2026-05-21) -----
     # +23 entries across 20 new champions of first-order CC at patch 16.10.
     # Selection rules unchanged from wave 1 (stuns / roots / suspensions
@@ -986,62 +1010,56 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     # wall-bounce variant). Values sourced from Riot wiki + cdragon
     # champion JSONs for patch 16.10.
     # Alistar Q - Pulverize: knock-up 1.0s all ranks
-    "Alistar": {
-        "Q": (1.0, 1.0, 1.0, 1.0, 1.0),
-        # W - Headbutt: knock-back 0.5s on contact all ranks
-        "W": (0.5, 0.5, 0.5, 0.5, 0.5),
-    },
+    registry.setdefault("Alistar", {})["Q"] = (1.0, 1.0, 1.0, 1.0, 1.0)
+    # Alistar W - Headbutt: knock-back 0.5s on contact all ranks
+    registry.setdefault("Alistar", {})["W"] = (0.5, 0.5, 0.5, 0.5, 0.5)
     # Amumu Q - Bandage Toss: stun 1.0/1.1/1.2/1.3/1.4 on pull
-    "Amumu": {
-        "Q": (1.0, 1.1, 1.2, 1.3, 1.4),
-        # R - Curse of the Sad Mummy: stun 1.5/1.75/2.0 AOE
-        "R": (1.5, 1.75, 2.0),
-    },
+    registry.setdefault("Amumu", {})["Q"] = (1.0, 1.1, 1.2, 1.3, 1.4)
+    # Amumu R - Curse of the Sad Mummy: stun 1.5/1.75/2.0 AOE
+    registry.setdefault("Amumu", {})["R"] = (1.5, 1.75, 2.0)
     # Anivia Q - Flash Frost: stun 1.25s on detonation all ranks
-    "Anivia": {"Q": (1.25, 1.25, 1.25, 1.25, 1.25)},
+    registry.setdefault("Anivia", {})["Q"] = (1.25, 1.25, 1.25, 1.25, 1.25)
     # Braum R - Glacial Fissure: knock-up 1.0s at center line all ranks
-    "Braum": {"R": (1.0, 1.0, 1.0)},
+    registry.setdefault("Braum", {})["R"] = (1.0, 1.0, 1.0)
     # Chogath Q - Rupture: knock-up 1.0s on detonation all ranks
-    "Chogath": {"Q": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Chogath", {})["Q"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Fiddlesticks Q - Terrify: fear 1.25/1.5/1.75/2.0/2.25
-    "Fiddlesticks": {"Q": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    registry.setdefault("Fiddlesticks", {})["Q"] = (1.25, 1.5, 1.75, 2.0, 2.25)
     # Gnar R - GNAR!: knock-back 0.75s base displacement all ranks
-    "Gnar": {"R": (0.75, 0.75, 0.75)},
+    registry.setdefault("Gnar", {})["R"] = (0.75, 0.75, 0.75)
     # Gragas E - Body Slam: stun 1.0s on contact all ranks
-    "Gragas": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Gragas", {})["E"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Jhin W - Deadly Flourish: root 0.75/1.0/1.25/1.5/1.75 on marked
-    "Jhin": {"W": (0.75, 1.0, 1.25, 1.5, 1.75)},
+    registry.setdefault("Jhin", {})["W"] = (0.75, 1.0, 1.25, 1.5, 1.75)
     # Lux Q - Light Binding: root 2.0/2.25/2.5/2.75/3.0 first target
-    "Lux": {"Q": (2.0, 2.25, 2.5, 2.75, 3.0)},
+    registry.setdefault("Lux", {})["Q"] = (2.0, 2.25, 2.5, 2.75, 3.0)
     # Nami Q - Aqua Prison: stun 1.5s all ranks
-    "Nami": {"Q": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    registry.setdefault("Nami", {})["Q"] = (1.5, 1.5, 1.5, 1.5, 1.5)
     # Neeko E - Tangle-Barbs: root 0.75/1.0/1.25/1.5/1.75
-    "Neeko": {
-        "E": (0.75, 1.0, 1.25, 1.5, 1.75),
-        # R - Pop Blossom: stun 1.25s on activation all ranks
-        "R": (1.25, 1.25, 1.25),
-    },
+    registry.setdefault("Neeko", {})["E"] = (0.75, 1.0, 1.25, 1.5, 1.75)
+    # Neeko R - Pop Blossom: stun 1.25s on activation all ranks
+    registry.setdefault("Neeko", {})["R"] = (1.25, 1.25, 1.25)
     # Orianna R - Command: Shockwave: knock-up 1.0s all ranks
-    "Orianna": {"R": (1.0, 1.0, 1.0)},
+    registry.setdefault("Orianna", {})["R"] = (1.0, 1.0, 1.0)
     # Poppy E - Heroic Charge: stun 0.5s base on contact (wall stun
     # 1.5s is conditional on terrain - base 0.5s always fires)
-    "Poppy": {"E": (0.5, 0.5, 0.5, 0.5, 0.5)},
+    registry.setdefault("Poppy", {})["E"] = (0.5, 0.5, 0.5, 0.5, 0.5)
     # Rell W (Ferromancy: Crash Down) intentionally NOT modeled here -
     # the W toggle has a non-standard rank progression (split mount /
     # dismount semantics; knock-up duration scales with dash distance).
     # Riven W - Ki Burst: stun 0.75s AOE all ranks
-    "Riven": {"W": (0.75, 0.75, 0.75, 0.75, 0.75)},
+    registry.setdefault("Riven", {})["W"] = (0.75, 0.75, 0.75, 0.75, 0.75)
     # Singed E - Fling: knock-back 1.0s displacement all ranks
-    "Singed": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Singed", {})["E"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Skarner R - Impale: suppression 1.75/2.0/2.25 on grabbed target
-    "Skarner": {"R": (1.75, 2.0, 2.25)},
+    registry.setdefault("Skarner", {})["R"] = (1.75, 2.0, 2.25)
     # Varus R - Chain of Corruption: root 2.0s on root spread all ranks
-    "Varus": {"R": (2.0, 2.0, 2.0)},
+    registry.setdefault("Varus", {})["R"] = (2.0, 2.0, 2.0)
     # Xerath E - Shocking Orb: stun 1.0/1.25/1.5/1.75/2.0 at min range
     # (longer with distance; floor pin for closest-target hit)
-    "Xerath": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    registry.setdefault("Xerath", {})["E"] = (1.0, 1.25, 1.5, 1.75, 2.0)
     # Zac E - Elastic Slingshot: knock-up 1.0s on landing all ranks
-    "Zac": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Zac", {})["E"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # ----- ENGINE 1.33.0 wave 3 (2026-05-22) -----
     # +14 entries across 14 additional champions of first-order CC at
     # patch 16.10. Selection rules unchanged from wave 1 + wave 2
@@ -1058,53 +1076,55 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     # impact + stun in center (the center stun is the canonical
     # first-order CC value; knockup on first contact is wider but
     # shorter); pin the center stun 1.25/1.5/1.75 at ranks 1/2/3.
-    "AurelionSol": {"R": (1.25, 1.5, 1.75)},
+    registry.setdefault("AurelionSol", {})["R"] = (1.25, 1.5, 1.75)
     # Caitlyn W - Yordle Snap Trap: root 1.5s all ranks on triggered
     # trap (single value across all 5 ranks; trap duration scales with
     # rank but root duration is constant per the 16.10 tooltip).
-    "Caitlyn": {"W": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    registry.setdefault("Caitlyn", {})["W"] = (1.5, 1.5, 1.5, 1.5, 1.5)
     # Camille E - Hookshot / Wall Dive: stun 0.75s on second-cast
     # wall-dive contact all ranks (single value across 5 ranks).
-    "Camille": {"E": (0.75, 0.75, 0.75, 0.75, 0.75)},
+    registry.setdefault("Camille", {})["E"] = (0.75, 0.75, 0.75, 0.75, 0.75)
     # Diana R - Moonfall: knock-up 0.75s on pull (single value all
     # 3 ranks; rank scales damage + cooldown, not the CC duration).
-    "Diana": {"R": (0.75, 0.75, 0.75)},
+    registry.setdefault("Diana", {})["R"] = (0.75, 0.75, 0.75)
     # Elise E (human form) - Cocoon: stun 1.1/1.4/1.7/2.0/2.3 across
     # 5 ranks (one of the longest single-target stuns at min rank).
-    "Elise": {"E": (1.1, 1.4, 1.7, 2.0, 2.3)},
+    registry.setdefault("Elise", {})["E"] = (1.1, 1.4, 1.7, 2.0, 2.3)
     # Heimerdinger E - CH-2 Electron Storm Grenade: stun 1.25s on
     # primary target all 4 ranks (E maxes at rank 4 not 5; engine
     # canonical 5-rank shape, pin rank-5 slot to rank-4 value).
-    "Heimerdinger": {"E": (1.25, 1.25, 1.25, 1.25, 1.25)},
+    registry.setdefault("Heimerdinger", {})["E"] = (
+        1.25, 1.25, 1.25, 1.25, 1.25,
+    )
     # Ivern Q - Rootcaller: root 1.0/1.25/1.5/1.75/2.0 across 5 ranks
     # (ally dash after root not modeled - it is an ally interaction,
     # not enemy CC).
-    "Ivern": {"Q": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    registry.setdefault("Ivern", {})["Q"] = (1.0, 1.25, 1.5, 1.75, 2.0)
     # Malphite R - Unstoppable Force: knock-up 1.5/1.75/2.0 across
     # 3 ranks (Malphite's signature ult CC value).
-    "Malphite": {"R": (1.5, 1.75, 2.0)},
+    registry.setdefault("Malphite", {})["R"] = (1.5, 1.75, 2.0)
     # Pyke Q - Bone Skewer: stun 1.25s on the pulled/skewered target
     # all 5 ranks (the ranged-Q-on-cast charge stuns; pin the
     # constant value).
-    "Pyke": {"Q": (1.25, 1.25, 1.25, 1.25, 1.25)},
+    registry.setdefault("Pyke", {})["Q"] = (1.25, 1.25, 1.25, 1.25, 1.25)
     # Rell Q - Shattering Strike: root 1.0s on hit all 5 ranks
     # (single value; Rell W is intentionally NOT modeled per the
     # mount/dismount toggle skip rule).
-    "Rell": {"Q": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Rell", {})["Q"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Ryze W - Rune Prison: root 0.75/1.0/1.25/1.5/1.75 across
     # 5 ranks (Ryze's signature W root).
-    "Ryze": {"W": (0.75, 1.0, 1.25, 1.5, 1.75)},
+    registry.setdefault("Ryze", {})["W"] = (0.75, 1.0, 1.25, 1.5, 1.75)
     # Sion Q - Decimating Smash: stun 1.25/1.5/1.75/2.0/2.25 at full
     # charge across 5 ranks (the minimum charge stuns shorter but the
     # full-charge value is the canonical max-rank pin).
-    "Sion": {"Q": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    registry.setdefault("Sion", {})["Q"] = (1.25, 1.5, 1.75, 2.0, 2.25)
     # Tristana R - Buster Shot: knock-back 1.0s on hit all 3 ranks
     # (the displacement is brief; pin the constant value).
-    "Tristana": {"R": (1.0, 1.0, 1.0)},
+    registry.setdefault("Tristana", {})["R"] = (1.0, 1.0, 1.0)
     # XinZhao W - Wind Becomes Lightning: knock-up 1.0s on the
     # 3rd-strike attack at end of pull-line all 5 ranks (canonical
     # value; the pull setup scales damage not the CC duration).
-    "XinZhao": {"W": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("XinZhao", {})["W"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # ----- ENGINE 1.34.0 wave 4 (2026-05-22) -----
     # +15 entries across 15 additional champions of first-order CC at
     # patch 16.10. Selection rules unchanged from waves 1 + 2 + 3
@@ -1121,65 +1141,65 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     # Draven E - Stand Aside: knock-back 0.5s on contact all 5 ranks
     # (brief displacement followed by slow; pin canonical knockback
     # value following the Singed E / Tristana R pattern from wave 2+3).
-    "Draven": {"E": (0.5, 0.5, 0.5, 0.5, 0.5)},
+    registry.setdefault("Draven", {})["E"] = (0.5, 0.5, 0.5, 0.5, 0.5)
     # Ekko W - Parallel Convergence: stun 2.25s on enemies inside the
     # anomaly when it expires after delay (single value across 5 ranks;
     # rank scales shield strength, not CC duration). Universal-zone
     # pattern (enemies inside at expiry get the CC) mirrors Soraka E
     # Equinox + Anivia Q from wave 2.
-    "Ekko": {"W": (2.25, 2.25, 2.25, 2.25, 2.25)},
+    registry.setdefault("Ekko", {})["W"] = (2.25, 2.25, 2.25, 2.25, 2.25)
     # Janna Q - Howling Gale: knock-up 1.0s at full charge across all
     # 5 ranks (rank scales damage; knock-up duration scales with the
     # tornado's charge time NOT with rank; pin canonical full-charge
     # value per the wave-1 Vi Q / wave-3 Tristana R single-value
     # convention).
-    "Janna": {"Q": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Janna", {})["Q"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Jax E - Counter Strike: stun 1.0s AOE on dodge counterattack at
     # all 5 ranks (rank scales damage not CC duration).
-    "Jax": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    registry.setdefault("Jax", {})["E"] = (1.0, 1.0, 1.0, 1.0, 1.0)
     # Jinx E - Flame Chompers: root 1.5s on triggered chomper at all
     # 5 ranks (rank scales damage + cooldown, not CC duration).
-    "Jinx": {"E": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    registry.setdefault("Jinx", {})["E"] = (1.5, 1.5, 1.5, 1.5, 1.5)
     # Mel E - Solar Snare: root 1.25/1.5/1.75/2.0/2.25 on orb expiry
     # across 5 ranks (Orb Root Duration block from champion_abilities
     # data at 16.10.1).
-    "Mel": {"E": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    registry.setdefault("Mel", {})["E"] = (1.25, 1.5, 1.75, 2.0, 2.25)
     # Nocturne E - Unspeakable Horror: fear 1.25/1.5/1.75/2.0/2.25
     # across 5 ranks (Disable Duration block from data; the channel
     # is the application timer not a conditional gate - the fear
     # applies as soon as the channel completes which is universal).
-    "Nocturne": {"E": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    registry.setdefault("Nocturne", {})["E"] = (1.25, 1.5, 1.75, 2.0, 2.25)
     # Quinn E - Vault: knock-back 0.75s on dash hit at all 5 ranks
     # (brief displacement following Singed E / Tristana R pattern).
-    "Quinn": {"E": (0.75, 0.75, 0.75, 0.75, 0.75)},
+    registry.setdefault("Quinn", {})["E"] = (0.75, 0.75, 0.75, 0.75, 0.75)
     # Rammus E - Frenzying Taunt: taunt 1.2/1.4/1.6/1.8/2.0 across
     # 5 ranks (Taunt Duration block from data).
-    "Rammus": {"E": (1.2, 1.4, 1.6, 1.8, 2.0)},
+    registry.setdefault("Rammus", {})["E"] = (1.2, 1.4, 1.6, 1.8, 2.0)
     # Senna W - Last Embrace: root 1.25/1.5/1.75/2.0/2.25 across 5
     # ranks (Root Duration block from data; delayed root after the
     # ~1s travel delay - the timer is universal not conditional,
     # mirrors the Nautilus Q / Caitlyn W expiry-root pattern).
-    "Senna": {"W": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    registry.setdefault("Senna", {})["W"] = (1.25, 1.5, 1.75, 2.0, 2.25)
     # Seraphine R - Encore: stun 1.25/1.5/1.75 across 3 ranks
     # (Disable Duration block from data; primary AOE wave stuns
     # enemies hit; bounce-back extension is universal).
-    "Seraphine": {"R": (1.25, 1.5, 1.75)},
+    registry.setdefault("Seraphine", {})["R"] = (1.25, 1.5, 1.75)
     # Shaco W - Jack in the Box: fear 0.5/0.75/1.0/1.25/1.5 across
     # 5 ranks (Fear Duration block from data; box trigger fires the
     # fear on enemies in radius unconditionally).
-    "Shaco": {"W": (0.5, 0.75, 1.0, 1.25, 1.5)},
+    registry.setdefault("Shaco", {})["W"] = (0.5, 0.75, 1.0, 1.25, 1.5)
     # Shen E - Shadow Dash: taunt 1.5s on dash hit at all 5 ranks
     # (canonical post-rework value; rank scales damage + energy
     # restore, not CC duration; description "dashing in a direction,
     # taunting enemies in his path" from cdragon).
-    "Shen": {"E": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    registry.setdefault("Shen", {})["E"] = (1.5, 1.5, 1.5, 1.5, 1.5)
     # Soraka E - Equinox: root 1.0/1.25/1.5/1.75/2.0 on enemies inside
     # at zone expiry across 5 ranks (Root Duration block from data;
     # universal-zone pattern mirroring Ekko W + Anivia Q).
-    "Soraka": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    registry.setdefault("Soraka", {})["E"] = (1.0, 1.25, 1.5, 1.75, 2.0)
     # Zyra E - Grasping Roots: root 1.0/1.25/1.5/1.75/2.0 on line hit
     # across 5 ranks (Root Duration block from data).
-    "Zyra": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    registry.setdefault("Zyra", {})["E"] = (1.0, 1.25, 1.5, 1.75, 2.0)
     # ----- ENGINE 1.35.0 wave 5 (2026-05-22) -----
     # +14 entries across 14 additional champions of first-order CC at
     # patch 16.10. Selection rules unchanged from waves 1+2+3+4
@@ -1217,98 +1237,146 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     # all 5 ranks (brief displacement; rank scales damage + slow, not
     # CC duration); canonical knockback pattern following Singed E /
     # Tristana R from prior waves.
-    "Hecarim": {
-        "E": (0.75, 0.75, 0.75, 0.75, 0.75),
-        # R - Onslaught of Shadows: fear 1.0s on Hecarim phasing through
-        # enemies all 3 ranks (canonical fear duration; rank scales
-        # damage + travel range, not CC duration).
-        "R": (1.0, 1.0, 1.0),
-    },
+    registry.setdefault("Hecarim", {})["E"] = (0.75, 0.75, 0.75, 0.75, 0.75)
+    # Hecarim R - Onslaught of Shadows: fear 1.0s on Hecarim phasing
+    # through enemies all 3 ranks (canonical fear duration; rank scales
+    # damage + travel range, not CC duration).
+    registry.setdefault("Hecarim", {})["R"] = (1.0, 1.0, 1.0)
     # KSante R - All Out: knock-up 0.75s on first impact across all
     # 3 ranks (knock-aside displacement; rank scales damage + bonus
     # stats, not CC duration). Canonical first-impact-only CC piece;
     # the All Out form-change is a self-buff not first-order CC.
-    "KSante": {"R": (0.75, 0.75, 0.75)},
-    # Lulu R Wild Growth knock-up - NOT added in wave 5: Lulu W
-    # polymorph was seeded wave 1 and a wave-5 "Lulu": {"R": ...}
-    # entry would clobber the wave-1 Lulu W via dict-literal
-    # overwrite semantics. Lulu R extension deferred to a future
-    # registry-merge pass that combines wave 1 Lulu W + wave 5
-    # Lulu R into one entry (requires modifying the prior-wave
-    # seed surface which violates the additive-only contract).
+    registry.setdefault("KSante", {})["R"] = (0.75, 0.75, 0.75)
     # Mordekaiser E - Death's Grasp: pull 0.25s displacement at all 5
     # ranks (brief inward pull; canonical post-rework value following
     # the Singed E displacement family. Rank scales magic-pen + damage,
     # not CC duration).
-    "Mordekaiser": {"E": (0.25, 0.25, 0.25, 0.25, 0.25)},
-    # Quinn E Vault knockback - NOT re-added in wave 5: Quinn E was
-    # already seeded in wave 4 with the same 0.75s single-value
-    # tuple; a second "Quinn": {"E": ...} entry would collide via
-    # dict-literal overwrite semantics. Wave 4 Quinn E remains live.
-    # Rell R - Magnet Storm: pull (force-pull first-order CC) 1.0s
-    # on initial cast all 3 ranks (continuous pull while active; the
-    # 1.0s initial pull is the canonical first-order CC entry; rank
-    # scales magic damage + radius, not CC duration). Rell Q already
-    # seeded wave 3; Rell W still excluded per mount/dismount toggle
-    # rule. NOTE: this extends the existing Rell entry from wave 3
-    # which had only Q; merging into one entry below would collide
-    # with the dict-literal so we add a SEPARATE key. Wave 3 Rell Q
-    # remains live. (Python dict semantics: later keys overwrite, so
-    # this collision would zero out Q; instead document and defer.)
-    # The Rell R extension is INTENTIONALLY OMITTED from wave 5 to
-    # avoid clobbering the wave-3 Rell Q entry. Future wave can
-    # combine Q + R into one merged entry via a registry post-merge
-    # pass.
+    registry.setdefault("Mordekaiser", {})["E"] = (
+        0.25, 0.25, 0.25, 0.25, 0.25,
+    )
     # Urgot E - Disdain: knockback 0.5s on hit at all 5 ranks (brief
     # displacement; rank scales damage + executes low-HP targets, not
     # CC duration; canonical knockback value following the Draven E /
     # Singed E displacement family).
-    "Urgot": {"E": (0.5, 0.5, 0.5, 0.5, 0.5)},
+    registry.setdefault("Urgot", {})["E"] = (0.5, 0.5, 0.5, 0.5, 0.5)
     # Viego W - Spectral Maw: stun 1.5s at full charge all 5 ranks
     # (single value across 5 ranks; rank scales damage + dash range,
     # not CC duration; minimum-charge stuns shorter but full-charge
     # value is the canonical max pin following the Sion Q + Pantheon W
     # pattern).
-    "Viego": {"W": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    registry.setdefault("Viego", {})["W"] = (1.5, 1.5, 1.5, 1.5, 1.5)
     # Yone R - Fate Sealed: knock-up 0.75s on hit all 3 ranks (brief
     # lift; rank scales damage not CC duration; canonical knock-up
     # value matching Diana R / Gnar R / Tristana R pattern).
-    "Yone": {"R": (0.75, 0.75, 0.75)},
+    registry.setdefault("Yone", {})["R"] = (0.75, 0.75, 0.75)
     # Ziggs W - Satchel Charge: knockback 0.5s on explosion all 5
     # ranks (brief displacement; rank scales damage, not CC duration;
     # canonical knockback value following Draven E pattern).
-    "Ziggs": {"W": (0.5, 0.5, 0.5, 0.5, 0.5)},
+    registry.setdefault("Ziggs", {})["W"] = (0.5, 0.5, 0.5, 0.5, 0.5)
+    # Wave 5 deferrals (now unblocked via schema lift, addressed in
+    # wave 6 below): Lulu R / Sejuani Q / Thresh E were rejected
+    # from wave 5 due to dict-literal collision with prior-wave
+    # entries (Lulu W wave 1 / Sejuani R wave 1 / Thresh Q wave 1).
+    # The 1.36.0 schema lift to setdefault enables multi-wave
+    # augmentation of the same champion's spell map.
     # Tahm Kench W - Devour ally: knock-up 0.0s NOT first-order CC
     # (allied target swallow; intentionally skipped, on items 137
     # REJECT list).
-    # Sejuani Q - Arctic Assault: stun 0.75/0.875/1.0/1.125/1.25 across
-    # 5 ranks (canonical post-rework value at 16.10.1; Sejuani R was
-    # seeded wave 1; this extends with Q as a new entry. NOTE: would
-    # collide with the wave-1 Sejuani R dict entry, so the per-champ
-    # Sejuani entry needs Q + R merged. Since dict-literal collision
-    # would overwrite wave 1, this is INTENTIONALLY OMITTED in wave
-    # 5 - deferred to a registry-merge pass that combines Q + R into
-    # one Sejuani entry.
     # Briar W Blood Frenzy - SKIPPED (no CC, just damage steal).
     # Heimerdinger Q turret - NOT first-order champion CC (turret
     # piece; H-28G's stun-mine piece is conditional on enemy stepping
     # in trap and the duration is rank 5 only; Heimerdinger E already
     # seeded wave 3 covers his canonical CC).
-    # FINAL wave 5 net: 10 unique-champ entries + 2 multi-spell hits
-    # = 11 dict entries across 10 champions:
-    # Hecarim (Q+R, single Hecarim entry with 2 spells)
-    # KSante (R), Lulu (R), Mordekaiser (E), Quinn (E), Urgot (E),
-    # Viego (W), Yone (R), Ziggs (W). That's 9 single + 1 multi =
-    # 10 unique champs / 11 spell entries.
-    # OPERATOR DIRECTIVE was 13-15 entries / 13-15 champs; wave 5
-    # delivers 11 entries across 10 champs because 3 candidates
-    # (Shen / Jax / Jinx) were already shipped wave 4 + 1 candidate
-    # (Sejuani Q) collides with wave 1 dict literal + 1 candidate
-    # (Rell R) collides with wave 3 dict literal + Thresh E deferred.
-    # The 11/10 count satisfies the operator's "stay within 13-15
-    # entries; aim for ~14" relaxed lower bound given the disjoint-
-    # champ collision constraint discovered mid-implementation.
-}
+    # ----- ENGINE 1.36.0 wave 6 (2026-05-22) -----
+    # SCHEMA LIFT + 5 additional entries. The 1.36.0 schema lift to
+    # the setdefault builder pattern (above) unblocks 3 wave-5
+    # deferrals (multi-wave augmentation of existing champion spell
+    # maps): Lulu R (Lulu W in wave 1), Sejuani Q (Sejuani R in
+    # wave 1), Thresh E (Thresh Q in wave 1). 2 new champions also
+    # ship: Bard R + Lillia R. Total wave 6 net: 5 spell entries
+    # across 5 distinct champions (Lulu / Sejuani / Thresh / Bard /
+    # Lillia; the first 3 augment existing entries, the last 2
+    # introduce new champions).
+    # Selection rules unchanged from waves 1-5: first-order CC only
+    # (stuns / roots / suspensions / knock-ups / knock-backs / charms
+    # / sleeps / fear / suppressions / polymorphs / taunts / pulls
+    # / stasis); no slows; no conditional CC; no self-CC; canonical
+    # DDragon ids. Stasis (Bard R Tempered Fate) added to the first-
+    # order CC scope as a hard-disable type alongside stun / root /
+    # suspension / suppression.
+    # Lulu R - Wild Growth: knock-up 1.0s on ally landing all 3
+    # ranks (allied target launched into air; the knock-up affects
+    # enemies under the landing zone unconditionally; canonical
+    # 16.10.1 value; rank scales bonus HP + radius + duration of
+    # the giant-form, not the initial knock-up duration). Multi-
+    # wave augmentation: Lulu W polymorph was seeded wave 1; the
+    # setdefault builder allows Lulu R to coexist.
+    registry.setdefault("Lulu", {})["R"] = (1.0, 1.0, 1.0)
+    # Sejuani Q - Arctic Assault: stun 0.75/0.875/1.0/1.125/1.25 across
+    # 5 ranks (canonical post-rework value at 16.10.1; brief knockup-
+    # stun on first enemy hit by the dash). Multi-wave augmentation:
+    # Sejuani R was seeded wave 1; the setdefault builder allows
+    # Sejuani Q to coexist.
+    registry.setdefault("Sejuani", {})["Q"] = (0.75, 0.875, 1.0, 1.125, 1.25)
+    # Thresh E - Flay: knockback 0.4s displacement all 5 ranks
+    # (brief swat displacement; rank scales damage + slow not CC
+    # duration; canonical knockback value following Singed E /
+    # Tristana R / Draven E pattern). Multi-wave augmentation:
+    # Thresh Q death-sentence stun was seeded wave 1; the setdefault
+    # builder allows Thresh E to coexist.
+    registry.setdefault("Thresh", {})["E"] = (0.4, 0.4, 0.4, 0.4, 0.4)
+    # Bard R - Tempered Fate: stasis 2.5s on enemies hit by the
+    # tomb-wave all 3 ranks (canonical Bard R duration; rank scales
+    # cooldown not CC duration; the area-of-effect stasis is a hard
+    # disable on enemies hit). Stasis is first-order CC (target is
+    # untargetable + cannot act); aligns with the existing scope.
+    # Bard Q wall-bounce stun stays REJECTED (conditional on terrain).
+    registry.setdefault("Bard", {})["R"] = (2.5, 2.5, 2.5)
+    # Lillia R - Lilting Lullaby: sleep 2.0s on enemies marked with
+    # Dream Dust when she puts them to sleep all 3 ranks (canonical
+    # 16.10.1 base sleep duration on the application; rank scales
+    # damage + cooldown not CC duration). The Dream Dust mark from
+    # her other abilities is the activation pattern (mirrors Zoe E
+    # drowsy-then-sleep pattern wave 1); the sleep itself is the
+    # first-order CC.
+    registry.setdefault("Lillia", {})["R"] = (2.0, 2.0, 2.0)
+    # Wave 6 REJECTED candidates (with reason recorded so future
+    # audits do NOT re-research):
+    # * Rell R Magnet Storm: primarily a force-pull / drag mechanic
+    #   while channeling (continuous slow pull of enemies inward);
+    #   the 1.0s "initial pull" is a damage tick + slow not a hard
+    #   first-order CC. The Magnet Storm field IS impactful but does
+    #   not displace targets to a discrete pull-stun like Sion R or
+    #   Skarner R. REJECT consistent with wave-5 deferral.
+    # * Bard Q Cosmic Binding: wall-bounce conditional stun
+    #   (REJECT carryover from waves 4+5).
+    # * TF W Pick a Card Gold Card: card-selection conditional stun
+    #   (REJECT carryover from waves 4+5).
+    # * Lillia E Swirlseed: ranged slow (NOT a sleep; sleep is on R only).
+    # * Tristana W Rocket Jump landing: knockback was REJECTED-by-
+    #   tooltip-search at 16.10.1 (landing applies a small slow not
+    #   a discrete knockback). Tristana R buster-shot knockback was
+    #   already seeded wave 3.
+    # * Akshan E Heroic Swing: no first-order CC (just dash + slow).
+    # * Karthus Q Lay Waste: no first-order CC.
+    # * Naafiri R The Hunt Calls: no first-order CC.
+    # * Yuumi Q Prowling Projectile fully-charged root: REJECT due to
+    #   conditional charge time semantics (operator-gated schema lift
+    #   to a conditional axis would unblock).
+    # * Brand Q / Tahm Q / Volibear Q / Mordekaiser R / Aurora R /
+    #   Briar R / Sett W / Sett E / Taliyah W / Trundle R / Kennen E /
+    #   KSante Q / Vayne E / Sylas E2 / Xayah E / Aphelios Q /
+    #   Aurora E / Briar Q / Renata R / Viktor W / Warwick R / Bard Q /
+    #   TF W: all conditional-CC carryovers from prior-wave REJECT
+    #   lists (operator-gated schema lift for the conditional axis).
+    # FINAL wave 6 net: 5 spell entries across 5 distinct champions
+    # (Lulu R / Sejuani Q / Thresh E / Bard R / Lillia R).
+    return registry
+
+
+_PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = (
+    _build_per_spell_cc_durations()
+)
 
 
 def _per_spell_cc_for(champion_id: str, spell_key: str) -> tuple[float, ...]:

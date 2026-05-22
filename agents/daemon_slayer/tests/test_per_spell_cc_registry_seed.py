@@ -98,16 +98,22 @@ class RegistrySeedShapeTests(unittest.TestCase):
     def test_registry_has_expected_champion_count(self) -> None:
         # ENGINE 1.30.0 = 24 champs; 1.31.0 wave 2 = +20 = 44 total;
         # 1.33.0 wave 3 = +14 = 58 total; 1.34.0 wave 4 = +15 = 73 total;
-        # 1.35.0 wave 5 = +7 = 80 total.
-        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 80)
+        # 1.35.0 wave 5 = +7 = 80 total; 1.36.0 wave 6 = +2 new champs
+        # (Bard / Lillia) = 82 total. Lulu / Sejuani / Thresh added a
+        # second spell each via the schema lift (multi-wave augmentation
+        # without dict-literal clobber) but stayed at 1 champ each.
+        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 82)
 
     def test_registry_has_expected_total_spell_entries(self) -> None:
         # ENGINE 1.30.0 = 30 entries; 1.31.0 wave 2 = +23 = 53 total;
         # 1.33.0 wave 3 = +14 = 67 total; 1.34.0 wave 4 = +15 = 82 total;
         # 1.35.0 wave 5 = +8 = 90 total (Hecarim has 2 spell entries
-        # E + R, contributing 1 champ + 2 entries to the wave 5 delta).
+        # E + R, contributing 1 champ + 2 entries to the wave 5 delta);
+        # 1.36.0 wave 6 = +5 entries = 95 total (Lulu R + Sejuani Q +
+        # Thresh E multi-wave augmentations + 2 new champs Bard R +
+        # Lillia R).
         total = sum(len(s) for s in _PER_SPELL_CC_DURATIONS.values())
-        self.assertEqual(total, 90)
+        self.assertEqual(total, 95)
 
     def test_each_value_is_tuple_of_floats(self) -> None:
         for champ, spells in _PER_SPELL_CC_DURATIONS.items():
@@ -473,13 +479,17 @@ class RegistryAsciiContractTests(unittest.TestCase):
     no smart quotes) per the project's hard ASCII rule."""
 
     def test_ability_dps_source_is_ascii_in_registry_section(self) -> None:
-        # Spot-check the ability_dps.py source around the registry literal.
+        # Spot-check the ability_dps.py source around the registry builder.
         src_path = (
             pathlib.Path(__file__).resolve().parent.parent / "ability_dps.py"
         )
         src = src_path.read_text(encoding="utf-8")
-        # The seeded registry literal lives between these markers.
-        start_marker = "_PER_SPELL_CC_DURATIONS:"
+        # The seeded registry builder lives between these markers.
+        # ENGINE 1.36.0 schema lift moved the registry from a single
+        # dict literal to a module-level builder function; the marker
+        # spans the full builder body + the post-function module
+        # assignment.
+        start_marker = "def _build_per_spell_cc_durations"
         end_marker = "def _per_spell_cc_for"
         start = src.find(start_marker)
         end = src.find(end_marker)
@@ -523,8 +533,8 @@ class RegistryAsciiContractTests(unittest.TestCase):
 
 
 class EngineVersionCurrentTests(unittest.TestCase):
-    def test_engine_version_at_1_31_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.35.0")
+    def test_engine_version_at_1_36_0(self) -> None:
+        self.assertEqual(ENGINE_VERSION, "1.36.0")
 
 
 if __name__ == "__main__":
