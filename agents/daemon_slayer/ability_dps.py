@@ -879,7 +879,10 @@ def _total_ability_haste(
 # of high-impact CC abilities at patch 16.10.1 (30 entries / 24 champs).
 # ENGINE 1.31.0 (2026-05-21) extends the seed with wave 2: 23 additional
 # entries across 20 additional champions, same first-order CC scope.
-# Total: 53 entries across 44 champions.
+# ENGINE 1.33.0 (2026-05-22) extends the seed with wave 3: 14 additional
+# entries across 14 additional champions of first-order CC at patch
+# 16.10.1, same selection rules.
+# Total: 67 entries across 58 champions.
 # All values from official Riot tooltips for FIRST-ORDER CC (stuns /
 # roots / suspensions / knock-ups / knock-backs / charms / suppressions
 # / polymorphs / sleeps / fear / taunts). Slows are NOT encoded
@@ -1039,6 +1042,69 @@ _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = {
     "Xerath": {"E": (1.0, 1.25, 1.5, 1.75, 2.0)},
     # Zac E - Elastic Slingshot: knock-up 1.0s on landing all ranks
     "Zac": {"E": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # ----- ENGINE 1.33.0 wave 3 (2026-05-22) -----
+    # +14 entries across 14 additional champions of first-order CC at
+    # patch 16.10. Selection rules unchanged from wave 1 + wave 2
+    # (stuns / roots / suspensions / knock-ups / knock-backs / charms
+    # / sleeps / fear / suppressions / polymorphs / taunts); no slows;
+    # no conditional CC (Brand R 3rd-hit / TF W Gold Card / Tahm Q
+    # 3rd-stack / Lillia R dream-stack / Volibear Q terrain / Urgot R
+    # fear / Rell W mount/dismount toggle / Warwick R channel-gated);
+    # no self-CC. Values sourced from Riot wiki + cdragon champion
+    # JSONs for patch 16.10. Canonical DDragon ids ("Chogath" /
+    # "MonkeyKing" / "AurelionSol" / "XinZhao" - punctuation-stripped
+    # per _portraitUrl convention).
+    # AurelionSol R - The Skies Descend / Falling Star: knock-up on
+    # impact + stun in center (the center stun is the canonical
+    # first-order CC value; knockup on first contact is wider but
+    # shorter); pin the center stun 1.25/1.5/1.75 at ranks 1/2/3.
+    "AurelionSol": {"R": (1.25, 1.5, 1.75)},
+    # Caitlyn W - Yordle Snap Trap: root 1.5s all ranks on triggered
+    # trap (single value across all 5 ranks; trap duration scales with
+    # rank but root duration is constant per the 16.10 tooltip).
+    "Caitlyn": {"W": (1.5, 1.5, 1.5, 1.5, 1.5)},
+    # Camille E - Hookshot / Wall Dive: stun 0.75s on second-cast
+    # wall-dive contact all ranks (single value across 5 ranks).
+    "Camille": {"E": (0.75, 0.75, 0.75, 0.75, 0.75)},
+    # Diana R - Moonfall: knock-up 0.75s on pull (single value all
+    # 3 ranks; rank scales damage + cooldown, not the CC duration).
+    "Diana": {"R": (0.75, 0.75, 0.75)},
+    # Elise E (human form) - Cocoon: stun 1.1/1.4/1.7/2.0/2.3 across
+    # 5 ranks (one of the longest single-target stuns at min rank).
+    "Elise": {"E": (1.1, 1.4, 1.7, 2.0, 2.3)},
+    # Heimerdinger E - CH-2 Electron Storm Grenade: stun 1.25s on
+    # primary target all 4 ranks (E maxes at rank 4 not 5; engine
+    # canonical 5-rank shape, pin rank-5 slot to rank-4 value).
+    "Heimerdinger": {"E": (1.25, 1.25, 1.25, 1.25, 1.25)},
+    # Ivern Q - Rootcaller: root 1.0/1.25/1.5/1.75/2.0 across 5 ranks
+    # (ally dash after root not modeled - it is an ally interaction,
+    # not enemy CC).
+    "Ivern": {"Q": (1.0, 1.25, 1.5, 1.75, 2.0)},
+    # Malphite R - Unstoppable Force: knock-up 1.5/1.75/2.0 across
+    # 3 ranks (Malphite's signature ult CC value).
+    "Malphite": {"R": (1.5, 1.75, 2.0)},
+    # Pyke Q - Bone Skewer: stun 1.25s on the pulled/skewered target
+    # all 5 ranks (the ranged-Q-on-cast charge stuns; pin the
+    # constant value).
+    "Pyke": {"Q": (1.25, 1.25, 1.25, 1.25, 1.25)},
+    # Rell Q - Shattering Strike: root 1.0s on hit all 5 ranks
+    # (single value; Rell W is intentionally NOT modeled per the
+    # mount/dismount toggle skip rule).
+    "Rell": {"Q": (1.0, 1.0, 1.0, 1.0, 1.0)},
+    # Ryze W - Rune Prison: root 0.75/1.0/1.25/1.5/1.75 across
+    # 5 ranks (Ryze's signature W root).
+    "Ryze": {"W": (0.75, 1.0, 1.25, 1.5, 1.75)},
+    # Sion Q - Decimating Smash: stun 1.25/1.5/1.75/2.0/2.25 at full
+    # charge across 5 ranks (the minimum charge stuns shorter but the
+    # full-charge value is the canonical max-rank pin).
+    "Sion": {"Q": (1.25, 1.5, 1.75, 2.0, 2.25)},
+    # Tristana R - Buster Shot: knock-back 1.0s on hit all 3 ranks
+    # (the displacement is brief; pin the constant value).
+    "Tristana": {"R": (1.0, 1.0, 1.0)},
+    # XinZhao W - Wind Becomes Lightning: knock-up 1.0s on the
+    # 3rd-strike attack at end of pull-line all 5 ranks (canonical
+    # value; the pull setup scales damage not the CC duration).
+    "XinZhao": {"W": (1.0, 1.0, 1.0, 1.0, 1.0)},
 }
 
 

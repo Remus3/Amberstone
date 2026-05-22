@@ -96,13 +96,15 @@ class RegistrySeedShapeTests(unittest.TestCase):
     """The registry has the expected size + entry shape."""
 
     def test_registry_has_expected_champion_count(self) -> None:
-        # ENGINE 1.30.0 = 24 champs; 1.31.0 wave 2 = +20 = 44 total.
-        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 44)
+        # ENGINE 1.30.0 = 24 champs; 1.31.0 wave 2 = +20 = 44 total;
+        # 1.33.0 wave 3 = +14 = 58 total.
+        self.assertEqual(len(_PER_SPELL_CC_DURATIONS), 58)
 
     def test_registry_has_expected_total_spell_entries(self) -> None:
-        # ENGINE 1.30.0 = 30 entries; 1.31.0 wave 2 = +23 = 53 total.
+        # ENGINE 1.30.0 = 30 entries; 1.31.0 wave 2 = +23 = 53 total;
+        # 1.33.0 wave 3 = +14 = 67 total.
         total = sum(len(s) for s in _PER_SPELL_CC_DURATIONS.values())
-        self.assertEqual(total, 53)
+        self.assertEqual(total, 67)
 
     def test_each_value_is_tuple_of_floats(self) -> None:
         for champ, spells in _PER_SPELL_CC_DURATIONS.items():
