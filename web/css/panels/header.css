@@ -1768,24 +1768,28 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 1px 0; border-radius: 3px;
 }
 
-/* Session view layout */
+/* Session view layout - v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #5,
+ * 2026-05-23). 2x2 card grid (OVERVIEW + PERFORMANCE narrow / CHAMPIONS +
+ * MATCHES wide). Row label/value pair via flex space-between; values
+ * use tabular-nums for column alignment across rows. */
 .session-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--panel-gap);
 }
 .session-card {
   background: var(--surface-head); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 12px 14px;
+  border-radius: var(--panel-radius-sm); padding: var(--panel-padding-comp);
 }
 .session-card-wide { grid-column: 1 / -1; }
 .session-card-head {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
-  margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 5px;
+  margin-bottom: var(--space-2); border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-1);
 }
 .session-row {
   display: flex; justify-content: space-between; align-items: baseline;
-  font-size: 13px; padding: 3px 0;
+  font-size: var(--fs-sm); padding: var(--space-1) 0;
+  min-height: var(--hit-min);
 }
 .session-row > span:first-child { color: var(--text-dim); }
 .session-row > span:last-child {
@@ -1793,7 +1797,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .session-champ-list, .session-match-list {
   list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column; gap: var(--space-1);
 }
 
 /* History view layout - v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #4,
