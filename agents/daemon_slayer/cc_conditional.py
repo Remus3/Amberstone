@@ -98,6 +98,26 @@ COND_TARGET_DEBUFFED because the stun fires only when target carries
 a Blaze passive stack (from any prior Brand spell-hit or auto-attack
 applying passive); standalone Q on a non-blazed target is damage
 only.
+Wave 7 (2026-05-22 / ENGINE 1.44.0) closes item 147 carry (l) by
+shipping the long-deferred conditional CC tag schema lift: 2 NEW tag
+constants ``COND_FRENZY_STATE`` (champion enters a self-empowered
+state that gates a CC variant of another spell) and ``COND_RANGE_GATED``
+(CC fires only at a specific cast-range band, distinct from terrain
+positioning and stack accumulation). Both tags register in
+``_DEFAULT_CONDITION_PROBABILITY`` with calibrated midpoint 0.4 (mid-
+low because the prerequisite empowered-state / range-band achievement
+is operator-controlled but not guaranteed). NO new registry entries
+this wave (registry stays at 36 entries / 32 champions); the schema
+lift is a FORWARD-MARKER seam mirroring the s112 ``STAT_GRANT_CALC_KEYS``
+empty-registry pattern. The item 147 carry-forward named Briar frenzy
++ Sylas range as the canonical REJECT candidates for these tags, but a
+Meraki 16.10.1 re-verify during this run found: (1) Sylas E2 Abduct
+stuns on hook hit regardless of cast range (the item 142 REJECT note
+calling it range-conditional was incorrect); (2) Briar W has 2 forms
+(Blood Frenzy + Snack Attack) but the Meraki extract is parse-stripped
+to damage_blocks only - the leveling/effects detail needed to verify
+a frenzy-empowered Q or R CC mechanic is absent at parse-strip level.
+Future entries populate when a Meraki-verifiable mechanic surfaces.
 At initial ship (ENGINE 1.37.0) no consumer wires were attached and the
 module was a strict forward marker. The first consumer wire ships via
 ``compute_cc_pressure(include_conditional=False)`` (item 142 / ENGINE
@@ -210,6 +230,31 @@ COND_MODE_GATED = "mode_gated"
 # matching mode and 0.0 elsewhere; consumers gate by mode separately
 # but the tag exists for documentation completeness.
 
+COND_FRENZY_STATE = "frenzy_state"
+# Champion enters a self-empowered state (Briar W Blood Frenzy,
+# Renekton Fury threshold, Volibear R passive form, Aatrox post-R
+# passive) that gates an empowered variant of another spell with
+# first-order CC. Probability midpoint reflects the fraction of fight
+# windows in which the operator has entered the empowered state
+# before the gated CC fires. Forward-marker tag added at ENGINE
+# 1.44.0 (item 148 schema lift) closing item 147 carry (l); no
+# registry entry consumes this tag at ship time. Future entries
+# populate when a Meraki-verifiable frenzy-gated CC mechanic
+# surfaces.
+
+COND_RANGE_GATED = "range_gated"
+# CC fires only when the cast lands within a specific range band
+# (close-range or max-range). Distinct from COND_TERRAIN (positioning
+# vs map geometry) and COND_NTH_HIT (stack accumulation). Probability
+# midpoint reflects the fraction of fights where the operator
+# achieves the required range band. Forward-marker tag added at
+# ENGINE 1.44.0 (item 148 schema lift) closing item 147 carry (l);
+# no registry entry consumes this tag at ship time. The item 142
+# REJECT note attaching this tag to Sylas E2 Abduct was incorrect
+# (the Abduct stun fires on hook hit regardless of cast range per
+# 16.10.1 Riot spec). Future entries populate when a Meraki-
+# verifiable range-gated CC mechanic surfaces.
+
 
 # ---------------- default-probability midpoints ----------------
 
@@ -231,6 +276,8 @@ _DEFAULT_CONDITION_PROBABILITY: Dict[str, float] = {
     COND_TARGET_DEBUFFED: 0.5,
     COND_DUAL_ENEMY: 0.6,
     COND_MODE_GATED: 1.0,
+    COND_FRENZY_STATE: 0.4,
+    COND_RANGE_GATED: 0.4,
 }
 
 
@@ -1476,9 +1523,11 @@ __all__ = [
     "COND_DEVOUR_TARGET",
     "COND_DREAM_STACK",
     "COND_DUAL_ENEMY",
+    "COND_FRENZY_STATE",
     "COND_GOLD_CARD",
     "COND_MODE_GATED",
     "COND_NTH_HIT",
+    "COND_RANGE_GATED",
     "COND_TARGET_DEBUFFED",
     "COND_TARGET_HP_BELOW",
     "COND_TERRAIN",
