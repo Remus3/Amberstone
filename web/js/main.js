@@ -5813,9 +5813,24 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const params = new URLSearchParams(location.search || "");
         if (params.get("ui_mock") === "1") {
           document.body.dataset.uiMock = "1";
-          const h = (location.hash || "").replace(/^#/, "").trim();
+          // PWA app-mode quirk: window.location.hash is occasionally
+          // empty at script-load time even when the URL bar carries #X.
+          // Parse the fragment from the full href as a fallback so the
+          // audit-capture hash route survives the PWA reload race.
+          let h = (location.hash || "").replace(/^#/, "").trim();
+          if (!h) {
+            const href = location.href || "";
+            const hashIdx = href.indexOf("#");
+            if (hashIdx >= 0) h = href.slice(hashIdx + 1).trim();
+          }
           if (h && VIEW_IDS.includes(h)) {
+            // Clear the prior manual sticky so the audit hash wins.
             try { localStorage.removeItem("rc-view-manual"); } catch (_) {}
+            // Force-restore location.hash for downstream _viewFromHash
+            // reads when the PWA stripped the fragment from the initial
+            // location.hash property. _viewWireOnce + _viewResolveAndApply
+            // run AFTER this IIFE so the corrected hash is observable.
+            try { if (!location.hash) location.hash = "#" + h; } catch (_) {}
           }
         }
       } catch (_) {}
