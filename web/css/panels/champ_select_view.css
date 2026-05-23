@@ -658,7 +658,8 @@
 .csv-trade-popup.is-open { display: flex; }
 .csv-trade-header {
   font-family: inherit;
-  font-size: 12px;
+  /* UI scale v2.1 (audit MUST FIX): 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   padding: 6px 12px;
   background: #14171c;
@@ -675,7 +676,8 @@
 }
 .csv-trade-choice {
   font-family: inherit;
-  font-size: 12px;
+  /* UI scale v2.1 (audit MUST FIX): 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   padding: 6px 12px;
   background: #14171c;
@@ -844,10 +846,11 @@
   letter-spacing: 0.02em;
 }
 .csv-pr-champ-wr   { font-size: 18px; font-weight: 800; }
-.csv-pr-champ-sub  { font-size: 13px; color: #8b909a; }
-.csv-pr-champ-role { font-size: 13px; color: #b8bdc7; }
+/* UI scale v2.1 (audit MUST FIX 2026-05-23): 13 -> --fs-xs (16) floor. */
+.csv-pr-champ-sub  { font-size: var(--fs-xs); color: #8b909a; }
+.csv-pr-champ-role { font-size: var(--fs-xs); color: #b8bdc7; }
 .csv-pr-champ.is-new   { color: #8b909a; }
-.csv-pr-champ.is-new em { font-style: italic; font-size: 13px; }
+.csv-pr-champ.is-new em { font-style: italic; font-size: var(--fs-xs); }
 .csv-pr-row {
   display: flex;
   align-items: center;
@@ -871,7 +874,7 @@
   white-space: nowrap;
 }
 .csv-pr-chip b  { margin-left: 5px; font-weight: 800; }
-.csv-pr-chip em { margin-left: 5px; font-style: normal; color: #8b909a; font-size: 13px; }
+.csv-pr-chip em { margin-left: 5px; font-style: normal; color: #8b909a; font-size: var(--fs-xs); }
 .csv-pr-chip.is-good { background: #16331f; color: #d6f5de; }
 .csv-pr-chip.is-good b { color: #4ade80; }
 .csv-pr-chip.is-mid  { background: #33290f; color: #f6eccf; }
@@ -885,7 +888,8 @@
 }
 .csv-pr-chip.is-new em { margin-left: 5px; color: #6b7280; }
 .csv-pr-hint {
-  font-size: 13px;
+  /* UI scale v2.1 (audit MUST FIX): 13 -> --fs-xs (16) floor. */
+  font-size: var(--fs-xs);
   font-style: italic;
   color: #6b7280;
 }
@@ -1006,7 +1010,8 @@
  * as a header above the explanation text - see .csv-pb-source-label
  * and .csv-pb-reason-text below. */
 .csv-pb-source-label {
-  font-size: 12px;
+  /* UI scale v2.1 (audit MUST FIX): 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 800;
   color: #9ca3af;
   text-transform: uppercase;
@@ -1032,7 +1037,8 @@
 }
 .csv-pb-pick-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-pb-pick-name {
-  font-size: 13px;
+  /* UI scale v2.1 (audit MUST FIX): 13 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #e8eaf0;
   text-align: center;
@@ -1106,7 +1112,8 @@
   gap: 2px;
 }
 .csv-pb-ban-pct {
-  font-size: 11px;
+  /* UI scale v2.1 (audit MUST FIX): 11 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #fbbf24;
   line-height: 1;
@@ -1121,7 +1128,8 @@
 }
 .csv-pb-ban-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-pb-ban-name {
-  font-size: 11px;
+  /* UI scale v2.1 (audit MUST FIX): 11 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   color: #9ca3af;
   line-height: 1.1;
   text-align: center;
@@ -1341,7 +1349,8 @@
   gap: 4px;
 }
 .csv-sugg-row-label {
-  font-size: 11px;
+  /* UI scale v2.1 (audit MUST FIX): 11 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1349,7 +1358,8 @@
   padding: 0 2px;
 }
 .csv-sugg-empty {
-  font-size: 12px;
+  /* UI scale v2.1 (audit MUST FIX): 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   color: #6a7280;
   font-style: italic;
   padding: 4px 6px;
@@ -1376,7 +1386,8 @@
   gap: 6px;
 }
 .csv-sugg-banned-side {
-  font-size: 12px;
+  /* UI scale v2.1 (audit MUST FIX): 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
