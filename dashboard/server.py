@@ -41,11 +41,11 @@ class _DualProtocolHTTPServer(ThreadingHTTPServer):
                                    skips the slot.
     """
 
-    def __init__(self, server_address, handler_class, *, ssl_ctx):
+    def __init__(self, server_address, handler_class, *, ssl_ctx) -> None:
         super().__init__(server_address, handler_class)
         self._ssl_ctx = ssl_ctx
 
-    def get_request(self):
+    def get_request(self) -> tuple:
         sock, addr = self.socket.accept()
         try:
             import socket as _socket
