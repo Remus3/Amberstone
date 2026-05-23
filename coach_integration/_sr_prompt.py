@@ -450,7 +450,7 @@ class WaveTracker:
         self._override = None
         self._override_until = 0.0
 
-    def set_override(self, state: str, duration_s: float = 30.0):
+    def set_override(self, state: str, duration_s: float = 30.0) -> None:
         self._override = state
         self._override_until = time.time() + duration_s
 

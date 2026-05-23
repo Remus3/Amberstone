@@ -6,8 +6,8 @@ try:
     HAS_ROLE_PROFILES = True
 except Exception:
     HAS_ROLE_PROFILES = False
-    def get_role_profile(champ, role="bot"): return ""
-    def aram_item_context(e, a, c): return ""
+    def get_role_profile(champ, role="bot") -> str: return ""
+    def aram_item_context(e, a, c) -> str: return ""
     ARAM_ITEM_RULES = ""
 
 CHAMPION_PROFILES = {

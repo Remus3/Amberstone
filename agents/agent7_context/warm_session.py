@@ -23,7 +23,7 @@ import os
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 logger = logging.getLogger("agent7.warm_session")
 
@@ -217,7 +217,7 @@ class WarmAgent7Session:
             }
 
 
-def warm_spawn_factory(session: WarmAgent7Session):
+def warm_spawn_factory(session: WarmAgent7Session) -> Callable[[str, str, str, dict], dict]:
     """Build a callable compatible with ``InputParser(llm_spawn=...)``.
 
     The resulting callable matches the signature
