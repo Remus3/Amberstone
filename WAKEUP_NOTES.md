@@ -3,6 +3,29 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-22 - item 147 4-slice parallel drain (cc_conditional wave 6 + _PER_SPELL_CC_DURATIONS wave 9 + BACKLOG stale-sweep wave 11 + cost/latency CLEAN) SHIPPED (3 worktree agents merged + orchestrator commit `22c55e8`, pushed `8d50732..22c55e8`; ENGINE 1.42.0 -> 1.43.0; non-frozen; DS :8893 restarted serves 1.43.0; RC :8888 unchanged)
+
+Operator AskUserQuestion-picked "DS 4-slice drain run 14 (Recommended)" from 4-option fork. 14th consecutive long-run using orchestrator-merge template (items 134-147). 4 worktree agents dispatched concurrent on item 146 carries (b) cc_conditional wave 6 + (j) _PER_SPELL_CC_DURATIONS wave 9 (multi-wave coexistence only - saturated for net-new champs).
+
+DS suite **3881 -> 3962 / 1 skipped / 1 xfailed / 1666 subtests passed** (+81: 44 Slice A + 37 Slice B).
+
+Slice A `1dca288` cc_conditional wave 6: 35/32 -> 36/32 (+1 multi-wave coexistence on Brand Q Sear target_debuffed 1.25s coexists with Brand R wave 1; cc_conditional multi-wave coexistence count now 4 champs Aatrox Q+W / Brand Q+R NEW / Briar Q+E / TahmKench R+Q). Used only 10 existing condition tags. +44 tests. 5 prior-wave test files relaxed Brand-pin assertions.
+
+Slice B `3c73c3b` _PER_SPELL_CC_DURATIONS wave 9: 106/89 -> 108/89 (+2 multi-wave coexistence Chogath W silence + Malzahar Q silence; silence joins first-order CC scope per wave 6 stasis precedent; coexistence count 7 -> 9 unconditional champs). +37 tests. Audit walked all 226 unregistered spells of 89 registered champs = data lane exhausted; future expansion requires new schema.
+
+Slice C `fc7219f` BACKLOG L13 stale-sweep wave 11: 1 flip (cc_conditional ecosystem subsection 35/32 + items 141-146; orchestrator commit catches up to 36/108 + items 141-147 post-A merge). Sweep cycle decay 1=2/2=3/3=3/4=1/5=1/6=1/7=2/8=1/9=1/10=1/**11=1**. ROADMAP CLEAN.
+
+Slice D 14th consecutive cost/latency CLEAN no-commit + 2 MINOR PROPOSALS (operator-gated, deferred): (1) loading_view.css orphan @import at web/css/dashboard.css:27 STILL present (carries from item 146); (2) NEW: web/css/panels/build_order.css orphan FILE (inverse orphan: exists but NOT @imported). Both safe 1-line edits but operator-gated.
+
+Orchestrator commit `22c55e8` bumps ENGINE 1.42.0 -> 1.43.0 + syncs 32 stale pin sites across 31 DS test files + BACKLOG L13 catchup + ROADMAP Fleet status DS row appended. Merge order C/A/B. 0 conflicts.
+
+Verified: DS 3962 passed; py_compile + ruff + ASCII clean; DS :8893 restarted serves 1.43.0; RC :8888 unchanged; CI run id 26322208527 in flight at commit time. Worktrees + 3 branches cleaned.
+
+Don't-redo: cc_conditional now 36/32; _PER_SPELL_CC_DURATIONS now 108/89; silence joins first-order CC scope; wave 10+ exhausted for unconditional (need new schema); orchestrator-merge pattern 14 consecutive runs (items 134-147) DURABLE.
+
+Carries forward: (a) loading_view.css orphan @import STILL operator-gated; (b) NEW build_order.css orphan FILE flagged operator-gated; (c) Briar frenzy + Sylas range REJECTs need new condition tag constants (separate schema lift, operator-gated); (d) DD Defy heal-on-takedown STILL deferred; (e) Live ARAM/SR smoke pending; (f) RC-PostmortemAnalyze 2026-05-24 04:15 first scheduled run - verify LastTaskResult=0 next session; (g) EHP calibrations operator-gated; (h-m) item 146 carries unchanged.
+
+---
 # 2026-05-22 - item 146 4-slice parallel drain (cc_conditional wave 5 + _PER_SPELL_CC_DURATIONS wave 8 + BACKLOG stale-sweep wave 10 + cost/latency CLEAN) SHIPPED (3 worktree agents merged + orchestrator commit `06c67a6`, pushed `b887f29..06c67a6`; ENGINE 1.41.0 -> 1.42.0; non-frozen; DS :8893 restarted serves 1.42.0; RC :8888 unchanged)
 
 Operator "continue DS and /done for /clear when complete" -> 13th consecutive long-run using orchestrator-merge template (items 134-145). 4 worktree agents dispatched concurrent on item 145 carries (a) cc_conditional wave 5+ expansion + (i) _PER_SPELL_CC_DURATIONS wave 8. Slice D CLEAN no-commit + 1 MINOR PROPOSAL (13th consecutive cost/latency CLEAN sweep since item 134).
