@@ -213,6 +213,23 @@ function _diagWireOnce() {
 // /api/replay/match/<id> and lets the user scrub through per-minute
 // snapshots. Items, level, gold, CS reflect the slider position.
 const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null };
+
+// UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
+// (2026-05-23). When body.dataset.uiMock === "1" the three fetch
+// sites below short-circuit to /data/ui_mock/replay.json instead of
+// the live /api/replay/* endpoints. Cached at module scope so the
+// list + match-detail + events ribbon share one fetch per page load.
+let _replayMockPromise = null;
+function _replayMockLoad() {
+  if (_replayMockPromise) return _replayMockPromise;
+  _replayMockPromise = fetch("/data/ui_mock/replay.json", { cache: "no-store" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .catch(() => null);
+  return _replayMockPromise;
+}
+function _replayIsMock() {
+  return document.body && document.body.dataset.uiMock === "1";
+}
 function _replayQueueLabel(q) {
   return ({
     400:"Normal Draft",420:"Ranked Solo",430:"Normal Blind",
@@ -258,8 +275,10 @@ function _replayViewRefresh() {
     focusMatchId = sessionStorage.getItem("rc-replay-focus-match") || null;
     if (focusMatchId) sessionStorage.removeItem("rc-replay-focus-match");
   } catch (_) {}
-  fetch("/api/replay/matches?limit=30")
-    .then(r => r.ok ? r.json() : null)
+  const matchesPromise = _replayIsMock()
+    ? _replayMockLoad().then((m) => (m && m.matches) ? { matches: m.matches } : null)
+    : fetch("/api/replay/matches?limit=30").then(r => r.ok ? r.json() : null);
+  matchesPromise
     .then(j => {
       const ul = document.getElementById("replay-match-list");
       if (!ul) return;
@@ -318,8 +337,13 @@ function _replayLoadMatch(matchId, rowEl) {
   // parallel with the per-frame snapshot fetch below. Both target
   // the same matchId so the ribbon + scrubber are coherent.
   try { loadReplayEvents(matchId); } catch (_) {}
-  fetch("/api/replay/match/" + encodeURIComponent(matchId))
-    .then(r => r.ok ? r.json() : null)
+  const matchPromise = _replayIsMock()
+    ? _replayMockLoad().then((m) => {
+        if (!m || !Array.isArray(m.matches)) return null;
+        return m.matches.find((x) => x.match_id === matchId) || null;
+      })
+    : fetch("/api/replay/match/" + encodeURIComponent(matchId)).then(r => r.ok ? r.json() : null);
+  matchPromise
     .then(d => {
       if (!d) return;
       _REPLAY.match = d;

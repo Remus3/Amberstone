@@ -1,0 +1,206 @@
+{
+  "mock": true,
+  "note": "Mock fixture for the Replay view (state-coverage check 5/7 per docs/UI_SCALE_SPEC_V2.md). Activated by ?ui_mock=1 URL flag or the Settings > Display > Dev UI mock data toggle. Each match is self-contained: list-shape metadata at the top level + participants + snapshots + events inline.",
+  "matches": [
+    {
+      "match_id": "MOCK_NORMAL_DRAFT_WIN",
+      "queue_id": 400,
+      "duration_s": 2123,
+      "patch": "16.10",
+      "game_creation_ts": 1684022400000,
+      "tracked": {
+        "champion_name": "Jinx",
+        "champion_id": 222,
+        "win": true
+      },
+      "participants": [
+        {"participant_id": 1, "team_id": 100, "champion_id": 24,  "champion_name": "Jax",        "summoner_name": "TopGapper",       "team_won": true},
+        {"participant_id": 2, "team_id": 100, "champion_id": 64,  "champion_name": "LeeSin",     "summoner_name": "JgUnit",          "team_won": true},
+        {"participant_id": 3, "team_id": 100, "champion_id": 134, "champion_name": "Syndra",     "summoner_name": "MidCarry",        "team_won": true},
+        {"participant_id": 4, "team_id": 100, "champion_id": 222, "champion_name": "Jinx",       "summoner_name": "SamplePlayer",       "team_won": true},
+        {"participant_id": 5, "team_id": 100, "champion_id": 412, "champion_name": "Thresh",     "summoner_name": "HookKing",        "team_won": true},
+        {"participant_id": 6, "team_id": 200, "champion_id": 17,  "champion_name": "Teemo",      "summoner_name": "BlindPick99",     "team_won": false},
+        {"participant_id": 7, "team_id": 200, "champion_id": 60,  "champion_name": "Elise",      "summoner_name": "SpiderMain",      "team_won": false},
+        {"participant_id": 8, "team_id": 200, "champion_id": 245, "champion_name": "Ekko",       "summoner_name": "TimeWarp",        "team_won": false},
+        {"participant_id": 9, "team_id": 200, "champion_id": 145, "champion_name": "Kaisa",      "summoner_name": "BotDC",           "team_won": false},
+        {"participant_id": 10, "team_id": 200, "champion_id": 53, "champion_name": "Blitzcrank", "summoner_name": "GrabBag",         "team_won": false}
+      ],
+      "snapshots": [
+        {
+          "minute": 0,
+          "entries": [
+            {"participant_id": 1, "level": 1, "total_gold": 500,  "cs": 0,  "items": []},
+            {"participant_id": 2, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1041]},
+            {"participant_id": 3, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1056]},
+            {"participant_id": 4, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1055]},
+            {"participant_id": 5, "level": 1, "total_gold": 500,  "cs": 0,  "items": [3850]},
+            {"participant_id": 6, "level": 1, "total_gold": 500,  "cs": 0,  "items": [2003]},
+            {"participant_id": 7, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1041]},
+            {"participant_id": 8, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1056]},
+            {"participant_id": 9, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1055]},
+            {"participant_id": 10, "level": 1, "total_gold": 500, "cs": 0,  "items": [3858]}
+          ]
+        },
+        {
+          "minute": 10,
+          "entries": [
+            {"participant_id": 1, "level": 7,  "total_gold": 4250, "cs": 78,  "items": [3047, 3133, 1029]},
+            {"participant_id": 2, "level": 6,  "total_gold": 3950, "cs": 12,  "items": [1041, 1036, 1031]},
+            {"participant_id": 3, "level": 7,  "total_gold": 4500, "cs": 82,  "items": [3145, 1056]},
+            {"participant_id": 4, "level": 8,  "total_gold": 5200, "cs": 105, "items": [3006, 3144]},
+            {"participant_id": 5, "level": 6,  "total_gold": 3800, "cs": 18,  "items": [3850, 3158]},
+            {"participant_id": 6, "level": 6,  "total_gold": 3500, "cs": 64,  "items": [2003, 3076]},
+            {"participant_id": 7, "level": 5,  "total_gold": 3200, "cs": 8,   "items": [1041, 1029]},
+            {"participant_id": 8, "level": 7,  "total_gold": 4100, "cs": 75,  "items": [3151]},
+            {"participant_id": 9, "level": 7,  "total_gold": 4400, "cs": 88,  "items": [3144, 3006]},
+            {"participant_id": 10, "level": 6, "total_gold": 3300, "cs": 14,  "items": [3858, 3047]}
+          ]
+        },
+        {
+          "minute": 20,
+          "entries": [
+            {"participant_id": 1, "level": 13, "total_gold": 9800,  "cs": 152, "items": [3047, 3071, 3742, 1029]},
+            {"participant_id": 2, "level": 12, "total_gold": 9200,  "cs": 32,  "items": [3110, 3047, 1031, 3067]},
+            {"participant_id": 3, "level": 14, "total_gold": 10500, "cs": 168, "items": [3145, 3115, 1056]},
+            {"participant_id": 4, "level": 14, "total_gold": 11200, "cs": 198, "items": [3006, 3094, 3144, 1037]},
+            {"participant_id": 5, "level": 12, "total_gold": 9100,  "cs": 38,  "items": [3850, 3107, 3158, 3504]},
+            {"participant_id": 6, "level": 11, "total_gold": 8200,  "cs": 124, "items": [3047, 3076, 3083]},
+            {"participant_id": 7, "level": 10, "total_gold": 7800,  "cs": 18,  "items": [3110, 1031, 3067]},
+            {"participant_id": 8, "level": 13, "total_gold": 9400,  "cs": 138, "items": [3152, 3047, 3157]},
+            {"participant_id": 9, "level": 13, "total_gold": 9900,  "cs": 162, "items": [3144, 3006, 1037]},
+            {"participant_id": 10, "level": 11, "total_gold": 7900, "cs": 28,  "items": [3858, 3107, 3047]}
+          ]
+        },
+        {
+          "minute": 30,
+          "entries": [
+            {"participant_id": 1,  "level": 16, "total_gold": 14200, "cs": 218, "items": [3047, 3071, 3742, 3053, 3065]},
+            {"participant_id": 2,  "level": 14, "total_gold": 12800, "cs": 48,  "items": [3110, 3047, 3193, 3742]},
+            {"participant_id": 3,  "level": 16, "total_gold": 14800, "cs": 232, "items": [3145, 3115, 3157, 1056]},
+            {"participant_id": 4,  "level": 16, "total_gold": 16200, "cs": 282, "items": [3006, 3094, 3046, 3144]},
+            {"participant_id": 5,  "level": 14, "total_gold": 12400, "cs": 54,  "items": [3850, 3107, 3504, 3001]},
+            {"participant_id": 6,  "level": 14, "total_gold": 11500, "cs": 182, "items": [3047, 6630, 3083, 3193]},
+            {"participant_id": 7,  "level": 12, "total_gold": 10500, "cs": 26,  "items": [3110, 3193, 3067]},
+            {"participant_id": 8,  "level": 16, "total_gold": 13800, "cs": 202, "items": [3152, 3047, 3157, 3742]},
+            {"participant_id": 9,  "level": 15, "total_gold": 13400, "cs": 228, "items": [3144, 3006, 6675]},
+            {"participant_id": 10, "level": 13, "total_gold": 11200, "cs": 38,  "items": [3858, 3107, 3047, 3504]}
+          ]
+        }
+      ],
+      "events": [
+        {"clock_s": 230, "type": "CHAMPION_KILL",          "team": 100, "actor": 1,  "actor_champion": "Jax",    "actor_name": "TopGapper", "victim": 6,  "victim_champion": "Teemo",     "victim_name": "BlindPick99", "lane": "TOP_LANE"},
+        {"clock_s": 290, "type": "TURRET_PLATE_DESTROYED", "team": 100, "actor": 4,  "actor_champion": "Jinx",   "actor_name": "SamplePlayer", "lane": "BOT_LANE"},
+        {"clock_s": 385, "type": "CHAMPION_KILL",          "team": 200, "actor": 7,  "actor_champion": "Elise",  "actor_name": "SpiderMain", "victim": 2, "victim_champion": "LeeSin",   "victim_name": "JgUnit"},
+        {"clock_s": 522, "type": "ELITE_MONSTER_KILL",     "subtype": "HORDE", "team": 100, "actor": 2, "actor_champion": "LeeSin", "actor_name": "JgUnit"},
+        {"clock_s": 580, "type": "TURRET_PLATE_DESTROYED", "team": 100, "actor": 3,  "actor_champion": "Syndra", "actor_name": "MidCarry", "lane": "MID_LANE"},
+        {"clock_s": 612, "type": "ELITE_MONSTER_KILL",     "subtype": "DRAGON_OCEAN", "team": 200, "actor": 7, "actor_champion": "Elise", "actor_name": "SpiderMain"},
+        {"clock_s": 768, "type": "CHAMPION_KILL",          "team": 100, "actor": 4,  "actor_champion": "Jinx",       "actor_name": "SamplePlayer",   "victim": 9, "victim_champion": "Kaisa",      "victim_name": "BotDC"},
+        {"clock_s": 815, "type": "CHAMPION_KILL",          "team": 100, "actor": 5,  "actor_champion": "Thresh",     "actor_name": "HookKing",    "victim": 10, "victim_champion": "Blitzcrank", "victim_name": "GrabBag"},
+        {"clock_s": 940, "type": "BUILDING_KILL",          "subtype": "OUTER_TURRET", "team": 100, "actor": 4, "actor_champion": "Jinx", "actor_name": "SamplePlayer", "lane": "BOT_LANE"},
+        {"clock_s": 1124, "type": "ELITE_MONSTER_KILL",    "subtype": "HERALD", "team": 100, "actor": 1, "actor_champion": "Jax",   "actor_name": "TopGapper"},
+        {"clock_s": 1305, "type": "BUILDING_KILL",         "subtype": "INNER_TURRET", "team": 100, "actor": 1, "actor_champion": "Jax",  "actor_name": "TopGapper", "lane": "TOP_LANE"},
+        {"clock_s": 1488, "type": "CHAMPION_KILL",         "team": 100, "actor": 4, "actor_champion": "Jinx",   "actor_name": "SamplePlayer", "victim": 6, "victim_champion": "Teemo",     "victim_name": "BlindPick99"},
+        {"clock_s": 1665, "type": "ELITE_MONSTER_KILL",    "subtype": "BARON_NASHOR", "team": 100, "actor": 3, "actor_champion": "Syndra", "actor_name": "MidCarry"},
+        {"clock_s": 1820, "type": "BUILDING_KILL",         "subtype": "INHIBITOR",    "team": 100, "actor": 4, "actor_champion": "Jinx", "actor_name": "SamplePlayer", "lane": "BOT_LANE"},
+        {"clock_s": 2110, "type": "BUILDING_KILL",         "subtype": "NEXUS",        "team": 100, "actor": 4, "actor_champion": "Jinx", "actor_name": "SamplePlayer"}
+      ]
+    },
+    {
+      "match_id": "MOCK_ARENA_LOSS_OVERFLOW_LONG_NAME_FOR_ELLIPSIS_TEST",
+      "queue_id": 1700,
+      "duration_s": 612,
+      "patch": "16.10",
+      "game_creation_ts": 1683936000000,
+      "tracked": {
+        "champion_name": "RenataGlasc",
+        "champion_id": 888,
+        "win": false
+      },
+      "participants": [
+        {"participant_id": 1, "team_id": 100, "champion_id": 888, "champion_name": "RenataGlasc", "summoner_name": "SamplePlayer", "team_won": false},
+        {"participant_id": 2, "team_id": 100, "champion_id": 22,  "champion_name": "Ashe",        "summoner_name": "DuoPartner", "team_won": false}
+      ],
+      "snapshots": [
+        {
+          "minute": 0,
+          "entries": [
+            {"participant_id": 1, "level": 1, "total_gold": 1000, "cs": 0, "items": []},
+            {"participant_id": 2, "level": 1, "total_gold": 1000, "cs": 0, "items": []}
+          ]
+        },
+        {
+          "minute": 5,
+          "entries": [
+            {"participant_id": 1, "level": 5, "total_gold": 4200, "cs": 0, "items": [3742, 3107]},
+            {"participant_id": 2, "level": 5, "total_gold": 4400, "cs": 0, "items": [3094, 1042]}
+          ]
+        },
+        {
+          "minute": 10,
+          "entries": [
+            {"participant_id": 1, "level": 10, "total_gold": 8400, "cs": 0, "items": [3742, 3107, 3504, 3001]},
+            {"participant_id": 2, "level": 10, "total_gold": 8800, "cs": 0, "items": [3094, 6675, 3046, 1037]}
+          ]
+        }
+      ],
+      "events": [
+        {"clock_s": 88,  "type": "CHAMPION_KILL", "team": 200, "actor": null, "actor_champion": null, "actor_name": "Bot_Opponent_A", "victim": 1, "victim_champion": "RenataGlasc", "victim_name": "SamplePlayer"},
+        {"clock_s": 245, "type": "CHAMPION_KILL", "team": 100, "actor": 2,    "actor_champion": "Ashe", "actor_name": "DuoPartner",   "victim": null, "victim_champion": null,        "victim_name": "Bot_Opponent_B"},
+        {"clock_s": 472, "type": "CHAMPION_KILL", "team": 200, "actor": null, "actor_champion": null, "actor_name": "Bot_Opponent_C", "victim": 2, "victim_champion": "Ashe",         "victim_name": "DuoPartner"}
+      ]
+    },
+    {
+      "match_id": "MOCK_ARAM_NEUTRAL",
+      "queue_id": 450,
+      "duration_s": 1234,
+      "patch": "16.10",
+      "game_creation_ts": 1683849600000,
+      "tracked": {
+        "champion_name": "Tristana",
+        "champion_id": 18,
+        "win": null
+      },
+      "participants": [
+        {"participant_id": 1,  "team_id": 100, "champion_id": 18,  "champion_name": "Tristana", "summoner_name": "SamplePlayer", "team_won": null},
+        {"participant_id": 6,  "team_id": 200, "champion_id": 21,  "champion_name": "MissFortune", "summoner_name": "ARAM_DC", "team_won": null}
+      ],
+      "snapshots": [
+        {"minute": 0, "entries": []}
+      ],
+      "events": []
+    },
+    {
+      "match_id": "MOCK_RANKED_SOLO_WIN_ZERO_KDA",
+      "queue_id": 420,
+      "duration_s": 1845,
+      "patch": "16.10",
+      "game_creation_ts": 1683763200000,
+      "tracked": {
+        "champion_name": "Yuumi",
+        "champion_id": 350,
+        "win": true
+      },
+      "participants": [
+        {"participant_id": 1, "team_id": 100, "champion_id": 350, "champion_name": "Yuumi", "summoner_name": "SamplePlayer", "team_won": true},
+        {"participant_id": 2, "team_id": 100, "champion_id": 222, "champion_name": "Jinx",  "summoner_name": "AdcCarry",  "team_won": true}
+      ],
+      "snapshots": [
+        {
+          "minute": 0,
+          "entries": [
+            {"participant_id": 1, "level": 1,  "total_gold": 500, "cs": 0, "items": [3850]},
+            {"participant_id": 2, "level": 1,  "total_gold": 500, "cs": 0, "items": [1055]}
+          ]
+        },
+        {
+          "minute": 15,
+          "entries": [
+            {"participant_id": 1, "level": 11, "total_gold": 6200,  "cs": 0,   "items": [3504, 3107, 3158]},
+            {"participant_id": 2, "level": 13, "total_gold": 9800,  "cs": 148, "items": [3006, 3094, 3144]}
+          ]
+        }
+      ],
+      "events": []
+    }
+  ]
+}
