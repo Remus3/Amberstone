@@ -86,10 +86,10 @@ class Coach:
         self._live.start()
         logger.info("TFT PBE Coach started (Set 17 Double Up, vision enabled)")
 
-    def submit_state(self, state: dict):
+    def submit_state(self, state: dict) -> None:
         pass  # TFT self-polls
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         if hasattr(self, "_engine"):
             self._engine.reset_state()
         if hasattr(self, "_live"):
@@ -99,7 +99,7 @@ class Coach:
         self._ensure_data_files()
         logger.info("TFT PBE state reset")
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         self._running = False
         if hasattr(self, "_live"):
             self._live.shutdown()
