@@ -241,7 +241,7 @@ class TftOcrReader:
         data = reader.read()  # -> {"stage_round": "3-6", "level": 8, "gold": 51, "hp": 65}
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._tess = _init_tesseract()
         self._last_read = 0.0
         self._cache: dict = {}
@@ -256,7 +256,7 @@ class TftOcrReader:
     def available(self) -> bool:
         return self._available
 
-    def calibrate(self, field: str, bbox: tuple):
+    def calibrate(self, field: str, bbox: tuple) -> None:
         """Override a region bbox at runtime for fine-tuning."""
         self._region_overrides[field] = bbox
         logger.info("OCR calibrated: %s -> %s", field, bbox)
@@ -339,7 +339,7 @@ class TftOcrReader:
         except Exception:
             return None
 
-    def save_debug_crops(self, out_dir: str = r"C:\Riot Commander\data\ocr_debug"):
+    def save_debug_crops(self, out_dir: str = r"C:\Riot Commander\data\ocr_debug") -> None:
         """Save all region crops for manual inspection/calibration."""
         from PIL import ImageDraw
         Path(out_dir).mkdir(parents=True, exist_ok=True)
