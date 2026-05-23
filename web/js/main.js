@@ -3198,6 +3198,47 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     400, 420, 430, 440, 480, 700,    // Normal Draft, Ranked Solo, Normal Blind, Ranked Flex, Swiftplay, Clash
     830, 840, 850, 870, 880, 890,    // Co-op vs AI variants (Intro/Beginner/Intermediate)
   ]);
+  // UI scale v2.1 page #7 audit ritual step 5 state-coverage mock fixture
+  // (2026-05-23). When body.dataset.uiMock === "1" the lobby view's
+  // _lobbyViewRefresh consumes /data/ui_mock/lobby.json (shape mirrors
+  // lcu envelope's `lobby` + `config` blocks) instead of the live
+  // state.latest.lcu feed - so the Pre-Game Lobby surface renders
+  // without an actively forwarding LCU agent during the audit pass.
+  let _lobbyMockPromise = null;
+  let _lobbyMockData = null;
+  function _lobbyIsMock() {
+    return !!(document.body && document.body.dataset.uiMock === "1");
+  }
+  function _lobbyMockLoad() {
+    if (_lobbyMockPromise) return _lobbyMockPromise;
+    _lobbyMockPromise = fetch("/data/ui_mock/lobby.json", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _lobbyMockData = data || null;
+        // Once the mock lands, re-fire the lobby refresh so the placeholder
+        // render that fired before the fetch resolved gets replaced.
+        if (_VIEW && _VIEW.current === "lobby") {
+          try { _lobbyViewRefresh(); } catch (_) {}
+        }
+        return _lobbyMockData;
+      })
+      .catch(() => { _lobbyMockData = null; return null; });
+    return _lobbyMockPromise;
+  }
+  function _lobbyResolveLcu() {
+    if (_lobbyIsMock()) {
+      if (_lobbyMockData) {
+        return {
+          phase: _lobbyMockData.phase || "Lobby",
+          lobby: _lobbyMockData.lobby || null,
+          config: _lobbyMockData.config || {},
+        };
+      }
+      // Fire the load on first call; the .then re-fires refresh on landing.
+      _lobbyMockLoad();
+    }
+    return (state.latest && state.latest.lcu) || {};
+  }
 
   function _fmtMasteryPoints(pts) {
     const n = pts | 0;
@@ -4354,7 +4395,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     });
   }
   function _lobbyViewRefresh() {
-    const lcu = (state.latest && state.latest.lcu) || {};
+    const lcu = _lobbyResolveLcu();
     const lobby = lcu.lobby || null;
     const wn = document.getElementById("lv-window");
     // s162 v14: hide the sub-label entirely when the panel is healthy
@@ -5761,9 +5802,22 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       // Dev override: ?ui_mock=1 on the URL forces mock mode for this
       // session without touching localStorage. Lets headless-Chrome
       // audit captures hit the populated mock state.
+      // UI scale v2.1 page #7 follow-up (2026-05-23): when ?ui_mock=1
+      // is paired with a #view hash, ALSO clear the rc-view-manual
+      // sticky so the operator's prior manual view doesn't override the
+      // audit-capture hash route. Chrome PWA app-mode occasionally
+      // launches the URL with hash stripped at script-load time; clearing
+      // the sticky lets the auto-derive land on the hash target without
+      // the manual side winning the next state envelope.
       try {
         const params = new URLSearchParams(location.search || "");
-        if (params.get("ui_mock") === "1") document.body.dataset.uiMock = "1";
+        if (params.get("ui_mock") === "1") {
+          document.body.dataset.uiMock = "1";
+          const h = (location.hash || "").replace(/^#/, "").trim();
+          if (h && VIEW_IDS.includes(h)) {
+            try { localStorage.removeItem("rc-view-manual"); } catch (_) {}
+          }
+        }
       } catch (_) {}
       // Scrub any legacy header-lock pinned styles so a stored lock from
       // before the feature was removed doesn't leak into the flex layout.
