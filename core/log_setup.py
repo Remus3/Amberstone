@@ -46,7 +46,7 @@ class DailyRotatingFileHandler(RotatingFileHandler):
     doesn't keep writing yesterday's log past midnight.
 
     The `baseFilename` is rewritten on each day-roll to point at today's
-    `logs/YYYY-MM-DD.log`. Size-based backups (`.1`, `.2`, …) accumulate
+    `logs/YYYY-MM-DD.log`. Size-based backups (`.1`, `.2`, ...) accumulate
     against whatever date is current at the moment of overflow.
     """
 
