@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-# Optional import â€” OCR only if installed and enabled
+# Optional import  -  OCR only if installed and enabled
 try:
     from tft.tft_ocr_reader import TftOcrReader as _TftOcrReader  # type: ignore
     _HAS_OCR = True
@@ -128,7 +128,7 @@ class StateValidator:
                 live_sr  = live.get("stage_round", "")
                 coach_sr = coach.get("stage_round", "")
                 if live_sr and coach_sr and live_sr != coach_sr:
-                    # Warn only â€” they may be legitimately 1 round apart
+                    # Warn only  -  they may be legitimately 1 round apart
                     self._mismatch(
                         "tft_round_mismatch",
                         f"live={live_sr} vs coach={coach_sr}",
@@ -177,7 +177,7 @@ class StateValidator:
         )
 
     def _ocr_check(self, report: Dict[str, Any]) -> None:
-        """Quick OCR cross-check for stage/round only â€” â‰¤2ms."""
+        """Quick OCR cross-check for stage/round only  -  â‰¤2ms."""
         try:
             reader = _TftOcrReader()
             if not reader.available:
