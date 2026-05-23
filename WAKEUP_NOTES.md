@@ -3,6 +3,33 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-23 - items 159-162 UI scale v2.1 pages #3 Replay + #4 History + #5 Session + #6 Home SHIPPED (6 commits `0d77e05` `69249f0` `6d55f63` `d677daf` `b3e14c1` `84b99a8`, pushed origin/main `2dfe8ac..84b99a8`; non-engine; non-frozen; no DS restart; no RC restart - ADR-008 asset-hash auto-served throughout)
+
+Item 158's 16-page v2.1 audit order continued. 4 consecutive pages migrated end-to-end (CSS to v2.1 tokens + per-page mock fixture at `web/data/ui_mock/<page>.json` + dev-toggle mock-fetch branch consulting `body.dataset.uiMock`). 7-step audit ritual GREEN on all 4 pages; visual proof captured on Game-PC monitor 1 except page #4 History (operator entered ARAM Mayhem mid-edit -> dashboard auto-routed away).
+
+**Per-page deltas:**
+- **#3 Replay** (`69249f0` CSS + `6d55f63` mock+wire + `0d77e05` item-158 fixture flip Eyeball Collection -> Sixth Sense): primitives.css L144-288 (.replay-* list/main/grid) + replay_events.css ribbon all token-migrated; champ-icon 28->38, item-icon 22->30, match-row min-height: var(--hit-min). 4-match fixture (full Normal Draft 10p + Arena overflow + ARAM empty + 2p ranked-solo). 3 fetch sites wired (`_replayViewRefresh` + `_replayLoadMatch` + `loadReplayEvents`).
+- **#4 Replay** (`d677daf`): header.css L585-599 (.view-tab shared rule) + L1794-1830 .history-grid/card/session/match-row. 4-scope fixture (14d / season / prior_season / all-empty-edge) keyed by `payload.scopes[scope]` with 14d fallback. **VISUAL DEFERRED** to next non-active-game window.
+- **#5 Session** (`b3e14c1`): header.css L1772-1797 .session-grid/card/row/champ-list/match-list. 6-game session fixture (32/14/47 KDA + S/A/B grades + 5 champs + 5 matches). Visual GREEN after Ctrl+Shift+R hard-reload (mock not fired on first nav due to service-worker cache).
+- **#6 Home** (`84b99a8`): home.css .home-* migrated (.lobby-* + .cs-* INTENTIONALLY preserved on v1 - pages #7 + #8-10 in audit order). Full Home payload fixture (today.games=4 + streaks 5-day/3-S-A-row + recent[5] + this_week[5] with full kills/deaths/assists/cs_total breakdown + services[6] + trends 14-day sparkline series with null gap + tonight_pick Jinx + last_build 6-item). Visual GREEN: hero + 3 chips with sparklines + 7 action tiles + Tonight's Pick card + LAST BUILD strip + RECENT 5 + THIS WEEK.
+
+**Mid-session BUG SURFACED + MITIGATED:** operator reported "active match does not match" - dashboard rendered 14-hour-old Kai'Sa snapshot during Senna ARAM loading screen. Root cause: liveclient :2999 not exposing active_player during loading; coaches haven't refreshed; dashboard fell through to stale `data/aram_coaching_data.json`. Force-cleared the file (backup `data/aram_coaching_data.json.bak-20260523-135434` preserved). View auto-routed to PRE-GAME LOBBY post-clear.
+
+**Verified:** Phase 8 smoke 75/75 PASS throughout. 0 new non-ASCII bytes per file-by-file diff scan. RC :8888 mode=client/aram alive=True reload_ok=True pid=14464 stable. DS :8893 untouched. Asset hash flow: fc4ff80c8b -> 682a4518c8 -> 3994d709da -> 48a31749d7 -> b805d11ec3 -> 67d175f339 -> 5c6b5a4247. Live UI hash = HEAD post-push.
+
+**Don't-redo:**
+- Mock-fixture pattern is canonical: module-level `_<page>MockPromise` + `_<page>IsMock()` + `body.dataset.uiMock` + `?ui_mock=1` URL flag. Mirror for pages #7-#16; each fixture MUST match render code field names (page #6 surfaced kda vs avg_kda + grade vs best_grade renaming).
+- `.lobby-*` + `.cs-*` CSS in home.css stays on v1 tokens until their pages (#7 Pre-Game Lobby + #8-10 Champ Select) hit the audit order.
+- The Eyeball Collection -> Sixth Sense fixture flip closes item 158's owed visual capture; don't re-investigate.
+- Active Match stale-detection bug: when `liveclient.champ=null + coaching_data.mtime > N min`, render should show empty "waiting for game start" state instead of stale snapshot. Separate fix needed (operator-gated).
+
+**Carries forward:**
+- Page #4 History visual proof owed at next non-active-game window.
+- Page #3 Replay finding: 10-row participant table collapses to ~0 visible rows when 15-event timeline saturates `max-height: 480`. Pre-existing flex allocation edge made visible by v2.1 +44% row height. Worth re-tuning `.replay-grid-wrap` min-height in follow-up.
+- Page #6 Home pre-existing bug: meta-line verdict at dev.js:337 `verdict.team_won ? "(W)" : "(L)"` treats null win as "(L)". ARAM neutral mock surfaces it.
+- 10 remaining pages in v2.1 order: #7 Pre-Game Lobby -> #8/9/10 Champ Select SR/ARAM/Arena -> #11/12/13 Active Match SR/ARAM/Arena -> #14/15/16 PGR SR/ARAM/Arena.
+
+---
 # 2026-05-23 - item 158 UI scale v2.1 page #2 User Builds + rune-page builder + spell chooser SHIPPED (2 commits `a82d8f3` `5452e9e`, pushed origin/main `dffea08..5452e9e`; non-engine; non-frozen; no DS restart; RC pid drifted 7356 -> 14464 mid-session via supervisor auto-relaunch picking up coaches/sr_user_builds.py edit - reload_ok=True)
 
 Operator-driven continuation of item 157's 16-page UI scale v2.1 audit order. Page #2 (User Builds) shipped end-to-end + mid-round augmentation: form pane gained a tabbed 5-tree rune-page builder + 11-icon summoner-spell chooser.
