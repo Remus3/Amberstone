@@ -3,6 +3,48 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-23 - item 157 UI scale v2.1 - per-element ~44% bump (25% + 15%) + zoom feature retired - Settings worked example SHIPPED (1 commit `09eddeb`, pushed origin/main `1d5ef99..09eddeb`; non-engine; non-frozen; no DS restart; no RC restart - asset-hash auto-reload per ADR-008)
+
+Operator triggered global UI density refactor across 16 pages (Settings -> User Builds -> Replay -> History -> Session -> Home -> Pre-Game Lobby -> Champ Select SR/ARAM/Arena -> Active Match SR/ARAM/Arena -> Post Game Review SR/ARAM/Arena). One framed AskUserQuestion 4-question scope fork pinned per [[feedback_scope_decision_cadence]]: (Q1) Spec doc + tokens.css draft + Settings rendered preview reviewed together (Recommended); (Q2) Density modes - single Comfortable/Broadcast target now, multi-mode primitive deferred (Recommended); (Q3) Page order - operator's verbatim list (Recommended); (Q4) Dummy data - dev-only Settings toggle default OFF.
+
+**Shipped (7 files / +457 / -96):**
+- `docs/UI_SCALE_SPEC_V2.md` NEW - typography matrix (v1 / v2 25% / v2.1 +15% columns) + 8-px spacing matrix + panel rules + interaction rules + dummy-data architecture + UI audit ritual v2 checklist + per-page execution order + per-component-class Settings targets + cleanup deltas.
+- `web/css/tokens.css` extended additively. Font scale v1 11/13/15/20/27 -> v2.1 16/18/22/29/37 + NEW tiers --fs-stat 26 + --fs-display 46. Panel tokens: --panel-padding 20, --panel-padding-comp 14, --panel-padding-loose 28, --panel-gap 14, --panel-gap-tight 10, --panel-radius 18, --panel-radius-sm 10. Interact tokens: --hit-min 42, --hover-pad 8, --tooltip-offset 12, --tooltip-delay 250ms, --focus-ring. NEW --space-7 40 + --space-8 48. v1 --space-1..6 unchanged (audit-wave-1 contract preserved).
+- `web/css/panels/header.css` settings-card / settings-card-head / settings-row / settings-row inputs token-driven; .view-section-head h2 -> --fs-lg 29px (affects all view-sections via single selector). Checkbox 14x14 -> 24x24, card padding 12-14 -> 20, card border-radius 8 -> 18, inter-card gap 14 -> 32.
+- `web/css/panels/base.css` `body { zoom: 1.0 }` declaration REMOVED + comment block updated to document zoom feature retired.
+- `web/index.html` Zen mode `<label class="settings-row">` row REMOVED + zoom slider row REMOVED + Dev UI mock data toggle ADDED in DISPLAY card.
+- `web/js/panels/dev.js` zoom slider wiring removed; cb("set-ui-mock", "rc-ui-mock", v => body.dataset.uiMock = v ? "1" : "") added.
+- `web/js/main.js` boot zoom-restore removed; Shift+R + prefs-chip-click no longer touch rc-zoom; tooltip place() function no longer divides by getComputedStyle(body).zoom; prefs-chip footer pill is ui-mock:on (was zoom).
+
+**Verified:**
+- RC dashboard https://127.0.0.1:8888/api/state HTTP 200, mode_key=client throughout (never restarted - ADR-008 unified asset-hash auto-reloaded CSS+JS edits, asset hash 8d3c7bcb7d -> 2579468dff between captures).
+- Game-PC monitor 1 captured 2x (pre-bump baseline + post-+15% delta). Settings page reads at comfortable viewing distance; zoom slider gone, mock toggle wired + functional (UI-MOCK:ON pill visible when checked); checkboxes 24x24 read fingertip-scale; section heads 29px (was 17px) clearly prominent.
+- RC health pid=7356 alive=True reload_ok=True throughout.
+- No tests touched (pure UI refactor, no logic change).
+
+**Don't-redo:**
+- Zoom feature is FULLY RETIRED. Do NOT reintroduce `body { zoom: N }`, the `#set-zoom` slider, or the `localStorage.rc-zoom` key. The 4 lazy mechanisms (transform: scale, body zoom, browser zoom, root font-size hack) are documented in docs/UI_SCALE_SPEC_V2.md as OFF-LIMITS for this refactor.
+- The +15% second-pass values (16/18/22/26/29/37/46) ARE the v2.1 baseline. If operator asks for "another 15%" treat that as v2.2 explicitly.
+- The tooltip `place()` function in `main.js:6113` is now in plain viewport CSS pixels - the prior zoom-divisor was specific to the old 1.33 body-zoom era and is dead-weight removed.
+- The `champ_select.js:268-274` popup workaround appends to `<html>` to bypass body-zoom; the workaround is HARMLESS now that body-zoom is gone but its reasoning is stale. Audit-ritual step 7 covers this when Champ Select pages (#8/9/10) hit the order.
+- Settings is the WORKED EXAMPLE not the locked ship-state. Operator approved (issued /done) so v2.1 token values + Settings layout are LOCKED for subsequent pages.
+- 27 panel CSS files + 27 panel JS files + 583 hardcoded font-size declarations across 29 CSS files - the page-by-page audit pass sweeps its OWN panels only. Do NOT do a bulk font-size sweep.
+
+**Carries forward:**
+(a) Item 156 carries ALL unchanged - this session was NON-engine, NON-frozen, NON-test (zoom feature retirement was the only "code-deletion" lever; everything else was additive token + selector tuning).
+(b) RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15 - verify LastTaskResult=0 next session.
+(c) DD Defy heal-on-takedown STILL deferred.
+(d) Live ARAM/SR smoke STILL pending.
+(e) Calibrations STILL operator-gated.
+(f) UI/UX live-game audit owed.
+(g) DS conditional arc operator-CLOSED (s232).
+(h) Legion 1-PC consolidation STILL operator-gated.
+(i) cc_conditional wave 12+ has 2 deferred candidates (Jayce E + Singed E) needing further schema lifts.
+(j) 542 residual U+2500 box-drawing chars carry forward as operator-gated separate sweep.
+(k) **NEW carry from item 157**: 15 remaining pages in the UI scale v2.1 audit order (User Builds -> Replay -> History -> Session -> Home -> Pre-Game Lobby -> Champ Select SR/ARAM/Arena -> Active Match SR/ARAM/Arena -> Post Game Review SR/ARAM/Arena). Each page consumes v2.1 tokens during its own audit pass per the UI audit ritual v2 checklist in `docs/UI_SCALE_SPEC_V2.md`. Per-page mock fixtures owed at `web/data/ui_mock/*.json` for the dev UI mock data toggle to render anything; no fixtures shipped this session.
+(l) **NEW carry from item 157**: 583 hardcoded font-size declarations across 29 CSS files will be swept incrementally per page-audit pass; no bulk sweep authorized.
+
+---
 # 2026-05-23 - item 156 operator-gated decision-owed parallel drain #4: rc_supervisor FROZEN mojibake byte-repair + Variant B em-dash mojibake closure + cc_conditional wave 11 Sion R + Gnar W form 1 + housekeeping triple SHIPPED (4 commits + 3 merges + docs sync follow-up, pushed origin/main; ENGINE 1.47.0 -> 1.48.0; DS :8893 restarted serves 1.48.0; RC :8888 unchanged)
 
 Operator triggered fourth consecutive "in parallel : start all open items in Operator-gated, decision owed" drain. AskUserQuestion 4-question scope fork pinned: (Q1) rc_supervisor.py 1368 mojibake byte-repair Grant + repair; (Q2) cc_conditional wave 11 Full pass (Recommended); (Q3) DD Defy Defer (Recommended); (Q4) Add housekeeping CLEAN slices explicitly. 3 worktree agents dispatched concurrent (orchestrator pattern items 134-155 extended to 21 consecutive runs).
