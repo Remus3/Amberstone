@@ -94,7 +94,7 @@ class MoonProxy:
             ).hexdigest()
             _cached = _gt().vision_dedupe_get(_key)
             if _cached is not None:
-                log.debug("Moon vision dedupe hit (%s…)", _key[7:15])
+                log.debug("Moon vision dedupe hit (%s...)", _key[7:15])
                 return _cached
         # AUDIT 2026-04-28 (deferred-frozen): narrowed from bare Exception.
         except (ImportError, AttributeError, TypeError, OSError, ValueError):
