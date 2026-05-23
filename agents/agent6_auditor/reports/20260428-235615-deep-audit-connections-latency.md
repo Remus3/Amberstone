@@ -17,7 +17,7 @@ Two cosmetic anomalies to address (`RCVisionServer` dupe task,
 | Component | Address | State | Detail |
 |---|---|---|---|
 | RC app (main.py) | local | ✅ pid 8772, alive, mode=client, ui_age 0.5 s, last_reload_ok | |
-| ops/rc_supervisor | local | ✅ pid 8280, run_id `28f0a06c…`, oslock held, uptime ≈ 93 min | |
+| ops/rc_supervisor | local | ✅ pid 8280, run_id `28f0a06c...`, oslock held, uptime ≈ 93 min | |
 | Vision server :8889 | local | ✅ alive, uptime ≈ 8476 s (≈ 2 h 21 m), api_key_ok | |
 | Web dashboard :8888 (HTTPS) | local | ✅ all 16 probed routes 200 | |
 | Phase 3 agents :8890 | local | ✅ /api/activity 200; /health is HTML 404 (expected, distinct supervisor) | |

@@ -576,7 +576,7 @@ def main() -> int:
         if not isinstance(payload, dict):
             continue
         # Meraki bulk uses the DDragon-style ID as the top-level dict key
-        # (Aatrox, MonkeyKing, KSante, …). Inside each record, ``id`` is the
+        # (Aatrox, MonkeyKing, KSante, ...). Inside each record, ``id`` is the
         # numeric Riot key and ``key`` is the DDragon string - the per-champion
         # endpoint reverses them. The top-level key is the only reliable
         # cross-source canonical anchor, so use it directly.

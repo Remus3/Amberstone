@@ -33,7 +33,7 @@ below; defense-in-depth not regressed but also not closed.
 **H-01 - `gamepc` bridge health-publisher stale ~8500s while `peer` is healthy at 25s; no alarm path engaged**
 - **Symptom:** Session-start probe surfaced
   `gamepc bridge daemon: watcher=alive queue=0 age=8489s ⚠ STALE` next
-  to a perfectly fresh `peer bridge daemon … age=25s`. Both daemons share
+  to a perfectly fresh `peer bridge daemon ... age=25s`. Both daemons share
   the same task loop (which IS alive - the only delta is the heartbeat
   publisher).
 - **Why it's a finding (not just an anomaly):** The auditor's session

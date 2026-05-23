@@ -103,7 +103,7 @@ def _render_state() -> str:
         pregame = " ".join((coach.get("pregame") or "").split())
         if pregame:
             # cap to ~50 chars so OBS doesn't get a wall of text
-            short = pregame[:50] + ("…" if len(pregame) > 50 else "")
+            short = pregame[:50] + ("..." if len(pregame) > 50 else "")
             return f"{mode} · {short}"
         return mode
     except Exception as exc:

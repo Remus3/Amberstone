@@ -658,7 +658,7 @@ export function renderChampSelectView(lcu) {
   // identifier + confidence pill.
   preloadChampionTags();
   if (!lcu || lcu.phase !== "ChampSelect") {
-    _csvSetText("csv-sub", "waiting for champ-select…");
+    _csvSetText("csv-sub", "waiting for champ-select...");
     return;
   }
   if (!CHAMPS.ready) return;  // names not loaded yet - wait next tick
@@ -935,7 +935,7 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
           });
         });
       } else {
-        bansGrid.innerHTML = '<div class="csv-sugg-empty">loading global top bans…</div>';
+        bansGrid.innerHTML = '<div class="csv-sugg-empty">loading global top bans...</div>';
       }
       // 2026-05-20 (item 109 carry-forward): HURTS-THEM / HELPS-US
       // toggle. Renders the dual-score ban-suggest backend ship
@@ -1880,7 +1880,7 @@ function _csvFetchUserVariants(champion, mode) {
 
 // Build chooser variants for the central pane. s171: returns DS-engine-
 // ranked items when available (cached per champion+mode), otherwise a
-// "computing…" placeholder. Mode-specific keystone hints distinguish
+// "computing..." placeholder. Mode-specific keystone hints distinguish
 // the 3 rows visually - same items in each row for now (Phase B-2 will
 // produce per-keystone variants once the loadout resolver is wired).
 function _csvBuildVariantsFor(cid, name, mode, cs) {
@@ -2252,7 +2252,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
       return `<div class="csv-duo-cell is-empty">
         <div class="csv-duo-cell-icon">?</div>
         <div class="csv-duo-cell-tag">${isMe ? "ME" : "ALLY"}</div>
-        <div class="csv-duo-cell-name">waiting…</div>
+        <div class="csv-duo-cell-name">waiting...</div>
       </div>`;
     }
     const nm = _csChampName(c.championId) || ("cid:" + c.championId);
@@ -2277,7 +2277,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
     const isActive = tier === curTier;
     return `<div class="csv-augment-slot ${tier}${filled ? " filled" : ""}${isActive ? " is-active" : ""}">
       <div class="csv-augment-slot-grade">${tier.toUpperCase()}</div>
-      <div class="csv-augment-slot-name">${filled ? s.name : (isActive ? "PICKING…" : "-")}</div>
+      <div class="csv-augment-slot-name">${filled ? s.name : (isActive ? "PICKING..." : "-")}</div>
     </div>`;
   }).join("");
 
@@ -2709,7 +2709,7 @@ function _csvRenderPickBan(cs, myCid) {
   const body = document.getElementById("csv-pickban-body");
   if (!body) return;
   if (!cs) {
-    body.innerHTML = '<div class="csv-empty">waiting for champ-select data…</div>';
+    body.innerHTML = '<div class="csv-empty">waiting for champ-select data...</div>';
     return;
   }
   const role = _csvResolveRole(cs);

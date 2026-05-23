@@ -89,7 +89,7 @@ Print a tight banner - exactly this format:
   • RC health            : pid=<pid> alive=<bool> reload_ok=<bool>
   • WAKEUP_NOTES         : updated (+<N> lines)
   • living docs          : roadmap/claude.md/readme - <N items updated | skipped>
-  • lessons triaged      : <N applied | none pending | err: …>
+  • lessons triaged      : <N applied | none pending | err: ...>
   • mid-game             : no | YES - wait until safe to /clear
 ══════════════════════════════════════════════════════════════════
   Type /clear to start a fresh session with reset token budget.

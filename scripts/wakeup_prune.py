@@ -34,9 +34,9 @@ SEP = "\n---\n\n"
 # A session heading is either:
 #   legacy - `# s171 wrap`, `# s171.8 wrap`, `# s209-s213 wrap` (en-dash or
 #            hyphen ranges); or
-#   dated  - `# 2026-05-17 (late) - …`, `# 2026-05-17 wrap - …`,
-#            `# 2026-05-17 OVERNIGHT RUN-1 - …` (any suffix after the date).
-# A leading pinned block (`# ✅ RESOLVED 2026-05-17 - …`) matches NEITHER -
+#   dated  - `# 2026-05-17 (late) - ...`, `# 2026-05-17 wrap - ...`,
+#            `# 2026-05-17 OVERNIGHT RUN-1 - ...` (any suffix after the date).
+# A leading pinned block (`# ✅ RESOLVED 2026-05-17 - ...`) matches NEITHER -
 # the date is not at heading-start - so split_sessions folds it into the
 # header rather than archiving it.
 SESSION_RE = re.compile(
@@ -77,7 +77,7 @@ def split_sessions(text: str) -> tuple[str, list[str]]:
             sessions.append(block)
         elif not seen_session:
             # Pinned non-session block(s) that precede the first session
-            # (e.g. `# ✅ RESOLVED … `). These belong with the header so
+            # (e.g. `# ✅ RESOLVED ... `). These belong with the header so
             # they are never archived and stay at the top of WAKEUP_NOTES.
             leading_pins.append(block)
         else:

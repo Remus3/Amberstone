@@ -7,7 +7,7 @@ from Riot LCU / DDragon JSON, both trusted sources. The audit flagged
 prompt-injection sanitization as theoretical for that reason. This module
 adds the cheap defense anyway - a future MITM, a CDragon mirror swap, or
 a user-named queue/lobby field could otherwise smuggle "Ignore previous
-instructions…" into the user-content block.
+instructions..." into the user-content block.
 
 Goals:
   * Strip control chars (keep \\n, \\t).
@@ -81,7 +81,7 @@ def clean(value, *, max_len: int = DEFAULT_MAX_LEN) -> str:
     # Final length cap - append an ellipsis so a downstream reader can
     # see truncation happened.
     if len(out) > max_len:
-        out = out[: max_len - 1] + "…"
+        out = out[: max_len - 1] + "..."
     return out
 
 

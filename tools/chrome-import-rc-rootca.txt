@@ -25,7 +25,7 @@ On Game-PC, in Chrome:
    or wherever you have a local copy)
 
    You may need to change the file-type filter from
-   "DER-encoded …" to "All files (*.*)" so the .pem is visible.
+   "DER-encoded ..." to "All files (*.*)" so the .pem is visible.
 
 5. A dialog appears asking what to trust. Check ALL THREE:
        [x] Trust this certificate for identifying websites

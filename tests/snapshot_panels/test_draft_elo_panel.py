@@ -92,5 +92,5 @@ def test_cache_ttl_matches_backend():
 def test_no_em_dashes_or_smart_quotes():
     for p in (JS_PATH, CSS_PATH):
         text = _read(p)
-        for ch in ("–", "—", "‘", "’", "“", "”"):
+        for ch in (chr(0x2013), chr(0x2014), chr(0x2018), chr(0x2019), chr(0x201C), chr(0x201D)):
             assert ch not in text, f"non-ASCII char {ch!r} in {p}"

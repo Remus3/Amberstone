@@ -400,11 +400,11 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             for k, v in (task.payload or {}).items():
                 sv = json.dumps(v, default=str) if not isinstance(v, str) else v
                 if len(sv) > 400:
-                    sv = sv[:400] + "…"
+                    sv = sv[:400] + "..."
                 payload_preview[k] = sv
             if task.result is not None:
                 rs = json.dumps(task.result, default=str)
-                result_preview = rs if len(rs) <= 800 else rs[:800] + "…"
+                result_preview = rs if len(rs) <= 800 else rs[:800] + "..."
 
         self._send_json(200, {
             "id": task_id,

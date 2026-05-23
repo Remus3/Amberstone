@@ -104,7 +104,7 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
     fetchBuildOrder(champion, dsMode, archetype, opts.scheduleRender);
     return `
       <div class="bo-card" data-bo-state="loading">
-        <div class="bo-line"><span class="bo-tag">Build Order</span><span class="bo-msg">computing…</span></div>
+        <div class="bo-line"><span class="bo-tag">Build Order</span><span class="bo-msg">computing...</span></div>
       </div>`;
   }
   const order = Array.isArray(data.order) ? data.order : [];

@@ -100,10 +100,10 @@ def parse(path: Path) -> dict:
         out["strongest_augments"] = [s.strip() for s in m.group(1).split(",")]
 
     # Recommended augments
-    m = re.search(r"prioritize ([\w'’: !\-]+?) for maximum impact", content)
+    m = re.search(r"prioritize ([\w'': !\-]+?) for maximum impact", content)
     if m:
         out["recommended_prismatic"] = m.group(1).strip()
-    m = re.search(r"Gold augments like ([\w'’: !\-]+?) (?:provide|synergize)", content)
+    m = re.search(r"Gold augments like ([\w'': !\-]+?) (?:provide|synergize)", content)
     if m:
         out["recommended_gold"] = m.group(1).strip()
 
@@ -115,7 +115,7 @@ def parse(path: Path) -> dict:
             "wr": float(m.group(2)),
         }
 
-    m = re.search(r"\*?\*?([\w'’ ]+?)\*?\*?\s*is the recommended boots", content)
+    m = re.search(r"\*?\*?([\w'' ]+?)\*?\*?\s*is the recommended boots", content)
     if m:
         out["recommended_boots"] = m.group(1).strip()
 

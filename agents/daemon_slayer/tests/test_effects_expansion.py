@@ -7771,7 +7771,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (double-space / "the target's" / caster pronoun+name)
         #          → migration promoted 32 mods across 13 champions
         #          (Gwen Q·R / Varus W / Trundle R / Fiddlesticks Q /
-        #          Sejuani W / Zac Q / Ambessa Q / …) whose %HP component
+        #          Sejuani W / Zac Q / Ambessa Q / ...) whose %HP component
         #          was dropped (Trundle R + Fiddle Q were 0 entirely).
         # 0.97.0 = s225 Phase 5.9.25 post-parser-fix block_index sweep.
         #          Varus W=2 - 'Bonus Magic Damage at Max Stacks' (3x the

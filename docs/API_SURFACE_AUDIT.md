@@ -25,7 +25,7 @@ _70 distinct endpoints across 215 callsites_
 | `lcu/lcu_pregame.py` | 192 | `POST /lol-champ-select/v1/session/bench/swap/{championId}` |
 | `lcu/lcu_pregame.py` | 196 | `f"/lol-champ-select/v1/session/bench/swap/{champion_id}",` |
 | `lcu/lcu_pregame.py` | 213 | `PATCH /lol-champ-select/v1/session/my-selection - but only when` |
-| … | | _27 more callsites omitted_ |
+| ... | | _27 more callsites omitted_ |
 
 ### `/lol-champ-select/v1/session`
 
@@ -39,7 +39,7 @@ _70 distinct endpoints across 215 callsites_
 | `tools/gamepc_lcu_agent.py` | 607 | `sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")` |
 | `tools/gamepc_lcu_agent.py` | 634 | `sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")` |
 | `tools/gamepc_lcu_agent.py` | 675 | `sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")` |
-| … | | _5 more callsites omitted_ |
+| ... | | _5 more callsites omitted_ |
 
 ### `/lol-champ-select/v1/session/actions/{action_id}`
 
@@ -220,7 +220,7 @@ _70 distinct endpoints across 215 callsites_
 | `tools/gamepc_lcu_agent.py` | 338 | `phase, _ = lcu_request("GET", "/lol-gameflow/v1/gameflow-phase")` |
 | `tools/gamepc_lcu_agent.py` | 385 | `# hints during draft. Fall back to /lol-gameflow/v1/session, which` |
 | `tools/gamepc_lcu_agent.py` | 388 | `gf, _ = lcu_request("GET", "/lol-gameflow/v1/session")` |
-| … | | _1 more callsites omitted_ |
+| ... | | _1 more callsites omitted_ |
 
 ### `/lol-gameflow/v1/gameflow-phase`
 
@@ -361,7 +361,7 @@ _70 distinct endpoints across 215 callsites_
 | `lcu/lcu_client.py` | 900 | `result = self._request("POST", "/lol-perks/v1/pages", payload)` |
 | `lcu/lcu_client.py` | 914 | `self._request("PUT", "/lol-perks/v1/currentpage", {"id": new_id})` |
 | `lcu/lcu_rune_writer.py` | 495 | `self._lcu._request("DELETE", f"/lol-perks/v1/pages/{page_id}")` |
-| … | | _6 more callsites omitted_ |
+| ... | | _6 more callsites omitted_ |
 
 ### `/lol-perks/v1/currentpage`
 
@@ -430,7 +430,7 @@ _70 distinct endpoints across 215 callsites_
 | `scripts/discover_champion_codes.py` | 62 | `lcu("DELETE", f"/lol-tft-team-planner/v1/sets/{SET_ID}/teams/{TEAM_ID}/champions")` |
 | `scripts/discover_champion_codes.py` | 113 | `f"/lol-tft-team-planner/v1/sets/{SET_ID}/teams/{TEAM_ID}/champions/{fmt}",` |
 | `scripts/patch_comp_control.py` | 38 | `ep   = f"https://192.168.8.237:{port}/lol-tft-team-planner/v1/sets/{set_id}/teams/{team_id}/import"` |
-| … | | _12 more callsites omitted_ |
+| ... | | _12 more callsites omitted_ |
 
 ### `/lol-tft-team-planner/v1/previous-context`
 
@@ -595,7 +595,7 @@ _2 distinct endpoints across 13 callsites_
 | `tools/GAMEPC_CLAUDE.md` | 141 | `curl.exe -k --max-time 5 https://127.0.0.1:2999/liveclientdata/allgamedata \| Select-String -SimpleMatch '"gameTime"'` |
 | `tools/gamepc_liveclient_relay.py` | 6 | `LAN. This relay polls /liveclientdata/allgamedata locally, then POSTs the` |
 | `tools/gamepc_liveclient_relay.py` | 26 | `"https://127.0.0.1:2999/liveclientdata/allgamedata",` |
-| … | | _4 more callsites omitted_ |
+| ... | | _4 more callsites omitted_ |
 
 ## Internal RC dashboard - `https://legion-rc:8888`
 
@@ -633,7 +633,7 @@ _89 distinct endpoints across 322 callsites_
 | `web/js/sim.js` | 43 | `"/api/advisories":  { advisories: [] },` |
 | `web/js/sim.js` | 61 | `["/api/advisories",  "advisories"],` |
 | `agents/agent3_testing/suite/test_round32.py` | 53 | `h = _make_handler("/api/advisories", fresh_scheduler)` |
-| … | | _3 more callsites omitted_ |
+| ... | | _3 more callsites omitted_ |
 
 ### `/api/analyze`
 
@@ -860,7 +860,7 @@ _89 distinct endpoints across 322 callsites_
 | `tests/phase4_dispatch_validate/test_dispatch_validate.py` | 74 | `_validate_request_body("/api/ds-preview", {"champion": "Vayne"})` |
 | `tests/phase4_dispatch_validate/test_dispatch_validate.py` | 79 | `_validate_request_body("/api/ds-preview", {` |
 | `tests/phase4_dispatch_validate/test_dispatch_validate.py` | 145 | `_validate_request_body("/api/ds-preview", {"mode": "SR"})` |
-| … | | _1 more callsites omitted_ |
+| ... | | _1 more callsites omitted_ |
 
 ### `/api/duration`
 
@@ -925,7 +925,7 @@ _89 distinct endpoints across 322 callsites_
 | `web/js/dashboard.js` | 8244 | `const r = await fetch("/api/health", { cache: "no-store" });` |
 | `web/js/main.js` | 5009 | `fetch("/api/health", { cache: "no-store" }),` |
 | `web/js/main.js` | 5384 | `const r = await fetch("/api/health", { cache: "no-store" });` |
-| … | | _1 more callsites omitted_ |
+| ... | | _1 more callsites omitted_ |
 
 ### `/api/health/all`
 
@@ -980,7 +980,7 @@ _89 distinct endpoints across 322 callsites_
 | `tests/phase4_dispatch_validate/test_dispatch_validate.py` | 20 | `"/api/input",` |
 | `tests/phase4_dispatch_validate/test_dispatch_validate.py` | 64 | `_validate_request_body("/api/input", {"text": "hello"})` |
 | `tests/phase4_dispatch_validate/test_dispatch_validate.py` | 103 | `_validate_request_body("/api/input", {})` |
-| … | | _5 more callsites omitted_ |
+| ... | | _5 more callsites omitted_ |
 
 ### `/api/insight-card`
 
@@ -1248,7 +1248,7 @@ _89 distinct endpoints across 322 callsites_
 | `web/js/dashboard.js` | 7950 | `const r = await fetch("/api/state", { cache: "no-store" });` |
 | `web/js/main.js` | 5008 | `fetch("/api/state", { cache: "no-store" }),` |
 | `web/js/main.js` | 5089 | `const r = await fetch("/api/state", { cache: "no-store" });` |
-| … | | _1 more callsites omitted_ |
+| ... | | _1 more callsites omitted_ |
 
 ### `/api/state-stream`
 

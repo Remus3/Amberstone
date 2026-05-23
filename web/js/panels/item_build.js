@@ -405,7 +405,7 @@ function _ibPushItems(champion, variant, mode) {
   if (key === _ibBuilds.lastAppliedKey) return;
   if (_ibBuilds.inflight) return;
   _ibBuilds.inflight = true;
-  _ibSetStatus("pushing…", "busy");
+  _ibSetStatus("pushing...", "busy");
   fetch("/api/loadout/apply", {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json" },

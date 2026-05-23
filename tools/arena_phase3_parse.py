@@ -72,7 +72,7 @@ def load_missing() -> tuple[list[str], dict[str, dict]]:
 
 
 def stream_chunks(html: str) -> str:
-    """Concatenate every self.__next_f.push([N,"…"]) string after JS-unescape."""
+    """Concatenate every self.__next_f.push([N,"..."]) string after JS-unescape."""
     pat = re.compile(r"self\.__next_f\.push\(\[\d+,\s*\"", re.S)
     out: list[str] = []
     i = 0

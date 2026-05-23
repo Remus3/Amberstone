@@ -848,7 +848,7 @@ class Supervisor:
 
     def auto_analyze_stats(self) -> dict:
         """Snapshot for /api/env - captures pending / running / last-run
-        state so the dashboard can show "refresh in 1:47" or "refreshing…".
+        state so the dashboard can show "refresh in 1:47" or "refreshing...".
         """
         now = time.monotonic()
         scheduled = self._auto_analyze_scheduled_at
