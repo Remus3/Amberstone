@@ -23,7 +23,7 @@ class Coach(CoachIntegration):
 
     GAME_MODES = ("CLASSIC", "PRACTICETOOL")
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Clean exit: stop any pending threads, flush cache."""
         try:
             if hasattr(self, "_cache") and self._cache:
