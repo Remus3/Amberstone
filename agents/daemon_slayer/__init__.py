@@ -1321,7 +1321,116 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.46.0"
+ENGINE_VERSION = "1.47.0"
+# 1.47.0 (cc_conditional wave 10 - same-spell-slot registry schema
+# lift closing the (a)-class REJECT carry from wave 9 + Hwei E form 2
+# EW root via effects_descriptions consumption, 2026-05-23):
+#
+# Ships the same-spell-slot registry schema lift (item 153 carry (a)
+# "Karma W form 1 R-empowered Renewal Total Root slot-collides with
+# wave 1 W entry; registry schema needs same-spell-slot lift") via a
+# parallel SIDECAR registry pattern that preserves backward
+# compatibility with the ~244 test access lines pinning the
+# ``_PER_SPELL_CC_CONDITIONAL["Champion"]["Slot"]`` lookup shape.
+#
+# Schema design:
+#
+#   * The PRIMARY ``_PER_SPELL_CC_CONDITIONAL`` registry stays
+#     ``Dict[str, Dict[str, ConditionalCcEntry]]`` (unchanged shape;
+#     all wave 0-9 entries land here with form_index=None default).
+#   * The PARALLEL ``_PER_SPELL_CC_CONDITIONAL_FORMS`` sidecar
+#     registry is ``Dict[str, Dict[Tuple[str, int], ConditionalCcEntry]]``
+#     keyed by ``(spell, form_index)`` for explicit-form entries.
+#   * ``ConditionalCcEntry`` gains optional ``form_index:
+#     Optional[int] = None`` field. None = default form (wave 0-9
+#     legacy); int = explicit Meraki form_index (wave 10+
+#     schema-lift entries).
+#   * ``get_conditional_entries(champion)`` merges entries from
+#     both registries, returning a flat Q/W/E/R-ordered tuple with
+#     multi-form entries on the same slot ordered by form_index
+#     ASC (default form first, then form-explicit by ASC index).
+#   * ``REGISTRY_TOTAL_ENTRIES`` sums entries across both
+#     registries. ``REGISTRY_TOTAL_CHAMPIONS`` counts unique
+#     champions across both.
+#   * New ``_apply_per_form_entry_overrides()`` helper extends the
+#     wave 1 per-entry override JSON shape with a 3-segment
+#     ``<champion>:<spell>:<form_index>`` key for form-explicit
+#     calibration. The 2-segment ``<champion>:<spell>`` key from
+#     wave 1+ still feeds the primary registry.
+#
+# NEW cc_conditional entries (both in sidecar registry; 0 net-new
+# champions since Karma + Hwei already had wave 0-9 entries;
+# registry 42/38 -> 44/38):
+#
+#   * Karma W form_index=1 Renewal (Mantra-empowered Focused Resolve)
+#     - COND_FRENZY_STATE (SECOND consumer after Renekton W wave 9)
+#     - durations_s = (2.35, 2.45, 2.55, 2.65, 2.75) seconds at mid
+#       Mantra rank 2 (+0.75 bonus); operator can tune via
+#       per_entry_probability key ``Karma:W:1`` if max-Mantra
+#       calibration is preferred (would land at (2.85, 2.95, 3.05,
+#       3.15, 3.25)).
+#     - Mechanic schema-lift-verified: effects_descriptions[0]
+#       "Mantra Bonus: Focused Resolve's root duration is increased
+#       ... Renewal scales with Mantra's rank".
+#     - Coexists with primary registry wave 1 Karma W default-form
+#       entry (Focused Resolve channel-completion root); the
+#       sidecar entry encodes the Mantra-bonus extension that the
+#       wave 1 entry could not capture under the old single-entry-
+#       per-slot registry.
+#
+#   * Hwei E form_index=2 Gaze of the Abyss (EW form root)
+#     - COND_CHANNEL_COMPLETION (third consumer after wave 1 Karma W
+#       + wave 4 Pyke E + wave 9 Hwei E form 1)
+#     - durations_s = (1.2, 1.4, 1.6, 1.8, 2.0) seconds across 5 E
+#       ranks (Meraki 16.10.1 Root Duration block; the duration
+#       values are in the parse-strip damage_blocks for form
+#       index=2 but were absent from the primary registry under the
+#       old single-entry-per-slot schema).
+#     - Mechanic schema-lift-verified: effects_descriptions[0]
+#       "Active - EW: Hwei tosses an eyeball ... root them for a
+#       duration".
+#     - Coexists with primary registry wave 9 Hwei E default-form
+#       entry (Grim Visage EQ channel-completion fear); both forms
+#       fire on the same 2-cast cycle gating but the operator
+#       picks EQ vs EW vs EE mid-cycle.
+#
+# NO new condition tag constants this wave. The 2 entries use
+# COND_FRENZY_STATE (existing wave 7 tag, second consumer; closing
+# the "only Renekton W" single-consumer state) + COND_CHANNEL_COMPLETION
+# (existing wave 0 tag, third consumer; Hwei form 2 root mirrors
+# Hwei form 1 fear which is in the primary registry).
+#
+# Consumer math BYTE-IDENTICAL to 1.46.0 for default
+# include_conditional=False callers across all 5 consumer surfaces
+# (cc_pressure + compute_ehp + compute_hybrid + coach prompt +
+# dashboard UI). The 2 new sidecar entries contribute to
+# compute_cc_pressure for Karma + Hwei when callers opt in via
+# include_conditional=True (Karma now has 2 conditional CC
+# contributions per cast; Hwei similarly).
+#
+# Multi-form coexistence: the wave 10 sidecar contains 2 entries
+# both on champions that ALREADY have wave 0-9 entries in the
+# primary registry. The merge in ``get_conditional_entries()``
+# returns the primary entry FIRST (legacy ordering) followed by
+# form-explicit entries in form_index ASC order. This deterministic
+# iteration order matches the ``compute_cc_pressure`` Q/W/E/R
+# convention plus the wave 10 sub-form ordering.
+#
+# +N tests NEW
+# ``agents/daemon_slayer/tests/test_cc_conditional_wave10.py``
+# mirrors wave 9 test structure with per-form entry pins +
+# multi-form same-slot coexistence assertions + form_index
+# override key shape pins.
+# ``test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES``
+# gained ``test_cc_conditional_wave10.py``.
+#
+# Carry-forwards from item 153 mostly unchanged: (a) Karma W form 1
+# CLOSED this wave (sidecar registry entry); (b) RC-PostmortemAnalyze
+# first scheduled run 2026-05-24 04:15 still pending; (c) DD Defy
+# still deferred; (d) live ARAM/SR smoke still pending; (e)
+# Aatrox R / Volibear R / Briar W from item 153 wave 9 REJECTs are
+# schema-lift-verified NEGATIVES (do NOT re-pitch).
+#
 # 1.46.0 (cc_conditional wave 9 + Meraki extractor schema lift -
 # +3 entries / +3 net-new champions closing 3 of 7 schema-lift-
 # blocked candidates from prior wave REJECT carries, 2026-05-23):
