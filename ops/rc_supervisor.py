@@ -43,20 +43,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 # Lifecycle authority:
-#   START  â€” this supervisor (via start_app or adopt_existing_app)
-#   STOP   â€” this supervisor (via stop_app, owned PID or adopted PID only)
-#   RESTART â€” this supervisor (via restart_app, same rules)
-#   ROLLBACK â€” this supervisor (via _do_rollback, triggered by supervisor_requests/)
-#   MONITOR â€” SelfMonitor threads (inside this process)
+#   START   -  this supervisor (via start_app or adopt_existing_app)
+#   STOP    -  this supervisor (via stop_app, owned PID or adopted PID only)
+#   RESTART  -  this supervisor (via restart_app, same rules)
+#   ROLLBACK  -  this supervisor (via _do_rollback, triggered by supervisor_requests/)
+#   MONITOR  -  SelfMonitor threads (inside this process)
 #
 # Nothing else may start main.py when supervisor is running.
 # watchdog.ps1, restart.bat, restart_clean.bat are deprecated (see .DEPRECATED files).
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
 
-# â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  -  -  Utilities  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
 EXPECTED_DECISIONS_VERSION = "phase3-1.1"
 
@@ -125,7 +125,7 @@ def _kill_pid(pid: int) -> bool:
         return False
 
 
-# â”€â”€ PID Lock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  -  -  PID Lock  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
 class PidLock:
     """
@@ -205,7 +205,7 @@ class PidLock:
                 pass
 
 
-# â”€â”€ Circuit Breaker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  -  -  Circuit Breaker  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
 class CircuitBreaker:
     """
@@ -231,7 +231,7 @@ class CircuitBreaker:
         self._total_restarts = 0
         self._restore()
 
-    # â”€â”€ Public â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Public  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def allow_restart(self) -> bool:
         now = time.monotonic()
@@ -259,7 +259,7 @@ class CircuitBreaker:
         self._do_reset()
 
     def force_reset(self) -> None:
-        """Explicit reset â€” triggered by reset_breaker file or command."""
+        """Explicit reset  -  triggered by reset_breaker file or command."""
         self._do_reset()
 
     def seconds_until_reset(self) -> float:
@@ -278,7 +278,7 @@ class CircuitBreaker:
             "seconds_until_reset": round(self.seconds_until_reset(), 1),
         }
 
-    # â”€â”€ Internal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Internal  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def _do_reset(self) -> None:
         self._times     = []
@@ -310,14 +310,14 @@ class CircuitBreaker:
             self._total_restarts = int(data.get("total_restarts", 0))
             if data.get("tripped"):
                 # Approximate: we can't know exact monotonic time from a previous run.
-                # Treat as if tripped just now â€” will auto-clear after cooldown_s.
+                # Treat as if tripped just now  -  will auto-clear after cooldown_s.
                 self.tripped    = True
                 self._trip_time = time.monotonic()
         except Exception:
             pass
 
 
-# â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  -  -  Helpers  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
 def _new_id() -> str:
     import uuid
@@ -618,7 +618,7 @@ class _Phase3Watcher:
         }
 
 
-# â”€â”€ Supervisor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  -  -  Supervisor  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
 class Supervisor:
 
@@ -715,7 +715,7 @@ class Supervisor:
             log_fn=self.log,
         )
 
-    # â”€â”€ Logging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Logging  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def log(self, line: str) -> None:
         msg = f"[{utc_now()}] {line}\n"
@@ -725,7 +725,7 @@ class Supervisor:
         except Exception:
             pass
 
-    # â”€â”€ Status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Status  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def write_status(self, extra: Optional[Dict[str, Any]] = None) -> None:
         # Compute startup deadline info for status visibility
@@ -768,7 +768,7 @@ class Supervisor:
             return self._adopted_pid
         return None
 
-    # â”€â”€ App alive check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  App alive check  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def _app_alive(self) -> bool:
         if self.process is not None and self.process.poll() is None:
@@ -779,7 +779,7 @@ class Supervisor:
             self._adopted_pid = None  # adopted process died
         return False
 
-    # â”€â”€ Process adoption â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Process adoption  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def _adopt_existing_app(self) -> bool:
         """
@@ -830,7 +830,7 @@ class Supervisor:
             self.log(f"adopt_existing_app failed: {exc}")
             return False
 
-    # â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Lifecycle  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def start_app(self, reason: str) -> bool:
         """
@@ -847,7 +847,7 @@ class Supervisor:
         if not self.circuit_breaker.allow_restart():
             wait = self.circuit_breaker.seconds_until_reset()
             self.log(
-                f"circuit_breaker TRIPPED â€” refusing restart reason={reason!r} "
+                f"circuit_breaker TRIPPED  -  refusing restart reason={reason!r} "
                 f"({wait:.0f}s until auto-reset)"
             )
             self._record_incident("ERROR", "circuit_breaker_tripped", "app_restart",
@@ -888,7 +888,7 @@ class Supervisor:
     def stop_app(self, reason: str) -> None:
         """
         Stop the managed app.
-        ALWAYS by owned PID or adopted PID â€” never by broad pattern matching.
+        ALWAYS by owned PID or adopted PID  -  never by broad pattern matching.
         """
         if self.process is not None:
             pid = self.process.pid
@@ -910,7 +910,7 @@ class Supervisor:
             if _pid_alive(pid):
                 self.log(f"stopping adopted app pid={pid} reason={reason!r}")
                 if not _kill_pid(pid):
-                    self.log(f"kill_pid({pid}) failed â€” process may already be dead")
+                    self.log(f"kill_pid({pid}) failed  -  process may already be dead")
                 # Give it a moment
                 for _ in range(10):
                     if not _pid_alive(pid):
@@ -932,7 +932,7 @@ class Supervisor:
         time.sleep(1.0)
         return self.start_app(reason=reason)
 
-    # â”€â”€ Health â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Health  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def _read_health(self) -> Optional[Dict[str, Any]]:
         """Read health.json safely. Returns None on any error."""
@@ -1191,12 +1191,12 @@ class Supervisor:
         enforces both the process-liveness and heartbeat-file checks."""
         return self.heartbeat_valid()
 
-    # â”€â”€ Request handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Request handlers  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def process_supervisor_requests(self) -> None:
         """
         Process all *.json files in supervisor_requests/.
-        Malformed/bad JSON is logged and skipped â€” never crashes the loop.
+        Malformed/bad JSON is logged and skipped  -  never crashes the loop.
         """
         for path in sorted(self.sup_req_dir.glob("*.json")):
             try:
@@ -1324,13 +1324,13 @@ class Supervisor:
             except Exception as exc:
                 self.log(f"backup prune failed {old_dir.name}: {exc}")
 
-    # â”€â”€ Non-blocking deploy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Non-blocking deploy  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def process_deploy_requests(self) -> None:
         """
         Start a deploy in a background thread.
         Supervisor loop stays unblocked and continues health monitoring.
-        Exactly one deploy at a time â€” concurrent deploys are rejected.
+        Exactly one deploy at a time  -  concurrent deploys are rejected.
         """
         # Don't start another while one is running
         if self._deploy_thread and self._deploy_thread.is_alive():
@@ -1387,7 +1387,7 @@ class Supervisor:
             path.unlink(missing_ok=True)
             self._deploy_in_progress.discard(stem)
 
-    # â”€â”€ Self-monitor bootstrap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Self-monitor bootstrap  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def _start_self_monitor(self) -> None:
         try:
@@ -1482,7 +1482,7 @@ class Supervisor:
             severity, f"phase3_{trigger}", "phase3_restart", state, detail=detail
         )
 
-    # â”€â”€ Main loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Main loop  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def _verify_decisions_version(self) -> None:
         """Fail-closed check: resolved_decisions.json must match EXPECTED_DECISIONS_VERSION."""
@@ -1528,7 +1528,7 @@ class Supervisor:
 
             while True:
                 try:
-                    # â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    #  -  -  Health check  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
                     if not self._app_alive():
                         stable_ticks = 0
                         self.log("app process not alive -- restarting")
@@ -1558,14 +1558,14 @@ class Supervisor:
                     # but not yet validated. stable_ticks stays at 0.
 
 
-                    # â”€â”€ Check circuit-breaker reset file â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    #  -  -  Check circuit-breaker reset file  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
                     reset_file = self.runtime_dir / "reset_circuit_breaker.flag"
                     if reset_file.exists():
                         self.circuit_breaker.force_reset()
                         reset_file.unlink(missing_ok=True)
                         self.log("circuit breaker reset via flag file")
 
-                    # â”€â”€ Process requests and deploys â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    #  -  -  Process requests and deploys  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
                     # AUDIT-PHASE-2-OPS-001: restart_trigger.txt watcher.
                     # AUDIT 2026-04-28 (deferred-frozen): clear via
                     # tmp+rename so a writer racing the clear can't see
@@ -1618,7 +1618,7 @@ class Supervisor:
                     pass
 
 
-# â”€â”€ Entry point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  -  -  Entry point  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
