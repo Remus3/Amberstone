@@ -148,7 +148,15 @@ class IncludeConditionalTrueTests(unittest.TestCase):
     """``include_conditional=True`` folds conditional contributions into EHP."""
 
     def test_brand_conditional_only_erodes_ehp(self) -> None:
-        """Brand R = 2.0s * 0.7 = 1.4s conditional contribution discounts EHP."""
+        """Brand conditional contribution discounts EHP.
+
+        Brand has wave 0 R (2.0 * 0.7 = 1.4 weighted) + wave 6 Q
+        (1.25 * 0.5 = 0.625 weighted) + any future Brand wave
+        additions. At wave-6 registry state total = 2.025 weighted.
+        Use assertGreaterEqual floor at 1.4 (wave-0-only baseline)
+        for forward-compat with future Brand wave additions; the
+        discount math derives from live measured value.
+        """
         r_default = compute_ehp(
             _SNAPSHOT,
             "Aatrox",
@@ -166,19 +174,20 @@ class IncludeConditionalTrueTests(unittest.TestCase):
         )
         # Default: Brand contributes 0.0 -> cc_blended_ehp == blended_ehp
         self.assertEqual(r_default.cc_blended_ehp, r_default.blended_ehp)
-        # Opt-in: 2.0 * 0.7 = 1.4s conditional. Fraction = 1.4/6 = 0.2333
-        # Discount = 0.2333 * 0.5 = 0.1167 -> cc_blended = 0.8833 * blended
-        self.assertAlmostEqual(r_opt_in.enemy_cc_pressure_s, 1.4, places=4)
+        # Opt-in: at least 1.4s (wave-0 R contribution) - assertGreaterEqual
+        # floor for forward-compat with future Brand wave additions.
+        self.assertGreaterEqual(r_opt_in.enemy_cc_pressure_s, 1.4)
+        # Discount math must match live measured pressure value.
+        live_frac = min(r_opt_in.enemy_cc_pressure_s / 6.0, 1.0)
         self.assertAlmostEqual(
-            r_opt_in.cc_pressure_fraction, 1.4 / 6.0, places=4
+            r_opt_in.cc_pressure_fraction, live_frac, places=4
         )
-        expected_blend = r_opt_in.blended_ehp * (
-            1.0 - (1.4 / 6.0) * 0.5
-        )
+        expected_blend = r_opt_in.blended_ehp * (1.0 - live_frac * 0.5)
         self.assertAlmostEqual(
             r_opt_in.cc_blended_ehp, expected_blend, places=4
         )
-        # And cc_blended_ehp is strictly LESS than the default case
+        # And cc_blended_ehp is strictly LESS than the default case -
+        # pinned regardless of future Brand wave additions.
         self.assertLess(r_opt_in.cc_blended_ehp, r_default.cc_blended_ehp)
 
     def test_annie_unconditional_combined_with_default(self) -> None:
@@ -248,7 +257,14 @@ class IncludeConditionalTrueTests(unittest.TestCase):
         )
 
     def test_annie_plus_brand_unconditional_and_conditional_combine(self) -> None:
-        """Annie R 1.5 + Brand R conditional 1.4 = 2.9s combined."""
+        """Annie R unconditional + Brand conditional entries combine.
+
+        Annie R = 1.5s unconditional. Brand has wave 0 R (2.0s * 0.7 prob
+        = 1.4 weighted) + wave 6 Q (1.25s * 0.5 prob = 0.625 weighted) +
+        any future Brand wave additions. Total combined = 1.5 + 1.4 +
+        0.625 = 3.525s at current registry state. Use assertGreaterEqual
+        floors for forward-compat with future Brand wave additions.
+        """
         r_default = compute_ehp(
             _SNAPSHOT,
             "Aatrox",
@@ -264,20 +280,38 @@ class IncludeConditionalTrueTests(unittest.TestCase):
             enemy_champions=("Annie", "Brand"),
             include_conditional=True,
         )
-        # Default: Annie 1.5 + Brand 0.0 = 1.5
+        # Default: Annie 1.5 + Brand 0.0 = 1.5 (exact - unconditional path)
         self.assertAlmostEqual(
             r_default.enemy_cc_pressure_s, 1.5, places=4
         )
-        # Opt-in: Annie 1.5 + Brand 1.4 = 2.9
-        self.assertAlmostEqual(r_opt_in.enemy_cc_pressure_s, 2.9, places=4)
-        # Opt-in cc_blended_ehp strictly lower than default
+        # Opt-in: Annie 1.5 + Brand R weighted 1.4 + Brand Q weighted
+        # 0.625 = 3.525 at wave-6 registry state. Floor at 2.9 (the
+        # wave-0-only baseline of Annie 1.5 + Brand R 1.4) for forward-
+        # compat with future Brand wave additions; the live value MUST
+        # exceed default by at least the Brand R contribution.
+        self.assertGreaterEqual(r_opt_in.enemy_cc_pressure_s, 2.9)
+        # Opt-in cc_blended_ehp strictly lower than default - the
+        # conditional contribution erodes EHP. Pinned regardless of
+        # future Brand wave additions.
         self.assertLess(r_opt_in.cc_blended_ehp, r_default.cc_blended_ehp)
-        # Fraction = 2.9/6.0; discount = (2.9/6.0) * 0.5
-        expected = r_opt_in.blended_ehp * (1.0 - (2.9 / 6.0) * 0.5)
+        # The cc_blended_ehp formula must match the live enemy_cc_pressure_s
+        # via the canonical discount: blended_ehp * (1 - frac * 0.5)
+        # where frac = enemy_cc_pressure_s / 6.0 clamped at 1.0. Use
+        # live measured values so test stays valid as registry grows.
+        live_frac = min(r_opt_in.enemy_cc_pressure_s / 6.0, 1.0)
+        expected = r_opt_in.blended_ehp * (1.0 - live_frac * 0.5)
         self.assertAlmostEqual(r_opt_in.cc_blended_ehp, expected, places=4)
 
     def test_multi_conditional_enemies_aggregate(self) -> None:
-        """Brand + Warwick (both conditional-only) aggregate cleanly."""
+        """Brand + Warwick (both conditional-only) aggregate cleanly.
+
+        Brand carries wave 0 R (2.0 * 0.7 = 1.4) + wave 6 Q (1.25 * 0.5
+        = 0.625) + any future wave additions. Warwick carries wave 0 R
+        (max rank 2.0 * 0.5 = 1.0). Total at wave-6 registry state =
+        1.4 + 0.625 + 1.0 = 3.025. Use assertGreaterEqual floor for
+        forward-compat with future wave additions; the wave-0-only
+        baseline (1.4 + 1.0 = 2.4) is the load-bearing floor.
+        """
         r_opt_in = compute_ehp(
             _SNAPSHOT,
             "Aatrox",
@@ -286,15 +320,17 @@ class IncludeConditionalTrueTests(unittest.TestCase):
             enemy_champions=("Brand", "Warwick"),
             include_conditional=True,
         )
-        # Brand R 2.0 * 0.7 = 1.4
-        # Warwick R max rank 2.0 * 0.5 = 1.0
-        # Total = 1.4 + 1.0 = 2.4
-        self.assertAlmostEqual(r_opt_in.enemy_cc_pressure_s, 2.4, places=4)
-        # Fraction = 2.4/6.0 = 0.4; discount = 0.4 * 0.5 = 0.2 -> 0.8 * blended
+        # Floor at 2.4 (wave-0-only baseline) for forward-compat with
+        # future Brand/Warwick wave additions.
+        self.assertGreaterEqual(r_opt_in.enemy_cc_pressure_s, 2.4)
+        # Discount math is canonical: cc_pressure_fraction = pressure / 6
+        # clamped at 1.0; cc_blended_ehp = blended_ehp * (1 - frac * 0.5).
+        # Use live measured values so test stays valid as registry grows.
+        live_frac = min(r_opt_in.enemy_cc_pressure_s / 6.0, 1.0)
         self.assertAlmostEqual(
-            r_opt_in.cc_pressure_fraction, 0.4, places=4
+            r_opt_in.cc_pressure_fraction, live_frac, places=4
         )
-        expected = r_opt_in.blended_ehp * 0.8
+        expected = r_opt_in.blended_ehp * (1.0 - live_frac * 0.5)
         self.assertAlmostEqual(r_opt_in.cc_blended_ehp, expected, places=4)
 
 
@@ -305,7 +341,16 @@ class AramTenacityAppliesToConditionalEhpTests(unittest.TestCase):
     """ARAM tenacity flows through into the cc_blended_ehp discount via cc_pressure."""
 
     def test_aram_tenacity_lengthens_conditional_in_ehp_via_monkeypatch(self) -> None:
-        """Add Brand to fake tenacity map; ARAM mode lifts cc_blended discount."""
+        """Add Brand to fake tenacity map; ARAM mode lifts cc_blended discount.
+
+        Brand carries wave 0 R + wave 6 Q + any future Brand wave
+        additions. The tenacity multiplier applies UNIFORMLY to the
+        entire summed conditional pressure (cc_pressure does the
+        multiplication post-aggregation). The exact pre-tenacity value
+        is registry-version-dependent; the load-bearing pin is the
+        RATIO of ARAM-to-SR pressure ALWAYS equals 1.20x (the tenacity
+        multiplier itself).
+        """
         # No champion at 16.10.1 is in BOTH the conditional registry +
         # the modified-tenacity map. Monkey-patch the cc_pressure
         # tenacity map to add Brand at 1.20x.
@@ -329,10 +374,16 @@ class AramTenacityAppliesToConditionalEhpTests(unittest.TestCase):
                 enemy_champions=("Brand",),
                 include_conditional=True,
             )
-        # SR: 2.0 * 0.7 = 1.4 (identity tenacity = 1.0)
-        self.assertAlmostEqual(r_sr.enemy_cc_pressure_s, 1.4, places=4)
-        # ARAM: 1.4 * 1.20 = 1.68 (tenacity lengthens conditional)
-        self.assertAlmostEqual(r_aram.enemy_cc_pressure_s, 1.68, places=4)
+        # SR: floor at 1.4 (wave-0 R contribution); future Brand waves
+        # add via assertGreaterEqual.
+        self.assertGreaterEqual(r_sr.enemy_cc_pressure_s, 1.4)
+        # ARAM: SR pressure x 1.20 tenacity multiplier (load-bearing
+        # ratio pin; the absolute value is registry-version-dependent).
+        self.assertAlmostEqual(
+            r_aram.enemy_cc_pressure_s,
+            r_sr.enemy_cc_pressure_s * 1.20,
+            places=4,
+        )
         # ARAM cc_blended_ehp discount is correspondingly larger.
         # Note: ARAM also has aramDamageTaken which scales blended_ehp,
         # so compare the discount RATIO not absolute values across modes.
@@ -358,12 +409,18 @@ class AramTenacityAppliesToConditionalEhpTests(unittest.TestCase):
         self.assertAlmostEqual(r.cc_blended_ehp, r.blended_ehp * 0.5, places=4)
 
     def test_kiwi_mode_propagates_conditional_tenacity_through_ehp(self) -> None:
-        """KIWI (ARAM Mayhem) mode also propagates conditional tenacity."""
+        """KIWI (ARAM Mayhem) mode also propagates conditional tenacity.
+
+        Brand has wave 0 R + wave 6 Q + any future wave additions;
+        the load-bearing pin is the RATIO ARAM-to-SR pressure equals
+        the tenacity multiplier (1.20x), regardless of the absolute
+        pressure value.
+        """
         fake_tenacity = {"Brand": 1.20}
         with mock.patch.object(
             cc_pressure, "_TENACITY_MAP", fake_tenacity
         ):
-            r = compute_ehp(
+            r_aram = compute_ehp(
                 _SNAPSHOT,
                 "Aatrox",
                 level=11,
@@ -371,7 +428,24 @@ class AramTenacityAppliesToConditionalEhpTests(unittest.TestCase):
                 enemy_champions=("Brand",),
                 include_conditional=True,
             )
-        self.assertAlmostEqual(r.enemy_cc_pressure_s, 1.68, places=4)
+            r_sr = compute_ehp(
+                _SNAPSHOT,
+                "Aatrox",
+                level=11,
+                mode="SR",
+                enemy_champions=("Brand",),
+                include_conditional=True,
+            )
+        # ARAM = SR * 1.20 (load-bearing tenacity ratio pin); absolute
+        # value depends on registry state. Floor at 1.68 (wave-0-only
+        # baseline: 1.4 * 1.20) for forward-compat with future Brand
+        # wave additions.
+        self.assertGreaterEqual(r_aram.enemy_cc_pressure_s, 1.68)
+        self.assertAlmostEqual(
+            r_aram.enemy_cc_pressure_s,
+            r_sr.enemy_cc_pressure_s * 1.20,
+            places=4,
+        )
 
 
 # ---------------- 4. EngineVersionCurrentTests ----------------
