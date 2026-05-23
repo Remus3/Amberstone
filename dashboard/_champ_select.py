@@ -89,11 +89,18 @@ def brief_via_coach(champ: str, enemies: list, allies: list,
             f"- For runes, return the keystone + trees + 3 shards the champ actually runs.\n"
             f"- 'ally_notes' = empty string if ALLIES is unknown."
         )
+        _CS_MODEL = "claude-haiku-4-5-20251001"
         resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=_CS_MODEL,
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
+        # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker.
+        try:
+            from core.cost_tracker import record_anthropic_response
+            record_anthropic_response(resp, model=_CS_MODEL, purpose="champ_select_brief")
+        except Exception as exc:
+            log.debug("cost_tracker record: %s", exc)
         text = resp.content[0].text.strip()
         # Strip any stray code fences
         if text.startswith("```"):

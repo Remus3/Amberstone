@@ -290,6 +290,13 @@ class TftLiveAnalysis:
                 logger.debug("moon_proxy.get_coaching primary path failed: %s", _exc)
             if raw is None:
                 resp=self._client.messages.create(model=self._model,max_tokens=500,messages=[{"role":"user","content":p}])
+                # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
+                # local-fallback path. moon_proxy primary records via vision_server.
+                try:
+                    from core.cost_tracker import record_anthropic_response
+                    record_anthropic_response(resp, model=self._model, purpose="tft_live_analysis")
+                except Exception as _exc:
+                    logger.debug("cost_tracker record: %s", _exc)
                 raw=resp.content[0].text; logger.info("Live analysis in %dms",int((time.time()-t0)*1000))
             f=_parse_analysis(raw)
             if f.get("comp","").upper().startswith("SPECTATING"): logger.debug("Spectating \u2014 skip"); return
@@ -314,6 +321,13 @@ class TftLiveAnalysis:
                 logger.debug("moon_proxy.get_coaching augment-select path failed: %s", _exc)
             if _araw is None:
                 _aresp=self._client.messages.create(model=self._model,max_tokens=300,messages=[{"role":"user","content":p}])
+                # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
+                # local-fallback path. moon_proxy primary records via vision_server.
+                try:
+                    from core.cost_tracker import record_anthropic_response
+                    record_anthropic_response(_aresp, model=self._model, purpose="tft_live_aug_select")
+                except Exception as _exc:
+                    logger.debug("cost_tracker record: %s", _exc)
                 _araw=_aresp.content[0].text
             raw=re.sub(r'\*{1,3}(.*?)\*{1,3}',r'\1',_araw)
             tk=_xf(raw,"Take"); why=_xf(raw,"Why"); plan=_xf(raw,"Gameplan")

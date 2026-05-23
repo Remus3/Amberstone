@@ -424,6 +424,13 @@ class TftPbeCoachEngine:
             system     = TFT_PBE_SYSTEM_PROMPT,
             messages   = [{"role": "user", "content": prompt}],
         )
+        # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker. POLLING
+        # cadence (per game tick).
+        try:
+            from core.cost_tracker import record_anthropic_response
+            record_anthropic_response(response, model=self._model, purpose="tft_pbe")
+        except Exception as exc:
+            logger.debug("cost_tracker record: %s", exc)
         latency = int((time.time() - t0) * 1000)
         raw     = response.content[0].text
         logger.info("TFT PBE coach response in %dms", latency)
