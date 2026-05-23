@@ -57,7 +57,7 @@ class StateValidator:
         self._last_run   = 0.0
         self._mismatch_count = 0
 
-    # â”€â”€ Public â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Public  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def maybe_run(self) -> Optional[Dict[str, Any]]:
         """Call on every monitor tick. Only runs at self.interval_s cadence."""
@@ -85,11 +85,11 @@ class StateValidator:
         is_tft = health.get("tft_mode", False)
         has_game = health.get("has_game", False)
 
-        # â”€â”€ Check 1: mode field plausibility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        #  -  -  Check 1: mode field plausibility  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
         if mode not in ("client", "game", "unknown"):
             self._mismatch("mode_invalid", f"health mode={mode!r}", report)
 
-        # â”€â”€ Check 2: coaching data freshness (SR only, during active game) â”€â”€â”€
+        #  -  -  Check 2: coaching data freshness (SR only, during active game)  -  -  - 
         if has_game and not is_tft and self._coaching_file.exists():
             age = time.time() - self._coaching_file.stat().st_mtime
             if age > self.staleness_threshold:
@@ -100,7 +100,7 @@ class StateValidator:
                 )
             report["checks"].append(f"sr_coaching_age={age:.0f}s")
 
-        # â”€â”€ Check 3: TFT live data plausibility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        #  -  -  Check 3: TFT live data plausibility  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
         if is_tft and has_game:
             live = self._read_json(self._tft_live_file)
             if live:
@@ -120,7 +120,7 @@ class StateValidator:
                     )
                 report["checks"].append(f"tft_hp={hp} sr={sr}")
 
-        # â”€â”€ Check 4: TFT coaching vs live stage_round agreement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        #  -  -  Check 4: TFT coaching vs live stage_round agreement  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
         if is_tft and has_game:
             live  = self._read_json(self._tft_live_file)
             coach = self._read_json(self._tft_coach_file)
@@ -136,7 +136,7 @@ class StateValidator:
                         severity="WARN",
                     )
 
-        # â”€â”€ Check 5: TFT coaching file freshness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        #  -  -  Check 5: TFT coaching file freshness  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
         if is_tft and has_game and self._tft_coach_file.exists():
             age = time.time() - self._tft_coach_file.stat().st_mtime
             if age > self.staleness_threshold:
@@ -147,7 +147,7 @@ class StateValidator:
                 )
             report["checks"].append(f"tft_coaching_age={age:.0f}s")
 
-        # â”€â”€ Check 6: OCR cross-check (only if enabled + Tesseract present) â”€â”€â”€
+        #  -  -  Check 6: OCR cross-check (only if enabled + Tesseract present)  -  -  - 
         if self.ocr_enabled and is_tft and has_game:
             self._ocr_check(report)
 
@@ -156,7 +156,7 @@ class StateValidator:
         self._mismatch_count += report["mismatch_count"]
         return report
 
-    # â”€â”€ Internal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Internal  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
     def _mismatch(
         self,

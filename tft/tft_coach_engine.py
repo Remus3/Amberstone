@@ -293,7 +293,7 @@ def _build_prompt(state: dict) -> str:
     if _live_board:
         lines.append(f"Board units: {_live_board}")
 
-    # â”€â”€ Augment context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Augment context  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
     # Build augment string from live data or items_str
     _aug_str = ""
     if _live_augments:
@@ -364,7 +364,7 @@ def _build_prompt(state: dict) -> str:
         f"Your items/augments: {items_str}",
     ]
 
-    # â”€â”€ Selected comp context (from overlay comp selector) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    #  -  -  Selected comp context (from overlay comp selector)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
     try:
         import json as _cj
         from pathlib import Path as _cp
