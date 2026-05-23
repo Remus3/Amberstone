@@ -1321,7 +1321,111 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.45.0"
+ENGINE_VERSION = "1.46.0"
+# 1.46.0 (cc_conditional wave 9 + Meraki extractor schema lift -
+# +3 entries / +3 net-new champions closing 3 of 7 schema-lift-
+# blocked candidates from prior wave REJECT carries, 2026-05-23):
+#
+# Ships the long-deferred Meraki extractor schema lift (item 147
+# carry (l) / item 150 wave 7 / items 151+152 carry) by adding
+# ``effects_descriptions: list[str]`` to each form record in
+# ``data/daemon_slayer/16.10.1/champion_abilities.json`` via
+# ``tools/daemon_slayer_abilities_extract.py``. The lift is PURELY
+# ADDITIVE: damage_blocks pipeline + parse_status math + downstream
+# consumers see byte-identical structured fields. Captures
+# empowered / form-gated CC mechanics that lived in description
+# text but were absent from the structured leveling[] blocks
+# (Renekton W Reign-of-Anger empowered stun 1.5s, Volibear R turret-
+# only confirmation, Aatrox R minion-only fear confirmation, Briar
+# W frenzy self-buff-only confirmation).
+#
+# NEW cc_conditional entries (all via setdefault builder, +3 net-new
+# champions; registry 39/35 -> 42/38):
+#
+#   * Hwei E form 1 Grim Visage (channel 0.4 fear 1.0/1.125/1.25/
+#     1.375/1.5s across 5 ranks). Hwei E is a 2-cast cycle (E mood
+#     selector -> Q/W/E form lock). Form 1 EQ fires fear on completion.
+#     Maps to COND_CHANNEL_COMPLETION on the 2-cast sequence.
+#
+#   * Neeko E Tangle-Barbs EMPOWERED variant (dual_enemy 0.5 root
+#     1.8/2.1/2.4/2.7/3.0s across 5 ranks). Spiral grows on first-
+#     enemy hit, subsequent enemies hit by the grown spiral are
+#     rooted for the empowered duration. Maps to COND_DUAL_ENEMY
+#     (2+ enemies in spiral path). Coexists with unconditional Neeko
+#     E base root (0.7-1.5s in _PER_SPELL_CC_DURATIONS) via the
+#     separate-registry pattern.
+#
+#   * Renekton W Reign-of-Anger empowered stun (frenzy_state 0.4
+#     stun 1.5s flat across 5 ranks). The Fury-empowered cast extends
+#     the base W stun (0.75s in unconditional) to 1.5s. Mechanic
+#     value captured EXCLUSIVELY in effects_descriptions[2] "Reign
+#     of Anger Bonus: ... increasing the stun duration to 1.5
+#     seconds" - the schema lift is necessary to verify this. Maps
+#     to COND_FRENZY_STATE - FIRST consumer of the wave 7 forward-
+#     marker tag, closing the empty-registry contract.
+#
+# NO new condition tag constants this wave. All 3 use existing
+# COND_CHANNEL_COMPLETION (1 entry) + COND_DUAL_ENEMY (1 entry) +
+# COND_FRENZY_STATE (1 entry; first consumer of the wave 7 forward-
+# marker tag). The Renekton W entry closes the COND_FRENZY_STATE
+# empty-registry pattern (parallel to s112 STAT_GRANT_CALC_KEYS
+# closure precedent + s134 _PER_SPELL_CC_DURATIONS seed precedent).
+#
+# REJECT verdicts (4 candidates from item 152 mission spec) after
+# schema-lift verification:
+#
+#   (a) Karma W form 1 Renewal - same (Karma, W) slot already in
+#       cc_conditional wave 1 (Focused Resolve channel-completion
+#       root). Registry keyed (champion, spell); form 1 R-empowered
+#       variant cannot coexist on the same slot. Wave 1 entry
+#       captures the core mechanic; R-empowered extension is a
+#       calibration tuning, not new mechanic.
+#   (b) Aatrox R World Ender - schema-lifted description confirms
+#       3s fear targets minions/monsters ONLY, NOT champions. No
+#       champion-facing CC. The item 150 audit speculation about
+#       "post-R passive empowered Q-sweetspot/W-pull" is not
+#       supported by Riot 16.10.1 description text.
+#   (c) Volibear R Stormbringer - schema-lifted description confirms
+#       only turret-disable + 50% slow (1s decaying). Slow is NOT
+#       first-order CC; turret-only disable is not champion CC.
+#   (d) Briar W Blood Frenzy - schema-lifted description confirms
+#       Blood Frenzy is purely self-buff (ghosting + AS + MS +
+#       AoE-around-target AA empowerment). No CC granted to other
+#       spells while in frenzy state.
+#
+# Consumer math BYTE-IDENTICAL to 1.45.0 for default
+# include_conditional=False callers across all 5 consumer surfaces
+# (cc_pressure + compute_ehp + compute_hybrid + coach prompt +
+# dashboard UI). The 3 new entries surface in compute_cc_pressure
+# for their champions when callers opt in via
+# include_conditional=True.
+#
+# Extractor lift verified: re-extracted patch 16.10.1 with --force
+# (operator authorized via mission spec - current.txt unchanged at
+# 16.10.1). New JSON is 2,260,764 bytes (was 1,702,349 bytes;
+# +33% growth from descriptions). Coverage section UNCHANGED
+# (927 forms / 571 ok / 3 partial / 3 unparsed / 350 no_damage /
+# 99.0% ok_rate / 99.5% parsed_rate) - the lift is structurally a
+# strict superset.
+#
+# +N tests NEW
+# ``agents/daemon_slayer/tests/test_cc_conditional_wave9.py`` mirrors
+# wave 8 test structure. Plus extractor schema lift tests in
+# ``agents/daemon_slayer/tests/test_abilities_extract_descriptions.py``
+# pinning the effects_descriptions field shape + presence on the
+# 7 candidate forms.
+# ``test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES``
+# gained ``test_cc_conditional_wave9.py``.
+#
+# Carry-forwards from item 152 mostly unchanged: (a) operator
+# calibrations still tunable via JSON loader; (b) RC-PostmortemAnalyze
+# first scheduled run 2026-05-24 04:15 still pending; (c) DD Defy
+# still deferred; (d) live ARAM/SR smoke still pending. The Meraki
+# extractor schema lift (cited as "operator-gated" in items 150 + 151
+# carry-forwards) is now SHIPPED at ENGINE 1.46.0 - that lever is
+# closed; future wave 10+ growth must source NEW mechanics or
+# operator-tune existing calibrations.
+#
 # 1.45.0 (cc_conditional wave 8 - +3 entries / +3 net-new champions
 # closing prior-wave REJECT carries that DO NOT need the Meraki
 # extractor schema lift, 2026-05-22):
