@@ -592,7 +592,26 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
-    if (viewId === "user-builds") { _userBuildsWireOnce(); _userBuildsFetchAndRender(); }
+    if (viewId === "user-builds") {
+      _userBuildsWireOnce();
+      _userBuildsFetchAndRender();
+      // Dev override: ?ub_form=mock auto-opens the form pane with the
+      // first mock-fixture build pre-loaded so headless-Chrome audit
+      // captures land on the rune-builder + spell-chooser rendered.
+      try {
+        const p = new URLSearchParams(location.search || "");
+        if (p.get("ub_form") === "mock" && document.body.dataset.uiMock === "1") {
+          fetch("/data/ui_mock/user_builds.json", { cache: "no-store" })
+            .then((r) => (r && r.ok ? r.json() : null))
+            .then((d) => {
+              const first = d && d.builds && d.builds[0];
+              if (!first) return;
+              _UB.champion = d.champion || "Tristana";
+              setTimeout(() => _userBuildsOpenForm(first), 100);
+            }).catch(() => {});
+        }
+      } catch (_) {}
+    }
     if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); }
   }
   function _viewUpdateTitleLabel(viewId) {
@@ -1744,6 +1763,37 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     editingId: null,    // build.id when editing, null when adding
     saving:    false,
   };
+  // Summoner-spell chooser state (rendered inside the form pane).
+  // Canonical 11-spell catalog covers Cleanse / Exhaust / Flash / Ghost
+  // / Heal / Smite / Teleport / Clarity / Ignite / Barrier / Snowball.
+  // _ubFormatSpells uses the same mapping; keep ids in sync if extended.
+  const _UB_SPELLS = [
+    { id: 4,  name: "Flash",    img: "SummonerFlash.png"   },
+    { id: 14, name: "Ignite",   img: "SummonerDot.png"     },
+    { id: 7,  name: "Heal",     img: "SummonerHeal.png"    },
+    { id: 6,  name: "Ghost",    img: "SummonerHaste.png"   },
+    { id: 21, name: "Barrier",  img: "SummonerBarrier.png" },
+    { id: 3,  name: "Exhaust",  img: "SummonerExhaust.png" },
+    { id: 1,  name: "Cleanse",  img: "SummonerBoost.png"   },
+    { id: 12, name: "Teleport", img: "SummonerTeleport.png"},
+    { id: 11, name: "Smite",    img: "SummonerSmite.png"   },
+    { id: 13, name: "Clarity",  img: "SummonerMana.png"    },
+    { id: 32, name: "Snowball", img: "SummonerSnowball.png"},
+  ];
+  // Rune-page + spell-chooser shared state. _RP_TREES cached lazily from
+  // /api/dictionary/runes on first form-open. Patch path fixed at the
+  // DDragon mirror's current dir (routes_dictionary serves runes for
+  // 16.10.1; the static folder mirrors the same patch in lockstep).
+  const _RP_DDRAGON_BASE = "/data/ddragon/16.10.1/img/";
+  let   _RP_TREES = null;
+  const _RP = {
+    primaryTree:    null,  // tree.key e.g. "Domination"
+    secondaryTree:  null,
+    keystone:       null,  // rune.name (display, also stored as keystone)
+    primaryMinors:  [],    // rune.name list (intended 1 per row, not enforced)
+    secondaryMinors: [],   // rune.name list (intended 2 max)
+  };
+  const _SP = { active: "d" };  // which slot the spell-grid click writes to
   function _ubEl(id) { return document.getElementById(id); }
   function _ubChampionsList() {
     // Cache a flat list of {name} for the datalist; populated lazily
@@ -1872,6 +1922,278 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         list.innerHTML = '<li class="home-empty">failed to load builds.</li>';
       });
   }
+  // ── Summoner-spell chooser (icon grid) ─────────────────────────────
+  function _spellById(id) {
+    const n = parseInt(id, 10);
+    return _UB_SPELLS.find((s) => s.id === n) || null;
+  }
+  function _spellIconUrl(img) {
+    return img ? (_RP_DDRAGON_BASE + "spell/" + img) : "";
+  }
+  function _ubSpellRenderCurrent() {
+    const dId = parseInt(_ubEl("ub-f-spell-d").value, 10);
+    const fId = parseInt(_ubEl("ub-f-spell-f").value, 10);
+    const dSp = _spellById(dId);
+    const fSp = _spellById(fId);
+    const dIcon = _ubEl("ub-sp-d-icon");
+    const fIcon = _ubEl("ub-sp-f-icon");
+    if (dIcon) { dIcon.src = _spellIconUrl(dSp && dSp.img); dIcon.alt = (dSp && dSp.name) || ""; }
+    if (fIcon) { fIcon.src = _spellIconUrl(fSp && fSp.img); fIcon.alt = (fSp && fSp.name) || ""; }
+    const dName = _ubEl("ub-sp-d-name");
+    const fName = _ubEl("ub-sp-f-name");
+    if (dName) dName.textContent = (dSp && dSp.name) || "-";
+    if (fName) fName.textContent = (fSp && fSp.name) || "-";
+    _ubEl("ub-sp-slot-d").classList.toggle("active", _SP.active === "d");
+    _ubEl("ub-sp-slot-f").classList.toggle("active", _SP.active === "f");
+  }
+  function _ubSpellRenderGrid() {
+    const g = _ubEl("ub-sp-grid");
+    if (!g || g.dataset.wired === "1") return;
+    g.dataset.wired = "1";
+    g.innerHTML = "";
+    for (const sp of _UB_SPELLS) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ub-sp-cell";
+      b.title = `${sp.name} (id ${sp.id})`;
+      b.dataset.spellId = String(sp.id);
+      const img = document.createElement("img");
+      img.src = _spellIconUrl(sp.img);
+      img.alt = sp.name;
+      const cap = document.createElement("span");
+      cap.className = "ub-sp-cell-name";
+      cap.textContent = sp.name;
+      b.appendChild(img);
+      b.appendChild(cap);
+      b.addEventListener("click", () => _ubSpellPick(sp.id));
+      g.appendChild(b);
+    }
+  }
+  function _ubSpellSlotActivate(slot) {
+    _SP.active = (slot === "f") ? "f" : "d";
+    _ubSpellRenderCurrent();
+  }
+  function _ubSpellPick(id) {
+    const slot   = _SP.active === "f" ? "f" : "d";
+    const otherSlot = slot === "d" ? "f" : "d";
+    const slotInput  = _ubEl(`ub-f-spell-${slot}`);
+    const otherInput = _ubEl(`ub-f-spell-${otherSlot}`);
+    if (!slotInput) return;
+    const prev = parseInt(slotInput.value, 10);
+    const other = parseInt(otherInput && otherInput.value, 10);
+    if (id === other && otherInput) {
+      // Swap so the operator can hot-swap by picking the other spell.
+      otherInput.value = prev;
+    }
+    slotInput.value = id;
+    // Auto-flip the active slot so two picks in a row populate both.
+    _SP.active = otherSlot;
+    _ubSpellRenderCurrent();
+  }
+
+  // ── Rune Page builder (5-tree tabs + keystone + minor picker) ─────
+  function _runeIconUrl(rel) {
+    return rel ? (_RP_DDRAGON_BASE + rel) : "";
+  }
+  function _ubRpFetchTrees() {
+    if (_RP_TREES) return Promise.resolve(_RP_TREES);
+    return fetch("/api/dictionary/runes", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        _RP_TREES = Array.isArray(d) ? d : [];
+        return _RP_TREES;
+      })
+      .catch(() => { _RP_TREES = []; return _RP_TREES; });
+  }
+  function _ubRpTreeByName(name) {
+    if (!name || !_RP_TREES) return null;
+    return _RP_TREES.find((t) => t.key === name || t.name === name) || null;
+  }
+  function _ubRpRenderTabs() {
+    const tabs = _ubEl("ub-rp-tabs");
+    if (!tabs) return;
+    tabs.innerHTML = "";
+    for (const t of (_RP_TREES || [])) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ub-rp-tab";
+      b.dataset.tree = t.key;
+      b.setAttribute("role", "tab");
+      b.classList.toggle("active", _RP.primaryTree === t.key);
+      const img = document.createElement("img");
+      img.src = _runeIconUrl(t.icon);
+      img.alt = t.name;
+      const cap = document.createElement("span");
+      cap.textContent = t.name;
+      b.appendChild(img);
+      b.appendChild(cap);
+      b.addEventListener("click", () => _ubRpPickPrimary(t.key));
+      tabs.appendChild(b);
+    }
+  }
+  function _ubRpRenderSecTrees() {
+    const row = _ubEl("ub-rp-sec-trees");
+    if (!row) return;
+    row.innerHTML = "";
+    for (const t of (_RP_TREES || [])) {
+      const isPrimary = (t.key === _RP.primaryTree);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ub-rp-sec-tab";
+      b.dataset.tree = t.key;
+      b.disabled = isPrimary;
+      b.classList.toggle("active", _RP.secondaryTree === t.key);
+      b.classList.toggle("disabled", isPrimary);
+      const img = document.createElement("img");
+      img.src = _runeIconUrl(t.icon);
+      img.alt = t.name;
+      const cap = document.createElement("span");
+      cap.textContent = t.name;
+      b.appendChild(img);
+      b.appendChild(cap);
+      b.addEventListener("click", () => { if (!isPrimary) _ubRpPickSecondary(t.key); });
+      row.appendChild(b);
+    }
+  }
+  function _ubRpBuildRow(rune, kind, rowIdx) {
+    const c = document.createElement("button");
+    c.type = "button";
+    c.className = `ub-rp-rune ub-rp-rune-${kind}`;
+    c.dataset.rune = rune.name;
+    c.dataset.row  = String(rowIdx);
+    const isKeystone = (kind === "keystone");
+    const sel = (
+      isKeystone ? (_RP.keystone === rune.name) :
+      kind === "primary" ? _RP.primaryMinors.includes(rune.name) :
+      _RP.secondaryMinors.includes(rune.name)
+    );
+    c.classList.toggle("selected", sel);
+    c.title = rune.name;
+    const img = document.createElement("img");
+    img.src = _runeIconUrl(rune.icon);
+    img.alt = rune.name;
+    const cap = document.createElement("span");
+    cap.textContent = rune.name;
+    c.appendChild(img);
+    c.appendChild(cap);
+    c.addEventListener("click", () => {
+      if (isKeystone) _ubRpPickKeystone(rune.name);
+      else if (kind === "primary") _ubRpToggleMinor("primary", rowIdx, rune.name);
+      else _ubRpToggleMinor("secondary", rowIdx, rune.name);
+    });
+    return c;
+  }
+  function _ubRpRenderRows(treeName, containerId, kind) {
+    const cont = _ubEl(containerId);
+    if (!cont) return;
+    cont.innerHTML = "";
+    const tree = _ubRpTreeByName(treeName);
+    if (!tree) {
+      cont.innerHTML = '<div class="ub-rp-empty">pick a tree above</div>';
+      return;
+    }
+    tree.slots.forEach((slot, i) => {
+      // For the SECONDARY pane, skip the keystone slot (row 0); the
+      // secondary tree only contributes minor runes per the game's rules.
+      if (kind === "secondary" && i === 0) return;
+      const rowEl = document.createElement("div");
+      rowEl.className = "ub-rp-row";
+      rowEl.dataset.rowIdx = String(i);
+      for (const rune of slot.runes) {
+        const cellKind = (kind === "primary" && i === 0) ? "keystone" : kind;
+        rowEl.appendChild(_ubRpBuildRow(rune, cellKind, i));
+      }
+      cont.appendChild(rowEl);
+    });
+  }
+  function _ubRpRenderSummary() {
+    const s = _ubEl("ub-rp-summary");
+    if (!s) return;
+    const bits = [];
+    if (_RP.keystone) bits.push(`Keystone: ${_RP.keystone}`);
+    if (_RP.primaryTree) {
+      const mins = _RP.primaryMinors.filter(Boolean);
+      bits.push(`Primary: ${_RP.primaryTree}${mins.length ? " (" + mins.join(" + ") + ")" : ""}`);
+    }
+    if (_RP.secondaryTree) {
+      const mins = _RP.secondaryMinors.filter(Boolean);
+      bits.push(`Secondary: ${_RP.secondaryTree}${mins.length ? " (" + mins.join(" + ") + ")" : ""}`);
+    }
+    s.textContent = bits.length ? bits.join("  -  ") : "Pick a tree tab, then a keystone.";
+  }
+  function _ubRpSyncTextFields() {
+    const k = _ubEl("ub-f-keystone");
+    const p = _ubEl("ub-f-primary");
+    const sc = _ubEl("ub-f-secondary");
+    if (k)  k.value = _RP.keystone     || "";
+    if (p)  p.value = _RP.primaryTree  || "";
+    if (sc) sc.value = _RP.secondaryTree || "";
+  }
+  function _ubRpRenderAll() {
+    _ubRpRenderTabs();
+    _ubRpRenderRows(_RP.primaryTree,   "ub-rp-primary-rows",   "primary");
+    _ubRpRenderSecTrees();
+    _ubRpRenderRows(_RP.secondaryTree, "ub-rp-secondary-rows", "secondary");
+    _ubRpRenderSummary();
+    _ubRpSyncTextFields();
+  }
+  function _ubRpPickPrimary(treeName) {
+    if (_RP.primaryTree === treeName) return;
+    _RP.primaryTree = treeName;
+    // Reset keystone + primary minors when the tree changes.
+    _RP.keystone = null;
+    _RP.primaryMinors = [];
+    // If the new primary == current secondary, clear secondary so they
+    // can never be the same tree (game rule).
+    if (_RP.secondaryTree === treeName) {
+      _RP.secondaryTree = null;
+      _RP.secondaryMinors = [];
+    }
+    _ubRpRenderAll();
+  }
+  function _ubRpPickSecondary(treeName) {
+    if (treeName === _RP.primaryTree) return;
+    _RP.secondaryTree = treeName;
+    _RP.secondaryMinors = [];
+    _ubRpRenderAll();
+  }
+  function _ubRpPickKeystone(name) {
+    _RP.keystone = (_RP.keystone === name) ? null : name;
+    _ubRpRenderAll();
+  }
+  function _ubRpToggleMinor(side, rowIdx, name) {
+    // Single-pick per row in the primary pane; up to 2 total in the
+    // secondary pane with no per-row enforcement (visual freedom matches
+    // the operator's stated "tabs + driven fields" scope).
+    if (side === "primary") {
+      const tree = _ubRpTreeByName(_RP.primaryTree);
+      if (!tree) return;
+      const rowNames = (tree.slots[rowIdx] || {}).runes.map((r) => r.name);
+      // Remove any prior pick from THIS row, then add the new one.
+      _RP.primaryMinors = _RP.primaryMinors.filter((n) => !rowNames.includes(n));
+      if (!_RP.primaryMinors.includes(name)) _RP.primaryMinors.push(name);
+    } else {
+      const arr = _RP.secondaryMinors;
+      if (arr.includes(name)) {
+        _RP.secondaryMinors = arr.filter((n) => n !== name);
+      } else if (arr.length >= 2) {
+        // Replace the oldest to keep at 2.
+        _RP.secondaryMinors = [arr[1], name];
+      } else {
+        _RP.secondaryMinors = [...arr, name];
+      }
+    }
+    _ubRpRenderAll();
+  }
+  function _ubRpResetFromBuild(b) {
+    const r = (b && b.runes) || {};
+    _RP.primaryTree     = r.primary   || null;
+    _RP.secondaryTree   = r.secondary || null;
+    _RP.keystone        = r.keystone  || null;
+    _RP.primaryMinors   = Array.isArray(r.minor_primary)   ? r.minor_primary.slice()   : [];
+    _RP.secondaryMinors = Array.isArray(r.minor_secondary) ? r.minor_secondary.slice() : [];
+  }
+
   function _userBuildsOpenForm(buildOrNull) {
     const pane  = _ubEl("ub-form-pane");
     const title = _ubEl("ub-form-title");
@@ -1885,18 +2207,29 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (title) title.textContent = _UB.editingId ? `Edit build (${_UB.editingId.slice(0,6)}...)` : "Add build";
 
     const b = buildOrNull || {};
-    const r = b.runes || {};
     const sp = b.summoner_spells || [4, 14];
     _ubEl("ub-f-label").value     = b.label || "";
     _ubEl("ub-f-role").value      = b.role || "";
-    _ubEl("ub-f-keystone").value  = r.keystone  || "";
-    _ubEl("ub-f-primary").value   = r.primary   || "";
-    _ubEl("ub-f-secondary").value = r.secondary || "";
-    _ubEl("ub-f-spell-d").value   = (sp[0] != null) ? sp[0] : "";
-    _ubEl("ub-f-spell-f").value   = (sp[1] != null) ? sp[1] : "";
+    _ubEl("ub-f-spell-d").value   = (sp[0] != null) ? sp[0] : 4;
+    _ubEl("ub-f-spell-f").value   = (sp[1] != null) ? sp[1] : 14;
     _ubEl("ub-f-items").value     = (b.items || []).join("\n");
     _ubEl("ub-f-notes").value     = b.notes || "";
+    _ubRpResetFromBuild(b);
+    _SP.active = "d";
+    _ubSpellRenderGrid();
+    _ubSpellRenderCurrent();
     _ubFormStatus("", null);
+    _ubRpFetchTrees().then(_ubRpRenderAll);
+    // Wire the spell-slot click handlers once. _userBuildsWireOnce
+    // wires top-level toolbar buttons; the slot buttons live INSIDE the
+    // form pane that opens lazily, so wire here gated by a dataset flag.
+    for (const slot of ["d", "f"]) {
+      const el = _ubEl(`ub-sp-slot-${slot}`);
+      if (el && el.dataset.wired !== "1") {
+        el.dataset.wired = "1";
+        el.addEventListener("click", () => _ubSpellSlotActivate(slot));
+      }
+    }
     // Re-highlight rows so the editing one gets the active border.
     _userBuildsFetchAndRender();
     // Focus the label field for fast typing.
@@ -1927,9 +2260,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       label:    (_ubEl("ub-f-label").value || "").trim(),
       role:     (_ubEl("ub-f-role").value  || "").trim() || null,
       runes: {
-        keystone:  (_ubEl("ub-f-keystone").value  || "").trim(),
-        primary:   (_ubEl("ub-f-primary").value   || "").trim(),
-        secondary: (_ubEl("ub-f-secondary").value || "").trim(),
+        keystone:        _RP.keystone     || (_ubEl("ub-f-keystone").value  || "").trim(),
+        primary:         _RP.primaryTree  || (_ubEl("ub-f-primary").value   || "").trim(),
+        secondary:       _RP.secondaryTree || (_ubEl("ub-f-secondary").value || "").trim(),
+        minor_primary:   _RP.primaryMinors.slice(),
+        minor_secondary: _RP.secondaryMinors.slice(),
       },
       summoner_spells: [d, f],
       items:    items,
