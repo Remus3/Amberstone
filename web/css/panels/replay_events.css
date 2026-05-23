@@ -11,51 +11,56 @@
  * + future video-overlay direction - do NOT vendor its source.
  */
 
+/* v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #3 Replay, 2026-05-23):
+ * font/padding/radius/icon sizes migrated to tokens. */
 .replay-events-section {
-  margin-top: 14px;
-  padding: 12px 14px;
+  margin-top: var(--panel-gap);
+  padding: var(--panel-padding-comp);
   background: var(--surface);
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   display: flex; flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .replay-events-section[hidden] { display: none; }
 
 .replay-events-head {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 14px;
-  padding-bottom: 6px;
+  gap: var(--panel-gap);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border-soft);
 }
 .replay-events-title {
-  font-size: 16px; font-weight: 700;
+  font-size: var(--fs-md); font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--text-dim);
 }
 
 .replay-events-filters {
-  display: flex; align-items: center; gap: 12px;
-  font-size: 14px;
+  display: flex; align-items: center; gap: var(--space-3);
+  font-size: var(--fs-sm);
   color: var(--text-dim);
 }
 .replay-events-filter {
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: center; gap: var(--space-1);
   cursor: pointer;
   user-select: none;
+  min-height: var(--hit-min);
+  padding: 0 var(--hover-pad);
 }
 .replay-events-filter input[type="checkbox"] {
   cursor: pointer;
   accent-color: var(--accent, #8a8cf0);
+  width: 20px; height: 20px;
 }
 .replay-events-count {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-faint, var(--text-dim));
-  padding: 2px 8px;
+  padding: 2px var(--space-2);
   background: var(--surface-2, #1a1a22);
-  border-radius: 3px;
-  min-width: 26px; text-align: center;
+  border-radius: 4px;
+  min-width: 32px; text-align: center;
 }
 
 .replay-events-list {
@@ -68,15 +73,15 @@
 }
 .replay-events-row {
   display: grid;
-  grid-template-columns: 52px 1fr 110px 130px;
+  grid-template-columns: 64px 1fr 140px 160px;
   align-items: center;
-  gap: 10px;
-  padding: 5px 10px;
+  gap: var(--panel-gap-tight);
+  padding: 6px var(--panel-gap-tight);
   background: var(--surface-2, #1a1a22);
   border: 1px solid var(--border-soft);
   border-left: 3px solid var(--text-dim);
-  border-radius: 3px;
-  font-size: 14px;
+  border-radius: 4px;
+  font-size: var(--fs-sm);
 }
 .replay-events-row[data-team="100"] { border-left-color: var(--ok,  #8ce5a8); }
 .replay-events-row[data-team="200"] { border-left-color: var(--bad, #e07a7a); }
@@ -94,16 +99,16 @@
 }
 .replay-events-actor,
 .replay-events-victim {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
-  display: flex; align-items: center; gap: 5px;
+  display: flex; align-items: center; gap: 6px;
   overflow: hidden;
 }
 .replay-events-victim { justify-content: flex-end; }
 .replay-events-portrait {
-  width: 18px; height: 18px;
-  border-radius: 2px;
+  width: 26px; height: 26px;
+  border-radius: 3px;
   flex-shrink: 0;
   object-fit: cover;
 }
@@ -129,9 +134,9 @@
 .replay-events-row[data-kind="other"]     .replay-events-label { color: var(--text-faint, var(--text-dim)); }
 
 .replay-events-empty {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-style: italic;
   color: var(--text-faint, var(--text-dim));
-  padding: 12px 4px;
+  padding: var(--space-3) var(--space-1);
 }
 .replay-events-empty[hidden] { display: none; }
