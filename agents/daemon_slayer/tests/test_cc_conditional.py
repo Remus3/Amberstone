@@ -42,9 +42,11 @@ from agents.daemon_slayer.cc_conditional import (
     COND_DEVOUR_TARGET,
     COND_DREAM_STACK,
     COND_DUAL_ENEMY,
+    COND_FRENZY_STATE,
     COND_GOLD_CARD,
     COND_MODE_GATED,
     COND_NTH_HIT,
+    COND_RANGE_GATED,
     COND_TARGET_DEBUFFED,
     COND_TARGET_HP_BELOW,
     COND_TERRAIN,
@@ -559,6 +561,8 @@ class DefaultProbabilityMapCoverageTests(unittest.TestCase):
             COND_TARGET_DEBUFFED,
             COND_DUAL_ENEMY,
             COND_MODE_GATED,
+            COND_FRENZY_STATE,
+            COND_RANGE_GATED,
         }
         self.assertEqual(
             expected_keys, set(_DEFAULT_CONDITION_PROBABILITY.keys())

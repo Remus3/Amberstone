@@ -1321,7 +1321,76 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.43.0"
+ENGINE_VERSION = "1.44.0"
+# 1.44.0 (cc_conditional wave 7 tag schema lift - COND_FRENZY_STATE +
+# COND_RANGE_GATED forward-marker, 2026-05-22):
+#
+# Closes item 147 carry (l) "Briar frenzy + Sylas range REJECTs STILL
+# need new condition tag constants (separate schema lift)". Ships the
+# 2 long-deferred condition tag constants ``COND_FRENZY_STATE`` and
+# ``COND_RANGE_GATED`` as a FORWARD-MARKER schema-lift seam. NO new
+# registry entries this wave - the schema lift unblocks future entries
+# without a separate engine bump.
+#
+# NEW condition tag constants:
+#   * ``COND_FRENZY_STATE`` = "frenzy_state" - champion enters a self-
+#     empowered state (Briar W Blood Frenzy, Renekton Fury threshold,
+#     Volibear R passive form, Aatrox post-R passive) that gates an
+#     empowered variant of another spell with first-order CC.
+#   * ``COND_RANGE_GATED`` = "range_gated" - CC fires only when the
+#     cast lands within a specific range band (close-range or max-
+#     range). Distinct from COND_TERRAIN (positioning vs map geometry)
+#     and COND_NTH_HIT (stack accumulation).
+#
+# Both tags registered in ``_DEFAULT_CONDITION_PROBABILITY`` with
+# calibrated midpoint 0.4 (mid-low - the empowered-state / range-band
+# prerequisite is operator-controlled but not guaranteed; calibration
+# sits below COND_DUAL_ENEMY 0.6 + COND_NTH_HIT 0.7 midpoints but
+# above COND_TERRAIN 0.3 floor). Both exported via ``__all__`` so
+# external readers see them as public taxonomy. Operator-tunable via
+# the per-tag override JSON loader.
+#
+# Registry total UNCHANGED at 36 entries / 32 champions. The item 147
+# carry-forward named Briar frenzy + Sylas range as canonical REJECT
+# candidates for these tags. A Meraki 16.10.1 re-verify during this
+# run found: (1) Sylas E2 Abduct stuns on hook hit regardless of cast
+# range (the item 142 REJECT note calling it range-conditional was
+# incorrect); (2) Briar W has 2 forms (Blood Frenzy + Snack Attack)
+# but the Meraki extract is parse-stripped to damage_blocks only - the
+# leveling/effects detail needed to verify a frenzy-empowered Q or R
+# CC mechanic is absent at parse-strip level. Future entries populate
+# when a Meraki-verifiable mechanic surfaces (e.g. Renekton W
+# empowered cast during Fury, Aatrox passive-empowered abilities,
+# Volibear R passive form). The forward-marker schema lift is the
+# deliverable.
+#
+# Mirrors the s112 ``STAT_GRANT_CALC_KEYS`` empty-registry pattern at
+# ENGINE 1.22.0 + the pre-1.32.0 ``_PER_SPELL_CC_DURATIONS`` forward-
+# marker pattern.
+#
+# +29 tests NEW ``agents/daemon_slayer/tests/test_cc_conditional_wave7_tags.py``
+# across 7 classes: WaveSevenTagConstantsTests (6) /
+# WaveSevenDefaultProbabilityTests (6) / WaveSevenPublicTaxonomyTests
+# (3) / RegistryUnchangedTests (4) / ConditionalCcEntryAcceptsNewTagsTests
+# (3) / WaveSevenOverrideLoaderCompatibilityTests (3) /
+# EngineVersionCurrentTests (1) + AsciiHygieneTests (2). Consumer math
+# BYTE-IDENTICAL to 1.43.0 for all 5 consumer surfaces (cc_pressure +
+# compute_ehp + compute_hybrid + coach prompt + dashboard UI) since
+# no registry entry consumes either new tag at ship time.
+# ``test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES`` gained
+# ``test_cc_conditional_wave7_tags.py``.
+#
+# Carry-forwards from item 147 unchanged: (a) loading_view.css orphan
+# @import + build_order.css inverse orphan still operator-gated;
+# (c) cc_conditional registry future wave 8+ expansion operator-gated;
+# (d) DD Defy heal-on-takedown still deferred; (e) live ARAM/SR smoke
+# still pending; (f) RC-PostmortemAnalyze first scheduled run
+# 2026-05-24 04:15; (g)/(h) calibration midpoints operator-gated;
+# (i) obj_participation widening operator-gated; (j) UI/UX live-game
+# audit ritual; (k) _PER_SPELL_CC_DURATIONS unconditional registry
+# 108/89 unchanged this wave (wave 10+ likely exhausted for net-new
+# at 16.10.1).
+#
 # 1.43.0 (cc_conditional wave 6 + _PER_SPELL_CC_DURATIONS wave 9 +
 # BACKLOG stale-sweep wave 11 + cost/latency CLEAN, 2026-05-22):
 #
