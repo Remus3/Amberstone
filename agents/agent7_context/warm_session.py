@@ -182,6 +182,15 @@ class WarmAgent7Session:
             self._total_input_tokens += inp
             self._total_output_tokens += out
 
+            # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker. Warm
+            # session reuses one client across turns; recording happens per
+            # turn so by_purpose["agent7_warm"] reflects real cadence.
+            try:
+                from core.cost_tracker import record_anthropic_response
+                record_anthropic_response(resp, model=self._model, purpose="agent7_warm")
+            except Exception as exc:
+                logger.debug("cost_tracker record: %s", exc)
+
         return {
             "text": text,
             "model": self._model,
