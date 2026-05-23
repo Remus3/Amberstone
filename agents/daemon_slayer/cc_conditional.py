@@ -71,7 +71,17 @@ registry to 28 entries across 28 champions. Wave 4 (2026-05-22 /
 ENGINE 1.41.0) adds +5 entries across +4 new champions + 1 multi-
 wave coexistence (Aatrox W chain-root coexists with Aatrox Q3
 knockup from wave 3), bringing the registry to 33 entries across 32
-champions.
+champions. Wave 5 (2026-05-22 / ENGINE 1.42.0) adds +2 entries via
+multi-wave coexistence on existing champions (Briar E channel-
+completion fear sourced from item 144 Briar W frenzy carry-forward
++ TahmKench Q nth_hit passive-stack stun re-examined from item 142
+conditional carry), bringing the registry to 35 entries across 32
+champions (no net-new champions; both entries land on existing
+champions via setdefault). TahmKench Q coexists with TahmKench R
+wave 0 conditional devour on a different spell slot. Briar Q wave 4
++ Briar E wave 5 coexist on the same champion via setdefault (SECOND
+multi-wave coexistence after Aatrox Q3+W from waves 3+4; TahmKench
+R+Q is THIRD).
 At initial ship (ENGINE 1.37.0) no consumer wires were attached and the
 module was a strict forward marker. The first consumer wire ships via
 ``compute_cc_pressure(include_conditional=False)`` (item 142 / ENGINE
@@ -1180,6 +1190,95 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
             "conditional. Frenzy-state-gated variants (Q+R during "
             "Frenzy) carry forward operator-gated - they need a new "
             "condition tag schema lift not in this wave."
+        ),
+    )
+
+    # ============================================================
+    # === wave 5 expansion (2026-05-22) - 2 entries / 2 new champs
+    # === for the conditional registry (Briar gets a SECOND spell
+    # === slot E coexisting with wave 4 Q; TahmKench gets a SECOND
+    # === spell slot Q coexisting with wave 0 R devour). Uses only
+    # === the 10 existing condition tags - no new tag constants.
+    # === Drawn from carries: Briar W frenzy carry (item 144) which
+    # === pointed at E as a non-frenzy-gated alternative, plus the
+    # === TahmKench passive-stack chain (item 142+) re-examined as
+    # === Q-application stun rather than passive-only encoding.
+    # === REJECTs documented in commit body: Vayne E wall-stun
+    # === (would clobber unconditional knockback on same slot;
+    # === schema lift needed); Trundle E displacement (no clean
+    # === tag fit since Trundle CREATES the terrain); Mel E Solar
+    # === Snare (not Meraki-verified at 16.10.1; needs reverify);
+    # === Annie passive Pyromania (the next-cast stun lands on Q/W/R,
+    # === not a discrete spell slot - encoding ambiguous); Belveth
+    # === W Above and Below (slow only, no first-order CC verified
+    # === in 16.10.1 ability data); Naafiri R / Akali R / Jhin R /
+    # === Pyke R / Sett R / Sett W (no CC verified per prior REJECTs);
+    # === Cho'Gath W Feral Scream (unconditional silence - belongs
+    # === in unconditional registry, not conditional); Singed W /
+    # === Aphelios Q / Lillia Q / Akshan Q / Ekko W coexistence
+    # === clobbers (E or W slot already in unconditional registry).
+    # === Briar W + R frenzy variants STILL operator-gated (need
+    # === new COND_FRENZY_STATE tag schema lift).
+    # ============================================================
+
+    # Briar E Chilling Scream: channeled scream that charges over
+    # ~1.5s. Tap-cast at zero charge deals damage + slow only with
+    # no first-order CC. Full-charge release fears enemies in a
+    # cone for ~1.0s + deals heavy damage. channel_completion
+    # conditional - the charge-channel must complete to gain the
+    # fear payload. Briar Q (wave 4) is the terrain-conditional
+    # stun; Briar E (this wave 5) is the channel-completion fear
+    # that coexists on the same champion via setdefault on a
+    # different spell slot. SECOND multi-wave coexistence in the
+    # cc_conditional registry (after Aatrox Q3 + W from waves 3+4).
+    # The Briar W + R frenzy-state-gated variants from item 144
+    # carry-forward STILL require new COND_FRENZY_STATE tag schema
+    # lift - not in this wave.
+    registry.setdefault("Briar", {})["E"] = ConditionalCcEntry(
+        champion="Briar",
+        spell="E",
+        cc_kind="fear",
+        durations_s=(1.0,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("Briar", "E", 0.5),
+        notes=(
+            "E is a charged scream; full-charge release fears "
+            "enemies in cone for 1.0s. Tap-cast is damage + slow "
+            "only (no first-order CC). channel_completion conditional "
+            "- the charge-channel must complete to gain the fear "
+            "payload. Coexists with Briar Q wave 4 terrain-stun on a "
+            "different spell slot via setdefault."
+        ),
+    )
+
+    # TahmKench Q Tongue Lash: applies 1 stack of passive 'An
+    # Acquired Taste' on hit. At 3 stacks (from Q + AA + Q OR
+    # Q + AA + AA OR similar 3-application chain) the target is
+    # stunned for 1.5s. Q's own slow is the unconditional damage
+    # surface; the 3rd-stack stun is the conditional first-order
+    # CC. Encoding on Q because Q is the primary stack applicator
+    # in the operator's typical combo (Q-AA-Q in fight = 3 stacks
+    # achievable in fight window). nth_hit conditional with
+    # probability 0.7 because Tahm's slow + reach makes the 3-cycle
+    # achievable in a 6s window. TahmKench R (wave 0) is the
+    # devour conditional; TahmKench Q (this wave 5) is the nth_hit
+    # passive-stack stun that coexists on the same champion via
+    # setdefault on a different spell slot.
+    registry.setdefault("TahmKench", {})["Q"] = ConditionalCcEntry(
+        champion="TahmKench",
+        spell="Q",
+        cc_kind="stun",
+        durations_s=(1.5,),
+        condition=COND_NTH_HIT,
+        probability=_p("TahmKench", "Q", 0.7),
+        notes=(
+            "Q applies 1 stack of passive An Acquired Taste; at 3 "
+            "stacks target is stunned 1.5s. Q's own slow is the "
+            "unconditional damage surface; the 3rd-stack stun is "
+            "the nth_hit conditional. Probability 0.7 because 3-cycle "
+            "is achievable in 6s fight via Q + AA + Q chain. Coexists "
+            "with TahmKench R wave 0 devour on different spell slot "
+            "via setdefault."
         ),
     )
 
