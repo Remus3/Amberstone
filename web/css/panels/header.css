@@ -582,12 +582,17 @@ footer .prefs-chip:hover { color: var(--text); }
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.view-section-tabs { display: flex; gap: 4px; margin-left: auto; }
+/* v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #4 History, 2026-05-23):
+ * view-tab is used only on History (4 scope buttons); view-section-btn
+ * is a shared primitive but the History sweep brings it along since
+ * the two share the same rule block. */
+.view-section-tabs { display: flex; gap: var(--space-1); margin-left: auto; }
 .view-section-btn, .view-tab {
   background: var(--surface-head); border: 1px solid var(--border);
-  color: var(--text-dim); padding: 5px 12px; font-size: 12px;
+  color: var(--text-dim); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs);
   letter-spacing: 0.06em; text-transform: uppercase;
-  border-radius: 4px; cursor: pointer;
+  border-radius: var(--panel-radius-sm); cursor: pointer;
+  min-height: var(--hit-min);
   transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
 .view-section-btn:hover, .view-tab:hover {
@@ -1791,36 +1796,40 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex; flex-direction: column; gap: 4px;
 }
 
-/* History view layout */
+/* History view layout - v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #4,
+ * 2026-05-23). 3-card grid (SESSIONS / SELECTED SESSION / SEASON STATS)
+ * + 4-button scope tabs. Row min-height floors to var(--hit-min) for
+ * fingertip target on dense list rows. */
 .history-grid {
-  display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 14px;
+  display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: var(--panel-gap);
 }
 .history-card {
   background: var(--surface-head); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 12px 14px;
+  border-radius: var(--panel-radius-sm); padding: var(--panel-padding-comp);
   max-height: 540px; overflow-y: auto;
 }
 .history-card-head {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
-  margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 5px;
-  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: var(--space-2); border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-1);
+  display: flex; align-items: baseline; gap: var(--space-2);
 }
 .history-count, .diag-sub {
-  font-size: 11px; color: var(--clock); margin-left: auto;
+  font-size: var(--fs-xs); color: var(--clock); margin-left: auto;
   letter-spacing: 0.06em;
 }
 .history-session-list, .history-match-list {
   list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column; gap: var(--space-1);
 }
 .history-session-row, .history-match-row {
-  background: var(--surface-alt); border-radius: 4px;
-  padding: 6px 10px; font-size: 12px; cursor: pointer;
+  background: var(--surface-alt); border-radius: var(--panel-radius-sm);
+  padding: var(--space-2) var(--panel-gap-tight); font-size: var(--fs-sm); cursor: pointer;
+  min-height: var(--hit-min);
   transition: background 0.08s, border-color 0.08s;
   border: 1px solid transparent;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: var(--space-2);
 }
 .history-session-row:hover, .history-match-row:hover {
   background: #1c1c2a; border-color: var(--clock);
