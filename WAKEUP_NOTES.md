@@ -3,6 +3,52 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-23 - item 158 UI scale v2.1 page #2 User Builds + rune-page builder + spell chooser SHIPPED (2 commits `a82d8f3` `5452e9e`, pushed origin/main `dffea08..5452e9e`; non-engine; non-frozen; no DS restart; RC pid drifted 7356 -> 14464 mid-session via supervisor auto-relaunch picking up coaches/sr_user_builds.py edit - reload_ok=True)
+
+Operator-driven continuation of item 157's 16-page UI scale v2.1 audit order. Page #2 (User Builds) shipped end-to-end + mid-round augmentation: form pane gained a tabbed 5-tree rune-page builder + 11-icon summoner-spell chooser.
+
+**Commit `a82d8f3` (page #2 base, 4 files / +292 / -48):**
+- `web/css/panels/header.css` `.ub-*` classes migrated to v2.1 tokens (--fs-xs/sm/md, --space-1..5, --panel-padding, --panel-radius, --panel-radius-sm, --hit-min). 30+ surgical replacements; per-class deltas tabulated in spec.
+- `web/js/main.js::_userBuildsFetchAndRender` consults `body.dataset.uiMock`; loads `/data/ui_mock/user_builds.json` when live is empty + mock is on. Renders `(MOCK)` suffix on label + count + hint.
+- `web/data/ui_mock/user_builds.json` NEW 5-build Tristana fixture (populated + role-variant + overflow + minimal edge cases).
+- `web/js/main.js` boot restorePrefs adds `?ui_mock=1` URL-search override so headless captures hit mock state without touching interactive Chrome localStorage.
+- `docs/UI_SCALE_SPEC_V2.md` per-component-class table for User Builds + mock fixture doc + audit ritual additions.
+- Asset hash `e9dad0bf6b -> 87ddde541c`. 7/7 audit ritual checks GREEN via 2 headless Game-PC captures.
+
+**Commit `5452e9e` (rune-builder + spell-chooser, 6 files / +629 / -29):**
+- `web/index.html` form-pane: Keystone / Primary tree / Secondary tree inputs marked `readonly` with `(driven by builder)` em hint. Summoner-spell numeric inputs become hidden + driven by chooser. NEW `.ub-sp-chooser` + `.ub-rp-builder` blocks.
+- `web/js/main.js` +355 LOC: `_UB_SPELLS` 11-spell catalog, `_RP_DDRAGON_BASE` constant, `_RP` + `_SP` state objects. Spell chooser: 2 slot buttons + 11-cell grid; click slot D/F to activate, click spell to assign, auto-flips active slot. Rune builder: lazy fetch `/api/dictionary/runes`, render 5 tabs (Domination/Inspiration/Precision/Resolve/Sorcery), PRIMARY pane shows keystone row + 3 minor rows (1 pick per row), SECONDARY pane shows pill row of 4 other trees + 3 minor rows (up to 2 picks total). `.ub-rp-summary` one-line preview of current picks. `_ubRpSyncTextFields` keeps readonly Keystone/Primary/Secondary text inputs aligned with builder state. `?ub_form=mock` URL flag auto-opens form with first mock build pre-loaded.
+- `web/js/main.js::_ubReadForm` extended to write `runes.minor_primary[]` + `runes.minor_secondary[]` on save.
+- `coaches/sr_user_builds.py::_normalize_record` extended additively to persist + sanitize minor_primary + minor_secondary (list[str], default empty). `format_for_display` unchanged - downstream chooser surface untouched. 22/22 phase8_smoke/test_sr_user_builds PASS post-edit; python smoke (minor runes round-trip through add->list) PASS. ruff PASS.
+- `web/css/panels/header.css` +178 LOC: `.ub-sp-*` + `.ub-rp-*` classes, all token-driven, --hit-min on all interactive cells, --panel-radius-sm on icons.
+- `web/data/ui_mock/user_builds.json` first build extended with minor_primary/secondary lists.
+- `docs/UI_SCALE_SPEC_V2.md` "User Builds form-pane augmentation" section: component-class table + DDragon image base + schema extension + round-trip notes.
+- Asset hash `87ddde541c -> fc4ff80c8b`.
+
+**Verified:**
+- RC dashboard https://127.0.0.1:8888/api/state HTTP 200; mode_key=client throughout.
+- `/api/ui-version` shows `fc4ff80c8b` post-commit (ADR-008 auto-reload).
+- RC health: pid drifted 7356 -> 14464 mid-session (RC-Supervisor auto-relaunch picked up the coaches/sr_user_builds.py edit). alive=True reload_ok=True post-relaunch.
+- Backend persistence: Python smoke test asserts minor_primary/secondary round-trip through `add()` -> `list_for()` cleanly. format_for_display unchanged.
+- Phase 8 smoke 75/75 PASS post-edit. ruff clean.
+- Headless captures: empty state + populated mock list both render correctly at v2.1 sizing. Form-pane visual capture (showing builder tabs + spell grid) NOT captured this session - headless Chrome session isolation from non-interactive PowerShell hung repeatedly. Form HTML/CSS/JS is mechanical extension of working code; visual verification owed at operator's next interactive Chrome session.
+
+**Don't-redo:**
+- `?ub_form=mock` is the canonical dev URL flag for auto-opening the form with the first mock build pre-loaded; requires `?ui_mock=1` to be set. Don't add another flag for the same purpose.
+- Rune-builder schema is `runes.minor_primary[]` + `runes.minor_secondary[]` (additive; empty lists when absent). Don't rename or restructure; downstream `format_for_display` ignores them today (champ-select chooser surface unchanged).
+- `_RP` + `_SP` are module-level state singletons (one form open at a time). Don't refactor into per-instance state - the form pane is single-instance + single-mode.
+- DDragon image base in JS is HARDCODED to `/data/ddragon/16.10.1/img/` (matches what `routes_dictionary.py` serves from `data/meta/ddragon_runes.json`). Both update in lockstep on the operator-triggered patch refresh; don't add a `/api/ddragon/current` indirection just to dynamically resolve.
+- Rune-page minor-rune row enforcement is INTENTIONALLY soft: primary side restricts to 1 pick per row (single-select toggle), secondary side allows up to 2 picks total with no per-row check. Game rules enforce stricter constraints client-side at the Riot client; RC's user-builds store is operator-curated additive, NOT pushed to LCU.
+- Headless Chrome screenshot of the form-pane via `mcp__gamepc__run_powershell` is FRAGILE: virtual-time-budget + setTimeout(_userBuildsOpenForm, 100) race + chrome lifecycle in non-interactive session hung 3 attempts. Form-pane visual verification owed at operator's next interactive session. Pattern for future: drive via the existing Chrome on Game-PC monitor 1 if SendKeys-from-service-session can be made to land (item 158 attempts failed at AppActivate / SetForegroundWindow due to session 0 vs interactive session isolation).
+
+**Carries forward:**
+(a) Item 157 carries (a)-(l) ALL unchanged EXCEPT (k)-relaxed: User Builds (page #2) is NO LONGER pending - SHIPPED this session.
+(b) 14 remaining pages in the UI scale v2.1 audit order: Replay (#3) -> History (#4) -> Session (#5) -> Home (#6) -> Pre-Game Lobby (#7) -> Champ Select SR/ARAM/Arena (#8/9/10) -> Active Match SR/ARAM/Arena (#11/12/13) -> Post Game Review SR/ARAM/Arena (#14/15/16). Per-page mock fixture owed at `web/data/ui_mock/<page>.json`.
+(c) Form-pane visual verification for the new rune builder + spell chooser owed at operator's next interactive Chrome session (headless capture race hung 3 attempts; backend + ruff + 75/75 smoke PASS).
+(d) RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15 - verify LastTaskResult=0 next session.
+(e) DD Defy heal-on-takedown STILL deferred. Live ARAM/SR smoke STILL pending. Calibrations operator-gated. cc_conditional wave 12+ 2 deferred candidates. 542 residual U+2500 box-drawing chars operator-gated. Legion 1-PC consolidation operator-gated.
+
+---
 # 2026-05-23 - item 157 UI scale v2.1 - per-element ~44% bump (25% + 15%) + zoom feature retired - Settings worked example SHIPPED (1 commit `09eddeb`, pushed origin/main `1d5ef99..09eddeb`; non-engine; non-frozen; no DS restart; no RC restart - asset-hash auto-reload per ADR-008)
 
 Operator triggered global UI density refactor across 16 pages (Settings -> User Builds -> Replay -> History -> Session -> Home -> Pre-Game Lobby -> Champ Select SR/ARAM/Arena -> Active Match SR/ARAM/Arena -> Post Game Review SR/ARAM/Arena). One framed AskUserQuestion 4-question scope fork pinned per [[feedback_scope_decision_cadence]]: (Q1) Spec doc + tokens.css draft + Settings rendered preview reviewed together (Recommended); (Q2) Density modes - single Comfortable/Broadcast target now, multi-mode primitive deferred (Recommended); (Q3) Page order - operator's verbatim list (Recommended); (Q4) Dummy data - dev-only Settings toggle default OFF.
