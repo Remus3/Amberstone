@@ -1,0 +1,111 @@
+{
+  "mock": true,
+  "note": "Mock fixture for the Pre-Game Lobby view (state-coverage check per docs/UI_SCALE_SPEC_V2.md page #7, 2026-05-23). Activated by ?ui_mock=1 URL flag or Settings > Display > Dev UI mock data toggle. Top-level shape mirrors the lcu envelope's `lobby` block so _lobbyViewRefresh + _renderPartyMembers can read state.latest.lcu.lobby through the short-circuit in main.js without further translation.",
+  "phase": "Lobby",
+  "lobby": {
+    "queue_id": 420,
+    "queue_name": "Ranked Solo/Duo",
+    "party_size": 3,
+    "max_party_size": 5,
+    "is_leader": true,
+    "can_search": true,
+    "search_state": "Idle",
+    "party_type": "open",
+    "local_member": {
+      "is_self": true,
+      "is_leader": true,
+      "position_preferences": {
+        "first_preference": "MIDDLE",
+        "second_preference": "BOTTOM"
+      }
+    },
+    "members": [
+      {
+        "riot_id": "SamplePlayer#Trist",
+        "summoner_name": "SamplePlayer",
+        "is_self": true,
+        "is_leader": true,
+        "summoner_level": 372,
+        "rank": {"tier": "DIAMOND", "division": "IV", "lp": 47},
+        "position_preferences": {"first": "MIDDLE", "second": "BOTTOM"},
+        "top_champs": ["Jinx", "Kai'Sa"]
+      },
+      {
+        "riot_id": "Brawler#NA1",
+        "summoner_name": "Brawler",
+        "is_self": false,
+        "is_leader": false,
+        "summoner_level": 218,
+        "rank": {"tier": "PLATINUM", "division": "II", "lp": 64},
+        "position_preferences": {"first": "JUNGLE", "second": "TOP"},
+        "top_champs": ["Lee Sin", "Viego"]
+      },
+      {
+        "riot_id": "WardBot#SUP",
+        "summoner_name": "WardBot",
+        "is_self": false,
+        "is_leader": false,
+        "summoner_level": 156,
+        "rank": {"tier": "GOLD", "division": "I", "lp": 88},
+        "position_preferences": {"first": "UTILITY", "second": "FILL"},
+        "top_champs": ["Thresh", "Pyke"]
+      }
+    ]
+  },
+  "config": {
+    "auto_accept": true
+  },
+  "mains": {
+    "tab": "you",
+    "you": [
+      {
+        "champion": "Jinx",
+        "icon": "/data/ddragon/16.10.1/img/champion/Jinx.png",
+        "mastery_level": 7,
+        "mastery_points": 412800,
+        "recent_result": "W",
+        "recent_kda": "8/3/12",
+        "games": 47,
+        "wins": 28,
+        "losses": 19,
+        "total_kda": "9.1/4.2/8.4",
+        "avg_kda": 4.17
+      },
+      {
+        "champion": "Kai'Sa",
+        "icon": "/data/ddragon/16.10.1/img/champion/Kaisa.png",
+        "mastery_level": 6,
+        "mastery_points": 184500,
+        "recent_result": "L",
+        "recent_kda": "5/7/4",
+        "games": 32,
+        "wins": 17,
+        "losses": 15,
+        "total_kda": "7.8/5.1/6.3",
+        "avg_kda": 2.76
+      },
+      {
+        "champion": "Tristana",
+        "icon": "/data/ddragon/16.10.1/img/champion/Tristana.png",
+        "mastery_level": 7,
+        "mastery_points": 298400,
+        "recent_result": "W",
+        "recent_kda": "11/2/9",
+        "games": 38,
+        "wins": 24,
+        "losses": 14,
+        "total_kda": "8.6/3.8/7.9",
+        "avg_kda": 4.34
+      }
+    ]
+  },
+  "top8": [
+    {"riot_id": "FrenLuvr#NA1",    "summoner_name": "FrenLuvr",    "rank": {"tier": "EMERALD",  "division": "III"}, "games": 142, "main_role": "TOP",    "online": true},
+    {"riot_id": "Brawler#NA1",     "summoner_name": "Brawler",     "rank": {"tier": "PLATINUM", "division": "II"},  "games": 88,  "main_role": "JUNGLE", "online": true},
+    {"riot_id": "SmurfLord#PRO",   "summoner_name": "SmurfLord",   "rank": {"tier": "MASTER",   "division": "I"},   "games": 217, "main_role": "MIDDLE", "online": false},
+    {"riot_id": "WardBot#SUP",     "summoner_name": "WardBot",     "rank": {"tier": "GOLD",     "division": "I"},   "games": 64,  "main_role": "UTILITY","online": true},
+    {"riot_id": "CarryHarder#NA1", "summoner_name": "CarryHarder", "rank": {"tier": "DIAMOND",  "division": "IV"},  "games": 105, "main_role": "BOTTOM", "online": false},
+    {"riot_id": "SkillIssue#TT",   "summoner_name": "SkillIssue",  "rank": {"tier": "SILVER",   "division": "II"},  "games": 23,  "main_role": "FILL",   "online": false},
+    {"riot_id": "NoobieMcGee#NEW", "summoner_name": "NoobieMcGee", "rank": null,                                       "games": 9,   "main_role": "TOP",    "online": true}
+  ]
+}
