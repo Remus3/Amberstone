@@ -124,8 +124,10 @@ class RegistrySeedShapeTests(unittest.TestCase):
         # all 8 are new champions, no multi-wave augmentations).
         # 1.42.0 wave 8 = +3 entries = 106 total (Lissandra W + Maokai
         # W + Rakan R; all 3 multi-wave augmentations of wave 1 champs).
+        # wave 9 = +2 entries = 108 total (Chogath W silence + Malzahar
+        # Q silence; both multi-wave augmentations - 0 new champions).
         total = sum(len(s) for s in _PER_SPELL_CC_DURATIONS.values())
-        self.assertGreaterEqual(total, 106)
+        self.assertGreaterEqual(total, 108)
 
     def test_each_value_is_tuple_of_floats(self) -> None:
         for champ, spells in _PER_SPELL_CC_DURATIONS.items():
