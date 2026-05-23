@@ -1428,6 +1428,166 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ---------------- wave 8 (2026-05-22 / ENGINE 1.45.0) ----------------
+    #
+    # Wave 8 ships +3 entries / +3 net-new champions across 2 existing
+    # condition tags (COND_CHANNEL_COMPLETION + COND_TARGET_DEBUFFED).
+    # All 3 are EXPLICITLY-AUTHORIZED candidates from prior wave REJECT
+    # lists where the REJECT note flagged the entry as belonging in
+    # cc_conditional (parallel to Karma W) - NOT new pitches.
+    #
+    # Source for each:
+    # 1) Morgana R Soul Shackles: wave 8 unconditional REJECT (item 146
+    #    Slice B `4ab11ba`) explicitly said "REJECT - belongs in
+    #    cc_conditional (parallel to Karma W)". Wave 9 REJECT (item 147
+    #    Slice B `3c73c3b`) re-stated: "stun fires on tether expiry
+    #    (channel-completion-conditional); belongs in cc_conditional if
+    #    added later parallel to Karma W". The Meraki 16.10.1 parse-
+    #    strip exposes the Stun Duration block (1.5/1.75/2.0s across 3
+    #    ranks). Mechanic mirrors Karma W exactly: ult tethers all
+    #    enemies in range for 3s; if Morgana maintains the tether (LoS
+    #    + distance) for the full channel, all tethered targets are
+    #    stunned for the rank duration. CC fires only on channel
+    #    completion - channel-cancel via knockup / displacement / death
+    #    nullifies. Pinned by Karma W parallel (wave 1 entry).
+    #
+    # 2) Seraphine E Beat Drop: wave 4 unconditional REJECT (item 138
+    #    Slice B `6718445`) said "conditional on existing slow"; wave 8
+    #    REJECT (item 146) said "stun OR root duration constant but
+    #    which CC fires is target-state-conditional; REJECT per item
+    #    138"; wave 9 REJECT (item 147) said "target-state conditional".
+    #    The Meraki 16.10.1 parse-strip exposes the Disable Duration
+    #    block (1.1-1.5s). At 16.10.1 the mechanic is: damages all
+    #    enemies in a line; fresh targets receive damage + slow only;
+    #    slowed targets are stunned; stunned targets are rooted (the
+    #    CC TIER ESCALATES based on target's pre-existing debuff state).
+    #    The disable duration is the same value across all CC types.
+    #    Encoding the CONDITIONAL stun/root variant via debuffed_target
+    #    captures the first-order CC that fires when a teammate (or
+    #    Seraphine's R) has already slowed the target. Probability mid
+    #    because the setup is teamfight-dependent (solo Seraphine on
+    #    a fresh target gets damage + slow only).
+    #
+    # 3) Evelynn W Allure: wave 4 unconditional REJECT (item 138 Slice
+    #    B `6718445`) said "detonation-on-Eve-attack conditional"; wave
+    #    8 REJECT (item 146) explicitly said "detonation-on-Eve-attack
+    #    conditional charm". The Meraki 16.10.1 parse-strip exposes
+    #    the Disable Duration block (1.25-2.25s across 5 ranks).
+    #    Mechanic: W applies a mark (charm-debuff) on cast that
+    #    DETONATES when Evelynn's NEXT spell-hit or auto-attack lands
+    #    on the marked target within the mark window. The charm fires
+    #    on Evelynn's follow-up attack - channel completion of her
+    #    own kit-sequence (mark + follow-up). Maps to
+    #    COND_CHANNEL_COMPLETION (Evelynn must complete the mark +
+    #    detonation sequence; if she dies / loses target / leaves
+    #    range before the follow-up, no charm). Probability mid-low -
+    #    Evelynn typically detonates her own mark in setup gank flows
+    #    but the mark also expires (~2.5s) before follow-up in many
+    #    fights.
+    #
+    # All 3 use ONLY the 12 existing condition tags. NO new tag
+    # constants. NO Meraki extractor schema lift needed (the duration
+    # values are in the parse-strip damage_blocks; the mechanic
+    # description lives in Riot wiki / in-game tooltip + standard
+    # League knowledge). The 3 entries close item 150 carry-forward
+    # (the "16 consecutive run saturation" verdict was based on
+    # candidates that DID need the schema lift; these 3 do NOT).
+    #
+    # Multi-wave coexistence count: NONE this wave (Morgana / Seraphine
+    # / Evelynn are net-new champions with no prior cc_conditional
+    # entries). Wave 8 grows the multi-entry-WITHIN-cc_conditional
+    # champion count by ZERO (stays at 4: Aatrox Q+W / Brand Q+R /
+    # Briar Q+E / TahmKench R+Q).
+    #
+    # REGISTRY GROWS: 36 entries -> 39 entries / 32 champions -> 35
+    # champions.
+
+    # Morgana R Soul Shackles: tethers all enemies in range for 3s;
+    # if Morgana maintains LoS + range for the full channel, all
+    # tethered targets are stunned for the rank duration. Channel
+    # cancel via knockup / displacement / death nullifies stun.
+    # Mechanic parallel to Karma W wave 1 entry (tether + full-
+    # channel CC). Stun durations 1.5/1.75/2.0s across 3 ranks
+    # confirmed via Meraki 16.10.1 Stun Duration block.
+    registry.setdefault("Morgana", {})["R"] = ConditionalCcEntry(
+        champion="Morgana",
+        spell="R",
+        cc_kind="stun",
+        durations_s=(1.5, 1.75, 2.0),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("Morgana", "R", 0.5),
+        notes=(
+            "R Soul Shackles tethers all enemies in range; tethered "
+            "targets are stunned for the rank duration if Morgana "
+            "maintains LoS + range for the full 3s channel. Channel "
+            "cancel via knockup / displacement / death nullifies the "
+            "stun. Mechanic parallel to Karma W wave 1 entry. "
+            "Probability midpoint - in teamfights the operator "
+            "typically gets the channel off but enemies frequently "
+            "interrupt or break tether. Closes wave 8 unconditional "
+            "REJECT (item 146) + wave 9 REJECT (item 147) note that "
+            "Morgana R belongs in cc_conditional parallel to Karma W."
+        ),
+    )
+
+    # Seraphine E Beat Drop: damages all enemies in a line; CC tier
+    # ESCALATES based on target's pre-existing debuff state. Fresh
+    # target gets damage + slow only. Slowed target is stunned.
+    # Stunned target is rooted. Disable duration is the SAME value
+    # across all CC types (1.1/1.2/1.3/1.4/1.5s across 5 ranks
+    # confirmed via Meraki 16.10.1 Disable Duration block). The
+    # conditional stun/root variant fires when target is already
+    # debuffed (slowed or stunned) - typically via teammate setup
+    # or Seraphine's own R follow-up.
+    registry.setdefault("Seraphine", {})["E"] = ConditionalCcEntry(
+        champion="Seraphine",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(1.1, 1.2, 1.3, 1.4, 1.5),
+        condition=COND_TARGET_DEBUFFED,
+        probability=_p("Seraphine", "E", 0.5),
+        notes=(
+            "E Beat Drop CC tier escalates by target state: fresh "
+            "target gets damage + slow only; slowed target stunned; "
+            "stunned target rooted. The conditional stun fires when "
+            "target is already slowed (teammate setup or Seraphine "
+            "R). Disable duration is the same value across all CC "
+            "tiers. Probability midpoint - teamfight setup-dependent. "
+            "Closes wave 4 + wave 8 + wave 9 REJECT notes that beat "
+            "drop conditional CC belongs in cc_conditional."
+        ),
+    )
+
+    # Evelynn W Allure: applies a mark (charm-debuff) on cast that
+    # DETONATES when Evelynn's next spell-hit or auto-attack lands
+    # on the marked target within the mark window (~2.5s). The
+    # charm fires on Evelynn's follow-up attack - channel completion
+    # of her own kit-sequence (mark application + detonation
+    # follow-up). Cleansable via QSS / mark-expiry. Disable
+    # durations 1.25/1.5/1.75/2.0/2.25s across 5 ranks confirmed via
+    # Meraki 16.10.1 Disable Duration block. Maps to
+    # COND_CHANNEL_COMPLETION (Evelynn must complete the mark +
+    # detonation sequence).
+    registry.setdefault("Evelynn", {})["W"] = ConditionalCcEntry(
+        champion="Evelynn",
+        spell="W",
+        cc_kind="charm",
+        durations_s=(1.25, 1.5, 1.75, 2.0, 2.25),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("Evelynn", "W", 0.4),
+        notes=(
+            "W Allure applies a mark that detonates on Evelynn's "
+            "next spell-hit or auto-attack on the marked target. "
+            "Charm fires on follow-up - channel completion of her "
+            "mark+detonation sequence. Mark expires ~2.5s without "
+            "follow-up. Probability mid-low - Evelynn typically "
+            "detonates in setup ganks but mark frequently expires "
+            "in poke fights. Closes wave 4 + wave 8 REJECT notes "
+            "that detonation-on-Eve-attack conditional charm belongs "
+            "in cc_conditional."
+        ),
+    )
+
     return registry
 
 
