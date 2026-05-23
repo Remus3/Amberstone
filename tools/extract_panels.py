@@ -38,9 +38,9 @@ RIGHT_NOW_FOOTER = """
 export { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats };
 """
 
-rn_dom     = L(37, 45)    # const RN = {…};  line 45 = closing };
+rn_dom     = L(37, 45)    # const RN = {...};  line 45 = closing };
 rn_bind    = L(571, 595)  # RN.action copy-click one-time handler
-rn_funcs   = L(598, 1066) # renderWhatWent … renderRightNow
+rn_funcs   = L(598, 1066) # renderWhatWent ... renderRightNow
 
 with open(f"{PANELS_DIR}/right_now.js", "w", encoding="utf-8") as f:
     f.write(RIGHT_NOW_HEADER + rn_dom + "\n" + rn_bind + "\n" + rn_funcs + RIGHT_NOW_FOOTER)
@@ -57,9 +57,9 @@ NEXT_FOOTER = """
 export { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine };
 """
 
-nx_dom       = L(46, 53)    # const NX = {…};  line 53 = closing };
+nx_dom       = L(46, 53)    # const NX = {...};  line 53 = closing };
 nx_wave_cmt  = L(1068, 1078) # wave-state comment block
-nx_wave_fns  = L(1079, 1245) # _classifyWavePct … renderNext
+nx_wave_fns  = L(1079, 1245) # _classifyWavePct ... renderNext
 nx_arena     = L(1493, 1540) # CAITLYN_PARTNER_COMBOS + arena helpers
 
 with open(f"{PANELS_DIR}/next.js", "w", encoding="utf-8") as f:
@@ -83,9 +83,9 @@ export {
 };
 """
 
-ib_dom      = L(54, 64)     # const IB = {…};  line 64 = closing };
-ib_funcs    = L(1247, 1491)  # _lastItemBuildState … renderItemBuild
-ib_ib_funcs = L(3270, 3419)  # _ibSetStatus … _ibMaybeRenderBuilds (extracted from champ_select range)
+ib_dom      = L(54, 64)     # const IB = {...};  line 64 = closing };
+ib_funcs    = L(1247, 1491)  # _lastItemBuildState ... renderItemBuild
+ib_ib_funcs = L(3270, 3419)  # _ibSetStatus ... _ibMaybeRenderBuilds (extracted from champ_select range)
 
 with open(f"{PANELS_DIR}/item_build.js", "w", encoding="utf-8") as f:
     f.write(ITEM_BUILD_HEADER + ib_dom + "\n" + ib_funcs + "\n" + ib_ib_funcs + ITEM_BUILD_FOOTER)
@@ -114,9 +114,9 @@ export {
 };
 """
 
-mm_dom        = L(78, 91)    # const MM = {…};  line 91 = closing };
-mm_funcs      = L(1546, 2377) # _updateGameClock … _renderMmStateLine
-mm_spell_fns  = L(2644, 2675) # state.spellCds comment + _spellKey … _currentSpellCd
+mm_dom        = L(78, 91)    # const MM = {...};  line 91 = closing };
+mm_funcs      = L(1546, 2377) # _updateGameClock ... _renderMmStateLine
+mm_spell_fns  = L(2644, 2675) # state.spellCds comment + _spellKey ... _currentSpellCd
 
 # Remove the state.gameClock / state.spellCds init lines that are inline in
 # the function blocks - they're lifted to the header. Lines 1545, 1606, 2647
@@ -144,12 +144,12 @@ CHAMP_SELECT_FOOTER = """
 export { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach };
 """
 
-# Section 1: lcuCmd … _csMarkSelectedRow (3067-3269), then skip _ib* (3270-3419),
-#            then _csOnBuildRowClick … _csWireButtonsOnce (3420-4051)
-# Section 2: renderChampSelectPanel … renderChampSelectCoach  (5816-6223)
+# Section 1: lcuCmd ... _csMarkSelectedRow (3067-3269), then skip _ib* (3270-3419),
+#            then _csOnBuildRowClick ... _csWireButtonsOnce (3420-4051)
+# Section 2: renderChampSelectPanel ... renderChampSelectCoach  (5816-6223)
 cs_comment  = L(3067, 3071)   # block comment before lcuCmd
-cs_funcs1a  = L(3072, 3269)   # lcuCmd … _csMarkSelectedRow (before _ib* block)
-cs_funcs1b  = L(3420, 4051)   # _csOnBuildRowClick … _csWireButtonsOnce (after _ib* block)
+cs_funcs1a  = L(3072, 3269)   # lcuCmd ... _csMarkSelectedRow (before _ib* block)
+cs_funcs1b  = L(3420, 4051)   # _csOnBuildRowClick ... _csWireButtonsOnce (after _ib* block)
 cs_panel    = L(5816, 6223)   # renderChampSelectPanel, handleChampSelect, renderChampSelectCoach
 
 # renderChampSelectCoach uses RN.action / RN.immediate - rewrite to el() to
@@ -178,7 +178,7 @@ BRIDGE_PENDING_FOOTER = """
 export { renderCoachDecisions, renderRecentCoachCalls, renderBridgePending };
 """
 
-bp_funcs = L(6500, 6829)  # COACH_DECISIONS … pollBridgePending + setInterval
+bp_funcs = L(6500, 6829)  # COACH_DECISIONS ... pollBridgePending + setInterval
 
 with open(f"{PANELS_DIR}/bridge_pending.js", "w", encoding="utf-8") as f:
     f.write(BRIDGE_PENDING_HEADER + bp_funcs + BRIDGE_PENDING_FOOTER)
@@ -200,7 +200,7 @@ export {
 };
 """
 
-dev_funcs = L(4499, 4944)  # _settingsRefresh … _replayViewWireOnce
+dev_funcs = L(4499, 4944)  # _settingsRefresh ... _replayViewWireOnce
 
 with open(f"{PANELS_DIR}/dev.js", "w", encoding="utf-8") as f:
     f.write(DEV_HEADER + dev_funcs + DEV_FOOTER)

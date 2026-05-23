@@ -354,13 +354,13 @@
       <div class="home-card home-card-recent">
         <div class="home-card-head">RECENT 5</div>
         <div class="home-recent-list" id="home-recent-list">
-          <div class="home-empty">loading…</div>
+          <div class="home-empty">loading...</div>
         </div>
       </div>
       <div class="home-card home-card-week">
         <div class="home-card-head">THIS WEEK</div>
         <div class="home-week-chart" id="home-week-list">
-          <div class="home-empty">loading…</div>
+          <div class="home-empty">loading...</div>
         </div>
       </div>
     </div>
@@ -391,7 +391,7 @@
              (ARAM, ARAM Mayhem, Normal Draft, etc) → posts
              change_queue_type LCU cmd. Hidden when not leader. -->
         <select class="lobby-queue-select" id="lobby-queue-select" hidden>
-          <option value="">Change queue…</option>
+          <option value="">Change queue...</option>
           <option value="450">ARAM (450)</option>
           <option value="920">ARAM Mayhem (920)</option>
           <option value="430">Normal Blind (430)</option>
@@ -417,7 +417,7 @@
       <div class="lobby-members" id="lobby-members" hidden>
         <div class="lobby-members-head">PARTY <span class="lobby-members-count" id="lobby-members-count">0</span></div>
         <ul class="lobby-members-list" id="lobby-members-list">
-          <li class="home-empty">waiting for LCU agent to forward members…</li>
+          <li class="home-empty">waiting for LCU agent to forward members...</li>
         </ul>
       </div>
     </div>
@@ -458,7 +458,7 @@
           <canvas id="mm-zoi-canvas" class="mm-zoi-canvas" width="720" height="720"></canvas>
           <canvas id="mm-pos-canvas" class="mm-pos-canvas" width="720" height="720"></canvas>
         </div>
-        <div class="minimap-state" id="mm-state">awaiting liveclient data…</div>
+        <div class="minimap-state" id="mm-state">awaiting liveclient data...</div>
         <div class="zoi-debug hidden" id="zoi-debug" aria-hidden="true"></div>
         <!-- Team gold diff - slim bar showing our team's gold lead / deficit. -->
         <div class="gold-diff hidden" id="gold-diff">
@@ -503,7 +503,7 @@
       </div>
       <div class="panel-body">
         <div class="action" id="rn-action">-</div>
-        <div class="immediate" id="rn-immediate">awaiting coach output…</div>
+        <div class="immediate" id="rn-immediate">awaiting coach output...</div>
         <!-- A/B tutoring choices (item 119). When state.coach.choices is
              non-empty, web/js/panels/coach_choices.js paints 2-3 chip
              buttons here; otherwise the mount stays hidden + the prose
@@ -830,7 +830,7 @@
            their respective panels (anchored centering - no JS math). -->
       <div class="view-section-head">
         <h2>Pre-Game Lobby</h2>
-        <span class="view-section-sub" id="lv-window">awaiting LCU lobby data…</span>
+        <span class="view-section-sub" id="lv-window">awaiting LCU lobby data...</span>
       </div>
       <div class="view-section-body">
         <div class="lobby-view-grid">
@@ -947,7 +947,7 @@
                    tag + legacy queue switcher kept as hidden JS targets. -->
               <span class="lobby-view-leader-tag" id="lv-leader-tag" style="display:none !important" hidden>★ LEADER</span>
               <select class="lobby-queue-select" id="lv-queue-select" style="display:none !important" hidden>
-                <option value="">Change queue…</option>
+                <option value="">Change queue...</option>
               </select>
             </div>
           </div>
@@ -1004,7 +1004,7 @@
                  reorder/remove spacers stay aligned with the row above. -->
             <div class="lv-top8-search" id="lv-top8-search">
               <input type="text" class="lv-top8-search-input"
-                     id="lv-top8-search-input" placeholder="Search summoner profile…"
+                     id="lv-top8-search-input" placeholder="Search summoner profile..."
                      autocomplete="off" />
               <!-- s162 v10: online/offline dot removed from the search row
                    (it never represented a real signal - search has no
@@ -1035,7 +1035,7 @@
             <div class="csv-card-head">Allies</div>
             <div class="csv-card-body">
               <ul class="csv-team-list" id="csv-allies-list">
-                <li class="csv-empty">waiting for my_team data…</li>
+                <li class="csv-empty">waiting for my_team data...</li>
               </ul>
             </div>
           </div>
@@ -1047,7 +1047,7 @@
           <div class="csv-card csv-card-pickban">
             <div class="csv-card-head">Pick &amp; Ban Recommendations</div>
             <div class="csv-card-body csv-pickban-body" id="csv-pickban-body">
-              <div class="csv-empty">waiting for champ-select data…</div>
+              <div class="csv-empty">waiting for champ-select data...</div>
             </div>
           </div>
           <div class="csv-card csv-card-mypick">
@@ -1068,7 +1068,7 @@
             <div class="csv-card-head">Enemies</div>
             <div class="csv-card-body">
               <ul class="csv-team-list" id="csv-enemies-list">
-                <li class="csv-empty">waiting for their_team data…</li>
+                <li class="csv-empty">waiting for their_team data...</li>
               </ul>
             </div>
           </div>
@@ -1103,7 +1103,7 @@
               <div class="csv-sugg-section csv-sugg-bans"
                    id="csv-sugg-bans">
                 <div class="csv-sugg-bans-grid" id="csv-sugg-bans-grid">
-                  <div class="csv-sugg-empty">waiting for champ-select…</div>
+                  <div class="csv-sugg-empty">waiting for champ-select...</div>
                 </div>
               </div>
               <!-- 2026-05-22 (item 139 carry (a)): FIRST dashboard UI
@@ -1198,7 +1198,7 @@
         <div class="history-grid">
           <div class="history-card history-card-sessions">
             <div class="history-card-head">SESSIONS <span class="history-count" id="history-session-count">-</span></div>
-            <ul class="history-session-list" id="history-session-list"><li class="home-empty">loading…</li></ul>
+            <ul class="history-session-list" id="history-session-list"><li class="home-empty">loading...</li></ul>
           </div>
           <div class="history-card history-card-detail">
             <div class="history-card-head" id="history-detail-head">SELECT A SESSION</div>
@@ -1404,7 +1404,7 @@
         <aside class="replay-list-pane">
           <div class="replay-list-head">RECENT MATCHES</div>
           <ul class="replay-match-list" id="replay-match-list">
-            <li class="home-empty">loading…</li>
+            <li class="home-empty">loading...</li>
           </ul>
         </aside>
         <main class="replay-main-pane">
@@ -1489,7 +1489,7 @@
     <section id="view-last-match" class="view-section" hidden>
       <div class="view-section-head">
         <h2>POST GAME REVIEW</h2>
-        <span class="view-section-sub" id="lm-meta">loading…</span>
+        <span class="view-section-sub" id="lm-meta">loading...</span>
       </div>
       <div class="view-section-body lm-body" id="lm-body">
 
@@ -1727,19 +1727,19 @@
               <div class="lm-qr-col lm-qr-col-right">
                 <div class="lm-qr-col-head">What went right</div>
                 <ul class="lm-qr-list" id="lm-qr-right">
-                  <li class="lm-qr-empty">loading…</li>
+                  <li class="lm-qr-empty">loading...</li>
                 </ul>
               </div>
               <div class="lm-qr-col lm-qr-col-wrong">
                 <div class="lm-qr-col-head">What went wrong as a team</div>
                 <ul class="lm-qr-list" id="lm-qr-wrong">
-                  <li class="lm-qr-empty">loading…</li>
+                  <li class="lm-qr-empty">loading...</li>
                 </ul>
               </div>
               <div class="lm-qr-col lm-qr-col-chronic">
                 <div class="lm-qr-col-head">What you fail most at</div>
                 <ul class="lm-qr-list" id="lm-qr-chronic">
-                  <li class="lm-qr-empty">loading…</li>
+                  <li class="lm-qr-empty">loading...</li>
                 </ul>
               </div>
             </div>
@@ -1867,7 +1867,7 @@
         <div class="kv"><span>Fatigue</span><span id="dig-fatigue">-</span></div>
         <div class="digest-popout-advice" id="dig-advice">-</div>
         <div class="digest-insights-head">TOP INSIGHTS <span id="dig-insights-count" class="dim">-</span></div>
-        <ul id="dig-insights" class="digest-insights"><li class="dim">loading…</li></ul>
+        <ul id="dig-insights" class="digest-insights"><li class="dim">loading...</li></ul>
       </div>
     </div>
   </div>

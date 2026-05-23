@@ -206,7 +206,7 @@ class CoachIntegration:
         # live stats (kda / cs / level / gold / game_time_s) to populate
         # the dashboard top-bar pills, which read from coaching_data.json
         # via the WS /push channel (raw file content, no liveclient
-        # overlay). _last_state has these prefixed (my_cs, my_level…).
+        # overlay). _last_state has these prefixed (my_cs, my_level...).
         self._last_gs = game_state
 
         cached = self._cache.get(coach_state)

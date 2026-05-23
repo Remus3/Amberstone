@@ -95,7 +95,7 @@ _sse_count_lock = threading.Lock()
 
 
 def _serve_state_stream(h) -> None:
-    """Long-lived SSE response. Streams /api/state payloads as `data: …\\n\\n`
+    """Long-lived SSE response. Streams /api/state payloads as `data: ...\\n\\n`
     events whenever the JSON hash changes, plus a periodic heartbeat so a
     dead connection drops within ~15s instead of accumulating silently."""
     global _sse_count

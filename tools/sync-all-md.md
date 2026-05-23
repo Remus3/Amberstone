@@ -74,9 +74,9 @@ If the README's structural claims (modes covered, what the engine does, two-mach
 
 - **CLAUDE.md** - touch ONLY: (a) the "Active priorities" block - flip shipped `🟡`→`✅` with short SHA if WAKEUP/git shows it shipped, add `🟡` for in-flight; (b) the one DS reference line if `ENGINE_VERSION`/items/patch moved. Leave Topology / Paths / Hard rules / everything else alone.
 - **ROADMAP.md** - Now+Next ledger. Mark shipped items `✅` + SHA; ensure the top reflects the latest session from §1. Do not delete completed items (history lives elsewhere); do not rewrite older entries.
-- **BACKLOG.md** - strike (`~~…~~`) anything that shipped this period with the SHA; don't reorder.
+- **BACKLOG.md** - strike (`~~...~~`) anything that shipped this period with the SHA; don't reorder.
 - **docs/ARCHITECTURE.md / OPERATIONS.md / BRIDGE.md / API.md / AGENTS.md** - **structural sync only.** Verify module map / endpoints / ports / task names against the actual code & CLAUDE.md. Update a line only if code changed it. These are not changelogs - don't add session notes.
-- **docs/DAEMON_SLAYER.md** - the highest-drift doc. Reconcile the status line (`ENGINE_VERSION · N tests · items · patch`), the `tests/` module-map row, the "Phase 3 … implemented today" sentence (all 6 scorers are wired now - verify against CLAUDE.md/code, fix if it still says "three"), and the coverage numbers.
+- **docs/DAEMON_SLAYER.md** - the highest-drift doc. Reconcile the status line (`ENGINE_VERSION · N tests · items · patch`), the `tests/` module-map row, the "Phase 3 ... implemented today" sentence (all 6 scorers are wired now - verify against CLAUDE.md/code, fix if it still says "three"), and the coverage numbers.
 - **BRIEF.md** - personal portfolio doc, **has a UTF-8 BOM - preserve it**. Keep the resume/interview/casual voice. Reconcile only hard numbers (tests, `ENGINE_VERSION`, item count, match count) to §1; intentionally-rounded casual phrasing stays. Don't sand off the personality.
 - **MEMORY.md** - verify every linked memory file exists and each line is ≤150 chars; if a LIVING doc fact contradicts a memory, the memory is stale → note it in the report (do NOT auto-edit memory bodies here; that's `/consolidate-memory`'s job - just flag).
 - **Lessons** - there is no `LESSONS.md`. The lesson surface is `docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md` (dated, append-only - do NOT rewrite) + the `/process-incoming-lessons` flow + memory `feedback_*` entries. Only check: does the lesson-schema's frontmatter field list still match `core/bridge_envelope.py` and the CLAUDE.md "Memory frontmatter" section? If they diverged, report it - don't edit the dated artifact.
@@ -131,7 +131,7 @@ Print exactly this shape:
   self-congruence    : <identical | re-mirrored tools/ copy>
   commit             : <none | docs: sync living docs - <topic> (SHA)>
 ══════════════════════════════════════════════════════════════════
-  Decisions needing operator: <broken-ref resolutions, deprecation moves, …>
+  Decisions needing operator: <broken-ref resolutions, deprecation moves, ...>
 ══════════════════════════════════════════════════════════════════
 ```
 

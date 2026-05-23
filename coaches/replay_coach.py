@@ -112,7 +112,7 @@ def _format_for_prompt(blob: dict[str, Any]) -> str:
 
 
 def _parse_response(raw: str) -> dict[str, Any]:
-    """Parse Haiku output. Labels may be inline ("Summary: text…") OR on
+    """Parse Haiku output. Labels may be inline ("Summary: text...") OR on
     their own line with the body following on subsequent lines until the
     next label. Handles markdown wrapping (**Summary:**, *Moment 1:*) +
     skips horizontal rules (---) and h1 headings."""

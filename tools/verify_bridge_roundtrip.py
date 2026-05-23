@@ -140,7 +140,7 @@ def main() -> int:
                 write_verdict(verdict)
                 surface_to_bridge(
                     f"Bridge roundtrip verifier PASS - Legion /loop picked up "
-                    f"task {task_id[:18]}… and replied in {latency:.1f}s",
+                    f"task {task_id[:18]}... and replied in {latency:.1f}s",
                     verdict,
                 )
                 return 0
@@ -165,7 +165,7 @@ def main() -> int:
     }
     write_verdict(verdict)
     surface_to_bridge(
-        f"Bridge roundtrip verifier FAIL_TIMEOUT - no result for {task_id[:18]}… "
+        f"Bridge roundtrip verifier FAIL_TIMEOUT - no result for {task_id[:18]}... "
         f"after {WAIT_S}s. Check ops/runtime/bridge_roundtrip_verdict.json",
         verdict,
     )

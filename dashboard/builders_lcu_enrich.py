@@ -185,7 +185,7 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
 
 def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
                            my_team_id) -> dict:
-    """Parse a Riot Match-V5 timeline payload (…/matches/{id}/timeline)
+    """Parse a Riot Match-V5 timeline payload (.../matches/{id}/timeline)
     into the per-minute differential series + objective-event ribbon the
     Post Game Review "Timeline" tab renders (s220 Item E, phase 1).
 
@@ -360,7 +360,7 @@ def _attach_match_timeline(enriched: dict, lcu_detail: dict) -> None:
     parsed result to ``enriched["timeline"]`` (s220 Item E, phase 1).
 
     The LCU exposes no per-game timeline endpoint, so the authoritative
-    source is Match-V5 (…/matches/{platform}_{gameId}/timeline) - exactly
+    source is Match-V5 (.../matches/{platform}_{gameId}/timeline) - exactly
     the consumer s148 anticipated. ``core.riot_api.get_match_timeline``
     is immutable-cached: one Riot call per match, then served from cache.
 

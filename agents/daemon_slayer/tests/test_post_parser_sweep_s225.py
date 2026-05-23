@@ -14,7 +14,7 @@ clean block_index ADD:
   passive on-hit), scoring Varus W at ~7% of reality (live A/B 18→240
   raw, 13.3×). Pattern D resource-state amp - operator fully controls
   the 3-stack build (precedent: Twitch E 6-stack s198, Renekton full
-  Fury s197). Block 2 (not block 4 'Maximum…at Max Stacks' = 1.5×
+  Fury s197). Block 2 (not block 4 'Maximum...at Max Stacks' = 1.5×
   block 2) because block 4 entangles Varus R's Blight amplification -
   W's contribution must be scored R-independent (R is its own
   ability_dps key). Varus → {Q:1, W:2}.
@@ -84,7 +84,7 @@ class VarusWEntryTests(unittest.TestCase):
                                places=6)
 
     def test_block2_is_R_independent_choice(self) -> None:
-        """Block 4 ('Maximum…at Max Stacks') is strictly larger than the
+        """Block 4 ('Maximum...at Max Stacks') is strictly larger than the
         chosen block 2 - confirming we deliberately took the smaller,
         R-independent 3-stack value, not the R-amplified one."""
         b2 = self._w(forced=2).raw_damage_per_cast
