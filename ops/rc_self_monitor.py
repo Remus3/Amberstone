@@ -1,5 +1,5 @@
 """
-ops/rc_self_monitor.py  â€”  Phase 0.1 corrective rewrite
+ops/rc_self_monitor.py   -   Phase 0.1 corrective rewrite
 
 Changes vs Phase 0:
   [1]  Ladder escalation fixed: health_check no longer resets ladder/consecutive_fails.
@@ -300,7 +300,7 @@ class SelfMonitor:
     def _tick(self) -> None:
         profile = self._load_profile()
 
-        # Kill switch â€” checked first every tick
+        # Kill switch  -  checked first every tick
         if self._kill_flag.exists():
             if self._armed:
                 self._armed  = False
@@ -308,7 +308,7 @@ class SelfMonitor:
                 self.incident_log.record(
                     severity="WARN", subsystem="monitor",
                     trigger="kill_flag_detected", action="monitor_off", result="ok",
-                    detail="self_monitor_off.flag found â€” auto-repair disabled",
+                    detail="self_monitor_off.flag found  -  auto-repair disabled",
                 )
             self._write_state(profile)
             return
@@ -407,7 +407,7 @@ class SelfMonitor:
         )
 
         #  -  -  Advance ladder unconditionally after each unhealthy tick  -  -  -  -  -  - 
-        # health_check is the only "wait and observe" step â€” it does not
+        # health_check is the only "wait and observe" step  -  it does not
         # advance the ladder on the FIRST failure (we need consecutive_failsâ‰¥2
         # before escalating past it).  All subsequent steps advance regardless
         # of whether the command was successfully issued.
@@ -416,7 +416,7 @@ class SelfMonitor:
             if self._consecutive_fails >= 2:
                 self._ladder_idx = min(idx + 1, len(ladder) - 1)
         else:
-            # Always advance â€” issuing the command is the action, not waiting
+            # Always advance  -  issuing the command is the action, not waiting
             # for the app to recover (recovery is detected on the next healthy tick).
             self._ladder_idx = min(idx + 1, len(ladder) - 1)
 
