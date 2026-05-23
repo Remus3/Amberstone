@@ -587,7 +587,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     _viewUpdateMenuActive(viewId);
     // Lazy-fetch view content (wire-once + fetch on first activate)
     if (viewId === "lobby")       { _lobbyViewWireOnce(); _lobbyViewRefresh(); }
-    if (viewId === "champ-select") { renderChampSelectView(state.latest.lcu); }
+    if (viewId === "champ-select") { renderChampSelectView(_csResolveLcu()); }
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
@@ -1203,7 +1203,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // active. lcu envelopes are one-shot from FakeSocket, so a render
     // that bailed on !CHAMPS.ready (champion-name index loads async)
     // would never re-run otherwise. State ticks every 2s - fine.
-    if (_VIEW.current === "champ-select") renderChampSelectView(state.latest.lcu);
+    if (_VIEW.current === "champ-select") renderChampSelectView(_csResolveLcu());
     renderStats(p);
     renderGameSense(p);
     renderWhatWent(p);
@@ -3239,6 +3239,45 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     }
     return (state.latest && state.latest.lcu) || {};
   }
+  // UI scale v2.1 page #8 audit ritual step 5 state-coverage mock fixture
+  // (2026-05-23). When body.dataset.uiMock === "1" and the view is
+  // champ-select, the renderChampSelectView call sites consume
+  // /data/ui_mock/champ_select_sr.json (shape mirrors lcu envelope's
+  // `phase` + `champ_select` blocks) instead of the live state.latest.lcu
+  // feed - so the Champ Select surface renders without an active LCU
+  // ChampSelect phase during the audit pass.
+  let _csMockPromise = null;
+  let _csMockData = null;
+  function _csIsMock() {
+    return !!(document.body && document.body.dataset.uiMock === "1");
+  }
+  function _csMockLoad() {
+    if (_csMockPromise) return _csMockPromise;
+    _csMockPromise = fetch("/data/ui_mock/champ_select_sr.json", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _csMockData = data || null;
+        if (_VIEW && _VIEW.current === "champ-select") {
+          try { renderChampSelectView(_csResolveLcu()); } catch (_) {}
+        }
+        return _csMockData;
+      })
+      .catch(() => { _csMockData = null; return null; });
+    return _csMockPromise;
+  }
+  function _csResolveLcu(realLcu) {
+    if (_csIsMock()) {
+      if (_csMockData) {
+        return {
+          phase: _csMockData.phase || "ChampSelect",
+          champ_select: _csMockData.champ_select || null,
+          config: _csMockData.config || {},
+        };
+      }
+      _csMockLoad();
+    }
+    return realLcu || (state.latest && state.latest.lcu) || {};
+  }
 
   function _fmtMasteryPoints(pts) {
     const n = pts | 0;
@@ -4961,7 +5000,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     renderHomePanel(lcu);       // home-view phase chip
     _viewResolveAndApply(lcu);  // re-derive view based on new phase
     _maybeRefreshLobbyView();   // re-render view-lobby if it's the active surface
-    if (_VIEW.current === "champ-select") renderChampSelectView(lcu);  // s164
+    if (_VIEW.current === "champ-select") renderChampSelectView(_csResolveLcu(lcu));  // s164
   }
 
   // ── Auto Accept (agent-CONFIG-backed, lobby ↔ settings synced) ──────
