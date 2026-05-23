@@ -169,7 +169,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 _LOG = logging.getLogger(__name__)
@@ -448,6 +448,20 @@ class ConditionalCcEntry:
         reliable than the tag-default midpoint).
       * ``notes``: free-form documentation. Should explain the
         condition + the calibration choice if non-default.
+      * ``form_index``: optional Meraki form_index pin. ``None`` (the
+        default) means the entry encodes the DEFAULT / aggregate form
+        of the spell (legacy wave 0-9 entries; one entry per
+        (champion, spell) slot in the primary
+        ``_PER_SPELL_CC_CONDITIONAL`` registry). An integer means the
+        entry encodes a SPECIFIC Meraki ``form_index`` of the spell
+        (multi-form same-spell-slot entries; lives in the parallel
+        ``_PER_SPELL_CC_CONDITIONAL_FORMS`` sidecar registry). Added
+        at ENGINE 1.47.0 (wave 10 schema lift, 2026-05-23) to support
+        spells where multiple forms on the same Q/W/E/R slot each
+        carry a distinct first-order CC mechanic (Karma W Renewal
+        Mantra-bonus root extension; Hwei E Gaze of the Abyss EW
+        form root). Backward-compat: all wave 0-9 entries omit the
+        field and default to ``form_index=None``.
     """
 
     champion: str
@@ -457,6 +471,7 @@ class ConditionalCcEntry:
     condition: str
     probability: float = 0.5
     notes: str = ""
+    form_index: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.spell not in ("Q", "W", "E", "R"):
@@ -1782,10 +1797,345 @@ _PER_SPELL_CC_CONDITIONAL: Dict[str, Dict[str, ConditionalCcEntry]] = (
 )
 
 
+# ---------------- wave 10 form-explicit sidecar registry ----------------
+#
+# ENGINE 1.47.0 (2026-05-23) introduces the same-spell-slot schema lift
+# to support spells where multiple Meraki ``form_index`` records on the
+# SAME Q/W/E/R slot each carry a distinct first-order CC mechanic.
+#
+# Examples surfaced via the ENGINE 1.46.0 ``effects_descriptions`` schema
+# lift in ``data/daemon_slayer/16.10.1/champion_abilities.json``:
+#
+#   * Karma W: form_index=0 Focused Resolve (channel-completion root,
+#     wave 1 default-form entry) coexists with form_index=1 Renewal
+#     (Mantra-bonus root extension; gated on Karma reaching a Mantra
+#     rank and casting empowered W via R).
+#   * Hwei E: form_index=1 Grim Visage (EQ form, channel-completion
+#     fear, wave 9 default-form entry) coexists with form_index=2
+#     Gaze of the Abyss (EW form, channel-completion root).
+#
+# Schema design:
+#
+#   * The PRIMARY ``_PER_SPELL_CC_CONDITIONAL`` registry is unchanged
+#     ``Dict[str, Dict[str, ConditionalCcEntry]]`` to preserve backward
+#     compatibility with ~244 test access lines pinning the
+#     ``["Champion"]["Slot"]`` lookup pattern. All wave 0-9 entries
+#     stay in this registry with ``form_index=None`` (default form
+#     semantic).
+#   * The PARALLEL ``_PER_SPELL_CC_CONDITIONAL_FORMS`` sidecar
+#     registry is ``Dict[str, Dict[Tuple[str, int], ConditionalCcEntry]]``
+#     keyed by ``(spell, form_index)``. Wave 10 form-explicit entries
+#     live here with their ``form_index`` field set to the integer
+#     Meraki form_index. This avoids the same-slot collision in the
+#     primary registry (e.g. (Karma, W) primary holds form_index=None
+#     Focused Resolve; sidecar holds (W, 1) Renewal).
+#   * ``get_conditional_entries(champion)`` merges entries from both
+#     registries, returning a flat Q/W/E/R-ordered tuple with multi-
+#     form entries on the same slot ordered by form_index ASC.
+#   * ``REGISTRY_TOTAL_ENTRIES`` counts the union (legacy +
+#     form-explicit). ``REGISTRY_TOTAL_CHAMPIONS`` counts unique
+#     champions across both registries.
+#
+# Math preservation: byte-identical for default include_conditional=False
+# callers (the consumer path skips conditional entirely). For
+# include_conditional=True callers, the new form-explicit entries
+# contribute to ``compute_cc_pressure`` for their champions ON TOP of
+# the legacy default-form entries. This is the INTENDED schema-lift
+# growth: Karma W and Hwei E gain a SECOND conditional CC contribution
+# per cast (when the form is selected) instead of being capped at one
+# entry per slot.
+
+
+def _build_per_spell_cc_conditional_forms() -> (
+    Dict[str, Dict[Tuple[str, int], ConditionalCcEntry]]
+):
+    """Build the form-explicit conditional CC sidecar registry.
+
+    Uses ``registry.setdefault(champion, {})[(spell, form_index)] = entry``
+    pattern so multi-wave + multi-form additions never clobber. Seed:
+    2 wave-10 entries closing the (a)-class REJECT carry from item 153
+    wave 9 (Karma W form 1 + Hwei E form 2 same-spell-slot constraint).
+
+    Per-entry probabilities pass through ``_p_form(champion, spell,
+    form_index, default)`` which honors any ``per_entry_probability``
+    override loaded from ``data/cc_conditional_calibration.json`` under
+    the extended key shape ``<champion>:<spell>:<form_index>``.
+    """
+    registry: Dict[str, Dict[Tuple[str, int], ConditionalCcEntry]] = {}
+
+    def _p_form(
+        champion: str, spell: str, form_index: int, default: float
+    ) -> float:
+        """Resolve per-form per-entry probability with operator override.
+
+        Reads ``_PER_FORM_ENTRY_PROBABILITY_OVERRIDES.get((champion,
+        spell, form_index), default)`` so the operator's calibration
+        JSON file flows through to every registered form-explicit
+        entry without per-entry boilerplate.
+        """
+        return _PER_FORM_ENTRY_PROBABILITY_OVERRIDES.get(
+            (champion, spell, form_index), default
+        )
+
+    # ============================================================
+    # === wave 10 expansion (2026-05-23 / ENGINE 1.47.0) - +2
+    # === entries / 0 net-new champions via same-spell-slot schema
+    # === lift on (Karma, W) and (Hwei, E). Both slots already hold
+    # === a wave 0-9 default-form entry in the primary registry;
+    # === these form-explicit entries land in the sidecar registry
+    # === without clobbering the legacy entries.
+    # ============================================================
+
+    # Karma W form_index=1 Renewal (Mantra-bonus root extension):
+    # The base Karma W Focused Resolve (form 0) is the wave 1
+    # channel-completion root entry in the primary registry (1.5-2.0s
+    # across 5 W ranks per Meraki Root Duration block). When Karma
+    # spends a Mantra charge (R) to empower W, the form becomes
+    # Renewal with TWO additional effects: (1) Karma heals for 17%
+    # of missing health on-cast plus again on tether expiry / target
+    # death; (2) the root duration is EXTENDED by a bonus per Mantra
+    # rank.
+    #
+    # Per Meraki 16.10.1 schema-lifted block, the Renewal form
+    # carries:
+    #   * ``Root Duration Increase`` modifier:
+    #       [0.5, 0.75, 1.0, 1.25] across 4 Mantra ranks.
+    #   * ``Total Root Duration`` modifier:
+    #       base [1.6, 1.7, 1.8, 1.9, 2.0] across 5 W ranks
+    #     PLUS bonus [0.5, 0.75, 1.0, 1.25] across 4 Mantra ranks.
+    #
+    # Encoding choice: a single per-W-rank tuple at the MID Mantra
+    # rank (rank 2 -> +0.75 bonus) gives operator-conservative
+    # midpoint duration values consistent with the wave 1
+    # calibration pattern. At max Mantra (rank 4 -> +1.25) the
+    # actual Total Root reaches (2.85, 2.95, 3.05, 3.15, 3.25) but
+    # the registry stores the mid-Mantra estimate; operator can tune
+    # via ``per_entry_probability`` (form-explicit key shape
+    # ``Karma:W:1``).
+    #
+    # Condition tag: COND_FRENZY_STATE - Karma must be in the
+    # Mantra-charged self-empowered state to cast Renewal. Parallel
+    # to Renekton W Fury (wave 9 first COND_FRENZY_STATE consumer);
+    # this is the SECOND consumer.
+    #
+    # Mechanic schema-lift-verified: the form 1 effects_descriptions
+    # text "Mantra Bonus: Focused Resolve's root duration is
+    # increased. Karma heals for 17% (+ 1% per 100 AP) of her missing
+    # health once on-cast, and again once the tether lasts its full
+    # duration or the target dies while tethered. Renewal scales with
+    # Mantra's rank." confirms the mechanic (the bonus root values
+    # are NOT in the structured leveling[] but the duration EXTENSION
+    # values ARE in the Meraki damage_blocks Root Duration Increase
+    # modifier; the schema lift confirms the mechanic in-source).
+    #
+    # Coexists with the primary registry wave 1 Karma W entry
+    # (form_index=None default form Focused Resolve channel-completion
+    # root). Both contribute to compute_cc_pressure(Karma,
+    # include_conditional=True): the base form 0 fires unconditional
+    # (within W's own conditional gate of full-channel tether), and
+    # the form 1 Mantra-bonus extension adds extra duration when
+    # Mantra is active.
+    base_w = (1.6, 1.7, 1.8, 1.9, 2.0)
+    mid_mantra_bonus = 0.75  # Mantra rank 2 / 4 (operator-conservative)
+    karma_w_form1 = tuple(round(b + mid_mantra_bonus, 4) for b in base_w)
+    registry.setdefault("Karma", {})[("W", 1)] = ConditionalCcEntry(
+        champion="Karma",
+        spell="W",
+        cc_kind="root",
+        durations_s=karma_w_form1,
+        condition=COND_FRENZY_STATE,
+        probability=_p_form("Karma", "W", 1, 0.4),
+        notes=(
+            "W form 1 Renewal (Mantra-empowered Focused Resolve): "
+            "Karma's base W root (1.6-2.0s across 5 W ranks) is "
+            "EXTENDED by a Mantra-rank bonus (+0.5/+0.75/+1.0/+1.25 "
+            "across 4 Mantra ranks). Encoded at mid Mantra rank 2 "
+            "(+0.75 bonus) for operator-conservative calibration: "
+            "(2.35, 2.45, 2.55, 2.65, 2.75) seconds across 5 W ranks. "
+            "At max Mantra rank 4 the actual durations reach (2.85, "
+            "2.95, 3.05, 3.15, 3.25). Maps to COND_FRENZY_STATE - "
+            "Karma must be in a Mantra-charged self-empowered state "
+            "(R) to cast the Renewal form variant. SECOND consumer "
+            "of COND_FRENZY_STATE after Renekton W wave 9. Mechanic "
+            "captured by ENGINE 1.46.0 Meraki schema lift "
+            "(effects_descriptions[0] 'Mantra Bonus: Focused "
+            "Resolve's root duration is increased ... Renewal "
+            "scales with Mantra's rank'). Coexists with the primary "
+            "registry wave 1 Karma W default-form entry; this is "
+            "the FIRST same-spell-slot schema-lift entry in the "
+            "sidecar registry. Form-explicit override key shape: "
+            "Karma:W:1."
+        ),
+        form_index=1,
+    )
+
+    # Hwei E form_index=2 Gaze of the Abyss (EW form root): Hwei E
+    # is a 2-cast cycle. Form 0 (Subject: Torment) is the mood
+    # selector; form 1 (Grim Visage, EQ follow-up) is the channel-
+    # completion FEAR already in the primary registry as the wave 9
+    # default-form entry; form 2 (Gaze of the Abyss, EW follow-up)
+    # is the channel-completion ROOT that this wave 10 entry adds;
+    # form 3 (Crushing Maw, EE follow-up) has no first-order CC
+    # (slow + pull only).
+    #
+    # Per Meraki 16.10.1 schema-lifted block, form 2 carries:
+    #   * ``Root Duration`` block: [1.2, 1.4, 1.6, 1.8, 2.0] across
+    #     5 ranks. NOTE: Hwei E levels per E spell rank (5 ranks),
+    #     not separately per form - all 3 EQ/EW/EE forms scale on
+    #     the same E rank index.
+    #
+    # Mechanic schema-lift-verified: the form 2 effects_descriptions
+    # text "Active - EW: Hwei tosses an eyeball to the target
+    # location. Upon arrival, it expands over 0.2 seconds into a
+    # dark gaze lasting 3 seconds ... Once locked on, the eye
+    # launches itself at the target after 0.3 seconds and collides
+    # with the first enemy hit to deal magic damage, reveal them
+    # for 2.5 seconds, and root them for a duration." confirms the
+    # mechanic.
+    #
+    # Condition tag: COND_CHANNEL_COMPLETION - parallel to form 1
+    # Grim Visage (wave 9 entry). The 2-cast cycle (E mood selector
+    # then EW form lock) is the channel; partial-cycle does not
+    # fire any payload. Additionally the eye has a placement-lock-
+    # launch sequence (0.7s + 0.3s = ~1s extra delay before the
+    # projectile lands) that adds dodgeable channel time.
+    #
+    # Probability mid-low (0.4 tag midpoint) - matches form 1 Hwei
+    # E calibration since both forms share the same 2-cast cycle
+    # gating mechanic. The form 2 root has additional placement +
+    # lock-on delay which is offset by the 5s root duration on a
+    # rooted target making it harder to escape.
+    #
+    # Coexists with the primary registry wave 9 Hwei E entry
+    # (form_index=None default form Grim Visage channel-completion
+    # fear). Both contribute to compute_cc_pressure(Hwei,
+    # include_conditional=True) when the operator picks the
+    # respective form mid-cycle. Form-explicit override key shape:
+    # Hwei:E:2.
+    registry.setdefault("Hwei", {})[("E", 2)] = ConditionalCcEntry(
+        champion="Hwei",
+        spell="E",
+        cc_kind="root",
+        durations_s=(1.2, 1.4, 1.6, 1.8, 2.0),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p_form("Hwei", "E", 2, 0.4),
+        notes=(
+            "E form 2 Gaze of the Abyss (EW form): roots target "
+            "for 1.2-2.0s across 5 E ranks. Hwei E is a 2-cast "
+            "cycle (E mood selector -> Q/W/E form lock). The root "
+            "fires only on the EW form completion plus a placement-"
+            "lock-launch sequence (~1s additional delay). Partial-"
+            "cycle = no fire. Maps to COND_CHANNEL_COMPLETION on "
+            "the 2-cast sequence + eye lock-on channel. Probability "
+            "mid-low - 2-input setup + dodgeable projectile. "
+            "Coexists with the primary registry wave 9 Hwei E "
+            "form 1 Grim Visage fear entry; this is the SECOND "
+            "same-spell-slot schema-lift entry in the sidecar "
+            "registry. Mechanic captured by ENGINE 1.46.0 Meraki "
+            "schema lift (effects_descriptions confirms root "
+            "payload on EW form). Form-explicit override key "
+            "shape: Hwei:E:2."
+        ),
+        form_index=2,
+    )
+
+    return registry
+
+
 # ---------------- public lookup helpers ----------------
 
 
 _SPELL_ORDER = ("Q", "W", "E", "R")
+
+
+# Apply per-form per-entry overrides at module load. The form-builder
+# reads this map for (champion, spell, form_index) -> probability
+# overrides. Defaults to no-op when the override file is absent or
+# malformed. Extends the wave 1 ``_PER_ENTRY_PROBABILITY_OVERRIDES``
+# pattern with a 3-tuple key shape.
+def _apply_per_form_entry_overrides(
+    overrides: dict,
+) -> Dict[Tuple[str, str, int], float]:
+    """Build the per-form per-entry probability override lookup map.
+
+    Reads the ``per_entry_probability`` block of the overrides dict.
+    Returns a dict keyed by ``(champion, spell, form_index)`` tuples
+    matching the form-builder's lookup key shape. Non-conformant
+    entries are silently dropped:
+
+      * Key without exactly two colons (cannot split into
+        champ:spell:form).
+      * Empty champion or spell after split.
+      * Non-integer form_index segment.
+      * Non-float value.
+      * Bool value.
+      * Out-of-range [0.0, 1.0] value.
+
+    The form-builder reads this lookup via
+    ``.get((champion, spell, form_index), tag_default)`` when
+    constructing each form-explicit ConditionalCcEntry. Unknown
+    ``<champion>:<spell>:<form>`` keys are not validated against the
+    seed here - they are silently dropped at builder lookup time when
+    ``.get()`` returns the form-builder's hardcoded default.
+
+    Same-key collision: if the override JSON has BOTH a 2-segment
+    ``<champion>:<spell>`` key (wave 1+ shape) AND a 3-segment
+    ``<champion>:<spell>:<form>`` key, the 2-segment lookup feeds the
+    primary registry default-form entries and the 3-segment lookup
+    feeds the sidecar registry form-explicit entries; both coexist
+    without ambiguity.
+    """
+    if not overrides:
+        return {}
+    section = overrides.get("per_entry_probability")
+    if not isinstance(section, dict):
+        return {}
+    result: Dict[Tuple[str, str, int], float] = {}
+    for key, value in section.items():
+        if not isinstance(key, str):
+            continue
+        # Key shape: ``<champion>:<spell>:<form_index>`` (exactly two
+        # colons; the 2-segment shape is handled by the wave 1
+        # ``_apply_per_entry_overrides`` helper and silently skipped
+        # here).
+        parts = key.split(":")
+        if len(parts) != 3:
+            continue
+        champion, spell, form_str = (
+            parts[0].strip(), parts[1].strip(), parts[2].strip()
+        )
+        if not champion or not spell or not form_str:
+            continue
+        # form_index must parse as an integer >= 0.
+        try:
+            form_index = int(form_str)
+        except (TypeError, ValueError):
+            continue
+        if form_index < 0:
+            continue
+        # bool defense (must come before int/float check).
+        if isinstance(value, bool):
+            continue
+        if not isinstance(value, (int, float)):
+            continue
+        numeric = float(value)
+        if numeric < 0.0 or numeric > 1.0:
+            continue
+        result[(champion, spell, form_index)] = numeric
+    return result
+
+
+_PER_FORM_ENTRY_PROBABILITY_OVERRIDES: Dict[Tuple[str, str, int], float] = (
+    _apply_per_form_entry_overrides(_OVERRIDES_RAW)
+)
+
+
+# Module-load: build sidecar registry once. Callers can re-invoke the
+# builder for fresh dict instances (used by tests to verify multi-wave-
+# friendly construction).
+_PER_SPELL_CC_CONDITIONAL_FORMS: Dict[
+    str, Dict[Tuple[str, int], ConditionalCcEntry]
+] = _build_per_spell_cc_conditional_forms()
 
 
 def get_conditional_entries(champion: str) -> Tuple[ConditionalCcEntry, ...]:
@@ -1796,17 +2146,32 @@ def get_conditional_entries(champion: str) -> Tuple[ConditionalCcEntry, ...]:
 
     The returned tuple is sorted in canonical Q-W-E-R order over the
     subset of spells the champion has registered (matches the
-    ``compute_cc_pressure`` ordering convention).
+    ``compute_cc_pressure`` ordering convention). For spells with
+    multi-form schema-lift entries (Karma W / Hwei E since ENGINE
+    1.47.0), the primary default-form entry comes FIRST, followed by
+    each form-explicit sidecar entry in form_index ASC order.
     """
     if not champion:
         return ()
     spells_dict = _PER_SPELL_CC_CONDITIONAL.get(champion, {})
-    if not spells_dict:
+    forms_dict = _PER_SPELL_CC_CONDITIONAL_FORMS.get(champion, {})
+    if not spells_dict and not forms_dict:
         return ()
-    ordered = []
+    ordered: List[ConditionalCcEntry] = []
     for slot in _SPELL_ORDER:
+        # Primary default-form entry (wave 0-9 legacy + setdefault
+        # pattern) lands first.
         if slot in spells_dict:
             ordered.append(spells_dict[slot])
+        # Form-explicit sidecar entries (wave 10+) land next, sorted
+        # by form_index ASC for deterministic iteration order.
+        slot_forms = [
+            (form_idx, entry)
+            for (spell, form_idx), entry in forms_dict.items()
+            if spell == slot
+        ]
+        for _, entry in sorted(slot_forms, key=lambda pair: pair[0]):
+            ordered.append(entry)
     return tuple(ordered)
 
 
@@ -1855,9 +2220,27 @@ def get_total_conditional_cc_seconds(
 # ---------------- public introspection ----------------
 
 
-REGISTRY_TOTAL_CHAMPIONS: int = len(_PER_SPELL_CC_CONDITIONAL)
+# REGISTRY_TOTAL_CHAMPIONS counts the union of champions across the
+# primary registry (wave 0-9 default-form entries) and the sidecar
+# registry (wave 10+ form-explicit same-spell-slot entries). Since the
+# wave 10 schema-lift candidates (Karma W form 1, Hwei E form 2) both
+# already have wave 0-9 entries in the primary registry, this stays at
+# the pre-wave-10 champion count for wave 10. Future waves that add
+# form-explicit entries on NEW champions would grow this count.
+REGISTRY_TOTAL_CHAMPIONS: int = len(
+    set(_PER_SPELL_CC_CONDITIONAL.keys())
+    | set(_PER_SPELL_CC_CONDITIONAL_FORMS.keys())
+)
+# REGISTRY_TOTAL_ENTRIES sums entries across BOTH registries. The
+# primary registry contains one entry per (champion, spell) default-form
+# slot; the sidecar contains one entry per (champion, spell, form_index)
+# form-explicit slot. The two never collide by construction (legacy
+# entries use form_index=None semantic; sidecar entries use explicit
+# integer form_index).
 REGISTRY_TOTAL_ENTRIES: int = sum(
     len(spells) for spells in _PER_SPELL_CC_CONDITIONAL.values()
+) + sum(
+    len(forms) for forms in _PER_SPELL_CC_CONDITIONAL_FORMS.values()
 )
 
 
@@ -1880,10 +2263,14 @@ __all__ = [
     "_DEFAULT_CONDITION_PROBABILITY",
     "_OVERRIDES_PATH",
     "_PER_ENTRY_PROBABILITY_OVERRIDES",
+    "_PER_FORM_ENTRY_PROBABILITY_OVERRIDES",
     "_PER_SPELL_CC_CONDITIONAL",
+    "_PER_SPELL_CC_CONDITIONAL_FORMS",
     "_apply_default_probability_overrides",
     "_apply_per_entry_overrides",
+    "_apply_per_form_entry_overrides",
     "_build_per_spell_cc_conditional",
+    "_build_per_spell_cc_conditional_forms",
     "_load_overrides",
     "get_conditional_entries",
     "get_total_conditional_cc_seconds",
