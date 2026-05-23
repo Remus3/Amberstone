@@ -29,7 +29,7 @@ log = logging.getLogger("rc.web_dashboard")
 DB_CONN_LOCAL = threading.local()
 
 
-def ro_conn(db_path: Path):
+def ro_conn(db_path: Path) -> sqlite3.Connection | None:
     """Per-thread read-only sqlite connection for db_path, opened
     lazily on first call per thread and reused thereafter. Returns
     None if the DB file is missing - caller decides the fallback."""

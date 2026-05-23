@@ -131,7 +131,7 @@ class VisionTracker:
     visibility per enemy. Output via atomic write to vision_state.json."""
 
     def __init__(self, output_path: Optional[Path] = None,
-                 poll_interval_s: float = _DEFAULT_POLL_S):
+                 poll_interval_s: float = _DEFAULT_POLL_S) -> None:
         self._out = Path(output_path) if output_path else _APP_DIR / "data" / "vision_state.json"
         self._poll_s = poll_interval_s
         self._state: dict = {}              # last published state
