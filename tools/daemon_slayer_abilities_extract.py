@@ -20,6 +20,13 @@ normalized into:
   ``bonus_mr_pct``, ``caster_max_mp_pct``)
 * ``parse_status`` - ``"ok"`` (all damage modifiers typed),
   ``"partial"`` (some unparsed), ``"unparsed"`` (no recognized fields)
+* ``effects_descriptions`` - list of raw effect description strings
+  from Meraki ``effects[].description``. ENGINE 1.46.0 schema lift
+  (2026-05-23): captures empowered / form-gated CC mechanics
+  (Renekton W Reign-of-Anger empowered stun, Volibear R turret-only
+  scope, Aatrox R minion-only fear, Briar W frenzy self-buff-only)
+  that live in description text but NOT in the structured leveling
+  blocks. Pure-additive: damage-block pipeline unchanged.
 
 Phase 4b will layer a formula evaluator on top of this snapshot. Phase 4a
 is data ingest only - we do not evaluate per-cast damage here.
@@ -392,11 +399,24 @@ def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
     raw_effects_count = 0
     raw_leveling_count = 0
     parse_notes: list[str] = []
+    # ENGINE 1.46.0 schema lift (2026-05-23): capture per-effect
+    # textual descriptions verbatim. Empowered / form-gated CC
+    # mechanics (Renekton W Reign-of-Anger stun extension, Volibear R
+    # Stormbringer turret-only confirmation, Aatrox R minion-only
+    # fear, Briar W frenzy self-buff-only confirmation) live in the
+    # description text but NOT in the structured leveling[] blocks.
+    # Phase 4a damage-block pipeline is UNCHANGED; descriptions are
+    # appended as a pure-additive list so prior parse_status math +
+    # downstream consumers see byte-identical structured fields.
+    effects_descriptions: list[str] = []
 
     for eff in form.get("effects") or []:
         raw_effects_count += 1
         if not isinstance(eff, dict):
             continue
+        desc = eff.get("description")
+        if isinstance(desc, str):
+            effects_descriptions.append(desc)
         levelings = eff.get("leveling") or []
         for lvl in levelings:
             raw_leveling_count += 1
@@ -450,6 +470,7 @@ def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
         "resource": resource,
         "is_aoe": _is_aoe(affects, targeting),
         "damage_blocks": damage_blocks,
+        "effects_descriptions": effects_descriptions,
         "raw_effects_count": raw_effects_count,
         "raw_leveling_count": raw_leveling_count,
         "parse_status": parse_status,
