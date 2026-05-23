@@ -1541,6 +1541,90 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     # wave augmentations (Lissandra W + Maokai W + Rakan R). Total
     # registry: 106 entries across 89 champs (unchanged champ count
     # because all 3 augmentations are on existing champions).
+    # ----- ENGINE wave 9 (2026-05-22) -----
+    # +2 entries / 0 new champions / 2 multi-wave augmentations. Per
+    # item 146 carry (j): "wave 9+ likely thin pool (saturation for
+    # net-new champions). The unconditional first-order CC at 16.10.1
+    # is genuinely saturated for net-new champions, future waves either
+    # coexist on already-registered champs OR need new schema." Wave 9
+    # delivers exactly that - all wave 9 candidates are multi-wave
+    # coexistence on already-registered champions. The wave 9 audit
+    # walked every UNREGISTERED spell of every already-registered
+    # champion in data/daemon_slayer/16.10.1/champion_abilities.json
+    # for explicit Stun/Root/Silence/Charm/Fear/Taunt/Sleep/Suppression/
+    # Knockup/Knockback/Airborne/Stasis Duration blocks. Result: 6
+    # candidates surfaced from the abilities-data grep, of which 2 are
+    # genuine unconditional first-order CC (Chogath W silence + Malzahar
+    # Q silence) and 4 are already-known conditional / out-of-scope
+    # rejects (see REJECT block below).
+    # Selection rules unchanged from waves 1-8: first-order CC only
+    # (stuns / roots / suspensions / knock-ups / knock-backs / charms /
+    # sleeps / fear / suppressions / polymorphs / taunts / pulls /
+    # stasis / silence / banishment); no slows; no conditional CC; no
+    # self-CC; canonical DDragon ids.
+    # Chogath W - Feral Scream: silence 1.6/1.7/1.8/1.9/2.0 across 5
+    # ranks (canonical 16.10.1 Meraki value via Silence Duration block
+    # in champion_abilities.json). Cone-shaped magic damage + silence
+    # on cast; enemies in the cone are silenced unconditionally once W
+    # is cast. Multi-wave augmentation: Chogath Q Rupture knockup was
+    # seeded wave 2; the setdefault builder allows Chogath W to coexist
+    # on the same champion's spell map. Silence is first-order CC per
+    # the wave 9 scope expansion (matches the Mordekaiser E pull family
+    # admission from wave 5 - hard-disable types that fit cleanly
+    # alongside stun / root / suspension / suppression).
+    registry.setdefault("Chogath", {})["W"] = (1.6, 1.7, 1.8, 1.9, 2.0)
+    # Malzahar Q - Call of the Void: silence 1.0/1.25/1.5/1.75/2.0
+    # across 5 ranks (canonical 16.10.1 Meraki value via Silence
+    # Duration block in champion_abilities.json). Two void zones AOE
+    # location-cast; enemies caught in the path between zones are
+    # silenced unconditionally on contact. Multi-wave augmentation:
+    # Malzahar R Nether Grasp suppression was seeded wave 1; the
+    # setdefault builder allows Malzahar Q to coexist on the same
+    # champion's spell map. This is a SECOND silence-family entry in
+    # wave 9 alongside Chogath W; both share the same silence CC kind
+    # which is added to the first-order CC scope in this wave per the
+    # same precedent as wave 6 stasis (Bard R Tempered Fate).
+    registry.setdefault("Malzahar", {})["Q"] = (1.0, 1.25, 1.5, 1.75, 2.0)
+    # Wave 9 REJECTED candidates (with reason recorded so future audits
+    # do NOT re-research):
+    # * Bard Q Cosmic Binding: already in cc_conditional wave 1 entry
+    #   (terrain-bounce double-stun conditional axis); the unconditional
+    #   first-stun-on-direct-hit piece is fired on every cast but the
+    #   double-stun-on-bounce semantics are conditional. REJECT per
+    #   carryover from waves 4-8 + cc_conditional schema-lift.
+    # * Morgana R Soul Shackles: stun 1.5/1.75/2.0 across 3 ranks IS
+    #   in the Stun Duration block - BUT the stun fires only on tether
+    #   expiry which requires target staying in range for ~3s OR dying
+    #   mid-tether. This is channel-completion-conditional and was
+    #   explicitly REJECTED in item 146 wave 8 - belongs in
+    #   cc_conditional if added later (parallel to Karma W).
+    # * Seraphine E Beat Drop: stun OR root duration 1.1/1.2/1.3/1.4/1.5
+    #   across 5 ranks. Already REJECTED in waves 4 + 8 - target state
+    #   determines which CC fires (still target gets root, moving/slowed
+    #   target gets stun). Conditional axis per item 138 rule.
+    # * Volibear R Stormbringer: 2/3/4s Turret Disable Duration - the
+    #   disable is on STRUCTURES (turrets), not on champion CC.
+    #   Carryover REJECT from items 138 + 142 + 146.
+    # * Janna R Monsoon: initial knockup on cast + heal channel; the
+    #   initial knockup is the cast-portion CC but its duration is not
+    #   exposed in the damage_blocks (only Heal Per Tick + Total Heal).
+    #   The knockup duration is brief (~0.5s tooltip-stated) and the
+    #   channel itself is a slow-pulse-with-heal not a hard CC. REJECT
+    #   per the unwillingness to encode a value not present in the
+    #   Meraki bulk - operator-tunable channel-knockup is best deferred
+    #   to cc_conditional with a channel-completion gate.
+    # * Lulu E Help, Pix!: shield/damage only, no CC.
+    # * 226 other UNREGISTERED spells of the 89 registered champions:
+    #   all have NO Stun/Root/Silence/Charm/Fear/Taunt/Sleep/Suppression/
+    #   Knockup/Knockback/Airborne/Stasis Duration block in
+    #   champion_abilities.json. The data lane is genuinely saturated.
+    # FINAL wave 9 net: 2 spell entries / 0 NEW champions / 2 multi-
+    # wave augmentations (Chogath W silence + Malzahar Q silence).
+    # Total registry: 108 entries across 89 champs (unchanged champ
+    # count because all augmentations are on existing champions). Per
+    # item 146 carry (j) prediction, wave 9 surfaces only thin
+    # multi-wave coexistence and the unconditional first-order CC pool
+    # at 16.10.1 remains saturated for net-new champions.
     return registry
 
 
