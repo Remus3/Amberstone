@@ -64,7 +64,7 @@ class CoachIntegration:
 
         logger.info("CoachIntegration ready (api_key=%s)", "set" if api_key else "MISSING")
 
-    def submit_state(self, game_state: dict):
+    def submit_state(self, game_state: dict) -> None:
         """Called from _apply_auto_fields every 2s. Non-blocking."""
         if not self._client:
             return
@@ -83,7 +83,7 @@ class CoachIntegration:
                              daemon=True, name="CoachCall")
         t.start()
 
-    def request_now(self, game_state: dict):
+    def request_now(self, game_state: dict) -> None:
         """Force immediate coaching call - from context menu."""
         if not self._client or not game_state:
             return
@@ -92,12 +92,12 @@ class CoachIntegration:
                              daemon=True, name="CoachForced")
         t.start()
 
-    def flag_last_bad(self):
+    def flag_last_bad(self) -> None:
         if self._last_state:
             self._cache.flag_bad(self._last_state)
             logger.info("Bad advice flagged for %s", self._last_state.get("champion"))
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self._last_submitted_state = {}
         self._last_state = {}
         self._last_coach_time = 0.0
@@ -113,7 +113,7 @@ class CoachIntegration:
             import logging as _lg; _lg.getLogger(__name__).debug("blank artifact write: %s", _e)
         logger.info("Coach state reset for new game")
 
-    def set_wave_override(self, state: str):
+    def set_wave_override(self, state: str) -> None:
         self._wave.set_override(state, duration_s=30)
         logger.info("Wave override: %s (30s)", state)
 
@@ -186,7 +186,7 @@ class CoachIntegration:
 
         return hp_delta >= 10 or gold_changed or obj_trigger
 
-    def _run_safe(self, game_state: dict):
+    def _run_safe(self, game_state: dict) -> None:
         if not self._lock.acquire(blocking=False):
             logger.debug("Coach already running, skipping")
             return
@@ -198,7 +198,7 @@ class CoachIntegration:
         finally:
             self._lock.release()
 
-    def _run(self, game_state: dict):
+    def _run(self, game_state: dict) -> None:
         t0 = time.time()
         coach_state = self._convert(game_state)
         self._last_state = coach_state
@@ -491,7 +491,7 @@ class CoachIntegration:
         return fields
 
     def _write_fields(self, raw_response: str, cache_hit: bool = False,
-                       update_ts: bool = True):
+                       update_ts: bool = True) -> None:
         fields = self._parse_response(raw_response)
         if not fields:
             logger.warning("No fields parsed from response (first 200 chars): %r",
@@ -630,7 +630,7 @@ class CoachIntegration:
                 else:
                     logger.error("Failed to write coaching_data.json: %s", e)
 
-    def _write_status_field(self, status: str):
+    def _write_status_field(self, status: str) -> None:
         self._write_fields(f"Immediate: {status}", update_ts=False)
 
     def _default_data(self) -> dict:

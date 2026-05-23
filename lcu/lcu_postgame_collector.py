@@ -250,7 +250,7 @@ def _get_conn() -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
-def _ensure_schema():
+def _ensure_schema() -> None:
     """Create all mode tables if they don't exist."""
     with _db_lock:
         conn = _get_conn()
@@ -424,7 +424,7 @@ def _parse_player(player: dict, team_result: str,
     }
 
 
-def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict):
+def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None:
     """Parse and save a full EOG stats block to the appropriate mode tables."""
     mode      = _norm_mode(game_mode)
     tbl       = mode.lower()
@@ -522,7 +522,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict):
 
 
 def _save_item_events(match_id: str, mode: str,
-                      events: list, item_map: dict):
+                      events: list, item_map: dict) -> None:
     """Save item purchase timeline events (best-effort)."""
     if not events:
         return
@@ -608,7 +608,7 @@ class PostgameCollector:
 
     # ── Public API ──────────────────────────────────────────────────────────
 
-    def start(self):
+    def start(self) -> None:
         """Start the background monitoring thread."""
         if self._thread and self._thread.is_alive():
             return
@@ -630,7 +630,7 @@ class PostgameCollector:
             self._thread.start()
             _log.info("PostgameCollector started (thread)")
 
-    def stop(self):
+    def stop(self) -> None:
         """Signal the monitoring thread to stop."""
         self._stop.set()
         self._trigger.set()
@@ -639,7 +639,7 @@ class PostgameCollector:
             except Exception: pass
             self._task = None
 
-    def trigger(self, game_mode: str = "CLASSIC"):
+    def trigger(self, game_mode: str = "CLASSIC") -> None:
         """
         Called by game lifecycle when a game ends.
         Arms the EOG collection for the next post-game lobby detection.
@@ -650,7 +650,7 @@ class PostgameCollector:
 
     # ── Internal ────────────────────────────────────────────────────────────
 
-    def _run(self):
+    def _run(self) -> None:
         """Background loop - waits for trigger, then captures EOG data."""
         while not self._stop.is_set():
             # Wait for a game-end trigger
@@ -662,7 +662,7 @@ class PostgameCollector:
             self._trigger.clear()
             self._capture_after_trigger(self._game_mode_hint)
 
-    async def _run_async(self):
+    async def _run_async(self) -> None:
         """Async equivalent of _run - wraps the blocking trigger.wait + the
         EOG-poll/HTTP burst in asyncio.to_thread so the AppLoop never
         blocks on the embedded time.sleep + synchronous LCU calls."""
@@ -750,7 +750,7 @@ class PostgameCollector:
             _log.debug("postgame history fallback failed: %s", exc)
         return False
 
-    def _try_fetch_timeline(self, game_id: str, game_mode: str):
+    def _try_fetch_timeline(self, game_id: str, game_mode: str) -> None:
         """Best-effort: fetch item purchase timeline from match history."""
         if not game_id:
             return
