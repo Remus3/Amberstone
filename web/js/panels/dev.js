@@ -24,17 +24,11 @@ function _settingsRefresh() {
   cb("set-voice-on", "rc-voice-on");
   cb("set-force-flash-snowball", "rc-force-flash-snowball");
   cb("set-zen", "rc-zen", (v) => { document.body.dataset.zen = v ? "1" : ""; });
-  const zoom = document.getElementById("set-zoom");
-  const zoomVal = document.getElementById("set-zoom-val");
-  if (zoom) {
-    zoom.value = parseFloat(get("rc-zoom") || "1.0");
-    if (zoomVal) zoomVal.textContent = parseFloat(zoom.value).toFixed(2) + "×";
-    zoom.addEventListener("input", () => {
-      setLS("rc-zoom", zoom.value);
-      if (zoomVal) zoomVal.textContent = parseFloat(zoom.value).toFixed(2) + "×";
-      document.body.style.zoom = zoom.value;
-    });
-  }
+  // UI scale v2 (2026-05-23, docs/UI_SCALE_SPEC_V2.md): the page-zoom
+  // slider was removed in favor of a per-element 25% scale across the
+  // token layer. Mock-data toggle replaces it - dev affordance for
+  // panel layout work, default OFF.
+  cb("set-ui-mock", "rc-ui-mock", (v) => { document.body.dataset.uiMock = v ? "1" : ""; });
   // s220: Post Game Review knobs. Rank-tier writes the SAME
   // localStorage key the PGR page's inline dropdown uses
   // (rc-pgr-rank-tier) - Settings is the canonical home, the two stay
