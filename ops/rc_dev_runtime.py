@@ -623,7 +623,7 @@ class DevRuntime:
         surfaces as an error instead of a phantom successful spawn.
 
         AUDIT 2026-04-28 (deferred-frozen): the prior Popen with no
-        post-launch verification let "ok=true, pid=…" return for a process
+        post-launch verification let "ok=true, pid=..." return for a process
         that immediately died. The verify window is intentionally short
         (default 500 ms) so this stays a spawner, not a wait()."""
         if not exe:
