@@ -1786,6 +1786,118 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ============================================================
+    # === wave 11 expansion (2026-05-23 / ENGINE 1.48.0) - +2 entries
+    # === / +2 net-new champions (Sion R primary + Gnar W form 1
+    # === sidecar). Uses ONLY the 12 existing condition tags - no
+    # === new tag constants. The Gnar W form 1 entry lives in the
+    # === sidecar registry _PER_SPELL_CC_CONDITIONAL_FORMS (see
+    # === _build_per_spell_cc_conditional_forms below); only the
+    # === Sion R primary entry is registered here.
+    # ===
+    # === Wave 11 closes 2 explicit-duration candidates from the
+    # === item 153 + 154 + 155 effects_descriptions audit that did
+    # === NOT need a separate extractor schema lift. The 13 other
+    # === candidates audited this wave were REJECT-confirmed:
+    # ===
+    # ===   (a) Aatrox R minion-only fear (confirmed not champion CC)
+    # ===   (b) Volibear R turret-only disable + slow (no champion
+    # ===       first-order CC; slow does not count)
+    # ===   (c) Briar W self-buff frenzy state (no CC payload)
+    # ===   (d) Sion E minion-only stun
+    # ===   (e) Lillia W damage + center-bonus only
+    # ===   (f) Ekko R self-stasis + damage only
+    # ===   (g) Smolder R damage + Smolder-heal only
+    # ===   (h) Karma E shield + MS only (both forms)
+    # ===   (i) Vladimir R damage amp + delayed burst + Vlad-heal
+    # ===   (j) Akshan Q/R damage + buffs only
+    # ===   (k) Tristana E damage stacking detonation only
+    # ===   (l) Kayle E/R no CC
+    # ===   (m) Nidalee R is a transform, no CC; Q/W/E forms have
+    # ===       no champion-facing CC duration in description text
+    # ===
+    # === DEFERRED (would need additional verification beyond
+    # === effects_descriptions):
+    # ===
+    # ===   * Jayce E Thundering Blow - description confirms "roots
+    # ===     the target enemy over the cast time" + 600u knockback,
+    # ===     but cast time duration value is NOT in
+    # ===     effects_descriptions or damage_blocks (would need wiki
+    # ===     cross-reference at ~0.4s). CARRY-FORWARD for wave 12+
+    # ===     if patch data adds cast_time field.
+    # ===   * Singed E Fling Mega-Adhesive overlap root - duration
+    # ===     described as "for a duration" only, no value. Requires
+    # ===     2-spell-overlap target-debuffed encoding that the
+    # ===     current schema lift does not support without further
+    # ===     work. CARRY-FORWARD for wave 12+.
+    # ===
+    # === Multi-wave coexistence: Sion (Q wave 0 unconditional +
+    # === R wave 11 cc_conditional) is the FIFTH multi-entry-cross-
+    # === unconditional/conditional champion (after Aatrox / Briar /
+    # === TahmKench / Brand all within cc_conditional + Pantheon
+    # === Q wave 4 + W unconditional + Renekton/Karma W cross). Gnar
+    # === (R wave 0 unconditional + W form 1 wave 11 sidecar) is the
+    # === SIXTH via the form-explicit sidecar pattern.
+    # ===
+    # === REGISTRY GROWS: 42 primary entries (unchanged + Sion R = 43
+    # === primary) + 2 sidecar (wave 10 Karma W form 1 + Hwei E form
+    # === 2 unchanged + Gnar W form 1 = 3 sidecar) = 46 total entries
+    # === across 40 champions (added Sion + Gnar to the union).
+    # === cc_conditional consumer math BYTE-IDENTICAL to 1.47.0 for
+    # === default include_conditional=False callers across all 5
+    # === consumer surfaces.
+    # ============================================================
+
+    # Sion R Unstoppable Onslaught: Sion charges forward for up to
+    # 8 seconds with displacement immunity + ghosting + ramping
+    # movement speed. At end of charge (or on terrain/champion
+    # collision) he slams the ground in a smaller-radius AOE.
+    # Enemies in that smaller AOE are PULLED toward Sion over 0.5s
+    # AND stunned after a brief delay. The stun duration scales with
+    # charge channel-time: 0.25s minimum (immediate-cancel slam) up
+    # to 1.75s (full 8s charge). Standalone slam-on-min-charge =
+    # damage + slow only; the inner-radius stun fires only on
+    # sufficient channel completion. Encoded at representative
+    # midpoint 1.0s (mid-charge ~4s) for operator-conservative
+    # calibration consistent with the wave 0+ single-value patterns.
+    # Operator can tune via per_entry_probability ``Sion:R`` if
+    # max-charge encoding is preferred (would land at 1.75s).
+    # Maps to COND_CHANNEL_COMPLETION - parallel to Karma W /
+    # Warwick R / Morgana R / Nunu R (channel-time-gated CC).
+    # Mechanic schema-lift-verified: effects_descriptions text
+    # "Enemies in a smaller radius are also pulled towards Sion
+    # over 0.5 seconds and become stunned after a brief delay for
+    # 0.25 : 1.75 (based on channel time) seconds" captured by
+    # ENGINE 1.46.0 Meraki schema lift. The outer-radius slow 3s
+    # is NOT first-order CC and is omitted. Sion Q (unconditional
+    # stun 1.25-2.25s in `_PER_SPELL_CC_DURATIONS`) is on a different
+    # spell slot - no collision.
+    registry.setdefault("Sion", {})["R"] = ConditionalCcEntry(
+        champion="Sion",
+        spell="R",
+        cc_kind="stun",
+        durations_s=(1.0,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("Sion", "R", 0.5),
+        notes=(
+            "R Unstoppable Onslaught: 8s charge with displacement "
+            "immunity; on slam-impact a smaller-radius inner AOE "
+            "pulls enemies toward Sion + stuns them for 0.25-1.75s "
+            "based on channel time. Encoded at midpoint 1.0s "
+            "(mid-charge ~4s) for operator-conservative calibration. "
+            "Outer-radius slow 3s is NOT first-order CC and is "
+            "omitted. Maps to COND_CHANNEL_COMPLETION - parallel "
+            "to Karma W / Warwick R / Morgana R. Mechanic captured "
+            "by ENGINE 1.46.0 Meraki schema lift "
+            "(effects_descriptions confirms 0.25 : 1.75 channel-"
+            "time-gated stun). Coexists with the unconditional "
+            "Sion Q stun 1.25-2.25s in `_PER_SPELL_CC_DURATIONS` "
+            "on a different spell slot. Operator can tune via "
+            "per_entry_probability ``Sion:R`` if max-charge "
+            "calibration (1.75s) is preferred."
+        ),
+    )
+
     return registry
 
 
@@ -2037,6 +2149,78 @@ def _build_per_spell_cc_conditional_forms() -> (
             "shape: Hwei:E:2."
         ),
         form_index=2,
+    )
+
+    # ============================================================
+    # === wave 11 expansion (2026-05-23 / ENGINE 1.48.0) - +1
+    # === sidecar entry / +1 net-new champion via Mega-rage-
+    # === transformation-form-gated CC on Gnar W slot. Gnar W
+    # === form_index=0 (Mini form, Hyper) is a passive on-hit
+    # === stack with no first-order CC; form_index=1 (Mega form,
+    # === Wallop) is the form-gated active stun. The form-explicit
+    # === sidecar registry is the canonical home for this entry
+    # === since Gnar has no wave 0-10 W primary registry entry to
+    # === collide with - but the sidecar pattern is preferred over
+    # === a primary entry because the CC is intrinsically form-
+    # === gated (Mega transform requires accumulated rage stacks
+    # === driven by combat activity / time-in-fight), so the
+    # === form_index field carries semantic meaning rather than
+    # === collision-avoidance.
+    # ============================================================
+
+    # Gnar W form_index=1 Wallop (Mega-form stun): When Gnar is in
+    # his Mega form (post-rage-meter transform), W becomes Wallop
+    # which slams the arm down dealing physical damage to all
+    # enemies struck within the area AND stunning them for 1.25s
+    # flat across all 5 W ranks. Mini-form W (form_index=0, Hyper)
+    # is a passive on-hit stack mechanic with NO first-order CC -
+    # only the Mega form gates the stun payload. Maps to
+    # COND_FRENZY_STATE - Gnar must be in the rage-meter-driven
+    # Mega transform state to cast Wallop. THIRD consumer of the
+    # COND_FRENZY_STATE tag after Renekton W wave 9 (first) +
+    # Karma W form 1 wave 10 (second). Probability tag midpoint
+    # 0.4 - Gnar reliably enters Mega form mid-fight via passive
+    # rage accumulation, but Wallop's cast timing must coincide
+    # with the Mega window before reverting to Mini.
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[0] for
+    # form_index=1 ("Active: Gnar slams his arm down in the target
+    # direction, dealing physical damage to all enemies struck
+    # within the area and stunning them for 1.25 seconds") captured
+    # by ENGINE 1.46.0 Meraki schema lift. The duration value 1.25s
+    # is explicit in the description; no rank scaling on the stun
+    # duration itself (the W damage scales but the stun is flat).
+    #
+    # Coexists with the unconditional Gnar R GNAR! terrain-collision
+    # stun 0.75s in `_PER_SPELL_CC_DURATIONS` on a different spell
+    # slot. Gnar has no primary registry W entry (the sidecar entry
+    # is the FIRST W slot registration for Gnar). Form-explicit
+    # override key shape: Gnar:W:1.
+    registry.setdefault("Gnar", {})[("W", 1)] = ConditionalCcEntry(
+        champion="Gnar",
+        spell="W",
+        cc_kind="stun",
+        durations_s=(1.25,),
+        condition=COND_FRENZY_STATE,
+        probability=_p_form("Gnar", "W", 1, 0.4),
+        notes=(
+            "W form 1 Wallop (Mega-form-gated stun): when Gnar is "
+            "in Mega form (rage-meter transform), W slams the arm "
+            "down + stuns enemies hit for 1.25s flat across all 5 "
+            "W ranks. Mini-form W (form_index=0, Hyper) is a "
+            "passive on-hit stack with NO first-order CC. Maps "
+            "to COND_FRENZY_STATE - Gnar must be in the rage-"
+            "meter-driven Mega transform. THIRD consumer of "
+            "COND_FRENZY_STATE after Renekton W wave 9 + Karma W "
+            "form 1 wave 10. Probability tag midpoint 0.4. "
+            "Mechanic captured by ENGINE 1.46.0 Meraki schema "
+            "lift (form 1 effects_descriptions confirms the 1.25s "
+            "stun is explicit + flat-duration). Coexists with "
+            "Gnar R unconditional terrain-collision stun 0.75s "
+            "in `_PER_SPELL_CC_DURATIONS` on a different spell "
+            "slot. Form-explicit override key shape: Gnar:W:1."
+        ),
+        form_index=1,
     )
 
     return registry
