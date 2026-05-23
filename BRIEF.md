@@ -23,7 +23,7 @@ League coaching advice online is static - tier lists and guides don't know what 
 ## Status & impact
 - **State:** In active personal use, running every session
 - **What it replaced:** Looking up item builds manually on aggregator A mid-game, pausing to check tier lists; also replaced a tkinter overlay window approach that required the game and coaching UI to share a single screen
-- **Numbers:** 4,130 passing tests on the DPS engine; 547/547 DDragon purchasable items covered; coaching response latency ~1-2s (Haiku); DPS engine answers in <10ms locally; 8+ months of daily iteration across ~100 tracked sessions
+- **Numbers:** 4,132 passing tests on the DPS engine; 547/547 DDragon purchasable items covered; coaching response latency ~1-2s (Haiku); DPS engine answers in <10ms locally; 8+ months of daily iteration across ~100 tracked sessions
 
 
 ## Planned direction: RC Tutor
