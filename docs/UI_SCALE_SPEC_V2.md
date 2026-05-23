@@ -292,7 +292,59 @@ flips `body.dataset.uiMock` for the page's lifetime (wired in
 `web/js/main.js` boot restorePrefs). This lets headless-Chrome audit
 captures hit the populated mock state without writing to localStorage
 on Game-PC's interactive browser - critical for the per-page sweep
-ritual when remote-driving the dashboard via screenshot.
+ritual when remote-driving the dashboard via screenshot. The companion
+flag `?ub_form=mock` (also wired to the user-builds view-router branch)
+auto-opens the form pane with the first mock-fixture build pre-loaded
+so the rune builder + spell chooser render without a click.
+
+## User Builds form-pane augmentation (page #2 sub-feature, 2026-05-23)
+
+Operator-requested mid-round: extend the Add/Edit form with a tabbed
+rune-page builder + summoner-spell chooser. The previously free-form
+`Keystone` / `Primary tree` / `Secondary tree` text inputs become
+read-only and are populated by the builder; existing save-shape
+preserved (additive `runes.minor_primary[]` + `runes.minor_secondary[]`
+lists in `coaches/sr_user_builds.py::_normalize_record`).
+
+| Element                          | Purpose                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| `.ub-sp-chooser` (card)          | Wraps the spell-slot pair + 11-cell grid                                 |
+| `.ub-sp-slot` (D / F)            | Click to activate; auto-flips after each pick                            |
+| `.ub-sp-grid` (11-cell)          | Flash / Ignite / Heal / Ghost / Barrier / Exhaust / Cleanse / TP / Smite / Clarity / Mark |
+| `.ub-sp-cell.active`             | Selected slot border tint                                                |
+| `.ub-rp-builder` (card)          | Wraps the 5-tree tab row + primary + secondary panes                     |
+| `.ub-rp-tabs` (5 tabs)           | Domination / Inspiration / Precision / Resolve / Sorcery icons + names   |
+| `.ub-rp-primary` (4 rows)        | Row 0 = keystones (single-pick); rows 1-3 = minor (one per row)          |
+| `.ub-rp-sec-trees`               | Pill row of 4 OTHER trees (primary tree is disabled)                     |
+| `.ub-rp-secondary` (3 rows)      | Minor rows only (game rules: no keystone); up to 2 picks total           |
+| `.ub-rp-summary`                 | Compact one-line preview of all current rune picks                       |
+
+Data source: `/api/dictionary/runes` (already exposed by
+`dashboard/routes_dictionary.py:215`, serves the pinned 16.10.1
+`data/meta/ddragon_runes.json`). DDragon image base hardcoded to
+`/data/ddragon/16.10.1/img/` (kept in lockstep with the dictionary
+patch). Tree icons under `Styles/720[0-4]_<TreeName>.png`; rune icons
+under `Styles/<TreeName>/<RuneKey>/<icon>.png` per the
+runesReforged.json `icon` field.
+
+Schema extension (additive, backward compatible):
+
+```json
+"runes": {
+  "keystone":        "Hail of Blades",
+  "primary":         "Domination",
+  "secondary":       "Precision",
+  "minor_primary":   ["Cheap Shot", "Eyeball Collection", "Ultimate Hunter"],
+  "minor_secondary": ["Triumph", "Coup de Grace"]
+}
+```
+
+Round-trip: `_userBuildsOpenForm` reads `runes.minor_primary` /
+`minor_secondary` into the in-module `_RP` state; `_ubReadForm` writes
+back into the same shape; `_normalize_record` coerces to a list of
+trimmed strings (empty list if missing). The downstream consumer
+(`format_for_display`) still only emits keystone + tree names so the
+champ-select chooser surface is unchanged.
 
 ## Cleanup deltas committed by Settings round (v2.1)
 
