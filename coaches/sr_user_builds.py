@@ -255,15 +255,21 @@ def _normalize_record(
         role = None
     notes = build.get("notes")
     notes = str(notes).strip() if isinstance(notes, str) else ""
+    minor_primary_in   = runes_in.get("minor_primary")   or []
+    minor_secondary_in = runes_in.get("minor_secondary") or []
+    minor_primary   = [str(x).strip() for x in minor_primary_in   if isinstance(x, str) and x.strip()]
+    minor_secondary = [str(x).strip() for x in minor_secondary_in if isinstance(x, str) and x.strip()]
     return {
         "id":              build_id,
         "label":           str(build.get("label") or "").strip(),
         "mode":            "sr",
         "role":            role,
         "runes": {
-            "keystone":  str(runes_in.get("keystone")  or ""),
-            "primary":   str(runes_in.get("primary")   or ""),
-            "secondary": str(runes_in.get("secondary") or ""),
+            "keystone":        str(runes_in.get("keystone")  or ""),
+            "primary":         str(runes_in.get("primary")   or ""),
+            "secondary":       str(runes_in.get("secondary") or ""),
+            "minor_primary":   minor_primary,
+            "minor_secondary": minor_secondary,
         },
         "summoner_spells": [d_spell, f_spell],
         "items":           items,
