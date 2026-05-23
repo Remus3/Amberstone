@@ -562,7 +562,11 @@ footer .prefs-chip:hover { color: var(--text); }
   border: 1px solid color-mix(in srgb, var(--good) 25%, transparent);
 }
 .view-section-head h2 {
-  margin: 0; font-size: 17px; letter-spacing: 0.18em;
+  /* UI scale v2 (2026-05-23): 17px -> --fs-lg (25px) per spec
+   * docs/UI_SCALE_SPEC_V2.md. Section-head tier on all view-sections;
+   * Settings is the worked-example page. Other view-sections inherit
+   * the size lift as their audit pass lands. */
+  margin: 0; font-size: var(--fs-lg); letter-spacing: 0.18em;
   color: var(--info); font-weight: 900;
 }
 .view-section-sub {
@@ -1973,29 +1977,61 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-top: 1px solid var(--border-soft);
 }
 
-/* Settings view layout */
-.settings-body { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* Settings view layout (UI scale v2.1, 2026-05-23 - worked-example
+ * page for the per-element ~44% bump = 25% first-pass + 15% second).
+ * Consumes tokens.css v2.1: --fs-xs (card head) / --fs-md (row body)
+ * / --fs-lg (page h2 in .view-section-head, set elsewhere) /
+ * --space-3..6 (gaps) / --panel-padding (20px) + --panel-radius (18)
+ * (card chrome) / --hit-min (42 fingertip target). v1 inline pixel
+ * values listed in comments for reference. */
+.settings-body {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);             /* was 14px -> 32px                  */
+}
 .settings-card {
   background: var(--surface-head); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 12px 14px;
+  border-radius: var(--panel-radius);   /* was --radius-sm 8px -> 18px */
+  padding: var(--panel-padding);        /* was 12px 14px -> 20px       */
 }
 .settings-card-head {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs);         /* was 11px -> 16px                  */
+  font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
-  margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 5px;
+  margin-bottom: var(--space-4);   /* was 10px -> 16px                  */
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-2);  /* was 5px -> 8px (grid)             */
 }
 .settings-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 0; font-size: 13px; color: var(--text-dim);
+  display: flex; align-items: center; gap: var(--space-3);  /* was 10  */
+  padding: var(--space-3) 0;       /* was 6px 0 -> 12px 0 (grid)        */
+  min-height: var(--hit-min);      /* 42px fingertip target floor       */
+  font-size: var(--fs-md);         /* was 13px -> 22px                  */
+  color: var(--text-dim);
   cursor: pointer;
 }
 .settings-row-static { cursor: default; }
 .settings-row input[type="checkbox"] {
-  width: 14px; height: 14px; accent-color: var(--clock);
+  width: 24px; height: 24px;       /* was 14x14 -> 24x24                */
+  accent-color: var(--clock);
 }
 .settings-row select, .settings-row input[type="range"] {
-  flex: 1; max-width: 240px;
+  flex: 1; max-width: 360px;       /* was 240px -> 360px                */
+  font-size: var(--fs-md);         /* explicit; inputs do not inherit   */
+}
+.settings-row select {
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius-sm);
+}
+.settings-row input[type="range"] {
+  height: var(--hit-min);          /* slider hit area floor             */
+  accent-color: var(--clock);
+}
+.settings-row .dim {
+  font-size: var(--fs-sm);         /* sub-label inside a row stays one  */
+  color: var(--text-faint);        /* tier smaller than the row body    */
 }
 
 /* Diagnostics view layout */

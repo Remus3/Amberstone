@@ -5318,16 +5318,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     refresh();
   })();
 
-  // Restore persisted preferences (zoom / zen) from prior session. Also
-  // builds a footer chip listing the active flags. The Shift+L header-lock
-  // mechanism was removed 2026-04-23 - it broke the UI composition when
-  // hidden pills were temporarily un-hidden during measurement, which
-  // displaced the visible pills' captured positions. The natural flex
-  // layout is stable enough once the advisory badge height is normalised.
+  // Restore persisted preferences (zen / ui-mock) from prior session.
+  // Also builds a footer chip listing the active flags. The Shift+L
+  // header-lock mechanism was removed 2026-04-23 - it broke the UI
+  // composition when hidden pills were temporarily un-hidden during
+  // measurement, which displaced the visible pills' captured positions.
+  // The natural flex layout is stable enough once the advisory badge
+  // height is normalised. The zoom slider was removed in UI scale v2
+  // (2026-05-23) - the per-element 25% bump replaced the body { zoom }
+  // approach; the legacy rc-zoom key is cleared on Shift+R / chip-click
+  // resets as defense-in-depth for stale browser state.
   (function restorePrefs() {
     try {
-      const savedZoom = localStorage.getItem("rc-zoom");
-      if (savedZoom) document.body.style.zoom = savedZoom;
       // Zen is OFF by default (2026-04-24). Only enabled when the user
       // has explicitly opted in (stored as "1" via the Z hotkey). First
       // visit + null storage → all four panels visible.
@@ -5342,6 +5344,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const savedZen = localStorage.getItem("rc-zen");
       const zenOn = savedZen === "1";
       if (zenOn) document.body.dataset.zen = "1";
+      // UI scale v2: restore the dev mock-data flag if the operator
+      // enabled it before. body[data-ui-mock="1"] is read by each
+      // panel's renderer to choose mock-fixture vs empty-state rendering.
+      const savedMock = localStorage.getItem("rc-ui-mock");
+      if (savedMock === "1") document.body.dataset.uiMock = "1";
       // Scrub any legacy header-lock pinned styles so a stored lock from
       // before the feature was removed doesn't leak into the flex layout.
       const staleLock = localStorage.getItem("rc-header-lock");
@@ -5355,20 +5362,19 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     } catch (_) {}
   })();
 
-  // Footer prefs chip - shows "zen:off" and/or "zoom:1×" when the user is
-  // running with non-default prefs. Recomputed from live state on each call
-  // so a Z-toggle (or zoom hotkey) updates the chip immediately rather
-  // than reflecting the value at page-load time only.
+  // Footer prefs chip - shows the dev mock-data flag when the operator
+  // is running with it ON. Recomputed from live state on each call so
+  // a toggle updates the chip immediately rather than reflecting the
+  // value at page-load time only.
   function _refreshPrefsChip() {
     // s161: zen flag dropped from the prefs chip - operator wanted
-    // the "ZEN:OFF" pill removed from the footer. Zoom flag stays
-    // since zoom drift is still useful diagnostic info.
-    const z = localStorage.getItem("rc-zoom");
+    // the "ZEN:OFF" pill removed from the footer.
+    // UI scale v2 (2026-05-23): zoom flag dropped - the page-zoom
+    // slider is gone, replaced by per-element 25% bump. The dev
+    // mock-data flag takes its slot as the surviving diagnostic.
+    const mock = localStorage.getItem("rc-ui-mock");
     const flags = [];
-    // Default is 1.0 - only flag in the footer chip when the user has
-    // dialed the slider above the default (was inverted pre-s218 when
-    // default was 1.33 and 1.0 was the opt-in setting).
-    if (z && parseFloat(z) > 1.05) flags.push("zoom:" + parseFloat(z).toFixed(2) + "×");
+    if (mock === "1") flags.push("ui-mock:on");
     let chip = document.querySelector("footer .prefs-chip");
     if (!flags.length) {
       if (chip) chip.remove();
@@ -5387,7 +5393,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       chip.style.cursor = "pointer";
       chip.addEventListener("click", () => {
         localStorage.removeItem("rc-zen");
-        localStorage.removeItem("rc-zoom");
         localStorage.removeItem("rc-header-lock");
         window.location.reload();
       });
@@ -5433,13 +5438,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
 
   // ── Keyboard shortcuts ───────────────────────────────────────────
   document.addEventListener("keydown", (e) => {
-    // Shift+R resets saved preferences (zen/zoom) + reloads.
+    // Shift+R resets saved preferences (zen) + reloads. The zoom key
+    // was retired in UI scale v2 (2026-05-23); body { zoom } is gone
+    // from base.css and no code path writes rc-zoom anymore.
     if (e.shiftKey && (e.key === "R" || e.key === "r")) {
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
       try {
         localStorage.removeItem("rc-zen");
-        localStorage.removeItem("rc-zoom");
         localStorage.removeItem("rc-header-lock");
       } catch (_) {}
       window.location.reload();
@@ -6093,32 +6099,20 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // used quadrant-based flipping (left of cursor in right half of
     // screen, above cursor in bottom half) which felt like the tip
     // "jumped" between anchor positions; user wants a single consistent
-    // direction relative to cursor.
-    //
-    // Body-zoom compensation: the dashboard sets `body { zoom: 1.33 }`,
-    // so all UI content scales up uniformly. `event.clientX/Y` reports
-    // viewport device pixels, but the tip is a descendant of the zoomed
-    // body - its `style.left` is interpreted in body-zoom CSS pixels and
-    // rendered at that × zoom visually. Without dividing cursor coords
-    // by the zoom factor the tip drifted roughly `cursorX × (zoom − 1)`
-    // to the right, producing the "~1 inch down, 2 inches over" offset
-    // the user flagged. We sample the live computed zoom each call so a
-    // JS zoom-override still works.
+    // direction relative to cursor. UI scale v2 (2026-05-23) retired
+    // the body { zoom } feature, so the zoom-compensation divisor that
+    // sat in this function is gone - all coords are now in plain
+    // viewport CSS pixels.
     function place() {
-      const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
       tip.style.left = "-9999px"; tip.style.top = "-9999px";
       const tr = tip.getBoundingClientRect();
-      // tr is in viewport device pixels, but the final position needs to
-      // be expressed in body-zoom CSS pixels - convert everything once.
-      const trW = tr.width  / z;
-      const trH = tr.height / z;
-      const vw  = window.innerWidth  / z;
-      const vh  = window.innerHeight / z;
-      const cx  = cursorX / z;
-      const cy  = cursorY / z;
+      const trW = tr.width;
+      const trH = tr.height;
+      const vw  = window.innerWidth;
+      const vh  = window.innerHeight;
       // Default: just below-right of the cursor.
-      let left = cx + OFFSET;
-      let top  = cy + OFFSET;
+      let left = cursorX + OFFSET;
+      let top  = cursorY + OFFSET;
       // Edge clamp: if the natural position runs off the right or bottom,
       // pull back inside the viewport. Reading order is preserved (still
       // grows down + right whenever there's room) without flipping above

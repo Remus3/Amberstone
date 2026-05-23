@@ -138,11 +138,14 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* Default zoom = 1.0 (reference size). The Settings page slider adjusts
- * per-user via document.body.style.zoom, persisted under localStorage
- * "rc-zoom" and re-applied on cold load. Design baseline is 1920×1080
- * Chrome windowed with chrome chrome present (usable ≈ 1920×~900). */
-body { zoom: 1.0; }
+/* UI scale v2 (2026-05-23, docs/UI_SCALE_SPEC_V2.md) retired the
+ * page-zoom feature. There is no Settings slider, no rc-zoom
+ * localStorage key, and no body { zoom } declaration anymore. Design
+ * baseline stays 1920x1080 Chrome windowed (usable ~1920x~900). All
+ * scale lifts live in tokens.css per-element. Do NOT reintroduce
+ * body { zoom } - the tooltip placement code, the champ-select popup,
+ * and the header dropdown all depended on the old zoom factor and
+ * have been simplified to plain CSS pixels. */
 body.cursor-hidden, body.cursor-hidden * { cursor: none !important; }
 
 /* Game-phase theming - JS sets body[data-phase] from game_time_s:

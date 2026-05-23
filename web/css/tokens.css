@@ -6,15 +6,17 @@
  *   - 24+ font-size declarations across panels (no shared scale);
  *   - off-grid paddings 2/4/5/6/7px instead of 8px multiples.
  *
+ * Wave-2 UI scale v2 (2026-05-23, docs/UI_SCALE_SPEC_V2.md) lifts the
+ * font scale ~25% across the board, adds two new tiers (--fs-stat,
+ * --fs-display), expands the 8-px spacing grid by 2 rungs, and
+ * introduces panel + interaction token groups. The page-by-page sweep
+ * consumes these per panel during each page's audit pass.
+ *
  * This file is ADDITIVE. It does NOT replace the existing primitives
  * layer (which owns --bg / --fg / --canvas / --text / --good / --bad /
- * --gold and the panel chrome). The semantic-* / fs-* / space-* / pulse-*
- * tokens below are net-new and consumed by panels that opt in.
- *
- * The 4-tier font scale (xs/sm/md/lg/xl - 5 sizes spanning the audit's
- * 4 tiers from chip metadata through hero headlines) and the 8px
- * spacing grid are reserved for FUTURE consumption; sweeping existing
- * font-size declarations is out of scope for this slice.
+ * --gold and the panel chrome). The semantic-* / fs-* / space-* /
+ * panel-* / interact-* / pulse-* tokens below are net-new and consumed
+ * by panels that opt in.
  *
  * Coach prompt pulse keyframes are exposed here so the running-coach
  * fresh-update affordance can light up consistently when the operator
@@ -36,23 +38,61 @@
   --signal-warn-soft: rgba(241, 176, 74, 0.18);
   --signal-bad-soft:  rgba(255, 80, 80, 0.18);
 
-  /* 4-tier font-size scale (5 sizes: xs/sm/md/lg/xl spans the 4 tiers
-   * the audit recommends - chip metadata through hero headlines).
-   * Floors per the viewing-distance feedback memory: 13/15/18px. */
-  --fs-xs: 11px;
-  --fs-sm: 13px;
-  --fs-md: 15px;
-  --fs-lg: 20px;
-  --fs-xl: 27px;
+  /* Font-size scale (v2.1, 2026-05-23). Five existing tiers bumped
+   * ~44% from v1 baseline (operator-directed: 25% first-pass + 15%
+   * second-pass). Two NEW tiers: --fs-stat (between md and lg, for
+   * prominent numeric displays) and --fs-display (true hero, for the
+   * lobby clock and the PGR verdict block). Floors per
+   * feedback_font_size_viewing_distance.md are 13/15/18 px; the lowest
+   * value here is 16 (--fs-xs), comfortably above the 13-px tertiary
+   * floor. v1 baseline (and v2 first-pass) listed in inline comments. */
+  --fs-xs:      16px;  /* v1 11 -> v2 14 -> 16; chip metadata, card heads  */
+  --fs-sm:      18px;  /* v1 13 -> v2 16 -> 18; secondary text, sub-labels */
+  --fs-md:      22px;  /* v1 15 -> v2 19 -> 22; body, settings rows        */
+  --fs-stat:    26px;  /* v2.1 NEW; prominent numeric stat cells           */
+  --fs-lg:      29px;  /* v1 20 -> v2 25 -> 29; section heads, panel titles*/
+  --fs-xl:      37px;  /* v1 27 -> v2 32 -> 37; display heads, action text */
+  --fs-display: 46px;  /* v2.1 NEW; lobby clock, PGR verdict, hero number  */
 
-  /* 8px spacing grid (replaces off-grid 2/4/5/6/7px paddings caught in
-   * the wave-1 audit; existing panel paddings are NOT auto-swept). */
+  /* 8px spacing grid. Six existing rungs unchanged (replaces off-grid
+   * 2/4/5/6/7px paddings from the wave-1 audit; existing panel paddings
+   * are NOT auto-swept). Two NEW rungs at the top of the scale support
+   * the larger panel padding / hero block targets from spec v2.1.
+   * --space-1..6 unchanged because they are shared with wave-1-audit
+   * consumers outside Settings; consumers re-rung up (e.g. --space-2
+   * -> --space-3) where the bigger text demands more breathing room. */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  --space-7: 40px;   /* NEW; hero-block padding, head breathing room    */
+  --space-8: 48px;   /* NEW; view-section top spacing on landing pages  */
+
+  /* Panel rules (v2.1, operator-directed +15% second-pass). Opt-in
+   * tokens for card / panel chrome. Radius tokens preserve hierarchy:
+   * --panel-radius 18 reads as "card", --panel-radius-sm 10 as
+   * "chip/tag/input". --panel-padding-loose gives hero / landing
+   * surfaces room without lifting the standard --panel-padding past
+   * the 20-px sweet-spot. */
+  --panel-padding:        20px;  /* v2 16 -> 20; default                */
+  --panel-padding-comp:   14px;  /* v2 12 -> 14; compact (dense)        */
+  --panel-padding-loose:  28px;  /* v2 24 -> 28; hero / landing         */
+  --panel-gap:            14px;  /* v2 12 -> 14; inter-row in panel     */
+  --panel-gap-tight:      10px;  /* v2 8  -> 10; dense table rows       */
+  --panel-radius:         18px;  /* v2 16 -> 18                          */
+  --panel-radius-sm:      10px;  /* v2 8  -> 10                          */
+
+  /* Interaction rules (v2.1). Hitbox + tooltip + focus tokens.
+   * --hit-min is the keyboard-and-fingertip target floor; visible
+   * control (checkbox, slider thumb) can be smaller but its <label>
+   * wrapper pads to --hit-min for the actual click target. */
+  --hit-min:        42px;        /* v2 36 -> 42                          */
+  --hover-pad:      8px;         /* v2 6  -> 8                           */
+  --tooltip-offset: 12px;        /* v2 10 -> 12                          */
+  --tooltip-delay:  250ms;
+  --focus-ring:     0 0 0 2px var(--signal-info);
 
   /* Fresh-update affordance (coach prompt glow) - tints calibrated
    * against the panel canvas background so the pulse reads at 1920x1080
