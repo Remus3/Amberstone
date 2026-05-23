@@ -1321,7 +1321,94 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.44.0"
+ENGINE_VERSION = "1.45.0"
+# 1.45.0 (cc_conditional wave 8 - +3 entries / +3 net-new champions
+# closing prior-wave REJECT carries that DO NOT need the Meraki
+# extractor schema lift, 2026-05-22):
+#
+# Closes item 150 carry-forward "16 consecutive saturation runs" by
+# correctly identifying 3 explicitly-authorized cc_conditional
+# candidates that:
+#   (a) cleanly fit the 12 existing condition tags (no new tag);
+#   (b) are visible at parse-strip Meraki 16.10.1 level (the Disable
+#       Duration / Stun Duration blocks ARE in the dump's
+#       damage_blocks);
+#   (c) were FLAGGED by prior wave REJECT notes as belonging in
+#       cc_conditional (NOT new pitches).
+#
+# NEW entries (all via setdefault builder, +3 net-new champions):
+#
+#   * Morgana R Soul Shackles (channel 0.5 stun 1.5/1.75/2.0s across
+#     3 ranks). Wave 8 unconditional REJECT (item 146 `4ab11ba`) said
+#     "REJECT - belongs in cc_conditional (parallel to Karma W)".
+#     Wave 9 REJECT (item 147 `3c73c3b`) said "channel-completion-
+#     conditional; belongs in cc_conditional parallel to Karma W".
+#     Mechanic identical to Karma W: tethers + stuns on full-channel
+#     completion. The wave 8 + wave 9 REJECT notes were definitive
+#     operator-acknowledged guidance; this wave executes.
+#
+#   * Seraphine E Beat Drop (debuffed_target 0.5 stun 1.1/1.2/1.3/
+#     1.4/1.5s across 5 ranks). Wave 4 REJECT (item 138 `6718445`)
+#     said "conditional on existing slow"; wave 8 REJECT (item 146)
+#     said "target-state-conditional"; wave 9 REJECT (item 147) said
+#     "target-state conditional". CC tier escalates by target state -
+#     fresh = damage+slow only / slowed = stun / stunned = root. The
+#     conditional stun variant is the registry shape; same Disable
+#     Duration block in Meraki for all CC tiers.
+#
+#   * Evelynn W Allure (channel 0.4 charm 1.25/1.5/1.75/2.0/2.25s
+#     across 5 ranks). Wave 4 REJECT (item 138) + wave 8 REJECT (item
+#     146) both said "detonation-on-Eve-attack conditional charm".
+#     The mark+detonation sequence is channel-completion of Evelynn's
+#     own kit-sequence (mark application + follow-up attack within
+#     ~2.5s mark window). Maps to COND_CHANNEL_COMPLETION.
+#
+# NO new condition tag constants. All 3 use existing
+# COND_CHANNEL_COMPLETION (2 entries) + COND_TARGET_DEBUFFED (1
+# entry). Registry: 36 entries / 32 champions -> 39 entries / 35
+# champions. Multi-wave coexistence count within cc_conditional
+# unchanged at 4 champs (Morgana/Seraphine/Evelynn are all net-new).
+#
+# This wave does NOT use the Meraki extractor schema lift - the
+# duration values are in the parse-strip damage_blocks (verified
+# via shape probe: Morgana R = "Stun Duration", Seraphine E =
+# "Disable Duration", Evelynn W = "Disable Duration"). The mechanic
+# descriptions (channel-completion / target-state-escalation /
+# mark-detonation) live in Riot wiki + in-game tooltip + standard
+# League knowledge - NO `effects`/`leveling` extractor schema lift
+# needed.
+#
+# The Meraki parse-strip is STILL the standing constraint for
+# OTHER candidates (Renekton W Fury / Aatrox post-R passive /
+# Volibear R passive / Briar W frenzy form-empowered Q+R / Karma
+# W form_index=1 / Hwei E form_index=1 / Neeko E Empowered Root) -
+# wave 8 does NOT close that constraint.
+#
+# Consumer math BYTE-IDENTICAL to 1.44.0 for default
+# include_conditional=False callers across the 5 consumer surfaces
+# (cc_pressure + compute_ehp + compute_hybrid + coach prompt +
+# dashboard UI). The 3 new entries surface in compute_cc_pressure
+# for their champions when callers opt in via
+# include_conditional=True.
+#
+# +29 tests NEW
+# ``agents/daemon_slayer/tests/test_cc_conditional_wave8.py`` across
+# 7 classes (WaveEightNewEntryShapeTests / WaveEightValuePinsTests /
+# WaveEightNewChampionsTests / RegistryGrowthTests /
+# ExistingSeedPreservedTests / EngineVersionCurrentTests /
+# AsciiHygieneTests). EngineVersionCurrentTests uses
+# ``assertGreaterEqual(parts, (1, 45, 0))`` for forward-
+# compatibility per item 146 lesson.
+# ``test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES``
+# gained ``test_cc_conditional_wave8.py``.
+#
+# Carry-forwards from item 150 mostly unchanged: (a) Meraki extractor
+# schema lift for form-empowered spells still operator-gated for the
+# OTHER candidates above; (c) RC-PostmortemAnalyze 2026-05-24 04:15;
+# (d) DD Defy still deferred; (e) live ARAM/SR smoke still pending;
+# (f) calibrations operator-gated; (g) obj_participation kills ->
+# takedowns flip operator-gated.
+#
 # 1.44.0 (cc_conditional wave 7 tag schema lift - COND_FRENZY_STATE +
 # COND_RANGE_GATED forward-marker, 2026-05-22):
 #
