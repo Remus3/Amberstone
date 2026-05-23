@@ -3,6 +3,37 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-22 - item 148 cc_conditional wave 7 tag schema lift (COND_FRENZY_STATE + COND_RANGE_GATED forward-marker) SHIPPED (commit `2547836`, pushed `0adf131..2547836`; ENGINE 1.43.0 -> 1.44.0; non-frozen; DS :8893 restarted serves 1.44.0; RC :8888 unchanged)
+
+Operator AskUserQuestion-picked "Conditional CC schema lift" from 4-option fork (over DS 4-slice drain run 15 / orphan CSS cleanup / live game smoke). Closes item 147 carry (l) "Briar frenzy + Sylas range REJECTs STILL need new condition tag constants (separate schema lift)".
+
+Ships 2 NEW condition tag constants as a FORWARD-MARKER schema-lift seam (mirror s112 STAT_GRANT_CALC_KEYS pattern at ENGINE 1.22.0 + pre-1.32.0 _PER_SPELL_CC_DURATIONS pattern). NO new registry entries this wave (registry stays at 36/32); the schema lift unblocks future entries without a separate engine bump.
+
+**NEW condition tag constants:**
+* `COND_FRENZY_STATE` = "frenzy_state" - champion enters self-empowered state (Briar Blood Frenzy / Renekton Fury / Volibear R passive / Aatrox post-R passive) that gates an empowered variant of another spell with first-order CC.
+* `COND_RANGE_GATED` = "range_gated" - CC fires only at specific cast-range band. Distinct from COND_TERRAIN (positioning vs map geometry) and COND_NTH_HIT (stack accumulation).
+
+Both tags registered in `_DEFAULT_CONDITION_PROBABILITY` with calibrated midpoint **0.4** (mid-low - operator-controlled prerequisite but not guaranteed; below COND_DUAL_ENEMY 0.6 + COND_NTH_HIT 0.7, above COND_TERRAIN 0.3 floor). Both exported via `__all__`. Operator-tunable via per-tag JSON override loader.
+
+**Meraki 16.10.1 re-verify** during this run found the item 147 carry-named candidates do NOT cleanly fit:
+* Sylas E2 Abduct stuns on hook hit REGARDLESS of cast range (the item 142 REJECT note calling it range-conditional was incorrect per Riot 16.10.1 spec).
+* Briar W has 2 forms (Blood Frenzy + Snack Attack) but Meraki extract is parse-stripped to damage_blocks only - the leveling/effects detail needed to verify a frenzy-empowered Q or R CC mechanic is absent at parse-strip level.
+
+The forward-marker schema lift is the deliverable. Future entries populate when a Meraki-verifiable mechanic surfaces (e.g. Renekton W empowered cast during Fury, Aatrox passive-empowered abilities, Volibear R passive form).
+
+**+29 tests NEW** `agents/daemon_slayer/tests/test_cc_conditional_wave7_tags.py` across 7 classes: WaveSevenTagConstantsTests (6) + WaveSevenDefaultProbabilityTests (6) + WaveSevenPublicTaxonomyTests (3) + RegistryUnchangedTests (4) + ConditionalCcEntryAcceptsNewTagsTests (3) + WaveSevenOverrideLoaderCompatibilityTests (3) + EngineVersionCurrentTests (1) + AsciiHygieneTests (2). `test_cc_conditional.py DefaultProbabilityMapCoverageTests` expected_keys gained the 2 new tags. `test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES` gained `test_cc_conditional_wave7_tags.py`.
+
+**+32 stale ENGINE pin syncs** across 31 DS test files (1.43.0 -> 1.44.0) via bulk regex rewrite.
+
+Consumer math BYTE-IDENTICAL to 1.43.0 for all 5 consumer surfaces (cc_pressure + compute_ehp + compute_hybrid + coach prompt + dashboard UI) since no registry entry consumes either new tag at ship time.
+
+**Verified:** DS suite **3962 -> 3991 / 1 skipped / 1 xfailed / 1666 subtests** (+29). Wider RC **3278 passed / 67 subtests / 0 failed** post-DS-restart. py_compile + ruff + ASCII clean (0 non-ASCII added to source). DS :8893 restarted via taskkill /F /PID 16932 + `schtasks /Run /TN RC-DaemonSlayer` -> /health returns `engine_version=1.44.0 patch=16.10.1 champions=172 items=705`. RC :8888 unchanged (no route module edits; DS engine + tests only).
+
+**Don't-redo:** the 2 new tag constants are CANONICAL forward-marker seam - do NOT remove or rename. Calibration midpoint 0.4 is operator-tunable via JSON override file but the SEED value is the engineered starting calibration; future tuning lives in `data/cc_conditional_calibration.json` not the source. Sylas E2 Abduct stun is NOT range-gated at 16.10.1 - do NOT re-pitch as a wave 8 COND_RANGE_GATED entry. Briar W frenzy-empowered Q/R mechanics cannot be verified at parse-strip Meraki level - any future encoding needs a real Meraki ability dump (champion_abilities.json with leveling intact). The empty-registry-for-new-tags pattern is intentional (mirrors s112 STAT_GRANT_CALC_KEYS + pre-1.32.0 _PER_SPELL_CC_DURATIONS) - do NOT pre-ship speculative entries.
+
+**Carries forward:** (a) `web/css/dashboard.css:27` orphan @import `./panels/loading_view.css` STILL operator-gated (carries from items 146 + 147). (b) `web/css/panels/build_order.css` inverse orphan FILE flagged item 147 STILL operator-gated. (c) cc_conditional wave 8+ entries that consume COND_FRENZY_STATE or COND_RANGE_GATED operator-gated when Meraki-verifiable mechanic surfaces (Renekton W Fury / Aatrox post-R / Volibear R passive). (d) DD Defy heal-on-takedown STILL deferred. (e) Live ARAM/SR smoke STILL pending. (f) RC-PostmortemAnalyze first scheduled run 2026-05-24 04:15 - verify LastTaskResult=0 next session. (g) `_MISSING_HP_SHARE_FOR_HEALS = 0.5` + `_CC_EFFECTIVENESS_FACTOR = 0.5` + 12 default condition probability midpoints + per-entry probability values STILL operator-gated. (h) Item 133 carry (c) personal calibration via `data/post_game_rubric_weights.json` STILL operator-gated. (i) obj_participation widening operator-gated. (j) UI/UX live-game audit ritual owed. (k) `_PER_SPELL_CC_DURATIONS` unconditional registry unchanged at 108/89 (wave 10+ likely exhausted at 16.10.1 per item 147). (l) Future cc_conditional wave 8 expansion from REJECT pool operator-gated.
+
+---
 # 2026-05-22 - item 147 4-slice parallel drain (cc_conditional wave 6 + _PER_SPELL_CC_DURATIONS wave 9 + BACKLOG stale-sweep wave 11 + cost/latency CLEAN) SHIPPED (3 worktree agents merged + orchestrator commit `22c55e8`, pushed `8d50732..22c55e8`; ENGINE 1.42.0 -> 1.43.0; non-frozen; DS :8893 restarted serves 1.43.0; RC :8888 unchanged)
 
 Operator AskUserQuestion-picked "DS 4-slice drain run 14 (Recommended)" from 4-option fork. 14th consecutive long-run using orchestrator-merge template (items 134-147). 4 worktree agents dispatched concurrent on item 146 carries (b) cc_conditional wave 6 + (j) _PER_SPELL_CC_DURATIONS wave 9 (multi-wave coexistence only - saturated for net-new champs).
