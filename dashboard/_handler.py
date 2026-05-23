@@ -80,6 +80,7 @@ _SUPPRESS_LOG_PATHS = (
     "GET /api/activity ",
     "GET /api/env ",
     "GET /api/locked-champion ",
+    "GET /api/minimap-crop ",
 )
 
 
