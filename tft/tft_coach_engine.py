@@ -19,7 +19,7 @@ logger = logging.getLogger("rc.tft.coach")
 TFT_SYSTEM_PROMPT = """\
 Challenger TFT Set 17 "Space Gods" Double Up coach. Max density, no padding.
 
-ROUND STRUCTURE: Stage 1=3 rounds. Stages 2-7: X-1/2/3=PvP, X-4=Realm of Gods (NOT carousel), X-5=PvE, X-6=PvP, 4-7=God Boon armory. NO carousels in Set 17. Never say "carousel" â€” say "God boon"/"Realm of Gods".
+ROUND STRUCTURE: Stage 1=3 rounds. Stages 2-7: X-1/2/3=PvP, X-4=Realm of Gods (NOT carousel), X-5=PvE, X-6=PvP, 4-7=God Boon armory. NO carousels in Set 17. Never say "carousel"  -  say "God boon"/"Realm of Gods".
 
 LEVEL TIMING: Lv6@3-2, Lv7@4-1, Lv8@4-2(rolldown), Lv9@5-1+. Fast8=Lv8@4-1 with 50g+. Fast9=Lv9@5-1 needs econ aug or winstreak. HP<35=roll now, board>econ. Never suggest Lv9 before stage 5.
 
@@ -33,25 +33,25 @@ COMP ID: Name after dominant trait (most units). 1-unit splash = ignore. Crest/C
 
 FEASIBILITY: Never suggest actions that require gold you don't have. No PvP tips during PVE rounds. No board swaps during God rounds.
 
-GOD ALIGNMENT (Set 17 mechanic â€” replaces carousel):
+GOD ALIGNMENT (Set 17 mechanic  -  replaces carousel):
   Stage X-4 = choose between 2 god offerings. Stage 4-7 = God Boon armory. Every offering includes a component.
   ALIGN RULE: Take same god â‰¥2 times on stages 2/3/4 to unlock their Boon at 4-7.
   
-  9 GODS â€” tier and strategy:
+  9 GODS  -  tier and strategy:
   S-TIER BOONS (take these):
   â€¢ Evelynn (Temptation): Instinct artifact boon. Strong frontline-light boards. Execute + AS burst.
   â€¢ Yasuo (Abyss): Empowers hexes. Best for comps that want hex positioning (Stargazer, Conduit).
   
   A-TIER BOONS:
-  â€¢ Ekko (???): Delayed value â€” delayed components/power. Prioritize when loss-streaking.
+  â€¢ Ekko (???): Delayed value  -  delayed components/power. Prioritize when loss-streaking.
   â€¢ Varus (Love): Offers 3/4/5-cost unit selectors. Best when you need a specific 4-5 cost.
   â€¢ Soraka (Stars): HP-focused. Soraka's Miracle artifact. Best when HP-pressured or loss-streaking.
   
   B-TIER BOONS:
   â€¢ Ahri (Opulence): Gold/econ boons. Good for fast-9 boards. Foxfire artifact for AP carries.
-  â€¢ Aurelion Sol (Wonders): Quest boon â€” complete trait breakpoints for bonus. Risky/conditional.
-  â€¢ Kayle (Exaltation): Extra components. Kayle's Exaltation artifact â€” radiant items after 18s.
-  â€¢ Thresh (???): Pulls bench unit to board. Thresh's Lantern artifact â€” redirects damage.
+  â€¢ Aurelion Sol (Wonders): Quest boon  -  complete trait breakpoints for bonus. Risky/conditional.
+  â€¢ Kayle (Exaltation): Extra components. Kayle's Exaltation artifact  -  radiant items after 18s.
+  â€¢ Thresh (???): Pulls bench unit to board. Thresh's Lantern artifact  -  redirects damage.
   
   OFFERING CHOICE: Take the offering that best fits current streak/board state.
   Win streak â†' take combat-power offering. Loss streak â†' take econ/delayed-value offering.
@@ -59,7 +59,7 @@ GOD ALIGNMENT (Set 17 mechanic â€” replaces carousel):
 
 
 
-OUTPUT â€” 9 fields only, no markdown, no bullets, max 15 words each:
+OUTPUT  -  9 fields only, no markdown, no bullets, max 15 words each:
 Action: ALL-CAPS 1-3 words
 Board: actual unit names + grid positions (tanks A wide, carries D6-7)
 Econ: level/gold timing
@@ -158,7 +158,7 @@ def _build_augment_context(items_str: str, trait_augments: dict) -> list:
             continue
 
         # Handle Set 17 God boon format: "[God] God of [Domain] - [Item/Effect]"
-        # These provide item components, not trait bonuses â€” note them but skip DB match
+        # These provide item components, not trait bonuses  -  note them but skip DB match
         if " god of " in aug_lower or " god " in aug_lower:
             item_part = ""
             if " - " in aug_name:
@@ -166,10 +166,10 @@ def _build_augment_context(items_str: str, trait_augments: dict) -> list:
             if item_part:
                 lines_buf = [
                     f"  [GOD BOON] {aug_name}",
-                    f"    Effect: Provides {item_part} component/item â€” equip on priority carry immediately.",
+                    f"    Effect: Provides {item_part} component/item  -  equip on priority carry immediately.",
                 ]
                 if "trait quest" in aug_lower:
-                    lines_buf.append("    Decision: Trait Quest boon â€” activate your dominant trait at max breakpoint to trigger bonus.")
+                    lines_buf.append("    Decision: Trait Quest boon  -  activate your dominant trait at max breakpoint to trigger bonus.")
                 matched_augments.append(("_god_boon", aug_name, lines_buf))
             continue
 
@@ -191,7 +191,7 @@ def _build_augment_context(items_str: str, trait_augments: dict) -> list:
     if not matched_augments:
         return []
 
-    lines.append("ACTIVE AUGMENTS â€” DECISION IMPACT:")
+    lines.append("ACTIVE AUGMENTS  -  DECISION IMPACT:")
     for entry in matched_augments:
         if entry[0] == "_god_boon":
             lines.extend(entry[2])
@@ -277,9 +277,9 @@ def _build_prompt(state: dict) -> str:
         lines.append(f"Players alive: {player_count} ({team_count} teams) | Your HP: {hp_display} | Partner HP: {partner_hp_str}")
         if _partner_hp is not None:
             if int(_partner_hp) < 25:
-                lines.append(f"âš  PARTNER HP CRITICAL ({_partner_hp}) â€” donate tank unit immediately")
+                lines.append(f"âš  PARTNER HP CRITICAL ({_partner_hp})  -  donate tank unit immediately")
             elif int(_partner_hp) < 35:
-                lines.append(f"Partner HP low ({_partner_hp}) â€” consider donating frontline unit")
+                lines.append(f"Partner HP low ({_partner_hp})  -  consider donating frontline unit")
     else:
         lines.append(f"Players alive: {alive+1} ({dead} eliminated)")
 
@@ -322,7 +322,7 @@ def _build_prompt(state: dict) -> str:
         lines.append(f"Current gold: {int(_live_gold)}g | Interest: +{_interest}g/round | {'AT CAP' if _interest >= 5 else f'Next bracket: {(_interest+1)*10}g'}")
 
     if is_car:
-        lines.append("CAROUSEL ROUND: Do NOT suggest rolling or leveling â€” only carousel/God boon pick advice.")
+        lines.append("CAROUSEL ROUND: Do NOT suggest rolling or leveling  -  only carousel/God boon pick advice.")
         try:
             import json as _json
             from pathlib import Path as _Path
@@ -336,15 +336,15 @@ def _build_prompt(state: dict) -> str:
             pass
 
     if event == "pve":
-        lines.append("PVE ROUND: No opponent to position against â€” focus on econ/leveling decisions.")
+        lines.append("PVE ROUND: No opponent to position against  -  focus on econ/leveling decisions.")
     if tempo:
         lines.append(f"Milestone: {tempo}")
 
     if variant == "hyper_roll":
         lines += [
             "",
-            "MODE: HYPER ROLL â€” Gold cap 10g. No interest economy. Roll every round.",
-            "Hyper Roll rules: ALWAYS roll â€” never save gold. Prioritize 3-starring cheap units.",
+            "MODE: HYPER ROLL  -  Gold cap 10g. No interest economy. Roll every round.",
+            "Hyper Roll rules: ALWAYS roll  -  never save gold. Prioritize 3-starring cheap units.",
             "Win condition: 3-star a 1-2 cost carry ASAP. Reroll aggressively every round.",
         ]
     elif variant == "double_up":
@@ -352,7 +352,7 @@ def _build_prompt(state: dict) -> str:
         coord_signals = du_rules.get("coordination_signals", {})
         lines += [
             "",
-            "MODE: DOUBLE UP (PBE) â€” Playing with a partner. Shared HP pool.",
+            "MODE: DOUBLE UP (PBE)  -  Playing with a partner. Shared HP pool.",
             "Coordination: ONE player AD carry, ONE player AP carry. Do not contest partner reroll targets.",
             "Donation rule: Send overflow units + 2nd tank if partner HP < 30.",
         ]
@@ -591,9 +591,9 @@ class TftCoachEngine:
 
         cfg_path = Path(__file__).parent.parent / "config" / "coach_settings.json"
         self._model      = "claude-haiku-4-5-20251001"
-        self._debounce_s = 45.0   # raised from 15s â€” fires once per round + max 1 urgent/30s
+        self._debounce_s = 45.0   # raised from 15s  -  fires once per round + max 1 urgent/30s
         self._timeout    = 20
-        self._max_tokens = 600    # reduced from 800 â€” 9 short fields don't need more
+        self._max_tokens = 600    # reduced from 800  -  9 short fields don't need more
         if cfg_path.exists():
             try:
                 cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
@@ -673,7 +673,7 @@ class TftCoachEngine:
 
     def _run_safe(self, state: dict):
         if not self._lock.acquire(blocking=False):
-            logger.debug("TFT coach busy â€” skipping")
+            logger.debug("TFT coach busy  -  skipping")
             return
         try:
             self._run(state)

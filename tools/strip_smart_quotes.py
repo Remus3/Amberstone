@@ -79,9 +79,11 @@ The --allow-frozen flag accepts a comma-separated list of frozen-file paths
 to rewrite anyway. This requires explicit operator grant (see CLAUDE.md
 hard-rule list + per-session approval). The flag is provided so trivial
 frozen-file hits (a single U+2026 in a log message) can be swept without
-hand-editing each file. ops/rc_supervisor.py is HARD SKIPPED regardless
-of the flag (defense-in-depth: 1380 mojibake U+201D bytes need a separate
-UTF-8 byte-repair pass, not a smart-quote sweep).
+hand-editing each file. _HARD_SKIP_FROZEN is the defense-in-depth set:
+any path in that frozenset is NEVER rewritten regardless of the flag.
+Currently empty so all frozen files are operator-grantable; bump only with
+explicit operator authorization for a specific path that must never be
+touched even by accidental grant.
 """
 from __future__ import annotations
 
@@ -125,14 +127,18 @@ _MOJI_NEIGHBOUR = b"\xe2\x82\xac"  # U+20AC EURO SIGN
 ROOT = Path(__file__).resolve().parent.parent
 _SELF = Path(__file__).resolve()
 
-# HARD SKIP: ops/rc_supervisor.py is NEVER rewritten, even when listed
-# in --allow-frozen. It carries 1380 mojibake U+201D bytes (latin-1
-# misdecode of em-dashes inside string literals) that need a separate
-# byte-repair pass, not a smart-quote sweep. Bypassing this would corrupt
-# the file (strings would silently terminate mid-literal).
-_HARD_SKIP_FROZEN = frozenset({
-    "ops/rc_supervisor.py",
-})
+# HARD SKIP: paths in this set are NEVER rewritten, even when listed in
+# --allow-frozen. Defense-in-depth defaulted to empty so any frozen file
+# is operator-grantable via the flag. Bump ONLY with explicit operator
+# authorization for a specific path that must never be touched even by
+# accidental grant.
+#
+# (Historical note: ops/rc_supervisor.py was previously hard-skipped while
+# it carried bulk mojibake U+201D bytes that would have been corrupted by
+# a naive smart-quote sweep. Item 156 cleared the mojibake via
+# tools/repair_mojibake.py with operator grant, after which the file
+# became safe to sweep and was removed from this set.)
+_HARD_SKIP_FROZEN: frozenset[str] = frozenset()
 
 # Frozen files per CLAUDE.md hard-rule. NEVER rewrite even on --apply;
 # only list in report. Stored as repo-relative POSIX paths.
