@@ -121,8 +121,14 @@ def _should_skip(path: Path, rel_posix: str) -> bool:
 
 
 # Frozen files per CLAUDE.md hard-rule. The strip tool refuses to rewrite
-# these; this test also excludes them from the assertion (any stray
-# codepoint inside a frozen file is operator-gated to fix separately).
+# these by default; this test also excludes them from the assertion (any
+# stray codepoint inside a frozen file is operator-gated to fix separately
+# via --allow-frozen).
+#
+# (Item 156 note: ops/rc_supervisor.py is deliberately OMITTED from this
+# set because it was repaired in item 156 - the drift guard NOW covers it
+# so any re-introduction of smart quotes / em-dashes into rc_supervisor
+# will be caught.)
 _FROZEN = frozenset({
     "main.py",
     "core/log_setup.py",
@@ -130,7 +136,6 @@ _FROZEN = frozenset({
     "lcu/lcu_client.py",
     "core/game_snapshot.py",
     "ops/rc_dev_runtime.py",
-    "ops/rc_supervisor.py",
     "app/__init__.py",
     "app/_loop.py",
     "app/_health_monitor.py",
@@ -159,12 +164,13 @@ _FROZEN = frozenset({
 # U+201D bytes in mojibake context). These are NOT smart-quote drift; they
 # need separate mojibake repair. The strip tool flags them; this guard
 # tolerates U+201D ONLY when 100% of occurrences are in mojibake context.
-_MOJIBAKE_TOLERATED = frozenset({
-    "ops/rc_self_monitor.py",
-    "ops/rc_state_validator.py",
-    "tft/tft_coach_engine.py",
-    # ops/rc_supervisor.py is also mojibake-tainted but already in _FROZEN.
-})
+#
+# (Item 156 note: empty as of 2026-05-23 - rc_self_monitor.py, rc_state_validator.py,
+# tft_coach_engine.py, and ops/rc_supervisor.py were all repaired this run
+# via tools/repair_mojibake.py extended to handle Variant B mojibake. The
+# tolerance machinery is retained for forward use if new mojibake-tainted
+# files are introduced before a repair pass.)
+_MOJIBAKE_TOLERATED: frozenset[str] = frozenset()
 
 
 def _tracked_files() -> list[Path]:
