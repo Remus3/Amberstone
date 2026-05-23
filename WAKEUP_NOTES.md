@@ -3,6 +3,29 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-22 - item 146 4-slice parallel drain (cc_conditional wave 5 + _PER_SPELL_CC_DURATIONS wave 8 + BACKLOG stale-sweep wave 10 + cost/latency CLEAN) SHIPPED (3 worktree agents merged + orchestrator commit `06c67a6`, pushed `b887f29..06c67a6`; ENGINE 1.41.0 -> 1.42.0; non-frozen; DS :8893 restarted serves 1.42.0; RC :8888 unchanged)
+
+Operator "continue DS and /done for /clear when complete" -> 13th consecutive long-run using orchestrator-merge template (items 134-145). 4 worktree agents dispatched concurrent on item 145 carries (a) cc_conditional wave 5+ expansion + (i) _PER_SPELL_CC_DURATIONS wave 8. Slice D CLEAN no-commit + 1 MINOR PROPOSAL (13th consecutive cost/latency CLEAN sweep since item 134).
+
+DS suite **3791 -> 3881 / 1 skipped / 1 xfailed / 1666 subtests passed** (+90: 52 Slice A + 38 Slice B). Wider RC suite **3203 passed / 67 subtests / 0 failed** (unchanged - DS engine + tests only this run). phase8_smoke **75 passed** post-DS-restart.
+
+**Slice A `fbb1354` (merge `9586f63`)** feat(ds) cc_conditional wave 5 expansion (33/32 -> 35/32; +2 entries / +0 net-new champs both multi-wave coexistence): Briar E Chilling Scream (channel_completion 0.5 fear 1.0s - SECOND multi-wave coexistence in cc_conditional with Briar Q wave 4) + TahmKench Q Tongue Lash (nth_hit 0.7 stun 1.5s - coexists with TahmKench R wave 1 devour). Uses only 10 existing condition tags. +52 tests NEW `tests/test_cc_conditional_wave5.py` across 9 classes. Multi-wave coexistence count now 4 cc_conditional champions: Aatrox Q+W, Briar Q+E, TahmKench R+Q, Pantheon W+Q.
+
+**Slice B `4ab11ba` (merge `7f9e9a1`)** feat(ds) _PER_SPELL_CC_DURATIONS wave 8 (103/89 -> 106/89; +3 entries / +0 net-new champs via multi-wave coexistence): Lissandra W root + Maokai W root + Rakan R charm. All 3 values verified vs Meraki 16.10.1. Multi-wave coexistence now 7 unconditional champions. Saturated for net-new champions at 16.10.1. +38 tests NEW `tests/test_per_spell_cc_registry_wave8.py`.
+
+**Slice C `5325d45` (merge `fc572d4`)** docs(backlog) stale-entry sweep wave 10: 1 BACKLOG L13 cc_conditional ecosystem subsection flipped (item-144 stop -> item-145 wave 4 + JSON override loader). ROADMAP sweep CLEAN. Sweep cycle decay wave 1-10: 2/3/3/1/1/1/2/1/1/1.
+
+**Slice D CLEAN no-commit + 1 MINOR PROPOSAL (13th consecutive cost/latency CLEAN since item 134):** 6 levers CLEAN (prompt-cache 8 callers / route TTL 17 routes / polling cadences / log spam /api/bridge 0.26/sec / model tier 21/21 Haiku / scheduled tasks 7 install scripts). MINOR PROPOSAL Lever 7: `web/css/dashboard.css:27` orphan @import `./panels/loading_view.css` (file does not exist; safe 1-line CSS edit but operator-gated since file may have been intentionally orphaned during a removal); deferred with carry-forward (a).
+
+**Orchestrator commit `06c67a6`** bumps ENGINE 1.41.0 -> 1.42.0 in `__init__.py` with full changelog covering all 4 slices + 32 stale ENGINE pin syncs across 30 DS test files via bulk-rewrite. Merge order: C first, A second, B third. 0 merge conflicts (3 entirely disjoint surfaces). One transient orchestrator misstep recovered: initial merge of C ran in wrong worktree (Slice A's branch); recovered via `git update-ref refs/heads/<branch> <original_sha>` to reset Slice A back to fbb1354 then re-merged from main cleanly.
+
+**Verified:** RC **3203 passed / 67 subtests / 0 failed**. DS suite **3881 passed / 1 skipped / 1 xfailed / 1666 subtests**. py_compile + ruff clean. DS :8893 restarted via taskkill /F /PID 13204 + `schtasks /Run /TN RC-DaemonSlayer` -> /health returns engine_version=1.42.0 patch=16.10.1 champions=172 items=705. RC :8888 unchanged. 3 worktrees unlocked + force-removed + 3 worktree branches deleted.
+
+**Don't-redo:** cc_conditional 35/32 (+2 via multi-wave only). _PER_SPELL_CC_DURATIONS 106/89 (+3 via multi-wave only); unconditional saturated for net-new champions at 16.10.1. Senna W shipped wave 4 (item 138) - do NOT re-pitch. The `assertGreaterEqual(parts, (1, 41, 0))` test pin shape from Slice A is forward-compatible (does NOT need orchestrator flip on bump); future wave tests should use this pattern. Orchestrator-merge pattern now 13 consecutive runs (items 134-146). Always `cd "C:/Riot Commander"` before each `git merge` to avoid running in wrong worktree branch (transient misstep this run).
+
+**Carries forward:** (a) `web/css/dashboard.css:27` orphan @import flagged - safe 1-line edit operator-gated. (b) cc_conditional wave 6+ from REJECT pool operator-gated. (c) Briar frenzy + Sylas range REJECTs need new condition tag schema lift (separate, operator-gated). (d) Live ARAM/SR smoke STILL pending. (e) RC-PostmortemAnalyze first scheduled run 2026-05-24 04:15 - verify LastTaskResult=0. (f-l) other carries from item 145 unchanged.
+
+---
 # 2026-05-22 - item 145 4-slice parallel drain (cc_conditional JSON override loader + wave 4 expansion + BACKLOG stale-sweep wave 9 + cost/latency CLEAN) SHIPPED (3 worktree agents merged + orchestrator commit `8262706`, pushed `222be15..8262706`; ENGINE 1.40.0 -> 1.41.0; non-frozen; DS :8893 restarted serves 1.41.0; RC :8888 unchanged)
 
 Operator "continue ds" -> 12th consecutive long-run using orchestrator-merge template (items 134-144). 4 worktree agents dispatched concurrent on item 144 carries (e) operator-tunable calibration midpoints + per-entry probabilities AND (j) future cc_conditional wave 4+ expansion. Slice D CLEAN no-commit (12th consecutive cost/latency CLEAN since item 134).
