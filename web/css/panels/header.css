@@ -1860,25 +1860,41 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text); margin-bottom: 6px;
 }
 
-/* User Builds view (Phase 8 step 6 - 2026-05-04). Operator CRUD over
- * data/daemon_slayer/user_builds.json. Two-pane layout: list of saved
- * builds for the picked champion on the left, add/edit form on the
- * right (form pane hidden until + Add or Edit is clicked). */
+/* User Builds view (Phase 8 step 6 - 2026-05-04, UI scale v2.1 page #2
+ * - 2026-05-23). Operator CRUD over data/daemon_slayer/user_builds.json.
+ * Two-pane layout: list of saved builds for the picked champion on the
+ * left, add/edit form on the right (form pane hidden until + Add or
+ * Edit is clicked). Consumes tokens.css v2.1: --fs-xs (chip metadata,
+ * card heads) / --fs-sm (sub-line, hint, button) / --fs-md (row label,
+ * inputs) / --space-1..6 (gaps + padding) / --panel-padding (20)
+ * + --panel-radius (18) / --panel-radius-sm (10 for chips, inputs)
+ * / --hit-min (42 fingertip target floor). v1 inline pixel values
+ * listed in comments. */
 .ub-toolbar {
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-  padding: 6px 0 12px;
+  display: flex; gap: var(--space-3);     /* was 10px -> 12px              */
+  align-items: center; flex-wrap: wrap;
+  padding: var(--space-2) 0 var(--space-4); /* was 6 0 12 -> 8 0 16        */
 }
 .ub-toolbar input[type="text"] {
-  flex: 0 1 260px; padding: 6px 10px; font-size: 14px;
+  flex: 0 1 360px;                        /* was 260px -> 360px            */
+  padding: var(--space-2) var(--space-3); /* was 6 10  -> 8 12             */
+  font-size: var(--fs-md);                /* was 14px -> 22px              */
+  min-height: var(--hit-min);             /* 42px fingertip floor          */
   background: var(--surface-alt); border: 1px solid var(--border);
-  border-radius: 4px; color: var(--text);
+  border-radius: var(--panel-radius-sm);  /* was 4px  -> 10px              */
+  color: var(--text);
 }
 .ub-hint {
-  font-size: 12px; color: var(--text-faint); letter-spacing: 0.04em;
+  font-size: var(--fs-sm);                /* was 12px -> 18px              */
+  color: var(--text-faint); letter-spacing: 0.04em;
 }
 .ub-btn {
-  padding: 6px 14px; font-size: 13px; font-weight: 700;
-  letter-spacing: 0.04em; border-radius: 4px; cursor: pointer;
+  padding: var(--space-2) var(--space-4); /* was 6 14  -> 8 16             */
+  font-size: var(--fs-sm);                /* was 13px -> 18px              */
+  min-height: var(--hit-min);             /* 42px fingertip floor          */
+  font-weight: 700; letter-spacing: 0.04em;
+  border-radius: var(--panel-radius-sm);  /* was 4px  -> 10px              */
+  cursor: pointer;
   border: 1px solid var(--border); transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
 .ub-btn-primary {
@@ -1894,86 +1910,122 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-color: var(--danger, #d96868);
 }
 .ub-btn-danger:hover { background: var(--danger, #d96868); color: var(--bg); }
-.ub-btn-tiny { padding: 3px 9px; font-size: 12px; font-weight: 700; }
+.ub-btn-tiny {
+  padding: var(--space-1) var(--space-3); /* was 3 9   -> 4 12             */
+  font-size: var(--fs-xs);                /* was 12px -> 16px              */
+  min-height: 0;                          /* row-scoped; floor relaxed     */
+  font-weight: 700;
+}
 .ub-layout {
-  display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px;
+  display: grid; grid-template-columns: 1fr 1.3fr;
+  gap: var(--space-5);                    /* was 14px -> 24px              */
   align-items: start;
 }
 .ub-list-pane, .ub-form-pane {
   background: var(--surface-head); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 12px 14px;
+  border-radius: var(--panel-radius);     /* was --radius-sm 8 -> 18       */
+  padding: var(--panel-padding);          /* was 12 14 -> 20               */
 }
 .ub-list-head {
   display: flex; align-items: baseline; justify-content: space-between;
-  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs);                /* was 11px -> 16px              */
+  font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
-  margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 5px;
+  margin-bottom: var(--space-3);          /* was 8px  -> 12px              */
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-2);         /* was 5px  -> 8px               */
 }
 .ub-count {
-  font-size: 11px; color: var(--clock); font-weight: 700;
+  font-size: var(--fs-xs);                /* was 11px -> 16px              */
+  color: var(--clock); font-weight: 700;
 }
 .ub-build-list {
   list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 6px;
-  max-height: 540px; overflow-y: auto;
+  display: flex; flex-direction: column;
+  gap: var(--space-2);                    /* was 6px  -> 8px               */
+  max-height: 720px;                      /* was 540  -> 720 (v2.1 fits)   */
+  overflow-y: auto;
 }
 .ub-build-row {
-  display: grid; grid-template-columns: 1fr auto auto; gap: 8px;
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: var(--space-3);                    /* was 8px  -> 12px              */
   align-items: center;
-  background: var(--surface-alt); border-radius: 4px;
-  padding: 8px 10px; border: 1px solid transparent;
+  background: var(--surface-alt);
+  border-radius: var(--panel-radius-sm);  /* was 4px  -> 10px              */
+  padding: var(--space-3);                /* was 8 10 -> 12 12             */
+  min-height: var(--hit-min);             /* 42px fingertip floor for row  */
+  border: 1px solid transparent;
 }
 .ub-build-row.editing { border-color: var(--info); background: var(--info-soft); }
 .ub-build-meta {
-  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  display: flex; flex-direction: column;
+  gap: var(--space-1);                    /* was 2px  -> 4px               */
+  min-width: 0;
 }
 .ub-build-label {
-  font-size: 14px; font-weight: 800; color: var(--text);
+  font-size: var(--fs-md);                /* was 14px -> 22px              */
+  font-weight: 800; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ub-build-sub {
-  font-size: 12px; color: var(--text-dim); letter-spacing: 0.02em;
+  font-size: var(--fs-sm);                /* was 12px -> 18px              */
+  color: var(--text-dim); letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ub-form-head {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs);                /* was 11px -> 16px              */
+  font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
-  margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 5px;
+  margin-bottom: var(--space-4);          /* was 10px -> 16px              */
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-2);         /* was 5px  -> 8px               */
 }
 .ub-form-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--space-3) var(--space-4);     /* was 10 12 -> 12 16            */
 }
 .ub-field {
-  display: flex; flex-direction: column; gap: 4px;
-  font-size: 12px;
+  display: flex; flex-direction: column;
+  gap: var(--space-1);                    /* was 4px  -> 4px (rung pin)    */
+  font-size: var(--fs-sm);                /* was 12px -> 18px              */
 }
 .ub-field-wide { grid-column: 1 / -1; }
 .ub-field > span {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  font-size: var(--fs-xs);                /* was 11px -> 16px              */
+  font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--text-faint);
 }
 .ub-field input, .ub-field select, .ub-field textarea {
   background: var(--surface-alt); border: 1px solid var(--border);
-  color: var(--text); padding: 6px 9px; font-size: 14px;
-  border-radius: 4px; font-family: inherit;
+  color: var(--text);
+  padding: var(--space-2) var(--space-3); /* was 6 9   -> 8 12             */
+  font-size: var(--fs-md);                /* was 14px -> 22px              */
+  border-radius: var(--panel-radius-sm);  /* was 4px  -> 10px              */
+  font-family: inherit;
+}
+.ub-field input, .ub-field select {
+  min-height: var(--hit-min);             /* 42px fingertip floor          */
 }
 .ub-field textarea {
   font-family: var(--font-mono, ui-monospace, monospace);
-  resize: vertical; min-height: 110px;
+  resize: vertical; min-height: 200px;    /* was 110px -> 200px            */
 }
 .ub-form-status {
-  margin-top: 10px; padding: 6px 10px; font-size: 13px; border-radius: 4px;
+  margin-top: var(--space-3);             /* was 10px -> 12px              */
+  padding: var(--space-2) var(--space-3); /* was 6 10  -> 8 12             */
+  font-size: var(--fs-sm);                /* was 13px -> 18px              */
+  border-radius: var(--panel-radius-sm);  /* was 4px  -> 10px              */
   background: var(--surface-alt); color: var(--text);
   border-left: 3px solid var(--clock);
 }
 .ub-form-status.ok    { border-left-color: var(--ok, #6cd97a); color: var(--ok, #6cd97a); }
 .ub-form-status.error { border-left-color: var(--danger, #d96868); color: var(--danger, #d96868); }
 .ub-form-actions {
-  display: flex; gap: 10px; justify-content: flex-end;
-  margin-top: 12px; padding-top: 10px;
+  display: flex; gap: var(--space-3);     /* was 10px -> 12px              */
+  justify-content: flex-end;
+  margin-top: var(--space-4);             /* was 12px -> 16px              */
+  padding-top: var(--space-3);            /* was 10px -> 12px              */
   border-top: 1px solid var(--border-soft);
 }
 

@@ -225,6 +225,75 @@ The Settings page exercises these specific token consumers (v2.1 values):
 | `.settings-row select` padding               | -                      | `--space-2 --space-3`         |
 | `.settings-row .dim` (sub-label)             | inherited              | `var(--fs-sm)` 18px           |
 
+## Per-component-class targets (User Builds page #2, 2026-05-23)
+
+The User Builds view (`#view-user-builds` / `.ub-*` classes in
+`web/css/panels/header.css:1867`) exercises these consumers (v2.1 values):
+
+| Element                                | v1                     | v2.1                                       |
+| -------------------------------------- | ---------------------- | ------------------------------------------ |
+| `.ub-toolbar` gap                      | 10px                   | `var(--space-3)` 12px                      |
+| `.ub-toolbar` padding                  | 6px 0 12px             | `var(--space-2) 0 var(--space-4)` (8 0 16) |
+| `.ub-toolbar input[type=text]` width   | flex 0 1 260px         | flex 0 1 360px                             |
+| `.ub-toolbar input[type=text]` padding | 6px 10px               | `var(--space-2) var(--space-3)` (8 12)     |
+| `.ub-toolbar input[type=text]` font    | 14px                   | `var(--fs-md)` 22px                        |
+| `.ub-toolbar input[type=text]` h-min   | -                      | `var(--hit-min)` 42px                      |
+| `.ub-toolbar input[type=text]` radius  | 4px                    | `var(--panel-radius-sm)` 10px              |
+| `.ub-hint` font                        | 12px                   | `var(--fs-sm)` 18px                        |
+| `.ub-btn` padding                      | 6px 14px               | `var(--space-2) var(--space-4)` (8 16)     |
+| `.ub-btn` font                         | 13px                   | `var(--fs-sm)` 18px                        |
+| `.ub-btn` h-min                        | -                      | `var(--hit-min)` 42px                      |
+| `.ub-btn` radius                       | 4px                    | `var(--panel-radius-sm)` 10px              |
+| `.ub-btn-tiny` padding                 | 3px 9px                | `var(--space-1) var(--space-3)` (4 12)     |
+| `.ub-btn-tiny` font                    | 12px                   | `var(--fs-xs)` 16px                        |
+| `.ub-btn-tiny` h-min                   | -                      | 0 (row-scoped; floor relaxed)              |
+| `.ub-layout` gap                       | 14px                   | `var(--space-5)` 24px                      |
+| `.ub-list-pane / .ub-form-pane` pad    | 12px 14px              | `var(--panel-padding)` 20px                |
+| `.ub-list-pane / .ub-form-pane` radius | `var(--radius-sm)` 8px | `var(--panel-radius)` 18px                 |
+| `.ub-list-head` font                   | 11px                   | `var(--fs-xs)` 16px                        |
+| `.ub-list-head` margin-bottom          | 8px                    | `var(--space-3)` 12px                      |
+| `.ub-count` font                       | 11px                   | `var(--fs-xs)` 16px                        |
+| `.ub-build-list` gap                   | 6px                    | `var(--space-2)` 8px                       |
+| `.ub-build-list` max-height            | 540px                  | 720px                                      |
+| `.ub-build-row` gap                    | 8px                    | `var(--space-3)` 12px                      |
+| `.ub-build-row` padding                | 8px 10px               | `var(--space-3)` 12px                      |
+| `.ub-build-row` radius                 | 4px                    | `var(--panel-radius-sm)` 10px              |
+| `.ub-build-row` h-min                  | -                      | `var(--hit-min)` 42px                      |
+| `.ub-build-meta` gap                   | 2px                    | `var(--space-1)` 4px                       |
+| `.ub-build-label` font                 | 14px                   | `var(--fs-md)` 22px                        |
+| `.ub-build-sub` font                   | 12px                   | `var(--fs-sm)` 18px                        |
+| `.ub-form-head` font                   | 11px                   | `var(--fs-xs)` 16px                        |
+| `.ub-form-head` margin-bottom          | 10px                   | `var(--space-4)` 16px                      |
+| `.ub-form-grid` gap                    | 10px 12px              | `var(--space-3) var(--space-4)` (12 16)    |
+| `.ub-field` font                       | 12px                   | `var(--fs-sm)` 18px                        |
+| `.ub-field > span` font                | 11px                   | `var(--fs-xs)` 16px                        |
+| `.ub-field input/select/textarea` pad  | 6px 9px                | `var(--space-2) var(--space-3)` (8 12)     |
+| `.ub-field input/select/textarea` font | 14px                   | `var(--fs-md)` 22px                        |
+| `.ub-field input/select/textarea` rad  | 4px                    | `var(--panel-radius-sm)` 10px              |
+| `.ub-field input / select` h-min       | -                      | `var(--hit-min)` 42px                      |
+| `.ub-field textarea` min-height        | 110px                  | 200px                                      |
+| `.ub-form-status` padding              | 6px 10px               | `var(--space-2) var(--space-3)` (8 12)     |
+| `.ub-form-status` font                 | 13px                   | `var(--fs-sm)` 18px                        |
+| `.ub-form-status` radius               | 4px                    | `var(--panel-radius-sm)` 10px              |
+| `.ub-form-actions` gap                 | 10px                   | `var(--space-3)` 12px                      |
+| `.ub-form-actions` margin-top          | 12px                   | `var(--space-4)` 16px                      |
+
+**Mock fixture:** `web/data/ui_mock/user_builds.json` ships 5 build
+records covering full populated state, sub-line variants
+(role/keystone/no-role), overflow (long label tests ellipsis), and
+minimal (1 item / no role / no keystone). Renderer in
+`web/js/main.js::_userBuildsFetchAndRender()` consults
+`document.body.dataset.uiMock === "1"` after the live fetch; if live is
+empty and mock is on, it loads the fixture via `/data/ui_mock/user_builds.json`
+and renders with "(MOCK)" suffix on the label + count chip + hint.
+
+**Audit ritual additions:** the `?ui_mock=1` URL-search param now also
+flips `body.dataset.uiMock` for the page's lifetime (wired in
+`web/js/main.js` boot restorePrefs). This lets headless-Chrome audit
+captures hit the populated mock state without writing to localStorage
+on Game-PC's interactive browser - critical for the per-page sweep
+ritual when remote-driving the dashboard via screenshot.
+
 ## Cleanup deltas committed by Settings round (v2.1)
 
 - `web/index.html` - REMOVED the Zen mode `<label class="settings-row">`

@@ -1796,7 +1796,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const cnt   = _ubEl("ub-count");
     const hint  = _ubEl("ub-hint");
     if (!list) return;
-    if (!champ) {
+    const uiMockOn = (document.body && document.body.dataset.uiMock === "1");
+    if (!champ && !uiMockOn) {
       list.innerHTML = '<li class="home-empty">pick a champion above ↑</li>';
       if (lbl) lbl.textContent = "No champion selected";
       if (cnt) cnt.textContent = "-";
@@ -1804,15 +1805,30 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       _UB.builds = [];
       return;
     }
-    if (lbl) lbl.textContent = champ.toUpperCase();
-    if (hint) hint.textContent = `Builds here append to the engine's 3 SR-draft profiles for ${champ}.`;
-    fetch(`/api/sr-draft/user-builds?champion=${encodeURIComponent(champ)}`,
-          { cache: "no-store" })
-      .then((r) => (r && r.ok ? r.json() : null))
-      .then((d) => {
-        const builds = (d && Array.isArray(d.builds)) ? d.builds : [];
+    const renderChamp = champ || "Tristana";
+    if (lbl) lbl.textContent = champ ? champ.toUpperCase() : "TRISTANA (MOCK)";
+    if (hint) hint.textContent = champ
+      ? `Builds here append to the engine's 3 SR-draft profiles for ${champ}.`
+      : "Dev UI mock fixture - toggle off in Settings to see live data.";
+    const liveFetch = champ
+      ? fetch(`/api/sr-draft/user-builds?champion=${encodeURIComponent(champ)}`,
+              { cache: "no-store" }).then((r) => (r && r.ok ? r.json() : null))
+      : Promise.resolve(null);
+    liveFetch
+      .then(async (d) => {
+        let builds = (d && Array.isArray(d.builds)) ? d.builds : [];
+        let mockUsed = false;
+        if (!builds.length && uiMockOn) {
+          try {
+            const mockResp = await fetch("/data/ui_mock/user_builds.json",
+                                         { cache: "no-store" });
+            const mockJson = mockResp && mockResp.ok ? await mockResp.json() : null;
+            builds = (mockJson && Array.isArray(mockJson.builds)) ? mockJson.builds : [];
+            mockUsed = builds.length > 0;
+          } catch (_) {}
+        }
         _UB.builds = builds;
-        if (cnt) cnt.textContent = `${builds.length} build${builds.length === 1 ? "" : "s"}`;
+        if (cnt) cnt.textContent = `${builds.length} build${builds.length === 1 ? "" : "s"}${mockUsed ? " (mock)" : ""}`;
         list.innerHTML = "";
         if (!builds.length) {
           list.innerHTML = '<li class="home-empty">no builds yet - click + Add build above.</li>';
@@ -5349,6 +5365,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       // panel's renderer to choose mock-fixture vs empty-state rendering.
       const savedMock = localStorage.getItem("rc-ui-mock");
       if (savedMock === "1") document.body.dataset.uiMock = "1";
+      // Dev override: ?ui_mock=1 on the URL forces mock mode for this
+      // session without touching localStorage. Lets headless-Chrome
+      // audit captures hit the populated mock state.
+      try {
+        const params = new URLSearchParams(location.search || "");
+        if (params.get("ui_mock") === "1") document.body.dataset.uiMock = "1";
+      } catch (_) {}
       // Scrub any legacy header-lock pinned styles so a stored lock from
       // before the feature was removed doesn't leak into the flex layout.
       const staleLock = localStorage.getItem("rc-header-lock");
