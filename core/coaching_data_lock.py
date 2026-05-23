@@ -56,7 +56,7 @@ class _CombinedLock:
         self._fl: portalocker.Lock | None = None
         self._has_file_lock = False
 
-    def __enter__(self):
+    def __enter__(self) -> "_CombinedLock":
         # 1. In-process lock - fast, serializes coach + dashboard threads.
         self._tl.acquire()
         # 2. OS file lock via portalocker. EXCLUSIVE | NON_BLOCKING is the
@@ -81,7 +81,7 @@ class _CombinedLock:
             self._fl = None
         return self
 
-    def __exit__(self, et, ev, tb):
+    def __exit__(self, et: object, ev: object, tb: object) -> bool:
         # Release file lock first, then the in-process lock.
         if self._fl and self._has_file_lock:
             try:
@@ -94,7 +94,7 @@ class _CombinedLock:
         return False
 
 
-def coaching_data_lock():
+def coaching_data_lock() -> "_CombinedLock":
     """Context manager - see module docstring. Always release on exit
     even if the file-lock acquire failed; the threading.Lock guarantees
     in-process serialization regardless."""

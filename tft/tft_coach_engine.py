@@ -575,7 +575,7 @@ def _parse_response(text: str) -> dict:
 
 
 class TftCoachEngine:
-    def __init__(self, data_file: Path, debug: bool = False):
+    def __init__(self, data_file: Path, debug: bool = False) -> None:
         self._data_file   = data_file
         self._debug       = debug
         self._lock        = threading.Lock()
@@ -615,7 +615,7 @@ class TftCoachEngine:
                     return k
         return ""
 
-    def submit(self, state: dict):
+    def submit(self, state: dict) -> None:
         if not self._client:
             return
         now       = time.time()
@@ -647,7 +647,7 @@ class TftCoachEngine:
         threading.Thread(target=self._run_safe, args=(state,),
                          daemon=True, name="TftCoach").start()
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self._last_round  = (0, 0)
         self._last_call   = 0.0
         self._last_fields = {}
@@ -668,7 +668,7 @@ class TftCoachEngine:
         except Exception:
             pass
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         logger.info("TftCoachEngine shutdown")
 
     def _run_safe(self, state: dict):

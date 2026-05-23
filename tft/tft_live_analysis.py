@@ -130,7 +130,7 @@ class TftLiveAnalysis:
     _AUGMENT_ROUNDS={(2,1),(3,2),(4,2)}
     _GOD_ROUNDS={(2,4),(3,4),(4,4)}
     _CAROUSEL_EVENTS={"carousel","opening_carousel","realm_of_gods"}
-    def __init__(self,api_key,data_file,model="claude-haiku-4-5-20251001"):
+    def __init__(self, api_key: str, data_file, model: str = "claude-haiku-4-5-20251001") -> None:
         import anthropic
         from tft.tft_vision_reader import TftVisionReader
         self._client=anthropic.Anthropic(api_key=api_key); self._model=model; self._data_file=data_file
@@ -140,11 +140,11 @@ class TftLiveAnalysis:
         self._vision_interval=15.0; self._debug=False; self._known_augments=[]; self._last_placement=""
         self._force_flag=False; self._round_start_time=0.0; self._scanned_planning=False; self._scanned_mid=False
         self._ai_bar = None   # TftAiStatusBar reference, set via set_ai_bar()
-    def start(self):
+    def start(self) -> None:
         self._running=True; self._thread=threading.Thread(target=self._loop,daemon=True,name="TftLiveAnalysis")
         self._thread.start(); logger.info("TftLiveAnalysis started")
-    def shutdown(self): self._running=False
-    def set_ai_bar(self, bar):
+    def shutdown(self) -> None: self._running=False
+    def set_ai_bar(self, bar) -> None:
         """Wire a TftAiStatusBar for scan progress notifications."""
         self._ai_bar = bar
     def _notify_scanning(self, pct=0):
@@ -159,7 +159,7 @@ class TftLiveAnalysis:
         try:
             if self._ai_bar: self._ai_bar.notify_scan_scheduled(at_mono)
         except Exception: pass
-    def force_scan(self):
+    def force_scan(self) -> None:
         # arch: phase 7 P2-C - clear stale choices on augment-select force scan
         # so the fresh vision read produces new advice
         try:
@@ -181,7 +181,7 @@ class TftLiveAnalysis:
             pass
         self._force_flag = True
         logger.info("Force vision scan triggered (augment reroll path)")
-    def notify_round(self,state):
+    def notify_round(self, state: dict) -> None:
         self._coach_state=state; sr=(state.get("stage",0),state.get("round",0))
         if sr!=self._last_round:
             # Detect new game: stage resets to <=2 from a higher stage
@@ -191,7 +191,7 @@ class TftLiveAnalysis:
                 logger.info("New game detected (stage %s→%s) - augments cleared",self._last_round,sr)
             self._last_round=sr; self._round_start_time=time.time()
             self._scanned_planning=False; self._scanned_mid=False
-    def notify_coach_state(self,state): self._coach_state=state
+    def notify_coach_state(self, state: dict) -> None: self._coach_state=state
     def _is_carousel_or_spectate(self):
         cs=self._coach_state; return cs.get("round_event","") in self._CAROUSEL_EVENTS or cs.get("is_carousel",False)
     def _loop(self):

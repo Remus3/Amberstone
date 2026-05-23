@@ -86,7 +86,7 @@ class TftVisionReader:
         (1200, 100, 1600, 700),  # player HP panel - right edge
     ]
 
-    def __init__(self, api_key: str, model: str = "claude-haiku-4-5-20251001"):
+    def __init__(self, api_key: str, model: str = "claude-haiku-4-5-20251001") -> None:
         import anthropic
         self._client = anthropic.Anthropic(api_key=api_key)
         self._model  = model   # haiku by default - use sonnet only if haiku quality is poor
