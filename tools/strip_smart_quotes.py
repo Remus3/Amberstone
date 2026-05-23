@@ -66,6 +66,22 @@ in the report and skipped. Operator must hand-edit if needed.
 Usage:
   py tools/strip_smart_quotes.py            # dry-run (default): report only
   py tools/strip_smart_quotes.py --apply    # rewrite in place (atomic)
+  py tools/strip_smart_quotes.py --apply \
+      --allow-frozen ops/rc_dev_runtime.py,core/moon_proxy.py
+                                             # override frozen-skip for the
+                                             # listed comma-separated paths
+                                             # (operator-grant required;
+                                             # ops/rc_supervisor.py is HARD
+                                             # SKIPPED regardless, see below)
+
+OPERATOR-GRANT OVERRIDE (--allow-frozen):
+The --allow-frozen flag accepts a comma-separated list of frozen-file paths
+to rewrite anyway. This requires explicit operator grant (see CLAUDE.md
+hard-rule list + per-session approval). The flag is provided so trivial
+frozen-file hits (a single U+2026 in a log message) can be swept without
+hand-editing each file. ops/rc_supervisor.py is HARD SKIPPED regardless
+of the flag (defense-in-depth: 1380 mojibake U+201D bytes need a separate
+UTF-8 byte-repair pass, not a smart-quote sweep).
 """
 from __future__ import annotations
 
@@ -108,6 +124,15 @@ _MOJI_NEIGHBOUR = b"\xe2\x82\xac"  # U+20AC EURO SIGN
 
 ROOT = Path(__file__).resolve().parent.parent
 _SELF = Path(__file__).resolve()
+
+# HARD SKIP: ops/rc_supervisor.py is NEVER rewritten, even when listed
+# in --allow-frozen. It carries 1380 mojibake U+201D bytes (latin-1
+# misdecode of em-dashes inside string literals) that need a separate
+# byte-repair pass, not a smart-quote sweep. Bypassing this would corrupt
+# the file (strings would silently terminate mid-literal).
+_HARD_SKIP_FROZEN = frozenset({
+    "ops/rc_supervisor.py",
+})
 
 # Frozen files per CLAUDE.md hard-rule. NEVER rewrite even on --apply;
 # only list in report. Stored as repo-relative POSIX paths.
@@ -226,7 +251,18 @@ def main() -> int:
                     help="rewrite files in place (default: dry-run)")
     ap.add_argument("--top", type=int, default=20,
                     help="show N highest-count files")
+    ap.add_argument("--allow-frozen", type=str, default="",
+                    help=("comma-separated frozen-file paths to OVERRIDE "
+                          "the frozen-skip for (operator-grant required; "
+                          "ops/rc_supervisor.py is HARD SKIPPED regardless)"))
     args = ap.parse_args()
+
+    # Parse + validate the --allow-frozen override list. The hard-skip set
+    # is enforced as a SECOND defensive check after the user-provided list
+    # is split.
+    _allow_raw = [s.strip() for s in args.allow_frozen.split(",") if s.strip()]
+    _allow_frozen = frozenset(p for p in _allow_raw if p not in _HARD_SKIP_FROZEN)
+    _hard_skipped_from_allow = [p for p in _allow_raw if p in _HARD_SKIP_FROZEN]
 
     by_codepoint: Counter[str] = Counter()
     by_ext: Counter[str] = Counter()
@@ -294,9 +330,13 @@ def main() -> int:
         per_file.append((file_repl, rel_posix))
 
         is_frozen = rel_posix in _FROZEN
-        if is_frozen:
+        is_hard_skip = rel_posix in _HARD_SKIP_FROZEN
+        # Second defensive check: even if listed in --allow-frozen, hard-skip
+        # files are NEVER rewritten.
+        allow_override = (rel_posix in _allow_frozen) and not is_hard_skip
+        if is_frozen and not allow_override:
             frozen_hits.append((file_repl, rel_posix))
-            continue  # NEVER rewrite frozen files
+            continue  # NEVER rewrite frozen files (no operator grant)
 
         if args.apply:
             tmp = p.with_suffix(p.suffix + ".sqtmp")
@@ -310,6 +350,12 @@ def main() -> int:
     print(f"mojibake U+201D skipped : {total_moji_skipped}")
     print(f"skipped (utf8 decode)   : {skipped_binary}")
     print(f"frozen files SKIPPED    : {len(frozen_hits)}")
+    if _allow_frozen:
+        print(f"frozen files OVERRIDDEN : {len(_allow_frozen)} "
+              f"(--allow-frozen): {sorted(_allow_frozen)}")
+    if _hard_skipped_from_allow:
+        print(f"HARD-SKIP from --allow-frozen (override IGNORED): "
+              f"{sorted(_hard_skipped_from_allow)}")
     print("by codepoint:")
     for cp, c in by_codepoint.most_common():
         print(f"  {cp}  {c}")
