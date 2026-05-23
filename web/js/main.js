@@ -1516,9 +1516,26 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
 
 
   // ── Session view fetchers (2026-04-26) ───────────────────────────
-  function _sessionFetchAndRender() {
-    fetch("/api/session/summary", { cache: "no-store" })
+  // UI scale v2.1 page #5 audit ritual step 5 state-coverage mock fixture
+  // (2026-05-23). When body.dataset.uiMock === "1" the fetch short-
+  // circuits to /data/ui_mock/session.json instead of /api/session/summary.
+  let _sessionMockPromise = null;
+  function _sessionMockLoad() {
+    if (_sessionMockPromise) return _sessionMockPromise;
+    _sessionMockPromise = fetch("/data/ui_mock/session.json", { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
+      .catch(() => null);
+    return _sessionMockPromise;
+  }
+  function _sessionIsMock() {
+    return document.body && document.body.dataset.uiMock === "1";
+  }
+  function _sessionFetchAndRender() {
+    const promise = _sessionIsMock()
+      ? _sessionMockLoad()
+      : fetch("/api/session/summary", { cache: "no-store" })
+          .then((r) => (r && r.ok ? r.json() : null));
+    promise
       .then((d) => {
         if (!d) return;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
