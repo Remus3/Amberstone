@@ -9,7 +9,11 @@ import logging
 import urllib.request
 import threading
 import time
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from core.game_snapshot import TftSnapshot
+
 logger = logging.getLogger("rc.tft.reader")
 TFT_API = "https://192.168.8.237:2999/liveclientdata/allgamedata"
 _TIME_TO_ROUND = [
@@ -41,7 +45,7 @@ def _log_round_calibration(t, stage, rnd):
 
 class TftStateReader:
     _variant_logged = False  # reset each game in __init__
-    def __init__(self):
+    def __init__(self) -> None:
         self._ssl=ssl.create_default_context();self._ssl.check_hostname=False;self._ssl.verify_mode=ssl.CERT_NONE
         self._my_name="";self._last_level=1;self._last_gold=0
         self._confirmed_stage=1;self._confirmed_round=1  # forward-only OCR guard
@@ -82,7 +86,7 @@ class TftStateReader:
         with self._ocr_lock:
             return dict(self._ocr_cache)
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         self._ocr_running = False
 
     # ------------------------------------------------------------------
@@ -90,7 +94,7 @@ class TftStateReader:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def to_tft_snapshot(state_dict: dict):
+    def to_tft_snapshot(state_dict: dict) -> "Optional[TftSnapshot]":
         """
         Convert a _parse() dict to a TftSnapshot.
         Called by app.py after the TFT state reader returns a valid state.
@@ -103,7 +107,7 @@ class TftStateReader:
             return TftSnapshot.from_state_dict(state_dict)
         except Exception:
             return None
-    def read(self):
+    def read(self) -> Optional[dict]:
         try: raw=self._fetch()
         except Exception as e: logger.debug("TFT API: %s",e); return None
         if not raw or not isinstance(raw,dict): return None
@@ -111,7 +115,7 @@ class TftStateReader:
         if "TFT" not in gd.get("gameMode",""): return None
         return self._parse(raw,gd=gd)
     @staticmethod
-    def detect_variant(gd):
+    def detect_variant(gd: dict) -> str:
         terrain=(gd.get("mapTerrain") or "").lower();mode=(gd.get("gameMode") or "").lower()
         map_name=(gd.get("mapName") or "").lower();map_num=gd.get("mapNumber",0)
         if not TftStateReader._variant_logged:

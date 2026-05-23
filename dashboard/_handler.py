@@ -85,7 +85,7 @@ _SUPPRESS_LOG_PATHS = (
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, fmt, *a):
+    def log_message(self, fmt: str, *a: object) -> None:
         msg = "HTTP " + (fmt % a if a else fmt)
         for needle in _SUPPRESS_LOG_PATHS:
             if needle in msg:
@@ -147,7 +147,7 @@ class Handler(BaseHTTPRequestHandler):
         try: self.wfile.write(body)
         except Exception: pass
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         # Slice 2C (2026-05-01): all GET routes live in dashboard/routes_*.
         # Anything that doesn't match a registered route either falls
         # through to the agents-supervisor proxy (:8890) for routes that
@@ -217,7 +217,7 @@ class Handler(BaseHTTPRequestHandler):
             log.debug("csrf_ok parse failed; allowing")
             return True
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         # 2026-04-27 audit: cap POST body at 1 MiB. RC is LAN-only and the
         # legitimate inputs (chat text, /api/bridge messages) are tiny -
         # an unbounded read on Content-Length: 999999999 would let a LAN
