@@ -3,6 +3,54 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-23 - item 156 operator-gated decision-owed parallel drain #4: rc_supervisor FROZEN mojibake byte-repair + Variant B em-dash mojibake closure + cc_conditional wave 11 Sion R + Gnar W form 1 + housekeeping triple SHIPPED (4 commits + 3 merges + docs sync follow-up, pushed origin/main; ENGINE 1.47.0 -> 1.48.0; DS :8893 restarted serves 1.48.0; RC :8888 unchanged)
+
+Operator triggered fourth consecutive "in parallel : start all open items in Operator-gated, decision owed" drain. AskUserQuestion 4-question scope fork pinned: (Q1) rc_supervisor.py 1368 mojibake byte-repair Grant + repair; (Q2) cc_conditional wave 11 Full pass (Recommended); (Q3) DD Defy Defer (Recommended); (Q4) Add housekeeping CLEAN slices explicitly. 3 worktree agents dispatched concurrent (orchestrator pattern items 134-155 extended to 21 consecutive runs).
+
+**Slice A `8ab3822` (merge `3fe431b`) chore(frozen) rc_supervisor.py mojibake byte-repair + Variant B em-dash mojibake closure (8 files / +246 / -136):**
+- Critical discovery: item 155's signature `c3 a2 e2 80 9d e2 82 ac` is actually U+2500 box-drawing mojibake (bytes e2 94 80 = UTF-8(U+2500) -> CP-1252 mis-decode -> re-encode UTF-8 `c3 a2 e2 80 9d e2 82 ac`). The canonical em-dash mojibake (Variant B) signature is `c3 a2 e2 82 ac e2 80 9d` (bytes e2 80 94 = UTF-8(U+2014) -> CP-1252 mis-decode -> re-encode UTF-8 `c3 a2 e2 82 ac e2 80 9d`).
+- `tools/repair_mojibake.py` extended to detect both variants + add `--allow-frozen <comma-csv>` flag (mirrors item 155 strip_smart_quotes pattern) + empty `_HARD_SKIP_FROZEN: frozenset[str] = frozenset()` defense-in-depth constant.
+- Per-file pre/post: ops/rc_supervisor.py Variant A 1368 -> 0 + Variant B 12 -> 0 (operator-granted frozen-file write); tft/tft_coach_engine.py Variant B 22 -> 0; ops/rc_self_monitor.py Variant B 5 -> 0; ops/rc_state_validator.py Variant B 3 -> 0.
+- Smart-quote follow-through: 1410 U+2014 em-dashes normalized to ASCII ` - `.
+- `tools/strip_smart_quotes.py` emptied `_HARD_SKIP_FROZEN` (was `{ops/rc_supervisor.py}`; post-repair the corruption-risk rationale no longer applies).
+- Drift guards `tests/test_mojibake_hygiene.py` + `tests/test_smart_quote_hygiene.py` extended to cover both variants + remove rc_supervisor from frozen exclusion list.
+
+**Slice B `5ec3d65` (merge `9c5cba1`) feat(ds) cc_conditional wave 11 - Sion R + Gnar W form 1 (35 files / +788 / -33):**
+- Re-audit of REJECT carries from item 153 against item 154's `effects_descriptions` + sidecar registry produced 2 new entries / 2 net-new champs.
+- **Sion R Unstoppable Onslaught** PRIMARY: stun 1.0s representative midpoint, COND_CHANNEL_COMPLETION 0.5; effects_descriptions evidence "stunned after a brief delay for 0.25 : 1.75 (based on channel time) seconds". Coexists with Sion Q unconditional 1.25-2.25s stun (different spell slot).
+- **Gnar W form_index=1 Wallop** SIDECAR Mega-rage-form-gated: stun 1.25s flat, COND_FRENZY_STATE 0.4; THIRD consumer of COND_FRENZY_STATE after Renekton W wave 9 + Karma W form 1 wave 10. Coexists with Gnar R unconditional 0.75s terrain-collision stun (different spell slot).
+- REJECT-confirmed (effects_descriptions evidence): Aatrox R minion-only fear / Volibear R turret-disable + slow only / Briar W self-buff frenzy no CC payload / Sion E minion-only stun / Lillia W damage only / Ekko R self-stasis + damage only / Smolder R damage + heal only / Karma E shield + MS both forms / Vladimir R damage amp + delayed burst + heal / Akshan Q+R damage + buffs only / Tristana E damage stacking only / Kayle E+R no CC / Nidalee R/Q/W/E transform + no champion CC.
+- Deferred wave 12+: Jayce E (cast_time value missing from schema) + Singed E Mega-Adhesive overlap root (2-spell-overlap target-debuffed encoding not supported).
+- ENGINE 1.47.0 -> 1.48.0 + 32 stale ENGINE pin syncs across DS test files.
+- NEW `agents/daemon_slayer/tests/test_cc_conditional_wave11.py` 46 tests across 11 classes.
+- REGISTRY_TOTAL_CHAMPIONS=38 -> 40 / REGISTRY_TOTAL_ENTRIES=44 -> 46 (43 primary + 3 sidecar). Default include_conditional=False math BYTE-IDENTICAL to 1.47.0.
+
+**Slice C `bdb0043` + `60c8d37` (merge `c1a88b5`) housekeeping triple (6 files / +8 / -8):**
+- Sub-task 1 stale-sweep wave 14: 3 flips (BACKLOG L13 cc_conditional ecosystem stale counts; ROADMAP L22 stale dashboard.js:5055 ref removed; ROADMAP L80 gamepc_lcu_agent.py:777 -> :1091).
+- Sub-task 2 cost/latency CLEAN wave 17 no-commit: 17th consecutive CLEAN sweep since item 134. All 7 levers + cost-trace 11 wires intact.
+- Sub-task 3 living docs sync: DAEMON_SLAYER.md/ARCHITECTURE.md/README.md/BRIEF.md test count 4130 -> 4132 (pre-Slice-B baseline; post-Slice-B sync via this item's follow-up commit).
+- Sweep cycle decay: 1=2 / 2=3 / 3=3 / 4-12=1 / 13=0 / **14=3** (rebound from items 149-155 churn).
+
+**Merge order:** A `3fe431b` -> B `9c5cba1` -> C `c1a88b5`. 0 merge conflicts (disjoint file sets). One mid-flight recovery: initial Slice A merge accidentally landed on Slice B's worktree branch due to persisted shell cwd; recovered via `git reset --hard 5ec3d65` on Slice B worktree + re-merging from C:\Riot Commander cwd.
+
+**Verified:**
+- DS suite `agents/daemon_slayer/tests/` = **4176 passed / 1 skipped / 1 xfailed / 1731 subtests in 67.88s** (+46 over 4130 baseline = exactly the wave 11 test file).
+- RC suite `tests/` (excl phase8_smoke) = **3257 passed / 67 subtests in 56.17s** (unchanged from item 155 baseline).
+- `tests/phase8_smoke/` = 75/75 PASS post-DS-restart.
+- `py -m ruff check .` ALL CHECKS PASSED.
+- DS :8893 killed pid 10516 + `schtasks /Run /TN RC-DaemonSlayer` (per [[reference_ds_server_not_supervisor_watched]]) -> serves engine_version=1.48.0 / patch=16.10.1 / 172 champs / 705 items.
+- RC :8888 responsive throughout (mode_key=client; never restarted - DS engine + tools + tests + docs only; supervisor edits take effect on next supervisor restart which operator can choose).
+
+**Don't-redo:**
+- Mojibake Variant identification is now definitive: Variant A `c3 a2 e2 80 9d e2 82 ac` = U+2500 box-drawing mojibake (NOT em-dash as items 154+155 ledger claimed); Variant B `c3 a2 e2 82 ac e2 80 9d` = canonical em-dash mojibake. Both repaired across non-frozen + rc_supervisor.py.
+- 542 residual U+2500 box-drawing chars (rc_supervisor 58 + rc_self_monitor 484) are INTENTIONAL docstring tree-drawing chars - operator-gated separate sweep needed if desired.
+- cc_conditional wave 11 methodology (re-audit prior REJECT carries against LATEST schema-lift + sidecar registry) is durable for future waves; the 14 REJECT-confirmed verdicts with effects_descriptions evidence are CONFIRMED NEGATIVES.
+- Shell-cwd persistence between Bash calls is a HAZARD: use `git -C "<path>"` for explicit-cwd or verify pwd before destructive ops.
+- Orchestrator-merge pattern now 21 consecutive runs (items 134-156).
+
+**Carries forward:** (a) Item 155 carries ALL unchanged EXCEPT (a)-relaxed: rc_supervisor.py mojibake byte-repair NO LONGER operator-gated (DONE this session). (b) RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15. (c) DD Defy heal-on-takedown STILL deferred. (d) Live ARAM/SR smoke STILL pending. (e) Calibrations STILL operator-gated. (f) UI/UX live-game audit owed. (g) DS conditional arc operator-CLOSED (s232). (h) Legion 1-PC consolidation STILL operator-gated. (i) cc_conditional wave 12+ has 2 deferred candidates (Jayce E + Singed E) needing further schema lifts. (j) 542 residual U+2500 box-drawing chars carry forward as operator-gated separate sweep. (k) Operator-gated decision-owed lane EXHAUSTED for actionable headless items at item 156 ship time. Frozen-file grant USED for ops/rc_supervisor.py; NOT used for any other frozen file.
+
+---
 # 2026-05-23 - item 155 operator-gated decision-owed parallel drain #3: mojibake byte-repair + frozen smart-quote sweep + L31 round 3 lcu/+coach_integration/+agents/ SHIPPED (3 commits + 3 merges, pushed origin/main `22a56bd`; non-engine; no DS restart; RC :8888 unchanged - non-frozen + frozen-grant scoped)
 
 Operator triggered third consecutive "in parallel : start all open items in Operator-gated, decision owed" drain. AskUserQuestion 4-question scope fork pinned: (Q1) Mojibake UTF-8 byte-repair on 4 flagged files Repair (Recommended); (Q2) Frozen smart-quote sweep Grant + sweep 3 trivial only - rc_supervisor NOT granted (Recommended); (Q3) L31 round 3 All three surfaces lcu/+coach_integration/+agents/ (Recommended); (Q4) cc_conditional wave 11 Skip / defer (Recommended - no clear candidate). 3 worktree agents dispatched concurrent (orchestrator pattern items 134-154 extended to 20 consecutive runs).
