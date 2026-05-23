@@ -1,7 +1,7 @@
 # arch: route registration | section=dashboard | frozen=no
 """Route dispatcher for the dashboard HTTP server.
 
-Slice 2C (2026-05-01): replaces the giant `if/elif self.path == …`
+Slice 2C (2026-05-01): replaces the giant `if/elif self.path == ...`
 chain in web_dashboard._Handler.do_GET / do_POST. Each routes_*
 module exposes:
 
@@ -41,7 +41,7 @@ log = logging.getLogger("rc.dispatch")
 # ── matcher factories ────────────────────────────────────────────────
 
 def equals(path: str) -> Callable[[str], bool]:
-    """Match exactly `path`, or `path?…` (path with a query string)."""
+    """Match exactly `path`, or `path?...` (path with a query string)."""
     return lambda p: p == path or p.startswith(path + "?")
 
 

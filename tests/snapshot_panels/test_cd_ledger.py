@@ -189,7 +189,7 @@ def test_main_js_threads_cooldowns_through_ctx():
 def test_no_em_or_en_dashes_in_new_files():
     """Hard rule: 7-bit ASCII authored content across the fleet.
     Smart quotes / em / en dashes break PS 5.1 parsers + operator style."""
-    bad = ["—", "–", "“", "”", "‘", "’"]
+    bad = [chr(0x2014), chr(0x2013), chr(0x201C), chr(0x201D), chr(0x2018), chr(0x2019)]
     for fp in (JS_PATH, CSS_PATH):
         src = _read(fp)
         for ch in bad:

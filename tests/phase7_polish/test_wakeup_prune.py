@@ -119,8 +119,8 @@ class TestRender(unittest.TestCase):
 
 class TestDatedAndPinnedFormat(unittest.TestCase):
     """Real-file shape regression (s235): recent sessions use a dated heading
-    (`# 2026-05-17 (late) - …`) not the legacy `# sNNN wrap`, and the file
-    opens with a pinned non-session block (`# ✅ RESOLVED … `) right after the
+    (`# 2026-05-17 (late) - ...`) not the legacy `# sNNN wrap`, and the file
+    opens with a pinned non-session block (`# ✅ RESOLVED ... `) right after the
     top header. Pre-fix, SESSION_RE matched neither, so split_sessions
     tail-dumped them all into `extras` (inverting newest/oldest) and prune()
     crashed at the moved_ids line - a lucky guard against mis-archiving the

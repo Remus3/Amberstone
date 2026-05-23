@@ -207,8 +207,8 @@ def _serve_bridge_status(h) -> None:
 
 # ── route table ──────────────────────────────────────────────────────
 
-# /api/bridge accepts query strings (`?since=…&limit=…`) - equals()
-# already handles the `?…` suffix. /api/preview-build is the same.
+# /api/bridge accepts query strings (`?since=...&limit=...`) - equals()
+# already handles the `?...` suffix. /api/preview-build is the same.
 # /api/champions is exact.
 GET_ROUTES = [
     (equals("/api/bridge"),          _serve_bridge),

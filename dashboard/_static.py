@@ -64,7 +64,7 @@ def compute_asset_hash() -> str:
 def inject_asset_hash(html: bytes) -> bytes:
     """Rewrite hardcoded `?v=YYYYMMDDNN` cache-bust queries on css/js refs
     in index.html with a freshly computed asset hash. Touches only the
-    href/src attributes that already carry a `?v=…` so unrelated query
+    href/src attributes that already carry a `?v=...` so unrelated query
     strings aren't disturbed."""
     import re as _re
     h = compute_asset_hash()

@@ -31,7 +31,7 @@ def main() -> int:
     issues = 0
     coverage_gaps = []
 
-    print(f"Validating {len(loadouts)} champions…")
+    print(f"Validating {len(loadouts)} champions...")
     print("-" * 64)
 
     for champ, info in sorted(loadouts.items()):

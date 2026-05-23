@@ -54,7 +54,7 @@ GOD ALIGNMENT (Set 17 mechanic â€” replaces carousel):
   â€¢ Thresh (???): Pulls bench unit to board. Thresh's Lantern artifact â€” redirects damage.
   
   OFFERING CHOICE: Take the offering that best fits current streak/board state.
-  Win streak â†’ take combat-power offering. Loss streak â†’ take econ/delayed-value offering.
+  Win streak â†' take combat-power offering. Loss streak â†' take econ/delayed-value offering.
   Pengu offering: higher cost units if HP is low (catch-up mechanism).
 
 
@@ -65,7 +65,7 @@ Board: actual unit names + grid positions (tanks A wide, carries D6-7)
 Econ: level/gold timing
 Rolldown: trigger + stagger note
 Items: component names + holder
-God pick: Realm of Gods offering choice (componentâ†’carry; God Boonâ†’best boon for comp)
+God pick: Realm of Gods offering choice (componentâ†'carry; God Boonâ†'best boon for comp)
 Placement: anti-flank + Double Up donation/request (required every round)
 Upgrade: pivot trigger
 Risk: single threat (include partner HP if critical)
@@ -277,7 +277,7 @@ def _build_prompt(state: dict) -> str:
         lines.append(f"Players alive: {player_count} ({team_count} teams) | Your HP: {hp_display} | Partner HP: {partner_hp_str}")
         if _partner_hp is not None:
             if int(_partner_hp) < 25:
-                lines.append(f"âš  PARTNER HP CRITICAL ({_partner_hp}) â€” donate tank unit immediately")
+                lines.append(f"âš  PARTNER HP CRITICAL ({_partner_hp}) â€” donate tank unit immediately")
             elif int(_partner_hp) < 35:
                 lines.append(f"Partner HP low ({_partner_hp}) â€” consider donating frontline unit")
     else:

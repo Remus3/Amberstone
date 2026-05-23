@@ -8,7 +8,7 @@ NOT already in the form_index registry, runs ground-truth A/B
 `compute_ability_dps` forced to form 0 vs each later form, and prints
 the ratio + each form's name so the operator/agent can judge whether a
 later form is the canonical operator-commit form (cougar, cannon,
-spider, empowered-recast …) the engine is wrongly defaulting away from.
+spider, empowered-recast ...) the engine is wrongly defaulting away from.
 
 Usage:
   py tools/ds_form_index_prefilter.py

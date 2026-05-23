@@ -199,7 +199,7 @@ def render_markdown(grouped: dict) -> str:
                 snippet = e["snippet"].replace("|", r"\|")
                 lines.append(f"| `{e['file']}` | {e['line']} | `{snippet}` |")
             if len(entries) > 8:
-                lines.append(f"| … | | _{len(entries) - 8} more callsites omitted_ |")
+                lines.append(f"| ... | | _{len(entries) - 8} more callsites omitted_ |")
             lines.append("")
     return "\n".join(lines)
 

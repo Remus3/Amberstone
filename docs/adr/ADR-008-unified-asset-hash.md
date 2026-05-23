@@ -11,12 +11,12 @@ together so a single asset edit reaches the operator's browser:
 
 1. **`dashboard/_static.compute_asset_hash()`** drives the `?v=<hash>`
    query-string rewrite in `inject_asset_hash()`. When `web/index.html`
-   is served, every `<link>`/`<script>` reference gets its `?v=…` tag
+   is served, every `<link>`/`<script>` reference gets its `?v=...` tag
    replaced with the freshly computed hash so the browser sees a new
    URL and refetches.
 2. **`dashboard/routes_state._serve_ui_version()`** powers the
    `/api/ui-version` poller. The page polls this endpoint every 4 s; if
-   the returned `{"v": …}` differs from the value at page load, the
+   the returned `{"v": ...}` differs from the value at page load, the
    page reloads itself.
 
 Each function independently maintained its own file allow-list:
@@ -34,7 +34,7 @@ lived at the root. They diverged silently in s133 (Phase 3.1 ESM split)
 when `js/main.js` became the entrypoint that pulled in `js/panels/*.js`
 and `css/panels/*.css`. Then s164 introduced `js/panels/champ_select.js`
 and `css/panels/champ_select_view.css`, neither of which was in either
-list. Subsequent panel work (s165, s166, s167, …, s171.7) repeatedly
+list. Subsequent panel work (s165, s166, s167, ..., s171.7) repeatedly
 edited those panel files but the auto-reload poller never noticed.
 
 The operator-visible failure mode: between s164 (2026-05-10) and s171.7

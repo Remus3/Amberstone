@@ -646,7 +646,7 @@ function renderMinimap(p) {
   const sharedVision = state.mode === "aram";
   if (sharedVision) {
     if (!hasAny) {
-      MM.status.textContent = "awaiting liveclient data…";
+      MM.status.textContent = "awaiting liveclient data...";
       MM.status.classList.remove("hidden");
     }
     // else: leave whatever the vision-overlay tick last wrote (or empty
@@ -667,7 +667,7 @@ function renderMinimap(p) {
       MM.status.classList.add("hidden");
     }
   } else {
-    MM.status.textContent = "awaiting liveclient data…";
+    MM.status.textContent = "awaiting liveclient data...";
     MM.status.classList.remove("hidden");
   }
   state.lastTouch.minimap = Date.now() / 1000;

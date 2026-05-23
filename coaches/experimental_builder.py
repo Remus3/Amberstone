@@ -185,7 +185,7 @@ def _build_history_block(history: list[dict]) -> str:
         kda = result.get("kda_str", "?")
         kp = result.get("kp_pct", "?")
         verdict = entry.get("verdict", "?")
-        item_short = ", ".join(items[:4]) + (", …" if len(items) > 4 else "")
+        item_short = ", ".join(items[:4]) + (", ..." if len(items) > 4 else "")
         lines.append(
             f"  it.{it} ({label}): {runes.get('keystone','?')}/{runes.get('primary','?')} "
             f"→ {item_short} | grade={grade} kda={kda} kp={kp}% verdict={verdict}"

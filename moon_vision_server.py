@@ -8,7 +8,7 @@ two external callers spawn it by file path:
   1. ``RC-VisionServer`` scheduled task: ``python.exe "C:\\Riot Commander\\moon_vision_server.py"``
   2. ``dashboard/server.py``: ``subprocess.Popen([sys.executable, "moon_vision_server.py"])``
 
-Both keep working unchanged. New code should ``from vision_server import …``
+Both keep working unchanged. New code should ``from vision_server import ...``
 instead of importing this file.
 """
 from __future__ import annotations

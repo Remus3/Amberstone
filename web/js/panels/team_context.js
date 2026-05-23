@@ -148,12 +148,12 @@ function renderTeamContext(state) {
   // Gate 2: payload present in coach.
   const tc = state && state.coach && state.coach.team_context;
   if (!tc) {
-    // Render a single "waiting on enrichment…" placeholder so the user
+    // Render a single "waiting on enrichment..." placeholder so the user
     // knows the panel exists (FU04 screenshot evidence).
     block.hidden = false;
     block.dataset.sig = "";   // force re-render when payload lands
     const status = document.getElementById("tc-status");
-    if (status) status.textContent = "waiting for enrichment…";
+    if (status) status.textContent = "waiting for enrichment...";
     const allies = document.getElementById("tc-allies");
     const enemies = document.getElementById("tc-enemies");
     if (allies && !allies._waitingPainted) {

@@ -1716,7 +1716,7 @@ function splitItemName(name) {
     const mid = Math.max(1, Math.floor(w.length / 2));
     return [w.slice(0, mid).join(' '), w.slice(mid).join(' ')];
   }
-  return [(name || '').slice(0, 12) + '…', ''];
+  return [(name || '').slice(0, 12) + '...', ''];
 }
 function renderItemGrid(items) {
   const grid = document.createElement('div');

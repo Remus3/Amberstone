@@ -154,20 +154,20 @@ def resolve_current_puuid(
     riot_id = operator_riot_id_from_db(conn)
     if riot_id is not None:
         name, tag = riot_id
-        print(f"Resolving current PUUID for {name}#{tag} via Account-V1…")
+        print(f"Resolving current PUUID for {name}#{tag} via Account-V1...")
         acct = riot_api.get_account_by_riot_id(name, tag)
         if acct is None or not acct.get("puuid"):
             stale = operator_puuid_from_db(conn)
-            print(f"  Account-V1 lookup failed; falling back to DB PUUID {stale[:24]}…")
+            print(f"  Account-V1 lookup failed; falling back to DB PUUID {stale[:24]}...")
             return stale
         fresh = acct["puuid"]
         stale = operator_puuid_from_db(conn)
         if fresh != stale:
-            print(f"  PUUID rotated: DB has {stale[:24]}…, current is {fresh[:24]}…")
+            print(f"  PUUID rotated: DB has {stale[:24]}..., current is {fresh[:24]}...")
         return fresh
 
     stale = operator_puuid_from_db(conn)
-    print(f"  No Riot ID in DB - using stale DB PUUID {stale[:24]}… (may fail)")
+    print(f"  No Riot ID in DB - using stale DB PUUID {stale[:24]}... (may fail)")
     return stale
 
 
@@ -386,7 +386,7 @@ def main() -> int:
     existing = existing_match_ids(conn)
     print(f"Already in DB: {len(existing):,} matches")
 
-    print("\nFetching new match ids…")
+    print("\nFetching new match ids...")
     new_ids = collect_new_match_ids(
         puuid, start_unix_s, existing,
         max_pages=args.max_pages, limit=args.limit,
@@ -400,7 +400,7 @@ def main() -> int:
         for mid in new_ids[:20]:
             print(f"  {mid}")
         if len(new_ids) > 20:
-            print(f"  … and {len(new_ids) - 20} more")
+            print(f"  ... and {len(new_ids) - 20} more")
         return 0
 
     done = errs = 0

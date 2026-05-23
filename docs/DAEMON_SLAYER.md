@@ -60,7 +60,7 @@ Operator-facing scorer selection lands in three layers:
 
 - **Storage**: `core/archetype_picks.py` - DDragon-tag → archetype default + per-champion override persisted to `data/cs_archetype_picks.json`. Six canonical archetypes: `carry`, `bruiser`, `tank`, `mage`, `assassin`, `enchanter` - all six implemented and wired through `rank_for_primary_archetype()` (carry → ds.dps, bruiser → ds.hybrid, tank → ds.ehp, mage → ds.ability, assassin → ds.burst, enchanter → ds.hps); no dispatcher fallbacks remain (s174-s181).
 - **REST**: `GET /api/cs-archetype-pick?champion=X` returns merged pick (override OR default). `POST /api/cs-archetype-pick {champion, primary, secondary?, source?}` persists. `POST {champion, clear: true}` rolls back to default.
-- **Dispatch**: `core.daemon_slayer_client.rank_for_primary_archetype(champion, archetype, …)` returns `{ok, scorer, archetype, ranked, fell_back}`. Coaches read the picked archetype via `coach_integration/archetype_dispatch.py` (s182); all 4 mode coaches inject scorer-aware DS picks before each Haiku call.
+- **Dispatch**: `core.daemon_slayer_client.rank_for_primary_archetype(champion, archetype, ...)` returns `{ok, scorer, archetype, ranked, fell_back}`. Coaches read the picked archetype via `coach_integration/archetype_dispatch.py` (s182); all 4 mode coaches inject scorer-aware DS picks before each Haiku call.
 - **UI**: 6-button 3×2 picker grid in the My Pick card of the champ-select view. Clicks save to `localStorage.rc-cs-archetype-<champion>` + POST. Unimplemented scorers grayed but still clickable.
 
 ## Coach integration status

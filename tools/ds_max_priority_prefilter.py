@@ -3,7 +3,7 @@
 `champion_max_priority.json` overrides the spell-max order (default
 Q→W→E) the ds.ability / ds.burst scorers use to resolve per-spell rank
 at a given level. Wrong for champions whose primary damage spell is W
-or E (Cassiopeia E, Karthus Q, Leblanc W, …). Objective oracle: try all
+or E (Cassiopeia E, Karthus Q, Leblanc W, ...). Objective oracle: try all
 6 (Q,W,E) orderings, compute total ability_dps at level 11; the order
 that maximises total is the one that ranks the highest-marginal-DPS
 spell first - i.e. the champion's real damage-max order. Flag every

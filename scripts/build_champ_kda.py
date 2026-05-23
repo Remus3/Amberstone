@@ -90,7 +90,7 @@ def main() -> int:
         if not puuid:
             print("error: no tracked-champion games in rewind_history.db", file=sys.stderr)
             return 1
-        print(f"user puuid: {puuid[:16]}…")
+        print(f"user puuid: {puuid[:16]}...")
 
         # Per-champion games + team_won.
         rows = c.execute(

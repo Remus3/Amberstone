@@ -683,7 +683,7 @@ def fetch_meraki_perlevel_overlay(ddragon_ids: set[str]) -> dict[str, dict[str, 
 # (Hullbreaker Skipper "consumes all stacks to deal bonus physical damage" -
 # no number; Essence Reaver Spellblade "deals bonus physical damage" - no
 # number). Meraki Analytics scrapes the wiki + game data and exposes the
-# numeric formula text in ``passives[*].effects`` as wikitext (the {{as|…|ad}}
+# numeric formula text in ``passives[*].effects`` as wikitext (the {{as|...|ad}}
 # token format). The engine consumer (effects.py) doesn't parse the wikitext
 # at runtime - coefficients still get pinned by hand per patch - but having
 # the structured Meraki snapshot in the extracted bundle:

@@ -132,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
         # AUDIT 2026-04-29: Strict-Transport-Security so any browser that
         # touches the dashboard once over HTTPS never falls back to plain
         # HTTP for this origin again - eliminates the original Game-PC
-        # "http://… not connecting" symptom permanently. 1-year max-age is
+        # "http://... not connecting" symptom permanently. 1-year max-age is
         # standard. We don't include preload / includeSubDomains because
         # this is LAN-only and we don't own the rest of the IP space.
         # Only set when the connection itself is TLS - when wrap_socket
