@@ -11,7 +11,7 @@
         "keystone": "Hail of Blades",
         "primary": "Domination",
         "secondary": "Precision",
-        "minor_primary": ["Cheap Shot", "Eyeball Collection", "Ultimate Hunter"],
+        "minor_primary": ["Cheap Shot", "Sixth Sense", "Ultimate Hunter"],
         "minor_secondary": ["Triumph", "Coup de Grace"]
       },
       "summoner_spells": [4, 7],
