@@ -687,9 +687,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lobby-view-card {
   background: var(--surface-head); border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  /* s162 v4: top + bottom padding tightened to 8 for tighter card
-   * rhythm in the lobby grid. Was 14/14, now 8/8. */
+  /* UI scale v2.1 (2026-05-23): card radius bumped to --panel-radius-sm
+   * (10). Padding preserved at s162-v4 8/16 tuning - the lobby fits
+   * without scroll only because each card runs compact. */
+  border-radius: var(--panel-radius-sm);
   padding: 8px 16px;
   min-height: 160px;
   display: flex; flex-direction: column;
@@ -712,9 +713,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   min-height: 0;
 }
 .lobby-view-card-head {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  /* UI scale v2.1 (2026-05-23): 11 -> --fs-xs (16) for the 16-px floor. */
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
-  margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
+  margin-bottom: var(--space-2); border-bottom: 1px solid var(--border-soft);
   padding-bottom: 6px;
   display: flex; align-items: baseline; gap: 8px;
 }
@@ -731,9 +733,11 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * (was --info / lavender, which felt mode-themed). White matches the
  * panel's brand tone without leaning into accent territory. */
 .lobby-view-queue-name {
-  /* s162 v4: 22→15 to match the YOUR/PARTY MAINS tab + PARTY title
-   * size, helps fit the whole lobby view without scroll. */
-  font-size: 16px; font-weight: 900; letter-spacing: 0.12em;
+  /* UI scale v2.1 (2026-05-23): 16 -> --fs-md (22) - QUEUE name is a
+   * panel title and reads more prominently at viewing distance. The
+   * s162-v4 fit-without-scroll constraint holds because the queue-block
+   * uses justify-content: space-evenly + flex:1 around it. */
+  font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
   text-align: center; padding: 0;
 }
@@ -770,12 +774,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lq-btn:disabled,
 .lq-btn.is-disabled { opacity: 0.55; cursor: default; }
 .lq-btn .lq-btn-line1 {
-  font-size: 13px; font-weight: 800; letter-spacing: 0.14em;
+  /* UI scale v2.1: 13 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--label);
   line-height: 1;
 }
 .lq-btn .lq-btn-line2 {
-  font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; line-height: 1;
 }
 
@@ -944,14 +950,15 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lq-mode-trigger {
   appearance: none; -webkit-appearance: none;
   width: 100%;
+  /* UI scale v2.1: height bumped 48 -> var(--hit-min) (42 floor; 48 keeps). */
   height: 48px;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-head);
   color: var(--info);
   border: 1px solid var(--info-soft);
-  border-radius: 10px;
+  border-radius: var(--panel-radius-sm);
   font-family: inherit;
-  font-size: 15px; font-weight: 800; letter-spacing: 0.12em;
+  font-size: var(--fs-sm); font-weight: 800; letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
@@ -990,7 +997,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex; flex-direction: column; gap: 4px;
 }
 .lq-mode-section {
-  font-size: 12px; font-weight: 800; letter-spacing: 0.18em;
+  /* UI scale v2.1: 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--text-dim);
   padding: 4px 4px 6px;
   border-bottom: 1px solid var(--border-soft);
@@ -1001,13 +1009,16 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   appearance: none; -webkit-appearance: none;
   display: block; width: 100%;
   text-align: center;
+  /* UI scale v2.1: padding kept compact; min-height bumped to --hit-min
+   * so the click target lands at the v2.1 fingertip floor. */
   padding: 10px 6px;
+  min-height: var(--hit-min);
   background: transparent;
   color: var(--text);
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--panel-radius-sm);
   font-family: inherit;
-  font-size: 15px; font-weight: 700; letter-spacing: 0.04em;
+  font-size: var(--fs-sm); font-weight: 700; letter-spacing: 0.04em;
   cursor: pointer;
   transition: background 0.08s, border-color 0.08s;
 }
@@ -1022,7 +1033,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 
 .lobby-view-leader-tag {
-  font-size: 12px; font-weight: 800; letter-spacing: 0.16em;
+  /* UI scale v2.1: 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.16em;
   color: var(--clock); padding: 3px 9px;
   background: var(--gold-soft); border-radius: 999px;
 }
@@ -1033,7 +1045,9 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * column (col 4), making it horizontally centered with the Rank
  * pips below. Inner span gets the styled placement. */
 .lv-friends-title {
-  font-size: 16px; font-weight: 900; letter-spacing: 0.12em;
+  /* UI scale v2.1 (2026-05-23): 16 -> --fs-md (22) - mirrors PARTY
+   * + QUEUE name bumps. */
+  font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
   display: grid;
   grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 14px 26px 26px 26px;
@@ -1237,8 +1251,9 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 
 /* ---- s162 v4: Party panel ---- */
 .lv-party-title {
-  /* s162 v4: 22→15 to match QUEUE name + MAINS tabs. */
-  font-size: 16px; font-weight: 900; letter-spacing: 0.12em;
+  /* UI scale v2.1 (2026-05-23): 16 -> --fs-md (22) - mirrors QUEUE
+   * name v2.1 bump. */
+  font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
   text-align: center;
 }
@@ -1301,10 +1316,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   gap: 6px;
   align-items: center;
   padding: 4px 8px;
+  /* UI scale v2.1: min-height pinned to --hit-min for fingertip target. */
+  min-height: var(--hit-min);
   background: var(--surface-alt);
-  border-radius: 6px;
+  border-radius: var(--panel-radius-sm);
   border: 1px solid transparent;
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 /* s162 v10: party row col 2 now hosts the member's LCU-pulled Primary
@@ -1331,7 +1349,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  /* UI scale v2.1: 11 -> --fs-xs (16); width/height kept to mirror icon. */
+  font-size: var(--fs-xs);
   color: var(--text-faint);
 }
 /* s162 v15: Primary-lane conflict outlines.
@@ -1352,7 +1371,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: 2px;
 }
 .lv-party-section-topchamps {
-  font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+  /* UI scale v2.1: 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.04em;
   color: var(--text-dim);
   /* s162 v8: right-align so the 2 short champ names hug the right
    * edge of the topchamps cell, leaving extra space adjacent to the
@@ -1390,7 +1410,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-party-empty {
   color: var(--text-faint);
-  font-size: 12px;
+  /* UI scale v2.1: 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
 }
 .lobby-members-list .lobby-member-row.is-self {
   border: 1px solid var(--info-soft);
@@ -1402,13 +1423,12 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 15px;
+  /* UI scale v2.1: 15 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
 }
 .lobby-member-pip {
-  /* s162 v14: was 9px (~12px effective at zoom:1.33), below the 13px
-   * tertiary floor in feedback_font_size_viewing_distance.md. Bumped
-   * to 13px source so the rank/leader/role pills meet the floor. */
-  font-size: 14px; font-weight: 800; letter-spacing: 0.06em;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1428,7 +1448,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text-dim);
   padding: 0;
   border-radius: 0;
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -1489,11 +1510,11 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 4px 6px;
   background: transparent;
   font-family: inherit;
-  /* s162 v4: 15→14 to fit lobby on screen without scroll. */
-  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  /* UI scale v2.1: 15 -> --fs-sm (18). */
+  font-size: var(--fs-sm); font-weight: 900; letter-spacing: 0.12em;
   text-transform: uppercase;
   border: 2px solid var(--bad);
-  border-radius: 10px;
+  border-radius: var(--panel-radius-sm);
   cursor: pointer;
   transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
@@ -1524,10 +1545,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-bottom: 1px solid var(--border-soft);
 }
 .lv-mc-cat {
-  /* s162 v14: 10px → 13px so column-header labels sit at the 13px
-   * tertiary floor. Letter-spacing tightened slightly so the wider
-   * type doesn't crowd narrow columns. */
-  font-size: 14px; font-weight: 800; letter-spacing: 0.10em;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.10em;
   text-transform: uppercase; color: var(--text-dim);
   text-align: center;
 }
@@ -1541,10 +1560,12 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   grid-template-columns: 76px 1.0fr 1.0fr 1.6fr 1.8fr;
   gap: 8px;
   align-items: center;
-  /* Reduced top/bottom buffer per operator. */
+  /* UI scale v2.1: min-height pinned to --hit-min for fingertip target;
+   * padding kept compact per operator's reduced top/bottom-buffer rule. */
   padding: 4px 6px;
+  min-height: var(--hit-min);
   background: var(--surface-alt);
-  border-radius: 8px;
+  border-radius: var(--panel-radius-sm);
   border: 1px solid transparent;
 }
 /* s162 v4: rank=1 gold border removed per operator. Selection-state
@@ -1558,7 +1579,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   opacity: 0.65;
 }
 .lv-mc-summoner-name {
-  font-size: 12px; font-weight: 800; letter-spacing: 0.08em;
+  /* UI scale v2.1: 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.08em;
   color: var(--text); text-transform: uppercase;
   text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1602,20 +1624,24 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   min-width: 0;
 }
 .lv-mc-mastery-level {
-  font-size: 14px; font-weight: 400; color: var(--text);
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 400; color: var(--text);
   letter-spacing: 0.04em;
 }
 .lv-mc-mastery-points {
-  font-size: 13px; color: var(--text-dim);
+  /* UI scale v2.1: 13 -> --fs-xs (16). */
+  font-size: var(--fs-xs); color: var(--text-dim);
 }
 .lv-mc-result {
-  font-size: 14px; font-weight: 800;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.08em;
 }
 .lv-mc-result-won  { color: var(--good); }
 .lv-mc-result-lost { color: var(--bad); }
 .lv-mc-kda {
-  font-size: 13px; color: var(--text-dim);
+  /* UI scale v2.1: 13 -> --fs-xs (16). */
+  font-size: var(--fs-xs); color: var(--text-dim);
   font-family: "SF Mono", Consolas, monospace;
 }
 
@@ -1632,17 +1658,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   align-items: center;
 }
 .lv-mc-games {
-  font-size: 14px; font-weight: 700; color: var(--text);
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 700; color: var(--text);
   cursor: help;
 }
 .lv-mc-wl {
-  font-size: 14px; font-weight: 700;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 700;
   font-family: "SF Mono", Consolas, monospace;
 }
 .lv-mc-wl .lv-mc-w { color: var(--good); }
 .lv-mc-wl .lv-mc-l { color: var(--bad); }
 .lv-mc-total-kda {
-  font-size: 13px; color: var(--text-dim);
+  /* UI scale v2.1: 13 -> --fs-xs (16). */
+  font-size: var(--fs-xs); color: var(--text-dim);
   font-family: "SF Mono", Consolas, monospace;
 }
 /* s162 v9: deaths in K/D/A flagged red so the eye lands on it. */
@@ -1651,7 +1680,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-weight: 800;
 }
 .lv-mc-kda-score {
-  font-size: 14px; font-weight: 800;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs); font-weight: 800;
   color: var(--text);
   text-align: center;
   letter-spacing: 0.04em;
