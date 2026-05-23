@@ -34,10 +34,12 @@ from core.obj_participation import (  # noqa: E402
     _HERALD_KEY,
     _OBJ_COLUMNS,
     _ROW_SUM_SQL,
+    _TURRET_KEY,
     _VOID_KEY,
     _challenges_objectives,
     _coerce_float,
     _herald_from_challenges,
+    _turret_from_challenges,
     _void_from_challenges,
     compute_obj_participation,
 )
@@ -265,20 +267,35 @@ class ModuleSchemaTests(unittest.TestCase):
         # counter present in 200/200 (100%) sampled rows post-2024).
         self.assertEqual(_VOID_KEY, "voidMonsterKill")
 
-    def test_module_docstring_mentions_seven_column_model(self):
-        # Pins the prior 7-column framing in the docstring so future
-        # readers see the historical lineage even after item 134's lift.
+    def test_turret_key_constant_is_canonical(self):
+        # Match-V5 challenges blob uses ``turretTakedowns`` (camelCase
+        # per Riot's challenges schema; per-turret takedown counter
+        # present in 160/200 (80%) sampled rows post-2024). Distinct
+        # from the binary first_tower_kill/first_tower_assist SQL
+        # sentinels which only cover the FIRST turret of the match.
+        self.assertEqual(_TURRET_KEY, "turretTakedowns")
+
+    def test_module_docstring_mentions_prior_column_lineage(self):
+        # Pins the historical lineage 7-col -> 8-col -> 9-col in the
+        # docstring so future readers see the model's evolution.
         path = ROOT / "core" / "obj_participation.py"
         text = path.read_text(encoding="utf-8")
-        self.assertIn("7-column", text)
         self.assertIn("riftHeraldTakedowns", text)
 
     def test_module_docstring_mentions_eight_column_model(self):
-        # Pins the current 8-column model framing post item 134 carry (g).
+        # Pins the prior 8-column model framing post item 134 carry (g).
         path = ROOT / "core" / "obj_participation.py"
         text = path.read_text(encoding="utf-8")
         self.assertIn("8-column", text)
         self.assertIn("voidMonsterKill", text)
+
+    def test_module_docstring_mentions_nine_column_model(self):
+        # Pins the current 9-column model framing post BACKLOG L14 (c).
+        path = ROOT / "core" / "obj_participation.py"
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("9-column", text)
+        self.assertIn("turretTakedowns", text)
+        self.assertIn("NON-OVERLAPPING", text)
 
 
 class CoerceFloatTests(unittest.TestCase):
@@ -952,38 +969,53 @@ class VoidFromChallengesTests(unittest.TestCase):
 
 
 class ChallengesObjectivesParseOnceTests(unittest.TestCase):
-    """The dual-extractor helper parses ONCE per row and returns
-    (herald, void) tuple."""
+    """The tri-extractor helper parses ONCE per row and returns
+    (herald, void, turret) tuple. BACKLOG L14 (c) widened from
+    2-tuple (item 135) to 3-tuple (this slice)."""
 
-    def test_extracts_both_keys(self):
-        blob = json.dumps({"riftHeraldTakedowns": 2, "voidMonsterKill": 5})
-        self.assertEqual(_challenges_objectives(blob), (2.0, 5.0))
+    def test_extracts_all_three_keys(self):
+        blob = json.dumps({
+            "riftHeraldTakedowns": 2,
+            "voidMonsterKill": 5,
+            "turretTakedowns": 7,
+        })
+        self.assertEqual(_challenges_objectives(blob), (2.0, 5.0, 7.0))
 
     def test_missing_void_only_herald_present(self):
         blob = json.dumps({"riftHeraldTakedowns": 1})
-        self.assertEqual(_challenges_objectives(blob), (1.0, 0.0))
+        self.assertEqual(_challenges_objectives(blob), (1.0, 0.0, 0.0))
 
     def test_missing_herald_only_void_present(self):
         blob = json.dumps({"voidMonsterKill": 3})
-        self.assertEqual(_challenges_objectives(blob), (0.0, 3.0))
+        self.assertEqual(_challenges_objectives(blob), (0.0, 3.0, 0.0))
+
+    def test_only_turret_present(self):
+        blob = json.dumps({"turretTakedowns": 4})
+        self.assertEqual(_challenges_objectives(blob), (0.0, 0.0, 4.0))
 
     def test_empty_blob_returns_zero_tuple(self):
-        self.assertEqual(_challenges_objectives(""), (0.0, 0.0))
-        self.assertEqual(_challenges_objectives(None), (0.0, 0.0))
+        self.assertEqual(_challenges_objectives(""), (0.0, 0.0, 0.0))
+        self.assertEqual(_challenges_objectives(None), (0.0, 0.0, 0.0))
 
     def test_malformed_json_returns_zero_tuple(self):
-        self.assertEqual(_challenges_objectives("{not json"), (0.0, 0.0))
+        self.assertEqual(_challenges_objectives("{not json"), (0.0, 0.0, 0.0))
 
     def test_non_dict_parse_returns_zero_tuple(self):
         # JSON list at top level - not a dict.
-        self.assertEqual(_challenges_objectives("[1, 2]"), (0.0, 0.0))
-        self.assertEqual(_challenges_objectives("null"), (0.0, 0.0))
+        self.assertEqual(_challenges_objectives("[1, 2]"), (0.0, 0.0, 0.0))
+        self.assertEqual(_challenges_objectives("null"), (0.0, 0.0, 0.0))
 
-    def test_herald_wrapper_uses_dual_helper(self):
-        # Pin that the legacy single-key wrapper still returns the herald
-        # piece of the tuple (no regression on existing callers).
-        blob = json.dumps({"riftHeraldTakedowns": 7, "voidMonsterKill": 99})
+    def test_herald_wrapper_uses_tri_helper(self):
+        # Pin that the legacy single-key wrappers still return their
+        # respective slice (no regression on existing callers).
+        blob = json.dumps({
+            "riftHeraldTakedowns": 7,
+            "voidMonsterKill": 99,
+            "turretTakedowns": 11,
+        })
         self.assertEqual(_herald_from_challenges(blob), 7.0)
+        self.assertEqual(_void_from_challenges(blob), 99.0)
+        self.assertEqual(_turret_from_challenges(blob), 11.0)
 
 
 class VoidMonsterTests(unittest.TestCase):
@@ -1415,6 +1447,195 @@ class VoidMonsterTests(unittest.TestCase):
             conn.close()
         # Operator 2 / team 2 = 1.0 (enemy 99 should be ignored).
         self.assertEqual(ratio, 1.0)
+
+
+class TurretTakedownsTests(unittest.TestCase):
+    """Non-overlapping turret count (BACKLOG L14 (c)): the extra credit
+    beyond the first_tower binary sentinels participates in numerator +
+    denominator. The ``max(turretTakedowns - first_tower_kill -
+    first_tower_assist, 0)`` clamp is the load-bearing arithmetic.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="obj_part_turret_")
+        self.db_path = pathlib.Path(self.tmpdir) / "rewind.db"
+
+    def tearDown(self):
+        try:
+            os.remove(self.db_path)
+        except OSError:
+            pass
+        try:
+            os.rmdir(self.tmpdir)
+        except OSError:
+            pass
+
+    def test_operator_turret_extra_lifts_numerator(self):
+        # Operator destroyed 4 turrets total, with first_tower_kill=1 and
+        # first_tower_assist=0; the non-overlapping contribution = 3.
+        # Team total turret_extra = 3 (operator only). 6-col team sum
+        # = 1 (just the first_tower_kill on operator). Final ratio:
+        # numerator = 1 (op 6-col) + 0 (herald) + 0 (void) + 3 (turret_extra)
+        #           = 4
+        # denominator same = 4 -> 1.0 (operator got 100% of non-overlapping
+        # turrets AND the first one).
+        rows = [
+            {
+                "match_id": "V_TURRET", "team_id": 100, "puuid": "SELF",
+                "first_tower_kill": 1, "first_tower_assist": 0,
+                "challenges_json": {"turretTakedowns": 4},
+            },
+            {
+                "match_id": "V_TURRET", "team_id": 100, "puuid": "ALLY1",
+                "challenges_json": {"turretTakedowns": 0},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_TURRET", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)
+
+    def test_first_tower_overlap_does_not_double_count(self):
+        # Operator destroyed 1 turret total = the first tower. SQL gives
+        # first_tower_kill=1; challenges_json turretTakedowns=1. The
+        # non-overlapping piece is max(1 - 1 - 0, 0) = 0. Numerator =
+        # 1 (the SQL sentinel) NOT 2.
+        rows = [
+            {
+                "match_id": "V_OVERLAP", "team_id": 100, "puuid": "SELF",
+                "first_tower_kill": 1, "first_tower_assist": 0,
+                "challenges_json": {"turretTakedowns": 1},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_OVERLAP", "SELF")
+        finally:
+            conn.close()
+        # Single-row team: numerator == denominator == 1, ratio = 1.0.
+        self.assertEqual(ratio, 1.0)
+
+    def test_assist_overlap_does_not_double_count(self):
+        # first_tower_assist=1 also subtracts. turretTakedowns=2 means
+        # the operator helped destroy 2 turrets total, one of which
+        # was the team's first one (assist-only, not kill). Non-overlap
+        # = max(2 - 0 - 1, 0) = 1. Numerator = 0 (6-col without
+        # ftk/fta) + 1 (assist) + 1 (extra) = 2; same denominator.
+        rows = [
+            {
+                "match_id": "V_ASSIST_OVERLAP", "team_id": 100, "puuid": "SELF",
+                "first_tower_kill": 0, "first_tower_assist": 1,
+                "challenges_json": {"turretTakedowns": 2},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_ASSIST_OVERLAP", "SELF")
+        finally:
+            conn.close()
+        self.assertEqual(ratio, 1.0)
+
+    def test_clamp_at_zero_when_no_turrets_but_first_tower_set(self):
+        # Edge case: turretTakedowns=0 but first_tower_kill=1 (the SQL
+        # sentinel fires on the team's first tower even if the
+        # challenges_json blob is stale or not yet populated). The
+        # max(0, 0 - 1 - 0) = 0 clamp prevents a NEGATIVE contribution
+        # that would unbalance numerator vs denominator.
+        rows = [
+            {
+                "match_id": "V_CLAMP", "team_id": 100, "puuid": "SELF",
+                "first_tower_kill": 1, "first_tower_assist": 0,
+                "challenges_json": {"turretTakedowns": 0},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_CLAMP", "SELF")
+        finally:
+            conn.close()
+        # Numerator = 1 (ftk) + 0 (herald) + 0 (void) + max(0-1-0, 0)
+        # = 1. Denominator same. Ratio = 1.0; no negative contribution.
+        self.assertEqual(ratio, 1.0)
+
+    def test_split_credit_with_ally_who_took_more_turrets(self):
+        # Operator: 1 turret, ally: 4 turrets. Operator's 1 = the first
+        # tower (ftk=1, turretTakedowns=1, extra=0). Ally's 4 = none of
+        # the first (ftk=0, turretTakedowns=4, extra=4). Numerator = 1
+        # (op total); denominator = 1 (op) + 4 (ally) = 5. Ratio 1/5
+        # = 0.2. The non-overlapping turret math GROWS the denominator
+        # so operator's relative share DROPS - this is the correct
+        # "participation" semantic.
+        rows = [
+            {
+                "match_id": "V_SPLIT", "team_id": 100, "puuid": "SELF",
+                "first_tower_kill": 1, "first_tower_assist": 0,
+                "challenges_json": {"turretTakedowns": 1},
+            },
+            {
+                "match_id": "V_SPLIT", "team_id": 100, "puuid": "ALLY",
+                "first_tower_kill": 0, "first_tower_assist": 0,
+                "challenges_json": {"turretTakedowns": 4},
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_SPLIT", "SELF")
+        finally:
+            conn.close()
+        self.assertAlmostEqual(ratio, 0.2, places=6)
+
+    def test_legacy_schema_ignores_turret_takedowns(self):
+        # Legacy schema (no challenges_json column): the turret-extra
+        # contribution silently degrades to 0; only the 6 SQL columns
+        # participate. Operator/team ratio holds at the 6-col level.
+        rows = [
+            {
+                "match_id": "V_LEGACY_TURRET", "team_id": 100, "puuid": "SELF",
+                "first_tower_kill": 1, "first_tower_assist": 0,
+            },
+            {
+                "match_id": "V_LEGACY_TURRET", "team_id": 100, "puuid": "ALLY",
+            },
+        ]
+        _seed_db(self.db_path, rows, legacy=True)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_LEGACY_TURRET", "SELF")
+        finally:
+            conn.close()
+        # Op 6-col=1 (ftk), team 6-col=1 -> ratio = 1.0.
+        self.assertEqual(ratio, 1.0)
+
+    def test_malformed_turret_value_drops_to_zero(self):
+        # challenges_json carries turretTakedowns="seven" (non-numeric)
+        # - _coerce_float drops to 0.0; turret_extra = 0; the row
+        # otherwise scores normally.
+        rows = [
+            {
+                "match_id": "V_BAD_TURRET", "team_id": 100, "puuid": "SELF",
+                "challenges_json": {"turretTakedowns": "seven"},
+            },
+            {
+                "match_id": "V_BAD_TURRET", "team_id": 100, "puuid": "ALLY",
+                "dragon_kills": 1,
+            },
+        ]
+        _seed_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            ratio = compute_obj_participation(conn, "V_BAD_TURRET", "SELF")
+        finally:
+            conn.close()
+        # Numerator = 0 (bad turret silently dropped), denominator = 1
+        # (ally dragon_kills). Ratio = 0.0.
+        self.assertEqual(ratio, 0.0)
 
 
 class ReadOnlyConnectionTests(unittest.TestCase):

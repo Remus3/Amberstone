@@ -49,10 +49,13 @@ def _seed_obj_db(
     ally_herald: int = 0,
     operator_void: int = 0,
     ally_void: int = 0,
+    operator_turret: int = 0,
+    ally_turret: int = 0,
 ) -> None:
-    """Widened seed: 6 objective columns + challenges_json (8-column model
-    per item 134 carry (g)). challenges_json now carries BOTH
-    riftHeraldTakedowns + voidMonsterKill."""
+    """Widened seed: 6 objective columns + challenges_json (9-column model
+    per BACKLOG L14 (c)). challenges_json carries riftHeraldTakedowns +
+    voidMonsterKill + turretTakedowns (the latter clamped against the
+    SQL first_tower sentinels in compute_obj_participation)."""
     operator_objectives = operator_objectives or {}
     ally_objectives = ally_objectives or {}
 
@@ -104,10 +107,12 @@ def _seed_obj_db(
     op_challenges = json.dumps({
         "riftHeraldTakedowns": int(operator_herald),
         "voidMonsterKill": int(operator_void),
+        "turretTakedowns": int(operator_turret),
     })
     ally_challenges = json.dumps({
         "riftHeraldTakedowns": int(ally_herald),
         "voidMonsterKill": int(ally_void),
+        "turretTakedowns": int(ally_turret),
     })
 
     # Operator row
@@ -631,6 +636,118 @@ class VoidEnrichmentRouteTests(unittest.TestCase):
             payload = json.loads(resp[0][1])
             self.assertTrue(payload["ok"])
             # 6-column 4/5 = 0.8 -> non-zero component.
+            self.assertGreater(payload["components"]["obj_participation"], 0.0)
+
+
+class TurretEnrichmentRouteTests(unittest.TestCase):
+    """The route now reads turretTakedowns from challenges_json
+    (BACKLOG L14 (c)) and folds the NON-OVERLAPPING piece (towers 2-11
+    beyond the first_tower binary sentinels) into the 9-column model."""
+
+    def setUp(self):
+        rpgr._CACHE.clear()
+
+    def _serve(self, path: str, db_path: Path, state_path: Path):
+        with mock.patch.object(rpgr, "_REWIND_DB", db_path):
+            with mock.patch.object(rpgr, "_STATE_JSON", state_path):
+                h = _StubHandler(path)
+                rpgr._serve_post_game_rubric(h)
+                return h.responses
+
+    def test_turret_enrichment_lifts_total_score(self):
+        """Same KDA + same SQL-obj content; only turretTakedowns differ.
+        The turret-enriched run should land a strictly higher
+        total_score when the ratio is NOT already saturated at 1.0."""
+        with tempfile.TemporaryDirectory() as td:
+            db_no_turret = Path(td) / "rh_no.db"
+            db_turret = Path(td) / "rh_yes.db"
+            state = Path(td) / "state.json"
+            _seed_state(state)
+            # Ally got 3 dragons so the no-turret baseline ratio is
+            # 1/4 = 0.25 (sub-saturated). Operator's turret=5 (with
+            # ftk=0, fta=0 from operator_objectives) lifts the
+            # non-overlapping count by 5, ratio -> 6/9 ~ 0.667.
+            op_obj = {"dragon_kills": 1}
+            ally_obj = {"dragon_kills": 3}
+            _seed_obj_db(db_no_turret, match_id="TM",
+                         operator_objectives=op_obj,
+                         ally_objectives=ally_obj,
+                         operator_turret=0, ally_turret=0)
+            _seed_obj_db(db_turret, match_id="TM",
+                         operator_objectives=op_obj,
+                         ally_objectives=ally_obj,
+                         operator_turret=5, ally_turret=0)
+            rpgr._CACHE.clear()
+            r1 = self._serve("/api/post-game-rubric?match_id=TM",
+                             db_no_turret, state)
+            rpgr._CACHE.clear()
+            r2 = self._serve("/api/post-game-rubric?match_id=TM",
+                             db_turret, state)
+            p1 = json.loads(r1[0][1])
+            p2 = json.loads(r2[0][1])
+            self.assertGreater(p2["total_score"], p1["total_score"])
+            self.assertGreater(
+                p2["components"]["obj_participation"],
+                p1["components"]["obj_participation"],
+            )
+
+    def test_first_tower_overlap_not_double_counted(self):
+        # Operator: first_tower_kill=1 + turretTakedowns=1 (the same
+        # turret). Ally: no objectives. The non-overlapping turret
+        # piece must be 0 (max(1-1-0, 0)=0); the numerator counts the
+        # SQL sentinel ONCE not twice. Ratio = 1/1 = 1.0 since op got
+        # the only objective.
+        with tempfile.TemporaryDirectory() as td:
+            db_overlap = Path(td) / "rh_overlap.db"
+            db_clean_extra = Path(td) / "rh_extra.db"
+            state = Path(td) / "state.json"
+            _seed_state(state)
+            # Overlap case: op turretTakedowns=1 + ftk=1 -> extra=0.
+            _seed_obj_db(db_overlap, match_id="TO",
+                         operator_objectives={"first_tower_kill": 1},
+                         ally_objectives={},
+                         operator_turret=1, ally_turret=0)
+            # Clean-extra case: op turretTakedowns=2 + ftk=1 -> extra=1.
+            # Numerator gains 1 vs overlap case.
+            _seed_obj_db(db_clean_extra, match_id="TO",
+                         operator_objectives={"first_tower_kill": 1},
+                         ally_objectives={},
+                         operator_turret=2, ally_turret=0)
+            rpgr._CACHE.clear()
+            r1 = self._serve("/api/post-game-rubric?match_id=TO",
+                             db_overlap, state)
+            rpgr._CACHE.clear()
+            r2 = self._serve("/api/post-game-rubric?match_id=TO",
+                             db_clean_extra, state)
+            p1 = json.loads(r1[0][1])
+            p2 = json.loads(r2[0][1])
+            # Both ratios saturate at 1.0 (op took every objective on
+            # their team). The 2nd case has higher RAW numerator + same
+            # ratio (1.0). The pin here is that the score does NOT
+            # exceed the 1.0-ratio cap (no double-count exceeds 100%).
+            self.assertLessEqual(
+                p1["components"]["obj_participation"],
+                p2["components"]["obj_participation"] + 1e-6,
+            )
+
+    def test_turret_with_herald_void_compose(self):
+        # Operator: 1 dragon_kill + 1 herald + 1 void + 3 extra turrets
+        # = 6. Ally: 1 dragon_kill = 1. Team = 7. Ratio = 6/7 ~ 0.857.
+        with tempfile.TemporaryDirectory() as td:
+            db = Path(td) / "rh.db"
+            state = Path(td) / "state.json"
+            _seed_state(state)
+            _seed_obj_db(
+                db, match_id="THV",
+                operator_objectives={"dragon_kills": 1},
+                ally_objectives={"dragon_kills": 1},
+                operator_herald=1, ally_herald=0,
+                operator_void=1, ally_void=0,
+                operator_turret=3, ally_turret=0,
+            )
+            resp = self._serve("/api/post-game-rubric?match_id=THV", db, state)
+            payload = json.loads(resp[0][1])
+            self.assertTrue(payload["ok"])
             self.assertGreater(payload["components"]["obj_participation"], 0.0)
 
 

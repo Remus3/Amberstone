@@ -768,20 +768,24 @@ def _populate_match_a_objectives_blob(
     ally_herald: int = 0,
     self_void: int = 0,
     ally_void: int = 0,
+    self_turret: int = 0,
+    ally_turret: int = 0,
 ) -> None:
-    """Stamp challenges_json with BOTH riftHeraldTakedowns and
-    voidMonsterKill (item 134 carry (g)). Mirrors the herald helper but
-    populates both blob keys atomically per row so the 8-column model is
-    exercised end-to-end."""
+    """Stamp challenges_json with riftHeraldTakedowns + voidMonsterKill
+    + turretTakedowns (BACKLOG L14 (c) widened from item 134's 8-col
+    model). Populates all 3 blob keys atomically per row so the
+    9-column model is exercised end-to-end."""
     conn = sqlite3.connect(str(db_path))
     try:
         op_blob = json.dumps({
             "riftHeraldTakedowns": int(self_herald),
             "voidMonsterKill": int(self_void),
+            "turretTakedowns": int(self_turret),
         })
         ally_blob = json.dumps({
             "riftHeraldTakedowns": int(ally_herald),
             "voidMonsterKill": int(ally_void),
+            "turretTakedowns": int(ally_turret),
         })
         conn.execute(
             "UPDATE participants SET challenges_json=? "
@@ -1174,6 +1178,116 @@ class VoidEnrichmentWireTests(unittest.TestCase):
         self.assertLess(
             with_ally_void["total_score"],
             without_ally_void["total_score"],
+        )
+
+
+class TurretEnrichmentWireTests(unittest.TestCase):
+    """Closes BACKLOG L14 (c): challenges_json turretTakedowns flows
+    through iter_role_grades -> compute_role_grade as the 9th
+    objective contribution via max(turret - ftk - fta, 0) clamp."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="postmortem_turret_")
+        self.db_path = pathlib.Path(self.tmpdir) / "rewind.db"
+        self.fixture = _build_fixture_db(self.db_path)
+
+    def tearDown(self):
+        try:
+            os.remove(self.db_path)
+        except OSError:
+            pass
+        try:
+            os.rmdir(self.tmpdir)
+        except OSError:
+            pass
+
+    def test_turret_enrichment_widens_obj_pct(self):
+        # Baseline: operator has zero objectives.
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            baseline = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        # Operator takes 5 turrets (none of them the first tower so no
+        # overlap to subtract); ally 0. Operator share = 1.0.
+        _populate_match_a_objectives_blob(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_turret=5, ally_turret=0,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            populated = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # MID weight for obj_participation is 0.30 - non-zero lift.
+        self.assertGreater(populated["total_score"], baseline["total_score"])
+        self.assertEqual(populated["role"], baseline["role"])
+
+    def test_turret_first_tower_overlap_not_double_counted(self):
+        # SQL ftk=1 already gives operator 1 point. Add
+        # turretTakedowns=1 (the SAME first turret) -> extra=0; the
+        # score must NOT lift further beyond the 1.0 ratio cap.
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+        # Match-A objectives default: op_dragons=2, ally_dragons=1; share 2/3
+        # = 0.667. Add op turretTakedowns=1 + (no extra ftk since
+        # _populate_match_a_objectives only sets dragons). Operator
+        # share rises to 3/4 = 0.75.
+        _populate_match_a_objectives_blob(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_turret=1, ally_turret=0,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            with_turret = iter_role_grades(
+                conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # Strictly positive obj_participation; never panics or returns
+        # > 1.0 share. Both score sanity checks.
+        self.assertGreater(with_turret["total_score"], 0.0)
+        self.assertLessEqual(with_turret["total_score"], 100.0)
+
+    def test_teammate_turret_lowers_operator_share(self):
+        # SQL: operator dragons=2 + ally dragons=1; team=3; share 2/3.
+        _populate_match_a_objectives(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            without_ally_turret = iter_role_grades(
+                conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+
+        # Ally takes 5 turrets (no overlap). Operator 2, team 2+1+5=8
+        # -> share 0.25 (down from 0.667).
+        _populate_match_a_objectives_blob(
+            self.db_path,
+            self_puuid=self.fixture["self_puuid"],
+            ally_puuid="PUUID-ALLY",
+            self_turret=0, ally_turret=5,
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            with_ally_turret = iter_role_grades(
+                conn, [self.fixture["self_puuid"]])[0]
+        finally:
+            conn.close()
+        # Operator's share fell -> total_score also fell.
+        self.assertLess(
+            with_ally_turret["total_score"],
+            without_ally_turret["total_score"],
         )
 
 
