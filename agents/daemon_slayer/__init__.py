@@ -1321,7 +1321,98 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.41.0"
+ENGINE_VERSION = "1.42.0"
+# 1.42.0 (cc_conditional wave 5 + _PER_SPELL_CC_DURATIONS wave 8 +
+# BACKLOG stale-sweep wave 10 + cost/latency CLEAN, 2026-05-22):
+#
+# Three commit-bearing parallel-slice additions + 1 read-only CLEAN
+# sweep composing on item 145 carries-forward (a) cc_conditional
+# wave 5+ expansion + (i) _PER_SPELL_CC_DURATIONS wave 8. Item 146.
+#
+# Slice A - cc_conditional wave 5 (33/32 -> 35/32; +2 entries / +0
+# net-new champs - both are multi-wave coexistence on existing keys)
+# via setdefault builder pattern from items 140-145. NEW: Briar E
+# Chilling Scream (channel_completion 0.5 fear 1.0s - full-charge
+# cone fear; tap-cast damage only; coexists with Briar Q wave 4
+# terrain stun via setdefault on different spell slot - SECOND multi-
+# wave coexistence in cc_conditional after Aatrox Q+W); TahmKench Q
+# Tongue Lash (nth_hit 0.7 stun 1.5s - 3rd-stack stun via passive;
+# coexists with TahmKench R wave 1 devour suppression via setdefault).
+# Uses only the 10 existing condition tags. REGISTRY_TOTAL_CHAMPIONS=
+# 32 unchanged / REGISTRY_TOTAL_ENTRIES=33 -> 35. REJECTED wave-5
+# candidates documented: Vayne wall-stun (schema lift needed), Mel E
+# (needs Meraki reverify), Annie passive Pyromania (encoding
+# ambiguous), Belveth W (slow only), Cho'Gath W (unconditional
+# silence belongs in unconditional registry), Trundle E (no clean
+# tag fit). Multi-wave coexistence count now 4: Aatrox Q3+W (waves
+# 3+4), Briar Q+E (waves 4+5), TahmKench R+Q (waves 1+5), Pantheon
+# W+Q (waves 1+4 already shipped). +52 tests NEW
+# tests/test_cc_conditional_wave5.py across 9 classes.
+# tests/test_cc_conditional_wave4.py 3 Briar aggregator assertions
+# relaxed to entry-level pins because Briar now has Q+E in registry.
+# tests/test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES set
+# gained test_cc_conditional_wave5.py.
+#
+# Slice B - _PER_SPELL_CC_DURATIONS wave 8 (103/89 -> 106/89; +3
+# entries / +0 net-new champs via multi-wave coexistence) extends
+# the unconditional first-order CC registry. NEW: Lissandra W Ring
+# of Frost root 1.25/1.35/1.45/1.55/1.65 across 5 ranks (coexists
+# with wave 1 Lissandra R stun); Maokai W Twisted Advance root
+# 1.0/1.1/1.2/1.3/1.4 (coexists with wave 1 Maokai R root); Rakan R
+# The Quickness charm 1.0/1.25/1.5 all 3 ranks (coexists with wave
+# 1 Rakan W knockup). All 3 values verified vs
+# data/daemon_slayer/16.10.1/champion_abilities.json Meraki duration
+# blocks. Multi-wave coexistence now proven at 7 champions: Lulu
+# W+R (waves 1+6), Sejuani R+Q (waves 1+6), Thresh Q+E (waves 1+6),
+# Zac E+R (waves 2+7), Lissandra R+W (waves 1+8 NEW), Maokai R+W
+# (waves 1+8 NEW), Rakan W+R (waves 1+8 NEW). Selection rules
+# unchanged from waves 1-7: first-order CC only; no slows; no
+# conditional CC; canonical DDragon ids. REJECTED wave-8 candidates
+# documented: Bard Q / Karma W / TwistedFate W / Zilean Q / Aatrox W
+# / Skarner Q (all in cc_conditional), Evelynn W / Morgana R /
+# Seraphine E (conditional axes), Volibear R (turret-only), Tristana
+# W (slow), Senna W (already shipped wave 4 per item 138). Consumer
+# math BYTE-IDENTICAL to 1.41.0 for default include_conditional=False
+# callers. +38 tests NEW tests/test_per_spell_cc_registry_wave8.py
+# across 7 classes. tests/test_per_spell_cc_registry_seed.py count
+# pin 89/103 -> 89/106. tests/test_per_spell_cc_registry_wave7.py
+# count pin assertEqual -> assertGreaterEqual relaxation.
+#
+# Slice C - BACKLOG.md L13 cc_conditional ecosystem subsection
+# stale-sweep wave 10 per [[feedback_backlog_path_stale_check]]:
+# stopping-at-item-144-state line ("items 141-144 / 3 wave
+# expansions / 28 entries") flipped to "items 141-145 / 4 wave
+# expansions / 33 entries + JSON override loader" annotation. ROADMAP
+# sweep CLEAN (Fleet status DS row already current at ENGINE 1.41.0
+# per item 145 Slice D verified). Sweep cycle decay: wave 1=2 / 2=3
+# / 3=3 / 4=1 / 5=1 / 6=1 / 7=2 / 8=1 / 9=1 / **10=1**. Methodology
+# stable across 10 sweep rounds.
+#
+# Slice D - cost/latency CLEAN no-commit (13th consecutive CLEAN
+# sweep since item 134). All 7 levers surveyed: prompt-cache (8
+# callers explicit-block w/ cache_control + replay_coach + experi-
+# mental_builder verified), route TTL (17 routes cached), polling
+# cadences (1.5s bridge_pending / 2s state matches item 145 baseline),
+# log spam (/api/bridge at 0.26/sec well below 1/sec threshold,
+# consistent with item 145's 0.021/sec window - both below threshold),
+# model tier (21/21 messages.create() Haiku per reference_model_
+# config.md; sonnet/opus annotations are POST-call telemetry stamps
+# NOT API tier), scheduled tasks (7 install scripts: DDragon /
+# Postmortem / Rewind / LegionBridge / Phase3 x2 / run_postmortem;
+# cadences sane), bundle size (28 panel @imports vs 27 panel files -
+# loading_view.css orphan @import flagged; operator-gated 1-line
+# CSS fix deferred). Verdict CLEAN on 6 levers + 1 MINOR PROPOSAL
+# (loading_view.css orphan @import in web/css/dashboard.css:27 -
+# safe to ship but operator-gated; carries forward).
+#
+# Stale ENGINE pin syncs across 30 DS test files (1.41.0 -> 1.42.0)
+# via orchestrator bulk-rewrite. Same s243/s246 facade-split
+# precedent; value-pinned regression suite is the definitive
+# behavior-equivalence proof.
+#
+# Orchestrator-merge pattern now 13 consecutive runs (items 134-146).
+# Durable template for parallel headless-upgrade-style drains.
+#
 # 1.41.0 (cc_conditional wave 4 expansion + JSON override loader for
 # operator personal calibration, 2026-05-22):
 #
