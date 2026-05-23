@@ -198,6 +198,12 @@ def analyze_match(match_id: str, *, api_key: str | None) -> dict[str, Any]:
             messages=[{"role": "user", "content": prompt}],
             timeout=20,
         )
+        # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker.
+        try:
+            from core.cost_tracker import record_anthropic_response
+            record_anthropic_response(resp, model=_MODEL, purpose="replay_coach")
+        except Exception as exc:
+            logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
     except Exception as exc:
         out["summary"] = f"(coach error: {type(exc).__name__})"
