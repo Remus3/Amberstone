@@ -34,7 +34,10 @@ The multipliers are calibrated so:
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from modules.cache_engine import CacheEngine
 
 _log = logging.getLogger("rc.coaches.feedback")
 
@@ -49,7 +52,8 @@ _GRADE_MULT = {
 
 
 def apply_grade(grade: str, last_state: Optional[dict],
-                cache=None, db_path: Optional[str] = None) -> bool:
+                cache: CacheEngine | None = None,
+                db_path: Optional[str] = None) -> bool:
     """Apply post-match grade to the cache entry for `last_state`.
 
     `cache`     - optional CacheEngine instance (use existing handle from

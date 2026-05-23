@@ -26,12 +26,16 @@ import sys
 import threading
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 logger = logging.getLogger("rc.coaches.tft")
 
 _APP_DIR = Path(__file__).parent.parent
 if str(_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_APP_DIR))
+
+if TYPE_CHECKING:
+    from core.tft_worker import TftWorker
 
 def _read_api_key(app_dir: Path) -> str:
     for p in [app_dir / "API-Key-Claude.txt"]:
@@ -110,7 +114,7 @@ class Coach:
 
     # ── Worker wiring ─────────────────────────────────────────────────────────
 
-    def set_worker(self, worker) -> None:
+    def set_worker(self, worker: "TftWorker") -> None:
         """Wire the TftWorker after it is created by app.py."""
         self._worker = worker
 
