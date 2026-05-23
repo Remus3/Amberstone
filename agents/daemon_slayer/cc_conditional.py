@@ -1588,6 +1588,189 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ============================================================
+    # === wave 9 expansion (2026-05-23 / ENGINE 1.46.0) - +3 entries
+    # === / +3 net-new champions closing 3 of the 7 schema-lift-blocked
+    # === candidates from prior wave REJECTs (items 150 / 151 / 152
+    # === carry-forward). The Meraki extractor schema lift shipped this
+    # === wave (additive ``effects_descriptions: list[str]`` per form
+    # === in ``data/daemon_slayer/16.10.1/champion_abilities.json``)
+    # === enables verification of empowered / form-gated mechanics that
+    # === lived in description text but were absent from the structured
+    # === leveling[] blocks. The CC duration values for all 3 wave 9
+    # === entries were ALREADY present in the parse-strip
+    # === damage_blocks.raw_modifiers; the schema lift confirms the
+    # === mechanic descriptions in-source (no re-litigation needed).
+    # ===
+    # === The 4 OTHER candidates from the item 152 mission spec
+    # === REJECT after schema-lift verification:
+    # ===
+    # ===   (a) Karma W form 1 Renewal - same (Karma, W) slot already
+    # ===       holds the wave 1 Focused Resolve channel-completion
+    # ===       root entry. The registry is keyed (champion, spell)
+    # ===       so the form 1 R-empowered variant cannot coexist on
+    # ===       the same spell slot. Wave 1 entry already captures
+    # ===       the core mechanic at base duration; the R-empowered
+    # ===       extension is a calibration tuning, not a new mechanic.
+    # ===   (b) Aatrox R World Ender - schema-lifted description
+    # ===       confirms the 3s fear targets minions/monsters ONLY,
+    # ===       NOT champions. No champion-facing CC. The item 150
+    # ===       audit note "post-R passive empowered Q-sweetspot/W-
+    # ===       pull" was speculative; Riot 16.10.1 description does
+    # ===       NOT empower Q or W under R. Q3 sweetspot knockup
+    # ===       0.5s is already in cc_conditional wave 3 unconditional
+    # ===       on its own (NOT R-gated).
+    # ===   (c) Volibear R Stormbringer - schema-lifted description
+    # ===       confirms only turret-disable + 50% slow (1s decaying).
+    # ===       Slow is NOT first-order CC; turret-only disable is
+    # ===       not champion CC. The Stormbringer form is a self-buff
+    # ===       (ghosting + bonus health + range + size) with no
+    # ===       champion-facing stun/root/knockup.
+    # ===   (d) Briar W Blood Frenzy - schema-lifted description
+    # ===       confirms Blood Frenzy is purely self-buff (ghosting +
+    # ===       attack speed + movement speed + AoE-around-target AA
+    # ===       empowerment). No CC granted to other spells while
+    # ===       in frenzy state. The Briar Q stun 0.85s is already
+    # ===       in cc_conditional wave 4+5 unconditional on its own;
+    # ===       Briar E Chilling Scream fear is wave 5 multi-wave
+    # ===       coexistence.
+    # ===
+    # === Multi-wave coexistence count: NONE this wave (Hwei / Neeko
+    # === are net-new champions to cc_conditional; Renekton is also
+    # === net-new in cc_conditional - the unconditional W base-stun
+    # === entry sits in `_PER_SPELL_CC_DURATIONS`, the cc_conditional
+    # === wave-9 entry encodes the Fury-empowered EXTENDED stun on
+    # === the same spell slot via the separate-registry coexistence
+    # === pattern established by Aatrox Q3 wave 3 + Neeko E wave 9).
+    # ===
+    # === REGISTRY GROWS: 39 entries -> 42 entries / 35 champions
+    # === -> 38 champions. cc_conditional consumer math BYTE-IDENTICAL
+    # === to 1.45.0 for default include_conditional=False callers
+    # === across all 5 consumer surfaces.
+    # ============================================================
+
+    # Hwei E form 1 Grim Visage (EQ): Hwei E is a 2-cast cycle where
+    # E (Subject: Torment, form_index=0) is the mood selector and the
+    # follow-up spell (Q / W / E) determines the form. Form 1 (EQ)
+    # fires a fear projectile dealing magic damage and applying a
+    # Disable Duration fear of 1.0/1.125/1.25/1.375/1.5s across 5
+    # ranks (Meraki 16.10.1 Disable Duration block; schema-lifted
+    # description text confirms "fears them for a duration"). The
+    # CC is unconditional WITHIN form 1 but conditional on completing
+    # the 2-cast cycle (E0 mood selector -> EQ form lock-in). Maps
+    # to COND_CHANNEL_COMPLETION (the operator must complete the
+    # 2-cast cycle before the fear lands; partial-cycle = no E1
+    # fire at all). Probability mid-low because the cycle requires
+    # 2 inputs in sequence + the fear projectile is dodgeable.
+    registry.setdefault("Hwei", {})["E"] = ConditionalCcEntry(
+        champion="Hwei",
+        spell="E",
+        cc_kind="fear",
+        durations_s=(1.0, 1.125, 1.25, 1.375, 1.5),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("Hwei", "E", 0.4),
+        notes=(
+            "E form 1 Grim Visage (EQ form): fears target for "
+            "1.0-1.5s across 5 ranks. Hwei E is a 2-cast cycle "
+            "(E mood selector -> Q/W/E form lock). The fear fires "
+            "only on the EQ form completion; partial-cycle = no "
+            "fire. Maps to COND_CHANNEL_COMPLETION on the 2-cast "
+            "sequence. Probability mid-low - 2-input setup + "
+            "dodgeable projectile. Closes item 150 + 151 + 152 "
+            "carry-forward 'Hwei E form_index=1 Grim Visage Disable "
+            "1.0-1.5s; multi-form same-spell-slot constraint' via "
+            "ENGINE 1.46.0 Meraki schema lift (the duration values "
+            "were already in the parse-strip damage_blocks but the "
+            "mechanic verification needed effects_descriptions)."
+        ),
+    )
+
+    # Neeko E Tangle-Barbs (EMPOWERED root variant): Neeko E base
+    # spiral roots first-hit target for 0.7/0.9/1.1/1.3/1.5s (already
+    # in unconditional `_PER_SPELL_CC_DURATIONS` as Neeko E base).
+    # If the spiral hits at least one enemy, the projectile grows in
+    # size and SUBSEQUENT enemies hit by the grown spiral are rooted
+    # for the EMPOWERED duration 1.8/2.1/2.4/2.7/3.0s across 5 ranks
+    # (Meraki 16.10.1 Empowered Root Duration block; schema-lifted
+    # description text confirms "If the spiral hits at least one
+    # enemy, it grows in size and its speed and root duration is
+    # increased"). The empowered duration applies to enemies hit
+    # AFTER the first; in a 1v1 isolated hit only the base duration
+    # fires. Maps to COND_DUAL_ENEMY (need 2+ enemies in spiral
+    # path for the empowered duration to credit). Coexists with the
+    # unconditional Neeko E base via the separate-registry pattern
+    # (Aatrox Q3 wave 3 is the precedent: unconditional Q damage
+    # alongside cc_conditional Q3 sweetspot knockup).
+    registry.setdefault("Neeko", {})["E"] = ConditionalCcEntry(
+        champion="Neeko",
+        spell="E",
+        cc_kind="root",
+        durations_s=(1.8, 2.1, 2.4, 2.7, 3.0),
+        condition=COND_DUAL_ENEMY,
+        probability=_p("Neeko", "E", 0.5),
+        notes=(
+            "E Tangle-Barbs EMPOWERED root variant: spiral grows on "
+            "first-enemy hit, subsequent enemies hit by the grown "
+            "spiral are rooted 1.8-3.0s across 5 ranks. Base root "
+            "(0.7-1.5s) is in unconditional _PER_SPELL_CC_DURATIONS. "
+            "The empowered duration credits when 2+ enemies are "
+            "caught in the spiral path. Maps to COND_DUAL_ENEMY "
+            "(teamfight conditional). Probability midpoint - "
+            "Neeko's E is a primary teamfight tool typically aimed "
+            "into clusters. Closes item 150 + 151 + 152 carry-"
+            "forward 'Neeko E Empowered Root 1.8-3.0s; multi-form "
+            "same-spell-slot constraint' via ENGINE 1.46.0 schema "
+            "lift. Coexists with unconditional base root on the "
+            "same (Neeko, E) slot via the separate-registry "
+            "pattern."
+        ),
+    )
+
+    # Renekton W Ruthless Predator (REIGN OF ANGER empowered stun):
+    # Renekton W base stun 0.75s is in unconditional
+    # `_PER_SPELL_CC_DURATIONS` (Riot canonical). The Reign of Anger
+    # Bonus (cast while at 100 Fury) increases the stun duration to
+    # 1.5s flat across all ranks. The bonus is gated on Renekton
+    # entering the empowered Fury state - a self-empowered champion
+    # state that gates a CC variant of W with extended duration.
+    # Maps to COND_FRENZY_STATE (the wave 7 forward-marker tag at
+    # midpoint 0.4 - this is the FIRST consumer of the frenzy_state
+    # tag in the registry, closing the forward-marker contract).
+    # Probability 0.4 (tag midpoint) - Renekton typically enters
+    # Fury for engages but the W cast must specifically coincide
+    # with the Fury threshold. Mechanic schema-lift-verified:
+    # description text effect[2] "Reign of Anger Bonus: ...
+    # increasing the stun duration to 1.5 seconds" was captured by
+    # the ENGINE 1.46.0 Meraki extractor schema lift (the 1.5s
+    # value is NOT in the structured damage_blocks - the W form
+    # damage_blocks only carry damage attributes; the empowered
+    # stun duration lived exclusively in description text).
+    registry.setdefault("Renekton", {})["W"] = ConditionalCcEntry(
+        champion="Renekton",
+        spell="W",
+        cc_kind="stun",
+        durations_s=(1.5,),
+        condition=COND_FRENZY_STATE,
+        probability=_p("Renekton", "W", 0.4),
+        notes=(
+            "W Ruthless Predator REIGN OF ANGER empowered stun: "
+            "base stun 0.75s (unconditional) extends to 1.5s when "
+            "cast while at 100 Fury. Mechanic captured by ENGINE "
+            "1.46.0 Meraki schema lift (effects_descriptions[2] "
+            "'Reign of Anger Bonus: ... increasing the stun "
+            "duration to 1.5 seconds'). Maps to COND_FRENZY_STATE "
+            "- FIRST consumer of the wave 7 forward-marker tag, "
+            "closing the COND_FRENZY_STATE empty-registry contract. "
+            "Probability tag midpoint 0.4. Closes item 150 + 151 "
+            "+ 152 carry-forward 'Renekton W Fury empowered-Fury "
+            "stun in stripped description'. Coexists with the "
+            "unconditional Renekton W 0.75s base stun on the same "
+            "(Renekton, W) slot via the separate-registry pattern "
+            "(unconditional registry = `_PER_SPELL_CC_DURATIONS`, "
+            "this is the conditional empowered variant)."
+        ),
+    )
+
     return registry
 
 
