@@ -44,6 +44,24 @@ const _RE = {
   events:  [],
 };
 
+// UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
+// (2026-05-23). When body.dataset.uiMock === "1" the events fetch
+// short-circuits to /data/ui_mock/replay.json. Cache is independent
+// from dev.js (small redundant fetch on activation) so this module
+// remains decoupled. Filter checkboxes (items/skills/wards) are not
+// applied to mock - the fixture events stand as authored.
+let _replayEventsMockPromise = null;
+function _replayEventsMockLoad() {
+  if (_replayEventsMockPromise) return _replayEventsMockPromise;
+  _replayEventsMockPromise = fetch("/data/ui_mock/replay.json", { cache: "no-store" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .catch(() => null);
+  return _replayEventsMockPromise;
+}
+function _replayEventsIsMock() {
+  return document.body && document.body.dataset.uiMock === "1";
+}
+
 function _escHtml(s) {
   const div = document.createElement("div");
   div.textContent = String(s == null ? "" : s);
@@ -223,6 +241,17 @@ export function loadReplayEvents(matchId) {
   }
   _RE.matchId = matchId;
   section.hidden = false;
+  if (_replayEventsIsMock()) {
+    _replayEventsMockLoad()
+      .then((m) => {
+        if (!m || !Array.isArray(m.matches)) { _RE.events = []; _renderEvents(); return; }
+        const hit = m.matches.find((x) => x.match_id === matchId);
+        _RE.events = (hit && Array.isArray(hit.events)) ? hit.events : [];
+        _renderEvents();
+      })
+      .catch(() => { _RE.events = []; _renderEvents(); });
+    return;
+  }
   const includeParam = [..._RE.include].sort().join(",");
   const url = `/api/replay/events?match_id=${encodeURIComponent(matchId)}` +
               (includeParam ? `&include=${encodeURIComponent(includeParam)}` : "");
