@@ -2718,11 +2718,28 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       strip.appendChild(pill);
     }
   }
+  // UI scale v2.1 page #6 audit ritual step 5 state-coverage mock fixture
+  // (2026-05-23). When body.dataset.uiMock === "1" the fetch short-
+  // circuits to /data/ui_mock/home.json instead of /api/home/summary.
+  let _homeMockPromise = null;
+  function _homeMockLoad() {
+    if (_homeMockPromise) return _homeMockPromise;
+    _homeMockPromise = fetch("/data/ui_mock/home.json", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .catch(() => null);
+    return _homeMockPromise;
+  }
+  function _homeIsMock() {
+    return document.body && document.body.dataset.uiMock === "1";
+  }
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
-    fetch("/api/home/summary", { cache: "no-store" })
-      .then((r) => (r && r.ok ? r.json() : null))
+    const promise = _homeIsMock()
+      ? _homeMockLoad()
+      : fetch("/api/home/summary", { cache: "no-store" })
+          .then((r) => (r && r.ok ? r.json() : null));
+    promise
       .then((data) => {
         _HOME.fetching = false;
         if (!data) return;
