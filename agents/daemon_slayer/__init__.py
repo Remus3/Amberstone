@@ -1321,7 +1321,140 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.47.0"
+ENGINE_VERSION = "1.48.0"
+# 1.48.0 (cc_conditional wave 11 - +2 entries / +2 net-new champions
+# closing 2 schema-lift-verified candidates: Sion R channel-time-
+# gated stun + Gnar W form 1 Wallop Mega-form-gated stun via
+# effects_descriptions consumption, 2026-05-23):
+#
+# Wave 11 ships +2 entries across +2 net-new champions using ONLY the
+# existing 12 condition tags. NO new tag constants. The registry total
+# grows 44 entries / 38 champions -> 46 entries / 40 champions.
+#
+# NEW cc_conditional entries:
+#
+#   * Sion R Unstoppable Onslaught (primary registry) - COND_CHANNEL_COMPLETION
+#     - durations_s=(1.0,) representative midpoint of channel-time
+#       range 0.25-1.75s explicit in effects_descriptions ("Enemies
+#       in a smaller radius are also pulled towards Sion over 0.5
+#       seconds and become stunned after a brief delay for 0.25 :
+#       1.75 (based on channel time) seconds")
+#     - probability=0.5 tag midpoint
+#     - mechanic: stun fires only on full-charge slam-impact; channel-
+#       cancel via partial charge or hard CC on Sion mid-charge
+#       nullifies. Closes item 150 + 151 wave-8/9 REJECT carries
+#       implicitly (Sion R was not previously pitched explicitly but
+#       falls under "channel-completion conditional channel-time-
+#       gated stun" pattern). Coexists with the wave 0 unconditional
+#       Sion Q (Decimating Smash stun 1.25-2.25s) on a different
+#       spell slot via setdefault.
+#
+#   * Gnar W form_index=1 Wallop (sidecar registry, Mega-rage-
+#     transformation-form-gated stun) - COND_FRENZY_STATE
+#     - durations_s=(1.25,) flat across all 5 W ranks per
+#       effects_descriptions ("Gnar slams his arm down in the
+#       target direction, dealing physical damage to all enemies
+#       struck within the area and stunning them for 1.25 seconds")
+#     - probability=0.4 COND_FRENZY_STATE tag midpoint
+#     - mechanic: Gnar W in Mini form (form_index=0, Hyper) is a
+#       passive on-hit stack with no first-order CC. Gnar W in Mega
+#       form (form_index=1, Wallop) is the Mega-form-gated active
+#       stun. Maps to COND_FRENZY_STATE - Gnar must be in the
+#       rage-meter-driven Mega transform state to cast Wallop.
+#       Parallel to Renekton W Fury wave 9 + Karma W form 1 wave
+#       10 (THIRD consumer of the COND_FRENZY_STATE tag). The Gnar
+#       R unconditional terrain-collision stun 0.75s stays in
+#       `_PER_SPELL_CC_DURATIONS` on a different spell slot
+#       unchanged.
+#
+# Wave 11 REJECT verdicts (effects_descriptions schema-lift-verified
+# this run; CARRY-FORWARD to future waves only if new evidence
+# surfaces):
+#
+#   * Aatrox R World Ender - the 3s fear in description
+#     "fearing nearby enemy minions and monsters for 3 seconds"
+#     is explicitly minion+monster-only. NO champion-facing CC.
+#     CONFIRMED-REJECT.
+#   * Volibear R Stormbringer - description "Volibear also
+#     disables enemy turrets in an area" + "slowing nearby enemies
+#     by 50% decaying over 1 second" confirms turret-disable +
+#     champion slow only. Slow is NOT first-order CC. CONFIRMED-
+#     REJECT.
+#   * Briar W Blood Frenzy - description confirms self-buff state
+#     (ghosting + bonus attack speed + bonus movement speed +
+#     basic-attack empowerment). No CC granted to other spells
+#     while in frenzy. Briar W form_index=1 Snack Attack adds bonus
+#     damage + 50 bonus range + life-steal on next AA - no CC.
+#     CONFIRMED-REJECT.
+#   * Sion E Roar of the Slayer - stun 0.75s explicit but mechanic
+#     "If the target is a minion or non-epic monster, they are
+#     also stunned" is minion-only. NO champion-facing stun.
+#     CONFIRMED-REJECT.
+#   * Twisted Fate W Pick a Card Gold - ALREADY in primary registry
+#     as wave 0 COND_GOLD_CARD stun 1.5s. NOT a wave 11 candidate.
+#   * Lillia W Watch Out! Eep! - effects_descriptions shows
+#     damage + center-bonus only, no CC. CONFIRMED-REJECT.
+#   * Lillia R Lilting Lullaby - drowsy 1.5s + 2.0s sleep ALREADY
+#     in `_PER_SPELL_CC_DURATIONS` unconditional. NOT a wave 11
+#     candidate.
+#   * Ekko W ALREADY in `_PER_SPELL_CC_DURATIONS` unconditional.
+#     Ekko R Chronobreak description shows damage + self-heal +
+#     stasis (Ekko's own stasis, not target CC). NO champion-
+#     facing CC. CONFIRMED-REJECT.
+#   * Smolder R MMOOOMMMM! - description "exhales a wave of fire"
+#     + Smolder-heal + damage; no CC mention. CONFIRMED-REJECT.
+#   * Karma E Inspire/Defiance - both forms shield + MS only, no
+#     CC. CONFIRMED-REJECT.
+#   * Vladimir R Hemoplague - description "increasing the damage
+#     they take from all sources by 10%" + delayed burst damage +
+#     Vlad heal. NO CC. CONFIRMED-REJECT.
+#   * Singed E Fling - description includes conditional Mega-
+#     Adhesive root ("If the target lands on Mega Adhesive's area
+#     of effect after the displacement, they are rooted for a
+#     duration") but Singed E primary CC (knockup 1.0s) is ALREADY
+#     in `_PER_SPELL_CC_DURATIONS` unconditional. The Mega-Adhesive
+#     follow-up root has no explicit duration in effects_descriptions
+#     (just "for a duration") and requires both spells cast in
+#     sequence - NOT verifiable from current schema at wave 11.
+#     SKIP for now; would need W-overlap target-debuffed encoding.
+#   * Sion R adjacent: the slow 3s "and slowed by 3 seconds" is
+#     slow only, NOT first-order CC. The wave 11 entry captures
+#     only the inner-radius stun.
+#   * Nidalee / Elise / Jayce / Kayle - no schema-lift-verifiable
+#     champion-CC mechanics surface in their effects_descriptions
+#     blocks beyond what's already encoded (Elise E human-form
+#     cocoon stun ALREADY in `_PER_SPELL_CC_DURATIONS`; Jayce E
+#     Thundering Blow root "over the cast time" lacks explicit
+#     duration value; Kayle E + R have NO CC; Nidalee R is a
+#     transform, no CC).
+#   * Jayce E Thundering Blow - the description "Jayce roots the
+#     target enemy over the cast time, then swings his hammer at
+#     them to deal magic damage, capped against monsters, and
+#     knock them back 600 units" includes a brief root over the
+#     cast time. The cast time is ~0.4s per Riot wiki (NOT in
+#     effects_descriptions). SKIP for wave 11 since the exact
+#     duration value is not in the parse-strip; would need patch
+#     wiki cross-reference. CARRY-FORWARD for wave 12+.
+#   * Akshan Q + R - description shows damage + AA-AS-buff + life-
+#     steal + execute, no first-order CC. CONFIRMED-REJECT.
+#   * Tristana E Explosive Charge - description shows damage
+#     stacking + detonation; the Buster Shot follow-up delays the
+#     detonation but no CC component. CONFIRMED-REJECT.
+#
+# Multi-wave coexistence count: Sion (Q wave 0 unconditional + R wave
+# 11 cc_conditional) joins as the FIFTH multi-entry-within-cc_conditional/
+# unconditional-cross champion. Gnar (R wave 0 unconditional + W form 1
+# wave 11 sidecar cc_conditional) joins as the SIXTH. Both via the
+# separate-registry coexistence pattern (unconditional =
+# `_PER_SPELL_CC_DURATIONS`; conditional primary =
+# `_PER_SPELL_CC_CONDITIONAL`; conditional form-explicit =
+# `_PER_SPELL_CC_CONDITIONAL_FORMS`).
+#
+# COND_FRENZY_STATE tag total consumers: 3 (Renekton W wave 9 +
+# Karma W form 1 wave 10 + Gnar W form 1 wave 11).
+# COND_RANGE_GATED tag total consumers: 0 (still forward-marker per
+# wave 7 schema lift).
+#
 # 1.47.0 (cc_conditional wave 10 - same-spell-slot registry schema
 # lift closing the (a)-class REJECT carry from wave 9 + Hwei E form 2
 # EW root via effects_descriptions consumption, 2026-05-23):
