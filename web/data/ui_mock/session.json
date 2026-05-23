@@ -1,0 +1,36 @@
+{
+  "mock": true,
+  "note": "Mock fixture for the Session view (state-coverage check 5/7 per docs/UI_SCALE_SPEC_V2.md page #5, 2026-05-23). Activated by ?ui_mock=1 URL flag or Settings > Display > Dev UI mock data toggle.",
+  "window_label": "session 2026-05-23 (started 11:42 AM, 4h 18m)",
+  "games": 6,
+  "time_played_s": 12420,
+  "started_at": "11:42 AM",
+  "last_at": "3:58 PM",
+  "total_kda": "47/24/68",
+  "avg_kda": 4.79,
+  "grades": {
+    "S": 2,
+    "A": 3,
+    "B": 1
+  },
+  "modes": {
+    "ARAM": 3,
+    "Ranked Solo": 2,
+    "Arena": 1
+  },
+  "champions": [
+    {"champion": "Jinx",        "games": 2, "kda": "18/6/14"},
+    {"champion": "Kai'Sa",      "games": 1, "kda": "9/4/11"},
+    {"champion": "Tristana",    "games": 1, "kda": "11/3/8"},
+    {"champion": "Senna",       "games": 1, "kda": "5/8/22"},
+    {"champion": "RenataGlasc", "games": 1, "kda": "4/3/13"}
+  ],
+  "matches": [
+    {"champion": "RenataGlasc", "mode": "Arena",       "kda": "4/3/13",  "grade": "B+", "timestamp": "3:58 PM"},
+    {"champion": "Senna",       "mode": "ARAM",        "kda": "5/8/22",  "grade": "A",  "timestamp": "3:14 PM"},
+    {"champion": "Jinx",        "mode": "Ranked Solo", "kda": "11/2/8",  "grade": "S",  "timestamp": "2:32 PM"},
+    {"champion": "Tristana",    "mode": "ARAM",        "kda": "11/3/8",  "grade": "A",  "timestamp": "1:48 PM"},
+    {"champion": "Kai'Sa",      "mode": "Ranked Solo", "kda": "9/4/11",  "grade": "A-", "timestamp": "12:55 PM"},
+    {"champion": "Jinx",        "mode": "ARAM",        "kda": "7/4/6",   "grade": "S-", "timestamp": "12:02 PM"}
+  ]
+}
