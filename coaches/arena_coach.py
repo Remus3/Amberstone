@@ -921,7 +921,7 @@ Rules:
         r.TIERED_VALIDATORS = self.TIERED_VALIDATORS
         self._reader = r
 
-    def read(self):
+    def read(self) -> "dict | None":
         return self._reader.read_tiered()
 
 
