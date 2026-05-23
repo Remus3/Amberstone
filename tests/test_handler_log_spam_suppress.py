@@ -39,8 +39,10 @@ class SuppressLogPathsConstantTests(unittest.TestCase):
         # diagnostic signal; narrowing it costs cost-saving. Pass-3
         # extended it from the original 3 (decisions / heartbeat /
         # vision-state at 2Hz) to 8 by adding 5 lower-cadence pollers
-        # (asset-stamp / ui-version / activity / env / locked-champion)
-        # each at ~5-15s cadence but cumulative still high-volume.
+        # (asset-stamp / ui-version / activity / env / locked-champion).
+        # 2026-05-23 added /api/minimap-crop - at 0.417/sec (UI 250ms
+        # fast poll gated on MINIMAP_MODES + document.hidden) it became
+        # the top non-suppressed contributor per item 151 Slice C audit.
         expected = {
             "GET /api/decisions ",
             "GET /api/decisions/heartbeat ",
@@ -50,6 +52,7 @@ class SuppressLogPathsConstantTests(unittest.TestCase):
             "GET /api/activity ",
             "GET /api/env ",
             "GET /api/locked-champion ",
+            "GET /api/minimap-crop ",
         }
         self.assertEqual(set(_handler._SUPPRESS_LOG_PATHS), expected)
         # Ordering is preserved as declared in the source for readability.
@@ -93,6 +96,19 @@ class LogMessageSuppressionTests(unittest.TestCase):
                 "GET /api/vision-state HTTP/1.1",
                 "200",
                 "456",
+            )
+            mock_debug.assert_not_called()
+
+    def test_minimap_crop_poll_is_suppressed(self):
+        with patch.object(_handler.log, "debug") as mock_debug:
+            _handler.Handler.log_message(
+                _FakeHandler(),
+                '%s - - [%s] "%s" %s %s',
+                "127.0.0.1",
+                "23/May/2026 01:00:00",
+                "GET /api/minimap-crop HTTP/1.1",
+                "200",
+                "12345",
             )
             mock_debug.assert_not_called()
 
