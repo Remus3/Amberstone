@@ -65,7 +65,8 @@
 .csv-card {
   background: var(--card-bg, #14171c);
   border: 1px solid var(--card-border, #2a2f37);
-  border-radius: 6px;
+  /* UI scale v2.1 (2026-05-23): border-radius 6 -> --panel-radius-sm (10). */
+  border-radius: var(--panel-radius-sm);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
@@ -73,7 +74,8 @@
 }
 
 .csv-card-head {
-  font-size: 16px;
+  /* UI scale v2.1 (2026-05-23): 16 -> --fs-xs (tokenize at floor). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -159,14 +161,16 @@
  * right-aligned text so the icon's left edge stays stable across
  * locked/hovering/empty states. */
 .csv-mypick-name {
-  font-size: 23px;
+  /* UI scale v2.1: 23 -> --fs-lg (29). Champion name is the page hero. */
+  font-size: var(--fs-lg);
   font-weight: 900;
   color: #fff;
   margin: 0;
   line-height: 1.1;
 }
 .csv-mypick-state {
-  font-size: 15px;
+  /* UI scale v2.1: 15 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
   color: #9ca3af;
   margin: 0;
   line-height: 1.15;
@@ -196,14 +200,18 @@
   display: block;
   width: 100%;
   margin: 4px 0 14px;
+  /* UI scale v2.1: padding kept; min-height pinned to --hit-min for
+   * fingertip target. font-size 16 -> --fs-md (22) - LOCK IN is the
+   * page's primary CTA; border-radius 6 -> --panel-radius-sm (10). */
   padding: 12px 16px;
-  font-size: 16px;
+  min-height: var(--hit-min);
+  font-size: var(--fs-md);
   font-weight: 800;
   letter-spacing: 0.6px;
   color: #d4f8de;
   background: #0a2014;
   border: 2px solid #2c6a3c;
-  border-radius: 6px;
+  border-radius: var(--panel-radius-sm);
   cursor: pointer;
   transition: 0.15s;
   text-transform: uppercase;
@@ -238,7 +246,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  /* UI scale v2.1: 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -254,7 +263,8 @@
   gap: 6px;
 }
 .csv-archetype-title .csv-arch-source {
-  font-size: 11px;
+  /* UI scale v2.1: 11 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #6b7280;
   text-transform: none;
@@ -272,7 +282,8 @@
  * button is `.is-active` with a slight green hue + border so the
  * operator can see "auto mode is engaged". Click reverts to default. */
 .csv-arch-auto {
-  font-size: 11px;
+  /* UI scale v2.1: 11 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.3px;
   color: #9ca3af;
@@ -322,7 +333,8 @@
   background: #21262e;
 }
 .csv-arch-btn .csv-arch-label {
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
   font-weight: 800;
   letter-spacing: 0.3px;
 }
@@ -410,12 +422,10 @@
 .csv-team-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
 
 .csv-team-cell-nm {
-  /* Reduced 14→13 per operator - frees up a few pixels to the right
-   * for the lock/timer column in narrow panels. s214: expanded inline
-   * padding so the hover target for the champion-name tooltip is the
-   * full cell-width column, not just the visible text glyph row.
-   * No row-height growth since the cell uses align-items:center. */
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-sm (18). Champion name reads more
+   * prominently at viewing distance; padding stays compact so the row
+   * doesn't grow. */
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: #e8eaf0;
   white-space: nowrap;
@@ -488,7 +498,8 @@
   white-space: nowrap;
 }
 .csv-team-cell-tag {
-  font-size: 11px;
+  /* UI scale v2.1: 11 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #cbd5e1;
   letter-spacing: 0.04em;
@@ -510,7 +521,8 @@
 .csv-team-cell-tag--flex     { color: #cbd5e1; border-color: #2a2f37; }
 /* s213 v3: confidence pill - grid col 7 (rightmost). No abs positioning. */
 .csv-card-enemies .csv-team-cell-confidence {
-  font-size: 11px;
+  /* UI scale v2.1: 11 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   padding: 1px 5px;
   background: #1c2026;
@@ -539,7 +551,8 @@
  *   unknown: sample_n < 5 (small-sample override)
  */
 .csv-card-enemies .csv-team-cell-threat {
-  font-size: 11px;
+  /* UI scale v2.1: 11 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   padding: 1px 6px;
   background: #1c2026;
@@ -558,7 +571,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
   color: #9ca3af;
   text-align: left;
 }
@@ -681,7 +695,8 @@
   color: #ef4444;
 }
 .csv-team-cell-summ {
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
   color: #9ca3af;
   white-space: nowrap;
   overflow: hidden;
@@ -691,7 +706,8 @@
 }
 
 .csv-team-cell-pos {
-  font-size: 12px;
+  /* UI scale v2.1: 12 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #9ca3af;
   text-transform: uppercase;
@@ -709,7 +725,8 @@
  * carries the "this is yours" signal in a single chromatic language
  * across both the cell border and the role pip. */
 .csv-team-cell.me .csv-team-cell-pos {
-  font-size: 15px;
+  /* UI scale v2.1: 15 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
   font-weight: 900;
   color: #818cf8;
   letter-spacing: 0.08em;
@@ -741,7 +758,8 @@
   border-top: 1px solid #232830;
 }
 .csv-builds-title {
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #9ca3af;
   text-transform: uppercase;
@@ -758,7 +776,8 @@
   background: #1a1d23;
   border: 1px solid #2a2f37;
   border-radius: 999px;
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #e8eaf0;
   text-transform: uppercase;
@@ -770,7 +789,8 @@
 
 .csv-empty {
   color: #6a7280;
-  font-size: 14px;
+  /* UI scale v2.1: 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   text-align: center;
   padding: 16px 8px;
   font-style: italic;
