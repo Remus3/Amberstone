@@ -4,11 +4,14 @@
  * data: today's session, last 5 matches, this week's champ summary,
  * service health. Reads from /api/home/summary which queries
  * data/match_history.db (fresh per-game capture). */
+/* v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #6 Home, 2026-05-23):
+ * .home-* selectors migrated to v2.1 tokens. .lobby-* and .cs-* remain
+ * on v1 tokens (those belong to pages #7 + #8-10 in the audit order). */
 .home-overlay {
-  margin: 12px 18px 0; padding: 14px 18px;
+  margin: var(--space-3) var(--space-5) 0; padding: var(--panel-padding-comp) var(--space-5);
   background: var(--surface); border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
-  display: flex; flex-direction: column; gap: 10px;
+  border-radius: var(--panel-radius);
+  display: flex; flex-direction: column; gap: var(--panel-gap-tight);
   /* Match the view-section flex behavior so the footer stays pinned to
    * the viewport bottom regardless of which view is active. Without
    * this, home-overlay was content-sized and the footer floated up to
@@ -34,7 +37,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-grid {
   display: grid;
   grid-template-columns: 1fr 1.4fr 1.1fr 0.9fr;
-  gap: 14px;
+  gap: var(--panel-gap);
 }
 
 /* ── V1 hero banner ───────────────────────────────────────────────── */
@@ -42,15 +45,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   position: relative;
   display: grid;
   grid-template-columns: minmax(180px, 1fr) 2fr auto;
-  gap: 24px;
+  gap: var(--space-5);
   align-items: center;
-  padding: 12px 20px;
+  padding: var(--panel-padding-comp) var(--panel-padding);
   background: linear-gradient(135deg,
               rgba(138, 140, 240, 0.06),
               rgba(245, 184, 124, 0.04));
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  min-height: 90px;
+  border-radius: var(--panel-radius-sm);
+  min-height: 120px;
   overflow: hidden;
 }
 /* Champion motif background. JS sets background-image inline based on
@@ -77,17 +80,17 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-hero-chips { position: relative; z-index: 1; }
 .home-hero-greet { min-width: 0; }
 .home-hero-time {
-  font-size: 23px; font-weight: 800; color: var(--text);
+  font-size: var(--fs-lg); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
   line-height: 1.1;
 }
 .home-hero-sub {
-  font-size: 14px; color: var(--text-faint);
+  font-size: var(--fs-sm); color: var(--text-faint);
   letter-spacing: 0.06em; text-transform: uppercase;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 .home-hero-headline {
-  font-size: 27px; font-weight: 800; color: var(--text);
+  font-size: var(--fs-xl); font-weight: 800; color: var(--text);
   letter-spacing: 0.01em;
   text-align: center;
   line-height: 1.2;
@@ -96,26 +99,26 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-hero-headline.down  { color: var(--bad); }
 .home-hero-headline.flat  { color: var(--text-dim); }
 .home-hero-chips {
-  display: flex; gap: 10px; flex-wrap: wrap;
+  display: flex; gap: var(--panel-gap-tight); flex-wrap: wrap;
   justify-content: flex-end;
 }
 .home-hero-chip {
   display: inline-flex; flex-direction: column; align-items: flex-start;
-  padding: 6px 12px; min-width: 110px;
+  padding: var(--space-2) var(--space-3); min-width: 130px;
   background: var(--surface-head);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
 }
 .home-hero-chip-lbl {
-  font-size: 14px; letter-spacing: 0.18em; font-weight: 700;
+  font-size: var(--fs-xs); letter-spacing: 0.18em; font-weight: 700;
   color: var(--label); text-transform: uppercase;
 }
 .home-hero-chip-row {
-  display: flex; align-items: center; gap: 8px;
-  margin-top: 3px;
+  display: flex; align-items: center; gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 .home-hero-chip-val {
-  font-size: 20px; font-weight: 800; color: var(--text);
+  font-size: var(--fs-stat); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -138,12 +141,12 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-body {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
-  gap: 14px;
+  gap: var(--panel-gap);
 }
 
 /* ── V1 recent matches as visual cards ────────────────────────────── */
 #home-recent-list.home-recent-list {
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; flex-direction: column; gap: var(--space-2);
   list-style: none; margin: 0; padding: 0;
 }
 .home-recent-card {
@@ -151,13 +154,14 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   /* s218 v2: fixed column widths so every row's items / kda / grade
    * line up vertically top-to-bottom. Auto sizing was letting variable
    * KDA-string widths shift downstream columns. */
-  grid-template-columns: 6px 44px 1fr 220px 100px 48px;
-  gap: 12px;
+  grid-template-columns: 6px 56px 1fr 250px 120px 56px;
+  gap: var(--space-3);
   align-items: center;
-  padding: 8px 12px 8px 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
   background: var(--surface-head);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
+  min-height: var(--hit-min);
   overflow: hidden;
   cursor: pointer;
   transition: border-color 0.12s, transform 0.12s;
@@ -171,8 +175,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   flex: none;
 }
 .home-recent-item-slot {
-  width: 28px; height: 28px;
-  border-radius: 4px;
+  width: 36px; height: 36px;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface);
   border: 1px solid var(--border-soft);
   display: inline-flex; align-items: center; justify-content: center;
@@ -189,8 +193,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   width: 100%; height: 100%; object-fit: cover;
 }
 .home-recent-img {
-  width: 44px; height: 44px;
-  border-radius: 6px;
+  width: 56px; height: 56px;
+  border-radius: var(--panel-radius-sm);
   object-fit: cover;
   border: 1px solid var(--border-soft);
   background: var(--surface);
@@ -200,7 +204,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   transform: translateX(2px);
 }
 .home-recent-stripe {
-  width: 6px; height: 100%; min-height: 44px;
+  width: 6px; height: 100%; min-height: 56px;
   background: var(--text-dim);
 }
 .home-recent-stripe.tier-good { background: var(--good); }
@@ -208,21 +212,21 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-recent-stripe.tier-bad  { background: var(--bad); }
 .home-recent-main { min-width: 0; padding-left: 4px; }
 .home-recent-champ {
-  font-size: 19px; font-weight: 800; color: var(--text);
+  font-size: var(--fs-md); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
   display: block;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .home-recent-meta {
-  font-size: 14px; color: var(--text-faint);
+  font-size: var(--fs-sm); color: var(--text-faint);
   letter-spacing: 0.04em; text-transform: uppercase;
-  margin-top: 3px;
+  margin-top: var(--space-1);
   display: block;
 }
 .home-recent-kda {
-  font-size: 17px; font-weight: 700; color: var(--text);
+  font-size: var(--fs-md); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums;
-  padding: 5px 12px;
+  padding: var(--space-1) var(--space-3);
   background: var(--surface);
   border-radius: 999px;
   white-space: nowrap;
@@ -233,10 +237,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   text-align: left;
 }
 .home-recent-grade-badge {
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 17px; font-weight: 900;
-  border-radius: 6px;
+  font-size: var(--fs-md); font-weight: 900;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface);
   color: var(--text-dim);
   border: 1px solid var(--border);
@@ -257,7 +261,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-combo {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .home-combo[hidden] { display: none; }
 
@@ -265,27 +269,27 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-trends {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
 }
 .home-trends[hidden] { display: none; }
 .home-trend-card {
   display: grid;
   grid-template-columns: auto 1fr;
   grid-template-rows: auto auto;
-  column-gap: 12px;
+  column-gap: var(--space-3);
   align-items: center;
-  padding: 8px 14px;
+  padding: var(--space-2) var(--panel-padding-comp);
   background: var(--surface-head);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
 }
 .home-trend-lbl {
-  font-size: 12px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   color: var(--label); text-transform: uppercase;
   grid-column: 1; grid-row: 1;
 }
 .home-trend-val {
-  font-size: 21px; font-weight: 800; color: var(--text);
+  font-size: var(--fs-lg); font-weight: 800; color: var(--text);
   font-variant-numeric: tabular-nums;
   grid-column: 1; grid-row: 2;
   white-space: nowrap;
@@ -315,8 +319,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-coach-build {
   background: var(--surface-head);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
+  border-radius: var(--panel-radius-sm);
+  padding: var(--panel-padding-comp);
 }
 .home-coach-pick[hidden],
 .home-coach-build[hidden] { display: none; }
@@ -327,13 +331,13 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-coach-pick-head,
 .home-coach-build-head {
-  font-size: 14px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   color: var(--label); text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 .home-coach-build-sub {
-  font-size: 11px; font-weight: 700; color: var(--text-faint);
-  margin-left: 8px; letter-spacing: 0.06em;
+  font-size: var(--fs-xs); font-weight: 700; color: var(--text-faint);
+  margin-left: var(--space-2); letter-spacing: 0.06em;
 }
 .home-coach-pick-body {
   /* s218 v2: Section 1 sized to its content (champion intro), Sections
@@ -361,7 +365,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   align-items: baseline;
 }
 .home-pick-tip-label {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -369,7 +373,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   white-space: nowrap;
 }
 .home-pick-tip-value {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   color: var(--text-faint);
   font-style: italic;
   overflow: hidden;
@@ -387,7 +391,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   align-items: baseline;
 }
 .home-pick-meta-label {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -395,25 +399,25 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   white-space: nowrap;
 }
 .home-pick-meta-value {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   color: var(--text);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: left;
 }
 .home-coach-pick-img {
-  width: 56px; height: 56px;
-  border-radius: 8px;
+  width: 72px; height: 72px;
+  border-radius: var(--panel-radius-sm);
   border: 1px solid var(--info-soft);
   background: var(--surface);
   object-fit: cover;
   flex: none;
 }
 .home-coach-pick-meta {
-  display: flex; flex-direction: column; min-width: 0; gap: 4px;
+  display: flex; flex-direction: column; min-width: 0; gap: var(--space-1);
 }
 .home-coach-pick-champ {
-  font-size: 23px; font-weight: 800; color: var(--info);
+  font-size: var(--fs-lg); font-weight: 800; color: var(--info);
   letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   /* s218 v7: clickable - routes to History filtered by this champion. */
@@ -426,15 +430,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   text-decoration-color: color-mix(in srgb, var(--good) 50%, transparent);
 }
 .home-coach-pick-reason {
-  font-size: 14px; color: var(--text-faint);
+  font-size: var(--fs-sm); color: var(--text-faint);
   letter-spacing: 0.04em;
 }
 .home-coach-build-items {
-  display: flex; gap: 6px; flex-wrap: wrap;
+  display: flex; gap: var(--space-2); flex-wrap: wrap;
 }
 .home-coach-build-item {
-  width: 44px; height: 44px;
-  border-radius: 6px;
+  width: 56px; height: 56px;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface);
   border: 1px solid var(--border-soft);
   object-fit: cover;
@@ -477,14 +481,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   transform: translate(-50%, -50%);
   width: min(960px, 92vw);
   z-index: 9200;
-  padding: 18px 22px;
+  padding: var(--panel-padding) var(--space-5);
 }
 .home-find-match-picker .lq-mode-section {
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 .home-find-match-picker .lq-mode-item {
-  font-size: 16px;
-  padding: 12px 8px;
+  font-size: var(--fs-md);
+  padding: var(--space-3) var(--space-2);
+  min-height: var(--hit-min);
 }
 /* Dimmer behind the picker - keeps focus on the queue choice. */
 .home-find-match-backdrop {
@@ -499,14 +504,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-actions {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 10px;
+  gap: var(--panel-gap-tight);
 }
 .home-action-tile {
   display: flex; flex-direction: column; align-items: center;
-  padding: 12px 10px;
+  padding: var(--panel-padding-comp) var(--space-3);
   background: var(--surface-head);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
+  min-height: var(--hit-min);
   cursor: pointer;
   font-family: inherit;
   text-align: center;
@@ -537,8 +543,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-action-tile:active { transform: translateY(0); }
 .home-action-icon {
-  width: 26px; height: 26px;
-  margin-bottom: 6px;
+  width: 36px; height: 36px;
+  margin-bottom: var(--space-2);
   color: var(--info);
   transition: color 0.12s, transform 0.12s;
 }
@@ -547,18 +553,18 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   transform: scale(1.08);
 }
 .home-action-label {
-  font-size: 18px; font-weight: 800; color: var(--text);
+  font-size: var(--fs-md); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
 }
 .home-action-sub {
-  font-size: 14px; color: var(--text-faint);
+  font-size: var(--fs-xs); color: var(--text-faint);
   letter-spacing: 0.06em; text-transform: uppercase;
-  margin-top: 3px;
+  margin-top: var(--space-1);
 }
 
 /* ── V2 this-week mini-chart (suggestion #5) ──────────────────────── */
 .home-week-chart {
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: var(--space-2);
   list-style: none; margin: 0; padding: 0;
 }
 .home-week-bar-row {
@@ -566,10 +572,11 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   /* s218 v2: fixed widths so every row's columns line up top-to-bottom
    * regardless of content length. Was auto-sized which let KDA-string
    * width drift shift the CS + grade cells laterally per row. */
-  grid-template-columns: minmax(80px, 1fr) 80px 140px 140px 36px;
-  gap: 10px;
+  grid-template-columns: minmax(100px, 1fr) 90px 170px 170px 44px;
+  gap: var(--panel-gap-tight);
   align-items: center;
-  padding: 6px 8px 6px 11px;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-3);
+  min-height: var(--hit-min);
   /* s218 v7: visually demoted - transparent bg + bottom-only border so
    * rows read as a list, not as cards (was background: surface-head +
    * 1px all-around border). The grade-tint signal moves to a 3px left
@@ -592,35 +599,35 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * so each week-row is a single visual line. Slightly smaller than the
  * RECENT-card badge since the row height target is tighter. */
 .home-week-bar-row .home-recent-grade-badge {
-  width: 28px; height: 28px;
-  font-size: 14px;
+  width: 36px; height: 36px;
+  font-size: var(--fs-sm);
   margin-right: 0;
 }
 .home-week-bar-name {
   position: relative;
-  font-size: 16px; font-weight: 700; color: var(--text);
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
   letter-spacing: 0.02em;
-  padding: 6px 10px;
+  padding: var(--space-2) var(--panel-gap-tight);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  border-radius: 3px;
+  border-radius: 4px;
   background: linear-gradient(to right,
               var(--info-soft) 0%, var(--info-soft) var(--bar-pct, 50%),
               transparent var(--bar-pct, 50%), transparent 100%);
 }
 .home-week-bar-games {
   /* s218: bumped from text-faint → text-dim + weight 700 for legibility. */
-  font-size: 14px; color: var(--text-dim); font-weight: 700;
+  font-size: var(--fs-sm); color: var(--text-dim); font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
 .home-week-bar-kda {
-  font-size: 15px; font-weight: 700; color: var(--text);
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums;
-  padding: 3px 10px;
+  padding: var(--space-1) var(--panel-gap-tight);
   background: var(--surface);
   border-radius: 999px;
-  min-width: 44px;
+  min-width: 56px;
   /* s218 v2: left-anchored inside its fixed-width cell so all rows'
    * KDA pills start at the same x. justify-self: start prevents grid
    * from centering the inline-flex inside the cell. */
@@ -635,13 +642,13 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   /* s218 v7: bumped 13→14px to separate it clearly from the 15px
    * ratio pill - was sitting at the tertiary floor next to a primary
    * value and reading ambiguous in the hierarchy. */
-  font-size: 14px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-dim);
   letter-spacing: 0.04em;
 }
 .home-week-bar-cs {
-  font-size: 13px; color: var(--text-dim);
+  font-size: var(--fs-xs); color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -651,17 +658,18 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-alerts {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .home-alerts-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
-  padding: 6px 12px;
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--hit-min);
   background: var(--surface-head);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   cursor: pointer;
   transition: border-color 0.12s, transform 0.12s;
 }
@@ -671,9 +679,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-alerts-icon {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  font-weight: 900; font-size: 17px;
+  width: 36px; height: 36px;
+  border-radius: var(--panel-radius-sm);
+  font-weight: 900; font-size: var(--fs-md);
   font-family: inherit;
 }
 .home-alerts-icon.advisory { background: var(--bad-soft);  color: var(--bad); }
@@ -683,16 +691,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   display: flex; flex-direction: column; min-width: 0;
 }
 .home-alerts-lbl {
-  font-size: 14px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
 }
 .home-alerts-val {
-  font-size: 16px; color: var(--text);
-  margin-top: 3px;
+  font-size: var(--fs-sm); color: var(--text);
+  margin-top: var(--space-1);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .home-alerts-cta {
-  font-size: 14px; color: var(--text-faint);
+  font-size: var(--fs-xs); color: var(--text-faint);
   letter-spacing: 0.08em; text-transform: uppercase;
   white-space: nowrap;
 }
@@ -700,20 +708,20 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 
 /* ── V1 services strip (replaces the SERVICES card) ───────────────── */
 .home-services-strip {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  padding: 8px 10px;
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  padding: var(--space-2) var(--panel-gap-tight);
   background: var(--surface-head);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   list-style: none; margin: 0;
 }
 .home-services-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 12px;
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 999px;
-  font-size: 14px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -731,8 +739,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-card {
   background: var(--surface-head);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  border-radius: var(--panel-radius-sm);
+  padding: var(--panel-padding-comp);
   min-height: 140px;
   display: flex; flex-direction: column;
   /* s218 v7: explicit stretch so Recent 5 + This Week cards end at the
@@ -741,25 +749,25 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   align-self: stretch;
 }
 .home-card-head {
-  font-size: 14px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
-  margin-bottom: 8px;
-  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: var(--space-2);
+  display: flex; align-items: baseline; gap: var(--space-2);
   border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 6px;
+  padding-bottom: var(--space-2);
 }
 .home-card-sub {
-  font-size: 12px; color: var(--clock); font-weight: 700;
+  font-size: var(--fs-xs); color: var(--clock); font-weight: 700;
   letter-spacing: 0.06em; margin-left: auto;
 }
 .home-empty {
-  padding: 6px 0; font-size: 12px; color: var(--text-faint);
+  padding: var(--space-2) 0; font-size: var(--fs-xs); color: var(--text-faint);
   font-style: italic; list-style: none;
 }
-.home-today-stats { display: flex; flex-direction: column; gap: 4px; }
+.home-today-stats { display: flex; flex-direction: column; gap: var(--space-1); }
 .home-today-row {
   display: flex; justify-content: space-between; align-items: baseline;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .home-today-lbl { color: var(--text-dim); letter-spacing: 0.04em; }
 .home-today-val {
@@ -767,20 +775,21 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-recent-list, .home-week-list, .home-services-list {
   list-style: none; padding: 0; margin: 0;
-  display: flex; flex-direction: column; gap: 5px;
+  display: flex; flex-direction: column; gap: var(--space-2);
 }
 .home-recent-row {
   display: grid;
-  grid-template-columns: 36px 1fr 70px 24px;
-  align-items: center; gap: 8px;
-  padding: 4px 6px;
+  grid-template-columns: 44px 1fr 90px 32px;
+  align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   background: var(--surface-alt);
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-xs);
+  min-height: var(--hit-min);
 }
 .home-recent-grade {
-  font-weight: 900; font-size: 14px; text-align: center;
-  padding: 1px 0; border-radius: 3px;
+  font-weight: 900; font-size: var(--fs-sm); text-align: center;
+  padding: 1px 0; border-radius: 4px;
   letter-spacing: 0.04em;
 }
 .home-recent-grade.S { color: #ffd166; background: rgba(245,184,124,0.18); }
@@ -790,40 +799,41 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-recent-grade.D { color: #f5c1c8; background: rgba(240,126,139,0.12); }
 .home-recent-grade.F { color: var(--bad); background: var(--bad-soft); }
 .home-recent-champ { color: var(--text); font-weight: 700; }
-.home-recent-meta  { color: var(--text-faint); font-size: 11px; }
+.home-recent-meta  { color: var(--text-faint); font-size: var(--fs-xs); }
 .home-recent-kda   { color: var(--text-dim); font-variant-numeric: tabular-nums; text-align: right; }
 .home-recent-mode  {
-  color: var(--info); font-size: 10px; font-weight: 700;
+  color: var(--info); font-size: var(--fs-xs); font-weight: 700;
   letter-spacing: 0.08em; text-align: right;
 }
 .home-week-row {
   display: grid;
-  grid-template-columns: 1fr 50px 30px 30px;
-  align-items: center; gap: 6px;
-  padding: 4px 6px;
+  grid-template-columns: 1fr 64px 44px 44px;
+  align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   background: var(--surface-alt);
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-xs);
+  min-height: var(--hit-min);
 }
 .home-week-champ { color: var(--text); font-weight: 600; }
-.home-week-games { color: var(--text-dim); text-align: right; font-size: 11px; }
+.home-week-games { color: var(--text-dim); text-align: right; font-size: var(--fs-xs); }
 .home-week-kda   { color: var(--text); font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; }
 .home-week-grade {
-  text-align: center; font-weight: 800; font-size: 12px;
-  padding: 1px 0; border-radius: 3px;
+  text-align: center; font-weight: 800; font-size: var(--fs-xs);
+  padding: 1px 0; border-radius: 4px;
 }
 .home-services-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 4px 6px; font-size: 12px;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2); font-size: var(--fs-xs);
 }
 .home-services-dot {
-  width: 8px; height: 8px; border-radius: 50%;
+  width: 10px; height: 10px; border-radius: 50%;
   background: var(--text-faint); flex-shrink: 0;
 }
 .home-services-dot.ok { background: var(--good); box-shadow: 0 0 4px rgba(127,209,154,0.5); }
 .home-services-dot.err { background: var(--bad); }
 .home-services-name { color: var(--text); font-weight: 700; }
-.home-services-detail { color: var(--text-faint); font-size: 11px; margin-left: auto; }
+.home-services-detail { color: var(--text-faint); font-size: var(--fs-xs); margin-left: auto; }
 
 @media (max-width: 1100px) {
   .home-grid { grid-template-columns: 1fr 1fr; }

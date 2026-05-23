@@ -1,0 +1,105 @@
+{
+  "mock": true,
+  "note": "Mock fixture for the Home view (state-coverage check 5/7 per docs/UI_SCALE_SPEC_V2.md page #6, 2026-05-23). Activated by ?ui_mock=1 URL flag or Settings > Display > Dev UI mock data toggle.",
+  "today": {
+    "games": 4,
+    "total_kda": "32/14/47",
+    "avg_kda": 5.64,
+    "grades": {"S": 1, "A": 2, "B": 1},
+    "modes": {"ARAM": 2, "Ranked Solo": 1, "Arena": 1}
+  },
+  "streaks": {
+    "play_days": 5,
+    "good_grades": 3
+  },
+  "recent": [
+    {"champion": "Jinx",        "mode": "ARAM",        "kda": "12/3/8",  "grade": "S",  "items": [3094, 3006, 3144, 3072, 3046, 3158], "timestamp": "3:42 PM"},
+    {"champion": "Senna",       "mode": "ARAM",        "kda": "5/8/22",  "grade": "A",  "items": [3107, 3504, 3158, 3001, 3050],       "timestamp": "3:14 PM"},
+    {"champion": "Kai'Sa",      "mode": "Ranked Solo", "kda": "9/4/11",  "grade": "A-", "items": [3006, 3094, 3144, 3036, 3072, 3046], "timestamp": "12:55 PM"},
+    {"champion": "RenataGlasc", "mode": "Arena",       "kda": "4/3/13",  "grade": "B+", "items": [3742, 3107, 3504],                   "timestamp": "12:18 PM"},
+    {"champion": "Tristana",    "mode": "ARAM",        "kda": "11/3/8",  "grade": "A",  "items": [3094, 3006, 3072, 3046, 3036, 3158], "timestamp": "11:48 AM"}
+  ],
+  "this_week": [
+    {"champion": "Jinx",        "games": 6, "avg_kda": 9.2, "kills": 55, "deaths": 22, "assists": 48, "cs_total": 1340, "cs_per_min": 7.4, "best_grade": "S"},
+    {"champion": "Kai'Sa",      "games": 4, "avg_kda": 4.8, "kills": 32, "deaths": 15, "assists": 40, "cs_total": 920,  "cs_per_min": 8.1, "best_grade": "A"},
+    {"champion": "Tristana",    "games": 3, "avg_kda": 5.3, "kills": 28, "deaths": 9,  "assists": 19, "cs_total": 580,  "cs_per_min": 6.9, "best_grade": "A"},
+    {"champion": "Senna",       "games": 2, "avg_kda": 3.4, "kills": 12, "deaths": 8,  "assists": 27, "cs_total": 0,    "cs_per_min": 0,   "best_grade": "B"},
+    {"champion": "RenataGlasc", "games": 1, "avg_kda": 5.7, "kills": 4,  "deaths": 3,  "assists": 13, "cs_total": 0,    "cs_per_min": 0,   "best_grade": "B"}
+  ],
+  "services": [
+    {"name": "Daemon Slayer",   "ok": true,  "detail": "v1.48.0 / 16.10.1"},
+    {"name": "Vision Server",   "ok": true,  "detail": "tier 1 OCR"},
+    {"name": "Bridge (Peer)",    "ok": true,  "detail": "alive 42s"},
+    {"name": "Bridge (Game-PC)","ok": true,  "detail": "alive 12s"},
+    {"name": "LCU Agent",       "ok": true,  "detail": "phase Lobby"},
+    {"name": "Anthropic API",   "ok": true,  "detail": "haiku-4-5"}
+  ],
+  "trends": {
+    "cs_per_min": [
+      {"date": "2026-05-09", "value": 6.4},
+      {"date": "2026-05-10", "value": 6.8},
+      {"date": "2026-05-11", "value": 7.1},
+      {"date": "2026-05-12", "value": 6.9},
+      {"date": "2026-05-13", "value": 7.3},
+      {"date": "2026-05-14", "value": null},
+      {"date": "2026-05-15", "value": 7.5},
+      {"date": "2026-05-16", "value": 7.2},
+      {"date": "2026-05-17", "value": 6.8},
+      {"date": "2026-05-18", "value": 7.0},
+      {"date": "2026-05-19", "value": 7.4},
+      {"date": "2026-05-20", "value": 7.6},
+      {"date": "2026-05-22", "value": 7.8},
+      {"date": "2026-05-23", "value": 8.1}
+    ],
+    "gold_per_min": [
+      {"date": "2026-05-09", "value": 380.2},
+      {"date": "2026-05-10", "value": 395.4},
+      {"date": "2026-05-11", "value": 402.1},
+      {"date": "2026-05-12", "value": 391.5},
+      {"date": "2026-05-13", "value": 408.3},
+      {"date": "2026-05-14", "value": null},
+      {"date": "2026-05-15", "value": 412.7},
+      {"date": "2026-05-16", "value": 405.9},
+      {"date": "2026-05-17", "value": 398.4},
+      {"date": "2026-05-18", "value": 410.2},
+      {"date": "2026-05-19", "value": 418.5},
+      {"date": "2026-05-20", "value": 425.1},
+      {"date": "2026-05-22", "value": 432.8},
+      {"date": "2026-05-23", "value": 441.6}
+    ],
+    "kda": [
+      {"date": "2026-05-09", "value": 2.8},
+      {"date": "2026-05-10", "value": 3.4},
+      {"date": "2026-05-11", "value": 3.1},
+      {"date": "2026-05-12", "value": 3.7},
+      {"date": "2026-05-13", "value": 3.9},
+      {"date": "2026-05-14", "value": null},
+      {"date": "2026-05-15", "value": 4.2},
+      {"date": "2026-05-16", "value": 3.8},
+      {"date": "2026-05-17", "value": 4.5},
+      {"date": "2026-05-18", "value": 4.1},
+      {"date": "2026-05-19", "value": 4.7},
+      {"date": "2026-05-20", "value": 5.2},
+      {"date": "2026-05-22", "value": 5.4},
+      {"date": "2026-05-23", "value": 5.64}
+    ]
+  },
+  "tonight_pick": {
+    "champion": "Jinx",
+    "reason": "best ratio this week + matchup-favored vs current meta bot lane",
+    "modes": ["Ranked Solo", "ARAM"],
+    "grade": "S",
+    "good": "9.2 avg KDA over 6 games",
+    "bad": "ban-rate 14% in your bracket",
+    "ugly": "no Yuumi available in mock"
+  },
+  "last_build": {
+    "champion": "Jinx",
+    "mode": "ARAM",
+    "items": [3094, 3006, 3144, 3072, 3046, 3158]
+  },
+  "alerts": {
+    "advisory": "DDragon patch 16.11 candidate in 2 days - DS engine ready",
+    "digest":   "5 day play streak / 14d-KDA up 0.9"
+  }
+}
