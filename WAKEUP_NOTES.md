@@ -3,6 +3,46 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-23 - item 155 operator-gated decision-owed parallel drain #3: mojibake byte-repair + frozen smart-quote sweep + L31 round 3 lcu/+coach_integration/+agents/ SHIPPED (3 commits + 3 merges, pushed origin/main `22a56bd`; non-engine; no DS restart; RC :8888 unchanged - non-frozen + frozen-grant scoped)
+
+Operator triggered third consecutive "in parallel : start all open items in Operator-gated, decision owed" drain. AskUserQuestion 4-question scope fork pinned: (Q1) Mojibake UTF-8 byte-repair on 4 flagged files Repair (Recommended); (Q2) Frozen smart-quote sweep Grant + sweep 3 trivial only - rc_supervisor NOT granted (Recommended); (Q3) L31 round 3 All three surfaces lcu/+coach_integration/+agents/ (Recommended); (Q4) cc_conditional wave 11 Skip / defer (Recommended - no clear candidate). 3 worktree agents dispatched concurrent (orchestrator pattern items 134-154 extended to 20 consecutive runs).
+
+**Slice A `4122d41` (merge `bd2d861`) tools mojibake UTF-8 byte-repair on 3 non-frozen files + drift guard (5 files / +430 / -21):**
+- NEW `tools/repair_mojibake.py` reads bytes, detects 8-byte signature `c3 a2 e2 80 9d e2 82 ac` (latin-1-misdecoded UTF-8 em-dash), replaces with proper 3-byte UTF-8 em-dash `e2 80 94`. Atomic `tmp.write_bytes + os.replace`. Frozen-file hard-skip allowlist mirrors `strip_em_dashes.py` + `strip_smart_quotes.py`. `--dry-run` default + `--apply` flag.
+- Per-file pre/post mojibake counts: `ops/rc_self_monitor.py` 534 -> 0; `ops/rc_state_validator.py` 256 -> 0; `tft/tft_coach_engine.py` 75 -> 0. (Carry-forward stated 539/259/97 = PRE-item-154 totals incl. clean U+201D; item 154 smart-quote sweep cleaned 5/3/22 clean-context bytes leaving 534/256/75 mojibake. Math reconciles.)
+- `ops/rc_supervisor.py` 1368 hits UNTOUCHED (FROZEN-NO-GRANT this session; defense-in-depth hard-skip even if tool's argv accidentally targets it).
+- Byte deltas (8B sig -> 3B em -> 3B ` - ` follow-through = -5B/sig): rc_self_monitor 52003 -> 49333 (-2670); rc_state_validator 10542 -> 9262 (-1280); tft_coach_engine 36356 -> 35981 (-375).
+- Smart-quote sweep follow-through ran after byte-repair: 865 U+2014 -> ` - ` across the 3 files.
+- NEW `tests/test_mojibake_hygiene.py` drift guard (3/3 PASS) walks repo with same exclusions + asserts no `c3 a2 e2 80 9d e2 82 ac` signature in tracked byte streams.
+
+**Slice B `6024ccc` (merge `fd91117`) chore(frozen) smart-quote sweep on 3 trivial frozen-file hits via item 155 operator grant (4 files / +51 / -5):**
+- Added `--allow-frozen <csv-paths>` argv flag to `tools/strip_smart_quotes.py` + `_HARD_SKIP_FROZEN={ops/rc_supervisor.py}` defense-in-depth constant. Rewrite-branch gates on `allow_override = (rel_posix in _allow_frozen) and not is_hard_skip`. Report prints overridden + hard-skipped-from-override lists.
+- 3 grant-targeted single-codepoint hits swept: `ops/rc_dev_runtime.py` U+2026 1 -> 0 (DailyRotatingFileHandler backup-suffix docstring); `core/moon_proxy.py` U+2026 1 -> 0 (Moon vision dedupe debug); `core/log_setup.py` U+2026 1 -> 0 (Popen verify-window AUDIT docstring).
+- `ops/rc_supervisor.py` UNTOUCHED confirmed via git status + file size 79885 unchanged + hard-skip listed in report. NOT in modified set.
+- Drift guard `tests/test_smart_quote_hygiene.py` 3/3 PASS post-sweep. Combined `test_smart_quote_hygiene + test_frozen_files_sync` 6/6 PASS.
+
+**Slice C `3fd9f4a` (merge `22a56bd`) chore(types) L31 round 3 - type annotations on lcu/+coach_integration/+agents/ public APIs (5 files / +23 / -23):**
+- 19 surgical sites total: lcu 9 + coach_integration 9 + agents 1 (+2 stub return types) + 1 import.
+- Files: `lcu/lcu_postgame_collector.py` + `coach_integration/_coach.py` + `coach_integration/_sr_prompt.py` + `coach_integration/_profiles.py` + `agents/agent7_context/warm_session.py`.
+- 0 ruff violations / 0 reverts / 0 frozen-file touches (`lcu/lcu_client.py` hard-skipped per CLAUDE.md).
+- Surface saturation: `lcu/lcu_pregame.py` + `lcu/lcu_rune_writer.py` + `coach_integration/{enemy_stats,archetype_dispatch}.py` + `agents/{_supervisor_*, supervisor, agent6_auditor/*, agent7_context/{input_parser,ui_feedback}}.py` ALREADY FULLY ANNOTATED (use `__future__ annotations` or pre-typed). Branch name `worktree-slice-c-l31-r3` (agent self-named; non-standard but functional).
+
+**Merge order:** A `bd2d861` -> B `fd91117` -> C `22a56bd`. All 3 ort merges 0 conflicts (disjoint file sets across all 3 slices).
+
+**Verified:**
+- RC suite `tests/` (excluding phase8_smoke) = **3257 passed / 67 subtests passed in 56.17s** (+3 over 3254 baseline = exactly new test_mojibake_hygiene.py tests).
+- `tests/phase8_smoke/` = 75/75 PASS (no engine change; DS :8893 untouched serves 1.47.0 from item 154 restart).
+- `py -m ruff check .` ALL CHECKS PASSED.
+- `py -m py_compile` clean on all 13 touched files (5 mojibake + 4 smart-quote + 5 L31, 1 overlap on tft_coach_engine.py).
+- RC :8888 responsive throughout (rc.pid=7356 alive=True mode=client; never restarted - non-frozen byte-edits + frozen-grant scoped to 3 trivial files + no coach prompt changes).
+- DS :8893 untouched (non-engine session); /health still serves engine_version=1.47.0 from item 154.
+- Pushed main as `22a56bd` to origin/main.
+
+**Don't-redo:** The mojibake signature `c3 a2 e2 80 9d e2 82 ac` (8 bytes = U+00E2 U+20AC U+009D U+20AC followed by U+20AC; result of latin-1 misinterpretation of UTF-8 em-dash `e2 80 94` re-encoded UTF-8) is the canonical fingerprint - the `tools/repair_mojibake.py` is the durable tool for any future drift. The drift guard `tests/test_mojibake_hygiene.py` LOCKS the invariant going forward; any future commit that introduces this byte sequence fails CI. The `--allow-frozen` flag on `tools/strip_smart_quotes.py` is the durable mechanism for operator-granted frozen-file sweeps; `_HARD_SKIP_FROZEN={ops/rc_supervisor.py}` is the defense-in-depth constant that prevents accidental sweep of rc_supervisor even if a future grant targets it - bump that constant only with explicit operator authorization. The L31 extension is now CLOSED for lcu/+coach_integration/+agents/ public APIs; the remaining surfaces (`ops/` + `tools/` + `app/` + `tft/` ALREADY DONE in item 154) have nothing significant to annotate. The orchestrator-merge pattern (3-4 worktree agents on disjoint slices + tests gate + RC unchanged + docs sync follow-up commit) is now 20 consecutive runs (items 134-155).
+
+**Carries forward:** (a) Item 154 carries ALL unchanged EXCEPT (a)-relaxed: mojibake byte-repair on 3 non-frozen files NO LONGER operator-gated (DONE this session); 3 trivial frozen-file smart-quote sweeps NO LONGER operator-gated (DONE); L31 extension to lcu/+coach_integration/+agents/ NO LONGER operator-gated (DONE). (b) RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15 - verify LastTaskResult=0 next session. (c) DD Defy heal-on-takedown STILL deferred. (d) Live ARAM/SR smoke STILL pending. (e) Calibrations STILL operator-gated. (f) UI/UX live-game audit ritual owed once operator plays a real game. (g) DS conditional arc operator-CLOSED (s232). (h) Legion 1-PC consolidation (s169 option B) STILL operator-gated. (i) **STILL CARRY**: `ops/rc_supervisor.py` 1368 mojibake U+201D byte-repair pass (FROZEN - needs explicit grant for that specific file beyond this session's grant). (j) cc_conditional wave 11+ should consume sidecar registry shape directly - skipped this session per no-clear-candidate verdict. (k) Operator-gated decision-owed lane EXHAUSTED for actionable headless items at item 155 ship time (remaining carries are all live-gated, hardware-migration, or frozen-rc_supervisor-only). Frozen-file grant USED this session for 3 trivial files; NOT used for rc_supervisor.
+
+---
 # 2026-05-23 - item 154 operator-gated decision-owed parallel drain #2: cc_conditional wave 10 sidecar registry schema lift + smart-quote retro-sweep + L31 extension dashboard/+core/+tft/ SHIPPED (3 commits + 2 merges, pushed origin/main `df50ca9`; ENGINE 1.46.0 -> 1.47.0; DS :8893 restarted serves 1.47.0; RC :8888 unchanged)
 
 Operator triggered "review github branches and close or merge as needed, then in parallel : start all open items in Operator-gated, decision owed". 5 stale remote worktree branches + wave9-cc-conditional-schema-lift all confirmed fully merged into main via `git log origin/main..origin/<branch>` empty diff; deleted via `git push origin --delete` x5. No open PRs. AskUserQuestion 4-question scope fork pinned: (Q1) cc_conditional wave 10 full pass (Recommended); (Q2) Smart-quote retro-sweep (Recommended); (Q3) L31 extension all three surfaces dashboard/+core/+tft/ (Recommended); (Q4) DD Defy SKIP (Recommended - still deferred). 3 worktree agents dispatched concurrent (orchestrator pattern items 134-153 extended to 19 consecutive runs).
