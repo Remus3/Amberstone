@@ -1265,25 +1265,52 @@
                 </select>
               </label>
               <label class="ub-field">
-                <span>Keystone</span>
-                <input type="text" id="ub-f-keystone" placeholder="Hail of Blades" />
+                <span>Keystone <em class="ub-field-driven">(driven by builder)</em></span>
+                <input type="text" id="ub-f-keystone" placeholder="pick below" readonly />
               </label>
               <label class="ub-field">
-                <span>Primary tree</span>
-                <input type="text" id="ub-f-primary" placeholder="Domination" />
+                <span>Primary tree <em class="ub-field-driven">(driven by builder)</em></span>
+                <input type="text" id="ub-f-primary" placeholder="pick below" readonly />
               </label>
               <label class="ub-field">
-                <span>Secondary tree</span>
-                <input type="text" id="ub-f-secondary" placeholder="Precision" />
+                <span>Secondary tree <em class="ub-field-driven">(driven by builder)</em></span>
+                <input type="text" id="ub-f-secondary" placeholder="pick below" readonly />
               </label>
-              <label class="ub-field">
-                <span>Spell D (id)</span>
-                <input type="number" id="ub-f-spell-d" placeholder="4 (Flash)" min="0" max="32" />
-              </label>
-              <label class="ub-field">
-                <span>Spell F (id)</span>
-                <input type="number" id="ub-f-spell-f" placeholder="14 (Ignite)" min="0" max="32" />
-              </label>
+              <input type="hidden" id="ub-f-spell-d" value="4" />
+              <input type="hidden" id="ub-f-spell-f" value="14" />
+              <div class="ub-field ub-field-wide ub-sp-chooser">
+                <span>Summoner spells</span>
+                <div class="ub-sp-current">
+                  <button type="button" class="ub-sp-slot" id="ub-sp-slot-d" data-slot="d" aria-label="Spell D slot">
+                    <img id="ub-sp-d-icon" alt="" />
+                    <span class="ub-sp-slot-key">D</span>
+                    <span class="ub-sp-slot-name" id="ub-sp-d-name">-</span>
+                  </button>
+                  <button type="button" class="ub-sp-slot" id="ub-sp-slot-f" data-slot="f" aria-label="Spell F slot">
+                    <img id="ub-sp-f-icon" alt="" />
+                    <span class="ub-sp-slot-key">F</span>
+                    <span class="ub-sp-slot-name" id="ub-sp-f-name">-</span>
+                  </button>
+                  <span class="ub-sp-hint" id="ub-sp-hint">Click D or F then pick a spell below.</span>
+                </div>
+                <div class="ub-sp-grid" id="ub-sp-grid"></div>
+              </div>
+              <div class="ub-field ub-field-wide ub-rp-builder">
+                <span>Rune page</span>
+                <div class="ub-rp-tabs" id="ub-rp-tabs" role="tablist" aria-label="Primary tree"></div>
+                <div class="ub-rp-pane">
+                  <div class="ub-rp-section ub-rp-primary">
+                    <div class="ub-rp-section-head">PRIMARY</div>
+                    <div class="ub-rp-rows" id="ub-rp-primary-rows"></div>
+                  </div>
+                  <div class="ub-rp-section ub-rp-secondary">
+                    <div class="ub-rp-section-head">SECONDARY</div>
+                    <div class="ub-rp-sec-trees" id="ub-rp-sec-trees" role="tablist" aria-label="Secondary tree"></div>
+                    <div class="ub-rp-rows" id="ub-rp-secondary-rows"></div>
+                  </div>
+                  <div class="ub-rp-summary" id="ub-rp-summary"></div>
+                </div>
+              </div>
               <label class="ub-field ub-field-wide">
                 <span>Items (one per line, in build order)</span>
                 <textarea id="ub-f-items" rows="6"

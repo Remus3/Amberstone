@@ -2029,6 +2029,184 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-top: 1px solid var(--border-soft);
 }
 
+/* User Builds - rune-page builder + spell chooser (2026-05-23, page #2
+ * augmentation). Tabs select PRIMARY tree; row 0 of the primary tree
+ * is the keystone row (1 pick); rows 1-3 are minor runes (1 per row).
+ * SECONDARY uses a pill row to pick a different tree; only its minor
+ * rows render (2 picks total). Spell chooser is an icon grid that
+ * writes through to hidden ub-f-spell-d / ub-f-spell-f inputs so the
+ * existing save-shape stays intact. Token consumers: --fs-xs (caps),
+ * --fs-sm (chip text), --space-1..4, --panel-radius-sm, --hit-min. */
+.ub-field-driven {
+  font-style: normal; font-weight: 600; color: var(--text-faint);
+  text-transform: none; letter-spacing: 0.02em;
+  font-size: var(--fs-xs);                /* matches `.ub-field > span` tier */
+  margin-left: var(--space-1);
+}
+.ub-field input[readonly] {
+  cursor: default; background: var(--surface);
+  color: var(--text-dim); border-color: var(--border-soft);
+}
+
+.ub-sp-chooser, .ub-rp-builder {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--panel-radius);
+  padding: var(--space-4);
+}
+.ub-sp-current {
+  display: flex; align-items: center; gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+.ub-sp-slot {
+  display: flex; align-items: center; gap: var(--space-2);
+  background: var(--surface-alt); border: 2px solid var(--border);
+  border-radius: var(--panel-radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--hit-min);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.1s, background 0.1s;
+}
+.ub-sp-slot:hover { border-color: var(--clock); }
+.ub-sp-slot.active {
+  border-color: var(--info); background: var(--info-soft);
+}
+.ub-sp-slot img {
+  width: 36px; height: 36px; border-radius: var(--panel-radius-sm);
+  background: var(--surface); object-fit: cover;
+}
+.ub-sp-slot-key {
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
+  color: var(--clock); min-width: 14px;
+}
+.ub-sp-slot-name {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
+}
+.ub-sp-hint {
+  font-size: var(--fs-xs); color: var(--text-faint);
+  letter-spacing: 0.04em; margin-left: auto;
+}
+.ub-sp-grid {
+  display: grid; grid-template-columns: repeat(11, minmax(56px, 1fr));
+  gap: var(--space-2);
+}
+@media (max-width: 1100px) {
+  .ub-sp-grid { grid-template-columns: repeat(6, minmax(56px, 1fr)); }
+}
+.ub-sp-cell {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-1);
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--panel-radius-sm);
+  padding: var(--space-2);
+  min-height: var(--hit-min);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.1s, background 0.1s;
+}
+.ub-sp-cell:hover { border-color: var(--clock); background: #1c1c2a; }
+.ub-sp-cell img {
+  width: 36px; height: 36px; border-radius: var(--panel-radius-sm);
+  background: var(--surface); object-fit: cover;
+}
+.ub-sp-cell-name {
+  font-size: var(--fs-xs); color: var(--text-dim); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ub-rp-tabs, .ub-rp-sec-trees {
+  display: flex; gap: var(--space-2); flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+.ub-rp-tab, .ub-rp-sec-tab {
+  display: flex; align-items: center; gap: var(--space-2);
+  background: var(--surface-alt); border: 2px solid var(--border);
+  border-radius: var(--panel-radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--hit-min);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.1s, background 0.1s, opacity 0.1s;
+}
+.ub-rp-tab:hover, .ub-rp-sec-tab:hover { border-color: var(--clock); }
+.ub-rp-tab.active, .ub-rp-sec-tab.active {
+  border-color: var(--info); background: var(--info-soft);
+}
+.ub-rp-sec-tab.disabled {
+  opacity: 0.35; cursor: not-allowed;
+}
+.ub-rp-tab img, .ub-rp-sec-tab img {
+  width: 32px; height: 32px; border-radius: var(--panel-radius-sm);
+  background: var(--surface); object-fit: cover;
+}
+.ub-rp-tab span, .ub-rp-sec-tab span {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
+  letter-spacing: 0.02em;
+}
+.ub-rp-pane {
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.ub-rp-section {
+  background: var(--surface-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+.ub-rp-section-head {
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-2);
+}
+.ub-rp-rows {
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.ub-rp-row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: var(--space-2);
+}
+.ub-rp-rune {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-1);
+  background: var(--surface); border: 2px solid transparent;
+  border-radius: var(--panel-radius-sm);
+  padding: var(--space-2);
+  min-height: var(--hit-min);
+  cursor: pointer; font-family: inherit;
+  transition: border-color 0.1s, background 0.1s, transform 0.1s;
+}
+.ub-rp-rune:hover { border-color: var(--clock); }
+.ub-rp-rune.selected {
+  border-color: var(--info); background: var(--info-soft);
+  transform: scale(1.02);
+}
+.ub-rp-rune-keystone img { width: 44px; height: 44px; }
+.ub-rp-rune img {
+  width: 36px; height: 36px; border-radius: var(--panel-radius-sm);
+  background: transparent; object-fit: contain;
+}
+.ub-rp-rune span {
+  font-size: var(--fs-xs); color: var(--text-dim); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
+.ub-rp-rune.selected span { color: var(--text); }
+.ub-rp-empty {
+  font-size: var(--fs-sm); color: var(--text-faint);
+  padding: var(--space-3);
+  text-align: center; font-style: italic;
+}
+.ub-rp-summary {
+  font-size: var(--fs-sm); color: var(--text-dim);
+  background: var(--surface-alt);
+  border-left: 3px solid var(--info);
+  border-radius: var(--panel-radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
 /* Settings view layout (UI scale v2.1, 2026-05-23 - worked-example
  * page for the per-element ~44% bump = 25% first-pass + 15% second).
  * Consumes tokens.css v2.1: --fs-xs (card head) / --fs-md (row body)

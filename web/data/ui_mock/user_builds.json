@@ -10,7 +10,9 @@
       "runes": {
         "keystone": "Hail of Blades",
         "primary": "Domination",
-        "secondary": "Precision"
+        "secondary": "Precision",
+        "minor_primary": ["Cheap Shot", "Eyeball Collection", "Ultimate Hunter"],
+        "minor_secondary": ["Triumph", "Coup de Grace"]
       },
       "summoner_spells": [4, 7],
       "items": [
