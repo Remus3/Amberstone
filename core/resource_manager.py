@@ -54,7 +54,7 @@ _MEM_SUSTAINED_SAMPLES = 3
 
 
 class ResourceManager:
-    def __init__(self, app_dir: Path):
+    def __init__(self, app_dir: Path) -> None:
         self._app_dir      = app_dir
         self._shutdown_done = False
         self._lock         = threading.Lock()
@@ -87,12 +87,12 @@ class ResourceManager:
 
     # --- Registration -------------------------------------------------------
 
-    def register(self, obj):
+    def register(self, obj: object) -> None:
         """Register any object that has a shutdown() method."""
         with self._lock:
             self._registry.append(obj)
 
-    def register_thread(self, t: threading.Thread):
+    def register_thread(self, t: threading.Thread) -> None:
         """Track a daemon thread so we can wait for it on exit."""
         with self._lock:
             self._threads.append(weakref.ref(t))
@@ -210,7 +210,7 @@ class ResourceManager:
 
     # --- Memory watchdog ----------------------------------------------------
 
-    def start_memory_watchdog(self, interval_s: float = 30.0):
+    def start_memory_watchdog(self, interval_s: float = 30.0) -> None:
         """Start background thread that monitors process RSS every interval_s."""
         if self._watchdog and self._watchdog.is_alive():
             return
@@ -294,7 +294,7 @@ class ResourceManager:
         self.shutdown()
         sys.exit(0)
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Drain all registered resources in reverse-registration order."""
         with self._lock:
             if self._shutdown_done:

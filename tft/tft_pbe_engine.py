@@ -333,7 +333,7 @@ def _parse_response(text: str) -> dict:
 
 
 class TftPbeCoachEngine:
-    def __init__(self, data_file: Path, debug: bool = False):
+    def __init__(self, data_file: Path, debug: bool = False) -> None:
         self._data_file   = data_file
         self._debug       = debug
         self._lock        = threading.Lock()
@@ -373,7 +373,7 @@ class TftPbeCoachEngine:
                     return k
         return ""
 
-    def submit(self, state: dict):
+    def submit(self, state: dict) -> None:
         if not self._client:
             return
         now       = time.time()
@@ -392,12 +392,12 @@ class TftPbeCoachEngine:
         threading.Thread(target=self._run_safe, args=(state,),
                          daemon=True, name="TftPbeCoach").start()
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self._last_round  = (0, 0)
         self._last_call   = 0.0
         self._last_fields = {}
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         logger.info("TftPbeCoachEngine shutdown")
 
     def _run_safe(self, state: dict):

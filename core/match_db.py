@@ -72,7 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_matches_grade ON matches(grade);
 
 
 class MatchDB:
-    def __init__(self, db_path):
+    def __init__(self, db_path: Path | str) -> None:
         self._path = Path(db_path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         # Per-thread connections held in thread-local storage. SQLite
@@ -104,7 +104,7 @@ class MatchDB:
             self._tlocal.conn = c
         return c
 
-    def save_match(self, data: dict):
+    def save_match(self, data: dict) -> None:
         """Save a match record. Accepts rating data dict from performance_tracker."""
         cols = [
             "timestamp", "mode", "champion", "grade", "game_time_s",
@@ -226,7 +226,7 @@ class MatchDB:
             "grade_dist": {g: grades.count(g) for g in set(grades)},
         }
 
-    def close(self):
+    def close(self) -> None:
         """Close the calling thread's connection. Other threads' connections
         are released by the OS when those threads exit."""
         c = getattr(self._tlocal, "conn", None)

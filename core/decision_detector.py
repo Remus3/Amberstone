@@ -663,7 +663,7 @@ class DecisionStore:
     handler - see Tier 3 #15."""
 
     def __init__(self, pending_path: Path = _PENDING_PATH,
-                 log_path: Path = _LOG_PATH):
+                 log_path: Path = _LOG_PATH) -> None:
         self._pending_path = pending_path
         self._log_path = log_path
 
@@ -775,7 +775,7 @@ class DecisionLoop:
     """Daemon thread: poll state, run detectors, reconcile pending."""
 
     def __init__(self, store: Optional[DecisionStore] = None,
-                 poll_interval_s: float = _DEFAULT_POLL_S):
+                 poll_interval_s: float = _DEFAULT_POLL_S) -> None:
         self._store = store or DecisionStore()
         self._poll_s = poll_interval_s
         self._stop = threading.Event()
