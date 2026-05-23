@@ -1568,10 +1568,34 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   }
 
   // ── History view fetchers (2026-04-26) ───────────────────────────
+  // UI scale v2.1 page #4 audit ritual step 5 state-coverage mock fixture
+  // (2026-05-23). When body.dataset.uiMock === "1" the fetch short-
+  // circuits to /data/ui_mock/history.json instead of /api/history.
+  // Scope tabs still drive the fetch but the mock fixture filters
+  // sessions[] by scope on the client side so the UX is identical.
   const _HISTORY = { scope: "14d", selectedSession: null };
-  function _historyFetchAndRender() {
-    fetch("/api/history?scope=" + encodeURIComponent(_HISTORY.scope), { cache: "no-store" })
+  let _historyMockPromise = null;
+  function _historyMockLoad() {
+    if (_historyMockPromise) return _historyMockPromise;
+    _historyMockPromise = fetch("/data/ui_mock/history.json", { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
+      .catch(() => null);
+    return _historyMockPromise;
+  }
+  function _historyIsMock() {
+    return document.body && document.body.dataset.uiMock === "1";
+  }
+  function _historyMockSliceForScope(payload, scope) {
+    if (!payload || !payload.scopes) return null;
+    const slice = payload.scopes[scope] || payload.scopes["14d"] || null;
+    return slice;
+  }
+  function _historyFetchAndRender() {
+    const promise = _historyIsMock()
+      ? _historyMockLoad().then((p) => _historyMockSliceForScope(p, _HISTORY.scope))
+      : fetch("/api/history?scope=" + encodeURIComponent(_HISTORY.scope), { cache: "no-store" })
+          .then((r) => (r && r.ok ? r.json() : null));
+    promise
       .then((d) => {
         if (!d) return;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
