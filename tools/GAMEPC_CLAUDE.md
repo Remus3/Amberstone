@@ -184,7 +184,7 @@ for non-time-critical work; tighten to 10 s if you're actively
 iterating with Legion.
 
 **Hard rule:** when you do execute a bridge task, you call
-`py C:\RC-Agent\bridge_post_result.py …` to return the result. Never
+`py C:\RC-Agent\bridge_post_result.py ...` to return the result. Never
 print results to chat expecting the user to paste them to Legion. The
 user is not a relay.
 

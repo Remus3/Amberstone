@@ -231,7 +231,7 @@ class ComputeNudgeFiredTests(unittest.TestCase):
 
     def test_fires_when_first_item_not_in_top15(self):
         # Operator picked tank but bought IE (3031). Dispatcher returns
-        # tank items (Warmog/Heartsteel/Sunfire/…) - IE not in top 15.
+        # tank items (Warmog/Heartsteel/Sunfire/...) - IE not in top 15.
         with mock.patch.object(
             am, "_evaluate_dispatcher",
             return_value=(True, ["Warmog's Armor", "Heartsteel", "Sunfire"]),

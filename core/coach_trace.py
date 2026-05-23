@@ -40,7 +40,7 @@ def _truncate(s: Any, n: int) -> str:
     if s is None:
         return ""
     s = str(s)
-    return s if len(s) <= n else s[: n - 1] + "…"
+    return s if len(s) <= n else s[: n - 1] + "..."
 
 
 def append(

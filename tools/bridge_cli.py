@@ -496,7 +496,7 @@ def _shorten_summary(text: str) -> str:
     if len(text) <= MAX_SUMMARY_LEN:
         return text
     cut = text[:MAX_SUMMARY_LEN].rsplit(" ", 1)[0]
-    return cut + "…"
+    return cut + "..."
 
 
 # Argparse wiring -----------------------------------------------------------

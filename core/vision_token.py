@@ -89,7 +89,7 @@ def debug() -> None:
     prints the full secret - safe for copy-paste troubleshooting."""
     tok, src = _resolve()
     if len(tok) >= 8:
-        masked = f"{tok[:4]}…{tok[-4:]}"
+        masked = f"{tok[:4]}...{tok[-4:]}"
     else:
         masked = "(short)"
     print(f"vision_token source={src} token={masked} len={len(tok)}")

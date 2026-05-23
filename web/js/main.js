@@ -205,9 +205,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   async function openTaskModal(taskId) {
     if (!TMODAL.root || !taskId) return;
     TMODAL.id.textContent = taskId;
-    TMODAL.op.textContent = "…";
-    TMODAL.owner.textContent = TMODAL.status.textContent = "…";
-    TMODAL.priority.textContent = TMODAL.ts.textContent = "…";
+    TMODAL.op.textContent = "...";
+    TMODAL.owner.textContent = TMODAL.status.textContent = "...";
+    TMODAL.priority.textContent = TMODAL.ts.textContent = "...";
     TMODAL.events.innerHTML = "";
     TMODAL.root.classList.remove("hidden");
     try {
@@ -1091,7 +1091,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // reasonable max like "Renata Glasc" / "Twisted Fate" (12 chars).
     label.textContent = String(name)
       .split(/\s*&\s*/)[0]
-      .replace(/[’'`]/g, "")
+      .replace(/[''`]/g, "")
       .trim();
     champPill.appendChild(label);
     champPill.className = "champion-pill" + (source === "live" ? "" : " fallback");
@@ -1465,7 +1465,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (key === ADAPT.lastKey && (Date.now() - ADAPT.fetchedAt) < 8000) return;
     if (ADAPT.inflight) return;
     ADAPT.inflight = true;
-    AD.status.textContent = "fetching…";
+    AD.status.textContent = "fetching...";
     try {
       const resp = await fetch(
         `/api/adaptation?champion=${encodeURIComponent(champion)}&mode=${mode}${enemyParam}`
@@ -1866,7 +1866,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     }
     pane.hidden = false;
     _UB.editingId = (buildOrNull && buildOrNull.id) || null;
-    if (title) title.textContent = _UB.editingId ? `Edit build (${_UB.editingId.slice(0,6)}…)` : "Add build";
+    if (title) title.textContent = _UB.editingId ? `Edit build (${_UB.editingId.slice(0,6)}...)` : "Add build";
 
     const b = buildOrNull || {};
     const r = b.runes || {};
@@ -1931,7 +1931,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (_UB.editingId) { body.id = _UB.editingId; body.patch = build; }
     else               { body.build = build; }
     _UB.saving = true;
-    _ubFormStatus(action === "add" ? "Saving…" : "Updating…", null);
+    _ubFormStatus(action === "add" ? "Saving..." : "Updating...", null);
     fetch("/api/sr-draft/user-builds", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -4596,7 +4596,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (find) find.addEventListener("click", () => {
       if (find.disabled) return;
       find.disabled = true;
-      _setLobbyStatus("starting…", "searching");
+      _setLobbyStatus("starting...", "searching");
       lcuCmd({ cmd: "start_matchmaking" }).then((res) => {
         lcuPollResult(res && res.id, (r) => {
           if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
@@ -4606,7 +4606,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     });
     const cancel = document.getElementById("lobby-cancel-match");
     if (cancel) cancel.addEventListener("click", () => {
-      _setLobbyStatus("cancelling…", "");
+      _setLobbyStatus("cancelling...", "");
       lcuCmd({ cmd: "cancel_matchmaking" }).then((res) => {
         lcuPollResult(res && res.id, (r) => {
           if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
@@ -4617,7 +4617,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (qsel) qsel.addEventListener("change", () => {
       const qid = parseInt(qsel.value, 10);
       if (!qid) return;
-      _setLobbyStatus("changing queue…", "searching");
+      _setLobbyStatus("changing queue...", "searching");
       lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
         lcuPollResult(res && res.id, (r) => {
           if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
@@ -4739,13 +4739,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const enabled = !!lobby.is_leader && !!lobby.can_search && !searching && !found;
       find.disabled = !enabled;
       if (findLabel) {
-        findLabel.textContent = searching ? "Searching…"
+        findLabel.textContent = searching ? "Searching..."
           : found ? "Match Found"
           : (lobby.is_leader ? "Find Match" : "Leader-only");
       }
     }
     // Status line - reads as a single peripheral signal.
-    if (searching) _setLobbyStatus("Searching…", "searching");
+    if (searching) _setLobbyStatus("Searching...", "searching");
     else if (found) _setLobbyStatus("Match Found · accept in client", "found");
     else if (!lobby.is_leader) _setLobbyStatus("Awaiting party leader", "");
     else if (!lobby.can_search) _setLobbyStatus("Lobby not ready", "err");
@@ -5180,11 +5180,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const tid = filedTasks[0];
         const status = document.createElement("div");
         status.className = "ui-proposal-status";
-        status.textContent = `applying task ${tid}…`;
+        status.textContent = `applying task ${tid}...`;
         INPUT.turns.lastChild.appendChild(status);
         const out = await _pollTaskUntilDone(tid);
         if (out.ok) {
-          status.textContent = "applied - reloading…";
+          status.textContent = "applied - reloading...";
           setTimeout(() => window.location.reload(), 400);
         } else if (out.timeout) {
           status.textContent =
@@ -6201,8 +6201,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         if (!dot) {
           dot = document.createElement("span");
           dot.className = "health-dot yellow";
-          dot.title = "Loading…";
-          dot.setAttribute("data-tt", "Loading…");
+          dot.title = "Loading...";
+          dot.setAttribute("data-tt", "Loading...");
           const footer = document.querySelector("footer");
           const modePill = document.getElementById("mode-pill");
           if (modePill && modePill.parentNode === footer) {

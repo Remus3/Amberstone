@@ -2,7 +2,7 @@
 """Generate JSDoc @typedef blocks from RC pydantic schema models.
 
 Sources introspected:
-    dashboard/api_schema.py  - HTTP envelope shapes (StateResponse, HealthBlock, …)
+    dashboard/api_schema.py  - HTTP envelope shapes (StateResponse, HealthBlock, ...)
     core/coaching_payload.py - per-mode coaching payload fields
 
 Output:

@@ -319,7 +319,7 @@ function _replayLoadMatch(matchId, rowEl) {
   document.querySelectorAll(".replay-match-row.active").forEach(r => r.classList.remove("active"));
   if (rowEl) rowEl.classList.add("active");
   const meta = document.getElementById("replay-meta");
-  if (meta) meta.textContent = "loading " + matchId + "…";
+  if (meta) meta.textContent = "loading " + matchId + "...";
   // s220 PGR S5: fire the Match-V5 timeline event ribbon fetch in
   // parallel with the per-frame snapshot fetch below. Both target
   // the same matchId so the ribbon + scrubber are coherent.
