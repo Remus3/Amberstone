@@ -1321,7 +1321,111 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.42.0"
+ENGINE_VERSION = "1.43.0"
+# 1.43.0 (cc_conditional wave 6 + _PER_SPELL_CC_DURATIONS wave 9 +
+# BACKLOG stale-sweep wave 11 + cost/latency CLEAN, 2026-05-22):
+#
+# Three commit-bearing parallel-slice additions + 1 read-only CLEAN
+# sweep composing on item 146 carries-forward (b) cc_conditional
+# wave 6 expansion + (j) _PER_SPELL_CC_DURATIONS wave 9 (multi-wave
+# coexistence only - saturated for net-new champs). Item 147. 14th
+# consecutive orchestrator-merge run (items 134-147).
+#
+# Slice A - cc_conditional wave 6 (35/32 -> 36/32; +1 entry / +0
+# net-new champs - multi-wave coexistence on Brand) via setdefault
+# builder pattern from items 140-146. NEW: Brand Q Sear (target_
+# debuffed 0.5 stun 1.25s - stuns target carrying Blaze passive
+# stack; coexists with Brand R wave 1 nth_hit stun on different
+# spell slot - third multi-wave coexistence within cc_conditional
+# after Aatrox Q+W, Briar Q+E, TahmKench R+Q; brings within-cc_
+# conditional multi-wave coexistence count to 4 champs). Uses only
+# the 10 existing condition tags. REGISTRY_TOTAL_CHAMPIONS=32
+# unchanged / REGISTRY_TOTAL_ENTRIES=35 -> 36. REJECTED wave-6
+# candidates documented: Lissandra E (no CC), Aurora R/E/Q/W
+# (uncertain/no CC), Volibear R (turret-only), Renata R (no CC),
+# Aphelios Q/R (no CC), Vex E (already shipped), Sett W (needs
+# new tag), Vayne wall (schema lift), Trundle E (no tag fit),
+# Renekton W / Camille E (asymmetry). +44 tests NEW
+# tests/test_cc_conditional_wave6.py. 5 prior-wave test files
+# relaxed Brand-pin assertions to assertGreaterEqual + entry-level
+# pins because Brand now has Q+R in registry (pattern matches item
+# 145 Slice B Aatrox wave 3 relax). EngineVersionCurrentTests uses
+# assertGreaterEqual((1, 42, 0)) for forward-compat per item 146
+# lesson. tests/test_cc_conditional_forward_marker.py _ALLOWED_
+# TEST_FILES gained test_cc_conditional_wave6.py.
+#
+# Slice B - _PER_SPELL_CC_DURATIONS wave 9 (106/89 -> 108/89; +2
+# entries / +0 net-new champs both multi-wave coexistence) confirms
+# item 146 carry (j) saturation prediction. Audit walked all 226
+# unregistered spells of all 89 registered champions; only 2 of 6
+# candidates surfaced were genuine unconditional first-order CC.
+# NEW: Chogath W Feral Scream silence 1.6/1.7/1.8/1.9/2.0s
+# (coexists with Chogath Q wave 2 knockup); Malzahar Q Call of
+# the Void silence 1.0/1.25/1.5/1.75/2.0s (coexists with Malzahar
+# R wave 1 suppression). Silence joins first-order CC scope per
+# same precedent as wave 6 stasis (Bard R) - hard-disable types
+# fit cleanly alongside stun/root/suspension/suppression. Both
+# values verified vs data/daemon_slayer/16.10.1/champion_
+# abilities.json Meraki silence-duration blocks. Multi-wave
+# coexistence count now proven at 9 unconditional champions: Lulu
+# W+R (waves 1+6), Sejuani R+Q (waves 1+6), Thresh Q+E (waves 1+
+# 6), Zac E+R (waves 2+7), Lissandra R+W (waves 1+8), Maokai R+W
+# (waves 1+8), Rakan W+R (waves 1+8), Chogath Q+W (waves 2+9
+# NEW), Malzahar R+Q (waves 1+9 NEW). Selection rules unchanged
+# from waves 1-8: first-order CC only; no slows; no conditional
+# CC; canonical DDragon ids. REJECTED wave-9 candidates: Bard Q
+# (cc_conditional wave 1), Morgana R (channel-completion conditional),
+# Seraphine E (target-state conditional), Volibear R (turret-only),
+# Janna R (undocumented duration), Lulu E (no CC). Consumer math
+# BYTE-IDENTICAL to 1.42.0 for default include_conditional=False
+# callers. +37 tests NEW tests/test_per_spell_cc_registry_wave9.py
+# across 7 classes. tests/test_per_spell_cc_registry_seed.py count
+# pin 89/106 -> 89/108 (assertGreaterEqual floor). tests/test_per
+# _spell_cc_registry_wave8.py 2 count pins assertEqual ->
+# assertGreaterEqual relaxation.
+#
+# Slice C - BACKLOG.md L13 cc_conditional ecosystem subsection
+# stale-sweep wave 11 per [[feedback_backlog_path_stale_check]]:
+# stopping-at-item-145-state line ("items 141-145 / 4 wave
+# expansions / 33 entries + JSON override loader") flipped to
+# "items 141-146 / 5 wave expansions / 35 entries". ROADMAP sweep
+# CLEAN (Fleet status DS row already current at ENGINE 1.42.0 per
+# item 146 Slice D verified). Sweep cycle decay: wave 1=2 / 2=3 /
+# 3=3 / 4=1 / 5=1 / 6=1 / 7=2 / 8=1 / 9=1 / 10=1 / **11=1**.
+# Methodology stable across 11 sweep rounds. Note: BACKLOG L13
+# now needs another touch by orchestrator commit to reflect the
+# 36/108 state THIS RUN ships (Slice C ran on pre-A baseline).
+#
+# Slice D - cost/latency CLEAN no-commit (14th consecutive CLEAN
+# sweep since item 134). All 7 levers surveyed: prompt-cache (19
+# files carry cache_control marker across 8 active coach modules;
+# 22 messages.create caller files), route TTL (11+6=17 cached
+# routes; uncached are POST/action/file-read), polling cadences
+# (1.5s bridge_pending / 2s state / 500ms applyStaleness UI-local /
+# 1000ms map cooldown UI-local), log spam (8-entry suppression set;
+# top non-suppressed /api/bridge at 0.197/sec well below 1/sec
+# threshold), model tier (all real messages.create() use claude-
+# haiku-4-5-20251001; 3 r._model="claude-sonnet-4-6" annotations
+# are POST-call telemetry stamps per item 146 don't-redo), scheduled
+# tasks (14 unique RC-* tasks matches item 146 catalog), bundle
+# size (27 panel files vs 29 @import lines in dashboard.css = 28
+# panel @imports including item 146 orphan loading_view.css NOT
+# fixed this run + 1 inverse orphan NEW: build_order.css EXISTS
+# in panels dir but is NOT @imported in dashboard.css). Verdict
+# CLEAN on 7 levers + 2 MINOR PROPOSALS (operator-gated, deferred):
+# 1. loading_view.css orphan @import at web/css/dashboard.css:27
+# (carries from item 146); 2. build_order.css orphan FILE (inverse:
+# either dead-code awaiting deletion OR missing @import; depends
+# on whether build_order panel is in production - NEW this run).
+#
+# Stale ENGINE pin syncs across 30+ DS test files (1.42.0 -> 1.43.0)
+# via orchestrator bulk-rewrite. Same s243/s246 facade-split
+# precedent; value-pinned regression suite is the definitive
+# behavior-equivalence proof.
+#
+# Orchestrator-merge pattern now 14 consecutive runs (items 134-147).
+# Durable template for parallel headless-upgrade-style drains.
+#
 # 1.42.0 (cc_conditional wave 5 + _PER_SPELL_CC_DURATIONS wave 8 +
 # BACKLOG stale-sweep wave 10 + cost/latency CLEAN, 2026-05-22):
 #
