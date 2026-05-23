@@ -560,9 +560,13 @@ class AggregatorWaveFourTests(unittest.TestCase):
         self.assertAlmostEqual(total, 1.225, places=4)
 
     def test_briar_q_weighted_max_rank(self) -> None:
-        # Briar Q = 1.0 * 0.3 = 0.30
-        total = get_total_conditional_cc_seconds("Briar")
-        self.assertAlmostEqual(total, 0.30, places=4)
+        # Briar Q entry-level contribution = 1.0 * 0.3 = 0.30
+        # Wave 5 added Briar E to the same champion, so the
+        # aggregator returns Q + E. Pin at entry-level instead.
+        entry = _PER_SPELL_CC_CONDITIONAL["Briar"]["Q"]
+        self.assertAlmostEqual(
+            entry.durations_s[-1] * entry.probability, 0.30, places=4
+        )
 
     def test_nunu_r_raw_max_rank(self) -> None:
         # Nunu R raw = 0.5
@@ -586,11 +590,11 @@ class AggregatorWaveFourTests(unittest.TestCase):
         self.assertAlmostEqual(total, 2.25, places=4)
 
     def test_briar_q_raw_max_rank(self) -> None:
-        # Briar Q raw = 1.0
-        total = get_total_conditional_cc_seconds(
-            "Briar", apply_probability=False
-        )
-        self.assertAlmostEqual(total, 1.0, places=4)
+        # Briar Q entry-level raw = 1.0. Wave 5 added Briar E
+        # to the same champion so aggregator sums Q + E; pin at
+        # entry-level instead (mirror of Aatrox Q+W approach).
+        entry = _PER_SPELL_CC_CONDITIONAL["Briar"]["Q"]
+        self.assertAlmostEqual(entry.durations_s[-1], 1.0, places=4)
 
     def test_get_conditional_entries_returns_r_for_nunu(self) -> None:
         entries = get_conditional_entries("Nunu")
@@ -616,8 +620,10 @@ class AggregatorWaveFourTests(unittest.TestCase):
         self.assertEqual(entries[1].spell, "W")
 
     def test_get_conditional_entries_returns_q_for_briar(self) -> None:
+        # Wave 5 added Briar E coexisting with wave 4 Q via setdefault.
+        # Q is the first entry in canonical Q-W-E-R order.
         entries = get_conditional_entries("Briar")
-        self.assertEqual(len(entries), 1)
+        self.assertGreaterEqual(len(entries), 1)
         self.assertEqual(entries[0].spell, "Q")
 
 
