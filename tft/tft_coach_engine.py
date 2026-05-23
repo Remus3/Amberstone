@@ -696,6 +696,13 @@ class TftCoachEngine:
                            "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": prompt}],
         )
+        # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker. POLLING
+        # cadence (45s debounce) - the biggest untracked HAIKU lane.
+        try:
+            from core.cost_tracker import record_anthropic_response
+            record_anthropic_response(response, model=self._model, purpose="tft_coach")
+        except Exception as exc:
+            logger.debug("cost_tracker record: %s", exc)
         latency = int((time.time() - t0) * 1000)
         raw     = response.content[0].text
         logger.info("TFT coach response in %dms", latency)

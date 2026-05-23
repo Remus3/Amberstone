@@ -368,3 +368,47 @@ def get_tracker() -> CostTracker:
             if _singleton is None:
                 _singleton = CostTracker()
     return _singleton
+
+
+# --- Shared response-recording helper -------------------------------------
+# Mirror of vision_server/_inference.py:_record_to_cost_tracker and
+# coaches/_base_coach.py:_record_coach_call. Lifted to a public module-level
+# helper so the 11 untracked call sites (tft/*, agent7, dashboard/_champ_select,
+# coaches/{aram_team_analyzer, experimental_builder, champ_select_coach,
+# replay_coach}) all funnel through ONE pricing-table + Prometheus path. Audit
+# 2026-05-23 (3rd cost-trace gap audit: 2026-04-29 gap A, gap B, 2026-05-23).
+#
+# Best-effort: a telemetry hiccup never breaks the caller. Returns the per-call
+# spend dict on success, None on any failure.
+
+def record_anthropic_response(
+    resp: Any,
+    *,
+    model: str,
+    purpose: str,
+) -> Optional[dict]:
+    """Extract usage from an anthropic.types.Message and feed cost_tracker.
+
+    Single chokepoint for any call site that does NOT already use
+    `coaches/_base_coach._BaseCoach._record_coach_call`. Pulls
+    `input_tokens / output_tokens / cache_read_input_tokens /
+    cache_creation_input_tokens` defensively (each defaults to 0 if missing
+    or None). Falls back to `getattr(resp, "model", "")` only if `model` is
+    blank.
+    """
+    try:
+        u = getattr(resp, "usage", None)
+        tin  = int(getattr(u, "input_tokens", 0) or 0) if u else 0
+        tout = int(getattr(u, "output_tokens", 0) or 0) if u else 0
+        cr   = int(getattr(u, "cache_read_input_tokens", 0) or 0) if u else 0
+        cw   = int(getattr(u, "cache_creation_input_tokens", 0) or 0) if u else 0
+        mdl  = model or getattr(resp, "model", "") or ""
+        return get_tracker().record_call(
+            model=mdl,
+            input_tokens=tin, output_tokens=tout,
+            cache_read=cr, cache_write=cw,
+            purpose=purpose or "_unspecified",
+        )
+    except Exception as exc:
+        _log.debug("record_anthropic_response swallowed: %s", exc)
+        return None

@@ -26,17 +26,17 @@ records there. moon_proxy only does the 2s vision dedupe accounting.
 | vision_server/_inference.py:141 | SONNET | YES (_record_to_cost_tracker) | ON-DEMAND (/vision relay) | vision_relay |
 | vision_server/_inference.py:176 | HAIKU | YES (_record_to_cost_tracker) | ON-DEMAND (/coach relay) | coach_relay |
 | modes/shared_vision.py:251 | SONNET | YES (record_call :274) | POLLING (vision fallback) | vision_direct |
-| coaches/aram_team_analyzer.py:161 | HAIKU | **NO** | ON-DEMAND (team comp) | - |
-| coaches/experimental_builder.py:207 | HAIKU | **NO** | ON-DEMAND (build gen) | - |
-| coaches/champ_select_coach.py:116 | HAIKU | **NO** | EVENT (champ select) | - |
-| coaches/replay_coach.py:192 | HAIKU | **NO** | ON-DEMAND (replay) | - |
-| dashboard/_champ_select.py:92 | HAIKU | **NO** | ON-DEMAND (dash brief) | - |
-| tft/tft_coach_engine.py:692 | HAIKU | **NO** (cache_control ephemeral) | POLLING (45s debounce) | - |
-| tft/tft_pbe_engine.py:421 | HAIKU | **NO** | POLLING (game tick) | - |
-| tft/tft_live_analysis.py:292 | HAIKU | **NO** | POLLING (vision cycle) | - |
-| tft/tft_live_analysis.py:316 | HAIKU | **NO** | POLLING (aug select) | - |
-| tft/tft_vision_reader.py:186 | SONNET | **NO** | POLLING (vision local fallback) | - |
-| agents/agent7_context/warm_session.py:154 | HAIKU | **NO** | WARM (persistent session) | - |
+| coaches/aram_team_analyzer.py:161 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (team comp) | aram_team_analyzer |
+| coaches/experimental_builder.py:207 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (build gen) | experimental_builder |
+| coaches/champ_select_coach.py:116 | HAIKU | YES (record_anthropic_response) | EVENT (champ select) | champ_select_coach |
+| coaches/replay_coach.py:192 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (replay) | replay_coach |
+| dashboard/_champ_select.py:92 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (dash brief) | champ_select_brief |
+| tft/tft_coach_engine.py:692 | HAIKU | YES (record_anthropic_response, cache_control ephemeral) | POLLING (45s debounce) | tft_coach |
+| tft/tft_pbe_engine.py:421 | HAIKU | YES (record_anthropic_response) | POLLING (game tick) | tft_pbe |
+| tft/tft_live_analysis.py:292 | HAIKU | YES (record_anthropic_response) | POLLING (vision cycle) | tft_live_analysis |
+| tft/tft_live_analysis.py:316 | HAIKU | YES (record_anthropic_response) | POLLING (aug select) | tft_live_aug_select |
+| tft/tft_vision_reader.py:186 | SONNET | YES (record_anthropic_response) | POLLING (vision local fallback) | tft_vision |
+| agents/agent7_context/warm_session.py:154 | HAIKU | YES (record_anthropic_response) | WARM (persistent session) | agent7_warm |
 
 Tracked sites correctly extract `usage.input_tokens / output_tokens /
 cache_read_input_tokens / cache_creation_input_tokens` (see
@@ -59,22 +59,22 @@ Opus is not a live billed path in the captured window.
 The dashboard total IS the ledger (`daily_spend()["total_usd"]`); they are
 definitionally equal and internally consistent (`total_usd` == sum of
 `by_model[*].usd` == sum of `by_purpose[*].usd`, verified below). So there is no
-tracked-vs-dashboard discrepancy. The real gap is **tracked ledger vs true
+tracked-vs-dashboard discrepancy. The real gap WAS **tracked ledger vs true
 Anthropic billing**:
 
-- **11 UNTRACKED call sites** (all of TFT, champ-select brief, experimental
-  builder, replay, aram_team_analyzer, agent7 warm session). Any spend on these
-  is invisible to the ledger and the dashboard. 5 are POLLING/WARM (the costly
-  cadence): tft_coach_engine, tft_pbe_engine, tft_live_analysis x2,
-  tft_vision_reader (SONNET), plus agent7 warm_session.
-- Recent ledgers only ever show purposes `aram_coach`, `vision_relay`,
-  `sr_coach` -> in practice only ARAM + SR + vision relay fired; no TFT/Arena
-  games or champ-select briefs in the window, so the gap is **latent, not
-  currently bleeding**. It becomes real the moment a TFT game or champ-select
-  brief runs.
-- Recorded spend is an ESTIMATE (local pricing table, not Anthropic invoice);
-  treat the dashboard as a lower bound on true spend by exactly the untracked
-  surface.
+- **All 11 previously-UNTRACKED call sites are now WIRED** (audit 2026-05-23):
+  all TFT engines (coach + PBE + live analysis x2 + vision reader), champ-select
+  brief (dashboard), experimental builder, replay coach, champ-select coach,
+  aram_team_analyzer, agent7 warm session. Each funnels through the shared
+  `core.cost_tracker.record_anthropic_response(resp, model=..., purpose=...)`
+  helper. The previously-latent gap (TFT/Arena/champ-select sessions invisible
+  to the dashboard) is closed.
+- A construction-layer shim `core.anthropic_client.tracked_anthropic(api_key,
+  *, purpose, default_model="")` is available as defense-in-depth so a future
+  12th call site is auto-tracked just by switching the import.
+- Recorded spend is still an ESTIMATE (local pricing table, not Anthropic
+  invoice); the gap between ledger and Anthropic billing now reflects pricing
+  drift only, NOT untracked surface.
 
 ### Spend ledger (4 most recent, internal-consistency checked)
 
@@ -86,13 +86,32 @@ Anthropic billing**:
   sonnet 0.185901/27 (vision_relay). SUM OK.
 - 2026-05-14: total 0.470071, calls 161 = haiku 0.470071/161 (sr_coach). SUM OK.
 
-## Recommended follow-ups (not auto-applied; tracked here)
+## Recommended follow-ups - SHIPPED 2026-05-23
 
-1. Route the 11 untracked `messages.create` through `_record_coach_call`
-   (coaches/*) or a small `_record_to_cost_tracker` (tft/*, agent7) so the
-   ledger reflects true spend. Highest priority: the 5 POLLING/WARM SONNET/HAIKU
-   sites (tft_vision_reader SONNET is the most expensive untracked cadence).
-2. Optionally add a `record_call` shim at the Anthropic-client construction
-   layer so new call sites are tracked by default (defense in depth vs the
-   recurring "new coach forgot to wire telemetry" gap - this is the 3rd such
-   audit: 2026-04-29 gap A, 2026-04-29 gap B, 2026-05-19).
+1. **SHIPPED** - All 11 untracked `messages.create` sites now feed
+   `core.cost_tracker.record_anthropic_response(resp, model=..., purpose=...)`
+   after a successful response. The helper is a single module-level chokepoint
+   (sibling of the existing `coaches/_base_coach._record_coach_call` private
+   method and `vision_server/_inference._record_to_cost_tracker` private
+   helper) so the pricing-table + Prometheus path stays unified across coaches,
+   TFT, dashboard champ-select, agent7 warm session.
+2. **SHIPPED** - `core/anthropic_client.py` exposes
+   `tracked_anthropic(api_key, *, purpose, default_model="")` returning a real
+   `anthropic.Anthropic` client with `messages.create` rebound to a wrapper
+   that auto-records. Defense-in-depth: future call sites that switch the
+   import are tracked by default, even if the caller forgets to call the
+   helper explicitly. Recording failures are swallowed; real API errors
+   propagate.
+
+Wired sites (`purpose` label is the by_purpose key in
+`data/spend/YYYY-MM-DD.json`):
+
+- `aram_team_analyzer`, `experimental_builder`, `champ_select_coach`,
+  `replay_coach`, `champ_select_brief`, `agent7_warm`
+- `tft_coach`, `tft_pbe`, `tft_live_analysis`, `tft_live_aug_select`,
+  `tft_vision`
+
+Tests pin the wire-in at each site (grep-based; see
+`tests/test_cost_tracker_response_helper.py::WiredSitesGrepTests`) so a
+future regression that rips the wire out fails CI before any live cadence
+hits the missing telemetry.

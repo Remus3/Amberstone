@@ -167,6 +167,12 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
             messages=[{"role": "user", "content": prompt}],
             timeout=12,
         )
+        # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker.
+        try:
+            from core.cost_tracker import record_anthropic_response
+            record_anthropic_response(resp, model=_MODEL, purpose="aram_team_analyzer")
+        except Exception as exc:
+            logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
     except Exception as exc:
         out["reason"] = f"(analyzer error: {type(exc).__name__})"

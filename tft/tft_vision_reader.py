@@ -191,6 +191,15 @@ class TftVisionReader:
                         "data": img_b64}},
                     {"type": "text", "text": _EXTRACT_PROMPT}
                 ]}])
+            # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
+            # local-fallback path. moon_proxy primary records via vision_server.
+            # tft_vision_reader is SONNET tier - the most expensive
+            # untracked cadence in the audit (polling vision local fallback).
+            try:
+                from core.cost_tracker import record_anthropic_response
+                record_anthropic_response(response, model=self._model, purpose="tft_vision")
+            except Exception as _exc:
+                logger.debug("cost_tracker record: %s", _exc)
             latency = int((time.time() - t0) * 1000)
             raw = response.content[0].text.strip()
             logger.debug("Vision extract in %dms (%d chars)", latency, len(raw))

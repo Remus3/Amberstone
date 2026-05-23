@@ -213,6 +213,12 @@ def _call_haiku(champion: str, history: list[dict], api_key: str) -> dict | None
             messages=[{"role": "user", "content": prompt}],
             timeout=15,
         )
+        # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker.
+        try:
+            from core.cost_tracker import record_anthropic_response
+            record_anthropic_response(resp, model=_MODEL, purpose="experimental_builder")
+        except Exception as exc:
+            logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
         parsed = _parse_haiku(raw)
         if not parsed["runes"]["keystone"] or not parsed["items"]:
