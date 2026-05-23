@@ -81,7 +81,23 @@ champions via setdefault). TahmKench Q coexists with TahmKench R
 wave 0 conditional devour on a different spell slot. Briar Q wave 4
 + Briar E wave 5 coexist on the same champion via setdefault (SECOND
 multi-wave coexistence after Aatrox Q3+W from waves 3+4; TahmKench
-R+Q is THIRD).
+R+Q is THIRD). Wave 6 (2026-05-22 / ENGINE 1.43.0) adds +1 entry via
+multi-wave coexistence on an existing champion (Brand Q Sear
+target_debuffed stun on Blaze-stacked target sourced from the wave 4
+REJECT carry where Brand W was rejected as not first-order; the
+canonical Brand Q stun-on-blazed-target IS first-order CC with a
+clean COND_TARGET_DEBUFFED fit), bringing the registry to 36 entries
+across 32 champions (no net-new champions; Brand Q lands via
+setdefault alongside Brand R wave 0 nth_hit 3-stack stun - FOURTH
+multi-entry-WITHIN-cc_conditional champion after Aatrox Q+W (waves
+3+4) / Briar Q+E (waves 4+5) / TahmKench R+Q (waves 0+5); Pantheon
+W+Q noted as multi-wave but Pantheon W lives in the SEPARATE
+unconditional `_PER_SPELL_CC_DURATIONS` registry not cc_conditional,
+so Pantheon has 1 entry in cc_conditional). The Brand Q encoding uses
+COND_TARGET_DEBUFFED because the stun fires only when target carries
+a Blaze passive stack (from any prior Brand spell-hit or auto-attack
+applying passive); standalone Q on a non-blazed target is damage
+only.
 At initial ship (ENGINE 1.37.0) no consumer wires were attached and the
 module was a strict forward marker. The first consumer wire ships via
 ``compute_cc_pressure(include_conditional=False)`` (item 142 / ENGINE
@@ -433,8 +449,17 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
     wave-6 schema lift from item 140 in ``ability_dps.py``).
 
     Seed: 10 canonical examples from the wave 4/5/6 REJECT lists in
-    CLAUDE.md items 138/139/140. Future waves populate further as
-    consumer logic ships and operator-calibrates probabilities.
+    CLAUDE.md items 138/139/140. Wave 1 expansion (item 142) added
+    +8 entries / +8 champs (10/10 -> 18/18). Wave 2 (item 143) added
+    +5 entries / +5 champs (18/18 -> 23/23). Wave 3 (item 144) added
+    +5 entries / +5 champs (23/23 -> 28/28). Wave 4 (item 145) added
+    +5 entries / +4 champs + 1 multi-wave coexistence (28/28 ->
+    33/32). Wave 5 (item 146) added +2 entries / 0 net-new champs
+    via multi-wave coexistence on Briar + TahmKench (33/32 -> 35/32).
+    Wave 6 (this run) adds +1 entry / 0 net-new champs via multi-
+    wave coexistence on Brand (35/32 -> 36/32). Future waves populate
+    further as consumer logic ships and operator-calibrates
+    probabilities.
 
     Per-entry probabilities pass through ``_p(champion, spell, default)``
     which honors any ``per_entry_probability`` override loaded from
@@ -1279,6 +1304,80 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
             "is achievable in 6s fight via Q + AA + Q chain. Coexists "
             "with TahmKench R wave 0 devour on different spell slot "
             "via setdefault."
+        ),
+    )
+
+    # ============================================================
+    # === wave 6 expansion (2026-05-22) - 1 entry / 0 new champs
+    # === via multi-wave coexistence on existing champion (Brand
+    # === gains Q coexisting with wave 0 R nth_hit 3-stack stun).
+    # === Uses only the 10 existing condition tags - no new tag
+    # === constants (operator-gated). Sourced from the wave 4
+    # === REJECT carry where Brand W was rejected as not first-
+    # === order CC; the canonical Brand Q stun-on-blazed-target
+    # === IS first-order CC with a clean COND_TARGET_DEBUFFED fit.
+    # === REJECTs documented in commit body: Lissandra E (damage +
+    # === dash only, no first-order CC at 16.10.1 per Meraki);
+    # === Aurora R/E/W (mechanic-uncertain or slow-only); Volibear
+    # === R (turret-only); Naafiri R / Akali R / Jhin R / Pyke R /
+    # === Sett R (no first-order CC verified); Vex E (mark-conditional
+    # === already shipped wave 0); Heimerdinger R-Q/R-W (already
+    # === unconditional E in _PER_SPELL_CC_DURATIONS); Galio Q (slow
+    # === only); Brand W Pillar of Flame (passive Blaze trigger,
+    # === not first-order); Lillia E (no CC); Sett W (needs new
+    # === grit_meter tag); Sett E (already wave 0 dual_enemy);
+    # === Tristana R terrain-stun (uncertain at 16.10.1 whether
+    # === stun fires only on wall collision or always - Meraki
+    # === shows Stun Duration block but mechanic interpretation
+    # === unclear); Mel E (root is unconditional direct-hit per
+    # === Meraki, belongs in _PER_SPELL_CC_DURATIONS not here);
+    # === Annie Pyromania passive (encoding still ambiguous per
+    # === item 146 wave 5 REJECT - lands across Q/W/R, rank-up by
+    # === champion-level not spell-level); Bel'Veth W (slow +
+    # === airborne unconditional, belongs elsewhere); Vayne E
+    # === wall-stun (schema lift needed per item 146 REJECT);
+    # === Trundle E (no clean tag fit); Renekton W + Camille E
+    # === (extension-shape asymmetry per item 144 REJECT).
+    # ============================================================
+
+    # Brand Q Sear: skillshot damage line. Standalone hit on a non-
+    # blazed target = damage only. If the target carries a Blaze
+    # passive stack (applied by any prior Brand spell-hit OR auto-
+    # attack landing the passive), Sear stuns the target for 1.25s.
+    # The Blaze debuff is the prerequisite (target_debuffed tag).
+    # Brand R is already in the cc_conditional registry as wave 0
+    # nth_hit 3-stack stun (Pyroclasm bouncing 3 times); Brand Q
+    # (this wave 6) is the conditional stun on a blazed target that
+    # coexists on the same champion via setdefault on a different
+    # spell slot. FOURTH multi-entry-within-cc_conditional champion
+    # (after Aatrox Q+W waves 3+4 / Briar Q+E waves 4+5 / TahmKench
+    # R+Q waves 0+5). Pantheon Q wave 4 coexists with Pantheon W in
+    # the SEPARATE unconditional `_PER_SPELL_CC_DURATIONS` registry,
+    # NOT in cc_conditional. Probability
+    # 0.5 (tag midpoint) - in a teamfight Brand typically applies
+    # Blaze early via passive auto-attack or W zone before Q follow-
+    # up, but the debuff also frequently expires before Q hits (4s
+    # window per stack); midpoint reflects average mid-fight setup.
+    # Duration 1.25s confirmed canonical at 16.10.x via Riot wiki
+    # Brand passive Blaze interaction. The Brand W Pillar of Flame
+    # increased-damage-on-blazed-target was REJECTED wave 4 as "not
+    # first-order"; Brand Q here is genuinely first-order CC (stun
+    # is the direct effect, not a damage amplification).
+    registry.setdefault("Brand", {})["Q"] = ConditionalCcEntry(
+        champion="Brand",
+        spell="Q",
+        cc_kind="stun",
+        durations_s=(1.25,),
+        condition=COND_TARGET_DEBUFFED,
+        probability=_p("Brand", "Q", 0.5),
+        notes=(
+            "Q Sear stuns 1.25s only when target carries a Blaze "
+            "passive stack from prior Brand spell-hit or auto-attack. "
+            "Standalone Q on a non-blazed target is damage only. "
+            "target_debuffed conditional - the Blaze stack must "
+            "persist on the target when Q lands (4s stack window). "
+            "Coexists with Brand R wave 0 nth_hit 3-stack stun on a "
+            "different spell slot via setdefault."
         ),
     )
 
