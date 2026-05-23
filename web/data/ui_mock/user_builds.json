@@ -1,0 +1,100 @@
+{
+  "ok": true,
+  "champion": "Tristana",
+  "mock": true,
+  "builds": [
+    {
+      "id": "ub_mock_001",
+      "label": "lethality 3-item rush",
+      "role": "BOTTOM",
+      "runes": {
+        "keystone": "Hail of Blades",
+        "primary": "Domination",
+        "secondary": "Precision"
+      },
+      "summoner_spells": [4, 7],
+      "items": [
+        "Opportunity",
+        "Edge of Night",
+        "Voltaic Cyclosword",
+        "Serylda's Grudge",
+        "Ravenous Hydra",
+        "Boots of Swiftness"
+      ],
+      "notes": "lethality 3-item rush vs squishy front"
+    },
+    {
+      "id": "ub_mock_002",
+      "label": "AS bruiser into tanks",
+      "role": "BOTTOM",
+      "runes": {
+        "keystone": "Lethal Tempo",
+        "primary": "Precision",
+        "secondary": "Domination"
+      },
+      "summoner_spells": [4, 14],
+      "items": [
+        "Kraken Slayer",
+        "Berserker's Greaves",
+        "Runaan's Hurricane",
+        "Wit's End",
+        "Blade of the Ruined King",
+        "Phantom Dancer"
+      ],
+      "notes": "AS-heavy split-and-shred build for tank-heavy enemy comps"
+    },
+    {
+      "id": "ub_mock_003",
+      "label": "burst rocket - W max",
+      "role": "MIDDLE",
+      "runes": {
+        "keystone": "Electrocute",
+        "primary": "Domination",
+        "secondary": "Sorcery"
+      },
+      "summoner_spells": [4, 14],
+      "items": [
+        "Statikk Shiv",
+        "Boots of Lucidity",
+        "Stormrazor",
+        "Lich Bane",
+        "Rabadon's Deathcap",
+        "Void Staff"
+      ],
+      "notes": "mid lane Trist with W-max for early burst trades"
+    },
+    {
+      "id": "ub_mock_004_long_label_overflow_check_to_validate_text_truncation_behavior",
+      "label": "extremely long build label to exercise the overflow ellipsis on .ub-build-label",
+      "role": "TOP",
+      "runes": {
+        "keystone": "Press the Attack",
+        "primary": "Precision",
+        "secondary": "Resolve"
+      },
+      "summoner_spells": [4, 12],
+      "items": [
+        "Doran's Blade",
+        "Plated Steelcaps",
+        "Vampiric Scepter",
+        "Cloak of Agility"
+      ],
+      "notes": "overflow check"
+    },
+    {
+      "id": "ub_mock_005",
+      "label": "minimal",
+      "role": null,
+      "runes": {
+        "keystone": "",
+        "primary": "",
+        "secondary": ""
+      },
+      "summoner_spells": [4, 4],
+      "items": [
+        "Doran's Blade"
+      ],
+      "notes": ""
+    }
+  ]
+}
