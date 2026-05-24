@@ -1,6 +1,6 @@
 {
   "mock": true,
-  "note": "ARAM Mayhem (KIWI / queue 2400) variant of the champ-select mock. Used by the audit ritual to render the ARAM-specific summoner-spell strip (Mark/Snowball id 32 in slot 2) + the 5-cell bench-swap strip. Activated by ?ui_mock=1&mode=aram + #champ-select.",
+  "note": "ARAM Mayhem (KIWI / queue 2400) variant of the champ-select mock. Used by the audit ritual to render the ARAM-specific summoner-spell strip (Mark/Snowball id 32 in slot 2) + the 10-cell bench-swap strip. Activated by ?ui_mock=1&mode=aram + #champ-select.",
   "phase": "ChampSelect",
   "champ_select": {
     "queue_id": 450,
@@ -26,7 +26,7 @@
       {"cellId": 8, "championId": 145, "summonerName": "",               "assignedPosition": "",  "completed": true,  "championPickIntent": 145},
       {"cellId": 9, "championId": 412, "summonerName": "",               "assignedPosition": "",  "completed": true,  "championPickIntent": 412}
     ],
-    "bench": [22, 18, 76, 81, 51],
+    "bench": [22, 18, 76, 81, 51, 75, 21, 67, 110, 96],
     "bans": {
       "my_team": [],
       "their_team": []
