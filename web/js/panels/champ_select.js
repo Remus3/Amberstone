@@ -842,12 +842,16 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   _csvMaybePushBuildsToLCU(myName, mode, variants);
   // Operator (2026-05-23): summoner spell strip. Selection mirrors the
   // current default variant's summoners (first row); click pushes to
-  // LCU via the agent's set_summoner_spell command (route is the
-  // operator's follow-up; the visual selection works regardless).
+  // LCU via the set_summoner_spell agent route (slot 1 = D, slot 2 = F).
+  // First click in a render cycle assigns D, next click assigns F, then
+  // wraps. Mode-keyed list (SR vs ARAM) so Mark / Snowball (id 32) lands
+  // in the ARAM strip.
   const _activeVariant = variants && variants.find((v) => !v.is_experimental) || (variants && variants[0]);
   const _activeSpells = (_activeVariant && Array.isArray(_activeVariant.summoners))
-    ? _activeVariant.summoners : [4, 7];
-  const summSpellHtml = _csvSummSpellStripHtml(_activeSpells);
+    ? _activeVariant.summoners : (mode === "aram" ? [4, 32] : [4, 7]);
+  _csvSpellPair[0] = _activeSpells[0] | 0;
+  _csvSpellPair[1] = _activeSpells[1] | 0;
+  const summSpellHtml = _csvSummSpellStripHtml(_csvSpellPair, mode);
   const buildsTitle = mode === "aram" ? "ARAM build chooser"
                     : mode === "arena" ? "Arena build chooser"
                     : "SR build chooser";
@@ -892,19 +896,20 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     ${buildsHtml}
     ${boHtml}`;
   // Wire click handlers on the summoner-spell strip (idempotent - body
-  // innerHTML rebuild on each render attaches fresh handlers).
+  // innerHTML rebuild on each render attaches fresh handlers). Click N=1
+  // fills the D slot, click N=2 fills the F slot, then wraps. Skips
+  // when the clicked spell would duplicate the other slot.
   body.querySelectorAll(".csv-summspell-cell").forEach((cell) => {
     cell.addEventListener("click", () => {
       const sid = parseInt(cell.dataset.spellId, 10) | 0;
       if (!sid) return;
-      const wasSelected = cell.classList.contains("is-selected");
-      // Single-select within the strip - clear all + mark this one.
-      body.querySelectorAll(".csv-summspell-cell.is-selected").forEach((c) => c.classList.remove("is-selected"));
-      if (!wasSelected) cell.classList.add("is-selected");
-      // Push to LCU - the agent route is the operator's follow-up
-      // (item 11 spawned 2026-05-23 to wire the in-game item dropdown);
-      // the set_summoner_spell shape mirrors set_pick_intent + set_ban_intent.
-      try { lcuCmd({ cmd: "set_summoner_spell", spellId: sid }); } catch (_) {}
+      const otherIdx = _csvNextSpellSlot === 1 ? 1 : 0;
+      if (sid === _csvSpellPair[otherIdx]) return;
+      const usedSlot = _csvNextSpellSlot;
+      _csvSpellPair[usedSlot - 1] = sid;
+      _csvNextSpellSlot = usedSlot === 1 ? 2 : 1;
+      _csvRefreshSpellBadges(body);
+      try { lcuCmd({ cmd: "set_summoner_spell", slot: usedSlot, spellId: sid }); } catch (_) {}
     });
   });
 
@@ -1280,7 +1285,7 @@ function _csvWireBench(scope) {
     cell.addEventListener("click", () => {
       const cid = parseInt(cell.dataset.benchId, 10);
       if (!cid) return;
-      lcuCmd({ cmd: "bench_swap", champion_id: cid });
+      lcuCmd({ cmd: "bench_swap", championId: cid });
       // Visual feedback - pulse the cell so the operator sees the click
       // registered before the LCU agent confirms via state push.
       cell.classList.add("is-pending");
@@ -1759,12 +1764,12 @@ function _csvMaybePushBuildsToLCU(champion, mode, variants) {
   try { lcuCmd({ cmd: "apply_item_sets_batch", sets }); } catch (_) {}
 }
 
-// Operator (2026-05-23): summoner spell strip. 9 SR-relevant spells in
-// a single horizontal row. Selected cell ids come from the current
-// default variant's summoners array; click toggles + pushes to LCU.
-// Recommended usage % mocked here against BOT-lane defaults; a real
-// percentage source would query the operator's match-history pivot
-// (sum, role, count(*)/total) - operator follow-up to wire that pivot.
+// Operator (2026-05-23): summoner spell strip. Mode-keyed list - SR
+// carries 9 SR-legal spells, ARAM swaps out Smite + Teleport for Mark
+// (Snowball, id 32) + Clarity (id 13). Selected cell ids come from
+// _csvSpellPair (module-level [d, f]); click rotates slot D -> F -> D
+// and pushes via set_summoner_spell. Recommended usage % is a rough
+// mock - wiring the operator's match-history pivot is a follow-up.
 const _CSV_SUMM_STRIP_SR = [
   { id: 4,  name: "Flash",    pct: 95 },
   { id: 7,  name: "Heal",     pct: 60 },
@@ -1776,24 +1781,76 @@ const _CSV_SUMM_STRIP_SR = [
   { id: 6,  name: "Ghost",    pct:  2 },
   { id: 11, name: "Smite",    pct:  0 },
 ];
-function _csvSummSpellStripHtml(currentSpells) {
+const _CSV_SUMM_STRIP_ARAM = [
+  { id: 4,  name: "Flash",    pct: 95 },
+  { id: 32, name: "Mark",     pct: 88 },
+  { id: 7,  name: "Heal",     pct: 35 },
+  { id: 1,  name: "Cleanse",  pct: 20 },
+  { id: 21, name: "Barrier",  pct: 18 },
+  { id: 3,  name: "Exhaust",  pct: 12 },
+  { id: 14, name: "Ignite",   pct: 10 },
+  { id: 13, name: "Clarity",  pct:  6 },
+  { id: 6,  name: "Ghost",    pct:  4 },
+];
+// Module-level state - tracks current D / F pair + next-click slot
+// pointer. Reset to [0, 0] / slot=1 between champion-pick rerenders.
+let _csvSpellPair = [0, 0];
+let _csvNextSpellSlot = 1;
+function _csvSummSpellListFor(mode) {
+  return (mode === "aram") ? _CSV_SUMM_STRIP_ARAM : _CSV_SUMM_STRIP_SR;
+}
+function _csvSpellSlotLabel(spellId) {
+  if (spellId && spellId === _csvSpellPair[0]) return "D";
+  if (spellId && spellId === _csvSpellPair[1]) return "F";
+  return "";
+}
+function _csvSummSpellStripHtml(currentSpells, mode) {
+  const list = _csvSummSpellListFor(mode);
   const selected = new Set((currentSpells || []).map((s) => s | 0));
-  const cells = _CSV_SUMM_STRIP_SR.map((sp) => {
+  const cells = list.map((sp) => {
     const isSel = selected.has(sp.id);
+    const slotLbl = _csvSpellSlotLabel(sp.id);
     const url = sumImg(sp.id);
     const icon = url
       ? `<img class="csv-summspell-icon" src="${url}" alt="${sp.name}" onerror="this.style.display='none'">`
       : `<span class="csv-summspell-icon" aria-hidden="true">?</span>`;
+    const badge = slotLbl
+      ? `<span class="csv-summspell-slot">${slotLbl}</span>`
+      : "";
     return `
       <button type="button" class="csv-summspell-cell${isSel ? " is-selected" : ""}"
               data-spell-id="${sp.id}" data-spell-name="${sp.name}"
               title="${sp.name} - ${sp.pct}% recommended usage">
-        ${icon}
-        <div class="csv-summspell-name">${sp.name}</div>
+        ${icon}${badge}
         <div class="csv-summspell-pct">${sp.pct}%</div>
       </button>`;
   }).join("");
   return `<div class="csv-summspell-strip" id="csv-summspell-strip">${cells}</div>`;
+}
+function _csvRefreshSpellBadges(scope) {
+  if (!scope) return;
+  scope.querySelectorAll(".csv-summspell-cell").forEach((cell) => {
+    const sid = parseInt(cell.dataset.spellId, 10) | 0;
+    const slotLbl = _csvSpellSlotLabel(sid);
+    const isSel = !!slotLbl;
+    cell.classList.toggle("is-selected", isSel);
+    let badge = cell.querySelector(".csv-summspell-slot");
+    if (slotLbl) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "csv-summspell-slot";
+        const iconEl = cell.querySelector(".csv-summspell-icon");
+        if (iconEl && iconEl.nextSibling) {
+          cell.insertBefore(badge, iconEl.nextSibling);
+        } else {
+          cell.appendChild(badge);
+        }
+      }
+      badge.textContent = slotLbl;
+    } else if (badge) {
+      badge.remove();
+    }
+  });
 }
 
 function _csvArchetypePickerHtml(champion) {

@@ -1049,7 +1049,9 @@ def execute_command(cmd):
         r, err = lcu_request("POST", "/lol-matchmaking/v1/ready-check/accept")
         return {"ok": err is None, "err": err}
     if name == "bench_swap":
-        cid = int(cmd.get("championId", 0))
+        # Accept both championId (canonical) and champion_id (legacy
+        # snake_case) so older JS payloads keep working.
+        cid = int(cmd.get("championId", cmd.get("champion_id", 0)))
         if cid <= 0: return {"ok": False, "err": "no champ"}
         r, err = lcu_request("POST", f"/lol-champ-select/v1/session/bench/swap/{cid}")
         return {"ok": err is None, "err": err}
@@ -1058,6 +1060,44 @@ def execute_command(cmd):
         body = {"spell1Id": d, "spell2Id": f}
         r, err = lcu_request("PATCH", "/lol-champ-select/v1/session/my-selection", body)
         return {"ok": err is None, "err": err}
+    if name == "set_summoner_spell":
+        # Per-slot push from the champ-select summoner-spell strip
+        # (2026-05-23 item 165). Body shape: {slot: 1|2, spellId: N}.
+        # Reads current my-cell pair from the session, replaces the
+        # targeted slot, and PATCHes /my-selection with the new pair
+        # so the partner slot stays intact across rapid D / F clicks.
+        try:
+            slot = int(cmd.get("slot", 0))
+        except (TypeError, ValueError):
+            slot = 0
+        try:
+            spell_id = int(cmd.get("spellId", 0))
+        except (TypeError, ValueError):
+            spell_id = 0
+        if slot not in (1, 2):
+            return {"ok": False, "err": "slot must be 1 or 2"}
+        if spell_id <= 0:
+            return {"ok": False, "err": "no spellId"}
+        sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
+        if not isinstance(sess, dict):
+            return {"ok": False, "err": "no session"}
+        my_cell = sess.get("localPlayerCellId", -1)
+        cur_d, cur_f = 0, 0
+        for player in (sess.get("myTeam") or []):
+            if isinstance(player, dict) and player.get("cellId") == my_cell:
+                cur_d = int(player.get("spell1Id", 0) or 0)
+                cur_f = int(player.get("spell2Id", 0) or 0)
+                break
+        new_d = spell_id if slot == 1 else cur_d
+        new_f = spell_id if slot == 2 else cur_f
+        # No-op if the targeted slot already holds the requested spell.
+        if (slot == 1 and cur_d == spell_id) or (slot == 2 and cur_f == spell_id):
+            return {"ok": True, "spell1Id": new_d, "spell2Id": new_f, "noop": True}
+        body = {"spell1Id": new_d, "spell2Id": new_f}
+        _, err = lcu_request("PATCH", "/lol-champ-select/v1/session/my-selection", body)
+        if err is not None:
+            return {"ok": False, "err": err}
+        return {"ok": True, "spell1Id": new_d, "spell2Id": new_f}
     if name in ("set_ban_intent", "set_pick_intent"):
         # PATCH the local cell's in-progress ban|pick action with the
         # requested champion id but ``completed: false`` so the in-game
