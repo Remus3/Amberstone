@@ -506,7 +506,7 @@ METHOD_HANDLERS = {
 class _Handler(http.server.BaseHTTPRequestHandler):
     server_version = f"{SERVER_NAME}/{SERVER_VERSION}"
 
-    def log_message(self, fmt, *a):
+    def log_message(self, fmt: str, *a: object) -> None:
         log.info("HTTP " + fmt, *a)
 
     def _send(self, status: int, body: bytes, ctype: str = "application/json") -> None:
@@ -525,7 +525,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return False
         return True
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         # /health for liveness probes (auth-gated like everything else).
         if self.path.startswith("/health"):
             if not self._check_auth(): return
@@ -535,7 +535,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         self._send(404, b'{"error":"not found"}')
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         if not self.path.startswith("/mcp"):
             self._send(404, b'{"error":"not found"}'); return
         if not self._check_auth(): return
