@@ -3,6 +3,36 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-24 - items 165b-168 SHIPPED: ARAM bench 10-cell + loadout roster + SR DS-align + P&B 3-panel + archetype preview (4 feature commits `15bafed` `dbcf9f2` `1750425` `81925a6` pushed origin/main `3b3f9d8..81925a6`; non-frozen; RC pid 14464 -> 12220 via schtasks /Run /TN RC-Supervisor; ADR-008 asset hash auto-served all UI edits)
+
+Four operator-directed asks executed end-to-end.
+
+**(a) ARAM bench 10-cell + drop champ name (`15bafed`)**: `_csvBenchHtml` slice 5 -> 10; dropped `.csv-bench-cell-name` div + CSS rule; CSS grid 5fr -> 10fr; mock fixture bench 5 -> 10 ids.
+
+**(b) Item 166 hand-curate Arena/SR/ARAM roster + boots (`dbcf9f2`)**: NEW `tools/champion_loadout_handcurate.py` + `tools/champion_loadout_handcurate_merge.py`. 4 worktree agents A-D on disjoint champ slices produced 4 patches; merged 172 / 503 / 172. Arena went from 0/172 hand to 172/172 hand. SR 162 champs at 1 hand variant got a 2nd archetype variant with boots; ARAM 169 champs at 2 hand variants got a 3rd archetype variant with boots. Yuumi + Cassiopeia bootsless preserved. Coverage gaps (no auto seed available): SR Caitlyn/Ezreal/Kai'Sa/Kayn/Lux/MasterYi/Pantheon/Twitch/Varus/Vayne; ARAM Kai'Sa/Lulu/Vayne.
+
+**(c) Item 167 align SR curated to DS engine + dedupe ARAM/Arena (`1750425`)**: 1421 unique-passive-family clashes pre-fix (Trinity Force + Essence Reaver, Lich Bane + Trinity Force, etc.). NEW `tools/champion_loadout_align.py`: SR variants regenerated via `core.build_order.plan_build_order` at typical enemy stats (armor=80, mr=60, hp=2000, bonus_hp=600, level=14, inject_boots=True) - same engine as DS-vs-enemy-comp build so curated + dynamic share components. ARAM + Arena variants deduped in-place per operator directive ("keep role standard for ARAM since enemy unknown"). Boots integral for SR/ARAM, excluded for Arena (no shop boots). 4 worktree agents A-D + follow-up all-slice rerun with improved 24-token legacy detector (ap-burst, adc-crit, tank-engage, etc.). Post-merge: 0 clashes anywhere; SR hand 346 (342 with boots). NEW `tests/test_champion_loadouts_no_unique_clash.py` drift guard.
+
+**(d) Item 168 P&B 3-panel + DS-archetype top-3 preview (`81925a6`)**: Operator reframed Pick & Ban panel as 3 stacked sub-panels in same row-2 floor (460px). TOP = 4 picks (3 role-matching from comfort + 1 last_in_queue). MIDDLE = 4 bans (3 counter + 1 struggle). BOTTOM = dynamic explanation (per-pick reason lines + CC-cleanse advisory). Backend: NEW `_query_last_in_queue` + `_query_struggle_ban` + `_compose_cleanse_advisory` helpers + 3 response fields (`last_in_queue`, `struggle_ban`, `cleanse_advisory`) + 2 query params (`enemies`, `my_summoners`). Frontend: full rewrite of `_csvRenderPickBan` with new `.csv-pb168-*` classes + source-color tags. Mood toggle dropped from UI (kept in cache key default=comfort). DS Archetype empty-space fill: top-3 DS picks render in a 3-cell row below the 6 archetype buttons via `_csvArchetypePickerHtml` extension + `.csv-arch-preview-*` CSS. Live probe BOT: `last_in_queue=Tristana`, `struggle_ban=Nilah 5/5`. 10 new pickban tests (53/53). Phase8 75/75. RC suite 3289/3289.
+
+**Don't-redo:**
+- `tools/champion_loadout_handcurate.py` + `tools/champion_loadout_handcurate_merge.py` + `tools/champion_loadout_align.py` are durable patch-pipeline tools. To regenerate after a patch bump: 4 parallel agents on A-D slices, then merge with the merge tool. Drift guard `test_champion_loadouts_no_unique_clash` LOCKS the no-double-family invariant for all 678 curated variants.
+- The Arena hand-curate is intentionally NOT bespoke per-champ-meta - it's a promotion of the auto-arena-primary-<arch> variant via the DS engine's archetype scorer. Hand-tuning per champ is operator-gated separately.
+- SR plan_build_order baseline (armor=80, mr=60, hp=2000, lvl=14) is the neutral pivot; the live DS-vs-enemy-comp path runs the SAME engine at the SAME baseline + current enemy stats, so curated + dynamic share components by construction.
+- `.csv-pb-pick-row` / `.csv-pb-pick-icon` / `.csv-pb-mood-row` CSS rules are now DEAD post-item-168 (new layout uses `.csv-pb168-*`); leave them in place for now (CSS-only, no JS still references them). Mood-toggle wiring code in JS is also no-op (querySelectorAll returns empty list).
+- `_compose_cleanse_advisory` HEAVY_THRESHOLD=1.0s + 3-champs-with-heavy-CC + cleanse-not-equipped triple gate is operator-tunable but currently calibrated for "actionable not spam".
+
+**Carries forward:**
+- All item 165 carries unchanged EXCEPT bench-10 part done this session.
+- Item 164 LCU multi-itemset push verification via Practice Tool match + Game-PC monitor 0 capture STILL operator-gated.
+- v2.1 audit pages 9/10 Champ Select ARAM/Arena -> 11/12/13 Active Match SR/ARAM/Arena -> 14/15/16 PGR SR/ARAM/Arena (8 remaining in audit order).
+- RC-PostmortemAnalyze first scheduled run was 2026-05-24 04:15 - verify LastTaskResult=0 next session.
+- 13 SR/ARAM coverage gaps in champion_loadouts (above (b)) - operator-gated whether to backfill with curated picks for the no-auto-seed champs.
+- New P&B panel layout per-pick reasons are short backend strings; if operator wants RICHER prose, swap `_compose_cleanse_advisory` for a Haiku call (opt 2/3 from item 168 fork; operator picked opt 1 lite for this round).
+- Page #8 visual-hierarchy audit subagent re-run per [[feedback_phase3_fixture_ritual]] STILL OWED for items 166-168 surface (P&B 3-panel + archetype preview need a live visual capture before /done locks the page).
+- DD Defy / Live ARAM/SR smoke / calibrations / cc_conditional wave 9+ / 542 U+2500 chars / Legion 1-PC consolidation - all operator-gated carries.
+
+---
 # 2026-05-23 - item 165 ARAM bench-swap + summoner-spell D/F slot rotation SHIPPED (commit `1fa39de`, pushed origin/main `02fef4b..1fa39de`; non-frozen; agent redeployed Game-PC; no DS restart; no RC restart - ADR-008 asset-hash auto-served)
 
 Operator-reported 4 live champ-select bugs, all fixed end-to-end:
