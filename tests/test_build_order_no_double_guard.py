@@ -138,7 +138,7 @@ class EveryEngineFamilyCoveredTests(unittest.TestCase):
     def test_no_family_doubled_in_a_full_plan(self):
         res = plan_build_order(
             "AnyChamp", "carry", level=18, owned_item_ids=[], mode="SR",
-            slots=6, rank_fn=self.eng,
+            slots=6, inject_boots=False, rank_fn=self.eng,
         )
         self.assertIsNotNone(res)
         fams = [self.fam_of[s.item_id] for s in res.order
@@ -161,7 +161,7 @@ class EveryEngineFamilyCoveredTests(unittest.TestCase):
             eng = _FakeEngine({i: self.cat[i] for i in ids})
             res = plan_build_order(
                 "AnyChamp", "carry", level=11, owned_item_ids=[],
-                mode="SR", slots=6, rank_fn=eng,
+                mode="SR", slots=6, inject_boots=False, rank_fn=eng,
             )
             self.assertEqual(
                 len(res.order), 1,

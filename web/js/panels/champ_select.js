@@ -821,6 +821,16 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // No-op if already cached / inflight. Renders synchronously below.
   if (myName) _csvFetchArchetype(myName);
   const archetypeHtml = _csvArchetypePickerHtml(myName);
+  // Operator (2026-05-23 round 2): Allies panel re-used as the DS
+  // Build Archetype slot. Render the picker into #csv-archetype-target
+  // + wire its click handlers; the My Pick body below no longer
+  // interpolates archetypeHtml.
+  const archTarget = document.getElementById("csv-archetype-target");
+  if (archTarget) {
+    archTarget.innerHTML = archetypeHtml
+      || '<div class="csv-empty">waiting for champion pick...</div>';
+    _csvWireArchetypePicker(archTarget);
+  }
   const variants = _csvBuildVariantsFor(myCid, myName, mode, cs);
   // Operator (2026-05-23) item 164: push ALL build variants to the LCU
   // client so the in-game item-shop "Recommended Items" dropdown carries
@@ -878,7 +888,6 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     </div>
     ${lockBtnHtml}
     ${extraHtml}
-    ${archetypeHtml}
     ${summSpellHtml}
     ${buildsHtml}
     ${boHtml}`;
@@ -905,7 +914,8 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   if (mode === "aram") _csvWireBench(body);
   _csvWireBuildVariants(body);
   _csvWireLockButton(body);
-  _csvWireArchetypePicker(body);
+  // Operator (2026-05-23 round 2): archetype picker wired against
+  // #csv-archetype-target (Allies grid-area), not the My Pick body.
 }
 
 // s210: Suggestions panel renderer (row 2 right).
@@ -2758,18 +2768,33 @@ function _csvPrTint(wr) {
 }
 
 function _csvPrChip(name, wr, games) {
-  // Champ names are trusted DDragon/DB data - interpolated raw, same as
-  // the existing _csvRenderPickBan rows (d.champName / b.name).
+  // Legacy text-chip - kept for backwards-compat. The Assessment-panel
+  // VS row now uses _csvPrChipIcon below.
   const nm = String(name || "?");
   if (!games) {
     return `<span class="csv-pr-chip is-new">${nm}<em>first time</em></span>`;
   }
-  // Operator (2026-05-23): drop the "${games}g" suffix per request -
-  // keep color (tint via _csvPrTint) + winrate %. The games count is
-  // still surfaced in the section header (JINX 16-11 (27g)); the per-
-  // ally / per-enemy chips show name + WR only for compactness.
   return `<span class="csv-pr-chip ${_csvPrTint(wr)}">`
        + `${nm}<b>${wr}%</b></span>`;
+}
+
+// Operator (2026-05-23 round 3): chip variant that renders the champion
+// portrait icon (instead of the text name) with the WR % below. Used in
+// the Assessment panel's VS row so the operator scans by face, not by
+// reading champ names. champId is the LCU integer (DDragon-keyed name
+// via CHAMPS.byId).
+function _csvPrChipIcon(champId, wr, games) {
+  const cid = (champId | 0);
+  const url = _csChampImg(cid);
+  const name = _csChampName(cid) || (cid ? "cid:" + cid : "?");
+  if (!games) {
+    return `<span class="csv-pr-chip-icon is-new" title="${name} - first time">`
+         + (url ? `<img class="csv-pr-chip-icon-img" src="${url}" alt="${name}" onerror="this.style.display='none'">` : "")
+         + `<span class="csv-pr-chip-icon-pct">--</span></span>`;
+  }
+  return `<span class="csv-pr-chip-icon ${_csvPrTint(wr)}" title="${name} ${wr}% (${games}g)">`
+       + (url ? `<img class="csv-pr-chip-icon-img" src="${url}" alt="${name}" onerror="this.style.display='none'">` : "")
+       + `<span class="csv-pr-chip-icon-pct">${wr}%</span></span>`;
 }
 
 // Build the foregrounded "YOUR RECORD" headline. Always renders the
@@ -2796,16 +2821,13 @@ function _csvRenderPersonalRecordBlock(pr, selfCid) {
            + `<span class="csv-pr-champ-name">${nm}</span>`
            + `<em>no games on record</em></div>`;
   }
-  const allies = (pr && Array.isArray(pr.with_allies)) ? pr.with_allies : [];
+  // Operator (2026-05-23 round 3): WITH row dropped entirely; VS row
+  // kept but each chip is now an icon (champion portrait) with WR %
+  // below - not a text name. Operator scans by face, not by name.
   const enemies = (pr && Array.isArray(pr.vs_enemies)) ? pr.vs_enemies : [];
-  if (allies.length) {
-    inner += `<div class="csv-pr-row"><span class="csv-pr-tag">WITH</span>`
-           + allies.map((x) => _csvPrChip(x.champName, x.wr_pct, x.games)).join("")
-           + `</div>`;
-  }
   if (enemies.length) {
-    inner += `<div class="csv-pr-row"><span class="csv-pr-tag">VS</span>`
-           + enemies.map((x) => _csvPrChip(x.champName, x.wr_pct, x.games)).join("")
+    inner += `<div class="csv-pr-row csv-pr-row-vs"><span class="csv-pr-tag">VS</span>`
+           + enemies.map((x) => _csvPrChipIcon(x.champId, x.wr_pct, x.games)).join("")
            + `</div>`;
   }
   if (!inner) {
@@ -2923,13 +2945,10 @@ function _csvRenderPickBan(cs, myCid) {
   }
 
   // ── Mood branch ────────────────────────────────────────────────
-  // Operator (2026-05-23): mood modifier dropped + 3 ban rows aggregate
-  // to 2 ban choices ("Struggle Ban" + "Counter Ban") - role-weighted
-  // via the operator's resolved lane (selfCid + role context). Mock
-  // aggregation for now: take the top performance ban as Struggle (the
-  // operator struggles vs this champion) + the top meta ban as Counter
-  // (this champion counters the operator's pick); a real aggregator
-  // would role-weight + dedupe across all 3 source ban candidates.
+  // Operator (2026-05-23 round 2): restored 3 pick rows (Performance /
+  // Mastery / Meta) - the 3 choices answer "which lane-role champion
+  // to play". Ban candidates per row reduced from 3 to 2 (dropped the
+  // "terror" 3rd ban) - see banCells .slice(0, 2) below.
   let sources;
   if (mood === "comfort") {
     const liveRecs = _csvFetchPickBanRecs(
@@ -2939,8 +2958,9 @@ function _csvRenderPickBan(cs, myCid) {
     );
     const merged = _csvMergePickBanData(role, liveRecs, ph);
     sources = [
-      { key: "struggle", label: "Struggle Ban", data: merged.performance },
-      { key: "counter",  label: "Counter Ban",  data: merged.meta },
+      { key: "performance", label: perfLabel, data: merged.performance },
+      { key: "mastery",     label: "Mastery", data: merged.mastery },
+      { key: "meta",        label: "Meta",    data: merged.meta },
     ];
   } else {
     // Single fetch - backend returns top-3 picks with the exclude-set
@@ -2963,15 +2983,12 @@ function _csvRenderPickBan(cs, myCid) {
     const fallbacks = [ph.performance, ph.mastery, ph.meta];
     const moodBans = (liveRecs && Array.isArray(liveRecs.performance_bans))
       ? liveRecs.performance_bans : ph.performance.bans;
-    // Operator (2026-05-23): post-mood-drop, the non-comfort branch
-     // is dead code; the legacy mood-cascade kept for future re-add.
-     // Sliced to 2 rows mirroring the comfort branch above.
-    sources = [0, 1].map((i) => {
+    sources = [0, 1, 2].map((i) => {
       const p = picks[i];
       if (p) {
         return {
-          key: i === 0 ? "struggle" : "counter",
-          label: i === 0 ? "Struggle Ban" : "Counter Ban",
+          key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+          label: i === 0 ? perfLabel : `${perfLabel} · #${i + 1}`,
           data: {
             champId: p.champId,
             champName: p.champName,
@@ -2986,8 +3003,8 @@ function _csvRenderPickBan(cs, myCid) {
       }
       const fb = fallbacks[i];
       return {
-        key: i === 0 ? "struggle" : "counter",
-        label: i === 0 ? "Struggle Ban" : "Counter Ban",
+        key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+        label: i === 0 ? perfLabel : (i === 1 ? "Mastery" : "Meta"),
         data: { ...fb, reason: `[no ${mood} data] ${fb.reason}` },
       };
     });
@@ -3032,8 +3049,10 @@ function _csvRenderPickBan(cs, myCid) {
 
   sources.forEach((src) => {
     const d = src.data;
-    const banCells = d.bans.map((b, i) => {
-      const role3 = ["counter", "struggle", "terror"][i] || "";
+    // Operator (2026-05-23 round 2): ban candidates reduced from 3 to 2
+    // (dropped the "terror" 3rd ban). Each row now shows COUNTER + STRUGGLE.
+    const banCells = d.bans.slice(0, 2).map((b, i) => {
+      const role3 = ["counter", "struggle"][i] || "";
       // s212 v6: no more `is-disabled` lockout - every cell stays
       // clickable so operator can re-fire `set_ban_intent` to LCU as
       // many times as they want during draft (LCU decides what sticks).
