@@ -3,6 +3,58 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-23 - items 163-164 page #8 Champ Select SR rounds 1-3 + boots-engine + LCU multi-itemset push SHIPPED (5 commits `15a2202` `562e992` `42e0c96` `0554ce7` `3d02d94` `fba6b72`, pushed origin/main `8c54682..fba6b72`; non-frozen; DS engine extended via core/build_order.py non-frozen; no DS restart needed since engine_version unchanged; RC :8888 ADR-008 asset-hash auto-served throughout)
+
+Item 158's v2.1 audit order continued: page #4 History visual proof closed (item 162 carry-forward (b)) + page #7 Pre-Game Lobby SHIPPED + page #8 Champ Select SR end-to-end + 3 rounds of operator-driven deltas + boots-engine injection.
+
+**Pages shipped:**
+- **#4 History visual** (commit `15a2202`): captured Game-PC monitor 1 with 5-session 14-day grid + 4-scope tabs + SEASON STATS card. Closes item 162's owed visual.
+- **#7 Pre-Game Lobby** (commits `15a2202` `562e992`): header.css L681-1766 ~22 v2.1 token swaps on .lobby-view-* / .lq-* / .lv-* (preserves s162 v2/v4/v5/v8/v10/v11/v13/v14/v15 fit-without-scroll discipline). NEW web/data/ui_mock/lobby.json (3-member Ranked Solo party + mains + top8). NEW main.js _csResolveLcu helpers + restorePrefs sticky-clear hook (PWA hash-restore fallback). Mid-iteration delta: PRIMARY/SECONDARY labels stripped from lane buttons; icon area 28x28 -> 44x44.
+- **#8 Champ Select SR** (commits `42e0c96` `0554ce7` `3d02d94` `fba6b72`):
+  - Round 1: ~17 v2.1 token swaps on champ_select_view.css. NEW champ_select_sr.json mock fixture. NEW main.js _csResolveLcu helpers + 3 call-site wires.
+  - Audit MUST FIX: 13 sub-floor declarations bumped to --fs-xs (YOUR RECORD lines / PICK&BAN labels / champ names / trade popup / SUGGESTIONS).
+  - Round 1.5: shrunk YOUR RECORD pills, removed games count from chips, populated SR BUILD CHOOSER with 3 Jinx mock variants + Experimental row, fixed _csvScheduleRender rAF re-fire to handle mock lcu (post-fetch re-render now lands).
+  - Round 1.75: hide ALLY/ENEMY ban grids + tips 1/2/3 from Assessment panel + .csv-card-mypick overflow:hidden so bo-chain ellipsis engages.
+  - Round 2 (4 deltas): Allies panel removed -> DS BUILD ARCHETYPE relocated to that grid slot via #csv-archetype-target. SR Build Chooser label widened 130 -> 200px. YOUR RECORD pinned to top of Assessment panel above CC threat cards. Pick & Ban restored to 3 rows (Performance/Mastery/Meta) + ban candidates 3 -> 2 per row (dropped terror).
+  - Round 3 (7 deltas): inner DS BUILD ARCHETYPE duplicate label hidden; HOVERING + Jinx vertically aligned (dropped 92px min-height, align-self center); LOCK IN button reduced (--fs-md -> --fs-sm, padding tightened, min-height 42 -> 32); summoner spell strip typography bumped (icons 28->36, fonts -> --fs-sm); Build order label renamed "Build Order" -> "DS vs Enemy Comp"; YOUR RECORD chips: icons replace names + WITH row dropped + VS row kept; CC threat balance + Conditional CC card fonts 11/10 -> --fs-sm/--fs-xs.
+
+**LCU multi-itemset push (item 164 - separate spawn task closed inline):**
+- `gamepc_lcu_agent.py` apply_item_set: replace-by-uid (NOT wipe-all-RC) so 4 build variants + boots-set coexist as RC- entries in the in-game item-shop dropdown.
+- gamepc_lcu_agent.py NEW `apply_item_sets_batch` command: PUTs N sets in 1 LCU call.
+- `dashboard/routes_loadout.py` _LCU_ALLOWED_CMDS: added apply_item_sets_batch + set_summoner_spell.
+- `champ_select.js` NEW _csvMaybePushBuildsToLCU helper: fires on every central-pane render, debounced via last-push key, pushes up to 4 variants. Operator-gated verification step: redeploy agent to Game-PC C:/RC-Agent/ + Practice Tool match + mid-match item shop dropdown capture.
+
+**League settings audit (item 164 sibling spawn closed inline):**
+- 7 `Riot Games` path refs in RC code, ALL `lockfile` READS. ZERO writes to PersistedSettings.json / input.ini / game.cfg.
+- RC NOT the culprit for the operator's settings-default-after-match issue. Likely actual causes: Vanguard / League patch / cloud-sync / per-resolution settings dir / GPU driver reset.
+
+**Boots-engine injection (item 164b - core/build_order.py):**
+- NEW _BOOTS_IDS frozenset (8 families) + _BOOTS_NAMES + _DEFAULT_BOOTS_BY_ARCHETYPE + _BOOTSLESS_CHAMPS{Yuumi, Cassiopeia}.
+- NEW _select_boots(arch, target_armor, target_mr) keyed on: MR >= 60 + non-dps -> Mercury's (3111); armor >= 100 + non-caster -> Steelcaps (3047); fallback by archetype.
+- plan_build_order: NEW inject_boots: bool = True parameter; loop refactored to insert boots step AFTER engine_call_i == 1 so subsequent engine calls see boots in item_ids when scoring slots 3+; engine_picks_count decremented to keep total length == slots; boots step scorer="boots" + unit="boots" for downstream filter.
+- 20 NEW tests in `tests/test_build_order_boots.py` (10 _select_boots + 10 plan_build_order integration). 26 existing plan_build_order test calls patched with `inject_boots=False` to test engine semantics in isolation. test_opt_in_populates_ordered_build + ScorerContractTests updated to filter scorer="boots". test_personal_record_dom updated for Assessment-panel relocation. test_replay_events_panel_dom widths updated for item 162 page #3 work.
+
+**Verified:** 7528 tests + DS tests pass (3277 RC + 4251 DS). Phase 8 smoke 75/75. RC pid=14464 alive=True reload_ok=True throughout. DS engine_version unchanged (engine code untouched, only orchestration in core/build_order.py). Asset hash flow: 5c6b5a4247 -> 3d4b452ea3 -> b3e5a7234a -> a1324c2a8a -> fd52ce4f4e -> a4b25e196d -> 4bea6a1b10 -> 5eaee8b26f -> dc95d0676b -> 0786e7f5ec -> 2d7f796c1f -> 2cd7868018 -> 7b16e25196 -> b8b917c1c1 -> (final).
+
+**Don't-redo:**
+- `apply_item_set` agent replace-by-uid is the canonical multi-set push; legacy wipe-all-RC available via `replace_all_rc=True`.
+- `apply_item_sets_batch` is the bulk-push command; use for >1 RC- set in one LCU call.
+- `_csvMaybePushBuildsToLCU` is debounced via `_CSV_LAST_PUSH_KEY` - safe to fire on every render.
+- Boots scorer="boots" + unit="boots" - downstream consumers MUST filter by `scorer != "boots"` when computing engine-driven aggregates (the ScorerContractTests pattern + DispatchIntegrationTests pattern in tests).
+- `_BOOTSLESS_CHAMPS` exception set lives in core/build_order.py; sanity-pinned in tests. Add to set if more bootsless champs surface (operator-flagged).
+- The PWA hash-restore fallback (`restorePrefs` extension when ?ui_mock=1) is BROADLY USEFUL - future audit captures with `?ui_mock=1#<view>` auto-clear prior manual sticky.
+- DS engine SHARED with all callers: archetype_dispatch invokes plan_build_order with default `inject_boots=True` so live coaching now includes boots. Tests of engine semantics use `inject_boots=False` to isolate.
+- The page #8 audit ritual (visual-hierarchy audit subagent per [[feedback_phase3_fixture_ritual]]) is STILL OWED before /done locks the page. Operator signaled /done + /clear before the next-session audit ritual - next session continues SR variant tweaks per operator's request.
+
+**Carries forward:**
+- Item 162 carries (a)-(g) unchanged EXCEPT (a)-relaxed: pages #7 + #4 visual closed; #8 SR shipped. 8 remaining pages in v2.1 audit order: #9/10 Champ Select ARAM/Arena -> #11/12/13 Active Match SR/ARAM/Arena -> #14/15/16 PGR SR/ARAM/Arena.
+- Page #8 audit ritual (visual-hierarchy subagent re-run) STILL OWED. Operator continues SR variant tweaks next session.
+- Operator-gated verification: LCU multi-itemset push verification via Practice Tool match + Game-PC monitor 0 capture of mid-match item-shop dropdown.
+- RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15.
+- Page #6 Home dev.js:337 verdict.team_won null bug, page #4 history mock-vs-render field-name mismatch, page #3 Replay flex-allocation re-tune, Active Match stale-detection fix - all operator-gated.
+- DD Defy / Live ARAM-SR smoke / calibrations / cc_conditional wave 12+ deferred / 542 U+2500 chars / Legion 1-PC consolidation - all operator-gated.
+
+---
 # 2026-05-23 - items 159-162 UI scale v2.1 pages #3 Replay + #4 History + #5 Session + #6 Home SHIPPED (6 commits `0d77e05` `69249f0` `6d55f63` `d677daf` `b3e14c1` `84b99a8`, pushed origin/main `2dfe8ac..84b99a8`; non-engine; non-frozen; no DS restart; no RC restart - ADR-008 asset-hash auto-served throughout)
 
 Item 158's 16-page v2.1 audit order continued. 4 consecutive pages migrated end-to-end (CSS to v2.1 tokens + per-page mock fixture at `web/data/ui_mock/<page>.json` + dev-toggle mock-fetch branch consulting `body.dataset.uiMock`). 7-step audit ritual GREEN on all 4 pages; visual proof captured on Game-PC monitor 1 except page #4 History (operator entered ARAM Mayhem mid-edit -> dashboard auto-routed away).
