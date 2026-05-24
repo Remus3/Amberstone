@@ -844,15 +844,23 @@
   border-radius: 4px;
   object-fit: contain;
 }
-.csv-summspell-name {
-  /* Operator (2026-05-23 round 3): name 16 -> --fs-sm (18). */
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: #d4d7dd;
-  letter-spacing: 0.04em;
+/* Operator (2026-05-23 item 165): name text removed - icon + D/F slot
+ * badge + pct row alone carries the chooser. */
+.csv-summspell-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 1px 6px;
+  margin-top: 2px;
+  background: #4ade80;
+  color: #0b1018;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border-radius: 4px;
   line-height: 1.1;
 }
-.csv-summspell-cell.is-selected .csv-summspell-name { color: #4ade80; }
 .csv-summspell-pct {
   /* Operator (2026-05-23 round 3): pct 16 -> --fs-sm (18). */
   font-size: var(--fs-sm);
