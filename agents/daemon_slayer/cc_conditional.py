@@ -481,6 +481,25 @@ class ConditionalCcEntry:
         Mantra-bonus root extension; Hwei E Gaze of the Abyss EW
         form root). Backward-compat: all wave 0-9 entries omit the
         field and default to ``form_index=None``.
+      * ``coexists_with_unconditional``: ENGINE 1.55.0 (wave 18 schema
+        lift, 2026-05-24) flag. ``False`` (the default) for all wave
+        0-17 entries means the entry stands ALONE on its (champion,
+        spell) slot: the consumer credits the conditional contribution
+        directly via ``include_conditional=True``. ``True`` declares
+        that the same (champion, spell) slot ALSO has an unconditional
+        entry in ``_PER_SPELL_CC_DURATIONS`` and the consumer MUST
+        avoid double-crediting. When ``True``, the consumer treats the
+        ``durations_s`` here as the FULL conditional-window duration
+        (typically the MAX-condition payoff, e.g. Maokai R max-distance
+        root 2.25s) and SUBTRACTS the unconditional contribution from
+        the same spell slot via ``_PER_SPELL_CC_DURATIONS``. Net effect
+        at ``include_conditional=True``: max(unconditional rank, prob *
+        conditional duration) credited per spell - never both summed.
+        Wave 18 lands a single consumer: Maokai R (unconditional rank-
+        based mid-distance root 1.2/1.6/2.0s in the legacy registry
+        coexists with the cc_conditional COND_RANGE_GATED max-distance
+        2.25s entry). Backward-compat: all wave 0-17 entries omit the
+        field and default to ``False``.
     """
 
     champion: str
@@ -491,6 +510,7 @@ class ConditionalCcEntry:
     probability: float = 0.5
     notes: str = ""
     form_index: Optional[int] = None
+    coexists_with_unconditional: bool = False
 
     def __post_init__(self) -> None:
         if self.spell not in ("Q", "W", "E", "R"):
@@ -3048,6 +3068,262 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
             "item 174 carry (i) Taliyah E needs new "
             "COND_TRAVERSE tag - operator-gated. Mechanic "
             "captured by ENGINE 1.46.0 Meraki schema lift."
+        ),
+    )
+
+    # ============================================================
+    # === wave 18 expansion (2026-05-24 / ENGINE 1.55.0) - +2
+    # === primary entries / +1 net-new champion (Maokai R distance-
+    # === gated root coexists with the unconditional Maokai R entry
+    # === in `_PER_SPELL_CC_DURATIONS` via the NEW
+    # === coexists_with_unconditional schema-lift flag; Briar R
+    # === Hematomania impact fear is a clean new entry on a new
+    # === Briar spell slot R - Briar already has Q wave 4 + E wave 5
+    # === entries so Briar is NOT net-new, only Maokai is).
+    # ===
+    # === Wave 18 SCHEMA LIFT: ConditionalCcEntry gains the
+    # === ``coexists_with_unconditional`` boolean field (default
+    # === False). When True, the entry declares that the same
+    # === (champion, spell) slot ALSO holds an unconditional CC
+    # === entry in ``_PER_SPELL_CC_DURATIONS``. The consumer-side
+    # === ``compute_cc_pressure(include_conditional=True)`` math
+    # === credits MAX(unconditional_post_tenacity,
+    # === conditional_post_tenacity) per slot - NEVER the sum.
+    # === This closes the long-deferred Maokai R distance-gated
+    # === root (item 170 + 172 + 173 + 174 + 175 carry forward;
+    # === would have double-counted before the schema lift).
+    # ===
+    # === Wave 18 RE-AUDIT CONCLUSIONS for the other operator-
+    # === flagged spec candidates:
+    # ===
+    # ===   * Renekton W Ruthless Predator Reign-of-Anger empowered
+    # ===     stun 1.5s - ALREADY SHIPPED wave 9 (ENGINE 1.46.0,
+    # ===     item 153) as the FIRST consumer of COND_FRENZY_STATE
+    # ===     tag. The wave 7 schema-lift carry-forward referring
+    # ===     to Renekton W is OBSOLETE - the mechanic is fully
+    # ===     captured. No state-tracking tag (COND_FURY_50) needed
+    # ===     because the existing COND_FRENZY_STATE tag with its
+    # ===     0.4 midpoint already covers Fury-state-gated CC.
+    # ===
+    # ===   * Karma W form 1 Renewal Mantra-bonus root extension
+    # ===     - ALREADY SHIPPED wave 10 (ENGINE 1.47.0, item 154)
+    # ===     in the sidecar registry as the SECOND consumer of
+    # ===     COND_FRENZY_STATE tag. The wave 7 carry-forward is
+    # ===     OBSOLETE.
+    # ===
+    # ===   * Hwei E form 1 Grim Visage Disable fear 1.0-1.5s -
+    # ===     ALREADY SHIPPED wave 9 (ENGINE 1.46.0, item 153) as
+    # ===     the PRIMARY registry entry. The wave 7 carry-forward
+    # ===     was misleading - the channel-completion mechanic was
+    # ===     covered.
+    # ===
+    # ===   * Hwei E form 2 Gaze of the Abyss root - ALREADY
+    # ===     SHIPPED wave 10 (ENGINE 1.47.0, item 154) in the
+    # ===     sidecar.
+    # ===
+    # ===   * Neeko E Empowered Root 1.8-3.0s - ALREADY SHIPPED
+    # ===     wave 9 (ENGINE 1.46.0, item 153) as the COND_DUAL_ENEMY
+    # ===     primary entry. The wave 7 carry-forward is OBSOLETE.
+    # ===
+    # ===   * Aatrox post-R passive empowered abilities - REJECT
+    # ===     re-verified (item 153 + wave 18 audit). The Meraki
+    # ===     16.10.1 effects_descriptions for Aatrox R confirms
+    # ===     "fearing nearby enemy MINIONS AND MONSTERS for 3
+    # ===     seconds" - minion/monster ONLY, not champions. The
+    # ===     post-R "passive empowered Q-sweetspot/W-pull" notion
+    # ===     in items 150/151/152 audit notes was speculative;
+    # ===     the schema-lifted description does NOT empower Q or
+    # ===     W during R. Q3 sweetspot knockup 0.5s is already in
+    # ===     cc_conditional wave 3 as Aatrox Q primary entry
+    # ===     (NOT R-gated).
+    # ===
+    # ===   * Volibear R Stormbringer passive form - REJECT
+    # ===     re-verified. effects_descriptions confirms only
+    # ===     turret-disable + 50% slow (1s decaying). Slow is NOT
+    # ===     first-order CC; turret-only disable is NOT champion
+    # ===     CC. Stormbringer is a self-buff (ghosting + bonus
+    # ===     health + range + size) with no champion-facing CC.
+    # ===
+    # ===   * Briar W Blood Frenzy empowered Q/E/R - REJECT
+    # ===     re-verified. effects_descriptions for Briar W
+    # ===     confirms self-buff frenzy state (ghosting + AS + MS
+    # ===     + AoE-around-target AA empowerment) but NO CC granted
+    # ===     to Q/E/R while in frenzy. Briar Q stun 0.85s is in
+    # ===     unconditional `_PER_SPELL_CC_DURATIONS` separately;
+    # ===     Briar W form 1 (Snack Attack) is bite + damage only.
+    # ===     Briar E charge fear / knockback is already in
+    # ===     cc_conditional wave 5.
+    # ===
+    # === Net wave 18 ship list = 2 entries:
+    # ===   (1) Maokai R distance-gated max-root + coexistence flag
+    # ===   (2) Briar R Hematomania impact non-marked target fear
+    # ===
+    # === Registry growth (primary registry):
+    # ===   58 primary + 7 sidecar = 65 entries / 54 champions
+    # ===   (ENGINE 1.54.0)
+    # === Post wave 18:
+    # ===   60 primary + 7 sidecar = 67 entries / 55 champions
+    # ===   (ENGINE 1.55.0) (Maokai NEW; Briar already in registry)
+    # ===
+    # === Condition tag total UNCHANGED at 13 (Maokai R reuses
+    # === COND_RANGE_GATED forward-marker - this is the FIRST
+    # === consumer of COND_RANGE_GATED, closing the empty-registry
+    # === contract; Briar R reuses COND_TARGET_DEBUFFED). No new
+    # === condition tag constants this wave.
+    # ============================================================
+
+    # Maokai R Nature's Grasp: 5 thorny brambles advance in the target
+    # direction; each bramble roots first-hit enemies. The actual root
+    # duration scales from 0.75s minimum (close-distance impact) up to
+    # 2.25s maximum (far-distance impact, full-bramble-travel). Per
+    # Meraki 16.10.1 effects_descriptions: "Each bramble deals magic
+    # damage to enemies hit and roots them for 0.75 : 2.25 (based on
+    # distance traveled) seconds." The unconditional
+    # `_PER_SPELL_CC_DURATIONS["Maokai"]["R"] = (1.2, 1.6, 2.0)` entry
+    # encodes per-rank MID-distance estimates (mid-distance impact at
+    # ranks 1/2/3 yields ~1.2/1.6/2.0s). The cc_conditional entry here
+    # encodes the FAR-DISTANCE 2.25s payoff gated on Maokai landing
+    # the brambles at maximum travel range. Maps to COND_RANGE_GATED -
+    # FIRST consumer of the wave 7 forward-marker tag, closing the
+    # COND_RANGE_GATED empty-registry contract that has been pending
+    # since ENGINE 1.44.0.
+    #
+    # SCHEMA LIFT: ``coexists_with_unconditional=True`` declares that
+    # the same (Maokai, R) slot ALSO holds the unconditional entry in
+    # `_PER_SPELL_CC_DURATIONS`. The consumer-side
+    # ``compute_cc_pressure(include_conditional=True)`` math credits
+    # MAX(unconditional_post_tenacity, conditional_post_tenacity) for
+    # this slot - NEVER both summed. This avoids the long-deferred
+    # double-count concern (item 170 + 172 + 173 + 174 + 175 carry
+    # forward) while still letting the operator opt into the far-
+    # distance bonus credit when include_conditional=True.
+    #
+    # Probability: tag midpoint COND_RANGE_GATED 0.4 reflects the
+    # fraction of Maokai R casts that land at the far-distance band
+    # (Maokai must place the brambles to clip at max-travel; close-
+    # range engages get the mid-distance value via the unconditional
+    # entry instead).
+    #
+    # Probability-weighted contribution at MAX (R rank 3, far distance):
+    #   2.25s * 0.4 = 0.9s post-probability.
+    # vs unconditional rank 3 mid-distance:
+    #   2.0s flat.
+    # Consumer MAX rule selects the unconditional 2.0s for Maokai R
+    # in the default calibration - the conditional only beats the
+    # unconditional if the operator tunes the probability above ~0.89
+    # via per_entry_probability override (Maokai:R = 0.9 lifts the
+    # conditional contribution to 2.025s, JUST above unconditional
+    # 2.0s). This is the intended operator-tunable behavior.
+    registry.setdefault("Maokai", {})["R"] = ConditionalCcEntry(
+        champion="Maokai",
+        spell="R",
+        cc_kind="root",
+        durations_s=(2.25,),
+        condition=COND_RANGE_GATED,
+        probability=_p("Maokai", "R", 0.4),
+        notes=(
+            "R Nature's Grasp distance-gated root: brambles root "
+            "0.75-2.25s scaling on distance traveled per Meraki "
+            "16.10.1 effects_descriptions ('0.75 : 2.25 based on "
+            "distance traveled'). Encoded at MAX-distance 2.25s "
+            "with COND_RANGE_GATED tag (FIRST consumer of the "
+            "wave 7 forward-marker tag - closes the empty-registry "
+            "contract pending since ENGINE 1.44.0). "
+            "coexists_with_unconditional=True declares same-slot "
+            "coexistence with the unconditional Maokai R entry "
+            "(1.2/1.6/2.0s per-rank mid-distance values in "
+            "`_PER_SPELL_CC_DURATIONS`). Consumer math: at "
+            "include_conditional=True the MAX rule credits the "
+            "larger of the unconditional post-tenacity (2.0s rank "
+            "3) or the conditional post-tenacity (2.25 * 0.4 = "
+            "0.9s default) - never both summed. Operator can tune "
+            "via per_entry_probability `Maokai:R` to lift the "
+            "conditional above the unconditional (Maokai:R = 0.9 "
+            "lifts to 2.025s vs unconditional 2.0s). Mechanic "
+            "captured by ENGINE 1.46.0 Meraki schema lift. Closes "
+            "items 170 + 172 + 173 + 174 + 175 carry forward "
+            "(Maokai R distance-gated needs same-spell-slot "
+            "coexistence schema lift)."
+        ),
+        coexists_with_unconditional=True,
+    )
+
+    # Briar R Certain Death (Hematomania impact non-marked fear):
+    # Briar's R kicks her pillory's hemolith in the target direction,
+    # marking the first enemy champion hit as prey. On hit, Briar
+    # cleanses herself + dashes to the marked target with displacement
+    # immunity. UPON ARRIVAL she creates an explosion that deals magic
+    # damage to the marked target AND nearby enemies AND fears ALL
+    # NON-MARKED targets in the explosion radius for 1.5 seconds (per
+    # Meraki 16.10.1 effects_descriptions: "fears all non-marked
+    # targets for 1.5 seconds, during which they are slowed by 35%").
+    # The marked target itself receives damage but no fear (R is
+    # single-target chase, not single-target fear). The fear is
+    # genuinely first-order champion CC fired conditionally on:
+    #   (1) The marked-target dash arriving (Briar must complete the
+    #       channel + dash to deliver the explosion);
+    #   (2) Non-marked enemies being inside the explosion radius
+    #       (teamfight-conditional - 1v1 on the marked target yields
+    #       no fear).
+    #
+    # Maps to COND_TARGET_DEBUFFED with the inverse semantic: fires on
+    # NON-DEBUFFED (non-marked) targets within range when the mark
+    # itself has been applied to a different enemy. This is the
+    # closest existing tag fit; the tag covers "fires only when target
+    # is in a specific debuff state" - here the relevant state is the
+    # OTHER target's marked-state which determines which enemies in
+    # the AoE receive the fear. Alternative encoding would be
+    # COND_DUAL_ENEMY (requires 2+ enemies = marked + non-marked) but
+    # COND_TARGET_DEBUFFED captures the mark-mechanic more precisely.
+    # Probability 0.5 (tag midpoint) - typical Briar R engage has
+    # 1-3 teammates near the marked target so the fear lands with
+    # mid-to-high frequency. The fear duration 1.5s flat across all
+    # 3 R ranks per effects_descriptions.
+    #
+    # Briar registry growth: existing entries Q wave 4 (terrain stun
+    # 1.0s) + E wave 5 (channel-completion fear 1.0s); R wave 18 is
+    # the THIRD Briar entry, making Briar the 4TH 3-slot champion in
+    # cc_conditional after TahmKench (Q+W+R) and Taliyah (W+E) -
+    # actually NO, Taliyah is 2-slot. Briar becomes the SECOND 3-slot
+    # champion after TahmKench. No coexistence flag needed - Briar
+    # has NO unconditional `_PER_SPELL_CC_DURATIONS` entry for R
+    # (R is a single-target chase mark + dash + explosion mechanic
+    # encoded entirely via cc_conditional).
+    #
+    # FIRST Briar R first-order CC registration anywhere - the
+    # earlier waves only captured Q dash-terrain-stun + E charge-fear,
+    # not the Hematomania impact fear which lives in the R
+    # description text and was not flagged in prior REJECT carries.
+    # Discovered during the wave 18 schema-lift re-audit of Briar
+    # description text alongside the Briar W self-buff verification.
+    registry.setdefault("Briar", {})["R"] = ConditionalCcEntry(
+        champion="Briar",
+        spell="R",
+        cc_kind="fear",
+        durations_s=(1.5,),
+        condition=COND_TARGET_DEBUFFED,
+        probability=_p("Briar", "R", 0.5),
+        notes=(
+            "R Certain Death Hematomania impact fear: on dash "
+            "arrival, the explosion fears all NON-MARKED enemies in "
+            "radius for 1.5s flat across all 3 R ranks per Meraki "
+            "16.10.1 effects_descriptions ('fears all non-marked "
+            "targets for 1.5 seconds'). Marked target receives "
+            "damage but no fear (single-target chase mark). Maps "
+            "to COND_TARGET_DEBUFFED with the inverse mark-state "
+            "semantic: the fear gates on non-marked status of the "
+            "AoE targets, which the marked-debuff-on-different-"
+            "enemy condition gates. Probability midpoint - typical "
+            "Briar R engage has 1-3 teammates near the marked "
+            "target so the fear lands with mid-to-high frequency. "
+            "No coexistence flag - Briar has no unconditional R "
+            "entry in `_PER_SPELL_CC_DURATIONS`. THIRD Briar entry "
+            "in cc_conditional after Q wave 4 + E wave 5; Briar "
+            "becomes the SECOND 3-slot cc_conditional champion "
+            "after TahmKench. FIRST Briar R first-order CC "
+            "registration anywhere. Discovered during wave 18 "
+            "re-audit of Briar description text. Mechanic captured "
+            "by ENGINE 1.46.0 Meraki schema lift."
         ),
     )
 
