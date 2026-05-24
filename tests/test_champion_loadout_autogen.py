@@ -68,8 +68,8 @@ class SummonersForTests(unittest.TestCase):
         self.assertEqual(autogen.summoners_for("arena", "bruiser"), [4, 7])
         self.assertEqual(autogen.summoners_for("arena", "enchanter"), [4, 7])
 
-    def test_sr_carry_is_flash_heal(self):
-        self.assertEqual(autogen.summoners_for("sr", "carry"), [4, 7])
+    def test_sr_carry_is_flash_barrier(self):
+        self.assertEqual(autogen.summoners_for("sr", "carry"), [4, 21])
 
     def test_sr_bruiser_is_flash_tp(self):
         self.assertEqual(autogen.summoners_for("sr", "bruiser"), [4, 12])
