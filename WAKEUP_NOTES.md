@@ -3,6 +3,37 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-24 - item 169 SHIPPED: SR carry summoner default Flash+Heal -> Flash+Barrier + page #8 audit re-run + PostmortemAnalyze verification (1 feature commit `102886c` merged `1d83f96` + 1 docs sync `969b337` pushed origin/main `12c604b..969b337`; non-frozen; no DS restart; no RC restart - data-only + dashboard route docstring sync via ADR-008 auto-serve)
+
+Operator triggered the "in parallel: start all open items in Operator-gated, decision owed" drain with a specific ADC summoner-spell fix spec. Orchestrator-merge pattern items 134-156 streak extended to 22 consecutive runs.
+
+**(a) Slice A `102886c` (merge `1d83f96`) SR carry [4,7] -> [4,21]**: `tools/champion_loadout_autogen.py:102` `SR_SUMM_BY_ARCH["carry"]` flipped Flash+Heal -> Flash+Barrier (solo ADC norm 16.10.x). `tests/test_champion_loadout_autogen.py` renamed `test_sr_carry_is_flash_heal` -> `test_sr_carry_is_flash_barrier` asserting [4,21]. NEW `tools/migrate_carry_summoners_flash_barrier.py` (147 LOC) iterates SR carry-coded variants (match `sr-carry`, `adc-*`, `ad-crit`, `on-hit`, contains `carry`, OR `_archetype=carry`, OR keystone in {Lethal Tempo, Press the Attack, Fleet Footwork}); flips [4,7] -> [4,21] except `BOT_DUO_HEAL_KEEP={Senna, Kalista, Yuumi}` denylist. Ran once: 61 flips / 5 denylist kept. `dashboard/routes_adaptive_summoners.py:181` docstring synced. Verification probe: 14 SR [4,7] survivors = 5 denylist + 9 enchanter/support variants (Janna/Lux/Milio/Nami/Sona/Soraka/Seraphine/Zilean) correctly skipped (NOT solo-ADC).
+
+**(b) Slice B (read-only audit) page #8 items 166-168 visual-hierarchy re-run per `feedback_phase3_fixture_ritual` (no commit)**: structure PASS (3-sub-panel TOP/MIDDLE/BOTTOM at champ_select.js:3252-3263 matches item 168 spec). DS-preview PASS (.csv-arch-preview-* renders top-3 DS items per archetype). Typography FAIL = pre-existing carry (.csv-pb168-* + .csv-arch-preview-* hardcoded 9/11/12/13px below v2.1 floor --fs-xs 16px) - page #8 v2.1 typography token migration STILL OWED. ASCII FAIL = pre-existing operator-gated retro-sweep carry (champ_select.js 399 non-ASCII bytes + champ_select_view.css 728 bytes). Not introduced by items 166-168.
+
+**(c) Item 156 carry (b) RC-PostmortemAnalyze first scheduled run CLOSED**: ran today 2026-05-24 04:15:15 with LastTaskResult=0, State=Ready, NumberOfMissedRuns=0, NextRunTime=2026-05-31 04:15:15 (weekly cadence confirmed).
+
+**Verified**: `py -m pytest tests/test_champion_loadout_autogen.py tests/test_champion_loadouts_no_unique_clash.py tests/phase8_smoke/ -q` = 112 passed in 2.48s post-merge. Spot-checks across 5 ADC variants flipped correctly. Adaptive route `_recommend()` swap logic (CC -> Cleanse, burst -> Barrier) still applies on top of new baseline at routes_adaptive_summoners.py:192-197 unchanged.
+
+**Don't-redo:**
+- SR carry default is now [4, 21] - do NOT revert without a meta shift. Bot duo coordinated Heal pick is the EXCEPTION, codified in BOT_DUO_HEAL_KEEP denylist.
+- Arena keeps [4, 7] (revive frame shorter than Barrier window). ARAM keeps [4, 32] (Mark/Snowball mode-mandatory).
+- The 9 enchanter/support [4, 7] survivors (Janna/Lux/Milio/Nami/Sona/Soraka/Seraphine/Zilean) are correct as-is (support sustain picks; NOT solo-ADC; carry-coded heuristic correctly skipped them).
+- `tools/migrate_carry_summoners_flash_barrier.py` is the durable migration template - re-run after a future patch's autogen regeneration if archetype mappings drift.
+
+**Carries forward:**
+- All items 165-168 carries unchanged EXCEPT item 156 carry (b) RC-PostmortemAnalyze first scheduled run NOW CLOSED + page #8 items 166-168 visual audit subagent re-run CLOSED.
+- Page #8 v2.1 typography token migration on .csv-pb168-* + .csv-arch-preview-* hardcoded 9/11/12/13px sites STILL OWED.
+- ASCII retro-sweep on champ_select.js (399 bytes) + champ_select_view.css (728 bytes) STILL operator-gated.
+- DD Defy heal-on-takedown STILL deferred.
+- Live ARAM/SR smoke STILL pending.
+- Calibrations STILL operator-gated.
+- Legion 1-PC consolidation STILL operator-gated.
+- cc_conditional wave 12+ has 2 deferred candidates (Jayce E + Singed E) needing schema lifts beyond effects_descriptions.
+- 542 residual U+2500 box-drawing chars carry forward as operator-gated separate sweep (NOT trivial - intentional docstring tree-drawing).
+- v2.1 audit pages 9/10 Champ Select ARAM/Arena -> 11/12/13 Active Match SR/ARAM/Arena -> 14/15/16 PGR SR/ARAM/Arena (8 remaining in audit order).
+
+---
 # 2026-05-24 - items 165b-168 SHIPPED: ARAM bench 10-cell + loadout roster + SR DS-align + P&B 3-panel + archetype preview (4 feature commits `15bafed` `dbcf9f2` `1750425` `81925a6` pushed origin/main `3b3f9d8..81925a6`; non-frozen; RC pid 14464 -> 12220 via schtasks /Run /TN RC-Supervisor; ADR-008 asset hash auto-served all UI edits)
 
 Four operator-directed asks executed end-to-end.
