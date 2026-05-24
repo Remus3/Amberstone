@@ -2607,6 +2607,308 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ============================================================
+    # === wave 16 expansion (2026-05-24 / ENGINE 1.53.0) - +4
+    # === primary entries / +3 net-new champions (Garen + Syndra
+    # === + Udyr; KSante W is a multi-wave coexistence on the
+    # === existing wave 1 KSante Q entry) sourced from the wave 15
+    # === leftover
+    # === candidate scan. The wave 15 audit walked all 110 forms
+    # === across 171 champions with cast_time>0 + a CC keyword in
+    # === effects_descriptions; wave 16 extends that scan to ALL
+    # === 171 champions regardless of cast_time, surfacing 11
+    # === uncovered slots with explicit duration values in
+    # === effects_descriptions. Of those 11, 4 close cleanly with
+    # === no schema lift + no tag expansion + no slot collision:
+    # ===
+    # ===   * Garen Q Decisive Strike empowered-AA silence 1.5s -
+    # ===     COND_NTH_HIT 0.7. Garen Q cleanses slows + bonus MS
+    # ===     + empowers the NEXT basic attack within 4.5s to
+    # ===     silence the target 1.5s on hit. The single-hit
+    # ===     empowered AA is the canonical nth_hit conditional
+    # ===     pattern; standalone Q with no follow-up AA = MS
+    # ===     buff only (no silence). FIRST Garen first-order CC
+    # ===     registration in the engine.
+    # ===   * Syndra E Scatter the Weak Dark-Sphere knockback
+    # ===     stun 1.25s - COND_TARGET_DEBUFFED 0.5. Syndra E
+    # ===     knocks back enemies for damage; if a Dark Sphere
+    # ===     (Q residue) is in the cone, the sphere ALSO flies
+    # ===     and stuns enemies it knocks back 1.25s flat.
+    # ===     Standalone E without a sphere in path = knockback
+    # ===     + damage only. Maps to COND_TARGET_DEBUFFED - the
+    # ===     "debuff" is the sphere positioning that the target
+    # ===     must overlap with. Distinct from the Transcendent
+    # ===     Bonus 80-Splinter slow REJECTED wave 15. FIRST
+    # ===     Syndra first-order CC registration in the engine.
+    # ===   * Udyr E Blazing Stampede empowered-AA pounce stun
+    # ===     0.75s - COND_NTH_HIT 0.7. Udyr enters Stampede
+    # ===     Stance + the NEXT basic attack pounces and stuns
+    # ===     0.75s. Mechanically parallel to Garen Q (single-
+    # ===     hit AA-empower) with a once-per-target ICD that
+    # ===     does not affect first-cast probability. Standalone
+    # ===     Stance entry with no AA = MS buff only. FIRST Udyr
+    # ===     first-order CC registration in the engine.
+    # ===   * KSante W Path Maker recast channel stun
+    # ===     0.5-1.75s - COND_CHANNEL_COMPLETION 0.5. KSante W
+    # ===     charges 0.4-1.0s; recast dashes + carries enemies
+    # ===     + stuns them 0.5-1.75s based on channel time. Mid-
+    # ===     channel hard CC cancels the recast payload. Maps
+    # ===     to COND_CHANNEL_COMPLETION - canonical channel-
+    # ===     completion conditional pattern (parallel to
+    # ===     Warwick R + Karma W + Pantheon Q). Standalone W
+    # ===     with no recast = displacement immunity only.
+    # ===     Coexists with KSante Q wave 1 cc_conditional
+    # ===     entry on a different spell slot. The All Out
+    # ===     (R-active) form REMOVES the stun (replaces with
+    # ===     true damage); this entry encodes the BASE form
+    # ===     payload only. Encoding choice: representative
+    # ===     1.0s midpoint of the 0.5-1.75s range (operator
+    # ===     can tune via per_entry_probability override).
+    # ===
+    # === Wave 16 REJECT verdicts (effects_descriptions schema-
+    # === verified this run; CARRY-FORWARD only if new evidence
+    # === surfaces):
+    # ===
+    # ===   * Ahri W priority targeting on Charmed - no CC
+    # ===     application by W itself (charm comes from E).
+    # ===     REJECT.
+    # ===   * Aphelios R Moonlight Vigil - already shipped as
+    # ===     Aphelios:Q:3 sidecar wave 13; R has no first-order
+    # ===     CC. REJECT.
+    # ===   * Darius E Apprehend - 1.0s airborne is UNCONDITIONAL
+    # ===     pull-displacement; belongs in
+    # ===     `_PER_SPELL_CC_DURATIONS` not cc_conditional.
+    # ===     REJECT (matches wave 15 Darius E REJECT).
+    # ===   * Irelia R perimeter knockaway - displacement only
+    # ===     (per effects_descriptions "knocking all enemy
+    # ===     units away from them, though not rendering them
+    # ===     airborne"); the 1.5s slow is NOT CC. REJECT.
+    # ===   * LeeSin R - item 171 wave 13 REJECT carries
+    # ===     (UNCONDITIONAL primary-target root + knockback).
+    # ===   * Milio R - cleanse + tenacity buff only, no CC
+    # ===     application. REJECT.
+    # ===   * Taliyah E dash-detonation stun 0.75s - wave 15
+    # ===     REJECT verdict binding (would need new
+    # ===     COND_TRAVERSE tag for clean fit; tag schema lift
+    # ===     operator-gated).
+    # ============================================================
+
+    # Garen Q Decisive Strike empowered-AA silence: Garen casts Q to
+    # cleanse himself of all slows + gain 35% bonus MS for a duration;
+    # additionally his NEXT basic attack within 4.5 seconds gains an
+    # uncancellable windup, lunges at the target, deals bonus physical
+    # damage, AND silences them for 1.5 seconds flat across all 5 Q
+    # ranks. The silence fires ONLY when the empowered AA lands; the
+    # AA must land on a champion target within the 4.5s window. Maps
+    # to COND_NTH_HIT - the empowered single-hit AA is the canonical
+    # nth_hit conditional pattern (mirrors Alistar E Trample 5-stack
+    # stun + Kennen E + Riven Q nth_hit knockup + Aatrox Q3 nth_hit
+    # knockup). Probability 0.7 (tag midpoint) - 4.5s is a generous
+    # window that reliably lands the empowered AA against most
+    # targets unless Garen is hard-CC'd or the target Flashes away.
+    # Standalone Q with no follow-up AA (within the 4.5s) = MS buff
+    # cleanse only (no silence). FIRST Garen first-order CC
+    # registration in the engine (Garen E + R have no champion CC).
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[1] for
+    # form 0 ("Additionally, Garen empowers his next basic attack
+    # within 4.5 seconds to have an uncancellable windup, lunge at
+    # the target, deal bonus physical damage, and silence them for
+    # 1.5 seconds.") + Meraki damage_blocks Movement Speed Duration
+    # block (the MS buff duration scales but the silence is flat).
+    # The 4.5s window itself is not a Meraki damage_block but is
+    # captured in effects_descriptions text.
+    registry.setdefault("Garen", {})["Q"] = ConditionalCcEntry(
+        champion="Garen",
+        spell="Q",
+        cc_kind="silence",
+        durations_s=(1.5,),
+        condition=COND_NTH_HIT,
+        probability=_p("Garen", "Q", 0.7),
+        notes=(
+            "Q Decisive Strike empowered-AA silence: Garen Q "
+            "cleanses slows + bonus MS + empowers NEXT basic "
+            "attack within 4.5s to lunge + silence 1.5s flat "
+            "across all 5 Q ranks per effects_descriptions. The "
+            "silence fires ONLY when the empowered AA lands on a "
+            "champion target. Standalone Q with no follow-up AA "
+            "= MS buff cleanse only (no silence). Maps to "
+            "COND_NTH_HIT - the empowered single-hit AA is the "
+            "canonical nth_hit conditional pattern (parallel to "
+            "Alistar E + Kennen E + Riven Q + Aatrox Q3 + Udyr E "
+            "wave 16). Probability tag midpoint 0.7 - 4.5s window "
+            "reliably lands the empowered AA absent hard CC on "
+            "Garen or target Flash. FIRST Garen first-order CC "
+            "registration in the engine (Garen E + R have no "
+            "champion CC payload)."
+        ),
+    )
+
+    # Syndra E Scatter the Weak Dark-Sphere knockback stun: Syndra
+    # E (0.25s cast_time) propels a wave of force in a cone in the
+    # target direction, knocking back enemies for damage. If a
+    # Dark Sphere (Q residue placed earlier) sits in the cone, the
+    # sphere ALSO flies and knocks back enemies it hits PLUS stuns
+    # them for 1.25 seconds flat across all 5 E ranks. The stun
+    # fires ONLY when an enemy is hit by a PUSHED Dark Sphere -
+    # standalone E without a sphere in path = damage + knockback
+    # only (no stun). Maps to COND_TARGET_DEBUFFED - the
+    # "debuff" is the sphere positioning the target must overlap
+    # with at the moment of cast. Mechanically distinct from the
+    # Transcendent Bonus 80-Splinter slow (REJECTED wave 15 for
+    # state-tracking). Probability 0.5 (tag midpoint) - sphere
+    # positioning + cone alignment is the operator's combo
+    # responsibility; reliable in lane (Q sphere telegraph) but
+    # less reliable in open teamfights. FIRST Syndra first-order
+    # CC registration in the engine (Syndra Q + W + R have no
+    # champion CC; the R execute is damage-only).
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[1] for
+    # form 0 ("Dark Spheres can be knocked back for 950 units and
+    # up to 1200 units away from Syndra based on proximity,
+    # knocking back enemies they hit over 70 units, though not
+    # through terrain. Targets hit are also stunned for 1.25
+    # seconds, during which they are also revealed, and dealt
+    # Scatter the Weak's damage if they were not damaged by the
+    # initial cast.") + Meraki cast_time=0.25 for form 0.
+    registry.setdefault("Syndra", {})["E"] = ConditionalCcEntry(
+        champion="Syndra",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(1.25,),
+        condition=COND_TARGET_DEBUFFED,
+        probability=_p("Syndra", "E", 0.5),
+        notes=(
+            "E Scatter the Weak Dark-Sphere knockback stun: "
+            "Syndra E propels a knockback cone; if a Dark "
+            "Sphere (Q residue) sits in the cone path, sphere "
+            "ALSO flies + STUNS targets 1.25s flat across all "
+            "5 E ranks per effects_descriptions. Standalone E "
+            "without sphere = damage + knockback only (no "
+            "stun). Maps to COND_TARGET_DEBUFFED - the "
+            "'debuff' is the sphere positioning at moment of "
+            "cast (target overlap with pushed sphere path). "
+            "Distinct from Transcendent 80-Splinter slow "
+            "(REJECTED wave 15 for state-tracking). Probability "
+            "tag midpoint 0.5 - sphere placement + cone "
+            "alignment is operator combo work; reliable in lane "
+            "telegraphed plays, less so in open teamfights. "
+            "FIRST Syndra first-order CC registration in the "
+            "engine (Q + W + R have no champion CC; R execute "
+            "is damage-only)."
+        ),
+    )
+
+    # Udyr E Blazing Stampede empowered-AA pounce stun: Udyr E
+    # enters Stampede Stance + ghosts + bonus MS (4s decay). His
+    # NEXT basic attack gains an uncancellable windup, pounces on
+    # the target, deals normal AA damage, AND stuns them for 0.75
+    # seconds flat across all 5 E ranks. The stun cannot affect
+    # the same target more than once every few seconds (ICD that
+    # does NOT affect first-cast probability). Maps to
+    # COND_NTH_HIT - the empowered single-hit AA pounce is the
+    # canonical nth_hit conditional pattern (parallel to Garen Q
+    # silence wave 16 + Alistar E + Kennen E + Riven Q + Aatrox
+    # Q3 nth_hit knockup). Probability 0.7 (tag midpoint) - 4-
+    # second Stance window reliably lands the pounce-AA absent
+    # hard CC on Udyr or target Flash. Standalone Stance entry
+    # with no AA = MS buff + ghosting only (no stun). FIRST Udyr
+    # first-order CC registration in the engine.
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[0] for
+    # form 0 ("Active - Stance: Udyr enters Stampede Stance,
+    # empowering his basic attacks to have an uncancellable
+    # windup and pounce on the target to stun them for 0.75
+    # seconds. This cannot affect the same target more than once
+    # every few seconds.") + Meraki damage_blocks confirm the
+    # 4s MS buff duration scales but the stun is flat.
+    registry.setdefault("Udyr", {})["E"] = ConditionalCcEntry(
+        champion="Udyr",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(0.75,),
+        condition=COND_NTH_HIT,
+        probability=_p("Udyr", "E", 0.7),
+        notes=(
+            "E Blazing Stampede empowered-AA pounce stun: Udyr "
+            "E enters Stampede Stance + ghosting + bonus MS; "
+            "NEXT basic attack pounces + stuns 0.75s flat "
+            "across all 5 E ranks per effects_descriptions. "
+            "Once-per-target ICD that does NOT affect first-"
+            "cast probability. Standalone Stance entry with no "
+            "AA = MS buff + ghosting only (no stun). Maps to "
+            "COND_NTH_HIT - the empowered single-hit AA pounce "
+            "is the canonical nth_hit conditional pattern "
+            "(parallel to Garen Q wave 16 silence + Alistar E + "
+            "Kennen E + Riven Q + Aatrox Q3 nth_hit knockup). "
+            "Probability tag midpoint 0.7 - 4-second Stance "
+            "window reliably lands the pounce-AA absent hard "
+            "CC on Udyr or target Flash. FIRST Udyr first-order "
+            "CC registration in the engine."
+        ),
+    )
+
+    # KSante W Path Maker recast channel-completion stun: KSante
+    # W raises ntofos defensively + prepares to dash; charges for
+    # 0.4-1.0s gaining displacement immunity + 30% damage
+    # reduction. Path Maker's range, stun duration, and All Out
+    # bonus true damage modifier all SCALE WITH CHANNEL TIME over
+    # the first 0.9s of charge. RECAST dashes in the targeted
+    # direction, deals damage to enemies passed through, carries
+    # them alongside, AND stuns them for 0.5-1.75 seconds based
+    # on channel time. Maps to COND_CHANNEL_COMPLETION - the
+    # canonical channel-completion conditional pattern (parallel
+    # to Warwick R + Karma W + Pantheon Q + Sion R + Renata Q +
+    # Rell W form 0). The cast is interruptible BY CROWD CONTROL
+    # ONLY mid-channel (the description explicitly notes "Path
+    # Maker's charge cannot be interrupted by crowd control" so
+    # standard CC effects don't cancel mid-charge; however the
+    # All Out form REMOVES the stun). Probability 0.5 (tag
+    # midpoint) - KSante typically holds the charge to threshold
+    # for max-range stun then dashes; the conditional gate is
+    # the cast itself completing rather than mid-channel
+    # interruption. The All Out (R-active) form REMOVES this
+    # stun (replaces with true damage); this entry encodes the
+    # BASE form payload only. Encoding choice: representative
+    # 1.0s midpoint of the 0.5-1.75s range; operator can tune
+    # via per_entry_probability override. Coexists with KSante Q
+    # wave 1 cc_conditional entry on a different spell slot.
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[2] for
+    # form 0 ("Recast: K'Sante dashes in the direction he
+    # targeted at the time of cast, though not through terrain,
+    # dealing physical damage to enemies he passes through,
+    # carrying them alongside him, and stunning them for 0.5 :
+    # 1.75 (based on channel time) seconds.").
+    registry.setdefault("KSante", {})["W"] = ConditionalCcEntry(
+        champion="KSante",
+        spell="W",
+        cc_kind="stun",
+        durations_s=(1.0,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("KSante", "W", 0.5),
+        notes=(
+            "W Path Maker recast channel-completion stun: "
+            "KSante W charges 0.4-1.0s + recast dashes + "
+            "carries enemies + STUNS them 0.5-1.75s based on "
+            "channel time per effects_descriptions. Stored as "
+            "representative 1.0s midpoint of the 0.5-1.75s "
+            "range; operator can tune via per_entry_probability "
+            "override key KSante:W. Maps to "
+            "COND_CHANNEL_COMPLETION - canonical channel-"
+            "completion pattern (parallel to Warwick R + "
+            "Karma W + Pantheon Q + Sion R + Renata Q + Rell W "
+            "form 0). Probability tag midpoint 0.5 - reliable "
+            "in operator-pace engages where KSante holds the "
+            "charge to threshold. The All Out (R-active) form "
+            "REMOVES this stun (replaces with true damage); "
+            "this entry encodes the BASE form payload only. "
+            "Coexists with KSante Q wave 1 cc_conditional "
+            "entry on a different spell slot. FIRST KSante W "
+            "first-order CC registration in the engine."
+        ),
+    )
+
     return registry
 
 

@@ -1321,7 +1321,142 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.52.0"
+ENGINE_VERSION = "1.53.0"
+# 1.53.0 (cc_conditional wave 16 - +4 primary entries / +3 net-new
+# champions via effects_descriptions re-audit of the ENGINE 1.52.0
+# Meraki schema-lifted data file extending the wave 15 audit to all
+# 171 champions regardless of cast_time, 2026-05-24):
+#
+# Wave 16 ships +4 primary entries / +3 net-new champions (Garen +
+# Syndra + Udyr; KSante already in registry with Q wave 1 nth_hit
+# root) using ONLY the existing 12 condition tags. NO new tag
+# constants. The registry total grows 60 entries / 51 champions ->
+# 64 entries / 54 champions (53 -> 57 primary + 7
+# sidecar unchanged = 64 total entries). The sweep extended the wave
+# 15 cast_time-gated audit to scan ALL 171 champions for uncovered
+# slots with explicit CC duration text in effects_descriptions; 11
+# candidates surfaced. 4 SHIP cleanly with no schema lift + no tag
+# expansion + no slot collision; the other 7 REJECTED.
+#
+# NEW cc_conditional entries (all primary registry):
+#
+#   * Garen Q Decisive Strike empowered-AA silence (primary
+#     registry, NEW champion) - COND_NTH_HIT 0.7
+#     - durations_s=(1.5,) flat across all 5 Q ranks per
+#       effects_descriptions ("silence them for 1.5 seconds").
+#     - mechanic: Garen Q cleanses slows + bonus MS + empowers
+#       NEXT basic attack within 4.5s to lunge + silence target
+#       1.5s on hit. Standalone Q with no follow-up AA = MS
+#       buff cleanse only (no silence). FIRST Garen first-order
+#       CC registration in the engine.
+#
+#   * Syndra E Scatter the Weak Dark-Sphere knockback stun
+#     (primary registry, NEW champion) - COND_TARGET_DEBUFFED 0.5
+#     - durations_s=(1.25,) flat across all 5 E ranks per
+#       effects_descriptions ("stunned for 1.25 seconds").
+#     - mechanic: Syndra E knockback cone; if a Dark Sphere
+#       (Q residue) sits in path, sphere ALSO flies + stuns
+#       targets 1.25s. Standalone E without sphere = damage +
+#       knockback only. Maps to COND_TARGET_DEBUFFED - the
+#       'debuff' is sphere overlap at moment of cast. Distinct
+#       from Transcendent 80-Splinter slow REJECTED wave 15.
+#       FIRST Syndra first-order CC registration.
+#
+#   * Udyr E Blazing Stampede empowered-AA pounce stun (primary
+#     registry, NEW champion) - COND_NTH_HIT 0.7
+#     - durations_s=(0.75,) flat across all 5 E ranks per
+#       effects_descriptions ("stun them for 0.75 seconds").
+#     - mechanic: Udyr E enters Stampede Stance + NEXT basic
+#       attack pounces + stuns 0.75s. Once-per-target ICD that
+#       does NOT affect first-cast probability. Standalone
+#       Stance entry with no AA = MS buff + ghosting only.
+#       Parallel to Garen Q wave 16 (single-hit AA-empower).
+#       FIRST Udyr first-order CC registration.
+#
+#   * KSante W Path Maker recast channel-completion stun
+#     (primary registry, NEW champion-slot) - COND_CHANNEL_COMPLETION 0.5
+#     - durations_s=(1.0,) representative midpoint of the
+#       0.5-1.75s range (channel-time-scaled per
+#       effects_descriptions). Operator can tune via
+#       per_entry_probability override.
+#     - mechanic: KSante W charges 0.4-1.0s + recast dashes +
+#       carries enemies + stuns 0.5-1.75s based on channel
+#       time. Canonical channel-completion pattern parallel to
+#       Warwick R + Karma W + Pantheon Q + Sion R + Renata Q +
+#       Rell W form 0. All Out (R-active) form REMOVES this
+#       stun (replaces with true damage); entry encodes BASE
+#       form payload only. Coexists with KSante Q wave 1
+#       cc_conditional entry on a different spell slot. FIRST
+#       KSante W first-order CC registration.
+#
+# Wave 16 REJECT verdicts (effects_descriptions schema-verified
+# this run; CARRY-FORWARD only if new evidence surfaces):
+#
+#   * Ahri W - priority targeting on Charmed targets is W's
+#     mechanic but W itself applies no CC; the charm is applied
+#     by Ahri's E. REJECT.
+#   * Aphelios R Moonlight Vigil - already shipped as
+#     Aphelios:Q:3 sidecar wave 13; R has no first-order CC
+#     payload. REJECT.
+#   * Darius E Apprehend - 1.0s airborne is UNCONDITIONAL
+#     pull-displacement; belongs in `_PER_SPELL_CC_DURATIONS`
+#     not cc_conditional. REJECT (matches wave 15 Darius E
+#     REJECT carry).
+#   * Irelia R perimeter knockaway - displacement only (per
+#     effects_descriptions "knocking all enemy units away from
+#     them, though not rendering them airborne"); 1.5s slow is
+#     NOT CC. REJECT.
+#   * LeeSin R - item 171 wave 13 REJECT carries (UNCONDITIONAL
+#     primary-target root + knockback) + item 172 wave 14
+#     REJECT carry.
+#   * Milio R - cleanse + tenacity buff only; no CC payload.
+#     REJECT.
+#   * Taliyah E dash-detonation stun 0.75s - wave 15 REJECT
+#     verdict binding (would need new COND_TRAVERSE tag for
+#     clean fit; tag schema lift operator-gated).
+#
+# Carry-forward (still operator-gated; NOT addressed wave 16):
+#
+#   * Maokai R distance-gated root - STILL would double-count
+#     with unconditional Maokai R entry in `_PER_SPELL_CC_DURATIONS`
+#     (NEEDS same-spell-slot conditional-vs-unconditional
+#     coexistence schema lift parallel to
+#     `_PER_SPELL_CC_CONDITIONAL_FORMS` but for unconditional/
+#     conditional pairs; operator-gated).
+#   * 6 wave-7 schema-lift carries: Renekton W Fury / Aatrox
+#     post-R passive / Volibear R passive / Briar W frenzy /
+#     multi-form Karma+Hwei+Neeko - STILL state-tracking
+#     schema-blocked (need extractor lift beyond cast_time +
+#     effects_descriptions to track Fury / passive-flag /
+#     form-empowered-state).
+#
+# Registry growth: 60 -> 64 entries / 51 -> 54 champions
+# (53 -> 57 primary + 7 sidecar unchanged). 3 of the 4 new entries
+# are net-new champions (Garen + Syndra + Udyr); KSante W is a
+# multi-wave coexistence with KSante Q wave 1.
+# Per-tag consumer counts: COND_NTH_HIT +2 (Garen Q + Udyr E);
+# COND_TARGET_DEBUFFED +1 (Syndra E); COND_CHANNEL_COMPLETION
+# +1 (KSante W). COND_TERRAIN / COND_FRENZY_STATE / COND_RANGE_GATED
+# unchanged.
+#
+# Math preservation: default include_conditional=False
+# compute_cc_pressure BYTE-IDENTICAL to 1.52.0 (the conditional
+# path skips when the flag is False). include_conditional=True
+# callers receive new probability-weighted contributions for
+# Garen (+1.05s = 1.5 * 0.7), Syndra (+0.625s = 1.25 * 0.5),
+# Udyr (+0.525s = 0.75 * 0.7), KSante (+0.5s = 1.0 * 0.5).
+#
+# Schema lift evidence (no new lift this wave - relies on the
+# 1.46.0 effects_descriptions schema lift + 1.51.0 cast_time
+# schema lift already in the extracted data):
+#
+#   * Effects-description text for all 4 shipped entries
+#     verified against `data/daemon_slayer/16.10.1/champion_abilities.json`
+#     via direct probe of `effects_descriptions[]` field.
+#   * No collisions detected vs `_PER_SPELL_CC_DURATIONS` or
+#     `_PER_SPELL_CC_CONDITIONAL` or `_PER_SPELL_CC_CONDITIONAL_FORMS`
+#     for any of Garen:Q / Syndra:E / Udyr:E / KSante:W.
+#
 # 1.52.0 (cc_conditional wave 15 - +3 entries / +2 net-new champions
 # via cast_time + effects_descriptions cross-reference audit of the
 # ENGINE 1.51.0 Meraki schema-lifted data file, 2026-05-24):
