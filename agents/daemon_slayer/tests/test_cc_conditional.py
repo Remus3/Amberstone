@@ -453,20 +453,24 @@ class GetTotalConditionalCcSecondsTests(unittest.TestCase):
 
     def test_warwick_weighted_max_rank(self) -> None:
         # Warwick R max rank (R rank 3) = 2.0s * 0.5 prob = 1.0
+        # Wave 13 adds Warwick E (1.0s flat * 0.5 prob) = 0.5
+        # Total weighted = 1.0 + 0.5 = 1.5
         total = get_total_conditional_cc_seconds("Warwick")
-        self.assertAlmostEqual(total, 1.0, places=4)
+        self.assertAlmostEqual(total, 1.5, places=4)
 
     def test_warwick_weighted_rank_0(self) -> None:
         # Warwick R rank 1 = 1.5s * 0.5 prob = 0.75
+        # Wave 13 Warwick E flat-tuple = 1.0s * 0.5 = 0.5 at any rank
+        # Total weighted = 0.75 + 0.5 = 1.25
         total = get_total_conditional_cc_seconds("Warwick", rank_index=0)
-        self.assertAlmostEqual(total, 0.75, places=4)
+        self.assertAlmostEqual(total, 1.25, places=4)
 
     def test_warwick_raw_max_rank(self) -> None:
-        # Warwick R max rank raw = 2.0s
+        # Warwick R max rank raw = 2.0s + Wave 13 E raw = 1.0s = 3.0s
         total = get_total_conditional_cc_seconds(
             "Warwick", apply_probability=False
         )
-        self.assertAlmostEqual(total, 2.0, places=4)
+        self.assertAlmostEqual(total, 3.0, places=4)
 
     def test_unknown_champion_zero(self) -> None:
         self.assertEqual(
@@ -483,13 +487,15 @@ class GetTotalConditionalCcSecondsTests(unittest.TestCase):
 
     def test_out_of_range_rank_index_falls_through_to_max(self) -> None:
         # rank_index >= len(tuple) falls through to max rank.
+        # Wave 13 added Warwick E (flat 1.0 * 0.5 = 0.5) so total = 1.5.
         total = get_total_conditional_cc_seconds("Warwick", rank_index=99)
-        self.assertAlmostEqual(total, 1.0, places=4)
+        self.assertAlmostEqual(total, 1.5, places=4)
 
     def test_negative_rank_index_falls_through_to_max(self) -> None:
         # rank_index < 0 (other than -1) falls through to max rank.
+        # Wave 13 added Warwick E (flat 1.0 * 0.5 = 0.5) so total = 1.5.
         total = get_total_conditional_cc_seconds("Warwick", rank_index=-5)
-        self.assertAlmostEqual(total, 1.0, places=4)
+        self.assertAlmostEqual(total, 1.5, places=4)
 
 
 # ---------------- registry growth contract ----------------
