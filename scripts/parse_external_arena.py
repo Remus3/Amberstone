@@ -122,7 +122,7 @@ def parse(path: Path) -> dict:
     return out
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("usage: parse_external_arena.py <file_or_dir>", file=sys.stderr)
         sys.exit(2)

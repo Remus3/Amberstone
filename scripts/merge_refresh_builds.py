@@ -157,7 +157,7 @@ def merge_arena(dry_run: bool = False) -> tuple[int, int]:
     return 0, new_count
 
 
-def main():
+def main() -> None:
     dry_run = "--dry-run" in sys.argv
     print(f"=== merge_refresh_builds.py (dry_run={dry_run}) ===")
     print()
