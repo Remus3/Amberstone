@@ -133,7 +133,7 @@ def find_in_entry(entry: dict, item: str) -> list[str]:
     return hits
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("usage: validate_build_data.py <path> [--mode sr|aram|arena|mayhem]")
         sys.exit(2)
