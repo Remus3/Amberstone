@@ -3,6 +3,61 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-24 - item 175 SHIPPED: operator-gated parallel drain #10 (cc_conditional wave 17 COND_TRAVERSE tag schema lift + Taliyah E ENGINE 1.54.0 + BACKLOG stale-sweep wave 19 CLEAN + cost/latency CLEAN wave 23) (3 commits + 1 merge `3fa56a1` (merge) + `a8847f1` (docs) pushed origin/main `92fb056..a8847f1`; ENGINE 1.53.0 -> 1.54.0; DS :8893 restarted pid 12264 -> serves 1.54.0; RC :8888 unchanged pid 5800 mode=client - DS engine + docs only)
+
+Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 28th consecutive run using orchestrator-merge pattern (items 134-175). 3 worktree/investigative agents dispatched concurrent. AskUserQuestion 3-question scope fork pinned per [[feedback_scope_decision_cadence]]: (Q1) cc_conditional wave 17 small lift COND_TRAVERSE + Taliyah E only (Recommended); (Q2) 542 residual U+2500 box-drawing chars Skip - intentional docstring tree-drawing (Recommended); (Q3) Housekeeping triple Full (Recommended). Pre-flight: 0 open PRs, all 5 CI runs green since item 174, 1 stale remote branch (worktree-agent-ad9b284de92b11e8b = item 174 slice A) confirmed fully merged via empty `git log origin/main..origin/<branch>` diff -> deleted via `git push origin --delete`. 17 local worktrees harness-locked (parent owns lifecycle, left in place per pattern).
+
+**Slice A `3fa56a1` (merge into main) feat(ds) cc_conditional wave 17 COND_TRAVERSE tag schema lift + Taliyah E ENGINE 1.53.0 -> 1.54.0 (36 files / +819 / -33):**
+- NEW `COND_TRAVERSE = "cond_traverse"` condition tag constant in `agents/daemon_slayer/cc_conditional.py` alongside existing 12 tag constants (was 12 tags; now 13). Midpoint probability 0.3 in `_DEFAULT_CONDITION_PROBABILITY` (parallel to COND_TERRAIN's 0.3 - both gate on champion behavior near map geometry/spell zones).
+- SHIP **Taliyah E Unweaver's Wall** primary registry COND_TRAVERSE prob 0.3: 0.75s knockup when enemy champion crosses through/over the wall (FIRST consumer of new COND_TRAVERSE tag; multi-wave coexistence with Taliyah W wave 1 - Taliyah becomes 2-slot cc_conditional champion).
+- Duration verified via Meraki effects_descriptions verbatim: "stunned for 0.75 seconds, increased to 2 seconds if they are a monster" (champion = 0.75s flat across all 5 E ranks; monster value encoded as monster-only - not first-order champion CC).
+- DEVIATION FROM SPEC: Slice A worktree agent correctly caught that (a) Taliyah is NOT net-new (already in registry via W wave 1) so REGISTRY_TOTAL_CHAMPIONS stays at 54 NOT 55; (b) duration is 0.75s NOT 1.0s per Meraki source-of-truth. The orchestrator's spec was wrong on both counts; the agent's deviations are validated and correct.
+- Registry: 64 entries / 54 champs (57 primary + 7 sidecar) -> 65 entries / 54 champs (58 primary + 7 sidecar). Per-tag growth: COND_TRAVERSE +1 (FIRST consumer of new tag).
+- +60 tests in NEW `agents/daemon_slayer/tests/test_cc_conditional_wave17.py`. ENGINE_VERSION 1.53.0 -> 1.54.0 + bulk pin sync across 31 DS test files. `test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES` extended with `test_cc_conditional_wave17.py`. `test_cc_conditional.py::DefaultProbabilityMapCoverageTests.expected_keys` set extended 12 -> 13 tags (NEW COND_TRAVERSE).
+- Default `compute_cc_pressure("Taliyah", include_conditional=False)` BYTE-IDENTICAL to 1.53.0 (base = 0.0 unchanged; True opts in 0.225 = 0.75 * 0.3).
+
+**Slice B CLEAN no-commit (BACKLOG/ROADMAP stale-sweep wave 19):**
+- 0 flips. All 6 file:line citations in OPEN items grep-verified live: ROADMAP L13 `dev.js:361` verdict.team_won + L23 `main.js:3081/3092/4281` LCU 3 sites + `gamepc_lcu_agent.py:246` ARAM Mayhem 2400 + L82 `tools/gamepc_lcu_agent.py:1194` augment_intent_unsupported. All other file:line refs (8 hits) were under SHIPPED entries / milestone narrative / shipped-item carry-forwards and intentionally left alone per [[feedback_no_history_rewrite]].
+- Sweep cycle decay: 1=2 / 2=3 / 3=3 / 4-12=1 / 13=0 / 14=3 / 15=2 / 16=2 / 17=0 / 18=1 / **19=0**. Item 174 wave 18's lone flip (`gamepc_lcu_agent.py:1091` -> `:1194`) holds; no subsequent line drift.
+
+**Slice C 23rd consecutive cost/latency CLEAN no-commit (read-only investigative agent):**
+- All 7 levers green. Prompt-cache 8 sites unchanged. Route TTL 12 routes with module-level `_CACHE` constant (matches item 174 verdict; the 12-16 fluctuation is loose ledger drift, not regression). Polling cadences tightest network 2000ms (pollIfStale + pollLcu); no sub-500ms network polls. Log spam top non-suppressed `/api/bridge` 0.132/sec (identical to item 174 baseline); `/api/minimap-crop` + `/api/activity` confirmed 0/sec post item 171 trailing-space fix; all under 1/sec hard threshold; 9-entry suppression tuple unchanged. Model tier all active coach `messages.create()` callers use claude-haiku-4-5-20251001 + Sonnet only in agents/agent7_context/warm_session.py + Opus only agent6_auditor. Scheduled tasks 14 RC-* matching item 173/174 catalog exactly. Bundle parity 27 panel CSS files = 27 dashboard.css panel @imports (drift guard test `tests/test_dashboard_css_panel_imports_parity.py` 4/4 PASSES per item 174).
+- Slice C also confirmed pid 5800 actual boot = 2026-05-24T15:23:23 local (the session-start `rc_facts.py` probe was stale "2026-05-20T14:35:48"; live process started today).
+
+**Docs sync `a8847f1` (6 files / 8 ins / 8 del):**
+- ENGINE 1.53.0 -> 1.54.0 + 4549 -> 4609 tests + 64/54 waves 0-16 -> 65/54 waves 0-17 + 12 -> 13 condition tags (COND_TRAVERSE added) + wave 17 closure note across docs/DAEMON_SLAYER.md L5+L32 (4 edits) + README.md L46 + BRIEF.md L20+L26 + docs/ARCHITECTURE.md L161 (3 edits) + BACKLOG.md L13 (3 edits) + ROADMAP.md L165.
+- Skipped per [[feedback_no_history_rewrite]]: BRIEF.md L33 milestone narrative + L57 resume-pitch.
+
+**Verified post-merge + DS restart:**
+- DS suite **4609 passed / 1 skipped / 1 xfailed / 1762 subtests** (+60 over 4549 baseline = exactly the wave 17 test file).
+- RC suite (excl phase8_smoke) **3291 passed / 67 subtests** (unchanged from item 174; engine change invisible to RC route layer until DS restart).
+- `tests/phase8_smoke/` = **75/75 PASS** post-DS-restart.
+- `py -m ruff check .` ALL CHECKS PASSED.
+- `py -m py_compile` clean on all touched files.
+- DS :8893 killed pid 12264 + `schtasks /Run /TN RC-DaemonSlayer` (per [[reference_ds_server_not_supervisor_watched]]) -> /health engine_version=1.54.0 patch=16.10.1 champions=172 items=705.
+- RC :8888 unchanged pid 5800 mode=client alive=True (no route/coach edits this run; DS engine + docs only).
+
+**Merge order:** Slice A merged into main FIRST as `3fa56a1` (worktree branch `worktree-agent-a4b1d99b2dc268fe4`, ort, 0 conflicts, 36 files). Docs sync committed direct to main SECOND as `a8847f1` (6 files / 8 ins / 8 del). 0 merge conflicts. Slice B + C produced no commits.
+
+**Don't-redo:**
+- COND_TRAVERSE midpoint 0.3 is calibrated parallel to COND_TERRAIN's 0.3 - both gate on champion behavior near map geometry/spell zones. Future tag additions for "champion proximity to spell-cast zone" mechanics should reuse COND_TRAVERSE before lifting yet another tag.
+- Taliyah is now a 2-slot cc_conditional champion (W wave 1 + E wave 17); previously KSante was the most recent 2-slot champ added (wave 16). TahmKench remains the only 3-slot champ (wave 13 closure).
+- The Meraki effects_descriptions field is the authoritative source for CC durations - the orchestrator's spec MUST be verified against the field before claiming a duration value. Slice A's agent correctly caught both spec deviations (Taliyah not net-new + 0.75s not 1.0s) by reading the schema directly.
+- The expected_keys set in `test_cc_conditional.py::DefaultProbabilityMapCoverageTests` is now 13 tags; future tag additions MUST extend this set or the schema invariant test fails. Slice A agent caught this pin and extended it correctly.
+- The orchestrator-merge pattern is now 28 consecutive runs (items 134-175). The 27-item streak's "first-attempt success" verdict continues; the wave 17 spec had 2 minor inaccuracies but the agent self-corrected without orchestrator intervention.
+
+**Carries forward:**
+- (a) All item 174 carries unchanged EXCEPT (a)-relaxed: cc_conditional wave 17 DONE; COND_TRAVERSE no longer "operator-gated tag schema lift"; Taliyah E NO LONGER schema-blocked.
+- (b) DD Defy heal-on-takedown STILL deferred.
+- (c) Live ARAM/SR smoke STILL pending.
+- (d) Calibrations STILL operator-gated (13 default condition probability midpoints + 65 per-entry probability values + `_MISSING_HP_SHARE_FOR_HEALS = 0.5` + `_CC_EFFECTIVENESS_FACTOR = 0.5`).
+- (e) Legion 1-PC consolidation STILL operator-gated.
+- (f) cc_conditional wave 18+ candidates: Maokai R distance-gated (NEEDS same-spell-slot coexistence schema lift - operator-gated registry schema lift) + 6 wave-7 schema-lift carries (Renekton W Fury / Aatrox post-R passive / Volibear R passive / Briar W frenzy / multi-form Karma+Hwei+Neeko) STILL operator-gated. The current-schema candidate lane is now saturated; further growth needs a registry shape change.
+- (g) 542 residual U+2500 box-drawing chars carry forward as operator-gated separate sweep (NEEDS rc_supervisor.py + rc_self_monitor.py frozen-file grant - NOT used this session per Q2 fork).
+- (h) v2.1 audit pages 9/10 Champ Select ARAM/Arena -> 11/12/13 Active Match SR/ARAM/Arena -> 14/15/16 PGR SR/ARAM/Arena (8 remaining; this session's framing again non-UI).
+- (i) Frozen-file grant NOT used this session.
+
+---
 # 2026-05-24 - item 174 SHIPPED: operator-gated parallel drain #9 (cc_conditional wave 16 ENGINE 1.53.0 + BACKLOG stale-sweep wave 18 + L31 round 6 SATURATED + cost/latency CLEAN wave 22 + RC test pin fix for wave 16) (4 commits + 1 merge `9e16584` `45955fc` `66dda6d` `2ac7147` pushed origin/main `9c1cb22..2ac7147`; ENGINE 1.52.0 -> 1.53.0; DS :8893 restarted pid 14312 -> serves 1.53.0; RC :8888 unchanged pid 5800 - DS engine + docs + 1 RC test fix only)
 
 Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 27th consecutive run using orchestrator-merge pattern (items 134-174). 3 worktree agents dispatched concurrent. No question-fork (carries clearly enumerated in item 173 (a)-(i)). Pre-flight: 0 open PRs, all CI green since item 172, 2 stale remote worktree branches (a515+ae88) confirmed fully merged via empty diff vs origin/main -> deleted.
