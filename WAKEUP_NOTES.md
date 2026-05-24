@@ -3,6 +3,42 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-23 - item 165 ARAM bench-swap + summoner-spell D/F slot rotation SHIPPED (commit `1fa39de`, pushed origin/main `02fef4b..1fa39de`; non-frozen; agent redeployed Game-PC; no DS restart; no RC restart - ADR-008 asset-hash auto-served)
+
+Operator-reported 4 live champ-select bugs, all fixed end-to-end:
+
+1. **ARAM bench-swap silent no-op**: JS sent `champion_id` (snake) but agent at `tools/gamepc_lcu_agent.py:1052` read `championId` -> `cid=0` -> early return "no champ". Fixed `champ_select.js:1283` to send `championId`; agent now accepts both for back-compat. Pre-fix the bench-swap pre-cooldown bypass was completely dead.
+2. **Summoner-spell single-select instead of D-then-F**: rewrote click handler with module-level `_csvSpellPair[2]` + `_csvNextSpellSlot` state. First click = D slot, next = F, then wraps. Skips no-op when clicked spell matches the other slot.
+3. **Push to client unwired**: `set_summoner_spell` was in `_LCU_ALLOWED_CMDS` (item 164) but had NO agent handler. Added `set_summoner_spell` handler: `{slot:1|2, spellId:N}` -> GET session, splice the targeted slot, PATCH `/lol-champ-select/v1/session/my-selection` with the new pair so the partner slot survives rapid clicks.
+4. **Strip spell name text removed**: dropped `.csv-summspell-name` divs + CSS rules. Cells now carry icon + green D/F pill + pct only. New `.csv-summspell-slot` CSS class for the pill.
+5. **Snowball in ARAM listing**: NEW `_CSV_SUMM_STRIP_ARAM` constant (Flash/Mark/Heal/Cleanse/Barrier/Exhaust/Ignite/Clarity/Ghost) swapped in by `_csvSummSpellListFor(mode)`. Mark = Snowball id 32 visible in cell 2 of the ARAM strip per visual capture.
+
+**Mock + verification**:
+- NEW `web/data/ui_mock/champ_select_aram.json` (queue_id=450, is_aram=true, bench=[22,18,76,81,51], spell defaults [4,32]).
+- `web/js/main.js:3254` `_csMockLoad` picks `champ_select_{sr,aram}.json` off `?mode=aram` URL flag.
+- Visual proof captured Game-PC monitor 1: SR variant (Flash D 95% / Heal F 60% / 7 other cells, no names) + ARAM variant (BENCH·CLICK TO SWAP with 5 champ cells: Ashe/Tristana/Nidalee/Ezreal/Caitlyn; spell strip Flash D 95% / Mark 88% / Heal F 35% / 6 other cells incl. Clarity).
+
+**Agent redeploy**: pushed updated `tools/gamepc_lcu_agent.py` to Game-PC `C:\RC-Agent\gamepc_lcu_agent.py` via HTTP-pull (legacy 92755 -> 94875 bytes, py-parse OK, backup retained `bak-item165-20260523-211601`). RC-LCU scheduled task is DISABLED and no LCU agent process was running at ship time (operator was in client mode, not champ-select); the new code is in place for next champ-select entry.
+
+**Verified**: Phase 8 smoke 75/75 PASS post-edit. py_compile + JS Function-constructor parse OK. ASCII clean (0 new non-ASCII bytes added across all 5 touched files). RC :8888 mode_key=client alive=True reload_ok=True throughout. Asset hash flow: 6773054739 (pre) -> 6773054739 (post-JS+CSS, mtimes incorporated) -> 5f58ce3f3c (post-main.js+aram.json).
+
+**Don't-redo**:
+- bench_swap payload uses `championId` (canonical); agent accepts both forms for forward compat - do NOT remove the `champion_id` legacy fallback.
+- `set_summoner_spell` handler is per-slot atomic: caller sends one spell id + slot number, agent reads session for the other slot so client/server stays in sync across rapid D/F clicks. Do NOT switch to a full-pair payload here (would require the JS to know the partner slot, racing the LCU).
+- `_csvSpellPair[2]` + `_csvNextSpellSlot` are MODULE-level state; resets when render() is called with new champion (the spell pair init reads the variant's summoners array, not the session's spell1Id/spell2Id - this is intentional per the existing "Selection mirrors the current default variant's summoners" rule).
+- The `.csv-summspell-name` CSS class is now DEAD - if a future audit reintroduces name text, give it a fresh class.
+- ARAM strip list is hand-curated (Flash/Mark/Heal/Cleanse/Barrier/Exhaust/Ignite/Clarity/Ghost). Mark and Clarity are ARAM-only; do NOT add to SR list.
+- `champ_select_aram.json` mock fixture is now canonical for ARAM page #8 audit. Mirror the shape for any Arena variant.
+- Game-PC RC-LCU scheduled task is DISABLED - operator must launch the LCU agent manually before champ-select (via the `RC-Agent` desktop shortcut or by re-enabling the task). The disabled-task carryover is pre-existing; this session did NOT change it.
+
+**Carries forward**:
+- All items 158/162/163/164 carries unchanged except item 158 (a)-relaxed: page #8 Champ Select SR is now functionally complete (operator-gated audit ritual visual-hierarchy subagent re-run STILL OWED).
+- LCU multi-itemset push verification via Practice Tool match + Game-PC monitor 0 capture of mid-match item-shop dropdown STILL operator-gated.
+- 8 remaining pages in v2.1 audit order: #9/10 Champ Select ARAM/Arena -> #11/12/13 Active Match SR/ARAM/Arena -> #14/15/16 PGR SR/ARAM/Arena.
+- RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15 - verify LastTaskResult=0 next session.
+- Game-PC RC-LCU task re-enable decision pending (operator must opt back in or keep manual launch).
+
+---
 # 2026-05-23 - items 163-164 page #8 Champ Select SR rounds 1-3 + boots-engine + LCU multi-itemset push SHIPPED (5 commits `15a2202` `562e992` `42e0c96` `0554ce7` `3d02d94` `fba6b72`, pushed origin/main `8c54682..fba6b72`; non-frozen; DS engine extended via core/build_order.py non-frozen; no DS restart needed since engine_version unchanged; RC :8888 ADR-008 asset-hash auto-served throughout)
 
 Item 158's v2.1 audit order continued: page #4 History visual proof closed (item 162 carry-forward (b)) + page #7 Pre-Game Lobby SHIPPED + page #8 Champ Select SR end-to-end + 3 rounds of operator-driven deltas + boots-engine injection.
