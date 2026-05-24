@@ -2353,6 +2353,260 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ============================================================
+    # === wave 15 expansion (2026-05-24 / ENGINE 1.52.0) - +2
+    # === primary entries / +2 net-new champions sourced from
+    # === systematic re-audit of the ENGINE 1.51.0 Meraki schema-
+    # === lifted data file (cast_time + effects_descriptions
+    # === cross-reference). The audit surfaced 110 forms across
+    # === 171 champions where cast_time>0 + a CC-keyword appears
+    # === in effects_descriptions; 57 of those collide with the
+    # === unconditional _PER_SPELL_CC_DURATIONS registry (BLOCKED
+    # === absent a same-spell-slot coexistence schema lift), 28
+    # === are already-covered cc_conditional entries (no
+    # === duplication), leaving 25 unsorted candidates. Of the
+    # === 25, 2 close cleanly with no schema lift + no tag
+    # === expansion + no collision (Zac Q + Ornn E); the
+    # === remaining 23 either map to unconditional CC
+    # === (Velkoz E / Blitzcrank R / Darius E / Ambessa R /
+    # === Quinn R), minion-only CC (Aatrox R / Darius R /
+    # === Sion E / Nunu Q), positional/transcendent state-
+    # === tracking the schema does not cover (Fiddlesticks E /
+    # === Taliyah E / Syndra E), knockback-not-stun-or-root
+    # === (XinZhao R / Zyra R), or no first-order CC at all
+    # === (Khazix Q / Aphelios R / Urgot R recast suppress).
+    # === A third entry lives in the sidecar registry (Rell W
+    # === form 0 Ferromancy: Crash Down channel-completion stun);
+    # === see _build_per_spell_cc_conditional_forms below.
+    # ===
+    # === New primary entries (2 total, both net-new champions):
+    # ===
+    # ===   * Zac Q Stretching Strikes 2-hit cross-target root -
+    # ===     COND_NTH_HIT 0.7: 0.5s root flat across all 5 Q
+    # ===     ranks when the empowered second strike lands on a
+    # ===     DIFFERENT target than the first (both then rooted).
+    # ===   * Ornn E Searing Charge terrain-collision stun -
+    # ===     COND_TERRAIN 0.3: 1.25s stun flat across all 5 E
+    # ===     ranks when Ornn collides with terrain mid-charge.
+    # ===     FIRST consumer of COND_TERRAIN tag (was forward-
+    # ===     marker with zero consumers since wave 7).
+    # ===
+    # === Wave 15 REJECT verdicts (cast_time + effects_descriptions
+    # === schema-verified this run; CARRY-FORWARD only if new
+    # === evidence surfaces):
+    # ===
+    # ===   * Aatrox R World Ender post-R fear 3.0s - minion-
+    # ===     only fear (effects_descriptions "fearing nearby
+    # ===     enemy minions and monsters for 3 seconds"). NOT
+    # ===     champion CC. REJECT (item 153 wave 9 carry-forward).
+    # ===   * Darius R Noxian Guillotine execute fear 3.0s -
+    # ===     minion-only fear after execute kill (effects_
+    # ===     descriptions "fears nearby minions and monsters for
+    # ===     3 seconds"). NOT champion CC. REJECT.
+    # ===   * Sion E Roar of the Slayer stun 0.75s - minion-only
+    # ===     stun (effects_descriptions "If the target is a
+    # ===     minion or non-epic monster, they are also stunned
+    # ===     for 0.75 seconds"). NOT champion CC. REJECT.
+    # ===   * Nunu Q Consume stun - minion-only stun (effects_
+    # ===     descriptions "stunning and pulling them towards
+    # ===     him" gated on Consume killing the minion target).
+    # ===     NOT champion CC. REJECT.
+    # ===   * Ambessa R Public Execution 0.75s suppress + 0.4s
+    # ===     stun - UNCONDITIONAL on primary champion target hit
+    # ===     (effects_descriptions describes the full sequence
+    # ===     once target seized; the cast-time gates Ambessa's
+    # ===     own stationarity not the CC application). Belongs
+    # ===     in _PER_SPELL_CC_DURATIONS not cc_conditional.
+    # ===     REJECT (mirrors LeeSin R wave 13/14 REJECT).
+    # ===   * Blitzcrank R Static Field silence - UNCONDITIONAL
+    # ===     AoE silence on detonation. Belongs in
+    # ===     _PER_SPELL_CC_DURATIONS not cc_conditional. REJECT.
+    # ===   * Darius E Apprehend pull+brief-airborne -
+    # ===     UNCONDITIONAL pull. Brief airborne (no explicit
+    # ===     duration in description). REJECT.
+    # ===   * Quinn R Behind Enemy Lines - no CC on enemies; the
+    # ===     2-second channel is Quinn's self-channel and the
+    # ===     ability buffs Valor (Quinn's familiar). REJECT.
+    # ===   * Velkoz E Tectonic Disruption knockup+stun 0.75s -
+    # ===     UNCONDITIONAL knockup+stun on direct hit (effects_
+    # ===     descriptions "knocking them up and stunning them
+    # ===     for 0.75 seconds"). The cast-time gates landing
+    # ===     delay (0.25-0.55s), NOT the CC application. Belongs
+    # ===     in _PER_SPELL_CC_DURATIONS not cc_conditional.
+    # ===     REJECT.
+    # ===   * Fiddlesticks E Reap center-target silence 1.25s -
+    # ===     POSITIONAL gating (only center-of-area enemies
+    # ===     silenced), not cast-time conditional. Schema does
+    # ===     not encode positional sub-zones cleanly. REJECT.
+    # ===   * Irelia R Vanguard's Edge perimeter knockaway -
+    # ===     not airborne per description ("knocking all enemy
+    # ===     units away from them, though not rendering them
+    # ===     airborne"); displacement-only with no stun/root
+    # ===     duration. REJECT.
+    # ===   * Khazix Q Taste Their Fear - "fear" appears in
+    # ===     SPELL NAME only; no actual fear CC on enemy. REJECT.
+    # ===   * LeeSin R Dragon's Rage primary-target root - item
+    # ===     171 wave 13 REJECT verdict carries (UNCONDITIONAL
+    # ===     primary-target CC; belongs in
+    # ===     _PER_SPELL_CC_DURATIONS not cc_conditional).
+    # ===   * Aphelios R Moonlight Vigil Gravitum root - actually
+    # ===     a Q form_index=3 entry (already shipped wave 13 as
+    # ===     Aphelios:Q:3 sidecar entry); R itself has no
+    # ===     first-order CC payload. REJECT.
+    # ===   * Rell W form 1 Mount Up empowered AA stun 0.6s -
+    # ===     gated on activating Mount Up state THEN landing
+    # ===     the empowered next basic attack. NOT cast-time
+    # ===     conditional - it is next-hit-after-form-transition
+    # ===     conditional. Could theoretically register as
+    # ===     COND_NTH_HIT but the empowerment is post-cast not
+    # ===     during cast_time, and the AA must land on a
+    # ===     champion target. Risky semantic - REJECT pending
+    # ===     operator clarification on whether form-transition
+    # ===     empowerments register here or live elsewhere.
+    # ===   * Syndra E Scatter the Weak Transcendent stun 1.25s -
+    # ===     STATE-tracking via Transcendent Bonus (80
+    # ===     Splinters of Wrath passive accumulation). Schema
+    # ===     does not encode passive-state accumulation. REJECT.
+    # ===   * Taliyah Q Threaded Volley no CC. REJECT.
+    # ===   * Taliyah E Unraveled Earth dash-detonation stun
+    # ===     0.75s (champion) / 2.0s (monster) - condition is
+    # ===     enemy DASHING or BEING DISPLACED across a stone,
+    # ===     not target-debuffed or nth-hit. No clean tag fit
+    # ===     in the 12 existing tags. REJECT (could fit a new
+    # ===     COND_TRAVERSE tag in a future wave with operator
+    # ===     authorization). Coexists potential with the
+    # ===     existing wave 3 Taliyah W cc_conditional entry.
+    # ===   * Urgot R Fear Beyond Death Mercy recast suppress -
+    # ===     gated on target HP<25%; HP-threshold state-tracking
+    # ===     the schema does not cover. The 1.5s channel-recast
+    # ===     suppress is COND_TARGET_HP_BELOW conceptually but
+    # ===     no existing consumer + Urgot R already has a complex
+    # ===     primary leash payload. REJECT pending operator
+    # ===     authorization to register first COND_TARGET_HP_BELOW
+    # ===     consumer.
+    # ===   * XinZhao R Crescent Guard knockback - knockback IS
+    # ===     not a CC kind in the current cc_conditional schema
+    # ===     (stun/root/charm/fear/silence/sleep/suppress/
+    # ===     airborne only). The knockback is also gated on
+    # ===     "non-Challenged" targets (Challenged is XinZhao's
+    # ===     passive mark). REJECT (mechanic out of schema scope).
+    # ===   * Zyra R Stranglethorns zone knockup 1.0s after 2s
+    # ===     delay - UNCONDITIONAL zone knockup. Belongs in
+    # ===     _PER_SPELL_CC_DURATIONS not cc_conditional. REJECT.
+    # ============================================================
+
+    # Zac Q Stretching Strikes 2-hit cross-target root: Zac casts
+    # Q stretching his left arm to catch the first enemy hit
+    # (damage + 40% slow + tether). The tether lingers 2 seconds;
+    # while it persists Zac's NEXT basic attack is REPLACED by a
+    # second Stretching Strike with 0.25s cast time + 25 bonus
+    # attack range. The conditional payload fires when the two
+    # strikes affect DIFFERENT targets: per effects_descriptions
+    # "If the two Stretching Strikes affect different targets,
+    # both are rooted for 0.5 seconds while the secondary target
+    # is dealt the initial damage and applied the same slow."
+    # Maps to COND_NTH_HIT - the root requires landing the 2nd
+    # strike on a different enemy than the 1st strike.
+    # Probability 0.7 (tag midpoint) - in teamfights Zac's Q
+    # leads engages onto a primary target, the empowered second
+    # strike then frequently hits a different enemy chasing or
+    # collapsing. Standalone Q with same-target double-strike =
+    # damage + slow only (no root). Coexists with the
+    # unconditional Zac E + R entries in `_PER_SPELL_CC_DURATIONS`
+    # on different spell slots.
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[2] for
+    # form 0 ("If the two Stretching Strikes affect different
+    # targets, both are rooted for 0.5 seconds while the secondary
+    # target is dealt the initial damage and applied the same
+    # slow.") + Meraki cast_time=0.33 for the first strike. The
+    # secondary slam (knockup + 0.25s stun on targets near each
+    # other after displacement) is a deeper conditional layer not
+    # registered here - this wave 15 entry encodes ONLY the
+    # 2-target root payload that fires on the 0.5s flat duration.
+    registry.setdefault("Zac", {})["Q"] = ConditionalCcEntry(
+        champion="Zac",
+        spell="Q",
+        cc_kind="root",
+        durations_s=(0.5,),
+        condition=COND_NTH_HIT,
+        probability=_p("Zac", "Q", 0.7),
+        notes=(
+            "Q Stretching Strikes 2-hit cross-target root: Zac's "
+            "first Q strike applies tether + slow + damage; the "
+            "empowered second strike (replaces next AA within 2s "
+            "tether window) lands on a DIFFERENT target = both "
+            "rooted for 0.5s flat across all 5 Q ranks per "
+            "effects_descriptions. Same-target double-strike = "
+            "damage + slow only (no root). Maps to COND_NTH_HIT "
+            "- root requires landing the 2nd strike on a "
+            "different enemy than the 1st. Probability tag "
+            "midpoint 0.7 - teamfight collapses + chase patterns "
+            "reliably hit different targets across the tether "
+            "window. FIRST Zac Q first-order CC registration in "
+            "the engine (unconditional Zac E + R entries cover "
+            "the other spell slots). The secondary slam knockup "
+            "+ 0.25s stun on targets-near-each-other is a deeper "
+            "conditional layer NOT registered here - this entry "
+            "encodes ONLY the 2-target root payload."
+        ),
+    )
+
+    # Ornn E Searing Charge terrain-collision stun: Ornn charges
+    # in the target direction (0.35s cast_time + travel) dealing
+    # physical damage to enemies he passes through. If Ornn
+    # COLLIDES with terrain during the charge, he creates a
+    # shockwave that knocks up and STUNS nearby enemies for
+    # 1.25 seconds flat (per effects_descriptions "If Ornn
+    # collides with terrain during the charge, he creates a
+    # shockwave that knocks up and stuns nearby enemies for
+    # 1.25 seconds"). Standalone E without terrain collision =
+    # damage only (no shockwave, no stun). Maps to COND_TERRAIN -
+    # the canonical terrain-positional conditional tag. FIRST
+    # consumer of COND_TERRAIN (was registered as a forward-
+    # marker tag with zero consumers; this is its first
+    # registration). Probability 0.3 (tag midpoint) - terrain
+    # collision requires Ornn to aim at a wall and the enemy to
+    # be near the wall; reliable in lane (close-to-wall fights)
+    # but unreliable in open teamfights. Coexists with the wave 4
+    # cc_conditional Ornn Q knockup entry on a different spell
+    # slot.
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[1] for
+    # form 0 ("If Ornn collides with terrain during the charge,
+    # he creates a shockwave that knocks up and stuns nearby
+    # enemies for 1.25 seconds and deals the same damage if they
+    # were not already hit by the charge.") + Meraki cast_time=
+    # 0.35 for E. The knockup payload is separately captured by
+    # the cc_pressure unconditional Ornn R registry (R has its
+    # own knockup); this wave 15 entry encodes ONLY the
+    # 1.25s stun-on-terrain conditional payload.
+    registry.setdefault("Ornn", {})["E"] = ConditionalCcEntry(
+        champion="Ornn",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(1.25,),
+        condition=COND_TERRAIN,
+        probability=_p("Ornn", "E", 0.3),
+        notes=(
+            "E Searing Charge terrain-collision stun: Ornn "
+            "charges + deals damage to enemies passed through; "
+            "if he COLLIDES with terrain mid-charge a shockwave "
+            "knocks up + STUNS nearby enemies 1.25s flat across "
+            "all 5 E ranks per effects_descriptions. Standalone "
+            "E with no terrain hit = damage only (no shockwave, "
+            "no stun). Maps to COND_TERRAIN - the canonical "
+            "terrain-positional conditional tag. FIRST consumer "
+            "of COND_TERRAIN (forward-marker tag since wave 7 "
+            "schema lift). Probability tag midpoint 0.3 - "
+            "terrain collision requires aiming at a wall + the "
+            "enemy near it; reliable in lane / mid-Rift fights, "
+            "unreliable in open teamfights. Coexists with the "
+            "wave 4 Ornn Q debuffed-target knockup entry on a "
+            "different spell slot."
+        ),
+    )
+
     return registry
 
 
@@ -2984,6 +3238,97 @@ def _build_per_spell_cc_conditional_forms() -> (
             "Q lockout not root' was correct - the 0.25s "
             "cast time is the actual root duration. Form-"
             "explicit override key shape: Jayce:E:0."
+        ),
+        form_index=0,
+    )
+
+    # ============================================================
+    # === wave 15 expansion (2026-05-24 / ENGINE 1.52.0) - +1
+    # === sidecar entry / +1 net-new champion via cast_time
+    # === Meraki schema lift on Rell W form 0 Ferromancy: Crash
+    # === Down channel-completion stun. Rell W has 2 forms
+    # === toggled by her mount state:
+    # ===
+    # ===   * form_index=0 Ferromancy: Crash Down (Mounted state)
+    # ===     - 0.625s cast_time leap + on-arrival 0.8s stun + 0.4s
+    # ===     knockup AoE. Channel-completion conditional.
+    # ===   * form_index=1 Ferromancy: Mount Up (Dismounted state)
+    # ===     - 0.25s cast_time + 0.6s stun on EMPOWERED-AA-after-
+    # ===     transition (next-hit-after-form-transition). Not
+    # ===     cleanly cast-time conditional; REJECTED separately
+    # ===     pending operator clarification.
+    # ===
+    # === This wave 15 entry registers ONLY form 0 in the sidecar
+    # === registry. Sidecar pattern parallel to Hwei E form 1+2 +
+    # === Sylas E form 1 + Karma W form 1 + Gnar W form 1 +
+    # === Aphelios Q form 3 + Jayce E form 0 - form_index carries
+    # === semantic meaning (form 0 = Mounted-state CC payload;
+    # === form 1 = Dismounted-state empowered-AA payload registered
+    # === elsewhere or REJECTED this wave).
+    # ============================================================
+
+    # Rell W form_index=0 Ferromancy: Crash Down channel-completion
+    # stun: Rell's W in Mounted form (Ferromancy: Crash Down) is a
+    # 0.625s cast_time leap to a target location. Upon arrival she
+    # deals magic damage + STUNS nearby enemies for 0.8s flat +
+    # KNOCKS UP for 0.4s + slides another 320 units over 0.5s.
+    # The CC payload fires ONLY when the cast-time leap COMPLETES;
+    # if Rell is hard-CC'd mid-cast (silenced / stunned / CC'd
+    # within the 0.625s), no arrival + no stun/knockup fires.
+    # Maps to COND_CHANNEL_COMPLETION - the 0.625s cast lockout
+    # is the channel window. Probability 0.5 (tag midpoint) -
+    # Rell W is a leap-engage with momentum; interrupting it
+    # requires Rell's target to have already-active ranged CC.
+    # Standalone W cast that is INTERRUPTED = no arrival payload
+    # (cast fails). Form 1 (Mount Up Dismounted-state empowered-
+    # AA) is a separate spell with different mechanics + a
+    # different conditional layer; that form is REJECTED this
+    # wave pending operator clarification. Coexists with the
+    # unconditional Rell Q stun entry in `_PER_SPELL_CC_DURATIONS`
+    # on a different spell slot (FIRST Rell W first-order CC
+    # registration anywhere in the engine).
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[1] for
+    # form_index=0 ("Active: Rell becomes Dismounted and leaps to
+    # the target location over the cast time, granting herself a
+    # shield that lasts until destroyed or casting Ferromancy:
+    # Mount Up. Upon arrival, she deals magic damage to nearby
+    # enemies, stuns them for 0.8 seconds, and knocks them up for
+    # 0.4 seconds.") + Meraki cast_time=0.625 for form 0. The
+    # 0.4s knockup is a separate displacement payload not
+    # registered here - this entry encodes ONLY the 0.8s stun
+    # payload. Form-explicit override key shape: Rell:W:0.
+    registry.setdefault("Rell", {})[("W", 0)] = ConditionalCcEntry(
+        champion="Rell",
+        spell="W",
+        cc_kind="stun",
+        durations_s=(0.8,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p_form("Rell", "W", 0, 0.5),
+        notes=(
+            "W form 0 Ferromancy: Crash Down channel-completion "
+            "stun: Rell's Mounted-state W leaps over 0.625s "
+            "cast_time + on arrival deals magic damage + STUNS "
+            "nearby enemies 0.8s flat across all 5 W ranks + "
+            "knocks up 0.4s + slides 320 units. CC payload fires "
+            "ONLY on cast completion; mid-cast hard CC cancels "
+            "arrival + stun/knockup. Maps to "
+            "COND_CHANNEL_COMPLETION - 0.625s cast lockout is "
+            "the channel window. Probability tag midpoint 0.5 - "
+            "leap-engage with momentum; interruption requires "
+            "ranged CC already active on target's team. Form 1 "
+            "(Mount Up Dismounted-state empowered-AA) is a "
+            "separate mechanic REJECTED this wave pending "
+            "operator clarification on form-transition empowered-"
+            "AA registration. FIRST Rell W first-order CC "
+            "registration in the engine. Coexists with the "
+            "unconditional Rell Q stun entry in "
+            "`_PER_SPELL_CC_DURATIONS` on a different spell slot. "
+            "The 0.4s knockup is a separate displacement payload "
+            "not registered here - this entry encodes ONLY the "
+            "0.8s stun. Mechanic captured by ENGINE 1.51.0 "
+            "schema lift (Meraki cast_time field for form 0 = "
+            "0.625s). Form-explicit override key shape: Rell:W:0."
         ),
         form_index=0,
     )

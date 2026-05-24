@@ -555,9 +555,15 @@ class AggregatorWaveOneTests(unittest.TestCase):
         self.assertEqual(entries[0].spell, "Q")
 
     def test_get_conditional_entries_returns_q_for_ornn(self) -> None:
+        # Wave 1 baseline: Ornn returns Q only.
+        # Wave 15 added Ornn E (terrain-collision stun) so the
+        # registry now returns 2 entries for Ornn. Relaxed
+        # to assertGreaterEqual + assertIn("Q", slots) for
+        # forward compat across waves.
         entries = get_conditional_entries("Ornn")
-        self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0].spell, "Q")
+        self.assertGreaterEqual(len(entries), 1)
+        slots = {e.spell for e in entries}
+        self.assertIn("Q", slots)
 
 
 # ---------------- ASCII hygiene contract ----------------
