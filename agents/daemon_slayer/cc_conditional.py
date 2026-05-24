@@ -2046,6 +2046,313 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ============================================================
+    # === wave 13 expansion (2026-05-24 / ENGINE 1.50.0) - +6
+    # === primary entries / +5 net-new champions sourced from an
+    # === all-champ effects_descriptions scan against the
+    # === ENGINE 1.46.0 Meraki schema-lifted data file. Each
+    # === closure uses ONE of the 12 existing condition tags; NO
+    # === new tag constants. A seventh wave 13 entry lives in
+    # === the sidecar registry (Aphelios Q form_index=3 Gravitum
+    # === Binding Eclipse expunge root - target-debuffed); see
+    # === _build_per_spell_cc_conditional_forms below.
+    # ===
+    # === New primary entries (6 total, 4 net-new champions +
+    # === 2 multi-wave coexistence on Warwick / TahmKench):
+    # ===
+    # ===   * Sejuani E Permafrost (NEW champ) - COND_NTH_HIT 0.7:
+    # ===     4-Frost-stack accumulator stun 1.0s flat.
+    # ===   * Renata Q Handshake (NEW champ) - COND_CHANNEL_COMPLETION
+    # ===     0.5: tether-recast-throw bystander stun 0.5s flat.
+    # ===   * Shaco R Hallucinate (NEW champ) - COND_CHANNEL_COMPLETION
+    # ===     0.5: clone-death deploy box fear 1.0s flat.
+    # ===   * Fizz R Chum the Waters (NEW champ) - COND_TARGET_DEBUFFED
+    # ===     0.5: lure-on-champion knockup 1.0s instead of base
+    # ===     knock-back.
+    # ===   * Warwick E Primal Howl (existing champ; coexists with
+    # ===     wave 0 Warwick R suppression) - COND_CHANNEL_COMPLETION
+    # ===     0.5: recast fear 1.0s after damage-reduction window.
+    # ===   * TahmKench W Abyssal Dive (existing champ; coexists with
+    # ===     wave 0 TahmKench R devour + wave 5 TahmKench Q nth_hit
+    # ===     stun) - COND_CHANNEL_COMPLETION 0.5: 1.35s channel +
+    # ===     0.65s recovery; emerges to stun 1.0s flat.
+    # ===
+    # === Wave 13 REJECT verdicts (effects_descriptions schema-
+    # === lift-verified this run; CARRY-FORWARD only if new
+    # === evidence surfaces):
+    # ===
+    # ===   * LeeSin R Dragon's Rage primary-target airborne 1.0s -
+    # ===     the description "rendering them airborne for 1 second"
+    # ===     is UNCONDITIONAL CC on the primary target; belongs
+    # ===     in `_PER_SPELL_CC_DURATIONS` not cc_conditional. The
+    # ===     bystander collision knockup IS conditional but
+    # ===     adding it without the primary unconditional entry
+    # ===     under-credits the spell. REJECT - defer to a future
+    # ===     `_PER_SPELL_CC_DURATIONS` LeeSin R addition.
+    # ===   * Poppy R Keeper's Verdict 1.0s base knockup - the
+    # ===     1.0s knockup is the BASE non-charged recast; the
+    # ===     charged knockback is the empowered variant.
+    # ===     Knockup-on-base-recast is UNCONDITIONAL; belongs
+    # ===     in `_PER_SPELL_CC_DURATIONS` not cc_conditional.
+    # ===     REJECT.
+    # ===   * RekSai W form 1 Unburrow knockup 1.0s - unconditional
+    # ===     1.0s knockup on Unburrow form transition; belongs in
+    # ===     `_PER_SPELL_CC_DURATIONS` not cc_conditional. REJECT.
+    # ===   * Jayce E cast-time root - STILL schema-blocked (item
+    # ===     170 wave 12 carry; cast_time field absent from
+    # ===     effects_descriptions and damage_blocks).
+    # ===   * Maokai R distance-gated root - STILL double-count
+    # ===     with unconditional Maokai R entry (item 170 wave 12
+    # ===     carry; would need that registry deleted first).
+    # ============================================================
+
+    # Sejuani E Permafrost: passive accumulates Frost stacks on
+    # enemies hit by Sejuani's W + allied melee basic attacks (up
+    # to 4 stacks per target over 5 seconds). Sejuani can ONLY
+    # cast E against an enemy with 4 stacks - the cast itself
+    # requires the nth-hit precondition. The cast deals magic
+    # damage + a slight displacement + STUNS the target for 1.0
+    # second flat across all 5 E ranks per effects_descriptions
+    # ("which deals magic damage, displaces slightly, and stuns
+    # them for 1 second"). Standalone E with no 4-stack target
+    # cannot be cast at all (the input is gated). Maps to
+    # COND_NTH_HIT - the canonical 4-stack accumulator
+    # conditional. Probability 0.7 (tag midpoint) - in teamfights
+    # Sejuani's W + ally autos reliably reach 4 stacks on a
+    # priority target within the 5s Frost window. Coexists with
+    # the unconditional Sejuani Q 0.75-1.25s stun + Sejuani R
+    # 1.0-2.0s stun in `_PER_SPELL_CC_DURATIONS` on different
+    # spell slots.
+    registry.setdefault("Sejuani", {})["E"] = ConditionalCcEntry(
+        champion="Sejuani",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(1.0,),
+        condition=COND_NTH_HIT,
+        probability=_p("Sejuani", "E", 0.7),
+        notes=(
+            "E Permafrost 4-Frost-stack stun: E can ONLY be cast "
+            "against an enemy already carrying 4 Frost stacks "
+            "(accumulated via Sejuani W + allied melee basic "
+            "attacks within a 5s window). Cast deals magic damage "
+            "+ slight displacement + stuns the target for 1.0s "
+            "flat across all 5 E ranks. Maps to COND_NTH_HIT - "
+            "input itself is gated on 4 stacks. Probability tag "
+            "midpoint 0.7 - W ticks + ally auto chain reliably "
+            "stacks a priority target. Coexists with Sejuani Q + "
+            "R unconditional stuns in `_PER_SPELL_CC_DURATIONS` "
+            "on different spell slots."
+        ),
+    )
+
+    # Renata Q Handshake recast bystander stun: the FIRST cast
+    # roots the primary target for 1.0s flat (unconditional CC
+    # on the primary target; this primary root belongs in
+    # `_PER_SPELL_CC_DURATIONS` if added later). The RECAST
+    # within the tether window throws the target in the recast
+    # direction; SECONDARY targets struck by the thrown enemy
+    # take damage AND are stunned for 0.5 seconds. Standalone Q
+    # without a recast = damage + 1.0s primary root only (no
+    # secondary stun). Maps to COND_CHANNEL_COMPLETION - the
+    # secondary stun fires only after the tether persists +
+    # Renata initiates the recast throw. Probability 0.5 (tag
+    # midpoint) - the tether persists if Renata stays in range,
+    # but secondary targets must be in the throw line which
+    # requires deliberate aim. Renata has NO unconditional CC
+    # entry in `_PER_SPELL_CC_DURATIONS` yet (primary root would
+    # need a separate addition); this cc_conditional entry
+    # encodes ONLY the recast-throw bystander stun payload.
+    registry.setdefault("Renata", {})["Q"] = ConditionalCcEntry(
+        champion="Renata",
+        spell="Q",
+        cc_kind="stun",
+        durations_s=(0.5,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("Renata", "Q", 0.5),
+        notes=(
+            "Q Handshake recast bystander stun: first cast roots "
+            "primary target 1.0s (unconditional, belongs in "
+            "`_PER_SPELL_CC_DURATIONS` if added later). Recast "
+            "within tether throws target; SECONDARY targets "
+            "struck by the thrown body are stunned 0.5s flat. "
+            "Standalone Q without recast = damage + primary "
+            "root only. Maps to COND_CHANNEL_COMPLETION - "
+            "secondary stun fires only after tether persists + "
+            "recast throw aim lands. Probability tag midpoint "
+            "0.5 - tether persists reliably but secondary "
+            "throw-line aim requires teamfight setup. FIRST "
+            "Renata first-order CC registration in the engine "
+            "(encodes only the recast bystander payload)."
+        ),
+    )
+
+    # Shaco R Hallucinate clone-death box fear: R blinks Shaco
+    # while summoning a controllable clone. The clone deals
+    # modified damage + can be commanded; when the clone DIES
+    # or EXPIRES (after up to 18 seconds), it deploys 3 mini-
+    # boxes that activate instantly + FEAR nearby enemy
+    # champions for 1.0 second flat per effects_descriptions
+    # ("deploy three mini-boxes that activate instantly,
+    # fearing nearby enemies for 1 second, increased to 2.2
+    # seconds against non-champions"). Standalone R cast with
+    # the clone still alive = damage + clone-control only (no
+    # fear payload). Maps to COND_CHANNEL_COMPLETION - the
+    # fear fires ONLY after the clone-death/expiration event
+    # completes, which is operator-controlled (Shaco can
+    # detonate manually) but not guaranteed in every fight
+    # window. Probability 0.5 (tag midpoint) - clone death is
+    # reliable in commit fights but Shaco frequently saves the
+    # clone for setup/scouting. Coexists with the unconditional
+    # Shaco W 0.5-1.5s fear in `_PER_SPELL_CC_DURATIONS` on a
+    # different spell slot.
+    registry.setdefault("Shaco", {})["R"] = ConditionalCcEntry(
+        champion="Shaco",
+        spell="R",
+        cc_kind="fear",
+        durations_s=(1.0,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("Shaco", "R", 0.5),
+        notes=(
+            "R Hallucinate clone-death box fear: clone deploys "
+            "3 mini-boxes on death/expiration that fear nearby "
+            "enemy champions 1.0s flat (effects_descriptions "
+            "'fearing nearby enemies for 1 second'). Standalone "
+            "R with clone alive = damage + control only. Maps "
+            "to COND_CHANNEL_COMPLETION - fear fires only after "
+            "clone death/expiration. Probability tag midpoint "
+            "0.5 - operator-controlled detonation but clone "
+            "frequently saved for utility. Coexists with Shaco "
+            "W unconditional fear in `_PER_SPELL_CC_DURATIONS` "
+            "on a different spell slot."
+        ),
+    )
+
+    # Fizz R Chum the Waters lure-on-champion knockup: R throws
+    # a lure that attracts a shark after a 2-second delay.
+    # Standalone lure (no champion intercept) = damage + slow +
+    # KNOCK BACK (not knockup) - the knockback is the BASE
+    # eruption effect. Conditional on an enemy champion
+    # intercepting the lure in flight (becoming the "holder"),
+    # the shark emerges at the holder's position and the
+    # eruption becomes a KNOCK UP for 1.0 second flat instead
+    # of the knock back per effects_descriptions ("The lure's
+    # holder is slowed and revealed for the duration and
+    # afterwards is impacted by the eruption but is knocked up
+    # for 1 second instead of knocked back"). Maps to
+    # COND_TARGET_DEBUFFED - the lure must attach to a champion
+    # (debuffing them with slow + reveal) for the knockup
+    # variant to fire. Probability 0.5 (tag midpoint) - in
+    # teamfights Fizz reliably hits a champion with the lure
+    # but skilled enemies side-step it. Coexists with no
+    # `_PER_SPELL_CC_DURATIONS` entry for Fizz (FIRST Fizz
+    # first-order CC registration anywhere in the engine; the
+    # base knockback is captured under cc_kind="knockback"
+    # which sits at 0.25s effective duration so it stays out
+    # of the unconditional registry per the wave 0 ship rule).
+    registry.setdefault("Fizz", {})["R"] = ConditionalCcEntry(
+        champion="Fizz",
+        spell="R",
+        cc_kind="knockup",
+        durations_s=(1.0,),
+        condition=COND_TARGET_DEBUFFED,
+        probability=_p("Fizz", "R", 0.5),
+        notes=(
+            "R Chum the Waters lure-on-champion knockup: base "
+            "eruption knocks BACK 0.25s; lure attached to a "
+            "champion (the holder) makes the eruption knock UP "
+            "for 1.0s flat instead (effects_descriptions "
+            "'knocked up for 1 second instead of knocked "
+            "back'). Maps to COND_TARGET_DEBUFFED - lure must "
+            "attach to a champion (debuffing them with slow + "
+            "reveal). Probability tag midpoint 0.5 - reliable "
+            "in teamfights but lure projectile is dodgeable. "
+            "FIRST Fizz first-order CC registration in the "
+            "engine."
+        ),
+    )
+
+    # Warwick E Primal Howl recast fear: E grants Warwick
+    # damage reduction for up to 2.5 seconds. After 1 second of
+    # the buff Warwick can RECAST E (automatically recasts on
+    # buff expiration) to fear nearby enemies for 1.0 second
+    # flat per effects_descriptions ("ending Primal Howl's
+    # effects and fearing nearby enemies for 1 second, slowing
+    # them by 90%"). Standalone E without recast = damage
+    # reduction self-buff only (no fear payload until 2.5s
+    # auto-recast). Maps to COND_CHANNEL_COMPLETION - the
+    # fear fires only after the 1s recast-window opens AND
+    # Warwick is in range of enemies when the recast triggers.
+    # Probability 0.5 (tag midpoint) - the recast auto-fires
+    # at 2.5s so the fear is reliable in commit fights, but
+    # the radius is short (380 units) so frequently misses
+    # mobile targets. Coexists with the wave 0 cc_conditional
+    # Warwick R suppression on a different spell slot.
+    registry.setdefault("Warwick", {})["E"] = ConditionalCcEntry(
+        champion="Warwick",
+        spell="E",
+        cc_kind="fear",
+        durations_s=(1.0,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("Warwick", "E", 0.5),
+        notes=(
+            "E Primal Howl recast fear: E grants 2.5s damage "
+            "reduction; recast (manual after 1s or auto on "
+            "buff expiration) fears nearby enemies 1.0s flat "
+            "(effects_descriptions 'fearing nearby enemies "
+            "for 1 second'). Standalone E without recast = "
+            "self-buff only. Maps to COND_CHANNEL_COMPLETION "
+            "- fear fires only after recast window opens. "
+            "Probability tag midpoint 0.5 - auto-recast at "
+            "2.5s is reliable but 380-unit radius frequently "
+            "misses mobile targets. Coexists with the wave 0 "
+            "Warwick R suppression cc_conditional entry on a "
+            "different spell slot."
+        ),
+    )
+
+    # TahmKench W Abyssal Dive emerge stun: W channels 1.35s
+    # as Tahm Kench dives, then blinks to the target location
+    # after a 0.15s delay and remains unable-to-act for 0.65s
+    # after the channel completes. Tahm Kench emerges to deal
+    # magic damage AND knock up + stun nearby enemies for 1.0
+    # second flat per effects_descriptions ("Tahm Kench
+    # emerges to deal magic damage to nearby enemies, as well
+    # as knock up and stun them for 1 second"). Standalone W
+    # cast that is INTERRUPTED during the 1.35s channel
+    # (Tahm Kench takes hard CC mid-dive) = no emerge payload
+    # (cast fails). Maps to COND_CHANNEL_COMPLETION - the
+    # stun fires only after the full 1.35 + 0.15 + 0.65s
+    # cycle completes. Probability 0.5 (tag midpoint) - the
+    # channel can be interrupted by stuns/silences but Tahm
+    # Kench has displacement immunity during the dive itself,
+    # so completion is reliable in most fight windows.
+    # Coexists with the wave 0 cc_conditional TahmKench R
+    # devour suppression + the wave 5 cc_conditional
+    # TahmKench Q nth_hit stun on different spell slots.
+    registry.setdefault("TahmKench", {})["W"] = ConditionalCcEntry(
+        champion="TahmKench",
+        spell="W",
+        cc_kind="stun",
+        durations_s=(1.0,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p("TahmKench", "W", 0.5),
+        notes=(
+            "W Abyssal Dive emerge stun: 1.35s channel + 0.15s "
+            "blink delay + 0.65s recovery; on completion Tahm "
+            "Kench emerges to knock up + stun nearby enemies "
+            "1.0s flat (effects_descriptions 'knock up and "
+            "stun them for 1 second'). Interrupted channel = "
+            "no emerge payload. Maps to "
+            "COND_CHANNEL_COMPLETION - stun fires only after "
+            "full cycle completes. Probability tag midpoint "
+            "0.5 - reliable in most fights given displacement "
+            "immunity during dive. Coexists with the wave 0 "
+            "TahmKench R devour suppression + wave 5 TahmKench "
+            "Q nth_hit stun cc_conditional entries on "
+            "different spell slots."
+        ),
+    )
+
     return registry
 
 
@@ -2464,6 +2771,87 @@ def _build_per_spell_cc_conditional_forms() -> (
             "explicit override key shape: Sylas:E:1."
         ),
         form_index=1,
+    )
+
+    # ============================================================
+    # === wave 13 expansion (2026-05-24 / ENGINE 1.50.0) - +1
+    # === sidecar entry / +1 net-new champion via Aphelios Q
+    # === form_index=3 Gravitum Binding Eclipse expunge root.
+    # === Aphelios Q is a weapon-cycle ability where the form
+    # === index corresponds to one of his 5 weapons (Calibrum,
+    # === Severum, Gravitum, Infernum, Crescendum). Each form
+    # === has a different active effect; form_index=3
+    # === (Gravitum, "Binding Eclipse") is the ONLY form with
+    # === a first-order CC payload: it expunges all enemies
+    # === already carrying Gravitum's slow debuff, dealing
+    # === magic damage AND rooting them for 1.0 second flat
+    # === per effects_descriptions. The conditional axis is
+    # === COND_TARGET_DEBUFFED - the root fires ONLY when a
+    # === target carries Gravitum's slow first (applied via
+    # === Aphelios's auto-attacks while Gravitum is the main
+    # === weapon). Sidecar registry preferred because
+    # === form_index carries semantic meaning (form 0/1/2/4/5
+    # === have NO CC; form 3 carries the CC payload). Sidecar
+    # === pattern parallel to Hwei E form 1+2 + Sylas E form
+    # === 1 + Karma W form 1 + Gnar W form 1.
+    # ============================================================
+
+    # Aphelios Q form_index=3 Gravitum Binding Eclipse expunge
+    # root: Aphelios's Q rotates through 5 weapons (forms 0/1/
+    # 2/3/4 = Calibrum/Severum/Gravitum/Infernum/Crescendum;
+    # form 5 = Sentry secondary). When Gravitum is the active
+    # main weapon (form 3), Q EXPUNGES every enemy already
+    # carrying Gravitum's slow debuff, dealing magic damage AND
+    # rooting them for 1.0 second flat per effects_descriptions
+    # ("Aphelios expunges all enemies with Gravitum's slow
+    # debuff, dealing 50 : 140 ... magic damage and rooting
+    # them for 1 second"). Standalone Q cast in any other
+    # weapon-form has NO root payload (Calibrum is a damage
+    # line-shot mark, Severum is a heal-AA empower, Infernum is
+    # a cone AoE, Crescendum is a chakram shower). Maps to
+    # COND_TARGET_DEBUFFED - the root requires Aphelios's auto-
+    # attacks to FIRST apply Gravitum's slow debuff to the
+    # target during the Gravitum-as-main-weapon window. Without
+    # the pre-applied slow, the expunge has no targets to root.
+    # Probability 0.5 (tag midpoint) - in teamfights Aphelios's
+    # high-attack-speed Gravitum auto-chain reliably slows
+    # multiple targets, but the operator must time the
+    # weapon-cycle to Gravitum AND have already auto-attacked
+    # priority targets. Sidecar pattern preferred (form 3
+    # carries CC; other forms do not) - parallel to Hwei E
+    # form 1+2 + Sylas E form 1 + Karma W form 1 + Gnar W
+    # form 1. Coexists with absence in
+    # `_PER_SPELL_CC_DURATIONS` (FIRST Aphelios first-order
+    # CC registration anywhere in the engine). Form-explicit
+    # override key shape: Aphelios:Q:3.
+    registry.setdefault("Aphelios", {})[("Q", 3)] = ConditionalCcEntry(
+        champion="Aphelios",
+        spell="Q",
+        cc_kind="root",
+        durations_s=(1.0,),
+        condition=COND_TARGET_DEBUFFED,
+        probability=_p_form("Aphelios", "Q", 3, 0.5),
+        notes=(
+            "Q form 3 Gravitum Binding Eclipse expunge root: "
+            "when Gravitum is active main weapon (form 3), Q "
+            "expunges enemies carrying Gravitum's slow debuff "
+            "(applied via Aphelios autos during the Gravitum "
+            "window) for damage + 1.0s root flat across all "
+            "Q ranks (effects_descriptions 'rooting them for "
+            "1 second'). Other weapon-forms (Calibrum/Severum/"
+            "Infernum/Crescendum) have NO root payload. Maps "
+            "to COND_TARGET_DEBUFFED - root requires pre-"
+            "applied Gravitum slow. Probability tag midpoint "
+            "0.5 - reliable Gravitum-window auto-chain but "
+            "requires weapon-cycle timing + prior autos. "
+            "FIRST Aphelios first-order CC registration in "
+            "the engine. Sidecar pattern parallel to Hwei E "
+            "form 1+2 + Sylas E form 1 + Karma W form 1 + "
+            "Gnar W form 1 - form_index carries semantic "
+            "meaning (only form 3 carries CC payload). Form-"
+            "explicit override key shape: Aphelios:Q:3."
+        ),
+        form_index=3,
     )
 
     return registry
