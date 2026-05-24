@@ -1321,7 +1321,147 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.49.0"
+ENGINE_VERSION = "1.50.0"
+# 1.50.0 (cc_conditional wave 13 - +7 entries / +5 net-new champions
+# via all-champ effects_descriptions scan against ENGINE 1.46.0 Meraki
+# schema-lifted data file, 2026-05-24):
+#
+# Wave 13 ships +7 entries (+6 primary + 1 sidecar) across +5 net-new
+# champions using ONLY the existing 12 condition tags. NO new tag
+# constants. The registry total grows 49 entries / 43 champions ->
+# 56 entries / 48 champions (45 -> 51 primary + 4 -> 5 sidecar = 56
+# total entries).
+#
+# NEW cc_conditional entries:
+#
+#   * Sejuani E Permafrost (primary registry, NEW champion) -
+#     COND_NTH_HIT 0.7
+#     - durations_s=(1.0,) flat across all 5 E ranks per
+#       effects_descriptions ("stuns them for 1 second").
+#     - mechanic: E can ONLY be cast against an enemy already
+#       carrying 4 Frost stacks (accumulated via Sejuani W +
+#       allied melee basic attacks within a 5s window). The cast
+#       itself is gated on 4 stacks - the canonical nth-hit
+#       conditional. Coexists with Sejuani Q + R unconditional
+#       stuns in `_PER_SPELL_CC_DURATIONS` on different spell
+#       slots.
+#
+#   * Renata Q Handshake recast bystander stun (primary registry,
+#     NEW champion) - COND_CHANNEL_COMPLETION 0.5
+#     - durations_s=(0.5,) flat across all 5 Q ranks per
+#       effects_descriptions ("all secondary targets hit are
+#       stunned for 0.5 seconds").
+#     - mechanic: first cast roots primary target 1.0s
+#       (unconditional, NOT registered here yet); RECAST within
+#       tether throws the target, SECONDARY enemies in the throw
+#       line are stunned 0.5s. FIRST Renata first-order CC
+#       registration in the engine.
+#
+#   * Shaco R Hallucinate clone-death box fear (primary registry,
+#     NEW champion) - COND_CHANNEL_COMPLETION 0.5
+#     - durations_s=(1.0,) flat across all 3 R ranks per
+#       effects_descriptions ("fearing nearby enemies for 1
+#       second").
+#     - mechanic: R summons a clone that lasts up to 18s; on
+#       clone death/expiration, 3 mini-boxes deploy + fear
+#       nearby enemies 1.0s. Standalone R cast = damage +
+#       control only. Coexists with unconditional Shaco W
+#       0.5-1.5s fear in `_PER_SPELL_CC_DURATIONS` on a
+#       different spell slot.
+#
+#   * Fizz R Chum the Waters lure-on-champion knockup (primary
+#     registry, NEW champion) - COND_TARGET_DEBUFFED 0.5
+#     - durations_s=(1.0,) flat across all 3 R ranks per
+#       effects_descriptions ("knocked up for 1 second instead
+#       of knocked back").
+#     - mechanic: base eruption knocks back 0.25s; lure
+#       attached to a champion (debuffing them with slow +
+#       reveal) makes the eruption knock UP 1.0s instead.
+#       FIRST Fizz first-order CC registration in the engine.
+#
+#   * Warwick E Primal Howl recast fear (primary registry,
+#     existing champion - coexists with wave 0 Warwick R
+#     suppression on a different spell slot) -
+#     COND_CHANNEL_COMPLETION 0.5
+#     - durations_s=(1.0,) flat across all 5 E ranks per
+#       effects_descriptions ("fearing nearby enemies for 1
+#       second").
+#     - mechanic: E grants 2.5s damage reduction; recast
+#       (manual after 1s or auto on buff expiration) fears
+#       nearby enemies 1.0s. Standalone E without recast =
+#       self-buff only.
+#
+#   * TahmKench W Abyssal Dive emerge stun (primary registry,
+#     existing champion - coexists with wave 0 TahmKench R
+#     devour suppression + wave 5 TahmKench Q nth_hit stun on
+#     different spell slots) - COND_CHANNEL_COMPLETION 0.5
+#     - durations_s=(1.0,) flat across all 5 W ranks per
+#       effects_descriptions ("knock up and stun them for 1
+#       second").
+#     - mechanic: 1.35s channel + 0.15s blink + 0.65s recovery;
+#       on completion Tahm Kench emerges to knock up + stun
+#       nearby enemies 1.0s. Interrupted channel = no payload.
+#
+#   * Aphelios Q form_index=3 Gravitum Binding Eclipse expunge
+#     root (sidecar registry, NEW champion) -
+#     COND_TARGET_DEBUFFED 0.5
+#     - durations_s=(1.0,) flat across all Q ranks per
+#       effects_descriptions ("rooting them for 1 second").
+#     - mechanic: when Gravitum is active main weapon (form 3),
+#       Q expunges enemies carrying Gravitum's slow debuff for
+#       1.0s root. Other weapon-forms (Calibrum/Severum/
+#       Infernum/Crescendum) have NO root payload. FIRST
+#       Aphelios first-order CC registration in the engine.
+#       Sidecar pattern parallel to Hwei E form 1+2 + Sylas E
+#       form 1 + Karma W form 1 + Gnar W form 1.
+#
+# Wave 13 REJECT verdicts (effects_descriptions schema-lift-verified
+# this run; CARRY-FORWARD only if new evidence surfaces):
+#
+#   * LeeSin R Dragon's Rage primary-target airborne 1.0s - the
+#     description "rendering them airborne for 1 second" is
+#     UNCONDITIONAL CC on the primary target; belongs in
+#     `_PER_SPELL_CC_DURATIONS` not cc_conditional. The bystander
+#     collision knockup IS conditional but adding it without the
+#     primary unconditional entry under-credits the spell.
+#     REJECT - defer to a future `_PER_SPELL_CC_DURATIONS`
+#     LeeSin R addition.
+#   * Poppy R Keeper's Verdict 1.0s base knockup - the 1.0s
+#     knockup is the BASE non-charged recast; the charged
+#     knockback is the empowered variant. Knockup-on-base-recast
+#     is UNCONDITIONAL; belongs in `_PER_SPELL_CC_DURATIONS` not
+#     cc_conditional. REJECT.
+#   * RekSai W form 1 Unburrow knockup 1.0s - unconditional 1.0s
+#     knockup on Unburrow form transition; belongs in
+#     `_PER_SPELL_CC_DURATIONS` not cc_conditional. REJECT.
+#   * Jayce E cast-time root - STILL schema-blocked (item 170
+#     wave 12 carry; cast_time field absent from
+#     effects_descriptions and damage_blocks).
+#   * Maokai R distance-gated root - STILL double-count with
+#     unconditional Maokai R entry (item 170 wave 12 carry;
+#     would need that registry deleted first).
+#
+# Multi-wave coexistence count: Warwick (wave 0 R + wave 13 E)
+# joins as the NINTH multi-entry-WITHIN-cc_conditional champion.
+# TahmKench (wave 0 R + wave 5 Q + wave 13 W) extends to TRIPLE
+# cc_conditional coverage - FIRST 3-slot cc_conditional champion
+# in the registry. Sejuani (Q+R uncond + E wave 13 cond) +
+# Shaco (W uncond + R wave 13 cond) join as the NINTH/TENTH
+# unconditional/conditional-cross champions. Renata + Fizz +
+# Aphelios are FIRST CC registrations (no prior cc_conditional
+# or unconditional entries).
+#
+# COND_FRENZY_STATE tag total consumers: 3 - unchanged.
+# COND_RANGE_GATED tag total consumers: 0 - still forward-marker.
+# COND_NTH_HIT total consumers: grew by 1 (Sejuani E wave 13
+# joins Alistar E / Brand R / Kennen E / KSante Q / Riven Q /
+# Viktor W / Xayah E / Yasuo Q / Yone Q / Zilean Q / Skarner Q /
+# Aatrox Q / TahmKench Q).
+# COND_TARGET_DEBUFFED total consumers: grew by 2 (Fizz R + Aphelios
+# Q form 3 wave 13).
+# COND_CHANNEL_COMPLETION total consumers: grew by 4 (Renata Q +
+# Shaco R + Warwick E + TahmKench W wave 13).
+
 # 1.49.0 (cc_conditional wave 12 - +3 entries / +3 net-new champions
 # closing 3 schema-lift-verified candidates: Singed E Mega-Adhesive
 # overlap root + Alistar E Trample 5-stack stun + Sylas E form 1
