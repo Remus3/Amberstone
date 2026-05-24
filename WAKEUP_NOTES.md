@@ -3,6 +3,51 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-24 - item 172 SHIPPED: operator-gated parallel drain #7 (cc_conditional wave 14 Meraki cast_time schema lift ENGINE 1.51.0 + L31 type annotations round 4 + cost/latency CLEAN wave 20 + RC restart applies item 171 log-suppress fix + item 167 tooling ruff fix unblocks CI) (4 commits + 2 merges `9766872` `b5b0ec3` `9a6e697` `528ce82` pushed origin/main `dbf55e6..528ce82`; ENGINE 1.50.0 -> 1.51.0; DS :8893 restarted pid 14632 -> serves 1.51.0; RC :8888 restarted pid 12220 -> 5800 via `restart_trigger.txt` to apply item 171 `_SUPPRESS_LOG_PATHS` query-string fix in production)
+
+Operator triggered "check github for ci checks and branch merge or deletes. then continue next operator gated passes in parallel". **CI was red 10 consecutive runs since item 170** on 3 ruff UP034 errors in `tools/champion_loadout_align.py:342` + `tools/champion_loadout_handcurate.py:315,316` (introduced item 167; items 170+171 deferred as "pre-existing"). Fixed via `py -m ruff check --fix` (3 paren removals). 2 stale remote worktree branches deleted. Then 3 parallel agents (orchestrator-merge pattern items 134-172 = 25 consecutive runs).
+
+**Slice A `b5b0ec3` (merged) feat(ds) cc_conditional wave 14 Meraki cast_time schema lift ENGINE 1.50.0 -> 1.51.0 (37 files / 1685 ins / 34 del):**
+- Investigation discovered Meraki source field `castTime` PRESENT but NOT extracted (verified Jayce/Maokai/Karthus/Cassiopeia/Caitlyn/Xerath/Velkoz/Lux).
+- Schema lift `tools/daemon_slayer_abilities_extract.py`: NEW `_normalize_cast_time(raw)` helper + `cast_time: float | None` per form. Re-extracted 16.10.1 (171 champs / 927 forms / 99.0% ok_rate).
+- SHIP Jayce E form_index=0 Thundering Blow cast-time root sidecar COND_CHANNEL_COMPLETION 0.25s (FIRST Jayce CC registration anywhere; closes item 170 carry).
+- REJECT Maokai R distance-gated (same-spell-slot conditional-vs-unconditional coexistence machinery STILL operator-gated). REJECT LeeSin R 0.25s (unconditional belongs in _PER_SPELL_CC_DURATIONS). REJECT KSante R (self-buff immunity not target CC).
+- Registry: 56/48 (51 primary + 5 sidecar) -> 57/49 (51 primary + 6 sidecar). +43 tests; default include_conditional=False byte-identical to 1.50.0.
+
+**Slice B `9a6e697` (merged) chore(types) L31 type annotations round 4 (12 files / 30 ins / 30 del):**
+- 30 surgical sites: vision_server/_http.py (8) + ops/_ws_probe.py (1) + tools/match_monitor.py (4) + tools/cost_health_watchdog.py (2) + tools/{bridge,ds_matchdb,gamepc}_mcp_server.py (3 each) + tools/run_phase2_smoke.py (1) + scripts/{merge_refresh_builds,parse_external_arena,cache_ddragon_assets,validate_build_data}.py (1 each).
+- 0 ruff violations / 0 frozen-file touches. Surface saturation note: orchestrator-easy surfaces now covered; remaining sites are higher-touch (gamepc_lcu_agent.py) or ad-hoc (perf harnesses).
+
+**Slice C cost/latency CLEAN wave 20 read-only (no commit):**
+- 20th consecutive CLEAN since item 134. 7 levers green. L4 anomaly: /api/minimap-crop 0.442/sec + /api/activity 0.099/sec - FIX PENDING RC RESTART (commit 0036359 dropped trailing space in _SUPPRESS_LOG_PATHS; RC pid 12220 held pre-fix module image).
+- L2 route TTL: 16 routes with `_CACHE` (live count; item 171 audit said 12, item 170 ledger said 14 - additive drift only).
+- RC restart applied via `restart_trigger.txt` -> pid 12220 -> 5800 alive=True reload_ok=True mode=client picks up new tuple.
+
+**Docs sync `528ce82`:** 6 files / 8 ins / 8 del. ENGINE 1.50.0 -> 1.51.0 + 4343 -> 4386 tests + 56/48 waves 0-13 -> 57/49 waves 0-14 across docs/DAEMON_SLAYER.md + README.md + docs/ARCHITECTURE.md + BRIEF.md + BACKLOG.md + ROADMAP.md.
+
+**Verified post-merges + DS restart + RC restart:**
+- DS suite 4386 passed / 1 skipped / 1 xfailed / 1751 subtests in 66.75s (+43 over 4343 = wave 14 test file).
+- RC suite 3291 passed / 67 subtests in 56.46s.
+- phase8_smoke 75/75 PASS post-DS-restart.
+- ruff ALL CHECKS PASSED (item 167 errors fixed).
+- DS :8893: taskkill pid 14632 + `schtasks /Run /TN RC-DaemonSlayer` -> `/health` engine_version=1.51.0 patch=16.10.1.
+- RC :8888 restarted via `restart_trigger.txt` -> pid 5800 alive=True reload_ok=True mode=client.
+- 2 remote worktree branches deleted (a5d3325f264ac4476 + a1bff00e83a839ac5).
+- Pushed origin/main as `528ce82`.
+
+**Don't-redo:**
+- Meraki `castTime` field IS in source + IS now captured via `_normalize_cast_time(raw)` helper. Future cc_conditional waves can rely on `form.cast_time` for cast-time-gated CC mechanics.
+- Jayce E form_index=0 is ranged (cast-time root); form_index=1 is melee (unconditional knockback, NOT cast-time root).
+- Maokai R same-spell-slot conditional-vs-unconditional coexistence machinery is the next BIG schema lift (parallel to _PER_SPELL_CC_CONDITIONAL_FORMS sidecar but for unconditional-vs-conditional pair).
+- CI red root cause was item 167 tooling ruff errors that items 170+171 ledger deferred as "pre-existing not this session's scope" - the trivial fix should NOT have been deferred (3-paren removal cheaper than 10 red CI runs).
+- L31 type-annotation pass is now SATURATED for orchestrator-easy surfaces.
+- Route TTL ledger count is loose (12/14/16 across items 170/171/172); use live grep at audit-time.
+- Orchestrator-merge pattern: 25 consecutive runs (items 134-172).
+
+**Carries forward:** (a) Item 171 carries unchanged EXCEPT cc_conditional wave 14 cast_time schema lift DONE; Jayce E NO LONGER schema-blocked. (b) DD Defy STILL deferred. (c) Live ARAM/SR smoke STILL pending. (d) Calibrations STILL operator-gated. (e) Legion 1-PC consolidation STILL operator-gated. (f) cc_conditional wave 15+ candidates: Maokai R distance-gated needs same-spell-slot coexistence schema lift (operator-gated) + 6 wave-7 schema-lift carries STILL operator-gated. (g) 542 residual U+2500 box-drawing chars carry forward as operator-gated separate sweep (NEEDS rc_supervisor.py + rc_self_monitor.py FROZEN grant). (h) v2.1 audit pages 9-16 (8 remaining; UI excluded this session). (i) Frozen-file grant NOT used.
+
+---
+
 # 2026-05-24 - item 171 SHIPPED: non-UI open-items parallel drain #6 (cc_conditional wave 13 ENGINE 1.50.0 + BACKLOG stale-sweep wave 16 + cost/latency DRIFT FLAG `_SUPPRESS_LOG_PATHS` query-string fix + docs sync) (4 commits + 2 merges `8611ff3` `a66210b` `0036359` pushed origin/main `27c4dba..0036359`; ENGINE 1.49.0 -> 1.50.0; DS :8893 restarted pid 4432 -> serves 1.50.0; RC :8888 unchanged mode=client - DS engine + dashboard log-suppress + docs only)
 
 Operator triggered "continue on any open items not operator ui" - sixth consecutive parallel drain. Orchestrator-merge pattern items 134-170 extended to 24 consecutive runs. 3 worktree/investigative agents on disjoint slices.
