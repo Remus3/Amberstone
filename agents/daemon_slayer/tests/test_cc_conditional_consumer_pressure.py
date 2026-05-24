@@ -258,23 +258,30 @@ class ConditionalOnlyChampionTests(unittest.TestCase):
     """Champions with conditional entries but no unconditional ones."""
 
     def test_warwick_conditional_only_max_rank_at_05_prob(self) -> None:
-        """Warwick R = (1.5, 1.75, 2.0); max rank 2.0 * 0.5 prob = 1.0s."""
+        """Warwick R max rank 2.0 * 0.5 = 1.0s. Wave 13 adds E 1.0 * 0.5 = 0.5s. Total = 1.5s."""
         result = compute_cc_pressure(
             "Warwick", "SR", include_conditional=True
         )
         # No unconditional entry
         self.assertEqual(result.spells, ())
-        # 2.0 (max rank) * 0.5 (channel completion midpoint) = 1.0
-        self.assertAlmostEqual(result.conditional_cc_seconds, 1.0, places=6)
-        self.assertAlmostEqual(result.total_cc_seconds, 1.0, places=6)
+        # Wave 0 R = 2.0 * 0.5 = 1.0 + Wave 13 E = 1.0 * 0.5 = 0.5 -> 1.5 total
+        self.assertAlmostEqual(result.conditional_cc_seconds, 1.5, places=6)
+        self.assertAlmostEqual(result.total_cc_seconds, 1.5, places=6)
 
     def test_warwick_conditional_entries_carry_r_channel(self) -> None:
-        """Warwick conditional_entries has the R Infinite Duress channel entry."""
+        """Warwick conditional_entries contain BOTH the wave 0 R suppression
+        and the wave 13 E fear; canonical order returns E before R."""
         result = compute_cc_pressure(
             "Warwick", "SR", include_conditional=True
         )
-        self.assertEqual(len(result.conditional_entries), 1)
-        entry = result.conditional_entries[0]
+        # Wave 13 added a 2nd entry (E fear).
+        self.assertEqual(len(result.conditional_entries), 2)
+        # Find the R entry (suppression) for legacy assertion preservation.
+        r_entries = [
+            e for e in result.conditional_entries if e.spell == "R"
+        ]
+        self.assertEqual(len(r_entries), 1)
+        entry = r_entries[0]
         self.assertEqual(entry.champion, "Warwick")
         self.assertEqual(entry.spell, "R")
         self.assertEqual(entry.cc_kind, "suppression")
@@ -439,7 +446,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """Pin ENGINE_VERSION at 1.38.0 for this slice."""
 
     def test_engine_version_is_1_38_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.49.0")
+        self.assertEqual(ENGINE_VERSION, "1.50.0")
 
 
 # ---------------- 7. ProbabilityFalseModeTests ----------------

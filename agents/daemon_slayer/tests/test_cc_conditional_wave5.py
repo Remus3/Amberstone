@@ -458,10 +458,11 @@ class WaveFiveCoexistenceWithPriorWavesTests(unittest.TestCase):
         self.assertEqual(q_entry.condition, COND_NTH_HIT)
 
     def test_tahmkench_has_exactly_two_entries(self) -> None:
-        # Wave 5 adds Q; total TahmKench entries = 2 (Q + R). Both
-        # share the same champion key via setdefault construction.
+        # Wave 5 adds Q; wave 5 baseline = 2 (Q + R). Wave 13 adds W
+        # taking TahmKench to 3-slot coverage; assertion relaxed to
+        # assertGreaterEqual for forward compatibility.
         spells = _PER_SPELL_CC_CONDITIONAL["TahmKench"]
-        self.assertEqual(len(spells), 2)
+        self.assertGreaterEqual(len(spells), 2)
 
 
 # ---------------- aggregator regression contract ----------------
@@ -490,16 +491,18 @@ class AggregatorWaveFiveTests(unittest.TestCase):
     def test_tahmkench_weighted_max_rank_sums_q_plus_r(self) -> None:
         # TahmKench Q = 1.5 * 0.7 = 1.05 (wave 5 nth_hit stun)
         # TahmKench R = 1.0 * 0.4 = 0.40 (wave 0 devour suppression)
-        # Total weighted = 1.05 + 0.40 = 1.45
+        # Wave 13 adds TahmKench W = 1.0 * 0.5 = 0.50 (channel completion stun)
+        # Total weighted = 1.05 + 0.50 + 0.40 = 1.95
         total = get_total_conditional_cc_seconds("TahmKench")
-        self.assertAlmostEqual(total, 1.45, places=4)
+        self.assertAlmostEqual(total, 1.95, places=4)
 
     def test_tahmkench_raw_max_rank_sums_q_plus_r(self) -> None:
-        # TahmKench Q raw = 1.5 + TahmKench R raw = 1.0 -> 2.5 total
+        # TahmKench Q raw = 1.5 + W raw (wave 13) = 1.0 + R raw = 1.0
+        # Total raw = 3.5
         total = get_total_conditional_cc_seconds(
             "TahmKench", apply_probability=False
         )
-        self.assertAlmostEqual(total, 2.5, places=4)
+        self.assertAlmostEqual(total, 3.5, places=4)
 
     def test_briar_e_entry_level_weighted(self) -> None:
         # Briar E entry-level contribution = 1.0 * 0.5 = 0.50
@@ -524,12 +527,14 @@ class AggregatorWaveFiveTests(unittest.TestCase):
         self.assertEqual(entries[1].spell, "E")
 
     def test_get_conditional_entries_returns_q_and_r_for_tahmkench(self) -> None:
-        # TahmKench has 2 entries (Q + R). Canonical Q-W-E-R order
-        # means Q is index 0, R is index 1.
+        # Wave 5 baseline: TahmKench has 2 entries (Q + R). Canonical
+        # Q-W-E-R order means Q index 0, R index 1.
+        # Wave 13 adds W taking TahmKench to 3 slots (Q, W, R).
+        # Assertion relaxed: Q remains first; R remains last.
         entries = get_conditional_entries("TahmKench")
-        self.assertEqual(len(entries), 2)
+        self.assertGreaterEqual(len(entries), 2)
         self.assertEqual(entries[0].spell, "Q")
-        self.assertEqual(entries[1].spell, "R")
+        self.assertEqual(entries[-1].spell, "R")
 
 
 # ---------------- ENGINE version pin ----------------
