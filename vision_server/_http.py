@@ -30,7 +30,7 @@ class Handler(BaseHTTPRequestHandler):
         return self.headers.get(AUTH_HEADER, "") == AUTH_TOKEN
 
     # ── GET ────────────────────────────────────────────────────────────────
-    def do_GET(self):
+    def do_GET(self) -> None:
         # Public: health, stats, monitor page
         if self.path == "/health":
             self._j(200, {"alive": True, "model": VISION_MODEL,
@@ -155,7 +155,7 @@ class Handler(BaseHTTPRequestHandler):
             self._j(404, {"error": "unknown"})
 
     # ── POST ───────────────────────────────────────────────────────────────
-    def do_POST(self):
+    def do_POST(self) -> None:
         if not self._auth():
             self._j(401, {"error": "unauthorized"})
             return
@@ -194,7 +194,7 @@ class Handler(BaseHTTPRequestHandler):
             self._j(500, {"error": str(e)})
 
     # ── PUT ────────────────────────────────────────────────────────────────
-    def do_PUT(self):
+    def do_PUT(self) -> None:
         if not self._auth():
             self._j(401, {"error": "unauthorized"})
             return
@@ -210,12 +210,12 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             self._j(500, {"error": str(e)})
 
-    def _cors(self):
+    def _cors(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-RC-Token")
 
-    def do_OPTIONS(self):
+    def do_OPTIONS(self) -> None:
         """Preflight CORS requests from browser."""
         self.send_response(204)
         self._cors()
@@ -229,7 +229,7 @@ class Handler(BaseHTTPRequestHandler):
                 return unquote(kv[len("source="):])
         return None
 
-    def _j(self, code, obj):
+    def _j(self, code: int, obj: dict) -> None:
         try:
             b = json.dumps(obj).encode()
             self.send_response(code)
@@ -241,5 +241,5 @@ class Handler(BaseHTTPRequestHandler):
         except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
             pass  # client closed connection early - harmless
 
-    def log_message(self, fmt, *a):
+    def log_message(self, fmt: str, *a: object) -> None:
         log.debug("HTTP " + fmt, *a)

@@ -4,7 +4,7 @@ import json
 import sys
 import websockets
 
-async def go():
+async def go() -> None:
     frames = []
     async with websockets.connect("ws://127.0.0.1:8891/push") as ws:
         try:
