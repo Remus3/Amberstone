@@ -43,7 +43,7 @@ The technical centerpiece. A local service that scores any champion × item × e
 
 A registry of per-champion overrides handles the unusual mechanics - Nidalee's cougar form, Akali's R recast window, Zed's shadow Q, Renekton's Fury bar, Riven's Wind Slash, and so on. About three-quarters of the roster is covered today, with new entries added in regular small batches.
 
-Coverage today: every purchasable item across all five modes (547 items), 4,234 tests, current League patch.
+Coverage today: every purchasable item across all five modes (547 items), 4,343 tests, current League patch.
 
 ---
 
