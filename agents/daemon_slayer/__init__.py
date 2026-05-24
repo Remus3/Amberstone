@@ -1321,7 +1321,65 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.53.0"
+ENGINE_VERSION = "1.54.0"
+# 1.54.0 (cc_conditional wave 17 - COND_TRAVERSE tag schema lift
+# +1 new condition tag constant + Taliyah E first-order CC entry
+# closing item 174 carry (i), 2026-05-24):
+#
+# Wave 17 lifts a NEW condition tag constant COND_TRAVERSE
+# ("traverse") at calibrated midpoint 0.3 (mid-low: champions
+# typically AVOID telegraphed traverse-zones unless forced through
+# by displacement or pathing constraint). The new tag captures the
+# "enemy displacement-over-placed-object" CC mechanic semantic that
+# does NOT fit the 12 pre-existing tags (COND_TERRAIN is map-
+# geometry collision NOT spell-placed object; COND_NTH_HIT is
+# stack accumulation; COND_TARGET_DEBUFFED is pre-applied mark).
+#
+# FIRST consumer is Taliyah E Unraveled Earth dash-detonation
+# stun 0.75s (champion-facing duration per Meraki
+# effects_descriptions; the 2.0s monster value is encoded as
+# monster-only in the description so the registry stores the
+# champion-facing value only). The mechanic is canonical:
+# Taliyah scatters 22 stones across the ground; enemies who DASH
+# OR ARE KNOCKED OVER a stone detonate it + are stunned 0.75s
+# (champion) / 2.0s (monster); the stun fires once per cast per
+# target ("Unraveled Earth can affect targets only once per
+# cast"). Standalone enemy who walks AROUND the field = damage
+# + 20% slow only (no first-order CC). Schema-lift-verified via
+# the ENGINE 1.46.0 Meraki effects_descriptions schema lift.
+#
+# Multi-wave coexistence: Taliyah W (wave 1 channel-completion
+# knockup) + Taliyah E (wave 17 traverse-conditional stun) is
+# the latest multi-entry-within-cc_conditional champion (joining
+# Aatrox Q+W / Brand Q+R / Briar Q+E / TahmKench R+Q / KSante
+# Q+W / etc).
+#
+# Registry growth: 64 -> 65 entries / 54 -> 54 champions
+# (Taliyah already in registry via W wave 1; this is multi-wave
+# coexistence on the SAME champion via setdefault on a different
+# spell slot). Condition tag total: 12 -> 13.
+#
+# Per-tag consumer counts post-wave-17: COND_TRAVERSE = 1
+# (Taliyah E, FIRST consumer); all other tag counts unchanged
+# from wave 16 baseline.
+#
+# Math preservation: default include_conditional=False
+# compute_cc_pressure is BYTE-IDENTICAL to 1.53.0 for Taliyah
+# (base = 0.0 unchanged; Taliyah has no unconditional
+# _PER_SPELL_CC_DURATIONS entry). include_conditional=True
+# callers receive new probability-weighted contribution Taliyah
+# +0.225s (0.75 * 0.3) stacked on top of the wave 1 W
+# contribution (0.75 * 0.5 = 0.375), giving Taliyah a total
+# conditional contribution of 0.6s post-wave-17.
+#
+# Closes item 174 carry (i) "Taliyah E NEEDS new COND_TRAVERSE
+# tag (operator-gated)". The remaining item 174 carries for
+# cc_conditional wave 18+ are Maokai R same-spell-slot
+# coexistence (NEEDS registry schema lift) + 6 wave-7
+# schema-lift carries (Renekton W Fury / Aatrox post-R passive
+# / Volibear R passive / Briar W frenzy / multi-form
+# Karma+Hwei+Neeko) STILL operator-gated.
+#
 # 1.53.0 (cc_conditional wave 16 - +4 primary entries / +3 net-new
 # champions via effects_descriptions re-audit of the ENGINE 1.52.0
 # Meraki schema-lifted data file extending the wave 15 audit to all
