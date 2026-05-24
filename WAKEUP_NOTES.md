@@ -3,6 +3,57 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-24 - item 170 SHIPPED: parallel drain (page #8 typography + champ_select ASCII sweep + cc_conditional wave 12 ENGINE 1.49.0 + BACKLOG sweep wave 15 + cost/latency CLEAN wave 18 + docs sync) (5 commits + 2 merges `f8fa9f1` `8f63409` `cb834a6` `36f6172` `a8b8164` `3e6e34b` pushed origin/main `a80dd6b..3e6e34b`; ENGINE 1.48.0 -> 1.49.0; DS :8893 restarted pid 7344 -> serves 1.49.0; RC :8888 unchanged pid 12220 mode=game alive=True - operator in active game during drain so no UI capture)
+
+Operator triggered the "in parallel: start all open items in Operator-gated, decision owed" drain. Orchestrator-merge pattern items 134-169 streak extended to 23 consecutive runs. 3 worktree agents on disjoint slices.
+
+**Slice A `f8fa9f1` (merge `36f6172`) page #8 typography migration + champ_select ASCII retro-sweep (2 files / 94 ins / 94 del):**
+- 9 CSS rules in `web/css/panels/champ_select_view.css` swapped: `.csv-arch-preview-head/name` (11px) + `.csv-pb168-head/tag/name/pct/expl-empty/expl-cc/expl-pick` (9/11/12/13px) -> `var(--fs-xs)` (16px floor). 0 sub-floor px declarations remain inside both namespaces post-sweep.
+- ASCII retro-sweep: `web/js/panels/champ_select.js` 399 -> 0 non-ASCII bytes; `web/css/panels/champ_select_view.css` 728 -> 0 bytes. 21 catalogued codepoints handled; 1 uncatalogued surfaced (U+2212 minus in CSS comment) and manually restored as ASCII `-`. Phase8 75/75 PASS. JS brace-balance clean (3305 lines).
+
+**Slice B `cb834a6` (merge `a8b8164`) cc_conditional wave 12 ENGINE 1.49.0 (35 files / 916 ins / 33 del):**
+- 4 explicit candidates audited + ~30 from broader effects_descriptions cc-keyword scan.
+- SHIP **Singed E Fling Mega-Adhesive overlap root** primary COND_TARGET_DEBUFFED 0.5 prob, Meraki damage_blocks per-rank Root Duration [1.0/1.25/1.5/1.75/2.0]s (item 156 wave 11 audit dismissed as "for a duration" text-only but the structured block was overlooked). Coexists with Singed E unconditional 1.0s knockback in `_PER_SPELL_CC_DURATIONS`.
+- SHIP **Alistar E Trample 5-stack stun** primary COND_NTH_HIT 0.5 prob, 1.0s flat (named in ability_dps.py:1225-1228 carryover comment; closes the conditional-CC note).
+- SHIP **Sylas E form_index=1 Abduct** sidecar COND_CHANNEL_COMPLETION 0.5 prob, 0.5s flat (first Sylas first-order CC anywhere; closes item 148 wave 7 schema-lift REJECT note).
+- REJECT Jayce E Thundering Blow: effects_descriptions "0.4 seconds" refers to Q/Q1 lockout AFTER cast, NOT cast-time root. Carry to wave 13+.
+- REJECT Maokai R Sapling Showcase distance-gated root: unconditional Maokai R already encodes mid-distance root (1.2/1.6/2.0)s at `_PER_SPELL_CC_DURATIONS`; adding cc_conditional COND_RANGE_GATED would double-count.
+- Registry growth: 46/40 -> **49/43** (45 primary + 4 sidecar). ENGINE_VERSION 1.48.0 -> 1.49.0 with full changelog block + 32 stale ENGINE pin syncs across DS test files via bulk regex rewrite.
+- NEW `agents/daemon_slayer/tests/test_cc_conditional_wave12.py` (~533 LOC) covering per-entry shape pins + registry growth + multi-wave coexistence + COND_TARGET_DEBUFFED/COND_NTH_HIT/COND_CHANNEL_COMPLETION consumer counts + per-form override + ASCII hygiene. `test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES` extended.
+- Default `compute_cc_pressure(include_conditional=False)` BYTE-IDENTICAL to 1.48.0 for all 3 ship candidates (Singed=1.0 / Alistar=1.5 / Sylas=0.0).
+
+**Slice C `8f63409` housekeeping triple (committed direct to main):**
+- Sub-task 1 BACKLOG stale-sweep wave 15: 2 flips. BACKLOG.md L13 cc_conditional ecosystem header version bumped + wave count refreshed. ROADMAP.md L23 lobby change_queue_type item: stale `main.js:2614-2629` -> `:3081`; `:3713-3723` -> `:3092 + :4281`; `gamepc_lcu_agent.py:229` (Poro King 920) -> `:246` (ARAM Mayhem 2400, actual stale-on-920 location).
+- Sub-task 2 cost/latency CLEAN wave 18 - **18th consecutive CLEAN sweep since item 134**. All 7 levers green. Top non-suppressed `/api/ward-heat` 0.109/sec (below item 156 baseline 0.149); `_SUPPRESS_LOG_PATHS` unchanged at 9; 27=27 CSS @import parity guard test 4/4 PASS.
+- Sub-task 3 living docs sync (synced to ENGINE 1.48.0 + 4178 baseline; Slice B's 1.49.0 + 4234 caught in follow-up commit `3e6e34b`).
+
+**Verified post-merges + DS restart:**
+- DS suite 4234 passed / 1 skipped / 1 xfailed / 1737 subtests in 67.31s (+58 vs item 156 baseline 4176).
+- RC suite 3289 passed / 67 subtests in 55.83s.
+- phase8_smoke 75/75 PASS post-DS-restart.
+- ruff 3 errors confirmed pre-existing item 167 tooling (`tools/champion_loadout_*.py` UP034 extraneous parens) - NOT this session's scope.
+- DS :8893: taskkill pid 7344 + `schtasks /Run /TN RC-DaemonSlayer` -> `/health` engine_version=1.49.0 patch=16.10.1 champions=172 items=705.
+- RC :8888 alive=True last_reload_ok=True mode=game throughout (operator in active SR game during drain - ADR-008 asset-hash auto-served Slice A's CSS+JS edits without restart).
+
+**Don't-redo:**
+- The Singed E re-audit lesson: re-check schema-lifted damage_blocks per-form for explicit duration attributes before dismissing as "for a duration" text-only. Wave 11's miss on Singed E was a parse-strip oversight, not a schema gap.
+- Jayce E cast-time root requires patch data with an explicit cast_time field; effects_descriptions "0.4 seconds" is Q/Q1 lockout AFTER cast, not the root duration. Schema-blocked at the parse-strip level.
+- Maokai R distance-gated root double-counts with existing unconditional `_PER_SPELL_CC_DURATIONS` entry; would need that registry deleted first.
+- Sub-floor pixel typography on `.csv-pb168-*` + `.csv-arch-preview-*` is now CLOSED via v2.1 token migration; do NOT re-introduce hardcoded px values below --fs-xs (16px) in these namespaces.
+- champ_select.js + champ_select_view.css are now 0 non-ASCII bytes; the sweep map covers 21 catalogued codepoints + U+2212 minus discovered this run. Drift guard pattern: pre-existing drift guards in tests/snapshot_panels/ cover most surfaces.
+
+**Carries forward:**
+- All item 169 carries unchanged EXCEPT (c) page #8 typography migration NOW CLOSED + (d) ASCII retro-sweep on champ_select.js + champ_select_view.css NOW CLOSED.
+- DD Defy heal-on-takedown STILL deferred.
+- Live ARAM/SR smoke STILL pending (operator was in active game during drain; visual UI capture of Slice A typography deferred to next non-game window).
+- Calibrations STILL operator-gated.
+- Legion 1-PC consolidation STILL operator-gated.
+- cc_conditional wave 13+ candidates: Jayce E (cast_time schema-blocked) + Maokai R distance-gated (would double-count). 6 wave-7 schema-lift carries (Renekton W Fury / Aatrox post-R passive / Volibear R passive / Briar W frenzy / multi-form Karma+Hwei+Neeko) still operator-gated separately.
+- 542 residual U+2500 box-drawing chars carry forward as operator-gated separate sweep (NOT trivial - intentional docstring tree-drawing).
+- v2.1 audit pages 9/10 Champ Select ARAM/Arena -> 11/12/13 Active Match SR/ARAM/Arena -> 14/15/16 PGR SR/ARAM/Arena (8 remaining in audit order).
+- Frozen-file grant NOT used this session.
+
+---
 # 2026-05-24 - item 169 SHIPPED: SR carry summoner default Flash+Heal -> Flash+Barrier + page #8 audit re-run + PostmortemAnalyze verification (1 feature commit `102886c` merged `1d83f96` + 1 docs sync `969b337` pushed origin/main `12c604b..969b337`; non-frozen; no DS restart; no RC restart - data-only + dashboard route docstring sync via ADR-008 auto-serve)
 
 Operator triggered the "in parallel: start all open items in Operator-gated, decision owed" drain with a specific ADC summoner-spell fix spec. Orchestrator-merge pattern items 134-156 streak extended to 22 consecutive runs.
