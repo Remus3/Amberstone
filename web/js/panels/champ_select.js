@@ -1250,10 +1250,10 @@ function _csvWireLockButton(scope) {
   });
 }
 
-// HTML for the ARAM bench strip (5 horizontal champion cells). Click
-// fires lcu bench_swap which bypasses the 5s client-side cooldown.
+// HTML for the ARAM bench strip (up to 10 horizontal champion cells).
+// Click fires lcu bench_swap which bypasses the 5s client-side cooldown.
 function _csvBenchHtml(cs) {
-  const bench = (cs && Array.isArray(cs.bench)) ? cs.bench.slice(0, 5) : [];
+  const bench = (cs && Array.isArray(cs.bench)) ? cs.bench.slice(0, 10) : [];
   if (!bench.length) {
     return `
       <div class="csv-bench">
@@ -1270,7 +1270,6 @@ function _csvBenchHtml(cs) {
     return `
       <div class="csv-bench-cell is-clickable" data-bench-id="${cid}" data-bench-name="${nm}" title="Swap to ${nm}">
         <div class="csv-bench-cell-icon">${img}</div>
-        <div class="csv-bench-cell-name">${nm}</div>
       </div>`;
   }).join("");
   return `
