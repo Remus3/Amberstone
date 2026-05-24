@@ -255,6 +255,24 @@ COND_RANGE_GATED = "range_gated"
 # 16.10.1 Riot spec). Future entries populate when a Meraki-
 # verifiable range-gated CC mechanic surfaces.
 
+COND_TRAVERSE = "traverse"
+# CC fires only when an enemy champion DASHES through or IS DISPLACED
+# OVER a placed object (typically a ground-zone marker placed by the
+# spell itself). Distinct from COND_TERRAIN (collision with map
+# geometry / wall slam), COND_NTH_HIT (stack accumulation), and
+# COND_TARGET_DEBUFFED (pre-applied mark on the target).
+# Probability midpoint 0.3 reflects that champions typically AVOID a
+# telegraphed traverse-zone unless forced through it by displacement
+# or a need-to-pass-through pathing constraint. Schema lift shipped at
+# ENGINE 1.54.0 (wave 17) closing item 174 carry (i) "Taliyah E needs
+# new COND_TRAVERSE tag". First consumer is Taliyah E Unraveled Earth
+# dash-detonation stun 0.75s, captured by ENGINE 1.46.0 Meraki schema
+# lift (effects_descriptions[1] "Enemies that dash or are knocked over
+# a stone will detonate it, taking magic damage and becoming stunned
+# for 0.75 seconds ... The stun is applied once the displacement
+# ends"). Future entries populate when other Meraki-verifiable
+# traverse-gated CC mechanics surface.
+
 
 # ---------------- default-probability midpoints ----------------
 
@@ -278,6 +296,7 @@ _DEFAULT_CONDITION_PROBABILITY: Dict[str, float] = {
     COND_MODE_GATED: 1.0,
     COND_FRENZY_STATE: 0.4,
     COND_RANGE_GATED: 0.4,
+    COND_TRAVERSE: 0.3,
 }
 
 
@@ -2909,6 +2928,129 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ============================================================
+    # === wave 17 expansion (2026-05-24 / ENGINE 1.54.0) - +1
+    # === entry / 0 net-new champions (Taliyah already in
+    # === registry with W wave 1 channel-completion knockup) via
+    # === a NEW COND_TRAVERSE condition tag schema lift. Closes
+    # === item 174 carry (i) "Taliyah E needs new COND_TRAVERSE
+    # === tag - operator-gated" + the wave 14 + wave 16 REJECT
+    # === carries flagging the same Taliyah E mechanic as
+    # === requiring a new tag for clean fit.
+    # ===
+    # === The Taliyah E Unraveled Earth mechanic is canonically
+    # === a TRAVERSE-conditional stun: Taliyah scatters a field
+    # === of stones across the ground; enemies who DASH OR ARE
+    # === KNOCKED OVER a stone detonate it, taking magic damage
+    # === and becoming STUNNED for 0.75 seconds (champion target;
+    # === 2.0s if monster). Standalone enemy who walks AROUND
+    # === the field never triggers the stun. The mechanic does
+    # === not fit COND_TERRAIN (which is collision with map
+    # === geometry, not a spell-placed object), does not fit
+    # === COND_NTH_HIT (no stack accumulation), and does not fit
+    # === COND_TARGET_DEBUFFED (no pre-applied mark - the stone
+    # === is a ground zone, not a debuff). COND_TRAVERSE captures
+    # === the "enemy displacement over placed object" semantic
+    # === precisely.
+    # ===
+    # === Multi-wave coexistence count: Taliyah W (wave 1
+    # === channel-completion knockup) + Taliyah E (wave 17
+    # === traverse-conditional stun) becomes the 7th multi-entry-
+    # === within-cc_conditional champion (after Aatrox Q+W /
+    # === Brand Q+R / Briar Q+E / TahmKench R+Q / KSante Q+W /
+    # === Sion R + Sion Q from prior waves - or similar count
+    # === depending on rolling totals; the test guard uses
+    # === assertGreaterEqual to stay forward-compatible).
+    # ===
+    # === REGISTRY GROWS: 64 entries -> 65 entries / 54
+    # === champions -> 54 champions (Taliyah already counted
+    # === via wave 1 W entry; this is multi-wave coexistence on
+    # === the SAME champion via setdefault on a different spell
+    # === slot). Condition tag total grows 12 -> 13 with the
+    # === new COND_TRAVERSE constant.
+    # ===
+    # === Default include_conditional=False compute_cc_pressure
+    # === is BYTE-IDENTICAL to 1.53.0 for Taliyah (base = 0.0
+    # === unchanged; Taliyah has no unconditional
+    # === _PER_SPELL_CC_DURATIONS entry).
+    # ============================================================
+
+    # Taliyah E Unraveled Earth dash-detonation stun: Taliyah
+    # scatters a field of 22 stones across the ground in the
+    # target direction. The stones remain for 4 seconds + slow
+    # enemies within the area by 20% (the slow is unconditional
+    # but is NOT first-order CC). Enemies that DASH OR ARE
+    # KNOCKED OVER a stone DETONATE it - taking magic damage AND
+    # becoming STUNNED for 0.75 seconds (2.0 seconds if monster).
+    # The stun is applied once the displacement ENDS. An enemy
+    # can detonate up to 4 stones per cast but the stun only
+    # fires once per cast per target (Unraveled Earth can affect
+    # targets only once per cast). Standalone enemy who never
+    # dashes / is never displaced across a stone = damage + slow
+    # only (no first-order CC). Maps to COND_TRAVERSE - the
+    # FIRST consumer of the wave 17 forward-marker schema lift,
+    # closing the COND_TRAVERSE empty-registry contract on ship.
+    #
+    # Probability 0.3 (tag midpoint) - champions typically AVOID
+    # the telegraphed stone field unless forced through it by
+    # ally CC / dash mechanics / need-to-pass-through pathing
+    # constraints. The reliable consumer cases are (a) enemy
+    # mid-dash through the field after Taliyah pre-places, and
+    # (b) ally CC chains that knock enemies over stones (e.g.
+    # JarvanIV EQ knockup placing the target in field path).
+    # Lower than COND_NTH_HIT 0.7 (stacks accumulate naturally
+    # in fights) and equal to COND_TERRAIN 0.3 (both require
+    # operator positioning + target movement coincidence). FIRST
+    # Taliyah E first-order CC registration in the engine
+    # (Taliyah Q + W + R have no champion CC; Q+Worked Ground
+    # monster stun is monster-only NOT champion).
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[1] for
+    # form 0 ("Enemies that dash or are knocked over a stone
+    # will detonate it, taking magic damage and becoming stunned
+    # for 0.75 seconds, increased to 2 seconds if they are a
+    # monster. The stun is applied once the displacement ends.")
+    # captured by the ENGINE 1.46.0 Meraki schema lift. The
+    # 0.75s duration is the champion-target value; the 2.0s
+    # monster value is encoded as MONSTER-ONLY in the
+    # description so the registry stores the champion-facing
+    # value only. Coexists with Taliyah W wave 1 cc_conditional
+    # entry on a different spell slot via setdefault. Distinct
+    # from Taliyah Q Worked Ground Boulder monster-stun
+    # (monster-only).
+    registry.setdefault("Taliyah", {})["E"] = ConditionalCcEntry(
+        champion="Taliyah",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(0.75,),
+        condition=COND_TRAVERSE,
+        probability=_p("Taliyah", "E", 0.3),
+        notes=(
+            "E Unraveled Earth dash-detonation stun: Taliyah "
+            "scatters 22 stones across the ground; enemies who "
+            "DASH OR ARE KNOCKED OVER a stone detonate it + are "
+            "STUNNED for 0.75s (champion; 2.0s monster) per "
+            "effects_descriptions. Standalone enemy who walks "
+            "AROUND the field = damage + 20% slow only (no "
+            "first-order CC). Maps to COND_TRAVERSE - FIRST "
+            "consumer of the wave 17 forward-marker tag schema "
+            "lift, closing the COND_TRAVERSE empty-registry "
+            "contract on ship. Probability tag midpoint 0.3 - "
+            "champions typically AVOID the telegraphed stone "
+            "field; reliable consumer cases are enemy mid-dash "
+            "through the field after Taliyah pre-places + ally "
+            "CC chains that knock enemies over stones. Coexists "
+            "with Taliyah W wave 1 cc_conditional entry on a "
+            "different spell slot via setdefault. FIRST Taliyah "
+            "E first-order CC registration in the engine "
+            "(Q + W + R have no champion CC; Q Worked Ground "
+            "Boulder stun is monster-only NOT champion). Closes "
+            "item 174 carry (i) Taliyah E needs new "
+            "COND_TRAVERSE tag - operator-gated. Mechanic "
+            "captured by ENGINE 1.46.0 Meraki schema lift."
+        ),
+    )
+
     return registry
 
 
@@ -3853,6 +3995,7 @@ __all__ = [
     "COND_TARGET_DEBUFFED",
     "COND_TARGET_HP_BELOW",
     "COND_TERRAIN",
+    "COND_TRAVERSE",
     "ConditionalCcEntry",
     "REGISTRY_TOTAL_CHAMPIONS",
     "REGISTRY_TOTAL_ENTRIES",
