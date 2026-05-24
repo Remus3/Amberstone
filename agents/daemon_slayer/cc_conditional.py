@@ -2854,6 +2854,140 @@ def _build_per_spell_cc_conditional_forms() -> (
         form_index=3,
     )
 
+    # ============================================================
+    # === wave 14 expansion (2026-05-24 / ENGINE 1.51.0) - +1
+    # === sidecar entry / +1 net-new champion via cast_time
+    # === schema lift on Jayce E form 0 Thundering Blow root.
+    # === Jayce E has 2 forms (Hammer-form Thundering Blow at
+    # === form_index=0 + Cannon-form Acceleration Gate at
+    # === form_index=1); the cast-time-gated root payload fires
+    # === ONLY on form 0. Sidecar pattern preferred because the
+    # === form_index distinguishes the CC-payload form from the
+    # === utility-only form. Closes item 170 wave-12 carry +
+    # === item 171 wave-13 carry (Jayce E cast-time root STILL
+    # === schema-blocked).
+    # ===
+    # === Wave 14 introduces the ``cast_time`` extractor schema
+    # === lift (ENGINE 1.51.0): the ``tools/daemon_slayer_abilities_extract.py``
+    # === extractor now captures the Meraki ``castTime`` field
+    # === per form (None for instant casts; float seconds
+    # === otherwise). The schema lift unlocks the long-deferred
+    # === "roots target over the cast time" mechanic for Jayce
+    # === E (0.25s) and reveals the same pattern is broadly
+    # === available across the fleet (LeeSin R 0.25s + KSante R
+    # === 0.4s as identified prior-wave REJECTs, but those land
+    # === in the SEPARATE _PER_SPELL_CC_DURATIONS unconditional
+    # === registry per item 171 wave 13 REJECT verdict - both
+    # === root the primary target unconditionally rather than
+    # === requiring a precondition).
+    # ===
+    # === Wave 14 REJECT verdicts:
+    # ===
+    # ===   * Maokai R distance-gated root - STILL double-counts
+    # ===     with unconditional Maokai R registry entry. No
+    # ===     change from wave 13. REJECT.
+    # ===   * Multi-form same-spell-slot Renekton W / Aatrox R /
+    # ===     Volibear R / Briar W - STILL self-buff or minion-
+    # ===     only or turret-only per item 153 wave 9 schema-lift
+    # ===     verification. REJECT (no new evidence this run).
+    # ===   * KSante R cast-time displacement immunity 0.4s -
+    # ===     the displacement immunity is a SELF buff (Sante
+    # ===     gains immunity); the target is unconditionally
+    # ===     rooted for an explicit 0.5s during the cast
+    # ===     (matches the unconditional path NOT cast_time
+    # ===     gated). REJECT.
+    # ============================================================
+
+    # Jayce E form_index=0 Thundering Blow cast-time root:
+    # Jayce's E in Hammer form (form 0, Thundering Blow) roots
+    # the target enemy over the cast time, then swings the
+    # hammer to deal magic damage + knock the target back 600
+    # units. The CC duration EQUALS the Meraki castTime field
+    # (0.25 seconds, captured via the ENGINE 1.51.0 schema lift
+    # of ``tools/daemon_slayer_abilities_extract.py``). The
+    # post-cast knockback is a separate displacement that lives
+    # in the unconditional `_PER_SPELL_CC_DURATIONS` registry
+    # (Jayce E form 0 knockback) - the wave 14 entry captures
+    # ONLY the cast-time root payload that fires before the
+    # knockback. Form 1 (Cannon-form Acceleration Gate) has
+    # cast_time=None (instant cast) and NO first-order CC -
+    # purely an ally-MS-buff gate placement. Maps to
+    # COND_CHANNEL_COMPLETION on the brief 0.25s cast lockout -
+    # if Jayce is interrupted mid-cast (silenced / stunned /
+    # CC'd within the 0.25s), no root or knockback fires.
+    # Probability 0.5 (tag midpoint) - short 0.25s cast window
+    # is generally completed but Jayce E is targeted with no
+    # stealth + slowed-targets-only sweetspot, so the operator
+    # frequently lands E only on damaged or already-CC'd
+    # targets making interruption-mid-cast rare in practice.
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[0] for
+    # form_index=0 ("Active: Jayce roots the target enemy over
+    # the cast time, then swings his hammer at them to deal
+    # magic damage, capped against monsters, and knock them
+    # back 600 units") + Meraki source castTime=0.25 for form
+    # 0 confirmed via the ENGINE 1.51.0 re-extract of
+    # ``data/daemon_slayer/16.10.1/champion_abilities.json``.
+    # The 0.4 seconds carry in the description ("Jayce is
+    # unable to cast To the Skies! or Shock Blast for 0.4
+    # seconds after Thundering Blow's cast time") refers to
+    # the Q/Q1 lockout AFTER cast, NOT the cast-time root
+    # duration - this was the item 170+171 schema-block
+    # diagnosis ("0.4s is Q lockout, not root").
+    #
+    # Coexists with absence in `_PER_SPELL_CC_DURATIONS` for
+    # Jayce E ROOT payload (the unconditional registry holds
+    # the post-cast knockback as a separate entry; this is
+    # the FIRST Jayce E root-payload registration). Sidecar
+    # pattern preferred - form_index carries semantic meaning
+    # (form 0 = Hammer-form root payload; form 1 = Cannon-
+    # form utility no CC). Closes item 170 wave 12 carry +
+    # item 171 wave 13 carry "Jayce E cast-time root STILL
+    # schema-blocked" - the schema lift this wave delivers
+    # the missing cast_time field. Form-explicit override key
+    # shape: Jayce:E:0.
+    registry.setdefault("Jayce", {})[("E", 0)] = ConditionalCcEntry(
+        champion="Jayce",
+        spell="E",
+        cc_kind="root",
+        durations_s=(0.25,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p_form("Jayce", "E", 0, 0.5),
+        notes=(
+            "E form 0 Thundering Blow cast-time root: Jayce's "
+            "Hammer-form E roots the target enemy for 0.25s "
+            "over the cast time before dealing damage + "
+            "knocking them back 600 units. The CC duration "
+            "equals the Meraki castTime field (0.25s flat - "
+            "no rank scaling on the cast lockout). Form 1 "
+            "(Cannon Acceleration Gate) is instant-cast "
+            "(cast_time=None) and has NO first-order CC. "
+            "Maps to COND_CHANNEL_COMPLETION on the brief "
+            "0.25s cast lockout - interruption mid-cast "
+            "cancels root + knockback. Probability tag "
+            "midpoint 0.5 - 0.25s cast window completes in "
+            "most fights, but Jayce E is targeted + reliable "
+            "only on slowed or already-CC'd enemies. FIRST "
+            "Jayce first-order CC registration (the "
+            "unconditional knockback lives in "
+            "`_PER_SPELL_CC_DURATIONS` separately). Sidecar "
+            "pattern - form_index carries semantic meaning "
+            "(form 0 carries CC, form 1 does not). "
+            "Mechanic captured by ENGINE 1.51.0 schema lift "
+            "(``tools/daemon_slayer_abilities_extract.py`` "
+            "now extracts the Meraki castTime field per "
+            "form). Closes item 170 wave 12 + item 171 "
+            "wave 13 deferred carry-forward 'Jayce E cast-"
+            "time root STILL schema-blocked' - the cast_time "
+            "field is now available in extracted data. "
+            "The item 170+171 ledger note '0.4 seconds is "
+            "Q lockout not root' was correct - the 0.25s "
+            "cast time is the actual root duration. Form-"
+            "explicit override key shape: Jayce:E:0."
+        ),
+        form_index=0,
+    )
+
     return registry
 
 

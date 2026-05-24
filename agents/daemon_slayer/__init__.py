@@ -1321,7 +1321,84 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.50.0"
+ENGINE_VERSION = "1.51.0"
+# 1.51.0 (cc_conditional wave 14 - +1 sidecar entry / +1 net-new
+# champion via cast_time Meraki extractor schema lift, 2026-05-24):
+#
+# Wave 14 closes the long-deferred Jayce E cast-time root carry
+# (item 170 wave 12 + item 171 wave 13) by schema-lifting
+# ``tools/daemon_slayer_abilities_extract.py`` to capture the Meraki
+# ``castTime`` field per form. The extracted JSON now exposes
+# ``cast_time`` (float seconds or None for instant casts) on every
+# ability form. ENGINE 1.51.0 re-extracts patch 16.10.1 with the new
+# schema; pure-additive (damage_blocks + effects_descriptions +
+# parse_status math byte-identical to 1.50.0).
+#
+# NEW cc_conditional entry:
+#
+#   * Jayce E form_index=0 Thundering Blow cast-time root
+#     (sidecar registry, NEW champion) - COND_CHANNEL_COMPLETION 0.5
+#     - durations_s=(0.25,) flat across all 5 E ranks per
+#       Meraki castTime field for form 0 (Hammer-form Thundering
+#       Blow). The CC duration equals the cast lockout window.
+#     - mechanic: roots the target enemy over the cast time, then
+#       swings the hammer to deal damage + knock target back 600
+#       units. Form 1 (Cannon Acceleration Gate) is instant-cast
+#       (cast_time=None) and has NO first-order CC. FIRST Jayce
+#       first-order CC registration in the engine.
+#     - Sidecar pattern parallel to Hwei E form 1+2 + Sylas E form 1
+#       + Karma W form 1 + Gnar W form 1 + Aphelios Q form 3 -
+#       form_index distinguishes the CC-payload form (Hammer) from
+#       the utility-only form (Cannon).
+#     - Form-explicit override key shape: Jayce:E:0.
+#
+# Wave 14 REJECT verdicts:
+#
+#   * Maokai R distance-gated root 0.75-2.25s - STILL would double-
+#     count with the unconditional Maokai R registry entry in
+#     `_PER_SPELL_CC_DURATIONS` for ranks 1/2/3. REJECT (carry from
+#     item 170 wave 12; would need that registry entry deleted
+#     first or a 3-registry coexistence schema lift).
+#   * LeeSin R cast-time root 0.25s - LeeSin R is UNCONDITIONAL on
+#     the primary target ("rooting the target enemy champion over
+#     the cast time") - belongs in `_PER_SPELL_CC_DURATIONS` not
+#     cc_conditional. The cast_time schema lift this wave makes
+#     LeeSin R a viable candidate for the unconditional registry
+#     but is OUT OF SCOPE for cc_conditional wave 14 (item 171
+#     wave 13 REJECT verdict carries).
+#   * KSante R cast-time gating - the description says K'Sante
+#     gains DISPLACEMENT IMMUNITY over the cast time AND the
+#     target is rooted for an explicit 0.5s during the cast
+#     (the 0.5s is the unconditional root - cast_time is the
+#     self-buff window, not the CC duration). REJECT.
+#   * Multi-form same-spell-slot Renekton W Fury / Aatrox post-R
+#     passive / Volibear R passive / Briar W frenzy - STILL self-
+#     buff or minion-only or turret-only per item 153 wave 9
+#     schema-lift verification. REJECT (no new evidence).
+#
+# Registry growth: 56 -> 57 entries / 48 -> 49 champions
+# (51 primary unchanged + 5 -> 6 sidecar).
+# Per-tag consumer counts: COND_CHANNEL_COMPLETION +1; others
+# unchanged.
+#
+# Math preservation: default include_conditional=False
+# compute_cc_pressure BYTE-IDENTICAL to 1.50.0 (the conditional
+# path skips when the flag is False). include_conditional=True
+# callers receive the new Jayce E sidecar entry's
+# probability-weighted contribution.
+#
+# Schema lift evidence:
+#
+#   * `tools/daemon_slayer_abilities_extract.py` now exports
+#     ``_normalize_cast_time(raw)`` helper handling None /
+#     "none" / float / numeric-string Meraki castTime values.
+#   * Per-form record now carries ``cast_time: float | None``.
+#   * Re-extracted patch 16.10.1 verified Jayce E form 0
+#     cast_time=0.25, form 1 cast_time=None (instant cast).
+#   * Same schema lift unlocks LeeSin R / KSante R / Maokai R
+#     cast-time data for FUTURE registry additions (NOT this
+#     wave per REJECT verdicts above).
+#
 # 1.50.0 (cc_conditional wave 13 - +7 entries / +5 net-new champions
 # via all-champ effects_descriptions scan against ENGINE 1.46.0 Meraki
 # schema-lifted data file, 2026-05-24):
