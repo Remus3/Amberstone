@@ -59,7 +59,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -70,7 +70,7 @@
   display: inline-block;
   padding: 1px 5px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.06em;
 }
@@ -98,7 +98,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--fs-sm);
   color: rgba(255, 255, 255, 0.78);
   font-variant-numeric: tabular-nums;
 }
@@ -114,7 +114,7 @@
 }
 
 .cc-blended-ehp-threat-row-cc {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.55);
 }
@@ -124,7 +124,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   margin-top: 2px;
   padding-top: 4px;
