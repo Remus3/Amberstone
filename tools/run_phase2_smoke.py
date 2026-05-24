@@ -25,7 +25,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-def main():
+def main() -> None:
     import io
     stream = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     loader  = unittest.TestLoader()

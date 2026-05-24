@@ -141,7 +141,7 @@ def spend_baseline(spend_dir: Path, today: str) -> dict:
     }
 
 
-def percentile(samples, pct: float) -> float:
+def percentile(samples: list[float] | tuple[float, ...], pct: float) -> float:
     """Nearest-rank percentile of `samples` (0 < pct <= 100).
 
     Pure, dependency-free. rank = ceil(pct/100 * N), 1-indexed into the
@@ -287,7 +287,7 @@ def _log_line(text: str) -> None:
         pass
 
 
-def main(argv=None) -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--remediate", action="store_true",
                     help="apply ONE bounded, logged config debounce "

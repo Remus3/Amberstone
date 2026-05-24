@@ -25,7 +25,7 @@ DASH = "https://127.0.0.1:8888"
 prev: dict = {}
 
 
-def fetch(url, headers=None):
+def fetch(url: str, headers: dict | None = None) -> dict | list | None:
     req = urllib.request.Request(url, headers=headers or {})
     ctx = _NOVERIFY if url.startswith("https:") else None
     try:
@@ -35,8 +35,8 @@ def fetch(url, headers=None):
         return None
 
 
-def snap():
-    out = {"t": time.time()}
+def snap() -> dict:
+    out: dict = {"t": time.time()}
     f = fetch(f"{BASE}/latest-frame/meta", H)
     if f and "ts" in f: out["frame_age"] = round(time.time() - f["ts"], 1)
     l = fetch(f"{BASE}/latest-lcu", H)
@@ -68,8 +68,8 @@ def snap():
     return out
 
 
-def diffs(a, b):
-    changes = []
+def diffs(a: dict, b: dict) -> list[str]:
+    changes: list[str] = []
     watch = ("lcu_phase", "cs_champ", "cs_locked", "cs_aram",
              "ig_mode", "ig_level", "ig_kda", "ig_cs")
     for k in watch:
@@ -85,7 +85,7 @@ def diffs(a, b):
     return changes
 
 
-def main():
+def main() -> None:
     global prev
     print(f"[monitor] polling every 3s  base={BASE}")
     prev = snap()
