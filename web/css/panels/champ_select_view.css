@@ -21,9 +21,9 @@
   grid-template-areas:
     "allies   mypick   enemies"
     "pickban  mypick   suggestions";
-  /* s212: tightened row-gap 12→4px to bring the left + right stacked
+  /* s212: tightened row-gap 12->4px to bring the left + right stacked
    * panels visually closer to each other.
-   * s214 v2: column-gap tightened 12→4px per operator - reduces dead
+   * s214 v2: column-gap tightened 12->4px per operator - reduces dead
    * space between the left (Allies / Pick & Ban), center (My Pick),
    * and right (Enemies / Suggestions) panels so the data zones sit
    * closer to each other. Card padding still provides interior
@@ -45,7 +45,7 @@
 /* Hardcoded width chosen so the summoner col (and the lock/timer at
  * its left edge) lands near the "A" of the centered "Allies" title
  * on the 1920-wide viewport. Adjust this number to shift the locks
- * left/right. Operator nudges so far: 110→100 (−10), 100→90 (−10
+ * left/right. Operator nudges so far: 110->100 (-10), 100->90 (-10
  * more) - net 20px left of the centered "A". */
 .csv-card-allies { --csv-champname-col: 90px; }
 .csv-card-allies .csv-team-cell {
@@ -107,7 +107,7 @@
    * unless explicitly authorized. Content that doesn't fit is clipped
    * via overflow:hidden; layout already keeps the 4 build rows + arch
    * picker + lock button + portrait inside the My Pick card at the
-   * 1920×1080 baseline, so clipping shouldn't be observed in practice. */
+   * 1920x1080 baseline, so clipping shouldn't be observed in practice. */
   overflow: hidden;
   min-height: 0;
 }
@@ -240,7 +240,7 @@
 .csv-lock-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
 /* Phase 3 (s176, 2026-05-12) - scorer-archetype picker.
- * Sits between lock button and build chooser. 6 buttons in a 3×2 grid.
+ * Sits between lock button and build chooser. 6 buttons in a 3x2 grid.
  * Unimplemented scorers (mage/assassin/enchanter - Phases 4-6) are
  * grayed and labeled as DPS placeholders, but still clickable so the
  * coach falls back to ds.dps with a fell_back=True tag. */
@@ -248,7 +248,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  /* s212 v4 (audit consider #3 option 3): bumped top-margin 4→20px so
+  /* s212 v4 (audit consider #3 option 3): bumped top-margin 4->20px so
    * the picker has breathing room from the LOCKED state above. Stops
    * the two heavy-outlined elements from visually competing for the
    * eye in the center column. */
@@ -340,7 +340,7 @@
   border-top: 1px solid #232830;
 }
 .csv-arch-preview-head {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.10em;
@@ -378,7 +378,7 @@
 }
 .csv-arch-preview-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-arch-preview-name {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #d1d5db;
   white-space: nowrap;
@@ -395,7 +395,7 @@
   gap: 2px;
   padding: 8px 4px;
   background: #1a1e25;
-  /* s212 v4 (audit consider #3 option 1): dropped 2→1px so the inactive
+  /* s212 v4 (audit consider #3 option 1): dropped 2->1px so the inactive
    * grid reads as a quieter background pattern. Active state below
    * carries the visual weight via a 4px left-edge accent (option 2)
    * rather than a heavy 2px border, eliminating the "two heavy
@@ -432,12 +432,12 @@
    *   (2) 4px left-edge accent - mirrors the color-coded left borders
    *       on the Pick & Ban rec rows so "active state" reads as the
    *       same system-wide visual grammar across panels.
-   *   (4) recolor blue → indigo/violet (#a78bfa / #7c3aed) so the
+   *   (4) recolor blue -> indigo/violet (#a78bfa / #7c3aed) so the
    *       archetype picker chromatically separates from LOCKED's
    *       saturated green AND the Pick & Ban green/purple/blue
    *       3-color rec stripes. Indigo isn't used anywhere else in
    *       the column.
-   * border-left grows from 1→4px which inset-shifts the content 3px;
+   * border-left grows from 1->4px which inset-shifts the content 3px;
    * compensate via the same -3px margin-left so the active button
    * stays grid-aligned with its inactive siblings. */
   border-color: #4c3a82;
@@ -569,7 +569,7 @@
 /* s213 v2: enemy "(guess)" pip replaced with a 2-piece tag strip +
  * confidence pill. The tags sit absolutely-positioned in the wide
  * 138px summoner col like the old guess pip did, but as two colored
- * chips reading like "CC · TANK" or "AD · ASSASSIN". Confidence
+ * chips reading like "CC . TANK" or "AD . ASSASSIN". Confidence
  * floats further right of the role pip. */
 /* s213 v3: tag chips render as inline grid items in their own col,
  * NOT absolute-positioned. Pre-s213v3 the absolute placement at left:
@@ -660,7 +660,7 @@
   color: #9ca3af;
   text-align: left;
 }
-/* s214: lock + countdown timer styles retired - the inline 🔒 was
+/* s214: lock + countdown timer styles retired - the inline [lock] was
  * dropped in s213 v2 and the per-cell countdown was dropped in s214.
  * The cell border (green=locked / amber=hovering / red=banning /
  * gold=picking) carries those signals without per-cell glyphs. The
@@ -699,7 +699,7 @@
   cursor: pointer;
   transition: box-shadow 0.12s, transform 0.12s;
 }
-/* Pick → green border (positive, "use this"); ban → red border
+/* Pick -> green border (positive, "use this"); ban -> red border
  * (negative, "deny this"). Selection persists across re-renders via
  * _csvSelection state. Once locked (operator clicked once), the
  * is-disabled class is added to the OTHER cells to lock the choice. */
@@ -960,7 +960,7 @@
   font-style: italic;
 }
 
-/* ── Pick & Ban Recommendations panel ───────────────────────────── */
+/* -- Pick & Ban Recommendations panel ----------------------------- */
 .csv-pickban-body {
   display: flex;
   flex-direction: column;
@@ -992,7 +992,7 @@
 .csv-pb168-bans  { flex: 1 1 auto; }
 .csv-pb168-expl  { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .csv-pb168-head {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.10em;
@@ -1033,7 +1033,7 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  font-size: 9px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   color: #6a7280;
@@ -1058,7 +1058,7 @@
 }
 .csv-pb168-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-pb168-name {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #e8eaf0;
   white-space: nowrap;
@@ -1068,7 +1068,7 @@
   text-align: center;
 }
 .csv-pb168-pct {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #ef4444;
 }
@@ -1087,14 +1087,14 @@
   padding: 2px 4px;
 }
 .csv-pb168-expl-empty {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-style: italic;
   color: #6a7280;
   text-align: center;
   padding: 6px 0;
 }
 .csv-pb168-expl-cc {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #fca5a5;
   background: rgba(239, 68, 68, 0.08);
@@ -1103,7 +1103,7 @@
   border-radius: 3px;
 }
 .csv-pb168-expl-pick {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: #9ca3af;
   line-height: 1.25;
   white-space: nowrap;
@@ -1427,7 +1427,7 @@
   grid-column: 2 / 3;
   grid-row: 1;
   text-align: center;
-  /* s211 v2: bumped 11→13px for legibility without growing row height
+  /* s211 v2: bumped 11->13px for legibility without growing row height
    * (no line-height bump). */
   font-size: 14px;
   font-weight: 800;
@@ -1440,7 +1440,7 @@
   grid-row: 2;
 }
 .csv-pb-pick-header {
-  /* s211 v2: bumped 11→13px to match BAN; no row-height growth. */
+  /* s211 v2: bumped 11->13px to match BAN; no row-height growth. */
   font-size: 14px;
   font-weight: 800;
   color: #4ade80;
@@ -1504,7 +1504,7 @@
   line-height: 1.1;
 }
 .csv-pb-mood-label > span {
-  /* s212 v2 (font-floor fix): 10→13px to clear the operator's tertiary
+  /* s212 v2 (font-floor fix): 10->13px to clear the operator's tertiary
    * font floor (across-room legibility). */
   font-size: 14px;
   font-weight: 700;
@@ -1517,7 +1517,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* s212 v2 (font-floor fix): 11→15px - interactive surfaces need to
+  /* s212 v2 (font-floor fix): 11->15px - interactive surfaces need to
    * meet the operator's clickables floor for across-room viewing. */
   font-size: 16px;
   font-weight: 700;
@@ -1542,7 +1542,7 @@
   border-color: #3a3f4a;
 }
 
-/* ─── Mode-conditional layouts (s165) ─────────────────────────────────
+/* --- Mode-conditional layouts (s165) ---------------------------------
  * Champ-select renders different content per game mode. Stamped onto
  * #view-champ-select via section.dataset.csMode = "sr|aram|arena"
  * from renderChampSelectView(). SR is the historical default; the
@@ -1603,7 +1603,7 @@
   text-align: left;
 }
 
-/* ── ARAM bench (under MY PICK) ─────────────────────────────────────
+/* -- ARAM bench (under MY PICK) -------------------------------------
  * Horizontal strip of up to 10 bench champions. Click fires bench_swap
  * via the LCU agent (instant - bypasses the 5s client cooldown). */
 .csv-bench {
@@ -1664,7 +1664,7 @@
   padding: 12px 0;
 }
 
-/* ── s210: Suggestions panel ──────────────────────────────────────── */
+/* -- s210: Suggestions panel ---------------------------------------- */
 .csv-card-suggestions .csv-card-body {
   display: flex;
   flex-direction: column;
@@ -1787,7 +1787,7 @@
   background: #1a1d23;
   border: 1px solid #2a2f37;
   border-radius: 4px;
-  /* s213 v3: bumped 14→15px (rows 1+2+3 of pick order) per operator
+  /* s213 v3: bumped 14->15px (rows 1+2+3 of pick order) per operator
    * audit follow-up. Clears the 13px tertiary floor with even more
    * headroom for across-room viewing distance.
    * s214 v4: min-height pinned so the 3 tip rows have uniform
@@ -1802,7 +1802,7 @@
 .csv-sugg-pickorder-cell .csv-sugg-pickorder-idx {
   color: #6a7280;
   font-weight: 700;
-  /* s213 v3: bumped 13→14px to scale with the surrounding text. */
+  /* s213 v3: bumped 13->14px to scale with the surrounding text. */
   font-size: 15px;
   min-width: 14px;
   text-align: center;
@@ -1810,7 +1810,7 @@
 /* s211: Row 4 (DS engine item strip) removed - moved to the
  * Experimental row in the build chooser. */
 
-/* ── Build chooser rows (SR / ARAM / Arena) ───────────────────────── */
+/* -- Build chooser rows (SR / ARAM / Arena) ------------------------- */
 .csv-builds-body {
   display: flex;
   flex-direction: column;
@@ -1929,7 +1929,7 @@
   align-items: center;
   column-gap: 8px;
   /* s214 v6: width matches the badge above (130px) so they share a
-   * right boundary. min-height bumped 32→38px to accommodate a
+   * right boundary. min-height bumped 32->38px to accommodate a
    * guaranteed-2-row keystone name below. */
   width: 130px;
   min-height: 38px;
@@ -1951,7 +1951,7 @@
   opacity: 0.95;
 }
 .csv-build-rune-tree-name {
-  /* s212 v3 (audit consider #1): 12→13px to clear the tertiary floor
+  /* s212 v3 (audit consider #1): 12->13px to clear the tertiary floor
    * with no row-height growth (line-height stays implicit).
    * s214 v3 (operator follow-up): keystone names can wrap to 2 lines -
    * "Grasp of the Undying" / "Glacial Augment" / "Unsealed Spellbook"
@@ -1972,7 +1972,7 @@
    *   - display: block - establishes block formatting for wrapping
    *   - text-align: left - explicit left-anchor (matches operator)
    *   - white-space: normal - allow wrap at whitespace
-   *   - height = 2 × line-height (exactly 2 rows always)
+   *   - height = 2 x line-height (exactly 2 rows always)
    *   - overflow: hidden - clip if a hypothetical 3-line name lands
    * Short names ("Conqueror", "Aftershock") fill line 1 only - line
    * 2 stays empty BUT the height is reserved, so all 4 build rows
@@ -2004,7 +2004,7 @@
   display: block;
 }
 /* s209 v2: adaptive-summoner swap badge. When the build chooser
- * swapped the second summoner (Heal → Cleanse vs CC, Heal → Barrier vs
+ * swapped the second summoner (Heal -> Cleanse vs CC, Heal -> Barrier vs
  * burst), the swapped icon gets a colored ring + a small lightning
  * dot in the corner so the operator notices at a glance. Title attr
  * carries the swap reason. */
@@ -2014,7 +2014,7 @@
   position: relative;
 }
 .csv-build-spell.is-swapped::after {
-  content: "⚡";
+  content: "!";
   position: absolute;
   top: -4px;
   right: -4px;
@@ -2041,9 +2041,9 @@
   flex: 1 1 auto;
   min-width: 0;
 }
-/* s211 v2: item icons bumped 36→42px after the subtree row was dropped
+/* s211 v2: item icons bumped 36->42px after the subtree row was dropped
  * and the card height rolled into bigger art. s214: tightened gap from
- * 3→6px so each cell has a 3px hover-safe margin on either side - the
+ * 3->6px so each cell has a 3px hover-safe margin on either side - the
  * larger gap doubles as a click cushion without growing the icon size
  * itself. cursor:help advertises tooltip; hover ring confirms the
  * cell is hot. */
@@ -2067,7 +2067,7 @@
 }
 .csv-build-item img { width: 100%; height: 100%; object-fit: cover; }
 
-/* ── Arena duo + augments (replaces MY PICK central pane) ─────────── */
+/* -- Arena duo + augments (replaces MY PICK central pane) ----------- */
 .csv-duo-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr); /* s234/#89: Arena 6 teams of 3 (me + 2 teammates) */
@@ -2210,7 +2210,7 @@
   line-height: 1.3;
 }
 
-/* ── Arena enemies (3 sub-team cards stacked) ─────────────────────── */
+/* -- Arena enemies (3 sub-team cards stacked) ----------------------- */
 #view-champ-select[data-cs-mode="arena"] .csv-card-enemies .csv-team-list {
   gap: 8px;
 }
