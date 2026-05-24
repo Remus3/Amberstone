@@ -355,8 +355,12 @@ class ScorerContractTests(_RealEngineBase):
                 f"{champ}/{arch}: routed to {res.scorer!r}, expected "
                 f"{expected_scorer!r}",
             )
-            # every BuildStep records the same routed scorer
+            # every engine-picked BuildStep records the same routed scorer.
+            # 2026-05-23 (item 164b): boots steps are synthetic post-engine
+            # inserts (scorer="boots") - filter them out of this invariant.
             for s in res.order:
+                if s.scorer == "boots":
+                    continue
                 self.assertEqual(s.scorer, expected_scorer)
 
     def test_unknown_archetype_falls_through_to_dps_branch(self):

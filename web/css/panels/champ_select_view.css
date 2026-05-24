@@ -136,13 +136,13 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: 4px;
-  /* s214 v5: in the new 3-col grid the name column is `1fr` flanking
-   * the icon. min-width:0 lets long champion names ellipsize rather
-   * than blow out the grid. justify-self: start pins to the icon's
-   * right edge - `1fr` width fills the remainder of the panel. */
+  /* Operator (2026-05-23 round 3): vertically align Jinx on icon
+   * centerline by centering content within the 1fr grid cell. */
   min-width: 0;
   justify-self: start;
+  align-self: center;
 }
 .csv-mypick-name {
   /* s214 v5: ellipsize on overflow so long names like "Aurelion Sol"
@@ -192,16 +192,16 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   font-weight: 700;
-  /* s214 v5: grid-cell-aligned. min-height matches icon (88+2+2=92px)
-   * so state text vertically centers against portrait center via flex.
-   * justify-self: end pins the cell content to the right edge of its
-   * 1fr column - visually the text sits just-left-of-icon since the
-   * column ends at the icon's left edge. */
-  min-height: 92px;
+  /* Operator (2026-05-23 round 3): vertically center HOVERING + Jinx
+   * on the icon centerline. Drop the 92px min-height that was forcing
+   * HOVERING to top-align via flex - the grid container already does
+   * align-items: center, so just letting the content sit at its
+   * intrinsic height + align-self: center is enough. */
   display: flex;
   align-items: center;
   justify-content: flex-end;
   justify-self: end;
+  align-self: center;
   text-align: right;
   white-space: nowrap;
 }
@@ -214,13 +214,14 @@
 .csv-lock-btn {
   display: block;
   width: 100%;
-  margin: 4px 0 14px;
-  /* UI scale v2.1: padding kept; min-height pinned to --hit-min for
-   * fingertip target. font-size 16 -> --fs-md (22) - LOCK IN is the
-   * page's primary CTA; border-radius 6 -> --panel-radius-sm (10). */
-  padding: 12px 16px;
-  min-height: var(--hit-min);
-  font-size: var(--fs-md);
+  /* Operator (2026-05-23 round 3): button reduced in prominence -
+   * padding tightened + font-size dropped one tier so the LOCK IN
+   * line doesn't visually dominate the My Pick column. The summoner
+   * spell strip + build chooser carry equal weight now. */
+  margin: 4px 0 10px;
+  padding: 6px 12px;
+  min-height: 32px;
+  font-size: var(--fs-sm);
   font-weight: 800;
   letter-spacing: 0.6px;
   color: #d4f8de;
@@ -789,7 +790,19 @@
   margin-bottom: 6px;
 }
 
-/* Operator (2026-05-23): Summoner Spell strip sits BELOW the DS BUILD
+/* Operator (2026-05-23 round 3): inside the relocated DS Build
+ * Archetype slot (#csv-archetype-target), hide the inner picker's own
+ * title row - the card head ".csv-card-head" already names the panel
+ * "Daemon Slayer Build Archetype". Pre-fix the title appeared twice. */
+#csv-archetype-target .csv-archetype-title { display: none; }
+#csv-archetype-target .csv-archetype-picker {
+  margin: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Operator (2026-05-23 round 3): Summoner Spell strip sits BELOW the DS BUILD
  * ARCHETYPE picker + ABOVE the SR BUILD CHOOSER. 9 SR-relevant spells in
  * a single horizontal row; each cell shows icon + name + recommended
  * usage % (operator's match-history-derived; mock defaults for now).
@@ -825,22 +838,26 @@
   background: rgba(74, 222, 128, 0.08);
 }
 .csv-summspell-icon {
-  width: 28px; height: 28px;
+  /* Operator (2026-05-23 round 3): icon 28 -> 36 to match the bumped
+   * typography below. */
+  width: 36px; height: 36px;
   border-radius: 4px;
   object-fit: contain;
 }
 .csv-summspell-name {
-  font-size: var(--fs-xs);
+  /* Operator (2026-05-23 round 3): name 16 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: #d4d7dd;
   letter-spacing: 0.04em;
-  line-height: 1;
+  line-height: 1.1;
 }
 .csv-summspell-cell.is-selected .csv-summspell-name { color: #4ade80; }
 .csv-summspell-pct {
-  font-size: var(--fs-xs);
+  /* Operator (2026-05-23 round 3): pct 16 -> --fs-sm (18). */
+  font-size: var(--fs-sm);
   color: #6a7280;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 /* Phase / timer sub-line in section head. */
@@ -965,6 +982,45 @@
   color: #6b7280;
 }
 .csv-pr-chip.is-new em { margin-left: 5px; color: #6b7280; }
+
+/* Operator (2026-05-23 round 3): icon variant of the personal-vs chip.
+ * Used in the Assessment panel's VS row - champion portrait stacked
+ * over the WR % so the operator scans by face. */
+.csv-pr-chip-icon {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: #21252e;
+  border: 1px solid #2a2f37;
+  line-height: 1;
+}
+.csv-pr-chip-icon-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.csv-pr-chip-icon-pct {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  color: #d4d7dd;
+  letter-spacing: 0.02em;
+}
+.csv-pr-chip-icon.is-good { background: #16331f; border-color: #277540; }
+.csv-pr-chip-icon.is-good .csv-pr-chip-icon-pct { color: #4ade80; }
+.csv-pr-chip-icon.is-mid  { background: #33290f; border-color: #b88410; }
+.csv-pr-chip-icon.is-mid  .csv-pr-chip-icon-pct { color: #fbbf24; }
+.csv-pr-chip-icon.is-bad  { background: #331717; border-color: #b84141; }
+.csv-pr-chip-icon.is-bad  .csv-pr-chip-icon-pct { color: #f87171; }
+.csv-pr-chip-icon.is-new {
+  background: transparent;
+  border: 1px dashed #3a3f48;
+}
+.csv-pr-chip-icon.is-new .csv-pr-chip-icon-pct { color: #6b7280; }
+
 .csv-pr-hint {
   /* UI scale v2.1 (audit MUST FIX): 13 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
@@ -1622,17 +1678,17 @@
  * past the keystone strip below and made the rune-name's right edge
  * drift row-to-row. */
 .csv-build-badge {
-  /* s214 v6: width reduced 150→130px to fit cleanly inside the meta
-   * column. Pre-s214v6 the 150px width slightly overflowed the
-   * effective grid cell width (~134px after card-padding +
-   * checkbox/summoners/items reservations), which caused the rune
-   * strip below to clip "Press the Attack" mid-character instead of
-   * wrapping. 130px gives ~4px of breathing room and keeps the
-   * keystone disc + text area at 92px (130 - 30 icon - 8 gap). */
-  --csv-badge-w: 130px;
+  /* Operator (2026-05-23 round 2): label width bumped 130 -> 200 so
+   * full variant names like "Lethal Tempo (On-Hit)" read in full
+   * without ellipsis truncation. The keystone strip below uses the
+   * same --csv-badge-w so its right edge tracks the badge's; spells
+   * + items cols are auto-sized so the 70px bump compresses the 1fr
+   * meta col + the natural reservation behind them. Now since
+   * Allies panel moved out, the My Pick column has more room. */
+  --csv-badge-w: 200px;
   display: inline-block;
   width: var(--csv-badge-w);
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.04em;
   padding: 3px 10px;

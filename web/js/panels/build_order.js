@@ -1,9 +1,9 @@
-// Build Order panel (2026-05-17, OVERNIGHT RUN-1 follow-up; plan §6b B+C).
+// DS vs Enemy Comp panel (2026-05-17, OVERNIGHT RUN-1 follow-up; plan §6b B+C).
 //
 // Renders the contextual, match-specific DS-backed item BUILD ORDER from
 // POST /api/build-order (core/build_order.py plan_build_order). Two
 // surfaces:
-//   (B) a collapsible "Build Order" block inside the champ-select My Pick
+//   (B) a collapsible "DS vs Enemy Comp" block inside the champ-select My Pick
 //       card - mode-agnostic (sr/aram/arena), since a build order matters
 //       just as much in ARAM/Arena. buildOrderCardHtml() returns an HTML
 //       string; champ_select.js injects it after the build chooser,
@@ -104,14 +104,14 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
     fetchBuildOrder(champion, dsMode, archetype, opts.scheduleRender);
     return `
       <div class="bo-card" data-bo-state="loading">
-        <div class="bo-line"><span class="bo-tag">Build Order</span><span class="bo-msg">computing...</span></div>
+        <div class="bo-line"><span class="bo-tag">DS vs Enemy Comp</span><span class="bo-msg">computing...</span></div>
       </div>`;
   }
   const order = Array.isArray(data.order) ? data.order : [];
   if (!order.length) {
     return `
       <div class="bo-card" data-bo-state="empty">
-        <div class="bo-line"><span class="bo-tag">Build Order</span><span class="bo-msg">no ordered build</span></div>
+        <div class="bo-line"><span class="bo-tag">DS vs Enemy Comp</span><span class="bo-msg">no ordered build</span></div>
       </div>`;
   }
   const ver = opts.ver || "latest";
@@ -147,7 +147,7 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
     return `
     <div class="bo-card" data-bo-state="ready" data-bo-collapsed="1">
       <div class="bo-line">
-        <span class="bo-tag">Build Order</span>
+        <span class="bo-tag">DS vs Enemy Comp</span>
         <span class="bo-chain" data-tt-html="${fullTip}">${chain}</span>
         ${safeChip}
         <button type="button" class="bo-expander" data-bo-toggle="1" title="show full ordered build">▾</button>
@@ -188,7 +188,7 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
   return `
     <div class="bo-card" data-bo-state="ready">
       <div class="bo-line">
-        <span class="bo-tag">Build Order</span>
+        <span class="bo-tag">DS vs Enemy Comp</span>
         ${ctxLine ? `<span class="bo-ctx">${_esc(ctxLine)}</span>` : ""}
         ${safeChip}
         <button type="button" class="bo-expander" data-bo-toggle="1" title="collapse">▴</button>

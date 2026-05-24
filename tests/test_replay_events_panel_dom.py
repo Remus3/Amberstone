@@ -194,9 +194,11 @@ class CssGridWidenedForNamesTests(unittest.TestCase):
         css = _read(EVENTS_CSS)
         # The grid template line for a row must declare wider columns
         # than the pre-join 60/80 to fit the portrait + champion name.
-        # We assert the new columns are present and the old narrow
-        # combo is gone.
-        self.assertIn("grid-template-columns: 52px 1fr 110px 130px", css)
+        # 2026-05-23 (item 162 page #3 Replay v2.1): widths bumped to
+        # 64px / 1fr / 140px / 160px (clock col +12, actor +30, victim
+        # +30) so participant-joined names + portrait read at v2.1 type
+        # scale without ellipsis-truncating.
+        self.assertIn("grid-template-columns: 64px 1fr 140px 160px", css)
         self.assertNotIn("grid-template-columns: 52px 1fr 60px 80px", css)
 
 

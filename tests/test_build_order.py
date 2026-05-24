@@ -125,7 +125,7 @@ class PlanBasicsTests(unittest.TestCase):
         eng = FakeEngine()
         res = plan_build_order(
             "Ezreal", "carry", level=11, owned_item_ids=[],
-            mode="SR", slots=6, rank_fn=eng,
+            mode="SR", slots=6, inject_boots=False, rank_fn=eng,
         )
         self.assertIsInstance(res, BuildOrderResult)
         self.assertEqual(len(res.order), 6)
@@ -139,7 +139,7 @@ class PlanBasicsTests(unittest.TestCase):
         eng = FakeEngine()
         res = plan_build_order(
             "Ezreal", "carry", level=13, owned_item_ids=["3074", "3071"],
-            mode="SR", slots=6, rank_fn=eng,
+            mode="SR", slots=6, inject_boots=False, rank_fn=eng,
         )
         self.assertEqual(res.owned, ["3074", "3071"])
         self.assertEqual(len(res.order), 4)            # 6 - 2 owned
@@ -152,7 +152,7 @@ class PlanBasicsTests(unittest.TestCase):
     def test_accumulation_each_call_carries_prior_picks(self):
         eng = FakeEngine()
         res = plan_build_order(
-            "Ezreal", "carry", level=11, owned_item_ids=[], slots=3, rank_fn=eng,
+            "Ezreal", "carry", level=11, owned_item_ids=[], slots=3, inject_boots=False, rank_fn=eng,
         )
         self.assertEqual(eng.calls[0]["item_ids"], [])
         self.assertEqual(eng.calls[1]["item_ids"], [res.order[0].item_id])
@@ -164,7 +164,7 @@ class PlanBasicsTests(unittest.TestCase):
     def test_order_str_and_to_dict_shape(self):
         eng = FakeEngine()
         res = plan_build_order("Ezreal", "carry", level=11,
-                               owned_item_ids=[], slots=2, rank_fn=eng)
+                               owned_item_ids=[], slots=2, inject_boots=False, rank_fn=eng)
         self.assertRegex(res.order_str(), r".+\(\+\d+dps,3000g\) > .+")
         d = res.to_dict()
         self.assertEqual(d["champion"], "Ezreal")
@@ -181,11 +181,11 @@ class MatchSpecificityTests(unittest.TestCase):
         eng = FakeEngine()
         low = plan_build_order("Ezreal", "carry", level=11, owned_item_ids=[],
                                slots=6, target_armor=0.0, target_mr=0.0,
-                               rank_fn=eng)
+                               inject_boots=False, rank_fn=eng)
         eng2 = FakeEngine()
         high = plan_build_order("Ezreal", "carry", level=11, owned_item_ids=[],
                                 slots=6, target_armor=300.0, target_mr=0.0,
-                                rank_fn=eng2)
+                                inject_boots=False, rank_fn=eng2)
         low_ids = [s.item_id for s in low.order]
         high_ids = [s.item_id for s in high.order]
         self.assertNotEqual(
@@ -198,10 +198,10 @@ class MatchSpecificityTests(unittest.TestCase):
     def test_enemy_mr_reorders_the_build(self):
         eng = FakeEngine()
         base = plan_build_order("Ezreal", "carry", level=11, owned_item_ids=[],
-                                slots=6, target_mr=0.0, rank_fn=eng)
+                                slots=6, target_mr=0.0, inject_boots=False, rank_fn=eng)
         eng2 = FakeEngine()
         ap = plan_build_order("Ezreal", "carry", level=11, owned_item_ids=[],
-                              slots=6, target_mr=400.0, rank_fn=eng2)
+                              slots=6, target_mr=400.0, inject_boots=False, rank_fn=eng2)
 
         def _rank(res, iid):
             ids = [s.item_id for s in res.order]
@@ -217,7 +217,7 @@ class MatchSpecificityTests(unittest.TestCase):
         eng = FakeEngine()
         res = plan_build_order("Ezreal", "carry", level=11, owned_item_ids=[],
                                slots=2, target_armor=120.0, target_mr=55.0,
-                               target_max_hp=2400.0, rank_fn=eng)
+                               target_max_hp=2400.0, inject_boots=False, rank_fn=eng)
         self.assertEqual(res.context["target_armor"], 120.0)
         self.assertEqual(res.context["target_mr"], 55.0)
         self.assertEqual(res.context["target_max_hp"], 2400.0)
@@ -240,7 +240,7 @@ class UniquePassiveNoDoubleTests(unittest.TestCase):
     def test_planner_never_doubles_spellblade(self):
         eng = FakeEngine()
         res = plan_build_order("Ezreal", "carry", level=11, owned_item_ids=[],
-                               slots=6, rank_fn=eng)
+                               slots=6, inject_boots=False, rank_fn=eng)
         fams = _families_in(res)
         self.assertLessEqual(
             fams.count("spellblade"), 1,
@@ -253,7 +253,7 @@ class UniquePassiveNoDoubleTests(unittest.TestCase):
     def test_once_spellblade_picked_family_locked_for_all_later_slots(self):
         eng = FakeEngine()
         res = plan_build_order("Ezreal", "carry", level=11, owned_item_ids=[],
-                               slots=6, rank_fn=eng)
+                               slots=6, inject_boots=False, rank_fn=eng)
         ids = [s.item_id for s in res.order]
         spellblades = [i for i in ids if _CATALOG[i][2] == "spellblade"]
         self.assertEqual(len(spellblades), 1)
@@ -265,7 +265,7 @@ class UniquePassiveNoDoubleTests(unittest.TestCase):
         eng = FakeEngine()
         res = plan_build_order("Ezreal", "carry", level=11,
                                owned_item_ids=["3508"],  # Essence Reaver
-                               slots=6, rank_fn=eng)
+                               slots=6, inject_boots=False, rank_fn=eng)
         ids = [s.item_id for s in res.order]
         for i in ids:
             self.assertNotEqual(_CATALOG[i][2], "spellblade")
@@ -277,7 +277,7 @@ class UniquePassiveNoDoubleTests(unittest.TestCase):
         eng = FakeEngine()
         res = plan_build_order(
             "Ezreal", "carry", level=11, owned_item_ids=[], slots=6,
-            rank_kwargs={"filter_shared_uniques": False}, rank_fn=eng,
+            rank_kwargs={"filter_shared_uniques": False}, inject_boots=False, rank_fn=eng,
         )
         for c in eng.calls:
             self.assertTrue(
@@ -292,13 +292,13 @@ class EdgeCaseContractTests(unittest.TestCase):
     def test_engine_down_at_slot_one_returns_none(self):
         eng = FakeEngine(hard_down=True)
         res = plan_build_order("Ezreal", "carry", level=11,
-                               owned_item_ids=[], slots=6, rank_fn=eng)
+                               owned_item_ids=[], slots=6, inject_boots=False, rank_fn=eng)
         self.assertIsNone(res)
 
     def test_engine_dies_mid_sequence_truncates_with_note(self):
         eng = FakeEngine(fail_after=3)   # calls 1,2 ok; 3rd → None
         res = plan_build_order("Ezreal", "carry", level=11,
-                               owned_item_ids=[], slots=6, rank_fn=eng)
+                               owned_item_ids=[], slots=6, inject_boots=False, rank_fn=eng)
         self.assertIsNotNone(res)
         self.assertEqual(len(res.order), 2)
         self.assertTrue(any("engine stopped responding" in n for n in res.notes))
@@ -307,11 +307,11 @@ class EdgeCaseContractTests(unittest.TestCase):
         eng = FakeEngine()
         self.assertIsNone(
             plan_build_order("", "carry", level=11, owned_item_ids=[],
-                             slots=6, rank_fn=eng)
+                             slots=6, inject_boots=False, rank_fn=eng)
         )
         self.assertIsNone(
             plan_build_order("   ", "carry", level=11, owned_item_ids=[],
-                             slots=6, rank_fn=eng)
+                             slots=6, inject_boots=False, rank_fn=eng)
         )
 
     def test_build_already_full_returns_empty_order_not_none(self):
@@ -319,7 +319,7 @@ class EdgeCaseContractTests(unittest.TestCase):
         res = plan_build_order(
             "Ezreal", "carry", level=18,
             owned_item_ids=["3074", "3071", "3033", "3036", "3135", "3053"],
-            slots=6, rank_fn=eng,
+            slots=6, inject_boots=False, rank_fn=eng,
         )
         self.assertIsNotNone(res)
         self.assertEqual(res.order, [])
@@ -334,7 +334,7 @@ class EdgeCaseContractTests(unittest.TestCase):
                         "ranked": [], "fell_back": False}
         eng = EmptyEngine()
         res = plan_build_order("Ezreal", "carry", level=11,
-                               owned_item_ids=[], slots=6, rank_fn=eng)
+                               owned_item_ids=[], slots=6, inject_boots=False, rank_fn=eng)
         self.assertIsNotNone(res)
         self.assertEqual(res.order, [])
         self.assertTrue(any("no further legal items" in n for n in res.notes))
@@ -342,7 +342,7 @@ class EdgeCaseContractTests(unittest.TestCase):
     def test_archetype_defaults_to_carry_when_blank(self):
         eng = FakeEngine()
         res = plan_build_order("Ezreal", "", level=11, owned_item_ids=[],
-                               slots=1, rank_fn=eng)
+                               slots=1, inject_boots=False, rank_fn=eng)
         self.assertEqual(res.archetype, "carry")
         self.assertEqual(eng.calls[0]["archetype"], "carry")
 
@@ -357,7 +357,7 @@ class Phase4dLockedFamilyTests(unittest.TestCase):
         eng = FakeEngine()
         res = plan_build_order("Ezreal", "carry", level=11,
                                owned_item_ids=[], slots=6,
-                               target_armor=0.0, target_mr=0.0, rank_fn=eng)
+                               target_armor=0.0, target_mr=0.0, inject_boots=False, rank_fn=eng)
         self.assertEqual(res.order[0].item_id, "3078")        # Trinity
         self.assertEqual(res.order[0].locked_family, "spellblade")
         hydra = [s for s in res.order if s.item_id == "3074"]  # no unique
@@ -371,7 +371,7 @@ class Phase4dLockedFamilyTests(unittest.TestCase):
         eng = FakeEngine()
         res = plan_build_order("Ezreal", "carry", level=11,
                                owned_item_ids=[], slots=2,
-                               target_armor=0.0, target_mr=0.0, rank_fn=eng)
+                               target_armor=0.0, target_mr=0.0, inject_boots=False, rank_fn=eng)
         d0 = res.order[0].to_dict()
         self.assertIn("locked_family", d0)
         self.assertEqual(d0["locked_family"], "spellblade")
@@ -389,7 +389,7 @@ class Phase4dLockedFamilyTests(unittest.TestCase):
         res = plan_build_order("Ezreal", "carry", level=11,
                                owned_item_ids=[], slots=3,
                                target_armor=0.0, target_mr=0.0,
-                               rank_fn=LegacyEngine())
+                               inject_boots=False, rank_fn=LegacyEngine())
         self.assertTrue(res.order)
         for s in res.order:
             self.assertEqual(s.locked_family, "")
@@ -410,7 +410,7 @@ class ScorerUnitTests(unittest.TestCase):
                 }
         eng = HpsEngine()
         res = plan_build_order("Soraka", "enchanter", level=11,
-                               owned_item_ids=[], slots=1, rank_fn=eng)
+                               owned_item_ids=[], slots=1, inject_boots=False, rank_fn=eng)
         self.assertEqual(res.scorer, "hps")
         self.assertEqual(res.order[0].unit, "hps")
         self.assertIn("hps", res.order_str())
@@ -472,9 +472,15 @@ class DispatchIntegrationTests(unittest.TestCase):
         self.assertIsInstance(res.build_order, BuildOrderResult)
         # 2-row static mock → planner takes both then stops (picked-id
         # filter drains it); flat dispatch + slot calls > 1.
+        # 2026-05-23 (item 164b): plan_build_order now injects a boots
+        # step at position 2 by default - filter it out of the engine-
+        # invariant check below since boots is a synthetic post-engine
+        # insertion (scorer="boots"), not an engine pick.
         self.assertGreater(m_rk.call_count, 1)
-        names = [s.item_name for s in res.build_order.order]
-        self.assertEqual(names, ["Trinity Force", "Ravenous Hydra"])
+        engine_picks = [
+            s.item_name for s in res.build_order.order if s.scorer != "boots"
+        ]
+        self.assertEqual(engine_picks, ["Trinity Force", "Ravenous Hydra"])
         self.assertTrue(res.build_order.unique_passive_safe)
         # legacy consumers untouched
         self.assertTrue(res.picks_str.startswith("Trinity Force"))
