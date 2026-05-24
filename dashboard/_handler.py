@@ -72,15 +72,15 @@ _MAX_POST_BYTES = 1 << 20
 # diagnostic value when something breaks). Error/info log calls elsewhere
 # in the handler are unaffected.
 _SUPPRESS_LOG_PATHS = (
-    "GET /api/decisions ",
-    "GET /api/decisions/heartbeat ",
-    "GET /api/vision-state ",
-    "GET /api/asset-stamp ",
-    "GET /api/ui-version ",
-    "GET /api/activity ",
-    "GET /api/env ",
-    "GET /api/locked-champion ",
-    "GET /api/minimap-crop ",
+    "GET /api/decisions",
+    "GET /api/decisions/heartbeat",
+    "GET /api/vision-state",
+    "GET /api/asset-stamp",
+    "GET /api/ui-version",
+    "GET /api/activity",
+    "GET /api/env",
+    "GET /api/locked-champion",
+    "GET /api/minimap-crop",
 )
 
 
