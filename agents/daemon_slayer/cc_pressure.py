@@ -266,17 +266,69 @@ def compute_cc_pressure(
     # for the 4 existing consumers. When True, the probability-weighted
     # raw sum is also passed through ``effective_cc_duration`` so the
     # tenacity math seam is unified across both axes.
+    #
+    # ENGINE 1.55.0 (wave 18 schema lift, 2026-05-24) - same-spell-
+    # slot coexistence machinery. ConditionalCcEntry.coexists_with_
+    # unconditional declares that the conditional entry's spell slot
+    # ALSO holds an unconditional entry in `_PER_SPELL_CC_DURATIONS`.
+    # When True, the consumer credits MAX(unconditional_post_tenacity,
+    # conditional_post_tenacity) for that slot - NEVER both summed.
+    # This avoids the long-deferred Maokai R distance-gated root
+    # double-count concern (item 170-175 carry forward) while still
+    # letting the operator opt into the far-distance bonus credit
+    # via per_entry_probability tuning.
+    #
+    # Math (per (champion, spell) slot when include_conditional=True):
+    #   * NO conditional entry for slot: credit unconditional.
+    #   * Conditional with coexists=False: credit BOTH (sum).
+    #   * Conditional with coexists=True: credit MAX(unconditional,
+    #     conditional_post_prob_post_tenacity).
     conditional_entries: tuple[ConditionalCcEntry, ...] = ()
     conditional_post_tenacity = 0.0
+    # The set of (champion, spell) slots where a coexists=True
+    # conditional entry has REPLACED the unconditional contribution
+    # via the MAX rule. Slots in this set skip the unconditional
+    # aggregation loop below (the MAX-selected value lives in
+    # conditional_post_tenacity already).
+    coexisting_slots: set[str] = set()
     if include_conditional:
         conditional_entries = get_conditional_entries(champion)
         if conditional_entries:
-            conditional_raw = get_total_conditional_cc_seconds(
-                champion, apply_probability=True
-            )
-            conditional_post_tenacity = effective_cc_duration(
-                conditional_raw, tenacity_mult
-            )
+            # Split entries into coexisting + standalone for separate
+            # math. Standalone entries are summed via the legacy
+            # probability-weighted aggregator; coexisting entries are
+            # MAX-compared against the same-slot unconditional value
+            # below.
+            for entry in conditional_entries:
+                if not entry.coexists_with_unconditional:
+                    duration = (
+                        entry.durations_s[-1] * entry.probability
+                    )
+                    conditional_post_tenacity += effective_cc_duration(
+                        duration, tenacity_mult
+                    )
+                    continue
+                # coexists=True: compute conditional contribution and
+                # compare against the same-slot unconditional value.
+                # Pick MAX. If MAX is the conditional, mark the slot
+                # so the unconditional aggregation loop SKIPS it.
+                cond_dur = entry.durations_s[-1] * entry.probability
+                cond_post = effective_cc_duration(cond_dur, tenacity_mult)
+                unc_durs = spells_dict.get(entry.spell)
+                unc_post = 0.0
+                if unc_durs:
+                    unc_post = effective_cc_duration(
+                        float(unc_durs[-1]), tenacity_mult
+                    )
+                if cond_post >= unc_post:
+                    # Conditional WINS: credit conditional, skip
+                    # unconditional aggregation for this slot.
+                    conditional_post_tenacity += cond_post
+                    coexisting_slots.add(entry.spell)
+                # else: Unconditional WINS - the unconditional
+                # aggregation loop credits it normally; conditional
+                # adds 0 to the conditional bucket. coexisting_slots
+                # remains empty for this slot.
     if not spells_dict:
         return CcPressureResult(
             champion=champion,
@@ -303,6 +355,12 @@ def compute_cc_pressure(
                 duration_post_tenacity_s=post_tenacity,
             )
         )
+        # Skip slots where the coexisting conditional entry has won
+        # the MAX comparison (already credited into
+        # conditional_post_tenacity). The spell entry is still
+        # included in the spells tuple for transparency.
+        if spell_key in coexisting_slots:
+            continue
         total += post_tenacity
     return CcPressureResult(
         champion=champion,

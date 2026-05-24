@@ -96,7 +96,7 @@ Coverage classes:
   * WaveSeventeenForwardMarkerAllowlistTests - the wave 17 test
     file is in the forward-marker test allowlist.
   * EngineVersionPinTests - ENGINE_VERSION sits at or above
-    1.54.0.
+    1.55.0.
   * AsciiHygieneTests - the test file is ASCII-clean +
     cc_conditional.py wave 17 block is ASCII-clean.
 """
@@ -317,14 +317,16 @@ class WaveSeventeenPerTagConsumerCountsTests(unittest.TestCase):
         self.assertGreaterEqual(len(frenzy_consumers), 3)
 
     def test_range_gated_still_zero_consumers(self) -> None:
-        # COND_RANGE_GATED remains a forward-marker with no consumers
-        # post-wave-17 (wave 7 schema lift never landed a consumer).
+        # Wave 17 ship-time: COND_RANGE_GATED had 0 consumers. Wave
+        # 18 (ENGINE 1.55.0) added Maokai R as the FIRST consumer via
+        # the coexists_with_unconditional schema lift. Wave 17
+        # invariant relaxed: at most 1 consumer present at this point.
         range_gated_consumers = [
             e
             for e in self._all_entries()
             if e.condition == cc.COND_RANGE_GATED
         ]
-        self.assertEqual(len(range_gated_consumers), 0)
+        self.assertLessEqual(len(range_gated_consumers), 1)
 
 
 class WaveSeventeenDefaultCallerByteIdenticalTests(unittest.TestCase):
@@ -518,7 +520,7 @@ class WaveSeventeenForwardMarkerAllowlistTests(unittest.TestCase):
 
 
 class EngineVersionPinTests(unittest.TestCase):
-    """ENGINE_VERSION sits at or above 1.54.0."""
+    """ENGINE_VERSION sits at or above 1.55.0."""
 
     def test_engine_version_string_pin(self) -> None:
         major, minor, patch = (int(x) for x in ENGINE_VERSION.split("."))
