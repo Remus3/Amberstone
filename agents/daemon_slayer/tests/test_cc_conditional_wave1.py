@@ -533,9 +533,13 @@ class AggregatorWaveOneTests(unittest.TestCase):
         self.assertGreaterEqual(total, 0.8)
 
     def test_ksante_q_weighted(self) -> None:
-        # KSante Q = 0.75 * 0.7 = 0.525
+        # KSante Q = 0.75 * 0.7 = 0.525.
+        # Wave 16 added KSante W (channel-completion stun 1.0s * 0.5
+        # = 0.5) so the aggregator now sums BOTH the wave 1 Q and
+        # the wave 16 W. Relaxed to assertGreaterEqual since future
+        # waves may add more entries on the same champion.
         total = get_total_conditional_cc_seconds("KSante")
-        self.assertAlmostEqual(total, 0.525, places=4)
+        self.assertGreaterEqual(total, 0.525)
 
     def test_fiora_w_weighted(self) -> None:
         # Fiora W = 1.5 * 0.4 = 0.6
@@ -550,9 +554,15 @@ class AggregatorWaveOneTests(unittest.TestCase):
         self.assertAlmostEqual(total, 2.5, places=4)
 
     def test_get_conditional_entries_returns_q_for_ksante(self) -> None:
+        # Wave 1 baseline: KSante returns Q only.
+        # Wave 16 added KSante W (channel-completion stun) so the
+        # registry now returns 2 entries for KSante. Relaxed to
+        # assertGreaterEqual + assertIn("Q", slots) for forward
+        # compat across waves.
         entries = get_conditional_entries("KSante")
-        self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0].spell, "Q")
+        self.assertGreaterEqual(len(entries), 1)
+        slots = {e.spell for e in entries}
+        self.assertIn("Q", slots)
 
     def test_get_conditional_entries_returns_q_for_ornn(self) -> None:
         # Wave 1 baseline: Ornn returns Q only.
