@@ -476,7 +476,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
         # syncs all ENGINE pin sites at merge. Current pre-merge
         # state on main is 1.38.0 (item 142 cf5f509). Orchestrator
         # bumps to 1.41.0 post-merge of Slice A + Slice B.
-        self.assertEqual(ENGINE_VERSION, "1.54.0")
+        self.assertEqual(ENGINE_VERSION, "1.55.0")
 
 
 # --------------------------------------------------- ASCII hygiene

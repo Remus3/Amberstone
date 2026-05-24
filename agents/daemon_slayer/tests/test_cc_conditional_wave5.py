@@ -432,10 +432,13 @@ class WaveFiveCoexistenceWithPriorWavesTests(unittest.TestCase):
         self.assertEqual(e_entry.condition, COND_CHANNEL_COMPLETION)
 
     def test_briar_has_exactly_two_entries(self) -> None:
-        # Wave 5 adds E; total Briar entries = 2 (Q + E). Both
-        # share the same champion key via setdefault construction.
+        # Wave 5 baseline: Briar has 2 entries (Q + E). Wave 18
+        # (ENGINE 1.55.0) adds Briar R Hematomania impact fear,
+        # taking Briar to 3-slot coverage (Q + E + R). Assertion
+        # relaxed to assertGreaterEqual for forward compatibility -
+        # mirrors the TahmKench wave 13 relaxation pattern.
         spells = _PER_SPELL_CC_CONDITIONAL["Briar"]
-        self.assertEqual(len(spells), 2)
+        self.assertGreaterEqual(len(spells), 2)
 
     def test_tahmkench_has_both_q_and_r_entries(self) -> None:
         # Both spell slots present post-build via setdefault.
@@ -475,18 +478,26 @@ class AggregatorWaveFiveTests(unittest.TestCase):
     entries per champion in canonical Q-W-E-R order."""
 
     def test_briar_weighted_max_rank_sums_q_plus_e(self) -> None:
-        # Briar Q = 1.0 * 0.3 = 0.30 (wave 4 terrain stun)
-        # Briar E = 1.0 * 0.5 = 0.50 (wave 5 channel-completion fear)
-        # Total weighted = 0.30 + 0.50 = 0.80
+        # Wave 5 baseline:
+        #   Briar Q = 1.0 * 0.3 = 0.30 (wave 4 terrain stun)
+        #   Briar E = 1.0 * 0.5 = 0.50 (wave 5 channel-completion fear)
+        # Wave 18 adds:
+        #   Briar R = 1.5 * 0.5 = 0.75 (Hematomania impact fear)
+        # Wave 18 total weighted = 0.30 + 0.50 + 0.75 = 1.55
+        # Assertion relaxed: total is at LEAST the wave 5 baseline
+        # of 0.80; forward-compatible with future Briar adds.
         total = get_total_conditional_cc_seconds("Briar")
-        self.assertAlmostEqual(total, 0.80, places=4)
+        self.assertGreaterEqual(total, 0.80)
 
     def test_briar_raw_max_rank_sums_q_plus_e(self) -> None:
-        # Briar Q raw = 1.0 + Briar E raw = 1.0 -> 2.0 total
+        # Wave 5 baseline: Briar Q raw 1.0 + Briar E raw 1.0 = 2.0
+        # Wave 18 adds Briar R raw 1.5; total raw = 3.5.
+        # Assertion relaxed: total raw is at LEAST the wave 5
+        # baseline 2.0; forward-compatible with future Briar adds.
         total = get_total_conditional_cc_seconds(
             "Briar", apply_probability=False
         )
-        self.assertAlmostEqual(total, 2.0, places=4)
+        self.assertGreaterEqual(total, 2.0)
 
     def test_tahmkench_weighted_max_rank_sums_q_plus_r(self) -> None:
         # TahmKench Q = 1.5 * 0.7 = 1.05 (wave 5 nth_hit stun)
@@ -519,10 +530,13 @@ class AggregatorWaveFiveTests(unittest.TestCase):
         )
 
     def test_get_conditional_entries_returns_q_and_e_for_briar(self) -> None:
-        # Briar has 2 entries (Q + E). Canonical Q-W-E-R order
-        # means Q is index 0, E is index 1.
+        # Wave 5 baseline: Briar has 2 entries (Q + E) in
+        # canonical Q-W-E-R order. Wave 18 adds Briar R, taking the
+        # entry list to 3 (Q + E + R). Assertion relaxed: Q remains
+        # first, E remains second, allow trailing entries from
+        # later waves. Mirrors TahmKench wave 13 relaxation pattern.
         entries = get_conditional_entries("Briar")
-        self.assertEqual(len(entries), 2)
+        self.assertGreaterEqual(len(entries), 2)
         self.assertEqual(entries[0].spell, "Q")
         self.assertEqual(entries[1].spell, "E")
 

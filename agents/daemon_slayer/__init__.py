@@ -1321,7 +1321,131 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.54.0"
+ENGINE_VERSION = "1.55.0"
+# 1.55.0 (cc_conditional wave 18 FULL schema lift - NEW
+# coexists_with_unconditional boolean field on ConditionalCcEntry
+# + consumer-side MAX rule in compute_cc_pressure() so a
+# conditional entry CAN now coexist on the same (champion, spell)
+# slot as an unconditional entry in _PER_SPELL_CC_DURATIONS
+# without double-counting. +2 primary entries / 0 net-new
+# champions (Maokai already in registry via Q wave 2; Briar
+# already in registry via Q wave 4 + E wave 5). Closes items
+# 170-175 carry forward (Maokai R distance-gated needs same-
+# spell-slot coexistence schema lift) and is the FIRST consumer
+# of the wave 7 forward-marker tag COND_RANGE_GATED, 2026-05-24):
+#
+# SCHEMA LIFT: ConditionalCcEntry gains optional
+# ``coexists_with_unconditional: bool = False`` field. When True,
+# the entry declares that the same (champion, spell) slot ALSO
+# holds an unconditional entry in `_PER_SPELL_CC_DURATIONS`. The
+# consumer-side ``compute_cc_pressure(include_conditional=True)``
+# math credits MAX(unconditional_post_tenacity,
+# conditional_post_probability_post_tenacity) per slot - never the
+# sum. Backward-compat: all wave 0-17 entries omit the field and
+# default to False; their consumer semantics are byte-identical
+# to ENGINE 1.54.0. The math change is OPT-IN per entry via the
+# new flag.
+#
+# +2 PRIMARY ENTRIES this wave:
+#
+# (1) Maokai R Nature's Grasp distance-gated max-root: encodes the
+#     FAR-DISTANCE 2.25s payoff (Meraki effects_descriptions:
+#     "roots them for 0.75 : 2.25 (based on distance traveled)
+#     seconds") gated on Maokai landing brambles at max travel.
+#     Maps to COND_RANGE_GATED - FIRST CONSUMER of the wave 7
+#     (ENGINE 1.44.0) forward-marker tag, closing the empty-
+#     registry contract pending since item 148. Probability tag
+#     midpoint 0.4. coexists_with_unconditional=True because the
+#     unconditional `_PER_SPELL_CC_DURATIONS["Maokai"]["R"] =
+#     (1.2, 1.6, 2.0)` entry encodes per-rank mid-distance
+#     estimates on the same slot. At default calibration the
+#     unconditional 2.0s (rank 3 post-tenacity) BEATS the
+#     conditional 2.25 * 0.4 = 0.9s post-probability - so the
+#     consumer credits the unconditional 2.0s. Operator can tune
+#     via per_entry_probability `Maokai:R = 0.9` (or higher) to
+#     lift the conditional above the unconditional. Maokai is NEW
+#     to cc_conditional in R slot (already had Q wave 2 terrain-
+#     stun); Maokai now has 2 cc_conditional entries (Q + R).
+#
+# (2) Briar R Certain Death Hematomania impact non-marked fear:
+#     1.5s flat fear on all non-marked enemies in the Hematomania
+#     impact explosion radius (Meraki effects_descriptions: "fears
+#     all non-marked targets for 1.5 seconds"). Maps to
+#     COND_TARGET_DEBUFFED with the inverse mark-state semantic
+#     (fires on NON-debuffed AoE targets when the marked-debuff
+#     was applied to a DIFFERENT enemy). Probability midpoint 0.5.
+#     NO coexistence flag - Briar has no unconditional R entry in
+#     `_PER_SPELL_CC_DURATIONS`. Briar becomes the SECOND 3-slot
+#     cc_conditional champion (Q wave 4 + E wave 5 + R wave 18)
+#     after TahmKench (Q + W + R - shipped wave 13). FIRST Briar
+#     R first-order CC registration anywhere. Discovered during
+#     wave 18 re-audit of Briar description text alongside Briar
+#     W self-buff verification.
+#
+# RE-AUDIT VERDICTS (orchestrator-flagged spec candidates):
+#
+# * Renekton W Reign-of-Anger empowered stun 1.5s: ALREADY SHIPPED
+#   wave 9 (ENGINE 1.46.0, item 153) as FIRST COND_FRENZY_STATE
+#   consumer. Spec carry obsolete. NO state-tracking tag
+#   COND_FURY_50 added (would duplicate COND_FRENZY_STATE
+#   semantic).
+# * Karma W form 1 Renewal: ALREADY SHIPPED wave 10 sidecar
+#   (ENGINE 1.47.0, item 154) as SECOND COND_FRENZY_STATE
+#   consumer.
+# * Hwei E form 1 Grim Visage fear: ALREADY SHIPPED wave 9 primary
+#   (ENGINE 1.46.0, item 153).
+# * Hwei E form 2 Gaze of the Abyss root: ALREADY SHIPPED wave 10
+#   sidecar (ENGINE 1.47.0, item 154).
+# * Neeko E Empowered Root: ALREADY SHIPPED wave 9 primary
+#   (ENGINE 1.46.0, item 153) with COND_DUAL_ENEMY tag.
+# * Aatrox R post-passive empowered Q/W: REJECT re-verified.
+#   effects_descriptions confirms "fearing nearby enemy MINIONS
+#   AND MONSTERS for 3 seconds" - minion/monster ONLY, not
+#   champions. The post-R "passive Q-sweetspot empowerment"
+#   notion in items 150-152 audit was speculative; schema-lifted
+#   description does NOT empower Q or W during R.
+# * Volibear R Stormbringer passive form: REJECT re-verified.
+#   effects_descriptions confirms only turret-disable + 50% slow
+#   (1s decaying). No champion-facing first-order CC.
+# * Briar W Blood Frenzy empowered Q/E/R: REJECT re-verified.
+#   effects_descriptions for Briar W confirms self-buff frenzy
+#   state (ghosting + AS + MS + AoE-around-target AA
+#   empowerment) with NO CC granted to Q/E/R while in frenzy.
+#
+# NO NEW CONDITION TAGS added this wave (the spec's proposed
+# COND_FURY_50 / COND_POSTR_PASSIVE / COND_TRANSFORMED /
+# COND_FRENZY_ACTIVE are redundant with existing
+# COND_FRENZY_STATE which already covers all observed state-
+# tracking-gated CC mechanics; tag total remains 13). The
+# COND_RANGE_GATED forward-marker tag is now ACTIVE (1 consumer
+# = Maokai R), closing the wave 7 schema-lift empty-registry
+# contract.
+#
+# Registry growth: 65 entries / 54 champions (ENGINE 1.54.0) ->
+# 67 entries / 54 champions (ENGINE 1.55.0) (Maokai already in
+# registry via Q wave 2; Briar already in registry via Q wave 4
+# + E wave 5; both are multi-wave coexistence adds on existing
+# champions). Per-tag consumer counts post-wave-18:
+# COND_RANGE_GATED +1 (FIRST consumer); COND_TARGET_DEBUFFED +1.
+#
+# Math preservation: default include_conditional=False
+# compute_cc_pressure is BYTE-IDENTICAL to 1.54.0 for all
+# touched champions. include_conditional=True callers receive:
+#   * Maokai R: MAX rule selects existing unconditional 2.0s
+#     by default (conditional 0.9s default falls below) - so
+#     the visible total_cc_seconds is UNCHANGED vs 1.54.0 at
+#     default calibration. Operator-tunable via
+#     per_entry_probability override.
+#   * Briar R: +0.75s conditional contribution (1.5 * 0.5) on
+#     top of existing Briar Q + E conditional contributions.
+#
+# Closes items 170 / 172 / 173 / 174 / 175 carry forward "Maokai
+# R distance-gated NEEDS same-spell-slot coexistence schema
+# lift" via the new coexists_with_unconditional flag + consumer
+# MAX rule. Closes wave 7 (ENGINE 1.44.0) COND_RANGE_GATED
+# forward-marker tag empty-registry contract via Maokai R FIRST
+# consumer.
+#
 # 1.54.0 (cc_conditional wave 17 - COND_TRAVERSE tag schema lift
 # +1 new condition tag constant + Taliyah E first-order CC entry
 # closing item 174 carry (i), 2026-05-24):
