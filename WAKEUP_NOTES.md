@@ -3,6 +3,69 @@
 > Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 archived to docs/history_notes.md. Only the last 3 sessions kept here.
 
 ---
+# 2026-05-24 - item 174 SHIPPED: operator-gated parallel drain #9 (cc_conditional wave 16 ENGINE 1.53.0 + BACKLOG stale-sweep wave 18 + L31 round 6 SATURATED + cost/latency CLEAN wave 22 + RC test pin fix for wave 16) (4 commits + 1 merge `9e16584` `45955fc` `66dda6d` `2ac7147` pushed origin/main `9c1cb22..2ac7147`; ENGINE 1.52.0 -> 1.53.0; DS :8893 restarted pid 14312 -> serves 1.53.0; RC :8888 unchanged pid 5800 - DS engine + docs + 1 RC test fix only)
+
+Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 27th consecutive run using orchestrator-merge pattern (items 134-174). 3 worktree agents dispatched concurrent. No question-fork (carries clearly enumerated in item 173 (a)-(i)). Pre-flight: 0 open PRs, all CI green since item 172, 2 stale remote worktree branches (a515+ae88) confirmed fully merged via empty diff vs origin/main -> deleted.
+
+**Slice A `45955fc` (merge into main) feat(ds) cc_conditional wave 16 ENGINE 1.52.0 -> 1.53.0 (36 files / 1175 ins / 37 del):**
+- Re-audit of REJECT carries from prior waves against latest Meraki schema (cast_time + effects_descriptions + damage_blocks). 4 ship candidates surface WITHOUT requiring schema lifts.
+- SHIP **Garen Q Decisive Strike** primary registry COND_NTH_HIT prob 0.7: 1.5s silence on empowered-AA (FIRST Garen first-order CC anywhere).
+- SHIP **Syndra E Scatter the Weak** primary registry COND_TARGET_DEBUFFED prob 0.5: 1.25s Dark-Sphere knockback stun (FIRST Syndra first-order CC anywhere).
+- SHIP **Udyr E Blazing Stampede** primary registry COND_NTH_HIT prob 0.7: 0.75s empowered-AA pounce stun (FIRST Udyr first-order CC anywhere).
+- SHIP **KSante W Path Maker** primary registry COND_CHANNEL_COMPLETION prob 0.5: 1.0s recast stun midpoint (0.5-1.75s range; multi-wave coexistence with KSante Q wave 1).
+- 7 REJECT verdicts: Ahri W (no W CC), Aphelios R (shipped wave 13 as Q form3 sidecar), Darius E (unconditional pull-displacement), Irelia R (displacement+slow only), LeeSin R (carries from waves 13/14/15), Milio R (cleanse+tenacity only), Taliyah E (needs NEW COND_TRAVERSE tag - operator-gated).
+- Registry: 60/51 (53 primary + 7 sidecar) -> 64/54 (57 primary + 7 sidecar). Per-tag growth: COND_NTH_HIT +2, COND_TARGET_DEBUFFED +1, COND_CHANNEL_COMPLETION +1.
+- +84 tests in NEW `agents/daemon_slayer/tests/test_cc_conditional_wave16.py`. ENGINE_VERSION 1.52.0 -> 1.53.0 + bulk pin sync across 31 DS test files. `test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES` extended. `test_cc_conditional_wave1.py` KSante assertions relaxed for multi-wave coexistence (parallel to wave 15 Ornn relaxation).
+- Default `compute_cc_pressure(include_conditional=False)` BYTE-IDENTICAL to 1.52.0 for all 4 candidates.
+
+**Slice B `9e16584` (committed direct to main pre-Slice-A) docs(roadmap) BACKLOG/ROADMAP stale-sweep wave 18 (1 file / 1 ins / 1 del):**
+- 1 flip: ROADMAP.md L82 `tools/gamepc_lcu_agent.py:1091` -> `:1194` (live grep: `return {"ok": False, "err": "augment_intent_unsupported"` at L1194; drifted +103 from item 156 anchor).
+- 5 other open-item paths grep-verified live (main.js:3081/3092/4281 + gamepc_lcu_agent.py:246 + dev.js:361). Per `feedback_no_history_rewrite`: shipped historical paths NOT touched.
+- Sweep cycle decay: 1=2 / 2=3 / 3=3 / 4-12=1 / 13=0 / 14=3 / 15=2 / 16=2 / 17=0 / **18=1**.
+- Also Slice B did read-only 22nd consecutive cost/latency CLEAN sweep (7 levers green; /api/bridge 0.132/sec top non-suppressed; minimap-crop + activity at 0/sec confirming item 171 trailing-space fix works; 14 RC-* scheduled tasks; 27=27 panel CSS parity).
+
+**Slice C L31 type annotations round 6 SATURATED (no commit):**
+- Surfaces checked: tools/ + vision_server/ + ops/_non_frozen + scripts/. tools/ + vision_server/ + ops/_non_frozen = 0 public unannotated defs (rounds 1-5 saturated). scripts/ = ~70 sites across 9 ad-hoc data pipelines (retrofill_match_metrics + rewind_scraper + data_pipeline + discover_champion_codes + probe_missing_codes + team_planner_sync + patch_champion + fetch_cdragon_pbe + audit_ddragon_items) - SKIPPED per item 173 don't-redo "scripts/ ad-hoc data pipelines retrofills skipped per constraint".
+- Verdict consistent with item 173 saturation note. No commit.
+
+**RC test pin fix `66dda6d` fix(tests) cc_conditional_pressure - swap Garen for Veigar post-wave-16 (1 file / 6 ins / 4 del):**
+- Slice A's wave 16 Garen Q landing invalidated `tests/test_routes_cc_conditional_pressure.py::MathTests::test_zero_cc_both_sides_returns_balanced_warn` which used Garen+Caitlyn as "unconditional-only at patch 16.10.1". Body returned tier=bad instead of warn.
+- Fix: swap Garen for Veigar (mage outside cc_conditional registry). Updated docstring with wave-16 invalidation marker mirroring test author's wave-3 Aatrox marker.
+- Caitlyn + Veigar + Annie + Galio all confirmed outside 54-champ cc_conditional registry.
+
+**Docs sync `2ac7147` (6 files / 8 ins / 8 del):**
+- ENGINE 1.52.0 -> 1.53.0 + 4465 -> 4549 tests + 60/51 waves 0-15 -> 64/54 waves 0-16 + wave 16 closure note across docs/DAEMON_SLAYER.md L5+L32 + README.md L46 + BRIEF.md L20+L26 + docs/ARCHITECTURE.md L161 + BACKLOG.md L13 + ROADMAP.md L165.
+
+**Verified post-merges + DS restart:**
+- DS suite **4549 passed / 1 skipped / 1 xfailed / 1761 subtests in 67.43s** (+84 over 4465 baseline = exactly wave 16 test file).
+- RC suite (excl phase8_smoke) **3291 passed / 67 subtests in 56.16s** post-test-pin-fix (1 failure pre-fix on Garen + Caitlyn pin).
+- tests/phase8_smoke/ = **75/75 PASS** post-DS-restart.
+- `py -m ruff check .` ALL CHECKS PASSED.
+- DS :8893 killed pid 14312 + `schtasks /Run /TN RC-DaemonSlayer` -> serves engine_version=1.53.0 patch=16.10.1 champions=172 items=705.
+- RC :8888 unchanged pid 5800 (no route/coach edits this run).
+
+**Merge order:** Slice B committed direct to main FIRST `9e16584` (pre-Slice-A; 1 file). Slice A merged into main SECOND `45955fc` (worktree branch `worktree-agent-ad9b284de92b11e8b`, ort, 0 conflicts, 36 files). RC test pin fix THIRD `66dda6d` (1 file, direct commit). Docs sync FOURTH `2ac7147` (6 files / 8 ins / 8 del). 0 merge conflicts across all slices.
+
+**Don't-redo:**
+- Wave 16 candidates Garen Q + Syndra E + Udyr E + KSante W are first-order CC entries for 3 net-new champs + 1 multi-wave coexistence. Future wave 17+ should target the remaining REJECT carries that DO NOT need schema lift (Taliyah E NEEDS new COND_TRAVERSE tag - operator-gated).
+- The RC test pin fix is the CANONICAL gotcha for cc_conditional wave landings: tests/test_routes_cc_conditional_pressure.py uses specific champion examples that go stale when waves land. Future waves landing first-order CC on Annie/Galio/Caitlyn/Veigar/Brand/Mordekaiser/TwistedFate would similarly require test pin updates.
+- KSante now has 2-slot cc_conditional coverage (Q wave 1 + W wave 16); previously TahmKench was the only 3-slot champ (wave 13).
+- The orchestrator-merge pattern is now 27 consecutive runs (items 134-174).
+- L31 type annotations is SATURATED across orchestrator-easy surfaces (rounds 1-5 closed coaches/+dashboard/+core/+tft/+lcu/+coach_integration/+agents/+vision_server/+ops/_non_frozen/+tools/_libraries/+scripts/_entrypoints/). Round 6 confirmed tools/ + vision_server/ + ops/ fully saturated; scripts/ remains operator-gated.
+- Slice B's 1-flip BACKLOG sweep on wave 18 shows the lane re-grows by ~1 flip per cc_conditional wave (line drift in `tools/gamepc_lcu_agent.py` across the L31 rounds). Continue periodic sweeps every 2-3 runs.
+
+**Carries forward:**
+- (a) All item 173 carries unchanged EXCEPT (a)-relaxed: cc_conditional wave 16 DONE; Garen Q + Syndra E + Udyr E + KSante W NO LONGER schema-blocked.
+- (b) DD Defy heal-on-takedown STILL deferred.
+- (c) Live ARAM/SR smoke STILL pending.
+- (d) Calibrations STILL operator-gated.
+- (e) Legion 1-PC consolidation STILL operator-gated.
+- (f) cc_conditional wave 17+ candidates: Taliyah E NEEDS new COND_TRAVERSE tag (operator-gated) + Maokai R distance-gated (NEEDS same-spell-slot coexistence schema lift) + 6 wave-7 schema-lift carries (Renekton W Fury / Aatrox post-R passive / Volibear R passive / Briar W frenzy / multi-form Karma+Hwei+Neeko) STILL operator-gated.
+- (g) 542 residual U+2500 box-drawing chars carry forward as operator-gated separate sweep (NEEDS rc_supervisor.py + rc_self_monitor.py frozen-file grant).
+- (h) v2.1 audit pages 9/10 Champ Select ARAM/Arena -> 11/12/13 Active Match SR/ARAM/Arena -> 14/15/16 PGR SR/ARAM/Arena (8 remaining; this session's framing again non-UI).
+- (i) Frozen-file grant NOT used this session.
+
+---
 # 2026-05-24 - item 173 SHIPPED: operator-gated parallel drain #8 (cc_conditional wave 15 ENGINE 1.52.0 + L31 type annotations round 5 + cost/latency CLEAN wave 21 + BACKLOG stale-sweep wave 17) (3 commits + 2 merges pushed origin/main; ENGINE 1.51.0 -> 1.52.0; DS :8893 restarted pid 13492 -> serves 1.52.0; RC :8888 unchanged pid 5800 - DS engine + docs only)
 
 Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 26th consecutive run using orchestrator-merge pattern (items 134-173). 3 worktree agents dispatched concurrent. No question-fork (operator framed scope; carries clearly enumerated in item 172 (a)-(i)). Pre-flight: 0 open PRs, 3 green CI runs since item 172 ruff fix, 13 stale locked worktrees (harness-owned).
