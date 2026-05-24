@@ -39,7 +39,7 @@ def fetch(url: str, dest: Path, *, retries: int = 2, timeout: float = 6.0) -> bo
                 return False
             time.sleep(0.5 * (attempt + 1))
 
-def main():
+def main() -> None:
     version = latest_version()
     src_dir = VERSION_DIR / version
     dst_root = ROOT / "web" / "data" / "ddragon" / version
