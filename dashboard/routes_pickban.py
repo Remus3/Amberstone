@@ -535,6 +535,180 @@ def _query_performance(conn: sqlite3.Connection, puuid: str, role: str,
     return result
 
 
+# --------------------------------------------------------------------
+# Item 168 (2026-05-24): P&B panel restructured to 3 stacked sub-panels.
+# Helpers below feed the new shape:
+#   * ``_query_last_in_queue``   - 4th pick = operator's most-recent
+#                                  champion in the SAME queue_id.
+#   * ``_query_struggle_ban``    - 4th ban = operator's at-role highest
+#                                  loss-rate enemy with >=2 encounters.
+#   * ``_compose_cleanse_advisory`` - dynamic explanation prose hooking
+#                                  into enemy-team CC pressure. Runs at
+#                                  request time (not cached) so the line
+#                                  shifts as enemies lock in.
+# Each is best-effort; on engine miss/db miss the field returns None
+# instead of 500-ing the whole endpoint.
+# --------------------------------------------------------------------
+
+
+def _query_last_in_queue(conn: sqlite3.Connection, puuid: str,
+                          queue_ids: tuple[int, ...],
+                          exclude_ids: tuple[int, ...] = ()) -> dict | None:
+    """Operator's most-recently-played champion in matches whose queue_id
+    is in ``queue_ids``. When the panel passes the live queue_id (e.g.
+    420 Ranked Solo) the result is the operator's last Ranked Solo champ,
+    answering "what did I play last time in this queue". ``exclude_ids``
+    skips any champ already banned/picked in the current draft.
+    """
+    if not queue_ids:
+        return None
+    placeholders = ",".join("?" * len(queue_ids))
+    excl_sql, excl_params = _exclude_clause(exclude_ids)
+    cur = conn.execute(
+        f"""
+        SELECT p.champion_id, p.champion_name, p.win,
+               m.game_creation_ts
+        FROM participants p
+        JOIN matches m ON m.match_id = p.match_id
+        WHERE p.puuid = ?
+          AND m.queue_id IN ({placeholders})
+          {excl_sql.replace("champion_id", "p.champion_id")}
+        ORDER BY m.game_creation_ts DESC, p.champion_id ASC
+        LIMIT 1
+        """,
+        (puuid, *queue_ids, *excl_params),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    champ_id, champ_name, win, ts = row
+    return {
+        "champId":   int(champ_id),
+        "champName": str(champ_name or "?"),
+        "games":     1,
+        "wins":      int(win or 0),
+        "wr_pct":    100 if win else 0,
+        "reason":    "last played in this queue"
+                     + (" - won" if win else " - lost"),
+        "source":    "last_in_queue",
+    }
+
+
+def _query_struggle_ban(conn: sqlite3.Connection, puuid: str, role: str,
+                         queue_ids: tuple[int, ...],
+                         exclude_ids: tuple[int, ...] = ()) -> dict | None:
+    """Operator's single highest loss-rate enemy at this role with
+    >=_MIN_GAMES_BAN encounters. The "struggle ban" surfaces the lane
+    matchup the operator personally loses to most often. Excludes any
+    champ already banned. Tied loss-rates broken by more encounters
+    (more reliable), then by champion_id (stable).
+    """
+    placeholders = ",".join("?" * len(queue_ids))
+    excl_sql, excl_params = _exclude_clause(exclude_ids)
+    cur = conn.execute(
+        f"""
+        SELECT enemy.champion_id, enemy.champion_name,
+               COUNT(*) AS encounters,
+               SUM(CASE WHEN tracked.win=0 THEN 1 ELSE 0 END) AS losses
+        FROM participants tracked
+        JOIN participants enemy
+          ON enemy.match_id = tracked.match_id
+         AND enemy.team_id != tracked.team_id
+         AND enemy.team_position = tracked.team_position
+        WHERE tracked.puuid = ?
+          AND tracked.team_position = ?
+          AND tracked.match_id IN (
+            SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
+          )
+          {excl_sql.replace("champion_id", "enemy.champion_id")}
+        GROUP BY enemy.champion_id
+        HAVING encounters >= ?
+        ORDER BY (CAST(losses AS REAL) / encounters) DESC,
+                 encounters DESC, enemy.champion_id ASC
+        LIMIT 1
+        """,
+        (puuid, role, *queue_ids, *excl_params, _MIN_GAMES_BAN),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    champ_id, champ_name, encounters, losses = row
+    pct = int(round(100 * losses / encounters)) if encounters else 0
+    if pct < 50:
+        # Not a real struggle if operator wins half or more.
+        return None
+    return {
+        "champId":    int(champ_id),
+        "name":       str(champ_name or "?"),
+        "encounters": int(encounters),
+        "losses":     int(losses),
+        "pct":        pct,
+        "source":     "struggle",
+    }
+
+
+def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
+                               my_summoners: tuple[int, ...]) -> str | None:
+    """Heuristic CC-cleanse advisory. Reads enemy locked champs, counts
+    heavy-CC sources (stun/root/charm/fear/snare>=1.0s per champion
+    based on the DS engine's per-spell CC registry). When the count
+    crosses 3 and the operator's summoner pair doesn't already include
+    Cleanse (id 1), surface a short prose tip.
+
+    Returns None when nothing to say (CC count below threshold OR
+    cleanse already equipped OR engine module unimportable).
+    """
+    if not enemy_cids:
+        return None
+    try:
+        from agents.daemon_slayer import _PER_SPELL_CC_DURATIONS  # type: ignore
+        from agents.daemon_slayer import cc_conditional as _cc_cond
+    except Exception:
+        return None
+    # Reverse champion-id -> name via DDragon dictionary (already
+    # loaded as a module-level cache by _load_champ_id_to_name).
+    id_to_name = _load_champ_id_to_name()
+    heavy_cc_champs: list[str] = []
+    HEAVY_THRESHOLD = 1.0  # seconds of single-spell hard CC
+    for cid in enemy_cids:
+        name = id_to_name.get(int(cid))
+        if not name:
+            continue
+        per_spell = _PER_SPELL_CC_DURATIONS.get(name) or {}
+        # Conditional entries (from cc_conditional) also count if
+        # their CC duration crosses threshold.
+        cond_entries = _cc_cond.get_conditional_entries(name) if hasattr(
+            _cc_cond, "get_conditional_entries") else []
+        max_cc = 0.0
+        for spell_key, durations in per_spell.items():
+            if not durations:
+                continue
+            # durations may be list-of-floats (per-rank); take the max.
+            try:
+                m = max(float(d) for d in durations if d is not None)
+                if m > max_cc:
+                    max_cc = m
+            except Exception:
+                continue
+        for entry in cond_entries:
+            try:
+                d = float(getattr(entry, "duration_seconds", 0.0) or 0.0)
+                if d > max_cc:
+                    max_cc = d
+            except Exception:
+                continue
+        if max_cc >= HEAVY_THRESHOLD:
+            heavy_cc_champs.append(name)
+    if len(heavy_cc_champs) < 3:
+        return None
+    has_cleanse = 1 in (my_summoners or ())
+    if has_cleanse:
+        return None
+    sample = ", ".join(heavy_cc_champs[:3])
+    return (f"enemy CC heavy ({len(heavy_cc_champs)} champs incl. "
+            f"{sample}) - consider Cleanse (D) over current spell")
+
+
 def _query_bans(conn: sqlite3.Connection, puuid: str, role: str,
                 queue_ids: tuple[int, ...]) -> list[dict]:
     """Top 3 enemy champions in same role the operator has lost to most
@@ -813,6 +987,9 @@ def _serve_pickban_recs(h) -> None:
         # `comfort` row and top=3 for LIMIT/NEW/SYNERGY rows 1+2+3.
         exclude_ids = _parse_csv_ints((qs.get("exclude") or [""])[0])
         ally_ids    = _parse_csv_ints((qs.get("allies")  or [""])[0])
+        # Item 168: enemies + my_summoners for the cleanse advisory.
+        enemy_ids   = _parse_csv_ints((qs.get("enemies") or [""])[0])
+        my_summs    = _parse_csv_ints((qs.get("my_summoners") or [""])[0])
         try:
             top_raw = int((qs.get("top") or ["1"])[0])
         except ValueError:
@@ -848,8 +1025,26 @@ def _serve_pickban_recs(h) -> None:
                 bans = _counters_for_champion(picks[0]["champName"])
             if not bans:
                 bans = _query_bans(conn, puuid, role, queue_ids)
+            # Item 168: 4th pick = operator's most-recent champ in the
+            # exact queue. Built after the comfort top-3 so picks[0..3]
+            # = role-matching + picks[3] = last-in-queue. Exclude the
+            # already-chosen comfort picks so we don't duplicate.
+            pick_excl = tuple(exclude_ids) + tuple(
+                int(p.get("champId") or 0) for p in picks
+                if p.get("champId"))
+            last_in_queue = _query_last_in_queue(
+                conn, puuid, queue_ids, exclude_ids=pick_excl)
+            # Item 168: 4th ban = personal struggle (highest-loss-rate
+            # at this role, >=2 enc). Exclude any champ already in
+            # bans[] so we don't duplicate the counter recs.
+            ban_excl = tuple(exclude_ids) + tuple(
+                int(b.get("champId") or 0) for b in bans if b.get("champId"))
+            struggle_ban = _query_struggle_ban(
+                conn, puuid, role, queue_ids, exclude_ids=ban_excl)
         finally:
             conn.close()
+        # Item 168: cleanse advisory composed outside the DB cursor.
+        cleanse_advisory = _compose_cleanse_advisory(enemy_ids, my_summs)
 
         # s214 response shape:
         #   `performance` - first pick (back-compat with pre-s214 callers
@@ -866,6 +1061,12 @@ def _serve_pickban_recs(h) -> None:
             "performance": first,
             "performance_picks": picks,
             "performance_bans": bans,
+            # Item 168: 4-pick + 4-ban + advisory additions. The legacy
+            # fields above stay untouched so pre-item-168 callers don't
+            # break; the panel reads the new fields when present.
+            "last_in_queue":  last_in_queue,
+            "struggle_ban":   struggle_ban,
+            "cleanse_advisory": cleanse_advisory,
             "elapsed_ms": int((time.time() - t0) * 1000),
         }).encode("utf-8"), "application/json")
     except Exception as exc:

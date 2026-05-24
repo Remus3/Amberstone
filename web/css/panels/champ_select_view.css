@@ -324,6 +324,69 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
+
+/* Item 168 (2026-05-24): top-3 DS picks preview below the 6 archetype
+ * buttons. Fills the empty space the operator flagged. 3-cell
+ * horizontal row of item-icon + name; hydrates the moment the
+ * /api/ds-preview POST returns (placeholder cells until then). Operator
+ * picks a different archetype -> _CSV_DS_CACHE invalidates the old key,
+ * the preview repopulates with the new archetype's top 3. */
+.csv-arch-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #232830;
+}
+.csv-arch-preview-head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: #6a7280;
+  text-align: center;
+}
+.csv-arch-preview-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.csv-arch-preview-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 2px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+}
+.csv-arch-preview-cell.is-empty { opacity: 0.5; }
+.csv-arch-preview-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  background: #14171c;
+  overflow: hidden;
+  border: 1px solid #2a2f37;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6a7280;
+  font-weight: 700;
+}
+.csv-arch-preview-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-arch-preview-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #d1d5db;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
 .csv-arch-btn {
   display: flex;
   flex-direction: column;
@@ -907,6 +970,150 @@
   flex: 1 1 auto;
   min-height: 0;
 }
+
+/* Item 168 (2026-05-24): 3-stacked-sub-panel layout for the Pick & Ban
+ * card. PICKS on top (4 cells), BANS in middle (4 cells), EXPLANATION
+ * at bottom (per-pick reason lines + cleanse advisory). Each section
+ * carries its own labeled head; the parent .csv-card-pickban head is
+ * still hidden (preserves the s212 layout). All 3 sections live within
+ * the existing row-2 floor (460px) so the panel doesn't escape its
+ * grid track.
+ *
+ * Picks + Bans use a 4-column grid; cells are square-ish (icon + name
+ * + small tag pill). Explanation is a vertical text strip with one
+ * short line per source plus the cleanse advisory in red. */
+.csv-pb168-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.csv-pb168-picks { flex: 1 1 auto; }
+.csv-pb168-bans  { flex: 1 1 auto; }
+.csv-pb168-expl  { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.csv-pb168-head {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: #6a7280;
+  text-align: center;
+  padding: 2px 0;
+  border-bottom: 1px solid #232830;
+}
+.csv-pb168-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.csv-pb168-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 2px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+.csv-pb168-cell.is-clickable { cursor: pointer; transition: border-color 0.12s, transform 0.12s; }
+.csv-pb168-cell.is-clickable:hover { transform: translateY(-1px); }
+.csv-pb168-cell.csv-pb168-pick.is-clickable:hover { border-color: #4ade80; }
+.csv-pb168-cell.csv-pb168-ban.is-clickable:hover  { border-color: #ef4444; }
+.csv-pb168-cell.csv-pb168-pick.is-selected { border-color: #4ade80; box-shadow: 0 0 0 2px #4ade80; }
+.csv-pb168-cell.csv-pb168-ban.is-selected  { border-color: #ef4444; box-shadow: 0 0 0 2px #ef4444; }
+/* Source-tag pill (TOP / #2 / #3 / LAST for picks; CTR / STRUGGLE for bans). */
+.csv-pb168-tag {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #6a7280;
+  background: #14171c;
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+.csv-pb168-cell.is-performance .csv-pb168-tag { color: #4ade80; }
+.csv-pb168-cell.is-mastery     .csv-pb168-tag { color: #a78bfa; }
+.csv-pb168-cell.is-meta        .csv-pb168-tag { color: #60a5fa; }
+.csv-pb168-cell.is-last        .csv-pb168-tag { color: #fbbf24; }
+.csv-pb168-cell.is-counter     .csv-pb168-tag { color: #ef4444; }
+.csv-pb168-cell.is-struggle    .csv-pb168-tag { color: #f97316; }
+.csv-pb168-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 4px;
+  background: #14171c;
+  overflow: hidden;
+  border: 1px solid #2a2f37;
+}
+.csv-pb168-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-pb168-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+.csv-pb168-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ef4444;
+}
+.csv-pb168-cell.is-struggle .csv-pb168-pct { color: #f97316; }
+/* Explanation strip. Compact, quickly readable. Cleanse advisory gets
+ * a red left-accent + slightly bolder weight so it draws the eye
+ * during champ-select. Per-pick reason lines are gray prose with
+ * source-color name highlight at the start. */
+.csv-pb168-expl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 2px 4px;
+}
+.csv-pb168-expl-empty {
+  font-size: 12px;
+  font-style: italic;
+  color: #6a7280;
+  text-align: center;
+  padding: 6px 0;
+}
+.csv-pb168-expl-cc {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid #ef4444;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+.csv-pb168-expl-pick {
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.csv-pb168-expl-pick.is-performance { border-left: 2px solid #4ade80; padding-left: 6px; }
+.csv-pb168-expl-pick.is-mastery     { border-left: 2px solid #a78bfa; padding-left: 6px; }
+.csv-pb168-expl-pick.is-meta        { border-left: 2px solid #60a5fa; padding-left: 6px; }
+.csv-pb168-expl-pick.is-last        { border-left: 2px solid #fbbf24; padding-left: 6px; }
 
 /* s239: foregrounded per-user "YOUR RECORD" headline. Sits at the top
  * of #csv-pickban-body, above the mood recs. Lavender left-accent +
