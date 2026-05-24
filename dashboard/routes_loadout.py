@@ -28,6 +28,17 @@ _LCU_ALLOWED_CMDS = {
     "accept_ready", "set_config", "bench_swap",
     "set_summoners", "lock_pick", "reroll",
     "apply_runes", "apply_item_set",
+    # 2026-05-23 (item 164): plural-form batch push so all 4 build
+    # variants + the build-order set go to LCU in one PUT. Each entry
+    # replaces by-uid (does NOT wipe other RC- sets). Used by the
+    # champ-select Apply flow + the active-match phase=InProgress
+    # trigger so the in-game item-shop dropdown always carries RC's
+    # current curated builds.
+    "apply_item_sets_batch",
+    # 2026-05-23 (item 164): summoner-spell strip click pushes via the
+    # existing set_summoners agent route - allowlist surfaces it for
+    # the new click handler in champ_select.js.
+    "set_summoner_spell",
     "trade_request", "accept_trade", "decline_trade",
     # Lobby actions (2026-04-26): start/cancel matchmaking from the
     # dashboard's Find Match button + change queue type from the
