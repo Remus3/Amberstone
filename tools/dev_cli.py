@@ -100,7 +100,7 @@ def _info(msg): print(f"          {msg}")
 
 # ── Subcommands ────────────────────────────────────────────────────────────
 
-def cmd_status():
+def cmd_status() -> int:
     """Print environment diagnostics. Read-only, no side effects."""
     print("=" * 60)
     print("Riot Commander -- Environment Status")
@@ -212,7 +212,7 @@ def cmd_status():
     return 0
 
 
-def cmd_start():
+def cmd_start() -> int:
     """Launch via start.bat -- the supported project entrypoint.
     start.bat loads the API key from API-Key-Claude.txt, then launches
     pythonw.exe main.py. Non-blocking: the CLI returns immediately.
@@ -229,7 +229,7 @@ def cmd_start():
     return 0
 
 
-def cmd_start_clean():
+def cmd_start_clean() -> int:
     """Launch via restart_clean.bat -- the supported clean-start path.
     restart_clean.bat kills existing pythonw processes, clears __pycache__,
     then relaunches pythonw.exe main.py. Delegates entirely to the
@@ -241,7 +241,7 @@ def cmd_start_clean():
     return r.returncode
 
 
-def cmd_preflight():
+def cmd_preflight() -> int:
     """Run preflight checks (lint + syntax). Delegates to tools/preflight.cmd."""
     pf = _require_tool("tools/preflight.cmd")
     print(f"Running preflight: {pf}")
@@ -249,7 +249,7 @@ def cmd_preflight():
     return r.returncode
 
 
-def cmd_smoke():
+def cmd_smoke() -> int:
     """Run the Phase 2 smoke test harness."""
     _require_tool("tools/run_phase2_smoke.py")
     print("Running smoke harness: python tools/run_phase2_smoke.py")
@@ -257,7 +257,7 @@ def cmd_smoke():
     return r.returncode
 
 
-def cmd_perf(extra_args):
+def cmd_perf(extra_args: list[str]) -> int:
     """Run the Phase 2 performance probe. Passes extra args through."""
     _require_tool("tools/run_phase2_perf.py")
     cmd_args = [_PYTHON, "tools/run_phase2_perf.py"] + list(extra_args)
@@ -266,7 +266,7 @@ def cmd_perf(extra_args):
     return r.returncode
 
 
-def cmd_snapshot():
+def cmd_snapshot() -> int:
     """Create a git checkpoint commit. Delegates to tools/snapshot.cmd."""
     snap = _require_tool("tools/snapshot.cmd")
     print(f"Running snapshot: {snap}")
@@ -274,7 +274,7 @@ def cmd_snapshot():
     return r.returncode
 
 
-def cmd_rollback_last(argv):
+def cmd_rollback_last(argv: list[str]) -> int:
     """
     Roll back the last git checkpoint commit.
     Requires --yes flag for non-interactive use, otherwise prompts.
@@ -341,7 +341,7 @@ Examples:
 """
 
 
-def main():
+def main() -> int:
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
         print(_HELP)
         return 0
