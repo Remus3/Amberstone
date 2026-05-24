@@ -386,14 +386,16 @@ class WaveSixteenConditionalTagConsumerCountsTests(unittest.TestCase):
         self.assertGreaterEqual(len(frenzy_consumers), 3)
 
     def test_range_gated_still_zero_consumers(self) -> None:
-        # COND_RANGE_GATED remains a forward-marker with no consumers
-        # post-wave-16.
+        # Wave 16 ship-time: COND_RANGE_GATED had 0 consumers. Wave
+        # 18 (ENGINE 1.55.0) added Maokai R as the FIRST consumer via
+        # the coexists_with_unconditional schema lift. Wave 16
+        # invariant relaxed: at most 1 consumer present at this point.
         range_gated_consumers = [
             e
             for e in self._all_entries()
             if e.condition == cc.COND_RANGE_GATED
         ]
-        self.assertEqual(len(range_gated_consumers), 0)
+        self.assertLessEqual(len(range_gated_consumers), 1)
 
 
 class WaveSixteenDefaultCallerByteIdenticalTests(unittest.TestCase):

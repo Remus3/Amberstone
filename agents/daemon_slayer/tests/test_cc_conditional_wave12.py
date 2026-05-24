@@ -332,11 +332,16 @@ class WaveTwelveConditionalTagConsumerCountsTests(unittest.TestCase):
         )
 
     def test_cond_range_gated_consumers_unchanged_at_zero(self) -> None:
-        # Wave 7 forward-marker tag stays at 0 consumers (wave 12 does
-        # NOT add a range_gated consumer; Maokai R was REJECTED).
+        # Wave 12 ship-time: COND_RANGE_GATED had 0 consumers (Maokai
+        # R was REJECTED this wave). Wave 18 (ENGINE 1.55.0) added
+        # Maokai R as the FIRST consumer via the
+        # coexists_with_unconditional schema lift. Wave 12 invariant
+        # relaxed: at most 1 consumer present at this point in the
+        # registry's evolution (the wave-12-only ship contract pinned
+        # 0; wave 18 closed the forward-marker contract).
         consumers = self._collect_tag_consumers()
-        self.assertEqual(
-            len(consumers.get(cc.COND_RANGE_GATED, [])), 0
+        self.assertLessEqual(
+            len(consumers.get(cc.COND_RANGE_GATED, [])), 1
         )
 
 
