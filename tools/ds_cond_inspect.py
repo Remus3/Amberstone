@@ -21,7 +21,7 @@ SCALE_FIELDS = (
 )
 
 
-def show(champ: str, keys):
+def show(champ: str, keys: list[str]) -> None:
     c = D.get(champ)
     if c is None:
         print(f"!! champion {champ!r} not in snapshot")

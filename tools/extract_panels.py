@@ -11,7 +11,7 @@ PANELS_DIR = "web/js/panels"
 with open(SRC, encoding="utf-8") as f:
     raw = f.readlines()           # 0-indexed internally, 1-indexed in comments
 
-def L(start, end, dedent=True):
+def L(start: int, end: int, dedent: bool = True) -> str:
     """Extract lines start..end (1-indexed, inclusive).
     If dedent=True, strip exactly 2 leading spaces (legacy IIFE indent)."""
     chunk = raw[start - 1 : end]
