@@ -1874,6 +1874,44 @@ function _csvArchetypePickerHtml(champion) {
   const autoBtn = `<button class="csv-arch-auto${isAuto ? " is-active" : ""}"
                            data-champion="${champion}"
                            title="${isAuto ? 'currently auto-derived from DDragon tags' : 'click to revert to DDragon-tag default'}">AUTO</button>`;
+  // Item 168: top-3 DS item preview below the 6 archetype buttons.
+  // Fills the empty space the operator flagged. Pulls from the same
+  // _CSV_DS_CACHE the build chooser uses (already fetched in parallel
+  // by _csvBuildVariantsFor). When cache is cold the row shows a
+  // 3-cell placeholder; the next render tick (~1s) hydrates once the
+  // POST returns.
+  const ver = CHAMPS.version || "latest";
+  const archKey = (resolved && resolved.key) || "";
+  // Default to SR preview; the build chooser handles the mode-specific
+  // ranking elsewhere. SR preview is the most representative pivot
+  // since archetype-driven scoring is best-developed for SR.
+  const dsKey = _csvDsCacheKey(champion, "SR", archKey);
+  const ranked = _CSV_DS_CACHE[dsKey] || [];
+  const top3 = ranked.slice(0, 3);
+  const previewCells = (top3.length ? top3 : [null, null, null]).map((r) => {
+    if (!r || !r.item_id) {
+      return `<div class="csv-arch-preview-cell is-empty">
+                <div class="csv-arch-preview-icon">?</div>
+                <div class="csv-arch-preview-name">-</div>
+              </div>`;
+    }
+    const iid = String(r.item_id);
+    const nm = r.item_name || iid;
+    return `<div class="csv-arch-preview-cell" title="${nm}">
+              <div class="csv-arch-preview-icon">
+                <img src="/data/ddragon/${ver}/img/item/${iid}.png" onerror="this.style.display='none'" alt="">
+              </div>
+              <div class="csv-arch-preview-name">${nm}</div>
+            </div>`;
+  }).join("");
+  const previewLabel = top3.length
+    ? `DS top picks - ${resolved.label || archKey}`
+    : "DS picks - computing...";
+  const previewBlock = `
+    <div class="csv-arch-preview">
+      <div class="csv-arch-preview-head">${previewLabel}</div>
+      <div class="csv-arch-preview-row">${previewCells}</div>
+    </div>`;
   return `
     <div class="csv-archetype-picker" data-champion="${champion}">
       <div class="csv-archetype-title">
@@ -1881,6 +1919,7 @@ function _csvArchetypePickerHtml(champion) {
         ${autoBtn}
       </div>
       <div class="csv-archetype-buttons">${buttons}</div>
+      ${previewBlock}
     </div>`;
 }
 
@@ -2734,15 +2773,23 @@ function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
   // multi-row queries on LIMIT/NEW/SYNERGY moods. The full opts payload
   // folds into the cache key so a re-fetch with different excludes
   // doesn't return stale top-N from the prior call.
+  //
+  // Item 168 (2026-05-24): opts.enemies + opts.my_summoners flow to
+  // the backend for the cleanse-advisory composer. Both are included
+  // in the cache key so the advisory shifts as enemies lock + the
+  // operator switches summoner pairs.
   if (!role || role === "-") return null;
   const m = mood || "comfort";
   const o = opts || {};
-  const exclude = Array.isArray(o.exclude) ? o.exclude.slice().sort((a, b) => a - b) : [];
-  const allies  = Array.isArray(o.allies)  ? o.allies.slice().sort((a, b) => a - b)  : [];
-  const top     = Math.max(1, Math.min(5, o.top | 0 || 1));
+  const exclude  = Array.isArray(o.exclude)      ? o.exclude.slice().sort((a, b) => a - b)      : [];
+  const allies   = Array.isArray(o.allies)       ? o.allies.slice().sort((a, b) => a - b)       : [];
+  const enemies  = Array.isArray(o.enemies)      ? o.enemies.slice().sort((a, b) => a - b)      : [];
+  const mySumms  = Array.isArray(o.my_summoners) ? o.my_summoners.slice().sort((a, b) => a - b) : [];
+  const top      = Math.max(1, Math.min(5, o.top | 0 || 1));
   const cacheKey = [
     role, queueId || 0, m, top,
     `e:${exclude.join(",")}`, `a:${allies.join(",")}`,
+    `n:${enemies.join(",")}`, `s:${mySumms.join(",")}`,
   ].join("|");
   const now = Date.now();
   const cached = _CSV_PB_CACHE[cacheKey];
@@ -2757,6 +2804,8 @@ function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
           + `&top=${top}`;
   if (exclude.length) url += `&exclude=${encodeURIComponent(exclude.join(","))}`;
   if (allies.length)  url += `&allies=${encodeURIComponent(allies.join(","))}`;
+  if (enemies.length) url += `&enemies=${encodeURIComponent(enemies.join(","))}`;
+  if (mySumms.length) url += `&my_summoners=${encodeURIComponent(mySumms.join(","))}`;
   fetch(url)
     .then((r) => r.ok ? r.json() : null)
     .then((j) => {
@@ -2964,6 +3013,15 @@ function _csvRenderPickBan(cs, myCid) {
     if (intent && intent > 0) baseExclude.add(intent | 0);
   });
 
+  // Item 168: operator's locked-in summoner-spell pair for the cleanse
+  // advisory. Pull from the operator's own my_team cell. Default to
+  // empty array if the cell isn't resolvable yet.
+  const myCell = (cs.my_team || []).find(
+    (p) => p && p.cellId === cs.local_cell);
+  const mySumms = myCell
+    ? [myCell.spell1Id, myCell.spell2Id].filter((x) => x > 0)
+    : [];
+
   // Ally ids (LOCKED only - hovers don't count toward team-comp synergy
   // because they can swap) for the SYNERGY mood backend query.
   const allyIds = (cs.my_team || [])
@@ -3000,71 +3058,123 @@ function _csvRenderPickBan(cs, myCid) {
       || '<div class="csv-sugg-empty">no champion picked yet</div>';
   }
 
-  // ── Mood branch ────────────────────────────────────────────────
-  // Operator (2026-05-23 round 2): restored 3 pick rows (Performance /
-  // Mastery / Meta) - the 3 choices answer "which lane-role champion
-  // to play". Ban candidates per row reduced from 3 to 2 (dropped the
-  // "terror" 3rd ban) - see banCells .slice(0, 2) below.
-  let sources;
-  if (mood === "comfort") {
-    const liveRecs = _csvFetchPickBanRecs(
-      role, cs.queue_id, mood,
-      { exclude: Array.from(baseExclude), top: 1 },
-      () => _csvRenderPickBan(cs, myCid),
-    );
-    const merged = _csvMergePickBanData(role, liveRecs, ph);
-    sources = [
-      { key: "performance", label: perfLabel, data: merged.performance },
-      { key: "mastery",     label: "Mastery", data: merged.mastery },
-      { key: "meta",        label: "Meta",    data: merged.meta },
-    ];
-  } else {
-    // Single fetch - backend returns top-3 picks with the exclude-set
-    // already applied. Cascade dedupe across rows happens server-side
-    // (each result is the next-best after the previously-yielded ones).
-    const opts = {
-      exclude: Array.from(baseExclude),
-      top: 3,
-    };
-    if (mood === "synergy") opts.allies = allyIds;
-    const liveRecs = _csvFetchPickBanRecs(
-      role, cs.queue_id, mood, opts,
-      () => _csvRenderPickBan(cs, myCid),
-    );
-    const picks = (liveRecs && Array.isArray(liveRecs.performance_picks))
-      ? liveRecs.performance_picks : [];
-    // Backend can return fewer than 3 when history is thin; pad with
-    // placeholder so the panel keeps its 3-row geometry rather than
-    // collapsing. Placeholder reuses the role's perf/mastery/meta data.
-    const fallbacks = [ph.performance, ph.mastery, ph.meta];
-    const moodBans = (liveRecs && Array.isArray(liveRecs.performance_bans))
-      ? liveRecs.performance_bans : ph.performance.bans;
-    sources = [0, 1, 2].map((i) => {
-      const p = picks[i];
-      if (p) {
-        return {
-          key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
-          label: i === 0 ? perfLabel : `${perfLabel} · #${i + 1}`,
-          data: {
-            champId: p.champId,
-            champName: p.champName,
-            reason: p.reason,
-            bans: moodBans.map((b) => ({
-              champId: b.champId,
-              name:    b.name,
-              pct:     b.pct,
-            })),
-          },
-        };
-      }
-      const fb = fallbacks[i];
+  // ── Item 168 (2026-05-24): 3-stacked-sub-panel layout ────────────
+  // Top    : 4 picks (3 role-matching from comfort + 1 last_in_queue).
+  // Middle : 4 bans  (3 from performance_bans + 1 struggle_ban).
+  // Bottom : dynamic explanation (per-pick reasons + cleanse advisory).
+  // Mood toggle stays in the bottom strip alongside the advisory; it
+  // re-orders the 3 role-matching picks. The 4th pick (last_in_queue)
+  // is mood-invariant by design.
+  const opts168 = {
+    exclude: Array.from(baseExclude),
+    top: 3,
+    enemies: enemyIds,
+    my_summoners: mySumms,
+  };
+  if (mood === "synergy") opts168.allies = allyIds;
+  const liveRecs = _csvFetchPickBanRecs(
+    role, cs.queue_id, mood, opts168,
+    () => _csvRenderPickBan(cs, myCid),
+  );
+  const liveRoleMatch = (liveRecs && Array.isArray(liveRecs.performance_picks))
+    ? liveRecs.performance_picks : [];
+  const fallbackPicks = [ph.performance, ph.mastery, ph.meta];
+  // 3 role-matching picks: backend top-3 from current mood, padded with
+  // placeholders so the row keeps its 4-cell geometry on a thin DB.
+  const roleMatchPicks = [0, 1, 2].map((i) => {
+    const p = liveRoleMatch[i];
+    if (p) {
       return {
-        key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
-        label: i === 0 ? perfLabel : (i === 1 ? "Mastery" : "Meta"),
-        data: { ...fb, reason: `[no ${mood} data] ${fb.reason}` },
+        champId:   p.champId,
+        champName: p.champName,
+        reason:    p.reason,
+        sourceKey: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
       };
-    });
+    }
+    const fb = fallbackPicks[i] || {};
+    return {
+      champId:   fb.champId   || 0,
+      champName: fb.champName || "-",
+      reason:    `[no ${mood} data]`,
+      sourceKey: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+    };
+  });
+  // 4th pick: last-in-queue (mood-invariant). When backend can't resolve
+  // it (no history in this queue), surface an em-dash placeholder cell.
+  const lastInQueue = liveRecs && liveRecs.last_in_queue;
+  const fourthPick = lastInQueue
+    ? {
+        champId:   lastInQueue.champId,
+        champName: lastInQueue.champName,
+        reason:    lastInQueue.reason,
+        sourceKey: "last",
+      }
+    : {
+        champId:   0,
+        champName: "-",
+        reason:    "no recent history in this queue",
+        sourceKey: "last",
+      };
+  const allPicks = [...roleMatchPicks, fourthPick];
+
+  // 3 counter bans + 1 struggle ban.
+  const liveBans = (liveRecs && Array.isArray(liveRecs.performance_bans))
+    ? liveRecs.performance_bans : [];
+  const counterBans = [0, 1, 2].map((i) => {
+    const b = liveBans[i];
+    if (b) {
+      return {
+        champId:   b.champId,
+        name:      b.name,
+        pct:       b.pct,
+        sourceKey: "counter",
+      };
+    }
+    // Use placeholder ban data when backend can't supply 3.
+    const fbBan = (ph.performance.bans || [])[i] || {};
+    return {
+      champId:   fbBan.champId || 0,
+      name:      fbBan.name    || "-",
+      pct:       fbBan.pct     || 0,
+      sourceKey: "counter",
+    };
+  });
+  const struggle = liveRecs && liveRecs.struggle_ban;
+  const fourthBan = struggle
+    ? {
+        champId:   struggle.champId,
+        name:      struggle.name,
+        pct:       struggle.pct,
+        sourceKey: "struggle",
+      }
+    : {
+        champId:   0,
+        name:      "-",
+        pct:       0,
+        sourceKey: "struggle",
+      };
+  const allBans = [...counterBans, fourthBan];
+
+  // Dynamic explanation: per-pick reason lines + cleanse advisory.
+  // Operator wants "lite + quickly readable" so cap to 3 short lines
+  // (1 per displayed source plus the advisory). The cleanse line lands
+  // first when present since it's the most actionable real-time signal.
+  const explanationLines = [];
+  const advisory = liveRecs && liveRecs.cleanse_advisory;
+  if (advisory) {
+    explanationLines.push({ cls: "csv-pb-expl-cc", text: advisory });
   }
+  allPicks.forEach((p) => {
+    if (!p.champId) return;
+    const tag = p.sourceKey === "last" ? "last in queue"
+              : (p.sourceKey === "performance" ? perfLabel.toLowerCase()
+                 : p.sourceKey);
+    explanationLines.push({
+      cls: `csv-pb-expl-pick is-${p.sourceKey}`,
+      text: `${p.champName}: ${p.reason} (${tag})`,
+    });
+  });
+
   // s214: pick-click safety - only disable when an actual BAN round is
   // active so the operator can't accidentally fire `set_pick_intent`
   // during a ban (the trap the original gate addressed). Pre-s214 the
@@ -3092,74 +3202,64 @@ function _csvRenderPickBan(cs, myCid) {
       ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(cid)]}.png" onerror="this.style.display='none'" alt="">`
       : "?";
 
-  // Operator (2026-05-23): YOUR RECORD moved to the Assessment panel
-  // (see _csvRenderPersonalRecordBlock write to #csv-sugg-your-record
-  // above). Pick & Ban panel now starts with the column-header strip.
-  let html = `
-    <div class="csv-pb-role-row">
-      <div class="csv-pb-pick-header">PICK</div>
-      <div class="csv-pb-bans-header-slot">
-        <div class="csv-pb-bans-header">BAN</div>
-      </div>
-    </div>`;
-
-  sources.forEach((src) => {
-    const d = src.data;
-    // Operator (2026-05-23 round 2): ban candidates reduced from 3 to 2
-    // (dropped the "terror" 3rd ban). Each row now shows COUNTER + STRUGGLE.
-    const banCells = d.bans.slice(0, 2).map((b, i) => {
-      const role3 = ["counter", "struggle"][i] || "";
-      // s212 v6: no more `is-disabled` lockout - every cell stays
-      // clickable so operator can re-fire `set_ban_intent` to LCU as
-      // many times as they want during draft (LCU decides what sticks).
-      // `.is-selected` still marks the most recent click for visual
-      // continuity but doesn't gate the other cells.
-      const isSelected = (_csvSelection.ban === b.champId);
-      const banCls = "csv-pb-ban is-clickable"
-                   + (isSelected ? " is-selected" : "");
-      return `
-        <div class="${banCls}" data-ban-id="${b.champId}" data-ban-name="${b.name}" title="${role3} ban candidate">
-          <span class="csv-pb-ban-pct">${b.pct}%</span>
-          <div class="csv-pb-ban-icon">${champImg(b.champId)}</div>
-          <div class="csv-pb-ban-name">${b.name}</div>
-        </div>`;
-    }).join("");
-    const isPickSelected = pickClickEnabled && _csvSelection.pick === d.champId;
-    const pickIconCls = pickClickEnabled
-      ? "csv-pb-pick-icon is-clickable"
-        + (isPickSelected ? " is-selected" : "")
-      : "csv-pb-pick-icon";
-    const pickDataAttr = pickClickEnabled ? ` data-pick-id="${d.champId}" data-pick-name="${d.champName}"` : "";
-    html += `
-      <div class="csv-pb-pick-row" data-source="${src.key}">
-        <div class="csv-pb-pick-col">
-          <div class="${pickIconCls}"${pickDataAttr}>${champImg(d.champId)}</div>
-          <div class="csv-pb-pick-name">${d.champName}</div>
-        </div>
-        <div class="csv-pb-reason-col">
-          <div class="csv-pb-source-label">${src.label.toUpperCase()}</div>
-          <div class="csv-pb-reason-text">${d.reason}</div>
-        </div>
-        <div class="csv-pb-bans-col">${banCells}</div>
+  // Item 168: 3-stacked-sub-panel render.
+  // Sub-panel 1: 4-pick horizontal grid.
+  const pickCells = allPicks.map((p) => {
+    const isClickable = pickClickEnabled && p.champId > 0;
+    const isSel = isClickable && (_csvSelection.pick === p.champId);
+    const cls = "csv-pb168-cell csv-pb168-pick is-" + p.sourceKey
+              + (isClickable ? " is-clickable" : "")
+              + (isSel ? " is-selected" : "");
+    const dataAttr = isClickable
+      ? ` data-pick-id="${p.champId}" data-pick-name="${p.champName}"` : "";
+    const tag = p.sourceKey === "last" ? "LAST"
+              : (p.sourceKey === "performance" ? "TOP"
+                 : (p.sourceKey === "mastery" ? "#2" : "#3"));
+    return `
+      <div class="${cls}"${dataAttr} title="${p.champName} - ${p.reason}">
+        <span class="csv-pb168-tag">${tag}</span>
+        <div class="csv-pb168-icon">${champImg(p.champId)}</div>
+        <div class="csv-pb168-name">${p.champName}</div>
       </div>`;
-  });
-
-  // s212 v5: single-word ALL-CAPS labels for the mood toggle. Pre-s212v5
-  // each button stacked two spans (e.g., "Comfort"/"Pick") to keep
-  // total horizontal footprint small; operator's request to simplify
-  // landed after the row got more horizontal room via other layout
-  // changes. Width parity comes from the parent grid's 1fr 1fr 1fr 1fr
-  // template (already in place); each label is centered inside its
-  // cell via the existing flex-column align/justify on .csv-pb-mood-btn.
-  const moodBtn = (k, l) =>
-    `<button class="csv-pb-mood-btn${mood === k ? " is-active" : ""}" data-mood="${k}">${l}</button>`;
-  html += `
-    <div class="csv-pb-mood-row">
-      <span class="csv-pb-mood-label"><span>MOOD</span></span>
-      ${moodBtn("comfort", "COMFORT")}
-      ${moodBtn("limit",   "LIMIT")}
-      ${moodBtn("new",     "NEW")}
-      ${moodBtn("synergy", "SYNERGY")}
+  }).join("");
+  // Sub-panel 2: 4-ban horizontal grid.
+  const banCells = allBans.map((b) => {
+    const isClickable = b.champId > 0;
+    const isSel = isClickable && (_csvSelection.ban === b.champId);
+    const cls = "csv-pb168-cell csv-pb168-ban is-" + b.sourceKey
+              + (isClickable ? " is-clickable" : "")
+              + (isSel ? " is-selected" : "");
+    const dataAttr = isClickable
+      ? ` data-ban-id="${b.champId}" data-ban-name="${b.name}"` : "";
+    const tag = b.sourceKey === "struggle" ? "STRUGGLE" : "CTR";
+    return `
+      <div class="${cls}"${dataAttr} title="${b.name} - ${b.pct}% threat">
+        <span class="csv-pb168-tag">${tag}</span>
+        <div class="csv-pb168-icon">${champImg(b.champId)}</div>
+        <div class="csv-pb168-name">${b.name}</div>
+        <span class="csv-pb168-pct">${b.pct}%</span>
+      </div>`;
+  }).join("");
+  // Sub-panel 3: dynamic explanation strip. Operator (item 168) dropped
+  // the mood toggle from this panel - 3 sub-panels only (picks / bans
+  // / explanation). Mood logic stays in cache-key (default=comfort) but
+  // no UI control surfaces.
+  const explHtml = explanationLines.length
+    ? explanationLines.map((ln) =>
+        `<div class="${ln.cls}">${ln.text}</div>`).join("")
+    : '<div class="csv-pb168-expl-empty">waiting for live data...</div>';
+  const html = `
+    <div class="csv-pb168-section csv-pb168-picks">
+      <div class="csv-pb168-head">PICK</div>
+      <div class="csv-pb168-row">${pickCells}</div>
+    </div>
+    <div class="csv-pb168-section csv-pb168-bans">
+      <div class="csv-pb168-head">BAN</div>
+      <div class="csv-pb168-row">${banCells}</div>
+    </div>
+    <div class="csv-pb168-section csv-pb168-expl">
+      <div class="csv-pb168-head">EXPLANATION</div>
+      <div class="csv-pb168-expl-body">${explHtml}</div>
     </div>`;
 
   body.innerHTML = html;
@@ -3178,27 +3278,23 @@ function _csvRenderPickBan(cs, myCid) {
       _csvRenderPickBan(cs, myCid);
     });
   });
-  // Ban quick-select: every click fires `set_ban_intent` to LCU. The
-  // most-recent click gets `.is-selected` red border via the selection
-  // tracker on `_csvSelection.ban`; siblings stay fully clickable so
-  // the operator can re-target as draft state shifts. s212 v6: dropped
-  // the one-shot lockout that pre-s212v6 grayed out the other 2 cells.
-  body.querySelectorAll(".csv-pb-ban.is-clickable").forEach((cell) => {
+  // Item 168: ban + pick click wiring on the new .csv-pb168-* cells.
+  // Every click fires `set_ban_intent` / `set_pick_intent` to LCU; the
+  // most-recent click gets `.is-selected` while siblings stay
+  // clickable so the operator can re-target.
+  body.querySelectorAll(".csv-pb168-ban.is-clickable").forEach((cell) => {
     cell.addEventListener("click", () => {
       const cid = parseInt(cell.dataset.banId, 10);
-      body.querySelectorAll(".csv-pb-ban").forEach((el) => {
+      body.querySelectorAll(".csv-pb168-ban").forEach((el) => {
         el.classList.toggle("is-selected", el === cell);
       });
       _csvOnBanSelect(cid);
     });
   });
-  // Pick quick-select: same flow as bans - every click fires
-  // `set_pick_intent`; latest-click gets the green border highlight,
-  // siblings stay clickable.
-  body.querySelectorAll(".csv-pb-pick-icon.is-clickable").forEach((cell) => {
+  body.querySelectorAll(".csv-pb168-pick.is-clickable").forEach((cell) => {
     cell.addEventListener("click", () => {
       const cid = parseInt(cell.dataset.pickId, 10);
-      body.querySelectorAll(".csv-pb-pick-icon").forEach((el) => {
+      body.querySelectorAll(".csv-pb168-pick").forEach((el) => {
         el.classList.toggle("is-selected", el === cell);
       });
       _csvOnPickSelect(cid);
