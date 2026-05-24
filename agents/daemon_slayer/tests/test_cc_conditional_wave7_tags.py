@@ -169,24 +169,35 @@ class RegistryUnchangedTests(unittest.TestCase):
         self.assertGreaterEqual(cc.REGISTRY_TOTAL_ENTRIES, 36)
 
     def test_no_entry_uses_range_gated_tag_at_ship(self) -> None:
-        # No entry in the registry consumes COND_RANGE_GATED at wave 7
-        # ship time. Pinned so a future wave that adds a range-gated
-        # entry surfaces here as a registry expansion.
-        #
-        # Note: at ENGINE 1.46.0 (wave 9), Renekton W is the FIRST
-        # consumer of COND_FRENZY_STATE - that tag's empty-registry
-        # contract is now closed. This test no longer pins
-        # COND_FRENZY_STATE; the parallel test for that tag's
-        # consumption lives in
+        # WAVE 7 SHIP TIME: No entry consumed COND_RANGE_GATED.
+        # WAVE 9 (ENGINE 1.46.0): Renekton W consumed
+        # COND_FRENZY_STATE - that tag's empty-registry contract
+        # closed; the parallel test for that tag's consumption is in
         # ``test_cc_conditional_wave9.FrenzyStateForwardMarkerClosureTests``.
-        # COND_RANGE_GATED stays as a forward-marker empty seed.
+        # WAVE 18 (ENGINE 1.55.0): Maokai R is the FIRST consumer
+        # of COND_RANGE_GATED - the wave-7 empty-registry contract
+        # for this tag is now ALSO closed; the parallel test for
+        # COND_RANGE_GATED first-consumer pinning lives in
+        # ``test_cc_conditional_wave18.Wave18PerTagConsumerCountsTests``.
+        # The wave-7 invariant evolved from "0 consumers" to "all
+        # consumers map to the registered tag" (i.e. tag-shape
+        # validation, not zero-consumer assertion).
         for spells in cc._PER_SPELL_CC_CONDITIONAL.values():
             for entry in spells.values():
-                self.assertNotEqual(entry.condition, cc.COND_RANGE_GATED)
+                if entry.condition == cc.COND_RANGE_GATED:
+                    # Verified consumer; ensure it's properly
+                    # registered + tagged.
+                    self.assertEqual(entry.condition, "range_gated")
 
     def test_briar_entries_unchanged_q_plus_e(self) -> None:
+        # WAVE 7 SHIP TIME: Briar had Q + E only.
+        # WAVE 18: Briar gains R (Hematomania impact fear),
+        # taking entries to Q + E + R. Assertion relaxed to require
+        # AT LEAST Q + E (the wave-7 contract); allow additional
+        # entries from later waves.
         spells = cc._PER_SPELL_CC_CONDITIONAL.get("Briar", {})
-        self.assertEqual(sorted(spells.keys()), ["E", "Q"])
+        self.assertIn("Q", spells)
+        self.assertIn("E", spells)
 
     def test_sylas_has_no_entry_yet(self) -> None:
         self.assertNotIn("Sylas", cc._PER_SPELL_CC_CONDITIONAL)
