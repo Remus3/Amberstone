@@ -504,7 +504,7 @@ class SelfMonitor:
     # grace (30s default) to avoid false escalation on slow starts.
     _BOOTSTRAP_GRACE_S: float = 60.0
 
-    # ── Supervisor status reader ──────────────────────────────────────────────
+    # -- Supervisor status reader ----------------------------------------------
 
     def _read_supervisor_status(self) -> Optional[Dict[str, Any]]:
         """Read ops/runtime/status.json safely. Returns None on any error."""
@@ -541,7 +541,7 @@ class SelfMonitor:
             return ""
         return str(status.get("supervisor_state") or "")
 
-    # ── Health check ──────────────────────────────────────────────────────────
+    # -- Health check ----------------------------------------------------------
     #
     # arch: phase 0.9 - _check_health() returns 3-value state string instead of plain bool
     # so _tick() can distinguish:
@@ -703,21 +703,21 @@ class SelfMonitor:
             or sup_state == "tolerated_startup_wait"
         )
 
-        # ── 0. Process-running gate ───────────────────────────────────────────────
+        # -- 0. Process-running gate -----------------------------------------------
         # If supervisor reports the managed process is NOT running and we are
         # not in startup grace, the app is dead regardless of what health.json says.
         if sup_process_running is False and not within_supervisor_grace:
             self._worker_dead_since = None
             return "unhealthy", "process_running=False (supervisor reports dead)"
 
-        # ── 1. Health file existence ───────────────────────────────────────────────
+        # -- 1. Health file existence -----------------------------------------------
         if not self.health_file.exists():
             self._worker_dead_since = None
             if within_supervisor_grace:
                 return "tolerated", "startup_grace: health_file_missing"
             return "unhealthy", "health_file_missing"
 
-        # ── 2. Read file (always - we need pid/run_id to classify correctly) ──────────
+        # -- 2. Read file (always - we need pid/run_id to classify correctly) ----------
         # NOTE: The stale-age rejection (age > max_heartbeat_age) is applied AFTER the
         # startup-grace and identity checks below. This ensures a stale previous-run
         # health file during supervisor startup grace returns "tolerated" (not "unhealthy")
@@ -730,7 +730,7 @@ class SelfMonitor:
             self._worker_dead_since = None
             return "unhealthy", f"health_read_error: {exc}"
 
-        # ── 3. PID identity check (before stale-age rejection) ───────────────────────
+        # -- 3. PID identity check (before stale-age rejection) -----------------------
         # If supervisor has a known expected_pid, verify the file belongs to it.
         # A stale previous-run file will be caught here (wrong pid -> tolerated/unhealthy)
         # BEFORE the stale-age check, so startup grace semantics are honoured.
@@ -750,7 +750,7 @@ class SelfMonitor:
                     + str(sup_expected_pid) + " got=" + str(file_pid),
                 )
 
-        # ── 2b. Stale-age rejection (after pid check; gated by grace) ────────────────
+        # -- 2b. Stale-age rejection (after pid check; gated by grace) ----------------
         # Now that we know the file is from the correct pid (or pid unknown), apply the
         # age-based stale check. During supervisor startup grace, a stale current-process
         # boot marker is tolerated. After grace, stale always means unhealthy.
@@ -760,12 +760,12 @@ class SelfMonitor:
                 return "tolerated", f"startup_grace: heartbeat_stale age={age:.0f}s (correct pid, within grace)"
             return "unhealthy", f"heartbeat_stale age={age:.0f}s"
 
-        # ── 4. alive check ───────────────────────────────────────────────────────────
+        # -- 4. alive check -----------------------------------------------------------
         if not payload.get("alive"):
             self._worker_dead_since = None
             return "unhealthy", "alive=False"
 
-        # ── 5. booting check ────────────────────────────────────────────────────────
+        # -- 5. booting check --------------------------------------------------------
         if payload.get("booting"):
             self._worker_dead_since = None
             if within_supervisor_grace:
@@ -784,7 +784,7 @@ class SelfMonitor:
                     pass
             return "unhealthy", "booting=True (startup grace expired)"
 
-        # ── 6. run_id / session_id identity match ────────────────────────────────────
+        # -- 6. run_id / session_id identity match ------------------------------------
         # When supervisor has established owned_run_id, the health file must match.
         # Wrong run/session within grace: tolerated (still starting up).
         # Wrong run/session outside grace: unhealthy (orphaned or stale file).
@@ -815,7 +815,7 @@ class SelfMonitor:
                     )
                 return "unhealthy", "session_id_mismatch"
 
-        # ── 7. Supervisor readiness gate ─────────────────────────────────────────────
+        # -- 7. Supervisor readiness gate ---------------------------------------------
         # Only return "healthy" when supervisor also considers the app ready.
         # If supervisor state is known but NOT healthy_ready, the app may have
         # just been adopted or is still transitioning.
@@ -824,7 +824,7 @@ class SelfMonitor:
                 return "tolerated", "startup_grace: supervisor_state=" + sup_state
             return "unhealthy", "supervisor_state=" + sup_state
 
-        # ── 8. Subsystem checks (app confirmed running, not booting) ─────────────────
+        # -- 8. Subsystem checks (app confirmed running, not booting) -----------------
 
         if "last_state_provider_ok" in payload:
             if not payload["last_state_provider_ok"]:
