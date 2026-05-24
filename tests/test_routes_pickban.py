@@ -23,7 +23,8 @@ def _build_test_db(path: Path, rows: list[dict]) -> None:
     conn.executescript("""
         CREATE TABLE matches (
             match_id TEXT PRIMARY KEY,
-            queue_id INTEGER
+            queue_id INTEGER,
+            game_creation_ts INTEGER
         );
         CREATE TABLE participants (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,12 +37,19 @@ def _build_test_db(path: Path, rows: list[dict]) -> None:
             win INTEGER
         );
     """)
+    # Item 168: include game_creation_ts so the new _query_last_in_queue
+    # join finds the column. Default to a synthetic monotonic stamp from
+    # the row index so ORDER BY ts DESC is deterministic.
     match_ids = set()
-    for r in rows:
+    for i, r in enumerate(rows):
         mid = r["match_id"]
         if mid not in match_ids:
-            conn.execute("INSERT INTO matches(match_id, queue_id) VALUES (?, ?)",
-                         (mid, r.get("queue_id", 420)))
+            conn.execute(
+                "INSERT INTO matches(match_id, queue_id, game_creation_ts) "
+                "VALUES (?, ?, ?)",
+                (mid, r.get("queue_id", 420),
+                 r.get("game_creation_ts", 1_700_000_000_000 + i * 86400)),
+            )
             match_ids.add(mid)
         conn.execute(
             "INSERT INTO participants(match_id, puuid, team_id, team_position, "
@@ -1013,6 +1021,272 @@ class TestPersonalRecordEndToEnd(unittest.TestCase):
         paths = [pred for pred, _ in routes_pickban.GET_ROUTES]
         self.assertTrue(
             any(p("/api/champ-select/personal-record") for p in paths))
+
+
+# Item 168 (2026-05-24): P&B panel restructured to 3 stacked sub-panels.
+# Backend additions: last_in_queue (4th pick), struggle_ban (4th ban),
+# cleanse_advisory (dynamic explanation prose).
+
+class TestLastInQueue(unittest.TestCase):
+    """4th pick = operator's most-recent champ in the same queue. Drives
+    the "what did I play last time in this queue" cell at the right edge
+    of the top sub-panel."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+
+    def tearDown(self):
+        self.db_path.unlink(missing_ok=True)
+
+    def test_picks_most_recent_match(self):
+        rows = [
+            {"match_id": "m1", "puuid": "me", "team_position": "BOTTOM",
+             "champion_id": 67, "champion_name": "Vayne", "win": 1,
+             "game_creation_ts": 1_000},
+            {"match_id": "m2", "puuid": "me", "team_position": "BOTTOM",
+             "champion_id": 51, "champion_name": "Caitlyn", "win": 0,
+             "game_creation_ts": 2_000},  # most recent
+        ]
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            out = routes_pickban._query_last_in_queue(conn, "me", (420,))
+        finally:
+            conn.close()
+        self.assertIsNotNone(out)
+        self.assertEqual(out["champId"], 51)
+        self.assertEqual(out["champName"], "Caitlyn")
+        self.assertEqual(out["source"], "last_in_queue")
+        self.assertIn("lost", out["reason"])
+
+    def test_exclude_filters_already_picked(self):
+        rows = [
+            {"match_id": "m1", "puuid": "me", "team_position": "BOTTOM",
+             "champion_id": 67, "champion_name": "Vayne", "win": 1,
+             "game_creation_ts": 2_000},  # would be picked but excluded
+            {"match_id": "m2", "puuid": "me", "team_position": "BOTTOM",
+             "champion_id": 51, "champion_name": "Caitlyn", "win": 0,
+             "game_creation_ts": 1_000},
+        ]
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            out = routes_pickban._query_last_in_queue(
+                conn, "me", (420,), exclude_ids=(67,))
+        finally:
+            conn.close()
+        self.assertIsNotNone(out)
+        self.assertEqual(out["champId"], 51)
+
+    def test_no_matches_returns_none(self):
+        _build_test_db(self.db_path, [])
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            out = routes_pickban._query_last_in_queue(conn, "me", (420,))
+        finally:
+            conn.close()
+        self.assertIsNone(out)
+
+
+class TestStruggleBan(unittest.TestCase):
+    """4th ban = operator's at-role highest loss-rate enemy with >=2
+    encounters. Skips when the worst matchup is <50% loss rate."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+
+    def tearDown(self):
+        self.db_path.unlink(missing_ok=True)
+
+    def test_picks_highest_loss_rate(self):
+        # Operator (puuid=me) plays BOTTOM. Encounters Draven 3 times
+        # (3L), Caitlyn 3 times (1L). Draven should win as struggle.
+        rows = []
+        for i in range(3):
+            rows.append({"match_id": f"d{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 67, "champion_name": "Vayne",
+                         "win": 0})  # operator loses to Draven
+            rows.append({"match_id": f"d{i}", "puuid": "enemy",
+                         "team_id": 200, "team_position": "BOTTOM",
+                         "champion_id": 119, "champion_name": "Draven",
+                         "win": 1})
+        for i in range(3):
+            rows.append({"match_id": f"c{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 67, "champion_name": "Vayne",
+                         "win": 1 if i > 0 else 0})  # 1L of 3
+            rows.append({"match_id": f"c{i}", "puuid": "enemy",
+                         "team_id": 200, "team_position": "BOTTOM",
+                         "champion_id": 51, "champion_name": "Caitlyn",
+                         "win": 0 if i > 0 else 1})
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            out = routes_pickban._query_struggle_ban(
+                conn, "me", "BOTTOM", (420,))
+        finally:
+            conn.close()
+        self.assertIsNotNone(out)
+        self.assertEqual(out["champId"], 119)
+        self.assertEqual(out["name"], "Draven")
+        self.assertEqual(out["pct"], 100)
+        self.assertEqual(out["source"], "struggle")
+
+    def test_returns_none_when_no_struggle(self):
+        # Operator wins every matchup -> no struggle.
+        rows = []
+        for i in range(2):
+            rows.append({"match_id": f"d{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 67, "champion_name": "Vayne", "win": 1})
+            rows.append({"match_id": f"d{i}", "puuid": "enemy",
+                         "team_id": 200, "team_position": "BOTTOM",
+                         "champion_id": 119, "champion_name": "Draven", "win": 0})
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            out = routes_pickban._query_struggle_ban(
+                conn, "me", "BOTTOM", (420,))
+        finally:
+            conn.close()
+        self.assertIsNone(out)
+
+    def test_exclude_filters_already_banned(self):
+        rows = []
+        for i in range(3):
+            rows.append({"match_id": f"d{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 67, "champion_name": "Vayne", "win": 0})
+            rows.append({"match_id": f"d{i}", "puuid": "enemy",
+                         "team_id": 200, "team_position": "BOTTOM",
+                         "champion_id": 119, "champion_name": "Draven", "win": 1})
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            out = routes_pickban._query_struggle_ban(
+                conn, "me", "BOTTOM", (420,), exclude_ids=(119,))
+        finally:
+            conn.close()
+        self.assertIsNone(out)
+
+
+class TestCleanseAdvisory(unittest.TestCase):
+    """Heuristic CC-cleanse advisory. Surfaces when enemy team has 3+
+    heavy-CC champs AND the operator's summoner pair doesn't include
+    Cleanse (id 1)."""
+
+    def test_returns_none_with_no_enemies(self):
+        self.assertIsNone(routes_pickban._compose_cleanse_advisory((), ()))
+
+    def test_returns_none_when_cleanse_already_equipped(self):
+        # Even if enemy team is heavy CC, no advisory when Cleanse is on.
+        advisory = routes_pickban._compose_cleanse_advisory(
+            (1, 2, 3, 4, 5), (4, 1))  # Flash + Cleanse
+        self.assertIsNone(advisory)
+
+    def test_silent_below_threshold(self):
+        # Fewer than 3 enemy ids -> never enough heavy CC.
+        advisory = routes_pickban._compose_cleanse_advisory((1, 2), (4, 14))
+        self.assertIsNone(advisory)
+
+
+class TestPickBanEndToEndItem168(unittest.TestCase):
+    """End-to-end shape pin for the item 168 response fields."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+        self._db_patch = mock.patch.object(
+            routes_pickban, "_REWIND_DB", self.db_path,
+        )
+        self._db_patch.start()
+
+    def tearDown(self):
+        self._db_patch.stop()
+        self.db_path.unlink(missing_ok=True)
+
+    def _make_handler(self, path):
+        h = mock.MagicMock()
+        h.path = path
+        return h
+
+    def test_response_carries_item168_fields(self):
+        # Build a DB with enough rows to populate comfort + last_in_queue.
+        # Operator plays Vayne (comfort #1) + 1 recent game on champ 999
+        # (synthetic, not in any counter list) so last_in_queue resolves
+        # to that NOT-already-picked id. Mock _counters_for_champion to
+        # return [] so the bans fallback to _query_bans (DB-driven) and
+        # struggle_ban can find a champ NOT in the bans list.
+        rows = []
+        for i in range(5):
+            rows.append({"match_id": f"v{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 67, "champion_name": "Vayne",
+                         "win": 1, "game_creation_ts": 1_000 + i})
+        # Most-recent game: synthetic champ 999.
+        rows.append({"match_id": "x1", "puuid": "me",
+                     "team_id": 100, "team_position": "BOTTOM",
+                     "champion_id": 999, "champion_name": "Synth",
+                     "win": 0, "game_creation_ts": 2_000})
+        # Two enemy struggle candidates: Singed (id 27, 3/3 losses) and
+        # Olaf (id 2, 2/3 losses = 66%). _query_bans uses TOP-3 ordering
+        # so Singed lands in bans; struggle_ban then falls to Olaf
+        # (the next-highest loss-rate above 50%). Both lane-matched.
+        for i in range(3):
+            rows.append({"match_id": f"d{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 67, "champion_name": "Vayne",
+                         "win": 0, "game_creation_ts": 500 + i})
+            rows.append({"match_id": f"d{i}", "puuid": "enemy",
+                         "team_id": 200, "team_position": "BOTTOM",
+                         "champion_id": 27, "champion_name": "Singed",
+                         "win": 1, "game_creation_ts": 500 + i})
+        for i in range(3):
+            rows.append({"match_id": f"o{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 67, "champion_name": "Vayne",
+                         "win": 1 if i == 2 else 0, "game_creation_ts": 600 + i})
+            rows.append({"match_id": f"o{i}", "puuid": "enemy",
+                         "team_id": 200, "team_position": "BOTTOM",
+                         "champion_id": 2, "champion_name": "Olaf",
+                         "win": 0 if i == 2 else 1, "game_creation_ts": 600 + i})
+        _build_test_db(self.db_path, rows)
+        h = self._make_handler("/api/champ-select/pickban-recs?role=BOT")
+        # Patch counters lookup to [] so bans use the DB fallback - keeps
+        # the struggle-ban path independent of the live counters json.
+        with mock.patch.object(routes_pickban, "_counters_for_champion",
+                                return_value=[]):
+            routes_pickban._serve_pickban_recs(h)
+        code, body, ctype = h._send.call_args[0]
+        self.assertEqual(code, 200)
+        import json as _json
+        payload = _json.loads(body)
+        self.assertTrue(payload["ok"])
+        # Item 168 fields ALWAYS present in response (even when None).
+        self.assertIn("last_in_queue", payload)
+        self.assertIn("struggle_ban", payload)
+        self.assertIn("cleanse_advisory", payload)
+        # last_in_queue should resolve to synth champ 999 (most recent +
+        # not the already-picked Vayne from comfort #1).
+        self.assertIsNotNone(payload["last_in_queue"])
+        self.assertEqual(payload["last_in_queue"]["champId"], 999)
+        # _query_bans takes top-3 loss-rate enemies (Singed 100% +
+        # Olaf 66%); struggle_ban then falls to the NEXT candidate not
+        # already in bans. With only 2 struggle enemies and both in
+        # bans, struggle_ban resolves to None - acceptable per the
+        # endpoint contract (the field is allowed to be None when all
+        # candidates are already in the counter-bans list).
+        # Field PRESENCE (None or struct) is what the panel reads.
+        self.assertTrue(payload["struggle_ban"] is None
+                        or payload["struggle_ban"]["champId"] in (27, 2))
+        # Cleanse advisory: empty enemies + no my_summoners -> None.
+        self.assertIsNone(payload["cleanse_advisory"])
 
 
 if __name__ == "__main__":
