@@ -50,6 +50,7 @@ from agents.daemon_slayer.cc_conditional import (
     COND_TARGET_DEBUFFED,
     COND_TARGET_HP_BELOW,
     COND_TERRAIN,
+    COND_TRAVERSE,
     ConditionalCcEntry,
     REGISTRY_TOTAL_CHAMPIONS,
     REGISTRY_TOTAL_ENTRIES,
@@ -569,6 +570,7 @@ class DefaultProbabilityMapCoverageTests(unittest.TestCase):
             COND_MODE_GATED,
             COND_FRENZY_STATE,
             COND_RANGE_GATED,
+            COND_TRAVERSE,
         }
         self.assertEqual(
             expected_keys, set(_DEFAULT_CONDITION_PROBABILITY.keys())
