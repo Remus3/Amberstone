@@ -312,8 +312,8 @@ def main(argv: list[str]) -> int:
         json.dump(patch, f, indent=2, ensure_ascii=True)
         f.write("\n")
     n = len(patch["champions"])
-    v = sum(len((e.get("variants") or {})) for e in patch["champions"].values())
-    d = sum(len((e.get("default_per_mode") or {})) for e in patch["champions"].values())
+    v = sum(len(e.get("variants") or {}) for e in patch["champions"].values())
+    d = sum(len(e.get("default_per_mode") or {}) for e in patch["champions"].values())
     print(f"slice={args.slice} champs_touched={n} variants_added={v} defaults_flipped={d}")
     print(f"wrote {out_path}")
     return 0
