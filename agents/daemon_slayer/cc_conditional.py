@@ -1898,6 +1898,154 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ============================================================
+    # === wave 12 expansion (2026-05-24 / ENGINE 1.49.0) - +2
+    # === primary entries / +2 net-new champions (Singed E Mega-
+    # === Adhesive overlap root + Alistar E Trample 5-stack stun).
+    # === A third wave 12 entry lives in the sidecar registry
+    # === (Sylas E form_index=1 Abduct 2-cast-completion stun);
+    # === see _build_per_spell_cc_conditional_forms below.
+    # ===
+    # === Wave 12 closes 3 schema-lift-verified candidates that
+    # === were missed in waves 1-11. The Singed E Mega-Adhesive
+    # === overlap root was DEFERRED at item 156 wave 11 with the
+    # === note "description says 'for a duration' with no explicit
+    # === value" - but the actual schema-lifted damage_blocks
+    # === block exposes a per-rank Root Duration modifier [1.0,
+    # === 1.25, 1.5, 1.75, 2.0] seconds that the wave 11 audit
+    # === overlooked. Re-audit at item 170 confirmed the
+    # === structured value in `data/daemon_slayer/16.10.1/
+    # === champion_abilities.json`. The Alistar E 5-stack
+    # === Trample stun + Sylas E2 Abduct 2-cast-completion stun
+    # === were both named in `ability_dps.py` comments as known
+    # === conditional-CC carryovers from prior-wave REJECT lists.
+    # ===
+    # === Wave 12 uses ONLY the 12 existing condition tags - no
+    # === new tag constants. Consumer math BYTE-IDENTICAL to
+    # === 1.48.0 for default include_conditional=False callers
+    # === across all 5 consumer surfaces.
+    # ===
+    # === REJECT (still deferred):
+    # ===   * Jayce E Thundering Blow cast-time root - description
+    # ===     "roots the target enemy over the cast time" + "0.4
+    # ===     seconds" lockout, but the 0.4s value refers to
+    # ===     Jayce's Q/Q1 lockout AFTER Thundering Blow's cast,
+    # ===     NOT the cast-time root duration. The cast-time
+    # ===     duration is still absent from effects_descriptions
+    # ===     and damage_blocks. CARRY-FORWARD wave 13+ if patch
+    # ===     adds explicit cast_time field.
+    # ===   * Maokai R Sapling Showcase distance-gated root
+    # ===     0.75-2.25s - the unconditional Maokai R registry
+    # ===     entry already encodes a mid-distance root for ranks
+    # ===     1/2/3. Adding a cc_conditional COND_RANGE_GATED
+    # ===     entry would double-count with the unconditional
+    # ===     encoding under include_conditional=True. REJECT.
+    # ============================================================
+
+    # Singed E Fling Mega-Adhesive overlap root: Singed E base
+    # mechanic flings the target 550 units over Singed dealing
+    # magic damage; the displacement is captured as the
+    # unconditional 1.0s knockback in `_PER_SPELL_CC_DURATIONS`
+    # (Singed E base entry). The CONDITIONAL root payload fires
+    # ONLY when the target's landing position falls inside the
+    # area-of-effect of Singed's Mega Adhesive (W), with a
+    # per-rank root duration of [1.0, 1.25, 1.5, 1.75, 2.0]
+    # seconds across 5 E ranks (Meraki 16.10.1 Root Duration
+    # block; effects_descriptions confirms "If the target lands
+    # on Mega Adhesive's area of effect after the displacement,
+    # they are rooted for a duration"). Maps to
+    # COND_TARGET_DEBUFFED - the target must be inside the Mega
+    # Adhesive zone when Fling resolves, which requires Singed to
+    # have pre-placed W along the projected flight path. Without
+    # W overlap the target receives damage + displacement only
+    # (no root). Coexists with the unconditional Singed E
+    # knockback on the same spell slot via the separate-registry
+    # pattern (`_PER_SPELL_CC_DURATIONS` = base displacement;
+    # this cc_conditional entry = overlap-root payload). The
+    # combination is the canonical Singed combo (W ground-
+    # adhesive then E Fling onto adhesive); RC's EHP-vs-CC
+    # scorer should credit both contributions under
+    # include_conditional=True. Closes item 156 + item 170
+    # wave-12-audit carry-forward (the wave 11 note dismissed
+    # the Mega-Adhesive root as "for a duration" but the
+    # schema-lifted damage_blocks ACTUALLY exposes the per-rank
+    # values; re-audit at item 170 confirmed the structured
+    # block).
+    registry.setdefault("Singed", {})["E"] = ConditionalCcEntry(
+        champion="Singed",
+        spell="E",
+        cc_kind="root",
+        durations_s=(1.0, 1.25, 1.5, 1.75, 2.0),
+        condition=COND_TARGET_DEBUFFED,
+        probability=_p("Singed", "E", 0.5),
+        notes=(
+            "E Fling Mega-Adhesive overlap root: when the target's "
+            "landing position falls inside Singed's pre-placed W "
+            "Mega Adhesive zone, target is rooted for 1.0-2.0s "
+            "across 5 E ranks (Meraki 16.10.1 Root Duration block). "
+            "Standalone Fling with no W overlap is damage + "
+            "displacement only. Maps to COND_TARGET_DEBUFFED - "
+            "target must be inside Mega Adhesive zone when Fling "
+            "lands. Probability midpoint - canonical Singed combo "
+            "(W then E onto W) is reliable but requires aim. "
+            "Coexists with the unconditional Singed E knockback "
+            "1.0s in `_PER_SPELL_CC_DURATIONS` on the same spell "
+            "slot via the separate-registry pattern (unconditional "
+            "= base displacement; conditional = W-overlap root "
+            "payload). Closes item 156 wave 11 deferred carry "
+            "via item 170 wave 12 re-audit of the schema-lifted "
+            "damage_blocks."
+        ),
+    )
+
+    # Alistar E Trample 5-stack stun: E channels for 5 seconds
+    # tramping the ground around Alistar every 0.5s, generating
+    # a stack of Trample per tick that damages at least one
+    # enemy champion, up to 5 stacks. At 5 stacks, Alistar's
+    # next basic attack on-hit against a champion within 6
+    # seconds ends Trample's effects to deal bonus magic damage
+    # AND stun the target for 1.0 second (flat across all 5 E
+    # ranks per effects_descriptions). Standalone E with fewer
+    # than 5 stacks (or no champion in the trample radius long
+    # enough) = damage + ghosting only (no stun payload). Maps
+    # to COND_NTH_HIT (5-stack accumulation conditional).
+    # Probability 0.7 (tag midpoint) - in teamfights Alistar
+    # reliably tramples a target for the 5s channel + lands the
+    # 5-stack basic attack within the 6s window, but a chasing
+    # target frequently exits the trample radius before stack
+    # 5 accumulates. Coexists with Alistar Q (unconditional
+    # knock-up 1.0s in `_PER_SPELL_CC_DURATIONS`) and Alistar W
+    # (unconditional knock-back 0.5s in
+    # `_PER_SPELL_CC_DURATIONS`) on different spell slots via
+    # setdefault. Closes item 170 wave-12-audit candidate
+    # (named in `ability_dps.py:1225-1228` comment as a known
+    # conditional-CC carryover from prior-wave REJECT lists).
+    registry.setdefault("Alistar", {})["E"] = ConditionalCcEntry(
+        champion="Alistar",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(1.0,),
+        condition=COND_NTH_HIT,
+        probability=_p("Alistar", "E", 0.7),
+        notes=(
+            "E Trample 5-stack stun: 5s channel ticks every 0.5s "
+            "generating a stack of Trample per champion damaged, "
+            "up to 5 stacks. At 5 stacks, the next basic attack "
+            "on-hit ends Trample to deal bonus damage + stun the "
+            "target for 1.0s flat across all 5 E ranks. "
+            "Standalone E with fewer than 5 stacks = damage + "
+            "ghosting only. Maps to COND_NTH_HIT (5-stack "
+            "accumulation conditional). Probability tag midpoint "
+            "0.7 - reliable in teamfights but chasing targets "
+            "frequently exit the trample radius. Coexists with "
+            "Alistar Q unconditional knock-up + Alistar W "
+            "unconditional knock-back on different spell slots. "
+            "Closes item 170 wave-12-audit candidate (named in "
+            "ability_dps.py comment as known conditional-CC "
+            "carryover)."
+        ),
+    )
+
     return registry
 
 
@@ -2219,6 +2367,101 @@ def _build_per_spell_cc_conditional_forms() -> (
             "Gnar R unconditional terrain-collision stun 0.75s "
             "in `_PER_SPELL_CC_DURATIONS` on a different spell "
             "slot. Form-explicit override key shape: Gnar:W:1."
+        ),
+        form_index=1,
+    )
+
+    # ============================================================
+    # === wave 12 expansion (2026-05-24 / ENGINE 1.49.0) - +1
+    # === sidecar entry / +1 net-new champion via Sylas E form 1
+    # === Abduct 2-cast-completion stun. Sylas E form_index=0
+    # === (Abscond) is the FIRST cast - a dash with NO first-
+    # === order CC; form_index=1 (Abduct) is the FOLLOW-UP cast
+    # === fired within 3.5s of Abscond that hits the first
+    # === enemy in the chain's path and stuns them for 0.5s +
+    # === knocks them up for 0.5s on Sylas's arrival. The
+    # === stun fires unconditionally WITHIN form 1 (just like
+    # === Hwei E form 1+2), but conditional on completing the
+    # === 2-cast cycle (Abscond -> Abduct within the 3.5s
+    # === window). Sidecar pattern parallel to Hwei E form 1+2
+    # === entries from wave 9/10 - the form_index distinguishes
+    # === the FIRST cast (no CC payload) from the SECOND cast
+    # === (stun + knockup CC payload). Encodes the stun
+    # === component only; the 0.5s knockup is a chained
+    # === airborne payload that fires AFTER the stun and is
+    # === captured under the same channel-completion gate.
+    # ============================================================
+
+    # Sylas E form_index=1 Abduct (2-cast-completion stun): Sylas
+    # E is a 2-cast cycle. Form 0 (Abscond) is a dash to the
+    # target location with NO first-order CC. Within 3.5 seconds
+    # of casting Abscond, Sylas can recast E (form 1, Abduct)
+    # which whips out his chains in the target direction. The
+    # chain deals magic damage to the first enemy hit and reveals
+    # + stuns them for 0.5 seconds flat across all 5 E ranks.
+    # Sylas then dashes to the target's location and knocks them
+    # up for 0.5 seconds upon arrival (chained airborne payload
+    # captured under the same channel-completion gate). Maps to
+    # COND_CHANNEL_COMPLETION on the 2-cast sequence - if Sylas
+    # does NOT recast within 3.5s, no Abduct stun fires (just the
+    # initial dash). Probability 0.4 (mid-low matching Hwei E
+    # parallel) - 2-input setup within a 3.5s window is reliable
+    # in Sylas's typical combo cadence, but the chain projectile
+    # is dodgeable + the recast is sometimes skipped in favor of
+    # other combo paths (W + R + Q without E recast). Coexists
+    # with the wave 0+ Sylas absence in `_PER_SPELL_CC_DURATIONS`
+    # (Sylas has NO unconditional CC entries - this is the FIRST
+    # Sylas first-order CC registration anywhere in the engine).
+    # Sidecar pattern preferred because the form_index carries
+    # semantic meaning (form 0 = setup dash with no CC; form 1 =
+    # 2nd-cast payload with stun + knockup). Closes the wave 0+
+    # carry-forward in `ability_dps.py:1225-1228` ("Sylas E2 -
+    # second-cast conditional") + the item 148 wave 7 schema-
+    # lift docstring REJECT note ("Sylas E2 Abduct stuns on hook
+    # hit regardless of cast range" - the wave 7 note was
+    # correct that range is NOT the conditional axis; channel-
+    # completion of the 2-cast cycle IS the axis).
+    #
+    # Mechanic schema-lift-verified: effects_descriptions[0] for
+    # form_index=1 ("Active: Sylas whips out his chains in the
+    # target direction that deal magic damage to the first
+    # enemy hit and reveal and stun them for 0.5 seconds. Upon
+    # hitting the target, Sylas dashes to their location and
+    # knocks them up for 0.5 seconds upon arrival") captured by
+    # ENGINE 1.46.0 Meraki schema lift. The duration value 0.5s
+    # is explicit in the description; no rank scaling on the
+    # stun duration itself. Form-explicit override key shape:
+    # Sylas:E:1.
+    registry.setdefault("Sylas", {})[("E", 1)] = ConditionalCcEntry(
+        champion="Sylas",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(0.5,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p_form("Sylas", "E", 1, 0.4),
+        notes=(
+            "E form 1 Abduct (2-cast-completion stun): Sylas E is "
+            "a 2-cast cycle. Form 0 (Abscond) dashes with no CC; "
+            "form 1 (Abduct, recast within 3.5s) whips chains "
+            "that stun the first enemy hit for 0.5s flat across "
+            "all 5 E ranks. Maps to COND_CHANNEL_COMPLETION on "
+            "the 2-cast sequence. Probability mid-low matching "
+            "Hwei E parallel - 2-input setup within 3.5s is "
+            "reliable in Sylas combo cadence but projectile is "
+            "dodgeable. Coexists with absence in "
+            "`_PER_SPELL_CC_DURATIONS` (FIRST Sylas first-order "
+            "CC registration anywhere in the engine). Sidecar "
+            "pattern preferred - form_index carries semantic "
+            "meaning (form 0 = no CC setup dash; form 1 = "
+            "2nd-cast stun payload). Closes item 170 wave-12-"
+            "audit candidate + ability_dps.py:1225-1228 "
+            "carry-forward + item 148 wave 7 schema-lift "
+            "REJECT note (the wave 7 reject was correct that "
+            "range is NOT the axis; channel-completion IS). "
+            "Mechanic captured by ENGINE 1.46.0 Meraki schema "
+            "lift (form 1 effects_descriptions confirms the "
+            "0.5s stun is explicit + flat-duration). Form-"
+            "explicit override key shape: Sylas:E:1."
         ),
         form_index=1,
     )
