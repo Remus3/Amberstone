@@ -1077,7 +1077,7 @@
                (3) suggested pick order (counter-picks vs locked
                enemies), (4) DS engine top-item output. -->
           <div class="csv-card csv-card-suggestions">
-            <div class="csv-card-head">Suggestions</div>
+            <div class="csv-card-head">Assessment</div>
             <div class="csv-card-body">
               <!-- s214: row label dropped per operator - the parent
                    "Suggestions" card head + post-phase per-row visual
@@ -1103,6 +1103,14 @@
                 <div class="csv-sugg-bans-grid" id="csv-sugg-bans-grid">
                   <div class="csv-sugg-empty">waiting for champ-select...</div>
                 </div>
+              </div>
+              <!-- Operator (2026-05-23): YOUR RECORD foreground headline
+                   relocated from Pick & Ban panel into the Assessment
+                   panel, ABOVE the CC threat cards. Same JS render path
+                   (_csvRenderPersonalRecordBlock) but writes here. -->
+              <div class="csv-sugg-section csv-sugg-your-record"
+                   id="csv-sugg-your-record">
+                <div class="csv-sugg-empty">no champion picked yet</div>
               </div>
               <!-- 2026-05-22 (item 139 carry (a)): FIRST dashboard UI
                    consumer of cc_blended_ehp. Compares ally vs enemy

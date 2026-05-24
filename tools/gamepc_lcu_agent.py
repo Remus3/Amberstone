@@ -911,8 +911,13 @@ def execute_command(cmd):
         print(f"[cmd] config -> {CONFIG}", flush=True)
         return {"ok": True, "config": dict(CONFIG)}
     if name == "apply_item_set":
-        # Push a custom item set (Phase 2). Replaces any existing RC-
-        # prefixed item set; preserves the user other item sets.
+        # Push a custom item set (Phase 2).
+        # 2026-05-23 (item 164): replace-by-uid (NOT wipe-all-RC) so 4
+        # build variants + 1 build-order set can coexist as 5 RC- prefixed
+        # entries in the in-game item-shop dropdown. Pre-fix behavior
+        # wiped every RC- set each call, leaving only the last push
+        # visible mid-match. Optional `replace_all_rc=True` preserves
+        # legacy behavior for callers that explicitly want it.
         set_uid = str(cmd.get("set_uid") or "RC-Auto")
         title   = str(cmd.get("title")   or "RC: Auto")
         champ_id = int(cmd.get("champion_id") or 0)
@@ -932,7 +937,10 @@ def execute_command(cmd):
         if not isinstance(cur, dict):
             cur = {"accountId": aid, "itemSets": []}
         sets = list(cur.get("itemSets") or [])
-        sets = [s for s in sets if not str(s.get("uid", "")).startswith("RC-")]
+        if bool(cmd.get("replace_all_rc", False)):
+            sets = [s for s in sets if not str(s.get("uid", "")).startswith("RC-")]
+        else:
+            sets = [s for s in sets if str(s.get("uid", "")) != set_uid]
         sets.insert(0, {
             "uid": set_uid, "title": title, "type": "custom",
             "map": "any", "mode": "any",
@@ -946,6 +954,61 @@ def execute_command(cmd):
         if err:
             return {"ok": False, "err": err}
         return {"ok": True, "set_uid": set_uid, "title": title}
+    if name == "apply_item_sets_batch":
+        # 2026-05-23 (item 164): push MULTIPLE RC item sets in one PUT.
+        # `sets` is a list of {set_uid, title, champion_id, blocks}. Each
+        # entry replaces any existing matching-uid set; non-matching RC-
+        # sets are preserved unless they appear in this batch. The PUT
+        # collapses N round-trips into 1, useful for "push all 4 build
+        # variants + build order at champ-select lock-in".
+        batch = cmd.get("sets") or []
+        if not isinstance(batch, list) or not batch:
+            return {"ok": False, "err": "no sets in batch"}
+        me, err = lcu_request("GET", "/lol-summoner/v1/current-summoner")
+        if not isinstance(me, dict):
+            return {"ok": False, "err": err or "no summoner"}
+        sid = me.get("summonerId")
+        aid = me.get("accountId")
+        if not sid:
+            return {"ok": False, "err": "no summoner id"}
+        cur, _ = lcu_request("GET", f"/lol-item-sets/v1/item-sets/{sid}/sets")
+        if not isinstance(cur, dict):
+            cur = {"accountId": aid, "itemSets": []}
+        sets = list(cur.get("itemSets") or [])
+        new_uids = set()
+        new_sets = []
+        for entry in batch:
+            if not isinstance(entry, dict):
+                continue
+            set_uid = str(entry.get("set_uid") or "")
+            if not set_uid:
+                continue
+            blocks = entry.get("blocks") or []
+            if not blocks and entry.get("items"):
+                blocks = [{"type": "Build", "items": entry["items"]}]
+            if not blocks:
+                continue
+            title    = str(entry.get("title") or set_uid)
+            champ_id = int(entry.get("champion_id") or 0)
+            new_uids.add(set_uid)
+            new_sets.append({
+                "uid": set_uid, "title": title, "type": "custom",
+                "map": "any", "mode": "any",
+                "associatedChampions": [champ_id] if champ_id else [],
+                "associatedMaps": [], "preferredItemSlots": [],
+                "blocks": blocks, "sortrank": 0,
+            })
+        if not new_sets:
+            return {"ok": False, "err": "no valid sets after filter"}
+        # Replace by-uid (overwrites matching entries; preserves the rest).
+        sets = [s for s in sets if str(s.get("uid", "")) not in new_uids]
+        sets = new_sets + sets  # new sets first so they appear on top in client
+        body = {"accountId": aid, "itemSets": sets,
+                "timestamp": int(time.time() * 1000)}
+        _, err = lcu_request("PUT", f"/lol-item-sets/v1/item-sets/{sid}/sets", body)
+        if err:
+            return {"ok": False, "err": err}
+        return {"ok": True, "set_uids": sorted(new_uids), "count": len(new_sets)}
     if name == "apply_runes":
         # Push a full rune page (Phase 2). Caller resolves keystone +
         # tree names to perk IDs server-side and sends raw IDs here so

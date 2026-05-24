@@ -661,6 +661,7 @@ export function renderChampSelectView(lcu) {
     _csvSetText("csv-sub", "waiting for champ-select...");
     return;
   }
+  _csvCacheLcuIfChampSelect(lcu);
   if (!CHAMPS.ready) return;  // names not loaded yet - wait next tick
 
   const cs = lcu.champ_select || {};
@@ -821,6 +822,22 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   if (myName) _csvFetchArchetype(myName);
   const archetypeHtml = _csvArchetypePickerHtml(myName);
   const variants = _csvBuildVariantsFor(myCid, myName, mode, cs);
+  // Operator (2026-05-23) item 164: push ALL build variants to the LCU
+  // client so the in-game item-shop "Recommended Items" dropdown carries
+  // RC's curated builds during the match (not just at champ-select). The
+  // agent's apply_item_sets_batch (gamepc_lcu_agent.py L948+) accepts a
+  // list of sets + replaces by-uid (does NOT wipe other RC- sets), so
+  // 4 variant sets coexist in the dropdown. Debounced via last-push key
+  // so we only re-push when the variant set actually changes.
+  _csvMaybePushBuildsToLCU(myName, mode, variants);
+  // Operator (2026-05-23): summoner spell strip. Selection mirrors the
+  // current default variant's summoners (first row); click pushes to
+  // LCU via the agent's set_summoner_spell command (route is the
+  // operator's follow-up; the visual selection works regardless).
+  const _activeVariant = variants && variants.find((v) => !v.is_experimental) || (variants && variants[0]);
+  const _activeSpells = (_activeVariant && Array.isArray(_activeVariant.summoners))
+    ? _activeVariant.summoners : [4, 7];
+  const summSpellHtml = _csvSummSpellStripHtml(_activeSpells);
   const buildsTitle = mode === "aram" ? "ARAM build chooser"
                     : mode === "arena" ? "Arena build chooser"
                     : "SR build chooser";
@@ -862,8 +879,25 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     ${lockBtnHtml}
     ${extraHtml}
     ${archetypeHtml}
+    ${summSpellHtml}
     ${buildsHtml}
     ${boHtml}`;
+  // Wire click handlers on the summoner-spell strip (idempotent - body
+  // innerHTML rebuild on each render attaches fresh handlers).
+  body.querySelectorAll(".csv-summspell-cell").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      const sid = parseInt(cell.dataset.spellId, 10) | 0;
+      if (!sid) return;
+      const wasSelected = cell.classList.contains("is-selected");
+      // Single-select within the strip - clear all + mark this one.
+      body.querySelectorAll(".csv-summspell-cell.is-selected").forEach((c) => c.classList.remove("is-selected"));
+      if (!wasSelected) cell.classList.add("is-selected");
+      // Push to LCU - the agent route is the operator's follow-up
+      // (item 11 spawned 2026-05-23 to wire the in-game item dropdown);
+      // the set_summoner_spell shape mirrors set_pick_intent + set_ban_intent.
+      try { lcuCmd({ cmd: "set_summoner_spell", spellId: sid }); } catch (_) {}
+    });
+  });
 
   // Wire bench cells to fire bench_swap on click. Only ARAM renders
   // the bench block; the wiring is idempotent under re-render since
@@ -1339,11 +1373,27 @@ function _csvComputeSig(cs, mode, myCid, myName) {
 // state.latest.lcu at fire time (in case the LCU envelope changed
 // between the fetch landing and the frame rendering).
 let _csvScheduledRenderRaf = 0;
+// UI scale v2.1 page #8 audit (2026-05-23): cache the last lcu that
+// rendered as a valid ChampSelect surface. _csvScheduleRender's rAF
+// re-fire normally pulls state.latest.lcu, but under mock mode the
+// live state has no ChampSelect phase - bailing out at the
+// renderChampSelectView phase-gate would skip the cache-driven
+// re-render (build chooser, threat chips, etc.). The cache lets the
+// rAF restore the mock lcu so post-fetch re-renders complete.
+let _csvLastRenderedLcu = null;
+function _csvCacheLcuIfChampSelect(lcu) {
+  if (lcu && lcu.phase === "ChampSelect") _csvLastRenderedLcu = lcu;
+}
 function _csvScheduleRender() {
   if (_csvScheduledRenderRaf) return;
   _csvScheduledRenderRaf = requestAnimationFrame(() => {
     _csvScheduledRenderRaf = 0;
-    if (state.latest && state.latest.lcu) {
+    const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
+    const liveLcu = (state.latest && state.latest.lcu) || null;
+    const lcu = (isMock && (!liveLcu || liveLcu.phase !== "ChampSelect"))
+      ? _csvLastRenderedLcu
+      : liveLcu;
+    if (lcu) {
       // s213: bump the section sig so the idempotent gate at the top
       // of renderChampSelectView doesn't bail. The sig already
       // captures DS/user/arch/adapt/bsugg cache state, but not the
@@ -1354,7 +1404,7 @@ function _csvScheduleRender() {
       // every fire site to the sig schema.
       const sec = document.getElementById("view-champ-select");
       if (sec) sec.dataset.csvSig = "";
-      renderChampSelectView(state.latest.lcu);
+      renderChampSelectView(lcu);
     }
   });
 }
@@ -1667,6 +1717,75 @@ function _csvResolveArchetype(champion) {
   return { key: "", source: "" };
 }
 
+// Operator (2026-05-23) item 164: push all 4 build variants to LCU so
+// they live in the in-game item-shop "Recommended Items" dropdown. The
+// agent (apply_item_sets_batch, gamepc_lcu_agent.py L948+) replaces
+// each variant by-uid, leaving other RC- sets intact. Debounced via a
+// last-push key so re-renders during the same champ-select session
+// don't re-PUT the same payload. NOOP in mock mode (LCU agent returns
+// "no summoner" - swallowed).
+const _CSV_LAST_PUSH_KEY = { value: "" };
+function _csvMaybePushBuildsToLCU(champion, mode, variants) {
+  if (!champion || !Array.isArray(variants) || !variants.length) return;
+  const realVariants = variants.filter((v) =>
+    v && Array.isArray(v.item_ids) && v.item_ids.length && v.key !== "empty");
+  if (!realVariants.length) return;
+  const itemSig = realVariants.map((v) =>
+    `${v.key}:${(v.item_ids || []).slice(0, 6).join(",")}`).join("|");
+  const key = `${champion}|${mode || "sr"}|${itemSig}`;
+  if (_CSV_LAST_PUSH_KEY.value === key) return;
+  _CSV_LAST_PUSH_KEY.value = key;
+  const sets = realVariants.slice(0, 4).map((v, i) => ({
+    set_uid:     `RC-${champion}-${mode || "sr"}-${v.key}`,
+    title:       `RC ${i + 1}: ${v.label || v.key}`.slice(0, 50),
+    champion_id: 0,
+    blocks: [{
+      type: v.label || v.key,
+      items: (v.item_ids || []).slice(0, 6).map((iid) =>
+        ({ id: String(iid), count: 1 })),
+    }],
+  }));
+  if (!sets.length) return;
+  try { lcuCmd({ cmd: "apply_item_sets_batch", sets }); } catch (_) {}
+}
+
+// Operator (2026-05-23): summoner spell strip. 9 SR-relevant spells in
+// a single horizontal row. Selected cell ids come from the current
+// default variant's summoners array; click toggles + pushes to LCU.
+// Recommended usage % mocked here against BOT-lane defaults; a real
+// percentage source would query the operator's match-history pivot
+// (sum, role, count(*)/total) - operator follow-up to wire that pivot.
+const _CSV_SUMM_STRIP_SR = [
+  { id: 4,  name: "Flash",    pct: 95 },
+  { id: 7,  name: "Heal",     pct: 60 },
+  { id: 14, name: "Ignite",   pct: 20 },
+  { id: 12, name: "Teleport", pct:  6 },
+  { id: 1,  name: "Cleanse",  pct: 12 },
+  { id: 21, name: "Barrier",  pct:  8 },
+  { id: 3,  name: "Exhaust",  pct:  4 },
+  { id: 6,  name: "Ghost",    pct:  2 },
+  { id: 11, name: "Smite",    pct:  0 },
+];
+function _csvSummSpellStripHtml(currentSpells) {
+  const selected = new Set((currentSpells || []).map((s) => s | 0));
+  const cells = _CSV_SUMM_STRIP_SR.map((sp) => {
+    const isSel = selected.has(sp.id);
+    const url = sumImg(sp.id);
+    const icon = url
+      ? `<img class="csv-summspell-icon" src="${url}" alt="${sp.name}" onerror="this.style.display='none'">`
+      : `<span class="csv-summspell-icon" aria-hidden="true">?</span>`;
+    return `
+      <button type="button" class="csv-summspell-cell${isSel ? " is-selected" : ""}"
+              data-spell-id="${sp.id}" data-spell-name="${sp.name}"
+              title="${sp.name} - ${sp.pct}% recommended usage">
+        ${icon}
+        <div class="csv-summspell-name">${sp.name}</div>
+        <div class="csv-summspell-pct">${sp.pct}%</div>
+      </button>`;
+  }).join("");
+  return `<div class="csv-summspell-strip" id="csv-summspell-strip">${cells}</div>`;
+}
+
 function _csvArchetypePickerHtml(champion) {
   if (!champion) return "";
   const resolved = _csvResolveArchetype(champion);
@@ -1856,6 +1975,23 @@ function _csvFetchUserVariants(champion, mode) {
   const key = `${champion}|${mode}`;
   if (_CSV_USER_CACHE[key] !== undefined || _CSV_USER_INFLIGHT[key]) return;
   _CSV_USER_INFLIGHT[key] = true;
+  // UI scale v2.1 page #8 audit (2026-05-23): when body.dataset.uiMock
+  // === "1", short-circuit the live POST and seed the cache from the
+  // mock fixture so the build chooser renders the operator-curated
+  // variants alongside the rest of the mocked champ-select state.
+  const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
+  if (isMock) {
+    fetch("/data/ui_mock/champ_select_sr.json", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _CSV_USER_INFLIGHT[key] = false;
+        const bv = (data && data.build_variants) || {};
+        _CSV_USER_CACHE[key] = Array.isArray(bv[key]) ? bv[key] : [];
+        if (_CSV_USER_CACHE[key].length) _csvScheduleRender();
+      })
+      .catch(() => { _CSV_USER_INFLIGHT[key] = false; _CSV_USER_CACHE[key] = []; });
+    return;
+  }
   fetch("/api/loadout/list", {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json" },
@@ -2628,8 +2764,12 @@ function _csvPrChip(name, wr, games) {
   if (!games) {
     return `<span class="csv-pr-chip is-new">${nm}<em>first time</em></span>`;
   }
+  // Operator (2026-05-23): drop the "${games}g" suffix per request -
+  // keep color (tint via _csvPrTint) + winrate %. The games count is
+  // still surfaced in the section header (JINX 16-11 (27g)); the per-
+  // ally / per-enemy chips show name + WR only for compactness.
   return `<span class="csv-pr-chip ${_csvPrTint(wr)}">`
-       + `${nm}<b>${wr}%</b><em>${games}g</em></span>`;
+       + `${nm}<b>${wr}%</b></span>`;
 }
 
 // Build the foregrounded "YOUR RECORD" headline. Always renders the
@@ -2772,11 +2912,24 @@ function _csvRenderPickBan(cs, myCid) {
     () => _csvRenderPickBan(cs, myCid),
   );
   const prHtml = _csvRenderPersonalRecordBlock(prData, selfCid);
+  // Operator (2026-05-23): YOUR RECORD headline relocated to the
+  // Assessment panel, above the CC threat balance cards. Write it into
+  // the new #csv-sugg-your-record container (web/index.html) instead
+  // of prepending it to the Pick & Ban panel's html.
+  const yrTarget = document.getElementById("csv-sugg-your-record");
+  if (yrTarget) {
+    yrTarget.innerHTML = prHtml
+      || '<div class="csv-sugg-empty">no champion picked yet</div>';
+  }
 
   // ── Mood branch ────────────────────────────────────────────────
-  // COMFORT: keep the legacy 3-source layout (perf|mastery|meta).
-  // LIMIT/NEW/SYNERGY: render 3 rows all of the same mood, cascading
-  // through `exclude` so each row surfaces the next-best pick.
+  // Operator (2026-05-23): mood modifier dropped + 3 ban rows aggregate
+  // to 2 ban choices ("Struggle Ban" + "Counter Ban") - role-weighted
+  // via the operator's resolved lane (selfCid + role context). Mock
+  // aggregation for now: take the top performance ban as Struggle (the
+  // operator struggles vs this champion) + the top meta ban as Counter
+  // (this champion counters the operator's pick); a real aggregator
+  // would role-weight + dedupe across all 3 source ban candidates.
   let sources;
   if (mood === "comfort") {
     const liveRecs = _csvFetchPickBanRecs(
@@ -2786,9 +2939,8 @@ function _csvRenderPickBan(cs, myCid) {
     );
     const merged = _csvMergePickBanData(role, liveRecs, ph);
     sources = [
-      { key: "performance", label: perfLabel, data: merged.performance },
-      { key: "mastery",     label: "Mastery", data: merged.mastery },
-      { key: "meta",        label: "Meta",    data: merged.meta },
+      { key: "struggle", label: "Struggle Ban", data: merged.performance },
+      { key: "counter",  label: "Counter Ban",  data: merged.meta },
     ];
   } else {
     // Single fetch - backend returns top-3 picks with the exclude-set
@@ -2811,12 +2963,15 @@ function _csvRenderPickBan(cs, myCid) {
     const fallbacks = [ph.performance, ph.mastery, ph.meta];
     const moodBans = (liveRecs && Array.isArray(liveRecs.performance_bans))
       ? liveRecs.performance_bans : ph.performance.bans;
-    sources = [0, 1, 2].map((i) => {
+    // Operator (2026-05-23): post-mood-drop, the non-comfort branch
+     // is dead code; the legacy mood-cascade kept for future re-add.
+     // Sliced to 2 rows mirroring the comfort branch above.
+    sources = [0, 1].map((i) => {
       const p = picks[i];
       if (p) {
         return {
-          key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
-          label: i === 0 ? perfLabel : `${perfLabel} · #${i + 1}`,
+          key: i === 0 ? "struggle" : "counter",
+          label: i === 0 ? "Struggle Ban" : "Counter Ban",
           data: {
             champId: p.champId,
             champName: p.champName,
@@ -2830,13 +2985,9 @@ function _csvRenderPickBan(cs, myCid) {
         };
       }
       const fb = fallbacks[i];
-      // s214 v3: short prefix tag so the reason stays ≤3 lines under
-      // the .csv-pb-reason-text clamp. Pre-s214v3 the prefix was
-      // "(no <mood> data - showing fallback) " which bloated the row
-      // to 4 lines on tight viewports per operator feedback.
       return {
-        key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
-        label: i === 0 ? perfLabel : (i === 1 ? "Mastery" : "Meta"),
+        key: i === 0 ? "struggle" : "counter",
+        label: i === 0 ? "Struggle Ban" : "Counter Ban",
         data: { ...fb, reason: `[no ${mood} data] ${fb.reason}` },
       };
     });
@@ -2868,14 +3019,10 @@ function _csvRenderPickBan(cs, myCid) {
       ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(cid)]}.png" onerror="this.style.display='none'" alt="">`
       : "?";
 
-  // Role row column-header strip: PICK on the left and BAN on the
-  // right. Operator removed the centered ROLE chip - the user's role
-  // is already shown on their ally row (gold "BOT" pip), so the
-  // duplicate chip here was redundant.
-  // s239: the foregrounded per-user headline sits ABOVE the mood recs -
-  // the per-user model is the first, strongest thing in this card
-  // (which is otherwise a header-hidden buried panel).
-  let html = prHtml + `
+  // Operator (2026-05-23): YOUR RECORD moved to the Assessment panel
+  // (see _csvRenderPersonalRecordBlock write to #csv-sugg-your-record
+  // above). Pick & Ban panel now starts with the column-header strip.
+  let html = `
     <div class="csv-pb-role-row">
       <div class="csv-pb-pick-header">PICK</div>
       <div class="csv-pb-bans-header-slot">

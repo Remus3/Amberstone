@@ -32,5 +32,36 @@
   },
   "config": {
     "auto_accept": true
+  },
+  "build_variants": {
+    "Jinx|sr": [
+      {
+        "key": "lethal-tempo-onhit",
+        "label": "Lethal Tempo (On-Hit)",
+        "keystone": "Lethal Tempo",
+        "primary": "Precision",
+        "secondary": "Domination",
+        "summoners": [4, 7],
+        "item_ids": [3094, 3153, 3031, 3036, 3072, 3026]
+      },
+      {
+        "key": "lethal-tempo-crit",
+        "label": "Lethal Tempo (Crit)",
+        "keystone": "Lethal Tempo",
+        "primary": "Precision",
+        "secondary": "Resolve",
+        "summoners": [4, 7],
+        "item_ids": [3094, 6672, 3031, 3036, 3072, 3026]
+      },
+      {
+        "key": "press-the-attack",
+        "label": "Press the Attack",
+        "keystone": "Press the Attack",
+        "primary": "Precision",
+        "secondary": "Sorcery",
+        "summoners": [4, 7],
+        "item_ids": [3094, 6676, 3031, 3036, 6695, 3026]
+      }
+    ]
   }
 }
