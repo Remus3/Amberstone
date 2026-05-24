@@ -178,7 +178,8 @@ def _recommend(base: list[int], role: str, threat: dict) -> dict:
     """Decision tree → (summoners, swap_to_name, reason). When no swap
     fires, returns the base pair with swap_to=None.
 
-    base : the variant's stored summoner pair (often [4, 7] = Flash+Heal).
+    base : the variant's stored summoner pair (often [4, 21] = Flash+Barrier
+           for carry; [4, 7] retained for support duo + Senna/Kalista).
     role : LCU/dashboard form; we accept either via _BARRIER_ELIGIBLE_ROLES.
     """
     primary   = base[0] if base else _FLASH

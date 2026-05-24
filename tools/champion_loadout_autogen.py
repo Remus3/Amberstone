@@ -99,7 +99,7 @@ ARCH_RUNES: dict[str, dict[str, str]] = {
 # Summoner IDs: 1 cleanse, 3 exhaust, 4 flash, 6 ghost, 7 heal, 11 smite,
 # 12 teleport, 14 ignite, 21 barrier, 32 mark (snowball/poro).
 SR_SUMM_BY_ARCH: dict[str, list[int]] = {
-    "carry":     [4, 7],   # Flash + Heal (bot lane)
+    "carry":     [4, 21],  # Flash + Barrier (solo ADC norm 16.10.x)
     "bruiser":   [4, 12],  # Flash + Teleport (top)
     "tank":      [4, 12],  # Flash + Teleport (top)
     "mage":      [4, 14],  # Flash + Ignite (mid)
