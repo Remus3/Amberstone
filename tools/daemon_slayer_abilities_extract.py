@@ -27,6 +27,15 @@ normalized into:
   scope, Aatrox R minion-only fear, Briar W frenzy self-buff-only)
   that live in description text but NOT in the structured leveling
   blocks. Pure-additive: damage-block pipeline unchanged.
+* ``cast_time`` - per-form cast time in seconds (float) or ``None``
+  when Meraki ships ``"none"`` / missing / null. ENGINE 1.51.0 schema
+  lift (2026-05-24): captures the cast lockout window which doubles
+  as the CC duration for spells whose description text says "roots
+  the target enemy over the cast time" (Jayce E Thundering Blow,
+  LeeSin R Dragon's Rage, KSante R cast-time displacement immunity).
+  The cast_time itself is a flat scalar per form (no rank scaling).
+  Pure-additive: damage-block pipeline + effects_descriptions
+  unchanged.
 
 Phase 4b will layer a formula evaluator on top of this snapshot. Phase 4a
 is data ingest only - we do not evaluate per-cast damage here.
@@ -385,6 +394,34 @@ def _build_damage_block(leveling: dict) -> dict:
     return block
 
 
+def _normalize_cast_time(raw: Any) -> float | None:
+    """Meraki ships castTime as a float, the string ``"none"``, or null.
+
+    Returns ``float`` when the value is a real number, ``None`` otherwise.
+    The string ``"none"`` (lowercase) appears on instant-cast spells and
+    on the second-cast forms of stance-swap abilities; the engine treats
+    both as ``cast_time is None`` (no cast lockout / no cast-time-gated
+    CC payload).
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    if isinstance(raw, str):
+        # Meraki uses literal "none" for instant casts. Anything else
+        # would be a numeric string we attempt to parse.
+        cleaned = raw.strip()
+        if not cleaned or cleaned.lower() == "none":
+            return None
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+    return None
+
+
 def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
     """Normalize one Meraki ability form (single stance) → a structured record."""
     name = form.get("name") or ability_key
@@ -394,6 +431,7 @@ def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
     targeting = form.get("targeting")
     affects = form.get("affects")
     resource = form.get("resource")
+    cast_time = _normalize_cast_time(form.get("castTime"))
 
     damage_blocks: list[dict] = []
     raw_effects_count = 0
@@ -469,6 +507,7 @@ def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
         "affects": affects,
         "resource": resource,
         "is_aoe": _is_aoe(affects, targeting),
+        "cast_time": cast_time,
         "damage_blocks": damage_blocks,
         "effects_descriptions": effects_descriptions,
         "raw_effects_count": raw_effects_count,
