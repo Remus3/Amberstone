@@ -1007,7 +1007,7 @@ class Supervisor:
             except Exception:
                 return None, 0.0
 
-        # ── Startup grace phase ───────────────────────────────────────────────
+        # -- Startup grace phase -----------------------------------------------
         if self._awaiting_first_heartbeat and self._startup_mono_ts is not None:
             elapsed      = now_mono - self._startup_mono_ts
             within_grace = elapsed < self.startup_heartbeat_timeout_s
@@ -1050,7 +1050,7 @@ class Supervisor:
                      + str(round(elapsed, 1)) + "s")
             return True
 
-        # ── Normal operation (after first heartbeat or adopted process) ───────
+        # -- Normal operation (after first heartbeat or adopted process) -------
         if not self.health_file.exists():
             return True
         health, mtime = None, 0.0
