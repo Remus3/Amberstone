@@ -3253,7 +3253,16 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   }
   function _csMockLoad() {
     if (_csMockPromise) return _csMockPromise;
-    _csMockPromise = fetch("/data/ui_mock/champ_select_sr.json", { cache: "no-store" })
+    // 2026-05-23 item 165: mock fixture picker - ?mode=aram URL flag
+    // loads the ARAM fixture (Mark / Snowball + bench), else SR.
+    let mockUrl = "/data/ui_mock/champ_select_sr.json";
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      if ((params.get("mode") || "").toLowerCase() === "aram") {
+        mockUrl = "/data/ui_mock/champ_select_aram.json";
+      }
+    } catch (_) {}
+    _csMockPromise = fetch(mockUrl, { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
       .then((data) => {
         _csMockData = data || null;
