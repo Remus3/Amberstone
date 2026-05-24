@@ -1321,7 +1321,113 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.48.0"
+ENGINE_VERSION = "1.49.0"
+# 1.49.0 (cc_conditional wave 12 - +3 entries / +3 net-new champions
+# closing 3 schema-lift-verified candidates: Singed E Mega-Adhesive
+# overlap root + Alistar E Trample 5-stack stun + Sylas E form 1
+# Abduct 2-cast-completion stun, 2026-05-24):
+#
+# Wave 12 ships +3 entries across +3 net-new champions using ONLY the
+# existing 12 condition tags. NO new tag constants. The registry total
+# grows 46 entries / 40 champions -> 49 entries / 43 champions (46 ->
+# 48 primary + 3 -> 4 sidecar = 49 total entries).
+#
+# NEW cc_conditional entries:
+#
+#   * Singed E Fling Mega-Adhesive overlap root (primary registry) -
+#     COND_TARGET_DEBUFFED
+#     - durations_s=(1.0, 1.25, 1.5, 1.75, 2.0) per Meraki 16.10.1
+#       Root Duration block (schema-lifted damage_blocks expose the
+#       per-rank values explicitly).
+#     - probability=0.5 tag midpoint
+#     - mechanic: target must land inside Singed's pre-placed W Mega
+#       Adhesive zone for the root to fire; standalone E with no W
+#       overlap is damage + displacement only. Coexists with the
+#       unconditional Singed E knockback 1.0s in
+#       `_PER_SPELL_CC_DURATIONS` on the same spell slot via the
+#       separate-registry pattern. Closes item 156 wave 11 deferred
+#       carry (the wave 11 audit dismissed the root as "for a
+#       duration" without explicit value, but the actual Meraki
+#       damage_blocks DOES expose the per-rank Root Duration block).
+#
+#   * Alistar E Trample 5-stack stun (primary registry) - COND_NTH_HIT
+#     - durations_s=(1.0,) flat across all 5 E ranks per
+#       effects_descriptions ("Alistar's next basic attack on-hit
+#       against a champion ... stun the target for 1 second").
+#     - probability=0.7 tag midpoint
+#     - mechanic: E channels 5s, ticks every 0.5s, generates a stack
+#       per champion damaged up to 5 stacks. At 5 stacks the next
+#       basic attack stuns. Standalone E with fewer than 5 stacks =
+#       damage + ghosting only. Coexists with Alistar Q + W
+#       unconditional entries on different spell slots. Closes item
+#       170 wave-12-audit candidate (named in ability_dps.py
+#       comment as known conditional-CC carryover).
+#
+#   * Sylas E form_index=1 Abduct (sidecar registry, 2-cast-
+#     completion stun) - COND_CHANNEL_COMPLETION
+#     - durations_s=(0.5,) flat across all 5 E ranks per
+#       effects_descriptions ("stun them for 0.5 seconds" + "knocks
+#       them up for 0.5 seconds upon arrival").
+#     - probability=0.4 mid-low matching Hwei E parallel.
+#     - mechanic: Sylas E is a 2-cast cycle. Form 0 (Abscond) is a
+#       dash with no CC. Form 1 (Abduct, recast within 3.5s) whips
+#       chains that stun the first enemy + knocks them up on Sylas's
+#       arrival. Sidecar pattern parallel to Hwei E form 1+2.
+#       FIRST Sylas first-order CC registration anywhere in the
+#       engine. Closes item 170 wave-12-audit candidate +
+#       ability_dps.py:1225-1228 carry-forward + item 148 wave 7
+#       schema-lift docstring REJECT note (the wave 7 reject was
+#       correct that range is NOT the conditional axis; channel-
+#       completion of the 2-cast cycle IS).
+#
+# Wave 12 REJECT verdicts (effects_descriptions schema-lift-verified
+# this run; CARRY-FORWARD to future waves only if new evidence
+# surfaces):
+#
+#   * Jayce E Thundering Blow cast-time root - effects_descriptions
+#     includes "Jayce roots the target enemy over the cast time"
+#     and "Jayce is unable to cast To the Skies! or Shock Blast
+#     for 0.4 seconds after Thundering Blow's cast time". The 0.4s
+#     value refers to Jayce's Q/Q1 LOCKOUT period AFTER the cast,
+#     NOT the cast-time root duration itself. The actual cast-
+#     time duration is not in effects_descriptions or damage_blocks.
+#     CARRY-FORWARD wave 13+ if patch data adds explicit cast_time
+#     field.
+#   * Maokai R Sapling Showcase distance-gated root 0.75-2.25s -
+#     the unconditional Maokai R registry entry in
+#     `_PER_SPELL_CC_DURATIONS` already encodes a mid-distance root
+#     (1.2, 1.6, 2.0) seconds across 3 R ranks. Adding a
+#     cc_conditional COND_RANGE_GATED entry would double-count
+#     with the unconditional encoding under
+#     include_conditional=True. REJECT.
+#
+# Multi-wave coexistence count: Singed (E wave 0 unconditional + E
+# wave 12 cc_conditional via separate-registry pattern on same spell
+# slot) joins as the SEVENTH unconditional/conditional-cross champion.
+# Alistar joins as the EIGHTH (Q+W unconditional, E wave 12
+# conditional, on different spell slots). Sylas (E form 1 wave 12
+# sidecar) is a FIRST CC registration (no prior cc_conditional or
+# unconditional entries).
+#
+# COND_FRENZY_STATE tag total consumers: 3 (Renekton W wave 9 + Karma
+# W form 1 wave 10 + Gnar W form 1 wave 11) - unchanged.
+# COND_RANGE_GATED tag total consumers: 0 (still forward-marker per
+# wave 7 schema lift) - unchanged.
+# COND_NTH_HIT total consumers: grew by 1 (Alistar E wave 12 joins
+# Brand R / Kennen E / KSante Q / Riven Q / Viktor W / Xayah E /
+# Yasuo Q / Yone Q / Zilean Q / Skarner Q / Aatrox Q / TahmKench Q).
+# COND_TARGET_DEBUFFED total consumers: grew by 1 (Singed E wave 12
+# joins Vex E / Ornn Q / Aatrox W / Brand Q / Fiora W / Seraphine E).
+# COND_CHANNEL_COMPLETION total consumers: grew by 1 (Sylas E form 1
+# wave 12 joins Karma W / Warwick R / Pyke E / Swain E / Taliyah W /
+# Leblanc E / Nunu R / Yuumi Q / Pantheon Q / Briar E / Morgana R /
+# Evelynn W / Hwei E + Hwei E form 2 sidecar + Sion R).
+#
+# Wave 12 closes the wave 11 + 12 audit-loop for now; future waves
+# would need either Meraki cast_time schema lift (unblocks Jayce E)
+# or 2-spell-overlap target-debuffed encoding schema lift (would
+# unblock additional patterns like Ahri R-then-W charm chain).
+#
 # 1.48.0 (cc_conditional wave 11 - +2 entries / +2 net-new champions
 # closing 2 schema-lift-verified candidates: Sion R channel-time-
 # gated stun + Gnar W form 1 Wallop Mega-form-gated stun via
