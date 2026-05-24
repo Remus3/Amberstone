@@ -1321,7 +1321,132 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.51.0"
+ENGINE_VERSION = "1.52.0"
+# 1.52.0 (cc_conditional wave 15 - +3 entries / +2 net-new champions
+# via cast_time + effects_descriptions cross-reference audit of the
+# ENGINE 1.51.0 Meraki schema-lifted data file, 2026-05-24):
+#
+# Wave 15 ships +3 entries (+2 primary + 1 sidecar) across +2 net-new
+# champions (Zac + Rell; Ornn already in registry with Q wave 4
+# debuffed_target knockup) using ONLY the existing 12 condition tags.
+# NO new tag constants. The registry total grows 57 entries / 49
+# champions -> 60 entries / 51 champions (51 -> 53 primary + 6 -> 7
+# sidecar = 60 total entries). The sweep audited all 110 forms across 171 champs
+# where cast_time>0 + a CC-keyword appears in effects_descriptions;
+# 57 collide with unconditional `_PER_SPELL_CC_DURATIONS` (BLOCKED),
+# 28 are already covered as cc_conditional entries (no dup), 25
+# unsorted candidates evaluated. 3 ship cleanly with no schema lift
+# + no tag expansion + no slot collision; the other 22 REJECTED.
+#
+# NEW cc_conditional entries:
+#
+#   * Zac Q Stretching Strikes 2-hit cross-target root (primary
+#     registry, NEW champion) - COND_NTH_HIT 0.7
+#     - durations_s=(0.5,) flat across all 5 Q ranks per
+#       effects_descriptions ("both are rooted for 0.5 seconds").
+#     - mechanic: first Q strike applies tether + slow; the
+#       empowered second strike (replaces next AA within 2s
+#       tether window) lands on a DIFFERENT target = both rooted
+#       0.5s. Same-target double-strike = damage + slow only (no
+#       root). FIRST Zac Q first-order CC registration in the
+#       engine. Coexists with unconditional Zac E + R entries in
+#       `_PER_SPELL_CC_DURATIONS` on different spell slots.
+#
+#   * Ornn E Searing Charge terrain-collision stun (primary
+#     registry, NEW champion) - COND_TERRAIN 0.3
+#     - durations_s=(1.25,) flat across all 5 E ranks per
+#       effects_descriptions ("stuns nearby enemies for 1.25
+#       seconds").
+#     - mechanic: Ornn charges + deals damage; terrain collision
+#       mid-charge creates a shockwave knockup + stun 1.25s.
+#       Standalone E with no terrain hit = damage only. FIRST
+#       consumer of COND_TERRAIN tag (forward-marker since wave 7
+#       schema lift). Coexists with the wave 4 cc_conditional
+#       Ornn Q debuffed-target knockup entry on a different
+#       spell slot.
+#
+#   * Rell W form_index=0 Ferromancy: Crash Down channel-completion
+#     stun (sidecar registry, NEW champion) - COND_CHANNEL_COMPLETION
+#     0.5
+#     - durations_s=(0.8,) flat across all 5 W ranks per
+#       effects_descriptions ("stuns them for 0.8 seconds").
+#     - mechanic: Rell's Mounted-state W leaps over 0.625s
+#       cast_time; on arrival stuns + knocks up + slides. Mid-cast
+#       hard CC cancels the arrival payload. Form 1 (Mount Up
+#       Dismounted-state empowered-AA) is REJECTED this wave
+#       pending operator clarification on form-transition
+#       empowered-AA registration. FIRST Rell W first-order CC
+#       registration in the engine. Coexists with unconditional
+#       Rell Q stun entry in `_PER_SPELL_CC_DURATIONS` on a
+#       different spell slot.
+#     - Sidecar pattern parallel to Hwei E form 1+2 + Sylas E
+#       form 1 + Karma W form 1 + Gnar W form 1 + Aphelios Q
+#       form 3 + Jayce E form 0.
+#     - Form-explicit override key shape: Rell:W:0.
+#
+# Wave 15 REJECT verdicts (cast_time + effects_descriptions schema-
+# verified this run; CARRY-FORWARD only if new evidence surfaces):
+#
+#   * Aatrox R / Darius R / Sion E / Nunu Q - minion-only fear or
+#     stun payloads (NOT champion CC). REJECT.
+#   * Ambessa R / Blitzcrank R / Darius E / Quinn R / Velkoz E -
+#     UNCONDITIONAL CC on primary champion target; belong in
+#     `_PER_SPELL_CC_DURATIONS` not cc_conditional. REJECT.
+#   * Fiddlesticks E center silence / Irelia R perimeter -
+#     positional sub-zone gating not encoded by schema. REJECT.
+#   * Khazix Q - "fear" appears in spell name only; no actual
+#     fear CC. REJECT.
+#   * LeeSin R - item 171 wave 13 REJECT carries (UNCONDITIONAL
+#     primary-target CC).
+#   * Aphelios R - the Gravitum root is already shipped as
+#     Aphelios:Q:3 sidecar (wave 13). R has no first-order CC.
+#     REJECT.
+#   * Rell W form 1 Mount Up empowered AA - form-transition
+#     empowered-AA semantics not cleanly cast-time conditional.
+#     REJECT pending operator clarification.
+#   * Syndra E Transcendent - 80-Splinter passive accumulation
+#     state-tracking not encoded by schema. REJECT.
+#   * Taliyah Q no CC; Taliyah E dash-detonation - no clean tag
+#     fit (would need new COND_TRAVERSE tag). REJECT.
+#   * Urgot R Mercy recast - target HP-threshold state-tracking
+#     not encoded; would need first COND_TARGET_HP_BELOW consumer
+#     registration. REJECT.
+#   * XinZhao R knockback - knockback not in cc_conditional CC
+#     kind schema. REJECT.
+#   * Zyra R - UNCONDITIONAL zone knockup. REJECT.
+#   * Maokai R distance-gated root - STILL would double-count
+#     with unconditional Maokai R entry (item 170 wave 12 + item
+#     171 wave 13 + item 172 wave 14 carry-forward).
+#   * Multi-form same-spell-slot Renekton W Fury / Aatrox post-R
+#     passive / Volibear R passive / Briar W frenzy / multi-form
+#     Karma+Hwei+Neeko - STILL self-buff or minion-only or turret-
+#     only per item 153 wave 9 schema-lift verification. REJECT.
+#
+# Registry growth: 57 -> 60 entries / 49 -> 51 champions
+# (51 -> 53 primary + 6 -> 7 sidecar). Ornn already in primary
+# registry with wave 4 Q debuffed_target knockup so Ornn E
+# adds an entry but not a net-new champion.
+# Per-tag consumer counts: COND_NTH_HIT +1 (Zac Q);
+# COND_TERRAIN +1 (Ornn E, FIRST consumer); COND_CHANNEL_COMPLETION
+# +1 (Rell W form 0); others unchanged.
+#
+# Math preservation: default include_conditional=False
+# compute_cc_pressure BYTE-IDENTICAL to 1.51.0 (the conditional
+# path skips when the flag is False). include_conditional=True
+# callers receive new probability-weighted contributions for
+# Zac (+0.35s = 0.5 * 0.7), Ornn (+0.375s = 1.25 * 0.3), Rell
+# (+0.4s = 0.8 * 0.5).
+#
+# Schema lift evidence (carry from 1.51.0 - no new lift this wave):
+#
+#   * `tools/daemon_slayer_abilities_extract.py` ``_normalize_cast_time``
+#     helper + per-form ``cast_time: float | None`` field from 1.51.0.
+#   * The 110-form audit walked the extracted data programmatically;
+#     the 3 shipped entries were verified against
+#     ``effects_descriptions[]`` + cross-checked against
+#     ``_PER_SPELL_CC_DURATIONS`` + ``_PER_SPELL_CC_CONDITIONAL``
+#     + ``_PER_SPELL_CC_CONDITIONAL_FORMS`` for collisions.
+#
 # 1.51.0 (cc_conditional wave 14 - +1 sidecar entry / +1 net-new
 # champion via cast_time Meraki extractor schema lift, 2026-05-24):
 #
