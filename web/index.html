@@ -1029,12 +1029,17 @@
       </div>
       <div class="view-section-body">
         <div class="csv-grid">
+          <!-- Operator (2026-05-23 round 2): Allies panel removed; the
+               Daemon Slayer Build Archetype picker moved into this
+               grid-area slot. The .csv-card-allies class stays so the
+               grid-area: allies template binding still applies; the
+               card head + body content swap to the archetype picker.
+               renderChampSelectView's _csvRenderTeam("csv-allies-list",
+               ...) gracefully no-ops since the ul target is gone. -->
           <div class="csv-card csv-card-allies">
-            <div class="csv-card-head">Allies</div>
-            <div class="csv-card-body">
-              <ul class="csv-team-list" id="csv-allies-list">
-                <li class="csv-empty">waiting for my_team data...</li>
-              </ul>
+            <div class="csv-card-head">Daemon Slayer Build Archetype</div>
+            <div class="csv-card-body" id="csv-archetype-target">
+              <div class="csv-empty">waiting for champion pick...</div>
             </div>
           </div>
           <!-- Pick & Ban Recommendations panel - sits below Allies in
@@ -1079,6 +1084,13 @@
           <div class="csv-card csv-card-suggestions">
             <div class="csv-card-head">Assessment</div>
             <div class="csv-card-body">
+              <!-- Operator (2026-05-23 round 2): YOUR RECORD pinned to
+                   the TOP of the Assessment panel, immediately under
+                   the card head + above any internal panel break. -->
+              <div class="csv-sugg-section csv-sugg-your-record"
+                   id="csv-sugg-your-record">
+                <div class="csv-sugg-empty">no champion picked yet</div>
+              </div>
               <!-- s214: row label dropped per operator - the parent
                    "Suggestions" card head + post-phase per-row visual
                    already communicate the bans context without the
@@ -1103,14 +1115,6 @@
                 <div class="csv-sugg-bans-grid" id="csv-sugg-bans-grid">
                   <div class="csv-sugg-empty">waiting for champ-select...</div>
                 </div>
-              </div>
-              <!-- Operator (2026-05-23): YOUR RECORD foreground headline
-                   relocated from Pick & Ban panel into the Assessment
-                   panel, ABOVE the CC threat cards. Same JS render path
-                   (_csvRenderPersonalRecordBlock) but writes here. -->
-              <div class="csv-sugg-section csv-sugg-your-record"
-                   id="csv-sugg-your-record">
-                <div class="csv-sugg-empty">no champion picked yet</div>
               </div>
               <!-- 2026-05-22 (item 139 carry (a)): FIRST dashboard UI
                    consumer of cc_blended_ehp. Compares ally vs enemy

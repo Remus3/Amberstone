@@ -76,10 +76,16 @@ class PanelJsRenderTests(unittest.TestCase):
         for cls in ("is-good", "is-mid", "is-bad", "is-new"):
             self.assertIn(cls, self.text)
 
-    def test_headline_prepended_above_mood_recs(self) -> None:
-        # The actual foregrounding: prHtml is prepended to the panel
-        # html so the per-user model is the FIRST thing in the card.
-        self.assertIn("let html = prHtml + `", self.text)
+    def test_headline_written_to_assessment_panel(self) -> None:
+        # 2026-05-23 (page #8 round 2): YOUR RECORD relocated from the
+        # Pick & Ban panel into the Assessment panel's
+        # #csv-sugg-your-record container - the foregrounding moved
+        # rather than disappeared. Grep for the write site so a future
+        # refactor that drops the target id fails this test.
+        self.assertIn(
+            'document.getElementById("csv-sugg-your-record")',
+            self.text,
+        )
 
     def test_enemy_and_self_derivation(self) -> None:
         self.assertIn("const enemyIds = (cs.their_team || [])", self.text)

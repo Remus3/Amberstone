@@ -78,6 +78,96 @@ _UNIT_SUFFIX: dict[str, str] = {
     "hps":     "hps",
 }
 
+# 2026-05-23 (item 164b): boots-slot injection. Every plan_build_order
+# call returns a build that contains exactly one boots family entry per
+# operator's directive ("boots in EVERY build order on EVERY mode"). The
+# inject happens AFTER the engine's iterative selection so subsequent
+# slots are still picked greedily against a no-boots accumulated build
+# (boots don't share unique-passive families with damage items so the
+# no-double rule isn't affected). Boots slot lands at position 2 (after
+# the first big item) - matches typical SR timing.
+#
+# Boots-family IDs (DDragon 16.10.1; verified via items.json):
+_BOOTS_IDS: frozenset = frozenset({
+    "3006",   # Berserker's Greaves
+    "3009",   # Boots of Swiftness
+    "3010",   # Symbiotic Soles (rune-granted, also a Mythic-boot family)
+    "3020",   # Sorcerer's Shoes
+    "3047",   # Plated Steelcaps
+    "3111",   # Mercury's Treads
+    "3117",   # Mobility Boots
+    "3158",   # Ionian Boots of Lucidity
+})
+_BOOTS_NAMES: dict[str, str] = {
+    "3006": "Berserker's Greaves",
+    "3009": "Boots of Swiftness",
+    "3010": "Symbiotic Soles",
+    "3020": "Sorcerer's Shoes",
+    "3047": "Plated Steelcaps",
+    "3111": "Mercury's Treads",
+    "3117": "Mobility Boots",
+    "3158": "Ionian Boots of Lucidity",
+}
+# Archetype/scorer → default boots family (fallback when enemy AD/AP
+# split is balanced). Carry/dps/marksman -> Berserker's; mage/burst ->
+# Sorcerer's; tank/ehp/bruiser -> Steelcaps; assassin -> Mobility;
+# enchanter/hps/ability -> Ionian.
+_DEFAULT_BOOTS_BY_ARCHETYPE: dict[str, str] = {
+    "carry":     "3006",
+    "marksman":  "3006",
+    "adc":       "3006",
+    "dps":       "3006",
+    "bruiser":   "3047",
+    "tank":      "3047",
+    "ehp":       "3047",
+    "hybrid":    "3047",
+    "mage":      "3020",
+    "burst":     "3020",
+    "assassin":  "3117",
+    "enchanter": "3158",
+    "support":   "3158",
+    "hps":       "3158",
+    "ability":   "3158",
+}
+# Champions that traditionally skip boots (operator-flagged exception
+# set). Yuumi has no movement-affected kit (attached to ally); Cassiopeia
+# has Aspect of the Serpent giving her boots equivalent. Add to this set
+# if more exception champs surface.
+_BOOTSLESS_CHAMPS: frozenset = frozenset({
+    "Yuumi",
+    "Cassiopeia",
+})
+
+
+def _select_boots(
+    archetype: str,
+    target_armor: float,
+    target_mr: float,
+) -> tuple[str, str]:
+    """Pick the appropriate boots family given the operator's archetype +
+    enemy AD/AP comp signal. Returns ``(item_id, item_name)``.
+
+    Decision order:
+      1. Strong AP/CC pressure (``target_mr >= 60``) -> Mercury's Treads
+         (MR + tenacity). Exception: dps/carry/marksman archetypes keep
+         Berserker's even vs heavy AP since the AS loss hurts more than
+         MR-pen helps for marksmen.
+      2. Strong AD pressure (``target_armor >= 100``) -> Plated Steelcaps
+         (armor). Exception: mage/burst/enchanter/hps keep their default
+         since CDR/penetration outweighs armor against caster threats.
+      3. Default: archetype map (carry -> Berserker, mage -> Sorcerer,
+         tank -> Steelcaps, assassin -> Mobility, enchanter -> Ionian).
+    """
+    arch = (archetype or "carry").strip().lower() or "carry"
+    is_dps_axis = arch in ("dps", "carry", "marksman", "adc")
+    is_caster_axis = arch in ("mage", "burst", "enchanter", "hps", "ability", "support")
+    if target_mr >= 60.0 and not is_dps_axis:
+        return ("3111", _BOOTS_NAMES["3111"])
+    if target_armor >= 100.0 and not is_caster_axis:
+        return ("3047", _BOOTS_NAMES["3047"])
+    iid = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
+    return (iid, _BOOTS_NAMES.get(iid, "Boots"))
+
 
 @dataclass(frozen=True)
 class BuildStep:
@@ -203,6 +293,7 @@ def plan_build_order(
     timeout: Optional[float] = None,
     rank_kwargs: Optional[dict] = None,
     rank_fn: Optional[Callable[..., Optional[dict]]] = None,
+    inject_boots: bool = True,
 ) -> Optional[BuildOrderResult]:
     """Plan a contextual, match-specific item ORDER for the remaining slots.
 
@@ -266,7 +357,42 @@ def plan_build_order(
     accumulated: list[str] = list(owned)
     picked_ids: set[str] = set(owned)
 
-    for slot_i in range(1, remaining + 1):
+    # 2026-05-23 (item 164b): boots-slot pre-determination. Boots get
+    # inserted INSIDE the iteration loop (after slot 1) so the engine
+    # sees boots in item_ids when scoring slots 3..N - subsequent picks
+    # are scored against a build that genuinely commits to boots. Reduces
+    # engine_picks_count by 1 to free a total-slot for boots. Skipped for
+    # bootsless-champion exception set + when owned already includes a
+    # boots family entry.
+    champ_name_norm = str(champion).strip()
+    boots_already_owned = any(str(iid) in _BOOTS_IDS for iid in owned)
+    boots_skip_champ = champ_name_norm in _BOOTSLESS_CHAMPS
+    boots_needed = (
+        bool(inject_boots)
+        and not boots_already_owned
+        and not boots_skip_champ
+        and remaining >= 2  # need at least 2 slots to inject boots at slot 2
+    )
+    boots_inserted = False
+    if boots_needed:
+        # Boots consume one of the remaining slots; engine picks one less.
+        engine_picks_count = remaining - 1
+    else:
+        engine_picks_count = remaining
+    boots_id: str = ""
+    boots_name: str = ""
+    if boots_needed:
+        boots_id, boots_name = _select_boots(
+            arch,
+            float(target_armor),
+            float(target_mr),
+        )
+
+    # next_slot tracks the 1-based slot for the NEXT entry appended to
+    # result.order. Engine picks + boots both increment it.
+    next_slot = 1
+
+    for engine_call_i in range(1, engine_picks_count + 1):
         call_kwargs = dict(
             level=int(level),
             item_ids=list(accumulated),
@@ -293,16 +419,19 @@ def plan_build_order(
         try:
             out = rank_fn(champion, arch, **call_kwargs)
         except Exception as exc:  # noqa: BLE001
-            logger.debug("build_order: rank_fn raised at slot %d: %s", slot_i, exc)
+            logger.debug(
+                "build_order: rank_fn raised at engine call %d: %s",
+                engine_call_i, exc,
+            )
             out = None
 
         if out is None:
-            if slot_i == 1:
+            if engine_call_i == 1:
                 # Engine unreachable before any pick - same contract as
                 # dispatch_for_coach: signal None so callers fall back.
                 return None
             result.notes.append(
-                f"engine stopped responding after slot {slot_i - 1}; "
+                f"engine stopped responding after engine call {engine_call_i - 1}; "
                 f"order truncated"
             )
             break
@@ -316,7 +445,7 @@ def plan_build_order(
         rows = [r for r in rows if str(r.get("item_id")) not in picked_ids]
         if not rows:
             result.notes.append(
-                f"no further legal items after slot {slot_i - 1} "
+                f"no further legal items after engine call {engine_call_i - 1} "
                 f"(scorer={scorer}) - order complete at "
                 f"{len(result.order)} new item(s)"
             )
@@ -325,8 +454,8 @@ def plan_build_order(
         chosen, excl_family, excl_example = _pick_top_safe(rows)
         if chosen is None:
             result.notes.append(
-                f"slot {slot_i}: all candidates collide with a locked "
-                f"unique passive - order complete"
+                f"engine call {engine_call_i}: all candidates collide with a "
+                f"locked unique passive - order complete"
             )
             break
         if chosen.get("shares_dead_unique"):
@@ -334,15 +463,15 @@ def plan_build_order(
             # than emit a rule-violating pick.
             result.unique_passive_safe = False
             result.notes.append(
-                f"slot {slot_i}: engine returned only dead-unique rows "
-                f"despite filter - aborting to honor no-double rule"
+                f"engine call {engine_call_i}: engine returned only dead-unique "
+                f"rows despite filter - aborting to honor no-double rule"
             )
             break
 
         item_id = str(chosen.get("item_id"))
         delta = float(chosen.get("delta", chosen.get("delta_dps", 0.0)) or 0.0)
         step = BuildStep(
-            slot=slot_i,
+            slot=next_slot,
             item_id=item_id,
             item_name=str(chosen.get("item_name") or item_id),
             delta=delta,
@@ -356,9 +485,49 @@ def plan_build_order(
         result.order.append(step)
         accumulated.append(item_id)
         picked_ids.add(item_id)
+        next_slot += 1
+
+        # 2026-05-23 (item 164b): boots inject AFTER slot 1 - the engine
+        # has now committed the first big item; boots ride next so the
+        # remaining engine calls (slots 3..N) score against a build that
+        # genuinely includes boots in item_ids. Pre-loop computed
+        # engine_picks_count -= 1 to keep total order length == slots.
+        if boots_needed and not boots_inserted and engine_call_i == 1:
+            boots_step = BuildStep(
+                slot=next_slot,
+                item_id=boots_id,
+                item_name=boots_name,
+                # delta/gold/scorer are synthetic - boots aren't engine-
+                # ranked at this layer; the rendered card uses scorer
+                # = "boots" to surface the synthetic provenance.
+                delta=0.0,
+                gold=900,
+                scorer="boots",
+                unit="boots",
+                excluded_family="",
+                excluded_example="",
+                locked_family="",
+            )
+            result.order.append(boots_step)
+            accumulated.append(boots_id)
+            picked_ids.add(boots_id)
+            next_slot += 1
+            boots_inserted = True
+            result.notes.append(
+                f"boots slot pinned at position {boots_step.slot}: "
+                f"{boots_name} (id={boots_id}, arch={arch}, "
+                f"armor={target_armor:.0f}, mr={target_mr:.0f})"
+            )
 
     if not result.scorer:
         result.scorer = "dps"
+    # 2026-05-23 (item 164b): note when boots were intentionally
+    # skipped (bootsless-champion exception).
+    if boots_skip_champ:
+        result.notes.append(
+            f"boots slot skipped: {champ_name_norm} is in the bootsless-"
+            f"champion exception set (operator-flagged)"
+        )
     if result.order:
         result.notes.append(
             f"planned {len(result.order)} item(s) by greedy forward "
