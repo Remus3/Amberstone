@@ -143,7 +143,7 @@ _session_state = {"phase": None, "last_summoner_set_for": None,
 
 # -- Lockfile / connection ---------------------------------------------------
 
-def read_lockfile():
+def read_lockfile() -> tuple[str | None, str | None]:
     for p in LOCKFILE_PATHS:
         if p.exists():
             try:
@@ -156,7 +156,7 @@ def read_lockfile():
     return None, None
 
 
-def ensure_lcu_conn():
+def ensure_lcu_conn() -> bool:
     port, pwd = read_lockfile()
     if not port or not pwd:
         with _lcu_lock:
@@ -174,7 +174,7 @@ def ensure_lcu_conn():
     return True
 
 
-def lcu_request(method, path, body=None):
+def lcu_request(method: str, path: str, body: dict | None = None) -> tuple[object, str | None]:
     if not _lcu["port"]:
         return None, "no_lcu"
     url = f"https://127.0.0.1:{_lcu['port']}{path}"
@@ -621,7 +621,7 @@ def _local_in_progress_action(sess: dict, action_type: str) -> dict | None:
     return None
 
 
-def capture_state():
+def capture_state() -> dict:
     """Snapshot LCU state for the dashboard. ts is set at the END so
     consumers see when capture finished (post lands ~immediately after),
     not when capture started - which during in-game can be 8-11s earlier
@@ -902,7 +902,7 @@ def capture_state():
 
 # -- Command execution -------------------------------------------------------
 
-def execute_command(cmd):
+def execute_command(cmd: dict) -> dict:
     name = cmd.get("cmd", "")
     if name == "set_config":
         for k in ("auto_accept", "summoner_override", "summoner_d", "summoner_f"):
@@ -1468,7 +1468,7 @@ def execute_command(cmd):
     return {"ok": False, "err": f"unknown cmd: {name}"}
 
 
-def auto_features():
+def auto_features() -> None:
     """Apply config-driven automatic actions. Called on its own thread at
     AUTO_INTERVAL cadence so it stays responsive even when capture_state
     is mid-flight on the state-push thread."""
@@ -1507,7 +1507,7 @@ def auto_features():
 
 # -- Legion HTTP -------------------------------------------------------------
 
-def post(path, data):
+def post(path: str, data: dict) -> dict:
     req = urllib.request.Request(
         f"{LEGION}{path}",
         data=json.dumps(data).encode(),
@@ -1518,7 +1518,7 @@ def post(path, data):
         return json.loads(r.read())
 
 
-def get(path):
+def get(path: str) -> dict:
     req = urllib.request.Request(f"{LEGION}{path}",
                                   headers={"X-RC-Token": TOKEN})
     with urllib.request.urlopen(req, timeout=3) as r:
@@ -1629,7 +1629,7 @@ def _build_team_context_body(cs: dict) -> dict:
     return {"queue_id": int(cs.get("queue_id") or 0), "roster": roster}
 
 
-def post_team_context_refresh(body: dict):
+def post_team_context_refresh(body: dict) -> tuple[bool, str]:
     """POST roster snapshot to Legion's team-context endpoint. Returns
     (ok, detail). Never raises - bridge auth missing or dashboard
     offline both surface as (False, "<reason>")."""
@@ -1869,7 +1869,7 @@ def _fetch_latest_match_for_ingest():
     return (puuid, gid, detail)
 
 
-def post_last_match_ingest(tracked_puuid: str, match_detail: dict):
+def post_last_match_ingest(tracked_puuid: str, match_detail: dict) -> tuple[bool, str]:
     """POST the LCU match detail to Legion. Returns (ok, detail).
     No auth header - /api/last-match/ingest is LAN-trust only for now
     (matches existing convention for /upload-lcu)."""
@@ -2028,7 +2028,7 @@ def _cmd_poll_loop():
         time.sleep(CMD_INTERVAL)
 
 
-def loop():
+def loop() -> None:
     print(f"lcu agent -> {LEGION} state={INTERVAL}s auto={AUTO_INTERVAL}s cmd={CMD_INTERVAL}s",
           flush=True)
     # s219: restore persisted ingest state + one-shot crash-recovery for

@@ -352,7 +352,7 @@ def _bench_workers():
 
 # ── Main ───────────────────────────────────────────────────────────────────
 
-def main():
+def main() -> int:
     import platform
     from datetime import datetime, timezone
 
