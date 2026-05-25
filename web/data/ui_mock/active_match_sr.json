@@ -1,0 +1,56 @@
+{
+  "mock": true,
+  "note": "Active Match SR mock fixture (item 188, 2026-05-25). Authored for the UI scale v2.1 page #11 audit ritual + Live UI capture. Activated via ?ui_mock=1&mode=sr URL flags. Renders into #view-active-match via main.js renderActiveMatch dispatcher. Coach payload mirrors data/sr_coaching_data.json shape; ctx.lcuPhase forced to InProgress so the isLive freshness gate passes.",
+  "mode": "sr",
+  "phase": "InProgress",
+  "coach": {
+    "champion": "Jinx",
+    "game_time": "18:42",
+    "level": 11,
+    "items": ["Berserker's Greaves", "Statikk Shiv", "Runaan's Hurricane"],
+    "action": "Push bot to tier-2 then rotate mid for plate gold",
+    "immediate": "Recall now - Ryze + Yi respawn 47s",
+    "next": "Mid plate window opens at 19:30 - take 2 plates with Karma",
+    "objective": "Dragon spawns 22:15 - establish bot vision by 21:00",
+    "daemon_slayer_picks": [
+      {"name": "Infinity Edge", "item_id": 3031, "scorer": "carry", "delta_dps": 142},
+      {"name": "Phantom Dancer", "item_id": 3046, "scorer": "carry", "delta_dps": 98},
+      {"name": "Lord Dominik's Regards", "item_id": 3036, "scorer": "carry", "delta_dps": 76},
+      {"name": "Bloodthirster", "item_id": 3072, "scorer": "carry", "delta_dps": 64},
+      {"name": "Rapid Firecannon", "item_id": 3094, "scorer": "carry", "delta_dps": 51}
+    ]
+  },
+  "liveclient": {
+    "activePlayer": {
+      "summonerName": "SamplePlayer",
+      "riotIdGameName": "SamplePlayer",
+      "championStats": {
+        "currentHealth": 1843,
+        "maxHealth": 1950,
+        "resourceValue": 287,
+        "resourceMax": 410
+      }
+    },
+    "gameData": {
+      "gameTime": 1122
+    },
+    "allPlayers": [
+      {"summonerName": "TopGapper", "championName": "Jax", "rawChampionName": "Jax", "team": "ORDER", "items": [{"itemID": 3074, "slot": 0}, {"itemID": 3047, "slot": 1}, {"itemID": 3133, "slot": 2}]},
+      {"summonerName": "JgUnit", "championName": "LeeSin", "rawChampionName": "LeeSin", "team": "ORDER", "items": [{"itemID": 6701, "slot": 0}, {"itemID": 3158, "slot": 1}]},
+      {"summonerName": "MidCarry", "championName": "Syndra", "rawChampionName": "Syndra", "team": "ORDER", "items": [{"itemID": 6655, "slot": 0}, {"itemID": 3020, "slot": 1}]},
+      {"summonerName": "SamplePlayer", "championName": "Jinx", "rawChampionName": "Jinx", "team": "ORDER", "items": [{"itemID": 3006, "slot": 0}, {"itemID": 3087, "slot": 1}, {"itemID": 3085, "slot": 2}]},
+      {"summonerName": "HookKing", "championName": "Thresh", "rawChampionName": "Thresh", "team": "ORDER", "items": [{"itemID": 3190, "slot": 0}, {"itemID": 3158, "slot": 1}]},
+      {"summonerName": "BlindPick99", "championName": "Teemo", "rawChampionName": "Teemo", "team": "CHAOS", "items": [{"itemID": 3115, "slot": 0}, {"itemID": 3020, "slot": 1}, {"itemID": 3157, "slot": 2}]},
+      {"summonerName": "SpiderMain", "championName": "Elise", "rawChampionName": "Elise", "team": "CHAOS", "items": [{"itemID": 3742, "slot": 0}, {"itemID": 3111, "slot": 1}]},
+      {"summonerName": "TimeWarp", "championName": "Ekko", "rawChampionName": "Ekko", "team": "CHAOS", "items": [{"itemID": 6653, "slot": 0}, {"itemID": 3020, "slot": 1}]},
+      {"summonerName": "BotDC", "championName": "Kaisa", "rawChampionName": "Kaisa", "team": "CHAOS", "items": [{"itemID": 6671, "slot": 0}, {"itemID": 3006, "slot": 1}]},
+      {"summonerName": "GrabBag", "championName": "Blitzcrank", "rawChampionName": "Blitzcrank", "team": "CHAOS", "items": [{"itemID": 3190, "slot": 0}, {"itemID": 3047, "slot": 1}]}
+    ]
+  },
+  "summoner_cooldowns": [
+    {"slot": "D", "name": "Flash", "remaining_s": 142, "rdy_at": "21:04", "tag": "ally-jinx"},
+    {"slot": "F", "name": "Heal", "remaining_s": 38, "rdy_at": "19:20", "tag": "ally-jinx"},
+    {"slot": "D", "name": "Flash", "remaining_s": 220, "rdy_at": "22:22", "tag": "enemy-kaisa"},
+    {"slot": "F", "name": "Cleanse", "remaining_s": 175, "rdy_at": "21:37", "tag": "enemy-kaisa"}
+  ]
+}

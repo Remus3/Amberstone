@@ -1,0 +1,56 @@
+{
+  "mock": true,
+  "note": "Active Match ARAM mock fixture (item 188, 2026-05-25). Authored for the UI scale v2.1 page #12 audit ritual + Live UI capture. Activated via ?ui_mock=1&mode=aram URL flags. ARAM 5v5 shared-vision shape; ctx.mode=aram drives _AM_SHARED_VISION suppression of the dot overlay. Coach payload mirrors data/aram_coaching_data.json shape.",
+  "mode": "aram",
+  "phase": "InProgress",
+  "coach": {
+    "champion": "Senna",
+    "game_time": "12:18",
+    "level": 9,
+    "items": ["Mortal Reminder", "Plated Steelcaps", "Black Cleaver"],
+    "action": "Stay back and farm souls - poke with Q at max range",
+    "immediate": "Save Q for Yasuo all-in attempt",
+    "next": "Wait for Ashe ult to land before committing to fight",
+    "objective": "First Mountain Soul team wins - track at 14:30",
+    "daemon_slayer_picks": [
+      {"name": "Lord Dominik's Regards", "item_id": 3036, "scorer": "carry", "delta_dps": 124},
+      {"name": "Infinity Edge", "item_id": 3031, "scorer": "carry", "delta_dps": 87},
+      {"name": "Phantom Dancer", "item_id": 3046, "scorer": "carry", "delta_dps": 72},
+      {"name": "Bloodthirster", "item_id": 3072, "scorer": "carry", "delta_dps": 58},
+      {"name": "Runaan's Hurricane", "item_id": 3085, "scorer": "carry", "delta_dps": 49}
+    ]
+  },
+  "liveclient": {
+    "activePlayer": {
+      "summonerName": "SamplePlayer",
+      "riotIdGameName": "SamplePlayer",
+      "championStats": {
+        "currentHealth": 1240,
+        "maxHealth": 1620,
+        "resourceValue": 198,
+        "resourceMax": 380
+      }
+    },
+    "gameData": {
+      "gameTime": 738
+    },
+    "allPlayers": [
+      {"summonerName": "SamplePlayer", "championName": "Senna", "rawChampionName": "Senna", "team": "ORDER", "items": [{"itemID": 3033, "slot": 0}, {"itemID": 3047, "slot": 1}, {"itemID": 3071, "slot": 2}]},
+      {"summonerName": "AllyOne", "championName": "Lulu", "rawChampionName": "Lulu", "team": "ORDER", "items": [{"itemID": 3504, "slot": 0}, {"itemID": 3158, "slot": 1}]},
+      {"summonerName": "AllyTwo", "championName": "Karthus", "rawChampionName": "Karthus", "team": "ORDER", "items": [{"itemID": 6655, "slot": 0}, {"itemID": 3020, "slot": 1}, {"itemID": 3157, "slot": 2}]},
+      {"summonerName": "AllyThree", "championName": "Garen", "rawChampionName": "Garen", "team": "ORDER", "items": [{"itemID": 3071, "slot": 0}, {"itemID": 3047, "slot": 1}]},
+      {"summonerName": "AllyFour", "championName": "Sona", "rawChampionName": "Sona", "team": "ORDER", "items": [{"itemID": 3504, "slot": 0}, {"itemID": 3107, "slot": 1}]},
+      {"summonerName": "EnemyOne", "championName": "Yasuo", "rawChampionName": "Yasuo", "team": "CHAOS", "items": [{"itemID": 6673, "slot": 0}, {"itemID": 3006, "slot": 1}, {"itemID": 3046, "slot": 2}]},
+      {"summonerName": "EnemyTwo", "championName": "Ashe", "rawChampionName": "Ashe", "team": "CHAOS", "items": [{"itemID": 3085, "slot": 0}, {"itemID": 3006, "slot": 1}]},
+      {"summonerName": "EnemyThree", "championName": "Annie", "rawChampionName": "Annie", "team": "CHAOS", "items": [{"itemID": 6653, "slot": 0}, {"itemID": 3020, "slot": 1}]},
+      {"summonerName": "EnemyFour", "championName": "Mundo", "rawChampionName": "DrMundo", "team": "CHAOS", "items": [{"itemID": 3084, "slot": 0}, {"itemID": 3047, "slot": 1}]},
+      {"summonerName": "EnemyFive", "championName": "Janna", "rawChampionName": "Janna", "team": "CHAOS", "items": [{"itemID": 3504, "slot": 0}, {"itemID": 3107, "slot": 1}]}
+    ]
+  },
+  "summoner_cooldowns": [
+    {"slot": "D", "name": "Flash", "remaining_s": 88, "rdy_at": "13:46", "tag": "ally-senna"},
+    {"slot": "F", "name": "Mark", "remaining_s": 12, "rdy_at": "12:30", "tag": "ally-senna"},
+    {"slot": "D", "name": "Flash", "remaining_s": 245, "rdy_at": "16:23", "tag": "enemy-yasuo"},
+    {"slot": "F", "name": "Mark", "remaining_s": 4, "rdy_at": "12:22", "tag": "enemy-yasuo"}
+  ]
+}
