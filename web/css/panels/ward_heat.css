@@ -16,6 +16,11 @@
   border-bottom: 1px solid var(--border-soft, #2a2a35);
   overflow: hidden;
   flex: 0 0 auto;
+  /* operator-exception: hover-tooltip-micro density - the container is a
+   * 22px-tall stacked strip (ally row 11px + enemy row 11px) sitting between
+   * MAP pane head and map body. The 9px base is the inherited tier for all
+   * inner cells. Bumping to --fs-xs (16) would force the 22px container to
+   * grow ~3x and break the MAP-pane layout. PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   line-height: 1;
 }
@@ -30,6 +35,8 @@
   justify-content: center;
   width: 100%;
   height: 22px;
+  /* operator-exception: hover-tooltip-micro empty state inside the 22px
+   * strip container. PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   letter-spacing: 0.08em;
   color: var(--text-faint, #9ca3af);
@@ -50,6 +57,8 @@
   align-items: center;
   justify-content: flex-end;
   padding-right: 6px;
+  /* operator-exception: hover-tooltip-micro side label "ALLY"/"ENEMY" in
+   * 11px row height. PRESERVED per item 184 v2.1 audit. */
   font-size: 8px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -69,6 +78,8 @@
   grid-template-columns: 1fr auto;
   align-items: center;
   padding: 0 4px;
+  /* operator-exception: hover-tooltip-micro cell with lane + count grid
+   * inside 11px row. PRESERVED per item 184 v2.1 audit. */
   font-size: 8px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -88,6 +99,8 @@
 
 .ward-heat-container .wh-cell .wh-count {
   font-weight: 700;
+  /* operator-exception: hover-tooltip-micro count value (0..9 ward count
+   * roll-over) inside the 8px-base cell. PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   padding-left: 4px;
   color: rgba(255, 255, 255, 0.95);
