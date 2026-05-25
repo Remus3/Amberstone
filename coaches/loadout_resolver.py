@@ -140,6 +140,38 @@ def list_variants(champion: str, mode: str) -> list[dict]:
             d_id, f_id = (int(summ[0]), int(summ[1])) if len(summ) >= 2 else (0, 0)
         except (ValueError, TypeError):
             d_id, f_id = 0, 0
+        # Item 178 (2026-05-24): SR variants may carry ``build_paths`` -
+        # one collapsed variant per champion with N labeled build-path
+        # rows shown vertically inside. Each path is {key, label, items,
+        # runes?, summoners?, _archetype?, _source_variant_key?}. The
+        # variant-level items/runes/summoners stay populated from the
+        # primary path so legacy callers see no shape change. Surface
+        # the resolved item_ids per path here so the frontend doesn't
+        # have to re-call ddragon resolution.
+        build_paths_in = v.get("build_paths") or []
+        build_paths_out: list[dict] = []
+        for p in build_paths_in:
+            if not isinstance(p, dict):
+                continue
+            p_items = list(p.get("items") or [])
+            p_runes = p.get("runes") or {}
+            p_summ = p.get("summoners") or []
+            try:
+                p_d, p_f = (int(p_summ[0]), int(p_summ[1])) if len(p_summ) >= 2 else (d_id, f_id)
+            except (ValueError, TypeError):
+                p_d, p_f = d_id, f_id
+            build_paths_out.append({
+                "key":        p.get("key") or "",
+                "label":      p.get("label") or "Variant",
+                "items":      p_items,
+                "item_ids":   _resolve_item_ids(p_items),
+                "keystone":   p_runes.get("keystone") or runes.get("keystone") or "",
+                "primary":    p_runes.get("primary") or runes.get("primary") or "",
+                "secondary":  p_runes.get("secondary") or runes.get("secondary") or "",
+                "summoners":  [p_d, p_f],
+                "_archetype": p.get("_archetype") or "",
+                "_is_primary": bool(p.get("_is_primary", False)),
+            })
         return {
             "key":         key,
             "label":       v.get("label") or key,
@@ -150,6 +182,8 @@ def list_variants(champion: str, mode: str) -> list[dict]:
             "summoners":   [d_id, f_id],
             "item_names":  items,
             "item_ids":    _resolve_item_ids(items),
+            "build_paths": build_paths_out,
+            "_collapsed":  bool(v.get("_collapsed", False)),
         }
 
     out = []
@@ -217,6 +251,18 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
     champ = loadouts.get(champion) or {}
     variants = champ.get("variants") or {}
     mode_key = _normalize_mode(mode)
+    # Item 178 (2026-05-24): collapsed SR variants accept a sub-path key
+    # via "<variant>:<path-key>" so the frontend can apply a specific
+    # build path WITHOUT mutating the variant-level fields. When the
+    # colon form is passed, the resolver selects the matching path
+    # from build_paths[] and overlays its items + (optional) runes +
+    # (optional) summoners on the resolved entry. The variant key
+    # before the colon must still exist in the file.
+    path_key = ""
+    if ":" in variant:
+        base_variant, _, path_key = variant.partition(":")
+        variant = base_variant.strip()
+        path_key = path_key.strip()
     # Special case: experimental variant is sourced from experimental_builds.json
     # and only available in ARAM. If the current iteration doesn't exist yet,
     # the caller should have hit /api/experimental/get first to generate it.
@@ -243,11 +289,44 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
             return {"ok": False, "err": f"no variant {variant!r} for {champion!r}"}
         if mode_key not in [str(m).lower() for m in (v.get("modes") or [])]:
             return {"ok": False, "err": f"variant {variant!r} not allowed in {mode_key}"}
+        # Item 178: if caller passed a sub-path key on a collapsed variant,
+        # overlay that path's items / runes / summoners onto the variant
+        # dict before the rune+item+summ cmds are built below. Empty
+        # path_key keeps the variant-level defaults (primary path).
+        if path_key:
+            paths = v.get("build_paths") or []
+            matched = None
+            for p in paths:
+                if isinstance(p, dict) and (p.get("key") or "") == path_key:
+                    matched = p
+                    break
+            if matched is None:
+                return {"ok": False,
+                        "err": f"no build_path {path_key!r} for {champion!r}:{variant!r}"}
+            # Defensive copy + overlay (items/runes/summoners only).
+            v_overlay = dict(v)
+            v_overlay["items"] = list(matched.get("items") or v.get("items") or [])
+            if matched.get("runes"):
+                v_overlay["runes"] = dict(matched.get("runes") or {})
+            if matched.get("summoners"):
+                v_overlay["summoners"] = list(matched.get("summoners") or [])
+            # Suffix the label so the page_name / set_uid carry the
+            # path identity (mostly cosmetic - shows up in LCU's set
+            # title in-game).
+            base_label = v.get("label") or variant
+            v_overlay["label"] = f"{base_label} - {matched.get('label') or path_key}"
+            v = v_overlay
 
+    # Item 178: identity string baked into page_name / set_uid / title.
+    # When a path_key was supplied, the identity includes the path so
+    # different paths produce distinct LCU sets (rather than overwriting
+    # each other by-uid).
+    identity = f"{variant}-{path_key}" if path_key else variant
     out: dict = {
         "ok": True,
         "champion": champion,
-        "variant":  variant,
+        "variant":  variant if not path_key else f"{variant}:{path_key}",
+        "path_key": path_key,
         "label":    v.get("label") or variant,
         "mode":     mode_key,
         "rune_cmd": None,
@@ -269,7 +348,7 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
         if perk_ids and primary_id and sub_id:
             out["rune_cmd"] = {
                 "cmd": "apply_runes",
-                "page_name": f"RC: {champion} {variant} ({mode_key.upper()})"[:75],
+                "page_name": f"RC: {champion} {identity} ({mode_key.upper()})"[:75],
                 "primary_id": primary_id,
                 "sub_id":     sub_id,
                 "perk_ids":   perk_ids,
@@ -281,8 +360,8 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
         champ_id = _load_champ_id_by_name().get(champion, 0)
         out["item_cmd"] = {
             "cmd": "apply_item_set",
-            "set_uid":    f"RC-{_norm(champion)}-{mode_key}-{_norm(variant)}",
-            "title":      f"RC: {champion} {variant.replace('-', ' ')} ({mode_key.upper()})"[:50],
+            "set_uid":    f"RC-{_norm(champion)}-{mode_key}-{_norm(identity)}",
+            "title":      f"RC: {champion} {identity.replace('-', ' ')} ({mode_key.upper()})"[:50],
             "champion_id": champ_id,
             "blocks": [{
                 "type":  "Build (RC)",
