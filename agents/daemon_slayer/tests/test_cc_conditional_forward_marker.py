@@ -76,6 +76,7 @@ _ALLOWED_TEST_FILES = {
     "test_cc_conditional_wave17.py",
     "test_cc_conditional_wave18.py",
     "test_cc_conditional_wave19.py",
+    "test_cc_conditional_wave20.py",
     "test_cc_conditional_consumer_pressure.py",
     "test_cc_conditional_consumer_ehp.py",
     "test_cc_conditional_consumer_hybrid.py",

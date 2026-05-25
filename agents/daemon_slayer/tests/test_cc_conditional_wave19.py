@@ -223,10 +223,16 @@ class Wave19RegistryByteIdenticalTests(unittest.TestCase):
     """
 
     def test_registry_total_entries_unchanged(self) -> None:
-        self.assertEqual(cc.REGISTRY_TOTAL_ENTRIES, 67)
+        # The wave 19 lift itself added zero entries. Pin wave 19 floor;
+        # future waves may grow the registry per [[feedback_no_history_rewrite]].
+        # Wave 20 (ENGINE 1.58.0) bumped 67 -> 68 via Vayne E.
+        self.assertGreaterEqual(cc.REGISTRY_TOTAL_ENTRIES, 67)
 
     def test_registry_total_champions_unchanged(self) -> None:
-        self.assertEqual(cc.REGISTRY_TOTAL_CHAMPIONS, 54)
+        # The wave 19 lift itself added zero champions. Pin wave 19 floor;
+        # future waves may grow the registry per [[feedback_no_history_rewrite]].
+        # Wave 20 (ENGINE 1.58.0) bumped 54 -> 55 via Vayne joining.
+        self.assertGreaterEqual(cc.REGISTRY_TOTAL_CHAMPIONS, 54)
 
     def test_condition_tag_count_unchanged(self) -> None:
         self.assertEqual(len(cc._DEFAULT_CONDITION_PROBABILITY), 13)
