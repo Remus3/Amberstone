@@ -30,7 +30,7 @@
 
 #view-active-match .am-pane-cd .am-pane-head .cd-chev {
   font-weight: 900;
-  font-size: 16px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   margin-left: 8px;
 }
@@ -98,6 +98,8 @@
   background: #2a2a36;
   color: #cfd2dc;
   font-weight: 700;
+  /* operator-exception: density inside 24x24 portrait fallback circle.
+   * PRESERVED per item 184 v2.1 audit. */
   font-size: 11px;
   display: inline-flex;
   align-items: center;
@@ -105,7 +107,7 @@
 }
 
 .cd-row-name {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text, #e5e7eb);
   letter-spacing: 0.02em;
@@ -137,6 +139,10 @@
   border-radius: 3px;
   background: #14141c;
   border: 1px solid #2a2a36;
+  /* operator-exception: density-critical 38px min-width chip; the row layout
+   * stacks D / F / R chips horizontally inside a 280px rail (24px portrait +
+   * name + 3 chips). Bumping to --fs-xs (16) would force chip width past
+   * the rail's column budget. PRESERVED per item 184 v2.1 audit. */
   font-size: 10px;
   font-weight: 700;
   color: var(--text-faint, #9ca3af);
@@ -159,6 +165,8 @@
   border-radius: 2px;
   background: #2a2a36;
   color: #cfd2dc;
+  /* operator-exception: density inside 14x14 sigil character box.
+   * PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   font-weight: 900;
   display: inline-flex;
@@ -198,7 +206,7 @@
 /* Empty placeholder when no live game / null cooldowns. */
 .cd-empty {
   color: var(--text-faint, #9ca3af);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   text-align: center;
   padding: 12px 8px;
   font-style: italic;
