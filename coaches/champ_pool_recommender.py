@@ -20,8 +20,9 @@ couldn't gather min_games of comp-matched data.
 Performance score is a simple win-pct weighted by sample size so a
 70% wr in 4 games doesn't outrank 60% wr in 40 games.
 
-Wiring: dashboard's `/api/recommend-champ` calls this; champ-select
-panel surface is feature work tracked separately.
+Wiring: dashboard route was retired in item 186 (zero callers). The
+`recommend()` function is still imported directly by scripts/build_champ_kda.py
+and remains available for any future dashboard or coach surface.
 """
 from __future__ import annotations
 
