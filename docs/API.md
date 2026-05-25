@@ -27,13 +27,10 @@ Pydantic schemas: `dashboard/api_schema.py` (outer shapes) · `core/coaching_pay
 | `/api/home/summary` | Home-screen summary card (win rate, streak, recent matches) | - |
 | `/api/replay/matches` | Replay-eligible match list from `rewind_history.db` | - |
 | `/api/replay/match/<id>` | Single replay match detail | - |
-| `/api/recommend-champ` | Champion recommendation (DS + history) | - |
-| `/api/logs` | Recent RC log lines (tail) | - |
 | `/api/bridge` | Bridge inbox messages (`?since=<ts>&limit=<n>`) | - |
 | `/api/bridge/messages` | Alias for `/api/bridge` | - |
 | `/api/bridge/status` | Bridge connection + watcher status | - |
 | `/api/bridge/cadence` | Bridge watcher cadence setting | - |
-| `/api/preview-build` | DS build preview for a champion | - |
 | `/api/champions` | Champion list from `data/champion_profiles/*.json` | - |
 | `/api/sr-draft/user-builds` | SR draft user build list | - |
 | `/api/lcu-cmd-result` | LCU command last result | - |
@@ -41,10 +38,7 @@ Pydantic schemas: `dashboard/api_schema.py` (outer shapes) · `core/coaching_pay
 | `/api/decisions` | Bridge watcher decision ring (last 24 h) | - |
 | `/api/decisions/log` | Extended decision log | - |
 | `/api/diagnostics` | Full system diagnostics dump | - |
-| `/api/reload-regions` | Reload `data/vision_regions.json` (no restart needed) | - |
 | `/api/ocr` | OCR debug: run tiered OCR on latest frame | - |
-| `/api/validate-ocr` | Validate OCR region coverage | - |
-| `/api/ocr-crop?region=<name>` | OCR crop image for a named region | PNG |
 | `/api/dev/vision-status` | Vision server diagnostic (frame age, tier counts) | - |
 | `/metrics` | Prometheus metrics (Counter / Gauge / Histogram) | text/plain |
 
@@ -68,19 +62,12 @@ Pydantic schemas: `dashboard/api_schema.py` (outer shapes) · `core/coaching_pay
 | `/api/bridge/cadence` | `{cadence: "active"\|"sleep"}` | Set bridge watcher poll cadence |
 | `/api/bridge/pending/<id>` | `{action}` | Execute a pending bridge action |
 | `/api/health/peer/<node>` | `{heartbeat: {...}}` | Publish peer health heartbeat |
-| `/api/sr-draft/profile` | `{queue_id?, champion?}` | Get SR draft profile for current game |
 | `/api/sr-draft/apply` | `{profile_id}` | Apply SR draft coaching profile |
 | `/api/sr-draft/user-builds` | `{builds: [...]}` | Save SR user build list |
-| `/api/replay-coach` | `{match_id}` | Run coaching analysis over a replay match |
 | `/api/speak` | `SpeakRequest` | TTS speak (voice coach) |
 | `/api/champ-select-coach` | `{champion, allies, enemies}` | Trigger champ-select coaching |
 | `/api/coach/toggle` | `{enabled: bool}` | Enable/disable live coaching |
-| `/api/experimental/get` | `{key}` | Get experimental feature flag |
-| `/api/experimental/adapt` | `{key, value}` | Set experimental adaptation |
-| `/api/experimental/mark` | `{key, outcome}` | Mark experimental outcome |
-| `/api/aram-analyze` | `{state}` | Trigger manual ARAM analysis |
 | `/api/decisions/<id>` | `{choice}` | Record bridge watcher decision choice |
-| `/api/ocr-crop` | `{region}` | Return cropped OCR region image |
 
 ---
 

@@ -1,11 +1,13 @@
-"""Item 186 dead-endpoint cleanup drift guard.
+"""Item 186 + 194 dead-endpoint cleanup drift guard.
 
-Pins the 11 routes deleted in item 186 as PERMANENTLY removed. These were
-the truly-dead endpoints from item 184 Phase 6's flagged candidate list:
-each had ZERO live callers across web/js/main.js, web/js/lib/, web/js/panels/,
-tests/, tools/, coaches/, core/, agents/, lcu/, tft/, ops/, vision_server/
-(excluding the documented-dead web/js/dashboard.js + web/js/sim.js + dated
-audit reports).
+Pins the 11 routes deleted in item 186 + 1 in item 194 as PERMANENTLY removed.
+The item 186 batch was truly-dead endpoints from item 184 Phase 6's flagged
+candidate list: each had ZERO live callers across web/js/main.js, web/js/lib/,
+web/js/panels/, tests/, tools/, coaches/, core/, agents/, lcu/, tft/, ops/,
+vision_server/ (excluding the documented-dead web/js/dashboard.js + web/js/sim.js
++ dated audit reports). Item 194 added /api/preview-build after a follow-up audit:
+only caller was the dead web/legacy_index.html:1523, so it survived the item 186
+sweep purely because that file is excluded.
 
 Per CLAUDE.md item 184 carry (h) the risky candidates (aram_analyze +
 sr_draft + post_game_*) were vetted individually:
@@ -15,10 +17,11 @@ sr_draft + post_game_*) were vetted individually:
   - /api/post-game-rubric    KEPT    - active route, in-flight feature
   - /api/post-game-wpa       KEPT    - active route, in-flight feature
 
-The 11 deletions also dropped these handler symbols:
+The 12 deletions also dropped these handler symbols:
   - _serve_aram_analyze_post
   - _serve_experimental_get_post / _adapt_post / _mark_post
   - _serve_logs
+  - _serve_preview_build (item 194)
   - _serve_recommend_champ
   - _serve_replay_coach_post
   - _serve_reload_regions
@@ -38,7 +41,7 @@ from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 
-# 11 routes deleted in item 186. Each pair = (path, deletion-mode).
+# 11 routes deleted in item 186 + 1 in item 194.
 _DELETED_ROUTES: tuple[str, ...] = (
     "/api/aram-analyze",
     "/api/experimental/adapt",
@@ -46,6 +49,7 @@ _DELETED_ROUTES: tuple[str, ...] = (
     "/api/experimental/mark",
     "/api/logs",
     "/api/ocr-crop",
+    "/api/preview-build",
     "/api/recommend-champ",
     "/api/reload-regions",
     "/api/replay-coach",
@@ -62,6 +66,7 @@ _DELETED_HANDLERS: tuple[str, ...] = (
     "_serve_experimental_mark_post",
     "_serve_logs",
     "_serve_ocr_crop",
+    "_serve_preview_build",
     "_serve_recommend_champ",
     "_serve_reload_regions",
     "_serve_replay_coach_post",
@@ -70,6 +75,7 @@ _DELETED_HANDLERS: tuple[str, ...] = (
 )
 
 _ROUTE_MODULES: tuple[str, ...] = (
+    "dashboard/routes_bridge.py",
     "dashboard/routes_coach.py",
     "dashboard/routes_diag.py",
     "dashboard/routes_sr_draft.py",
@@ -153,12 +159,18 @@ class CallerSurfaceAbsenceTests(unittest.TestCase):
             for path in paths:
                 rel = str(path.relative_to(_PROJECT_ROOT)).replace("\\", "/")
                 # Skip the route registrations + the dashboard.js legacy dead
-                # file + the SPA mock sim.js + dated archives.
+                # file + the SPA mock sim.js + dated archives + the legacy
+                # web/legacy_index.html shell (the dead web/js/dashboard.js
+                # caller of /api/preview-build lives here) + runtime/cache
+                # artifacts.
                 if rel.startswith("dashboard/routes_"):
                     continue
-                if rel in {"web/js/dashboard.js", "web/js/sim.js"}:
+                if rel in {"web/js/dashboard.js", "web/js/sim.js",
+                           "web/legacy_index.html"}:
                     continue
                 if "/_archive/" in rel:
+                    continue
+                if rel.startswith("ops/runtime/"):
                     continue
                 try:
                     text = path.read_text(encoding="utf-8", errors="ignore")
