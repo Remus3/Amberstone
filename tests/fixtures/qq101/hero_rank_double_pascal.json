@@ -1,0 +1,8 @@
+{
+  "Aatrox": [
+    {"pair": "Tryndamere", "wr": 52.1, "g": 1234}
+  ],
+  "Tryndamere": [
+    {"pair": "Aatrox", "wr": 50.3, "g": 600}
+  ]
+}
