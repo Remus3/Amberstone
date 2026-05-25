@@ -112,14 +112,14 @@ def _bar(parent, row, label, color, minsize=40):
     return var, lbl
 
 
-# ── Team Health Canvas v2 ─────────────────────────────────────────────────────
+# -- Team Health Canvas v2 -----------------------------------------------------
 # 8 teams ranked by HP descending (dead at bottom)
 # YOUR pair: bright green border + "YOU" tag
 # Partner: separate row with partner label
 # Next opponent: orange border + "NEXT" tag + threat icon
 # Trend arrows: △ gained HP (healed), ▽ lost HP (took damage since last round)
 # Camp phase: banner overlay when detected
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 class ArenaHealthCanvas(tk.Frame):
     ROW_H  = 17
 
@@ -280,7 +280,7 @@ class ArenaHealthCanvas(tk.Frame):
                                fill=C["dead"], font=("Consolas", 8), anchor="w")
 
 
-# ── Right-top ─────────────────────────────────────────────────────────────────
+# -- Right-top -----------------------------------------------------------------
 class ArenaRightTop(tk.Toplevel):
     GEO = {"x": 1600, "y": 0, "w": 320, "h": 520}
 
@@ -338,7 +338,7 @@ class ArenaRightTop(tk.Toplevel):
         _write_rich(self._anvil_txt, data.get("anvil_advice", "\u2014"), C["anvil"])
 
 
-# ── Right-bot ─────────────────────────────────────────────────────────────────
+# -- Right-bot -----------------------------------------------------------------
 
 class ArenaAiStatusBar(tk.Toplevel):
     GEO = {"x": 1600, "y": 520, "w": 320, "h": 20}
@@ -459,7 +459,7 @@ class ArenaRightBot(tk.Toplevel):
             except Exception: pass
 
 
-# ── Bottom strip ──────────────────────────────────────────────────────────────
+# -- Bottom strip --------------------------------------------------------------
 class ArenaBottomStrip(tk.Toplevel):
     GEO = {"x": 0, "y": 880, "w": 1920, "h": 200}
 

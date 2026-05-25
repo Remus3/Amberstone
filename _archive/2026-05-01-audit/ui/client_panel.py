@@ -49,7 +49,7 @@ class ClientPanel(OverlayWindow):
         container = tk.Frame(self.top, bg=BG, highlightbackground=BORDER, highlightthickness=1)
         container.pack(fill="both", expand=True, padx=1, pady=1)
 
-        # ── Tab row ──────────────────────────────────────────────────────
+        # -- Tab row ------------------------------------------------------
         tab_row = tk.Frame(container, bg=BG); tab_row.pack(fill="x", pady=(1, 0))
         self._tab_labels = {}; self._active_tab = "SR"
         _all_tabs = ["ARAM", "SR", "ARENA", "BRAWL", "TFT", "OPS"]
@@ -66,7 +66,7 @@ class ClientPanel(OverlayWindow):
             f.bind("<Button-1>", lambda e, m=mode: self._select_tab(m))
             self._tab_labels[mode] = (f, lbl); tab_row.columnconfigure(i, weight=1)
 
-        # ── Rating body (shared by ARAM/SR/ARENA/BRAWL/TFT tabs) ─────────
+        # -- Rating body (shared by ARAM/SR/ARENA/BRAWL/TFT tabs) ---------
         self._rating_frame = tk.Frame(container, bg=BG)
         self._rating_frame.pack(fill="both", expand=True, padx=4, pady=(0, 2))
 
@@ -118,20 +118,20 @@ class ClientPanel(OverlayWindow):
                  font=("Consolas", 8), anchor="e"
                  ).pack(fill="x", anchor="e", pady=(0, 2))
 
-        # ── OPS tab body (hidden until OPS tab is selected) ───────────────
+        # -- OPS tab body (hidden until OPS tab is selected) ---------------
         self._ops_frame = tk.Frame(container, bg=BG)
         # (Not packed yet — shown on demand by _select_tab)
         self._build_ops_tab(self._ops_frame)
 
         self._ratings_cache = {}; self._load_all(); self._select_tab("SR")
 
-    # ── MetricsCache wiring ───────────────────────────────────────────────
+    # -- MetricsCache wiring -----------------------------------------------
 
     def set_metrics_cache(self, metrics_cache) -> None:
         """Called by app.py after MetricsCache is available."""
         self._metrics = metrics_cache
 
-    # ── LCU rune page wiring (AUDIT-PHASE-2-API-001) ─────────────────────
+    # -- LCU rune page wiring (AUDIT-PHASE-2-API-001) ---------------------
 
     def set_lcu_client(self, lcu) -> None:
         """Pass the live LcuClient so the panel can show current rune page."""
@@ -154,11 +154,11 @@ class ClientPanel(OverlayWindow):
         except Exception:
             self._rune_var.set("")
 
-    # ── OPS tab construction ──────────────────────────────────────────────
+    # -- OPS tab construction ----------------------------------------------
 
     def _build_ops_tab(self, parent: tk.Frame) -> None:
         """Build the OPS observability + action surface."""
-        # ── Observability section ─────────────────────────────────────────
+        # -- Observability section -----------------------------------------
         obs_frame = tk.Frame(parent, bg=BG)
         obs_frame.pack(fill="x", padx=6, pady=(4, 0))
 
@@ -208,7 +208,7 @@ class ClientPanel(OverlayWindow):
         tk.Label(obs_frame, textvariable=self._obs_ts_var, bg=BG, fg=_C_DIM,
                  font=("Consolas", 7), anchor="e").pack(fill="x")
 
-        # ── Policy section ──────────────────────────────────────────
+        # -- Policy section ------------------------------------------
         tk.Frame(obs_frame, bg="#222233", height=1).pack(fill="x", pady=(4, 0))
         tk.Label(obs_frame, text="FEATURE POLICY", bg=BG, fg=_OPS_TAB_COLOR,
                  font=("Consolas", 8, "bold"), anchor="w").pack(fill="x", pady=(2, 0))
@@ -246,7 +246,7 @@ class ClientPanel(OverlayWindow):
                  font=("Consolas", 7), anchor="w", wraplength=370, justify="left"
                  ).pack(fill="x")
 
-        # ── Action section ────────────────────────────────────────────────
+        # -- Action section ------------------------------------------------
         tk.Frame(parent, bg="#222233", height=1).pack(fill="x", padx=6, pady=(4, 0))
         act_frame = tk.Frame(parent, bg=BG)
         act_frame.pack(fill="x", padx=6, pady=(4, 4))
@@ -276,7 +276,7 @@ class ClientPanel(OverlayWindow):
                  wraplength=370, justify="left")
         self._action_result_lbl.pack(fill="x", pady=(2, 0))
 
-    # ── OPS tab refresh ───────────────────────────────────────────────────
+    # -- OPS tab refresh ---------------------------------------------------
 
     def refresh_ops(self) -> None:
         """
@@ -374,7 +374,7 @@ class ClientPanel(OverlayWindow):
             rt = rt.split("T")[1][:8]
         self._obs_ts_var.set(f"refreshed {rt}" if rt else "")
 
-        # ── Policy section ──────────────────────────────────────────────
+        # -- Policy section ----------------------------------------------
         def _pset(key, text, color=_C_TEXT):
             if key in self._policy_vars:
                 var, lbl = self._policy_vars[key]
@@ -408,7 +408,7 @@ class ClientPanel(OverlayWindow):
         warn = s.policy_last_warning or ""
         self._policy_warn_var.set(warn[:120] if warn else "")
 
-    # ── Action handlers ───────────────────────────────────────────────────
+    # -- Action handlers ---------------------------------------------------
 
     def _action_preflight(self) -> None:
         self._set_action_status("Running preflight...", _C_TEXT)
@@ -481,7 +481,7 @@ class ClientPanel(OverlayWindow):
         except Exception:
             pass
 
-    # ── Tab switching ─────────────────────────────────────────────────────
+    # -- Tab switching -----------------------------------------------------
 
     def _select_tab(self, mode):
         self._active_tab = mode
@@ -509,7 +509,7 @@ class ClientPanel(OverlayWindow):
                 self._label_var.set(""); self._notes_var.set(""); self._time_var.set("")
             self._refresh_rune_page()
 
-    # ── Rating methods (unchanged from pre-Step-6) ────────────────────────
+    # -- Rating methods (unchanged from pre-Step-6) ------------------------
 
     def _load_all(self):
         if not HAS_TRACKER: return

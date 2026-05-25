@@ -42,12 +42,25 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 # Constructed via \xNN escapes so this test file stays 7-bit ASCII.
 _U2500_BYTES = b"\xe2\x94\x80"
 
-# Files swept by item 176 - these specific paths must remain U+2500-free.
-# To extend coverage to additional files, get operator grant + run the
-# sweep tool, then add the path here.
+# Files swept by item 176 (frozen) + item 187 (candidates: archived code +
+# data payload). These specific paths must remain U+2500-free. To extend
+# coverage, get operator grant + run the sweep tool, then add the path
+# here.
 _ASSERTED_CLEAN: frozenset[str] = frozenset({
+    # item 176 frozen-file sweep (2026-05-24):
     "ops/rc_supervisor.py",
     "ops/rc_self_monitor.py",
+    # item 187 candidate sweep (2026-05-25) - archived dead code:
+    "_archive/2026-05-01-audit/tft/comp_control.py",
+    "_archive/2026-05-01-audit/ui/client_panel.py",
+    "_archive/2026-05-01-audit/modes/arena_overlay.py",
+    "_archive/2026-05-01-audit/ui/game_right_bot.py",
+    "_archive/2026-05-01-audit/tft/tft_overlay.py",
+    "_archive/2026-05-01-audit/core/tk_ai_bar_proxy.py",
+    "_archive/2026-05-01-audit/ui/base.py",
+    # item 187 candidate sweep (2026-05-25) - data payload + dead fallback:
+    "web/legacy_index.html",
+    "ops/rc_config.json",
 })
 
 
