@@ -1741,22 +1741,53 @@ function _csvResolveArchetype(champion) {
 const _CSV_LAST_PUSH_KEY = { value: "" };
 function _csvMaybePushBuildsToLCU(champion, mode, variants) {
   if (!champion || !Array.isArray(variants) || !variants.length) return;
-  const realVariants = variants.filter((v) =>
-    v && Array.isArray(v.item_ids) && v.item_ids.length && v.key !== "empty");
-  if (!realVariants.length) return;
-  const itemSig = realVariants.map((v) =>
-    `${v.key}:${(v.item_ids || []).slice(0, 6).join(",")}`).join("|");
+  // Item 178 (2026-05-24): flatten collapsed variants into their
+  // build_paths so the in-game item-shop dropdown carries one set per
+  // build path (not one set per champion). Pre-item-178 a collapsed
+  // variant would push only the primary path's items because the
+  // variant-level item_ids field is populated from path[0]; this
+  // missed paths 2..N. Each path's set carries a distinct set_uid so
+  // apply_item_sets_batch's replace-by-uid leaves them coexisting.
+  const pushUnits = [];
+  for (const v of variants) {
+    if (!v || v.key === "empty") continue;
+    const paths = Array.isArray(v.build_paths) ? v.build_paths : [];
+    if (paths.length) {
+      for (const p of paths) {
+        if (p && Array.isArray(p.item_ids) && p.item_ids.length) {
+          pushUnits.push({
+            uidKey: `${v.key}-${p.key || "path"}`,
+            label:  `${v.label || v.key} - ${p.label || p.key || "Variant"}`,
+            item_ids: (p.item_ids || []).slice(0, 6).map((x) => String(x)),
+          });
+        }
+      }
+    } else if (Array.isArray(v.item_ids) && v.item_ids.length) {
+      // Legacy single-variant entry (ARAM/Arena/experimental).
+      pushUnits.push({
+        uidKey: v.key || "default",
+        label:  v.label || v.key || "Build",
+        item_ids: (v.item_ids || []).slice(0, 6).map((x) => String(x)),
+      });
+    }
+  }
+  if (!pushUnits.length) return;
+  const itemSig = pushUnits.map((u) =>
+    `${u.uidKey}:${u.item_ids.join(",")}`).join("|");
   const key = `${champion}|${mode || "sr"}|${itemSig}`;
   if (_CSV_LAST_PUSH_KEY.value === key) return;
   _CSV_LAST_PUSH_KEY.value = key;
-  const sets = realVariants.slice(0, 4).map((v, i) => ({
-    set_uid:     `RC-${champion}-${mode || "sr"}-${v.key}`,
-    title:       `RC ${i + 1}: ${v.label || v.key}`.slice(0, 50),
+  // Cap at 4 sets to match the historical apply_item_sets_batch
+  // budget (item 164); the in-game dropdown holds more but the
+  // operator picked 4 as the sweet spot for the recommended-items
+  // surface.
+  const sets = pushUnits.slice(0, 4).map((u, i) => ({
+    set_uid:     `RC-${champion}-${mode || "sr"}-${u.uidKey}`,
+    title:       `RC ${i + 1}: ${u.label}`.slice(0, 50),
     champion_id: 0,
     blocks: [{
-      type: v.label || v.key,
-      items: (v.item_ids || []).slice(0, 6).map((iid) =>
-        ({ id: String(iid), count: 1 })),
+      type: u.label,
+      items: u.item_ids.map((iid) => ({ id: String(iid), count: 1 })),
     }],
   }));
   if (!sets.length) return;
@@ -2183,6 +2214,14 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
     const summoners = (adapt && Array.isArray(adapt.summoners))
       ? adapt.summoners
       : baseSumm;
+    // Item 178 (2026-05-24): collapsed SR variant carries build_paths[]
+    // (one per source variant in the operator's prior config). When
+    // present, the row renders as ONE champion entry with N labeled
+    // build-path rows stacked vertically inside. Each path's items +
+    // (optional) runes / summoners override the variant-level fields
+    // on click. backend route serves the resolved item_ids per path
+    // so the frontend doesn't have to re-call ddragon resolution.
+    const buildPaths = Array.isArray(v.build_paths) ? v.build_paths : [];
     return {
       key:        v.key,
       label:      v.label || v.key,
@@ -2196,6 +2235,8 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
       reasons:    {},
       is_default: false,
       is_user:    true,
+      collapsed:  !!v._collapsed,
+      build_paths: buildPaths,
     };
   });
   // s210: experimental auto-build row appended to every champion's
@@ -2244,6 +2285,35 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
   return experimentalRow ? userRows.concat([experimentalRow]) : userRows;
 }
 
+// Item 178 (2026-05-24): render a single build-path row inside a
+// collapsed variant. Each path renders as a labeled pill + 6 item
+// icons stacked horizontally. Click selects the path (highlight +
+// persist) and fires the LCU push via _csvApplyLoadout with the
+// `<variant>:<path-key>` form so the backend resolver overlays the
+// path's items / runes / summoners on the variant.
+function _csvBuildPathRowHtml(variantKey, path, isActive, ver) {
+  const items = (path.item_ids || []).slice(0, 6).map((iid) => {
+    const lolHtml = itemTooltipHtml(iid);
+    const ttAttr = lolHtml ? ` data-tt-html="${lolHtml.replace(/"/g, "&quot;")}"` : "";
+    return `
+      <div class="csv-build-path-item"${ttAttr}>
+        <img src="/data/ddragon/${ver}/img/item/${iid}.png"
+             onerror="if(!this.dataset.cdn){this.dataset.cdn=1;this.src='https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${iid}.png'}else{this.style.display='none'}"
+             alt="">
+      </div>`;
+  }).join("") || '<div class="csv-empty">-</div>';
+  const label = path.label || path.key || "Variant";
+  const archAttr = path._archetype ? ` data-arch="${path._archetype}"` : "";
+  const primaryAttr = path._is_primary ? ' data-primary="1"' : "";
+  return `
+    <div class="csv-build-path-row${isActive ? " is-active" : ""}"
+         data-variant="${variantKey}"
+         data-path-key="${path.key || ""}"${archAttr}${primaryAttr}>
+      <div class="csv-build-path-label" title="${label}">${label}</div>
+      <div class="csv-build-path-items">${items}</div>
+    </div>`;
+}
+
 function _csvBuildVariantRowsHtml(variants, savedChoice) {
   if (!variants || !variants.length) {
     return '<div class="csv-empty">no build variants for this champion / mode yet</div>';
@@ -2252,9 +2322,13 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
   // s171.8: pre-select the saved choice if present; else default to
   // the first row (DS engine top picks). Matches what the in-game
   // chooser does via _ibSavedChoice on the same localStorage key.
+  // Item 178: saved choice can be either "<variant>" (legacy) or
+  // "<variant>:<path-key>" (multi-path). Strip the path-key suffix
+  // when looking up the variant idx.
   let selectedIdx = 0;
   if (savedChoice) {
-    const found = variants.findIndex((v) => v && v.key === savedChoice);
+    const savedVariant = savedChoice.split(":")[0];
+    const found = variants.findIndex((v) => v && v.key === savedVariant);
     if (found >= 0) selectedIdx = found;
   }
   return variants.map((v, idx) => {
@@ -2364,6 +2438,40 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
                + ` data-exp-secondary="${v.secondary}"`
                + ` data-exp-items="${itemList}"`;
     }
+    // Item 178 (2026-05-24): collapsed SR variant renders ONE champion
+    // entry with N labeled build-path rows stacked vertically inside
+    // (instead of N separate selectable variant rows). Each path is
+    // clickable - selection persists as "<variant>:<path-key>" so the
+    // legacy single-variant savedChoice format still pre-selects the
+    // variant idx on next render. Non-collapsed variants (ARAM/Arena/
+    // experimental) render the legacy single-row layout below.
+    const buildPaths = Array.isArray(v.build_paths) ? v.build_paths : [];
+    if (buildPaths.length) {
+      // Pick the active path: saved choice's :path-key suffix if it
+      // belongs to this variant; else the first path flagged as primary;
+      // else path[0].
+      let activePathKey = "";
+      if (savedChoice && savedChoice.startsWith(v.key + ":")) {
+        activePathKey = savedChoice.slice(v.key.length + 1);
+      }
+      if (!activePathKey) {
+        const primaryPath = buildPaths.find((p) => p && p._is_primary);
+        activePathKey = (primaryPath && primaryPath.key) || buildPaths[0].key || "";
+      }
+      const pathRowsHtml = buildPaths.map((p) =>
+        _csvBuildPathRowHtml(v.key, p, p.key === activePathKey, ver)
+      ).join("");
+      return `
+        <div class="csv-build-row csv-build-row-collapsed${idx === selectedIdx ? " selected" : ""}"
+             data-variant="${v.key}"
+             data-active-path="${activePathKey}">
+          <div class="csv-build-collapsed-head">
+            <div class="csv-build-collapsed-title">${v.label}</div>
+          </div>
+          <div class="csv-build-path-list">${pathRowsHtml}</div>
+        </div>`;
+    }
+
     // s211: 4-column row - checkbox / meta (3 stacked rows: badge, main
     // tree, sub tree) / summoners (stacked vertically) / items (larger).
     // Label rendered as a colored pill via csv-build-badge so the row
@@ -2437,9 +2545,43 @@ function _csvWireBuildVariants(scope) {
   const wrap = scope.querySelector(".csv-builds");
   const champion = wrap ? (wrap.dataset.champion || "") : "";
   const mode     = wrap ? (wrap.dataset.mode || "sr") : "sr";
+
+  // Item 178 (2026-05-24): wire path-row clicks inside collapsed variants
+  // BEFORE the legacy single-variant click handler so a nested click is
+  // handled by the inner row (and stopPropagation prevents the outer
+  // selection toggle). Each path click persists `<variant>:<path-key>`
+  // and fires _csvApplyLoadout with the same form so the resolver
+  // overlays the path's items on the variant.
+  const pathRows = scope.querySelectorAll(".csv-build-path-row");
+  pathRows.forEach((prow) => {
+    prow.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const variantKey = prow.dataset.variant || "";
+      const pathKey    = prow.dataset.pathKey || "";
+      if (!champion || !variantKey || !pathKey) return;
+      // Single-active-path within this collapsed variant.
+      const siblings = prow.parentNode
+        ? prow.parentNode.querySelectorAll(".csv-build-path-row")
+        : [];
+      siblings.forEach((s) => s.classList.toggle("is-active", s === prow));
+      const outer = prow.closest(".csv-build-row-collapsed");
+      if (outer) outer.dataset.activePath = pathKey;
+      const composed = `${variantKey}:${pathKey}`;
+      _csvSaveChoice(champion, composed);
+      _csvApplyLoadout(champion, composed, mode, null, null, null);
+    });
+  });
+
+  // Legacy single-variant rows - click selects the variant (non-
+  // collapsed shape; ARAM / Arena / experimental).
   const rows = scope.querySelectorAll(".csv-build-row");
   rows.forEach((row) => {
     row.addEventListener("click", () => {
+      // Collapsed rows have their own per-path click wiring above; the
+      // outer click should not toggle a single "selected" state on the
+      // collapsed entry (only one entry per champ; the row is implicitly
+      // selected).
+      if (row.classList.contains("csv-build-row-collapsed")) return;
       rows.forEach((r) => r.classList.toggle("selected", r === row));
       const variantKey = row.dataset.variant;
       if (champion && variantKey

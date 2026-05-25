@@ -55,22 +55,43 @@ class CuratedLoadoutsNoUniqueClashTests(unittest.TestCase):
             cls.loadouts = json.load(f)
         cls.fam_map = _build_name_to_family()
 
+    def _check_items_for_clashes(self, scope: str, items: list) -> list[str]:
+        """Return list of clash strings for an item list under `scope`."""
+        out: list[str] = []
+        seen: dict[str, str] = {}
+        for it in items or []:
+            fam = self.fam_map.get(_norm(it))
+            if not fam:
+                continue
+            if fam in seen:
+                out.append(
+                    f"{scope}: {seen[fam]!r} + {it!r} "
+                    f"both in unique-passive family {fam!r}"
+                )
+            else:
+                seen[fam] = it
+        return out
+
     def test_no_variant_has_unique_family_clash(self) -> None:
         clashes: list[str] = []
         for cn, c in (self.loadouts.get("champions") or {}).items():
             for vk, v in (c.get("variants") or {}).items():
-                seen: dict[str, str] = {}
-                for it in (v.get("items") or []):
-                    fam = self.fam_map.get(_norm(it))
-                    if not fam:
+                # Variant-level items (legacy + back-compat with the
+                # collapsed primary path).
+                clashes.extend(self._check_items_for_clashes(
+                    f"{cn}|{vk}", v.get("items") or [],
+                ))
+                # Item 178 (2026-05-24): SR variants may carry
+                # build_paths[] where each path has its own items list.
+                # Walk those too so a clash inside a non-primary path
+                # is caught.
+                for p in (v.get("build_paths") or []):
+                    if not isinstance(p, dict):
                         continue
-                    if fam in seen:
-                        clashes.append(
-                            f"{cn}|{vk}: {seen[fam]!r} + {it!r} "
-                            f"both in unique-passive family {fam!r}"
-                        )
-                    else:
-                        seen[fam] = it
+                    p_key = p.get("key") or "?"
+                    clashes.extend(self._check_items_for_clashes(
+                        f"{cn}|{vk}:{p_key}", p.get("items") or [],
+                    ))
         # Cap noise at 25 examples on failure.
         if clashes:
             shown = clashes[:25]
