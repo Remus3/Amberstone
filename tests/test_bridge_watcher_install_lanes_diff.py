@@ -136,54 +136,11 @@ class WatcherPyArgparseStableTests(unittest.TestCase):
         self.assertIn("--enable-auto-action-lanes", body)
 
 
-class InstallPs1FrozenStateTests(unittest.TestCase):
-    """tools/bridge_watcher_install.ps1 must still be in pre-diff state.
-
-    These assertions flip once the operator grants + lands the diff. At
-    that point delete this test class (or relax it) and bump the carry
-    in CLAUDE.md from "owed" to "DONE".
-    """
-
-    def test_install_ps1_exists(self) -> None:
-        self.assertTrue(_INSTALL_PS1.is_file())
-
-    def test_install_ps1_still_lacks_enablelanes_param(self) -> None:
-        body = _INSTALL_PS1.read_text(encoding="utf-8")
-        # Pre-diff: no $EnableLanes param. Post-diff: this assertion
-        # will fail loudly, signaling the carry can be closed.
-        self.assertNotRegex(
-            body,
-            r'\[string\]\$EnableLanes\s*=\s*""',
-            "tools/bridge_watcher_install.ps1 now declares $EnableLanes; "
-            "item 188 carry (j) is DONE - close this test class and "
-            "flip the carry in CLAUDE.md.",
-        )
-
-    def test_install_ps1_still_lacks_lanes_flag_in_args(self) -> None:
-        body = _INSTALL_PS1.read_text(encoding="utf-8")
-        # Pre-diff: hardcoded Arguments string at L200 does NOT mention
-        # --enable-auto-action-lanes. Post-diff: this flips.
-        self.assertNotIn(
-            "--enable-auto-action-lanes",
-            body,
-            "tools/bridge_watcher_install.ps1 now wires the lanes flag "
-            "through; item 188 carry (j) is DONE - close this test "
-            "class + flip the carry in CLAUDE.md.",
-        )
-
-    def test_install_ps1_param_block_present(self) -> None:
-        # The diff lands on a specific anchor: the existing param() block.
-        # Make sure the anchor still looks the way the diff doc assumes.
-        body = _INSTALL_PS1.read_text(encoding="utf-8")
-        self.assertIn('[ValidateSet("gamepc", "peer")]', body)
-        self.assertIn('[string]$Node = ""', body)
-
-    def test_install_ps1_arguments_line_present(self) -> None:
-        # The second diff hunk lands on the existing <Arguments> line in
-        # the embedded task XML. Confirm the anchor.
-        body = _INSTALL_PS1.read_text(encoding="utf-8")
-        self.assertIn("--node $Node --bridge-url $BridgeUrl", body)
-        self.assertIn("--poll 15", body)
+# InstallPs1FrozenStateTests was retired in item 190 follow-up: the operator
+# granted the frozen-file edit on tools/bridge_watcher_install.ps1 and the
+# canonical $EnableLanes param + --enable-auto-action-lanes pass-through are
+# now landed (commit 93695ca). The landed-state pin lives in
+# tests/test_bridge_watcher_install_enable_lanes.py.
 
 
 class CrossCheckGateProbeDocTests(unittest.TestCase):
