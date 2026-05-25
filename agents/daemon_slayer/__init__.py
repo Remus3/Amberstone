@@ -1321,8 +1321,86 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.55.0"
-# 1.55.0 (cc_conditional wave 18 FULL schema lift - NEW
+ENGINE_VERSION = "1.56.0"
+# 1.56.0 (cc_conditional wave 19 STATE-TRACKING EXTRACTOR SCHEMA
+# LIFT - NEW parent_resource field per-form record in
+# tools/daemon_slayer_abilities_extract.py output. The field
+# captures the champion-level Meraki resource string (FURY /
+# BLOOD_WELL / FRENZY / RAGE / HEAT / ENERGY / GRIT / MANA / ...)
+# threaded to every form so consumers can query state-tracking
+# eligibility WITHOUT parsing description text. The per-form
+# resource field encoded what the SPELL costs (Briar Q costs
+# CURRENT_HEALTH because it self-damages); the new
+# parent_resource field encodes what the CHAMPION uses as its
+# resource bar (Briar's bar is FRENZY). For Aatrox / Renekton /
+# Gnar / Rumble the per-form resource was null because the spells
+# don't cost a resource; the new field surfaces their empowered-
+# state resource (BLOOD_WELL / FURY / RAGE / HEAT) for the first
+# time. 0 new cc_conditional entries (all 6 wave-7 carries were
+# already shipped in prior waves 9/10/18 or REJECT-verified per
+# item 176 finding); the lift is FORWARD-MARKER infrastructure
+# for any future cc_conditional candidate consuming the
+# COND_FRENZY_STATE tag - the entry author SHOULD verify the
+# champion's parent_resource is in the empowered-state family
+# {FURY, BLOOD_WELL, FRENZY, RAGE, HEAT} before pitching. 6
+# cc_conditional champs (Aatrox / Briar / Gnar / Kennen /
+# Renekton / Sett) carry empowered-state resources today; the
+# remaining 48 are MANA/ENERGY/no-state. The 1.55.0 byte-
+# identical-default contract holds: include_conditional=False
+# math is unchanged for ALL champions; the lift is purely additive
+# on the extracted-data side, 2026-05-24):
+#
+# SCHEMA LIFT: tools/daemon_slayer_abilities_extract.py
+# ``_build_champion`` now reads ``payload["resource"]`` from the
+# Meraki champion-level record and threads it to every form via
+# the new ``_build_form(..., parent_resource=...)`` kwarg.
+# ``_build_form`` adds ``"parent_resource": parent_resource`` to
+# the returned per-form dict positioned next to the existing
+# ``"resource"`` field. Snapshot at
+# ``data/daemon_slayer/16.10.1/champion_abilities.json``
+# regenerated; coverage 99.0% ok_rate / 927 forms / 171 champions
+# byte-identical to ENGINE 1.55.0 baseline. The new field is on
+# every form (drift guard test).
+#
+# RE-AUDIT OUTCOME (carry-forward 176 (a)): all 6 wave-7 carries
+# closed without registry growth this wave.
+#   * Renekton W - ALREADY SHIPPED PRIMARY wave 9 item 153
+#     (COND_FRENZY_STATE 1.5s).
+#   * Karma W form_index=1 - ALREADY SHIPPED SIDECAR wave 10
+#     item 154 (COND_FRENZY_STATE 2.35-2.75s).
+#   * Hwei E form_index=2 - ALREADY SHIPPED SIDECAR wave 10
+#     item 154 (COND_CHANNEL_COMPLETION 1.2-2.0s); form_index=1
+#     Grim Visage was item 153 REJECT (description text says
+#     "DISABLE not CHANNEL") and Sylas E form 1 took the channel
+#     slot at wave 12.
+#   * Neeko E Empowered Root - ALREADY SHIPPED PRIMARY wave 1
+#     (COND_DUAL_ENEMY 1.8-3.0s, the dual-enemy gate is the
+#     same trigger surface as the W-disguise-stack empowered
+#     root).
+#   * Aatrox post-R passive - REJECT-VERIFIED item 153: the post-
+#     R passive surface change is minion-only fear, NOT champion
+#     CC; Aatrox first-order CC is Q wave 3 (nth_hit 0.5s) +
+#     W wave 4 (debuffed_target 1.75s).
+#   * Volibear R passive - REJECT-VERIFIED items 150/153/156:
+#     Stormbringer Turret Disable Duration is TURRET-only NOT
+#     champion CC.
+#   * Briar W frenzy - REJECT-VERIFIED items 150/153/156: Blood
+#     Frenzy is self-buff only (Bonus AS + Bonus MS) with no
+#     champion CC payload; Briar first-order CC is Q wave 4
+#     (terrain 1.0s) + E wave 5 (channel 1.0s) + R wave 18
+#     (debuffed_target 1.5s).
+#
+# Future cc_conditional wave 19+ candidates targeting the
+# COND_FRENZY_STATE tag SHOULD use the parent_resource field as a
+# structural pre-filter: the entry author runs
+# ``champ_rec[\"Q\"][0][\"parent_resource\"]`` and confirms the
+# result is in the empowered-state family before pitching the
+# entry. This replaces the prior practice of parsing description
+# text for "empowered" / "frenzied" / "berserk" / "rage" keywords
+# which had false positives (description text mentioned the state
+# but the CC fired on a different trigger).
+#
+# ALSO 1.55.0 (cc_conditional wave 18 FULL schema lift - NEW
 # coexists_with_unconditional boolean field on ConditionalCcEntry
 # + consumer-side MAX rule in compute_cc_pressure() so a
 # conditional entry CAN now coexist on the same (champion, spell)
