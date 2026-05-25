@@ -1,6 +1,50 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 188 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-05-25 (night) - item 189 SHIPPED: parallel 3-slice drain - bridge_watcher_install.ps1 -EnableLanes prep diff + cc_conditional wave 21 Xin Zhao Q + R ENGINE 1.59.0 + housekeeping wave 28 CLEAN + docs sync (4 commits + 2 merges `cf72ced` `b1ac4f9` `e39a6fb` `757f37c` pushed origin/main `006cde7..757f37c`; ENGINE 1.58.0 -> 1.59.0; DS :8893 restarted Stop-Process pid 16192 + schtasks -> serves 1.59.0; RC :8888 unchanged pid 10352 mode_key=client - DS engine + tools markdown diff + docs only)
+
+Operator "continue with the carry forwards". 41st consecutive run using orchestrator-merge pattern (items 134-189). 3 worktree/research agents dispatched concurrent. Pre-flight: 0 open PRs; 0 stale remote branches; CI 1 in-progress (item 188 CLAUDE.md sync) + 5 green; HEAD = item 188 `006cde7`; mode_key=client.
+
+**Slice A `415a20d` (merge `b1ac4f9` ort 0 conflicts 2 files +348 / 0) feat(bridge) item 189 Slice A bridge_watcher_install.ps1 -EnableLanes param prep work:** Closes item 188 carry (j). The frozen `tools/bridge_watcher_install.ps1` was NOT modified per CLAUDE.md hard rule; the staged ~5 LOC diff was written as a markdown doc for operator review + explicit grant. NEW `tools/BRIDGE_WATCHER_INSTALL_PS1_LANES_DIFF.md` ~137 lines (2-hunk diff: param block + task XML Arguments line; default empty `-EnableLanes` -> Arguments line byte-identical to today; only explicit non-empty value triggers extended form; ValidatePattern restricts input to empty/read/ops/read,ops/ops,read so typos fail at parse time). NEW `tests/test_bridge_watcher_install_lanes_diff.py` ~211 lines 15 drift-guard tests across 4 classes pinning the staged diff shape + bridge_watcher.py argparse stability + the FROZEN install.ps1 pre-diff state (these flip once operator lands the diff) + recipe doc anchor presence. Drift-guard test class `InstallPs1FrozenStateTests` asserts pre-diff state - those assertions flip when operator lands the diff = clean "carry is done" signal. Mid-flight self-correction: legion XML cross-check initially mis-decoded UTF-16 LE bytes as UTF-8; fixed by reading as utf-16 (Windows scheduled task XMLs are UTF-16 LE w/BOM per install.ps1's own L207 comment).
+
+**Slice B `4d60420` (merge `e39a6fb` ort 0 conflicts 37 files +1110 / -36) feat(ds) item 189 Slice B cc_conditional wave 21 ENGINE 1.59.0 Xin Zhao Q + R:** Re-audit of prior wave REJECT carries against item 188 wave 20 `notes` field schema lift surfaced 2 valid ship candidates both on Xin Zhao - neither covered by waves 0-20 registry. Both ship as primary. Registry 68/55 -> 70/56 (60 primary + 7 sidecar -> 62 primary + 7 sidecar). Tag count unchanged at 13. Xin Zhao becomes 2-slot champion (Q + R landing in same wave). **SHIP Xin Zhao Q Three Talon Strike 3rd-attack knockup** primary COND_NTH_HIT prob 0.7 durations_s=(0.75, 0.75, 0.75, 0.75, 0.75) per Meraki effects_descriptions[1] "The third attack knocks up the target for 0.75 seconds"; notes field confirms "Spell shield will only block the knock up"; COND_NTH_HIT tag's own docstring at cc_conditional.py:190 EXPLICITLY names "Xin Zhao Q 3rd-attack knockup" as canonical motivating example - waves 0-20 never added it; FIRST Xin Zhao Q first-order CC anywhere. **SHIP Xin Zhao R Crescent Sweep target-NOT-Challenged stun** primary COND_TARGET_DEBUFFED prob 0.5 (INVERSE semantic) durations_s=(0.75, 0.75, 0.75) per Meraki effects_descriptions[1] "knocking back all non-Challenged targets hit up-to 700 units over 0.75 seconds, as well as stunning them for the same duration"; notes confirms "Displacement immunity will also resist the application of the stun"; CORRECTS wave 15 REJECT carry (wave 15 audit dismissed citing "not in cc_conditional CC kind schema" - misread that caught only knockback, missed alongside stun); SECOND INVERSE-gated COND_TARGET_DEBUFFED after Briar R wave 18; FIRST Xin Zhao R first-order CC anywhere. **REJECT verdicts 38** from top-40 triage: ~11 unconditional CC payloads belonging in `_PER_SPELL_CC_DURATIONS` (Blitzcrank E, Darius E, LeeSin R, Sett R, Skarner E, Trundle E, Vel'Koz E, Viego R, Yorick W, Poppy W, Poppy R, Rammus Q); rest false-positive regex hits on cast-cancel clauses / self-CC during ability / cross-references. Rell W form 1 carries to wave 22+ as operator-decision-gated. Math preservation: `compute_cc_pressure(include_conditional=False)` BYTE-IDENTICAL to 1.58.0 for ALL champions. ENGINE_VERSION 1.58.0 -> 1.59.0 in `__init__.py` with full changelog block + 32 stale ENGINE pin syncs across DS test files. **+51 tests** in NEW `agents/daemon_slayer/tests/test_cc_conditional_wave21.py` ~686 lines. `test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES` extended. `test_cc_conditional_wave20.py` REGISTRY_TOTAL assertions relaxed assertEqual -> assertGreaterEqual.
+
+**Slice C `cf72ced` (committed direct main pre-A pre-B) docs(sync) item 189 Slice C wave 28 living docs sync - ROADMAP L165 wave 20 narrative (1 file +1 / -1):** Housekeeping triple at wave 28. PART 1 BACKLOG/ROADMAP stale-sweep wave 23 = 0 actionable flips (1 stale anchor flagged but in-scope ambiguous: ROADMAP L82 augment_intent_unsupported reference now stale post item 188 Slice C 4-PATCH chain handler ship, but item itself isn't closeable yet per item 188 carry (i)). PART 2 cost/latency CLEAN wave 30 = **30th consecutive CLEAN since item 134**: L1 13 cache_control across 8 blocks / L2 16 routes with `_CACHE` / L3 polling tightest 2000ms / L4 log spam `/api/bridge` 0.138/sec well below 1/sec / L5 all coaches haiku-4-5-20251001 Sonnet only POST-call telemetry / L6 14 RC-* scheduled tasks / L7 27=27 panel CSS parity. PART 3 living docs verify - ROADMAP.md L165 Fleet status DS row had header counts current (ENGINE 1.58.0 + 4749 tests) but inline cc_conditional wave narrative truncated at wave 19 (item 177 ENGINE 1.56.0); item 188 docs sync `1310c81` missed appending wave 20 clause. Fixed via 1-line surgical edit appending wave 20 narrative (Vayne E Condemn + 3 REJECTs).
+
+**Docs sync `757f37c` (direct main):** 6 files / 8 ins / 8 del. ENGINE 1.58.0 -> 1.59.0 + 4749 -> 4800 tests + cc_conditional 68/55 waves 0-20 -> 70/56 waves 0-21 + wave 21 closure narrative across docs/DAEMON_SLAYER.md L5+L32 / README.md L46 / BRIEF.md L20+L26 / docs/ARCHITECTURE.md L161 (3 edits) / ROADMAP.md L165 / BACKLOG.md L13 (2 edits). Skipped per [[feedback_no_history_rewrite]]: BRIEF.md L33 + L57.
+
+**Merge order:** Slice C `cf72ced` direct main FIRST (item 188 docs sync gap closure). Slice A merged into main SECOND `b1ac4f9` (ort, 0 conflicts, 2 files). Slice B merged into main THIRD `e39a6fb` (ort, 0 conflicts, 37 files). Docs sync `757f37c` direct main FOURTH (6 files / 8 ins / 8 del). 0 merge conflicts across all slices.
+
+**Verified:** DS suite **4800 passed / 1 skipped / 1 xfailed / 1777 subtests in 68.48s** (+51 over 4749 baseline = exactly wave 21 test file). `py -m ruff check .` ALL CHECKS PASSED. DS :8893 restarted via PowerShell `Stop-Process -Id 16192 -Force` + `schtasks /Run /TN RC-DaemonSlayer` (per [[reference_ds_server_not_supervisor_watched]] + item 188 don't-redo (j) Bash taskkill mis-coerces in Git-Bash env) -> serves engine_version=1.59.0 / patch=16.10.1 / 172 champs / 705 items. RC :8888 unchanged (pid 10352 mode_key=client alive=True last_reload_ok=True; never restarted - DS engine + tools markdown diff + docs only). 2 stale remote worktree branches deleted (worktree-agent-a5702d52b92d3b486 + worktree-agent-a0c63b83b7015dfe3). Pushed origin/main as `757f37c`.
+
+**Don't-redo:**
+- Slice A `tools/BRIDGE_WATCHER_INSTALL_PS1_LANES_DIFF.md` is the staged 2-hunk diff; the 15 drift-guard tests pin pre-diff state and FLIP when operator lands the change under explicit frozen-file grant. Do NOT modify `tools/bridge_watcher_install.ps1` without that grant. Operator next session pre-flagged "explicit frozen-files granted" so Slice A diff is the FIRST candidate to land.
+- Slice B Xin Zhao Q (COND_NTH_HIT docstring's own canonical motivating example) finally landed in wave 21 - 3rd-attack knockup that waves 0-20 missed. Xin Zhao R is SECOND INVERSE-gated COND_TARGET_DEBUFFED after Briar R wave 18 and corrects the wave 15 REJECT carry. Future wave 22+ should not re-pitch Xin Zhao Q or R.
+- The INVERSE-gated COND_TARGET_DEBUFFED semantic (entry fires when target is NOT debuffed by Challenged status) is the canonical home for "fires on non-marked targets" mechanics; Briar R + Xin Zhao R are the 2 consumers; future entries with inverse-debuff gates use the same probability midpoint 0.5.
+- The 38 REJECT verdicts in wave 21 catch ~11 unconditional CC payloads that belong in `_PER_SPELL_CC_DURATIONS` not cc_conditional (Blitzcrank E, Darius E, LeeSin R, Sett R, Skarner E, Trundle E, Vel'Koz E, Viego R, Yorick W, Poppy W, Poppy R, Rammus Q); do NOT re-pitch them as wave 22+ cc_conditional candidates.
+- Slice C's wave 28 audit produced 30 consecutive CLEAN cost/latency sweeps since item 134 = cost/latency lane saturated at this baseline.
+- The orchestrator-merge pattern is now 41 consecutive runs (items 134-189).
+- DS restart MUST use PowerShell `Stop-Process -Id <pid> -Force` not Bash taskkill (item 188 don't-redo (j) - Bash taskkill in Git-Bash env on Windows mis-coerces paths).
+
+**Carries forward:**
+(a) Item 188 carries (b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m) ALL unchanged EXCEPT (j) Slice A staged the diff this session - operator now grants frozen-file lift to apply.
+(b) Cherry augment live verification + Game-PC redeploy OWED at next Arena 1750 window.
+(c) Active Match #11/12/13 real in-game capture OWED.
+(d) 101.qq.com operator-at-Game-PC Chrome DevTools capture OWED.
+(e) `tools/bridge_watcher_install.ps1` -EnableLanes diff frozen-file grant + apply staged via Slice A diff doc + 15 drift-guard tests pre-diff state pinned.
+(f) Legion `RC-BridgeWatcher` pid 6204 RESURRECTION operator-decision (Task Scheduler falsely reports running per item 188 Slice G side-finding).
+(g) cc_conditional wave 22+ candidates require NEW schema lift beyond cast_time + effects_descriptions + parent_resource + notes (current 4-field Meraki extraction is saturated for current-schema candidates).
+(h) Auto-ops verb expansion + auto-action lanes Phase 3 95% gate (current N=2 zero-cadence; ETA indeterminate).
+(i) DD Defy deferred check - SHIPPED item 187, leaving the carry behind from item 188 (i).
+(j) Live ARAM/SR smoke STILL pending.
+(k) Calibrations STILL operator-gated.
+(l) Legion 1-PC consolidation STILL operator-gated.
+(m) Rell W form 1 cc_conditional candidate carries to wave 22+ as operator-decision-gated (REJECTED in wave 21 audit).
+(n) Frozen-file grant NOT used this session (next session grant expected per operator pre-flag).
+(o) DS test count 4800 / cumulative subtests 1777.
 
 ---
 
@@ -133,65 +177,3 @@ Operator-triggered parallel headless drain on operator-gated decision-owed lane:
 - 101.qq.com duo-synergy one-off Game-PC capture STILL operator-at-Game-PC-gated.
 - Frozen-file grant NOT used this session.
 - The 51,287 U+2500 chars across 197 non-frozen files: classified intentional (test/tool divider art) vs candidate (data payloads, archived code) - 10/10 split in top 20. Operator-gated separate sweep if desired; not a blocker.
-
----
-
-# 2026-05-25 (afternoon) - item 185 SHIPPED: page #3 Replay flex-allocation re-tune + housekeeping triple wave 26 CLEAN (1 commit `e9bc504` pushed origin/main `636804d..e9bc504`; non-engine; non-frozen; no DS engine bump; no DS restart; no RC restart - ADR-008 asset-hash auto-serves CSS on next dashboard load)
-
-Operator "start the next item" - 37th consecutive run using orchestrator-merge pattern (items 134-185). CAVEMAN ULTRA session default. 3 audit slices dispatched concurrent + 1 inline code slice. Pre-flight: 0 open PRs; 0 stale remote branches; CI 5/5 green; HEAD = item 184 `636804d`. Operator mode_key=client (between games) so non-game UI work UNBLOCKED.
-
-**Slice A `e9bc504` (direct main) fix(ui) page #3 Replay flex-allocation re-tune (3 files / +103 / -1):**
-- Item 184 carry (b) / item 162 carry (c). 10-row participant table collapsed to ~0 visible rows when 15-event timeline saturated `.replay-events-list { max-height: 480px }`. Edge surfaced after v2.1 typography migration (items 159 + 182) bumped row heights +44% (champ-icon 28 -> 38 / item-icon 22 -> 30 / row min-height -> --hit-min 42px).
-- `web/css/panels/primitives.css` `.replay-grid-wrap` gains `min-height: 360px` so participant grid always shows ~6-7 rows visible even when timeline saturates. flex: 1 still grows the grid when timeline is short.
-- `web/css/panels/replay_events.css` `.replay-events-list max-height: 480px -> 320px` so timeline does not crowd out the grid in the ~780px `.replay-main-pane` viewport. overflow-y: auto keeps long event tails scrollable.
-- NEW `tests/test_replay_view_flex_allocation.py` (~108 LOC, 6 grep-based pin tests across 3 classes): ReplayGridWrapMinHeightTests 2 + ReplayEventsListMaxHeightTests 2 + AsciiHygieneTests 2. Pins .replay-grid-wrap min-height 360 + .replay-events-list max-height 320 + flex: 1 + overflow-y: auto + ASCII hygiene on edited blocks.
-
-**Slice B CLEAN no-commit (BACKLOG/ROADMAP stale-sweep wave 26):**
-- 0 actionable flips. Explore subagent flagged 1 semantic drift at `agents/supervisor.py:597` claiming "minimap-locate rewire" reference in ROADMAP L61 is now UIApplyError. Direct verification: ROADMAP L61 is the `✅ FU01 - minimap-locate` SHIPPED entry from s168 (2026-05-11); shipped-entry historical anchors are intentionally frozen per [[feedback_no_history_rewrite]]. False positive on shipped-entry historical citation.
-- All 11 canonical OPEN file:line refs grep-verified live within +/- 3 tolerance: `dev.js:361` verdict.team_won / `main.js:3081/3092/4281` LCU 3 sites / `gamepc_lcu_agent.py:246` ARAM Mayhem qid=2400 / `gamepc_lcu_agent.py:536` _arena_teams / `gamepc_lcu_agent.py:1192` augment_intent_unsupported / `rc_supervisor.py:210` CircuitBreaker / `archetype_dispatch.py:52` _UNIT_SUFFIX / `item_build.js:328` _ibBuilds / `core/draft_elo.py:141` cross_pairs (BACKLOG L13 cc_conditional ecosystem cross-ref).
-- **Sweep cycle decay:** 17=0 / 18=1 / 19=0 / 20=0 / 21=0 / 22=0 / 23=0 / 24=0 / 25=0 / **26=0** = 9 consecutive zero-flip waves = sustained saturation plateau.
-
-**Slice C CLEAN no-commit (cost/latency wave 28 audit + measurement-error verification):**
-- 28th consecutive CLEAN since item 134. Initial Explore subagent report flagged 4 false-positive drift claims; live verification against source authoritative:
-  - Lever 1 prompt-cache: agent counted 21 raw cache_control mentions; live `grep cache_control coaches/*.py coach_integration/*.py | wc -l` = 13 hits across 8 cache blocks (matches item 184 baseline of "8 sites" = cache-control marker BLOCKS not raw grep counts). CLEAN.
-  - Lever 3 polling: agent flagged 8 sub-500ms NETWORK timers; live grep `setInterval` in `web/js/main.js` shows tightest NETWORK polls = `pollIfStale` 2000ms (L6179) + `pollLcu` 2000ms (L6247); 500ms is `applyStaleness` (L1284) UI-local timer per item 184 baseline. CLEAN.
-  - Lever 4 log spam: agent counted 15 _SUPPRESS_LOG_PATHS entries claiming spam at 0.98/sec; live `dashboard/_handler.py:74-85` = 10 entries unchanged from item 184; top non-suppressed `/api/ward-heat` 0.148/sec per item 184 baseline well below 1/sec. The 0.98/sec was LCU lockfile INFO log, not an HTTP route handler log - different category. CLEAN.
-  - Lever 6 scheduled tasks: agent reported 0 RC-* tasks; live `schtasks /Query /TN \RC-* /FO LIST | grep -c TaskName` = 13 (matches session-start rc_facts probe of 14 within tolerance for subfolder differences). CLEAN.
-  - Lever 5 model tier: agent claimed sonnet-4-6 in aram_coach.py call-time; per item 184 don't-redo + memory `feedback_verify_generated_reports`: Sonnet only appears as `r._model = "claude-sonnet-4-6"` POST-call telemetry stamps (not call-time selection). CLEAN.
-- Lever 2 route TTL: 16 routes_*.py with `_CACHE` (within 12-16 loose drift). Lever 7 bundle parity: `ls web/css/panels/*.css | wc -l` = 27 = `grep -c "@import.*panels/" web/css/dashboard.css` = 27. CLEAN.
-- **Verdict: 28th consecutive CLEAN no-commit.** Per [[feedback_verify_generated_reports]] agent measurement errors recorded for prompt refinement; do NOT relay subagent audit outputs as-is.
-
-**Slice D CLEAN no-commit (cc_conditional wave 20 audit):**
-- SCHEMA-BLOCKED as expected per item 184 don't-redo. 5 wave 19 REJECT carries re-audited against current Meraki schema (parent_resource + coexists_with_unconditional + cast_time):
-  - Jayce E cast-time root: REJECT-CONFIRMED (root duration missing from Meraki at parse-strip level despite cast_time=0.25 captured).
-  - Maokai R distance-gated: ALREADY SHIPPED wave 18 ENGINE 1.55.0.
-  - Taliyah E Unraveled Earth: ALREADY SHIPPED wave 17 ENGINE 1.54.0 COND_TRAVERSE.
-  - Rell W form 1: REJECT-CONFIRMED (form-transition semantics not gate-encodable under current schema).
-  - Urgot R recast suppression: REJECT-CONFIRMED (no COND_RECAST_THRESHOLD tag exists; HP-threshold gate is recast precondition not CC condition).
-- 0 new candidates surfaced from broader Meraki effects_descriptions + cast_time + parent_resource scan.
-- **Verdict: SCHEMA-BLOCKED no-commit.** Wave 20+ growth needs (1) new COND_RECAST_THRESHOLD + COND_FORM_TRANSITION tags, (2) Meraki encode of missing root durations, or (3) multi-form orchestration schema. Operator-gated.
-
-**Verified post-commit:**
-- `py -m pytest tests/test_replay_view_flex_allocation.py tests/test_replay_events_panel_dom.py tests/phase8_smoke/ -q` = **110 passed in 2.44s** (6 new + 29 replay_events_panel_dom + 75 phase8_smoke).
-- `py -m ruff check .` ALL CHECKS PASSED.
-- DS suite untouched (no engine change; DS :8893 serves 1.56.0 from item 177; not restarted).
-- RC :8888 unchanged pid 7612 alive=True reload_ok=True mode_key=client throughout (ADR-008 auto-serves CSS on next dashboard load).
-
-**Don't-redo:**
-- `.replay-grid-wrap min-height: 360px` is canonical floor for the participant grid; do NOT remove without rebalancing against `.replay-events-list` max-height. `.replay-events-list max-height: 320px` is the corresponding cap; future re-tunes should change BOTH in lockstep so the ~780px pane allocation stays balanced (~115px misc + 360 grid + 320 timeline = 795 close to pane height with slight overflow tolerance via overflow:auto on both).
-- Slice B + C agent reports caught false positives this session - per [[feedback_verify_generated_reports]] subagent audit numbers MUST be verified vs live source before action. The "1 drift flip" on supervisor.py:597 was a shipped-entry historical anchor; the "5 measurement errors" on cost/latency levers were prompt-misread artifacts. Future audit slice prompts should include explicit "before claiming X, grep against current source" guards.
-- 28 consecutive CLEAN cost/latency waves + 9 consecutive zero-flip BACKLOG sweeps confirm saturation; future sweep + audit slices should expect CLEAN no-commit verdicts as baseline.
-- Orchestrator-merge pattern now 37 consecutive runs (items 134-185).
-
-**Carry-forward:**
-- Item 184 carries ALL unchanged EXCEPT (b) page #3 Replay flex-allocation re-tune NOW CLOSED.
-- Live UI capture OWED for page #3 Replay at next operator-driven match-list-populated session (requires `rewind_history.db` populated + a selected match for the 10-row table to render).
-- Live UI capture OWED for pages #11/12/13 Active Match SR/ARAM/Arena at next in-game window.
-- DD Defy heal-on-takedown STILL deferred.
-- Calibrations STILL operator-gated.
-- Legion 1-PC consolidation STILL operator-gated.
-- cc_conditional wave 20+ STILL SCHEMA-BLOCKED (this session's audit confirms).
-- 542 residual U+2500 box-drawing chars STILL operator-gated separate sweep.
-- Item 184 dead-endpoint cleanup proposal (15 candidates) STILL operator-gated.
-- Item 184 dedup duplicate-fetch cache STILL deferred LOW-priority.
-- Frozen-file grant NOT used this session.
