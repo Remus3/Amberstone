@@ -323,12 +323,20 @@ class ItemHeal:
     stat-driven (``stats["lifesteal"] * stats["ad"] * stats["as"] *
     _FIGHT_WINDOW_S``) and computed inline in ``compute_ehp``.
 
-    Death's Dance Defy heal (75% bonus AD on takedown over 2s) is
-    DEFERRED to Phase 6.5: the takedown-rate assumption is uncertain
-    enough that a Phase 6 first-pass would over- or under-credit it.
-    Bloodthirster ichor-shield ships as an ``ItemShield`` (Phase 1.5
-    pipeline) using the full-cap steady-state assumption (overheal
-    builds the shield between fights at base/walking).
+    ENGINE 1.57.0 (2026-05-25): ``takedown_gated`` extends the dataclass
+    to support item heal pieces that fire conditional on a champion
+    takedown (kill or assist credit within a short window). Death's
+    Dance Defy is the first consumer: 75% bonus AD over 2s heal on
+    takedown. When ``takedown_gated=True``, the consumer (``ehp.py``)
+    multiplies the resolved per-trigger magnitude by the operator-
+    tunable ``_TAKEDOWN_RATE_PER_FIGHT`` constant (default 0.5 ->
+    "carry nets one takedown every other fight" / "support gets assist
+    credit roughly half the time"). The dataclass stays convention-
+    agnostic: the gating multiplier lands at the consumer site, not
+    here, mirroring the ``missing_hp_pct`` precedent. Bloodthirster
+    ichor-shield ships as an ``ItemShield`` (Phase 1.5 pipeline) using
+    the full-cap steady-state assumption (overheal builds the shield
+    between fights at base/walking).
 
     Magnitude resolves as ``flat + base_ad_scaling * base_ad +
     bonus_hp_scaling * bonus_hp + bonus_ad_scaling * bonus_ad +
@@ -339,7 +347,9 @@ class ItemHeal:
 
     The fight-window assumption (6.0s default) gates lifesteal
     accumulation only; item-passive heals use the one-trigger-per-fight
-    convention and are NOT scaled by the fight window.
+    convention and are NOT scaled by the fight window. ``takedown_gated``
+    items get an additional consumer-side multiplier on top of the
+    one-trigger model (resolved magnitude * ``_TAKEDOWN_RATE_PER_FIGHT``).
     """
     flat: float = 0.0
     base_ad_scaling: float = 0.0
@@ -347,6 +357,15 @@ class ItemHeal:
     bonus_ad_scaling: float = 0.0
     missing_hp_pct: float = 0.0
     ranged_modifier: float = 1.0
+    # ENGINE 1.57.0 (2026-05-25): takedown-gated trigger flag. When True,
+    # the consumer (``ehp._collect_heals``) multiplies the resolved
+    # per-trigger magnitude by ``_TAKEDOWN_RATE_PER_FIGHT`` (default 0.5)
+    # to approximate the fraction of fights that yield a takedown
+    # (kill / assist within 3s of damage). Default False preserves
+    # ENGINE 1.29.0 byte-identical resolve_magnitude behavior for
+    # Sundered Sky and any other always-on heal entry. Death's Dance
+    # 6333 / Arena 226333 Defy is the first consumer.
+    takedown_gated: bool = False
     note: str = ""
 
     def __post_init__(self) -> None:
