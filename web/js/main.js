@@ -3256,11 +3256,16 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (_csMockPromise) return _csMockPromise;
     // 2026-05-23 item 165: mock fixture picker - ?mode=aram URL flag
     // loads the ARAM fixture (Mark / Snowball + bench), else SR.
+    // 2026-05-25 page #10: ?mode=arena URL flag loads the Arena 6x2
+    // fixture (6 sub-teams, augments scaffold, Flash + Heal spells).
     let mockUrl = "/data/ui_mock/champ_select_sr.json";
     try {
       const params = new URLSearchParams(window.location.search || "");
-      if ((params.get("mode") || "").toLowerCase() === "aram") {
+      const m = (params.get("mode") || "").toLowerCase();
+      if (m === "aram") {
         mockUrl = "/data/ui_mock/champ_select_aram.json";
+      } else if (m === "arena") {
+        mockUrl = "/data/ui_mock/champ_select_arena.json";
       }
     } catch (_) {}
     _csMockPromise = fetch(mockUrl, { cache: "no-store" })
