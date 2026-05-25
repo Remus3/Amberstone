@@ -124,6 +124,14 @@ _BRIDGE_PUB_ALERT_S = 1800.0            # 30 min silent → escalate
 _BRIDGE_PUB_CHECK_INTERVAL_S = 300.0    # poll cadence (publisher posts ~60s)
 _BRIDGE_PUB_REFILE_COOLDOWN_S = 21600.0  # one task per node per 6h outage
 
+# Audit-8 H-02 reconciler: task_queue.jsonl state-machine leak guard.
+# Periodic scan closes IN_PROGRESS envelopes that never received a
+# terminal event (e.g. supervisor crash mid-dispatch, ephemeral session
+# aborted, audit cron exceeded budget). Threshold + interval mirror the
+# bridge watchdog cadence so the two background loops co-exist cheaply.
+_RECONCILE_INTERVAL_S = 300.0    # 5 min between scans
+_RECONCILE_STALE_S = 1800.0      # 30 min before in_progress is considered stale
+
 
 def _bridge_pub_should_file(
     age_s: float,
