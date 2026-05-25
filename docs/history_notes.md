@@ -6,6 +6,56 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-25 (night) - item 188 SHIPPED: parallel 7-slice drain - cc_conditional wave 20 notes schema lift ENGINE 1.58.0 + Vayne E + Cherry augment 4-path scaffold + Active Match mock fixtures + 101.qq.com probe scripts + 2 DEFER gate probe docs (7 commits + 1 docs sync `1310c81` pushed origin/main `2fb70a6..1310c81`; ENGINE 1.57.0 -> 1.58.0; DS :8893 restarted serves 1.58.0; RC :8888 unchanged pid 10352 mode_key=client)
+
+Operator "start: 1 / 2 / 4 / 5 / 6 / 9 / 10 in parallel" from item 187 carries menu -> 7 worktree/research agents dispatched concurrent. 40th consecutive run using orchestrator-merge pattern (items 134-188). Pre-flight: 0 open PRs; 2 stale remote branches deleted (fully merged); CI 10/10 green; HEAD = item 187 `2fb70a6`.
+
+**Slice A `7530002` (merge `bbf935e`) ENGINE 1.57.0 -> 1.58.0 cc_conditional wave 20 Meraki notes schema lift + Vayne E terrain stun (40 files / +1782 / -48):** NEW `notes: str | None` field per spell form in `tools/daemon_slayer_abilities_extract.py` parallel to cast_time + effects_descriptions + parent_resource. Re-extracted 16.10.1 (171 champs / 927 forms / 98.8% notes coverage). All 3 brief-named candidates REJECTED: Kindred E (slow + missing-HP crit damage only) + Diana P (pure AS bonus) + Vayne P (pure MS bonus). **4th candidate Vayne E surfaced + SHIP-PRIMARY:** terrain-collision stun 1.5s flat all 5 E ranks; COND_TERRAIN 0.3 SECOND consumer after Ornn E wave 15; coexists_with_unconditional=True for 0.5s knockback in `_PER_SPELL_CC_DURATIONS`. Registry 67/54/13 -> 68/55/13 (+1 entry / +1 net-new Vayne / tag count unchanged). +37 tests NEW `test_cc_conditional_wave20.py`. 32 stale ENGINE pin syncs. Default `include_conditional=False` byte-identical to 1.57.0.
+
+**Slice B no-commit (housekeeping triple):** 7 levers PASS; wave 22 BACKLOG sweep 0 flips. Slice B flagged ROADMAP L165 705->547 flip but **REJECTED per [[feedback_verify_generated_reports]]**: 705 = canonical DS catalog count per /health (includes Arena mirrors); 547 = DDragon purchasable subset. Two legitimate counts.
+
+**Slice C `0a4ee4d` (merge `3b00cdb`) Cherry set_augment_intent 4-endpoint PATCH chain scaffold (3 files / +418 / -12):** Replaced no-op stub at `tools/gamepc_lcu_agent.py:1179-1194` with 4-path priority chain. Body `{"augmentId": int, "slotIndex": 0..3}`. First 2xx wins. 15 tests / 14 PASS + 1 SKIP. NEW `docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md`.
+
+**Slice D `9a7c756` (merge `6a3a23f`) Active Match SR/ARAM/Arena mock fixtures + dispatcher + capture recipes (6 files / +622 / -14):** 3 NEW mock fixtures (Arena 6x2 = 12 players per item 180/183). `_amMockLoad` + `?mode=<sr|aram|arena>` URL flag at `web/js/main.js:3298-3354`. NEW `docs/UI_CAPTURE_RECIPES.md`. 24 new tests; 100 PASS.
+
+**Slice E `b8b77b7` (merge `fce36c2`) 101.qq.com hero-rank-double probe + compare scripts + operator recipe (7 new files / +826):** NEW `tools/probe_101qq_hero_rank_double.py` + `tools/compare_101qq_vs_ddragon.py` + `docs/CAPTURE_101QQ_INSTRUCTIONS.md` 7-step recipe. 24 tests + 3 fixtures. Stdlib-only. JSONP brace-balance unwrap.
+
+**Slice F `537a74d` (merge `7bef8df`) auto-ops verb expansion gate probe DEFERRED:** rate=2/2=100% but N=2 << N=50; 0 outcomes since 2026-05-03 (ETA ~550 days). `auto_ops_verbs` at FROZEN `tools/bridge_watcher_config.json:10-13`. NEW `tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md` ready-to-ship pseudocode.
+
+**Slice G `cf57992` (merge `4dcea89`) auto-action lanes enablement gate probe DEFERRED:** `--enable-auto-action-lanes` at `tools/bridge_watcher.py:1083`. Game-PC + Peer OFF state. Same Phase 3 gate as Slice F. NEW `docs/AUTO_ACTION_LANES_ENABLE_RECIPE.md`. **Side-finding:** Legion `RC-BridgeWatcher` pid 6204 dead since 2026-05-23 heartbeat stale 42h but Task Scheduler falsely reports running; blocks sample accumulation.
+
+**Docs sync `1310c81`:** ENGINE 1.57.0 -> 1.58.0 + 4712 -> 4749 tests + cc_conditional 67/54 waves 0-19 -> 68/55 waves 0-20 across 6 files / 8 ins / 8 del.
+
+**Merge order:** A -> C -> D -> E -> F -> G -> docs `1310c81`. 0 merge conflicts.
+
+**Verified:** DS suite 4749 passed / 1 skipped / 1 xfailed / 1775 subtests (+37 over 4712 baseline). phase8 1 expected fail pre-DS-restart; PASS post. ruff ALL CHECKS PASSED. DS :8893 restarted via Stop-Process + schtasks -> /health 1.58.0 / 16.10.1 / 172 champs / 705 items. RC :8888 unchanged.
+
+**Don't-redo:**
+- Vayne E SECOND COND_TERRAIN consumer; FIRST Vayne CC; coexists with 0.5s knockback in unconditional registry. Do NOT re-pitch.
+- `notes` schema lift is canonical home for free-form CC mechanic notes that don't fit cast_time/effects_descriptions/parent_resource; future wave 21+ consume `notes` BEFORE re-pitching extractor lift.
+- 3 REJECT candidates (Kindred E + Diana P + Vayne P) are schema-lift-verified NEGATIVES; do NOT re-pitch.
+- ROADMAP L165 `705 items` is the canonical DS catalog count per /health; 547 is DDragon purchasable subset. Both legitimate; do NOT flip 705 to 547.
+- Slice C 4-path Cherry handler priority chain canonical; live verification owed at next Arena 1750 + HTTP-pull redeploy per [[reference_gamepc_http_server_redeploy]].
+- Slice D `_amMockLoad` mirrors `_csMockLoad` (item 165) + `_lmMockLoad` (item 183); future per-page mock dispatchers extend `?mode=<mode>` URL flag.
+- Phase 3 gate STILL not cleared (rate=100% but sample size << 50; cadence indeterminate); both DEFER docs ready when gate clears.
+- Legion RC-BridgeWatcher pid 6204 dead since 2026-05-23 = SEPARATE operator-decision (prerequisite to lanes enablement).
+- Orchestrator-merge pattern now 40 consecutive runs (items 134-188).
+
+**Carries forward:**
+- All item 187 carries unchanged EXCEPT: cc_conditional wave 20 `notes` schema lift NOW SHIPPED; Cherry augment scaffold NOW SHIPPED (live verification + Game-PC redeploy OWED); Active Match mock dispatcher READY (real in-game capture OWED); 101.qq.com probe scripts READY (operator capture OWED).
+- DD Defy heal-on-takedown DONE (item 187).
+- Live ARAM/SR smoke STILL pending.
+- Calibrations STILL operator-gated.
+- Legion 1-PC consolidation STILL operator-gated.
+- Auto-ops verb expansion + auto-action lanes STILL DEFERRED (Phase 3 95% gate).
+- **NEW carry:** Legion RC-BridgeWatcher pid 6204 RESURRECTION operator-decision (prerequisite for any sample accumulation).
+- Game-PC `gamepc_lcu_agent.py` HTTP-pull redeploy OWED at next Arena 1750 window for Slice C Cherry live verification.
+- bridge_watcher_install.ps1 -EnableLanes param (~5 LOC) prep work owed before Slice G recipe invocation.
+- 101.qq.com operator-at-Game-PC Chrome DevTools capture OWED for Slice E probe verification.
+- Frozen-file grant NOT used this session.
+
+---
+
 # 2026-05-25 (overnight) - item 184 SHIPPED: pages #11/12/13 Active Match v2.1 typography + audit-8 H-02 + M-02 + log-suppress POST /api/loadout/list + history.json mock realignment + dev.js verdict.team_won null guard + warm_session model pin + armor_factor parametrized sweep + cost/latency wave 27 CLEAN (5 commits + 1 merge `7e1e004` `5d4fbfd` `524d538` `834e180` `662c1a9` pushed origin/main `07ec3f9..662c1a9`; non-engine; non-frozen; no DS engine bump; no RC restart - all ADR-008 asset-hash auto-serves + non-route module edits)
 
 Operator triggered `/headless-upgrade` long autonomous run with frozen-file grant + 24 parallel agents per task authority. 36th consecutive run using orchestrator-merge pattern (items 134-184). Operator out-of-game (RC mode_key=client at boot) UNBLOCKED pages #11/12/13 Active Match v2.1 typography per item 183 carry (b). 5 parallel agents dispatched concurrent (Slice A typography + Slice B BACKLOG sweep + Slice C cost/latency + Slice D audit-8 + Slice E cc_conditional wave 20 audit). Pre-flight: 0 open PRs; 0 stale remote branches; 8549 RC + 4673 DS tests collected; CI 5/6 green (latest run completed-success).
