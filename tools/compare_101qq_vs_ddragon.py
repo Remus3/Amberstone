@@ -1,0 +1,125 @@
+"""Align Tencent 101.qq.com hero IDs to RC's DDragon champion keys
+(item 187 Slice G follow-up; ROADMAP L132).
+
+Companion to tools/probe_101qq_hero_rank_double.py. Where the probe
+script just SUMMARIZES the captured payload shape, this script tries to
+build a complete `tencent_id -> ddragon_name` map and reports any
+mismatches. Output is a canonical id_map.json the live consumer (the
+pick/ban synergy lane of `core/smoothed_rates.py`) can load.
+
+Override hook: an optional `data/external/101qq_hero_id_map.json` file
+of the same shape (overlaid LAST) lets the operator hand-correct
+mismatches without re-running the comparison.
+
+STDLIB-ONLY: argparse / json / pathlib / sys. ASCII-clean.
+
+Usage:
+  py tools/compare_101qq_vs_ddragon.py --json C:/path/to/captured.json
+  py tools/compare_101qq_vs_ddragon.py --json ... --out data/external/101qq_id_map.json
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_DDRAGON_CHAMPION_JSON = _REPO_ROOT / "data" / "meta_build" / "ddragon" / "16.10.1" / "champion.json"
+_OPERATOR_OVERRIDE = _REPO_ROOT / "data" / "external" / "101qq_hero_id_map.json"
+
+
+def load_ddragon_keys() -> dict:
+    """Return both id-keyed and name-keyed views of DDragon champions."""
+    out: dict = {"by_id": {}, "by_name_lower": {}}
+    if not _DDRAGON_CHAMPION_JSON.exists():
+        return out
+    raw = json.loads(_DDRAGON_CHAMPION_JSON.read_text(encoding="utf-8"))
+    for name, payload in (raw.get("data") or {}).items():
+        key = str(payload.get("key", "")).strip()
+        if key.isdigit():
+            out["by_id"][key] = name
+        out["by_name_lower"][name.lower()] = name
+    return out
+
+
+def load_override() -> dict:
+    """Operator's hand-corrections layered last. Schema: {tencent_id: ddragon_name}."""
+    if not _OPERATOR_OVERRIDE.exists():
+        return {}
+    try:
+        return json.loads(_OPERATOR_OVERRIDE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def build_alignment(payload: object, ddragon: dict, override: dict) -> dict:
+    """Walk the captured payload's top-level keys and try to map each
+    to a DDragon canonical name."""
+    aligned: dict = {}
+    unmatched: list = []
+    if not isinstance(payload, dict):
+        return {"aligned": aligned, "unmatched": unmatched, "note": "payload is not a top-level dict"}
+    for k in payload.keys():
+        s = str(k)
+        if s in override:
+            aligned[s] = override[s]
+            continue
+        if s in ddragon["by_id"]:
+            aligned[s] = ddragon["by_id"][s]
+            continue
+        if s.lower() in ddragon["by_name_lower"]:
+            aligned[s] = ddragon["by_name_lower"][s.lower()]
+            continue
+        unmatched.append(s)
+    return {"aligned": aligned, "unmatched": unmatched, "note": ""}
+
+
+def main(argv: list | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Align captured 101.qq.com hero IDs to DDragon champion names.",
+    )
+    parser.add_argument("--json", required=True, help="Path to captured JSON payload on disk.")
+    parser.add_argument(
+        "--out",
+        default="",
+        help="Optional output path for canonical id_map.json. If omitted, only prints to stdout.",
+    )
+    args = parser.parse_args(argv)
+
+    json_path = Path(args.json)
+    if not json_path.exists():
+        print(f"ERROR: JSON file not found: {json_path}", file=sys.stderr)
+        return 1
+    try:
+        payload = json.loads(json_path.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"ERROR: could not parse JSON: {exc}", file=sys.stderr)
+        return 1
+
+    ddragon = load_ddragon_keys()
+    override = load_override()
+    alignment = build_alignment(payload, ddragon, override)
+
+    summary = {
+        "total_keys": len(alignment["aligned"]) + len(alignment["unmatched"]),
+        "aligned_count": len(alignment["aligned"]),
+        "unmatched_count": len(alignment["unmatched"]),
+        "unmatched_sample": alignment["unmatched"][:10],
+        "override_loaded": bool(override),
+        "ddragon_champ_count": len(ddragon["by_id"]),
+    }
+    print(json.dumps({"summary": summary, "note": alignment.get("note", "")}, ensure_ascii=True, indent=2, sort_keys=True))
+
+    if args.out:
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out_path.with_suffix(out_path.suffix + ".tmp")
+        tmp.write_text(json.dumps(alignment["aligned"], ensure_ascii=True, indent=2, sort_keys=True), encoding="utf-8")
+        tmp.replace(out_path)
+        print(f"Wrote id_map: {out_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
