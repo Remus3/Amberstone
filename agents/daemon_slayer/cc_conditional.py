@@ -3327,6 +3327,119 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ---------------- wave 20 entries (2026-05-25, ENGINE 1.58.0) ---
+    # Wave 20 schema lift (Meraki `notes` field on every spell form;
+    # tools/daemon_slayer_abilities_extract.py + ENGINE 1.58.0)
+    # surfaces 1 ship-candidate from re-audit of the operator-brief
+    # named entries (Kindred E / Diana P / Vayne P) PLUS the
+    # cross-audit of Vayne E that the operator brief did NOT name
+    # but matches the wave-7 forward-marker COND_TERRAIN tag cleanly.
+    #
+    # REJECT verdicts for the 3 brief-named carries:
+    #
+    #   * Kindred E Mounting Dread - effects_descriptions text:
+    #     "slows them by 30% (+ 5% per 100 AP) for 1 second and
+    #     marks them for 4 seconds". Slow only. The third stack
+    #     directs Wolf to pounce for damage; missing-HP crit
+    #     threshold. NO hard CC. The `notes` field carries only
+    #     casting cancel + bug clauses, no CC duration override.
+    #     REJECT.
+    #   * Diana P Moonsilver Blade - effects_descriptions text:
+    #     "Diana gains 15% : 35% (based on level) bonus attack
+    #     speed. After casting an ability, this bonus is tripled
+    #     to 45% : 105% (based on level) for 5 seconds". Pure
+    #     AS bonus. NO CC mechanic at all. The `notes` field
+    #     carries only structure-targeting + bug clauses.
+    #     REJECT.
+    #   * Vayne P Night Hunter - effects_descriptions text:
+    #     "Vayne gains 30 bonus movement speed while facing a
+    #     nearby visible enemy champion, increased to 90 while
+    #     under the effects of Final Hour". Pure MS bonus. NO
+    #     CC mechanic at all. The `notes` field carries only the
+    #     2s sight-loss persistence clause. REJECT.
+    #
+    # Vayne E Condemn (terrain-collision stun): the cross-audit
+    # surfaced this as a 4th candidate the brief did NOT name.
+    # effects_descriptions text: "If the target collides with
+    # terrain, they take bonus physical damage and become stunned
+    # for 1.5 seconds" - terrain-collision conditional stun 1.5s
+    # flat across all 5 E ranks. The `notes` field adds nuance:
+    # "Condemn's stun duration starts when Vayne's target collides
+    # with a wall (they can be immobilized for up to 2 seconds
+    # depending on displacement duration based on distance
+    # traveled)" - the 1.5s is fixed; the additional 0.5s is the
+    # displacement-distance-scaled travel time AFTER the cast
+    # ends. Encoded at the canonical 1.5s stun for the consumer.
+    # Maps to COND_TERRAIN (prob 0.3) - SECOND consumer of the
+    # wave 7 forward-marker tag after Ornn E wave 15. Vayne joins
+    # the registry as a NEW cc_conditional champion (was not in
+    # the registry under any prior wave).
+    #
+    # SCHEMA LIFT: ``coexists_with_unconditional=True`` declares
+    # that the same (Vayne, E) slot ALSO holds the unconditional
+    # entry in `_PER_SPELL_CC_DURATIONS["Vayne"]["E"] = (0.5,
+    # 0.5, 0.5, 0.5, 0.5)` - the 0.5s knockback that always lands
+    # (terrain-miss path). Consumer-side
+    # ``compute_cc_pressure(include_conditional=True)`` math
+    # credits MAX(unconditional_post_tenacity, conditional_post_
+    # tenacity) for this slot - NEVER both summed. The unconditional
+    # 0.5s knockback represents the no-wall miss path; the
+    # conditional 1.5s * 0.3 = 0.45s represents the wall-hit
+    # weighted expectation. Default calibration: unconditional
+    # 0.5s wins. Operator can tune Vayne:E above 0.34 to flip
+    # the conditional above the unconditional.
+    #
+    # Probability midpoint 0.3 reflects the wall-hit fraction in
+    # a typical 6s fight window. Vayne is a marksman who keeps
+    # distance from walls + targets in lane phase; her terrain
+    # stun typically lands in skirmishes near jungle camps,
+    # river entrances, or alcoves. Mid frequency.
+    #
+    # FIRST Vayne first-order CC registration anywhere. Discovered
+    # during wave 20 schema-lift re-audit of the Vayne ability set
+    # alongside the brief-named carries.
+    registry.setdefault("Vayne", {})["E"] = ConditionalCcEntry(
+        champion="Vayne",
+        spell="E",
+        cc_kind="stun",
+        durations_s=(1.5, 1.5, 1.5, 1.5, 1.5),
+        condition=COND_TERRAIN,
+        probability=_p("Vayne", "E", 0.3),
+        notes=(
+            "E Condemn terrain-collision stun: knockback 475u + "
+            "if target collides with terrain, bonus physical damage "
+            "+ 1.5s stun flat across all 5 E ranks per Meraki "
+            "16.10.1 effects_descriptions ('become stunned for "
+            "1.5 seconds'). The Meraki `notes` field captures the "
+            "ENGINE 1.58.0 schema lift detail: 'Condemn's stun "
+            "duration starts when Vayne's target collides with a "
+            "wall (they can be immobilized for up to 2 seconds "
+            "depending on displacement duration based on distance "
+            "traveled)' - the 1.5s is the fixed canonical stun "
+            "duration; the additional 0.5s is displacement-distance"
+            "-scaled travel time before the stun starts (modeled "
+            "as 1.5s for the consumer). Maps to COND_TERRAIN (prob "
+            "0.3) - SECOND consumer of the wave 7 forward-marker "
+            "tag after Ornn E wave 15. coexists_with_unconditional"
+            "=True declares same-slot coexistence with the "
+            "unconditional Vayne E 0.5s knockback entry in "
+            "`_PER_SPELL_CC_DURATIONS` (the no-wall miss path). "
+            "Consumer math: at include_conditional=True the MAX "
+            "rule credits the larger of unconditional 0.5s or "
+            "conditional 1.5 * 0.3 = 0.45s default (operator can "
+            "tune via per_entry_probability `Vayne:E` to lift the "
+            "conditional above the unconditional). FIRST Vayne "
+            "first-order CC registration anywhere. Discovered "
+            "during wave 20 (ENGINE 1.58.0) re-audit of operator "
+            "brief named carries Kindred E + Diana P + Vayne P "
+            "(all 3 REJECT-verified at parse-strip + notes-lift "
+            "level: Kindred E slow only / Diana P AS bonus only "
+            "/ Vayne P MS bonus only). Vayne E was the 4th "
+            "candidate the audit surfaced as a genuine winner."
+        ),
+        coexists_with_unconditional=True,
+    )
+
     return registry
 
 
