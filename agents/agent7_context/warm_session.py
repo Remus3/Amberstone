@@ -29,7 +29,7 @@ logger = logging.getLogger("agent7.warm_session")
 
 # Charter defaults - overridable per-instance if we ever need them.
 IDLE_TIMEOUT_SEC = 30 * 60     # 30 min
-DEFAULT_MODEL = "claude-haiku-4-5"
+DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 MAX_HISTORY_TURNS = 20         # trim past this to keep token cost bounded
 DEFAULT_MAX_OUTPUT_TOKENS = 600
 
