@@ -88,7 +88,7 @@ class GameRightBot(OverlayWindow):
         self._ally_names = []
         self._enemy_names = []
 
-    # ── Clock ────────────────────────────────────────────────────────────────
+    # -- Clock ----------------------------------------------------------------
 
     def _tick_clock(self):
         if self._clock_wall_time > 0:
@@ -103,7 +103,7 @@ class GameRightBot(OverlayWindow):
         if self._clock_job is None:
             self._tick_clock()
 
-    # ── Text helpers ─────────────────────────────────────────────────────────
+    # -- Text helpers ---------------------------------------------------------
 
     def _write_txt(self, txt, text: str):
         txt.configure(state="normal")
@@ -153,7 +153,7 @@ class GameRightBot(OverlayWindow):
                     break
         txt.configure(state="disabled")
 
-    # ── Data update ──────────────────────────────────────────────────────────
+    # -- Data update ----------------------------------------------------------
 
     def update_data(self, data):
         ally = data.get("ally_comp", [])

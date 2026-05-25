@@ -17,7 +17,7 @@ from pathlib import Path
 
 _log = logging.getLogger("rc.tft.compctrl")
 
-# ── Theme ──────────────────────────────────────────────────────────────────
+# -- Theme ------------------------------------------------------------------
 BG      = "#0b0b12"
 BG_SEC  = "#111119"
 BORDER  = "#252535"
@@ -28,12 +28,12 @@ _EMBLEM_BG    = "#2a2a10"
 _EMBLEM_BORDER= "#FFD700"
 _SELECTED_BG  = "#1a2a1a"
 
-# ── Paths ──────────────────────────────────────────────────────────────────
+# -- Paths ------------------------------------------------------------------
 _META_DIR  = Path(__file__).parent.parent / "data" / "meta"
 _ICON_DIR  = Path(__file__).parent.parent / "data" / "icons" / "items"   # item PNGs live here
 _STATE_FILE= Path(__file__).parent.parent / "data" / "comp_state.json"
 
-# ── Item icon cache ────────────────────────────────────────────────────────
+# -- Item icon cache --------------------------------------------------------
 _icon_cache: dict = {}
 
 def _item_slug(name: str) -> str:
@@ -62,7 +62,7 @@ def _get_icon(name: str, size: int = 22):
     _icon_cache[key] = None   # cache miss
     return None
 
-# ── Persistence ────────────────────────────────────────────────────────────
+# -- Persistence ------------------------------------------------------------
 def _save_state(selected, ignore_emblems, pbe=False):
     try:
         _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -81,7 +81,7 @@ def _load_state() -> dict:
         pass
     return {}
 
-# ── Meta loader ────────────────────────────────────────────────────────────
+# -- Meta loader ------------------------------------------------------------
 def _load_meta(pbe: bool = False) -> dict:
     """Load meta. pbe=True uses PBE path, pbe=False uses live path."""
     # Phase 7 P1-A: route to correct meta based on PBE flag
@@ -102,7 +102,7 @@ def _load_meta(pbe: bool = False) -> dict:
                 _log.warning("Failed to load %s: %s", fn, e)
     return {}
 
-# ── Team planner code generator ────────────────────────────────────────────
+# -- Team planner code generator --------------------------------------------
 def build_team_code(units: list, meta: dict, set_name: str = "TFTSet17") -> str:
     """
     Build team planner import code.
@@ -129,7 +129,7 @@ def build_team_code(units: list, meta: dict, set_name: str = "TFTSet17") -> str:
         hex_parts.append("000")
     return f"02{''.join(hex_parts)}{set_name}"
 
-# ── LCU team planner import ────────────────────────────────────────────────
+# -- LCU team planner import ------------------------------------------------
 def _lcu_import_units(units: list, team_id: str, set_id: str = "TFTSet17") -> bool:
     """Import units into LCU team planner using correct string-array format."""
     import ssl
@@ -219,7 +219,7 @@ def _clip_silent(text: str):
     except Exception:
         pass
 
-# ── Tooltip ────────────────────────────────────────────────────────────────
+# -- Tooltip ----------------------------------------------------------------
 class _Tooltip:
     """Robust tooltip: delayed show, auto-expire, force-destroy on leave/click."""
     def __init__(self, widget, text_or_func):
@@ -299,7 +299,7 @@ class CompControl(tk.Frame):
         self._emblem_comps: set = set()
         self._comp_frames: dict = {}
 
-        # ── Header: title + checkboxes ─────────────────────────────────
+        # -- Header: title + checkboxes ---------------------------------
         hdr = tk.Frame(self, bg=BG_SEC)
         hdr.pack(fill="x", padx=4, pady=(3, 0))
         tk.Label(hdr, text="COMP", bg=BG_SEC, fg=LABEL_C,
@@ -315,7 +315,7 @@ class CompControl(tk.Frame):
             variable=self._ignore_emblems, command=self._on_emblem_toggle,
         ).pack(side="right", padx=(0, 1))
 
-        # ── Search ────────────────────────────────────────────────────
+        # -- Search ----------------------------------------------------
         sf = tk.Frame(self, bg=BG_SEC)
         sf.pack(fill="x", padx=4, pady=(1, 0))
         self._search_var = tk.StringVar()
@@ -327,7 +327,7 @@ class CompControl(tk.Frame):
         se.bind("<KeyRelease>", lambda e: self._filter_comps())
         se.bind("<Escape>",     lambda e: (self._search_var.set(""), self._filter_comps()))
 
-        # ── Scrollable list ────────────────────────────────────────────
+        # -- Scrollable list --------------------------------------------
         self._canvas     = tk.Canvas(self, bg=BG_SEC, bd=0, highlightthickness=0)
         self._scrollbar  = tk.Scrollbar(self, orient="vertical", command=self._canvas.yview)
         self._list_frame = tk.Frame(self._canvas, bg=BG_SEC)
@@ -354,7 +354,7 @@ class CompControl(tk.Frame):
         if _last and _last in self._comp_frames:
             self.after(100, lambda: self._select_comp(_last))
 
-    # ── Helpers ────────────────────────────────────────────────────────
+    # -- Helpers --------------------------------------------------------
     def _scroll(self, event):
         self._canvas.yview_scroll(-1 * (event.delta // 120), "units")
 
@@ -393,7 +393,7 @@ class CompControl(tk.Frame):
             else:
                 w["frame"].pack_forget()
 
-    # ── Build list ─────────────────────────────────────────────────────
+    # -- Build list -----------------------------------------------------
     def _build_comp_list(self):
         tier_list = self._meta.get("tier_list", {})
         comps_db  = self._meta.get("comps", {})
@@ -457,7 +457,7 @@ class CompControl(tk.Frame):
         if tip:
             _Tooltip(f, tip)
 
-    # ── Selection ─────────────────────────────────────────────────────
+    # -- Selection -----------------------------------------------------
     def _select_comp(self, name: str):
         if self._selected == name:
             self._deselect_comp()
@@ -620,7 +620,7 @@ class ChampItemControl(tk.Frame):
                                       bg=BG_SEC, fg="#555566", font=("Segoe UI", 9))
         self._empty_label.pack(expand=True)
 
-    # ── Public API ─────────────────────────────────────────────────────
+    # -- Public API -----------------------------------------------------
     def set_comp(self, name: str | None, comp_data: dict):
         self._comp_name  = name
         self._comp_data  = comp_data
@@ -700,7 +700,7 @@ class ChampItemControl(tk.Frame):
                      font=("Consolas", 7)).pack(side="left")
 
 
-    # ── Private: unit row ──────────────────────────────────────────────
+    # -- Private: unit row ----------------------------------------------
     def _add_unit_row(self, champ: str, item_info: dict, item_db: dict,
                       costs: dict, core_set: set, is_flex: bool):
         meta  = _load_meta()

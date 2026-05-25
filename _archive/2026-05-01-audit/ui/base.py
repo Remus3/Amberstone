@@ -52,7 +52,7 @@ class OverlayWindow:
             self._visible = False
 
 
-# ── Shared tag regex ─────────────────────────────────────────────────────────
+# -- Shared tag regex ---------------------------------------------------------
 TAG_RE = re.compile(
     r'\[A\](.*?)\[/A\]|\[E\](.*?)\[/E\]|\[T\](.*?)\[/T\]', re.DOTALL
 )
