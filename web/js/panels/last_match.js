@@ -321,6 +321,39 @@ function _activateTab(which) {
   });
 }
 
+// UI scale v2.1 pages #14/15/16 audit ritual mock fixture dispatcher
+// (item 183, 2026-05-25). When body.dataset.uiMock === "1" the
+// /api/last-match fetch short-circuits to a local fixture under
+// /data/ui_mock/. ?mode=aram loads last_match_aram.json (ARAM 10-player
+// shape, queue 450 mapId 12, augments empty); ?mode=arena loads
+// last_match_arena.json (Arena 6x2=12 player CHERRY shape, queue 1750
+// mapId 30, 4 augments per player so data-aug='1' widens the row grid);
+// otherwise falls through to live /api/last-match for the SR baseline
+// captured by item 182.
+let _lmMockPromise = null;
+function _lmIsMock() {
+  return !!(document.body && document.body.dataset.uiMock === "1");
+}
+function _lmMockUrl() {
+  // ?mode=<aram|arena> URL flag picks the matching fixture (mirrors
+  // the _csMockLoad pattern in main.js L3263 from items 165 + 181).
+  let url = null;
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const m = (params.get("mode") || "").toLowerCase();
+    if (m === "aram")  url = "/data/ui_mock/last_match_aram.json";
+    else if (m === "arena") url = "/data/ui_mock/last_match_arena.json";
+  } catch (_) {}
+  return url;
+}
+function _lmMockLoad(url) {
+  if (_lmMockPromise) return _lmMockPromise;
+  _lmMockPromise = fetch(url, { cache: "no-store" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .catch(() => null);
+  return _lmMockPromise;
+}
+
 /** Fetch latest match + render into DOM. Safe to call repeatedly. */
 export function fetchAndRenderLastMatch() {
   // s220: baseline window is operator-configurable from Settings
@@ -330,6 +363,26 @@ export function fetchAndRenderLastMatch() {
   try { _b = parseInt(localStorage.getItem("rc-pgr-baseline") || "20", 10); } catch (_) {}
   if (isNaN(_b)) _b = 20;
   _b = Math.max(5, Math.min(50, _b));
+  // Item 183: UI scale v2.1 audit ritual short-circuit. When the dev
+  // mock toggle is on AND ?mode=aram|arena is present, render the
+  // local fixture instead of the live /api/last-match feed - so pages
+  // #15 + #16 PGR ARAM/Arena audit captures stand on authored data
+  // even when the operator's most-recent live match is an SR game.
+  if (_lmIsMock()) {
+    const mockUrl = _lmMockUrl();
+    if (mockUrl) {
+      _lmMockLoad(mockUrl)
+        .then((data) => {
+          if (data) renderLastMatch(data);
+          else _liveFetch(_b);
+        });
+      return;
+    }
+  }
+  _liveFetch(_b);
+}
+
+function _liveFetch(_b) {
   fetch(`/api/last-match?baseline=${_b}`, { headers: { "Accept": "application/json" } })
     .then((r) => r.json())
     .then((data) => renderLastMatch(data))
