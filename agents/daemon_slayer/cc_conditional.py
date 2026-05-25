@@ -3440,6 +3440,303 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         coexists_with_unconditional=True,
     )
 
+    # ---------------- wave 21 entries (2026-05-25, ENGINE 1.59.0) ---
+    # Wave 21 re-audits prior-wave REJECT carries against the new
+    # ENGINE 1.58.0 ``notes`` schema-lifted field. The full-fleet
+    # filter (916 forms with non-null notes; CC-verb + condition-gate
+    # regex against post-boilerplate-stripped notes text;
+    # registry-membership filter against `_PER_SPELL_CC_DURATIONS` +
+    # cc_conditional primary + sidecar registries) surfaced 113
+    # candidates from the post-strip notes text. Triage of the top
+    # ~40 against full effects_descriptions + notes content yields
+    # TWO valid ship candidates - both on Xin Zhao, neither of which
+    # the wave 0-20 registry covered.
+    #
+    # Xin Zhao Q + R are BOTH first-order CC entries gated on a
+    # state condition. The `notes` field for both spells confirms
+    # the CC payload is real (spell-shield + displacement-immunity
+    # interaction clauses reference "the knock up" and "the stun"
+    # respectively, which is how Meraki documents real CC payloads
+    # in their per-spell operational notes).
+    #
+    # SHIP candidates:
+    #
+    # (1) Xin Zhao Q Three Talon Strike - 3rd-hit knockup 0.75s.
+    #     The COND_NTH_HIT tag in this very module's docstring
+    #     EXPLICITLY names "Xin Zhao Q 3rd-attack knockup" as the
+    #     canonical motivating example for the tag (line 190).
+    #     Yet through waves 0-20 the entry was never added. This
+    #     wave closes the gap.
+    #     Mechanic: Q empowers next 3 basic attacks within 5s.
+    #     3rd attack knocks up target 0.75s. Per Meraki
+    #     effects_descriptions[1] "The third attack knocks up the
+    #     target for 0.75 seconds". Notes field confirms "Spell
+    #     shield will only block the knock up" - distinguishing
+    #     the CC payload from the damage. Maps to COND_NTH_HIT
+    #     (prob 0.7 tag midpoint). FIRST Xin Zhao Q first-order CC
+    #     registration anywhere. Coexists with the unconditional
+    #     Xin Zhao W in `_PER_SPELL_CC_DURATIONS` on a different
+    #     spell slot.
+    #
+    # (2) Xin Zhao R Crescent Sweep - target-NOT-Challenged stun
+    #     0.75s.
+    #     This was a wave 15 REJECT carry ("XinZhao R knockback -
+    #     not in cc_conditional CC kind schema") that misread the
+    #     mechanic. The wave 15 audit caught the knockback
+    #     displacement (which IS in the schema, but the wave 15
+    #     verdict claimed otherwise) and missed the STUN that fires
+    #     ALONGSIDE the knockback on the same target-not-Challenged
+    #     gate. The wave 21 re-audit confirms the stun is real via
+    #     two independent evidence sources:
+    #     (a) effects_descriptions[1] "Active: Xin Zhao sweeps his
+    #         spear around him ... knocking back all non-Challenged
+    #         targets hit up-to 700 units over 0.75 seconds, as well
+    #         as stunning them for the same duration."
+    #     (b) The wave 20 schema-lifted notes field carries
+    #         "Displacement immunity will also resist the application
+    #         of the stun" - confirming the stun is a separate CC
+    #         payload distinct from the knockback (otherwise displ-
+    #         imm would never be discussed in stun context).
+    #     The condition is the INVERSE target-state gate: stun
+    #     fires ONLY on targets that are NOT currently marked
+    #     Challenged. Challenged targets receive damage but no
+    #     CC. This is the SECOND COND_TARGET_DEBUFFED entry that
+    #     gates on the INVERSE of target debuff state (the first
+    #     was Briar R wave 18 fearing non-marked enemies).
+    #     Maps to COND_TARGET_DEBUFFED (prob 0.5 tag midpoint) -
+    #     midpoint reflects that in a typical teamfight, the
+    #     operator's R cast lands on 2-4 enemies of which ~1 is
+    #     usually the Challenged target (skill expression: the
+    #     operator targets the highest-value non-Challenged enemy
+    #     before cycling). FIRST Xin Zhao R first-order CC
+    #     registration anywhere. Coexists with the unconditional
+    #     Xin Zhao W in `_PER_SPELL_CC_DURATIONS` on a different
+    #     spell slot (Q + W + R all distinct slots).
+    #
+    # REJECT verdicts wave 21 (top 40 candidates after registry
+    # filter; full audit report in
+    # `agents/daemon_slayer/docs/WAVE_21_AUDIT_NOTES.md`):
+    #   * Akshan E polymorph - notes wording is about Akshan being
+    #     self-CCd cancelling his own dash, not applying CC to
+    #     enemies. REJECT.
+    #   * Aphelios Q form 2 taunted - notes interaction clause about
+    #     Aphelios being taunted during onslaught, not applying CC.
+    #     REJECT.
+    #   * Aurora R collision - rift border collision applies only a
+    #     30%/50% slow, no hard CC. REJECT.
+    #   * Bard E grounded - corridor cast-prevention check (Bard
+    #     cannot cast Magical Journey while grounded), not enemy CC.
+    #     REJECT.
+    #   * Bel'Veth E taunted - notes interaction clause about Bel'Veth
+    #     being taunted, not applying CC. REJECT.
+    #   * Blitzcrank E knockup - UNCONDITIONAL knockup 1s on empowered
+    #     AA (no gating condition; the empowered state is granted by
+    #     simply casting E within the 5s window). Belongs in
+    #     `_PER_SPELL_CC_DURATIONS`. REJECT for conditional registry.
+    #   * Briar W form 1 charmed - notes about Briar herself being
+    #     charmed during Frenzy, not applying CC. REJECT.
+    #   * Caitlyn E suppressed - cast-cancel clause if Caitlyn is
+    #     suppressed mid-cast, not applying CC. REJECT.
+    #   * Camille R silence - 0.4s nested silence during disrupt is
+    #     a tech-detail "nested silence prevents silence-immunity
+    #     from blocking the disrupt"; not first-order champion CC,
+    #     just an engine-implementation safeguard. REJECT.
+    #   * Darius E airborne - UNCONDITIONAL pull-displacement +
+    #     airborne 1s. Belongs in `_PER_SPELL_CC_DURATIONS`. REJECT.
+    #   * Kha'Zix Q Isolated - damage modifier only on Isolated
+    #     targets; no CC payload. REJECT.
+    #   * LeeSin R - UNCONDITIONAL knockback + airborne 1s primary
+    #     + 1s knockup secondary. Belongs in
+    #     `_PER_SPELL_CC_DURATIONS`. wave 13/14/15/16 REJECT carry.
+    #     REJECT.
+    #   * Olaf R - SELF crowd-control cleanse, no enemy CC. REJECT.
+    #   * Poppy W knocked-up - UNCONDITIONAL knockup 0.5s on dash-
+    #     interruption (the aura). Belongs in
+    #     `_PER_SPELL_CC_DURATIONS` if not already. REJECT for
+    #     conditional registry.
+    #   * Poppy R knocked-up - UNCONDITIONAL knockup 1s on recast.
+    #     Already in `_PER_SPELL_CC_DURATIONS`? No - belongs there.
+    #     REJECT for conditional registry.
+    #   * Pyke R execute - no CC payload, just execute + blink.
+    #     REJECT.
+    #   * Rammus Q recast - the stun on terminal collision is
+    #     UNCONDITIONAL on collision with enemy. Belongs in
+    #     `_PER_SPELL_CC_DURATIONS`. REJECT for conditional
+    #     registry.
+    #   * Rek'Sai E form 1 knockup - Tunnel mechanic with no CC
+    #     payload mentioned in form 1 effects. The "knocked up"
+    #     gate phrase is from a different mechanic context.
+    #     REJECT.
+    #   * Rell W form 1 grounded - notes wording is about Rell using
+    #     empowered AA while grounded/rooted; not enemy CC. wave 15
+    #     ship had Rell W form 0 (Crash Down channel-completion
+    #     stun); wave 15 docstring explicitly noted "Form 1 (Mount
+    #     Up Dismounted-state empowered-AA) is a separate mechanic
+    #     REJECTED this wave pending operator clarification on
+    #     form-transition empowered-AA registration." This wave 21
+    #     re-audit confirms the form 1 mechanic is an empowered-AA
+    #     dash+stun gated on dismounted-state + completion of the
+    #     dash impact. While it COULD ship as a sidecar entry under
+    #     COND_FRENZY_STATE (parallel to Gnar W form 1 + Karma W
+    #     form 1), the "form-transition empowered-AA" semantic is
+    #     intrinsically different from the rage-meter / mantra-
+    #     charge / form-cycle patterns used by prior sidecar
+    #     entries. Per item 187 don't-redo precedent, this is an
+    #     operator-decision-gated entry. CARRY to wave 22+ pending
+    #     operator clarification. REJECT for wave 21.
+    #   * Rumble E - heat-gated harpoon empowered version applies
+    #     no extra CC (only stronger slow + shred). REJECT.
+    #   * Samira P stack - airborne immobilize trigger + extended
+    #     melee range; no CC applied by Samira. REJECT.
+    #   * Sett R suppression - UNCONDITIONAL suppression on cast
+    #     (the cast IS the suppress, no gating condition). Belongs
+    #     in `_PER_SPELL_CC_DURATIONS`. REJECT for conditional
+    #     registry.
+    #   * Skarner E terrain-collision stun - the 1.1s stun fires
+    #     UNCONDITIONALLY when the attached target collides with
+    #     terrain during the charge. Skarner E suppression is
+    #     also UNCONDITIONAL during the charge (grab triggers
+    #     suppression on collision). Both belong in
+    #     `_PER_SPELL_CC_DURATIONS`. REJECT for conditional
+    #     registry (the unconditional-CC schema is the proper
+    #     home).
+    #   * Sylas R stack - notes wording is about per-target
+    #     cooldown stacking on Hijack, not CC. REJECT.
+    #   * Taliyah R grounded - notes about Taliyah jumping while
+    #     immobilized or silenced; not enemy CC. REJECT.
+    #   * Trundle E - UNCONDITIONAL knockback on pillar spawn.
+    #     Belongs in `_PER_SPELL_CC_DURATIONS`. REJECT for
+    #     conditional registry.
+    #   * Tryndamere E Fury - cooldown reduction on crit-strike
+    #     only; no CC at all. REJECT.
+    #   * TwistedFate R grounded - cast-cancel clause about TF
+    #     unable to recast Destiny while grounded/rooted, not
+    #     enemy CC. REJECT.
+    #   * Twitch W suppressed - cast-cancel clause about Venom
+    #     Cask missile failing to fire if Twitch is suppressed.
+    #     REJECT.
+    #   * Urgot W taunted - the empowered-AA on-immobilized trigger
+    #     is captured by "taunted" but Urgot W applies no CC.
+    #     REJECT.
+    #   * Vel'Koz E - UNCONDITIONAL knockup + stun 0.75s; close-
+    #     proximity adds knockback. Belongs in
+    #     `_PER_SPELL_CC_DURATIONS`. REJECT for conditional
+    #     registry.
+    #   * Vex R grounded - cast-cancel clause about Vex unable to
+    #     recast while grounded/rooted, not enemy CC. REJECT.
+    #   * Viego R - UNCONDITIONAL knockback up to 400u + 0.99 slow
+    #     0.25s on primary target. Belongs in
+    #     `_PER_SPELL_CC_DURATIONS`. REJECT for conditional
+    #     registry.
+    #   * Yorick W knocks-aside - UNCONDITIONAL knock-aside on
+    #     ring rise. Belongs in `_PER_SPELL_CC_DURATIONS`. REJECT
+    #     for conditional registry.
+    #
+    # Wave 21 registry growth: +2 primary entries / +1 net-new
+    # champion (Xin Zhao). Per-tag consumer counts: COND_NTH_HIT
+    # +1 (Xin Zhao Q), COND_TARGET_DEBUFFED +1 (Xin Zhao R). Tag
+    # count unchanged at 13.
+    #
+    # Math preservation: default
+    # compute_cc_pressure(include_conditional=False) is BYTE-
+    # IDENTICAL to ENGINE 1.58.0 for ALL champions (the wave 21
+    # path skips when the flag is False). include_conditional=True
+    # callers receive new probability-weighted contributions for
+    # Xin Zhao: Q 0.75 * 0.7 = 0.525s, R 0.75 * 0.5 = 0.375s,
+    # totaling +0.9s expected conditional pressure beyond the
+    # existing 1.0s unconditional W knockup.
+
+    # Xin Zhao Q Three Talon Strike 3rd-hit knockup
+    registry.setdefault("XinZhao", {})["Q"] = ConditionalCcEntry(
+        champion="XinZhao",
+        spell="Q",
+        cc_kind="knockup",
+        durations_s=(0.75, 0.75, 0.75, 0.75, 0.75),
+        condition=COND_NTH_HIT,
+        probability=_p("XinZhao", "Q", 0.7),
+        notes=(
+            "Q Three Talon Strike: Xin Zhao empowers his next 3 "
+            "basic attacks within 5s. The 3rd attack knocks the "
+            "target up 0.75s flat across all 5 Q ranks per Meraki "
+            "16.10.1 effects_descriptions[1] ('The third attack "
+            "knocks up the target for 0.75 seconds'). Maps to "
+            "COND_NTH_HIT (prob 0.7 tag midpoint). The notes field "
+            "confirms the knockup is the CC payload separately from "
+            "the damage ('Spell shield will only block the knock "
+            "up'). This is the CANONICAL example of COND_NTH_HIT - "
+            "the tag's own docstring at line 190 names Xin Zhao Q "
+            "3rd-attack knockup as the motivating example, yet "
+            "through waves 0-20 the entry was never added. Wave 21 "
+            "(notes-field re-audit of prior-wave REJECT carries + "
+            "fresh full-fleet filter) closes the gap. FIRST Xin "
+            "Zhao Q first-order CC registration anywhere. Coexists "
+            "with the unconditional Xin Zhao W 1.0s knockup in "
+            "`_PER_SPELL_CC_DURATIONS` on a different spell slot. "
+            "No coexists_with_unconditional flag - Xin Zhao Q has "
+            "no unconditional entry. Probability 0.7 midpoint - "
+            "in a teamfight, the operator typically lands 3 "
+            "consecutive AAs on the highest-priority target within "
+            "the 5s window; missed attacks (target untargetable / "
+            "dashes / displacement) lower the success rate but "
+            "Xin Zhao's empowered AA range expansion makes the "
+            "3rd-hit knockup reliable. Mechanic captured by ENGINE "
+            "1.46.0 Meraki schema lift (effects_descriptions); "
+            "validated against ENGINE 1.58.0 notes-field lift."
+        ),
+    )
+
+    # Xin Zhao R Crescent Sweep target-not-Challenged stun
+    registry.setdefault("XinZhao", {})["R"] = ConditionalCcEntry(
+        champion="XinZhao",
+        spell="R",
+        cc_kind="stun",
+        durations_s=(0.75, 0.75, 0.75),
+        condition=COND_TARGET_DEBUFFED,
+        probability=_p("XinZhao", "R", 0.5),
+        notes=(
+            "R Crescent Sweep target-not-Challenged stun: Xin Zhao "
+            "sweeps his spear, knocking back all NON-Challenged "
+            "targets hit up to 700 units over 0.75s + stunning "
+            "them 0.75s flat across all 3 R ranks per Meraki "
+            "16.10.1 effects_descriptions[1] ('Active: Xin Zhao "
+            "sweeps his spear around him ... knocking back all "
+            "non-Challenged targets hit up-to 700 units over 0.75 "
+            "seconds, as well as stunning them for the same "
+            "duration'). Challenged targets (the last enemy hit by "
+            "Xin Zhao's AAs or Audacious Charge, marked for 3s) "
+            "receive damage but no CC - the stun is INVERSE-gated "
+            "on the target's debuff state. Maps to "
+            "COND_TARGET_DEBUFFED (prob 0.5 tag midpoint) with "
+            "inverse semantic. SECOND COND_TARGET_DEBUFFED entry "
+            "gating on inverse target-state after Briar R wave 18 "
+            "(non-marked-enemy fear). The wave 20 schema-lifted "
+            "notes field confirms the stun is a distinct CC "
+            "payload via 'Displacement immunity will also resist "
+            "the application of the stun' - if the stun were not "
+            "a real payload, the notes would not document displ-"
+            "imm interaction. This entry CORRECTS a wave 15 "
+            "REJECT carry (the wave 15 audit caught the knockback "
+            "displacement and dismissed the entry as 'not in "
+            "cc_conditional CC kind schema'; that was a misread - "
+            "knockback IS in the schema AND the same gate fires a "
+            "stun alongside). FIRST Xin Zhao R first-order CC "
+            "registration anywhere. Coexists with the unconditional "
+            "Xin Zhao W 1.0s knockup in `_PER_SPELL_CC_DURATIONS` "
+            "on a different spell slot. No coexists_with_"
+            "unconditional flag - Xin Zhao R has no unconditional "
+            "entry. Probability 0.5 midpoint - in a typical "
+            "teamfight the operator's R cast lands on 2-4 enemies "
+            "of which ~1 is usually the Challenged target. Skill "
+            "expression: operator targets the highest-value non-"
+            "Challenged enemy before cycling. Mechanic captured by "
+            "ENGINE 1.46.0 Meraki schema lift; the inverse-target-"
+            "state gate documented by ENGINE 1.58.0 notes-field "
+            "lift. Xin Zhao becomes a 2-slot cc_conditional "
+            "champion (Q wave 21 + R wave 21) entering the registry "
+            "with both slots in the same wave."
+        ),
+    )
+
     return registry
 
 
