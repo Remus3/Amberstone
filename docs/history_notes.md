@@ -5,6 +5,41 @@ Current WAKEUP_NOTES.md keeps only the most recent 2-3 sessions.
 Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
+# 2026-05-24 (late evening) - #89 LIVE VERIFICATION SHIPPED: Arena 1700 -> 1750 + Practice Tool queueId:3140 + drop is_brawl 480 (1 commit `55b67db` pushed origin/main `7cffcfb..55b67db`; non-frozen; no DS engine change; no DS restart; no RC restart; Game-PC agent redeployed via HTTP-pull to sha 0261d7d3aa251ca4 size 93730B pid 13188)
+
+Operator: "start #89 live verification (ROADMAP L24): Practice Tool + ARAM Mayhem + Arena lobby create from BOTH pickers; Arena 6x3 render; agent name-map redeploy". Item #89 had been live-gated since 2026-05-17 commit `c3a1e23` shipped repo-side fixes. This session ran the live verification end-to-end with operator in front of the League client + dashboard, surfacing 3 stale queue assumptions that the offline test suite could never catch.
+
+**Findings vs /lol-game-queues/v1/queues live LCU catalog (16.10.x):**
+- **Arena live queue = 1750** (Arena 3x6 CHERRY mapId 30), NOT 1700/1710. Both retired from live catalog. Direct LCU POST {queueId:1700} returns 500 INVALID_LOBBY; {queueId:1750} returns 200 OK.
+- **Practice Tool needs explicit queueId:3140** (Multiplayer Practice Tool Custom). The agent was omitting queueId entirely; newer LCU builds reject customGameLobby body with 500 INVALID_LOBBY when queueId is absent. Captured via in-client PT create -> GET /lol-lobby/v2/lobby showing gameConfig.queueId=3140 + gameMode:PRACTICETOOL + mapId:11. Test matrix proved adding queueId:3140 to the agent's existing teamSize:1 body fixes the 500.
+- **`is_brawl: queue_id == 480` was dead** (Brawl retired s214; 480 is now Swiftplay per live catalog). Removed from agent champ-select state.
+
+**Fixes (commit `55b67db`):** 12 files / +66 / -46. Updated 1700/1710 -> 1750 in: web/index.html (3 picker buttons + lobby `<option>`), web/js/main.js (SR_QUEUE_IDS comments + LV_QUEUE_TIPS map), web/js/panels/champ_select.js (modeMap + _csvDetectMode + _CSV_QUEUE_NAMES + cc-blended-ehp/cc-conditional-pressure mode resolvers + _csvResolveRole + P&B gate comment), web/js/panels/dev.js + last_match.js (queue_name + isArenaSubteamMode), coaches/loadout_resolver.py + core/augment_recommender.py + dashboard/builders_last_match.py + _cs_retention.py (classifier maps), core/queue_modes.py (1750 added + comment), tools/gamepc_lcu_agent.py (name-map 1700 -> 1750 + arena_teams classifier accepts 1750 + Practice Tool body gains explicit `queueId: 3140` + is_brawl line dropped). Updated tests/phase_b_champ_select/test_lcu_lobby_members.py (queue_name_map asserts + test_arena_queue_name uses 1750).
+
+**Live end-to-end via /api/lcu-cmd dashboard chain (POST /api/lcu-cmd -> dashboard -> :8889 -> Game-PC agent -> LCU):**
+- Arena change_queue_type queue_id:1750 -> ok:true; live LCU shows qid 1750 + gameMode CHERRY
+- ARAM Mayhem change_queue_type queue_id:2400 -> ok:true; live LCU shows qid 2400 + gameMode KIWI
+- lobby.create_practice_tool -> ok:true; live LCU shows qid 3140 + gameMode PRACTICETOOL + mapId 11
+- Dashboard Pre-Game Lobby render in Arena state: footer pill "ARENA", mode label "ARENA", YOUR MAINS + MY TOP 8 populated (queue 1750 -> arena mode_key chain proven through state-builder + view-router + JS render)
+
+**Verified:** RC suite excl phase8_smoke **3367 passed / 67 subtests passed** (same as item 179 baseline; behavior-equivalent). py_compile + node --check + ruff clean on all touched files. RC :8888 pid 5800 mode=client alive=True last_reload_ok=True throughout (no restart needed - non-frozen + non-coach-prompt edits; ADR-008 auto-served the CSS/JS edits).
+
+**Game-PC agent redeploy via HTTP-pull pattern (per reference_gamepc_http_server_redeploy.md):** legion `py -m http.server 8765` from tools/ + Game-PC Invoke-WebRequest + taskkill old pid + atomic Move-Item + pythonw relaunch. End state: pid 13188, sha 0261d7d3aa251ca4, size 93730 bytes - matches Legion source exactly. Earlier in session there was a moment where 2 agent pids ran simultaneously (5368 + 1040) due to my failed taskkill - cleaned to single pid 1040 via explicit taskkill of older pid, then again for the PT-fix redeploy to pid 13188.
+
+**Don't-redo:**
+- Arena queue 1700/1710 -> 1750 is the canonical flip. 1700/1710 stay as LEGACY ALIASES in classifier maps (rewind_history.db has historic match data carrying those IDs); lobby CREATE POSTs use 1750 exclusively. Do NOT re-pitch dropping the 1700/1710 aliases - they earn their keep on replay/history.
+- Practice Tool create body MUST carry explicit `queueId: 3140`. The `customGameLobby` config alone is insufficient. teamSize:1 is fine (live LCU expands to teamSize:5 + numPlayersPerTeam:5 post-create). Do NOT re-litigate teamSize:5 in the create body.
+- `is_brawl: queue_id == 480` is permanently dropped. Brawl retired s214 + 480 reassigned to Swiftplay in 16.10. Do NOT reintroduce.
+- Live LCU catalog at /lol-game-queues/v1/queues is the authoritative source-of-truth for queue IDs. When in doubt about a queue ID, GET that endpoint first; don't trust the agent's `_LOBBY_QUEUE_NAMES` map alone (it can lag behind Riot's catalog).
+- The orchestrator-merge pattern was NOT used this session (single direct commit on main; live ops with operator-in-the-loop rather than parallel worktree agents).
+- 22 local worktrees still harness-locked (carry-forward from item 179 + earlier; not this session's responsibility).
+
+**Carry-forward (operator-gated):**
+- Arena 6x3 champ-select VISUAL capture STILL OWED - needs operator to commit a real Arena queue + accept + CS entry. Lobby-side ARENA mode proven via monitor 1 capture; only the actual 3-ally-cell + central-me+2 + 5-enemy-trio-cards layout (per c3a1e23 _csvArenaPaneHtml + _csvRenderEnemiesArena 8x2 -> 6x3 refactor) remains unverified live.
+- 542 residual U+2500 box-drawing chars (rc_supervisor 58 + rc_self_monitor 484) - operator-gated separate sweep per item 176 carries.
+- All item 179 carries unchanged: RC-PostmortemAnalyze first scheduled run today 2026-05-25 04:15, DD Defy deferred, live ARAM/SR smoke pending, calibrations operator-gated, UI/UX live-game audit owed, Legion 1-PC consolidation operator-gated, cc_conditional wave 20+ schema-blocked, v2.1 audit pages 9/10/11/12/13/14/15/16 owed, frozen-file grant NOT used this session.
+
+---
 # 2026-05-22 - item 150 4-slice parallel housekeeping drain (cc_conditional wave 8 CLEAN + BACKLOG stale-sweep wave 12 + cost/latency CLEAN wave 15 + living docs catchup post-148) SHIPPED (3 commits + 1 merge `bc12982` `60c3aab` `28caf50`, pushed; non-engine; non-frozen; no ENGINE bump; no DS restart; no RC restart - all docs-only)
 
 Operator "continue what is left as open items in parallel commit + push & /done for /clear, use as many agents as needed" -> 4 worktree agents dispatched concurrent. 16th consecutive run using orchestrator-merge template items 134-150.
