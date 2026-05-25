@@ -55,7 +55,7 @@ class TkAiBarProxy:
         self._root = root
         self._bar  = bar
 
-    # ── Internal safe dispatch ────────────────────────────────────────────────
+    # -- Internal safe dispatch ------------------------------------------------
 
     def _schedule(self, fn) -> None:
         """Schedule fn() on the Tk main thread. Silently no-op if root is gone."""
@@ -64,7 +64,7 @@ class TkAiBarProxy:
         except Exception:
             pass  # root destroyed or Tk not running — silently ignore
 
-    # ── TftLiveAnalysis interface ─────────────────────────────────────────────
+    # -- TftLiveAnalysis interface ---------------------------------------------
 
     def set_scanning(self, pct: int = 0) -> None:
         """Marshal set_scanning onto Tk main thread."""

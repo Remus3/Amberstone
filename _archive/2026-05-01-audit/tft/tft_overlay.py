@@ -246,7 +246,7 @@ class TftBoardCanvas(tk.Frame):
         except Exception: pass
         self._cost_tw = None
 
-    # ── Heatmap overlay ──────────────────────────────────────────────────
+    # -- Heatmap overlay --------------------------------------------------
 
     def load_heatmap(self):
         """Load placement_heatmap.json into memory."""
@@ -632,7 +632,7 @@ class TftAiStatusBar(tk.Toplevel):
         self._tick_job = None
         self._tick()
 
-    # ── Public API ──────────────────────────────────────────────────────
+    # -- Public API ------------------------------------------------------
     def set_scanning(self, pct: int = 0):
         """Called when vision scan starts/progresses."""
         self._state    = "scanning"
@@ -831,12 +831,12 @@ class TftRightBot(tk.Toplevel):
         self._econ_txt=_sec(con,0,"ECON",C["econ"],minsize=90)
         self._action_var,self._act_lbl=_bar(con,1,"ACTION",C["action"],minsize=40)
         self._upgrisk_txt=None  # RISK panel removed from TFT
-        # ── COMP CONTROL (row 2) ──
+        # -- COMP CONTROL (row 2) --
         from tft.comp_control import CompControl, ChampItemControl
         self._comp_ctrl = CompControl(con, on_select=self._on_comp_select)
         self._comp_ctrl.grid(row=2, column=0, sticky="nsew", pady=(2,0))
         con.rowconfigure(2, weight=2, minsize=140)
-        # ── CHAMP/ITEM CONTROL (row 3) ──
+        # -- CHAMP/ITEM CONTROL (row 3) --
         self._item_ctrl = ChampItemControl(con)
         self._item_ctrl.grid(row=3, column=0, sticky="nsew", pady=(2,0))
         con.rowconfigure(3, weight=3, minsize=415)
