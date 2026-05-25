@@ -32,8 +32,12 @@ Coverage classes:
   "increases self-healing and shielding by 25%".
 * ``EhpResultHealFieldsTests`` - new heal_* fields present in to_dict
   + format_table renders heal row when non-zero.
-* ``DeathsDanceDeferredTests`` - DD 6333 stays defensive_only (Defy heal
-  deferred to Phase 6.5).
+* ``DeathsDanceDeferredTests`` - HISTORICAL: DD 6333 used to stay
+  defensive_only (Defy heal deferred). ENGINE 1.57.0 (2026-05-25)
+  SHIPPED Defy via the new ``ItemHeal.takedown_gated`` schema field;
+  the test class now pins the post-ship state (DD has a heal entry,
+  not defensive_only). The historical "deferred" semantics live in
+  ``test_dd_defy_heal_on_takedown.py``.
 * ``BTPlusLifelineStacksTests`` - BT shield + Sterak shield both apply
   (BT does NOT share unique_passive_key="lifeline" so compute_ehp adds
   both magnitudes; rank.py dedup is upstream and unaffected here).
@@ -513,19 +517,36 @@ class EhpResultHealFieldsTests(unittest.TestCase):
 
 
 class DeathsDanceDeferredTests(unittest.TestCase):
-    def test_dd_stays_defensive_only(self) -> None:
-        dd = ITEM_EFFECTS["6333"]
-        self.assertTrue(dd.defensive_only)
+    """HISTORICAL: DD Defy was deferred from Phase 6.
 
-    def test_dd_has_no_heal_field(self) -> None:
-        # Defy heal deferred to Phase 6.5
+    ENGINE 1.57.0 (2026-05-25) SHIPPED Defy via the
+    ``ItemHeal.takedown_gated`` schema lift + ``_TAKEDOWN_RATE_PER_FIGHT``
+    operator-tunable constant. This class now pins the post-ship state:
+    DD has a heal entry and is no longer defensive_only. The deep
+    shape pins (per-rank magnitude / takedown-rate gating math /
+    schema-additive guarantees) live in
+    ``test_dd_defy_heal_on_takedown.py``.
+    """
+
+    def test_dd_no_longer_defensive_only(self) -> None:
+        # ENGINE 1.57.0 (2026-05-25): DD shipped Defy heal so the item
+        # now contributes to EHP throughput (not defensive_only).
         dd = ITEM_EFFECTS["6333"]
-        self.assertIsNone(dd.heal)
+        self.assertFalse(dd.defensive_only)
+
+    def test_dd_has_heal_field(self) -> None:
+        # ENGINE 1.57.0 (2026-05-25): Defy heal SHIPPED via ItemHeal.
+        dd = ITEM_EFFECTS["6333"]
+        self.assertIsNotNone(dd.heal)
+        # heal_amp_pct stays 0 (DD does NOT amp heals/shields like
+        # Spirit Visage; the Defy heal itself is amped by SV when
+        # both are equipped via _total_heal_amp).
         self.assertEqual(dd.heal_amp_pct, 0.0)
 
-    def test_dd_arena_mirror_same_deferral(self) -> None:
+    def test_dd_arena_mirror_matches_sr(self) -> None:
+        # Arena 226333 mirrors SR 6333 - same Defy schema.
         dd = ITEM_EFFECTS["226333"]
-        self.assertIsNone(dd.heal)
+        self.assertIsNotNone(dd.heal)
         self.assertEqual(dd.heal_amp_pct, 0.0)
 
 
@@ -573,7 +594,7 @@ class BTPlusLifelineStacksTests(unittest.TestCase):
 
 class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_at_1_31_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.56.0")
+        self.assertEqual(ENGINE_VERSION, "1.57.0")
 
 
 # ---------------- Phase 6.5: missing-HP additive on item heals ----------------

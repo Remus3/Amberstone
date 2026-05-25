@@ -1321,7 +1321,93 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.56.0"
+ENGINE_VERSION = "1.57.0"
+# 1.57.0 (Death's Dance Defy heal-on-takedown - SHIPPED via NEW
+# ItemHeal.takedown_gated schema field + _TAKEDOWN_RATE_PER_FIGHT
+# operator-tunable module constant. Closes the Phase 6 deliberate
+# omission "Death's Dance Defy heal (75% bonus AD on takedown over
+# 2s) is DEFERRED to Phase 6.5: the takedown-rate assumption is
+# uncertain enough that a Phase 6 first-pass would over- or
+# under-credit it" pending since ENGINE 1.28.0 (2026-05-21,
+# Phase 6 heal pipeline). +2 ItemEffect promotions (SR 6333 +
+# Arena 226333) flipped from defensive_only -> heal contributors.
+# Default 1.56.0 byte-identical-EHP contract holds for every build
+# WITHOUT Death's Dance equipped. ENGINE 1.56.0 sites (CC pressure,
+# parent_resource lift) are byte-identical, 2026-05-25):
+#
+# SCHEMA LIFT: agents/daemon_slayer/_effects_types.py
+# ``ItemHeal`` gains optional ``takedown_gated: bool = False`` field.
+# When True, the consumer (``ehp._collect_heals``) multiplies the
+# resolved per-trigger magnitude by ``_TAKEDOWN_RATE_PER_FIGHT``
+# (operator-tunable module constant in ``ehp.py``, default 0.5)
+# before contributing to the heal pool. Backward-compat: all wave
+# 1.28.0/1.29.0 ItemHeal entries omit the field and default to False;
+# their consumer semantics are byte-identical to ENGINE 1.56.0.
+# The math change is OPT-IN per item via the new flag.
+#
+# CONSUMER WIRE: agents/daemon_slayer/ehp.py
+# ``_collect_heals`` gains ``takedown_rate: float =
+# _TAKEDOWN_RATE_PER_FIGHT`` kwarg; when an ItemHeal's takedown_gated
+# is True, the resolved magnitude is multiplied by
+# ``max(0.0, takedown_rate)`` before contributing to the totals.
+# Items without the flag (the 99% default case including Sundered
+# Sky) flow through unchanged. The constant lives in ``ehp.py``
+# (not in the dataclass) to mirror the Phase 6.5
+# ``_MISSING_HP_SHARE_FOR_HEALS = 0.5`` precedent and the ENGINE
+# 1.33.0 ``_CC_EFFECTIVENESS_FACTOR = 0.5`` precedent: operator-
+# tunable midpoint as a single module constant; do NOT vary
+# per-champion or per-mode (the calibration surface area beyond
+# what live data supports is a long-tail risk).
+#
+# CONSTANT: agents/daemon_slayer/ehp.py
+# ``_TAKEDOWN_RATE_PER_FIGHT = 0.5`` - "carry nets one takedown
+# every other fight on average". Calibration note: this is a
+# conservative midpoint that does NOT over-credit DD in passive
+# sidelane play and does NOT under-credit it in active teamfights.
+# Future per-role calibration via rewind_history.db role-by-role
+# analysis is operator-gated.
+#
+# +2 ITEMEFFECT PROMOTIONS this engine bump:
+#
+# (1) SR 6333 Death's Dance (Legendary, 3300g, 60 AD + 50 armor +
+#     15 ability haste). ItemHeal(bonus_ad_scaling=0.75,
+#     takedown_gated=True). Per Meraki 16.10.1 passive Defy: "If
+#     an enemy champion dies within 3 seconds of you damaging them,
+#     removes Ignore Pain's remaining stored damage and heals you
+#     for 75% bonus AD over 2 seconds". The Ignore Pain damage-
+#     storing piece is NOT modeled at the EHP layer (it shifts
+#     damage from instant -> 3s spread - a timing transform, not a
+#     magnitude reduction; the EHP scorer is a magnitude model;
+#     timing-shift damage smoothing is a separate axis intentionally
+#     out of scope here). Promoted from defensive_only -> heal
+#     contributor; the Meraki-verified 75% bonus AD coefficient is
+#     the authoritative source.
+#
+# (2) Arena 226333 Death's Dance - mode mirror of SR 6333 with
+#     identical Defy schema. Arena fights are shorter (multi-round
+#     cycles) but the constant is mode-agnostic by design; mode-
+#     specific calibration can layer on top via a future per-mode
+#     override. Promoted from defensive_only -> heal contributor.
+#
+# SAMPLE MATH (Aatrox L11 with 6333 only, base_ad=68, bonus_ad=60,
+# takedown_rate=0.5): per-trigger heal = 0.75 * 60 = 45 hp;
+# takedown-gated * 0.5 = 22.5 hp. The heal pool gains 22.5 hp;
+# blended_ehp gains ~22 hp via the top-of-damage-stack absorption.
+# At takedown_rate=1.0 (every-fight takedown), heal contribution
+# doubles to 45 hp; at takedown_rate=0.0 (never), heal contribution
+# is 0 (DD is back to defensive_only-equivalent on the EHP lane).
+#
+# DOWNSTREAM CONSUMERS: rank.py rank_items_by_ehp surfaces DD as a
+# real EHP contributor for the first time. The heal magnitude is
+# small relative to DD's stat block (60 AD + 50 armor + 15 AH),
+# but the EHP delta now reflects the takedown-conditional heal
+# pool addition rather than ignoring it entirely. Live coaching
+# layers (champ_select_coach, sr_coach archetype recommenders)
+# pick up the change automatically via the EHP scorer.
+#
+# Test count grew by 26 (4672 -> 4698) - exactly the new
+# test_dd_defy_heal_on_takedown.py file.
+#
 # 1.56.0 (cc_conditional wave 19 STATE-TRACKING EXTRACTOR SCHEMA
 # LIFT - NEW parent_resource field per-form record in
 # tools/daemon_slayer_abilities_extract.py output. The field
