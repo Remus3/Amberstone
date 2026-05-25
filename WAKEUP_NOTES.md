@@ -4,6 +4,89 @@
 
 ---
 
+# 2026-05-25 (late afternoon) - item 186 SHIPPED: dead-endpoint cleanup (11 routes) + dedup duplicate-fetch cache + housekeeping wave 27 CLEAN + Slice E U+2500 stale-carry confirmed + Slice G cc_conditional wave 20 saturation (2 merges + 1 RC restart pushed origin/main `9aea56a..077ee64`; non-engine; non-frozen; no DS engine bump; no DS restart; RC :8888 restarted via restart_trigger.txt pid 12612 -> 10352 for route module reload)
+
+Operator-triggered parallel headless drain on operator-gated decision-owed lane: dead-endpoint cleanup vet + implement / dedup duplicate-fetch cache / U+2500 audit / cc_conditional wave 20 REJECT re-audit / housekeeping triple / 101.qq.com Game-PC capture / set_augment_intent Cherry discovery / Bridge Watcher acceptance / Auto-ops verb expansion + lanes. 38th consecutive run using orchestrator-merge pattern (items 134-186). 5 worktree/investigative agents dispatched concurrent (Slice C dead-endpoint + Slice D dedup + Slice E U+2500 + Slice G cc_conditional + Slice J housekeeping). Pre-flight: 0 open PRs; 0 stale remote branches; CI 5/5 green; HEAD = item 185 `9aea56a`; mode_key=client.
+
+**Slice C `4cfd0be` (merge `077ee64` ort 0 conflicts 7 files +229 / -547) chore(dashboard) item-186 dead-endpoint cleanup - 11 routes removed + 11 keepers + drift guard:**
+- Item 184 Phase 6 carry (h). 15 dead-endpoint candidates surfaced; 11 truly-dead deleted; 4 had real callers and were kept (sr-draft/apply + post-game-rubric + post-game-wpa + decisions/respond_active kept after caller-verification per item 184 risk-control note).
+- Routes removed (11): /api/aram-analyze + /api/experimental/adapt + /api/experimental/get + /api/experimental/mark + /api/logs + /api/recommend-champ + /api/replay-coach (routes_coach.py); /api/ocr-crop + /api/reload-regions + /api/validate-ocr (routes_diag.py); /api/sr-draft/profile (routes_sr_draft.py).
+- Keepers verified by real-caller grep (11): /api/bridge/cadence (operator /sleep+/wake slash commands) / /api/bridge/messages (peer_bridge_daemon + bridge_watcher) / /api/bridge/status (bridge_mcp_server) / /api/decisions/respond_active (gamepc_keybind_listener) / /api/health/peer (supervisor + bridge_watcher_health_publisher + main.js) / /api/last-match/ingest (gamepc_lcu_agent) / /api/ocr (calibrate_vision) / /api/replay/match (dev.js + index.html) / /api/sr-draft/apply (phase8 test + live LCU push) / /api/team-context (dispatch + tests + LCU agent) / /api/bridge/pending (bridge_pending panel).
+- Risk-control vetting per item 184 carry (h): aram_analyze (0 callers, DELETED safely); sr-draft/profile (0 callers, DELETED); sr-draft/apply + post-game-rubric + post-game-wpa (real callers, KEPT). Risk-check grep against ROADMAP.md + BACKLOG.md OPEN items: 0 references to the 11 deleted routes.
+- NEW `tests/test_dead_endpoint_cleanup_item186.py` (~214 LOC / 4 drift guard tests) pins via AST walk: deleted routes cannot reappear in GET_ROUTES/POST_ROUTES tables + deleted handler symbols cannot be re-defined / re-imported. Failures CI-blocking.
+- Phase 8 smoke tests dropped 5 (test_sr_draft_profile_stub.py::TestRouteHandler (3) + test_sr_user_builds.py::TestRouteMergeInvariant (2) - their routes are gone); +4 new drift guard tests = net +4 unique passing test cases. Pre-existing test failures (16 in ban_suggest + draft_elo + target_state_caller, all sqlite or live-HTTP unrelated) unchanged baseline.
+- RC restart REQUIRED for route table reload (immutable module-level GET/POST_ROUTES); restart_trigger.txt -> pid 12612 -> 10352 alive=True reload_ok=True mode_key=client.
+- Live HTTP probe verification: 6/6 deleted routes confirmed HTTP 404 (correct); 3/3 kept routes confirmed handler-hit (POST /api/sr-draft/apply = 400 bad body + POST /api/last-match/ingest = 400 bad body + POST /api/decisions/respond_active = 404 "no pending decision" handler response).
+
+**Slice D `d570aa4` (merge `7f17625` ort 0 conflicts 6 files +293 / -5) feat(web) item-186 dedup duplicate-fetch cache - /api/loadout/list + /api/decisions ~50-150ms saved per consolidated fetch:**
+- Item 184 Phase 6 carry (j) LOW priority. /api/loadout/list + /api/decisions each hit by 2 panel modules independently per page load.
+- NEW `web/js/lib/dedup_fetch.js` (~93 LOC) module-level Map<urlKey, inflightPromise> dedup primitive with 100ms grace TTL + response.clone() for multi-consumer body reads + immediate evict-on-reject (matches item 171 trailing-space precedent for query-string-aware cache keys).
+- Wired 4 call sites: web/js/panels/bridge_pending.js (+5/-1) + web/js/panels/trigger_pill.js (+4/-1) for /api/decisions; web/js/panels/champ_select.js (+5/-1) + web/js/panels/item_build.js (+9/-2) for /api/loadout/list (2 sites in item_build).
+- NEW `tests/test_loadout_list_dedup.py` (~170 LOC / 13 tests across 4 classes): DedupFetchLibTests + WiredSitesGrepTests + NoRawFetchRegressionTests + AsciiHygieneTests.
+- Expected savings: /api/decisions trigger_pill 500ms cadence vs bridge_pending 20s cadence = ~1 saved roundtrip per coincident tick (~50-100ms server-side per dedup; 500ms grace window covers typical 0-100ms overlap). /api/loadout/list 2 panels both fire on central-pane render; at item 184 baseline 0.684/s pre-suppression, render-storm bursts (panel mount + state tick within same frame) coalesce into 1 request via 100ms TTL.
+- ADR-008 asset-hash auto-serves new JS; no RC restart needed for the dedup work itself (Slice C restart covered both).
+
+**Slice E read-only no-commit (U+2500 residue audit beyond rc_supervisor + rc_self_monitor):**
+- Carry-forward statement in items 178-185 ("542 residual U+2500 chars STILL operator-gated separate sweep, NOT trivial - intentional docstring tree-drawing in rc_supervisor 58 + rc_self_monitor 484") is STALE.
+- Live grep: ops/rc_supervisor.py = 0 U+2500; ops/rc_self_monitor.py = 0 U+2500. Both files already swept by item 176 (`8611ff3` 2026-05-24 frozen-file grant `tools/strip_u2500.py --allow-frozen`).
+- Repo-wide audit: 51,287 U+2500 across 197 files (excluding .git/ _archive/ logs/ .venv/ node_modules/ data/daemon_slayer/). Top 20 = 16,886 chars = 33% of total. Classification: 10 INTENTIONAL (test/tool docstring section divider art - safe to retain) + 10 candidate (data payloads, JS generated content, archived code, policy definitions - candidates if operator wants sweep).
+- **Verdict: STALE-CARRY CONFIRMED.** Orchestrator drops the "542 residual" line from next ledger entry. No code commit needed.
+
+**Slice G read-only no-commit (cc_conditional wave 20 REJECT re-audit at current schema):**
+- Per item 184 carry (g): wave 20+ SCHEMA-BLOCKED unless re-audit REJECT carries from waves 11-19 against current Meraki + parent_resource (item 177 forward-marker) + cast_time (item 172) + coexists_with_unconditional (item 176) schemas.
+- Cross-referenced ~50 REJECT carries from waves 11-19 against `data/daemon_slayer/16.10.1/champion_abilities.json` + `agents/daemon_slayer/cc_conditional.py` _PER_SPELL_CC_CONDITIONAL + _PER_SPELL_CC_CONDITIONAL_FORMS.
+- Verdict per carry: ALL initially-REJECT carries remain REJECT-confirmed (unconditional / minion-only / self-buff / turret-only / out-of-schema / state-tracking / damage-only) OR already-shipped (Renekton W wave 9 / Karma W form 1 wave 10 / Hwei E form 2 wave 10 / Neeko E wave 1 / Aphelios Q form 3 wave 13) OR overridden by later waves' schema lifts (Jayce E cast_time -> shipped wave 14 / Maokai R coexists -> shipped wave 18 / Taliyah E -> shipped wave 17 COND_TRAVERSE).
+- 0 NEW ship-candidates surfaced from broader Meraki effects_descriptions + cast_time + parent_resource scan.
+- **Verdict: SATURATION DEEPENS no-commit.** Registry stays at 67 entries / 54 champions / 13 condition tags. Future wave 20+ growth needs NEW Meraki schema field OR re-audit of older waves' REJECT pile at a later schema lift.
+
+**Slice J no-commit (housekeeping triple wave 27):**
+- Cost/latency lever sweep: 29th consecutive CLEAN since item 134. 7 levers all green. L1 prompt-cache 13 cache_control hits / 8 blocks (matches item 185 baseline); L2 route TTL 14 routes with `_CACHE` (within 12-16 fluctuation); L3 polling tightest NETWORK 2000ms (pollIfStale + pollLcu); L4 log spam `_SUPPRESS_LOG_PATHS` 10 entries unchanged; top non-suppressed /api/bridge 0.132/sec (matches item 184/185 baseline; /api/ward-heat absent because operator out-of-game); L5 model tier all coaches haiku-4-5-20251001 + agent7 DEFAULT_MODEL = haiku (Sonnet only as POST-call telemetry; Opus only agent6_auditor); L6 14 RC-* scheduled tasks; L7 27=27 panel CSS = dashboard.css @imports parity guard 4/4 PASS.
+- BACKLOG/ROADMAP stale-sweep wave 27: 0 actionable flips. 8 OPEN file:line anchors grep-verified live within +/- 3 tolerance (dev.js:362 verdict.team_won within +1 tolerance from cited :361 / gamepc_lcu_agent.py:1192 augment_intent_unsupported EXACT / gamepc_lcu_agent.py:245 ARAM Mayhem 2400 within -1 tolerance from cited :246 / gamepc_lcu_agent.py:536 _arena_teams EXACT / archetype_dispatch.py:52 _UNIT_SUFFIX EXACT / rc_supervisor.py:210 CircuitBreaker EXACT / item_build.js:328 _ibBuilds within +1 tolerance / supervisor.py:667 champ_select_states (ROADMAP L61 cites :597 = SHIPPED FU01 historical anchor; intentionally FROZEN per [[feedback_no_history_rewrite]]).
+- **Sweep cycle decay:** 17=0 / 18=1 / 19=0 / 20=0 / 21=0 / 22=0 / 23=0 / 24=0 / 25=0 / 26=0 / **27=0** = 10 consecutive zero-flip waves = saturation plateau deepens.
+- Living docs sync verify: ENGINE_VERSION=1.56.0 / cc_conditional=67/54 / tags=13 / DS health endpoint serves engine_version=1.56.0 patch=16.10.1 champs=172 items=705 / BRIEF.md L20 + DAEMON_SLAYER.md L5/L32 (4671 tests) + ARCHITECTURE.md L161 + BACKLOG.md L13 + ROADMAP.md L165 ALL current at 1.56.0 / 4671 / 67/54 / waves 0-19 / 13 tags. Item 185 anchors verified live: primitives.css:249 min-height: 360px + replay_events.css:71 max-height: 320px. No drift; no commit needed.
+
+**Slices skipped this session (operator-gated lane items 1-3 + 4-7 explicitly listed but not actionable):**
+- set_augment_intent Cherry endpoint discovery: requires live Arena lobby + LCU swagger probe at mid-Arena phase; mode_key=client (no Arena session); deferred to next live Arena window.
+- Live UI captures (page #3 Replay + pages #11/12/13 Active Match + ARAM Mayhem smoke): operator out-of-game; deferred.
+- DD Defy heal-on-takedown: scope unclear without spec; deferred.
+- Calibrations (13 cond-prob midpoints + 67 entry probs + _MISSING_HP_SHARE_FOR_HEALS=0.5 + _CC_EFFECTIVENESS_FACTOR=0.5): operator-gated; no live game outcome data without rewind_history.db backfill; deferred.
+- 101.qq.com duo-synergy one-off Game-PC capture: needs operator at Game-PC browser; bridge dispatch to Game-PC Claude possible but capture itself needs operator auth/navigation; deferred.
+- Bridge Watcher acceptance (50+ samples): time-gated on real traffic.
+- Auto-ops verb expansion + GamePC/Peer auto-action lanes: gated on Phase 3 95% success rate (not yet measured at threshold).
+
+**Verified post-commit:**
+- `py -m pytest tests/phase8_smoke/ tests/test_dead_endpoint_cleanup_item186.py tests/test_loadout_list_dedup.py -q` = **87 passed / 4 subtests in 3.73s**. Phase 8 smoke 75 -> 70 (5 dropped because their routes are gone) + 13 dedup tests + 4 drift guard tests = 87 net.
+- `py -m ruff check .` ALL CHECKS PASSED.
+- DS suite untouched (no engine change; DS :8893 serves 1.56.0 from item 177; not restarted).
+- RC :8888 restarted via restart_trigger.txt for route table reload: pid 12612 -> 10352 alive=True last_reload_ok=True mode_key=client throughout post-restart.
+- Live HTTP probes: 6/6 deleted routes 404 (correct); 3/3 kept routes handler-hit (correct).
+- Pushed `9aea56a..077ee64` origin/main.
+
+**Don't-redo:**
+- `_SUPPRESS_LOG_PATHS` 10-entry needle tuple is calibrated; trailing-space needle bug (item 171 root cause) is regressed-protected by `test_constant_contains_high_frequency_paths` + 2 positive tests asserting bare-path-prefix + query-string variants both suppressed.
+- The 11 deleted routes are now CI-blocked from re-introduction by `tests/test_dead_endpoint_cleanup_item186.py` AST-walk drift guard. Re-introducing /api/aram-analyze (etc.) requires deleting the corresponding drift guard pin first.
+- `web/js/lib/dedup_fetch.js` is the canonical dedup primitive for ALL future panel-level fetch wiring on multi-consumer endpoints. Wire pattern: import dedupFetch from "/js/lib/dedup_fetch.js"; await dedupFetch(url, opts). 100ms grace TTL is appropriate for the typical panel-mount + state-tick coincidence window; longer TTLs need explicit per-call override.
+- The "542 residual U+2500" carry-forward is permanently dropped from future ledger entries. rc_supervisor.py + rc_self_monitor.py were swept item 176; the residual count was a stale ledger artifact (item 178+ carry inherited an out-of-date snapshot).
+- cc_conditional wave 20+ STILL SCHEMA-BLOCKED at current Meraki + parent_resource + cast_time + coexists_with_unconditional schemas. Future ship-candidates require a NEW field lift in `tools/daemon_slayer_abilities_extract.py` to surface mechanics absent from the current parse-strip (state-tracking thresholds, form-transition gates, recast preconditions).
+- 30+ days of orchestrator-merge pattern (items 134-186) demonstrates the 3-5-parallel-slice + sequential-merge + Slice D worktree or direct main + tests gate + restart-if-route-table-changed + docs sync + push template is durable. 38 consecutive runs is the streak.
+- Slice C agent self-corrected on caller-verification mid-run: initially flagged 22 routes for deletion, narrowed to 11 truly-dead after grepping tools/ + web/js/ + tests/ + ROADMAP.md + BACKLOG.md for callers. Per [[feedback_verify_generated_reports]]: subagent measurement claims MUST be grep-verified before action.
+
+**Carries forward:**
+- Item 185 carries ALL unchanged EXCEPT: (a) item 184 dead-endpoint cleanup (15 candidates) NOW CLOSED via Slice C; (b) item 184 dedup duplicate-fetch cache NOW CLOSED via Slice D; (c) 542 residual U+2500 carry-forward DROPPED as stale (rc_supervisor + rc_self_monitor swept item 176).
+- Live UI capture STILL OWED for page #3 Replay (rewind_history.db populated + match selected) + pages #11/12/13 Active Match SR/ARAM/Arena (in-game window).
+- DD Defy heal-on-takedown STILL deferred (operator-gated, scope unclear).
+- Calibrations STILL operator-gated.
+- Legion 1-PC consolidation STILL operator-gated (s169 option B).
+- cc_conditional wave 20+ STILL SCHEMA-BLOCKED (this session's Slice G audit confirms saturation; needs NEW Meraki schema lift to unblock).
+- set_augment_intent Cherry endpoint discovery STILL live-gated.
+- Bridge Watcher acceptance criteria (50+ real samples) STILL time-gated.
+- Auto-ops verb expansion + GamePC/Peer auto-action lanes STILL gated on Phase 3 95% success rate.
+- 101.qq.com duo-synergy one-off Game-PC capture STILL operator-at-Game-PC-gated.
+- Frozen-file grant NOT used this session.
+- The 51,287 U+2500 chars across 197 non-frozen files: classified intentional (test/tool divider art) vs candidate (data payloads, archived code) - 10/10 split in top 20. Operator-gated separate sweep if desired; not a blocker.
+
+---
+
 # 2026-05-25 (afternoon) - item 185 SHIPPED: page #3 Replay flex-allocation re-tune + housekeeping triple wave 26 CLEAN (1 commit `e9bc504` pushed origin/main `636804d..e9bc504`; non-engine; non-frozen; no DS engine bump; no DS restart; no RC restart - ADR-008 asset-hash auto-serves CSS on next dashboard load)
 
 Operator "start the next item" - 37th consecutive run using orchestrator-merge pattern (items 134-185). CAVEMAN ULTRA session default. 3 audit slices dispatched concurrent + 1 inline code slice. Pre-flight: 0 open PRs; 0 stale remote branches; CI 5/5 green; HEAD = item 184 `636804d`. Operator mode_key=client (between games) so non-game UI work UNBLOCKED.
