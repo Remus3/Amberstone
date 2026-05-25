@@ -39,6 +39,58 @@ _(items 148-149 archived to docs/history_notes.md per session-workflow keep-last
 
 ---
 
+# 2026-05-24 - item 171 SHIPPED: non-UI open-items parallel drain #6 (cc_conditional wave 13 ENGINE 1.50.0 + BACKLOG stale-sweep wave 16 + cost/latency DRIFT FLAG `_SUPPRESS_LOG_PATHS` query-string fix + docs sync) (4 commits + 2 merges `8611ff3` `a66210b` `0036359` pushed origin/main `27c4dba..0036359`; ENGINE 1.49.0 -> 1.50.0; DS :8893 restarted pid 4432 -> serves 1.50.0; RC :8888 unchanged mode=client - DS engine + dashboard log-suppress + docs only)
+
+Operator triggered "continue on any open items not operator ui" - sixth consecutive parallel drain. Orchestrator-merge pattern items 134-170 extended to 24 consecutive runs. 3 worktree/investigative agents on disjoint slices.
+
+**Slice A `8611ff3` (merged) feat(ds) cc_conditional wave 13 ENGINE 1.49.0 -> 1.50.0 (37 files / 1452 ins / 57 del):**
+- Re-audit of effects_descriptions across all 171 champs surfaced 7 new candidates verifiable WITHOUT schema lift.
+- SHIP Sejuani E Permafrost 4-Frost-stack stun nth_hit 1.0s (prob 0.7).
+- SHIP Renata Q Handshake recast bystander stun channel_completion 0.5s.
+- SHIP Shaco R Hallucinate clone-death AoE fear channel_completion 1.0s.
+- SHIP Fizz R Chum the Waters lure-on-champion knockup target_debuffed 1.0s.
+- SHIP Warwick E Primal Howl recast fear channel_completion 1.0s (joins wave 0 Warwick R).
+- SHIP TahmKench W Abyssal Dive emerge stun channel_completion 1.0s - FIRST 3-slot cc_conditional champ (W + Q wave 5 + R wave 0).
+- SHIP Aphelios Q form_index=3 Gravitum Binding Eclipse expunge root target_debuffed 1.0s sidecar (first Aphelios first-order CC anywhere).
+- REJECT LeeSin R + Poppy R + RekSai W form 1 (all UNCONDITIONAL belong in `_PER_SPELL_CC_DURATIONS` not cc_conditional). Jayce E cast-time + Maokai R distance-gated CARRY (still schema-blocked / would double-count).
+- Registry growth: 49/43 -> 56/48 (45 primary + 4 sidecar -> 51 primary + 5 sidecar). ENGINE 1.49.0 -> 1.50.0 with changelog block + 31 stale ENGINE pin syncs.
+- NEW `agents/daemon_slayer/tests/test_cc_conditional_wave13.py` ~848 LOC; +109 tests; default include_conditional=False byte-identical to 1.49.0 for all 7 candidates.
+
+**Slice B `a66210b` (merged) docs(backlog) stale-sweep wave 16 (1 file / 2 ins / 2 del):**
+- 2 flips. ROADMAP.md L13 `dev.js:337` -> `dev.js:361` (line drifted +24 from item 162 carry).
+- ROADMAP.md L165 Fleet status DS row header bumped (later re-bumped to 1.50.0 + 4343 + wave 13 by docs sync commit `0036359`).
+- Sweep cycle: 1=2 / 2=3 / 3=3 / 4-12=1 / 13=0 / 14=3 / 15=2 / **16=2**.
+
+**Slice C drift flag + fix (committed as part of `0036359`):**
+- Cost/latency 19th consecutive sweep. 6/7 levers CLEAN.
+- **DRIFT on lever 4 (log spam):** `_SUPPRESS_LOG_PATHS` needles in `dashboard/_handler.py:74-83` were trailing-space terminated. Substring match silently failed against actual log lines with query strings. `/api/minimap-crop?mode=sr&_=ts` ran unsuppressed at **0.490/sec** (3720 hits / 7599s window) since item 156 despite being in the tuple; item 156 ledger's "0.000/sec after suppression" claim was a misread. `/api/activity?limit=6` same silent failure at 0.099/sec.
+- Fix: drop trailing space from all 9 needles. Bare prefix match handles both bare-path AND query-string variants. Defense-in-depth test added: `test_constant_contains_high_frequency_paths` asserts no needle ends with space. 2 new positive tests for query-string variants.
+- Other 6 levers CLEAN: prompt-cache 8 sites + route TTL 12 routes + polling cadences (tightest network 2000ms) + model tier (haiku active, sonnet only agent7_warm) + scheduled tasks (14 RC-*) + bundle parity (27=27).
+
+**Docs sync (committed in `0036359`):** 6 files / 7 edits. docs/DAEMON_SLAYER.md L5+L32 / README.md L46 / docs/ARCHITECTURE.md L161 + wave lineage / BRIEF.md L20+L26 / BACKLOG.md L13 / ROADMAP.md L165 wave-13 lineage append.
+
+**Verified post-merges + DS restart:**
+- DS suite 4343 passed / 1 skipped / 1 xfailed / 1747 subtests in 67.01s (+109 over 4234 baseline = exactly wave 13 test file).
+- RC suite 3291 passed / 67 subtests in 57.05s (+2 over 3289 = exactly the 2 new query-string log-suppress tests).
+- phase8_smoke 75/75 PASS post-DS-restart.
+- ruff 3 errors confirmed pre-existing item 167 tooling - NOT this session's scope.
+- DS :8893: taskkill pid 4432 + `schtasks /Run /TN RC-DaemonSlayer` -> `/health` engine_version=1.50.0 patch=16.10.1 champions=172 items=705.
+- RC :8888 mode=client throughout (never restarted - non-route-module change; `_SUPPRESS_LOG_PATHS` tuple is module-level immutable so existing handlers won't suppress until supervisor relaunch).
+- Pushed origin/main as `0036359`.
+
+**Don't-redo:**
+- The `_SUPPRESS_LOG_PATHS` trailing-space silent failure is a CANONICAL regression. `test_constant_contains_high_frequency_paths` now asserts no needle ends with space + 2 new positive tests cover the query-string variant. CI catches any future regression.
+- The item 156 ledger's "0.000/sec after suppression" claim was a misread. The actual fix never took effect because the needle never matched.
+- cc_conditional wave 13's 7 closures are all candidates verifiable WITHOUT schema lift (methodology template per item 151 wave 8 precedent).
+- TahmKench is now the FIRST 3-slot cc_conditional champion (W + Q + R) - future multi-slot expansions are not constrained by the registry shape.
+- Aphelios Q form_index=3 (Gravitum) is the first Aphelios first-order CC anywhere; other 4 Aphelios Q forms remain damage-only.
+- Orchestrator-merge pattern now 24 consecutive runs (items 134-171).
+- Route TTL ledger count (12 vs item 170's "14") is loose. Actual count fluctuates around 12-16 with consumer routes added/removed.
+
+**Carries forward:** (a) All item 170 carries unchanged EXCEPT (f)-relaxed: cc_conditional wave 13 DONE; Jayce E + Maokai R STILL schema-blocked / would-double-count. (b) DD Defy heal-on-takedown STILL deferred. (c) Live ARAM/SR smoke STILL pending. (d) Calibrations STILL operator-gated. (e) Legion 1-PC consolidation STILL operator-gated. (f) cc_conditional wave 14+ candidates: 2 schema-blocked + 6 wave-7 schema-lift carries all operator-gated. (g) 542 residual U+2500 box-drawing chars carry forward. (h) v2.1 audit pages 9-16 (8 remaining in audit order). (i) Frozen-file grant NOT used.
+
+---
+
 # 2026-05-24 - item 170 SHIPPED: parallel drain (page #8 typography + champ_select ASCII sweep + cc_conditional wave 12 ENGINE 1.49.0 + BACKLOG sweep wave 15 + cost/latency CLEAN wave 18 + docs sync) (5 commits + 2 merges `f8fa9f1` `8f63409` `cb834a6` `36f6172` `a8b8164` `3e6e34b` pushed origin/main `a80dd6b..3e6e34b`; ENGINE 1.48.0 -> 1.49.0; DS :8893 restarted pid 7344 -> serves 1.49.0; RC :8888 unchanged pid 12220 mode=game alive=True - operator in active game during drain so no UI capture)
 
 Operator triggered the "in parallel: start all open items in Operator-gated, decision owed" drain. Orchestrator-merge pattern items 134-169 streak extended to 23 consecutive runs. 3 worktree agents on disjoint slices.
