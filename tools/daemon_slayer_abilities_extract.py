@@ -36,6 +36,34 @@ normalized into:
   The cast_time itself is a flat scalar per form (no rank scaling).
   Pure-additive: damage-block pipeline + effects_descriptions
   unchanged.
+* ``parent_resource`` - champion-level resource string lifted from
+  Meraki ``payload["resource"]`` and stamped on EVERY form record.
+  ENGINE 1.56.0 schema lift (2026-05-24): captures the empowered-
+  state signal (``"FURY"`` / ``"BLOOD_WELL"`` / ``"FRENZY"`` /
+  ``"RAGE"`` / ``"HEAT"`` / ``"ENERGY"`` / ``"GRIT"`` / ...) so
+  consumers can query state-tracking eligibility WITHOUT parsing
+  description text. The per-form ``resource`` field is what the
+  spell itself COSTS (e.g. Briar Q costs ``CURRENT_HEALTH`` because
+  it self-damages); the new ``parent_resource`` field is what the
+  champion as a WHOLE uses (e.g. Briar's resource bar is
+  ``FRENZY``). For mana champions both fields tend to land on
+  ``"MANA"``; for non-mana champions they diverge. Aatrox / Renekton
+  / Gnar / Rumble surface here for the first time (their per-form
+  ``resource`` was ``null`` despite the champion-level bar). The
+  field is a structured signal for the cc_conditional
+  ``COND_FRENZY_STATE`` tag - any future entry consuming that tag
+  SHOULD ship with a champion whose ``parent_resource`` is in
+  ``{"FURY", "BLOOD_WELL", "FRENZY", "RAGE", "HEAT"}`` (the
+  empowered-state resource family). Pure-additive: damage-block
+  pipeline + effects_descriptions + cast_time unchanged. The 6
+  wave-7 schema-lift carries (Renekton W / Aatrox post-R passive /
+  Volibear R passive / Briar W frenzy / Karma W form 1 / Hwei E
+  form 1+2 / Neeko E) were either ALREADY SHIPPED in prior waves
+  (Renekton wave 9 / Karma wave 10 / Hwei wave 10 / Neeko primary)
+  or REJECT-verified (Aatrox post-R minion-only / Volibear R
+  turret-only / Briar W self-buff-only); the schema lift this
+  wave is FORWARD-MARKER infrastructure for future
+  ``COND_FRENZY_STATE`` consumers.
 
 Phase 4b will layer a formula evaluator on top of this snapshot. Phase 4a
 is data ingest only - we do not evaluate per-cast damage here.
@@ -422,8 +450,22 @@ def _normalize_cast_time(raw: Any) -> float | None:
     return None
 
 
-def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
-    """Normalize one Meraki ability form (single stance) → a structured record."""
+def _build_form(
+    form: dict,
+    form_index: int,
+    ability_key: str,
+    parent_resource: str | None = None,
+) -> dict:
+    """Normalize one Meraki ability form (single stance) - a structured record.
+
+    ``parent_resource`` (ENGINE 1.56.0 schema lift) is the champion-level
+    resource string read from ``payload["resource"]`` by ``_build_champion``
+    and threaded down so EVERY form carries the empowered-state signal
+    even when the per-form ``resource`` field is ``null`` (Aatrox /
+    Renekton / Gnar / Rumble all surface their ``BLOOD_WELL`` / ``FURY`` /
+    ``RAGE`` / ``HEAT`` resource here for the first time). Pure-additive:
+    no prior field changes shape or value.
+    """
     name = form.get("name") or ability_key
     cooldown = _normalize_cooldown_or_cost(form.get("cooldown"))
     cost = _normalize_cooldown_or_cost(form.get("cost"))
@@ -506,6 +548,7 @@ def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
         "targeting": targeting,
         "affects": affects,
         "resource": resource,
+        "parent_resource": parent_resource,
         "is_aoe": _is_aoe(affects, targeting),
         "cast_time": cast_time,
         "damage_blocks": damage_blocks,
@@ -518,15 +561,32 @@ def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
 
 
 def _build_champion(name: str, payload: dict) -> dict:
-    """Normalize a Meraki champion record → ``{P,Q,W,E,R: [form, ...]}``."""
+    """Normalize a Meraki champion record - ``{P,Q,W,E,R: [form, ...]}``.
+
+    ENGINE 1.56.0 schema lift (2026-05-24): reads champion-level
+    ``payload["resource"]`` (e.g. ``"FURY"`` for Renekton / Tryndamere
+    / Shyvana, ``"BLOOD_WELL"`` for Aatrox, ``"FRENZY"`` for Briar,
+    ``"RAGE"`` for Gnar, ``"HEAT"`` for Rumble, ``"ENERGY"`` for Akali
+    / Kennen / LeeSin / Shen / Zed, ``"GRIT"`` for Sett, ``"MANA"``
+    for everyone else) and threads it down to every form via the
+    new ``parent_resource`` per-form field. The output shape
+    ``{P,Q,W,E,R: [form, ...]}`` is unchanged - the lift is per-form,
+    not a new top-level dict key, to preserve consumer compat with
+    the current snapshot shape that 17 DS tests + the cc_conditional
+    forward-marker contract pin against.
+    """
     abilities = payload.get("abilities") or {}
+    parent_resource_raw = payload.get("resource")
+    parent_resource = (
+        parent_resource_raw if isinstance(parent_resource_raw, str) else None
+    )
     out: dict[str, list[dict]] = {}
     for key in ("P", "Q", "W", "E", "R"):
         forms = abilities.get(key) or []
         if not isinstance(forms, list):
             continue
         out[key] = [
-            _build_form(form, idx, key)
+            _build_form(form, idx, key, parent_resource=parent_resource)
             for idx, form in enumerate(forms)
             if isinstance(form, dict)
         ]
