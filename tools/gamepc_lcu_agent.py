@@ -1177,21 +1177,55 @@ def execute_command(cmd: dict) -> dict:
             return {"ok": False, "err": err}
         return {"ok": True, "swap_id": swap_id, "cell_id": cell_id}
     if name == "set_augment_intent":
-        # Arena/Cherry augment selection. The dashboard's augment chooser
-        # fires this with ``augment_id`` for the active round slot. The
-        # exact LCU endpoint (under /lol-cherry/v1/*) needs to be confirmed
-        # against a live Arena lobby - Cherry's REST surface isn't well
-        # documented. Until then, queue it as a no-op so the agent doesn't
-        # crash on unknown-cmd and the dashboard surfaces "not yet wired"
-        # rather than a phantom error.
+        # Arena/Cherry augment selection. Item 187 Slice E scaffold (research-
+        # only); item 188 Slice C wires the actual PATCH chain. Cherry's REST
+        # surface is undocumented + version-volatile, so we try a priority
+        # chain of 4 candidate endpoints; first 2xx wins; all 4 missing -> a
+        # full error envelope with each attempt's status so the operator can
+        # see at a glance which surface the live LCU is exposing this patch.
+        # Live verification gated on a real Arena 1750 champ-select augment
+        # phase (see docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md for the recipe).
+        #
+        # Endpoint priority chain (first 2xx wins):
+        #   1. PATCH /lol-cherry-game-intra-event/v1/augment-select
+        #         - item 187 Slice E primary guess; intra-event is the
+        #           live-game phase surface Cherry uses for round-by-round
+        #           augment picks (rounds 1-4 = silver/gold/prismatic).
+        #   2. PATCH /lol-cherry/v1/augment-select
+        #         - shorter namespace fallback; older patches sometimes use
+        #           the bare /lol-cherry/v1/* tree.
+        #   3. PATCH /lol-cherry-summoner/v1/augments
+        #         - summoner-scoped fallback; if the live surface exposes
+        #           augment selection under the per-summoner namespace.
+        #   4. POST  /lol-cherry-game-intra-event/v1/augment-select
+        #         - method-fallback in case the surface expects POST not
+        #           PATCH; mirrors item 180's queueId fallback discovery.
         aug_id = int(cmd.get("augment_id", 0))
+        slot = int(cmd.get("slot", 0))
         if aug_id <= 0:
             return {"ok": False, "err": "no augment_id"}
-        print(f"[cmd] set_augment_intent augment={aug_id} (no-op - "
-              "LCU /lol-cherry/v1/* endpoint TBD)", flush=True)
-        return {"ok": False, "err": "augment_intent_unsupported",
-                "note": "needs /lol-cherry/v1/* discovery vs. live Arena",
-                "augment_id": aug_id}
+        if slot < 0 or slot > 3:
+            return {"ok": False, "err": f"bad slot {slot} (want 0-3)"}
+        body = {"augmentId": aug_id, "slotIndex": slot}
+        attempts = (
+            ("PATCH", "/lol-cherry-game-intra-event/v1/augment-select"),
+            ("PATCH", "/lol-cherry/v1/augment-select"),
+            ("PATCH", "/lol-cherry-summoner/v1/augments"),
+            ("POST",  "/lol-cherry-game-intra-event/v1/augment-select"),
+        )
+        tried = []
+        for method, path in attempts:
+            resp, err = lcu_request(method, path, body)
+            if err is None:
+                print(f"[cmd] set_augment_intent augment={aug_id} slot={slot} "
+                      f"-> {method} {path} ok", flush=True)
+                return {"ok": True, "augment_id": aug_id, "slot": slot,
+                        "endpoint": f"{method} {path}", "resp": resp}
+            tried.append(f"{method} {path} -> {err}")
+        print(f"[cmd] set_augment_intent augment={aug_id} slot={slot} "
+              f"FAIL all 4 endpoints", flush=True)
+        return {"ok": False, "err": "augment_intent_all_endpoints_failed",
+                "augment_id": aug_id, "slot": slot, "tried": tried}
     if name == "trade_request":
         cell_id = int(cmd.get("cell_id", -1))
         if cell_id < 0:
