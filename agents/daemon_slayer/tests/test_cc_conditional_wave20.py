@@ -243,10 +243,12 @@ class Wave20RegistryGrowthTests(unittest.TestCase):
     bumps 54 -> 55."""
 
     def test_registry_total_entries(self) -> None:
-        self.assertEqual(cc.REGISTRY_TOTAL_ENTRIES, 68)
+        # Wave 20 ship floor; subsequent waves can grow this further.
+        self.assertGreaterEqual(cc.REGISTRY_TOTAL_ENTRIES, 68)
 
     def test_registry_total_champions(self) -> None:
-        self.assertEqual(cc.REGISTRY_TOTAL_CHAMPIONS, 55)
+        # Wave 20 ship floor; subsequent waves can grow this further.
+        self.assertGreaterEqual(cc.REGISTRY_TOTAL_CHAMPIONS, 55)
 
     def test_tag_count_unchanged_at_thirteen(self) -> None:
         self.assertEqual(len(cc._DEFAULT_CONDITION_PROBABILITY), 13)
