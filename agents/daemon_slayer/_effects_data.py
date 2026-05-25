@@ -603,8 +603,29 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6333": ItemEffect(
         item_id="6333",
         name="Death's Dance",
-        defensive_only=True,
-        note="Death's Dance: bleed (stores damage to release over time); no DPS proc",
+        # ENGINE 1.57.0 (2026-05-25): Phase 6.5+ Defy heal-on-takedown.
+        # Meraki 16.10.1 passive Defy: "If an enemy champion dies within
+        # 3 seconds of you damaging them, removes Ignore Pain's remaining
+        # stored damage and heals you for 75% bonus AD over 2 seconds".
+        # The heal is takedown-gated; consumer-side multiplies by
+        # _TAKEDOWN_RATE_PER_FIGHT (default 0.5). NOT defensive_only any
+        # more - this contributes to EHP throughput on the heal lane.
+        # Ignore Pain (the damage-storing piece) is still not modeled
+        # at the EHP layer: it shifts damage from instant -> 3s spread,
+        # which is a timing transform rather than a magnitude reduction;
+        # the EHP scorer is a magnitude model. Future Phase 6.5+ work
+        # MAY model Ignore Pain as a soft damage smoothing factor but
+        # that is a separate axis (and intentionally out of scope here).
+        heal=ItemHeal(
+            bonus_ad_scaling=0.75,
+            takedown_gated=True,
+            note="Death's Dance Defy: 75% bonus AD heal on takedown (3s window)",
+        ),
+        note=(
+            "Death's Dance: Ignore Pain stores 30% damage as bleed over 3s "
+            "(timing-shift, not modeled at EHP layer); Defy heals 75% bonus "
+            "AD over 2s on takedown - gated by _TAKEDOWN_RATE_PER_FIGHT"
+        ),
     ),
     "3161": ItemEffect(
         item_id="3161",
@@ -3242,8 +3263,23 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226333": ItemEffect(
         item_id="226333",
         name="Death's Dance",
-        defensive_only=True,
-        note="Death's Dance (Arena 226333): damage-storing Ignore Pain + Defy heal; no DPS contribution",
+        # ENGINE 1.57.0 (2026-05-25): Arena mirror of SR 6333 Defy heal -
+        # same takedown-gated 75% bonus AD over 2s schema. Arena fights
+        # tend to be shorter (multi-round cycles) but the operator-tunable
+        # _TAKEDOWN_RATE_PER_FIGHT constant is mode-agnostic by design;
+        # mode-specific calibration can layer on top via a future per-mode
+        # override. The Ignore Pain timing-shift piece is also not modeled
+        # (parallel to SR). Promoted from defensive_only.
+        heal=ItemHeal(
+            bonus_ad_scaling=0.75,
+            takedown_gated=True,
+            note="Death's Dance Defy (Arena 226333): 75% bonus AD heal on takedown",
+        ),
+        note=(
+            "Death's Dance (Arena 226333): Ignore Pain damage smoothing "
+            "(timing-shift, not modeled) + Defy 75% bonus AD heal over 2s "
+            "on takedown - gated by _TAKEDOWN_RATE_PER_FIGHT"
+        ),
     ),
     "226609": ItemEffect(
         item_id="226609",

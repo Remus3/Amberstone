@@ -46,7 +46,7 @@ Tests pin:
     file declares the schema lift in its module docstring + the
     ``_build_champion`` docstring + the ``_build_form`` docstring.
   * Wave19EngineVersionPinTests - ENGINE_VERSION sits at or above
-    1.56.0.
+    1.56.0 (the wave 19 ship floor).
   * Wave19ForwardMarkerAllowlistTests - the wave 19 test file is in
     the forward-marker test allowlist.
   * Wave19AsciiHygieneTests - test file + extractor source + the
@@ -384,6 +384,9 @@ class Wave19ExtractorDocstringDeclaresLiftTests(unittest.TestCase):
         self.assertIn("parent_resource", self.source)
 
     def test_module_docstring_mentions_engine_1_56_0(self) -> None:
+        # The schema lift itself happened at ENGINE 1.56.0 (the wave 19
+        # ship marker in the extractor source is HISTORICAL and never
+        # bumped); the current ENGINE_VERSION may sit higher.
         self.assertIn("ENGINE 1.56.0", self.source)
 
     def test_build_champion_docstring_mentions_lift(self) -> None:
@@ -399,6 +402,8 @@ class Wave19ExtractorDocstringDeclaresLiftTests(unittest.TestCase):
         self.assertGreater(doc_close, doc_open, "_build_champion docstring close missing")
         block = self.source[idx:doc_close + 3]
         self.assertIn("parent_resource", block)
+        # The schema lift ship marker is "1.56.0" in the source
+        # (HISTORICAL anchor; current ENGINE may be higher).
         self.assertIn("1.56.0", block)
 
     def test_build_form_signature_takes_parent_resource(self) -> None:
@@ -415,7 +420,7 @@ class Wave19ExtractorDocstringDeclaresLiftTests(unittest.TestCase):
 
 
 class Wave19EngineVersionPinTests(unittest.TestCase):
-    """ENGINE_VERSION sits at or above 1.56.0."""
+    """ENGINE_VERSION sits at or above 1.56.0 (wave 19 ship floor)."""
 
     def test_engine_version_string_pin(self) -> None:
         major, minor, patch = (int(x) for x in ENGINE_VERSION.split("."))
@@ -459,6 +464,8 @@ class Wave19AsciiHygieneTests(unittest.TestCase):
         block immediately following the marker to avoid picking up
         pre-existing U+2500 box-drawing ASCII-art section dividers
         elsewhere in the file (operator-gated retro-sweep carry).
+        The marker text is HISTORICAL (the wave 19 ship event was
+        at ENGINE 1.56.0) - do NOT bump on subsequent ENGINE bumps.
         """
         src = _EXTRACTOR_SOURCE.read_text(encoding="utf-8")
         marker = "ENGINE 1.56.0 schema lift"

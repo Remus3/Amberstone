@@ -325,8 +325,11 @@ class DefensiveOnlyBatch2Tests(unittest.TestCase):
     # Essence Reaver (3508) was here through batch 20; promoted in
     # batch 21 (CallContext.crit_chance schema, 2026-05-04) - its
     # proc-shape assertions live in EssenceReaverSpellbladeTests below.
+    # ENGINE 1.57.0 (2026-05-25): "6333" Death's Dance was promoted
+    # from defensive_only via the new ItemHeal.takedown_gated schema
+    # (Defy heal-on-takedown 75% bonus AD over 2s); its proc-shape
+    # pins live in test_dd_defy_heal_on_takedown.py.
     EXPECTED = {
-        "6333": "Death's Dance",
         "3161": "Spear of Shojin",
         "3083": "Warmog's Armor",
         "3139": "Mercurial Scimitar",
@@ -5592,7 +5595,10 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
 
     def test_batch41_defensive_only_entries(self) -> None:
         expected = {
-            "226333": "Death's Dance",
+            # 226333 Death's Dance promoted via ItemHeal.takedown_gated
+            # in ENGINE 1.57.0 (2026-05-25, mirrors SR 6333 - Defy heal
+            # 75% bonus AD over 2s on takedown); proc-shape pins in
+            # test_dd_defy_heal_on_takedown.py
             "226609": "Chempunk Chainsword",
             "226616": "Staff of Flowing Water",
             "226617": "Moonstone Renewer",
@@ -7802,7 +7808,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.56.0")
+        self.assertEqual(ENGINE_VERSION, "1.57.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7863,7 +7869,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.56.0")
+        self.assertEqual(ENGINE_VERSION, "1.57.0")
 
 
 if __name__ == "__main__":
