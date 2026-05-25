@@ -2067,6 +2067,96 @@
 }
 .csv-build-item img { width: 100%; height: 100%; object-fit: cover; }
 
+/* Item 178 (2026-05-24): collapsed SR variant renders ONE champion
+ * entry with N labeled build-path rows stacked vertically inside.
+ * Operator-directed UI cleanup - replaces N separate selectable
+ * variant pills per champion (was 678 SR variants -> 172 collapsed
+ * entries with build_paths[]). */
+.csv-build-row-collapsed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 6px;
+  cursor: default;
+}
+.csv-build-row-collapsed:hover { border-color: #2a2f37; /* no hover ring on outer - paths are the click target */ }
+.csv-build-collapsed-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 2px;
+  border-bottom: 1px solid #2a2f37;
+}
+.csv-build-collapsed-title {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  color: #a8b1c5;
+  letter-spacing: 0.02em;
+}
+.csv-build-path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.csv-build-path-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--hit-min, 42px);
+  padding: 4px 6px;
+  background: #14171c;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.csv-build-path-row:hover {
+  border-color: #60a5fa;
+  background: #1a2030;
+}
+.csv-build-path-row.is-active {
+  border-color: #4ade80;
+  background: #1a2a20;
+}
+.csv-build-path-label {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: #2a2f37;
+}
+.csv-build-path-row.is-active .csv-build-path-label {
+  background: #2a4a35;
+  color: #c8f2d4;
+}
+.csv-build-path-items {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.csv-build-path-item {
+  width: 32px; height: 32px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  cursor: help;
+  transition: box-shadow 0.12s, border-color 0.12s;
+}
+.csv-build-path-item:hover {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.4);
+}
+.csv-build-path-item img { width: 100%; height: 100%; object-fit: cover; }
+
 /* -- Arena duo + augments (replaces MY PICK central pane) ----------- */
 .csv-duo-row {
   display: grid;
