@@ -6,6 +6,90 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-25 (overnight) - item 184 SHIPPED: pages #11/12/13 Active Match v2.1 typography + audit-8 H-02 + M-02 + log-suppress POST /api/loadout/list + history.json mock realignment + dev.js verdict.team_won null guard + warm_session model pin + armor_factor parametrized sweep + cost/latency wave 27 CLEAN (5 commits + 1 merge `7e1e004` `5d4fbfd` `524d538` `834e180` `662c1a9` pushed origin/main `07ec3f9..662c1a9`; non-engine; non-frozen; no DS engine bump; no RC restart - all ADR-008 asset-hash auto-serves + non-route module edits)
+
+Operator triggered `/headless-upgrade` long autonomous run with frozen-file grant + 24 parallel agents per task authority. 36th consecutive run using orchestrator-merge pattern (items 134-184). Operator out-of-game (RC mode_key=client at boot) UNBLOCKED pages #11/12/13 Active Match v2.1 typography per item 183 carry (b). 5 parallel agents dispatched concurrent (Slice A typography + Slice B BACKLOG sweep + Slice C cost/latency + Slice D audit-8 + Slice E cc_conditional wave 20 audit). Pre-flight: 0 open PRs; 0 stale remote branches; 8549 RC + 4673 DS tests collected; CI 5/6 green (latest run completed-success).
+
+**Phase 1 Slice A `7d27b5b` (merge `5d4fbfd` ort 0 conflicts 5 files +61 / -5) chore(ui) item-184 pages #11/12/13 Active Match v2.1 typography token migration:**
+- web/css/panels/active_match.css 2 swaps (.am-pane-head + .am-empty -> --fs-xs).
+- web/css/panels/draft_elo.css 11 operator-exceptions (5 chip-density at 11-13px + 6 hover-tooltip-micro with pointer-events:none; bumping forces 3+ line layout break in 320px max-width overlay).
+- web/css/panels/spike_curve.css 2 operator-exceptions (.spk-empty + legend chart-axis at 40px sparkline container pinned height).
+- web/css/panels/ward_heat.css 5 operator-exceptions (22px stacked-strip density ally+enemy 2-row layout; bumping 3x's strip height + breaks MAP-pane).
+- web/css/panels/cd_ledger.css 3 swaps (.cd-chev + .cd-row-name + .cd-empty -> --fs-xs) + 3 operator-exceptions (.cd-row-initial 24x24 + .cd-chip 38px-min density-critical + .cd-chip-sigil 14x14).
+- Total: 5 PRIMARY swaps + 21 operator-exceptions preserved with inline `/* operator-exception: <density|tooltip-micro|chart-axis> reason */` comments.
+- right_now.css + next.css INTENTIONALLY UNTOUCHED per item 183 audit (SHARED with main grid; touches ripple to ALL views).
+- Pages #11/12/13 SR/ARAM/Arena rendered identically (0 mode-conditional CSS branching per item 183 carry).
+- 5-phase audit per `feedback_phase3_fixture_ritual`: STRUCTURE PASS (3 panes CALL/BUILD/MAP + CD ledger rail) / TYPOGRAPHY PASS / HIT-TARGETS PASS (cd-row not click target; cd-chip 38px min-height preserved) / ASCII PASS (0 new non-ASCII bytes; pre-existing 4 bytes U+00D7 in CSS comments "1920x1080" + "~2x" carry forward per operator-gated retro-sweep) / HIERARCHY PASS.
+
+**Phase 2 `7e1e004` (direct main) chore(dashboard) log-suppress POST /api/loadout/list closing item 183 carry (g):**
+- `_SUPPRESS_LOG_PATHS` 10 entries (was 9): add `"POST /api/loadout/list"`. Cost/latency Slice C wave 27 audit caught initial GET-prefix drift in inline first-attempt (3 call sites are POST per `dashboard/routes_loadout.py:319` + `web/js/panels/item_build.js:158/438` + `web/js/panels/champ_select.js:2136`); corrected same session.
+- Pre-fix top non-suppressed `POST /api/loadout/list` 0.684/sec; post-fix top non-suppressed `/api/ward-heat` 0.148/sec well below 1/sec threshold.
+- +2 tests in tests/test_handler_log_spam_suppress.py pin POST + query-string variants (mirroring item 171 trailing-space fix pattern).
+
+**Phase 3 Slice B CLEAN no-commit (BACKLOG/ROADMAP stale-sweep wave 25):**
+- 0 flips. 11 ROADMAP file:line refs all verified live within +/- 3 tolerance: `dev.js:361` verdict.team_won / `gamepc_lcu_agent.py:246` ARAM Mayhem 2400 / `gamepc_lcu_agent.py:536` _arena_teams 6x2 / `gamepc_lcu_agent.py:1192` augment_intent_unsupported (cited at 1194 in ROADMAP within tolerance) / `main.js:3081/3092/4281` LCU 3 sites / `supervisor.py:597` champ_select_states / `archetype_dispatch.py:52` _UNIT_SUFFIX / `item_build.js:328` _ibBuilds (cited 327 +1 tolerance) / `rc_supervisor.py:210` CircuitBreaker. BACKLOG L13 cc_conditional ecosystem cross-ref to core/draft_elo.py:141 cross_pairs() VERIFIED.
+- **Sweep cycle decay:** 17=0 / 18=1 / 19=0 / 20=0 / 21=0 / 22=0 / 23=0 / 24=0 / **25=0** = 8 consecutive zero-flip waves = sustained saturation plateau.
+
+**Phase 3 Slice C cost/latency wave 27 - DRIFT CAUGHT + FIXED + 27 CLEAN:**
+- 7 levers swept. L4 (log spam) flagged `POST /api/loadout/list 0.684/sec` above 1/sec soft warn (below hard threshold; biggest contributor). Inline first-attempt added `GET /api/loadout/list` which silently failed on the POST request line. Slice C audit caught the method-mismatch drift. Fix: changed to `POST /api/loadout/list` (Phase 2 commit).
+- Other 6 levers CLEAN: L1 prompt-cache 8 sites + L2 route TTL 16 routes with `_CACHE` (target 12-16; within range) + L3 polling tightest network 2000ms `setInterval(pollLcu, 2000)` no sub-500ms + L5 model tier all coaches haiku-4-5-20251001 (Sonnet only as r._model POST-call telemetry stamps per item 175 correction; Opus only agent6_auditor + warm_session was undated haiku-4-5 -> fixed Phase 6) + L6 14 RC-* scheduled tasks matching catalog + L7 27=27 panel CSS = dashboard.css @imports parity guard 4/4 PASS.
+- **Effective verdict: 27th consecutive CLEAN since item 134** (after Phase 2 + Phase 6 fixes).
+
+**Phase 4 `524d538` (direct main) chore(phase3) audit-8 closures - H-02 task_queue reconciler + M-02 resolved_decisions backfill (5 files / +896):**
+- H-02 (HIGH from 20260525-025744-eighth-audit-phase3.md): `Scheduler.reconcile_stale_in_progress(stale_seconds=1800, reason="timeout-no-terminal-event")` scans in-memory `_tasks` dict, parses `updated_at`, calls `self.fail(tid, error=reason)` for any IN_PROGRESS envelope older than 30 min. Returns list of reconciled IDs. `Scheduler._parse_iso_ts()` static helper handles `+00:00` / `Z` / naive / garbage. Supervisor wires reconciler at boot (`reason="supervisor-restart"`) + periodic 5-min coroutine `_task_queue_reconciler_loop()`. Live state at commit: 4 IN_PROGRESS tasks past threshold (`t-6d79a0f356fb` 32 days + `t-a24dafd43465` + `t-f573f0d1bf90` 6 days + `t-b15da576ef54` audit-8 task itself at 2.7 hr). Will reap on next supervisor restart.
+- M-02 (MEDIUM same audit): `agents/state/resolved_decisions.json` 20-entry decisions[] array backfilled from CLAUDE.md "Settled" section. Schema `{id, title, decided_at, summary, source, authority}`. Existing rich phase3 structure preserved byte-equivalent. Auditor's "442 ready + 449 in_progress" count was per-event status snapshot; actual live state probed `{filed: 498, dispatched: 460, completed: 460, failed: 2, reclassified_completed: 1}` with per-task last status `{completed: 447, needs_explicit_approval: 46, in_progress: 4, failed: 1}` - only 4 actually leaking; reconciler correctly sized.
+- +23 tests in NEW tests/test_task_queue_reconciler.py 23/23 PASS in 0.09s.
+
+**Phase 5 Slice E CLEAN no-commit (cc_conditional wave 20 audit):**
+- Verdict: SCHEMA-BLOCKED. 0 ship candidates. Registry 67/54 + 13-tag ecology saturated at wave 19 (item 177 closure).
+- Re-audited 5 candidates from waves 11-19 REJECT backlog: Jayce E cast-time root (NO duration encoded in effects_descriptions; cast_time=0.5 but no root payload text) / Maokai R distance-gated (ALREADY SHIPPED wave 18) / Taliyah E (SHIPPED wave 17 COND_TRAVERSE) / Rell W form 1 empowered-AA (FORM-TRANSITION semantics not cleanly gate-encodable) / Urgot R recast (TARGET_HP_THRESHOLD state-tracking absent from schema).
+- Future wave 20+ growth requires NEW schema lift (COND_CAST_TIME_GATED + COND_HP_THRESHOLD + COND_FORM_TRANSITION tags + supporting extractor changes) - operator-gated.
+
+**Phase 6 + 7 `662c1a9` (direct main) chore(cost) micro-fixes:**
+- Phase 6 Slice F (extended cost/latency sweep beyond 7-lever): agents/agent7_context/warm_session.py:32 `DEFAULT_MODEL` pinned to dated alias `claude-haiku-4-5-20251001` (was undated `claude-haiku-4-5`). Prevents silent model upgrade on future Anthropic Haiku version rollouts; matches dated discipline of champ_select_coach + aram_coach + sr_coach. Cost-tracker telemetry preserved (date suffix is by-model spend key).
+- Phase 7 Slice G (DS engine drift audit): verdict SATURATED per don't-redo expectations. 1 actionable test gap closed: agents/daemon_slayer/tests/test_dps.py ArmorFactorTests + new test_armor_factor_parametrized_sweep covering 11 cases across +/-120 range including +/-1 and +/-99 boundaries closest to branch flip at a=0 (positive: 100/(100+a), negative: 2 - 100/(100-a)). Prior tests pinned only 3 discrete points; gap closed.
+- DS suite: 4672 passed / 1 skipped / 1 xfailed / 1775 subtests (+11 over 1764 baseline = exactly the new parametrized subtests).
+
+**Phase 8 micro-fixes `834e180` (direct main) fix(ui) page #6 dev.js verdict.team_won null guard + page #4 history mock field-name alignment:**
+- (item 162 carry d) Page #6 Home dev.js:361 `verdict.team_won` ternary treated null win as "(L)". Live event-mode payloads (Arena/ARAM-Mayhem) return team_won=null causing replay-meta footer to misrender. Replaced single ternary with explicit `===true / ===false / else ""` branch.
+- (item 162 carry g) Page #4 History mock `web/data/ui_mock/history.json` field-name mismatch with live render. Mock had queue/result/duration; live /api/history payload has mode/grade/timestamp/duration_s (probed live via curl). Renderer at main.js:1736-1739 reads m.champion + m.mode + m.kda + m.timestamp + m.grade. All 15 match records across 4 scopes realigned; queue->mode, result+duration dropped, grade+timestamp added with sensible heuristics, duration_s preserved.
+- Item 162 carries (d) + (g) CLOSED.
+
+**Verified:**
+- DS suite **4674 collected / 4672 passed / 1 skipped / 1 xfailed / 1775 subtests** in 67.24s (+1 test over 4673 = the new parametrized sweep).
+- RC suite (excl python-embed) **3467 collected** (was 3442 pre-flight); +23 reconciler tests + 2 log-suppress tests.
+- `py -m pytest tests/phase8_smoke/ tests/test_handler_log_spam_suppress.py tests/test_task_queue_reconciler.py -q` = **112 passed in 2.20s**.
+- `py -m ruff check .` ALL CHECKS PASSED.
+- DS :8893 untouched (no engine bump; serves 1.56.0).
+- RC :8888 unchanged pid 5800 mode=client alive=True throughout (never restarted; ADR-008 asset-hash auto-serves CSS+JS+JSON edits; non-route module edits + non-coach-prompt changes).
+- CI 5/5 green on all 5 push events (Phase 2 + 4 + 1 merge + Phase 8 + Phase 6+7).
+
+**Don't-redo:**
+- (a) Pages #11/12/13 Active Match SR/ARAM/Arena v2.1 typography migration CLOSED for the 5 EXCLUSIVE CSS files. right_now.css + next.css remain SHARED + UNTOUCHED (any touch ripples to all views). The 21 operator-exceptions carry rationale in inline CSS comments (density / tooltip-micro / chart-axis); do NOT bump without operator approval. 16 of 16 v2.1 audit pages now COMPLETE; the global density refactor is at saturation.
+- (b) `_SUPPRESS_LOG_PATHS` now 10 entries; method prefix MUST match the live endpoint (POST for /api/loadout/list per 3 call sites). The 2 query-string variant tests pin the bare-path substring fallback.
+- (c) Audit-8 H-02 reconciler is the canonical chokepoint for task_queue state-machine leak; `Scheduler.reconcile_stale_in_progress` with 30-min threshold + supervisor wires at boot + periodic 5-min cadence. Future state-machine leaks should extend the same method (e.g. dropped/deduped events for the filed-not-dispatched case if it surfaces). Future writers MUST emit ISO timestamps with `+00:00` or `Z` (existing `_iso_now()` writes `+00:00`).
+- (d) `resolved_decisions.json` is now POPULATED with 20 entries (curated subset of CLAUDE.md "Settled"); operator extends by adding `phase3-d021+` entries. File tracked in git via `git add -f` (parent `agents/state/` dir-level ignore wins; needed force-add).
+- (e) cc_conditional wave 20+ STILL SCHEMA-BLOCKED. The 5 candidates re-audited this session are REJECT-VERIFIED at the parse-strip level. Future growth needs explicit new tag schema + extractor lift - operator-gated.
+- (f) agent7_warm DEFAULT_MODEL CANONICAL with dated suffix; future Haiku version changes require explicit pin update with cost-impact review.
+- (g) armor_factor 11-case parametrized sweep locks the branch flip at a=0; future negative-armor mechanics (Black Cleaver / Mortal Reminder / LDR stacks) inherit the locked invariant.
+- (h) Item 162 carries (d) + (g) CLOSED; do NOT re-pitch the dev.js verdict.team_won fix or the history.json mock realignment.
+- (i) Orchestrator-merge pattern is now 36 consecutive runs (items 134-184). 5-parallel-slice dispatch + sequential merge + 0-N commit-bearing slices + tests gate + restart-as-needed + docs sync at run END is durable.
+
+**Carries forward:**
+- (a) Live UI capture OWED for pages #11/12/13 Active Match SR/ARAM/Arena at next in-game window (operator-out-of-game during this session = capture deferred to next game).
+- (b) Page #3 Replay finding: 10-row participant table collapses to ~0 visible rows when 15-event timeline saturates max-height: 480; pre-existing flex allocation edge (item 162 carry (c)) STILL OPEN.
+- (c) `/api/loadout/list` 0.684/s now suppressed in log + tests pinned; the next log-spam audit candidate is `/api/ward-heat` at 0.148/sec (still well below 1/sec; no action).
+- (d) DD Defy heal-on-takedown STILL deferred (operator-gated).
+- (e) Calibrations STILL operator-gated.
+- (f) Legion 1-PC consolidation STILL operator-gated.
+- (g) 542 residual U+2500 box-drawing chars (rc_supervisor 58 + rc_self_monitor 484) carry forward as operator-gated separate sweep.
+- (h) Item 184 dead-endpoint cleanup proposal (Phase 6 finding): 15 candidates flagged for batch-delete pending operator vet vs ROADMAP in-flight features (aram_analyze + sr_draft + post_game_* particularly risky). NOT shipped this session.
+- (i) Dedup duplicate-fetch cache (Phase 6 finding): /api/loadout/list + /api/decisions hit by 2 panels each. ~50-150ms saved per consolidated fetch. LOW priority; deferred.
+- (j) RC-PostmortemAnalyze first scheduled run was 2026-05-25 04:15 + completed `LastTaskResult=0` `State=Ready` (per audit-8 report); operator can verify next session.
+- (k) Frozen-file grant ACTIVE this session but NOT USED (no frozen file edits; all 6 commits were non-frozen).
+
+---
+
 # 2026-05-25 - items 182 + 183 SHIPPED: page #14 PGR SR v2.1 typography + pages #15+#16 PGR ARAM+Arena mock fixtures + ?mode URL flag wiring + housekeeping wave 24 CLEAN + Active Match read-only composition audit (2 merges `efc9cfd` + `b1c8e90` pushed origin/main `8cb5686..b1c8e90`; non-frozen; no DS engine change; no DS restart; no RC restart - ADR-008 asset-hash auto-serves CSS+JS+JSON on next dashboard load)
 
 Operator: "continue other open items -> operator is in ranked SR" (x2 consecutive prompts). 34th + 35th consecutive runs using orchestrator-merge pattern (items 134-181 + 182 + 183). 4 worktree/investigative agents across two prompts. Pre-flight: 0 open PRs; 2 stale remote branches from item 181 deleted (`worktree-agent-a7b1d4045eb667440` + `worktree-agent-ae7fcc75d84601b9e` fully merged into `6ba6b4d`). RC mode_key=sr stable through both drains; mode dropped to client (Offline) by end of session (operator's ranked SR game ended between Slice A merge + /done).
