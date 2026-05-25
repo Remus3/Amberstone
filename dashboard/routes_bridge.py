@@ -1,18 +1,13 @@
-"""Bridge / preview-build / champions routes.
+"""Bridge / champions routes.
 
 Slice 2C-6 (2026-05-01): handlers carved out of web_dashboard._Handler.
-Group 6 - three GET endpoints:
 
   /api/bridge          cross-Claude message log read
-  /api/preview-build   champ-select build + runes + ally-notes brief
   /api/champions       DDragon championId -> {name, slug} map (cached)
 
 `/api/bridge` reads from `dashboard._bridge_log` directly (the in-memory
 deque + JSONL backup were extracted from web_dashboard.py in the Tier 2
-helper-shake). `/api/preview-build` reaches `lcu_summary` directly from
-`dashboard._liveclient` (Tier 2 #4) and still does a deferred import of
-`_champ_select_brief_via_coach` from web_dashboard to avoid the
-circular start-up cost.
+helper-shake).
 
 `/api/champions` keeps its module-level cache (`_CACHE`) here; nothing
 outside this handler reads it.
@@ -24,10 +19,8 @@ from urllib.parse import parse_qs, urlparse
 
 from core import bridge as _bridge
 from dashboard._bridge_log import bridge_post, bridge_since
-from dashboard._champ_select import brief_via_coach
 from dashboard._context import APP_DIR
 from dashboard._dispatch import equals
-from dashboard._liveclient import lcu_summary
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -49,49 +42,6 @@ def _serve_bridge(h) -> None:
         payload = {"now": time.time(), "messages": items}
         h._send(200, json.dumps(payload).encode(), "application/json")
     except Exception as exc:
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-
-
-def _serve_preview_build(h) -> None:
-    # Unified champ-select brief: build + runes + ally notes. The
-    # CHAMPION_BUILDS curated path is preferred for build *only* when
-    # the champion is curated and the mode isn't ARAM; runes + ally
-    # notes always come from Haiku (cheap).
-    try:
-        qs = parse_qs(urlparse(h.path).query)
-        champ = (qs.get("champion") or [""])[0].strip()
-        enemies = [s.strip() for s in
-                   (qs.get("enemies") or [""])[0].split(",") if s.strip()]
-        allies  = [s.strip() for s in
-                   (qs.get("allies")  or [""])[0].split(",") if s.strip()]
-        role = (qs.get("role") or [""])[0].strip()
-        mode = (qs.get("mode") or ["SR"])[0].strip().upper()
-        # Auto-detect ARAM from live LCU state if caller didn't pass.
-        if mode == "SR":
-            lcu = lcu_summary() or {}
-            if ((lcu.get("champ_select") or {}).get("is_aram")):
-                mode = "ARAM"
-        if not champ:
-            h._send(400, b'{"error":"champion required"}', "application/json")
-            return
-        import sys as _sys
-        _sys.path.insert(0, str(APP_DIR))
-        from item_advisor import resolve_build, CHAMPION_BUILDS
-        brief = brief_via_coach(champ, enemies, allies, role, mode)
-        source = "coach"
-        # Curated build wins outside ARAM. Runes/ally_notes still from coach.
-        if champ in CHAMPION_BUILDS and mode != "ARAM":
-            brief["build"] = resolve_build(champ, enemies, [])
-            source = "curated+coach"
-        payload = {
-            "champion": champ, "mode": mode, "source": source,
-            "build":      brief["build"],
-            "runes":      brief["runes"],
-            "ally_notes": brief["ally_notes"],
-        }
-        h._send(200, json.dumps(payload).encode(), "application/json")
-    except Exception as exc:
-        log.warning("api/preview-build: %s", exc)
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
@@ -208,13 +158,11 @@ def _serve_bridge_status(h) -> None:
 # ── route table ──────────────────────────────────────────────────────
 
 # /api/bridge accepts query strings (`?since=...&limit=...`) - equals()
-# already handles the `?...` suffix. /api/preview-build is the same.
-# /api/champions is exact.
+# already handles the `?...` suffix. /api/champions is exact.
 GET_ROUTES = [
     (equals("/api/bridge"),          _serve_bridge),
     (equals("/api/bridge/messages"), _serve_bridge),
     (equals("/api/bridge/status"),   _serve_bridge_status),
-    (equals("/api/preview-build"),   _serve_preview_build),
     (equals("/api/champions"),       _serve_champions),
 ]
 
