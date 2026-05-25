@@ -6,6 +6,68 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-25 (afternoon) - item 185 SHIPPED: page #3 Replay flex-allocation re-tune + housekeeping triple wave 26 CLEAN (1 commit `e9bc504` pushed origin/main `636804d..e9bc504`; non-engine; non-frozen; no DS engine bump; no DS restart; no RC restart - ADR-008 asset-hash auto-serves CSS on next dashboard load)
+
+Operator "start the next item" - 37th consecutive run using orchestrator-merge pattern (items 134-185). CAVEMAN ULTRA session default. 3 audit slices dispatched concurrent + 1 inline code slice. Pre-flight: 0 open PRs; 0 stale remote branches; CI 5/5 green; HEAD = item 184 `636804d`. Operator mode_key=client (between games) so non-game UI work UNBLOCKED.
+
+**Slice A `e9bc504` (direct main) fix(ui) page #3 Replay flex-allocation re-tune (3 files / +103 / -1):**
+- Item 184 carry (b) / item 162 carry (c). 10-row participant table collapsed to ~0 visible rows when 15-event timeline saturated `.replay-events-list { max-height: 480px }`. Edge surfaced after v2.1 typography migration (items 159 + 182) bumped row heights +44% (champ-icon 28 -> 38 / item-icon 22 -> 30 / row min-height -> --hit-min 42px).
+- `web/css/panels/primitives.css` `.replay-grid-wrap` gains `min-height: 360px` so participant grid always shows ~6-7 rows visible even when timeline saturates. flex: 1 still grows the grid when timeline is short.
+- `web/css/panels/replay_events.css` `.replay-events-list max-height: 480px -> 320px` so timeline does not crowd out the grid in the ~780px `.replay-main-pane` viewport. overflow-y: auto keeps long event tails scrollable.
+- NEW `tests/test_replay_view_flex_allocation.py` (~108 LOC, 6 grep-based pin tests across 3 classes): ReplayGridWrapMinHeightTests 2 + ReplayEventsListMaxHeightTests 2 + AsciiHygieneTests 2. Pins .replay-grid-wrap min-height 360 + .replay-events-list max-height 320 + flex: 1 + overflow-y: auto + ASCII hygiene on edited blocks.
+
+**Slice B CLEAN no-commit (BACKLOG/ROADMAP stale-sweep wave 26):**
+- 0 actionable flips. Explore subagent flagged 1 semantic drift at `agents/supervisor.py:597` claiming "minimap-locate rewire" reference in ROADMAP L61 is now UIApplyError. Direct verification: ROADMAP L61 is the `✅ FU01 - minimap-locate` SHIPPED entry from s168 (2026-05-11); shipped-entry historical anchors are intentionally frozen per [[feedback_no_history_rewrite]]. False positive on shipped-entry historical citation.
+- All 11 canonical OPEN file:line refs grep-verified live within +/- 3 tolerance: `dev.js:361` verdict.team_won / `main.js:3081/3092/4281` LCU 3 sites / `gamepc_lcu_agent.py:246` ARAM Mayhem qid=2400 / `gamepc_lcu_agent.py:536` _arena_teams / `gamepc_lcu_agent.py:1192` augment_intent_unsupported / `rc_supervisor.py:210` CircuitBreaker / `archetype_dispatch.py:52` _UNIT_SUFFIX / `item_build.js:328` _ibBuilds / `core/draft_elo.py:141` cross_pairs (BACKLOG L13 cc_conditional ecosystem cross-ref).
+- **Sweep cycle decay:** 17=0 / 18=1 / 19=0 / 20=0 / 21=0 / 22=0 / 23=0 / 24=0 / 25=0 / **26=0** = 9 consecutive zero-flip waves = sustained saturation plateau.
+
+**Slice C CLEAN no-commit (cost/latency wave 28 audit + measurement-error verification):**
+- 28th consecutive CLEAN since item 134. Initial Explore subagent report flagged 4 false-positive drift claims; live verification against source authoritative:
+  - Lever 1 prompt-cache: agent counted 21 raw cache_control mentions; live `grep cache_control coaches/*.py coach_integration/*.py | wc -l` = 13 hits across 8 cache blocks (matches item 184 baseline of "8 sites" = cache-control marker BLOCKS not raw grep counts). CLEAN.
+  - Lever 3 polling: agent flagged 8 sub-500ms NETWORK timers; live grep `setInterval` in `web/js/main.js` shows tightest NETWORK polls = `pollIfStale` 2000ms (L6179) + `pollLcu` 2000ms (L6247); 500ms is `applyStaleness` (L1284) UI-local timer per item 184 baseline. CLEAN.
+  - Lever 4 log spam: agent counted 15 _SUPPRESS_LOG_PATHS entries claiming spam at 0.98/sec; live `dashboard/_handler.py:74-85` = 10 entries unchanged from item 184; top non-suppressed `/api/ward-heat` 0.148/sec per item 184 baseline well below 1/sec. The 0.98/sec was LCU lockfile INFO log, not an HTTP route handler log - different category. CLEAN.
+  - Lever 6 scheduled tasks: agent reported 0 RC-* tasks; live `schtasks /Query /TN \RC-* /FO LIST | grep -c TaskName` = 13 (matches session-start rc_facts probe of 14 within tolerance for subfolder differences). CLEAN.
+  - Lever 5 model tier: agent claimed sonnet-4-6 in aram_coach.py call-time; per item 184 don't-redo + memory `feedback_verify_generated_reports`: Sonnet only appears as `r._model = "claude-sonnet-4-6"` POST-call telemetry stamps (not call-time selection). CLEAN.
+- Lever 2 route TTL: 16 routes_*.py with `_CACHE` (within 12-16 loose drift). Lever 7 bundle parity: `ls web/css/panels/*.css | wc -l` = 27 = `grep -c "@import.*panels/" web/css/dashboard.css` = 27. CLEAN.
+- **Verdict: 28th consecutive CLEAN no-commit.** Per [[feedback_verify_generated_reports]] agent measurement errors recorded for prompt refinement; do NOT relay subagent audit outputs as-is.
+
+**Slice D CLEAN no-commit (cc_conditional wave 20 audit):**
+- SCHEMA-BLOCKED as expected per item 184 don't-redo. 5 wave 19 REJECT carries re-audited against current Meraki schema (parent_resource + coexists_with_unconditional + cast_time):
+  - Jayce E cast-time root: REJECT-CONFIRMED (root duration missing from Meraki at parse-strip level despite cast_time=0.25 captured).
+  - Maokai R distance-gated: ALREADY SHIPPED wave 18 ENGINE 1.55.0.
+  - Taliyah E Unraveled Earth: ALREADY SHIPPED wave 17 ENGINE 1.54.0 COND_TRAVERSE.
+  - Rell W form 1: REJECT-CONFIRMED (form-transition semantics not gate-encodable under current schema).
+  - Urgot R recast suppression: REJECT-CONFIRMED (no COND_RECAST_THRESHOLD tag exists; HP-threshold gate is recast precondition not CC condition).
+- 0 new candidates surfaced from broader Meraki effects_descriptions + cast_time + parent_resource scan.
+- **Verdict: SCHEMA-BLOCKED no-commit.** Wave 20+ growth needs (1) new COND_RECAST_THRESHOLD + COND_FORM_TRANSITION tags, (2) Meraki encode of missing root durations, or (3) multi-form orchestration schema. Operator-gated.
+
+**Verified post-commit:**
+- `py -m pytest tests/test_replay_view_flex_allocation.py tests/test_replay_events_panel_dom.py tests/phase8_smoke/ -q` = **110 passed in 2.44s** (6 new + 29 replay_events_panel_dom + 75 phase8_smoke).
+- `py -m ruff check .` ALL CHECKS PASSED.
+- DS suite untouched (no engine change; DS :8893 serves 1.56.0 from item 177; not restarted).
+- RC :8888 unchanged pid 7612 alive=True reload_ok=True mode_key=client throughout (ADR-008 auto-serves CSS on next dashboard load).
+
+**Don't-redo:**
+- `.replay-grid-wrap min-height: 360px` is canonical floor for the participant grid; do NOT remove without rebalancing against `.replay-events-list` max-height. `.replay-events-list max-height: 320px` is the corresponding cap; future re-tunes should change BOTH in lockstep so the ~780px pane allocation stays balanced (~115px misc + 360 grid + 320 timeline = 795 close to pane height with slight overflow tolerance via overflow:auto on both).
+- Slice B + C agent reports caught false positives this session - per [[feedback_verify_generated_reports]] subagent audit numbers MUST be verified vs live source before action. The "1 drift flip" on supervisor.py:597 was a shipped-entry historical anchor; the "5 measurement errors" on cost/latency levers were prompt-misread artifacts. Future audit slice prompts should include explicit "before claiming X, grep against current source" guards.
+- 28 consecutive CLEAN cost/latency waves + 9 consecutive zero-flip BACKLOG sweeps confirm saturation; future sweep + audit slices should expect CLEAN no-commit verdicts as baseline.
+- Orchestrator-merge pattern now 37 consecutive runs (items 134-185).
+
+**Carry-forward:**
+- Item 184 carries ALL unchanged EXCEPT (b) page #3 Replay flex-allocation re-tune NOW CLOSED.
+- Live UI capture OWED for page #3 Replay at next operator-driven match-list-populated session (requires `rewind_history.db` populated + a selected match for the 10-row table to render).
+- Live UI capture OWED for pages #11/12/13 Active Match SR/ARAM/Arena at next in-game window.
+- DD Defy heal-on-takedown STILL deferred.
+- Calibrations STILL operator-gated.
+- Legion 1-PC consolidation STILL operator-gated.
+- cc_conditional wave 20+ STILL SCHEMA-BLOCKED (this session's audit confirms).
+- 542 residual U+2500 box-drawing chars STILL operator-gated separate sweep.
+- Item 184 dead-endpoint cleanup proposal (15 candidates) STILL operator-gated.
+- Item 184 dedup duplicate-fetch cache STILL deferred LOW-priority.
+- Frozen-file grant NOT used this session.
+
+---
+
 # 2026-05-25 (night) - item 188 SHIPPED: parallel 7-slice drain - cc_conditional wave 20 notes schema lift ENGINE 1.58.0 + Vayne E + Cherry augment 4-path scaffold + Active Match mock fixtures + 101.qq.com probe scripts + 2 DEFER gate probe docs (7 commits + 1 docs sync `1310c81` pushed origin/main `2fb70a6..1310c81`; ENGINE 1.57.0 -> 1.58.0; DS :8893 restarted serves 1.58.0; RC :8888 unchanged pid 10352 mode_key=client)
 
 Operator "start: 1 / 2 / 4 / 5 / 6 / 9 / 10 in parallel" from item 187 carries menu -> 7 worktree/research agents dispatched concurrent. 40th consecutive run using orchestrator-merge pattern (items 134-188). Pre-flight: 0 open PRs; 2 stale remote branches deleted (fully merged); CI 10/10 green; HEAD = item 187 `2fb70a6`.
