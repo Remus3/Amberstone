@@ -13,6 +13,7 @@ import {
   _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice,
 } from './item_build.js';
 import { buildOrderCardHtml } from './build_order.js';
+import { dedupFetch } from '../lib/dedup_fetch.js';
 import {
   fetchBanSuggest, getCachedBanSuggest, getBanSuggestCacheCount,
   renderBanSuggestModeChip, renderBanSuggestList,
@@ -2133,7 +2134,10 @@ function _csvFetchUserVariants(champion, mode) {
       .catch(() => { _CSV_USER_INFLIGHT[key] = false; _CSV_USER_CACHE[key] = []; });
     return;
   }
-  fetch("/api/loadout/list", {
+  // item 186: dedupFetch coalesces with item_build.js's parallel POSTs
+  // for the same (champion, mode) tuple within the 100ms render-storm
+  // grace window.
+  dedupFetch("/api/loadout/list", {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ champion, mode }),
