@@ -64,6 +64,26 @@ normalized into:
   turret-only / Briar W self-buff-only); the schema lift this
   wave is FORWARD-MARKER infrastructure for future
   ``COND_FRENZY_STATE`` consumers.
+* ``notes`` - free-form Meraki ``notes`` string per spell form. ENGINE
+  1.58.0 schema lift (2026-05-25, wave 20): captures the per-spell
+  operational nuance + mechanical caveats Meraki ships in the spell-
+  form ``notes`` field. This carries detail that is NOT in
+  ``effects[].description`` blocks: cast-time displacement direction
+  resolution (Vayne E Condemn), spell-shield exception behavior
+  (Diana Q exception cases), bug notes, terrain-collision stun-
+  duration scaling clauses, etc. Pure-additive: damage-block pipeline
+  + effects_descriptions + cast_time + parent_resource UNCHANGED.
+  Downstream consumers (cc_conditional registry, fight-window scorer)
+  ignore the field until they opt in. The wave 20 ship-candidate
+  audit (Kindred E / Diana P / Vayne P named in item 187 Slice D
+  research brief) found the brief premise stale: Kindred E carries
+  only slow + damage with no hard CC; Diana P is pure AS bonus; Vayne
+  P is pure MS bonus. All 3 REJECT under the lift. Vayne E Condemn
+  surfaced as a 4th candidate during the audit: terrain-collision
+  stun 1.5s is verifiable from effects_descriptions alone, so the
+  notes lift is FORWARD-MARKER infrastructure for future consumers
+  that need richer per-spell mechanical caveats (e.g. Crit-immunity
+  windows, cast-cancel clauses, untargetable-during-X notes).
 
 Phase 4b will layer a formula evaluator on top of this snapshot. Phase 4a
 is data ingest only - we do not evaluate per-cast damage here.
@@ -450,6 +470,32 @@ def _normalize_cast_time(raw: Any) -> float | None:
     return None
 
 
+def _normalize_notes(raw: Any) -> str | None:
+    """Meraki ships per-spell ``notes`` as a multi-line string or null.
+
+    Returns the trimmed string when the value is a non-empty str, ``None``
+    otherwise. ENGINE 1.58.0 schema lift (wave 20, 2026-05-25): captures
+    the free-form operational/mechanical caveats Meraki documents per
+    spell form (Vayne E displacement direction at cast-time end +
+    cleanse-cancels-displacement clause; Maokai Q spell-shield
+    interactions; cast-cancel on untargetable/dies/out-of-sight; bug
+    annotations). Pure-additive: no prior field changes shape or value.
+
+    Booleans + ints + floats + lists + dicts return ``None`` (Meraki
+    only emits strings here in current corpus; defensive coverage).
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return None
+    if not isinstance(raw, str):
+        return None
+    cleaned = raw.strip()
+    if not cleaned:
+        return None
+    return cleaned
+
+
 def _build_form(
     form: dict,
     form_index: int,
@@ -474,6 +520,7 @@ def _build_form(
     affects = form.get("affects")
     resource = form.get("resource")
     cast_time = _normalize_cast_time(form.get("castTime"))
+    notes = _normalize_notes(form.get("notes"))
 
     damage_blocks: list[dict] = []
     raw_effects_count = 0
@@ -551,6 +598,7 @@ def _build_form(
         "parent_resource": parent_resource,
         "is_aoe": _is_aoe(affects, targeting),
         "cast_time": cast_time,
+        "notes": notes,
         "damage_blocks": damage_blocks,
         "effects_descriptions": effects_descriptions,
         "raw_effects_count": raw_effects_count,
