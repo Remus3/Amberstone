@@ -246,6 +246,7 @@ header { transition: height 180ms ease; }
 .replay-grid-wrap {
   flex: 1; overflow: auto;
   border-radius: var(--panel-radius-sm);
+  min-height: 360px;
 }
 .replay-grid {
   width: 100%;
