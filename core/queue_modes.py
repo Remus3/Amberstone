@@ -12,8 +12,9 @@ Returns lowercase keys matching the keys in
 `brawl`, `sr`) or `None` for unknown queue IDs (caller falls back to
 `client`).
 
-ID coverage is conservative - Arena (1700/1710) and ARAM (450/720/920)
-are the cases that actually deliver a coach payload pre-game today;
+ID coverage is conservative - Arena (1750 live, 1700/1710 legacy) and
+ARAM (450/720/920/2400) are the cases that actually deliver a coach
+payload pre-game today;
 SR ranked/draft IDs are mapped because the SR draft profile already
 keys off the same set in `coaches/sr_draft_profile.py`. Add TFT/Brawl
 IDs once those modes have a corresponding pre-game coach panel.
@@ -47,8 +48,9 @@ QUEUE_ID_TO_MODE_KEY: dict[int, str] = {
     2400: "aram", # ARAM Mayhem (KIWI gameMode) - queueId confirmed s220
                   # from the operator's stashed post-game LCU match payload.
     # Arena
-    1700: "arena",  # Arena
-    1710: "arena",  # Arena variant
+    1750: "arena",  # Arena 3x6 (CHERRY mapId 30) - live ID confirmed 2026-05-24 via /lol-game-queues/v1/queues catalog (#89 verification).
+    1700: "arena",  # Legacy Arena - retained for replay/history match data pre-16.10.
+    1710: "arena",  # Legacy Arena variant - retained for replay/history match data pre-16.10.
 }
 
 

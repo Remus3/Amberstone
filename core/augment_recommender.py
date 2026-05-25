@@ -49,7 +49,7 @@ _DB_PATH = _PROJECT_ROOT / "data" / "match_history.db"
 # Mode → (gameMode, queueId set) for filtering lcu_match_detail.
 _MODE_FILTERS = {
     "mayhem": ("KIWI", {2400}),
-    "arena": ("CHERRY", {1700, 1710}),
+    "arena": ("CHERRY", {1700, 1710, 1750}),
 }
 
 # Smoothed-rate family defaults sourced from the shared primitive so
