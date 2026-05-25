@@ -588,6 +588,21 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // Lazy-fetch view content (wire-once + fetch on first activate)
     if (viewId === "lobby")       { _lobbyViewWireOnce(); _lobbyViewRefresh(); }
     if (viewId === "champ-select") { renderChampSelectView(_csResolveLcu()); }
+    // Item 188: kick the Active Match mock dispatcher on view-change so
+    // navigating to #active-match with ?ui_mock=1&mode=<X> renders even
+    // before the next state envelope tick fires.
+    if (viewId === "active-match" && _amIsMock() && _amMockUrl()) {
+      if (_amMockData) {
+        renderActiveMatch(_amMockData.coach || {}, {
+          mode: _amMockData.mode || "sr",
+          lcuPhase: _amMockData.phase || "InProgress",
+          liveclient: _amMockData.liveclient || null,
+          cooldowns: _amMockData.summoner_cooldowns || null,
+        });
+      } else {
+        _amMockLoad();
+      }
+    }
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
@@ -1185,20 +1200,40 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // module's render is null-safe when DOM nodes are missing. lcuPhase
     // is left out of ctx for step 1; the state envelope carries the
     // per-mode coach payload only, not the full /api/state lcu block.
-    renderActiveMatch(p, {
-      mode: state.mode,
-      lcuPhase: (state.latest && state.latest.lcu && state.latest.lcu.phase) || "",
-      // UX-2 (2026-05-20): thread the raw liveclient block so the
-      // active_match build pane can render per-enemy threat donuts
-      // sourced from /api/damage-mix. Null-safe; renderActiveMatch
-      // skips the THREATS strip when liveclient is missing/empty.
-      liveclient: (state.latest && state.latest.liveclient) || null,
-      // UX-3 (2026-05-20): thread the summoner_cooldowns array (or null)
-      // so the active_match view's right-rail CD ledger picks it up.
-      // Computed backend-side in dashboard/_state_cooldowns.py + sorted
-      // by next-up ascending in core/summoner_cooldowns.compute_cooldowns.
-      cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
-    });
+    // Item 188 (2026-05-25): UI scale v2.1 pages #11/12/13 audit ritual
+    // mock fixture short-circuit. When body.dataset.uiMock === "1" AND
+    // ?mode=<sr|aram|arena> is present, render the local Active Match
+    // fixture instead of the live state envelope so the per-mode audit
+    // captures stand on authored coach + liveclient + cooldowns data
+    // even when the operator is between games.
+    if (_amIsMock() && _amMockUrl()) {
+      if (_amMockData) {
+        renderActiveMatch(_amMockData.coach || {}, {
+          mode: _amMockData.mode || "sr",
+          lcuPhase: _amMockData.phase || "InProgress",
+          liveclient: _amMockData.liveclient || null,
+          cooldowns: _amMockData.summoner_cooldowns || null,
+        });
+      } else {
+        _amMockLoad();  // .then re-fires render on landing
+        renderActiveMatch({}, { mode: "", lcuPhase: "", liveclient: null, cooldowns: null });
+      }
+    } else {
+      renderActiveMatch(p, {
+        mode: state.mode,
+        lcuPhase: (state.latest && state.latest.lcu && state.latest.lcu.phase) || "",
+        // UX-2 (2026-05-20): thread the raw liveclient block so the
+        // active_match build pane can render per-enemy threat donuts
+        // sourced from /api/damage-mix. Null-safe; renderActiveMatch
+        // skips the THREATS strip when liveclient is missing/empty.
+        liveclient: (state.latest && state.latest.liveclient) || null,
+        // UX-3 (2026-05-20): thread the summoner_cooldowns array (or null)
+        // so the active_match view's right-rail CD ledger picks it up.
+        // Computed backend-side in dashboard/_state_cooldowns.py + sorted
+        // by next-up ascending in core/summoner_cooldowns.compute_cooldowns.
+        cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
+      });
+    }
     // s164: re-fire champ-select view on every state envelope when it's
     // active. lcu envelopes are one-shot from FakeSocket, so a render
     // that bailed on !CHAMPS.ready (champion-name index loads async)
@@ -3292,6 +3327,59 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       _csMockLoad();
     }
     return realLcu || (state.latest && state.latest.lcu) || {};
+  }
+
+  // UI scale v2.1 pages #11/12/13 audit ritual + Live UI capture mock
+  // fixture dispatcher (item 188, 2026-05-25). When body.dataset.uiMock
+  // === "1" AND URL ?mode=<sr|aram|arena> is set, the renderActiveMatch
+  // call-site short-circuits to /data/ui_mock/active_match_<mode>.json
+  // (full coach payload + liveclient block + summoner_cooldowns +
+  // forced phase=InProgress so the active_match.js isLive freshness gate
+  // passes). Mirrors _csMockLoad (items 165 + 181) + _lmMockLoad
+  // (item 183) + _lobbyMockLoad (item 163) patterns.
+  let _amMockPromise = null;
+  let _amMockData = null;
+  function _amIsMock() {
+    return !!(document.body && document.body.dataset.uiMock === "1");
+  }
+  function _amMockUrl() {
+    let url = null;
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      const m = (params.get("mode") || "").toLowerCase();
+      if (m === "sr")         url = "/data/ui_mock/active_match_sr.json";
+      else if (m === "aram")  url = "/data/ui_mock/active_match_aram.json";
+      else if (m === "arena") url = "/data/ui_mock/active_match_arena.json";
+    } catch (_) {}
+    return url;
+  }
+  function _amMockLoad() {
+    if (_amMockPromise) return _amMockPromise;
+    const url = _amMockUrl();
+    if (!url) {
+      _amMockPromise = Promise.resolve(null);
+      return _amMockPromise;
+    }
+    _amMockPromise = fetch(url, { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _amMockData = data || null;
+        // Re-fire active-match render on landing so the placeholder
+        // render that fired before fetch resolved gets replaced.
+        if (_VIEW && _VIEW.current === "active-match" && _amMockData) {
+          try {
+            renderActiveMatch(_amMockData.coach || {}, {
+              mode: _amMockData.mode || "sr",
+              lcuPhase: _amMockData.phase || "InProgress",
+              liveclient: _amMockData.liveclient || null,
+              cooldowns: _amMockData.summoner_cooldowns || null,
+            });
+          } catch (_) {}
+        }
+        return _amMockData;
+      })
+      .catch(() => { _amMockData = null; return null; });
+    return _amMockPromise;
   }
 
   function _fmtMasteryPoints(pts) {
