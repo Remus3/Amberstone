@@ -111,15 +111,6 @@ def _serve_diagnostics(h) -> None:
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
-def _serve_reload_regions(h) -> None:
-    try:
-        from core.vision_tesseract import reload_regions
-        reload_regions()
-        h._send(200, b'{"ok":true}', "application/json")
-    except Exception as exc:
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-
-
 def _serve_ocr(h) -> None:
     # Pull latest frame from vision server, run Tesseract on configured fields.
     try:
@@ -160,99 +151,7 @@ def _serve_ocr(h) -> None:
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
-def _close_enough(a, b, pct: float = 0.05, abs_tol: int = 2) -> bool:
-    if a is None or b is None:
-        return False
-    return abs(a - b) <= max(abs_tol, abs(b) * pct)
-
-
-def _serve_validate_ocr(h) -> None:
-    # Cross-check OCR against Live Client API ground truth where overlap exists.
-    # Self-fields (hp, mana, level, gold, kda) have authoritative API values.
-    # Use those to score OCR accuracy. Returns per-field {ocr, truth, ok} + summary.
-    try:
-        import ssl
-        import urllib.request as _ur
-        from web_dashboard import _VISION_TOKEN
-        # OCR fields
-        req = _ur.Request("http://127.0.0.1:8889/latest-frame",
-                          headers={"X-RC-Token": _VISION_TOKEN})
-        with _ur.urlopen(req, timeout=4) as r:
-            frame = json.loads(r.read())
-        from core.vision_tesseract import read_fast_fields
-        ocr = read_fast_fields(frame["b64"])
-        # Live Client truth
-        ssl_ctx = ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
-        truth: dict = {}
-        try:
-            with _ur.urlopen("https://192.168.8.237:2999/liveclientdata/allgamedata",
-                             context=ssl_ctx, timeout=3) as r:
-                live = json.loads(r.read())
-            me_name = live.get("activePlayer", {}).get("summonerName", "")
-            me_stats = live.get("activePlayer", {}).get("championStats", {})
-            me_pl = next((p for p in live.get("allPlayers", [])
-                          if p.get("summonerName") == me_name), None)
-            truth["hp"] = int(me_stats.get("currentHealth", 0))
-            truth["mana"] = int(me_stats.get("resourceValue", 0))
-            truth["level"] = me_pl.get("level") if me_pl else None
-            truth["gold"] = int(live.get("activePlayer", {}).get("currentGold", 0))
-            if me_pl:
-                s = me_pl.get("scores", {})
-                truth["kda"] = f'{s.get("kills",0)}/{s.get("deaths",0)}/{s.get("assists",0)}'
-                truth["cs"] = s.get("creepScore")
-            truth["timer_sec"] = int(live.get("gameData", {}).get("gameTime", 0))
-        except Exception as e:
-            truth = {"_error": f"live_client_unreachable: {e}"}
-        checks: dict = {}
-        for k in ("hp", "mana", "level", "gold", "cs", "kda"):
-            o, t = ocr.get(k), truth.get(k)
-            if t is None or "_error" in truth:
-                checks[k] = {"ocr": o, "truth": t, "ok": None}
-            elif k == "kda":
-                checks[k] = {"ocr": o, "truth": t, "ok": (o == t)}
-            elif k == "level":
-                checks[k] = {"ocr": o, "truth": t, "ok": (o == t)}
-            else:
-                checks[k] = {"ocr": o, "truth": t, "ok": _close_enough(o, t)}
-        ok_count = sum(1 for v in checks.values() if v["ok"] is True)
-        total = sum(1 for v in checks.values() if v["ok"] is not None)
-        payload = {"checks": checks, "score": f"{ok_count}/{total}",
-                   "ocr_extras": {k: v for k, v in ocr.items() if k not in checks}}
-        h._send(200, json.dumps(payload, indent=2).encode(), "application/json")
-    except Exception as exc:
-        log.warning("api/validate-ocr: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-
-
-def _serve_ocr_crop(h) -> None:
-    # /api/ocr-crop?field=NAME - returns the cropped PNG for visual verification.
-    try:
-        import base64
-        import urllib.request as _ur
-        from web_dashboard import _VISION_TOKEN
-        qs = parse_qs(urlparse(h.path).query)
-        field = (qs.get("field") or ["timer"])[0]
-        req = _ur.Request("http://127.0.0.1:8889/latest-frame",
-                          headers={"X-RC-Token": _VISION_TOKEN})
-        with _ur.urlopen(req, timeout=4) as r:
-            frame = json.loads(r.read())
-        from core.vision_tesseract import crop_png_b64
-        b64png = crop_png_b64(frame["b64"], field)
-        if not b64png:
-            h._send(404, b"unknown field", "text/plain"); return
-        h._send(200, base64.b64decode(b64png), "image/png")
-    except Exception as exc:
-        log.warning("api/ocr-crop: %s", exc)
-        h._send(500, str(exc).encode(), "text/plain")
-
-
 # ── route table ──────────────────────────────────────────────────────
-
-# /api/ocr-crop uses prefix() because the legacy do_GET used
-# `startswith` (the field is in the query string). All others are
-# exact matches.
 # ── POST handlers (slice 2C-7b) ──────────────────────────────────────
 
 
@@ -377,10 +276,7 @@ GET_ROUTES = [
     (equals("/api/decisions/log"),        _serve_decisions_log),
     (equals("/api/decisions/heartbeat"),  _serve_decisions_heartbeat),
     (equals("/api/diagnostics"),          _serve_diagnostics),
-    (equals("/api/reload-regions"),       _serve_reload_regions),
     (equals("/api/ocr"),                  _serve_ocr),
-    (equals("/api/validate-ocr"),         _serve_validate_ocr),
-    (prefix("/api/ocr-crop"),             _serve_ocr_crop),
 ]
 
 # /api/decisions/<id> uses prefix() - the legacy elif used
