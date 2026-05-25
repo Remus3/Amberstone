@@ -2,6 +2,7 @@
 // bridge task pending display. setIntervals start at module load.
 import { el, safe, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
+import { dedupFetch } from '../lib/dedup_fetch.js';
 
 
 // ── Coach decisions banner ─────────────────────────────────────────
@@ -112,7 +113,10 @@ async function recordChoice(id, choice, li, actions) {
 async function pollCoachDecisions() {
   if (document.hidden) return;
   try {
-    const r = await fetch("/api/decisions");
+    // item 186: dedupFetch coalesces with trigger_pill's parallel
+    // /api/decisions poll (500ms cadence vs this module's 20s; the
+    // 100ms grace TTL covers the typical overlap window).
+    const r = await dedupFetch("/api/decisions");
     if (!r.ok) return;
     const d = await r.json();
     renderCoachDecisions(d.pending || []);
