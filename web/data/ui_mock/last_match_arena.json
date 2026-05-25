@@ -1,0 +1,114 @@
+{
+  "mock": true,
+  "note": "Mock fixture for the Post Game Review (Last Match) view - Arena variant (item 183 page #16). Activated by ?ui_mock=1&mode=arena. Shape mirrors /api/last-match -> dashboard.builders_last_match._build_last_match output. Arena = queue_id 1750 (CHERRY live current post-item-180; 1700/1710 legacy classifier aliases), mapId 30, game_mode CHERRY. 6 subteams x 2 players = 12 total (matches item 181 champ_select_arena.json shape; live LCU _arena_teams() distil). Operator is participant 5 on subteam 3 (MY TEAM, teamId=300). subteamPlacement=2 (2nd of 6 final ranking). data-aug='1' so the row grid widens to a 9-col track + augment strip renders. 4 augments per player (kBronze/kSilver/kGold + occasional kPrismatic).",
+  "found": true,
+  "history_count": 14,
+  "match": {
+    "id": 9002,
+    "timestamp": "2026-05-25T02:48:00",
+    "mode": "ARENA",
+    "champion": "Jinx",
+    "grade": "S",
+    "kda_str": "18/6/4",
+    "kda_ratio": 3.67,
+    "duration_s": 920,
+    "kills": 18,
+    "deaths": 6,
+    "assists": 4,
+    "cs": 24,
+    "cs_per_min": 1.57,
+    "gold": 14800,
+    "gold_per_min": 965.2,
+    "kp_pct": null,
+    "label": "Arena 2nd place - Crit augment scaling carried; Lulu shielded clean",
+    "coach_action": "Stack on Crit augments + IE for Jinx; Lulu W bait the all-in.",
+    "ds_picks": [],
+    "lcu_ingested_at": "2026-05-25T02:49:14",
+    "enriched": {
+      "champion_id": 222,
+      "team_id": 300,
+      "win": false,
+      "champ_level": 18,
+      "spell1_id": 4,
+      "spell2_id": 7,
+      "items": [3094, 6675, 3031, 3072, 3046, 3026, 0],
+      "runes": {
+        "keystone": 8005,
+        "primary_style": 8000,
+        "sub_style": 8200,
+        "primary": [8005, 9111, 9104, 8014],
+        "secondary": [8226, 8237, 0, 0]
+      },
+      "damage": {
+        "dealt_to_champs": 32400,
+        "physical_to_champs": 28200,
+        "magic_to_champs": 2400,
+        "true_to_champs": 1800,
+        "taken": 16800,
+        "self_mitigated": 6200,
+        "to_objectives": 8400,
+        "to_turrets": 0
+      },
+      "support": {
+        "total_heal": 4200,
+        "heal_on_teammates": 800,
+        "shield_on_teammates": 0,
+        "heal_plus_shield": 800,
+        "units_healed": 2
+      },
+      "arena_augments": [1156, 1018, 1062, 1308, 0, 0],
+      "vision": {
+        "score": 0,
+        "wards_placed": 0,
+        "wards_killed": 0,
+        "control_wards": 0
+      },
+      "roster": [
+        {"participant_id": 1,  "team_id": 100, "champion_id": 86,  "game_name": "TeamOneTop",  "tag_line": "NA1",   "is_me": false, "kills": 12, "deaths": 14, "assists": 6, "cs": 18, "gold": 12200, "damage_to_champs": 21800, "damage_taken": 19400, "vision_score": 0, "champ_level": 17, "items": [3074, 3071, 6630, 3193, 3053, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1018, 1308, 1162, 1408, 0, 0], "win": false},
+        {"participant_id": 2,  "team_id": 100, "champion_id": 64,  "champion_name": "LeeSin", "game_name": "TeamOneSupp", "tag_line": "NA1", "is_me": false, "kills": 8, "deaths": 14, "assists": 11, "cs": 12, "gold": 11400, "damage_to_champs": 18200, "damage_taken": 22600, "vision_score": 0, "champ_level": 17, "items": [3074, 3071, 6632, 3193, 3026, 0,    0], "summoner1": 4, "summoner2": 7, "augments": [1402, 1162, 1086, 1018, 0, 0], "win": false},
+        {"participant_id": 3,  "team_id": 200, "champion_id": 122, "game_name": "TeamTwoTop",  "tag_line": "NA1",   "is_me": false, "kills": 15, "deaths": 9,  "assists": 10, "cs": 22, "gold": 13600, "damage_to_champs": 28400, "damage_taken": 18200, "vision_score": 0, "champ_level": 18, "items": [3074, 3071, 6630, 6333, 3053, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1308, 1018, 1162, 1408, 0, 0], "win": false},
+        {"participant_id": 4,  "team_id": 200, "champion_id": 99,  "game_name": "TeamTwoSupp", "tag_line": "NA1",   "is_me": false, "kills": 12, "deaths": 8,  "assists": 18, "cs": 16, "gold": 12400, "damage_to_champs": 24800, "damage_taken": 16400, "vision_score": 0, "champ_level": 17, "items": [3115, 6655, 3020, 3157, 3089, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1062, 1308, 1156, 1086, 0, 0], "win": false},
+        {"participant_id": 5,  "team_id": 300, "champion_id": 222, "game_name": "SamplePlayer",   "tag_line": "Trist", "is_me": true,  "kills": 18, "deaths": 6,  "assists": 4,  "cs": 24, "gold": 14800, "damage_to_champs": 32400, "damage_taken": 16800, "vision_score": 0, "champ_level": 18, "items": [3094, 6675, 3031, 3072, 3046, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1156, 1018, 1062, 1308, 0, 0], "win": false},
+        {"participant_id": 6,  "team_id": 300, "champion_id": 117, "game_name": "LuluEnjoyer", "tag_line": "NA1",   "is_me": false, "kills": 6,  "deaths": 6,  "assists": 22, "cs": 14, "gold": 12100, "damage_to_champs": 18400, "damage_taken": 14200, "vision_score": 0, "champ_level": 17, "items": [3504, 3107, 3047, 2065, 3050, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1086, 1402, 1308, 1162, 0, 0], "win": false},
+        {"participant_id": 7,  "team_id": 400, "champion_id": 121, "game_name": "TeamFourTop", "tag_line": "NA1",   "is_me": false, "kills": 11, "deaths": 10, "assists": 8,  "cs": 14, "gold": 12300, "damage_to_champs": 22400, "damage_taken": 19800, "vision_score": 0, "champ_level": 17, "items": [3814, 3071, 3147, 3193, 6333, 0,    0], "summoner1": 4, "summoner2": 7, "augments": [1018, 1308, 1402, 1162, 0, 0], "win": false},
+        {"participant_id": 8,  "team_id": 400, "champion_id": 157, "game_name": "TeamFourSupp", "tag_line": "NA1",  "is_me": false, "kills": 9,  "deaths": 10, "assists": 12, "cs": 18, "gold": 11800, "damage_to_champs": 20100, "damage_taken": 18600, "vision_score": 0, "champ_level": 17, "items": [3036, 3094, 6675, 3031, 3072, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1156, 1162, 1086, 1018, 0, 0], "win": false},
+        {"participant_id": 9,  "team_id": 500, "champion_id": 145, "game_name": "TeamFiveTop", "tag_line": "NA1",   "is_me": false, "kills": 14, "deaths": 11, "assists": 7,  "cs": 20, "gold": 13200, "damage_to_champs": 26200, "damage_taken": 19200, "vision_score": 0, "champ_level": 18, "items": [3094, 3006, 6672, 3031, 3046, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1156, 1018, 1308, 1062, 0, 0], "win": false},
+        {"participant_id": 10, "team_id": 500, "champion_id": 412, "game_name": "TeamFiveSupp", "tag_line": "NA1",  "is_me": false, "kills": 7,  "deaths": 11, "assists": 18, "cs": 12, "gold": 11200, "damage_to_champs": 16400, "damage_taken": 21200, "vision_score": 0, "champ_level": 17, "items": [3107, 3047, 3001, 3050, 3194, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1086, 1402, 1162, 1308, 0, 0], "win": false},
+        {"participant_id": 11, "team_id": 600, "champion_id": 53,  "game_name": "TeamSixTop",  "tag_line": "NA1",   "is_me": false, "kills": 6,  "deaths": 12, "assists": 14, "cs": 10, "gold": 10800, "damage_to_champs": 14800, "damage_taken": 23200, "vision_score": 0, "champ_level": 16, "items": [3068, 3110, 3193, 3047, 3050, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1018, 1162, 1086, 1308, 0, 0], "win": false},
+        {"participant_id": 12, "team_id": 600, "champion_id": 36,  "game_name": "TeamSixSupp", "tag_line": "NA1",   "is_me": false, "kills": 4,  "deaths": 12, "assists": 16, "cs": 8,  "gold": 10100, "damage_to_champs": 12400, "damage_taken": 24800, "vision_score": 0, "champ_level": 16, "items": [3074, 3071, 6631, 3193, 3053, 3026, 0], "summoner1": 4, "summoner2": 7, "augments": [1402, 1086, 1018, 1162, 0, 0], "win": false}
+      ],
+      "teams": [
+        {"team_id": 100, "win": false, "first_blood": false, "first_tower": false, "first_baron": false, "first_dragon": false, "first_inhibitor": false, "baron_kills": 0, "dragon_kills": 0, "tower_kills": 0, "inhibitor_kills": 0, "rift_herald_kills": 0, "horde_kills": 0, "bans": []},
+        {"team_id": 200, "win": false, "first_blood": false, "first_tower": false, "first_baron": false, "first_dragon": false, "first_inhibitor": false, "baron_kills": 0, "dragon_kills": 0, "tower_kills": 0, "inhibitor_kills": 0, "rift_herald_kills": 0, "horde_kills": 0, "bans": []},
+        {"team_id": 300, "win": false, "first_blood": false, "first_tower": false, "first_baron": false, "first_dragon": false, "first_inhibitor": false, "baron_kills": 0, "dragon_kills": 0, "tower_kills": 0, "inhibitor_kills": 0, "rift_herald_kills": 0, "horde_kills": 0, "bans": []},
+        {"team_id": 400, "win": false, "first_blood": false, "first_tower": false, "first_baron": false, "first_dragon": false, "first_inhibitor": false, "baron_kills": 0, "dragon_kills": 0, "tower_kills": 0, "inhibitor_kills": 0, "rift_herald_kills": 0, "horde_kills": 0, "bans": []},
+        {"team_id": 500, "win": false, "first_blood": false, "first_tower": false, "first_baron": false, "first_dragon": false, "first_inhibitor": false, "baron_kills": 0, "dragon_kills": 0, "tower_kills": 0, "inhibitor_kills": 0, "rift_herald_kills": 0, "horde_kills": 0, "bans": []},
+        {"team_id": 600, "win": false, "first_blood": false, "first_tower": false, "first_baron": false, "first_dragon": false, "first_inhibitor": false, "baron_kills": 0, "dragon_kills": 0, "tower_kills": 0, "inhibitor_kills": 0, "rift_herald_kills": 0, "horde_kills": 0, "bans": []}
+      ],
+      "game_id": 9002,
+      "game_mode": "CHERRY",
+      "queue_id": 1750,
+      "map_id": 30,
+      "game_duration_s": 920,
+      "game_creation_ts": 1716598440000,
+      "game_creation_date": "2026-05-25T02:48:00Z",
+      "game_version": "16.10.1",
+      "end_of_game_result": "GameComplete",
+      "ended_in_surrender": false,
+      "ended_in_early_surrender": false,
+      "subteam_placement": 2
+    }
+  },
+  "quick_review": {
+    "right": [
+      {"text": "Carry-tier kill output (18 kills, 6 deaths)", "why": "18 kills with 6 deaths across the round set = solid Arena carry pattern. The Crit augment stack scaled into the final 2-team showdown."},
+      {"text": "Solid grade tier (S)", "why": "Match graded S - Arena grades reward placement + damage; a top-2 placement with 32k DMG to champs hits the high tier."}
+    ],
+    "wrong_team": [
+      {"text": "No team-level red flags this match", "why": "Arena's 6-subteam structure does not fit a single ally / enemy frame - the wrong-team heuristics are deferred for CHERRY mode. The chronic + right sections still fire on operator-side stats."}
+    ],
+    "my_chronic": [
+      {"text": "No chronic pattern detected (yet)", "why": "Not enough recent Arena matches to compute baselines, or this match's stats are within +/-1 SD of your medians."}
+    ]
+  }
+}
