@@ -50,6 +50,7 @@ class SuppressLogPathsConstantTests(unittest.TestCase):
             "GET /api/env",
             "GET /api/locked-champion",
             "GET /api/minimap-crop",
+            "POST /api/loadout/list",
         }
         self.assertEqual(set(_handler._SUPPRESS_LOG_PATHS), expected)
         # Ordering is preserved as declared in the source for readability.
@@ -141,6 +142,39 @@ class LogMessageSuppressionTests(unittest.TestCase):
                 "GET /api/activity?limit=6 HTTP/1.1",
                 "200",
                 "1024",
+            )
+            mock_debug.assert_not_called()
+
+    def test_loadout_list_poll_is_suppressed(self):
+        # Item 184 carry from item 183 (g): /api/loadout/list ran at
+        # 0.631/sec - new top non-suppressed log entry until this fix.
+        # Champ-select + item-build panel call this with method=POST per
+        # `dashboard/routes_loadout.py:319` + `web/js/panels/item_build.js:158/438`
+        # + `web/js/panels/champ_select.js:2136` - 3 call sites all POST.
+        with patch.object(_handler.log, "debug") as mock_debug:
+            _handler.Handler.log_message(
+                _FakeHandler(),
+                '%s - - [%s] "%s" %s %s',
+                "127.0.0.1",
+                "25/May/2026 00:30:00",
+                "POST /api/loadout/list HTTP/1.1",
+                "200",
+                "2048",
+            )
+            mock_debug.assert_not_called()
+
+    def test_loadout_list_poll_with_query_string_is_suppressed(self):
+        # Defensive: if a future caller adds a query string, the bare-path
+        # substring needle still matches.
+        with patch.object(_handler.log, "debug") as mock_debug:
+            _handler.Handler.log_message(
+                _FakeHandler(),
+                '%s - - [%s] "%s" %s %s',
+                "127.0.0.1",
+                "25/May/2026 00:30:00",
+                "POST /api/loadout/list?champion=Jinx HTTP/1.1",
+                "200",
+                "2048",
             )
             mock_debug.assert_not_called()
 
