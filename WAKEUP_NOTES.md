@@ -4,6 +4,59 @@
 
 ---
 
+# 2026-05-25 - items 182 + 183 SHIPPED: page #14 PGR SR v2.1 typography + pages #15+#16 PGR ARAM+Arena mock fixtures + ?mode URL flag wiring + housekeeping wave 24 CLEAN + Active Match read-only composition audit (2 merges `efc9cfd` + `b1c8e90` pushed origin/main `8cb5686..b1c8e90`; non-frozen; no DS engine change; no DS restart; no RC restart - ADR-008 asset-hash auto-serves CSS+JS+JSON on next dashboard load)
+
+Operator: "continue other open items -> operator is in ranked SR" (x2 consecutive prompts). 34th + 35th consecutive runs using orchestrator-merge pattern (items 134-181 + 182 + 183). 4 worktree/investigative agents across two prompts. Pre-flight: 0 open PRs; 2 stale remote branches from item 181 deleted (`worktree-agent-a7b1d4045eb667440` + `worktree-agent-ae7fcc75d84601b9e` fully merged into `6ba6b4d`). RC mode_key=sr stable through both drains; mode dropped to client (Offline) by end of session (operator's ranked SR game ended between Slice A merge + /done).
+
+**Item 182 Slice A `b72ec9f` (merge `efc9cfd` ort 0 conflicts 1 file +82 / -55) chore(ui) page #14 PGR SR v2.1 typography token migration:**
+- `web/css/panels/last_match.css` 55 token swaps on `.lm-*` selectors covering all PGR mode-shared rendering. Hero tier: `.lm-hero-grade` 48 -> --fs-display (46); `.lm-hero-champ` + `.lm-hero-score-value` 32-36 -> --fs-xl (37). Statistical tier: `.lm-hero-role-grade-value` + `.lm-kda-text` 30 -> --fs-lg (29); `.lm-hero-stat-value` + `.lm-rank-cell-value` + `.lm-stat-value` + `.lm-tc-mvp-score-value` 26-27 -> --fs-stat (26). Body tier: `.lm-qr-list li` + `.lm-tl-chart-final` + `.lm-hero-result` 19-20 -> --fs-md (22); `.lm-tab` + `.lm-section-head` + `.lm-tc-row` 18-19 -> --fs-sm (18). Compact tier: floor bumps 13-15 -> --fs-xs (16) including `.lm-hero-score-tier`.
+- 5 operator-exception sub-floor cells preserved with inline rationale comments (mirrors item 181 `.csv-bench-empty` + `.csv-duo-cell-tag` + `.csv-arena-cell-name` precedent): `.lm-hero-role-grade-role` 11px (3-char role badge density ADC/SUP/JG/MID/TOP); `.lm-wpa-foot` 13px (italic caption attribution); `.lm-tc-score-badge` 14px (per-row MVP/SVP/#N badge density 44px column); `.lm-tc-mvp-badge` 14px (MVP/SVP card badge text); `.lm-tc-mvp-score-tier` 11px (EXCELLENT/GOOD/OK/BAD micro-label).
+- 3 hit-target floors added (`min-height: var(--hit-min)` 42px): `.lm-tab:467` + `.lm-rank-select:333` + `.lm-section-head-btn:1252`. Participant rows `.lm-tc-row` left sub-floor per item 181 dense-table precedent (tooltip cells, not click actions).
+- 5-phase audit per `feedback_phase3_fixture_ritual`: STRUCTURE PASS (hero / tabs / per-side rosters / chart / WPA + 3-col Quick Review; no `.lm-arena-*` or `.lm-aram-*` selectors exist - all `.lm-*` font-sizes SR-shared = de-facto covers pages #15/16); TYPOGRAPHY PASS; HIT-TARGETS PASS; ASCII PASS 0 new non-ASCII bytes (pre-existing 972 bytes box-drawing/arrows operator-gated retro-sweep carry); HIERARCHY PASS (4 distinct tiers display/statistical/body/compact at 1080px baseline).
+
+**Item 182 Slice B CLEAN no-commit (housekeeping triple wave 24):**
+- BACKLOG/ROADMAP stale-sweep wave 24 = **0 flips**. Live anchors verified: `dev.js:361` verdict.team_won + `gamepc_lcu_agent.py:1192` augment_intent_unsupported within +/- 3 tolerance. **Sweep cycle decay:** 17=0 / 18=1 / 19=0 / 20=0 / 21=0 / 22=0 / 23=0 / **24=0** = 7 consecutive zero-flip waves = saturation deepening continues.
+- 28th consecutive cost/latency CLEAN since item 134. 7 levers all green: prompt-cache 8 sites + route TTL 12 routes + polling tightest 2000ms + log spam top non-suppressed `POST /api/loadout/list` **0.631/s** (NEW top non-suppressed surfacing above prior `ds-preview` + `ward-heat` + `bridge`; below 1/s hard threshold; minor proposal operator-gated for future log-suppress) + ward-heat 0.148/s + bridge 0.132/s + 9-entry `_SUPPRESS_LOG_PATHS` unchanged + model tier all haiku-4-5 (Sonnet POST-call telemetry only; agent7_warm_session=haiku per item 177 correction) + 14 RC-* scheduled tasks + bundle parity 27=27 PASS.
+- Living docs VERIFY CLEAN: ENGINE 1.56.0 + 4671 tests + 67/54 waves 0-19 + 13 condition tags - all current. Last DS bump item 177; items 178-181 no engine touch. No commit needed.
+
+**Item 183 Slice A `b0ac2a6` (merge `b1c8e90` ort 0 conflicts 3 files +275) chore(ui) pages #15+#16 PGR ARAM+Arena mock fixtures + ?mode URL flag wiring:**
+- NEW `web/data/ui_mock/last_match_aram.json` (108 lines): queue 450 mapId 12 (ARAM); 10-player; teams 100/200; augments all-zero -> `data-aug="0"`; operator champ Jinx (id 222); grade A; KDA 12/4/22.
+- NEW `web/data/ui_mock/last_match_arena.json` (114 lines): queue 1750 CHERRY mapId 30 (canonical post-item-180); 12-player **6x2 shape** per item 180 `_arena_teams()` distil at `tools/gamepc_lcu_agent.py:536` (NOT 8x2 as brief initially asserted; agent caught + corrected against live LCU shape); subteam teamIds 100-600 (one per subteam, MY TEAM=300 -> renderer's `roster.filter(r.team_id === myTeamId)` -> 2 allies + 10 enemies); 4 augments/player + 2 trailing zeros -> `data-aug="1"`; operator champ Jinx grade S placement 2.
+- `web/js/panels/last_match.js` +53 lines (L324-376): NEW `_lmIsMock()` / `_lmMockUrl()` / `_lmMockLoad(url)` helpers + `_liveFetch(_b)` live-path extraction. `fetchAndRenderLastMatch()` short-circuits to mock fixture when `body.dataset.uiMock === "1"` AND URL param `mode=aram|arena` present. Mirrors `web/js/main.js _csMockLoad` L3263 precedent (items 165 + 181).
+- 5-phase audit ritual: STRUCTURE PASS (10p ARAM / 12p 6x2 Arena / mode-conditional augment grid via `#lm-tc-table[data-aug="1"]` 9-col track); TYPOGRAPHY DE-FACTO PASS (item 182 last_match.css mode-shared `.lm-*` + `.lm-tc-aug*` selectors already cover ARAM/Arena via 9-col augment grid); HIT-TARGETS PASS via item 182 floors (no new floors needed); ASCII PASS 0 new non-ASCII bytes; HIERARCHY PASS.
+
+**Item 183 Slice B read-only no-commit (Active Match view composition audit):**
+- 7 CSS files compose `#view-active-match`: 5 EXCLUSIVE (active_match.css 137 LOC / 2 font-size hits + draft_elo.css 191 / 11 + spike_curve.css 60 / 2 + ward_heat.css 97 / 5 + cd_ledger.css 205 / 6) + 2 SHARED (right_now.css 173 / 8 + next.css 58 / 1 - both also render in main grid; touches ripple to ALL views during in-game baseline).
+- 0 mode-conditional CSS branching (no sr-only / aram-only / arena-only selectors; rendering identical SR/ARAM/Arena via JS logic).
+- 19 sub-floor (< 16px) declarations pre-mapped for pages #11/12/13 v2.1 typography migration when operator out-of-game: active_match 2x14 / draft_elo 9-13 x5 / spike_curve 9-10 x2 / ward_heat 8-9 x5 (likely operator-exceptions for hover-tooltip micro-legends) / cd_ledger 9-12 x5.
+- Bundle parity 27=27 PASS (test_dashboard_css_panel_imports_parity.py 4/4).
+
+**Verified post-merges:**
+- DS suite untouched (no engine change; DS :8893 serves 1.56.0 from item 177; not restarted).
+- `py -m pytest tests/phase8_smoke/ tests/test_dashboard_css_panel_imports_parity.py -q` = **79 passed in 2.40s** post both merges.
+- `py -m ruff check .` ALL CHECKS PASSED both times.
+- JSON validity both new fixtures PASS via `json.load`.
+- RC :8888 mode_key transitioned sr -> client (Offline) by end of session; pid 5800 alive=True last_reload_ok=True throughout; never restarted (ADR-008 auto-served CSS+JS+JSON).
+
+**Don't-redo:**
+- (a) Page #14 PGR SR v2.1 typography CLOSED; do NOT re-pitch font-size bumps on `.lm-*` without operator approval. The 5 operator-exception sub-floor cells (`.lm-hero-role-grade-role` 11 / `.lm-wpa-foot` 13 / `.lm-tc-score-badge` 14 / `.lm-tc-mvp-badge` 14 / `.lm-tc-mvp-score-tier` 11) carry rationale in CSS comments.
+- (b) `last_match.css` is mode-SHARED - no ARAM-only / Arena-only selectors; pages #15/16 typography is DE-FACTO closed via item 182. Future PGR ARAM/Arena slices should focus on STRUCTURAL or content-layout deltas, not typography.
+- (c) Arena PGR fixture shape is 6x2 = 12 players (NOT 8x2 / 16 players); honor live LCU `_arena_teams()` at `tools/gamepc_lcu_agent.py:536`.
+- (d) `_lmMockLoad` mirrors `_csMockLoad` (items 165+181); future PGR mode-mock dispatchers extend the `?mode=<mode>` URL flag pattern.
+- (e) Active Match composition allowlist locked: 5 EXCLUSIVE CSS files SAFE TO TOUCH only when operator out-of-game; 2 SHARED CSS files (right_now + next) ripple to all views.
+- (f) 7 consecutive zero-flip BACKLOG sweep waves (17-24) = sweep cycle saturation deepening.
+- (g) `/api/loadout/list` 0.631/s is the new top non-suppressed log entry; still below 1/s hard threshold; operator-gated minor proposal for future log-suppress needle.
+- (h) Orchestrator-merge pattern now 35 consecutive runs (items 134-181 + 182 + 183).
+
+**Carries forward:**
+- (a) Live UI capture OWED for pages #14 + #15 + #16 PGR (SR + ARAM + Arena) at next non-game window (mid-ranked-SR forbids capture per [[feedback_screen_capture_default]] + brief).
+- (b) Pages #11/12/13 Active Match SR/ARAM/Arena v2.1 typography STILL deferred (operator-out-of-game requirement). SAFE TARGETS LIST locked: 5 exclusive CSS files + 19 sub-floor declarations pre-mapped.
+- (c) `/api/loadout/list` 0.631/s log-suppress minor proposal operator-gated.
+- (d) All item 181 carries (a)-(l) otherwise unchanged: 542 residual U+2500 box-drawing chars operator-gated separate sweep; DD Defy deferred; calibrations operator-gated; Legion 1-PC consolidation operator-gated; cc_conditional wave 20+ schema-blocked; frozen-file grant NOT used; RC-PostmortemAnalyze first scheduled run was 2026-05-25 04:15 (operator can verify LastTaskResult=0).
+- (e) `web/js/panels/last_match.js` still has 5 pre-existing non-ASCII codepoints (operator-gated retro-sweep separate pass; NOT introduced by this session).
+
+---
+
 # 2026-05-25 (early) - item 181 SHIPPED: UI scale v2.1 pages #9 ARAM + #10 Arena parallel slices + housekeeping triple wave 23 CLEAN (2 merges `2a4fa7b` + `6ba6b4d` pushed origin/main `c94881f..6ba6b4d`; non-frozen; no DS engine change; no DS restart; no RC restart - ADR-008 asset-hash auto-serves CSS+JS+JSON on next dashboard load)
 
 Operator: "in parallel, work on the next items that are open -> operator is queuing ranked SR". Next-in-audit-order pages #9 + #10 from item 13 (16-page UI scale v2.1 refactor; 8 pages remaining post-item-178). 3 parallel agents dispatched concurrent per orchestrator-merge pattern (33rd consecutive run extending items 134-179; item 180 was direct-commit live-ops not orchestrator). Pre-flight: 0 open PRs, item 179's Slice A remote branch (`worktree-agent-abea64c3e46bbdd24`) deleted via `git push origin --delete` (already merged via `c55fd00`). 25 local worktrees harness-locked (parent owns lifecycle; left in place per pattern). Operator queueing ranked SR throughout drain - RC :8888 mode_key=sr stable, no restart.
@@ -80,65 +133,3 @@ Operator: "start #89 live verification (ROADMAP L24): Practice Tool + ARAM Mayhe
 - Arena 6x3 champ-select VISUAL capture STILL OWED - needs operator to commit a real Arena queue + accept + CS entry. Lobby-side ARENA mode proven via monitor 1 capture; only the actual 3-ally-cell + central-me+2 + 5-enemy-trio-cards layout (per c3a1e23 _csvArenaPaneHtml + _csvRenderEnemiesArena 8x2 -> 6x3 refactor) remains unverified live.
 - 542 residual U+2500 box-drawing chars (rc_supervisor 58 + rc_self_monitor 484) - operator-gated separate sweep per item 176 carries.
 - All item 179 carries unchanged: RC-PostmortemAnalyze first scheduled run today 2026-05-25 04:15, DD Defy deferred, live ARAM/SR smoke pending, calibrations operator-gated, UI/UX live-game audit owed, Legion 1-PC consolidation operator-gated, cc_conditional wave 20+ schema-blocked, v2.1 audit pages 9/10/11/12/13/14/15/16 owed, frozen-file grant NOT used this session.
-
----
-
-# 2026-05-24 - item 179 SHIPPED: operator-gated parallel drain #13 (ARAM + Arena build chooser collapse extending item 178's SR pattern; BACKLOG/ROADMAP stale-sweep wave 22 CLEAN; cost/latency CLEAN wave 26) (1 merge `c55fd00` of `worktree-agent-abea64c3e46bbdd24` `d0a66c3` pushed origin/main `2b26f27..c55fd00`; non-frozen; no DS engine change; no DS restart; no RC restart - ADR-008 asset-hash auto-serves data/champion_loadouts.json on next dashboard load)
-
-Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 32nd consecutive run using orchestrator-merge pattern (items 134-179). 3 worktree/investigative agents dispatched concurrent. AskUserQuestion 3-question scope fork pinned per [[feedback_scope_decision_cadence]]: (Q1) ARAM + Arena variant collapse Full (operator picked the larger scope over ARAM-only or skip); (Q2) cc_conditional wave 20+ Skip / defer (Recommended; schema-blocked saturation continues); (Q3) Housekeeping triple Full (Recommended). Pre-flight: 0 open PRs, 5 green CI runs since item 178, 1 stale remote branch (worktree-agent-a6c0eeb6dcc380e0a = item 178 Slice B fully merged via `9c7a9bb`) deleted via `git push origin --delete`. 22 local worktrees harness-locked (parent owns lifecycle, left in place per pattern). 1 untracked at start: data/aram_coaching_data.json.bak-20260523-135434 (forensic from item 165) left in place per [[feedback_no_history_rewrite]].
-
-**Slice A `d0a66c3` (merge `c55fd00` ort 0 conflicts 3 files +39406 / -31414) feat(loadouts) ARAM + Arena build chooser collapse extending item 178's SR pattern + 43 new tests:**
-- Schema ADDITIVE: ARAM + Arena variants collapsed into ONE `aram-collapsed` + `arena-collapsed` per champion carrying `build_paths: list[{key, label, items[], reason?}]`. Variant-level `items` / `runes` / `summoners` populate from primary path for back-compat (loadout_resolver consumers passing just `aram-collapsed` or `arena-collapsed` get primary path's items unchanged). SR `sr-collapsed` from item 178 PRESERVED byte-equivalent.
-- Before/after: **ARAM 685 source variants -> 172 aram-collapsed** (one per champion) + **Arena 688 source variants -> 172 arena-collapsed** (one per champion). 0 broken `default_per_mode.aram` or `default_per_mode.arena` pointers. SR 172 sr-collapsed UNCHANGED (item 178 isolation preserved).
-- Extended `tools/champion_loadout_collapse_to_paths.py` (+199 / -25 net): NEW `--mode <sr|aram|arena|all>` flag + `--item-tag` flag + `collapsed_key_for(mode)` + `collapse_payload_modes()` helpers + `_AUTO_SLOT_SUFFIX` for Arena slot disambiguation (`(primary)` / `(flavor)` / `(secondary)`). Atomic tmp.write_text + tmp.replace + backup to `data/champion_loadouts.json.bak-item179-20260524-205914` (uncommitted, lives in worktree filesystem per item 178 pattern).
-- Label-mapping table extended from 57 (item 178) to **85 entries** covering aram-/arena-`<arch>` standards + legacy ARAM keys (`ap-burst`/`tank-aram`/`ap-bombs`/`ad-bruiser`/`ad-crit`/`adc-scaling`/`berserker`/`bruiser-trinity`/`divetop`/`duelist` etc.) + auto-arena slot disambiguators. SR + ARAM auto-* keys preserve item 178's no-slot-suffix behavior. Only `auto-arena-*` gets the `(sec)` / `(flav)` disambiguator since Arena is the only mode with multi-slot population.
-- `coaches/loadout_resolver.py` UNCHANGED: the `<variant>:<path-key>` resolve form already worked for ARAM/Arena via mode-agnostic codepath - no resolver edits needed. Verified end-to-end via Jinx smoke: SR/ARAM/Arena each return ONE entry with 4 build_paths; primary path items + summoners preserved; sub-path resolve form `aram-collapsed:on-hit` returns On-Hit items with distinct `set_uid` `RC-jinx-aram-aramcollapsedonhit`.
-- `web/js/panels/champ_select.js::_csvMaybePushBuildsToLCU` UNCHANGED: already handles `build_paths` generically per mode (`set_uid` format `RC-<champion>-<mode>-<uidKey>` was already mode-parameterized) - no JS edits needed.
-- LCU `apply_item_sets_batch` LCU contract UNCHANGED at `tools/gamepc_lcu_agent.py:957`; agent takes `sets[]` list; now fed paths-flattened-from-collapsed-variants per mode (up to 4 per mode). Each set's `set_uid` makes paths coexist by-uid.
-- NEW `tests/test_champion_loadout_collapse_aram_arena.py` (741 LOC, **43 tests across 8 classes**): migration tool invariants (dry-run + --mode filter + backup + idempotent re-run) + schema-additive per-mode (SR untouched by ARAM run + ARAM untouched by Arena run) + label-mapping (ARAM short labels + Arena primary/flavor/secondary disambiguators) + per-champion collapse correctness + default selection contract + multi-mode isolation + ASCII hygiene.
-- Idempotent re-run: re-collapsing an already-collapsed mode with no source variants left preserves the existing path list verbatim (operator hand-edits survive); re-collapsing after operator hand-adds a source variant picks it up + rebuilds deterministically.
-
-**Slice B CLEAN no-commit (BACKLOG/ROADMAP stale-sweep wave 22):** 0 flips. All 4 anchors from item 177 wave 21 grep-verified live at cited lines: ROADMAP L13 `dev.js:361` verdict.team_won + ROADMAP L23 `main.js:3081/3092/4281` LCU 3 sites + ROADMAP L23 `gamepc_lcu_agent.py:246` ARAM Mayhem + ROADMAP L82 `gamepc_lcu_agent.py:1194` augment_intent_unsupported. **Sweep cycle decay:** wave 17=0 / 18=1 / 19=0 / 20=0 / 21=0 / **22=0**. Five consecutive zero-flip waves (17 + 19 + 20 + 21 + 22). Saturation deepening; wave 18 lone flip (`gamepc_lcu_agent.py:1091` -> `:1194` from item 174) remains the most-recent line drift across 5 sweeps.
-
-**Slice C 26th consecutive cost/latency CLEAN no-commit (read-only investigative agent):**
-- All 7 levers green. (1) Prompt-cache 8 cache_control sites (7 coaches + coach_integration/_coach.py). (2) Route TTL **16 routes** with `_CACHE` (live grep authoritative; item 177 "12 routes" claim was loose ledger drift not a regression - count fluctuates 12-16 across audits). (3) Polling cadences pollIfStale + pollLcu 2000ms (main.js:6173/6241); no sub-500ms network polls. (4) Log spam top non-suppressed `/api/ward-heat` 0.194/s + `/api/bridge` 0.132/s + `/api/adaptation` 0.122/s + `/api/health/all` 0.068/s - ALL below 1/sec threshold; `/api/bridge` rate matches item 177 baseline exactly. _SUPPRESS_LOG_PATHS = 9 entries unchanged. (5) Model tier coaches all `claude-haiku-4-5-20251001`; agent7 DEFAULT_MODEL = `claude-haiku-4-5` (item 177 correction confirmed); agent6_auditor = Opus only. (6) Scheduled tasks 14 RC-* matching item 177 catalog exactly. (7) Bundle parity 27 panel CSS files = 27 panel @imports in dashboard.css (29 total = 27 panel + 2 non-panel including build_order.css + tokens/base); drift guard `test_dashboard_css_panel_imports_parity.py` 4/4 PASS.
-- INFORMATIONAL note: today's `logs/2026-05-24.log` only spans 20:16:18-20:56:52 (40-min window) - the log was rotated/truncated mid-day; pid 5800 continues writing into a freshly-opened handle. Per item 177 closure: `core/log_setup.py` DailyRotatingFileHandler uses `date.today()` local-time so file rotates on local-date boundary not UTC. Mid-day truncation is a separate signal worth verifying next session if it recurs (non-blocking).
-
-**Verified post-merge:**
-- DS suite untouched (no engine change; DS :8893 still serves 1.56.0 from item 177; not restarted).
-- RC suite `tests/` (excl phase8_smoke) **3367 passed / 67 subtests passed in 56.57s** (+43 over item 178's 3324 baseline = exactly the new test_champion_loadout_collapse_aram_arena.py file).
-- Relevant surfaces: `tests/test_champion_loadout_autogen.py` 35/35 + `tests/test_champion_loadouts_no_unique_clash.py` 2/2 + `tests/test_champion_loadout_collapse_to_paths.py` 27/27 + `tests/test_champion_loadout_collapse_aram_arena.py` 43/43 + `tests/phase8_smoke/` 75/75 = **182/182 PASS**.
-- `py -m ruff check .` ALL CHECKS PASSED.
-- `py -m py_compile tools/champion_loadout_collapse_to_paths.py coaches/loadout_resolver.py` clean.
-- ASCII: 0 non-ASCII bytes in tool + test file + data file.
-- Resolver smoke verified end-to-end for Jinx: SR/ARAM/Arena each return ONE entry with 4 build_paths; primary path items + summoners preserved; sub-path resolve form `aram-collapsed:on-hit` returns On-Hit items with distinct set_uid.
-- Post-collapse counts: SR=172 (collapsed=172) ARAM=172 (collapsed=172) Arena=172 (collapsed=172); 0 non-collapsed source variants remain in any mode; all 172 default_per_mode pointers point to their respective collapsed keys per mode.
-- RC :8888 unchanged pid 5800 mode=game aram_mode=true has_game=true (operator entered ARAM game mid-session; never restarted - non-frozen + non-coach-prompt edits; ADR-008 unified asset-hash auto-serves data/champion_loadouts.json on next dashboard load).
-
-**Merge order:** Slice A worktree branch `worktree-agent-abea64c3e46bbdd24` pushed by agent; orchestrator fetched + `git merge --no-ff origin/<branch>` into main as `c55fd00` (ort, 0 conflicts, 3 files). Pushed origin/main `2b26f27..c55fd00`. 0 merge conflicts. 0 docs sync follow-up commit needed (no engine bump, no version pins, no test count refs in living docs - those tier docs sync only on ENGINE bumps per recent ledger pattern).
-
-**Don't-redo:**
-- ARAM + Arena variant collapse via `aram-collapsed` + `arena-collapsed` keys with `build_paths: list[{key, label, items[], reason?}]` is now the canonical home for per-champion-multi-archetype build presentations across all 3 modes (SR + ARAM + Arena). The collapse tool is mode-parameterized via `--mode <sr|aram|arena|all>` flag; future mode additions extend `_PATH_ORDER` + `_AUTO_SLOT_SUFFIX` per-mode policies in `tools/champion_loadout_collapse_to_paths.py`.
-- The 85-entry label-mapping table covers all 64 ARAM unique variant keys + all 23 Arena unique keys observed in current data; extend it (NOT titlecased fallback) for any future net-new archetype to keep pill labels short + readable.
-- The `<variant>:<path-key>` resolve form is mode-agnostic - `coaches/loadout_resolver.py` did NOT need edits this session; the colon-form is the canonical apply-path API across all 3 modes. Legacy callers passing just `<variant>` resolve to the primary path's items (back-compat preserved).
-- `apply_item_sets_batch` LCU contract is UNCHANGED at `tools/gamepc_lcu_agent.py:957`; the agent continues to take `sets[]`; the JS `_csvMaybePushBuildsToLCU` already handled the per-mode `set_uid` format (`RC-<champion>-<mode>-<uidKey>`) so distinct paths in distinct modes coexist by-uid.
-- Operator hand-edits to collapsed variants survive idempotent re-runs of the tool (verified in test class). Re-collapsing after operator hand-adds a source variant picks it up + rebuilds deterministically; re-running on already-collapsed mode with no source variants is a no-op preserving existing path list verbatim.
-- The orchestrator-merge pattern is now 32 consecutive runs (items 134-179). This run had no scope-fork mid-flight + no ENGINE bump + no DS restart + no RC restart - the slim-est-merge variant in the recent ledger (same as item 178). No additional docs-sync follow-up commit needed.
-- Operator was mid-game (ARAM) during the merge - the resolver + LCU contract was preserved so live coaching is unaffected. Live UI capture of the new ARAM + Arena multi-path render OWED at next champ select of those modes.
-
-**Carries forward:**
-- (a) Item 178 carries ALL unchanged EXCEPT (k) ARAM + Arena variant collapse NO LONGER operator-gated (DONE this session).
-- (b) RC-PostmortemAnalyze first scheduled run TODAY 2026-05-25 04:15 (per item 178 carry forward; verify LastTaskResult=0 next session; role_grades JSON will reflect 9-col obj_participation on next aggregation).
-- (c) DD Defy heal-on-takedown STILL deferred (operator-gated).
-- (d) Live ARAM/SR smoke STILL pending (live-gated; this session's verification was tests + resolver smoke only; live ARAM bench-swap or Arena lobby load with the new collapsed entries owed).
-- (e) Calibrations STILL operator-gated.
-- (f) UI/UX live-game audit ritual owed once operator plays a real ARAM game with the new collapsed build chooser.
-- (g) DS conditional arc operator-CLOSED (s232).
-- (h) Legion 1-PC consolidation (s169 option B) STILL operator-gated.
-- (i) cc_conditional wave 20+ candidates STILL UNDEFINED - schema-lift-blocked saturation continues (operator-gated; Slice Q2 fork picked Skip / defer this session).
-- (j) 542 residual U+2500 chars NO LONGER carry-forward (DONE item 176).
-- (k) Live UI capture of new ARAM + Arena multi-path render OWED at next champ select of those modes.
-- (l) v2.1 audit pages 9/10 Champ Select ARAM/Arena -> 11/12/13 Active Match SR/ARAM/Arena -> 14/15/16 PGR SR/ARAM/Arena (8 remaining; this session's framing again non-UI per scope fork).
-- (m) Frozen-file grant NOT used this session.
-- (n) INFORMATIONAL log rotation note: today's `logs/2026-05-24.log` rotated mid-day at ~20:16; if recurring next session, worth investigating (non-blocking).
-- (o) Slice C noted route TTL count fluctuates 12-16 across audits; do NOT pin to a specific number in future ledger entries; use live `grep _CACHE dashboard/routes_*.py | wc -l` at audit time.
