@@ -358,7 +358,13 @@ function _replayLoadMatch(matchId, rowEl) {
       if (m) {
         const verdict = (d.participants || []).find(p =>
           p.champion_id === (d.tracked && d.tracked.champion_id));
-        const v = verdict ? (verdict.team_won ? " (W)" : " (L)") : "";
+        const v = verdict
+          ? (verdict.team_won === true
+              ? " (W)"
+              : verdict.team_won === false
+                ? " (L)"
+                : "")
+          : "";
         m.textContent = `${d.match_id} · ${_replayQueueLabel(d.queue_id)} · ${_replayDurStr(d.duration_s)} · patch ${d.patch || "?"}${v}`;
       }
       _replayRenderSnapshot(0);
