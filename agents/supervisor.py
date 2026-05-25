@@ -107,6 +107,8 @@ from agents._supervisor_common import (
     _BRIDGE_PUB_CHECK_INTERVAL_S,
     _BRIDGE_PUB_PEERS,
     _BRIDGE_PUB_REFILE_COOLDOWN_S,
+    _RECONCILE_INTERVAL_S,
+    _RECONCILE_STALE_S,
     _DETERMINISTIC_HANDLED_OPS,
     _DETERMINISTIC_RECORDKEEPING_OPS,
     _PROJECT_ROOT,
@@ -158,6 +160,8 @@ __all__ = [
     "_BRIDGE_PUB_CHECK_INTERVAL_S",
     "_BRIDGE_PUB_PEERS",
     "_BRIDGE_PUB_REFILE_COOLDOWN_S",
+    "_RECONCILE_INTERVAL_S",
+    "_RECONCILE_STALE_S",
     "_DETERMINISTIC_HANDLED_OPS",
     "_DETERMINISTIC_RECORDKEEPING_OPS",
     "_PROJECT_ROOT",
@@ -265,11 +269,32 @@ class Supervisor:
 
         self._web = start_web_server(WEB_PORT, supervisor=self)
 
+        # One-shot recovery on boot (audit-8 H-02): close any stale
+        # IN_PROGRESS envelope from a prior supervisor process that
+        # never reached a terminal event. Bounds the leak so the file's
+        # last-status-per-task view converges before the dispatch loop
+        # picks up fresh work.
+        if self._scheduler is not None:
+            try:
+                reconciled = self._scheduler.reconcile_stale_in_progress(
+                    stale_seconds=_RECONCILE_STALE_S,
+                    reason="supervisor-restart",
+                )
+                if reconciled:
+                    log.warning(
+                        "boot reconciler: closed %d stale in_progress task(s) "
+                        "from prior supervisor process: %s",
+                        len(reconciled), reconciled[:10],
+                    )
+            except Exception as e:  # noqa: BLE001
+                log.warning("boot reconciler raised: %s", e)
+
         # Bootstrap tasks.
         asyncio.create_task(self._heartbeat_loop())
         asyncio.create_task(self._dispatch_loop())
         asyncio.create_task(self._warm_ui_watchdog())
         asyncio.create_task(self._bridge_publisher_watchdog())  # Audit7 H-01
+        asyncio.create_task(self._task_queue_reconciler_loop())  # Audit8 H-02
 
         # Decision detector loop (T3 #15, 2026-05-01) - relocated from
         # dashboard/server.py. Polls the Live Client relay + vision_state
@@ -436,6 +461,53 @@ class Supervisor:
                             "bridge-pub watchdog: file_task for %s "
                             "failed: %s", node, e,
                         )
+        except asyncio.CancelledError:
+            pass
+
+    # ---- task-queue reconciler (Audit8 H-02) -------------------------
+    async def _task_queue_reconciler_loop(self) -> None:
+        """Periodic reconciler: close out IN_PROGRESS task envelopes that
+        never received a terminal completed/failed event.
+
+        Audit-8 H-02 surfaced 449 dispatched envelopes that never reached
+        a terminal state, leaving the per-task last-event view in a
+        permanent leak. Causes include supervisor crashes mid-dispatch,
+        ephemeral LLM sessions aborted before write-back, and audit cron
+        sessions exceeding budget. The reconciler converges the file by
+        emitting a ``failed`` event for any envelope older than 30 min.
+
+        Cadence + threshold imported from `_supervisor_common`:
+        ``_RECONCILE_INTERVAL_S`` (5 min) + ``_RECONCILE_STALE_S`` (30 min).
+        Both bound the scan generously so long-running LLM tasks that
+        legitimately stay in_progress are not falsely reaped.
+
+        Fault-tolerant: any per-iteration exception is logged + swallowed
+        so the loop never dies. Stop signal honored on the next sleep
+        boundary.
+        """
+        try:
+            # First scan happens after the interval, not immediately - the
+            # one-shot boot reconciler in start() already handled the
+            # cold-start backlog.
+            while not self._stop.is_set():
+                await asyncio.sleep(_RECONCILE_INTERVAL_S)
+                if self._scheduler is None:
+                    continue
+                try:
+                    reconciled = self._scheduler.reconcile_stale_in_progress(
+                        stale_seconds=_RECONCILE_STALE_S,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    log.warning(
+                        "task-queue reconciler: scan raised: %s", e,
+                    )
+                    continue
+                if reconciled:
+                    log.warning(
+                        "task-queue reconciler: closed %d stale "
+                        "in_progress task(s): %s",
+                        len(reconciled), reconciled[:10],
+                    )
         except asyncio.CancelledError:
             pass
 

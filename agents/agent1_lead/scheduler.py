@@ -57,6 +57,14 @@ _APPEND_LOCK_MAX_WAIT_SEC = 5.0
 _COMPACT_INTERVAL_S = 3600.0  # hourly check
 _COMPACT_THRESHOLD_BYTES = 2 * 1024 * 1024  # compact above 2 MB
 
+# Reconciler policy (audit-8 H-02): in_progress envelopes that never
+# receive a terminal completed/failed event are state-machine leaks.
+# Stale threshold = 30 minutes per the audit-8 proposal; reconcile cadence
+# 5 minutes keeps the scan cheap (in-memory dict iteration only).
+_RECONCILE_STALE_SEC = 1800.0     # 30 min - audit-8 H-02 threshold
+_RECONCILE_INTERVAL_S = 300.0     # 5 min between scans
+_RECONCILE_TIMEOUT_REASON = "timeout-no-terminal-event"
+
 logger = logging.getLogger("agent1.scheduler")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -711,6 +719,81 @@ class Scheduler:
             return []
         # Trim to the last `cap` entries then reverse for newest-first.
         return list(reversed(events[-cap:]))
+
+    # ----- reconciliation (audit-8 H-02) --------------------------
+    @staticmethod
+    def _parse_iso_ts(ts: str | None) -> datetime | None:
+        """Parse an ISO-8601 timestamp string to an aware datetime.
+
+        Returns ``None`` for malformed / missing input so the caller
+        can fall through to "skip this task" instead of raising. Both
+        ``+00:00`` and ``Z`` suffixes are accepted; naive timestamps
+        are treated as UTC (defensive - the scheduler always writes
+        ``+00:00`` via ``_iso_now()``).
+        """
+        if not ts:
+            return None
+        try:
+            s = ts.replace("Z", "+00:00") if ts.endswith("Z") else ts
+            dt = datetime.fromisoformat(s)
+        except (TypeError, ValueError):
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+
+    def reconcile_stale_in_progress(
+        self,
+        stale_seconds: float = _RECONCILE_STALE_SEC,
+        reason: str = _RECONCILE_TIMEOUT_REASON,
+    ) -> list[str]:
+        """Close out any IN_PROGRESS task whose ``updated_at`` is older
+        than ``stale_seconds``. Emits a terminal ``failed`` event for
+        each via ``self.fail()`` so the per-task last-event view
+        converges and the audit math (filed == completed + failed +
+        dead-letter + ready-still-pending) reconciles.
+
+        Audit-8 H-02 closes the state-machine leak where 449 dispatched
+        envelopes never reached a terminal event. The 30-minute window
+        matches the audit-8 proposal; bound generously to avoid racing
+        long-running LLM tasks that legitimately stay in_progress.
+
+        Returns the list of reconciled task IDs (empty when nothing
+        was stale). Safe to call from any thread - takes the same RLock
+        as ``fail()``.
+        """
+        if stale_seconds <= 0:
+            return []
+        now = datetime.now(timezone.utc)
+        reconciled: list[str] = []
+        with self._lock:
+            # Snapshot ids first so we can call fail() (which takes the
+            # same lock) without mutating the dict mid-iteration.
+            stale_ids: list[str] = []
+            for tid, t in self._tasks.items():
+                if t.status != TaskStatus.IN_PROGRESS:
+                    continue
+                dt = self._parse_iso_ts(t.updated_at)
+                if dt is None:
+                    continue
+                age_s = (now - dt).total_seconds()
+                if age_s >= stale_seconds:
+                    stale_ids.append(tid)
+            for tid in stale_ids:
+                t = self._tasks.get(tid)
+                if t is None or t.status != TaskStatus.IN_PROGRESS:
+                    continue
+                self.fail(tid, error=reason)
+                reconciled.append(tid)
+            if reconciled:
+                logger.warning(
+                    "reconciler: closed %d stale in_progress task(s) "
+                    "older than %.0fs (reason=%s): %s",
+                    len(reconciled), stale_seconds, reason,
+                    ", ".join(reconciled[:10])
+                    + (" ..." if len(reconciled) > 10 else ""),
+                )
+        return reconciled
 
 
 if __name__ == "__main__":

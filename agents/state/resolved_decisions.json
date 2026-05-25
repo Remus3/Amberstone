@@ -1,0 +1,369 @@
+{
+  "version": "phase3-1.1",
+  "locked_at": "2026-04-22",
+  "decisions": [
+    {
+      "id": "phase3-d001",
+      "title": "Frozen-file list - explicit operator approval required to modify",
+      "decided_at": "2026-04-22",
+      "summary": "The following files are frozen and require explicit user approval per modification: main.py, core/log_setup.py, core/moon_proxy.py, lcu/lcu_client.py, core/game_snapshot.py, ops/rc_dev_runtime.py, ops/rc_supervisor.py, app/__init__.py, app/_loop.py, app/_health_monitor.py, app/_remediation.py, app/_state_authority.py, app/_overlay_manager.py, app/_game_lifecycle.py. Bridge tool set in tools/ (bridge_watcher_*, bridge_post_result.py, bridge_pull_tasks.py, RC-BridgeWatcher.xml) is also frozen. Scheduler auto-adds category 1 (hard gate) when a payload references any of these unless user_override=True.",
+      "source": "CLAUDE.md / Hard rules / Frozen files",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d002",
+      "title": "ADR-008 unified asset-hash - no RC restart for asset-only edits",
+      "decided_at": "2026-05-09",
+      "summary": "Editing web/{js,css}/panels/* + data/ui_mock/*.json + web/data/* + dashboard/css/* triggers compute_asset_hash auto-reload. Browsers re-request on next dashboard load. No RC supervisor restart required for asset-only changes. Coach prompt edits + dashboard route module edits DO require a restart.",
+      "source": "CLAUDE.md / Settled / ADR-008",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d003",
+      "title": "ADR-006 Riot API key policy - key permitted for champ-select + post-game",
+      "decided_at": "2026-04-25",
+      "summary": "Personal Riot API key permitted for champ-select context + post-game full-team enrichment. Key file at C:/Riot Commander/API-Key-Claude.txt (gitignored). Match-V5 403/empty on event modes (ARAM Mayhem KIWI, queue 2400, Arena) is EXPECTED not a key fault. UA-less requests = Cloudflare 1010. Key cache is process-lifetime.",
+      "source": "CLAUDE.md / Settled / ADR-006",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d004",
+      "title": "DS conditional-target-state arc operator-CLOSED (s232)",
+      "decided_at": "2026-05-04",
+      "summary": "Daemon Slayer Part-2 live target-state plumbing is shelved permanently. An s232 saturation guard exists. Do NOT re-pitch Part-2 or re-scan for conditional candidates beyond the closed methodology. The block_index/form_index/max_priority/combo_sequence pure-data registries were swept s223-s232 and are provably saturated (machine-guarded). Further growth needs a schema lift, not uncovered-champion scans.",
+      "source": "CLAUDE.md / Settled / DS conditional arc",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d005",
+      "title": "ASCII-only authored content - no em-dashes, en-dashes, or smart quotes",
+      "decided_at": "2026-05-18",
+      "summary": "Hard rule across Legion / Game-PC / Peer in ALL authored text: code, comments, docstrings, .md, writeups, commit messages, WAKEUP/ROADMAP/CLAUDE, bridge messages, chat output. Use ' - ' (spaced hyphen) for clause break, '-' otherwise. Avoid smart quotes (U+201C U+201D U+2018 U+2019) and en/em dashes (U+2013 U+2014). Stay ASCII. Root cause: Windows PowerShell 5.1 ParseFile ANSI-decodes no-BOM .ps1, turning UTF-8 em-dash in double-quoted strings into U+201D smart-quote that tokenizer treats as string terminator (2026-05-18 gamepc_boot.ps1 incident). Retroactive purge done 2026-05-18 via tools/strip_em_dashes.py; smart quotes rule-banned going forward but retro-sweep is separate operator-gated pass. The functional '-' no-data sentinel in code/JSON is operator-approved (empty cells render as '-').",
+      "source": "CLAUDE.md / Hard rules",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d006",
+      "title": "Atomic writes only - tmp.write_text + tmp.replace pattern",
+      "decided_at": "2026-04-22",
+      "summary": "Any file write that other readers may poll mid-write MUST use the atomic dance: tmp = path.with_suffix(path.suffix + '.tmp'); tmp.write_text(...); tmp.replace(target). Overlays + dashboards poll JSON outputs mid-write so a partial write produces a parse error. Coaching JSONs, vision state, decisions_pending.json, health.json, peer_health, task_queue.jsonl compaction - all atomic.",
+      "source": "CLAUDE.md / Hard rules",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d007",
+      "title": "Restart workflow - restart_trigger.txt, never Stop-Process",
+      "decided_at": "2026-04-22",
+      "summary": "RC restart via 'echo restart > restart_trigger.txt' (supervisor clears + restarts within ~5s). NEVER Stop-Process the supervisor or RC PID - hangs MCP pipe. Hard fallback: taskkill /F /PID <pid> then restart.bat. Verify via ops/runtime/health.json showing new pid, alive=true, last_reload_ok=true. The RC-Supervisor scheduled task can also be triggered via schtasks /Run /TN RC-Supervisor when restart_trigger is unavailable.",
+      "source": "CLAUDE.md / Restart workflow + Hard rules",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d008",
+      "title": "py_compile gate before every restart",
+      "decided_at": "2026-04-22",
+      "summary": "Always py_compile any modified .py file before triggering restart_trigger.txt. Syntax errors crash silently under pythonw.exe (no console). The supervisor's last_reload_ok=false latches and only schtasks /Run can recover. py_compile catches all SyntaxError + IndentationError + import-time NameError pre-restart.",
+      "source": "CLAUDE.md / Hard rules",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d009",
+      "title": "SCRIPT_DIR layout - Path(__file__).parent.parent in app/__init__.py",
+      "decided_at": "2026-04-22",
+      "summary": "SCRIPT_DIR in app/__init__.py MUST be Path(__file__).parent.parent because the app/ package is one directory below the project root. Drift causes data/, logs/, ops/runtime/ paths to mis-resolve and the supervisor silently writes to the wrong tree. Frozen file - any change to app/__init__.py requires explicit user approval.",
+      "source": "CLAUDE.md / Hard rules + Frozen files",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d010",
+      "title": "Phase 3 supervisor topology - WS_PORT 8891 + WEB_PORT 8890",
+      "decided_at": "2026-04-22",
+      "summary": "Two parallel supervisors run: ops/rc_supervisor.py (frozen, RC runtime supervisor) and agents/supervisor.py (Phase 3 framework, NOT frozen per s243, ports 8891 WS + 8890 web, proxied by /api/analyze). The RC :8888 dashboard runs in the rc_supervisor process; the Phase 3 framework is independent. RC-Phase3-Supervisor serves stale code - no restart_trigger equivalent; bounce via schtasks /End /TN RC-Phase3-Supervisor then /Run after editing the preflip-mirror chain or it broadcasts stale WS health.",
+      "source": "CLAUDE.md / Topology + reference_two_supervisors.md",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d011",
+      "title": "Tailnet topology - 3 machines, prefer tailnet hostnames",
+      "decided_at": "2026-04-22",
+      "summary": "Legion (legion-rc / 100.70.22.55 / LAN 192.168.8.230) runs RC + supervisor + vision server + web dashboard. Game-PC (gamepc-rc / 100.95.66.128 / LAN 192.168.8.237) runs League + Chrome on secondary monitor (panel 1920x1280 native at 100% scale). Peer (peer-host / <peer-tailnet-ip>) is cross-Claude peer for RC<->Peer bridge. All three in tailnet tailc150de.ts.net. Prefer tailnet hostnames over LAN IPs (MagicDNS old hostname de-registers instantly on rename). Vision runs in-process at 127.0.0.1:8889.",
+      "source": "CLAUDE.md / Topology",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d012",
+      "title": "Agent 6 auditor authority + scope",
+      "decided_at": "2026-04-22",
+      "summary": "Agent 6 (Opus 4.7, ephemeral) owns codebase health, perf, safeguards, scraper reweighting for Phase 3 framework. NOT responsible for coach output quality (Agent 4). Autonomous edits permitted on: lib/http/blocklist.json, agents/agent6_auditor/safeguards/*, agents/agent6_auditor/source_quality.json, rotating-log retention, firewall-adjacent ops/ scripts. Propose-and-queue for everything else via agents/agent6_auditor/proposals/<ts>-<label>/. NO cross-machine authority - never write to \\\\192.168.8.237\\RCClient\\*. Reads resolved_decisions.json as source of truth for locked decisions.",
+      "source": "CLAUDE.md + agents/agent6_auditor/charter.md",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d013",
+      "title": "Game-end 0x50 BSOD root cause - DXGI screen-agent disabled",
+      "decided_at": "2026-05-10",
+      "summary": "Continuous DXGI screen-agent on Game-PC stays DISABLED at boot. Root cause traced to Duet (iPad) virtual-display + main-monitor resolution swap at match-end (1920x1080 -> 1440p) + GPU driver crash; vgk.sys is downstream symptom not root. On-demand mcp__gamepc__capture_monitor is the separate BSOD-clean path but stays operator-gated ('now' / 'got it'); re-confirm after Vanguard/League updates. Do NOT re-enable the continuous DXGI agent without a fix to the resolution-swap window.",
+      "source": "CLAUDE.md / Settled + feedback_gamepc_screen_capture_bsod.md",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d014",
+      "title": "Bridge mechanics - core.bridge.send() for outbound, asymmetric paths",
+      "decided_at": "2026-05-02",
+      "summary": "RC<->Peer bridge live over Tailscale since 2026-05-02; opt-in via cross_project: true in memory frontmatter. Outbound MUST use core.bridge.send() which routes ONLY to Peer. target=gamepc requires direct POST to Legion local /api/bridge with explicit id (Game-PC polls Legion, not vice versa). Bridge skill peer auto-invoke is unreliable - /process-bridge-tasks does not reliably auto-fire on Peer/Game-PC; manual 'see what is on the bridge' nudge is the recovery path.",
+      "source": "CLAUDE.md / Bridge + reference_rc_peer_bridge.md + reference_bridge_dispatch_target_paths.md",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d015",
+      "title": "Daemon Slayer engine version is authoritative via /health + current.txt",
+      "decided_at": "2026-05-04",
+      "summary": "Live DS truth = data/daemon_slayer/current.txt + agents/daemon_slayer/__init__.py ENGINE_VERSION + DS :8893 /health endpoint. Do NOT trust ledger recollection of patch/ENGINE. DS coverage %/match-row prose is a DS-batch docs-sync job, never recomputed in a general sync (nested registry schema; flat count mis-parses). After ENGINE_VERSION bump, DS server is NOT supervisor-watched; taskkill the pid + relaunch via schtasks /Run /TN RC-DaemonSlayer per reference_ds_server_not_supervisor_watched.",
+      "source": "CLAUDE.md / Settled + reference_ds_server_not_supervisor_watched.md + feedback_ds_coverage_prose_recompute.md",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d016",
+      "title": "Keystone fix - ARAM Mayhem reports queueId 2400 (not 920)",
+      "decided_at": "2026-04-29",
+      "summary": "ARAM Mayhem queue ID is 2400 (KIWI gameMode), NOT 920 (legacy Poro King retired pre-s232). The phase-driven view-router is proven correct; cs.is_aram rendering path is item-87-preserved. The dead web/js/dashboard.js carries a stale 920 ref at dashboard.js:5055 (confirmed-dead legacy, leave it). The augment LCU/:2999 API is a confirmed dead-end (no capture-free augment API mid-game); augment-OCR into the coach is the proven path.",
+      "source": "CLAUDE.md / Settled / item 87",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d017",
+      "title": "Arena queue ID is 1750 (CHERRY mapId 30) post-item-180",
+      "decided_at": "2026-05-24",
+      "summary": "Arena live queue = 1750 (CHERRY mapId 30); 1700/1710 both retired. Direct POST {queueId:1700} = 500 INVALID_LOBBY; {queueId:1750} = 200 OK. 1700/1710 retained as legacy classifier aliases in JS for rewind_history.db historical data only; lobby CREATE POSTs use 1750 exclusively. Practice Tool create body MUST carry explicit queueId:3140 in customGameLobby body. is_brawl: queue_id == 480 is permanently dropped (Brawl retired s214; 480 = Swiftplay in 16.10). Live LCU catalog at /lol-game-queues/v1/queues is the authoritative queue-ID source.",
+      "source": "CLAUDE.md / item 180 + live LCU verification",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d018",
+      "title": "Dashboard UI sizing baseline - 1920x1080 Chrome windowed",
+      "decided_at": "2026-04-30",
+      "summary": "Authored at 1920x1080 Chrome windowed (usable viewport ~1920x920 with chrome chrome present). main flex-grows. No 100vh math. F11 fullscreen is optional and recovers chrome chrome - main flex-grows into the extra height (no layout pinned to 1280). Dashboard temp-relocated to monitor 1 for UI work was a TEMP 2026-05-10 measure - self-removing. Dashboard :8888 is HTTPS (self-signed); HTTP RSTs pre-Python and looks wedged.",
+      "source": "CLAUDE.md / Web dashboard + project_dashboard_ui_baseline.md",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d019",
+      "title": "Brawl mode retired from champ-select (s214)",
+      "decided_at": "2026-05-14",
+      "summary": "Brawl mode is retired from champ-select (s214); legacy brawl backend is left as deadcode for a separate cleanup pass. Do NOT re-enable Brawl in mode selectors or champion picker; queue 480 (which was Brawl) is now Swiftplay in 16.10 per live LCU catalog.",
+      "source": "CLAUDE.md / Settled",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d020",
+      "title": "Phase 3 framework version pin - phase3-1.1",
+      "decided_at": "2026-04-22",
+      "summary": "EXPECTED_DECISIONS_VERSION in agents/_supervisor_common.py = 'phase3-1.1'. On supervisor startup _verify_decisions_version checks resolved_decisions.json version field matches this constant. Bump this constant whenever resolved_decisions.json version increments AND the code has been updated to honour the new contract. The version stamp + this constant gate any framework migration.",
+      "source": "CLAUDE.md / Settled + agents/_supervisor_common.py",
+      "authority": "operator"
+    }
+  ],
+  "topology": {
+    "legion_pc": "192.168.8.230",
+    "game_pc": "192.168.8.237",
+    "moon_pc": "decommissioned",
+    "install_root": "C:\\Riot Commander\\"
+  },
+  "agents": {
+    "0": {
+      "role": "gatekeeper",
+      "substrate": "python"
+    },
+    "1": {
+      "role": "lead",
+      "substrate": "python"
+    },
+    "2": {
+      "role": "backend",
+      "substrate": "ephemeral_llm",
+      "model": "claude-sonnet-4-6"
+    },
+    "3": {
+      "role": "testing",
+      "substrate": "python_plus_ephemeral_llm",
+      "model": "claude-sonnet-4-6"
+    },
+    "4": {
+      "role": "coach_mentor",
+      "substrate": "ephemeral_llm",
+      "model_default": "claude-sonnet-4-6",
+      "model_deep": "claude-opus-4-7"
+    },
+    "5": {
+      "role": "ui",
+      "substrate": "ephemeral_llm",
+      "model": "claude-sonnet-4-6"
+    },
+    "6": {
+      "role": "auditor",
+      "substrate": "ephemeral_llm",
+      "model": "claude-opus-4-7"
+    },
+    "7": {
+      "role": "user_context",
+      "substrate": "warm_llm_during_play",
+      "model": "claude-haiku-4-5"
+    }
+  },
+  "panels": {
+    "roster": [
+      "minimap_or_arena_map",
+      "right_now",
+      "next",
+      "next_milestone",
+      "item_build",
+      "team_directive",
+      "augments"
+    ],
+    "mode_visibility": {
+      "sr_draft": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "sr_ranked": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "aram": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "arena": [
+        "1A",
+        2,
+        3,
+        4,
+        5,
+        7
+      ],
+      "brawl": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  },
+  "latency_tiers": {
+    "right_now": "1-2s",
+    "next": "~8s",
+    "next_milestone": "30-60s",
+    "item_build": "event_driven",
+    "team_directive": "~8s",
+    "augments": "event_driven",
+    "minimap": "matches_right_now"
+  },
+  "transport": "websocket_end_to_end",
+  "sources": [
+    "live_client",
+    "lcu",
+    "ddragon",
+    "aggregator D",
+    "ugg"
+  ],
+  "scraper_discipline": {
+    "user_agent": "RiotCommander/3.0",
+    "rate_limit": "<=1 req/sec per hostname",
+    "respect_robots_txt": true,
+    "circuit_breaker_owner": "agent6",
+    "cease_and_desist_fallback": "curated_jsons"
+  },
+  "fallback": "last_known_greyed_plus_staleness_indicator",
+  "learn_adapt": {
+    "axis": "per_champion_x_per_mode_plus_matchup_modifier_at_5_games",
+    "save_intervals": "event_triggered_plus_post_match_summary",
+    "ingestion_trigger": "queued_idle_after_2min_idle",
+    "manual_feedback": false,
+    "autonomy": {
+      "autonomous_data_json": true,
+      "propose_and_queue_code_and_prompts": true
+    },
+    "data_quality_signal_path": "agent4_files_task_to_agent6"
+  },
+  "db": {
+    "strategy": "separate_db_per_mode",
+    "files": [
+      "sr_draft.db",
+      "sr_ranked.db",
+      "aram.db",
+      "arena.db",
+      "brawl.db"
+    ],
+    "seed_source": "data/rewind_history.db",
+    "seed_size": "1.62 GB",
+    "seed_games": 2800
+  },
+  "bypass_mode": {
+    "flag": "--dangerously-skip-permissions",
+    "hard_gates": [
+      1,
+      7,
+      8
+    ],
+    "soft_gate_agent0": [
+      5
+    ],
+    "ungated": [
+      2,
+      3,
+      4,
+      6
+    ],
+    "outbound_net_control": "blocklist_via_lib_http",
+    "cross_machine_mechanism": "smb_share_cmdkey_persistent"
+  },
+  "cross_machine": {
+    "share_unc": "\\\\192.168.8.237\\RCClient",
+    "writable_zones": [
+      "\\\\192.168.8.237\\RCClient\\forwarder\\",
+      "\\\\192.168.8.237\\RCClient\\web\\"
+    ],
+    "credential_store": "cmdkey_on_legion_under_target_192.168.8.237",
+    "auth_user": "Administrator",
+    "forwarder_restart_signal": "\\\\192.168.8.237\\RCClient\\forwarder\\restart_trigger.txt"
+  },
+  "agent0_rejection": {
+    "reasons_1_2_3_6": "dead_letter_immediately",
+    "reasons_4_5": "auto_retry_once_then_dead_letter"
+  },
+  "parallelism": {
+    "model": "event_loop_async_supervisor",
+    "deterministic_agents": [
+      0,
+      1,
+      3
+    ],
+    "ephemeral_llm_agents": [
+      2,
+      4,
+      5,
+      6
+    ],
+    "warm_llm_agents": [
+      7
+    ],
+    "warm_window": "from_ui_open_or_game_start_until_30min_idle_or_ui_close"
+  },
+  "post_setup_first_task": "agent6_full_audit_pass"
+}
