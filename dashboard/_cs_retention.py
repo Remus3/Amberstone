@@ -1,7 +1,7 @@
 # arch: champ-select snapshot retention across no-draft transition | section=dashboard | frozen=no
 """Champ-select snapshot retention across the fast no-draft transition.
 
-ARAM (450) / ARAM Mayhem (KIWI, 2400) / Arena (1700) have no ban/pick
+ARAM (450) / ARAM Mayhem (KIWI, 2400) / Arena (1750) have no ban/pick
 draft - champ-select is a short bench / reroll / augment window that
 flips ChampSelect → GameStart → InProgress in well under the dashboard
 snapshot path's latency budget:

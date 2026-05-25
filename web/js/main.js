@@ -3187,13 +3187,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     UTILITY: "/icons/positions/utility.png",
     FILL: "/icons/positions/fill.png",
   };
-  // SR map queue ids - controls strip is SR-only. ARAM (450/920),
-  // Arena (1700), Brawl (1300/900/1900/1400) hide the strip entirely.
+  // SR map queue ids - controls strip is SR-only. ARAM (450/920/2400),
+  // Arena (1750 live / 1700/1710 legacy) hide the strip entirely.
   // s162 (2026-05-10): SR map queue ids - controls strip is SR-only.
   // Includes Swiftplay (480) - added 2026-05-10 from operator's live
   // mode list. Brawl modes (NEXUSBLITZ/etc) removed since Brawl is no
-  // longer a selectable queue per Riot. ARAM (450/920), Arena (1700)
-  // hide the strip entirely.
+  // longer a selectable queue per Riot. ARAM (450/920/2400) + Arena
+  // (1750) hide the strip entirely. 2026-05-24 (#89): Arena live queue
+  // confirmed 1750 (was 1700 pre-16.10).
   const SR_QUEUE_IDS = new Set([
     400, 420, 430, 440, 480, 700,    // Normal Draft, Ranked Solo, Normal Blind, Ranked Flex, Swiftplay, Clash
     830, 840, 850, 870, 880, 890,    // Co-op vs AI variants (Intro/Beginner/Intermediate)
@@ -4226,7 +4227,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     420:  ["Ranked Solo - match decides LP. Don't dodge unless griefed.",
            "Ban on what enemy team comp / role threats."],
     440:  ["Ranked Flex - premade up to 5; matchmaking pools differ from solo."],
-    1700: ["Arena - 6 teams of 3. Pick a synergy trio.",
+    1750: ["Arena - 6 teams of 3. Pick a synergy trio.",
            "Anvil decisions matter more than build path. Read the augment."],
   };
   // s162 v2: status text removed from the lobby card per operator. Stub

@@ -32,7 +32,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
           objective-control + soul + baron + tower diff
       - ARAM / Mayhem (queueId 450 / 2400 / KIWI mode):
           tower diff + KDA disparity (only rift to push on)
-      - Arena (queueId 1700/1710 / CHERRY mode):
+      - Arena (queueId 1750 live, 1700/1710 legacy / CHERRY mode):
           deferred - 4 subteam paradigm doesn't fit win/loss heuristics
       - Other: degrade gracefully to operator-side death/KDA proxies.
 
@@ -51,7 +51,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
 
     queue_id  = enriched.get("queue_id") or 0
     game_mode = (enriched.get("game_mode") or "").upper()
-    is_arena   = queue_id in (1700, 1710) or game_mode == "CHERRY"
+    is_arena   = queue_id in (1700, 1710, 1750) or game_mode == "CHERRY"
     is_aram    = (queue_id == 450 or queue_id == 2400
                   or game_mode in ("ARAM", "KIWI"))
     is_sr      = (queue_id in (400, 420, 430, 440)
