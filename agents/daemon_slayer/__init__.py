@@ -1321,7 +1321,95 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.58.0"
+ENGINE_VERSION = "1.59.0"
+# 1.59.0 (cc_conditional wave 21 - Xin Zhao Q + R re-audit closures
+# via the wave 20 `notes` field schema lift. The wave 21 re-audit
+# applied the orchestrator-brief "re-audit ALL prior-wave REJECT
+# carries against the new `notes` field" methodology. Full-fleet
+# scan: 916 forms with non-null notes (98.8% coverage from 1.58.0);
+# CC-verb + condition-gate regex over post-boilerplate-stripped
+# notes text yielded 190 matches; registry-membership filter
+# against `_PER_SPELL_CC_DURATIONS` + cc_conditional primary +
+# sidecar registries reduced to 113 candidates; triage of the top
+# 40 against full effects_descriptions + notes content yielded
+# TWO valid ship candidates - both on Xin Zhao, neither of which
+# the wave 0-20 registry covered.
+#
+# REGISTRY ADDS: +2 primary entries / +1 net-new champion. Xin
+# Zhao becomes the 56th cc_conditional champion + enters with
+# BOTH Q and R simultaneously (rare 2-slot entry in a single wave,
+# parallel to wave 13 Aphelios Q form 3 + wave 18 Briar R single-
+# wave entries). Registry: 68 entries / 55 champs -> 70 entries /
+# 56 champs (60 primary + 7 sidecar -> 62 primary + 7 sidecar).
+# Tag count unchanged at 13.
+#
+# (1) Xin Zhao Q Three Talon Strike 3rd-hit knockup 0.75s flat
+#     across all 5 Q ranks. COND_NTH_HIT (prob 0.7 tag midpoint).
+#     The COND_NTH_HIT tag's own docstring in cc_conditional.py
+#     (line 190) EXPLICITLY named "Xin Zhao Q 3rd-attack knockup"
+#     as the canonical motivating example for the tag, yet through
+#     waves 0-20 the entry was never added. Wave 21 closes the
+#     gap.
+#
+# (2) Xin Zhao R Crescent Sweep target-NOT-Challenged stun 0.75s
+#     flat across all 3 R ranks. COND_TARGET_DEBUFFED (prob 0.5
+#     tag midpoint) with INVERSE semantic - stun fires ONLY on
+#     targets that are NOT currently marked Challenged. SECOND
+#     INVERSE-gated COND_TARGET_DEBUFFED entry after Briar R wave
+#     18 (non-marked-enemy fear). CORRECTS a wave 15 REJECT carry
+#     where the audit caught the knockback displacement and
+#     dismissed the entry as 'not in cc_conditional CC kind
+#     schema' - that was a misread (knockback IS in the schema
+#     AND the same gate fires a stun alongside). The wave 20
+#     schema-lifted notes field confirms the stun is a distinct
+#     CC payload via 'Displacement immunity will also resist the
+#     application of the stun' (the notes field is the canonical
+#     home for spell-shield + displ-imm interaction clauses on
+#     real CC payloads).
+#
+# REJECT verdicts wave 21 (after triaging top 40 candidates from
+# the 113-after-registry-filter pool; full audit report in
+# `agents/daemon_slayer/docs/WAVE_21_AUDIT_NOTES.md`):
+#   - Blitzcrank E, Darius E, Poppy W, Poppy R, Rammus Q,
+#     Sett R, Skarner E, Trundle E, Vel'Koz E, Viego R, Yorick W:
+#     UNCONDITIONAL CC payloads belonging in
+#     `_PER_SPELL_CC_DURATIONS` not cc_conditional. CARRY to a
+#     future _PER_SPELL_CC_DURATIONS expansion wave; operator-
+#     gated since the unconditional registry already covers ~89
+#     champs and adding 11+ more is a separate scope decision.
+#   - LeeSin R: UNCONDITIONAL knockback + airborne primary + 1s
+#     knockup secondary. wave 13/14/15/16 REJECT carry. REJECT.
+#   - Akshan E, Aphelios Q form 2, Aurora R, Bard E, Bel'Veth E,
+#     Briar W form 1, Caitlyn E, Camille R, Kha'Zix Q, Olaf R,
+#     Pyke R, Rek'Sai E form 1, Rumble E, Samira P, Sylas R,
+#     Taliyah R, Tryndamere E, TwistedFate R, Twitch W, Urgot W,
+#     Vex R: notes wording mentions CC verbs in non-CC context
+#     (cast-cancel clauses, self-CC during ability, interaction
+#     clauses, damage modifiers on debuffed targets). REJECT
+#     (false-positive on regex filter).
+#   - Rell W form 1: empowered-AA dash+stun gated on dismounted-
+#     state. CARRY to wave 22+ as operator-decision-gated entry
+#     (wave 15 docstring explicitly REJECT-noted "form-transition
+#     empowered-AA registration" semantic distinct from rage-
+#     meter / mantra-charge patterns).
+#
+# Math preservation: default
+# compute_cc_pressure(include_conditional=False) is BYTE-
+# IDENTICAL to ENGINE 1.58.0 for ALL champions (the wave 21
+# path skips when the flag is False). include_conditional=True
+# callers receive +0.525s (Q 0.75 * 0.7) and +0.375s (R 0.75 *
+# 0.5) = +0.9s expected conditional pressure for Xin Zhao on top
+# of the existing 1.0s unconditional W knockup.
+#
+# Schema preservation: pure-additive on the cc_conditional
+# registry. The notes-field schema lift from ENGINE 1.58.0 was
+# the unblocking artifact (the notes field IS used as authoritative
+# evidence for "the stun" being a real CC payload on Xin Zhao R).
+# No new condition tag introduced. No sidecar entries added.
+# The 7 sidecar entries (Aphelios Q form 3, Gnar W form 1, Hwei
+# E form 2, Jayce E form 0, Karma W form 1, Rell W form 0,
+# Sylas E form 1) are unchanged, 2026-05-25):
+#
 # 1.58.0 (cc_conditional wave 20 - Meraki extractor `notes` field
 # schema lift + Vayne E Condemn terrain-collision stun SHIPPED.
 # Operator-gated decision from item 187 Slice D research note:
