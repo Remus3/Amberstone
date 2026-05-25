@@ -1,4 +1,4 @@
-"""Phase 8 step 1 - queue gate + sr_draft state-builder flag + route shape.
+"""Phase 8 step 1 - queue gate + sr_draft state-builder flag.
 
 Originally shipped as the P8-1 thin-slice tests against an empty-profiles
 stub. P8-2 swapped the stub body for live engine /beam calls, so the
@@ -8,27 +8,21 @@ build_profile shape tests moved to test_sr_draft_profile_engine.py
   - `is_sr_draft_queue` matches {400, 420, 430, 440}, rejects others.
   - `dashboard._state_builder.build_state()` injects `sr_draft` into
     `lcu.champ_select` based on `queue_id`.
-  - The HTTP route handler returns 200 with the locked envelope shape
-    (engine mocked away so the test is fast + deterministic).
 
-Avoids importing the dashboard HTTP server (no port binding in tests);
-the route handler itself is exercised by a stubbed `_send` capture so
-we don't need a live ThreadingHTTPServer.
+The HTTP route handler tests were removed in item 186 along with the
+`/api/sr-draft/profile` route (0 live callers; engine still reachable
+via `build_profile` direct import in test_sr_draft_profile_engine.py).
 """
-import json
 import sys
 import unittest
-import urllib.error
 from pathlib import Path
 from unittest import mock
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from coaches import sr_draft_profile
 from coaches.sr_draft_profile import (
     SR_DRAFT_QUEUE_IDS,
-    clear_cache,
     is_sr_draft_queue,
 )
 
@@ -87,75 +81,6 @@ class TestStateBuilderFlag(unittest.TestCase):
         out = self._run_with(snap)
         self.assertFalse(out["lcu"]["champ_select"]["sr_draft"])
 
-
-class TestRouteHandler(unittest.TestCase):
-    """Exercise routes_sr_draft._serve_sr_draft_profile_post via a fake handler.
-
-    Engine is mocked away (URLError) so profiles=[] and the test only
-    verifies the route layer's contract - type coercion, 400 path, and
-    the locked envelope keys. Engine integration is covered separately
-    in test_sr_draft_profile_engine.py."""
-
-    def setUp(self):
-        clear_cache()
-        # Force engine path to fail so the route returns the empty-profiles
-        # envelope deterministically.
-        self._patcher = mock.patch.object(
-            sr_draft_profile.urllib.request, "urlopen",
-            side_effect=urllib.error.URLError("test: engine off"),
-        )
-        self._patcher.start()
-
-    def tearDown(self):
-        self._patcher.stop()
-
-    def _handler(self):
-        captured = {}
-        class _H:
-            def _send(self, code, body, ctype):
-                captured["code"]  = code
-                captured["body"]  = body
-                captured["ctype"] = ctype
-        return _H(), captured
-
-    def test_happy_path(self):
-        from dashboard.routes_sr_draft import _serve_sr_draft_profile_post
-        h, captured = self._handler()
-        _serve_sr_draft_profile_post(h, {
-            "champion": "Tristana", "role": "BOTTOM", "queue_id": 420,
-        })
-        self.assertEqual(captured["code"], 200)
-        body = json.loads(captured["body"])
-        self.assertEqual(body["champion"], "Tristana")
-        self.assertEqual(body["role"], "BOTTOM")
-        self.assertTrue(body["sr_draft"])
-        self.assertEqual(body["profiles"], [])  # engine mocked off
-        # Locked envelope keys present.
-        for k in ("champion", "role", "queue_id", "sr_draft", "engine_version", "profiles"):
-            self.assertIn(k, body, f"missing key {k}")
-
-    def test_missing_champion(self):
-        from dashboard.routes_sr_draft import _serve_sr_draft_profile_post
-        h, captured = self._handler()
-        _serve_sr_draft_profile_post(h, {"queue_id": 420})
-        self.assertEqual(captured["code"], 400)
-        body = json.loads(captured["body"])
-        self.assertIn("champion", body["error"])
-
-    def test_garbage_types_dont_crash(self):
-        from dashboard.routes_sr_draft import _serve_sr_draft_profile_post
-        h, captured = self._handler()
-        _serve_sr_draft_profile_post(h, {
-            "champion":  "Yuumi",
-            "role":      42,            # not a string → coerced to None
-            "my_team":   "not a list",  # → None
-            "queue_id":  "420",         # not an int → None (sr_draft False)
-        })
-        self.assertEqual(captured["code"], 200)
-        body = json.loads(captured["body"])
-        self.assertIsNone(body["role"])
-        self.assertIsNone(body["queue_id"])
-        self.assertFalse(body["sr_draft"])
 
 
 if __name__ == "__main__":
