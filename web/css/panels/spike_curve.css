@@ -37,6 +37,9 @@
   justify-content: center;
   width: 100%;
   height: 40px;
+  /* operator-exception: chart-axis density inside 40px-tall sparkline
+   * container. Bumping to --fs-xs (16) forces line-height to break the
+   * pinned 40px height constraint. PRESERVED per item 184 v2.1 audit. */
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--text-faint, #9ca3af);
@@ -52,6 +55,9 @@
 .spike-curve-container[data-spk-legend="1"]::before {
   content: "ally vs enemy power";
   display: block;
+  /* operator-exception: chart-axis micro-legend caption above the 40px
+   * sparkline. Design comment notes "40px is too short for inline text"
+   * (line 50). PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   letter-spacing: 0.08em;
   color: var(--text-faint, #9ca3af);

@@ -57,7 +57,7 @@
 
 #view-active-match .am-pane-head {
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.18em;
   color: var(--info);
@@ -74,7 +74,7 @@
 
 #view-active-match .am-empty {
   color: var(--text-faint);
-  font-size: 14px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   letter-spacing: 0.02em;
   padding: 8px 4px;
