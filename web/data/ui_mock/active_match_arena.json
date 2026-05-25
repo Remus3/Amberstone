@@ -1,0 +1,56 @@
+{
+  "mock": true,
+  "note": "Active Match Arena mock fixture (item 188, 2026-05-25). Authored for the UI scale v2.1 page #13 audit ritual + Live UI capture. Activated via ?ui_mock=1&mode=arena URL flags. Arena 6x2=12 player CHERRY shape per item 180 _arena_teams() distil at tools/gamepc_lcu_agent.py:536 (NOT 6x3 per item 183 carry correction). Coach payload mirrors data/arena_coaching_data.json shape; augments not surfaced in active_match.js render (BUILD pane uses items only).",
+  "mode": "arena",
+  "phase": "InProgress",
+  "coach": {
+    "champion": "Jinx",
+    "game_time": "07:24",
+    "level": 12,
+    "items": ["Berserker's Greaves", "Statikk Shiv", "Stormrazor", "Infinity Edge"],
+    "action": "Stay back of duo - poke rocket form before committing",
+    "immediate": "Round 4 starts in 12s - move to NE corner",
+    "next": "Round 5 = First Augment - prefer Crit-stacking augment",
+    "objective": "Stay top 4 - avoid full HP commits without ult charged",
+    "daemon_slayer_picks": [
+      {"name": "Lord Dominik's Regards", "item_id": 3036, "scorer": "carry", "delta_dps": 156},
+      {"name": "Rapid Firecannon", "item_id": 3094, "scorer": "carry", "delta_dps": 102},
+      {"name": "Bloodthirster", "item_id": 3072, "scorer": "carry", "delta_dps": 78},
+      {"name": "Mortal Reminder", "item_id": 3033, "scorer": "carry", "delta_dps": 64},
+      {"name": "Phantom Dancer", "item_id": 3046, "scorer": "carry", "delta_dps": 56}
+    ]
+  },
+  "liveclient": {
+    "activePlayer": {
+      "summonerName": "SamplePlayer",
+      "riotIdGameName": "SamplePlayer",
+      "championStats": {
+        "currentHealth": 2450,
+        "maxHealth": 2680,
+        "resourceValue": 312,
+        "resourceMax": 420
+      }
+    },
+    "gameData": {
+      "gameTime": 444
+    },
+    "allPlayers": [
+      {"summonerName": "SamplePlayer", "championName": "Jinx", "rawChampionName": "Jinx", "team": "100", "items": [{"itemID": 3006, "slot": 0}, {"itemID": 3087, "slot": 1}, {"itemID": 3095, "slot": 2}, {"itemID": 3031, "slot": 3}]},
+      {"summonerName": "MyDuo", "championName": "Karma", "rawChampionName": "Karma", "team": "100", "items": [{"itemID": 3504, "slot": 0}, {"itemID": 3107, "slot": 1}, {"itemID": 3158, "slot": 2}]},
+      {"summonerName": "FoeOneA", "championName": "Garen", "rawChampionName": "Garen", "team": "200", "items": [{"itemID": 6630, "slot": 0}, {"itemID": 3047, "slot": 1}, {"itemID": 3071, "slot": 2}]},
+      {"summonerName": "FoeOneB", "championName": "Lulu", "rawChampionName": "Lulu", "team": "200", "items": [{"itemID": 3504, "slot": 0}, {"itemID": 3107, "slot": 1}]},
+      {"summonerName": "FoeTwoA", "championName": "Yasuo", "rawChampionName": "Yasuo", "team": "300", "items": [{"itemID": 6673, "slot": 0}, {"itemID": 3006, "slot": 1}, {"itemID": 3046, "slot": 2}]},
+      {"summonerName": "FoeTwoB", "championName": "Yone", "rawChampionName": "Yone", "team": "300", "items": [{"itemID": 6673, "slot": 0}, {"itemID": 3006, "slot": 1}]},
+      {"summonerName": "FoeThreeA", "championName": "Mundo", "rawChampionName": "DrMundo", "team": "400", "items": [{"itemID": 3084, "slot": 0}, {"itemID": 3047, "slot": 1}, {"itemID": 3193, "slot": 2}]},
+      {"summonerName": "FoeThreeB", "championName": "Soraka", "rawChampionName": "Soraka", "team": "400", "items": [{"itemID": 3504, "slot": 0}, {"itemID": 3107, "slot": 1}]},
+      {"summonerName": "FoeFourA", "championName": "Zed", "rawChampionName": "Zed", "team": "500", "items": [{"itemID": 6701, "slot": 0}, {"itemID": 3158, "slot": 1}, {"itemID": 3142, "slot": 2}]},
+      {"summonerName": "FoeFourB", "championName": "Akali", "rawChampionName": "Akali", "team": "500", "items": [{"itemID": 6653, "slot": 0}, {"itemID": 3020, "slot": 1}]},
+      {"summonerName": "FoeFiveA", "championName": "Vayne", "rawChampionName": "Vayne", "team": "600", "items": [{"itemID": 3124, "slot": 0}, {"itemID": 3006, "slot": 1}, {"itemID": 3085, "slot": 2}]},
+      {"summonerName": "FoeFiveB", "championName": "Thresh", "rawChampionName": "Thresh", "team": "600", "items": [{"itemID": 3190, "slot": 0}, {"itemID": 3047, "slot": 1}]}
+    ]
+  },
+  "summoner_cooldowns": [
+    {"slot": "D", "name": "Flash", "remaining_s": 64, "rdy_at": "08:28", "tag": "ally-jinx"},
+    {"slot": "F", "name": "Heal", "remaining_s": 22, "rdy_at": "07:46", "tag": "ally-jinx"}
+  ]
+}
