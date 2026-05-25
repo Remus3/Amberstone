@@ -1613,7 +1613,8 @@
   width: 100%;
 }
 .csv-bench-title {
-  font-size: 14px;
+  /* UI scale v2.1 page #9 ARAM (item 181): 14 -> --fs-xs (16). */
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #9ca3af;
   text-transform: uppercase;
@@ -1657,6 +1658,9 @@
 }
 .csv-bench-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-bench-empty {
+  /* UI scale v2.1: 13px is a documented operator exception per item 178
+   * audit (incidental "waiting for reroll" empty-state copy; sub-floor
+   * intentional). Do NOT bump to --fs-xs without operator approval. */
   font-size: 13px;
   font-style: italic;
   color: #6a7280;
