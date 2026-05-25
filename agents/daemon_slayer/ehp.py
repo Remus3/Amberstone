@@ -62,9 +62,13 @@ the damage stack (same place as shields), absorbing all damage types
 (heals don't discriminate by damage type in League's model).
 
 Phase 6 deliberate omissions (deferred to Phase 6.5+):
-* Death's Dance Defy heal-on-takedown (75% bonus AD over 2s) - the
-  takedown-rate assumption is uncertain enough that a first-pass would
-  over- or under-credit; stays defensive_only.
+* Death's Dance Defy heal-on-takedown (75% bonus AD over 2s) -
+  SHIPPED in ENGINE 1.57.0 (2026-05-25). New ``ItemHeal.takedown_gated``
+  schema field + ``_TAKEDOWN_RATE_PER_FIGHT = 0.5`` operator-tunable
+  module constant. Consumer-site gating: ``_collect_heals`` multiplies
+  the resolved per-trigger magnitude by the takedown rate when the
+  flag is set. DD 6333 / Arena 226333 are the first consumers; flipped
+  from defensive_only to a real EHP heal contribution.
 * Lifesteal post-mitigation accuracy - the lifesteal heal model uses
   pre-armor AD (the EHP scorer is enemy-state-agnostic). Real lifesteal
   heals on post-armor damage, so this over-credits by ~30-40% vs a
@@ -242,6 +246,37 @@ is a coarse aggregate model by design.
 """
 
 
+_TAKEDOWN_RATE_PER_FIGHT = 0.5
+"""ENGINE 1.57.0 (2026-05-25) takedown-gated heal trigger rate.
+
+Death's Dance Defy heals 75% bonus AD over 2s on a champion takedown
+(kill or assist within 3s of damage). The per-fight takedown rate is
+inherently champion-role / game-state dependent: a carry farming sidelane
+sees few takedowns, while a teamfighting bruiser may net 1-2 per skirmish.
+This constant approximates the fraction of fights that yield AT LEAST
+ONE Defy trigger. 0.5 (default) matches "every other fight on average"
+or equivalently "one takedown every two skirmishes" - a conservative
+midpoint that does NOT over-credit DD in passive sidelane play and does
+NOT under-credit it in active teamfights.
+
+Operator-tunable via a single module constant (parallels
+``_MISSING_HP_SHARE_FOR_HEALS = 0.5`` Phase 6.5 discipline and
+``_CC_EFFECTIVENESS_FACTOR = 0.5`` ENGINE 1.33.0 precedent).
+
+Applied at the consumer site in ``_collect_heals``: for any ItemHeal
+with ``takedown_gated=True``, the resolved per-trigger magnitude is
+multiplied by this factor before contributing to the heal pool. The
+dataclass ``ItemHeal`` stays convention-agnostic - it composes the
+heal magnitude; the consumer applies the gating.
+
+Calibration note: this is a coarse aggregate model by design. Future
+calibration data (live rewind_history.db role-by-role takedown rate
+analysis) MAY warrant per-role tuning, but the single-constant
+discipline is intentional - varying per-build or per-enemy multiplies
+the calibration surface area beyond what the data supports.
+"""
+
+
 def _collect_heals(
     item_ids: Iterable[str],
     base_ad: float,
@@ -249,6 +284,7 @@ def _collect_heals(
     bonus_ad: float,
     is_ranged: bool,
     missing_hp: float = 0.0,
+    takedown_rate: float = _TAKEDOWN_RATE_PER_FIGHT,
 ) -> tuple[float, tuple[tuple[str, float], ...]]:
     """Resolve every ``ItemHeal`` across the equipped items.
 
@@ -269,6 +305,15 @@ def _collect_heals(
     here; items whose heal carries ``missing_hp_pct=0`` (the 99%
     default case) are unaffected.
 
+    ENGINE 1.57.0 (2026-05-25): ``takedown_rate`` (default
+    ``_TAKEDOWN_RATE_PER_FIGHT`` = 0.5) gates items whose heal is
+    triggered on a champion takedown (kill or assist within a short
+    window). For any ``ItemHeal`` with ``takedown_gated=True``, the
+    resolved per-trigger magnitude is multiplied by this rate before
+    contributing to the totals. Items without the flag (the 99%
+    default case) are unaffected. Death's Dance 6333 / Arena 226333
+    Defy is the first consumer.
+
     Items without a ``heal`` field (the ~99% case) contribute nothing
     and are silently skipped.
     """
@@ -285,6 +330,8 @@ def _collect_heals(
             missing_hp=missing_hp,
             is_ranged=is_ranged,
         )
+        if eff.heal.takedown_gated:
+            magnitude *= max(0.0, takedown_rate)
         if magnitude <= 0:
             continue
         total += magnitude
@@ -708,6 +755,12 @@ def compute_ehp(
     # it through _collect_heals. The full-HP steady-state convention
     # used elsewhere in the scorer is preserved by gating this only
     # on items that opt in via ItemHeal.missing_hp_pct > 0.
+    # ENGINE 1.57.0 (2026-05-25): takedown-gated heals (Death's Dance
+    # Defy 75% bonus AD per takedown) are scaled by the
+    # ``_TAKEDOWN_RATE_PER_FIGHT`` constant inside ``_collect_heals``
+    # for ItemHeal entries with takedown_gated=True. Items without the
+    # flag (the 99% default case including Sundered Sky) are unaffected
+    # and stay at the always-on one-trigger-per-fight model.
     missing_hp = hp * _MISSING_HP_SHARE_FOR_HEALS
     heal_item_total, heal_sources = _collect_heals(
         resolved.item_ids,
