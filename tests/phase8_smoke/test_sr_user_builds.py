@@ -6,21 +6,21 @@ touched by the test suite.
 
 Covers: list_for / add / update / delete CRUD; mtime-aware reload;
 atomic write via tmp.replace; format_for_display shape parity with
-engine profiles; merge invariant in routes_sr_draft (engine + user
-builds coexist with kind tags).
+engine profiles. The route-merge invariant (engine + user builds in
+routes_sr_draft) was retired in item 186 along with the
+/api/sr-draft/profile endpoint.
 """
 import json
 import sys
 import tempfile
 import unittest
-import urllib.error
 from pathlib import Path
 from unittest import mock
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from coaches import sr_draft_profile, sr_user_builds
+from coaches import sr_user_builds
 
 
 class _HermeticStoreCase(unittest.TestCase):
@@ -213,75 +213,6 @@ class TestFormatForDisplay(_HermeticStoreCase):
     def test_non_dict_input(self):
         self.assertIsNone(sr_user_builds.format_for_display("not a dict"))  # type: ignore[arg-type]
 
-
-class TestRouteMergeInvariant(_HermeticStoreCase):
-    """The route layer merges user builds with engine profiles. Verify
-    operator-additive: user builds APPEND, never replace."""
-
-    def setUp(self):
-        super().setUp()
-        sr_draft_profile.clear_cache()
-
-    def _route_handler(self):
-        captured = {}
-        class _H:
-            def _send(self, code, body, ctype):
-                captured["code"]  = code
-                captured["body"]  = body
-                captured["ctype"] = ctype
-        return _H(), captured
-
-    def test_engine_then_user_in_order(self):
-        sr_user_builds.add("Tristana", {
-            "label": "my off-meta",
-            "items": ["IE", "LDR", "Runaan's", "MR", "Kraken", "Yun Tal"],
-        })
-        # Mock engine to return 3 profiles.
-        FAKE_BEAM = {
-            "ranked": [{
-                "item_ids":   ["3031", "3036", "3085", "3033", "6672", "3032"],
-                "item_names": ["Infinity Edge", "Lord Dominik's Regards", "Runaan's Hurricane",
-                               "Mortal Reminder", "Kraken Slayer", "Yun Tal Wildarrows"],
-                "total_gold": 18550, "final_dps": 800.0, "baseline_dps": 37.0,
-                "delta_dps": 763.0, "dps_per_1k_gold": 41.0,
-            }]
-        }
-        def _open(req, **kwargs):
-            class _R:
-                def read(self):  return json.dumps(FAKE_BEAM).encode()
-                def __enter__(self): return self
-                def __exit__(self, *a): return False
-            return _R()
-        with mock.patch.object(sr_draft_profile.urllib.request, "urlopen",
-                               side_effect=_open):
-            from dashboard.routes_sr_draft import _serve_sr_draft_profile_post
-            h, captured = self._route_handler()
-            _serve_sr_draft_profile_post(h, {
-                "champion": "Tristana", "role": "BOTTOM", "queue_id": 420,
-            })
-        self.assertEqual(captured["code"], 200)
-        body = json.loads(captured["body"])
-        self.assertEqual(len(body["profiles"]), 4)  # 3 engine + 1 user
-        # Order: 3 engine first, then user.
-        kinds = [p["kind"] for p in body["profiles"]]
-        self.assertEqual(kinds, ["engine", "engine", "engine", "user"])
-        # User build label preserved.
-        self.assertEqual(body["profiles"][3]["label"], "my off-meta")
-
-    def test_engine_unreachable_user_still_visible(self):
-        sr_user_builds.add("Yuumi", {"label": "user-only", "items": ["Moonstone Renewer", "Locket"]})
-        with mock.patch.object(sr_draft_profile.urllib.request, "urlopen",
-                               side_effect=urllib.error.URLError("off")):
-            from dashboard.routes_sr_draft import _serve_sr_draft_profile_post
-            h, captured = self._route_handler()
-            _serve_sr_draft_profile_post(h, {
-                "champion": "Yuumi", "role": "UTILITY", "queue_id": 420,
-            })
-        body = json.loads(captured["body"])
-        # Engine failure logs notes but user build still appears.
-        self.assertEqual(len(body["profiles"]), 1)
-        self.assertEqual(body["profiles"][0]["kind"], "user")
-        self.assertEqual(body["profiles"][0]["label"], "user-only")
 
 
 if __name__ == "__main__":
