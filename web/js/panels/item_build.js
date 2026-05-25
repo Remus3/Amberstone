@@ -4,6 +4,7 @@ import { state } from '../lib/state.js';
 import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList, diffVariantItemIds } from '../lib/items_index.js';
 import { formatDsDelta } from '../lib/scorer_units.js';
 import { buildOrderPill } from './build_order.js';
+import { dedupFetch } from '../lib/dedup_fetch.js';
 
 const IB = {
   root: el("item-build"),
@@ -155,7 +156,9 @@ function _updateItemBuildHeader(champion, mode) {
   }
   // Lazy fetch
   _itemBuildLabelCache[cacheKey] = null;   // mark in-flight
-  fetch("/api/loadout/list", {
+  // item 186: dedupFetch coalesces with champ_select.js's parallel
+  // POST for the same (champion, mode) tuple.
+  dedupFetch("/api/loadout/list", {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ champion: champion, mode: mode || "aram" }),
@@ -435,7 +438,10 @@ function _ibOnRowClick(variant) {
   }
 }
 function _ibFetchAndRender(champion, mode) {
-  fetch("/api/loadout/list", {
+  // item 186: dedupFetch coalesces with champ_select.js's parallel
+  // POST for the same (champion, mode) tuple within the render-storm
+  // grace window.
+  dedupFetch("/api/loadout/list", {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ champion: champion, mode: mode }),
