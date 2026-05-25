@@ -8,6 +8,7 @@
 #
 #   .\bridge_watcher_install.ps1 -Node gamepc
 #   .\bridge_watcher_install.ps1 -Node peer -BridgeUrl https://127.0.0.1:8888/api/bridge -InstallDir C:\path\to\peer-vip\tools
+#   .\bridge_watcher_install.ps1 -Node gamepc -EnableLanes read,ops
 #
 # What it does (idempotent -- safe to re-run):
 #   1. Detects which node from $env:COMPUTERNAME if -Node not passed.
@@ -27,6 +28,8 @@ param(
     [string]$InstallDir = "",
     [string]$BridgeUrl = "",
     [string]$LegionAgentBase = "https://legion-rc:8888/agent",
+    [ValidateSet("", "read", "ops", "read,ops", "ops,read")]
+    [string]$EnableLanes = "",
     [switch]$InstallHook,
     [switch]$DryRun,
     [switch]$Force
@@ -78,6 +81,7 @@ $TaskName = $d.TaskName
 Write-Step "InstallDir = $InstallDir"
 Write-Step "BridgeUrl  = $BridgeUrl"
 Write-Step "TaskName   = $TaskName"
+Write-Step "EnableLanes = $(if ($EnableLanes) { $EnableLanes } else { '(none; classifier never returns auto-* lanes)' })"
 
 # ── 3. Pull files from Legion ──────────────────────────────────────────
 
@@ -167,6 +171,10 @@ if ($existed) {
 # ── 6. Create scheduled task XML ────────────────────────────────────────
 
 $WatcherPath = [System.IO.Path]::Combine($InstallDir, "bridge_watcher.py")
+$LanesArg = ""
+if ($EnableLanes) {
+    $LanesArg = " --enable-auto-action-lanes $EnableLanes"
+}
 $XmlContent = @"
 <?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -197,7 +205,7 @@ $XmlContent = @"
   <Actions Context="Author">
     <Exec>
       <Command>"$Pythonw"</Command>
-      <Arguments>"$WatcherPath" --node $Node --bridge-url $BridgeUrl --data-dir "$InstallDir" --log-dir "$InstallDir\logs" --poll 15</Arguments>
+      <Arguments>"$WatcherPath" --node $Node --bridge-url $BridgeUrl --data-dir "$InstallDir" --log-dir "$InstallDir\logs" --poll 15$LanesArg</Arguments>
     </Exec>
   </Actions>
 </Task>
