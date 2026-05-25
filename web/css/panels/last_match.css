@@ -58,14 +58,14 @@
 }
 .lm-hero-score[hidden] { display: none; }
 .lm-hero-score-value {
-  font-size: 36px;
+  font-size: var(--fs-xl);   /* item 182 v2.1: 36 -> 37 (hero numeric) */
   font-weight: 800;
   line-height: 1;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .lm-hero-score-tier {
-  font-size: 13px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 13 -> 16 (bump to floor) */
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -99,6 +99,10 @@
 }
 .lm-hero-role-grade[hidden] { display: none; }
 .lm-hero-role-grade-role {
+  /* item 182 v2.1 OPERATOR EXCEPTION: 11px PRESERVED for 3-char role
+   * label (ADC/SUP/JG/MID/TOP). Tight badge density beneath the grade
+   * letter; mirrors item 181 csv-bench-empty 13px + csv-duo-cell-tag
+   * 11px precedent. Do NOT bump without operator approval. */
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -106,7 +110,7 @@
   color: var(--text-dim);
 }
 .lm-hero-role-grade-value {
-  font-size: 30px;
+  font-size: var(--fs-lg);   /* item 182 v2.1: 30 -> 29 (hero grade letter) */
   font-weight: 800;
   line-height: 1;
   color: var(--text);
@@ -114,7 +118,7 @@
   margin-top: 2px;
 }
 .lm-hero-role-grade-tier {
-  font-size: 13px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 13 -> 16 (bump to floor) */
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -138,7 +142,7 @@
 
 /* W/L pill - visible only when LCU enrichment carries a real win flag. */
 .lm-hero-result {
-  font-size: 20px; font-weight: 800;
+  font-size: var(--fs-md); font-weight: 800;   /* item 182 v2.1: 20 -> 22 (W/L pill) */
   letter-spacing: 0.1em;
   padding: 6px 14px;
   border-radius: var(--radius-sm);
@@ -180,7 +184,7 @@
   min-width: 0;
 }
 .lm-hero-champ {
-  font-size: 32px; font-weight: 700; color: var(--text);
+  font-size: var(--fs-xl); font-weight: 700; color: var(--text);   /* item 182 v2.1: 32 -> 37 (champion name hero) */
   cursor: pointer;
   text-decoration: none;
   border-bottom: 1px dashed transparent;
@@ -202,7 +206,7 @@
  * (visual-only removal) so a later slice can reinstate or relocate it. */
 .lm-hero-mode {
   display: none;
-  font-size: 19px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 19 -> 18 (hidden legacy; display:none above) */
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -243,21 +247,21 @@
   cursor: help;
 }
 .lm-hero-stat-label {
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (stat label) */
   font-weight: 600;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .lm-hero-stat-value {
-  font-size: 27px;
+  font-size: var(--fs-stat);   /* item 182 v2.1: 27 -> 26 (stat numeric) */
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 .lm-hero-stat-sub {
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (stat sub) */
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
 }
@@ -315,11 +319,12 @@
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   padding: 3px 8px;
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; rank select) */
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
   width: 100%;   /* s220: span col1 (= KDA+KP% pair width) */
+  min-height: var(--hit-min);   /* item 182 v2.1: 42px hit-target floor */
 }
 .lm-rank-select:hover {
   border-color: var(--accent, #8a8cf0);
@@ -339,26 +344,26 @@
 /* s220 #8: match the hero stat typography (label 13 / value 23) so
  * section 3 reads at the same weight as sections 1 + 2. */
 .lm-rank-cell-label {
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (rank cell label) */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-faint, var(--text-dim));
 }
 .lm-rank-cell-value {
-  font-size: 27px;
+  font-size: var(--fs-stat);   /* item 182 v2.1: 27 -> 26 (rank cell numeric) */
   font-weight: 700;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 .lm-rank-pending {
-  font-size: 15px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 15 -> 16 (bump to floor) */
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
 }
 .lm-kda-text {
-  font-size: 29px; font-weight: 600; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-lg); font-weight: 600; font-variant-numeric: tabular-nums;   /* item 182 v2.1: 29 -> 29 (token swap; KDA hero) */
   color: var(--text);
   /* s-PGR-S2: reserve width for ##/##/## (tabular digits) so a
    * single-digit KDA doesn't shift the ratio/result/grade cells
@@ -367,10 +372,10 @@
   text-align: right;
 }
 .lm-kda-ratio {
-  font-size: 19px; color: var(--text-dim);
+  font-size: var(--fs-sm); color: var(--text-dim);   /* item 182 v2.1: 19 -> 18 (KDA ratio) */
 }
 .lm-hero-grade {
-  font-size: 48px; font-weight: 800; line-height: 1;
+  font-size: var(--fs-display); font-weight: 800; line-height: 1;   /* item 182 v2.1: 48 -> 46 (display tier; grade letter) */
   padding: 4px 18px;
   border-radius: var(--radius-sm);
   background: var(--surface-2, #1a1a22);
@@ -412,18 +417,18 @@
   gap: 2px;
 }
 .lm-stat-label {
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; stat label) */
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .lm-stat-value {
-  font-size: 26px; font-weight: 700;
+  font-size: var(--fs-stat); font-weight: 700;   /* item 182 v2.1: 26 -> 26 (token swap; stat numeric) */
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .lm-stat-sub {
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; stat sub) */
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
 }
@@ -448,12 +453,13 @@
   display: flex; gap: 6px;
 }
 .lm-tab {
-  font-size: 19px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 19 -> 18 (tab nav) */
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 8px 0;
   min-width: 96px;
+  min-height: var(--hit-min);   /* item 182 v2.1: 42px hit-target floor */
   text-align: center;
   background: transparent;
   border: 1px solid transparent;
@@ -496,7 +502,7 @@
 .lm-tab-panel[hidden] { display: none !important; }
 
 .lm-tab-panel-hint {
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (tab panel hint) */
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
   margin-bottom: 8px;
@@ -517,14 +523,14 @@
   grid-template-columns: 110px 1fr auto 1fr;
   align-items: center;
   gap: 8px;
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (chart row default) */
 }
 .lm-chart-label {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-dim);
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; chart label) */
 }
 .lm-chart-bar {
   position: relative;
@@ -557,11 +563,11 @@
   font-weight: 700;
   color: var(--text);
   padding: 2px 8px;
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; chart bar) */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 .lm-chart-vs {
-  font-size: 14px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 14 -> 16 (bump to floor) */
   font-weight: 700;
   color: var(--text-faint, var(--text-dim));
   text-transform: uppercase;
@@ -598,12 +604,12 @@
   display: flex; align-items: baseline; justify-content: space-between;
 }
 .lm-tl-chart-label {
-  font-size: 17px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;   /* item 182 v2.1: 17 -> 18 (timeline label) */
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--text-dim);
 }
 .lm-tl-chart-final {
-  font-size: 21px; font-weight: 800;
+  font-size: var(--fs-md); font-weight: 800;   /* item 182 v2.1: 21 -> 22 (timeline final) */
   font-variant-numeric: tabular-nums;
   color: currentColor;
 }
@@ -631,7 +637,7 @@
   vector-effect: non-scaling-stroke;
 }
 .lm-tl-ribbon-head {
-  font-size: 17px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;   /* item 182 v2.1: 17 -> 18 (timeline ribbon head) */
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--text-dim);
   padding-top: 8px;
@@ -648,7 +654,7 @@
   border: 1px solid var(--border-soft);
   border-left: 3px solid var(--text-dim);
   border-radius: 4px;
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (timeline event row) */
 }
 .lm-tl-ev[data-team="ally"]    { border-left-color: var(--ok,  #8ce5a8); }
 .lm-tl-ev[data-team="enemy"]   { border-left-color: var(--bad, #e07a7a); }
@@ -660,13 +666,13 @@
 }
 .lm-tl-ev-label { color: var(--text); font-weight: 600; }
 .lm-tl-ev-side {
-  font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em;   /* item 182 v2.1: 15 -> 16 (bump to floor) */
   color: var(--text-faint, var(--text-dim));
 }
 .lm-tl-ev[data-team="ally"]  .lm-tl-ev-side { color: var(--ok,  #8ce5a8); }
 .lm-tl-ev[data-team="enemy"] .lm-tl-ev-side { color: var(--bad, #e07a7a); }
 .lm-tl-ev-empty {
-  font-size: 16px; font-style: italic;
+  font-size: var(--fs-xs); font-style: italic;   /* item 182 v2.1: 16 -> 16 (token swap; empty state) */
   color: var(--text-faint, var(--text-dim));
   padding: 4px 0;
 }
@@ -690,7 +696,7 @@
  * bled through. Mirrors the existing .lm-tl-wrap[hidden] pattern. */
 .lm-wpa-wrap[hidden] { display: none; }
 .lm-wpa-head {
-  font-size: 17px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;   /* item 182 v2.1: 17 -> 18 (WPA head) */
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--text-dim);
 }
@@ -707,13 +713,13 @@
   border: 1px solid var(--border-soft);
   border-left: 3px solid var(--text-dim);
   border-radius: 4px;
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; WPA row) */
 }
 .lm-wpa-row[data-side="ally"]    { border-left-color: var(--ok,  #8ce5a8); }
 .lm-wpa-row[data-side="enemy"]   { border-left-color: var(--bad, #e07a7a); }
 .lm-wpa-row[data-side="neutral"] { border-left-color: var(--text-dim); }
 .lm-wpa-rank {
-  font-weight: 700; font-size: 18px;
+  font-weight: 700; font-size: var(--fs-sm);   /* item 182 v2.1: 18 -> 18 (token swap; WPA rank) */
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
 }
@@ -730,17 +736,22 @@
 .lm-wpa-row[data-sign="pos"] .lm-wpa-wpa { color: var(--ok,  #8ce5a8); }
 .lm-wpa-row[data-sign="neg"] .lm-wpa-wpa { color: var(--bad, #e07a7a); }
 .lm-wpa-prob {
-  color: var(--text-dim); font-size: 15px;
+  color: var(--text-dim); font-size: var(--fs-xs);   /* item 182 v2.1: 15 -> 16 (bump to floor) */
   font-variant-numeric: tabular-nums;
 }
 .lm-wpa-side {
-  font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em;   /* item 182 v2.1: 14 -> 16 (bump to floor) */
   color: var(--text-faint, var(--text-dim));
   text-align: right;
 }
 .lm-wpa-row[data-side="ally"]  .lm-wpa-side { color: var(--ok,  #8ce5a8); }
 .lm-wpa-row[data-side="enemy"] .lm-wpa-side { color: var(--bad, #e07a7a); }
 .lm-wpa-foot {
+  /* item 182 v2.1 OPERATOR EXCEPTION: 13px PRESERVED for WPA-foot
+   * caption-style italic micro-text (single-line attribution under
+   * the Phases-that-mattered list). Sub-floor intentional; mirrors
+   * item 181 csv-bench-empty 13px precedent. Do NOT bump without
+   * operator approval. */
   font-size: 13px; color: var(--text-faint, var(--text-dim));
   font-style: italic;
 }
@@ -755,7 +766,7 @@
   gap: 10px;
 }
 .lm-section-head {
-  font-size: 18px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;   /* item 182 v2.1: 18 -> 18 (token swap; section head) */
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -765,7 +776,7 @@
   gap: 10px;
 }
 .lm-section-sub {
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; section sub) */
   color: var(--text-faint, var(--text-dim));
   font-weight: 500;
   text-transform: none;
@@ -782,7 +793,7 @@
 }
 .lm-build-row[hidden] { display: none; }
 .lm-build-row-label {
-  font-size: 15px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 15 -> 16 (bump to floor) */
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -838,7 +849,7 @@
   background: var(--surface-2, #1a1a22);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (build item) */
 }
 .lm-build-item img {
   width: 32px; height: 32px; border-radius: 4px;
@@ -851,7 +862,7 @@
 }
 
 .lm-pending {
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (pending placeholder) */
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
   padding: 8px 4px;
@@ -879,7 +890,7 @@
 }
 .lm-tc-group-head {
   display: flex; align-items: center; gap: 12px;
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (group head ALLY/ENEMY) */
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -888,7 +899,7 @@
   border-bottom: 1px dashed var(--border-soft);
 }
 .lm-tc-group-result {
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; group result pill) */
   padding: 2px 8px;
   border-radius: 4px;
   background: var(--surface);
@@ -927,7 +938,7 @@
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
-  font-size: 19px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 19 -> 18 (participant row default) */
 }
 .lm-tc-row.lm-tc-row-me {
   background: rgba(138, 140, 240, 0.08);
@@ -951,7 +962,7 @@
   white-space: nowrap;
 }
 .lm-tc-tag {
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (player riot tag) */
   color: var(--text-faint, var(--text-dim));
   font-weight: 500;
 }
@@ -977,6 +988,11 @@
 .lm-tc-score[data-kind="mvp"]  { color: var(--grade-s, #f5b87c); }
 .lm-tc-score[data-kind="svp"]  { color: var(--accent, #8a8cf0); }
 .lm-tc-score-badge {
+  /* item 182 v2.1 OPERATOR EXCEPTION: 14px PRESERVED for 3-char MVP/SVP/#N
+   * badge density in the per-row score cell (44px score column width must
+   * fit "MVP"/"SVP"/"#10"). Bumping to floor would force the column wider
+   * and shrink the player-name column. Mirrors item 181 csv-bench-empty
+   * 13px precedent. Do NOT bump without operator approval. */
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -984,7 +1000,7 @@
 }
 .lm-tc-score[data-kind="rank"] .lm-tc-score-badge { font-weight: 700; }
 .lm-tc-score-value {
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (per-row score 0-100 value) */
   font-weight: 800;
   color: var(--text);
   line-height: 1;
@@ -1039,6 +1055,10 @@
   gap: 1px;
 }
 .lm-tc-mvp-badge {
+  /* item 182 v2.1 OPERATOR EXCEPTION: 14px PRESERVED for the 3-char
+   * MVP/SVP badge text inside the per-side MVP card header. Same
+   * rationale as .lm-tc-score-badge above; tight kerning + uppercase
+   * keeps the badge tile-shaped. Do NOT bump without operator approval. */
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.10em;
@@ -1050,7 +1070,7 @@
   color: var(--accent, #8a8cf0);
 }
 .lm-tc-mvp-name {
-  font-size: 18px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 18 -> 18 (token swap; MVP card name) */
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
@@ -1069,11 +1089,17 @@
   line-height: 1;
 }
 .lm-tc-mvp-score-value {
-  font-size: 26px;
+  font-size: var(--fs-stat);   /* item 182 v2.1: 26 -> 26 (token swap; MVP score numeric) */
   font-weight: 800;
   color: var(--text);
 }
 .lm-tc-mvp-score-tier {
+  /* item 182 v2.1 OPERATOR EXCEPTION: 11px PRESERVED for MVP/SVP-card
+   * score-tier micro-label (single-word "EXCELLENT"/"GOOD"/"OK"/"BAD"
+   * under the numeric score on the right edge of the MVP card).
+   * Sub-floor intentional; mirrors role-grade-role 11px exception
+   * above + item 181 csv-duo-cell-tag 11px precedent. Do NOT bump
+   * without operator approval. */
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -1093,7 +1119,7 @@
 .lm-tc-lvl,
 .lm-tc-kda,
 .lm-tc-cs {
-  font-size: 19px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 19 -> 18 (per-row LVL/KDA/CS cells) */
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1160,7 +1186,7 @@
 .lm-tc-aug[data-rarity="bronze"]    { border-color: #c08457; }
 
 .lm-tc-empty {
-  font-size: 16px;
+  font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; empty state) */
   font-style: italic;
   color: var(--text-faint, var(--text-dim));
   padding: 4px 0;
@@ -1186,7 +1212,7 @@
 .lm-qr-col-chronic  { border-top-color: var(--bad,  #e07a7a); }
 
 .lm-qr-col-head {
-  font-size: 19px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;   /* item 182 v2.1: 19 -> 18 (quick-review col head) */
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text);
@@ -1200,7 +1226,7 @@
   gap: 6px;
 }
 .lm-qr-list li {
-  font-size: 20px;
+  font-size: var(--fs-md);   /* item 182 v2.1: 20 -> 22 (quick-review list body) */
   color: var(--text);
   padding: 8px 12px;
   background: var(--surface);
@@ -1230,7 +1256,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  font-size: 18px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 18 -> 18 (token swap; deep-review CTA head) */
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1238,6 +1264,7 @@
   cursor: pointer;
   text-align: left;
   transition: background 0.12s ease, border-color 0.12s ease;
+  min-height: var(--hit-min);   /* item 182 v2.1: 42px hit-target floor */
 }
 .lm-section-head-btn:hover {
   background: var(--accent-soft, rgba(138, 140, 240, 0.08));
@@ -1256,7 +1283,7 @@
 
 /* Empty-state - when match_history.db has no rows yet */
 .lm-empty {
-  font-size: 17px;
+  font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (empty state) */
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
   padding: 6px 0;
