@@ -35,8 +35,30 @@ class ArmorFactorTests(unittest.TestCase):
         self.assertAlmostEqual(_armor_factor(100), 0.5)
 
     def test_negative_armor_amplifies(self) -> None:
-        # -100 armor → 2 - 100/200 = 1.5
+        # -100 armor -> 2 - 100/200 = 1.5
         self.assertAlmostEqual(_armor_factor(-100), 1.5)
+
+    def test_armor_factor_parametrized_sweep(self) -> None:
+        # Item 184 Phase 7 - parametrize across the +/-120 boundary
+        # range to lock both branches (positive: 100/(100+a), negative:
+        # 2 - 100/(100-a)) including the +/-1 / +/-99 boundaries
+        # closest to the branch flip at a=0.
+        cases = [
+            (-120, 2.0 - 100.0 / 220.0),
+            (-99,  2.0 - 100.0 / 199.0),
+            (-48,  2.0 - 100.0 / 148.0),
+            (-24,  2.0 - 100.0 / 124.0),
+            (-1,   2.0 - 100.0 / 101.0),
+            (0,    1.0),
+            (1,    100.0 / 101.0),
+            (24,   100.0 / 124.0),
+            (48,   100.0 / 148.0),
+            (99,   100.0 / 199.0),
+            (120,  100.0 / 220.0),
+        ]
+        for armor, expected in cases:
+            with self.subTest(armor=armor):
+                self.assertAlmostEqual(_armor_factor(armor), expected, places=9)
 
 
 class AatroxDpsBaselineTests(unittest.TestCase):
