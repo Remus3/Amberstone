@@ -257,7 +257,13 @@ class TestQueueNameMap(unittest.TestCase):
     def test_known_queues(self):
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[420], "Ranked Solo/Duo")
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[450], "ARAM")
-        self.assertEqual(agent._LOBBY_QUEUE_NAMES[1700], "Arena")
+        # 2026-05-24 (#89): live Arena queue is 1750 (Arena 3x6 CHERRY).
+        # 1700 retired from /lol-game-queues/v1/queues catalog; the agent
+        # name-map drops 1700 entirely - legacy alias retained only in
+        # _CSV_QUEUE_NAMES (dashboard JS) for replay/history match data.
+        self.assertEqual(agent._LOBBY_QUEUE_NAMES[1750], "Arena")
+        self.assertNotIn(1700, agent._LOBBY_QUEUE_NAMES)
+        self.assertNotIn(1710, agent._LOBBY_QUEUE_NAMES)
         # s234 (#89): ARAM Mayhem is queue 2400 (KIWI gameMode, confirmed
         # s220 / item 87) - NOT 920. 920 is Legend of the Poro King; the
         # old map labelled 920 "ARAM Mayhem", which is why the lobby
@@ -402,7 +408,8 @@ class TestCaptureStateLobby(unittest.TestCase):
         self.assertEqual(state["lobby"]["members"][0]["riot_id"], "OK#NA1")
 
     def test_arena_queue_name(self):
-        rs = self._stub_lobby(queue_id=1700)
+        # 2026-05-24 (#89): live Arena queue 1750 (was 1700 pre-16.10).
+        rs = self._stub_lobby(queue_id=1750)
         with mock.patch.object(agent, "lcu_request",
                                side_effect=_patch_lcu(rs)):
             state = agent.capture_state()

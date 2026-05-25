@@ -235,8 +235,7 @@ _LOBBY_QUEUE_NAMES = {
     1160: "TFT Double Up",
     1300: "Nexus Blitz",
     1400: "Ultimate Spellbook",
-    1700: "Arena",
-    1710: "Arena (no AFK)",
+    1750: "Arena",  # Arena 3x6 (CHERRY mapId 30). Was 1700/1710 pre-16.10 - retired from live LCU /lol-game-queues/v1/queues catalog 2026-05-24 (#89 verification).
     1810: "Swarm",
     1820: "Swarm (Solo)",
     1830: "Swarm (Duo)",
@@ -814,7 +813,6 @@ def capture_state() -> dict:
             state["champ_select"] = {
                 "queue_id":     queue_id,
                 "is_aram":      queue_id in _ARAM_QUEUE_IDS,
-                "is_brawl":     queue_id == 480,
                 # s171.3: local_cell exposed so the dashboard's role
                 # resolver (_csvResolveRole) can find my_team[i] by
                 # cellId == local_cell to read assignedPosition. Without
@@ -858,7 +856,7 @@ def capture_state() -> dict:
             # Arena game - until then we only forward the subteam roster
             # so allies + enemies render correctly; augments stays an
             # empty scaffold and ``set_augment_intent`` no-ops.
-            if queue_id in (1700, 1710):
+            if queue_id in (1700, 1710, 1750):  # 1750 = live Arena 3x6 (CHERRY); 1700/1710 retained as legacy aliases for replay/history match data.
                 state["champ_select"]["arena_teams"] = _arena_teams(sess)
                 state["champ_select"]["augments"] = {
                     "my_slots":      ["", "", ""],
@@ -1445,9 +1443,18 @@ def execute_command(cmd: dict) -> dict:
         return {"ok": err is None, "err": err,
                 "riot_id": rid, "summoner_id": target_sid}
     if name == "lobby.create_practice_tool":
-        # Practice Tool uses queue_id 0 + customGameLobby config.
-        # The minimal create payload - Riot does most of the work.
+        # Practice Tool uses queueId 3140 (Multiplayer Practice Tool
+        # Custom, PRACTICETOOL gameMode) + customGameLobby config.
+        # 2026-05-24 (#89): queueId was previously omitted - newer LCU
+        # builds reject the body with 500 INVALID_LOBBY without an
+        # explicit queueId. Live capture via in-client Practice Tool
+        # create -> /lol-lobby/v2/lobby GET confirmed queueId:3140 +
+        # gameMode:PRACTICETOOL + mapId:11. teamSize:1 is fine (the
+        # live lobby's gameConfig reports teamSize:5 + numPlayersPerTeam:5
+        # post-create but the create body's teamSize:1 is accepted).
         body = {
+            "queueId": 3140,
+            "isCustom": True,
             "customGameLobby": {
                 "configuration": {
                     "gameMode": "PRACTICETOOL",
@@ -1461,7 +1468,6 @@ def execute_command(cmd: dict) -> dict:
                 "lobbyName": "RC Practice Tool",
                 "lobbyPassword": "",
             },
-            "isCustom": True,
         }
         _, err = lcu_request("POST", "/lol-lobby/v2/lobby", body)
         return {"ok": err is None, "err": err}

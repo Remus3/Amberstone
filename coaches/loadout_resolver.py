@@ -107,7 +107,7 @@ def _normalize_mode(mode: str) -> str:
     m = (mode or "").lower()
     if "aram" in m or m in ("kiwi", "450", "920"):
         return "aram"
-    if "arena" in m or m in ("1700", "1710"):
+    if "arena" in m or m in ("1700", "1710", "1750"):
         return "arena"
     if "tft" in m or "teamfight" in m:
         return "tft"

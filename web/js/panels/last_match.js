@@ -485,7 +485,7 @@ function _setHero(m, enriched) {
   // we model subteam_placement.
   if (result) {
     const queueId = enriched && enriched.queue_id;
-    const isArenaSubteamMode = (queueId === 1700 || queueId === 1710);
+    const isArenaSubteamMode = (queueId === 1700 || queueId === 1710 || queueId === 1750);
     if (enriched && enriched.win != null && !isArenaSubteamMode) {
       const won = !!enriched.win;
       let label = won ? "VICTORY" : "DEFEAT";
@@ -934,7 +934,7 @@ function _setChart(enriched) {
   const queueId = enriched.queue_id || 0;
   const gameMode = (enriched.game_mode || "").toUpperCase();
   const isAram   = queueId === 450 || queueId === 2400 || gameMode === "ARAM" || gameMode === "KIWI";
-  const isArena  = queueId === 1700 || queueId === 1710 || gameMode === "CHERRY";
+  const isArena  = queueId === 1700 || queueId === 1710 || queueId === 1750 || gameMode === "CHERRY";
   const isSr     = !isAram && !isArena;
 
   const rows = [
