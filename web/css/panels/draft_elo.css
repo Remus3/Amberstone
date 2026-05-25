@@ -13,6 +13,11 @@
   align-items: center;
   gap: 8px;
   padding: 3px 8px;
+  /* operator-exception: inline chip density - the chip nests inside BUILD pane
+   * inline-flex with .de-label / .de-wr / .de-score / .de-sample children; the
+   * 11px container base is the design intent so the chip stays compact next
+   * to the spike-curve sparkline. Bumping to --fs-xs (16) explodes the chip
+   * height and breaks the inline pairing. PRESERVED per item 184 v2.1 audit. */
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -33,12 +38,17 @@
 }
 
 .draft-elo-chip .de-label {
+  /* operator-exception: inline chip micro-label "DRAFT" - density inside
+   * the 11px chip container. PRESERVED per item 184 v2.1 audit. */
   font-size: 10px;
   letter-spacing: 0.10em;
   color: rgba(255, 255, 255, 0.55);
 }
 
 .draft-elo-chip .de-wr {
+  /* operator-exception: chip statistical readout already prominent within
+   * the 11px chip base; bumping to --fs-xs (16) would overflow chip height.
+   * PRESERVED per item 184 v2.1 audit. */
   font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -49,12 +59,16 @@
 .draft-elo-chip .de-wr.de-band-green  { color: var(--signal-good); }
 
 .draft-elo-chip .de-score {
+  /* operator-exception: inline chip Elo delta - density inside 11px chip
+   * container. PRESERVED per item 184 v2.1 audit. */
   font-size: 10px;
   color: rgba(255, 255, 255, 0.65);
   font-variant-numeric: tabular-nums;
 }
 
 .draft-elo-chip .de-sample {
+  /* operator-exception: density-indicator pill with 1px 5px padding inside
+   * the 11px chip container. PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   font-weight: 500;
   padding: 1px 5px;
@@ -94,6 +108,10 @@
   min-width: 220px;
   max-width: 320px;
   padding: 6px 8px 5px;
+  /* operator-exception: hover-only tooltip-micro body; non-interactive overlay
+   * with pointer-events: none + display:none default + :hover toggle. 220-320px
+   * max-width means a 16px base would force the per-row layout to break onto
+   * 3+ lines. PRESERVED per item 184 v2.1 audit. */
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -111,6 +129,8 @@
 }
 
 .draft-elo-chip .de-contrib-head {
+  /* operator-exception: tooltip-micro section header inside the hover-only
+   * contributions overlay. PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -130,6 +150,9 @@
 }
 
 .draft-elo-chip .de-contrib-kind {
+  /* operator-exception: tooltip-micro row kind tag (ally-pair/enemy-pair/
+   * matchup) in 42px min-width column inside hover-only overlay. PRESERVED
+   * per item 184 v2.1 audit. */
   font-size: 8px;
   letter-spacing: 0.08em;
   font-weight: 700;
@@ -169,6 +192,8 @@
   height: 22px;
   line-height: 22px;
   text-align: center;
+  /* operator-exception: tooltip 22x22 portrait fallback initials box - density
+   * fit inside hover-only overlay. PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.04);
@@ -176,6 +201,8 @@
 }
 
 .draft-elo-chip .de-contrib-delta {
+  /* operator-exception: tooltip-micro row delta value inside hover-only
+   * overlay. PRESERVED per item 184 v2.1 audit. */
   font-size: 11px;
   font-weight: 700;
   margin-left: auto;
@@ -185,6 +212,8 @@
 .draft-elo-chip .de-contrib-delta.de-contrib-down { color: #ff8080; }
 
 .draft-elo-chip .de-contrib-n {
+  /* operator-exception: tooltip-micro sample count inside hover-only overlay.
+   * PRESERVED per item 184 v2.1 audit. */
   font-size: 9px;
   color: rgba(255, 255, 255, 0.45);
   font-weight: 400;
