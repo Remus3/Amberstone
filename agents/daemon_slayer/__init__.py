@@ -1321,7 +1321,90 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.57.0"
+ENGINE_VERSION = "1.58.0"
+# 1.58.0 (cc_conditional wave 20 - Meraki extractor `notes` field
+# schema lift + Vayne E Condemn terrain-collision stun SHIPPED.
+# Operator-gated decision from item 187 Slice D research note:
+# "RECOMMENDED `notes` field per spell form at
+# tools/daemon_slayer_abilities_extract.py:453-560. Pure-additive
+# parallel to cast_time/effects_descriptions/parent_resource.
+# Unblocks Kindred E + Diana P + Vayne P." Re-audit against fresh
+# Meraki bulk found the brief premise stale: Kindred E carries
+# only slow + damage (no hard CC); Diana P is pure AS bonus
+# (no CC at all); Vayne P is pure MS bonus (no CC at all).
+# All 3 REJECT under the lift. Vayne E Condemn surfaced as a
+# 4th candidate during the audit: terrain-collision stun 1.5s
+# (flat across all 5 E ranks per Meraki effects_descriptions
+# "If the target collides with terrain, they take bonus
+# physical damage and become stunned for 1.5 seconds"). The
+# `notes` field adds nuance ("Condemn's stun duration starts
+# when Vayne's target collides with a wall (they can be
+# immobilized for up to 2 seconds depending on displacement
+# duration based on distance traveled)") confirming the 1.5s
+# is a fixed value with displacement-distance-scaled padding.
+# Vayne E gets `coexists_with_unconditional=True` because the
+# slot ALSO has the unconditional 0.5s knockback entry in
+# `_PER_SPELL_CC_DURATIONS` (the no-terrain miss path);
+# consumer MAX rule selects the larger of unconditional
+# post-tenacity (0.5s) or conditional post-tenacity
+# (1.5 * 0.3 = 0.45s default). Tag = COND_TERRAIN (prob 0.3)
+# - SECOND consumer of the wave 7 forward-marker tag after
+# Ornn E wave 15. Vayne becomes a NEW cc_conditional
+# champion. Registry growth: 67 entries / 54 champs ->
+# 68 entries / 55 champs. Tag count UNCHANGED at 13. The
+# notes schema lift is FORWARD-MARKER infrastructure for
+# future consumers that need richer per-spell mechanical
+# caveats (spell-shield interactions, cast-cancel clauses,
+# untargetable-during-X notes). Default
+# `compute_cc_pressure(include_conditional=False)`
+# BYTE-IDENTICAL to 1.57.0 for ALL champions, 2026-05-25):
+#
+# SCHEMA LIFT: tools/daemon_slayer_abilities_extract.py
+# NEW `_normalize_notes(raw) -> str | None` helper +
+# `notes: str | None = None` per-form record field threaded
+# through `_build_form(...)`. Pure-additive: damage-block
+# pipeline + effects_descriptions + cast_time +
+# parent_resource UNCHANGED. Re-extracted
+# data/daemon_slayer/16.10.1/champion_abilities.json at
+# 1.58.0 schema (171 champs / 927 forms / 99.0% ok_rate;
+# 916 / 927 forms with non-null notes = 98.8% coverage).
+# Byte-identical coverage shape vs 1.57.0; the new field
+# surfaces for first time without altering existing schema.
+#
+# REGISTRY ADD: agents/daemon_slayer/cc_conditional.py
+# +1 primary entry registry.setdefault("Vayne", {})["E"] =
+# ConditionalCcEntry(... cc_kind="stun", durations_s=(1.5,) * 5,
+# condition=COND_TERRAIN, probability=_p("Vayne", "E", 0.3),
+# coexists_with_unconditional=True).
+# +0 sidecar entries. REGISTRY_TOTAL_ENTRIES bumps 67 -> 68,
+# REGISTRY_TOTAL_CHAMPIONS bumps 54 -> 55. Vayne joins
+# Ornn as a multi-slot cc_conditional champion eventually
+# (Ornn has Q wave 4 + E wave 15; Vayne starts with only
+# E wave 20). FIRST Vayne first-order CC registration
+# anywhere.
+#
+# REJECT verdicts wave 20 (3 brief-named carries):
+# Kindred E Mounting Dread - effects: slow 30% for 1s,
+# 3-stack pounce damage with missing-HP crit threshold.
+# NO hard CC. The 3rd stack is target-tag-stacking damage
+# only. REJECT.
+# Diana P Moonsilver Blade - effects: +15-35% bonus AS
+# scaling to 3x after ability cast. NO CC mechanic at all.
+# REJECT.
+# Vayne P Night Hunter - effects: +30 bonus MS while
+# facing a visible enemy champion. NO CC mechanic at all.
+# REJECT.
+#
+# Brief deviation pattern matches item 187 + item 177
+# precedents (first-attempt-success + agent-self-correction).
+# The brief's 3 named candidates were all REJECT-verified at
+# the parse-strip + notes-lift level. Vayne E is the 4th
+# candidate that the audit surfaced as a genuine winner.
+# Future wave 21+ ship-candidates should re-audit prior
+# REJECT carries against the `notes` field for richer
+# mechanical caveats not in effects_descriptions
+# (operator-gated).
+#
 # 1.57.0 (Death's Dance Defy heal-on-takedown - SHIPPED via NEW
 # ItemHeal.takedown_gated schema field + _TAKEDOWN_RATE_PER_FIGHT
 # operator-tunable module constant. Closes the Phase 6 deliberate
