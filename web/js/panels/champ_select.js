@@ -114,10 +114,10 @@ function handleChampSelect(lcu) {
     .map((id) => CHAMPS.byId[String(id)])
     .filter(Boolean);
   // Map queue_id to adaptation mode. ARAM-family = 450 (Classic) /
-  // 920 (Poro King) / 2400 (Mayhem); Arena = 1700, etc.
+  // 920 (Poro King) / 2400 (Mayhem); Arena = 1750 live (1700/1710 legacy).
   const modeMap = {
     450: "aram", 920: "aram", 2400: "aram",   // ARAM Classic / Poro King / Mayhem
-    1700: "arena", 1710: "arena",    // Arena + variants
+    1750: "arena", 1700: "arena", 1710: "arena",    // Arena live + legacy aliases
     400: "sr_draft", 420: "sr_ranked", 430: "sr_ranked", 440: "sr_ranked",
     830: "sr_ranked", 840: "sr_ranked", 850: "sr_ranked",   // co-op vs AI
   };
@@ -327,15 +327,19 @@ function _csvShowTradeChoice(cellId, anchorEl, opts) {
 let _csvActiveRound = null;
 
 // Mode classifier for the champ-select view. SR draft is the historical
-// default; ARAM (450/920), Arena (1700/1710) get distinct central +
-// enemies layouts because the LCU surface they expose differs
-// structurally - ARAM has a bench but no roles/bans, Arena has 6 teams of 3
-// + augments and no enemy-team field. s214 v2: Brawl mode retired from
-// the live League rotation; brawl branches dropped from this classifier.
+// default; ARAM (450/920/2400), Arena (1750 live, 1700/1710 legacy) get
+// distinct central + enemies layouts because the LCU surface they
+// expose differs structurally - ARAM has a bench but no roles/bans,
+// Arena has 6 teams of 3 + augments and no enemy-team field. s214 v2:
+// Brawl mode retired from the live League rotation; brawl branches
+// dropped from this classifier. 2026-05-24 (#89): Arena live queue
+// flipped 1700 -> 1750 (verified via /lol-game-queues/v1/queues
+// catalog); 1700/1710 retained as legacy aliases for historical match
+// data still in rewind_history.db.
 function _csvDetectMode(cs) {
   if (!cs) return "sr";
   const q = (cs.queue_id | 0);
-  if (q === 1700 || q === 1710) return "arena";
+  if (q === 1700 || q === 1710 || q === 1750) return "arena";
   if (cs.is_aram || q === 450 || q === 920 || q === 2400) return "aram";
   return "sr";
 }
@@ -361,6 +365,7 @@ const _CSV_QUEUE_NAMES = {
   1400: "Ultimate Spellbook",
   1700: "Arena",
   1710: "Arena",
+  1750: "Arena",  // Live Arena 3x6 (CHERRY mapId 30) - 2026-05-24 #89.
   2400: "ARAM Mayhem",
 };
 function _csvQueueLabel(queueId) {
@@ -1556,13 +1561,13 @@ function _csvRenderCcBlendedEhpThreat(cs) {
     return;
   }
   // Map queue_id to mode. ARAM (450), KIWI/Mayhem (2400), Arena
-  // (1700/1710) all benefit from the chip; SR (420 ranked / 400
-  // normal) computes cleanly at identity tenacity. The backend
-  // accepts any of these and defaults to ARAM if absent.
+  // (1750 live, 1700/1710 legacy) all benefit from the chip; SR (420
+  // ranked / 400 normal) computes cleanly at identity tenacity. The
+  // backend accepts any of these and defaults to ARAM if absent.
   let mode = "ARAM";
   const q = cs.queue_id | 0;
   if (q === 2400) mode = "KIWI";
-  else if (q === 1700 || q === 1710) mode = "ARENA";
+  else if (q === 1700 || q === 1710 || q === 1750) mode = "ARENA";
   else if (q === 420 || q === 400 || q === 430 || q === 700) mode = "SR";
   else if (q === 450 || q === 920) mode = "ARAM";
 
@@ -1605,7 +1610,7 @@ function _csvRenderCcConditionalPressure(cs) {
   let mode = "ARAM";
   const q = cs.queue_id | 0;
   if (q === 2400) mode = "KIWI";
-  else if (q === 1700 || q === 1710) mode = "ARENA";
+  else if (q === 1700 || q === 1710 || q === 1750) mode = "ARENA";
   else if (q === 420 || q === 400 || q === 430 || q === 700) mode = "SR";
   else if (q === 450 || q === 920) mode = "ARAM";
 
@@ -2831,7 +2836,7 @@ function _csvResolveRole(cs) {
   // Mayhem is queue 2400 (KIWI), not 920 - 920 is Legend of the Poro
   // King (ARAM-family). Real Mayhem games were falling through to the
   // SR position logic and never showing the MAYHEM badge.
-  if (cs.queue_id === 1700 || cs.queue_id === 1710) return "ARENA";
+  if (cs.queue_id === 1700 || cs.queue_id === 1710 || cs.queue_id === 1750) return "ARENA";
   if (cs.queue_id === 450 || cs.queue_id === 920) return "ARAM";
   if (cs.queue_id === 2400) return "MAYHEM";
   // SR: read assignedPosition from my local cell.
@@ -3332,7 +3337,7 @@ function _csvRenderPickBan(cs, myCid) {
   //   430 Normal Blind  - no bans, alt picks only
   //   440 Ranked Flex   - same as 420
   //   490 Quickplay     - no bans, alt picks
-  // ARAM (450/920) + Arena (1700/1710) don't show the P&B panel
+  // ARAM (450/920/2400) + Arena (1700/1710/1750) don't show the P&B panel
   // (CSS hides it via data-cs-mode), so this gate is SR-only in practice.
   // s214 v2: Brawl branch retired from this list (mode removed).
   const inActiveBanRound = !!(cs.active_round
