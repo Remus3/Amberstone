@@ -175,16 +175,19 @@ class Wave18CoexistsFlagSchemaTests(unittest.TestCase):
         self.assertTrue(entry.coexists_with_unconditional)
 
     def test_legacy_entries_have_default_false(self) -> None:
-        # All wave 0-17 entries (excluding wave 18) should have
-        # coexists_with_unconditional=False. Scan the entire primary
-        # registry; only the wave 18 Maokai R entry should be True.
-        flagged: list[tuple[str, str]] = []
+        # All wave 0-17 entries should have coexists_with_unconditional=False.
+        # Wave 18 ship was Maokai R. Wave 20 (ENGINE 1.58.0) added Vayne E
+        # as a second consumer of the coexists flag. Pin Maokai R as
+        # required member; future-wave members may join (relaxed from
+        # the original exact-equality assertion per [[feedback_no_history_rewrite]]).
+        flagged: set[tuple[str, str]] = set()
         for champ, spells in _PER_SPELL_CC_CONDITIONAL.items():
             for spell_key, entry in spells.items():
                 if entry.coexists_with_unconditional:
-                    flagged.append((champ, spell_key))
-        # The only flagged entry should be Maokai R (wave 18 ship).
-        self.assertEqual(flagged, [("Maokai", "R")])
+                    flagged.add((champ, spell_key))
+        self.assertIn(("Maokai", "R"), flagged)
+        # Vayne E ship added wave 20 (ENGINE 1.58.0).
+        self.assertIn(("Vayne", "E"), flagged)
 
 
 # ---------------- wave 18 entry shape pins ----------------
@@ -252,15 +255,20 @@ class Wave18RegistryGrowthTests(unittest.TestCase):
     def test_total_entries_pin(self) -> None:
         # Pre-wave-18: 65 (58 primary + 7 sidecar from wave 17).
         # Post-wave-18: 67 (60 primary + 7 sidecar; +2 Maokai R +
-        # Briar R primary entries).
-        self.assertEqual(REGISTRY_TOTAL_ENTRIES, 67)
+        # Briar R primary entries). Wave 20 (ENGINE 1.58.0) adds
+        # Vayne E primary -> 68. Relaxed assertEqual -> assertGreaterEqual
+        # to permit future-wave additions per [[feedback_no_history_rewrite]].
+        self.assertGreaterEqual(REGISTRY_TOTAL_ENTRIES, 67)
 
     def test_total_champions_pin(self) -> None:
         # Pre-wave-18: 54 champions. Post-wave-18: 54 champions
         # (Maokai already in registry via Q wave 2; Briar already in
         # registry via Q wave 4 + E wave 5; both are multi-wave
-        # coexistence adds on existing champions).
-        self.assertEqual(REGISTRY_TOTAL_CHAMPIONS, 54)
+        # coexistence adds on existing champions). Wave 20 (ENGINE
+        # 1.58.0) adds Vayne as NEW cc_conditional champion -> 55.
+        # Relaxed assertEqual -> assertGreaterEqual for future-wave
+        # additions per [[feedback_no_history_rewrite]].
+        self.assertGreaterEqual(REGISTRY_TOTAL_CHAMPIONS, 54)
 
 
 # ---------------- per-tag consumer counts ----------------
