@@ -270,7 +270,7 @@ main { display:grid;
 
 .empty .value { color: var(--dim); font-style: italic; font-size: 13px; }
 
-/* ── Game-mode layout ──────────────────────────────────────────────
+/* -- Game-mode layout ----------------------------------------------
    DESIGN BASELINE - all sizes below are tuned for:
      Windows OS display scale : 100%
      Edge browser zoom        : 100%
@@ -1289,7 +1289,7 @@ function fmtClock(s) {
   const ss = String(t%60).padStart(2,'0');
   return mm + ':' + ss;
 }
-// ── Pre-game Lobby renderer (client mode) ──────────────────────────────
+// -- Pre-game Lobby renderer (client mode) ------------------------------
 // Three columns: (1) draft inputs, (2) quick-action buttons, (3) coach response.
 // Inputs persist in localStorage so they survive page reload / app restart.
 const LOBBY_KEY = 'rc-lobby-v1';
@@ -1361,7 +1361,7 @@ function renderLobbyResponse(coach) {
     el.innerHTML = blocks.map(b => '<p>' + markupHTML(b) + '</p>').join('');
   }
 }
-// ── LCU live integration ────────────────────────────────────────────────
+// -- LCU live integration ------------------------------------------------
 let CHAMP_MAP = null;
 async function loadChampMap() {
   if (CHAMP_MAP) return CHAMP_MAP;
@@ -1765,7 +1765,7 @@ function renderBuildCard(srItems, bootsPhase, bootsSwap) {
   }
   return card;
 }
-// ── Phase-1 Combat HUD ──────────────────────────────────────────────
+// -- Phase-1 Combat HUD ----------------------------------------------
 // Cache item/champion icon slugs that returned 404 so we don't keep
 // requesting them every poll (the re-request is what causes 1-frame
 // flicker on empty/missing slots). Attached to window so inline onerror
@@ -1950,7 +1950,7 @@ function renderCombatHUD(lc) {
   return card;
 }
 
-// ── New 3-col game layout (per Desktop/2.txt) ──────────────────────
+// -- New 3-col game layout (per Desktop/2.txt) ----------------------
 function hpBucket(hp, hpMax) {
   if (!hpMax) return '100';
   const pct = (hp / hpMax) * 100;
@@ -2140,7 +2140,7 @@ function renderChampRow(p, colIsRight, teamTotals, roleFlags) {
     </div>
   </div>`;
 }
-// ── Top-bar objectives tracker ──────────────────────────────────────
+// -- Top-bar objectives tracker --------------------------------------
 function renderObjectivesTracker(obj, myOnLeft) {
   const leftSlot  = document.querySelector('.hdr-left');
   const rightSlot = document.querySelector('.hdr-right');
@@ -2720,7 +2720,7 @@ function tickRTClock() {
 tickRTClock();
 setInterval(tickRTClock, 1000);
 
-// ── Input + commands ─────────────────────────────────────────────────────
+// -- Input + commands -----------------------------------------------------
 const TOAST = document.getElementById('toast');
 let toastTimer = null;
 function toast(msg, isErr) {
@@ -2832,7 +2832,7 @@ if (CHAT_LOG) {
   });
 }
 
-// ── Flush workflow ──────────────────────────────────────────────────
+// -- Flush workflow --------------------------------------------------
 const FLUSH_OVL     = document.getElementById('flush-ovl');
 const FLUSH_TITLE   = document.getElementById('flush-title');
 const FLUSH_BODY    = document.getElementById('flush-body');

@@ -9,28 +9,28 @@
   "deploy_script":          "C:\\Riot Commander\\ops\\rc_transactional_deploy.py",
   "api_key_file":           "API-Key-Claude.txt",
 
-  "_supervisor_settings":   "──────────────────────────────────────────────",
+  "_supervisor_settings":   "----------------------------------------------",
   "max_heartbeat_age_seconds": 15,
   "poll_interval_seconds":  1,
   "max_restart_attempts":   5,
   "restart_window_seconds": 120,
   "restart_cooldown_seconds": 300,
 
-  "_bridge_settings":       "──────────────────────────────────────────────",
+  "_bridge_settings":       "----------------------------------------------",
   "bridge_poll_interval_seconds": 0.5,
 
-  "_security":              "──────────────────────────────────────────────",
+  "_security":              "----------------------------------------------",
   "admin_bridge_enabled":   false,
   "_admin_bridge_note":     "Set true ONLY for manual development sessions. NEVER in production. Enables shell/start_process in DevRuntime and run_powershell in FileBridge.",
 
-  "_retention":             "──────────────────────────────────────────────",
+  "_retention":             "----------------------------------------------",
   "image_retention_days":   2,
   "control_file_retention_hours": 24,
   "backup_retention_count": 10,
 
-  "_self_monitor":          "──────────────────────────────────────────────",
+  "_self_monitor":          "----------------------------------------------",
   "_self_monitor_note":     "Primary self-monitor settings live in config/self_monitor_profile.json. Settings below are supervisor-level overrides.",
 
-  "_config_authority":      "──────────────────────────────────────────────",
+  "_config_authority":      "----------------------------------------------",
   "_authority_note":        "Config hierarchy: ops/rc_config.json (ops stack) > config/self_monitor_profile.json (monitor) > config/coach_settings.json (AI coaching). config/runtime.json is install-only, ignored at runtime."
 }
