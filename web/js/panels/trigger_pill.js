@@ -9,6 +9,7 @@
 // Hidden by CSS on client/tft modes; render still runs so the pill
 // is up-to-date the moment the operator drops into a game.
 import { el } from '../lib/helpers.js';
+import { dedupFetch } from '../lib/dedup_fetch.js';
 
 const TP = {
   pill: el("trigger-pill"),
@@ -26,7 +27,9 @@ async function _tick() {
     if (r.ok) hb = await r.json();
   } catch (_) { /* swallow - pill will go grey */ }
   try {
-    const r = await fetch("/api/decisions");
+    // item 186: dedupFetch coalesces with bridge_pending's parallel
+    // /api/decisions poll (20s cadence vs this module's 500ms).
+    const r = await dedupFetch("/api/decisions");
     if (r.ok) {
       const j = await r.json();
       if (Array.isArray(j.pending)) pendingCount = j.pending.length;
