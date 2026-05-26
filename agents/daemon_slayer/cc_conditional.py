@@ -4447,20 +4447,130 @@ def _build_per_spell_cc_conditional_forms() -> (
             "the channel window. Probability tag midpoint 0.5 - "
             "leap-engage with momentum; interruption requires "
             "ranged CC already active on target's team. Form 1 "
-            "(Mount Up Dismounted-state empowered-AA) is a "
-            "separate mechanic REJECTED this wave pending "
-            "operator clarification on form-transition empowered-"
-            "AA registration. FIRST Rell W first-order CC "
-            "registration in the engine. Coexists with the "
-            "unconditional Rell Q stun entry in "
-            "`_PER_SPELL_CC_DURATIONS` on a different spell slot. "
-            "The 0.4s knockup is a separate displacement payload "
-            "not registered here - this entry encodes ONLY the "
-            "0.8s stun. Mechanic captured by ENGINE 1.51.0 "
-            "schema lift (Meraki cast_time field for form 0 = "
-            "0.625s). Form-explicit override key shape: Rell:W:0."
+            "(Mount Up Dismounted-state empowered-AA) shipped "
+            "wave 22 (ENGINE 1.60.0) as a separate sidecar entry "
+            "below. FIRST Rell W first-order CC registration in "
+            "the engine. Coexists with the unconditional Rell Q "
+            "stun entry in `_PER_SPELL_CC_DURATIONS` on a "
+            "different spell slot. The 0.4s knockup is a separate "
+            "displacement payload not registered here - this entry "
+            "encodes ONLY the 0.8s stun. Mechanic captured by "
+            "ENGINE 1.51.0 schema lift (Meraki cast_time field "
+            "for form 0 = 0.625s). Form-explicit override key "
+            "shape: Rell:W:0."
         ),
         form_index=0,
+    )
+
+    # ============================================================
+    # === wave 22 expansion (2026-05-25 / ENGINE 1.60.0) - +1
+    # === entry / 0 net-new champions via same-spell-slot schema
+    # === lift on (Rell, W). Closes item 198 carry (i) Rell W form 1
+    # === operator-gated since wave 15 REJECT pending operator
+    # === clarification on form-transition empowered-AA semantics.
+    # === Operator authority granted item 199 Slice B.
+    # ============================================================
+
+    # Rell W form_index=1 Ferromancy: Mount Up empowered-AA stun:
+    # The base Rell W has TWO forms - form 0 Crash Down (Dismounted
+    # leap, wave 15 ship) and form 1 Mount Up (Dismounted -> Mounted
+    # transform). Form 1 is the Mount Up recast within 3.5s of form
+    # 0 cast. Form 1 grants Mounted state + buffs Rell's next basic
+    # attack within 3.5s to charge the target at 100 bonus range +
+    # 40% bonus AS, with 0.2s cast_time. Upon CHARGE-ARRIVAL or
+    # collision, the empowered AA deals bonus magic damage + STUNS
+    # the target 0.6s flat + flings them 150 units over Rell over
+    # 0.4s.
+    #
+    # Mechanic per Meraki effects_descriptions[0] for form_index=1:
+    # "Active: Rell becomes Mounted, gaining 30% bonus movement
+    # speed decaying over 2 seconds and empowering her next basic
+    # attack within 3.5 seconds to have a 0.2-second cast time, gain
+    # 100 bonus attack range and cause her to charge at the target's
+    # location, during which she also gains 40% bonus attack speed.
+    # Upon arrival or collision, she deals bonus magic damage, stuns
+    # the target for 0.6 seconds, and flings them 150 units over
+    # herself, though not through terrain, over 0.4 seconds."
+    # Meraki cast_time=0.25 for form 1 (the form 1 cast itself; the
+    # empowered AA charge is a separate 0.2s cast on AA delivery).
+    #
+    # Encoding choice: cc_kind=stun (the 0.6s stun is the primary
+    # locked-CC payload; the 0.4s fling is a separate displacement
+    # not registered here - mirrors form 0's exclusion of its own
+    # 0.4s knockup). Single-element duration tuple - 0.6s is flat
+    # across all 5 W ranks (the stun does NOT scale with W rank;
+    # only the cast cooldown + Mount Up shield-conversion scale).
+    #
+    # Condition tag: COND_CHANNEL_COMPLETION - the 2-cast cycle
+    # (form 0 -> form 1 within 3.5s) + the empowered-AA charge
+    # delivery sequence is functionally a multi-step channel. The
+    # stun fires ONLY on charge-arrival completion; if Rell is
+    # interrupted between form 1 cast + AA delivery (silenced /
+    # CC'd / killed) the stun does NOT fire. Pattern parallel to
+    # Sylas E form 1 Abduct (2-cast cycle, wave 12) + Hwei E form
+    # 1 Grim Visage (2-cast cycle, wave 9). Probability midpoint
+    # 0.4 (mid-low, mirroring Sylas E + Hwei E form 1 - 2-input
+    # setup is reliable in Rell combo cadence but the charged AA
+    # is dodgeable within the 100-unit-extended range; the 3.5s
+    # form 1 + 3.5s AA window is generous but operator-gated since
+    # the empowered AA can be denied by knockup / dash / hard CC
+    # on Rell mid-charge).
+    #
+    # Coexists with the wave 15 Rell W form 0 sidecar entry on the
+    # same (Rell, W) slot via the form_index discriminator. This is
+    # the FOURTH same-spell-slot multi-form-coexistence in the
+    # sidecar registry (after Karma W form 0+1, Hwei E form 0+1+2,
+    # Sylas E form 0+1). Default
+    # compute_cc_pressure(include_conditional=False) is BYTE-
+    # IDENTICAL to ENGINE 1.59.0 for Rell - the conditional path
+    # skips when the flag is False. include_conditional=True
+    # callers receive +0.24s (0.6 * 0.4) NEW conditional pressure
+    # on top of the wave 15 form 0 0.4s (0.8 * 0.5) = total
+    # conditional 0.64s for Rell W.
+    #
+    # Form-explicit override key shape: Rell:W:1.
+    registry.setdefault("Rell", {})[("W", 1)] = ConditionalCcEntry(
+        champion="Rell",
+        spell="W",
+        cc_kind="stun",
+        durations_s=(0.6,),
+        condition=COND_CHANNEL_COMPLETION,
+        probability=_p_form("Rell", "W", 1, 0.4),
+        notes=(
+            "W form 1 Ferromancy: Mount Up empowered-AA stun: "
+            "Rell's Dismounted-state W (recast within 3.5s of "
+            "form 0 Crash Down) transforms her to Mounted state "
+            "AND empowers her next basic attack within 3.5s. The "
+            "empowered AA charges the target at 100 bonus range + "
+            "40% bonus AS with 0.2s cast_time. Upon charge-"
+            "arrival or collision, the AA deals bonus magic "
+            "damage + STUNS the target 0.6s flat across all 5 W "
+            "ranks + flings them 150 units over Rell over 0.4s. "
+            "Maps to COND_CHANNEL_COMPLETION on the 2-cast cycle "
+            "(form 0 -> form 1 within 3.5s) + empowered-AA "
+            "charge-delivery sequence. Stun fires ONLY on charge-"
+            "arrival completion; interruption between form 1 cast "
+            "+ AA delivery (silenced / CC'd / killed) cancels the "
+            "stun. Probability tag midpoint 0.4 - mid-low matching "
+            "Sylas E form 1 + Hwei E form 1 parallel 2-input "
+            "setup pattern; the 3.5s form 1 + 3.5s AA window is "
+            "generous but the empowered AA can be denied by hard "
+            "CC on Rell mid-charge. Coexists with the wave 15 "
+            "Rell W form 0 sidecar entry on the same (Rell, W) "
+            "slot via the form_index discriminator (FOURTH same-"
+            "spell-slot multi-form-coexistence in the sidecar "
+            "registry after Karma W 0+1 / Hwei E 0+1+2 / Sylas E "
+            "0+1). The 0.4s fling is a separate displacement "
+            "payload not registered here - this entry encodes "
+            "ONLY the 0.6s stun. Mechanic captured by ENGINE "
+            "1.51.0 schema lift (Meraki cast_time + "
+            "effects_descriptions for form 1; both already "
+            "available since wave 14 cast_time lift). Closes item "
+            "198 carry (i) Rell W form 1 operator-gated since "
+            "wave 15 REJECT carry. Form-explicit override key "
+            "shape: Rell:W:1."
+        ),
+        form_index=1,
     )
 
     return registry
