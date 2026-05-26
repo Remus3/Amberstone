@@ -1,6 +1,114 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-05-26 - item 202 SHIPPED: headless-upgrade run - CI ruff F541 fix + champ_select.js 13 sub-floor typography migration + cc_conditional wave 23 Hecarim R distance-gated fear ENGINE 1.61.0 + housekeeping triple docs sync
+
+Operator triggered `/headless-upgrade` long autonomous run with frozen-file grant + 24-parallel-agents-per-task authority. 51st-streak orchestrator pattern (items 134-189 + slim variants 190-198 + items 199 + 200 + 201 + 202). 4 phases sequential (no parallel-slice merge this session - slim variant). Pre-flight: CI RED on item 201 `64fc7cf` for 2x F541 in tests/test_coach_prompt_format_safe.py blocking main; fixed before any new work per skill discipline. 4 stale remote worktree branches deleted (a7763 + a8256 + ad041 + af19e all fully merged into 64fc7cf).
+
+**Phase 0 `3b4eb2a` (4 files / +85 / -3) fix(ci+coach) item 201 polish:**
+- tests/test_coach_prompt_format_safe.py: drop 2 extraneous f-prefixes (`py -m ruff check --fix` autofix; CI F541 fix; unblocks main since 64fc7cf 4 CI red runs).
+- coach_integration/_coach.py:413-433: detect Anthropic permanent failures (credit balance / rate limit / auth / 400 invalid_request) + write short friendly status text to dashboard CALL pane instead of leaking raw API error JSON.
+- web/js/main.js modePill flip stamps `document.title` baseline "RC . <MODE>" on every mode flip so browser tab doesn't persist prior game's champ/time after returning to lobby.
+- web/js/main.js HTTP-fallback + SSE + LCU-poller paths stamp `state.latest.liveclient + summoner_cooldowns` BEFORE onState() so renderActiveMatch sees fresh data (was rendering "no live game" mid-game).
+- WAKEUP_NOTES.md: item 201 entry already documented.
+
+**Phase 1 `84a999a` (2 files / +193 / -16) chore(ui) champ_select_view.css v2.1 typography token migration + drift guard:**
+Closes item 201 carry-forward "13 typography sub-floor sites on champ select Page #8". The carry-forward had STALE line numbers pointing to `web/js/panels/champ_select.js` (the audit subagent had misidentified the file); actual sub-floor sites live in `web/css/panels/champ_select_view.css`. 19 hardcoded sub-floor declarations surveyed; 12 flipped to `var(--fs-xs)` (16px v2.1 floor); 7 documented operator-exceptions preserved with inline rationale.
+
+Flipped to `var(--fs-xs)`:
+- `.csv-arch-btn .csv-arch-scorer` (11 -> 16)
+- `.csv-pr-title` (13 -> 16)
+- `.csv-pr-tag` (13 -> 16)
+- `.csv-pb-role-label` (11 -> 16)
+- `.csv-pb-role-chip` (15 -> 16)
+- `.csv-pb-bans-header` (14 -> 16)
+- `.csv-pb-pick-header` (14 -> 16)
+- `.csv-sugg-ban-name` (12 -> 16)
+- `.csv-sugg-pickorder-cell .csv-sugg-pickorder-idx` (15 -> 16)
+- `.csv-build-label` (14 -> 16)
+- `.csv-build-rune-name` (14 -> 16)
+- `.csv-build-runes` (12 -> 16)
+
+Operator-exception (sub-floor stays, documented rationale):
+- `.csv-pr-chip` 14px (explicit operator-directed sub-floor per L1202)
+- `.csv-pb-mood-label > span` 14px (parent display:none dead path)
+- `.csv-bench-empty` 13px (item 178 audit)
+- `.csv-build-spell.is-swapped::after` 10px ("!" indicator badge pseudoelement)
+- `.csv-build-spell.empty` 11px (empty placeholder text)
+- `.csv-duo-cell-tag` 11px (item 178 dense badge)
+- `.csv-arena-cell-name` 13px (item 178 dense 15-cell column)
+
+NEW `tests/test_csv_typography_v21_floor.py` 4 tests LOCK:
+(a) the 12 flipped selectors all use var(--fs-xs) (no regression),
+(b) the 7 operator-exception selectors stay at expected px with rationale comment present,
+(c) any NEW sub-floor declaration without joining _OPERATOR_EXCEPTIONS fails CI,
+(d) CSS doesn't gain a non-ASCII byte spike.
+
+ADR-008 asset-hash auto-serves on next dashboard load; no RC restart.
+
+**Phase 2 `084cc50` (43 files / +649 / -55) feat(ds) cc_conditional wave 23 ENGINE 1.61.0 - Hecarim R distance-gated fear:**
+Audit subagent (Explore type) dispatched with explicit don't-redo list of 30+ already-shipped REJECT-verified candidates from waves 0-22. Subagent surveyed 115 candidates NOT in registry; surfaced Hecarim R as the canonical range-gated fear payload that prior waves had not matched against the COND_RANGE_GATED tag.
+
+**SHIP Hecarim R Onslaught of Shadows distance-gated fear** primary registry COND_RANGE_GATED prob 0.4 durations_s=(1.5, 1.5, 1.5) flat per R rank `coexists_with_unconditional=True`. Per Meraki 16.10.1 effects_descriptions[1]: "Upon arrival, he fears nearby enemies for 0.75 : 1.5 (based on distance traveled) seconds and slows them by 0% : 99% (based on distance from Hecarim)." Coexists with unconditional Hecarim R 1.0s flat baseline in `_PER_SPELL_CC_DURATIONS["Hecarim"]["R"] = (1.0, 1.0, 1.0)`. **SECOND consumer of the wave 7 forward-marker COND_RANGE_GATED tag** after Maokai R wave 18. **FIRST Hecarim cc_conditional entry anywhere** (E knockback + R baseline fear already in unconditional registry). Hecarim is a NEW cc_conditional champion (was not in registry prior).
+
+Registry growth: 71 entries / 56 champs / 1.60.0 -> **72 entries / 57 champs / 1.61.0** (62 primary + 8 sidecar -> 63 primary + 8 sidecar). COND_RANGE_GATED consumer count 1 -> 2. Tag count UNCHANGED at 13. ENGINE_VERSION 1.60.0 -> 1.61.0 + 32 stale ENGINE pin syncs across DS test files via bulk regex rewrite.
+
+**+27 tests** in NEW `agents/daemon_slayer/tests/test_cc_conditional_wave23.py` (~340 LOC across 10 classes): per-entry shape pin + registry totals growth + COND_RANGE_GATED consumer count + multi-wave coexistence (Maokai + Hecarim) + unconditional coexistence preservation + default include_conditional=False byte-identical + MAX-rule consumer math + evidence from effects_descriptions snapshot + ENGINE pin + forward-marker allowlist + ASCII hygiene.
+
+Consumer math: default `compute_cc_pressure(include_conditional=False)` BYTE-IDENTICAL to 1.60.0 for ALL champions (the wave 23 path skips when False). At include_conditional=True the MAX rule credits MAX(unconditional 1.0s, conditional 1.5 * 0.4 = 0.6s default) = 1.0s; default calibration keeps unconditional winning. Operator override Hecarim:R above 0.667 flips conditional above unconditional.
+
+REJECT verdicts wave 23 (audit subagent full report):
+- Jhin W Deadly Flourish "roots them for a duration" - duration lacks explicit numeric value
+- Anivia Q recast shatter stun "stun them for a duration" - duration lacks explicit numeric value
+- Heimerdinger E center-of-impact 1.5s stun - center-of-impact is spatial NOT tactical condition
+- Lillia R Dream Mist 1.5s drowsy - COND_DREAM_STACK forward-marker tag still empty-registry; multi-mark mechanics parse-stripped
+- Lissandra W root + R stun / Jinx E knockdown - all UNCONDITIONAL, belong in `_PER_SPELL_CC_DURATIONS` not cc_conditional
+- Leona R epicenter stun - epicenter is spatial NOT tactical
+
+Test relaxations: 6 prior-wave assertions relaxed for the 2nd COND_RANGE_GATED consumer. wave 18 `assertEqual(consumers, [(Maokai, R)])` -> `assertIn(("Maokai", "R"), consumers)` + count assertEqual(1) -> assertGreaterEqual(1); wave 12-13 `assertLessEqual(1)` -> `assertLessEqual(2)`; waves 14-17 same. DS suite 4845 -> 4872 (+27 = exactly wave 23 test file).
+
+DS :8893 restarted via `Stop-Process -Id 3876 -Force` (PowerShell - Bash taskkill blocked in Git-Bash env) + `schtasks /Run /TN RC-DaemonSlayer` per [[reference_ds_server_not_supervisor_watched]] -> `/health` engine_version=1.61.0 / patch=16.10.1 / 172 champs / 705 items. RC :8888 unchanged pid 15960 alive=True last_reload_ok=True mode_key=None (client) throughout - non-coach + non-route module edits this session.
+
+**Phase 3 `741e891` (6 files / +8 / -8) docs: sync living docs to wave 23 ENGINE 1.61.0 + 4872 tests + 72/57:**
+- ROADMAP.md L165 Fleet status row: ENGINE 1.60.0 -> 1.61.0 + 4845 -> 4872 tests + appended wave 23 narrative.
+- docs/DAEMON_SLAYER.md L5 + L32 + cc_conditional summary: ENGINE bump + 71/56 -> 72/57 + wave 23 closure note.
+- docs/ARCHITECTURE.md L161: ENGINE bump + waves 0-22 -> 0-23.
+- BACKLOG.md L13 cc_conditional ecosystem subsection: waves 1-22 -> waves 1-23 + wave 23 lineage append.
+- README.md L46: 4,845 -> 4,872 tests.
+- BRIEF.md L20 + L26: ENGINE_VERSION 1.60.0 -> 1.61.0 + 4,845 -> 4,872 passing tests.
+- Skipped per [[feedback_no_history_rewrite]]: BRIEF.md historical milestone narrative + WAKEUP_NOTES.md prior sessions.
+
+Parallel investigative agents (Phase 3 read-only):
+- BACKLOG/ROADMAP stale-sweep subagent: 2 flips needed (ROADMAP L165 Fleet status ENGINE + cc_conditional 71/56 -> 72/57 - both applied this session); all other code-line anchors verified within +/- 5 tolerance.
+- 30th-consecutive cost/latency 7-lever sweep subagent: 5/7 CLEAN + 2 MINOR PROPOSAL operator-gated (cache_control test-file noise + low _CACHE constant count). Per [[feedback_verify_generated_reports]] both flags are likely measurement errors (test files declare cache_control as DATA not RUNTIME use; _CACHE grep target may differ across audits with count fluctuating 12-16) - NOT auto-applied.
+
+**Verified:** DS suite **4872 passed / 1 skipped / 1 xfailed / 1781 subtests in 67.12s** (+27 over 4845 baseline = exactly wave 23 test file). RC suite tests/phase8_smoke 70/70 PASS post-DS-restart. `py -m ruff check .` ALL CHECKS PASSED. py_compile + JS Function-constructor parse OK on all touched files. CI green on 3/4 prior pushes (Phase 0 ruff + Phase 1 typography + Phase 2 wave 23); Phase 3 docs sync in-progress at session-end.
+
+**Don't-redo:**
+- The 12 flipped sub-floor selectors in `champ_select_view.css` are CI-locked via `tests/test_csv_typography_v21_floor.py`. Any future maintainer that bumps these back to hardcoded px fails CI. The 7 operator-exception selectors carry inline rationale comments; do NOT bump without operator approval.
+- Hecarim R coexists_with_unconditional=True is the canonical pattern for SECOND COND_RANGE_GATED consumer. Future wave 24+ candidates can reuse the COND_RANGE_GATED tag + coexists flag without re-pitching either schema.
+- The 6 wave 23 REJECT-verified candidates (Jhin W vague / Anivia Q vague / Heimerdinger E spatial / Lillia R dream_stack-empty / Lissandra W+R unconditional / Jinx E unconditional) are NEGATIVES - do NOT re-pitch.
+- The `champ_select_view.css` was the actual file for item 201's "13 typography sub-floor sites" carry-forward (not `champ_select.js` as the audit subagent claimed). Future audit agents flagging typography sub-floors should grep ACROSS both .js + .css files since `font-size:` lives in CSS rules only.
+- The orchestrator-merge-with-parallel-slices pattern was NOT used this session (4 sequential phases, no worktree branches created); the simpler sequential-commit pattern is the slim variant for headless runs with NO scope-fork mid-flight.
+- The cost/latency lever sweep "FLAG: MINOR" results from sub-agents are operator-gated proposals NOT auto-applied per [[feedback_verify_generated_reports]] - test-file cache_control + `_CACHE` constant counts are both likely measurement artifacts at sub-agent visibility.
+- `Stop-Process -Id <pid> -Force` (PowerShell) is canonical for DS restarts; Bash `taskkill /F /PID` blocked in Git-Bash env per recent ledger pattern.
+- Orchestrator-merge pattern now 51 consecutive runs (items 134-202; slim variants 190-198 + 200 + 201 + 202).
+
+**Carries forward:**
+(a) All item 201 carries CLOSED EXCEPT (a)-relaxed: 13 typography sub-floor sites NO LONGER carry (12 flipped + 7 operator-exception preserved this session).
+(b) Live in-game chip verification owed at next coach tick (mode_key was client/None throughout this session).
+(c) All item 200 carries unchanged: LCU agent redeploy via HTTP-pull dance for `delete_stale_rc_item_sets` + apply_item_sets_batch + champ select PICK section / DS top-picks UI changes - operator-gated.
+(d) DD Defy heal-on-takedown STILL deferred (operator-gated).
+(e) Live ARAM/SR smoke STILL pending.
+(f) Calibrations STILL operator-gated.
+(g) Legion 1-PC consolidation STILL operator-gated.
+(h) cc_conditional wave 24+ candidates: COND_DREAM_STACK forward-marker tag (wave 7) STILL empty-registry; Lillia passive multi-mark mechanics parse-stripped in damage_blocks-only format - operator-gated schema lift needed beyond cast_time/effects_descriptions/notes/parent_resource to unblock.
+(i) Frozen-file grant NOT used this session despite authorization.
+(j) DS test count 4872 / cumulative subtests 1781.
+(k) Stale local worktrees (24+ from prior orchestrator runs) STILL harness-locked - parent owns lifecycle per established pattern; left in place.
 
 ---
 
@@ -107,82 +215,3 @@ Operator triggered "NEXT SESSION: quick UI audit in parallel" with 4 explicit ta
 (l) Duo-synergy panel live UI capture + other lane combos (top+jng, jng+mid, mid+sup) STILL operator-gated separately (item 199 carries (l) + (m)).
 (m) Frozen-file grant NOT used this session.
 
----
-
-# 2026-05-26 - item 199 SHIPPED: parallel 3-slice drain - auto-action lanes Phase 3 gate enablement script + cc_conditional wave 22 Rell W form 1 ENGINE 1.60.0 + 101.qq.com seed consumer wire + duo-lane champ-select panel
-
-Operator-triggered parallel 3-slice drain (49th-streak orchestrator pattern items 134-189 + slim variants 190-198 + item 199). Operator-granted authority "allow all, commit and push, do not wait on operator gating -> continue with recommended". AskUserQuestion NOT used (explicit autonomous frame). 3 worktree agents dispatched concurrent on disjoint surfaces (Slice A bridge-tools + Slice B DS-engine + Slice CD core/+dashboard/+web/). Pre-flight: 0 open PRs; CI 5 runs since item 198 (`1f5167c` last green); HEAD = `1f5167c`; mode_key=client + RC pid 8436 alive=True post-restart throughout.
-
-**Slice A `434365b` (merge `3e173cd` ort 0 conflicts 3 files +576 / -25) feat(bridge) auto-action lanes Phase 3 gate enablement script + recipe refresh:** Closes item 188 Slice G + item 198 carry (f) DEFER prep work. NEW `tools/bridge_dispatch_enable_lanes.py` ~220 LOC argparse `--target gamepc|peer` + sha256 checksum of `tools/bridge_watcher_install.ps1` + envelope builder for `kind="ops_request"` payload `{"verb": "reinstall_bridge_watcher_with_lanes", "source_url": "http://legion-rc:8765/bridge_watcher_install.ps1", "checksum_sha256": "<computed>"}` + `--dry-run` mode + idempotence probe (reads `ops/runtime/bridge_watcher_health.json` `enabled_lanes` field if present). PREP-only, does NOT execute peer-side dispatch in slice. NEW `tests/test_bridge_dispatch_enable_lanes.py` 25 tests across 7 classes (script imports / argparse / checksum-from-install.ps1 / envelope-shape / dry-run-no-POST / idempotence-probe / ASCII hygiene / frozen-file-untouched). UPDATED `docs/AUTO_ACTION_LANES_GATE_PROBE.md` 103 lines: dropped stale "manual ps1-edit owed" path (item 189 Slice A landed `-EnableLanes`) -> replaced with 3-step recipe (iwr install.ps1 from Legion -> peer runs install.ps1 -EnableLanes read -> verify via schtasks XML probe) + section pointing to new dispatch helper. **Key finding from Slice A:** `tools/bridge_watcher.py:_write_heartbeat` does NOT currently surface `enabled_lanes` field; the dispatch script's idempotence probe degrades to "not enabled" until heartbeat extension lands (non-frozen file; carry-forward operator-gated).
-
-**Slice B `c16c3a2` (merge `48e7267` ort 0 conflicts 38 files +940 / -79) feat(ds) cc_conditional wave 22 ENGINE 1.59.0 -> 1.60.0 Rell W form 1 Mount Up empowered-AA stun sidecar:** Closes item 198 carry (i) Rell W form 1 operator-decision-gated. Re-audit of 28 candidate spells with explicit CC duration damage_blocks confirmed ALL already in `_PER_SPELL_CC_DURATIONS` unconditional registry (parse-strip CC-attribute lane fully saturated). Rell W form_index=1 Ferromancy: Mount Up empowered-AA stun primary registry `(Rell, W, form_index=1)` durations_s=(0.6,) flat all 5 W ranks + COND_CHANNEL_COMPLETION 0.4 (2-cast cycle: form 0 -> form 1 within 3.5s -> empowered-AA charge-delivery; mechanic evidence Meraki effects_descriptions[0] for form 1 + cast_time=0.25 form 1 vs cast_time=0.625 form 0; the 0.4s fling excluded mirroring form 0 wave 15 exclusion of its own 0.4s knockup). **FOURTH** same-spell-slot multi-form-coexistence sidecar after Karma W 0+1 (waves 1 + 10) / Hwei E 0+1+2 (waves 9 + 10) / Sylas E 0+1 (waves 0 + 12). Coexists with wave 15 Rell W form_index=0 sidecar entry on same (Rell, W) slot via form_index discriminator. Registry growth: 70/56 -> **71/56** (62 primary + 7 sidecar -> 62 primary + 8 sidecar; +1 sidecar / +0 net-new champ - Rell already in via wave 15). Tag count 13 unchanged. ENGINE_VERSION 1.59.0 -> 1.60.0 + 37 stale ENGINE pin syncs across 33 DS test files. **+45 tests NEW** `agents/daemon_slayer/tests/test_cc_conditional_wave22.py` 13 classes. `test_cc_conditional_forward_marker.py _ALLOWED_TEST_FILES` extended. Prior-wave pin relaxations: wave 15 Rell sidecar assertions (3 tests) + wave 21 Rell W form 1 REJECT-carry assertion (1 test). Default `compute_cc_pressure(include_conditional=False)` BYTE-IDENTICAL to 1.59.0 verified.
-
-**Slice CD `9169ee0` (auto-merged into main; 9 files +572 / -10) feat(ui+ds) 101.qq.com duo-synergy seed consumer + duo-lane champ-select panel:** Closes item 198 carry (k) operator-gated `core/smoothed_rates.py` pick/ban consumer wiring + operator-requested NEW UI panel replacing Pick & Ban EXPLANATION sub-panel. **7 deliverables:** (1) NEW `core/smoothed_rates_101qq.py` 340 LOC consumer with `DuoRec` + `SoloRec` dataclasses + module-level cache loader (loads `data/external/101qq_id_map.json` + `data/external/101qq_hero_rank_double_tier200_capture_20260525.json`; 65 unique champs / 200 records) + `top_duos_for_bot()` / `top_duos_for_sup()` / `top_solo_picks()` / `pair_synergy()` functions; Laplace-smoothed sample-weighted aggregation via `smoothed_rates.laplace_rate()` + `shrink()` + `blend()`. (2) NEW `dashboard/routes_duo_synergy.py` 270 LOC `GET /api/duo-synergy` with query params `my_role` + `ally_bot_lock/hover` + `ally_sup_lock/hover` + `top_n`; mode resolution priority `both_locked > bot_locked > sup_locked > bot_hover > sup_hover > none`; 5s TTL cache; registered via `dashboard/_dispatch.py`. (3) NEW `data/laning_tips_duo.json` 20 hand-curated pairs + `default` field. (4) CSS block in `web/css/panels/champ_select_view.css` ~110 LOC `.csv-duosyn-*` 4-col x 2-row grid + tips strip + v2.1 tokens (--fs-xs, --fs-sm, --hit-min 42px). (5) JS edits in `web/js/panels/champ_select.js` ~180 LOC NEW `_csvFetchDuoSynergy` + `_csvRenderDuoSynergyHtml` helpers + `.csv-pb168-expl` EXPLANATION sub-panel replaced with `DUO SYNERGY (101.qq.com)` 4x2 grid; pb168 picks/bans rendering untouched; rapid polling via existing `_csvScheduleRender` cadence. (6) NEW `web/data/ui_mock/duo_synergy.json` mock fixture. (7) 2 NEW test files: `tests/test_smoothed_rates_101qq.py` 20 tests (cache loader / top_duos sort / Laplace smoothing pull-to-50% / pair_synergy / ASCII hygiene) + `tests/test_routes_duo_synergy.py` 20 tests (mode priority / both_locked tips / top_n cap / cache lifecycle / fail-soft 500 / dispatcher registration). Live route probe post-RC-restart: `GET /api/duo-synergy?my_role=bot&top_n=2` returns mode=none + Seraphine + Swain top_row + Elise bottom_row + null laning_tips - CORRECT. ADR-008 asset-hash auto-serves JS+CSS+JSON; new route required RC restart for `_dispatch.py` re-import.
-
-**Merge order:** Slice A `3e173cd` first (ort, 3 files), Slice B `48e7267` second (ort, 38 files; ENGINE bump + 37 test file pin syncs), Slice CD `9169ee0` auto-included via worktree-share filesystem (9 files; verified via `ls` + live route probe). 0 merge conflicts across all 3 slices (disjoint file sets).
-
-**Verified:** DS suite `agents/daemon_slayer/tests/` = **4845 passed / 1 skipped / 1 xfailed / 1780 subtests passed in 68.47s** (+45 over 4800 baseline = exactly wave 22 test file). `py -m pytest tests/test_bridge_dispatch_enable_lanes.py tests/test_smoothed_rates_101qq.py tests/test_routes_duo_synergy.py agents/daemon_slayer/tests/test_cc_conditional_wave22.py -q` = **110 passed in 0.38s**. `tests/phase8_smoke/` 75/75 PASS post-DS-restart (initial 69/1 pre-restart fail on `test_live_three_profiles` engine_version pin per `[[reference_ds_server_not_supervisor_watched]]`). `py -m ruff check .` ALL CHECKS PASSED. DS :8893 killed pid 10644 + `schtasks /Run /TN RC-DaemonSlayer` -> serves `engine_version=1.60.0 patch=16.10.1 champions=172 items=705`. RC :8888 restarted via `restart_trigger.txt` -> pid 12220 -> 8436 alive=True last_reload_ok=True mode=client (new `/api/duo-synergy` route now serving). Pushed origin/main.
-
-**Don't-redo:**
-- The 3-slice parallel orchestrator pattern with disjoint file surfaces (bridge-tools / DS-engine / core+dashboard+web) lands 0 merge conflicts and is canonical for headless drains with multiple independent operator carries closing in one session.
-- Rell W form_index=1 is now FOURTH same-spell-slot multi-form-coexistence sidecar after Karma W 0+1 / Hwei E 0+1+2 / Sylas E 0+1. The sidecar registry shape `(champion, spell, form_index)` is durable; future cc_conditional wave 23+ should consume it before re-pitching new registry shape.
-- `tools/bridge_dispatch_enable_lanes.py` is the canonical chokepoint for enabling auto-action lanes on Game-PC + Peer peers. The script is PREP-only by design; actual dispatch is operator-decided (bridge envelope risks remote re-install). The `--dry-run` mode is the default for any orchestrator-side invocation; switch to live mode only with explicit operator authorization.
-- The Slice A finding about `tools/bridge_watcher.py:_write_heartbeat` NOT publishing `enabled_lanes` field is a NEW operator-gated carry; the dispatch script's idempotence probe degrades gracefully but cannot self-verify lane state until the heartbeat extension lands.
-- `core/smoothed_rates_101qq.py` is the canonical consumer for the 101.qq.com bot+sup duo-synergy seed. Future duo-synergy enrichment from other data sources (aggregator A / aggregator D / Aggregator B bot+sup pages) should extend this module's data loaders rather than build parallel consumer modules; the `DuoRec` shape is the durable interchange format.
-- `/api/duo-synergy` mode resolution priority is `both_locked > bot_locked > sup_locked > bot_hover > sup_hover > none`. Lock priority over hover is the canonical UI semantic; future panel additions for other lane combos (top+jng, jng+mid, mid+sup) should follow this same priority order.
-- The `.csv-duosyn-*` panel REPLACES `.csv-pb168-expl` EXPLANATION sub-panel; the pb168 picks/bans 2-sub-panel layout (TOP picks + MIDDLE bans) is UNTOUCHED. Future panel iterations should preserve this 3-sub-panel composition.
-- `data/laning_tips_duo.json` is operator-tunable; the 20 hand-curated pair tips ship as bootstrap content. Future pair additions extend the `pairs` object; `default` field is the fallback when pair not found.
-
-**Carries forward:**
-(a) Items 197 + 198 carries unchanged EXCEPT (f) auto-action lanes Phase 3 gate enablement PREP work DONE (Slice A) + (i) Rell W form 1 cc_conditional candidate CLOSED (Slice B) + (k) `core/smoothed_rates.py` 101.qq.com seed consumer wire DONE (Slice CD).
-(b) NEW carry: `tools/bridge_watcher.py:_write_heartbeat` extension to publish `enabled_lanes` field for dispatch script idempotence probe (non-frozen file; operator-gated).
-(c) NEW carry: Actual dispatch of `tools/bridge_dispatch_enable_lanes.py --target gamepc/peer` to enable lanes on peers (operator-gated; bridge envelope risks remote re-install).
-(d) Cherry augment live verification + Game-PC HTTP-pull redeploy STILL OWED at next Arena 1750 window.
-(e) Live ARAM/SR smoke STILL pending.
-(f) Calibrations STILL operator-gated.
-(g) Legion 1-PC consolidation STILL operator-gated.
-(h) Active Match #11/12/13 real in-game capture STILL OWED.
-(i) v2.1 visual captures pages #9/10/11/12/13/14/15/16 OWED at next operator-driven Chrome session.
-(j) cc_conditional wave 23+ candidates require either NEW Meraki schema field OR registry shape lift (parse-strip CC-attribute lane fully saturated per Slice B audit of 28 explicit-duration candidates; sidecar registry the only growth path until next schema lift).
-(k) NEW carry: Phase 3 95% N=50+ gate STILL UNREACHABLE because inbound bridge traffic is zero (not because watcher health is bad); sample accumulation blocked by zero-cadence not by missing infrastructure.
-(l) NEW carry: Duo-synergy panel live UI capture OWED on next operator-driven champ-select session (mock fixture at `?ui_mock=1&mode=sr#champ-select` available now).
-(m) NEW carry: Duo-synergy capture for other lane combos (top+jng, jng+mid, mid+sup) operator-gated separately; Tencent SPA presumably segregates these by URL fragment.
-(n) Operator-requested NEXT-SESSION UI audit: verify all champions properly displaying item builds in champ select + condense LCU client item-build dropdown from 20+ entries + verify runes push to LCU on champ-select item-builder selection change. Operator framed as parallel work for next session.
-(o) Frozen-file grant NOT used this session.
-
----
-
-# 2026-05-26 - item 198 SHIPPED: 101.qq.com hero-rank-double live capture + wrapped-envelope unwrap + id_map alignment (closes ROADMAP L132)
-
-Operator picked "101.qq.com Game-PC capture" from a framed AskUserQuestion after the orchestrator surfaced that the headless dead-code lane was SATURATED per item 197's don't-redo (6 consecutive ALL-CLEAN drains items 192-197). Operator captured the payload via Chrome DevTools on Game-PC + pasted the JSON inline. Closes ROADMAP L132 "🔵 101.qq.com duo-synergy capture" - the one-off Game-PC step is DONE. Pure pick/ban-synergy data enrichment lane open; consumer wiring into `core/smoothed_rates.py` is a separate operator-gated session.
-
-**Capture shape:** wrapped `{"code":0,"data":[...200 records...],"message":"success"}` envelope. Each record carries `championid1` + `championid2` (numeric strings = Riot DDragon keys 1:1) + `doublewinrate` + `iwinrate1`/`iwinrate2` + `itemp1` (pick rate %) + `vitemp1` (trend +/-) + `irank`. All 200 records are `(lane1=bottom, lane2=support)` so this is the bot-lane duo-synergy slice specifically. URL path was operator-pasted as path-only (the original full URL was lost in copy-paste); the analysis runs purely on the JSON file, so URL-structure analyzer reports `host=101.qq.com is_gtimg=false` (the SPA URL, NOT the gtimg CDN URL).
-
-**Alignment:** 65 unique champion IDs in the capture (smaller than the 172 roster - bot-lane meta only surfaces ~38% of champs in the top-200 ranks). 65/65 align to DDragon by-id; ZERO unmatched; ZERO hand-corrections needed (Tencent IDs literally are Riot's `key` field at patch 16.10.1, NOT a separate Tencent code mapping as the recipe doc hedged against). Sample alignments: 22 -> Ashe, 222 -> Jinx, 901 -> Smolder, 526 -> Rell, 147 -> Seraphine, 201 -> Braum, 497 -> Rakan, 12 -> Alistar.
-
-**Shipped (3 files modified + 3 NEW files / +195 / -13):** (1) `tools/probe_101qq_hero_rank_double.py` gains NEW `unwrap_envelope(payload)` helper (detects `{code, data, message}` envelope; returns `payload["data"]` when present + `data` is a list; passes through otherwise for back-compat with synthetic dict-of-pairs fixtures) + NEW `extract_champion_ids(payload)` helper (returns sorted-unique IDs from either top-level dict keys OR `data[].championid1/2` record fields) + `analyze_schema()` extended with `list_of_pair_records` detection (when first record has `championid1` + `championid2` keys) + `_first_pair_from_payload()` extended to handle list-of-records shape + `main()` wires `unwrap_envelope()` before schema + cross-reference. (2) `tools/compare_101qq_vs_ddragon.py` gains the same `unwrap_envelope()` helper + NEW `_collect_ids(payload)` helper (mirrors probe's `extract_champion_ids` for the alignment lane) + `build_alignment()` extended to walk `_collect_ids()` output instead of just `payload.keys()` + `main()` wires `unwrap_envelope()` before alignment. (3) NEW fixture `tests/fixtures/qq101/hero_rank_double_wrapped.json` (3 sample records mirroring the live capture's shape; 6 unique champion IDs Ashe/Jinx/Senna/Seraphine/MissFortune/Lulu/Tristana/Braum + envelope shape). (4) NEW capture artifact `data/external/101qq_hero_rank_double_tier200_capture_20260525.json` (operator's verbatim paste, 200 records, single-line JSON 35,584 bytes). (5) NEW alignment artifact `data/external/101qq_id_map.json` (65-entry numeric-string -> DDragon-name mapping; sorted by ID; ready to load by future `core/smoothed_rates.py` pick/ban consumer). (6) `tests/test_probe_101qq_script.py` gains NEW `WrappedEnvelopeTests` class with 9 tests: probe unwrap_envelope dict-passthrough + extracts-data + rejects-malformed + same 3 for compare + extract_champion_ids from records + from dict + build_alignment list_records + probe end-to-end on wrapped fixture + compare end-to-end on wrapped fixture. `_WRAPPED` fixture added to `_FIXTURES` map; `AsciiHygieneTests::test_fixtures_ascii` extended to assert wrapped fixture is ASCII-clean. ROADMAP L132 flipped from `🔵` open to `✅ SHIPPED 2026-05-26 (item 198)` with full lineage embedded.
-
-**Verified:** `py -m pytest tests/phase8_smoke/ tests/test_probe_101qq_script.py -q` = **104 passed in 2.39s** (70 phase8_smoke + 34 probe tests = +9 net new over baseline 25). `py -m ruff check tools/probe_101qq_hero_rank_double.py tools/compare_101qq_vs_ddragon.py tests/test_probe_101qq_script.py` ALL CHECKS PASSED. `py -m py_compile tools/probe_101qq_hero_rank_double.py tools/compare_101qq_vs_ddragon.py` clean. ASCII probe across all 6 touched + new files: 0 non-ASCII bytes. Live probe verdict end-to-end on the real capture: `champion_key_format_guess=numeric_ddragon_or_tencent_id` + `likely_pair_structure=list_of_pair_records` + `matched_as_numeric_ddragon_key=65 / total_payload_keys=65 / unmatched_sample=[]` + `payload_pair_sample={champion_a: Ashe, champion_b: Seraphine}` cross-checks rewind_history.db query branch. DS :8893 untouched (non-engine; serves 1.59.0 from item 189). RC :8888 untouched (non-route + non-coach edits; pid None throughout - idle).
-
-**Don't-redo:**
-- The `unwrap_envelope()` pattern is now the canonical entry point for both probe + compare tools; future captures from Tencent or any other wrapped-envelope provider auto-handle via this helper. Do NOT bypass it.
-- Tencent's `championid1`/`championid2` are numeric strings matching Riot DDragon `key` field 1:1 at patch 16.10.1 - confirmed by zero unmatched out of 65 unique IDs. Future captures should expect this 1:1 alignment; only flip to hand-map mode (`data/external/101qq_hero_id_map.json`) if a future patch introduces a Tencent-specific code scheme. The override hook is in place + tested but currently UNUSED.
-- The capture's URL was operator-pasted without the full origin (just `/.../hero-rank-double?tier=200`); future captures should preserve the full URL (the recipe at `docs/CAPTURE_101QQ_INSTRUCTIONS.md` step 7 emphasizes this; operator can re-capture if needed but the JSON shape + payload analysis stand). The URL is needed to surface patch-versioning + tier-stratification heuristics; without it `analyze_url()` reports `host=101.qq.com is_gtimg=false`.
-- The capture is bot-lane-only (200 records, all `(bottom, support)` pairs). A separate capture is needed for other lane combos (top + jungle vs support? bot vs jungle?) but Tencent's SPA presumably segregates these by URL fragment; not in this session's scope.
-- The 65 unique IDs covered are a meta-population subset (top-200 duo synergy ranks at tier=200 = the highest tier in Tencent's scheme). Full 172-champ roster coverage would require pulling lower tiers or different sort criteria; not in this session's scope.
-- The consumer wiring into `core/smoothed_rates.py` is a SEPARATE operator-gated session. The shape: load `data/external/101qq_id_map.json` -> map record's `championid1` + `championid2` to DDragon names -> use `record["doublewinrate"]` + `record["iwinrate1"]` + `record["iwinrate2"]` as external seed for `blend(own_smoothed_rate, external_rate, w=n_own/(n_own+K))` per the shared-primitive design from item 138.
-- The orchestrator pattern is now 48th-streak (items 134-189 + slim variants 190/191/192/193/194/195/196/197/198). This is the FIRST commit-bearing slice since item 195/196 / `554ccf9` `0aa23c1` - the lane has been ALL-CLEAN/slim for 6 consecutive sessions per item 197 don't-redo. Item 198 is operator-driven (capture happened only because operator chose the lane via AskUserQuestion), not auto-discovered headless work.
-
-**Carries forward:**
-(a) Items 196 + 197 carries (a)-(l) ALL unchanged EXCEPT (c) 101.qq.com operator-at-Game-PC Chrome DevTools capture STILL OWED is now CLOSED (this session).
-(b) Cherry augment live verification + Game-PC HTTP-pull redeploy STILL OWED at next Arena 1750 window.
-(c) Live ARAM/SR smoke STILL pending.
-(d) Calibrations STILL operator-gated.
-(e) Legion 1-PC consolidation STILL operator-gated.
-(f) Auto-ops verb expansion + auto-action lanes Phase 3 95% gate STILL DEFERRED.
-(g) Active Match #11/12/13 real in-game capture STILL OWED.
-(h) v2.1 visual captures pages #9/10/11/12/13/14/15/16 OWED at next operator-driven Chrome session.
-(i) Rell W form 1 cc_conditional candidate STILL operator-decision-gated.
-(j) cc_conditional wave 24+ candidates still require schema/registry lift.
-(k) `core/smoothed_rates.py` pick/ban consumer wiring of the 101.qq.com seed is a NEW carry; operator-gated separate session.
-(l) Frozen-file grant NOT used this session.
