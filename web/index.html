@@ -1035,10 +1035,22 @@
                card head + body content swap to the archetype picker.
                renderChampSelectView's _csvRenderTeam("csv-allies-list",
                ...) gracefully no-ops since the ul target is gone. -->
+          <!-- Operator (2026-05-25 item 200 Slice D): top-left card now
+               carries the DS Build Archetype picker PLUS the PICK
+               sub-panel moved up from Pick & Ban (item 168). The
+               DS-top-picks preview row that previously rendered under
+               the archetype picker is REMOVED so the picks land in the
+               freed vertical space. Bans + duo-synergy (101.qq.com)
+               stay in row-2 pickban with the extra space they need. -->
           <div class="csv-card csv-card-allies">
-            <div class="csv-card-head">Daemon Slayer Build Archetype</div>
-            <div class="csv-card-body" id="csv-archetype-target">
-              <div class="csv-empty">waiting for champion pick...</div>
+            <div class="csv-card-head">Daemon Slayer Build Archetype + Picks</div>
+            <div class="csv-card-body csv-card-allies-body">
+              <div id="csv-archetype-target">
+                <div class="csv-empty">waiting for champion pick...</div>
+              </div>
+              <div id="csv-picks-target">
+                <div class="csv-empty">waiting for champ-select data...</div>
+              </div>
             </div>
           </div>
           <!-- Pick & Ban Recommendations panel - sits below Allies in

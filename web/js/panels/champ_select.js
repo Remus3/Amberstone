@@ -1926,44 +1926,11 @@ function _csvArchetypePickerHtml(champion) {
   const autoBtn = `<button class="csv-arch-auto${isAuto ? " is-active" : ""}"
                            data-champion="${champion}"
                            title="${isAuto ? 'currently auto-derived from DDragon tags' : 'click to revert to DDragon-tag default'}">AUTO</button>`;
-  // Item 168: top-3 DS item preview below the 6 archetype buttons.
-  // Fills the empty space the operator flagged. Pulls from the same
-  // _CSV_DS_CACHE the build chooser uses (already fetched in parallel
-  // by _csvBuildVariantsFor). When cache is cold the row shows a
-  // 3-cell placeholder; the next render tick (~1s) hydrates once the
-  // POST returns.
-  const ver = CHAMPS.version || "latest";
-  const archKey = (resolved && resolved.key) || "";
-  // Default to SR preview; the build chooser handles the mode-specific
-  // ranking elsewhere. SR preview is the most representative pivot
-  // since archetype-driven scoring is best-developed for SR.
-  const dsKey = _csvDsCacheKey(champion, "SR", archKey);
-  const ranked = _CSV_DS_CACHE[dsKey] || [];
-  const top3 = ranked.slice(0, 3);
-  const previewCells = (top3.length ? top3 : [null, null, null]).map((r) => {
-    if (!r || !r.item_id) {
-      return `<div class="csv-arch-preview-cell is-empty">
-                <div class="csv-arch-preview-icon">?</div>
-                <div class="csv-arch-preview-name">-</div>
-              </div>`;
-    }
-    const iid = String(r.item_id);
-    const nm = r.item_name || iid;
-    return `<div class="csv-arch-preview-cell" title="${nm}">
-              <div class="csv-arch-preview-icon">
-                <img src="/data/ddragon/${ver}/img/item/${iid}.png" onerror="this.style.display='none'" alt="">
-              </div>
-              <div class="csv-arch-preview-name">${nm}</div>
-            </div>`;
-  }).join("");
-  const previewLabel = top3.length
-    ? `DS top picks - ${resolved.label || archKey}`
-    : "DS picks - computing...";
-  const previewBlock = `
-    <div class="csv-arch-preview">
-      <div class="csv-arch-preview-head">${previewLabel}</div>
-      <div class="csv-arch-preview-row">${previewCells}</div>
-    </div>`;
+  // Operator (2026-05-25 item 200 Slice D): the DS-top-picks preview
+  // row that lived under the 6 archetype buttons (item 168) is removed.
+  // The freed vertical space is filled by the PICK sub-panel moved up
+  // from Pick & Ban into the same top-left card. See `csv-picks-target`
+  // mount in web/index.html + _csvRenderPickBan split below.
   return `
     <div class="csv-archetype-picker" data-champion="${champion}">
       <div class="csv-archetype-title">
@@ -1971,7 +1938,6 @@ function _csvArchetypePickerHtml(champion) {
         ${autoBtn}
       </div>
       <div class="csv-archetype-buttons">${buttons}</div>
-      ${previewBlock}
     </div>`;
 }
 
@@ -3582,11 +3548,18 @@ function _csvRenderPickBan(cs, myCid) {
     () => _csvRenderPickBan(cs, myCid),
   );
   const duoSynHtml = _csvRenderDuoSynergyHtml(duoSynData, champImg);
-  const html = `
+  // Operator (2026-05-25 item 200 Slice D): PICK sub-panel renders into
+  // the top-left card (#csv-picks-target inside .csv-card-allies). BAN +
+  // DUO SYNERGY stay in #csv-pickban-body (row-2 pickban) with all the
+  // freed vertical space. Pick + ban cells keep the .csv-pb168-pick /
+  // .csv-pb168-ban classes; the click wiring below scopes to document
+  // so it finds picks in their new location.
+  const picksHtml = `
     <div class="csv-pb168-section csv-pb168-picks">
       <div class="csv-pb168-head">PICK</div>
       <div class="csv-pb168-row">${pickCells}</div>
-    </div>
+    </div>`;
+  const html = `
     <div class="csv-pb168-section csv-pb168-bans">
       <div class="csv-pb168-head">BAN</div>
       <div class="csv-pb168-row">${banCells}</div>
@@ -3597,6 +3570,8 @@ function _csvRenderPickBan(cs, myCid) {
     </div>`;
 
   body.innerHTML = html;
+  const picksTarget = document.getElementById("csv-picks-target");
+  if (picksTarget) picksTarget.innerHTML = picksHtml;
 
   // Wire mood toggle. s209: re-render the panel after persisting so the
   // performance row reflects the new mood (comfort / limit / new /
@@ -3625,10 +3600,14 @@ function _csvRenderPickBan(cs, myCid) {
       _csvOnBanSelect(cid);
     });
   });
-  body.querySelectorAll(".csv-pb168-pick.is-clickable").forEach((cell) => {
+  // Item 200 Slice D: picks render into #csv-picks-target (top-left
+  // card) not body (#csv-pickban-body). Scope pick-click wiring to the
+  // picks target so it attaches to the moved cells.
+  const picksScope = document.getElementById("csv-picks-target") || body;
+  picksScope.querySelectorAll(".csv-pb168-pick.is-clickable").forEach((cell) => {
     cell.addEventListener("click", () => {
       const cid = parseInt(cell.dataset.pickId, 10);
-      body.querySelectorAll(".csv-pb168-pick").forEach((el) => {
+      picksScope.querySelectorAll(".csv-pb168-pick").forEach((el) => {
         el.classList.toggle("is-selected", el === cell);
       });
       _csvOnPickSelect(cid);
