@@ -46,7 +46,7 @@ class PromptShapeTests(unittest.TestCase):
     def test_choices_field_label_appears_3_times(self):
         # One Choices: <OPTIONAL ... line per system prompt
         # (NB + URF + OFA = 3 occurrences).
-        self.assertEqual(self.src.count("Choices: <OPTIONAL"), 3)
+        self.assertEqual(self.src.count("Choices: <REQUIRED"), 3)
 
     def test_schema_hint_describes_json_array(self):
         # The schema hint enumerates the 5 required keys per entry.
@@ -72,7 +72,7 @@ class PromptShapeTests(unittest.TestCase):
     def test_empty_array_is_acceptable(self):
         # Each prompt MUST tell the model "[] is OK" so it doesn't
         # padded-emit unrelated junk on idle ticks.
-        self.assertGreaterEqual(self.src.count("Return [] if"), 3)
+        self.assertGreaterEqual(self.src.count("Return []"), 3)
 
     def test_single_line_json_required(self):
         # parse_fields is line-based; multi-line JSON would break
@@ -171,7 +171,7 @@ class CachePreservedTests(unittest.TestCase):
         nb_end = self.src.index('"""', self.src.index('"""', nb_start) + 3)
         block = self.src[nb_start:nb_end]
         idx_risk = block.index("Risk:")
-        idx_choices = block.index("Choices: <OPTIONAL")
+        idx_choices = block.index("Choices: <REQUIRED")
         self.assertLess(idx_risk, idx_choices,
                         "NB: Choices line MUST follow Risk line")
 
@@ -181,7 +181,7 @@ class CachePreservedTests(unittest.TestCase):
         urf_end = self.src.index('"""', self.src.index('"""', urf_start) + 3)
         block = self.src[urf_start:urf_end]
         idx_comp = block.index("Comp analysis:")
-        idx_choices = block.index("Choices: <OPTIONAL")
+        idx_choices = block.index("Choices: <REQUIRED")
         self.assertLess(idx_comp, idx_choices,
                         "URF: Choices line MUST follow Comp analysis line")
 
@@ -191,7 +191,7 @@ class CachePreservedTests(unittest.TestCase):
         ofa_end = self.src.index('"""', self.src.index('"""', ofa_start) + 3)
         block = self.src[ofa_start:ofa_end]
         idx_risk = block.index("Risk:")
-        idx_choices = block.index("Choices: <OPTIONAL")
+        idx_choices = block.index("Choices: <REQUIRED")
         self.assertLess(idx_risk, idx_choices,
                         "OFA: Choices line MUST follow Risk line")
 
@@ -203,7 +203,7 @@ class CachePreservedTests(unittest.TestCase):
         count = 0
         while True:
             try:
-                idx_choices = self.src.index("Choices: <OPTIONAL", idx)
+                idx_choices = self.src.index("Choices: <REQUIRED", idx)
             except ValueError:
                 break
             idx_close = self.src.index('"""', idx_choices)

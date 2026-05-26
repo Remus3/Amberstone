@@ -1,18 +1,23 @@
 /* A/B tutoring coach choices.
  *
- * Mount: #rn-choices, sits between #rn-immediate and the .kv Watch row.
+ * Mount: #rn-choices, sits directly under #rn-action and visually
+ * occupies the slot that used to host the Immediate prose (right_now.js
+ * hides #rn-immediate when choices.length > 0 - item 189, 2026-05-25).
  * Hidden when no choices array on state.coach. Each chip carries:
- * a key letter (A/B/C), a label, a 3-segment confidence bar, and an
- * optional source-tag pill.
+ * a key letter (A/B/C), an ALT+N hotkey pill (Alt+1/Alt+2/Alt+3),
+ * a label, a 3-segment confidence bar, and an optional source-tag pill.
  *
  * Colors reference the tokens.css semantic palette (--signal-good /
  * --signal-warn / --signal-bad / --signal-dim / --signal-info). Falls
  * back to inherit when tokens.css hasn't loaded yet (graceful).
+ *
+ * Hotkey wiring lives in coach_choices.js (window-level keydown
+ * handler matching Alt + Digit1/Digit2/Digit3 -> activate chip A/B/C).
  */
 
 #rn-choices {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
   margin: 6px 0 4px;
 }
@@ -24,17 +29,21 @@
 .rc-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
+  gap: 8px;
+  padding: 10px 14px;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
   color: inherit;
   font-family: inherit;
-  font-size: 13px;
-  line-height: 1.2;
+  font-size: var(--fs-md, 18px);
+  line-height: 1.25;
   cursor: pointer;
   user-select: none;
+  text-align: left;
+  width: 100%;
+  min-height: var(--hit-min, 42px);
   transition: background-color 0.12s ease, border-color 0.12s ease,
               transform 0.06s ease;
 }
@@ -55,10 +64,10 @@
 
 .rc-key {
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-lg, 29px);
   color: var(--signal-good, inherit);
   font-variant-numeric: tabular-nums;
-  min-width: 12px;
+  min-width: 24px;
   text-align: center;
 }
 
@@ -71,10 +80,53 @@
 }
 
 .rc-label {
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  font-size: var(--fs-md, 18px);
+}
+
+/* ALT+N hotkey hint pill. Sits next to the label so the operator can
+ * see the digit -> chip binding without hovering. Dimmed when no
+ * choices currently rendered (chip is inert) - handled by chip-level
+ * disable, not here. */
+.rc-hotkey {
+  font-family: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+  font-size: var(--fs-xs, 16px);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--signal-dim, #8a8e9c);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* ACK toast bubble: shown after a successful POST /api/coach-choice
+ * so a hotkey-driven pick (no mouse near the chip) has visible
+ * confirmation that the selection logged. Mirror of the COPIED bubble
+ * pattern in right_now.js's action-headline copy handler. */
+.rc-ack-bubble {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 8px;
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: var(--signal-good, #6ec977);
+  color: #0a0e14;
+  border-radius: 4px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.rc-ack-bubble.show {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .rc-band {

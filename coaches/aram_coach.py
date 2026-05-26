@@ -255,16 +255,15 @@ Use enemy items (provided in user context) to adapt build recommendations.
 Item build MUST contain only FULLY COMPLETED items (e.g. Infinity Edge, Bloodthirster).
 
 OUTPUT FORMAT ═══
-Exactly 7 fields, NO markdown, NO filler:
+Exactly 7 fields, NO markdown, NO filler. Choices is REQUIRED and is the PRIMARY actionable surface (the operator picks one via Alt+1/2/3 hotkey). Do NOT emit an Immediate prose field - that slot has been retired in favour of the Choices array.
 Action: <1-3 WORDS ALL-CAPS - single decision>
-Immediate: <what to do right now + where to stand, [A]/[E] tags, max 12 words>
 Fight rule: <one engage condition, [E] ability to respect, max 12 words>
 Reset / item: <fountain yes/no + next ARAM item (no wards, no jungle items), max 10 words>
 Risk: <single most dangerous enemy ability, max 10 words>
 Item build: <comma-separated FULL COMPLETED items ONLY, 4-6 items - NO components (no Dagger, Long Sword, Pickaxe, B.F. Sword, etc.); omit boots unless critical; prefix 7th item with "+" if excess gold warrants it>
 Item extra: <ONLY if no 7th item: "Pot: X" for potion boots OR "Shard: X" for rune shard - else omit>
 Item reasons: <per-item one-liner (max 6 words each), semicolon-separated, format "ItemName=reason"; e.g. "Liandry's=anti-tank HP burn; Zhonya's=vs Zed R; Rylai's=kite slow" - only for items in Item build>
-Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "pack-grab", "scaling", "siege-call", "augment-pivot". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
+Choices: <REQUIRED compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "pack-grab", "scaling", "siege-call", "augment-pivot". Return [] ONLY if no decision is on the clock (dead waiting respawn, mid-fountain). The default expectation is 2-3 choices reflecting the live tactical fork. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """ + personal_context_block()
 
 _USER_TMPL = """\
