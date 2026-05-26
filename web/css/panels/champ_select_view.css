@@ -2394,3 +2394,109 @@
     -1px  1px 0 #000,
      1px  1px 0 #000;
 }
+
+/* ----------------------------------------------------------------
+ * Item 199 Slice CD (2026-05-25): Duo-Synergy panel.
+ *
+ * Replaces the item-168 .csv-pb168-expl EXPLANATION sub-panel with a
+ * 4-col x 2-row grid of champion icons:
+ *   .csv-duosyn-row-top  = bottom-role champions (ADCs).
+ *   .csv-duosyn-row-bot  = support champions.
+ * Highest-ranking cell is LEFTMOST. When both ally bot + sup are
+ * locked, .csv-duosyn-tips renders below the grid with the laning-tip
+ * line from data/laning_tips_duo.json.
+ *
+ * v2.1 tokens throughout: --fs-xs / --fs-sm / --hit-min 42px.
+ * ---------------------------------------------------------------- */
+.csv-duosyn-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: auto auto;
+  gap: 8px;
+  padding: 4px 0;
+}
+.csv-duosyn-row-top { grid-row: 1; display: contents; }
+.csv-duosyn-row-bot { grid-row: 2; display: contents; }
+.csv-duosyn-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 2px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+  position: relative;
+  min-height: var(--hit-min);
+  overflow: hidden;
+}
+.csv-duosyn-cell.is-top    { border-top: 2px solid #60a5fa; }
+.csv-duosyn-cell.is-bottom { border-top: 2px solid #fbbf24; }
+.csv-duosyn-cell.is-locked { border-color: #4ade80; box-shadow: 0 0 0 1px #4ade80; }
+.csv-duosyn-cell.is-hover  { border-color: #fbbf24; }
+.csv-duosyn-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  background: #14171c;
+  overflow: hidden;
+  border: 1px solid #2a2f37;
+}
+.csv-duosyn-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-duosyn-name {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+.csv-duosyn-rank-badge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: #6a7280;
+  background: #14171c;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.csv-duosyn-cell.is-top    .csv-duosyn-rank-badge { color: #60a5fa; }
+.csv-duosyn-cell.is-bottom .csv-duosyn-rank-badge { color: #fbbf24; }
+.csv-duosyn-wr {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: #9ca3af;
+}
+.csv-duosyn-cell.is-strong-wr .csv-duosyn-wr { color: #4ade80; }
+.csv-duosyn-cell.is-weak-wr   .csv-duosyn-wr { color: #ef4444; }
+.csv-duosyn-empty {
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: #6a7280;
+  text-align: center;
+  padding: 6px 0;
+  grid-column: 1 / -1;
+}
+.csv-duosyn-tips {
+  font-size: var(--fs-sm);
+  color: #cbd5e1;
+  background: rgba(74, 222, 128, 0.06);
+  border-left: 3px solid #4ade80;
+  padding: 8px 10px;
+  border-radius: 3px;
+  margin-top: 6px;
+  line-height: 1.3;
+}
+.csv-duosyn-source {
+  font-size: var(--fs-xs);
+  color: #6a7280;
+  font-style: italic;
+  text-align: right;
+  padding: 2px 0;
+}
+
