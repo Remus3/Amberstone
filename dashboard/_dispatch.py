@@ -66,6 +66,7 @@ def _gather_get() -> list:
                                routes_cc_blended_ehp_threat,
                                routes_cc_conditional_pressure,
                                routes_damage_mix, routes_draft_elo,
+                               routes_duo_synergy,
                                routes_health_peer,
                                routes_lessons,
                                routes_loadout, routes_lobby_aux, routes_metrics,
@@ -94,6 +95,7 @@ def _gather_get() -> list:
                       + list(routes_cc_conditional_pressure.GET_ROUTES)
                       + list(routes_damage_mix.GET_ROUTES)
                       + list(routes_draft_elo.GET_ROUTES)
+                      + list(routes_duo_synergy.GET_ROUTES)
                       + list(routes_health_peer.GET_ROUTES)
                       + list(routes_lessons.GET_ROUTES)
                       + list(routes_loadout.GET_ROUTES)
