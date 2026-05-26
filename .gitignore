@@ -58,6 +58,9 @@ data/cs_archetype_picks.json
 data/*.db.bak
 data/*.db.bak-*
 
+# champion_loadouts.json migration backups from one-off slice tools (item 178/179/200 pattern)
+data/champion_loadouts.json.bak-*
+
 # Local-only Claude / MCP config (may contain server URLs, tokens)
 .claude/
 .mcp.json
