@@ -115,6 +115,21 @@ def load_json(path: Path) -> object:
     return json.loads(raw)
 
 
+def unwrap_envelope(payload: object) -> object:
+    """Unwrap Tencent's `{code, data, message}` envelope if present.
+
+    Item 198 capture (2026-05-26) showed the live shape is
+    `{"code":0,"data":[{...pair-records...}],"message":"success"}` with
+    the actual pair records living in `data[]`. Returns `payload["data"]`
+    when the envelope is detected; otherwise returns `payload` unchanged
+    (back-compat with synthetic fixtures that pre-date the capture)."""
+    if isinstance(payload, dict):
+        keys = set(payload.keys())
+        if {"code", "data", "message"}.issubset(keys) and isinstance(payload.get("data"), list):
+            return payload["data"]
+    return payload
+
+
 def analyze_schema(obj: object) -> dict:
     """Walk top-level shape of the captured payload.
 
@@ -146,7 +161,14 @@ def analyze_schema(obj: object) -> dict:
             if isinstance(obj[0], dict):
                 inner_keys = list(obj[0].keys())
                 summary["sample_keys"] = inner_keys[:5]
-    if summary["sample_entry"] and isinstance(obj, (dict, list)):
+                if {"championid1", "championid2"}.issubset(set(inner_keys)):
+                    summary["likely_pair_structure"] = "list_of_pair_records"
+                    sample_ids = []
+                    for rec in obj[:5]:
+                        if isinstance(rec, dict):
+                            sample_ids.append(str(rec.get("championid1", "")))
+                    summary["champion_key_format_guess"] = _guess_key_format(sample_ids)
+    if summary["likely_pair_structure"] == "unknown" and summary["sample_entry"] and isinstance(obj, (dict, list)):
         # Look for a sub-list whose entries look like (otherChamp, winRate, games)
         sample = obj[summary["sample_keys"][0]] if isinstance(obj, dict) and summary["sample_keys"] else obj[0]
         if isinstance(sample, list) and sample and isinstance(sample[0], (list, dict)):
@@ -198,9 +220,34 @@ def load_ddragon_keys() -> dict:
     return out
 
 
+def extract_champion_ids(payload: object) -> list:
+    """Return the unique champion IDs referenced anywhere in the unwrapped
+    payload.
+
+    Handles both shapes the operator may capture:
+    (a) dict-of-pairs (synthetic / hypothetical): top-level keys = champ IDs
+    (b) list-of-pair-records (item 198 actual capture): each record has
+        `championid1` + `championid2` numeric-string fields
+
+    Returns a sorted list of string IDs. Empty list = unfamiliar shape."""
+    ids: set = set()
+    if isinstance(payload, dict):
+        for k in payload.keys():
+            ids.add(str(k))
+    elif isinstance(payload, list):
+        for rec in payload:
+            if isinstance(rec, dict):
+                for field in ("championid1", "championid2"):
+                    v = rec.get(field)
+                    if v is not None and str(v):
+                        ids.add(str(v))
+    return sorted(ids, key=lambda x: (0, int(x)) if x.isdigit() else (1, x))
+
+
 def cross_reference_ddragon(payload_keys: list, ddragon_map: dict) -> dict:
-    """Check how many of the payload's top-level keys map to a DDragon
-    champion (by numeric id OR by name string). Cheap classifier."""
+    """Check how many of the payload's champion IDs (top-level keys OR
+    record fields per `extract_champion_ids`) map to a DDragon champion
+    (by numeric id OR by name string). Cheap classifier."""
     out: dict = {
         "total_payload_keys": len(payload_keys),
         "matched_as_numeric_ddragon_key": 0,
@@ -271,6 +318,17 @@ def cross_check_rewind(payload: object, ddragon_map: dict) -> dict:
 def _first_pair_from_payload(payload: object, ddragon_map: dict) -> dict:
     """Best-effort extraction of one (champion_a, champion_b) pair from
     the captured payload. Heuristic; operator's real shape will validate."""
+    if isinstance(payload, list):
+        for rec in payload:
+            if isinstance(rec, dict):
+                a = str(rec.get("championid1", ""))
+                b = str(rec.get("championid2", ""))
+                if a and b:
+                    return {
+                        "champion_a": ddragon_map.get(a, a),
+                        "champion_b": ddragon_map.get(b, b),
+                    }
+        return {}
     if not isinstance(payload, dict):
         return {}
     keys = list(payload.keys())
@@ -321,15 +379,16 @@ def main(argv: list | None = None) -> int:
         return 1
 
     try:
-        payload = load_json(json_path)
+        raw_payload = load_json(json_path)
     except (json.JSONDecodeError, OSError) as exc:
         print(f"ERROR: could not parse JSON: {exc}", file=sys.stderr)
         return 1
 
+    payload = unwrap_envelope(raw_payload)
     url_findings = analyze_url(args.url)
     schema = analyze_schema(payload)
     ddragon_map = load_ddragon_keys()
-    payload_keys = list(payload.keys()) if isinstance(payload, dict) else []
+    payload_keys = extract_champion_ids(payload)
     xref = cross_reference_ddragon(payload_keys, ddragon_map)
 
     _print_section("url_structure", url_findings)

@@ -1,0 +1,42 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "championid1": "22",
+      "championid2": "147",
+      "lane1": "bottom",
+      "lane2": "support",
+      "doublewinrate": 0.5653,
+      "iwinrate1": 0.5223,
+      "iwinrate2": 0.5307,
+      "itemp1": "4.78%",
+      "vitemp1": 0,
+      "irank": 1
+    },
+    {
+      "championid1": "222",
+      "championid2": "201",
+      "lane1": "bottom",
+      "lane2": "support",
+      "doublewinrate": 0.5799,
+      "iwinrate1": 0.5373,
+      "iwinrate2": 0.5225,
+      "itemp1": "1.32%",
+      "vitemp1": 1,
+      "irank": 2
+    },
+    {
+      "championid1": "498",
+      "championid2": "497",
+      "lane1": "bottom",
+      "lane2": "support",
+      "doublewinrate": 0.5616,
+      "iwinrate1": 0.5357,
+      "iwinrate2": 0.5353,
+      "itemp1": "4.1%",
+      "vitemp1": -1,
+      "irank": 3
+    }
+  ],
+  "message": "success"
+}

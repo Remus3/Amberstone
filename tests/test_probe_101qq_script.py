@@ -34,6 +34,7 @@ _FIXTURES = _REPO_ROOT / "tests" / "fixtures" / "qq101"
 _NUMERIC = _FIXTURES / "hero_rank_double_numeric.json"
 _PASCAL = _FIXTURES / "hero_rank_double_pascal.json"
 _JSONP = _FIXTURES / "hero_rank_double_jsonp.js"
+_WRAPPED = _FIXTURES / "hero_rank_double_wrapped.json"
 
 _TOOL_PROBE = _REPO_ROOT / "tools" / "probe_101qq_hero_rank_double.py"
 _TOOL_COMPARE = _REPO_ROOT / "tools" / "compare_101qq_vs_ddragon.py"
@@ -183,6 +184,86 @@ class CompareToolTests(unittest.TestCase):
         self.assertNotIn("weird_code", result["unmatched"])
 
 
+class WrappedEnvelopeTests(unittest.TestCase):
+    """Item 198 (2026-05-26): the live Tencent payload is wrapped in a
+    `{code, data, message}` envelope with pair-records in `data[]` keyed
+    by `championid1` + `championid2`. Both tools must auto-unwrap."""
+
+    def test_probe_unwrap_envelope_dict_passthrough(self) -> None:
+        passthrough = {"266": [], "Aatrox": []}
+        self.assertIs(probe_mod.unwrap_envelope(passthrough), passthrough)
+
+    def test_probe_unwrap_envelope_extracts_data(self) -> None:
+        wrapped = {"code": 0, "data": [{"championid1": "22"}], "message": "success"}
+        result = probe_mod.unwrap_envelope(wrapped)
+        self.assertIsInstance(result, list)
+        self.assertEqual(result[0]["championid1"], "22")
+
+    def test_probe_unwrap_envelope_rejects_malformed(self) -> None:
+        wrong_data_type = {"code": 0, "data": {"22": "Ashe"}, "message": "success"}
+        self.assertIs(probe_mod.unwrap_envelope(wrong_data_type), wrong_data_type)
+
+    def test_compare_unwrap_envelope_dict_passthrough(self) -> None:
+        passthrough = {"266": [], "Aatrox": []}
+        self.assertIs(cmp_mod.unwrap_envelope(passthrough), passthrough)
+
+    def test_compare_unwrap_envelope_extracts_data(self) -> None:
+        wrapped = {"code": 0, "data": [{"championid1": "22"}], "message": "success"}
+        result = cmp_mod.unwrap_envelope(wrapped)
+        self.assertIsInstance(result, list)
+        self.assertEqual(result[0]["championid1"], "22")
+
+    def test_probe_extract_champion_ids_from_records(self) -> None:
+        records = [
+            {"championid1": "22", "championid2": "147"},
+            {"championid1": "222", "championid2": "201"},
+            {"championid1": "22", "championid2": "63"},
+        ]
+        ids = probe_mod.extract_champion_ids(records)
+        self.assertEqual(set(ids), {"22", "63", "147", "201", "222"})
+
+    def test_probe_extract_champion_ids_from_dict(self) -> None:
+        dict_shape = {"266": [], "Aatrox": [], "12": []}
+        ids = probe_mod.extract_champion_ids(dict_shape)
+        self.assertEqual(set(ids), {"266", "Aatrox", "12"})
+
+    def test_compare_build_alignment_list_records(self) -> None:
+        ddragon = cmp_mod.load_ddragon_keys()
+        records = [
+            {"championid1": "22", "championid2": "147"},
+            {"championid1": "222", "championid2": "201"},
+        ]
+        result = cmp_mod.build_alignment(records, ddragon, {})
+        self.assertEqual(result["aligned"].get("22"), "Ashe")
+        self.assertEqual(result["aligned"].get("147"), "Seraphine")
+        self.assertEqual(result["aligned"].get("222"), "Jinx")
+        self.assertEqual(result["aligned"].get("201"), "Braum")
+        self.assertEqual(result["unmatched"], [])
+
+    def test_probe_end_to_end_wrapped_fixture(self) -> None:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = probe_mod.main([
+                "--url", "https://101.qq.com/.../hero-rank-double?tier=200",
+                "--json", str(_WRAPPED),
+            ])
+        self.assertEqual(rc, 0)
+        text = buf.getvalue()
+        self.assertIn("list_of_pair_records", text)
+        # Fixture has 3 records referencing 6 unique champion IDs.
+        self.assertIn('"matched_as_numeric_ddragon_key": 6', text)
+        self.assertIn('"total_payload_keys": 6', text)
+
+    def test_compare_end_to_end_wrapped_fixture(self) -> None:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = cmp_mod.main(["--json", str(_WRAPPED)])
+        self.assertEqual(rc, 0)
+        summary = json.loads(buf.getvalue())["summary"]
+        self.assertEqual(summary["aligned_count"], 6)
+        self.assertEqual(summary["unmatched_count"], 0)
+
+
 class NoExternalDepsTests(unittest.TestCase):
     """Confirm the tool files import only stdlib + the in-repo helpers."""
 
@@ -219,7 +300,7 @@ class AsciiHygieneTests(unittest.TestCase):
         self._assert_ascii(_DOC_INSTRUCTIONS)
 
     def test_fixtures_ascii(self) -> None:
-        for f in (_NUMERIC, _PASCAL, _JSONP):
+        for f in (_NUMERIC, _PASCAL, _JSONP, _WRAPPED):
             self._assert_ascii(f)
 
 
