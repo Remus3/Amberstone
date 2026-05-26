@@ -72,17 +72,16 @@ Nexus: group + dive in order (tank first, carry second, mop up third)
 
 NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T]
 
-OUTPUT FORMAT - exactly 8 fields, NO markdown:
+OUTPUT FORMAT - exactly 8 fields, NO markdown. Choices is REQUIRED and is the PRIMARY actionable surface (the operator picks one via Alt+1/2/3 hotkey). Do NOT emit an Immediate prose field - that slot has been retired in favour of the Choices array.
 Champion build: {brawl_meta}
 Action: <1-3 WORDS ALL-CAPS - GROUP MID / PUSH BOT / CONTEST EVENT / FIGHT NOW / BASE>
-Immediate: <what to do RIGHT NOW, [A]/[E] tags, max 15 words>
 Event: <event name + action + [T]timer[/T] + lane location>
 Fight rule: <engage condition [E] carry + exact mechanic, max 20 words>
 Wave: <freeze/slow/crash/bounce + reason>
 Reset / item: <recall/base condition + next item spike>
 Objective: <structure target + rotate timing [T]>
 Risk: <[E]ability[/E] to respect + cooldown context>
-Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "event-rotate", "siege-call". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
+Choices: <REQUIRED compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "event-rotate", "siege-call". Return [] ONLY if no decision is on the clock. The default expectation is 2-3 choices reflecting the live tactical fork. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """ + personal_context_block()
 
 _URF_SYSTEM_PROMPT = """\
@@ -112,16 +111,15 @@ Champion-specific build notes are in the CHAMPION BUILD field below
 
 NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T]
 
-OUTPUT FORMAT - 8 fields, NO markdown:
+OUTPUT FORMAT - 8 fields, NO markdown. Choices is REQUIRED and is the PRIMARY actionable surface (the operator picks one via Alt+1/2/3 hotkey). Do NOT emit an Immediate prose field.
 Action: <1-3 WORDS ALL-CAPS>
-Immediate: <what to do RIGHT NOW, max 15 words>
 Fight rule: <engage/disengage with [E] tags>
 Wave: <shove or freeze>
 Reset / item: <next spike + gold check>
 Objective: <rotate or hold>
 Risk: <specific [E] spell to dodge>
 Comp analysis: <your damage type vs enemy - exploit their weakness>
-Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "spam-poke", "all-in". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
+Choices: <REQUIRED compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "spam-poke", "all-in". Return [] ONLY if no decision is on the clock. The default expectation is 2-3 choices reflecting the live tactical fork. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """ + personal_context_block()
 
 _OFA_SYSTEM_PROMPT = """\
@@ -142,20 +140,19 @@ OBJECTIVE: fight for every objective - 5 same champions = predictable burst timi
 
 NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T] - use in all fields.
 
-OUTPUT FORMAT - 7 fields, NO markdown:
+OUTPUT FORMAT - 7 fields, NO markdown. Choices is REQUIRED and is the PRIMARY actionable surface (the operator picks one via Alt+1/2/3 hotkey). Do NOT emit an Immediate prose field.
 Action: <1-3 WORDS ALL-CAPS>
-Immediate: <right now, max 15 words>
 Fight rule: <stack condition + timing>
 Wave: <shove or hold>
 Reset / item: <next item>
 Objective: <take/hold>
 Risk: <enemy exploit vs your champion weakness>
-Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "stack-combo", "ofa-burst". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
+Choices: <REQUIRED compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "fight-trade", "respawn-window", "objective-pace", "stack-combo", "ofa-burst". Return [] ONLY if no decision is on the clock. The default expectation is 2-3 choices reflecting the live tactical fork. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """ + personal_context_block()
 
-_NB_OUTPUT_KEYS  = ["action", "immediate", "event", "fight rule", "wave", "reset / item", "objective", "risk", "choices"]
-_URF_OUTPUT_KEYS = ["action", "immediate", "fight rule", "wave", "reset / item", "objective", "risk", "comp analysis", "choices"]
-_OFA_OUTPUT_KEYS = ["action", "immediate", "fight rule", "wave", "reset / item", "objective", "risk", "choices"]
+_NB_OUTPUT_KEYS  = ["action", "event", "fight rule", "wave", "reset / item", "objective", "risk", "choices"]
+_URF_OUTPUT_KEYS = ["action", "fight rule", "wave", "reset / item", "objective", "risk", "comp analysis", "choices"]
+_OFA_OUTPUT_KEYS = ["action", "fight rule", "wave", "reset / item", "objective", "risk", "choices"]
 
 
 # ══════════════════════════════════════════════════════════════════════════════

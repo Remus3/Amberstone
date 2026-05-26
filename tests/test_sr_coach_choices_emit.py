@@ -58,7 +58,7 @@ class PromptShapeTests(unittest.TestCase):
     def test_choices_field_label_present(self):
         # The field LABEL itself - "Choices:" on its own line inside the
         # SR_SYSTEM_PROMPT block.
-        self.assertIn("Choices: <OPTIONAL", self.src)
+        self.assertIn("Choices: <REQUIRED", self.src)
 
     def test_choices_lives_inside_sr_system_prompt(self):
         # Scope check: the Choices line MUST be inside the SR_SYSTEM_PROMPT
@@ -67,7 +67,7 @@ class PromptShapeTests(unittest.TestCase):
         sr_start = self.src.index("SR_SYSTEM_PROMPT")
         sr_end = self.src.index('"""', self.src.index('"""', sr_start) + 3)
         sr_block = self.src[sr_start:sr_end]
-        self.assertIn("Choices: <OPTIONAL", sr_block,
+        self.assertIn("Choices: <REQUIRED", sr_block,
                       "Choices line must be inside SR_SYSTEM_PROMPT block")
 
     def test_schema_hint_describes_json_array(self):
@@ -91,7 +91,7 @@ class PromptShapeTests(unittest.TestCase):
     def test_empty_array_is_acceptable(self):
         # The prompt MUST tell the model "[] is OK" so it doesn't
         # padded-emit unrelated junk on idle ticks.
-        self.assertIn("Return [] if", self.src)
+        self.assertIn("Return []", self.src)
 
     def test_single_line_json_required(self):
         # The line-based parser would break on multi-line JSON; the
@@ -174,7 +174,7 @@ class CachePreservedTests(unittest.TestCase):
         sr_end = self.prompt_src.index('"""', self.prompt_src.index('"""', sr_start) + 3)
         sr_block = self.prompt_src[sr_start:sr_end]
         idx_risk = sr_block.index("Risk:")
-        idx_choices = sr_block.index("Choices: <OPTIONAL")
+        idx_choices = sr_block.index("Choices: <REQUIRED")
         self.assertLess(idx_risk, idx_choices,
                         "Choices line MUST follow Risk line")
 
@@ -186,7 +186,7 @@ class CachePreservedTests(unittest.TestCase):
         sr_block_open = self.prompt_src.index('"""', sr_start) + 3
         sr_block_close = self.prompt_src.index('"""', sr_block_open)
         sr_block = self.prompt_src[sr_block_open:sr_block_close]
-        idx_choices = sr_block.index("Choices: <OPTIONAL")
+        idx_choices = sr_block.index("Choices: <REQUIRED")
         # After the Choices line should be at most one newline (the
         # trailing \n before """).
         between = sr_block[idx_choices:]
@@ -208,7 +208,7 @@ class CachePreservedTests(unittest.TestCase):
         aram_block_close = self.prompt_src.index('"""', aram_block_open)
         aram_block = self.prompt_src[aram_block_open:aram_block_close]
         self.assertNotIn(
-            "Choices: <OPTIONAL", aram_block,
+            "Choices: <REQUIRED", aram_block,
             "Slice scope: ARAM_SYSTEM_PROMPT inside _sr_prompt.py must NOT "
             "be touched (ARAM coach owns its own prompt under coaches/)",
         )

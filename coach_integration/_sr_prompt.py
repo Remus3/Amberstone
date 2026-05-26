@@ -119,16 +119,15 @@ ALLY vs ENEMY RULE - CRITICAL: never swap these tags.
   If you are uncertain which team a champion is on, do NOT tag them rather than risk a swap.
   A wrong tag inverts the color on screen and directly misleads the player - this is a hard error.
 
-OUTPUT FORMAT - follow exactly, no preamble. Every field has a hard word cap:
+OUTPUT FORMAT - follow exactly, no preamble. Every field has a hard word cap.
+Choices is REQUIRED and is the PRIMARY actionable surface (the operator picks one via Alt+1/2/3 hotkey). Do NOT emit Immediate/Next prose - those slots have been retired in favour of the Choices array. Every field below MUST be present.
 Action: <1-3 WORDS ALL-CAPS macro priority - e.g. PUSH BOT LANE / BASE LOW HP / FREEZE WAVE / FIGHT NOW / GIVE SPACE / DEFEND TOWER / CRASH AND RESET / TAKE DRAKE / TAKE BARON / END GAME>
-Immediate: <concise 3-5s action, use [A]/[E] name tags, max 12 words>
-Next: <15-30s plan, use [A]/[E] tags and [T] for all timings, max 16 words>
 Wave: <state + <=6 word reason>
 Objective: <take/setup/skip/rotate-NOW + [T] timing, max 10 words>
 Fight rule: <specific condition using [A]/[E] tags + exact mechanic, max 12 words>
 Reset / item: <item name + exact gold check, max 8 words>
 Risk: <specific threat using [E] tag + mechanic to watch, max 12 words>
-Choices: <OPTIONAL compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "lane-state", "rotate-ward", "team-fight", "wave-tempo", "objective-call". Return [] if no clean binary decision is on the clock. Do NOT inflate; an empty array is better than padded choices. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
+Choices: <REQUIRED compact single-line JSON array of 2-3 micro-decisions the player faces RIGHT NOW. Schema: [{{"key":"A","label":"<3-5 word option>","expected_outcome":"<one sentence what likely happens>","confidence":"low" or "mid" or "high","source_tag":"<3-10 char descriptor>"}}, ...]. Keys are A/B/C in order. Use confidence honestly: "high" only for textbook plays; "mid" for situational reads; "low" for high-uncertainty calls. Set source_tag to a short descriptor like "lane-state", "rotate-ward", "team-fight", "wave-tempo", "objective-call". Return [] ONLY if no decision is on the clock (e.g. dead waiting respawn, in fountain shopping); the default expectation is 2-3 choices reflecting the live tactical fork. Output MUST be a single line of valid JSON (no markdown, no line breaks inside the array).>
 """ + personal_context_block()
 # \u2500\u2500 ARAM / ARAM Mayhem system prompt \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 

@@ -479,10 +479,23 @@ function renderRightNow(p) {
   RN.action.textContent = hasAction
     ? (alreadyGlyphed ? rawAction : glyph + rawAction)
     : "-";
-  // Arena: in pregame (no round yet / no round_strategy), surface the
-  // full pregame card as the immediate content. Once the live coach
-  // starts writing round_strategy, swap to that.
-  if (arena) {
+  // 2026-05-25 (item 189): the LLM coaches no longer emit Immediate/Next
+  // prose - the Choices array (Alt+1/2/3 hotkey-selectable chips rendered
+  // by web/js/panels/coach_choices.js into #rn-choices) is the primary
+  // actionable surface now. If choices are non-empty, hide #rn-immediate
+  // entirely so the chips occupy the slot below #rn-action. If choices
+  // are empty (no decision on the clock, dead waiting respawn, mid-base,
+  // or pre-game-pregame) fall through to whatever prose the coach still
+  // emits (pregame for arena, plain p.immediate for replay-cached data).
+  const hasChoices = Array.isArray(p.choices) && p.choices.length > 0;
+  RN.immediate.hidden = hasChoices;
+  if (hasChoices) {
+    RN.immediate.classList.remove("is-pregame");
+    RN.immediate.textContent = "";
+  } else if (arena) {
+    // Arena: in pregame (no round yet / no round_strategy), surface the
+    // full pregame card as the immediate content. Once the live coach
+    // starts writing round_strategy, swap to that.
     const liveStrategy = safe(p.round_strategy);
     const hasLiveRound = (typeof p.round === "number" && p.round > 0) || !!liveStrategy;
     const imm = hasLiveRound

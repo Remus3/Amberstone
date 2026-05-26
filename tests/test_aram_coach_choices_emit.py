@@ -44,7 +44,7 @@ class PromptShapeTests(unittest.TestCase):
 
     def test_choices_field_label_present(self):
         # The field LABEL itself - "Choices:" on its own line.
-        self.assertIn("Choices: <OPTIONAL", self.src)
+        self.assertIn("Choices: <REQUIRED", self.src)
 
     def test_schema_hint_describes_json_array(self):
         # The schema hint enumerates the 5 required keys per entry.
@@ -69,7 +69,7 @@ class PromptShapeTests(unittest.TestCase):
     def test_empty_array_is_acceptable(self):
         # The prompt MUST tell the model "[] is OK" so it doesn't
         # padded-emit unrelated junk on idle ticks.
-        self.assertIn("Return [] if", self.src)
+        self.assertIn("Return []", self.src)
 
     def test_single_line_json_required(self):
         # parse_fields is line-based; multi-line JSON would break
@@ -151,7 +151,7 @@ class CachePreservedTests(unittest.TestCase):
         # last pre-Choices field. Putting Choices AFTER "Item reasons:"
         # is what keeps the prior bytes unchanged.
         idx_reasons = self.src.index("Item reasons:")
-        idx_choices = self.src.index("Choices: <OPTIONAL")
+        idx_choices = self.src.index("Choices: <REQUIRED")
         self.assertLess(idx_reasons, idx_choices,
                         "Choices line MUST follow Item reasons line")
 
@@ -159,7 +159,7 @@ class CachePreservedTests(unittest.TestCase):
         # After Choices, the SYSTEM block MUST close with the triple
         # quote terminator + the _USER_TMPL definition. Nothing else
         # is allowed between Choices and the closing """.
-        idx_choices = self.src.index("Choices: <OPTIONAL")
+        idx_choices = self.src.index("Choices: <REQUIRED")
         idx_close = self.src.index('"""', idx_choices)
         between = self.src[idx_choices:idx_close]
         # Must be a single line: one newline after the > closer.
