@@ -1321,7 +1321,99 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.60.0"
+ENGINE_VERSION = "1.61.0"
+# 1.61.0 (cc_conditional wave 23 - Hecarim R Onslaught of Shadows
+# distance-gated fear SHIPPED via the wave 18 coexists_with_unconditional
+# same-slot-coexistence schema (Maokai R precedent). SECOND consumer of
+# the wave 7 forward-marker COND_RANGE_GATED tag.
+#
+# Re-audit of operator-gated REJECT carries from items 178-201 against
+# the FULL ENGINE 1.60.0 schema (cast_time + effects_descriptions +
+# parent_resource + notes + damage_blocks). The audit subagent surfaced
+# Hecarim R as the canonical range-gated fear payload that prior waves
+# had not matched against the COND_RANGE_GATED tag. The
+# effects_descriptions[1] "fears nearby enemies for 0.75 : 1.5 (based
+# on distance traveled) seconds" is the textbook range-gated CC payload
+# pattern; Maokai R wave 18 was the FIRST consumer (range-gated root),
+# Hecarim R wave 23 is the SECOND (range-gated fear).
+#
+# REGISTRY ADDS: +1 primary entry / +1 net-new champion (Hecarim).
+# Registry: 71 entries / 56 champs -> 72 entries / 57 champs (62
+# primary + 8 sidecar -> 63 primary + 8 sidecar). Tag count unchanged
+# at 13. COND_RANGE_GATED consumer count: 1 -> 2.
+#
+# Hecarim R mechanism:
+#   * Active: Hecarim dashes with displacement immunity to target
+#     location, summoning 5 spectral riders in an arrow formation
+#     that charge alongside him.
+#   * Upon arrival: AoE magic damage + range-gated fear + range-
+#     gated slow on nearby enemies. Per Meraki effects_descriptions[1]:
+#     "Upon arrival, he fears nearby enemies for 0.75 : 1.5 (based on
+#     distance traveled) seconds and slows them by 0% : 99% (based on
+#     distance from Hecarim)."
+#   * Distance-traveled values:
+#     - Short-range dash (close to original position): 0.75s fear
+#     - Mid-range dash: ~1.0s fear (the unconditional baseline value)
+#     - Long-range dash (max ride): 1.5s fear (the cc_conditional value)
+#
+# Encoding choice:
+#   * cc_kind=fear (the 0.75-1.5s fear is the primary CC payload;
+#     the 0-99% slow is a separate utility payload not registered
+#     here per the slow-without-damage rule).
+#   * durations_s=(1.5, 1.5, 1.5) - 1.5s flat per R rank at the
+#     max-distance band; R rank only scales the dash range + the
+#     spectral rider damage, NOT the fear cap.
+#   * condition=COND_RANGE_GATED - SECOND consumer of the wave 7
+#     forward-marker tag (Maokai R wave 18 was the FIRST). The
+#     range-gated payload pattern (duration scales on distance
+#     traveled) is the canonical match for this tag.
+#   * probability=0.4 (tag midpoint matching Maokai R precedent;
+#     mid-low reflecting that the operator must commit to a long-
+#     distance ride to reach the 1.5s far band).
+#   * coexists_with_unconditional=True - declares same-slot
+#     coexistence with the unconditional `_PER_SPELL_CC_DURATIONS
+#     ["Hecarim"]["R"] = (1.0, 1.0, 1.0)` baseline entry. Consumer
+#     math: include_conditional=True the MAX rule credits the
+#     larger of unconditional 1.0s or conditional 1.5 * 0.4 = 0.6s
+#     default; default calibration keeps unconditional 1.0s as the
+#     credited value. Operator tunes Hecarim:R above 0.667 to flip.
+#
+# Math preservation: default
+# compute_cc_pressure(include_conditional=False) is BYTE-IDENTICAL
+# to ENGINE 1.60.0 for ALL champions (the wave 23 path skips when
+# the flag is False; unconditional 1.0s R fear unchanged for
+# Hecarim). include_conditional=True at default 0.4 probability
+# keeps the unconditional 1.0s winning via MAX-rule; only operator
+# override above 0.667 flips the conditional above the
+# unconditional.
+#
+# REJECT verdicts wave 23 (audit subagent full report; cross-
+# checked against `data/daemon_slayer/16.10.1/champion_abilities.json`):
+#   * Jhin W Deadly Flourish "roots them for a duration" - duration
+#     lacks explicit numeric value. REJECT (cannot pin durations_s
+#     without verified cast-time or per-rank spec).
+#   * Anivia Q recast shatter stun "stun them for a duration" -
+#     duration lacks explicit numeric value. REJECT.
+#   * Heimerdinger E center-of-impact 1.5s stun - center-of-impact
+#     spatial differentiation is NOT a tactical condition (no nth_hit
+#     marker, no mark application, no terrain requirement). REJECT
+#     for conditional registry; if first-order, belongs in
+#     `_PER_SPELL_CC_DURATIONS`.
+#   * Lillia R Dream Mist 1.5s drowsy on Dream Dust mark - the
+#     COND_DREAM_STACK forward-marker tag remains empty-registry;
+#     Lillia passive multi-mark mechanics are parse-stripped in
+#     damage_blocks-only format; cannot verify multi-stack payoff
+#     explicitly. REJECT pending Meraki schema lift for Dream Stack
+#     interactions.
+#   * Lissandra W root + R stun "stunned for 1.5 seconds" - both
+#     are UNCONDITIONAL first-order CC (no gating condition). Belong
+#     in `_PER_SPELL_CC_DURATIONS`. REJECT for conditional registry.
+#   * Leona R epicenter stun - epicenter is spatial (impact zone),
+#     NOT a tactical condition. REJECT.
+#   * Jinx E knockdown + root - UNCONDITIONAL knockdown/root on
+#     champion contact. Belongs in `_PER_SPELL_CC_DURATIONS`. REJECT
+#     for conditional registry.
+#
 # 1.60.0 (cc_conditional wave 22 - Rell W form 1 Ferromancy: Mount Up
 # empowered-AA stun SHIPPED via the wave 14 cast_time + wave 20 notes
 # schema lifts. Operator-granted authority item 199 Slice B (full
