@@ -132,6 +132,6 @@ def test_keyerror_quoted_repro_anchor() -> None:
         f"If this changed, Python's str.format() parsing rules changed."
     )
     assert str(ei.value) == '\'"key"\'', (
-        f"Expected str(e) repr to be `'\"key\"'` (7 chars). "
-        f"If this changed, log-grepping for the symptom needs updating."
+        "Expected str(e) repr to be `'\"key\"'` (7 chars). "
+        "If this changed, log-grepping for the symptom needs updating."
     )
