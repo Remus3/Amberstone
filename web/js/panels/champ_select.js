@@ -3140,6 +3140,28 @@ function _csvFetchDuoSynergy(myRole, botLock, botHover, supLock, supHover, topN,
     return cached.data;
   }
   if (_CSV_DUOSYN_INFLIGHT[key]) return cached ? cached.data : null;
+  // Mock dispatcher: when body.dataset.uiMock === "1", load the static
+  // fixture instead of hitting /api/duo-synergy. Mirrors _csMockLoad
+  // (items 165 + 181) + _lmMockLoad (item 183) + _lobbyMockLoad (item
+  // 163) + _amMockLoad (item 184) + _csvFetchUserVariants (item 178)
+  // patterns. Closes item 199 Slice CD orphan: the fixture at
+  // web/data/ui_mock/duo_synergy.json was created with the route but
+  // never wired at the frontend layer.
+  const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
+  if (isMock) {
+    _CSV_DUOSYN_INFLIGHT[key] = true;
+    fetch("/data/ui_mock/duo_synergy.json", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((j) => {
+        _CSV_DUOSYN_INFLIGHT[key] = false;
+        if (j && j.ok) {
+          _CSV_DUOSYN_CACHE[key] = { data: j, fetchedAt: Date.now() };
+          if (typeof onLoad === "function") onLoad();
+        }
+      })
+      .catch(() => { _CSV_DUOSYN_INFLIGHT[key] = false; });
+    return cached ? cached.data : null;
+  }
   _CSV_DUOSYN_INFLIGHT[key] = true;
   const params = new URLSearchParams();
   params.set("my_role", String(myRole || "bot"));
