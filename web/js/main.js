@@ -445,6 +445,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     state.mode = tag;
     modePill.textContent = (tag || "client").toUpperCase();
     modePill.className = `mode-pill ${tag}`;
+    // 2026-05-25 item 201 fix: stamp a baseline document.title on every
+    // mode flip so the browser tab doesn't carry the prior game's
+    // champion + game_time after the operator returns to lobby
+    // (renderHeader, which authors the enriched title, bails on
+    // !driveNow for client/sr-without-coach-data). Coach ticks for
+    // in-game modes overwrite this with "RC · <champ> · <MODE> · <t>".
+    try { document.title = "RC · " + (tag || "client").toUpperCase(); } catch (_) {}
     // Mode-aware CSS hook for minimap panel (SR underlay only on SR).
     const mmPanel = document.querySelector(".panel-minimap");
     if (mmPanel) mmPanel.className = "panel panel-minimap mode-" + tag;
@@ -6253,6 +6260,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           // The "coach" sub-object is the state envelope's payload -
           // contains action, immediate, kda, augments, item_build, etc.
           const coachPayload = st.coach || st;
+          // 2026-05-25 item 201 fix: stamp the top-level /api/state
+          // siblings into state.latest BEFORE onState() so renderActiveMatch
+          // sees fresh liveclient + summoner_cooldowns. Without this the
+          // CDS rail rendered "no live game" mid-game and the threat-donut
+          // strip got null liveclient.
+          state.latest.liveclient = st.liveclient || null;
+          state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
           onState({ type: "state", source: "state-http",
                     mode: fileMode, payload: coachPayload });
           // 2026-04-25: cold-start champ-select prep - surface adaptation
@@ -6290,6 +6304,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           // Pipe through the same handlers the WS / HTTP-fallback paths use.
           const fileMode = st.mode_key || "client";
           const coachPayload = st.coach || st;
+          // 2026-05-25 item 201 fix: see HTTP-fallback site above.
+          state.latest.liveclient = st.liveclient || null;
+          state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
           if (st.lcu) handleLcuEnvelope(st.lcu);
@@ -6327,6 +6344,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         if (r.ok) {
           const st = await r.json();
           if (st && st.lcu) handleLcuEnvelope(st.lcu);
+          // 2026-05-25 item 201 fix: stamp siblings here too so the
+          // independent LCU poller path also keeps state.latest fresh.
+          if (st) {
+            state.latest.liveclient = st.liveclient || null;
+            state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
+          }
           if (st) { renderTeamContext(st); renderArchetypeNudge(st); renderScreenRead(st); }
         }
       } catch (_) { /* silent */ }

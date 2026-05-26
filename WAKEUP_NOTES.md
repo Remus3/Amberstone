@@ -4,6 +4,45 @@
 
 ---
 
+# 2026-05-26 - item 201 SHIPPED: LIVE BUG fix SR coach KeyError + Choices-first refactor w/ Alt+1/2/3 hotkeys + game-monitor skill gate `{game}` -> `{sr}`
+
+Operator triggered "starting ranked sr - monitor UI and game, fix as needed -> smoke tests and checks and error corrections". Active ranked SoloDuo queue 420 mid-session. **LIVE PRODUCTION BUG SURFACED + ROOT-CAUSED + FIXED + 2 RC RESTARTS during the operator's first ranked SR game in 5 days.**
+
+**Root cause:** `coach_integration/_sr_prompt.py:131` SR_SYSTEM_PROMPT had a JSON schema literal `[{"key":"A","label":"<3-5 word option>",...}]` inside the Choices field doc. Python's `str.format(profile=..., sr_rune_rec=..., sr_build_note=..., adaptation_hint=...)` at `coach_integration/_coach.py:262` parses `{"key":"A",...}` as a format field with field-name `"key"` (5-char literal with quotes) and raises `KeyError('"key"')` every coach tick. ARAM + Arena + Brawl 3x prompts had the SAME bug. Bug landed 2026-05-21 commits `58b7d20` (Brawl + SR native choices emit) + `b3cd60b` (ARAM/Arena phase 2). The 5-day window before today's ranked SR game was the first time the SR `.format()` path was exercised live. Symptom in `logs/2026-05-25.log`: `ERROR coach [_coach.py:196] Coach error: '"key"'` repeating every ~30s in-game with `coach.action / immediate / next` all empty.
+
+**Fix `64fc7cf` (12 files / +554 / -68; pushed origin/main `2f703eb..64fc7cf`):**
+1. **Brace-escape on 6 schema lines** (1 SR + 1 ARAM + 1 Arena + 3 Brawl URF/OFA/NB): `[{"key":"A",...},...]` -> `[{{"key":"A",...}},...]` so `str.format()` sees literal `{{...}}` and renders single-brace `{...}` back. Tools `tools/strip_em_dashes.py` + `tools/strip_smart_quotes.py` precedent.
+2. **Dropped LLM `Immediate:` + `Next:` emit** from all 4 in-game system prompts. Operator scope expansion: "drop the coach prompt firing for the immediate/next, use the A+B choice surfacing, and make sure that the hotkey selections (ALT+1, ALT+2, ALT+3) are wired and the feedback can be received and acted upon. surface those choices within the immediate panel."
+3. **Choices is now REQUIRED** (was OPTIONAL) in all 4 prompts. Token spend reduction + the JSON array is the primary actionable surface, not a sidecar.
+4. **`coaches/brawl_coach.py::_NB_OUTPUT_KEYS / _URF_OUTPUT_KEYS / _OFA_OUTPUT_KEYS`** dropped `"immediate"` so `parse_fields(raw, output_keys)` doesn't silently look for a field the LLM no longer emits.
+5. **`web/js/panels/coach_choices.js`**: window-level keydown handler for Alt+1/Alt+2/Alt+3 funnels into a shared `_activateChip` helper (same path as click); each chip carries an `Alt+N` pill so the digit binding is visible without hover; `_latestState` module-stash so the keyboard handler can snapshot game_context outside `renderCoachChoices`'s closure; `.rc-ack-bubble` toast renders after a successful POST so hotkey picks have visible ACK feedback.
+6. **`web/js/panels/right_now.js`**: `hasChoices` guard hides `#rn-immediate` when `state.coach.choices.length > 0`, so the chips visually occupy the slot directly under `#rn-action` (per operator: "surface those choices within the immediate panel").
+7. **`web/css/panels/coach_choices.css`**: chips column-stack (was horizontal flex-wrap), label at `--fs-md` (18px), chip meets `--hit-min` (42px), plus `.rc-hotkey` Alt+N pill + `.rc-ack-bubble` toast rules.
+8. **`.claude/commands/game-monitor.md`** (user-level, not in repo): gate `{game, arena, aram, tft, brawl}` -> `{sr, arena, aram, tft, brawl}`. The prior set had a phantom `"game"` mode_key that `core/queue_modes.py` never emits (SR is `"sr"`). The skill never fired for SR games before this fix.
+
+**Tests (+31 new tests across 2 new files):**
+- NEW `tests/test_coach_prompt_format_safe.py` 7 tests: pin `.format()` works on each in-game prompt + repro the exact `KeyError('"key"')` shape so future JSON-in-prompt regressions fail CI before a live tick. Anchor includes `assertEqual(ei.value.args, ('"key"',))` so future Python parsing-rule changes are caught.
+- NEW `tests/test_coach_choices_alt_hotkey.py` 24 tests: pin Immediate/Next drop in all 4 prompts + brawl output_keys drop + Alt+1/2/3 keydown bind + `ev.altKey` + Digit1/2/3 recognition + `_activateChip` shared path + ACK toast CSS + `right_now.js hasChoices` suppression order.
+- 5 existing tests updated: `Choices: <OPTIONAL` -> `<REQUIRED` + `Return [] if` -> `Return []` across sr/aram/brawl `_choices_emit.py`.
+- Smoke: `223 passed in 2.79s` across coach + phase8_smoke surfaces.
+
+**RC restart sequence:** pid 7500 -> 2504 (SR brace fix) -> 2372 (full sweep ARAM/Arena/Brawl) -> 10464 (this commit's full prompts). `last_reload_ok=True` throughout. Each restart was 5-10s coach blackout but coach was already broken so no regression. Asset hash `5c6b5a4247 -> 8099493d46` across the 3 frontend edits; ADR-008 auto-served on Game-PC Chrome.
+
+**Champ select audit subagent (Explore) launched in parallel during coach refactor:** 5-phase verdict for page #8 SR. STRUCTURE / HIT-TARGETS / ASCII / HIERARCHY = PASS. TYPOGRAPHY = FAIL: 13 sub-floor sites (12-15px hardcoded under `.csv-*` scope) at `web/js/panels/champ_select.js:769, 787, 1179, 1264, 1386, 1413, 1456, 1483, 1500, 1708, 1717, 1745, 2456`. All must upgrade to `var(--fs-xs)` (16px v2.1 floor). NO ALT-hotkey collision. Operator-gated for next pass.
+
+**Don't-redo:**
+- The `{{...}}` brace-escape on JSON literals inside `.format()`'d prompts is the canonical fix. NEW `tests/test_coach_prompt_format_safe.py` LOCKS the invariant - any new JSON literal in a system prompt that forgets to escape fails CI before reaching production.
+- `coach.choices` is the primary actionable surface NOT a sidecar. Future coach surfaces (e.g. a new mode coach) should follow the same pattern: drop prose Immediate/Next, REQUIRED Choices, render in `#rn-immediate` slot via `hasChoices` guard.
+- Alt+1/2/3 binding is in `web/js/panels/coach_choices.js` `_onAltDigitKeydown` (capture-phase, preventDefault on match). The handler is bound ONCE at module load via `window.__rcCoachChoicesAltBound` sentinel. The `_chipByKey` cache is rebuilt on every `renderCoachChoices` call; outside-of-render keypresses (no chips visible) are NO-OPs.
+- The game-monitor skill gate fix (`{game}` -> `{sr}`) is in the user-level `.claude/commands/` directory - it survives `git clean` but won't be tracked in the repo. The 5-mode gate set is now correct against `core/queue_modes.py::QUEUE_ID_TO_MODE_KEY` values.
+- Operator's commit-message numbering ("item 189" in `64fc7cf` subject) is a stale-snapshot artifact - the actual sequence number after item 200 is item 201 per WAKEUP_NOTES; the SHA is canonical regardless of textual label.
+- Game-PC LCU agent redeploy from item 200 Slice B (`delete_stale_rc_item_sets`) STILL OWED at next Arena/SR window via HTTP-pull dance per [[reference_gamepc_http_server_redeploy]].
+
+**Carries forward:**
+- 13 typography sub-floor sites on champ select Page #8 (lines 769, 787, 1179, 1264, 1386, 1413, 1456, 1483, 1500, 1708, 1717, 1745, 2456) - bump to `var(--fs-xs)`. Operator-gated.
+- Live in-game chip verification owed at next coach tick (mode_key was `client` throughout end of session).
+- All item 200 carries unchanged (LCU agent redeploy / etc).
+
 # 2026-05-26 - item 200 SHIPPED: parallel 4-slice UI audit drain - SR/ARAM/Arena item-build meta conformance (19 ARAM boots fixes) + LCU stale-RC item-set wipe pre-push (condense dropdown 20+ to <=4) + rune-push end-to-end drift guard (verdict EXISTS) + Champ Select PICK section moved to top-left card + DS top-picks carry removed
 
 Operator triggered "NEXT SESSION: quick UI audit in parallel" with 4 explicit task threads. 50th-streak orchestrator pattern (items 134-189 + slim variants 190-198 + items 199 + 200). 4 worktree-isolated agents dispatched concurrent on disjoint surfaces (Slice A data/champion_loadouts.json + Slice B LCU agent / dashboard / JS push wire + Slice C tests-only / verdict EXISTS + Slice D UI HTML/CSS/JS restructure). No AskUserQuestion (operator scope explicit). Pre-flight: 0 open PRs; HEAD = `e8d3afa` clean; RC pid 8436 mode=client.

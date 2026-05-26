@@ -413,7 +413,27 @@ class CoachIntegration:
             return
         except Exception as e:
             logger.error("Claude error: %s", e)
-            self._write_status_field(str(e)[:60])
+            # 2026-05-25 item 201 fix: don't leak raw API error JSON into
+            # the dashboard CALL/RIGHT NOW panel. Detect the common
+            # permanent-failure cases (credit balance exhausted, rate
+            # limit, auth) and write short friendly status text. Operator
+            # is switching to A+B prompt mode; the verbose prose path is
+            # the legacy that hits these errors first. Once credits are
+            # topped up the call resumes and the synthesizer + native
+            # choices repopulate the chips on the next tick.
+            _msg = str(e)
+            _low = _msg.lower()
+            if "credit balance" in _low:
+                _status = "(coach paused - add API credits)"
+            elif "rate" in _low and "limit" in _low:
+                _status = "(coach paused - rate limited)"
+            elif "authentication" in _low or "401" in _low:
+                _status = "(coach paused - auth error)"
+            elif "400" in _low or "invalid_request" in _low:
+                _status = "(coach paused - request invalid)"
+            else:
+                _status = "(coach paused)"
+            self._write_status_field(_status)
             return
 
         latency = round((time.time() - t0) * 1000)
