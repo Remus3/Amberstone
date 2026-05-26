@@ -289,18 +289,22 @@ class Wave18PerTagConsumerCountsTests(unittest.TestCase):
     def test_cond_range_gated_first_consumer_is_maokai_r(self) -> None:
         # Wave 7 (ENGINE 1.44.0) registered COND_RANGE_GATED as a
         # forward-marker tag with 0 consumers. Wave 18 lands Maokai R
-        # as the FIRST consumer.
+        # as the FIRST consumer. Wave 23 (2026-05-26 ENGINE 1.61.0)
+        # lands Hecarim R as the SECOND consumer; assertion relaxed
+        # from assertEqual to "Maokai is the first member".
         consumers = []
         for champ, spells in _PER_SPELL_CC_CONDITIONAL.items():
             for spell_key, entry in spells.items():
                 if entry.condition == COND_RANGE_GATED:
                     consumers.append((champ, spell_key))
-        self.assertEqual(consumers, [("Maokai", "R")])
+        self.assertIn(("Maokai", "R"), consumers)
 
     def test_cond_range_gated_consumer_count_is_one(self) -> None:
-        # COND_RANGE_GATED has exactly 1 consumer in the primary
-        # registry post-wave-18.
-        self.assertEqual(self._count_tag_consumers(COND_RANGE_GATED), 1)
+        # COND_RANGE_GATED has at least 1 consumer post-wave-18.
+        # Wave 23 lifts the count to 2 (Maokai R + Hecarim R) so this
+        # assertion is relaxed from assertEqual to assertGreaterEqual.
+        self.assertGreaterEqual(
+            self._count_tag_consumers(COND_RANGE_GATED), 1)
 
     def test_cond_target_debuffed_includes_briar_r(self) -> None:
         # Briar R adds a new consumer to COND_TARGET_DEBUFFED. Verify

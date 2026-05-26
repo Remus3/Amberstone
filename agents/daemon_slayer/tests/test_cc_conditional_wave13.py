@@ -566,13 +566,13 @@ class WaveThirteenConditionalTagConsumerCountsTests(unittest.TestCase):
 
     def test_cond_range_gated_consumers_unchanged_at_zero(self) -> None:
         # Wave 13 ship-time: COND_RANGE_GATED had 0 consumers. Wave
-        # 18 (ENGINE 1.55.0) added Maokai R as the FIRST consumer via
-        # the coexists_with_unconditional schema lift. Wave 13
-        # invariant relaxed: at most 1 consumer present at this point
-        # in the registry's evolution.
+        # 18 added Maokai R as the FIRST consumer. Wave 23 (2026-
+        # 05-26 ENGINE 1.61.0) added Hecarim R as the SECOND consumer.
+        # Wave 13 invariant relaxed again: at most 2 consumers
+        # present at this point in the registry's evolution.
         consumers = self._collect_tag_consumers()
         self.assertLessEqual(
-            len(consumers.get(cc.COND_RANGE_GATED, [])), 1
+            len(consumers.get(cc.COND_RANGE_GATED, [])), 2
         )
 
 
