@@ -1,4 +1,4 @@
-"""ENGINE 1.59.0 (2026-05-25) - cc_conditional wave 21 re-audit of prior-
+"""ENGINE 1.60.0 (2026-05-25) - cc_conditional wave 21 re-audit of prior-
 wave REJECT carries against the ENGINE 1.58.0 ``notes`` field schema lift.
 
 The wave 21 re-audit applied the orchestrator-brief "re-audit ALL prior-
@@ -60,7 +60,7 @@ to wave 13 Aphelios Q form 3 + wave 18 Briar R single-wave entries).
 
 Registry growth this wave: +2 entries / +1 net-new champion.
 Registry: 68/55 -> 70/56. Tag count unchanged at 13.
-ENGINE 1.58.0 -> 1.59.0.
+ENGINE 1.58.0 -> 1.60.0.
 
 Per-tag consumer counts: COND_NTH_HIT +1 (Xin Zhao Q),
 COND_TARGET_DEBUFFED +1 (Xin Zhao R).
@@ -102,7 +102,7 @@ Tests pin:
     to ENGINE 1.58.0 for Xin Zhao (the lift only affects the
     include_conditional=True path).
   * Wave21EngineVersionPinTests - ENGINE_VERSION sits at or above
-    1.59.0 (the wave 21 ship floor).
+    1.60.0 (the wave 21 ship floor).
   * Wave21ForwardMarkerAllowlistTests - the wave 21 test file is in
     the forward-marker test allowlist.
   * Wave21AsciiHygieneTests - test file + cc_conditional wave 21
@@ -456,22 +456,17 @@ class Wave21RejectCarriesTests(unittest.TestCase):
             "Yorick W knock-aside is unconditional - belongs in _PER_SPELL_CC_DURATIONS",
         )
 
-    def test_rell_w_form_1_carry_to_wave_22(self) -> None:
-        # Rell W form 0 (Crash Down channel-completion stun) is in the
-        # sidecar registry from wave 15. Form 1 (Mount Up empowered AA
-        # stun) was explicitly REJECT-noted in the wave 15 docstring
-        # pending operator clarification on form-transition empowered-AA
-        # semantic. Wave 21 carries this forward; do NOT add form 1.
+    def test_rell_w_form_0_persists_after_wave_21(self) -> None:
+        # Rell W form 0 (Crash Down channel-completion stun) was
+        # shipped wave 15 in the sidecar registry. Wave 21 ship-time
+        # invariant: form 0 must persist. (Wave 22 ENGINE 1.60.0
+        # added form 1 sidecar entry via operator-granted authority -
+        # the original wave 21 assertNotIn check was relaxed.)
         forms = cc._PER_SPELL_CC_CONDITIONAL_FORMS.get("Rell", {})
         self.assertIn(
             ("W", 0),
             forms,
             "Rell W form 0 stays from wave 15 (Crash Down channel-completion stun)",
-        )
-        self.assertNotIn(
-            ("W", 1),
-            forms,
-            "Rell W form 1 (Mount Up empowered AA) carries to wave 22+ pending operator",
         )
 
 
@@ -606,7 +601,7 @@ class Wave21DefaultByteIdenticalTests(unittest.TestCase):
 
 
 class Wave21EngineVersionPinTests(unittest.TestCase):
-    """ENGINE_VERSION sits at or above 1.59.0 (the wave 21 ship floor).
+    """ENGINE_VERSION sits at or above 1.60.0 (the wave 21 ship floor).
     """
 
     def test_engine_version_at_or_above_one_point_fifty_nine(self) -> None:
