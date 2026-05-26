@@ -2,21 +2,31 @@
 //
 // Reads state.coach.choices (an array stamped server-side by
 // core.coach_choices.parse_choices + synthesize_simple_choices) and
-// paints 2-3 chip buttons under #rn-immediate. Each chip carries:
+// paints 2-3 chip buttons in #rn-choices, which now sits directly under
+// #rn-action and visually occupies the slot that used to host the
+// Immediate prose (right_now.js hides #rn-immediate when choices are
+// non-empty - item 189, 2026-05-25). Each chip carries:
+// - the option key letter A/B/C
+// - an ALT+N hotkey hint (1/2/3) shown as a sub-pill on every chip
 // - the option label (Contest / Concede / Engage / Disengage / etc)
 // - confidence band (low / mid / high) rendered as a 3-segment bar
 // - source-tag pill (synth / archetype_sim / winrate_hist / etc)
-// On click: POST /api/coach-choice with the selection + a tiny game
-// context snapshot, log-only on the server; chip visually marks selected.
+// On click OR Alt+1/Alt+2/Alt+3 hotkey: POST /api/coach-choice with the
+// selection + a tiny game context snapshot, log-only on the server; chip
+// visually marks selected with a green ring + brief "ACK" toast.
 //
-// When state.coach.choices is empty or absent, the mount is hidden +
-// no DOM is generated. The existing prose stream (action / immediate /
-// kv rows) is untouched.
+// When state.coach.choices is empty or absent, the mount is hidden + no
+// DOM is generated. The hotkey handler is a NO-OP when no chips exist.
 
 const MOUNT_ID = "rn-choices";
 
+// Module-level state: latest rendered state (for game_context snapshot
+// inside the keydown handler, which fires outside renderCoachChoices's
+// scope) + dedupe key + cache of {A: chipEl, B: chipEl, C: chipEl}.
 let _lastSig = "";
 let _lastSelectedKey = null;
+let _latestState = null;
+let _chipByKey = {};
 
 function _chipsSignature(choices) {
   if (!Array.isArray(choices) || choices.length === 0) return "";
@@ -33,18 +43,26 @@ function _bandDots(band) {
   return `<span class="rc-band rc-band-${band}" title="confidence: ${band}">${html}</span>`;
 }
 
+// Map chip key A/B/C to the corresponding ALT+digit hotkey 1/2/3.
+const _KEY_TO_DIGIT = { A: "1", B: "2", C: "3" };
+
 function _chipHtml(c) {
-  const k = (c.key || "?").slice(0, 1);
+  const k = (c.key || "?").slice(0, 1).toUpperCase();
   const label = (c.label || "").slice(0, 80);
   const outcome = (c.expected_outcome || "").slice(0, 160);
   const src = (c.source_tag || "").slice(0, 32);
   const srcPill = src ? `<span class="rc-src">${src}</span>` : "";
+  const digit = _KEY_TO_DIGIT[k] || "";
+  const hotkeyPill = digit
+    ? `<span class="rc-hotkey" title="Press Alt+${digit} to pick">Alt+${digit}</span>`
+    : "";
   return `
     <button type="button" class="rc-chip" data-key="${k}" data-label="${label}"
             data-confidence="${c.confidence}" data-source="${src}"
             title="${outcome.replace(/"/g, "&quot;")}">
       <span class="rc-key">${k}</span>
       <span class="rc-label">${label}</span>
+      ${hotkeyPill}
       ${_bandDots(c.confidence)}
       ${srcPill}
     </button>`;
@@ -85,9 +103,60 @@ async function _postSelection(chip, state) {
   }
 }
 
+function _activateChip(mount, chip, state) {
+  if (!chip) return;
+  if (_lastSelectedKey === chip.dataset.key) return;
+  _lastSelectedKey = chip.dataset.key;
+  mount.querySelectorAll(".rc-chip").forEach((c) => c.classList.toggle(
+    "rc-selected", c.dataset.key === _lastSelectedKey));
+  _postSelection(chip, state).then(() => {
+    // ACK toast: brief "PICKED" bubble over the chip so a hotkey-driven
+    // selection (no mouse cursor near the chip) still has visible
+    // feedback that the choice was logged.
+    const bubble = document.createElement("span");
+    bubble.className = "rc-ack-bubble";
+    bubble.textContent = "PICKED";
+    chip.appendChild(bubble);
+    requestAnimationFrame(() => bubble.classList.add("show"));
+    setTimeout(() => bubble.remove(), 900);
+  }).catch(() => {});
+}
+
+function _onAltDigitKeydown(ev) {
+  if (!ev.altKey) return;
+  if (ev.metaKey || ev.ctrlKey || ev.shiftKey) return;
+  // ev.code is layout-stable (e.g. Digit1) vs ev.key which depends on
+  // OS layout. Browsers also emit ev.key for Alt+digit on most layouts
+  // - check both for robustness.
+  let key = null;
+  if (ev.code === "Digit1" || ev.key === "1") key = "A";
+  else if (ev.code === "Digit2" || ev.key === "2") key = "B";
+  else if (ev.code === "Digit3" || ev.key === "3") key = "C";
+  if (!key) return;
+  const chip = _chipByKey[key];
+  if (!chip) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  const mount = document.getElementById(MOUNT_ID);
+  if (!mount) return;
+  _activateChip(mount, chip, _latestState);
+}
+
+// Bind ALT+1/2/3 once at module load. The handler is a NO-OP when no
+// choices are currently rendered (chip lookup returns undefined), so
+// the bind is safe even before the first coach tick.
+if (typeof window !== "undefined" && !window.__rcCoachChoicesAltBound) {
+  window.addEventListener("keydown", _onAltDigitKeydown, { capture: true });
+  window.__rcCoachChoicesAltBound = true;
+}
+
 export function renderCoachChoices(state) {
   const mount = document.getElementById(MOUNT_ID);
   if (!mount) return;
+  // Stash the freshest state in module scope so the keydown handler
+  // (which fires outside this function's closure) can build a
+  // game_context snapshot at the moment the operator hits Alt+N.
+  _latestState = state;
   const coach = (state && state.coach) || {};
   const choices = Array.isArray(coach.choices) ? coach.choices : [];
   const sig = _chipsSignature(choices);
@@ -97,6 +166,7 @@ export function renderCoachChoices(state) {
       mount.hidden = true;
       _lastSig = "";
       _lastSelectedKey = null;
+      _chipByKey = {};
     }
     return;
   }
@@ -105,14 +175,10 @@ export function renderCoachChoices(state) {
   _lastSelectedKey = null;
   mount.hidden = false;
   mount.innerHTML = choices.map(_chipHtml).join("");
+  _chipByKey = {};
   mount.querySelectorAll(".rc-chip").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      if (_lastSelectedKey === chip.dataset.key) return;
-      _lastSelectedKey = chip.dataset.key;
-      mount.querySelectorAll(".rc-chip").forEach((c) => c.classList.toggle(
-        "rc-selected", c.dataset.key === _lastSelectedKey));
-      _postSelection(chip, state);
-    });
+    _chipByKey[chip.dataset.key] = chip;
+    chip.addEventListener("click", () => _activateChip(mount, chip, _latestState));
   });
 }
 
@@ -122,5 +188,8 @@ export const _internals = {
   _bandDots,
   _chipHtml,
   _gameContextSnapshot,
+  _onAltDigitKeydown,
+  _activateChip,
+  _KEY_TO_DIGIT,
   MOUNT_ID,
 };
