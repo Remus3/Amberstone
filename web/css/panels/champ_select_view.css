@@ -77,6 +77,30 @@
 .csv-card-suggestions .csv-sugg-bans { display: none; }
 .csv-card-suggestions .csv-sugg-pickorder { display: none; }
 
+/* Item 200 Slice D (2026-05-25): top-left card holds the DS Build
+ * Archetype picker on top + the PICK sub-panel (moved from Pick & Ban)
+ * below. Flex column so picks land in the freed space where the
+ * .csv-arch-preview row used to render. */
+.csv-card-allies-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.csv-card-allies-body #csv-picks-target {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* PICK sub-panel in its new home grows to fill the freed vertical
+ * space below the archetype picker. */
+.csv-card-allies-body .csv-pb168-section.csv-pb168-picks {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .csv-card {
   background: var(--card-bg, #14171c);
   border: 1px solid var(--card-border, #2a2f37);
