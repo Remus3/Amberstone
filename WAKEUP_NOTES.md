@@ -1,6 +1,72 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-05-26 - item 200 SHIPPED: parallel 4-slice UI audit drain - SR/ARAM/Arena item-build meta conformance (19 ARAM boots fixes) + LCU stale-RC item-set wipe pre-push (condense dropdown 20+ to <=4) + rune-push end-to-end drift guard (verdict EXISTS) + Champ Select PICK section moved to top-left card + DS top-picks carry removed
+
+Operator triggered "NEXT SESSION: quick UI audit in parallel" with 4 explicit task threads. 50th-streak orchestrator pattern (items 134-189 + slim variants 190-198 + items 199 + 200). 4 worktree-isolated agents dispatched concurrent on disjoint surfaces (Slice A data/champion_loadouts.json + Slice B LCU agent / dashboard / JS push wire + Slice C tests-only / verdict EXISTS + Slice D UI HTML/CSS/JS restructure). No AskUserQuestion (operator scope explicit). Pre-flight: 0 open PRs; HEAD = `e8d3afa` clean; RC pid 8436 mode=client.
+
+**Slice A `9efaa6f` (merge `432831a` ort 0 conflicts 4 files +532 / -20) feat(loadouts) SR/ARAM/Arena item-build meta conformance + 19-champ ARAM boots fix + drift guard:**
+- Pre-state: SR=0 drift / Arena=0 drift (already CLEAN per item 167 align), ARAM=20 drift across 19 champs.
+- Top patterns: 17x ARAM ap-tank Rod-of-Ages-rush boots-at-index-2 anti-pattern (Ahri / Anivia / Annie / AurelionSol / Fiddlesticks / Galio / Hwei / Karthus / Lillia / Mordekaiser / Morgana / Neeko / Nunu / Rammus / Swain / Syndra / Viktor) flipped to canonical items[1]=boots.
+- 2x bootsless violations (Cassiopeia + Yuumi ARAM had Sorcerer's Shoes) dropped per `core/build_order.py::_BOOTSLESS_CHAMPS`.
+- 1x Lulu on-hit ARAM boots position fix.
+- NEW `tools/champion_loadout_validate_meta.py` ~270 LOC argparse + `--dry-run` + `--no-backup` flags + atomic backup to gitignored `data/champion_loadouts.json.bak-slice-a-<UTC-stamp>` (.gitignore entry added mirroring `data/*.db.bak-*` precedent).
+- NEW `tests/test_champion_loadouts_meta_conformance.py` ~190 LOC / 7 tests (4 invariant + 2 lock-step + 1 ASCII).
+- Coverage gaps from item 167 (SR 10 / ARAM 3) verified ALL CLOSED by items 178/179 multi-path collapse.
+
+**Slice B `0b81310` (merge `bb951e1` ort 0 conflicts 4 files +430 / -0) feat(lcu+dashboard+ui) LCU stale-RC item-set wipe pre-push (condense dropdown from 20+ to <=4 per active scope):**
+- Root cause confirmed: per item 165 `apply_item_set` is replace-by-uid (not wipe-all-RC); 4 paths * 3 modes = 12 sets per champion accumulate across session; 2-3 champions/session = 24-36 stale RC- entries matching operator's "20+".
+- NEW handler `delete_stale_rc_item_sets(active_champion, active_mode)` at `tools/gamepc_lcu_agent.py:1010-1071`: GET current item-sets list -> DELETE every uid starting with `RC-` that does NOT match `RC-<active_champion>-<active_mode>-*` prefix (trailing-hyphen anchor guards substring false-keeps like Jinx vs JinxJunior or sr vs srtest). Operator non-RC- sets preserved unconditionally. Current-scope RC- sets preserved for apply-batch idempotence. Short-circuit PUT when nothing to wipe.
+- Wired into `_LCU_ALLOWED_CMDS` at `dashboard/routes_loadout.py:46`.
+- JS wire at `web/js/panels/champ_select.js::_csvMaybePushBuildsToLCU` L1801-1815 as PRE-PUSH best-effort try/catch (apply_item_sets_batch fires regardless on rune-push parity per Slice C).
+- NEW `tests/test_lcu_item_sets_wipe_stale.py` ~340 LOC / 14 tests across 5 classes (HandlerShape 4 + WipeScope 6 + AllowlistDriftGuard 1 + JsWireDriftGuard 2 + AsciiHygiene 1).
+- **Game-PC redeploy OWED:** live agent at `C:\RC-Agent\gamepc_lcu_agent.py` still runs pre-wipe code; redeploy via HTTP-pull dance per [[reference_gamepc_http_server_redeploy]] before operator can verify live dropdown condense.
+
+**Slice C `b73799c` (merge `9679f12` ort 0 conflicts 1 new file +281) test(runes) rune push end-to-end drift guard - verdict EXISTS (no code fix needed):**
+- Audit verdict: rune push works end-to-end on variant selection change for BOTH item-178 collapsed-path clicks AND legacy ARAM/Arena/experimental row clicks. Existing wire is correct.
+- Flow verified: `_csvWireBuildVariants` L2549 wires both `.csv-build-path-row` clicks L2566 + `.csv-build-row` clicks L2588 -> `_csvApplyLoadout` L2509 POSTs `/api/loadout/apply` with `push_runes: true` default -> `dashboard/routes_loadout.py::_serve_loadout_apply_post` L144 -> `_enqueue(resolved.get("rune_cmd"))` L226 -> vision server `/lcu-cmd` -> `tools/gamepc_lcu_agent.py::apply_runes` handler L1010 -> PATCH/POST `/lol-perks/v1/pages` + PUT `/lol-perks/v1/currentpage` chain.
+- Live verification: `coaches/loadout_resolver.py::resolve()` colon-form `<variant>:<path-key>` overlays per-path runes; Jinx `sr-collapsed:adc-crit` -> Lethal Tempo / Precision; Jinx `sr-collapsed:sr-bruiser` -> Conqueror / Precision = distinct LCU pages.
+- NEW `tests/test_csv_rune_push_on_selection_change.py` 15 tests across 5 classes (JsVariantClickFiresApplyLoadoutTests 6 + DashboardAllowlistRuneCmdTests 3 + GamepcAgentRuneHandlerTests 3 + ResolverRuneCmdSmokeTests 2 + AsciiHygiene 1). Zero edits to production code.
+
+**Slice D `70509b6` (merge `ed0902f` auto-merge clean 4 files +308 / -46) feat(ui) Champ Select PICK section moved to top-left card + DS top-picks carry section removed (frees space for 101 info area):**
+- Identification: "DS top picks carry" = the `.csv-arch-preview` block inside `_csvArchetypePickerHtml` at `champ_select.js:1914-1951` (3 horizontal cells under the 6-archetype-buttons grid showing "DS top picks - <archetype>" with item icons; introduced item 168 commit `81925a6`). The 6-archetype-selectables picker itself UNCHANGED (item 168/178 operator-protected).
+- Move scope: only the PICK 4-pick TOP sub-panel of Pick & Ban (item 168 `.csv-pb168-section[data-section="picks"]`) moves to top-left `.csv-card-allies` mount via NEW `#csv-picks-target`. MIDDLE bans + BOTTOM duo-synergy (101.qq.com, item 199 Slice CD) stay in row-2 `#csv-pickban-body`.
+- `_csvRenderPickBan` split into picks + bans subroutines; picks wiring scope restricted to new top-left mount.
+- NEW `.csv-card-allies-body` flex column rule + `#csv-picks-target` grow rule in `web/css/panels/champ_select_view.css`.
+- 5-phase audit PASS per [[feedback_phase3_fixture_ritual]]: STRUCTURE + TYPOGRAPHY (0 new sub-floor declarations) + HIT-TARGETS (`.csv-pb168-cell` 38px icon density preserved) + ASCII (0 new non-ASCII bytes) + HIERARCHY (4 distinct visual tiers).
+- NEW `tests/test_csv_topleft_picks_layout.py` ~247 LOC / 18 tests across 5 classes (grep-based pin tests for PICK in top-left + carry removed + Pick & Ban structure preserved).
+- Live UI capture deferred to next operator session (ADR-008 asset-hash auto-serves; no RC restart needed for UI alone).
+
+**Merge order:** A `432831a` -> B `bb951e1` -> C `9679f12` -> D `ed0902f`. Slice B + D both touched `web/js/panels/champ_select.js` at DISJOINT regions (B at L1801-1815 pre-push wire / D at L1914-1951 `.csv-arch-preview` removal + `_csvRenderPickBan` split) -> ort auto-merged clean with 0 conflicts. Pushed origin/main `e8d3afa..ed0902f`.
+
+**Verified:** `py -m pytest tests/test_champion_loadouts_meta_conformance.py tests/test_lcu_item_sets_wipe_stale.py tests/test_csv_rune_push_on_selection_change.py tests/test_csv_topleft_picks_layout.py tests/test_champion_loadouts_no_unique_clash.py tests/test_champion_loadout_autogen.py tests/test_champion_loadout_collapse_to_paths.py tests/test_champion_loadout_collapse_aram_arena.py tests/phase8_smoke/ -q` = **231 passed in 2.39s** (+54 over baseline = exactly 7 + 14 + 15 + 18 new tests across the 4 slices). `py -m ruff check .` ALL CHECKS PASSED. `node --check web/js/panels/champ_select.js` exit 0. `py -m py_compile tools/gamepc_lcu_agent.py dashboard/routes_loadout.py tools/champion_loadout_validate_meta.py` clean. DS :8893 untouched (non-engine; serves 1.60.0 from item 199; not restarted). RC :8888 restarted via `restart_trigger.txt` -> pid 7500 alive=True last_reload_ok=True mode=client (picks up new `delete_stale_rc_item_sets` allowlist; Slice D UI auto-served via ADR-008).
+
+**Don't-redo:**
+- `tools/champion_loadout_validate_meta.py` is the canonical drift detector + fixer for SR/ARAM/Arena boots-position + bootsless-champ + first-item-archetype invariants. Future patch upgrades that regenerate autogen seeds should run this tool to flatten drift before committing.
+- The ARAM ap-tank Rod-of-Ages-rush anti-pattern was a SEED-LEVEL drift: the auto-aram-primary scorer placed the Mythic/Rod-of-Ages first item correctly but `tools/champion_loadout_align.py` (item 167) was BYPASSED for ARAM in item 166's hand-curate merge. Drift was localized to the 17 ap-tank ARAM variants because `_DEFAULT_BOOTS_BY_ARCHETYPE` maps ap-tank to Sorcerer's Shoes and the hand-curate cloned the auto seed without boots-injection on item 166's merge path. Future ARAM hand-curate passes MUST also run `champion_loadout_validate_meta.py --fix` after merge.
+- `delete_stale_rc_item_sets` LCU handler is the canonical chokepoint for RC- set hygiene. The trailing-hyphen anchor in the prefix match (`RC-<champ>-<mode>-` NOT `RC-<champ>-<mode>`) is essential to avoid substring false-keeps (Jinx vs JinxJunior; sr vs srtest). Future RC- set UID schema changes MUST preserve the `RC-<champion>-<mode>-<path>` trailing-hyphen separator discipline.
+- The rune-push wire is END-TO-END CORRECT as-is (verdict EXISTS); future audit waves should NOT re-pitch a "missing rune push" fix without first running `tests/test_csv_rune_push_on_selection_change.py` (15-test drift guard locks the wire integrity).
+- The PICK-to-top-left layout is the canonical Champ Select top-left composition going forward. `.csv-arch-preview` is DEAD; do NOT re-introduce a duplicate DS top-picks render block - the 6-archetype-selectables picker carries top-3 DS items per archetype natively (item 168 `.csv-arch-preview` block was the duplicate that was operator-flagged this session).
+- The orchestrator-merge pattern is now 50th-streak (items 134-189 + slim variants 190-198 + items 199 + 200). Disjoint file surfaces (data + LCU/dashboard/JS + tests-only + UI) land 0 merge conflicts.
+- The 4-slice parallel dispatch with one truly disjoint surface per agent is durable for "audit + fix-as-needed" sessions.
+
+**Carries forward:**
+(a) Items 197 + 198 + 199 carries unchanged EXCEPT: (n)-item-199 UI audit work DONE this session = item 200.
+(b) NEW carry: Game-PC HTTP-pull redeploy of `gamepc_lcu_agent.py` to `C:\RC-Agent\gamepc_lcu_agent.py` HARD-OWED at next non-game window (operator does HTTP-pull dance per [[reference_gamepc_http_server_redeploy]]: Legion `py -m http.server 8765 --bind 0.0.0.0 --directory tools` -> Game-PC `Invoke-WebRequest` -> sha256-verify -> taskkill old pid -> atomic Move-Item -> pythonw relaunch). Compounds with item 188 Slice C 4-PATCH Cherry chain redeploy carry - operator can redeploy ONCE carrying BOTH (NEW Slice B stale-RC wipe + Cherry).
+(c) Cherry augment live verification STILL OWED at next Arena 1750 window after carry (b) redeploy lands.
+(d) Live UI capture of new PICK-to-top-left layout OWED at next operator-driven Champ Select session (mock fixture at `?ui_mock=1&mode=sr#champ-select`).
+(e) Live ARAM/SR smoke STILL pending.
+(f) Calibrations STILL operator-gated.
+(g) Legion 1-PC consolidation STILL operator-gated.
+(h) Active Match #11/12/13 real in-game capture STILL OWED.
+(i) v2.1 visual captures pages #9/10/11/12/13/14/15/16 STILL OWED at next operator-driven Chrome session.
+(j) Rell W form 1 + cc_conditional wave 24+ candidates per item 199 STILL operator-decision-gated / require schema lift.
+(k) Phase 3 95% N=50+ gate STILL UNREACHABLE (zero-cadence inbound bridge traffic per item 199 carry).
+(l) Duo-synergy panel live UI capture + other lane combos (top+jng, jng+mid, mid+sup) STILL operator-gated separately (item 199 carries (l) + (m)).
+(m) Frozen-file grant NOT used this session.
 
 ---
 
@@ -81,46 +147,3 @@ Operator picked "101.qq.com Game-PC capture" from a framed AskUserQuestion after
 (j) cc_conditional wave 24+ candidates still require schema/registry lift.
 (k) `core/smoothed_rates.py` pick/ban consumer wiring of the 101.qq.com seed is a NEW carry; operator-gated separate session.
 (l) Frozen-file grant NOT used this session.
-
----
-
-# 2026-05-25 (night 5) - item 197 ALL-CLEAN no-commit drain: orphan production .py modules SCAN CLEAN (0 modules surface across coaches/+dashboard/+core/+tft/+lcu/+agents/+ops/non-frozen/+coach_integration/+vision_server/) + orphan test fixtures SCAN CLEAN (41 fixtures across 5 dirs all alive) + dead web/js/*.js SCAN CLEAN (39 JS files all imported) + BACKLOG/ROADMAP stale-sweep wave 28 = 0 flips (12 consecutive zero-flip waves 17-28) + cost/latency wave 34 = 34th consecutive CLEAN since item 134 (0 code commits; non-engine; non-frozen; no DS restart; no RC restart - WAKEUP prune only)
-
-Operator "continue". 47th-streak orchestrator pattern preserved (items 134-189 + slim variants 190/191/192/193/194/195/196/197). 3 parallel Explore agents dispatched concurrent + 4 inline Bash probes; 0 commit-bearing slices. AskUserQuestion NOT used (same continuation framing as items 192-196 + carries clearly enumerated as operator-gated). Pre-flight: 0 open PRs; CI 2 runs since item 196 ship (`0aa23c1` green + `3163e4a` WAKEUP commit queued at probe time); HEAD = `3163e4a`; mode_key=client + RC pid None (idle/down) throughout.
-
-**Slice A no-commit (orphan production .py modules scan CLEAN):** Closes a NEW dead-code surface lane after items 186 + 194 + 195 + 196 closed dead routes / orphan one-off scripts / orphan data + runtime artifacts. Explore agent walked `coaches/` + `dashboard/` + `core/` + `tft/` + `lcu/` + `agents/` + `ops/` (NON-FROZEN only per CLAUDE.md hard-rule frozen list) + `coach_integration/` + `vision_server/` for `.py` modules with ZERO importers. Initial 3 candidates flagged: `core/bridge_envelope.py` 72 LOC + `ops/_ws_probe.py` 32 LOC + `ops/rc_bootstrap.py` 93 LOC. Each grep-verified against ALL `.py` + script invocations + scheduled task XML: **ALL 3 have actual callers** (dynamic imports in `dashboard/_dispatch.py:62-83` + `:124-133` route table + `if __name__ == "__main__":` entrypoints with scheduled-task XML references). Final verdict: **0 orphan production modules**. The dynamic-import-via-string pattern in `dashboard/_dispatch.py` defeated the agent's regex-based grep; orchestrator caught the false-positive via direct import-chain trace. Slice A CLEAN.
-
-**Slice B no-commit (orphan test fixtures scan CLEAN):** Explore agent walked `tests/fixtures/` (6 golden snapshots + 1 state_dicts.py module + 3 qq101 probe fixtures + 10 snapshot_panels fixtures) + `tests/fixtures/snapshots/` (6 game-mode golden) + `web/data/ui_mock/` (13 active match + champ_select + last_match + lobby/history/home/session/user_builds/replay mock fixtures). **41 total fixtures** across 5 directories. Each fixture has ACTIVE test consumer with grep evidence: golden snapshots -> `test_snapshot_authority.py` 27 methods; qq101 probes -> `test_probe_101qq_script.py` 11 methods; snapshot_panels -> `test_panel_snapshots.py` 7 parameterized; ui_mock active_match -> `test_active_match_mock_fixtures.py` 16 methods; state_dicts.py -> 6 test files across phase2_smoke + snapshot_regressions. **0 orphans confirmed.** No deprecated queue IDs (920 Brawl / 1700-1710 retired Arena / 480 retired Swiftplay - all per CLAUDE.md Settled) detected in fixture data. Slice B CLEAN.
-
-**Slice C no-commit (dead web/js/*.js scan CLEAN):** Explore agent walked `web/js/` for `.js` files with ZERO importers from `main.js` / `web/index.html` / cross-imports / `dashboard/_static.py` cache-buster references. **39 total JS files** checked: 1 entry point (main.js) + 12 library files (helpers + idempotent_render + items_index + state + state_schema + lol_descriptions + champion_tags + summoner_spells + scorer_units + dedup_fetch + ws_client + 1 more) + 26 panel files (right_now + next + item_build + map_state + champ_select + active_match + last_match + bridge_pending + dev + trigger_pill + spike_curve + ward_heat + draft_elo + cd_ledger + sr_draft + ...). Every file has confirmed reference chain to live entry points. Exclusions respected per CLAUDE.md "Settled" + item 194: `web/js/dashboard.js` (intentionally kept as dead-code reference) + `web/js/sim.js` (item 194 dead-file exclusion). **0 orphans confirmed.** Slice C CLEAN.
-
-**Slice D no-commit (BACKLOG/ROADMAP stale-sweep wave 28 = 0 flips; 12 consecutive zero-flip waves):** Inline Bash probes verified all file:line citations in OPEN entries grep-verified live within +/- 3 tolerance: ROADMAP L13 `dev.js:361` -> live `verdict.team_won` at L362 (within tolerance); ROADMAP L23 `gamepc_lcu_agent.py:246` ARAM Mayhem queue 2400 -> live mapping at L245 (within tolerance); ROADMAP L82 `tools/gamepc_lcu_agent.py:1179-1228` augment_intent 4-PATCH handler -> live at L1179 (`set_augment_intent` handler entry) + L1227 (`augment_intent_all_endpoints_failed` error string, NOT old `augment_intent_unsupported` stub per item 188 Slice C wire); BACKLOG L92 `core/draft_elo.py:141 cross_pairs()` -> live at L141. **Sweep cycle decay:** wave 17=0 / 18=1 / 19=0 / 20=0 / 21=0 / 22=0 / 23=0 / 24=0 / 25=0 / 26=0 / 27=0 / **28=0** = 12 consecutive zero-flip waves = saturation plateau extends.
-
-**Slice E no-commit (cost/latency wave 34 = 34th consecutive CLEAN since item 134):** Inline Bash probes confirmed all 7 levers green. L1 prompt-cache **13 cache_control across 8 production blocks** verified (coach_integration/_coach.py=2 + aram_coach=2 + arena_coach=2 + brawl_coach=2 + champ_select_coach=2 + replay_coach=1 + sr_coach=0 + tft_coach=0 + aram_team_analyzer=1 + experimental_builder=1 = 13 hits across 8 distinct production coach files; matches item 188 + 195 + 196 baseline; sr_coach.py + tft_coach.py historically have 0 cache_control hits because their prompt structure is per-call dynamic per item 188 audit). L2 `_CACHE` module-level **12 files** in `dashboard/routes_*.py` (matches item 188 carry (g) loose-ledger baseline "12-16 fluctuation; do NOT pin"). L6 14 unique RC-* scheduled tasks (`schtasks /Query /FO CSV` deduped: BridgeDaemon + BridgeWatcher + CostHealthWatchdog + DaemonSlayer + DDragonMirrorRefresh + DS-MatchDB-MCP + PatchRefresh + Phase3-PeriodicAudit + Phase3-Supervisor + PostmortemAnalyze + RewindCatchup + Supervisor + VerifyBridgeRoundtrip-Once + VisionServer = 14; CSV view shows 15 lines because CostHealthWatchdog appears with 2 trigger rows but is a single task). L7 27=27 panel parity (`ls web/css/panels/*.css | wc -l` = 27 + `grep -c "@import.*./panels/" web/css/dashboard.css` = 27 PERFECT PARITY; `tests/test_dashboard_css_panel_imports_parity.py` 4/4 PASS). L3 polling + L4 log spam + L5 model tier inherited from item 195 (no JS / dashboard handler / coach prompt edits this session). **Verdict: 34th consecutive CLEAN since item 134; cost/latency lane saturated.**
-
-**Slice F no-commit (bridge watcher Phase 3 ledger probe):** `ops/runtime/bridge_watcher_health.json`: pid 12000 alive=True queue_depth=0 auto_ok_since_boot=0 auto_err_since_boot=0 (unchanged from items 192/193/194/195 - bridge watcher healthy + lanes baked in BUT 0 firings since item 191 resurrection because inbound bridge traffic is zero). `ops/runtime/bridge_action_history.db` unchanged at 2 rows from 2026-05-03 self-test. Phase 3 95% sample gate STILL BLOCKED by zero inbound traffic, not by watcher health.
-
-**Verified:** No code changes. No engine bump (DS :8893 serves 1.59.0 from item 189; not restarted). No RC restart (pid None idle). No frozen-file grant used. 0 worktrees left dangling (Slices A/B/C used Explore agents = no worktree; Slices D/E/F inline Bash).
-
-**Don't-redo:**
-- The 3-lane dead-code surface scan (production .py modules + test fixtures + web JS) is now SATURATED across items 195 (scripts) + 196 (.bak + runtime artifacts) + 197 (production modules + fixtures + JS). The orphan-cleanup methodology is durable BUT future waves should expect ZERO new orphans for 30-60 days as the codebase evolves; re-run after 30+ days only.
-- The dynamic-import pattern in `dashboard/_dispatch.py:62-83` + `:124-133` defeats regex-based grep for module callers; future "orphan module" Explore agents MUST trace import chains via string match against the literal `"X.Y"` patterns in the dispatch table, NOT just `import X.Y` syntax.
-- The 14-vs-15 RC-* task count quirk in `schtasks /Query /FO CSV` is a CSV-view artifact (CostHealthWatchdog has 2 trigger rows in CSV output but is a SINGLE task); future scheduled-task audits should `Get-ScheduledTask -TaskName "RC-*"` in PowerShell OR dedupe the CSV TaskName column to get the unique count.
-- The ROADMAP L82 augment_intent handler is now wired (item 188 Slice C); the OLD `augment_intent_unsupported` no-op error string is REPLACED by `augment_intent_all_endpoints_failed` at L1227 (the 4-endpoint PATCH chain returns this if ALL 4 fail). Future stale-sweep waves should NOT flag this line difference - the rewrite is intentional + the L82 ROADMAP entry already cites the correct `:1179-1228` range.
-- Per [[feedback_verify_generated_reports]] this session verified 1 subagent false-positive (Slice A initially flagged 3 candidates -> all 3 had dynamic-import or scheduled-task callers; final verdict 0 orphans). The pattern is durable: subagent flags AUDIT-CLAIMS REQUIRE GREP-EVIDENCE per claim before relaying.
-- The orchestrator pattern is now 47th-streak (items 134-189 + slim variants 190/191/192/193/194/195/196/197). 6 consecutive ALL-CLEAN or slim cleanup variants (items 192/193/194/195/196/197) confirm headless dead-code lane is GENUINELY saturated; future continuations should expect operator-driven (Cherry / 101.qq.com / live UI captures) or hardware-migration (Legion 1-PC) work before headless dead-code work resurfaces.
-
-**Carries forward:**
-(a) Item 196 carries (a)-(l) ALL unchanged.
-(b) Cherry augment live verification + Game-PC HTTP-pull redeploy STILL OWED at next Arena 1750 window.
-(c) 101.qq.com operator-at-Game-PC Chrome DevTools capture STILL OWED.
-(d) Live ARAM/SR smoke STILL pending.
-(e) Calibrations STILL operator-gated.
-(f) Legion 1-PC consolidation STILL operator-gated.
-(g) Auto-ops verb expansion + auto-action lanes Phase 3 95% gate STILL DEFERRED - watcher pid 12000 healthy + lanes baked in BUT 0 firings (unchanged from items 192-196).
-(h) Active Match #11/12/13 real in-game capture STILL OWED.
-(i) v2.1 visual captures pages #9/10/11/12/13/14/15/16 OWED at next operator-driven Chrome session.
-(j) Rell W form 1 cc_conditional candidate STILL operator-decision-gated.
-(k) cc_conditional wave 24+ candidates require either NEW Meraki schema field OR registry shape lift to host passive-AA stack-detonation slot - both operator-gated; saturated per items 192/193/195.
-(l) Frozen-file grant NOT used this session.
-
