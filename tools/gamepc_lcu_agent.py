@@ -1007,6 +1007,68 @@ def execute_command(cmd: dict) -> dict:
         if err:
             return {"ok": False, "err": err}
         return {"ok": True, "set_uids": sorted(new_uids), "count": len(new_sets)}
+    if name == "delete_stale_rc_item_sets":
+        # Wipe stale RC- item-sets that don't match the current
+        # {champion, mode}. Operator-reported issue (item 188 Slice B):
+        # the in-game item-shop dropdown was showing 20+ stale RC- sets
+        # after a session of switching champions + modes. Per item 178
+        # collapse + item 179 ARAM/Arena collapse, each
+        # `_csvMaybePushBuildsToLCU` call pushes up to 4 sets with uid
+        # `RC-<champion>-<mode>-<path>`; 4 paths * 3 modes (SR/ARAM/Arena)
+        # = 12 sets per champion. Cycling through 2-3 champion picks per
+        # session accumulates 24-36 stale RC- entries. apply_item_set +
+        # apply_item_sets_batch deliberately preserve other RC- sets
+        # (replace-by-uid only) so this wipe handler is the deliberate
+        # garbage collector wired as a PRE-PUSH step.
+        #
+        # Wipe scope: DELETE every set whose uid starts with "RC-" AND
+        # does NOT match `RC-<active_champion>-<active_mode>-*`. The
+        # current-champion-current-mode-* sets survive so the apply
+        # batch right after this call doesn't need to re-push them
+        # (idempotence). Operator's own custom sets (no RC- prefix) are
+        # ALWAYS preserved.
+        active_champ = str(cmd.get("active_champion") or "").strip()
+        active_mode  = str(cmd.get("active_mode")     or "").strip()
+        if not active_champ or not active_mode:
+            return {"ok": False, "err": "active_champion + active_mode required"}
+        keep_prefix = f"RC-{active_champ}-{active_mode}-"
+        me, err = lcu_request("GET", "/lol-summoner/v1/current-summoner")
+        if not isinstance(me, dict):
+            return {"ok": False, "err": err or "no summoner"}
+        sid = me.get("summonerId")
+        aid = me.get("accountId")
+        if not sid:
+            return {"ok": False, "err": "no summoner id"}
+        cur, _ = lcu_request("GET", f"/lol-item-sets/v1/item-sets/{sid}/sets")
+        if not isinstance(cur, dict):
+            cur = {"accountId": aid, "itemSets": []}
+        sets_before = list(cur.get("itemSets") or [])
+        kept = []
+        wiped_uids = []
+        for s in sets_before:
+            if not isinstance(s, dict):
+                continue
+            uid = str(s.get("uid", ""))
+            # Preserve any set that is not an RC- managed set.
+            if not uid.startswith("RC-"):
+                kept.append(s)
+                continue
+            # RC- managed: keep only if uid matches the active scope.
+            if uid.startswith(keep_prefix):
+                kept.append(s)
+                continue
+            wiped_uids.append(uid)
+        if not wiped_uids:
+            # Nothing to wipe; short-circuit PUT to save a round-trip.
+            return {"ok": True, "wiped_uids": [], "wiped_count": 0,
+                    "kept_count": len(kept)}
+        body = {"accountId": aid, "itemSets": kept,
+                "timestamp": int(time.time() * 1000)}
+        _, err = lcu_request("PUT", f"/lol-item-sets/v1/item-sets/{sid}/sets", body)
+        if err:
+            return {"ok": False, "err": err}
+        return {"ok": True, "wiped_uids": sorted(wiped_uids),
+                "wiped_count": len(wiped_uids), "kept_count": len(kept)}
     if name == "apply_runes":
         # Push a full rune page (Phase 2). Caller resolves keystone +
         # tree names to perk IDs server-side and sends raw IDs here so

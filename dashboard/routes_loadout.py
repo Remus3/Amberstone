@@ -35,6 +35,15 @@ _LCU_ALLOWED_CMDS = {
     # trigger so the in-game item-shop dropdown always carries RC's
     # current curated builds.
     "apply_item_sets_batch",
+    # 2026-05-25 (item 188 Slice B): wipe stale RC- item-sets that
+    # don't match the current {champion, mode}. Operator-reported the
+    # in-game item-shop dropdown was showing 20+ stale RC- sets after
+    # a session of switching champions + modes (4 paths * 3 modes per
+    # champion * 2-3 champions). Wired as PRE-PUSH step in
+    # _csvMaybePushBuildsToLCU so the dropdown only carries the
+    # current scope's sets. Preserves operator's own custom (non-RC-)
+    # sets + the current-champion-current-mode-* RC- sets.
+    "delete_stale_rc_item_sets",
     # 2026-05-23 (item 164): summoner-spell strip click pushes via the
     # existing set_summoners agent route - allowlist surfaces it for
     # the new click handler in champ_select.js.
