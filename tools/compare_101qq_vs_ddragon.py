@@ -53,15 +53,56 @@ def load_override() -> dict:
         return {}
 
 
+def unwrap_envelope(payload: object) -> object:
+    """Unwrap Tencent's `{code, data, message}` envelope if present.
+
+    Item 198 capture (2026-05-26) showed the live shape is
+    `{"code":0,"data":[{...pair-records...}],"message":"success"}` with
+    pair records living in `data[]`. Returns `payload["data"]` when the
+    envelope is detected; otherwise returns `payload` unchanged."""
+    if isinstance(payload, dict):
+        keys = set(payload.keys())
+        if {"code", "data", "message"}.issubset(keys) and isinstance(payload.get("data"), list):
+            return payload["data"]
+    return payload
+
+
+def _collect_ids(payload: object) -> list:
+    """Return all champion IDs referenced in the payload.
+
+    Handles both shapes:
+    (a) dict-of-pairs (synthetic / hypothetical): top-level keys are IDs
+    (b) list-of-pair-records (item 198 actual capture): each record has
+        `championid1` + `championid2` numeric-string fields
+    """
+    ids: list = []
+    if isinstance(payload, dict):
+        ids.extend(str(k) for k in payload.keys())
+    elif isinstance(payload, list):
+        seen: set = set()
+        for rec in payload:
+            if isinstance(rec, dict):
+                for field in ("championid1", "championid2"):
+                    v = rec.get(field)
+                    if v is None:
+                        continue
+                    s = str(v)
+                    if s and s not in seen:
+                        seen.add(s)
+                        ids.append(s)
+    return ids
+
+
 def build_alignment(payload: object, ddragon: dict, override: dict) -> dict:
-    """Walk the captured payload's top-level keys and try to map each
-    to a DDragon canonical name."""
+    """Walk the captured payload's champion IDs and try to map each to a
+    DDragon canonical name. Accepts either dict-of-pairs (synthetic) or
+    list-of-pair-records (item 198 actual capture shape)."""
     aligned: dict = {}
     unmatched: list = []
-    if not isinstance(payload, dict):
-        return {"aligned": aligned, "unmatched": unmatched, "note": "payload is not a top-level dict"}
-    for k in payload.keys():
-        s = str(k)
+    ids = _collect_ids(payload)
+    if not ids:
+        return {"aligned": aligned, "unmatched": unmatched, "note": "no champion IDs found in payload"}
+    for s in ids:
         if s in override:
             aligned[s] = override[s]
             continue
@@ -92,11 +133,12 @@ def main(argv: list | None = None) -> int:
         print(f"ERROR: JSON file not found: {json_path}", file=sys.stderr)
         return 1
     try:
-        payload = json.loads(json_path.read_text(encoding="utf-8-sig"))
+        raw_payload = json.loads(json_path.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, OSError) as exc:
         print(f"ERROR: could not parse JSON: {exc}", file=sys.stderr)
         return 1
 
+    payload = unwrap_envelope(raw_payload)
     ddragon = load_ddragon_keys()
     override = load_override()
     alignment = build_alignment(payload, ddragon, override)
