@@ -1321,7 +1321,130 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.59.0"
+ENGINE_VERSION = "1.60.0"
+# 1.60.0 (cc_conditional wave 22 - Rell W form 1 Ferromancy: Mount Up
+# empowered-AA stun SHIPPED via the wave 14 cast_time + wave 20 notes
+# schema lifts. Operator-granted authority item 199 Slice B (full
+# allow + commit + push + recommended-option-always).
+#
+# Re-audit of operator-gated REJECT carries from items 178-198 against
+# the FULL ENGINE 1.59.0 schema (cast_time + effects_descriptions +
+# parent_resource + notes + damage_blocks). The candidate was the
+# explicit item 198 carry (i) "Rell W form 1 cc_conditional candidate
+# STILL operator-decision-gated" - the wave 15 REJECT carry pending
+# operator clarification on form-transition empowered-AA semantics.
+#
+# Fleet-wide audit verified saturation on the parse-strip CC-attribute
+# damage_blocks lane: all 28 candidate spells with explicit Stun /
+# Root / Fear / Silence / Taunt / Charm / Knockup / Snare / Disable
+# Duration damage_blocks (Ahri E / Anivia Q / Braum R / Chogath QW /
+# Elise E / Fiddlesticks Q / Gnar R / Ivern Q / Jhin W / Lissandra
+# RW / Lulu RW / Malzahar QR / Maokai RW / Mel E / Morgana Q /
+# Nautilus QR / Nocturne E / Poppy E / Rakan RW / Rammus E / Senna W /
+# Seraphine R / Shaco W / Soraka E / Tristana R / Veigar E / Volibear
+# E / Zyra E) are ALREADY in `_PER_SPELL_CC_DURATIONS` unconditional
+# registry; this lane is fully saturated and the cc_conditional
+# growth requires sidecar / form-explicit / state-tracking entries.
+#
+# REGISTRY ADDS: +1 sidecar entry / 0 net-new champions. Rell W form
+# 1 lands in the sidecar registry alongside the wave 15 Rell W form 0
+# entry on the same (Rell, W) slot via the form_index discriminator.
+# This is the FOURTH same-spell-slot multi-form-coexistence in the
+# sidecar registry after Karma W form 0+1 (wave 1+10), Hwei E form
+# 0+1+2 (wave 9+10), Sylas E form 0+1 (wave 12). Registry: 70
+# entries / 56 champs -> 71 entries / 56 champs (62 primary + 7
+# sidecar -> 62 primary + 8 sidecar). Tag count unchanged at 13.
+#
+# Rell W form 1 Mount Up empowered-AA mechanism:
+#   * Form 0 cast (wave 15 entry) -> Mounted -> Dismounted transform
+#     + leap + arrival stun 0.8s.
+#   * Form 1 RECAST within 3.5s of form 0 -> Dismounted -> Mounted
+#     transform + empowers next basic attack within 3.5s with 0.2s
+#     cast_time + 100 bonus AA range + 40% bonus AS.
+#   * Empowered AA charge-arrival or collision -> stuns target 0.6s
+#     flat + flings 150 units over Rell over 0.4s.
+#   * Per Meraki effects_descriptions[0] for form_index=1: "Upon
+#     arrival or collision, she deals bonus magic damage, stuns the
+#     target for 0.6 seconds, and flings them 150 units over
+#     herself, though not through terrain, over 0.4 seconds."
+#   * Cast_time pinned by Meraki schema lift: form 1 = 0.25s cast
+#     for the W recast itself; empowered AA charge = 0.2s cast.
+#
+# Encoding choice:
+#   * cc_kind=stun (0.6s primary CC payload; 0.4s fling is a
+#     separate displacement not registered, mirroring form 0's
+#     exclusion of its own 0.4s knockup).
+#   * durations_s=(0.6,) single-element tuple - 0.6s flat across
+#     all 5 W ranks (the stun does NOT scale with W rank; only
+#     the cast cooldown + Mount Up shield-conversion scale).
+#   * condition=COND_CHANNEL_COMPLETION - the 2-cast cycle (form
+#     0 -> form 1 within 3.5s) + empowered-AA charge-delivery
+#     sequence is functionally a multi-step channel. The stun
+#     fires ONLY on charge-arrival completion. Pattern parallel to
+#     Sylas E form 1 Abduct (2-cast cycle, wave 12) + Hwei E form
+#     1 Grim Visage (2-cast cycle, wave 9).
+#   * probability=0.4 (mid-low, mirroring Sylas E + Hwei E form 1
+#     - 2-input setup is reliable in Rell combo cadence but the
+#     charged AA is dodgeable; the 3.5s form 1 + 3.5s AA window
+#     is generous but operator-gated since the empowered AA can
+#     be denied by knockup / dash / hard CC on Rell mid-charge).
+#   * form_index=1 (sidecar registry slot).
+#
+# Math preservation: default
+# compute_cc_pressure(include_conditional=False) is BYTE-IDENTICAL
+# to ENGINE 1.59.0 for ALL champions (the wave 22 path skips when
+# the flag is False). include_conditional=True callers receive
+# +0.24s (0.6 * 0.4) NEW conditional pressure on top of the wave
+# 15 form 0 0.4s (0.8 * 0.5) = total Rell W conditional 0.64s.
+#
+# Schema preservation: pure-additive on the cc_conditional sidecar
+# registry. No new condition tag introduced. The wave 14 cast_time
+# schema lift + wave 20 notes field schema lift are both used
+# (cast_time confirms 0.25s form 1 + 0.2s charge AA; notes field
+# adds the "ranged version" + "instant melee version" interaction
+# clauses; effects_descriptions field carries the 0.6s stun value
+# verbatim).
+#
+# REJECT verdicts wave 22 (cross-checked against full schema):
+#   - Renekton W Fury (REJECT-confirmed: already shipped wave 9
+#     primary registry COND_FRENZY_STATE 1.5s).
+#   - Karma W form 1 Mantra (REJECT-confirmed: already shipped
+#     wave 10 sidecar registry COND_FRENZY_STATE).
+#   - Hwei E form 1 Grim Visage (REJECT-confirmed: already shipped
+#     wave 9 primary registry COND_CHANNEL_COMPLETION).
+#   - Hwei E form 2 Gaze of the Abyss (REJECT-confirmed: already
+#     shipped wave 10 sidecar registry COND_CHANNEL_COMPLETION).
+#   - Neeko E Empowered Root (REJECT-confirmed: the Empowered Root
+#     Duration block IS in the Meraki damage_blocks for form 0
+#     alongside base Root Duration, but Neeko E primary entry wave
+#     1 already covers the base root path; the empowered root is
+#     gated on Neeko's W-form-stack mechanic that requires a
+#     separate state-tracking schema lift not authorized this
+#     wave. CARRY).
+#   - Aatrox R post-passive (REJECT-confirmed: minion-only fear
+#     per items 150/153/156/177 schema-lift verification; not
+#     champion CC).
+#   - Volibear R Stormbringer (REJECT-confirmed: only Turret
+#     Disable Duration parsed in damage_blocks; turret-only NOT
+#     champion CC per items 150/153/156/177).
+#   - Briar W frenzy-empowered (REJECT-confirmed: only Bonus AS +
+#     Bonus MS parsed in damage_blocks; self-buff frenzy NOT
+#     champion CC per items 150/153/156/177).
+#
+# Carries forward (wave 23+ operator-gated, all require state-
+# tracking schema lift beyond cast_time + effects_descriptions +
+# parent_resource + notes + damage_blocks):
+#   * Neeko E Empowered W-stack root (W-form-disguise stack
+#     mechanic state-tracking).
+#   * Renekton W base stun unconditional (could move to
+#     _PER_SPELL_CC_DURATIONS coexists pattern but operator-gated).
+#   * 28 unconditional CC carries flagged in audit (the 28-spell
+#     unconditional-CC saturation list above is operator-gated for
+#     a separate _PER_SPELL_CC_DURATIONS-expansion wave).
+#   * Cherry / Arena augment-empowered champion-CC entries
+#     (Arena-mode-gated; needs COND_MODE_GATED + per-augment
+#     state-tracking schema lift), 2026-05-25):
+#
 # 1.59.0 (cc_conditional wave 21 - Xin Zhao Q + R re-audit closures
 # via the wave 20 `notes` field schema lift. The wave 21 re-audit
 # applied the orchestrator-brief "re-audit ALL prior-wave REJECT
