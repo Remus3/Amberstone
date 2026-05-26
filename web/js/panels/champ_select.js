@@ -1797,6 +1797,21 @@ function _csvMaybePushBuildsToLCU(champion, mode, variants) {
     }],
   }));
   if (!sets.length) return;
+  // Item 188 Slice B (2026-05-25): PRE-PUSH wipe of stale RC- sets
+  // that don't match the current {champion, mode}. Without this, each
+  // champ-select swap or mode-switch leaves the prior 4 RC- sets behind
+  // (replace-by-uid only overwrites matching uids), so a session
+  // cycling 2-3 champions across SR/ARAM/Arena accumulates 20+ stale
+  // entries in the in-game item-shop dropdown. The wipe handler keeps
+  // operator's own custom (non-RC-) sets + this scope's RC- sets so
+  // the apply_item_sets_batch right below is idempotent.
+  try {
+    lcuCmd({
+      cmd: "delete_stale_rc_item_sets",
+      active_champion: champion,
+      active_mode: mode || "sr",
+    });
+  } catch (_) {}
   try { lcuCmd({ cmd: "apply_item_sets_batch", sets }); } catch (_) {}
 }
 
