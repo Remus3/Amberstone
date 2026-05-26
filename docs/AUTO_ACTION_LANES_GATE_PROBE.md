@@ -72,60 +72,113 @@ Probe: `curl -ks https://127.0.0.1:8888/api/health/all | jq .peers`.
 ## Ready-to-ship enablement recipe (do NOT execute until gate clears)
 
 When Slice F (or a future audit) reports gate CLEARED with N>=50 real samples
-at >=95% success, dispatch these via the bridge per `[[reference_rc_peer_bridge]]`:
+at >=95% success, dispatch these via the bridge per `[[reference_rc_peer_bridge]]`.
 
-### 1. Game-PC enablement
+PREP STATE (item 199 update): the `tools/bridge_watcher_install.ps1` script
+NOW exposes a native `-EnableLanes` parameter (landed item 189 Slice A under
+explicit frozen-file grant; commit `93695ca`). The old "manual ps1 edit owed"
+path is RETIRED. Peer installers can pull the latest install.ps1 from Legion
+and re-run with `-EnableLanes read` to flip the scheduled task XML; no manual
+file edit is required. The pin tests at
+`tests/test_bridge_watcher_install_enable_lanes.py` lock that surface so the
+recipe below stays invocable.
 
-Bridge task to Game-PC: stop the running watcher, re-register the scheduled
-task with `--enable-auto-action-lanes read` (read lane only first; ops lane
-is the 2nd-stage promotion after 24h of clean read-lane samples).
+### 1. Game-PC enablement (3 steps)
 
-```
-py "C:\Riot Commander\tools\bridge_post_result.py" --source legion --reply-to gamepc --summary "enable auto-action-lanes read" --body '{"prompt": "Re-register RC-BridgeWatcher-GamePC with --enable-auto-action-lanes read. Stop current task, re-run bridge_watcher_install.ps1 with -Node gamepc -EnableLanes read, verify heartbeat reports lanes=[read]"}'
-```
-
-(NOTE: `bridge_watcher_install.ps1` does NOT yet expose an `-EnableLanes`
-parameter - line 200 hardcodes the args list. A 1-line install script edit
-to thread `--enable-auto-action-lanes $EnableLanes` is owed as a prep step
-before the flip. Operator-gated; ~5 LOC.)
-
-### 2. Peer enablement (same recipe)
-
-Same bridge task to Peer with `--reply-to peer`. Peer RC bridge address is
-`<peer-tailnet-ip>`; per `tools/PEER_ROADMAP_SUGGESTIONS.md:55`, Peer has its own
-`bridge_watcher_install.ps1` clone at `C:\Peer-VIP\core\` and the operator
-flips the Peer scheduled task XML directly.
-
-### 3. Verification curls
+a. From Game-PC, pull the latest installer from Legion's `/agent/` HTTP serve:
 
 ```
-# Peer health: lanes should appear in heartbeat config
+iwr -UseBasicParsing https://legion-rc:8888/agent/bridge_watcher_install.ps1 -OutFile "$env:TEMP\bridge_watcher_install.ps1"
+```
+
+b. Run the installer with `-EnableLanes read` (read lane first; `ops` lane is
+the 2nd-stage promotion after 24h of clean read-lane samples):
+
+```
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\bridge_watcher_install.ps1" -Node gamepc -EnableLanes read
+```
+
+c. Verify the scheduled task XML carries the flag (heartbeat JSON does not
+currently surface `enabled_lanes`; that is a separate operator-gated extension
+to `tools/bridge_watcher.py:_write_heartbeat` - see item 199 carry-forward).
+Until then, verify via the scheduled-task Arguments string:
+
+```
+schtasks /Query /TN RC-BridgeWatcher-GamePC /XML | findstr "enable-auto-action-lanes"
+```
+
+Expected output line:
+
+```
+<Arguments>...bridge_watcher.py --node gamepc --bridge-url ... --poll 15 --enable-auto-action-lanes read</Arguments>
+```
+
+Operator can also use the bridge-dispatch helper (see below) to enqueue all
+three steps as a single ops_request envelope.
+
+### 2. Peer enablement (same 3 steps)
+
+Same recipe with `-Node peer`. Peer RC bridge address is `<peer-tailnet-ip>`; per
+`tools/PEER_ROADMAP_SUGGESTIONS.md:55`, Peer has its own `bridge_watcher_install.ps1`
+clone at `C:\Peer-VIP\core\`. The peer should pull the latest install.ps1 from
+Legion (URL above), then run with `-Node peer -EnableLanes read`.
+
+### 3. Dispatch helper (item 199 Slice A)
+
+`tools/bridge_dispatch_enable_lanes.py` builds an `ops_request` bridge task
+envelope with the install URL + sha256 checksum + the lanes string, posts it
+to the target peer via `bridge_cli task` (the same chokepoint
+`bridge_post_result.py` uses for non-result envelopes). Operator runs:
+
+```
+py "C:\Riot Commander\tools\bridge_dispatch_enable_lanes.py" --target gamepc --lanes read
+py "C:\Riot Commander\tools\bridge_dispatch_enable_lanes.py" --target peer --lanes read
+```
+
+Add `--dry-run` to see the envelope without POSTing. Add `--lanes read,ops`
+once the 2nd-stage promotion gate clears. The script is idempotent: it checks
+the dashboard's `/api/health/all` for the peer's current `enabled_lanes`
+shape before posting and exits 0 with a `"already enabled"` note if no change
+is needed (peer's heartbeat must expose the field for the idempotence check
+to fire; until then the script logs a notice and always posts).
+
+### 4. Verification curls
+
+```
+# Peer health: lanes should appear in heartbeat config once item-199-carry lands
 curl -ks https://127.0.0.1:8888/api/health/all | jq '.peers.gamepc, .peers.peer'
 
 # Direct peer probe
 curl -k https://gamepc-rc:8893/bridge_watcher_health.json
 curl -k https://peer-host:8888/api/bridge/watcher_health
+
+# Direct task XML probe (peer-side, until heartbeat surfaces lanes)
+schtasks /Query /TN RC-BridgeWatcher-GamePC /XML | findstr "enable-auto-action-lanes"
+schtasks /Query /TN RC-BridgeWatcher-Peer /XML | findstr "enable-auto-action-lanes"
 ```
 
 Expected post-flip:
+- Scheduled task Arguments includes `--enable-auto-action-lanes read`
 - `auto_actions_since_boot` increments as real envelopes match auto-* patterns
 - `auto_ok_since_boot / (auto_ok + auto_err)` >= 0.95 sustained
 
-### 4. Rollback
+### 5. Rollback
 
 ```
-# Stop the task, re-register without the flag
-schtasks /End /TN RC-BridgeWatcher-GamePC
-schtasks /Change /TN RC-BridgeWatcher-GamePC /TR "<path-to-pythonw>:<install-dir>\bridge_watcher.py --node gamepc --poll 15"
-schtasks /Run /TN RC-BridgeWatcher-GamePC
+# Re-run installer WITHOUT -EnableLanes (default is empty -> no flag in args)
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\bridge_watcher_install.ps1" -Node gamepc
+# Or set explicitly to disable on a still-installed task:
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\bridge_watcher_install.ps1" -Node gamepc -EnableLanes ""
 ```
 
-(Mirror for Peer with `-Peer` suffix and Peer paths.)
+The installer is idempotent (re-runs replace the scheduled task XML in place).
+Mirror for Peer with `-Node peer`.
 
-### 5. Promotion to `ops` lane
+### 6. Promotion to `ops` lane
 
 After 24h of clean read-lane samples with >=95% success on N>=20 per peer,
-re-dispatch the bridge task with `--enable-auto-action-lanes read,ops`.
+re-run step 1 with `-EnableLanes read,ops`. The dispatch helper accepts
+`--lanes read,ops`.
 
 ---
 
