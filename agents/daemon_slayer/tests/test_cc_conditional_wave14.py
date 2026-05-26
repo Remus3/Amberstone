@@ -245,7 +245,7 @@ class WaveFourteenConditionalTagConsumerCountsTests(unittest.TestCase):
         range_gated_consumers = [
             e for e in all_entries if e.condition == cc.COND_RANGE_GATED
         ]
-        self.assertLessEqual(len(range_gated_consumers), 1)
+        self.assertLessEqual(len(range_gated_consumers), 2)  # wave 23 lift Maokai R + Hecarim R
 
 
 class WaveFourteenDefaultCallerByteIdenticalTests(unittest.TestCase):
