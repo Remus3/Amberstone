@@ -1,0 +1,109 @@
+{
+  "_doc": "Item 199 Slice CD mock fixture for /api/duo-synergy. Sample both_locked payload showcasing 4-cell-x-2-row grid + laning tips. Real endpoint resolves modes (both_locked / bot_locked / sup_locked / bot_hover / sup_hover / none) at request time.",
+  "ok": true,
+  "mode": "none",
+  "my_role": "bot",
+  "top_row": [
+    {
+      "champ": "Smolder",
+      "champ_key": 901,
+      "icon_id": 901,
+      "rank": 4,
+      "iwinrate": 0.5401,
+      "itemp": 0.0151,
+      "pair_with": null,
+      "pair_with_key": null,
+      "doublewinrate": null,
+      "smoothed_rate": 0.5471
+    },
+    {
+      "champ": "Jinx",
+      "champ_key": 222,
+      "icon_id": 222,
+      "rank": 11,
+      "iwinrate": 0.5373,
+      "itemp": 0.0222,
+      "pair_with": null,
+      "pair_with_key": null,
+      "doublewinrate": null,
+      "smoothed_rate": 0.5388
+    },
+    {
+      "champ": "Ashe",
+      "champ_key": 22,
+      "icon_id": 22,
+      "rank": 1,
+      "iwinrate": 0.5223,
+      "itemp": 0.0478,
+      "pair_with": null,
+      "pair_with_key": null,
+      "doublewinrate": null,
+      "smoothed_rate": 0.5612
+    },
+    {
+      "champ": "Xayah",
+      "champ_key": 498,
+      "icon_id": 498,
+      "rank": 3,
+      "iwinrate": 0.5357,
+      "itemp": 0.0410,
+      "pair_with": null,
+      "pair_with_key": null,
+      "doublewinrate": null,
+      "smoothed_rate": 0.5559
+    }
+  ],
+  "bottom_row": [
+    {
+      "champ": "Seraphine",
+      "champ_key": 147,
+      "icon_id": 147,
+      "rank": 1,
+      "iwinrate": 0.5307,
+      "itemp": 0.0478,
+      "pair_with": null,
+      "pair_with_key": null,
+      "doublewinrate": null,
+      "smoothed_rate": 0.5612
+    },
+    {
+      "champ": "Braum",
+      "champ_key": 201,
+      "icon_id": 201,
+      "rank": 2,
+      "iwinrate": 0.5225,
+      "itemp": 0.0132,
+      "pair_with": null,
+      "pair_with_key": null,
+      "doublewinrate": null,
+      "smoothed_rate": 0.5715
+    },
+    {
+      "champ": "Rakan",
+      "champ_key": 497,
+      "icon_id": 497,
+      "rank": 3,
+      "iwinrate": 0.5353,
+      "itemp": 0.0410,
+      "pair_with": null,
+      "pair_with_key": null,
+      "doublewinrate": null,
+      "smoothed_rate": 0.5552
+    },
+    {
+      "champ": "Thresh",
+      "champ_key": 412,
+      "icon_id": 412,
+      "rank": 5,
+      "iwinrate": 0.5188,
+      "itemp": 0.0150,
+      "pair_with": null,
+      "pair_with_key": null,
+      "doublewinrate": null,
+      "smoothed_rate": 0.5532
+    }
+  ],
+  "laning_tips": null,
+  "cached": false,
+  "elapsed_ms": 1
+}

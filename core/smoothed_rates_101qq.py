@@ -1,0 +1,389 @@
+"""core/smoothed_rates_101qq.py - 101.qq.com duo-synergy consumer.
+
+Item 199 Slice CD (2026-05-25). Wires the operator-captured 101.qq.com
+hero-rank-double bot+sup duo win-rate seed into `core.smoothed_rates`
+so the dashboard's champ-select view can surface "best bot/sup
+pairings" while the operator + ally lock in.
+
+Data sources (operator-captured 2026-05-25, top-200 bot-lane meta tier):
+
+  * `data/external/101qq_hero_rank_double_tier200_capture_20260525.json`
+    wrapped envelope `{"code":0,"data":[...200 records...],"message":"success"}`.
+    Each record: championid1, championid2, doublewinrate, iwinrate1,
+    iwinrate2, itemp1, vitemp1, irank, lane1=bottom, lane2=support.
+
+  * `data/external/101qq_id_map.json` 65-entry numeric-string ->
+    DDragon-name mapping. Tencent IDs are 1:1 with Riot DDragon `key`
+    field at patch 16.10.1.
+
+Public API:
+
+  top_duos_for_bot(bot_champ, top_n=4) -> list[DuoRec]
+      Sorted by doublewinrate DESC (smoothed via Laplace). Picks the
+      top N support pairings for a locked bot.
+
+  top_duos_for_sup(sup_champ, top_n=4) -> list[DuoRec]
+      Sorted by doublewinrate DESC. Picks the top N bot pairings for
+      a locked sup.
+
+  top_solo_picks(role, top_n=4) -> list[SoloRec]
+      Top N picks for "bot" or "sup" when nothing is locked. Sorted
+      by aggregated rank weight (champion's median irank across all
+      pairings, lower = better).
+
+  pair_synergy(bot_champ, sup_champ) -> DuoRec | None
+      The specific pair record (None if the pair isn't in the top 200).
+
+Smoothing notes:
+  doublewinrate is already a percentage (e.g. 0.5653 = 56.53%). itemp1
+  is a "play rate at tier" percentage (e.g. "4.78%") proxy for sample
+  size. We treat sample_size ~= itemp1_float * 1000 (rounded) as a
+  rough win-count proxy and apply `smoothed_rates.laplace_rate` so
+  thin-sample pairings (irank 195 + itemp1 0.30%) don't outrank well-
+  evidenced ones (irank 1 + itemp1 4.78%) when ordering by smoothed
+  win-rate. The raw irank is preserved as a ground-truth tie-breaker
+  + display field.
+"""
+from __future__ import annotations
+
+import json
+import threading
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+from core import smoothed_rates as _sr
+
+# --------------------------------------------------------------------
+# Paths + cache
+# --------------------------------------------------------------------
+
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "external"
+_RECORDS_PATH = _DATA_DIR / "101qq_hero_rank_double_tier200_capture_20260525.json"
+_ID_MAP_PATH = _DATA_DIR / "101qq_id_map.json"
+
+_CACHE_LOCK = threading.RLock()
+_LOADED = False
+_ID_TO_NAME: dict[int, str] = {}
+_NAME_TO_ID: dict[str, int] = {}
+_DUO_RECS: list[dict] = []          # raw records (envelope unwrapped)
+_PAIR_INDEX: dict[tuple[int, int], dict] = {}    # (bot_id, sup_id) -> rec
+_BOTS_BY_SUP: dict[int, list[dict]] = {}         # sup_id -> sorted bot recs
+_SUPS_BY_BOT: dict[int, list[dict]] = {}         # bot_id -> sorted sup recs
+
+# Sample-size proxy from itemp1 percentage ("4.78%") -> 1000-scaled.
+# A 4.78%-of-tier-200 representation is "well evidenced"; 0.30% is the
+# Laplace pull-toward-50% boundary. Tunable - operator-gated.
+_ITEMP_TO_SAMPLE_SCALE = 1000.0
+
+# Default Laplace alpha (mirrors core.smoothed_rates default).
+_LAPLACE_ALPHA = 1.0
+
+
+@dataclass(frozen=True)
+class DuoRec:
+    """One bot+sup pair record from 101.qq.com seed.
+
+    bot / sup are DDragon names (case + punctuation preserved e.g.
+    "Kaisa", "TahmKench"). bot_id / sup_id are numeric DDragon keys.
+    doublewinrate / iwinrate_bot / iwinrate_sup are raw rates [0..1].
+    itemp_bot is the play-rate float (e.g. 0.0478 = 4.78% of tier).
+    irank is the source pair rank [1..200] (lower = better).
+    smoothed_rate is the Laplace-smoothed doublewinrate; sample-size
+    weighted so thin pairings get pulled toward 0.5.
+    """
+    bot: str
+    sup: str
+    bot_id: int
+    sup_id: int
+    doublewinrate: float
+    iwinrate_bot: float
+    iwinrate_sup: float
+    itemp_bot: float
+    irank: int
+    smoothed_rate: float
+
+
+@dataclass(frozen=True)
+class SoloRec:
+    """One single-role top pick when nothing locked. role is bot|sup.
+
+    rank is the median irank across all pairings this champion appears
+    in for the role; lower = better. iwinrate is the per-role solo
+    win-rate aggregated (mean across appearances). itemp is the mean
+    itemp_bot across appearances (proxy for play-rate share).
+    """
+    champ: str
+    champ_id: int
+    role: str
+    rank: float
+    iwinrate: float
+    itemp: float
+    smoothed_rate: float
+
+
+# --------------------------------------------------------------------
+# Loader (lazy, thread-safe, idempotent)
+# --------------------------------------------------------------------
+
+
+def _parse_itemp(raw: str | float | None) -> float:
+    """Parse "4.78%" -> 0.0478 (decimal share). Returns 0.0 on garbage."""
+    if raw is None:
+        return 0.0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    s = str(raw).strip().rstrip("%")
+    try:
+        return float(s) / 100.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _load_once() -> None:
+    """Loads + indexes both seed files. Thread-safe, idempotent.
+
+    Silent on missing files (returns empty cache); the API layer surfaces
+    that as "no data" rather than 500.
+    """
+    global _LOADED, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
+    global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
+    with _CACHE_LOCK:
+        if _LOADED:
+            return
+        # ID map: numeric-string keys -> DDragon names
+        id_to_name: dict[int, str] = {}
+        name_to_id: dict[str, int] = {}
+        try:
+            raw_map = json.loads(_ID_MAP_PATH.read_text(encoding="utf-8"))
+            for k, v in raw_map.items():
+                try:
+                    cid = int(k)
+                except (TypeError, ValueError):
+                    continue
+                if not isinstance(v, str) or not v:
+                    continue
+                id_to_name[cid] = v
+                name_to_id[v.lower()] = cid
+        except (OSError, json.JSONDecodeError):
+            pass
+
+        # Records: unwrap envelope, normalize fields
+        records: list[dict] = []
+        try:
+            raw_env = json.loads(_RECORDS_PATH.read_text(encoding="utf-8"))
+            data = raw_env.get("data") if isinstance(raw_env, dict) else None
+            if not isinstance(data, list):
+                data = []
+            for rec in data:
+                if not isinstance(rec, dict):
+                    continue
+                try:
+                    bot_id = int(rec.get("championid1") or 0)
+                    sup_id = int(rec.get("championid2") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if not (bot_id and sup_id):
+                    continue
+                bot_name = id_to_name.get(bot_id, "")
+                sup_name = id_to_name.get(sup_id, "")
+                if not (bot_name and sup_name):
+                    continue
+                try:
+                    doublewr = float(rec.get("doublewinrate") or 0.0)
+                    iwr1 = float(rec.get("iwinrate1") or 0.0)
+                    iwr2 = float(rec.get("iwinrate2") or 0.0)
+                    irank = int(rec.get("irank") or 0)
+                except (TypeError, ValueError):
+                    continue
+                itemp = _parse_itemp(rec.get("itemp1"))
+                # Sample-size proxy: itemp1 is play-rate share; scale to
+                # wins-count proxy and Laplace-smooth. doublewr * proxy
+                # = wins, proxy = games, alpha = 1.0.
+                sample = max(0.0, itemp * _ITEMP_TO_SAMPLE_SCALE)
+                wins = doublewr * sample
+                smoothed = _sr.laplace_rate(wins, sample, _LAPLACE_ALPHA)
+                norm = {
+                    "bot": bot_name,
+                    "sup": sup_name,
+                    "bot_id": bot_id,
+                    "sup_id": sup_id,
+                    "doublewinrate": doublewr,
+                    "iwinrate_bot": iwr1,
+                    "iwinrate_sup": iwr2,
+                    "itemp_bot": itemp,
+                    "irank": irank,
+                    "smoothed_rate": smoothed,
+                }
+                records.append(norm)
+        except (OSError, json.JSONDecodeError):
+            pass
+
+        # Build per-side indices, sorted by smoothed_rate DESC for the
+        # "given a locked partner, who pairs best with them" queries.
+        pair_index: dict[tuple[int, int], dict] = {}
+        bots_by_sup: dict[int, list[dict]] = {}
+        sups_by_bot: dict[int, list[dict]] = {}
+        for r in records:
+            pair_index[(r["bot_id"], r["sup_id"])] = r
+            bots_by_sup.setdefault(r["sup_id"], []).append(r)
+            sups_by_bot.setdefault(r["bot_id"], []).append(r)
+        # Sort each list by smoothed_rate DESC then irank ASC (tiebreaker).
+        for v in bots_by_sup.values():
+            v.sort(key=lambda x: (-x["smoothed_rate"], x["irank"]))
+        for v in sups_by_bot.values():
+            v.sort(key=lambda x: (-x["smoothed_rate"], x["irank"]))
+
+        _ID_TO_NAME = id_to_name
+        _NAME_TO_ID = name_to_id
+        _DUO_RECS = records
+        _PAIR_INDEX = pair_index
+        _BOTS_BY_SUP = bots_by_sup
+        _SUPS_BY_BOT = sups_by_bot
+        _LOADED = True
+
+
+def _reset_cache() -> None:
+    """Test-only: clear cache so the next call re-reads from disk."""
+    global _LOADED, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
+    global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
+    with _CACHE_LOCK:
+        _LOADED = False
+        _ID_TO_NAME = {}
+        _NAME_TO_ID = {}
+        _DUO_RECS = []
+        _PAIR_INDEX = {}
+        _BOTS_BY_SUP = {}
+        _SUPS_BY_BOT = {}
+
+
+def _resolve_id(champ: str) -> int:
+    """Champion name -> DDragon numeric id, case-insensitive. 0 if not in
+    the 101.qq seed coverage (65 unique IDs)."""
+    if not champ:
+        return 0
+    _load_once()
+    return _NAME_TO_ID.get(str(champ).strip().lower(), 0)
+
+
+def _rec_to_duo(rec: dict) -> DuoRec:
+    """Internal raw dict -> typed DuoRec."""
+    return DuoRec(
+        bot=rec["bot"],
+        sup=rec["sup"],
+        bot_id=rec["bot_id"],
+        sup_id=rec["sup_id"],
+        doublewinrate=rec["doublewinrate"],
+        iwinrate_bot=rec["iwinrate_bot"],
+        iwinrate_sup=rec["iwinrate_sup"],
+        itemp_bot=rec["itemp_bot"],
+        irank=rec["irank"],
+        smoothed_rate=rec["smoothed_rate"],
+    )
+
+
+# --------------------------------------------------------------------
+# Public API
+# --------------------------------------------------------------------
+
+
+def top_duos_for_bot(bot_champ: str, top_n: int = 4) -> list[DuoRec]:
+    """Top N support pairings for a locked bot, sorted by smoothed_rate
+    DESC then irank ASC. Empty list if champ isn't in coverage or has
+    no pairings."""
+    _load_once()
+    bot_id = _resolve_id(bot_champ)
+    if not bot_id:
+        return []
+    recs = _SUPS_BY_BOT.get(bot_id) or []
+    n = max(0, min(int(top_n), len(recs)))
+    return [_rec_to_duo(r) for r in recs[:n]]
+
+
+def top_duos_for_sup(sup_champ: str, top_n: int = 4) -> list[DuoRec]:
+    """Top N bot pairings for a locked sup, sorted by smoothed_rate DESC
+    then irank ASC."""
+    _load_once()
+    sup_id = _resolve_id(sup_champ)
+    if not sup_id:
+        return []
+    recs = _BOTS_BY_SUP.get(sup_id) or []
+    n = max(0, min(int(top_n), len(recs)))
+    return [_rec_to_duo(r) for r in recs[:n]]
+
+
+def pair_synergy(bot_champ: str, sup_champ: str) -> DuoRec | None:
+    """Return the specific pair record or None if not in coverage."""
+    _load_once()
+    bot_id = _resolve_id(bot_champ)
+    sup_id = _resolve_id(sup_champ)
+    if not (bot_id and sup_id):
+        return None
+    rec = _PAIR_INDEX.get((bot_id, sup_id))
+    return _rec_to_duo(rec) if rec else None
+
+
+def top_solo_picks(role: Literal["bot", "sup"], top_n: int = 4) -> list[SoloRec]:
+    """Top N picks for a role when nothing is locked.
+
+    Aggregates each champion's median irank across all pairings (lower
+    = better), mean iwinrate, mean itemp_bot, and Laplace-smoothed
+    doublewinrate (mean across pairings, weighted by itemp_bot sample
+    proxy). Returns sorted by smoothed_rate DESC then median rank ASC.
+    """
+    _load_once()
+    r = role.lower() if role else ""
+    if r not in ("bot", "sup"):
+        return []
+    # Group records by champion id (depending on role side).
+    buckets: dict[int, list[dict]] = {}
+    for rec in _DUO_RECS:
+        cid = rec["bot_id"] if r == "bot" else rec["sup_id"]
+        buckets.setdefault(cid, []).append(rec)
+    aggregates: list[SoloRec] = []
+    for cid, recs in buckets.items():
+        if not recs:
+            continue
+        name = _ID_TO_NAME.get(cid, "")
+        if not name:
+            continue
+        ranks = sorted(x["irank"] for x in recs)
+        median_rank = float(ranks[len(ranks) // 2])
+        # Per-role solo iwinrate is constant for a given champ across
+        # the seed (it's the champion's own ranked WR), so mean = the
+        # value any record carries. Defensive mean handles edge cases.
+        side_key = "iwinrate_bot" if r == "bot" else "iwinrate_sup"
+        iwinrates = [x[side_key] for x in recs]
+        mean_iwr = sum(iwinrates) / len(iwinrates) if iwinrates else 0.0
+        itemps = [x["itemp_bot"] for x in recs]
+        mean_itemp = sum(itemps) / len(itemps) if itemps else 0.0
+        # Sample-weighted mean of smoothed doublewinrate: heavier
+        # pairings dominate the aggregate so a one-irank=1 entry
+        # doesn't outrank a champion with consistent strong pairings.
+        total_w = sum(max(0.0001, x["itemp_bot"]) for x in recs)
+        weighted_sr = sum(
+            x["smoothed_rate"] * max(0.0001, x["itemp_bot"]) for x in recs
+        ) / total_w if total_w > 0 else 0.0
+        aggregates.append(SoloRec(
+            champ=name,
+            champ_id=cid,
+            role=r,
+            rank=median_rank,
+            iwinrate=mean_iwr,
+            itemp=mean_itemp,
+            smoothed_rate=weighted_sr,
+        ))
+    aggregates.sort(key=lambda x: (-x.smoothed_rate, x.rank))
+    n = max(0, min(int(top_n), len(aggregates)))
+    return aggregates[:n]
+
+
+def coverage() -> dict:
+    """Diagnostic: how many unique champs + records are loaded."""
+    _load_once()
+    return {
+        "unique_champions": len(_ID_TO_NAME),
+        "total_records":    len(_DUO_RECS),
+        "unique_bot_ids":   len(_SUPS_BY_BOT),
+        "unique_sup_ids":   len(_BOTS_BY_SUP),
+    }

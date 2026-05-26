@@ -3123,6 +3123,162 @@ function _csvMergePickBanData(role, liveRecs, placeholder) {
   return out;
 }
 
+// -----------------------------------------------------------------
+// Item 199 Slice CD (2026-05-25): 101.qq.com duo-synergy fetcher.
+//
+// Polls /api/duo-synergy with the operator's current my_role + ally
+// bot/sup lock+hover state. The endpoint resolves the mode priority
+// (both_locked > bot_locked > sup_locked > bot_hover > sup_hover >
+// none) and returns a 4x2 grid payload + optional laning tip.
+//
+// Same in-flight + TTL cache pattern as _csvFetchPickBanRecs above.
+// _CSV_DUOSYN_TTL_MS is short (5s) so rapid champ-select ticks see
+// stable data without hammering the backend at 500ms cadence.
+// -----------------------------------------------------------------
+const _CSV_DUOSYN_CACHE = {};
+const _CSV_DUOSYN_INFLIGHT = {};
+const _CSV_DUOSYN_TTL_MS = 5_000;
+
+function _csvDuoSynergyKey(myRole, botLock, botHover, supLock, supHover, topN) {
+  return [
+    String(myRole || "bot"),
+    String(botLock || ""),
+    String(botHover || ""),
+    String(supLock || ""),
+    String(supHover || ""),
+    String(topN | 0 || 4),
+  ].join("|");
+}
+
+function _csvFetchDuoSynergy(myRole, botLock, botHover, supLock, supHover, topN, onLoad) {
+  const n = Math.max(1, Math.min(4, topN | 0 || 4));
+  const key = _csvDuoSynergyKey(myRole, botLock, botHover, supLock, supHover, n);
+  const now = Date.now();
+  const cached = _CSV_DUOSYN_CACHE[key];
+  if (cached && (now - cached.fetchedAt) < _CSV_DUOSYN_TTL_MS) {
+    return cached.data;
+  }
+  if (_CSV_DUOSYN_INFLIGHT[key]) return cached ? cached.data : null;
+  _CSV_DUOSYN_INFLIGHT[key] = true;
+  const params = new URLSearchParams();
+  params.set("my_role", String(myRole || "bot"));
+  if (botLock)  params.set("ally_bot_lock",  String(botLock));
+  if (botHover) params.set("ally_bot_hover", String(botHover));
+  if (supLock)  params.set("ally_sup_lock",  String(supLock));
+  if (supHover) params.set("ally_sup_hover", String(supHover));
+  params.set("top_n", String(n));
+  fetch(`/api/duo-synergy?${params.toString()}`)
+    .then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _CSV_DUOSYN_INFLIGHT[key] = false;
+      if (j && j.ok) {
+        _CSV_DUOSYN_CACHE[key] = { data: j, fetchedAt: Date.now() };
+        if (typeof onLoad === "function") onLoad();
+      }
+    })
+    .catch(() => { _CSV_DUOSYN_INFLIGHT[key] = false; });
+  return cached ? cached.data : null;
+}
+
+// Champion-name lookup from numeric id via CHAMPS.byId. Used to map
+// the operator's allies (LCU returns championId numbers) into the
+// string names the backend route expects.
+function _csvChampNameFromId(cid) {
+  if (!cid) return "";
+  const slug = CHAMPS.byId[String(cid | 0)];
+  if (!slug) return "";
+  return String(slug);
+}
+
+// Extract the ally bot + sup roles from the champ-select session state.
+// Returns {botLock, botHover, supLock, supHover} as strings (empty when
+// not present). 'lock' is the locked champion (cell.championId on a
+// completed pick); 'hover' is championPickIntent before lock.
+function _csvAllyBotSupState(cs) {
+  const out = { botLock: "", botHover: "", supLock: "", supHover: "" };
+  if (!cs || !Array.isArray(cs.my_team)) return out;
+  for (const p of cs.my_team) {
+    if (!p) continue;
+    const pos = String((p.assignedPosition || "")).toUpperCase();
+    const lockedId = p.completed && p.championId ? (p.championId | 0) : 0;
+    const hoverId = (p.championPickIntent | 0) || 0;
+    if (pos === "BOTTOM") {
+      if (lockedId) out.botLock  = _csvChampNameFromId(lockedId);
+      else if (hoverId) out.botHover = _csvChampNameFromId(hoverId);
+    } else if (pos === "UTILITY") {
+      if (lockedId) out.supLock  = _csvChampNameFromId(lockedId);
+      else if (hoverId) out.supHover = _csvChampNameFromId(hoverId);
+    }
+  }
+  return out;
+}
+
+// Map dashboard role label (BOT/SUP/JNG/TOP/MID) -> backend my_role
+// (bot|sup). Non-bot/sup defaults to "bot" so the 'none' mode shows
+// bot picks up top + sup picks bottom (operator's default scan order).
+function _csvMyRoleForDuoSynergy(role) {
+  const r = String(role || "").toUpperCase();
+  if (r === "SUP" || r === "UTILITY" || r === "SUPPORT") return "sup";
+  return "bot";
+}
+
+// Build the 4x2 grid HTML from the /api/duo-synergy payload. champImg
+// is the same per-champ image helper used by the pb168 cells (defined
+// inside _csvRenderPickBan and closed-over via a parameter).
+function _csvRenderDuoSynergyHtml(payload, champImg) {
+  if (!payload || !payload.ok) {
+    return '<div class="csv-duosyn-empty">waiting for duo data...</div>';
+  }
+  const mode = String(payload.mode || "none");
+  const topRow = Array.isArray(payload.top_row) ? payload.top_row : [];
+  const botRow = Array.isArray(payload.bottom_row) ? payload.bottom_row : [];
+  // Render each cell with rank badge + icon + name + WR pct.
+  const renderCell = (cell, sideClass) => {
+    if (!cell) {
+      return `<div class="csv-duosyn-cell ${sideClass}"></div>`;
+    }
+    const wr = cell.doublewinrate != null ? Math.round(cell.doublewinrate * 100)
+             : (cell.iwinrate != null ? Math.round(cell.iwinrate * 100) : 0);
+    const wrClass = wr >= 55 ? "is-strong-wr"
+                  : (wr > 0 && wr < 48 ? "is-weak-wr" : "");
+    const lockOrHover = (mode.indexOf("locked") >= 0 && !cell.pair_with)
+                     || (mode.indexOf("hover") >= 0 && !cell.pair_with);
+    const stateClass = lockOrHover
+      ? (mode.indexOf("locked") >= 0 ? "is-locked" : "is-hover") : "";
+    const rankBadge = (cell.rank && cell.rank > 0)
+      ? `<span class="csv-duosyn-rank-badge">#${cell.rank}</span>` : "";
+    const wrEl = wr > 0 ? `<span class="csv-duosyn-wr">${wr}%</span>` : "";
+    const cellClasses = ["csv-duosyn-cell", sideClass, stateClass, wrClass]
+      .filter(Boolean).join(" ");
+    const pairTitle = cell.pair_with ? ` with ${cell.pair_with}` : "";
+    return `
+      <div class="${cellClasses}" title="${cell.champ}${pairTitle}">
+        ${rankBadge}
+        <div class="csv-duosyn-icon">${champImg(cell.champ_key)}</div>
+        <div class="csv-duosyn-name">${cell.champ}</div>
+        ${wrEl}
+      </div>`;
+  };
+  // Pad rows to 4 cells so the grid keeps its 4-col geometry.
+  const padTo4 = (arr) => {
+    const out = arr.slice(0, 4);
+    while (out.length < 4) out.push(null);
+    return out;
+  };
+  const topCells = padTo4(topRow).map((c) => renderCell(c, "is-top")).join("");
+  const botCells = padTo4(botRow).map((c) => renderCell(c, "is-bottom")).join("");
+  const tipsHtml = payload.laning_tips
+    ? `<div class="csv-duosyn-tips">${payload.laning_tips}</div>`
+    : "";
+  return `
+    <div class="csv-duosyn-grid">
+      <div class="csv-duosyn-row-top">${topCells}</div>
+      <div class="csv-duosyn-row-bot">${botCells}</div>
+    </div>
+    ${tipsHtml}
+    <div class="csv-duosyn-source">source: 101.qq.com tier-200</div>`;
+}
+
 function _csvRenderPickBan(cs, myCid) {
   const body = document.getElementById("csv-pickban-body");
   if (!body) return;
@@ -3391,14 +3547,26 @@ function _csvRenderPickBan(cs, myCid) {
         <span class="csv-pb168-pct">${b.pct}%</span>
       </div>`;
   }).join("");
-  // Sub-panel 3: dynamic explanation strip. Operator (item 168) dropped
-  // the mood toggle from this panel - 3 sub-panels only (picks / bans
-  // / explanation). Mood logic stays in cache-key (default=comfort) but
-  // no UI control surfaces.
-  const explHtml = explanationLines.length
-    ? explanationLines.map((ln) =>
-        `<div class="${ln.cls}">${ln.text}</div>`).join("")
-    : '<div class="csv-pb168-expl-empty">waiting for live data...</div>';
+  // Sub-panel 3: Item 199 Slice CD - duo-synergy panel (replaces
+  // the item-168 EXPLANATION strip). Polls /api/duo-synergy with the
+  // operator's current my_role + ally bot/sup lock+hover state and
+  // renders a 4x2 grid of champion icons. When both bot + sup are
+  // locked, a concise laning tip line lands below the grid (sourced
+  // from data/laning_tips_duo.json, operator-tunable). The mood
+  // toggle stays in cache-key (default=comfort) but no UI control
+  // surfaces here - that decision is item 168-locked.
+  const myRoleDuoSyn = _csvMyRoleForDuoSynergy(role);
+  const allyState = _csvAllyBotSupState(cs);
+  const duoSynData = _csvFetchDuoSynergy(
+    myRoleDuoSyn,
+    allyState.botLock,
+    allyState.botHover,
+    allyState.supLock,
+    allyState.supHover,
+    4,
+    () => _csvRenderPickBan(cs, myCid),
+  );
+  const duoSynHtml = _csvRenderDuoSynergyHtml(duoSynData, champImg);
   const html = `
     <div class="csv-pb168-section csv-pb168-picks">
       <div class="csv-pb168-head">PICK</div>
@@ -3409,8 +3577,8 @@ function _csvRenderPickBan(cs, myCid) {
       <div class="csv-pb168-row">${banCells}</div>
     </div>
     <div class="csv-pb168-section csv-pb168-expl">
-      <div class="csv-pb168-head">EXPLANATION</div>
-      <div class="csv-pb168-expl-body">${explHtml}</div>
+      <div class="csv-pb168-head">DUO SYNERGY (101.qq.com)</div>
+      <div class="csv-pb168-expl-body">${duoSynHtml}</div>
     </div>`;
 
   body.innerHTML = html;
