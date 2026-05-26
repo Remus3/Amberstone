@@ -3737,6 +3737,105 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
         ),
     )
 
+    # ============================================================
+    # === wave 23 expansion (2026-05-26 / ENGINE 1.61.0) - +1
+    # === entry / +1 net-new champion (Hecarim) via the wave 18
+    # === coexists_with_unconditional same-slot-coexistence schema
+    # === (Maokai R precedent). SECOND consumer of the wave 7
+    # === forward-marker COND_RANGE_GATED tag.
+    # ============================================================
+
+    # Hecarim R Onslaught of Shadows distance-gated fear: Hecarim
+    # dashes to the target location with displacement immunity and
+    # summons 5 spectral riders in an arrow formation that charge
+    # alongside him. UPON ARRIVAL he fears nearby enemies with a
+    # duration scaled on the distance traveled from cast origin to
+    # the dash terminus. Per Meraki 16.10.1 effects_descriptions[1]:
+    # "Upon arrival, he fears nearby enemies for 0.75 : 1.5 (based
+    # on distance traveled) seconds and slows them by 0% : 99%
+    # (based on distance from Hecarim)."
+    #
+    # The 0.75-1.5s range-gated fear coexists with the unconditional
+    # Hecarim R 1.0s flat entry in `_PER_SPELL_CC_DURATIONS["Hecarim"]
+    # ["R"] = (1.0, 1.0, 1.0)`. The unconditional 1.0s represents the
+    # mid-distance midpoint; the conditional 1.5s represents the
+    # max-distance band. Maps to COND_RANGE_GATED (prob 0.4 - tag
+    # midpoint matches Maokai R precedent; mid-low reflecting that
+    # the operator must commit to a long-range dash to reach the
+    # 1.5s far-band fear, while close-range R engages get the 1.0s
+    # mid value via the unconditional entry).
+    #
+    # SCHEMA: coexists_with_unconditional=True declares same-slot
+    # coexistence with the unconditional `_PER_SPELL_CC_DURATIONS`
+    # entry. Consumer-side compute_cc_pressure(include_conditional=
+    # True) math credits MAX(unconditional_post_tenacity 1.0s,
+    # conditional_post_tenacity 1.5 * 0.4 = 0.6s default) - never
+    # both summed. Default calibration: unconditional 1.0s wins.
+    # Operator can tune Hecarim:R above 0.667 (1.0/1.5) to lift the
+    # conditional above the unconditional via the per_entry_
+    # probability override.
+    #
+    # SECOND consumer of the wave 7 forward-marker COND_RANGE_GATED
+    # tag after Maokai R wave 18. Closes wave 23 audit (re-audit of
+    # all prior REJECT carries against the FULL ENGINE 1.60.0 schema
+    # including notes + cast_time + effects_descriptions + parent_
+    # resource + damage_blocks; Hecarim R surfaced because the
+    # effects_descriptions for the R fear was not previously matched
+    # against the COND_RANGE_GATED tag - the audit subagent flagged
+    # the "0.75 : 1.5 (based on distance traveled)" range as the
+    # canonical range-gated CC payload).
+    #
+    # FIRST Hecarim cc_conditional entry anywhere - the existing
+    # Hecarim E knockback (0.75s flat) + R fear (1.0s baseline) live
+    # in the unconditional `_PER_SPELL_CC_DURATIONS` registry. This
+    # wave 23 entry registers ONLY the range-gated fear bonus.
+    #
+    # Math preservation: default compute_cc_pressure(include_
+    # conditional=False) is BYTE-IDENTICAL to ENGINE 1.60.0 for ALL
+    # champions including Hecarim (the wave 23 path skips when the
+    # flag is False; unconditional 1.0s flat R fear unchanged). At
+    # include_conditional=True the consumer max-rule keeps the
+    # unconditional 1.0s as the credited value by default; operator
+    # override Hecarim:R = 0.95 lifts conditional to 1.425s which
+    # then beats the unconditional via MAX.
+    registry.setdefault("Hecarim", {})["R"] = ConditionalCcEntry(
+        champion="Hecarim",
+        spell="R",
+        cc_kind="fear",
+        durations_s=(1.5, 1.5, 1.5),
+        condition=COND_RANGE_GATED,
+        probability=_p("Hecarim", "R", 0.4),
+        notes=(
+            "R Onslaught of Shadows distance-gated fear: Hecarim "
+            "dashes to target with displacement immunity, summons 5 "
+            "spectral riders, AoE magic damage on arrival. Per "
+            "Meraki 16.10.1 effects_descriptions[1] 'fears nearby "
+            "enemies for 0.75 : 1.5 (based on distance traveled) "
+            "seconds'. Encoded at MAX-distance 1.5s with COND_RANGE_"
+            "GATED tag (SECOND consumer of the wave 7 forward-marker "
+            "tag after Maokai R wave 18). coexists_with_unconditional"
+            "=True declares same-slot coexistence with the "
+            "unconditional Hecarim R 1.0s flat baseline entry in "
+            "`_PER_SPELL_CC_DURATIONS`. Consumer math: at include_"
+            "conditional=True the MAX rule credits the larger of "
+            "unconditional 1.0s or conditional 1.5 * 0.4 = 0.6s "
+            "default (operator can tune Hecarim:R above 0.667 to "
+            "flip the conditional above the unconditional). "
+            "Probability midpoint 0.4 matches Maokai R precedent - "
+            "operator must commit to a long-distance ride to reach "
+            "the 1.5s far band; close-range R engages get the 1.0s "
+            "mid value via the unconditional entry. FIRST Hecarim "
+            "cc_conditional entry anywhere (E knockback + R baseline "
+            "fear already in `_PER_SPELL_CC_DURATIONS`). Discovered "
+            "during wave 23 (2026-05-26 / ENGINE 1.61.0) full-schema "
+            "re-audit. Mechanic captured by ENGINE 1.46.0 Meraki "
+            "schema lift (effects_descriptions); range-gated payload "
+            "matches the COND_RANGE_GATED tag without further "
+            "schema work."
+        ),
+        coexists_with_unconditional=True,
+    )
+
     return registry
 
 
