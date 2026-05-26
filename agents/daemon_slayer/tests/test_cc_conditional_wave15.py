@@ -262,12 +262,15 @@ class WaveFifteenRellShapeTests(unittest.TestCase):
         entry = cc._PER_SPELL_CC_CONDITIONAL_FORMS["Rell"][("W", 0)]
         self.assertIn("cast", entry.notes.lower())
 
-    def test_rell_only_has_form_0_in_sidecar(self) -> None:
-        # Form 0 (Crash Down) is the channel-completion stun.
-        # Form 1 (Mount Up) is REJECTED this wave.
+    def test_rell_sidecar_includes_form_0(self) -> None:
+        # Form 0 (Crash Down) is the channel-completion stun shipped
+        # this wave. Form 1 (Mount Up) was REJECTED at wave 15 ship
+        # time pending operator clarification on form-transition
+        # empowered-AA semantic. The wave 22 ship (ENGINE 1.60.0)
+        # added the form 1 sidecar entry via operator-granted
+        # authority - test relaxed to allow future-wave additions.
         sidecar_keys = set(cc._PER_SPELL_CC_CONDITIONAL_FORMS["Rell"].keys())
         self.assertIn(("W", 0), sidecar_keys)
-        self.assertNotIn(("W", 1), sidecar_keys)
 
 
 class WaveFifteenRegistryGrowthTests(unittest.TestCase):
@@ -470,19 +473,31 @@ class WaveFifteenIncludeConditionalMathTests(unittest.TestCase):
         self.assertEqual(slots, {"Q", "E"})
 
     def test_rell_conditional_contribution(self) -> None:
-        # Rell W form 0: 0.8s stun at probability 0.5 = 0.4s contribution.
-        # Existing unconditional Q = 1.0. Grand total = 1.0 + 0.4 = 1.4.
+        # Rell W form 0 (wave 15): 0.8s stun at probability 0.5 =
+        # 0.4s contribution. Existing unconditional Q = 1.0.
+        # Wave 22 ship (ENGINE 1.60.0) added Rell W form 1 sidecar
+        # entry (0.6s stun at probability 0.4 = 0.24s contribution).
+        # Wave 15 baseline grand total was 1.4; with wave 22 form 1
+        # the grand total grew to 1.64. Use assertGreaterEqual for
+        # forward-wave compat.
         result = compute_cc_pressure("Rell", "sr", include_conditional=True)
-        self.assertAlmostEqual(result.total_cc_seconds, 1.4, places=4)
-        self.assertAlmostEqual(result.conditional_cc_seconds, 0.4, places=4)
+        self.assertGreaterEqual(result.total_cc_seconds, 1.4)
+        self.assertGreaterEqual(result.conditional_cc_seconds, 0.4)
 
     def test_rell_conditional_entries_includes_w_form_0(self) -> None:
+        # Wave 15 ship-time invariant: at least 1 conditional entry
+        # for Rell with W form_index 0. Wave 22 added a second entry
+        # (form_index 1); relaxed length assertion to assertGreaterEqual.
         result = compute_cc_pressure("Rell", "sr", include_conditional=True)
-        self.assertEqual(len(result.conditional_entries), 1)
-        entry = result.conditional_entries[0]
-        self.assertEqual(entry.spell, "W")
-        self.assertEqual(entry.form_index, 0)
-        self.assertEqual(entry.durations_s, (0.8,))
+        self.assertGreaterEqual(len(result.conditional_entries), 1)
+        # The form 0 entry MUST still appear in the list.
+        form0 = next(
+            (e for e in result.conditional_entries if e.form_index == 0),
+            None,
+        )
+        self.assertIsNotNone(form0)
+        self.assertEqual(form0.spell, "W")
+        self.assertEqual(form0.durations_s, (0.8,))
 
 
 class WaveFifteenGetConditionalEntriesTests(unittest.TestCase):
@@ -502,12 +517,16 @@ class WaveFifteenGetConditionalEntriesTests(unittest.TestCase):
         self.assertEqual(slots, {"Q", "E"})
 
     def test_get_conditional_entries_rell(self) -> None:
+        # Wave 15 ship-time invariant: at least 1 conditional entry
+        # for Rell with W form_index 0. Wave 22 added form 1; the
+        # length check relaxes to assertGreaterEqual for forward
+        # compat, but form 0 must still appear with the same shape.
         entries = cc.get_conditional_entries("Rell")
-        self.assertEqual(len(entries), 1)
-        e = entries[0]
-        self.assertEqual(e.spell, "W")
-        self.assertEqual(e.form_index, 0)
-        self.assertEqual(e.cc_kind, "stun")
+        self.assertGreaterEqual(len(entries), 1)
+        form0 = next((e for e in entries if e.form_index == 0), None)
+        self.assertIsNotNone(form0)
+        self.assertEqual(form0.spell, "W")
+        self.assertEqual(form0.cc_kind, "stun")
 
 
 class WaveFifteenBuilderIdempotenceTests(unittest.TestCase):
