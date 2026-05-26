@@ -1,6 +1,83 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-05-26 - item 203 SHIPPED: headless-upgrade run - duo_synergy.json frontend mock orphan closure + ground-truth verification of subagent claims
+
+Operator triggered `/headless-upgrade` second consecutive long autonomous run on the same UTC day (item 202 wrapped earlier; this run started immediately after). Same operator-grant scope (frozen-file authority unused; 24-parallel-agents/task authority). 52nd-streak orchestrator pattern (items 134-189 + slim variants 190-198 + items 199 + 200 + 201 + 202 + 203). Pre-flight: HEAD `a7b37d9` clean / CI 6/6 green / ENGINE 1.61.0 / DS 4872 / RC pid 15960 mode=client / 0 open PRs / 0 stale remote branches. Bridge gamepc+peer green; Legion daemon idle.
+
+**4 parallel investigative agents dispatched at start to find genuine actionable work (saturation lane is thin - cc_conditional schema-blocked wave 24+ / L31 saturated rounds 1-6 / UI v2.1 all 16 pages closed at item 202 / cost/latency 30 CLEAN / dead-endpoint cleanup item 186 done / dedup duplicate-fetch item 184 done).**
+
+Per [[feedback_verify_generated_reports]] every agent claim was ground-truth grep-checked before any commit:
+
+- Agent A (cost/latency wave 31): claimed L1 18 markers (baseline 13) + L2 9 _CACHE constants (baseline 12-16). My ground-truth grep: L1 18 markers across 10 .py files (+5 from item 202 baseline = legitimate expansion via routes_dictionary.py 3 markers + replay_coach.py 1 marker; NOT a regression). L2 strict `^[A-Z_]*_CACHE\s*=` returns 0 (wrong regex; agent same error); wider `_CACHE\b` returns 15 routes (within 12-16 prior baseline). Both flagged proposals = measurement errors, NOT actionable.
+
+- Agent B (dead-code sweep): claimed only 1 actionable item (xfail test in test_wireable_sims_p1l3.py for lifesteal sustain - intentional Phase 6 architectural deferral). VERIFIED. NO ACTION.
+
+- Agent C (BACKLOG/ROADMAP stale-sweep wave 24): claimed 0 flips CLEAN saturation. VERIFIED.
+
+- Agent D (web surface sweep): claimed 11 panel JS files orphaned + duo_synergy.json orphan. **PARTIAL MEASUREMENT ERROR**: 10/11 panel "orphans" are actually imported via panel-to-panel chains (champ_select.js imports ban_suggest_toggle / build_order / cc_blended_ehp_threat / cc_conditional_pressure; active_match.js imports cd_ledger / spike_curve / ward_heat / draft_elo; dev.js imports replay_events; last_match.js imports post_game_phases). Agent only grepped main.js imports + missed the chain. **One CORRECT finding**: `web/data/ui_mock/duo_synergy.json` is genuinely orphan at frontend layer.
+
+**Phase 1 `00f96be` (2 files / +69 / -0) feat(ui+test) item 203 - wire duo_synergy.json mock dispatcher in _csvFetchDuoSynergy + drift guard:**
+
+Closes the orphan that surfaced during ground-truth audit. Item 199 Slice CD `c33xxx` shipped:
+- Backend `dashboard/routes_duo_synergy.py` (full GET /api/duo-synergy handler).
+- Mock fixture `web/data/ui_mock/duo_synergy.json` (45-cell sample payload).
+- Test `tests/test_routes_duo_synergy.py` with ASCII guard on the fixture (`AsciiHygieneTests::test_mock_fixture_is_ascii`).
+
+But the FRONTEND wiring never happened: `_csvFetchDuoSynergy` at `web/js/panels/champ_select.js:3134` ONLY fetched the live `/api/duo-synergy` endpoint. When body.dataset.uiMock="1" (operator's dev UI mock toggle via `?ui_mock=1` URL flag + Settings checkbox per item 157), the duo-synergy panel would still hit the live backend - the mock fixture was never loaded.
+
+Fix mirrors 5 prior mock-dispatcher patterns (`_csMockLoad` items 165+181 / `_lmMockLoad` item 183 / `_lobbyMockLoad` item 163 / `_amMockLoad` item 184 / `_csvFetchUserVariants` mock branch item 178 at L2105). Added `isMock` short-circuit at top of `_csvFetchDuoSynergy` (after cache+inflight checks):
+```javascript
+const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
+if (isMock) {
+  _CSV_DUOSYN_INFLIGHT[key] = true;
+  fetch("/data/ui_mock/duo_synergy.json", { cache: "no-store" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .then((j) => {
+      _CSV_DUOSYN_INFLIGHT[key] = false;
+      if (j && j.ok) {
+        _CSV_DUOSYN_CACHE[key] = { data: j, fetchedAt: Date.now() };
+        if (typeof onLoad === "function") onLoad();
+      }
+    })
+    .catch(() => { _CSV_DUOSYN_INFLIGHT[key] = false; });
+  return cached ? cached.data : null;
+}
+```
+
+NEW `tests/test_routes_duo_synergy.py::DuoSynergyMockWireDriftGuard` class (4 tests):
+- `test_csvFetchDuoSynergy_has_mock_branch` - asserts `body.dataset.uiMock === "1"` check present in champ_select.js
+- `test_csvFetchDuoSynergy_loads_fixture_when_mock` - asserts `"/data/ui_mock/duo_synergy.json"` URL present
+- `test_mock_branch_short_circuits_before_live_fetch` - asserts mock URL idx < live `/api/duo-synergy` URL idx (mock must come BEFORE live in source order)
+- `test_mock_branch_populates_same_cache` - asserts mock branch writes to the same `_CSV_DUOSYN_CACHE[key] = { data: j, fetchedAt: Date.now() }` shape the live path uses
+
+**Verified:** `py -m pytest tests/test_routes_duo_synergy.py -q` = **24 passed in 0.16s** (+4 over 20 baseline = exactly the new drift guard class). `py -m pytest tests/phase8_smoke/ tests/test_csv_topleft_picks_layout.py tests/test_csv_rune_push_on_selection_change.py tests/test_routes_duo_synergy.py -q` = **127 passed** post-merge. `py -m ruff check .` ALL CHECKS PASSED. `node --check web/js/panels/champ_select.js` exit 0. 0 new non-ASCII bytes. 0 frozen-file touches.
+
+Merge: rebased onto weekly health commit `d77ae4e` (RC-WeeklyHealth task pushed during the run) then pushed `a7b37d9..00f96be`. CI green expected on push.
+
+**Don't-redo:**
+- `_csvFetchDuoSynergy` mock dispatcher is the SIXTH consumer of the `body.dataset.uiMock === "1"` pattern. Future panels that wire mock fixtures should mirror this exact shape (cache+inflight gated; short-circuit BEFORE live fetch; populates the same in-memory cache; same onLoad firing semantics).
+- The `tests/test_routes_duo_synergy.py::DuoSynergyMockWireDriftGuard` class is the canonical CI-locked drift guard for the wire. If a future maintainer reverts the mock branch (e.g. during a refactor that consolidates fetch helpers) the 4 tests fail before reaching production.
+- Cost/latency lever sweep "FLAG" results from sub-agents continue to surface measurement errors per [[feedback_verify_generated_reports]]. The L1 cache_control marker count + L2 _CACHE constant count BOTH need careful grep-pattern verification against current source. The 30-CLEAN streak through item 202 + this run = 31 consecutive CLEAN (L1+L2 confirmed within prior baseline range; not regressions).
+- Subagent panel-orphan grep was incomplete: main.js imports + dashboard.css imports together cover only ~60% of the panel surface; the remaining ~40% are imported via panel-to-panel chains. Future "orphan" grep agents MUST also grep `web/js/panels/*.js` for inter-panel imports. The 11 panels Agent D flagged (ban_suggest_toggle + build_order + cc_blended_ehp + cc_conditional_pressure + cd_ledger + spike_curve + ward_heat + draft_elo + replay_events + post_game_phases) are all chain-imported; only duo_synergy.json was a genuine orphan (because the panel itself doesn't exist - the live fetcher is inlined in champ_select.js).
+- The orchestrator-merge pattern this run was the SLIM variant (no parallel-slice worktree merge; 1 commit-bearing phase; 4 sequential investigative agents up front to find work then 1 implementation phase). Pattern fits when the saturation lane has 0-1 actionable items.
+
+**Carries forward:**
+(a) All item 202 carries unchanged EXCEPT new closure: duo_synergy.json frontend mock is NO LONGER orphan.
+(b) Live in-game chip verification owed at next coach tick (mode_key was client throughout this session).
+(c) Game-PC HTTP-pull redeploy carry from items 188 (Cherry chain) + 200 (Slice B stale-RC wipe) STILL OWED.
+(d) DD Defy heal-on-takedown STILL deferred.
+(e) Live ARAM/SR smoke STILL pending.
+(f) Calibrations STILL operator-gated.
+(g) Legion 1-PC consolidation STILL operator-gated.
+(h) cc_conditional wave 24+ schema-blocked.
+(i) Frozen-file grant authorized but NOT used this run.
+(j) DS test count 4872 / cumulative subtests 1781 (unchanged - non-engine).
+(k) item_build.js TODO at L108 (subtract owned sub-item values once items_recipes.json generated) STILL deferred - requires architectural decision on whether to generate items_recipes.json from DDragon `from` field at patch-refresh time + extend items_index.js to expose ITEM_RECIPES + ~200 LOC + test wire; operator-gated.
+(l) Lifesteal/spellvamp xfail test in `agents/daemon_slayer/tests/test_wireable_sims_p1l3.py` (sustain modeling deferral, strict=True) STILL operator-gated - either delete on Phase 6 sustain-not-shipping confirmation OR flip to PASS on sustain-shipping implementation.
 
 ---
 
@@ -151,67 +228,4 @@ Operator triggered "starting ranked sr - monitor UI and game, fix as needed -> s
 - Live in-game chip verification owed at next coach tick (mode_key was `client` throughout end of session).
 - All item 200 carries unchanged (LCU agent redeploy / etc).
 
-# 2026-05-26 - item 200 SHIPPED: parallel 4-slice UI audit drain - SR/ARAM/Arena item-build meta conformance (19 ARAM boots fixes) + LCU stale-RC item-set wipe pre-push (condense dropdown 20+ to <=4) + rune-push end-to-end drift guard (verdict EXISTS) + Champ Select PICK section moved to top-left card + DS top-picks carry removed
-
-Operator triggered "NEXT SESSION: quick UI audit in parallel" with 4 explicit task threads. 50th-streak orchestrator pattern (items 134-189 + slim variants 190-198 + items 199 + 200). 4 worktree-isolated agents dispatched concurrent on disjoint surfaces (Slice A data/champion_loadouts.json + Slice B LCU agent / dashboard / JS push wire + Slice C tests-only / verdict EXISTS + Slice D UI HTML/CSS/JS restructure). No AskUserQuestion (operator scope explicit). Pre-flight: 0 open PRs; HEAD = `e8d3afa` clean; RC pid 8436 mode=client.
-
-**Slice A `9efaa6f` (merge `432831a` ort 0 conflicts 4 files +532 / -20) feat(loadouts) SR/ARAM/Arena item-build meta conformance + 19-champ ARAM boots fix + drift guard:**
-- Pre-state: SR=0 drift / Arena=0 drift (already CLEAN per item 167 align), ARAM=20 drift across 19 champs.
-- Top patterns: 17x ARAM ap-tank Rod-of-Ages-rush boots-at-index-2 anti-pattern (Ahri / Anivia / Annie / AurelionSol / Fiddlesticks / Galio / Hwei / Karthus / Lillia / Mordekaiser / Morgana / Neeko / Nunu / Rammus / Swain / Syndra / Viktor) flipped to canonical items[1]=boots.
-- 2x bootsless violations (Cassiopeia + Yuumi ARAM had Sorcerer's Shoes) dropped per `core/build_order.py::_BOOTSLESS_CHAMPS`.
-- 1x Lulu on-hit ARAM boots position fix.
-- NEW `tools/champion_loadout_validate_meta.py` ~270 LOC argparse + `--dry-run` + `--no-backup` flags + atomic backup to gitignored `data/champion_loadouts.json.bak-slice-a-<UTC-stamp>` (.gitignore entry added mirroring `data/*.db.bak-*` precedent).
-- NEW `tests/test_champion_loadouts_meta_conformance.py` ~190 LOC / 7 tests (4 invariant + 2 lock-step + 1 ASCII).
-- Coverage gaps from item 167 (SR 10 / ARAM 3) verified ALL CLOSED by items 178/179 multi-path collapse.
-
-**Slice B `0b81310` (merge `bb951e1` ort 0 conflicts 4 files +430 / -0) feat(lcu+dashboard+ui) LCU stale-RC item-set wipe pre-push (condense dropdown from 20+ to <=4 per active scope):**
-- Root cause confirmed: per item 165 `apply_item_set` is replace-by-uid (not wipe-all-RC); 4 paths * 3 modes = 12 sets per champion accumulate across session; 2-3 champions/session = 24-36 stale RC- entries matching operator's "20+".
-- NEW handler `delete_stale_rc_item_sets(active_champion, active_mode)` at `tools/gamepc_lcu_agent.py:1010-1071`: GET current item-sets list -> DELETE every uid starting with `RC-` that does NOT match `RC-<active_champion>-<active_mode>-*` prefix (trailing-hyphen anchor guards substring false-keeps like Jinx vs JinxJunior or sr vs srtest). Operator non-RC- sets preserved unconditionally. Current-scope RC- sets preserved for apply-batch idempotence. Short-circuit PUT when nothing to wipe.
-- Wired into `_LCU_ALLOWED_CMDS` at `dashboard/routes_loadout.py:46`.
-- JS wire at `web/js/panels/champ_select.js::_csvMaybePushBuildsToLCU` L1801-1815 as PRE-PUSH best-effort try/catch (apply_item_sets_batch fires regardless on rune-push parity per Slice C).
-- NEW `tests/test_lcu_item_sets_wipe_stale.py` ~340 LOC / 14 tests across 5 classes (HandlerShape 4 + WipeScope 6 + AllowlistDriftGuard 1 + JsWireDriftGuard 2 + AsciiHygiene 1).
-- **Game-PC redeploy OWED:** live agent at `C:\RC-Agent\gamepc_lcu_agent.py` still runs pre-wipe code; redeploy via HTTP-pull dance per [[reference_gamepc_http_server_redeploy]] before operator can verify live dropdown condense.
-
-**Slice C `b73799c` (merge `9679f12` ort 0 conflicts 1 new file +281) test(runes) rune push end-to-end drift guard - verdict EXISTS (no code fix needed):**
-- Audit verdict: rune push works end-to-end on variant selection change for BOTH item-178 collapsed-path clicks AND legacy ARAM/Arena/experimental row clicks. Existing wire is correct.
-- Flow verified: `_csvWireBuildVariants` L2549 wires both `.csv-build-path-row` clicks L2566 + `.csv-build-row` clicks L2588 -> `_csvApplyLoadout` L2509 POSTs `/api/loadout/apply` with `push_runes: true` default -> `dashboard/routes_loadout.py::_serve_loadout_apply_post` L144 -> `_enqueue(resolved.get("rune_cmd"))` L226 -> vision server `/lcu-cmd` -> `tools/gamepc_lcu_agent.py::apply_runes` handler L1010 -> PATCH/POST `/lol-perks/v1/pages` + PUT `/lol-perks/v1/currentpage` chain.
-- Live verification: `coaches/loadout_resolver.py::resolve()` colon-form `<variant>:<path-key>` overlays per-path runes; Jinx `sr-collapsed:adc-crit` -> Lethal Tempo / Precision; Jinx `sr-collapsed:sr-bruiser` -> Conqueror / Precision = distinct LCU pages.
-- NEW `tests/test_csv_rune_push_on_selection_change.py` 15 tests across 5 classes (JsVariantClickFiresApplyLoadoutTests 6 + DashboardAllowlistRuneCmdTests 3 + GamepcAgentRuneHandlerTests 3 + ResolverRuneCmdSmokeTests 2 + AsciiHygiene 1). Zero edits to production code.
-
-**Slice D `70509b6` (merge `ed0902f` auto-merge clean 4 files +308 / -46) feat(ui) Champ Select PICK section moved to top-left card + DS top-picks carry section removed (frees space for 101 info area):**
-- Identification: "DS top picks carry" = the `.csv-arch-preview` block inside `_csvArchetypePickerHtml` at `champ_select.js:1914-1951` (3 horizontal cells under the 6-archetype-buttons grid showing "DS top picks - <archetype>" with item icons; introduced item 168 commit `81925a6`). The 6-archetype-selectables picker itself UNCHANGED (item 168/178 operator-protected).
-- Move scope: only the PICK 4-pick TOP sub-panel of Pick & Ban (item 168 `.csv-pb168-section[data-section="picks"]`) moves to top-left `.csv-card-allies` mount via NEW `#csv-picks-target`. MIDDLE bans + BOTTOM duo-synergy (101.qq.com, item 199 Slice CD) stay in row-2 `#csv-pickban-body`.
-- `_csvRenderPickBan` split into picks + bans subroutines; picks wiring scope restricted to new top-left mount.
-- NEW `.csv-card-allies-body` flex column rule + `#csv-picks-target` grow rule in `web/css/panels/champ_select_view.css`.
-- 5-phase audit PASS per [[feedback_phase3_fixture_ritual]]: STRUCTURE + TYPOGRAPHY (0 new sub-floor declarations) + HIT-TARGETS (`.csv-pb168-cell` 38px icon density preserved) + ASCII (0 new non-ASCII bytes) + HIERARCHY (4 distinct visual tiers).
-- NEW `tests/test_csv_topleft_picks_layout.py` ~247 LOC / 18 tests across 5 classes (grep-based pin tests for PICK in top-left + carry removed + Pick & Ban structure preserved).
-- Live UI capture deferred to next operator session (ADR-008 asset-hash auto-serves; no RC restart needed for UI alone).
-
-**Merge order:** A `432831a` -> B `bb951e1` -> C `9679f12` -> D `ed0902f`. Slice B + D both touched `web/js/panels/champ_select.js` at DISJOINT regions (B at L1801-1815 pre-push wire / D at L1914-1951 `.csv-arch-preview` removal + `_csvRenderPickBan` split) -> ort auto-merged clean with 0 conflicts. Pushed origin/main `e8d3afa..ed0902f`.
-
-**Verified:** `py -m pytest tests/test_champion_loadouts_meta_conformance.py tests/test_lcu_item_sets_wipe_stale.py tests/test_csv_rune_push_on_selection_change.py tests/test_csv_topleft_picks_layout.py tests/test_champion_loadouts_no_unique_clash.py tests/test_champion_loadout_autogen.py tests/test_champion_loadout_collapse_to_paths.py tests/test_champion_loadout_collapse_aram_arena.py tests/phase8_smoke/ -q` = **231 passed in 2.39s** (+54 over baseline = exactly 7 + 14 + 15 + 18 new tests across the 4 slices). `py -m ruff check .` ALL CHECKS PASSED. `node --check web/js/panels/champ_select.js` exit 0. `py -m py_compile tools/gamepc_lcu_agent.py dashboard/routes_loadout.py tools/champion_loadout_validate_meta.py` clean. DS :8893 untouched (non-engine; serves 1.60.0 from item 199; not restarted). RC :8888 restarted via `restart_trigger.txt` -> pid 7500 alive=True last_reload_ok=True mode=client (picks up new `delete_stale_rc_item_sets` allowlist; Slice D UI auto-served via ADR-008).
-
-**Don't-redo:**
-- `tools/champion_loadout_validate_meta.py` is the canonical drift detector + fixer for SR/ARAM/Arena boots-position + bootsless-champ + first-item-archetype invariants. Future patch upgrades that regenerate autogen seeds should run this tool to flatten drift before committing.
-- The ARAM ap-tank Rod-of-Ages-rush anti-pattern was a SEED-LEVEL drift: the auto-aram-primary scorer placed the Mythic/Rod-of-Ages first item correctly but `tools/champion_loadout_align.py` (item 167) was BYPASSED for ARAM in item 166's hand-curate merge. Drift was localized to the 17 ap-tank ARAM variants because `_DEFAULT_BOOTS_BY_ARCHETYPE` maps ap-tank to Sorcerer's Shoes and the hand-curate cloned the auto seed without boots-injection on item 166's merge path. Future ARAM hand-curate passes MUST also run `champion_loadout_validate_meta.py --fix` after merge.
-- `delete_stale_rc_item_sets` LCU handler is the canonical chokepoint for RC- set hygiene. The trailing-hyphen anchor in the prefix match (`RC-<champ>-<mode>-` NOT `RC-<champ>-<mode>`) is essential to avoid substring false-keeps (Jinx vs JinxJunior; sr vs srtest). Future RC- set UID schema changes MUST preserve the `RC-<champion>-<mode>-<path>` trailing-hyphen separator discipline.
-- The rune-push wire is END-TO-END CORRECT as-is (verdict EXISTS); future audit waves should NOT re-pitch a "missing rune push" fix without first running `tests/test_csv_rune_push_on_selection_change.py` (15-test drift guard locks the wire integrity).
-- The PICK-to-top-left layout is the canonical Champ Select top-left composition going forward. `.csv-arch-preview` is DEAD; do NOT re-introduce a duplicate DS top-picks render block - the 6-archetype-selectables picker carries top-3 DS items per archetype natively (item 168 `.csv-arch-preview` block was the duplicate that was operator-flagged this session).
-- The orchestrator-merge pattern is now 50th-streak (items 134-189 + slim variants 190-198 + items 199 + 200). Disjoint file surfaces (data + LCU/dashboard/JS + tests-only + UI) land 0 merge conflicts.
-- The 4-slice parallel dispatch with one truly disjoint surface per agent is durable for "audit + fix-as-needed" sessions.
-
-**Carries forward:**
-(a) Items 197 + 198 + 199 carries unchanged EXCEPT: (n)-item-199 UI audit work DONE this session = item 200.
-(b) NEW carry: Game-PC HTTP-pull redeploy of `gamepc_lcu_agent.py` to `C:\RC-Agent\gamepc_lcu_agent.py` HARD-OWED at next non-game window (operator does HTTP-pull dance per [[reference_gamepc_http_server_redeploy]]: Legion `py -m http.server 8765 --bind 0.0.0.0 --directory tools` -> Game-PC `Invoke-WebRequest` -> sha256-verify -> taskkill old pid -> atomic Move-Item -> pythonw relaunch). Compounds with item 188 Slice C 4-PATCH Cherry chain redeploy carry - operator can redeploy ONCE carrying BOTH (NEW Slice B stale-RC wipe + Cherry).
-(c) Cherry augment live verification STILL OWED at next Arena 1750 window after carry (b) redeploy lands.
-(d) Live UI capture of new PICK-to-top-left layout OWED at next operator-driven Champ Select session (mock fixture at `?ui_mock=1&mode=sr#champ-select`).
-(e) Live ARAM/SR smoke STILL pending.
-(f) Calibrations STILL operator-gated.
-(g) Legion 1-PC consolidation STILL operator-gated.
-(h) Active Match #11/12/13 real in-game capture STILL OWED.
-(i) v2.1 visual captures pages #9/10/11/12/13/14/15/16 STILL OWED at next operator-driven Chrome session.
-(j) Rell W form 1 + cc_conditional wave 24+ candidates per item 199 STILL operator-decision-gated / require schema lift.
-(k) Phase 3 95% N=50+ gate STILL UNREACHABLE (zero-cadence inbound bridge traffic per item 199 carry).
-(l) Duo-synergy panel live UI capture + other lane combos (top+jng, jng+mid, mid+sup) STILL operator-gated separately (item 199 carries (l) + (m)).
-(m) Frozen-file grant NOT used this session.
-
+# 2026-05-26 - item 200 SHIPPED (archived to docs/history_notes.md per keep-last-3 rule)
