@@ -1,0 +1,26 @@
+{
+  "_doc": "Item 199 Slice CD - operator-tunable per-bot+sup laning tips. Keyed by '<bot>:<sup>' using DDragon names (case-sensitive, no punctuation per id_map). The default field fires when a pair isn't covered. Tips are 1-2 sentences for the operator's at-a-glance read while both teammates lock in.",
+  "default": "Coordinate engages with vision. Track jungler timings. Trade respects passive cooldowns.",
+  "pairs": {
+    "Jinx:Senna": "Stack souls early for late-game scaling. Senna's range covers Jinx's weak laning.",
+    "Caitlyn:Lux": "All-in level 2 with E + W root combo. Push hard for early plates and bot dive setups.",
+    "Kaisa:Rakan": "Wait for Rakan W engage to all-in. Save Kaisa E + R for follow-up dives.",
+    "Smolder:TahmKench": "Tahm save covers Smolder's stack-farming hesitation. Stay back, scale, win late.",
+    "Smolder:Thresh": "Thresh lantern enables aggressive stack farming. Don't waste flash unless Smolder confirms.",
+    "Xayah:Rakan": "Xayah R + Rakan W is a level-6 wombo. Trade short, save spells for the engage timing.",
+    "Smolder:Leona": "Leona engage forces Smolder into the fight; level-3 all-in works but respect early sustain matchups.",
+    "Ashe:Braum": "Braum stacks proc Ashe slows for Concussive Blows. Bully short trades level 1-3.",
+    "MissFortune:Brand": "MF Q + Brand stun = level-3 cooldown kill. Stack Brand passive before bursting.",
+    "Jhin:Brand": "Brand stun chains into Jhin W root. Look for level-3 all-in with cd-matched W timings.",
+    "Sivir:Braum": "Sivir spellshield covers Braum lane-leave fights. Trade after Braum proc passive.",
+    "Caitlyn:Morgana": "Morgana W zone forces enemies into Caitlyn traps. Save Q shield for high-CC enemy bots.",
+    "Zeri:Lulu": "Lulu shields Zeri's all-in dashes. Don't over-extend without R - Zeri is squishy mid-game.",
+    "Nilah:Yuumi": "Nilah pulls Yuumi healing into AoE; bully short trades but respect enemy disengage like Janna.",
+    "Lucian:Yuumi": "Lucian double-Q with Yuumi heals enables aggressive level-2 trades. Don't let Yuumi detach early.",
+    "Draven:Blitzcrank": "Blitz hook = instant double; if hook misses, Draven backs out. Don't push past river.",
+    "Kalista:Taric": "Kalista R + Taric ult = invulnerable engage. Save the combo for objective fights.",
+    "Twitch:Pyke": "Twitch invis + Pyke roam = bot freeze + map pressure. Don't fight 2v2 - look mid.",
+    "Senna:Tahm Kench": "Stack souls 0-15min, Tahm zone-controls; late-game Senna 1v1s the enemy ADC.",
+    "Yunara:Sona": "Sona heal sustains Yunara's poke. Trade with Q + auto-cancels; respect enemy hook champions."
+  }
+}
