@@ -62,6 +62,19 @@ Scoped sessions - each focused task is one session.
 - **Start:** `/clear`, bootstrap from CLAUDE.md + MEMORY.md + git log + WAKEUP_NOTES + `docs/ARCHITECTURE.md` + `ROADMAP.md` (all 4 under 800 lines total).
 - `/clear` between Tier items, between coding/reviewing modes, between focus-area switches.
 
+## Session-End Ritual
+
+When user says 'wrap', '/done', or 'end session': run tests, commit with descriptive message, push, sync living docs, and confirm CI green before declaring done.
+
+## Output Constraints
+
+Keep individual responses under 500 output tokens to avoid API errors. Break long work into multiple turns or use file writes for verbose output.
+
+## Style Rules
+
+- No em-dashes anywhere (repo-wide hard rule, enforced).
+- Watch for em-dashes in PowerShell double-quoted strings - they cause mojibake parse failures.
+
 ## Web dashboard
 
 `web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/bridge/pending`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Game-PC secondary at `https://legion-rc:8888/` - design baseline is **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport ≈ 1920×~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-gamepc`, `riot-commander-peer`).
@@ -112,6 +125,14 @@ does_not_apply_when:         # optional list; receiver skips if any entry matche
 
 `type: user` memories are never eligible. Default is OFF - author decides at write-time.
 False-negatives are recoverable (edit frontmatter later); false-positives are bridge spam.
+
+## TDD First
+
+All feature work and bug fixes follow TDD: write failing characterization/regression test first, then implement, then verify full suite (1300+ tests) before committing.
+
+## Subagent Code Quality
+
+When spawning subagents to generate files (especially tests), require them to run ruff/lint before reporting done. Subagent-generated test files have broken CI in the past.
 
 ## Testing Discipline
 
