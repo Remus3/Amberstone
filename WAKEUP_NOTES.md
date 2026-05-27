@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-05-26 - item 204 SHIPPED: /insights 2026-05-26-185928 followup - CLAUDE.md +5 sections + 2 scoping docs + edit_lint_check hook + verify-before-declaring memory
+
+Operator ran `/insights` after wrap. Drained the report's actionable suggestions across 2 commits + 1 memory write outside repo. 1 commit `adb2e96` on origin/main `0676407..adb2e96`; non-frozen; non-engine; no DS restart; no RC restart (no route/coach module edits this run). 3 worktree-agent dispatches NOT used this session (single Claude orchestrator + scoping work only).
+
+**Shipped (4 files / +340 / -0):**
+- `CLAUDE.md` +5 sections from report: `## Session-End Ritual` + `## Output Constraints` + `## Style Rules` + `## TDD First` + `## Subagent Code Quality` (lines 65-77 + 124-130).
+- `docs/CI_WATCHDOG_PLAN.md` NEW (5.4 KB / 88 lines) - scoping ONLY for auto-fix red CI via headless `claude -p` on dedicated worktree at `C:\RC-CIWatchdog\`. 3 open questions block implementation (PR auto-merge policy / bridge escalation envelope / stale-fix cancellation).
+- `docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md` NEW (10.4 KB / 127 lines) - scoping ONLY for replacing champ-select / augment / lobby polling with LCU WAMP push events on Game-PC. 5 open questions block implementation (monitor target by RESOLUTION not index / debounce window / frame format / Cherry urgency / bridge envelope).
+- `tools/edit_lint_check.py` NEW (~75 LOC) - PostToolUse hook helper: reads `$CLAUDE_FILE_PATHS`, runs `py -m ruff check --fix` on .py files, byte-scans for U+2014 / U+2013 / U+201C / U+201D / U+2018 / U+2019. Advisory non-blocking exit 0. Uses `chr(0xNNNN)` form in `_BANNED` dict to avoid self-violating the rule (item 154 precedent).
+
+**Local-only (NOT in commit, NOT in repo):**
+- `.claude/settings.json` PostToolUse hook entry added at L22-26 calling `edit_lint_check.py`. File is gitignored (`.gitignore:65`); change is LEGION-LOCAL. Operator must replay this edit on Game-PC + Peer if they want the hook on those fleets.
+- `C:\Users\Administrator\.claude\projects\C--Riot-Commander\memory\feedback_verify_before_declare_broken.md` NEW - feedback memory: "X is dead / missing / broken / not installed" verdicts need a second independent probe + named stale-doc risk before stating. Indexed in `MEMORY.md` line 34 between `[[feedback_verify_generated_reports]]` + `[[feedback_backlog_path_stale_check]]`. Memory files live outside the repo per `auto memory` system.
+
+**Don't-redo (tomorrow-you):**
+- `/wrap` skill drop SKIPPED. Existing `C:\Users\Administrator\.claude\commands\wrap.md` is 7-section superset of the pasted version (git status + push + Game-PC bridge probe + RC restart check + memory updates + session size guard + final summary). Do NOT drop `.claude/skills/wrap/SKILL.md` - would downgrade.
+- Pasted parallel-agents prompt was just a copyable quote, no infra to ship.
+- CI Watchdog + LCU Phase Capture Watcher IMPLEMENTATION is gated on operator answering the open questions at bottom of each PLAN.md. Do NOT start coding either before that. Both are TDD-first per new `## TDD First` rule.
+- New hook helper `tools/edit_lint_check.py` is ADVISORY non-blocking (exit 0 always). Future edits will surface em-dash / smart-quote warnings to stderr but never abort the operator's flow. The drift guard is dual-layered: hook catches at edit-time + `tools/strip_em_dashes.py` + `tools/strip_smart_quotes.py` sweep at audit-time.
+- The 5 CLAUDE.md sections are baseline now; do NOT re-pitch a "TDD First" or "Output Constraints" section.
+- Smoke-tested the hook on a synthetic em-dash file: detected `em-dash x1` and exit 0. Smoke-tested on the helper itself (clean): exit 0 no output.
+
+**Carries forward:** All item 203 carries unchanged. RC pid 15960 alive=True last_reload_ok=True mode_key=client throughout. No bridge tasks pending.
+
+---
+
 # 2026-05-26 - item 203 SHIPPED: headless-upgrade run - duo_synergy.json frontend mock orphan closure + ground-truth verification of subagent claims
 
 Operator triggered `/headless-upgrade` second consecutive long autonomous run on the same UTC day (item 202 wrapped earlier; this run started immediately after). Same operator-grant scope (frozen-file authority unused; 24-parallel-agents/task authority). 52nd-streak orchestrator pattern (items 134-189 + slim variants 190-198 + items 199 + 200 + 201 + 202 + 203). Pre-flight: HEAD `a7b37d9` clean / CI 6/6 green / ENGINE 1.61.0 / DS 4872 / RC pid 15960 mode=client / 0 open PRs / 0 stale remote branches. Bridge gamepc+peer green; Legion daemon idle.
@@ -186,46 +212,3 @@ Parallel investigative agents (Phase 3 read-only):
 (i) Frozen-file grant NOT used this session despite authorization.
 (j) DS test count 4872 / cumulative subtests 1781.
 (k) Stale local worktrees (24+ from prior orchestrator runs) STILL harness-locked - parent owns lifecycle per established pattern; left in place.
-
----
-
-# 2026-05-26 - item 201 SHIPPED: LIVE BUG fix SR coach KeyError + Choices-first refactor w/ Alt+1/2/3 hotkeys + game-monitor skill gate `{game}` -> `{sr}`
-
-Operator triggered "starting ranked sr - monitor UI and game, fix as needed -> smoke tests and checks and error corrections". Active ranked SoloDuo queue 420 mid-session. **LIVE PRODUCTION BUG SURFACED + ROOT-CAUSED + FIXED + 2 RC RESTARTS during the operator's first ranked SR game in 5 days.**
-
-**Root cause:** `coach_integration/_sr_prompt.py:131` SR_SYSTEM_PROMPT had a JSON schema literal `[{"key":"A","label":"<3-5 word option>",...}]` inside the Choices field doc. Python's `str.format(profile=..., sr_rune_rec=..., sr_build_note=..., adaptation_hint=...)` at `coach_integration/_coach.py:262` parses `{"key":"A",...}` as a format field with field-name `"key"` (5-char literal with quotes) and raises `KeyError('"key"')` every coach tick. ARAM + Arena + Brawl 3x prompts had the SAME bug. Bug landed 2026-05-21 commits `58b7d20` (Brawl + SR native choices emit) + `b3cd60b` (ARAM/Arena phase 2). The 5-day window before today's ranked SR game was the first time the SR `.format()` path was exercised live. Symptom in `logs/2026-05-25.log`: `ERROR coach [_coach.py:196] Coach error: '"key"'` repeating every ~30s in-game with `coach.action / immediate / next` all empty.
-
-**Fix `64fc7cf` (12 files / +554 / -68; pushed origin/main `2f703eb..64fc7cf`):**
-1. **Brace-escape on 6 schema lines** (1 SR + 1 ARAM + 1 Arena + 3 Brawl URF/OFA/NB): `[{"key":"A",...},...]` -> `[{{"key":"A",...}},...]` so `str.format()` sees literal `{{...}}` and renders single-brace `{...}` back. Tools `tools/strip_em_dashes.py` + `tools/strip_smart_quotes.py` precedent.
-2. **Dropped LLM `Immediate:` + `Next:` emit** from all 4 in-game system prompts. Operator scope expansion: "drop the coach prompt firing for the immediate/next, use the A+B choice surfacing, and make sure that the hotkey selections (ALT+1, ALT+2, ALT+3) are wired and the feedback can be received and acted upon. surface those choices within the immediate panel."
-3. **Choices is now REQUIRED** (was OPTIONAL) in all 4 prompts. Token spend reduction + the JSON array is the primary actionable surface, not a sidecar.
-4. **`coaches/brawl_coach.py::_NB_OUTPUT_KEYS / _URF_OUTPUT_KEYS / _OFA_OUTPUT_KEYS`** dropped `"immediate"` so `parse_fields(raw, output_keys)` doesn't silently look for a field the LLM no longer emits.
-5. **`web/js/panels/coach_choices.js`**: window-level keydown handler for Alt+1/Alt+2/Alt+3 funnels into a shared `_activateChip` helper (same path as click); each chip carries an `Alt+N` pill so the digit binding is visible without hover; `_latestState` module-stash so the keyboard handler can snapshot game_context outside `renderCoachChoices`'s closure; `.rc-ack-bubble` toast renders after a successful POST so hotkey picks have visible ACK feedback.
-6. **`web/js/panels/right_now.js`**: `hasChoices` guard hides `#rn-immediate` when `state.coach.choices.length > 0`, so the chips visually occupy the slot directly under `#rn-action` (per operator: "surface those choices within the immediate panel").
-7. **`web/css/panels/coach_choices.css`**: chips column-stack (was horizontal flex-wrap), label at `--fs-md` (18px), chip meets `--hit-min` (42px), plus `.rc-hotkey` Alt+N pill + `.rc-ack-bubble` toast rules.
-8. **`.claude/commands/game-monitor.md`** (user-level, not in repo): gate `{game, arena, aram, tft, brawl}` -> `{sr, arena, aram, tft, brawl}`. The prior set had a phantom `"game"` mode_key that `core/queue_modes.py` never emits (SR is `"sr"`). The skill never fired for SR games before this fix.
-
-**Tests (+31 new tests across 2 new files):**
-- NEW `tests/test_coach_prompt_format_safe.py` 7 tests: pin `.format()` works on each in-game prompt + repro the exact `KeyError('"key"')` shape so future JSON-in-prompt regressions fail CI before a live tick. Anchor includes `assertEqual(ei.value.args, ('"key"',))` so future Python parsing-rule changes are caught.
-- NEW `tests/test_coach_choices_alt_hotkey.py` 24 tests: pin Immediate/Next drop in all 4 prompts + brawl output_keys drop + Alt+1/2/3 keydown bind + `ev.altKey` + Digit1/2/3 recognition + `_activateChip` shared path + ACK toast CSS + `right_now.js hasChoices` suppression order.
-- 5 existing tests updated: `Choices: <OPTIONAL` -> `<REQUIRED` + `Return [] if` -> `Return []` across sr/aram/brawl `_choices_emit.py`.
-- Smoke: `223 passed in 2.79s` across coach + phase8_smoke surfaces.
-
-**RC restart sequence:** pid 7500 -> 2504 (SR brace fix) -> 2372 (full sweep ARAM/Arena/Brawl) -> 10464 (this commit's full prompts). `last_reload_ok=True` throughout. Each restart was 5-10s coach blackout but coach was already broken so no regression. Asset hash `5c6b5a4247 -> 8099493d46` across the 3 frontend edits; ADR-008 auto-served on Game-PC Chrome.
-
-**Champ select audit subagent (Explore) launched in parallel during coach refactor:** 5-phase verdict for page #8 SR. STRUCTURE / HIT-TARGETS / ASCII / HIERARCHY = PASS. TYPOGRAPHY = FAIL: 13 sub-floor sites (12-15px hardcoded under `.csv-*` scope) at `web/js/panels/champ_select.js:769, 787, 1179, 1264, 1386, 1413, 1456, 1483, 1500, 1708, 1717, 1745, 2456`. All must upgrade to `var(--fs-xs)` (16px v2.1 floor). NO ALT-hotkey collision. Operator-gated for next pass.
-
-**Don't-redo:**
-- The `{{...}}` brace-escape on JSON literals inside `.format()`'d prompts is the canonical fix. NEW `tests/test_coach_prompt_format_safe.py` LOCKS the invariant - any new JSON literal in a system prompt that forgets to escape fails CI before reaching production.
-- `coach.choices` is the primary actionable surface NOT a sidecar. Future coach surfaces (e.g. a new mode coach) should follow the same pattern: drop prose Immediate/Next, REQUIRED Choices, render in `#rn-immediate` slot via `hasChoices` guard.
-- Alt+1/2/3 binding is in `web/js/panels/coach_choices.js` `_onAltDigitKeydown` (capture-phase, preventDefault on match). The handler is bound ONCE at module load via `window.__rcCoachChoicesAltBound` sentinel. The `_chipByKey` cache is rebuilt on every `renderCoachChoices` call; outside-of-render keypresses (no chips visible) are NO-OPs.
-- The game-monitor skill gate fix (`{game}` -> `{sr}`) is in the user-level `.claude/commands/` directory - it survives `git clean` but won't be tracked in the repo. The 5-mode gate set is now correct against `core/queue_modes.py::QUEUE_ID_TO_MODE_KEY` values.
-- Operator's commit-message numbering ("item 189" in `64fc7cf` subject) is a stale-snapshot artifact - the actual sequence number after item 200 is item 201 per WAKEUP_NOTES; the SHA is canonical regardless of textual label.
-- Game-PC LCU agent redeploy from item 200 Slice B (`delete_stale_rc_item_sets`) STILL OWED at next Arena/SR window via HTTP-pull dance per [[reference_gamepc_http_server_redeploy]].
-
-**Carries forward:**
-- 13 typography sub-floor sites on champ select Page #8 (lines 769, 787, 1179, 1264, 1386, 1413, 1456, 1483, 1500, 1708, 1717, 1745, 2456) - bump to `var(--fs-xs)`. Operator-gated.
-- Live in-game chip verification owed at next coach tick (mode_key was `client` throughout end of session).
-- All item 200 carries unchanged (LCU agent redeploy / etc).
-
-# 2026-05-26 - item 200 SHIPPED (archived to docs/history_notes.md per keep-last-3 rule)
