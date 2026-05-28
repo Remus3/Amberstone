@@ -380,27 +380,38 @@ class TestPositionAndPickOrderSwap(unittest.TestCase):
 
 
 class TestSetAugmentIntentStub(unittest.TestCase):
+    """Item 188 Slice C replaced the no-op stub with a 4-endpoint PATCH
+    priority chain; these tests cover (a) the handler tries every endpoint
+    when LCU returns errors, (b) the no-augment-id reject path that does
+    NOT touch LCU."""
+
     def setUp(self):
-        # Even though the handler shouldn't hit LCU, patch to be safe.
         self._patch = mock.patch.object(agent, "lcu_request")
         self.mock_req = self._patch.start()
 
     def tearDown(self):
         self._patch.stop()
 
-    def test_returns_unsupported_with_id(self):
+    def test_all_endpoints_tried_then_envelope_returned(self):
+        # All 4 candidate endpoints return an error (live LCU exposes
+        # none of them on this patch) - handler must report the
+        # composite failure envelope, not crash.
+        self.mock_req.return_value = (None, "404 Not Found")
         out = agent.execute_command(
             {"cmd": "set_augment_intent", "augment_id": 7042})
         self.assertFalse(out["ok"])
-        self.assertEqual(out["err"], "augment_intent_unsupported")
+        self.assertEqual(out["err"], "augment_intent_all_endpoints_failed")
         self.assertEqual(out["augment_id"], 7042)
-        self.assertIn("note", out)
-        self.mock_req.assert_not_called()
+        self.assertEqual(out["slot"], 0)
+        self.assertEqual(len(out["tried"]), 4)
+        self.assertEqual(self.mock_req.call_count, 4)
 
     def test_missing_id_rejected(self):
         out = agent.execute_command({"cmd": "set_augment_intent"})
         self.assertFalse(out["ok"])
         self.assertEqual(out["err"], "no augment_id")
+        # No LCU call when id is missing.
+        self.mock_req.assert_not_called()
 
 
 class TestAramQueueIdsAntiDrift(unittest.TestCase):
