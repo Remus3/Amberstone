@@ -7165,57 +7165,34 @@
             "sr"
           ],
           "runes": {
-            "keystone": "Fleet Footwork",
+            "keystone": "Press the Attack",
             "primary": "Precision",
-            "secondary": "Sorcery"
+            "secondary": "Domination"
           },
           "summoners": [
             4,
             21
           ],
           "items": [
-            "Trinity Force",
-            "Mercury's Treads",
+            "Yun Tal Wildarrows",
+            "Berserker's Greaves",
+            "Infinity Edge",
+            "Rapid Firecannon",
             "Lord Dominik's Regards",
-            "Bastionbreaker",
-            "Umbral Glaive",
             "Runaan's Hurricane"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "lethality-poke",
-              "label": "Leth Poke",
-              "items": [
-                "Trinity Force",
-                "Mercury's Treads",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Runaan's Hurricane"
-              ],
-              "runes": {
-                "keystone": "Fleet Footwork",
-                "primary": "Precision",
-                "secondary": "Sorcery"
-              },
-              "summoners": [
-                4,
-                21
-              ],
-              "_source_variant_key": "lethality-poke",
-              "_is_primary": true
-            },
-            {
               "key": "adc-crit",
               "label": "Crit",
               "items": [
-                "Blade of The Ruined King",
-                "Berserker's Greaves",
-                "Runaan's Hurricane",
-                "Lord Dominik's Regards",
                 "Yun Tal Wildarrows",
-                "Infinity Edge"
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Press the Attack",
@@ -7226,7 +7203,30 @@
                 4,
                 21
               ],
-              "_source_variant_key": "adc-crit"
+              "_source_variant_key": "adc-crit",
+              "_is_primary": true
+            },
+            {
+              "key": "lethality-poke",
+              "label": "Lethality",
+              "items": [
+                "Eclipse",
+                "Berserker's Greaves",
+                "Opportunity",
+                "Serylda's Grudge",
+                "Edge of Night",
+                "Lord Dominik's Regards"
+              ],
+              "runes": {
+                "keystone": "Fleet Footwork",
+                "primary": "Precision",
+                "secondary": "Sorcery"
+              },
+              "summoners": [
+                4,
+                21
+              ],
+              "_source_variant_key": "lethality-poke"
             },
             {
               "key": "auto-sr-primary-carry",
@@ -7248,8 +7248,8 @@
                 4,
                 21
               ],
-              "_archetype": "carry",
-              "_source_variant_key": "auto-sr-primary-carry"
+              "_source_variant_key": "auto-sr-primary-carry",
+              "_archetype": "carry"
             }
           ]
         },
@@ -11386,62 +11386,62 @@
             "sr"
           ],
           "runes": {
-            "keystone": "Conqueror",
-            "primary": "Precision",
+            "keystone": "First Strike",
+            "primary": "Inspiration",
             "secondary": "Sorcery"
           },
           "summoners": [
             4,
-            12
+            21
           ],
           "items": [
-            "Blade of The Ruined King",
-            "Mercury's Treads",
-            "Heartsteel",
-            "Runaan's Hurricane",
-            "Sterak's Gage",
-            "Overlord's Bloodmail"
+            "Manamune",
+            "Berserker's Greaves",
+            "Trinity Force",
+            "Lord Dominik's Regards",
+            "Serylda's Grudge",
+            "Edge of Night"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "manamune-bruiser",
+              "key": "manamune",
               "label": "Manamune",
               "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Heartsteel",
-                "Runaan's Hurricane",
-                "Sterak's Gage",
-                "Overlord's Bloodmail"
+                "Manamune",
+                "Berserker's Greaves",
+                "Trinity Force",
+                "Lord Dominik's Regards",
+                "Serylda's Grudge",
+                "Edge of Night"
               ],
               "runes": {
-                "keystone": "Conqueror",
-                "primary": "Precision",
+                "keystone": "First Strike",
+                "primary": "Inspiration",
                 "secondary": "Sorcery"
               },
               "summoners": [
                 4,
-                12
+                21
               ],
-              "_source_variant_key": "manamune-bruiser",
+              "_source_variant_key": "manamune",
               "_is_primary": true
             },
             {
               "key": "adc-crit",
               "label": "Crit",
               "items": [
-                "Blade of The Ruined King",
+                "Essence Reaver",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
-                "Lord Dominik's Regards",
                 "Infinity Edge",
-                "Yun Tal Wildarrows"
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
-                "keystone": "Press the Attack",
+                "keystone": "Fleet Footwork",
                 "primary": "Precision",
-                "secondary": "Domination"
+                "secondary": "Sorcery"
               },
               "summoners": [
                 4,
@@ -11453,24 +11453,24 @@
               "key": "auto-sr-primary-carry",
               "label": "Carry",
               "items": [
-                "Blade of The Ruined King",
+                "Manamune",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
-                "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Yun Tal Wildarrows"
+                "Trinity Force",
+                "Muramana",
+                "Serylda's Grudge",
+                "Edge of Night"
               ],
               "runes": {
-                "keystone": "Lethal Tempo",
-                "primary": "Precision",
-                "secondary": "Domination"
+                "keystone": "First Strike",
+                "primary": "Inspiration",
+                "secondary": "Sorcery"
               },
               "summoners": [
                 4,
                 21
               ],
-              "_archetype": "carry",
-              "_source_variant_key": "auto-sr-primary-carry"
+              "_source_variant_key": "auto-sr-primary-carry",
+              "_archetype": "carry"
             }
           ]
         },
@@ -19145,12 +19145,12 @@
             21
           ],
           "items": [
-            "Blade of The Ruined King",
+            "Yun Tal Wildarrows",
             "Berserker's Greaves",
-            "Trinity Force",
+            "Infinity Edge",
+            "Rapid Firecannon",
             "Lord Dominik's Regards",
-            "Runaan's Hurricane",
-            "Bastionbreaker"
+            "Runaan's Hurricane"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -19158,12 +19158,12 @@
               "key": "adc-crit",
               "label": "Crit",
               "items": [
-                "Blade of The Ruined King",
+                "Yun Tal Wildarrows",
                 "Berserker's Greaves",
-                "Trinity Force",
+                "Infinity Edge",
+                "Rapid Firecannon",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
-                "Bastionbreaker"
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19178,37 +19178,15 @@
               "_is_primary": true
             },
             {
-              "key": "sr-bruiser",
-              "label": "Bruiser",
-              "items": [
-                "Heartsteel",
-                "Mercury's Treads",
-                "Trinity Force",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Dead Man's Plate"
-              ],
-              "runes": {
-                "keystone": "Conqueror",
-                "primary": "Precision",
-                "secondary": "Resolve"
-              },
-              "summoners": [
-                4,
-                12
-              ],
-              "_source_variant_key": "sr-bruiser"
-            },
-            {
-              "key": "auto-sr-primary-carry",
-              "label": "Carry",
+              "key": "adc-on-hit",
+              "label": "On-Hit",
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Trinity Force",
-                "Lord Dominik's Regards",
                 "Runaan's Hurricane",
-                "Bastionbreaker"
+                "Wit's End",
+                "Lord Dominik's Regards",
+                "Phantom Dancer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19219,31 +19197,30 @@
                 4,
                 21
               ],
-              "_archetype": "carry",
-              "_source_variant_key": "auto-sr-primary-carry"
+              "_source_variant_key": "adc-on-hit"
             },
             {
-              "key": "auto-sr-secondary-bruiser",
-              "label": "Bruiser",
+              "key": "auto-sr-primary-carry",
+              "label": "Carry",
               "items": [
-                "Heartsteel",
-                "Mercury's Treads",
-                "Trinity Force",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Dead Man's Plate"
+                "Yun Tal Wildarrows",
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane",
+                "Bloodthirster"
               ],
               "runes": {
-                "keystone": "Conqueror",
+                "keystone": "Press the Attack",
                 "primary": "Precision",
-                "secondary": "Resolve"
+                "secondary": "Domination"
               },
               "summoners": [
                 4,
-                12
+                21
               ],
-              "_archetype": "bruiser",
-              "_source_variant_key": "auto-sr-secondary-bruiser"
+              "_source_variant_key": "auto-sr-primary-carry",
+              "_archetype": "carry"
             }
           ]
         },
@@ -19846,88 +19823,88 @@
           "runes": {
             "keystone": "Hail of Blades",
             "primary": "Domination",
-            "secondary": "Sorcery"
+            "secondary": "Precision"
           },
           "summoners": [
             4,
-            32
+            21
           ],
           "items": [
-            "Bloodthirster",
-            "Mercury's Treads",
-            "Lord Dominik's Regards",
-            "Bastionbreaker",
-            "Umbral Glaive",
-            "Axiom Arc"
+            "Blade of The Ruined King",
+            "Berserker's Greaves",
+            "Runaan's Hurricane",
+            "Nashor's Tooth",
+            "Riftmaker",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-hybrid",
-              "label": "AP Hybrid",
-              "items": [
-                "Bloodthirster",
-                "Mercury's Treads",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Axiom Arc"
-              ],
-              "runes": {
-                "keystone": "Hail of Blades",
-                "primary": "Domination",
-                "secondary": "Sorcery"
-              },
-              "summoners": [
-                4,
-                32
-              ],
-              "_source_variant_key": "ap-hybrid",
-              "_is_primary": true
-            },
-            {
-              "key": "ad-on-hit",
-              "label": "AD On-Hit",
+              "key": "adc-on-hit",
+              "label": "On-Hit",
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
+                "Nashor's Tooth",
+                "Riftmaker",
+                "Lord Dominik's Regards"
+              ],
+              "runes": {
+                "keystone": "Hail of Blades",
+                "primary": "Domination",
+                "secondary": "Precision"
+              },
+              "summoners": [
+                4,
+                21
+              ],
+              "_source_variant_key": "adc-on-hit",
+              "_is_primary": true
+            },
+            {
+              "key": "adc-crit",
+              "label": "Crit",
+              "items": [
                 "Yun Tal Wildarrows",
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
                 "Lord Dominik's Regards",
-                "Infinity Edge"
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Press the Attack",
                 "primary": "Precision",
+                "secondary": "Domination"
+              },
+              "summoners": [
+                4,
+                21
+              ],
+              "_source_variant_key": "adc-crit"
+            },
+            {
+              "key": "ap-burst",
+              "label": "AP Hybrid",
+              "items": [
+                "Hubris",
+                "Berserker's Greaves",
+                "Nashor's Tooth",
+                "Rabadon's Deathcap",
+                "Void Staff",
+                "Shadowflame"
+              ],
+              "runes": {
+                "keystone": "Electrocute",
+                "primary": "Domination",
                 "secondary": "Sorcery"
               },
               "summoners": [
                 4,
                 21
               ],
-              "_source_variant_key": "ad-on-hit"
-            },
-            {
-              "key": "bruiser-trinity",
-              "label": "Trinity",
-              "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Runaan's Hurricane",
-                "Bloodthirster",
-                "Yun Tal Wildarrows",
-                "Lord Dominik's Regards"
-              ],
-              "runes": {
-                "keystone": "Conqueror",
-                "primary": "Precision",
-                "secondary": "Resolve"
-              },
-              "summoners": [
-                4,
-                32
-              ],
-              "_source_variant_key": "bruiser-trinity"
+              "_source_variant_key": "ap-burst"
             }
           ]
         },
@@ -22303,25 +22280,25 @@
             11
           ],
           "items": [
-            "Blade of The Ruined King",
-            "Mercury's Treads",
-            "Heartsteel",
-            "Trinity Force",
+            "Sundered Sky",
+            "Plated Steelcaps",
+            "Death's Dance",
             "Sterak's Gage",
-            "Runaan's Hurricane"
+            "Spear of Shojin",
+            "Guardian Angel"
           ],
           "_collapsed": true,
           "build_paths": [
             {
               "key": "jg-bruiser",
-              "label": "JG Bruiser",
+              "label": "Rhaast (Red)",
               "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Heartsteel",
-                "Trinity Force",
+                "Sundered Sky",
+                "Plated Steelcaps",
+                "Death's Dance",
                 "Sterak's Gage",
-                "Runaan's Hurricane"
+                "Spear of Shojin",
+                "Guardian Angel"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -22336,49 +22313,48 @@
               "_is_primary": true
             },
             {
-              "key": "lethality",
-              "label": "Lethality",
+              "key": "jg-assassin",
+              "label": "Shadow (Blue)",
               "items": [
-                "Essence Reaver",
+                "Eclipse",
                 "Mercury's Treads",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Infinity Edge"
+                "Edge of Night",
+                "Serylda's Grudge",
+                "Death's Dance",
+                "Maw of Malmortius"
               ],
               "runes": {
-                "keystone": "Electrocute",
+                "keystone": "Hail of Blades",
                 "primary": "Domination",
-                "secondary": "Sorcery"
+                "secondary": "Precision"
               },
               "summoners": [
                 4,
                 11
               ],
-              "_source_variant_key": "lethality"
+              "_source_variant_key": "jg-assassin"
             },
             {
-              "key": "auto-sr-primary-bruiser",
-              "label": "Bruiser",
+              "key": "jg-lethality",
+              "label": "Lethality",
               "items": [
-                "Blade of The Ruined King",
+                "Profane Hydra",
                 "Mercury's Treads",
-                "Heartsteel",
-                "Trinity Force",
-                "Sterak's Gage",
-                "Runaan's Hurricane"
+                "Edge of Night",
+                "Serylda's Grudge",
+                "Opportunity",
+                "Lord Dominik's Regards"
               ],
               "runes": {
-                "keystone": "Conqueror",
-                "primary": "Precision",
-                "secondary": "Resolve"
+                "keystone": "Electrocute",
+                "primary": "Domination",
+                "secondary": "Precision"
               },
               "summoners": [
                 4,
-                12
+                11
               ],
-              "_archetype": "bruiser",
-              "_source_variant_key": "auto-sr-primary-bruiser"
+              "_source_variant_key": "jg-lethality"
             }
           ]
         },
@@ -34642,79 +34618,34 @@
             "sr"
           ],
           "runes": {
-            "keystone": "Aftershock",
-            "primary": "Resolve",
-            "secondary": "Inspiration"
+            "keystone": "Conqueror",
+            "primary": "Precision",
+            "secondary": "Resolve"
           },
           "summoners": [
             4,
-            14
+            12
           ],
           "items": [
-            "Echoes of Helia",
+            "Eclipse",
             "Mercury's Treads",
-            "Ardent Censer",
-            "Staff of Flowing Water",
-            "Redemption",
-            "Moonstone Renewer"
+            "Black Cleaver",
+            "Sundered Sky",
+            "Sterak's Gage",
+            "Maw of Malmortius"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "lethality-support",
-              "label": "Leth Sup",
-              "items": [
-                "Echoes of Helia",
-                "Mercury's Treads",
-                "Ardent Censer",
-                "Staff of Flowing Water",
-                "Redemption",
-                "Moonstone Renewer"
-              ],
-              "runes": {
-                "keystone": "Aftershock",
-                "primary": "Resolve",
-                "secondary": "Inspiration"
-              },
-              "summoners": [
-                4,
-                14
-              ],
-              "_source_variant_key": "lethality-support",
-              "_is_primary": true
-            },
-            {
               "key": "lethality",
               "label": "Lethality",
               "items": [
-                "Essence Reaver",
+                "Eclipse",
                 "Mercury's Treads",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Infinity Edge"
-              ],
-              "runes": {
-                "keystone": "Conqueror",
-                "primary": "Precision",
-                "secondary": "Domination"
-              },
-              "summoners": [
-                4,
-                12
-              ],
-              "_source_variant_key": "lethality"
-            },
-            {
-              "key": "auto-sr-primary-bruiser",
-              "label": "Bruiser",
-              "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Heartsteel",
-                "Trinity Force",
+                "Black Cleaver",
+                "Sundered Sky",
                 "Sterak's Gage",
-                "Runaan's Hurricane"
+                "Maw of Malmortius"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -34725,8 +34656,52 @@
                 4,
                 12
               ],
-              "_archetype": "bruiser",
-              "_source_variant_key": "auto-sr-primary-bruiser"
+              "_source_variant_key": "lethality",
+              "_is_primary": true
+            },
+            {
+              "key": "bruiser",
+              "label": "Bruiser",
+              "items": [
+                "Sundered Sky",
+                "Plated Steelcaps",
+                "Black Cleaver",
+                "Sterak's Gage",
+                "Death's Dance",
+                "Maw of Malmortius"
+              ],
+              "runes": {
+                "keystone": "Conqueror",
+                "primary": "Precision",
+                "secondary": "Resolve"
+              },
+              "summoners": [
+                4,
+                12
+              ],
+              "_source_variant_key": "bruiser"
+            },
+            {
+              "key": "sup-lethality",
+              "label": "Sup Roam",
+              "items": [
+                "Profane Hydra",
+                "Mobility Boots",
+                "Opportunity",
+                "Edge of Night",
+                "Serylda's Grudge",
+                "Umbral Glaive"
+              ],
+              "runes": {
+                "keystone": "Electrocute",
+                "primary": "Domination",
+                "secondary": "Precision"
+              },
+              "summoners": [
+                4,
+                14
+              ],
+              "_source_variant_key": "sup-lethality"
             }
           ]
         },
@@ -50946,7 +50921,7 @@
             "sr"
           ],
           "runes": {
-            "keystone": "Fleet Footwork",
+            "keystone": "Press the Attack",
             "primary": "Precision",
             "secondary": "Sorcery"
           },
@@ -50955,12 +50930,12 @@
             21
           ],
           "items": [
-            "Trinity Force",
-            "Mercury's Treads",
-            "Lord Dominik's Regards",
-            "Blade of The Ruined King",
-            "Bastionbreaker",
-            "Runaan's Hurricane"
+            "Eclipse",
+            "Berserker's Greaves",
+            "Opportunity",
+            "Serylda's Grudge",
+            "Edge of Night",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -50968,15 +50943,15 @@
               "key": "lethality",
               "label": "Lethality",
               "items": [
-                "Trinity Force",
-                "Mercury's Treads",
-                "Lord Dominik's Regards",
-                "Blade of The Ruined King",
-                "Bastionbreaker",
-                "Runaan's Hurricane"
+                "Eclipse",
+                "Berserker's Greaves",
+                "Opportunity",
+                "Serylda's Grudge",
+                "Edge of Night",
+                "Lord Dominik's Regards"
               ],
               "runes": {
-                "keystone": "Fleet Footwork",
+                "keystone": "Press the Attack",
                 "primary": "Precision",
                 "secondary": "Sorcery"
               },
@@ -50988,37 +50963,15 @@
               "_is_primary": true
             },
             {
-              "key": "on-hit",
+              "key": "adc-on-hit",
               "label": "On-Hit",
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
+                "Wit's End",
                 "Lord Dominik's Regards",
-                "Yun Tal Wildarrows",
-                "Infinity Edge"
-              ],
-              "runes": {
-                "keystone": "Lethal Tempo",
-                "primary": "Precision",
-                "secondary": "Sorcery"
-              },
-              "summoners": [
-                4,
-                21
-              ],
-              "_source_variant_key": "on-hit"
-            },
-            {
-              "key": "auto-sr-primary-carry",
-              "label": "Carry",
-              "items": [
-                "Blade of The Ruined King",
-                "Berserker's Greaves",
-                "Runaan's Hurricane",
-                "Lord Dominik's Regards",
-                "Yun Tal Wildarrows",
-                "Infinity Edge"
+                "Phantom Dancer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -51029,8 +50982,29 @@
                 4,
                 21
               ],
-              "_archetype": "carry",
-              "_source_variant_key": "auto-sr-primary-carry"
+              "_source_variant_key": "adc-on-hit"
+            },
+            {
+              "key": "adc-crit",
+              "label": "Crit",
+              "items": [
+                "Yun Tal Wildarrows",
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
+              ],
+              "runes": {
+                "keystone": "Lethal Tempo",
+                "primary": "Precision",
+                "secondary": "Domination"
+              },
+              "summoners": [
+                4,
+                21
+              ],
+              "_source_variant_key": "adc-crit"
             }
           ]
         },
