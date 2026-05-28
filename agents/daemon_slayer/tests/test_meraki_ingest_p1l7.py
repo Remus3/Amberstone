@@ -176,19 +176,24 @@ class RoundTripFidelity(unittest.TestCase):
                 )
 
     def test_arena_mirror_keeps_its_own_stats_not_base_id(self) -> None:
-        # 223031 is a distinct DDragon entry; engine must use ITS stats,
-        # never silently fall back to base 3031. They legitimately differ
-        # (Arena IE 55 AD vs SR IE 75 AD) - assert distinctness w/o
-        # hardcoding either number.
-        base = self.snap.item("3031").get("stats") or {}
-        mirror = self.snap.item("223031").get("stats") or {}
+        # 223072 is a distinct DDragon entry; engine must use ITS stats,
+        # never silently fall back to base 3072. They legitimately differ
+        # (Arena Bloodthirster 70 AD vs SR Bloodthirster 80 AD at
+        # 16.11.1) - assert distinctness w/o hardcoding either number.
+        # Note: IE (3031/223031) was the original anchor here; Riot
+        # equalized SR/Arena IE AD to 75 in patch 16.11.1 so the mirror
+        # distinction is no longer load-bearing on IE. Bloodthirster
+        # still carries an AD gap and exercises the same OWN-stat path.
+        base = self.snap.item("3072").get("stats") or {}
+        mirror = self.snap.item("223072").get("stats") or {}
         self.assertIn("FlatPhysicalDamageMod", base)
         self.assertIn("FlatPhysicalDamageMod", mirror)
         self.assertNotEqual(
             base["FlatPhysicalDamageMod"],
             mirror["FlatPhysicalDamageMod"],
-            "fixture drift: Arena IE should differ from SR IE; if Riot "
-            "equalized them this guard is stale, not a bug",
+            "fixture drift: Arena Bloodthirster should differ from SR "
+            "Bloodthirster; if Riot equalized them switch to a different "
+            "divergent mirror pair (probe via 16.11.1 items.json)",
         )
         # Engine aggregate must reflect the mirror's own AD, not the base's.
         agg = aggregate_item_stats([mirror])

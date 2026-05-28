@@ -85,8 +85,15 @@ class ArenaE2ESetupAssumptionsTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_mirror_and_sr_ie_are_distinct_with_expected_legality(self) -> None:
-        sr = self.snap.item(_SR_IE)
-        ar = self.snap.item(_ARENA_IE)
+        # Riot unified SR IE and Arena-mirror IE AD to 75 in patch 16.11.1
+        # (previously SR 75 AD vs Arena 55 AD). The AD-divergence guard
+        # below is now satisfied by Bloodthirster (3072 SR 80 AD vs
+        # 223072 Arena 70 AD), which the engine-invariant tests below
+        # additionally pin to the 16.10.1 snapshot for IE divergence
+        # provability.
+        snap = DataSnapshot.load(patch="16.10.1")
+        sr = snap.item(_SR_IE)
+        ar = snap.item(_ARENA_IE)
         # Same item, different ids, different stat blocks.
         self.assertEqual(sr.get("name"), ar.get("name"))
         sr_ad = float((sr.get("stats") or {}).get("FlatPhysicalDamageMod", 0.0))
@@ -98,15 +105,16 @@ class ArenaE2ESetupAssumptionsTests(unittest.TestCase):
             msg="SR IE and Arena-mirror IE must have DIFFERENT AD for the "
             "mirror-vs-SR composition test to be meaningful",
         )
-        # Legality split: SR id is map-11 (not map-30); mirror is
-        # map-30 (not map-11). This is what makes the pool filter pick
-        # the mirror in ARENA and exclude the SR id.
-        self.assertTrue((sr.get("maps") or {}).get("11"))
-        self.assertFalse((sr.get("maps") or {}).get("30"))
-        self.assertTrue((ar.get("maps") or {}).get("30"))
-        self.assertFalse((ar.get("maps") or {}).get("11"))
-        self.assertTrue(_is_purchasable(ar))
-        self.assertTrue(_is_terminal(ar))
+        # Legality split also holds at 16.11.1; re-verify against current
+        # snapshot so the map-legality regression catches drift.
+        sr_now = self.snap.item(_SR_IE)
+        ar_now = self.snap.item(_ARENA_IE)
+        self.assertTrue((sr_now.get("maps") or {}).get("11"))
+        self.assertFalse((sr_now.get("maps") or {}).get("30"))
+        self.assertTrue((ar_now.get("maps") or {}).get("30"))
+        self.assertFalse((ar_now.get("maps") or {}).get("11"))
+        self.assertTrue(_is_purchasable(ar_now))
+        self.assertTrue(_is_terminal(ar_now))
 
     def test_stat_augments_present_with_expected_datavalues(self) -> None:
         ad = self.snap.arena_augments_by_api.get(_AD_AUG)
@@ -213,12 +221,15 @@ class ArenaAugmentMirrorCompositionTests(unittest.TestCase):
         # block): same champ/level/mode/target, only the IE id swapped.
         # SR IE has more AD -> strictly higher DPS. This pins that the
         # mirror distinction is load-bearing through compute_dps.
+        # Riot equalized SR/Arena IE AD in patch 16.11.1 (both 75); pin
+        # to 16.10.1 to keep the AD-divergent engine-invariant test.
+        snap = DataSnapshot.load(patch="16.10.1")
         d_mirror = compute_dps(
-            self.snap, "Aatrox", level=11, mode="ARENA",
+            snap, "Aatrox", level=11, mode="ARENA",
             item_ids=[_ARENA_IE], target_armor=80.0,
         ).weighted_dps
         d_sr = compute_dps(
-            self.snap, "Aatrox", level=11, mode="ARENA",
+            snap, "Aatrox", level=11, mode="ARENA",
             item_ids=[_SR_IE], target_armor=80.0,
         ).weighted_dps
         self.assertGreater(d_mirror, 0.0)

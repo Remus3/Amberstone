@@ -184,8 +184,13 @@ class ModeMultiplierTests(unittest.TestCase):
         self.assertTrue(any("aramDamageDealt" in n for n in aram.notes))
 
     def test_yunara_aram_zero_multiplier_zeros_dps(self) -> None:
-        # Yunara aramDamageDealt = 0 in 16.9.1 - hard ARAM disable
-        aram = compute_dps(self.snap, "Yunara", level=11, mode="ARAM")
+        # Yunara aramDamageDealt = 0 in 16.9.1 - hard ARAM disable.
+        # Patch 16.11.1 lifted the disable (aramDamageDealt = 1.0); no
+        # champion is ARAM-disabled at current patch, so this engine-
+        # invariant test pins to the 16.10.1 snapshot where Yunara was
+        # still gated. Validates that mode_multiplier=0 zeroes downstream.
+        snap_pinned = DataSnapshot.load(patch="16.10.1")
+        aram = compute_dps(snap_pinned, "Yunara", level=11, mode="ARAM")
         self.assertEqual(aram.mode_multiplier, 0.0)
         self.assertEqual(aram.weighted_dps, 0.0)
         self.assertEqual(aram.avg_attack_dmg, 0.0)
