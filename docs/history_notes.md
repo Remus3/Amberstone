@@ -6,6 +6,45 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-27 (evening) - item 206 SHIPPED: DDragon + DS patch 16.10.1 -> 16.11.1 + 9 patch-drift test fixes
+
+Operator: "new patch  // check everywhere for updates and commit + push". Live DDragon dropped 16.11.1; RC was pinned at 16.10.1 (cached 2026-05-13). Full refresh chain executed end-to-end. 1 commit `ac83a4b` pushed origin/main `9af3c1a..ac83a4b`; ENGINE_VERSION unchanged at 1.61.0 (data refresh only). DS :8893 restarted via `schtasks /Run /TN RC-DaemonSlayer` -> serves patch=16.11.1 / 172 champs / 705 items. RC :8888 unchanged pid 16064 alive=True mode_key=client throughout.
+
+**Refresh chain:**
+- `py scripts/data_pipeline.py all` -> DDragon meta refresh (703 items / 172 champs / 35 spells / 16.11.1)
+- `py tools/daemon_slayer_extract.py` -> data/daemon_slayer/16.11.1/{champions,items,scenarios,arena_augments,items_meraki,manifest}.json + current.txt flip
+- `py tools/daemon_slayer_abilities_extract.py` -> data/daemon_slayer/16.11.1/champion_abilities.json (171 champs / 927 forms / 99.0% ok_rate)
+- `py tools/ddragon_mirror_refresh.py` -> web/data/ddragon/16.11.1/ (577 MB; gitignored) + data/meta_build/ddragon/16.11.1/{champion,item,profileicon,runesReforged,summoner}.json
+- Hand-curated artifacts copied 16.10.1 -> 16.11.1: `enchanter_items.json` + `cherry_augments.json` + `mayhem_augment_stats.json` (not auto-generated; cross-patch stable)
+
+**Patch-drift fixes (9 tests):**
+- 4 Yunara tests pinned to `DataSnapshot.load(patch="16.10.1")`: Riot lifted Yunara's ARAM disable (aramDamageDealt 0 -> 1.0) in 16.11.1; no champion is currently ARAM-disabled, so engine-invariant zero-multiplier tests pin to the prior snapshot.
+- 2 IE-divergence tests pinned to 16.10.1: Riot unified SR / Arena-mirror Infinity Edge AD to 75 in 16.11.1 (was SR 75 vs Arena 55).
+- 1 IE-divergence test swapped to Bloodthirster (3072 SR 80 AD vs 223072 Arena 70 AD - still divergent at 16.11.1).
+- 1 Phase B Cherry test updated for item 188 Slice C handler (was asserting deleted no-op stub behavior; now covers 4-endpoint PATCH chain + no-augment-id reject).
+- 1 smart-quote hygiene allowlist extended: DDragon-delivered `ddragon_items.json` (Riot ships an en-dash) + `agents/agent6_auditor/reports/` (dated artifacts).
+
+**Living docs synced (live patch header only - historical wave anchors at 16.10.1 preserved per `feedback_no_history_rewrite`):**
+- BRIEF.md L20: `ENGINE_VERSION 1.61.0 (16.10.1)` -> `(16.11.1)`
+- docs/DAEMON_SLAYER.md L5: `patch 16.10.1` -> `16.11.1`
+- docs/ARCHITECTURE.md L161: `patch 16.10.1` -> `16.11.1`
+- dashboard/routes_dictionary.py docstring: `currently 16.10.1` -> `currently 16.11.1`
+- web/js/main.js 5 hardcoded `/data/ddragon/16.10.1/` paths + CHAMPS.version fallback strings -> `16.11.1`
+
+**Verified:** DS suite 4872 passed / 1 skipped / 1 xfailed / 1781 subtests in 67s. RC suite 3674 passed / 1 skipped in 60s. Phase 8 smoke 70/70. `py -m ruff check .` ALL CHECKS PASSED. DS `/health` returns engine_version=1.61.0 / patch=16.11.1 / 172 champs / 705 items.
+
+**Don't-redo (tomorrow-you):**
+- The 16.10.1 DS snapshot dir STAYS in `data/daemon_slayer/` indefinitely - 11 DS test files reference it as a frozen historical anchor (CC entries pinned to specific Meraki data state). The 4 Yunara tests + 2 IE tests added this session join that pattern.
+- DS `/health` items=705 is the canonical catalog count (incl. Arena mirrors + mode-specific copies); DDragon purchasable subset is 547 + total entries 703 - 3 separate counts, all legitimate. Do NOT flip the README's 547 to 703 / 705.
+- Yunara + Zaahen missing from Meraki bulk is HISTORICAL PATTERN for new champs (they were missing at 16.10.1 release too); Meraki catches up within 1-2 patches. Do NOT re-pitch as a bug.
+- Hand-curated artifacts (`enchanter_items.json` + `cherry_augments.json` + `mayhem_augment_stats.json`) must be COPIED FORWARD on every patch refresh until either (a) operator decides to update them with patch-specific value drift or (b) they're auto-generated. Their schema_version=1 + patch field tracks the original authoring patch.
+- The smart-quote hygiene allowlist for `data/meta/ddragon_items.json` + `ddragon_runes.json` + `ddragon_summoner_spells.json` is now durable; Riot-delivered punctuation in catalog data is NOT authored-source drift.
+- `agents/agent6_auditor/reports/` is now in the hygiene allowlist as dated immutable artifacts.
+
+**Carries forward:** All item 205 + item 204 carries unchanged. Mid-game capture for any UI v2.1 page-#11/12/13 still operator-gated (game state mode_key=client at /done time = safe to /clear). 7 prior-session items still in WAKEUP_NOTES (205 + 204 + 203 from item-201 chain) - eligible for archive via `wakeup_prune.py --keep 3` post-this-session.
+
+---
+
 # 2026-05-27 - item 205 SHIPPED: UNIVERSAL_FILES portable bootstrap kit updated 2026-05-19 -> 2026-05-27
 
 Operator: "update the desktop folder UNIVERSAL_FILES, with all the new changes that would apply forward to a project. all tools and methods and watchers". Target = `C:\Users\Administrator\Desktop\UNIVERSAL_FILES\` (6 .md files / NOT a git repo / portable bootstrap kit for fresh Claude Code projects on Windows). Lifted forward all durable patterns proven on RC items 134-204 (40+ orchestrator-merge runs).
