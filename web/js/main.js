@@ -1060,7 +1060,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           cell.dataset.cdKey = _spellKey(p.champion, sname);
           if (spell) {
             const img = document.createElement("img");
-            img.src = `/data/ddragon/16.10.1/img/spell/${spell.img}`;
+            img.src = `/data/ddragon/16.11.1/img/spell/${spell.img}`;
             img.alt = spell.name;
             cell.title = spell.name;
             cell.appendChild(img);
@@ -1866,8 +1866,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // Rune-page + spell-chooser shared state. _RP_TREES cached lazily from
   // /api/dictionary/runes on first form-open. Patch path fixed at the
   // DDragon mirror's current dir (routes_dictionary serves runes for
-  // 16.10.1; the static folder mirrors the same patch in lockstep).
-  const _RP_DDRAGON_BASE = "/data/ddragon/16.10.1/img/";
+  // 16.11.1; the static folder mirrors the same patch in lockstep).
+  const _RP_DDRAGON_BASE = "/data/ddragon/16.11.1/img/";
   let   _RP_TREES = null;
   const _RP = {
     primaryTree:    null,  // tree.key e.g. "Domination"
@@ -2513,7 +2513,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       // so display names like "Kai'Sa" / "Wukong" / "Renata Glasc" map to
       // their DDragon file ids ("Kaisa" / "MonkeyKing" / "Renata") instead
       // of trying to load a 404'ing URL-encoded version of the raw name.
-      const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.10.1";
+      const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.11.1";
       const img = document.createElement("img");
       img.className = "home-recent-img";
       img.alt = "";
@@ -2888,7 +2888,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const buildCard = document.getElementById("home-coach-build");
     const trends = document.getElementById("home-trends");
     if (!combo || !pickCard || !buildCard) return;
-    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.10.1";
+    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.11.1";
     // Tonight's pick
     if (pick && pick.champion) {
       pickCard.hidden = false;
@@ -2975,7 +2975,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       if (r.length && r[0].champion) champ = r[0].champion;
     }
     if (!champ) return;
-    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.10.1";
+    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.11.1";
     const motifCid = _resolveChampId(champ) || encodeURIComponent(champ);
     bg.style.backgroundImage =
       `url("/data/ddragon/${ver}/img/champion/${motifCid}.png")`;

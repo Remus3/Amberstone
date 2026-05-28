@@ -250,10 +250,13 @@ class BeamSearchModeTests(unittest.TestCase):
                 self.assertTrue(maps.get("12"), f"item {iid} ({rec.get('name')}) is not ARAM-legal")
 
     def test_yunara_aram_zero_mult_zeroes_all_deltas(self) -> None:
-        # Yunara has aramDamageDealt=0 → mode multiplier zeroes everything;
-        # delta_dps is 0 across the board. The flag is in notes.
+        # Yunara aramDamageDealt = 0 (hard ARAM disable) pre-16.11.1.
+        # Patch 16.11.1 enabled Yunara in ARAM; no champion is currently
+        # ARAM-disabled, so this engine-invariant test pins to the
+        # 16.10.1 snapshot.
+        snap_pinned = DataSnapshot.load(patch="16.10.1")
         r = beam_search_build(
-            self.snap, "Yunara", level=11, mode="ARAM",
+            snap_pinned, "Yunara", level=11, mode="ARAM",
             beam_width=4, top_n=3,
         )
         self.assertEqual(r.baseline_dps, 0.0)
