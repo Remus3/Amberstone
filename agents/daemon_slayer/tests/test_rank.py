@@ -162,7 +162,11 @@ class RankItemsTests(unittest.TestCase):
             )
 
     def test_yunara_aram_zero_mult_zeros_all_deltas(self) -> None:
-        r = rank_items(self.snap, "Yunara", level=11, mode="ARAM", top_n=10)
+        # Yunara was ARAM-disabled in 16.9.1 / 16.10.1; lifted in
+        # 16.11.1. Pin to the 16.10.1 snapshot to keep the engine-
+        # invariant test stable.
+        snap_pinned = DataSnapshot.load(patch="16.10.1")
+        r = rank_items(snap_pinned, "Yunara", level=11, mode="ARAM", top_n=10)
         self.assertEqual(r.baseline_dps, 0.0)
         self.assertTrue(all(ri.delta_dps == 0.0 for ri in r.ranked))
         self.assertTrue(any("mode_multiplier=0" in n for n in r.notes))

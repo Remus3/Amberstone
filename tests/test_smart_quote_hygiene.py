@@ -97,6 +97,18 @@ def _is_external_data(rel_posix: str) -> bool:
         return True
     if rel_posix == "data/meta/ddragon_champions.json":
         return True
+    # DDragon-delivered item / spell catalogs may carry punctuation Riot
+    # shipped (en-dashes in patch notes, etc); allowlist with the other
+    # external-data mirrors.
+    if rel_posix in {"data/meta/ddragon_items.json",
+                     "data/meta/ddragon_runes.json",
+                     "data/meta/ddragon_summoner_spells.json"}:
+        return True
+    # Dated audit reports under agents/agent6_auditor/reports/ are
+    # immutable per feedback_no_history_rewrite; em-dash drift inside
+    # them is operator-gated cleanup, not authored-source drift.
+    if rel_posix.startswith("agents/agent6_auditor/reports/"):
+        return True
     return False
 
 

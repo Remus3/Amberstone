@@ -257,16 +257,19 @@ class BeamDeterminismAndFrontierOrder(unittest.TestCase):
         # so the entire frontier is a tie. A correct stable sort must then
         # return an identical (pool-insertion-order-driven) sequence every
         # run - any nondeterministic set/dict iteration would shuffle it.
+        # Patch 16.11.1 lifted Yunara's ARAM disable; pin to 16.10.1
+        # snapshot to preserve the all-zero-tie precondition.
+        snap_pinned = DataSnapshot.load(patch="16.10.1")
         def run():
             r = beam_search_build(
-                self.snap, "Yunara", level=_LVL, mode="ARAM",
+                snap_pinned, "Yunara", level=_LVL, mode="ARAM",
                 beam_width=8, top_n=8,
             )
             return [b.item_ids for b in r.ranked]
 
         first = run()
         self.assertTrue(all(
-            compute_dps(self.snap, "Yunara", level=_LVL, mode="ARAM",
+            compute_dps(snap_pinned, "Yunara", level=_LVL, mode="ARAM",
                         item_ids=list(ids)).weighted_dps == 0.0
             for ids in first
         ))
