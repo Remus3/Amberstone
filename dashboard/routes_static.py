@@ -147,6 +147,8 @@ _AGENT_ALLOWED = {
     "done-peer.md",
     "gamepc_bridge_daemon.py",
     "peer_bridge_daemon.py",
+    "gamepc_phase_watcher.py",
+    "gamepc_phase_watcher_install.ps1",
 }
 
 
