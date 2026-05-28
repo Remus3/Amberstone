@@ -1081,11 +1081,26 @@ def execute_command(cmd: dict) -> dict:
         perk_ids   = cmd.get("perk_ids") or []
         if not primary_id or not sub_id or len(perk_ids) != 9:
             return {"ok": False, "err": "bad rune ids"}
+        # Item 210 2026-05-27 fix: broaden the DELETE filter so RC's
+        # apply_runes path can reclaim slots from RC-authored pages that
+        # used legacy naming conventions. The codebase has FOUR RC page-
+        # name templates in flight:
+        #   - "RC: <champ> <identity> (<MODE>)"     (loadout_resolver.py)
+        #   - "RC: Auto"                            (this agent's default)
+        #   - "RC Experimental - <champ>"           (routes_loadout.py)
+        #   - "RC - <champ> (<MODE>)"               (lcu_client.py _RC_PAGE_PREFIX)
+        # Pre-fix the filter only matched "RC: " so the legacy "RC " /
+        # "RC-" prefixes survived; with the operator's 3-slot account
+        # cap, that left zero free slots and POST /lol-perks/v1/pages
+        # returned 4xx "max owned page count reached", silently failing
+        # the rune push for the entire champ select. Matching all three
+        # 3-char prefixes covers every RC-authored variant + future drift.
         pages, _ = lcu_request("GET", "/lol-perks/v1/pages")
         if isinstance(pages, list):
             for pg in pages:
+                nm = str(pg.get("name", ""))
                 if (isinstance(pg, dict) and pg.get("isDeletable")
-                        and str(pg.get("name", "")).startswith("RC: ")):
+                        and nm[:3] in ("RC ", "RC:", "RC-")):
                     pid = pg.get("id")
                     if pid:
                         lcu_request("DELETE", f"/lol-perks/v1/pages/{pid}")
