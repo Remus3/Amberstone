@@ -4,6 +4,39 @@
 
 ---
 
+# 2026-05-27 (mid-game ranked SR Caitlyn+Lux duo) - item 208 SHIPPED: item-167 ADC pollution hot-fix 7 SR champs (`a814020`, pushed origin/main `b8a82fe..a814020`; non-frozen; data + tools only; no RC/DS restart; ADR-008 asset-hash auto-serves)
+
+Operator reported live mid-game: SR build chooser populating wrong items on Caitlyn (Trinity Force + Bastionbreaker + Umbral Glaive on ADC primary; same on Jinx). Root cause = item-167 `tools/champion_loadout_align.py` archetype scorer ranking bruiser/on-hit-hybrid components high for ranged ADCs in the `_score_item_for_archetype("carry", ...)` path. AskUserQuestion scope fork pinned per [[feedback_scope_decision_cadence]]: operator picked "All 10 SR ADCs now" -> swept all 10 item-167 coverage-gap champs, 4 came back CLEAN (Lux/MasterYi/Twitch/Vayne), 7 polluted -> hot-patched in-place.
+
+**Shipped (2 files / +392 / -259):**
+- `tools/hotfix_sr_adc_loadouts_item167.py` NEW (~140 LOC) - reusable atomic-write patch script with `path()` helper + per-champ 16.10.x meta build dict. Atomic tmp.write_text + os.replace; ensure_ascii=True.
+- `data/champion_loadouts.json` - 7 sr-collapsed variant payloads rewritten:
+  - Caitlyn: Crit PRIMARY Yun Tal/Berserker/IE/RFC/LDR/Runaan; Lethality Eclipse/Berserker/Opportunity/Serylda/EoN/LDR; Carry kept
+  - Ezreal: Manamune PRIMARY Manamune/Berserker/Trinity/LDR/Serylda/EoN
+  - Jinx: Crit PRIMARY Yun Tal/Berserker/IE/RFC/LDR/Runaan; On-Hit BorK/Berserker/Runaan/Wits End/LDR/PD; duplicate Bruiser dropped
+  - Kai'Sa: On-Hit PRIMARY BorK/Berserker/Runaan/Nashor/Riftmaker/LDR (Hail of Blades)
+  - Kayn: Rhaast(Red) PRIMARY Sundered Sky/Steelcaps/DD/Sterak/Shojin/GA; Shadow(Blue) Eclipse/Merc/EoN/Serylda/DD/Maw
+  - Pantheon: Lethality PRIMARY Eclipse/Merc/Black Cleaver/Sundered/Sterak/Maw
+  - Varus: Lethality PRIMARY Eclipse/Berserker/Opportunity/Serylda/EoN/LDR
+
+**Verified:** Live API /api/loadout/list POST returns new builds correctly for all 7; ADR-008 auto-serves data/*.json on next dashboard Ctrl+Shift+R; RC pid 16768 alive=True reload_ok=True mode=game throughout (operator stayed in-game). DS :8893 untouched. No tests added (pure data patch + non-test tool).
+
+**Don't-redo (tomorrow-you):**
+- The 4 CLEAN champs (Lux/MasterYi/Twitch/Vayne) do NOT need patching; their sr-collapsed paths already render proper ADC/mage meta. Do NOT re-pitch.
+- Pantheon Sup Roam path keeps Umbral Glaive INTENTIONALLY (ward-clear support tool, not bruiser pollution). The grep flagged it but it's legit.
+- `tools/champion_loadout_align.py` is the ROOT regression - the archetype scorer for `carry` ranks TF + Bastionbreaker high for ranged ADCs. Next patch regen via `tools/champion_loadout_align.py` will REPRODUCE this pollution unless the scorer is fixed first. Fix is in `core/build_order.py::_score_item_for_archetype` "carry" branch - add a ranged-ADC penalty for melee/bruiser items (TF Sheen + Bastionbreaker + Heartsteel + Umbral on ranged classifier).
+- Champion-specific meta builds are HAND-CURATED 16.10.x and will drift at next League patch. Re-audit at any DS engine bump that touches `data/champion_loadouts.json`.
+- ADR-008 auto-serves data/* on next dashboard load - do NOT add a restart_trigger.txt for data-only patches.
+
+**Carries forward:**
+- Item 207 carries ALL unchanged (LCU Phase Watcher live deployment to Game-PC still OWED at next operator-driven Game-PC reboot/install).
+- Item 206 carries ALL unchanged (DDragon 16.11.1 + DS 16.11.1 baseline).
+- All operator-gated decision-owed lane carries from items 134-207 unchanged.
+- **NEW carry:** `tools/champion_loadout_align.py` archetype scorer fix - add ranged-ADC penalty for TF/Bastionbreaker/Heartsteel/Umbral. Without this, next patch regen REPRODUCES the item-167 pollution and the 7 hand-fixes get clobbered.
+- **NEW carry:** Sweep `data/champion_loadouts.json` for any non-coverage-gap champion still carrying TF + Bastionbreaker on `_archetype="carry"` paths. This session only touched the 10 item-167 coverage-gap names; the same scorer may have polluted other ADCs (Sivir / Tristana / Xayah / Ashe / Draven / Lucian / Miss Fortune / Senna / Samira / Kog'Maw / Aphelios / Nilah etc.).
+
+---
+
 # 2026-05-27 (late evening) - item 207 SHIPPED: LCU Phase Capture Watcher implementation - tools/gamepc_phase_watcher.py + 64 TDD tests + /upload-frame event_meta extension + Game-PC installer
 
 Operator: "continue WAKEUP_NOTES.md -> Resume a specific carry-forward -> LCU Phase Capture Watcher". Resumed item 204's deferred scoping doc `docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md`. AskUserQuestion 4-question scope fork pinned per [[feedback_scope_decision_cadence]]: (Q1) Capture target = **BOTH monitors per event** (game 1920x1080 + dashboard 1920x1280; classified by RESOLUTION not index per [[reference_gamepc_monitor_index_volatility]]); (Q2) Debounce = per (topic, sub_phase, queue_id) per gameflow cycle (recommended default); (Q3) Frame format = JPEG q75 inherit (recommended default; matches gamepc_screen_agent.py contract); (Q4) Cherry urgency = standard debounce (recommended default; CHERRY_NO_DEBOUNCE flag stays False initially); Q5 bridge envelope = YES emit kind=ui_capture (defaulted; low-cost UI-audit hook).
@@ -79,32 +112,3 @@ Operator: "new patch  // check everywhere for updates and commit + push". Live D
 - `agents/agent6_auditor/reports/` is now in the hygiene allowlist as dated immutable artifacts.
 
 **Carries forward:** All item 205 + item 204 carries unchanged. Mid-game capture for any UI v2.1 page-#11/12/13 still operator-gated (game state mode_key=client at /done time = safe to /clear). 7 prior-session items still in WAKEUP_NOTES (205 + 204 + 203 from item-201 chain) - eligible for archive via `wakeup_prune.py --keep 3` post-this-session.
-
----
-
-# 2026-05-27 - item 205 SHIPPED: UNIVERSAL_FILES portable bootstrap kit updated 2026-05-19 -> 2026-05-27
-
-Operator: "update the desktop folder UNIVERSAL_FILES, with all the new changes that would apply forward to a project. all tools and methods and watchers". Target = `C:\Users\Administrator\Desktop\UNIVERSAL_FILES\` (6 .md files / NOT a git repo / portable bootstrap kit for fresh Claude Code projects on Windows). Lifted forward all durable patterns proven on RC items 134-204 (40+ orchestrator-merge runs).
-
-**Files updated (out-of-tree, no git commit):**
-- `1_ENV_CHECK.md`: 426 -> 621 lines (+195). Checks 15-24 added: drift guards, ADR-008 asset-hash, cost-trace shim, v2.1 tokens, phase8_smoke, bridge watcher cadence, memory state, in-repo skills + mirror drift, scheduled tasks catalog, Phase 3 supervisor stale-code probe. Extended SYSTEM SUMMARY template.
-- `2_BOOTSTRAP.md`: 1134 -> 1715 (+581). 14 new slash command here-strings: /verify /run /review /code-review /security-review /loop /schedule /insights /headless-upgrade /process-incoming-lessons /init /update-config /fewer-permission-prompts /keybindings-help. NEW Step 10.5 (mirror tracked commands loop for full 26-cmd set), Step 11.5 (phase8_smoke scaffold), Step 12.6 (ADR-008 asset-hash skeleton).
-- `3_MASTER.md`: 1404 -> 2245 (+841). Parts 21-32 appended: orchestrator-merge pattern, AskUserQuestion scope-fork cadence, 7-lever CLEAN wave audit, BACKLOG stale-sweep, v2.1 tokens + 5-phase UI audit ritual, ADR-008 asset-hash, slice-based commits, drift-guard tests, record_anthropic_response shim, HTTP-pull redeploy dance, mojibake byte-repair, updated quick-ref card.
-- `4_PROJECT_MIGRATION.md`: 472 -> 598 (+126). 16 gap-analysis items added (drift guards, cost-trace, tokens, mock fixtures, asset-hash, .claude/skills, etc), NEW Steps 4i (drift-guard tests) + 4j (ADR-008) + 4k (cost-trace shim), 4 new pitfalls (verify_generated_reports / no_history_rewrite / backlog_path_stale_check / verify_before_declare_broken).
-- `5_NEW_PROJECT.md`: 369 -> 451 (+82). Scaffold items 30-43 (tokens.css verbatim / ui_mock dir / cost-tracker + shim / phase8_smoke / 4 hygiene tests / repair tools / .claude/skills / asset-hash route / 5 feedback memories / docs/cost_trace.md). NEW Q7.4-7.6 (mojibake check / cost-trace audit cadence / drift guard patterns).
-- `6_USAGE_GUIDE.md`: 333 -> 461 (+128). Part H (14 new slash commands quick-ref) + Part I (8 new troubleshooting items for caveman ULTRA / subagent verify / Phase3 stale / Git-Bash taskkill / v2.1 tokens / cost-trace / bridge watcher cadence / scope cadence).
-
-Total: +1953 lines across 6 files. All bumped 2026-05-19 -> 2026-05-27. ASCII clean (no em-dashes / smart quotes added).
-
-**Method:** 4 parallel general-purpose agents drafted surgical additions (one per file pairing). Orchestrator applied via Edit/Write to existing files. 6 TaskCreate/TaskUpdate items tracked end-to-end (all completed).
-
-**Don't-redo (tomorrow-you):**
-- UNIVERSAL_FILES is NOT a git repo - desktop folder lives at `C:\Users\Administrator\Desktop\UNIVERSAL_FILES\`. Edits there do NOT need git commit. If operator wants version control later, `git init` it as its own repo.
-- All 26 slash commands now documented across the 3 files where they belong (2_BOOTSTRAP installs them, 3_MASTER references them in quick-ref, 6_USAGE_GUIDE explains them to humans). Do NOT add new commands without updating all 3.
-- The v2.1 token scale (--fs-xs=16 through --fs-display=46 / --hit-min=42) is documented verbatim in 3_MASTER Part 25 + 5_NEW_PROJECT item 30. Future projects scaffolded via /init pick this up automatically.
-- ADR-008 unified asset-hash pattern (compute_asset_hash MD5 over web/{js,css,data/ui_mock}/ mtime+size; ?v=<hash> query) is now scaffold item 41. Future dashboards get it by default.
-- record_anthropic_response + tracked_anthropic shim pattern documented in 3_MASTER Part 29 + scaffold items 32-33 + drift-guard test item 37. Future Claude API projects auto-cost-trace once they wire the shim.
-- 5 new feedback memory files scaffolded as item 42 (verify_generated_reports / no_history_rewrite / backlog_path_stale_check / verify_before_declare_broken / scope_decision_cadence). Future projects get the memory pattern at scaffold time.
-
-**Carries forward:** All item 204 carries unchanged (CI Watchdog + LCU Phase Capture Watcher PLAN.md still gated on operator answering open questions). RC pid=16064 alive=True last_reload_ok=True mode_key=client throughout. No bridge tasks pending. No RC repo edits this session.
-
