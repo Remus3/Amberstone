@@ -4,6 +4,33 @@
 
 ---
 
+# 2026-05-28 (post-game ranked SR queue) - items 209a + 209b + 210 SHIPPED: cmd-window flash + game-end BSOD + runes-not-pushing (3 commits pushed origin/main `07f5e79..fcba9cd`)
+
+3 distinct operator-reported bugs surfaced + closed in one session. RC pid 16768 alive throughout. DS :8893 untouched. No RC restart.
+
+**209a `8d36960` fix(bridge): CREATE_NO_WINDOW on watcher claude.cmd spawns.** Operator: "a cmd window keeps opening on legion". Root cause = `tools/bridge_watcher.py:269` push_notif + `tools/bridge_watcher_actions.py:244` auto-action lane both spawned claude.cmd via subprocess.run WITHOUT creationflags. pythonw parent has no console -> .cmd shim got a new visible console each call. Throttled to 3/hr but 10 escalations / 24h = visible flashes. Fix: 1-line `creationflags=CREATE_NO_WINDOW` on both. `bridge_watcher_actions.py` is frozen - operator-granted. NEW `tests/test_bridge_watcher_create_no_window.py` 3 drift guards. RC-BridgeWatcher restarted pid 12000 -> 12228.
+
+**209b `6f56cd6` fix(gamepc): phase watcher BSOD - drop WaitingForStats + InProgress edge delay.** OPERATOR DIAGNOSIS: the item 207 LCU phase watcher fires DXGI capture (both monitors via bettercam) on `WaitingForStats` gameflow phase = exactly when League swaps 1080p -> 1440p = same Duet/GPU/Vanguard chain as the disabled `gamepc_screen_agent.py` = 0x50 vgk.sys BSOD. Surgical fix: drop `WaitingForStats` from `_CAPTURED_GAMEFLOW_PHASES`; add `INPROGRESS_CAPTURE_DELAY_S = 15.0` so handle_event sleeps past the game-start swap before binding DXGI for the InProgress phase. Cherry augment_select stays (mid-game stable). 65/65 tests PASS. Game-PC binary patched via HTTP-pull dance + `RC-PhaseWatcher` restarted pid 5128 -> 14320. NEW memory `feedback_gamepc_lcu_phase_watcher_bsod.md`.
+
+**210 `fcba9cd` fix(lcu): apply_runes - broaden RC page DELETE filter to 3 prefixes.** Operator: "i am also not seeing the runes being pushed in client during champ select for the selected champ". Root cause = `tools/gamepc_lcu_agent.py:1088` `apply_runes` handler DELETE filter only matched `"RC: "` prefix. Codebase ships 4 RC page-name templates (loadout_resolver "RC: " + agent default "RC: Auto" + experimental "RC Experimental - " + lcu_client "RC - "). Operator LCU had stuck `RC Experimental - Vayne` page (em-dash legacy pre-purge) consuming 1 of 3 owned slots; with 3/3 full + filter missing legacy prefixes, POST `/lol-perks/v1/pages` 4xx'd silently. Fix: `nm[:3] in ("RC ", "RC:", "RC-")`. NEW `tests/test_apply_runes_page_filter.py` 4 tests. End-to-end verified: stuck page deleted, new `RC: Caitlyn sr-collapsed (SR)` ps=8000 ss=8100 perks=[8005,9111,9104,8014,8143,8135,5005,5008,5001] landed as currentpage. Game-PC agent redeployed pid 6640 -> 2408 + flipped python.exe -> pythonw.exe (no visible console; sibling fix to item 209a class).
+
+**Don't-redo (tomorrow-you):**
+- (a) Both bridge_watcher spawn sites are CI-locked by drift guard. Do NOT remove creationflags.
+- (b) `_CAPTURED_GAMEFLOW_PHASES` MUST NOT re-add `WaitingForStats` (test fails). PGR capture must come from a post-swap trigger, not the WAMP edge. The discrete-event mental model is wrong - trigger is resolution swap co-firing with bound DXGI surface, not duration.
+- (c) `INPROGRESS_CAPTURE_DELAY_S = 15.0` is calibrated for typical Windows 1440p<->1080p swap.
+- (d) The 3-char prefix tuple `("RC ", "RC:", "RC-")` is canonical; do NOT revert to `startswith("RC: ")` (drift guard fails).
+- (e) `isDeletable` guard must stay; user-imported pages (Aggregator A/Overlay App E) have isDeletable=true but never RC prefix.
+- (f) Game-PC redeploy used HTTP-pull dance per [[reference_gamepc_http_server_redeploy]]; also flipped agent from python.exe (visible console) to pythonw.exe - durable hygiene.
+
+**Carries forward:**
+- (a) 4 divergent RC page-name templates still ship; filter catches all so no functional impact, but a hygiene pass could unify to single `"RC: "` prefix. Operator-gated.
+- (b) All item 208 carries unchanged (item-167 align scorer ranged-ADC penalty still owed in `core/build_order.py::_score_item_for_archetype` "carry" branch).
+- (c) Item 207 phase watcher's WaitingForStats fire was the BSOD; item 209b corrects it. Live deployment now complete on Game-PC.
+- (d) Frozen-file grant USED only for `tools/bridge_watcher_actions.py`; NOT used for other frozen files.
+- (e) Operator queued for ranked SR at session end (lcu.phase=Matchmaking + mode_key=sr) - next champ select is the live verification of item 210.
+
+---
+
 # 2026-05-27 (mid-game ranked SR Caitlyn+Lux duo) - item 208 SHIPPED: item-167 ADC pollution hot-fix 7 SR champs (`a814020`, pushed origin/main `b8a82fe..a814020`; non-frozen; data + tools only; no RC/DS restart; ADR-008 asset-hash auto-serves)
 
 Operator reported live mid-game: SR build chooser populating wrong items on Caitlyn (Trinity Force + Bastionbreaker + Umbral Glaive on ADC primary; same on Jinx). Root cause = item-167 `tools/champion_loadout_align.py` archetype scorer ranking bruiser/on-hit-hybrid components high for ranged ADCs in the `_score_item_for_archetype("carry", ...)` path. AskUserQuestion scope fork pinned per [[feedback_scope_decision_cadence]]: operator picked "All 10 SR ADCs now" -> swept all 10 item-167 coverage-gap champs, 4 came back CLEAN (Lux/MasterYi/Twitch/Vayne), 7 polluted -> hot-patched in-place.
@@ -73,42 +100,3 @@ Operator: "continue WAKEUP_NOTES.md -> Resume a specific carry-forward -> LCU Ph
 - **NEW carry: Live deployment of watcher to Game-PC OWED.** Operator runs `tools/gamepc_phase_watcher_install.ps1` once. Prereqs: `py -m pip install bettercam websocket-client` on Game-PC. First live cycle should land event-tagged frames in vision server `/latest-frame?source=game-pc-event-game` (or `-dashboard`) and JSON sidecars under `data/event_captures/`. Bridge envelope `kind=ui_capture` lands on Legion's `:8888/api/bridge`.
 - **NEW carry: Item 187 Slice C Cherry augment live verification can now consume event-driven captures.** When operator enters Arena 1750 augment-phase, watcher fires on first non-empty `available[]` and captures both monitors. The 4-endpoint PATCH chain at `tools/gamepc_lcu_agent.py:1179-1194` priority order can be empirically verified by inspecting the watcher's `cherry_augment_select` capture (response confirms which endpoint accepted the PATCH).
 - DD Defy still deferred / calibrations still operator-gated / Legion 1-PC consolidation still operator-gated / live UI captures for pages #11/12/13 still gated on in-game window (but now event-driven once the watcher deploys). Frozen-file grant NOT used this session.
-
----
-
-# 2026-05-27 (evening) - item 206 SHIPPED: DDragon + DS patch 16.10.1 -> 16.11.1 + 9 patch-drift test fixes
-
-Operator: "new patch  // check everywhere for updates and commit + push". Live DDragon dropped 16.11.1; RC was pinned at 16.10.1 (cached 2026-05-13). Full refresh chain executed end-to-end. 1 commit `ac83a4b` pushed origin/main `9af3c1a..ac83a4b`; ENGINE_VERSION unchanged at 1.61.0 (data refresh only). DS :8893 restarted via `schtasks /Run /TN RC-DaemonSlayer` -> serves patch=16.11.1 / 172 champs / 705 items. RC :8888 unchanged pid 16064 alive=True mode_key=client throughout.
-
-**Refresh chain:**
-- `py scripts/data_pipeline.py all` -> DDragon meta refresh (703 items / 172 champs / 35 spells / 16.11.1)
-- `py tools/daemon_slayer_extract.py` -> data/daemon_slayer/16.11.1/{champions,items,scenarios,arena_augments,items_meraki,manifest}.json + current.txt flip
-- `py tools/daemon_slayer_abilities_extract.py` -> data/daemon_slayer/16.11.1/champion_abilities.json (171 champs / 927 forms / 99.0% ok_rate)
-- `py tools/ddragon_mirror_refresh.py` -> web/data/ddragon/16.11.1/ (577 MB; gitignored) + data/meta_build/ddragon/16.11.1/{champion,item,profileicon,runesReforged,summoner}.json
-- Hand-curated artifacts copied 16.10.1 -> 16.11.1: `enchanter_items.json` + `cherry_augments.json` + `mayhem_augment_stats.json` (not auto-generated; cross-patch stable)
-
-**Patch-drift fixes (9 tests):**
-- 4 Yunara tests pinned to `DataSnapshot.load(patch="16.10.1")`: Riot lifted Yunara's ARAM disable (aramDamageDealt 0 -> 1.0) in 16.11.1; no champion is currently ARAM-disabled, so engine-invariant zero-multiplier tests pin to the prior snapshot.
-- 2 IE-divergence tests pinned to 16.10.1: Riot unified SR / Arena-mirror Infinity Edge AD to 75 in 16.11.1 (was SR 75 vs Arena 55).
-- 1 IE-divergence test swapped to Bloodthirster (3072 SR 80 AD vs 223072 Arena 70 AD - still divergent at 16.11.1).
-- 1 Phase B Cherry test updated for item 188 Slice C handler (was asserting deleted no-op stub behavior; now covers 4-endpoint PATCH chain + no-augment-id reject).
-- 1 smart-quote hygiene allowlist extended: DDragon-delivered `ddragon_items.json` (Riot ships an en-dash) + `agents/agent6_auditor/reports/` (dated artifacts).
-
-**Living docs synced (live patch header only - historical wave anchors at 16.10.1 preserved per `feedback_no_history_rewrite`):**
-- BRIEF.md L20: `ENGINE_VERSION 1.61.0 (16.10.1)` -> `(16.11.1)`
-- docs/DAEMON_SLAYER.md L5: `patch 16.10.1` -> `16.11.1`
-- docs/ARCHITECTURE.md L161: `patch 16.10.1` -> `16.11.1`
-- dashboard/routes_dictionary.py docstring: `currently 16.10.1` -> `currently 16.11.1`
-- web/js/main.js 5 hardcoded `/data/ddragon/16.10.1/` paths + CHAMPS.version fallback strings -> `16.11.1`
-
-**Verified:** DS suite 4872 passed / 1 skipped / 1 xfailed / 1781 subtests in 67s. RC suite 3674 passed / 1 skipped in 60s. Phase 8 smoke 70/70. `py -m ruff check .` ALL CHECKS PASSED. DS `/health` returns engine_version=1.61.0 / patch=16.11.1 / 172 champs / 705 items.
-
-**Don't-redo (tomorrow-you):**
-- The 16.10.1 DS snapshot dir STAYS in `data/daemon_slayer/` indefinitely - 11 DS test files reference it as a frozen historical anchor (CC entries pinned to specific Meraki data state). The 4 Yunara tests + 2 IE tests added this session join that pattern.
-- DS `/health` items=705 is the canonical catalog count (incl. Arena mirrors + mode-specific copies); DDragon purchasable subset is 547 + total entries 703 - 3 separate counts, all legitimate. Do NOT flip the README's 547 to 703 / 705.
-- Yunara + Zaahen missing from Meraki bulk is HISTORICAL PATTERN for new champs (they were missing at 16.10.1 release too); Meraki catches up within 1-2 patches. Do NOT re-pitch as a bug.
-- Hand-curated artifacts (`enchanter_items.json` + `cherry_augments.json` + `mayhem_augment_stats.json`) must be COPIED FORWARD on every patch refresh until either (a) operator decides to update them with patch-specific value drift or (b) they're auto-generated. Their schema_version=1 + patch field tracks the original authoring patch.
-- The smart-quote hygiene allowlist for `data/meta/ddragon_items.json` + `ddragon_runes.json` + `ddragon_summoner_spells.json` is now durable; Riot-delivered punctuation in catalog data is NOT authored-source drift.
-- `agents/agent6_auditor/reports/` is now in the hygiene allowlist as dated immutable artifacts.
-
-**Carries forward:** All item 205 + item 204 carries unchanged. Mid-game capture for any UI v2.1 page-#11/12/13 still operator-gated (game state mode_key=client at /done time = safe to /clear). 7 prior-session items still in WAKEUP_NOTES (205 + 204 + 203 from item-201 chain) - eligible for archive via `wakeup_prune.py --keep 3` post-this-session.
