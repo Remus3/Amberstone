@@ -1,0 +1,5 @@
+# Sidecar destination for tools/gamepc_phase_watcher.py (item 207).
+# Each event-driven capture writes <topic>_<sub_phase>_<queue_id>_<iso>.json
+# alongside the PNG/JPEG in the vision-server frame cache.
+# Distinct from data/coaching_data/ so this content does NOT leak into
+# coach-prompt context.
