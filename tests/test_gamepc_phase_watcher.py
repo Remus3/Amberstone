@@ -2,7 +2,12 @@
 
 Item 207: implementation of docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md. The
 watcher runs on Game-PC and fires DXGI capture on phase transitions
-(champ-select / Cherry augment / lobby / InProgress / WaitingForStats).
+(champ-select / Cherry augment / lobby / InProgress). WaitingForStats is
+intentionally EXCLUDED per [[feedback_gamepc_lcu_phase_watcher_bsod]]
+(2026-05-27 item 209): the WaitingForStats edge fires at the game-end
+resolution swap (1920x1080 -> 1440p) which is the documented Duet+GPU+
+Vanguard BSOD chain. PGR captures must be driven by a post-swap trigger,
+not the WAMP edge.
 
 TDD-first per CLAUDE.md. Suite is stdlib-only and stub-driven so it runs
 on any platform (no LCU + no DXGI + no network).
@@ -41,9 +46,11 @@ def _load_watcher_module():
 
 class ClassifyGameflowPhaseTests(unittest.TestCase):
     """The watcher subscribes to /lol-gameflow/v1/gameflow-phase and only
-    captures on transitions to ChampSelect / InProgress / WaitingForStats.
-    Other phases (Lobby / Matchmaking / ReadyCheck / EndOfGame / None)
-    return None.
+    captures on transitions to ChampSelect / InProgress.
+    Other phases (Lobby / Matchmaking / ReadyCheck / EndOfGame /
+    WaitingForStats / None) return None. WaitingForStats is excluded per
+    item 209 BSOD fix (game-end resolution-swap coincides with the WAMP
+    edge).
     """
 
     @classmethod
@@ -58,9 +65,25 @@ class ClassifyGameflowPhaseTests(unittest.TestCase):
         out = self.mod.classify_gameflow_phase("InProgress", queue_id=1750)
         self.assertEqual(out, ("gameflow_phase", "InProgress", 1750))
 
-    def test_waiting_for_stats_transition_captured(self):
+    def test_waiting_for_stats_NOT_captured_bsod_fix_item_209(self):
+        # Item 209 (2026-05-27) BSOD fix: WaitingForStats fires at the
+        # game-end resolution swap which is the documented Duet+GPU+
+        # Vanguard crash chain. DO NOT re-add. PGR captures must come
+        # from a post-swap trigger.
         out = self.mod.classify_gameflow_phase("WaitingForStats", queue_id=450)
-        self.assertEqual(out, ("gameflow_phase", "WaitingForStats", 450))
+        self.assertIsNone(out)
+
+    def test_inprogress_capture_delay_constant_defined(self):
+        # Item 209 sibling fix: the InProgress WAMP edge coincides with
+        # the game-start resolution swap. handle_event sleeps
+        # INPROGRESS_CAPTURE_DELAY_S past the edge before binding DXGI.
+        delay = getattr(self.mod, "INPROGRESS_CAPTURE_DELAY_S", None)
+        self.assertIsNotNone(delay,
+                             "module must expose INPROGRESS_CAPTURE_DELAY_S "
+                             "constant for BSOD-safe InProgress capture")
+        self.assertGreaterEqual(float(delay), 5.0,
+                                "delay must be >=5s to clear the resolution "
+                                "swap; 15s is the calibrated default")
 
     def test_lobby_phase_not_captured_here(self):
         # Lobby is captured via /lol-lobby/v2/lobby topic, not gameflow.
