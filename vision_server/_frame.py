@@ -21,7 +21,8 @@ from ._stats import _record, _stats, _stats_lock
 
 _frame_lock = threading.Lock()
 _latest_frame: dict = {"b64": None, "ts": 0.0, "size": 0, "source": None,
-                       "width": None, "height": None, "format": None}
+                       "width": None, "height": None, "format": None,
+                       "event_meta": None}
 _frames_by_source: dict = {}
 
 
@@ -80,6 +81,13 @@ def handle_upload_frame(body: bytes) -> dict:
         # a corner-case base64 layout doesn't blackhole real captures.
     src = d.get("source", "unknown")
     primary = bool(d.get("primary", True))
+    # Item 207: optional event_meta field tags the frame as event-
+    # driven (LCU phase-watcher capture). Backward-compatible: polling
+    # uploads omit the field and get a None entry. UI-audit-ritual
+    # subagent can subscribe to event-tagged frames specifically.
+    event_meta = d.get("event_meta")
+    if event_meta is not None and not isinstance(event_meta, dict):
+        event_meta = None
     frame = {
         "b64":    img,
         "ts":     time.time(),
@@ -89,6 +97,7 @@ def handle_upload_frame(body: bytes) -> dict:
         "height": d.get("height"),
         "format": d.get("format", "png"),
         "primary": primary,
+        "event_meta": event_meta,
     }
     with _frame_lock:
         _frames_by_source[src] = dict(frame)
@@ -101,7 +110,8 @@ def handle_upload_frame(body: bytes) -> dict:
         )
     _record("frame_upload", ms, ok=True)
     return {"ok": True, "size": len(img), "ts": frame["ts"],
-            "source": src, "primary": primary}
+            "source": src, "primary": primary,
+            "event_tagged": event_meta is not None}
 
 
 def get_latest_frame(source: str | None = None) -> dict:

@@ -6,6 +6,30 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-26 - item 204 SHIPPED: /insights 2026-05-26-185928 followup - CLAUDE.md +5 sections + 2 scoping docs + edit_lint_check hook + verify-before-declaring memory
+
+Operator ran `/insights` after wrap. Drained the report's actionable suggestions across 2 commits + 1 memory write outside repo. 1 commit `adb2e96` on origin/main `0676407..adb2e96`; non-frozen; non-engine; no DS restart; no RC restart (no route/coach module edits this run). 3 worktree-agent dispatches NOT used this session (single Claude orchestrator + scoping work only).
+
+**Shipped (4 files / +340 / -0):**
+- `CLAUDE.md` +5 sections from report: `## Session-End Ritual` + `## Output Constraints` + `## Style Rules` + `## TDD First` + `## Subagent Code Quality` (lines 65-77 + 124-130).
+- `docs/CI_WATCHDOG_PLAN.md` NEW (5.4 KB / 88 lines) - scoping ONLY for auto-fix red CI via headless `claude -p` on dedicated worktree at `C:\RC-CIWatchdog\`. 3 open questions block implementation (PR auto-merge policy / bridge escalation envelope / stale-fix cancellation).
+- `docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md` NEW (10.4 KB / 127 lines) - scoping ONLY for replacing champ-select / augment / lobby polling with LCU WAMP push events on Game-PC. 5 open questions block implementation (monitor target by RESOLUTION not index / debounce window / frame format / Cherry urgency / bridge envelope).
+- `tools/edit_lint_check.py` NEW (~75 LOC) - PostToolUse hook helper: reads `$CLAUDE_FILE_PATHS`, runs `py -m ruff check --fix` on .py files, byte-scans for U+2014 / U+2013 / U+201C / U+201D / U+2018 / U+2019. Advisory non-blocking exit 0. Uses `chr(0xNNNN)` form in `_BANNED` dict to avoid self-violating the rule (item 154 precedent).
+
+**Local-only (NOT in commit, NOT in repo):**
+- `.claude/settings.json` PostToolUse hook entry added at L22-26 calling `edit_lint_check.py`. File is gitignored (`.gitignore:65`); change is LEGION-LOCAL. Operator must replay this edit on Game-PC + Peer if they want the hook on those fleets.
+- `C:\Users\Administrator\.claude\projects\C--Riot-Commander\memory\feedback_verify_before_declare_broken.md` NEW - feedback memory: "X is dead / missing / broken / not installed" verdicts need a second independent probe + named stale-doc risk before stating. Indexed in `MEMORY.md` line 34 between `[[feedback_verify_generated_reports]]` + `[[feedback_backlog_path_stale_check]]`. Memory files live outside the repo per `auto memory` system.
+
+**Don't-redo (tomorrow-you):**
+- `/wrap` skill drop SKIPPED. Existing `C:\Users\Administrator\.claude\commands\wrap.md` is 7-section superset of the pasted version (git status + push + Game-PC bridge probe + RC restart check + memory updates + session size guard + final summary). Do NOT drop `.claude/skills/wrap/SKILL.md` - would downgrade.
+- Pasted parallel-agents prompt was just a copyable quote, no infra to ship.
+- CI Watchdog + LCU Phase Capture Watcher IMPLEMENTATION is gated on operator answering the open questions at bottom of each PLAN.md. Do NOT start coding either before that. Both are TDD-first per new `## TDD First` rule.
+- New hook helper `tools/edit_lint_check.py` is ADVISORY non-blocking (exit 0 always). Future edits will surface em-dash / smart-quote warnings to stderr but never abort the operator's flow. The drift guard is dual-layered: hook catches at edit-time + `tools/strip_em_dashes.py` + `tools/strip_smart_quotes.py` sweep at audit-time.
+- The 5 CLAUDE.md sections are baseline now; do NOT re-pitch a "TDD First" or "Output Constraints" section.
+- Smoke-tested the hook on a synthetic em-dash file: detected `em-dash x1` and exit 0. Smoke-tested on the helper itself (clean): exit 0 no output.
+
+**Carries forward:** All item 203 carries unchanged. RC pid 15960 alive=True last_reload_ok=True mode_key=client throughout. No bridge tasks pending.
+
 ---
 
 # 2026-05-26 - item 201 SHIPPED: LIVE BUG fix SR coach KeyError + Choices-first refactor w/ Alt+1/2/3 hotkeys + game-monitor skill gate `{game}` -> `{sr}`

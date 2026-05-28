@@ -1,5 +1,26 @@
 # LCU Phase-Change Capture Watcher - Architecture Proposal
 
+**SHIPPED 2026-05-27 (item 207).** Implementation files:
+- `tools/gamepc_phase_watcher.py` (classifier + Debouncer + capture orchestrator + WAMP loop)
+- `tools/gamepc_phase_watcher_install.ps1` (Game-PC scheduled task installer)
+- `tests/test_gamepc_phase_watcher.py` (64 stub-driven tests + drift guards)
+- `tests/test_vision_frame_event_meta.py` (3 tests covering /upload-frame event_meta extension)
+- `vision_server/_frame.py` (extended to accept optional `event_meta` field; backward-compatible)
+- `data/event_captures/` (sidecar destination; distinct from `data/coaching_data/`)
+
+**Operator scope-fork answers locked at ship time:**
+- Q1 capture target: BOTH monitors per event (game 1920x1080 + dashboard 1920x1280; classified by resolution per [[reference_gamepc_monitor_index_volatility]])
+- Q2 debounce: per (topic, sub_phase, queue_id) per gameflow cycle; `Debouncer.reset_cycle()` called on EndOfGame transition
+- Q3 frame format: JPEG q75 (inherits gamepc_screen_agent.py contract)
+- Q4 Cherry urgency: standard debounce (operator can flip `CHERRY_NO_DEBOUNCE = True` later)
+- Q5 bridge envelope: YES emit `kind=ui_capture` envelope (`source=gamepc`, `target=legion`)
+
+**Live deployment OWED:** Game-PC operator runs `tools/gamepc_phase_watcher_install.ps1` once. Prereqs: `py -m pip install bettercam websocket-client` on Game-PC. First live cycle should land event-tagged frames in vision server `/latest-frame?source=game-pc-event-game` (or `-dashboard`) and JSON sidecars under `data/event_captures/`.
+
+The original architecture proposal follows below for design-record purposes.
+
+---
+
 Scoping doc only. Implementation deferred to a separate scoped session. Operator green-light + answers to open questions required before code lands.
 
 ## Goal
