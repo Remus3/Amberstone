@@ -240,11 +240,18 @@ def _run_subprocess(argv: list[str], *, timeout_s: int,
     env.pop("ANTHROPIC_API_KEY", None)
     if env_extra:
         env.update(env_extra)
+    # Suppress cmd.exe window flash on Windows when spawning claude.cmd
+    # (npm shim). pythonw parent has no console so spawning a .cmd allocates
+    # a new visible console for the duration of the call. Mirrors the flag
+    # pattern at tools/legion_bridge_daemon.py:212 and the sibling fix at
+    # tools/bridge_watcher.py:_send_push_notification (item 208 2026-05-27,
+    # frozen-file grant).
+    _flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
         proc = subprocess.run(
             argv, capture_output=True, text=True,
             timeout=timeout_s, env=env, encoding="utf-8", errors="replace",
-            check=False,
+            check=False, creationflags=_flags,
         )
         return (proc.returncode, proc.stdout or "", proc.stderr or "")
     except subprocess.TimeoutExpired:

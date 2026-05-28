@@ -265,10 +265,16 @@ def _send_push_notification(summary: str, source: str, node: str,
     env_vars = dict(os.environ)
     env_vars.pop("ANTHROPIC_API_KEY", None)
     import subprocess
+    # Suppress the cmd.exe window flash on Windows when spawning claude.cmd
+    # (npm shim). pythonw parent has no console, so spawning a .cmd allocates
+    # a new visible console for the duration of the call (~claude --print
+    # takes several seconds). Mirrors the flag pattern at
+    # tools/legion_bridge_daemon.py:212.
+    _flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
         proc = subprocess.run(
             argv, capture_output=True, text=True, timeout=20,
-            check=False, env=env_vars,
+            check=False, env=env_vars, creationflags=_flags,
         )
         if proc.returncode != 0:
             _log.warning("push notif failed rc=%d stderr=%s",
