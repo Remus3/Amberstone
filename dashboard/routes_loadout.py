@@ -87,6 +87,42 @@ def _serve_loadout_list_post(h, payload) -> None:
             h._send(400, b'{"error":"champion required"}', "application/json"); return
         vs = list_variants(champ, mode)
         df = default_variant(champ, mode)
+        # 2026-05-28: merge operator user-curated builds (sr_user_builds)
+        # into the chooser for EVERY champ-select mode (operator
+        # directive). The store is SR-authored today but a saved build is
+        # selectable whether the live game is SR / ARAM / Arena. Keys are
+        # namespaced "userbuild_<id>" (colon-free so the item-178
+        # "<variant>:<path>" savedChoice split does not mis-parse them) so
+        # /api/loadout/apply routes them to _resolve_user_build instead of
+        # champion_loadouts.json. Appended AFTER the curated rows so the
+        # engine defaults stay the operator's eye-line; user builds sit
+        # below, experimental last.
+        try:
+            from coaches.sr_user_builds import (
+                format_for_display as _ub_fmt,
+                list_for as _ub_list,
+            )
+            for rec in _ub_list(champ):
+                shaped = _ub_fmt(rec)
+                if not shaped:
+                    continue
+                ub_runes = shaped.get("runes") or {}
+                vs.append({
+                    "key":         "userbuild_" + (shaped.get("key") or ""),
+                    "label":       shaped.get("label") or "user build",
+                    "is_default":  False,
+                    "is_user":     True,
+                    "keystone":    shaped.get("keystone") or "",
+                    "primary":     ub_runes.get("primary") or "",
+                    "secondary":   ub_runes.get("secondary") or "",
+                    "summoners":   shaped.get("summoner_spells") or [],
+                    "item_names":  shaped.get("build_path") or [],
+                    "item_ids":    shaped.get("item_ids") or [],
+                    "build_paths": [],
+                    "_collapsed":  False,
+                })
+        except Exception as exc:
+            log.warning("loadout/list user-build merge: %s", exc)
         h._send(200, json.dumps({
             "champion": champ, "mode": mode,
             "variants": vs, "default": df,
@@ -150,6 +186,86 @@ def _build_experimental_resolved(champion: str, mode: str,
     }
 
 
+# 2026-05-28: operator user-curated builds (coaches/sr_user_builds) are
+# merged into /api/loadout/list across ALL champ-select modes and applied
+# here. The variant key is "userbuild_<8hex>"; we look the record up,
+# shape it via format_for_display (resolves item display names -> ddragon
+# ids), and build the same rune_cmd / item_cmd / summ_cmd trio resolve()
+# produces so the existing enqueue loop is unchanged. override_summ (from
+# the champ-select adaptive-summoners pipeline) wins over the build's
+# stored pair when present.
+def _resolve_user_build(champion: str, variant: str, mode: str,
+                        override_summ: list | None) -> dict:
+    from coaches.loadout_resolver import (
+        _load_champ_id_by_name, _norm, _normalize_mode,
+    )
+    from coaches.sr_user_builds import format_for_display, list_for
+    from lcu.lcu_rune_writer import _TREES, build_perk_ids
+    uid = variant[len("userbuild_"):]
+    rec = next((b for b in list_for(champion)
+                if isinstance(b, dict) and b.get("id") == uid), None)
+    if not rec:
+        return {"ok": False, "err": f"no user build {uid!r} for {champion!r}"}
+    shaped = format_for_display(rec)
+    if not shaped:
+        return {"ok": False, "err": f"user build {uid!r} malformed"}
+    mode_key  = _normalize_mode(mode)
+    label     = shaped.get("label") or "user build"
+    runes     = shaped.get("runes") or {}
+    keystone  = str(runes.get("keystone") or "")
+    primary   = str(runes.get("primary") or "")
+    secondary = str(runes.get("secondary") or "")
+    rune_cmd = None
+    if keystone and primary and secondary:
+        perk_ids   = build_perk_ids(keystone, primary, secondary,
+                                    mode_key == "aram")
+        primary_id = _TREES.get(primary, 0)
+        sub_id     = _TREES.get(secondary, 0)
+        if perk_ids and primary_id and sub_id:
+            rune_cmd = {
+                "cmd":        "apply_runes",
+                "page_name":  f"RC: {champion} {label} ({mode_key.upper()})"[:75],
+                "primary_id": primary_id,
+                "sub_id":     sub_id,
+                "perk_ids":   perk_ids,
+            }
+    item_ids = [str(x) for x in (shaped.get("item_ids") or []) if x]
+    item_cmd = None
+    if item_ids:
+        champ_id = _load_champ_id_by_name().get(champion, 0)
+        item_cmd = {
+            "cmd":         "apply_item_set",
+            "set_uid":     f"RC-{_norm(champion)}-{mode_key}-ub-{uid}",
+            "title":       f"RC: {champion} {label} ({mode_key.upper()})"[:50],
+            "champion_id": champ_id,
+            "blocks": [{
+                "type":  "User Build (RC)",
+                "items": [{"id": i, "count": 1} for i in item_ids],
+            }],
+        }
+    spells = shaped.get("summoner_spells") or []
+    pair = (override_summ if (isinstance(override_summ, list)
+                              and len(override_summ) == 2) else spells)
+    summ_cmd = None
+    if isinstance(pair, list) and len(pair) >= 2:
+        try:
+            summ_cmd = {"cmd": "set_summoners",
+                        "d": int(pair[0]), "f": int(pair[1])}
+        except (ValueError, TypeError):
+            pass
+    return {
+        "ok":        True,
+        "champion":  champion,
+        "variant":   variant,
+        "mode":      mode_key,
+        "label":     label,
+        "rune_cmd":  rune_cmd,
+        "item_cmd":  item_cmd,
+        "summ_cmd":  summ_cmd,
+        "raw_items": list(shaped.get("build_path") or []),
+    }
+
+
 def _serve_loadout_apply_post(h, payload) -> None:
     # Body: {champion, variant, mode, push_runes?, push_items?, push_summoners?,
     #        override_runes?:{keystone,primary,secondary},
@@ -199,8 +315,16 @@ def _serve_loadout_apply_post(h, payload) -> None:
             override_items = None
         if not champ or not variant:
             h._send(400, b'{"error":"champion+variant required"}', "application/json"); return
+        # 2026-05-28: operator user-curated build. Namespaced
+        # "userbuild_<id>" by /api/loadout/list; routed here BEFORE the
+        # experimental + resolver paths so the colon-free key never
+        # reaches resolve()'s "<variant>:<path>" partition logic.
+        if variant.startswith("userbuild_"):
+            resolved = _resolve_user_build(champ, variant, mode, override_summ)
+            if not resolved.get("ok"):
+                h._send(404, json.dumps(resolved).encode(), "application/json"); return
         # s210 v2: experimental path - build cmds inline, skip resolver.
-        if override_runes and override_items:
+        elif override_runes and override_items:
             resolved = _build_experimental_resolved(
                 champ, mode, override_runes, override_items, override_summ,
             )
