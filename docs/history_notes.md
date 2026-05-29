@@ -6,6 +6,30 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-28 (Home Recent-5 wrong-items bug) - item 211 SHIPPED: gameId-keyed ingest + backfill + Match-V5 recovery (3 commits pushed origin/main `4ff288f..1628a47`; non-frozen; RC restarted pid 16768 -> 11272; ADR-008 auto-served)
+
+Operator: "when on the home page, the recent 5 is always missing an item row for one of the cards - and eventually when the matches update : the items are on the wrong matches". Root cause = `dashboard/routes_last_match.py:122-125` `_serve_last_match_ingest` SELECTed `ORDER BY timestamp DESC LIMIT 1`. Race: Game-PC LCU agent POSTs ingest on EndOfGame BEFORE local performance_tracker.save_match writes the new row -> ingest stamped the PREVIOUS row's raw_data with the new game's lcu_match_detail (and items). New row then never received ingest -> items=[]. Visible live: row 1690 (Jinx 22:54:03) carried Caitlyn's gid 5569828374; row 1691 (Caitlyn 23:57:12) carried items=[].
+
+**Shipped:**
+- **`b7bd74a` fix(ingest):** matches schema gains `game_id INTEGER DEFAULT 0` + `idx_matches_game_id` + in-place ALTER TABLE migration. Route rewritten: gameId-primary -> gameCreation+gameDuration vs row.timestamp +/- 180s for legacy rows -> 202+queue+60s retry/10s drain. Matched rows stamp game_id so re-ingest is keyed. `performance_tracker.save_match` persists game_id when Live Client exposes it. +11 TDD tests in `tests/test_last_match_ingest_gameid.py` (schema migration / gameId match + idempotence / ts-window fallback / queue drain + age-out / item 211 regression pin). 3758 pass / 2 pre-existing failed (Pantheon lifeline + Jinx sr-bruiser, items 168/178 carries; NOT regressions).
+- **`4e043a8` chore(backfill):** `tools/backfill_match_ingest_misattribution.py` walks every non-TFT row carrying lcu_match_detail, extracts participantId via tracked_puuid, maps championId via DDragon, compares vs db.champion. If mismatch: finds target row by champ + ts window; MOVEs detail with stamps `item211_backfill_moved_to/received_from` for forensics. Atomic backup. --dry-run + --window flags. Applied 180s + 600s passes -> 26 stamped + 15 moved + 15 true orphans.
+- **`1628a47` feat(recovery):** `tools/recover_match_via_match_v5.py` for orphans where ingest NEVER landed (Game-PC agent offline / RC down / POST failed). Account-V1 -> Match-V5 by-puuid -> synth LCU-shaped blob with participantIdentities + participants[].stats.itemN -> POST /api/last-match/ingest. Row 1690 recovered via NA1_5569790114 (Jinx items [1055, 3032, 2523, 3031, 3086, 3144]). Home Recent-5 now 5/5 clean.
+
+**Don't-redo (tomorrow-you):**
+- (a) `_serve_last_match_ingest` row-match contract is gameId-primary then ts-window then queue+retry. Do NOT revert to "latest row" - the regression pin in test_last_match_ingest_gameid.py fails.
+- (b) game_id INTEGER + idx_matches_game_id is the schema chokepoint; ALTER TABLE handles legacy DBs in place. The fresh-vs-legacy CREATE/ALTER branch in `core/match_db.py:84-110` is required because the full _SCHEMA's CREATE INDEX statements explode against narrow legacy tables.
+- (c) matches.tracked_puuid IS STALE for older rows (per [[reference_riot_puuid_rotation]] - operator's puuid rotated). For Match-V5 recovery ALWAYS re-resolve via Account-V1 by Riot ID (SamplePlayer#Trist post-2026-05-20).
+- (d) The Match-V5 gameDuration unit varies: seconds when gameEndTimestamp is present, milliseconds in older payloads. `_normalize_unit(n)` in recovery tool divides by 1000 when n > 100_000. Test before changing.
+- (e) Backfill ran twice with different window sizes (180s strict, 600s for slow-grader cases); both backups kept at `data/match_history.db.bak-item211-20260528-{201639,201739}`.
+
+**Carries forward:**
+- (a) 15 orphan rows from backfill have no clean target row (target was never written - RC down / agent offline at the time). Operator-decision: run `tools/recover_match_via_match_v5.py --row-id <orphan>` per row to recover, OR add a `--clear-orphans` flag to backfill tool to clear wrong detail blobs (better empty than wrong on deeper History pages).
+- (b) Live Client `/allgamedata` rarely exposes gameId reliably so performance_tracker writes game_id=0 most games. The timestamp-window fallback covers that. If a future Live Client patch surfaces gameId, the forward path tightens automatically.
+- (c) All items 209/210 carries unchanged. Frozen-file grant NOT used.
+- (d) Operator hard-refreshed dashboard after each phase; final state has 5/5 cards correct (Caitlyn/Caitlyn/Jinx/MF/Samira all show their own items).
+
+---
+
 # 2026-05-28 (post-game ranked SR queue) - items 209a + 209b + 210 SHIPPED: cmd-window flash + game-end BSOD + runes-not-pushing (3 commits pushed origin/main `07f5e79..fcba9cd`)
 
 3 distinct operator-reported bugs surfaced + closed in one session. RC pid 16768 alive throughout. DS :8893 untouched. No RC restart.
