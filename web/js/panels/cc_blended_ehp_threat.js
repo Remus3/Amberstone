@@ -116,6 +116,31 @@ function _tierLabel(tier) {
   return "EVEN";
 }
 
+// item 213 (2026-05-28): plain-language verdict for the unconditional
+// CC card. enemyCc / allyCc are seconds of crowd control a team can
+// chain onto ONE target. A teamfight is roughly 5-6s, so "X seconds
+// locked" is framed as a share of a fight the operator loses control.
+const _CC_FIGHT_S = 6;
+function _ccVerdict(allyCc, enemyCc) {
+  const a = +allyCc || 0;
+  const e = +enemyCc || 0;
+  if (e <= 0.05 && a <= 0.05) {
+    return "Neither team has meaningful hard CC to chain.";
+  }
+  const lossPct = Math.min(99, Math.round((e / _CC_FIGHT_S) * 100));
+  if (e > a + 0.5) {
+    return `Enemy out-chains you ${e.toFixed(1)}s vs ${a.toFixed(1)}s - you `
+         + `lose ~${lossPct}% of a fight locked down. Consider Cleanse / QSS `
+         + `and spread out.`;
+  }
+  if (a > e + 0.5) {
+    return `You out-chain them ${a.toFixed(1)}s vs ${e.toFixed(1)}s - force `
+         + `fights and chain your CC to delete a target.`;
+  }
+  return `Even CC: ${a.toFixed(1)}s you vs ${e.toFixed(1)}s enemy - `
+       + `whoever lands first CC wins the trade.`;
+}
+
 // Render the CC-blended EHP threat chip into the provided element.
 // payload is the backend response (may be null on cold-load).
 export function renderCcBlendedEhpThreat(blockEl, payload) {
@@ -142,40 +167,42 @@ export function renderCcBlendedEhpThreat(blockEl, payload) {
   blockEl.hidden = false;
   blockEl.dataset.ccTier = tier;
 
+  // item 213: lead with the CC-CHAIN seconds (the actionable number:
+  // "how long one target can be locked down") not the bare cc-blended
+  // EHP figure. EHP is kept as a secondary "effective HP under that CC
+  // pressure" caption so the tier still has its underlying math, but it
+  // no longer headlines the card.
   const allyAvg = Math.round(+payload.ally_avg_cc_blended_ehp || 0);
   const enemyAvg = Math.round(+payload.enemy_avg_cc_blended_ehp || 0);
   const allyCc = (+payload.ally_total_cc_seconds || 0).toFixed(1);
   const enemyCc = (+payload.enemy_total_cc_seconds || 0).toFixed(1);
-  const ratio = (+payload.ratio || 0).toFixed(2);
   const tierLabel = _tierLabel(tier);
+  const verdict = _ccVerdict(allyCc, enemyCc);
 
   blockEl.innerHTML = (
     `<div class="cc-blended-ehp-threat-head">`
     + `<span class="cc-blended-ehp-threat-tier">${tierLabel}</span>`
-    + `<span>CC threat balance</span>`
+    + `<span>CC chain on one target</span>`
     + `</div>`
     + `<div class="cc-blended-ehp-threat-row">`
-    + `<span class="cc-blended-ehp-threat-row-label">Ally cc-blended EHP avg</span>`
+    + `<span class="cc-blended-ehp-threat-row-label">Enemy can chain on you</span>`
     + `<span>`
-    + `<span class="cc-blended-ehp-threat-row-value">${allyAvg}</span> `
+    + `<span class="cc-blended-ehp-threat-row-value">${enemyCc}s</span> `
     + `<span class="cc-blended-ehp-threat-row-cc"`
-    + ` title="Enemy CC pressure summed across registered spells">`
-    + `(enemy CC ${enemyCc}s)</span>`
+    + ` title="Your team's effective HP under that CC pressure">`
+    + `(your EHP ${allyAvg})</span>`
     + `</span>`
     + `</div>`
     + `<div class="cc-blended-ehp-threat-row">`
-    + `<span class="cc-blended-ehp-threat-row-label">Enemy cc-blended EHP avg</span>`
+    + `<span class="cc-blended-ehp-threat-row-label">You can chain on them</span>`
     + `<span>`
-    + `<span class="cc-blended-ehp-threat-row-value">${enemyAvg}</span> `
+    + `<span class="cc-blended-ehp-threat-row-value">${allyCc}s</span> `
     + `<span class="cc-blended-ehp-threat-row-cc"`
-    + ` title="Ally CC pressure summed across registered spells">`
-    + `(ally CC ${allyCc}s)</span>`
+    + ` title="Enemy team's effective HP under your CC pressure">`
+    + `(enemy EHP ${enemyAvg})</span>`
     + `</span>`
     + `</div>`
-    + `<div class="cc-blended-ehp-threat-ratio">`
-    + `<span class="cc-blended-ehp-threat-row-label">Ratio (ally / enemy)</span>`
-    + `<span class="cc-blended-ehp-threat-ratio-value">${ratio}x</span>`
-    + `</div>`
+    + `<div class="cc-blended-ehp-threat-verdict">${verdict}</div>`
   );
 }
 
