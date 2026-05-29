@@ -4,7 +4,6 @@
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS, _normItemName, _resolveItemId, _resolveChampId } from '../lib/items_index.js';
-import { scorerUnit } from '../lib/scorer_units.js';
 import { sumImg, sumName } from '../lib/summoner_spells.js';
 import { itemTooltipHtml, keystoneTooltipHtml, preloadLolDescriptions } from '../lib/lol_descriptions.js';
 import { championTags, preloadChampionTags } from '../lib/champion_tags.js';
@@ -852,7 +851,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // First click in a render cycle assigns D, next click assigns F, then
   // wraps. Mode-keyed list (SR vs ARAM) so Mark / Snowball (id 32) lands
   // in the ARAM strip.
-  const _activeVariant = variants && variants.find((v) => !v.is_experimental) || (variants && variants[0]);
+  const _activeVariant = variants && variants[0];
   const _activeSpells = (_activeVariant && Array.isArray(_activeVariant.summoners))
     ? _activeVariant.summoners : (mode === "aram" ? [4, 32] : [4, 7]);
   _csvSpellPair[0] = _activeSpells[0] | 0;
@@ -876,9 +875,20 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // champ+mode+arch per session) and its re-render piggybacks on
   // _csvScheduleRender, exactly like the DS-builds fetch.
   const _boArch = (_csvResolveArchetype(myName) || {}).key || "";
+  // item 213 (2026-05-28): resolve the LIVE enemy comp (numeric LCU
+  // championIds -> DDragon slugs) so the DS-vs-enemy-comp build re-ranks
+  // + re-fetches whenever an enemy locks / swaps. resolveChampNames is
+  // the same helper the CC cards use; empty during early CS (the build
+  // plans vs the zero-baseline until enemies lock).
+  const _boEnemyIds = cs
+    ? ((cs.their_team || []).map((p) => (p && (p.championId | 0)) || 0)
+        .filter((x) => x > 0))
+    : [];
+  const _boEnemyNames = resolveChampNames(_boEnemyIds);
   const boHtml = buildOrderCardHtml(myName, _csvDsModeFor(mode), _boArch, {
     ver: (ITEMS && ITEMS.version) || "latest",
     scheduleRender: _csvScheduleRender,
+    enemies: _boEnemyNames,
   });
 
   // s214 v2: LOCKED state sits to the LEFT of the champion icon now
@@ -1076,10 +1086,10 @@ function _csvBannedListRow(banIds, sideLabel) {
 // s211: variant key -> badge CSS class. Each known variant gets a
 // distinct hue so the operator can read the row identity at a glance
 // without a separate trailing tag. Unknown variant keys fall through
-// to a neutral grey pill. Experimental's amber matches the pre-s211
-// tag color (operator already learned that hue means "auto-built").
+// to a neutral grey pill.
+// item 213 (2026-05-28): the synthetic "experimental" row was removed
+// from every champion + mode; its amber badge branch is gone with it.
 function _csvVariantBadgeClass(v) {
-  if (v.is_experimental) return "csv-build-badge csv-build-badge-experimental";
   const key = (v.key || "").toLowerCase();
   if (key.startsWith("userbuild_")) return "csv-build-badge csv-build-badge-user";
   if (key === "on-hit" || key === "onhit")  return "csv-build-badge csv-build-badge-onhit";
@@ -1094,22 +1104,8 @@ function _csvVariantBadgeClass(v) {
   return "csv-build-badge csv-build-badge-default";
 }
 
-// s210 v2: archetype -> (keystone, primary tree, secondary tree) for
-// the experimental row's auto-built rune page. Mirrors the standard
-// "default keystone per archetype" consensus - operator can refine
-// per-champion later via a JSON override file. The keystone slug is
-// converted to /icons/runes/<slug>.png via _csvKeystoneIcon().
-const _CSV_EXPERIMENTAL_RUNES = {
-  carry:     { keystone: "Lethal Tempo",  primary: "Precision",  secondary: "Domination"  },
-  bruiser:   { keystone: "Conqueror",     primary: "Precision",  secondary: "Resolve"     },
-  tank:      { keystone: "Aftershock",    primary: "Resolve",    secondary: "Inspiration" },
-  mage:      { keystone: "Arcane Comet",  primary: "Sorcery",    secondary: "Inspiration" },
-  assassin:  { keystone: "Electrocute",   primary: "Domination", secondary: "Precision"   },
-  enchanter: { keystone: "Summon Aery",   primary: "Sorcery",    secondary: "Inspiration" },
-};
-function _csvExperimentalRunesFor(archetypeKey) {
-  return _CSV_EXPERIMENTAL_RUNES[archetypeKey] || _CSV_EXPERIMENTAL_RUNES.carry;
-}
+// item 213 (2026-05-28): the auto-build chooser row was removed, so
+// its per-archetype default rune table + lookup helper are gone too.
 
 // s210: pick-order advisory blurbs per role. Short tips, ordered from
 // "what to do first" to "what to do at lock-in". s214: row 3 is now
@@ -1446,6 +1442,47 @@ document.addEventListener("rc:champion-tags-ready", () => {
 // reflect the new collapsed state (mirrors the cache-land re-renders).
 document.addEventListener("rc:build-order-toggle", () => {
   _csvScheduleRender();
+});
+// item 213 (2026-05-28): delegated handler for the DS-vs-enemy-comp
+// "save + push to client" button (rendered by build_order.js). Pushes
+// the finalized ordered build to the League client as an item set via
+// the EXISTING apply_item_sets_batch LCU contract (item 164/178). The
+// set_uid is distinct (RC-<champ>-<mode>-dsenemycomp) so it coexists
+// with the build-chooser rows' sets - replace-by-uid leaves them all in
+// the in-game item-shop dropdown. Items are already in buy order from
+// the engine (boots + core early, situational later); we preserve that
+// order in the pushed block.
+let _BO_PUSH_INFLIGHT = false;
+document.addEventListener("click", (ev) => {
+  const btn = ev.target && ev.target.closest && ev.target.closest("[data-bo-push]");
+  if (!btn) return;
+  ev.stopPropagation();
+  if (_BO_PUSH_INFLIGHT) return;
+  const champ = btn.dataset.boChamp || "";
+  const mode  = (btn.dataset.boMode || "SR").toLowerCase();
+  const itemsRaw = btn.dataset.boItems || "";
+  const itemIds = itemsRaw.split(",").map((x) => String(x).trim()).filter(Boolean);
+  if (!champ || !itemIds.length) return;
+  _BO_PUSH_INFLIGHT = true;
+  const sets = [{
+    set_uid:     `RC-${champ}-${mode}-dsenemycomp`,
+    title:       `RC DS vs Enemy Comp: ${champ}`.slice(0, 50),
+    champion_id: 0,
+    blocks: [{
+      type: "DS vs Enemy Comp (buy order)",
+      items: itemIds.slice(0, 6).map((iid) => ({ id: String(iid), count: 1 })),
+    }],
+  }];
+  try { lcuCmd({ cmd: "apply_item_sets_batch", sets }); } catch (_) {}
+  // Brief visual ack on the button, then clear the in-flight guard.
+  const prior = btn.textContent;
+  btn.textContent = "pushed";
+  btn.classList.add("is-pushed");
+  setTimeout(() => {
+    btn.textContent = prior;
+    btn.classList.remove("is-pushed");
+    _BO_PUSH_INFLIGHT = false;
+  }, 1500);
 });
 
 // s171: DS engine cache for the new champ-select view's build chooser.
@@ -2179,14 +2216,6 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
     ? ((cs.their_team || []).map((p) => (p && p.championId) | 0).filter((x) => x > 0))
     : [];
   const role = cs ? _csvResolveRole(cs) : "";
-  const top6 = ranked.slice(0, 6).map((r) => r.item_id).filter((x) => x);
-  const reasons = {};
-  ranked.slice(0, 6).forEach((r) => {
-    if (r.item_id) {
-      const u = scorerUnit(r.scorer);
-      reasons[r.item_id] = "+" + Math.round(r.delta_dps || 0) + " " + u;
-    }
-  });
   const userVariants = _CSV_USER_CACHE[`${name}|${mode || "sr"}`] || [];
   // User-variant rows carry their own keystone / primary / secondary /
   // summoners / item_ids from the loadout file. s209 preserves all four
@@ -2230,50 +2259,12 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
       build_paths: buildPaths,
     };
   });
-  // s210: experimental auto-build row appended to every champion's
-  // chooser. Pulls DS engine top-6 items + adaptive summoners (when
-  // available). Keystone is left blank - operator can copy a curated
-  // variant's rune page if they want runes too; experimental is items+
-  // spells only. Click pushes runes:false / items:true / summoners:true.
-  let experimentalRow = null;
-  if (top6.length) {
-    // s210 v2: archetype -> keystone / primary / secondary derived from
-    // the operator's active scorer archetype pick (or the DDragon-tag
-    // default). This gives the experimental row a real keystone icon +
-    // tree pair so the visual matches the curated rows. The apply
-    // pipeline pushes these via override_runes.
-    const arch = _csvResolveArchetype(name);
-    const archKey = (arch && arch.key) || "carry";
-    const expRunes = _csvExperimentalRunesFor(archKey);
-    const expBaseSumm = [4, 7];  // Flash + Heal baseline; adaptive overrides.
-    _csvFetchAdaptiveSummoners(name, enemyIds, expBaseSumm, role);
-    const expAdapt = _CSV_ADAPT_CACHE[_csvAdaptKey(name, enemyIds, expBaseSumm, role)];
-    const expSumm = (expAdapt && Array.isArray(expAdapt.summoners))
-      ? expAdapt.summoners : expBaseSumm;
-    experimentalRow = {
-      key:        "experimental",
-      label:      "Experimental",
-      keystone:   expRunes.keystone,
-      primary:    expRunes.primary,
-      secondary:  expRunes.secondary,
-      summoners:  expSumm,
-      summoners_base: expBaseSumm,
-      adapt:      expAdapt || null,
-      item_ids:   top6,
-      reasons,
-      is_default: false,
-      is_experimental: true,
-      // s210 v2: extra fields surfaced to the click handler so apply
-      // can push override_runes + override_items without re-deriving.
-      experimental_archetype: archKey,
-      experimental_item_ids:  top6,
-    };
-  }
-  // s210: experimental row goes LAST so the curated rows are the
-  // operator's default eye-line. Drop the DS pseudo-row (now in the
-  // Suggestions panel) and the [saved] tag (every non-experimental
-  // row is curated - the tag was redundant once the DS row left).
-  return experimentalRow ? userRows.concat([experimentalRow]) : userRows;
+  // item 213 (2026-05-28): the synthetic "experimental" auto-build row
+  // was removed from every champion + mode per operator request. The
+  // chooser now shows only the operator's curated + user-build rows.
+  // DS engine output still surfaces via the DS Build Archetype preview
+  // (Pick & Ban panel) + the DS vs Enemy Comp card (build_order.js).
+  return userRows;
 }
 
 // Item 178 (2026-05-24): render a single build-path row inside a
@@ -2410,25 +2401,13 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
     // s209 v2: stash the adaptive override on the row dataset so the
     // click handler can read it without going through the cache twice.
     // Empty when no swap applied (click uses variant's stored summoners).
-    // For experimental rows we ALWAYS pass the recommended summoners
-    // (adaptive when available; baseline Flash+Heal otherwise) so the
-    // apply pipeline pushes them - variant isn't in the loadouts file
-    // so there's no "stored" pair to fall back to.
-    const summOverride = (v.is_experimental || swappedSecondary) && Array.isArray(v.summoners)
+    const summOverride = swappedSecondary && Array.isArray(v.summoners)
       ? v.summoners.join(",")
       : "";
     const summAttr = summOverride ? ` data-override-summoners="${summOverride}"` : "";
-    // s210 v2: experimental rows carry override_runes + override_items
-    // so the backend bypasses the variant resolver and builds the LCU
-    // command payloads inline.
-    let expAttrs = "";
-    if (v.is_experimental && v.keystone && v.primary && v.secondary) {
-      const itemList = (v.experimental_item_ids || v.item_ids || []).join(",");
-      expAttrs = ` data-exp-keystone="${v.keystone}"`
-               + ` data-exp-primary="${v.primary}"`
-               + ` data-exp-secondary="${v.secondary}"`
-               + ` data-exp-items="${itemList}"`;
-    }
+    // item 213 (2026-05-28): the experimental row + its data-exp-*
+    // override attributes were removed; expAttrs is now always empty.
+    const expAttrs = "";
     // Item 178 (2026-05-24): collapsed SR variant renders ONE champion
     // entry with N labeled build-path rows stacked vertically inside
     // (instead of N separate selectable variant rows). Each path is
@@ -2580,29 +2559,15 @@ function _csvWireBuildVariants(scope) {
           && variantKey !== "ds-pending") {
         _csvSaveChoice(champion, variantKey);
         // s209: fire the actual LCU push - runes + items + summoners.
-        // s209 v2 / s210 v2: read override data stamped on the row.
         // Curated rows pass override_summoners only (when adaptive
-        // swapped). Experimental rows additionally pass override_runes
-        // + override_items so the backend builds LCU cmds inline.
+        // swapped). item 213 (2026-05-28): experimental override_runes
+        // + override_items were removed with the experimental row.
         const summRaw = row.dataset.overrideSummoners || "";
         const overrideSummoners = summRaw
           ? summRaw.split(",").map((x) => x | 0)
           : null;
-        let overrideRunes = null;
-        let overrideItems = null;
-        if (row.dataset.expKeystone) {
-          overrideRunes = {
-            keystone:  row.dataset.expKeystone,
-            primary:   row.dataset.expPrimary || "",
-            secondary: row.dataset.expSecondary || "",
-          };
-          const itemsRaw = row.dataset.expItems || "";
-          overrideItems = itemsRaw
-            ? itemsRaw.split(",").filter((x) => x)
-            : null;
-        }
         _csvApplyLoadout(champion, variantKey, mode,
-                         overrideSummoners, overrideRunes, overrideItems);
+                         overrideSummoners, null, null);
       }
     });
   });
@@ -3105,84 +3070,13 @@ function _csvMergePickBanData(role, liveRecs, placeholder) {
   return out;
 }
 
-// -----------------------------------------------------------------
-// Item 199 Slice CD (2026-05-25): 101.qq.com duo-synergy fetcher.
-//
-// Polls /api/duo-synergy with the operator's current my_role + ally
-// bot/sup lock+hover state. The endpoint resolves the mode priority
-// (both_locked > bot_locked > sup_locked > bot_hover > sup_hover >
-// none) and returns a 4x2 grid payload + optional laning tip.
-//
-// Same in-flight + TTL cache pattern as _csvFetchPickBanRecs above.
-// _CSV_DUOSYN_TTL_MS is short (5s) so rapid champ-select ticks see
-// stable data without hammering the backend at 500ms cadence.
-// -----------------------------------------------------------------
-const _CSV_DUOSYN_CACHE = {};
-const _CSV_DUOSYN_INFLIGHT = {};
-const _CSV_DUOSYN_TTL_MS = 5_000;
-
-function _csvDuoSynergyKey(myRole, botLock, botHover, supLock, supHover, topN) {
-  return [
-    String(myRole || "bot"),
-    String(botLock || ""),
-    String(botHover || ""),
-    String(supLock || ""),
-    String(supHover || ""),
-    String(topN | 0 || 4),
-  ].join("|");
-}
-
-function _csvFetchDuoSynergy(myRole, botLock, botHover, supLock, supHover, topN, onLoad) {
-  const n = Math.max(1, Math.min(4, topN | 0 || 4));
-  const key = _csvDuoSynergyKey(myRole, botLock, botHover, supLock, supHover, n);
-  const now = Date.now();
-  const cached = _CSV_DUOSYN_CACHE[key];
-  if (cached && (now - cached.fetchedAt) < _CSV_DUOSYN_TTL_MS) {
-    return cached.data;
-  }
-  if (_CSV_DUOSYN_INFLIGHT[key]) return cached ? cached.data : null;
-  // Mock dispatcher: when body.dataset.uiMock === "1", load the static
-  // fixture instead of hitting /api/duo-synergy. Mirrors _csMockLoad
-  // (items 165 + 181) + _lmMockLoad (item 183) + _lobbyMockLoad (item
-  // 163) + _amMockLoad (item 184) + _csvFetchUserVariants (item 178)
-  // patterns. Closes item 199 Slice CD orphan: the fixture at
-  // web/data/ui_mock/duo_synergy.json was created with the route but
-  // never wired at the frontend layer.
-  const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
-  if (isMock) {
-    _CSV_DUOSYN_INFLIGHT[key] = true;
-    fetch("/data/ui_mock/duo_synergy.json", { cache: "no-store" })
-      .then((r) => (r && r.ok ? r.json() : null))
-      .then((j) => {
-        _CSV_DUOSYN_INFLIGHT[key] = false;
-        if (j && j.ok) {
-          _CSV_DUOSYN_CACHE[key] = { data: j, fetchedAt: Date.now() };
-          if (typeof onLoad === "function") onLoad();
-        }
-      })
-      .catch(() => { _CSV_DUOSYN_INFLIGHT[key] = false; });
-    return cached ? cached.data : null;
-  }
-  _CSV_DUOSYN_INFLIGHT[key] = true;
-  const params = new URLSearchParams();
-  params.set("my_role", String(myRole || "bot"));
-  if (botLock)  params.set("ally_bot_lock",  String(botLock));
-  if (botHover) params.set("ally_bot_hover", String(botHover));
-  if (supLock)  params.set("ally_sup_lock",  String(supLock));
-  if (supHover) params.set("ally_sup_hover", String(supHover));
-  params.set("top_n", String(n));
-  fetch(`/api/duo-synergy?${params.toString()}`)
-    .then((r) => r.ok ? r.json() : null)
-    .then((j) => {
-      _CSV_DUOSYN_INFLIGHT[key] = false;
-      if (j && j.ok) {
-        _CSV_DUOSYN_CACHE[key] = { data: j, fetchedAt: Date.now() };
-        if (typeof onLoad === "function") onLoad();
-      }
-    })
-    .catch(() => { _CSV_DUOSYN_INFLIGHT[key] = false; });
-  return cached ? cached.data : null;
-}
+// item 213 (2026-05-28): the duo-synergy fetcher + its render helper +
+// the ally-bot-sup-state extractor were removed when the bottom panel
+// was reoriented to a live ally-picks-by-role mirror (the ally-roles
+// renderer below). The /api/duo-synergy route + its mock fixture stay
+// for any future re-use; nothing in champ-select calls them now.
+// The champ-name-from-id helper is retained - the ally-roles panel
+// uses it.
 
 // Champion-name lookup from numeric id via CHAMPS.byId. Used to map
 // the operator's allies (LCU returns championId numbers) into the
@@ -3194,93 +3088,74 @@ function _csvChampNameFromId(cid) {
   return String(slug);
 }
 
-// Extract the ally bot + sup roles from the champ-select session state.
-// Returns {botLock, botHover, supLock, supHover} as strings (empty when
-// not present). 'lock' is the locked champion (cell.championId on a
-// completed pick); 'hover' is championPickIntent before lock.
-function _csvAllyBotSupState(cs) {
-  const out = { botLock: "", botHover: "", supLock: "", supHover: "" };
-  if (!cs || !Array.isArray(cs.my_team)) return out;
-  for (const p of cs.my_team) {
+
+
+// item 213 (2026-05-28): ROLE_ORDER for the ally-picks-by-role panel.
+// Canonical SR lane order top -> bottom of the visual list.
+const _CSV_ROLE_ORDER = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"];
+const _CSV_ROLE_SHORT = {
+  TOP: "TOP", JUNGLE: "JG", MIDDLE: "MID", BOTTOM: "ADC", UTILITY: "SUP",
+};
+
+// item 213 (2026-05-28): bottom/support panel redesigned to mirror the
+// LIVE ally roster - one row per assigned lane showing which ally is on
+// that role + the champion they LOCKED (solid) or are HOVERING (dimmed),
+// or an empty "picking..." state. Replaces the prior 101.qq.com duo-
+// synergy suggestion grid (disconnected from the actual draft). Reads
+// cs.my_team cells: assignedPosition + (completed ? championId : pick
+// intent) + cellId vs cs.local_cell to flag the operator's own row.
+function _csvRenderAllyRolesHtml(cs, champImg) {
+  const team = (cs && Array.isArray(cs.my_team)) ? cs.my_team : [];
+  if (!team.length) {
+    return '<div class="csv-allyroles-empty">waiting for ally picks...</div>';
+  }
+  // Index cells by assigned position so we render in canonical lane
+  // order regardless of the raw cell ordering.
+  const byPos = Object.create(null);
+  const unassigned = [];
+  for (const p of team) {
     if (!p) continue;
-    const pos = String((p.assignedPosition || "")).toUpperCase();
-    const lockedId = p.completed && p.championId ? (p.championId | 0) : 0;
-    const hoverId = (p.championPickIntent | 0) || 0;
-    if (pos === "BOTTOM") {
-      if (lockedId) out.botLock  = _csvChampNameFromId(lockedId);
-      else if (hoverId) out.botHover = _csvChampNameFromId(hoverId);
-    } else if (pos === "UTILITY") {
-      if (lockedId) out.supLock  = _csvChampNameFromId(lockedId);
-      else if (hoverId) out.supHover = _csvChampNameFromId(hoverId);
-    }
+    const pos = String(p.assignedPosition || "").toUpperCase();
+    if (pos && _CSV_ROLE_SHORT[pos]) byPos[pos] = p;
+    else unassigned.push(p);
   }
-  return out;
-}
-
-// Map dashboard role label (BOT/SUP/JNG/TOP/MID) -> backend my_role
-// (bot|sup). Non-bot/sup defaults to "bot" so the 'none' mode shows
-// bot picks up top + sup picks bottom (operator's default scan order).
-function _csvMyRoleForDuoSynergy(role) {
-  const r = String(role || "").toUpperCase();
-  if (r === "SUP" || r === "UTILITY" || r === "SUPPORT") return "sup";
-  return "bot";
-}
-
-// Build the 4x2 grid HTML from the /api/duo-synergy payload. champImg
-// is the same per-champ image helper used by the pb168 cells (defined
-// inside _csvRenderPickBan and closed-over via a parameter).
-function _csvRenderDuoSynergyHtml(payload, champImg) {
-  if (!payload || !payload.ok) {
-    return '<div class="csv-duosyn-empty">waiting for duo data...</div>';
-  }
-  const mode = String(payload.mode || "none");
-  const topRow = Array.isArray(payload.top_row) ? payload.top_row : [];
-  const botRow = Array.isArray(payload.bottom_row) ? payload.bottom_row : [];
-  // Render each cell with rank badge + icon + name + WR pct.
-  const renderCell = (cell, sideClass) => {
-    if (!cell) {
-      return `<div class="csv-duosyn-cell ${sideClass}"></div>`;
-    }
-    const wr = cell.doublewinrate != null ? Math.round(cell.doublewinrate * 100)
-             : (cell.iwinrate != null ? Math.round(cell.iwinrate * 100) : 0);
-    const wrClass = wr >= 55 ? "is-strong-wr"
-                  : (wr > 0 && wr < 48 ? "is-weak-wr" : "");
-    const lockOrHover = (mode.indexOf("locked") >= 0 && !cell.pair_with)
-                     || (mode.indexOf("hover") >= 0 && !cell.pair_with);
-    const stateClass = lockOrHover
-      ? (mode.indexOf("locked") >= 0 ? "is-locked" : "is-hover") : "";
-    const rankBadge = (cell.rank && cell.rank > 0)
-      ? `<span class="csv-duosyn-rank-badge">#${cell.rank}</span>` : "";
-    const wrEl = wr > 0 ? `<span class="csv-duosyn-wr">${wr}%</span>` : "";
-    const cellClasses = ["csv-duosyn-cell", sideClass, stateClass, wrClass]
-      .filter(Boolean).join(" ");
-    const pairTitle = cell.pair_with ? ` with ${cell.pair_with}` : "";
+  const localCell = cs.local_cell;
+  const rowFor = (pos, cell) => {
+    const isMe = cell && cell.cellId != null && cell.cellId === localCell;
+    const lockedId = (cell && cell.completed && cell.championId)
+      ? (cell.championId | 0) : 0;
+    const hoverId = (cell && (cell.championPickIntent | 0)) || 0;
+    const showId = lockedId || hoverId;
+    let stateCls = "is-empty";
+    let stateTxt = "picking...";
+    if (lockedId) { stateCls = "is-locked"; stateTxt = "LOCKED"; }
+    else if (hoverId) { stateCls = "is-hover"; stateTxt = "hovering"; }
+    const champName = showId ? (_csvChampNameFromId(showId) || "?") : "-";
+    const meCls = isMe ? " is-me" : "";
     return `
-      <div class="${cellClasses}" title="${cell.champ}${pairTitle}">
-        ${rankBadge}
-        <div class="csv-duosyn-icon">${champImg(cell.champ_key)}</div>
-        <div class="csv-duosyn-name">${cell.champ}</div>
-        ${wrEl}
+      <div class="csv-allyroles-row ${stateCls}${meCls}">
+        <span class="csv-allyroles-role">${_CSV_ROLE_SHORT[pos] || pos}</span>
+        <div class="csv-allyroles-icon">${showId ? champImg(showId) : '<span class="csv-allyroles-icon-empty">?</span>'}</div>
+        <span class="csv-allyroles-name">${champName}</span>
+        <span class="csv-allyroles-state">${isMe ? "YOU" : stateTxt}</span>
       </div>`;
   };
-  // Pad rows to 4 cells so the grid keeps its 4-col geometry.
-  const padTo4 = (arr) => {
-    const out = arr.slice(0, 4);
-    while (out.length < 4) out.push(null);
-    return out;
-  };
-  const topCells = padTo4(topRow).map((c) => renderCell(c, "is-top")).join("");
-  const botCells = padTo4(botRow).map((c) => renderCell(c, "is-bottom")).join("");
-  const tipsHtml = payload.laning_tips
-    ? `<div class="csv-duosyn-tips">${payload.laning_tips}</div>`
-    : "";
-  return `
-    <div class="csv-duosyn-grid">
-      <div class="csv-duosyn-row-top">${topCells}</div>
-      <div class="csv-duosyn-row-bot">${botCells}</div>
-    </div>
-    ${tipsHtml}
-    <div class="csv-duosyn-source">source: 101.qq.com tier-200</div>`;
+  let rows = "";
+  let rendered = 0;
+  for (const pos of _CSV_ROLE_ORDER) {
+    if (byPos[pos]) { rows += rowFor(pos, byPos[pos]); rendered += 1; }
+  }
+  // ARAM / blind / unassigned-position queues: no assignedPosition, so
+  // fall back to one row per cell (no lane label).
+  if (rendered === 0) {
+    rows = team.map((cell, i) =>
+      rowFor("#" + (i + 1), cell)).join("");
+  } else {
+    // Append any extra unassigned cells below the lane rows.
+    rows += unassigned.map((cell, i) =>
+      rowFor("#" + (i + 1), cell)).join("");
+  }
+  return `<div class="csv-allyroles-grid">${rows}</div>`;
 }
 
 function _csvRenderPickBan(cs, myCid) {
@@ -3551,26 +3426,14 @@ function _csvRenderPickBan(cs, myCid) {
         <span class="csv-pb168-pct">${b.pct}%</span>
       </div>`;
   }).join("");
-  // Sub-panel 3: Item 199 Slice CD - duo-synergy panel (replaces
-  // the item-168 EXPLANATION strip). Polls /api/duo-synergy with the
-  // operator's current my_role + ally bot/sup lock+hover state and
-  // renders a 4x2 grid of champion icons. When both bot + sup are
-  // locked, a concise laning tip line lands below the grid (sourced
-  // from data/laning_tips_duo.json, operator-tunable). The mood
-  // toggle stays in cache-key (default=comfort) but no UI control
-  // surfaces here - that decision is item 168-locked.
-  const myRoleDuoSyn = _csvMyRoleForDuoSynergy(role);
-  const allyState = _csvAllyBotSupState(cs);
-  const duoSynData = _csvFetchDuoSynergy(
-    myRoleDuoSyn,
-    allyState.botLock,
-    allyState.botHover,
-    allyState.supLock,
-    allyState.supHover,
-    4,
-    () => _csvRenderPickBan(cs, myCid),
-  );
-  const duoSynHtml = _csvRenderDuoSynergyHtml(duoSynData, champImg);
+  // Sub-panel 3: item 213 (2026-05-28) - ally-picks-by-role panel.
+  // Replaces the prior 101.qq.com duo-synergy SUGGESTION grid (which
+  // was disconnected from the actual draft) with a LIVE mirror of the
+  // ally roster: one row per assigned lane showing which ally is on
+  // that role + the champion they locked / are hovering. Reads
+  // cs.my_team directly - no backend fetch needed, so it updates every
+  // champ-select tick as allies lock in.
+  const allyRolesHtml = _csvRenderAllyRolesHtml(cs, champImg);
   // Operator (2026-05-25 item 200 Slice D): PICK sub-panel renders into
   // the top-left card (#csv-picks-target inside .csv-card-allies). BAN +
   // DUO SYNERGY stay in #csv-pickban-body (row-2 pickban) with all the
@@ -3588,8 +3451,8 @@ function _csvRenderPickBan(cs, myCid) {
       <div class="csv-pb168-row">${banCells}</div>
     </div>
     <div class="csv-pb168-section csv-pb168-expl">
-      <div class="csv-pb168-head">DUO SYNERGY (101.qq.com)</div>
-      <div class="csv-pb168-expl-body">${duoSynHtml}</div>
+      <div class="csv-pb168-head">ALLY PICKS BY ROLE</div>
+      <div class="csv-pb168-expl-body">${allyRolesHtml}</div>
     </div>`;
 
   body.innerHTML = html;

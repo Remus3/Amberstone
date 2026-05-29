@@ -121,6 +121,27 @@ function _tierLabel(tier) {
   return "EVEN";
 }
 
+// item 213 (2026-05-28): plain-language one-liner the operator can act
+// on. Built from the team CC-chain totals (seconds of crowd control one
+// team can land on a single target). enemyChain / allyChain are the
+// load-bearing numbers; conditional = "if the setup condition is met".
+function _conditionalVerdict(allyChain, enemyChain) {
+  const a = +allyChain || 0;
+  const e = +enemyChain || 0;
+  if (e <= 0.05 && a <= 0.05) {
+    return "Neither team has conditional CC chains to set up.";
+  }
+  if (e > a + 0.3) {
+    return `Enemy out-chains you ${e.toFixed(1)}s vs ${a.toFixed(1)}s of `
+         + `conditional CC - consider Cleanse / QSS and do not group tight.`;
+  }
+  if (a > e + 0.3) {
+    return `You out-chain them ${a.toFixed(1)}s vs ${e.toFixed(1)}s - `
+         + `set up your conditional CC to lock a target in fights.`;
+  }
+  return `Even conditional CC: ${a.toFixed(1)}s you vs ${e.toFixed(1)}s enemy.`;
+}
+
 // Render the CC-conditional pressure chip into the provided element.
 // payload is the backend response (may be null on cold-load).
 export function renderCcConditionalPressure(blockEl, payload) {
@@ -146,28 +167,33 @@ export function renderCcConditionalPressure(blockEl, payload) {
   blockEl.hidden = false;
   blockEl.dataset.ccCondTier = tier;
 
-  const allyAvg = (+payload.ally_conditional_cc_s || 0).toFixed(1);
-  const enemyAvg = (+payload.enemy_conditional_cc_s || 0).toFixed(1);
-  const ratio = (+payload.ratio || 0).toFixed(2);
+  // item 213: the CONDITIONAL chain totals are the actionable numbers -
+  // "how many seconds of conditional CC can land on one target if the
+  // setup condition is met". Prefer the per-team chain seconds; fall
+  // back to the legacy per-champ avg fields if the route omits them.
+  const allyChain = (payload.ally_total_cc_seconds != null)
+    ? +payload.ally_total_cc_seconds
+    : +payload.ally_conditional_cc_s || 0;
+  const enemyChain = (payload.enemy_total_cc_seconds != null)
+    ? +payload.enemy_total_cc_seconds
+    : +payload.enemy_conditional_cc_s || 0;
   const tierLabel = _tierLabel(tier);
+  const verdict = _conditionalVerdict(allyChain, enemyChain);
 
   blockEl.innerHTML = (
     `<div class="cc-conditional-pressure-head">`
     + `<span class="cc-conditional-pressure-tier">${tierLabel}</span>`
-    + `<span>Conditional CC threat balance</span>`
+    + `<span>Conditional CC (if setup lands)</span>`
     + `</div>`
     + `<div class="cc-conditional-pressure-row">`
-    + `<span class="cc-conditional-pressure-row-label">Ally conditional CC avg</span>`
-    + `<span class="cc-conditional-pressure-row-value">${allyAvg}s</span>`
+    + `<span class="cc-conditional-pressure-row-label">Enemy can chain on one target</span>`
+    + `<span class="cc-conditional-pressure-row-value">${enemyChain.toFixed(1)}s</span>`
     + `</div>`
     + `<div class="cc-conditional-pressure-row">`
-    + `<span class="cc-conditional-pressure-row-label">Enemy conditional CC avg</span>`
-    + `<span class="cc-conditional-pressure-row-value">${enemyAvg}s</span>`
+    + `<span class="cc-conditional-pressure-row-label">You can chain on one target</span>`
+    + `<span class="cc-conditional-pressure-row-value">${allyChain.toFixed(1)}s</span>`
     + `</div>`
-    + `<div class="cc-conditional-pressure-ratio">`
-    + `<span class="cc-conditional-pressure-row-label">Ratio (ally / enemy)</span>`
-    + `<span class="cc-conditional-pressure-ratio-value">${ratio}x</span>`
-    + `</div>`
+    + `<div class="cc-conditional-pressure-verdict">${verdict}</div>`
   );
 }
 
