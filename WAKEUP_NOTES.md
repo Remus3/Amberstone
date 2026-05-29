@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-05-28 (dev UI: user builds page) - user-curated builds now surface in live champ-select chooser (ALL modes) (1 commit `a887c2b` pushed origin/main `50543b7..a887c2b`; non-frozen; RC restarted pid 11272 -> 9312)
+
+Operator: "starting on user builds page. user build for locked Caitlyn was not displayed in live champ select." Root cause: user builds (`coaches/sr_user_builds` -> `data/daemon_slayer/user_builds.json`) were orphaned from EVERY live chooser - `/api/loadout/list` -> `loadout_resolver.list_variants()` reads `champion_loadouts.json` only; `format_for_display()` was test-only; the old merge route `/api/sr-draft/profile` was deleted item 186.
+
+**Shipped `a887c2b`:** `dashboard/routes_loadout.py` `_serve_loadout_list_post` appends user builds as `userbuild_<id>` rows for ALL modes (operator: "available in other modes as well"); new `_resolve_user_build()` builds the rune+item+summoner trio; `_serve_loadout_apply_post` routes `userbuild_*` before the resolver (colon-free key dodges the item-178 `<variant>:<path>` savedChoice split). `champ_select.js` + `champ_select_view.css` get a sky-blue `.csv-build-badge-user` - no other JS change, existing render/click/apply wiring flows the row key. NEW `tests/test_loadout_user_builds_merge.py` 16 tests. Drive-by: `tests/test_csv_rune_push_on_selection_change.py` stale Jinx `sr-bruiser` path (dropped item 208) -> `auto-sr-primary-carry` (Press the Attack vs adc-crit Lethal Tempo; keystone still differs).
+
+**Verified:** 16/16 + 15/15 green; ruff + py_compile + node --check clean; RC pid 9312 alive reload_ok; live `/api/loadout/list` Caitlyn -> `userbuild_723d445b` "crit max" present sr/aram/arena, 6 item_ids resolved.
+
+**Carries forward (tomorrow-you):** (a) Minor runes (`minor_primary`/`minor_secondary`) are SAVED on the user-builds page but NOT pushed to LCU - `format_for_display` + `build_perk_ids` ignore them so the LCU page gets default minors. This is the natural NEXT user-builds-page item. (b) Visual capture of the rendered chooser row OWED - operator was mode=client (no live champ select). (c) `_csvMaybePushBuildsToLCU` caps the in-game item-shop dropdown at 4 sets; a user build can be crowded out (click-apply push is unaffected). Minor.
+
+---
+
 # 2026-05-28 (Home Recent-5 wrong-items bug) - item 211 SHIPPED: gameId-keyed ingest + backfill + Match-V5 recovery (3 commits pushed origin/main `4ff288f..1628a47`; non-frozen; RC restarted pid 16768 -> 11272; ADR-008 auto-served)
 
 Operator: "when on the home page, the recent 5 is always missing an item row for one of the cards - and eventually when the matches update : the items are on the wrong matches". Root cause = `dashboard/routes_last_match.py:122-125` `_serve_last_match_ingest` SELECTed `ORDER BY timestamp DESC LIMIT 1`. Race: Game-PC LCU agent POSTs ingest on EndOfGame BEFORE local performance_tracker.save_match writes the new row -> ingest stamped the PREVIOUS row's raw_data with the new game's lcu_match_detail (and items). New row then never received ingest -> items=[]. Visible live: row 1690 (Jinx 22:54:03) carried Caitlyn's gid 5569828374; row 1691 (Caitlyn 23:57:12) carried items=[].
@@ -52,36 +64,3 @@ Operator: "when on the home page, the recent 5 is always missing an item row for
 - (c) Item 207 phase watcher's WaitingForStats fire was the BSOD; item 209b corrects it. Live deployment now complete on Game-PC.
 - (d) Frozen-file grant USED only for `tools/bridge_watcher_actions.py`; NOT used for other frozen files.
 - (e) Operator queued for ranked SR at session end (lcu.phase=Matchmaking + mode_key=sr) - next champ select is the live verification of item 210.
-
----
-
-# 2026-05-27 (mid-game ranked SR Caitlyn+Lux duo) - item 208 SHIPPED: item-167 ADC pollution hot-fix 7 SR champs (`a814020`, pushed origin/main `b8a82fe..a814020`; non-frozen; data + tools only; no RC/DS restart; ADR-008 asset-hash auto-serves)
-
-Operator reported live mid-game: SR build chooser populating wrong items on Caitlyn (Trinity Force + Bastionbreaker + Umbral Glaive on ADC primary; same on Jinx). Root cause = item-167 `tools/champion_loadout_align.py` archetype scorer ranking bruiser/on-hit-hybrid components high for ranged ADCs in the `_score_item_for_archetype("carry", ...)` path. AskUserQuestion scope fork pinned per [[feedback_scope_decision_cadence]]: operator picked "All 10 SR ADCs now" -> swept all 10 item-167 coverage-gap champs, 4 came back CLEAN (Lux/MasterYi/Twitch/Vayne), 7 polluted -> hot-patched in-place.
-
-**Shipped (2 files / +392 / -259):**
-- `tools/hotfix_sr_adc_loadouts_item167.py` NEW (~140 LOC) - reusable atomic-write patch script with `path()` helper + per-champ 16.10.x meta build dict. Atomic tmp.write_text + os.replace; ensure_ascii=True.
-- `data/champion_loadouts.json` - 7 sr-collapsed variant payloads rewritten:
-  - Caitlyn: Crit PRIMARY Yun Tal/Berserker/IE/RFC/LDR/Runaan; Lethality Eclipse/Berserker/Opportunity/Serylda/EoN/LDR; Carry kept
-  - Ezreal: Manamune PRIMARY Manamune/Berserker/Trinity/LDR/Serylda/EoN
-  - Jinx: Crit PRIMARY Yun Tal/Berserker/IE/RFC/LDR/Runaan; On-Hit BorK/Berserker/Runaan/Wits End/LDR/PD; duplicate Bruiser dropped
-  - Kai'Sa: On-Hit PRIMARY BorK/Berserker/Runaan/Nashor/Riftmaker/LDR (Hail of Blades)
-  - Kayn: Rhaast(Red) PRIMARY Sundered Sky/Steelcaps/DD/Sterak/Shojin/GA; Shadow(Blue) Eclipse/Merc/EoN/Serylda/DD/Maw
-  - Pantheon: Lethality PRIMARY Eclipse/Merc/Black Cleaver/Sundered/Sterak/Maw
-  - Varus: Lethality PRIMARY Eclipse/Berserker/Opportunity/Serylda/EoN/LDR
-
-**Verified:** Live API /api/loadout/list POST returns new builds correctly for all 7; ADR-008 auto-serves data/*.json on next dashboard Ctrl+Shift+R; RC pid 16768 alive=True reload_ok=True mode=game throughout (operator stayed in-game). DS :8893 untouched. No tests added (pure data patch + non-test tool).
-
-**Don't-redo (tomorrow-you):**
-- The 4 CLEAN champs (Lux/MasterYi/Twitch/Vayne) do NOT need patching; their sr-collapsed paths already render proper ADC/mage meta. Do NOT re-pitch.
-- Pantheon Sup Roam path keeps Umbral Glaive INTENTIONALLY (ward-clear support tool, not bruiser pollution). The grep flagged it but it's legit.
-- `tools/champion_loadout_align.py` is the ROOT regression - the archetype scorer for `carry` ranks TF + Bastionbreaker high for ranged ADCs. Next patch regen via `tools/champion_loadout_align.py` will REPRODUCE this pollution unless the scorer is fixed first. Fix is in `core/build_order.py::_score_item_for_archetype` "carry" branch - add a ranged-ADC penalty for melee/bruiser items (TF Sheen + Bastionbreaker + Heartsteel + Umbral on ranged classifier).
-- Champion-specific meta builds are HAND-CURATED 16.10.x and will drift at next League patch. Re-audit at any DS engine bump that touches `data/champion_loadouts.json`.
-- ADR-008 auto-serves data/* on next dashboard load - do NOT add a restart_trigger.txt for data-only patches.
-
-**Carries forward:**
-- Item 207 carries ALL unchanged (LCU Phase Watcher live deployment to Game-PC still OWED at next operator-driven Game-PC reboot/install).
-- Item 206 carries ALL unchanged (DDragon 16.11.1 + DS 16.11.1 baseline).
-- All operator-gated decision-owed lane carries from items 134-207 unchanged.
-- **NEW carry:** `tools/champion_loadout_align.py` archetype scorer fix - add ranged-ADC penalty for TF/Bastionbreaker/Heartsteel/Umbral. Without this, next patch regen REPRODUCES the item-167 pollution and the 7 hand-fixes get clobbered.
-- **NEW carry:** Sweep `data/champion_loadouts.json` for any non-coverage-gap champion still carrying TF + Bastionbreaker on `_archetype="carry"` paths. This session only touched the 10 item-167 coverage-gap names; the same scorer may have polluted other ADCs (Sivir / Tristana / Xayah / Ashe / Draven / Lucian / Miss Fortune / Senna / Samira / Kog'Maw / Aphelios / Nilah etc.).
