@@ -96,7 +96,7 @@ def _serve_loadout_list_post(h, payload) -> None:
         # /api/loadout/apply routes them to _resolve_user_build instead of
         # champion_loadouts.json. Appended AFTER the curated rows so the
         # engine defaults stay the operator's eye-line; user builds sit
-        # below, experimental last.
+        # below. (item 213: the synthetic experimental row was removed.)
         try:
             from coaches.sr_user_builds import (
                 format_for_display as _ub_fmt,
@@ -132,58 +132,13 @@ def _serve_loadout_list_post(h, payload) -> None:
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
-# s210 v2: build LCU command payloads for the synthetic "experimental"
-# variant row in the build chooser. The frontend supplies a complete
-# override package (keystone+primary+secondary + item-id list +
-# adaptive summoners) - we skip the variant resolver entirely and
-# build rune_cmd / item_cmd / summ_cmd inline.
-def _build_experimental_resolved(champion: str, mode: str,
-                                  override_runes: dict,
-                                  override_items: list,
-                                  override_summ: list | None) -> dict:
-    from lcu.lcu_rune_writer import _TREES, build_perk_ids
-    keystone   = str(override_runes.get("keystone") or "")
-    primary    = str(override_runes.get("primary") or "")
-    secondary  = str(override_runes.get("secondary") or "")
-    is_aram    = (mode == "aram")
-    perk_ids   = build_perk_ids(keystone, primary, secondary, is_aram)
-    primary_id = _TREES.get(primary, 0)
-    sub_id     = _TREES.get(secondary, 0)
-    rune_cmd = None
-    if perk_ids and primary_id and sub_id:
-        rune_cmd = {
-            "cmd":        "apply_runes",
-            "page_name":  f"RC Experimental - {champion}",
-            "primary_id": primary_id,
-            "sub_id":     sub_id,
-            "perk_ids":   perk_ids,
-        }
-    items_str = [str(x) for x in (override_items or []) if x]
-    item_cmd = None
-    if items_str:
-        item_cmd = {
-            "cmd":      "apply_item_set",
-            "set_name": f"RC Experimental - {champion}",
-            "blocks":   [{
-                "type":  "DS engine · top picks",
-                "items": [{"id": iid, "count": 1} for iid in items_str],
-            }],
-        }
-    summ_cmd = None
-    if override_summ and len(override_summ) == 2:
-        summ_cmd = {"cmd": "set_summoners",
-                    "d": int(override_summ[0]),
-                    "f": int(override_summ[1])}
-    return {
-        "ok":         True,
-        "mode":       mode,
-        "label":      f"Experimental ({champion})",
-        "rune_cmd":   rune_cmd,
-        "item_cmd":   item_cmd,
-        "summ_cmd":   summ_cmd,
-        "raw_items":  items_str,
-        "synthetic":  True,
-    }
+# item 213 (2026-05-28): the synthetic auto-build chooser row was
+# removed from the champ-select frontend (all champs + all modes). Its
+# inline override-package builder + the dedicated "RC ..." page-name
+# path are gone with it. The apply route now routes only userbuild_* +
+# the variant resolver. The DS-vs-enemy-comp save+push uses the standard
+# apply_item_sets_batch contract from the frontend (no bespoke backend
+# resolver needed).
 
 
 # 2026-05-28: operator user-curated builds (coaches/sr_user_builds) are
@@ -296,23 +251,10 @@ def _serve_loadout_apply_post(h, payload) -> None:
         if not (isinstance(override_summ, list) and len(override_summ) == 2
                 and all(isinstance(x, int) for x in override_summ)):
             override_summ = None
-        # s210 v2: optional override of runes + items for the experimental
-        # build chooser row. When both are provided, the resolver path is
-        # bypassed entirely - we build the LCU command payloads inline
-        # from the operator-supplied keystone+primary+secondary +
-        # item-id list. Champion arg is still required (used in page
-        # naming + as a sanity check); variant arg can be the synthetic
-        # "experimental" key that doesn't exist in champion_loadouts.json.
-        override_runes = payload.get("override_runes") or None
-        if not (isinstance(override_runes, dict)
-                and override_runes.get("keystone")
-                and override_runes.get("primary")
-                and override_runes.get("secondary")):
-            override_runes = None
-        override_items = payload.get("override_items")
-        if not (isinstance(override_items, list) and override_items
-                and all(isinstance(x, (int, str)) for x in override_items)):
-            override_items = None
+        # item 213 (2026-05-28): the experimental override_runes +
+        # override_items inline-build path was removed with the
+        # experimental chooser row. The apply route now routes only
+        # userbuild_* + the variant resolver.
         if not champ or not variant:
             h._send(400, b'{"error":"champion+variant required"}', "application/json"); return
         # 2026-05-28: operator user-curated build. Namespaced
@@ -323,11 +265,6 @@ def _serve_loadout_apply_post(h, payload) -> None:
             resolved = _resolve_user_build(champ, variant, mode, override_summ)
             if not resolved.get("ok"):
                 h._send(404, json.dumps(resolved).encode(), "application/json"); return
-        # s210 v2: experimental path - build cmds inline, skip resolver.
-        elif override_runes and override_items:
-            resolved = _build_experimental_resolved(
-                champ, mode, override_runes, override_items, override_summ,
-            )
         else:
             resolved = resolve(champ, variant, mode)
             if not resolved.get("ok"):
