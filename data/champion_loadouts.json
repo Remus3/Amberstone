@@ -1369,7 +1369,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Kraken Slayer"
               ],
               "runes": {
@@ -1409,9 +1408,7 @@
               "key": "auto-arena-secondary-assassin",
               "label": "Assassin (sec)",
               "items": [
-                "Divine Sunderer",
                 "The Golden Spatula",
-                "Sundered Sky",
                 "Galeforce"
               ],
               "runes": {
@@ -3278,12 +3275,7 @@
               "key": "sr-bruiser",
               "label": "Bruiser",
               "items": [
-                "Warmog's Armor",
-                "Mercury's Treads",
-                "Sterak's Gage",
-                "Jak'Sho, The Protean",
-                "Kaenic Rookern",
-                "Spirit Visage"
+                "Mercury's Treads"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -3323,12 +3315,7 @@
               "key": "auto-sr-secondary-bruiser",
               "label": "Bruiser",
               "items": [
-                "Warmog's Armor",
-                "Mercury's Treads",
-                "Sterak's Gage",
-                "Jak'Sho, The Protean",
-                "Kaenic Rookern",
-                "Spirit Visage"
+                "Mercury's Treads"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -3513,8 +3500,6 @@
               "key": "auto-arena-flavor-assassin",
               "label": "Assassin (flav)",
               "items": [
-                "Divine Sunderer",
-                "Sundered Sky",
                 "The Golden Spatula"
               ],
               "runes": {
@@ -3557,7 +3542,6 @@
               "label": "Bruiser (sec)",
               "items": [
                 "Void Immolation",
-                "Warmog's Armor",
                 "Shield of Molten Stone",
                 "Cloak of Starry Night",
                 "Lightning Rod",
@@ -3757,7 +3741,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -3801,7 +3784,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -3867,7 +3849,6 @@
               "label": "Assassin (flav)",
               "items": [
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Wooglet's Witchcap",
                 "Twilight's Edge"
               ],
@@ -4943,8 +4924,7 @@
               "items": [
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
-                "Innervating Locket",
-                "Divine Sunderer"
+                "Innervating Locket"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -7268,12 +7248,12 @@
             21
           ],
           "items": [
-            "Trinity Force",
-            "Mercury's Treads",
+            "Blade of The Ruined King",
+            "Berserker's Greaves",
+            "Runaan's Hurricane",
+            "Golden Spatula",
             "Lord Dominik's Regards",
-            "Bastionbreaker",
-            "Umbral Glaive",
-            "Runaan's Hurricane"
+            "Infinity Edge"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -7281,12 +7261,12 @@
               "key": "lethality-poke",
               "label": "Leth Poke",
               "items": [
-                "Trinity Force",
-                "Mercury's Treads",
+                "Blade of The Ruined King",
+                "Berserker's Greaves",
+                "Runaan's Hurricane",
+                "Golden Spatula",
                 "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Runaan's Hurricane"
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Fleet Footwork",
@@ -7304,7 +7284,6 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Berserker's Greaves",
                 "Golden Spatula",
                 "Stormrazor",
@@ -7348,7 +7327,6 @@
               "key": "auto-aram-primary-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Berserker's Greaves",
                 "Golden Spatula",
                 "Stormrazor",
@@ -7385,9 +7363,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Trinity Force",
+            "Runaan's Hurricane",
             "Hamstringer",
-            "Statikk Shiv"
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -7396,9 +7376,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Statikk Shiv"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -7416,10 +7398,8 @@
               "key": "auto-arena-flavor-assassin",
               "label": "Assassin (flav)",
               "items": [
-                "Divine Sunderer",
                 "The Golden Spatula",
-                "Twilight's Edge",
-                "Sundered Sky"
+                "Twilight's Edge"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -7438,9 +7418,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Statikk Shiv"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -7459,9 +7441,7 @@
               "label": "Bruiser (sec)",
               "items": [
                 "The Golden Spatula",
-                "Void Immolation",
-                "Trinity Force",
-                "Heartsteel"
+                "Void Immolation"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -8568,9 +8548,7 @@
             "Bloodthirster",
             "Mercury's Treads",
             "Hextech Gunblade",
-            "Lord Dominik's Regards",
-            "Bastionbreaker",
-            "Umbral Glaive"
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -8581,9 +8559,7 @@
                 "Bloodthirster",
                 "Mercury's Treads",
                 "Hextech Gunblade",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive"
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "First Strike",
@@ -8604,9 +8580,7 @@
                 "Bloodthirster",
                 "Mercury's Treads",
                 "Hextech Gunblade",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive"
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -8649,9 +8623,7 @@
                 "Bloodthirster",
                 "Mercury's Treads",
                 "Hextech Gunblade",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive"
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -8685,9 +8657,7 @@
             "Bloodthirster",
             "Mercury's Treads",
             "Hextech Gunblade",
-            "Lord Dominik's Regards",
-            "Bastionbreaker",
-            "Umbral Glaive"
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -8698,9 +8668,7 @@
                 "Bloodthirster",
                 "Mercury's Treads",
                 "Hextech Gunblade",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive"
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "First Strike",
@@ -8835,7 +8803,6 @@
                 "The Golden Spatula",
                 "Wooglet's Witchcap",
                 "Twilight's Edge",
-                "Divine Sunderer",
                 "Innervating Locket"
               ],
               "runes": {
@@ -10022,7 +9989,6 @@
                 "Mercury's Treads",
                 "Runaan's Hurricane",
                 "Bloodthirster",
-                "Trinity Force",
                 "Lord Dominik's Regards"
               ],
               "runes": {
@@ -10067,7 +10033,6 @@
                 "Mercury's Treads",
                 "Runaan's Hurricane",
                 "Bloodthirster",
-                "Trinity Force",
                 "Lord Dominik's Regards"
               ],
               "runes": {
@@ -10135,7 +10100,6 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Berserker's Greaves",
                 "Golden Spatula",
                 "Stormrazor",
@@ -10179,7 +10143,6 @@
               "key": "auto-aram-primary-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Berserker's Greaves",
                 "Golden Spatula",
                 "Stormrazor",
@@ -10216,9 +10179,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Trinity Force",
+            "Runaan's Hurricane",
             "Hamstringer",
-            "Kraken Slayer"
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -10227,9 +10192,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -10247,10 +10214,8 @@
               "key": "auto-arena-flavor-assassin",
               "label": "Assassin (flav)",
               "items": [
-                "Divine Sunderer",
                 "The Golden Spatula",
-                "Galeforce",
-                "Sundered Sky"
+                "Galeforce"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -10269,9 +10234,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -10290,9 +10257,7 @@
               "label": "Bruiser (sec)",
               "items": [
                 "The Golden Spatula",
-                "Void Immolation",
-                "Trinity Force",
-                "Heartsteel"
+                "Void Immolation"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -11397,7 +11362,6 @@
           "items": [
             "Manamune",
             "Berserker's Greaves",
-            "Trinity Force",
             "Lord Dominik's Regards",
             "Serylda's Grudge",
             "Edge of Night"
@@ -11410,7 +11374,6 @@
               "items": [
                 "Manamune",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Lord Dominik's Regards",
                 "Serylda's Grudge",
                 "Edge of Night"
@@ -11455,7 +11418,6 @@
               "items": [
                 "Manamune",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Muramana",
                 "Serylda's Grudge",
                 "Edge of Night"
@@ -11548,11 +11510,11 @@
               "label": "Manamune",
               "items": [
                 "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Heartsteel",
+                "Berserker's Greaves",
                 "Runaan's Hurricane",
-                "Sterak's Gage",
-                "Overlord's Bloodmail"
+                "Golden Spatula",
+                "Lord Dominik's Regards",
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -11640,8 +11602,7 @@
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
                 "Twilight's Edge",
-                "Innervating Locket",
-                "Divine Sunderer"
+                "Innervating Locket"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -18797,8 +18758,7 @@
             "Berserker's Greaves",
             "Runaan's Hurricane",
             "Lord Dominik's Regards",
-            "Infinity Edge",
-            "Bastionbreaker"
+            "Infinity Edge"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -18810,8 +18770,7 @@
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
                 "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Bastionbreaker"
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Fleet Footwork",
@@ -18831,8 +18790,6 @@
               "items": [
                 "Lord Dominik's Regards",
                 "Mercury's Treads",
-                "Bastionbreaker",
-                "Umbral Glaive",
                 "Axiom Arc",
                 "Rabadon's Deathcap"
               ],
@@ -18855,8 +18812,7 @@
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
                 "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Bastionbreaker"
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -18876,8 +18832,6 @@
               "items": [
                 "Lord Dominik's Regards",
                 "Mercury's Treads",
-                "Bastionbreaker",
-                "Umbral Glaive",
                 "Axiom Arc",
                 "Rabadon's Deathcap"
               ],
@@ -18914,8 +18868,7 @@
             "Berserker's Greaves",
             "Runaan's Hurricane",
             "Lord Dominik's Regards",
-            "Infinity Edge",
-            "Bastionbreaker"
+            "Infinity Edge"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -18927,8 +18880,7 @@
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
                 "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Bastionbreaker"
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Fleet Footwork",
@@ -18950,8 +18902,7 @@
                 "Berserker's Greaves",
                 "Stormrazor",
                 "Infinity Edge",
-                "Golden Spatula",
-                "Heartsteel"
+                "Golden Spatula"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -18994,8 +18945,7 @@
                 "Berserker's Greaves",
                 "Stormrazor",
                 "Infinity Edge",
-                "Golden Spatula",
-                "Heartsteel"
+                "Golden Spatula"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19026,10 +18976,12 @@
             7
           ],
           "items": [
+            "Blade of The Ruined King",
             "The Golden Spatula",
-            "Divine Sunderer",
-            "Heartsteel",
-            "Void Immolation"
+            "Runaan's Hurricane",
+            "Lord Dominik's Regards",
+            "Infinity Edge",
+            "Prowler's Claw"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -19037,10 +18989,12 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
+                "Blade of The Ruined King",
                 "The Golden Spatula",
-                "Divine Sunderer",
-                "Heartsteel",
-                "Void Immolation"
+                "Runaan's Hurricane",
+                "Lord Dominik's Regards",
+                "Infinity Edge",
+                "Prowler's Claw"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19060,7 +19014,6 @@
               "items": [
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Twilight's Edge"
               ],
               "runes": {
@@ -19079,10 +19032,12 @@
               "key": "auto-arena-primary-carry",
               "label": "Carry",
               "items": [
+                "Blade of The Ruined King",
                 "The Golden Spatula",
-                "Divine Sunderer",
-                "Heartsteel",
-                "Void Immolation"
+                "Runaan's Hurricane",
+                "Lord Dominik's Regards",
+                "Infinity Edge",
+                "Prowler's Claw"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19239,12 +19194,12 @@
             21
           ],
           "items": [
-            "Blade of The Ruined King",
+            "Void Immolation",
             "Berserker's Greaves",
-            "Trinity Force",
+            "Blade of The Ruined King",
+            "Essence Reaver",
             "Lord Dominik's Regards",
-            "Runaan's Hurricane",
-            "Bastionbreaker"
+            "Runaan's Hurricane"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -19252,12 +19207,12 @@
               "key": "adc-crit",
               "label": "Crit",
               "items": [
-                "Blade of The Ruined King",
+                "Void Immolation",
                 "Berserker's Greaves",
-                "Trinity Force",
+                "Blade of The Ruined King",
+                "Essence Reaver",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
-                "Bastionbreaker"
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19277,10 +19232,10 @@
               "items": [
                 "Void Immolation",
                 "Berserker's Greaves",
-                "Trinity Force",
-                "Heartsteel",
-                "Stormrazor",
-                "Statikk Shiv"
+                "Blade of The Ruined King",
+                "Essence Reaver",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19301,8 +19256,7 @@
                 "Berserker's Greaves",
                 "Wit's End",
                 "Guinsoo's Rageblade",
-                "Terminus",
-                "Sterak's Gage"
+                "Terminus"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19321,10 +19275,10 @@
               "items": [
                 "Void Immolation",
                 "Berserker's Greaves",
-                "Trinity Force",
-                "Heartsteel",
-                "Stormrazor",
-                "Statikk Shiv"
+                "Blade of The Ruined King",
+                "Essence Reaver",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19355,10 +19309,12 @@
             7
           ],
           "items": [
-            "The Golden Spatula",
             "Void Immolation",
-            "Divine Sunderer",
-            "Heartsteel"
+            "The Golden Spatula",
+            "Runaan's Hurricane",
+            "Essence Reaver",
+            "Lord Dominik's Regards",
+            "Prowler's Claw"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -19366,10 +19322,12 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "The Golden Spatula",
                 "Void Immolation",
-                "Divine Sunderer",
-                "Heartsteel"
+                "The Golden Spatula",
+                "Runaan's Hurricane",
+                "Essence Reaver",
+                "Lord Dominik's Regards",
+                "Prowler's Claw"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19388,7 +19346,6 @@
               "label": "Assassin (flav)",
               "items": [
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Wooglet's Witchcap",
                 "Twilight's Edge"
               ],
@@ -19408,10 +19365,12 @@
               "key": "auto-arena-primary-carry",
               "label": "Carry",
               "items": [
-                "The Golden Spatula",
                 "Void Immolation",
-                "Divine Sunderer",
-                "Heartsteel"
+                "The Golden Spatula",
+                "Runaan's Hurricane",
+                "Essence Reaver",
+                "Lord Dominik's Regards",
+                "Prowler's Claw"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19430,9 +19389,7 @@
               "label": "Bruiser (sec)",
               "items": [
                 "Void Immolation",
-                "The Golden Spatula",
-                "Divine Sunderer",
-                "Heartsteel"
+                "The Golden Spatula"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -19834,7 +19791,6 @@
             "Berserker's Greaves",
             "Runaan's Hurricane",
             "Nashor's Tooth",
-            "Riftmaker",
             "Lord Dominik's Regards"
           ],
           "_collapsed": true,
@@ -19847,7 +19803,6 @@
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
                 "Nashor's Tooth",
-                "Riftmaker",
                 "Lord Dominik's Regards"
               ],
               "runes": {
@@ -19926,8 +19881,6 @@
             "Bloodthirster",
             "Mercury's Treads",
             "Lord Dominik's Regards",
-            "Bastionbreaker",
-            "Umbral Glaive",
             "Axiom Arc"
           ],
           "_collapsed": true,
@@ -19939,8 +19892,6 @@
                 "Bloodthirster",
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
                 "Axiom Arc"
               ],
               "runes": {
@@ -19985,8 +19936,7 @@
                 "Berserker's Greaves",
                 "Wit's End",
                 "Guinsoo's Rageblade",
-                "Terminus",
-                "Sterak's Gage"
+                "Terminus"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -20017,9 +19967,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Trinity Force",
-            "Kraken Slayer",
-            "Hamstringer"
+            "Runaan's Hurricane",
+            "Hamstringer",
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -20028,9 +19980,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
-                "Kraken Slayer",
-                "Hamstringer"
+                "Runaan's Hurricane",
+                "Hamstringer",
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -20049,7 +20003,6 @@
               "label": "Assassin (flav)",
               "items": [
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Twilight's Edge",
                 "Wooglet's Witchcap"
               ],
@@ -20070,9 +20023,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
-                "Kraken Slayer",
-                "Hamstringer"
+                "Runaan's Hurricane",
+                "Hamstringer",
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -20291,7 +20246,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -20335,7 +20289,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -20402,9 +20355,7 @@
               "key": "auto-arena-flavor-assassin",
               "label": "Assassin (flav)",
               "items": [
-                "Divine Sunderer",
                 "The Golden Spatula",
-                "Sundered Sky",
                 "Galeforce"
               ],
               "runes": {
@@ -20447,7 +20398,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Hamstringer"
               ],
               "runes": {
@@ -23468,7 +23418,6 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Berserker's Greaves",
                 "Golden Spatula",
                 "Stormrazor",
@@ -23512,7 +23461,6 @@
               "key": "auto-aram-primary-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Berserker's Greaves",
                 "Golden Spatula",
                 "Stormrazor",
@@ -23549,9 +23497,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Trinity Force",
+            "Runaan's Hurricane",
             "Hamstringer",
-            "Kraken Slayer"
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -23560,9 +23510,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -23580,9 +23532,7 @@
               "key": "auto-arena-flavor-assassin",
               "label": "Assassin (flav)",
               "items": [
-                "Divine Sunderer",
                 "The Golden Spatula",
-                "Sundered Sky",
                 "Galeforce"
               ],
               "runes": {
@@ -23602,9 +23552,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -23623,9 +23575,7 @@
               "label": "Bruiser (sec)",
               "items": [
                 "The Golden Spatula",
-                "Void Immolation",
-                "Trinity Force",
-                "Heartsteel"
+                "Void Immolation"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -24197,7 +24147,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
@@ -24219,7 +24168,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
@@ -24254,9 +24202,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Trinity Force",
+            "Runaan's Hurricane",
             "Hamstringer",
-            "Kraken Slayer"
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -24265,9 +24215,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -24287,8 +24239,7 @@
               "items": [
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
-                "Innervating Locket",
-                "Divine Sunderer"
+                "Innervating Locket"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -24307,9 +24258,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -26187,12 +26140,9 @@
               "key": "sr-assassin",
               "label": "Assassin",
               "items": [
-                "Trinity Force",
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
-                "Blade of The Ruined King",
-                "Bastionbreaker",
-                "Umbral Glaive"
+                "Blade of The Ruined King"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -26232,12 +26182,9 @@
               "key": "auto-sr-secondary-assassin",
               "label": "Assassin",
               "items": [
-                "Trinity Force",
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
-                "Blade of The Ruined King",
-                "Bastionbreaker",
-                "Umbral Glaive"
+                "Blade of The Ruined King"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -26306,7 +26253,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
@@ -26350,7 +26296,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
@@ -26385,9 +26330,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Trinity Force",
+            "Runaan's Hurricane",
             "Hamstringer",
-            "Kraken Slayer"
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -26396,9 +26343,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -26418,7 +26367,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Hamstringer"
               ],
               "runes": {
@@ -26438,9 +26386,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -26460,7 +26410,6 @@
               "items": [
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Twilight's Edge"
               ],
               "runes": {
@@ -29339,8 +29288,7 @@
                 "Mercury's Treads",
                 "Mejai's Soulstealer",
                 "Hextech Gunblade",
-                "Lord Dominik's Regards",
-                "Bastionbreaker"
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -29384,8 +29332,7 @@
                 "Mercury's Treads",
                 "Mejai's Soulstealer",
                 "Hextech Gunblade",
-                "Lord Dominik's Regards",
-                "Bastionbreaker"
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -29455,7 +29402,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -29499,7 +29445,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -29568,8 +29513,7 @@
                 "The Golden Spatula",
                 "Twilight's Edge",
                 "Innervating Locket",
-                "Hextech Gunblade",
-                "Divine Sunderer"
+                "Hextech Gunblade"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -36025,8 +35969,7 @@
             "Mercury's Treads",
             "Essence Reaver",
             "Lord Dominik's Regards",
-            "Runaan's Hurricane",
-            "Bastionbreaker"
+            "Runaan's Hurricane"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -36038,8 +35981,7 @@
                 "Mercury's Treads",
                 "Essence Reaver",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
-                "Bastionbreaker"
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Press the Attack",
@@ -36061,8 +36003,7 @@
                 "Mercury's Treads",
                 "Essence Reaver",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
-                "Bastionbreaker"
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -36106,8 +36047,7 @@
                 "Mercury's Treads",
                 "Essence Reaver",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
-                "Bastionbreaker"
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -36142,8 +36082,7 @@
             "Mercury's Treads",
             "Essence Reaver",
             "Lord Dominik's Regards",
-            "Runaan's Hurricane",
-            "Bastionbreaker"
+            "Runaan's Hurricane"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -36155,8 +36094,7 @@
                 "Mercury's Treads",
                 "Essence Reaver",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
-                "Bastionbreaker"
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Press the Attack",
@@ -36176,7 +36114,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
@@ -36220,7 +36157,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
@@ -36288,7 +36224,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Kraken Slayer"
               ],
               "runes": {
@@ -36328,9 +36263,7 @@
               "key": "auto-arena-secondary-assassin",
               "label": "Assassin (sec)",
               "items": [
-                "Divine Sunderer",
                 "The Golden Spatula",
-                "Sundered Sky",
                 "Twilight's Edge"
               ],
               "runes": {
@@ -39959,8 +39892,6 @@
                 "Infinity Edge",
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
                 "The Collector"
               ],
               "runes": {
@@ -40004,8 +39935,6 @@
                 "Infinity Edge",
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
                 "The Collector"
               ],
               "runes": {
@@ -40073,12 +40002,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
-                "Berserker's Greaves",
-                "Stormrazor",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Berserker's Greaves",
+                "Blade of The Ruined King",
+                "Runaan's Hurricane",
+                "Golden Spatula",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -40117,12 +40046,12 @@
               "key": "auto-aram-primary-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
-                "Berserker's Greaves",
-                "Stormrazor",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Berserker's Greaves",
+                "Blade of The Ruined King",
+                "Runaan's Hurricane",
+                "Golden Spatula",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -40153,10 +40082,12 @@
             7
           ],
           "items": [
+            "Void Immolation",
             "The Golden Spatula",
-            "Trinity Force",
-            "Heartsteel",
-            "Void Immolation"
+            "Runaan's Hurricane",
+            "Hamstringer",
+            "Lord Dominik's Regards",
+            "Prowler's Claw"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -40164,10 +40095,12 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
+                "Void Immolation",
                 "The Golden Spatula",
-                "Trinity Force",
-                "Heartsteel",
-                "Void Immolation"
+                "Runaan's Hurricane",
+                "Hamstringer",
+                "Lord Dominik's Regards",
+                "Prowler's Claw"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -40186,9 +40119,7 @@
               "label": "Bruiser (flav)",
               "items": [
                 "The Golden Spatula",
-                "Void Immolation",
-                "Trinity Force",
-                "Heartsteel"
+                "Void Immolation"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -40206,10 +40137,12 @@
               "key": "auto-arena-primary-carry",
               "label": "Carry",
               "items": [
+                "Void Immolation",
                 "The Golden Spatula",
-                "Trinity Force",
-                "Heartsteel",
-                "Void Immolation"
+                "Runaan's Hurricane",
+                "Hamstringer",
+                "Lord Dominik's Regards",
+                "Prowler's Claw"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -40228,7 +40161,6 @@
               "label": "Assassin (sec)",
               "items": [
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Galeforce",
                 "Bloodthirster"
               ],
@@ -40902,7 +40834,6 @@
                 "The Golden Spatula",
                 "Twilight's Edge",
                 "Bloodthirster",
-                "Ravenous Hydra",
                 "Hemomancer's Helm",
                 "Manamune"
               ],
@@ -40946,10 +40877,11 @@
               "label": "Carry (sec)",
               "items": [
                 "The Golden Spatula",
-                "Statikk Shiv",
-                "Essence Reaver",
-                "Kraken Slayer",
-                "Heartsteel"
+                "Blade of The Ruined King",
+                "Runaan's Hurricane",
+                "Hamstringer",
+                "Lord Dominik's Regards",
+                "Prowler's Claw"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -43630,7 +43562,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Kraken Slayer"
               ],
@@ -43674,7 +43605,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Kraken Slayer"
               ],
@@ -43708,10 +43638,11 @@
           ],
           "items": [
             "The Golden Spatula",
+            "Runaan's Hurricane",
             "Hamstringer",
-            "Kraken Slayer",
-            "Trinity Force",
-            "Galeforce"
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -43720,10 +43651,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer",
-                "Trinity Force",
-                "Galeforce"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -43742,7 +43674,6 @@
               "label": "Assassin (flav)",
               "items": [
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Wooglet's Witchcap",
                 "Twilight's Edge"
               ],
@@ -43763,10 +43694,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer",
-                "Trinity Force",
-                "Galeforce"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -43786,7 +43718,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer"
               ],
@@ -44225,9 +44156,7 @@
                 "Bloodthirster",
                 "Mercury's Treads",
                 "Infinity Edge",
-                "Umbral Glaive",
-                "Lord Dominik's Regards",
-                "Bastionbreaker"
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -44270,9 +44199,7 @@
                 "Bloodthirster",
                 "Mercury's Treads",
                 "Infinity Edge",
-                "Umbral Glaive",
-                "Lord Dominik's Regards",
-                "Bastionbreaker"
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -44365,8 +44292,7 @@
                 "Berserker's Greaves",
                 "Wit's End",
                 "Guinsoo's Rageblade",
-                "Terminus",
-                "Sterak's Gage"
+                "Terminus"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -44453,8 +44379,7 @@
               "items": [
                 "The Golden Spatula",
                 "Wooglet's Witchcap",
-                "Twilight's Edge",
-                "Divine Sunderer"
+                "Twilight's Edge"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -44497,7 +44422,6 @@
                 "Twilight's Edge",
                 "Wooglet's Witchcap",
                 "Bloodthirster",
-                "Ravenous Hydra",
                 "Hemomancer's Helm"
               ],
               "runes": {
@@ -47775,8 +47699,7 @@
             "Mercury's Treads",
             "Rabadon's Deathcap",
             "Shadowflame",
-            "Stormsurge",
-            "Riftmaker"
+            "Stormsurge"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -47788,8 +47711,7 @@
                 "Mercury's Treads",
                 "Rabadon's Deathcap",
                 "Shadowflame",
-                "Stormsurge",
-                "Riftmaker"
+                "Stormsurge"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -47811,8 +47733,7 @@
                 "Mercury's Treads",
                 "Rabadon's Deathcap",
                 "Shadowflame",
-                "Stormsurge",
-                "Riftmaker"
+                "Stormsurge"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -47856,8 +47777,7 @@
                 "Mercury's Treads",
                 "Rabadon's Deathcap",
                 "Shadowflame",
-                "Stormsurge",
-                "Riftmaker"
+                "Stormsurge"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -48040,7 +47960,6 @@
               "items": [
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Innervating Locket"
               ],
               "runes": {
@@ -48085,7 +48004,6 @@
                 "Innervating Locket",
                 "The Golden Spatula",
                 "Demonic Embrace",
-                "Riftmaker",
                 "Everfrost"
               ],
               "runes": {
@@ -48528,7 +48446,6 @@
                 "Mercury's Treads",
                 "Infinity Edge",
                 "Lord Dominik's Regards",
-                "Bastionbreaker",
                 "Runaan's Hurricane"
               ],
               "runes": {
@@ -48573,7 +48490,6 @@
                 "Mercury's Treads",
                 "Infinity Edge",
                 "Lord Dominik's Regards",
-                "Bastionbreaker",
                 "Runaan's Hurricane"
               ],
               "runes": {
@@ -48667,8 +48583,7 @@
                 "Berserker's Greaves",
                 "Wit's End",
                 "Guinsoo's Rageblade",
-                "Terminus",
-                "Sterak's Gage"
+                "Terminus"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -48755,7 +48670,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Kraken Slayer"
               ],
               "runes": {
@@ -48798,7 +48712,6 @@
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
                 "Twilight's Edge",
-                "Divine Sunderer",
                 "Innervating Locket"
               ],
               "runes": {
@@ -49580,8 +49493,7 @@
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
                 "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Bastionbreaker"
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -49625,8 +49537,7 @@
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
                 "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Bastionbreaker"
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -49814,8 +49725,7 @@
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
                 "Innervating Locket",
-                "Twilight's Edge",
-                "Divine Sunderer"
+                "Twilight's Edge"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -49856,10 +49766,12 @@
               "key": "auto-arena-secondary-carry",
               "label": "Carry (sec)",
               "items": [
+                "Void Immolation",
                 "The Golden Spatula",
-                "Divine Sunderer",
-                "Heartsteel",
-                "Void Immolation"
+                "Runaan's Hurricane",
+                "Infinity Edge",
+                "Lord Dominik's Regards",
+                "Prowler's Claw"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -50032,7 +49944,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -50076,7 +49987,6 @@
                 "Golden Spatula",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -50145,7 +50055,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer"
               ],
@@ -50189,7 +50098,6 @@
               "items": [
                 "Wooglet's Witchcap",
                 "The Golden Spatula",
-                "Divine Sunderer",
                 "Innervating Locket"
               ],
               "runes": {
@@ -51023,12 +50931,12 @@
             21
           ],
           "items": [
-            "Trinity Force",
-            "Mercury's Treads",
-            "Lord Dominik's Regards",
             "Blade of The Ruined King",
-            "Bastionbreaker",
-            "Runaan's Hurricane"
+            "Berserker's Greaves",
+            "Runaan's Hurricane",
+            "Golden Spatula",
+            "Lord Dominik's Regards",
+            "Yun Tal Wildarrows"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -51036,12 +50944,12 @@
               "key": "lethality",
               "label": "Lethality",
               "items": [
-                "Trinity Force",
-                "Mercury's Treads",
-                "Lord Dominik's Regards",
                 "Blade of The Ruined King",
-                "Bastionbreaker",
-                "Runaan's Hurricane"
+                "Berserker's Greaves",
+                "Runaan's Hurricane",
+                "Golden Spatula",
+                "Lord Dominik's Regards",
+                "Yun Tal Wildarrows"
               ],
               "runes": {
                 "keystone": "Fleet Footwork",
@@ -51061,7 +50969,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
@@ -51105,7 +51012,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
@@ -51140,9 +51046,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Trinity Force",
+            "Runaan's Hurricane",
             "Hamstringer",
-            "Kraken Slayer"
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -51151,9 +51059,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -51173,7 +51083,6 @@
               "items": [
                 "The Golden Spatula",
                 "Wooglet's Witchcap",
-                "Divine Sunderer",
                 "Twilight's Edge"
               ],
               "runes": {
@@ -51193,9 +51102,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -51217,7 +51128,6 @@
                 "Twilight's Edge",
                 "Wooglet's Witchcap",
                 "Bloodthirster",
-                "Ravenous Hydra",
                 "Hemomancer's Helm"
               ],
               "runes": {
@@ -51445,10 +51355,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Trinity Force",
+            "Runaan's Hurricane",
             "Hamstringer",
-            "Kraken Slayer",
-            "Galeforce"
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -51457,10 +51368,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer",
-                "Galeforce"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -51480,7 +51392,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer"
               ],
@@ -51501,10 +51412,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Trinity Force",
+                "Runaan's Hurricane",
                 "Hamstringer",
-                "Kraken Slayer",
-                "Galeforce"
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -51522,9 +51434,7 @@
               "key": "auto-arena-secondary-assassin",
               "label": "Assassin (sec)",
               "items": [
-                "Divine Sunderer",
                 "The Golden Spatula",
-                "Sundered Sky",
                 "Twilight's Edge"
               ],
               "runes": {
@@ -55277,7 +55187,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
@@ -55321,7 +55230,6 @@
               "items": [
                 "Golden Spatula",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Stormrazor",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
@@ -55387,9 +55295,7 @@
               "key": "auto-arena-flavor-assassin",
               "label": "Assassin (flav)",
               "items": [
-                "Divine Sunderer",
                 "The Golden Spatula",
-                "Sundered Sky",
                 "Galeforce"
               ],
               "runes": {
@@ -55431,7 +55337,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Trinity Force",
                 "Hamstringer"
               ],
               "runes": {
@@ -57274,7 +57179,6 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Heartsteel",
                 "Runaan's Hurricane",
                 "Yun Tal Wildarrows",
                 "Bloodthirster"
@@ -57319,7 +57223,6 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Heartsteel",
                 "Runaan's Hurricane",
                 "Yun Tal Wildarrows",
                 "Bloodthirster"
@@ -57416,8 +57319,7 @@
                 "Berserker's Greaves",
                 "Wit's End",
                 "Guinsoo's Rageblade",
-                "Terminus",
-                "Sterak's Gage"
+                "Terminus"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -57472,11 +57374,11 @@
           ],
           "items": [
             "The Golden Spatula",
-            "Statikk Shiv",
-            "Kraken Slayer",
-            "Trinity Force",
-            "Heartsteel",
-            "Void Immolation"
+            "Runaan's Hurricane",
+            "Hamstringer",
+            "Infinity Edge",
+            "Hexbolt Companion",
+            "Lord Dominik's Regards"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -57485,11 +57387,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Statikk Shiv",
-                "Kraken Slayer",
-                "Trinity Force",
-                "Heartsteel",
-                "Void Immolation"
+                "Runaan's Hurricane",
+                "Hamstringer",
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -57509,7 +57411,6 @@
               "items": [
                 "The Golden Spatula",
                 "Wooglet's Witchcap",
-                "Divine Sunderer",
                 "Twilight's Edge"
               ],
               "runes": {
@@ -57529,11 +57430,11 @@
               "label": "Carry",
               "items": [
                 "The Golden Spatula",
-                "Statikk Shiv",
-                "Kraken Slayer",
-                "Trinity Force",
-                "Heartsteel",
-                "Void Immolation"
+                "Runaan's Hurricane",
+                "Hamstringer",
+                "Infinity Edge",
+                "Hexbolt Companion",
+                "Lord Dominik's Regards"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -57553,8 +57454,6 @@
               "items": [
                 "The Golden Spatula",
                 "Void Immolation",
-                "Heartsteel",
-                "Trinity Force",
                 "Statikk Shiv"
               ],
               "runes": {
@@ -59015,10 +58914,10 @@
             21
           ],
           "items": [
-            "Heartsteel",
+            "Bloodsong",
             "Berserker's Greaves",
-            "Trinity Force",
             "Cruelty",
+            "Blade of The Ruined King",
             "Lord Dominik's Regards",
             "Voltaic Cyclosword"
           ],
@@ -59028,10 +58927,10 @@
               "key": "on-hit",
               "label": "On-Hit",
               "items": [
-                "Heartsteel",
+                "Bloodsong",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Cruelty",
+                "Blade of The Ruined King",
                 "Lord Dominik's Regards",
                 "Voltaic Cyclosword"
               ],
@@ -59051,12 +58950,7 @@
               "key": "sr-bruiser",
               "label": "Bruiser",
               "items": [
-                "Heartsteel",
-                "Mercury's Treads",
-                "Trinity Force",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Warmog's Armor"
+                "Mercury's Treads"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -59073,10 +58967,10 @@
               "key": "auto-sr-primary-carry",
               "label": "Carry",
               "items": [
-                "Heartsteel",
+                "Bloodsong",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Cruelty",
+                "Blade of The Ruined King",
                 "Lord Dominik's Regards",
                 "Voltaic Cyclosword"
               ],
@@ -59096,12 +58990,7 @@
               "key": "auto-sr-secondary-bruiser",
               "label": "Bruiser",
               "items": [
-                "Heartsteel",
-                "Mercury's Treads",
-                "Trinity Force",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Warmog's Armor"
+                "Mercury's Treads"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -59132,10 +59021,10 @@
             21
           ],
           "items": [
-            "Heartsteel",
+            "Void Immolation",
             "Berserker's Greaves",
-            "Trinity Force",
-            "Cruelty",
+            "Dusk and Dawn",
+            "Blade of The Ruined King",
             "Lord Dominik's Regards",
             "Voltaic Cyclosword"
           ],
@@ -59145,10 +59034,10 @@
               "key": "on-hit",
               "label": "On-Hit",
               "items": [
-                "Heartsteel",
+                "Void Immolation",
                 "Berserker's Greaves",
-                "Trinity Force",
-                "Cruelty",
+                "Dusk and Dawn",
+                "Blade of The Ruined King",
                 "Lord Dominik's Regards",
                 "Voltaic Cyclosword"
               ],
@@ -59170,10 +59059,10 @@
               "items": [
                 "Void Immolation",
                 "Berserker's Greaves",
-                "Heartsteel",
-                "Trinity Force",
-                "Stormrazor",
-                "Statikk Shiv"
+                "Dusk and Dawn",
+                "Blade of The Ruined King",
+                "Lord Dominik's Regards",
+                "Voltaic Cyclosword"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -59214,10 +59103,10 @@
               "items": [
                 "Void Immolation",
                 "Berserker's Greaves",
-                "Heartsteel",
-                "Trinity Force",
-                "Stormrazor",
-                "Statikk Shiv"
+                "Dusk and Dawn",
+                "Blade of The Ruined King",
+                "Lord Dominik's Regards",
+                "Voltaic Cyclosword"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -59250,8 +59139,10 @@
           "items": [
             "Void Immolation",
             "The Golden Spatula",
-            "Heartsteel",
-            "Trinity Force"
+            "Pyromancer's Cloak",
+            "Cruelty",
+            "Dusk and Dawn",
+            "Wooglet's Witchcap"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -59261,8 +59152,10 @@
               "items": [
                 "Void Immolation",
                 "The Golden Spatula",
-                "Heartsteel",
-                "Trinity Force"
+                "Pyromancer's Cloak",
+                "Cruelty",
+                "Dusk and Dawn",
+                "Wooglet's Witchcap"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -59282,7 +59175,6 @@
               "items": [
                 "The Golden Spatula",
                 "Wooglet's Witchcap",
-                "Divine Sunderer",
                 "Twilight's Edge"
               ],
               "runes": {
@@ -59303,8 +59195,10 @@
               "items": [
                 "Void Immolation",
                 "The Golden Spatula",
-                "Heartsteel",
-                "Trinity Force"
+                "Pyromancer's Cloak",
+                "Cruelty",
+                "Dusk and Dawn",
+                "Wooglet's Witchcap"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -59324,8 +59218,6 @@
               "items": [
                 "Void Immolation",
                 "The Golden Spatula",
-                "Heartsteel",
-                "Trinity Force",
                 "Pyromancer's Cloak"
               ],
               "runes": {
