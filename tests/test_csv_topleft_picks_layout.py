@@ -148,8 +148,9 @@ class DsTopPicksCarryRemovedTests(unittest.TestCase):
 
 class PickBanStructurePreservedTests(unittest.TestCase):
     """Pick & Ban now renders 2 sub-panels in #csv-pickban-body (BAN +
-    DUO SYNERGY); the picks sub-panel template still exists in JS but
-    targets #csv-picks-target via the split assignment."""
+    ALLY PICKS BY ROLE; item 213 replaced the 101.qq.com DUO SYNERGY
+    grid); the picks sub-panel template still exists in JS but targets
+    #csv-picks-target via the split assignment."""
 
     def setUp(self) -> None:
         self.js = _read(CHAMP_SELECT_JS)
@@ -180,9 +181,12 @@ class PickBanStructurePreservedTests(unittest.TestCase):
         )
 
     def test_duo_synergy_section_still_in_main_html(self) -> None:
+        # item 213: the third sub-panel is now ALLY PICKS BY ROLE (was
+        # the 101.qq.com DUO SYNERGY grid). The .csv-pb168-expl wrapper
+        # class is preserved so the layout slot is unchanged.
         self.assertIn(
             'csv-pb168-section csv-pb168-expl', self.js,
-            "DUO SYNERGY (101.qq.com) sub-panel must still render in "
+            "third sub-panel (ALLY PICKS BY ROLE) must still render in "
             "#csv-pickban-body",
         )
 
