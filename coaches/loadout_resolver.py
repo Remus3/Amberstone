@@ -120,10 +120,11 @@ def list_variants(champion: str, mode: str) -> list[dict]:
     Each row: {key, label, is_default, keystone, primary, secondary,
     summoners, item_names, item_ids}. The extra fields let the dashboard
     render an inline preview (icons + keystone) per build without a
-    second round-trip to /api/loadout/apply. Always appends an
-    "experimental" entry for ARAM modes so the user can opt into the
-    auto-adapting funky build (generated lazily on first pick if no
-    current iteration exists yet).
+    second round-trip to /api/loadout/apply.
+
+    Item 213 (2026-05-28): the synthetic ARAM "experimental" row was
+    removed - the experimental build chooser is gone for all champs +
+    all modes/pages.
     """
     loadouts = _load_loadouts().get("champions", {}) or {}
     champ = loadouts.get(champion) or {}
@@ -193,26 +194,6 @@ def list_variants(champion: str, mode: str) -> list[dict]:
             continue
         out.append(_row(key, v, key == default_key))
     out.sort(key=lambda r: (not r["is_default"], r["label"]))
-
-    if mode_key == "aram":
-        try:
-            from coaches.experimental_builder import get_current as _exp_current
-            cur = _exp_current(champion)
-            iter_n = (cur.get("iteration") if cur else 0) or 0
-            label = f"⚗ Experimental (it.{iter_n})" if iter_n else "⚗ Experimental (new)"
-            cur_v = cur or {}
-            out.append(_row("experimental", {
-                "label": label,
-                "modes": ["aram"],
-                "runes": cur_v.get("runes") or {},
-                "summoners": cur_v.get("summoners") or [],
-                "items": cur_v.get("items") or [],
-            }, False))
-            # Restore the synthesized label (the _row helper would default
-            # to "experimental"); we want the iteration counter visible.
-            out[-1]["label"] = label
-        except Exception as exc:
-            _log.debug("experimental list_variants check: %s", exc)
     return out
 
 
@@ -263,59 +244,40 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
         base_variant, _, path_key = variant.partition(":")
         variant = base_variant.strip()
         path_key = path_key.strip()
-    # Special case: experimental variant is sourced from experimental_builds.json
-    # and only available in ARAM. If the current iteration doesn't exist yet,
-    # the caller should have hit /api/experimental/get first to generate it.
-    if variant == "experimental":
-        if mode_key != "aram":
-            return {"ok": False, "err": "experimental variant is ARAM-only"}
-        try:
-            from coaches.experimental_builder import get_current as _exp_current
-            cur = _exp_current(champion)
-        except Exception as exc:
-            return {"ok": False, "err": f"experimental load failed: {exc}"}
-        if not cur:
-            return {"ok": False, "err": "no experimental build generated yet"}
-        v = {
-            "label":     f"⚗ {cur.get('label','Experimental')}",
-            "modes":     ["aram"],
-            "runes":     cur.get("runes") or {},
-            "summoners": cur.get("summoners") or [],
-            "items":     cur.get("items") or [],
-        }
-    else:
-        v = variants.get(variant)
-        if not v:
-            return {"ok": False, "err": f"no variant {variant!r} for {champion!r}"}
-        if mode_key not in [str(m).lower() for m in (v.get("modes") or [])]:
-            return {"ok": False, "err": f"variant {variant!r} not allowed in {mode_key}"}
-        # Item 178: if caller passed a sub-path key on a collapsed variant,
-        # overlay that path's items / runes / summoners onto the variant
-        # dict before the rune+item+summ cmds are built below. Empty
-        # path_key keeps the variant-level defaults (primary path).
-        if path_key:
-            paths = v.get("build_paths") or []
-            matched = None
-            for p in paths:
-                if isinstance(p, dict) and (p.get("key") or "") == path_key:
-                    matched = p
-                    break
-            if matched is None:
-                return {"ok": False,
-                        "err": f"no build_path {path_key!r} for {champion!r}:{variant!r}"}
-            # Defensive copy + overlay (items/runes/summoners only).
-            v_overlay = dict(v)
-            v_overlay["items"] = list(matched.get("items") or v.get("items") or [])
-            if matched.get("runes"):
-                v_overlay["runes"] = dict(matched.get("runes") or {})
-            if matched.get("summoners"):
-                v_overlay["summoners"] = list(matched.get("summoners") or [])
-            # Suffix the label so the page_name / set_uid carry the
-            # path identity (mostly cosmetic - shows up in LCU's set
-            # title in-game).
-            base_label = v.get("label") or variant
-            v_overlay["label"] = f"{base_label} - {matched.get('label') or path_key}"
-            v = v_overlay
+    # Item 213 (2026-05-28): the experimental variant special-case was
+    # removed - the experimental chooser row no longer exists.
+    v = variants.get(variant)
+    if not v:
+        return {"ok": False, "err": f"no variant {variant!r} for {champion!r}"}
+    if mode_key not in [str(m).lower() for m in (v.get("modes") or [])]:
+        return {"ok": False, "err": f"variant {variant!r} not allowed in {mode_key}"}
+    # Item 178: if caller passed a sub-path key on a collapsed variant,
+    # overlay that path's items / runes / summoners onto the variant
+    # dict before the rune+item+summ cmds are built below. Empty
+    # path_key keeps the variant-level defaults (primary path).
+    if path_key:
+        paths = v.get("build_paths") or []
+        matched = None
+        for p in paths:
+            if isinstance(p, dict) and (p.get("key") or "") == path_key:
+                matched = p
+                break
+        if matched is None:
+            return {"ok": False,
+                    "err": f"no build_path {path_key!r} for {champion!r}:{variant!r}"}
+        # Defensive copy + overlay (items/runes/summoners only).
+        v_overlay = dict(v)
+        v_overlay["items"] = list(matched.get("items") or v.get("items") or [])
+        if matched.get("runes"):
+            v_overlay["runes"] = dict(matched.get("runes") or {})
+        if matched.get("summoners"):
+            v_overlay["summoners"] = list(matched.get("summoners") or [])
+        # Suffix the label so the page_name / set_uid carry the
+        # path identity (mostly cosmetic - shows up in LCU's set
+        # title in-game).
+        base_label = v.get("label") or variant
+        v_overlay["label"] = f"{base_label} - {matched.get('label') or path_key}"
+        v = v_overlay
 
     # Item 178: identity string baked into page_name / set_uid / title.
     # When a path_key was supplied, the identity includes the path so
