@@ -60,7 +60,12 @@ CREATE TABLE IF NOT EXISTS matches (
     -- Notes
     notes       TEXT DEFAULT '',        -- JSON list of improvement notes
     label       TEXT DEFAULT '',        -- grade label text
-    raw_data    TEXT DEFAULT ''         -- full JSON dump for future reference
+    raw_data    TEXT DEFAULT '',        -- full JSON dump for future reference
+    -- Item 211: Match-V5 / LCU gameId so /api/last-match/ingest can
+    -- row-match by id instead of "latest non-TFT row" (which raced the
+    -- local performance_tracker writer and attached items to the wrong
+    -- card on Home Recent-5). 0 = unknown (legacy or pre-stamp).
+    game_id     INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_matches_mode ON matches(mode);
@@ -68,6 +73,7 @@ CREATE INDEX IF NOT EXISTS idx_matches_timestamp ON matches(timestamp);
 CREATE INDEX IF NOT EXISTS idx_matches_tft_comp ON matches(tft_comp);
 CREATE INDEX IF NOT EXISTS idx_matches_tft_placement ON matches(tft_placement);
 CREATE INDEX IF NOT EXISTS idx_matches_grade ON matches(grade);
+CREATE INDEX IF NOT EXISTS idx_matches_game_id ON matches(game_id);
 """
 
 
@@ -89,7 +95,28 @@ class MatchDB:
             setup.execute("PRAGMA journal_mode = WAL")
             setup.execute("PRAGMA synchronous = NORMAL")
             setup.execute("PRAGMA busy_timeout = 5000")
-            setup.executescript(_SCHEMA)
+            # Item 211: handle fresh vs legacy DB separately. executescript()
+            # is safe on a fresh fleet, but a pre-fix DB may carry a
+            # narrower legacy matches table (no tft_comp/grade columns) and
+            # the CREATE INDEX statements in _SCHEMA explode against
+            # missing columns. Branch on table existence to keep both paths
+            # idempotent without losing data on legacy machines.
+            tbl_exists = setup.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='matches'"
+            ).fetchone() is not None
+            if not tbl_exists:
+                setup.executescript(_SCHEMA)
+            existing_cols = {r[1] for r in setup.execute(
+                "PRAGMA table_info(matches)")}
+            if "game_id" not in existing_cols:
+                setup.execute(
+                    "ALTER TABLE matches ADD COLUMN game_id INTEGER DEFAULT 0")
+            # Index creation is conditional on the underlying column existing
+            # (so legacy short tables don't error out here either).
+            setup.execute(
+                "CREATE INDEX IF NOT EXISTS idx_matches_game_id "
+                "ON matches(game_id)")
             setup.commit()
         finally:
             setup.close()
@@ -114,6 +141,7 @@ class MatchDB:
             "tft_traits", "tft_units", "tft_augments", "tft_items",
             "arena_rounds_won", "arena_placement",
             "notes", "label", "raw_data",
+            "game_id",
         ]
         vals = {c: data.get(c, "") for c in cols}
         # Serialize lists to JSON
@@ -121,6 +149,12 @@ class MatchDB:
             v = vals.get(k)
             if isinstance(v, (list, dict)):
                 vals[k] = json.dumps(v)
+        # Item 211: game_id is INTEGER; coerce blank/None to 0 so the
+        # callers that omit it (TFT save_match call) still INSERT cleanly.
+        try:
+            vals["game_id"] = int(vals.get("game_id") or 0)
+        except (TypeError, ValueError):
+            vals["game_id"] = 0
         if not vals.get("timestamp"):
             vals["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if not vals.get("raw_data"):
