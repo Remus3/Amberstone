@@ -311,12 +311,20 @@ class JsWireDriftGuardTests(unittest.TestCase):
     def test_pre_push_wipe_call_is_present(self):
         js_path = _REPO / "web" / "js" / "panels" / "champ_select.js"
         src = js_path.read_text(encoding="utf-8")
-        # The wipe call must appear and must precede the apply_item_sets_batch
-        # call (same _csvMaybePushBuildsToLCU body).
-        wipe_idx = src.find('cmd: "delete_stale_rc_item_sets"')
-        batch_idx = src.find('cmd: "apply_item_sets_batch"')
+        # Item 213: a second apply_item_sets_batch site exists (the
+        # DS-vs-enemy-comp save+push button, a single distinct-uid set whose
+        # cross-champ stale accumulation is handled by this same render-time
+        # wipe). Scope the ordering assertion to the _csvMaybePushBuildsToLCU
+        # body so the global first-occurrence find does not latch the other
+        # push site.
+        fn_idx = src.find("function _csvMaybePushBuildsToLCU")
+        self.assertGreater(fn_idx, 0,
+            "_csvMaybePushBuildsToLCU function missing from champ_select.js")
+        body = src[fn_idx:]
+        wipe_idx = body.find('cmd: "delete_stale_rc_item_sets"')
+        batch_idx = body.find('cmd: "apply_item_sets_batch"')
         self.assertGreater(wipe_idx, 0,
-            "delete_stale_rc_item_sets call missing from champ_select.js")
+            "delete_stale_rc_item_sets call missing from _csvMaybePushBuildsToLCU")
         self.assertGreater(batch_idx, wipe_idx,
             "wipe must precede apply_item_sets_batch in _csvMaybePushBuildsToLCU")
 
