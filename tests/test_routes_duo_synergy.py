@@ -243,15 +243,16 @@ class AsciiHygieneTests(unittest.TestCase):
             self.fail(f"non-ASCII byte in duo_synergy.json: {exc}")
 
 
-class DuoSynergyMockWireDriftGuard(unittest.TestCase):
-    """Closes the orphan that surfaced 2026-05-26 headless run audit:
-    `web/data/ui_mock/duo_synergy.json` existed and was ASCII-checked
-    (above) but had ZERO frontend consumers. _csvFetchDuoSynergy was
-    only fetching the live /api/duo-synergy endpoint. Item 199 Slice
-    CD shipped the fixture for the body.dataset.uiMock="1" mock path
-    but never wired the dispatcher. The wire mirrors _csMockLoad
-    (items 165+181) / _lmMockLoad (item 183) / _lobbyMockLoad (item
-    163) / _amMockLoad (item 184) / _csvFetchUserVariants (item 178).
+class DuoSynergyFrontendRemovalDriftGuard(unittest.TestCase):
+    """item 213 (2026-05-28): the champ-select bottom/support panel was
+    reoriented from the 101.qq.com duo-synergy SUGGESTION grid to a LIVE
+    ally-picks-by-role mirror (_csvRenderAllyRolesHtml). The duo-synergy
+    frontend wiring (_csvFetchDuoSynergy + _csvRenderDuoSynergyHtml +
+    _csvAllyBotSupState + the body.dataset.uiMock fixture branch) was
+    removed from champ_select.js. The /api/duo-synergy ROUTE + the
+    duo_synergy.json fixture are RETAINED (tested above) for any future
+    re-use, but nothing in champ-select calls them now. This guard pins
+    that removal so a stale re-wire fails CI before shipping.
     """
 
     @classmethod
@@ -259,35 +260,25 @@ class DuoSynergyMockWireDriftGuard(unittest.TestCase):
         cls._js_path = _PROJECT_ROOT / "web" / "js" / "panels" / "champ_select.js"
         cls._js_text = cls._js_path.read_text(encoding="utf-8")
 
-    def test_csvFetchDuoSynergy_has_mock_branch(self):
-        self.assertIn("_csvFetchDuoSynergy", self._js_text)
-        self.assertIn('body.dataset.uiMock === "1"', self._js_text)
+    def test_duo_synergy_fetcher_removed_from_frontend(self):
+        self.assertNotIn("_csvFetchDuoSynergy", self._js_text,
+                         "duo-synergy fetcher must stay removed (item 213)")
+        self.assertNotIn("_csvRenderDuoSynergyHtml", self._js_text)
 
-    def test_csvFetchDuoSynergy_loads_fixture_when_mock(self):
-        self.assertIn('"/data/ui_mock/duo_synergy.json"', self._js_text)
+    def test_no_qq_source_ui_string_in_frontend(self):
+        # The "101.qq.com tier-200" / "(101.qq.com)" UI strings were
+        # removed. Surviving "101.qq" mentions are comments only.
+        self.assertNotIn("source: 101.qq.com", self._js_text)
+        self.assertNotIn("DUO SYNERGY (101.qq.com)", self._js_text)
 
-    def test_mock_branch_short_circuits_before_live_fetch(self):
-        text = self._js_text
-        mock_path_idx = text.find('"/data/ui_mock/duo_synergy.json"')
-        live_path_idx = text.find('"/api/duo-synergy')
-        if live_path_idx < 0:
-            live_path_idx = text.find("`/api/duo-synergy")
-        self.assertGreater(mock_path_idx, 0,
-                           "mock fixture URL not present in champ_select.js")
-        self.assertGreater(live_path_idx, mock_path_idx,
-                           "mock branch must short-circuit BEFORE live /api fetch")
+    def test_ally_roles_panel_present(self):
+        self.assertIn("_csvRenderAllyRolesHtml", self._js_text,
+                      "ally-picks-by-role panel must replace duo synergy")
+        self.assertIn("ALLY PICKS BY ROLE", self._js_text)
 
-    def test_mock_branch_populates_same_cache(self):
-        text = self._js_text
-        head_idx = text.find("function _csvFetchDuoSynergy")
-        tail_idx = text.find("function _csvChampNameFromId")
-        self.assertGreater(head_idx, 0)
-        self.assertGreater(tail_idx, head_idx)
-        body = text[head_idx:tail_idx]
-        self.assertIn('"/data/ui_mock/duo_synergy.json"', body,
-                      "mock fetch missing inside _csvFetchDuoSynergy")
-        self.assertIn("_CSV_DUOSYN_CACHE[key] = { data: j, fetchedAt: Date.now() }", body,
-                      "mock branch must populate the same in-memory cache the live path uses")
+    def test_champ_name_helper_retained(self):
+        # _csvChampNameFromId is reused by the ally-roles panel.
+        self.assertIn("function _csvChampNameFromId", self._js_text)
 
 
 if __name__ == "__main__":

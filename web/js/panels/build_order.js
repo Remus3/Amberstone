@@ -31,8 +31,18 @@ const _BO_CACHE = Object.create(null); // key -> route JSON
 const _BO_INFLIGHT = Object.create(null); // key -> true while fetching
 let _boExpanded = false; // session-ephemeral expander state (progressive disclosure)
 
-function _boKey(champion, dsMode, archetype) {
-  return `${champion}|${dsMode}|${archetype || ""}`;
+// item 213 (2026-05-28): the cache key now includes a sorted enemy-comp
+// signature so the DS-vs-enemy-comp build LIVE-UPDATES when an enemy
+// locks / swaps during champ-select. The backend's _resolve_ds_target_stats
+// reads the `enemies` body field to derive target armor / MR / HP, so a
+// changed enemy comp legitimately re-ranks the ordered build.
+function _enemySig(enemies) {
+  if (!Array.isArray(enemies) || !enemies.length) return "";
+  return enemies.map((e) => String(e || "")).filter(Boolean).sort().join(",");
+}
+
+function _boKey(champion, dsMode, archetype, enemies) {
+  return `${champion}|${dsMode}|${archetype || ""}|${_enemySig(enemies)}`;
 }
 
 // Escape for both text nodes and attribute values (data-tt-html / title).
@@ -54,9 +64,9 @@ function _deltaTxt(o) {
 // onLand callback re-renders the consuming view (champ-select passes
 // _csvScheduleRender; in-game the next item_build tick picks up the cache,
 // so null is fine there).
-function fetchBuildOrder(champion, dsMode, archetype, onLand) {
+function fetchBuildOrder(champion, dsMode, archetype, onLand, enemies) {
   if (!champion || !dsMode) return;
-  const key = _boKey(champion, dsMode, archetype);
+  const key = _boKey(champion, dsMode, archetype, enemies);
   if (_BO_CACHE[key] || _BO_INFLIGHT[key]) return;
   _BO_INFLIGHT[key] = true;
   const body = {
@@ -67,6 +77,10 @@ function fetchBuildOrder(champion, dsMode, archetype, onLand) {
     slots: BO_SLOTS,
   };
   if (archetype) body.archetype = archetype;
+  // item 213: live enemy comp -> backend target-stat resolution.
+  if (Array.isArray(enemies) && enemies.length) {
+    body.enemies = enemies.map((e) => String(e || "")).filter(Boolean);
+  }
   fetch("/api/build-order", {
     method: "POST",
     cache: "no-store",
@@ -86,8 +100,8 @@ function fetchBuildOrder(champion, dsMode, archetype, onLand) {
     });
 }
 
-export function getCachedBuildOrder(champion, dsMode, archetype) {
-  return _BO_CACHE[_boKey(champion, dsMode, archetype)] || null;
+export function getCachedBuildOrder(champion, dsMode, archetype, enemies) {
+  return _BO_CACHE[_boKey(champion, dsMode, archetype, enemies)] || null;
 }
 
 // ── (B) champ-select card ─────────────────────────────────────────────
@@ -98,10 +112,14 @@ export function getCachedBuildOrder(champion, dsMode, archetype) {
 export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
   opts = opts || {};
   if (!champion || champion === "-" || !dsMode) return "";
-  const key = _boKey(champion, dsMode, archetype);
+  // item 213: opts.enemies is the live enemy-comp champion-name list
+  // from champ-select. It keys the cache + drives the backend target
+  // stats so the DS-vs-enemy-comp build re-ranks as enemies lock in.
+  const enemies = Array.isArray(opts.enemies) ? opts.enemies : [];
+  const key = _boKey(champion, dsMode, archetype, enemies);
   const data = _BO_CACHE[key];
   if (!data) {
-    fetchBuildOrder(champion, dsMode, archetype, opts.scheduleRender);
+    fetchBuildOrder(champion, dsMode, archetype, opts.scheduleRender, enemies);
     return `
       <div class="bo-card" data-bo-state="loading">
         <div class="bo-line"><span class="bo-tag">DS vs Enemy Comp</span><span class="bo-msg">computing...</span></div>
@@ -185,6 +203,25 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
     })
     .join("");
 
+  // item 213 (2026-05-28): Save + Push control. Pushes the finalized
+  // ordered build to the League client as an item set (distinct
+  // set_uid RC-<champ>-dsenemycomp so it coexists with the build-chooser
+  // sets) via the existing apply_item_sets_batch LCU contract. The
+  // click is delegated in champ_select.js (it owns lcuCmd + reads the
+  // cached order via getCachedBuildOrder).
+  // Ordered item-id list in BUY order (the engine appends each pick
+  // sequentially so `order` is already purchase/timing order: boots +
+  // core early, situational later). Embedded on the button so the
+  // champ_select.js delegated handler pushes without a cache re-lookup.
+  const orderIds = order.map((o) => String(o.item_id)).filter(Boolean).join(",");
+  const pushBtn =
+    `<button type="button" class="bo-pushbtn" data-bo-push="1"`
+    + ` data-bo-champ="${_esc(champion)}" data-bo-mode="${_esc(dsMode)}"`
+    + ` data-bo-arch="${_esc(archetype || "")}"`
+    + ` data-bo-items="${_esc(orderIds)}"`
+    + ` title="save this ordered build + push it to the League client">`
+    + `save + push to client</button>`;
+
   return `
     <div class="bo-card" data-bo-state="ready">
       <div class="bo-line">
@@ -194,6 +231,7 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
         <button type="button" class="bo-expander" data-bo-toggle="1" title="collapse">▴</button>
       </div>
       <div class="bo-slots">${rows}</div>
+      <div class="bo-actions">${pushBtn}</div>
     </div>`;
 }
 
