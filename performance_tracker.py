@@ -347,7 +347,16 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
                 "game_mode":raw_mode}
         if _ds_picks:
             _raw["daemon_slayer_picks"] = _ds_picks
-        try:db.save_match({"mode":category,"champion":champion,"grade":grade,"game_time_s":game_secs,"kills":stats["kills"],"deaths":stats["deaths"],"assists":stats["assists"],"cs":game_state.get("cs",0),"cs_per_min":stats["cs_per_min"],"gold":game_state.get("gold",0),"gold_per_min":gpm,"kda_str":kda_str,"kp_pct":kp,"arena_rounds_won":game_state.get("arena_rounds_won",0),"arena_placement":game_state.get("arena_rank",0),"notes":notes,"label":GRADE_LABEL.get(grade,""),"raw_data":json.dumps(_raw,default=str)})
+        # Item 211: persist Live Client gameId when available so the
+        # /api/last-match/ingest pipeline can row-match deterministically
+        # instead of "latest non-TFT row" (which raced this writer and
+        # produced Home Recent-5 items-off-by-one).
+        _gid = 0
+        try:
+            _gid = int(game_state.get("game_id") or game_state.get("gameId") or 0)
+        except (TypeError, ValueError):
+            _gid = 0
+        try:db.save_match({"mode":category,"champion":champion,"grade":grade,"game_time_s":game_secs,"kills":stats["kills"],"deaths":stats["deaths"],"assists":stats["assists"],"cs":game_state.get("cs",0),"cs_per_min":stats["cs_per_min"],"gold":game_state.get("gold",0),"gold_per_min":gpm,"kda_str":kda_str,"kp_pct":kp,"arena_rounds_won":game_state.get("arena_rounds_won",0),"arena_placement":game_state.get("arena_rank",0),"notes":notes,"label":GRADE_LABEL.get(grade,""),"raw_data":json.dumps(_raw,default=str),"game_id":_gid})
         except Exception as e:_log.warning("Match DB save failed: %s",e)
     # 2026-04-25: adaptation feedback loop. Translate the user's grade
     # (S/A/B/C/D/F) into a confidence multiplier on the cache entry for
