@@ -54,6 +54,94 @@ SORT_KEYS: tuple[str, ...] = ("delta", "efficiency")
 # excludes them via _is_purchasable (gold.purchasable=False).
 ARENA_TRINKET_IDS: frozenset[str] = frozenset({"3348"})
 
+# Ranged-marksman off-class item pollution filter (item 213, 2026-05-28).
+#
+# The DPS scorer ranks every purchasable, mode-legal item by raw DPS delta.
+# That surfaces melee-bruiser / tank / skirmisher items (Trinity Force,
+# Heartsteel, Bastionbreaker, Umbral Glaive, ...) high for a ranged marksman
+# because they add big raw AD / AS / Health stats - items the operator never
+# plays on a Caitlyn / Jinx / Ezreal class ADC. The candidate pool is
+# class-agnostic by design; this is a CONSUMER-side filter that fires only
+# for ranged marksmen routed through the DPS scorer (the carry / dps / adc
+# axis). Mages route through the mage scorer (untouched); melee fighters /
+# tanks are NOT ranged marksmen so the gate never fires for them.
+#
+# Data-driven, NOT per-champion: the gate is the snapshot's own champion
+# record (Marksman tag + attackrange >= RANGED_MARKSMAN_RANGE_FLOOR). The
+# deny-set is by NAME - alias-proof (the Arena 22/32/44/66-prefixed mirror
+# IDs all share the canonical name) and patch-stable (names drift far less
+# than ids). Bruiser-skirmisher + tank-frontline + AP-bruiser items that a
+# ranged ADC should never build as a core item. ADC on-hit / crit / lethality
+# completes (BorK, IE, LDR, Yun Tal, Runaan's, Kraken, Wit's End, Eclipse,
+# Opportunity, Serylda's, Edge of Night, Profane Hydra) are NOT in this set.
+RANGED_MARKSMAN_RANGE_FLOOR: int = 500
+
+OFFCLASS_MARKSMAN_ITEM_NAMES: frozenset[str] = frozenset({
+    # Sheen / bruiser-skirmisher mythic-class
+    "Trinity Force",
+    "Sundered Sky",
+    "Divine Sunderer",
+    "Iceborn Gauntlet",
+    "Stridebreaker",
+    "Goredrinker",
+    # Bruiser / fighter cores
+    "Black Cleaver",
+    "Sterak's Gage",
+    "Bastionbreaker",
+    "Hullbreaker",
+    "Experimental Hexplate",
+    "Spear of Shojin",
+    "Maw of Malmortius",
+    "Hexdrinker",
+    "Overlord's Bloodmail",
+    # Health-stacking bruiser / tank-skirmisher
+    "Heartsteel",
+    "Titanic Hydra",
+    "Ravenous Hydra",
+    "Warmog's Armor",
+    # Bruiser hydras / support lethality tool (ward-clear, not ADC core)
+    "Profane Hydra",
+    "Umbral Glaive",
+    # Tank-frontline armor / MR (a ranged ADC never builds these as DPS)
+    "Sunfire Aegis",
+    "Hollow Radiance",
+    "Dead Man's Plate",
+    "Frozen Heart",
+    "Thornmail",
+    "Randuin's Omen",
+    "Jak'Sho, The Protean",
+    "Force of Nature",
+    "Abyssal Mask",
+    "Spirit Visage",
+    "Kaenic Rookern",
+    "Unending Despair",
+    "Winter's Approach",
+    "Fimbulwinter",
+    # AP-bruiser / mage-bruiser (off-class for an AD marksman scorer)
+    "Riftmaker",
+    "Cosmic Drive",
+})
+
+
+def _is_ranged_marksman(champ_rec: dict) -> bool:
+    """True iff this champion is a ranged marksman - the only class for
+    which the off-class item deny-set fires through the DPS scorer.
+
+    Data-driven gate: ``Marksman`` in tags AND attackrange at or above the
+    ranged floor. Melee fighters / tanks (175 range) and ranged mages (no
+    Marksman tag, and they route through the mage scorer anyway) are excluded.
+    """
+    if not isinstance(champ_rec, dict):
+        return False
+    tags = champ_rec.get("tags") or ()
+    if "Marksman" not in tags:
+        return False
+    rng = (champ_rec.get("stats") or {}).get("attackrange", 0) or 0
+    try:
+        return float(rng) >= RANGED_MARKSMAN_RANGE_FLOOR
+    except (TypeError, ValueError):
+        return False
+
 
 def strip_arena_trinkets(
     current_ids: tuple[str, ...], mode: str
@@ -221,12 +309,14 @@ def _filter_candidates(
     budget: Optional[int],
     include_components: bool,
     only_ids: Optional[set[str]],
+    exclude_names: Optional[frozenset[str]] = None,
 ) -> list[tuple[str, dict]]:
     """Return ``[(item_id, item_record), ...]`` passing all filters.
 
     Filters applied (in order):
       * already-equipped items skipped (``current_ids``)
       * ``only_ids`` whitelist - restrict to caller-selected ids when set
+      * ``exclude_names`` deny-set by item NAME (alias-proof off-class filter)
       * purchasable + ``gold.total`` > 0
       * mode validity via ``maps`` (only when mode is known)
       * terminal-only (``into`` empty) unless ``include_components``
@@ -237,6 +327,8 @@ def _filter_candidates(
         if item_id in current_ids:
             continue
         if only_ids is not None and item_id not in only_ids:
+            continue
+        if exclude_names and rec.get("name") in exclude_names:
             continue
         if not _is_purchasable(rec):
             continue
@@ -334,6 +426,16 @@ def rank_items(
         augments=augments,
     )
 
+    # Off-class deny-set (item 213): when the champion is a ranged marksman,
+    # drop melee-bruiser / tank / skirmisher items from the DPS candidate
+    # pool. This scorer is only routed to for carry / dps / adc archetypes,
+    # so a ranged-marksman gate here precisely targets ADC build pollution
+    # without touching mage (mage scorer) or melee fighter / tank builds.
+    exclude_names: Optional[frozenset[str]] = None
+    champ_rec = snapshot.champions.get(str(champion_id))
+    if champ_rec is not None and _is_ranged_marksman(champ_rec):
+        exclude_names = OFFCLASS_MARKSMAN_ITEM_NAMES
+
     candidates = _filter_candidates(
         snapshot,
         mode=mode,
@@ -341,6 +443,7 @@ def rank_items(
         budget=budget,
         include_components=include_components,
         only_ids=only_ids,
+        exclude_names=exclude_names,
     )
 
     ranked: list[RankedItem] = []
