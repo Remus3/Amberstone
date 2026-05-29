@@ -223,30 +223,38 @@ class ResolverRuneCmdSmokeTests(unittest.TestCase):
 
     def test_jinx_sr_collapsed_path_keystones_differ(self):
         """The whole point of item 189: different paths -> different
-        runes. If Crit and Bruiser end up with the same keystone, the
-        per-path overlay in resolver is broken."""
+        runes. If two paths end up with the same keystone, the per-path
+        overlay in resolver is broken.
+
+        2026-05-28: item 208 (commit a814020) dropped Jinx's duplicate
+        Bruiser/Conqueror path. The live sr-collapsed paths are now
+        adc-crit + adc-on-hit (both Lethal Tempo) + auto-sr-primary-carry
+        (Press the Attack). Compare Crit vs Carry - they carry genuinely
+        distinct keystones (Lethal Tempo 8008 vs Press the Attack 8005),
+        which is the case this invariant must protect."""
         from coaches.loadout_resolver import resolve
 
-        # Loadout file has Jinx with at least 2 distinct paths (Crit
-        # uses Lethal Tempo, Bruiser uses Conqueror per the live data).
-        crit = resolve("Jinx", "sr-collapsed:adc-crit",   "sr")
-        brui = resolve("Jinx", "sr-collapsed:sr-bruiser", "sr")
+        # Loadout file has Jinx with >=2 distinct-keystone paths (Crit
+        # uses Lethal Tempo, Carry uses Press the Attack per the live
+        # data). Pick those two so the keystone genuinely differs.
+        crit  = resolve("Jinx", "sr-collapsed:adc-crit",              "sr")
+        carry = resolve("Jinx", "sr-collapsed:auto-sr-primary-carry", "sr")
         self.assertTrue(crit.get("ok"),
             f"resolve crit path failed: {crit.get('err')}")
-        self.assertTrue(brui.get("ok"),
-            f"resolve bruiser path failed: {brui.get('err')}")
+        self.assertTrue(carry.get("ok"),
+            f"resolve carry path failed: {carry.get('err')}")
         self.assertIsNotNone(crit.get("rune_cmd"),
             "Crit path missing rune_cmd")
-        self.assertIsNotNone(brui.get("rune_cmd"),
-            "Bruiser path missing rune_cmd")
+        self.assertIsNotNone(carry.get("rune_cmd"),
+            "Carry path missing rune_cmd")
         # The page_name carries the variant+path identity so distinct
         # paths produce distinct LCU page names. This is the durable
         # invariant tested here.
-        crit_name = crit["rune_cmd"].get("page_name", "")
-        brui_name = brui["rune_cmd"].get("page_name", "")
-        self.assertNotEqual(crit_name, brui_name,
+        crit_name  = crit["rune_cmd"].get("page_name", "")
+        carry_name = carry["rune_cmd"].get("page_name", "")
+        self.assertNotEqual(crit_name, carry_name,
             f"per-path rune_cmd page_name collision: "
-            f"crit={crit_name!r} bruiser={brui_name!r} - "
+            f"crit={crit_name!r} carry={carry_name!r} - "
             "different build paths must produce distinct LCU pages.")
         # primary_id is the tree id (e.g. Precision=8000 vs
         # Domination=8100 vs Resolve=8400). At least one of
@@ -257,14 +265,14 @@ class ResolverRuneCmdSmokeTests(unittest.TestCase):
             crit["rune_cmd"].get("sub_id"),
             tuple(crit["rune_cmd"].get("perk_ids") or [])[:1],
         )
-        brui_sig = (
-            brui["rune_cmd"].get("primary_id"),
-            brui["rune_cmd"].get("sub_id"),
-            tuple(brui["rune_cmd"].get("perk_ids") or [])[:1],
+        carry_sig = (
+            carry["rune_cmd"].get("primary_id"),
+            carry["rune_cmd"].get("sub_id"),
+            tuple(carry["rune_cmd"].get("perk_ids") or [])[:1],
         )
-        self.assertNotEqual(crit_sig, brui_sig,
+        self.assertNotEqual(crit_sig, carry_sig,
             f"per-path rune_cmd contents identical: crit={crit_sig} "
-            f"bruiser={brui_sig} - the per-path overlay in "
+            f"carry={carry_sig} - the per-path overlay in "
             "coaches/loadout_resolver.py::resolve is not picking up "
             "build_paths[].runes.")
 
