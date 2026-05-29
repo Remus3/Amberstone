@@ -1950,6 +1950,10 @@
 .csv-build-badge-support     { color: #fde68a; background: #2a2010; border-color: #b8800c; }
 .csv-build-badge-experimental{ color: #fb923c; background: #2a1810; border-color: #b8610c; }
 .csv-build-badge-default     { color: #cbd5e1; background: #1a1d23; border-color: #2a2f37; }
+/* 2026-05-28: operator user-curated builds (key "userbuild_<id>") get a
+   distinct sky-blue hue so a saved build reads apart from the engine-
+   curated + experimental rows in the same chooser. */
+.csv-build-badge-user        { color: #93c5fd; background: #0b1c33; border-color: #2563eb; }
 /* s211: pre-s211 [default] / [experimental] inline tags removed -
  * variant identity is now carried entirely by the colored badge label
  * (.csv-build-badge / .csv-build-badge-experimental / etc.). */
