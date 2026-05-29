@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-05-28 - item 214: Electron shell + in-game overlay ARCHITECTURE PLAN (doc-only) (1 commit `82ecfba` pushed origin/main `faee0ca..82ecfba`; non-frozen; no code; no RC/DS restart)
+
+Operator ask: stabilize RC into a standalone Electron app + viewable solely in-game (overlays/panels togglable via hotkey), removing the 2nd-display requirement, keeping to 1 screen. Linked 5 inspiration pics (Zed AGGREGATOR D in-client panel, auto-champ-select, lock-in, Mayhem Doctor modal, Mayhem Settings showing UI INJECTIONS + pop-out window + window-size presets).
+
+Fork (AskUserQuestion): operator picked "All three surfaces in one arch doc first" (no code), "Point Electron at live https://legion-rc:8888". On topology operator asked back if thin-client-now blocks consolidation-later -> answered NO (origin is config not code; grounded: all `fetch("/api/...")` relative + WS uses `location.hostname` `web/js/ws_client.js:4` -> origin follows window load; flip `RC_ORIGIN` to localhost after consolidation = zero JS change).
+
+**Shipped `82ecfba`:** `docs/ELECTRON_OVERLAY.md` - 3 render surfaces (A companion/pop-out window easy / B in-game transparent always-on-top overlay + hotkey + click-through<->interactive medium-hard / C Pengu in-client panels medium); window state machine driven by `/api/state` mode_key + LCU phase; hotkey map (Alt+Shift+O/A/C); the `width=1920` hardcoded viewport (`web/index.html:5`) means overlay needs its own `overlay.css` compact layout NOT a grid shrink; 6-phase roadmap (0 doc -> 1 companion -> 2 state-machine+hotkeys -> 3 overlay passive -> 4 overlay interactive -> 5 stabilize electron-updater -> 6 Pengu); risk register (BSOD = overlay is DWM compositor NOT DXGI capture so not the screen-agent crash surface, keep Borderless, hide on WaitingForStats edge; Vanguard-safe = only :2999 + LCU lockfile, no memory reads/injection, same bar Overlay App E/aggregator A clear).
+
+**Carries forward (tomorrow-you):** plan only - NO code shipped. Next = Phase 1 companion shell (`rc-shell/` Electron project, single frameless window loading `RC_ORIGIN/`, config + size presets + scoped cert trust). Open decisions deferred (do not block Phases 1-5): 1-PC consolidation timing (orthogonal), Surface C inclusion (Pengu dependency tolerance), Phase 4 interactivity depth, pulse/notify modality. All item 213 carries unchanged.
+
+---
+
 # 2026-05-28 (overnight headless) - item 213: competitor-lift research + all-champ loadout pollution rebuild + champ-select 7-ask redesign (7 commits pushed origin/main `ea14c36..2269c05`; ENGINE 1.61.0 -> 1.62.0; DS restarted 1.62.0; RC restarted x3 -> pid 16428)
 
 Operator multi-part: review 18 competitor sites + correct item/rune/summoner pollution for ALL champs (2-3+ paths all modes) + champ-select redesign (support panel -> live ally-picks-by-role, reformat ban/pick rows, remove source/101.qq inlines, remove experimental row entirely, DS-vs-enemy-comp live-validated build saved+pushed to client, rewrite CC cards plain-language). Fork: all-this-session + scorer-fix-and-full-regen. Orchestrator-merge: 4 bg research agents + ALPHA(engine) + BETA(frontend) + ALPHA2(data).
