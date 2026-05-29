@@ -1081,6 +1081,7 @@ function _csvBannedListRow(banIds, sideLabel) {
 function _csvVariantBadgeClass(v) {
   if (v.is_experimental) return "csv-build-badge csv-build-badge-experimental";
   const key = (v.key || "").toLowerCase();
+  if (key.startsWith("userbuild_")) return "csv-build-badge csv-build-badge-user";
   if (key === "on-hit" || key === "onhit")  return "csv-build-badge csv-build-badge-onhit";
   if (key === "crit")                       return "csv-build-badge csv-build-badge-crit";
   if (key === "ap-burst" || key === "ap")   return "csv-build-badge csv-build-badge-ap";
