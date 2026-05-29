@@ -10,27 +10,121 @@
     "my_cell_id": 2,
     "my_champion": 222,
     "my_completed": false,
-    "timer": {"remaining_ms": 28000},
+    "timer": {
+      "remaining_ms": 28000
+    },
     "active_round": null,
     "my_team": [
-      {"cellId": 0, "championId": 119, "summonerName": "DravenLover",    "assignedPosition": "",  "completed": true,  "championPickIntent": 119, "spell1Id": 4, "spell2Id": 32},
-      {"cellId": 1, "championId": 53,  "summonerName": "BlitzcrankBot",  "assignedPosition": "",  "completed": true,  "championPickIntent": 53,  "spell1Id": 4, "spell2Id": 32},
-      {"cellId": 2, "championId": 222, "summonerName": "SamplePlayer",      "assignedPosition": "",  "completed": false, "championPickIntent": 222, "spell1Id": 4, "spell2Id": 32},
-      {"cellId": 3, "championId": 99,  "summonerName": "LuxOTPLol",      "assignedPosition": "",  "completed": true,  "championPickIntent": 99,  "spell1Id": 4, "spell2Id": 32},
-      {"cellId": 4, "championId": 117, "summonerName": "LuluEnjoyer",    "assignedPosition": "",  "completed": true,  "championPickIntent": 117, "spell1Id": 4, "spell2Id": 32}
+      {
+        "cellId": 0,
+        "championId": 119,
+        "summonerName": "DravenLover",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 119,
+        "spell1Id": 4,
+        "spell2Id": 32
+      },
+      {
+        "cellId": 1,
+        "championId": 53,
+        "summonerName": "BlitzcrankBot",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 53,
+        "spell1Id": 4,
+        "spell2Id": 32
+      },
+      {
+        "cellId": 2,
+        "championId": 222,
+        "summonerName": "SamplePlayer",
+        "assignedPosition": "",
+        "completed": false,
+        "championPickIntent": 222,
+        "spell1Id": 4,
+        "spell2Id": 32
+      },
+      {
+        "cellId": 3,
+        "championId": 99,
+        "summonerName": "LuxOTPLol",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 99,
+        "spell1Id": 4,
+        "spell2Id": 32
+      },
+      {
+        "cellId": 4,
+        "championId": 117,
+        "summonerName": "LuluEnjoyer",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 117,
+        "spell1Id": 4,
+        "spell2Id": 32
+      }
     ],
     "their_team": [
-      {"cellId": 5, "championId": 122, "summonerName": "",               "assignedPosition": "",  "completed": true,  "championPickIntent": 122},
-      {"cellId": 6, "championId": 36,  "summonerName": "",               "assignedPosition": "",  "completed": true,  "championPickIntent": 36},
-      {"cellId": 7, "championId": 157, "summonerName": "",               "assignedPosition": "",  "completed": true,  "championPickIntent": 157},
-      {"cellId": 8, "championId": 145, "summonerName": "",               "assignedPosition": "",  "completed": true,  "championPickIntent": 145},
-      {"cellId": 9, "championId": 412, "summonerName": "",               "assignedPosition": "",  "completed": true,  "championPickIntent": 412}
+      {
+        "cellId": 5,
+        "championId": 122,
+        "summonerName": "",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 122
+      },
+      {
+        "cellId": 6,
+        "championId": 36,
+        "summonerName": "",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 36
+      },
+      {
+        "cellId": 7,
+        "championId": 157,
+        "summonerName": "",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 157
+      },
+      {
+        "cellId": 8,
+        "championId": 145,
+        "summonerName": "",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 145
+      },
+      {
+        "cellId": 9,
+        "championId": 412,
+        "summonerName": "",
+        "assignedPosition": "",
+        "completed": true,
+        "championPickIntent": 412
+      }
     ],
-    "bench": [22, 18, 76, 81, 51, 75, 21, 67, 110, 96],
+    "bench": [
+      22,
+      18,
+      76,
+      81,
+      51,
+      75,
+      21,
+      67,
+      110,
+      96
+    ],
     "bans": {
       "my_team": [],
       "their_team": []
-    }
+    },
+    "local_cell": 2
   },
   "config": {
     "auto_accept": true
@@ -43,8 +137,18 @@
         "keystone": "Lethal Tempo",
         "primary": "Precision",
         "secondary": "Domination",
-        "summoners": [4, 32],
-        "item_ids": [3094, 3153, 3031, 3036, 3072, 3026]
+        "summoners": [
+          4,
+          32
+        ],
+        "item_ids": [
+          3094,
+          3153,
+          3031,
+          3036,
+          3072,
+          3026
+        ]
       }
     ]
   }

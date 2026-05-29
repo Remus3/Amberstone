@@ -173,3 +173,37 @@
   color: var(--text-faint, #6b6d7c);
   font-style: italic;
 }
+
+/* item 213 (2026-05-28): DS-vs-enemy-comp save+push control. Pushes the
+ * finalized ordered build to the League client item set via
+ * apply_item_sets_batch (distinct set_uid RC-<champ>-<mode>-dsenemycomp).
+ * Lives at the foot of the expanded card. */
+.bo-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.bo-pushbtn {
+  font: inherit;
+  font-size: var(--fs-xs, 16px);
+  font-weight: 600;
+  min-height: var(--hit-min, 42px);
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--info, #8a8cf0);
+  background: rgba(138, 140, 240, 0.12);
+  color: var(--info, #8a8cf0);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.bo-pushbtn:hover {
+  background: rgba(138, 140, 240, 0.22);
+  color: var(--text, #f5f5f7);
+}
+.bo-pushbtn.is-pushed {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.16);
+  color: #4ade80;
+}
