@@ -1321,7 +1321,23 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.61.0"
+ENGINE_VERSION = "1.62.0"
+# 1.62.0 (item 213 - ranged-marksman off-class item pollution filter.
+# The DPS scorer (rank.rank_items) ranked every purchasable mode-legal
+# item by raw DPS delta, surfacing melee-bruiser / tank / skirmisher
+# items (Trinity Force, Heartsteel, Bastionbreaker, Umbral Glaive,
+# Sundered Sky, Black Cleaver, ...) high for ranged ADCs because they add
+# big raw AD / AS / Health - items the operator never plays on a Caitlyn /
+# Jinx / Ezreal class champion. NEW consumer-side filter: when the champion
+# is a ranged marksman (Marksman tag + attackrange >= 500) the DPS candidate
+# pool drops the OFFCLASS_MARKSMAN_ITEM_NAMES deny-set (by NAME - alias-proof
+# vs the Arena 22/32/44/66-prefixed mirror ids, patch-stable). Gate fires
+# ONLY through the DPS scorer (carry / dps / adc archetypes) so mages
+# (mage scorer) and melee fighters / tanks (not ranged marksmen) are
+# untouched - no over-filter regression. Data-driven, NOT per-champion:
+# the gate is the snapshot's own champion record. Default ranking math
+# for every non-ranged-marksman champion is BYTE-IDENTICAL to 1.61.0.)
+#
 # 1.61.0 (cc_conditional wave 23 - Hecarim R Onslaught of Shadows
 # distance-gated fear SHIPPED via the wave 18 coexists_with_unconditional
 # same-slot-coexistence schema (Maokai R precedent). SECOND consumer of
