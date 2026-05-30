@@ -51,7 +51,7 @@ _INJECTION_MARKER = "[BLOCKED:override]"
 DEFAULT_MAX_LEN = 200
 
 
-def clean(value, *, max_len: int = DEFAULT_MAX_LEN) -> str:
+def clean(value: object, *, max_len: int = DEFAULT_MAX_LEN) -> str:
     """Sanitise a single string for inclusion in a prompt body.
 
     Non-string input is coerced via ``str(value)``; ``None`` returns "".
