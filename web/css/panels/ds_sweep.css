@@ -1,0 +1,91 @@
+/* DS stat-sweep graph (competitor lift #3,
+ * docs/COMPETITOR_LIFT_2026-05-30.md). Plots the LOCKED champion's
+ * auto-attack DPS against a swept enemy-stat axis (default target armor
+ * 0..300) - a single labelled sparkline. Mounts inside the Suggestions card
+ * (.csv-card-suggestions) during champ-select, a sibling of the
+ * cooldown-watch + cc-conditional-pressure cards.
+ *
+ * Uses the semantic tokens from web/css/tokens.css. The card carries an
+ * info-toned (ally-blue) accent since it is a scaling read on the operator's
+ * OWN champion (not an enemy-threat surface); no tier attr (it is a curve,
+ * not a balance ratio).
+ *
+ * ASCII only (no em / en dashes, no smart quotes).
+ */
+
+.ds-sweep {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-info, #5096ff);
+  border-radius: 4px;
+}
+
+.ds-sweep[hidden] {
+  display: none;
+}
+
+.dsw-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.dsw-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dsw-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Sparkline holder - reserves the SVG height so a cold-load cache miss does
+ * not collapse the card and jitter the layout. */
+.dsw-chart {
+  width: 100%;
+  min-height: 44px;
+}
+
+.dsw-svg {
+  display: block;
+  width: 100%;
+  height: 44px;
+}
+
+.dsw-line {
+  fill: none;
+}
+
+/* Axis footer: low-end DPS | axis label | high-end DPS. */
+.dsw-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.dsw-foot-lo,
+.dsw-foot-hi {
+  font-weight: 800;
+  color: var(--signal-info, #5096ff);
+}
+
+.dsw-foot-axis {
+  flex: 1 1 auto;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.55);
+}
