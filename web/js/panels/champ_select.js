@@ -31,6 +31,14 @@ import {
   fetchCooldownWatch, getCachedCooldownWatch,
   getCooldownWatchCacheCount, renderCooldownWatch,
 } from './cooldown_watch.js';
+import {
+  renderDsSweepForChampSelect, getDsSweepCacheCount, setDsSweepScheduler,
+} from './ds_sweep.js';
+import {
+  fetchDsCombo, getCachedDsCombo, getDsComboCacheCount, parseSeqInput,
+  renderDsCombo,
+} from './ds_combo.js';
+import { renderDsKnobs, getDsKnobsCacheCount } from './ds_knobs.js';
 
 // -- LCU command helper (used by champ-select + build chooser) ------
 function lcuCmd(cmdObj) {
@@ -1034,6 +1042,11 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // max-rank base cooldown ("watch their hook - 16s"). Joins the CC threat
   // registries to per-rank ability cooldowns from champion_abilities.json.
   _csvRenderCooldownWatch(cs);
+  setDsSweepScheduler(_csvScheduleRender);
+  renderDsSweepForChampSelect(cs);
+  _csvRenderDsCombo(cs);
+  { const _dskBlock = document.getElementById("csv-ds-knobs");
+    if (_dskBlock) renderDsKnobs(_dskBlock, cs); }
   // ---- Row 3: pick-order tips (no header label per s213 v3) ----
   // Static advisory keyed on operator's assigned role. 3 tips per role
   // - the third row is the "consider" / strategic depth tip beyond
@@ -1374,6 +1387,9 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   const ccBlendedCount = getCcBlendedEhpThreatCacheCount();
   const ccCondCount = getCcConditionalPressureCacheCount();
   const cdwCount = getCooldownWatchCacheCount();
+  const dswCount = getDsSweepCacheCount();
+  const dscCount = getDsComboCacheCount();
+  const dskCount = getDsKnobsCacheCount();
   return [
     cs.phase || "",
     myCid | 0,
@@ -1386,7 +1402,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}`,
   ].join("|");
 }
 
@@ -1694,6 +1710,44 @@ function _csvRenderCooldownWatch(cs) {
   fetchCooldownWatch(enemyNames, _csvScheduleRender);
   const payload = getCachedCooldownWatch(enemyNames);
   renderCooldownWatch(block, payload);
+}
+
+let _csvDsComboWired = false;
+// Host wrapper for the action-queue combo panel (competitor lift #2).
+// ds_combo.js renders the input row on first paint then leaves the
+// re-fetch cadence to the host: resolve the LOCKED champion, parse the
+// live input, fetch the per-hit timeline, repaint. The input listener is
+// wired once (the panel never repaints the input, preserving the caret).
+function _csvRenderDsCombo(cs) {
+  const block = document.getElementById("csv-sugg-ds-combo");
+  if (!block) return;
+  const myId = (cs.my_champion | 0) || 0;
+  if (myId <= 0) { block.hidden = true; return; }
+  const names = resolveChampNames([myId]);
+  if (!names.length) { block.hidden = true; return; }
+  block.hidden = false;
+  const champion = names[0];
+  const input = document.getElementById("csv-sugg-ds-combo-input");
+  if (!input) {
+    // First paint: panel builds the (defaulted) input row. Wire it + kick
+    // a re-render so the next tick reads the input value and fetches.
+    renderDsCombo(block, null, { champion });
+    const inp = document.getElementById("csv-sugg-ds-combo-input");
+    if (inp && !_csvDsComboWired) {
+      inp.addEventListener("change", () => _csvScheduleRender());
+      inp.addEventListener("input", () => _csvScheduleRender());
+      _csvDsComboWired = true;
+    }
+    _csvScheduleRender();
+    return;
+  }
+  const seq = parseSeqInput(input.value);
+  const opts = {
+    champion, level: 11, items: [],
+    seq, target_armor: 80, target_mr: 60, mode: "SR",
+  };
+  fetchDsCombo(opts, _csvScheduleRender);
+  renderDsCombo(block, getCachedDsCombo(opts), { champion });
 }
 
 function _csvAdaptKey(champion, enemyIds, baseSummoners, role) {
