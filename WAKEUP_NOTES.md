@@ -4,7 +4,7 @@
 
 ---
 
-# 2026-05-30 - item 221 PARTIAL: lolmath-wiki stat sidecar extractor shipped (tool + 33 offline tests); sidecar DATA + combo wire OWED - wiki edge-blocked from Legion (1 commit; NO ENGINE bump; NO DS/RC restart - tool+tests only)
+# 2026-05-30 - item 221 NEAR-COMPLETE: lolmath-wiki extractor + combo.py consumer wire shipped (2 commits db4c268 + merge 56980d6; NO ENGINE bump 1.63.0; NO DS restart; RC restarted for combo/data_loader). ONLY sidecar DATA owed - wiki host-blocked (re-probed +35min, still 401)
 
 Operator "in parallel: start all Open/actionable" (3rd same-prompt drain). AskUserQuestion picked lolmath-wiki off BACKLOG:20; on the wiki-blocked fork picked "ship tool now, data+wire owed". Targets item-217 GO-conditional (`docs/LOLMATH_WIKI_SOURCE_2026-05-30.md`).
 
@@ -16,7 +16,9 @@ Operator "in parallel: start all Open/actionable" (3rd same-prompt drain). AskUs
 
 **Process note:** an over-optimistic earlier batch drafted FABRICATED build outcomes ("action=bucket DEAD", "172/170 with cast_time") from misread all-401s; cascade-cancel + manual `git checkout` of 4 docs reverted ALL of it pre-commit. Shipped tool carries ONLY item-217-verified claims + edge-block note. ([[feedback_verify_generated_reports]] + [[feedback_verify_before_declare_broken]].)
 
-**Carries forward (OWED, tomorrow-you):** (a) **run extractor from a host that reaches wiki.gg** (or after Legion egress clears): `py tools/daemon_slayer_wiki_stats_extract.py --patch 16.11.1`, check `_with_cast_time`/`_errors`, commit `wiki_stats.json` ONLY if non-degenerate (0 cast = blocked, don't commit). (b) **wire combo.py** (DataSnapshot optional `wiki_stats` overlay + per-champ AA windup, byte-identical absent) - deferred, unverifiable without data. (c) action=bucket mode-mults (Arena/URF/NB) NOT built (needs live Bucket probe; ARAM Meraki-covered). (d) source IS the wiki (item-217-proven); block is host-egress not dead endpoint - don't conclude wiki unusable. (e) tool file-shapes now CORRECT - reachable-host run needs no code change. (f) all item 220 carries unchanged.
+**combo wire DONE (merge 56980d6):** data_loader DataSnapshot optional `wiki_stats` frozen field + `wiki_attack_cast_time()` accessor (load() reads `_read_optional("wiki_stats.json")`; missing/degenerate -> {} never raises); combo.py AA windup reads per-champ value when present, else `_DEFAULT_AA_WINDUP_S`=0.25 (the existing default, found+preserved). SPELL path untouched (Meraki authoritative). Byte-identical when sidecar absent OR all-null (pinned by ComboWireTests). 13 new tests; DS suite 5008->5021. A degenerate all-401 wiki_stats.json from the first optimistic run was written-but-never-committed (untracked); DELETED so absent-path is genuinely exercised.
+
+**The ONE remaining OWED piece:** run `py tools/daemon_slayer_wiki_stats_extract.py --patch 16.11.1` from a host that reaches wiki.gg (Legion is host-blocked: 401 on every call, confirmed persistent at +35min - NOT a transient rate-trip; the wiki itself is live per item-217). Commit `data/daemon_slayer/16.11.1/wiki_stats.json` ONLY if `_with_cast_time>0`. The moment a real sidecar lands, combo.py consumes it with NO further code change. Plus: action=bucket mode-mults (Arena/URF/NB) NOT built (ARAM Meraki-covered); all item 220 carries unchanged.
 
 ---
 
