@@ -905,7 +905,7 @@ _collector: Optional[PostgameCollector] = None
 def get_collector() -> Optional[PostgameCollector]:
     return _collector
 
-def init_collector(lcu_client) -> PostgameCollector:
+def init_collector(lcu_client: object) -> PostgameCollector:
     """Create and start the singleton collector. Call once at app startup."""
     global _collector
     if _collector is None:

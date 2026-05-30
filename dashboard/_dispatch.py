@@ -22,6 +22,7 @@ only, never reject. Mirrors the soft-warn pattern from
 core.coaching_payload (Phase 4.3).
 """
 import logging
+from http.server import BaseHTTPRequestHandler
 from typing import Callable
 
 from pydantic import ValidationError
@@ -157,7 +158,7 @@ def _gather_post() -> list:
     return _POST_CACHE
 
 
-def dispatch_get(handler) -> bool:
+def dispatch_get(handler: BaseHTTPRequestHandler) -> bool:
     """Try each registered GET route in order. Returns True if one
     matched and handled the request (the handler is responsible for
     writing a response). Returns False if no route matched."""
@@ -207,7 +208,7 @@ def _validate_request_body(path: str, body) -> None:
             log.warning("request_body[%s] %s: %s", base, loc, err["msg"])
 
 
-def dispatch_post(handler, body) -> bool:
+def dispatch_post(handler: BaseHTTPRequestHandler, body: object) -> bool:
     """Same as dispatch_get but for POST. `body` is the parsed JSON
     payload (dict) extracted upstream."""
     path = handler.path

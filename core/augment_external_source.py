@@ -102,7 +102,7 @@ class AugmentPriorTable:
             return None
         return self.augments.get(str(augment_id))
 
-    def win_rate(self, augment_id) -> Optional[float]:
+    def win_rate(self, augment_id: int | str | None) -> Optional[float]:
         """External marginal win-rate for an augment, or None if unknown."""
         row = self._row(augment_id)
         if not row:
@@ -110,14 +110,14 @@ class AugmentPriorTable:
         wr = row.get("win_rate")
         return float(wr) if isinstance(wr, (int, float)) else None
 
-    def num_games(self, augment_id) -> int:
+    def num_games(self, augment_id: int | str | None) -> int:
         row = self._row(augment_id)
         if not row:
             return 0
         n = row.get("num_games")
         return int(n) if isinstance(n, (int, float)) else 0
 
-    def stage_win_rate(self, augment_id, stage) -> Optional[float]:
+    def stage_win_rate(self, augment_id: int | str | None, stage: int | str) -> Optional[float]:
         """Per-Mayhem-round (1-5) win-rate, for optional round-aware
         sharpening. None if absent."""
         row = self._row(augment_id)
@@ -388,15 +388,15 @@ class AugmentMetaTable:
             return None
         return self.augments.get(str(augment_id))
 
-    def name(self, augment_id) -> Optional[str]:
+    def name(self, augment_id: int | str | None) -> Optional[str]:
         row = self._row(augment_id)
         return row.get("name") if row else None
 
-    def rarity(self, augment_id) -> Optional[str]:
+    def rarity(self, augment_id: int | str | None) -> Optional[str]:
         row = self._row(augment_id)
         return row.get("rarity") if row else None
 
-    def icon_path(self, augment_id) -> Optional[str]:
+    def icon_path(self, augment_id: int | str | None) -> Optional[str]:
         row = self._row(augment_id)
         return row.get("icon") if row else None
 
