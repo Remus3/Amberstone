@@ -21093,23 +21093,12 @@
                 25.0,
                 30.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    10,
-                    10,
-                    10,
-                    10,
-                    10
-                  ],
-                  "units": [
-                    "% of Ivern's AP",
-                    "% of Ivern's AP",
-                    "% of Ivern's AP",
-                    "% of Ivern's AP",
-                    "% of Ivern's AP"
-                  ]
-                }
+              "ap_pct": [
+                10.0,
+                10.0,
+                10.0,
+                10.0,
+                10.0
               ]
             }
           ],
@@ -21489,23 +21478,12 @@
                 50.0,
                 50.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    30,
-                    30,
-                    30,
-                    30,
-                    30
-                  ],
-                  "units": [
-                    "% bonus movement speed",
-                    "% bonus movement speed",
-                    "% bonus movement speed",
-                    "% bonus movement speed",
-                    "% bonus movement speed"
-                  ]
-                }
+              "caster_bonus_ms_pct": [
+                30.0,
+                30.0,
+                30.0,
+                30.0,
+                30.0
               ]
             },
             {
@@ -26724,18 +26702,6 @@
               "unparsed_modifiers": [
                 {
                   "values": [
-                    16,
-                    16,
-                    16
-                  ],
-                  "units": [
-                    "%  bonus AD",
-                    "%  bonus AD",
-                    "%  bonus AD"
-                  ]
-                },
-                {
-                  "values": [
                     50,
                     50,
                     50
@@ -26746,24 +26712,17 @@
                     "% per 100% bonus attack speed"
                   ]
                 }
+              ],
+              "bonus_ad_pct": [
+                16.0,
+                16.0,
+                16.0
               ]
             },
             {
               "attribute": "Maximum Physical Damage",
               "attribute_kind": "damage",
               "unparsed_modifiers": [
-                {
-                  "values": [
-                    240,
-                    240,
-                    240
-                  ],
-                  "units": [
-                    "%  bonus AD",
-                    "%  bonus AD",
-                    "%  bonus AD"
-                  ]
-                },
                 {
                   "values": [
                     750,
@@ -26776,6 +26735,11 @@
                     "% per 100% bonus attack speed"
                   ]
                 }
+              ],
+              "bonus_ad_pct": [
+                240.0,
+                240.0,
+                240.0
               ]
             },
             {
@@ -32197,18 +32161,6 @@
               "unparsed_modifiers": [
                 {
                   "values": [
-                    330,
-                    660,
-                    990
-                  ],
-                  "units": [
-                    "  ",
-                    "  ",
-                    "  "
-                  ]
-                },
-                {
-                  "values": [
                     15,
                     30,
                     45
@@ -32219,6 +32171,11 @@
                     "   per 4% critical strike chance"
                   ]
                 }
+              ],
+              "base": [
+                330.0,
+                660.0,
+                990.0
               ]
             },
             {
@@ -33455,23 +33412,12 @@
                 20.0,
                 20.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    15,
-                    15,
-                    15,
-                    15,
-                    15
-                  ],
-                  "units": [
-                    "% armor",
-                    "% armor",
-                    "% armor",
-                    "% armor",
-                    "% armor"
-                  ]
-                }
+              "caster_armor_pct": [
+                15.0,
+                15.0,
+                15.0,
+                15.0,
+                15.0
               ]
             },
             {
@@ -33491,23 +33437,12 @@
                 30.0,
                 30.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    15,
-                    15,
-                    15,
-                    15,
-                    15
-                  ],
-                  "units": [
-                    "% armor",
-                    "% armor",
-                    "% armor",
-                    "% armor",
-                    "% armor"
-                  ]
-                }
+              "caster_armor_pct": [
+                15.0,
+                15.0,
+                15.0,
+                15.0,
+                15.0
               ]
             }
           ],
@@ -33569,23 +33504,12 @@
                 60.0,
                 60.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    40,
-                    40,
-                    40,
-                    40,
-                    40
-                  ],
-                  "units": [
-                    "% armor",
-                    "% armor",
-                    "% armor",
-                    "% armor",
-                    "% armor"
-                  ]
-                }
+              "caster_armor_pct": [
+                40.0,
+                40.0,
+                40.0,
+                40.0,
+                40.0
               ]
             },
             {
@@ -48768,23 +48692,12 @@
                 55.0,
                 55.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    2,
-                    2,
-                    2,
-                    2,
-                    2
-                  ],
-                  "units": [
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana"
-                  ]
-                }
+              "caster_bonus_mp_pct": [
+                2.0,
+                2.0,
+                2.0,
+                2.0,
+                2.0
               ]
             },
             {
@@ -48868,23 +48781,12 @@
                 70.0,
                 70.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    4,
-                    4,
-                    4,
-                    4,
-                    4
-                  ],
-                  "units": [
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana"
-                  ]
-                }
+              "caster_bonus_mp_pct": [
+                4.0,
+                4.0,
+                4.0,
+                4.0,
+                4.0
               ]
             }
           ],
@@ -48944,23 +48846,12 @@
                 50.0,
                 50.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    2,
-                    2,
-                    2,
-                    2,
-                    2
-                  ],
-                  "units": [
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana",
-                    "% bonus mana"
-                  ]
-                }
+              "caster_bonus_mp_pct": [
+                2.0,
+                2.0,
+                2.0,
+                2.0,
+                2.0
               ]
             }
           ],
@@ -54713,15 +54604,8 @@
                 25.0,
                 30.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    10
-                  ],
-                  "units": [
-                    "% of Sona's AP"
-                  ]
-                }
+              "ap_pct": [
+                10.0
               ]
             }
           ],
@@ -56852,11 +56736,11 @@
               "attribute": "Magic Damage",
               "attribute_kind": "damage",
               "base": [
-                6.0,
-                8.470588235294118,
-                10.941176470588236,
-                13.411764705882353,
-                15.882352941176471,
+                81.0,
+                128.47058823529412,
+                175.94117647058823,
+                223.41176470588235,
+                270.88235294117646,
                 18.352941176470587,
                 20.823529411764707,
                 23.294117647058826,
@@ -56886,22 +56770,6 @@
                 4.0
               ],
               "unparsed_modifiers": [
-                {
-                  "values": [
-                    75,
-                    120,
-                    165,
-                    210,
-                    255
-                  ],
-                  "units": [
-                    " ",
-                    " ",
-                    " ",
-                    " ",
-                    " "
-                  ]
-                },
                 {
                   "values": [
                     1.5,
