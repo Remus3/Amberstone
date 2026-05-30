@@ -63,7 +63,7 @@ def _is_tft_pbe() -> bool:
     return False
 
 
-def load_coach(game_mode: str, data_file, debug: bool = False):
+def load_coach(game_mode: str, data_file: str, debug: bool = False) -> object | None:
     # Exact match first
     module_path = _MODE_MAP.get(game_mode)
 
@@ -99,7 +99,7 @@ def load_coach(game_mode: str, data_file, debug: bool = False):
         return None
 
 
-def unload_all():
+def unload_all() -> None:
     for path, coach in list(_loaded.items()):
         try:
             if hasattr(coach, "shutdown"):

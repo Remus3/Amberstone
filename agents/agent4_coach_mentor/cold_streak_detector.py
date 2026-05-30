@@ -23,9 +23,12 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from coaches.adaptation_hint import SUPPORTED_MODES, kda_trends
+
+if TYPE_CHECKING:
+    from agents.agent1_lead.scheduler import Scheduler
 
 logger = logging.getLogger("agent4.cold_streak")
 
@@ -76,7 +79,7 @@ def _in_cooldown(cooldowns: dict[str, str], key: str, now: datetime) -> bool:
 
 
 def detect_and_file(
-    scheduler,
+    scheduler: "Scheduler",
     modes: Iterable[str] = SUPPORTED_MODES,
     delta_floor: float = COLD_DELTA_FLOOR,
     sample_floor: int = COLD_SAMPLE_FLOOR,
