@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-05-29 - item 215: 1-PC consolidation EXECUTE + RC game-host config + agent relocation (1 commit `2e6081c` pushed origin/main; ADR-011; RC restarted pid 14944)
+
+Migration session driven by the outside-repo runbook `Desktop\Legion-Migration-Plan`. Operator executed Phases 0-9: firmware spoof-in-place on Legion (NO hdd swap - same Win10 install, InstallDate 2026-04-18 / ProductId AA858; serials/MAC/UUID/MachineGuid re-rolled, Windows hostname now DESKTOP-JKZECV9 but Tailscale node STAYS legion-rc). League + Vanguard installed = clean-break identity. Post-Vanguard audit verified the spoof HELD (no re-roll; vgk Running). SystemSKUNumber="SKU" + EDID AOC Q27GBZD operator-accepted. Records archived to the Desktop folder (legion_identity_for_records.txt + post-vanguard audit).
+
+Pivot: Game-PC OUT of League/RC entirely. OBS now local on Legion (NOT the Game-PC OBS-server plan) - pre-seeded `%APPDATA%\obs-studio` Display Capture WGC / NVENC / 1080p60 / mkv / C:\RC-Recordings.
+
+**Shipped `2e6081c` (Phase 11 coaching slice):** `core/game_host.py` NEW `RC_GAME_HOST` (default 127.0.0.1) - 9 live readers flipped off hardcoded Game-PC IP 192.168.8.237 (incl FROZEN `lcu/lcu_client.py`, operator-granted). Agents relocated to Legion-local ONLOGON tasks: RC-LCUAgent + RC-LiveClientRelay + RC-HotkeyListener (Game-PC copies taskkilled; phase_watcher NOT relocated + RC-PhaseWatcher disabled - BSOD class). `tests/test_game_host.py` 4/4. ADR-011 + CLAUDE.md + ARCHITECTURE topology. Side-fixes (no commit): window-flash (RC-PatchRefresh + RC-PostmortemAnalyze Interactive->S4U), Acrobat error 1920 (Spooler Disabled->Automatic+started).
+
+**Carries forward (tomorrow-you):** (a) **LIVE VERIFY OWED** - open League champ select to confirm relocated agents push runes/items/summoners + in-game :2999 flows (only real test; operator was not in client). (b) poller is relay-first: if RC-LiveClientRelay dies a :8889 404 wrongly short-circuits "no game" - watch it, or refactor poller to prefer direct local :2999 (ADR-011 watch-for). (c) OBS Display Capture = continuous DXGI = match-end BSOD class; watch. (d) OBS launch-test owed (operator opens obs64.exe, verify NVENC engages + Display Capture previews). (e) Game-PC cross-Claude bridge KEPT (operator decision). (f) Deferred Phase 11: in-process vision collapse, archive gamepc_*.py, ARCHITECTURE agent-section rewrite. (g) Migration Phases 0-9 + agent relocation DONE - do NOT re-run spoof/Vanguard.
+
+---
+
 # 2026-05-28 - item 214: Electron shell + in-game overlay ARCHITECTURE PLAN (doc-only) (1 commit `82ecfba` pushed origin/main `faee0ca..82ecfba`; non-frozen; no code; no RC/DS restart)
 
 Operator ask: stabilize RC into a standalone Electron app + viewable solely in-game (overlays/panels togglable via hotkey), removing the 2nd-display requirement, keeping to 1 screen. Linked 5 inspiration pics (Zed AGGREGATOR D in-client panel, auto-champ-select, lock-in, Mayhem Doctor modal, Mayhem Settings showing UI INJECTIONS + pop-out window + window-size presets).
@@ -25,15 +37,3 @@ Operator multi-part: review 18 competitor sites + correct item/rune/summoner pol
 **Verified:** RC 3802 passed (full excl phase8) + phase8 70 + clash 0 + ruff clean + DS 1.62.0; live Caitlyn SR/ARAM clean, no experimental, 0 Golden Spatula SR/ARAM.
 
 **Carries forward (tomorrow-you):** (a) LIVE VISUAL CAPTURE OWED for champ-select SR/ARAM/Arena (pick/ban + ally-roles panel + CC cards + DS save+push) - Game-PC MCP :8892 went unreachable mid-session (manual restart per `project_gamepc_mcp_boot_gap`); capture `?ui_mock=1#champ-select` + `&mode=aram|arena`, Ctrl+Shift+R, monitor 1. (b) DS-vs-enemy-comp save+push needs in-champ-select verification (operator was mode=client). (c) ARAM "Leth Poke" label borderline on some ADC paths (cosmetic, left). (d) competitor lift backlog: calc.gg combo-queue + stat-sweep graphs, lolsolved engine-knobs, statcheck stat-sandbox, Aggregator P relative-score bars - all over existing DS math, operator-gated. (e) item 212 minor-rune LCU push gap unchanged.
-
----
-
-# 2026-05-28 (dev UI: user builds page) - user-curated builds now surface in live champ-select chooser (ALL modes) (1 commit `a887c2b` pushed origin/main `50543b7..a887c2b`; non-frozen; RC restarted pid 11272 -> 9312)
-
-Operator: "starting on user builds page. user build for locked Caitlyn was not displayed in live champ select." Root cause: user builds (`coaches/sr_user_builds` -> `data/daemon_slayer/user_builds.json`) were orphaned from EVERY live chooser - `/api/loadout/list` -> `loadout_resolver.list_variants()` reads `champion_loadouts.json` only; `format_for_display()` was test-only; the old merge route `/api/sr-draft/profile` was deleted item 186.
-
-**Shipped `a887c2b`:** `dashboard/routes_loadout.py` `_serve_loadout_list_post` appends user builds as `userbuild_<id>` rows for ALL modes (operator: "available in other modes as well"); new `_resolve_user_build()` builds the rune+item+summoner trio; `_serve_loadout_apply_post` routes `userbuild_*` before the resolver (colon-free key dodges the item-178 `<variant>:<path>` savedChoice split). `champ_select.js` + `champ_select_view.css` get a sky-blue `.csv-build-badge-user` - no other JS change, existing render/click/apply wiring flows the row key. NEW `tests/test_loadout_user_builds_merge.py` 16 tests. Drive-by: `tests/test_csv_rune_push_on_selection_change.py` stale Jinx `sr-bruiser` path (dropped item 208) -> `auto-sr-primary-carry` (Press the Attack vs adc-crit Lethal Tempo; keystone still differs).
-
-**Verified:** 16/16 + 15/15 green; ruff + py_compile + node --check clean; RC pid 9312 alive reload_ok; live `/api/loadout/list` Caitlyn -> `userbuild_723d445b` "crit max" present sr/aram/arena, 6 item_ids resolved.
-
-**Carries forward (tomorrow-you):** (a) Minor runes (`minor_primary`/`minor_secondary`) are SAVED on the user-builds page but NOT pushed to LCU - `format_for_display` + `build_perk_ids` ignore them so the LCU page gets default minors. This is the natural NEXT user-builds-page item. (b) Visual capture of the rendered chooser row OWED - operator was mode=client (no live champ select). (c) `_csvMaybePushBuildsToLCU` caps the in-game item-shop dropdown at 4 sets; a user build can be crowded out (click-apply push is unaffected). Minor.
