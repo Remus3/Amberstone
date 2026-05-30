@@ -1,0 +1,125 @@
+/* DS relative-score bar panel (competitor lift #3,
+ * docs/COMPETITOR_LIFT_2026-05-30.md "Lift 3", Aggregator P relative-score
+ * bars). Mounts inside the champ-select Suggestions area: a READ-ONLY ranked
+ * bar list for the LOCKED champion. Each row is item name | a horizontal bar
+ * filled to the item's DPS delta as a percent of the best item | the percent
+ * | gold. The relative-score BAR is the hero element of this panel.
+ *
+ * Backend: dashboard/routes_ds_relscore.py
+ *   GET /api/ds-relscore?champion=<champ>&mode=SR[&items=][&level=11]
+ *
+ * Uses the semantic tokens from web/css/tokens.css. Accent-toned (info)
+ * since it is a relative-power readout, not an enemy-threat surface.
+ */
+
+.ds-relscore {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-info, #8a8cf0);
+  border-radius: 4px;
+}
+
+.ds-relscore[hidden] {
+  display: none;
+}
+
+.dsr-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.dsr-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dsr-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Ranked bar list: item | [====bar====] | pct | gold. */
+.dsr-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dsr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+
+.dsr-row:first-of-type {
+  border-top: none;
+}
+
+.dsr-item {
+  flex: 0 0 34%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.90);
+}
+
+/* The hero element: the relative-score bar track + fill. */
+.dsr-bar {
+  flex: 1 1 auto;
+  position: relative;
+  height: 14px;
+  min-width: 40px;
+  background: rgba(0, 0, 0, 0.40);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dsr-bar-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--signal-info, #8a8cf0) 0%,
+    rgba(138, 140, 240, 0.55) 100%
+  );
+  border-radius: 2px;
+  transition: width 0.18s ease-out;
+}
+
+.dsr-pct {
+  flex: 0 0 auto;
+  width: 34px;
+  text-align: right;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--signal-info, #8a8cf0);
+}
+
+.dsr-gold {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dsr-empty {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 0;
+}
