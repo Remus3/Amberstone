@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-05-30 - item 216: DS ability unit-map exhaustion + 3 caster-stat scaling fields wired (2 commits `9b61dc7` + docs `6ddfaa6`; ENGINE 1.62.0 -> 1.63.0; DS restarted 1.63.0; RC untouched)
+
+Triggered by lolmath-handoff staging (extractor "extend `_UNIT_TO_FIELD`" note). A workflow classified all 29 unmapped Meraki damage-modifier unit strings: 8 typed, 21 intentional leaves (12 per-100-stat/per-stack/conditional amps + 9 Meraki mis-split crit-formula fragments).
+
+**Shipped `9b61dc7`:** extractor `_UNIT_TO_FIELD` +6 (possessive-AP `% of Sona's/Ivern's AP` -> ap_pct; double-space `%  bonus AD` -> bonus_ad_pct; `% armor` -> caster_armor_pct; `% bonus mana` -> caster_bonus_mp_pct; `% bonus movement speed` -> caster_bonus_ms_pct) + `_canonicalize_unit` whitespace-only -> base (TahmKench Q / Lucian R flat dmg was silently dropped). `tools/migrate_abilities_units_2026_05_30.py` in-place re-typed 16.10.1 + 16.11.1 (NO Meraki re-fetch - mutable-latest rule; `.bak-units20260530-*` backups left untracked). 3 new caster fields wired end to end into the LIVE evaluator: DamageBlock + `_SCALING_FIELDS` + AbilityContext + `_SCALING_TARGETS` + from_build; caster_bonus_* follow the existing "above level-1 base" convention; DEFAULTED at END of frozen dataclass (inserting mid-class = 41-failure trap). ENGINE 1.62.0 -> 1.63.0 + 33 pin files. NEW `tests/test_abilities_unit_map_2026_05_30.py` 8/8.
+
+**Verified:** DS suite 4894 passed / 0 fail; ruff clean; DS :8893 restarted 1.63.0 / 16.11.1 / 172 / 705; phase8 live engine 18/18 post-restart. Malphite W: caster_armor_pct recovers +22.5 raw (rank5, 150 armor) old parser dropped = ~29% on-cast understatement now corrected. Janna caster_bonus_ms 0.0 itemless (no overcount).
+
+**Carries forward (tomorrow-you):** (a) lolmath wiki-source analysis OWED (operator on wakeup): whether wiki.leagueoflegends.com exposes Module:ChampionData via MediaWiki action=raw / Cargo cargoquery - the extractor normalization layer (unit-map + form stitching) is the reusable part if so. (b) external handoff bundle `Desktop\lolmath_handoff` (+ .7z) is NOT git-tracked + carries zero personal/outreach metadata (see [[feedback_keep_outreach_out_of_repo]]) - keep both true. (c) the 21 intentional unit leaves are NOT a parser gap (second-order amps + Meraki crit-garbage); ok_rate stays 0.9896 because residual is structural; do NOT re-attempt typing them. (d) item 215 LIVE VERIFY still owed (relocated agents push runes/items/summoners in champ select).
+
+---
+
 # 2026-05-29 - item 215: 1-PC consolidation EXECUTE + RC game-host config + agent relocation (1 commit `2e6081c` pushed origin/main; ADR-011; RC restarted pid 14944)
 
 Migration session driven by the outside-repo runbook `Desktop\Legion-Migration-Plan`. Operator executed Phases 0-9: firmware spoof-in-place on Legion (NO hdd swap - same Win10 install, InstallDate 2026-04-18 / ProductId AA858; serials/MAC/UUID/MachineGuid re-rolled, Windows hostname now DESKTOP-JKZECV9 but Tailscale node STAYS legion-rc). League + Vanguard installed = clean-break identity. Post-Vanguard audit verified the spoof HELD (no re-roll; vgk Running). SystemSKUNumber="SKU" + EDID AOC Q27GBZD operator-accepted. Records archived to the Desktop folder (legion_identity_for_records.txt + post-vanguard audit).
