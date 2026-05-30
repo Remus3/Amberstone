@@ -86,6 +86,7 @@ _ALLOWED_TEST_FILES = {
     "test_cc_conditional_overrides.py",
 }
 _ALLOWED_SOURCE_FILES = {
+    "cooldown_watch.py",
     "cc_pressure.py",
 }
 
