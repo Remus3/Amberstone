@@ -1153,6 +1153,17 @@
                    id="csv-sugg-cc-conditional-pressure"
                    data-cc-cond-tier="warn"
                    hidden></div>
+              <!-- 2026-05-30 (item 218 / competitor lift #5): matchup
+                   cooldown-watch. Per enemy champion, the single highest-
+                   threat hard-CC ability + its max-rank BASE cooldown
+                   ("watch their hook - 16s"). Q/W/E base-ability layer;
+                   joins the CC threat registries to the per-rank cooldown
+                   data in champion_abilities.json. Backend:
+                   dashboard/routes_cooldown_watch.py. Hidden until at
+                   least one enemy is committed in champ-select. -->
+              <div class="csv-sugg-section cooldown-watch"
+                   id="csv-sugg-cooldown-watch"
+                   hidden></div>
               <div class="csv-sugg-section csv-sugg-pickorder"
                    id="csv-sugg-pickorder">
                 <!-- s213 v3: "SUGGESTED PICK ORDER" label removed per

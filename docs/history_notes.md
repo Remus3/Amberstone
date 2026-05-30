@@ -9564,3 +9564,17 @@ Verified: DS 3962 passed; py_compile + ruff + ASCII clean; DS :8893 restarted se
 Don't-redo: cc_conditional now 36/32; _PER_SPELL_CC_DURATIONS now 108/89; silence joins first-order CC scope; wave 10+ exhausted for unconditional (need new schema); orchestrator-merge pattern 14 consecutive runs (items 134-147) DURABLE.
 
 Carries forward: (a) loading_view.css orphan @import STILL operator-gated - NOW CLOSED via item 149; (b) NEW build_order.css orphan FILE flagged operator-gated - NOW CLOSED via item 149; (c) Briar frenzy + Sylas range REJECTs need new condition tag constants (separate schema lift, operator-gated) - schema lift SHIPPED item 148 but registry stays at 36/32; (d) DD Defy heal-on-takedown STILL deferred; (e) Live ARAM/SR smoke pending; (f) RC-PostmortemAnalyze 2026-05-24 04:15 first scheduled run - verify LastTaskResult=0 next session; (g) EHP calibrations operator-gated; (h-m) item 146 carries unchanged.
+
+---
+
+---
+
+# 2026-05-29 - item 215: 1-PC consolidation EXECUTE + RC game-host config + agent relocation (1 commit `2e6081c` pushed origin/main; ADR-011; RC restarted pid 14944)
+
+Migration session driven by the outside-repo runbook `Desktop\Legion-Migration-Plan`. Operator executed Phases 0-9: firmware spoof-in-place on Legion (NO hdd swap - same Win10 install, InstallDate 2026-04-18 / ProductId AA858; serials/MAC/UUID/MachineGuid re-rolled, Windows hostname now DESKTOP-JKZECV9 but Tailscale node STAYS legion-rc). League + Vanguard installed = clean-break identity. Post-Vanguard audit verified the spoof HELD (no re-roll; vgk Running). SystemSKUNumber="SKU" + EDID AOC Q27GBZD operator-accepted. Records archived to the Desktop folder (legion_identity_for_records.txt + post-vanguard audit).
+
+Pivot: Game-PC OUT of League/RC entirely. OBS now local on Legion (NOT the Game-PC OBS-server plan) - pre-seeded `%APPDATA%\obs-studio` Display Capture WGC / NVENC / 1080p60 / mkv / C:\RC-Recordings.
+
+**Shipped `2e6081c` (Phase 11 coaching slice):** `core/game_host.py` NEW `RC_GAME_HOST` (default 127.0.0.1) - 9 live readers flipped off hardcoded Game-PC IP 192.168.8.237 (incl FROZEN `lcu/lcu_client.py`, operator-granted). Agents relocated to Legion-local ONLOGON tasks: RC-LCUAgent + RC-LiveClientRelay + RC-HotkeyListener (Game-PC copies taskkilled; phase_watcher NOT relocated + RC-PhaseWatcher disabled - BSOD class). `tests/test_game_host.py` 4/4. ADR-011 + CLAUDE.md + ARCHITECTURE topology. Side-fixes (no commit): window-flash (RC-PatchRefresh + RC-PostmortemAnalyze Interactive->S4U), Acrobat error 1920 (Spooler Disabled->Automatic+started).
+
+**Carries forward (tomorrow-you):** (a) **LIVE VERIFY OWED** - open League champ select to confirm relocated agents push runes/items/summoners + in-game :2999 flows (only real test; operator was not in client). (b) poller is relay-first: if RC-LiveClientRelay dies a :8889 404 wrongly short-circuits "no game" - watch it, or refactor poller to prefer direct local :2999 (ADR-011 watch-for). (c) OBS Display Capture = continuous DXGI = match-end BSOD class; watch. (d) OBS launch-test owed (operator opens obs64.exe, verify NVENC engages + Display Capture previews). (e) Game-PC cross-Claude bridge KEPT (operator decision). (f) Deferred Phase 11: in-process vision collapse, archive gamepc_*.py, ARCHITECTURE agent-section rewrite. (g) Migration Phases 0-9 + agent relocation DONE - do NOT re-run spoof/Vanguard.

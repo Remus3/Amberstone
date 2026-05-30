@@ -27,6 +27,10 @@ import {
   getCcConditionalPressureCacheCount,
   renderCcConditionalPressure,
 } from './cc_conditional_pressure.js';
+import {
+  fetchCooldownWatch, getCachedCooldownWatch,
+  getCooldownWatchCacheCount, renderCooldownWatch,
+} from './cooldown_watch.js';
 
 // -- LCU command helper (used by champ-select + build chooser) ------
 function lcuCmd(cmdObj) {
@@ -1025,6 +1029,11 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // whether enemy conditional CC threatens to land more lockdown than
   // ally conditional CC will land on enemies.
   _csvRenderCcConditionalPressure(cs);
+  // 2026-05-30 (item 218 / competitor lift #5): matchup cooldown-watch.
+  // Per enemy champion, the single highest-threat hard-CC ability + its
+  // max-rank base cooldown ("watch their hook - 16s"). Joins the CC threat
+  // registries to per-rank ability cooldowns from champion_abilities.json.
+  _csvRenderCooldownWatch(cs);
   // ---- Row 3: pick-order tips (no header label per s213 v3) ----
   // Static advisory keyed on operator's assigned role. 3 tips per role
   // - the third row is the "consider" / strategic depth tip beyond
@@ -1364,6 +1373,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   // /api/cc-blended-ehp-threat lands.
   const ccBlendedCount = getCcBlendedEhpThreatCacheCount();
   const ccCondCount = getCcConditionalPressureCacheCount();
+  const cdwCount = getCooldownWatchCacheCount();
   return [
     cs.phase || "",
     myCid | 0,
@@ -1376,7 +1386,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}`,
   ].join("|");
 }
 
@@ -1656,6 +1666,34 @@ function _csvRenderCcConditionalPressure(cs) {
   fetchCcConditionalPressure(allyNames, enemyNames, mode, _csvScheduleRender);
   const payload = getCachedCcConditionalPressure(allyNames, enemyNames, mode);
   renderCcConditionalPressure(block, payload);
+}
+
+// 2026-05-30 (item 218 / competitor lift #5): matchup cooldown-watch.
+// ENEMY-only surface (no ally side) - per enemy champion, the single
+// highest-threat hard-CC ability + its max-rank base cooldown. Calls
+// /api/cooldown-watch with the enemy roster, renders the card list inside
+// the #csv-sugg-cooldown-watch block. Hidden until at least one enemy is
+// committed. Mode-agnostic (the route + engine take no mode param - the
+// cooldown is intrinsic to the ability).
+function _csvRenderCooldownWatch(cs) {
+  const block = document.getElementById("csv-sugg-cooldown-watch");
+  if (!block) return;
+  const enemyNumericIds = (cs.their_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (!enemyNumericIds.length) {
+    block.hidden = true;
+    return;
+  }
+  const enemyNames = resolveChampNames(enemyNumericIds);
+  if (!enemyNames.length) {
+    // CHAMPS index not yet loaded - keep hidden, resolves next tick.
+    block.hidden = true;
+    return;
+  }
+  fetchCooldownWatch(enemyNames, _csvScheduleRender);
+  const payload = getCachedCooldownWatch(enemyNames);
+  renderCooldownWatch(block, payload);
 }
 
 function _csvAdaptKey(champion, enemyIds, baseSummoners, role) {
