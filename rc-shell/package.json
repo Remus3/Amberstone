@@ -1,0 +1,19 @@
+{
+  "name": "rc-shell",
+  "version": "0.1.0",
+  "description": "Riot Commander Electron Phase 1 companion shell - a thin frameless always-on-top window that loads RC_ORIGIN (the dashboard). Vanguard-safe: loads a URL, nothing else.",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/config.test.js test/store.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  },
+  "author": "Riot Commander",
+  "license": "UNLICENSED"
+}
