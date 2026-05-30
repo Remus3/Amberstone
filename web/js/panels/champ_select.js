@@ -39,6 +39,8 @@ import {
   renderDsCombo,
 } from './ds_combo.js';
 import { renderDsKnobs, getDsKnobsCacheCount } from './ds_knobs.js';
+import { renderDsRelscore, getDsRelscoreCacheCount } from './ds_relscore.js';
+import { renderDsStatcheck, getDsStatcheckCacheCount } from './ds_statcheck.js';
 
 // -- LCU command helper (used by champ-select + build chooser) ------
 function lcuCmd(cmdObj) {
@@ -1047,6 +1049,10 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   _csvRenderDsCombo(cs);
   { const _dskBlock = document.getElementById("csv-ds-knobs");
     if (_dskBlock) renderDsKnobs(_dskBlock, cs); }
+  { const _dsrBlock = document.getElementById("csv-ds-relscore");
+    if (_dsrBlock) renderDsRelscore(_dsrBlock, cs); }
+  { const _dssBlock = document.getElementById("csv-ds-statcheck");
+    if (_dssBlock) renderDsStatcheck(_dssBlock, cs); }
   // ---- Row 3: pick-order tips (no header label per s213 v3) ----
   // Static advisory keyed on operator's assigned role. 3 tips per role
   // - the third row is the "consider" / strategic depth tip beyond
@@ -1390,6 +1396,8 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   const dswCount = getDsSweepCacheCount();
   const dscCount = getDsComboCacheCount();
   const dskCount = getDsKnobsCacheCount();
+  const dsrCount = getDsRelscoreCacheCount();
+  const dssCount = getDsStatcheckCacheCount();
   return [
     cs.phase || "",
     myCid | 0,
@@ -1402,7 +1410,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}|dsr:${dsrCount}|dss:${dssCount}`,
   ].join("|");
 }
 
