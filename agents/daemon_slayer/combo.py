@@ -310,6 +310,18 @@ def compute_combo(
             notes=tuple(notes),
         )
 
+    # Per-champ AA windup from the optional wiki_stats sidecar (item 221).
+    # Used ONLY when it is a real positive float; otherwise the fixed
+    # _DEFAULT_AA_WINDUP_S default holds (byte-identical to no-sidecar).
+    _wiki_aa = snap.wiki_attack_cast_time(burst.champion_id or champ)
+    aa_windup = (
+        float(_wiki_aa)
+        if isinstance(_wiki_aa, (int, float))
+        and not isinstance(_wiki_aa, bool)
+        and float(_wiki_aa) > 0.0
+        else _DEFAULT_AA_WINDUP_S
+    )
+
     clock = 0.0
     cumulative = 0.0
     total_raw = 0.0
@@ -332,7 +344,7 @@ def compute_combo(
         cast_time = (
             _cast_time_for(burst.champion_id or champ, key)
             if (is_ability and key in _COOLDOWN_KEYS)
-            else _DEFAULT_AA_WINDUP_S
+            else aa_windup
         )
 
         # Cooldown skip: a cooldown-bearing ability re-cast before its
