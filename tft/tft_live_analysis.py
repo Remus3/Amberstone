@@ -144,7 +144,7 @@ class TftLiveAnalysis:
         self._running=True; self._thread=threading.Thread(target=self._loop,daemon=True,name="TftLiveAnalysis")
         self._thread.start(); logger.info("TftLiveAnalysis started")
     def shutdown(self) -> None: self._running=False
-    def set_ai_bar(self, bar) -> None:
+    def set_ai_bar(self, bar: object) -> None:
         """Wire a TftAiStatusBar for scan progress notifications."""
         self._ai_bar = bar
     def _notify_scanning(self, pct=0):

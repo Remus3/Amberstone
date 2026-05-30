@@ -26,7 +26,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -75,7 +75,7 @@ _listeners: list = []
 _listeners_lock = threading.Lock()
 
 
-def add_listener(fn) -> None:
+def add_listener(fn: Callable[..., object]) -> None:
     """Register a snapshot listener. Called after every fetch.
 
     The listener receives the new Snapshot. Idempotent: a listener
@@ -88,7 +88,7 @@ def add_listener(fn) -> None:
         _listeners.append(fn)
 
 
-def remove_listener(fn) -> None:
+def remove_listener(fn: Callable[..., object]) -> None:
     """Remove a listener if present. Idempotent."""
     with _listeners_lock:
         try:

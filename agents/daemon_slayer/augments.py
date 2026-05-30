@@ -15,7 +15,10 @@ them.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
+
+if TYPE_CHECKING:
+    from agents.daemon_slayer.data_loader import DataSnapshot
 
 # ─── Rarity constants (cdragon convention) ───────────────────────────────────
 # 0 = Silver, 1 = Gold, 2 = Prismatic, 4 = Hero (apiName starts with "GoH")
@@ -180,7 +183,7 @@ _AUGMENT_STAT_OVERLAYS: dict[str, callable] = {
 
 def compute_augment_stats(
     augments: Iterable[Augment | dict | int | str],
-    snapshot,
+    snapshot: "DataSnapshot",
 ) -> dict[str, float]:
     """Sum stat overlays for the given augments.
 
@@ -238,7 +241,7 @@ def compute_augment_stats(
     return totals
 
 
-def list_augments_by_rarity(snapshot, rarity: int) -> list[Augment]:
+def list_augments_by_rarity(snapshot: "DataSnapshot", rarity: int) -> list[Augment]:
     return [
         Augment.from_record(rec)
         for rec in snapshot.arena_augments_by_id.values()
