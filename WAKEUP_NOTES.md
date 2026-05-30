@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-05-30 - item 223 + 222: Electron Phase 1 companion shell + living-doc reconciliation + 2 stale-carry closes (electron merge 8d398ab + docs 8662b87; rc-shell/ NEW only; NO ENGINE bump; NO DS/RC restart)
+
+Operator "in parallel: start all Open/actionable" (4th same-prompt drain). Grounded stale-sweep first (2 read-only sub-agents) - the actionable-headless well is down to Electron Phase 1; everything else is live-gated or operator-input-blocked.
+
+**item 223 - Electron Phase 1 companion shell (merge 8d398ab):** Phase 1 of item-214's 6-phase plan (`docs/ELECTRON_OVERLAY.md`) - the companion/pop-out window (surface A), NOT the in-game overlay. NEW `rc-shell/` (9 files, zero existing-file touch): package.json (electron ^33), src/config.js PURE (resolveConfig env RC_ORIGIN > saved > default + SIZE_PRESETS + clampPosition + applyPreset), src/store.js PURE atomic position persistence (tolerates missing/corrupt -> defaults), src/main.js (frameless BrowserWindow loads resolveConfig().origin default https://legion-rc:8888, restores+persists window pos, SCOPED certificate-error handler gated to RC origin host only - NOT global cert-disable), src/preload.js (contextIsolation true, near-empty), test/*.test.js (node:test, no electron dep), README + .gitignore. RC_ORIGIN config-not-code (flips to 127.0.0.1:8888 post-consolidation, zero code change). Vanguard-safe (DWM window, no DXGI/memory/injection/globalShortcut). Verified: node --check 6/6; node --test 41/41 pass; npm install SUCCEEDED (electron 33.4.11; npm egress reachable unlike wiki.gg); ASCII clean; merge 0 files outside rc-shell/.
+
+**item 222 - living-doc reconciliation + stale closes (8662b87):** README/BRIEF/DAEMON_SLAYER/ARCHITECTURE current-state numbers 4872/4894 -> 5021 tests + BRIEF ENGINE 1.61.0 -> 1.63.0 (stale since item 219). Coverage prose + dated anchors untouched (DS-coverage + no-history-rewrite rules). 2 ROADMAP carries verified STALE + closed: Page #3 Replay flex-alloc (item 185 already retuned 320/360) + only_item_ids threading (fixed 2026-05-18 9bba79a, full chain wired + test exists).
+
+**Carries forward (tomorrow-you):** (a) Electron VISUAL LAUNCH OWED (`cd rc-shell && npm install && npm start`) - window render operator-gated (headless host). (b) Electron Phase 2 (in-game overlay) is the next slice when operator opens it - DWM compositor, Borderless, hide on resolution-swap per BSOD memories; do NOT build Phase 2-6 unscoped. (c) cert-trust SCOPED to RC origin - never global-disable. (d) config.js/store.js stay PURE (no electron import) so node:test needs no electron. (e) all item 221 carries unchanged (wiki sidecar DATA still owed - host edge-blocked).
+
+---
+
 # 2026-05-30 - item 221 NEAR-COMPLETE: lolmath-wiki extractor + combo.py consumer wire shipped (2 commits db4c268 + merge 56980d6; NO ENGINE bump 1.63.0; NO DS restart; RC restarted for combo/data_loader). ONLY sidecar DATA owed - wiki host-blocked (re-probed +35min, still 401)
 
 Operator "in parallel: start all Open/actionable" (3rd same-prompt drain). AskUserQuestion picked lolmath-wiki off BACKLOG:20; on the wiki-blocked fork picked "ship tool now, data+wire owed". Targets item-217 GO-conditional (`docs/LOLMATH_WIKI_SOURCE_2026-05-30.md`).
