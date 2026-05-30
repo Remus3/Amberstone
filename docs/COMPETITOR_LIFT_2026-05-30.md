@@ -331,6 +331,18 @@ NOT in the static curated build list:
   `BuildStep` carries `delta` (`core/build_order.py:180`, the scorer delta gained at that step) +
   `scorer` + `unit`. A per-STEP relative bar is `step.delta / max(steps.delta)`. Cheap.
 
+MERGER CORRECTION (2026-05-30, verified vs live code before commit): Agent 2's
+"the build-chooser DS archetype preview already renders these rows" is STALE.
+item 200 Slice D (2026-05-25) REMOVED the DS-top-picks preview row from under the
+archetype buttons (`web/js/panels/champ_select.js:1967-1971` comment). Post-item-200
+the `delta_dps` ranked rows are fetched into `_CSV_DS_CACHE` ONLY for the
+adaptive-summoner pipeline + experimental item-set (`champ_select.js:2203-2207`) -
+they are NOT rendered as a visible decoratable item list anywhere in champ-select.
+So the relative-score bar has NO existing render surface to decorate; it would
+require ADDING a render surface (re-introduce the item-200-removed DS-top-picks
+row, or a new panel). That makes it a NEW-surface design choice = OPERATOR-GATE,
+not the pure-presentation in-run tweak first assessed. NOT shipped this run.
+
 CAVEAT (state it exactly): the STATIC curated build chooser - `coaches/loadout_resolver.py`
 `list_variants()` (`:117`) and the `build_paths[]` rows it returns - carries NO score field. Those
 rows are hand-curated item-name lists (`key, label, items, runes, summoners, _archetype`); there
