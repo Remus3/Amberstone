@@ -1,0 +1,119 @@
+/* Matchup cooldown-watch card (competitor lift #5,
+ * docs/COMPETITOR_LIFT_2026-05-30.md). Sibling of the cc-conditional-
+ * pressure chip - mounts inside the Suggestions card (.csv-card-suggestions)
+ * just below it during champ-select.
+ *
+ * Surfaces, per ENEMY champion, the single highest-threat hard-CC ability
+ * + its max-rank base cooldown ("watch their hook - 16s"). The card is the
+ * Q/W/E base-ability layer; summoner+ult cooldowns live on the separate
+ * CD ledger surface.
+ *
+ * Backend: dashboard/routes_cooldown_watch.py
+ *   GET /api/cooldown-watch?enemy=<champ,champ,...>
+ *
+ * Uses the semantic tokens from web/css/tokens.css. The card carries a
+ * threat-toned (warn) accent since it is an enemy-threat surface; no tier
+ * attr (it is a list, not a balance ratio).
+ */
+
+.cooldown-watch {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-warn, #f1b04a);
+  border-radius: 4px;
+}
+
+.cooldown-watch[hidden] {
+  display: none;
+}
+
+.cdw-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.cdw-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cdw-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Per-enemy card row: slot badge | champ+spell+cc stack | cooldown. */
+.cdw-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+
+.cdw-row:first-of-type {
+  border-top: none;
+}
+
+.cdw-slot {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+}
+
+.cdw-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.cdw-champ {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.cdw-spell {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.70);
+}
+
+.cdw-cc {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Conditional CC rows are softer + their cc descriptor is tinted to
+ * signal "only if the setup lands". */
+.cdw-row[data-cdw-cond="1"] .cdw-cc {
+  color: var(--signal-warn, #f1b04a);
+}
+
+.cdw-cd {
+  flex: 0 0 auto;
+  font-size: var(--fs-md);
+  font-weight: 800;
+  color: var(--signal-warn, #f1b04a);
+  letter-spacing: 0.02em;
+}

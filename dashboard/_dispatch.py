@@ -65,6 +65,7 @@ def _gather_get() -> list:
                                routes_bridge_pending, routes_bridge_cadence,
                                routes_cc_blended_ehp_threat,
                                routes_cc_conditional_pressure,
+                               routes_cooldown_watch,
                                routes_damage_mix, routes_draft_elo,
                                routes_duo_synergy,
                                routes_health_peer,
@@ -93,6 +94,7 @@ def _gather_get() -> list:
                       + list(routes_ban_suggest.GET_ROUTES)
                       + list(routes_cc_blended_ehp_threat.GET_ROUTES)
                       + list(routes_cc_conditional_pressure.GET_ROUTES)
+                      + list(routes_cooldown_watch.GET_ROUTES)
                       + list(routes_damage_mix.GET_ROUTES)
                       + list(routes_draft_elo.GET_ROUTES)
                       + list(routes_duo_synergy.GET_ROUTES)
