@@ -31,6 +31,10 @@ class DataSnapshot:
     arena_augments_by_id: dict[int, dict]
     arena_augments_by_api: dict[str, dict]
     data_root: Path = field(repr=False)
+    # Optional lolmath-wiki stat sidecar (item 221). Maps champ id ->
+    # {attack_cast_time, missile_speed, ...}. Default empty dict so an
+    # absent wiki_stats.json is byte-identical to pre-sidecar behavior.
+    wiki_stats: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, patch: str | None = None, data_root: Path | None = None) -> "DataSnapshot":
@@ -98,6 +102,14 @@ class DataSnapshot:
         augs_by_id = {int(a["id"]): a for a in augs if isinstance(a.get("id"), int)}
         augs_by_api = {a["apiName"]: a for a in augs if a.get("apiName")}
 
+        # wiki_stats.json is the optional lolmath-wiki stat sidecar (item
+        # 221). Absent file -> _read_optional returns None -> {}. A present
+        # file is {"champions": {<id>: {...}}, ...}; pull the champions map.
+        wiki_doc = _read_optional("wiki_stats.json")
+        wiki_stats = (
+            wiki_doc.get("champions") if isinstance(wiki_doc, dict) else None
+        ) or {}
+
         return cls(
             patch=patch,
             manifest=manifest,
@@ -108,6 +120,7 @@ class DataSnapshot:
             arena_augments_by_id=augs_by_id,
             arena_augments_by_api=augs_by_api,
             data_root=root,
+            wiki_stats=wiki_stats,
         )
 
     def champion(self, champ_id: str) -> dict:
@@ -125,6 +138,16 @@ class DataSnapshot:
 
     def scenarios(self, champ_id: str) -> list:
         return self.scenarios_by_id.get(champ_id, [])
+
+    def wiki_attack_cast_time(self, champ_id: str) -> float | None:
+        """Per-champ AA windup (s) from the optional wiki_stats sidecar.
+
+        Returns None when the sidecar is absent, has no entry for the
+        champ, or the entry's attack_cast_time is null - the combo clock
+        falls back to its fixed default in that case (byte-identical to
+        pre-sidecar behavior).
+        """
+        return self.wiki_stats.get(str(champ_id), {}).get("attack_cast_time")
 
     def arena_augment(self, key: int | str) -> dict:
         if isinstance(key, int):
