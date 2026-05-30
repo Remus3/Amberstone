@@ -11,11 +11,13 @@ import threading
 import time
 from typing import TYPE_CHECKING, Optional
 
+from core.game_host import GAME_HOST
+
 if TYPE_CHECKING:
     from core.game_snapshot import TftSnapshot
 
 logger = logging.getLogger("rc.tft.reader")
-TFT_API = "https://192.168.8.237:2999/liveclientdata/allgamedata"
+TFT_API = f"https://{GAME_HOST}:2999/liveclientdata/allgamedata"
 _TIME_TO_ROUND = [
     # Set 17 Space Gods Double Up - calibrated from 3 confirmed live data points:
     # t=32s→1-2, t=348s→2-5, t≈1002s→4-6, t=1879s→7-4

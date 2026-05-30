@@ -1,6 +1,6 @@
 # Riot Commander - Agent Context
 
-Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard on Game-PC's secondary display. RC is tkinter-free; Daemon Slayer (`:8893`) computes real DPS math per champion.
+Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free; Daemon Slayer (`:8893`) computes real DPS math per champion.
 
 > **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md` · `docs/API.md`
 > **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine - 705 items / 172 champs - ENGINE_VERSION 1.43.0 - all 6 archetype scorers wired + per-spell CC consumer + cc_blended_ehp ecosystem COMPLETE 4 consumers + per-spell CC wave 9 108/89 + cc_conditional ecosystem COMPLETE 5 consumers wave 6 36/32) - `docs/AGENTS.md` (Phase 3 framework) - `BACKLOG.md` (aspirational)
@@ -11,11 +11,11 @@ Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude H
 
 | Machine | Tailnet / IP | LAN IP | Role |
 |---|---|---|---|
-| **Legion** | `legion-rc` / `100.70.22.55` | `192.168.8.230` | Runs RC, supervisor, vision server, web dashboard |
-| **Game-PC** | `gamepc-rc` / `100.95.66.128` | `192.168.8.237` | Runs League; Chrome on secondary display (panel is 1920×1280 native @ 100% scale) shows the dashboard |
-| **Peer** | `peer-host` / `<peer-tailnet-ip>` | - | Cross-Claude peer; RC↔Peer bridge |
+| **Legion** | `legion-rc` / `100.70.22.55` | `192.168.8.230` | 1-PC (2026-05-29, ADR-011): runs League + Vanguard + RC + supervisor + vision server + dashboard + OBS. Relocated agents run local as ONLOGON tasks: RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener. Tailscale node stays `legion-rc` though Windows hostname is now `DESKTOP-JKZECV9` |
+| **Game-PC** | `gamepc-rc` / `100.95.66.128` | `192.168.8.237` | Out of the League/RC pipeline (2026-05-29). Cross-Claude bridge daemons may remain; repurpose pending |
+| **Peer** | `peer-host` / `<peer-tailnet-ip>` | - | Cross-Claude peer; RC<->Peer bridge |
 
-All three in tailnet `tailc150de.ts.net`. Prefer tailnet hostnames. Vision runs in-process at `127.0.0.1:8889`.
+All three in tailnet `tailc150de.ts.net`. Prefer tailnet hostnames. Vision runs in-process at `127.0.0.1:8889`. The game host is config not code: `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`) is where every live reader finds Live Client `:2999` + LCU.
 
 ## Paths
 

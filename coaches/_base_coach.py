@@ -180,8 +180,9 @@ def fetch_game_data(ssl_ctx: "ssl.SSLContext | None" = None) -> "dict | None":
     """
     ctx = ssl_ctx or make_ssl_ctx()
     try:
+        from core.game_host import GAME_HOST
         req = urllib.request.Request(
-            "https://192.168.8.237:2999/liveclientdata/allgamedata"
+            f"https://{GAME_HOST}:2999/liveclientdata/allgamedata"
         )
         with urllib.request.urlopen(req, context=ctx, timeout=2) as r:
             return json.loads(r.read())

@@ -98,11 +98,12 @@ class LcuPregame:
         """
         Fetch champion square icon PNG from LCU local asset server.
         Returns raw PNG bytes or None.
-        URL: https://192.168.8.237:{port}/lol-game-data/assets/v1/champion-icons/{id}.png
+        URL: https://{RC_GAME_HOST}:{port}/lol-game-data/assets/v1/champion-icons/{id}.png
         """
         if not self._port or not self._auth:
             return None
-        url = f"https://192.168.8.237:{self._port}/lol-game-data/assets/v1/champion-icons/{champion_id}.png"
+        from core.game_host import GAME_HOST
+        url = f"https://{GAME_HOST}:{self._port}/lol-game-data/assets/v1/champion-icons/{champion_id}.png"
         try:
             req = urllib.request.Request(
                 url,
@@ -266,7 +267,8 @@ class LcuPregame:
                 if not self._port or not self._auth:
                     return "None"
                 import ssl as _ssl
-                url = f"https://192.168.8.237:{self._port}/lol-gameflow/v1/phase"
+                from core.game_host import GAME_HOST
+                url = f"https://{GAME_HOST}:{self._port}/lol-gameflow/v1/phase"
                 req = urllib.request.Request(
                     url,
                     headers={"Authorization": f"Basic {self._auth}",

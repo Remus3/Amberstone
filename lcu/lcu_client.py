@@ -3,7 +3,7 @@
 lcu/lcu_client.py - League Client Update (LCU) API client.
 Auto-accept queue pops + ARAM bench swap + rune page read (API-001).
 
-LCU API: https://192.168.8.237:{port} with Basic auth "riot:{password}"
+LCU API: https://{RC_GAME_HOST}:{port} with Basic auth "riot:{password}"
 Lockfile: {LeaguePath}/lockfile -> processName:pid:port:password:protocol
 
 AUDIT-PHASE-2-API-001 - 2026-04-18
@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import Any, Optional
 import urllib.error
 import urllib.request
+
+from core.game_host import GAME_HOST
 
 _log = logging.getLogger("rc.lcu")
 
@@ -70,7 +72,7 @@ class LcuClient(_PGMixin):
     def _request(self, method, endpoint, data=None):
         if not self._port or not self._auth:
             return None
-        url = f"https://192.168.8.237:{self._port}{endpoint}"
+        url = f"https://{GAME_HOST}:{self._port}{endpoint}"
         headers = {
             "Authorization": f"Basic {self._auth}",
             "Content-Type": "application/json",

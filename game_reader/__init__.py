@@ -1,11 +1,11 @@
 # arch: GameReader facade - composes poller + normalizer mixins | section=vision | frozen=no
 """game_reader - Reads League of Legends game state from Riot's local APIs.
 
-Live Client Data API (in-game): https://192.168.8.237:2999/liveclientdata/
+Live Client Data API (in-game): https://{RC_GAME_HOST}:2999/liveclientdata/
   - No auth required, runs automatically during any game.
   - Provides: champion stats, items, levels, CS, all players, events, game time.
 
-LCU API (client/champ select): https://192.168.8.237:{port}/
+LCU API (client/champ select): https://{RC_GAME_HOST}:{port}/
   - Auth from LeagueClientUx process command line / lockfile.
   - Provides: champ select picks/bans, summoner data.
 

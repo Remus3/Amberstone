@@ -3,7 +3,7 @@
 Slice 2C (2026-05-01): handlers carved out of web_dashboard._Handler.
 Group 4 - read-only diag and vision endpoints. Several reach the
 in-process vision server at 127.0.0.1:8889 (using `_VISION_TOKEN`)
-and the Live Client API at 192.168.8.237:2999 (https, self-signed).
+and the Live Client API at {RC_GAME_HOST}:2999 (https, self-signed).
 
 Each route receives the BaseHTTPRequestHandler (`h`) as its sole
 argument and uses `h._send(code, body, ctype)` to write the response.

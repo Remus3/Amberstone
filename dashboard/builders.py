@@ -243,14 +243,15 @@ def _build_diagnostics() -> dict:
     except Exception as exc:
         out["connections"].append({"name": "Vision relay", "ok": False,
                                     "detail": f"down ({type(exc).__name__})"})
-    # Game-PC liveclient relay (LAN)
+    # Live Client API (local on Legion post 1-PC consolidation)
     try:
         import urllib.request as _ur
-        with _ur.urlopen("http://192.168.8.237:2999/liveclientdata/activeplayer", timeout=2) as r:
-            out["connections"].append({"name": "Live Client API (Game-PC)", "ok": r.status == 200,
-                                        "detail": "192.168.8.237:2999"})
+        from core.game_host import GAME_HOST
+        with _ur.urlopen(f"http://{GAME_HOST}:2999/liveclientdata/activeplayer", timeout=2) as r:
+            out["connections"].append({"name": "Live Client API", "ok": r.status == 200,
+                                        "detail": f"{GAME_HOST}:2999"})
     except Exception as exc:
-        out["connections"].append({"name": "Live Client API (Game-PC)", "ok": False,
+        out["connections"].append({"name": "Live Client API", "ok": False,
                                     "detail": f"unreachable ({type(exc).__name__}) - normal if no game"})
     # Tail today's log
     try:

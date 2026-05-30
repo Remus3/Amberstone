@@ -865,7 +865,8 @@ class PostgameCollector:
         auth = getattr(self._lcu, "_auth", None)
         if not port or not auth:
             return None
-        url = f"https://192.168.8.237:{port}{path}"
+        from core.game_host import GAME_HOST
+        url = f"https://{GAME_HOST}:{port}{path}"
         req = urllib.request.Request(url, headers={
             "Authorization": f"Basic {auth}",
             "Accept":        "application/json,*/*",

@@ -23,7 +23,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-LIVE_API = "https://192.168.8.237:2999/liveclientdata"
+from core.game_host import GAME_HOST
+
+LIVE_API = f"https://{GAME_HOST}:2999/liveclientdata"
 
 # Relay endpoint: gamepc_liveclient_relay.py on Game-PC pushes the localhost
 # Live Client API JSON to vision server, which caches it. Riot's API binds
@@ -284,7 +286,7 @@ class _PollerMixin:
         return False
 
     def _lcu_get(self, endpoint):
-        url = f"https://192.168.8.237:{self._lcu_port}{endpoint}"
+        url = f"https://{GAME_HOST}:{self._lcu_port}{endpoint}"
         req = urllib.request.Request(url)
         req.add_header("Authorization", f"Basic {self._lcu_auth}")
         with urllib.request.urlopen(req, context=self._ssl, timeout=3) as r:

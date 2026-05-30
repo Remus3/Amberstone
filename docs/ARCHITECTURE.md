@@ -8,13 +8,13 @@ _Living document. Update after topology or module changes. See `docs/_archive/` 
 
 | Machine | Tailnet hostname | Tailnet IP | LAN IP | Role |
 |---|---|---|---|---|
-| **Legion** | `legion-rc` | `100.70.22.55` | `192.168.8.230` | RC main process, vision server `:8889`, web dashboard `:8888` |
-| **Game-PC** | `gamepc-rc` | `100.95.66.128` | `192.168.8.237` | Runs League; Chrome on secondary display (panel is 1920×1280 native @ 100% scale) shows the dashboard |
-| **Peer** | `peer-host` | `<peer-tailnet-ip>` | - | Cross-Claude peer; RC↔Peer bridge |
+| **Legion** | `legion-rc` | `100.70.22.55` | `192.168.8.230` | 1-PC (2026-05-29, ADR-011): League + Vanguard + RC main process + vision server `:8889` + dashboard `:8888` + OBS. Relocated agents run local: RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener. Windows hostname now `DESKTOP-JKZECV9`; Tailscale node stays `legion-rc` |
+| **Game-PC** | `gamepc-rc` | `100.95.66.128` | `192.168.8.237` | Out of the League/RC pipeline (2026-05-29). Cross-Claude bridge daemons remain |
+| **Peer** | `peer-host` | `<peer-tailnet-ip>` | - | Cross-Claude peer; RC<->Peer bridge |
 
 All three in tailnet `tailc150de.ts.net`. Prefer tailnet hostnames for all cross-machine HTTP.
 
-Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is a dumb monitor** - no PWA, no touch, no apps.
+Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` agents below now run on Legion-local (reading local lockfile + Live Client `:2999`); the live readers find the game host via `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The Game-PC relay-agent pattern and the section below are retained until the in-process vision collapse lands.
 
 ---
 
