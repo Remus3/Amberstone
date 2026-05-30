@@ -38,6 +38,7 @@ import threading
 import time
 import weakref
 from pathlib import Path
+from typing import Callable
 
 _log = logging.getLogger("rc.resources")
 
@@ -105,7 +106,7 @@ class ResourceManager:
     # warm-up so a genuinely-recovered process never re-trips on residual RSS.
     _MEM_REMEDIATION_COOLDOWN_S: float = 600.0
 
-    def set_remediation_hook(self, hook) -> None:
+    def set_remediation_hook(self, hook: Callable[[], object] | None) -> None:
         """
         Wire the high-memory watchdog to a remediation entrypoint.
 

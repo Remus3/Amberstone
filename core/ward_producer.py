@@ -317,7 +317,7 @@ def snapshot_size() -> int:
         return len(_state)
 
 
-def tick_from_snapshot(snap) -> int:
+def tick_from_snapshot(snap: object) -> int:
     """Adapter for ``core.liveclient_cache.add_listener``.
 
     Pulls ``allPlayers`` and the active summoner from a Snapshot's
