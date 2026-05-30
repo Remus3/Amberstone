@@ -4,6 +4,25 @@
 
 ---
 
+# 2026-05-30 - item 220: 3 deferred/held competitor-lift items in parallel - statcheck stat-sandbox + relative-score bar + fight-length-reweight knob + item-218 forward-marker fix (3 worktree merges + 1 wiring commit; non-engine; non-frozen; NO ENGINE bump; NO DS restart; RC restarted pid 17136 -> 15580)
+
+Operator "in parallel: start all Open/actionable" (same prompt as item 219). This run drains the 3 buildable items item 219 left HELD/DEFERRED. AskUserQuestion scope-fork: operator picked all 3 (statcheck #5 + relative-score-bar #3b as own panel + fight-length-reweight knob); lolmath-wiki extractor stays gated. Orchestrator-merge: 3 parallel worktree agents on disjoint slices; orchestrator wired the 5 shared files + folded in the item-218 pre-existing-failure fix.
+
+**3 slices shipped (each READS existing engine math, NO ENGINE bump):**
+- (A) **statcheck stat-sandbox** (lift #5): NEW `dashboard/routes_ds_statcheck.py` `/api/ds-statcheck` wraps `compute_dps` for the locked champ at operator-set TARGET stats (blank -> auto curve) -> resolved CHAMPION stat block (`DpsResult.stats`: ad/ap/as/crit/hp/mp/armor/mr) + dps + phase + `ds_statcheck.js` (editable enemy-armor/MR/HP/bonusHP inputs, debounced) + .css. DpsResult has NO ttk; champ-side AD/AS/crit DISPLAYED not editable (no engine stat-injection arg).
+- (B) **relative-score bar** (lift #3) - **resolves the long-HELD surface decision: shipped as its OWN panel `#csv-ds-relscore`** (item 200 deleted the DS-top-picks row; the item-219 lifts each got own panel = same pattern). NEW `dashboard/routes_ds_relscore.py` `/api/ds-relscore` READ-ONLY (no knobs, auto target stats) wraps `rank_items` -> per-row `score_pct = delta_dps/top_delta*100` (row0=100.0) + `ds_relscore.js` (horizontal bar fill = score_pct%, hero element) + .css.
+- (C) **fight-length-reweight knob** - closes item-219 C DEFERRED. `rank.py` `rank_items` gains `fight_length: Optional[float]=None` (END of sig) + `RankedItem.effective_score: float=0.0` + `_safe_burst()`. None/<=0 = **BYTE-IDENTICAL** (pinned by `ByteIdenticalWhenNoneTests`). Set = `effective_score = (burst(build+item)-burst(build)) + delta_dps*fight_length` (burst only when engaged), sort DESC - short=burst, long=sustained. `routes_ds_knobs.py` threads &fight_length + docstring DEFERRED->SHIPPED; `ds_knobs.js` 4th "Fight length (s)" input. NOT an ENGINE bump (in-process helper; :8893 /rank never passes fight_length).
+
+**Item-218 pre-existing-failure fix (folded in, not a separate branch):** item 218's `cooldown_watch.py:50` imports `cc_conditional` but never registered in the forward-marker guard `_ALLOWED_SOURCE_FILES` (was `{"cc_pressure.py"}`) - guard red since item 218. Added `"cooldown_watch.py"`. Real intended consumer; does not loosen the seam.
+
+**Wiring (5 shared files, +17/-1):** `_dispatch.py` 2 imports + 2 GET_ROUTES; `dashboard.css` 2 @imports (parity 32->34); `index.html` 2 blocks; `champ_select.js` 2 imports + 2 mounts + 2 cache decls + dsr/dss sig tokens; forward-marker allow-list +1.
+
+**Verified:** new panel+route+knob 83 passed; forward-marker + rank fight-length 22 passed (item-218 guard GREEN); full DS + full RC suites green; ruff + py_compile + node --check clean. RC restarted -> pid 15580 alive reload_ok mode=client. **Live curl all 3 ok=true:** ds-statcheck Caitlyn dps=25.86 + 8 stat keys + auto armor95/mr63; ds-relscore Caitlyn 12 rows top3 Runaan's 100.0/ER 96.6/Kraken 92.0; ds-knobs fight_length=3 top3 ER/IE/Lord Dominik's vs fight_length=20 Runaan's #2 + Kraken #3 - **inversion proven live**.
+
+**Carries forward (tomorrow-you):** (a) **LIVE VISUAL CAPTURE OWED** statcheck + relscore (gate on LOCKED champ; operator mode=client) + the new ds-knobs fight-length input; capture at next champ-select. (b) lolmath-wiki extractor STILL gated (external dep, BACKLOG:20). (c) item-219 carries unchanged EXCEPT relative-score bar HELD->SHIPPED + fight-length-reweight DEFERRED->SHIPPED. (d) item 218 cooldown-watch capture + item 215 relocated-agent LIVE VERIFY + OBS launch-test still owed (live-gated). (e) 3 worktree branches harness-locked. Don't bump ENGINE / don't restart DS for any of these (in-process route reads). `RankedItem.effective_score` additive optional (default 0.0); `rank_items(fight_length=None)` MUST stay byte-identical.
+
+---
+
 # 2026-05-30 - item 219: 4 competitor-lift panels in parallel (5 worktree merges + 1 wiring commit; non-engine; non-frozen; NO ENGINE bump; NO DS restart; RC restarted pid 17136)
 
 Operator "in parallel: start all Open/actionable" off wakeup+backlog. Orchestrator-merge: 5 parallel worktree agents on disjoint NEW-files slices; orchestrator wired the 5 shared files. HELD (stated): relative-score bar (lift #3 - needs a NEW surface, item 200 removed the DS-top-picks row = product call) + lolmath-wiki extractor (external MediaWiki dep, own gate). Live-owed skipped.
