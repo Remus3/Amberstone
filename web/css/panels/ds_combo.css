@@ -1,0 +1,217 @@
+/* DS action-queue combo simulator (competitor lift #2,
+ * docs/COMPETITOR_LIFT_2026-05-30.md). Sibling of the cooldown-watch card -
+ * a per-hit damage TIMELINE for an operator-typed action queue
+ * ("Q, AA, W, R"). Mounts inside the Suggestions card during champ-select.
+ *
+ * Backend: dashboard/routes_ds_combo.py
+ *   GET /api/ds-combo?champion=<id>&seq=Q,AA,W,R&...
+ *
+ * Uses the semantic tokens from web/css/tokens.css. The card carries an
+ * info-toned accent (it is the operator's OWN damage timeline, not an
+ * enemy threat surface). Rows skipped on cooldown are dimmed + warn-tinted.
+ */
+
+.ds-combo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-info, #5aa9e6);
+  border-radius: 4px;
+}
+
+.ds-combo[hidden] {
+  display: none;
+}
+
+.dscombo-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.dscombo-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dscombo-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Action-queue text input row. */
+.dscombo-input-row {
+  display: flex;
+  margin-bottom: 4px;
+}
+
+.dscombo-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  letter-spacing: 0.04em;
+}
+
+.dscombo-input:focus {
+  outline: none;
+  border-color: var(--signal-info, #5aa9e6);
+}
+
+/* Timeline table - a 5-column flex grid (t | action | raw | hit | total). */
+.dscombo-table {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dscombo-empty {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 0;
+}
+
+.dscombo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+
+.dscombo-row:first-of-type {
+  border-top: none;
+}
+
+.dscombo-head-row {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.45);
+  border-top: none;
+}
+
+.dscombo-t {
+  flex: 0 0 38px;
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dscombo-act {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.dscombo-slot {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+}
+
+.dscombo-name {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.62);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dscombo-badge {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--signal-warn, #f1b04a);
+}
+
+.dscombo-raw {
+  flex: 0 0 46px;
+  text-align: right;
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.50);
+}
+
+.dscombo-mit {
+  flex: 0 0 46px;
+  text-align: right;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.dscombo-cum {
+  flex: 0 0 56px;
+  text-align: right;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--signal-info, #5aa9e6);
+}
+
+/* On-cooldown skipped rows: dimmed + warn-tinted, zero damage. */
+.dscombo-row[data-dscombo-cd="1"] {
+  opacity: 0.55;
+}
+
+.dscombo-row[data-dscombo-cd="1"] .dscombo-mit,
+.dscombo-row[data-dscombo-cd="1"] .dscombo-raw,
+.dscombo-row[data-dscombo-cd="1"] .dscombo-cum {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.dscombo-row[data-dscombo-cd="1"] .dscombo-badge {
+  color: var(--signal-warn, #f1b04a);
+}
+
+/* Footer: total duration + total damage. */
+.dscombo-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dscombo-foot-dur {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.dscombo-foot-tot {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--signal-info, #5aa9e6);
+  font-variant-numeric: tabular-nums;
+}
+
+.dscombo-foot-raw {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.45);
+}
