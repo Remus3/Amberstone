@@ -19,6 +19,7 @@ import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
 import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
+import { renderSpikeMarkers, fetchSpikeMarkers, getCachedSpikeMarkers } from './spike_markers.js';
 import { renderWardHeat, fetchWardHeat, getCachedWardHeat } from './ward_heat.js';
 import { renderDraftElo, fetchDraftElo, getCachedDraftElo } from './draft_elo.js';
 
@@ -29,6 +30,7 @@ const _AM = {
   mapBody:    () => document.getElementById("am-map-body"),
   cdBody:     () => document.getElementById("cd-ledger-body"),
   spikeCurve: () => document.getElementById("am-spike-curve"),
+  spikeMarkers: () => document.getElementById("am-spike-markers"),
   wardHeat:   () => document.getElementById("am-ward-heat"),
   draftElo:   () => document.getElementById("am-draft-elo"),
 };
@@ -248,6 +250,7 @@ export function renderActiveMatch(payload, ctx) {
   // refetch. Skips silently in TFT / lobby / pre-game (mode not in
   // _SPK_MODE_MAP or no liveclient).
   _renderSpikeCurveFromCtx(ctx);
+  _renderSpikeMarkersFromCtx(ctx, p);
 
   // Ward-Coverage Heat Strip (UX wave 1, 2026-05-20). Pulls a 90s
   // rolling window of inferred ward placements per side x lane. Polls
@@ -710,6 +713,40 @@ function _renderSpikeCurveFromCtx(ctx) {
     nowMinute,
     { item_minutes: _SPK_ITEM_MINUTES },
   );
+}
+
+// Live power-spike markers (competitor lift #4, 2026-05-30). Discrete
+// level (6/11/16) + item-completion (1/2/3) "now you can fight" markers
+// for the OPERATOR's own champion, keyed to live level + owned items.
+// Re-fetch: getCachedSpikeMarkers memoizes; the next state tick paints
+// once the cache lands (mirrors _renderSpikeCurveFromCtx). The live
+// game-clock cursor on the strip is OWED (live-game-only visual).
+function _renderSpikeMarkersFromCtx(ctx, p) {
+  const mount = _AM.spikeMarkers();
+  if (!mount) return;
+  const modeLow = String((ctx && ctx.mode) || "").toLowerCase();
+  const spkMode = _SPK_MODE_MAP[modeLow];
+  const champ = (p && p.champion) || "";
+  const level = parseInt((p && p.level) || 0, 10) || 0;
+  if (!spkMode || !champ || level <= 0) {
+    if (mount.dataset.smState !== "hidden") {
+      mount.dataset.smState = "hidden";
+      mount.style.display = "none";
+      mount.innerHTML = "";
+    }
+    return;
+  }
+  mount.style.display = "";
+  mount.dataset.smState = "live";
+  const items = Array.isArray(p.items) ? p.items : [];
+  const itemCount = Math.min(items.length, 3);
+  const cached = getCachedSpikeMarkers(champ, level, itemCount, spkMode);
+  if (!cached) {
+    fetchSpikeMarkers(champ, level, items, spkMode, itemCount, null);
+    renderSpikeMarkers(mount, null);
+    return;
+  }
+  renderSpikeMarkers(mount, cached);
 }
 
 // Ward Coverage Heat Strip tick (UX wave 1, 2026-05-20). Fetches a 90s

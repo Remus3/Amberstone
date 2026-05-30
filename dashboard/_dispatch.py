@@ -67,6 +67,8 @@ def _gather_get() -> list:
                                routes_cc_blended_ehp_threat,
                                routes_cc_conditional_pressure,
                                routes_cooldown_watch,
+                               routes_ds_combo, routes_ds_knobs,
+                               routes_ds_sweep,
                                routes_damage_mix, routes_draft_elo,
                                routes_duo_synergy,
                                routes_health_peer,
@@ -80,6 +82,7 @@ def _gather_get() -> list:
                                routes_post_game_wpa,
                                routes_replay_events,
                                routes_spike_curve,
+                               routes_spike_markers,
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context,
                                routes_ward_heat,
@@ -96,6 +99,9 @@ def _gather_get() -> list:
                       + list(routes_cc_blended_ehp_threat.GET_ROUTES)
                       + list(routes_cc_conditional_pressure.GET_ROUTES)
                       + list(routes_cooldown_watch.GET_ROUTES)
+                      + list(routes_ds_combo.GET_ROUTES)
+                      + list(routes_ds_knobs.GET_ROUTES)
+                      + list(routes_ds_sweep.GET_ROUTES)
                       + list(routes_damage_mix.GET_ROUTES)
                       + list(routes_draft_elo.GET_ROUTES)
                       + list(routes_duo_synergy.GET_ROUTES)
@@ -114,6 +120,7 @@ def _gather_get() -> list:
                       + list(routes_post_game_wpa.GET_ROUTES)
                       + list(routes_replay_events.GET_ROUTES)
                       + list(routes_spike_curve.GET_ROUTES)
+                      + list(routes_spike_markers.GET_ROUTES)
                       + list(routes_sr_draft.GET_ROUTES)
                       + list(routes_sr_user_builds.GET_ROUTES)
                       + list(routes_team_context.GET_ROUTES)
