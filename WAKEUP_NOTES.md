@@ -4,6 +4,22 @@
 
 ---
 
+# 2026-05-30 - item 221 PARTIAL: lolmath-wiki stat sidecar extractor shipped (tool + 33 offline tests); sidecar DATA + combo wire OWED - wiki edge-blocked from Legion (1 commit; NO ENGINE bump; NO DS/RC restart - tool+tests only)
+
+Operator "in parallel: start all Open/actionable" (3rd same-prompt drain). AskUserQuestion picked lolmath-wiki off BACKLOG:20; on the wiki-blocked fork picked "ship tool now, data+wire owed". Targets item-217 GO-conditional (`docs/LOLMATH_WIKI_SOURCE_2026-05-30.md`).
+
+**Shipped:** NEW `tools/daemon_slayer_wiki_stats_extract.py` (offline patch-refresh, mirrors abilities-extractor: stdlib urllib + UA + --sleep + fail-soft + atomic + ASCII + argparse). Calls `action=expandtemplates&text={{#invoke:ChampionData|get|<DisplayName>|<field>}}` (lean; item-217 probe verified Aatrox attack_cast_time->0.3). Fields: attack_cast_time (AA windup; replaces combo.py `_DEFAULT_AA_WINDUP_S=0.25` per-champ) + missile_speed (ranged; bare-then-`stats.` fallback). Champ ids from abilities snapshot top-level `data` dict (171 @ 16.11.1; keyed under `data` NOT `champions`). Names from `data/meta_build/ddragon/<patch>/champion.json` `.data.<id>.name` (ChampionData keyed by DISPLAY name - Kaisa->Kai'Sa, MonkeyKing->Wukong). NEW `tests/test_wiki_stats_extract.py` 33 offline tests (no network; monkeypatched `_expand`).
+
+**BLOCKER:** live extraction did NOT run, NO sidecar data committed - wiki edge-blocked EVERY call from Legion (401 tool-UA / 403 + wiki.gg "Blocked" interstitial browser-UA = Cloudflare bot-block, NOT a UA gate; clean sub-agent probe confirmed). Item-217 agent reached it earlier same day -> likely rate-trip from my ~40 probes or host-egress rule, not permanent. Tool `--dry-run` from Legion correctly prints `WARNING: 0 champs resolved a cast time ... NOT a committable sidecar` + writes nothing.
+
+**Verified:** py_compile + ruff clean; 33/33 offline tests; dry-run WARNING proven; no wiki_stats.json written.
+
+**Process note:** an over-optimistic earlier batch drafted FABRICATED build outcomes ("action=bucket DEAD", "172/170 with cast_time") from misread all-401s; cascade-cancel + manual `git checkout` of 4 docs reverted ALL of it pre-commit. Shipped tool carries ONLY item-217-verified claims + edge-block note. ([[feedback_verify_generated_reports]] + [[feedback_verify_before_declare_broken]].)
+
+**Carries forward (OWED, tomorrow-you):** (a) **run extractor from a host that reaches wiki.gg** (or after Legion egress clears): `py tools/daemon_slayer_wiki_stats_extract.py --patch 16.11.1`, check `_with_cast_time`/`_errors`, commit `wiki_stats.json` ONLY if non-degenerate (0 cast = blocked, don't commit). (b) **wire combo.py** (DataSnapshot optional `wiki_stats` overlay + per-champ AA windup, byte-identical absent) - deferred, unverifiable without data. (c) action=bucket mode-mults (Arena/URF/NB) NOT built (needs live Bucket probe; ARAM Meraki-covered). (d) source IS the wiki (item-217-proven); block is host-egress not dead endpoint - don't conclude wiki unusable. (e) tool file-shapes now CORRECT - reachable-host run needs no code change. (f) all item 220 carries unchanged.
+
+---
+
 # 2026-05-30 - item 220: 3 deferred/held competitor-lift items in parallel - statcheck stat-sandbox + relative-score bar + fight-length-reweight knob + item-218 forward-marker fix (3 worktree merges + 1 wiring commit; non-engine; non-frozen; NO ENGINE bump; NO DS restart; RC restarted pid 17136 -> 15580)
 
 Operator "in parallel: start all Open/actionable" (same prompt as item 219). This run drains the 3 buildable items item 219 left HELD/DEFERRED. AskUserQuestion scope-fork: operator picked all 3 (statcheck #5 + relative-score-bar #3b as own panel + fight-length-reweight knob); lolmath-wiki extractor stays gated. Orchestrator-merge: 3 parallel worktree agents on disjoint slices; orchestrator wired the 5 shared files + folded in the item-218 pre-existing-failure fix.
