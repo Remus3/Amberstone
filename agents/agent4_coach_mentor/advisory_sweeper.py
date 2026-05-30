@@ -15,6 +15,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from agents.agent1_lead.scheduler import Scheduler
 
 logger = logging.getLogger("agent4.advisory_sweeper")
 
@@ -34,7 +38,7 @@ def _parse_iso(ts: str) -> datetime | None:
 
 
 def sweep_stale(
-    scheduler,
+    scheduler: "Scheduler",
     max_age_hours: float = DEFAULT_MAX_AGE_HOURS,
     ops: frozenset[str] = ADVISORY_OPS,
 ) -> dict:

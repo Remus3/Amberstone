@@ -19,14 +19,14 @@ _thread: threading.Thread | None = None
 CTRL_TAB_COOLDOWN = 3.0   # seconds between consecutive force scans
 
 
-def register_coach(coach) -> None:
+def register_coach(coach: object) -> None:
     """Register a coach for forced-scan triggering. Call from app.py when coach starts."""
     global _coaches
     if coach not in _coaches:
         _coaches.append(coach)
 
 
-def unregister_coach(coach) -> None:
+def unregister_coach(coach: object) -> None:
     global _coaches
     _coaches = [c for c in _coaches if c is not coach]
 
