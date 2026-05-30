@@ -1,6 +1,23 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-05-30 - item 219: 4 competitor-lift panels in parallel (5 worktree merges + 1 wiring commit; non-engine; non-frozen; NO ENGINE bump; NO DS restart; RC restarted pid 17136)
+
+Operator "in parallel: start all Open/actionable" off wakeup+backlog. Orchestrator-merge: 5 parallel worktree agents on disjoint NEW-files slices; orchestrator wired the 5 shared files. HELD (stated): relative-score bar (lift #3 - needs a NEW surface, item 200 removed the DS-top-picks row = product call) + lolmath-wiki extractor (external MediaWiki dep, own gate). Live-owed skipped.
+
+**4 panels shipped (each NEW route + panel js/css + tests; READ existing engine math, NO ENGINE bump):**
+- (A) stat-sweep graph: `agents/daemon_slayer/dps_sweep.py` + `/api/ds-sweep` + `ds_sweep.js` (reuses spike_curve sparkline; armor/mr/level axes; champ-select card `#csv-sugg-ds-sweep`).
+- (B) action-queue combo sim: NEW `agents/daemon_slayer/combo.py` (composes `compute_burst_damage` + mitigation; per-hit timeline; v1 fixed cast-times 0.25s fallback, on-CD recast skipped) + `/api/ds-combo` + `ds_combo.js` (host `_csvRenderDsCombo` wrapper owns input re-fetch).
+- (C) engine-knobs v1: `/api/ds-knobs` wraps `rank_items` (NOT :8893 dispatcher - no budget arg) with target_armor/mr/budget overrides + `ds_knobs.js` 3-input strip; fight-length-reweight DEFERRED (needs new engine arg).
+- (D) live power-spike markers: NEW `agents/daemon_slayer/spike_markers.py` (level 6/11/16 + item 1/2/3, crossed/next/future) + `/api/spike-markers` + `spike_markers.js` on ACTIVE-MATCH (`_renderSpikeMarkersFromCtx`, keyed p.level+p.items); live-clock cursor OWED.
+- (E) type-hints + ruff (BACKLOG:33 CLOSED): 14 public-API param-type sites across coaches/core/dashboard/tft/lcu/agents; ruff clean; 0 behavior change.
+
+**Verified:** RC suite (excl phase8) 4025 passed/1 skip/71 subtests (+185); phase8 70/70; DS combo+spike+CSS-parity 70/70; ruff + py_compile + node --check clean. RC restarted -> pid 17136 alive reload_ok. Live curl all 4 ok=true (sweep 13pts/combo 5hits/knobs 8rows/spike 6markers). DOM WiringTests flipped skip->pass after wiring (1 skip left vs ~10).
+
+**Carries forward (tomorrow-you):** (a) **LIVE VISUAL CAPTURE OWED** all 4 panels - champ-select trio gates on a LOCKED champ (`cs.my_champion`), spike-markers on a live InProgress game; operator was mode=client; capture at next champ-select + next game (spike-markers live-clock cursor also OWED). (b) relative-score bar STILL HELD (new-surface product call). (c) lolmath-wiki extractor STILL gated. (d) item 218 cooldown-watch capture + item 215 relocated-agent LIVE VERIFY + OBS launch-test all still owed. (e) 5 worktree branches harness-locked (parent owns lifecycle). Don't bump ENGINE / don't restart DS for any of these 4 (in-process route reads).
 
 ---
 
@@ -33,14 +50,3 @@ Long autonomous run. Orchestrator + 2 background research agents; merger verifie
 
 **Carries forward (tomorrow-you):** (a) competitor-lift gate slate (6 lifts) in BACKLOG.md + pick-list/specs in docs/COMPETITOR_LIFT_2026-05-30.md - operator picks which to build (all OPERATOR-GATE). (b) relative-score bar needs a NEW render surface (item 200 removed the DS-top-picks row) - do NOT re-pitch as a trivial decoration. (c) do NOT re-pitch the wiki for ARAM mode-mults (already covered by Meraki). (d) item 215 LIVE VERIFY (relocated agents) + OBS launch-test still owed (live/operator-gated).
 
----
-
-# 2026-05-30 - item 216: DS ability unit-map exhaustion + 3 caster-stat scaling fields wired (2 commits `9b61dc7` + docs `6ddfaa6`; ENGINE 1.62.0 -> 1.63.0; DS restarted 1.63.0; RC untouched)
-
-Triggered by lolmath-handoff staging (extractor "extend `_UNIT_TO_FIELD`" note). A workflow classified all 29 unmapped Meraki damage-modifier unit strings: 8 typed, 21 intentional leaves (12 per-100-stat/per-stack/conditional amps + 9 Meraki mis-split crit-formula fragments).
-
-**Shipped `9b61dc7`:** extractor `_UNIT_TO_FIELD` +6 (possessive-AP `% of Sona's/Ivern's AP` -> ap_pct; double-space `%  bonus AD` -> bonus_ad_pct; `% armor` -> caster_armor_pct; `% bonus mana` -> caster_bonus_mp_pct; `% bonus movement speed` -> caster_bonus_ms_pct) + `_canonicalize_unit` whitespace-only -> base (TahmKench Q / Lucian R flat dmg was silently dropped). `tools/migrate_abilities_units_2026_05_30.py` in-place re-typed 16.10.1 + 16.11.1 (NO Meraki re-fetch - mutable-latest rule; `.bak-units20260530-*` backups left untracked). 3 new caster fields wired end to end into the LIVE evaluator: DamageBlock + `_SCALING_FIELDS` + AbilityContext + `_SCALING_TARGETS` + from_build; caster_bonus_* follow the existing "above level-1 base" convention; DEFAULTED at END of frozen dataclass (inserting mid-class = 41-failure trap). ENGINE 1.62.0 -> 1.63.0 + 33 pin files. NEW `tests/test_abilities_unit_map_2026_05_30.py` 8/8.
-
-**Verified:** DS suite 4894 passed / 0 fail; ruff clean; DS :8893 restarted 1.63.0 / 16.11.1 / 172 / 705; phase8 live engine 18/18 post-restart. Malphite W: caster_armor_pct recovers +22.5 raw (rank5, 150 armor) old parser dropped = ~29% on-cast understatement now corrected. Janna caster_bonus_ms 0.0 itemless (no overcount).
-
-**Carries forward (tomorrow-you):** (a) lolmath wiki-source analysis OWED (operator on wakeup): whether wiki.leagueoflegends.com exposes Module:ChampionData via MediaWiki action=raw / Cargo cargoquery - the extractor normalization layer (unit-map + form stitching) is the reusable part if so. (b) external handoff bundle `Desktop\lolmath_handoff` (+ .7z) is NOT git-tracked + carries zero personal/outreach metadata (see [[feedback_keep_outreach_out_of_repo]]) - keep both true. (c) the 21 intentional unit leaves are NOT a parser gap (second-order amps + Meraki crit-garbage); ok_rate stays 0.9896 because residual is structural; do NOT re-attempt typing them. (d) item 215 LIVE VERIFY still owed (relocated agents push runes/items/summoners in champ select).
