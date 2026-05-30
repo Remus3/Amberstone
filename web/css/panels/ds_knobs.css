@@ -1,0 +1,146 @@
+/* DS engine-knobs control panel (competitor lift #1,
+ * docs/COMPETITOR_LIFT_2026-05-30.md "Lift 1", lolsolved.gg engine-knobs UX).
+ * Mounts inside the champ-select build chooser area: a control strip
+ * (enemy armor / enemy MR / gold cap) above a compact ranked-rows list for
+ * the LOCKED champion. The operator overrides the fight model and the DS
+ * DPS ranking re-ranks for it (instead of the auto-resolved enemy curve).
+ *
+ * Backend: dashboard/routes_ds_knobs.py
+ *   GET /api/ds-knobs?champion=<champ>&mode=SR[&target_armor=][&target_mr=]
+ *       [&budget=]
+ *
+ * Uses the semantic tokens from web/css/tokens.css. Accent-toned (info /
+ * accent) since it is an operator control surface, not an enemy-threat
+ * surface like the cooldown-watch card.
+ */
+
+.ds-knobs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-info, #8a8cf0);
+  border-radius: 4px;
+}
+
+.ds-knobs[hidden] {
+  display: none;
+}
+
+.dsk-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.dsk-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dsk-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Control strip: three labelled numeric inputs in a row. */
+.dsk-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 2px 0 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dsk-knob {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 0;
+  min-width: 72px;
+}
+
+.dsk-knob > span {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.60);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dsk-knob > input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.dsk-knob > input:focus {
+  outline: none;
+  border-color: var(--signal-info, #8a8cf0);
+}
+
+.dsk-knob > input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Ranked-rows list: item | +delta dps | gold. */
+.dsk-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dsk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+
+.dsk-row:first-of-type {
+  border-top: none;
+}
+
+.dsk-item {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.90);
+}
+
+.dsk-delta {
+  flex: 0 0 auto;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--signal-info, #8a8cf0);
+}
+
+.dsk-gold {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dsk-empty {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 0;
+}
