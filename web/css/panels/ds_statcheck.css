@@ -1,0 +1,114 @@
+/* ds_statcheck.css - statcheck stat-sandbox panel (competitor lift #5). */
+
+.dss-host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.dss-title {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 600;
+  color: var(--signal-strong, #e6edf3);
+  letter-spacing: 0.02em;
+}
+
+.dss-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+
+.dss-knob {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-2xs, 13px);
+  color: var(--signal-mute, #9aa7b3);
+  flex: 1 1 auto;
+  min-width: 72px;
+}
+
+.dss-knob input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-2, #0f1620);
+  border: 1px solid var(--border-1, #2a3441);
+  border-radius: 4px;
+  color: var(--signal-strong, #e6edf3);
+  padding: 4px 6px;
+  font-size: var(--fs-2xs, 13px);
+}
+
+.dss-knob input:focus {
+  outline: none;
+  border-color: var(--accent, #4493f8);
+}
+
+.dss-dps {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2, 8px);
+}
+
+.dss-dps-label {
+  font-size: var(--fs-2xs, 13px);
+  color: var(--signal-mute, #9aa7b3);
+  letter-spacing: 0.04em;
+}
+
+.dss-dps-value {
+  font-size: var(--fs-lg, 24px);
+  font-weight: 700;
+  color: var(--accent, #4493f8);
+  font-variant-numeric: tabular-nums;
+}
+
+.dss-phase {
+  font-size: var(--fs-2xs, 13px);
+  color: var(--signal-mute, #9aa7b3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dss-target {
+  font-size: var(--fs-2xs, 13px);
+  color: var(--signal-mute, #9aa7b3);
+}
+
+.dss-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dss-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--surface-2, #0f1620);
+}
+
+.dss-name {
+  flex: 1 1 auto;
+  font-size: var(--fs-2xs, 13px);
+  color: var(--signal-mute, #9aa7b3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dss-val {
+  font-size: var(--fs-xs, 16px);
+  color: var(--signal-strong, #e6edf3);
+  font-variant-numeric: tabular-nums;
+}
+
+.dss-empty {
+  font-size: var(--fs-2xs, 13px);
+  color: var(--signal-mute, #9aa7b3);
+  padding: 4px 0;
+}
