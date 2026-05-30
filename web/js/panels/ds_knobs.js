@@ -15,9 +15,11 @@
 //     count, elapsed_ms, cached
 //   }
 //
-// SCOPED v1: ONLY armor / MR / gold-cap knobs (each maps to an existing
-// rank_items arg). The lolsolved fight-length-reweight knob is DEFERRED
-// (needs a new engine arg) and is NOT surfaced here.
+// FOUR knobs: armor / MR / gold-cap + fight-length (item 219 C follow-up).
+// Fight length (seconds) reweights the ranking by total damage over a fight
+// of that length (burst + sustained): short fights favor burst items, long
+// fights favor sustained-DPS items. Blank fight length = no reweight (pure
+// delta-DPS ranking). Each knob maps to an existing rank_items arg.
 //
 // The locked champion comes from cs.my_champion (numeric LCU championId)
 // resolved via resolveChampNames (re-exported from
@@ -37,8 +39,9 @@ const _DSK_TTL_MS = 5 * 60 * 1000;          // matches backend TTL
 const _DSK_DEBOUNCE_MS = 350;
 
 // Per-champion operator knob state. Persists across re-renders so a state
-// tick does not wipe a knob the operator just set. null => use auto / no-cap.
-const _DSK_KNOBS = Object.create(null);     // champ -> {armor, mr, budget}
+// tick does not wipe a knob the operator just set. null => use auto / no-cap
+// / no-reweight.
+const _DSK_KNOBS = Object.create(null);     // champ -> {armor, mr, budget, fight_length}
 
 // queue_id -> DS mode (mirrors champ_select.js modeMap).
 const _DSK_MODE_MAP = {
@@ -59,7 +62,7 @@ function _modeForQueue(queueId) {
 
 function _knobsFor(champ) {
   if (!_DSK_KNOBS[champ]) {
-    _DSK_KNOBS[champ] = { armor: null, mr: null, budget: null };
+    _DSK_KNOBS[champ] = { armor: null, mr: null, budget: null, fight_length: null };
   }
   return _DSK_KNOBS[champ];
 }
@@ -80,6 +83,7 @@ function _cacheKey(champ, mode, items, knobs, level) {
     knobs.armor === null ? "" : knobs.armor,
     knobs.mr === null ? "" : knobs.mr,
     knobs.budget === null ? "" : knobs.budget,
+    knobs.fight_length === null ? "" : knobs.fight_length,
     level,
   ].join("|");
 }
@@ -90,6 +94,7 @@ function _buildUrl(champ, mode, items, knobs, level) {
   if (knobs.armor !== null) p.set("target_armor", String(knobs.armor));
   if (knobs.mr !== null) p.set("target_mr", String(knobs.mr));
   if (knobs.budget !== null) p.set("budget", String(knobs.budget));
+  if (knobs.fight_length !== null) p.set("fight_length", String(knobs.fight_length));
   return "/api/ds-knobs?" + p.toString();
 }
 
@@ -160,6 +165,7 @@ function _stripHtml(champ, knobs, resolved) {
   const av = knobs.armor === null ? "" : knobs.armor;
   const mv = knobs.mr === null ? "" : knobs.mr;
   const bv = knobs.budget === null ? "" : knobs.budget;
+  const fv = knobs.fight_length === null ? "" : knobs.fight_length;
   return (
     `<div class="dsk-head">`
     + `<span class="dsk-head-title">Fight model</span>`
@@ -175,6 +181,9 @@ function _stripHtml(champ, knobs, resolved) {
     + `<label class="dsk-knob"><span>Gold cap</span>`
     + `<input type="number" id="dsk-budget" min="0" max="20000" step="250"`
     + ` value="${bv}" placeholder="none"></label>`
+    + `<label class="dsk-knob"><span>Fight length (s)</span>`
+    + `<input type="number" id="dsk-fight-length" min="0" max="120" step="0.5"`
+    + ` value="${fv}" placeholder="auto"></label>`
     + `</div>`
     + `<div class="dsk-rows" id="dsk-rows"></div>`
   );
@@ -255,9 +264,11 @@ function _wireStrip(blockEl, cs, champ) {
     const a = blockEl.querySelector("#dsk-armor");
     const m = blockEl.querySelector("#dsk-mr");
     const b = blockEl.querySelector("#dsk-budget");
+    const f = blockEl.querySelector("#dsk-fight-length");
     knobs.armor = a ? _numOrNull(a.value) : null;
     knobs.mr = m ? _numOrNull(m.value) : null;
     knobs.budget = b ? _numOrNull(b.value) : null;
+    knobs.fight_length = f ? _numOrNull(f.value) : null;
     if (_dskDebounceTimer) clearTimeout(_dskDebounceTimer);
     _dskDebounceTimer = setTimeout(() => {
       // Force a fresh rows paint after a knob change.
@@ -265,7 +276,7 @@ function _wireStrip(blockEl, cs, champ) {
       renderDsKnobs(blockEl, cs);
     }, _DSK_DEBOUNCE_MS);
   };
-  ["dsk-armor", "dsk-mr", "dsk-budget"].forEach((id) => {
+  ["dsk-armor", "dsk-mr", "dsk-budget", "dsk-fight-length"].forEach((id) => {
     const el = blockEl.querySelector("#" + id);
     if (el) el.addEventListener("input", onChange);
   });

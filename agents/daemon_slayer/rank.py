@@ -180,6 +180,12 @@ class RankedItem:
     # Phase 4(d): candidate's own unique-passive family key, always set
     # (collision-independent) - the positive "locks <family>" signal.
     unique_passive_key: str = ""
+    # Fight-length-reweight knob (item 219 C follow-up, 2026-05-30). 0.0 on the
+    # default ranking path (``rank_items(fight_length=None)``) so existing
+    # consumers + value pins are unaffected; populated only when ``rank_items``
+    # is called with a positive ``fight_length`` and the rows are then sorted
+    # by this score instead of ``delta_dps``.
+    effective_score: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -194,6 +200,7 @@ class RankedItem:
             "shares_dead_unique": self.shares_dead_unique,
             "dead_unique_key": self.dead_unique_key,
             "unique_passive_key": self.unique_passive_key,
+            "effective_score": self.effective_score,
         }
 
 
@@ -343,6 +350,46 @@ def _filter_candidates(
     return out
 
 
+def _safe_burst(
+    snapshot: DataSnapshot,
+    *,
+    champion_id: str,
+    level: int,
+    item_ids: tuple[str, ...],
+    mode: str,
+    target_armor: float,
+    target_mr: float,
+    target_max_hp: float,
+    target_bonus_hp: float,
+    augments: Optional[Iterable],
+) -> float:
+    """Single-rotation total burst damage for a build, fail-soft to 0.0.
+
+    Used only by the fight-length-reweight knob in ``rank_items``. Imported
+    lazily so the default ``rank_items`` path (``fight_length`` omitted) never
+    pays the burst-module import cost. Some champions return a zero/empty
+    ``total_burst_damage``; the caller treats 0.0 as "burst unavailable" and
+    falls back to a delta-only effective score. Never raises.
+    """
+    try:
+        from .burst import compute_burst_damage
+
+        res = compute_burst_damage(
+            snapshot,
+            champion_id=champion_id,
+            level=level,
+            item_ids=item_ids,
+            mode=mode,
+            target_armor=target_armor,
+            target_mr=target_mr,
+            target_max_hp=target_max_hp,
+            target_bonus_hp=target_bonus_hp,
+        )
+        return max(0.0, float(getattr(res, "total_burst_damage", 0.0) or 0.0))
+    except Exception:
+        return 0.0
+
+
 def rank_items(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -362,6 +409,7 @@ def rank_items(
     sort_by: str = "delta",
     augments: Optional[Iterable] = None,
     filter_shared_uniques: bool = True,
+    fight_length: Optional[float] = None,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -385,10 +433,35 @@ def rank_items(
     even though stat-only delta_dps would be positive (Trinity → ER,
     Sterak's → Maw, Sunfire → Hollow Radiance). Pass ``False`` to surface
     them with ``shares_dead_unique=True`` set on the result.
+
+    ``fight_length`` is the OPTIONAL fight-length-reweight knob (item 219 C
+    follow-up). When ``None`` (the default), this function behaves EXACTLY as
+    before: rows are ranked by ``sort_by`` over ``delta_dps`` /
+    ``dps_per_1k_gold`` and ``RankedItem.effective_score`` is left at its 0.0
+    default. The output is byte-identical to the pre-knob behavior; the extra
+    burst compute is never paid. When a POSITIVE float, each candidate is
+    re-scored to model total damage over a fight of that many seconds, blending
+    front-loaded BURST with SUSTAINED DPS:
+
+        effective = burst_delta + delta_dps * fight_length
+
+    where ``burst_delta = burst(build + item) - burst(build)`` is the extra
+    one-rotation burst the item adds (via ``compute_burst_damage`` ->
+    ``BurstResult.total_burst_damage``). Short fights favor high-burst items;
+    long fights favor high-sustained-DPS items. Rows are sorted by
+    ``effective_score`` DESC (``sort_by`` is ignored while engaged) and the
+    value is exposed on each ``RankedItem``. Fail-soft: a candidate whose burst
+    is unavailable falls back to a delta-only effective score and never raises.
+    Non-positive ``fight_length`` is treated as ``None`` (default ranking).
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
+
+    # Fight-length-reweight knob (item 219 C). Only a positive float engages
+    # the burst reweight; None / non-positive -> default delta-only ranking
+    # (the byte-identical pre-knob path that pays nothing for burst compute).
+    reweight = fight_length is not None and fight_length > 0.0
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
@@ -425,6 +498,24 @@ def rank_items(
         phase=phase,
         augments=augments,
     )
+
+    # Baseline burst with the current build (item 219 C). Computed ONCE and
+    # ONLY when the fight-length knob is engaged - the default path never pays
+    # for the burst module import or the extra engine pass.
+    baseline_burst = 0.0
+    if reweight:
+        baseline_burst = _safe_burst(
+            snapshot,
+            champion_id=champion_id,
+            level=level,
+            item_ids=current_ids,
+            mode=mode,
+            target_armor=target_armor,
+            target_mr=target_mr,
+            target_max_hp=target_max_hp,
+            target_bonus_hp=target_bonus_hp,
+            augments=augments,
+        )
 
     # Off-class deny-set (item 213): when the champion is a ranged marksman,
     # drop melee-bruiser / tank / skirmisher items from the DPS candidate
@@ -477,6 +568,27 @@ def rank_items(
         # Efficiency in DPS per 1000 gold so the column stays in a readable range.
         # Negative or zero deltas zero-out - they're not "efficient", they're regressions.
         eff = (delta / (gold / 1000.0)) if (gold > 0 and delta > 0) else 0.0
+        # Fight-length-reweighted effective score (item 219 C). Default path
+        # (reweight False) leaves this at 0.0 so the rows stay byte-identical.
+        effective = 0.0
+        if reweight:
+            # fight_length is narrowed positive by ``reweight``.
+            trial_burst = _safe_burst(
+                snapshot,
+                champion_id=champion_id,
+                level=level,
+                item_ids=new_build,
+                mode=mode,
+                target_armor=target_armor,
+                target_mr=target_mr,
+                target_max_hp=target_max_hp,
+                target_bonus_hp=target_bonus_hp,
+                augments=augments,
+            )
+            # Fail-soft: if the trial burst is unavailable (0.0), fall back to a
+            # delta-only effective score for this candidate (no burst term).
+            burst_gain = (trial_burst - baseline_burst) if trial_burst > 0.0 else 0.0
+            effective = burst_gain + delta * float(fight_length)
         ranked.append(
             RankedItem(
                 item_id=item_id,
@@ -490,10 +602,14 @@ def rank_items(
                 shares_dead_unique=shares_dead_unique,
                 dead_unique_key=cand_key if shares_dead_unique else "",
                 unique_passive_key=cand_key,
+                effective_score=effective,
             )
         )
 
-    if sort_by == "efficiency":
+    if reweight:
+        # Fight-length knob engaged: order by total-damage-over-fight model.
+        ranked.sort(key=lambda r: (r.effective_score, r.delta_dps), reverse=True)
+    elif sort_by == "efficiency":
         ranked.sort(key=lambda r: (r.dps_per_1k_gold, r.delta_dps), reverse=True)
     else:
         ranked.sort(key=lambda r: (r.delta_dps, r.dps_per_1k_gold), reverse=True)
