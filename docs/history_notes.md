@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-28 (dev UI: user builds page) - user-curated builds now surface in live champ-select chooser (ALL modes) (1 commit `a887c2b` pushed origin/main `50543b7..a887c2b`; non-frozen; RC restarted pid 11272 -> 9312)
+
+Operator: "starting on user builds page. user build for locked Caitlyn was not displayed in live champ select." Root cause: user builds (`coaches/sr_user_builds` -> `data/daemon_slayer/user_builds.json`) were orphaned from EVERY live chooser - `/api/loadout/list` -> `loadout_resolver.list_variants()` reads `champion_loadouts.json` only; `format_for_display()` was test-only; the old merge route `/api/sr-draft/profile` was deleted item 186.
+
+**Shipped `a887c2b`:** `dashboard/routes_loadout.py` `_serve_loadout_list_post` appends user builds as `userbuild_<id>` rows for ALL modes (operator: "available in other modes as well"); new `_resolve_user_build()` builds the rune+item+summoner trio; `_serve_loadout_apply_post` routes `userbuild_*` before the resolver (colon-free key dodges the item-178 `<variant>:<path>` savedChoice split). `champ_select.js` + `champ_select_view.css` get a sky-blue `.csv-build-badge-user` - no other JS change, existing render/click/apply wiring flows the row key. NEW `tests/test_loadout_user_builds_merge.py` 16 tests. Drive-by: `tests/test_csv_rune_push_on_selection_change.py` stale Jinx `sr-bruiser` path (dropped item 208) -> `auto-sr-primary-carry` (Press the Attack vs adc-crit Lethal Tempo; keystone still differs).
+
+**Verified:** 16/16 + 15/15 green; ruff + py_compile + node --check clean; RC pid 9312 alive reload_ok; live `/api/loadout/list` Caitlyn -> `userbuild_723d445b` "crit max" present sr/aram/arena, 6 item_ids resolved.
+
+**Carries forward (tomorrow-you):** (a) Minor runes (`minor_primary`/`minor_secondary`) are SAVED on the user-builds page but NOT pushed to LCU - `format_for_display` + `build_perk_ids` ignore them so the LCU page gets default minors. This is the natural NEXT user-builds-page item. (b) Visual capture of the rendered chooser row OWED - operator was mode=client (no live champ select). (c) `_csvMaybePushBuildsToLCU` caps the in-game item-shop dropdown at 4 sets; a user build can be crowded out (click-apply push is unaffected). Minor.
+
+---
+
 # 2026-05-28 (Home Recent-5 wrong-items bug) - item 211 SHIPPED: gameId-keyed ingest + backfill + Match-V5 recovery (3 commits pushed origin/main `4ff288f..1628a47`; non-frozen; RC restarted pid 16768 -> 11272; ADR-008 auto-served)
 
 Operator: "when on the home page, the recent 5 is always missing an item row for one of the cards - and eventually when the matches update : the items are on the wrong matches". Root cause = `dashboard/routes_last_match.py:122-125` `_serve_last_match_ingest` SELECTed `ORDER BY timestamp DESC LIMIT 1`. Race: Game-PC LCU agent POSTs ingest on EndOfGame BEFORE local performance_tracker.save_match writes the new row -> ingest stamped the PREVIOUS row's raw_data with the new game's lcu_match_detail (and items). New row then never received ingest -> items=[]. Visible live: row 1690 (Jinx 22:54:03) carried Caitlyn's gid 5569828374; row 1691 (Caitlyn 23:57:12) carried items=[].
