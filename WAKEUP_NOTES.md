@@ -4,6 +4,23 @@
 
 ---
 
+# 2026-05-30 - item 217 (/headless-upgrade run, operator away): DS caster-stat test-hardening + lolmath-wiki feasibility (item 216 carry a) + competitor-lift gate slate + cost/latency CLEAN (3 commits `f8d7ae8` + `2681bf5` + `93b313c`; non-engine; non-frozen; no DS/RC restart)
+
+Long autonomous run. Orchestrator + 2 background research agents; merger verified EVERY agent premise vs live code before commit (caught 2 stale claims).
+
+**Shipped:**
+- `f8d7ae8` test(ds): NEW `agents/daemon_slayer/tests/test_caster_stat_scaling_2026_05_30.py` 13 tests / 110 subtests. Item 216 wired 3 caster-stat fields into the live evaluator but verified them ONLY live at ship; this pins the math as committed regression (from_build caster_armor = FULL armor NOT bonus-only; caster_bonus_mp/ms above-base; _evaluate_block linearity; Malphite W +22.5 + Janna 0.0). ENGINE unchanged; DS 4896 -> 4907 green.
+- `2681bf5` docs: `docs/LOLMATH_WIKI_SOURCE_2026-05-30.md` (item 216 carry a, CLOSED as research) + `docs/COMPETITOR_LIFT_2026-05-30.md` (5 HIGH lifts deepened to gate specs).
+- `93b313c` docs: CLAUDE item 217 + BACKLOG gate slate (6 lifts + wiki extractor) + COMPETITOR doc item-200 correction.
+
+**lolmath-wiki verdict:** GO-conditional SIDECAR extractor. Live probes: Cargo GONE (wiki.gg -> Bucket ext + Scribunto); action=bucket read-callable; Module:ChampionData serves live. Net-new fields: AA-timing, static-CD flags, charge/ammo, Arena/URF/NB mode-mults. MERGER CORRECTION: ARAM mode-mults NOT a gap (Meraki aram_modifiers covers + DS applies dealt/taken/tenacity) - agent's "biggest win fixes ARAM" was the known false-claim pattern; net-new for non-ARAM modes only.
+
+**Cost/latency 7-lever: CLEAN no-commit** (all green; details in CLAUDE item 217). Sub-note: agent6 auditor pinned claude-opus-4-7 (current Opus is 4-8) - model-currency, operator-gated, not a degrade.
+
+**Carries forward (tomorrow-you):** (a) competitor-lift gate slate (6 lifts) in BACKLOG.md + pick-list/specs in docs/COMPETITOR_LIFT_2026-05-30.md - operator picks which to build (all OPERATOR-GATE). (b) relative-score bar needs a NEW render surface (item 200 removed the DS-top-picks row) - do NOT re-pitch as a trivial decoration. (c) do NOT re-pitch the wiki for ARAM mode-mults (already covered by Meraki). (d) item 215 LIVE VERIFY (relocated agents) + OBS launch-test still owed (live/operator-gated).
+
+---
+
 # 2026-05-30 - item 216: DS ability unit-map exhaustion + 3 caster-stat scaling fields wired (2 commits `9b61dc7` + docs `6ddfaa6`; ENGINE 1.62.0 -> 1.63.0; DS restarted 1.63.0; RC untouched)
 
 Triggered by lolmath-handoff staging (extractor "extend `_UNIT_TO_FIELD`" note). A workflow classified all 29 unmapped Meraki damage-modifier unit strings: 8 typed, 21 intentional leaves (12 per-100-stat/per-stack/conditional amps + 9 Meraki mis-split crit-formula fragments).
@@ -25,15 +42,3 @@ Pivot: Game-PC OUT of League/RC entirely. OBS now local on Legion (NOT the Game-
 **Shipped `2e6081c` (Phase 11 coaching slice):** `core/game_host.py` NEW `RC_GAME_HOST` (default 127.0.0.1) - 9 live readers flipped off hardcoded Game-PC IP 192.168.8.237 (incl FROZEN `lcu/lcu_client.py`, operator-granted). Agents relocated to Legion-local ONLOGON tasks: RC-LCUAgent + RC-LiveClientRelay + RC-HotkeyListener (Game-PC copies taskkilled; phase_watcher NOT relocated + RC-PhaseWatcher disabled - BSOD class). `tests/test_game_host.py` 4/4. ADR-011 + CLAUDE.md + ARCHITECTURE topology. Side-fixes (no commit): window-flash (RC-PatchRefresh + RC-PostmortemAnalyze Interactive->S4U), Acrobat error 1920 (Spooler Disabled->Automatic+started).
 
 **Carries forward (tomorrow-you):** (a) **LIVE VERIFY OWED** - open League champ select to confirm relocated agents push runes/items/summoners + in-game :2999 flows (only real test; operator was not in client). (b) poller is relay-first: if RC-LiveClientRelay dies a :8889 404 wrongly short-circuits "no game" - watch it, or refactor poller to prefer direct local :2999 (ADR-011 watch-for). (c) OBS Display Capture = continuous DXGI = match-end BSOD class; watch. (d) OBS launch-test owed (operator opens obs64.exe, verify NVENC engages + Display Capture previews). (e) Game-PC cross-Claude bridge KEPT (operator decision). (f) Deferred Phase 11: in-process vision collapse, archive gamepc_*.py, ARCHITECTURE agent-section rewrite. (g) Migration Phases 0-9 + agent relocation DONE - do NOT re-run spoof/Vanguard.
-
----
-
-# 2026-05-28 - item 214: Electron shell + in-game overlay ARCHITECTURE PLAN (doc-only) (1 commit `82ecfba` pushed origin/main `faee0ca..82ecfba`; non-frozen; no code; no RC/DS restart)
-
-Operator ask: stabilize RC into a standalone Electron app + viewable solely in-game (overlays/panels togglable via hotkey), removing the 2nd-display requirement, keeping to 1 screen. Linked 5 inspiration pics (Zed AGGREGATOR D in-client panel, auto-champ-select, lock-in, Mayhem Doctor modal, Mayhem Settings showing UI INJECTIONS + pop-out window + window-size presets).
-
-Fork (AskUserQuestion): operator picked "All three surfaces in one arch doc first" (no code), "Point Electron at live https://legion-rc:8888". On topology operator asked back if thin-client-now blocks consolidation-later -> answered NO (origin is config not code; grounded: all `fetch("/api/...")` relative + WS uses `location.hostname` `web/js/ws_client.js:4` -> origin follows window load; flip `RC_ORIGIN` to localhost after consolidation = zero JS change).
-
-**Shipped `82ecfba`:** `docs/ELECTRON_OVERLAY.md` - 3 render surfaces (A companion/pop-out window easy / B in-game transparent always-on-top overlay + hotkey + click-through<->interactive medium-hard / C Pengu in-client panels medium); window state machine driven by `/api/state` mode_key + LCU phase; hotkey map (Alt+Shift+O/A/C); the `width=1920` hardcoded viewport (`web/index.html:5`) means overlay needs its own `overlay.css` compact layout NOT a grid shrink; 6-phase roadmap (0 doc -> 1 companion -> 2 state-machine+hotkeys -> 3 overlay passive -> 4 overlay interactive -> 5 stabilize electron-updater -> 6 Pengu); risk register (BSOD = overlay is DWM compositor NOT DXGI capture so not the screen-agent crash surface, keep Borderless, hide on WaitingForStats edge; Vanguard-safe = only :2999 + LCU lockfile, no memory reads/injection, same bar Overlay App E/aggregator A clear).
-
-**Carries forward (tomorrow-you):** plan only - NO code shipped. Next = Phase 1 companion shell (`rc-shell/` Electron project, single frameless window loading `RC_ORIGIN/`, config + size presets + scoped cert trust). Open decisions deferred (do not block Phases 1-5): 1-PC consolidation timing (orthogonal), Surface C inclusion (Pengu dependency tolerance), Phase 4 interactivity depth, pulse/notify modality. All item 213 carries unchanged.
