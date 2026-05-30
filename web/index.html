@@ -1164,6 +1164,14 @@
               <div class="csv-sugg-section cooldown-watch"
                    id="csv-sugg-cooldown-watch"
                    hidden></div>
+              <!-- 2026-05-30 competitor lifts #2/#3/#1: DS action-queue
+                   combo timeline, target-armor stat-sweep graph, engine-
+                   knobs re-rank strip. Backends routes_ds_combo /
+                   routes_ds_sweep / routes_ds_knobs. Render for the LOCKED
+                   champion (cs.my_champion). Hidden until a champion locks. -->
+              <div class="ds-sweep" id="csv-sugg-ds-sweep" hidden></div>
+              <div class="ds-combo" id="csv-sugg-ds-combo" hidden></div>
+              <div class="ds-knobs" id="csv-ds-knobs" hidden></div>
               <div class="csv-sugg-section csv-sugg-pickorder"
                    id="csv-sugg-pickorder">
                 <!-- s213 v3: "SUGGESTED PICK ORDER" label removed per
@@ -1819,6 +1827,11 @@
         <div class="am-pane am-pane-build">
           <div class="am-pane-head">BUILD <span class="draft-elo-chip" id="am-draft-elo" data-de-state="init"></span></div>
           <div class="spike-curve-container" id="am-spike-curve" data-spk-state="init"></div>
+          <!-- 2026-05-30 competitor lift #4: live power-spike markers
+               (level 6/11/16 + item 1/2/3) for the operator's champion,
+               keyed to live level + owned items. Backend routes_spike_markers.
+               Live-clock cursor OWED (live-game-only). -->
+          <div class="spike-markers" id="am-spike-markers" data-sm-state="init" hidden></div>
           <div class="am-pane-body" id="am-build-body">
             <div class="am-empty">DS engine ranks + owned items list will render here mid-game.</div>
           </div>

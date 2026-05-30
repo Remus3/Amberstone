@@ -37,6 +37,10 @@
 @import './panels/cc_blended_ehp_threat.css';
 @import './panels/cc_conditional_pressure.css';
 @import './panels/cooldown_watch.css';
+@import './panels/ds_sweep.css';
+@import './panels/ds_combo.css';
+@import './panels/ds_knobs.css';
+@import './panels/spike_markers.css';
 @import './panels/last_match.css';
 @import './panels/replay_events.css';
 @import './panels/coach_choices.css';
