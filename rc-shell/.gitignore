@@ -1,0 +1,16 @@
+# Electron / Node
+node_modules/
+dist/
+out/
+
+# rc-shell window state (runtime data, never committed)
+rc-shell-state.json
+*.tmp
+
+# logs
+*.log
+npm-debug.log*
+
+# OS cruft
+.DS_Store
+Thumbs.db
