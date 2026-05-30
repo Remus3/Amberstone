@@ -19,9 +19,12 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from coaches.adaptation_hint import SUPPORTED_MODES, coaching_digest
+
+if TYPE_CHECKING:
+    from agents.agent1_lead.scheduler import Scheduler
 
 logger = logging.getLogger("agent4.insight_detector")
 
@@ -81,7 +84,7 @@ def _cooldown_key(insight: dict) -> str:
 
 
 def detect_insights_and_file(
-    scheduler,
+    scheduler: "Scheduler",
     modes: Iterable[str] = SUPPORTED_MODES,
     severity_floor: float = SEVERITY_FLOOR,
     cooldown_hours: float = COOLDOWN_HOURS,
