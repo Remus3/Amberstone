@@ -64,6 +64,9 @@ _SCALING_FIELDS: tuple[str, ...] = (
     "bonus_armor_pct",
     "bonus_mr_pct",
     "caster_max_mp_pct",
+    "caster_armor_pct",
+    "caster_bonus_mp_pct",
+    "caster_bonus_ms_pct",
 )
 
 
@@ -105,6 +108,9 @@ class DamageBlock:
     bonus_armor_pct: tuple[float, ...] | None = None
     bonus_mr_pct: tuple[float, ...] | None = None
     caster_max_mp_pct: tuple[float, ...] | None = None
+    caster_armor_pct: tuple[float, ...] | None = None
+    caster_bonus_mp_pct: tuple[float, ...] | None = None
+    caster_bonus_ms_pct: tuple[float, ...] | None = None
     unparsed_modifiers: tuple[dict, ...] = field(default_factory=tuple)
     raw_modifiers: tuple[dict, ...] = field(default_factory=tuple)
 

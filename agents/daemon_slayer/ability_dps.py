@@ -525,6 +525,10 @@ _SCALING_TARGETS: tuple[tuple[str, str], ...] = (
     ("bonus_armor_pct", "caster_bonus_armor"),
     ("bonus_mr_pct", "caster_bonus_mr"),
     ("caster_max_mp_pct", "caster_max_mp"),
+    # 2026-05-30 unit-map exhaustion: deterministic caster-stat scalings.
+    ("caster_armor_pct", "caster_armor"),
+    ("caster_bonus_mp_pct", "caster_bonus_mp"),
+    ("caster_bonus_ms_pct", "caster_bonus_ms"),
 )
 
 # Valid block-strategies. Phase 5.9 (s191) added ``"indexed"`` - pick a
@@ -559,6 +563,12 @@ class AbilityContext:
     target_current_hp: float
     target_missing_hp: float
     target_bonus_hp: float
+    # 2026-05-30 unit-map exhaustion: deterministic caster-stat scalings.
+    # Defaulted so existing manual AbilityContext(...) constructions (test
+    # helpers) stay valid; from_build sets real values by keyword.
+    caster_armor: float = 0.0
+    caster_bonus_mp: float = 0.0
+    caster_bonus_ms: float = 0.0
 
     @staticmethod
     def from_build(
@@ -588,6 +598,10 @@ class AbilityContext:
         caster_bonus_armor = max(0.0, float(stats.get("armor", 0.0)) - caster_base_armor)
         caster_base_mr = float(base.get("mr", 0.0))
         caster_bonus_mr = max(0.0, float(stats.get("mr", 0.0)) - caster_base_mr)
+        caster_armor = float(stats.get("armor", 0.0))
+        caster_max_mp = float(stats.get("mp", 0.0))
+        caster_bonus_mp = max(0.0, caster_max_mp - float(base.get("mp", 0.0)))
+        caster_bonus_ms = max(0.0, float(stats.get("ms", 0.0)) - float(base.get("ms", 0.0)))
 
         current_pct = max(0.0, min(1.0, target_current_hp_pct))
         target_current_hp = target_max_hp * current_pct
@@ -602,7 +616,10 @@ class AbilityContext:
             caster_bonus_hp=caster_bonus_hp,
             caster_bonus_armor=caster_bonus_armor,
             caster_bonus_mr=caster_bonus_mr,
-            caster_max_mp=float(stats.get("mp", 0.0)),
+            caster_armor=caster_armor,
+            caster_max_mp=caster_max_mp,
+            caster_bonus_mp=caster_bonus_mp,
+            caster_bonus_ms=caster_bonus_ms,
             caster_mp_regen_per_5=float(stats.get("mpregen", 0.0)),
             target_armor=float(target_armor),
             target_mr=float(target_mr),
