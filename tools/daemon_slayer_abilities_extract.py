@@ -171,6 +171,20 @@ _UNIT_TO_FIELD: dict[str, str] = {
     "% bonus armor": "bonus_armor_pct",
     "% bonus magic resistance": "bonus_mr_pct",
     "% maximum mana": "caster_max_mp_pct",
+    # 2026-05-30 unit-map exhaustion (29-string sweep). Possessive-AP name
+    # variants (precedent: "% of Braum's maximum health"); AP has no
+    # caster/target axis so name-stripping to ap_pct is unambiguous.
+    "% of Ivern's AP": "ap_pct",
+    "% of Sona's AP": "ap_pct",
+    # Double-space formatting drift of the existing "% bonus AD" unit
+    # (Katarina R "Physical Damage Per Dagger").
+    "%  bonus AD": "bonus_ad_pct",
+    # NEW deterministic caster-stat scalings with no prior field. Malphite W
+    # scales off the caster's own armor, Ryze Q off bonus mana, Janna W off
+    # bonus movement speed. caster_*_pct convention parallels caster_max_mp_pct.
+    "% armor": "caster_armor_pct",
+    "% bonus mana": "caster_bonus_mp_pct",
+    "% bonus movement speed": "caster_bonus_ms_pct",
 }
 
 # Set of unit strings recognized as non-damage so we don't mis-flag them as
@@ -205,7 +219,13 @@ def _canonicalize_unit(unit: str) -> str:
     previously-unparsed nested-syntax units (Kindred E missing-health;
     Cho'Gath E / K'Sante W / Sett Q / Shen Q / Zac W / Amumu W / Evelynn E /
     Elise Q / Kled W maximum/current-health) gain a typed mapping.
+
+    Whitespace-only units (Meraki ships a stray " " / "  " on some flat-base
+    rows, e.g. TahmKench Q + Lucian R) canonicalize to "" so they map to the
+    ``base`` field instead of being silently dropped to unparsed_modifiers.
     """
+    if not unit.strip():
+        return ""
     if "(+" not in unit:
         return unit
     prev = None
