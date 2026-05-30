@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-28 (overnight headless) - item 213: competitor-lift research + all-champ loadout pollution rebuild + champ-select 7-ask redesign (7 commits pushed origin/main `ea14c36..2269c05`; ENGINE 1.61.0 -> 1.62.0; DS restarted 1.62.0; RC restarted x3 -> pid 16428)
+
+Operator multi-part: review 18 competitor sites + correct item/rune/summoner pollution for ALL champs (2-3+ paths all modes) + champ-select redesign (support panel -> live ally-picks-by-role, reformat ban/pick rows, remove source/101.qq inlines, remove experimental row entirely, DS-vs-enemy-comp live-validated build saved+pushed to client, rewrite CC cards plain-language). Fork: all-this-session + scorer-fix-and-full-regen. Orchestrator-merge: 4 bg research agents + ALPHA(engine) + BETA(frontend) + ALPHA2(data).
+
+**Shipped:** Research `docs/COMPETITOR_LIFT_2026-05-28.md`. ALPHA `6973ff0` - `agents/daemon_slayer/rank.py` `OFFCLASS_MARKSMAN_ITEM_NAMES` deny-set + `_is_ranged_marksman` (attackrange>=525); ENGINE 1.61.0->1.62.0; root cause was rank.py class-agnostic pool NOT the never-existent item-208 `_score_item_for_archetype`. ALPHA2 `04e4b04` - `tools/champion_loadout_cleanup_pollution_item213.py` strips Golden Spatula 758 + Trinity/Bastionbreaker/Mejai's/etc, 2050->1390 paths (653 dups), 358 backfills, 178 summoner fixes; merge resolved data toward ALPHA2 (its worktree base was pre-ALPHA). `1ee1db0` Pantheon lifeline clash fixed -> clash guard 0 (first ever). BETA `0d83673` champ-select 7 asks: experimental row removed, DS-vs-enemy-comp live-rerank + save+push button (set_uid `RC-<champ>-<mode>-dsenemycomp`), 101.qq source line gone, pick/ban reformat (PICK green/BAN red), bottom panel = `_csvRenderAllyRolesHtml` live ally-by-role, CC cards plain-language verdict lines. `87fbc0e` removed the experimental row from `loadout_resolver.py` too (BETA didn't own it). Test fix `tests/test_lcu_item_sets_wipe_stale.py` scoped to `_csvMaybePushBuildsToLCU`.
+
+**Verified:** RC 3802 passed (full excl phase8) + phase8 70 + clash 0 + ruff clean + DS 1.62.0; live Caitlyn SR/ARAM clean, no experimental, 0 Golden Spatula SR/ARAM.
+
+**Carries forward (tomorrow-you):** (a) LIVE VISUAL CAPTURE OWED for champ-select SR/ARAM/Arena (pick/ban + ally-roles panel + CC cards + DS save+push) - Game-PC MCP :8892 went unreachable mid-session (manual restart per `project_gamepc_mcp_boot_gap`); capture `?ui_mock=1#champ-select` + `&mode=aram|arena`, Ctrl+Shift+R, monitor 1. (b) DS-vs-enemy-comp save+push needs in-champ-select verification (operator was mode=client). (c) ARAM "Leth Poke" label borderline on some ADC paths (cosmetic, left). (d) competitor lift backlog: calc.gg combo-queue + stat-sweep graphs, lolsolved engine-knobs, statcheck stat-sandbox, Aggregator P relative-score bars - all over existing DS math, operator-gated. (e) item 212 minor-rune LCU push gap unchanged.
+
+---
+
 # 2026-05-28 (dev UI: user builds page) - user-curated builds now surface in live champ-select chooser (ALL modes) (1 commit `a887c2b` pushed origin/main `50543b7..a887c2b`; non-frozen; RC restarted pid 11272 -> 9312)
 
 Operator: "starting on user builds page. user build for locked Caitlyn was not displayed in live champ select." Root cause: user builds (`coaches/sr_user_builds` -> `data/daemon_slayer/user_builds.json`) were orphaned from EVERY live chooser - `/api/loadout/list` -> `loadout_resolver.list_variants()` reads `champion_loadouts.json` only; `format_for_display()` was test-only; the old merge route `/api/sr-draft/profile` was deleted item 186.
