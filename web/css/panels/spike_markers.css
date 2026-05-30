@@ -1,0 +1,153 @@
+/* Live power-spike markers strip (competitor lift #4,
+ * docs/COMPETITOR_LIFT_2026-05-30.md). Mounts on the ACTIVE-MATCH surface
+ * (am-spike-markers), beneath the team power-curve sparkline.
+ *
+ * Renders the operator's discrete power spikes as horizontal threshold
+ * tracks: level spikes (6/11/16) + item-completion spikes (1/2/3 finished
+ * legendaries). Each cell is CROSSED (filled - online), NEXT (ringed -
+ * the nearest upcoming spike), or FUTURE (muted).
+ *
+ * OWED (live-game-only): a live-clock cursor line at the live game_time.
+ * v1 ships the discrete strip; the cursor is wired when a live game
+ * proves the visual.
+ *
+ * Backend: dashboard/routes_spike_markers.py
+ *   GET /api/spike-markers?champion=<id>&level=<n>&items=<id,id>&mode=SR
+ *
+ * Uses the semantic tokens from web/css/tokens.css. The strip carries a
+ * positive (good) accent for crossed spikes + a warn ring for the next
+ * spike (the actionable "you are about to come online" cue).
+ */
+
+.spike-markers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-good, #4ad295);
+  border-radius: 4px;
+}
+
+.spike-markers[hidden] {
+  display: none;
+}
+
+.spm-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.spm-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.spm-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* One family row: a left tag (LVL / ITEMS) + the threshold track. */
+.spm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spm-row-tag {
+  flex: 0 0 auto;
+  width: 42px;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: right;
+}
+
+.spm-track {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* One threshold cell. Crossed = filled good; next = warn ring; future =
+ * muted outline. */
+.spm-cell {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 3px 2px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+
+.spm-cell[data-spm-state="crossed"] {
+  background: rgba(74, 210, 149, 0.18);
+  border-color: var(--signal-good, #4ad295);
+}
+
+.spm-cell[data-spm-state="next"] {
+  background: rgba(241, 176, 74, 0.12);
+  border: 2px solid var(--signal-warn, #f1b04a);
+}
+
+.spm-cell[data-spm-state="future"] {
+  opacity: 0.5;
+}
+
+.spm-mark {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.spm-cell[data-spm-state="crossed"] .spm-mark {
+  color: var(--signal-good, #4ad295);
+}
+
+.spm-cell[data-spm-state="next"] .spm-mark {
+  color: var(--signal-warn, #f1b04a);
+}
+
+.spm-lbl {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.60);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.spm-dps {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* The "next spike" caption under the tracks. */
+.spm-next {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--signal-warn, #f1b04a);
+  margin-top: 2px;
+}
+
+.spm-next.spm-next-done {
+  color: var(--signal-good, #4ad295);
+}
