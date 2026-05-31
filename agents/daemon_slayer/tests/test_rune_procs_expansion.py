@@ -34,8 +34,11 @@ def _lerp(low, high, level):
 
 
 class RegistrySizeTests(unittest.TestCase):
-    def test_registry_has_14_entries(self):
-        self.assertEqual(len(RUNE_PROCS), 14)
+    def test_registry_has_at_least_14_entries(self):
+        # item-229-NEXT(3) added per_attack runes 9923 + 8008 (registry now
+        # 16). assertGreaterEqual keeps this pin forward-compatible with
+        # future expansions instead of breaking on exact count.
+        self.assertGreaterEqual(len(RUNE_PROCS), 14)
 
     def test_original_eight_unchanged(self):
         # The 8 original runes from item 226 must still be present.
