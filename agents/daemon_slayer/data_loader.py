@@ -230,6 +230,42 @@ class DataSnapshot:
             .get("geometry")
         )
 
+    def spell_missile_speed(self, champ_id: str, slot: str) -> float | None:
+        """Per-spell missile speed (units/s) from the optional CDragon sidecar (item 233).
+
+        Returns the ``missile_speed`` float for the champ + slot, or None when
+        the sidecar is absent / the spell has no missile. The values are a MIX:
+        a real projectile is ~1000-3000, values below ~400 are dash / melee /
+        on-hit artifacts, and very high values (>=5000, incl. a 1e9 instant
+        sentinel) are effectively instant / global. The travel-time consumer
+        (`missile.spell_travel_time`, geometry-paired) gates on those bands.
+        """
+        ms = (
+            self.cdragon_spell_stats.get(str(champ_id), {})
+            .get("spells", {})
+            .get(str(slot), {})
+            .get("missile_speed")
+        )
+        if isinstance(ms, bool) or not isinstance(ms, (int, float)):
+            return None
+        return float(ms)
+
+    def ability_static_cd(self, champ_id: str, ability_name: str) -> str | None:
+        """Per-ability static (haste-immune) cooldown from the optional wiki sidecar (item 233).
+
+        The wiki overlay is keyed by ``"<Champion>/<AbilityName>"``. Returns the
+        raw ``static`` value (a MIX: a plain number string like ``"3"`` / ``"240"``,
+        a toggle marker ``"True"``, or a wiki formula string) or None when absent.
+        DATA-STAGED: the live cooldown model carries no ability-haste layer to
+        gate against, so this is a reachable cross-source, not yet a behavioral
+        consumer (an honest no-consumer per the item 233 brief).
+        """
+        rec = self.wiki_ability_stats.get(f"{champ_id}/{ability_name}")
+        if not isinstance(rec, dict):
+            return None
+        v = rec.get("static")
+        return str(v) if v is not None else None
+
     def ability_recharge(self, champ_id: str, ability_name: str) -> list | None:
         """Per-ability charge-recharge ranks from the optional wiki sidecar (item 232).
 
