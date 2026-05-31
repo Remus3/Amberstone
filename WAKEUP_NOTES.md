@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-05-31 - docs beautify: DAEMON_SLAYER + ARCHITECTURE changelogs reflowed into per-version lines + one-line-per-bump rule (commit 7fa3058; CI green run 26726300182; docs-only; no ENGINE bump; no DS/RC restart; non-frozen)
+
+Operator: the two DS docs had unreadable single physical lines (DAEMON_SLAYER.md line 5 = 24745 chars from ~38 ENGINE-bump appends; ARCHITECTURE.md line 161 = 8364 chars). Docs-only, no engine/test/data.
+
+Shipped (7fa3058): DAEMON_SLAYER.md line-5 megastring reflowed -> short status header + "## Engine substrate & registries" + "## Changelog" (one bullet per ENGINE version, newest-first: V2 substrate 1.64.0-1.74.0 then cc_conditional waves 0-23). VERBATIM reflow via deterministic slicing + content-token verifier: 0 tokens dropped, all 33 ENGINE versions + waves 0-23 preserved (also cleaned the pre-existing malformed bold on the fused wave 6/8 chunk). ARCHITECTURE.md line-161 condensed -> summary sentence + 4 structural bullets (scorers / override registries / cc_conditional ecosystem / CS picker UI) + see-DAEMON_SLAYER-changelog pointer (per-version narrative dropped, allowed). Added the one-line-per-bump rule to the new Changelog header + .claude/commands/done.md step 6b (gitignored = Legion-local).
+
+ALSO closes item 239 (shipped LAST session, /done was not finished): 89cd204 engine + 4bc484e Share + 7fd6d65 docs-sync; ENGINE 1.74.0->1.75.0 = phantom residual (DrMundo E + Twitch R) + opt-in Gap1 _ability_amp_overrides.py + opt-in Gap2 _passive_damage_overrides.py; DS suite 5663; DS :8893 already 1.75.0. CLAUDE.md item 239 + Share/ already synced last session.
+
+Dont-redo: the reflow is VERBATIM (verifier = 0 content loss) - do NOT re-reflow. Future ENGINE bumps PREPEND a new Changelog bullet, never extend a prior version's line (rule now in done.md 6b + the DAEMON_SLAYER Changelog header). Temp slicing scripts tools/_beautify_*.py deleted, never committed. tools/_c3.txt/_done_out.txt/_lessons.txt/_lp.txt/_probe.txt are PRE-EXISTING untracked junk (not this session).
+
+NEXT: nothing owed by the beautify. Item-239 NEXT carries unchanged (all operator-gated; Share/docs/04_GAPS_AND_ROADMAP.md + CLAUDE item 239): live-game flag-flip validation, Gap2 on_hit->AA cadence, 3 staged amps, AA-empower seam, exotic passives, refactor recs.
+
+---
+
 # 2026-05-31 - insights pass 2: built the horizon items the pass-1 entry deferred (commit e151e95; CI green; no ENGINE bump; no DS/RC restart; non-frozen)
 
 Operator ran /insights then "apply ALL of features-to-try + on-the-horizon; fold CLAUDE.md additions in; explain why already-present skills get re-suggested." This closes the pass-1 NEXT (self-healing checkpoint+resume + verifier gate were explicitly NOT built last session).
@@ -162,23 +176,3 @@ Verified: DS 5305 -> 5335 (+30 = 16+14); ruff clean; added-lines ASCII-clean (pr
 DON'T-REDO: (a) gate_ammo OPT-IN default False = BYTE-IDENTICAL; do NOT flip default-on without live validation (re-ranks mana_bounded_dps for the 22 ammo champs). (b) Akali Q is energy/null-ammo - NOT a gate fixture; Vi E is. ComboCast.rank is 0-based. (c) Last Stand 8299 / Absolute Focus 8233 / Gathering Storm 8236 are caster-state/game-time-gated = honest exclusions; do NOT re-pitch as proc damage; the DDragon 16.11.1 rune well is DRY (0 net-new). (d) ammo wired into mana_sim (route-layer V2 substrate via scenario_matrix), NOT a live :8893 default scorer - default /rank unchanged. (e) Git-Bash mangles taskkill /F (-> F:/) - use the PowerShell tool for DS restart (taskkill /F /PID then schtasks, NOT Stop-Process per CLAUDE.md hard rule).
 
 NEXT (operator-gated, ENGINE bump each): (1) remaining 5 owed sidecar buckets - missile (needs skillshot-range/distance source to pair with missile_speed) + static-CD (needs Q/W/E/R -> ability-display-name bridge; wiki_ability_stats is name-keyed) + geometry (no hitbox-aware damage consumer) + recharge (charge-regen cadence beyond the ammo gate) + mode_modifiers (Arena mult re-ranks Arena, validate; urf/ofa/usb/nb inactive). cc_tags BLOCKED (cc_conditional operator-CLOSED). (2) flip gate_ammo default-on after live validation. (3) auto-enable an assassin keystone in the live /rank-assassin default (item-230 carry, operator sign-off).
-
----
-
-# 2026-05-31 - item 230: DS V2 3-disjoint-slice drain - rune_procs per_attack + scenario_matrix mana/rune metrics + rank-assassin runes wire (ENGINE 1.65.0 -> 1.66.0; HEAD ace2fde; pushed eed2452..ace2fde; CI green run 26705400674; DS :8893 restarted serves 1.66.0)
-
-Operator: "continue DS Parallel disjoint slices Pre-flight: clean worktrees. CI + smoke + commit + push + /done." Headless-upgrade run; 3 parallel worktree agents (disjoint files) orchestrator-merged 0 conflicts. Pre-flight: clean tree / 0 PRs / 1 worktree / only origin/main / CI green. Closes 3 of the 4 item-229-NEXT carries.
-
-A (slice 86a512e): rune_procs.py per_attack 14 -> 16. Hail of Blades 9923 (per_attack TRUE `_lerp_by_level(4,20,level) + 0.08*ad + 0.06*ap` ADDITIVE bAD+AP NOT adaptive, CD 10s) + Lethal Tempo 8008 (per_attack flat adaptive `_lerp_by_level(9,30,level)` melee 100%-effective at max stacks; ranged 6-24 + +1%-per-1%-bonus-AS amp NOT modeled - no role/AS in signature, Grasp melee precedent). Fleet Footwork 8021 HONEST EXCLUSION (heal+MS sustain only; modeling as damage = inventing) documented beside the Aery-shield/Grasp-heal notes. DDragon 16.11.1 longDesc verbatim. Relaxed test_rune_procs_expansion exact-count pin 14 -> assertGreaterEqual. +15t.
-
-B (slice 07e9df2): scenario_matrix.py VALID_METRICS +2 mana_bounded_dps (-> mana_sim.compute_mana_bounded_combo.bounded_dps, default Q-AA-W-R) + rune_burst (-> compute_burst_damage(runes=).total_burst_damage). NEW optional sequence+runes params (default None) on sweep_scenarios+_score_cell; dps/burst/combo BYTE-IDENTICAL (harness); check_invariants untouched. +17t.
-
-C (slice 40dc059): burst.py rank_items_by_burst + server.py _route_rank_assassin NEW optional runes (LAST param) threaded into BOTH compute_burst_damage calls; route parses via the _route_burst _coerce_str_list().isdigit() pattern, passes runes=(runes or None). BYTE-IDENTICAL when omitted; live re-rank ONLY when body carries runes (NOT auto-enabled). top-N attr = ranked. +10t.
-
-ENGINE bump (ace2fde): 1.65.0 -> 1.66.0 + 33 test-pin sync (ENGINE_VERSION-assertion lines only; test_mana_valuation:7 "pre-1.65.0" + cc_conditional_wave* historical docstrings left frozen per no-history-rewrite). Living docs synced DAEMON_SLAYER L5+L32 / README L46 / BRIEF L20+L26 / ARCH L161 / ROADMAP item 230.
-
-Verified: DS 5264 -> 5305 (+41); ruff clean; phase8 70/70 post-restart; CI green run 26705400674. Live :8893 /rank-assassin Zed L11 no-runes IE new_burst 1139.73 -> runes=[8112] 1317.23 (+177.5 = Electrocute L11 170 base + adaptive), delta_burst 404.06 -> 411.56 (IE AD scales Electrocute 0.10 bAD term), ranking order unchanged - wire LIVE + correct.
-
-DON'T-REDO: (a) Fleet Footwork 8021 honest data-availability ceiling (heal+MS, no damage) - do NOT add as a damage rune. (b) Lethal Tempo 8008 melee 100%-effective 9-30 flat; ranged 6-24 + bonus-AS amp NOT applied (no role/AS in signature). (c) Hail of Blades 9923 ADDITIVE bAD+AP not adaptive. (d) Slice C runes wire BYTE-IDENTICAL when omitted + NOT auto-enabled - do NOT flip /rank-assassin to auto-pass a keystone by default without operator validation. (e) scenario_matrix new metrics REUSE existing scorers (harness, no new math).
-
-NEXT (operator-gated, ENGINE bump each): (1) item 225's 6 data sidecar buckets owed engine wiring (LAST item-229-NEXT carry). (2) auto-enable an assassin keystone in the live /rank-assassin default (re-rank validation vs real builds). (3) expand per_attack to other on-hit runes if DDragon exposes them.
