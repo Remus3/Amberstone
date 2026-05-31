@@ -203,6 +203,7 @@ def compute_hybrid(
     enemy_champions: Iterable[str] = (),
     include_conditional: bool = False,
     apply_mode_modifiers: bool = False,
+    apply_build_tenacity: bool = False,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
 ) -> HybridResult:
@@ -300,6 +301,7 @@ def compute_hybrid(
         augments=augments,
         enemy_champions=enemy_champions_tuple,
         apply_mode_modifiers=apply_mode_modifiers,
+        apply_build_tenacity=apply_build_tenacity,
         **_ehp_kwargs,
     )
 
@@ -377,6 +379,10 @@ class HybridRankedItem:
     # Phase 4(d): candidate's own unique-passive family key, always set
     # (collision-independent) - the positive "locks <family>" signal.
     unique_passive_key: str = ""
+    # Item 237: CC-adjusted EHP surface (mirrors EhpRankedItem). == new_ehp /
+    # delta_ehp when no enemy_champions (the compute_ehp identity contract).
+    cc_blended_ehp: float = 0.0
+    delta_cc_blended_ehp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -390,6 +396,8 @@ class HybridRankedItem:
             "hybrid_delta_pct": self.hybrid_delta_pct,
             "hybrid_score": self.hybrid_score,
             "hybrid_per_1k_gold": self.hybrid_per_1k_gold,
+            "cc_blended_ehp": self.cc_blended_ehp,
+            "delta_cc_blended_ehp": self.delta_cc_blended_ehp,
             "is_terminal": self.is_terminal,
             "tags": list(self.tags),
             "shares_dead_unique": self.shares_dead_unique,
@@ -426,6 +434,9 @@ class HybridRankResult:
     candidates_evaluated: int
     ranked: tuple[HybridRankedItem, ...]
     notes: tuple[str, ...] = field(default_factory=tuple)
+    # Item 237: which EHP metric the delta_pct sort key used - "blended"
+    # (default, PRE-cc) or "cc_blended" (enemy-CC-lockdown-adjusted + tenacity).
+    score_by: str = "blended"
 
     def to_dict(self) -> dict:
         return {
@@ -451,6 +462,7 @@ class HybridRankResult:
             "budget": self.budget,
             "slot_count": self.slot_count,
             "sort_by": self.sort_by,
+            "score_by": self.score_by,
             "candidates_considered": self.candidates_considered,
             "candidates_evaluated": self.candidates_evaluated,
             "ranked": [r.to_dict() for r in self.ranked],
@@ -555,6 +567,8 @@ def rank_items_by_hybrid(
     enemy_champions: Iterable[str] = (),
     include_conditional: bool = False,
     apply_mode_modifiers: bool = False,
+    apply_build_tenacity: Optional[bool] = None,
+    score_by: str = "blended",
     filter_shared_uniques: bool = True,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
@@ -575,6 +589,17 @@ def rank_items_by_hybrid(
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
+    if score_by not in ("blended", "cc_blended"):
+        raise ValueError(
+            f"score_by must be 'blended' or 'cc_blended', got {score_by!r}"
+        )
+    # Item 237: tenacity-credit defaults ON for cc_blended bruiser ranking (the
+    # cc_blended discount is build-INDEPENDENT without it -> an inert sort) and
+    # OFF for the default blended mode (byte-identical). Explicit bool overrides.
+    apply_tenacity = (
+        apply_build_tenacity if apply_build_tenacity is not None
+        else (score_by == "cc_blended")
+    )
     level = clamp_level(level)
 
     if alpha is None or beta is None:
@@ -636,6 +661,7 @@ def rank_items_by_hybrid(
         augments=augments,
         enemy_champions=enemy_champions_tuple,
         apply_mode_modifiers=apply_mode_modifiers,
+        apply_build_tenacity=apply_tenacity,
         **_ehp_kwargs_baseline,
     )
     baseline_dps = baseline_dps_result.weighted_dps
@@ -651,6 +677,13 @@ def rank_items_by_hybrid(
         else baseline_ehp_result.blended_ehp
     )
     baseline_hybrid = alpha_resolved * baseline_dps + beta_resolved * baseline_ehp_for_score
+    # Item 237: the EHP normalizer the delta_pct sort key divides by. Default
+    # "blended" keeps the PRE-cc baseline (byte-identical); "cc_blended" uses the
+    # CC-lockdown-adjusted baseline so a tenacity item's cc-EHP gain re-ranks.
+    active_baseline_ehp = (
+        baseline_ehp_result.cc_blended_ehp if score_by == "cc_blended"
+        else baseline_ehp
+    )
 
     candidates = _filter_candidates(
         snapshot,
@@ -692,6 +725,7 @@ def rank_items_by_hybrid(
                 augments=augments,
                 enemy_champions=enemy_champions_tuple,
                 apply_mode_modifiers=apply_mode_modifiers,
+                apply_build_tenacity=apply_tenacity,
                 **_ehp_kwargs_scored,
             )
         except (KeyError, ValueError):
@@ -699,8 +733,14 @@ def rank_items_by_hybrid(
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
         delta_dps = dps_scored.weighted_dps - baseline_dps
         delta_ehp = ehp_scored.blended_ehp - baseline_ehp
+        cc_delta_ehp = ehp_scored.cc_blended_ehp - baseline_ehp_result.cc_blended_ehp
+        # Item 237: the active EHP metric drives the delta_pct sort key. Default
+        # "blended" uses the PRE-cc delta (byte-identical); "cc_blended" uses the
+        # CC-lockdown-adjusted delta (+ tenacity) so a tenacity item rises vs a
+        # non-saturating CC comp - the bruiser mirror of the item-236 tank mode.
+        active_delta_ehp = cc_delta_ehp if score_by == "cc_blended" else delta_ehp
         delta_pct = _hybrid_delta_pct(
-            delta_dps, delta_ehp, baseline_dps, baseline_ehp,
+            delta_dps, active_delta_ehp, baseline_dps, active_baseline_ehp,
             alpha_resolved, beta_resolved,
         )
         ehp_scored_for_score = (
@@ -731,6 +771,8 @@ def rank_items_by_hybrid(
             shares_dead_unique=shares_dead_unique,
             dead_unique_key=cand_key if shares_dead_unique else "",
             unique_passive_key=cand_key,
+            cc_blended_ehp=ehp_scored.cc_blended_ehp,
+            delta_cc_blended_ehp=cc_delta_ehp,
         ))
 
     if sort_by == "efficiency":
@@ -745,6 +787,12 @@ def rank_items_by_hybrid(
     notes.append(
         f"weights α={alpha_resolved:.2f} / β={beta_resolved:.2f} ({alpha_source})"
     )
+    if score_by == "cc_blended":
+        notes.append(
+            f"score_by=cc_blended - ranked on CC-adjusted EHP "
+            f"(tenacity {'on' if apply_tenacity else 'off'}) vs "
+            f"{len(enemy_champions_tuple)} enemy champ(s)"
+        )
     notes.append(
         f"enemy mix: AD {enemy_ad_share * 100:.0f}% / "
         f"AP {enemy_ap_share * 100:.0f}% / "
@@ -794,4 +842,5 @@ def rank_items_by_hybrid(
         candidates_evaluated=len(candidates),
         ranked=tuple(ranked),
         notes=tuple(notes),
+        score_by=score_by,
     )
