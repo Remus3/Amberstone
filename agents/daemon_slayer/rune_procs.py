@@ -608,12 +608,18 @@ RUNE_PROCS: Dict[int, RuneProc] = {
         tree="Precision",
         proc_type="stacking_amp",
         cooldown_s=0.0,
+        condition="target_hp_below",
         formula=(
             "8% more damage to champions below 40% health (execute amp). "
-            "Modeled as a flat 1.08 amp; the <40% HP condition is a caller "
-            "gate not applied here. keystone_amp applies 1.08; compute "
-            "returns 0.0 (DDragon 16.11.1; brief crossed id with Cut Down - "
-            "8014 IS Coup de Grace)"
+            "condition='target_hp_below' is METADATA: the burst-MAX scorer "
+            "applies the 1.08 amp UNCONDITIONALLY (item 232/233 burst-window "
+            "approximation - a burst opens >60% and the killing portion carries "
+            "the target through the <40% execute band, so the amp is met within "
+            "the window; gating by a single target_hp_pct snapshot would be LESS "
+            "accurate for a burst). A future per-instant scenario eval can read "
+            "the tag + target_hp_pct to gate. keystone_amp applies 1.08 flat; "
+            "compute returns 0.0 (DDragon 16.11.1; brief crossed id with Cut "
+            "Down - 8014 IS Coup de Grace)"
         ),
         compute=lambda **_kw: 0.0,
         amp_mult=_COUP_DE_GRACE_AMP_MULT,
@@ -624,11 +630,15 @@ RUNE_PROCS: Dict[int, RuneProc] = {
         tree="Precision",
         proc_type="stacking_amp",
         cooldown_s=0.0,
+        condition="target_hp_above",
         formula=(
-            "8% more damage to champions above 60% health. Modeled as a flat "
-            "1.08 amp; the >60% HP condition is a caller gate not applied "
-            "here. keystone_amp applies 1.08; compute returns 0.0 "
-            "(DDragon 16.11.1; brief crossed id - 8017 IS Cut Down)"
+            "8% more damage to champions above 60% health. condition="
+            "'target_hp_above' is METADATA: the burst-MAX scorer applies the "
+            "1.08 amp UNCONDITIONALLY (burst-window approximation, mirror of "
+            "Coup de Grace 8014; the burst opener meets the >60% gate). A future "
+            "per-instant scenario eval can gate via target_hp_pct. keystone_amp "
+            "applies 1.08 flat; compute returns 0.0 (DDragon 16.11.1; brief "
+            "crossed id - 8017 IS Cut Down)"
         ),
         compute=lambda **_kw: 0.0,
         amp_mult=_CUT_DOWN_AMP_MULT,
@@ -750,6 +760,7 @@ def compute_rune_proc_damage(
     game_time_s: float = 0.0,
     role: str = "melee",
     bonus_as: float = 0.0,
+    target_hp_pct: float = 1.0,
     **extra,
 ) -> float:
     """Compute a rune's per-proc damage (or per-stack adaptive value).
@@ -787,6 +798,7 @@ def compute_rune_proc_damage(
                 game_time_s=game_time_s,
                 role=role,
                 bonus_as=bonus_as,
+                target_hp_pct=target_hp_pct,
                 **extra,
             )
         )
@@ -804,6 +816,7 @@ def keystone_amp(
     game_time_s: float = 0.0,
     role: str = "melee",
     bonus_as: float = 0.0,
+    target_hp_pct: float = 1.0,
 ) -> float:
     """Apply a flat-damage keystone AMPLIFIER to ``base_damage``.
 
@@ -821,10 +834,19 @@ def keystone_amp(
     supplies a low caster HP. All other ``stacking_amp`` runes use the flat
     ``amp_mult`` and ignore the gating kwargs (byte-identical).
 
+    Cut Down (8017, condition="target_hp_above") + Coup de Grace (8014,
+    condition="target_hp_below") apply their 1.08 flat amp UNCONDITIONALLY here
+    (item 232/233): a burst spans the target HP range (opens >60%, kills <40%)
+    so the burst-MAX scorer meets BOTH gates within the window - gating by a
+    single ``target_hp_pct`` snapshot would be LESS accurate for a burst. The
+    condition tag + ``target_hp_pct`` kwarg are metadata / forward-compat for a
+    future per-instant scenario eval that wants to gate; this default is
+    byte-identical.
+
     Unknown rune ids and non-amp runes return ``base_damage`` unchanged.
-    ``stacks`` / ``game_time_s`` / ``role`` / ``bonus_as`` are accepted for
-    forward compatibility / signature parity but are unused for the current amp
-    registry. Fail-soft.
+    ``stacks`` / ``game_time_s`` / ``role`` / ``bonus_as`` / ``target_hp_pct``
+    are accepted for forward compatibility / signature parity but are unused for
+    the current amp registry. Fail-soft.
     """
     try:
         base = float(base_damage)
