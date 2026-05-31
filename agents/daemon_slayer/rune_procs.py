@@ -272,6 +272,53 @@ def _lethal_tempo(*, level=1.0, **_kw) -> float:
 # Grasp heal side (heal + permanent-HP not modeled): we only register the
 # DAMAGE a rune deals. Do NOT add 8021 to RUNE_PROCS as a burst rune.
 
+# ---------------------------------------------------------------------------
+# Honest exclusions (NOT in RUNE_PROCS) - the on-hit/per_attack-expansion dry
+# well (operator NEXT "expand per_attack to other on-hit runes if DDragon
+# exposes them"). A scoping pass verified the DDragon 16.11.1 well: of all 64
+# runes, the 16 above are modeled, Fleet Footwork 8021 (above) is the heal+MS
+# sustain exclusion, and the runes below are sustain / utility / stat-stack /
+# tower-only OR caster-state / game-time gated - none is a defensible proc-
+# damage entry. They are listed here so they are never re-pitched.
+#
+# Last Stand 8299 (Precision slot-4, the SAME mutually-exclusive slot as
+# Coup de Grace 8014 + Cut Down 8017 modeled above).
+# DDragon 16.11.1 longDesc: "Deal 5% - 11% increased damage to champions while
+# you are below 60% health. Max damage gained at 30% health."
+# EXCLUDED (the one borderline candidate). Its two slot siblings ARE modeled
+# unconditionally best-case (stacking_amp 1.08x) because their gates are on the
+# TARGET's hp (Cut Down >60%, Coup de Grace <40%) and a burst window routinely
+# MEETS those: you open a burst on a healthy target (>60%) and the killing
+# portion of the burst carries it through the execute band (<40%). Last Stand
+# instead gates on the CASTER being below 60% hp (max at 30%). In a burst-MAX
+# scorer the caster is the one bursting and is typically at FULL hp on the
+# opener - the OPPOSITE of the gate. Applying a best-case 1.11x unconditionally
+# would inflate every burst total by 11% for a caster-state (<=30% hp while
+# bursting) the scorer almost never represents. The caster-state gate is not
+# expressible / not defensible in the unconditional best-case proc model, so
+# Last Stand is an honest exclusion rather than a misleading 1.11x amp. Do NOT
+# add 8299 to RUNE_PROCS.
+#
+# Absolute Focus 8233 (Sorcery). DDragon 16.11.1 longDesc: "While above 70%
+# health, gain an adaptive bonus of up to 18 Attack Damage or 30 Ability Power
+# (based on level)." This is a caster-hp-gated STAT GRANT, not proc damage -
+# the same class as the Eyeball / Legend stat runes this module never models
+# (RUNE_PROCS registers damage a rune deals, not stat sticks; Conqueror is the
+# lone adaptive STAT entry and it is EXCLUDED from the burst total). Do NOT add
+# 8233 to RUNE_PROCS.
+#
+# Gathering Storm 8236 (Sorcery). DDragon 16.11.1 longDesc: "Every 10 min gain
+# AP or AD, adaptive. 10 min: +8 AP or 5 AD ... 60 min: +168 AP or 101 AD."
+# A game-time-gated adaptive STAT GRANT (not proc damage, and the value depends
+# on elapsed game time which is not in the proc signature). Same stat-grant
+# exclusion class as Absolute Focus. Do NOT add 8236 to RUNE_PROCS.
+#
+# Taste of Blood 8139 (Domination) + Demolish 8446 (Resolve) are likewise NOT
+# proc-damage entries: 8139 longDesc "Heal when you damage an enemy champion"
+# is the Grasp/Aery-shield heal-side exclusion class (sustain, not burst), and
+# 8446 longDesc "Your third attack against towers deals ... bonus physical
+# damage" is TOWER-ONLY damage (no champion damage to score). Do NOT add either.
+
 # Press the Attack flat damage amplifier (post 3-stack): "amplifies your
 # damage dealt by 8%". DDragon 16.11.1 longDesc says a flat 8% (the brief's
 # "8-12% by level" is STALE). 1.08 multiplier.
