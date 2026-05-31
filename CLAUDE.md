@@ -138,6 +138,14 @@ When spawning subagents to generate files (especially tests), require them to ru
 
 Always run the full test suite after schema changes, engine version bumps, or item-effect additions. Avoid data-fragile cross-item comparison assertions; prefer assertions on computed quantities. When stubbing methods accessed via class, wrap with `@staticmethod` correctly.
 
+## Error Handling
+
+Never surface raw API error strings (credit/balance exhaustion, 400, rate-limit, thinking-block) in the coach UI or any user-facing dashboard panel. Catch and render a friendly degraded-mode message (e.g. "coaching paused - retrying") and log the raw error to `logs/`. Applies to all coaches + dashboard panels.
+
+## Verification
+
+Before asserting external state - API key validity, account IDs, process/PID metrics, "X is dead/missing/broken" - verify it live against the source of truth; never rely on a stale doc or another agent's unverified output. Re-probe first, then assert. See memories `feedback_verify_generated_reports` / `feedback_verify_before_declare_broken` / `feedback_audit_proposals_are_intent`.
+
 ## Windows Environment Notes
 
 Claude Desktop on Windows may be installed via the Microsoft Store (check `%LOCALAPPDATA%\Packages`) in addition to standard install paths. Use `pythonw.exe` (not `python.exe`) for background daemons to avoid flashing console windows.
