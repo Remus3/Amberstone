@@ -536,6 +536,7 @@ def _route_hybrid(body: dict) -> dict:
     include_conditional = _opt_bool(body, "include_conditional", False)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
+    apply_build_tenacity = _opt_bool(body, "apply_build_tenacity", False)
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -547,6 +548,7 @@ def _route_hybrid(body: dict) -> dict:
             enemy_champions=enemies,
             include_conditional=include_conditional,
             apply_mode_modifiers=apply_mode_modifiers,
+            apply_build_tenacity=apply_build_tenacity,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -596,6 +598,13 @@ def _route_rank_bruiser(body: dict) -> dict:
     include_conditional = _opt_bool(body, "include_conditional", False)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
+    score_by = _opt_str(body, "score_by", "blended") or "blended"
+    if score_by not in ("blended", "cc_blended"):
+        raise _ApiError(400, f"score_by: must be blended|cc_blended, got {score_by!r}")
+    apply_build_tenacity = (
+        _opt_bool(body, "apply_build_tenacity", False)
+        if "apply_build_tenacity" in body else None
+    )
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -613,6 +622,8 @@ def _route_rank_bruiser(body: dict) -> dict:
             enemy_champions=enemies,
             include_conditional=include_conditional,
             apply_mode_modifiers=apply_mode_modifiers,
+            apply_build_tenacity=apply_build_tenacity,
+            score_by=score_by,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
