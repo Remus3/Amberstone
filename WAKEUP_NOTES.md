@@ -4,6 +4,22 @@
 
 ---
 
+# 2026-05-30 - item 225: DS/RC missing-data SOURCE SWEEP (5 agents) + "all 6 data only" 3-sidecar extraction + lolmath handoff (commit e2db0c2; CI green; DATA-ONLY - NO ENGINE bump, NO DS restart, NO engine wiring)
+
+Operator: "what other sites can be deep-dive researched to lift DS/RC's missing data - investigate each + trace to upstream until exhausted." Then "apply all the gains ... all 6 data only, no engine." Then commit+push + a standalone lolmath handoff.
+
+**SWEEP (`docs/DS_DATA_SOURCE_SWEEP_2026-05-30.md`):** 5 parallel agents, all verbatim-grounded. Verdict EXHAUSTED: 4 upstream layers only (DDragon, CommunityDragon RAW = deepest/game WAD bins, Meraki, LoL wiki). All 13 downstream sites CLOSED (calc.gg cites Meraki+DDragon/math server-side; lolmath DEAD/parked; aggregator P<-Aggregator B; aggregator B/aggregator A/aggregator D/aggregator C/overlay app E/overlay app F/esports stats site Z3/esports stats site Z2 = Match-V5 win-rate aggregators). CC-duration-seconds = TRUE CEILING (structured nowhere; CDragon buff scripts 404; wiki/Meraki free-text only).
+
+**3 sidecars shipped (`data/daemon_slayer/16.11.1/`, e2db0c2):** wiki_stats.json +mode_modifiers (170 champs; urf/ofa/usb/nb MULTIPLIERS, ar/swift ADDEND stat-overrides; AA timing byte-reproduced 61 measured/110 default); cdragon_spell_stats.json (NEW; per-spell ammo 24/missile 416/cc_tags 186/geometry 619; 171/171, 0 err); wiki_ability_stats.json (NEW; per-ability static-CD 55/recharge 20/CC-flags 753; 1046 abilities). 3 extractors (stdlib, batched wiki query ~22 calls not 850) + offline tests (mode-mults 80 / cdragon 60 / wiki-ability 49). Stale dup `tests/test_wiki_stats_extract.py` DELETED.
+
+**Fiddlesticks fix:** bin splits across two name casings (Root under FiddleSticks, spells under Fiddlesticks) - `_spells_index` now scans all Characters/*/Spells/ prefixes + `_char_root_name` prefers the spellNames root; +3 regression tests; errors 1->0 (171/171).
+
+**lolmath handoff** `Desktop\lolmath_handoff\` (NON-repo): standalone README + 3 data files + 3 tools + sweep doc. a peer maintainer replied they do NOT pull the wiki + think it needs HTML scraping - README now explicitly answers: MediaWiki API not scraping (action=raw = whole roster in 1 GET; action=query batches Template:Data; non-browser UA gotcha). So the wiki-derived buckets are genuinely net-new to lolmath.
+
+**Carries (tomorrow-you):** (a) ENGINE WIRING of the 6 buckets is the next slice IF operator opens it - data is staged on disk, consumers deferred (each its own batch + ENGINE bump + DS restart + DPS validation). DO NOT auto-wire. (b) DO NOT re-research: CC-duration-seconds (ceiling), 110 default-AA champs (ceiling), Arena/Swiftplay dmg-mult (does not exist - stat overrides only), all 13 downstream sites, anything below CDragon (byte-equiv). (c) wiki access: non-browser UA passes / Mozilla trips Cloudflare 403; CDragon URL 2-segment (16.11 not 16.11.1). (d) all item 224/223/221 carries unchanged.
+
+---
+
 # 2026-05-30 - item 223 + 222: Electron Phase 1 companion shell + living-doc reconciliation + 2 stale-carry closes (electron merge 8d398ab + docs 8662b87; rc-shell/ NEW only; NO ENGINE bump; NO DS/RC restart)
 
 Operator "in parallel: start all Open/actionable" (4th same-prompt drain). Grounded stale-sweep first (2 read-only sub-agents) - the actionable-headless well is down to Electron Phase 1; everything else is live-gated or operator-input-blocked.
@@ -31,22 +47,3 @@ Operator "in parallel: start all Open/actionable" (3rd same-prompt drain). AskUs
 **combo wire DONE (merge 56980d6):** data_loader DataSnapshot optional `wiki_stats` frozen field + `wiki_attack_cast_time()` accessor (load() reads `_read_optional("wiki_stats.json")`; missing/degenerate -> {} never raises); combo.py AA windup reads per-champ value when present, else `_DEFAULT_AA_WINDUP_S`=0.25 (the existing default, found+preserved). SPELL path untouched (Meraki authoritative). Byte-identical when sidecar absent OR all-null (pinned by ComboWireTests). 13 new tests; DS suite 5008->5021. A degenerate all-401 wiki_stats.json from the first optimistic run was written-but-never-committed (untracked); DELETED so absent-path is genuinely exercised.
 
 **The ONE remaining OWED piece:** run `py tools/daemon_slayer_wiki_stats_extract.py --patch 16.11.1` from a host that reaches wiki.gg (Legion is host-blocked: 401 on every call, confirmed persistent at +35min - NOT a transient rate-trip; the wiki itself is live per item-217). Commit `data/daemon_slayer/16.11.1/wiki_stats.json` ONLY if `_with_cast_time>0`. The moment a real sidecar lands, combo.py consumes it with NO further code change. Plus: action=bucket mode-mults (Arena/URF/NB) NOT built (ARAM Meraki-covered); all item 220 carries unchanged.
-
----
-
-# 2026-05-30 - item 220: 3 deferred/held competitor-lift items in parallel - statcheck stat-sandbox + relative-score bar + fight-length-reweight knob + item-218 forward-marker fix (3 worktree merges + 1 wiring commit; non-engine; non-frozen; NO ENGINE bump; NO DS restart; RC restarted pid 17136 -> 15580)
-
-Operator "in parallel: start all Open/actionable" (same prompt as item 219). This run drains the 3 buildable items item 219 left HELD/DEFERRED. AskUserQuestion scope-fork: operator picked all 3 (statcheck #5 + relative-score-bar #3b as own panel + fight-length-reweight knob); lolmath-wiki extractor stays gated. Orchestrator-merge: 3 parallel worktree agents on disjoint slices; orchestrator wired the 5 shared files + folded in the item-218 pre-existing-failure fix.
-
-**3 slices shipped (each READS existing engine math, NO ENGINE bump):**
-- (A) **statcheck stat-sandbox** (lift #5): NEW `dashboard/routes_ds_statcheck.py` `/api/ds-statcheck` wraps `compute_dps` for the locked champ at operator-set TARGET stats (blank -> auto curve) -> resolved CHAMPION stat block (`DpsResult.stats`: ad/ap/as/crit/hp/mp/armor/mr) + dps + phase + `ds_statcheck.js` (editable enemy-armor/MR/HP/bonusHP inputs, debounced) + .css. DpsResult has NO ttk; champ-side AD/AS/crit DISPLAYED not editable (no engine stat-injection arg).
-- (B) **relative-score bar** (lift #3) - **resolves the long-HELD surface decision: shipped as its OWN panel `#csv-ds-relscore`** (item 200 deleted the DS-top-picks row; the item-219 lifts each got own panel = same pattern). NEW `dashboard/routes_ds_relscore.py` `/api/ds-relscore` READ-ONLY (no knobs, auto target stats) wraps `rank_items` -> per-row `score_pct = delta_dps/top_delta*100` (row0=100.0) + `ds_relscore.js` (horizontal bar fill = score_pct%, hero element) + .css.
-- (C) **fight-length-reweight knob** - closes item-219 C DEFERRED. `rank.py` `rank_items` gains `fight_length: Optional[float]=None` (END of sig) + `RankedItem.effective_score: float=0.0` + `_safe_burst()`. None/<=0 = **BYTE-IDENTICAL** (pinned by `ByteIdenticalWhenNoneTests`). Set = `effective_score = (burst(build+item)-burst(build)) + delta_dps*fight_length` (burst only when engaged), sort DESC - short=burst, long=sustained. `routes_ds_knobs.py` threads &fight_length + docstring DEFERRED->SHIPPED; `ds_knobs.js` 4th "Fight length (s)" input. NOT an ENGINE bump (in-process helper; :8893 /rank never passes fight_length).
-
-**Item-218 pre-existing-failure fix (folded in, not a separate branch):** item 218's `cooldown_watch.py:50` imports `cc_conditional` but never registered in the forward-marker guard `_ALLOWED_SOURCE_FILES` (was `{"cc_pressure.py"}`) - guard red since item 218. Added `"cooldown_watch.py"`. Real intended consumer; does not loosen the seam.
-
-**Wiring (5 shared files, +17/-1):** `_dispatch.py` 2 imports + 2 GET_ROUTES; `dashboard.css` 2 @imports (parity 32->34); `index.html` 2 blocks; `champ_select.js` 2 imports + 2 mounts + 2 cache decls + dsr/dss sig tokens; forward-marker allow-list +1.
-
-**Verified:** new panel+route+knob 83 passed; forward-marker + rank fight-length 22 passed (item-218 guard GREEN); full DS + full RC suites green; ruff + py_compile + node --check clean. RC restarted -> pid 15580 alive reload_ok mode=client. **Live curl all 3 ok=true:** ds-statcheck Caitlyn dps=25.86 + 8 stat keys + auto armor95/mr63; ds-relscore Caitlyn 12 rows top3 Runaan's 100.0/ER 96.6/Kraken 92.0; ds-knobs fight_length=3 top3 ER/IE/Lord Dominik's vs fight_length=20 Runaan's #2 + Kraken #3 - **inversion proven live**.
-
-**Carries forward (tomorrow-you):** (a) **LIVE VISUAL CAPTURE OWED** statcheck + relscore (gate on LOCKED champ; operator mode=client) + the new ds-knobs fight-length input; capture at next champ-select. (b) lolmath-wiki extractor STILL gated (external dep, BACKLOG:20). (c) item-219 carries unchanged EXCEPT relative-score bar HELD->SHIPPED + fight-length-reweight DEFERRED->SHIPPED. (d) item 218 cooldown-watch capture + item 215 relocated-agent LIVE VERIFY + OBS launch-test still owed (live-gated). (e) 3 worktree branches harness-locked. Don't bump ENGINE / don't restart DS for any of these (in-process route reads). `RankedItem.effective_score` additive optional (default 0.0); `rank_items(fight_length=None)` MUST stay byte-identical.
