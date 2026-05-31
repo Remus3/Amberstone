@@ -1321,7 +1321,38 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.68.0"
+ENGINE_VERSION = "1.69.0"
+# 1.69.0 (DS V2 - item 233 missile travel-time bucket + rune target_hp tags +
+# burst role + static-CD accessor. Continues item 225's owed-bucket wiring; all
+# OPT-IN / additive / byte-identical at default. (A) MISSILE -> NEW missile.py
+# (spell_travel_time = distance / missile_speed; speed bands gate the MIX:
+# <400 dash/melee/on-hit artifact -> None, >=5000 instant/global -> 0.0, else a
+# real projectile; _distance_from_geometry rejects the cone_distance=100.0 /
+# 0.0 CDragon placeholder sentinels + a <200 cast_radius floor, falling to
+# _DEFAULT_DISTANCE=1000 so the travel-time is never the 100-sentinel garbage -
+# most slots resolve at the default reference, real cast_radius like Lux E 295
+# gives an exact value). Consumed by fight_report's NEW 7th MISSILE section
+# (per-projectile-slot travel-time; APPROXIMATE - default-distance-dominated).
+# spell_missile_speed accessor added to data_loader (item 233 foundation).
+# (B) RUNE target_hp tags -> rune_procs.py Cut Down 8017 (target_hp_above) +
+# Coup de Grace 8014 (target_hp_below) condition tags as METADATA; keystone_amp
+# keeps the 1.08 amp UNCONDITIONAL (the burst-window approximation - a burst
+# spans >60% open to <40% execute so both gates are met within the window; a
+# single target_hp_pct snapshot would be LESS accurate for a burst). target_hp_pct
+# kwarg added to keystone_amp + compute_rune_proc_damage for forward-compat
+# parity. Byte-identical (registry 19). (C) BURST role -> burst.py derives caster
+# role from champion attackrange (>350 = ranged) + threads role + target_hp_pct
+# into the rune calls (Lethal Tempo 8008 ranged 6-24 vs melee 9-30 now correct);
+# only changes an explicit runes=[8008] call on a ranged champ - the live /rank
+# passes no runes so it is unaffected. (D) STATIC-CD -> data_loader
+# ability_static_cd accessor (wiki static, name-keyed); DATA-STAGED honest
+# no-consumer - the live cooldown model has no ability-haste layer to gate
+# against + the wiki static is a MIX of numbers/toggles/formulas. (E) DEFAULT-ON
+# FLIP assessment (gate_ammo / apply_mode_modifiers / aoe_targets_hit): all THREE
+# stay default-OFF - each re-ranks live output (mana_bounded_dps / Arena base
+# stats + urf-mode mults / AoE-shaped burst) and needs live-game validation
+# before a flip; operator-gated, not flipped this run. Every default path
+# byte-identical to 1.68.0.)
 # 1.68.0 (DS V2 - item 232 4-bucket sidecar consume + rune proc-signature lift.
 # Wires 3 of item 225's remaining owed sidecar buckets + lifts the rune model,
 # all OPT-IN / BYTE-IDENTICAL at default (mirrors the gate_ammo/runes=None
