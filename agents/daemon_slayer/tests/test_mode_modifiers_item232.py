@@ -17,13 +17,12 @@ including ARAM. This mirrors item 231's ``gate_ammo`` opt-in precedent: the
 flag is the established gated-data pattern so the live /rank stays
 byte-identical until the operator validates.
 
-STATS.PY ADDEND DEFERRED: the ar/swift per-level stat addend (hp_lvl /
-dam_lvl) was NOT wired this slice - the base-stat scaling helper is
-``engine._scale_champion_base`` (engine.py:88), a file outside this slice's
-disjoint set, and ``_scale_champion_base(champ_stats, level)`` carries no
-mode/snapshot param to thread the override through cleanly. ARENA therefore
-stays BYTE-IDENTICAL with the flag on (Arena has no dmg_dealt/dmg_taken in
-the sidecar - only the deferred hp_lvl/dam_lvl addend), pinned below.
+ar/swift ADDEND (SHIPPED item 232): the per-level stat addend (hp_lvl /
+dam_lvl / arm_lvl / as_lvl + hp_base / arm_base) is wired in
+``engine._scale_champion_base`` via ``_resolve_mode_addends`` (orchestrator
+slice); build_champion threads ``apply_mode_modifiers`` -> the addend feeds
+the growth formula. Flag OFF stays BYTE-IDENTICAL; flag ON re-ranks Arena
+(operator-gated flip, like gate_ammo). Pinned in ArenaAddendShippedTests.
 """
 
 import unittest
@@ -187,15 +186,14 @@ class DmgTakenOnlyModeTests(_SnapBase):
         self.assertEqual(d_off, d_on)
 
 
-class ArenaAddendDeferredTests(_SnapBase):
-    """Arena carries ONLY hp_lvl / dam_lvl addend (no dmg_dealt / dmg_taken
-    multiplier). The addend wire was DEFERRED (engine._scale_champion_base
-    is a non-owned file with no mode param), so ARENA stays BYTE-IDENTICAL
-    with the flag ON. This pins the deferred-state contract: when the
-    addend is later wired, this test should be replaced by a level>1
-    EHP-rises assertion."""
+class ArenaAddendShippedTests(_SnapBase):
+    """Arena carries hp_lvl / dam_lvl ADDEND stat-growth overrides (item 232
+    wired them in engine._scale_champion_base via the orchestrator slice).
+    Jinx ar = {dam_lvl: 0.6, hp_lvl: 10.0}: dam_lvl raises per-level AD ->
+    dps rises with the flag ON; hp_lvl raises per-level HP -> ehp rises.
+    Flag OFF stays BYTE-IDENTICAL to SR (the opt-in contract)."""
 
-    def test_arena_dps_byte_identical_with_flag_on(self):
+    def test_arena_dps_rises_with_flag_on(self):
         off = compute_dps(
             self.snap, _ARENA_CHAMP, 11, item_ids=[_ARENA_ITEM], mode="ARENA",
             apply_mode_modifiers=False,
@@ -204,9 +202,13 @@ class ArenaAddendDeferredTests(_SnapBase):
             self.snap, _ARENA_CHAMP, 11, item_ids=[_ARENA_ITEM], mode="ARENA",
             apply_mode_modifiers=True,
         ).weighted_dps
-        self.assertEqual(off, on)
+        sr = compute_dps(
+            self.snap, _ARENA_CHAMP, 11, item_ids=[_ARENA_ITEM], mode="SR",
+        ).weighted_dps
+        self.assertEqual(off, sr)  # flag off -> byte-identical to SR
+        self.assertGreater(on, off)  # dam_lvl addend lifts AD -> dps rises
 
-    def test_arena_ehp_byte_identical_with_flag_on(self):
+    def test_arena_ehp_rises_with_flag_on(self):
         off = compute_ehp(
             self.snap, _ARENA_CHAMP, 11, item_ids=[_ARENA_ITEM], mode="ARENA",
             apply_mode_modifiers=False,
@@ -215,7 +217,24 @@ class ArenaAddendDeferredTests(_SnapBase):
             self.snap, _ARENA_CHAMP, 11, item_ids=[_ARENA_ITEM], mode="ARENA",
             apply_mode_modifiers=True,
         ).blended_ehp
-        self.assertEqual(off, on)
+        sr = compute_ehp(
+            self.snap, _ARENA_CHAMP, 11, item_ids=[_ARENA_ITEM], mode="SR",
+        ).blended_ehp
+        self.assertEqual(off, sr)  # flag off -> byte-identical to SR
+        self.assertGreater(on, off)  # hp_lvl addend lifts HP -> ehp rises
+
+    def test_arena_addend_byte_identical_at_level_1(self):
+        # The addend is a per-LEVEL coefficient; at level 1 (n-1 == 0) the
+        # growth term is 0 so flag on == flag off even for an addend mode.
+        on = compute_ehp(
+            self.snap, _ARENA_CHAMP, 1, item_ids=[_ARENA_ITEM], mode="ARENA",
+            apply_mode_modifiers=True,
+        ).blended_ehp
+        off = compute_ehp(
+            self.snap, _ARENA_CHAMP, 1, item_ids=[_ARENA_ITEM], mode="ARENA",
+            apply_mode_modifiers=False,
+        ).blended_ehp
+        self.assertAlmostEqual(on, off, places=6)
 
 
 class AsciiHygieneTests(unittest.TestCase):
