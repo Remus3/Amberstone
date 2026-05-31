@@ -33,8 +33,10 @@ of - ``if ad >= ap`` use the AD coefficient else the AP coefficient (standard
 League adaptive tiebreak goes to AD).
 
 Contract: fail-soft (never raises; unknown rune -> 0.0 / pass-through).
-ASCII only. ``__all__`` exports the public surface. ENGINE_VERSION is NOT
-bumped (additive, no live scorer consumes this yet).
+ASCII only. ``__all__`` exports the public surface. This registry IS consumed
+by ``burst.py`` and ``combo.py`` (DS V2 S3, ENGINE 1.65.0): they fold
+``compute_rune_proc_damage`` + ``keystone_amp`` into the damage total when a
+rune set is passed. Registry expansions therefore DO bump ENGINE.
 """
 
 from __future__ import annotations
@@ -228,8 +230,47 @@ def _aftershock(*, level=1.0, bonus_hp=0.0, **_kw) -> float:
 
 
 # ---------------------------------------------------------------------------
+# per_attack expansion (item-229-NEXT(3)): the two per-AA damage runes. These
+# add damage to EACH auto-attack (proc_type "per_attack"), so the closure
+# returns the SINGLE-AA contribution; any per-window stack multiplier (Hail of
+# Blades' "up to 3 attacks") is the caller's concern, NOT multiplied here.
+# Every coefficient is verbatim from the live DDragon 16.11.1 runesReforged.json
+# longDesc (data/meta_build/ddragon/16.11.1/runesReforged.json); DDragon wins.
+# ---------------------------------------------------------------------------
+
+def _hail_of_blades(*, level=1.0, ad=0.0, ap=0.0, **_kw) -> float:
+    # DDragon 16.11.1 longDesc: "On-Hit Damage: 4 - 20 (+0.08 bonus AD, +0.06 AP)
+    # damage" as TRUE damage, up to 3 attacks, CD 10s. This is ADDITIVE (BOTH
+    # 0.08 bonus AD AND 0.06 AP per the "+0.08 bonus AD, +0.06 AP" wording) -
+    # NOT adaptive. Returns the per-AA (single-attack) contribution; the "up to
+    # 3 attacks" multiplier is the caller's concern (do NOT multiply by 3 here).
+    return _lerp_by_level(4.0, 20.0, level) + 0.08 * _f(ad) + 0.06 * _f(ap)
+
+
+def _lethal_tempo(*, level=1.0, **_kw) -> float:
+    # DDragon 16.11.1 longDesc: "At max stacks, deal [9 - 30 Melee || 6 - 24
+    # Ranged] bonus adaptive damage On-Attack, increased by 1% per 1% Bonus
+    # Attack Speed." The 9-30 melee value is a flat adaptive-TYPED by-level
+    # number with NO stated bAD/AP coefficient, so NO stat scaling is applied.
+    # We model the MELEE 100%-effective max-stack value (mirrors the existing
+    # Grasp melee-100%-modeled precedent in this file). The ranged 6-24 value
+    # AND the "+1% per 1% bonus AS" amp are NOT applied here (no role flag /
+    # no bonus-AS in the proc signature).
+    return _lerp_by_level(9.0, 30.0, level)
+
+
+# ---------------------------------------------------------------------------
 # Registry. Keyed by Riot perk id.
 # ---------------------------------------------------------------------------
+
+# Honest exclusion (NOT in RUNE_PROCS): Fleet Footwork 8021 (Precision).
+# DDragon 16.11.1 longDesc: "Energized attacks heal you for 10 - 130 (+0.1
+# Bonus AD, +0.05 AP) and grant 20% Move Speed for 1s." It is a HEAL + MOVE
+# SPEED sustain keystone with NO damage component - modeling it as a damage
+# rune would invent numbers that do not exist. Same data-availability-ceiling
+# discipline as the Summon Aery shield side (mitigation, not burst) and the
+# Grasp heal side (heal + permanent-HP not modeled): we only register the
+# DAMAGE a rune deals. Do NOT add 8021 to RUNE_PROCS as a burst rune.
 
 # Press the Attack flat damage amplifier (post 3-stack): "amplifies your
 # damage dealt by 8%". DDragon 16.11.1 longDesc says a flat 8% (the brief's
@@ -446,6 +487,36 @@ RUNE_PROCS: Dict[int, RuneProc] = {
         ),
         compute=lambda **_kw: 0.0,
         amp_mult=_CUT_DOWN_AMP_MULT,
+    ),
+    # --- per_attack expansion (item-229-NEXT(3)) ---
+    9923: RuneProc(
+        rune_id=9923,
+        name="Hail of Blades",
+        tree="Domination",
+        proc_type="per_attack",
+        cooldown_s=10.0,
+        formula=(
+            "per-AA TRUE damage 4-20 by level + 0.08 bonus AD + 0.06 AP "
+            "(ADDITIVE, not adaptive); up to 3 attacks per proc, CD 10s. "
+            "compute returns the SINGLE-AA contribution; the 3-attack window "
+            "multiplier is the caller's concern (DDragon 16.11.1)"
+        ),
+        compute=_hail_of_blades,
+    ),
+    8008: RuneProc(
+        rune_id=8008,
+        name="Lethal Tempo",
+        tree="Precision",
+        proc_type="per_attack",
+        cooldown_s=0.0,
+        formula=(
+            "at max stacks (6) deal 9-30 by level bonus adaptive on-attack "
+            "(MELEE 100%-effective modeled, no stat coeff stated). Ranged "
+            "6-24 value + the '+1% per 1% bonus AS' amp NOT applied (no role "
+            "flag / no bonus-AS in the proc signature); stacking AS buff has "
+            "no cooldown (DDragon 16.11.1)"
+        ),
+        compute=_lethal_tempo,
     ),
 }
 
