@@ -1334,8 +1334,9 @@ ENGINE_VERSION = "1.68.0"
 # - default targets_hit=1 -> x1 -> byte-identical (the guard skips the call).
 # (B) RECHARGE -> NEW recharge_ledger.py (compute_recharge_ledger: time-step
 # charge-availability over a fight window; cdragon ammo recharge primary,
-# wiki ability_recharge supplementary fallback). Standalone metric, no live
-# scorer consumes it by default. (C) MODE_MODIFIERS -> dps.py + ehp.py +
+# wiki ability_recharge supplementary fallback). Consumed by fight_report's
+# NEW recharge section (6th substrate section; charge-availability per slot
+# over a fight window). (C) MODE_MODIFIERS -> dps.py + ehp.py +
 # engine.py opt-in apply_mode_modifiers: bool = False (END of compute_dps /
 # compute_ehp sig). True applies the wiki mode_modifiers - dmg_dealt/dmg_taken
 # MULTIPLIERS for urf/ofa/usb/nb (dps/ehp; ARAM keeps its legacy lolmath path,
