@@ -1321,7 +1321,32 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.66.0"
+ENGINE_VERSION = "1.67.0"
+# 1.67.0 (DS V2 - 2 disjoint slices + rune-expansion verdict. (A) wire item
+# 225's `ammo` charge sidecar bucket (data/daemon_slayer/<patch>/
+# cdragon_spell_stats.json) into mana_sim behind an OPTIONAL gate_ammo flag -
+# BYTE-IDENTICAL when omitted (gate_ammo=False, the default, tracks no charges
+# at all; mirrors the runes=None opt-in precedent). When gate_ammo=True the
+# bounded rotation layers a per-slot charge ledger over the bounded pass only:
+# a cast of a charge-bearing slot consumes 1 charge, charges recharge over the
+# clock at recharge[rank] s/charge capped at max[rank], a 0-charge cast is gated
+# status="no_ammo" (same skip shape as "oom" - zero damage / no spend / no clock
+# advance / cooldown not consumed). The unbounded reference pass is never ammo-
+# gated so the bounded_dps denominator stays the full V1-parity rotation. Slots
+# with ammo==null + manaless/energy champs are completely unaffected. New
+# DataSnapshot.cdragon_spell_stats field + spell_ammo(champ, slot) accessor
+# (absent file -> {} -> byte-identical). Closes 1 of item 225's 6 owed sidecar
+# buckets. (B) rune_procs - resolve the "expand per_attack if DDragon exposes
+# them" NEXT honestly: the DDragon 16.11.1 well is DRY (16 runes modeled + Fleet
+# Footwork excluded; every remaining damage/amp rune is caster-state-gated /
+# game-time-gated / sustain / utility / stat-stack / tower-only). Last Stand
+# 8299 documented as an HONEST EXCLUSION (caster-hp<60% amp; modeling it
+# unconditionally best-case 1.11x would inflate every burst for a caster-state
+# the burst-MAX scorer almost never represents, unlike the target-hp-gated Cut
+# Down 8017 / Coup de Grace 8014 siblings a burst window routinely meets) +
+# Absolute Focus 8233 / Gathering Storm 8236 (stat grants, not proc damage) +
+# Taste of Blood 8139 / Demolish 8446. 0 net-new runes; registry unchanged.
+# Additive: every default path is byte-identical to 1.66.0.)
 # 1.66.0 (DS V2 - 3 disjoint slices. (A) rune_procs 14 -> 16: add the two
 # per_attack damage runes Hail of Blades 9923 (TRUE 4-20 by level + 0.08 bonus
 # AD + 0.06 AP, additive, CD 10s) and Lethal Tempo 8008 (flat adaptive 9-30 by
