@@ -85,15 +85,73 @@ class ResolvedStats:
         return "\n".join(rows)
 
 
-def _scale_champion_base(champ_stats: dict, level: int) -> tuple[dict[str, float], dict[str, float]]:
+# item 232 - wiki mode_modifiers ADDEND axes (ar=Arena / swift=Swiftplay) map
+# to a canonical scaling-rule stat + which term they adjust. hp_lvl/dam_lvl/etc
+# are ADDENDS to the per-level growth coefficient; hp_base/arm_base add to the
+# base value. Multiplier modes (urf/ofa/usb/nb) carry NO addend axis here -
+# their dmg_dealt/dmg_taken multipliers live in dps.py / ehp.py (item 232 M
+# slice). ms_mod / total_as are intentionally NOT mapped (no clean canonical
+# growth-rule target; logged as a deferred edge).
+_ADDEND_AXIS_MAP: dict[str, tuple[str, str]] = {
+    "hp_base": ("hp", "base"),
+    "hp_lvl": ("hp", "per"),
+    "arm_base": ("armor", "base"),
+    "arm_lvl": ("armor", "per"),
+    "dam_lvl": ("ad", "per"),
+    "as_lvl": ("as", "per"),
+}
+
+
+def _resolve_mode_addends(
+    snapshot: "DataSnapshot", champion_id: str, mode: str
+) -> dict[str, dict[str, float]] | None:
+    """Resolve ar/swift stat-growth ADDENDS for a champion (item 232).
+
+    Returns ``{canonical_key: {"base": addend, "per": addend}}`` for an addend
+    mode, or None when the mode carries no addend axis (SR / ARAM / the
+    multiplier modes / absent sidecar). Opt-in: only called from
+    build_champion when apply_mode_modifiers is set.
+    """
+    try:
+        mm = snapshot.mode_modifier(champion_id, mode)
+    except Exception:
+        return None
+    if not isinstance(mm, dict):
+        return None
+    out: dict[str, dict[str, float]] = {}
+    for axis, val in mm.items():
+        target = _ADDEND_AXIS_MAP.get(axis)
+        if target is None:
+            continue
+        key, kind = target
+        try:
+            out.setdefault(key, {})[kind] = float(val)
+        except (TypeError, ValueError):
+            continue
+    return out or None
+
+
+def _scale_champion_base(
+    champ_stats: dict,
+    level: int,
+    mode_addends: dict[str, dict[str, float]] | None = None,
+) -> tuple[dict[str, float], dict[str, float]]:
     """Return ``(scaled, raw_base)`` where scaled is canonical-key → value at level
     and raw_base preserves the unscaled base values needed for AS combine math.
+
+    ``mode_addends`` (item 232, default None -> byte-identical) adds the ar/swift
+    per-level / base stat-growth overrides before the growth formula applies.
     """
     scaled: dict[str, float] = {}
     raw_base: dict[str, float] = {}
     for rule in CHAMPION_SCALING_RULES:
         base = float(champ_stats.get(rule.base_field, 0.0))
         per = float(champ_stats.get(rule.perlevel_field, 0.0))
+        if mode_addends:
+            add = mode_addends.get(rule.canonical_key)
+            if add:
+                base += add.get("base", 0.0)
+                per += add.get("per", 0.0)
         scaled[rule.canonical_key] = rule.formula(base, per, level)
         raw_base[rule.canonical_key] = base
     for canonical_key, ddragon_field in PASSTHROUGH_STAT_FIELDS.items():
@@ -230,6 +288,7 @@ def build_champion(
     item_ids: Optional[Iterable[str | int]] = None,
     mode: str = "SR",
     augments: Optional[Iterable[str | int]] = None,
+    apply_mode_modifiers: bool = False,
 ) -> ResolvedStats:
     """Resolve a champion's stats at ``level`` with the given items equipped.
 
@@ -259,7 +318,16 @@ def build_champion(
     aug_list: tuple[str, ...] = tuple(str(x) for x in (augments or ()))
     augment_overlay = compute_augment_stats(aug_list, snapshot) if aug_list else {}
 
-    scaled, raw_base = _scale_champion_base(champ_stats, level)
+    # item 232 - ar/swift stat-growth addends (opt-in; default None -> byte-
+    # identical). Resolved before scaling so the per-level overrides feed the
+    # growth formula. Multiplier modes (urf/ofa/usb/nb/aram) resolve to None
+    # here - their dmg mults live in dps.py/ehp.py, not the base-stat layer.
+    mode_addends = (
+        _resolve_mode_addends(snapshot, champion_id, mode)
+        if apply_mode_modifiers
+        else None
+    )
+    scaled, raw_base = _scale_champion_base(champ_stats, level, mode_addends)
 
     # Phase 4 batch 20 (2026-05-04): item-passive bonus AD as a percentage of
     # leveled base AD (Sterak's "+45% base AD as bonus AD"). Walked here -
@@ -353,6 +421,10 @@ def build_champion(
     final, mode_notes = _apply_mode_modifiers(final, raw_base, mode, champ)
 
     notes: list[str] = list(mode_notes)
+    if mode_addends:
+        notes.append(
+            f"mode={mode} stat-growth addends applied: {sorted(mode_addends)}"
+        )
     if mode not in ("SR", "ARAM"):
         notes.append(f"mode={mode} - modifier table not plugged in for this mode")
     if aug_list and not augment_overlay:

@@ -1321,7 +1321,43 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.67.0"
+ENGINE_VERSION = "1.68.0"
+# 1.68.0 (DS V2 - item 232 4-bucket sidecar consume + rune proc-signature lift.
+# Wires 3 of item 225's remaining owed sidecar buckets + lifts the rune model,
+# all OPT-IN / BYTE-IDENTICAL at default (mirrors the gate_ammo/runes=None
+# precedent). Foundation: DataSnapshot loads wiki_ability_stats.json + 3 new
+# accessors spell_geometry / ability_recharge / mode_modifier (pure reads).
+# (A) GEOMETRY -> NEW geometry.py (classify_spell_shape / is_aoe_shape /
+# aoe_multiplier / spell_aoe_multiplier; _AOE_TARGET_CAP=5). burst.py gains
+# aoe_targets_hit: int = 1 (END of sig); an AoE-shaped ability (line/cone/
+# circle per the cdragon geometry bucket) hitting N targets scales x min(N, cap)
+# - default targets_hit=1 -> x1 -> byte-identical (the guard skips the call).
+# (B) RECHARGE -> NEW recharge_ledger.py (compute_recharge_ledger: time-step
+# charge-availability over a fight window; cdragon ammo recharge primary,
+# wiki ability_recharge supplementary fallback). Standalone metric, no live
+# scorer consumes it by default. (C) MODE_MODIFIERS -> dps.py + ehp.py +
+# engine.py opt-in apply_mode_modifiers: bool = False (END of compute_dps /
+# compute_ehp sig). True applies the wiki mode_modifiers - dmg_dealt/dmg_taken
+# MULTIPLIERS for urf/ofa/usb/nb (dps/ehp; ARAM keeps its legacy lolmath path,
+# no double-count) + the ar(Arena)/swift hp_lvl/dam_lvl/arm_lvl/as_lvl/hp_base/
+# arm_base ADDEND stat-growth overrides (engine._scale_champion_base via
+# _resolve_mode_addends + _ADDEND_AXIS_MAP; build_champion threads the flag).
+# Arena re-ranks ONLY when the flag is True (operator-gated flip). ms_mod /
+# total_as axes intentionally unmapped (no clean growth-rule target). (D) RUNE
+# PROC-SIGNATURE LIFT -> rune_procs.py: RuneProc gains condition: str =
+# "unconditional"; compute_rune_proc_damage + keystone_amp gain caster_hp_pct=
+# 1.0 / game_time_s=0.0 / role="melee" / bonus_as=0.0 kwargs (byte-identical
+# defaults). Ships the 3 item-231 honest-exclusion gated runes EXPRESSIBLY:
+# Last Stand 8299 (stacking_amp caster_hp_below; amp 1.0 at full HP -> byte-
+# identical, ramps 1.05->1.11 as caster hp 0.60->0.30), Absolute Focus 8233 +
+# Gathering Storm 8236 (adaptive stat grants, EXCLUDED from burst total like
+# Conqueror -> byte-identical burst, expressible via fight_report). Lethal
+# Tempo 8008 gains role (melee 9-30 default byte-identical; ranged 6-24) +
+# bonus_as amp. Registry 16 -> 19. burst.py + fight_report.py thread
+# caster_hp_pct + game_time_s into the rune calls (default full-HP/time-0 ->
+# byte-identical; fight_report reports the context-gated amp). 8139 (heal) +
+# 8446 (tower) remain honest exclusions. Every default path byte-identical to
+# 1.67.0.)
 # 1.67.0 (DS V2 - 2 disjoint slices + rune-expansion verdict. (A) wire item
 # 225's `ammo` charge sidecar bucket (data/daemon_slayer/<patch>/
 # cdragon_spell_stats.json) into mana_sim behind an OPTIONAL gate_ammo flag -
