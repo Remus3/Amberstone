@@ -927,6 +927,11 @@ def _route_rank_assassin(body: dict) -> dict:
     for the burst formula plus ``budget`` / ``slots`` / ``top`` / ``sort`` /
     ``include_components`` / ``only`` / ``filter_shared_uniques`` for the
     candidate-filtering pipeline shared with the other rankers.
+
+    Optional ``runes`` (list or comma string of Riot perk ids; junk ids
+    ignored) threads the keystone/proc rune layer into the burst formula
+    (DS V2 S3). When the body omits ``runes`` the ranking is BYTE-IDENTICAL
+    to today (empty list -> None inside ``rank_items_by_burst``).
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -957,6 +962,11 @@ def _route_rank_assassin(body: dict) -> dict:
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
+    runes = [
+        int(x)
+        for x in _coerce_str_list(body.get("runes"), "runes")
+        if str(x).strip().lstrip("-").isdigit()
+    ]
     try:
         result = rank_items_by_burst(
             snap,
@@ -975,6 +985,7 @@ def _route_rank_assassin(body: dict) -> dict:
             block_index_overrides=block_index_overrides,
             combo_sequence=combo_sequence,
             filter_shared_uniques=filter_shared_uniques,
+            runes=(runes or None),
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
