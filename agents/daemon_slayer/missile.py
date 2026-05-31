@@ -30,20 +30,34 @@ _DEFAULT_DISTANCE: float = 1000.0
 """Fallback cast distance (units) when geometry yields no usable range.
 Represents a typical mid-range skillshot cast."""
 
+_CONE_DISTANCE_SENTINELS: frozenset[float] = frozenset({0.0, 100.0})
+"""CDragon cone_distance boilerplate values that are NOT real cone lengths.
+At 16.11.1 cone_distance=100.0 appears 487 times + 0.0 45 times (the
+placeholder) vs ~23 spells with a real value - mirrors the cast_radius
+210/100 conflation. A sentinel cone_distance is rejected so the travel-time
+falls to a real cast_radius or _DEFAULT_DISTANCE, never the 100 garbage."""
+
+_MIN_REAL_DISTANCE: float = 200.0
+"""Floor below which a geometry distance is treated as an artifact (e.g. the
+cast_radius=20 dash entries) and rejected in favor of _DEFAULT_DISTANCE."""
+
 
 # --- internal helpers ---
 
 def _distance_from_geometry(geometry: "dict | None") -> "float | None":
-    """Extract a travel distance from the CDragon geometry dict.
+    """Extract a REAL travel distance from the CDragon geometry dict.
 
     Priority:
-      1. ``cone_distance`` when non-null (cone spell length).
-      2. ``cast_radius`` when non-null AND ``cast_radius_conflated`` is False
-         (projectile / circle range).
-      3. None otherwise.
+      1. ``cone_distance`` when non-null, NOT a placeholder sentinel
+         (0.0 / 100.0), and >= ``_MIN_REAL_DISTANCE`` (cone spell length).
+      2. ``cast_radius`` when non-null, NOT ``cast_radius_conflated``, and
+         >= ``_MIN_REAL_DISTANCE`` (projectile / circle range).
+      3. None otherwise (caller falls to ``_DEFAULT_DISTANCE``).
 
-    ``line_width`` is a perpendicular width, not a travel length, so it is
-    never used as a distance here.
+    The sentinel / floor filters are essential: cone_distance=100.0 is a
+    near-universal CDragon placeholder, so taking it verbatim would yield a
+    nonsense 100/speed travel time on ~487 spells. ``line_width`` is a
+    perpendicular width, not a travel length, so it is never used here.
     """
     if not geometry:
         return None
@@ -51,7 +65,9 @@ def _distance_from_geometry(geometry: "dict | None") -> "float | None":
     cone_dist = geometry.get("cone_distance")
     if cone_dist is not None:
         try:
-            return float(cone_dist)
+            cd = float(cone_dist)
+            if cd not in _CONE_DISTANCE_SENTINELS and cd >= _MIN_REAL_DISTANCE:
+                return cd
         except (TypeError, ValueError):
             pass
 
@@ -59,7 +75,9 @@ def _distance_from_geometry(geometry: "dict | None") -> "float | None":
     conflated = geometry.get("cast_radius_conflated", True)
     if cast_rad is not None and not conflated:
         try:
-            return float(cast_rad)
+            cr = float(cast_rad)
+            if cr >= _MIN_REAL_DISTANCE:
+                return cr
         except (TypeError, ValueError):
             pass
 
