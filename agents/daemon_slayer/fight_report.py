@@ -169,6 +169,9 @@ def compute_fight_report(
     caster_hp_pct: float = 1.0,
     game_time_s: float = 0.0,
     recharge_window_s: float = 10.0,
+    gate_ammo: bool = False,
+    apply_ability_haste: bool = False,
+    apply_mode_modifiers: bool = False,
 ) -> FightReport:
     """Compose a unified V2 fight report for ``champion``.
 
@@ -214,6 +217,7 @@ def compute_fight_report(
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
             mode=mode, snapshot=snap,
+            gate_ammo=gate_ammo, apply_ability_haste=apply_ability_haste,
         )
         resource_type = mr.resource_type
         mana_pool = mr.mana_pool
@@ -255,6 +259,7 @@ def compute_fight_report(
             snap, champ, lvl, item_ids=items, mode=mode,
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            apply_mode_modifiers=apply_mode_modifiers,
         ).weighted_dps
     except Exception:
         phys_dps = 0.0

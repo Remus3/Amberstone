@@ -98,6 +98,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><th>method</th><th>path</th><th>purpose</th></tr>
 <tr><td>GET</td><td><a href=/health>/health</a></td><td>liveness + version</td></tr>
 <tr><td>GET</td><td><a href=/snapshot>/snapshot</a></td><td>patch + counts</td></tr>
+<tr><td>GET</td><td><a href=/modifier-summary>/modifier-summary</a></td><td>ability modifier-block taxonomy (diagnostic)</td></tr>
 <tr><td>POST</td><td>/stats</td><td>resolve champion stats at level + items</td></tr>
 <tr><td>POST</td><td>/dps</td><td>auto-attack DPS over rotation scenarios</td></tr>
 <tr><td>POST</td><td>/rank</td><td>rank items by DPS delta</td></tr>
@@ -325,6 +326,7 @@ def _route_dps(body: dict) -> dict:
     target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
     phase = _opt_str(body, "phase")
     augments = _coerce_str_list(body.get("augments"), "augments")
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
     try:
@@ -333,7 +335,8 @@ def _route_dps(body: dict) -> dict:
                              target_armor=target_armor, target_mr=target_mr,
                              target_max_hp=target_max_hp,
                              target_bonus_hp=target_bonus_hp,
-                             phase=phase, augments=augments)
+                             phase=phase, augments=augments,
+                             apply_mode_modifiers=apply_mode_modifiers)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
@@ -368,6 +371,7 @@ def _route_rank(body: dict) -> dict:
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = rank_items(
             snap,
@@ -382,6 +386,7 @@ def _route_rank(body: dict) -> dict:
             only_item_ids=only_ids, sort_by=sort_by,
             augments=augments,
             filter_shared_uniques=filter_shared_uniques,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -405,6 +410,9 @@ def _route_ehp(body: dict) -> dict:
     enemy_ad_share = _opt_float(body, "enemy_ad_share", 0.5)
     enemy_ap_share = _opt_float(body, "enemy_ap_share", 0.5)
     augments = _coerce_str_list(body.get("augments"), "augments")
+    enemies = _coerce_str_list(body.get("enemies"), "enemies")
+    include_conditional = _opt_bool(body, "include_conditional", False)
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -412,6 +420,9 @@ def _route_ehp(body: dict) -> dict:
             enemy_ad_share=enemy_ad_share,
             enemy_ap_share=enemy_ap_share,
             augments=augments,
+            enemy_champions=enemies,
+            include_conditional=include_conditional,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -449,6 +460,7 @@ def _route_rank_tank(body: dict) -> dict:
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = rank_items_by_ehp(
             snap,
@@ -461,6 +473,7 @@ def _route_rank_tank(body: dict) -> dict:
             only_item_ids=only_ids, sort_by=sort_by,
             augments=augments,
             filter_shared_uniques=filter_shared_uniques,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -503,6 +516,9 @@ def _route_hybrid(body: dict) -> dict:
     augments = _coerce_str_list(body.get("augments"), "augments")
     alpha = _opt_weight(body, "alpha")
     beta = _opt_weight(body, "beta")
+    include_conditional = _opt_bool(body, "include_conditional", False)
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
+    enemies = _coerce_str_list(body.get("enemies"), "enemies")
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -511,6 +527,9 @@ def _route_hybrid(body: dict) -> dict:
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
             enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
             phase=phase, augments=augments,
+            enemy_champions=enemies,
+            include_conditional=include_conditional,
+            apply_mode_modifiers=apply_mode_modifiers,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -557,6 +576,9 @@ def _route_rank_bruiser(body: dict) -> dict:
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
+    include_conditional = _opt_bool(body, "include_conditional", False)
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
+    enemies = _coerce_str_list(body.get("enemies"), "enemies")
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -571,6 +593,9 @@ def _route_rank_bruiser(body: dict) -> dict:
             only_item_ids=only_ids, sort_by=sort_by,
             augments=augments,
             filter_shared_uniques=filter_shared_uniques,
+            enemy_champions=enemies,
+            include_conditional=include_conditional,
+            apply_mode_modifiers=apply_mode_modifiers,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -853,6 +878,7 @@ def _route_burst(body: dict) -> dict:
     form_index_overrides = _parse_form_index(body)
     block_index_overrides = _parse_block_index(body)
     combo_sequence = _parse_combo_sequence(body)
+    aoe_targets_hit = _opt_int(body, "aoe_targets_hit", 1) or 1
     try:
         result = compute_burst_damage(
             snap, champion_id=champion, level=level,
@@ -866,6 +892,7 @@ def _route_burst(body: dict) -> dict:
             form_index_overrides=form_index_overrides,
             block_index_overrides=block_index_overrides,
             combo_sequence=combo_sequence,
+            aoe_targets_hit=aoe_targets_hit,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -905,12 +932,17 @@ def _route_fight_report(body: dict) -> dict:
         for x in _coerce_str_list(body.get("runes"), "runes")
         if str(x).strip().lstrip("-").isdigit()
     ]
+    gate_ammo = _opt_bool(body, "gate_ammo", False)
+    apply_ability_haste = _opt_bool(body, "apply_ability_haste", False)
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = compute_fight_report(
             champion, level, item_ids=items, sequence=sequence, runes=runes,
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
             mode=mode, snapshot=snap,
+            gate_ammo=gate_ammo, apply_ability_haste=apply_ability_haste,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -967,6 +999,7 @@ def _route_rank_assassin(body: dict) -> dict:
         for x in _coerce_str_list(body.get("runes"), "runes")
         if str(x).strip().lstrip("-").isdigit()
     ]
+    aoe_targets_hit = _opt_int(body, "aoe_targets_hit", 1) or 1
     try:
         result = rank_items_by_burst(
             snap,
@@ -986,6 +1019,7 @@ def _route_rank_assassin(body: dict) -> dict:
             combo_sequence=combo_sequence,
             filter_shared_uniques=filter_shared_uniques,
             runes=(runes or None),
+            aoe_targets_hit=aoe_targets_hit,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1107,6 +1141,7 @@ def _route_beam(body: dict) -> dict:
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = beam_search_build(
             snap,
@@ -1121,6 +1156,7 @@ def _route_beam(body: dict) -> dict:
             include_components=include_components,
             only_item_ids=only_ids,
             boots_unique=boots_unique,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1147,6 +1183,24 @@ def _route_health() -> dict:
             "champions": 0,
             "items": 0,
         }
+
+
+def _route_modifier_summary() -> dict:
+    """GET /modifier-summary - roster-wide ability MODIFIER-block taxonomy.
+
+    Behavior-neutral diagnostic: walks the live ``AbilitiesSnapshot`` and
+    buckets every champion ability MODIFIER block via
+    ``modifier_blocks.summarize_modifiers`` into pve_only / target_shred /
+    defensive_self / damage_amp_self / other. Reads only - touches no
+    DPS / EHP / burst number. This is the live consumer for the deliberately
+    additive ``modifier_blocks`` substrate (the module's docstring names "a
+    coach surface" as its intended home); surfacing the classification is
+    that surface. ``load_default`` is process-cached so repeated GETs do not
+    re-read disk.
+    """
+    from .abilities import load_default
+    from .modifier_blocks import summarize_modifiers
+    return summarize_modifiers(load_default()).to_dict()
 
 
 def _route_snapshot() -> dict:
@@ -1316,6 +1370,9 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path == "/snapshot":
                 self._send_json(200, _route_snapshot())
+                return
+            if path == "/modifier-summary":
+                self._send_json(200, _route_modifier_summary())
                 return
             if path in _GET_DISPATCH_ROUTES:
                 body = self._query_to_body(url.query)

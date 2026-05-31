@@ -126,7 +126,7 @@ from .effects import (
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
-from ._item_ability_haste import total_item_ability_haste
+from ._item_ability_haste import effective_cooldown, total_item_ability_haste
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -841,13 +841,12 @@ def _effective_ability_cd(base_cd: float, total_haste: float) -> float:
 
     A ``base_cd`` of 0 returns 0 regardless of haste (locked spells,
     pre-rank states).
+
+    Delegates to ``_item_ability_haste.effective_cooldown`` (the shared
+    single-source formula); this wrapper stays as the ability-side name +
+    docstring anchor. Byte-identical to the prior inline implementation.
     """
-    if base_cd <= 0:
-        return 0.0
-    denom = 1.0 + float(total_haste) / 100.0
-    if denom < 0.01:
-        denom = 0.01
-    return float(base_cd) / denom
+    return effective_cooldown(base_cd, total_haste)
 
 
 def _total_ability_haste(

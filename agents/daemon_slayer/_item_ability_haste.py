@@ -271,8 +271,35 @@ def total_item_ability_haste(item_ids: Iterable[str | int]) -> float:
     contribute multiplicatively per occurrence per League's stat-stack
     rules (the engine's build planner enforces inventory cap and the
     s81/s82 unique-passive doctrine separately).
+
+    Delegates per-item to ``item_ability_haste`` so the single-item
+    accessor and the sum share one lookup path (no duplicate dict-get).
     """
-    total = 0.0
-    for iid in item_ids:
-        total += _ITEM_ABILITY_HASTE.get(str(iid), 0.0)
-    return total
+    return sum(item_ability_haste(iid) for iid in item_ids)
+
+
+def effective_cooldown(base_cd: float, ability_haste: float) -> float:
+    """Riot canonical post-haste cooldown ``eff_cd = base_cd / (1 + AH/100)``.
+
+    Single source for the haste-CDR formula shared by the ability-DPS
+    scorer (``ability_dps._effective_ability_cd``) and the bounded-mana
+    rotation walker (``mana_sim``). Before this helper each re-implemented
+    the same arithmetic inline (ENGINE 1.23.0 ability side; item 234 mana
+    side).
+
+      * ``base_cd <= 0`` -> 0.0 (locked / pre-rank spells).
+      * ``ability_haste == 0`` -> identity (eff_cd == base_cd).
+      * ``ability_haste > 0`` -> shorter eff_cd.
+      * ``ability_haste < 0`` (event-mode penalties) -> longer eff_cd.
+
+    The denominator is floored at 0.01 so a hypothetical
+    ``ability_haste <= -100`` stays finite + monotone-increasing rather
+    than dividing by zero / inverting. Real engine values never approach
+    that edge; the floor keeps the helper robust to test extremes.
+    """
+    if base_cd <= 0:
+        return 0.0
+    denom = 1.0 + float(ability_haste) / 100.0
+    if denom < 0.01:
+        denom = 0.01
+    return float(base_cd) / denom
