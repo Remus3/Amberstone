@@ -461,6 +461,19 @@ def _route_rank_tank(body: dict) -> dict:
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
+    # Item 236: CC-adjusted ranking. enemies + include_conditional feed the
+    # cc_blended_ehp discount; score_by="cc_blended" ranks on it (tenacity-aware
+    # by default - apply_build_tenacity tri-state: omit -> ON for cc_blended /
+    # OFF for blended, explicit 0/1 overrides). Default body = byte-identical.
+    enemies = _coerce_str_list(body.get("enemies"), "enemies")
+    include_conditional = _opt_bool(body, "include_conditional", False)
+    score_by = _opt_str(body, "score_by", "blended") or "blended"
+    if score_by not in ("blended", "cc_blended"):
+        raise _ApiError(400, f"score_by: must be blended|cc_blended, got {score_by!r}")
+    apply_build_tenacity = (
+        _opt_bool(body, "apply_build_tenacity", False)
+        if "apply_build_tenacity" in body else None
+    )
     try:
         result = rank_items_by_ehp(
             snap,
@@ -474,6 +487,10 @@ def _route_rank_tank(body: dict) -> dict:
             augments=augments,
             filter_shared_uniques=filter_shared_uniques,
             apply_mode_modifiers=apply_mode_modifiers,
+            enemy_champions=enemies,
+            include_conditional=include_conditional,
+            score_by=score_by,
+            apply_build_tenacity=apply_build_tenacity,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
