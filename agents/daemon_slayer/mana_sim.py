@@ -87,6 +87,7 @@ import math
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
 
+from ._item_ability_haste import total_item_ability_haste
 from .burst import compute_burst_damage
 from .data_loader import DataSnapshot
 from .stats import aggregate_item_stats, scaled
@@ -245,6 +246,7 @@ def _walk(
     gate_mana: bool,
     gate_ammo: bool = False,
     ammo_by_slot: Optional[dict] = None,
+    ability_haste: float = 0.0,
 ) -> Tuple[List[ManaLedgerHit], int, int, float, Optional[float], float, float]:
     """Walk the resolved cast list once.
 
@@ -287,6 +289,11 @@ def _walk(
         token = str(getattr(cast, "token", ""))
         key = str(getattr(cast, "ability_key", ""))
         cooldown_s = float(getattr(cast, "cooldown", 0.0) or 0.0)
+        # item 234 - ability-haste CDR (Riot canonical base/(1+AH/100)). Applied
+        # uniformly to every cooldown-bearing slot; ability_haste==0.0 (the
+        # default / no-haste build) leaves cooldown_s byte-identical.
+        if ability_haste > 0.0 and cooldown_s > 0.0:
+            cooldown_s = cooldown_s / (1.0 + ability_haste / 100.0)
         cost = float(getattr(cast, "cost", 0.0) or 0.0)
         cast_time = _cast_time_for(cast)
 
@@ -495,6 +502,7 @@ def compute_mana_bounded_combo(
     mode: str = "SR",
     snapshot: Optional[DataSnapshot] = None,
     gate_ammo: bool = False,
+    apply_ability_haste: bool = False,
 ) -> ManaBoundedResult:
     """Walk a bounded rotation over ``sequence`` gated on the champion's mana.
 
@@ -512,6 +520,21 @@ def compute_mana_bounded_combo(
     the BOUNDED pass and a cast with 0 charges available is gated
     (``status="no_ammo"``). The unbounded reference pass is never ammo-gated so
     the denominator stays the full V1-parity rotation.
+
+    ``apply_ability_haste`` (default False) is the OPT-IN CDR refinement: when
+    False the rotation uses the raw rank cooldowns (BYTE-IDENTICAL). When True
+    the build's item ability haste (``total_item_ability_haste`` over the
+    resolved item list - the SAME hand-curated 16.x registry the live ability
+    scorer uses) reduces every cooldown-bearing slot via Riot's canonical
+    ``base_cd / (1 + ability_haste / 100)``. It is applied to BOTH passes so
+    the shared wall-clock denominator stays consistent (bounded_dps <=
+    unbounded_dps holds); a faster rotation accrues less regen between casts so
+    haste can also bind the mana gate earlier. A build with no haste items
+    (ability_haste == 0) is byte-identical to apply_ability_haste=False. Haste
+    is applied UNIFORMLY: the wiki static-CD (haste-immune) bucket is NOT used
+    to exempt slots - its QWER coverage is 3 abilities with a mislabel
+    (Amumu Q scales with haste in-game), too unreliable to gate, and a burst
+    rotation's spells all scale with haste regardless.
 
     Fail-soft: no champion / empty sequence / burst failure yields an empty
     ``hits`` tuple with a note rather than raising.
@@ -579,6 +602,13 @@ def compute_mana_bounded_combo(
             if isinstance(slot_ammo, dict) and slot_ammo.get("max"):
                 ammo_by_slot[slot] = slot_ammo
 
+    # Resolve item ability haste ONLY when the caller opted in (default 0.0 ->
+    # raw cooldowns -> byte-identical). Same source the live ability scorer
+    # uses; applied uniformly to both passes' cooldown clock below.
+    ability_haste = (
+        total_item_ability_haste(burst.item_ids) if apply_ability_haste else 0.0
+    )
+
     # Unbounded reference pass FIRST - same walk, mana gate OFF. It establishes
     # the full-rotation wall-clock (``ref_duration``). Both DPS figures are
     # measured over that SAME denominator so the invariant bounded_dps <=
@@ -588,6 +618,7 @@ def compute_mana_bounded_combo(
     # rotation's own end time (informational).
     (_uh, _ua, _ur, _us, _uoom, unbounded_mit, unbounded_dur) = _walk(
         burst.per_cast, pool, regen_per_s, gate_mana=False,
+        ability_haste=ability_haste,
     )
 
     # Bounded pass (mana gate active iff this champion is mana-gated; the ammo
@@ -598,6 +629,7 @@ def compute_mana_bounded_combo(
     ) = _walk(
         burst.per_cast, pool, regen_per_s, gate_mana=is_mana_gated,
         gate_ammo=gate_ammo, ammo_by_slot=ammo_by_slot,
+        ability_haste=ability_haste,
     )
 
     # Shared denominator = the full rotation wall-clock from the unbounded
@@ -626,6 +658,11 @@ def compute_mana_bounded_combo(
     if n_no_ammo:
         notes.append(
             f"{n_no_ammo} cast(s) gated on charges (gate_ammo=True)"
+        )
+    if ability_haste > 0.0:
+        notes.append(
+            f"ability_haste={ability_haste:.0f} applied "
+            f"(cooldowns x {1.0 / (1.0 + ability_haste / 100.0):.3f})"
         )
 
     return ManaBoundedResult(
