@@ -4,6 +4,24 @@
 
 ---
 
+# 2026-05-31 - item 233: DS missile travel-time bucket + rune target_hp tags + burst role + static-CD accessor, all OPT-IN/additive/byte-identical (ENGINE 1.68.0 -> 1.69.0; HEAD f71605f; pushed 96e20bf..f71605f; DS :8893 restarted serves 1.69.0; RC NOT restarted)
+
+Operator headless continuation (fresh context after item-232 ScheduleWakeup). Pre-flight clean: HEAD 96e20bf / 0 PRs / CI all green / 0 worktrees / ENGINE 1.68.0 in sync.
+
+Foundation afe2bd5 (no bump, additive): data_loader.py 2 accessors spell_missile_speed (cdragon missile_speed float|None) + ability_static_cd (wiki static raw str|None, name-keyed); 7 tests.
+
+1 background worktree agent (missile, merged 782e167): NEW missile.py spell_travel_time = distance/missile_speed; speed bands gate the MIX (_MIN_PROJECTILE_SPEED=400 below->None, _INSTANT_SPEED=5000 above->0.0) + is_projectile + _distance_from_geometry; 48t. CRITICAL agent finding + orchestrator FIX: cone_distance=100.0 is a near-universal CDragon PLACEHOLDER SENTINEL (487/555 + 0.0 x45, only ~23 real) -> agent's verbatim cone_distance gave 100/speed garbage. Patched missile.py to reject _CONE_DISTANCE_SENTINELS={0.0,100.0} + a _MIN_REAL_DISTANCE=200 cast_radius floor -> sentinels/artifacts fall to _DEFAULT_DISTANCE=1000 (honest default-reference); real cast_radius (Lux E 295) exact; 9 stale agent test pins rewritten + a real-geometry pin added.
+
+Orchestrator inline (rune+burst+fight_report) fd86735+f71605f: rune_procs.py Cut Down 8017 (target_hp_above) + Coup de Grace 8014 (target_hp_below) condition tags as METADATA - keystone_amp keeps 1.08 UNCONDITIONAL (burst-window approximation: burst spans >60% open to <40% execute so both gates met; a single target_hp_pct snapshot would be LESS accurate for a burst) + target_hp_pct kwarg parity (byte-identical, registry 19). burst.py derives caster role from attackrange (_RANGED_ATTACK_RANGE=350, >350=ranged) + threads role + target_current_hp_pct into rune calls -> Lethal Tempo ranged 6-24 vs melee 9-30 (Caitlyn(650) LT delta 16.59 < Aatrox(175) 21.35); only affects explicit runes=[8008] on ranged champ (live /rank passes none). fight_report.py NEW 7th MISSILE section consuming missile.spell_travel_time (missile_slots per projectile slot; APPROXIMATE default-distance-dominated; makes missile a live consumer).
+
+ENGINE bump f71605f 1.68.0 -> 1.69.0 + 33 test-pin sync. Decisions logged honest: (i) static-CD ACCESSOR ONLY data-staged no-consumer (no haste model + wiki static a MIX numbers/toggles/formulas). (ii) flips gate_ammo/apply_mode_modifiers/aoe_targets_hit ALL stay default-OFF (each re-ranks, operator-gated). (iii) missile combo-clock delay NOT built - geometry distance sentinel-dominated so a delay adds approximate noise without changing cooldown-gated bounded-DPS; fight_report enrichment is the grounded consumer.
+
+Verified: DS 5484 -> 5543 (+59); RC 4161 (engine sig back-compat); phase8 70/70 post-restart; ruff clean; CI all green. Live: Lux missile Q 0.8333 / W 0.2494 / E 0.2269 / R 0.0833; burst byte-id defaults. DS restarted PowerShell -> 1.69.0.
+
+Don't-redo: (a) cone_distance=100/0 are CDragon PLACEHOLDER SENTINELS - missile._distance_from_geometry rejects them + <200 cast_radius floor; travel-time is APPROXIMATE (default-distance-dominated). (b) rune target_hp tags on 8014/8017 are METADATA - keystone_amp keeps them UNCONDITIONAL 1.08 (burst-window approximation); do NOT gate by a single snapshot. (c) static-CD data-staged accessor-only - no haste model to consume it; do NOT fabricate a consumer. (d) burst role-from-attackrange only affects explicit runes=[8008] on ranged champs (not a live re-rank). (e) flips stay OFF operator-gated. (f) DS restart PowerShell taskkill (Bash mangles /F); NEVER Stop-Process.
+
+NEXT (operator-gated): (1) static-CD consumer needs a live ability-haste model first. (2) flip the 3 default-on flips after live validation. (3) missile combo-clock delay IF a real per-spell cast-range source lands. (4) auto-enable assassin keystone in /rank-assassin. (5) more per_attack runes if a proc-signature fits. cc_tags operator-CLOSED.
+
 # 2026-05-31 - item 232: DS 3 sidecar buckets (geometry/recharge/mode_modifiers) + rune proc-signature LIFT, all OPT-IN/byte-identical (ENGINE 1.67.0 -> 1.68.0; HEAD d944154; pushed ce3aa6e..d944154; DS :8893 restarted serves 1.68.0; RC NOT restarted)
 
 Operator headless run: "continue DS: geometry (no consumer) / recharge (time-step ledger) / mode_modifiers (inactive modes); rune per_attack proc-signature lift; cc_tags operator-CLOSED. self-audit every wire + parameterize. lift everything." Pre-flight clean: HEAD ce3aa6e / 0 PRs / CI green / 5 stale worktrees cleaned. 3 read-only Explore scoping agents (data layer + rune model + consumers).
