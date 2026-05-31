@@ -56,11 +56,13 @@ class RegistrySizeTests(unittest.TestCase):
             self.assertIn(rid, RUNE_PROCS)
 
     def test_id_crossing_documented_correctly(self):
-        # DDragon: 8014 = Coup de Grace, 8017 = Cut Down. 8299 (Last Stand)
-        # must NOT be in the registry (it is not modeled).
+        # DDragon: 8014 = Coup de Grace, 8017 = Cut Down, 8299 = Last Stand.
+        # Item 232 lift: 8299 (Last Stand) is NOW modeled (caster_hp_below
+        # stacking_amp, byte-identical at the default full-HP context); the
+        # id-crossing names below must stay DDragon-correct.
         self.assertEqual(RUNE_PROCS[8014].name, "Coup de Grace")
         self.assertEqual(RUNE_PROCS[8017].name, "Cut Down")
-        self.assertNotIn(8299, RUNE_PROCS)
+        self.assertEqual(RUNE_PROCS[8299].name, "Last Stand")
 
 
 class SummonAeryTests(unittest.TestCase):

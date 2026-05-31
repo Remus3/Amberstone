@@ -118,6 +118,15 @@ class RuneProc:
 
     ``amp_mult`` is the flat multiplier a ``stacking_amp`` rune applies to
     inbound damage (1.0 = no amp). Non-amp runes leave it at 1.0.
+
+    ``condition`` is the gating tag (item 232 proc-signature lift). Default
+    "unconditional" keeps every pre-lift rune byte-identical. Tags:
+    "unconditional" | "caster_hp_below" | "caster_hp_above" | "target_hp_below"
+    | "target_hp_above" | "game_time" | "per_attack". A gated rune's closure /
+    amp consumes the gating-context kwargs (caster_hp_pct / game_time_s / role /
+    bonus_as) threaded through ``**extra``; at the DEFAULT context every gate
+    yields the no-contribution value (amp 1.0 / 0.0 burst), so a default-context
+    caller sees byte-identical behaviour to the pre-lift exclusion.
     """
 
     rune_id: int
@@ -130,12 +139,16 @@ class RuneProc:
         default=lambda **_kw: 0.0, compare=False, repr=False
     )
     amp_mult: float = 1.0
+    condition: str = "unconditional"
 
 
 # ---------------------------------------------------------------------------
 # Per-rune compute closures.
 # Each takes (level, ad, ap, bonus_hp, target_max_hp, mode) via **kw and
 # returns a float. They read only the kwargs they need; extras are ignored.
+# Item 232 lift: the gating context (caster_hp_pct / game_time_s / role /
+# bonus_as) is ALSO threaded via the same **kw. Closures that ignore those
+# kwargs (via **_kw) are unaffected -> byte-identical at the default context.
 # ---------------------------------------------------------------------------
 
 def _electrocute(*, level=1.0, ad=0.0, ap=0.0, **_kw) -> float:
@@ -238,25 +251,96 @@ def _aftershock(*, level=1.0, bonus_hp=0.0, **_kw) -> float:
 # longDesc (data/meta_build/ddragon/16.11.1/runesReforged.json); DDragon wins.
 # ---------------------------------------------------------------------------
 
-def _hail_of_blades(*, level=1.0, ad=0.0, ap=0.0, **_kw) -> float:
+def _hail_of_blades(*, level=1.0, ad=0.0, ap=0.0, role="melee", **_kw) -> float:
     # DDragon 16.11.1 longDesc: "On-Hit Damage: 4 - 20 (+0.08 bonus AD, +0.06 AP)
     # damage" as TRUE damage, up to 3 attacks, CD 10s. This is ADDITIVE (BOTH
     # 0.08 bonus AD AND 0.06 AP per the "+0.08 bonus AD, +0.06 AP" wording) -
     # NOT adaptive. Returns the per-AA (single-attack) contribution; the "up to
     # 3 attacks" multiplier is the caller's concern (do NOT multiply by 3 here).
+    # Item 232: role accepted for signature parity with Lethal Tempo, but Hail
+    # of Blades' On-Hit Damage does NOT vary by role (DDragon gives one number,
+    # not a melee||ranged split), so role is unused and the melee default value
+    # is byte-identical.
     return _lerp_by_level(4.0, 20.0, level) + 0.08 * _f(ad) + 0.06 * _f(ap)
 
 
-def _lethal_tempo(*, level=1.0, **_kw) -> float:
-    # DDragon 16.11.1 longDesc: "At max stacks, deal [9 - 30 Melee || 6 - 24
-    # Ranged] bonus adaptive damage On-Attack, increased by 1% per 1% Bonus
-    # Attack Speed." The 9-30 melee value is a flat adaptive-TYPED by-level
-    # number with NO stated bAD/AP coefficient, so NO stat scaling is applied.
-    # We model the MELEE 100%-effective max-stack value (mirrors the existing
-    # Grasp melee-100%-modeled precedent in this file). The ranged 6-24 value
-    # AND the "+1% per 1% bonus AS" amp are NOT applied here (no role flag /
-    # no bonus-AS in the proc signature).
-    return _lerp_by_level(9.0, 30.0, level)
+def _lethal_tempo(*, level=1.0, role="melee", bonus_as=0.0, **_kw) -> float:
+    # DDragon 16.11.1 longDesc: "Attacking an enemy champion grants you [6%
+    # Melee || 4% Ranged] Attack Speed for 6 seconds, up to 6. At max stacks,
+    # deal [9 - 30 Melee || 6 - 24 Ranged] bonus adaptive damage On-Attack,
+    # increased by 1% per 1% Bonus Attack Speed." Item 232 lift: role picks the
+    # melee (9-30) vs ranged (6-24) by-level base; bonus_as applies the
+    # "+1% per 1% bonus AS" amp via result *= (1.0 + bonus_as) (bonus_as is a
+    # fraction, e.g. 0.50 = +50% bonus AS -> 1.5x). DEFAULTS role="melee" +
+    # bonus_as=0.0 -> 9-30 melee with no amp = BYTE-IDENTICAL to the pre-lift
+    # value. No stated bAD/AP coefficient so NO stat scaling is applied.
+    base = _lerp_by_level(6.0, 24.0, level) if str(role) == "ranged" else _lerp_by_level(9.0, 30.0, level)
+    return base * (1.0 + _f(bonus_as))
+
+
+# ---------------------------------------------------------------------------
+# Item 232 proc-signature lift: the 3 previously-EXCLUDED gated runes, now
+# EXPRESSIBLE with HONEST gates that yield byte-identical defaults.
+# ---------------------------------------------------------------------------
+
+def _last_stand_amp(*, caster_hp_pct=1.0) -> float:
+    # DDragon 16.11.1 longDesc: "Deal 5% - 11% increased damage to champions
+    # while you are below 60% health. Max damage gained at 30% health."
+    # HONEST GATE: amp = 1.0 at caster_hp_pct >= 0.60 (no amp); ramps linearly
+    # 1.05 -> 1.11 as caster_hp_pct goes 0.60 -> 0.30; capped 1.11 below 0.30.
+    # Returned by keystone_amp, NOT compute (8299 is a stacking_amp). At the
+    # DEFAULT caster_hp_pct=1.0 -> amp 1.0 -> base unchanged -> BYTE-IDENTICAL
+    # to the item-231 exclusion (a burst-MAX caller at full HP sees NO change).
+    hp = _f(caster_hp_pct)
+    if hp >= 0.60:
+        return 1.0
+    if hp <= 0.30:
+        return 1.11
+    # Linear 1.05 (at 0.60) -> 1.11 (at 0.30) over the 0.30 hp band.
+    return 1.05 + (1.11 - 1.05) * (0.60 - hp) / 0.30
+
+
+def _adaptive_grant(ad: float, ap: float, ad_val: float, ap_val: float) -> float:
+    # Pick the flat adaptive STAT-GRANT value by the standard adaptive rule:
+    # AD-side value when bonus AD >= bonus AP (AD wins ties, League default),
+    # else AP-side value. Unlike :func:`_adaptive_coeff` (a stat-SCALED proc
+    # coefficient), this returns the grant value DIRECTLY (no stat multiply).
+    return ad_val if _f(ad) >= _f(ap) else ap_val
+
+
+def _absolute_focus(*, level=1.0, ad=0.0, ap=0.0, caster_hp_pct=1.0, **_kw) -> float:
+    # DDragon 16.11.1 longDesc: "While above 70% health, gain an adaptive bonus
+    # of up to 18 Attack Damage or 30 Ability Power (based on level). Grants
+    # 1.8 Attack Damage or 3 Ability Power at level 1." This is a caster-hp-gated
+    # adaptive STAT GRANT, not proc damage - so like Conqueror it is proc_type
+    # "adaptive" and the BURST CONSUMER SKIPS proc_type=="adaptive" (it does NOT
+    # enter the burst total). At the DEFAULT caster_hp_pct=1.0 (>0.70) compute
+    # returns the grant value (1.8->18 AD / 3->30 AP adaptive by level, AD-side
+    # on the default ad>=ap tie) but since burst SKIPS adaptive the burst is
+    # BYTE-IDENTICAL; a fight_report may surface the stat. caster_hp_pct <= 0.70
+    # -> 0.0 (gate fails).
+    if _f(caster_hp_pct) <= 0.70:
+        return 0.0
+    return _adaptive_grant(ad, ap, _lerp_by_level(1.8, 18.0, level), _lerp_by_level(3.0, 30.0, level))
+
+
+def _gathering_storm(*, ad=0.0, ap=0.0, game_time_s=0.0, **_kw) -> float:
+    # DDragon 16.11.1 longDesc: "Every 10 min gain AP or AD, adaptive. 10 min:
+    # +8 AP or 5 AD  20 min: +24 AP or 14 AD  30 min: +48 AP or 29 AD  40 min:
+    # +80 AP or 48 AD  50 min: +120 AP or 72 AD  60 min: +168 AP or 101 AD."
+    # A game-time-gated adaptive STAT GRANT (not proc damage). proc_type
+    # "adaptive" -> the BURST CONSUMER SKIPS it (does NOT enter the burst total)
+    # -> burst BYTE-IDENTICAL. Modeled as the AD-side 5-per-10-min / AP-side
+    # 8-per-10-min linear ramp (game_time_s / 600.0 * milestone); the longDesc
+    # accelerates at later milestones but the 10-min cadence anchor is the
+    # honest first-order ramp. At the DEFAULT game_time_s=0.0 -> 0.0 (a burst
+    # scorer at t=0 has the rune contribute nothing, matching the exclusion).
+    # game_time_s=600 (10 min) -> 5 AD (AD-side); game_time_s=1800 (30 min) ->
+    # 15 AD. AD-side on the default ad>=ap tie.
+    t = _f(game_time_s)
+    if t <= 0.0:
+        return 0.0
+    return _adaptive_grant(ad, ap, 5.0 * (t / 600.0), 8.0 * (t / 600.0))
 
 
 # ---------------------------------------------------------------------------
@@ -273,51 +357,56 @@ def _lethal_tempo(*, level=1.0, **_kw) -> float:
 # DAMAGE a rune deals. Do NOT add 8021 to RUNE_PROCS as a burst rune.
 
 # ---------------------------------------------------------------------------
-# Honest exclusions (NOT in RUNE_PROCS) - the on-hit/per_attack-expansion dry
-# well (operator NEXT "expand per_attack to other on-hit runes if DDragon
-# exposes them"). A scoping pass verified the DDragon 16.11.1 well: of all 64
-# runes, the 16 above are modeled, Fleet Footwork 8021 (above) is the heal+MS
-# sustain exclusion, and the runes below are sustain / utility / stat-stack /
-# tower-only OR caster-state / game-time gated - none is a defensible proc-
-# damage entry. They are listed here so they are never re-pitched.
+# Conditionally modeled (honest gate, byte-identical default) - item 232
+# proc-signature lift. These 3 runes WERE honest exclusions (item 231) because
+# the unconditional best-case proc model could not express their gates without
+# inflating the burst-MAX scorer. The item 232 lift makes the gate EXPRESSIBLE:
+# each rune carries a `condition` tag + reads the gating-context kwargs, and
+# the DEFAULT context (caster_hp_pct=1.0 / game_time_s=0.0) yields the SAME
+# no-contribution value the exclusion produced. The item-231 REASONING was
+# correct (unconditional best-case inflates); the lift does NOT contradict it -
+# it computes correctly ONLY when a caller supplies the gating context.
 #
 # Last Stand 8299 (Precision slot-4, the SAME mutually-exclusive slot as
-# Coup de Grace 8014 + Cut Down 8017 modeled above).
-# DDragon 16.11.1 longDesc: "Deal 5% - 11% increased damage to champions while
-# you are below 60% health. Max damage gained at 30% health."
-# EXCLUDED (the one borderline candidate). Its two slot siblings ARE modeled
-# unconditionally best-case (stacking_amp 1.08x) because their gates are on the
-# TARGET's hp (Cut Down >60%, Coup de Grace <40%) and a burst window routinely
-# MEETS those: you open a burst on a healthy target (>60%) and the killing
-# portion of the burst carries it through the execute band (<40%). Last Stand
-# instead gates on the CASTER being below 60% hp (max at 30%). In a burst-MAX
-# scorer the caster is the one bursting and is typically at FULL hp on the
-# opener - the OPPOSITE of the gate. Applying a best-case 1.11x unconditionally
-# would inflate every burst total by 11% for a caster-state (<=30% hp while
-# bursting) the scorer almost never represents. The caster-state gate is not
-# expressible / not defensible in the unconditional best-case proc model, so
-# Last Stand is an honest exclusion rather than a misleading 1.11x amp. Do NOT
-# add 8299 to RUNE_PROCS.
+# Coup de Grace 8014 + Cut Down 8017). DDragon 16.11.1 longDesc: "Deal 5% - 11%
+# increased damage to champions while you are below 60% health. Max damage
+# gained at 30% health." Its two slot siblings (Cut Down >60%, Coup de Grace
+# <40%) gate on the TARGET's hp and a burst window routinely MEETS those, so
+# they are modeled unconditionally best-case (stacking_amp 1.08x). Last Stand
+# gates on the CASTER being below 60% hp (max at 30%) - in a burst-MAX scorer
+# the caster is typically at FULL hp on the opener, the OPPOSITE of the gate.
+# Item 232: NOW MODELED as condition="caster_hp_below" stacking_amp; keystone_amp
+# returns base * _last_stand_amp(caster_hp_pct=) = 1.0 at the default full HP
+# (byte-identical - NO inflation) and 1.05->1.11 when a caller supplies a low
+# caster_hp_pct. Item-231's anti-inflation concern is HONORED by the default.
 #
 # Absolute Focus 8233 (Sorcery). DDragon 16.11.1 longDesc: "While above 70%
 # health, gain an adaptive bonus of up to 18 Attack Damage or 30 Ability Power
-# (based on level)." This is a caster-hp-gated STAT GRANT, not proc damage -
-# the same class as the Eyeball / Legend stat runes this module never models
-# (RUNE_PROCS registers damage a rune deals, not stat sticks; Conqueror is the
-# lone adaptive STAT entry and it is EXCLUDED from the burst total). Do NOT add
-# 8233 to RUNE_PROCS.
+# (based on level)." A caster-hp-gated adaptive STAT GRANT, not proc damage -
+# same class as Conqueror (the lone other adaptive STAT entry). Item 232: NOW
+# MODELED as condition="caster_hp_above" proc_type="adaptive"; compute returns
+# the grant (1.8->18 AD / 3->30 AP) when caster_hp_pct>0.70 else 0.0. Because
+# the burst consumer SKIPS proc_type=="adaptive", the grant does NOT enter the
+# burst total -> burst is BYTE-IDENTICAL even at the default full HP. A
+# fight_report may surface the stat.
 #
 # Gathering Storm 8236 (Sorcery). DDragon 16.11.1 longDesc: "Every 10 min gain
 # AP or AD, adaptive. 10 min: +8 AP or 5 AD ... 60 min: +168 AP or 101 AD."
-# A game-time-gated adaptive STAT GRANT (not proc damage, and the value depends
-# on elapsed game time which is not in the proc signature). Same stat-grant
-# exclusion class as Absolute Focus. Do NOT add 8236 to RUNE_PROCS.
+# A game-time-gated adaptive STAT GRANT (not proc damage). Item 232: NOW MODELED
+# as condition="game_time" proc_type="adaptive"; compute returns the time-scaled
+# grant (0.0 at game_time_s=0, >0 thereafter). Burst SKIPS adaptive -> burst is
+# BYTE-IDENTICAL. A fight_report may surface the stat.
 #
-# Taste of Blood 8139 (Domination) + Demolish 8446 (Resolve) are likewise NOT
-# proc-damage entries: 8139 longDesc "Heal when you damage an enemy champion"
-# is the Grasp/Aery-shield heal-side exclusion class (sustain, not burst), and
-# 8446 longDesc "Your third attack against towers deals ... bonus physical
-# damage" is TOWER-ONLY damage (no champion damage to score). Do NOT add either.
+# ---------------------------------------------------------------------------
+# Honest exclusions (NOT in RUNE_PROCS) - truly out of scope (heal / tower, not
+# champion proc damage). They are listed here so they are never re-pitched as
+# proc-damage entries.
+#
+# Taste of Blood 8139 (Domination) + Demolish 8446 (Resolve) are NOT proc-damage
+# entries: 8139 longDesc "Heal when you damage an enemy champion" is the
+# Grasp/Aery-shield heal-side exclusion class (sustain, not burst), and 8446
+# longDesc "Your third attack against towers deals ... bonus physical damage"
+# is TOWER-ONLY damage (no champion damage to score). Do NOT add either.
 
 # Press the Attack flat damage amplifier (post 3-stack): "amplifies your
 # damage dealt by 8%". DDragon 16.11.1 longDesc says a flat 8% (the brief's
@@ -557,13 +646,80 @@ RUNE_PROCS: Dict[int, RuneProc] = {
         proc_type="per_attack",
         cooldown_s=0.0,
         formula=(
-            "at max stacks (6) deal 9-30 by level bonus adaptive on-attack "
-            "(MELEE 100%-effective modeled, no stat coeff stated). Ranged "
-            "6-24 value + the '+1% per 1% bonus AS' amp NOT applied (no role "
-            "flag / no bonus-AS in the proc signature); stacking AS buff has "
-            "no cooldown (DDragon 16.11.1)"
+            "Attacking an enemy champion grants you [6% Melee || 4% Ranged] "
+            "Attack Speed for 6 seconds, up to 6. At max stacks, deal "
+            "[9 - 30 Melee || 6 - 24 Ranged] bonus adaptive damage On-Attack, "
+            "increased by 1% per 1% Bonus Attack Speed. Item 232: role picks "
+            "melee 9-30 (default, byte-identical) vs ranged 6-24; bonus_as "
+            "applies *= (1.0 + bonus_as). Defaults role=melee + bonus_as=0 -> "
+            "byte-identical to pre-lift. Stacking AS buff has no cooldown "
+            "(DDragon 16.11.1)"
         ),
         compute=_lethal_tempo,
+        condition="per_attack",
+    ),
+    # --- item 232 proc-signature lift: 3 conditionally-modeled gated runes ---
+    # All three default to ZERO contribution at the default full-HP / time-0
+    # context (matching the item-231 exclusion), but compute correctly when a
+    # caller supplies the gating context.
+    8299: RuneProc(
+        rune_id=8299,
+        name="Last Stand",
+        tree="Precision",
+        proc_type="stacking_amp",
+        cooldown_s=0.0,
+        formula=(
+            "Deal 5% - 11% increased damage to champions while you are below "
+            "60% health. Max damage gained at 30% health. Item 232 HONEST "
+            "GATE (caster_hp_below): keystone_amp(8299, base, caster_hp_pct=) "
+            "returns base*amp where amp=1.0 at hp>=0.60 (no amp), ramps 1.05 "
+            "-> 1.11 linearly as hp 0.60 -> 0.30, capped 1.11 below 0.30. At "
+            "the DEFAULT caster_hp_pct=1.0 -> amp 1.0 -> BYTE-IDENTICAL to the "
+            "item-231 exclusion (a burst-MAX caller at full HP sees NO change). "
+            "amp_mult left 1.0 - the amp is caster-hp-dependent, computed in "
+            "keystone_amp via _last_stand_amp, NOT a flat multiplier "
+            "(DDragon 16.11.1)"
+        ),
+        compute=lambda **_kw: 0.0,
+        condition="caster_hp_below",
+    ),
+    8233: RuneProc(
+        rune_id=8233,
+        name="Absolute Focus",
+        tree="Sorcery",
+        proc_type="adaptive",
+        cooldown_s=0.0,
+        formula=(
+            "While above 70% health, gain an adaptive bonus of up to 18 Attack "
+            "Damage or 30 Ability Power (based on level). Grants 1.8 Attack "
+            "Damage or 3 Ability Power at level 1. Item 232: caster-hp-gated "
+            "adaptive STAT GRANT (caster_hp_above), NOT proc damage. proc_type "
+            "adaptive -> burst consumer SKIPS it -> burst BYTE-IDENTICAL even "
+            "at the default caster_hp_pct=1.0 (>0.70) where compute returns the "
+            "1.8->18 AD / 3->30 AP grant. compute returns 0.0 at hp<=0.70 "
+            "(gate fails). A fight_report may surface the stat (DDragon 16.11.1)"
+        ),
+        compute=_absolute_focus,
+        condition="caster_hp_above",
+    ),
+    8236: RuneProc(
+        rune_id=8236,
+        name="Gathering Storm",
+        tree="Sorcery",
+        proc_type="adaptive",
+        cooldown_s=0.0,
+        formula=(
+            "Every 10 min gain AP or AD, adaptive. 10 min: +8 AP or 5 AD  "
+            "20 min: +24 AP or 14 AD  30 min: +48 AP or 29 AD  40 min: +80 AP "
+            "or 48 AD  50 min: +120 AP or 72 AD  60 min: +168 AP or 101 AD. "
+            "Item 232: game-time-gated adaptive STAT GRANT (game_time), NOT "
+            "proc damage. proc_type adaptive -> burst consumer SKIPS it -> "
+            "burst BYTE-IDENTICAL. compute returns the AD-side 5-per-10-min / "
+            "AP-side 8-per-10-min ramp scaled by game_time_s; 0.0 at the "
+            "DEFAULT game_time_s=0.0, >0 at game_time_s>0 (DDragon 16.11.1)"
+        ),
+        compute=_gathering_storm,
+        condition="game_time",
     ),
 }
 
@@ -580,6 +736,11 @@ def compute_rune_proc_damage(
     bonus_hp: float = 0.0,
     target_max_hp: float = 0.0,
     mode: str = "SR",
+    *,
+    caster_hp_pct: float = 1.0,
+    game_time_s: float = 0.0,
+    role: str = "melee",
+    bonus_as: float = 0.0,
     **extra,
 ) -> float:
     """Compute a rune's per-proc damage (or per-stack adaptive value).
@@ -588,10 +749,18 @@ def compute_rune_proc_damage(
     ``extra`` carries optional per-rune kwargs (e.g. ``souls`` for Dark
     Harvest) without breaking the fixed signature.
 
+    Item 232 proc-signature lift: the gating-context kwargs
+    ``caster_hp_pct`` (default 1.0 = full HP), ``game_time_s`` (default 0.0),
+    ``role`` (default "melee"), ``bonus_as`` (default 0.0) are threaded into the
+    per-rune closure. At the DEFAULTS every gated rune yields its
+    no-contribution value, so a default-context caller sees BYTE-IDENTICAL
+    behaviour to the pre-lift engine for every previously-registered rune.
+
     For ``stacking_amp`` runes this returns the on-proc burst piece (Press the
-    Attack's 40-160 adaptive hit); the 8% multiplier is via :func:`keystone_amp`.
-    For ``adaptive`` runes (Conqueror) this returns the PER-STACK adaptive
-    force; the caller multiplies by the live stack count.
+    Attack's 40-160 adaptive hit); the multiplier is via :func:`keystone_amp`.
+    For ``adaptive`` runes (Conqueror / Absolute Focus / Gathering Storm) this
+    returns the PER-STACK adaptive force or the gated stat grant; the burst
+    consumer SKIPS proc_type=="adaptive" so it never enters the burst total.
     """
     proc = RUNE_PROCS.get(rune_id)
     if proc is None:
@@ -605,6 +774,10 @@ def compute_rune_proc_damage(
                 bonus_hp=bonus_hp,
                 target_max_hp=target_max_hp,
                 mode=mode,
+                caster_hp_pct=caster_hp_pct,
+                game_time_s=game_time_s,
+                role=role,
+                bonus_as=bonus_as,
                 **extra,
             )
         )
@@ -618,6 +791,10 @@ def keystone_amp(
     base_damage: float,
     *,
     stacks: Optional[int] = None,
+    caster_hp_pct: float = 1.0,
+    game_time_s: float = 0.0,
+    role: str = "melee",
+    bonus_as: float = 0.0,
 ) -> float:
     """Apply a flat-damage keystone AMPLIFIER to ``base_damage``.
 
@@ -627,9 +804,18 @@ def keystone_amp(
     stat stack, not a damage amp (its per-stack adaptive force is surfaced via
     :func:`compute_rune_proc_damage`).
 
+    Item 232 proc-signature lift: the gating-context kwargs are accepted with
+    BYTE-IDENTICAL defaults. Last Stand (8299, condition="caster_hp_below") is
+    the one gate-dependent amp: it returns ``base * _last_stand_amp(caster_hp_pct)``
+    = ``base`` unchanged at the default ``caster_hp_pct=1.0`` (full HP, no amp,
+    byte-identical to the item-231 exclusion), ramping to 1.11x as the caller
+    supplies a low caster HP. All other ``stacking_amp`` runes use the flat
+    ``amp_mult`` and ignore the gating kwargs (byte-identical).
+
     Unknown rune ids and non-amp runes return ``base_damage`` unchanged.
-    ``stacks`` is accepted for forward compatibility (a future per-stack amp
-    rune) but is unused for the current registry. Fail-soft.
+    ``stacks`` / ``game_time_s`` / ``role`` / ``bonus_as`` are accepted for
+    forward compatibility / signature parity but are unused for the current amp
+    registry. Fail-soft.
     """
     try:
         base = float(base_damage)
@@ -640,6 +826,13 @@ def keystone_amp(
         return base
     if proc.proc_type != "stacking_amp":
         return base
+    if rune_id == 8299:
+        # Last Stand: caster-hp-gated amp (NOT a flat amp_mult). Default
+        # caster_hp_pct=1.0 -> _last_stand_amp returns 1.0 -> base unchanged.
+        try:
+            return base * _last_stand_amp(caster_hp_pct=caster_hp_pct)
+        except (TypeError, ValueError):
+            return base
     try:
         return base * float(proc.amp_mult)
     except (TypeError, ValueError):
