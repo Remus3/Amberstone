@@ -4,6 +4,25 @@
 
 ---
 
+# 2026-05-31 - item 237: DS bruiser cc_blended ranking + build-tenacity (symmetric completion of item 236); cc_blended/tenacity arc COMPLETE; clean headless DS engine-wiring lane EXHAUSTED (ENGINE 1.72.0 -> 1.73.0; HEAD c24f44f; pushed 834ae02..c24f44f; CI green run 26716822332; DS :8893 restarted serves 1.73.0; RC NOT restarted)
+
+Operator headless continuation (fresh context after item-236 ScheduleWakeup; item-236 ledger NEXT(1)). Pre-flight clean: HEAD 834ae02 / 0 PRs / CI green / 0 worktrees / ENGINE 1.72.0 in sync.
+
+ASYMMETRY (verified before building): item 236 made the TANK ranker (rank_items_by_ehp) tenacity-aware under score_by="cc_blended", but the BRUISER scorer was tenacity-blind - compute_hybrid + rank_items_by_hybrid consumed cc_blended_ehp for the DISPLAYED hybrid_score yet SORTED on `hybrid_delta_pct` computed from PRE-cc blended_ehp (line 706), so threading tenacity alone made the scalar accurate but did NOT re-rank (smoke confirmed: hybrid_score rose 2122->2182 but order unchanged). Fix required the full score_by treatment mirroring item 236.
+
+Shipped (1 commit c24f44f): compute_hybrid +`apply_build_tenacity:bool=False` (threaded to its compute_ehp call -> tenacity-accurate hybrid_score scalar). rank_items_by_hybrid +`score_by:str="blended"`(default,byte-id)|`"cc_blended"` (the delta_pct SORT key now divides the cc_blended-ehp delta by the cc_blended baseline when cc_blended) +`apply_build_tenacity:Optional[bool]=None` (tri-state None -> ON for cc_blended/OFF for blended). HybridRankedItem +cc_blended_ehp/+delta_cc_blended_ehp; HybridRankResult +score_by. /rank-bruiser exposes score_by/apply_build_tenacity (400 on bad); /hybrid keeps the plain-bool scalar (no sort to re-key). +11 tests test_bruiser_cc_blended_item237.py.
+
+ENGINE 1.72.0 -> 1.73.0 + 33 test-pin sync. Verified: DS 5587 -> 5598; RC 4091 (+70 phase8 = 4161, zero regression); phase8 70/70 post-restart; ruff clean; CI green. PROVEN re-rank: Sett vs ["Ashe"] (1.5s, un-saturated) Wit's End blended #24 -> cc_blended #21, Sterak's #20 -> #19; DEFAULT byte-identical. DS restarted PowerShell -> 1.73.0.
+
+Don't-redo: (a) DEFAULT score_by="blended" + tenacity OFF = BYTE-IDENTICAL; do NOT flip the default. (b) compute_hybrid keeps a PLAIN bool apply_build_tenacity (it is the scalar, no sort) while rank_items_by_hybrid uses the Optional tri-state (mirrors the ranker contract) - do NOT confuse them. (c) the hybrid ranker SORTS on hybrid_delta_pct which uses the active (blended|cc_blended) ehp delta+baseline; the displayed hybrid_score field separately uses cc_blended-when-enemies - these are 2 different consumers, both correct. (d) same saturation nuance as item 236 - tenacity re-ranks ONLY vs non-saturating CC comps. (e) DS restart PowerShell taskkill; NEVER Stop-Process.
+
+EXHAUSTION DECLARED (honest, per item-237 prompt (b)): the cc_blended/tenacity arc is COMPLETE - both EHP-bearing scorers (tank ds.ehp + bruiser ds.hybrid) are now tenacity-aware. The other 4 scorers (carry/mage/assassin/enchanter) score on DPS/burst/HPS not EHP, so cc_blended (a defensive metric) does not apply to them. The item-235 3-audit wiring sweep + items 236/237 have EXHAUSTED the clean headless DS engine-wiring lane. Remaining DS work is all operator-gated / NOT headless-buildable:
+  (1) LIVE-GAME VALIDATION to flip any now-route-reachable opt-in flag default-on (apply_mode_modifiers / gate_ammo / apply_ability_haste / aoe_targets_hit / score_by=cc_blended) - each re-ranks, needs a real game.
+  (2) PRODUCT DECISION: auto-enable an assassin keystone in /rank-assassin default (item-230 carry - which keystone).
+  (3) PATCH-REFRESH data work (no new Riot patch; 16.11.1 current).
+  (4) Marginal/manufactured-only (rejected per "keep it real and grounded"): naming Riot-fixed formula constants in _effects_data.py; a /tenacity diagnostic route; a tenacity-monotonicity scenario_matrix invariant. NOT worth shipping.
+Loop intentionally STOPPED here (no further ScheduleWakeup) rather than manufacture low-value work - the operator's exhaustion off-ramp.
+
 # 2026-05-31 - item 236: DS opt-in cc_blended-EHP ranking mode + item-tenacity layer (ENGINE 1.71.0 -> 1.72.0; HEAD 587771e; pushed a7c3444..587771e; CI green run 26716346206; DS :8893 restarted serves 1.72.0; RC NOT restarted)
 
 Operator headless continuation (fresh context after item-235 ScheduleWakeup; item-235 ledger NEXT(2)). Pre-flight clean: HEAD a7c3444 / 0 PRs / CI green / 0 worktrees / ENGINE 1.71.0 in sync.
