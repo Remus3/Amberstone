@@ -15,6 +15,23 @@ from typing import Any
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
+# Engine mode string -> wiki_stats.mode_modifiers lowercase key (item 232).
+# The wiki overlay keys modes as aram/urf/ofa/usb/nb (MULTIPLIER modes) +
+# ar (Arena/CHERRY) / swift (Swiftplay) (ADDEND stat-override modes). The
+# engine speaks SR/ARAM/ARENA/BRAWL/URF/etc; this bridges the two.
+_WIKI_MODE_ALIASES = {
+    "arena": "ar",
+    "cherry": "ar",
+    "swiftplay": "swift",
+    "swift": "swift",
+    "aram": "aram",
+    "urf": "urf",
+    "ofa": "ofa",
+    "usb": "usb",
+    "nb": "nb",
+    "nexusblitz": "nb",
+}
+
 
 class SnapshotNotFound(FileNotFoundError):
     """Raised when the requested patch directory is missing."""
@@ -36,9 +53,15 @@ class DataSnapshot:
     # absent wiki_stats.json is byte-identical to pre-sidecar behavior.
     wiki_stats: dict = field(default_factory=dict)
     # Optional CDragon per-spell sidecar (item 225). Maps champ id ->
-    # {"spells": {<Q|W|E|R>: {ammo, missile, ...}}}. Default empty dict so an
-    # absent cdragon_spell_stats.json is byte-identical to pre-sidecar behavior.
+    # {"spells": {<Q|W|E|R>: {ammo, missile, geometry, ...}}}. Default empty
+    # dict so an absent cdragon_spell_stats.json is byte-identical to pre-
+    # sidecar behavior.
     cdragon_spell_stats: dict = field(default_factory=dict)
+    # Optional wiki per-ability sidecar (item 225/232). Maps the wiki page
+    # title "<Champion>/<AbilityName>" -> {recharge_ranks, static, ...}.
+    # Default empty dict so an absent wiki_ability_stats.json is byte-identical
+    # to pre-sidecar behavior.
+    wiki_ability_stats: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, patch: str | None = None, data_root: Path | None = None) -> "DataSnapshot":
@@ -122,6 +145,15 @@ class DataSnapshot:
             spell_doc.get("champions") if isinstance(spell_doc, dict) else None
         ) or {}
 
+        # wiki_ability_stats.json is the optional wiki per-ability overlay
+        # (item 225/232). Absent -> None -> {}. Present file is
+        # {"abilities": {<Champion/Ability>: {recharge_ranks, static, ...}}};
+        # pull the abilities map (keyed by wiki Template:Data page title).
+        abil_doc = _read_optional("wiki_ability_stats.json")
+        wiki_ability_stats = (
+            abil_doc.get("abilities") if isinstance(abil_doc, dict) else None
+        ) or {}
+
         return cls(
             patch=patch,
             manifest=manifest,
@@ -134,6 +166,7 @@ class DataSnapshot:
             data_root=root,
             wiki_stats=wiki_stats,
             cdragon_spell_stats=cdragon_spell_stats,
+            wiki_ability_stats=wiki_ability_stats,
         )
 
     def champion(self, champ_id: str) -> dict:
@@ -177,6 +210,60 @@ class DataSnapshot:
             .get(str(slot), {})
             .get("ammo")
         )
+
+    def spell_geometry(self, champ_id: str, slot: str) -> dict | None:
+        """Per-spell cast geometry from the optional CDragon sidecar (item 232).
+
+        Returns the ``{"cast_radius", "cast_radius_conflated", "cone_angle",
+        "cone_distance", "line_width"}`` dict for the champ + slot
+        (``"Q"``/``"W"``/``"E"``/``"R"``), or None when the sidecar is absent,
+        has no entry, or the spell carries no geometry. The shape encodes the
+        hit area: a non-null ``line_width`` is a line skillshot, a non-null
+        ``cone_distance``/``cone_angle`` is a cone, a non-conflated
+        ``cast_radius`` is a circle. ``cast_radius_conflated=True`` flags a
+        boilerplate radial value that must not be trusted as a real hit area.
+        """
+        return (
+            self.cdragon_spell_stats.get(str(champ_id), {})
+            .get("spells", {})
+            .get(str(slot), {})
+            .get("geometry")
+        )
+
+    def ability_recharge(self, champ_id: str, ability_name: str) -> list | None:
+        """Per-ability charge-recharge ranks from the optional wiki sidecar (item 232).
+
+        The wiki ability overlay is keyed by ``"<Champion>/<AbilityName>"``
+        (the Template:Data page title). Returns the ``recharge_ranks`` list
+        (seconds per charge by rank) or None when absent. Charge-bearing
+        abilities (traps/turrets/shrooms/kegs) carry it. The CDragon
+        ``spell_ammo`` recharge is the authoritative slot-keyed source; this
+        name-keyed bucket is the supplementary wiki cross-source for abilities
+        CDragon misses.
+        """
+        rec = self.wiki_ability_stats.get(f"{champ_id}/{ability_name}")
+        if not isinstance(rec, dict):
+            return None
+        rr = rec.get("recharge_ranks")
+        return rr if isinstance(rr, list) and rr else None
+
+    def mode_modifier(self, champ_id: str, mode: str) -> dict | None:
+        """Per-champ per-mode balance modifiers from the optional wiki sidecar (item 232).
+
+        Returns the axis dict for the mode (``aram``/``urf``/``ofa``/``usb``/
+        ``nb`` carry dmg_dealt/dmg_taken/... MULTIPLIERS; ``ar`` (Arena/CHERRY)
+        / ``swift`` (Swiftplay) carry hp_lvl/dam_lvl/... ADDEND stat overrides),
+        or None when the sidecar is absent or the champ has no entry for that
+        mode. The engine mode string is bridged to the wiki's lowercase key via
+        ``_WIKI_MODE_ALIASES`` (ARENA -> ar, etc). ARAM keeps its legacy lolmath
+        path in the engine; this accessor is the source for the other modes.
+        """
+        mm = self.wiki_stats.get(str(champ_id), {}).get("mode_modifiers")
+        if not isinstance(mm, dict):
+            return None
+        wiki_key = _WIKI_MODE_ALIASES.get(str(mode).lower(), str(mode).lower())
+        val = mm.get(wiki_key)
+        return val if isinstance(val, dict) else None
 
     def arena_augment(self, key: int | str) -> dict:
         if isinstance(key, int):
