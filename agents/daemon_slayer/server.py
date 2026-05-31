@@ -797,6 +797,7 @@ def _route_ability_dps(body: dict) -> dict:
     max_priority = _parse_max_priority(body)
     form_index_overrides = _parse_form_index(body)
     block_index_overrides = _parse_block_index(body)
+    apply_ability_amps = _opt_bool(body, "apply_ability_amps", False)
     try:
         result = compute_ability_dps(
             snap, champion_id=champion, level=level,
@@ -809,6 +810,7 @@ def _route_ability_dps(body: dict) -> dict:
             block_strategy=block_strategy,
             form_index_overrides=form_index_overrides,
             block_index_overrides=block_index_overrides,
+            apply_ability_amps=apply_ability_amps,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -851,6 +853,7 @@ def _route_rank_mage(body: dict) -> dict:
         raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
     include_components = _opt_bool(body, "include_components", False)
     filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
+    apply_ability_amps = _opt_bool(body, "apply_ability_amps", False)
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
@@ -871,6 +874,7 @@ def _route_rank_mage(body: dict) -> dict:
             form_index_overrides=form_index_overrides,
             block_index_overrides=block_index_overrides,
             filter_shared_uniques=filter_shared_uniques,
+            apply_ability_amps=apply_ability_amps,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
