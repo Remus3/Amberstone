@@ -6,6 +6,26 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-31 - item 230: DS V2 3-disjoint-slice drain - rune_procs per_attack + scenario_matrix mana/rune metrics + rank-assassin runes wire (ENGINE 1.65.0 -> 1.66.0; HEAD ace2fde; pushed eed2452..ace2fde; CI green run 26705400674; DS :8893 restarted serves 1.66.0)
+
+Operator: "continue DS Parallel disjoint slices Pre-flight: clean worktrees. CI + smoke + commit + push + /done." Headless-upgrade run; 3 parallel worktree agents (disjoint files) orchestrator-merged 0 conflicts. Pre-flight: clean tree / 0 PRs / 1 worktree / only origin/main / CI green. Closes 3 of the 4 item-229-NEXT carries.
+
+A (slice 86a512e): rune_procs.py per_attack 14 -> 16. Hail of Blades 9923 (per_attack TRUE `_lerp_by_level(4,20,level) + 0.08*ad + 0.06*ap` ADDITIVE bAD+AP NOT adaptive, CD 10s) + Lethal Tempo 8008 (per_attack flat adaptive `_lerp_by_level(9,30,level)` melee 100%-effective at max stacks; ranged 6-24 + +1%-per-1%-bonus-AS amp NOT modeled - no role/AS in signature, Grasp melee precedent). Fleet Footwork 8021 HONEST EXCLUSION (heal+MS sustain only; modeling as damage = inventing) documented beside the Aery-shield/Grasp-heal notes. DDragon 16.11.1 longDesc verbatim. Relaxed test_rune_procs_expansion exact-count pin 14 -> assertGreaterEqual. +15t.
+
+B (slice 07e9df2): scenario_matrix.py VALID_METRICS +2 mana_bounded_dps (-> mana_sim.compute_mana_bounded_combo.bounded_dps, default Q-AA-W-R) + rune_burst (-> compute_burst_damage(runes=).total_burst_damage). NEW optional sequence+runes params (default None) on sweep_scenarios+_score_cell; dps/burst/combo BYTE-IDENTICAL (harness); check_invariants untouched. +17t.
+
+C (slice 40dc059): burst.py rank_items_by_burst + server.py _route_rank_assassin NEW optional runes (LAST param) threaded into BOTH compute_burst_damage calls; route parses via the _route_burst _coerce_str_list().isdigit() pattern, passes runes=(runes or None). BYTE-IDENTICAL when omitted; live re-rank ONLY when body carries runes (NOT auto-enabled). top-N attr = ranked. +10t.
+
+ENGINE bump (ace2fde): 1.65.0 -> 1.66.0 + 33 test-pin sync (ENGINE_VERSION-assertion lines only; test_mana_valuation:7 "pre-1.65.0" + cc_conditional_wave* historical docstrings left frozen per no-history-rewrite). Living docs synced DAEMON_SLAYER L5+L32 / README L46 / BRIEF L20+L26 / ARCH L161 / ROADMAP item 230.
+
+Verified: DS 5264 -> 5305 (+41); ruff clean; phase8 70/70 post-restart; CI green run 26705400674. Live :8893 /rank-assassin Zed L11 no-runes IE new_burst 1139.73 -> runes=[8112] 1317.23 (+177.5 = Electrocute L11 170 base + adaptive), delta_burst 404.06 -> 411.56 (IE AD scales Electrocute 0.10 bAD term), ranking order unchanged - wire LIVE + correct.
+
+DON'T-REDO: (a) Fleet Footwork 8021 honest data-availability ceiling (heal+MS, no damage) - do NOT add as a damage rune. (b) Lethal Tempo 8008 melee 100%-effective 9-30 flat; ranged 6-24 + bonus-AS amp NOT applied (no role/AS in signature). (c) Hail of Blades 9923 ADDITIVE bAD+AP not adaptive. (d) Slice C runes wire BYTE-IDENTICAL when omitted + NOT auto-enabled - do NOT flip /rank-assassin to auto-pass a keystone by default without operator validation. (e) scenario_matrix new metrics REUSE existing scorers (harness, no new math).
+
+NEXT (operator-gated, ENGINE bump each): (1) item 225's 6 data sidecar buckets owed engine wiring (LAST item-229-NEXT carry). (2) auto-enable an assassin keystone in the live /rank-assassin default (re-rank validation vs real builds). (3) expand per_attack to other on-hit runes if DDragon exposes them.
+
+---
+
 # 2026-05-31 - item 229: DS V2 S2/S3/S4 + L - unified fight-report + rune wire into burst/combo + rune registry expand + lolmath re-review (ENGINE 1.64.0 -> 1.65.0; HEAD = this docs commit; pushed 7f1be83..HEAD = merges 8cc0c65/725af3c/5f74246 + bump 2e8db97 + docs; DS :8893 restarted serves 1.65.0)
 
 Operator: "continue DS V2: S2 unified fight-report, S3 wire rune_procs into burst/combo (byte-identical default, ENGINE 1.64.0 -> 1.65.0), S4 expand rune_procs (DDragon-verbatim), re-review lolmath post-2026-05-30. Parallel disjoint slices per item 228. Pre-flight clean S1+227 worktrees. CI+smoke+commit+push+/done." Headless-upgrade run; 3 parallel worktree agents (disjoint files) orchestrator-merged 0 conflicts + L inline. Pre-flight: unlocked + removed 7 stale worktrees (S1+item 227) + pruned branches; CI green; 0 PRs.
