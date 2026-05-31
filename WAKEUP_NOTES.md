@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-05-31 - item 238: DS null-damage-type ability correction registry (validated vs sibling-project a peer maintainer/Redymix scraper-refactor chat) (ENGINE 1.73.0 -> 1.74.0; HEAD de1cd3b; pushed 9bd3da2..de1cd3b; DS :8893 restarted serves 1.74.0; RC NOT restarted)
+
+Operator: "validate DS against [chat]" then "get them implemented". AskUserQuestion -> Gap-3-first-staged + probability-gated midpoints (Gaps 1+2 deferred to own sessions). Chat critique: null-damageType abilities (Caitlyn W) lose mitigation; "modifiers arent considered"; mixed-damage attribution. Verdict: RC already Meraki-dynamic on ability damage + MORE robust on the null-dtype drop (keeps by block-kind, not damage_type, so KEEPS 27 abilities their tool zeroes); 2 shared gaps remain.
+
+Shipped (commit 4df07ee + docs de1cd3b): NEW agents/daemon_slayer/_ability_overrides.py - 2 registries keyed (champ,key,form_index), applied at abilities.AbilitiesSnapshot.load via _apply_ability_overrides (one source, all scorers). (A) DAMAGE_TYPE_OVERRIDES 7: Camille Q / Sett W / Smolder Q / Udyr Q / Urgot R -> PHYSICAL; Yone W/R -> MIXED (equal phys+magic). (B) NON_DAMAGE_BLOCKS 7: Aatrox R / Olaf R / Vayne R / Tryndamere Q / Janna E / Aphelios P bonus-AD grants + Sona W shield = PHANTOM damage (extractor mislabeled "...Damage" as attribute_kind=damage) -> flipped to "other". +31 tests; ENGINE bump + 33 pin syncs; DS suite 5598 -> 5629, 0 failed; ruff clean; /health 1.74.0/16.11.1/172/705.
+
+Dont-redo: overrides at LOAD time (do not re-patch per-consumer); the 13 unactioned null-dtype forms are MAGIC-default-correct; engine MIXED=50/50 armor/MR (do not set magic+true abilities to MIXED); phantom flip is inert "other" (honest fix = extractor _classify_attribute + re-extract, deferred). HARNESS: severe stale-tool-result replay this session - trust git status + Edit success/fail + pytest-to-file + DONE-exit sentinels, NOT raw stdout, when the pipe wedges.
+
+NEXT (operator-gated, staged): Gap 1 = modifier-amp application (15 damage_amp_self blocks ALWAYS-ON vs CONDITIONAL w/ prob-gated midpoints; item 235 deferred on purpose; own ENGINE bump + re-rank validation). Gap 2 = effects-text-only passive damage (~118 TIER-1 forms parse=no_damage with formula in effects_descriptions: Caitlyn Headshot, Ziggs Short Fuse, KogMaw, Aatrox, Gangplank -> hand-authored _PASSIVE_DAMAGE_OVERRIDES, NOT a text-parser). Both re-rank; validate saner-not-just-different.
+
 # 2026-05-31 - item 237: DS bruiser cc_blended ranking + build-tenacity (symmetric completion of item 236); cc_blended/tenacity arc COMPLETE; clean headless DS engine-wiring lane EXHAUSTED (ENGINE 1.72.0 -> 1.73.0; HEAD c24f44f; pushed 834ae02..c24f44f; CI green run 26716822332; DS :8893 restarted serves 1.73.0; RC NOT restarted)
 
 Operator headless continuation (fresh context after item-236 ScheduleWakeup; item-236 ledger NEXT(1)). Pre-flight clean: HEAD 834ae02 / 0 PRs / CI green / 0 worktrees / ENGINE 1.72.0 in sync.
