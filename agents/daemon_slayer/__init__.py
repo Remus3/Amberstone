@@ -1321,7 +1321,26 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.65.0"
+ENGINE_VERSION = "1.66.0"
+# 1.66.0 (DS V2 - 3 disjoint slices. (A) rune_procs 14 -> 16: add the two
+# per_attack damage runes Hail of Blades 9923 (TRUE 4-20 by level + 0.08 bonus
+# AD + 0.06 AP, additive, CD 10s) and Lethal Tempo 8008 (flat adaptive 9-30 by
+# level, melee 100%-effective at max stacks; ranged 6-24 and the +1%-per-1%-
+# bonus-AS amp NOT modeled - no role flag / no bonus-AS in the proc signature,
+# mirrors the Grasp melee-modeled precedent). Fleet Footwork 8021 is an HONEST
+# EXCLUSION (heal + move-speed sustain only, no damage; modeling it as a damage
+# rune would invent numbers) - documented alongside the Aery-shield / Grasp-heal
+# exclusions. All DDragon 16.11.1 runesReforged.json longDesc verbatim.
+# (B) scenario_matrix: 2 new metrics mana_bounded_dps (-> mana_sim
+# compute_mana_bounded_combo.bounded_dps) and rune_burst (-> burst
+# compute_burst_damage(runes=...).total_burst_damage); still a HARNESS over
+# existing scorers, no new math; the existing dps/burst/combo metrics are
+# byte-identical (new sequence/runes params default None). (C) wire an OPTIONAL
+# runes param into rank_items_by_burst + the live /rank-assassin route -
+# BYTE-IDENTICAL when omitted (runes=None threads None into both
+# compute_burst_damage calls); the live assassin ranking only re-ranks when a
+# caller passes runes in the request body. Additive: every default path is
+# byte-identical to 1.65.0.)
 # 1.65.0 (DS V2 S2/S3/S4 - wire the rune_procs proc/amp layer into the burst +
 # combo scorers behind an OPTIONAL runes param. BYTE-IDENTICAL when omitted
 # (rune_proc_damage=0.0, total_burst_damage unchanged); when a runes list is
