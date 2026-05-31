@@ -1321,7 +1321,33 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.74.0"
+ENGINE_VERSION = "1.75.0"
+# 1.75.0 (GAP findings - 3 opt-in / correction engine extensions; default path
+# byte-identical except the (a) correction):
+# (a) phantom-damage residual: _ability_overrides.NON_DAMAGE_BLOCKS +2 entries
+#     (DrMundo E / Twitch R). block[0] is a self-AD grant / steroid the Meraki
+#     extractor mislabeled attribute_kind="damage" (the name contains "Damage");
+#     flipped to "other" so no damage consumer sums it (DrMundo E falls to the
+#     real block[1]/[2]; Twitch R is an AA-empower so its cast damage is 0).
+#     Mel R left to its block-index route (block[0] is not default-selected).
+#     A correction (changes those 2 forms' DPS), not an opt-in flag.
+# (b) ability self-damage-amp registry (_ability_amp_overrides.py): opt-in
+#     compute_ability_dps(apply_ability_amps=False) seam (ability_dps.py post_amps
+#     line); ACTIVE Mordekaiser Q (isolation, verified) + Illaoi Q (always_on
+#     reference, live-inert) + 5 AA-empowerment entries (base="aa", inert here);
+#     AurelionSol W / Sion Q / Hwei Q f2 STAGED (cross-spell target / a "Maximum"
+#     block already models the ceiling). Default False -> byte-identical.
+# (c) effects-text-only passive-damage registry (_passive_damage_overrides.py):
+#     opt-in AbilitiesSnapshot.load(apply_passive_damage=False) load-time synthetic
+#     -DamageBlock inject; 10 P-slot on-hit passives hand-authored from verbatim
+#     effects_descriptions (Ziggs/Lux/Orianna/Warwick/Akali/Khazix/Qiyana/Vex/
+#     Sona/Velkoz). Default False -> no block appended -> byte-identical. The
+#     on_hit -> AA-cadence default-flip is live-validation-gated (STAGED).
+# 1.74.0 (item 238 - null-damage-type ability correction registry,
+# _ability_overrides.py: DAMAGE_TYPE_OVERRIDES 7 + NON_DAMAGE_BLOCKS 7, applied
+# at abilities.AbilitiesSnapshot.load via _apply_ability_overrides; corrects 27
+# null-damage-type forms' mitigation routing + flips 7 phantom self-buff/shield
+# blocks to "other"; single load-time hook -> all consumers see corrected forms).
 # 1.73.0 (item 237 - bruiser cc_blended ranking + build-tenacity, the symmetric
 # completion of item 236. Item 236 made the TANK ranker (rank_items_by_ehp)
 # tenacity-aware under score_by="cc_blended", but the BRUISER scorer
