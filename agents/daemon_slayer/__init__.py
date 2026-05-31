@@ -1321,7 +1321,7 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.73.0"
+ENGINE_VERSION = "1.74.0"
 # 1.73.0 (item 237 - bruiser cc_blended ranking + build-tenacity, the symmetric
 # completion of item 236. Item 236 made the TANK ranker (rank_items_by_ehp)
 # tenacity-aware under score_by="cc_blended", but the BRUISER scorer
