@@ -91,15 +91,23 @@ class TestSpellTravelTimeRealProjectile:
         assert t is not None
         assert t > 0.0
 
-    def test_lux_q_geometry_value(self, snap: DataSnapshot) -> None:
-        # Lux Q: cone_distance=100.0 -> 100/1200 = 0.0833
+    def test_lux_q_all_sentinel_geometry_uses_default(self, snap: DataSnapshot) -> None:
+        # Lux Q: cone_distance=100 (sentinel) + cast_radius=210 conflated ->
+        # geometry yields no real distance -> _DEFAULT_DISTANCE 1000 / 1200 = 0.8333.
         t = spell_travel_time(snap, "Lux", "Q")
-        assert t == pytest.approx(0.0833, abs=1e-3)
+        assert t == pytest.approx(1000.0 / 1200.0, abs=1e-3)
 
-    def test_morgana_q_geometry_value(self, snap: DataSnapshot) -> None:
-        # Morgana Q: speed=1200, cone_distance=100.0 -> 100/1200 = 0.0833
+    def test_morgana_q_all_sentinel_geometry_uses_default(self, snap: DataSnapshot) -> None:
+        # Morgana Q: cone_distance=100 sentinel + cast_radius=210 conflated ->
+        # _DEFAULT_DISTANCE 1000 / 1200 = 0.8333.
         t = spell_travel_time(snap, "Morgana", "Q")
-        assert t == pytest.approx(0.0833, abs=1e-3)
+        assert t == pytest.approx(1000.0 / 1200.0, abs=1e-3)
+
+    def test_lux_e_real_cast_radius_geometry(self, snap: DataSnapshot) -> None:
+        # Lux E: cast_radius=295 non-conflated (>= _MIN_REAL_DISTANCE) ->
+        # a REAL geometry distance -> 295 / 1300 = 0.2269.
+        t = spell_travel_time(snap, "Lux", "E")
+        assert t == pytest.approx(295.0 / 1300.0, abs=1e-3)
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +241,19 @@ class TestDistanceFromGeometry:
         assert _distance_from_geometry(geo) == pytest.approx(200.0)
 
     def test_fallback_to_non_conflated_cast_radius(self) -> None:
-        # cone_distance=None, cast_radius non-conflated -> returns cast_radius
+        # cone_distance=None, cast_radius non-conflated AND >= _MIN_REAL_DISTANCE
+        # (200) -> returns cast_radius.
+        geo = {
+            "cast_radius": 295.0,
+            "cast_radius_conflated": False,
+            "cone_angle": None,
+            "cone_distance": None,
+            "line_width": 60.0,
+        }
+        assert _distance_from_geometry(geo) == pytest.approx(295.0)
+
+    def test_small_cast_radius_below_floor_rejected(self) -> None:
+        # cast_radius=175 < _MIN_REAL_DISTANCE (200) -> artifact, rejected (None).
         geo = {
             "cast_radius": 175.0,
             "cast_radius_conflated": False,
@@ -241,8 +261,19 @@ class TestDistanceFromGeometry:
             "cone_distance": None,
             "line_width": 60.0,
         }
-        # Aphelios Q shape
-        assert _distance_from_geometry(geo) == pytest.approx(175.0)
+        assert _distance_from_geometry(geo) is None
+
+    def test_cone_distance_sentinel_rejected(self) -> None:
+        # cone_distance=100.0 is the CDragon placeholder sentinel -> rejected;
+        # falls to the non-conflated cast_radius (300 >= floor).
+        geo = {
+            "cast_radius": 300.0,
+            "cast_radius_conflated": False,
+            "cone_angle": None,
+            "cone_distance": 100.0,
+            "line_width": None,
+        }
+        assert _distance_from_geometry(geo) == pytest.approx(300.0)
 
     def test_conflated_radius_not_used(self) -> None:
         # cone_distance=None, cast_radius conflated -> returns None
@@ -266,19 +297,25 @@ class TestDistanceFromGeometry:
         }
         assert _distance_from_geometry(geo) is None
 
-    def test_lux_q_geometry_gives_cone_distance(self, snap: DataSnapshot) -> None:
-        # Lux Q: cone_distance=100.0 -> returns 100.0
+    def test_lux_q_geometry_sentinel_returns_none(self, snap: DataSnapshot) -> None:
+        # Lux Q: cone_distance=100 (sentinel) + cast_radius=210 conflated ->
+        # no real distance -> None (caller falls to _DEFAULT_DISTANCE).
         geo = snap.spell_geometry("Lux", "Q")
-        result = _distance_from_geometry(geo)
-        assert result == pytest.approx(100.0)
+        assert _distance_from_geometry(geo) is None
 
-    def test_aphelios_q_geometry_gives_cast_radius(
+    def test_lux_e_geometry_gives_real_cast_radius(
         self, snap: DataSnapshot
     ) -> None:
-        # Aphelios Q: cone_distance=None, cast_radius=175 not conflated -> 175
+        # Lux E: cast_radius=295 non-conflated (>= floor) -> 295.
+        geo = snap.spell_geometry("Lux", "E")
+        assert _distance_from_geometry(geo) == pytest.approx(295.0)
+
+    def test_aphelios_q_small_radius_returns_none(
+        self, snap: DataSnapshot
+    ) -> None:
+        # Aphelios Q: cast_radius=175 < _MIN_REAL_DISTANCE (200) -> None.
         geo = snap.spell_geometry("Aphelios", "Q")
-        result = _distance_from_geometry(geo)
-        assert result == pytest.approx(175.0)
+        assert _distance_from_geometry(geo) is None
 
     def test_aatrox_w_line_only_returns_none(
         self, snap: DataSnapshot
@@ -294,21 +331,22 @@ class TestDistanceFromGeometry:
 # ---------------------------------------------------------------------------
 
 class TestDefaultDistanceFallback:
-    def test_morgana_q_conflated_radius_uses_cone_distance(
+    def test_morgana_q_sentinel_geometry_uses_default(
         self, snap: DataSnapshot
     ) -> None:
-        # Morgana Q: cone_distance=100 present -> uses cone_distance (not default)
+        # Morgana Q: cone_distance=100 sentinel + cast_radius conflated ->
+        # _DEFAULT_DISTANCE 1000 / 1200 = 0.8333.
         t = spell_travel_time(snap, "Morgana", "Q")
-        expected = round(100.0 / 1200.0, 4)
+        expected = round(1000.0 / 1200.0, 4)
         assert t == pytest.approx(expected, rel=1e-4)
 
-    def test_aphelios_q_non_conflated_radius(
+    def test_aphelios_q_small_radius_uses_default(
         self, snap: DataSnapshot
     ) -> None:
-        # Aphelios Q: cone_distance=None, cast_radius=175 not conflated
-        # -> dist=175, speed=1850 -> 175/1850=0.0946
+        # Aphelios Q: cast_radius=175 < floor -> _DEFAULT_DISTANCE 1000,
+        # speed=1850 -> 1000/1850 = 0.5405.
         t = spell_travel_time(snap, "Aphelios", "Q")
-        expected = round(175.0 / 1850.0, 4)
+        expected = round(1000.0 / 1850.0, 4)
         assert t == pytest.approx(expected, rel=1e-3)
 
 

@@ -141,6 +141,27 @@ class RechargeSectionTests(unittest.TestCase):
         self.assertEqual(r.recharge_slots, ())
 
 
+class MissileSectionTests(unittest.TestCase):
+    def test_projectile_champ_reports_missile_slots(self):
+        # Lux has projectile spells (Q/E speed >= 400) -> missile section
+        # surfaces travel-time slots.
+        r = compute_fight_report("Lux", 11, item_ids=[], snapshot=_SNAP)
+        self.assertTrue(r.missile_slots)
+        slot = r.missile_slots[0]
+        self.assertIn("travel_time_s", slot)
+        self.assertGreaterEqual(slot["travel_time_s"], 0.0)
+        self.assertIn("missile_slots", r.to_dict())
+
+    def test_non_projectile_slots_excluded(self):
+        # Aatrox Q has no missile (None) and E is a 20 u/s dash artifact -
+        # both are NON-projectiles and MUST be absent from missile_slots
+        # (only is_projectile slots like R 779.9 are reported).
+        r = compute_fight_report("Aatrox", 11, item_ids=[], snapshot=_SNAP)
+        reported = {s["slot"] for s in r.missile_slots}
+        self.assertNotIn("Q", reported)
+        self.assertNotIn("E", reported)
+
+
 class FailSoftTests(unittest.TestCase):
     def test_unknown_champion_does_not_raise(self):
         # compute_fight_report is fail-soft: an unknown champion is caught
