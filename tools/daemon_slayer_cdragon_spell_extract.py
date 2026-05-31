@@ -342,21 +342,28 @@ def _spells_index(doc: dict[str, Any], char_name: str) -> dict[str, dict[str, An
     """Map ``<AbilityName>/<SpellName>`` (and bare ``<SpellName>``) -> mSpell dict.
 
     The bin is a flat dict of dotted-path keys. We index every spell record under
-    ``Characters/<char_name>/Spells/`` by both its full ``<Ability>/<Spell>``
+    ANY ``Characters/<Name>/Spells/`` prefix by both its full ``<Ability>/<Spell>``
     suffix and its bare trailing ``<Spell>`` name so the slot resolver + the
-    sibling-missile scan can find records by either form.
+    sibling-missile scan can find records by either form. We scan ALL
+    ``Characters/*/Spells/`` keys (not just ``char_name``'s) because some bins
+    split the CharacterRecords/Root and the ability spell records across two name
+    casings - Fiddlesticks holds the Root under ``FiddleSticks`` but the Q/W/E/R
+    spells under ``Fiddlesticks`` - and the character bin is single-champion so
+    there is no cross-champion contamination. ``char_name`` is accepted for call
+    compatibility but no longer constrains the prefix.
     """
-    prefix = "Characters/" + char_name + "/Spells/"
+    marker = "/Spells/"
     out: dict[str, dict[str, Any]] = {}
     for key, rec in doc.items():
-        if not isinstance(key, str) or not key.startswith(prefix):
+        if not isinstance(key, str) or not key.startswith("Characters/"):
             continue
-        if not isinstance(rec, dict):
+        idx = key.find(marker)
+        if idx < 0 or not isinstance(rec, dict):
             continue
         mspell = rec.get("mSpell")
         if not isinstance(mspell, dict):
             continue
-        suffix = key[len(prefix):]  # e.g. "MissileBarrageAbility/MissileBarrage"
+        suffix = key[idx + len(marker):]  # e.g. "MissileBarrageAbility/MissileBarrage"
         out[suffix] = mspell
         bare = suffix.split("/")[-1]  # e.g. "MissileBarrage"
         out.setdefault(bare, mspell)
@@ -426,15 +433,28 @@ def _parse_spell_record(primary: dict[str, Any], ability_name: str,
 def _char_root_name(doc: dict[str, Any], slug: str) -> Optional[str]:
     """The ``<Name>`` segment of the bin's Characters/<Name>/ keys.
 
-    Derived from the first ``Characters/<Name>/...`` key (the bin's internal
-    name can differ in casing from the slug, e.g. ``MonkeyKing`` vs ``wukong``).
+    The bin's internal name can differ in casing from the slug (e.g.
+    ``MonkeyKing`` vs ``wukong``). Some bins hold MULTIPLE ``Characters/<Name>``
+    entries - an effigy/clone/trinket character that precedes the real champion
+    (Fiddlesticks is the known case) - and only the real one carries a
+    ``CharacterRecords/Root.spellNames`` list. So prefer the first <Name> whose
+    Root has a non-empty spellNames; fall back to the first <Name> seen.
     """
+    names: list[str] = []
+    seen: set[str] = set()
     for key in doc:
         if isinstance(key, str) and key.startswith("Characters/"):
             parts = key.split("/")
-            if len(parts) >= 2 and parts[1]:
-                return parts[1]
-    return None
+            if len(parts) >= 2 and parts[1] and parts[1] not in seen:
+                seen.add(parts[1])
+                names.append(parts[1])
+    for nm in names:
+        root = doc.get("Characters/" + nm + "/CharacterRecords/Root")
+        if isinstance(root, dict):
+            sn = root.get("spellNames")
+            if isinstance(sn, list) and sn:
+                return nm
+    return names[0] if names else None
 
 
 def _parse_cdragon_spells(doc: dict[str, Any], slug: str) -> dict[str, dict[str, Any]]:
