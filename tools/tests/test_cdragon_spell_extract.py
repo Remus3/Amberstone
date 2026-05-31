@@ -398,6 +398,23 @@ class TestParseCdragonSpells:
     def test_empty_doc_returns_empty(self):
         assert C._parse_cdragon_spells({}, "foo") == {}
 
+    def test_casing_split_root_and_spells(self):
+        # Fiddlesticks-class: Root (with spellNames) under one name casing,
+        # the ability spell records under the OTHER casing. Must still resolve.
+        doc = {
+            "Characters/FiddleSticks/CharacterRecords/Root": {
+                "spellNames": [
+                    "FiddleSticksQAbility/FiddleSticksQ", "", "", "",
+                ]
+            },
+            "Characters/Fiddlesticks/Spells/FiddleSticksQAbility/FiddleSticksQ": {
+                "mSpell": {"mSpellTags": ["Trait_ImmobilizingCCSpell"]}
+            },
+        }
+        out = C._parse_cdragon_spells(doc, "fiddlesticks")
+        assert "Q" in out
+        assert out["Q"]["cc_tags"] == ["Trait_ImmobilizingCCSpell"]
+
 
 # --------------------------------------------------------------------------- _char_root_name
 class TestCharRootName:
@@ -410,6 +427,24 @@ class TestCharRootName:
 
     def test_no_characters_key(self):
         assert C._char_root_name({"Other/Thing": {}}, "x") is None
+
+    def test_multi_root_prefers_one_with_spellnames(self):
+        # Fiddlesticks-class: an effigy/clone character precedes the real champ;
+        # only the real root carries spellNames. Must skip the effigy.
+        doc = {
+            "Characters/FiddleSticksTrinket/CharacterRecords/Root": {},
+            "Characters/FiddleSticks/CharacterRecords/Root": {
+                "spellNames": ["Drain/FiddleSticksDrain"]
+            },
+        }
+        assert C._char_root_name(doc, "fiddlesticks") == "FiddleSticks"
+
+    def test_multi_root_falls_back_to_first_when_none_have_spellnames(self):
+        doc = {
+            "Characters/A/CharacterRecords/Root": {},
+            "Characters/B/CharacterRecords/Root": {},
+        }
+        assert C._char_root_name(doc, "x") == "A"
 
 
 # --------------------------------------------------------------------------- extract
