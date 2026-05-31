@@ -115,19 +115,19 @@ class ByteIdenticalContractTests(unittest.TestCase):
         # The brief's named example: Electrocute 8112 at level 11.
         self.assertEqual(compute_rune_proc_damage(8112, 11, 100.0, 80.0), 180.0)
 
-    def test_pre_lift_runes_are_unconditional(self):
-        # The 13 non-new runes that existed before AND were never gated keep
-        # the default "unconditional" tag (Lethal Tempo 8008 is per_attack;
-        # the 3 new ones are gated; everything else is unconditional).
+    def test_pre_lift_runes_condition_tags(self):
+        # Pre-lift runes keep "unconditional" EXCEPT: Lethal Tempo 8008 is
+        # per_attack; item 233 tagged Cut Down 8017 (target_hp_above) + Coup de
+        # Grace 8014 (target_hp_below) as METADATA (their amp stays 1.08
+        # unconditional in keystone_amp - the burst-window approximation - the
+        # tag only documents the gate for a future per-instant scenario eval).
+        _tag = {8008: "per_attack", 8017: "target_hp_above", 8014: "target_hp_below"}
         for rid in _PRE_LIFT_COMPUTE:
-            if rid == 8008:
-                self.assertEqual(RUNE_PROCS[rid].condition, "per_attack")
-            else:
-                self.assertEqual(
-                    RUNE_PROCS[rid].condition,
-                    "unconditional",
-                    f"pre-lift rune {rid} should be unconditional",
-                )
+            self.assertEqual(
+                RUNE_PROCS[rid].condition,
+                _tag.get(rid, "unconditional"),
+                f"pre-lift rune {rid} condition tag mismatch",
+            )
 
 
 class LastStandTests(unittest.TestCase):

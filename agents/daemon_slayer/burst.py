@@ -100,6 +100,11 @@ from .effects import (
 from .engine import build_champion
 from .geometry import spell_aoe_multiplier
 from .rune_procs import RUNE_PROCS, compute_rune_proc_damage, keystone_amp
+
+# item 233 - melee/ranged split for per_attack rune scaling (Lethal Tempo melee
+# 9-30 vs ranged 6-24). No champion sits between melee (~125-175) and ranged
+# (~450+), so 350 cleanly separates the two.
+_RANGED_ATTACK_RANGE = 350.0
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -809,6 +814,16 @@ def compute_burst_damage(
     # rune_procs is BONUS AD (ctx.bonus_ad); AP is the final amplified AP.
     rune_proc_damage = 0.0
     if runes:
+        # item 233 - role from attackrange feeds per_attack rune scaling (Lethal
+        # Tempo melee 9-30 vs ranged 6-24). Only changes an explicit runes=[8008]
+        # call on a ranged champ; the live default passes no runes so /rank is
+        # unaffected. target_current_hp_pct threads through for forward-compat
+        # (the amp registry's target_hp tags are metadata - keystone_amp applies
+        # them unconditionally for the burst-window approximation).
+        _attack_range = float(
+            snapshot.champion(champion_id).get("stats", {}).get("attackrange", 0.0)
+        )
+        _caster_role = "ranged" if _attack_range > _RANGED_ATTACK_RANGE else "melee"
         for _rid in runes:
             proc = RUNE_PROCS.get(_rid)
             if proc is None or proc.proc_type == "adaptive":
@@ -823,12 +838,15 @@ def compute_burst_damage(
                 mode=mode,
                 caster_hp_pct=caster_hp_pct,
                 game_time_s=game_time_s,
+                role=_caster_role,
+                target_hp_pct=target_current_hp_pct,
             )
         amped_base = total_burst
         for _rid in runes:
             amped_base = keystone_amp(
                 _rid, amped_base,
                 caster_hp_pct=caster_hp_pct, game_time_s=game_time_s,
+                role=_caster_role, target_hp_pct=target_current_hp_pct,
             )
         total_burst = amped_base + rune_proc_damage
 
