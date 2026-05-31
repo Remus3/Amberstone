@@ -35,6 +35,10 @@ class DataSnapshot:
     # {attack_cast_time, missile_speed, ...}. Default empty dict so an
     # absent wiki_stats.json is byte-identical to pre-sidecar behavior.
     wiki_stats: dict = field(default_factory=dict)
+    # Optional CDragon per-spell sidecar (item 225). Maps champ id ->
+    # {"spells": {<Q|W|E|R>: {ammo, missile, ...}}}. Default empty dict so an
+    # absent cdragon_spell_stats.json is byte-identical to pre-sidecar behavior.
+    cdragon_spell_stats: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, patch: str | None = None, data_root: Path | None = None) -> "DataSnapshot":
@@ -110,6 +114,14 @@ class DataSnapshot:
             wiki_doc.get("champions") if isinstance(wiki_doc, dict) else None
         ) or {}
 
+        # cdragon_spell_stats.json is the optional CDragon per-spell sidecar
+        # (item 225). Absent -> _read_optional returns None -> {}. A present
+        # file is {"champions": {<id>: {"spells": {...}}}, ...}; pull champions.
+        spell_doc = _read_optional("cdragon_spell_stats.json")
+        cdragon_spell_stats = (
+            spell_doc.get("champions") if isinstance(spell_doc, dict) else None
+        ) or {}
+
         return cls(
             patch=patch,
             manifest=manifest,
@@ -121,6 +133,7 @@ class DataSnapshot:
             arena_augments_by_api=augs_by_api,
             data_root=root,
             wiki_stats=wiki_stats,
+            cdragon_spell_stats=cdragon_spell_stats,
         )
 
     def champion(self, champ_id: str) -> dict:
@@ -148,6 +161,22 @@ class DataSnapshot:
         pre-sidecar behavior).
         """
         return self.wiki_stats.get(str(champ_id), {}).get("attack_cast_time")
+
+    def spell_ammo(self, champ_id: str, slot: str) -> dict | None:
+        """Per-spell ammo (charge) model from the optional CDragon sidecar.
+
+        Returns the ``{"max": [...], "recharge": [...]}`` dict for the given
+        champion + slot (``"Q"`` / ``"W"`` / ``"E"`` / ``"R"``), or None when
+        the sidecar is absent, has no entry for the champ/slot, or that spell
+        carries no charge model. A None return is the byte-identical fallback
+        (the consumer reverts to mana-only gating).
+        """
+        return (
+            self.cdragon_spell_stats.get(str(champ_id), {})
+            .get("spells", {})
+            .get(str(slot), {})
+            .get("ammo")
+        )
 
     def arena_augment(self, key: int | str) -> dict:
         if isinstance(key, int):

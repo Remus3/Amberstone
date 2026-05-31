@@ -54,6 +54,25 @@ would push the clock past the hard ``_MAX_DURATION_S`` rotation cap - that
 cast cannot fire within the modeled window and is recorded (zero damage, no
 spend) rather than waited on. AA has no cooldown and always fires.
 
+Ammo (charge) gate - OPT-IN refinement (item 225)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Some spells store CHARGES instead of (or alongside) a flat cooldown - Vi E,
+Jhin E, Caitlyn W, Heimerdinger Q, etc. The charge model lives in the optional
+``cdragon_spell_stats.json`` sidecar (``DataSnapshot.spell_ammo``) as
+``{"max": [r1..r7], "recharge": [r1..r7]}``. ``compute_mana_bounded_combo``
+takes an OPT-IN ``gate_ammo`` flag (default False). When False the function is
+BYTE-IDENTICAL to the mana-only walk - no charge tracking at all - mirroring
+the ``runes=None`` opt-in precedent. When True, every cast of a slot that has a
+charge model consumes one charge; charges recharge over the rotation clock at
+``recharge[rank]`` seconds per charge (capped at ``max[rank]``). A cast that
+finds 0 charges available and has not yet recharged one is gated with
+``status="no_ammo"`` (parallel to the ``"oom"`` mana gate - zero damage, no
+spend, no clock advance, slot cooldown NOT consumed). Slots WITHOUT a charge
+model are untouched (mana-only gating as before). The rank index into the ammo
+arrays uses the resolved ``ComboCast.rank`` DIRECTLY (it is already 0-based -
+rank 0 at the spell's first level), clamped to the array bounds; this is NOT
+``rank - 1``.
+
 Fail-soft contract (mirrors ``combo.py`` + the burst walker): no champion /
 empty sequence / burst failure yields an empty ``hits`` tuple with a note
 rather than raising.
@@ -104,7 +123,8 @@ class ManaLedgerHit:
     casts). For an ``oom`` cast the cast is skipped, ``mana_after ==
     mana_before``, ``raw`` / ``mitigated`` are 0.0, and ``note`` records the
     shortfall. ``cumulative`` is the running sum of ``mitigated`` through this
-    action inclusive. ``status`` is ``"ok"`` | ``"oom"`` | ``"on_cooldown"``.
+    action inclusive. ``status`` is ``"ok"`` | ``"oom"`` | ``"on_cooldown"`` |
+    ``"no_ammo"`` (the OPT-IN charge gate - same skip shape as ``"oom"``).
     """
 
     index: int
@@ -126,8 +146,8 @@ class ManaBoundedResult:
     """Resolved mana-bounded rotation + totals.
 
     ``hits`` is the per-action timeline in cast order (skipped ``oom`` /
-    ``on_cooldown`` actions are retained with zero damage so the timeline stays
-    1:1 with the resolvable casts). ``casts_allowed`` counts ``status=="ok"``
+    ``on_cooldown`` / ``no_ammo`` actions are retained with zero damage so the
+    timeline stays 1:1 with the resolvable casts). ``casts_allowed`` counts ``status=="ok"``
     rows; ``casts_requested`` counts the resolvable casts (unlocked rows that
     reached the mana gate). ``mana_spent`` is the cumulative mana deducted.
     ``oom_at_t`` is the clock of the first ``oom`` cast or None. ``bounded_dps``
@@ -223,6 +243,8 @@ def _walk(
     regen_per_s: float,
     *,
     gate_mana: bool,
+    gate_ammo: bool = False,
+    ammo_by_slot: Optional[dict] = None,
 ) -> Tuple[List[ManaLedgerHit], int, int, float, Optional[float], float, float]:
     """Walk the resolved cast list once.
 
@@ -230,6 +252,13 @@ def _walk(
     total_mitigated, duration_s)``. When ``gate_mana`` is False the mana check
     is bypassed (the infinite-mana reference pass); ``hits`` is still produced
     so the unbounded pass can reuse the same code path.
+
+    When ``gate_ammo`` is True the per-slot charge ledger sourced from
+    ``ammo_by_slot`` (slot -> ``{"max": [...], "recharge": [...]}``) is layered
+    on top: a cast of a charge-bearing slot consumes one charge, charges
+    recharge over the clock, and a cast that finds 0 available charges is gated
+    with ``status="no_ammo"``. When False the ammo ledger is never consulted -
+    BYTE-IDENTICAL to the prior mana-only walk.
     """
     clock = 0.0
     mana = pool
@@ -241,6 +270,11 @@ def _walk(
     oom_at_t: Optional[float] = None
     last_cast_t: dict = {}
     hits: List[ManaLedgerHit] = []
+    # Per-slot charge state, lazily initialized on first encounter of a slot
+    # that carries an ammo model: {slot: {"charges": float, "max": float,
+    # "recharge": float, "last_t": float}}. Only used when gate_ammo is True.
+    ammo_state: dict = {}
+    ammo = ammo_by_slot or {}
 
     for i, cast in enumerate(casts):
         is_ability = bool(getattr(cast, "is_ability", False))
@@ -293,6 +327,33 @@ def _walk(
         casts_requested += 1
         mana_before = mana
 
+        # Ammo (charge) gate - OPT-IN, only when gate_ammo + this slot carries a
+        # charge model. Recharge accrues over the clock; a cast with 0 charges
+        # available is gated (same skip shape as oom). Slots without ammo are
+        # untouched (slot_ammo is None -> no charge bookkeeping).
+        slot_ammo = ammo.get(key) if (gate_ammo and is_ability) else None
+        if slot_ammo is not None:
+            st = _ammo_slot_state(ammo_state, key, slot_ammo, rank, clock)
+            if st is not None:
+                _recharge_to(st, clock)
+                if st["charges"] < 1.0 - _FLOAT_EPS:
+                    # No charge ready: skip (no damage, no spend, no clock
+                    # advance, cooldown NOT consumed - the cast never fired).
+                    hits.append(ManaLedgerHit(
+                        index=i, action=token, ability_key=key,
+                        t=round(clock, 3), cost=round(cost, 2),
+                        mana_before=_round_mana(mana_before),
+                        mana_after=_round_mana(mana_before),
+                        raw=0.0, mitigated=0.0,
+                        cumulative=round(cumulative, 2),
+                        status="no_ammo",
+                        note=(
+                            f"no {key} charges ready (recharge "
+                            f"{st['recharge']:.1f}s/charge) - skipped"
+                        ),
+                    ))
+                    continue
+
         if gate_mana and mana_before < cost - _FLOAT_EPS:
             # Out of mana: skip the cast (no damage, no spend, no clock
             # advance, slot cooldown NOT consumed since it never fired).
@@ -322,6 +383,9 @@ def _walk(
         casts_allowed += 1
         if is_ability and key in _COOLDOWN_KEYS:
             last_cast_t[key] = clock
+        # Consume one charge on a fired charge-bearing cast (gate_ammo only).
+        if slot_ammo is not None and key in ammo_state:
+            ammo_state[key]["charges"] -= 1.0
 
         hits.append(ManaLedgerHit(
             index=i, action=token, ability_key=key,
@@ -354,6 +418,71 @@ def _round_mana(value: float) -> float:
     return value if math.isinf(value) else round(value, 2)
 
 
+def _ammo_index(rank: int, length: int) -> int:
+    """Clamp the resolved (0-based) ComboCast rank into an ammo-array index.
+
+    ``ComboCast.rank`` is already 0-based (rank 0 at a spell's first level), so
+    the array index IS the rank - not ``rank - 1``. A locked rank (< 0) clamps
+    to 0; an out-of-range rank clamps to the last element.
+    """
+    if length <= 0:
+        return 0
+    return max(0, min(rank, length - 1))
+
+
+def _ammo_slot_state(
+    ammo_state: dict, key: str, slot_ammo: dict, rank: int, clock: float
+) -> Optional[dict]:
+    """Lazily init + return the per-slot charge ledger entry, or None if unusable.
+
+    Initializes ``charges`` to ``max[rank]`` (full charges at fight start) and
+    pins ``recharge`` to ``recharge[rank]`` on first encounter. Returns None if
+    the ammo arrays are missing / empty (so the consumer treats the slot as
+    charge-free).
+    """
+    existing = ammo_state.get(key)
+    if existing is not None:
+        return existing
+    max_arr = slot_ammo.get("max") or []
+    rec_arr = slot_ammo.get("recharge") or []
+    if not max_arr:
+        return None
+    idx = _ammo_index(rank, len(max_arr))
+    max_charges = float(max_arr[idx])
+    if max_charges <= 0.0:
+        return None
+    rec_idx = _ammo_index(rank, len(rec_arr)) if rec_arr else 0
+    recharge = float(rec_arr[rec_idx]) if rec_arr else 0.0
+    st = {
+        "charges": max_charges,
+        "max": max_charges,
+        "recharge": max(0.0, recharge),
+        "last_t": clock,
+    }
+    ammo_state[key] = st
+    return st
+
+
+def _recharge_to(st: dict, clock: float) -> None:
+    """Accrue charges for the elapsed time since ``last_t``, capped at ``max``.
+
+    A recharge of 0 means charges never regenerate (charges stay where they
+    are). ``last_t`` always advances to ``clock`` so elapsed time is not
+    double-counted on the next call.
+    """
+    recharge = st["recharge"]
+    if recharge > _FLOAT_EPS and st["charges"] < st["max"] - _FLOAT_EPS:
+        dt = max(0.0, clock - st["last_t"])
+        gained = math.floor(dt / recharge)
+        if gained > 0:
+            st["charges"] = min(st["max"], st["charges"] + float(gained))
+            # Advance last_t by the consumed whole-charge intervals so the
+            # remaining fractional time carries into the next recharge.
+            st["last_t"] += gained * recharge
+            return
+    st["last_t"] = clock
+
+
 def compute_mana_bounded_combo(
     champion: str,
     level: int,
@@ -365,6 +494,7 @@ def compute_mana_bounded_combo(
     target_bonus_hp: float = 0.0,
     mode: str = "SR",
     snapshot: Optional[DataSnapshot] = None,
+    gate_ammo: bool = False,
 ) -> ManaBoundedResult:
     """Walk a bounded rotation over ``sequence`` gated on the champion's mana.
 
@@ -375,6 +505,13 @@ def compute_mana_bounded_combo(
     cooldown wait), and skip any cast the caster cannot afford
     (``status="oom"``). A second infinite-mana pass produces ``unbounded_dps``
     so the caller sees the V1-parity reference.
+
+    ``gate_ammo`` (default False) is the OPT-IN charge refinement: when False
+    the walk is BYTE-IDENTICAL to the mana-only behavior (no charge tracking);
+    when True a per-slot charge ledger from ``snap.spell_ammo`` is layered on
+    the BOUNDED pass and a cast with 0 charges available is gated
+    (``status="no_ammo"``). The unbounded reference pass is never ammo-gated so
+    the denominator stays the full V1-parity rotation.
 
     Fail-soft: no champion / empty sequence / burst failure yields an empty
     ``hits`` tuple with a note rather than raising.
@@ -431,6 +568,17 @@ def compute_mana_bounded_combo(
 
     is_mana_gated = (not math.isinf(pool)) and pool > 0.0
 
+    # Resolve the per-slot ammo (charge) model ONLY when the caller opted in.
+    # When gate_ammo is False this stays empty so the bounded walk is
+    # byte-identical to the mana-only behavior. Missing sidecar / no-ammo slot
+    # -> spell_ammo returns None -> the slot is simply absent from the map.
+    ammo_by_slot: dict = {}
+    if gate_ammo:
+        for slot in _COOLDOWN_KEYS:
+            slot_ammo = snap.spell_ammo(champ_id, slot)
+            if isinstance(slot_ammo, dict) and slot_ammo.get("max"):
+                ammo_by_slot[slot] = slot_ammo
+
     # Unbounded reference pass FIRST - same walk, mana gate OFF. It establishes
     # the full-rotation wall-clock (``ref_duration``). Both DPS figures are
     # measured over that SAME denominator so the invariant bounded_dps <=
@@ -442,11 +590,15 @@ def compute_mana_bounded_combo(
         burst.per_cast, pool, regen_per_s, gate_mana=False,
     )
 
-    # Bounded pass (mana gate active iff this champion is mana-gated).
+    # Bounded pass (mana gate active iff this champion is mana-gated; the ammo
+    # charge gate layered on top only when the caller opted in via gate_ammo).
     (
         hits, casts_allowed, casts_requested, mana_spent, oom_at_t,
         total_mitigated, duration_s,
-    ) = _walk(burst.per_cast, pool, regen_per_s, gate_mana=is_mana_gated)
+    ) = _walk(
+        burst.per_cast, pool, regen_per_s, gate_mana=is_mana_gated,
+        gate_ammo=gate_ammo, ammo_by_slot=ammo_by_slot,
+    )
 
     # Shared denominator = the full rotation wall-clock from the unbounded
     # pass. For a manaless / non-mana champion the two passes are identical so
@@ -469,6 +621,11 @@ def compute_mana_bounded_combo(
         notes.append(
             f"out of mana at t={oom_at_t:.1f}s after {casts_allowed} of "
             f"{casts_requested} casts"
+        )
+    n_no_ammo = sum(1 for h in hits if h.status == "no_ammo")
+    if n_no_ammo:
+        notes.append(
+            f"{n_no_ammo} cast(s) gated on charges (gate_ammo=True)"
         )
 
     return ManaBoundedResult(
