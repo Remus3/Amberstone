@@ -1216,6 +1216,7 @@ def rank_items_by_burst(
     block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     combo_sequence: Optional[Sequence[str]] = None,
     filter_shared_uniques: bool = True,
+    runes: Optional[Sequence[int]] = None,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -1233,10 +1234,22 @@ def rank_items_by_burst(
     ``filter_shared_uniques=True`` drops candidates whose unique passive
     key collides with one already in ``current_item_ids`` - matches the
     other scorers' behavior so the assassin ranker stays consistent.
+
+    ``runes`` (DS V2 S3, optional Riot perk ids) is threaded into BOTH the
+    baseline and per-candidate ``compute_burst_damage`` calls. When None or
+    empty the ranking is BYTE-IDENTICAL to today (the None path of
+    ``compute_burst_damage`` is unchanged). When supplied, each build's
+    burst gains the rune-proc layer (on_proc_burst / per_attack /
+    stacking_amp + keystone_amp; Conqueror adaptive excluded), so the
+    delta still isolates the item's marginal gain over a rune-equipped
+    baseline.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
+    # Normalize once so baseline + every candidate share the same rune list.
+    # None when absent/empty -> compute_burst_damage stays byte-identical.
+    runes_norm = list(runes) if runes else None
 
     # Resolve once so baseline + every candidate share priority + combo +
     # form_index + block_index.
@@ -1282,6 +1295,7 @@ def rank_items_by_burst(
         form_index_overrides=resolved_form_index,
         block_index_overrides=resolved_block_index,
         combo_sequence=combo_norm,
+        runes=runes_norm,
     )
 
     candidates = _filter_candidates(
@@ -1316,6 +1330,7 @@ def rank_items_by_burst(
                 form_index_overrides=resolved_form_index,
                 block_index_overrides=resolved_block_index,
                 combo_sequence=combo_norm,
+                runes=runes_norm,
             )
         except (KeyError, ValueError):
             continue
