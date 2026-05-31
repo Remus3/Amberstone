@@ -1254,6 +1254,7 @@ def rank_items_by_burst(
     combo_sequence: Optional[Sequence[str]] = None,
     filter_shared_uniques: bool = True,
     runes: Optional[Sequence[int]] = None,
+    aoe_targets_hit: int = 1,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -1333,6 +1334,7 @@ def rank_items_by_burst(
         block_index_overrides=resolved_block_index,
         combo_sequence=combo_norm,
         runes=runes_norm,
+        aoe_targets_hit=aoe_targets_hit,
     )
 
     candidates = _filter_candidates(
@@ -1368,6 +1370,7 @@ def rank_items_by_burst(
                 block_index_overrides=resolved_block_index,
                 combo_sequence=combo_norm,
                 runes=runes_norm,
+                aoe_targets_hit=aoe_targets_hit,
             )
         except (KeyError, ValueError):
             continue

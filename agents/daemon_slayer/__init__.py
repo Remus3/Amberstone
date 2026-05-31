@@ -1321,7 +1321,34 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.70.0"
+ENGINE_VERSION = "1.71.0"
+# 1.71.0 (item 235 - self-audit wiring + parameterize pass. The 6 opt-in scoring
+# flags shipped across items 231-234 (apply_mode_modifiers / gate_ammo /
+# apply_ability_haste / aoe_targets_hit) + the cc_blended-EHP enemy context
+# (enemy_champions / include_conditional) reached ZERO :8893 route, so no live
+# caller could exercise them. This pass threads them end-to-end - leaf compute_*
+# fns already accepted them; the rank_* wrappers + the routes now do too - all
+# OPT-IN, DEFAULT byte-identical to 1.70.0 (proven: full DS suite unchanged at
+# the defaults). Specifically: `apply_mode_modifiers` -> rank_items / +/dps,
+# rank_items_by_ehp / +/rank-tank, compute_hybrid + rank_items_by_hybrid /
+# +/hybrid +/rank-bruiser, beam_search_build / +/beam, compute_dps_curve,
+# compute_fight_report (phys-dps section); `aoe_targets_hit` -> rank_items_by_burst
+# / +/rank-assassin +/burst; `gate_ammo` + `apply_ability_haste` ->
+# compute_fight_report / +/v2/fight-report -> mana_sim; `enemy_champions` (NEW
+# route arg `enemies`) + `include_conditional` -> /ehp +/hybrid +/rank-bruiser
+# so the item-137/143 cc_blended_ehp discount is finally reachable from a route.
+# include_conditional was REVERTED from rank_items_by_ehp / +/rank-tank - the EHP
+# ranker deltas on blended_ehp (PRE-cc) + EhpRankedItem has no cc field, so it was
+# inert there (kept honest, not shipped as a no-op param). DRY: NEW shared
+# `_item_ability_haste.effective_cooldown(base_cd, ah)` (Riot base/(1+AH/100) with
+# the 0.01 denom floor) - the canonical single-source for the haste-CDR formula;
+# `ability_dps._effective_ability_cd` + `mana_sim` now delegate to it (was
+# re-implemented inline in each). `total_item_ability_haste` now delegates per-item
+# to `item_ability_haste` (wired the previously no-consumer single-item accessor).
+# NEW behavior-neutral GET /modifier-summary diagnostic route surfaces
+# `modifier_blocks.summarize_modifiers` over the live AbilitiesSnapshot (the
+# deliberate additive substrate's intended coach surface) - reads only, touches no
+# DPS/EHP number. +23 wiring tests (test_flag_wiring_item235.py).)
 # 1.70.0 (DS V2 - item 234 mana_sim opt-in ability-haste / CDR model + static-CD
 # honest no-consumer verdict. Gives the bounded rotation CDR-awareness +
 # resolves the item-233 static-CD blocker honestly. `compute_mana_bounded_combo`

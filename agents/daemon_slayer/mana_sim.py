@@ -87,7 +87,7 @@ import math
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
 
-from ._item_ability_haste import total_item_ability_haste
+from ._item_ability_haste import effective_cooldown, total_item_ability_haste
 from .burst import compute_burst_damage
 from .data_loader import DataSnapshot
 from .stats import aggregate_item_stats, scaled
@@ -289,11 +289,12 @@ def _walk(
         token = str(getattr(cast, "token", ""))
         key = str(getattr(cast, "ability_key", ""))
         cooldown_s = float(getattr(cast, "cooldown", 0.0) or 0.0)
-        # item 234 - ability-haste CDR (Riot canonical base/(1+AH/100)). Applied
+        # item 234 - ability-haste CDR (Riot canonical base/(1+AH/100)) via the
+        # shared _item_ability_haste.effective_cooldown helper. Applied
         # uniformly to every cooldown-bearing slot; ability_haste==0.0 (the
         # default / no-haste build) leaves cooldown_s byte-identical.
         if ability_haste > 0.0 and cooldown_s > 0.0:
-            cooldown_s = cooldown_s / (1.0 + ability_haste / 100.0)
+            cooldown_s = effective_cooldown(cooldown_s, ability_haste)
         cost = float(getattr(cast, "cost", 0.0) or 0.0)
         cast_time = _cast_time_for(cast)
 
@@ -662,7 +663,7 @@ def compute_mana_bounded_combo(
     if ability_haste > 0.0:
         notes.append(
             f"ability_haste={ability_haste:.0f} applied "
-            f"(cooldowns x {1.0 / (1.0 + ability_haste / 100.0):.3f})"
+            f"(cooldowns x {effective_cooldown(1.0, ability_haste):.3f})"
         )
 
     return ManaBoundedResult(

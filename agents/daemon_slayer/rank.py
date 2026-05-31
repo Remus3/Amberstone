@@ -422,6 +422,7 @@ def rank_items(
     filter_shared_uniques: bool = True,
     fight_length: Optional[float] = None,
     mana_value_per_point: Optional[float] = None,
+    apply_mode_modifiers: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -527,6 +528,7 @@ def rank_items(
         target_bonus_hp=target_bonus_hp,
         phase=phase,
         augments=augments,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
 
     # Baseline burst with the current build (item 219 C). Computed ONCE and
@@ -590,6 +592,7 @@ def rank_items(
                 target_bonus_hp=target_bonus_hp,
                 phase=phase,
                 augments=augments,
+                apply_mode_modifiers=apply_mode_modifiers,
             )
         except (KeyError, ValueError):
             continue

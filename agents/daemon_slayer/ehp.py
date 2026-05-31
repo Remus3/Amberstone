@@ -1093,6 +1093,7 @@ def rank_items_by_ehp(
     sort_by: str = "delta",
     augments: Optional[Iterable] = None,
     filter_shared_uniques: bool = True,
+    apply_mode_modifiers: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1143,6 +1144,7 @@ def rank_items_by_ehp(
         enemy_ad_share=enemy_ad_share,
         enemy_ap_share=enemy_ap_share,
         augments=augments,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
 
     candidates = _filter_candidates(
@@ -1172,6 +1174,7 @@ def rank_items_by_ehp(
                 enemy_ad_share=enemy_ad_share,
                 enemy_ap_share=enemy_ap_share,
                 augments=augments,
+                apply_mode_modifiers=apply_mode_modifiers,
             )
         except (KeyError, ValueError):
             continue
