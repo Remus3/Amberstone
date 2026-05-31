@@ -67,6 +67,7 @@ from .data_loader import DataSnapshot, SnapshotNotFound
 from .dps import compute_dps
 from .ehp import compute_ehp, rank_items_by_ehp
 from .engine import build_champion
+from .fight_report import compute_fight_report
 from .hps import compute_hps, rank_items_by_hps
 from .hybrid import compute_hybrid, rank_items_by_hybrid
 from .rank import SORT_KEYS, rank_items
@@ -873,6 +874,51 @@ def _route_burst(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_fight_report(body: dict) -> dict:
+    """POST /v2/fight-report - unified V2 fight report (DS V2 S2).
+
+    Composes the 5 additive V2 substrate modules (mana_sim, rune_procs,
+    ability_hps, self_shred, scenario_matrix) into one report. Body:
+      * ``champion`` (required), ``level``, ``items``, ``mode``,
+        ``target_armor`` / ``target_mr`` / ``target_max_hp`` /
+        ``target_bonus_hp``
+      * ``sequence`` (list or comma string) - rotation tokens; default
+        Q-W-E-AA-R-AA
+      * ``runes`` (list or comma string of Riot perk ids) - keystone/proc
+        rune layer; junk ids ignored
+    ``compute_fight_report`` is itself fail-soft (per-section notes), so a
+    KeyError here is only the champion-resolution failure (404).
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    target_armor = _opt_float(body, "target_armor", 0.0)
+    target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
+    raw_seq = _coerce_str_list(body.get("sequence"), "sequence")
+    sequence = raw_seq if raw_seq else None
+    runes = [
+        int(x)
+        for x in _coerce_str_list(body.get("runes"), "runes")
+        if str(x).strip().lstrip("-").isdigit()
+    ]
+    try:
+        result = compute_fight_report(
+            champion, level, item_ids=items, sequence=sequence, runes=runes,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            mode=mode, snapshot=snap,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_rank_assassin(body: dict) -> dict:
     """POST /rank-assassin - rank items by total-burst-damage delta.
 
@@ -1129,6 +1175,7 @@ _POST_ROUTES = {
     "/rank-assassin": _route_rank_assassin,
     "/hps": _route_hps,
     "/rank-enchanter": _route_rank_enchanter,
+    "/v2/fight-report": _route_fight_report,
 }
 
 # GET routes that need a body merge from query params for the same handler.
