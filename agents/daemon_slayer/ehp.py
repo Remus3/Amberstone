@@ -648,6 +648,7 @@ def compute_ehp(
     enemy_champions: Iterable[str] = (),
     include_conditional: bool = False,
     apply_mode_modifiers: bool = False,
+    apply_build_tenacity: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -857,6 +858,18 @@ def compute_ehp(
             cc_total += compute_cc_pressure(
                 enemy, mode, include_conditional=include_conditional
             ).total_cc_seconds
+        # Item 236: OPT-IN build-tenacity credit. Tenacity shortens the CC the
+        # CASTER actually eats, so it shrinks the enemy CC pressure for THIS
+        # build (build-dependent -> the cc_blended ranking mode can now re-rank
+        # tenacity items up vs a heavy-CC comp). Reuses the documented
+        # effective_cc_duration tenacity seam (tenacity_mult = 1 - fraction).
+        # Default False = the pre-item-236 build-independent discount
+        # (byte-identical for every existing enemy_champions caller).
+        if apply_build_tenacity:
+            from ._item_tenacity import total_item_tenacity
+            ten_frac = total_item_tenacity(item_ids or ())
+            if ten_frac > 0.0:
+                cc_total = effective_cc_duration(cc_total, 1.0 - ten_frac)
         enemy_cc_pressure_s = cc_total
         if enemy_cc_pressure_s > 0:
             cc_pressure_fraction = min(
@@ -978,6 +991,15 @@ class EhpRankedItem:
     # Phase 4(d): candidate's own unique-passive family key, always set
     # (collision-independent) - the positive "locks <family>" signal.
     unique_passive_key: str = ""
+    # Item 236: CC-adjusted EHP surface. ``cc_blended_ehp`` is the new build's
+    # blended EHP discounted by the enemy comp's CC-lockdown fraction (== new_ehp
+    # when no enemy_champions are supplied, by the compute_ehp identity contract).
+    # ``delta_cc_blended_ehp`` is that value's gain over the baseline build. When
+    # the ranker runs ``score_by="cc_blended"`` the sort + efficiency key uses
+    # ``delta_cc_blended_ehp``; the default ``score_by="blended"`` leaves both at
+    # their no-enemy identity (cc == blended) so the row stays byte-identical.
+    cc_blended_ehp: float = 0.0
+    delta_cc_blended_ehp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -992,6 +1014,8 @@ class EhpRankedItem:
             "shares_dead_unique": self.shares_dead_unique,
             "dead_unique_key": self.dead_unique_key,
             "unique_passive_key": self.unique_passive_key,
+            "cc_blended_ehp": self.cc_blended_ehp,
+            "delta_cc_blended_ehp": self.delta_cc_blended_ehp,
         }
 
 
@@ -1013,6 +1037,9 @@ class EhpRankResult:
     candidates_evaluated: int
     ranked: tuple[EhpRankedItem, ...]
     notes: tuple[str, ...] = field(default_factory=tuple)
+    # Item 236: which EHP metric drove the ranking - "blended" (default,
+    # PRE-cc) or "cc_blended" (enemy-CC-lockdown-adjusted).
+    score_by: str = "blended"
 
     def to_dict(self) -> dict:
         return {
@@ -1028,6 +1055,7 @@ class EhpRankResult:
             "budget": self.budget,
             "slot_count": self.slot_count,
             "sort_by": self.sort_by,
+            "score_by": self.score_by,
             "candidates_considered": self.candidates_considered,
             "candidates_evaluated": self.candidates_evaluated,
             "ranked": [r.to_dict() for r in self.ranked],
@@ -1094,6 +1122,10 @@ def rank_items_by_ehp(
     augments: Optional[Iterable] = None,
     filter_shared_uniques: bool = True,
     apply_mode_modifiers: bool = False,
+    enemy_champions: Iterable[str] = (),
+    include_conditional: bool = False,
+    score_by: str = "blended",
+    apply_build_tenacity: Optional[bool] = None,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1109,9 +1141,37 @@ def rank_items_by_ehp(
     ``core/defensive_picks.py`` curated catalog (Option B from the s174
     design conversation): the catalog is passed as a whitelist so the
     math-driven ranking happens within an operator-vetted pool.
+
+    Item 236 - CC-adjusted ranking. ``score_by`` selects the EHP metric the
+    sort + efficiency key rank on:
+      * ``"blended"`` (default) - PRE-cc ``blended_ehp`` delta. BYTE-IDENTICAL
+        to the pre-item-236 behavior (the ``cc_blended_ehp`` / ``delta_cc_blended_ehp``
+        row fields still populate, but at their no-enemy identity ``cc == blended``
+        so nothing about the ordering changes).
+      * ``"cc_blended"`` - the enemy-CC-lockdown-adjusted ``cc_blended_ehp`` delta.
+        A tank picking into a heavy-CC comp ranks by CC-adjusted effective HP.
+    ``enemy_champions`` (the enemy comp) + ``include_conditional`` (fold the
+    probability-weighted conditional-CC registry into the discount) are threaded
+    into every ``compute_ehp`` call so the baseline + each candidate share the
+    same enemy context. Both are no-ops on ``blended_ehp`` (compute_ehp computes
+    ``blended_ehp`` before the enemy-CC block), so supplying them under the
+    default ``score_by="blended"`` is still byte-identical to today.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
+    if score_by not in ("blended", "cc_blended"):
+        raise ValueError(
+            f"score_by must be 'blended' or 'cc_blended', got {score_by!r}"
+        )
+    enemy_champions = tuple(str(e) for e in (enemy_champions or ()))
+    # Item 236: tenacity-credit defaults ON for cc_blended ranking (an
+    # inert build-INDEPENDENT cc_blended discount cannot re-rank, so the
+    # mode is only meaningful with the build-tenacity term) and OFF for the
+    # default blended mode (keeps it byte-identical). Explicit bool overrides.
+    apply_tenacity = (
+        apply_build_tenacity if apply_build_tenacity is not None
+        else (score_by == "cc_blended")
+    )
     level = clamp_level(level)
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
@@ -1145,6 +1205,9 @@ def rank_items_by_ehp(
         enemy_ap_share=enemy_ap_share,
         augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
+        enemy_champions=enemy_champions,
+        include_conditional=include_conditional,
+        apply_build_tenacity=apply_tenacity,
     )
 
     candidates = _filter_candidates(
@@ -1175,14 +1238,22 @@ def rank_items_by_ehp(
                 enemy_ap_share=enemy_ap_share,
                 augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,
+                enemy_champions=enemy_champions,
+                include_conditional=include_conditional,
+                apply_build_tenacity=apply_tenacity,
             )
         except (KeyError, ValueError):
             continue
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
         delta = scored.blended_ehp - baseline.blended_ehp
-        # Efficiency in EHP per 1000 gold so the column stays readable.
-        # Negative or zero deltas zero-out - they're regressions, not efficient.
-        eff = (delta / (gold / 1000.0)) if (gold > 0 and delta > 0) else 0.0
+        cc_delta = scored.cc_blended_ehp - baseline.cc_blended_ehp
+        # Item 236: the ACTIVE metric drives efficiency + sort. Default
+        # score_by="blended" ranks on the PRE-cc delta (byte-identical: cc_delta
+        # == delta when no enemy_champions); "cc_blended" ranks on the
+        # enemy-CC-lockdown-adjusted delta. Negative / zero deltas zero-out the
+        # per-1k column - regressions, not efficiency.
+        active_delta = cc_delta if score_by == "cc_blended" else delta
+        eff = (active_delta / (gold / 1000.0)) if (gold > 0 and active_delta > 0) else 0.0
         ranked.append(EhpRankedItem(
             item_id=item_id,
             item_name=str(rec.get("name", item_id)),
@@ -1195,12 +1266,21 @@ def rank_items_by_ehp(
             shares_dead_unique=shares_dead_unique,
             dead_unique_key=cand_key if shares_dead_unique else "",
             unique_passive_key=cand_key,
+            cc_blended_ehp=scored.cc_blended_ehp,
+            delta_cc_blended_ehp=cc_delta,
         ))
 
+    # Item 236: the sort key tracks score_by. Default "blended" sorts on
+    # delta_ehp (byte-identical); "cc_blended" sorts on delta_cc_blended_ehp.
+    _active = (
+        (lambda r: r.delta_cc_blended_ehp)
+        if score_by == "cc_blended"
+        else (lambda r: r.delta_ehp)
+    )
     if sort_by == "efficiency":
-        ranked.sort(key=lambda r: (r.ehp_per_1k_gold, r.delta_ehp), reverse=True)
+        ranked.sort(key=lambda r: (r.ehp_per_1k_gold, _active(r)), reverse=True)
     else:
-        ranked.sort(key=lambda r: (r.delta_ehp, r.ehp_per_1k_gold), reverse=True)
+        ranked.sort(key=lambda r: (_active(r), r.ehp_per_1k_gold), reverse=True)
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]
@@ -1227,6 +1307,12 @@ def rank_items_by_ehp(
             f"ARAM aramDamageTaken={baseline.mode_multiplier:.3f} "
             f"folded into all EHP values"
         )
+    if score_by == "cc_blended":
+        notes.append(
+            f"score_by=cc_blended - ranked on CC-adjusted EHP vs "
+            f"{len(enemy_champions)} enemy champ(s)"
+            + ("" if enemy_champions else " (no enemies supplied -> identical to blended)")
+        )
 
     return EhpRankResult(
         champion_id=baseline.champion_id,
@@ -1245,4 +1331,5 @@ def rank_items_by_ehp(
         candidates_evaluated=len(candidates),
         ranked=tuple(ranked),
         notes=tuple(notes),
+        score_by=score_by,
     )

@@ -1321,7 +1321,34 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.71.0"
+ENGINE_VERSION = "1.72.0"
+# 1.72.0 (item 236 - opt-in CC-adjusted (cc_blended) EHP ranking mode + the
+# item-tenacity layer that makes it real. The item-235 enemies/include_conditional
+# wire surfaced the cc_blended_ehp DISCOUNT on /ehp+/hybrid+/rank-bruiser, but the
+# discount is a per-enemy-comp UNIFORM scale (it credits no caster build attribute),
+# so a cc_blended SORT would be ORDER-INERT - it cannot re-rank items. Fix: a NEW
+# item-tenacity layer makes the discount build-DEPENDENT. `rank_items_by_ehp` gains
+# `score_by: str = "blended"` (default, byte-identical PRE-cc delta) | "cc_blended"
+# (ranks on the enemy-CC-lockdown-adjusted delta) + `enemy_champions` +
+# `include_conditional` (re-added here as a LIVE consumer, unlike item 235 which
+# reverted them as inert on the blended ranker) + `apply_build_tenacity:
+# Optional[bool]=None` (tri-state: None -> ON for cc_blended / OFF for blended;
+# explicit bool overrides). `EhpRankedItem` gains `cc_blended_ehp` +
+# `delta_cc_blended_ehp` fields; `EhpRankResult` gains `score_by`. NEW
+# `_item_tenacity.py` per-item tenacity registry (17 items, description-parsed -
+# DDragon stats strip tenacity exactly like ability haste; Anathema's enemy-debuff
+# + Silvermere active + Elixir consumable EXCLUDED) + `total_item_tenacity` (League
+# MULTIPLICATIVE stacking 1-prod(1-t)). `compute_ehp` gains `apply_build_tenacity:
+# bool=False`: when True it scales the enemy CC the caster eats by (1 - build
+# tenacity) via the existing `effective_cc_duration` seam BEFORE the 6s-cap
+# fraction, so a tenacity item (Sterak's/Mercury's) shrinks its own lockdown ->
+# larger cc_blended_ehp -> rises under cc_blended scoring (VS a non-saturating CC
+# comp; an ultra-heavy comp still saturates the 6s cap so no tenacity helps -
+# correct). /rank-tank route exposes score_by/enemies/include_conditional/
+# apply_build_tenacity (400 on bad score_by). DEFAULT score_by="blended" +
+# apply_build_tenacity OFF = BYTE-IDENTICAL to 1.71.0 (full DS suite unchanged;
+# proven Malphite vs ["Ashe"] Sterak's blended #5 -> cc_blended #2). +14 tests
+# test_cc_blended_ranking_item236.py.)
 # 1.71.0 (item 235 - self-audit wiring + parameterize pass. The 6 opt-in scoring
 # flags shipped across items 231-234 (apply_mode_modifiers / gate_ammo /
 # apply_ability_haste / aoe_targets_hit) + the cc_blended-EHP enemy context
