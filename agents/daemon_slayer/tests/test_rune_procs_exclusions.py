@@ -1,26 +1,24 @@
-"""Honest-exclusion contract for the rune-proc registry (RUNE_PROCS).
+"""Honest-exclusion + conditionally-modeled contract for RUNE_PROCS.
 
-Closes the operator NEXT "expand per_attack to other on-hit runes if DDragon
-exposes them". A scoping pass verified the DDragon 16.11.1 well is a dry one:
-16 damage/amp runes are modeled, Fleet Footwork 8021 is an honest exclusion,
-and the remaining candidates are sustain / utility / stat-stack / tower-only OR
-caster-state / game-time gated. These tests PIN the deliberate non-entries so a
-future maintainer does not "discover" them and add a misleading best-case proc:
+ITEM 232 PROC-SIGNATURE LIFT updated this file. Last Stand 8299 / Absolute
+Focus 8233 / Gathering Storm 8236 WERE honest exclusions (item 231) because the
+unconditional best-case proc model could not express their gates without
+inflating the burst-MAX scorer. The item-232 lift makes those gates EXPRESSIBLE
+(a `condition` tag + gating-context kwargs), defaulting to BYTE-IDENTICAL
+behaviour (zero contribution at the full-HP / time-0 context, matching the
+exclusion). They are now CONDITIONALLY MODELED, not excluded. The item-231
+reasoning still holds: the DEFAULT context yields no contribution.
 
-  * Last Stand 8299      - CASTER-hp-gated amp (below 60% HP). Best-case 1.11x is
-                            materially misleading for a burst-MAX scorer because
-                            the caster is typically NOT low-hp during a burst
-                            window (the opposite of target-hp gates like Cut Down
-                            / Coup de Grace which burst windows routinely meet).
-  * Absolute Focus 8233  - caster-hp-gated STAT GRANT (adaptive force while above
-                            70% HP), same class as Eyeball/Legend stat runes we
-                            never model.
-  * Gathering Storm 8236 - time-scaled adaptive STAT GRANT (game-time gated).
+Still HONEST EXCLUSIONS (truly out of scope - heal / tower, not champion proc
+damage):
   * Taste of Blood 8139  - heal/sustain, no damage.
   * Demolish 8446        - tower-only damage, no champion damage.
+Plus Fleet Footwork 8021 (heal + move speed sustain keystone, no damage).
 
-These are NOT shippable as proc damage. Modeling any of them would invent
-numbers / misrepresent the scorer.
+These tests PIN both contracts so a future maintainer neither (a) re-pitches
+8139/8446 as proc damage, nor (b) regresses the 8299/8233/8236 gates back to a
+misleading unconditional best-case (the gates MUST yield zero contribution at
+the default context).
 """
 
 from __future__ import annotations
@@ -34,16 +32,20 @@ from agents.daemon_slayer.rune_procs import (
     keystone_amp,
 )
 
-# Ids that MUST NOT live in RUNE_PROCS (honest exclusions).
+# Ids that MUST NOT live in RUNE_PROCS (honest exclusions - heal / tower).
 _EXCLUDED_IDS = {
-    8299,  # Last Stand    - caster-hp-gated amp; best-case misleading for burst-MAX
-    8233,  # Absolute Focus- caster-hp-gated stat grant
-    8236,  # Gathering Storm - game-time-gated stat grant
     8139,  # Taste of Blood- heal/sustain only
     8446,  # Demolish      - tower-only damage
 }
 
-# The 16 runes that ARE modeled (8 substrate + 6 S4 + 2 per_attack).
+# Item 232: the 3 conditionally-modeled gated runes (NOW in RUNE_PROCS).
+_CONDITIONAL_IDS = {
+    8299,  # Last Stand    - caster_hp_below stacking_amp (amp 1.0 at full HP)
+    8233,  # Absolute Focus- caster_hp_above adaptive (burst-excluded grant)
+    8236,  # Gathering Storm - game_time adaptive (burst-excluded grant)
+}
+
+# The runes that ARE modeled (16 pre-lift + 3 item-232 gated = 19).
 _MODELED_IDS = {
     8112,  # Electrocute
     8128,  # Dark Harvest
@@ -61,11 +63,14 @@ _MODELED_IDS = {
     8017,  # Cut Down (target >60% hp, best-case stacking_amp)
     9923,  # Hail of Blades
     8008,  # Lethal Tempo
+    8299,  # Last Stand (item 232: caster_hp_below)
+    8233,  # Absolute Focus (item 232: caster_hp_above)
+    8236,  # Gathering Storm (item 232: game_time)
 }
 
 
 class ExcludedRunesNotRegistered(unittest.TestCase):
-    """The deliberate non-entries must stay out of RUNE_PROCS."""
+    """The remaining honest exclusions (heal / tower) must stay out."""
 
     def test_excluded_ids_absent_from_registry(self):
         for rune_id in sorted(_EXCLUDED_IDS):
@@ -74,11 +79,6 @@ class ExcludedRunesNotRegistered(unittest.TestCase):
                 RUNE_PROCS,
                 f"rune {rune_id} is an honest exclusion - must NOT be in RUNE_PROCS",
             )
-
-    def test_last_stand_8299_excluded(self):
-        # The borderline candidate: caster-hp-gated amp. EXCLUDED because a
-        # best-case 1.11x is materially misleading for a burst-MAX scorer.
-        self.assertNotIn(8299, RUNE_PROCS)
 
     def test_excluded_compute_is_zero(self):
         # Fail-soft: an unknown (excluded) rune contributes 0.0 proc damage.
@@ -100,27 +100,52 @@ class ExcludedRunesNotRegistered(unittest.TestCase):
             )
 
 
-class ModeledRunesStillPresent(unittest.TestCase):
-    """Guard the dry-well finding: exactly the known 16 runes are modeled."""
+class ConditionallyModeledRunesPresent(unittest.TestCase):
+    """Item 232: the 3 gated runes are registered with their condition tags."""
 
-    def test_all_16_modeled_present(self):
+    def test_conditional_ids_present(self):
+        for rune_id in sorted(_CONDITIONAL_IDS):
+            self.assertIn(rune_id, RUNE_PROCS, f"conditional rune {rune_id} missing")
+
+    def test_conditions_assigned(self):
+        self.assertEqual(RUNE_PROCS[8299].condition, "caster_hp_below")
+        self.assertEqual(RUNE_PROCS[8233].condition, "caster_hp_above")
+        self.assertEqual(RUNE_PROCS[8236].condition, "game_time")
+
+    def test_default_context_zero_burst_contribution(self):
+        # The lift defaults MUST yield no contribution (byte-identical to the
+        # item-231 exclusion):
+        #   8299 stacking_amp -> amp 1.0 at default full HP.
+        self.assertEqual(keystone_amp(8299, 1000.0), 1000.0)
+        #   8233 + 8236 are proc_type "adaptive" -> burst consumer SKIPS them.
+        self.assertEqual(RUNE_PROCS[8233].proc_type, "adaptive")
+        self.assertEqual(RUNE_PROCS[8236].proc_type, "adaptive")
+        #   8236 compute is 0.0 at the default game_time_s=0.0 too.
+        self.assertEqual(compute_rune_proc_damage(8236, 11, 100.0, 0.0), 0.0)
+
+
+class ModeledRunesStillPresent(unittest.TestCase):
+    """Guard the registry: exactly the known 19 runes are modeled."""
+
+    def test_all_19_modeled_present(self):
         for rune_id in sorted(_MODELED_IDS):
             self.assertIn(rune_id, RUNE_PROCS, f"modeled rune {rune_id} missing")
 
-    def test_registry_is_exactly_the_16_modeled(self):
-        # No silent additions and no silent drops since the scoping pass.
+    def test_registry_is_exactly_the_19_modeled(self):
+        # No silent additions and no silent drops since the item-232 lift.
         self.assertEqual(set(RUNE_PROCS.keys()), _MODELED_IDS)
 
 
-class LastStandConsistencyWithSiblings(unittest.TestCase):
-    """Last Stand 8299 shares Precision slot 3 with Cut Down + Coup de Grace.
+class LastStandGateHonorsAntiInflation(unittest.TestCase):
+    """Last Stand 8299 shares Precision slot 4 with Cut Down + Coup de Grace.
 
     Cut Down 8017 (target >60% hp) and Coup de Grace 8014 (target <40% hp) ARE
     modeled as unconditional best-case stacking_amp (the target-hp gate is met
     by the target during a normal burst window). Last Stand gates on the CASTER
-    being low-hp, which a burst-opener typically is NOT - so it is the honest
-    exclusion. These asserts pin the asymmetry: the two target-hp siblings are
-    stacking_amp 1.08x; Last Stand is absent.
+    being low-hp, which a burst-opener typically is NOT - so item 232 models it
+    as a caster_hp_below stacking_amp whose amp is 1.0 at the default full HP
+    (NO inflation, honoring the item-231 anti-inflation concern) and ramps to
+    1.11x only when a caller supplies a low caster HP.
     """
 
     def test_cut_down_and_coup_are_stacking_amp(self):
@@ -137,15 +162,21 @@ class LastStandConsistencyWithSiblings(unittest.TestCase):
                 keystone_amp(rune_id, 1000.0), 1000.0 * expected_mult, places=4
             )
 
-    def test_last_stand_does_not_amp(self):
-        # Last Stand is NOT a stacking_amp in the registry: keystone_amp returns
-        # base unchanged (it is excluded, so unknown to the amp path).
+    def test_last_stand_no_amp_at_full_hp(self):
+        # Item 232: Last Stand IS a stacking_amp, but its amp is caster-hp gated.
+        # At the default full HP the amp is 1.0 -> base unchanged (no inflation).
         self.assertEqual(keystone_amp(8299, 1000.0), 1000.0)
+        self.assertEqual(keystone_amp(8299, 1000.0, caster_hp_pct=1.0), 1000.0)
+
+    def test_last_stand_amps_at_low_hp(self):
+        # When a caller supplies a low caster HP, the gate computes correctly.
+        self.assertAlmostEqual(
+            keystone_amp(8299, 1000.0, caster_hp_pct=0.30), 1110.0, places=4
+        )
 
 
 class ExclusionDocumentedInSource(unittest.TestCase):
-    """The exclusions must be DOCUMENTED inline (mirrors the Fleet Footwork
-    comment style) so they are never re-pitched."""
+    """The exclusions + conditionally-modeled runes must be DOCUMENTED inline."""
 
     @classmethod
     def setUpClass(cls):
@@ -158,17 +189,21 @@ class ExclusionDocumentedInSource(unittest.TestCase):
         self.assertIn("8021", self.source)
         self.assertIn("Fleet Footwork", self.source)
 
-    def test_last_stand_exclusion_documented(self):
+    def test_last_stand_documented(self):
         self.assertIn("8299", self.source)
         self.assertIn("Last Stand", self.source)
 
-    def test_absolute_focus_exclusion_documented(self):
+    def test_absolute_focus_documented(self):
         self.assertIn("8233", self.source)
         self.assertIn("Absolute Focus", self.source)
 
-    def test_gathering_storm_exclusion_documented(self):
+    def test_gathering_storm_documented(self):
         self.assertIn("8236", self.source)
         self.assertIn("Gathering Storm", self.source)
+
+    def test_heal_tower_exclusions_documented(self):
+        self.assertIn("8139", self.source)
+        self.assertIn("8446", self.source)
 
 
 class AsciiHygiene(unittest.TestCase):
