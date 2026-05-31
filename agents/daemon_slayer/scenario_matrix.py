@@ -7,9 +7,19 @@ This is the DS V2 "validating multiple & expansive scenarios of fights and
 combinations" deliverable. It is a HARNESS, not a new scorer: every cell's
 ``value`` comes from one of three existing engine functions -
 
-  * ``metric="dps"``   -> ``dps.compute_dps(...).weighted_dps``
-  * ``metric="burst"`` -> ``burst.compute_burst_damage(...).total_burst_damage``
-  * ``metric="combo"`` -> ``combo.compute_combo(...).total_mitigated``
+  * ``metric="dps"``             -> ``dps.compute_dps(...).weighted_dps``
+  * ``metric="burst"``           -> ``burst.compute_burst_damage(...).total_burst_damage``
+  * ``metric="combo"``           -> ``combo.compute_combo(...).total_mitigated``
+  * ``metric="mana_bounded_dps"`` -> ``mana_sim.compute_mana_bounded_combo(...).bounded_dps``
+  * ``metric="rune_burst"``      -> ``burst.compute_burst_damage(..., runes=...).total_burst_damage``
+
+The 2 newer metrics REUSE the existing scorers (no new math, still a pure
+harness): ``mana_bounded_dps`` runs the finite-mana bounded rotation, and
+``rune_burst`` runs the burst scorer WITH a rune-proc layer. ``rune_burst``
+is the ONLY metric that consumes ``runes``; the plain ``burst`` branch
+ignores it (so ``runes=None`` and ``runes=[...]`` are byte-identical under
+``metric="burst"``). Likewise ``sequence`` is consumed ONLY by
+``mana_bounded_dps`` (the ``dps``/``burst``/``combo`` branches ignore it).
 
 No DPS / burst / mitigation math is duplicated or moved here. The module
 adds the cross-product enumeration + an invariant checker over the
@@ -55,7 +65,9 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from .data_loader import DataSnapshot
 
 # Metrics this harness can dispatch. Each maps to one existing scorer.
-VALID_METRICS: Tuple[str, ...] = ("dps", "burst", "combo")
+VALID_METRICS: Tuple[str, ...] = (
+    "dps", "burst", "combo", "mana_bounded_dps", "rune_burst",
+)
 
 # Default combo sequence for metric="combo" cells (Q-AA-W-R). Short, fixed;
 # the combo scorer is itself the authority on per-cast timing.
@@ -135,6 +147,8 @@ def _score_cell(
     bonus_hp: float,
     mode: str,
     metric: str,
+    sequence: Optional[Sequence[str]] = None,
+    runes: Optional[Sequence[int]] = None,
 ) -> Tuple[float, str]:
     """Dispatch one cell to the matching EXISTING scorer; fail-soft.
 
@@ -168,6 +182,24 @@ def _score_cell(
                 target_bonus_hp=bonus_hp, mode=mode, snapshot=snapshot,
             )
             return (float(r.total_mitigated), "")
+        if metric == "mana_bounded_dps":
+            from .mana_sim import compute_mana_bounded_combo  # noqa: PLC0415
+            seq = list(sequence) if sequence else list(_DEFAULT_COMBO_SEQUENCE)
+            r = compute_mana_bounded_combo(
+                champion, int(level), item_ids=list(item_ids), sequence=seq,
+                target_armor=armor, target_mr=mr, target_max_hp=max_hp,
+                target_bonus_hp=bonus_hp, mode=mode, snapshot=snapshot,
+            )
+            return (float(r.bounded_dps), "")
+        if metric == "rune_burst":
+            from .burst import compute_burst_damage  # noqa: PLC0415
+            r = compute_burst_damage(
+                snapshot, champion, int(level), item_ids=list(item_ids),
+                mode=mode, target_armor=armor, target_mr=mr,
+                target_max_hp=max_hp, target_bonus_hp=bonus_hp,
+                runes=(list(runes) if runes else None),
+            )
+            return (float(r.total_burst_damage), "")
         return (float("nan"), f"unknown metric {metric!r}")
     except Exception as exc:  # fail-soft: record NaN + reason, never raise
         return (float("nan"), f"scorer raised: {type(exc).__name__}: {str(exc)[:120]}")
@@ -181,14 +213,22 @@ def sweep_scenarios(
     modes: Sequence[str] = ("SR",),
     metric: str = "dps",
     snapshot: Optional[DataSnapshot] = None,
+    sequence: Optional[Sequence[str]] = None,
+    runes: Optional[Sequence[int]] = None,
 ) -> List[ScenarioCell]:
     """Evaluate ``metric`` for ``champion`` over the full cross-product.
 
     The matrix is ``levels x item_sets x target_profiles x modes``. Each
     cell dispatches to the matching EXISTING scorer (``compute_dps`` /
-    ``compute_burst_damage`` / ``compute_combo``). ``target_profiles`` are
-    ``(armor, mr[, max_hp, bonus_hp])`` tuples (2- or 4-wide). ``item_sets``
-    are item-id tuples (str or int ids).
+    ``compute_burst_damage`` / ``compute_combo`` / ``compute_mana_bounded_combo``).
+    ``target_profiles`` are ``(armor, mr[, max_hp, bonus_hp])`` tuples (2- or
+    4-wide). ``item_sets`` are item-id tuples (str or int ids).
+
+    ``sequence`` (action tokens) is consumed ONLY by ``metric=
+    "mana_bounded_dps"`` (defaults to the Q-AA-W-R combo when omitted);
+    every other metric ignores it. ``runes`` (rune ids) is consumed ONLY by
+    ``metric="rune_burst"``; every other metric ignores it - so a ``burst``
+    sweep is byte-identical whether ``runes`` is passed or None.
 
     Fail-soft: a scorer raising on one cell yields a ``ScenarioCell`` with
     ``value=float('nan')`` + a note; the sweep continues. The returned list
@@ -217,7 +257,7 @@ def sweep_scenarios(
                 for mode in norm_modes:
                     value, note = _score_cell(
                         snap, champ, lv, item_ids, armor, mr, max_hp,
-                        bonus_hp, mode, metric,
+                        bonus_hp, mode, metric, sequence, runes,
                     )
                     cells.append(ScenarioCell(
                         champion=champ,
