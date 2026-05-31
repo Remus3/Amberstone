@@ -108,9 +108,13 @@ class HpsDerivationTests(unittest.TestCase):
         # (heal is never miscounted as shield or vice-versa).
         self.assertEqual(r.shielding_hps_raw, 0.0)
         self.assertEqual(r.shielding_hps, 0.0)
-        # No buff credit on Redemption - total is purely the amped heal.
+        # No buff credit on Redemption - item throughput is purely the amped
+        # heal. total_throughput also folds in ability HPS (V2 enchanter
+        # wire) so it equals item_heal + ability_hps_total.
         self.assertAlmostEqual(
-            r.total_throughput, exp_raw * exp_amp, places=4
+            r.total_throughput,
+            exp_raw * exp_amp + r.ability_hps_total,
+            places=4,
         )
 
     def test_locket_is_pure_shield_not_heal(self) -> None:
@@ -174,19 +178,24 @@ class HpsDerivationTests(unittest.TestCase):
             exp_buff += f["ally_buff_credit_per_second"]
         self.assertAlmostEqual(r.amp_multiplier, exp_amp, places=6)
         self.assertAlmostEqual(r.ally_buff_credit, exp_buff, places=4)
-        # total = direct(amped) + buff(NOT amped). Prove buff is not inside
-        # the amp product by reconstructing total both ways.
+        # total = direct(amped) + buff(NOT amped) + ability_hps_total (V2
+        # enchanter wire, ADDITIVE). Prove buff is not inside the item amp
+        # product by reconstructing total.
         self.assertAlmostEqual(
             r.total_throughput,
             r.healing_hps_raw * r.amp_multiplier * r.mode_multiplier
             + r.shielding_hps_raw * r.amp_multiplier * r.mode_multiplier
-            + exp_buff,
+            + exp_buff
+            + r.ability_hps_total,
             places=4,
         )
-        # Sanity: buff is NOT scaled by the 1.573x amp.
+        # Sanity: buff is NOT scaled by the 1.573x item amp. Both sides carry
+        # the same ability_hps_total addend so the comparison still isolates
+        # whether buff sits inside the amp product.
         self.assertNotAlmostEqual(
             r.total_throughput,
-            (r.healing_hps_raw + exp_buff) * r.amp_multiplier,
+            (r.healing_hps_raw + exp_buff) * r.amp_multiplier
+            + r.ability_hps_total,
             places=2,
         )
 
@@ -201,12 +210,17 @@ class HpsDerivationTests(unittest.TestCase):
                 msg=f"item {iid} unexpectedly carries a damage term: {keys}",
             )
 
-    def test_naked_build_is_exactly_zero_throughput(self) -> None:
+    def test_naked_build_is_exactly_zero_item_throughput(self) -> None:
+        # ability HPS folded in (V2 enchanter wire): the ITEM-side throughput
+        # of itemless Soraka is exactly 0, but total_throughput now equals her
+        # own kit's ability_hps_total.
         r = compute_hps(self.snap, "Soraka", level=11)
-        self.assertEqual(r.total_throughput, 0.0)
         self.assertEqual(r.healing_hps, 0.0)
         self.assertEqual(r.shielding_hps, 0.0)
+        self.assertEqual(r.direct_throughput, 0.0)
         self.assertEqual(r.ally_buff_credit, 0.0)
+        self.assertGreater(r.ability_hps_total, 0.0)
+        self.assertAlmostEqual(r.total_throughput, r.ability_hps_total, places=9)
 
 
 # --- HYBRID: alpha*dps + beta*ehp ---
