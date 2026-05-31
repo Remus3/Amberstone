@@ -545,6 +545,7 @@ def compute_dps(
     target_bonus_hp: float = 0.0,
     phase: Optional[str] = None,
     augments: Optional[Iterable] = None,
+    apply_mode_modifiers: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -581,6 +582,18 @@ def compute_dps(
     mode_mult = 1.0
     if mode == "ARAM":
         mode_mult = float(aram.get("aramDamageDealt", 1.0))
+    elif apply_mode_modifiers:
+        # item 232: OPT-IN wiki mode_modifiers sidecar for the non-ARAM
+        # modes (urf/ofa/usb/nb dmg_dealt MULTIPLIERS). ARAM keeps its
+        # authoritative legacy lolmath path above - do NOT route ARAM
+        # through the wiki sidecar (avoids double-count). SR + unknown +
+        # addend-only modes (ARENA/swift carry no dmg_dealt) leave
+        # mode_mult=1.0, so output stays byte-identical unless the flag is
+        # True AND the mode has a wiki dmg_dealt entry. Mirrors item 231's
+        # gate_ammo opt-in precedent: default False = byte-identical.
+        mm = snapshot.mode_modifier(resolved.champion_id, mode)
+        if isinstance(mm, dict) and "dmg_dealt" in mm:
+            mode_mult = float(mm["dmg_dealt"])
 
     item_effects = collect_effects(resolved.item_ids)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
