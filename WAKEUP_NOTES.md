@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-05-30 - item 226: DS scraper-review 3-slice fix (lolmath chat) - ability heal/shield scorer + modifier taxonomy + bounded mana valuation (commit 5a303c2; CI green run 26702508176; NO ENGINE bump - 1.63.0 stays; NO DS restart; additive)
+
+Operator pasted a lolmath dev-chat (a peer maintainer/Redymix) about moonbeam's scraper + 6 perceived issues; asked "review DS for the contents noted in here and provide a fix if needed - commenting on findings."
+
+**VERDICT (verified vs ground truth, NOT agent-relayed - drift scan: committed 16.11.1 == current scraper, 1709 blocks 0 mismatch):**
+- #1 Caitlyn W null damage_type -> no damage = NOT A BUG (Cait W has 0 `damage` blocks; Meraki omits trap damage; RC correctly scores 0).
+- #3 MIXED mis-assignment / "two `_abil_damage_type` w/ F811" = NOT A BUG (no such dup exists - agent hallucinated; `_mitigation_factor` routes MIXED 50/50, null->MAGIC, per-block honored).
+- #3b Akali electrocute proc-count / passive double-count = CANNOT EXIST (RC has ZERO rune-proc layer; Akali P = 0 damage blocks).
+- #2 + #6 + #7 = real deferred-by-design gaps -> FIXED this session.
+
+**AskUserQuestion:** operator picked all 3 buildable (#6 + #2 + #7). 3 slices, all PURELY ADDITIVE (byte-identical when knobs unset) so NO ENGINE bump + NO DS :8893 restart (phase8 70/70 vs live 1.63.0 confirms).
+
+**#6 NEW `agents/daemon_slayer/ability_hps.py`** (24 tests): champ-spell heal/shield was extracted (96 heal + 56 shield blocks) but never consumed. ROOT CAUSE found by probing: heal/shield numbers live ONLY in `raw_modifiers` (flat + % AP / % bonus AD / % max health), never the typed fields the damage `_evaluate_block` reads -> returns 0 for every heal/shield block. `compute_ability_hps` parses raw_modifiers directly: caster-side unit map + meta-attr denylist (`_META_HEAL_SHIELD_RE` skips cost-reductions/multipliers/HP-grants), mirrors ability_dps AP-amp chain, folds ARAM aramHealing/aramShielding per-side, measured cast rates. Verified vs raw data: Soraka W=130 heal, Janna E=80 shield, Sona W dual 60 heal + 65 shield.
+
+**#2 NEW `agents/daemon_slayer/modifier_blocks.py`** (22 tests): the 180 modifier blocks ARE correctly dropped from DPS - they're heterogeneous (125 pve-only / 17 target-shred / 17 defensive-self / 15 self-amp / 6 other), NOT one clean multiplier. A blanket apply would multiply champ damage by minion numbers + double-count resist shred. `classify_modifier_kind` + `summarize_modifiers` make them queryable WITHOUT corrupting DPS; target_shred (Nasus E etc.) flagged as the one real-champ-DPS class for a future deliberate slice.
+
+**#7 `rank.py` `rank_items`** (+12 tests): NEW optional `mana_value_per_point` param. DPS scorer values flat mana ~0 so Tear/Lost Chapter/Blackfire rank below burn/AP for mana casters. Adds `mana_value_per_point * mana_gained` to each candidate's `mana_adjusted_score`, sorts by it. `RankedItem` gains `mana_adjusted_score` + `mana_gained` (both default 0.0). None/0/negative = byte-identical; no effect under sort_by=efficiency or when fight_length engaged. Probed on Ziggs: Blackfire (mp+600) surfaces #5.
+
+**Verified:** DS suite 5077 / RC 4091 (+1 skip +71 subtests) / phase8 70/70 green; ruff clean repo-wide. RankResult has NO `mana_value_per_point` field (knob surfaced via notes, mirrors fight_length).
+
+**Don't-redo:** (a) Issues #1/#3/#3b are RC non-bugs - do NOT re-investigate. (b) NO ENGINE bump happened - 1.63.0 is current; all 3 slices additive. (c) `ability_hps.py` is v1 ACTIVE-only - passive-P heals (Aatrox/Vladimir/DrMundo) + target-relative units (Taric W % target max-HP) are OUT OF SCOPE v1, flagged lower-bound not silently zeroed. (d) NOTHING in the engine consumes ability_hps or modifier_blocks yet - they are data-driven substrate for a future enchanter-HPS scorer / coach surface / self-shred DPS slice (each its own engine slice + ENGINE bump when opened). (e) target_shred is the ONE modifier class with real unconditional champ-DPS impact RC does not model - future slice. (f) the 2 `.bak-units20260530-003054` files are pre-existing item-225 junk (NOT mine; left untracked).
+
+---
+
 # 2026-05-30 - item 225: DS/RC missing-data SOURCE SWEEP (5 agents) + "all 6 data only" 3-sidecar extraction + lolmath handoff (commit e2db0c2; CI green; DATA-ONLY - NO ENGINE bump, NO DS restart, NO engine wiring)
 
 Operator: "what other sites can be deep-dive researched to lift DS/RC's missing data - investigate each + trace to upstream until exhausted." Then "apply all the gains ... all 6 data only, no engine." Then commit+push + a standalone lolmath handoff.
