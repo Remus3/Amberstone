@@ -1321,7 +1321,30 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.69.0"
+ENGINE_VERSION = "1.70.0"
+# 1.70.0 (DS V2 - item 234 mana_sim opt-in ability-haste / CDR model + static-CD
+# honest no-consumer verdict. Gives the bounded rotation CDR-awareness +
+# resolves the item-233 static-CD blocker honestly. `compute_mana_bounded_combo`
+# NEW `apply_ability_haste: bool = False` (END of sig). False (DEFAULT) = raw
+# rank cooldowns, BYTE-IDENTICAL to 1.69.0. True = the build's item ability
+# haste (`_item_ability_haste.total_item_ability_haste` over the resolved item
+# list - the SAME hand-curated 16.x registry the live ability scorer uses)
+# reduces every cooldown-bearing slot in the WAIT-TO-READY clock via Riot's
+# canonical `base_cd / (1 + ability_haste / 100)`, applied UNIFORMLY to BOTH the
+# bounded + unbounded reference passes so the shared wall-clock denominator
+# stays consistent (bounded_dps <= unbounded_dps holds). A faster rotation
+# accrues less regen between casts so haste can also bind the mana gate earlier.
+# Haste only BINDS on a cooldown-REPEATING sequence (a single-cast Q-AA-W-E-R
+# combo is cast-time-bound, not cooldown-bound, so haste is moot there); on a
+# repeating sequence (e.g. Lux Q-AA-Q-AA-Q at 35 AH) cooldowns x 0.741 ->
+# duration 18.25 -> 13.58s -> bounded_dps 56.02 -> 75.27. A no-haste build
+# (ability_haste==0) is byte-identical with the flag on. STATIC-CD HONEST
+# VERDICT: the item-233 staged `ability_static_cd` bucket is NOT used to exempt
+# haste-immune slots - its QWER active-slot coverage is only 3 abilities (Amumu
+# Q / Heimerdinger R / Samira R) with a clear mislabel (Amumu Bandage Toss
+# scales with haste in-game), too unreliable to gate CDR, and a burst rotation's
+# spells all scale with haste regardless. Haste is applied UNIFORMLY. Every
+# default path byte-identical to 1.69.0.)
 # 1.69.0 (DS V2 - item 233 missile travel-time bucket + rune target_hp tags +
 # burst role + static-CD accessor. Continues item 225's owed-bucket wiring; all
 # OPT-IN / additive / byte-identical at default. (A) MISSILE -> NEW missile.py
