@@ -170,12 +170,17 @@ class ComputeHpsBasicsTests(unittest.TestCase):
         self.assertEqual(r.mode, "SR")
 
     def test_naked_build_zero_throughput(self) -> None:
+        # ability HPS folded in (V2 enchanter wire): itemless Soraka has 0
+        # ITEM throughput but her own kit (W heal) now counts. The item-only
+        # components (healing_hps_raw / shielding_hps_raw / ally_buff_credit /
+        # amp_multiplier) stay 0 / 1.0; total_throughput == ability_hps_total.
         r = compute_hps(self.snap, "Soraka", level=11)
-        self.assertEqual(r.total_throughput, 0.0)
         self.assertEqual(r.healing_hps_raw, 0.0)
         self.assertEqual(r.shielding_hps_raw, 0.0)
         self.assertEqual(r.ally_buff_credit, 0.0)
         self.assertEqual(r.amp_multiplier, 1.0)
+        self.assertGreater(r.ability_hps_total, 0.0)
+        self.assertAlmostEqual(r.total_throughput, r.ability_hps_total, places=9)
 
     def test_naked_build_has_note_about_no_match(self) -> None:
         r = compute_hps(self.snap, "Soraka", level=11)
@@ -183,9 +188,16 @@ class ComputeHpsBasicsTests(unittest.TestCase):
         self.assertIn("no enchanter formulas matched", joined)
 
     def test_non_enchanter_items_dont_contribute(self) -> None:
-        """A DPS item (BotRK) on the build should contribute 0 to HPS."""
+        """A DPS item (BotRK) on the build contributes 0 ITEM HPS.
+
+        total_throughput is no longer 0: ability HPS folded in (V2 enchanter
+        wire) - BotRK gives no AP so Soraka's ability heal is unchanged from
+        itemless, but it is still counted. The ITEM-side stays exactly 0.
+        """
         r = compute_hps(self.snap, "Soraka", level=11, item_ids=["3153"])
-        self.assertEqual(r.total_throughput, 0.0)
+        self.assertEqual(r.direct_throughput, 0.0)
+        self.assertEqual(r.ally_buff_credit, 0.0)
+        self.assertAlmostEqual(r.total_throughput, r.ability_hps_total, places=9)
 
     def test_redemption_alone_matches_curated_formula(self) -> None:
         """lvl 11 + Redemption (3107): per_proc=150 + 10*11.76=267.6;
@@ -211,16 +223,26 @@ class ComputeHpsBasicsTests(unittest.TestCase):
         self.assertEqual(r.healing_hps_raw, 0.0)
         self.assertEqual(r.shielding_hps_raw, 0.0)
         self.assertAlmostEqual(r.amp_multiplier, 1.30, places=4)
-        # Total = 0 × 1.30 + 0 buff = 0.
-        self.assertEqual(r.total_throughput, 0.0)
+        # Item direct = 0 x 1.30 + 0 buff = 0. total_throughput is now the
+        # ability HPS only (folded in, V2 enchanter wire); Moonstone's AP
+        # raises Soraka's own kit heal above the itemless value.
+        self.assertEqual(r.direct_throughput, 0.0)
+        self.assertEqual(r.ally_buff_credit, 0.0)
+        self.assertAlmostEqual(r.total_throughput, r.ability_hps_total, places=9)
 
     def test_ardent_alone_provides_buff_credit_only(self) -> None:
-        """Ardent (3504): 0 direct heal, 15 ally_buff_credit, 10% amp."""
+        """Ardent (3504): 0 direct heal, 15 ally_buff_credit, 10% amp.
+
+        ITEM direct stays 0 + buff 15; total_throughput now also folds in
+        ability HPS (V2 enchanter wire) so total == 15.0 + ability_hps_total.
+        """
         r = compute_hps(self.snap, "Soraka", level=11, item_ids=["3504"])
         self.assertEqual(r.healing_hps_raw, 0.0)
         self.assertAlmostEqual(r.ally_buff_credit, 15.0, places=3)
         self.assertAlmostEqual(r.amp_multiplier, 1.10, places=4)
-        self.assertAlmostEqual(r.total_throughput, 15.0, places=3)
+        self.assertAlmostEqual(
+            r.total_throughput, 15.0 + r.ability_hps_total, places=3
+        )
 
     def test_locket_alone_shields_not_heals(self) -> None:
         """Locket (3190): pure shield output, no heal."""
@@ -264,8 +286,12 @@ class AmpPipelineTests(unittest.TestCase):
         )
         # Ardent buff_credit = 15.0, unaffected by Moonstone's 30% amp.
         self.assertAlmostEqual(r.ally_buff_credit, 15.0, places=3)
-        # Total = 0 × amp + 15.0 = 15.0
-        self.assertAlmostEqual(r.total_throughput, 15.0, places=3)
+        # Item direct = 0 x amp + 15.0 buff; total_throughput now also folds
+        # in ability HPS (V2 enchanter wire) so total == 15.0 + ability.
+        self.assertEqual(r.direct_throughput, 0.0)
+        self.assertAlmostEqual(
+            r.total_throughput, 15.0 + r.ability_hps_total, places=3
+        )
 
     def test_buff_credit_sums_across_items(self) -> None:
         """Multiple buff items sum their credits."""
@@ -293,9 +319,12 @@ class AmpPipelineTests(unittest.TestCase):
         )
         # buff_credit = 15.0 (Ardent only - Moonstone is amp, Redemption is direct heal)
         self.assertAlmostEqual(r.ally_buff_credit, 15.0, places=3)
-        # total = direct + buff
+        # total = direct + buff + ability_hps_total (ability HPS folded in,
+        # V2 enchanter wire; healing_hps is the item-only direct heal).
         self.assertAlmostEqual(
-            r.total_throughput, r.healing_hps + 15.0, places=3
+            r.total_throughput,
+            r.healing_hps + 15.0 + r.ability_hps_total,
+            places=3,
         )
 
 
@@ -463,17 +492,26 @@ class EdgeCaseTests(unittest.TestCase):
         self.assertIn("Ardent", out)
 
     def test_chemtech_putrifier_contributes_zero(self) -> None:
-        """Chemtech (3011) is anti-heal; intentionally excluded from registry."""
+        """Chemtech (3011) is anti-heal; intentionally excluded from registry.
+
+        ITEM throughput stays 0; total_throughput now folds in ability HPS
+        (V2 enchanter wire) so it equals Soraka's ability_hps_total.
+        """
         r = compute_hps(self.snap, "Soraka", level=11, item_ids=["3011"])
-        self.assertEqual(r.total_throughput, 0.0)
+        self.assertEqual(r.direct_throughput, 0.0)
+        self.assertEqual(r.ally_buff_credit, 0.0)
+        self.assertAlmostEqual(r.total_throughput, r.ability_hps_total, places=9)
 
     def test_aram_mirror_id_not_in_registry_contributes_zero(self) -> None:
         """ARAM Redemption (323107) is not in the curated registry by id."""
         r = compute_hps(self.snap, "Soraka", level=11, item_ids=["323107"], mode="ARAM")
-        # Either zero (mirror not in registry) or behaves like SR Redemption
-        # depending on engine - Phase 6 v1 chose "by ID match," so mirrors
-        # without registry entries contribute zero.
-        self.assertEqual(r.total_throughput, 0.0)
+        # Phase 6 v1 chose "by ID match," so mirrors without registry entries
+        # contribute zero ITEM throughput. total_throughput now folds in
+        # ability HPS (V2 enchanter wire; ARAM-scaled), so it equals
+        # ability_hps_total - the ITEM side is still exactly 0.
+        self.assertEqual(r.direct_throughput, 0.0)
+        self.assertEqual(r.ally_buff_credit, 0.0)
+        self.assertAlmostEqual(r.total_throughput, r.ability_hps_total, places=9)
 
 
 class HpsItemContributionTests(unittest.TestCase):
