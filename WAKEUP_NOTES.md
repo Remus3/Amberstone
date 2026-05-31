@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-05-31 - item 229: DS V2 S2/S3/S4 + L - unified fight-report + rune wire into burst/combo + rune registry expand + lolmath re-review (ENGINE 1.64.0 -> 1.65.0; HEAD = this docs commit; pushed 7f1be83..HEAD = merges 8cc0c65/725af3c/5f74246 + bump 2e8db97 + docs; DS :8893 restarted serves 1.65.0)
+
+Operator: "continue DS V2: S2 unified fight-report, S3 wire rune_procs into burst/combo (byte-identical default, ENGINE 1.64.0 -> 1.65.0), S4 expand rune_procs (DDragon-verbatim), re-review lolmath post-2026-05-30. Parallel disjoint slices per item 228. Pre-flight clean S1+227 worktrees. CI+smoke+commit+push+/done." Headless-upgrade run; 3 parallel worktree agents (disjoint files) orchestrator-merged 0 conflicts + L inline. Pre-flight: unlocked + removed 7 stale worktrees (S1+item 227) + pruned branches; CI green; 0 PRs.
+
+S2 (feat 4679deb -> merge 5f74246) NEW agents/daemon_slayer/fight_report.py: FightReport frozen dataclass (31 fields) + compute_fight_report(champion, level, item_ids, sequence, runes, target_*, mode, snapshot) COMPOSING all 5 substrate modules (mana_sim + rune_procs + self_shred + ability_hps + scenario_matrix), fail-soft per-section (one section raising -> note + that section zeroed, never raises). NEW POST /v2/fight-report route in server.py (15th _POST_ROUTE; _route_fight_report mirrors _route_burst; auto-joins _GET_DISPATCH_ROUTES). Rune section resolves caster stats via build_champion + AbilityContext.from_build (bonus_ad/ap/caster_bonus_hp/caster_max_hp), INDEPENDENT of S3's burst wire (no double-count). Scenario section sweeps 2 levels x 3 armor profiles = 6 cells + check_invariants. +9 tests. Live probe: Lux bounded 498.4 / rune_burst 245.0 / cells 6 / violations 0 / ability_hps_total 1.86.
+
+S3 (feat 5e55770 -> merge 725af3c) burst.py + combo.py: NEW optional `runes: Optional[Sequence[int]] = None`. BYTE-IDENTICAL when None/empty (rune_proc_damage=0.0, the existing total_burst line untouched on the None path). When runes passed: rune_proc_damage = sum compute_rune_proc_damage(rid, ad=ctx.bonus_ad, ap=ap_total, bonus_hp=ctx.caster_bonus_hp, target_max_hp, mode) over proc_type in {on_proc_burst, per_attack, stacking_amp}; CONQUEROR adaptive EXCLUDED (per-stack stat-force, not damage); keystone_amp applied to ability+AA base (PtA 1.08); total_burst = amped_base + rune_proc_damage. NEW BurstResult.rune_proc_damage field (default 0.0) + to_dict. combo threads runes -> burst, folds rune_proc_damage into total + note. +14 tests. Lux/Caitlyn burst + Lux combo pins stay green.
+
+S4 (feat c93244f -> merge 8cc0c65) rune_procs.py 8 -> 14, all DDragon 16.11.1 verbatim: 8214 Summon Aery on_proc_burst (10-50 by level + 0.10 bAD + 0.05 AP adaptive; shield side NOT modeled), 8437 Grasp of the Undying on_proc_burst (0.035*caster_max_hp magic via **extra; ranged 40% caller's job), 8439 Aftershock on_proc_burst (25-120 by level + 0.08 bonus_hp), 8369 First Strike stacking_amp 1.07 (7% true; compute 0.0), 8014 Coup de Grace stacking_amp 1.08 (<40% HP target), 8017 Cut Down stacking_amp 1.08 (>60% HP target). len(RUNE_PROCS)==14; 8 originals unchanged. ID-CORRECTION: brief said "Coup de Grace 8299 / Cut Down 8014" - BOTH crossed; DDragon authoritative 8299=Last Stand / 8014=Coup de Grace / 8017=Cut Down (documented inline). keystone_amp unchanged (3 new amps flow through generically).
+
+L: lolmath changelog (https://lolmath.net/info/changelog/) re-review post-2026-05-30 = 0 NEW entries; latest is 2026-05-22 (stat-growth revert, already CLOSED item 227). CLEAN, nothing actionable.
+
+ENGINE bump (2e8db97): 1.64.0 -> 1.65.0 + 34 test-pin sync (tests/*.py only; agent test files carry NO version pin). Living docs synced (DAEMON_SLAYER L5+L32 / README L46 / BRIEF L20+L26 / ARCH L161) - item 228 had left them stale at 1.63.0/5191, fixed to 1.65.0/5264.
+
+Verified: DS suite 5204 -> 5264 (+60); RC suite 4091 passed / 0 fail; phase8 70/70 post-restart; ruff repo-wide ALL CHECKS PASSED; 0 non-ASCII added. DS :8893 killed pid 19404 + schtasks Run -> /health engine 1.65.0 / patch 16.11.1 / 172 / 705. RC :8888 NOT restarted (DS-only + the server.py route goes live via the DS restart, not RC).
+
+DON'T-REDO: (a) S3 runes=None is BYTE-IDENTICAL (None-path total line untouched; Lux/Caitlyn pins lock it) - do NOT change the None path. (b) Conqueror 8010 EXCLUDED from burst damage total (adaptive stat-stack, not damage); do NOT add it. (c) rune ids 8014=Coup de Grace / 8017=Cut Down / 8299=Last Stand (brief crossed them; DDragon won) - do NOT "fix" back. (d) Grasp 8437 reads caster_max_hp via **extra (not a fixed kwarg); fight_report passes it. (e) fight_report computes its rune section INDEPENDENTLY (build_champion + AbilityContext), NOT via burst's runes param, to avoid double-count - keep them separate. (f) lolmath 0 actionable (re-confirmed); skip unless entries appear after 2026-05-31. (g) ability_hps resolve_target_relative stays False in LIVE compute_hps (item 228 honest lower bound).
+
+NEXT (operator-gated, each own ENGINE bump): (1) wire rune_procs into the LIVE :8893 rank scorers (rank_items_by_burst /rank-assassin) so build ranking values keystone runes - RE-RANKS assassin builds (validate). (2) mana_sim + runes as scenario_matrix metrics. (3) expand rune coverage - per_attack runes (Lethal Tempo / Fleet Footwork / Hail of Blades) not yet modeled. (4) item 225 6 data sidecar buckets still owed wiring.
+
+CARRY: cost/latency 7-lever sweep NOT run (V2-focused session). Git-Bash mangles taskkill/schtasks (path coercion) - use PowerShell tool for DS restart (taskkill /F /PID then schtasks /Run). Anomaly RC-CostHealthWatchdog (carry). 3 S2/S3/S4 worktrees harness-locked -> next pre-flight cleans. Frozen-file grant NOT used.
+
+---
+
 # 2026-05-31 - item 228: DS V2 S1 - wire ability_hps v2 into LIVE enchanter HPS scorer (ENGINE 1.63.0 -> 1.64.0; HEAD 965bbb9; pushed 1288141..965bbb9; DS :8893 restarted serves 1.64.0)
 
 Operator: "continue DS V2 next slices: wire ability_hps v2 into live ds.hps; compose 5 substrate into unified V2 fight-report; wire rune_procs into burst/combo; expand rune+champ coverage; review lolmath changelog; parallel agents; full+frozen rights; do not solely trust current DS; CI+smoke+commit+push+/done." Headless-upgrade run; CONTEXT RAN OUT after S1 -> wrapped per protocol. Only S1 shipped this session; S2/S3/S4/L are carry-forward (all designed in docs/DS_V2_PLAN.md + mapped this session).
@@ -39,27 +63,3 @@ DON'T-REDO: all 5 additive (no auto-wire); ability_hps P-heal = data ceiling (do
 NEXT (operator-gated, ENGINE bump each, the repeatable continue picks up): (1) wire ability_hps v2 -> LIVE ds.hps enchanter scorer (re-ranks builds + lower-bound -> validate; DEFERRED from blind overnight); (2) unified V2 fight-report compose 5 modules; (3) wire rune_procs into burst/combo; (4) expand rune+champ coverage + mana_sim as scenario_matrix metric. Item 225's 6 data sidecar buckets still owed wiring.
 
 CARRY: 6 R1 agent worktrees harness-locked (live pids 4044/20624) - next pre-flight cleans. Anomaly RC-CostHealthWatchdog last_result=1 (pre-existing watchdog; flag for operator). Frozen-file grant NOT used.
-
----
-
-# 2026-05-30 - item 226: DS scraper-review 3-slice fix (lolmath chat) - ability heal/shield scorer + modifier taxonomy + bounded mana valuation (commit 5a303c2; CI green run 26702508176; NO ENGINE bump - 1.63.0 stays; NO DS restart; additive)
-
-Operator pasted a lolmath dev-chat (a peer maintainer/Redymix) about moonbeam's scraper + 6 perceived issues; asked "review DS for the contents noted in here and provide a fix if needed - commenting on findings."
-
-**VERDICT (verified vs ground truth, NOT agent-relayed - drift scan: committed 16.11.1 == current scraper, 1709 blocks 0 mismatch):**
-- #1 Caitlyn W null damage_type -> no damage = NOT A BUG (Cait W has 0 `damage` blocks; Meraki omits trap damage; RC correctly scores 0).
-- #3 MIXED mis-assignment / "two `_abil_damage_type` w/ F811" = NOT A BUG (no such dup exists - agent hallucinated; `_mitigation_factor` routes MIXED 50/50, null->MAGIC, per-block honored).
-- #3b Akali electrocute proc-count / passive double-count = CANNOT EXIST (RC has ZERO rune-proc layer; Akali P = 0 damage blocks).
-- #2 + #6 + #7 = real deferred-by-design gaps -> FIXED this session.
-
-**AskUserQuestion:** operator picked all 3 buildable (#6 + #2 + #7). 3 slices, all PURELY ADDITIVE (byte-identical when knobs unset) so NO ENGINE bump + NO DS :8893 restart (phase8 70/70 vs live 1.63.0 confirms).
-
-**#6 NEW `agents/daemon_slayer/ability_hps.py`** (24 tests): champ-spell heal/shield was extracted (96 heal + 56 shield blocks) but never consumed. ROOT CAUSE found by probing: heal/shield numbers live ONLY in `raw_modifiers` (flat + % AP / % bonus AD / % max health), never the typed fields the damage `_evaluate_block` reads -> returns 0 for every heal/shield block. `compute_ability_hps` parses raw_modifiers directly: caster-side unit map + meta-attr denylist (`_META_HEAL_SHIELD_RE` skips cost-reductions/multipliers/HP-grants), mirrors ability_dps AP-amp chain, folds ARAM aramHealing/aramShielding per-side, measured cast rates. Verified vs raw data: Soraka W=130 heal, Janna E=80 shield, Sona W dual 60 heal + 65 shield.
-
-**#2 NEW `agents/daemon_slayer/modifier_blocks.py`** (22 tests): the 180 modifier blocks ARE correctly dropped from DPS - they're heterogeneous (125 pve-only / 17 target-shred / 17 defensive-self / 15 self-amp / 6 other), NOT one clean multiplier. A blanket apply would multiply champ damage by minion numbers + double-count resist shred. `classify_modifier_kind` + `summarize_modifiers` make them queryable WITHOUT corrupting DPS; target_shred (Nasus E etc.) flagged as the one real-champ-DPS class for a future deliberate slice.
-
-**#7 `rank.py` `rank_items`** (+12 tests): NEW optional `mana_value_per_point` param. DPS scorer values flat mana ~0 so Tear/Lost Chapter/Blackfire rank below burn/AP for mana casters. Adds `mana_value_per_point * mana_gained` to each candidate's `mana_adjusted_score`, sorts by it. `RankedItem` gains `mana_adjusted_score` + `mana_gained` (both default 0.0). None/0/negative = byte-identical; no effect under sort_by=efficiency or when fight_length engaged. Probed on Ziggs: Blackfire (mp+600) surfaces #5.
-
-**Verified:** DS suite 5077 / RC 4091 (+1 skip +71 subtests) / phase8 70/70 green; ruff clean repo-wide. RankResult has NO `mana_value_per_point` field (knob surfaced via notes, mirrors fight_length).
-
-**Don't-redo:** (a) Issues #1/#3/#3b are RC non-bugs - do NOT re-investigate. (b) NO ENGINE bump happened - 1.63.0 is current; all 3 slices additive. (c) `ability_hps.py` is v1 ACTIVE-only - passive-P heals (Aatrox/Vladimir/DrMundo) + target-relative units (Taric W % target max-HP) are OUT OF SCOPE v1, flagged lower-bound not silently zeroed. (d) NOTHING in the engine consumes ability_hps or modifier_blocks yet - they are data-driven substrate for a future enchanter-HPS scorer / coach surface / self-shred DPS slice (each its own engine slice + ENGINE bump when opened). (e) target_shred is the ONE modifier class with real unconditional champ-DPS impact RC does not model - future slice. (f) the 2 `.bak-units20260530-003054` files are pre-existing item-225 junk (NOT mine; left untracked).
