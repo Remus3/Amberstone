@@ -59,6 +59,14 @@ jobs:
       - name: ruff lint
         run: ruff check .
 
+      - name: DS Share package in sync
+        run: |
+          # The Share/ external-review package mirrors the live DS engine.
+          # --check re-derives the deterministic Share/src mirror and exits 1
+          # if it drifts from the live engine - so any DS change that forgot
+          # to re-sync (py tools/ds_share_sync.py) fails here. Pure stdlib.
+          python tools/ds_share_sync.py --check
+
       - name: smoke + regression tests
         run: |
           pytest tests/phase2_smoke tests/snapshot_regressions tests/phase8_smoke \
