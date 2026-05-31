@@ -647,6 +647,7 @@ def compute_ehp(
     augments: Optional[Iterable] = None,
     enemy_champions: Iterable[str] = (),
     include_conditional: bool = False,
+    apply_mode_modifiers: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -708,6 +709,18 @@ def compute_ehp(
     mr = float(stats.get("mr", 0.0))
 
     mode_mult = _aram_damage_taken(snapshot, resolved.champion_id, mode)
+    if mode != "ARAM" and apply_mode_modifiers:
+        # item 232: OPT-IN wiki mode_modifiers sidecar for the non-ARAM
+        # modes (urf/ofa/usb/nb dmg_taken MULTIPLIERS). ARAM keeps its
+        # authoritative legacy aramDamageTaken path above (the helper
+        # returns 1.0 outside ARAM) - do NOT route ARAM through the wiki
+        # sidecar (avoids double-count). SR + unknown + addend-only modes
+        # (ARENA/swift carry no dmg_taken) leave mode_mult=1.0, so EHP
+        # stays byte-identical unless the flag is True AND the mode has a
+        # wiki dmg_taken entry. Mirrors item 231's gate_ammo opt-in.
+        mm = snapshot.mode_modifier(resolved.champion_id, mode)
+        if isinstance(mm, dict) and "dmg_taken" in mm:
+            mode_mult = float(mm["dmg_taken"])
     # Division-safety: never let a future data corruption pin
     # aramDamageTaken to 0 and explode the EHP math.
     safe_mult = mode_mult if mode_mult > 0 else 1.0
