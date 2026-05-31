@@ -240,6 +240,7 @@ def compute_combo(
     target_bonus_hp: float = 0.0,
     mode: str = "SR",
     snapshot: Optional[DataSnapshot] = None,
+    runes: Optional[Sequence[int]] = None,
 ) -> ComboResult:
     """Walk a clock over an ordered cast/attack list; per-hit mitigated dmg.
 
@@ -286,7 +287,7 @@ def compute_combo(
             snap, champ, int(level), item_ids=list(item_ids or []),
             mode=mode, target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
-            combo_sequence=seq,
+            combo_sequence=seq, runes=runes,
         )
     except Exception as exc:  # fail-soft: surface a note, never raise
         notes.append(f"burst walker failed: {str(exc)[:120]}")
@@ -393,6 +394,17 @@ def compute_combo(
         notes.append(f"sequence truncated at {MAX_DURATION_S:.0f}s clock cap")
     if len(seq) >= MAX_ACTIONS:
         notes.append(f"sequence capped at {MAX_ACTIONS} actions")
+
+    # DS V2 S3 - fold the burst walker's optional rune-proc aggregate into the
+    # combo totals so the timeline total reflects keystone/proc runes. The
+    # rune burst is a single aggregate on the BurstResult (NOT per-cast), so
+    # it is added once to total_raw + total_mitigated rather than to a hit
+    # row. ``rune_proc_damage`` is 0.0 when ``runes`` is None -> byte-identical.
+    rune_proc = float(getattr(burst, "rune_proc_damage", 0.0) or 0.0)
+    if rune_proc > 0.0:
+        total_raw += rune_proc
+        total_mitigated += rune_proc
+        notes.append(f"rune procs +{rune_proc:.1f} folded into combo total")
 
     return ComboResult(
         champion=burst.champion_id or champ,
