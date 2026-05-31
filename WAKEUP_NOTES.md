@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-05-30 - item 227: DS V2 bounded-combat-simulator substrate (5-slice parallel headless-upgrade run) (HEAD 7353be0; pushed acaf2fe..7353be0; CI green run 26703611726; NO ENGINE bump - 1.63.0 stays; NO DS restart; all 5 modules ADDITIVE, not wired into live :8893 scorers)
+
+Operator: "continue DS missing-by-design + implement missing designs; review lolmath changelog; expand DS in parallel; V2; mana real-usage-not-infinite; cross-interaction fight sims; full + frozen rights; do not solely trust current DS for V2 - start implementation + put-off items." Re-issued same prompt mid-dispatch (no in-flight slice) -> task re-assert, continued.
+
+V2 = steady-state DPS calculator -> BOUNDED COMBAT SIMULATOR. Plan + contracts in NEW docs/DS_V2_PLAN.md. 6 parallel worktree agents on disjoint files, orchestrator-merged (5 commit-bearing + 1 read-only); 0 conflicts. DS 5077 -> 5191 (+114). Full DS suite green, ruff clean, CI green.
+
+5 substrate modules (ALL additive, nothing wired into live scorers - do NOT auto-wire):
+- mana_sim.py (545/19t): finite-mana bounded rotation; pool=stats.scaled mp + item mana, regen/5; OOM-gates burst per-cast .cost; manaless/energy ungated (bounded==unbounded). Wait-to-ready cooldown (not combo skip) so the gate binds. Lux L9 14/24 OOM -> +Tear 18 -> +Archangel's 21 monotonic.
+- rune_procs.py (396/32t): net-new rune layer (RC had ZERO). 8 runes; ALL coeffs verified+corrected vs LIVE DDragon 16.11.1 (brief numbers stale).
+- ability_hps.py v2 (+154/-21; 17+22t): passive-P + target-relative/missing-HP units. HONEST: zero P-form heal damage_blocks in snapshot (heals in stripped effects-text) = data ceiling, asserted not fabricated. v1 byte-identical.
+- self_shred.py (401/21t): target_shred -> own-DPS uplift; AD-reduction shreds (Trundle/Tryndamere) correctly skipped.
+- scenario_matrix.py (431/25t): cross-interaction sweep + 5 invariants + violation probe (not a no-op).
+- lolmath changelog: 0 NOW / 0 FUTURE / 7 CLOSED - all already correct in RC or by-design.
+
+DON'T-REDO: all 5 additive (no auto-wire); ability_hps P-heal = data ceiling (do NOT re-hunt); rune coeffs DDragon-verified (trust formula strings); mana_sim wait-to-ready intentional; lolmath nothing actionable.
+
+NEXT (operator-gated, ENGINE bump each, the repeatable continue picks up): (1) wire ability_hps v2 -> LIVE ds.hps enchanter scorer (re-ranks builds + lower-bound -> validate; DEFERRED from blind overnight); (2) unified V2 fight-report compose 5 modules; (3) wire rune_procs into burst/combo; (4) expand rune+champ coverage + mana_sim as scenario_matrix metric. Item 225's 6 data sidecar buckets still owed wiring.
+
+CARRY: 6 R1 agent worktrees harness-locked (live pids 4044/20624) - next pre-flight cleans. Anomaly RC-CostHealthWatchdog last_result=1 (pre-existing watchdog; flag for operator). Frozen-file grant NOT used.
+
+---
+
 # 2026-05-30 - item 226: DS scraper-review 3-slice fix (lolmath chat) - ability heal/shield scorer + modifier taxonomy + bounded mana valuation (commit 5a303c2; CI green run 26702508176; NO ENGINE bump - 1.63.0 stays; NO DS restart; additive)
 
 Operator pasted a lolmath dev-chat (a peer maintainer/Redymix) about moonbeam's scraper + 6 perceived issues; asked "review DS for the contents noted in here and provide a fix if needed - commenting on findings."
@@ -41,33 +63,3 @@ Operator: "what other sites can be deep-dive researched to lift DS/RC's missing 
 **lolmath handoff** `Desktop\lolmath_handoff\` (NON-repo): standalone README + 3 data files + 3 tools + sweep doc. a peer maintainer replied they do NOT pull the wiki + think it needs HTML scraping - README now explicitly answers: MediaWiki API not scraping (action=raw = whole roster in 1 GET; action=query batches Template:Data; non-browser UA gotcha). So the wiki-derived buckets are genuinely net-new to lolmath.
 
 **Carries (tomorrow-you):** (a) ENGINE WIRING of the 6 buckets is the next slice IF operator opens it - data is staged on disk, consumers deferred (each its own batch + ENGINE bump + DS restart + DPS validation). DO NOT auto-wire. (b) DO NOT re-research: CC-duration-seconds (ceiling), 110 default-AA champs (ceiling), Arena/Swiftplay dmg-mult (does not exist - stat overrides only), all 13 downstream sites, anything below CDragon (byte-equiv). (c) wiki access: non-browser UA passes / Mozilla trips Cloudflare 403; CDragon URL 2-segment (16.11 not 16.11.1). (d) all item 224/223/221 carries unchanged.
-
----
-
-# 2026-05-30 - item 223 + 222: Electron Phase 1 companion shell + living-doc reconciliation + 2 stale-carry closes (electron merge 8d398ab + docs 8662b87; rc-shell/ NEW only; NO ENGINE bump; NO DS/RC restart)
-
-Operator "in parallel: start all Open/actionable" (4th same-prompt drain). Grounded stale-sweep first (2 read-only sub-agents) - the actionable-headless well is down to Electron Phase 1; everything else is live-gated or operator-input-blocked.
-
-**item 223 - Electron Phase 1 companion shell (merge 8d398ab):** Phase 1 of item-214's 6-phase plan (`docs/ELECTRON_OVERLAY.md`) - the companion/pop-out window (surface A), NOT the in-game overlay. NEW `rc-shell/` (9 files, zero existing-file touch): package.json (electron ^33), src/config.js PURE (resolveConfig env RC_ORIGIN > saved > default + SIZE_PRESETS + clampPosition + applyPreset), src/store.js PURE atomic position persistence (tolerates missing/corrupt -> defaults), src/main.js (frameless BrowserWindow loads resolveConfig().origin default https://legion-rc:8888, restores+persists window pos, SCOPED certificate-error handler gated to RC origin host only - NOT global cert-disable), src/preload.js (contextIsolation true, near-empty), test/*.test.js (node:test, no electron dep), README + .gitignore. RC_ORIGIN config-not-code (flips to 127.0.0.1:8888 post-consolidation, zero code change). Vanguard-safe (DWM window, no DXGI/memory/injection/globalShortcut). Verified: node --check 6/6; node --test 41/41 pass; npm install SUCCEEDED (electron 33.4.11; npm egress reachable unlike wiki.gg); ASCII clean; merge 0 files outside rc-shell/.
-
-**item 222 - living-doc reconciliation + stale closes (8662b87):** README/BRIEF/DAEMON_SLAYER/ARCHITECTURE current-state numbers 4872/4894 -> 5021 tests + BRIEF ENGINE 1.61.0 -> 1.63.0 (stale since item 219). Coverage prose + dated anchors untouched (DS-coverage + no-history-rewrite rules). 2 ROADMAP carries verified STALE + closed: Page #3 Replay flex-alloc (item 185 already retuned 320/360) + only_item_ids threading (fixed 2026-05-18 9bba79a, full chain wired + test exists).
-
-**Carries forward (tomorrow-you):** (a) Electron VISUAL LAUNCH OWED (`cd rc-shell && npm install && npm start`) - window render operator-gated (headless host). (b) Electron Phase 2 (in-game overlay) is the next slice when operator opens it - DWM compositor, Borderless, hide on resolution-swap per BSOD memories; do NOT build Phase 2-6 unscoped. (c) cert-trust SCOPED to RC origin - never global-disable. (d) config.js/store.js stay PURE (no electron import) so node:test needs no electron. (e) all item 221 carries unchanged (wiki sidecar DATA still owed - host edge-blocked).
-
----
-
-# 2026-05-30 - item 221 NEAR-COMPLETE: lolmath-wiki extractor + combo.py consumer wire shipped (2 commits db4c268 + merge 56980d6; NO ENGINE bump 1.63.0; NO DS restart; RC restarted for combo/data_loader). ONLY sidecar DATA owed - wiki host-blocked (re-probed +35min, still 401)
-
-Operator "in parallel: start all Open/actionable" (3rd same-prompt drain). AskUserQuestion picked lolmath-wiki off BACKLOG:20; on the wiki-blocked fork picked "ship tool now, data+wire owed". Targets item-217 GO-conditional (`docs/LOLMATH_WIKI_SOURCE_2026-05-30.md`).
-
-**Shipped:** NEW `tools/daemon_slayer_wiki_stats_extract.py` (offline patch-refresh, mirrors abilities-extractor: stdlib urllib + UA + --sleep + fail-soft + atomic + ASCII + argparse). Calls `action=expandtemplates&text={{#invoke:ChampionData|get|<DisplayName>|<field>}}` (lean; item-217 probe verified Aatrox attack_cast_time->0.3). Fields: attack_cast_time (AA windup; replaces combo.py `_DEFAULT_AA_WINDUP_S=0.25` per-champ) + missile_speed (ranged; bare-then-`stats.` fallback). Champ ids from abilities snapshot top-level `data` dict (171 @ 16.11.1; keyed under `data` NOT `champions`). Names from `data/meta_build/ddragon/<patch>/champion.json` `.data.<id>.name` (ChampionData keyed by DISPLAY name - Kaisa->Kai'Sa, MonkeyKing->Wukong). NEW `tests/test_wiki_stats_extract.py` 33 offline tests (no network; monkeypatched `_expand`).
-
-**BLOCKER:** live extraction did NOT run, NO sidecar data committed - wiki edge-blocked EVERY call from Legion (401 tool-UA / 403 + wiki.gg "Blocked" interstitial browser-UA = Cloudflare bot-block, NOT a UA gate; clean sub-agent probe confirmed). Item-217 agent reached it earlier same day -> likely rate-trip from my ~40 probes or host-egress rule, not permanent. Tool `--dry-run` from Legion correctly prints `WARNING: 0 champs resolved a cast time ... NOT a committable sidecar` + writes nothing.
-
-**Verified:** py_compile + ruff clean; 33/33 offline tests; dry-run WARNING proven; no wiki_stats.json written.
-
-**Process note:** an over-optimistic earlier batch drafted FABRICATED build outcomes ("action=bucket DEAD", "172/170 with cast_time") from misread all-401s; cascade-cancel + manual `git checkout` of 4 docs reverted ALL of it pre-commit. Shipped tool carries ONLY item-217-verified claims + edge-block note. ([[feedback_verify_generated_reports]] + [[feedback_verify_before_declare_broken]].)
-
-**combo wire DONE (merge 56980d6):** data_loader DataSnapshot optional `wiki_stats` frozen field + `wiki_attack_cast_time()` accessor (load() reads `_read_optional("wiki_stats.json")`; missing/degenerate -> {} never raises); combo.py AA windup reads per-champ value when present, else `_DEFAULT_AA_WINDUP_S`=0.25 (the existing default, found+preserved). SPELL path untouched (Meraki authoritative). Byte-identical when sidecar absent OR all-null (pinned by ComboWireTests). 13 new tests; DS suite 5008->5021. A degenerate all-401 wiki_stats.json from the first optimistic run was written-but-never-committed (untracked); DELETED so absent-path is genuinely exercised.
-
-**The ONE remaining OWED piece:** run `py tools/daemon_slayer_wiki_stats_extract.py --patch 16.11.1` from a host that reaches wiki.gg (Legion is host-blocked: 401 on every call, confirmed persistent at +35min - NOT a transient rate-trip; the wiki itself is live per item-217). Commit `data/daemon_slayer/16.11.1/wiki_stats.json` ONLY if `_with_cast_time>0`. The moment a real sidecar lands, combo.py consumes it with NO further code change. Plus: action=bucket mode-mults (Arena/URF/NB) NOT built (ARAM Meraki-covered); all item 220 carries unchanged.
