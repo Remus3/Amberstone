@@ -186,6 +186,15 @@ class RankedItem:
     # is called with a positive ``fight_length`` and the rows are then sorted
     # by this score instead of ``delta_dps``.
     effective_score: float = 0.0
+    # 2026-05-30 mana-valuation knob: bounded mana valuation knob. The DPS scorer
+    # values flat mana at ~0 (mana is invisible to auto-attack DPS), so early
+    # mana items (Tear 240, Lost Chapter 300) rank below burn/AP items for a
+    # mana-dependent caster even when the mana sustain is the point. When
+    # ``rank_items(mana_value_per_point=...)`` is set, this carries
+    # ``delta_dps + mana_value_per_point * mana_gained`` and the rows sort by
+    # it. Both default 0.0 -> byte-identical when the knob is unused.
+    mana_adjusted_score: float = 0.0
+    mana_gained: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -201,6 +210,8 @@ class RankedItem:
             "dead_unique_key": self.dead_unique_key,
             "unique_passive_key": self.unique_passive_key,
             "effective_score": self.effective_score,
+            "mana_adjusted_score": self.mana_adjusted_score,
+            "mana_gained": self.mana_gained,
         }
 
 
@@ -410,6 +421,7 @@ def rank_items(
     augments: Optional[Iterable] = None,
     filter_shared_uniques: bool = True,
     fight_length: Optional[float] = None,
+    mana_value_per_point: Optional[float] = None,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -453,10 +465,28 @@ def rank_items(
     value is exposed on each ``RankedItem``. Fail-soft: a candidate whose burst
     is unavailable falls back to a delta-only effective score and never raises.
     Non-positive ``fight_length`` is treated as ``None`` (default ranking).
+
+    ``mana_value_per_point`` is the OPTIONAL bounded mana-valuation knob
+    (ENGINE 1.64.0). The auto-attack DPS scorer values flat mana at ~0, so a
+    mana-dependent caster (Ziggs, Cassiopeia) sees early mana items (Tear 240
+    mana, Lost Chapter 300 mana) rank below burn/AP items even when the mana
+    sustain is the actual play. When ``None`` (default) the output is
+    byte-identical to before - ``mana_adjusted_score`` / ``mana_gained`` stay
+    0.0 and the sort key is unchanged. When a POSITIVE float (DPS-equivalent
+    worth of one mana point), each candidate's ``mana_adjusted_score`` becomes
+    ``delta_dps + mana_value_per_point * mana_gained`` (mana_gained = the flat
+    mana the item adds over the baseline build) and the default ranking sorts
+    by it. It has NO effect under ``sort_by="efficiency"`` or when
+    ``fight_length`` is engaged (those own the sort key). A sane starting
+    value is small (e.g. 0.02); it is operator-tunable, not a claim that mana
+    has a fixed DPS price. Non-positive is treated as ``None``.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
+    # Bounded mana valuation knob (ENGINE 1.64.0). Only a positive float
+    # engages it; None / non-positive -> byte-identical default ranking.
+    mana_reweight = mana_value_per_point is not None and mana_value_per_point > 0.0
 
     # Fight-length-reweight knob (item 219 C). Only a positive float engages
     # the burst reweight; None / non-positive -> default delta-only ranking
@@ -589,6 +619,20 @@ def rank_items(
             # delta-only effective score for this candidate (no burst term).
             burst_gain = (trial_burst - baseline_burst) if trial_burst > 0.0 else 0.0
             effective = burst_gain + delta * float(fight_length)
+        # Bounded mana valuation (ENGINE 1.64.0). mana_gained is the flat mana
+        # this item adds over the baseline build (mana sits in the resolved
+        # stat block but contributes ~0 to weighted_dps for most casters).
+        # Default path (mana_reweight False) leaves both at 0.0 so the rows
+        # stay byte-identical to the pre-1.64.0 output.
+        mana_gained = 0.0
+        mana_adjusted = 0.0
+        if mana_reweight:
+            mana_gained = max(
+                0.0,
+                float(scored.stats.get("mp", 0.0))
+                - float(baseline.stats.get("mp", 0.0)),
+            )
+            mana_adjusted = delta + mana_value_per_point * mana_gained
         ranked.append(
             RankedItem(
                 item_id=item_id,
@@ -603,6 +647,8 @@ def rank_items(
                 dead_unique_key=cand_key if shares_dead_unique else "",
                 unique_passive_key=cand_key,
                 effective_score=effective,
+                mana_adjusted_score=mana_adjusted,
+                mana_gained=mana_gained,
             )
         )
 
@@ -611,6 +657,11 @@ def rank_items(
         ranked.sort(key=lambda r: (r.effective_score, r.delta_dps), reverse=True)
     elif sort_by == "efficiency":
         ranked.sort(key=lambda r: (r.dps_per_1k_gold, r.delta_dps), reverse=True)
+    elif mana_reweight:
+        # Bounded mana valuation knob (ENGINE 1.64.0): order by the
+        # mana-adjusted score so early mana items surface for mana-dependent
+        # casters; delta_dps breaks ties.
+        ranked.sort(key=lambda r: (r.mana_adjusted_score, r.delta_dps), reverse=True)
     else:
         ranked.sort(key=lambda r: (r.delta_dps, r.dps_per_1k_gold), reverse=True)
 
@@ -630,6 +681,11 @@ def rank_items(
         notes.append("include_components=True - non-terminal items in the ranking")
     if budget is not None:
         notes.append(f"budget={budget}g - items over budget filtered")
+    if mana_reweight:
+        notes.append(
+            f"mana_value_per_point={mana_value_per_point} - mana-adjusted "
+            f"ranking (delta_dps + {mana_value_per_point} x mana_gained)"
+        )
     if baseline.mode_multiplier == 0.0:
         notes.append(
             "baseline mode_multiplier=0 - all DPS deltas will be 0 (e.g. Yunara in ARAM)"
