@@ -98,6 +98,7 @@ from .effects import (
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
+from .rune_procs import RUNE_PROCS, compute_rune_proc_damage, keystone_amp
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -325,6 +326,12 @@ class BurstResult:
     lightshield_strike_procs: int = 0
     lightshield_strike_damage: float = 0.0
     lightshield_strike_item_name: str = ""
+    # DS V2 S3 (2026-05-31) - net rune-proc burst from the optional
+    # ``runes`` param (on_proc_burst + per_attack + stacking_amp burst
+    # pieces; Conqueror adaptive force is EXCLUDED). Already folded into
+    # ``total_burst_damage`` when runes were supplied; 0.0 by default so
+    # the no-runes path is byte-identical.
+    rune_proc_damage: float = 0.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -363,6 +370,7 @@ class BurstResult:
             "lightshield_strike_procs": self.lightshield_strike_procs,
             "lightshield_strike_damage": self.lightshield_strike_damage,
             "lightshield_strike_item_name": self.lightshield_strike_item_name,
+            "rune_proc_damage": self.rune_proc_damage,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -437,6 +445,7 @@ def compute_burst_damage(
     form_index_overrides: Optional[dict[str, int]] = None,
     block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     combo_sequence: Optional[Sequence[str]] = None,
+    runes: Optional[Sequence[int]] = None,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -775,6 +784,35 @@ def compute_burst_damage(
     ability_total = sum(c.final_damage for c in per_cast if c.is_ability)
     aa_total = sum(c.final_damage for c in per_cast if not c.is_ability)
     total_burst = ability_total + aa_total
+
+    # DS V2 S3 - optional rune-proc layer. Byte-identical when ``runes`` is
+    # falsy (rune_proc_damage stays 0.0, total_burst is the line above). On
+    # supplied runes: (1) sum the per-proc burst piece across on_proc_burst /
+    # per_attack / stacking_amp runes (Conqueror's adaptive STAT force is
+    # excluded - it is not a flat damage); (2) apply each rune's keystone amp
+    # to the ability+AA base (PtA 1.08; non-amp runes pass through unchanged);
+    # (3) total = amped base + proc burst. Caster scaling: adaptive AD on
+    # rune_procs is BONUS AD (ctx.bonus_ad); AP is the final amplified AP.
+    rune_proc_damage = 0.0
+    if runes:
+        for _rid in runes:
+            proc = RUNE_PROCS.get(_rid)
+            if proc is None or proc.proc_type == "adaptive":
+                continue
+            rune_proc_damage += compute_rune_proc_damage(
+                _rid,
+                level,
+                ad=ctx.bonus_ad,
+                ap=ap_total,
+                bonus_hp=ctx.caster_bonus_hp,
+                target_max_hp=target_max_hp,
+                mode=mode,
+            )
+        amped_base = total_burst
+        for _rid in runes:
+            amped_base = keystone_amp(_rid, amped_base)
+        total_burst = amped_base + rune_proc_damage
+
     primary = _classify_primary_scaling(per_cast, forms_for_classification)
 
     notes: list[str] = list(resolved.notes)
@@ -863,6 +901,13 @@ def compute_burst_damage(
             + ", ".join(f"{k}={block_overrides[k]}" for k in sorted(block_overrides))
         )
 
+    if runes:
+        _n = sum(1 for _r in runes if RUNE_PROCS.get(_r) is not None)
+        notes.append(
+            f"rune procs +{rune_proc_damage:.1f} ({_n} known rune(s)); "
+            "keystone amp applied to ability+AA base"
+        )
+
     return BurstResult(
         champion_id=resolved.champion_id,
         champion_name=resolved.champion_name,
@@ -897,6 +942,7 @@ def compute_burst_damage(
         lightshield_strike_procs=lightshield_procs_fired,
         lightshield_strike_damage=lightshield_damage_total,
         lightshield_strike_item_name=aa_lightshield_name,
+        rune_proc_damage=rune_proc_damage,
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
