@@ -9707,3 +9707,25 @@ Pivot: Game-PC OUT of League/RC entirely. OBS now local on Legion (NOT the Game-
 # 2026-05-30 - item 226: DS scraper-review 3-slice fix (commit 5a303c2; NO ENGINE bump - 1.63.0 stays; additive, no DS restart)
 
 Operator pasted a lolmath dev-chat (6 perceived scraper issues); asked to review DS + fix. VERDICT vs ground truth (not agent-relayed): #1 Caitlyn W null damage_type (Cait W has 0 damage blocks; Meraki omits trap damage; RC scores 0 correctly) + #3 MIXED mis-assignment / F811 dup (no such dup; _mitigation_factor routes MIXED 50/50) + #3b Akali electrocute proc-count double-count (CANNOT EXIST - RC had ZERO rune-proc layer) = all NON-bugs. #2 + #6 + #7 = real deferred-by-design gaps, FIXED (AskUserQuestion picked all 3; all PURELY ADDITIVE byte-identical when knobs unset). #6 NEW agents/daemon_slayer/ability_hps.py (24t): champ-spell heal/shield lived ONLY in raw_modifiers (flat + %AP/%bAD/%maxHP), never the typed fields _evaluate_block reads -> compute_ability_hps parses raw_modifiers directly (caster unit map + meta-attr denylist + ARAM aramHealing/aramShielding). Verified Soraka W 130 / Janna E 80 / Sona dual 60+65. #2 NEW agents/daemon_slayer/modifier_blocks.py (22t): the 180 modifier blocks are heterogeneous (125 pve / 17 target-shred / 17 defensive-self / 15 self-amp / 6 other) NOT one clean multiplier; classify_modifier_kind + summarize_modifiers make them queryable without corrupting DPS; target_shred flagged for a future slice. #7 rank.py rank_items NEW optional mana_value_per_point (Tear/Lost Chapter/Blackfire surface for mana casters; RankedItem +mana_adjusted_score +mana_gained; None/0/neg byte-identical). Verified DS 5077 / RC 4091 / phase8 70/70 green; ruff clean. Don't-redo: #1/#3/#3b are RC non-bugs; ability_hps v1 is ACTIVE-only (passive-P heals + target-relative units out of scope v1, flagged lower-bound); nothing consumes ability_hps/modifier_blocks yet (substrate for future enchanter-HPS / self-shred slices). [Items 227/228/229 built the DS V2 substrate + wiring on top of this.]
+
+---
+
+# 2026-05-30 - item 227: DS V2 bounded-combat-simulator substrate (5-slice parallel headless-upgrade run) (HEAD 7353be0; pushed acaf2fe..7353be0; CI green run 26703611726; NO ENGINE bump - 1.63.0 stays; NO DS restart; all 5 modules ADDITIVE, not wired into live :8893 scorers)
+
+Operator: "continue DS missing-by-design + implement missing designs; review lolmath changelog; expand DS in parallel; V2; mana real-usage-not-infinite; cross-interaction fight sims; full + frozen rights; do not solely trust current DS for V2 - start implementation + put-off items." Re-issued same prompt mid-dispatch (no in-flight slice) -> task re-assert, continued.
+
+V2 = steady-state DPS calculator -> BOUNDED COMBAT SIMULATOR. Plan + contracts in NEW docs/DS_V2_PLAN.md. 6 parallel worktree agents on disjoint files, orchestrator-merged (5 commit-bearing + 1 read-only); 0 conflicts. DS 5077 -> 5191 (+114). Full DS suite green, ruff clean, CI green.
+
+5 substrate modules (ALL additive, nothing wired into live scorers - do NOT auto-wire):
+- mana_sim.py (545/19t): finite-mana bounded rotation; pool=stats.scaled mp + item mana, regen/5; OOM-gates burst per-cast .cost; manaless/energy ungated (bounded==unbounded). Wait-to-ready cooldown (not combo skip) so the gate binds. Lux L9 14/24 OOM -> +Tear 18 -> +Archangel's 21 monotonic.
+- rune_procs.py (396/32t): net-new rune layer (RC had ZERO). 8 runes; ALL coeffs verified+corrected vs LIVE DDragon 16.11.1 (brief numbers stale).
+- ability_hps.py v2 (+154/-21; 17+22t): passive-P + target-relative/missing-HP units. HONEST: zero P-form heal damage_blocks in snapshot (heals in stripped effects-text) = data ceiling, asserted not fabricated. v1 byte-identical.
+- self_shred.py (401/21t): target_shred -> own-DPS uplift; AD-reduction shreds (Trundle/Tryndamere) correctly skipped.
+- scenario_matrix.py (431/25t): cross-interaction sweep + 5 invariants + violation probe (not a no-op).
+- lolmath changelog: 0 NOW / 0 FUTURE / 7 CLOSED - all already correct in RC or by-design.
+
+DON'T-REDO: all 5 additive (no auto-wire); ability_hps P-heal = data ceiling (do NOT re-hunt); rune coeffs DDragon-verified (trust formula strings); mana_sim wait-to-ready intentional; lolmath nothing actionable.
+
+NEXT (operator-gated, ENGINE bump each, the repeatable continue picks up): (1) wire ability_hps v2 -> LIVE ds.hps enchanter scorer (re-ranks builds + lower-bound -> validate; DEFERRED from blind overnight); (2) unified V2 fight-report compose 5 modules; (3) wire rune_procs into burst/combo; (4) expand rune+champ coverage + mana_sim as scenario_matrix metric. Item 225's 6 data sidecar buckets still owed wiring.
+
+CARRY: 6 R1 agent worktrees harness-locked (live pids 4044/20624) - next pre-flight cleans. Anomaly RC-CostHealthWatchdog last_result=1 (pre-existing watchdog; flag for operator). Frozen-file grant NOT used.

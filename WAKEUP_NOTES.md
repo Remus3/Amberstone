@@ -1,6 +1,26 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-05-31 - item 230: DS V2 3-disjoint-slice drain - rune_procs per_attack + scenario_matrix mana/rune metrics + rank-assassin runes wire (ENGINE 1.65.0 -> 1.66.0; HEAD ace2fde; pushed eed2452..ace2fde; CI green run 26705400674; DS :8893 restarted serves 1.66.0)
+
+Operator: "continue DS Parallel disjoint slices Pre-flight: clean worktrees. CI + smoke + commit + push + /done." Headless-upgrade run; 3 parallel worktree agents (disjoint files) orchestrator-merged 0 conflicts. Pre-flight: clean tree / 0 PRs / 1 worktree / only origin/main / CI green. Closes 3 of the 4 item-229-NEXT carries.
+
+A (slice 86a512e): rune_procs.py per_attack 14 -> 16. Hail of Blades 9923 (per_attack TRUE `_lerp_by_level(4,20,level) + 0.08*ad + 0.06*ap` ADDITIVE bAD+AP NOT adaptive, CD 10s) + Lethal Tempo 8008 (per_attack flat adaptive `_lerp_by_level(9,30,level)` melee 100%-effective at max stacks; ranged 6-24 + +1%-per-1%-bonus-AS amp NOT modeled - no role/AS in signature, Grasp melee precedent). Fleet Footwork 8021 HONEST EXCLUSION (heal+MS sustain only; modeling as damage = inventing) documented beside the Aery-shield/Grasp-heal notes. DDragon 16.11.1 longDesc verbatim. Relaxed test_rune_procs_expansion exact-count pin 14 -> assertGreaterEqual. +15t.
+
+B (slice 07e9df2): scenario_matrix.py VALID_METRICS +2 mana_bounded_dps (-> mana_sim.compute_mana_bounded_combo.bounded_dps, default Q-AA-W-R) + rune_burst (-> compute_burst_damage(runes=).total_burst_damage). NEW optional sequence+runes params (default None) on sweep_scenarios+_score_cell; dps/burst/combo BYTE-IDENTICAL (harness); check_invariants untouched. +17t.
+
+C (slice 40dc059): burst.py rank_items_by_burst + server.py _route_rank_assassin NEW optional runes (LAST param) threaded into BOTH compute_burst_damage calls; route parses via the _route_burst _coerce_str_list().isdigit() pattern, passes runes=(runes or None). BYTE-IDENTICAL when omitted; live re-rank ONLY when body carries runes (NOT auto-enabled). top-N attr = ranked. +10t.
+
+ENGINE bump (ace2fde): 1.65.0 -> 1.66.0 + 33 test-pin sync (ENGINE_VERSION-assertion lines only; test_mana_valuation:7 "pre-1.65.0" + cc_conditional_wave* historical docstrings left frozen per no-history-rewrite). Living docs synced DAEMON_SLAYER L5+L32 / README L46 / BRIEF L20+L26 / ARCH L161 / ROADMAP item 230.
+
+Verified: DS 5264 -> 5305 (+41); ruff clean; phase8 70/70 post-restart; CI green run 26705400674. Live :8893 /rank-assassin Zed L11 no-runes IE new_burst 1139.73 -> runes=[8112] 1317.23 (+177.5 = Electrocute L11 170 base + adaptive), delta_burst 404.06 -> 411.56 (IE AD scales Electrocute 0.10 bAD term), ranking order unchanged - wire LIVE + correct.
+
+DON'T-REDO: (a) Fleet Footwork 8021 honest data-availability ceiling (heal+MS, no damage) - do NOT add as a damage rune. (b) Lethal Tempo 8008 melee 100%-effective 9-30 flat; ranged 6-24 + bonus-AS amp NOT applied (no role/AS in signature). (c) Hail of Blades 9923 ADDITIVE bAD+AP not adaptive. (d) Slice C runes wire BYTE-IDENTICAL when omitted + NOT auto-enabled - do NOT flip /rank-assassin to auto-pass a keystone by default without operator validation. (e) scenario_matrix new metrics REUSE existing scorers (harness, no new math).
+
+NEXT (operator-gated, ENGINE bump each): (1) item 225's 6 data sidecar buckets owed engine wiring (LAST item-229-NEXT carry). (2) auto-enable an assassin keystone in the live /rank-assassin default (re-rank validation vs real builds). (3) expand per_attack to other on-hit runes if DDragon exposes them.
 
 ---
 
@@ -41,25 +61,3 @@ DON'T-REDO: S1 re-rank intentional+validated; resolve_target_relative stays Fals
 NEXT (the repeatable continue - S2/S3/S4/L unstarted; partition disjoint: S2=fight_report.py+server.py, S3=burst.py+combo.py, S4=rune_procs.py): (2) S2 NEW agents/daemon_slayer/fight_report.py compose mana_sim+rune_procs+self_shred+ability_hps+scenario_matrix into compute_fight_report + /v2/fight-report route (server.py _POST_ROUTES @1117-1132; _route_hps@951 = pattern; additive no bump). (3) S3 OPTIONAL `runes` param on compute_burst_damage (sig burst.py:422; total agg burst.py:775-777; in-scope ad=ctx.ad/ap=ap_total/bonus_hp=ctx.caster_bonus_hp @567-599; add rune_proc_damage field + keystone_amp PtA; Conqueror=stat-stack EXCLUDE) + thread runes through combo.py (composes burst @285-290); BYTE-IDENTICAL default runes=None (test_burst.py:153 + test_combo_2026_05_30.py:11-17 Lux pins MUST stay green); = next ENGINE bump 1.64.0 -> 1.65.0 (orchestrator owns __init__.py:1324 + 33-pin sync via `py` replace over tests/; agents leave version alone, no version pin in new tests). (4) S4 expand rune_procs.py 8 -> +Summon Aery 8214/Grasp 8437/Aftershock 8439/First Strike 8369/Coup de Grace 8299/Cut Down 8014 (amps); coeffs VERBATIM data/meta_build/ddragon/16.11.1/runesReforged.json (DDragon wins, NEVER invent). (L) re-review lolmath changelog for entries AFTER 2026-05-30 (item 227: 0 NOW/0 FUTURE/7 CLOSED).
 
 CARRY: cost/latency 7-lever sweep NOT run (context). S1 worktree + item 227 R1 worktrees harness-locked (next pre-flight cleans). Item 225 6 data sidecar buckets owed wiring. Git-Bash mangles taskkill/schtasks args (path coercion) - use PowerShell tool for DS restart (taskkill /F /PID then schtasks /Run, NOT Stop-Process). Anomaly RC-CostHealthWatchdog (carry). Frozen-file grant NOT used.
-
----
-
-# 2026-05-30 - item 227: DS V2 bounded-combat-simulator substrate (5-slice parallel headless-upgrade run) (HEAD 7353be0; pushed acaf2fe..7353be0; CI green run 26703611726; NO ENGINE bump - 1.63.0 stays; NO DS restart; all 5 modules ADDITIVE, not wired into live :8893 scorers)
-
-Operator: "continue DS missing-by-design + implement missing designs; review lolmath changelog; expand DS in parallel; V2; mana real-usage-not-infinite; cross-interaction fight sims; full + frozen rights; do not solely trust current DS for V2 - start implementation + put-off items." Re-issued same prompt mid-dispatch (no in-flight slice) -> task re-assert, continued.
-
-V2 = steady-state DPS calculator -> BOUNDED COMBAT SIMULATOR. Plan + contracts in NEW docs/DS_V2_PLAN.md. 6 parallel worktree agents on disjoint files, orchestrator-merged (5 commit-bearing + 1 read-only); 0 conflicts. DS 5077 -> 5191 (+114). Full DS suite green, ruff clean, CI green.
-
-5 substrate modules (ALL additive, nothing wired into live scorers - do NOT auto-wire):
-- mana_sim.py (545/19t): finite-mana bounded rotation; pool=stats.scaled mp + item mana, regen/5; OOM-gates burst per-cast .cost; manaless/energy ungated (bounded==unbounded). Wait-to-ready cooldown (not combo skip) so the gate binds. Lux L9 14/24 OOM -> +Tear 18 -> +Archangel's 21 monotonic.
-- rune_procs.py (396/32t): net-new rune layer (RC had ZERO). 8 runes; ALL coeffs verified+corrected vs LIVE DDragon 16.11.1 (brief numbers stale).
-- ability_hps.py v2 (+154/-21; 17+22t): passive-P + target-relative/missing-HP units. HONEST: zero P-form heal damage_blocks in snapshot (heals in stripped effects-text) = data ceiling, asserted not fabricated. v1 byte-identical.
-- self_shred.py (401/21t): target_shred -> own-DPS uplift; AD-reduction shreds (Trundle/Tryndamere) correctly skipped.
-- scenario_matrix.py (431/25t): cross-interaction sweep + 5 invariants + violation probe (not a no-op).
-- lolmath changelog: 0 NOW / 0 FUTURE / 7 CLOSED - all already correct in RC or by-design.
-
-DON'T-REDO: all 5 additive (no auto-wire); ability_hps P-heal = data ceiling (do NOT re-hunt); rune coeffs DDragon-verified (trust formula strings); mana_sim wait-to-ready intentional; lolmath nothing actionable.
-
-NEXT (operator-gated, ENGINE bump each, the repeatable continue picks up): (1) wire ability_hps v2 -> LIVE ds.hps enchanter scorer (re-ranks builds + lower-bound -> validate; DEFERRED from blind overnight); (2) unified V2 fight-report compose 5 modules; (3) wire rune_procs into burst/combo; (4) expand rune+champ coverage + mana_sim as scenario_matrix metric. Item 225's 6 data sidecar buckets still owed wiring.
-
-CARRY: 6 R1 agent worktrees harness-locked (live pids 4044/20624) - next pre-flight cleans. Anomaly RC-CostHealthWatchdog last_result=1 (pre-existing watchdog; flag for operator). Frozen-file grant NOT used.
