@@ -283,21 +283,30 @@ def _lethal_tempo(*, level=1.0, role="melee", bonus_as=0.0, **_kw) -> float:
 # EXPRESSIBLE with HONEST gates that yield byte-identical defaults.
 # ---------------------------------------------------------------------------
 
+# Last Stand 8299 honest-gate parameters (DDragon 16.11.1 longDesc verbatim:
+# "Deal 5% - 11% increased damage to champions while you are below 60% health.
+# Max damage gained at 30% health."). Named so the gate is tunable in one place.
+_LAST_STAND_HP_HIGH = 0.60   # at/above this caster hp fraction -> no amp (1.0)
+_LAST_STAND_HP_LOW = 0.30    # at/below this -> max amp
+_LAST_STAND_AMP_MIN = 1.05   # amp just under the high threshold
+_LAST_STAND_AMP_MAX = 1.11   # amp at/below the low threshold
+
+
 def _last_stand_amp(*, caster_hp_pct=1.0) -> float:
-    # DDragon 16.11.1 longDesc: "Deal 5% - 11% increased damage to champions
-    # while you are below 60% health. Max damage gained at 30% health."
-    # HONEST GATE: amp = 1.0 at caster_hp_pct >= 0.60 (no amp); ramps linearly
-    # 1.05 -> 1.11 as caster_hp_pct goes 0.60 -> 0.30; capped 1.11 below 0.30.
-    # Returned by keystone_amp, NOT compute (8299 is a stacking_amp). At the
-    # DEFAULT caster_hp_pct=1.0 -> amp 1.0 -> base unchanged -> BYTE-IDENTICAL
-    # to the item-231 exclusion (a burst-MAX caller at full HP sees NO change).
+    # HONEST GATE: amp = 1.0 at caster_hp_pct >= _LAST_STAND_HP_HIGH (no amp);
+    # ramps linearly _LAST_STAND_AMP_MIN -> _LAST_STAND_AMP_MAX as hp goes HIGH
+    # -> LOW; capped at MAX below LOW. Returned by keystone_amp, NOT compute
+    # (8299 is a stacking_amp). At the DEFAULT caster_hp_pct=1.0 -> amp 1.0 ->
+    # base unchanged -> BYTE-IDENTICAL to the item-231 exclusion (a burst-MAX
+    # caller at full HP sees NO change).
     hp = _f(caster_hp_pct)
-    if hp >= 0.60:
+    if hp >= _LAST_STAND_HP_HIGH:
         return 1.0
-    if hp <= 0.30:
-        return 1.11
-    # Linear 1.05 (at 0.60) -> 1.11 (at 0.30) over the 0.30 hp band.
-    return 1.05 + (1.11 - 1.05) * (0.60 - hp) / 0.30
+    if hp <= _LAST_STAND_HP_LOW:
+        return _LAST_STAND_AMP_MAX
+    span = _LAST_STAND_HP_HIGH - _LAST_STAND_HP_LOW
+    frac = (_LAST_STAND_HP_HIGH - hp) / span
+    return _LAST_STAND_AMP_MIN + (_LAST_STAND_AMP_MAX - _LAST_STAND_AMP_MIN) * frac
 
 
 def _adaptive_grant(ad: float, ap: float, ad_val: float, ap_val: float) -> float:

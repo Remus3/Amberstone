@@ -119,6 +119,28 @@ class AbilityHpsSectionTests(unittest.TestCase):
         self.assertGreater(r.ability_hps_total, 0.0)
 
 
+class RechargeSectionTests(unittest.TestCase):
+    def test_charge_champ_reports_recharge_slots(self):
+        # Caitlyn W (Yordle Snap Trap) is a cdragon charge ability -> the
+        # recharge section surfaces it with source="cdragon" + casts > 0.
+        r = compute_fight_report(
+            "Caitlyn", 13, item_ids=[], mode="SR",
+            snapshot=_SNAP, recharge_window_s=10.0,
+        )
+        self.assertEqual(r.recharge_window_s, 10.0)
+        self.assertTrue(r.recharge_slots)
+        slot = r.recharge_slots[0]
+        self.assertEqual(slot["source"], "cdragon")
+        self.assertGreater(slot["total_casts_available"], 0.0)
+        # round-trips in to_dict
+        self.assertIn("recharge_slots", r.to_dict())
+
+    def test_non_charge_champ_has_empty_recharge_slots(self):
+        # Aatrox has no charge-bearing slots -> the section is empty (no raise).
+        r = compute_fight_report("Aatrox", 11, item_ids=[], snapshot=_SNAP)
+        self.assertEqual(r.recharge_slots, ())
+
+
 class FailSoftTests(unittest.TestCase):
     def test_unknown_champion_does_not_raise(self):
         # compute_fight_report is fail-soft: an unknown champion is caught
