@@ -31,16 +31,40 @@ DPS / EHP / ability-DPS / HPS-item rankers. Nothing in the engine consumes
 it yet; it is the data-driven substrate a future enchanter scorer or a
 coach surface can read.
 
-Deliberate v1 omissions (mirror ``ability_dps``):
-* Passive (P) heal/shield - Aatrox/Vladimir/DrMundo/Warwick heal off their
-  passive, but P uses a level-scaled (not rank-locked) model that
-  ``ability_dps`` also defers. Active-ability heals (Soraka W/E, Nami W,
-  Janna/Lulu E shields, Sona W, Seraphine W) are the enchanter-relevant
-  bulk and are covered here.
-* Caster-missing-HP heal scaling (Soraka/Vladimir heal-more-when-low) is
-  not captured - the DamageBlock schema has caster_max_hp_pct /
-  caster_bonus_hp_pct but no caster_missing_hp_pct field, so only the
-  base + AP/AD/max-HP portion of such heals is scored.
+v2 (2026-05-30 item 226 NEXT, additive, no ENGINE bump) extends the v1
+active-slot-only scorer with two opt-in paths, both BYTE-IDENTICAL to v1
+when they do not apply:
+
+* PASSIVE-P slot (``include_passive=True``, default ON). The P key is now
+  walked alongside Q/W/E/R, resolved at the level-scaled rank
+  ``rank_at_level("P", level)`` (== level-1, the same model ``ability_dps``
+  uses for passives). DATA-AVAILABILITY CEILING at 16.11.1: the extractor
+  emits ZERO heal/shield ``damage_blocks`` on any P form (Aatrox
+  Deathbringer Stance / Dr. Mundo regen / Vladimir Crimson Pact heals live
+  in stripped ``effects`` description text, NOT in the parsed blocks). So
+  including P is currently a no-op for the entire roster - it future-proofs
+  the path for a patch that surfaces a P heal block without re-touching the
+  scorer. We do NOT fabricate passive heals that the snapshot does not
+  carry. Set ``include_passive=False`` for the exact v1 Q/W/E/R-only walk.
+* TARGET-RELATIVE + CASTER-MISSING-HP heal/shield units
+  (``resolve_target_relative=True``, default OFF). v1 flags these as
+  ``unresolved`` (lower bound 0). v2 resolves them against documented
+  representative stats so they contribute a real lower-bound amount:
+  - ``% of target's maximum health`` (Taric W shield) -> ``target_max_hp``
+  - ``% of target's missing health`` (Fiddlesticks/Seraphine W) ->
+    ``target_max_hp * target_missing_hp_pct``
+  - ``% missing health`` / ``% of his missing health`` /
+    ``% of missing health`` (Volibear W, Yorick Q, TahmKench Q, Dr. Mundo R,
+    Gangplank W, Olaf W) -> CASTER missing-HP =
+    ``caster_max_hp * caster_missing_hp_pct``
+  When ``target_max_hp == 0`` (the default) the target-relative units still
+  resolve to 0 - so flipping ``resolve_target_relative`` on without passing
+  a representative ``target_max_hp`` changes nothing. Pass a representative
+  enemy HP (and the missing-HP fractions) to get a non-zero lower bound. The
+  v1 default keeps these UNRESOLVED so the existing pins (and the v1
+  ``_eval_heal_shield_block`` call shape) stay byte-identical.
+
+Deliberate omissions (mirror ``ability_dps``):
 * Multi-block heal/shield forms default to ``block_strategy="first"`` (the
   first heal block + first shield block), matching ``ability_dps``'s
   damage-block default so "Total"/"Maximum" variant blocks are not
@@ -101,6 +125,25 @@ _HEAL_UNIT_TO_CTX: dict[str, str | None] = {
     "% of his bonus health": "caster_bonus_hp",
 }
 
+# --- v2 target-relative + caster-missing-HP units (opt-in) -----------------
+#
+# These units scale heal/shield off a stat that is NOT a resting caster stat:
+# the TARGET's HP, or the CASTER's MISSING HP (a state-dependent quantity).
+# v1 leaves them ``unresolved`` (lower bound 0). v2's ``resolve_target_relative``
+# path resolves each one against a documented assumption. Each entry maps a
+# unit string to a "stat-kind" symbol that ``_resolve_extra_units`` turns into
+# a concrete value using the per-call assumptions (target_max_hp +
+# target_missing_hp_pct + caster_missing_hp_pct). Bare units NOT in this map
+# remain unresolved (the lower-bound contract holds for life-steal / per-soul /
+# per-mist / per-health-lost units we still cannot resolve at rest).
+_TARGET_REL_STAT_KIND: dict[str, str] = {
+    "% of target's maximum health": "target_max_hp",
+    "% of target's missing health": "target_missing_hp",
+    "% missing health": "caster_missing_hp",
+    "% of his missing health": "caster_missing_hp",
+    "% of missing health": "caster_missing_hp",
+}
+
 # Attribute names tagged heal/shield by the extractor that are NOT a direct,
 # recurring heal/shield amount: cost reductions, percentage MULTIPLIERS,
 # permanent max-HP grants, regen, conversion ratios, stat readouts, and the
@@ -134,13 +177,51 @@ def _value_at_rank(values: list, rank: int) -> float:
         return 0.0
 
 
-def _eval_heal_shield_block(block, rank: int, ctx) -> tuple[float, bool]:
+def _resolve_extra_units(
+    ctx,
+    *,
+    target_max_hp: float,
+    target_missing_hp_pct: float,
+    caster_missing_hp_pct: float,
+) -> dict[str, float]:
+    """Build the v2 opt-in unit -> resolved-value map for one ``ctx``.
+
+    Returns a ``{lowercased_unit: stat_value}`` dict that
+    ``_eval_heal_shield_block`` multiplies by ``value / 100``. The
+    target-relative + caster-missing-HP units are computed from the
+    documented per-call assumptions; a unit whose stat resolves to 0 (e.g.
+    ``target_max_hp == 0``) still appears in the map so it is treated as
+    RESOLVED (contributes 0, no unresolved flag) - that is the documented
+    lower-bound behavior.
+    """
+    caster_max_hp = float(getattr(ctx, "caster_max_hp", 0.0) or 0.0)
+    target_missing_hp = target_max_hp * target_missing_hp_pct
+    caster_missing_hp = caster_max_hp * caster_missing_hp_pct
+    kind_value = {
+        "target_max_hp": target_max_hp,
+        "target_missing_hp": target_missing_hp,
+        "caster_missing_hp": caster_missing_hp,
+    }
+    return {
+        unit: kind_value[kind] for unit, kind in _TARGET_REL_STAT_KIND.items()
+    }
+
+
+def _eval_heal_shield_block(
+    block, rank: int, ctx, extra_units: Optional[dict] = None,
+) -> tuple[float, bool]:
     """Evaluate one heal/shield block's raw_modifiers at ``rank``.
 
     Returns ``(amount, had_unresolved_unit)``. A flat term (empty unit) is
     added directly; a recognized percent unit multiplies the matching
     ``ctx`` stat / 100. An unrecognized unit contributes 0 and flips the
     unresolved flag so callers can note the value is a lower bound.
+
+    ``extra_units`` (v2, opt-in) is a ``{lowercased_unit: stat_value}`` map
+    of target-relative / caster-missing-HP units to resolve. When ``None``
+    (the v1 default) those units stay UNRESOLVED, so the v1 call shape is
+    byte-identical. A unit present in BOTH the caster map and ``extra_units``
+    is resolved by the caster map first (caster-side wins).
     """
     total = 0.0
     unresolved = False
@@ -161,6 +242,8 @@ def _eval_heal_shield_block(block, rank: int, ctx) -> tuple[float, bool]:
                 total += val
             else:
                 total += (val / 100.0) * getattr(ctx, ctx_attr, 0.0)
+        elif extra_units is not None and unit in extra_units:
+            total += (val / 100.0) * extra_units[unit]
         else:
             unresolved = True
     return total, unresolved
@@ -282,14 +365,20 @@ class AbilityHpsResult:
 # --- Core scorer ----------------------------------------------------------
 
 
-def _select_kind_blocks(form, kind: str, rank: int, ctx, strategy: str) -> tuple[float, bool]:
+def _select_kind_blocks(
+    form, kind: str, rank: int, ctx, strategy: str,
+    extra_units: Optional[dict] = None,
+) -> tuple[float, bool]:
     """Sum the evaluated heal- or shield-kind blocks per strategy.
 
     Skips meta blocks (cost reductions / multipliers / HP grants - see
     ``_META_HEAL_SHIELD_RE``). ``strategy="first"`` evaluates only the first
     NON-meta block of ``kind`` (so "Minimum/Maximum/Total" band variants of
     the same heal do not double-count); ``strategy="sum"`` adds every
-    non-meta block. Returns ``(amount, had_unresolved_unit)``.
+    non-meta block. ``extra_units`` (v2, opt-in) is threaded to
+    ``_eval_heal_shield_block`` to resolve target-relative / missing-HP
+    units; ``None`` keeps the v1 lower-bound behavior. Returns
+    ``(amount, had_unresolved_unit)``.
     """
     blocks = tuple(
         b for b in form.damage_blocks
@@ -298,11 +387,11 @@ def _select_kind_blocks(form, kind: str, rank: int, ctx, strategy: str) -> tuple
     if not blocks:
         return 0.0, False
     if strategy == "first":
-        return _eval_heal_shield_block(blocks[0], rank, ctx)
+        return _eval_heal_shield_block(blocks[0], rank, ctx, extra_units)
     total = 0.0
     unresolved = False
     for b in blocks:
-        amt, unres = _eval_heal_shield_block(b, rank, ctx)
+        amt, unres = _eval_heal_shield_block(b, rank, ctx, extra_units)
         total += amt
         unresolved = unresolved or unres
     return total, unresolved
@@ -349,13 +438,34 @@ def compute_ability_hps(
     form_index_overrides: Optional[dict[str, int]] = None,
     block_strategy: str = "first",
     abilities=None,
+    include_passive: bool = True,
+    resolve_target_relative: bool = False,
+    target_max_hp: float = 0.0,
+    target_missing_hp_pct: float = 0.0,
+    caster_missing_hp_pct: float = 0.0,
 ) -> AbilityHpsResult:
     """Compute champion-ability healing + shielding throughput per second.
 
     Mirrors ``ability_dps.compute_ability_dps`` but evaluates the ``"heal"``
-    and ``"shield"`` blocks of each Q/W/E/R rather than ``"damage"`` blocks.
+    and ``"shield"`` blocks of each P/Q/W/E/R rather than ``"damage"`` blocks.
     Returns a zero-throughput result for champions with no active-ability
     heal/shield blocks (the common case for most of the roster).
+
+    v2 opt-in args (all default to v1-byte-identical behavior):
+
+    * ``include_passive`` (default True) walks the P key alongside Q/W/E/R,
+      resolved at ``rank_at_level("P", level)``. At 16.11.1 the extractor
+      emits no P-slot heal/shield blocks, so this is currently a no-op for
+      the whole roster - it future-proofs the path. ``False`` = exact v1
+      Q/W/E/R-only walk.
+    * ``resolve_target_relative`` (default False) resolves target-relative /
+      caster-missing-HP units (``% of target's maximum health``, ``% missing
+      health``, etc.) against ``target_max_hp`` + ``target_missing_hp_pct`` +
+      ``caster_missing_hp_pct``. Default OFF keeps those units UNRESOLVED
+      (lower bound 0). With it ON and ``target_max_hp == 0`` the target units
+      still resolve to 0 - pass a representative enemy HP for a real lower
+      bound. The caster-missing-HP units use ``caster_max_hp`` from the
+      resolved build times ``caster_missing_hp_pct``.
     """
     if block_strategy not in _BLOCK_STRATEGIES:
         raise ValueError(
@@ -395,6 +505,21 @@ def compute_ability_hps(
     ap_total = ap_total * ap_amp * hp_ap_amp
     ctx = replace(ctx, ap=ap_total)
 
+    # v2 opt-in: resolve target-relative + caster-missing-HP units against the
+    # documented per-call assumptions. None keeps the v1 lower-bound contract
+    # (those units stay unresolved). Built once from the finalized ctx.
+    extra_units = (
+        _resolve_extra_units(
+            ctx,
+            target_max_hp=target_max_hp,
+            target_missing_hp_pct=target_missing_hp_pct,
+            caster_missing_hp_pct=caster_missing_hp_pct,
+        )
+        if resolve_target_relative
+        else None
+    )
+    keys = (("P",) + tuple(SPELL_KEYS)) if include_passive else tuple(SPELL_KEYS)
+
     snap_abilities = abilities if abilities is not None else load_default()
     try:
         forms_by_key = snap_abilities.get_abilities(champ_id)
@@ -414,7 +539,7 @@ def compute_ability_hps(
     total_heal_ps = 0.0
     total_shield_ps = 0.0
 
-    for key in SPELL_KEYS:
+    for key in keys:
         forms = forms_by_key.get(key) or ()
         if not forms:
             continue
@@ -427,10 +552,10 @@ def compute_ability_hps(
             continue
 
         heal_per_cast, heal_unres = _select_kind_blocks(
-            form, "heal", rank, ctx, block_strategy,
+            form, "heal", rank, ctx, block_strategy, extra_units,
         )
         shield_per_cast, shield_unres = _select_kind_blocks(
-            form, "shield", rank, ctx, block_strategy,
+            form, "shield", rank, ctx, block_strategy, extra_units,
         )
         if heal_per_cast <= 0.0 and shield_per_cast <= 0.0:
             continue
@@ -445,7 +570,15 @@ def compute_ability_hps(
         base_cd = _form_cooldown_at_rank(form, rank, fallback_form=fallback)
         cost = _form_cost_at_rank(form, rank)
 
-        measured = get_spell_casts_per_sec(resolved.champion_name, key, mode)
+        # P (passive) has no measured cast cadence - ``get_spell_casts_per_sec``
+        # only accepts Q/W/E/R and raises on "P". A passive heal/shield fires
+        # on-hit / on-event, so fall straight through to the cooldown-derived
+        # rate (or 0 when the form has no cooldown). Q/W/E/R use the measured
+        # rate exactly as v1.
+        measured = (
+            None if key == "P"
+            else get_spell_casts_per_sec(resolved.champion_name, key, mode)
+        )
         cps_source = "measured"
         mana_uptime = 1.0
         if measured is None or measured <= 0:
@@ -484,7 +617,7 @@ def compute_ability_hps(
     if not spells:
         notes.append(
             "no active-ability heal/shield blocks for this champion "
-            "(passive-P heal/shield is out of scope for v1)"
+            "(no P-slot heal/shield blocks exist in the snapshot at 16.11.1)"
         )
     if mode == "ARAM" and (heal_mult != 1.0 or shield_mult != 1.0):
         notes.append(
