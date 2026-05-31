@@ -11,6 +11,7 @@ substrate modules and stitches their results into a single ``FightReport``:
   * self_shred.compute_self_shred_uplift -> target-shred own-DPS uplift
   * scenario_matrix.sweep_scenarios       -> cross-interaction sweep + invariants
   * recharge_ledger.compute_recharge_ledger -> charge-availability over a window
+  * missile.spell_travel_time            -> per-slot skillshot travel-time
 
 Fail-soft: ``compute_fight_report`` NEVER raises. Each section runs in its own
 try/except; on failure that section is zeroed and a note is appended, the rest
@@ -29,6 +30,7 @@ from .dps import compute_dps
 from .engine import build_champion
 from .mana_sim import compute_mana_bounded_combo
 from .rune_procs import RUNE_PROCS, compute_rune_proc_damage, keystone_amp
+from .missile import is_projectile, spell_travel_time
 from .recharge_ledger import compute_recharge_ledger
 from .scenario_matrix import check_invariants, sweep_scenarios
 from .self_shred import compute_self_shred_uplift
@@ -99,6 +101,10 @@ class FightReport:
     recharge_window_s: float = 0.0
     recharge_slots: Tuple[dict, ...] = field(default_factory=tuple)
 
+    # missile section (item 233): per-slot skillshot travel-time (projectile
+    # slots only; instant/global -> 0.0; non-projectiles dropped).
+    missile_slots: Tuple[dict, ...] = field(default_factory=tuple)
+
     notes: Tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
@@ -138,6 +144,7 @@ class FightReport:
             ],
             "recharge_window_s": self.recharge_window_s,
             "recharge_slots": [dict(s) for s in self.recharge_slots],
+            "missile_slots": [dict(s) for s in self.missile_slots],
             "notes": list(self.notes),
         }
 
@@ -165,7 +172,7 @@ def compute_fight_report(
 ) -> FightReport:
     """Compose a unified V2 fight report for ``champion``.
 
-    Calls each of the 6 substrate modules in its own try/except. NEVER raises -
+    Calls each of the 7 substrate modules in its own try/except. NEVER raises -
     a section that fails is zeroed and a note is appended. ``snapshot`` is a
     DataSnapshot (loaded when None). ``runes`` is an iterable of Riot perk ids
     (int or str). ``sequence`` defaults to ``_DEFAULT_SEQUENCE`` when None.
@@ -374,6 +381,28 @@ def compute_fight_report(
         notes.append(f"recharge section failed: {_short(exc)}")
         recharge_slots = []
 
+    # ----- MISSILE section ---------------------------------------------
+    # Per-slot skillshot travel-time (item 233). Projectile slots only
+    # (is_projectile gate); instant/global -> 0.0; non-projectiles dropped.
+    # Geometry distance is sentinel-filtered, so most slots use the
+    # _DEFAULT_DISTANCE reference - travel-time is an APPROXIMATE enrichment.
+    missile_slots: List[dict] = []
+    try:
+        for slot in ("Q", "W", "E", "R"):
+            if not is_projectile(snap, champ, slot):
+                continue
+            tt = spell_travel_time(snap, champ, slot)
+            if tt is None:
+                continue
+            missile_slots.append({
+                "slot": slot,
+                "missile_speed": snap.spell_missile_speed(champ, slot),
+                "travel_time_s": tt,
+            })
+    except Exception as exc:  # fail-soft
+        notes.append(f"missile section failed: {_short(exc)}")
+        missile_slots = []
+
     return FightReport(
         champion=champ,
         champion_name=champion_name,
@@ -407,6 +436,7 @@ def compute_fight_report(
         invariant_violations=tuple(invariant_violations),
         recharge_window_s=float(recharge_window_s),
         recharge_slots=tuple(recharge_slots),
+        missile_slots=tuple(missile_slots),
         notes=tuple(notes),
     )
 
