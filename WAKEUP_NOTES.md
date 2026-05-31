@@ -4,6 +4,22 @@
 
 ---
 
+# 2026-05-31 - item 234: DS mana_sim opt-in ability-haste/CDR model + static-CD honest no-consumer verdict; ALL 6 sidecar buckets RESOLVED (ENGINE 1.69.0 -> 1.70.0; HEAD e898114; pushed 65f1bda..e898114; DS :8893 restarted serves 1.70.0; RC NOT restarted)
+
+Operator headless continuation (fresh context after item-233 ScheduleWakeup). Pre-flight clean: HEAD 65f1bda / 0 PRs / CI all green / 0 worktrees / ENGINE 1.69.0 in sync.
+
+Premise verified FIRST: mana_sim _walk cooldown DOES drive the WAIT-TO-READY clock (line 302), so haste shortens wall-clock + reduces regen-between-casts -> affects BOTH bounded_dps AND casts_allowed (not moot). Existing infra reused: _item_ability_haste.total_item_ability_haste (hand-curated per-item AH registry) + ability_dps already applies base_cd/(1+AH/100).
+
+Shipped (1 inline commit e898114): mana_sim.compute_mana_bounded_combo NEW apply_ability_haste:bool=False (END of sig). False (DEFAULT) = raw cooldowns BYTE-IDENTICAL. True = total_item_ability_haste(burst.item_ids) reduces every cooldown-bearing slot in _walk via cooldown_s/(1+AH/100), applied UNIFORMLY to BOTH passes (bounded_dps <= unbounded_dps holds). _walk gains ability_haste:float=0.0. Haste only BINDS on a cooldown-REPEATING sequence (single-cast Q-AA-W-E-R is cast-time-bound -> haste moot there); Lux Q-AA-Q-AA-Q @35 AH cd x0.741 dur 18.25->13.58 dps 56.02->75.27. No-AH build byte-identical with flag on. +7 tests.
+
+STATIC-CD HONEST VERDICT (resolves item 233 blocker): the wiki static QWER active-slot coverage is 3 abilities (Amumu Q / Heimerdinger R / Samira R) with a CLEAR MISLABEL (Amumu Bandage Toss scales with haste in-game) + 14 formulas + 4 toggles - too unreliable to gate haste-immunity, and a burst rotation's spells all scale with haste regardless. NOT used to exempt slots; haste applied UNIFORMLY. ability_static_cd accessor stays reachable but is an HONEST no-consumer.
+
+ENGINE 1.69.0 -> 1.70.0 + 33 test-pin sync. Verified: DS 5543 -> 5550; RC 4161 (engine sig back-compat); phase8 70/70 post-restart; ruff clean; CI all green. DS restarted PowerShell -> 1.70.0.
+
+Don't-redo: (a) ability-haste CDR REUSES total_item_ability_haste + Riot base_cd/(1+AH/100); do NOT rebuild AH aggregation (DDragon stats strip AbilityHaste). (b) haste binds only on cooldown-REPEATING sequences (single-cast combos cast-time-bound) - correct, not a bug. (c) static-CD HONEST no-consumer (QWER 3 abilities w/ mislabel); do NOT wire it to gate haste-immunity. (d) apply_ability_haste OPT-IN default-OFF byte-identical; do NOT flip without live validation. (e) ALL 6 buckets RESOLVED (5 wired + static-CD honest-no-consumer + cc_tags operator-CLOSED) - sidecar lane COMPLETE. (f) DS restart PowerShell taskkill; NEVER Stop-Process.
+
+NEXT (operator-gated / data-blocked - clean headless DS lane EXHAUSTED): (1) flip the 4 opt-in flags (gate_ammo/apply_mode_modifiers/aoe_targets_hit/apply_ability_haste) after LIVE-GAME validation - each re-ranks, NOT headless. (2) auto-enable assassin keystone in /rank-assassin (operator sign-off - product decision). (3) missile combo-clock delay IF a real per-spell cast-RANGE source lands. (4) more per_attack runes (registry saturated). cc_tags operator-CLOSED.
+
 # 2026-05-31 - item 233: DS missile travel-time bucket + rune target_hp tags + burst role + static-CD accessor, all OPT-IN/additive/byte-identical (ENGINE 1.68.0 -> 1.69.0; HEAD f71605f; pushed 96e20bf..f71605f; DS :8893 restarted serves 1.69.0; RC NOT restarted)
 
 Operator headless continuation (fresh context after item-232 ScheduleWakeup). Pre-flight clean: HEAD 96e20bf / 0 PRs / CI all green / 0 worktrees / ENGINE 1.68.0 in sync.
