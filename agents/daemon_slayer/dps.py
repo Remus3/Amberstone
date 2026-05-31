@@ -945,6 +945,7 @@ def compute_dps_curve(
     target_bonus_hp: float = 0.0,
     levels: Optional[Iterable[int]] = None,
     augments: Optional[Iterable] = None,
+    apply_mode_modifiers: bool = False,
 ) -> list[DpsCurvePoint]:
     """Return a per-level DPS curve for ``champion_id`` with the given build.
 
@@ -969,6 +970,7 @@ def compute_dps_curve(
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
             augments=augments,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
         pts.append(DpsCurvePoint(
             level=lv,
