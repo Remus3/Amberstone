@@ -102,6 +102,11 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
+from ._ability_amp_overrides import (
+    _DEFAULT_AMP_PROBABILITY,
+    _ability_amp_for,
+    _amp_multiplier,
+)
 from .abilities import (
     AbilitiesNotFound,
     AbilitiesSnapshot,
@@ -1958,6 +1963,7 @@ def compute_ability_dps(
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
     block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
+    apply_ability_amps: bool = False,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -2192,8 +2198,17 @@ def compute_ability_dps(
         # Unmake doesn't touch physical Garen Q or true Talon E).
         dt = (form.damage_type or "MAGIC").upper()
         spell_magic_amp = magic_amp if dt == "MAGIC" else 1.0
+        # GAP 1 (item 239): opt-in ability self-damage-amp (Illaoi Q always-on,
+        # Mordekaiser Q isolation, Hwei/Sion charge, etc). Default OFF -> 1.0 ->
+        # byte-identical to prior. Only base=="ability" entries fire here; base==
+        # "aa" entries are AA empowerments inert in ability_dps.
+        amp_factor = 1.0
+        if apply_ability_amps:
+            _amp_entry = _ability_amp_for(resolved.champion_id, key, form.form_index)
+            if _amp_entry is not None and _amp_entry.base == "ability":
+                amp_factor = _amp_multiplier(_amp_entry, rank, _DEFAULT_AMP_PROBABILITY)
         # Build-wide damage_amp + spell-magic_amp scale per-cast pre-mit.
-        post_amps = post_mode * damage_amp * spell_magic_amp
+        post_amps = post_mode * damage_amp * spell_magic_amp * amp_factor
         mit_factor = _mitigation_factor(form.damage_type, target_armor_eff, target_mr_eff)
         post_mit = post_amps * mit_factor
 
@@ -2578,6 +2593,7 @@ def rank_items_by_ability_dps(
     form_index_overrides: Optional[dict[str, int]] = None,
     block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     filter_shared_uniques: bool = True,
+    apply_ability_amps: bool = False,
 ) -> AbilityDpsRankResult:
     """Rank items by total-ability-DPS gain when added to ``current_item_ids``.
 
@@ -2648,6 +2664,7 @@ def rank_items_by_ability_dps(
         block_strategy=block_strategy,
         form_index_overrides=resolved_form_index,
         block_index_overrides=resolved_block_index,
+        apply_ability_amps=apply_ability_amps,
     )
 
     candidates = _filter_candidates(
@@ -2681,6 +2698,7 @@ def rank_items_by_ability_dps(
                 block_strategy=block_strategy,
                 form_index_overrides=resolved_form_index,
                 block_index_overrides=resolved_block_index,
+                apply_ability_amps=apply_ability_amps,
             )
         except (KeyError, ValueError):
             continue
