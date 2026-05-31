@@ -4,6 +4,22 @@
 
 ---
 
+# 2026-05-31 - insights pass 2: built the horizon items the pass-1 entry deferred (commit e151e95; CI green; no ENGINE bump; no DS/RC restart; non-frozen)
+
+Operator ran /insights then "apply ALL of features-to-try + on-the-horizon; fold CLAUDE.md additions in; explain why already-present skills get re-suggested." This closes the pass-1 NEXT (self-healing checkpoint+resume + verifier gate were explicitly NOT built last session).
+
+Shipped (tracked, in e151e95): CLAUDE.md +5 convention sections after ## Verification (Verification Discipline / UI Fixture Ritual / Python Conventions / Data Fixes / Engine-Build Conventions, each grounded in a real item: 238 stale-replay / page-8 audit miss / 216 dataclass-41-break / 211 backfill / 208->213 marksman). NEW tools/slice_orchestrator.py + tests/test_slice_orchestrator.py (16 green) = resumable run manifest (init/add/set/next/resume/summary, atomic, ops/runtime/slice_manifest.json). NEW tools/headless_run.ps1 = crash-retry + manifest-resume wrapper.
+
+Shipped (LOCAL/gitignored .claude/, active now): NEW .claude/agents/verifier.md (read-only ground-truth verifier subagent, no Edit/Write). NEW .claude/commands/root-cause-fix.md skill. headless-upgrade.md +manifest-init pre-flight +verifier-gate-before-merge +per-slice checkpoint +root-cause-fix ref. done.md +ground-truth re-verify bullet.
+
+Why insights re-suggested skills/hooks already present: /insights reads session TRANSCRIPTS not the .claude/ filesystem; it cannot see that done/headless/TDD skills exist or that pytest_guard+edit_lint_check+precommit_gate already run on every edit/commit. The lever to stop re-suggestion = changing observable BEHAVIOR (verifier dispatch, manifest checkpoints, audit-before-commit), now codified. Hooks left AS-IS - did NOT add the literal pytest-per-edit suggestion (would slow the loop; the existing layering is better).
+
+Dont-redo: hooks already satisfy the report (do NOT add redundant pytest-per-edit to settings.json). .claude/* is gitignored (line 65) so verifier+root-cause-fix+skill-edits are Legion-local, never in git history - same as every other skill here. slice_orchestrator manifest path defaults to ops/runtime/slice_manifest.json, overridable via --manifest (tests inject tmp).
+
+NEXT: nothing owed. Next /insights pass should not re-surface these themes if the verifier/manifest/audit behavior shows up in transcripts; insights is a transcript heuristic so no hard guarantee.
+
+---
+
 # 2026-05-31 - insights gap-fill: commit-time ruff+glyph gate + CLAUDE.md Error Handling/Verification sections (no ENGINE bump; no DS/RC restart; non-frozen; .claude/settings.json hook is gitignored = LOCAL to Legion)
 
 Operator ran /insights then "dig into all sections + try all suggestions into the current commands/skills for /done /clear". One AskUserQuestion -> Gap-fill only + Block-new-violations. Verified ~90% of the report's suggestions ALREADY shipped here (PostToolUse ruff+glyph hook edit_lint_check.py, no-em-dash hard rule, done + headless-upgrade skills, verify-before-assert memories). Shipped only the 3 genuine gaps.
@@ -166,27 +182,3 @@ Verified: DS 5264 -> 5305 (+41); ruff clean; phase8 70/70 post-restart; CI green
 DON'T-REDO: (a) Fleet Footwork 8021 honest data-availability ceiling (heal+MS, no damage) - do NOT add as a damage rune. (b) Lethal Tempo 8008 melee 100%-effective 9-30 flat; ranged 6-24 + bonus-AS amp NOT applied (no role/AS in signature). (c) Hail of Blades 9923 ADDITIVE bAD+AP not adaptive. (d) Slice C runes wire BYTE-IDENTICAL when omitted + NOT auto-enabled - do NOT flip /rank-assassin to auto-pass a keystone by default without operator validation. (e) scenario_matrix new metrics REUSE existing scorers (harness, no new math).
 
 NEXT (operator-gated, ENGINE bump each): (1) item 225's 6 data sidecar buckets owed engine wiring (LAST item-229-NEXT carry). (2) auto-enable an assassin keystone in the live /rank-assassin default (re-rank validation vs real builds). (3) expand per_attack to other on-hit runes if DDragon exposes them.
-
----
-
-# 2026-05-31 - item 229: DS V2 S2/S3/S4 + L - unified fight-report + rune wire into burst/combo + rune registry expand + lolmath re-review (ENGINE 1.64.0 -> 1.65.0; HEAD = this docs commit; pushed 7f1be83..HEAD = merges 8cc0c65/725af3c/5f74246 + bump 2e8db97 + docs; DS :8893 restarted serves 1.65.0)
-
-Operator: "continue DS V2: S2 unified fight-report, S3 wire rune_procs into burst/combo (byte-identical default, ENGINE 1.64.0 -> 1.65.0), S4 expand rune_procs (DDragon-verbatim), re-review lolmath post-2026-05-30. Parallel disjoint slices per item 228. Pre-flight clean S1+227 worktrees. CI+smoke+commit+push+/done." Headless-upgrade run; 3 parallel worktree agents (disjoint files) orchestrator-merged 0 conflicts + L inline. Pre-flight: unlocked + removed 7 stale worktrees (S1+item 227) + pruned branches; CI green; 0 PRs.
-
-S2 (feat 4679deb -> merge 5f74246) NEW agents/daemon_slayer/fight_report.py: FightReport frozen dataclass (31 fields) + compute_fight_report(champion, level, item_ids, sequence, runes, target_*, mode, snapshot) COMPOSING all 5 substrate modules (mana_sim + rune_procs + self_shred + ability_hps + scenario_matrix), fail-soft per-section (one section raising -> note + that section zeroed, never raises). NEW POST /v2/fight-report route in server.py (15th _POST_ROUTE; _route_fight_report mirrors _route_burst; auto-joins _GET_DISPATCH_ROUTES). Rune section resolves caster stats via build_champion + AbilityContext.from_build (bonus_ad/ap/caster_bonus_hp/caster_max_hp), INDEPENDENT of S3's burst wire (no double-count). Scenario section sweeps 2 levels x 3 armor profiles = 6 cells + check_invariants. +9 tests. Live probe: Lux bounded 498.4 / rune_burst 245.0 / cells 6 / violations 0 / ability_hps_total 1.86.
-
-S3 (feat 5e55770 -> merge 725af3c) burst.py + combo.py: NEW optional `runes: Optional[Sequence[int]] = None`. BYTE-IDENTICAL when None/empty (rune_proc_damage=0.0, the existing total_burst line untouched on the None path). When runes passed: rune_proc_damage = sum compute_rune_proc_damage(rid, ad=ctx.bonus_ad, ap=ap_total, bonus_hp=ctx.caster_bonus_hp, target_max_hp, mode) over proc_type in {on_proc_burst, per_attack, stacking_amp}; CONQUEROR adaptive EXCLUDED (per-stack stat-force, not damage); keystone_amp applied to ability+AA base (PtA 1.08); total_burst = amped_base + rune_proc_damage. NEW BurstResult.rune_proc_damage field (default 0.0) + to_dict. combo threads runes -> burst, folds rune_proc_damage into total + note. +14 tests. Lux/Caitlyn burst + Lux combo pins stay green.
-
-S4 (feat c93244f -> merge 8cc0c65) rune_procs.py 8 -> 14, all DDragon 16.11.1 verbatim: 8214 Summon Aery on_proc_burst (10-50 by level + 0.10 bAD + 0.05 AP adaptive; shield side NOT modeled), 8437 Grasp of the Undying on_proc_burst (0.035*caster_max_hp magic via **extra; ranged 40% caller's job), 8439 Aftershock on_proc_burst (25-120 by level + 0.08 bonus_hp), 8369 First Strike stacking_amp 1.07 (7% true; compute 0.0), 8014 Coup de Grace stacking_amp 1.08 (<40% HP target), 8017 Cut Down stacking_amp 1.08 (>60% HP target). len(RUNE_PROCS)==14; 8 originals unchanged. ID-CORRECTION: brief said "Coup de Grace 8299 / Cut Down 8014" - BOTH crossed; DDragon authoritative 8299=Last Stand / 8014=Coup de Grace / 8017=Cut Down (documented inline). keystone_amp unchanged (3 new amps flow through generically).
-
-L: lolmath changelog (https://lolmath.net/info/changelog/) re-review post-2026-05-30 = 0 NEW entries; latest is 2026-05-22 (stat-growth revert, already CLOSED item 227). CLEAN, nothing actionable.
-
-ENGINE bump (2e8db97): 1.64.0 -> 1.65.0 + 34 test-pin sync (tests/*.py only; agent test files carry NO version pin). Living docs synced (DAEMON_SLAYER L5+L32 / README L46 / BRIEF L20+L26 / ARCH L161) - item 228 had left them stale at 1.63.0/5191, fixed to 1.65.0/5264.
-
-Verified: DS suite 5204 -> 5264 (+60); RC suite 4091 passed / 0 fail; phase8 70/70 post-restart; ruff repo-wide ALL CHECKS PASSED; 0 non-ASCII added. DS :8893 killed pid 19404 + schtasks Run -> /health engine 1.65.0 / patch 16.11.1 / 172 / 705. RC :8888 NOT restarted (DS-only + the server.py route goes live via the DS restart, not RC).
-
-DON'T-REDO: (a) S3 runes=None is BYTE-IDENTICAL (None-path total line untouched; Lux/Caitlyn pins lock it) - do NOT change the None path. (b) Conqueror 8010 EXCLUDED from burst damage total (adaptive stat-stack, not damage); do NOT add it. (c) rune ids 8014=Coup de Grace / 8017=Cut Down / 8299=Last Stand (brief crossed them; DDragon won) - do NOT "fix" back. (d) Grasp 8437 reads caster_max_hp via **extra (not a fixed kwarg); fight_report passes it. (e) fight_report computes its rune section INDEPENDENTLY (build_champion + AbilityContext), NOT via burst's runes param, to avoid double-count - keep them separate. (f) lolmath 0 actionable (re-confirmed); skip unless entries appear after 2026-05-31. (g) ability_hps resolve_target_relative stays False in LIVE compute_hps (item 228 honest lower bound).
-
-NEXT (operator-gated, each own ENGINE bump): (1) wire rune_procs into the LIVE :8893 rank scorers (rank_items_by_burst /rank-assassin) so build ranking values keystone runes - RE-RANKS assassin builds (validate). (2) mana_sim + runes as scenario_matrix metrics. (3) expand rune coverage - per_attack runes (Lethal Tempo / Fleet Footwork / Hail of Blades) not yet modeled. (4) item 225 6 data sidecar buckets still owed wiring.
-
-CARRY: cost/latency 7-lever sweep NOT run (V2-focused session). Git-Bash mangles taskkill/schtasks (path coercion) - use PowerShell tool for DS restart (taskkill /F /PID then schtasks /Run). Anomaly RC-CostHealthWatchdog (carry). 3 S2/S3/S4 worktrees harness-locked -> next pre-flight cleans. Frozen-file grant NOT used.
