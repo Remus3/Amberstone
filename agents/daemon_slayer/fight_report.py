@@ -10,6 +10,7 @@ substrate modules and stitches their results into a single ``FightReport``:
   * ability_hps.compute_ability_hps      -> active+passive heal/shield throughput
   * self_shred.compute_self_shred_uplift -> target-shred own-DPS uplift
   * scenario_matrix.sweep_scenarios       -> cross-interaction sweep + invariants
+  * recharge_ledger.compute_recharge_ledger -> charge-availability over a window
 
 Fail-soft: ``compute_fight_report`` NEVER raises. Each section runs in its own
 try/except; on failure that section is zeroed and a note is appended, the rest
@@ -28,6 +29,7 @@ from .dps import compute_dps
 from .engine import build_champion
 from .mana_sim import compute_mana_bounded_combo
 from .rune_procs import RUNE_PROCS, compute_rune_proc_damage, keystone_amp
+from .recharge_ledger import compute_recharge_ledger
 from .scenario_matrix import check_invariants, sweep_scenarios
 from .self_shred import compute_self_shred_uplift
 
@@ -92,6 +94,11 @@ class FightReport:
     scenario_cells: int = 0
     invariant_violations: Tuple[dict, ...] = field(default_factory=tuple)
 
+    # recharge_ledger section (item 232): charge-availability over a window
+    # for charge-bearing slots (only slots with a cdragon ammo recharge).
+    recharge_window_s: float = 0.0
+    recharge_slots: Tuple[dict, ...] = field(default_factory=tuple)
+
     notes: Tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
@@ -129,6 +136,8 @@ class FightReport:
                 {"invariant": v["invariant"], "detail": v["detail"]}
                 for v in self.invariant_violations
             ],
+            "recharge_window_s": self.recharge_window_s,
+            "recharge_slots": [dict(s) for s in self.recharge_slots],
             "notes": list(self.notes),
         }
 
@@ -152,10 +161,11 @@ def compute_fight_report(
     snapshot: Optional[DataSnapshot] = None,
     caster_hp_pct: float = 1.0,
     game_time_s: float = 0.0,
+    recharge_window_s: float = 10.0,
 ) -> FightReport:
     """Compose a unified V2 fight report for ``champion``.
 
-    Calls each of the 5 substrate modules in its own try/except. NEVER raises -
+    Calls each of the 6 substrate modules in its own try/except. NEVER raises -
     a section that fails is zeroed and a note is appended. ``snapshot`` is a
     DataSnapshot (loaded when None). ``runes`` is an iterable of Riot perk ids
     (int or str). ``sequence`` defaults to ``_DEFAULT_SEQUENCE`` when None.
@@ -342,6 +352,28 @@ def compute_fight_report(
         scenario_cells = 0
         invariant_violations = []
 
+    # ----- RECHARGE section --------------------------------------------
+    # Charge-availability over the fight window for charge-bearing slots
+    # (cdragon ammo recharge). Non-charge slots return source="none" and are
+    # dropped. Standalone metric - does not feed the bounded-dps math.
+    recharge_slots: List[dict] = []
+    try:
+        for slot in ("Q", "W", "E", "R"):
+            ledger = compute_recharge_ledger(
+                snap, champ, slot, recharge_window_s,
+            )
+            if ledger.source != "none":
+                recharge_slots.append({
+                    "slot": slot,
+                    "source": ledger.source,
+                    "recharge_s": ledger.recharge_s,
+                    "max_charges": ledger.max_charges,
+                    "total_casts_available": ledger.total_casts_available,
+                })
+    except Exception as exc:  # fail-soft
+        notes.append(f"recharge section failed: {_short(exc)}")
+        recharge_slots = []
+
     return FightReport(
         champion=champ,
         champion_name=champion_name,
@@ -373,6 +405,8 @@ def compute_fight_report(
         shred_dps_gain=shred_dps_gain,
         scenario_cells=scenario_cells,
         invariant_violations=tuple(invariant_violations),
+        recharge_window_s=float(recharge_window_s),
+        recharge_slots=tuple(recharge_slots),
         notes=tuple(notes),
     )
 
