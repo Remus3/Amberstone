@@ -573,7 +573,7 @@ def compute_dps(
 
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
-        augments=augments,
+        augments=augments, apply_mode_modifiers=apply_mode_modifiers,
     )
     stats = resolved.stats
 

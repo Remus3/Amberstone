@@ -27,7 +27,7 @@ from .data_loader import DataSnapshot
 from .dps import compute_dps
 from .engine import build_champion
 from .mana_sim import compute_mana_bounded_combo
-from .rune_procs import RUNE_PROCS, compute_rune_proc_damage
+from .rune_procs import RUNE_PROCS, compute_rune_proc_damage, keystone_amp
 from .scenario_matrix import check_invariants, sweep_scenarios
 from .self_shred import compute_self_shred_uplift
 
@@ -150,6 +150,8 @@ def compute_fight_report(
     target_bonus_hp: float = 0.0,
     mode: str = "SR",
     snapshot: Optional[DataSnapshot] = None,
+    caster_hp_pct: float = 1.0,
+    game_time_s: float = 0.0,
 ) -> FightReport:
     """Compose a unified V2 fight report for ``champion``.
 
@@ -281,6 +283,20 @@ def compute_fight_report(
                 rid, lvl, ad=ctx.bonus_ad, ap=ctx.ap,
                 bonus_hp=ctx.caster_bonus_hp, target_max_hp=target_max_hp,
                 mode=mode, caster_max_hp=ctx.caster_max_hp,
+                caster_hp_pct=caster_hp_pct, game_time_s=game_time_s,
+            )
+            # item 232 - gated stacking-amp runes (Last Stand 8299) report the
+            # CONTEXT-GATED amp via keystone_amp, not the static amp_mult field
+            # (which is 1.0 for gated runes). For unconditional amps (PtA/Coup/
+            # Cut/First Strike) keystone_amp(rid, 1.0, default ctx) == amp_mult,
+            # so this is byte-identical at the full-HP / time-0 default.
+            eff_amp = (
+                keystone_amp(
+                    rid, 1.0,
+                    caster_hp_pct=caster_hp_pct, game_time_s=game_time_s,
+                )
+                if proc is not None and proc.proc_type == "stacking_amp"
+                else (proc.amp_mult if proc else 1.0)
             )
             entry = {
                 "rune_id": rid,
@@ -288,7 +304,7 @@ def compute_fight_report(
                 "tree": proc.tree if proc else "",
                 "proc_type": proc.proc_type if proc else "",
                 "value": val,
-                "amp_mult": proc.amp_mult if proc else 1.0,
+                "amp_mult": eff_amp,
             }
             rune_entries.append(entry)
             if entry["proc_type"] in _BURST_PROC_TYPES:

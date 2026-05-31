@@ -98,6 +98,7 @@ from .effects import (
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
+from .geometry import spell_aoe_multiplier
 from .rune_procs import RUNE_PROCS, compute_rune_proc_damage, keystone_amp
 from .rank import (
     DEFAULT_SLOT_COUNT,
@@ -446,6 +447,9 @@ def compute_burst_damage(
     block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     combo_sequence: Optional[Sequence[str]] = None,
     runes: Optional[Sequence[int]] = None,
+    caster_hp_pct: float = 1.0,
+    game_time_s: float = 0.0,
+    aoe_targets_hit: int = 1,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -765,6 +769,16 @@ def compute_burst_damage(
         post_amps = post_mode * damage_amp * spell_magic_amp
         mit = _mitigation_factor(form.damage_type, target_armor_eff, target_mr_eff)
         final = post_amps * mit
+        # item 232 - geometry-aware AoE scaling. Byte-identical at the default
+        # single-target aoe_targets_hit=1 (the guard skips the call entirely;
+        # spell_aoe_multiplier would also return 1.0). An AoE-shaped ability
+        # (line/cone/circle per the cdragon geometry sidecar) hitting N targets
+        # in a teamfight deals ~N x its single-target damage, capped at the
+        # team size; point/self-cast spells stay x1.
+        if aoe_targets_hit > 1:
+            final *= spell_aoe_multiplier(
+                snapshot, champion_id, ability_key, aoe_targets_hit
+            )
         per_cast.append(ComboCast(
             token=canonical,
             is_ability=True,
@@ -807,10 +821,15 @@ def compute_burst_damage(
                 bonus_hp=ctx.caster_bonus_hp,
                 target_max_hp=target_max_hp,
                 mode=mode,
+                caster_hp_pct=caster_hp_pct,
+                game_time_s=game_time_s,
             )
         amped_base = total_burst
         for _rid in runes:
-            amped_base = keystone_amp(_rid, amped_base)
+            amped_base = keystone_amp(
+                _rid, amped_base,
+                caster_hp_pct=caster_hp_pct, game_time_s=game_time_s,
+            )
         total_burst = amped_base + rune_proc_damage
 
     primary = _classify_primary_scaling(per_cast, forms_for_classification)
