@@ -122,11 +122,20 @@ class HpsScoringTests(unittest.TestCase):
         self.assertIn("6620", top_3_ids)
 
     def test_moonstone_low_priority_at_naked(self) -> None:
-        """Moonstone at naked = 0 delta because there's nothing to amp."""
+        """Moonstone at naked has no ITEM heal to amp; its only delta now is
+        the small bump from its AP raising Soraka's own AP-scaling ability
+        heal (ability HPS folded in, V2 enchanter wire). It stays low-priority
+        (well below a direct-heal item) but is no longer exactly 0."""
         r = rank_items_by_hps(self.snap, "Soraka", level=11, top_n=20)
         moonstone_row = next((row for row in r.ranked if row.item_id == "6617"), None)
+        helia_row = next((row for row in r.ranked if row.item_id == "6620"), None)
         if moonstone_row is not None:
-            self.assertEqual(moonstone_row.delta_hps, 0.0)
+            # Small positive delta from AP -> ability-heal scaling, not 0.
+            self.assertGreaterEqual(moonstone_row.delta_hps, 0.0)
+            self.assertLess(moonstone_row.delta_hps, 5.0)
+            # Still ranks below a real direct-heal item (Helia 6620).
+            if helia_row is not None:
+                self.assertLess(moonstone_row.delta_hps, helia_row.delta_hps)
 
     def test_moonstone_rises_with_existing_heals(self) -> None:
         """Moonstone delta > 0 when build already has direct-heal items."""
