@@ -202,6 +202,7 @@ def compute_hybrid(
     augments: Optional[Iterable] = None,
     enemy_champions: Iterable[str] = (),
     include_conditional: bool = False,
+    apply_mode_modifiers: bool = False,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
 ) -> HybridResult:
@@ -277,6 +278,7 @@ def compute_hybrid(
         target_bonus_hp=target_bonus_hp,
         phase=phase,
         augments=augments,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
     # ENGINE 1.39.0 (item 143 Slice B): pass include_conditional through
     # to compute_ehp ONLY when True. This preserves byte-identical
@@ -297,6 +299,7 @@ def compute_hybrid(
         enemy_ap_share=enemy_ap_share,
         augments=augments,
         enemy_champions=enemy_champions_tuple,
+        apply_mode_modifiers=apply_mode_modifiers,
         **_ehp_kwargs,
     )
 
@@ -551,6 +554,7 @@ def rank_items_by_hybrid(
     augments: Optional[Iterable] = None,
     enemy_champions: Iterable[str] = (),
     include_conditional: bool = False,
+    apply_mode_modifiers: bool = False,
     filter_shared_uniques: bool = True,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
@@ -617,6 +621,7 @@ def rank_items_by_hybrid(
         target_armor=target_armor, target_mr=target_mr,
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         phase=phase, augments=augments,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
     # ENGINE 1.39.0 (item 143 Slice B): pass include_conditional through
     # only when True (same pattern as compute_hybrid above).
@@ -630,6 +635,7 @@ def rank_items_by_hybrid(
         enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
         augments=augments,
         enemy_champions=enemy_champions_tuple,
+        apply_mode_modifiers=apply_mode_modifiers,
         **_ehp_kwargs_baseline,
     )
     baseline_dps = baseline_dps_result.weighted_dps
@@ -671,6 +677,7 @@ def rank_items_by_hybrid(
                 target_armor=target_armor, target_mr=target_mr,
                 target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
                 phase=phase, augments=augments,
+                apply_mode_modifiers=apply_mode_modifiers,
             )
             # ENGINE 1.39.0 (item 143 Slice B): same conditional kwarg
             # threading pattern as the baseline call above.
@@ -684,6 +691,7 @@ def rank_items_by_hybrid(
                 enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
                 augments=augments,
                 enemy_champions=enemy_champions_tuple,
+                apply_mode_modifiers=apply_mode_modifiers,
                 **_ehp_kwargs_scored,
             )
         except (KeyError, ValueError):

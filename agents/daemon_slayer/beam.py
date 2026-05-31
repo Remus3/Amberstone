@@ -205,6 +205,7 @@ def beam_search_build(
     include_components: bool = False,
     only_item_ids: Optional[Iterable[str | int]] = None,
     boots_unique: bool = True,
+    apply_mode_modifiers: bool = False,
 ) -> BeamResult:
     """Search top ``top_n`` complete builds for ``champion_id``.
 
@@ -251,6 +252,7 @@ def beam_search_build(
         target_max_hp=target_max_hp,
         target_bonus_hp=target_bonus_hp,
         phase=phase,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
 
     seed_gold = _build_gold(snapshot, current_ids)
@@ -365,6 +367,7 @@ def beam_search_build(
                         target_max_hp=target_max_hp,
                         target_bonus_hp=target_bonus_hp,
                         phase=phase,
+                        apply_mode_modifiers=apply_mode_modifiers,
                     )
                 except (KeyError, ValueError):
                     continue
