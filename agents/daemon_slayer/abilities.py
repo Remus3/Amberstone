@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from ._ability_overrides import DAMAGE_TYPE_OVERRIDES, NON_DAMAGE_BLOCKS
+from ._passive_damage_overrides import _PASSIVE_DAMAGE_OVERRIDES, to_damage_block
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
@@ -244,6 +245,42 @@ def _apply_ability_overrides(cid: str, key: str, form: AbilityForm) -> AbilityFo
     return replace(form, **changes)
 
 
+def _apply_passive_damage_overrides(cid: str, key: str, form: AbilityForm) -> AbilityForm:
+    """Inject the GAP-2 effects-text-only passive damage block at load time.
+
+    OPT-IN: this runs only when ``AbilitiesSnapshot.load`` is called with
+    ``apply_passive_damage=True``. When it runs, it appends a synthetic
+    ``attribute_kind="damage"`` block to a form ONLY when:
+      * the form has ``parse_status == "no_damage"`` (the Meraki pipeline
+        could not structure a damage block), AND
+      * ``(cid, key, form.form_index)`` has a registered
+        ``PassiveDamageEntry``.
+
+    The synthetic block routes through the existing
+    ``ability_dps._evaluate_block`` / ``_select_blocks`` machinery with zero
+    new math. ``form.damage_type`` is set from the entry ONLY when the form's
+    current type is null (the seeded P forms already carry a sensible
+    ``damage_type`` - Lux MAGIC, Qiyana PHYSICAL, Vel'Koz TRUE - so this
+    almost never fires; it is a safety net for a future entry on a null-type
+    form). Returns ``form`` unchanged when the gate is not met.
+
+    See ``_passive_damage_overrides`` for the registry + the staged-candidate
+    list. The default (flag OFF) path never calls this, so forms are
+    byte-identical to the no-override behavior.
+    """
+    if form.parse_status != "no_damage":
+        return form
+    entry = _PASSIVE_DAMAGE_OVERRIDES.get((cid, key, form.form_index))
+    if entry is None:
+        return form
+    changes: dict[str, Any] = {
+        "damage_blocks": form.damage_blocks + (to_damage_block(entry),),
+    }
+    if not form.damage_type:
+        changes["damage_type"] = entry.damage_type
+    return replace(form, **changes)
+
+
 @dataclass(frozen=True)
 class AbilitiesSnapshot:
     """Versioned snapshot of all champion ability records.
@@ -260,7 +297,23 @@ class AbilitiesSnapshot:
     data_root: Path = field(repr=False, default=_DEFAULT_DATA_ROOT)
 
     @classmethod
-    def load(cls, patch: str | None = None, data_root: Path | None = None) -> "AbilitiesSnapshot":
+    def load(
+        cls,
+        patch: str | None = None,
+        data_root: Path | None = None,
+        apply_passive_damage: bool = False,
+    ) -> "AbilitiesSnapshot":
+        """Load the abilities snapshot for ``patch`` (or current.txt).
+
+        ``apply_passive_damage`` (GAP 2, default False / OFF) is opt-in. When
+        True, ``_apply_passive_damage_overrides`` appends a synthetic damage
+        block to each seeded ``parse_status == "no_damage"`` P-slot passive
+        (Ziggs Short Fuse, Lux Illumination, etc.) so its effects-text-only
+        damage formula scores through the existing evaluator. When False (the
+        default) NO synthetic block is appended and forms are byte-identical
+        to the no-override behavior - the full DS suite passes unchanged.
+        The item-238 ``_apply_ability_overrides`` step runs first + always.
+        """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
             pointer = root / "current.txt"
@@ -293,10 +346,17 @@ class AbilitiesSnapshot:
             per_key: dict[str, tuple[AbilityForm, ...]] = {}
             for key in _KEY_ORDER:
                 forms = keymap.get(key) or []
-                per_key[key] = tuple(
-                    _apply_ability_overrides(cid, key, AbilityForm.from_dict(f))
-                    for f in forms if isinstance(f, dict)
-                )
+                built: list[AbilityForm] = []
+                for f in forms:
+                    if not isinstance(f, dict):
+                        continue
+                    # item 238 null-damage-type corrections run FIRST + always.
+                    fm = _apply_ability_overrides(cid, key, AbilityForm.from_dict(f))
+                    # GAP 2 effects-text-only passive damage: opt-in, default OFF.
+                    if apply_passive_damage:
+                        fm = _apply_passive_damage_overrides(cid, key, fm)
+                    built.append(fm)
+                per_key[key] = tuple(built)
             champions[cid] = per_key
         return cls(
             patch=patch,
