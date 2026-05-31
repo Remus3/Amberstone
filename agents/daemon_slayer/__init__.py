@@ -1321,7 +1321,19 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.64.0"
+ENGINE_VERSION = "1.65.0"
+# 1.65.0 (DS V2 S2/S3/S4 - wire the rune_procs proc/amp layer into the burst +
+# combo scorers behind an OPTIONAL runes param. BYTE-IDENTICAL when omitted
+# (rune_proc_damage=0.0, total_burst_damage unchanged); when a runes list is
+# passed, on_proc_burst/per_attack/stacking_amp procs add to the total and a
+# stacking-amp keystone (Press the Attack 1.08, First Strike 1.07) multiplies
+# the ability+AA base. Conqueror (adaptive stat-stack) is EXCLUDED from the
+# damage total by design. Expand rune_procs 8 -> 14 (Summon Aery 8214 / Grasp
+# 8437 / Aftershock 8439 / First Strike 8369 / Coup de Grace 8014 / Cut Down
+# 8017 - all DDragon 16.11.1 verbatim; the brief crossed 8014/8299 ids, DDragon
+# won). NEW fight_report.py unified V2 report composing mana_sim + rune_procs +
+# self_shred + ability_hps + scenario_matrix, served at POST /v2/fight-report.
+# Additive: every existing scorer is byte-identical without runes.)
 # 1.64.0 (DS V2 - wire ability_hps v2 into the live enchanter HPS scorer:
 # compute_hps now folds champion-spell heal/shield throughput
 # (total_ability_hps) into total_throughput, re-ranking enchanter builds.

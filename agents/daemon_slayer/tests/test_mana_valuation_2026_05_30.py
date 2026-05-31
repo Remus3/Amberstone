@@ -4,7 +4,7 @@ Pins ``rank_items(mana_value_per_point=...)``. The auto-attack DPS scorer
 values flat mana at ~0, so a mana-dependent caster sees early mana items
 (Tear, Lost Chapter, Blackfire/Rod-of-Ages line) rank below burn/AP items.
 The knob adds ``mana_value_per_point * mana_gained`` to each candidate's
-score. Default (None) MUST stay byte-identical to pre-1.64.0.
+score. Default (None) MUST stay byte-identical to pre-1.65.0.
 """
 from __future__ import annotations
 
