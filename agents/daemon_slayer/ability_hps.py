@@ -1,0 +1,512 @@
+"""2026-05-30 (DS scraper-review slice; additive, no ENGINE bump) - champion ABILITY healing/shielding scorer.
+
+Sibling of ``ability_dps.py``. Where ``ability_dps`` evaluates the
+``attribute_kind == "damage"`` blocks of each active spell (Q/W/E/R), this
+module evaluates the ``"heal"`` and ``"shield"`` blocks - making
+champion-spell heal/shield throughput DATA-DRIVEN from the scraped
+``champion_abilities.json`` (96 heal + 56 shield blocks at 16.11.1) instead
+of leaving them on the cutting-room floor.
+
+Context (2026-05-30 DS review): the scraper-refactor conversation flagged
+that ability heal/shield "still has hardcoded values" - in RC's case the
+champion-ability heal/shield blocks were extracted but NEVER CONSUMED
+(``ability_dps`` filters to ``"damage"`` blocks at the block-select step;
+``hps.py`` only scores the curated ENCHANTER ITEM registry). This closes
+that gap for the ACTIVE abilities by reusing the exact per-cast evaluation
+machinery ``ability_dps`` uses for damage:
+
+* rank-at-level via ``_resolve_max_priority`` + ``rank_at_level``
+* per-block scaling via ``_evaluate_block`` (base + AP/AD/HP coeffs); the
+  AP fed to procs is amp-adjusted (Rabadon's 30%, Mejai's stacks, HP->AP
+  cross-derivation) exactly as ``compute_ability_dps`` does so heal-on-AP
+  agrees with the damage scorer
+* per-cast rate via measured ``get_spell_casts_per_sec`` then a
+  ``1 / cooldown`` fallback gated by mana uptime
+* ARAM ``aramHealing`` / ``aramShielding`` mode multipliers (reused from
+  ``hps._aram_heal_shield_modifiers`` so the heal and shield halves stay
+  independent - 24 champs carry split values at 16.10.1+)
+
+This is a PURELY ADDITIVE scorer: it introduces no change to the existing
+DPS / EHP / ability-DPS / HPS-item rankers. Nothing in the engine consumes
+it yet; it is the data-driven substrate a future enchanter scorer or a
+coach surface can read.
+
+Deliberate v1 omissions (mirror ``ability_dps``):
+* Passive (P) heal/shield - Aatrox/Vladimir/DrMundo/Warwick heal off their
+  passive, but P uses a level-scaled (not rank-locked) model that
+  ``ability_dps`` also defers. Active-ability heals (Soraka W/E, Nami W,
+  Janna/Lulu E shields, Sona W, Seraphine W) are the enchanter-relevant
+  bulk and are covered here.
+* Caster-missing-HP heal scaling (Soraka/Vladimir heal-more-when-low) is
+  not captured - the DamageBlock schema has caster_max_hp_pct /
+  caster_bonus_hp_pct but no caster_missing_hp_pct field, so only the
+  base + AP/AD/max-HP portion of such heals is scored.
+* Multi-block heal/shield forms default to ``block_strategy="first"`` (the
+  first heal block + first shield block), matching ``ability_dps``'s
+  damage-block default so "Total"/"Maximum" variant blocks are not
+  double-counted. Pass ``block_strategy="sum"`` to add all blocks.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field, replace
+from typing import Iterable, Optional
+
+from .abilities import load_default
+from .ability_dps import (
+    SPELL_KEYS,
+    AbilityContext,
+    _form_cooldown_at_rank,
+    _form_cost_at_rank,
+    _mana_uptime_factor,
+    _resolve_form_index_overrides,
+    _resolve_max_priority,
+    clamp_level,
+    rank_at_level,
+)
+from .data_loader import DataSnapshot
+from .effects import (
+    collect_effects,
+    total_ap_amp_multiplier,
+    total_bonus_ap_from_hp,
+    total_caster_hp_scaled_ap_amp,
+    total_stacked_ap,
+)
+from .engine import build_champion
+from .hps import _aram_heal_shield_modifiers
+from .ult_rates import get_spell_casts_per_sec
+
+_BLOCK_STRATEGIES: frozenset[str] = frozenset({"first", "sum"})
+
+# --- raw_modifiers heal/shield evaluation ---------------------------------
+#
+# The extractor TYPES only ``attribute_kind == "damage"`` blocks into the
+# scaling fields (base / ap_pct / ...) the damage evaluator reads. heal +
+# shield blocks keep their numbers ONLY in ``raw_modifiers`` (a list of
+# {values:[per-rank], units:[per-rank]} dicts), so ``_evaluate_block`` (which
+# reads the typed fields) returns 0 for every heal/shield block. This module
+# parses ``raw_modifiers`` directly - the caster-side units a resting
+# throughput number can resolve. Units NOT in this map (target-relative,
+# missing-health, life-steal, per-stack/soul/mist) contribute 0 and are
+# tracked as ``unresolved`` so the number never silently overstates.
+_HEAL_UNIT_TO_CTX: dict[str, str | None] = {
+    "": None,                       # flat base term
+    "% ap": "ap",
+    "% of sona's ap": "ap",
+    "% bonus ad": "bonus_ad",
+    "% ad": "total_ad",
+    "% maximum health": "caster_max_hp",
+    "% of maximum health": "caster_max_hp",
+    "% bonus health": "caster_bonus_hp",
+    "% of his bonus health": "caster_bonus_hp",
+}
+
+# Attribute names tagged heal/shield by the extractor that are NOT a direct,
+# recurring heal/shield amount: cost reductions, percentage MULTIPLIERS,
+# permanent max-HP grants, regen, conversion ratios, stat readouts, and the
+# downgrade ("Reduced ...") / per-AA-hit variants that would double-count or
+# mis-cadence against a per-cast model. Matched case-insensitively as a
+# substring; such blocks are skipped entirely.
+_META_HEAL_SHIELD_RE = re.compile(
+    r"(reduced|percentage|increased heal|bonus health|base health|"
+    r"health regen|regenerat|threshold|wall health|"
+    r"heal and shield power|shield to healing|health cost|"
+    r"on-hit|per hit|per 1 fury|per ally)",
+    re.IGNORECASE,
+)
+
+
+def _is_meta_heal_shield(attribute: str) -> bool:
+    """True when a heal/shield-tagged block is NOT a direct recurring amount."""
+    return bool(_META_HEAL_SHIELD_RE.search(attribute or ""))
+
+
+def _value_at_rank(values: list, rank: int) -> float:
+    """Pick the per-rank value, clamping a 1-element list to that value."""
+    if not values:
+        return 0.0
+    idx = 0 if rank < 0 else rank
+    if idx >= len(values):
+        idx = len(values) - 1
+    try:
+        return float(values[idx])
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _eval_heal_shield_block(block, rank: int, ctx) -> tuple[float, bool]:
+    """Evaluate one heal/shield block's raw_modifiers at ``rank``.
+
+    Returns ``(amount, had_unresolved_unit)``. A flat term (empty unit) is
+    added directly; a recognized percent unit multiplies the matching
+    ``ctx`` stat / 100. An unrecognized unit contributes 0 and flips the
+    unresolved flag so callers can note the value is a lower bound.
+    """
+    total = 0.0
+    unresolved = False
+    for mod in block.raw_modifiers:
+        if not isinstance(mod, dict):
+            continue
+        values = mod.get("values") or []
+        units = mod.get("units") or []
+        unit_raw = next((u for u in units if u), "")
+        unit = str(unit_raw).strip().lower()
+        val = _value_at_rank(values, rank)
+        if unit == "":
+            total += val
+            continue
+        if unit in _HEAL_UNIT_TO_CTX:
+            ctx_attr = _HEAL_UNIT_TO_CTX[unit]
+            if ctx_attr is None:
+                total += val
+            else:
+                total += (val / 100.0) * getattr(ctx, ctx_attr, 0.0)
+        else:
+            unresolved = True
+    return total, unresolved
+
+
+# --- Result types ---------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class AbilitySpellHps:
+    """Per-spell healing/shielding throughput for one Q/W/E/R."""
+
+    key: str
+    form_name: str
+    form_index: int
+    rank: int
+    cooldown: float
+    heal_per_cast: float          # pre-mode (raw, post-scaling)
+    shield_per_cast: float        # pre-mode
+    casts_per_sec: float
+    casts_per_sec_source: str
+    mana_uptime_factor: float
+    heal_per_sec: float           # heal_per_cast x casts_per_sec x heal_mult
+    shield_per_sec: float         # shield_per_cast x casts_per_sec x shield_mult
+    notes: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict:
+        return {
+            "key": self.key,
+            "form_name": self.form_name,
+            "form_index": self.form_index,
+            "rank": self.rank,
+            "cooldown": self.cooldown,
+            "heal_per_cast": self.heal_per_cast,
+            "shield_per_cast": self.shield_per_cast,
+            "casts_per_sec": self.casts_per_sec,
+            "casts_per_sec_source": self.casts_per_sec_source,
+            "mana_uptime_factor": self.mana_uptime_factor,
+            "heal_per_sec": self.heal_per_sec,
+            "shield_per_sec": self.shield_per_sec,
+            "notes": list(self.notes),
+        }
+
+
+@dataclass(frozen=True)
+class AbilityHpsResult:
+    """Total champion-ability healing/shielding throughput for a build."""
+
+    champion_id: str
+    champion_name: str
+    level: int
+    item_ids: tuple[str, ...]
+    mode: str
+    ap: float                     # amp-adjusted AP the heals scale on
+    heal_mult: float              # aramHealing; 1.0 outside ARAM
+    shield_mult: float            # aramShielding; 1.0 outside ARAM
+    total_heal_per_sec: float
+    total_shield_per_sec: float
+    total_ability_hps: float      # total_heal_per_sec + total_shield_per_sec
+    spells: tuple[AbilitySpellHps, ...]
+    block_strategy: str = "first"
+    notes: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict:
+        return {
+            "champion_id": self.champion_id,
+            "champion_name": self.champion_name,
+            "level": self.level,
+            "item_ids": list(self.item_ids),
+            "mode": self.mode,
+            "ap": self.ap,
+            "heal_mult": self.heal_mult,
+            "shield_mult": self.shield_mult,
+            "total_heal_per_sec": self.total_heal_per_sec,
+            "total_shield_per_sec": self.total_shield_per_sec,
+            "total_ability_hps": self.total_ability_hps,
+            "spells": [s.to_dict() for s in self.spells],
+            "block_strategy": self.block_strategy,
+            "notes": list(self.notes),
+        }
+
+    def format_table(self) -> str:
+        head = (
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [ABILITY HPS]"
+        )
+        rows = [head, "-" * len(head)]
+        rows.append(f"items: {', '.join(self.item_ids) if self.item_ids else '(none)'}")
+        rows.append(f"caster ap: {self.ap:.0f}")
+        if self.heal_mult != 1.0 or self.shield_mult != 1.0:
+            rows.append(
+                f"aramHealing x{self.heal_mult:.3f}  "
+                f"aramShielding x{self.shield_mult:.3f}"
+            )
+        rows.append("")
+        rows.append(
+            f"  {'key':>3}  {'name':<22}  {'rank':>4}  {'cd':>5}  "
+            f"{'heal/cast':>9}  {'shld/cast':>9}  {'heal/s':>7}  {'shld/s':>7}"
+        )
+        rows.append("  " + "-" * 78)
+        for s in self.spells:
+            rows.append(
+                f"  {s.key:>3}  {s.form_name[:22]:<22}  {s.rank:>4}  "
+                f"{s.cooldown:>5.1f}  {s.heal_per_cast:>9.1f}  "
+                f"{s.shield_per_cast:>9.1f}  {s.heal_per_sec:>7.2f}  "
+                f"{s.shield_per_sec:>7.2f}"
+            )
+        rows.append("")
+        rows.append(f"  total_heal_per_sec    {self.total_heal_per_sec:8.2f}")
+        rows.append(f"  total_shield_per_sec  {self.total_shield_per_sec:8.2f}")
+        rows.append(f"  total_ability_hps     {self.total_ability_hps:8.2f}")
+        if self.notes:
+            rows.append("")
+            for n in self.notes:
+                rows.append(f"  note: {n}")
+        return "\n".join(rows)
+
+
+# --- Core scorer ----------------------------------------------------------
+
+
+def _select_kind_blocks(form, kind: str, rank: int, ctx, strategy: str) -> tuple[float, bool]:
+    """Sum the evaluated heal- or shield-kind blocks per strategy.
+
+    Skips meta blocks (cost reductions / multipliers / HP grants - see
+    ``_META_HEAL_SHIELD_RE``). ``strategy="first"`` evaluates only the first
+    NON-meta block of ``kind`` (so "Minimum/Maximum/Total" band variants of
+    the same heal do not double-count); ``strategy="sum"`` adds every
+    non-meta block. Returns ``(amount, had_unresolved_unit)``.
+    """
+    blocks = tuple(
+        b for b in form.damage_blocks
+        if b.attribute_kind == kind and not _is_meta_heal_shield(b.attribute)
+    )
+    if not blocks:
+        return 0.0, False
+    if strategy == "first":
+        return _eval_heal_shield_block(blocks[0], rank, ctx)
+    total = 0.0
+    unresolved = False
+    for b in blocks:
+        amt, unres = _eval_heal_shield_block(b, rank, ctx)
+        total += amt
+        unresolved = unresolved or unres
+    return total, unresolved
+
+
+def _empty_result(
+    champion_id: str,
+    champion_name: str,
+    level: int,
+    item_ids: tuple[str, ...],
+    mode: str,
+    ap: float,
+    heal_mult: float,
+    shield_mult: float,
+    block_strategy: str,
+    notes: tuple[str, ...],
+) -> AbilityHpsResult:
+    return AbilityHpsResult(
+        champion_id=champion_id,
+        champion_name=champion_name,
+        level=level,
+        item_ids=item_ids,
+        mode=mode,
+        ap=ap,
+        heal_mult=heal_mult,
+        shield_mult=shield_mult,
+        total_heal_per_sec=0.0,
+        total_shield_per_sec=0.0,
+        total_ability_hps=0.0,
+        spells=(),
+        block_strategy=block_strategy,
+        notes=notes,
+    )
+
+
+def compute_ability_hps(
+    snapshot: DataSnapshot,
+    champion_id: str,
+    level: int,
+    item_ids: Optional[Iterable[str | int]] = None,
+    mode: str = "SR",
+    augments: Optional[Iterable] = None,
+    max_priority: Optional[Iterable[str]] = None,
+    form_index_overrides: Optional[dict[str, int]] = None,
+    block_strategy: str = "first",
+    abilities=None,
+) -> AbilityHpsResult:
+    """Compute champion-ability healing + shielding throughput per second.
+
+    Mirrors ``ability_dps.compute_ability_dps`` but evaluates the ``"heal"``
+    and ``"shield"`` blocks of each Q/W/E/R rather than ``"damage"`` blocks.
+    Returns a zero-throughput result for champions with no active-ability
+    heal/shield blocks (the common case for most of the roster).
+    """
+    if block_strategy not in _BLOCK_STRATEGIES:
+        raise ValueError(
+            f"block_strategy must be one of {sorted(_BLOCK_STRATEGIES)}, "
+            f"got {block_strategy!r}"
+        )
+    level = clamp_level(level)
+
+    resolved = build_champion(
+        snapshot, champion_id, level, item_ids=item_ids, mode=mode,
+        augments=augments,
+    )
+    champ_id = resolved.champion_id
+
+    heal_mult, shield_mult = _aram_heal_shield_modifiers(snapshot, champ_id, mode)
+    safe_heal_mult = heal_mult if heal_mult > 0 else 1.0
+    safe_shield_mult = shield_mult if shield_mult > 0 else 1.0
+
+    # Build the per-cast context, then mirror compute_ability_dps's AP
+    # amp chain so AP-scaling heals see Rabadon's / Mejai's / HP->AP. The
+    # target_* args are zero - heal/shield blocks scale on caster stats,
+    # never on target resists/HP.
+    ctx = AbilityContext.from_build(
+        stats=resolved.stats,
+        base_stats=resolved.base_stats,
+        target_armor=0.0,
+        target_mr=0.0,
+        target_max_hp=0.0,
+        target_bonus_hp=0.0,
+    )
+    item_effects = collect_effects(resolved.item_ids)
+    ap_from_hp = total_bonus_ap_from_hp(item_effects, ctx.caster_bonus_hp)
+    stacked_ap = total_stacked_ap(item_effects)
+    ap_total = ctx.ap + ap_from_hp + stacked_ap
+    ap_amp = total_ap_amp_multiplier(item_effects)
+    hp_ap_amp = total_caster_hp_scaled_ap_amp(item_effects, ctx.caster_max_hp)
+    ap_total = ap_total * ap_amp * hp_ap_amp
+    ctx = replace(ctx, ap=ap_total)
+
+    snap_abilities = abilities if abilities is not None else load_default()
+    try:
+        forms_by_key = snap_abilities.get_abilities(champ_id)
+    except KeyError:
+        return _empty_result(
+            champ_id, resolved.champion_name, level, resolved.item_ids, mode,
+            ap_total, heal_mult, shield_mult, block_strategy,
+            (f"no abilities snapshot entry for {champ_id!r}",),
+        )
+
+    mp, _src = _resolve_max_priority(champ_id, max_priority)
+    form_idx_map, _fsrc = _resolve_form_index_overrides(
+        champ_id, form_index_overrides,
+    )
+
+    spells: list[AbilitySpellHps] = []
+    total_heal_ps = 0.0
+    total_shield_ps = 0.0
+
+    for key in SPELL_KEYS:
+        forms = forms_by_key.get(key) or ()
+        if not forms:
+            continue
+        form_idx = form_idx_map.get(key, 0)
+        if form_idx < 0 or form_idx >= len(forms):
+            form_idx = 0
+        form = forms[form_idx]
+        rank = rank_at_level(key, level, max_priority=mp)
+        if rank < 0:
+            continue
+
+        heal_per_cast, heal_unres = _select_kind_blocks(
+            form, "heal", rank, ctx, block_strategy,
+        )
+        shield_per_cast, shield_unres = _select_kind_blocks(
+            form, "shield", rank, ctx, block_strategy,
+        )
+        if heal_per_cast <= 0.0 and shield_per_cast <= 0.0:
+            continue
+        spell_notes: tuple[str, ...] = ()
+        if heal_unres or shield_unres:
+            spell_notes = (
+                "lower bound: a state-dependent unit (missing-HP / target / "
+                "per-stack) was not resolved at rest",
+            )
+
+        fallback = forms[0] if form_idx != 0 else None
+        base_cd = _form_cooldown_at_rank(form, rank, fallback_form=fallback)
+        cost = _form_cost_at_rank(form, rank)
+
+        measured = get_spell_casts_per_sec(resolved.champion_name, key, mode)
+        cps_source = "measured"
+        mana_uptime = 1.0
+        if measured is None or measured <= 0:
+            if base_cd > 0:
+                mana_uptime = _mana_uptime_factor(cost, base_cd, ctx, form.resource)
+                casts_per_sec = (1.0 / base_cd) * mana_uptime
+                cps_source = "theoretical_cooldown"
+            else:
+                casts_per_sec = 0.0
+                cps_source = "none"
+        else:
+            casts_per_sec = measured
+
+        heal_ps = heal_per_cast * casts_per_sec * safe_heal_mult
+        shield_ps = shield_per_cast * casts_per_sec * safe_shield_mult
+        total_heal_ps += heal_ps
+        total_shield_ps += shield_ps
+
+        spells.append(AbilitySpellHps(
+            key=key,
+            form_name=form.name,
+            form_index=form_idx,
+            rank=rank,
+            cooldown=base_cd,
+            heal_per_cast=heal_per_cast,
+            shield_per_cast=shield_per_cast,
+            casts_per_sec=casts_per_sec,
+            casts_per_sec_source=cps_source,
+            mana_uptime_factor=mana_uptime,
+            heal_per_sec=heal_ps,
+            shield_per_sec=shield_ps,
+            notes=spell_notes,
+        ))
+
+    notes: list[str] = []
+    if not spells:
+        notes.append(
+            "no active-ability heal/shield blocks for this champion "
+            "(passive-P heal/shield is out of scope for v1)"
+        )
+    if mode == "ARAM" and (heal_mult != 1.0 or shield_mult != 1.0):
+        notes.append(
+            f"ARAM aramHealing={heal_mult:.3f} aramShielding={shield_mult:.3f} "
+            f"applied per-side"
+        )
+    if block_strategy != "first":
+        notes.append(f"block_strategy={block_strategy!r}")
+
+    return AbilityHpsResult(
+        champion_id=champ_id,
+        champion_name=resolved.champion_name,
+        level=level,
+        item_ids=resolved.item_ids,
+        mode=mode,
+        ap=ap_total,
+        heal_mult=heal_mult,
+        shield_mult=shield_mult,
+        total_heal_per_sec=total_heal_ps,
+        total_shield_per_sec=total_shield_ps,
+        total_ability_hps=total_heal_ps + total_shield_ps,
+        spells=tuple(spells),
+        block_strategy=block_strategy,
+        notes=tuple(notes),
+    )
