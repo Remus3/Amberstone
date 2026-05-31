@@ -18,6 +18,26 @@ the default path is byte-identical. No DPS-path module imports
 covers these spells (the CC roots Mord R / Sion R / Hwei E are different
 spells), so there is NO double-count with any existing consumer.
 
+Inclusion principle - ACTIVE (``_ABILITY_AMP_OVERRIDES``, consumed) vs STAGED
+(``_STAGED_AMP_CANDIDATES``, documentation-only):
+An ability-amp is ACTIVE only when the keyed form carries a same-form
+``attribute_kind=="damage"`` block the amp can scale AND that amplified value
+is not ALREADY a separate damage block on the same form (no redundant
+double-model). At 16.11.1 the clean case is Mordekaiser Q - the isolation
+bonus lives only in the modifier, with no separate "isolated" damage block, so
+the amp is the only way to surface it. Illaoi Q is kept as the always_on
+reference even though its Q form is modifier-only (no same-form damage block,
+so the amp is LIVE-INERT - a forward-marker that applies the instant a
+same-form damage block ever appears).
+The STAGED entries each need a different seam before they can apply correctly:
+AurelionSol W (the amp targets the Breath-of-Light Q beam while in flight - a
+cross-spell self-state the per-form key cannot express; W f0 has no damage
+block); Sion Q and Hwei Q f2 (each form already carries a "Maximum ..." damage
+block that represents the charged / isolated ceiling, so an amp on the base
+block would double-model the same value - reconcile via block-index routing,
+and Hwei's bonus is missing-HP-scaled which needs Gap-2-style coefficient
+modeling). They are registered for the handoff record but never consumed.
+
 Two amp bases:
 
 * ``"ability"`` - multiplies THIS spell's own ability damage and IS
@@ -88,6 +108,12 @@ class AmpEntry:
 _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
     # Illaoi Q Tentacle Smash: ed[0] "Passive: Tentacle damage is increased"
     # (unconditional). raw_modifiers "Damage Increase" [10,15,20,25,30]%.
+    # LIVE-INERT at 16.11.1: the Q form holds only a modifier block (no
+    # same-form "damage" block), so there is nothing for the amp to scale on
+    # the real form. Retained as the canonical always_on reference + a
+    # forward-marker (the amp applies the instant a same-form damage block
+    # exists). Illaoi's amplified tentacle damage is a separate P-driven
+    # mechanic, not this Q form.
     ("Illaoi", "Q", 0): AmpEntry(
         amp_per_rank=(0.10, 0.15, 0.20, 0.25, 0.30),
         base="ability",
@@ -101,41 +127,6 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
         base="ability",
         condition=_COND_ISOLATION,
         note="Q damage increase when only one enemy is hit (ed[0]).",
-    ),
-    # Sion Q Decimating Smash: ed[0] charge "for up to 2 seconds to increase
-    # ... damage". raw_modifiers "Maximum Base Damage Increase"
-    # [125,158.33,175,185,191.67]% is the FULL-CHARGE base-damage multiplier;
-    # the addend is the bonus over the (minimum) base = value/100 - 1.0.
-    # APPROXIMATE: the % is "Maximum Base Damage" and block_strategy="first"
-    # selects the "Minimum Physical Damage" block, so the modeled factor is
-    # the max-charge ceiling applied to the min-charge base (see notes file).
-    ("Sion", "Q", 0): AmpEntry(
-        amp_per_rank=(0.25, 0.5833, 0.75, 0.85, 0.9167),
-        base="ability",
-        condition=_COND_CHANNEL,
-        note="full-charge max base-damage bonus over min base (ed[0]); approximate.",
-    ),
-    # Aurelion Sol W Astral Flight: ed[0] "During flight ... its flat damage
-    # is increased". raw_modifiers "Breath of Light Flat Damage Modifier"
-    # [108,109,110,111,112]%. VERDICT: multiplier-on-base (x1.08..x1.12),
-    # addend value/100 - 1.0. Self-state (flight active) -> frenzy_state.
-    ("AurelionSol", "W", 0): AmpEntry(
-        amp_per_rank=(0.08, 0.09, 0.10, 0.11, 0.12),
-        base="ability",
-        condition=_COND_FRENZY_STATE,
-        note="Breath of Light flat-damage x1.08..1.12 while in flight (ed[0]).",
-    ),
-    # Hwei Q form2 (QW Severing Bolt): ed[1] "increased damage based on the
-    # target's missing health" when "hits only one enemy or immobilized
-    # enemies". raw_modifiers "Maximum Damage Increase" [200..350]%. No
-    # champion_block_index.json exists at 16.11.1 and no DPS-path consumer
-    # reads this modifier block, so this registry is the sole consumer (no
-    # double-count). Isolation-gated (the missing-HP scaling is the ceiling).
-    ("Hwei", "Q", 2): AmpEntry(
-        amp_per_rank=(2.00, 2.375, 2.75, 3.125, 3.50),
-        base="ability",
-        condition=_COND_ISOLATION,
-        note="Severing Bolt max damage increase vs isolated/immobilized (ed[1]).",
     ),
     # --- AA-empowerment entries: base="aa" -> DOCUMENTED but INERT in
     # ability_dps (they belong in the AA scorer compute_dps). amp_per_rank is
@@ -175,8 +166,52 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
 }
 
 
+# (champion_id, key, form_index) -> AmpEntry. DOCUMENTATION ONLY - NOT consumed
+# by ``_ability_amp_for`` / the seam. Each needs a different mechanism before it
+# can apply without a redundant double-model or a wrong target. Kept here as the
+# handoff record of the analyzed-but-deferred ``damage_amp_self`` blocks.
+_STAGED_AMP_CANDIDATES: dict[tuple[str, str, int], AmpEntry] = {
+    # AurelionSol W Astral Flight: the "Breath of Light Flat Damage Modifier"
+    # [108..112]% (x1.08..1.12) amplifies the Q beam (Breath of Light) WHILE in
+    # flight - a cross-spell self-state. W f0 itself has no damage block, so the
+    # amp cannot be keyed to W. Needs a cross-spell / self-state seam that
+    # applies a Q-side multiplier gated on the W (flight) buff being active.
+    ("AurelionSol", "W", 0): AmpEntry(
+        amp_per_rank=(0.08, 0.09, 0.10, 0.11, 0.12),
+        base="ability",
+        condition=_COND_FRENZY_STATE,
+        note="STAGED: cross-spell - amplifies Q beam during W flight, not W itself.",
+    ),
+    # Sion Q Decimating Smash: the form already carries a "Maximum Physical
+    # Damage" damage block representing the full-charge value; an amp on the
+    # "Minimum Physical Damage" block would double-model the same charged
+    # ceiling. Reconcile via a block-index / charge-fraction route, not an amp.
+    ("Sion", "Q", 0): AmpEntry(
+        amp_per_rank=(0.25, 0.5833, 0.75, 0.85, 0.9167),
+        base="ability",
+        condition=_COND_CHANNEL,
+        note="STAGED: 'Maximum Physical Damage' block already models full charge.",
+    ),
+    # Hwei Q form2 Severing Bolt: the form already carries a "Maximum Damage"
+    # block (the isolated / immobilized ceiling) AND the bonus is missing-HP
+    # scaled. An amp on the base "Magic Damage" block double-models the ceiling;
+    # the missing-HP term needs Gap-2-style coefficient modeling. Reconcile via
+    # block-index routing + a missing-HP coefficient, not an amp.
+    ("Hwei", "Q", 2): AmpEntry(
+        amp_per_rank=(2.00, 2.375, 2.75, 3.125, 3.50),
+        base="ability",
+        condition=_COND_ISOLATION,
+        note="STAGED: 'Maximum Damage' block + missing-HP scaling; reconcile via routing.",
+    ),
+}
+
+
 def _ability_amp_for(cid: str, key: str, form_index: int) -> AmpEntry | None:
-    """Return the AmpEntry for ``(cid, key, form_index)`` or None."""
+    """Return the AmpEntry for ``(cid, key, form_index)`` or None.
+
+    Reads only ``_ABILITY_AMP_OVERRIDES`` (the active registry).
+    ``_STAGED_AMP_CANDIDATES`` is intentionally NOT consulted.
+    """
     return _ABILITY_AMP_OVERRIDES.get((cid, key, form_index))
 
 
