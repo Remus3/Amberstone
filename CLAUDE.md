@@ -146,6 +146,26 @@ Never surface raw API error strings (credit/balance exhaustion, 400, rate-limit,
 
 Before asserting external state - API key validity, account IDs, process/PID metrics, "X is dead/missing/broken" - verify it live against the source of truth; never rely on a stale doc or another agent's unverified output. Re-probe first, then assert. See memories `feedback_verify_generated_reports` / `feedback_verify_before_declare_broken` / `feedback_audit_proposals_are_intent`.
 
+## Verification Discipline
+
+Re-verify against ground truth before claiming any task green; the tool pipe can replay stale or out-of-order results (item 238 hit severe stale-tool-result replay - fabricated "1 failed", a non-existent dtype=None, a pre-bump /health, invented filenames). Ground truth when the pipe wedges = `git status` + Edit success/fail + pytest written to a file + a DONE-exit sentinel, NOT raw stdout. Before reporting complete: re-run the relevant suite fresh, confirm every cited test file actually exists on disk (`ls` it), and report the exact pass/fail counts you observed THIS run - never carry a prior or subagent-reported count forward. NEVER trust a subagent's claim about test counts, green CI, or file existence without an independent probe; subagents have cited non-existent test files and used broken commands (wmic, pre-restart cumulative measurements). The `verifier` subagent (`.claude/agents/verifier.md`) exists for exactly this re-check. See `feedback_verify_generated_reports` / `feedback_verify_before_declare_broken`.
+
+## UI Fixture Ritual
+
+Any UI page change runs the visual-hierarchy / fixture audit subagent BEFORE the commit + push, not after. Do not commit a page until the 5-phase audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY) completes and every MUST-FIX is resolved in the same slice. Shipping a page ahead of its audit (page #8) was a process miss the operator called out explicitly. See `feedback_phase3_fixture_ritual` + headless-upgrade section 3b.
+
+## Python Conventions
+
+When adding a required field to a dataclass, append it at the END with a default; do not insert mid-class. A mid-class required field breaks every existing positional construction + test (item 216 inserted an AbilityContext field mid-class and broke 41 manual constructions; the fix was to default it at the end).
+
+## Data Fixes
+
+A data-corruption or pollution fix is not done until already-corrupted rows are backfilled + recovered, not just future occurrences prevented. A race-condition guard that only stops future races leaves the existing bad rows wrong (item 211 needed two extra backfill + Match-V5 recovery rounds AFTER the guard landed). Plan the recovery pass in the SAME fix and verify the historical rows are corrected live.
+
+## Engine / Build Conventions
+
+Champion-specific build / scorer fixes are validated per-champion, not with one generic ADC-crit shape; expect to patch multiple champions. A narrow first fix (item 208 marksman pollution) missed Golden Spatula + duplicate-path pollution and forced a second comprehensive cleanup (item 213). Before shipping a build/scorer fix: grep for sibling cases (other champions, other modes, duplicate build paths) and add a test covering each, root-cause-first (see the `root-cause-fix` skill).
+
 ## Windows Environment Notes
 
 Claude Desktop on Windows may be installed via the Microsoft Store (check `%LOCALAPPDATA%\Packages`) in addition to standard install paths. Use `pythonw.exe` (not `python.exe`) for background daemons to avoid flashing console windows.
