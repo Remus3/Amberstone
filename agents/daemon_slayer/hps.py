@@ -338,13 +338,23 @@ class HpsResult:
     # Final score components:
     healing_hps: float             # healing_hps_raw × amp × heal_mult
     shielding_hps: float           # shielding_hps_raw × amp × shield_mult
-    direct_throughput: float       # healing_hps + shielding_hps
+    direct_throughput: float       # healing_hps + shielding_hps (item-only)
     ally_buff_credit: float        # sum of ally_buff_credit_per_second
-    total_throughput: float        # direct_throughput + ally_buff_credit
+    total_throughput: float        # direct + buff + ability_hps_total
     # Per-item breakdown:
     items: tuple[HpsItemContribution, ...]
     notes: tuple[str, ...] = field(default_factory=tuple)
     targets_per_proc_override: Optional[float] = None
+    # --- V2: champion-ability heal/shield throughput (ability_hps.py) ---
+    # Folded into total_throughput so an enchanter's own kit counts (Soraka
+    # W, Lulu E shield, Janna E shield, ...). 0.0 for champions with no
+    # ability heal/shield blocks (most of the roster) -> total_throughput
+    # stays byte-identical to the pre-V2 direct+buff value. New defaulted
+    # fields go at the END of the dataclass so _empty_result + the main
+    # return keep their existing positional/keyword construction.
+    ability_heal_hps: float = 0.0
+    ability_shield_hps: float = 0.0
+    ability_hps_total: float = 0.0
 
     @property
     def mode_multiplier(self) -> float:
@@ -376,6 +386,9 @@ class HpsResult:
             "shielding_hps": self.shielding_hps,
             "direct_throughput": self.direct_throughput,
             "ally_buff_credit": self.ally_buff_credit,
+            "ability_heal_hps": self.ability_heal_hps,
+            "ability_shield_hps": self.ability_shield_hps,
+            "ability_hps_total": self.ability_hps_total,
             "total_throughput": self.total_throughput,
             "items": [i.to_dict() for i in self.items],
             "notes": list(self.notes),
@@ -408,6 +421,10 @@ class HpsResult:
         rows.append(f"  shielding_hps       {self.shielding_hps:7.2f}")
         rows.append(f"  direct_throughput   {self.direct_throughput:7.2f}")
         rows.append(f"  ally_buff_credit    {self.ally_buff_credit:7.2f}")
+        if self.ability_hps_total > 0:
+            rows.append(f"  ability_heal_hps    {self.ability_heal_hps:7.2f}")
+            rows.append(f"  ability_shield_hps  {self.ability_shield_hps:7.2f}")
+            rows.append(f"  ability_hps_total   {self.ability_hps_total:7.2f}")
         rows.append(f"  total_throughput    {self.total_throughput:7.2f}")
         if self.items:
             rows.append("")
@@ -463,6 +480,9 @@ def _empty_result(
         total_throughput=0.0,
         items=(),
         notes=notes,
+        ability_heal_hps=0.0,
+        ability_shield_hps=0.0,
+        ability_hps_total=0.0,
     )
 
 
@@ -565,12 +585,62 @@ def compute_hps(
     healing_hps = healing_raw * amp_factor * safe_heal_mult
     shielding_hps = shielding_raw * amp_factor * safe_shield_mult
     direct = healing_hps + shielding_hps
-    total = direct + buff_credit
+
+    # V2 (2026-05-30): fold champion-ability heal/shield throughput into the
+    # grand total so an enchanter's own kit counts (Soraka W, Lulu E shield,
+    # Janna E shield, ...). FUNCTION-LEVEL import: ability_hps.py imports
+    # `from .hps import _aram_heal_shield_modifiers` at module load, so a
+    # module-level import here would be a circular import. We pass the SAME
+    # snapshot / champion / level / resolved item_ids / mode / augments.
+    # include_passive=True is the default (no-op on the 16.11.1 snapshot - no
+    # P-slot heal/shield blocks). resolve_target_relative=False is the
+    # conservative lower bound for the live scorer: target-relative shields
+    # (Taric W % target max HP) stay at their 0 lower bound rather than
+    # over-counting against an assumed enemy HP. ability_hps_total is
+    # ADDITIVE to the grand total; for champions with NO ability heal/shield
+    # blocks (most of the roster) it is 0.0 and total_throughput is
+    # byte-identical to the pre-V2 direct+buff value. Fail-soft: a raise in
+    # the heal-scorer must never crash the item scorer.
+    ability_heal_hps = 0.0
+    ability_shield_hps = 0.0
+    ability_hps_total = 0.0
+    ability_hps_failed = False
+    try:
+        from .ability_hps import compute_ability_hps
+
+        a = compute_ability_hps(
+            snapshot,
+            resolved.champion_id,
+            level,
+            item_ids=resolved.item_ids,
+            mode=mode,
+            augments=augments,
+            include_passive=True,
+            resolve_target_relative=False,
+        )
+        ability_heal_hps = a.total_heal_per_sec
+        ability_shield_hps = a.total_shield_per_sec
+        ability_hps_total = a.total_ability_hps
+    except Exception:
+        ability_hps_failed = True
+
+    total = direct + buff_credit + ability_hps_total
 
     notes_out: list[str] = []
     if matched_count == 0:
         notes_out.append(
-            "no enchanter formulas matched current items - total throughput is 0"
+            "no enchanter formulas matched current items - item throughput is 0"
+        )
+    if ability_hps_total > 0:
+        notes_out.append(
+            f"includes champion-ability heal/shield throughput "
+            f"({ability_hps_total:.2f} HPS) - target-relative shields at "
+            f"their lower bound"
+        )
+    if ability_hps_failed:
+        notes_out.append(
+            "ability heal/shield throughput unavailable (scorer error) - "
+            "counted as 0"
         )
     if mode == "ARAM" and (heal_mult != 1.0 or shield_mult != 1.0):
         notes_out.append(
@@ -603,6 +673,9 @@ def compute_hps(
         items=tuple(contributions),
         notes=tuple(notes_out),
         targets_per_proc_override=targets_per_proc_override,
+        ability_heal_hps=ability_heal_hps,
+        ability_shield_hps=ability_shield_hps,
+        ability_hps_total=ability_hps_total,
     )
 
 
@@ -886,6 +959,12 @@ def rank_items_by_hps(
         notes.append(
             f"ARAM aramHealing={baseline.heal_mult:.3f} "
             f"aramShielding={baseline.shield_mult:.3f} folded into HPS values"
+        )
+    if baseline.ability_hps_total > 0:
+        notes.append(
+            "includes champion-ability heal/shield throughput "
+            f"({baseline.ability_hps_total:.2f} HPS in baseline; recomputed "
+            "per candidate as AP-scaling heals grow with each item)"
         )
 
     return HpsRankResult(
