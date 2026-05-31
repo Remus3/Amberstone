@@ -1321,7 +1321,13 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.63.0"
+ENGINE_VERSION = "1.64.0"
+# 1.64.0 (DS V2 - wire ability_hps v2 into the live enchanter HPS scorer:
+# compute_hps now folds champion-spell heal/shield throughput
+# (total_ability_hps) into total_throughput, re-ranking enchanter builds.
+# Byte-identical for champions with no ability heal/shield blocks. Mana
+# uptime gates the ability cast cadence (real finite-mana usage). Additive
+# substrate (mana_sim/rune_procs/self_shred/scenario_matrix) stays unwired.)
 # 1.62.0 (item 213 - ranged-marksman off-class item pollution filter.
 # The DPS scorer (rank.rank_items) ranked every purchasable mode-legal
 # item by raw DPS delta, surfacing melee-bruiser / tank / skirmisher
