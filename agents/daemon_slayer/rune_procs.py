@@ -198,6 +198,36 @@ def _conqueror_adaptive(*, level=1.0, **_kw) -> float:
 
 
 # ---------------------------------------------------------------------------
+# S4 expansion (8 -> 14): six net-new runes, every coefficient verbatim from
+# the live DDragon 16.11.1 runesReforged.json longDesc.
+# ---------------------------------------------------------------------------
+
+def _summon_aery(*, level=1.0, ad=0.0, ap=0.0, **_kw) -> float:
+    # DDragon 16.11.1 longDesc: "dealing 10 - 50 based on level (+0.05 AP)
+    # (+0.1 bonus AD)" adaptive. This is the DAMAGE layer only - the shield
+    # side of Aery (20-100 + same scaling) is NOT modeled here (a shield is
+    # mitigation, not burst). Adaptive tiebreak goes to AD.
+    base = _lerp_by_level(10.0, 50.0, level)
+    return base + _adaptive_coeff(ad, ap, 0.10, 0.05)
+
+
+def _grasp(*, caster_max_hp=0.0, **_kw) -> float:
+    # DDragon 16.11.1 longDesc: "Deal bonus magic damage equal to 3.5% of
+    # your max health" (Ranged: 40% effective). This scales on CASTER max
+    # health, which is NOT a fixed signature kwarg - read it from **extra via
+    # caster_max_hp. The melee 100%-effective value is modeled; pass
+    # caster_max_hp via extra. Ranged 40%-effective scaling is the caller's
+    # responsibility (not applied here - no role flag in the proc signature).
+    return 0.035 * _f(caster_max_hp)
+
+
+def _aftershock(*, level=1.0, bonus_hp=0.0, **_kw) -> float:
+    # DDragon 16.11.1 longDesc: "Damage: 25 - 120 (+8% of your bonus health)".
+    # Level-scaled magic burst after immobilizing an enemy champion.
+    return _lerp_by_level(25.0, 120.0, level) + 0.08 * _f(bonus_hp)
+
+
+# ---------------------------------------------------------------------------
 # Registry. Keyed by Riot perk id.
 # ---------------------------------------------------------------------------
 
@@ -205,6 +235,16 @@ def _conqueror_adaptive(*, level=1.0, **_kw) -> float:
 # damage dealt by 8%". DDragon 16.11.1 longDesc says a flat 8% (the brief's
 # "8-12% by level" is STALE). 1.08 multiplier.
 _PTA_AMP_MULT = 1.08
+
+# S4 amp multipliers (DDragon 16.11.1):
+#   First Strike 8369 = 7% extra true damage -> 1.07.
+#   Coup de Grace 8014 = 8% more damage (target < 40% HP) -> 1.08.
+#   Cut Down 8017 = 8% more damage (target > 60% HP) -> 1.08.
+# All three flow through keystone_amp generically (base * amp_mult); no
+# keystone_amp change is needed.
+_FIRST_STRIKE_AMP_MULT = 1.07
+_COUP_DE_GRACE_AMP_MULT = 1.08
+_CUT_DOWN_AMP_MULT = 1.08
 
 RUNE_PROCS: Dict[int, RuneProc] = {
     8112: RuneProc(
@@ -314,6 +354,98 @@ RUNE_PROCS: Dict[int, RuneProc] = {
             "(DDragon 16.11.1; brief 1.8-3.0 was stale - it is 1.8-4.0)"
         ),
         compute=_conqueror_adaptive,
+    ),
+    # --- S4 expansion (8 -> 14) ---
+    8214: RuneProc(
+        rune_id=8214,
+        name="Summon Aery",
+        tree="Sorcery",
+        proc_type="on_proc_burst",
+        cooldown_s=2.0,
+        formula=(
+            "10-50 by level + 0.10 bonus AD + 0.05 AP (adaptive) on damage; "
+            "Aery returns to you before re-firing (~2s effective). DAMAGE "
+            "layer only - the shield side (20-100 + same scaling) is NOT "
+            "modeled (mitigation, not burst) (DDragon 16.11.1)"
+        ),
+        compute=_summon_aery,
+    ),
+    8437: RuneProc(
+        rune_id=8437,
+        name="Grasp of the Undying",
+        tree="Resolve",
+        proc_type="on_proc_burst",
+        cooldown_s=4.0,
+        formula=(
+            "3.5% caster max health magic damage on the empowered AA; "
+            "ranged 40% effective (melee 100% modeled); pass caster_max_hp "
+            "via extra (heal + permanent-HP sides not modeled) "
+            "(DDragon 16.11.1)"
+        ),
+        compute=_grasp,
+    ),
+    8439: RuneProc(
+        rune_id=8439,
+        name="Aftershock",
+        tree="Resolve",
+        proc_type="on_proc_burst",
+        cooldown_s=20.0,
+        formula=(
+            "25-120 by level + 0.08 bonus health magic burst after "
+            "immobilizing an enemy champion; CD 20s "
+            "(resist-bonus side not modeled) (DDragon 16.11.1)"
+        ),
+        compute=_aftershock,
+    ),
+    8369: RuneProc(
+        rune_id=8369,
+        name="First Strike",
+        tree="Inspiration",
+        proc_type="stacking_amp",
+        cooldown_s=25.0,
+        formula=(
+            "7% extra TRUE damage vs champions for 3s; CD 25-15s. keystone_amp "
+            "applies the 1.07 multiplier; compute returns 0.0 (pure amp, no "
+            "burst piece). Gold-on-hit (50%/35% ranged of bonus damage) is "
+            "NOT damage so not modeled (DDragon 16.11.1)"
+        ),
+        compute=lambda **_kw: 0.0,
+        amp_mult=_FIRST_STRIKE_AMP_MULT,
+    ),
+    # DDragon 16.11.1 id crossing: the WAKEUP brief said "Coup de Grace 8299 /
+    # Cut Down 8014" which CROSSED the ids. Live runesReforged.json is
+    # authoritative: 8299 = Last Stand, 8014 = Coup de Grace, 8017 = Cut Down.
+    # The two amp runes below use the DDragon-correct ids.
+    8014: RuneProc(
+        rune_id=8014,
+        name="Coup de Grace",
+        tree="Precision",
+        proc_type="stacking_amp",
+        cooldown_s=0.0,
+        formula=(
+            "8% more damage to champions below 40% health (execute amp). "
+            "Modeled as a flat 1.08 amp; the <40% HP condition is a caller "
+            "gate not applied here. keystone_amp applies 1.08; compute "
+            "returns 0.0 (DDragon 16.11.1; brief crossed id with Cut Down - "
+            "8014 IS Coup de Grace)"
+        ),
+        compute=lambda **_kw: 0.0,
+        amp_mult=_COUP_DE_GRACE_AMP_MULT,
+    ),
+    8017: RuneProc(
+        rune_id=8017,
+        name="Cut Down",
+        tree="Precision",
+        proc_type="stacking_amp",
+        cooldown_s=0.0,
+        formula=(
+            "8% more damage to champions above 60% health. Modeled as a flat "
+            "1.08 amp; the >60% HP condition is a caller gate not applied "
+            "here. keystone_amp applies 1.08; compute returns 0.0 "
+            "(DDragon 16.11.1; brief crossed id - 8017 IS Cut Down)"
+        ),
+        compute=lambda **_kw: 0.0,
+        amp_mult=_CUT_DOWN_AMP_MULT,
     ),
 }
 
