@@ -170,6 +170,185 @@ class TestParseLuaTable:
         assert W._parse_lua_table("") == {}
 
 
+# --------------------------------------------------------------------------- mode_modifiers (additive, wiki-only)
+class TestParseModeModifiers:
+    # Canned Lua-table string with varied mode sub-blocks, all NESTED inside each
+    # champ's ["stats"] block (the live shape verified 16.11.1):
+    #   Aatrox  - urf (MULTIPLIER mode) + a missing-trailing-comma block
+    #   Briar   - ar (ADDEND mode) with a NEGATIVE value (swift-style arm_lvl)
+    #   Garen   - NO mode sub-blocks at all (only scalar stats)
+    SAMPLE = (
+        "return {\n"
+        '  ["Aatrox"] = {\n'
+        '    ["id"]         = 266,\n'
+        '    ["apiname"]    = "Aatrox",\n'
+        '    ["stats"] = {\n'
+        '      ["attack_cast_time"]  = 0.300000011920928,\n'
+        '      ["attack_total_time"] = 1.51999998092651,\n'
+        '      ["aram"] = {\n'
+        '        ["dmg_dealt"] = 1.05,\n'
+        '        ["dmg_taken"] = 1,\n'
+        "      },\n"
+        '      ["urf"] = {\n'
+        '        ["dmg_dealt"] = 1.15,\n'
+        '        ["dmg_taken"] = 0.7\n'  # NOTE: no trailing comma before }
+        "      },\n"
+        "    },\n"
+        "  },\n"
+        '  ["Briar"] = {\n'
+        '    ["id"]         = 233,\n'
+        '    ["apiname"]    = "Briar",\n'
+        '    ["stats"] = {\n'
+        '      ["attack_cast_time"]  = 0.20999999344349,\n'
+        '      ["ar"] = {\n'
+        '        ["hp_lvl"]  = 17,\n'
+        '        ["arm_lvl"] = -0.5,\n'  # signed (addend mode delta)
+        "      },\n"
+        '      ["swift"] = {\n'
+        '        ["arm_lvl"] = -0.5,\n'
+        "      },\n"
+        "    },\n"
+        "  },\n"
+        '  ["Garen"] = {\n'
+        '    ["id"]         = 86,\n'
+        '    ["apiname"]    = "Garen",\n'
+        '    ["stats"] = {\n'
+        '      ["attack_cast_time"]  = 0.4,\n'
+        '      ["range"] = 175,\n'
+        "    },\n"
+        "  },\n"
+        "}\n"
+    )
+
+    def test_multiplier_mode_parsed(self):
+        t = W._parse_lua_table(self.SAMPLE)
+        mm = t["Aatrox"]["mode_modifiers"]
+        assert mm["aram"] == {"dmg_dealt": pytest.approx(1.05), "dmg_taken": pytest.approx(1.0)}
+        assert mm["urf"] == {"dmg_dealt": pytest.approx(1.15), "dmg_taken": pytest.approx(0.7)}
+
+    def test_missing_trailing_comma_block_parses(self):
+        # the urf block omits the comma after dmg_taken=0.7 (valid Lua) -> parse anyway
+        t = W._parse_lua_table(self.SAMPLE)
+        assert t["Aatrox"]["mode_modifiers"]["urf"]["dmg_taken"] == pytest.approx(0.7)
+
+    def test_addend_mode_with_negative_value(self):
+        t = W._parse_lua_table(self.SAMPLE)
+        mm = t["Briar"]["mode_modifiers"]
+        assert mm["ar"] == {"hp_lvl": pytest.approx(17.0), "arm_lvl": pytest.approx(-0.5)}
+        assert mm["swift"] == {"arm_lvl": pytest.approx(-0.5)}
+
+    def test_champ_with_no_modes_is_empty_dict(self):
+        t = W._parse_lua_table(self.SAMPLE)
+        assert t["Garen"]["mode_modifiers"] == {}
+
+    def test_only_recognized_mode_keys_captured(self):
+        # range/attack_cast_time are scalar stats, NOT mode sub-blocks
+        t = W._parse_lua_table(self.SAMPLE)
+        for cid in ("Aatrox", "Briar", "Garen"):
+            assert set(t[cid]["mode_modifiers"]) <= set(W._MODE_KEYS)
+
+    def test_scalar_parsing_still_works_alongside_modes(self):
+        # the existing attack_cast_time / attack_total_time scalars are unaffected
+        t = W._parse_lua_table(self.SAMPLE)
+        assert t["Aatrox"]["attack_cast_time"] == pytest.approx(0.3)
+        assert t["Aatrox"]["attack_total_time"] == pytest.approx(1.52, abs=0.01)
+        assert t["Briar"]["attack_cast_time"] == pytest.approx(0.21, abs=0.01)
+        assert t["Garen"]["attack_cast_time"] == pytest.approx(0.4)
+        # missile_speed absent everywhere here -> None (unchanged behavior)
+        assert t["Garen"]["missile_speed"] is None
+
+    def test_mode_modifiers_key_always_present(self):
+        # every champ record carries the key (default {}), so consumers never KeyError
+        t = W._parse_lua_table(self.SAMPLE)
+        for cid in ("Aatrox", "Briar", "Garen"):
+            assert "mode_modifiers" in t[cid]
+
+    def test_parse_mode_block_direct(self):
+        # the body parser handles signed numbers + missing trailing comma
+        body = (
+            '\n        ["dmg_dealt"] = 1.15,\n'
+            '        ["ability_haste"] = 20,\n'
+            '        ["ms_mod"] = -10\n'  # no trailing comma
+        )
+        out = W._parse_mode_block(body)
+        assert out == {
+            "dmg_dealt": pytest.approx(1.15),
+            "ability_haste": pytest.approx(20.0),
+            "ms_mod": pytest.approx(-10.0),
+        }
+
+    def test_empty_mode_block_is_dropped(self):
+        # a mode sub-block with no parseable scalars is omitted from the result
+        sample = (
+            "return {\n"
+            '  ["X"] = {\n'
+            '    ["id"]      = 1,\n'
+            '    ["apiname"] = "X",\n'
+            '    ["stats"] = {\n'
+            '      ["aram"] = {\n'
+            "      },\n"
+            "    },\n"
+            "  },\n"
+            "}\n"
+        )
+        t = W._parse_lua_table(sample)
+        assert t["X"]["mode_modifiers"] == {}
+
+
+# --------------------------------------------------------------------------- extract carries mode_modifiers
+class TestExtractModeModifiers:
+    @pytest.fixture(autouse=True)
+    def _reset_cache(self):
+        W._WIKI_TABLE_CACHE = None
+        yield
+        W._WIKI_TABLE_CACHE = None
+
+    def test_extract_carries_mode_modifiers_and_counter(self, monkeypatch):
+        monkeypatch.setattr(W, "_load_champion_ids", lambda p: ["Aatrox", "Garen"])
+        monkeypatch.setattr(W, "_load_display_names", lambda p: {"Aatrox": "Aatrox", "Garen": "Garen"})
+        monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {"Aatrox": 175.0, "Garen": 175.0})
+        monkeypatch.setattr(W, "_load_wiki_table", lambda: {
+            "Aatrox": {"wiki_name": "Aatrox", "attack_cast_time": 0.3,
+                       "attack_total_time": 1.52, "missile_speed": None,
+                       "mode_modifiers": {"aram": {"dmg_dealt": 1.05}, "urf": {"dmg_dealt": 1.15}}},
+            "Garen": {"wiki_name": "Garen", "attack_cast_time": 0.4,
+                      "attack_total_time": None, "missile_speed": None,
+                      "mode_modifiers": {}},
+        })
+        out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False, source="wiki")
+        assert out["champions"]["Aatrox"]["mode_modifiers"] == {
+            "aram": {"dmg_dealt": pytest.approx(1.05)},
+            "urf": {"dmg_dealt": pytest.approx(1.15)},
+        }
+        assert out["champions"]["Garen"]["mode_modifiers"] == {}
+        assert out["_with_mode_modifiers"] == 1  # only Aatrox has any
+        assert W._FIELD_MODE_MODIFIERS in out["_fields"]
+
+    def test_mode_modifiers_empty_when_table_missing(self, monkeypatch):
+        # source=cdragon: the wiki table never loads, so no mode_modifiers anywhere
+        monkeypatch.setattr(W, "_load_champion_ids", lambda p: ["Aatrox"])
+        monkeypatch.setattr(W, "_load_display_names", lambda p: {"Aatrox": "Aatrox"})
+        monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {"Aatrox": 175.0})
+        monkeypatch.setattr(W, "_cdragon_scalars", lambda cid, ar: {
+            "attack_cast_time": 0.3, "attack_total_time": 1.6, "missile_speed": None,
+        })
+        out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False, source="cdragon")
+        assert out["champions"]["Aatrox"]["mode_modifiers"] == {}
+        assert out["_with_mode_modifiers"] == 0
+
+    def test_ascii_output_with_mode_modifiers(self, monkeypatch):
+        monkeypatch.setattr(W, "_load_champion_ids", lambda p: ["Aatrox"])
+        monkeypatch.setattr(W, "_load_display_names", lambda p: {"Aatrox": "Aatrox"})
+        monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {"Aatrox": 175.0})
+        monkeypatch.setattr(W, "_load_wiki_table", lambda: {
+            "Aatrox": {"wiki_name": "Aatrox", "attack_cast_time": 0.3,
+                       "attack_total_time": 1.52, "missile_speed": None,
+                       "mode_modifiers": {"ar": {"hp_lvl": 17, "arm_lvl": -0.5}}},
+        })
+        out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False, source="wiki")
+        json.dumps(out, ensure_ascii=True)  # must not raise
+
+
 # --------------------------------------------------------------------------- _fetch_field (getter fallback)
 class TestFetchField:
     def test_bare_field_resolves(self, monkeypatch):

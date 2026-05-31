@@ -22,6 +22,14 @@ What it pulls:
     from the same parse; windup ratio = cast / total. No consumer yet.
   * ``missile_speed`` - ranged AA missile speed (units/s). Melee champs have
     none (null).
+  * ``mode_modifiers`` - per-mode balance changes parsed from the SAME raw
+    module (zero extra network cost; the mode sub-blocks are nested inside each
+    champ's ``["stats"]`` block). {mode_key: {inner_key: float}} for every mode
+    sub-block present, ``{}`` when a champ has none. aram/urf/nb/ofa/usb store
+    MULTIPLIERS (dmg_dealt 1.05 = +5%); ar (Arena/CHERRY) + swift (Swiftplay)
+    store ADDEND stat-overrides (hp_lvl 17 = +17 hp/level). Inner keys stored
+    verbatim (no multiplier-vs-addend coercion). Wiki-sourced only (no cdragon
+    backfill, no default fill, no <field>_src). No DS consumer yet.
 
 HOW (item 221 deep-dive, 2026-05-30 - the working method, verified live):
   * The ``leagueoflegends.wiki.gg`` host edge-blocks Legion's egress (HTTP 401
@@ -150,6 +158,10 @@ _CDRAGON_SLUG_OVERRIDES: dict[str, str] = {}
 _FIELD_ATTACK_CAST_TIME = "attack_cast_time"
 _FIELD_ATTACK_TOTAL_TIME = "attack_total_time"
 _FIELD_MISSILE_SPEED = "missile_speed"
+# Per-champion per-mode balance multipliers/addends parsed from the SAME wiki
+# raw module (zero extra network cost). Wiki-only - no cdragon/default fill, so
+# no <field>_src provenance; it is documented as wiki-sourced in the meta _note.
+_FIELD_MODE_MODIFIERS = "mode_modifiers"
 _SRC_SUFFIX = "_src"
 
 # Default basic-attack windup (seconds) for champs neither source measures.
@@ -346,6 +358,80 @@ def _scalar_in_block(blk: str, field: str) -> Optional[float]:
     return _parse_scalar(m.group(1)) if m else None
 
 
+# Per-champion balance-modifier mode keys nested INSIDE the ``["stats"]`` block
+# of each champ. aram/urf/nb/ofa/usb store MULTIPLIERS (dmg_dealt 1.05 = +5%);
+# ar (Arena/CHERRY) + swift (Swiftplay) store ADDEND stat-overrides (hp_lvl 17 =
+# +17 hp per level). Verified live (16.11.1): roster mode counts aram 161 / urf
+# 102 / ofa 82 / usb 45 / ar 45 / nb 32 / swift 13. The set is closed at the
+# observed roster; an unknown future mode key is simply not captured (no crash).
+_MODE_KEYS = ("aram", "urf", "nb", "ofa", "usb", "ar", "swift")
+# A signed Lua number (int or float, optional leading -). The mode sub-blocks
+# carry only numeric scalars (multipliers + per-level addends); negatives appear
+# in the addend modes (e.g. swift arm_lvl = -0.5).
+_MODE_SCALAR_RE = re.compile(r'\["([a-z0-9_]+)"\]\s*=\s*(-?[0-9.]+)')
+_MODE_OPEN_RE = re.compile(r'\["(' + "|".join(_MODE_KEYS) + r')"\]\s*=\s*\{')
+
+
+def _parse_mode_block(inner: str) -> dict[str, float]:
+    """Parse the scalar inner keys of ONE mode sub-block body (inside its braces).
+
+    ``inner`` is the text between (not including) the ``{`` and matching ``}`` of
+    a ``["<mode>"] = { ... }`` block. Captures every ``["<key>"] = <number>``
+    scalar verbatim (signed; the addend modes carry negative per-level deltas);
+    a missing trailing comma before ``}`` is fine (the scalar regex does not need
+    it). Non-scalar entries (none observed in mode blocks) are ignored. The keys
+    are stored as-is (dmg_dealt / dmg_taken / ability_haste / ms_mod / hp_lvl /
+    arm_lvl / ...) - no coercion of multiplier-vs-addend semantics.
+    """
+    out: dict[str, float] = {}
+    for m in _MODE_SCALAR_RE.finditer(inner):
+        val = _parse_scalar(m.group(2))
+        if val is not None:
+            out[m.group(1)] = val
+    return out
+
+
+def _parse_mode_modifiers_in_stats(stats_blk: str) -> dict[str, dict[str, float]]:
+    """Find each ``["<mode>"] = {...}`` sub-block inside a champ's stats block.
+
+    ``stats_blk`` is the full ``["stats"] = { ... }`` text (braces included). For
+    every recognized mode key, brace-scans to the matching ``}`` (reusing
+    ``_scan_block_end`` so nested braces are handled) and parses the scalar inner
+    keys. Returns {mode_key: {inner_key: float}} for each mode block present;
+    empty dict when the champ has no mode blocks. A block with no parseable
+    scalars is omitted (keeps the output honest - mode_modifiers reflects only
+    real data).
+    """
+    out: dict[str, dict[str, float]] = {}
+    for m in _MODE_OPEN_RE.finditer(stats_blk):
+        mode = m.group(1)
+        open_idx = stats_blk.find("{", m.start())
+        if open_idx < 0:
+            continue
+        end = _scan_block_end(stats_blk, open_idx)
+        inner = stats_blk[open_idx + 1:end - 1]  # body between the braces
+        scalars = _parse_mode_block(inner)
+        if scalars:
+            out[mode] = scalars
+    return out
+
+
+def _stats_block_of(blk: str) -> Optional[str]:
+    """Return the ``["stats"] = { ... }`` sub-block text of a champ block, or None.
+
+    Brace-scans to the matching ``}`` so the returned slice contains the full
+    nested stats subtable (including its mode sub-blocks).
+    """
+    sm = re.search(r'\["stats"\]\s*=\s*\{', blk)
+    if not sm:
+        return None
+    open_idx = blk.find("{", sm.start())
+    if open_idx < 0:
+        return None
+    end = _scan_block_end(blk, open_idx)
+    return blk[open_idx:end]
+
+
 def _parse_lua_table(raw: str) -> dict[str, dict[str, Any]]:
     """Parse Module:ChampionData/data action=raw text into {apiname: {...}}.
 
@@ -367,11 +453,18 @@ def _parse_lua_table(raw: str) -> dict[str, dict[str, Any]]:
         am = re.search(r'\["apiname"\]\s*=\s*"([^"]+)"', blk)
         if not am:
             continue
+        # Mode-modifier sub-blocks live nested inside ["stats"]; scope the scan to
+        # that subtable so a (hypothetical) top-level mode key cannot leak in.
+        stats_blk = _stats_block_of(blk)
+        mode_modifiers = (
+            _parse_mode_modifiers_in_stats(stats_blk) if stats_blk is not None else {}
+        )
         out[am.group(1)] = {
             "wiki_name": m.group(1),
             _FIELD_ATTACK_CAST_TIME: _scalar_in_block(blk, _FIELD_ATTACK_CAST_TIME),
             _FIELD_ATTACK_TOTAL_TIME: _scalar_in_block(blk, _FIELD_ATTACK_TOTAL_TIME),
             _FIELD_MISSILE_SPEED: _scalar_in_block(blk, _FIELD_MISSILE_SPEED),
+            _FIELD_MODE_MODIFIERS: mode_modifiers,
         }
     return out
 
@@ -556,6 +649,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     ms_ok = 0
     cd_fill = 0
     default_fill = 0
+    mode_mod_ok = 0
     errs: list[str] = []
     if table_err:
         errs.append(table_err)
@@ -597,6 +691,10 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
                     cd.get(_FIELD_ATTACK_CAST_TIME), cast_default)
         _merge_fill(out_rec, _FIELD_ATTACK_TOTAL_TIME, w_tot, cd.get(_FIELD_ATTACK_TOTAL_TIME))
         _merge_fill(out_rec, _FIELD_MISSILE_SPEED, w_ms, cd.get(_FIELD_MISSILE_SPEED))
+        # Mode modifiers are wiki-only (parsed from the raw-table entry); no
+        # cdragon/default fill, no _src. Absent champ / no mode blocks -> {}.
+        mode_modifiers = rec.get(_FIELD_MODE_MODIFIERS) or {}
+        out_rec[_FIELD_MODE_MODIFIERS] = mode_modifiers
         champions[ddragon_id] = out_rec
 
         if out_rec[_FIELD_ATTACK_CAST_TIME] is not None:
@@ -607,15 +705,19 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             cd_fill += 1
         if out_rec[_FIELD_ATTACK_CAST_TIME + _SRC_SUFFIX] == "default":
             default_fill += 1
+        if mode_modifiers:
+            mode_mod_ok += 1
 
         if verbose:
             tag = "ERR" if err_here else "ok"
+            modes_str = ",".join(sorted(mode_modifiers)) if mode_modifiers else "-"
             print(
                 f"[{n+1}/{len(ids)}] {ddragon_id} ({wname}): "
                 f"act={out_rec[_FIELD_ATTACK_CAST_TIME]} "
                 f"[{out_rec[_FIELD_ATTACK_CAST_TIME + _SRC_SUFFIX]}] "
                 f"ms={out_rec[_FIELD_MISSILE_SPEED]} "
-                f"[{out_rec[_FIELD_MISSILE_SPEED + _SRC_SUFFIX]}] {tag}"
+                f"[{out_rec[_FIELD_MISSILE_SPEED + _SRC_SUFFIX]}] "
+                f"modes=[{modes_str}] {tag}"
             )
         if sleep_s > 0 and did_net and n + 1 < len(ids):
             time.sleep(sleep_s)
@@ -632,16 +734,25 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
         "_source": src_label,
         "_source_mode": source,
         "_patch": patch,
-        "_fields": [_FIELD_ATTACK_CAST_TIME, _FIELD_ATTACK_TOTAL_TIME, _FIELD_MISSILE_SPEED],
+        "_fields": [
+            _FIELD_ATTACK_CAST_TIME, _FIELD_ATTACK_TOTAL_TIME, _FIELD_MISSILE_SPEED,
+            _FIELD_MODE_MODIFIERS,
+        ],
         "_note": (
             "OPTIONAL DS overlay. attack_cast_time = AA windup (s); "
             "attack_total_time = full AA cycle (s); missile_speed = ranged AA "
             "missile speed (melee null). Each scalar carries a <field>_src "
             "provenance: 'wiki' (operator-named source, wins) > 'cdragon' (fills "
             "wiki nulls) > 'default' (0.25s = combo.py fallback, for champs "
-            "neither source overrides; attack_cast_time only) > null. Meraki stays "
-            "authoritative for ratios/CC. A run with _with_cast_measured==0 means "
-            "the host could not reach either source (edge block) - do NOT commit."
+            "neither source overrides; attack_cast_time only) > null. "
+            "mode_modifiers = per-mode balance changes parsed from the SAME wiki "
+            "raw module (wiki-sourced only, no _src; {} when a champ has none): "
+            "aram/urf/nb/ofa/usb store MULTIPLIERS (dmg_dealt 1.05 = +5%), ar "
+            "(Arena/CHERRY) + swift (Swiftplay) store ADDEND stat-overrides "
+            "(hp_lvl 17 = +17 hp/level); inner keys stored verbatim, not coerced. "
+            "Meraki stays authoritative for ratios/CC. A run with "
+            "_with_cast_measured==0 means the host could not reach either source "
+            "(edge block) - do NOT commit."
         ),
         "_champ_count": len(champions),
         "_with_cast_time": ok,
@@ -649,6 +760,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
         "_with_missile_speed": ms_ok,
         "_cdragon_cast_fills": cd_fill,
         "_default_cast_fills": default_fill,
+        "_with_mode_modifiers": mode_mod_ok,
         "_errors": errs,
         "champions": champions,
     }
