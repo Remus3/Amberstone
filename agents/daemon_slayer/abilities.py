@@ -38,9 +38,11 @@ Snapshot layout::
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Iterable
+
+from ._ability_overrides import DAMAGE_TYPE_OVERRIDES, NON_DAMAGE_BLOCKS
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
@@ -215,6 +217,33 @@ class AbilityForm:
         return tuple(b for b in self.damage_blocks if b.attribute_kind == "damage")
 
 
+def _apply_ability_overrides(cid: str, key: str, form: AbilityForm) -> AbilityForm:
+    """Apply the item-238 null-damage-type corrections at load time.
+
+    Returns ``form`` unchanged when no override is registered for
+    ``(cid, key, form.form_index)``. Otherwise returns a copy with the
+    corrected ``damage_type`` (mis-mitigated null-type abilities) and/or with
+    phantom self-buff / shield blocks re-labeled ``attribute_kind="other"`` so
+    no damage consumer sums them. See ``_ability_overrides`` for the registry.
+    """
+    k = (cid, key, form.form_index)
+    new_dtype = DAMAGE_TYPE_OVERRIDES.get(k)
+    drop_attrs = NON_DAMAGE_BLOCKS.get(k)
+    if not new_dtype and not drop_attrs:
+        return form
+    changes: dict[str, Any] = {}
+    if new_dtype:
+        changes["damage_type"] = new_dtype
+    if drop_attrs:
+        changes["damage_blocks"] = tuple(
+            replace(b, attribute_kind="other")
+            if (b.attribute_kind == "damage" and b.attribute in drop_attrs)
+            else b
+            for b in form.damage_blocks
+        )
+    return replace(form, **changes)
+
+
 @dataclass(frozen=True)
 class AbilitiesSnapshot:
     """Versioned snapshot of all champion ability records.
@@ -265,7 +294,8 @@ class AbilitiesSnapshot:
             for key in _KEY_ORDER:
                 forms = keymap.get(key) or []
                 per_key[key] = tuple(
-                    AbilityForm.from_dict(f) for f in forms if isinstance(f, dict)
+                    _apply_ability_overrides(cid, key, AbilityForm.from_dict(f))
+                    for f in forms if isinstance(f, dict)
                 )
             champions[cid] = per_key
         return cls(
