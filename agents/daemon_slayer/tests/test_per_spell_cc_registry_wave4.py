@@ -422,7 +422,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """
 
     def test_engine_version_at_1_36_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.72.0")
+        self.assertEqual(ENGINE_VERSION, "1.73.0")
 
 
 # ---------------- ASCII hygiene contract ----------------

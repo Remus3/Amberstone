@@ -1321,7 +1321,28 @@ ENGINE_VERSION 1.10.0):
   V14.1 lethality was changed back to no longer scale by level."
 """
 
-ENGINE_VERSION = "1.72.0"
+ENGINE_VERSION = "1.73.0"
+# 1.73.0 (item 237 - bruiser cc_blended ranking + build-tenacity, the symmetric
+# completion of item 236. Item 236 made the TANK ranker (rank_items_by_ehp)
+# tenacity-aware under score_by="cc_blended", but the BRUISER scorer
+# (compute_hybrid + rank_items_by_hybrid) stayed tenacity-blind: it consumed
+# cc_blended_ehp for the displayed hybrid_score yet SORTED on PRE-cc blended_ehp,
+# so a tenacity item could not rise vs a CC comp (a real asymmetry). Fix:
+# compute_hybrid gains `apply_build_tenacity: bool = False` (threaded to its
+# compute_ehp call - makes the hybrid_score scalar tenacity-accurate);
+# rank_items_by_hybrid gains `score_by: str = "blended"` (default, byte-id) |
+# "cc_blended" (the delta_pct SORT key now divides the cc_blended-ehp delta by
+# the cc_blended baseline) + `apply_build_tenacity: Optional[bool] = None`
+# (tri-state: None -> ON for cc_blended / OFF for blended, mirroring item 236).
+# HybridRankedItem +cc_blended_ehp/+delta_cc_blended_ehp; HybridRankResult
+# +score_by. /rank-bruiser exposes score_by/apply_build_tenacity (400 on bad
+# score_by); /hybrid keeps the plain-bool apply_build_tenacity scalar (no sort).
+# DEFAULT score_by="blended" + tenacity OFF = BYTE-IDENTICAL to 1.72.0 (full DS
+# suite unchanged; proven Sett vs ["Ashe"] Wit's End blended #24 -> cc_blended
+# #21, Sterak's #20 -> #19). Same honest nuance as item 236: tenacity re-ranks
+# ONLY vs a non-saturating CC comp (the 6s fraction cap). +11 tests
+# test_bruiser_cc_blended_item237.py. With this the cc_blended/tenacity arc is
+# COMPLETE - both the tank + bruiser cc_blended scorers are tenacity-aware.)
 # 1.72.0 (item 236 - opt-in CC-adjusted (cc_blended) EHP ranking mode + the
 # item-tenacity layer that makes it real. The item-235 enemies/include_conditional
 # wire surfaced the cc_blended_ehp DISCOUNT on /ehp+/hybrid+/rank-bruiser, but the
