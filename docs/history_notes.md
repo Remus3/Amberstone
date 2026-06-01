@@ -6,6 +6,22 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-31 - insights pass 2: built the horizon items the pass-1 entry deferred (commit e151e95; CI green; no ENGINE bump; no DS/RC restart; non-frozen)
+
+Operator ran /insights then "apply ALL of features-to-try + on-the-horizon; fold CLAUDE.md additions in; explain why already-present skills get re-suggested." This closes the pass-1 NEXT (self-healing checkpoint+resume + verifier gate were explicitly NOT built last session).
+
+Shipped (tracked, in e151e95): CLAUDE.md +5 convention sections after ## Verification (Verification Discipline / UI Fixture Ritual / Python Conventions / Data Fixes / Engine-Build Conventions, each grounded in a real item: 238 stale-replay / page-8 audit miss / 216 dataclass-41-break / 211 backfill / 208->213 marksman). NEW tools/slice_orchestrator.py + tests/test_slice_orchestrator.py (16 green) = resumable run manifest (init/add/set/next/resume/summary, atomic, ops/runtime/slice_manifest.json). NEW tools/headless_run.ps1 = crash-retry + manifest-resume wrapper.
+
+Shipped (LOCAL/gitignored .claude/, active now): NEW .claude/agents/verifier.md (read-only ground-truth verifier subagent, no Edit/Write). NEW .claude/commands/root-cause-fix.md skill. headless-upgrade.md +manifest-init pre-flight +verifier-gate-before-merge +per-slice checkpoint +root-cause-fix ref. done.md +ground-truth re-verify bullet.
+
+Why insights re-suggested skills/hooks already present: /insights reads session TRANSCRIPTS not the .claude/ filesystem; it cannot see that done/headless/TDD skills exist or that pytest_guard+edit_lint_check+precommit_gate already run on every edit/commit. The lever to stop re-suggestion = changing observable BEHAVIOR (verifier dispatch, manifest checkpoints, audit-before-commit), now codified. Hooks left AS-IS - did NOT add the literal pytest-per-edit suggestion (would slow the loop; the existing layering is better).
+
+Dont-redo: hooks already satisfy the report (do NOT add redundant pytest-per-edit to settings.json). .claude/* is gitignored (line 65) so verifier+root-cause-fix+skill-edits are Legion-local, never in git history - same as every other skill here. slice_orchestrator manifest path defaults to ops/runtime/slice_manifest.json, overridable via --manifest (tests inject tmp).
+
+NEXT: nothing owed. Next /insights pass should not re-surface these themes if the verifier/manifest/audit behavior shows up in transcripts; insights is a transcript heuristic so no hard guarantee.
+
+---
+
 # 2026-05-31 - insights gap-fill: commit-time ruff+glyph gate + CLAUDE.md Error Handling/Verification sections (no ENGINE bump; no DS/RC restart; non-frozen; .claude/settings.json hook is gitignored = LOCAL to Legion)
 
 Operator ran /insights then "dig into all sections + try all suggestions into the current commands/skills for /done /clear". One AskUserQuestion -> Gap-fill only + Block-new-violations. Verified ~90% of the report's suggestions ALREADY shipped here (PostToolUse ruff+glyph hook edit_lint_check.py, no-em-dash hard rule, done + headless-upgrade skills, verify-before-assert memories). Shipped only the 3 genuine gaps.
