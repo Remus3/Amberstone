@@ -77,11 +77,12 @@ class ToHealBlockTests(unittest.TestCase):
         self.assertEqual(
             b.raw_modifiers[0]["units"], ["% of target's maximum health"],
         )
-        # two bilinear terms (bonus AD + AP), both * target_max_hp
-        self.assertEqual(len(b.bilinear_terms), 2)
+        # bilinear terms (bonus AD + AP + the item-253 bonus AS), all *
+        # target_max_hp. Was 2 pre-item-253; the AS-aware seam added the 3rd.
+        self.assertEqual(len(b.bilinear_terms), 3)
         for (_factor, a, b_attr) in b.bilinear_terms:
             self.assertEqual(b_attr, "target_max_hp")
-            self.assertIn(a, ("bonus_ad", "ap"))
+            self.assertIn(a, ("bonus_ad", "ap", "bonus_as"))
 
     def test_per_100_factors_match_helper(self) -> None:
         e = _PASSIVE_HEAL_OVERRIDES[("Viego", "P", 0)]
@@ -233,15 +234,23 @@ class InjectionEndToEndTests(unittest.TestCase):
         self.snap = _snap()
         self.ab_on = AbilitiesSnapshot.load(apply_passive_heal=True)
 
-    def test_viego_p_per_cast_flat_only_itemless(self) -> None:
-        # itemless L13: AP=0, bonus_ad=0 -> heal_per_cast = flat 2% of 2500 = 50
+    def test_viego_p_per_cast_flat_plus_as_itemless(self) -> None:
+        # itemless L13: AP=0, bonus_ad=0 -> heal = flat 2% of 2500 (=50) + the
+        # item-253 AS term (5% per 100% bonus AS, here per-level growth only).
+        from agents.daemon_slayer.engine import build_champion
+
+        rc = build_champion(self.snap, "Viego", 13, item_ids=[], mode="SR")
+        base_as = float(self.snap.champion("Viego")["stats"]["attackspeed"])
+        bonus_as_pct = (float(rc.stats["as"]) - base_as) / base_as * 100.0
+        expected = 0.02 * 2500.0 + 0.0005 * bonus_as_pct * 2500.0
         r = compute_ability_hps(
             self.snap, "Viego", 13, abilities=self.ab_on,
             resolve_target_relative=True, target_max_hp=2500.0,
         )
         p = [s for s in r.spells if s.key == "P"]
         self.assertTrue(p)
-        self.assertAlmostEqual(p[0].heal_per_cast, 50.0, places=3)
+        self.assertGreater(p[0].heal_per_cast, 50.0)  # AS term adds to the flat 50
+        self.assertAlmostEqual(p[0].heal_per_cast, expected, places=3)
 
     def test_kayn_r_per_cast_flat_only_itemless(self) -> None:
         r = compute_ability_hps(
@@ -283,7 +292,7 @@ class InjectionEndToEndTests(unittest.TestCase):
 
 class EnginePinTests(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.84.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.85.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):

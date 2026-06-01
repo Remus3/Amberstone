@@ -1331,6 +1331,37 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.85.0 (item 253 / gap-plan - GAP-2 AS-AWARE effects-text HEAL seam + the LAST
+named clean headless heal lift, default-OFF byte-identical. The bilinear HEAL
+registry (items 250-252) could not express a heal scaling on bonus ATTACK SPEED
+because the heal block carried no AS stat - so Viego P's "+5% per 100% bonus
+attack speed of the target's maximum health" sub-term was deliberately OMITTED
+in item 250 and carried forward. This slice closes it: compute_ability_hps now
+feeds a "bonus_as" entry into the bilinear_ctx = bonus attack speed in PERCENTAGE
+POINTS (total AS minus the champion's INNATE base AS over the innate base, the
+"% per 100% bonus AS" convention - it credits BOTH the per-level AND item AS
+bonus; the innate base is the champion record's flat "attackspeed" stat, e.g.
+Viego 0.658, NOT resolved.base_stats["as"] which folds per-level AS growth into
+"base"). The AS term is then a plain _per_100(5.0, "bonus_as", "target_max_hp")
+bilinear product - ZERO new eval math (the item-248 bilinear evaluator already
+sums factor * ctx[a] * ctx[b]); only the new caster-stat key. bonus_as is a pure
+caster stat (always resolved); the Viego term gates on its target_max_hp half so
+a build with no AS bonus and the default resolve_target_relative=False are both
+byte-identical (the bilinear product is 0). SEEDED 1 (the sole AS-scaled heal in
+the EXHAUSTED roster scan): Viego P gains the 4th term (was 3: flat 2% + 2.5%/100
+bonus AD + 2%/100 AP target max HP; now + 5% per 100% bonus AS target max HP).
+EXHAUSTED: the all-171-champ scan for a heal OR shield magnitude scaling on the
+caster's own bonus attack speed found Viego P and nothing else - every other
+"attack speed" + heal line is an AS buff, a vamp/life-steal clause (excluded
+class), a stat-steal on the TARGET (Mordekaiser R reduces the target's AS), or a
+heal-amp multiplier (Trundle W / Nilah P). +16 tests test_passive_heal_overrides_
+as_aware_item253.py (+ 2 item-250 Viego pins rescoped for the 3rd bilinear term).
+DS suite 5818 -> 5834. DS :8893 restarted -> 1.85.0; RC NOT
+restarted - DS engine + tests + Share + docs only. NOTE: Mordekaiser R "heal 10%
+of target max HP" surfaced in the scan as a LINEAR target-max-HP heal that the
+item-251 linear registry missed - NOT AS-scaled, out of scope here; logged for a
+future linear-registry re-open.)
+
 1.84.0 (item 252 / gap-plan - GAP-2 PER-CHARGE effects-text HEAL seam + 1
 SEEDED, default-OFF byte-identical. The heal sibling of the item-249 per-stack
 DAMAGE fold: PassiveHealEntry gains per_charge (a tuple of (value, unit) linear
