@@ -159,8 +159,12 @@ def _is_ranged_marksman(champ_rec: dict) -> bool:
 def strip_arena_trinkets(
     current_ids: tuple[str, ...], mode: str
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """Return (kept_ids, stripped_ids). No-op outside ARENA."""
-    if mode != "ARENA" or not current_ids:
+    """Return (kept_ids, stripped_ids). No-op outside ARENA.
+
+    ``mode`` matched case-insensitively (item 244): a lowercase ``arena``
+    from the route body must still strip the Arcane Sweeper trinket.
+    """
+    if mode.upper() != "ARENA" or not current_ids:
         return current_ids, ()
     kept: list[str] = []
     stripped: list[str] = []
@@ -325,8 +329,14 @@ def _is_terminal(item: dict) -> bool:
 
 
 def _is_legal_in_mode(item: dict, mode: str) -> bool:
-    """Items list per-map availability. If we don't recognise the mode, allow."""
-    map_id = MODE_MAP_ID.get(mode)
+    """Items list per-map availability. If we don't recognise the mode, allow.
+
+    ``mode`` is matched case-insensitively: ``MODE_MAP_ID`` keys are
+    uppercase, so a lowercase mode from the ``/rank`` body (``mode=aram``)
+    would otherwise miss the lookup and fall through to allow-all -
+    silently admitting every map-illegal item (item 243/244 hardening).
+    """
+    map_id = MODE_MAP_ID.get(mode.upper())
     if map_id is None:
         return True
     maps = item.get("maps") or {}
