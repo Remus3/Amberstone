@@ -79,6 +79,19 @@ quantity, so it resolves to 0 unless the caller opts into
 ``resolve_target_relative`` + passes the HP assumption - the default
 ``compute_ability_hps`` call stays byte-identical even with the flag on.
 
+v4 (2026-06-01 item 253 - AS-aware heal seam, additive, byte-identical at the
+defaults) adds a ``bonus_as`` entry to ``bilinear_ctx`` so a heal term can scale
+on the caster's bonus attack speed (the one named clean headless heal term the
+bilinear registry could not previously express). ``bonus_as`` is bonus attack
+speed in PERCENTAGE POINTS (total AS minus the champion's INNATE base AS over
+the innate base, the "% per 100% bonus AS" convention - it credits both the
+per-level and item AS bonus). It is a pure caster stat (always resolved); the
+sole consumer (Viego P's omitted "+5% per 100% bonus attack speed of target max
+HP" term) gates on its ``target_max_hp`` half, so a build with no AS bonus and
+the default ``resolve_target_relative=False`` are both byte-identical. This is
+the LAST named clean headless heal lift - the AS-scaled heal class is the single
+Viego P term (the roster scan found no other heal or shield scaling on AS).
+
 Deliberate omissions (mirror ``ability_dps``):
 * Multi-block heal/shield forms default to ``block_strategy="first"`` (the
   first heal block + first shield block), matching ``ability_dps``'s
@@ -577,10 +590,36 @@ def compute_ability_hps(
     # snapshot heal/shield block (they carry no bilinear_terms) -> byte-
     # identical when no synthetic heal block is injected.
     _caster_max_hp = float(getattr(ctx, "caster_max_hp", 0.0) or 0.0)
+    # v4 (item 253) AS-aware heal seam: bonus attack speed in PERCENTAGE POINTS
+    # (50.0 = 50% bonus AS), matching the "% per 100% bonus AS" / _per_100
+    # denominator convention. League's "bonus attack speed" = total AS minus the
+    # champion's INNATE base AS (the flat champion-record "attackspeed" stat,
+    # e.g. Viego 0.658), NOT resolved.base_stats["as"] which folds the per-level
+    # AS growth INTO "base" - per-level AS growth IS bonus AS in League, so the
+    # innate-base denominator credits both the per-level and item bonus. A pure
+    # caster stat (always resolved); the only AS-scaled heal term (Viego P) gates
+    # on its target_max_hp half, so the default resolve_target_relative=False
+    # path stays byte-identical (the bilinear product is 0). A missing champion
+    # record / zero base AS falls back to 0.0 (the term contributes 0 - an honest
+    # lower bound).
+    try:
+        _innate_base_as = float(
+            (snapshot.champion(champ_id).get("stats") or {}).get("attackspeed", 0.0)
+            or 0.0
+        )
+    except Exception:
+        _innate_base_as = 0.0
+    _total_as = float((resolved.stats or {}).get("as", 0.0) or 0.0)
+    _bonus_as_pct = (
+        ((_total_as - _innate_base_as) / _innate_base_as * 100.0)
+        if _innate_base_as > 0
+        else 0.0
+    )
     bilinear_ctx = {
         "ap": float(getattr(ctx, "ap", 0.0) or 0.0),
         "bonus_ad": float(getattr(ctx, "bonus_ad", 0.0) or 0.0),
         "total_ad": float(getattr(ctx, "total_ad", 0.0) or 0.0),
+        "bonus_as": _bonus_as_pct,
         "caster_max_hp": _caster_max_hp,
         "caster_bonus_hp": float(getattr(ctx, "caster_bonus_hp", 0.0) or 0.0),
         "caster_missing_hp": (
