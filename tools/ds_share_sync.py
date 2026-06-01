@@ -19,14 +19,26 @@ engine on its own technical merits:
   2. ``_SCRUB`` rewrites a small, bounded set of development-context comment
      phrases to neutral wording. Data JSON is copied verbatim (it is data).
 
+It also keeps the authored handoff docs' MECHANICAL version/patch anchors fresh:
+the ``ENGINE_VERSION = "X"`` literal and the explicit ``data patch `X` `` /
+``"patch": "X"`` anchor phrases in ``Share/README.md`` + ``Share/docs/*.md`` are
+rewritten to the live values on a plain run and verified by ``--check`` - the
+same hard gate as the ``src`` mirror, so an engine bump that forgets the docs
+fails CI. Only those literal anchors are auto-maintained; the SEMANTIC prose
+(shipped-vs-staged, test counts, the dated CHANGELOG entry) is a hand step in the
+/done ritual, and a doc that describes a now-complete one-off effort is updated
+to its done-state or archived there.
+
 Usage:
   python tools/ds_share_sync.py            # sync Share/src + stamp MANIFEST
-  python tools/ds_share_sync.py --check    # CI guard: exit 1 if Share/src drifts
-                                           # from the live engine (no writes)
+                                           # + refresh authored-doc anchors
+  python tools/ds_share_sync.py --check    # CI guard: exit 1 if Share/src OR an
+                                           # authored-doc anchor drifts (no writes)
 
-The ``--check`` mode compares only ``Share/src`` (the deterministic mirror);
-``Share/MANIFEST.md`` carries a sync timestamp and is not part of the drift
-check. CI runs ``--check`` so any DS change that forgets to re-sync fails.
+The ``--check`` mode compares ``Share/src`` (the deterministic mirror) AND the
+authored-doc version/patch anchors; ``Share/MANIFEST.md`` carries a sync
+timestamp and is not part of the drift check. CI runs ``--check`` so any DS
+change that forgets to re-sync (src or doc anchors) fails.
 """
 from __future__ import annotations
 
@@ -41,6 +53,22 @@ _REPO = Path(__file__).resolve().parents[1]
 _SHARE = _REPO / "Share"
 _SRC = _SHARE / "src"
 _PATCH = "16.11.1"
+
+# Authored docs whose mechanical version/patch anchors must track the live
+# engine. The CHANGELOG (release history, legitimately full of OLD versions) and
+# the machine-generated MANIFEST are excluded. These are NOT part of the
+# deterministic ``src`` mirror; this script keeps their version/patch anchors
+# fresh (write mode) and verifies them (``--check``) the same way it restamps and
+# guards MANIFEST/src, so an engine bump that forgets the docs fails CI.
+_DOC_FILES: tuple[str, ...] = (
+    "README.md",
+    "docs/01_OVERVIEW.md",
+    "docs/02_FUNCTION_REFERENCE.md",
+    "docs/03_DATA_AND_SOURCES.md",
+    "docs/04_GAPS_AND_ROADMAP.md",
+    "docs/05_AUDIT_AND_REFACTOR.md",
+)
+_SEMVER = r"\d+\.\d+\.\d+"
 
 # DS engine tooling copied into the package (extractors + serving + the
 # patch-bump prefilter/inspect scanners). This script is intentionally NOT in
@@ -258,6 +286,68 @@ contract or any external dependency.
     (_SHARE / "MANIFEST.md").write_text(body, encoding="utf-8")
 
 
+def _doc_anchor_rules() -> tuple[tuple[str, "re.Pattern[str]", str], ...]:
+    """Mechanical version/patch anchor rules for the authored docs.
+
+    Each rule is ``(label, pattern, live_value)``. The pattern matches ONLY the
+    version/patch token (via fixed-width look-around), so ``pattern.sub(live,
+    text)`` rewrites just the token and ``pattern.finditer(text)`` yields the
+    tokens to verify. Deliberately scoped to unambiguous anchor forms so it never
+    rewrites a file path, the CommunityDragon two-segment patch pin, the
+    ``current.txt`` content description, or a changelog history entry. The
+    semantic prose (shipped-vs-staged, test counts) is refreshed by hand per the
+    /done ritual - only these literal anchors are auto-maintained.
+    """
+    version = _engine_version()
+    patch = _PATCH
+    return (
+        ("engine version", re.compile(rf'(?<=ENGINE_VERSION = ")(?:{_SEMVER})(?=")'), version),
+        ("data patch", re.compile(rf'(?<=data patch `)(?:{_SEMVER})(?=`)'), patch),
+        ("active data patch", re.compile(rf'(?<=Active data patch: `)(?:{_SEMVER})(?=`)'), patch),
+        ("game patch", re.compile(rf'(?<=game patch `)(?:{_SEMVER})(?=`)'), patch),
+        ("health-example patch", re.compile(rf'(?<="patch": ")(?:{_SEMVER})(?=")'), patch),
+    )
+
+
+def _rewrite_doc_anchors() -> list[str]:
+    """Write mode: rewrite the mechanical version/patch anchors in the authored
+    docs to the live values. Returns the relpaths changed."""
+    rules = _doc_anchor_rules()
+    changed: list[str] = []
+    for rel in _DOC_FILES:
+        p = _SHARE / rel
+        if not p.exists():
+            continue
+        text = p.read_text(encoding="utf-8")
+        new = text
+        for _label, pat, live in rules:
+            new = pat.sub(live, new)
+        if new != text:
+            p.write_text(new, encoding="utf-8")
+            changed.append(rel)
+    return changed
+
+
+def _check_doc_anchors() -> int:
+    """--check: count drifted version/patch anchors in the authored docs, each
+    printed as ``file:line``. Returns the drift count (0 == fresh)."""
+    rules = _doc_anchor_rules()
+    drift = 0
+    for rel in _DOC_FILES:
+        p = _SHARE / rel
+        if not p.exists():
+            continue
+        text = p.read_text(encoding="utf-8")
+        for label, pat, live in rules:
+            for m in pat.finditer(text):
+                if m.group(0) != live:
+                    line = text.count("\n", 0, m.start()) + 1
+                    drift += 1
+                    print(f"  DOC ANCHOR DRIFT ({label}): {rel}:{line} "
+                          f"has '{m.group(0)}', live is '{live}'")
+    return drift
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Sync the DS Share review package.")
     ap.add_argument("--check", action="store_true",
@@ -268,19 +358,22 @@ def main(argv: list[str] | None = None) -> int:
     version = _engine_version()
 
     if args.check:
-        drift = _check(expected)
+        drift = _check(expected) + _check_doc_anchors()
         if drift:
-            print(f"ds_share_sync: {drift} path(s) drifted - run "
+            print(f"ds_share_sync: {drift} path(s)/anchor(s) drifted - run "
                   f"`python tools/ds_share_sync.py` and commit Share/.")
             return 1
-        print(f"ds_share_sync: Share/src in sync (engine {version}, "
+        print(f"ds_share_sync: Share/src + doc anchors in sync (engine {version}, "
               f"{len(expected)} files).")
         return 0
 
     n = _write(expected)
     _stamp_manifest(version, n)
+    docs_changed = _rewrite_doc_anchors()
+    doc_note = (f" + refreshed {len(docs_changed)} doc anchor file(s)"
+                if docs_changed else " + doc anchors already fresh")
     print(f"ds_share_sync: wrote {n} files to Share/src (engine {version}, "
-          f"patch {_PATCH}) + stamped MANIFEST.")
+          f"patch {_PATCH}) + stamped MANIFEST{doc_note}.")
     return 0
 
 
