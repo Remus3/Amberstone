@@ -1331,6 +1331,43 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.81.0 (item 249 / gap-plan - GAP-2 PER-STACK passive damage schema lift + 3
+SEEDED + 1 UPGRADE, default-OFF byte-identical. Some passives deal damage that
+scales LINEARLY with the number of stacks on the target; the per-stack
+COEFFICIENTS are exact and only the stack MULTIPLIER is a steady-state
+``assumed_stacks`` (documented per entry, operator-tunable, externalized so a
+future live consumer can feed the real count - mirrors item 236's tenacity
+externalization). The lift adds the ``PerStackTerm`` dataclass +
+``PassiveDamageEntry.per_stack`` / ``assumed_stacks`` fields;
+``_passive_damage_overrides.to_damage_block`` FOLDS ``field + per_stack.field *
+assumed_stacks`` element-wise into the synthetic DamageBlock, so
+``ability_dps._evaluate_block`` needs ZERO new math (no abilities.py /
+ability_dps.py change - the per-stack contribution collapses into the ordinary
+base/scaling fields once the assumed count is fixed). SEEDED from verbatim
+16.11.1 effects_descriptions, all default-OFF (the seam injects only under
+apply_passive_damage=True): Kai'Sa P Caustic Wounds (4:24 by level + 12% AP, +
+(1:6 by level + 3% AP) per Plasma stack; the "12%:24% based on stacks" AP ratio
+is linear = 12% + 3%/stack; assumed_stacks 2.0 = the 0..4 ramp-cycle-average -
+the canonical case STAGED through item 248) + Darius P Hemorrhage ((13:30 by
+level + 30% bonus AD) per stack bleed, dot, cap 5, assumed 3.0) + Twitch P
+Deadly Venom ((6/12/18/24/30 by level + 18% AP) per stack true poison, dot,
+cap 6, assumed 3.0) + an UPGRADE to the already-seeded Orianna P (adds the
+2:10 by level + 3% AP per-stack ramp it was missing; assumed 1.0). EXHAUSTED
+scan: of the 15 no_damage P-forms with "per stack"+"damage" language only
+these 4 are per-stack TARGET damage; the other 11 are stat STEROIDS
+(Belveth/Garen/Irelia/Kayle/Samira/Senna/Sona/Volibear/Wukong gain
+AS/MS/armor per stack) or stack-gain/damage-store mechanics (Mel/Smolder) -
+documented inline, not seeded. The Kai'Sa 5th-stack-consume sub-term (15% + 6%
+per 100 AP of MISSING health) is OMITTED: conditional (fires on the 5th stack)
+AND inert at the default full-HP ctx (same precedent as Ekko W staged in 248).
+STAYED STAGED (neither bilinear nor per-stack covers them): Brand P / Ekko W
+(conditional + missing-HP) + Karma W f1 / Viego P (HEALS, not damage). +17
+tests test_passive_damage_per_stack_item249.py (PerStackTerm fold math /
+assumed_stacks=0 inert / registry shape / steroid forms not seeded /
+default-OFF byte-identical / inject-on verbatim L11 values for the 4 / Orianna
+upgrade differs from base-only). DEFAULT byte-identical: the full DS suite is
+unchanged with apply_passive_damage at its False default.)
+
 1.80.0 (item 248 / gap-plan - GAP-2 bilinear AP-on-HP passive schema lift +
 4 SEEDED passives, default-OFF byte-identical. The AP-scaled %-of-HP passive
 form ("X% (+ Y% per 100 AP) of the target's HP") is a PRODUCT of two ctx stats
