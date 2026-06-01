@@ -1,8 +1,10 @@
 """Champion-level CC pressure aggregator over ``_PER_SPELL_CC_DURATIONS``.
 
 First consumer of the per-spell CC duration registry seeded at ENGINE
-1.30.0 (2026-05-21) and extended at 1.31.0 (2026-05-21, wave 2 = 53
-entries across 44 champions of first-order CC at patch 16.10.1).
+1.30.0 (2026-05-21) and grown across subsequent waves to its live size
+(108 entries across 89 champions of first-order CC at patch 16.11.1). The
+registry size is computed at import - trust the live
+``_PER_SPELL_CC_DURATIONS`` value, not this prose.
 
 ENGINE 1.32.0 (2026-05-22) seam: ``compute_cc_pressure(champion, mode)``
 walks the registry, picks max-rank base durations per registered spell,
