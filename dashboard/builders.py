@@ -218,16 +218,28 @@ def _build_loadouts_all(mode: str) -> dict:
     return {"mode": mode, "champions": out_champs}
 
 
+def _live_metrics_enabled() -> bool:
+    """Diagnostics flag: True when live-metrics capture is on (env
+    RC_LIVE_METRICS=1 OR config live_metrics_enabled). Lazy import so a
+    builders import never hard-depends on core.live_metrics."""
+    try:
+        from core import live_metrics
+        return live_metrics.enabled()
+    except Exception:
+        import os
+        return os.environ.get("RC_LIVE_METRICS", "0") == "1"
+
+
 def _build_diagnostics() -> dict:
     """Connection status + log tail + health snapshot for the
     Diagnostics view. Folds in the connection-check use case from
     the dropped Current Match view."""
-    import os
     out = {
         "connections": [],
         "log_tail": [],
         "health": _read_json("ops/runtime/health.json"),
-        "live_metrics_enabled": os.environ.get("RC_LIVE_METRICS", "0") == "1",
+        # env RC_LIVE_METRICS=1 OR config live_metrics_enabled (re-read live).
+        "live_metrics_enabled": _live_metrics_enabled(),
     }
     h = out["health"]
     out["connections"].append({

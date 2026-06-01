@@ -1395,7 +1395,7 @@
           <label class="settings-row settings-row-static">
             <span>Live metric streamer</span>
             <span id="set-live-metrics-status">-</span>
-            <span class="dim">(env var RC_LIVE_METRICS - supervisor restart required to change)</span>
+            <span class="dim">(env RC_LIVE_METRICS=1 OR config live_metrics_enabled in coach_settings.json - the config switch is re-read live, no restart)</span>
           </label>
         </div>
         <div class="settings-card">

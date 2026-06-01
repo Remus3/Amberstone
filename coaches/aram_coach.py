@@ -42,21 +42,11 @@ from core.mayhem_detect import is_mayhem
 logger = logging.getLogger("rc.coaches.aram")
 _APP_DIR = Path(__file__).parent.parent
 
-# ── Live metric recording feature flag ─────────────────────────────────────
-# When True, this coach emits a metric snapshot to data/match_metrics.db on
-# milestone boundaries (game_start / 10/15/20/25/30 min / L6/11/16 spikes /
-# game_end) plus 60s periodic sampling. Flag is OFF by default so enabling
-# live metric capture is a deliberate act after verifying the coach
-# doesn't regress - flip to True here (or set RC_LIVE_METRICS=1 in env)
-# once you want to start building the live dataset.
-
-_RC_LIVE_METRICS_ENABLED = os.environ.get("RC_LIVE_METRICS", "0") == "1"
-if _RC_LIVE_METRICS_ENABLED:
-    try:
-        from core.metric_streamer import MetricStreamer
-    except Exception as _exc:
-        logger.warning("live-metrics import failed: %s", _exc)
-        _RC_LIVE_METRICS_ENABLED = False
+# Live metric recording: the enable gate (env RC_LIVE_METRICS=1 OR config
+# live_metrics_enabled, re-read live) + per-match streamer dispatch live in
+# core.live_metrics. Wired into the coaching write below via live_metrics.stream;
+# OFF by default, never crashes the coach.
+from core import live_metrics
 
 
 def _parse_item_reasons(reasons_str: str) -> dict:
@@ -909,26 +899,11 @@ class Coach(BaseCoach):
             safe_write(self._out, cur)
 
             # ── Live metric streaming (feature-flagged) ──────────────
-            # Gated on RC_LIVE_METRICS env var. Streamer is lazy-created
-            # on the first tick of each match; it decides internally
-            # whether this tick crosses a milestone (10min_mark,
-            # l6_spike, etc.) + emits periodic 60s samples. Never
-            # crashes the coach: any error is logged + swallowed.
-            if _RC_LIVE_METRICS_ENABLED:
-                try:
-                    game_id = str(state.get("game_id") or state.get("gameId") or "")
-                    if game_id:
-                        mid = f"live_{game_id}"
-                        existing = getattr(self, "_streamer", None)
-                        if existing is None or existing.match_id != mid:
-                            self._streamer = MetricStreamer(
-                                match_id=mid,
-                                champion=state.get("champion"),
-                                mode=self._MODE_NAME,
-                            )
-                        self._streamer.on_state(cur)
-                except Exception as _exc:
-                    logger.debug("live-metrics stream error: %s", _exc)
+            # Shared gate + per-match streamer dispatch in core.live_metrics
+            # (env RC_LIVE_METRICS=1 OR config live_metrics_enabled). Decides
+            # internally whether this tick crosses a milestone + emits 60s
+            # periodic samples. Never crashes the coach.
+            live_metrics.stream(self, cur, state, self._MODE_NAME)
 
             if _cb:
                 try:
