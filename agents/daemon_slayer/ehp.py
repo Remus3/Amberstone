@@ -665,8 +665,8 @@ def compute_ehp(
     second engine math consumer of ``compute_cc_pressure`` (closes item
     136 carry (a)). Pass an iterable of enemy champion ids (canonical
     DDragon ids like "Annie", "Morgana", "MonkeyKing") to compute
-    ``enemy_cc_pressure_s`` summed across registered CC spells (44 of
-    172 champs at 1.32.0). Default ``()`` leaves all 3 new fields at
+    ``enemy_cc_pressure_s`` summed across registered CC spells (89 of
+    172 champs at patch 16.11.1; the registry size is computed at import). Default ``()`` leaves all 3 new fields at
     identity (0.0 / 0.0 / equal to ``blended_ehp``), preserving full
     back-compat for all existing callers. Empty / None / unknown
     entries within the iterable are silently skipped (mirrors

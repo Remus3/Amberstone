@@ -1,8 +1,8 @@
-"""Unified V2 fight-report: compose the 5 substrate modules into one report.
+"""Unified V2 fight-report: compose the 7 substrate modules into one report.
 
 DS V2 plan section 3 (S2 deliverable): V1 stays the fast steady-state ranking
 path; V2 is the bounded combat-simulator / correctness path. This module is the
-COMPOSE layer - it does NOT rewrite any scorer. It calls the 5 additive V2
+COMPOSE layer - it does NOT rewrite any scorer. It calls the 7 additive V2
 substrate modules and stitches their results into a single ``FightReport``:
 
   * mana_sim.compute_mana_bounded_combo  -> finite-mana bounded rotation
@@ -48,7 +48,7 @@ _BURST_PROC_TYPES = frozenset({"on_proc_burst", "per_attack", "stacking_amp"})
 
 @dataclass(frozen=True)
 class FightReport:
-    """Composed V2 fight report stitching the 5 substrate modules.
+    """Composed V2 fight report stitching the 7 substrate modules.
 
     Every numeric section is fail-soft: a section that raised is zeroed and the
     reason is recorded in ``notes``. ``invariant_violations`` is empty for a
