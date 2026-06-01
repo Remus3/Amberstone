@@ -34,12 +34,20 @@ from pathlib import Path as _Path_tok
 def _resolve_auth_token() -> str:
     env = _os_tok.environ.get("RC_VISION_TOKEN")
     if env: return env.strip()
-    cfg = _Path_tok(__file__).resolve().parent / "vision_token.txt"
-    try:
-        if cfg.exists():
-            line = cfg.read_text(encoding="utf-8").splitlines()[0].strip()
-            if line: return line
-    except OSError: pass
+    # Canonical source (item 242): repo config/vision_token.txt. The legacy
+    # sibling vision_token.txt + the hardcode below are DEAD fallbacks - a
+    # stale token 401s every /upload-liveclient silently (pythonw, no console)
+    # -> relay cache empty -> the app never sees the live game -> coach dead.
+    # Never reintroduce a token hardcode as the live path.
+    _root = _Path_tok(__file__).resolve().parent.parent
+    for cand in (_root / "config" / "vision_token.txt",
+                 _Path_tok(__file__).resolve().parent / "vision_token.txt"):
+        try:
+            if cand.exists():
+                line = cand.read_text(encoding="utf-8").splitlines()[0].strip()
+                if line: return line
+        except OSError:
+            pass
     return "8e8f131e212b329438218eca27372dde"
 
 TOKEN = _resolve_auth_token()
