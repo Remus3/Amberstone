@@ -110,23 +110,26 @@
   color: var(--text, #f5f5f7);
 }
 
-/* Expanded vertical list. */
+/* Operator 2026-05-31 (part 2): the ordered build is surfaced
+ * HORIZONTALLY - a wrapping row of compact item chips (buy order
+ * left-to-right) - not a collapsed line + vertical expand. */
 .bo-slots {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-top: 5px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
   min-height: 0;
 }
 
 .bo-slot {
-  display: grid;
-  grid-template-columns: 16px 20px 1fr auto;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.03);
+  gap: 6px;
+  padding: 3px 8px 3px 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   cursor: default;
 }
 .bo-slot:hover {
@@ -152,9 +155,14 @@
 .bo-name {
   font-size: 15px;
   color: var(--text, #f5f5f7);
+  max-width: 120px;
+  line-height: 1.15;
+  /* operator 2026-05-31 (#7): wrap the item name to up to 2 lines
+     instead of ellipsis-truncating it to one. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .bo-delta {
