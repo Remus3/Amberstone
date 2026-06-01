@@ -120,11 +120,47 @@ def test_stream_noop_when_disabled(monkeypatch):
     assert getattr(h, "_streamer", None) is None
 
 
-def test_stream_noop_without_game_id(monkeypatch):
+def test_stream_synthesizes_id_without_game_id(monkeypatch):
+    """ARAM and other modes never expose game_id (item 211) - the streamer
+    must still capture via a synthetic per-match session id."""
     _enable(monkeypatch)
     h = _Holder()
-    assert live_metrics.stream(h, {"game_time_s": 60}, {}, "sr") == 0
-    assert _FakeStreamer.created == []
+    rows = live_metrics.stream(h, {"game_time_s": 60, "champion": "Sona"}, {}, "aram")
+    assert rows == 1
+    assert len(_FakeStreamer.created) == 1
+    assert _FakeStreamer.created[0].match_id.startswith("sess_aram_Sona_")
+
+
+def test_synthetic_id_reused_within_match(monkeypatch):
+    _enable(monkeypatch)
+    h = _Holder()
+    live_metrics.stream(h, {"game_time_s": 30, "champion": "Sona"}, {}, "aram")
+    live_metrics.stream(h, {"game_time_s": 90, "champion": "Sona"}, {}, "aram")
+    live_metrics.stream(h, {"game_time_s": 600, "champion": "Sona"}, {}, "aram")
+    assert len(_FakeStreamer.created) == 1  # one match, clock only rises
+
+
+def test_synthetic_id_new_on_clock_reset(monkeypatch):
+    _enable(monkeypatch)
+    h = _Holder()
+    live_metrics.stream(h, {"game_time_s": 1400, "champion": "Sona"}, {}, "aram")
+    first = h._streamer.match_id
+    # next game starts near 0 -> clock dropped >30s -> new synthetic match
+    live_metrics.stream(h, {"game_time_s": 25, "champion": "Lux"}, {}, "aram")
+    assert len(_FakeStreamer.created) == 2
+    assert h._streamer.match_id != first
+
+
+def test_real_game_id_preferred_and_zero_treated_empty(monkeypatch):
+    _enable(monkeypatch)
+    h = _Holder()
+    # game_id "0" is treated as absent -> synthetic
+    live_metrics.stream(h, {"game_time_s": 10, "champion": "Zed"}, {"game_id": "0"}, "sr")
+    assert h._streamer.match_id.startswith("sess_sr_Zed_")
+    # a real game_id wins and clears the synthetic session
+    live_metrics.stream(h, {"champion": "Zed"}, {"game_id": "777"}, "sr")
+    assert h._streamer.match_id == "live_777"
+    assert getattr(h, "_lm_session", "x") is None
 
 
 def test_stream_creates_and_feeds(monkeypatch):
