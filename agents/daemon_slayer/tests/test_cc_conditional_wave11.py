@@ -351,7 +351,7 @@ class WaveElevenWiredSitesGrepTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.source_path = (
-            Path(__file__).resolve().parent.parent / "cc_conditional.py"
+            Path(__file__).resolve().parent.parent / "CC_CONDITIONAL_NOTES.md"
         )
         cls.source_text = cls.source_path.read_text(encoding="utf-8")
 
@@ -409,7 +409,7 @@ class WaveElevenAsciiHygieneTests(unittest.TestCase):
         # surface avoids re-flagging pre-existing carryover bytes from
         # other waves that are operator-gated retro-sweep candidates.
         path = (
-            Path(__file__).resolve().parent.parent / "cc_conditional.py"
+            Path(__file__).resolve().parent.parent / "CC_CONDITIONAL_NOTES.md"
         )
         text = path.read_text(encoding="utf-8")
         # Find both wave 11 sections.

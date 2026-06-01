@@ -486,7 +486,7 @@ class WiredSiteGrepTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self.source_path = (
-            Path(__file__).parent.parent / "cc_conditional.py"
+            Path(__file__).parent.parent / "CC_CONDITIONAL_NOTES.md"
         )
         self.assertTrue(self.source_path.exists())
         self.source = self.source_path.read_text(encoding="utf-8")

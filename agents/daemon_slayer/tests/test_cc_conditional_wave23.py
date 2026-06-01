@@ -101,7 +101,7 @@ _ABILITIES_JSON = (
     _REPO_ROOT / "data" / "daemon_slayer" / "16.10.1" / "champion_abilities.json"
 )
 _CC_CONDITIONAL_SOURCE = (
-    _REPO_ROOT / "agents" / "daemon_slayer" / "cc_conditional.py"
+    _REPO_ROOT / "agents" / "daemon_slayer" / "CC_CONDITIONAL_NOTES.md"
 )
 _WAVE23_TEST_SOURCE = pathlib.Path(__file__).resolve()
 

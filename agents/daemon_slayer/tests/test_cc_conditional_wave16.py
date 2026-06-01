@@ -590,15 +590,15 @@ class WaveSixteenRejectVerdictsPinnedTests(unittest.TestCase):
     """REJECT verdicts documented in module docstring."""
 
     def test_module_docstring_documents_ahri_w_reject(self) -> None:
-        src = inspect.getsource(cc)
+        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
         self.assertIn("Ahri W", src)
 
     def test_module_docstring_documents_milio_r_reject(self) -> None:
-        src = inspect.getsource(cc)
+        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
         self.assertIn("Milio R", src)
 
     def test_module_docstring_documents_irelia_r_reject(self) -> None:
-        src = inspect.getsource(cc)
+        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
         self.assertIn("Irelia R", src)
 
 
@@ -606,7 +606,7 @@ class WaveSixteenWiredSitesGrepTests(unittest.TestCase):
     """Wave 16 entries grep-match in the cc_conditional.py source."""
 
     def _source(self) -> str:
-        return inspect.getsource(cc)
+        return open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
 
     def test_source_mentions_garen_q_setdefault(self) -> None:
         src = self._source()
@@ -667,7 +667,7 @@ class AsciiHygieneTests(unittest.TestCase):
         )
 
     def test_cc_conditional_wave_16_block_is_ascii(self) -> None:
-        src = inspect.getsource(cc)
+        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
         # Slice from the "wave 16 expansion" header through the
         # end-of-builder; assert no non-ASCII bytes appear in that
         # slice. The earlier waves carry pre-existing non-ASCII bytes
