@@ -4,6 +4,22 @@
 
 ---
 
+# 2026-06-01 - item 256: Share/ DS authored-doc freshness machine-guarded + ritualized; fixed 1.86.0 -> 1.87.0 staleness (commit 3e1d7c5; no engine bump; no DS/RC restart)
+
+Operator: "have the Share folder for DS - documents updated/added/archived as changes are made (a done refactor can be archived) so they do not go stale again; make it part of /done." Scope fork (AskUserQuestion) -> operator picked "auto-rewrite + hard CI gate".
+
+ROOT: ds_share_sync.py --check (the CI gate) guarded ONLY Share/src. The authored docs (README + CHANGELOG + docs/01..05) were hand-maintained with no machine guard, so item 255's 1.86.0 -> 1.87.0 bump synced src but left the docs at 1.86.0 (and the conditional-gate DAMAGE lift listed as "staged" when it shipped). The existing /done CHANGELOG-prepend step was also skipped for 1.87.0 - a prose checklist is what already failed.
+
+SHIPPED (3e1d7c5): ds_share_sync.py gains _DOC_FILES + _doc_anchor_rules + _rewrite_doc_anchors + _check_doc_anchors. Write mode auto-rewrites the mechanical anchors (ENGINE_VERSION = "X" + data patch `X` + "patch": "X") in README + docs/*.md to live; --check verifies them (same hard CI gate as src). Scoped to unambiguous anchor forms - the CHANGELOG history + the data/<patch>/ path + the CDragon two-segment pin are left alone. tests/test_ds_share_doc_anchors.py (8): live-fresh + changelog-exclusion + planted-drift detect/repair/noop + ASCII. .claude/commands/done.md (gitignored) §0b extended with the SEMANTIC authored-doc step (update/add/archive verbs) the auto-rewrite cannot do.
+
+STALE-FIX (same commit): 01/02/05 version anchors auto-bumped 1.86.0 -> 1.87.0 (02:40 + 05:211 reworded to the canonical ENGINE_VERSION = "X" form so the guard covers 100%); 04 moved conditional-gate DAMAGE staged -> shipped (cross-spell AurelionSol W = sole remainder); 05 test count 5858 -> 5886 / 169 -> 171 files (collect-only 5888 = 5886+1skip+1xfail); 02 passive-damage registry cells list target_missing_hp_pct + conditional_probability; Share/CHANGELOG.md 1.87.0 entry prepended + sync-history line; MANIFEST restamped (258 files).
+
+Gate: --check green (src + doc anchors) / 8 new tests pass / ruff . clean / hygiene 12 pass / DS engine UNTOUCHED (no ENGINE bump, no DS restart; RC mode=client). Share/src byte-identical (deterministic re-mirror) - only the authored half + tool + MANIFEST changed.
+
+Don't-redo: (a) the doc version/patch ANCHORS are now tool-owned - never hand-edit the ENGINE_VERSION = "X" / data patch `X` / "patch": "X" literals; run ds_share_sync.py. (b) a PLAIN patch bump still needs a manual doc pass for the path/CDragon patch forms the auto-rewrite leaves alone (03_DATA_AND_SOURCES.md path citations + the /16.11/ two-segment pin). (c) the SEMANTIC freshness (shipped-vs-staged in 04, test count in 05, CHANGELOG prepend, archive-when-complete) stays a /done §0b hand step. NEXT: unchanged from item 255 (Phase D live flag-flips; AurelionSol W cross-spell seam; item-240 UI part-3).
+
+---
+
 # 2026-06-01 - item 255: DS GAP-2 CONDITIONAL-GATE effects-text DAMAGE schema lift + 5 SEEDED, default-OFF byte-identical (ENGINE 1.86.0 -> 1.87.0; DS restarted 1.87.0; RC not restarted - DS engine + tests + Share + docs only)
 
 Operator "start the next DS schema lift and exhaust it then /done". Per item 254 the HEAL lifts were exhausted; next named headless lift = the conditional-gate DAMAGE lift (Brand P + Ekko W) staged by items 248/249.
@@ -35,21 +51,3 @@ Share/ external-review docs were authored at 1.75.0 (item 239); live engine is 1
 - CHANGELOG: consolidated 1.77.0->1.86.0 dated entry + sync-history line.
 
 Don't-redo: (a) ds_share_sync --check was GREEN (256 files, engine 1.86.0) - only authored docs (Share/docs + CHANGELOG) changed, which the --check guard does not govern; the Share/src MIRROR was NOT touched, do NOT re-run a mirror sync for this. (b) NO engine bump - ENGINE stays 1.86.0; the 1.77-1.86 work shipped items 246-254, this session only DOCUMENTED it. (c) 03_DATA_AND_SOURCES + README + MANIFEST were already current (MANIFEST is auto-generated) - left untouched. (d) the "used to be 4911/2791/4626 lines" phrasing in 05 is intentional past-tense before/after framing, NOT stale - do NOT "fix" it. NEXT unchanged from item 254 (Phase D live flag-flips operator-gated; AurelionSol W cross-spell seam; item-240 UI part-3). Doc-maintenance task, not a new ledger item.
-
----
-
-# 2026-06-01 - item 254: DS GAP-2 LINEAR effects-text HEAL registry RE-OPEN (item-251 sibling) + 4 SEEDED, default-OFF byte-identical (ENGINE 1.85.0 -> 1.86.0; DS restarted 1.86.0; RC not restarted - DS engine + tests + Share + docs only)
-
-Operator "start the next item" -> item 253 NEXT(4) = Mordekaiser R linear target-max-HP heal (item-251 linear-registry re-open), the cleanest headless-buildable carry (live-gated Phase-D flag-flips + conditional-gate Brand P/Ekko W + cross-spell AurelionSol W + UI carries are NOT headless).
-
-FINDING (verified vs live 16.11.1 before building): item 253 logged Mordekaiser R "heal 10% of their maximum health" as a clean target-max-HP linear heal the original item-251 84-candidate scan MISSED. Fresh exhaustive re-scan (all 171 champs, NO heal block + heal/restore verb + self/target HP quantity) recovered 4 misses. NO SCHEMA CHANGE - all 4 use the EXISTING item-251 LINEAR machinery (a linear entry just carries no bilinear_terms / no per_charge).
-
-SEEDED (4, all default-OFF): Mordekaiser R Realm of Death (10% TARGET max HP on soul-consume, FLAT all 3 R ranks; target-relative -> 0 at rest, surfaces under resolve_target_relative + target_max_hp; per_cast; damage_blocks=[] so the no-existing-heal-block gate admits it) / Illaoi P Prophet of an Elder God (5% caster MISSING HP per Tentacle hit; 0 at rest, surfaces under caster_missing_hp_pct; per-Tentacle lower bound) / Zac P Cell Division Goo (4% : 8% by level caster MAX HP per chunk; resolves at default like Maokai/Swain; resurrection 50% revive OMITTED) / Dr. Mundo P Goes Where He Pleases (4% caster MAX HP on canister consume; resolves at default like Gragas; per-5s max-HP REGEN tick OMITTED - "regenerates" not "heal").
-
-EXHAUSTED: re-scan REJECTS - %-of-HP DAMAGE lines (Aatrox/Brand/Gwen/Sejuani/Smolder, spurious heal-verb match); vamp class (Aatrox/Gwen/Warwick); Darius Q bespoke; REVIVE/grey-health (Pyke P / Sion P / TahmKench E; Warwick W is a sub-50%-HP HUNT trigger not a heal); PET heal (Zyra R restores her PLANTS' HP); REMOUNT (Kled P / Skaarl restores 40-70% of the MOUNT's max HP on remount). The LINEAR effects-text heal class is now genuinely EXHAUSTED at 16.11.1.
-
-+20 tests test_passive_heal_overrides_linear_reopen_item254.py (24 cases). ENGINE 1.85.0 -> 1.86.0 + 39 test-pin syncs + CHANGELOG prepend + Share re-sync (--check clean, 256 files engine 1.86.0; gist auto-pushes) + DS restart (PowerShell taskkill /F /PID 14444 + schtasks /Run /TN RC-DaemonSlayer). DS suite 5834 -> 5858 (+24, 0 failed); phase8 70/70 post-restart; ruff clean; added-diff 0 non-ASCII. CI run 26778396329 green. LIVE in-process: Mordekaiser R 0(rest)/250.0(tmh=2500); Illaoi P 0(rest)/41.628(cmh=0.5 L11); Zac P 27.4(L1)->203.04(L18) at default; Dr. Mundo P 61.753(L11)->95.64(L18) at default; all 4 EMPTY at apply_passive_heal=False default (byte-identical); Trundle P item-251 regression 99.412 intact. Commits 4da5f9f (feat) + ab4272d (ledger), pushed ee91da1..ab4272d.
-
-Don't-redo: (a) all 4 ride EXISTING item-251 linear machinery (no schema change). (b) Mordekaiser R is FLAT 10% (NOT rank-scaled); target-relative so 0 at resolve-off. (c) Illaoi P is caster-MISSING-HP (0 at rest); Zac P + DrMundo P are caster-MAX-HP (resolve at default). (d) OMITTED on purpose: Zac P resurrection revive, DrMundo P per-5s regen tick. (e) LINEAR heal class EXHAUSTED - do NOT re-pitch the documented REJECTS as linear heals. (f) DS restart PowerShell taskkill + schtasks (NEVER Stop-Process).
-
-NEXT (gap-plan, operator-gated / live = Phase D): (1) Phase D live flag-flips (apply_passive_heal now 24 forms). (2) the 5 C2 AA-empower amortized values. (3) STAGED damage lift: Brand P + Ekko W conditional-gate (Phase-D-deferred). (4) AurelionSol W cross-spell seam (own session). (5) item-240 UI part-3 + #7/#8 sign-off + item-243 NEXT(2) ranked-SR UI watch. The clean headless effects-text HEAL lifts (bilinear 250 / linear 251 + re-open 254 / per-charge 252 / AS-aware 253) are ALL EXHAUSTED - remaining DS gap-plan = conditional-gate DAMAGE + cross-spell AurelionSol W + live Phase-D, none headless-clean.
