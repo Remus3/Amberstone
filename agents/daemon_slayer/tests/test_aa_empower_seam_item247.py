@@ -31,6 +31,12 @@ from agents.daemon_slayer.ability_dps import rank_at_level
 from agents.daemon_slayer.data_loader import DataSnapshot
 
 _AA_CHAMPS = ("Caitlyn", "Fiora", "Jayce", "Sivir", "Nidalee")
+# Item 258 (gap-plan Phase D) authored Fiora E (a real guaranteed-crit base-AA
+# uplift); the other 4 stay INERT placeholders. The forward-marker assertions
+# below were split to track that: the 4 inert champs keep the factor-1.0 / flag-on
+# == flag-off invariant; Fiora's authored value is covered by
+# test_aa_empower_authored_item258.py.
+_AA_INERT_CHAMPS = ("Caitlyn", "Jayce", "Sivir", "Nidalee")
 
 
 class _SnapMixin(unittest.TestCase):
@@ -40,21 +46,38 @@ class _SnapMixin(unittest.TestCase):
 
 
 class ByteIdenticalDefaultTests(_SnapMixin):
-    def test_flag_on_equals_off_today(self) -> None:
-        # placeholder entries are inert -> apply_ability_amps changes nothing
-        for champ in _AA_CHAMPS + ("Aatrox", "Jinx"):
+    def test_flag_on_equals_off_for_inert_champs(self) -> None:
+        # The 4 still-inert placeholder entries + controls -> apply_ability_amps
+        # changes nothing. (Fiora is authored item 258; covered separately.)
+        for champ in _AA_INERT_CHAMPS + ("Aatrox", "Jinx"):
             off = D.compute_dps(self.snap, champion_id=champ, level=11,
                                 item_ids=["3031"], apply_ability_amps=False).weighted_dps
             on = D.compute_dps(self.snap, champion_id=champ, level=11,
                                item_ids=["3031"], apply_ability_amps=True).weighted_dps
             self.assertAlmostEqual(off, on, places=9, msg=f"{champ}: seam not byte-identical")
 
+    def test_default_off_byte_identical_for_all_aa_champs(self) -> None:
+        # The DEFAULT (apply_ability_amps=False) path is unchanged for every aa
+        # champ incl Fiora - the authored seam only injects under the flag.
+        for champ in _AA_CHAMPS:
+            a = D.compute_dps(self.snap, champion_id=champ, level=11,
+                              item_ids=["3031"], apply_ability_amps=False).weighted_dps
+            b = D.compute_dps(self.snap, champion_id=champ, level=11,
+                              item_ids=["3031"], apply_ability_amps=False).weighted_dps
+            self.assertEqual(a, b, msg=f"{champ}: default path not deterministic")
+
 
 class AaAmpMultiplierTests(unittest.TestCase):
-    def test_forward_marker_is_one_for_aa_champs(self) -> None:
-        for champ in _AA_CHAMPS:
+    def test_inert_champs_factor_one(self) -> None:
+        # The 4 still-inert entries (placeholder 0.0) return factor 1.0.
+        for champ in _AA_INERT_CHAMPS:
             f = _aa_amp_multiplier(champ, lambda k: rank_at_level(k, 11))
             self.assertEqual(f, 1.0, f"{champ} aa-amp factor should be 1.0 (placeholder)")
+
+    def test_fiora_authored_factor_above_one(self) -> None:
+        # Item 258: Fiora E is authored -> factor > 1.0 at level 11 (E rank 0).
+        f = _aa_amp_multiplier("Fiora", lambda k: rank_at_level(k, 11))
+        self.assertGreater(f, 1.0)
 
     def test_non_aa_champ_is_one(self) -> None:
         self.assertEqual(_aa_amp_multiplier("Aatrox", lambda k: rank_at_level(k, 11)), 1.0)
