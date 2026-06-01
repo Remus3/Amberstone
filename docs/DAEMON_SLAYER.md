@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.77.0 - 5689 tests - patch 16.11.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.79.0 - 5715 tests - patch 16.11.1.
 
 ## Engine substrate & registries
 
@@ -15,6 +15,8 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 
 ## Changelog
 
+- **ENGINE 1.79.0 (item 247 / gap-plan Phase C2): AA-empowerment amp seam in `compute_dps`. The 5 `base="aa"` AmpEntry champs (Caitlyn W / Fiora E / Jayce W f1 / Sivir W / Nidalee Q), registered item 239 but with NO consumer, are now wired into the AA scorer: `compute_dps(apply_ability_amps=False default = byte-identical)`; when True NEW `_aa_amp_multiplier` scales ONLY the base-AA component (item proc DPS unamped), threaded `compute_dps -> _phase_weighted_dps -> _rotation_attack_dps` (`aa_empower_amp`) + the per-hit display values; route-reachable via the `/dps` server route. `rank_at_level` imported function-level (dps <-> ability_dps cycle break). FORWARD-MARKER: the 5 entries are placeholder `(0.0,)` so the seam is INERT today - wired + route-reachable + byte-identical; Phase D authors the amortized per-champ value + flips `always_on` / a condition live. +8 tests `test_aa_empower_seam_item247.py`.**
+- **ENGINE 1.78.0 (item 247 / gap-plan Phase C3): GAP-2 exotic passive registry, 6 of 8 authored default-OFF in `_passive_damage_overrides.py` from verbatim 16.11.1 effects_descriptions. Additive schema: NEW `_step_per_level` (3-tier even-thirds level step for slash-notation); PassiveDamageEntry scaling fields widen to `float | tuple` (per-level coefficient rides target_max_hp_pct / total_ad_pct); `to_damage_block` coerces either + wires target_current_hp_pct. SEEDED: Aatrox P (4%:8% target max HP lerp) / JarvanIV P (8% target current HP flat; min/cap inert in champ band) / Zed P (6/8/10% target max HP step; below-50% fire gate not modeled - magnitude gate-independent) / Caitlyn P (60/90/120% AD step; +crit-chance AD multiplier omitted = AA-crit seam) / Ekko P (30:140 + 90% AP; every-3rd-stack cadence metadata) / Gangplank P (50:250 + 100% bonus AD TRUE over 2.5s dot; +crit term omitted). STAGED own-slice: Gwen P (bilinear AP-on-HP needs a core evaluator term) + Kai'Sa P (per-Plasma-stack ramp needs a stack-count decision). DEFAULT BYTE-IDENTICAL (seam injects only under `apply_passive_damage=True`). +31 tests `test_passive_damage_exotic_item247.py`.**
 - **ENGINE 1.77.0 (item 246 / gap-plan Phase C1): staged-amp block-index routing for Hwei Q f2, gated under `apply_ability_amps` (default byte-identical). The 2 STAGED `damage_amp_self` candidates whose "Maximum ..." block already models the charged/isolated ceiling are reconciled by ROUTING the block-index (never an amp - that would double-count): (a) Sion Q was already resolved pre-seam by `champion_block_index.json {Q:2}` (the s191 routing selects "Maximum Physical Damage" by default), STAGED entry removed, flag on/off byte-identical; (b) Hwei Q f2 Severing Bolt now wired via NEW `_STAGED_AMP_BLOCK_ROUTES` -> under the flag routes to damage-block 1 "Maximum Damage" (isolated/immobilized + max-missing-HP ceiling, which Meraki pre-bakes flat == block0 * "Maximum Damage Increase" %, so NO separate missing-HP coefficient needed - the route IS the ceiling). `compute_ability_dps` consults `_staged_amp_block_route_for` ONLY when `apply_ability_amps=True`, precedence over `block_index_overrides` for that (champ,key,form). AurelionSol W stays STAGED (cross-spell seam, deferred). Live :8893 proof: Hwei Q f2 raw 160 (off) -> 560 (on). +10 tests `test_staged_amp_block_route_item246.py`.**
 - **ENGINE 1.76.0 (item 243): non-coachable joke/anvil item deny-set in the rank pool. `rank.py` `_NON_COACHABLE_ITEM_IDS = {994403 Golden Spatula, 663064 Veigar's Talisman}` skipped unconditionally in `_filter_candidates` (every mode + scorer). Root: DDragon mis-flags Golden Spatula `maps['12']=True` (ARAM) with a full all-stats block, so the DPS scorer ranked it #2 in a live ARAM Varus build; item 213 stripped it from curated `champion_loadouts.json` but the live rank pool reads the DDragon maps flag directly. +7 tests `test_non_coachable_deny_item243.py`; `test_rank_mode_legality_p1l23` expected-set now subtracts the deny-set.**
 
@@ -83,7 +85,7 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 | `beam.py` | `beam_search_build()` - full-build beam search returning top-N complete builds |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
 | `ult_rates.py` | Per-champion cast-rate lookup. Legacy `get_ult_casts_per_sec` (R-only, reads `ult_cast_rates.json`) preserved for Malignance Hatefog backward compat; `get_spell_casts_per_sec(champion, key, mode)` (Phase 4b, s178) reads `spell_cast_rates.json` for all 4 active spells; both derived from rewind_history.db via `scripts/build_spell_cast_rates.py`; 172 champions × 4 spells × 3 mode buckets |
-| `tests/` | 5663 tests passing |
+| `tests/` | 5715 tests passing |
 
 ## Key data types
 
