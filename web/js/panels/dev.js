@@ -74,6 +74,79 @@ function _settingsRefresh() {
       const el = document.getElementById("set-live-metrics-status");
       if (el && d) el.textContent = d.live_metrics_enabled ? "ON" : "OFF";
     }).catch(() => {});
+
+  // API SPEND GATES (dev): a master dev-mode toggle reveals the per-gate
+  // Anthropic kill-switches. The gate rows themselves are server-driven
+  // (GATE_META) so they stay in sync; each shows a per-match cost averaged
+  // over the last N full matches. Persistent via rc-dev-mode + the gate
+  // disabled-set lives server-side in coach_settings.json.
+  const devCb = document.getElementById("set-dev-mode");
+  const gatesList = document.getElementById("spend-gates-list");
+  if (devCb) {
+    devCb.checked = get("rc-dev-mode") === "1";
+    document.body.dataset.devMode = devCb.checked ? "1" : "";
+    if (gatesList) gatesList.hidden = !devCb.checked;
+    devCb.addEventListener("change", () => {
+      setLS("rc-dev-mode", devCb.checked ? "1" : "0");
+      document.body.dataset.devMode = devCb.checked ? "1" : "";
+      if (gatesList) gatesList.hidden = !devCb.checked;
+      if (devCb.checked) renderSpendGates();
+    });
+    if (devCb.checked) renderSpendGates();
+  }
+}
+
+// Re-entrant: fetch the gate registry + per-match cost and (re)build the
+// rows. Called on each Settings view show + after every toggle so the cost
+// stays synced. A checked box = gate ENABLED (Anthropic spend allowed);
+// unchecking it persists the kill-switch server-side and applies live.
+function renderSpendGates() {
+  const host = document.getElementById("spend-gates-list");
+  if (!host) return;
+  fetch("/api/spend/gates", { cache: "no-store" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .then((j) => {
+      if (!j || !j.gates) return;
+      const pm = j.per_match || {};
+      host.innerHTML = "";
+      const mk = (tag, cls) => {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        return n;
+      };
+      for (const gate of Object.keys(j.gates)) {
+        const g = j.gates[gate];
+        const cost = pm[gate] || { usd: 0, tokens: 0, n: 0 };
+        const row = mk("label", "settings-row spend-gate-row");
+        const cbx = document.createElement("input");
+        cbx.type = "checkbox";
+        cbx.checked = !g.disabled;
+        cbx.addEventListener("change", () => {
+          fetch("/api/coach/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Requested-With": "rc-dashboard" },
+            body: JSON.stringify({ mode: gate, disabled: !cbx.checked }),
+          }).then(() => renderSpendGates()).catch(() => {});
+        });
+        const txt = mk("span", "spend-gate-txt");
+        const lab = mk("b"); lab.textContent = g.label || gate;
+        const exp = mk("span", "dim"); exp.textContent = g.explain || "";
+        txt.append(lab, document.createElement("br"), exp);
+        const costEl = mk("span", "spend-gate-cost");
+        if (cost.n) {
+          const usd = mk("b"); usd.textContent = "$" + (cost.usd || 0).toFixed(4);
+          const tok = mk("span", "dim");
+          tok.textContent = (cost.tokens || 0).toLocaleString() + " tok/match";
+          costEl.append(usd, document.createElement("br"), tok);
+        } else {
+          const nd = mk("span", "dim"); nd.textContent = "no data";
+          costEl.append(nd);
+        }
+        row.append(cbx, txt, costEl);
+        host.appendChild(row);
+      }
+    })
+    .catch(() => {});
 }
 
 // ── Diagnostics view (2026-04-26) ────────────────────────────────
@@ -450,7 +523,7 @@ function _replayViewWireOnce() {
 }
 
 export {
-  _settingsRefresh,
+  _settingsRefresh, renderSpendGates,
   _diagFetchAndRender, _diagWireOnce,
   _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch,
 };

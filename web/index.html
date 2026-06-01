@@ -1382,6 +1382,15 @@
           </label>
         </div>
         <div class="settings-card">
+          <div class="settings-card-head">API SPEND GATES</div>
+          <label class="settings-row"
+                 data-tt="Reveal the per-gate Anthropic spend kill-switches. Each gate turns its credit-spending calls on or off independently; the choice persists server-side and applies live (no restart). A checked gate is ENABLED (spends credits); unchecking blocks it. The cost beside each gate is USD + tokens averaged over the last 2 full matches.">
+            <input type="checkbox" id="set-dev-mode" />
+            <span>Dev mode (reveal Anthropic spend kill-switches + per-match cost)</span>
+          </label>
+          <div id="spend-gates-list" hidden></div>
+        </div>
+        <div class="settings-card">
           <div class="settings-card-head">DATA / METRICS</div>
           <label class="settings-row settings-row-static">
             <span>Live metric streamer</span>

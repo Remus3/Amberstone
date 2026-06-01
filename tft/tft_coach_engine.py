@@ -684,6 +684,13 @@ class TftCoachEngine:
             self._lock.release()
 
     def _run(self, state: dict):
+        # Spend-gate: TFT Anthropic calls off via Settings kill-switch.
+        try:
+            from core.cost_tracker import get_tracker as _gt
+            if _gt().gate_disabled("tft"):
+                return
+        except Exception:
+            pass
         t0     = time.time()
         prompt = _build_prompt(state)
         if self._debug:
