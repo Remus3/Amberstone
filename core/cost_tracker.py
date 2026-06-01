@@ -121,6 +121,60 @@ _SPEND_DIR  = _APP_DIR / "data" / "spend"
 _COACH_CFG  = _APP_DIR / "config" / "coach_settings.json"
 _RC_CFG     = _APP_DIR / "rc_config.json"
 
+# --- API spend gates (settings-menu kill-switches + per-match cost) --------
+# Each gate is an individually toggleable kill-switch surfaced in the dev
+# Settings card. The disabled set is persisted in coach_settings.json under
+# CFG_COACH_DISABLED_MODES (shared with the legacy per-mode switch). A gate
+# maps to the cost_tracker `purpose` labels its calls record under, so the
+# per-match cost panel can attribute spend back to the gate that produced it.
+GATE_META = {
+    "sr":           {"label": "SR coach",
+                     "purposes": ["sr_coach"],
+                     "explain": "Live Summoner's Rift text coaching (Haiku)."},
+    "aram":         {"label": "ARAM coach",
+                     "purposes": ["aram_coach", "aram_aug_select"],
+                     "explain": "Live ARAM text coaching (Haiku)."},
+    "arena":        {"label": "Arena coach",
+                     "purposes": ["arena_coach", "arena_aug_select"],
+                     "explain": "Live Arena text coaching (Haiku)."},
+    "brawl":        {"label": "Brawl coach",
+                     "purposes": ["brawl_coach"],
+                     "explain": "Live Brawl text coaching (Haiku)."},
+    "vision":       {"label": "Vision scans",
+                     "purposes": ["vision_relay", "vision_direct"],
+                     "explain": "Sonnet screen-vision escalation (all modes; the priciest call)."},
+    "champ_select": {"label": "Champ select",
+                     "purposes": ["champ_select_coach", "champ_select_brief",
+                                  "aram_team_analyzer", "experimental_builder"],
+                     "explain": "Champ-select brief, team analyzer, experimental builder."},
+    "tft":          {"label": "TFT coach",
+                     "purposes": ["tft_coach", "tft_pbe", "tft_live_analysis",
+                                  "tft_live_aug_select", "tft_vision"],
+                     "explain": "TFT live + PBE coaching and TFT board vision."},
+}
+GATES = list(GATE_META)
+_MATCH_OPEN_PATH     = _SPEND_DIR / "_match_open.json"      # by_purpose snapshot @ last boundary
+_RECENT_MATCHES_PATH = _SPEND_DIR / "recent_matches.json"   # rolling per-match cost (pruned)
+_RECENT_MATCHES_KEEP = 2                                    # average over last N full matches
+
+
+def _purpose_to_gate(purpose: str):
+    """Map a cost_tracker `purpose` label to its owning gate, or None when
+    the purpose is not gated (e.g. coach_relay / agent7_warm / replay)."""
+    p = str(purpose or "").lower()
+    if not p:
+        return None
+    if p.startswith("tft"):          # tft_vision stays under the TFT gate
+        return "tft"
+    if "vision" in p:                # vision_relay / vision_direct
+        return "vision"
+    for g, meta in GATE_META.items():
+        if g in ("vision", "tft"):
+            continue
+        if p in meta["purposes"]:
+            return g
+    return None
+
 
 def _today_str() -> str:
     return date.today().isoformat()
@@ -245,6 +299,8 @@ class CostTracker:
                 })
                 pb["calls"] += 1
                 pb["usd"]    = round(pb.get("usd", 0.0) + total_usd, 6)
+                pb["tokens"] = (pb.get("tokens", 0) + input_tokens
+                                + output_tokens + cache_read + cache_write)
             atomic_write_json(self._spend_path(), cur)
         return {"usd": round(total_usd, 6), "total_usd": cur["total_usd"]}
 
@@ -353,6 +409,80 @@ class CostTracker:
         cfg[CFG_COACH_DISABLED_MODES] = cur
         atomic_write_json(_COACH_CFG, cfg)
         return cur
+
+    # --- API spend gates + per-match cost ---------------------------------
+
+    def gate_disabled(self, gate: str) -> bool:
+        """True when `gate` is in the persisted disabled set. Generalizes
+        coach_disabled() across the full gate registry (text coaches +
+        vision + champ_select + tft). Re-reads disk each call so a toggle
+        applies live across processes (RC main + the vision server)."""
+        return self.coach_disabled(gate)
+
+    def note_match_boundary(self) -> None:
+        """Close the current per-match cost segment - call once per full
+        match (core.match_db.save_match). Diffs the SHARED daily ledger's
+        by_purpose since the last boundary, attributes the delta per gate,
+        appends a record to recent_matches.json (kept to the last N), then
+        re-snapshots. Cross-process safe: the vision server writes the same
+        daily ledger, so its vision spend is captured here. Best-effort -
+        a telemetry hiccup never breaks the match-save path."""
+        try:
+            _open_path   = self._spend_dir / "_match_open.json"
+            _recent_path = self._spend_dir / "recent_matches.json"
+            with self._lock:
+                now_bp = self.daily_spend().get("by_purpose", {}) or {}
+                open_bp = (read_json_dict(_open_path, default={})
+                           .get("by_purpose", {}) or {})
+                by_gate: dict = {}
+                for purpose, cur in now_bp.items():
+                    gate = _purpose_to_gate(purpose)
+                    if gate is None or not isinstance(cur, dict):
+                        continue
+                    prev = open_bp.get(purpose) or {}
+                    prev = prev if isinstance(prev, dict) else {}
+                    d_usd = float(cur.get("usd", 0.0)) - float(prev.get("usd", 0.0))
+                    d_tok = int(cur.get("tokens", 0)) - int(prev.get("tokens", 0))
+                    if d_usd < 0 or d_tok < 0:   # daily ledger rolled (midnight)
+                        d_usd = float(cur.get("usd", 0.0))
+                        d_tok = int(cur.get("tokens", 0))
+                    g = by_gate.setdefault(gate, {"usd": 0.0, "tokens": 0})
+                    g["usd"] = round(g["usd"] + d_usd, 6)
+                    g["tokens"] += d_tok
+                rec = read_json_dict(_recent_path, default={})
+                matches = rec.get("matches") or []
+                matches.append({"ts": time.time(), "by_gate": by_gate})
+                matches = matches[-_RECENT_MATCHES_KEEP:]          # prune
+                atomic_write_json(_recent_path, {"matches": matches})
+                atomic_write_json(_open_path,
+                                  {"by_purpose": now_bp, "ts": time.time()})
+        except Exception as exc:
+            _log.debug("note_match_boundary: %s", exc)
+
+    def recent_match_avg(self) -> dict:
+        """Per-gate cost averaged over the last N full matches. Returns
+        {gate: {usd, tokens, n}} for EVERY gate (zeros when no data)."""
+        rec = read_json_dict(self._spend_dir / "recent_matches.json", default={})
+        matches = rec.get("matches") or []
+        out = {g: {"usd": 0.0, "tokens": 0, "n": 0} for g in GATES}
+        if not matches:
+            return out
+        n = len(matches)
+        for g in GATES:
+            usd = sum(float((m.get("by_gate", {}).get(g) or {}).get("usd", 0.0))
+                      for m in matches)
+            tok = sum(int((m.get("by_gate", {}).get(g) or {}).get("tokens", 0))
+                      for m in matches)
+            out[g] = {"usd": round(usd / n, 6), "tokens": int(tok / n), "n": n}
+        return out
+
+    def gates_state(self) -> dict:
+        """Full gate registry for the Settings UI: per gate label, explain,
+        and disabled flag (enabled = not disabled)."""
+        return {g: {"label": GATE_META[g]["label"],
+                    "explain": GATE_META[g]["explain"],
+                    "disabled": self.coach_disabled(g)}
+                for g in GATES}
 
 
 # --- Singleton ------------------------------------------------------------

@@ -123,6 +123,14 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
     if not isinstance(state, dict) or not state.get("my_champion"):
         out["reason"] = "(no champion picked yet)"
         return out
+    # Spend-gate: champ-select Anthropic calls off via Settings kill-switch.
+    try:
+        from core.cost_tracker import get_tracker as _gt
+        if _gt().gate_disabled("champ_select"):
+            out["reason"] = "(champ-select coach disabled)"
+            return out
+    except Exception:
+        pass
     bench = [c for c in (state.get("bench") or []) if c]
     variants = [v for v in (state.get("variants") or []) if v.get("key")]
     if not bench and len(variants) <= 1:

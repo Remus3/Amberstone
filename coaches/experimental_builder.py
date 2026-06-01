@@ -196,6 +196,13 @@ def _build_history_block(history: list[dict]) -> str:
 def _call_haiku(champion: str, history: list[dict], api_key: str) -> dict | None:
     """Returns parsed build dict on success, None on failure."""
     try:
+        # Spend-gate: champ-select Anthropic calls off via Settings kill-switch.
+        from core.cost_tracker import get_tracker as _gt
+        if _gt().gate_disabled("champ_select"):
+            return None
+    except Exception:
+        pass
+    try:
         import anthropic
         prompt = (
             f"Champion: {champion}\n"
