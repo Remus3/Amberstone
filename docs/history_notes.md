@@ -6,6 +6,23 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-31 - Share review-gist + auto-sync + champ-select SR UI redesign (2 audited rounds) + DS-completion plan (commit e7bca41; pushed e5b4fc9..e7bca41; CI green run 26730539253; non-engine; non-frozen; no DS/RC restart - web assets auto-serve)
+
+Operator: (1) put `Share/` on ONE shareable gist, auto-update on any Share/ change; (2) Q/A-decide the item-239 NEXT items into a plan; (3) apply a champ-select UI redesign; then /done. The gist is the lolmath/a peer maintainer handoff link (operator sends it AFTER next session).
+
+Shipped (e7bca41):
+- SECRET gist https://gist.github.com/<redacted-gist-id> (public=false, link-shareable no-account): Share.zip (248 files, 2.3MB, __pycache__ excluded, DETERMINISTIC zip) + daemon_slayer_wiki_stats_extract.py + daemon_slayer_wiki_ability_extract.py inline + generated README. `tools/gist_share_sync.py` regenerates+pushes; clone OUT of repo at `C:\Users\Administrator\.rc-share-gist` (its git remote holds the gist id - nothing hardcoded). `.git/hooks/post-commit` (LF, Legion-local) fires the sync ONLY when a commit touches `Share/` (verified gate; Share/ unchanged this session so no spurious push). gist shape decided via Discord context (a peer maintainer wanted the extraction script readable + a tldr; operator wanted the whole package).
+- `docs/DS_GAP_COMPLETION_PLAN.md` = NEXT-SESSION plan. Q/A decisions: LIVE session (operator plays to validate); fix the stale docstrings clean; ALL 3 refactors (__init__ changelog reloc + ability_dps 3-way split + cc_conditional->data); leave the `lolmath` data key + README-flag it; Sion Q + Hwei Q f2 block-index amps (defer AurelionSol W); AA-empower seam default-OFF; author all 8 exotic passives default-OFF. Phases A refactors -> B stale-doc fix -> C amp/passive default-OFF -> D live flag-flips -> E Share re-sync.
+- `docs/CHAMP_SELECT_UI_SPEC.md` + champ-select SR redesign, 2 audited rounds (0 MUST-FIX each): R1 = ban un-stretch / DS-build horizontal+no-collapse / enemy win% leading + drop YOUR RECORD / allies restyle. R2 (operator marked up 8 fixes) = conf% pill removed / win% leading-LEFT of portrait / names un-truncated / no-double chip+save-push button removed / short enemy roles JG/ADC/SUP / ban cells centered (no CTR, no %) / DS item names 2-line + BO_SLOTS 6->7 / CC CHAIN+CONDITIONAL CC moved to My Pick center + Assessment divider tightened. 188 tests green (panel-DOM tests updated for moved mounts + removed button).
+
+Dont-redo: the gist clone at `.rc-share-gist` MUST persist (sync logs an error + exits if gone); the post-commit hook is Legion-local (`.git/hooks` not committed); the gist auto-updates on the NEXT Share/-touching commit. UI **part-3** (SR build chooser rune nested panel + 3-category LCU push + per-champion persistence) is DEFERRED to next session's LIVE slice (the push needs a real champ-select to verify; operator was mode=client) - spec is final in CHAMP_SELECT_UI_SPEC.md.
+
+Flags (operator sign-off, not blockers): #7 `BO_SLOTS=7` requests a 7th item but the engine returned 6 for the Jinx mock plan (live games fill more); #8 the CC cards sit in the packed My-Pick column so they scroll to reach (operator may prefer tightening other center content).
+
+NEXT: work `docs/DS_GAP_COMPLETION_PLAN.md` in a LIVE session + UI part-3 + the #7/#8 sign-off. Then operator sends the gist link to a peer maintainer.
+
+---
+
 # 2026-05-31 - docs beautify: DAEMON_SLAYER + ARCHITECTURE changelogs reflowed into per-version lines + one-line-per-bump rule (commit 7fa3058; CI green run 26726300182; docs-only; no ENGINE bump; no DS/RC restart; non-frozen)
 
 Operator: the two DS docs had unreadable single physical lines (DAEMON_SLAYER.md line 5 = 24745 chars from ~38 ENGINE-bump appends; ARCHITECTURE.md line 161 = 8364 chars). Docs-only, no engine/test/data.
