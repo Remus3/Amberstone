@@ -17,7 +17,7 @@ League coaching advice online is static - tier lists and guides don't know what 
 - **Stack:** Python 3.14, Flask (dashboard + DPS engine), asyncio scheduler, Claude Haiku (fast coaching), Claude Sonnet (vision), Tesseract OCR, Tailscale (cross-machine networking), mkcert TLS
 - **Architecture:** Legion PC runs the RC process, a local DPS math service (`:8893`), a vision relay server (`:8889`), and the HTTPS dashboard (`:8888`). Game-PC runs five lightweight agents that capture the screen, poll the Riot API, and forward everything to Legion over Tailscale. The LLM sees pre-computed DPS rankings in the prompt before generating any text.
 - **Non-obvious bits:**
-  1. The DPS engine (`agents/daemon_slayer/`) hand-models all 547 purchasable League items - on-hit procs, armor pen, periodic damage, HP scaling - so Haiku sees "Kraken Slayer +340 DPS, 2700g" instead of guessing from patch notes. Getting this to cover the full item catalogue took 63+ batch commits and reverse-engineering Meraki's item passive JSON for cooldown fields. ENGINE_VERSION 1.81.0 (16.11.1).
+  1. The DPS engine (`agents/daemon_slayer/`) hand-models all 547 purchasable League items - on-hit procs, armor pen, periodic damage, HP scaling - so Haiku sees "Kraken Slayer +340 DPS, 2700g" instead of guessing from patch notes. Getting this to cover the full item catalogue took 63+ batch commits and reverse-engineering Meraki's item passive JSON for cooldown fields. ENGINE_VERSION 1.82.0 (16.11.1).
   2. The dashboard runs headless on Legion (no GUI process) and is served over mkcert-signed HTTPS. Game-PC's browser trusts the cert without warnings. Atomic JSON writes with retry-on-WinError-5 prevent the browser from reading a half-written file mid-poll.
 
 ## Status & impact
