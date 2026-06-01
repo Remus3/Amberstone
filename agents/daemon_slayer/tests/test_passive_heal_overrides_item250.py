@@ -46,22 +46,22 @@ def _snap() -> DataSnapshot:
 
 
 class RegistryShapeTests(unittest.TestCase):
-    def test_exactly_three_seeds(self) -> None:
-        self.assertEqual(set(_PASSIVE_HEAL_OVERRIDES.keys()), set(_SEEDS))
+    def test_three_bilinear_seeds_present(self) -> None:
+        # item 251 added the LINEAR seeds; the 3 item-250 bilinear seeds stay.
+        self.assertTrue(set(_SEEDS).issubset(_PASSIVE_HEAL_OVERRIDES.keys()))
 
     def test_entries_are_passive_heal_entries(self) -> None:
-        for key, e in _PASSIVE_HEAL_OVERRIDES.items():
+        for key in _SEEDS:
+            e = _PASSIVE_HEAL_OVERRIDES[key]
             self.assertIsInstance(e, PassiveHealEntry, key)
             self.assertTrue(e.linear_terms, key)
             self.assertTrue(e.bilinear_terms, key)
             self.assertIn(e.cadence, ("per_cast", "per_fight"), key)
 
     def test_documented_exclusions_absent(self) -> None:
-        # Fiora P heal is FLAT (linear registry), Vladimir Q has a snapshot
-        # heal block (conditional empowered bonus). Neither is a bilinear-heal
-        # seed.
-        for k in (("Fiora", "P", 0), ("Vladimir", "Q", 0)):
-            self.assertNotIn(k, _PASSIVE_HEAL_OVERRIDES, k)
+        # Vladimir Q has a snapshot heal block (the no-existing-heal-block gate
+        # skips it). Fiora P is NOW seeded by item 251 (flat linear heal).
+        self.assertNotIn(("Vladimir", "Q", 0), _PASSIVE_HEAL_OVERRIDES)
 
 
 class ToHealBlockTests(unittest.TestCase):
@@ -283,7 +283,7 @@ class InjectionEndToEndTests(unittest.TestCase):
 
 class EnginePinTests(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.82.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.83.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):

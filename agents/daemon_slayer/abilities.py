@@ -127,6 +127,15 @@ class DamageBlock:
     # Synthetic-only (built by ``_passive_damage_overrides.to_damage_block``);
     # no live snapshot carries this key so ``from_dict`` does not parse it.
     bilinear_terms: tuple[tuple[float, str, str], ...] = ()
+    # When True, this synthetic HEAL block's ``raw_modifiers`` per-rank
+    # ``values`` lists are indexed by champion LEVEL (level-1) rather than the
+    # spell rank - for a SPELL-slot (Q/W/E/R) effects-text heal whose magnitude
+    # scales "based on level" (Rakan Q / Talon Q): an 18-element per-level tuple
+    # indexed by the spell rank (0-4) would mis-read. P-slot heals already see
+    # ``rank == rank_at_level("P", level) == level-1`` so they leave this False.
+    # Synthetic-only (built by ``_passive_heal_overrides.to_heal_block``); no
+    # live snapshot sets it so ``from_dict`` leaves it False (byte-identical).
+    level_scaled: bool = False
 
     @classmethod
     def from_dict(cls, payload: dict) -> "DamageBlock":

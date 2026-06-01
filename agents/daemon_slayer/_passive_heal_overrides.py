@@ -1,4 +1,18 @@
-"""2026-06-01 (GAP 2) - effects-text-only HEAL registry (bilinear AP/AD-on-HP).
+"""2026-06-01 (GAP 2) - effects-text-only HEAL registry (bilinear + linear).
+
+Item 250 seeded the 3 BILINEAR ``(base% + per100% * stat) * HP`` self-heals
+(Viego P / Karma W f1 / Kayn R). Item 251 (the sibling slice) added the LINEAR
+effects-text heals: flat ("35 : 100 based on level"), caster-stat-scaled
+("+ 20% AP", "5.5% of max HP"), per-level-pct-of-HP, and per-level on a
+SPELL slot (Rakan Q / Talon Q, via ``level_scaled``). Same module, same seam,
+same consumer - a linear entry simply carries no ``bilinear_terms``.
+
+UNLIKE the 3 bilinear seeds (every term target/missing-HP scaled -> 0 at the
+default ``resolve_target_relative=False``), most linear entries have a FLAT /
+caster-stat term that resolves NON-zero even at the default - so
+``apply_passive_heal=True`` surfaces them without an HP assumption. The
+``apply_passive_heal=False`` DEFAULT (``load_default``) is still byte-identical;
+only the opt-in flag path differs from the all-bilinear item-250 story.
 
 Sibling of ``_passive_damage_overrides.py`` (the effects-text-only passive
 DAMAGE registry, items 247-249), but for self/ally HEALS that the Meraki
@@ -69,29 +83,36 @@ bilinear_terms=(...))``. ``_eval_heal_shield_block`` sums the linear
 the new ``bilinear_ctx``). Keyed ``(champion_id, key, form_index)`` - same
 shape as ``_passive_damage_overrides`` / ``_ability_overrides``.
 
-EXHAUSTED scan (all 171 champs, forms with NO heal block whose
-effects_descriptions carry a "heal" + a "per 100 X" + a max/missing "health"):
-the BILINEAR self-heal set is exactly the 3 SEEDED below. Documented
-EXCLUSIONS (scanned, deliberately NOT seeded):
-  - Fiora P Duelist's Dance: the heal is a FLAT "35 : 100 (based on level)"
-    (no bilinear term); the bilinear "3% + 4% per 100 bonus AD of max HP" on
-    Fiora P is the DAMAGE (true), not the heal. A flat effects-text heal
-    belongs in a future LINEAR effects-text-heal registry, not this bilinear
-    one.
-  - Vladimir Q Transfusion: ALREADY carries a snapshot heal block (the base
-    Transfusion heal is scored). The bilinear "5% + 4% per 100 AP of missing
-    health" is a CONDITIONAL Crimson-Rush-empowered BONUS heal on top of the
-    base - the no-existing-heal-block gate correctly skips it (injecting would
-    double-count) and the conditional empowerment is a Phase-D decision.
-The other ~54 effects-text heals found in the scan are LINEAR-only (flat /
-% AP / % missing HP with no per-100 product) - out of scope for the BILINEAR
-lift; a future linear effects-text-heal registry is their home.
+EXHAUSTED scan (all 171 champs, forms with NO ``attribute_kind=="heal"`` block
+whose effects_descriptions carry a "heal"/"restore" verb): 84 candidate forms.
+The BILINEAR set is exactly the 3 item-250 seeds; the LINEAR seedable set is the
+16 item-251 entries below (14 P-slot + Rakan Q + Talon Q). Documented EXCLUSIONS
+(scanned, deliberately NOT seeded - with the reason class):
+  - VAMP / "% of post-mitigation damage dealt" (not resolvable at rest, same
+    boundary as the damage registry's omitted vamp): Aatrox P/E, Briar P,
+    DrMundo Q, Gwen P, Kayn P, Morgana P, Vladimir W, Warwick P/R, XinZhao W,
+    Aphelios P2, Nilah Q/R, Olaf E.
+  - RESOURCE restores (mana / energy / Courage - NOT health): Akali W, Ambessa
+    P, Bard P, Brand P, Ezreal W, Fizz W, Hwei W3, Jayce W, Kalista E, Karthus
+    E, Kassadin W, Kennen P/E, Kled P/Q, LeeSin P, Malzahar E, Shen E, Smolder
+    Q, Syndra P, Velkoz Q, Xerath P, Yuumi E, Zed W (Cho'Gath P's mana half is
+    skipped; its 18:52 heal half IS seeded).
+  - REVIVE / grey-health conversion (full-HP resurrect or damage-mirror, not a
+    recurring castable heal): Anivia P, Pyke P, Rengar W, TahmKench E.
+  - BESPOKE products / charge / crit / form gates (no clean linear shape):
+    Kindred W (missing-HP * flat), Darius Q (targets-hit * missing-HP), Taric Q
+    (per-stocked-charge), TwistedFate W (% crit), Aphelios R (gun-form-gated +
+    spell-slot level), Elise R (heal spiderlings to full), Nilah P (heal-amp
+    multiplier).
+  - Vladimir Q Transfusion: ALREADY carries a snapshot heal block (the no-
+    existing-heal-block gate correctly skips it; the Crimson-Rush bonus is a
+    Phase-D conditional decision).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ._passive_damage_overrides import _per_100
+from ._passive_damage_overrides import _lerp_per_level, _per_100, _step_per_level
 
 # Import the engine DamageBlock lazily in to_heal_block (abilities.py imports
 # this module after defining DamageBlock; a top-level import would be circular).
@@ -123,6 +144,11 @@ class PassiveHealEntry:
     note: str
     attribute: str = "Passive Heal"
     bilinear_terms: tuple[tuple[float, str, str], ...] = ()
+    # When True the synthetic heal block's per-rank ``values`` lists are read
+    # at champion LEVEL (level-1), not the spell rank - for a SPELL-slot
+    # (Q/W/E/R) heal whose magnitude scales "based on level" (Rakan Q / Talon
+    # Q). P-slot heals already see ``rank == level-1`` so they leave this False.
+    level_scaled: bool = False
 
 
 # (champion_id, key, form_index) -> PassiveHealEntry.
@@ -184,6 +210,169 @@ _PASSIVE_HEAL_OVERRIDES: dict[tuple[str, str, int], PassiveHealEntry] = {
         note="Umbral Trespass (Darkin): heal 11.25% (+ 7.5% per 100 bonus AD) of target max HP; Rhaast/Darkin-form-only (Shadow Assassin heals nothing) - form gate not modeled (magnitude gate-independent, Zed-P precedent)",
         attribute="Umbral Trespass",
     ),
+    # ---- LINEAR effects-text heals (item 251, the sibling slice to the 3
+    # bilinear seeds above). Each is flat / caster-stat-scaled / per-level-pct
+    # of HP with NO per-100 product. Authored from verbatim 16.11.1
+    # effects_descriptions. The flat / caster-stat terms resolve NON-zero at the
+    # default (resolve_target_relative=False) - unlike the bilinear seeds - so
+    # apply_passive_heal=True surfaces them even without an HP assumption; the
+    # apply_passive_heal=False DEFAULT stays byte-identical. P-slot heals use the
+    # 18-element per-LEVEL tuple (rank == level-1); the 2 SPELL-slot level-scaled
+    # heals (Rakan Q / Talon Q) set level_scaled=True so the per-level tuple is
+    # indexed by level, not the spell rank. ----
+    # Ahri P Essence Theft: at 9 stacks consume to "heal herself for 35 : 95
+    # (based on level) (+ 20% AP)". The 2nd takedown-within-3s heal (75 : 165 +
+    # 30% AP) is a separate conditional event, OMITTED (model the guaranteed
+    # 9-stack consume). per_fight (stack-consume; passive -> heal_per_sec 0).
+    ("Ahri", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(35.0, 95.0), ""), (20.0, "% ap")),
+        cadence="per_fight",
+        note="Essence Theft: heal 35 : 95 (based on level) (+ 20% AP) on 9-stack consume; the 2nd takedown-gated heal (75 : 165 + 30% AP) omitted (conditional)",
+        attribute="Essence Theft",
+    ),
+    # Alistar P Triumphant Roar: at 7 stacks "heal himself for 5% of his maximum
+    # health and nearby allied champions for 7%". Model the 5% SELF heal (the
+    # 7% ally heal is a separate target). per_fight (stack-consume).
+    ("Alistar", "P", 0): PassiveHealEntry(
+        linear_terms=((5.0, "% maximum health"),),
+        cadence="per_fight",
+        note="Triumphant Roar: heal 5% of caster max HP on 7-stack consume; the 7% ally heal omitted (different target)",
+        attribute="Triumphant Roar",
+    ),
+    # Aurora P Spirit Abjuration: "For each active Spirit, Aurora is healed for
+    # 3 : 20 (based on level) (+ 2% AP) every second" (max per tick 12 : 80 + 8%
+    # AP at 4 Spirits). Model the PER-SPIRIT value (lower bound, 1 Spirit); the
+    # per-tick max is up to 4x at full Spirits. per_cast (every second).
+    ("Aurora", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(3.0, 20.0), ""), (2.0, "% ap")),
+        cadence="per_cast",
+        note="Spirit Abjuration: heal 3 : 20 (based on level) (+ 2% AP) per active Spirit per second (lower bound, 1 Spirit; up to 4x at 4 Spirits)",
+        attribute="Spirit Abjuration",
+    ),
+    # Cho'Gath P Carnivore: "Whenever Cho'Gath kills an enemy, it heals for 18 :
+    # 52 (based on level)" (+ a separate mana restore, ignored). flat per-level.
+    # per_fight (on-kill).
+    ("Chogath", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(18.0, 52.0), ""),),
+        cadence="per_fight",
+        note="Carnivore: heal 18 : 52 (based on level) on enemy kill; mana restore ignored (resource, not health)",
+        attribute="Carnivore",
+    ),
+    # Evelynn P Demon Shade: "While below 250 : 590 (+ 250% AP) health, Evelynn
+    # heals herself for 15 : 150 (based on level) every second". The below-
+    # threshold gate is NOT modeled (the heal magnitude is gate-independent,
+    # Warwick-P / Zed-P precedent). per_cast (every second).
+    ("Evelynn", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(15.0, 150.0), ""),),
+        cadence="per_cast",
+        note="Demon Shade: heal 15 : 150 (based on level) per second while below the HP threshold; threshold gate not modeled (magnitude gate-independent)",
+        attribute="Demon Shade",
+    ),
+    # Fiora P Duelist's Dance: triggering a Vital "heals Fiora for 35 : 100
+    # (based on level)" (the bilinear "3% + 4% per 100 bonus AD of max HP" on the
+    # same passive is the DAMAGE, not the heal - excluded here, lives in the
+    # damage path). flat per-level. per_cast (Vital trigger).
+    ("Fiora", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(35.0, 100.0), ""),),
+        cadence="per_cast",
+        note="Duelist's Dance: heal 35 : 100 (based on level) on Vital trigger; the bilinear %-HP term on this passive is the DAMAGE not the heal",
+        attribute="Duelist's Dance",
+    ),
+    # Gragas P Happy Hour: "after casting an ability, Gragas heals himself for
+    # 5.5% of his maximum health". flat % max HP. per_cast (after ability).
+    ("Gragas", "P", 0): PassiveHealEntry(
+        linear_terms=((5.5, "% maximum health"),),
+        cadence="per_cast",
+        note="Happy Hour: heal 5.5% of caster max HP after casting an ability",
+        attribute="Happy Hour",
+    ),
+    # Lillia P Dream-Laden Bough: "heals herself for ... 6 : 90 (based on level)
+    # (+ 30% AP) against champions" (the vs-large-monster 39 + 15% AP + the per-
+    # 0.5s variant are alternates, not modeled). flat per-level + 30% AP.
+    ("Lillia", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(6.0, 90.0), ""), (30.0, "% ap")),
+        cadence="per_cast",
+        note="Dream-Laden Bough: heal 6 : 90 (based on level) (+ 30% AP) vs champions; vs-monster + per-0.5s-tick variants omitted",
+        attribute="Dream-Laden Bough",
+    ),
+    # Maokai P Sap Magic: empowered AA "heal him for 4% : 12.8% (based on level)
+    # maximum health". per-LEVEL pct of caster max HP. per_cast (empowered AA).
+    ("Maokai", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(4.0, 12.8), "% maximum health"),),
+        cadence="per_cast",
+        note="Sap Magic: heal 4% : 12.8% (based on level) of caster max HP on the empowered basic attack",
+        attribute="Sap Magic",
+    ),
+    # Rek'Sai P Fury of the Xer'Sai: on Burrow "consumes her current Fury ... to
+    # heal for up to 10% : 20% (based on level) maximum health at 100 Fury".
+    # per-LEVEL pct of caster max HP (the at-100-Fury max). per_fight (Fury
+    # consume).
+    ("RekSai", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(10.0, 20.0), "% maximum health"),),
+        cadence="per_fight",
+        note="Fury of the Xer'Sai: heal 10% : 20% (based on level) of caster max HP at 100 Fury on Burrow (max-Fury value)",
+        attribute="Fury of the Xer'Sai",
+    ),
+    # Swain P Ravenous Flock: claiming a Soul Fragment "heal for 3% : 6% (based
+    # on level) of his maximum health". per-LEVEL pct of caster max HP.
+    # per_fight (soul-fragment claim).
+    ("Swain", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(3.0, 6.0), "% maximum health"),),
+        cadence="per_fight",
+        note="Ravenous Flock: heal 3% : 6% (based on level) of caster max HP on claiming a Soul Fragment",
+        attribute="Ravenous Flock",
+    ),
+    # Trundle P King's Tribute: "Whenever a nearby enemy dies, Trundle heals
+    # himself for 1.8% : 5.5% (based on level) of the target's maximum health".
+    # per-LEVEL pct of TARGET max HP -> resolves to 0 at the default full-HP ctx
+    # (the lower-bound contract, like the bilinear seeds). per_fight (on death).
+    ("Trundle", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(1.8, 5.5), "% of target's maximum health"),),
+        cadence="per_fight",
+        note="King's Tribute: heal 1.8% : 5.5% (based on level) of TARGET max HP on a nearby enemy death; target-relative -> 0 at full HP, resolves under resolve_target_relative",
+        attribute="King's Tribute",
+    ),
+    # Xin Zhao P Determination: 3rd stack on-hit "heal Xin Zhao for 3% / 3.5% /
+    # 4% (based on level) of his maximum health (+ 65% AP)". 3-tier LEVEL step
+    # pct of caster max HP + flat 65% AP. per_cast (on-hit 3rd stack).
+    ("XinZhao", "P", 0): PassiveHealEntry(
+        linear_terms=(
+            (_step_per_level((3.0, 3.5, 4.0)), "% maximum health"),
+            (65.0, "% ap"),
+        ),
+        cadence="per_cast",
+        note="Determination: heal 3% / 3.5% / 4% (based on level) of caster max HP (+ 65% AP) on the 3rd-stack on-hit; even-thirds level boundaries (step estimate)",
+        attribute="Determination",
+    ),
+    # Yuumi P Bop 'n' Block: the periodic empowered hit "heal her for 20 : 110
+    # (based on level) (+ 25% AP)". flat per-level + 25% AP. per_cast (periodic).
+    ("Yuumi", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(20.0, 110.0), ""), (25.0, "% ap")),
+        cadence="per_cast",
+        note="Bop 'n' Block: heal 20 : 110 (based on level) (+ 25% AP) on the periodic empowered hit; the same-amount ally heal omitted (different target)",
+        attribute="Bop 'n' Block",
+    ),
+    # Rakan Q Boisterous Bravado: "Rakan heals himself and nearby allied
+    # champions for 40 : 210 (based on level) (+ 55% AP)". SPELL-slot heal that
+    # scales by LEVEL (not Q rank) -> level_scaled=True so the 18-element tuple
+    # is indexed by level. flat per-level + 55% AP. per_cast.
+    ("Rakan", "Q", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(40.0, 210.0), ""), (55.0, "% ap")),
+        cadence="per_cast",
+        note="Boisterous Bravado: heal 40 : 210 (based on level) (+ 55% AP) after the Q radius delay; SPELL-slot level-scaled (level_scaled indexes by level not Q rank)",
+        attribute="Boisterous Bravado",
+        level_scaled=True,
+    ),
+    # Talon Q Noxian Diplomacy: "If Noxian Diplomacy kills the target, Talon
+    # heals for 9 : 55 (based on level)". SPELL-slot LEVEL-scaled flat ->
+    # level_scaled=True. per_fight (on-kill).
+    ("Talon", "Q", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(9.0, 55.0), ""),),
+        cadence="per_fight",
+        note="Noxian Diplomacy: heal 9 : 55 (based on level) on a Q kill; SPELL-slot level-scaled (level_scaled indexes by level not Q rank); kill-gated per_fight",
+        attribute="Noxian Diplomacy",
+        level_scaled=True,
+    ),
 }
 
 
@@ -222,4 +411,5 @@ def to_heal_block(entry: PassiveHealEntry):
         attribute_kind="heal",
         raw_modifiers=raw_modifiers,
         bilinear_terms=bilinear_terms,
+        level_scaled=entry.level_scaled,
     )
