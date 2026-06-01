@@ -201,13 +201,6 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     )
 
 
-def _cmd_not_implemented(name: str, phase: str):
-    def _run(_args: argparse.Namespace) -> int:
-        print(f"{name}: not implemented yet - scheduled for {phase}", file=sys.stderr)
-        return 64
-    return _run
-
-
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="daemon_slayer", description="Daemon Slayer engine CLI")
     p.add_argument("--patch", default=None, help="patch version (default: read current.txt)")

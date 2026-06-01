@@ -27,8 +27,9 @@ machinery ``ability_dps`` uses for damage:
   independent - 24 champs carry split values at 16.10.1+)
 
 This is a PURELY ADDITIVE scorer: it introduces no change to the existing
-DPS / EHP / ability-DPS / HPS-item rankers. Nothing in the engine consumes
-it yet; it is the data-driven substrate a future enchanter scorer or a
+DPS / EHP / ability-DPS / HPS-item rankers. ``compute_hps`` (``hps.py``)
+consumes ``compute_ability_hps`` via a function-level import, folding its
+output into the enchanter HPS total; it is also the data-driven substrate a
 coach surface can read.
 
 v2 (2026-05-30 item 226 NEXT, additive, no ENGINE bump) extends the v1
