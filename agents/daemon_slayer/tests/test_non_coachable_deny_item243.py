@@ -32,7 +32,7 @@ class NonCoachableDenyTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.86.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.87.0")
 
     def test_deny_set_membership(self) -> None:
         self.assertIn(_GOLDEN_SPATULA, _NON_COACHABLE_ITEM_IDS)

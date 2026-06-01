@@ -158,7 +158,7 @@ Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` ag
 
 ## Daemon Slayer (`:8893`)
 
-`agents/daemon_slayer/` - 547 item effects, ENGINE_VERSION 1.86.0, 5858 tests, patch 16.11.1, 6 archetype scorers. All 4 coach modes DS-before-Haiku.
+`agents/daemon_slayer/` - 547 item effects, ENGINE_VERSION 1.87.0, 5886 tests, patch 16.11.1, 6 archetype scorers. All 4 coach modes DS-before-Haiku.
 
 - **Six archetype scorers** dispatch via `rank_for_primary_archetype()` in `core/daemon_slayer_client.py` (no fallbacks): carry -> `ds.dps`, tank -> `ds.ehp`, bruiser -> `ds.hybrid` (a*dps + b*ehp; per-champion weights in `archetype_weights.json`), mage -> `ds.ability` (per-spell DPS via `ability_dps.py` + measured cast rates from `spell_cast_rates.json`), assassin -> `ds.burst` (combo-window evaluator in `burst.py`), enchanter -> `ds.hps` (curated formulas in `data/daemon_slayer/<patch>/enchanter_items.json`).
 - **Override registries** cover 73% of the roster: `champion_max_priority.json` / `champion_combo_sequences.json` / `champion_form_index.json` / `champion_block_index.json` (196 entries / 125 champions). Dead-unique candidates (Trinity->ER etc.) filtered by default.
