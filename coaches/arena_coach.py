@@ -30,6 +30,7 @@ from coaches._base_coach import (
 )
 from coaches._arena_item_advisor import recompute_arena_build
 from core import daemon_slayer_client as _ds_client
+from core import live_metrics
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
 from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
 from core.cc_conditional_impact_context import (
@@ -710,6 +711,8 @@ class Coach(BaseCoach):
 
             safe_write(self._out, current)
             logger.debug("Arena coaching written (%d fields)", len(fields))
+            # Live metric streaming (feature-flagged; core.live_metrics gate).
+            live_metrics.stream(self, current, state, self._MODE_NAME)
             try:
                 from core.coaching_timestamps import write_coaching_ts as _wts
                 _wts("arena")
