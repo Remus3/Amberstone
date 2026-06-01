@@ -67,6 +67,17 @@ jobs:
           # to re-sync (py tools/ds_share_sync.py) fails here. Pure stdlib.
           python tools/ds_share_sync.py --check
 
+      - name: authored-source hygiene
+        run: |
+          # ASCII-hygiene drift guards: no smart quotes / em-en dashes / NBSP /
+          # ellipsis / mojibake / U+2500 box-drawing in authored source. The
+          # Share/src DS data mirror is excluded as external data (same as the
+          # data/daemon_slayer/ source it mirrors). Catches authored-text drift
+          # at PR time so it is never dismissed as "pre-existing / not in CI".
+          pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py \
+            tests/test_u2500_hygiene.py \
+            -q --tb=line --timeout=60
+
       - name: smoke + regression tests
         run: |
           pytest tests/phase2_smoke tests/snapshot_regressions tests/phase8_smoke \
