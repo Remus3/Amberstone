@@ -106,6 +106,7 @@ from ._ability_amp_overrides import (
     _DEFAULT_AMP_PROBABILITY,
     _ability_amp_for,
     _amp_multiplier,
+    _staged_amp_block_route_for,
 )
 from .abilities import (
     AbilitiesNotFound,
@@ -1047,10 +1048,27 @@ def compute_ability_dps(
         # total_ah == 0 (SR mode + most ARAM champions).
         cooldown = _effective_ability_cd(base_cooldown, total_ah)
         cost = _form_cost_at_rank(form, rank)
+        # C1 (item 246, gap-plan Phase C1): staged-amp block-route. Under
+        # apply_ability_amps, route a staged candidate (Hwei Q f2 "Maximum
+        # Damage" ceiling) to the block that already models its full value -
+        # avoids the double-counting an amp would cause. Gated on the flag so
+        # the default path is byte-identical, and takes precedence over the
+        # standard block_overrides for that (champion, key, form) only. Sion Q
+        # needs no route: champion_block_index.json {Q:2} already selects its
+        # Maximum block by default (the s191 routing predates this seam).
+        _staged_route = (
+            _staged_amp_block_route_for(resolved.champion_id, key, form.form_index)
+            if apply_ability_amps else None
+        )
         # Phase 5.9 (s191): if this key has a block_index override (caller
         # or per-(champion, key) registry), switch to "indexed" strategy
         # with that specific block; otherwise honor the global block_strategy.
-        if key in block_overrides:
+        if _staged_route is not None:
+            raw_dpc = _select_blocks(
+                form.damage_blocks, rank, ctx, "indexed",
+                block_index=_staged_route,
+            )
+        elif key in block_overrides:
             raw_dpc = _select_blocks(
                 form.damage_blocks, rank, ctx, "indexed",
                 block_index=block_overrides[key],

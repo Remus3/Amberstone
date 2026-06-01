@@ -1331,6 +1331,25 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.77.0 (item 246 / gap-plan Phase C1 - staged-amp block-index routing for
+Hwei Q f2, gated under apply_ability_amps; default byte-identical. The two
+STAGED damage_amp_self candidates whose "Maximum ..." block already models the
+charged / isolated ceiling are reconciled by ROUTING the block-index (never an
+amp, which would double-count the value the block holds): (a) Sion Q was already
+resolved before this seam - champion_block_index.json {Q:2} selects its "Maximum
+Physical Damage" block by default (the s191 routing predates the Gap-1 amp
+analysis), so its STAGED entry was removed and flag on/off is byte-identical;
+(b) Hwei Q form2 Severing Bolt is now wired via the new _STAGED_AMP_BLOCK_ROUTES
+in _ability_amp_overrides.py - under apply_ability_amps the block-index routes
+to damage-block 1 "Maximum Damage" (the isolated / immobilized + max-missing-HP
+ceiling, which Meraki pre-bakes flat == block0 * the "Maximum Damage Increase"
+%, so NO separate Gap-2 missing-HP coefficient is needed - the route IS the
+ceiling). compute_ability_dps consults _staged_amp_block_route_for ONLY when
+apply_ability_amps=True, taking precedence over block_index_overrides for that
+(champion, key, form) only; the default path is untouched. AurelionSol W stays
+STAGED (cross-spell self-state seam, deferred to its own session). +16 tests
+test_staged_amp_block_route_item246; existing test_ability_amp_overrides green.)
+
 1.76.0 (item 243 - non-coachable joke/anvil item deny-set in the rank pool.
 rank.py _NON_COACHABLE_ITEM_IDS = {994403 Golden Spatula, 663064 Veigar's
 Talisman of Ascension} skipped unconditionally in _filter_candidates, so they
