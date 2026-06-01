@@ -1331,6 +1331,50 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.87.0 (item 255 / gap-plan - GAP-2 CONDITIONAL-GATE effects-text DAMAGE schema
+lift + 5 SEEDED, default-OFF byte-identical. The class items 248/249 STAGED
+(Brand P ring explosion + Ekko W sub-30% passive) + 3 siblings the exhaustion
+scan surfaced (Jhin P 4th shot, K'Sante P mark consume, Sejuani P frozen
+detonation). TWO new PassiveDamageEntry fields (+ the same on PerStackTerm for
+the fold): (a) target_missing_hp_pct = % of the target's MISSING health (the
+sibling of target_max_hp_pct; rides the EXISTING evaluator -
+target_missing_hp_pct -> target_missing_hp is already in _SCALING_TARGETS - so
+ZERO new evaluator math; resolves to 0 at the default full-HP ctx = byte-
+identical lower-bound, like the missing-HP HEAL seeds, surfacing only under a
+sub-threshold target_current_hp_pct). (b) conditional_probability (default 1.0
+= no-op for the 23 prior entries) - to_damage_block MULTIPLIES every coefficient
+(base + each scaling field + each bilinear factor) by it so the injected block
+is the amortized expected magnitude; the documented operator-tunable firing
+midpoint for a gate NOT expressible via the target-HP ctx (per_stack
+assumed_stacks + cc_conditional probability precedent). SEEDED (5, verbatim
+16.11.1): Brand P Blaze ring explosion (8%:12% (based on level) + 2%/100 AP
+MAX HP, MAGIC, per_fight, conditional_probability 0.5 = 3-stack+2s detonation
+firing midpoint; base Ablaze DoT not modeled) / Ekko W Parallel Convergence
+passive (3% + 3%/100 AP MISSING HP, MAGIC, on_hit, conditional_probability 1.0 -
+the sub-30%-HP gate is ctx-ENCODED so a second probability would double-discount;
+0 at full HP) / Jhin P Whisper 4th shot (15/20/25% (based on level) MISSING HP,
+PHYSICAL, on_hit, conditional_probability 0.25 = EXACT every-4th-shot frequency;
+always-crit + AD steroid omitted; 0 at full HP) / K'Sante P Dauntless Instinct
+mark consume (12 + 1%:2% (based on level) MAX HP, PHYSICAL, on_hit, prob 1.0;
+All Out Bonus bonus-armor/MR %max-HP omitted - no ctx, Caitlyn-crit precedent) /
+Sejuani P Icebreaker frozen detonation (10% MAX HP, MAGIC, per_fight,
+conditional_probability 0.5 = CC-detonation firing midpoint). REJECTS
+(documented): Kai'Sa P 5th-stack consume (the (Kaisa,P,0) key holds the
+UNCONDITIONAL Caustic Wounds per-stack ramp; a per-entry conditional_probability
+would wrongly gate it - needs per-TERM gating / a multi-entry registry) / Zed P
+below-50% (already shipped item 247, full magnitude gate-not-modeled, not
+re-gated) / Zeri P full-charge shot (AA-replacement semantics, the additive
+passive seam mis-models it) / Samira P blade bonus (the missing-HP clause is a
+MULTIPLIER on a flat+AD on-hit, not an additive %-HP term) / the missing-HP
+HEALS (Karma W f1 / Viego P - in the heal registry, not damage). +20 tests
+test_passive_damage_conditional_gate_item255.py. LIVE in-process block-eval:
+Brand P apply_passive_damage=True 0.5*lerp(8,12)@L11*2500 = 129.41 no-AP /
+293.41 at AP 656; Ekko W 0 at full HP / 425.25 at 25% HP (AP 656); Jhin P 0 at
+full HP / 93.75 at 25% HP (= 0.25*20%*1875 EXACT, no AP); K'Sante P 51.71
+(12 + 1.59%*2500); Sejuani P 125.0 (= 0.5*10%*2500); all default-OFF
+byte-identical. DS suite 5866 -> 5886 (+20). ENGINE 1.86.0 -> 1.87.0. DS :8893
+restarted -> 1.87.0; RC NOT restarted - DS engine + tests + Share + docs only.)
+
 1.86.0 (item 254 / gap-plan - GAP-2 LINEAR effects-text HEAL registry RE-OPEN
 (the item-251 sibling slice) + 4 SEEDED, default-OFF byte-identical. NO schema
 change - the 4 new entries use the EXISTING item-251 linear machinery (same

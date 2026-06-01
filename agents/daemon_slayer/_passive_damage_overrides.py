@@ -120,15 +120,41 @@ Power Chord, not a per-stack term) - documented inline, not seeded. The Kai'Sa
 conditional (fires on the 5th stack) AND inert at the default full-HP ctx
 (same precedent as Ekko W).
 
-STAGED candidates (documented, NOT live entries - neither the bilinear nor the
-per-stack lift covers them; each needs a further runtime decision / its own
-slice):
-  - bilinear-but-CONDITIONAL: Brand P Blaze ring detonation (8%:12% + 2% per
-    100 AP max HP) fires only on a 3-stack + 2s-delay explosion (the base
-    Ablaze DoT is NOT bilinear); Ekko W Parallel Convergence (3% + 3% per 100
-    AP MISSING HP) fires only vs targets below 30% HP and scales on MISSING HP
-    (~0 at the default full-HP ctx). Both need a Phase-D conditional / low-HP
-    assumption, not a default-OFF steady-state ship.
+GAP-2 CONDITIONAL-GATE passives (item 255, conditional-gate schema lift): a
+class whose damage fires on a non-steady-state CONDITION (an Nth-stack
+explosion, a sub-X%-HP gate, a marked-target consume, an Nth-shot) and scales
+on target MAX or MISSING HP. The lift adds (a) ``PassiveDamageEntry.
+target_missing_hp_pct`` (the missing-HP sibling of ``target_max_hp_pct``;
+resolves to 0 at the default full-HP ctx = byte-identical lower-bound, like the
+missing-HP HEAL seeds) and (b) ``conditional_probability`` (default 1.0 = no-op
+for the 23 prior entries; ``to_damage_block`` multiplies every coefficient by
+it so the injected block is the amortized expected magnitude). Two shapes:
+MAX-HP (non-zero at the default ctx -> the gate is the only thing keeping it
+from over-injecting; conditional_probability < 1.0 carries the firing midpoint)
+vs MISSING-HP (0 at the default ctx -> the HP gate is ctx-encoded, so
+conditional_probability stays 1.0 unless there is a SEPARATE event gate). No
+new evaluator code (target_missing_hp_pct -> target_missing_hp is already in
+``_SCALING_TARGETS``; bilinear ``_per_100(.., "ap", "target_missing_hp")`` rides
+the item-248 path). SEEDED (5): Brand P (max-HP ring explosion, prob 0.5),
+Ekko W (missing-HP sub-30%, prob 1.0 ctx-gated), Jhin P (missing-HP 4th shot,
+prob 0.25 EXACT), K'Sante P (flat + max-HP mark consume, prob 1.0), Sejuani P
+(max-HP frozen detonation, prob 0.5). All default-OFF byte-identical.
+
+REJECTS (documented, NOT seeded):
+  - Kai'Sa P 5th-stack consume (15% + 6%/100 AP MISSING HP): the (Kaisa,P,0)
+    key already holds the UNCONDITIONAL Caustic Wounds per-stack ramp; a
+    per-entry conditional_probability would wrongly gate it. Needs per-TERM
+    gating / a multi-entry registry (a further lift).
+  - Zed P below-50%-HP (max-HP): already SHIPPED item 247 at full magnitude
+    (gate-not-modeled, gate-independent); not retroactively re-gated (its
+    flag-ON output + item-247 pins stay).
+  - Zeri P full-charge empowered shot: her basic-attack damage is fully
+    charge-gated/spell-replaced (both the empowered AND non-empowered forms
+    differ from a normal AA), so the additive passive-damage seam mis-models
+    it - needs a champion-specific AA-replacement treatment.
+  - Samira P blade bonus: the missing-HP clause is a MULTIPLIER on the
+    flat+AD blade bonus, not an additive %-of-HP term; the base is an AD-scaled
+    on-hit (linear-registry shape), not a conditional %-HP damage.
   - bilinear HEALS (not damage): Karma W f1 Renewal (17% + 1% per 100 AP
     missing HP self-heal), Viego P Sovereign's Domination (2% + 2.5%/100 bonus
     AD + 2%/100 AP + 5%/100% bonus AS max-HP self-heal on Mist Wraith consume)
@@ -240,6 +266,7 @@ class PerStackTerm:
     ap_pct: float | tuple[float, ...] = 0.0
     total_ad_pct: float | tuple[float, ...] = 0.0
     target_max_hp_pct: float | tuple[float, ...] = 0.0
+    target_missing_hp_pct: float | tuple[float, ...] = 0.0
     target_current_hp_pct: float | tuple[float, ...] = 0.0
 
 
@@ -275,6 +302,14 @@ class PassiveDamageEntry:
     total_ad_pct: float | tuple[float, ...] = 0.0
     target_max_hp_pct: float | tuple[float, ...] = 0.0
     target_current_hp_pct: float | tuple[float, ...] = 0.0
+    # item 255 conditional-gate lift: % of the target's MISSING health (the
+    # caster-relative sibling of target_max_hp_pct). Resolves to 0 at the
+    # default full-HP ctx (target_missing_hp = max_hp * (1 - current_pct), and
+    # current_pct defaults to 1.0) - the same resting-lower-bound contract as
+    # the missing-HP HEAL seeds (items 250/254): a missing-HP damage term is
+    # byte-identical at the default ctx and surfaces only under
+    # resolve_target_relative + a sub-threshold target_current_hp_pct.
+    target_missing_hp_pct: float | tuple[float, ...] = 0.0
     # Bilinear product terms (item 248 schema lift): each
     # ``(factor, ctx_attr_a, ctx_attr_b)`` from ``_per_100(...)`` rides the
     # synthetic block as ``factor * ctx[a] * ctx[b]`` (an AP-scaled %-of-HP
@@ -288,6 +323,18 @@ class PassiveDamageEntry:
     # assumed_stacks is set). Default None = no per-stack term.
     per_stack: "PerStackTerm | None" = None
     assumed_stacks: float = 0.0
+    # item 255 conditional-gate lift: the documented operator-tunable fraction
+    # of the relevant cadence events at which a CONDITIONAL passive's term
+    # actually fires, for gates NOT expressible via the target-HP ctx (a stack
+    # / explosion / mark / Nth-shot event). to_damage_block MULTIPLIES every
+    # coefficient (base + each scaling field + each bilinear factor) by it at
+    # build time, so the injected block is the amortized expected magnitude and
+    # the evaluator stays byte-identical. Default 1.0 = byte-identical for the
+    # 23 prior entries. Same midpoint convention as per_stack.assumed_stacks +
+    # cc_conditional probabilities. For a ctx-encoded gate (Ekko W sub-30% HP)
+    # leave it 1.0 - the resolve_target_relative + HP ctx already gates it and
+    # a second probability would double-discount the in-gate magnitude.
+    conditional_probability: float = 1.0
 
 
 # (champion_id, key, form_index) -> PassiveDamageEntry.
@@ -583,9 +630,12 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
     # consumes them all (so 0..4 are present "before application");
     # assumed_stacks=2.0 = the cycle-average over the 5-attack ramp (sees
     # 0,1,2,3,4 -> mean 2). The 5th-stack-consume sub-term (15% + 6% per 100 AP
-    # of MISSING health) is OMITTED: it is conditional (fires on the 5th stack)
-    # AND missing-HP-scaled (~0 at the default full-HP ctx) - shipping it would
-    # be a misleading inert sub-term (same precedent as Ekko W staged in 248).
+    # of MISSING health) STAYS OMITTED even after the item-255 conditional-gate
+    # lift: this (Kaisa,P,0) entry is the UNCONDITIONAL Caustic Wounds per-stack
+    # ramp, and the registry is one-entry-per-(champ,key,form), so a per-entry
+    # conditional_probability would WRONGLY gate the unconditional ramp too.
+    # Isolating the 5th-stack term needs per-TERM gating or a multi-entry-per-
+    # key registry (a further lift) - documented item-255 reject, not seeded.
     ("Kaisa", "P", 0): PassiveDamageEntry(
         base=_lerp_per_level(4.0, 24.0),
         ap_pct=12.0,
@@ -632,6 +682,108 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
         cadence="dot",
         note="Deadly Venom: (6/12/18/24/30 (based on level) (+ 18% AP)) per stack total true over the 6s poison (cap 6; assumed_stacks 3.0 = mid-ramp, operator-tunable); breakpoints even-fifths estimate; dot cadence",
         attribute="Deadly Venom",
+    ),
+    # --- item 255 CONDITIONAL-GATE damage lift. The class items 248/249 STAGED
+    # (Brand P + Ekko W) + 3 siblings the exhaustion scan surfaced. Each entry
+    # is WHOLLY conditional (no unconditional base mixed in) so the per-entry
+    # conditional_probability gate cleanly scales the whole block. Two shapes:
+    #   (a) target MAX-HP scaled (non-zero at the default ctx) - the gate is the
+    #       ONLY thing keeping it from over-injecting on every eval (Brand,
+    #       Sejuani). conditional_probability < 1.0 = the documented firing
+    #       midpoint (operator-tunable, Phase-D-refinable).
+    #   (b) target MISSING-HP scaled (0 at the default full-HP ctx, lower-bound
+    #       like the missing-HP HEAL seeds) - byte-identical default even with
+    #       the flag ON; surfaces only under resolve_target_relative + a
+    #       sub-threshold target_current_hp_pct (Ekko, Jhin). The HP gate is
+    #       ctx-ENCODED so conditional_probability stays 1.0 EXCEPT Jhin (the
+    #       4th-shot frequency is a separate, EXACT 0.25 event gate).
+    # All default-OFF byte-identical (the seam only injects under
+    # apply_passive_damage=True). vs-minion/monster caps + mins are
+    # champ-context-uncapped (Aatrox / Zed / Gwen precedent).
+    #
+    # Brand P Blaze: on the 3rd Ablaze stack a ring forms and after 2s explodes
+    # for "8% : 12% (based on level) (+ 2% per 100 AP) of their maximum health"
+    # magic. MAX-HP -> non-zero at the default ctx; the 3-stack + 2s + 4s-no-
+    # restack gate is NOT ctx-expressible, so conditional_probability=0.5 is the
+    # documented firing midpoint (the ring is a reliable Brand combo finisher
+    # but not every ability; operator-tunable). The base Ablaze DoT (2% max HP
+    # over 4s per stack) is a SEPARATE unconditional term NOT modeled here.
+    ("Brand", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=_lerp_per_level(8.0, 12.0),
+        bilinear_terms=(_per_100(2.0, "ap", "target_max_hp"),),
+        damage_type="MAGIC",
+        cadence="per_fight",
+        conditional_probability=0.5,
+        note="Blaze ring explosion: 8% : 12% (based on level) (+ 2% per 100 AP) target max HP magic on the 3-stack + 2s detonation; conditional_probability 0.5 = documented firing midpoint (operator-tunable); base Ablaze DoT not modeled",
+        attribute="Blaze",
+    ),
+    # Ekko W Parallel Convergence (passive): basic attacks vs enemies BELOW 30%
+    # max HP deal "3% (+ 3% per 100 AP) of the target's missing health" bonus
+    # magic (min 15, capped 150 vs minions/monsters). MISSING-HP -> 0 at the
+    # default full-HP ctx; the sub-30% gate is ctx-ENCODED (evaluating at a
+    # sub-30% target_current_hp_pct both meets the gate AND gives the correct
+    # missing-HP magnitude) so conditional_probability stays 1.0 - a second
+    # probability would double-discount the in-gate value. on_hit cadence.
+    ("Ekko", "W", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_missing_hp_pct=3.0,
+        bilinear_terms=(_per_100(3.0, "ap", "target_missing_hp"),),
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Parallel Convergence (passive): 3% (+ 3% per 100 AP) target MISSING HP bonus magic on-hit vs sub-30%-HP targets; 0 at the default full-HP ctx (lower-bound, surfaces under resolve_target_relative); sub-30% gate ctx-encoded so conditional_probability=1.0; min15/cap150 champ-context",
+        attribute="Parallel Convergence",
+    ),
+    # Jhin P Whisper: the 4th (final) round always crits AND deals bonus
+    # physical equal to "15% / 20% / 25% (based on level) of the target's
+    # missing health" (capped 800 vs monsters). MISSING-HP -> 0 at the default
+    # ctx (lower-bound). The "every 4th shot" gate is a discrete EXACT event
+    # (1-of-4 attacks) NOT ctx-expressible, so conditional_probability=0.25 is
+    # exact (not a midpoint). The always-crit + the "Every Moment Matters" AD
+    # steroid are SEPARATE (AA-crit / AD interactions, not this term). 3-tier
+    # level STEP -> _step_per_level (even-thirds; verify exact 16.11.1 in Ph-D).
+    ("Jhin", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_missing_hp_pct=_step_per_level((15.0, 20.0, 25.0)),
+        damage_type="PHYSICAL",
+        cadence="on_hit",
+        conditional_probability=0.25,
+        note="Whisper 4th shot: 15/20/25% (based on level) target MISSING HP bonus physical; 0 at the default full-HP ctx (lower-bound); conditional_probability 0.25 = EXACT every-4th-shot frequency; always-crit + AD steroid omitted (separate); breakpoints even-thirds estimate; cap 800 vs monsters champ-context",
+        attribute="Whisper",
+    ),
+    # K'Sante P Dauntless Instinct: abilities mark enemies 4s; the next basic
+    # attack consumes the mark for "12 (+ 1% : 2% (based on level) of target's
+    # maximum health)" bonus physical (min 15 : 100). MAX-HP -> non-zero at the
+    # default ctx. The mark is reliably up after any ability (4s, refreshed) so
+    # the empowered AA fires like the other on-hit mark-consume passives
+    # (Ziggs / Lux / Vex / Sona / Velkoz) -> conditional_probability=1.0,
+    # cadence on_hit (the consumer amortizes the after-ability frequency). The
+    # "All Out Bonus" (1% + 1%/100 bonus armor + 1%/100 bonus MR of max HP) is
+    # OMITTED (bonus-armor/MR scaling has no ctx on a passive block, same
+    # boundary as Caitlyn's crit term); min 15:100 vs minions champ-context.
+    ("KSante", "P", 0): PassiveDamageEntry(
+        base=(12.0,),
+        target_max_hp_pct=_lerp_per_level(1.0, 2.0),
+        damage_type="PHYSICAL",
+        cadence="on_hit",
+        note="Dauntless Instinct mark consume: 12 (+ 1% : 2% (based on level) target max HP) bonus physical on-hit; All Out Bonus (bonus-armor/MR %max-HP) omitted (no ctx, Caitlyn-crit precedent); min15:100 champ-context",
+        attribute="Dauntless Instinct",
+    ),
+    # Sejuani P Icebreaker: an enemy stunned by Sejuani is marked Frozen; her
+    # next basic attack or ability vs a Frozen target consumes the mark for
+    # "10% of their maximum health" bonus magic (capped 250 vs epic monsters).
+    # MAX-HP -> non-zero at the default ctx; the Frozen gate (Sejuani must land
+    # CC first) is NOT ctx-expressible so conditional_probability=0.5 = the
+    # documented CC-detonation firing midpoint (operator-tunable). Flat 10% (no
+    # level / AP scaling). cadence per_fight (a CC-gated burst, not per-AA).
+    ("Sejuani", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=10.0,
+        damage_type="MAGIC",
+        cadence="per_fight",
+        conditional_probability=0.5,
+        note="Icebreaker frozen detonation: 10% target max HP bonus magic on the next hit vs a Sejuani-Frozen target; conditional_probability 0.5 = documented CC-detonation firing midpoint (operator-tunable); cap 250 vs epic champ-context",
+        attribute="Icebreaker",
     ),
 }
 
@@ -700,6 +852,7 @@ def to_damage_block(entry: PassiveDamageEntry):
         "ap_pct",
         "total_ad_pct",
         "target_max_hp_pct",
+        "target_missing_hp_pct",
         "target_current_hp_pct",
     ):
         v = _eff(fld)
@@ -710,6 +863,24 @@ def to_damage_block(entry: PassiveDamageEntry):
             (float(factor), str(attr_a), str(attr_b))
             for (factor, attr_a, attr_b) in entry.bilinear_terms
         )
+
+    # item 255 conditional-gate fold: scale every coefficient by the documented
+    # firing probability so the injected block is the amortized expected
+    # magnitude. p == 1.0 (the default for all 23 prior entries) is a no-op =
+    # byte-identical. Applied AFTER the per-stack fold so a conditional
+    # per-stack entry would scale the already-folded coefficients.
+    p = float(entry.conditional_probability)
+    if p != 1.0:
+        def _scale(t: tuple[float, ...]) -> tuple[float, ...]:
+            return tuple(round(x * p, 6) for x in t)
+        for key, val in list(kwargs.items()):
+            if key == "bilinear_terms":
+                kwargs[key] = tuple(
+                    (round(factor * p, 6), a, b) for (factor, a, b) in val
+                )
+            else:
+                kwargs[key] = _scale(val)
+
     return DamageBlock(
         attribute=entry.attribute,
         attribute_kind="damage",
