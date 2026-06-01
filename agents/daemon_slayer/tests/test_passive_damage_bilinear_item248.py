@@ -138,8 +138,11 @@ class RegistrySeedTests(unittest.TestCase):
         self.assertEqual(b.target_max_hp_pct[0], 1.0)
         self.assertEqual(b.target_max_hp_pct[-1], 2.0)
 
-    def test_kaisa_stays_staged(self) -> None:
-        self.assertNotIn(("Kaisa", "P", 0), _PASSIVE_DAMAGE_OVERRIDES)
+    def test_kaisa_seeded_by_item249(self) -> None:
+        # Kai'Sa P stayed STAGED through item 248 (the bilinear lift does not
+        # cover a per-Plasma-stack ramp); the item-249 per-stack schema lift
+        # now seeds it (see test_passive_damage_per_stack_item249).
+        self.assertIn(("Kaisa", "P", 0), _PASSIVE_DAMAGE_OVERRIDES)
 
 
 class ByteIdenticalDefaultTests(unittest.TestCase):
