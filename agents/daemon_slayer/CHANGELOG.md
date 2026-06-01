@@ -1331,6 +1331,36 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.80.0 (item 248 / gap-plan - GAP-2 bilinear AP-on-HP passive schema lift +
+4 SEEDED passives, default-OFF byte-identical. The AP-scaled %-of-HP passive
+form ("X% (+ Y% per 100 AP) of the target's HP") is a PRODUCT of two ctx stats
+(ctx[ap] * ctx[target_hp]) that no single linear _SCALING_TARGETS field
+expresses - each field is one pct * one ctx attr. The lift adds
+DamageBlock.bilinear_terms (a flat tuple of (factor, ctx_attr_a, ctx_attr_b)
+summed as factor * ctx[a] * ctx[b] in ability_dps._evaluate_block, AFTER the
+per-rank linear terms; default () = every existing block byte-identical) +
+has_damage_scaling now True for a bilinear-only block + the
+_passive_damage_overrides._per_100(pct, per_attr, of_attr) authoring helper
+(factor = pct / 10000: /100 to turn pct into a fraction, /100 for the "per 100"
+denominator). SEEDED from verbatim 16.11.1 effects_descriptions, all default-OFF
+(the seam injects only under apply_passive_damage=True): Gwen P A Thousand Cuts
+(1% + 0.55% per 100 AP target max HP, on-hit - the canonical case the lift was
+built for, STAGED through item 247) + Aurora P Spirit Abjuration (2.5% + 2% per
+100 AP max HP, 3rd-stack consume) + Lillia P Dream-Laden Bough (5% + 1.25% per
+100 AP max HP dot) + Renata P Leverage (1%:2% level + 2% per 100 AP max HP,
+first-hit per_fight). All four scale on target MAX HP (non-zero at the default
+full-HP ctx, so not inert). STAYED STAGED (the bilinear lift does NOT cover
+them): Kai'Sa P (the dominant per-application term is a Plasma-stack-count ramp;
+its 5th-stack-consume bilinear sub-term is only part of the passive + fires
+conditionally) + Brand P / Ekko W (bilinear term is conditional - ring
+detonation / sub-30%-HP gate, and Ekko's is missing-HP-scaled = ~0 at full-HP
+ctx) + Karma W f1 / Viego P (the bilinear term is a HEAL, not damage). +22 tests
+test_passive_damage_bilinear_item248.py (per_100 conversion / bilinear-only
+DamageBlock evaluation / has_damage_scaling / registry shape / default-OFF
+byte-identical / inject-on verbatim values for the 4) + item-247 StagedAbsent
+test split (Gwen now seeded, Kai'Sa stays staged). DEFAULT byte-identical: the
+full DS suite is unchanged with apply_passive_damage at its False default.)
+
 1.79.0 (item 247 / gap-plan Phase C2 - AA-empowerment amp seam in compute_dps.
 The 5 base="aa" AmpEntry champs (Caitlyn W / Fiora E / Jayce W f1 / Sivir W /
 Nidalee Q), registered item 239 but with NO consumer, are now wired into the

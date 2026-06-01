@@ -71,18 +71,44 @@ coerces either); the crit-interaction terms (Caitlyn's +crit-chance AD,
 Gangplank's +2 per 1% crit) and Zed's below-50%-HP fire gate are documented
 omissions in each entry's note (they belong in the AA-crit / conditional
 seam, NOT a passive damage block). Their default-OFF magnitudes are exact for
-the modeled terms.
+the modeled terms. Item 248 then added the bilinear AP-on-HP schema lift and
+SEEDED Gwen P (the item-247 staged candidate) + Aurora / Lillia / Renata P
+(see the GAP-2 BILINEAR section below); Kai'Sa P stays staged (per-stack).
 
-STAGED candidates (still documented, NOT live entries - need a core evaluator
-term or a runtime decision; their own slice):
-  - bilinear AP-on-HP: Gwen P A Thousand Cuts (1% + 0.55% per 100 AP of
-    target max HP). The AP-scaled %-of-max-HP is a target_max_hp * AP product
-    that no single ``_SCALING_TARGETS`` field expresses (each field is one
-    pct * one ctx attr); base-1%-only would under-model by ~2x at 200 AP, so
-    it is staged for a bilinear evaluator term rather than shipped partial.
+GAP-2 BILINEAR passives (item 248, bilinear AP-on-HP schema lift): the
+AP-scaled %-of-HP form ("X% (+ Y% per 100 AP) of the target's HP") is a
+``ctx[ap] * ctx[target_hp]`` PRODUCT that no single ``_SCALING_TARGETS`` field
+expresses (each field is one pct * one ctx attr; base-X%-only under-models by
+~2x at 200 AP). The lift adds ``DamageBlock.bilinear_terms`` (a flat
+``factor * ctx[a] * ctx[b]`` product summed in ``ability_dps._evaluate_block``)
++ the ``_per_100(pct, per_attr, of_attr)`` authoring helper. SEEDED below from
+verbatim 16.11.1 effects_descriptions, all default-OFF byte-identical: Gwen P
+A Thousand Cuts (1% + 0.55% per 100 AP max HP) - the canonical case the lift
+was built for, was STAGED through item 247 - plus Aurora P Spirit Abjuration
+(2.5% + 2% per 100 AP max HP, 3rd-stack consume), Lillia P Dream-Laden Bough
+(5% + 1.25% per 100 AP max HP dot), Renata P Leverage (1%:2% level + 2% per
+100 AP max HP, first-hit per_fight). All four scale on target MAX HP, which is
+non-zero at the default full-HP ctx (so they are not inert).
+
+STAGED candidates (documented, NOT live entries - the bilinear lift does NOT
+cover them; each needs a further runtime decision / its own slice):
   - per-stack ramps: Kai'Sa P Caustic Wounds (4 : 24 + 1 : 6 per Plasma stack
-    + 12% : 24% per stacks AP) - a stacking term with no single steady-state
-    value; needs a Plasma-stack-count assumption (its own decision).
+    + 12% : 24% per stacks AP) - the DOMINANT per-application term scales with
+    the live Plasma-stack count (no single steady-state value); needs a
+    stack-count assumption (its own decision). The 5th-stack-consume sub-term
+    (15% + 6% per 100 AP of MISSING health) IS bilinear-expressible now, but
+    is only part of the passive + fires on the 5th stack (a conditional
+    cadence), so Kai'Sa stays staged whole rather than shipped partial.
+  - bilinear-but-CONDITIONAL: Brand P Blaze ring detonation (8%:12% + 2% per
+    100 AP max HP) fires only on a 3-stack + 2s-delay explosion (the base
+    Ablaze DoT is NOT bilinear); Ekko W Parallel Convergence (3% + 3% per 100
+    AP MISSING HP) fires only vs targets below 30% HP and scales on MISSING HP
+    (~0 at the default full-HP ctx). Both need a Phase-D conditional / low-HP
+    assumption, not a default-OFF steady-state ship.
+  - bilinear HEALS (not damage): Karma W f1 Renewal (17% + 1% per 100 AP
+    missing HP self-heal), Viego P Sovereign's Domination (2% + 2.5%/100 bonus
+    AD + 2%/100 AP + 5%/100% bonus AS max-HP self-heal on Mist Wraith consume)
+    - the bilinear term is a heal, out of scope for a damage block.
 
 KogMaw P "Icathian Surprise" is explicitly NOT a damage passive (it is the
 death-state self-detonation zombie passive); do NOT author it.
@@ -145,6 +171,27 @@ def _step_per_level(values: tuple[float, ...], count: int = _LEVEL_COUNT) -> tup
     return tuple(float(values[min(i // seg, n - 1)]) for i in range(count))
 
 
+def _per_100(pct: float, per_attr: str, of_attr: str) -> tuple[float, str, str]:
+    """Build one BILINEAR term from Riot's "X% per 100 {per_attr} of {of_attr}".
+
+    item 248 schema lift. The AP-scaled %-of-HP form ("0.55% per 100 AP of the
+    target's maximum health") is a PRODUCT of two ctx stats - ``per_attr``
+    (AP / bonus AD) and ``of_attr`` (target_max_hp / target_missing_hp) - that
+    no single linear ``_SCALING_TARGETS`` field expresses (each field is one
+    pct * one ctx attr). The engine evaluates a bilinear term as
+    ``factor * ctx[per_attr] * ctx[of_attr]``; Riot's "pct% per 100 X" notation
+    converts to ``factor = (pct / 100) * (1 / 100) = pct / 10000`` (the first
+    /100 turns pct into a fraction, the second is the "per 100" denominator).
+
+    Example: ``_per_100(0.55, "ap", "target_max_hp")`` -> ``factor = 0.000055``;
+    at AP=200, target_max_hp=2500 -> 0.000055 * 200 * 2500 = 27.5 = the AP part
+    of Gwen P's "0.55% per 100 AP" (1.1% of 2500). ``per_attr`` / ``of_attr``
+    are literal ``AbilityContext`` attribute names. Rounded to 10 places so the
+    authored factor is stable + ASCII-clean.
+    """
+    return (round(pct / 10000.0, 10), per_attr, of_attr)
+
+
 @dataclass(frozen=True)
 class PassiveDamageEntry:
     """One hand-authored effects-text-only passive damage formula.
@@ -177,6 +224,11 @@ class PassiveDamageEntry:
     total_ad_pct: float | tuple[float, ...] = 0.0
     target_max_hp_pct: float | tuple[float, ...] = 0.0
     target_current_hp_pct: float | tuple[float, ...] = 0.0
+    # Bilinear product terms (item 248 schema lift): each
+    # ``(factor, ctx_attr_a, ctx_attr_b)`` from ``_per_100(...)`` rides the
+    # synthetic block as ``factor * ctx[a] * ctx[b]`` (an AP-scaled %-of-HP
+    # term a single linear field cannot express). Default empty = no bilinear.
+    bilinear_terms: tuple[tuple[float, str, str], ...] = ()
 
 
 # (champion_id, key, form_index) -> PassiveDamageEntry.
@@ -381,6 +433,67 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
         note="Trial by Fire: 50 : 250 (based on level) (+ 100% bonus AD) bonus true over 2.5s; +2-per-1%-crit term omitted (crit seam); dot cadence",
         attribute="Trial by Fire",
     ),
+    # --- GAP-2 BILINEAR passives (item 248, bilinear AP-on-HP schema lift).
+    # Each is an "X% (+ Y% per 100 AP) of the target's HP" form: the linear X%
+    # rides a (level-flat or level-scaled) target_*_hp_pct field, and the AP
+    # part rides a bilinear_terms PRODUCT (AP * target HP) via _per_100. All
+    # default-OFF byte-identical (the seam only injects under
+    # apply_passive_damage=True). Authored from verbatim 16.11.1
+    # effects_descriptions; vs-minion/monster caps are champ-context-uncapped
+    # (same precedent as Aatrox / Zed); heal sub-clauses are utility not damage.
+    #
+    # Gwen P A Thousand Cuts: on-hit "1% (+ 0.55% per 100 AP) of the target's
+    # maximum health" bonus magic. The canonical bilinear case this schema
+    # lift was built for (was STAGED through item 247).
+    ("Gwen", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=1.0,
+        bilinear_terms=(_per_100(0.55, "ap", "target_max_hp"),),
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="A Thousand Cuts: 1% (+ 0.55% per 100 AP) target max HP bonus magic on-hit; vs-minion/monster caps + heal clause not modeled (champ context uncapped)",
+        attribute="A Thousand Cuts",
+    ),
+    # Aurora P Spirit Abjuration: 3rd-stack consume deals "2.5% (+ 2% per 100
+    # AP) of the target's maximum health" bonus magic. every-3rd-stack cadence
+    # metadata-only (cadence "on_hit", full consume magnitude - same convention
+    # as Ekko P). vs-monster cap 100:270 not modeled; heal sub-clause utility.
+    ("Aurora", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=2.5,
+        bilinear_terms=(_per_100(2.0, "ap", "target_max_hp"),),
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Spirit Abjuration: 2.5% (+ 2% per 100 AP) target max HP bonus magic on 3rd-stack consume (every-3rd-stack cadence metadata-only); vs-monster cap 100:270 not modeled",
+        attribute="Spirit Abjuration",
+    ),
+    # Lillia P Dream-Laden Bough (Dream Dust): "5% (+ 1.25% per 100 AP) of the
+    # target's maximum health" total magic over 3s (dot cadence). cap 65 vs
+    # monsters not modeled; the Lillia self-heal sub-clause is utility.
+    ("Lillia", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=5.0,
+        bilinear_terms=(_per_100(1.25, "ap", "target_max_hp"),),
+        damage_type="MAGIC",
+        cadence="dot",
+        note="Dream-Laden Bough (Dream Dust): 5% (+ 1.25% per 100 AP) target max HP total magic over 3s; cap 65 vs monsters + heal clause not modeled; dot cadence",
+        attribute="Dream-Laden Bough",
+    ),
+    # Renata P Leverage: first (unmarked) empowered AA deals "1% : 2% (based on
+    # level) (+ 2% per 100 AP) of the target's maximum health" bonus magic. The
+    # level-scaled linear 1%:2% rides a per-level target_max_hp_pct tuple; the
+    # AP part is bilinear. per_fight cadence (the mark persists 6s + refreshes
+    # so the bonus fires once per engagement on a sustained target). The
+    # ally-consume mirror + 150 epic cap are not modeled.
+    ("Renata", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=_lerp_per_level(1.0, 2.0),
+        bilinear_terms=(_per_100(2.0, "ap", "target_max_hp"),),
+        damage_type="MAGIC",
+        cadence="per_fight",
+        note="Leverage: 1% : 2% (based on level) (+ 2% per 100 AP) target max HP bonus magic on first (unmarked) hit; per_fight cadence; ally-consume mirror + 150 epic cap not modeled",
+        attribute="Leverage",
+    ),
 }
 
 
@@ -413,7 +526,7 @@ def to_damage_block(entry: PassiveDamageEntry):
         return float(v) != 0.0
 
     base = tuple(float(x) for x in entry.base) if entry.base else (0.0,)
-    kwargs: dict[str, tuple[float, ...]] = {"base": base}
+    kwargs: dict[str, tuple] = {"base": base}
     for fld in (
         "bonus_ad_pct",
         "ap_pct",
@@ -424,6 +537,11 @@ def to_damage_block(entry: PassiveDamageEntry):
         v = getattr(entry, fld)
         if _present(v):
             kwargs[fld] = _coerce(v)
+    if entry.bilinear_terms:
+        kwargs["bilinear_terms"] = tuple(
+            (float(factor), str(attr_a), str(attr_b))
+            for (factor, attr_a, attr_b) in entry.bilinear_terms
+        )
     return DamageBlock(
         attribute=entry.attribute,
         attribute_kind="damage",
