@@ -1331,6 +1331,23 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.79.0 (item 247 / gap-plan Phase C2 - AA-empowerment amp seam in compute_dps.
+The 5 base="aa" AmpEntry champs (Caitlyn W / Fiora E / Jayce W f1 / Sivir W /
+Nidalee Q), registered item 239 but with NO consumer, are now wired into the
+AA scorer: compute_dps gains apply_ability_amps (default False / byte-identical)
+and, when True, _aa_amp_multiplier scales ONLY the base-AA component (item proc
+DPS stays unamped) by the champ's amortized empowerment factor. Threaded
+compute_dps -> _phase_weighted_dps -> _rotation_attack_dps (aa_empower_amp) + the
+per-hit display values (avg_attack_dmg / raw_attack_dps); route-reachable via the
+/dps server route (apply_ability_amps body param). rank_at_level is imported
+function-level to avoid the dps <-> ability_dps cycle. FORWARD-MARKER: the 5
+entries carry placeholder amp_per_rank=(0.0,) (and are conditional-with-no-
+condition, so prob 0), so the seam is INERT today - it is wired + route-reachable
++ byte-identical, and Phase D authors the amortized per-champ value + flips
+always_on / a condition per champ live. +8 tests test_aa_empower_seam_item247.py
+(default byte-identical / forward-marker factor==1.0 / monkeypatched always_on
+amp scales base-AA fully + AA-only scope vs a proc build / route wiring pin).)
+
 1.78.0 (item 247 / gap-plan Phase C3 - GAP-2 exotic passive registry: 6 of 8
 authored default-OFF in _passive_damage_overrides.py from verbatim 16.11.1
 effects_descriptions. NEW additive schema: _step_per_level (3-tier even-thirds
