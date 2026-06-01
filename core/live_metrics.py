@@ -42,6 +42,14 @@ _CFG_KEY = "live_metrics_enabled"
 # env switch read once at import (legacy contract).
 _ENV_ENABLED = os.environ.get("RC_LIVE_METRICS", "0") == "1"
 
+# Many live modes (ARAM among them) never surface a game_id - the Live Client
+# /allgamedata payload rarely exposes it (see item 211). Without a match key
+# the streamer cannot group a match, so we synthesise a per-match id from the
+# coach holder + game clock: a new id is minted on the first tick and again
+# whenever game_time_s drops by more than this many seconds (a new game reset).
+_NEW_GAME_CLOCK_DROP_S = 30.0
+_synthetic_seq = 0
+
 # Lazy MetricStreamer import - only attempted when first needed, cached after.
 _MetricStreamer = None
 _import_attempted = False
@@ -83,6 +91,34 @@ def enabled() -> bool:
     return _ENV_ENABLED or _config_enabled()
 
 
+def _resolve_match_id(holder, cur: dict, state: dict, mode: str) -> str:
+    """Return a stable per-match id. Prefer a real game_id; otherwise mint a
+    synthetic per-match session stamped on the holder, refreshed whenever the
+    game clock resets (a new game). Tracks the last game clock on the holder
+    so the existing-streamer comparison in stream() recreates on a new game."""
+    game_id = str(state.get("game_id") or state.get("gameId") or "").strip()
+    if game_id and game_id != "0":
+        holder._lm_session = None  # real id wins; drop any synthetic session
+        return f"live_{game_id}"
+
+    global _synthetic_seq
+    try:
+        gt = float(cur.get("game_time_s")
+                   or state.get("game_time_s")
+                   or state.get("game_seconds") or 0.0)
+    except (TypeError, ValueError):
+        gt = 0.0
+    last_gt = getattr(holder, "_lm_last_gt", None)
+    session = getattr(holder, "_lm_session", None)
+    if session is None or (last_gt is not None and gt + _NEW_GAME_CLOCK_DROP_S < last_gt):
+        _synthetic_seq += 1
+        champ = cur.get("champion") or state.get("champion") or "champ"
+        session = f"sess_{mode}_{champ}_{_synthetic_seq}"
+        holder._lm_session = session
+    holder._lm_last_gt = gt
+    return session
+
+
 def stream(holder, cur: dict, state: dict, mode: str) -> int:
     """Feed one coach tick to a per-match MetricStreamer stashed on `holder`.
 
@@ -98,10 +134,7 @@ def stream(holder, cur: dict, state: dict, mode: str) -> int:
     try:
         state = state or {}
         cur = cur or {}
-        game_id = str(state.get("game_id") or state.get("gameId") or "")
-        if not game_id:
-            return 0
-        match_id = f"live_{game_id}"
+        match_id = _resolve_match_id(holder, cur, state, mode)
         existing = getattr(holder, "_streamer", None)
         if existing is None or existing.match_id != match_id:
             holder._streamer = streamer_cls(
