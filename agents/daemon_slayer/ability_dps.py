@@ -368,6 +368,13 @@ def _evaluate_block(
     its corresponding context attribute, divided by 100 (Meraki stores
     percentages as floats, e.g. 50.0 = 50%). Missing fields contribute 0
     via ``DamageBlock.value_at``'s default.
+
+    item 248 bilinear schema lift: ``block.bilinear_terms`` adds each
+    ``factor * ctx[attr_a] * ctx[attr_b]`` PRODUCT term - the one damage form a
+    single linear ``_SCALING_TARGETS`` field cannot express (Gwen P
+    "0.55% per 100 AP of target max HP" = AP * target_max_hp). The factor is
+    flat (level-independent) so it is summed after the per-rank linear terms.
+    Default ``()`` leaves every existing block byte-identical.
     """
     if rank < 0:
         return 0.0
@@ -378,6 +385,10 @@ def _evaluate_block(
             continue
         ctx_val = getattr(ctx, ctx_attr, 0.0)
         total += (scaling_pct / 100.0) * ctx_val
+    for factor, attr_a, attr_b in block.bilinear_terms:
+        if factor == 0.0:
+            continue
+        total += factor * getattr(ctx, attr_a, 0.0) * getattr(ctx, attr_b, 0.0)
     return total
 
 

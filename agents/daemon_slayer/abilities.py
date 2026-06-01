@@ -116,6 +116,16 @@ class DamageBlock:
     caster_bonus_ms_pct: tuple[float, ...] | None = None
     unparsed_modifiers: tuple[dict, ...] = field(default_factory=tuple)
     raw_modifiers: tuple[dict, ...] = field(default_factory=tuple)
+    # Bilinear product terms (item 248 schema lift): each
+    # ``(factor, ctx_attr_a, ctx_attr_b)`` contributes
+    # ``factor * ctx[attr_a] * ctx[attr_b]`` in ``ability_dps._evaluate_block``
+    # - the one damage form a single linear ``_SCALING_TARGETS`` field cannot
+    # express (a PRODUCT of two ctx stats, e.g. Gwen P "0.55% per 100 AP of
+    # target max HP" = AP * target_max_hp). The factor is flat (NOT per-rank):
+    # the bilinear AP-on-HP coefficient is level-flat by Riot convention.
+    # Synthetic-only (built by ``_passive_damage_overrides.to_damage_block``);
+    # no live snapshot carries this key so ``from_dict`` does not parse it.
+    bilinear_terms: tuple[tuple[float, str, str], ...] = ()
 
     @classmethod
     def from_dict(cls, payload: dict) -> "DamageBlock":
@@ -134,8 +144,10 @@ class DamageBlock:
         return cls(**kwargs)
 
     def has_damage_scaling(self) -> bool:
-        """True when at least one scaling field is populated."""
-        return any(getattr(self, f) is not None for f in _SCALING_FIELDS)
+        """True when at least one scaling field (or a bilinear term) is set."""
+        return any(getattr(self, f) is not None for f in _SCALING_FIELDS) or bool(
+            self.bilinear_terms
+        )
 
     def value_at(self, field_name: str, rank: int) -> float:
         """Return the scaling value for ``field_name`` at 0-indexed ``rank``.
