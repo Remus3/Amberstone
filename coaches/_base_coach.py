@@ -371,9 +371,19 @@ class BaseCoach(abc.ABC):
                     pass
                 if forced or now - self._last_vision >= self._VISION_INTERVAL:
                     self._last_vision = now
-                    # _run_vision does blocking HTTP (vision relay + Sonnet);
-                    # marshal to a thread so we don't stall the loop.
-                    await asyncio.to_thread(self._run_vision)
+                    # Spend-gate: skip the Sonnet vision scan when the
+                    # "vision" gate is disabled (Settings kill-switch).
+                    # Re-read each tick so a toggle applies live.
+                    _vision_off = False
+                    try:
+                        from core.cost_tracker import get_tracker as _gt
+                        _vision_off = _gt().gate_disabled("vision")
+                    except Exception:
+                        pass
+                    if not _vision_off:
+                        # _run_vision does blocking HTTP (vision relay + Sonnet);
+                        # marshal to a thread so we don't stall the loop.
+                        await asyncio.to_thread(self._run_vision)
             except Exception as exc:
                 logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
                     "%s vision: %s", self._MODE_NAME, exc

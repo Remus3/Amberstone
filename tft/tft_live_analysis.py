@@ -255,6 +255,10 @@ class TftLiveAnalysis:
             r.append(s)
         return r
     def _run_analysis(self,vs):
+        try:
+            from core.cost_tracker import get_tracker as _gt
+            if _gt().gate_disabled("tft"): return
+        except Exception: pass
         cs=self._coach_state; rt=vs.get("traits_active") or []
         tn={t.split()[0].lower() for t in rt if t}
         bc=self._clean_units(vs.get("board_units"),tn); bn=self._clean_units(vs.get("bench_units"),tn); sc=self._clean_units(vs.get("shop_units"),tn)
@@ -306,6 +310,10 @@ class TftLiveAnalysis:
             self._write(vs,f,cs)
         except Exception as e: logger.error("Live analysis API: %s",e)
     def _run_augment_select(self,vs):
+        try:
+            from core.cost_tracker import get_tracker as _gt
+            if _gt().gate_disabled("tft"): return
+        except Exception: pass
         cs=self._coach_state; ch=vs.get("augment_choices") or []
         if not ch: return
         def _fc(c): return f"{c.get('name','?')}: {c.get('description','')}" if isinstance(c,dict) else str(c)

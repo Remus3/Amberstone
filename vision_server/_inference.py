@@ -129,6 +129,15 @@ def handle_vision(body: bytes) -> dict:
     model = d.get("model", VISION_MODEL)
     if not img:
         return {"error": "no image_b64"}
+    # Spend-gate (belt-and-suspenders, separate process): refuse the Sonnet
+    # vision call when the "vision" gate is disabled. Re-reads coach_settings
+    # off disk each call, so a Settings toggle applies here too.
+    try:
+        from core.cost_tracker import get_tracker as _gt
+        if _gt().gate_disabled("vision"):
+            return {"error": "vision_disabled"}
+    except Exception:
+        pass
     # AUDIT 2026-04-29 (gap C): crop stitched dual-monitor frame to the
     # primary 1920×1080 region before sending. Halves Sonnet input area.
     img_send, media_type = _crop_to_primary(img)

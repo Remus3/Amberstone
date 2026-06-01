@@ -168,6 +168,15 @@ class MatchDB:
                 f"INSERT INTO matches ({col_names}) VALUES ({placeholders})", vals)
             c.commit()
             _log.info("Match saved: mode=%s grade=%s", vals["mode"], vals["grade"])
+            # Per-match Anthropic spend boundary: a saved match closes the
+            # current cost segment so the Settings spend-gate panel can show
+            # cost averaged over the last N full matches. Best-effort - never
+            # let a telemetry hiccup break the match-save path.
+            try:
+                from core.cost_tracker import get_tracker as _gt
+                _gt().note_match_boundary()
+            except Exception as _exc:
+                _log.debug("cost note_match_boundary: %s", _exc)
         except Exception as exc:
             _log.error("Match save failed: %s", exc)
 

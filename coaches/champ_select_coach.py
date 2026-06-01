@@ -89,6 +89,14 @@ def coach_pick(state: dict, api_key: str | None) -> dict[str, Any]:
     if not isinstance(state, dict) or not state.get("my_champion"):
         out["advice"] = "(no champion locked yet)"
         return out
+    # Spend-gate: champ-select Anthropic calls off via Settings kill-switch.
+    try:
+        from core.cost_tracker import get_tracker as _gt
+        if _gt().gate_disabled("champ_select"):
+            out["advice"] = "(champ-select coach disabled)"
+            return out
+    except Exception:
+        pass
     if not api_key:
         out["advice"] = "(API key missing - coach disabled)"
         return out

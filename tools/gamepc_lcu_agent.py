@@ -57,12 +57,21 @@ from pathlib import Path as _Path_tok
 def _resolve_auth_token() -> str:
     env = _os_tok.environ.get("RC_VISION_TOKEN")
     if env: return env.strip()
-    cfg = _Path_tok(__file__).resolve().parent / "vision_token.txt"
-    try:
-        if cfg.exists():
-            line = cfg.read_text(encoding="utf-8").splitlines()[0].strip()
-            if line: return line
-    except OSError: pass
+    # 1-PC consolidation (item 215): the agent now runs Legion-local, so it
+    # must read the SAME canonical token the vision server + dashboard use
+    # (core.vision_token -> config/vision_token.txt). Without this the agent
+    # fell through to the legacy hardcoded fallback, which no longer matches
+    # the rotated config token -> every /upload-lcu POST 401s silently ->
+    # the relay caches no LCU snapshot -> the lobby/champ-select UI never
+    # updates. Canonical config path wins; tools-sibling stays for back-compat.
+    here = _Path_tok(__file__).resolve().parent
+    for cand in (here.parent / "config" / "vision_token.txt",
+                 here / "vision_token.txt"):
+        try:
+            if cand.exists():
+                line = cand.read_text(encoding="utf-8").splitlines()[0].strip()
+                if line: return line
+        except OSError: pass
     return "8e8f131e212b329438218eca27372dde"
 
 def _resolve_bridge_secret() -> str:
