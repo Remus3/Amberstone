@@ -29,14 +29,25 @@ the amp is the only way to surface it. Illaoi Q is kept as the always_on
 reference even though its Q form is modifier-only (no same-form damage block,
 so the amp is LIVE-INERT - a forward-marker that applies the instant a
 same-form damage block ever appears).
-The STAGED entries each need a different seam before they can apply correctly:
-AurelionSol W (the amp targets the Breath-of-Light Q beam while in flight - a
-cross-spell self-state the per-form key cannot express; W f0 has no damage
-block); Sion Q and Hwei Q f2 (each form already carries a "Maximum ..." damage
-block that represents the charged / isolated ceiling, so an amp on the base
-block would double-model the same value - reconcile via block-index routing,
-and Hwei's bonus is missing-HP-scaled which needs Gap-2-style coefficient
-modeling). They are registered for the handoff record but never consumed.
+C1 (item 246, gap-plan Phase C1) RESOLVED two of the three STAGED entries via
+block-index routing (the "Maximum ..." block already holds the ceiling, so an
+amp would double-model it - route the block-index instead, never add an amp):
+
+* Sion Q - already resolved BEFORE this seam: ``champion_block_index.json``
+  ``{"Q": 2}`` selects the "Maximum Physical Damage" block by default (the s191
+  block-index routing predates the Gap-1 amp analysis). No flag-gated route is
+  needed; flag on/off is byte-identical. Its STAGED entry was removed.
+* Hwei Q form2 - now wired via ``_STAGED_AMP_BLOCK_ROUTES`` below, GATED on
+  ``apply_ability_amps`` (default byte-identical). The route points at the
+  "Maximum Damage" damage block, which Meraki pre-bakes as a flat value equal to
+  block0 * the "Maximum Damage Increase" % - i.e. the full missing-HP ceiling is
+  ALREADY in the block, so NO separate Gap-2 missing-HP coefficient is required;
+  the route IS the ceiling. Its STAGED entry was removed.
+
+The remaining STAGED entry (AurelionSol W) needs a cross-spell / self-state seam
+the per-form key cannot express (the amp targets the Breath-of-Light Q beam
+while the W flight buff is active; W f0 has no damage block). It is registered
+for the handoff record but never consumed (DEFERRED to its own session).
 
 Two amp bases:
 
@@ -167,9 +178,12 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
 
 
 # (champion_id, key, form_index) -> AmpEntry. DOCUMENTATION ONLY - NOT consumed
-# by ``_ability_amp_for`` / the seam. Each needs a different mechanism before it
-# can apply without a redundant double-model or a wrong target. Kept here as the
-# handoff record of the analyzed-but-deferred ``damage_amp_self`` blocks.
+# by ``_ability_amp_for`` / the seam. The remaining entry needs a different
+# mechanism (a cross-spell self-state seam) before it can apply without a wrong
+# target. Kept here as the handoff record of the analyzed-but-deferred
+# ``damage_amp_self`` blocks. Sion Q + Hwei Q f2 were REMOVED by item 246 C1
+# (resolved via block-index routing - see _STAGED_AMP_BLOCK_ROUTES below + the
+# module docstring).
 _STAGED_AMP_CANDIDATES: dict[tuple[str, str, int], AmpEntry] = {
     # AurelionSol W Astral Flight: the "Breath of Light Flat Damage Modifier"
     # [108..112]% (x1.08..1.12) amplifies the Q beam (Breath of Light) WHILE in
@@ -182,27 +196,27 @@ _STAGED_AMP_CANDIDATES: dict[tuple[str, str, int], AmpEntry] = {
         condition=_COND_FRENZY_STATE,
         note="STAGED: cross-spell - amplifies Q beam during W flight, not W itself.",
     ),
-    # Sion Q Decimating Smash: the form already carries a "Maximum Physical
-    # Damage" damage block representing the full-charge value; an amp on the
-    # "Minimum Physical Damage" block would double-model the same charged
-    # ceiling. Reconcile via a block-index / charge-fraction route, not an amp.
-    ("Sion", "Q", 0): AmpEntry(
-        amp_per_rank=(0.25, 0.5833, 0.75, 0.85, 0.9167),
-        base="ability",
-        condition=_COND_CHANNEL,
-        note="STAGED: 'Maximum Physical Damage' block already models full charge.",
-    ),
-    # Hwei Q form2 Severing Bolt: the form already carries a "Maximum Damage"
-    # block (the isolated / immobilized ceiling) AND the bonus is missing-HP
-    # scaled. An amp on the base "Magic Damage" block double-models the ceiling;
-    # the missing-HP term needs Gap-2-style coefficient modeling. Reconcile via
-    # block-index routing + a missing-HP coefficient, not an amp.
-    ("Hwei", "Q", 2): AmpEntry(
-        amp_per_rank=(2.00, 2.375, 2.75, 3.125, 3.50),
-        base="ability",
-        condition=_COND_ISOLATION,
-        note="STAGED: 'Maximum Damage' block + missing-HP scaling; reconcile via routing.",
-    ),
+}
+
+
+# (champion_id, key, form_index) -> damage-block index to ROUTE to, consumed by
+# ``ability_dps.compute_ability_dps`` ONLY when ``apply_ability_amps=True`` (so
+# the default path is byte-identical). C1 (item 246): a staged candidate whose
+# "Maximum ..." damage block already models the charged / isolated ceiling is
+# reconciled by routing the block-index (vs the un-amped "first" block), NOT by
+# adding an amp that would double-count. The value is a DAMAGE-block index (the
+# index into the form's ``attribute_kind=="damage"`` blocks, matching
+# ``_select_blocks`` "indexed" semantics), out-of-range clamps to the last.
+#
+# Sion Q is intentionally ABSENT: champion_block_index.json {Q:2} already routes
+# it to the Maximum block by default (flag on/off byte-identical), so no gated
+# entry is needed.
+_STAGED_AMP_BLOCK_ROUTES: dict[tuple[str, str, int], int] = {
+    # Hwei Q form2 Severing Bolt: damage-block 0 "Magic Damage" is the un-amped
+    # base; damage-block 1 "Maximum Damage" is the isolated / immobilized + full
+    # missing-HP ceiling (Meraki pre-bakes it flat == block0 * "Maximum Damage
+    # Increase" %, so no separate missing-HP coefficient is needed).
+    ("Hwei", "Q", 2): 1,
 }
 
 
@@ -213,6 +227,18 @@ def _ability_amp_for(cid: str, key: str, form_index: int) -> AmpEntry | None:
     ``_STAGED_AMP_CANDIDATES`` is intentionally NOT consulted.
     """
     return _ABILITY_AMP_OVERRIDES.get((cid, key, form_index))
+
+
+def _staged_amp_block_route_for(cid: str, key: str, form_index: int) -> int | None:
+    """Return the staged-amp DAMAGE-block route for ``(cid, key, form_index)``.
+
+    Reads only ``_STAGED_AMP_BLOCK_ROUTES``. The caller
+    (``ability_dps.compute_ability_dps``) consults this ONLY under
+    ``apply_ability_amps=True``; the default path never sees it, keeping the
+    default ranking byte-identical. ``None`` means no staged route - honor the
+    normal block-strategy / block_index_overrides resolution.
+    """
+    return _STAGED_AMP_BLOCK_ROUTES.get((cid, key, form_index))
 
 
 def _amp_multiplier(
