@@ -15,8 +15,9 @@ registry path) and assert:
     ``runes=None`` for each matched cell (a proc rune ADDS burst).
   * BYTE-IDENTICAL guards: passing ``runes`` to ``metric="burst"`` does not
     change it; passing ``sequence`` to ``metric="dps"`` does not change it.
-    (Only ``rune_burst`` consumes ``runes``; only ``mana_bounded_dps``
-    consumes ``sequence``.)
+    (Only ``rune_burst`` consumes ``runes``. ``sequence`` is honored by
+    burst/combo/rune_burst/mana_bounded_dps; only ``dps`` ignores it - see
+    ``test_scenario_matrix_sequence_honored.py``.)
   * an invalid metric still raises ValueError.
   * ASCII hygiene (0 non-ASCII bytes in the module + this test file).
 
