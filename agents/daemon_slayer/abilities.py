@@ -44,6 +44,7 @@ from typing import Any, Iterable
 
 from ._ability_overrides import DAMAGE_TYPE_OVERRIDES, NON_DAMAGE_BLOCKS
 from ._passive_damage_overrides import _PASSIVE_DAMAGE_OVERRIDES, to_damage_block
+from ._passive_heal_overrides import _PASSIVE_HEAL_OVERRIDES, to_heal_block
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
@@ -293,6 +294,34 @@ def _apply_passive_damage_overrides(cid: str, key: str, form: AbilityForm) -> Ab
     return replace(form, **changes)
 
 
+def _apply_passive_heal_overrides(cid: str, key: str, form: AbilityForm) -> AbilityForm:
+    """Inject the GAP-2 effects-text-only HEAL block at load time.
+
+    OPT-IN: runs only when ``AbilitiesSnapshot.load`` is called with
+    ``apply_passive_heal=True``. Appends a synthetic ``attribute_kind="heal"``
+    block to a form ONLY when:
+      * the form has NO existing ``attribute_kind == "heal"`` block (so a
+        snapshot heal is never double-counted), AND
+      * ``(cid, key, form.form_index)`` has a registered ``PassiveHealEntry``.
+
+    The synthetic heal block routes through the existing
+    ``ability_hps._select_kind_blocks`` / ``_eval_heal_shield_block`` machinery
+    (raw_modifiers for the linear %-of-HP terms + bilinear_terms for the
+    products). Returns ``form`` unchanged when the gate is not met. The default
+    (flag OFF) path never calls this, so forms are byte-identical to the
+    no-override behavior. See ``_passive_heal_overrides`` for the registry +
+    the exhaustive scan / documented exclusions.
+    """
+    if any(b.attribute_kind == "heal" for b in form.damage_blocks):
+        return form
+    entry = _PASSIVE_HEAL_OVERRIDES.get((cid, key, form.form_index))
+    if entry is None:
+        return form
+    return replace(
+        form, damage_blocks=form.damage_blocks + (to_heal_block(entry),),
+    )
+
+
 @dataclass(frozen=True)
 class AbilitiesSnapshot:
     """Versioned snapshot of all champion ability records.
@@ -314,6 +343,7 @@ class AbilitiesSnapshot:
         patch: str | None = None,
         data_root: Path | None = None,
         apply_passive_damage: bool = False,
+        apply_passive_heal: bool = False,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -325,6 +355,13 @@ class AbilitiesSnapshot:
         default) NO synthetic block is appended and forms are byte-identical
         to the no-override behavior - the full DS suite passes unchanged.
         The item-238 ``_apply_ability_overrides`` step runs first + always.
+
+        ``apply_passive_heal`` (GAP 2, default False / OFF) is the HEAL sibling:
+        when True, ``_apply_passive_heal_overrides`` appends a synthetic
+        ``attribute_kind="heal"`` block to each registered form that has NO
+        existing heal block (Viego P / Karma W f1 / Kayn R - effects-text-only
+        bilinear self-heals) so ``compute_ability_hps`` can score them under
+        ``resolve_target_relative``. Default OFF = byte-identical.
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
@@ -367,6 +404,9 @@ class AbilitiesSnapshot:
                     # GAP 2 effects-text-only passive damage: opt-in, default OFF.
                     if apply_passive_damage:
                         fm = _apply_passive_damage_overrides(cid, key, fm)
+                    # GAP 2 effects-text-only HEAL: opt-in, default OFF.
+                    if apply_passive_heal:
+                        fm = _apply_passive_heal_overrides(cid, key, fm)
                     built.append(fm)
                 per_key[key] = tuple(built)
             champions[cid] = per_key

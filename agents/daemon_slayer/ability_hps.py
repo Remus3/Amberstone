@@ -65,6 +65,20 @@ when they do not apply:
   v1 default keeps these UNRESOLVED so the existing pins (and the v1
   ``_eval_heal_shield_block`` call shape) stay byte-identical.
 
+v3 (2026-06-01 GAP-2 effects-text HEAL registry, additive, byte-identical at
+the v1/v2 defaults) adds support for a synthetic ``attribute_kind="heal"``
+block carrying ``bilinear_terms`` - an AP / bonus-AD scaled %-of-HP self-heal
+(``factor * ctx[a] * ctx[b]``) that no single linear heal unit expresses. The
+blocks are injected by ``abilities.AbilitiesSnapshot.load(apply_passive_heal=
+True)`` from ``_passive_heal_overrides`` (Viego P / Karma W f1 / Kayn R - heals
+that live only in stripped ``effects_descriptions`` text). ``_eval_heal_shield_
+block`` evaluates the bilinear terms against a ``bilinear_ctx`` dict built once
+per call; snapshot heal/shield blocks carry no ``bilinear_terms`` so this is a
+no-op for them. Every seeded heal scales on a target / caster-MISSING HP
+quantity, so it resolves to 0 unless the caller opts into
+``resolve_target_relative`` + passes the HP assumption - the default
+``compute_ability_hps`` call stays byte-identical even with the flag on.
+
 Deliberate omissions (mirror ``ability_dps``):
 * Multi-block heal/shield forms default to ``block_strategy="first"`` (the
   first heal block + first shield block), matching ``ability_dps``'s
@@ -210,6 +224,7 @@ def _resolve_extra_units(
 
 def _eval_heal_shield_block(
     block, rank: int, ctx, extra_units: Optional[dict] = None,
+    bilinear_ctx: Optional[dict] = None,
 ) -> tuple[float, bool]:
     """Evaluate one heal/shield block's raw_modifiers at ``rank``.
 
@@ -223,6 +238,15 @@ def _eval_heal_shield_block(
     (the v1 default) those units stay UNRESOLVED, so the v1 call shape is
     byte-identical. A unit present in BOTH the caster map and ``extra_units``
     is resolved by the caster map first (caster-side wins).
+
+    ``bilinear_ctx`` (GAP-2 effects-text HEAL registry, opt-in) is a
+    ``{ctx_attr: resolved_value}`` map for evaluating the synthetic heal
+    block's ``bilinear_terms`` (each ``(factor, a, b)`` contributes
+    ``factor * bilinear_ctx[a] * bilinear_ctx[b]`` - an AP / bonus-AD scaled
+    %-of-HP product). Snapshot heal/shield blocks carry no ``bilinear_terms``
+    so this is a no-op for them (byte-identical). A bilinear term whose HP
+    factor is resolved to 0 (``resolve_target_relative=False``) contributes 0
+    silently, mirroring the linear lower-bound behavior.
     """
     total = 0.0
     unresolved = False
@@ -247,6 +271,13 @@ def _eval_heal_shield_block(
             total += (val / 100.0) * extra_units[unit]
         else:
             unresolved = True
+    if bilinear_ctx is not None and getattr(block, "bilinear_terms", ()):
+        for factor, attr_a, attr_b in block.bilinear_terms:
+            total += (
+                float(factor)
+                * float(bilinear_ctx.get(attr_a, 0.0))
+                * float(bilinear_ctx.get(attr_b, 0.0))
+            )
     return total, unresolved
 
 
@@ -369,6 +400,7 @@ class AbilityHpsResult:
 def _select_kind_blocks(
     form, kind: str, rank: int, ctx, strategy: str,
     extra_units: Optional[dict] = None,
+    bilinear_ctx: Optional[dict] = None,
 ) -> tuple[float, bool]:
     """Sum the evaluated heal- or shield-kind blocks per strategy.
 
@@ -388,11 +420,15 @@ def _select_kind_blocks(
     if not blocks:
         return 0.0, False
     if strategy == "first":
-        return _eval_heal_shield_block(blocks[0], rank, ctx, extra_units)
+        return _eval_heal_shield_block(
+            blocks[0], rank, ctx, extra_units, bilinear_ctx,
+        )
     total = 0.0
     unresolved = False
     for b in blocks:
-        amt, unres = _eval_heal_shield_block(b, rank, ctx, extra_units)
+        amt, unres = _eval_heal_shield_block(
+            b, rank, ctx, extra_units, bilinear_ctx,
+        )
         total += amt
         unresolved = unresolved or unres
     return total, unresolved
@@ -519,6 +555,28 @@ def compute_ability_hps(
         if resolve_target_relative
         else None
     )
+    # GAP-2 effects-text HEAL registry (bilinear AP/AD-on-HP) support. Built
+    # once from the finalized ctx + the per-call HP assumptions. Caster stats
+    # are always available; the target / caster-MISSING HP factors are resolved
+    # ONLY under resolve_target_relative (0 otherwise) so a bilinear %-of-HP
+    # heal stays gated exactly like its linear sibling. A no-op for every
+    # snapshot heal/shield block (they carry no bilinear_terms) -> byte-
+    # identical when no synthetic heal block is injected.
+    _caster_max_hp = float(getattr(ctx, "caster_max_hp", 0.0) or 0.0)
+    bilinear_ctx = {
+        "ap": float(getattr(ctx, "ap", 0.0) or 0.0),
+        "bonus_ad": float(getattr(ctx, "bonus_ad", 0.0) or 0.0),
+        "total_ad": float(getattr(ctx, "total_ad", 0.0) or 0.0),
+        "caster_max_hp": _caster_max_hp,
+        "caster_bonus_hp": float(getattr(ctx, "caster_bonus_hp", 0.0) or 0.0),
+        "caster_missing_hp": (
+            _caster_max_hp * caster_missing_hp_pct if resolve_target_relative else 0.0
+        ),
+        "target_max_hp": target_max_hp if resolve_target_relative else 0.0,
+        "target_missing_hp": (
+            target_max_hp * target_missing_hp_pct if resolve_target_relative else 0.0
+        ),
+    }
     keys = (("P",) + tuple(SPELL_KEYS)) if include_passive else tuple(SPELL_KEYS)
 
     snap_abilities = abilities if abilities is not None else load_default()
@@ -553,10 +611,10 @@ def compute_ability_hps(
             continue
 
         heal_per_cast, heal_unres = _select_kind_blocks(
-            form, "heal", rank, ctx, block_strategy, extra_units,
+            form, "heal", rank, ctx, block_strategy, extra_units, bilinear_ctx,
         )
         shield_per_cast, shield_unres = _select_kind_blocks(
-            form, "shield", rank, ctx, block_strategy, extra_units,
+            form, "shield", rank, ctx, block_strategy, extra_units, bilinear_ctx,
         )
         if heal_per_cast <= 0.0 and shield_per_cast <= 0.0:
             continue

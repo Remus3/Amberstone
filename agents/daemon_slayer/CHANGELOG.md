@@ -1331,6 +1331,52 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.82.0 (item 250 / gap-plan - GAP-2 effects-text-only HEAL registry (bilinear
+AP/AD-on-HP) + 3 SEEDED, default-OFF byte-identical. The HEAL sibling of the
+items 247-249 effects-text-only passive DAMAGE registry. A class of P/W/R forms
+parse to NO attribute_kind=="heal" block (the heal lives only in stripped
+effects_descriptions text) yet carry a self-heal whose dominant term is a
+BILINEAR (base% + per100% * stat) * HP product - an AP / bonus-AD scaled
+%-of-HP heal that no single linear heal unit expresses. Because heals feed
+ability_hps (compute_ability_hps reads heal blocks from raw_modifiers, not the
+typed fields the damage evaluator uses), this is a NEW module
+(_passive_heal_overrides.py) + a NEW opt-in flag (AbilitiesSnapshot.load(
+apply_passive_heal=True) + _apply_passive_heal_overrides) + a NEW consumer path
+(ability_hps._eval_heal_shield_block evaluates a synthetic heal block's
+bilinear_terms against a bilinear_ctx dict). to_heal_block builds a synthetic
+DamageBlock(attribute_kind="heal", raw_modifiers=(...linear %-of-HP...),
+bilinear_terms=(...products...)); the linear terms resolve through the EXISTING
+v2 resolve_target_relative / extra_units machinery and the bilinear products
+through the new bilinear_ctx. SEEDED from verbatim 16.11.1 effects_descriptions,
+all default-OFF: Viego P Sovereign's Domination (heal 2% (+ 2.5% per 100 bonus
+AD) (+ 2% per 100 AP) of target max HP on Mist-Wraith consume; the +5% per 100%
+bonus-AS term is OMITTED - no AS ctx on a heal block, same boundary as the
+damage registry's omitted crit terms; takedown-gated per_fight cadence) + Karma
+W f1 Renewal (heal 17% (+ 1% per 100 AP) of caster missing HP on the Mantra-
+empowered W; the 2nd on-tether-complete heal omitted; form 1, so a consumer
+routes W->1 via form_index_overrides) + Kayn R Umbral Trespass Darkin (heal
+11.25% (+ 7.5% per 100 bonus AD) of target max HP; Rhaast-form-only, the form
+gate not modeled - magnitude gate-independent, Zed-P precedent). STRONGER
+default-OFF story than the damage registry: every seeded heal scales on a
+target / caster-MISSING HP quantity that compute_ability_hps resolves to 0
+unless the caller opts into resolve_target_relative + an HP assumption, so even
+with apply_passive_heal=True the DEFAULT compute_ability_hps call
+(resolve_target_relative=False) is byte-identical - the seeded heals contribute
+0 (unresolved lower bound) and the spell row is skipped. EXHAUSTED scan (171
+champs, forms with no heal block whose effects_descriptions carry heal +
+"per 100 X" + max/missing health): the bilinear self-heal set is exactly these
+3. Documented EXCLUSIONS (scanned, not seeded): Fiora P (heal is FLAT 35:100,
+the bilinear term is its DAMAGE) -> a future LINEAR effects-text-heal registry;
+Vladimir Q (already has a snapshot heal block; the bilinear missing-HP term is a
+conditional Crimson-Rush-empowered BONUS - the no-existing-heal-block gate
+correctly skips it). +23 tests test_passive_heal_overrides_item250.py (registry
+shape / to_heal_block raw+bilinear shape / _per_100 factor reuse / exact eval
+math for the 3 / lower-bound unresolved without extra_units / bilinear_ctx=None
+no-op / load seam gate skips when a heal block exists / flag-on resolve-off
+byte-identical to flag-off / inject-on verbatim L13 per-cast values for the 3 /
+AP raises Viego's per-cast). DEFAULT byte-identical: the full DS suite is
+unchanged with apply_passive_heal at its False default.)
+
 1.81.0 (item 249 / gap-plan - GAP-2 PER-STACK passive damage schema lift + 3
 SEEDED + 1 UPGRADE, default-OFF byte-identical. Some passives deal damage that
 scales LINEARLY with the number of stacks on the target; the per-stack
