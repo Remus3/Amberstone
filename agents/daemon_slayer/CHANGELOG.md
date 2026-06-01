@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.78.0 (item 247 / gap-plan Phase C3 - GAP-2 exotic passive registry: 6 of 8
+authored default-OFF in _passive_damage_overrides.py from verbatim 16.11.1
+effects_descriptions. NEW additive schema: _step_per_level (3-tier even-thirds
+level step for slash-notation "X / Y / Z based on level"); the PassiveDamageEntry
+scaling fields widen to float | tuple (a per-level tuple rides target_max_hp_pct
+/ total_ad_pct for a level-scaled coefficient); to_damage_block coerces either +
+wires target_current_hp_pct. SEEDED: Aatrox P (4%:8% target max HP lerp), Jarvan
+IV P (8% target current HP flat; min-20/cap-400 inert in champ band), Zed P
+(6/8/10% target max HP step; below-50%-HP fire gate not modeled - magnitude is
+gate-independent; breakpoints even-thirds estimate), Caitlyn P (60/90/120% AD
+step; +crit-chance AD multiplier omitted = AA-crit seam), Ekko P (30:140 + 90% AP
+lerp; every-3rd-stack cadence metadata-only), Gangplank P (50:250 + 100% bonus AD
+TRUE over 2.5s dot; +2-per-1%-crit term omitted = crit seam). STAGED (own slice):
+Gwen P (bilinear AP-on-HP needs a core evaluator term), Kai'Sa P (per-Plasma-stack
+ramp needs a stack-count runtime decision). DEFAULT BYTE-IDENTICAL: the seam only
+injects under apply_passive_damage=True; the 6 new P forms stay no_damage with the
+flag OFF. +31 tests test_passive_damage_exotic_item247.py.)
+
 1.77.0 (item 246 / gap-plan Phase C1 - staged-amp block-index routing for
 Hwei Q f2, gated under apply_ability_amps; default byte-identical. The two
 STAGED damage_amp_self candidates whose "Maximum ..." block already models the
