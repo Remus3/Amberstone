@@ -18,6 +18,7 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
+from core import live_metrics
 from ._profiles import CHAMPION_PROFILES, GENERIC_PROFILE, HAS_ROLE_PROFILES, get_role_profile
 from ._sr_prompt import (
     SR_SYSTEM_PROMPT, _load_sr_rune_rec, _load_sr_build_note, _load_lane_matchup_note,
@@ -643,6 +644,11 @@ class CoachIntegration:
                         _wts("sr")
                     except Exception:
                         pass  # non-fatal
+                    # Live metric streaming (feature-flagged; core.live_metrics
+                    # gate). Gated on update_ts so only genuine coaching writes
+                    # record - status / pregame writes (update_ts=False) skip.
+                    live_metrics.stream(
+                        self, current, getattr(self, "_last_gs", None) or {}, "sr")
                 return
             except Exception as e:
                 if attempt < retries - 1:
