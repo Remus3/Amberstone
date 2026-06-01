@@ -84,6 +84,46 @@ class ActiveChampionResolverTests(unittest.TestCase):
             "Yasuo",
         )
 
+    def test_my_champion_numeric_id_resolves_to_name(self):
+        # item 244: the SR/draft champ-select payload carries my_champion
+        # as a numeric championId (51 = Caitlyn), NOT a local_pick name
+        # dict. _active_champion must resolve it to the display name so
+        # cs_archetype_pick populates pre-game.
+        self.assertEqual(
+            _active_champion(
+                coach={},
+                lc=None,
+                lcu_snapshot={"champ_select": {"my_champion": 51, "local_cell": 5}},
+            ),
+            "Caitlyn",
+        )
+
+    def test_my_champion_zero_is_no_pick(self):
+        # championId 0 = no pick yet; must not resolve to a stray name.
+        self.assertEqual(
+            _active_champion(
+                coach={},
+                lc=None,
+                lcu_snapshot={"champ_select": {"my_champion": 0, "local_cell": 5}},
+            ),
+            "",
+        )
+
+    def test_local_pick_wins_over_my_champion(self):
+        # When both shapes are present the explicit local_pick name keeps
+        # precedence over the numeric id resolution.
+        self.assertEqual(
+            _active_champion(
+                coach={},
+                lc=None,
+                lcu_snapshot={"champ_select": {
+                    "local_pick": {"champion_name": "Lulu"},
+                    "my_champion": 51,
+                }},
+            ),
+            "Lulu",
+        )
+
     def test_all_missing_returns_empty_string(self):
         self.assertEqual(_active_champion({}, None, None), "")
 

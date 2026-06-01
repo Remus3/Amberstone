@@ -98,6 +98,7 @@ _CHAMPS_PATH = _DATA_DIR / "meta" / "ddragon_champions.json"
 # Per-process cache for the DDragon tag lookup. Loaded once; the file
 # rotates per patch but `cs_archetype_picks.json` is patch-independent.
 _TAGS_CACHE: dict[str, list[str]] | None = None
+_KEY_NAME_CACHE: dict[str, str] | None = None
 _TAGS_LOCK = threading.Lock()
 
 # Per-process cache for the persisted picks. Reloaded on every write
@@ -149,6 +150,40 @@ def _load_champion_tags() -> dict[str, list[str]]:
             _log.warning("archetype_picks: tags load failed: %s", exc)
         _TAGS_CACHE = out
         return out
+
+
+def champion_name_by_key(key) -> str:
+    """Resolve a numeric DDragon champion key (51 / "51") to its display
+    name ("Caitlyn"). Returns "" on no-pick (0 / None / "") or load
+    failure. Used by the state-builder to turn the champ-select
+    ``my_champion`` (a numeric championId) into a name for archetype
+    lookup (item 244 - the SR/draft payload carries no local_pick name).
+    """
+    global _KEY_NAME_CACHE
+    if key in (None, "", 0, "0"):
+        return ""
+    with _TAGS_LOCK:
+        if _KEY_NAME_CACHE is None:
+            m: dict[str, str] = {}
+            try:
+                raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
+                data = raw.get("data", raw)
+                for entry in data.values():
+                    if not isinstance(entry, dict):
+                        continue
+                    k = entry.get("key")
+                    nm = entry.get("name") or entry.get("id")
+                    if k is not None and nm:
+                        m[str(k)] = str(nm)
+            except FileNotFoundError:
+                _log.warning(
+                    "archetype_picks: %s missing - champion_name_by_key empty",
+                    _CHAMPS_PATH,
+                )
+            except Exception as exc:  # noqa: BLE001 - fail-soft resolver
+                _log.warning("archetype_picks: key->name load failed: %s", exc)
+            _KEY_NAME_CACHE = m
+        return _KEY_NAME_CACHE.get(str(key), "")
 
 
 def default_for_champion(champion: str) -> tuple[str, str]:
