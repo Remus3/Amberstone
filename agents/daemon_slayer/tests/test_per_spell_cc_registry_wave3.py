@@ -379,7 +379,7 @@ class AsciiHygieneTests(unittest.TestCase):
 
     def test_ability_dps_wave_three_block_is_ascii(self) -> None:
         src_path = (
-            pathlib.Path(__file__).resolve().parent.parent / "ability_dps.py"
+            pathlib.Path(__file__).resolve().parent.parent / "_per_spell_cc.py"
         )
         src = src_path.read_text(encoding="utf-8")
         start_marker = "ENGINE 1.33.0 wave 3"
