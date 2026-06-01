@@ -75,10 +75,12 @@ class DsEnemyCompBuildTests(unittest.TestCase):
         self.assertIn("resolveChampNames(_boEnemyIds)", js)
         self.assertIn("enemies: _boEnemyNames", js)
 
-    def test_save_push_button_emitted(self) -> None:
+    def test_save_push_button_removed(self) -> None:
+        # Operator 2026-05-31 (#4): the save+push-to-client button was
+        # removed from the DS-vs-enemy-comp card.
         js = _read(_BO_JS)
-        self.assertIn("data-bo-push", js)
-        self.assertIn("save + push to client", js)
+        self.assertNotIn("data-bo-push", js)
+        self.assertNotIn("save + push to client", js)
 
     def test_push_uses_apply_item_sets_batch_with_distinct_uid(self) -> None:
         js = _read(_CS_JS)

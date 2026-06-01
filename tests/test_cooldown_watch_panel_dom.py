@@ -10,8 +10,9 @@ Suggestions card of champ-select so a future refactor that drops one of
 the wires reverts the surface to invisible:
 
   - web/index.html declares #csv-sugg-cooldown-watch inside
-    .csv-card-suggestions, BELOW #csv-sugg-cc-conditional-pressure and
-    ABOVE #csv-sugg-pickorder.
+    .csv-card-suggestions, BELOW #csv-sugg-bans and ABOVE
+    #csv-sugg-pickorder (the CC chips moved to the My Pick card,
+    operator 2026-05-31 #8).
   - web/js/panels/cooldown_watch.js exports the API contract
     (fetchCooldownWatch, getCachedCooldownWatch,
     getCooldownWatchCacheCount, renderCooldownWatch).
@@ -60,10 +61,13 @@ class ChipMountTests(unittest.TestCase):
         self.assertLess(sugg_open, chip_at)
         self.assertLess(chip_at, pickorder_at)
 
-    def test_below_cc_conditional_pressure(self) -> None:
-        cond_at = self.text.index('id="csv-sugg-cc-conditional-pressure"')
+    def test_below_bans_section(self) -> None:
+        # Operator 2026-05-31 (#8): the CC chips moved to the My Pick
+        # card, so cooldown-watch now follows the bans section in the
+        # Assessment card (the CC chips no longer sit above it here).
+        bans_at = self.text.index('id="csv-sugg-bans"')
         cdw_at = self.text.index('id="csv-sugg-cooldown-watch"')
-        self.assertLess(cond_at, cdw_at)
+        self.assertLess(bans_at, cdw_at)
 
 
 class JsConsumptionTests(unittest.TestCase):

@@ -65,6 +65,15 @@
  * the 1.2fr template allotment, pushing the Allies + Enemies columns
  * narrower than designed. */
 .csv-card-mypick      { grid-area: mypick; min-width: 0; overflow: hidden; }
+/* Operator 2026-05-31 (#8): the CC CHAIN + CONDITIONAL CC cards now sit
+ * at the foot of the My Pick body (below the DS-vs-Enemy-Comp build).
+ * Let this card's body scroll so they stay reachable when the center
+ * column is packed (portrait + chooser + build + CC cards). */
+.csv-card-mypick .csv-card-body { overflow-y: auto; }
+.csv-card-mypick .csv-card-body::-webkit-scrollbar { width: 8px; }
+.csv-card-mypick .csv-card-body::-webkit-scrollbar-thumb {
+  background: #2a2f37; border-radius: 4px;
+}
 .csv-card-enemies     { grid-area: enemies; }
 .csv-card-suggestions { grid-area: suggestions; min-height: 0; overflow: hidden; }
 
@@ -76,6 +85,14 @@
  * the scenes but no one sees it. */
 .csv-card-suggestions .csv-sugg-bans { display: none; }
 .csv-card-suggestions .csv-sugg-pickorder { display: none; }
+/* Operator 2026-05-31 (#8): tighten the divider space below the
+ * ASSESSMENT head - drop the border + most of the bottom margin so the
+ * first card sits close under the title. */
+.csv-card-suggestions > .csv-card-head {
+  border-bottom: none;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
+}
 
 /* Item 200 Slice D (2026-05-25): top-left card holds the DS Build
  * Archetype picker on top + the PICK sub-panel (moved from Pick & Ban)
@@ -524,6 +541,32 @@
   overflow: hidden;
 }
 .csv-team-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Operator 2026-05-31 (#1/#2/#3): SR enemy cell = LEADING win-rate slot
+ * (col 1) + icon + name + summ + tags + role; confidence pill dropped.
+ * SR-scoped (higher specificity than the base .csv-card-enemies grid) so
+ * ARAM/Arena keep the base layout. Re-uses --csv-champname-col so the
+ * champion name is NOT truncated. */
+#view-champ-select[data-cs-mode="sr"] #csv-enemies-list .csv-team-cell {
+  grid-template-columns: auto 36px var(--csv-champname-col) auto auto 1fr auto;
+}
+#view-champ-select[data-cs-mode="sr"] #csv-enemies-list .csv-enemy-wr-slot  { grid-column: 1; grid-row: 1; }
+#view-champ-select[data-cs-mode="sr"] #csv-enemies-list .csv-team-cell-icon { grid-column: 2; grid-row: 1; }
+#view-champ-select[data-cs-mode="sr"] #csv-enemies-list .csv-team-cell-nm   { grid-column: 3; grid-row: 1; }
+#view-champ-select[data-cs-mode="sr"] #csv-enemies-list .csv-team-cell-summ { grid-column: 4; grid-row: 1; }
+#view-champ-select[data-cs-mode="sr"] #csv-enemies-list .csv-team-cell-tags { grid-column: 5; grid-row: 1; }
+#view-champ-select[data-cs-mode="sr"] #csv-enemies-list .csv-team-cell-pos  { grid-column: 7; grid-row: 1; }
+.csv-enemy-wr-slot {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+  color: #6b7280;
+}
+.csv-enemy-wr-slot.is-good { color: #4ade80; }
+.csv-enemy-wr-slot.is-mid  { color: #fbbf24; }
+.csv-enemy-wr-slot.is-bad  { color: #f87171; }
+.csv-enemy-wr-slot.is-new  { color: #6b7280; }
 
 .csv-team-cell-nm {
   /* UI scale v2.1: 14 -> --fs-sm (18). Champion name reads more
@@ -1014,7 +1057,7 @@
   flex: 0 0 auto;
 }
 .csv-pb168-picks { flex: 1 1 auto; }
-.csv-pb168-bans  { flex: 1 1 auto; }
+.csv-pb168-bans  { flex: 0 0 auto; }
 .csv-pb168-expl  { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 /* item 213 (2026-05-28): PICK / BAN heads reformatted for a clearer
  * visual hierarchy - the head is now a left-aligned labeled bar with a
@@ -1125,6 +1168,19 @@
   margin-top: auto;
 }
 .csv-pb168-cell.is-struggle .csv-pb168-pct { color: #f97316; }
+/* Operator 2026-05-31 (#6): ban cells show the champion name centered
+ * (no CTR tag, no %); only the struggle ban carries a centered STRUGGLE
+ * label. The icon margin-top that cleared the old absolute tag is
+ * dropped for ban cells. */
+.csv-pb168-ban .csv-pb168-icon { margin-top: 0; }
+.csv-pb168-struggle {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #f97316;
+  text-align: center;
+}
 /* Explanation strip. Compact, quickly readable. Cleanse advisory gets
  * a red left-accent + slightly bolder weight so it draws the eye
  * during champ-select. Per-pick reason lines are gray prose with
@@ -2480,20 +2536,24 @@
   gap: 5px;
   padding: 4px 0;
 }
+/* Operator 2026-05-31 (part 6): match the Enemies panel cell styling
+ * (.csv-team-cell) - same icon size, row chrome, and lock/hover treated
+ * via the icon border (green locked / amber hovering) instead of a
+ * left accent bar. */
 .csv-allyroles-row {
   display: grid;
-  grid-template-columns: 44px 38px 1fr auto;
+  grid-template-columns: 44px 36px 1fr auto;
   align-items: center;
   gap: 8px;
   padding: 3px 6px;
-  min-height: var(--hit-min);
+  min-height: 38px;
   background: #1a1d23;
-  border: 1px solid #2a2f37;
-  border-left: 3px solid #2a2f37;
-  border-radius: 6px;
+  border: 1px solid #232830;
+  border-radius: 4px;
 }
-.csv-allyroles-row.is-locked { border-left-color: #4ade80; }
-.csv-allyroles-row.is-hover  { border-left-color: #fbbf24; opacity: 0.82; }
+.csv-allyroles-row.is-locked .csv-allyroles-icon { border-color: #4ade80; }
+.csv-allyroles-row.is-hover  { opacity: 0.82; }
+.csv-allyroles-row.is-hover  .csv-allyroles-icon { border-color: #fbbf24; }
 .csv-allyroles-row.is-empty  { opacity: 0.5; }
 .csv-allyroles-row.is-me {
   background: #21262e;
@@ -2508,9 +2568,9 @@
 }
 .csv-allyroles-row.is-me .csv-allyroles-role { color: #60a5fa; }
 .csv-allyroles-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 5px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
   background: #14171c;
   overflow: hidden;
   border: 1px solid #2a2f37;
