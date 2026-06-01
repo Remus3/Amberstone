@@ -7,6 +7,14 @@ effects-text heals: flat ("35 : 100 based on level"), caster-stat-scaled
 SPELL slot (Rakan Q / Talon Q, via ``level_scaled``). Same module, same seam,
 same consumer - a linear entry simply carries no ``bilinear_terms``.
 
+Item 252 (this slice) adds the PER-CHARGE seam - the heal sibling of the
+item-249 per-stack DAMAGE fold. ``per_charge`` linear terms fold *
+``assumed_charges`` into ``raw_modifiers`` at BUILD time (zero new eval math);
+the coefficients are exact, only the stocked-charge count is the operator-
+tunable assumption. The sole per-charge heal is Taric Q Starlight's Touch
+(25 + 15% AP + 1% max HP per charge); the only other charge mechanic, Zeri P,
+is a DAMAGE charge, not a heal.
+
 UNLIKE the 3 bilinear seeds (every term target/missing-HP scaled -> 0 at the
 default ``resolve_target_relative=False``), most linear entries have a FLAT /
 caster-stat term that resolves NON-zero even at the default - so
@@ -86,7 +94,8 @@ shape as ``_passive_damage_overrides`` / ``_ability_overrides``.
 EXHAUSTED scan (all 171 champs, forms with NO ``attribute_kind=="heal"`` block
 whose effects_descriptions carry a "heal"/"restore" verb): 84 candidate forms.
 The BILINEAR set is exactly the 3 item-250 seeds; the LINEAR seedable set is the
-16 item-251 entries below (14 P-slot + Rakan Q + Talon Q). Documented EXCLUSIONS
+16 item-251 entries below (14 P-slot + Rakan Q + Talon Q); the item-252
+per-charge seam adds Taric Q (the sole per-charge heal). Documented EXCLUSIONS
 (scanned, deliberately NOT seeded - with the reason class):
   - VAMP / "% of post-mitigation damage dealt" (not resolvable at rest, same
     boundary as the damage registry's omitted vamp): Aatrox P/E, Briar P,
@@ -99,11 +108,11 @@ The BILINEAR set is exactly the 3 item-250 seeds; the LINEAR seedable set is the
     skipped; its 18:52 heal half IS seeded).
   - REVIVE / grey-health conversion (full-HP resurrect or damage-mirror, not a
     recurring castable heal): Anivia P, Pyke P, Rengar W, TahmKench E.
-  - BESPOKE products / charge / crit / form gates (no clean linear shape):
-    Kindred W (missing-HP * flat), Darius Q (targets-hit * missing-HP), Taric Q
-    (per-stocked-charge), TwistedFate W (% crit), Aphelios R (gun-form-gated +
-    spell-slot level), Elise R (heal spiderlings to full), Nilah P (heal-amp
-    multiplier).
+  - BESPOKE products / crit / form gates (no clean linear shape): Kindred W
+    (missing-HP * flat), Darius Q (targets-hit * missing-HP), TwistedFate W
+    (% crit), Aphelios R (gun-form-gated + spell-slot level), Elise R (heal
+    spiderlings to full), Nilah P (heal-amp multiplier). [Taric Q per-charge is
+    SEEDED via the item-252 per-charge fold.]
   - Vladimir Q Transfusion: ALREADY carries a snapshot heal block (the no-
     existing-heal-block gate correctly skips it; the Crimson-Rush bonus is a
     Phase-D conditional decision).
@@ -149,6 +158,19 @@ class PassiveHealEntry:
     # (Q/W/E/R) heal whose magnitude scales "based on level" (Rakan Q / Talon
     # Q). P-slot heals already see ``rank == level-1`` so they leave this False.
     level_scaled: bool = False
+    # GAP-2 per-charge heal seam (item 252 schema lift, mirrors the item-249
+    # per-stack DAMAGE fold): ``per_charge`` is a tuple of ``(value, unit)``
+    # linear terms read "per charge" (same shape + unit maps as ``linear_terms``;
+    # ``value`` flat or a per-level/per-rank tuple). ``to_heal_block`` FOLDS each
+    # into ``raw_modifiers`` as ``value * assumed_charges`` at BUILD time - so the
+    # existing ``_eval_heal_shield_block`` needs ZERO new math (the per-charge
+    # contribution collapses into ordinary raw_modifiers once the count is fixed).
+    # ``assumed_charges`` is the operator-tunable steady-state stock (the
+    # per-charge COEFFICIENTS are exact; only the count is the assumption); a
+    # future live consumer feeds the real stocked-charge count. Default () / 0.0
+    # = no per-charge term (every prior entry unaffected, byte-identical).
+    per_charge: tuple[tuple[float | tuple[float, ...], str], ...] = ()
+    assumed_charges: float = 0.0
 
 
 # (champion_id, key, form_index) -> PassiveHealEntry.
@@ -373,6 +395,38 @@ _PASSIVE_HEAL_OVERRIDES: dict[tuple[str, str, int], PassiveHealEntry] = {
         attribute="Noxian Diplomacy",
         level_scaled=True,
     ),
+    # ---- PER-CHARGE effects-text heal (item 252, the per-charge seam - the
+    # heal sibling of the item-249 per-stack DAMAGE fold). The per-charge terms
+    # fold * assumed_charges at build time; the COEFFICIENTS are exact, only the
+    # stock count is the operator-tunable assumption. ----
+    # Taric Q Starlight's Touch: "Active: Taric heals himself and nearby allied
+    # champions for 25 (+ 15% AP) (+ 1% of his maximum health) per charge of
+    # Starlight's Touch that he periodically stocks, up to a maximum amount"
+    # (max 125 + 75% AP + 5% max HP at 5 charges). The 3 PER-CHARGE terms (flat
+    # 25 + 15% AP + 1% caster max HP) fold * assumed_charges. Q RANK sets the MAX
+    # charges (Maximum Charges block = 1/2/3/4/5 by rank); assumed_charges 3.0 =
+    # typical mid-fight stock (operator-tunable; true cap = Q rank, 5 at rank 5,
+    # so 3.0 over-credits Q rank 1/2 - the same steady-state-midpoint
+    # approximation class as the item-249 assumed_stacks). The SELF heal is
+    # modeled; the ally heal is the same per-charge amount on a different target
+    # (omitted). All terms flat / caster-stat -> resolve NON-zero at the default
+    # (no HP assumption needed, like the other linear caster-stat seeds); the
+    # apply_passive_heal=False DEFAULT stays byte-identical. per_cast (Q has a
+    # cooldown -> heal_per_sec is computed). NO existing heal block on Taric Q
+    # (only a "Maximum Charges" attribute_kind="other" block), so the seam's
+    # no-existing-heal-block gate admits it.
+    ("Taric", "Q", 0): PassiveHealEntry(
+        linear_terms=(),
+        per_charge=(
+            (25.0, ""),
+            (15.0, "% ap"),
+            (1.0, "% maximum health"),
+        ),
+        assumed_charges=3.0,
+        cadence="per_cast",
+        note="Starlight's Touch: heal 25 (+ 15% AP) (+ 1% of caster max HP) per charge (cap = Q rank, max 5; assumed_charges 3.0 = mid-fight stock, operator-tunable); ally heal omitted (same per-charge amount, different target)",
+        attribute="Starlight's Touch",
+    ),
 }
 
 
@@ -398,10 +452,30 @@ def to_heal_block(entry: PassiveHealEntry):
             return [float(x) for x in v] or [0.0]
         return [float(v)]
 
+    def _scale_value(
+        v: float | tuple[float, ...], mult: float
+    ) -> float | tuple[float, ...]:
+        if isinstance(v, (tuple, list)):
+            return tuple(float(x) * mult for x in v)
+        return float(v) * mult
+
     raw_modifiers = tuple(
         {"values": _values_list(value), "units": [str(unit)]}
         for (value, unit) in entry.linear_terms
     )
+    # item 252 per-charge fold: each per_charge (value, unit) becomes one
+    # raw_modifiers entry scaled by assumed_charges at BUILD time, so the
+    # existing eval reads it as an ordinary linear term (zero new eval math).
+    # No per_charge terms / assumed_charges 0 -> contributes nothing.
+    charges = float(entry.assumed_charges) if entry.per_charge else 0.0
+    if charges:
+        raw_modifiers = raw_modifiers + tuple(
+            {
+                "values": _values_list(_scale_value(value, charges)),
+                "units": [str(unit)],
+            }
+            for (value, unit) in entry.per_charge
+        )
     bilinear_terms = tuple(
         (float(factor), str(attr_a), str(attr_b))
         for (factor, attr_a, attr_b) in entry.bilinear_terms
