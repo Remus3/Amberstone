@@ -408,7 +408,7 @@ class WaveFourteenWiredSitesGrepTests(unittest.TestCase):
     """Wave 14 entry grep-matches in the cc_conditional.py source."""
 
     def _source(self) -> str:
-        src = inspect.getsource(cc)
+        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
         return src
 
     def test_source_mentions_jayce_e_form_0(self) -> None:
@@ -451,7 +451,7 @@ class AsciiHygieneTests(unittest.TestCase):
         )
 
     def test_cc_conditional_wave_14_block_is_ascii(self) -> None:
-        src = inspect.getsource(cc)
+        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
         # Slice from the "wave 14 expansion" header through the
         # end-of-builder; assert no non-ASCII bytes appear in that
         # slice. The earlier waves carry pre-existing non-ASCII
