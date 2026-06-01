@@ -241,6 +241,35 @@ def _staged_amp_block_route_for(cid: str, key: str, form_index: int) -> int | No
     return _STAGED_AMP_BLOCK_ROUTES.get((cid, key, form_index))
 
 
+def _aa_amp_multiplier(
+    cid: str,
+    rank_for_key,
+    prob_map: dict[str, float] = _DEFAULT_AMP_PROBABILITY,
+) -> float:
+    """Combined AA-empowerment amp factor for champion ``cid``.
+
+    Multiplies the ``_amp_multiplier`` of every ``base == "aa"`` entry keyed to
+    ``cid`` (each champion has at most one - Caitlyn W / Fiora E / Jayce W f1 /
+    Sivir W / Nidalee Q). ``rank_for_key(key)`` returns the spell's 0-based
+    rank. Consumed by ``dps.compute_dps`` ONLY when ``apply_ability_amps=True``
+    (the AA-empowerment seam, GAP-1 / gap-plan Phase C2); the default path
+    never calls this, so the AA DPS stays byte-identical.
+
+    FORWARD-MARKER: the 5 ``base="aa"`` entries currently carry placeholder
+    ``amp_per_rank=(0.0,)`` (the amortized per-champ empowerment magnitude +
+    cadence are live-validation work, gap-plan Phase D). So this returns 1.0
+    for every champion today - the seam is wired + route-reachable + inert
+    until Phase D authors a real value (mirrors the Illaoi Q always_on
+    LIVE-INERT reference on the ability side).
+    """
+    factor = 1.0
+    for (c, key, _form), entry in _ABILITY_AMP_OVERRIDES.items():
+        if c != cid or entry.base != "aa":
+            continue
+        factor *= _amp_multiplier(entry, rank_for_key(key), prob_map)
+    return factor
+
+
 def _amp_multiplier(
     entry: AmpEntry,
     rank: int,

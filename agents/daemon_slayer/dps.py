@@ -433,6 +433,7 @@ def _rotation_attack_dps(
     call_ctx: CallContext,
     damage_amp: float = 1.0,
     magic_amp: float = 1.0,
+    aa_empower_amp: float = 1.0,
 ) -> float:
     """DPS contribution from basic attacks during a single rotation.
 
@@ -453,6 +454,13 @@ def _rotation_attack_dps(
     Phase 4 batch 34 (2026-05-04): ``magic_amp`` applies only to magical
     proc DPS inside ``_periodic_proc_dps`` - does NOT touch base AA
     (physical). Default 1.0 keeps pre-batch behavior unchanged.
+
+    Item 247 (gap-plan Phase C2): ``aa_empower_amp`` scales ONLY the base AA
+    component (not item proc DPS) - it is the AA-empowerment amp seam for the
+    5 ``base="aa"`` AmpEntry champs (Caitlyn W / Fiora E / Jayce W f1 / Sivir W
+    / Nidalee Q). Default 1.0 = byte-identical; the seam is gated on
+    ``compute_dps(apply_ability_amps=True)`` and currently inert (placeholder
+    entries, Phase D authors the real per-champ value).
     """
     duration = float(rotation.get("duration", 0) or 0)
     if duration <= 0:
@@ -478,7 +486,7 @@ def _rotation_attack_dps(
         target_armor_for_physical, target_mr, mode_dmg_mult, rotation_ctx,
         magic_amp=magic_amp,
     )
-    return (base_dps + proc_dps) * damage_amp
+    return (base_dps * aa_empower_amp + proc_dps) * damage_amp
 
 
 def _phase_weighted_dps(
@@ -492,6 +500,7 @@ def _phase_weighted_dps(
     call_ctx: CallContext,
     damage_amp: float = 1.0,
     magic_amp: float = 1.0,
+    aa_empower_amp: float = 1.0,
 ) -> float:
     """Weighted average of rotation DPS within a phase (weights from lolmath)."""
     if not rotations:
@@ -505,7 +514,7 @@ def _phase_weighted_dps(
         weighted_sum += w * _rotation_attack_dps(
             stats, r, target_armor_for_physical, target_mr,
             mode_dmg_mult, crit_bonus, effects, call_ctx, damage_amp,
-            magic_amp=magic_amp,
+            magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
         )
         total_weight += w
     if total_weight <= 0:
@@ -546,6 +555,7 @@ def compute_dps(
     phase: Optional[str] = None,
     augments: Optional[Iterable] = None,
     apply_mode_modifiers: bool = False,
+    apply_ability_amps: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -594,6 +604,24 @@ def compute_dps(
         mm = snapshot.mode_modifier(resolved.champion_id, mode)
         if isinstance(mm, dict) and "dmg_dealt" in mm:
             mode_mult = float(mm["dmg_dealt"])
+
+    # Item 247 (gap-plan Phase C2): AA-empowerment amp seam. OPT-IN
+    # (apply_ability_amps default False = byte-identical). When True, the 5
+    # base="aa" AmpEntry champs (Caitlyn W / Fiora E / Jayce W f1 / Sivir W /
+    # Nidalee Q) scale ONLY the base-AA component (not item procs) by their
+    # amortized empowerment factor. The rank lookup uses the canonical
+    # 1-point-per-level distribution; rank_at_level is imported function-level
+    # to avoid the dps <-> ability_dps module cycle. FORWARD-MARKER: the
+    # entries are placeholder (0.0,) today, so the factor is 1.0 - the seam is
+    # route-reachable + inert until Phase D authors the real per-champ value.
+    aa_empower_amp = 1.0
+    if apply_ability_amps:
+        from ._ability_amp_overrides import _aa_amp_multiplier
+        from .ability_dps import rank_at_level
+
+        aa_empower_amp = _aa_amp_multiplier(
+            resolved.champion_id, lambda k: rank_at_level(k, level)
+        )
 
     item_effects = collect_effects(resolved.item_ids)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
@@ -741,7 +769,7 @@ def compute_dps(
         p: _phase_weighted_dps(
             stats_for_rotation, rotations_by_phase[p], target_armor_eff, target_mr_eff,
             mode_mult, crit_bonus, item_effects, call_ctx, damage_amp,
-            magic_amp=magic_amp,
+            magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
         )
         for p in PHASES
     }
@@ -751,9 +779,11 @@ def compute_dps(
     ad = float(stats.get("ad", 0.0))
     eff_as = float(stats.get("as", 0.0))
     # Phase 4 batch 14: per-hit display value reflects the same amp the
-    # rotation DPS uses, so /dps clients see consistent numbers.
-    avg_attack_dmg = ad * (1 + crit * crit_bonus) * _armor_factor(target_armor_eff) * mode_mult * damage_amp
-    raw_attack_dps = ad * eff_as * (1 + crit * crit_bonus)
+    # rotation DPS uses, so /dps clients see consistent numbers. Item 247:
+    # the AA-empower amp is a pure-AA factor, so the per-hit displays carry it
+    # too (1.0 default -> byte-identical).
+    avg_attack_dmg = ad * (1 + crit * crit_bonus) * _armor_factor(target_armor_eff) * mode_mult * damage_amp * aa_empower_amp
+    raw_attack_dps = ad * eff_as * (1 + crit * crit_bonus) * aa_empower_amp
     # Phase 5.6 (s188, 2026-05-13): per-attack on-hit proc damage. Used
     # by burst.compute_burst_damage to score AA tokens richer than raw
     # AD-on-armor - captures Wit's End / BotRK / Statikk contributions
