@@ -63,24 +63,26 @@ when the opt-in ``apply_passive_damage=True`` flag is passed to
 is appended, so the seeded P forms keep their original ``damage_blocks`` and
 ``parse_status == "no_damage"``, and the full DS suite is unchanged.
 
-STAGED candidates (documented, NOT live entries - need extra modeling before
-they can be authored against a fixed level/AP/AD pin):
-  - % max/current/missing-HP coefficients: Aatrox P (4%:8% target max HP),
-    JarvanIV P (8% target current HP, min 20 cap 400), Zed P (6/8/10%
-    target max HP below 50% - also a 3-point level step), Gwen P
-    (1% + 0.55% per 100 AP of target max HP - nested AP-on-HP term). These
-    need a target-HP value (and Zed's a below-50% conditional gate) to
-    resolve to a number; the % fields exist in ``_SCALING_FIELDS`` but the
-    realistic-target-HP and conditional-gate decisions are their own slice.
-  - crit-chance coefficients: Caitlyn P Headshot (60/90/120% AD scaling by
-    level, an empowered-AA crit-interaction). No crit-chance scaling field
-    on DamageBlock; needs the AA-crit interaction modeled.
-  - per-stack ramps: Kai'Sa P Caustic Wounds (4:24 + 1:6 per Plasma stack +
-    12%:24% nested) - a stacking term with no single steady-state value.
-  - conditional gates: Ekko P Resonance (fires on the 3rd Resonance stack
-    only), Zed P (below-50%-HP gate).
-  - dot cadence: Gangplank P Trial by Fire (50:250 + 100% bAD + 2 per 1%
-    crit, true damage over 2.5s) - dot cadence + a crit coefficient.
+GAP-2 exotic passives (item 247, gap-plan Phase C3): 6 of the 8 are now
+SEEDED below with documented v1 caveats (Aatrox P / Jarvan IV P / Zed P /
+Caitlyn P / Ekko P / Gangplank P). The level-scaled %-HP and 3-tier-step
+coefficients ride the ``float | tuple`` scaling fields (``to_damage_block``
+coerces either); the crit-interaction terms (Caitlyn's +crit-chance AD,
+Gangplank's +2 per 1% crit) and Zed's below-50%-HP fire gate are documented
+omissions in each entry's note (they belong in the AA-crit / conditional
+seam, NOT a passive damage block). Their default-OFF magnitudes are exact for
+the modeled terms.
+
+STAGED candidates (still documented, NOT live entries - need a core evaluator
+term or a runtime decision; their own slice):
+  - bilinear AP-on-HP: Gwen P A Thousand Cuts (1% + 0.55% per 100 AP of
+    target max HP). The AP-scaled %-of-max-HP is a target_max_hp * AP product
+    that no single ``_SCALING_TARGETS`` field expresses (each field is one
+    pct * one ctx attr); base-1%-only would under-model by ~2x at 200 AP, so
+    it is staged for a bilinear evaluator term rather than shipped partial.
+  - per-stack ramps: Kai'Sa P Caustic Wounds (4 : 24 + 1 : 6 per Plasma stack
+    + 12% : 24% per stacks AP) - a stacking term with no single steady-state
+    value; needs a Plasma-stack-count assumption (its own decision).
 
 KogMaw P "Icathian Surprise" is explicitly NOT a damage passive (it is the
 death-state self-detonation zombie passive); do NOT author it.
@@ -122,6 +124,27 @@ def _lerp_per_level(low: float, high: float, count: int = _LEVEL_COUNT) -> tuple
     return tuple(round(low + (high - low) * i / span, 6) for i in range(count))
 
 
+def _step_per_level(values: tuple[float, ...], count: int = _LEVEL_COUNT) -> tuple[float, ...]:
+    """Build a per-LEVEL tuple for a DISCRETE "X / Y / Z (based on level)" step.
+
+    League slash-notation ("6% / 8% / 10%") is a discrete level TIER step, NOT
+    a smooth lerp (colon notation "X : Y" is the smooth form ``_lerp_per_level``
+    covers). The 16.11.1 Meraki ``effects_descriptions`` gives the tier VALUES
+    but not the level boundaries; the LoL-wiki ``{{pp|...}}`` breakpoints belong
+    to the CURRENT patch (whose values drifted from 16.11.1), so we use the
+    conventional EVEN-THIRDS boundaries (levels 1-6 / 7-12 / 13-18 for 3 tiers)
+    as the documented v1 estimate. Each tier occupies ``count // len(values)``
+    consecutive levels; the last tier absorbs any remainder so the tuple is
+    always ``count`` long. Indexed by ``rank_at_level('P', level) == level - 1``
+    exactly like ``_lerp_per_level``.
+    """
+    n = len(values)
+    if n == 0:
+        return tuple(0.0 for _ in range(count))
+    seg = max(1, count // n)
+    return tuple(float(values[min(i // seg, n - 1)]) for i in range(count))
+
+
 @dataclass(frozen=True)
 class PassiveDamageEntry:
     """One hand-authored effects-text-only passive damage formula.
@@ -145,10 +168,15 @@ class PassiveDamageEntry:
     cadence: str
     note: str
     attribute: str = "Passive Damage"
-    bonus_ad_pct: float = 0.0
-    ap_pct: float = 0.0
-    total_ad_pct: float = 0.0
-    target_max_hp_pct: float = 0.0
+    # Scaling % of a caster/target stat. A plain float is a FLAT % (same at
+    # every level); a tuple is a PER-LEVEL % (indexed by rank == level - 1 via
+    # value_at) for a level-scaled coefficient like Aatrox P (4% : 8% max HP)
+    # or Caitlyn P (60 / 90 / 120% AD step). to_damage_block coerces either.
+    bonus_ad_pct: float | tuple[float, ...] = 0.0
+    ap_pct: float | tuple[float, ...] = 0.0
+    total_ad_pct: float | tuple[float, ...] = 0.0
+    target_max_hp_pct: float | tuple[float, ...] = 0.0
+    target_current_hp_pct: float | tuple[float, ...] = 0.0
 
 
 # (champion_id, key, form_index) -> PassiveDamageEntry.
@@ -262,6 +290,97 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
         note="Organic Deconstruction: 35 : 180 (based on level) (+ 60% AP) bonus true damage",
         attribute="Organic Deconstruction",
     ),
+    # --- GAP-2 exotic passives (item 247, gap-plan Phase C3). Authored from
+    # verbatim 16.11.1 effects_descriptions. Each carries a documented v1
+    # modeling caveat in its note; all default-OFF byte-identical (the seam
+    # only injects under apply_passive_damage=True). Gwen (bilinear AP-on-HP)
+    # and Kai'Sa (per-Plasma-stack ramp) remain STAGED in the docstring - they
+    # need a core evaluator term / a stack-count runtime decision (their own
+    # slice), not a v1 caveat.
+    #
+    # Aatrox P Deathbringer Stance: empowered AA deals "4% : 8% (based on
+    # level) of the target's maximum health" bonus magic. cap 100 vs monsters
+    # (champion context = uncapped). Level-scaled %max-HP -> per-level tuple.
+    ("Aatrox", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=_lerp_per_level(4.0, 8.0),
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Deathbringer Stance: 4% : 8% (based on level) target max HP bonus magic (vs-monster cap 100 not modeled; champ context uncapped)",
+        attribute="Deathbringer Stance",
+    ),
+    # Jarvan IV P Martial Cadence: empowered AA deals "8% of the target's
+    # current health" bonus physical, min 20, cap 400 vs non-champions. vs
+    # champions: uncapped; the min-20 floor binds only below ~250 current HP
+    # (rare for a champion). v1 models the flat 8% current HP; the min/cap
+    # clamp is inert in the typical champion band (documented).
+    ("JarvanIV", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_current_hp_pct=8.0,
+        damage_type="PHYSICAL",
+        cadence="on_hit",
+        note="Martial Cadence: 8% target current HP bonus physical (min 20 / cap 400 vs non-champ inert in champ band)",
+        attribute="Martial Cadence",
+    ),
+    # Zed P Contempt for the Weak: empowered AA vs targets BELOW 50% max HP
+    # deals "6% / 8% / 10% (based on level)" of target max HP bonus magic.
+    # 3-tier level STEP (slash notation) -> _step_per_level; 16.11.1 Meraki
+    # values, EVEN-THIRDS breakpoint estimate (the live-wiki 1;7;17 belongs to
+    # the drifted 5/7.5/10 current values - verify exact 16.11.1 boundaries in
+    # Phase D). The below-50%-max-HP FIRE gate is not modeled: the injected
+    # magnitude IS the value when it fires (% of MAX HP, gate-independent);
+    # routing the fire-probability is a Phase-D conditional decision.
+    ("Zed", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=_step_per_level((6.0, 8.0, 10.0)),
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Contempt for the Weak: 6/8/10% (based on level) target max HP bonus magic; below-50%-HP FIRE gate not modeled (magnitude is gate-independent); breakpoints even-thirds estimate",
+        attribute="Contempt for the Weak",
+    ),
+    # Caitlyn P Headshot: empowered AA deals "60% / 90% / 120% (based on
+    # level) AD bonus physical" (the verbatim 16.11.1 value), plus a
+    # (+ crit-strike-chance) AD term. v1 models the base 60/90/120% TOTAL AD
+    # step; the "+ crit chance AD" multiplier is an AA-crit interaction (no
+    # crit context on a passive damage block - belongs in the AA/headshot
+    # crit seam, not here) and the 110/115/120% vs non-champions is omitted.
+    # 3-tier step -> _step_per_level, even-thirds breakpoints (verify Phase D).
+    ("Caitlyn", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        total_ad_pct=_step_per_level((60.0, 90.0, 120.0)),
+        damage_type="PHYSICAL",
+        cadence="on_hit",
+        note="Headshot: 60/90/120% (based on level) AD bonus physical; +crit-chance AD multiplier omitted (AA-crit seam); breakpoints even-thirds estimate",
+        attribute="Headshot",
+    ),
+    # Ekko P Z-Drive Resonance: the 3rd Resonance stack consumes them to deal
+    # "30 : 140 (based on level) (+ 90% AP)" bonus magic. Smooth 2-point lerp
+    # base + flat AP. The every-3rd-stack CADENCE is metadata-only (cadence
+    # "on_hit"): the value is the full 3rd-stack magnitude; amortizing it
+    # across the 3 triggering hits is the on_hit-cadence consumer's job (same
+    # convention as the 10 v1 on_hit entries above).
+    ("Ekko", "P", 0): PassiveDamageEntry(
+        base=_lerp_per_level(30.0, 140.0),
+        ap_pct=90.0,
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Z-Drive Resonance: 30 : 140 (based on level) (+ 90% AP) bonus magic on 3rd stack (every-3rd-stack cadence metadata-only)",
+        attribute="Z-Drive Resonance",
+    ),
+    # Gangplank P Trial by Fire: empowered AA sets the target on fire for
+    # "50 : 250 (based on level) (+ 100% bonus AD) (+ 2 per 1% crit) bonus
+    # TRUE damage over 2.5 seconds". Smooth lerp base + 100% bonus AD, dot
+    # cadence. The "+2 per 1% critical strike chance" term is omitted (crit
+    # interaction - no crit context on a passive damage block; same boundary
+    # as Caitlyn's crit term).
+    ("Gangplank", "P", 0): PassiveDamageEntry(
+        base=_lerp_per_level(50.0, 250.0),
+        bonus_ad_pct=100.0,
+        damage_type="TRUE",
+        cadence="dot",
+        note="Trial by Fire: 50 : 250 (based on level) (+ 100% bonus AD) bonus true over 2.5s; +2-per-1%-crit term omitted (crit seam); dot cadence",
+        attribute="Trial by Fire",
+    ),
 }
 
 
@@ -271,9 +390,11 @@ def to_damage_block(entry: PassiveDamageEntry):
     The returned block is ``attribute_kind="damage"`` so
     ``ability_dps._select_blocks`` (which filters to damage blocks) and
     ``_evaluate_block`` consume it with zero new math: ``base`` is the
-    per-level tuple, and each populated scaling field is a 1-element tuple of
-    the flat percentage (``value_at`` returns that single value at every
-    rank, matching the existing constant-scaling convention).
+    per-level tuple, and each populated scaling field is coerced to a tuple
+    (a flat float -> a 1-element tuple = same % at every rank; a per-level
+    tuple is passed through, so ``value_at`` returns the level-correct % for a
+    level-scaled coefficient like Aatrox / Caitlyn / Zed). An entry with no
+    flat ``base`` (pure %-of-HP / %-of-AD passives) gets ``base=(0.0,)``.
 
     Imported lazily to avoid a circular import (abilities.py imports this
     module to wire the load-time seam, and DamageBlock is defined in
@@ -281,15 +402,28 @@ def to_damage_block(entry: PassiveDamageEntry):
     """
     from .abilities import DamageBlock
 
-    kwargs: dict[str, tuple[float, ...]] = {"base": tuple(entry.base)}
-    if entry.bonus_ad_pct:
-        kwargs["bonus_ad_pct"] = (float(entry.bonus_ad_pct),)
-    if entry.ap_pct:
-        kwargs["ap_pct"] = (float(entry.ap_pct),)
-    if entry.total_ad_pct:
-        kwargs["total_ad_pct"] = (float(entry.total_ad_pct),)
-    if entry.target_max_hp_pct:
-        kwargs["target_max_hp_pct"] = (float(entry.target_max_hp_pct),)
+    def _coerce(v: float | tuple[float, ...]) -> tuple[float, ...]:
+        if isinstance(v, (tuple, list)):
+            return tuple(float(x) for x in v)
+        return (float(v),)
+
+    def _present(v: float | tuple[float, ...]) -> bool:
+        if isinstance(v, (tuple, list)):
+            return any(float(x) != 0.0 for x in v)
+        return float(v) != 0.0
+
+    base = tuple(float(x) for x in entry.base) if entry.base else (0.0,)
+    kwargs: dict[str, tuple[float, ...]] = {"base": base}
+    for fld in (
+        "bonus_ad_pct",
+        "ap_pct",
+        "total_ad_pct",
+        "target_max_hp_pct",
+        "target_current_hp_pct",
+    ):
+        v = getattr(entry, fld)
+        if _present(v):
+            kwargs[fld] = _coerce(v)
     return DamageBlock(
         attribute=entry.attribute,
         attribute_kind="damage",
