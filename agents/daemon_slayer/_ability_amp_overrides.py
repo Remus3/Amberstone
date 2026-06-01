@@ -56,11 +56,32 @@ Two amp bases:
 * ``"ability"`` - multiplies THIS spell's own ability damage and IS
   applied inside ``ability_dps``. The amp factor multiplies the
   post-mode / post-build-amp per-cast damage.
-* ``"aa"`` - an auto-attack empowerment (Caitlyn W, Fiora E, Jayce W,
-  Sivir W, Nidalee Q). Registered for documentation, but INERT in
-  ``ability_dps`` - it belongs in the AA scorer (``compute_dps``), a
-  separate future seam. ``compute_ability_dps`` skips any ``base != "ability"``
-  entry.
+* ``"aa"`` - an auto-attack empowerment. INERT in ``ability_dps``
+  (``compute_ability_dps`` skips any ``base != "ability"`` entry); consumed by
+  ``dps.compute_dps`` via ``_aa_amp_multiplier`` ONLY under
+  ``apply_ability_amps=True`` (the AA scorer seam wired item 247, gap-plan
+  Phase C2). That consumer multiplies ONLY the base-AA single-target damage
+  component (``base_dps`` over the whole rotation) - NOT item proc DPS, NOT
+  attack speed, NOT extra-target bounces. So a ``base="aa"`` ``amp_per_rank``
+  is the AVERAGE per-AA single-target damage uplift over a sustained rotation,
+  and ONLY a champion whose empowerment is a base-AA single-target DAMAGE
+  multiplier (a guaranteed crit, or guaranteed bonus physical damage on the
+  empowered AA) can carry a real value.
+  Item 258 (gap-plan Phase D) authored the amortized values. Of the 5
+  registered ``base="aa"`` champs only ONE fits that seam:
+  * Fiora E (Bladework) - the 2nd empowered AA is a GUARANTEED CRIT at modified
+    crit damage 160%:200% by rank; on Fiora's typical no-crit bruiser build that
+    is a real ``(m - 1)`` per-AA damage uplift, amortized over the E cooldown.
+    AUTHORED (condition ``nth_hit``; the guaranteed crit is the every-Nth-AA
+    empowered hit). See its note for the assumption.
+  The other 4 stay INERT placeholders (``amp_per_rank=(0.0,)``) because their
+  empowerment is NOT a base-AA single-target damage multiplier the consumer can
+  represent (Caitlyn W = a conditional Headshot passive gated on a sprung trap;
+  Jayce W f1 = a per-AA "% AD" modifier mostly BELOW 1.0xAD whose real value is
+  the +360% bonus AS the consumer cannot model; Sivir W = an extra-target bounce
+  + AS; Nidalee Q f1 = an AA-replacement that converts the AA to a magic
+  missing-HP formula, gated behind a Cougar-form Q recast). Each entry's note
+  documents the precise non-fit reason.
 
 Two amp gatings (via ``_amp_multiplier``):
 
@@ -176,37 +197,80 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
     # --- AA-empowerment entries: base="aa" -> DOCUMENTED but INERT in
     # ability_dps (they belong in the AA scorer compute_dps). amp_per_rank is
     # a placeholder shape; it is never read because ability_dps skips base!="ability".
-    # Caitlyn W Yordle Snap Trap: the headshot empowerment is on her passive;
-    # registered per spec for documentation. AA-empowerment family.
+    # Caitlyn W Yordle Snap Trap: the damage_block "Headshot Damage Increase"
+    # (35:215 flat + 30% bonus AD) is a CONDITIONAL Caitlyn-Headshot bonus that
+    # fires ONLY when an enemy springs the trap (ed[2]) - a separate passive
+    # gated on a trap-spring event, NOT a guaranteed base-AA damage multiplier on
+    # every rotation AA. INERT: a base-AA amp would over-credit every AA for a
+    # bonus that lands at most once per trap-spring; the Headshot bonus belongs in
+    # an AA-crit / Headshot-passive seam, not the base-AA empower factor.
     ("Caitlyn", "W", 0): AmpEntry(
         amp_per_rank=(0.0,),
         base="aa",
-        note="AA empowerment family (headshot); AA scorer seam, inert here.",
+        note="Headshot bonus is a trap-spring-gated separate passive, not a base-AA "
+             "multiplier; INERT (would over-credit every AA).",
     ),
-    # Fiora E Bladework: ed[0] "empowers her next two basic attacks".
+    # Fiora E Bladework: ed[0]/ed[1] empower the next 2 AAs; the 1st slows +
+    # CANNOT crit (neutral base damage), the 2nd is a GUARANTEED CRIT at modified
+    # crit damage 160%:200% by E rank (damage_block "Critical damage"). On Fiora's
+    # typical no-crit bruiser build that 2nd AA is a real (m-1) per-AA uplift over
+    # a non-crit AA: +0.60 (rank1) .. +1.00 (rank5). AMORTIZED over the E cooldown
+    # window (cd 11/10/9/8/7s) at AS=1.0 baseline -> ~cd AAs/window, of which one
+    # carries the (m-1) crit uplift: addend = (m-1)/cd. always_on (the addend is
+    # the already-amortized expected per-AA uplift averaged over all AAs; a
+    # probability gate would double-discount). ASSUMPTION (operator-tunable, same
+    # convention as item-249 assumed_stacks / item-255 conditional_probability):
+    # AS=1.0 sustained window + the 1st-AA crit-loss modeled as neutral (not a
+    # downside) + the build is no-crit (a crit build already folds crit into
+    # base_dps so this would over-credit it). Phase-D live validation may retune.
     ("Fiora", "E", 0): AmpEntry(
-        amp_per_rank=(0.0,),
+        amp_per_rank=(0.0545, 0.0700, 0.0889, 0.1125, 0.1429),
         base="aa",
-        note="empowers next two basic attacks (ed[0]); AA scorer seam, inert here.",
+        always_on=True,
+        note="guaranteed crit on the 2nd empowered AA (modified crit 160:200%); "
+             "amortized (m-1)/cd over the E cooldown at AS=1.0, no-crit bruiser build.",
     ),
-    # Jayce W (Hammer) Lightning Field form: ed[0] "empowers his next 3 basic attacks".
+    # Jayce W form1 Hyper Charge: empowers next 3 AAs to deal MODIFIED physical
+    # damage + gain 360% bonus AS (ed[0]). The damage_block "Damage Modifier" is
+    # 70:110 % AD by rank - i.e. each empowered AA deals 0.70..1.10 * AD, MOSTLY
+    # BELOW a normal 1.0*AD hit (only rank 5/6 exceed it). Hyper Charge's value is
+    # the +360% bonus AS (4x hits in the window), which the base-AA DAMAGE consumer
+    # does NOT model. INERT: modeling it as a per-AA damage multiplier would make
+    # the spell look like a base-AA NERF at ranks 1-4 (delta -0.30..-0.06 *AD), the
+    # opposite of grounded; the AS gain is the real uplift + belongs in an AS-aware
+    # AA seam, not the base-AA damage factor.
     ("Jayce", "W", 1): AmpEntry(
         amp_per_rank=(0.0,),
         base="aa",
-        note="empowers next 3 basic attacks (ed[0]); AA scorer seam, inert here.",
+        note="per-AA modifier 70:110% AD is mostly < 1.0*AD; spell value is the +360% "
+             "bonus AS the consumer cannot model; INERT (would read as a base-AA nerf).",
     ),
-    # Sivir W Ricochet: ed[0] "empowers her crossblade ... her basic attacks".
+    # Sivir W Ricochet: empowers AAs to BOUNCE to additional surrounding enemies
+    # (damage_block "Bounce Damage" 40:50% total AD to EXTRA targets) + gain bonus
+    # AS (ed[0]/ed[1]). The single-target AA's own damage is UNCHANGED; the
+    # empowerment adds extra-target bounce damage + AS, neither of which scales the
+    # single-target base_dps the consumer multiplies. INERT: the base-AA amp models
+    # single-target damage only; bounce damage belongs in an AoE/extra-target seam
+    # and the AS in an AS-aware seam.
     ("Sivir", "W", 0): AmpEntry(
         amp_per_rank=(0.0,),
         base="aa",
-        note="empowers basic attacks / crossblade bounce (ed[0]); AA scorer seam, inert here.",
+        note="empower is extra-target bounce (40:50% AD to others) + AS; single-target "
+             "AA damage unchanged; INERT (consumer scales single-target base-AA only).",
     ),
-    # Nidalee Q form1 (Human Javelin Toss empowered AA - Takedown): ed[0]
-    # "empowers her next basic attack".
+    # Nidalee Q form1 Takedown (Cougar form): empowers the next AA to deal MODIFIED
+    # MAGIC damage with a missing-HP scaling (damage_block Min/Max Magic Damage,
+    # 75:206% total AD + 40:110% AP). notes: the AA's damage is CONVERTED to magic +
+    # the empowered hit is gated behind a Cougar-form Q recast (not the sustained
+    # physical-AA rotation). This REPLACES the AA's physical damage with a magic
+    # formula - it is not a multiplier ON the physical base-AA the consumer scales.
+    # INERT: AA-replacement / damage-type conversion, gated off-rotation; belongs in
+    # an ability-cast seam, not the base-AA physical damage factor.
     ("Nidalee", "Q", 1): AmpEntry(
         amp_per_rank=(0.0,),
         base="aa",
-        note="empowers next basic attack Takedown (ed[0]); AA scorer seam, inert here.",
+        note="Takedown CONVERTS the AA to a magic missing-HP formula (not a physical "
+             "base-AA multiplier), gated behind a Cougar-form Q recast; INERT.",
     ),
 }
 
@@ -321,18 +385,27 @@ def _aa_amp_multiplier(
     (the AA-empowerment seam, GAP-1 / gap-plan Phase C2); the default path
     never calls this, so the AA DPS stays byte-identical.
 
-    FORWARD-MARKER: the 5 ``base="aa"`` entries currently carry placeholder
-    ``amp_per_rank=(0.0,)`` (the amortized per-champ empowerment magnitude +
-    cadence are live-validation work, gap-plan Phase D). So this returns 1.0
-    for every champion today - the seam is wired + route-reachable + inert
-    until Phase D authors a real value (mirrors the Illaoi Q always_on
-    LIVE-INERT reference on the ability side).
+    Item 258 (gap-plan Phase D) authored the values: only Fiora E carries a real
+    amp (a guaranteed-crit base-AA uplift, amortized over the E cooldown); the
+    other 4 entries stay placeholder ``amp_per_rank=(0.0,)`` because their
+    empowerment is not a base-AA single-target damage multiplier the consumer can
+    represent (see each entry's note). Those 4 contribute factor 1.0.
+
+    SOURCE-RANK GUARD: an entry whose spell is UNLEVELED (``rank_for_key(key) <
+    0``) contributes nothing - no points in the spell means the empowerment does
+    not exist yet, so the amp must not fire. This mirrors the item-257
+    cross-spell ``src_rank >= 0`` guard and keeps a low-level Fiora (E not yet
+    leveled under the canonical 1-point distribution) byte-identical to the
+    no-amp baseline.
     """
     factor = 1.0
     for (c, key, _form), entry in _ABILITY_AMP_OVERRIDES.items():
         if c != cid or entry.base != "aa":
             continue
-        factor *= _amp_multiplier(entry, rank_for_key(key), prob_map)
+        rank = rank_for_key(key)
+        if rank < 0:
+            continue  # spell unleveled -> empowerment does not exist yet
+        factor *= _amp_multiplier(entry, rank, prob_map)
     return factor
 
 
