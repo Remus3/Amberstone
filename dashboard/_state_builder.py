@@ -155,6 +155,19 @@ def _active_champion(coach: dict, lc: dict | None, lcu_snapshot: dict | None) ->
                     v = local.get(key)
                     if v:
                         return str(v)
+            # item 244: the live SR/draft champ-select payload carries
+            # my_champion as a numeric championId (51) + local_cell, not a
+            # local_pick name dict. Resolve it to a display name so
+            # cs_archetype_pick populates pre-game. Fail-soft; 0 = no pick.
+            mc = cs.get("my_champion")
+            if mc:
+                try:
+                    from core.archetype_picks import champion_name_by_key
+                    name = champion_name_by_key(mc)
+                    if name:
+                        return name
+                except Exception:
+                    pass
     return ""
 
 

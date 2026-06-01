@@ -475,6 +475,7 @@ class CoachIntegration:
         }
 
     def _parse_response(self, text: str) -> dict:
+        import re as _re
         field_map = {
             "action":       "action",
             "immediate":    "immediate",
@@ -486,6 +487,19 @@ class CoachIntegration:
             "risk":         "risk",
             "choices":      "choices",
         }
+
+        def _clean(key: str, val: str) -> str:
+            # item 244: strip stray markdown emphasis the Haiku coach
+            # occasionally leaks into a field value (observed live as
+            # action="** FREEZE WAVE"). Unwrap paired **bold**/*em* and
+            # strip leading/trailing emphasis runs. The choices field is a
+            # JSON array passthrough - leave it byte-identical.
+            if key == "choices":
+                return val.strip()
+            v = _re.sub(r"\*\*(.+?)\*\*", r"\1", val)
+            v = _re.sub(r"\*(.+?)\*", r"\1", v)
+            return v.strip().strip("*").strip()
+
         fields = {}
         current_key = None
         current_val = []
@@ -494,13 +508,12 @@ class CoachIntegration:
             if not s:
                 continue
             s_clean = s.lstrip("*").rstrip("*")
-            import re as _re
             s_clean = _re.sub(r'^\*{1,2}(.*?)\*{1,2}(:)', r'\1\2', s_clean)
             matched = False
             for prefix, key in field_map.items():
                 if s_clean.lower().startswith(prefix + ":"):
                     if current_key:
-                        fields[current_key] = " ".join(current_val).strip()
+                        fields[current_key] = _clean(current_key, " ".join(current_val).strip())
                     current_key = key
                     current_val = [s_clean[len(prefix)+1:].strip()]
                     matched = True
@@ -508,7 +521,7 @@ class CoachIntegration:
             if not matched and current_key:
                 current_val.append(s)
         if current_key:
-            fields[current_key] = " ".join(current_val).strip()
+            fields[current_key] = _clean(current_key, " ".join(current_val).strip())
         return fields
 
     def _write_fields(self, raw_response: str, cache_hit: bool = False,
