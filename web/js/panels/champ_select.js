@@ -247,8 +247,8 @@ function _csvOrdinal(n) {
 // position pip. Operator wanted them spelled out rather than the
 // 3-letter abbreviations the panel previously showed.
 const _CSV_SHORT_ROLE = {
-  TOP: "TOP", JUNGLE: "JUNGLE", MIDDLE: "MID",
-  BOTTOM: "BOTTOM", UTILITY: "SUPPORT",
+  TOP: "TOP", JUNGLE: "JG", MIDDLE: "MID",
+  BOTTOM: "ADC", UTILITY: "SUP",
 };
 function _csvShortRole(pos) {
   return _CSV_SHORT_ROLE[pos] || pos || "-";
@@ -569,6 +569,17 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
       activeCls = (_csvActiveRound.type === "ban") ? " is-banning" : " is-picking";
     }
     li.className = "csv-team-cell " + stateCls + (isMe ? " me" : "") + activeCls;
+    li.dataset.cid = String(cid || 0);
+
+    // Operator 2026-05-31 (part 4): on the SR Enemies panel, reserve a
+    // fixed-width leading slot for the operator's lifetime win-rate vs
+    // this enemy (filled by _csvInjectEnemyWinRates once the personal-
+    // record fetch lands). First child so every enemy icon stays aligned.
+    if (isEnemyList && opts && opts.withWinRate) {
+      const wrSlot = document.createElement("span");
+      wrSlot.className = "csv-enemy-wr-slot";
+      li.appendChild(wrSlot);
+    }
 
     const icon = document.createElement("div");
     icon.className = "csv-team-cell-icon";
@@ -634,31 +645,10 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
           .join("");
         li.appendChild(tagsEl);
       }
-      // Confidence pill: 100% when locked, 85% when LCU assigned a
-      // position but the pick isn't committed, 50% otherwise.
-      const confPct = (p && p.completed) ? 100 : (pos ? 85 : 50);
-      const confEl = document.createElement("span");
-      confEl.className = "csv-team-cell-confidence";
-      if (confPct >= 95) confEl.classList.add("is-high");
-      else if (confPct >= 80) confEl.classList.add("is-med");
-      else confEl.classList.add("is-low");
-      confEl.textContent = `${confPct}%`;
-      confEl.title = (confPct >= 95) ? "champion locked - role confirmed"
-                    : (confPct >= 80) ? "LCU role guess - pick not yet committed"
-                    : "no role assigned yet";
-      li.appendChild(confEl);
-
-      // Personal-vs threat tag (UX win): inline pill showing operator's
-      // lifetime record vs this enemy champion, color-coded by win-rate
-      // band. Fetches in parallel per cell and slots the result into the
-      // already-rendered placeholder via _csvThreatTagApply.
-      const threatEl = document.createElement("span");
-      threatEl.className = "csv-team-cell-threat csv-team-cell-threat--unknown";
-      threatEl.textContent = "...";
-      threatEl.title = "personal record vs " + champNm + " - loading";
-      threatEl.dataset.champId = String(cid);
-      li.appendChild(threatEl);
-      _csvThreatTagFetch(cid, champNm, threatEl);
+      // Operator 2026-05-31: confidence pill removed (#1); the per-enemy
+      // win-rate is the leading .csv-enemy-wr-slot (via
+      // _csvInjectEnemyWinRates, #2), so the inline threat pill is dropped
+      // too. Tags above stay.
     }
     list.appendChild(li);
   });
@@ -759,7 +749,7 @@ export function renderChampSelectView(lcu) {
     _csvRenderEnemiesArena(cs, timerEndMs);
   } else {
     const enemyOpts = (mode === "sr")
-      ? { cellCount: 5, showGuess: true,  allowRolePip: true }
+      ? { cellCount: 5, showGuess: true,  allowRolePip: true, withWinRate: true }
       : { cellCount: 5, showGuess: false, allowRolePip: false };
     _csvRenderTeam("csv-enemies-list", cs.their_team, myCid, timerEndMs, showPickOrder, enemyOpts);
   }
@@ -924,7 +914,9 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     ${extraHtml}
     ${summSpellHtml}
     ${buildsHtml}
-    ${boHtml}`;
+    ${boHtml}
+    <div class="csv-sugg-section cc-blended-ehp-threat" id="csv-sugg-cc-blended-ehp-threat" data-cc-tier="warn" hidden></div>
+    <div class="csv-sugg-section cc-conditional-pressure" id="csv-sugg-cc-conditional-pressure" data-cc-cond-tier="warn" hidden></div>`;
   // Wire click handlers on the summoner-spell strip (idempotent - body
   // innerHTML rebuild on each render attaches fresh handlers). Click N=1
   // fills the D slot, click N=2 fills the F slot, then wraps. Skips
@@ -1470,13 +1462,9 @@ document.addEventListener("rc:lol-descriptions-ready", () => {
 document.addEventListener("rc:champion-tags-ready", () => {
   _csvScheduleRender();
 });
-// 2026-05-17: re-render when the Build Order card's expander toggles.
-// build_order.js dispatches this on the collapsed<->full click; the card
-// HTML is rebuilt by renderChampSelectView so it needs a render pass to
-// reflect the new collapsed state (mirrors the cache-land re-renders).
-document.addEventListener("rc:build-order-toggle", () => {
-  _csvScheduleRender();
-});
+// Operator 2026-05-31 (part 2): the Build Order card no longer collapses
+// (always-on horizontal render), so the rc:build-order-toggle listener +
+// its dispatch in build_order.js were removed.
 // item 213 (2026-05-28): delegated handler for the DS-vs-enemy-comp
 // "save + push to client" button (rendered by build_order.js). Pushes
 // the finalized ordered build to the League client as an item set via
@@ -3141,6 +3129,35 @@ function _csvRenderPersonalRecordBlock(pr, selfCid) {
        + `<div class="csv-pr-title">YOUR RECORD</div>${inner}</div>`;
 }
 
+// Operator 2026-05-31 (part 4): inject the operator's lifetime win-rate
+// vs each enemy into the Enemies panel (left of the icon), replacing the
+// removed YOUR RECORD VS-chip row. Idempotent - clears prior fills first.
+// prData.vs_enemies = [{champId, wr_pct, games}].
+function _csvInjectEnemyWinRates(prData) {
+  const list = document.getElementById("csv-enemies-list");
+  if (!list) return;
+  list.querySelectorAll(".csv-enemy-wr-slot").forEach((el) => {
+    el.textContent = "";
+    el.className = "csv-enemy-wr-slot";
+    el.removeAttribute("title");
+  });
+  const vs = (prData && Array.isArray(prData.vs_enemies)) ? prData.vs_enemies : [];
+  if (!vs.length) return;
+  const byId = Object.create(null);
+  vs.forEach((x) => { if (x && x.champId) byId[x.champId | 0] = x; });
+  list.querySelectorAll("li.csv-team-cell[data-cid]").forEach((li) => {
+    const cid = parseInt(li.dataset.cid, 10) | 0;
+    const rec = cid ? byId[cid] : null;
+    const slot = li.querySelector(".csv-enemy-wr-slot");
+    if (!rec || !slot) return;
+    const tint = (rec.wr_pct != null) ? _csvPrTint(rec.wr_pct) : "is-new";
+    slot.textContent = (rec.wr_pct != null) ? rec.wr_pct + "%" : "--";
+    slot.className = "csv-enemy-wr-slot " + tint;
+    slot.title = `your record vs ${_csChampName(cid) || cid}: `
+               + `${rec.wr_pct}% (${rec.games || 0}g)`;
+  });
+}
+
 function _csvMergePickBanData(role, liveRecs, placeholder) {
   // Layer live performance over placeholder mastery/meta. When the
   // live performance row is missing (operator has no SR history at
@@ -3333,16 +3350,13 @@ function _csvRenderPickBan(cs, myCid) {
     role, selfCid, allyIds, enemyIds,
     () => _csvRenderPickBan(cs, myCid),
   );
-  const prHtml = _csvRenderPersonalRecordBlock(prData, selfCid);
-  // Operator (2026-05-23): YOUR RECORD headline relocated to the
-  // Assessment panel, above the CC threat balance cards. Write it into
-  // the new #csv-sugg-your-record container (web/index.html) instead
-  // of prepending it to the Pick & Ban panel's html.
+  // Operator 2026-05-31 (part 4): YOUR RECORD block removed. The per-
+  // enemy lifetime win-rate now renders in the Enemies panel (left of
+  // each icon) via _csvInjectEnemyWinRates; the prData fetch above still
+  // drives it. Hide the now-removed Assessment container if still present.
   const yrTarget = document.getElementById("csv-sugg-your-record");
-  if (yrTarget) {
-    yrTarget.innerHTML = prHtml
-      || '<div class="csv-sugg-empty">no champion picked yet</div>';
-  }
+  if (yrTarget) { yrTarget.innerHTML = ""; yrTarget.hidden = true; }
+  _csvInjectEnemyWinRates(prData);
 
   // -- Item 168 (2026-05-24): 3-stacked-sub-panel layout ------------
   // Top    : 4 picks (3 role-matching from comfort + 1 last_in_queue).
@@ -3517,13 +3531,15 @@ function _csvRenderPickBan(cs, myCid) {
               + (isSel ? " is-selected" : "");
     const dataAttr = isClickable
       ? ` data-ban-id="${b.champId}" data-ban-name="${b.name}"` : "";
-    const tag = b.sourceKey === "struggle" ? "STRUGGLE" : "CTR";
+    // Operator 2026-05-31 (#6): champion name centered (no CTR/COUNTER
+    // tag, no %); the struggle ban keeps a centered STRUGGLE label.
+    const struggleLabel = b.sourceKey === "struggle"
+      ? `<div class="csv-pb168-struggle">STRUGGLE</div>` : "";
     return `
-      <div class="${cls}"${dataAttr} title="${b.name} - ${b.pct}% threat">
-        <span class="csv-pb168-tag">${tag}</span>
+      <div class="${cls}"${dataAttr} title="${b.name}">
+        ${struggleLabel}
         <div class="csv-pb168-icon">${champImg(b.champId)}</div>
         <div class="csv-pb168-name">${b.name}</div>
-        <span class="csv-pb168-pct">${b.pct}%</span>
       </div>`;
   }).join("");
   // Sub-panel 3: item 213 (2026-05-28) - ally-picks-by-role panel.

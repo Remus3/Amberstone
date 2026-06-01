@@ -25,11 +25,10 @@
 // renders `unique_passive_safe` + any per-slot excluded_family signal.
 
 const BO_PLAN_LEVEL = 13; // full-build planning level (matches the plan's curl example)
-const BO_SLOTS = 6;
+const BO_SLOTS = 7; // operator 2026-05-31 (#7): lane quest reward funds a 7th item
 
 const _BO_CACHE = Object.create(null); // key -> route JSON
 const _BO_INFLIGHT = Object.create(null); // key -> true while fetching
-let _boExpanded = false; // session-ephemeral expander state (progressive disclosure)
 
 // item 213 (2026-05-28): the cache key now includes a sorted enemy-comp
 // signature so the DS-vs-enemy-comp build LIVE-UPDATES when an enemy
@@ -138,57 +137,20 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
   if (ctx.target_armor != null) ctxBits.push(`${Math.round(ctx.target_armor)} armor`);
   if (ctx.target_mr != null) ctxBits.push(`${Math.round(ctx.target_mr)} MR`);
   if (ctx.target_max_hp != null) ctxBits.push(`${Math.round(ctx.target_max_hp)} HP`);
-  const ctxLine = ctxBits.length ? `vs ${ctxBits.join(" · ")}` : "";
+  const ctxLine = ctxBits.length ? `vs ${ctxBits.join(", ")}` : "";
 
-  const safeChip = data.unique_passive_safe
-    ? `<span class="bo-safe" title="no two items share a unique passive - engine-enforced">no-double ✓</span>`
-    : `<span class="bo-unsafe" title="unique-passive collision - engine guard did not hold">⚠ double</span>`;
-
-  // Full numbered order + per-slot math - also the collapsed-line hover
-  // (so the dense default still gives the operator the deeper math).
-  const fullTip =
-    order
-      .map(
-        (o) =>
-          `${o.slot}. ${_esc(o.item_name)} - ${_esc(_deltaTxt(o))}, ${o.gold || 0}g` +
-          (o.excluded_family ? ` · locks ${_esc(o.excluded_family)}` : ""),
-      )
-      .join("<br>") +
-    (ctxLine ? `<br>${_esc(ctxLine)}` : "");
-
-  // Collapsed (default) - ONE dense line: tag · ordered-name chain
-  // (ellipsis-clips, full order in the tooltip) · no-double chip ·
-  // expander. This is the density-optimal default for the tight My Pick
-  // card (trim content, not font - feedback_font_size_viewing_distance).
-  if (!_boExpanded) {
-    const chain = order.map((o) => _esc(o.item_name)).join(" → ");
-    return `
-    <div class="bo-card" data-bo-state="ready" data-bo-collapsed="1">
-      <div class="bo-line">
-        <span class="bo-tag">DS vs Enemy Comp</span>
-        <span class="bo-chain" data-tt-html="${fullTip}">${chain}</span>
-        ${safeChip}
-        <button type="button" class="bo-expander" data-bo-toggle="1" title="show full ordered build">▾</button>
-      </div>
-    </div>`;
-  }
-
-  // Expanded - full numbered vertical list, readable fonts, per-slot
-  // delta + excluded-family signal + a deeper-math tooltip per slot.
+  // Operator 2026-05-31 (part 2): always-on HORIZONTAL ordered build -
+  // no collapse/expand. A wrapping row of compact item chips in buy
+  // order; the full per-slot math stays in each chip's hover tooltip.
   const rows = order
     .map((o) => {
       const dt = _deltaTxt(o);
-      const excl = o.excluded_family
-        ? `<div class="bo-excl">locks ${_esc(o.excluded_family)}` +
-          (o.excluded_example ? ` · ${_esc(o.excluded_example)} dropped` : "") +
-          `</div>`
-        : "";
       const tip =
         `Slot ${o.slot}: ${_esc(o.item_name)} - ${_esc(dt)}, ${o.gold || 0}g` +
         (ctxLine ? ` (${_esc(ctxLine)})` : "") +
-        (o.scorer ? ` · scorer ${_esc(o.scorer)}` : "") +
+        (o.scorer ? ` - scorer ${_esc(o.scorer)}` : "") +
         (o.excluded_family
-          ? ` · locks the ${_esc(o.excluded_family)} unique-passive family`
+          ? ` - locks the ${_esc(o.excluded_family)} unique-passive family`
           : "");
       return `
       <div class="bo-slot" data-tt-html="${tip}">
@@ -198,56 +160,21 @@ export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
              alt="">
         <span class="bo-name">${_esc(o.item_name)}</span>
         <span class="bo-delta">${_esc(dt)}</span>
-        ${excl}
       </div>`;
     })
     .join("");
 
-  // item 213 (2026-05-28): Save + Push control. Pushes the finalized
-  // ordered build to the League client as an item set (distinct
-  // set_uid RC-<champ>-dsenemycomp so it coexists with the build-chooser
-  // sets) via the existing apply_item_sets_batch LCU contract. The
-  // click is delegated in champ_select.js (it owns lcuCmd + reads the
-  // cached order via getCachedBuildOrder).
-  // Ordered item-id list in BUY order (the engine appends each pick
-  // sequentially so `order` is already purchase/timing order: boots +
-  // core early, situational later). Embedded on the button so the
-  // champ_select.js delegated handler pushes without a cache re-lookup.
-  const orderIds = order.map((o) => String(o.item_id)).filter(Boolean).join(",");
-  const pushBtn =
-    `<button type="button" class="bo-pushbtn" data-bo-push="1"`
-    + ` data-bo-champ="${_esc(champion)}" data-bo-mode="${_esc(dsMode)}"`
-    + ` data-bo-arch="${_esc(archetype || "")}"`
-    + ` data-bo-items="${_esc(orderIds)}"`
-    + ` title="save this ordered build + push it to the League client">`
-    + `save + push to client</button>`;
-
+  // Operator 2026-05-31 (#4): the no-double chip + the save+push button
+  // were removed from this card.
   return `
     <div class="bo-card" data-bo-state="ready">
       <div class="bo-line">
         <span class="bo-tag">DS vs Enemy Comp</span>
         ${ctxLine ? `<span class="bo-ctx">${_esc(ctxLine)}</span>` : ""}
-        ${safeChip}
-        <button type="button" class="bo-expander" data-bo-toggle="1" title="collapse">▴</button>
       </div>
       <div class="bo-slots">${rows}</div>
-      <div class="bo-actions">${pushBtn}</div>
     </div>`;
 }
-
-// One delegated click handler for the expander. The card HTML is
-// re-injected on every champ-select render, so a per-element listener
-// won't survive - delegate on document, wired once at module load (same
-// idiom as archetype_nudge_chip.js's X-button). champ_select.js listens
-// for the dispatched event and schedules a re-render.
-document.addEventListener("click", (ev) => {
-  const btn =
-    ev.target && ev.target.closest && ev.target.closest("[data-bo-toggle]");
-  if (!btn) return;
-  ev.stopPropagation();
-  _boExpanded = !_boExpanded;
-  document.dispatchEvent(new CustomEvent("rc:build-order-toggle"));
-});
 
 // ── (C) in-game #ds-pill glance ───────────────────────────────────────
 
@@ -300,5 +227,4 @@ export function buildOrderPill(stateObj) {
 export function _resetBuildOrder() {
   for (const k of Object.keys(_BO_CACHE)) delete _BO_CACHE[k];
   for (const k of Object.keys(_BO_INFLIGHT)) delete _BO_INFLIGHT[k];
-  _boExpanded = false;
 }

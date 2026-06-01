@@ -8,8 +8,10 @@ consumer of cc_blended_ehp into the Suggestions card of the champ-
 select view so a future refactor that drops one of the wires reverts
 the surface to invisible:
 
-  - web/index.html declares #csv-sugg-cc-blended-ehp-threat inside the
-    .csv-card-suggestions block.
+  - web/js/panels/champ_select.js renders #csv-sugg-cc-blended-ehp-threat
+    in the center My Pick card body, below the DS-vs-Enemy-Comp build
+    (operator 2026-05-31 #8; moved out of the Assessment card in
+    web/index.html).
   - web/js/panels/cc_blended_ehp_threat.js exports the API contract
     (fetchCcBlendedEhpThreat, getCachedCcBlendedEhpThreat,
     getCcBlendedEhpThreatCacheCount, renderCcBlendedEhpThreat,
@@ -49,40 +51,34 @@ def _read(p: Path) -> str:
 
 
 class ChipMountTests(unittest.TestCase):
+    # Operator 2026-05-31 (#8): the chip mount moved from web/index.html
+    # (Assessment card) into the champ_select.js My Pick card body render.
     @classmethod
     def setUpClass(cls) -> None:
-        cls.text = _read(INDEX_HTML)
+        cls.text = _read(CHAMP_SELECT_JS)
+        cls.html = _read(INDEX_HTML)
 
     def test_chip_mount_present(self) -> None:
         self.assertIn('id="csv-sugg-cc-blended-ehp-threat"', self.text)
         self.assertIn("cc-blended-ehp-threat", self.text)
 
+    def test_chip_removed_from_index_html(self) -> None:
+        self.assertNotIn('id="csv-sugg-cc-blended-ehp-threat"', self.html)
+
     def test_chip_hidden_by_default(self) -> None:
         idx = self.text.index('id="csv-sugg-cc-blended-ehp-threat"')
-        # The hidden attribute should appear on the same element.
         tail = self.text[idx:idx + 400]
         self.assertIn("hidden", tail)
 
     def test_chip_carries_initial_data_cc_tier(self) -> None:
-        # First-paint tier attribute = warn (neutral), so CSS picks up
-        # styles immediately even before the response lands.
         self.assertIn('data-cc-tier="warn"', self.text)
 
-    def test_chip_inside_suggestions_card(self) -> None:
-        sugg_open = self.text.index("csv-card-suggestions")
+    def test_chip_below_build_order(self) -> None:
+        # New location: the My Pick body, after the DS-vs-Enemy-Comp
+        # build (boHtml).
+        bo_at = self.text.index("${boHtml}")
         chip_at = self.text.index('id="csv-sugg-cc-blended-ehp-threat"')
-        pickorder_at = self.text.index('id="csv-sugg-pickorder"')
-        # Order: suggestions card open -> bans grid -> chip -> pickorder
-        self.assertLess(sugg_open, chip_at)
-        self.assertLess(chip_at, pickorder_at)
-
-    def test_chip_below_bans_grid(self) -> None:
-        # Chip lives BETWEEN the legacy bans grid and the pickorder
-        # block so the visual flow stays Suggestions -> bans -> threat
-        # balance -> pick-order tips.
-        bans_at = self.text.index('id="csv-sugg-bans-grid"')
-        chip_at = self.text.index('id="csv-sugg-cc-blended-ehp-threat"')
-        self.assertLess(bans_at, chip_at)
+        self.assertLess(bo_at, chip_at)
 
 
 # ---------------------------------------------------------------------
