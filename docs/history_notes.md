@@ -33,6 +33,24 @@ NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` 
 
 ---
 
+# 2026-06-01 - item 254: DS GAP-2 LINEAR effects-text HEAL registry RE-OPEN (item-251 sibling) + 4 SEEDED, default-OFF byte-identical (ENGINE 1.85.0 -> 1.86.0; DS restarted 1.86.0; RC not restarted - DS engine + tests + Share + docs only)
+
+Operator "start the next item" -> item 253 NEXT(4) = Mordekaiser R linear target-max-HP heal (item-251 linear-registry re-open), the cleanest headless-buildable carry (live-gated Phase-D flag-flips + conditional-gate Brand P/Ekko W + cross-spell AurelionSol W + UI carries are NOT headless).
+
+FINDING (verified vs live 16.11.1 before building): item 253 logged Mordekaiser R "heal 10% of their maximum health" as a clean target-max-HP linear heal the original item-251 84-candidate scan MISSED. Fresh exhaustive re-scan (all 171 champs, NO heal block + heal/restore verb + self/target HP quantity) recovered 4 misses. NO SCHEMA CHANGE - all 4 use the EXISTING item-251 LINEAR machinery (a linear entry just carries no bilinear_terms / no per_charge).
+
+SEEDED (4, all default-OFF): Mordekaiser R Realm of Death (10% TARGET max HP on soul-consume, FLAT all 3 R ranks; target-relative -> 0 at rest, surfaces under resolve_target_relative + target_max_hp; per_cast; damage_blocks=[] so the no-existing-heal-block gate admits it) / Illaoi P Prophet of an Elder God (5% caster MISSING HP per Tentacle hit; 0 at rest, surfaces under caster_missing_hp_pct; per-Tentacle lower bound) / Zac P Cell Division Goo (4% : 8% by level caster MAX HP per chunk; resolves at default like Maokai/Swain; resurrection 50% revive OMITTED) / Dr. Mundo P Goes Where He Pleases (4% caster MAX HP on canister consume; resolves at default like Gragas; per-5s max-HP REGEN tick OMITTED - "regenerates" not "heal").
+
+EXHAUSTED: re-scan REJECTS - %-of-HP DAMAGE lines (Aatrox/Brand/Gwen/Sejuani/Smolder, spurious heal-verb match); vamp class (Aatrox/Gwen/Warwick); Darius Q bespoke; REVIVE/grey-health (Pyke P / Sion P / TahmKench E; Warwick W is a sub-50%-HP HUNT trigger not a heal); PET heal (Zyra R restores her PLANTS' HP); REMOUNT (Kled P / Skaarl restores 40-70% of the MOUNT's max HP on remount). The LINEAR effects-text heal class is now genuinely EXHAUSTED at 16.11.1.
+
++20 tests test_passive_heal_overrides_linear_reopen_item254.py (24 cases). ENGINE 1.85.0 -> 1.86.0 + 39 test-pin syncs + CHANGELOG prepend + Share re-sync (--check clean, 256 files engine 1.86.0; gist auto-pushes) + DS restart (PowerShell taskkill /F /PID 14444 + schtasks /Run /TN RC-DaemonSlayer). DS suite 5834 -> 5858 (+24, 0 failed); phase8 70/70 post-restart; ruff clean; added-diff 0 non-ASCII. CI run 26778396329 green. LIVE in-process: Mordekaiser R 0(rest)/250.0(tmh=2500); Illaoi P 0(rest)/41.628(cmh=0.5 L11); Zac P 27.4(L1)->203.04(L18) at default; Dr. Mundo P 61.753(L11)->95.64(L18) at default; all 4 EMPTY at apply_passive_heal=False default (byte-identical); Trundle P item-251 regression 99.412 intact. Commits 4da5f9f (feat) + ab4272d (ledger), pushed ee91da1..ab4272d.
+
+Don't-redo: (a) all 4 ride EXISTING item-251 linear machinery (no schema change). (b) Mordekaiser R is FLAT 10% (NOT rank-scaled); target-relative so 0 at resolve-off. (c) Illaoi P is caster-MISSING-HP (0 at rest); Zac P + DrMundo P are caster-MAX-HP (resolve at default). (d) OMITTED on purpose: Zac P resurrection revive, DrMundo P per-5s regen tick. (e) LINEAR heal class EXHAUSTED - do NOT re-pitch the documented REJECTS as linear heals. (f) DS restart PowerShell taskkill + schtasks (NEVER Stop-Process).
+
+NEXT (gap-plan, operator-gated / live = Phase D): (1) Phase D live flag-flips (apply_passive_heal now 24 forms). (2) the 5 C2 AA-empower amortized values. (3) STAGED damage lift: Brand P + Ekko W conditional-gate (Phase-D-deferred). (4) AurelionSol W cross-spell seam (own session). (5) item-240 UI part-3 + #7/#8 sign-off + item-243 NEXT(2) ranked-SR UI watch. The clean headless effects-text HEAL lifts (bilinear 250 / linear 251 + re-open 254 / per-charge 252 / AS-aware 253) are ALL EXHAUSTED - remaining DS gap-plan = conditional-gate DAMAGE + cross-spell AurelionSol W + live Phase-D, none headless-clean.
+
+---
+
 # 2026-06-01 - item 253: DS GAP-2 AS-AWARE effects-text HEAL seam + Viego P bonus-AS term (the LAST named clean headless heal lift), default-OFF byte-identical (ENGINE 1.84.0 -> 1.85.0; DS restarted 1.85.0; RC not restarted - DS engine + tests + Share + docs only)
 
 Operator "start the next DS schema lift and exhaust it then /done". The next STAGED heal lift named in item 252 NEXT(3) = the AS-aware heal seam (Viego's omitted +5%/100% bonus-AS term; "add bonus_as to the bilinear_ctx").
