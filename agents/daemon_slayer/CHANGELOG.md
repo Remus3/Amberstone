@@ -1331,6 +1331,29 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.84.0 (item 252 / gap-plan - GAP-2 PER-CHARGE effects-text HEAL seam + 1
+SEEDED, default-OFF byte-identical. The heal sibling of the item-249 per-stack
+DAMAGE fold: PassiveHealEntry gains per_charge (a tuple of (value, unit) linear
+terms read "per charge", same shape + unit maps as linear_terms) + assumed_
+charges (the operator-tunable steady-state stock); to_heal_block FOLDS each
+per_charge term * assumed_charges into raw_modifiers at BUILD time, so the
+existing ability_hps._eval_heal_shield_block needs ZERO new math (the per-charge
+contribution collapses into ordinary raw_modifiers once the count is fixed - no
+abilities.py / ability_hps.py change). SEEDED 1 (the sole per-charge heal in the
+EXHAUSTED scan): Taric Q Starlight's Touch - 25 (+ 15% AP) (+ 1% of caster max
+HP) per charge; the 3 per-charge terms fold * assumed_charges 3.0 (typical mid-
+fight stock; the per-charge COEFFICIENTS are exact, only the count is the
+assumption; true cap = Q rank, max 5 at rank 5). NO existing heal block on Taric
+Q (only a "Maximum Charges" attribute_kind="other" block), so the seam's no-
+existing-heal-block gate admits it. All terms flat / caster-stat -> resolve NON-
+zero at the default resolve_target_relative=False (no HP assumption needed, like
+the item-251 linear caster-stat seeds); the apply_passive_heal=False DEFAULT
+(load_default) stays byte-identical. EXHAUSTED: Taric Q is the only per-charge
+HEAL (the only other charge mechanic, Zeri P, is a DAMAGE charge); Taric Q moved
+out of the in-module BESPOKE exclusion. +18 tests test_passive_heal_overrides_
+per_charge_item252.py. DS suite 5800 -> 5818. DS :8893 restarted -> 1.84.0; RC
+NOT restarted - DS engine + tests + Share + docs only.)
+
 1.83.0 (item 251 / gap-plan - GAP-2 LINEAR effects-text-only HEAL registry +
 16 SEEDED, default-OFF byte-identical. The sibling slice to item 250's 3
 BILINEAR heals: the same _passive_heal_overrides module + apply_passive_heal
