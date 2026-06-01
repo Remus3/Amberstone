@@ -224,7 +224,7 @@ def _resolve_extra_units(
 
 def _eval_heal_shield_block(
     block, rank: int, ctx, extra_units: Optional[dict] = None,
-    bilinear_ctx: Optional[dict] = None,
+    bilinear_ctx: Optional[dict] = None, level: Optional[int] = None,
 ) -> tuple[float, bool]:
     """Evaluate one heal/shield block's raw_modifiers at ``rank``.
 
@@ -232,6 +232,14 @@ def _eval_heal_shield_block(
     added directly; a recognized percent unit multiplies the matching
     ``ctx`` stat / 100. An unrecognized unit contributes 0 and flips the
     unresolved flag so callers can note the value is a lower bound.
+
+    ``level`` (GAP-2 LINEAR effects-text HEAL registry, opt-in) is the champion
+    level. It is consulted ONLY for a synthetic heal block flagged
+    ``level_scaled=True`` (a SPELL-slot effects-text heal whose per-rank
+    ``values`` list is actually a per-LEVEL tuple - Rakan Q / Talon Q): the
+    value is read at ``level-1`` instead of the spell rank. Every snapshot
+    block + every P-slot synthetic block leaves ``level_scaled`` False, so the
+    index is ``rank`` and the call is byte-identical when ``level`` is None.
 
     ``extra_units`` (v2, opt-in) is a ``{lowercased_unit: stat_value}`` map
     of target-relative / caster-missing-HP units to resolve. When ``None``
@@ -250,6 +258,11 @@ def _eval_heal_shield_block(
     """
     total = 0.0
     unresolved = False
+    eff_rank = (
+        (level - 1)
+        if (level is not None and getattr(block, "level_scaled", False))
+        else rank
+    )
     for mod in block.raw_modifiers:
         if not isinstance(mod, dict):
             continue
@@ -257,7 +270,7 @@ def _eval_heal_shield_block(
         units = mod.get("units") or []
         unit_raw = next((u for u in units if u), "")
         unit = str(unit_raw).strip().lower()
-        val = _value_at_rank(values, rank)
+        val = _value_at_rank(values, eff_rank)
         if unit == "":
             total += val
             continue
@@ -401,6 +414,7 @@ def _select_kind_blocks(
     form, kind: str, rank: int, ctx, strategy: str,
     extra_units: Optional[dict] = None,
     bilinear_ctx: Optional[dict] = None,
+    level: Optional[int] = None,
 ) -> tuple[float, bool]:
     """Sum the evaluated heal- or shield-kind blocks per strategy.
 
@@ -421,13 +435,13 @@ def _select_kind_blocks(
         return 0.0, False
     if strategy == "first":
         return _eval_heal_shield_block(
-            blocks[0], rank, ctx, extra_units, bilinear_ctx,
+            blocks[0], rank, ctx, extra_units, bilinear_ctx, level,
         )
     total = 0.0
     unresolved = False
     for b in blocks:
         amt, unres = _eval_heal_shield_block(
-            b, rank, ctx, extra_units, bilinear_ctx,
+            b, rank, ctx, extra_units, bilinear_ctx, level,
         )
         total += amt
         unresolved = unresolved or unres
@@ -612,9 +626,11 @@ def compute_ability_hps(
 
         heal_per_cast, heal_unres = _select_kind_blocks(
             form, "heal", rank, ctx, block_strategy, extra_units, bilinear_ctx,
+            level,
         )
         shield_per_cast, shield_unres = _select_kind_blocks(
             form, "shield", rank, ctx, block_strategy, extra_units, bilinear_ctx,
+            level,
         )
         if heal_per_cast <= 0.0 and shield_per_cast <= 0.0:
             continue
