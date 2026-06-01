@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-01 - lobby vision-token fix + Anthropic spend-gate cutoff w/ Settings panel (item 242; commit 5901449; pushed 642919b..5901449; CI green run 26733510397; non-frozen; no ENGINE bump; RC restarted pid 6176 + vision-server + LCU agent restarted)
+
+Operator: "I entered a lobby but the UI did not update" -> then "disable the calls that use Anthropic API credits."
+
+LOBBY FIX (root cause): relocated `RC-LCUAgent` (`tools/gamepc_lcu_agent.py`, item-215 1-PC move) auth'd `/upload-lcu` with the stale hardcoded token `8e8f131e...` (env unset + tools/vision_token.txt absent) while the server expects `c3c5e23f...` from `config/vision_token.txt`. Every push 401'd silently (pythonw, no console) -> relay cached no LCU -> dashboard `lcu_summary()` {} -> lobby never rendered. Fix: `_resolve_auth_token()` now reads canonical `config/vision_token.txt` first. Restarted agent (pid 11900). Verified end-to-end: `/latest-lcu` 200 + `/api/state` mode_key=aram phase=Lobby queue 2400. Also restores rune/item/summoner LCU pushes + team-context (all token-gated).
+
+SPEND CUTOFF (feature): 7 toggleable gates (sr/aram/arena/brawl/vision/champ_select/tft) in `core.cost_tracker` (`gate_disabled` + GATE_META + purpose->gate map). Enforced at EVERY live credit path: text coaches (existing), `_base_coach._vision_loop`, `vision_server.handle_vision` (belt-and-suspenders, separate proc), champ-select analyzers (champ_select_coach/aram_team_analyzer/experimental_builder), TFT engines (coach/pbe/live x2). Persistent in `config/coach_settings.json disabled_coaches` (re-read live, crosses processes). Per-match cost: `match_db.save_match` -> `note_match_boundary()` diffs shared daily-ledger by_purpose -> per-gate USD+tokens, kept to last 2 matches (pruned), `recent_match_avg()`. Settings dev-mode card (`set-dev-mode` reveals rows + cost) via new GET `/api/spend/gates`. ALL 7 set disabled now (spend off). +22 tests (tests/test_spend_gates_cutoff.py). Live-proven: `POST :8889/vision -> vision_disabled`.
+
+Don't-redo: vision-token canonical source = `config/vision_token.txt` (read by core.vision_token); the agent's old `tools/vision_token.txt` + hardcoded fallback are legacy - never reintroduce a token hardcode. Spend gates DEFAULT empty in code (byte-identical when no local config) - the cutoff is a LOCAL runtime choice (coach_settings.json is gitignored), do NOT ship disabled-by-default. `allow_vision()` is dead code (0 callers). Pre-existing (NOT mine): `test_smart_quote_hygiene` flags upstream em-dashes in Share/src DS data snapshot - not in CI path, CI green. NEXT: re-enable gates via Settings (uncheck = ON) when spend is wanted; live-capture the Settings card render at next session (couldn't headlessly - Game-PC capture gone post-1-PC).
+
+---
+
 # 2026-06-01 - DS gap-completion plan Phase A refactors (A1+A2) + Phase B cleanup + Share re-sync (item 241; commits 205a9b2 A1 / 5d24191 A2 / 8eb901a B / 3775c75 Share; no ENGINE bump - structural+docs only, 1.75.0 unchanged; no DS/RC restart)
 
 Worked `docs/DS_GAP_COMPLETION_PLAN.md` (the item-240 NEXT). Landed the 2 lower-risk refactors + all the cleanup + the Share re-sync. DEFERRED A3 (cc_conditional->JSON; de-risked, approach below) + Phase C/D (features + live flag-flips) to the LIVE session, where the plan already frames them. DS suite 5663 green throughout.
@@ -36,17 +48,3 @@ Dont-redo: the gist clone at `.rc-share-gist` MUST persist (sync logs an error +
 Flags (operator sign-off, not blockers): #7 `BO_SLOTS=7` requests a 7th item but the engine returned 6 for the Jinx mock plan (live games fill more); #8 the CC cards sit in the packed My-Pick column so they scroll to reach (operator may prefer tightening other center content).
 
 NEXT: work `docs/DS_GAP_COMPLETION_PLAN.md` in a LIVE session + UI part-3 + the #7/#8 sign-off. Then operator sends the gist link to a peer maintainer.
-
----
-
-# 2026-05-31 - docs beautify: DAEMON_SLAYER + ARCHITECTURE changelogs reflowed into per-version lines + one-line-per-bump rule (commit 7fa3058; CI green run 26726300182; docs-only; no ENGINE bump; no DS/RC restart; non-frozen)
-
-Operator: the two DS docs had unreadable single physical lines (DAEMON_SLAYER.md line 5 = 24745 chars from ~38 ENGINE-bump appends; ARCHITECTURE.md line 161 = 8364 chars). Docs-only, no engine/test/data.
-
-Shipped (7fa3058): DAEMON_SLAYER.md line-5 megastring reflowed -> short status header + "## Engine substrate & registries" + "## Changelog" (one bullet per ENGINE version, newest-first: V2 substrate 1.64.0-1.74.0 then cc_conditional waves 0-23). VERBATIM reflow via deterministic slicing + content-token verifier: 0 tokens dropped, all 33 ENGINE versions + waves 0-23 preserved (also cleaned the pre-existing malformed bold on the fused wave 6/8 chunk). ARCHITECTURE.md line-161 condensed -> summary sentence + 4 structural bullets (scorers / override registries / cc_conditional ecosystem / CS picker UI) + see-DAEMON_SLAYER-changelog pointer (per-version narrative dropped, allowed). Added the one-line-per-bump rule to the new Changelog header + .claude/commands/done.md step 6b (gitignored = Legion-local).
-
-ALSO closes item 239 (shipped LAST session, /done was not finished): 89cd204 engine + 4bc484e Share + 7fd6d65 docs-sync; ENGINE 1.74.0->1.75.0 = phantom residual (DrMundo E + Twitch R) + opt-in Gap1 _ability_amp_overrides.py + opt-in Gap2 _passive_damage_overrides.py; DS suite 5663; DS :8893 already 1.75.0. CLAUDE.md item 239 + Share/ already synced last session.
-
-Dont-redo: the reflow is VERBATIM (verifier = 0 content loss) - do NOT re-reflow. Future ENGINE bumps PREPEND a new Changelog bullet, never extend a prior version's line (rule now in done.md 6b + the DAEMON_SLAYER Changelog header). Temp slicing scripts tools/_beautify_*.py deleted, never committed. tools/_c3.txt/_done_out.txt/_lessons.txt/_lp.txt/_probe.txt are PRE-EXISTING untracked junk (not this session).
-
-NEXT: nothing owed by the beautify. Item-239 NEXT carries unchanged (all operator-gated; Share/docs/04_GAPS_AND_ROADMAP.md + CLAUDE item 239): live-game flag-flip validation, Gap2 on_hit->AA cadence, 3 staged amps, AA-empower seam, exotic passives, refactor recs.

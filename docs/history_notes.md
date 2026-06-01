@@ -6,6 +6,20 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-05-31 - docs beautify: DAEMON_SLAYER + ARCHITECTURE changelogs reflowed into per-version lines + one-line-per-bump rule (commit 7fa3058; CI green run 26726300182; docs-only; no ENGINE bump; no DS/RC restart; non-frozen)
+
+Operator: the two DS docs had unreadable single physical lines (DAEMON_SLAYER.md line 5 = 24745 chars from ~38 ENGINE-bump appends; ARCHITECTURE.md line 161 = 8364 chars). Docs-only, no engine/test/data.
+
+Shipped (7fa3058): DAEMON_SLAYER.md line-5 megastring reflowed -> short status header + "## Engine substrate & registries" + "## Changelog" (one bullet per ENGINE version, newest-first: V2 substrate 1.64.0-1.74.0 then cc_conditional waves 0-23). VERBATIM reflow via deterministic slicing + content-token verifier: 0 tokens dropped, all 33 ENGINE versions + waves 0-23 preserved (also cleaned the pre-existing malformed bold on the fused wave 6/8 chunk). ARCHITECTURE.md line-161 condensed -> summary sentence + 4 structural bullets (scorers / override registries / cc_conditional ecosystem / CS picker UI) + see-DAEMON_SLAYER-changelog pointer (per-version narrative dropped, allowed). Added the one-line-per-bump rule to the new Changelog header + .claude/commands/done.md step 6b (gitignored = Legion-local).
+
+ALSO closes item 239 (shipped LAST session, /done was not finished): 89cd204 engine + 4bc484e Share + 7fd6d65 docs-sync; ENGINE 1.74.0->1.75.0 = phantom residual (DrMundo E + Twitch R) + opt-in Gap1 _ability_amp_overrides.py + opt-in Gap2 _passive_damage_overrides.py; DS suite 5663; DS :8893 already 1.75.0. CLAUDE.md item 239 + Share/ already synced last session.
+
+Dont-redo: the reflow is VERBATIM (verifier = 0 content loss) - do NOT re-reflow. Future ENGINE bumps PREPEND a new Changelog bullet, never extend a prior version's line (rule now in done.md 6b + the DAEMON_SLAYER Changelog header). Temp slicing scripts tools/_beautify_*.py deleted, never committed. tools/_c3.txt/_done_out.txt/_lessons.txt/_lp.txt/_probe.txt are PRE-EXISTING untracked junk (not this session).
+
+NEXT: nothing owed by the beautify. Item-239 NEXT carries unchanged (all operator-gated; Share/docs/04_GAPS_AND_ROADMAP.md + CLAUDE item 239): live-game flag-flip validation, Gap2 on_hit->AA cadence, 3 staged amps, AA-empower seam, exotic passives, refactor recs.
+
+---
+
 # 2026-05-31 - insights pass 2: built the horizon items the pass-1 entry deferred (commit e151e95; CI green; no ENGINE bump; no DS/RC restart; non-frozen)
 
 Operator ran /insights then "apply ALL of features-to-try + on-the-horizon; fold CLAUDE.md additions in; explain why already-present skills get re-suggested." This closes the pass-1 NEXT (self-healing checkpoint+resume + verifier gate were explicitly NOT built last session).
