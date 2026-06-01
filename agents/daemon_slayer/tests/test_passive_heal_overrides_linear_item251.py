@@ -70,9 +70,10 @@ class RegistryShapeTests(unittest.TestCase):
             self.assertIn(key, _PASSIVE_HEAL_OVERRIDES, key)
             self.assertIsInstance(_PASSIVE_HEAL_OVERRIDES[key], PassiveHealEntry)
 
-    def test_registry_total_is_19(self) -> None:
-        # 3 item-250 bilinear + 16 item-251 linear.
-        self.assertEqual(len(_PASSIVE_HEAL_OVERRIDES), 19)
+    def test_registry_total_is_at_least_19(self) -> None:
+        # 3 item-250 bilinear + 16 item-251 linear (+ later per-charge seam
+        # entries from item 252+ may grow the registry; the 19 here are pinned).
+        self.assertGreaterEqual(len(_PASSIVE_HEAL_OVERRIDES), 19)
 
     def test_linear_seeds_have_no_bilinear_terms(self) -> None:
         for key in _LINEAR_SEEDS:
