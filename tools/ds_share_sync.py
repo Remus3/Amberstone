@@ -136,6 +136,12 @@ def _build_expected() -> dict[str, bytes]:
         if p.is_dir() or _is_pyc(p):
             continue
         rel = f"agents/daemon_slayer/{p.relative_to(eng).as_posix()}"
+        # The live engine CHANGELOG.md is the repo-internal release history
+        # relocated out of __init__.py (item 241). The Share package carries its
+        # own authored Share/CHANGELOG.md and a stubbed __init__, so the engine
+        # changelog is intentionally not mirrored.
+        if p.name == "CHANGELOG.md" and p.parent == eng:
+            continue
         if p.name == "__init__.py" and p.parent == eng:
             out[rel] = _CLEAN_INIT.format(version=version).encode("utf-8")
         elif p.suffix == ".py":
