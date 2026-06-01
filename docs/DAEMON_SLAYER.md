@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.76.0 - 5670 tests - patch 16.11.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.77.0 - 5689 tests - patch 16.11.1.
 
 ## Engine substrate & registries
 
@@ -15,6 +15,7 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 
 ## Changelog
 
+- **ENGINE 1.77.0 (item 246 / gap-plan Phase C1): staged-amp block-index routing for Hwei Q f2, gated under `apply_ability_amps` (default byte-identical). The 2 STAGED `damage_amp_self` candidates whose "Maximum ..." block already models the charged/isolated ceiling are reconciled by ROUTING the block-index (never an amp - that would double-count): (a) Sion Q was already resolved pre-seam by `champion_block_index.json {Q:2}` (the s191 routing selects "Maximum Physical Damage" by default), STAGED entry removed, flag on/off byte-identical; (b) Hwei Q f2 Severing Bolt now wired via NEW `_STAGED_AMP_BLOCK_ROUTES` -> under the flag routes to damage-block 1 "Maximum Damage" (isolated/immobilized + max-missing-HP ceiling, which Meraki pre-bakes flat == block0 * "Maximum Damage Increase" %, so NO separate missing-HP coefficient needed - the route IS the ceiling). `compute_ability_dps` consults `_staged_amp_block_route_for` ONLY when `apply_ability_amps=True`, precedence over `block_index_overrides` for that (champ,key,form). AurelionSol W stays STAGED (cross-spell seam, deferred). Live :8893 proof: Hwei Q f2 raw 160 (off) -> 560 (on). +10 tests `test_staged_amp_block_route_item246.py`.**
 - **ENGINE 1.76.0 (item 243): non-coachable joke/anvil item deny-set in the rank pool. `rank.py` `_NON_COACHABLE_ITEM_IDS = {994403 Golden Spatula, 663064 Veigar's Talisman}` skipped unconditionally in `_filter_candidates` (every mode + scorer). Root: DDragon mis-flags Golden Spatula `maps['12']=True` (ARAM) with a full all-stats block, so the DPS scorer ranked it #2 in a live ARAM Varus build; item 213 stripped it from curated `champion_loadouts.json` but the live rank pool reads the DDragon maps flag directly. +7 tests `test_non_coachable_deny_item243.py`; `test_rank_mode_legality_p1l23` expected-set now subtracts the deny-set.**
 
 > Changelog: newest first, ONE line per ENGINE bump - never append to a prior version's line.
