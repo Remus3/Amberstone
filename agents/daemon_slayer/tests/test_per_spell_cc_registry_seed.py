@@ -495,7 +495,7 @@ class RegistryAsciiContractTests(unittest.TestCase):
     def test_ability_dps_source_is_ascii_in_registry_section(self) -> None:
         # Spot-check the ability_dps.py source around the registry builder.
         src_path = (
-            pathlib.Path(__file__).resolve().parent.parent / "ability_dps.py"
+            pathlib.Path(__file__).resolve().parent.parent / "_per_spell_cc.py"
         )
         src = src_path.read_text(encoding="utf-8")
         # The seeded registry builder lives between these markers.
