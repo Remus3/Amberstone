@@ -437,6 +437,39 @@ function _ibOnRowClick(variant) {
     _ibPushItems(_ibBuilds.lastChamp, variant, _ibBuilds.lastMode);
   }
 }
+// Items 178/179 collapsed every SR/ARAM/Arena champion into a SINGLE
+// "<mode>-collapsed" variant carrying build_paths[] (one per archetype:
+// Crit/On-Hit/Lethality...). Flatten those into selectable rows keyed
+// "<variant>:<path>" - the same colon form champ_select.js uses and the
+// /api/loadout/apply resolver overlays. Falls back to the variant itself
+// for any legacy non-collapsed variant. Without this the chooser saw a
+// single variant and the < 2 guard hid it for every champion.
+function _ibFlattenRows(variants) {
+  const rows = [];
+  (variants || []).forEach((v) => {
+    const paths = Array.isArray(v.build_paths) ? v.build_paths : [];
+    if (paths.length) {
+      paths.forEach((p) => {
+        rows.push({
+          key:        v.key + ":" + p.key,
+          label:      p.label || p.key,
+          keystone:   p.keystone || v.keystone || "-",
+          item_ids:   p.item_ids || [],
+          item_names: p.items || p.item_names || [],
+        });
+      });
+    } else {
+      rows.push({
+        key:        v.key,
+        label:      v.label || v.key,
+        keystone:   v.keystone || "-",
+        item_ids:   v.item_ids || [],
+        item_names: v.item_names || [],
+      });
+    }
+  });
+  return rows;
+}
 function _ibFetchAndRender(champion, mode) {
   // item 186: dedupFetch coalesces with champ_select.js's parallel
   // POST for the same (champion, mode) tuple within the render-storm
@@ -449,21 +482,23 @@ function _ibFetchAndRender(champion, mode) {
     .then((r) => (r && r.ok ? r.json() : null))
     .then((data) => {
       const block = document.getElementById("ib-builds-block");
-      if (!data || !data.variants || data.variants.length < 2) {
-        // <2 variants is uninteresting (just "default + experimental")
-        // - hide rather than clutter the small panel.
+      const rows = _ibFlattenRows(data && data.variants);
+      if (rows.length < 2) {
+        // <2 selectable builds is uninteresting - hide rather than
+        // clutter the small panel.
         if (block) block.hidden = true;
         return;
       }
       if (block) block.hidden = false;
-      _ibBuilds.variants = data.variants;
+      _ibBuilds.variants = rows;
       // Default highlight: persisted pre-game choice if it's still a valid
-      // variant for this champion+mode; otherwise the resolver's default.
+      // row for this champion+mode; otherwise the primary path (rows[0],
+      // ordered primary-first by the collapse tool).
       const saved = _ibSavedChoice(champion);
-      const valid = data.variants.some((v) => v.key === saved);
-      _ibBuilds.chosen = (saved && valid) ? saved : (data.default || data.variants[0].key);
-      _ibRenderRows(data.variants, _ibBuilds.chosen);
-      _ibSetStatus("ready · " + data.variants.length + " builds", "");
+      const valid = rows.some((v) => v.key === saved);
+      _ibBuilds.chosen = (saved && valid) ? saved : rows[0].key;
+      _ibRenderRows(rows, _ibBuilds.chosen);
+      _ibSetStatus("ready - " + rows.length + " builds", "");
     })
     .catch(() => {});
 }
