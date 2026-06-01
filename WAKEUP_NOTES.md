@@ -4,6 +4,26 @@
 
 ---
 
+# 2026-06-01 - item 246: DS gap-plan Phase C1 - staged-amp block-index routing Hwei Q f2 + Sion Q resolved-pre-seam (commit 24ea243; pushed 83dcc92..24ea243; ENGINE 1.76.0 -> 1.77.0; DS restarted 1.77.0; RC not restarted - DS engine + tests + Share + docs only; default-OFF byte-identical)
+
+Operator: "start next item ... commit + push and /done and /clear then start /headless-upgrade". Next item = item-245 NEXT C1 from docs/DS_GAP_COMPLETION_PLAN.md.
+
+FINDING (verified vs live champion_abilities.json BEFORE building): the 2 _STAGED_AMP_CANDIDATES Sion Q + Hwei Q f2 each carry a "Maximum ..." damage block that ALREADY holds the charged/isolated ceiling -> an amp would DOUBLE-COUNT; grounded fix = block-index ROUTING (never an amp).
+(a) Sion Q ALREADY resolved BEFORE this seam: champion_block_index.json {Q:2} (s191 routing) selects "Maximum Physical Damage" by DEFAULT (char-probe: Sion Q raw 577.904 itemless L9 = Maximum block; flag on/off byte-identical). STAGED entry REMOVED; no gated route needed.
+(b) Hwei Q f2 Severing Bolt now wired via NEW _STAGED_AMP_BLOCK_ROUTES = {("Hwei","Q",2): 1} + _staged_amp_block_route_for() in _ability_amp_overrides.py; compute_ability_dps consults it ONLY when apply_ability_amps=True (precedence over block_index_overrides for that champ/key/form), routing to damage-block 1 "Maximum Damage". NO separate Gap-2 missing-HP coeff needed - Meraki PRE-BAKES "Maximum Damage" flat == block0 * "Maximum Damage Increase" % (verified rank1 120=60*2.0, rank5 560=160*3.5), so the routed block IS the ceiling. STAGED entry REMOVED.
+AurelionSol W stays STAGED (cross-spell seam, DEFERRED to own session per plan).
+
+CRITICAL: _select_blocks indexes DAMAGE-only filtered blocks, NOT the raw array. Hwei Q f2 raw [damage, modifier, damage] -> damage-index 0="Magic Damage"(160), 1="Maximum Damage"(560); route value = 1 (not raw-array 2).
+
++10 tests test_staged_amp_block_route_item246.py. ENGINE 1.76.0 -> 1.77.0 + 36 test-pin syncs (35 files). DS suite 5679 -> 5689 (+10, 0 failed). ruff clean. Share re-synced 246 files (engine 1.77.0, --check clean; gist auto-pushed 1.77.0/255 files). Living docs synced (DAEMON_SLAYER/ARCHITECTURE/BRIEF/CLAUDE).
+LIVE :8893 proof (DS restarted taskkill pid 16428 + schtasks -> /health 1.77.0/16.11.1/172/705): POST /ability-dps Hwei form_index={Q:2} apply_ability_amps=false -> Q raw 160.0; true -> 560.0.
+
+Don't-redo: (a) Sion Q DONE via default block_index {Q:2} - do NOT add a gated route/amp (double-count/re-rank). (b) _STAGED_AMP_BLOCK_ROUTES values are DAMAGE-block indices (post attribute_kind=="damage" filter); Hwei Q f2 = 1, not raw-array 2. (c) route GATED on apply_ability_amps (default False) = byte-identical; do NOT flip default-on without LIVE validation (Phase D). (d) no Gap-2 coeff needed (block pre-bakes the ceiling). (e) DS restart PowerShell taskkill /F /PID + schtasks RC-DaemonSlayer (NEVER Stop-Process; DS not supervisor-watched).
+
+NEXT (gap-plan headless spine; each = own ENGINE bump + DS restart, default-OFF byte-identical): C2 AA-empower seam in compute_dps (5 base="aa" entries Caitlyn W / Fiora E / Jayce W f1 / Sivir W / Nidalee Q, inert in ability_dps) / C3 author 8 exotic passives default-OFF in _passive_damage_overrides.py (Aatrox P / JarvanIV P / Zed P / Gwen P / Caitlyn P Headshot / Kaisa P / Ekko P / Gangplank P). Then Phase D (live flag-flips) + Phase E (Share re-sync) + item-240 UI part-3 + #7/#8 sign-off + item-243 NEXT(2) ranked-SR UI watch (live). AurelionSol W cross-spell seam DEFERRED (own session).
+
+---
+
 # 2026-06-01 - item 245: DS gap-plan A3 - externalize cc_conditional registry to JSON + live /rank?mode=aram echo (commit 81a8c97; pushed adcdbd9..81a8c97; CI green run 26738527735; NO ENGINE bump - structural 1.76.0 unchanged; DS restarted 1.76.0 to load A3 loaders + item-244 rank.py case-fix; RC not restarted - byte-identical)
 
 Operator: "start next items" (DS_GAP_COMPLETION_PLAN A3 = the item-241 "do FIRST next session"). Shipped A3 + confirmed item-244 NEXT(1).
@@ -40,6 +60,3 @@ Operator: make the Share-data smart-quote gate always-checked; "when can we turn
 LIVE-VERIFIED this session (operator played ARAM Mayhem Varus): live-metrics captured `sess_aram_Varus_1` 60 rows (game_start/L6/L11/10min); build chooser renders 3 builds; coach ARAM picks clean (no Golden Spatula). Don't-redo: relay token canonical = `config/vision_token.txt` (BOTH agents now); live-metrics config switch is the durable on-path; the build-chooser collapse fix is global not Varus.
 
 NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` hardening - the `/rank` endpoint with a LOWERCASE mode silently bypasses the map filter (MODE_MAP_ID keys uppercase -> `.get("aram")`=None -> admits ALL incl Arena 22-prefix mirror ids + maps-false "The Golden Spatula" 4403/224403); the COACH path is UNAFFECTED (uses uppercase `ARAM`, verified) so this is a robustness/Brawl-bug-class fix not a live bug. Then probe `/rank?mode=aram` to confirm it filters + clear this todo. (2) WATCH the ranked-SR champ-select UI + random in-game UI for inconsistencies/missing features (operator queuing ranked SR now - the live game will be in progress; tick the dashboard vs liveclient like this session caught the build-chooser + Golden Spatula). (3) item 240/241 SR champ-select part-3 + DS Phase C/D still owed.
-
----
-
