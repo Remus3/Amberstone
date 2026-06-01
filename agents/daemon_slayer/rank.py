@@ -123,6 +123,19 @@ OFFCLASS_MARKSMAN_ITEM_NAMES: frozenset[str] = frozenset({
 })
 
 
+# Non-coachable joke / meme / anvil items that DDragon mis-flags as buyable
+# on real maps (e.g. Golden Spatula carries maps['12']=True for ARAM with a
+# full all-stats block, so the DPS scorer ranked it #2 for a live ARAM Varus).
+# Item 213 stripped these from the curated champion_loadouts.json but the live
+# rank pool reads the DDragon maps flag directly, so they leaked back into
+# daemon_slayer_picks. Deny by stable item id (unconditional, every mode +
+# every scorer) - these are never a real recommendation in any mode.
+_NON_COACHABLE_ITEM_IDS: frozenset[str] = frozenset({
+    "994403",  # Golden Spatula - Arena anvil/joke (all 13 stats); maps['12']=True
+    "663064",  # Veigar's Talisman of Ascension - "no stats, 100% XP" meme item
+})
+
+
 def _is_ranged_marksman(champ_rec: dict) -> bool:
     """True iff this champion is a ranged marksman - the only class for
     which the off-class item deny-set fires through the DPS scorer.
@@ -343,6 +356,8 @@ def _filter_candidates(
     out: list[tuple[str, dict]] = []
     for item_id, rec in snapshot.items.items():
         if item_id in current_ids:
+            continue
+        if item_id in _NON_COACHABLE_ITEM_IDS:
             continue
         if only_ids is not None and item_id not in only_ids:
             continue
