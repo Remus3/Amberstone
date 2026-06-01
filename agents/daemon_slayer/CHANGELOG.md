@@ -1331,6 +1331,18 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.76.0 (item 243 - non-coachable joke/anvil item deny-set in the rank pool.
+rank.py _NON_COACHABLE_ITEM_IDS = {994403 Golden Spatula, 663064 Veigar's
+Talisman of Ascension} skipped unconditionally in _filter_candidates, so they
+are excluded from every mode + every scorer's candidate pool. Root cause:
+DDragon mis-flags Golden Spatula maps['12']=True (ARAM) with a full all-stats
+block, so the DPS scorer ranked it #2 in a live ARAM Varus build; item 213
+stripped it from the curated champion_loadouts.json but the live rank pool
+reads the DDragon maps flag directly. +7 tests test_non_coachable_deny_item243;
+test_rank_mode_legality_p1l23's source-derived expected set now subtracts the
+deny-set. Default behaviour unchanged for every build that does not contain
+those two ids.)
+
 1.75.0 (GAP findings - 3 opt-in / correction engine extensions; default path
 byte-identical except the (a) correction):
 (a) phantom-damage residual: _ability_overrides.NON_DAMAGE_BLOCKS +2 entries
