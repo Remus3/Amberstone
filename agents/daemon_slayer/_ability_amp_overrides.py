@@ -44,10 +44,12 @@ amp would double-model it - route the block-index instead, never add an amp):
   ALREADY in the block, so NO separate Gap-2 missing-HP coefficient is required;
   the route IS the ceiling. Its STAGED entry was removed.
 
-The remaining STAGED entry (AurelionSol W) needs a cross-spell / self-state seam
-the per-form key cannot express (the amp targets the Breath-of-Light Q beam
-while the W flight buff is active; W f0 has no damage block). It is registered
-for the handoff record but never consumed (DEFERRED to its own session).
+C2x (item 257) RESOLVED the last STAGED entry (AurelionSol W) via the cross-spell
+self-state seam below (``_CROSS_SPELL_AMP_OVERRIDES`` + ``CrossSpellAmpEntry``).
+The amp targets the Breath-of-Light Q beam while the W flight buff is active;
+W f0 has no damage block, so the amp is keyed to the TARGET Q and sourced from
+the W rank + W-flight buff state. It is GATED on ``apply_ability_amps`` (default
+byte-identical). ``_STAGED_AMP_CANDIDATES`` is now empty.
 
 Two amp bases:
 
@@ -84,15 +86,19 @@ from dataclasses import dataclass
 _COND_ISOLATION = "isolation"          # no cc_conditional COND_* tag; ~0.5 midpoint
 _COND_CHANNEL = "channel"              # == cc_conditional.COND_CHANNEL_COMPLETION
 _COND_FRENZY_STATE = "frenzy_state"    # == cc_conditional.COND_FRENZY_STATE
+_COND_W_FLIGHT = "w_flight"            # self-state buff window (AurelionSol Astral Flight active)
 
 # Condition -> probability midpoint. Mirrors cc_conditional values:
 #   channel == COND_CHANNEL_COMPLETION (0.5)
 #   frenzy_state == COND_FRENZY_STATE (0.4)
 #   isolation has no COND_* tag - takes the shared ~0.5 single-condition midpoint.
+#   w_flight has no COND_* tag - a short self-state dash/flight window; takes the
+#     0.4 midpoint (the magnitude the AurelionSol W staged entry always documented).
 _DEFAULT_AMP_PROBABILITY: dict[str, float] = {
     _COND_ISOLATION: 0.5,
     _COND_CHANNEL: 0.5,
     _COND_FRENZY_STATE: 0.4,
+    _COND_W_FLIGHT: 0.4,
 }
 
 
@@ -109,6 +115,34 @@ class AmpEntry:
 
     amp_per_rank: tuple[float, ...]
     base: str
+    condition: str = ""
+    always_on: bool = False
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class CrossSpellAmpEntry:
+    """A self-state amp where one spell's RANK + active buff scale a DIFFERENT spell.
+
+    The single staged ``damage_amp_self`` block that the per-form ``AmpEntry``
+    key cannot express: the amp magnitude lives on a SOURCE spell (its modifier
+    block + rank) but it multiplies a TARGET spell's damage, gated on the source
+    spell's self-state buff being active. AurelionSol W (Astral Flight) carries a
+    "Breath of Light Flat Damage Modifier" [108..112]% that amplifies the Q beam
+    while W flight is active; W f0 itself has no damage block, so the amp cannot
+    be keyed to W (item 239 STAGED it for this exact reason).
+
+    Keyed by the TARGET spell ``(cid, target_key, target_form_index)``. The
+    magnitude is indexed by the SOURCE spell's 0-based rank (resolved at the
+    current champion level), and gated on ``condition`` (a self-state buff
+    window) via the same ``_DEFAULT_AMP_PROBABILITY`` midpoint machinery as
+    ``AmpEntry``. ``always_on`` / ``condition`` / ``amp_per_rank`` are read by
+    the shared ``_amp_multiplier``; ``source_key`` is read by the consumer
+    (``ability_dps``) to resolve the source rank via ``rank_at_level``.
+    """
+
+    source_key: str
+    amp_per_rank: tuple[float, ...]
     condition: str = ""
     always_on: bool = False
     note: str = ""
@@ -178,23 +212,40 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
 
 
 # (champion_id, key, form_index) -> AmpEntry. DOCUMENTATION ONLY - NOT consumed
-# by ``_ability_amp_for`` / the seam. The remaining entry needs a different
-# mechanism (a cross-spell self-state seam) before it can apply without a wrong
-# target. Kept here as the handoff record of the analyzed-but-deferred
-# ``damage_amp_self`` blocks. Sion Q + Hwei Q f2 were REMOVED by item 246 C1
-# (resolved via block-index routing - see _STAGED_AMP_BLOCK_ROUTES below + the
-# module docstring).
-_STAGED_AMP_CANDIDATES: dict[tuple[str, str, int], AmpEntry] = {
-    # AurelionSol W Astral Flight: the "Breath of Light Flat Damage Modifier"
-    # [108..112]% (x1.08..1.12) amplifies the Q beam (Breath of Light) WHILE in
-    # flight - a cross-spell self-state. W f0 itself has no damage block, so the
-    # amp cannot be keyed to W. Needs a cross-spell / self-state seam that
-    # applies a Q-side multiplier gated on the W (flight) buff being active.
-    ("AurelionSol", "W", 0): AmpEntry(
+# by ``_ability_amp_for`` / the seam. EMPTY at item 257: all three analyzed-but-
+# deferred ``damage_amp_self`` candidates have now been resolved -
+#   * Sion Q + Hwei Q f2 (item 246 C1) via block-index routing
+#     (_STAGED_AMP_BLOCK_ROUTES below) - the "Maximum ..." block already holds
+#     the ceiling, so an amp would double-model it.
+#   * AurelionSol W (item 257) via the cross-spell self-state seam
+#     (_CROSS_SPELL_AMP_OVERRIDES below) - the amp is keyed to the TARGET Q,
+#     sourced from the W rank + W-flight buff state.
+# Kept as the (now empty) handoff record; a future staged candidate would re-seed it.
+_STAGED_AMP_CANDIDATES: dict[tuple[str, str, int], AmpEntry] = {}
+
+
+# (target_cid, target_key, target_form_index) -> CrossSpellAmpEntry. Consumed by
+# ``ability_dps.compute_ability_dps`` ONLY when ``apply_ability_amps=True`` (so
+# the default path is byte-identical). item 257 (gap-plan: "AurelionSol W cross-
+# spell amp seam, its own session"): a ``damage_amp_self`` block whose magnitude
+# lives on a SOURCE spell but multiplies a TARGET spell, gated on the source's
+# self-state buff. The amp is keyed by the TARGET spell; the consumer resolves
+# the SOURCE rank via ``rank_at_level(source_key, level, ...)`` and applies the
+# midpoint-gated multiplier on top of the target spell's per-cast damage. No
+# double-count: the source spell (W f0) has no damage block of its own, and the
+# target spell (Q) has no ``_ABILITY_AMP_OVERRIDES`` entry.
+_CROSS_SPELL_AMP_OVERRIDES: dict[tuple[str, str, int], CrossSpellAmpEntry] = {
+    # AurelionSol Q Breath of Light: amplified by W (Astral Flight) while W
+    # flight is active. W's "Breath of Light Flat Damage Modifier" raw_modifiers
+    # are [108,109,110,111,112]% by W rank (x1.08..1.12 -> addend 0.08..0.12).
+    # Source rank = W; gated on the W-flight self-state midpoint (0.4). Verified
+    # against AurelionSol W raw_modifiers + effects_descriptions at 16.11.1.
+    ("AurelionSol", "Q", 0): CrossSpellAmpEntry(
+        source_key="W",
         amp_per_rank=(0.08, 0.09, 0.10, 0.11, 0.12),
-        base="ability",
-        condition=_COND_FRENZY_STATE,
-        note="STAGED: cross-spell - amplifies Q beam during W flight, not W itself.",
+        condition=_COND_W_FLIGHT,
+        note="W (Astral Flight) flat-damage modifier x1.08..1.12 amplifies the Q "
+             "beam while W flight is active; magnitude indexed by W rank.",
     ),
 }
 
@@ -241,6 +292,21 @@ def _staged_amp_block_route_for(cid: str, key: str, form_index: int) -> int | No
     return _STAGED_AMP_BLOCK_ROUTES.get((cid, key, form_index))
 
 
+def _cross_spell_amp_for(
+    cid: str, target_key: str, target_form_index: int
+) -> CrossSpellAmpEntry | None:
+    """Return the CrossSpellAmpEntry for the TARGET ``(cid, target_key, form)`` or None.
+
+    Reads only ``_CROSS_SPELL_AMP_OVERRIDES``. The caller
+    (``ability_dps.compute_ability_dps``) consults this ONLY under
+    ``apply_ability_amps=True``; the default path never sees it, keeping the
+    default ranking byte-identical. The caller resolves ``entry.source_key``'s
+    rank via ``rank_at_level`` and multiplies ``_amp_multiplier(entry, src_rank,
+    ...)`` into the target spell's per-cast amp factor.
+    """
+    return _CROSS_SPELL_AMP_OVERRIDES.get((cid, target_key, target_form_index))
+
+
 def _aa_amp_multiplier(
     cid: str,
     rank_for_key,
@@ -271,11 +337,15 @@ def _aa_amp_multiplier(
 
 
 def _amp_multiplier(
-    entry: AmpEntry,
+    entry: AmpEntry | CrossSpellAmpEntry,
     rank: int,
     prob_map: dict[str, float],
 ) -> float:
     """Return the per-cast amp factor for ``entry`` at 0-based ``rank``.
+
+    Accepts ``AmpEntry`` or ``CrossSpellAmpEntry`` (both carry ``amp_per_rank``
+    / ``always_on`` / ``condition``); for the cross-spell entry ``rank`` is the
+    SOURCE spell's rank.
 
     ``always_on`` -> 1.0 + addend. Conditional -> 1.0 + probability * addend
     where probability is ``prob_map[entry.condition]`` (0.0 if the condition
