@@ -1095,13 +1095,10 @@
           <div class="csv-card csv-card-suggestions">
             <div class="csv-card-head">Assessment</div>
             <div class="csv-card-body">
-              <!-- Operator (2026-05-23 round 2): YOUR RECORD pinned to
-                   the TOP of the Assessment panel, immediately under
-                   the card head + above any internal panel break. -->
-              <div class="csv-sugg-section csv-sugg-your-record"
-                   id="csv-sugg-your-record">
-                <div class="csv-sugg-empty">no champion picked yet</div>
-              </div>
+              <!-- Operator 2026-05-31 (part 4): YOUR RECORD removed; the
+                   per-enemy lifetime win-rate now renders in the Enemies
+                   panel (left of each icon) via _csvInjectEnemyWinRates. -->
+
               <!-- s214: row label dropped per operator - the parent
                    "Suggestions" card head + post-phase per-row visual
                    already communicate the bans context without the
@@ -1127,32 +1124,12 @@
                   <div class="csv-sugg-empty">waiting for champ-select...</div>
                 </div>
               </div>
-              <!-- 2026-05-22 (item 139 carry (a)): FIRST dashboard UI
-                   consumer of cc_blended_ehp. Compares ally vs enemy
-                   CC-blended EHP ratio so the operator can see at a
-                   glance whether enemy CC threatens to erode their
-                   team faster than ally CC erodes the enemy team.
-                   Tier-tinted via data-cc-tier (good / warn / bad).
-                   Hidden until at least one ally + one enemy is
-                   committed in champ-select. -->
-              <div class="csv-sugg-section cc-blended-ehp-threat"
-                   id="csv-sugg-cc-blended-ehp-threat"
-                   data-cc-tier="warn"
-                   hidden></div>
-              <!-- 2026-05-22 (item 144): FIRST dashboard UI consumer
-                   of cc_conditional + 5th overall consumer of the
-                   cc_conditional ecosystem. Surfaces ally vs enemy
-                   CONDITIONAL CC seconds (probability-weighted at
-                   midpoints from cc_conditional registry). Visually
-                   coherent with the cc-blended-ehp-threat chip
-                   above but uses a separate data-cc-cond-tier attr
-                   to avoid CSS selector collision. Hidden until at
-                   least one ally + one enemy is committed in champ-
-                   select. -->
-              <div class="csv-sugg-section cc-conditional-pressure"
-                   id="csv-sugg-cc-conditional-pressure"
-                   data-cc-cond-tier="warn"
-                   hidden></div>
+              <!-- Operator 2026-05-31 (#8): the CC CHAIN (cc_blended_ehp)
+                   + CONDITIONAL CC (cc_conditional) mounts moved to the
+                   center My Pick card, below the DS-vs-Enemy-Comp build.
+                   The renderers (_csvRenderCcBlendedEhpThreat /
+                   _csvRenderCcConditionalPressure) still target them by id
+                   so they populate in their new location. -->
               <!-- 2026-05-30 (item 218 / competitor lift #5): matchup
                    cooldown-watch. Per enemy champion, the single highest-
                    threat hard-CC ability + its max-rank BASE cooldown

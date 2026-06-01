@@ -9,9 +9,10 @@ consumer of cc_conditional into the Suggestions card of the champ-
 select view so a future refactor that drops one of the wires reverts
 the surface to invisible:
 
-  - web/index.html declares #csv-sugg-cc-conditional-pressure inside
-    the .csv-card-suggestions block, BELOW the existing
-    #csv-sugg-cc-blended-ehp-threat chip and ABOVE #csv-sugg-pickorder.
+  - web/js/panels/champ_select.js renders #csv-sugg-cc-conditional-pressure
+    in the center My Pick card body, below the DS-vs-Enemy-Comp build and
+    after the #csv-sugg-cc-blended-ehp-threat chip (operator 2026-05-31 #8;
+    moved out of the Assessment card in web/index.html).
   - web/js/panels/cc_conditional_pressure.js exports the API contract
     (fetchCcConditionalPressure, getCachedCcConditionalPressure,
     getCcConditionalPressureCacheCount, renderCcConditionalPressure,
@@ -51,37 +52,38 @@ def _read(p: Path) -> str:
 
 
 class ChipMountTests(unittest.TestCase):
+    # Operator 2026-05-31 (#8): the chip mount moved from web/index.html
+    # (Assessment card) into the champ_select.js My Pick card body render.
     @classmethod
     def setUpClass(cls) -> None:
-        cls.text = _read(INDEX_HTML)
+        cls.text = _read(CHAMP_SELECT_JS)
+        cls.html = _read(INDEX_HTML)
 
     def test_chip_mount_present(self) -> None:
         self.assertIn('id="csv-sugg-cc-conditional-pressure"', self.text)
         self.assertIn("cc-conditional-pressure", self.text)
 
+    def test_chip_removed_from_index_html(self) -> None:
+        # Moved out of the Assessment card; must not be duplicated there.
+        self.assertNotIn('id="csv-sugg-cc-conditional-pressure"', self.html)
+
     def test_chip_hidden_by_default(self) -> None:
         idx = self.text.index('id="csv-sugg-cc-conditional-pressure"')
-        # The hidden attribute should appear on the same element.
         tail = self.text[idx:idx + 400]
         self.assertIn("hidden", tail)
 
     def test_chip_carries_initial_data_cc_cond_tier(self) -> None:
-        # First-paint tier attribute = warn (neutral), so CSS picks up
-        # styles immediately even before the response lands.
         self.assertIn('data-cc-cond-tier="warn"', self.text)
 
-    def test_chip_inside_suggestions_card(self) -> None:
-        sugg_open = self.text.index("csv-card-suggestions")
+    def test_chip_below_build_order(self) -> None:
+        # New location: in the My Pick body, after the DS-vs-Enemy-Comp
+        # build (boHtml) so the flow is build -> CC cards.
+        bo_at = self.text.index("${boHtml}")
         chip_at = self.text.index('id="csv-sugg-cc-conditional-pressure"')
-        pickorder_at = self.text.index('id="csv-sugg-pickorder"')
-        # Order: suggestions card open -> chip -> pickorder
-        self.assertLess(sugg_open, chip_at)
-        self.assertLess(chip_at, pickorder_at)
+        self.assertLess(bo_at, chip_at)
 
     def test_chip_below_blended_ehp_threat(self) -> None:
-        # Visual flow: cc-blended-ehp-threat chip THEN
-        # cc-conditional-pressure chip THEN pickorder block. The two
-        # chips are siblings inside the Suggestions card.
+        # cc-blended chip THEN cc-conditional chip in the same render.
         blended_at = self.text.index('id="csv-sugg-cc-blended-ehp-threat"')
         cond_at = self.text.index('id="csv-sugg-cc-conditional-pressure"')
         self.assertLess(blended_at, cond_at)

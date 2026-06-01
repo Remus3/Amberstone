@@ -16,6 +16,13 @@ champ_select.js wiring that foregrounds it:
 A future ESM split / render refactor / CSS purge that drops one of
 these would silently un-foreground the feature. Grep-based smoke
 checks - cheap, fast, enough to catch a missing wire.
+
+Operator 2026-05-31 (part 4): the YOUR RECORD headline was REMOVED from
+the Assessment panel; the operator's lifetime win-rate vs each enemy now
+renders in the Enemies panel (left of the icon) via
+_csvInjectEnemyWinRates. The _csvRenderPersonalRecordBlock function + the
+.csv-pr-* CSS remain as deadcode pending a sweep, so the existence checks
+below still pass; the render-WIRING check now targets the injection.
 """
 from __future__ import annotations
 
@@ -76,12 +83,11 @@ class PanelJsRenderTests(unittest.TestCase):
         for cls in ("is-good", "is-mid", "is-bad", "is-new"):
             self.assertIn(cls, self.text)
 
-    def test_headline_written_to_assessment_panel(self) -> None:
-        # 2026-05-23 (page #8 round 2): YOUR RECORD relocated from the
-        # Pick & Ban panel into the Assessment panel's
-        # #csv-sugg-your-record container - the foregrounding moved
-        # rather than disappeared. Grep for the write site so a future
-        # refactor that drops the target id fails this test.
+    def test_your_record_container_defensively_hidden(self) -> None:
+        # Operator 2026-05-31 (part 4): YOUR RECORD removed. The JS keeps
+        # a defensive getElementById("csv-sugg-your-record") that empties
+        # + hides the container if any cached DOM still carries it. Guard
+        # that the lookup (now a hide, not a write) is still present.
         self.assertIn(
             'document.getElementById("csv-sugg-your-record")',
             self.text,
@@ -93,9 +99,38 @@ class PanelJsRenderTests(unittest.TestCase):
 
     def test_fetch_called_in_renderpickban(self) -> None:
         self.assertIn("const prData = _csvFetchPersonalRecord(", self.text)
-        self.assertIn(
+        # Operator 2026-05-31 (part 4): the YOUR RECORD render call was
+        # replaced by the per-enemy win-rate injection into the Enemies
+        # panel. The old headline render is no longer wired.
+        self.assertNotIn(
             "const prHtml = _csvRenderPersonalRecordBlock(prData, selfCid);",
             self.text)
+        self.assertIn("_csvInjectEnemyWinRates(prData)", self.text)
+
+
+class EnemyWinRateInjectTests(unittest.TestCase):
+    """Operator 2026-05-31 (part 4): per-enemy lifetime win-rate rendered
+    in the Enemies panel (left of the icon), replacing the YOUR RECORD
+    block. Grep guards on the inject helper + its wiring."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.text = _read(PANEL_JS)
+        cls.css = _read(CSV_CSS)
+
+    def test_inject_helper_defined(self) -> None:
+        self.assertIn("function _csvInjectEnemyWinRates(", self.text)
+
+    def test_enemies_opts_request_win_rate(self) -> None:
+        self.assertIn("withWinRate: true", self.text)
+
+    def test_wr_slot_class_wired(self) -> None:
+        self.assertIn("csv-enemy-wr-slot", self.text)
+        self.assertIn(".csv-enemy-wr-slot", self.css)
+
+    def test_enemies_cells_carry_cid(self) -> None:
+        # _csvInjectEnemyWinRates matches enemy cells by data-cid.
+        self.assertIn("li.dataset.cid =", self.text)
 
 
 class CsvCssTests(unittest.TestCase):
