@@ -7,13 +7,25 @@ effects-text heals: flat ("35 : 100 based on level"), caster-stat-scaled
 SPELL slot (Rakan Q / Talon Q, via ``level_scaled``). Same module, same seam,
 same consumer - a linear entry simply carries no ``bilinear_terms``.
 
-Item 252 (this slice) adds the PER-CHARGE seam - the heal sibling of the
-item-249 per-stack DAMAGE fold. ``per_charge`` linear terms fold *
-``assumed_charges`` into ``raw_modifiers`` at BUILD time (zero new eval math);
-the coefficients are exact, only the stocked-charge count is the operator-
-tunable assumption. The sole per-charge heal is Taric Q Starlight's Touch
-(25 + 15% AP + 1% max HP per charge); the only other charge mechanic, Zeri P,
-is a DAMAGE charge, not a heal.
+Item 252 adds the PER-CHARGE seam - the heal sibling of the item-249 per-stack
+DAMAGE fold. ``per_charge`` linear terms fold * ``assumed_charges`` into
+``raw_modifiers`` at BUILD time (zero new eval math); the coefficients are exact,
+only the stocked-charge count is the operator-tunable assumption. The sole
+per-charge heal is Taric Q Starlight's Touch (25 + 15% AP + 1% max HP per
+charge); the only other charge mechanic, Zeri P, is a DAMAGE charge, not a heal.
+
+Item 253 (this slice) adds the AS-AWARE seam - the bilinear registry could not
+previously express a heal scaling on bonus ATTACK SPEED (the heal block carried
+no AS stat). ``ability_hps`` now feeds a ``bonus_as`` entry (bonus attack speed
+in PERCENTAGE POINTS) into the ``bilinear_ctx``, so a ``_per_100(pct, "bonus_as",
+"target_max_hp")`` term resolves exactly. The sole consumer is Viego P's
+"+5% per 100% bonus attack speed of the target's maximum health" sub-term, the
+ONE clause that items 250-252 deliberately omitted (no AS ctx on a heal block).
+This is the LAST named clean headless heal lift: the roster scan for an
+AS-scaled heal (or shield) found Viego P and nothing else - every other "attack
+speed" + heal line is an AS buff, a vamp/life-steal clause, a stat-steal on the
+target, or a heal-amp multiplier, none of which is a heal magnitude scaling on
+the caster's own bonus AS.
 
 UNLIKE the 3 bilinear seeds (every term target/missing-HP scaled -> 0 at the
 default ``resolve_target_relative=False``), most linear entries have a FLAT /
@@ -181,11 +193,12 @@ _PASSIVE_HEAL_OVERRIDES: dict[tuple[str, str, int], PassiveHealEntry] = {
     # Viego P Sovereign's Domination: on consuming a Mist Wraith (spawned on an
     # enemy-champion takedown) Viego "heals himself for 2% (+ 2.5% per 100 bonus
     # AD) (+ 2% per 100 AP) (+ 5% per 100% bonus attack speed) of the target's
-    # maximum health". 3 modeled terms: flat 2% target max HP + 2.5%/100 bonus
-    # AD + 2%/100 AP (both bilinear * target max HP). The 5% per 100% BONUS
-    # ATTACK SPEED term is OMITTED: AbilityContext carries no bonus-AS stat for
-    # the heal block, so it belongs in a future AS-aware seam (same boundary as
-    # the damage registry's omitted crit terms - exact for the modeled terms).
+    # maximum health". All 4 terms modeled (item 253 AS-aware seam): flat 2%
+    # target max HP + 2.5%/100 bonus AD + 2%/100 AP + 5% per 100% bonus AS (the
+    # last three bilinear * target max HP). The 5% per 100% BONUS ATTACK SPEED
+    # term - previously omitted (no AS ctx on a heal block, items 250-252) - now
+    # rides the bilinear_ctx "bonus_as" key (bonus AS in PERCENTAGE POINTS, so
+    # _per_100(5.0, "bonus_as", "target_max_hp") is exact: 5% per 100% bonus AS).
     # cadence per_fight (takedown-gated consume); a passive P has no cooldown so
     # compute_ability_hps gives heal_per_sec 0 - the per-cast heal is surfaced,
     # the on-consume cadence routing is a future live consumer's job.
@@ -194,9 +207,10 @@ _PASSIVE_HEAL_OVERRIDES: dict[tuple[str, str, int], PassiveHealEntry] = {
         bilinear_terms=(
             _per_100(2.5, "bonus_ad", "target_max_hp"),
             _per_100(2.0, "ap", "target_max_hp"),
+            _per_100(5.0, "bonus_as", "target_max_hp"),
         ),
         cadence="per_fight",
-        note="Sovereign's Domination: heal 2% (+ 2.5% per 100 bonus AD) (+ 2% per 100 AP) of target max HP on Mist-Wraith consume; +5% per 100% bonus-AS term omitted (no AS ctx on a heal block); takedown-gated per_fight cadence (passive -> heal_per_sec 0)",
+        note="Sovereign's Domination: heal 2% (+ 2.5% per 100 bonus AD) (+ 2% per 100 AP) (+ 5% per 100% bonus AS) of target max HP on Mist-Wraith consume; AS-aware seam (item 253) resolves the bonus-AS term via bilinear_ctx bonus_as (innate-base denominator, percentage points); takedown-gated per_fight cadence (passive -> heal_per_sec 0)",
         attribute="Sovereign's Domination",
     ),
     # Karma W form 1 (Renewal, the Mantra-empowered W): "Karma heals for 17%
