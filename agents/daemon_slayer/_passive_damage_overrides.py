@@ -73,7 +73,10 @@ omissions in each entry's note (they belong in the AA-crit / conditional
 seam, NOT a passive damage block). Their default-OFF magnitudes are exact for
 the modeled terms. Item 248 then added the bilinear AP-on-HP schema lift and
 SEEDED Gwen P (the item-247 staged candidate) + Aurora / Lillia / Renata P
-(see the GAP-2 BILINEAR section below); Kai'Sa P stays staged (per-stack).
+(see the GAP-2 BILINEAR section below). Item 249 then added the per-stack
+schema lift and SEEDED Kai'Sa P (the canonical per-stack case STAGED through
+item 248) + Darius P + Twitch P + upgraded Orianna P (see the GAP-2 PER-STACK
+section below).
 
 GAP-2 BILINEAR passives (item 248, bilinear AP-on-HP schema lift): the
 AP-scaled %-of-HP form ("X% (+ Y% per 100 AP) of the target's HP") is a
@@ -90,15 +93,36 @@ was built for, was STAGED through item 247 - plus Aurora P Spirit Abjuration
 100 AP max HP, first-hit per_fight). All four scale on target MAX HP, which is
 non-zero at the default full-HP ctx (so they are not inert).
 
-STAGED candidates (documented, NOT live entries - the bilinear lift does NOT
-cover them; each needs a further runtime decision / its own slice):
-  - per-stack ramps: Kai'Sa P Caustic Wounds (4 : 24 + 1 : 6 per Plasma stack
-    + 12% : 24% per stacks AP) - the DOMINANT per-application term scales with
-    the live Plasma-stack count (no single steady-state value); needs a
-    stack-count assumption (its own decision). The 5th-stack-consume sub-term
-    (15% + 6% per 100 AP of MISSING health) IS bilinear-expressible now, but
-    is only part of the passive + fires on the 5th stack (a conditional
-    cadence), so Kai'Sa stays staged whole rather than shipped partial.
+GAP-2 PER-STACK passives (item 249, per-stack damage schema lift): some
+passives deal damage that scales LINEARLY with the number of stacks on the
+target. The per_stack COEFFICIENTS are exact; only the stack MULTIPLIER is a
+steady-state ``assumed_stacks`` (documented per entry, operator-tunable,
+externalized so a future live consumer can feed the real count - mirrors item
+236's tenacity externalization). The lift adds ``PerStackTerm`` +
+``PassiveDamageEntry.per_stack`` / ``assumed_stacks``; ``to_damage_block``
+FOLDS ``field + per_stack.field * assumed_stacks`` element-wise into the
+synthetic block, so ``ability_dps._evaluate_block`` needs ZERO new math (the
+per-stack contribution collapses into the ordinary base/scaling fields once
+the assumed count is fixed). SEEDED from verbatim 16.11.1
+effects_descriptions, all default-OFF byte-identical: Kai'Sa P Caustic Wounds
+(4:24 + 12% AP, + (1:6 + 3% AP) per Plasma stack; the "12%:24% based on
+stacks" AP ratio is linear = 12% + 3%/stack) + Darius P Hemorrhage ((13:30 +
+30% bonus AD) per stack bleed dot) + Twitch P Deadly Venom ((6/12/18/24/30 +
+18% AP) per stack true dot) + an UPGRADE to the already-seeded Orianna P
+(adds the 2:10 + 3% AP per-stack ramp it was missing). EXHAUSTED scan: of the
+15 no_damage P-forms with "per stack"+"damage" language, only these 4 are
+per-stack TARGET damage; the other 11 are NOT (Belveth/Garen/Irelia/Kayle/
+Samira/Senna/Volibear/Wukong gain AS/MS/armor stat STEROIDS per stack;
+Mel/Smolder are stack-gain / damage-store mechanics; Sona's per-stack
+Accelerando is a haste steroid - Sona P is separately seeded for its flat
+Power Chord, not a per-stack term) - documented inline, not seeded. The Kai'Sa
+5th-stack-consume sub-term (15% + 6%/100 AP of MISSING health) is OMITTED:
+conditional (fires on the 5th stack) AND inert at the default full-HP ctx
+(same precedent as Ekko W).
+
+STAGED candidates (documented, NOT live entries - neither the bilinear nor the
+per-stack lift covers them; each needs a further runtime decision / its own
+slice):
   - bilinear-but-CONDITIONAL: Brand P Blaze ring detonation (8%:12% + 2% per
     100 AP max HP) fires only on a 3-stack + 2s-delay explosion (the base
     Ablaze DoT is NOT bilinear); Ekko W Parallel Convergence (3% + 3% per 100
@@ -121,7 +145,7 @@ Keyed ``(champion_id, key, form_index)`` - the same shape as
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # Import the engine DamageBlock so to_damage_block builds the real type that
 # _evaluate_block consumes. abilities.py imports THIS module after it defines
@@ -193,6 +217,33 @@ def _per_100(pct: float, per_attr: str, of_attr: str) -> tuple[float, str, str]:
 
 
 @dataclass(frozen=True)
+class PerStackTerm:
+    """item 249 schema lift - a per-stack damage component.
+
+    Some passives deal damage that scales LINEARLY with the number of stacks
+    present on the target (Kai'Sa Plasma, Darius Hemorrhage, Twitch Deadly
+    Venom, Orianna Clockwork Winding). The coefficients are EXACT; only the
+    stack MULTIPLIER is a steady-state assumption, externalized to the entry's
+    ``assumed_stacks`` so a future live consumer can feed the real count
+    without re-authoring (mirrors how item 236 externalized the tenacity
+    assumption). The same scaling fields as ``PassiveDamageEntry`` are read as
+    "per stack"; ``to_damage_block`` folds ``field + per_stack.field *
+    assumed_stacks`` into the synthetic block (element-wise over the per-level
+    tuples) so the evaluator needs ZERO new math - the per-stack contribution
+    collapses into the ordinary ``base`` / scaling fields once the assumed
+    count is fixed. A plain float is a flat per-stack coefficient; a tuple is a
+    per-level per-stack coefficient (Kai'Sa "1 : 6 per level per stack").
+    """
+
+    base: float | tuple[float, ...] = 0.0
+    bonus_ad_pct: float | tuple[float, ...] = 0.0
+    ap_pct: float | tuple[float, ...] = 0.0
+    total_ad_pct: float | tuple[float, ...] = 0.0
+    target_max_hp_pct: float | tuple[float, ...] = 0.0
+    target_current_hp_pct: float | tuple[float, ...] = 0.0
+
+
+@dataclass(frozen=True)
 class PassiveDamageEntry:
     """One hand-authored effects-text-only passive damage formula.
 
@@ -229,6 +280,14 @@ class PassiveDamageEntry:
     # synthetic block as ``factor * ctx[a] * ctx[b]`` (an AP-scaled %-of-HP
     # term a single linear field cannot express). Default empty = no bilinear.
     bilinear_terms: tuple[tuple[float, str, str], ...] = ()
+    # Per-stack damage component (item 249 schema lift): a ``PerStackTerm``
+    # whose coefficients ``to_damage_block`` folds into the synthetic block as
+    # ``field + per_stack.field * assumed_stacks``. ``assumed_stacks`` is the
+    # documented steady-state stack count (operator-tunable; default 0 = inert
+    # so a per_stack entry never injects a per-stack contribution until its own
+    # assumed_stacks is set). Default None = no per-stack term.
+    per_stack: "PerStackTerm | None" = None
+    assumed_stacks: float = 0.0
 
 
 # (champion_id, key, form_index) -> PassiveDamageEntry.
@@ -259,14 +318,21 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
         attribute="Illumination",
     ),
     # Orianna Clockwork Windup: on-hit "10 : 50 (based on level) (+ 15% AP)
-    # bonus magic damage" (2-stack-ramped empowered AA; we author the
-    # full-magnitude on-hit value).
+    # bonus magic damage, increased by 2 : 10 (based on level) (+ 3% AP) per
+    # stack, up to 14 : 70 (based on level) (+ 21% AP)" (stacking to 2 on a
+    # single target; all stacks lost when attacking a NEW enemy). item 249
+    # per-stack lift: the flat base is the 0-stack value; the per_stack term
+    # adds 2:10 base + 3% AP per stack. assumed_stacks=1.0 (the ramp-midpoint
+    # of the 0..2 window; operator-tunable). At 1 stack -> 12:60 (+ 18% AP);
+    # at the 2-stack cap -> 14:70 (+ 21% AP) = the documented max.
     ("Orianna", "P", 0): PassiveDamageEntry(
         base=_lerp_per_level(10.0, 50.0),
         ap_pct=15.0,
+        per_stack=PerStackTerm(base=_lerp_per_level(2.0, 10.0), ap_pct=3.0),
+        assumed_stacks=1.0,
         damage_type="MAGIC",
         cadence="on_hit",
-        note="Clockwork Winding: 10 : 50 (based on level) (+ 15% AP) bonus magic damage on-hit",
+        note="Clockwork Winding: 10 : 50 (based on level) (+ 15% AP) + 2 : 10 (based on level) (+ 3% AP) per stack (cap 2; assumed_stacks 1.0 = ramp-midpoint, operator-tunable) bonus magic on-hit",
         attribute="Clockwork Winding",
     ),
     # Warwick Eternal Hunger: "12 : 46 (based on level) (+ 15% bonus AD)
@@ -494,6 +560,79 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
         note="Leverage: 1% : 2% (based on level) (+ 2% per 100 AP) target max HP bonus magic on first (unmarked) hit; per_fight cadence; ally-consume mirror + 150 epic cap not modeled",
         attribute="Leverage",
     ),
+    # --- GAP-2 PER-STACK passives (item 249, per-stack damage schema lift).
+    # The damage scales LINEARLY with the number of stacks on the target; the
+    # per_stack coefficients are EXACT and the stack MULTIPLIER is a documented
+    # steady-state ``assumed_stacks`` (operator-tunable, folded at build time).
+    # All default-OFF byte-identical (the seam injects only under
+    # apply_passive_damage=True). Authored from verbatim 16.11.1
+    # effects_descriptions; vs-monster multipliers/caps are champ-context
+    # (same precedent as Aatrox / Zed). Exhausted scan: the 11 other "per
+    # stack" no_damage P-forms are NOT per-stack target damage - stat STEROIDS
+    # (Belveth/Garen/Irelia/Kayle/Samira/Senna/Volibear/Wukong AS/MS/armor) or
+    # stack-gain/store mechanics (Mel/Smolder); Sona's per-stack Accelerando is
+    # a haste steroid (Sona P is separately seeded for its flat Power Chord).
+    # Documented in the module docstring, not seeded.
+    #
+    # Kai'Sa P Caustic Wounds: "Plasma stacks ... deal 4 : 24 (based on level)
+    # (+ 1 : 6 (based on level) per Plasma stack before application) (+ 12% :
+    # 24% (based on Plasma stacks before application) AP) bonus magic damage".
+    # The "12% : 24% based on stacks" AP ratio is LINEAR in stacks: 12% + 3%
+    # per stack (12 at 0 stacks, 24 at 4). So: flat base 4:24 + flat 12% AP,
+    # PLUS per stack (1:6 base + 3% AP). Plasma stacks to 5 then the 5th
+    # consumes them all (so 0..4 are present "before application");
+    # assumed_stacks=2.0 = the cycle-average over the 5-attack ramp (sees
+    # 0,1,2,3,4 -> mean 2). The 5th-stack-consume sub-term (15% + 6% per 100 AP
+    # of MISSING health) is OMITTED: it is conditional (fires on the 5th stack)
+    # AND missing-HP-scaled (~0 at the default full-HP ctx) - shipping it would
+    # be a misleading inert sub-term (same precedent as Ekko W staged in 248).
+    ("Kaisa", "P", 0): PassiveDamageEntry(
+        base=_lerp_per_level(4.0, 24.0),
+        ap_pct=12.0,
+        per_stack=PerStackTerm(base=_lerp_per_level(1.0, 6.0), ap_pct=3.0),
+        assumed_stacks=2.0,
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Caustic Wounds: 4 : 24 (based on level) (+ 12% AP) + (1 : 6 (based on level) (+ 3% AP)) per Plasma stack (cap 5/consume-at-5; assumed_stacks 2.0 = ramp-cycle-average, operator-tunable) bonus magic on-hit; 5th-stack-consume missing-HP term omitted (conditional + inert at full HP)",
+        attribute="Caustic Wounds",
+    ),
+    # Darius P Hemorrhage: "For each stack, the target is dealt 13 : 30 (based
+    # on level) (+ 30% bonus AD) total physical damage over the duration ...
+    # up to a maximum of 65 : 150 (based on level) (+ 150% bonus AD)" (5
+    # stacks). Pure per-stack bleed DoT (no flat base). assumed_stacks=3.0 =
+    # mid of the 1..5 window (Darius applies stacks fast + refreshes; a focused
+    # target sits mid-to-high). cadence dot (total over the bleed duration).
+    # The 200% vs monsters multiplier is champ-context (not modeled).
+    ("Darius", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        per_stack=PerStackTerm(base=_lerp_per_level(13.0, 30.0), bonus_ad_pct=30.0),
+        assumed_stacks=3.0,
+        damage_type="PHYSICAL",
+        cadence="dot",
+        note="Hemorrhage: (13 : 30 (based on level) (+ 30% bonus AD)) per stack total physical over the bleed (cap 5; assumed_stacks 3.0 = mid-ramp, operator-tunable); 200% vs monsters not modeled; dot cadence",
+        attribute="Hemorrhage",
+    ),
+    # Twitch P Deadly Venom: "For each stack, the target is dealt 1 / 2 / 3 / 4
+    # / 5 (based on level) (+ 3% AP) true damage per second over the duration
+    # [total 6 / 12 / 18 / 24 / 30 (based on level) (+ 18% AP)] ... maximum 36 /
+    # 72 / 108 / 144 / 180 (+ 108% AP)" (6 stacks). Per-stack true-damage DoT;
+    # we author the per-stack TOTAL over the 6s venom (6/12/18/24/30 + 18% AP).
+    # 5-tier level STEP (slash notation) -> _step_per_level even-fifths estimate
+    # (16.11.1 Meraki gives tier values not boundaries; same precedent as the
+    # Zed/Caitlyn even-thirds steps). assumed_stacks=3.0 = mid of the 1..6
+    # window. cadence dot (total over the duration).
+    ("Twitch", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        per_stack=PerStackTerm(
+            base=_step_per_level((6.0, 12.0, 18.0, 24.0, 30.0)),
+            ap_pct=18.0,
+        ),
+        assumed_stacks=3.0,
+        damage_type="TRUE",
+        cadence="dot",
+        note="Deadly Venom: (6/12/18/24/30 (based on level) (+ 18% AP)) per stack total true over the 6s poison (cap 6; assumed_stacks 3.0 = mid-ramp, operator-tunable); breakpoints even-fifths estimate; dot cadence",
+        attribute="Deadly Venom",
+    ),
 }
 
 
@@ -525,7 +664,36 @@ def to_damage_block(entry: PassiveDamageEntry):
             return any(float(x) != 0.0 for x in v)
         return float(v) != 0.0
 
-    base = tuple(float(x) for x in entry.base) if entry.base else (0.0,)
+    # item 249 per-stack fold: when the entry carries a PerStackTerm + a
+    # non-zero assumed_stacks, each scaling field becomes
+    # ``entry.field + per_stack.field * assumed_stacks`` (element-wise over the
+    # per-level tuples, broadcasting a flat to the longer length). The result
+    # is an ordinary DamageBlock - the evaluator stays byte-identical.
+    def _as_tuple(v: float | tuple[float, ...]) -> tuple[float, ...]:
+        if isinstance(v, (tuple, list)):
+            return tuple(float(x) for x in v) or (0.0,)
+        return (float(v),)
+
+    def _fold(flat_v, ps_v, stacks: float) -> tuple[float, ...]:
+        a = _as_tuple(flat_v)
+        b = _as_tuple(ps_v)
+        n = max(len(a), len(b))
+        return tuple(
+            round((a[i] if i < len(a) else a[-1]) + (b[i] if i < len(b) else b[-1]) * stacks, 6)
+            for i in range(n)
+        )
+
+    stacks = float(entry.assumed_stacks) if entry.per_stack is not None else 0.0
+    ps = entry.per_stack
+
+    def _eff(field: str) -> float | tuple[float, ...]:
+        ev = getattr(entry, field)
+        if ps is not None and stacks:
+            return _fold(ev, getattr(ps, field), stacks)
+        return ev
+
+    base_eff = _eff("base")
+    base = tuple(float(x) for x in base_eff) if base_eff else (0.0,)
     kwargs: dict[str, tuple] = {"base": base}
     for fld in (
         "bonus_ad_pct",
@@ -534,7 +702,7 @@ def to_damage_block(entry: PassiveDamageEntry):
         "target_max_hp_pct",
         "target_current_hp_pct",
     ):
-        v = getattr(entry, fld)
+        v = _eff(fld)
         if _present(v):
             kwargs[fld] = _coerce(v)
     if entry.bilinear_terms:
