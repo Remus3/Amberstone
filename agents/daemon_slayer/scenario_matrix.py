@@ -18,8 +18,14 @@ harness): ``mana_bounded_dps`` runs the finite-mana bounded rotation, and
 ``rune_burst`` runs the burst scorer WITH a rune-proc layer. ``rune_burst``
 is the ONLY metric that consumes ``runes``; the plain ``burst`` branch
 ignores it (so ``runes=None`` and ``runes=[...]`` are byte-identical under
-``metric="burst"``). Likewise ``sequence`` is consumed ONLY by
-``mana_bounded_dps`` (the ``dps``/``burst``/``combo`` branches ignore it).
+``metric="burst"``). A caller-supplied ``sequence`` IS honored by the
+``burst`` / ``combo`` / ``rune_burst`` / ``mana_bounded_dps`` metrics (it
+threads to ``compute_burst_damage(combo_sequence=...)`` /
+``compute_combo(sequence=...)`` so a scenario can isolate a single ability,
+e.g. ``sequence=["R"]`` scores R in isolation rather than a full rotation).
+``sequence=None`` keeps each metric's default rotation, BYTE-IDENTICAL to
+the pre-sequence behavior. Only ``dps`` ignores ``sequence`` (the AA scorer
+has no per-cast sequence concept).
 
 No DPS / burst / mitigation math is duplicated or moved here. The module
 adds the cross-product enumeration + an invariant checker over the
@@ -69,8 +75,9 @@ VALID_METRICS: Tuple[str, ...] = (
     "dps", "burst", "combo", "mana_bounded_dps", "rune_burst",
 )
 
-# Default combo sequence for metric="combo" cells (Q-AA-W-R). Short, fixed;
-# the combo scorer is itself the authority on per-cast timing.
+# Default combo sequence for metric="combo" cells (Q-AA-W-R) when the caller
+# passes no ``sequence``. Short, fixed; the combo scorer is itself the
+# authority on per-cast timing. A caller-supplied sequence overrides this.
 _DEFAULT_COMBO_SEQUENCE: Tuple[str, ...] = ("Q", "AA", "W", "R")
 
 # Floating-point slack for the "non-increasing" / "non-decreasing" tests.
@@ -171,13 +178,15 @@ def _score_cell(
                 snapshot, champion, int(level), item_ids=list(item_ids),
                 mode=mode, target_armor=armor, target_mr=mr,
                 target_max_hp=max_hp, target_bonus_hp=bonus_hp,
+                combo_sequence=(list(sequence) if sequence else None),
             )
             return (float(r.total_burst_damage), "")
         if metric == "combo":
             from .combo import compute_combo  # noqa: PLC0415
             r = compute_combo(
                 champion, int(level), item_ids=list(item_ids),
-                sequence=list(_DEFAULT_COMBO_SEQUENCE),
+                sequence=(list(sequence) if sequence
+                          else list(_DEFAULT_COMBO_SEQUENCE)),
                 target_armor=armor, target_mr=mr, target_max_hp=max_hp,
                 target_bonus_hp=bonus_hp, mode=mode, snapshot=snapshot,
             )
@@ -198,6 +207,7 @@ def _score_cell(
                 mode=mode, target_armor=armor, target_mr=mr,
                 target_max_hp=max_hp, target_bonus_hp=bonus_hp,
                 runes=(list(runes) if runes else None),
+                combo_sequence=(list(sequence) if sequence else None),
             )
             return (float(r.total_burst_damage), "")
         return (float("nan"), f"unknown metric {metric!r}")
@@ -224,11 +234,15 @@ def sweep_scenarios(
     ``target_profiles`` are ``(armor, mr[, max_hp, bonus_hp])`` tuples (2- or
     4-wide). ``item_sets`` are item-id tuples (str or int ids).
 
-    ``sequence`` (action tokens) is consumed ONLY by ``metric=
-    "mana_bounded_dps"`` (defaults to the Q-AA-W-R combo when omitted);
-    every other metric ignores it. ``runes`` (rune ids) is consumed ONLY by
-    ``metric="rune_burst"``; every other metric ignores it - so a ``burst``
-    sweep is byte-identical whether ``runes`` is passed or None.
+    ``sequence`` (action tokens) is HONORED by ``burst`` / ``combo`` /
+    ``rune_burst`` / ``mana_bounded_dps`` (threads to the scorer's
+    ``combo_sequence`` / ``sequence`` so a scenario can isolate one ability,
+    e.g. ``sequence=["R"]`` scores R alone, not a full rotation). Omitted ->
+    each metric's default rotation, BYTE-IDENTICAL to pre-sequence behavior.
+    ``dps`` ignores ``sequence`` (the AA scorer has no per-cast sequence).
+    ``runes`` (rune ids) is consumed ONLY by ``metric="rune_burst"``; every
+    other metric ignores it - so a ``burst`` sweep is byte-identical whether
+    ``runes`` is passed or None.
 
     Fail-soft: a scorer raising on one cell yields a ``ScenarioCell`` with
     ``value=float('nan')`` + a note; the sweep continues. The returned list
