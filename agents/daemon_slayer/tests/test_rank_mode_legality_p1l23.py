@@ -37,6 +37,7 @@ import unittest
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.rank import (
     MODE_MAP_ID,
+    _NON_COACHABLE_ITEM_IDS,
     _filter_candidates,
     _is_legal_in_mode,
     _is_purchasable,
@@ -55,9 +56,12 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
     """Expected terminal pool for a map id, computed from source fields.
 
     eligible == purchasable (gold.purchasable AND gold.total>0) AND
-    maps[map_id] is truthy AND terminal (no ``into``). This mirrors
-    _filter_candidates' documented contract but is derived independently
-    here from the raw records so the test does not just restate the impl.
+    maps[map_id] is truthy AND terminal (no ``into``) AND NOT a
+    non-coachable joke/anvil item (item 243 _NON_COACHABLE_ITEM_IDS -
+    e.g. Golden Spatula, which DDragon mis-flags maps['12']=True). This
+    mirrors _filter_candidates' documented contract but is derived
+    independently here from the raw records so the test does not just
+    restate the impl.
     """
     out: set[str] = set()
     for item_id, rec in snap.items.items():
@@ -73,7 +77,7 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
         if into:  # non-terminal component
             continue
         out.add(item_id)
-    return out
+    return out - _NON_COACHABLE_ITEM_IDS
 
 
 class ModeMapIdWiringTests(unittest.TestCase):
