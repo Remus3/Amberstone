@@ -1331,6 +1331,37 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.83.0 (item 251 / gap-plan - GAP-2 LINEAR effects-text-only HEAL registry +
+16 SEEDED, default-OFF byte-identical. The sibling slice to item 250's 3
+BILINEAR heals: the same _passive_heal_overrides module + apply_passive_heal
+seam + compute_ability_hps consumer now also carry LINEAR effects-text self-
+heals (flat "35 : 100 based on level", caster-stat-scaled "+ 20% AP" / "5.5% of
+max HP", per-level-pct-of-HP) found in the EXHAUSTED 84-candidate scan (forms
+with NO attribute_kind=="heal" block whose effects_descriptions carry a heal
+verb). SEEDED 16: 14 P-slot - Ahri P (35:95 + 20% AP, 9-stack consume) /
+Alistar P (5% max HP, 7-stack) / Aurora P (3:20 + 2% AP per Spirit/sec) /
+Cho'Gath P (18:52 on-kill) / Evelynn P (15:150/sec below-threshold, gate not
+modeled) / Fiora P (35:100 Vital) / Gragas P (5.5% max HP) / Lillia P (6:90 +
+30% AP vs champ) / Maokai P (4%:12.8% max HP empowered AA) / Rek'Sai P (10%:20%
+max HP Fury consume) / Swain P (3%:6% max HP soul fragment) / Trundle P (1.8%:
+5.5% TARGET max HP on death - resolves under resolve_target_relative) / Xin Zhao
+P (3/3.5/4% max HP + 65% AP on-hit) / Yuumi P (20:110 + 25% AP periodic) - plus
+2 SPELL-slot Rakan Q (40:210 + 55% AP) / Talon Q (9:55 on-kill). SCHEMA LIFT
+(the one novel piece beyond item 250): NEW level_scaled flag (PassiveHealEntry
++ DamageBlock + a level param threaded through ability_hps._select_kind_blocks /
+_eval_heal_shield_block) so a SPELL-slot heal scaling "based on level" reads its
+18-element per-level tuple at the champion LEVEL (level-1), not the spell rank -
+Rakan Q / Talon Q (a Q-rank index would mis-read a level-scaled heal). UNLIKE
+the 3 bilinear seeds (all target/missing-HP scaled -> 0 at resolve-off), most
+linear seeds have a FLAT / caster-stat term that resolves NON-zero at the
+default resolve_target_relative=False - so apply_passive_heal=True surfaces them
+without an HP assumption; the apply_passive_heal=False DEFAULT (load_default)
+stays byte-identical. EXCLUSIONS documented in-module (vamp / resource-restore /
+revive / grey-health / bespoke-product/charge/crit/form-gate). +22 tests
+test_passive_heal_overrides_linear_item251.py; item-250 test rescoped 3->19
+registry. DS suite 5778 -> 5800. DS :8893 restarted -> 1.83.0; RC NOT
+restarted.)
+
 1.82.0 (item 250 / gap-plan - GAP-2 effects-text-only HEAL registry (bilinear
 AP/AD-on-HP) + 3 SEEDED, default-OFF byte-identical. The HEAL sibling of the
 items 247-249 effects-text-only passive DAMAGE registry. A class of P/W/R forms
