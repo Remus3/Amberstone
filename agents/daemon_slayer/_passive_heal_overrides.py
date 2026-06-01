@@ -21,11 +21,26 @@ in PERCENTAGE POINTS) into the ``bilinear_ctx``, so a ``_per_100(pct, "bonus_as"
 "target_max_hp")`` term resolves exactly. The sole consumer is Viego P's
 "+5% per 100% bonus attack speed of the target's maximum health" sub-term, the
 ONE clause that items 250-252 deliberately omitted (no AS ctx on a heal block).
-This is the LAST named clean headless heal lift: the roster scan for an
-AS-scaled heal (or shield) found Viego P and nothing else - every other "attack
-speed" + heal line is an AS buff, a vamp/life-steal clause, a stat-steal on the
-target, or a heal-amp multiplier, none of which is a heal magnitude scaling on
-the caster's own bonus AS.
+This was the LAST named clean headless heal lift for the AS-scaled CLASS: the
+roster scan for an AS-scaled heal (or shield) found Viego P and nothing else -
+every other "attack speed" + heal line is an AS buff, a vamp/life-steal clause,
+a stat-steal on the target, or a heal-amp multiplier, none of which is a heal
+magnitude scaling on the caster's own bonus AS.
+
+Item 254 (this slice) RE-OPENS the item-251 LINEAR registry: the item-253
+AS-aware roster pass surfaced Mordekaiser R "heal 10% of their maximum health"
+- a clean target-max-HP linear heal the original 84-candidate scan overlooked.
+A fresh exhaustive re-scan (all 171 champs, no-heal-block forms whose
+effects_descriptions carry a heal/restore verb AND a self/target HP quantity)
+recovered 4 misses total - all using the EXISTING linear machinery (no schema
+change): Mordekaiser R (10% TARGET max HP, gated), Illaoi P (5% caster MISSING
+health per Tentacle hit, gated), Zac P (4% : 8% by level caster MAX HP per Goo
+chunk), Dr. Mundo P (4% caster MAX HP on canister consume). The re-scan
+confirmed the rest of the heal-verb+HP hits are DAMAGE lines (Aatrox/Brand/Gwen/
+Sejuani/Smolder %-of-HP damage), the documented vamp / revive / grey-health
+classes, a pet heal (Zyra R restores her PLANTS' HP), or a remount/mount-HP
+restore (Kled P / Skaarl) - none a new clean self/ally heal. The LINEAR
+effects-text heal class is now exhausted at patch 16.11.1.
 
 UNLIKE the 3 bilinear seeds (every term target/missing-HP scaled -> 0 at the
 default ``resolve_target_relative=False``), most linear entries have a FLAT /
@@ -106,7 +121,8 @@ shape as ``_passive_damage_overrides`` / ``_ability_overrides``.
 EXHAUSTED scan (all 171 champs, forms with NO ``attribute_kind=="heal"`` block
 whose effects_descriptions carry a "heal"/"restore" verb): 84 candidate forms.
 The BILINEAR set is exactly the 3 item-250 seeds; the LINEAR seedable set is the
-16 item-251 entries below (14 P-slot + Rakan Q + Talon Q); the item-252
+16 item-251 entries below (14 P-slot + Rakan Q + Talon Q) PLUS the 4 item-254
+re-open misses (Mordekaiser R / Illaoi P / Zac P / Dr. Mundo P); the item-252
 per-charge seam adds Taric Q (the sole per-charge heal). Documented EXCLUSIONS
 (scanned, deliberately NOT seeded - with the reason class):
   - VAMP / "% of post-mitigation damage dealt" (not resolvable at rest, same
@@ -118,8 +134,15 @@ per-charge seam adds Taric Q (the sole per-charge heal). Documented EXCLUSIONS
     E, Kassadin W, Kennen P/E, Kled P/Q, LeeSin P, Malzahar E, Shen E, Smolder
     Q, Syndra P, Velkoz Q, Xerath P, Yuumi E, Zed W (Cho'Gath P's mana half is
     skipped; its 18:52 heal half IS seeded).
-  - REVIVE / grey-health conversion (full-HP resurrect or damage-mirror, not a
-    recurring castable heal): Anivia P, Pyke P, Rengar W, TahmKench E.
+  - REVIVE / grey-health / remount conversion (resurrect, damage-mirror, or
+    mount-HP restore - not a recurring castable self-heal): Anivia P, Pyke P,
+    Rengar W, TahmKench E, Sion P (reanimate to full), Zac P resurrection half
+    (the Goo-chunk heal half IS seeded item 254), Kled P (Skaarl restores
+    40-70% of the MOUNT's max HP on a 100-Courage remount).
+  - PET heals (restore a summon's HP, not the champion's): Zyra R (enrages her
+    plants, "restoring 50% of their current health" = the plants', not Zyra's).
+  - %-of-HP DAMAGE lines (heal-verb match was spurious - these are damage, in
+    the damage path): Aatrox P, Brand P, Gwen P, Sejuani P, Smolder Q.
   - BESPOKE products / crit / form gates (no clean linear shape): Kindred W
     (missing-HP * flat), Darius Q (targets-hit * missing-HP), TwistedFate W
     (% crit), Aphelios R (gun-form-gated + spell-slot level), Elise R (heal
@@ -440,6 +463,85 @@ _PASSIVE_HEAL_OVERRIDES: dict[tuple[str, str, int], PassiveHealEntry] = {
         cadence="per_cast",
         note="Starlight's Touch: heal 25 (+ 15% AP) (+ 1% of caster max HP) per charge (cap = Q rank, max 5; assumed_charges 3.0 = mid-fight stock, operator-tunable); ally heal omitted (same per-charge amount, different target)",
         attribute="Starlight's Touch",
+    ),
+    # ---- LINEAR effects-text heal MISSES recovered by the item-254 re-open of
+    # the item-251 linear scan. The item-253 AS-aware roster pass surfaced
+    # Mordekaiser R (a target-max-HP heal the original 84-candidate scan
+    # overlooked); a fresh exhaustive re-scan (all 171 champs, forms with NO
+    # attribute_kind=="heal" block whose effects_descriptions carry a
+    # heal/restore verb AND a self/target HP quantity) found 3 more clean LINEAR
+    # misses (Illaoi P / Zac P / Dr. Mundo P). All 4 use the EXISTING linear
+    # machinery - no schema change, same registry, same eval; a target-max-HP
+    # or caster-missing-HP term stays gated by resolve_target_relative (0 at
+    # rest, the lower-bound contract), a caster-max-HP term resolves at the
+    # default. Re-scan REJECTS (documented, NOT seeded): the %-of-HP DAMAGE
+    # lines whose heal-verb match was spurious (Aatrox P / Brand P / Gwen P /
+    # Sejuani P / Smolder Q - these are damage, already in the damage path);
+    # the already-excluded vamp class (Aatrox/Gwen/Warwick heals are vamp);
+    # Darius Q (bespoke targets-hit * missing-HP, item-251 exclusion); the
+    # revive / grey-health class (Pyke P / Sion P / TahmKench E - reanimate or
+    # grey-health, not a recurring castable heal); Warwick W (a sub-50%-HP HUNT
+    # trigger, not a heal magnitude); Zyra R (restores her PLANTS' current
+    # health = a pet heal, not a champion self/ally heal); Kled P (Skaarl
+    # restores 40-70% of the MOUNT's max HP on a 100-Courage remount = a
+    # mount-HP-restore / remount event, the revive-adjacent class). ----
+    # Mordekaiser R Realm of Death: banishes the target to the Death Realm and
+    # "consumes the target's soul for 7 seconds, healing himself for 10% of
+    # their maximum health". FLAT 10% TARGET max HP (constant across all 3 R
+    # ranks - rank scales the stat-steal % and cooldown, not the heal).
+    # Target-relative -> resolves to 0 at the default full-HP ctx (the
+    # lower-bound contract, like Trundle P / Kayn R); surfaces under
+    # resolve_target_relative + target_max_hp. cadence per_cast (the ult has a
+    # cooldown -> per-second; heal fires once on the soul-consume at cast).
+    # NO existing heal block (R damage_blocks empty - the item-253 discovery).
+    ("Mordekaiser", "R", 0): PassiveHealEntry(
+        linear_terms=((10.0, "% of target's maximum health"),),
+        cadence="per_cast",
+        note="Realm of Death: heal 10% of TARGET max HP on consuming the banished target's soul; flat (not rank-scaled); target-relative -> 0 at full HP, resolves under resolve_target_relative; item-251 linear-scan miss (item 254 re-open)",
+        attribute="Realm of Death",
+    ),
+    # Illaoi P Prophet of an Elder God: "Each Tentacle also heals Illaoi for 5%
+    # of her missing health if it hits at least one enemy champion". FLAT 5%
+    # caster MISSING health per Tentacle that connects. Missing-HP scaled ->
+    # resolves to 0 at the default full-HP ctx (lower-bound contract, like Karma
+    # W); surfaces under resolve_target_relative + caster_missing_hp_pct. Model
+    # the per-Tentacle-hit heal (one Tentacle); a teamfight commands several, so
+    # this is a lower bound. cadence per_cast (Tentacles attack on Illaoi's
+    # ability casts). NO existing heal block.
+    ("Illaoi", "P", 0): PassiveHealEntry(
+        linear_terms=((5.0, "% missing health"),),
+        cadence="per_cast",
+        note="Prophet of an Elder God: heal 5% of caster MISSING health per Tentacle that hits a champion; missing-HP scaled -> 0 at full HP, resolves under resolve_target_relative; per-Tentacle lower bound (a teamfight commands several); item-251 linear-scan miss (item 254 re-open)",
+        attribute="Prophet of an Elder God",
+    ),
+    # Zac P Cell Division (Goo): Zac sheds chunks on ability hits; "Zac will
+    # consume it to heal for 4% : 8% (based on level) of his maximum health".
+    # per-LEVEL pct of caster max HP per chunk consumed. Resolves NON-zero at
+    # the default (caster max HP, no HP assumption needed - same class as Maokai
+    # P / Swain P). Model the per-chunk heal (one chunk); several chunks spawn
+    # per ability, so lower bound. The Cell-Division RESURRECTION (50% max HP
+    # revive + 10:50% respawn) is a revive event, OMITTED (revive class, like
+    # the item-251 exclusions). cadence per_cast (chunk consume during a fight).
+    # NO existing heal block.
+    ("Zac", "P", 0): PassiveHealEntry(
+        linear_terms=((_lerp_per_level(4.0, 8.0), "% maximum health"),),
+        cadence="per_cast",
+        note="Cell Division (Goo): heal 4% : 8% (based on level) of caster max HP per chunk consumed; per-chunk lower bound (several spawn per ability); the resurrection 50% revive omitted (revive class); item-251 linear-scan miss (item 254 re-open)",
+        attribute="Cell Division",
+    ),
+    # Dr. Mundo P Goes Where He Pleases: after resisting an immobilize a canister
+    # spawns; "Dr. Mundo can move near the canister to consume it, healing
+    # himself for 4% of his maximum health". FLAT 4% caster max HP on canister
+    # consume. Resolves NON-zero at the default (caster max HP - same class as
+    # Gragas P). The ed[0] "regenerates 0.4% : 2.3% of his maximum health every
+    # 5 seconds" is a passive HP-REGEN steroid (says "regenerates", not "heal"),
+    # OMITTED (regen-rate, not an event heal). cadence per_fight (the
+    # canister-consume is a resist-gated event). NO existing heal block.
+    ("DrMundo", "P", 0): PassiveHealEntry(
+        linear_terms=((4.0, "% maximum health"),),
+        cadence="per_fight",
+        note="Goes Where He Pleases: heal 4% of caster max HP on consuming the immobilize-resist canister; the per-5s max-HP regen tick omitted (regen-rate steroid, not an event heal); item-251 linear-scan miss (item 254 re-open)",
+        attribute="Goes Where He Pleases",
     ),
 }
 

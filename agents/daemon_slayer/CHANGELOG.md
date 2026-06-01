@@ -1331,6 +1331,39 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.86.0 (item 254 / gap-plan - GAP-2 LINEAR effects-text HEAL registry RE-OPEN
+(the item-251 sibling slice) + 4 SEEDED, default-OFF byte-identical. NO schema
+change - the 4 new entries use the EXISTING item-251 linear machinery (same
+_PASSIVE_HEAL_OVERRIDES dict, same to_heal_block, same _eval_heal_shield_block);
+a linear entry just carries no bilinear_terms / no per_charge. The item-253
+AS-aware roster pass logged Mordekaiser R "heal 10% of their maximum health" as
+a clean target-max-HP linear heal the original item-251 84-candidate scan
+overlooked; this slice re-runs the exhaustive scan (all 171 champs, no-heal-block
+forms whose effects_descriptions carry a heal/restore verb AND a self/target HP
+quantity) and recovers 4 misses. SEEDED 4: Mordekaiser R Realm of Death (10%
+TARGET max HP on the soul-consume, flat across all 3 R ranks - target-relative,
+0 at rest, surfaces under resolve_target_relative + target_max_hp, cadence
+per_cast); Illaoi P Prophet of an Elder God (5% caster MISSING HP per Tentacle
+that hits a champion - missing-HP, 0 at rest, surfaces under
+resolve_target_relative + caster_missing_hp_pct, per-Tentacle lower bound);
+Zac P Cell Division Goo (4% : 8% by level caster MAX HP per chunk consumed -
+resolves at the default like Maokai/Swain, per-chunk lower bound, the
+resurrection 50% revive omitted); Dr. Mundo P Goes Where He Pleases (4% caster
+MAX HP on the immobilize-resist canister consume - resolves at the default like
+Gragas; the per-5s max-HP regen tick omitted as a regen-rate steroid). EXHAUSTED:
+the re-scan confirmed the remaining heal-verb+HP hits are %-of-HP DAMAGE lines
+(Aatrox/Brand/Gwen/Sejuani/Smolder - the heal-verb match was spurious), the
+documented vamp / revive / grey-health classes (Darius Q bespoke, Pyke P / Sion P
+/ TahmKench E, Warwick W is a sub-50%-HP HUNT trigger not a heal), a PET heal
+(Zyra R restores her PLANTS' current HP), or a remount / mount-HP restore (Kled P
+- Skaarl restores 40-70% of the MOUNT's max HP on a 100-Courage remount, the
+revive-adjacent class). The LINEAR effects-text heal class is now EXHAUSTED at
+patch 16.11.1. Default apply_passive_heal=False (load_default) byte-identical
+(the seam injects only under the flag, gated on no existing heal block - all 4
+forms have empty damage_blocks). +20 tests test_passive_heal_overrides_linear_
+reopen_item254.py. DS :8893 restarted -> 1.86.0; RC NOT restarted - DS engine +
+tests + Share + docs only.)
+
 1.85.0 (item 253 / gap-plan - GAP-2 AS-AWARE effects-text HEAL seam + the LAST
 named clean headless heal lift, default-OFF byte-identical. The bilinear HEAL
 registry (items 250-252) could not express a heal scaling on bonus ATTACK SPEED
