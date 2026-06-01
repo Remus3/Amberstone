@@ -543,7 +543,9 @@ class Wave18AsciiHygieneTests(unittest.TestCase):
         # Read source directly from disk to avoid sys.modules churn
         # from earlier test setUp/tearDown.
         path = Path(cc.__file__).resolve()
-        src = path.read_text(encoding="utf-8")
+        src = path.read_text(encoding="utf-8") + path.with_name(
+            "CC_CONDITIONAL_NOTES.md"
+        ).read_text(encoding="utf-8")
         marker = "wave 18 expansion (2026-05-24 / ENGINE 1.55.0)"
         idx = src.find(marker)
         self.assertGreater(idx, -1, "wave 18 header marker missing")
@@ -562,7 +564,9 @@ class Wave18AsciiHygieneTests(unittest.TestCase):
         # The new coexists_with_unconditional field docstring block
         # must be ASCII-clean. Read source from disk directly.
         path = Path(cc.__file__).resolve()
-        src = path.read_text(encoding="utf-8")
+        src = path.read_text(encoding="utf-8") + path.with_name(
+            "CC_CONDITIONAL_NOTES.md"
+        ).read_text(encoding="utf-8")
         idx = src.find("coexists_with_unconditional: bool = False")
         self.assertGreater(
             idx, -1, "coexists_with_unconditional field missing"

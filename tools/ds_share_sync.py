@@ -139,8 +139,12 @@ def _build_expected() -> dict[str, bytes]:
         # The live engine CHANGELOG.md is the repo-internal release history
         # relocated out of __init__.py (item 241). The Share package carries its
         # own authored Share/CHANGELOG.md and a stubbed __init__, so the engine
-        # changelog is intentionally not mirrored.
-        if p.name == "CHANGELOG.md" and p.parent == eng:
+        # changelog is intentionally not mirrored. CC_CONDITIONAL_NOTES.md is the
+        # repo-internal authoring source + REJECT rationale relocated out of the
+        # cc_conditional.py builders (item 245 A3); it carries dev-context (wave /
+        # item numbers) and is not read at runtime (the loader reads the mirrored
+        # cc_conditional_registry.json), so it is intentionally not mirrored.
+        if p.name in ("CHANGELOG.md", "CC_CONDITIONAL_NOTES.md") and p.parent == eng:
             continue
         if p.name == "__init__.py" and p.parent == eng:
             out[rel] = _CLEAN_INIT.format(version=version).encode("utf-8")
