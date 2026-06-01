@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-06-01 - item 255: DS GAP-2 CONDITIONAL-GATE effects-text DAMAGE schema lift + 5 SEEDED, default-OFF byte-identical (ENGINE 1.86.0 -> 1.87.0; DS restarted 1.87.0; RC not restarted - DS engine + tests + Share + docs only)
+
+Operator "start the next DS schema lift and exhaust it then /done". Per item 254 the HEAL lifts were exhausted; next named headless lift = the conditional-gate DAMAGE lift (Brand P + Ekko W) staged by items 248/249.
+
+PRE-WORK (same session, separate fix ea6f071): operator-reported Udyr R "AD mis-attribution" root-caused NOT to R (its blocks are pure MAGIC + ap_pct; direct compute_burst_damage(combo_sequence=['R']) = AD 90 / AP 975) but to scenario_matrix.sweep_scenarios SILENTLY DROPPING the caller `sequence` for the burst/combo/rune_burst metrics (only mana_bounded_dps honored it) -> a "scenario of just R" scored the full Q-AA-W-R combo (AA + Q %max-HP physical = AD). Fixed: threaded sequence into combo (sequence=) + burst/rune_burst (combo_sequence=); seq=None byte-identical; +9 tests; NO ENGINE bump (harness, not :8893-route-reachable).
+
+FINDING (verified vs live 16.11.1): Brand P explosion = 8%:12% (lvl) + 2%/100 AP of MAX HP (non-zero at rest -> needs a gate); Ekko W = 3% + 3%/100 AP of MISSING HP (0 at rest, sub-30% gate); exhaustion scan (ndb==0 forms w/ conditional + HP scaling) surfaced 3 clean siblings (Jhin P 4th-shot missing-HP, KSante P mark-consume max-HP, Sejuani P frozen-detonation max-HP).
+
+SCHEMA LIFT (2 fields on PassiveDamageEntry + same on PerStackTerm for the fold; ZERO new evaluator math): (a) target_missing_hp_pct = % target MISSING HP (sibling of target_max_hp_pct; target_missing_hp_pct -> target_missing_hp already in _SCALING_TARGETS); 0 at the default full-HP ctx = byte-identical lower-bound, surfaces only under a sub-threshold target_current_hp_pct. (b) conditional_probability (default 1.0 = no-op for the 23 prior entries): to_damage_block MULTIPLIES every coefficient (base + scaling fields + bilinear factors) by it -> amortized expected magnitude; operator-tunable firing midpoint for a non-ctx gate (per_stack assumed_stacks + cc_conditional precedent).
+
+SEEDED (5, default-OFF): Brand P Blaze ring explosion (8%:12% + 2%/100 AP MAX HP, MAGIC, per_fight, prob 0.5) / Ekko W (3% + 3%/100 AP MISSING HP, MAGIC, on_hit, prob 1.0 - sub-30% gate ctx-encoded; 0 at full HP) / Jhin P Whisper 4th shot (15/20/25% MISSING HP, PHYSICAL, on_hit, prob 0.25 EXACT) / KSante P Dauntless Instinct (12 + 1%:2% MAX HP, PHYSICAL, on_hit, prob 1.0) / Sejuani P Icebreaker (10% MAX HP, MAGIC, per_fight, prob 0.5).
+
+REJECTS: Kai'Sa P 5th-stack (the (Kaisa,P,0) key is the item-249 UNCONDITIONAL Caustic Wounds ramp; a per-entry prob would wrongly gate it - needs per-TERM gating) / Zed P (shipped item 247 full magnitude, not re-gated) / Zeri P (AA-replacement) / Samira P (missing-HP MULTIPLIER not additive) / Karma W f1 + Viego P (missing-HP HEALS).
+
+LIVE in-process block-eval: Brand P 129.41 no-AP / 293.41 @ AP 656; Ekko W 0 full / 425.25 @ 25% HP; Jhin P 0 full / 93.75 @ 25% (= 0.25*20%*1875 EXACT); KSante P 51.71; Sejuani P 125.0; all default-OFF byte-identical.
+
++20 tests test_passive_damage_conditional_gate_item255.py. ENGINE 1.86.0 -> 1.87.0 + 41 test-pin syncs + CHANGELOG prepend + Share re-sync (--check clean, 258 files) + DS restart (PowerShell taskkill /F /PID 19860 + schtasks /Run /TN RC-DaemonSlayer -> /health 1.87.0/16.11.1/172/705). DS suite 5866 -> 5886 (+20, 0 failed); phase8 70/70 post-restart; ruff clean; added-diff 0 non-ASCII. Commits: 78f6ef0 feat (+ ea6f071 the scenario_matrix pre-work fix).
+
+Don't-redo: (a) conditional_probability MULTIPLIES the whole block so it ONLY fits a WHOLLY-conditional entry (Kai'Sa P reject = mixed with the unconditional ramp). (b) Jhin 0.25 EXACT; Brand/Sejuani 0.5 documented midpoints; Ekko 1.0 (sub-30% gate ctx-encoded, a 2nd prob double-discounts). (c) P-slot seeds are NOT in the QWER compute_ability_dps rotation - verify via direct to_damage_block + _evaluate_block (compute_ability_dps skips P), same as all item-247/249 P-slot passives; on_hit/per_fight cadence routing is Phase D. (d) the 4 REJECTS are documented negatives - do NOT re-pitch. (e) DS restart PowerShell taskkill + schtasks (NEVER Stop-Process). NEXT: Phase D live flag-flips (apply_passive_damage now 28 forms; wire resolve_target_relative + a live current-HP feed for the missing-HP seeds + tune Brand/Sejuani 0.5 live; route on_hit -> AA / per_fight -> fight clock); the 5 C2 AA-empower values; AurelionSol W cross-spell seam (own session); item-240 UI part-3. The clean headless effects-text lifts (HEAL 250/251/252/253/254 + DAMAGE 247/248/249/255) are now ALL EXHAUSTED.
+
+---
+
 # 2026-06-01 - Share/ DS handoff docs reconciled to ENGINE 1.86.0 (docs-only; commit 5725aa7; CI green; no engine bump; no DS/RC restart; Share/src mirror untouched)
 
 Share/ external-review docs were authored at 1.75.0 (item 239); live engine is 1.86.0. Updated the 5 authored handoff docs to reflect current status - the gaps/recommendations that have since shipped (items 240-254). 5 files, +225/-182; commit 5725aa7 pushed a730b70..5725aa7; CI run 26781709012 green.
