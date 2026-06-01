@@ -1331,6 +1331,31 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.88.0 (item 257 / gap-plan C2x - AurelionSol W CROSS-SPELL self-state amp seam,
+default-OFF byte-identical. Resolves the last _STAGED_AMP_CANDIDATES entry that
+the per-form AmpEntry key could not express: AurelionSol W (Astral Flight)
+carries a "Breath of Light Flat Damage Modifier" [108,109,110,111,112]% that
+amplifies the Q beam WHILE W flight is active; W f0 itself has no damage block.
+NEW CrossSpellAmpEntry (source_key + amp_per_rank + condition) + NEW
+_CROSS_SPELL_AMP_OVERRIDES keyed by the TARGET spell (AurelionSol Q f0,
+source_key=W, amp_per_rank 0.08..0.12, condition w_flight) + NEW _cross_spell_amp_for
+resolver + NEW _COND_W_FLIGHT condition (0.4 midpoint, the magnitude the staged
+entry always documented). compute_ability_dps consults it ONLY under
+apply_ability_amps=True: resolves the SOURCE (W) rank via rank_at_level at the
+current level + gates on the W-flight midpoint, multiplying the target Q's
+per-cast amp factor; skipped when W is unleveled (rank < 0 -> no buff). NO
+double-count (W f0 has no damage block; Q has no _ABILITY_AMP_OVERRIDES entry).
+_STAGED_AMP_CANDIDATES is now EMPTY (Sion Q + Hwei Q f2 resolved item 246 via
+block-index routing; AurelionSol W resolved here). _amp_multiplier type widened
+to AmpEntry | CrossSpellAmpEntry (both carry amp_per_rank/always_on/condition).
+LIVE: AurelionSol Q apply_ability_amps=True lvl1 byte-identical 146.25 (W rank -1
+skipped) / lvl11 292.5 -> 304.2 (x1.04 = 1 + 0.4*0.10 W rank 2) / lvl16 292.5 ->
+306.54 (x1.048 = 1 + 0.4*0.12 W rank 4); default apply_ability_amps=False
+byte-identical for all champions; Caitlyn control flag-on byte-identical (no
+cross-spell entry). +20 tests test_cross_spell_amp_item257.py. ENGINE 1.87.0 ->
+1.88.0. DS :8893 restarted -> 1.88.0; RC NOT restarted - DS engine + tests +
+Share + docs only.)
+
 1.87.0 (item 255 / gap-plan - GAP-2 CONDITIONAL-GATE effects-text DAMAGE schema
 lift + 5 SEEDED, default-OFF byte-identical. The class items 248/249 STAGED
 (Brand P ring explosion + Ekko W sub-30% passive) + 3 siblings the exhaustion
