@@ -1331,6 +1331,42 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.89.0 (item 258 / gap-plan Phase D - authored the C2 AA-empower amortized values
+in _ability_amp_overrides.py, default-OFF byte-identical. The 5 base="aa" AmpEntry
+champs (Caitlyn W / Fiora E / Jayce W f1 / Sivir W / Nidalee Q f1) carried
+placeholder amp_per_rank=(0.0,) since item 247 wired the dps.compute_dps consumer
+(_aa_amp_multiplier scales ONLY the base-AA single-target damage component
+base_dps - NOT item proc DPS, NOT attack speed, NOT extra-target bounces). Of the
+5, ONLY Fiora E fits that seam and is AUTHORED; the other 4 stay INERT with
+documented non-fit reasons. AUTHORED: Fiora E Bladework - the 2nd empowered AA is
+a GUARANTEED CRIT at modified crit damage 160%:200% by E rank (damage_block
+"Critical damage"), a real (m-1) per-AA uplift on Fiora's typical no-crit bruiser
+build (the 1st empowered AA cannot crit -> modeled neutral). AMORTIZED over the E
+cooldown (11/10/9/8/7s) at AS=1.0 baseline: addend=(m-1)/cd -> amp_per_rank
+(0.0545,0.0700,0.0889,0.1125,0.1429), always_on (the addend is the already-
+amortized expected per-AA uplift; a probability gate would double-discount).
+ASSUMPTION (operator-tunable, same convention as item-249 assumed_stacks /
+item-255 conditional_probability): AS=1.0 sustained window + 1st-AA crit-loss
+modeled neutral + no-crit build (a crit build folds crit into base_dps so this
+would over-credit). INERT (4, documented non-fit): Caitlyn W = Headshot bonus is
+a trap-spring-gated separate passive not a base-AA multiplier (would over-credit
+every AA); Jayce W f1 = per-AA modifier 70:110% AD is mostly < 1.0*AD, spell value
+is the +360% bonus AS the consumer cannot model (would read as a base-AA nerf);
+Sivir W = extra-target bounce (40:50% AD to others) + AS, single-target AA damage
+unchanged; Nidalee Q f1 = Takedown CONVERTS the AA to a magic missing-HP formula
+(not a physical base-AA multiplier) gated behind a Cougar-form Q recast. NEW
+source-rank guard in _aa_amp_multiplier: an entry whose spell is UNLEVELED
+(rank < 0) contributes factor 1.0 (mirrors the item-257 cross-spell src_rank >= 0
+guard; a low-level Fiora with E not yet leveled under the canonical 1-point
+distribution stays byte-identical to the no-amp baseline). LIVE (compute_dps
+weighted_dps, itemless): Fiora apply_ability_amps=False L4 37.2852 / L11 31.0544 /
+L18 42.3214 -> True 39.3172 (x1.0545 E rank0) / 32.7469 / 48.3691 (x1.1429 E
+rank4); Fiora L1-3 (E rank -1) byte-identical; Caitlyn / Jayce / Sivir / Nidalee
+flag-on byte-identical (4 inert); Lux control byte-identical; default
+apply_ability_amps=False byte-identical for all champions. +18 tests
+test_aa_empower_authored_item258.py. ENGINE 1.88.0 -> 1.89.0. DS :8893 restarted
+-> 1.89.0; RC NOT restarted - DS engine + tests + Share + docs only.)
+
 1.88.0 (item 257 / gap-plan C2x - AurelionSol W CROSS-SPELL self-state amp seam,
 default-OFF byte-identical. Resolves the last _STAGED_AMP_CANDIDATES entry that
 the per-form AmpEntry key could not express: AurelionSol W (Astral Flight)
