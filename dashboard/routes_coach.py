@@ -92,6 +92,21 @@ def _serve_replay_match(h) -> None:
                 "application/json")
 
 
+def _serve_spend_gates(h) -> None:
+    # API spend gates for the Settings dev card: per-gate label + explain +
+    # disabled flag, plus per-match cost (usd + tokens) averaged over the
+    # last N full matches. GET only; flip a gate via POST /api/coach/toggle.
+    try:
+        from core.cost_tracker import get_tracker as _gt
+        t = _gt()
+        payload = {"gates": t.gates_state(), "per_match": t.recent_match_avg()}
+        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+    except Exception as exc:
+        log.warning("api/spend/gates: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                "application/json")
+
+
 def _serve_coach_state(h) -> None:
     # Per-mode coach kill-switch state. GET only; toggle via POST.
     try:
@@ -153,7 +168,8 @@ def _serve_coach_toggle_post(h, payload) -> None:
     try:
         mode = str(payload.get("mode") or "").strip().lower()
         disabled = bool(payload.get("disabled"))
-        if mode not in {"sr", "aram", "arena", "brawl", "tft"}:
+        from core.cost_tracker import GATES
+        if mode not in set(GATES):
             h._send(400, b'{"error":"invalid mode"}', "application/json")
             return
         from core.cost_tracker import get_tracker as _gt
@@ -174,6 +190,7 @@ def _serve_coach_toggle_post(h, payload) -> None:
 # query string handled by equals()).
 GET_ROUTES = [
     (equals("/api/cost"),             _serve_cost),
+    (equals("/api/spend/gates"),      _serve_spend_gates),
     (equals("/api/coach/trace"),      _serve_coach_trace),
     (equals("/api/coach/state"),      _serve_coach_state),
     (equals("/api/replay/matches"),   _serve_replay_matches),
