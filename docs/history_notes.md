@@ -33,6 +33,28 @@ NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` 
 
 ---
 
+# 2026-06-01 - item 252: DS GAP-2 PER-CHARGE effects-text HEAL seam + 1 SEEDED (Taric Q), default-OFF byte-identical (ENGINE 1.83.0 -> 1.84.0; DS restarted 1.84.0; RC not restarted - DS engine + tests + Share + docs only)
+
+Operator "start the next DS schema lift and exhaust it then /done". Next staged HEADLESS schema need from item 251 NEXT(3) = the per-charge heal seam (Taric Q).
+
+FINDING (verified vs live 16.11.1 before building): a scan of all 171 champs for per-charge / stocked-charge HEAL forms surfaces exactly ONE - Taric Q Starlight's Touch ("heals ... for 25 (+ 15% AP) (+ 1% of his maximum health) per charge ... up to a maximum amount"; max 125 + 75% AP + 5% max HP at 5 charges). The only other charge mechanic, Zeri P, is a DAMAGE charge. Taric Q parses to NO attribute_kind=="heal" block (only a "Maximum Charges" attribute_kind=="other" block = [1..5] per Q rank), so the existing-heal-block gate admits it; compute_ability_hps scored Taric 0.0 pre-lift.
+
+SCHEMA LIFT (the heal sibling of item-249's per-stack DAMAGE fold; entirely contained in _passive_heal_overrides.py - NO abilities.py / ability_hps.py change): NEW PassiveHealEntry.per_charge (tuple of (value, unit) linear terms read "per charge", same shape + unit maps as linear_terms) + assumed_charges; to_heal_block FOLDS each per_charge term * assumed_charges into raw_modifiers at BUILD time (a _scale_value helper broadcasting flats + per-level tuples), so the existing _eval_heal_shield_block needs ZERO new math. Default per_charge=() / assumed_charges=0.0 = every prior entry byte-identical.
+
+SEEDED (1, default-OFF, exact from verbatim 16.11.1): Taric Q Starlight's Touch - the 3 per-charge terms (flat 25 + 15% AP + 1% caster max HP) fold * assumed_charges 3.0 (typical mid-fight stock; the COEFFICIENTS are exact, only the count is the assumption; true cap = Q rank, max 5 at rank 5). SELF heal modeled; ally heal omitted (same per-charge amount, different target). cadence per_cast (Q has a cooldown -> heal_per_sec computed).
+
+DEFAULT-OFF (like the item-251 linear caster-stat seeds): all 3 folded terms are flat / caster-stat -> resolve NON-zero at the default resolve_target_relative=False under the flag (no HP assumption needed); the apply_passive_heal=False DEFAULT (load_default) is byte-identical (full DS suite unchanged at default).
+
+EXHAUSTED: Taric Q is the SOLE per-charge HEAL (Zeri P is a damage charge); Taric Q moved out of the in-module BESPOKE exclusion. The other bespoke heals (Kindred W / Darius Q / TwistedFate W / Aphelios R / Elise R / Nilah P) each need a DIFFERENT mechanic, NOT per-charge.
+
++18 tests test_passive_heal_overrides_per_charge_item252.py; item-251 registry-total test rescoped 19 -> >=19. ENGINE 1.83.0 -> 1.84.0 + 37 test-pin syncs + CHANGELOG prepend + Share re-sync (--check clean, 254 files engine 1.84.0; gist auto-pushes on commit) + DS restart (PowerShell taskkill /F /PID 6460 + schtasks /Run /TN RC-DaemonSlayer). DS suite 5800 -> 5818 (+18, 0 failed); phase8 70/70 post-restart; ruff clean; added-diff 0 non-ASCII. LIVE in-process: Taric Q apply_passive_heal=True heal_per_cast 120.412 (L11 itemless = 75 flat + 0.03*1513.7 caster max HP) / heal_per_sec 8.826; +AP (Luden's+Zhonya's) 212.662; 0 at apply_passive_heal=False default; Soraka existing-heal-block gate OFF==ON 8.836.
+
+Don't-redo: (a) per_charge + assumed_charges is the canonical home for ANY per-stocked-charge heal; to_heal_block FOLDS at build time (mirrors item-249 per-stack; no DamageBlock/ctx/eval change) - COEFFICIENTS exact, only assumed_charges (3.0) is the operator-tunable midpoint; do NOT bake the count into the per-charge values (loses the Phase-D live-count seam). (b) Taric Q has NO existing heal block (only "Maximum Charges" other-block) so the gate admits it - do NOT inject onto a form with a snapshot heal block. (c) Taric Q is the SOLE per-charge HEAL; Zeri P is DAMAGE - do NOT re-pitch Zeri P. (d) per_charge terms are FLAT (not Q-rank-scaled); Q rank only sets the max-charge CAP; assumed_charges 3.0 over-credits Q rank 1/2 (item-249 steady-state-midpoint approx) - do NOT rank-gate without a live charge feed. (e) the folded terms resolve NON-zero at resolve-off under the flag (resting-resolvable, NOT the lower-bound contract); the apply_passive_heal=False DEFAULT is what stays byte-identical. (f) DS restart PowerShell taskkill /F /PID + schtasks (NEVER Stop-Process).
+
+NEXT (gap-plan, operator-gated / live = Phase D): (1) Phase D live flag-flips (apply_passive_heal now 20 forms; wire resolve_target_relative + a live target-HP / caster-missing-HP feed for the 3 bilinear + Trundle P + a live stocked-charge feed for Taric Q assumed_charges; the flat/caster-stat seeds surface immediately). (2) the 5 C2 AA-empower amortized values. (3) STAGED heal lifts: an AS-aware heal seam (Viego's omitted +5%/100% bonus-AS term - the LAST named clean headless heal lift; add bonus_as to the bilinear_ctx); Brand P + Ekko W conditional-gate (damage, Phase-D-deferred). (4) AurelionSol W cross-spell seam (own session). (5) item-240 UI part-3 + #7/#8 sign-off + item-243 NEXT(2) ranked-SR UI watch.
+
+---
+
 # 2026-06-01 - item 251: DS GAP-2 LINEAR effects-text-only HEAL registry + 16 SEEDED, default-OFF byte-identical (ENGINE 1.82.0 -> 1.83.0; DS restarted 1.83.0; RC not restarted - DS engine + tests + Share + docs only)
 
 Operator "start the next DS schema lift and exhaust it then /done". Next staged HEADLESS schema need from item 250 NEXT(3) = the LINEAR effects-text-heal registry (Fiora P 35:100 flat + the linear-only effects-text heals - the sibling slice to item 250's 3 bilinear seeds).
