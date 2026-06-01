@@ -91,9 +91,14 @@ class SchemaCoercionTests(unittest.TestCase):
 
 
 class StagedAbsentTests(unittest.TestCase):
-    def test_gwen_and_kaisa_not_seeded(self) -> None:
-        self.assertNotIn(("Gwen", "P", 0), _PASSIVE_DAMAGE_OVERRIDES)
+    def test_kaisa_not_seeded(self) -> None:
+        # Kai'Sa P stays STAGED (per-Plasma-stack ramp - its own decision).
         self.assertNotIn(("Kaisa", "P", 0), _PASSIVE_DAMAGE_OVERRIDES)
+
+    def test_gwen_seeded_by_item248(self) -> None:
+        # Gwen P was STAGED here through item 247; the item-248 bilinear
+        # schema lift now seeds it (see test_passive_damage_bilinear_item248).
+        self.assertIn(("Gwen", "P", 0), _PASSIVE_DAMAGE_OVERRIDES)
 
 
 class ByteIdenticalDefaultTests(unittest.TestCase):
