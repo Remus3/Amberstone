@@ -106,6 +106,7 @@ from ._ability_amp_overrides import (
     _DEFAULT_AMP_PROBABILITY,
     _ability_amp_for,
     _amp_multiplier,
+    _cross_spell_amp_for,
     _staged_amp_block_route_for,
 )
 from .abilities import (
@@ -1100,6 +1101,22 @@ def compute_ability_dps(
             _amp_entry = _ability_amp_for(resolved.champion_id, key, form.form_index)
             if _amp_entry is not None and _amp_entry.base == "ability":
                 amp_factor = _amp_multiplier(_amp_entry, rank, _DEFAULT_AMP_PROBABILITY)
+            # C2x (item 257): cross-spell self-state amp - a DIFFERENT spell's
+            # rank + active buff scales THIS spell (AurelionSol Q amplified by W
+            # Astral Flight's flat-damage modifier while W flight is active). The
+            # magnitude is indexed by the SOURCE spell's rank (resolved at this
+            # level via rank_at_level) and gated on the W-flight self-state
+            # midpoint. Skipped when the source spell is unleveled (rank < 0 ->
+            # no buff). Multiplies on top of any same-form ability amp.
+            _xs_entry = _cross_spell_amp_for(resolved.champion_id, key, form.form_index)
+            if _xs_entry is not None:
+                _src_rank = rank_at_level(
+                    _xs_entry.source_key, level, max_priority=max_priority
+                )
+                if _src_rank >= 0:
+                    amp_factor *= _amp_multiplier(
+                        _xs_entry, _src_rank, _DEFAULT_AMP_PROBABILITY
+                    )
         # Build-wide damage_amp + spell-magic_amp scale per-cast pre-mit.
         post_amps = post_mode * damage_amp * spell_magic_amp * amp_factor
         mit_factor = _mitigation_factor(form.damage_type, target_armor_eff, target_mr_eff)
