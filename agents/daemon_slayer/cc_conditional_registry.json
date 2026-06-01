@@ -1,0 +1,1005 @@
+{
+  "_generated_by": "tools/ds_cc_conditional_to_json.py",
+  "_note": "Hand-authored conditional-CC registry. Probabilities are SEED midpoints; the cc_conditional loader re-applies per-entry calibration overrides from data/cc_conditional_calibration.json (gitignored) via _p / _p_form. Do NOT bake an override into this file. Add new entries by hand (the dataclass __post_init__ validates spell/probability/durations/condition at load); the REJECT rationale + wave history live in CC_CONDITIONAL_NOTES.md.",
+  "_schema": "cc_conditional_registry_v1",
+  "forms": [
+    {
+      "cc_kind": "root",
+      "champion": "Aphelios",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": 3,
+      "notes": "Q form 3 Gravitum Binding Eclipse expunge root: when Gravitum is active main weapon (form 3), Q expunges enemies carrying Gravitum's slow debuff (applied via Aphelios autos during the Gravitum window) for damage + 1.0s root flat across all Q ranks (effects_descriptions 'rooting them for 1 second'). Other weapon-forms (Calibrum/Severum/Infernum/Crescendum) have NO root payload. Maps to COND_TARGET_DEBUFFED - root requires pre-applied Gravitum slow. Probability tag midpoint 0.5 - reliable Gravitum-window auto-chain but requires weapon-cycle timing + prior autos. FIRST Aphelios first-order CC registration in the engine. Sidecar pattern parallel to Hwei E form 1+2 + Sylas E form 1 + Karma W form 1 + Gnar W form 1 - form_index carries semantic meaning (only form 3 carries CC payload). Form-explicit override key shape: Aphelios:Q:3.",
+      "probability": 0.5,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Gnar",
+      "coexists_with_unconditional": false,
+      "condition": "frenzy_state",
+      "durations_s": [
+        1.25
+      ],
+      "form_index": 1,
+      "notes": "W form 1 Wallop (Mega-form-gated stun): when Gnar is in Mega form (rage-meter transform), W slams the arm down + stuns enemies hit for 1.25s flat across all 5 W ranks. Mini-form W (form_index=0, Hyper) is a passive on-hit stack with NO first-order CC. Maps to COND_FRENZY_STATE - Gnar must be in the rage-meter-driven Mega transform. THIRD consumer of COND_FRENZY_STATE after Renekton W wave 9 + Karma W form 1 wave 10. Probability tag midpoint 0.4. Mechanic captured by ENGINE 1.46.0 Meraki schema lift (form 1 effects_descriptions confirms the 1.25s stun is explicit + flat-duration). Coexists with Gnar R unconditional terrain-collision stun 0.75s in `_PER_SPELL_CC_DURATIONS` on a different spell slot. Form-explicit override key shape: Gnar:W:1.",
+      "probability": 0.4,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Hwei",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.2,
+        1.4,
+        1.6,
+        1.8,
+        2.0
+      ],
+      "form_index": 2,
+      "notes": "E form 2 Gaze of the Abyss (EW form): roots target for 1.2-2.0s across 5 E ranks. Hwei E is a 2-cast cycle (E mood selector -> Q/W/E form lock). The root fires only on the EW form completion plus a placement-lock-launch sequence (~1s additional delay). Partial-cycle = no fire. Maps to COND_CHANNEL_COMPLETION on the 2-cast sequence + eye lock-on channel. Probability mid-low - 2-input setup + dodgeable projectile. Coexists with the primary registry wave 9 Hwei E form 1 Grim Visage fear entry; this is the SECOND same-spell-slot schema-lift entry in the sidecar registry. Mechanic captured by ENGINE 1.46.0 Meraki schema lift (effects_descriptions confirms root payload on EW form). Form-explicit override key shape: Hwei:E:2.",
+      "probability": 0.4,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Jayce",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        0.25
+      ],
+      "form_index": 0,
+      "notes": "E form 0 Thundering Blow cast-time root: Jayce's Hammer-form E roots the target enemy for 0.25s over the cast time before dealing damage + knocking them back 600 units. The CC duration equals the Meraki castTime field (0.25s flat - no rank scaling on the cast lockout). Form 1 (Cannon Acceleration Gate) is instant-cast (cast_time=None) and has NO first-order CC. Maps to COND_CHANNEL_COMPLETION on the brief 0.25s cast lockout - interruption mid-cast cancels root + knockback. Probability tag midpoint 0.5 - 0.25s cast window completes in most fights, but Jayce E is targeted + reliable only on slowed or already-CC'd enemies. FIRST Jayce first-order CC registration (the unconditional knockback lives in `_PER_SPELL_CC_DURATIONS` separately). Sidecar pattern - form_index carries semantic meaning (form 0 carries CC, form 1 does not). Mechanic captured by ENGINE 1.51.0 schema lift (``tools/daemon_slayer_abilities_extract.py`` now extracts the Meraki castTime field per form). Closes item 170 wave 12 + item 171 wave 13 deferred carry-forward 'Jayce E cast-time root STILL schema-blocked' - the cast_time field is now available in extracted data. The item 170+171 ledger note '0.4 seconds is Q lockout not root' was correct - the 0.25s cast time is the actual root duration. Form-explicit override key shape: Jayce:E:0.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Karma",
+      "coexists_with_unconditional": false,
+      "condition": "frenzy_state",
+      "durations_s": [
+        2.35,
+        2.45,
+        2.55,
+        2.65,
+        2.75
+      ],
+      "form_index": 1,
+      "notes": "W form 1 Renewal (Mantra-empowered Focused Resolve): Karma's base W root (1.6-2.0s across 5 W ranks) is EXTENDED by a Mantra-rank bonus (+0.5/+0.75/+1.0/+1.25 across 4 Mantra ranks). Encoded at mid Mantra rank 2 (+0.75 bonus) for operator-conservative calibration: (2.35, 2.45, 2.55, 2.65, 2.75) seconds across 5 W ranks. At max Mantra rank 4 the actual durations reach (2.85, 2.95, 3.05, 3.15, 3.25). Maps to COND_FRENZY_STATE - Karma must be in a Mantra-charged self-empowered state (R) to cast the Renewal form variant. SECOND consumer of COND_FRENZY_STATE after Renekton W wave 9. Mechanic captured by ENGINE 1.46.0 Meraki schema lift (effects_descriptions[0] 'Mantra Bonus: Focused Resolve's root duration is increased ... Renewal scales with Mantra's rank'). Coexists with the primary registry wave 1 Karma W default-form entry; this is the FIRST same-spell-slot schema-lift entry in the sidecar registry. Form-explicit override key shape: Karma:W:1.",
+      "probability": 0.4,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Rell",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        0.8
+      ],
+      "form_index": 0,
+      "notes": "W form 0 Ferromancy: Crash Down channel-completion stun: Rell's Mounted-state W leaps over 0.625s cast_time + on arrival deals magic damage + STUNS nearby enemies 0.8s flat across all 5 W ranks + knocks up 0.4s + slides 320 units. CC payload fires ONLY on cast completion; mid-cast hard CC cancels arrival + stun/knockup. Maps to COND_CHANNEL_COMPLETION - 0.625s cast lockout is the channel window. Probability tag midpoint 0.5 - leap-engage with momentum; interruption requires ranged CC already active on target's team. Form 1 (Mount Up Dismounted-state empowered-AA) shipped wave 22 (ENGINE 1.60.0) as a separate sidecar entry below. FIRST Rell W first-order CC registration in the engine. Coexists with the unconditional Rell Q stun entry in `_PER_SPELL_CC_DURATIONS` on a different spell slot. The 0.4s knockup is a separate displacement payload not registered here - this entry encodes ONLY the 0.8s stun. Mechanic captured by ENGINE 1.51.0 schema lift (Meraki cast_time field for form 0 = 0.625s). Form-explicit override key shape: Rell:W:0.",
+      "probability": 0.5,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Rell",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        0.6
+      ],
+      "form_index": 1,
+      "notes": "W form 1 Ferromancy: Mount Up empowered-AA stun: Rell's Dismounted-state W (recast within 3.5s of form 0 Crash Down) transforms her to Mounted state AND empowers her next basic attack within 3.5s. The empowered AA charges the target at 100 bonus range + 40% bonus AS with 0.2s cast_time. Upon charge-arrival or collision, the AA deals bonus magic damage + STUNS the target 0.6s flat across all 5 W ranks + flings them 150 units over Rell over 0.4s. Maps to COND_CHANNEL_COMPLETION on the 2-cast cycle (form 0 -> form 1 within 3.5s) + empowered-AA charge-delivery sequence. Stun fires ONLY on charge-arrival completion; interruption between form 1 cast + AA delivery (silenced / CC'd / killed) cancels the stun. Probability tag midpoint 0.4 - mid-low matching Sylas E form 1 + Hwei E form 1 parallel 2-input setup pattern; the 3.5s form 1 + 3.5s AA window is generous but the empowered AA can be denied by hard CC on Rell mid-charge. Coexists with the wave 15 Rell W form 0 sidecar entry on the same (Rell, W) slot via the form_index discriminator (FOURTH same-spell-slot multi-form-coexistence in the sidecar registry after Karma W 0+1 / Hwei E 0+1+2 / Sylas E 0+1). The 0.4s fling is a separate displacement payload not registered here - this entry encodes ONLY the 0.6s stun. Mechanic captured by ENGINE 1.51.0 schema lift (Meraki cast_time + effects_descriptions for form 1; both already available since wave 14 cast_time lift). Closes item 198 carry (i) Rell W form 1 operator-gated since wave 15 REJECT carry. Form-explicit override key shape: Rell:W:1.",
+      "probability": 0.4,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Sylas",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        0.5
+      ],
+      "form_index": 1,
+      "notes": "E form 1 Abduct (2-cast-completion stun): Sylas E is a 2-cast cycle. Form 0 (Abscond) dashes with no CC; form 1 (Abduct, recast within 3.5s) whips chains that stun the first enemy hit for 0.5s flat across all 5 E ranks. Maps to COND_CHANNEL_COMPLETION on the 2-cast sequence. Probability mid-low matching Hwei E parallel - 2-input setup within 3.5s is reliable in Sylas combo cadence but projectile is dodgeable. Coexists with absence in `_PER_SPELL_CC_DURATIONS` (FIRST Sylas first-order CC registration anywhere in the engine). Sidecar pattern preferred - form_index carries semantic meaning (form 0 = no CC setup dash; form 1 = 2nd-cast stun payload). Closes item 170 wave-12-audit candidate + ability_dps.py:1225-1228 carry-forward + item 148 wave 7 schema-lift REJECT note (the wave 7 reject was correct that range is NOT the axis; channel-completion IS). Mechanic captured by ENGINE 1.46.0 Meraki schema lift (form 1 effects_descriptions confirms the 0.5s stun is explicit + flat-duration). Form-explicit override key shape: Sylas:E:1.",
+      "probability": 0.4,
+      "spell": "E"
+    }
+  ],
+  "primary": [
+    {
+      "cc_kind": "knockup",
+      "champion": "Aatrox",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        0.5
+      ],
+      "form_index": null,
+      "notes": "Q is a 3-cast cycle; 3rd cast's inner sweetspot circle knocks up enemies hit for 0.5s. Outside the sweetspot is damage + brief knockback (not first-order CC). 3-cycle achievability high in a 6s fight given Q's short windup between casts.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Aatrox",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.75
+      ],
+      "form_index": null,
+      "notes": "W chain hits + applies chain debuff for 1.75s; if target is still inside the zone when timer expires, they are pulled back + briefly rooted. Walking out of the zone before expiry = damage + slow only. target_debuffed conditional - the chain debuff must persist through the full window. Coexists with Aatrox Q wave 3 conditional knockup on a different spell slot via setdefault.",
+      "probability": 0.5,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Alistar",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "E Trample 5-stack stun: 5s channel ticks every 0.5s generating a stack of Trample per champion damaged, up to 5 stacks. At 5 stacks, the next basic attack on-hit ends Trample to deal bonus damage + stun the target for 1.0s flat across all 5 E ranks. Standalone E with fewer than 5 stacks = damage + ghosting only. Maps to COND_NTH_HIT (5-stack accumulation conditional). Probability tag midpoint 0.7 - reliable in teamfights but chasing targets frequently exit the trample radius. Coexists with Alistar Q unconditional knock-up + Alistar W unconditional knock-back on different spell slots. Closes item 170 wave-12-audit candidate (named in ability_dps.py comment as known conditional-CC carryover).",
+      "probability": 0.7,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Bard",
+      "coexists_with_unconditional": false,
+      "condition": "terrain",
+      "durations_s": [
+        1.5,
+        1.75,
+        2.0,
+        2.25,
+        2.5
+      ],
+      "form_index": null,
+      "notes": "Q stuns on bounce off wall or pass-through second target. Single-target hit with no wall behind is slow-only. Terrain-positioning conditional; probability mid-low because Bard must aim into geometry.",
+      "probability": 0.3,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Brand",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.25
+      ],
+      "form_index": null,
+      "notes": "Q Sear stuns 1.25s only when target carries a Blaze passive stack from prior Brand spell-hit or auto-attack. Standalone Q on a non-blazed target is damage only. target_debuffed conditional - the Blaze stack must persist on the target when Q lands (4s stack window). Coexists with Brand R wave 0 nth_hit 3-stack stun on a different spell slot via setdefault.",
+      "probability": 0.5,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Brand",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        2.0
+      ],
+      "form_index": null,
+      "notes": "Brand passive Blaze stuns target at 3 stacks (2.0s); R Pyroclasm bounces multiple times so it is the most likely source of 3-stack saturation in a teamfight.",
+      "probability": 0.7,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "fear",
+      "champion": "Briar",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "E is a charged scream; full-charge release fears enemies in cone for 1.0s. Tap-cast is damage + slow only (no first-order CC). channel_completion conditional - the charge-channel must complete to gain the fear payload. Coexists with Briar Q wave 4 terrain-stun on a different spell slot via setdefault.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Briar",
+      "coexists_with_unconditional": false,
+      "condition": "terrain",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "Q dash; if target is knocked into terrain at end of dash, stun 1.0s. No-terrain hit is damage only. terrain conditional. Frenzy-state-gated variants (Q+R during Frenzy) carry forward operator-gated - they need a new condition tag schema lift not in this wave.",
+      "probability": 0.3,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "fear",
+      "champion": "Briar",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "R Certain Death Hematomania impact fear: on dash arrival, the explosion fears all NON-MARKED enemies in radius for 1.5s flat across all 3 R ranks per Meraki 16.10.1 effects_descriptions ('fears all non-marked targets for 1.5 seconds'). Marked target receives damage but no fear (single-target chase mark). Maps to COND_TARGET_DEBUFFED with the inverse mark-state semantic: the fear gates on non-marked status of the AoE targets, which the marked-debuff-on-different-enemy condition gates. Probability midpoint - typical Briar R engage has 1-3 teammates near the marked target so the fear lands with mid-to-high frequency. No coexistence flag - Briar has no unconditional R entry in `_PER_SPELL_CC_DURATIONS`. THIRD Briar entry in cc_conditional after Q wave 4 + E wave 5; Briar becomes the SECOND 3-slot cc_conditional champion after TahmKench. FIRST Briar R first-order CC registration anywhere. Discovered during wave 18 re-audit of Briar description text. Mechanic captured by ENGINE 1.46.0 Meraki schema lift.",
+      "probability": 0.5,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "charm",
+      "champion": "Evelynn",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.25,
+        1.5,
+        1.75,
+        2.0,
+        2.25
+      ],
+      "form_index": null,
+      "notes": "W Allure applies a mark that detonates on Evelynn's next spell-hit or auto-attack on the marked target. Charm fires on follow-up - channel completion of her mark+detonation sequence. Mark expires ~2.5s without follow-up. Probability mid-low - Evelynn typically detonates in setup ganks but mark frequently expires in poke fights. Closes wave 4 + wave 8 REJECT notes that detonation-on-Eve-attack conditional charm belongs in cc_conditional.",
+      "probability": 0.4,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Fiora",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "W parries within a 0.75s window; if it blocks an enemy champion ability or AA, target is stunned 1.5s. Parry outcome depends on enemy cast timing into Fiora's window; probability mid-low because parry timing is hard.",
+      "probability": 0.4,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "Fizz",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "R Chum the Waters lure-on-champion knockup: base eruption knocks BACK 0.25s; lure attached to a champion (the holder) makes the eruption knock UP for 1.0s flat instead (effects_descriptions 'knocked up for 1 second instead of knocked back'). Maps to COND_TARGET_DEBUFFED - lure must attach to a champion (debuffing them with slow + reveal). Probability tag midpoint 0.5 - reliable in teamfights but lure projectile is dodgeable. FIRST Fizz first-order CC registration in the engine.",
+      "probability": 0.5,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "silence",
+      "champion": "Garen",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "Q Decisive Strike empowered-AA silence: Garen Q cleanses slows + bonus MS + empowers NEXT basic attack within 4.5s to lunge + silence 1.5s flat across all 5 Q ranks per effects_descriptions. The silence fires ONLY when the empowered AA lands on a champion target. Standalone Q with no follow-up AA = MS buff cleanse only (no silence). Maps to COND_NTH_HIT - the empowered single-hit AA is the canonical nth_hit conditional pattern (parallel to Alistar E + Kennen E + Riven Q + Aatrox Q3 + Udyr E wave 16). Probability tag midpoint 0.7 - 4.5s window reliably lands the empowered AA absent hard CC on Garen or target Flash. FIRST Garen first-order CC registration in the engine (Garen E + R have no champion CC payload).",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "fear",
+      "champion": "Hecarim",
+      "coexists_with_unconditional": true,
+      "condition": "range_gated",
+      "durations_s": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "form_index": null,
+      "notes": "R Onslaught of Shadows distance-gated fear: Hecarim dashes to target with displacement immunity, summons 5 spectral riders, AoE magic damage on arrival. Per Meraki 16.10.1 effects_descriptions[1] 'fears nearby enemies for 0.75 : 1.5 (based on distance traveled) seconds'. Encoded at MAX-distance 1.5s with COND_RANGE_GATED tag (SECOND consumer of the wave 7 forward-marker tag after Maokai R wave 18). coexists_with_unconditional=True declares same-slot coexistence with the unconditional Hecarim R 1.0s flat baseline entry in `_PER_SPELL_CC_DURATIONS`. Consumer math: at include_conditional=True the MAX rule credits the larger of unconditional 1.0s or conditional 1.5 * 0.4 = 0.6s default (operator can tune Hecarim:R above 0.667 to flip the conditional above the unconditional). Probability midpoint 0.4 matches Maokai R precedent - operator must commit to a long-distance ride to reach the 1.5s far band; close-range R engages get the 1.0s mid value via the unconditional entry. FIRST Hecarim cc_conditional entry anywhere (E knockback + R baseline fear already in `_PER_SPELL_CC_DURATIONS`). Discovered during wave 23 (2026-05-26 / ENGINE 1.61.0) full-schema re-audit. Mechanic captured by ENGINE 1.46.0 Meraki schema lift (effects_descriptions); range-gated payload matches the COND_RANGE_GATED tag without further schema work.",
+      "probability": 0.4,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "fear",
+      "champion": "Hwei",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.0,
+        1.125,
+        1.25,
+        1.375,
+        1.5
+      ],
+      "form_index": null,
+      "notes": "E form 1 Grim Visage (EQ form): fears target for 1.0-1.5s across 5 ranks. Hwei E is a 2-cast cycle (E mood selector -> Q/W/E form lock). The fear fires only on the EQ form completion; partial-cycle = no fire. Maps to COND_CHANNEL_COMPLETION on the 2-cast sequence. Probability mid-low - 2-input setup + dodgeable projectile. Closes item 150 + 151 + 152 carry-forward 'Hwei E form_index=1 Grim Visage Disable 1.0-1.5s; multi-form same-spell-slot constraint' via ENGINE 1.46.0 Meraki schema lift (the duration values were already in the parse-strip damage_blocks but the mechanic verification needed effects_descriptions).",
+      "probability": 0.4,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "JarvanIV",
+      "coexists_with_unconditional": false,
+      "condition": "terrain",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "E places flag; Q dashes to flag and knocks enemies up 1.0s along the path. Conditional on flag-placement preceding Q within a teamfight setup.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "KSante",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        0.75
+      ],
+      "form_index": null,
+      "notes": "Q is a 3-cast cycle; 3rd cast roots for 0.75s. First 2 casts are damage + slow only. 3-cast achievability is high in a 6s fight given Q's short cooldown.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "KSante",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "W Path Maker recast channel-completion stun: KSante W charges 0.4-1.0s + recast dashes + carries enemies + STUNS them 0.5-1.75s based on channel time per effects_descriptions. Stored as representative 1.0s midpoint of the 0.5-1.75s range; operator can tune via per_entry_probability override key KSante:W. Maps to COND_CHANNEL_COMPLETION - canonical channel-completion pattern (parallel to Warwick R + Karma W + Pantheon Q + Sion R + Renata Q + Rell W form 0). Probability tag midpoint 0.5 - reliable in operator-pace engages where KSante holds the charge to threshold. The All Out (R-active) form REMOVES this stun (replaces with true damage); this entry encodes the BASE form payload only. Coexists with KSante Q wave 1 cc_conditional entry on a different spell slot. FIRST KSante W first-order CC registration in the engine.",
+      "probability": 0.5,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Karma",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.5,
+        1.625,
+        1.75,
+        1.875,
+        2.0
+      ],
+      "form_index": null,
+      "notes": "W tethers target; root fires only if tether persists for the full channel (~2s). Movement / dash / LoS break can cancel; probability mid-low vs full midpoint because tether is frequently cancelled in fights.",
+      "probability": 0.4,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Kennen",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        1.25
+      ],
+      "form_index": null,
+      "notes": "E applies Mark of the Storm. At 3 stacks (Q + W + E + AA combo or similar) target is stunned 1.25s. E is the mid-fight applicator; probability mid because Kennen needs full combo to land the third stack.",
+      "probability": 0.6,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Leblanc",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "E applies tether on hit; root fires only if tether persists for the full duration (~1.5s) without Leblanc leaving range or target breaking LoS. Tether-breaking = damage only. Probability midpoint matches the Karma W full-tether pattern from wave 1; tether is frequently cancelled in mid-fight.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Maokai",
+      "coexists_with_unconditional": false,
+      "condition": "terrain",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "Q knocks back; if target collides with terrain, stun extends to ~1.0s. Standalone hit with no wall behind is brief knockback only. Terrain-positioning conditional; probability mid-low because aim is geometry-dependent.",
+      "probability": 0.3,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Maokai",
+      "coexists_with_unconditional": true,
+      "condition": "range_gated",
+      "durations_s": [
+        2.25
+      ],
+      "form_index": null,
+      "notes": "R Nature's Grasp distance-gated root: brambles root 0.75-2.25s scaling on distance traveled per Meraki 16.10.1 effects_descriptions ('0.75 : 2.25 based on distance traveled'). Encoded at MAX-distance 2.25s with COND_RANGE_GATED tag (FIRST consumer of the wave 7 forward-marker tag - closes the empty-registry contract pending since ENGINE 1.44.0). coexists_with_unconditional=True declares same-slot coexistence with the unconditional Maokai R entry (1.2/1.6/2.0s per-rank mid-distance values in `_PER_SPELL_CC_DURATIONS`). Consumer math: at include_conditional=True the MAX rule credits the larger of the unconditional post-tenacity (2.0s rank 3) or the conditional post-tenacity (2.25 * 0.4 = 0.9s default) - never both summed. Operator can tune via per_entry_probability `Maokai:R` to lift the conditional above the unconditional (Maokai:R = 0.9 lifts to 2.025s vs unconditional 2.0s). Mechanic captured by ENGINE 1.46.0 Meraki schema lift. Closes items 170 + 172 + 173 + 174 + 175 carry forward (Maokai R distance-gated needs same-spell-slot coexistence schema lift).",
+      "probability": 0.4,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "banishment",
+      "champion": "Mordekaiser",
+      "coexists_with_unconditional": false,
+      "condition": "mode_gated",
+      "durations_s": [
+        7.0
+      ],
+      "form_index": null,
+      "notes": "Banishes target to Death Realm 7s on cast. Once cast and landed, banishment is unconditional; probability=1.0. The operator cannot engage the rest of the team during this window which the scorer should credit.",
+      "probability": 1.0,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Morgana",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.5,
+        1.75,
+        2.0
+      ],
+      "form_index": null,
+      "notes": "R Soul Shackles tethers all enemies in range; tethered targets are stunned for the rank duration if Morgana maintains LoS + range for the full 3s channel. Channel cancel via knockup / displacement / death nullifies the stun. Mechanic parallel to Karma W wave 1 entry. Probability midpoint - in teamfights the operator typically gets the channel off but enemies frequently interrupt or break tether. Closes wave 8 unconditional REJECT (item 146) + wave 9 REJECT (item 147) note that Morgana R belongs in cc_conditional parallel to Karma W.",
+      "probability": 0.5,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Neeko",
+      "coexists_with_unconditional": false,
+      "condition": "dual_enemy",
+      "durations_s": [
+        1.8,
+        2.1,
+        2.4,
+        2.7,
+        3.0
+      ],
+      "form_index": null,
+      "notes": "E Tangle-Barbs EMPOWERED root variant: spiral grows on first-enemy hit, subsequent enemies hit by the grown spiral are rooted 1.8-3.0s across 5 ranks. Base root (0.7-1.5s) is in unconditional _PER_SPELL_CC_DURATIONS. The empowered duration credits when 2+ enemies are caught in the spiral path. Maps to COND_DUAL_ENEMY (teamfight conditional). Probability midpoint - Neeko's E is a primary teamfight tool typically aimed into clusters. Closes item 150 + 151 + 152 carry-forward 'Neeko E Empowered Root 1.8-3.0s; multi-form same-spell-slot constraint' via ENGINE 1.46.0 schema lift. Coexists with unconditional base root on the same (Neeko, E) slot via the separate-registry pattern.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "Nunu",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        0.5
+      ],
+      "form_index": null,
+      "notes": "R is a 3s channel that explodes on completion + knocks up enemies in the AOE for 0.5s. Channel-interruption by hard CC or Nunu moving out of range cancels the knockup. Probability midpoint - channels are frequently cancelled in teamfights but Nunu can use terrain to break LoS.",
+      "probability": 0.5,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Ornn",
+      "coexists_with_unconditional": false,
+      "condition": "terrain",
+      "durations_s": [
+        1.25
+      ],
+      "form_index": null,
+      "notes": "E Searing Charge terrain-collision stun: Ornn charges + deals damage to enemies passed through; if he COLLIDES with terrain mid-charge a shockwave knocks up + STUNS nearby enemies 1.25s flat across all 5 E ranks per effects_descriptions. Standalone E with no terrain hit = damage only (no shockwave, no stun). Maps to COND_TERRAIN - the canonical terrain-positional conditional tag. FIRST consumer of COND_TERRAIN (forward-marker tag since wave 7 schema lift). Probability tag midpoint 0.3 - terrain collision requires aiming at a wall + the enemy near it; reliable in lane / mid-Rift fights, unreliable in open teamfights. Coexists with the wave 4 Ornn Q debuffed-target knockup entry on a different spell slot.",
+      "probability": 0.3,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "Ornn",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "Q knocks up only when target has Brittle stack from auto or W. Standalone Q is damage + slow. Probability midpoint because Brittle application is part of Ornn fight rhythm.",
+      "probability": 0.5,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Pantheon",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "Q tap-cast is a short-range damage spear; empowered long-cast (hold + release) becomes a long-range thrown spear with 1.0s stun on champion hit. channel_completion conditional - the windup-channel must complete. Coexists with Pantheon W unconditional stun on a different spell slot via setdefault.",
+      "probability": 0.5,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Pyke",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.25
+      ],
+      "form_index": null,
+      "notes": "E leaves a knife on dash path; knife returns ~1.25s post-cast and stuns enemies it passes through for the rank duration. Channel-completion conditional; mid probability because return path is predictable but dodgeable.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Renata",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        0.5
+      ],
+      "form_index": null,
+      "notes": "Q Handshake recast bystander stun: first cast roots primary target 1.0s (unconditional, belongs in `_PER_SPELL_CC_DURATIONS` if added later). Recast within tether throws target; SECONDARY targets struck by the thrown body are stunned 0.5s flat. Standalone Q without recast = damage + primary root only. Maps to COND_CHANNEL_COMPLETION - secondary stun fires only after tether persists + recast throw aim lands. Probability tag midpoint 0.5 - tether persists reliably but secondary throw-line aim requires teamfight setup. FIRST Renata first-order CC registration in the engine (encodes only the recast bystander payload).",
+      "probability": 0.5,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Renekton",
+      "coexists_with_unconditional": false,
+      "condition": "frenzy_state",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "W Ruthless Predator REIGN OF ANGER empowered stun: base stun 0.75s (unconditional) extends to 1.5s when cast while at 100 Fury. Mechanic captured by ENGINE 1.46.0 Meraki schema lift (effects_descriptions[2] 'Reign of Anger Bonus: ... increasing the stun duration to 1.5 seconds'). Maps to COND_FRENZY_STATE - FIRST consumer of the wave 7 forward-marker tag, closing the COND_FRENZY_STATE empty-registry contract. Probability tag midpoint 0.4. Closes item 150 + 151 + 152 carry-forward 'Renekton W Fury empowered-Fury stun in stripped description'. Coexists with the unconditional Renekton W 0.75s base stun on the same (Renekton, W) slot via the separate-registry pattern (unconditional registry = `_PER_SPELL_CC_DURATIONS`, this is the conditional empowered variant).",
+      "probability": 0.4,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "Riven",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        0.75
+      ],
+      "form_index": null,
+      "notes": "Q is a 3-dash cycle; 3rd dash impact AOE knocks up enemies 0.75s. Casts 1 + 2 are damage + dash only. 3-cycle achievability high given Q's short cooldown and dash reset cadence.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Sejuani",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "E Permafrost 4-Frost-stack stun: E can ONLY be cast against an enemy already carrying 4 Frost stacks (accumulated via Sejuani W + allied melee basic attacks within a 5s window). Cast deals magic damage + slight displacement + stuns the target for 1.0s flat across all 5 E ranks. Maps to COND_NTH_HIT - input itself is gated on 4 stacks. Probability tag midpoint 0.7 - W ticks + ally auto chain reliably stacks a priority target. Coexists with Sejuani Q + R unconditional stuns in `_PER_SPELL_CC_DURATIONS` on different spell slots.",
+      "probability": 0.7,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Seraphine",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.1,
+        1.2,
+        1.3,
+        1.4,
+        1.5
+      ],
+      "form_index": null,
+      "notes": "E Beat Drop CC tier escalates by target state: fresh target gets damage + slow only; slowed target stunned; stunned target rooted. The conditional stun fires when target is already slowed (teammate setup or Seraphine R). Disable duration is the same value across all CC tiers. Probability midpoint - teamfight setup-dependent. Closes wave 4 + wave 8 + wave 9 REJECT notes that beat drop conditional CC belongs in cc_conditional.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Sett",
+      "coexists_with_unconditional": false,
+      "condition": "dual_enemy",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "E pulls enemies inward; stuns 1.0s only when 2+ enemies are caught and snap together. Teamfight conditional; in 1v1 the E is slow only.",
+      "probability": 0.6,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "fear",
+      "champion": "Shaco",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "R Hallucinate clone-death box fear: clone deploys 3 mini-boxes on death/expiration that fear nearby enemy champions 1.0s flat (effects_descriptions 'fearing nearby enemies for 1 second'). Standalone R with clone alive = damage + control only. Maps to COND_CHANNEL_COMPLETION - fear fires only after clone death/expiration. Probability tag midpoint 0.5 - operator-controlled detonation but clone frequently saved for utility. Coexists with Shaco W unconditional fear in `_PER_SPELL_CC_DURATIONS` on a different spell slot.",
+      "probability": 0.5,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Singed",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.0,
+        1.25,
+        1.5,
+        1.75,
+        2.0
+      ],
+      "form_index": null,
+      "notes": "E Fling Mega-Adhesive overlap root: when the target's landing position falls inside Singed's pre-placed W Mega Adhesive zone, target is rooted for 1.0-2.0s across 5 E ranks (Meraki 16.10.1 Root Duration block). Standalone Fling with no W overlap is damage + displacement only. Maps to COND_TARGET_DEBUFFED - target must be inside Mega Adhesive zone when Fling lands. Probability midpoint - canonical Singed combo (W then E onto W) is reliable but requires aim. Coexists with the unconditional Singed E knockback 1.0s in `_PER_SPELL_CC_DURATIONS` on the same spell slot via the separate-registry pattern (unconditional = base displacement; conditional = W-overlap root payload). Closes item 156 wave 11 deferred carry via item 170 wave 12 re-audit of the schema-lifted damage_blocks.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Sion",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "R Unstoppable Onslaught: 8s charge with displacement immunity; on slam-impact a smaller-radius inner AOE pulls enemies toward Sion + stuns them for 0.25-1.75s based on channel time. Encoded at midpoint 1.0s (mid-charge ~4s) for operator-conservative calibration. Outer-radius slow 3s is NOT first-order CC and is omitted. Maps to COND_CHANNEL_COMPLETION - parallel to Karma W / Warwick R / Morgana R. Mechanic captured by ENGINE 1.46.0 Meraki schema lift (effects_descriptions confirms 0.25 : 1.75 channel-time-gated stun). Coexists with the unconditional Sion Q stun 1.25-2.25s in `_PER_SPELL_CC_DURATIONS` on a different spell slot. Operator can tune via per_entry_probability ``Sion:R`` if max-charge calibration (1.75s) is preferred.",
+      "probability": 0.5,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "Skarner",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        0.75
+      ],
+      "form_index": null,
+      "notes": "Q is a 3-charge cycle; 3rd cast creates terrain pillar + knocks up 0.75s. First 2 casts are damage only. 3-cycle achievability is high given Q's low cooldown.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Swain",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.5,
+        1.625,
+        1.75,
+        1.875,
+        2.0
+      ],
+      "form_index": null,
+      "notes": "E damage zone returns to Swain; targets hit by RETURN wave rooted 1.5-2.0s across ranks. Outbound hit is damage only. Channel-completion conditional - return path takes ~1.5s + dodgeable; probability midpoint.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Syndra",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.25
+      ],
+      "form_index": null,
+      "notes": "E Scatter the Weak Dark-Sphere knockback stun: Syndra E propels a knockback cone; if a Dark Sphere (Q residue) sits in the cone path, sphere ALSO flies + STUNS targets 1.25s flat across all 5 E ranks per effects_descriptions. Standalone E without sphere = damage + knockback only (no stun). Maps to COND_TARGET_DEBUFFED - the 'debuff' is the sphere positioning at moment of cast (target overlap with pushed sphere path). Distinct from Transcendent 80-Splinter slow (REJECTED wave 15 for state-tracking). Probability tag midpoint 0.5 - sphere placement + cone alignment is operator combo work; reliable in lane telegraphed plays, less so in open teamfights. FIRST Syndra first-order CC registration in the engine (Q + W + R have no champion CC; R execute is damage-only).",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "TahmKench",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "Q applies 1 stack of passive An Acquired Taste; at 3 stacks target is stunned 1.5s. Q's own slow is the unconditional damage surface; the 3rd-stack stun is the nth_hit conditional. Probability 0.7 because 3-cycle is achievable in 6s fight via Q + AA + Q chain. Coexists with TahmKench R wave 0 devour on different spell slot via setdefault.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "suppression",
+      "champion": "TahmKench",
+      "coexists_with_unconditional": false,
+      "condition": "devour",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "Devour requires 3 stacks of Tongue Lash (Q) on the enemy. While devoured, target is effectively suppressed; can be spat or held. Probability assumes Tahm setup time.",
+      "probability": 0.4,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "TahmKench",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "W Abyssal Dive emerge stun: 1.35s channel + 0.15s blink delay + 0.65s recovery; on completion Tahm Kench emerges to knock up + stun nearby enemies 1.0s flat (effects_descriptions 'knock up and stun them for 1 second'). Interrupted channel = no emerge payload. Maps to COND_CHANNEL_COMPLETION - stun fires only after full cycle completes. Probability tag midpoint 0.5 - reliable in most fights given displacement immunity during dive. Coexists with the wave 0 TahmKench R devour suppression + wave 5 TahmKench Q nth_hit stun cc_conditional entries on different spell slots.",
+      "probability": 0.5,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Taliyah",
+      "coexists_with_unconditional": false,
+      "condition": "traverse",
+      "durations_s": [
+        0.75
+      ],
+      "form_index": null,
+      "notes": "E Unraveled Earth dash-detonation stun: Taliyah scatters 22 stones across the ground; enemies who DASH OR ARE KNOCKED OVER a stone detonate it + are STUNNED for 0.75s (champion; 2.0s monster) per effects_descriptions. Standalone enemy who walks AROUND the field = damage + 20% slow only (no first-order CC). Maps to COND_TRAVERSE - FIRST consumer of the wave 17 forward-marker tag schema lift, closing the COND_TRAVERSE empty-registry contract on ship. Probability tag midpoint 0.3 - champions typically AVOID the telegraphed stone field; reliable consumer cases are enemy mid-dash through the field after Taliyah pre-places + ally CC chains that knock enemies over stones. Coexists with Taliyah W wave 1 cc_conditional entry on a different spell slot via setdefault. FIRST Taliyah E first-order CC registration in the engine (Q + W + R have no champion CC; Q Worked Ground Boulder stun is monster-only NOT champion). Closes item 174 carry (i) Taliyah E needs new COND_TRAVERSE tag - operator-gated. Mechanic captured by ENGINE 1.46.0 Meraki schema lift.",
+      "probability": 0.3,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "Taliyah",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        0.75
+      ],
+      "form_index": null,
+      "notes": "W zone fires after delay; knockup direction set by Taliyah's recast input. Single value 0.75s across all ranks. Probability midpoint - recast cadence varies.",
+      "probability": 0.5,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "TwistedFate",
+      "coexists_with_unconditional": false,
+      "condition": "gold_card",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "Pick a Card cycles R/Y/B; Gold (Yellow) stuns 1.5s. Probability assumes TF locks Gold before engage; not all fights start with W pre-loaded.",
+      "probability": 0.4,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Udyr",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        0.75
+      ],
+      "form_index": null,
+      "notes": "E Blazing Stampede empowered-AA pounce stun: Udyr E enters Stampede Stance + ghosting + bonus MS; NEXT basic attack pounces + stuns 0.75s flat across all 5 E ranks per effects_descriptions. Once-per-target ICD that does NOT affect first-cast probability. Standalone Stance entry with no AA = MS buff + ghosting only (no stun). Maps to COND_NTH_HIT - the empowered single-hit AA pounce is the canonical nth_hit conditional pattern (parallel to Garen Q wave 16 silence + Alistar E + Kennen E + Riven Q + Aatrox Q3 nth_hit knockup). Probability tag midpoint 0.7 - 4-second Stance window reliably lands the pounce-AA absent hard CC on Udyr or target Flash. FIRST Udyr first-order CC registration in the engine.",
+      "probability": 0.7,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Vayne",
+      "coexists_with_unconditional": true,
+      "condition": "terrain",
+      "durations_s": [
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5
+      ],
+      "form_index": null,
+      "notes": "E Condemn terrain-collision stun: knockback 475u + if target collides with terrain, bonus physical damage + 1.5s stun flat across all 5 E ranks per Meraki 16.10.1 effects_descriptions ('become stunned for 1.5 seconds'). The Meraki `notes` field captures the ENGINE 1.58.0 schema lift detail: 'Condemn's stun duration starts when Vayne's target collides with a wall (they can be immobilized for up to 2 seconds depending on displacement duration based on distance traveled)' - the 1.5s is the fixed canonical stun duration; the additional 0.5s is displacement-distance-scaled travel time before the stun starts (modeled as 1.5s for the consumer). Maps to COND_TERRAIN (prob 0.3) - SECOND consumer of the wave 7 forward-marker tag after Ornn E wave 15. coexists_with_unconditional=True declares same-slot coexistence with the unconditional Vayne E 0.5s knockback entry in `_PER_SPELL_CC_DURATIONS` (the no-wall miss path). Consumer math: at include_conditional=True the MAX rule credits the larger of unconditional 0.5s or conditional 1.5 * 0.3 = 0.45s default (operator can tune via per_entry_probability `Vayne:E` to lift the conditional above the unconditional). FIRST Vayne first-order CC registration anywhere. Discovered during wave 20 (ENGINE 1.58.0) re-audit of operator brief named carries Kindred E + Diana P + Vayne P (all 3 REJECT-verified at parse-strip + notes-lift level: Kindred E slow only / Diana P AS bonus only / Vayne P MS bonus only). Vayne E was the 4th candidate the audit surfaced as a genuine winner.",
+      "probability": 0.3,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "fear",
+      "champion": "Vex",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        1.0,
+        1.125,
+        1.25,
+        1.375,
+        1.5
+      ],
+      "form_index": null,
+      "notes": "Personal Space deals damage + applies fear when target is Doom-marked (from R or passive). Standalone E is damage only; the fear requires the Doom mark.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Viktor",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        1.5
+      ],
+      "form_index": null,
+      "notes": "Field deals slow + stacks; enemy at 3 stacks (~1.5s in field) is stunned 1.5s. Probability assumes Viktor zones the field correctly + enemy fails to flash out.",
+      "probability": 0.6,
+      "spell": "W"
+    },
+    {
+      "cc_kind": "knockback",
+      "champion": "Volibear",
+      "coexists_with_unconditional": false,
+      "condition": "terrain",
+      "durations_s": [
+        0.75
+      ],
+      "form_index": null,
+      "notes": "Q dashes; if collision with terrain occurs while target is hit, target is knocked aside 0.75s. Standalone Q is slow only; the conditional bump requires positioning.",
+      "probability": 0.3,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "fear",
+      "champion": "Warwick",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "E Primal Howl recast fear: E grants 2.5s damage reduction; recast (manual after 1s or auto on buff expiration) fears nearby enemies 1.0s flat (effects_descriptions 'fearing nearby enemies for 1 second'). Standalone E without recast = self-buff only. Maps to COND_CHANNEL_COMPLETION - fear fires only after recast window opens. Probability tag midpoint 0.5 - auto-recast at 2.5s is reliable but 380-unit radius frequently misses mobile targets. Coexists with the wave 0 Warwick R suppression cc_conditional entry on a different spell slot.",
+      "probability": 0.5,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "suppression",
+      "champion": "Warwick",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.5,
+        1.75,
+        2.0
+      ],
+      "form_index": null,
+      "notes": "R suppresses target for channel duration. Cleanseable; interruptible by hard CC on Warwick. Probability assumes average teamfight where R lands but may be interrupted.",
+      "probability": 0.5,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Xayah",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        1.25
+      ],
+      "form_index": null,
+      "notes": "E recalls feathers; root fires only if 3+ feathers hit the same target. 1-2 feather hit is damage only. Probability mid because feather setup needs prior Q + auto chain.",
+      "probability": 0.6,
+      "spell": "E"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "XinZhao",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        0.75,
+        0.75,
+        0.75,
+        0.75,
+        0.75
+      ],
+      "form_index": null,
+      "notes": "Q Three Talon Strike: Xin Zhao empowers his next 3 basic attacks within 5s. The 3rd attack knocks the target up 0.75s flat across all 5 Q ranks per Meraki 16.10.1 effects_descriptions[1] ('The third attack knocks up the target for 0.75 seconds'). Maps to COND_NTH_HIT (prob 0.7 tag midpoint). The notes field confirms the knockup is the CC payload separately from the damage ('Spell shield will only block the knock up'). This is the CANONICAL example of COND_NTH_HIT - the tag's own docstring at line 190 names Xin Zhao Q 3rd-attack knockup as the motivating example, yet through waves 0-20 the entry was never added. Wave 21 (notes-field re-audit of prior-wave REJECT carries + fresh full-fleet filter) closes the gap. FIRST Xin Zhao Q first-order CC registration anywhere. Coexists with the unconditional Xin Zhao W 1.0s knockup in `_PER_SPELL_CC_DURATIONS` on a different spell slot. No coexists_with_unconditional flag - Xin Zhao Q has no unconditional entry. Probability 0.7 midpoint - in a teamfight, the operator typically lands 3 consecutive AAs on the highest-priority target within the 5s window; missed attacks (target untargetable / dashes / displacement) lower the success rate but Xin Zhao's empowered AA range expansion makes the 3rd-hit knockup reliable. Mechanic captured by ENGINE 1.46.0 Meraki schema lift (effects_descriptions); validated against ENGINE 1.58.0 notes-field lift.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "XinZhao",
+      "coexists_with_unconditional": false,
+      "condition": "debuffed_target",
+      "durations_s": [
+        0.75,
+        0.75,
+        0.75
+      ],
+      "form_index": null,
+      "notes": "R Crescent Sweep target-not-Challenged stun: Xin Zhao sweeps his spear, knocking back all NON-Challenged targets hit up to 700 units over 0.75s + stunning them 0.75s flat across all 3 R ranks per Meraki 16.10.1 effects_descriptions[1] ('Active: Xin Zhao sweeps his spear around him ... knocking back all non-Challenged targets hit up-to 700 units over 0.75 seconds, as well as stunning them for the same duration'). Challenged targets (the last enemy hit by Xin Zhao's AAs or Audacious Charge, marked for 3s) receive damage but no CC - the stun is INVERSE-gated on the target's debuff state. Maps to COND_TARGET_DEBUFFED (prob 0.5 tag midpoint) with inverse semantic. SECOND COND_TARGET_DEBUFFED entry gating on inverse target-state after Briar R wave 18 (non-marked-enemy fear). The wave 20 schema-lifted notes field confirms the stun is a distinct CC payload via 'Displacement immunity will also resist the application of the stun' - if the stun were not a real payload, the notes would not document displ-imm interaction. This entry CORRECTS a wave 15 REJECT carry (the wave 15 audit caught the knockback displacement and dismissed the entry as 'not in cc_conditional CC kind schema'; that was a misread - knockback IS in the schema AND the same gate fires a stun alongside). FIRST Xin Zhao R first-order CC registration anywhere. Coexists with the unconditional Xin Zhao W 1.0s knockup in `_PER_SPELL_CC_DURATIONS` on a different spell slot. No coexists_with_unconditional flag - Xin Zhao R has no unconditional entry. Probability 0.5 midpoint - in a typical teamfight the operator's R cast lands on 2-4 enemies of which ~1 is usually the Challenged target. Skill expression: operator targets the highest-value non-Challenged enemy before cycling. Mechanic captured by ENGINE 1.46.0 Meraki schema lift; the inverse-target-state gate documented by ENGINE 1.58.0 notes-field lift. Xin Zhao becomes a 2-slot cc_conditional champion (Q wave 21 + R wave 21) entering the registry with both slots in the same wave.",
+      "probability": 0.5,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "Yasuo",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        1.0
+      ],
+      "form_index": null,
+      "notes": "Q is a 3-cast cycle; 3rd cast becomes a ranged tornado that knocks up enemies hit for 1.0s. Casts 1 + 2 are damage only (no first-order CC). 3-cycle achievability high in a 6s fight given Q is core combo + bonus AS from passive.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "knockup",
+      "champion": "Yone",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        0.75
+      ],
+      "form_index": null,
+      "notes": "Q is a 3-cast cycle mirror of Yasuo's; 3rd cast becomes a ranged tornado that knocks up enemies hit for 0.75s. Casts 1 + 2 are damage only (no first-order CC). 3-cycle achievability high given Q's short cooldown.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Yuumi",
+      "coexists_with_unconditional": false,
+      "condition": "channel",
+      "durations_s": [
+        1.75
+      ],
+      "form_index": null,
+      "notes": "Q is a long-travel skillshot; root fires only at max projectile distance for 1.75s. Short-range hit is damage only. Probability mid-low because Yuumi must aim from far back to land the max-distance root; teamfight positioning often does not allow this.",
+      "probability": 0.4,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "root",
+      "champion": "Zac",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        0.5
+      ],
+      "form_index": null,
+      "notes": "Q Stretching Strikes 2-hit cross-target root: Zac's first Q strike applies tether + slow + damage; the empowered second strike (replaces next AA within 2s tether window) lands on a DIFFERENT target = both rooted for 0.5s flat across all 5 Q ranks per effects_descriptions. Same-target double-strike = damage + slow only (no root). Maps to COND_NTH_HIT - root requires landing the 2nd strike on a different enemy than the 1st. Probability tag midpoint 0.7 - teamfight collapses + chase patterns reliably hit different targets across the tether window. FIRST Zac Q first-order CC registration in the engine (unconditional Zac E + R entries cover the other spell slots). The secondary slam knockup + 0.25s stun on targets-near-each-other is a deeper conditional layer NOT registered here - this entry encodes ONLY the 2-target root payload.",
+      "probability": 0.7,
+      "spell": "Q"
+    },
+    {
+      "cc_kind": "stun",
+      "champion": "Zilean",
+      "coexists_with_unconditional": false,
+      "condition": "nth_hit",
+      "durations_s": [
+        2.0
+      ],
+      "form_index": null,
+      "notes": "Q places delayed bomb (3s); if 2 bombs land on same target before either detonates, both pop + target stunned 2.0s. Single bomb is damage only. 2-stack achievability high in a 6s fight with Q cooldown reset.",
+      "probability": 0.7,
+      "spell": "Q"
+    }
+  ]
+}

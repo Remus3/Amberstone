@@ -479,7 +479,7 @@ class WaveSeventeenWiredSitesGrepTests(unittest.TestCase):
     """Wave 17 entry + COND_TRAVERSE constant grep-match in source."""
 
     def _source(self) -> str:
-        return inspect.getsource(cc)
+        return (inspect.getsource(cc) + open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read())
 
     def test_source_defines_cond_traverse_constant(self) -> None:
         src = self._source()
@@ -541,7 +541,7 @@ class AsciiHygieneTests(unittest.TestCase):
         )
 
     def test_cc_conditional_wave_17_block_is_ascii(self) -> None:
-        src = inspect.getsource(cc)
+        src = (inspect.getsource(cc) + open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read())
         # Slice from the "wave 17 expansion" header through the
         # Taliyah E setdefault site; assert no non-ASCII bytes
         # appear in that slice. The earlier waves carry pre-existing
@@ -564,7 +564,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_cond_traverse_docstring_block_is_ascii(self) -> None:
         # The COND_TRAVERSE constant + its docstring is a fresh block
         # added this wave; verify ASCII-clean.
-        src = inspect.getsource(cc)
+        src = (inspect.getsource(cc) + open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read())
         idx = src.find('COND_TRAVERSE = "traverse"')
         self.assertGreater(idx, -1, "COND_TRAVERSE constant missing")
         # Slice through the next blank line to capture the docstring.

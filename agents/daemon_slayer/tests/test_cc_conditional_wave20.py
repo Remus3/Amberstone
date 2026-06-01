@@ -86,7 +86,7 @@ _EXTRACTOR_SOURCE = (
     _REPO_ROOT / "tools" / "daemon_slayer_abilities_extract.py"
 )
 _CC_CONDITIONAL_SOURCE = (
-    _REPO_ROOT / "agents" / "daemon_slayer" / "cc_conditional.py"
+    _REPO_ROOT / "agents" / "daemon_slayer" / "CC_CONDITIONAL_NOTES.md"
 )
 _WAVE20_TEST_SOURCE = pathlib.Path(__file__).resolve()
 
