@@ -416,6 +416,7 @@ def _route_ehp(body: dict) -> dict:
     include_conditional = _opt_bool(body, "include_conditional", False)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
+    apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -427,6 +428,7 @@ def _route_ehp(body: dict) -> dict:
             include_conditional=include_conditional,
             apply_mode_modifiers=apply_mode_modifiers,
             apply_passive_mitigation=apply_passive_mitigation,
+            apply_passive_resist=apply_passive_resist,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -479,6 +481,7 @@ def _route_rank_tank(body: dict) -> dict:
         if "apply_build_tenacity" in body else None
     )
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
+    apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     try:
         result = rank_items_by_ehp(
             snap,
@@ -497,6 +500,7 @@ def _route_rank_tank(body: dict) -> dict:
             score_by=score_by,
             apply_build_tenacity=apply_build_tenacity,
             apply_passive_mitigation=apply_passive_mitigation,
+            apply_passive_resist=apply_passive_resist,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -544,6 +548,7 @@ def _route_hybrid(body: dict) -> dict:
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
     apply_build_tenacity = _opt_bool(body, "apply_build_tenacity", False)
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
+    apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -557,6 +562,7 @@ def _route_hybrid(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
             apply_build_tenacity=apply_build_tenacity,
             apply_passive_mitigation=apply_passive_mitigation,
+            apply_passive_resist=apply_passive_resist,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -614,6 +620,7 @@ def _route_rank_bruiser(body: dict) -> dict:
         if "apply_build_tenacity" in body else None
     )
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
+    apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -633,6 +640,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
             apply_build_tenacity=apply_build_tenacity,
             apply_passive_mitigation=apply_passive_mitigation,
+            apply_passive_resist=apply_passive_resist,
             score_by=score_by,
             alpha=alpha, beta=beta,
         )

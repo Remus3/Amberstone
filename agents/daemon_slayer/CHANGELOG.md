@@ -1331,6 +1331,43 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.93.0 (item 264 - GAP-2 effects-text RESIST-STAT grant registry + 6 seeded,
+default-OFF byte-identical. The FOURTH survivability axis, sibling of the
+effects-text HEAL (items 250-254) + SHIELD (item 260) + DAMAGE-REDUCTION (items
+261-262) registries. A resist grant is bonus armor / magic resistance a champion
+gains from an ability or innate passive that is NOT in the resolved stat block
+(not base per-level, not an item), so compute_ehp never carried it. Item 261
+documented resist-stat grants as a DELIBERATE EXCLUSION from the DR registry ("a
+DIFFERENT axis than a damage multiplier"); this is that axis. NEW module
+_passive_resist_overrides.py: PassiveResistEntry (armor + mr terms, flat or
+per-level tuple, + conditional_probability + level_scaled) + resist_grants(champ,
+level, apply) -> (bonus_armor, bonus_mr). compute_ehp(apply_passive_resist=False)
+adds the grants to armor/mr BEFORE _armor_factor (eff_armor = armor + bonus_armor;
+a positive grant lowers the resist curve's damage-taken multiplier = larger EHP =
+the correct direction). +2 EhpResult fields (passive_resist_armor / _mr, default
+0.0) at END + to_dict + note. Threaded rank_items_by_ehp + /ehp + /rank-tank +
+compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser (the full EHP-
+bearing scorer pair). SEEDED 6 (4 permanent + 2 active; exact from verbatim
+16.11.1 effects_descriptions): Garen W Courage (30 armor + 30 MR cap, permanent),
+Wukong P Stone Skin (6:10 by level bonus armor, armor-only, permanent), Shyvana P
+(5 armor + 5 MR base, permanent; per-drake +5 omitted), Sejuani P Frost Armor (10
+armor + 10 MR in-combat, permanent; +75% bonus-resist sub-terms omitted), Gwen W
+Hallowed Mist (22 armor + 22 MR active mist, amortized 0.3; +7% AP omitted),
+Pantheon E Aegis Assault (5:30 by level armor + MR, 4s active, amortized 0.3,
+level_scaled; +2.5% bonus HP omitted). EXCLUDED (documented NEGATIVES): value-not-
+in-effects-text (Olaf R / Rammus W / Kennen R / Nasus R / Hecarim W / Malphite W /
+Singed R / Taric W / Graves E - value in a parsed block, not the prose), percent-
+of-resist multiplier (Poppy W +12% total / Rell W 15% bonus - needs a base-vs-
+bonus resist split), form-gated gate-dependent magnitude (Jayce R Hammer - Cannon
+has zero), resurrection-state (Anivia P), per-stack unbounded (Thresh P souls),
+ball-attached (Orianna E). KEY FINDING (honest, DIFFERS from the DR registry): a
+flat resist add goes through the NON-LINEAR _armor_factor, so unlike item 261's
+DR (a uniform multiplicative EHP scale that is rank-INVARIANT) a resist grant is
+NOT a uniform scale -> rank_items_by_ehp / rank_items_by_hybrid CAN re-rank flag-
+on (an armor item is worth marginally less EHP to a champ that already carries +30
+innate armor). DEFAULT apply_passive_resist=False = both grants 0.0 = byte-
+identical to 1.92.0. +N tests test_passive_resist_overrides_item264.py.)
+
 1.92.0 (item 262 - thread apply_passive_mitigation into the BRUISER EHP scorer,
 default-OFF byte-identical. Symmetric completion of item 261: that wired the
 item-261 effects-text DAMAGE-REDUCTION layer into the TANK scorer (compute_ehp +
