@@ -1,0 +1,139 @@
+/* Post-Game lane / role comparison (PGR reframe S4). Operator vs lane
+ * opponent (same role slot): final gold / cs / damage / kill-part, each
+ * a head-to-head split bar. Mounts inside the PGR view (Build tab). */
+
+#pgr-lane-compare-mount[hidden] { display: none; }
+
+.plc-card {
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+
+.plc-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.plc-title {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text, #e8eaf0);
+}
+.plc-sub {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+}
+
+/* Champion vs champion header row. */
+.plc-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.plc-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--hit-min, 42px);
+}
+.plc-side-opp { flex-direction: row-reverse; }
+.plc-champ-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border-soft);
+}
+.plc-champ-noimg {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-soft);
+  display: inline-block;
+}
+.plc-name {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 600;
+  color: var(--text, #e8eaf0);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plc-kda {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+  font-variant-numeric: tabular-nums;
+}
+.plc-vs-sep {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Per-metric comparison rows. */
+.plc-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plc-row {
+  display: grid;
+  grid-template-columns: 84px 1fr 64px;
+  align-items: center;
+  gap: 10px;
+}
+.plc-row-label {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.plc-row-body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plc-val {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 56px;
+}
+.plc-val-mine { text-align: right; color: var(--text, #e8eaf0); }
+.plc-val-opp { text-align: left; color: var(--text-dim, #8b93a7); }
+
+/* The split bar - operator share on the left, opponent on the right. */
+.plc-bar {
+  flex: 1;
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--border-soft);
+}
+.plc-bar-mine { background: var(--signal-info, #8a8cf0); }
+.plc-bar-opp { background: var(--signal-dim, #8a8e9c); opacity: 0.45; }
+
+.plc-delta {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.plc-ahead { color: var(--signal-good, #6ec977); }
+.plc-behind { color: var(--signal-bad, #ff5050); }
+.plc-even { color: var(--signal-dim, #8a8e9c); }
+
+/* Row tint on the lead side so a glance reads ahead/behind. */
+.plc-row[data-lead="ahead"] .plc-bar-mine { background: var(--signal-good, #6ec977); }
+.plc-row[data-lead="behind"] .plc-bar-mine { background: var(--signal-bad, #ff5050); }
