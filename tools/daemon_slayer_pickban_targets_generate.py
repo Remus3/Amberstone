@@ -16,21 +16,31 @@ the itemless lvl-9 duel" - with NO synergy / team-comp / role-context / rune
 modelling. It is an honest deterministic proxy for the kind of "who counters
 whom" hint a coach would otherwise ask Haiku for, and it is reproducible.
 
-HOW the ranking works
----------------------
+HOW the ranking works (DE-BIASED relative strength)
+---------------------------------------------------
 ``compute_matchup(snapshot, A, B, ...).net_swing`` is positive when champion A is
-favored over B (and is anti-symmetric: swing(A,B) == -swing(B,A)). For champion
-A we score every other champion B by ``net_swing`` of A-vs-B:
+favored over B. A RAW net_swing ranking collapses every champion's counters list
+onto the same few globally-strong duelists (a champ that beats EVERYONE shows up
+as everyone's counter), which is nearly useless as a per-champ counter signal.
 
-* ``counters`` for A   = the B with the most NEGATIVE A-vs-B swing (B beats A) -
-  these are the champs to BAN against / be wary of when you pick A.
-* ``good_against`` for A = the B with the most POSITIVE A-vs-B swing (A beats B) -
-  the matchups A is favored into.
+So the ranking de-biases by each champ's global dominance baseline
+``colmean(B)`` (mean of B's swing over the whole roster):
 
-Each list is sign-filtered then top-K (default 8), sorted strongest-first, as
-``[{"champion": "<id>", "net_swing": <rounded>}, ...]``. A champ that loses no
-itemless lvl-9 duel has an EMPTY ``counters`` list (and vice versa) - that is
-the honest contract, NOT a degenerate row.
+* ``counters`` for A     = champs B that BEAT A, ranked by
+  ``rel = swing(B, A) - colmean(B)`` (most positive first). Subtracting B's
+  global strength surfaces the champ that ESPECIALLY beats A over a bully that
+  beats everyone - so the list is A-SPECIFIC.
+* ``good_against`` for A  = champs B that A beats, ranked by
+  ``rel = swing(A, B) + colmean(B)`` (most positive first). Adding B's strength
+  surfaces "you are favored into this STRONG champ" over "you beat a champ
+  everyone beats".
+
+Each list is sign-filtered (B genuinely beats / loses to A) then top-K
+(default 8). The de-bias is in the SORT, not a hard ``rel`` cut, so a champ that
+loses to anyone still gets its most-specific counters rather than an empty list.
+Each entry is ``{"champion": "<id>", "net_swing": <raw A-vs-B, rounded>,
+"rel": <de-biased, rounded>}`` (net_swing stays A-vs-B, NEGATIVE for a counter -
+the reader's documented contract; rel is the value the list is sorted by).
 
 What it produces (atomic write)
 -------------------------------
@@ -41,10 +51,11 @@ What it produces (atomic write)
       "mode": "sr",
       "level": 9,
       "top_k": 8,
+      "ranking": "debiased_relative",
       "targets": {
         "<ChampId>": {
-          "counters":     [{"champion": "<id>", "net_swing": <float>}, ...],
-          "good_against": [{"champion": "<id>", "net_swing": <float>}, ...]
+          "counters":     [{"champion": "<id>", "net_swing": <float>, "rel": <float>}, ...],
+          "good_against": [{"champion": "<id>", "net_swing": <float>, "rel": <float>}, ...]
         },
         ...
       }
@@ -154,46 +165,122 @@ def _swing(snapshot: DataSnapshot, champ_a: str, champ_b: str) -> Optional[float
     return float(result.net_swing)
 
 
+def build_matrix(
+    snapshot: DataSnapshot,
+    roster: list[str],
+    *,
+    verbose: bool = True,
+) -> dict[str, dict[str, float]]:
+    """Full pairwise swing matrix ``m[A][B] = swing(A, B)`` (A favored > 0).
+
+    One ``compute_matchup`` call per ordered pair; engine-None pairs are simply
+    absent from the inner dict (fail-soft). This is the single source the
+    de-biased ranking reads - colmeans + per-champ ranking both derive from it.
+    """
+    m: dict[str, dict[str, float]] = {a: {} for a in roster}
+    total = len(roster)
+    for i, champ_a in enumerate(roster):
+        for champ_b in roster:
+            if champ_b == champ_a:
+                continue
+            sw = _swing(snapshot, champ_a, champ_b)
+            if sw is not None:
+                m[champ_a][champ_b] = sw
+        if verbose and (i + 1) % _PROGRESS_EVERY == 0:
+            print(f"  ... {i + 1}/{total} rows computed", file=sys.stderr)
+    return m
+
+
+def _colmean(m: dict[str, dict[str, float]], champ: str) -> float:
+    """Champ's global duel dominance baseline: mean of its swing over all foes.
+
+    A globally-strong duelist (beats everyone) has a high colmean; a weak one
+    is negative. Subtracting it from a pairwise swing isolates the matchup that
+    is ESPECIALLY (un)favorable, removing the global-strength skew that made
+    every champ's raw counters list collapse onto the same few bullies.
+    """
+    row = m.get(champ) or {}
+    vals = list(row.values())
+    if not vals:
+        return 0.0
+    return sum(vals) / len(vals)
+
+
+def targets_from_matrix(
+    m: dict[str, dict[str, float]],
+    champ_a: str,
+    roster: list[str],
+    top_k: int,
+    colmeans: dict[str, float],
+) -> dict:
+    """De-biased ``{"counters": [...], "good_against": [...]}`` for ``champ_a``.
+
+    counters     = champs B that BEAT champ_a (swing(B, A) > 0), ranked by the
+                   de-biased counter strength ``rel = swing(B, A) - colmean(B)``
+                   (most positive first). Subtracting B's global dominance means
+                   a champ that ESPECIALLY beats champ_a outranks a global bully
+                   that beats everyone - so the list is champ_a-SPECIFIC, not the
+                   same 5 duelists for every champ.
+    good_against = champs B that champ_a beats (swing(A, B) > 0), ranked by
+                   ``rel = swing(A, B) + colmean(B)`` (most positive first).
+                   Adding B's dominance surfaces "you are favored into this
+                   STRONG champ" above "you beat a champ everyone beats".
+
+    Each entry keeps the raw ``net_swing`` (champ_a-vs-B, so NEGATIVE for a
+    counter - the reader's documented contract) PLUS the de-biased ``rel`` it is
+    sorted by. Self is excluded; only the swing SIGN filters (B genuinely beats
+    / loses to champ_a) - the de-bias is in the SORT, so a champ that loses to
+    anyone still gets its most-specific counters rather than an empty list.
+    """
+    a_mean = colmeans.get(champ_a, 0.0)
+    counters: list[tuple[str, float, float]] = []
+    good: list[tuple[str, float, float]] = []
+    for champ_b in roster:
+        if champ_b == champ_a:
+            continue
+        sw_ba = m.get(champ_b, {}).get(champ_a)  # B-vs-A (B beats A when > 0)
+        if sw_ba is not None and sw_ba > 0.0:
+            rel = sw_ba - colmeans.get(champ_b, 0.0)
+            # net_swing kept as champ_a-vs-B (negative); fall back to -sw_ba
+            # when the A-vs-B cell is absent (engine asymmetry / a skipped pair).
+            net = m.get(champ_a, {}).get(champ_b, -sw_ba)
+            counters.append((champ_b, net, rel))
+        sw_ab = m.get(champ_a, {}).get(champ_b)  # A-vs-B (A beats B when > 0)
+        if sw_ab is not None and sw_ab > 0.0:
+            rel = sw_ab + colmeans.get(champ_b, 0.0)
+            good.append((champ_b, sw_ab, rel))
+
+    counters.sort(key=lambda t: t[2], reverse=True)
+    good.sort(key=lambda t: t[2], reverse=True)
+    counters = counters[:top_k]
+    good = good[:top_k]
+
+    return {
+        "counters": [
+            {"champion": c, "net_swing": round(net, _ROUND), "rel": round(rel, _ROUND)}
+            for c, net, rel in counters
+        ],
+        "good_against": [
+            {"champion": c, "net_swing": round(net, _ROUND), "rel": round(rel, _ROUND)}
+            for c, net, rel in good
+        ],
+    }
+
+
 def targets_for_champion(
     snapshot: DataSnapshot,
     champ_a: str,
     roster: list[str],
     top_k: int,
 ) -> dict:
-    """Return ``{"counters": [...], "good_against": [...]}`` for ``champ_a``.
+    """Convenience single-champ view: build the matrix + return champ_a's entry.
 
-    ``counters``     = champs with the most NEGATIVE A-vs-B swing (B beats A).
-    ``good_against`` = champs with the most POSITIVE A-vs-B swing (A beats B).
-    Each entry is ``{"champion": <id>, "net_swing": <rounded>}``, strongest
-    first. Self is excluded; pairs the engine fails on are skipped.
+    Rebuilds the full matrix for ``roster`` (fine for small rosters / tests);
+    the real generator calls ``build_matrix`` once via ``generate_payload``.
     """
-    scored: list[tuple[str, float]] = []
-    for champ_b in roster:
-        if champ_b == champ_a:
-            continue
-        sw = _swing(snapshot, champ_a, champ_b)
-        if sw is None:
-            continue
-        scored.append((champ_b, sw))
-
-    # good_against: A favored -> POSITIVE swing only, most positive first.
-    # counters: A unfavored -> NEGATIVE swing only, most negative first.
-    # Sign-filtering keeps the contract honest: "counters = champs that BEAT
-    # this champ" should be empty for a champ that loses no itemless duel,
-    # rather than padding the list with its least-favorable wins.
-    good = sorted((t for t in scored if t[1] > 0.0),
-                  key=lambda t: t[1], reverse=True)[:top_k]
-    counters = sorted((t for t in scored if t[1] < 0.0),
-                      key=lambda t: t[1])[:top_k]
-
-    return {
-        "counters": [
-            {"champion": c, "net_swing": round(s, _ROUND)} for c, s in counters
-        ],
-        "good_against": [
-            {"champion": c, "net_swing": round(s, _ROUND)} for c, s in good
-        ],
-    }
+    m = build_matrix(snapshot, roster, verbose=False)
+    colmeans = {x: _colmean(m, x) for x in roster}
+    return targets_from_matrix(m, champ_a, roster, top_k, colmeans)
 
 
 def generate_payload(
@@ -204,18 +291,19 @@ def generate_payload(
     *,
     verbose: bool = True,
 ) -> dict:
-    """Build the full pick/ban targets payload for the roster."""
-    targets: dict[str, dict] = {}
-    total = len(roster)
-    for i, champ_a in enumerate(roster):
-        targets[champ_a] = targets_for_champion(snapshot, champ_a, roster, top_k)
-        if verbose and (i + 1) % _PROGRESS_EVERY == 0:
-            print(f"  ... {i + 1}/{total} champions scored", file=sys.stderr)
+    """Build the full de-biased pick/ban targets payload for the roster."""
+    m = build_matrix(snapshot, roster, verbose=verbose)
+    colmeans = {x: _colmean(m, x) for x in roster}
+    targets: dict[str, dict] = {
+        champ_a: targets_from_matrix(m, champ_a, roster, top_k, colmeans)
+        for champ_a in roster
+    }
     return {
         "patch": patch,
         "mode": _MODE_KEY,
         "level": _LEVEL,
         "top_k": top_k,
+        "ranking": "debiased_relative",
         "targets": targets,
     }
 

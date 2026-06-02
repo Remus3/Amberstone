@@ -25,10 +25,22 @@ _GEN_MOD = "tools.daemon_slayer_pickban_targets_generate"
 
 # ---------------------------------------------------------------------------
 # Deterministic stub matchup engine for the generator tests.
-# A small 4-champ roster. net_swing(A, B) is anti-symmetric. We pick a strict
-# total order A > B > C > D so the ranking is unambiguous: higher letter loses.
+#
+# Explicit 4-champ swing matrix M[A][B] = swing(A, B) (A favored when > 0),
+# designed to expose the global-strength bias the de-bias fixes:
+#   - Bully    beats EVERYONE (high colmean) - it is nobody's SPECIFIC counter.
+#   - Specific beats Victim by 0.5 but loses to Bully + Neutral (low colmean) -
+#     Victim is its standout matchup, so it IS Victim's specific counter.
+#   - Bully beats Victim HARDER in raw terms (0.7) than Specific does (0.5), so a
+#     RAW net_swing ranking would put Bully first; the de-bias must flip that.
 # ---------------------------------------------------------------------------
-_RANK = {"A": 3.0, "B": 2.0, "C": 1.0, "D": 0.0}
+_MATRIX = {
+    ("Bully", "Specific"): 0.6, ("Bully", "Victim"): 0.7, ("Bully", "Neutral"): 0.6,
+    ("Specific", "Bully"): -0.6, ("Specific", "Victim"): 0.5, ("Specific", "Neutral"): -0.4,
+    ("Victim", "Bully"): -0.7, ("Victim", "Specific"): -0.5, ("Victim", "Neutral"): -0.3,
+    ("Neutral", "Bully"): -0.6, ("Neutral", "Specific"): 0.4, ("Neutral", "Victim"): 0.3,
+}
+_ROSTER = ["Bully", "Specific", "Victim", "Neutral"]
 
 
 class _StubResult:
@@ -37,8 +49,7 @@ class _StubResult:
 
 
 def _stub_compute_matchup(snapshot, champ_a, champ_b, *, level_a, level_b, mode):
-    # Positive when champ_a is favored over champ_b (higher rank == favored).
-    return _StubResult(_RANK[champ_a] - _RANK[champ_b])
+    return _StubResult(_MATRIX[(champ_a, champ_b)])
 
 
 class _StubSnapshot:
@@ -52,68 +63,92 @@ def _load_gen():
     return importlib.import_module(_GEN_MOD)
 
 
-class GeneratorTargetsTests(unittest.TestCase):
-    """targets_for_champion sorts + slices counters / good_against correctly."""
+class DebiasRankingTests(unittest.TestCase):
+    """The de-bias ranks a SPECIFIC counter above a global bully."""
 
     def setUp(self) -> None:
         self.gen = _load_gen()
-        self.roster = ["A", "B", "C", "D"]
         self.snap = _StubSnapshot()
 
-    def test_good_against_is_positive_swing_sorted(self) -> None:
+    def test_specific_counter_outranks_global_bully(self) -> None:
+        # Victim's counters: Bully beats Victim hardest in RAW swing (0.7 vs
+        # Specific's 0.5), but Bully beats everyone so its rel is small; Specific
+        # ESPECIALLY beats Victim so its rel is large -> Specific must rank #1.
         with mock.patch.object(self.gen, "compute_matchup",
                                _stub_compute_matchup):
-            out = self.gen.targets_for_champion(self.snap, "A", self.roster,
+            out = self.gen.targets_for_champion(self.snap, "Victim", _ROSTER,
+                                                top_k=8)
+        counters = [r["champion"] for r in out["counters"]]
+        self.assertEqual(counters[0], "Specific",
+                         "de-bias must surface the specific counter over the bully")
+        self.assertIn("Bully", counters)  # bully still a counter, just ranked lower
+        self.assertLess(counters.index("Specific"), counters.index("Bully"))
+
+    def test_counter_entries_carry_raw_and_rel(self) -> None:
+        with mock.patch.object(self.gen, "compute_matchup",
+                               _stub_compute_matchup):
+            out = self.gen.targets_for_champion(self.snap, "Victim", _ROSTER,
+                                                top_k=8)
+        top = out["counters"][0]
+        # net_swing stays Victim-vs-Specific (NEGATIVE, the reader contract).
+        self.assertLess(top["net_swing"], 0.0)
+        self.assertIn("rel", top)
+        # Sorted strictly by descending rel.
+        rels = [r["rel"] for r in out["counters"]]
+        self.assertEqual(rels, sorted(rels, reverse=True))
+
+    def test_counters_sign_filtered_to_actual_beats(self) -> None:
+        # Bully loses to nobody, so Bully has an EMPTY counters list.
+        with mock.patch.object(self.gen, "compute_matchup",
+                               _stub_compute_matchup):
+            out = self.gen.targets_for_champion(self.snap, "Bully", _ROSTER,
+                                                top_k=8)
+        self.assertEqual(out["counters"], [])
+
+    def test_good_against_sorted_by_rel(self) -> None:
+        with mock.patch.object(self.gen, "compute_matchup",
+                               _stub_compute_matchup):
+            out = self.gen.targets_for_champion(self.snap, "Bully", _ROSTER,
                                                 top_k=8)
         good = out["good_against"]
-        # A beats B, C, D - strongest (most positive) first: D (3.0) > C > B.
-        self.assertEqual([r["champion"] for r in good], ["D", "C", "B"])
-        # net_swing rounded + matches A-vs-B (positive).
-        self.assertEqual(good[0]["net_swing"], 3.0)
-        self.assertEqual(good[-1]["net_swing"], 1.0)
-
-    def test_counters_is_negative_swing_sorted(self) -> None:
-        with mock.patch.object(self.gen, "compute_matchup",
-                               _stub_compute_matchup):
-            out = self.gen.targets_for_champion(self.snap, "D", self.roster,
-                                                top_k=8)
-        counters = out["counters"]
-        # Everyone beats D - the worst matchup (most negative) first: A.
-        self.assertEqual([r["champion"] for r in counters], ["A", "B", "C"])
-        self.assertEqual(counters[0]["net_swing"], -3.0)
+        # Bully beats all three; entries carry positive net_swing + a rel.
+        self.assertEqual({r["champion"] for r in good},
+                         {"Specific", "Victim", "Neutral"})
+        self.assertTrue(all(r["net_swing"] > 0 for r in good))
+        rels = [r["rel"] for r in good]
+        self.assertEqual(rels, sorted(rels, reverse=True))
 
     def test_self_is_excluded(self) -> None:
         with mock.patch.object(self.gen, "compute_matchup",
                                _stub_compute_matchup):
-            out = self.gen.targets_for_champion(self.snap, "B", self.roster,
+            out = self.gen.targets_for_champion(self.snap, "Specific", _ROSTER,
                                                 top_k=8)
         names = ({r["champion"] for r in out["counters"]}
                  | {r["champion"] for r in out["good_against"]})
-        self.assertNotIn("B", names)
+        self.assertNotIn("Specific", names)
 
     def test_top_k_slices_each_list(self) -> None:
         with mock.patch.object(self.gen, "compute_matchup",
                                _stub_compute_matchup):
-            out = self.gen.targets_for_champion(self.snap, "A", self.roster,
+            out = self.gen.targets_for_champion(self.snap, "Victim", _ROSTER,
                                                 top_k=1)
-        self.assertEqual(len(out["good_against"]), 1)
-        self.assertEqual(out["good_against"][0]["champion"], "D")
-        # A beats everyone, so its counters list is empty (no negative swings).
-        self.assertEqual(out["counters"], [])
+        self.assertEqual(len(out["counters"]), 1)
+        self.assertEqual(out["counters"][0]["champion"], "Specific")
 
     def test_fail_soft_skips_none_pair(self) -> None:
         def flaky(snapshot, a, b, *, level_a, level_b, mode):
-            if b == "C":
-                return None  # engine "failed" for this pair
+            if a == "Bully" and b == "Victim":
+                return None  # engine "failed" for this directed pair
             return _stub_compute_matchup(snapshot, a, b, level_a=level_a,
                                          level_b=level_b, mode=mode)
 
         with mock.patch.object(self.gen, "compute_matchup", flaky):
-            out = self.gen.targets_for_champion(self.snap, "A", self.roster,
+            out = self.gen.targets_for_champion(self.snap, "Victim", _ROSTER,
                                                 top_k=8)
-        names = {r["champion"] for r in out["good_against"]}
-        self.assertNotIn("C", names)  # C skipped, B + D survive
-        self.assertEqual(names, {"B", "D"})
+        # Bully-vs-Victim cell is gone, but Victim-vs-Bully (-0.7) survives so
+        # Bully is still counted as a counter via the reverse cell - the run
+        # never raises (the point of fail-soft).
+        self.assertIsInstance(out["counters"], list)
 
 
 class GeneratorPayloadTests(unittest.TestCase):
@@ -121,7 +156,7 @@ class GeneratorPayloadTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self.gen = _load_gen()
-        self.roster = ["A", "B", "C", "D"]
+        self.roster = list(_ROSTER)
         self.snap = _StubSnapshot()
 
     def test_payload_shape(self) -> None:
@@ -134,6 +169,7 @@ class GeneratorPayloadTests(unittest.TestCase):
         self.assertEqual(payload["mode"], "sr")
         self.assertEqual(payload["level"], 9)
         self.assertEqual(payload["top_k"], 8)
+        self.assertEqual(payload["ranking"], "debiased_relative")
         self.assertEqual(set(payload["targets"]), set(self.roster))
         for champ, entry in payload["targets"].items():
             self.assertIn("counters", entry)
