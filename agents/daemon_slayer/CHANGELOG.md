@@ -1331,6 +1331,37 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.96.0 (GAP-2 RESIST-STAT grant PERCENT-OF-RESIST mode, item 268 - the
+candidate-B base-vs-bonus split named in items 264/267 as the documented
+percent-mode EXCLUSION, now modeled. A percent-of-resist grant is bonus armor /
+MR equal to a PERCENT of the champion's OWN resist STAT (not a flat add): the
+flat-add seam (items 264/267) could not express it. NEW PassiveResistEntry
+fields armor_pct / mr_pct (percent, flat or per-rank / per-level tuple, resolved
+the same way as armor / mr) + pct_base ("total" = base + build, or "bonus" =
+build delta total - base). resist_grants gains keyword-only total_armor /
+total_mr / base_armor / base_mr (0.0 defaults = a legacy positional call returns
+the flat-add half unchanged + any percent entry contributes 0); compute_ehp
+threads the RESOLVED build resists in. The percent multiplies the resolved build
+resist (excludes these passive grants -> no self-feedback) BEFORE _armor_factor;
+flat + percent halves on one entry SUM (Rammus). SEEDED 5 (default-OFF
+byte-identical to 1.95.0; rides the item-264 apply_passive_resist flag through
+compute_ehp / compute_hybrid / rank_items_by_ehp / rank_items_by_hybrid / /ehp /
+/rank-tank / /hybrid / /rank-bruiser, NO new wiring): Malphite W 10/15/20/25/30%
+of TOTAL armor by W rank ARMOR-ONLY permanent (Granite-Shield Increased tier
+omitted) / Taric W 6/7/8/9/10% of TOTAL armor by W rank ARMOR-ONLY permanent
+(ally copy omitted) / Poppy W flat 12% of TOTAL armor + MR permanent (doubled-
+24%-below-40%-HP omitted) / Rell W form 1 flat 15% of BONUS armor + MR Dismounted
+steady-state (0 itemless) / Rammus W 30/37.5/45/52.5/60% of TOTAL armor + MR by W
+rank extending the item-267 flat half on the SAME entry, 7s active amortized at
+_ACTIVE_RESIST_PROB. RE-RANK note unchanged from item 264: a resist add goes
+through the NON-LINEAR _armor_factor so rank_items_by_ehp / _by_hybrid CAN
+re-rank flag-on (a CORRECT re-rank); default flag-OFF stays byte-identical. The
+percent-of-resist class is now EXHAUSTED at 16.11.1 - the remaining resist-grant
+exclusions are unlabeled-multi-stat-block (Singed R / Braum W / Leona W / Jax R),
+form-gated-gate-dependent (Jayce R), resurrection-state (Anivia P), per-stack-
+unbounded (Thresh P), ball-attached (Orianna E). +28 tests
+test_passive_resist_percent_item268.py.)
+
 1.95.0 (GAP-2 RESIST-STAT grant "read the parsed block" lift, item 267 - the
 fifth survivability axis continued. Extends the item-264
 _passive_resist_overrides.py registry with grants whose VALUE is NOT in the

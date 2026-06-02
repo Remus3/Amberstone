@@ -17,13 +17,13 @@ League coaching advice online is static - tier lists and guides don't know what 
 - **Stack:** Python 3.14, Flask (dashboard + DPS engine), asyncio scheduler, Claude Haiku (fast coaching), Claude Sonnet (vision), Tesseract OCR, Tailscale (cross-machine networking), mkcert TLS
 - **Architecture:** Legion PC runs the RC process, a local DPS math service (`:8893`), a vision relay server (`:8889`), and the HTTPS dashboard (`:8888`). Game-PC runs five lightweight agents that capture the screen, poll the Riot API, and forward everything to Legion over Tailscale. The LLM sees pre-computed DPS rankings in the prompt before generating any text.
 - **Non-obvious bits:**
-  1. The DPS engine (`agents/daemon_slayer/`) hand-models all 547 purchasable League items - on-hit procs, armor pen, periodic damage, HP scaling - so Haiku sees "Kraken Slayer +340 DPS, 2700g" instead of guessing from patch notes. Getting this to cover the full item catalogue took 63+ batch commits and reverse-engineering Meraki's item passive JSON for cooldown fields. ENGINE_VERSION 1.95.0 (16.11.1).
+  1. The DPS engine (`agents/daemon_slayer/`) hand-models all 547 purchasable League items - on-hit procs, armor pen, periodic damage, HP scaling - so Haiku sees "Kraken Slayer +340 DPS, 2700g" instead of guessing from patch notes. Getting this to cover the full item catalogue took 63+ batch commits and reverse-engineering Meraki's item passive JSON for cooldown fields. ENGINE_VERSION 1.96.0 (16.11.1).
   2. The dashboard runs headless on Legion (no GUI process) and is served over mkcert-signed HTTPS. Game-PC's browser trusts the cert without warnings. Atomic JSON writes with retry-on-WinError-5 prevent the browser from reading a half-written file mid-poll.
 
 ## Status & impact
 - **State:** In active personal use, running every session
 - **What it replaced:** Looking up item builds manually on aggregator A mid-game, pausing to check tier lists; also replaced a tkinter overlay window approach that required the game and coaching UI to share a single screen
-- **Numbers:** 6,079 passing tests on the DPS engine; 547/547 DDragon purchasable items covered; coaching response latency ~1-2s (Haiku); DPS engine answers in <10ms locally; 8+ months of daily iteration across ~100 tracked sessions
+- **Numbers:** 6,103 passing tests on the DPS engine; 547/547 DDragon purchasable items covered; coaching response latency ~1-2s (Haiku); DPS engine answers in <10ms locally; 8+ months of daily iteration across ~100 tracked sessions
 
 
 ## Planned direction: RC Tutor
