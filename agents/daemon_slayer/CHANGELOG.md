@@ -1331,6 +1331,29 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.98.0 (GAP-2 RESIST-STAT grant FORM-OCCUPANCY-gated lift, item 271 - the last
+clean headless resist-grant exclusion class. A self bonus armor / MR grant that
+exists ONLY in one stance of a 2-form toggle; the other stance carries ZERO of
+it, so unlike K'Sante All Out / Kayn R the base cannot be seeded gate-
+independently. Amortized by the form-occupancy midpoint (_FORM_OCCUPANCY_PROB
+0.5 = a roughly even Cannon/Hammer split), reusing the existing
+conditional_probability field - NO new schema field (the item-270 hand-authoring
+convention). SEEDED 1 (default-OFF byte-identical to 1.97.0): Jayce R Transform
+Mercury Hammer (5/15/25/35 (based on level) armor == MR via _step_per_level even-
+quarters, Hammer-stance only; +7.5% bonus AD sub-term omitted - no bonus-AD ctx
+on the EHP seam, the item-270 Jax-R / item-264 omission boundary; Cannon-stance R
+form 0 only shreds the TARGET, never a self-grant). EXHAUSTIVE roster scan: Jayce
+R Hammer is the SOLE form-gated self flat-resist grant (Kled forms are HP not
+resist; Elise/Nidalee/Gnar/Shyvana/Swain forms grant no flat resist). The clean
+headless effects-text RESIST-grant lane is now FULLY EXHAUSTED across all 5
+source modes (flat 264 + rank-scaled-block 267 + percent-of-resist 268 +
+unlabeled-multi-stat-block 270 + form-occupancy 271); the 3 remaining resist
+exclusions each need a DIFFERENT seam and stay documented NEGATIVES: Anivia P
+resurrection non-combat state, Thresh P per-stack-unbounded soul accumulator,
+Orianna E ball-attached (rides an ally not the caster). Default
+apply_passive_resist=False byte-identical. +24 tests
+test_passive_resist_form_gated_item271.py.)
+
 1.97.0 (GAP-2 RESIST-STAT grant UNLABELED MULTI-STAT / MULTI-SERIES block lift,
 item 270 - the last seedable resist-grant EXCLUSION class from items 264/267/268,
 now seeded. These forms carry a parsed Meraki block that bundles several stats or

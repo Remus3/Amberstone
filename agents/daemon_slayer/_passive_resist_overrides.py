@@ -88,11 +88,17 @@ resist grant). TWO source modes:
     documented omissions (the item-264 omission boundary). No new schema field -
     hand-authoring resolves the per-series attribution the item-264 note imagined
     needing a generic parser for.
+  - FORM-OCCUPANCY-gated value (item 271): the grant exists ONLY in one stance of
+    a 2-form toggle (the other stance carries ZERO of it, so unlike K'Sante All
+    Out / Kayn R the base cannot be seeded gate-independently); amortized by the
+    fraction of the modeled fight spent in the granting form
+    (``_FORM_OCCUPANCY_PROB`` 0.5, reusing ``conditional_probability`` - no new
+    schema field). Jayce R Hammer (5/15/25/35 by level armor == MR, Hammer-stance
+    only; +7.5% bonus AD omitted). EXHAUSTIVE roster scan: the SOLE form-gated
+    self flat-resist grant (Cannon-stance Jayce R only shreds the TARGET; Kled
+    forms are HP not resist; Elise/Nidalee/Gnar/Shyvana/Swain forms grant no flat
+    resist).
 Documented EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
-  - FORM-GATED with a GATE-DEPENDENT magnitude (the resist exists ONLY in one
-    form; unlike K'Sante All Out / Kayn R where the base is gate-INDEPENDENT, here
-    Cannon stance has ZERO of this grant so the base cannot be cleanly seeded -
-    needs a form-state midpoint, Phase D): Jayce R Hammer (5/15/25/35 by level).
   - RESURRECTION / non-combat STATE (the grant applies only while the champion
     cannot act - a revive-egg, not a stat she fights with): Anivia P
     (-40:20 by level while under resurrection).
@@ -108,7 +114,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ._passive_damage_overrides import _lerp_per_level
+from ._passive_damage_overrides import _lerp_per_level, _step_per_level
 
 # Operator-tunable midpoint for a short defensive ACTIVE resist grant (the
 # expected fraction of a fight's duration the active is up). Documented +
@@ -116,6 +122,18 @@ from ._passive_damage_overrides import _lerp_per_level
 # grant uses prob 1.0 (always up in the fight the EHP frame models). Parallel to
 # ``_passive_mitigation_overrides._ACTIVE_DR_PROB``.
 _ACTIVE_RESIST_PROB = 0.3
+
+# Operator-tunable midpoint for a FORM-OCCUPANCY-gated resist grant (item 271):
+# the resist exists ONLY while the champion is in one stance of a 2-form toggle
+# (the OTHER stance carries ZERO of the grant, so the base cannot be seeded
+# gate-independently the way K'Sante All Out / Kayn R are). The grant is
+# amortized by the expected fraction of the modeled fight spent in the
+# granting form. 0.5 = a roughly even split of a 2-form toggle (Jayce mains
+# weave Cannon poke + Hammer brawl). Documented + conservative; Phase D tunes
+# per-champ live. Reuses the existing ``conditional_probability`` amortization
+# field (no new schema field - hand-authoring resolves the form gate, the
+# item-270 convention). Parallel to ``_ACTIVE_RESIST_PROB``.
+_FORM_OCCUPANCY_PROB = 0.5
 
 
 @dataclass(frozen=True)
@@ -461,6 +479,27 @@ _PASSIVE_RESIST_OVERRIDES: dict[tuple[str, str, int], PassiveResistEntry] = {
         attribute="Grandmaster-at-Arms",
         rank_scaled=True,
     ),
+    # Jayce R Transform Mercury Hammer (form_index 1, item 271): "Active: Jayce
+    # transforms into Hammer Stance ... gaining 5 / 15 / 25 / 35 (based on level)
+    # (+ 7.5% bonus AD) bonus armor and bonus magic resistance". FORM-GATED: this
+    # grant exists ONLY in Hammer stance; Cannon stance (form_index 0) carries
+    # ZERO of it (its R only shreds the TARGET's resists 10..25% on-hit, an
+    # offensive debuff not a self-grant), so unlike K'Sante All Out / Kayn R the
+    # base cannot be seeded gate-independently. Amortized by the form-occupancy
+    # midpoint (_FORM_OCCUPANCY_PROB 0.5 = a roughly even Cannon/Hammer split).
+    # armor == MR == 5/15/25/35 "based on level" = slash-notation discrete level
+    # TIER step -> _step_per_level (even-quarters v1 estimate, the item-247
+    # convention; level boundaries not in the 16.11.1 effects text). The +7.5%
+    # bonus-AD sub-term is OMITTED (no bonus-AD ctx on this EHP seam; the item
+    # 270 Jax-R / item 264 omission boundary).
+    ("Jayce", "R", 1): PassiveResistEntry(
+        armor=_step_per_level((5.0, 15.0, 25.0, 35.0)),
+        mr=_step_per_level((5.0, 15.0, 25.0, 35.0)),
+        conditional_probability=_FORM_OCCUPANCY_PROB,
+        note="Transform Mercury Hammer: 5/15/25/35 (based on level) armor == MR, Hammer-stance only; +7.5% bonus AD omitted; form-occupancy amortized at the midpoint; level_scaled",
+        attribute="Transform Mercury Hammer",
+        level_scaled=True,
+    ),
 }
 
 __all__ = [
@@ -468,6 +507,7 @@ __all__ = [
     "_PASSIVE_RESIST_OVERRIDES",
     "resist_grants",
     "_ACTIVE_RESIST_PROB",
+    "_FORM_OCCUPANCY_PROB",
 ]
 
 
