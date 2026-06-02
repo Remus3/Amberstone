@@ -51,6 +51,22 @@ NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` 
 
 ---
 
+# 2026-06-02 - item 263: Kai'Sa ARAM rebuild + Ashe SR ADC paths (data-only, RC pid 324 live-verified, no restart)
+
+Operator "start the next open item" -> the LW DEFERRED carry (data-only loadout fix). Pre-flight: clean tree, main, item 262 last shipped, DS clean-headless lane EXHAUSTED (mitigation triad scorer-COMPLETE), remaining DS NEXT is all Phase D (live/operator-gated). So the next headless-buildable open item = the LW deferred loadout rebuild.
+
+SHIPPED `32ed831` (data/champion_loadouts.json + 2 new files; ADR-008 auto-served, no restart): (1) Kai'Sa `aram-collapsed` - replaced 2 item-167 coverage-gap junk paths: `ap-hybrid` (4 AD items mislabeled "AP Hybrid", 0 AP) -> `ap-burst` "AP" (Hubris/Nashor/Rabadon's/Void/Shadowflame = REAL AP); `bruiser-trinity` (label "Trinity", NO Trinity Force) -> `adc-crit` "Crit". The legit `on-hit` path (BorK/Berserker/Wit's End/Guinsoo's/Terminus/Sterak's) KEPT as primary. summs [4,32]. (2) Ashe `sr-collapsed` thin 2-path (one was `sr-enchanter` = Echoes/Ardent/Staff-of-Flowing/Redemption/Moonstone = full enchanter build on a ranged ADC) -> 3 ADC paths: `utility-adc` (kept primary) + `adc-crit` + `adc-on-hit`, mirroring Caitlyn/Jinx. summs [4,21].
+
+All builds mirror item-213-proven clean sets (0 unique-family clash). +8 tests `test_loadout_fix_kaisa_aram_ashe_sr_item263.py` (TDD RED 5-fail -> GREEN) via NEW `tools/hotfix_kaisa_aram_ashe_sr_item263.py` (atomic + idempotent, sibling of `tools/hotfix_sr_adc_loadouts_item167.py`). Verified: 62 pass (8 new + no-unique-clash + item-213 pollution + collapse + name-fallback drift guards), 71 pass (autogen + meta-conformance + dedup + user-builds), ruff clean, ASCII clean, live `/api/loadout/list` (RC pid 324) serves corrected Kai'Sa ARAM on-hit/ap-burst/adc-crit.
+
+ROOT (verified, [[feedback_verify_before_declare_broken]]): the LW-cited `core/build_order.py::_score_item_for_archetype` is a PHANTOM ref - `grep -rln _score_item_for_archetype` returns NOTHING (item-208 named a non-existent fn; item-213 already established this). The real auto-seed/ranker root is `rank.py` (`OFFCLASS_MARKSMAN_ITEM_NAMES` + `_is_ranged_marksman` at :79/:139/:584) + the item-167 align tool routing a ranged ADC through an enchanter archetype - both UNCHANGED. This was the data-side hand-curate (Kai'Sa ARAM is deduped-in-place by item-167 policy, NOT regenerated, so re-running align would not fix it).
+
+Don't-redo: do NOT re-investigate Kai'Sa ARAM / Ashe SR; do NOT re-pitch a `_score_item_for_archetype` fix (the fn does not exist). The `.bak-item263-*` backup is gitignored (not committed).
+
+SIBLING POLLUTION CARRY (operator-gated, NOT this scope): the same item-167 coverage-gap auto-seed left other mislabels surfaced in this session's scan but NOT fixed (operator named only Kai'Sa ARAM + Ashe SR): Corki SR+ARAM `ap-hybrid` (0 AP), Jhin + Smolder `sr-mage` (AD items labeled "Mage"), Gwen/Elise/Gragas AP-archetype paths with 0 AP items, + a thin 4-item ARAM "Carry" template (Stormrazor/Berserker/Yun Tal/IE) across ~12 ADCs (Caitlyn/Draven/Kalista/MissFortune/Quinn/Twitch/Xayah/Varus/Zeri etc - these 4-item ARAM cores may be acceptable per the item-167 "keep role standard for ARAM" policy). Senna's enchanter items are INTENTIONAL (support-marksman, NOT pollution). A future item can sweep the genuine mislabels via the same hotfix-tool pattern.
+
+---
+
 # 2026-06-02 - live-watch (ranked SR Ashe + ARAM Mayhem Kai'Sa): PGR game-end refetch fix (a0bacd7) + on-demand capture confirmed BSOD-clean
 
 Operator queued ranked SR (warmed up with an ARAM Mayhem Kai'Sa first), authorized the live UI watch + screen captures as a BSOD test.
