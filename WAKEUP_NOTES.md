@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-02 - item 275: operator-gated drain (3/4/5/6) + PGR S2 build-WPA strip
+
+Operator "what is next that is operator gated" -> picked 3/4/5/6. Then "verify CI green, build the PGR S2 layout". 1-PC capture-path correction (history-edit granted): capture is Legion-local Windows-MCP Screenshot per ADR-011; the ledger-wide "Game-PC MCP :8892 down" capture-blocker framing is STALE (gamepc MCP RETIRED). 6 commits + ledger; CI green; no DS restart; RC pid 20324 mode=client.
+
+- Item 3 Build Insights VISUAL CAPTURE DONE (`816d628`) - the deferred capture surfaced + FIXED a real render defect: `web/css/panels/header.css` was missing BOTH `body[data-view="build-insights"]` rules (show-section + hide-`main`) so the item-273-G view never rendered (section+nav+VIEW_IDS+dispatch shipped but neither CSS rule); +2 guards. Live WPA table renders.
+- Item 4 thin-ARAM-ADC (`2e701b7`) - the LW sibling-pollution carry was a STALE pre-269 snapshot; real residual = 4 thin n=4 ADC carry primaries (Jinx adc-crit/Zeri on-hit/Caitlyn lethality-poke/Varus lethality) -> clash-free 6-item sets + Lulu/Teemo "AP On-Hit"; `tools/hotfix_thin_aram_adc_item275.py` idempotent; +6t. 17 bruiser/assassin secondaries + `Zaahen` junk fixture OUT-OF-SCOPE.
+- Item 5 skill-order WPA (`970fa54`) - `core/skill_wpa.py` + GET `/api/skill-wpa`; unit=(champion, first-maxed basic Q/W/E); spells/runes REJECTED (no purchase-frame -> degenerate ~0.5 baseline); reuses item_wpa + post_game_score + shrink; LIVE 229 rows; +10t.
+- Item 6 PGR S2 design spec (`d471650`, `docs/PGR_REFRAME_S2.md`, no UI code) + PGR S2 build-WPA strip SHIPPED (`77c3cc3`) - `web/js/panels/pgr_build_wpa.js` "YOUR BUILD - GRADED BY YOUR CAREER" under the last-match hero; career item-WPA + skill-WPA chips on the reviewed loadout, best max-order highlighted; +23t. LIVE-verified Ashe (Kraken -2.0pp/n1217, W-max +4.0pp best vs Q -1.1pp, join exact).
+
+Don't-redo: (a) Build Insights view-router visibility is PURE-CSS keyed on `body[data-view]` - a new view needs BOTH header.css rules (show-section + hide-main); section+nav+VIEW_IDS+dispatch is NOT sufficient. (b) 1-PC capture = Legion-local Windows-MCP Screenshot (App-switch RC Chrome + `Clipboard set` URL + `ctrl+v` + Ctrl+Shift+R + Screenshot; Windows-MCP `Type` needs a target, `loc` serializes-as-string so click by integer `label`; nav via `Start-Process chrome "url?ui_mock=1#view"` clears the rc-view-manual sticky on load); gamepc MCP RETIRED. (c) spells/runes have NO purchase-frame -> do NOT build a runes/spells-WPA residual. (d) s220 PGR already shipped hero-score + phases-that-mattered graph; the build-WPA strip was the missing S2 piece; S3 win-prob graph is largely present as phases. (e) the LW sibling-pollution carry is CLOSED (269/273 swept the named SR+ARAM mislabels; the 4 thin ADC residuals fixed). Live-gated carries unchanged: champ-select brief flip, DS Phase D / Anivia P / Orianna E.
+
 # 2026-06-02 - item 274: resolve 5 pre-existing local test failures (item 273 carry 4)
 
 Operator "start what is up next" (CAVEMAN ULTRA). mode_key=client (no game), DS 1.99.0 == repo, clean tree, 0 PRs. Only headless-actionable carry = item 273 (4)'s 5 pre-existing local failures (CI does not run them). 1 commit `bf61604`, CI green run 26848418515, NON-engine, no DS/RC restart. RC suite 4644 passed / 0 failed.
