@@ -37322,28 +37322,6 @@
               "_is_primary": true
             },
             {
-              "key": "aram-carry",
-              "label": "Carry",
-              "items": [
-                "Blade of The Ruined King",
-                "Berserker's Greaves",
-                "Runaan's Hurricane",
-                "Infinity Edge",
-                "Lord Dominik's Regards",
-                "Yun Tal Wildarrows"
-              ],
-              "runes": {
-                "keystone": "Lethal Tempo",
-                "primary": "Precision",
-                "secondary": "Domination"
-              },
-              "summoners": [
-                4,
-                32
-              ],
-              "_source_variant_key": "aram-carry"
-            },
-            {
               "key": "crit",
               "label": "Crit",
               "items": [

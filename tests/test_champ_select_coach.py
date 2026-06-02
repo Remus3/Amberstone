@@ -80,7 +80,17 @@ class CallShapeTests(unittest.TestCase):
         fake_anthropic = MagicMock()
         fake_anthropic.Anthropic.return_value = fake_client
 
-        with patch.dict("sys.modules", {"anthropic": fake_anthropic}):
+        # Hermetic spend-gate: coach_pick short-circuits when the local
+        # config/coach_settings.json disables the "champ_select" coach
+        # (operator's gitignored runtime preference). Force the gate OFF
+        # so this call-shape contract is independent of the local config
+        # - CI has no such config and passes, but a dev machine with the
+        # gate enabled must not flip this test red.
+        fake_tracker = MagicMock()
+        fake_tracker.gate_disabled.return_value = False
+
+        with patch.dict("sys.modules", {"anthropic": fake_anthropic}), \
+                patch("core.cost_tracker.get_tracker", return_value=fake_tracker):
             out = champ_select_coach.coach_pick(
                 {"is_aram": False, "my_champion": "Ahri",
                  "my_team": ["Yuumi"], "their_team": ["Caitlyn"]},

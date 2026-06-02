@@ -16,7 +16,10 @@ This test locks the post-cleanup invariants on
       paths that duplicated the curated paths are dropped.
   (c) Every collapsed variant (``sr-collapsed`` / ``aram-collapsed`` /
       ``arena-collapsed``) carries >= 2 build_paths, each with >= 4
-      items.
+      items - EXCEPT the documented single-clean-build lethality
+      assassins in ``_SINGLE_BUILD_OK`` (item 269 L4) whose polluted 2nd
+      path was removed rather than re-polluted; they keep one >= 4 item
+      path.
   (d) A sample of ranged ADCs (Caitlyn / Jinx / Ezreal / Varus /
       Kai'Sa) have NO melee/tank off-class items
       (Plated Steelcaps / Trinity Force / Bastionbreaker /
@@ -68,6 +71,21 @@ _OFFCLASS_MELEE = {
 }
 
 _RANGED_ADC_SAMPLE = ["Caitlyn", "Jinx", "Ezreal", "Varus", "Kai'Sa"]
+
+# Documented single-clean-build exception (item 269 L4). These lethality
+# assassins had a polluted "sr-mage" 2nd path (AD items mislabeled
+# "Mage") REMOVED, not renamed - a rename would COLLIDE with the clean
+# lethality primary, and fabricating a 2nd meta build is the exact
+# pollution the item-208/213/269 sweeps removed. They are allowed a
+# single sr-collapsed build_path; the >= 4 item thinness/pollution guard
+# in test_c still applies to that single path. If a real, distinct 2nd
+# build is ever curated for one of these, drop it from this set.
+_SINGLE_BUILD_OK = {
+    "Kha'Zix|sr-collapsed",
+    "Qiyana|sr-collapsed",
+    "Talon|sr-collapsed",
+    "Zed|sr-collapsed",
+}
 
 
 def _norm(s: str) -> str:
@@ -136,7 +154,7 @@ class LoadoutPollutionCleanupItem213Tests(unittest.TestCase):
         bad: list[str] = []
         for cn, vk, mode, v in self._iter_collapsed():
             bps = v.get("build_paths") or []
-            if len(bps) < 2:
+            if len(bps) < 2 and f"{cn}|{vk}" not in _SINGLE_BUILD_OK:
                 bad.append(f"{cn}|{vk}: only {len(bps)} build_paths")
                 continue
             for bp in bps:
