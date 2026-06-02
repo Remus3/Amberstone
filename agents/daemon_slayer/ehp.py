@@ -112,6 +112,7 @@ from .data_loader import DataSnapshot
 from .effects import ITEM_EFFECTS
 from ._effects_types import ANY, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
+from ._passive_mitigation_overrides import mitigation_multipliers
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -525,6 +526,15 @@ class EhpResult:
     cc_blended_ehp: float = 0.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
+    # ENGINE 1.91.0 (2026-06-02): GAP-2 effects-text passive DAMAGE-REDUCTION
+    # multipliers (per damage type) folded into the EHP denominator when
+    # ``apply_passive_mitigation=True``. Default 1.0 (no reduction) leaves the
+    # physical/magical/true/blended EHP fields above byte-identical; the values
+    # < 1.0 surface the DR magnitude (mult 0.90 = 10% reduction). Same sibling
+    # convention as ``shield_amp_mult`` / ``aram_tenacity_mult``.
+    passive_mitigation_phys: float = 1.0
+    passive_mitigation_mag: float = 1.0
+    passive_mitigation_true: float = 1.0
 
     def to_dict(self) -> dict:
         return {
@@ -565,6 +575,9 @@ class EhpResult:
             "enemy_cc_pressure_s": self.enemy_cc_pressure_s,
             "cc_pressure_fraction": self.cc_pressure_fraction,
             "cc_blended_ehp": self.cc_blended_ehp,
+            "passive_mitigation_phys": self.passive_mitigation_phys,
+            "passive_mitigation_mag": self.passive_mitigation_mag,
+            "passive_mitigation_true": self.passive_mitigation_true,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -649,6 +662,7 @@ def compute_ehp(
     include_conditional: bool = False,
     apply_mode_modifiers: bool = False,
     apply_build_tenacity: bool = False,
+    apply_passive_mitigation: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -808,14 +822,28 @@ def compute_ehp(
     shield_mag_amped = shield_mag * shield_amp_mult
     shield_true_amped = shield_true * shield_amp_mult
 
+    # ENGINE 1.91.0 (2026-06-02): GAP-2 effects-text passive DAMAGE-REDUCTION.
+    # A flat-% DR ("Kassadin takes 10% reduced magic damage") is multiplicative
+    # on the damage TAKEN, so it folds into the EHP DENOMINATOR per damage type
+    # (a smaller divisor -> larger EHP -> the correct "less damage taken ->
+    # survives more" direction). ``apply_passive_mitigation`` defaults False ->
+    # all three multipliers are 1.0 -> BYTE-IDENTICAL to 1.90.0. Active /
+    # cooldown-gated DRs are amortized inside ``mitigation_multipliers`` by their
+    # entry's operator-tunable ``conditional_probability`` midpoint.
+    mit_phys, mit_mag, mit_true = mitigation_multipliers(
+        resolved.champion_id, level, apply_passive_mitigation
+    )
+
     # Shields + heal sit at the top of the damage stack: each damage_type
     # sees ``hp + shield_any_amped + shield_<type>_amped + heal_total``
     # effective HP before the armor/MR curve. Shields + heals are NOT
     # reduced separately by resistances in League's damage model - they
-    # share the same factor as HP.
-    physical_ehp = (hp + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(armor) * safe_mult)
-    magical_ehp = (hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(mr) * safe_mult)
-    true_ehp = (hp + shield_any_amped + shield_true_amped + heal_total) / safe_mult
+    # share the same factor as HP. The mit_* DR multiplier divides the
+    # whole denominator (it composes multiplicatively with armor/MR, the way
+    # League stacks a flat-% reduction on top of the resistance curve).
+    physical_ehp = (hp + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(armor) * safe_mult * mit_phys)
+    magical_ehp = (hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(mr) * safe_mult * mit_mag)
+    true_ehp = (hp + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
     enemy_true_share = max(0.0, 1.0 - enemy_ad_share - enemy_ap_share)
     blended_ehp = (
@@ -927,6 +955,13 @@ def compute_ehp(
             f"{cc_pressure_fraction * _CC_EFFECTIVENESS_FACTOR * 100:.0f}% "
             f"via _CC_EFFECTIVENESS_FACTOR=0.5"
         )
+    if apply_passive_mitigation and (mit_phys != 1.0 or mit_mag != 1.0 or mit_true != 1.0):
+        notes.append(
+            f"passive_mitigation: effects-text damage reduction folded into the "
+            f"EHP denominator (mit_phys=x{mit_phys:.3f} mit_mag=x{mit_mag:.3f} "
+            f"mit_true=x{mit_true:.3f}; active DRs amortized at their "
+            f"conditional_probability midpoint)"
+        )
 
     return EhpResult(
         champion_id=resolved.champion_id,
@@ -960,6 +995,9 @@ def compute_ehp(
         enemy_cc_pressure_s=enemy_cc_pressure_s,
         cc_pressure_fraction=cc_pressure_fraction,
         cc_blended_ehp=cc_blended_ehp,
+        passive_mitigation_phys=mit_phys,
+        passive_mitigation_mag=mit_mag,
+        passive_mitigation_true=mit_true,
         stats=dict(stats),
         notes=tuple(notes),
     )
@@ -1126,6 +1164,7 @@ def rank_items_by_ehp(
     include_conditional: bool = False,
     score_by: str = "blended",
     apply_build_tenacity: Optional[bool] = None,
+    apply_passive_mitigation: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1208,6 +1247,7 @@ def rank_items_by_ehp(
         enemy_champions=enemy_champions,
         include_conditional=include_conditional,
         apply_build_tenacity=apply_tenacity,
+        apply_passive_mitigation=apply_passive_mitigation,
     )
 
     candidates = _filter_candidates(
@@ -1241,6 +1281,7 @@ def rank_items_by_ehp(
                 enemy_champions=enemy_champions,
                 include_conditional=include_conditional,
                 apply_build_tenacity=apply_tenacity,
+                apply_passive_mitigation=apply_passive_mitigation,
             )
         except (KeyError, ValueError):
             continue
