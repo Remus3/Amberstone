@@ -51,6 +51,24 @@ NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` 
 
 ---
 
+# 2026-06-02 - live-watch (ranked SR Ashe + ARAM Mayhem Kai'Sa): PGR game-end refetch fix (a0bacd7) + on-demand capture confirmed BSOD-clean
+
+Operator queued ranked SR (warmed up with an ARAM Mayhem Kai'Sa first), authorized the live UI watch + screen captures as a BSOD test.
+
+SHIPPED a0bacd7 (web/js/main.js, ADR-008 auto-served, no restart): PGR (last-match view) refetches on game-end. Root: applyView L615 was the SOLE caller of fetchAndRenderLastMatch(); sitting on the PGR page through a game left it stale (backend /api/last-match was serving the correct row the whole time - id 1807 Kai'Sa ARAM grade B). Fix re-fires once on the gameStarted in-progress -> null edge + one 10s ingest-lag retry, guarded on _VIEW.current==="last-match". node --check OK, asset hash bbf4f6e2d5.
+
+CAPTURE / BSOD: on-demand Windows-MCP Screenshot (Legion-local; gamepc MCP :8892 is DOWN post-1PC boot-gap) grabbed twice mid-game (loading 0:00 + in-lane 4:47), NO BSOD. The on-demand capture path is BSOD-clean. Continuous DXGI screen-agent stays DISABLED.
+
+LIVE-WATCH HEALTHY: dashboard ACTIVE MATCH render == /api/state every tick (SR Ashe, kda 2/1/2 by lvl 6, coach Seraphine-ally-aware "rotate with Seraphine only if 2+ enemies bot", drake-timed, "CC saturation 94% -> Xerath" from the DS cc-pressure ecosystem). Build chooser POPULATES for Ashe SR + Caitlyn/Jinx SR -> the earlier Kai'Sa-ARAM "not populated" was NOT a global bug (likely a game-start render race; Kai'Sa ARAM data IS served, 3 paths).
+
+DEFERRED (data-only, no restart; post-game / next session): (1) Kai'Sa ARAM build rebuild - item-167 coverage-gap auto-seed: ap-hybrid path thin (4 items, AD items mislabeled under "AP Hybrid") + bruiser-trinity key lies (no Trinity Force in it). (2) Ashe SR only 2 paths, one is sr-enchanter/Aery (enchanter build on an ADC) - thin vs Caitlyn/Jinx 3 ADC paths.
+
+APOSTROPHE-CHAMP CHAMP-SELECT FIX SHIPPED a9a57a8 (coaches/loadout_resolver.py - NEEDED RC restart, done -> pid 324 alive reload_ok, live-verified): champ-select build chooser was EMPTY for special-char champs. Root: champ_select.js:119 resolves myName via CHAMPS.byId (DDragon-KEY form "Kaisa" from web/data/champions_index.json, NO apostrophe) then fetches /api/loadout/list for "Kaisa", but the loadout store is keyed by DISPLAY name "Kai'Sa" -> exact lookup missed -> 0 variants. Hits Kai'Sa/Kha'Zix/Kog'Maw/Rek'Sai/Cho'Gath/Vel'Koz/Bel'Veth. Fix: NEW _lookup_champ helper (exact match then _norm fuzzy fallback - _norm already strips apostrophe/case) threaded through all 3 resolver lookup sites (list_variants x2 + resolve); both name forms now resolve the same entry + same set_uid (idempotent LCU push). +4 tests test_loadout_name_form_fallback.py. LIVE post-restart: /api/loadout/list "Kaisa" 18 items / "Khazix" 12 / "RekSai" 12 / "KogMaw" 12 (all 0 pre-fix). The IN-GAME chooser (item_build.js) was NEVER affected (it uses p.champion="Kai'Sa" display form from coach data).
+
+Don't-redo: PGR refetch SHIPPED (a0bacd7) + apostrophe-champ champ-select lookup SHIPPED (a9a57a8, RC restarted pid 324) - do NOT re-investigate either; build chooser is NOT globally broken (renders SR + ARAM; the apostrophe class is now fixed too); gamepc MCP :8892 down is expected post-1PC (use Windows-MCP Screenshot for Legion-local captures). The DDragon-key-vs-display-name name-form drift is now tolerated at the resolver - if a future champ-select surface still mis-resolves, check CHAMPS.byId (key form) vs the store (display form) first.
+
+---
+
 # 2026-06-02 - item 262: DS thread apply_passive_mitigation into the BRUISER EHP scorer (symmetric completion of item 261), default-OFF byte-identical (ENGINE 1.91.0 -> 1.92.0; DS restarted 1.92.0 + live-verified; RC not restarted - DS engine + tests + Share + docs only)
 
 Operator "start next" -> item 261 NEXT(1). Item 261 wired the effects-text DAMAGE-REDUCTION layer (apply_passive_mitigation) into the TANK scorer (compute_ehp + rank_items_by_ehp + /ehp + /rank-tank); the BRUISER scorer (compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser) was mitigation-blind.
