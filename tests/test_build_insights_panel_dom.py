@@ -30,6 +30,7 @@ STATE_JS = WEB / "js" / "lib" / "state.js"
 MAIN_JS = WEB / "js" / "main.js"
 INDEX_HTML = WEB / "index.html"
 DASHBOARD_CSS = WEB / "css" / "dashboard.css"
+HEADER_CSS = WEB / "css" / "panels" / "header.css"
 
 VIEW_ID = "build-insights"
 MOUNT_ID = "bi-table-mount"
@@ -100,6 +101,38 @@ class DashboardCssImportTests(unittest.TestCase):
     def test_imports_panel_css(self) -> None:
         text = _read(DASHBOARD_CSS)
         self.assertIn("panels/build_insights.css", text)
+
+
+class HeaderCssViewVisibilityTests(unittest.TestCase):
+    """The view-router visibility is pure-CSS keyed on body[data-view].
+    Item 275 fix: item 273 shipped the section + nav + dispatch but NOT
+    the two header.css rules, so #view-build-insights stayed [hidden] and
+    the coaching <main> grid stayed visible - the view never rendered.
+    Both rules are required; this guard locks them so a future view add
+    that forgets either rule fails CI instead of silently not rendering.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        # Collapse whitespace so a selector split across newlines still
+        # matches (the rules are comma-chained over many lines).
+        cls.text = " ".join(_read(HEADER_CSS).split())
+
+    def test_show_section_rule_present(self) -> None:
+        # body[data-view="build-insights"] #view-build-insights -> display:block
+        self.assertIn(
+            'body[data-view="build-insights"] #view-build-insights',
+            self.text,
+            "header.css missing the show-section rule for build-insights",
+        )
+
+    def test_hide_main_grid_rule_present(self) -> None:
+        # body[data-view="build-insights"] main -> display:none
+        self.assertIn(
+            'body[data-view="build-insights"] main',
+            self.text,
+            "header.css missing the hide-main rule for build-insights",
+        )
 
 
 class JsContractTests(unittest.TestCase):
