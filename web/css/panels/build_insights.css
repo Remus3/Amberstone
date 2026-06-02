@@ -1,9 +1,42 @@
-/* Build Insights view (item 273, competitor-WPA lift).
+/* Build Insights view (item 273 item-WPA + item 275 skill-WPA tab,
+ * competitor-WPA lift).
  *
- * Sortable item-WPA table on the v2.1 token scale. Dark theme matching
+ * Two-tab sortable WPA table on the v2.1 token scale. Dark theme matching
  * the dashboard. The signed WPA column is the hero - green when positive,
  * red when negative, with a 5-segment sample-confidence bar.
  */
+
+/* [ Items | Skills ] tab toggle. Buttons meet the --hit-min fingertip
+ * floor; the active tab gets the accent underline. */
+.bi-tabs {
+  display: flex;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-3, 12px);
+  border-bottom: 1px solid #2a2e3c;
+}
+.bi-tab {
+  min-height: var(--hit-min);
+  padding: 0 var(--space-4, 20px);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--signal-dim);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+.bi-tab:hover {
+  color: #e6e8ef;
+}
+.bi-tab:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+.bi-tab.is-active {
+  color: #e6e8ef;
+  border-bottom-color: var(--accent, #7aa2ff);
+}
 
 .bi-controls {
   display: flex;
@@ -83,6 +116,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+.bi-skill-caption {
+  font-size: var(--fs-xs);
+  color: var(--signal-dim);
+  line-height: 1.4;
+  max-width: 1100px;
+  margin-bottom: var(--space-4, 20px);
+}
+
 .bi-item {
   display: flex;
   align-items: center;
@@ -96,6 +137,33 @@
 }
 .bi-item-name {
   font-size: var(--fs-sm);
+}
+
+/* Skill tab: champion square + name, and the Q/W/E badge. */
+.bi-champ {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+.bi-champ-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+.bi-champ-name {
+  font-size: var(--fs-sm);
+}
+.bi-skill-badge {
+  display: inline-block;
+  min-width: 26px;
+  padding: 2px var(--space-2, 8px);
+  text-align: center;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: #e6e8ef;
+  background: #2a2e3c;
+  border-radius: var(--panel-radius-sm, 10px);
 }
 
 /* WPA cell - the hero. Signed pp value + 5-segment confidence bar. */

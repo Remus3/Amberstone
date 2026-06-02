@@ -1,0 +1,278 @@
+{
+  "ok": true,
+  "match_id": "MOCK_SR_WINPROB",
+  "events": [
+    {
+      "game_time": 196,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0182,
+      "prob_before": 0.552,
+      "prob_after": 0.5337,
+      "actor": 7,
+      "actor_team": 200,
+      "victim": 1,
+      "subtype": null
+    },
+    {
+      "game_time": 517,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0238,
+      "prob_before": 0.4879,
+      "prob_after": 0.4641,
+      "actor": 7,
+      "actor_team": 200,
+      "victim": 3,
+      "subtype": null
+    },
+    {
+      "game_time": 585,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0124,
+      "prob_before": 0.4206,
+      "prob_after": 0.4082,
+      "actor": 8,
+      "actor_team": 200,
+      "victim": 4,
+      "subtype": null
+    },
+    {
+      "game_time": 703,
+      "type": "CHAMPION_KILL",
+      "wpa": 0.012,
+      "prob_before": 0.3709,
+      "prob_after": 0.3829,
+      "actor": 3,
+      "actor_team": 100,
+      "victim": 8,
+      "subtype": null
+    },
+    {
+      "game_time": 869,
+      "type": "BUILDING_KILL",
+      "wpa": -0.0205,
+      "prob_before": 0.4036,
+      "prob_after": 0.3831,
+      "actor": 9,
+      "actor_team": 200,
+      "victim": null,
+      "subtype": "TOWER_BUILDING"
+    },
+    {
+      "game_time": 1026,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0119,
+      "prob_before": 0.2099,
+      "prob_after": 0.198,
+      "actor": 9,
+      "actor_team": 200,
+      "victim": 3,
+      "subtype": null
+    },
+    {
+      "game_time": 1071,
+      "type": "CHAMPION_KILL",
+      "wpa": 0.0114,
+      "prob_before": 0.1858,
+      "prob_after": 0.1971,
+      "actor": 1,
+      "actor_team": 100,
+      "victim": 9,
+      "subtype": null
+    },
+    {
+      "game_time": 1221,
+      "type": "ELITE_MONSTER_KILL",
+      "wpa": 0.0305,
+      "prob_before": 0.3796,
+      "prob_after": 0.4101,
+      "actor": 2,
+      "actor_team": 100,
+      "victim": null,
+      "subtype": "HEXTECH_DRAGON"
+    },
+    {
+      "game_time": 1311,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0177,
+      "prob_before": 0.6063,
+      "prob_after": 0.5887,
+      "actor": 8,
+      "actor_team": 200,
+      "victim": 3,
+      "subtype": null
+    },
+    {
+      "game_time": 1510,
+      "type": "CHAMPION_KILL",
+      "wpa": 0.0236,
+      "prob_before": 0.4367,
+      "prob_after": 0.4603,
+      "actor": 1,
+      "actor_team": 100,
+      "victim": 6,
+      "subtype": null
+    },
+    {
+      "game_time": 1599,
+      "type": "ELITE_MONSTER_KILL",
+      "wpa": -0.0082,
+      "prob_before": 0.6572,
+      "prob_after": 0.6491,
+      "actor": 2,
+      "actor_team": 100,
+      "victim": null,
+      "subtype": null
+    },
+    {
+      "game_time": 1723,
+      "type": "CHAMPION_KILL",
+      "wpa": 0.0239,
+      "prob_before": 0.4815,
+      "prob_after": 0.5054,
+      "actor": 2,
+      "actor_team": 100,
+      "victim": 9,
+      "subtype": null
+    },
+    {
+      "game_time": 1810,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0348,
+      "prob_before": 0.4793,
+      "prob_after": 0.4445,
+      "actor": 7,
+      "actor_team": 200,
+      "victim": 1,
+      "subtype": null
+    },
+    {
+      "game_time": 1851,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0219,
+      "prob_before": 0.366,
+      "prob_after": 0.3441,
+      "actor": 9,
+      "actor_team": 200,
+      "victim": 5,
+      "subtype": null
+    },
+    {
+      "game_time": 1899,
+      "type": "CHAMPION_KILL",
+      "wpa": 0.0116,
+      "prob_before": 0.1908,
+      "prob_after": 0.2024,
+      "actor": 2,
+      "actor_team": 100,
+      "victim": 8,
+      "subtype": null
+    },
+    {
+      "game_time": 2065,
+      "type": "CHAMPION_KILL",
+      "wpa": 0.0179,
+      "prob_before": 0.5689,
+      "prob_after": 0.5868,
+      "actor": 5,
+      "actor_team": 100,
+      "victim": 10,
+      "subtype": null
+    },
+    {
+      "game_time": 2070,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0348,
+      "prob_before": 0.5524,
+      "prob_after": 0.5175,
+      "actor": 9,
+      "actor_team": 200,
+      "victim": 1,
+      "subtype": null
+    },
+    {
+      "game_time": 2074,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0346,
+      "prob_before": 0.5703,
+      "prob_after": 0.5357,
+      "actor": 6,
+      "actor_team": 200,
+      "victim": 2,
+      "subtype": null
+    },
+    {
+      "game_time": 2078,
+      "type": "BUILDING_KILL",
+      "wpa": 0.0213,
+      "prob_before": 0.5356,
+      "prob_after": 0.5569,
+      "actor": null,
+      "actor_team": null,
+      "victim": null,
+      "subtype": "TOWER_BUILDING"
+    },
+    {
+      "game_time": 2343,
+      "type": "BUILDING_KILL",
+      "wpa": -0.0079,
+      "prob_before": 0.106,
+      "prob_after": 0.0981,
+      "actor": null,
+      "actor_team": null,
+      "victim": null,
+      "subtype": "TOWER_BUILDING"
+    },
+    {
+      "game_time": 2367,
+      "type": "BUILDING_KILL",
+      "wpa": -0.0031,
+      "prob_before": 0.0533,
+      "prob_after": 0.0503,
+      "actor": 6,
+      "actor_team": 200,
+      "victim": null,
+      "subtype": "INHIBITOR_BUILDING"
+    }
+  ],
+  "top_phases": [
+    {
+      "game_time": 1810,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0348,
+      "prob_before": 0.4793,
+      "prob_after": 0.4445,
+      "actor": 7,
+      "actor_team": 200,
+      "victim": 1,
+      "subtype": null
+    },
+    {
+      "game_time": 2070,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0348,
+      "prob_before": 0.5524,
+      "prob_after": 0.5175,
+      "actor": 9,
+      "actor_team": 200,
+      "victim": 1,
+      "subtype": null
+    },
+    {
+      "game_time": 2074,
+      "type": "CHAMPION_KILL",
+      "wpa": -0.0346,
+      "prob_before": 0.5703,
+      "prob_after": 0.5357,
+      "actor": 6,
+      "actor_team": 200,
+      "victim": 2,
+      "subtype": null
+    }
+  ],
+  "frame_count": 41,
+  "event_count": 105,
+  "model": null,
+  "model_version": null,
+  "n_samples": null,
+  "cached": false
+}
