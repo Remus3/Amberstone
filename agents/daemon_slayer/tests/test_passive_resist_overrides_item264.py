@@ -226,21 +226,22 @@ class ExclusionDocTests(unittest.TestCase):
 
     def test_excluded_champs_absent(self):
         cids = {k[0] for k in _PASSIVE_RESIST_OVERRIDES}
-        # revive / per-stack / ball-attached - the documented NEGATIVES that each
-        # still need a DIFFERENT seam. (Olaf/Rammus/Kennen/Nasus/Hecarim/Graves ->
-        # SEEDED rank_scaled by item 267; Malphite/Taric/Poppy/Rell -> SEEDED
-        # percent-mode by item 268; Singed/Braum/Leona/Jax were the unlabeled-
-        # multi-stat-block exclusion -> SEEDED flat-base by item 270; Jayce R was
-        # the form-gated exclusion -> SEEDED form-occupancy by item 271; all no
-        # longer exclusions.)
-        for c in ("Anivia", "Thresh", "Orianna"):
+        # revive / ball-attached - the documented NEGATIVES that each still need a
+        # DIFFERENT seam. (Olaf/Rammus/Kennen/Nasus/Hecarim/Graves -> SEEDED
+        # rank_scaled by item 267; Malphite/Taric/Poppy/Rell -> SEEDED percent-mode
+        # by item 268; Singed/Braum/Leona/Jax were the unlabeled-multi-stat-block
+        # exclusion -> SEEDED flat-base by item 270; Jayce R was the form-gated
+        # exclusion -> SEEDED form-occupancy by item 271; Thresh P was the per-
+        # stack-unbounded exclusion -> SEEDED per_stack by item 272; all no longer
+        # exclusions.)
+        for c in ("Anivia", "Orianna"):
             self.assertNotIn(c, cids)
 
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_pin(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.98.0")
-        self.assertEqual(ENGINE_VERSION, "1.98.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.99.0")
+        self.assertEqual(ENGINE_VERSION, "1.99.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):
