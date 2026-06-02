@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.92.0 (item 262 - thread apply_passive_mitigation into the BRUISER EHP scorer,
+default-OFF byte-identical. Symmetric completion of item 261: that wired the
+item-261 effects-text DAMAGE-REDUCTION layer into the TANK scorer (compute_ehp +
+rank_items_by_ehp + /ehp + /rank-tank); this mirrors it for the bruiser path
+(compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser). apply_passive_mitigation
+flows to every compute_ehp call so a champion with a registered mitigation passive
+(Kassadin / KSante / Briar / Irelia / Nilah) gets a DR-boosted ehp + cc_blended_ehp
+-> a larger hybrid_score scalar. Default False = all three DR multipliers 1.0 =
+BYTE-IDENTICAL to 1.91.0. The mitigation is a CHAMPION passive (build-independent),
+so it scales the EHP denominator uniformly across the baseline AND every candidate;
+the ratio-based hybrid_delta_pct sort key (delta_ehp / baseline_ehp) is INVARIANT
+under that uniform scale -> enabling it does NOT re-rank, it makes the per-row
+hybrid_score + cc_blended_ehp scalars accurate (mirrors item 261's tank
+rank_items_by_ehp - a champ passive cannot differentiate one candidate from another
+the way the build-dependent tenacity term does). This completes the EHP-bearing
+scorer pair: tank ds.ehp + bruiser ds.hybrid are both mitigation-aware; the other 4
+scorers (carry/mage/assassin/enchanter) score on DPS/burst/HPS not EHP so a DR
+denominator does not apply. +14 tests test_bruiser_mitigation_item262.py. NO engine
+math change beyond the additive flag threading - no new EhpResult/HybridResult fields,
+no registry change.)
+
 1.91.0 (item 261 / GAP 2 - effects-text-only DAMAGE-REDUCTION (mitigation)
 registry, default-OFF byte-identical. The survivability-triad SIBLING of the
 effects-text HEAL (items 250-254) + SHIELD (item 260) registries, but for the
