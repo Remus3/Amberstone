@@ -4,6 +4,23 @@
 
 ---
 
+# 2026-06-02 - item 273: 5-slice parallel drain (Arena Mage sweep + coachless teardown + item-WPA + tft cache + deterministic champ-select brief)
+
+Operator "start next item on lists in parallel + backlog items" (/headless-upgrade, caveman ULTRA). 9 commits `533f6fc..7a1861d`, CI green. NO ENGINE bump (1.99.0 stays, no DS work). RC restarted x2 (pid 11464 -> 20276 item-WPA route -> 2096 champ-select shadow-log). Game-PC MCP :8892 DOWN (visual capture owed). Orchestrator-merge + verifier-gate-before-merge (all 3 code slices CONFIRMed before merge).
+
+- **Slice A `1dbb878` (merge `533f6fc`) Arena Mage-label sweep (data-only, item 269 L4 carry):** 8 champs (Kha'Zix/Pyke/Qiyana/Senna/Smolder/Talon/Varus/Zed) Arena build_paths relabeled Mage->Bruiser (label/key/_archetype only, 0 item change). The item-269 "0-AP Mage" premise was a heuristic artifact - real defect = AD-DOMINANCE (proper flat-AP classify via items.json shows every Arena path carries Twilight's-Edge AP). Root = autogen flavor-slot label-stamp; idempotent `tools/hotfix_arena_mage_mislabel_item273.py` re-applies on regen. +4t. Arena-only; keeps bruiser-ADC items.
+- **Slice C `a95c573` coachless.gg teardown (`docs/COMPETITOR_LIFT_2026-06-02.md`):** NOW 0 / FUTURE 3 / CLOSED 3. ONE WPA stat engine, NO desktop app (site-AND-app CLOSED). Top lift = per-item WPA (obs - expected). Pre-game 44M-game net + path optimizer CLOSED (modeling-ceiling/redistributable). Review WPA already shipped.
+- **Slice E `1765b45` (merge `c849575`) + wire `59fbc98` item-WPA backend/route (coachless lift, ITEM_PURCHASED gate OPEN - 529291 events/2902 matches):** `core/item_wpa.compute_item_wpa` residual = obs_win - `post_game_score.predict_prob`(frame@purchase); predict_prob=P(team100) FLIP for team200; 125-legendary filter; `smoothed_rates.shrink(n,k=5)` damping; min_n gated; reuses the shipped WPA model, NO new dep/Riot/Claude. GET `/api/item-wpa` (5min TTL). +12t. LIVE 95 items, TOP Experimental Hexplate +0.096 / BOT Umbral Glaive -0.076. Personal-corpus DESCRIPTIVE lens. **PANEL DEFERRED** (placement = product call; visual capture owed).
+- **Slice D `b67a294` tft_pbe system-prompt cache_control** (2450-tok > 2048 haiku floor; PBE-only; live next RC restart).
+- **Slice F `624a255` (merge `7a1861d`) deterministic champ-select brief SUBSTRATE (Haiku-elim 4b):** `_champ_select_deterministic.brief_deterministic` = the exact {build,runes,ally_notes} shape with ZERO Haiku call (build+runes from the curated loadout_resolver the chooser uses; ally_notes archetype heuristic). `_champ_select.py` fail-soft SHADOW-LOG to `logs/champ_select_brief_shadow.jsonl` (+28/-0). **Served brief STAYS live Haiku** (AST no-flip drift-guard); flip operator-gated, validate via the shadow-log. +22t.
+- **Slice B cost sweep CLEAN** (1 real win = D). champ_select/tft_live_analysis pass dynamic content in messages (no cacheable prefix, NOT gaps); tft_vision charter-exempt. Levers 2-7 clean (route TTL 300s, tightest poll 500ms, CSS parity 35==35).
+
+**NEXT (operator-gated):** (1) item-WPA panel + placement decision (PGR-annotation vs insights card) + VISUAL CAPTURE (Game-PC MCP down). (2) deterministic champ-select brief FLIP after live shadow-log validation -> retire that Haiku call. (3) item 272 carries: DS resist exclusions (Anivia P / Orianna E, different seams) + Phase D flag-flips + Phase 11 vision collapse + gamepc archival.
+
+**Carry - 5 PRE-EXISTING local test failures** (verified failing on f8fca3b baseline, NOT this run, NOT in CI's smoke/regression selection): `test_champ_select_coach::test_runtime_call_passes_block_with_cache_control`, `test_coach_choices_panel_dom::test_state_builder_imports_coach_choices`, `test_loadout_pollution_cleanup_item213::test_b` (Twitch aram-collapsed aram-carry dup on-hit) + `test_c` (Kha'Zix/Qiyana/Talon/Zed sr-collapsed 1-path), `test_pickban_systems_p1l2::test_coach_pick_safe_without_champion_or_key`. CI is green (runs only py_compile + phase2 + snapshot + hygiene). A future slice can chase these.
+
+---
+
 # 2026-06-02 - item 272: DS per-stack unbounded resist grant (ENGINE 1.99.0)
 
 Operator "start the next DS schema lift and exhaust it then /done for /clear". Seeded the LAST cleanly headless-buildable resist-grant exclusion (per-stack unbounded). 2 commits `73bbb85` feat + docs (pushed). ENGINE 1.98.0 -> 1.99.0. DS :8893 restarted (taskkill pid 16868 + schtasks) -> 1.99.0/16.11.1/172/705, live-verified. RC NOT touched.
@@ -25,18 +42,3 @@ Operator "start the next DS schema lift and exhaust it then /done for /clear". S
 - EXHAUSTIVE roster scan: Jayce R Hammer is the SOLE form-gated self flat-resist grant (Kled forms are HP not resist; Elise/Nidalee/Gnar/Shyvana/Swain grant no flat resist). The 3 other exclusions RE-CONFIRMED: Anivia P (resurrection non-combat), Thresh P (per-stack-unbounded souls), Orianna E (ball-attached ally-target).
 - RESIST-grant lane now COMPLETE across all 5 source modes (flat 264 + rank-scaled-block 267 + percent 268 + unlabeled-block 270 + form-occupancy 271). +24 tests `test_passive_resist_form_gated_item271.py`. DS 6118 -> 6142, 0 failed. Share 277 files --check clean. Live /ehp: Jayce L16 pr 17.5 (35*0.5), L11 12.5, armor 94.375 unchanged; Caitlyn off==on byte-identical.
 - Don't-redo: do NOT add a new schema field for form-gating (conditional_probability covers it); 0.5 is operator-tunable (Phase D); the 3 remaining exclusions each need a DIFFERENT seam (non-combat-state gate / assumed-soul midpoint / ally-target seam). The clean headless effects-text survivability+resist lane is EXHAUSTED across both EHP scorers + all 5 resist modes - remaining DS work is Phase D live flag-flips + the 3 different-seam exclusions + Phase 11 vision-frame collapse + gamepc archival.
-
----
-
-# 2026-06-02 - item 270: DS unlabeled-multi-stat-block resist grants (ENGINE 1.97.0)
-
-Operator "start the next DS schema lift and exhaust it then /done for /clear". Seeded the LAST resist-grant exclusion class (Singed R / Braum W / Leona W / Jax R). 1 commit `fbb2934` (pushed `ff7ffa6..fbb2934`), CI green run 26831626137. ENGINE 1.96.0 -> 1.97.0. DS :8893 restarted (taskkill pid 15424 + schtasks) -> live-verified. RC NOT touched.
-
-- NO new schema field - hand-attribution + the existing item-267 `rank_scaled` flat-add seam. The item-264 "unlabeled / not confidently attributed" framing was OVER-cautious: series[0] varies by rank = flat base; series[1] rank-constant = a percent coefficient (omitted per its base). Singed R is one shared series [25,60,95]=AP=armor=MR.
-- SEEDED 4 rank_scaled flat-base active-amortized 0.3: Singed R (25/60/95), Braum W (20-40), Leona W (20-50), Jax R (armor 25/50/75 + MR 15/30/45). Percent coefficients omitted: Braum 36%-of-ALLY (cross-champ), Leona 20% (uncertain), Jax 40%/24%-of-bonus-AD (no seam).
-- Exhaustive re-scan: the only other armor/MR blocks are target-SHRED (Evelynn/JarvanIV/Renekton/Rengar/Rumble/Yorick = offensive, NOT self-resist).
-- +15t `test_passive_resist_unlabeled_block_item270.py`; item-264 exclusion-list dropped the 4. DS 6103 -> 6118; 51 test-pin syncs; Share 276 files --check clean; living docs 1.97.0/6118.
-- LIVE /ehp: Singed L16 28.5; Jax L16 armor 22.5 / mr 13.5; Braum L11 9.0; Leona L16 15.0; Caitlyn off==on byte-identical.
-
-Don't-redo: (a) the resist-grant lane is now COMPLETE (flat 264 + rank-block 267 + percent 268 + unlabeled-block 270) - do NOT re-pitch Singed/Braum/Leona/Jax. (b) the 4 remaining resist exclusions each need a DIFFERENT seam: Jayce R form-state midpoint / Anivia P resurrection / Thresh P per-stack / Orianna E ball-attached. (c) percent coefficients deliberately omitted (no ally / bonus-AD seam) - do NOT force-seed. (d) default apply_passive_resist=False byte-identical; flag-on CAN re-rank (non-linear _armor_factor) - Phase D live validation before default-on.
-NEXT (operator-gated): the entire headless effects-text survivability + resist-grant lane is EXHAUSTED across both EHP scorers; remaining DS = Phase D live flag-flips + the 4 different-seam resist exclusions + the deferred Phase 11 vision-frame collapse + gamepc archival.
