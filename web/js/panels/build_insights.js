@@ -1,4 +1,4 @@
-/* Build Insights view (item 273, coachless.gg lift).
+/* Build Insights view (item 273, competitor-WPA lift).
  *
  * Consumes the shipped GET /api/item-wpa as a sortable WPA table:
  *   Item (icon + name) | WPA (signed pp + confidence bar) | Buys (n) |
