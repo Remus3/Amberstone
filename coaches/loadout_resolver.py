@@ -46,6 +46,28 @@ def _norm(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(name).lower())
 
 
+def _lookup_champ(loadouts: dict, champion: str) -> dict:
+    """Resolve a champion entry tolerant of name-form drift.
+
+    The champ-select view passes the DDragon-key form (CHAMPS.byId, e.g.
+    "Kaisa") while the store is keyed by display name ("Kai'Sa"). Exact
+    match first, then a fuzzy-normalized fallback so every special-char
+    champ (Kai'Sa / Kha'Zix / Kog'Maw / Rek'Sai / Cho'Gath / Vel'Koz /
+    Bel'Veth) resolves from either form. Without this the champ-select build
+    chooser is empty for those champs (the lookup never finds the entry).
+    """
+    champ = loadouts.get(champion)
+    if champ:
+        return champ
+    want = _norm(champion)
+    if not want:
+        return {}
+    for key, val in loadouts.items():
+        if isinstance(key, str) and _norm(key) == want:
+            return val or {}
+    return {}
+
+
 def _load_items_by_name() -> dict[str, str]:
     global _items_by_name_cache
     if _items_by_name_cache is not None:
@@ -127,7 +149,7 @@ def list_variants(champion: str, mode: str) -> list[dict]:
     all modes/pages.
     """
     loadouts = _load_loadouts().get("champions", {}) or {}
-    champ = loadouts.get(champion) or {}
+    champ = _lookup_champ(loadouts, champion)
     variants = champ.get("variants") or {}
     mode_key = _normalize_mode(mode)
     defaults = champ.get("default_per_mode") or {}
@@ -200,7 +222,7 @@ def list_variants(champion: str, mode: str) -> list[dict]:
 def default_variant(champion: str, mode: str) -> str:
     """Return the default variant key for this champion+mode, or ''."""
     loadouts = _load_loadouts().get("champions", {}) or {}
-    champ = loadouts.get(champion) or {}
+    champ = _lookup_champ(loadouts, champion)
     mode_key = _normalize_mode(mode)
     default_key = (champ.get("default_per_mode") or {}).get(mode_key, "")
     variants = champ.get("variants") or {}
@@ -229,7 +251,7 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
         }
     """
     loadouts = _load_loadouts().get("champions", {}) or {}
-    champ = loadouts.get(champion) or {}
+    champ = _lookup_champ(loadouts, champion)
     variants = champ.get("variants") or {}
     mode_key = _normalize_mode(mode)
     # Item 178 (2026-05-24): collapsed SR variants accept a sub-path key
