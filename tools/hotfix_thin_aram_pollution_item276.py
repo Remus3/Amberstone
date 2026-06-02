@@ -1,6 +1,4 @@
-"""Hotfix item 276 - thin ARAM bruiser/assassin SECONDARY paths + Zaahen junk entry.
-
-Two targets swept:
+"""Hotfix item 276 - thin ARAM bruiser/assassin SECONDARY paths.
 
 TARGET 1 - 17 thin n=4 bruiser/assassin SECONDARY paths in aram-collapsed variants.
   Item 275 documented these as OUT-OF-SCOPE (intentional auto-seed) but item 276
@@ -16,13 +14,12 @@ TARGET 1 - 17 thin n=4 bruiser/assassin SECONDARY paths in aram-collapsed varian
                                  Mordekaiser, Nasus, Sett, Udyr, Yorick
     Assassin (aram-assassin key): Akali, Ekko, Elise, Fizz, Katarina, Shaco
 
-TARGET 2 - Zaahen aram-collapsed junk entry.
-  Primary 'ap-burst' path carries Doran's Shield / Doran's Blade / Doran's Ring /
-  Doran's Bow placeholder items - clearly a junk auto-generation artifact from
-  when the champion_id was None. Zaahen is a real champion (The Unsundered,
-  Fighter/Assassin, added 16.11.1) but the aram-collapsed build is all starter
-  items. The entire Zaahen entry is removed; a future curated build can replace it.
-  No tests reference Zaahen in tests/; confirmed via grep.
+Zaahen NOT swept - verify-before-declare-broken: Zaahen is a REAL champion
+  (The Unsundered, Fighter/Assassin, key 904, added 16.11.1), NOT a junk fixture.
+  Its aram-collapsed build carries all-Doran's placeholder items because the
+  champion_id is None (an unresolved autogen stub), but removing a real champion's
+  loadout entry would leave RC with NO build for it. The placeholder is preserved
+  as-is; a real curated/autogen build is a separate DS-batch task. Do NOT remove it.
 
 Idempotent + atomic (tmp.write_text + os.replace). Touches items + label only;
 runes + summoners + keys preserved. Mirrors tools/hotfix_thin_aram_adc_item275.py.
@@ -292,10 +289,7 @@ def apply(data: dict) -> int:
                 touched += 1
                 break
 
-    # TARGET 2: remove Zaahen junk entry
-    if "Zaahen" in champs:
-        del champs["Zaahen"]
-        touched += 1
+    # Zaahen intentionally NOT touched - it is a real champion (see module docstring).
 
     return touched
 
@@ -303,7 +297,7 @@ def apply(data: dict) -> int:
 def run(dry_run: bool = False) -> int:
     data = json.loads(_LOADOUTS.read_text(encoding="utf-8"))
     n = apply(data)
-    print(f"=== item 276 thin-ARAM-pollution + Zaahen: {n} change(s) ===")
+    print(f"=== item 276 thin-ARAM-pollution: {n} change(s) ===")
     if dry_run:
         print("(dry-run; no write)")
         return 0
@@ -320,7 +314,7 @@ def run(dry_run: bool = False) -> int:
 
 def main(argv: list | None = None) -> int:
     p = argparse.ArgumentParser(
-        description="item 276 thin-ARAM-bruiser/assassin + Zaahen hotfix"
+        description="item 276 thin-ARAM-bruiser/assassin hotfix"
     )
     p.add_argument("--dry-run", action="store_true", help="report only, no write")
     args = p.parse_args(argv)
