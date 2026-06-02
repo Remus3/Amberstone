@@ -67,13 +67,16 @@ resist grant). TWO source modes:
     indexed by ability rank -> seeded ``rank_scaled``: Olaf R [10/15/20] perm,
     Nasus R [40/55/70], Kennen R [20/40/60], Hecarim W [5..25], Rammus W FLAT
     [27..47] (% half omitted), Graves E [32..128] armor-only at-cap.
+  - percent-of-resist value (item 268, the candidate-B base-vs-bonus split): 5
+    entries whose grant is a PERCENT of the champion's own armor / MR (not a flat
+    add). ``armor_pct`` / ``mr_pct`` + ``pct_base`` ("total" | "bonus") multiply
+    the RESOLVED build resist threaded in from ``compute_ehp``: Malphite W
+    (10..30% of TOTAL armor, ARMOR ONLY, permanent), Taric W (6..10% of TOTAL
+    armor, ARMOR ONLY, permanent), Poppy W (flat 12% of TOTAL armor + MR,
+    permanent), Rell W form 1 (flat 15% of BONUS armor + MR, Dismounted steady-
+    state), Rammus W (30..60% of TOTAL armor + MR, the %-half extending the item
+    267 flat entry, 7s active amortized).
 Documented EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
-  - PERCENT-OF-RESIST multiplier (a multiplier on the resist STAT, not a flat
-    add; needs a base-vs-bonus resist split this flat-add seam does not pass - a
-    future percent-mode lift): Malphite W (% of armor, tripled w/ Granite Shield),
-    Taric W (% of his armor), Rammus W %-total half (flat half IS seeded item
-    267), Poppy W (+12% TOTAL armor + MR, doubled <40% HP), Rell W (15% BONUS
-    armor + MR while Dismounted).
   - UNLABELED MULTI-STAT / MULTI-TIER block (the [other] blocks carry several
     series with no name, so the armor/MR value cannot be confidently attributed):
     Singed R (3 unlabeled [other] series for AP / armor / MR / regen), Braum W
@@ -133,6 +136,17 @@ class PassiveResistEntry:
 
     armor: float | tuple[float, ...] = 0.0
     mr: float | tuple[float, ...] = 0.0
+    # item 268 (percent-of-resist mode): bonus armor / MR equal to a PERCENT of
+    # the champion's OWN resist STAT (e.g. Malphite W 20% of his armor), NOT a
+    # flat add. ``armor_pct`` / ``mr_pct`` carry the percent (12.0 == 12%), flat
+    # or a per-rank / per-level tuple resolved the same way as ``armor`` / ``mr``.
+    # ``pct_base`` selects which resist the percent multiplies: "total" (base +
+    # build) or "bonus" (build delta = total - base per-level). An entry may carry
+    # BOTH the flat-add fields (item 264/267) AND the percent fields (Rammus W);
+    # they sum. Default 0.0 percent -> the flat-only entries are unchanged.
+    armor_pct: float | tuple[float, ...] = 0.0
+    mr_pct: float | tuple[float, ...] = 0.0
+    pct_base: str = "total"
     conditional_probability: float = 1.0
     note: str = ""
     attribute: str = "Passive Resist"
@@ -279,13 +293,83 @@ _PASSIVE_RESIST_OVERRIDES: dict[tuple[str, str, int], PassiveResistEntry] = {
     # [30:60]. The FLAT half (by W rank) is seeded; the %-of-total half is OMITTED
     # (a percent-of-resist mode the flat-add seam does not pass - the candidate-B
     # base-vs-bonus split). 7s active, cooldown-gated -> amortized.
+    # item 268: the %-of-total half ITEM 267 OMITTED is now seeded alongside the
+    # flat half on the SAME entry. "Bonus Armor" [30,37.5,45,52.5,60] % total armor
+    # + "Bonus Magic Resistance" [30,37.5,45,52.5,60] % total MR by W rank. The
+    # flat half (27..47) + percent half SUM (League stacks both). 7s active
+    # amortized at the same _ACTIVE_RESIST_PROB midpoint; rank_scaled (W priority_2)
+    # governs BOTH the flat tuple and the percent tuple.
     ("Rammus", "W", 0): PassiveResistEntry(
         armor=(27.0, 32.0, 37.0, 42.0, 47.0),
         mr=(27.0, 32.0, 37.0, 42.0, 47.0),
+        armor_pct=(30.0, 37.5, 45.0, 52.5, 60.0),
+        mr_pct=(30.0, 37.5, 45.0, 52.5, 60.0),
+        pct_base="total",
         conditional_probability=_ACTIVE_RESIST_PROB,
-        note="Defensive Ball Curl: 27/32/37/42/47 FLAT armor + MR by W rank ([other] block); %-of-total-resist half omitted (percent mode); 7s active amortized; rank_scaled (W priority_2)",
+        note="Defensive Ball Curl: 27/32/37/42/47 FLAT + 30/37.5/45/52.5/60% of TOTAL armor + MR by W rank ([other] blocks, both sum); 7s active amortized; rank_scaled (W priority_2)",
         attribute="Defensive Ball Curl",
         rank_scaled=True,
+    ),
+    # ----- item 268: PERCENT-OF-RESIST mode (the candidate-B base-vs-bonus split
+    # named as the percent-mode EXCLUSION in items 264/267). The grant is a PERCENT
+    # of the champion's own resist STAT (resolved against the build), not a flat
+    # add - so armor_pct / mr_pct carry the percent + pct_base selects total | bonus.
+    #
+    # Malphite W Thunderclap: "Bonus Armor" [10,15,20,25,30] % of his armor (% of
+    # TOTAL armor, ARMOR ONLY). The Granite-Shield "Increased Bonus Armor"
+    # [30..90]% tier is OMITTED (shield-gated; the base is seeded). PERMANENT
+    # passive (always on while W learned) -> prob 1.0; rank_scaled (W priority_2).
+    ("Malphite", "W", 0): PassiveResistEntry(
+        armor_pct=(10.0, 15.0, 20.0, 25.0, 30.0),
+        mr_pct=0.0,
+        pct_base="total",
+        conditional_probability=1.0,
+        note="Thunderclap: 10/15/20/25/30% of TOTAL armor as bonus armor by W rank (ARMOR ONLY); Granite-Shield Increased tier omitted; permanent; rank_scaled (W priority_2)",
+        attribute="Thunderclap",
+        rank_scaled=True,
+    ),
+    # Taric W Bastion: "Bonus Armor" [6,7,8,9,10] % of Taric's armor (% of TOTAL
+    # armor, ARMOR ONLY). The ally-tethered copy is omitted (self portion seeded).
+    # PERMANENT (the self-bonus is present whenever W is learned) -> prob 1.0;
+    # rank_scaled (W priority_2).
+    ("Taric", "W", 0): PassiveResistEntry(
+        armor_pct=(6.0, 7.0, 8.0, 9.0, 10.0),
+        mr_pct=0.0,
+        pct_base="total",
+        conditional_probability=1.0,
+        note="Bastion: 6/7/8/9/10% of TOTAL armor as bonus armor by W rank (ARMOR ONLY, self portion); ally copy omitted; permanent; rank_scaled (W priority_2)",
+        attribute="Bastion",
+        rank_scaled=True,
+    ),
+    # Poppy W Steadfast Presence passive (Stubborn to a Fault): "increases her
+    # total armor and total magic resistance by 12%, doubled to 24% while below 40%
+    # maximum health." FLAT 12% of TOTAL armor + MR (NOT rank-scaled). The
+    # doubled-to-24%-below-40%-HP conditional is OMITTED (the steady-state
+    # above-40%-HP value is seeded; same boundary as Sejuani's +75% sub-terms).
+    # PERMANENT passive (the Garen-W / Shyvana-P flat-permanent convention,
+    # level-invariant) -> prob 1.0.
+    ("Poppy", "W", 0): PassiveResistEntry(
+        armor_pct=12.0,
+        mr_pct=12.0,
+        pct_base="total",
+        conditional_probability=1.0,
+        note="Stubborn to a Fault: +12% of TOTAL armor + MR (flat, level-invariant); doubled-to-24%-below-40%-HP conditional omitted; permanent",
+        attribute="Stubborn to a Fault",
+    ),
+    # Rell W form 1 (Mount Up / Dismounted passive): "While Rell is Dismounted, she
+    # gains 15% bonus armor, 15% bonus magic resistance". FLAT 15% of BONUS armor +
+    # MR (the build delta, NOT total) -> 0 itemless, surfaces only when she builds
+    # resists. Dismounted is her STEADY-STATE combat stance after the R/W engage
+    # (the EHP frame models the post-engage fight), so prob 1.0 (the Sejuani
+    # Frost-Armor in-combat-permanent convention). form_index 1 = the Mount Up form
+    # where the Dismounted passive lives in the parsed data.
+    ("Rell", "W", 1): PassiveResistEntry(
+        armor_pct=15.0,
+        mr_pct=15.0,
+        pct_base="bonus",
+        conditional_probability=1.0,
+        note="Ferromancy (Dismounted): +15% of BONUS armor + MR (build delta, 0 itemless) while Dismounted; Dismounted = steady-state combat stance, prob 1.0",
+        attribute="Ferromancy",
     ),
     # Graves E True Grit: "For each stack, Graves gains bonus armor." ARMOR ONLY
     # (no MR). [other] per-stack [4,7,10,13,16] + the at-cap (8 stacks)
@@ -354,13 +438,32 @@ def _value_at_level(
 
 
 def resist_grants(
-    champion_id: str, level: int, apply_passive_resist: bool
+    champion_id: str,
+    level: int,
+    apply_passive_resist: bool,
+    *,
+    total_armor: float = 0.0,
+    total_mr: float = 0.0,
+    base_armor: float = 0.0,
+    base_mr: float = 0.0,
 ) -> tuple[float, float]:
     """Return ``(bonus_armor, bonus_mr)`` from effects-text resist grants.
 
-    Each is ``sum(value(level) * conditional_probability)`` over every registered
-    resist grant matching ``champion_id``. When ``apply_passive_resist`` is False
-    (the default) both are 0.0 - the EHP math is byte-identical.
+    Sums, over every registered grant matching ``champion_id``:
+      - the FLAT-ADD half (item 264/267): ``value(level) * prob``.
+      - the PERCENT-OF-RESIST half (item 268): ``(pct(level)/100) * resist * prob``
+        where ``resist`` is ``total_armor`` / ``total_mr`` for ``pct_base="total"``
+        or the build BONUS (``max(0, total - base)``) for ``pct_base="bonus"``.
+
+    The resolved build resists (``total_*`` / ``base_*``) are keyword-only with
+    0.0 defaults so a legacy positional call (the item 264/267 tests) returns the
+    flat-add half unchanged and any percent entry contributes 0.0 (percent * 0).
+    Only ``compute_ehp`` passes the build resists, so the percent half fires only
+    on the live EHP path. When ``apply_passive_resist`` is False (the default) both
+    are 0.0 - the EHP math is byte-identical.
+
+    The percent multiplies the RESOLVED build resist (which excludes these passive
+    grants - they are not in base/items), so there is NO self-feedback loop.
 
     The caller adds each to the matching resolved resist BEFORE ``_armor_factor``
     (``eff_armor = armor + bonus_armor``); a positive grant lowers the resist
@@ -372,6 +475,8 @@ def resist_grants(
         return bonus_armor, bonus_mr
     cid = str(champion_id)
     lvl = int(level)
+    build_bonus_armor = max(0.0, float(total_armor) - float(base_armor))
+    build_bonus_mr = max(0.0, float(total_mr) - float(base_mr))
     for (entry_cid, _key, _form), entry in _PASSIVE_RESIST_OVERRIDES.items():
         if entry_cid != cid:
             continue
@@ -386,4 +491,18 @@ def resist_grants(
         )
         bonus_armor += a * prob
         bonus_mr += m * prob
+        # item 268: percent-of-resist half (multiplies the resolved build resist).
+        if entry.armor_pct or entry.mr_pct:
+            res_a = float(total_armor) if entry.pct_base == "total" else build_bonus_armor
+            res_m = float(total_mr) if entry.pct_base == "total" else build_bonus_mr
+            pa = _value_at_level(
+                entry.armor_pct, lvl, entry.level_scaled,
+                key=_key, rank_scaled=entry.rank_scaled,
+            )
+            pm = _value_at_level(
+                entry.mr_pct, lvl, entry.level_scaled,
+                key=_key, rank_scaled=entry.rank_scaled,
+            )
+            bonus_armor += (pa / 100.0) * res_a * prob
+            bonus_mr += (pm / 100.0) * res_m * prob
     return bonus_armor, bonus_mr
