@@ -1331,6 +1331,34 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.97.0 (GAP-2 RESIST-STAT grant UNLABELED MULTI-STAT / MULTI-SERIES block lift,
+item 270 - the last seedable resist-grant EXCLUSION class from items 264/267/268,
+now seeded. These forms carry a parsed Meraki block that bundles several stats or
+two value series with no per-stat label, so item 264 deferred them as "value
+cannot be confidently attributed". NO new schema field - the existing flat-add
+rank_scaled machinery (item 267) handles all four; HAND attribution resolves the
+per-series ambiguity the item-264 note imagined needing a generic parser for.
+SEEDED 4 (all default-OFF byte-identical to 1.96.0, rank_scaled flat-add): Singed
+R Insanity Potion (ONE shared series [25,60,95] = AP == armor == MR, 25s active
+amortized), Braum W Stand Behind Me (self base [20,25,30,35,40] by W rank,
+series[1] +36%-of-ALLY-bonus omitted, active amortized), Leona W Eclipse (base
+[20,27.5,35,42.5,50] by W rank, series[1] +20% + the per-instance flat damage
+reduction omitted, 3s active amortized), Jax R Grandmaster-at-Arms (armor
+[25,50,75] + MR [15,30,45] by R rank, series[1] +40%/24%-bonus-AD + per-champ-hit
+extra omitted, on-hit active amortized). The rank-varying series[0] is the flat
+base; the rank-constant series[1] is a percent coefficient omitted per its
+(different) base (cross-champion / uncertain / bonus-AD - the item-264 omission
+boundary). resist_grants / compute_ehp / EhpResult unchanged. EXHAUSTIVE roster
+re-scan confirmed these 4 are the only non-seeded SELF resist-grant blocks; the 6
+other armor/MR blocks are target-SHRED (Evelynn W / JarvanIV Q / Renekton E /
+Rengar R / Rumble E / Yorick E). The clean headless effects-text RESIST-grant
+lane is now EXHAUSTED (flat + rank-scaled-block + percent-of-resist + unlabeled-
+multi-stat-block all seeded); remaining exclusions each need a DIFFERENT seam:
+Jayce R form-gated gate-dependent, Anivia P resurrection-state, Thresh P
+per-stack-unbounded, Orianna E ball-attached. apply_passive_resist defaults False
+-> byte-identical; flag-on CAN re-rank the item-rankers (non-linear _armor_factor,
+the item-264 finding) - validate live before flipping default-on (Phase D).)
+
 1.96.0 (GAP-2 RESIST-STAT grant PERCENT-OF-RESIST mode, item 268 - the
 candidate-B base-vs-bonus split named in items 264/267 as the documented
 percent-mode EXCLUSION, now modeled. A percent-of-resist grant is bonus armor /
