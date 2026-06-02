@@ -66,17 +66,26 @@ class JsVariantClickFiresApplyLoadoutTests(unittest.TestCase):
         )
 
     def test_apply_loadout_defaults_push_runes_true(self):
-        # The body MUST default push_runes: true so a click that
-        # doesn't explicitly pass push_runes still pushes runes.
+        # A click that does NOT pass an explicit pushFlags arg must still
+        # push runes. Item 240 part-3 generalized _csvApplyLoadout with an
+        # optional pushFlags param; the body now reads
+        # push_runes: wantRunes, where wantRunes defaults to true when the
+        # caller omits pushFlags. Assert BOTH halves so the default-true
+        # contract is pinned (regression: silent items-only if the default
+        # flips to false or the wantRunes default is dropped).
         body_block_re = re.compile(
-            r"const body = \{[^}]*push_runes:\s*true[^}]*\}",
+            r"const body = \{[^}]*push_runes:\s*wantRunes[^}]*\}",
             re.DOTALL,
         )
         self.assertRegex(
             self.text, body_block_re,
-            "_csvApplyLoadout body must default push_runes: true so a "
-            "default click pushes runes (regression: silent items-only "
-            "if push_runes flag is dropped).",
+            "_csvApplyLoadout body must set push_runes: wantRunes.",
+        )
+        self.assertIn(
+            "const wantRunes = (pf.push_runes !== undefined) ? !!pf.push_runes : true;",
+            self.text,
+            "wantRunes must default to true when pushFlags is omitted so a "
+            "default click still pushes runes (item 240 part-3).",
         )
 
     def test_apply_loadout_targets_correct_endpoint(self):
