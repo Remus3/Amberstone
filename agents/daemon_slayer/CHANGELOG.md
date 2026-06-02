@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.90.0 (item 260 / GAP 2 - effects-text-only SHIELD registry, default-OFF
+byte-identical. New _passive_shield_overrides.py (sibling of the heal/damage
+registries): a synthetic attribute_kind="shield" block for the self-shields whose
+magnitude lives only in stripped effects_descriptions (no shield block parsed).
+The consumer was already complete - ability_hps._eval_heal_shield_block is kind-
+agnostic and compute_ability_hps already sums _select_kind_blocks(form,"shield")
+into total_shield_per_sec (the 56 snapshot shields were scored); this registry
+adds only the missing effects-text half. Injected by AbilitiesSnapshot.load(
+apply_passive_shield=True) when the form has NO existing shield block. SEEDED 10
+(exhaustive of the clean self-shield set at 16.11.1): Malphite P Granite Shield
+(10% max HP) / Camille P Adaptive Defenses (20% max HP) / Vi P Blast Shield (12%
+max HP) / Rakan P Fey Feathers (30:225 + 95% AP) / Shen P Ki Barrier (47:120 +
+13% bonus HP) / Yasuo P Way of the Wanderer (125:600 Flow-shield) / Blitzcrank P
+Mana Barrier (35% max MANA) / Skarner W Seismic Bastion (8% max HP) / Volibear E
+Sky Splitter (14% max HP + 75% AP) / Viktor Q Siphon Power (40:115 + 18% AP,
+level_scaled). One additive unit "% maximum mana" -> caster_max_mp in
+ability_hps._HEAL_UNIT_TO_CTX (the ctx attr already existed; no snapshot block
+uses a mana unit -> default path byte-identical). No bilinear / per-charge term
+needed. Conditional gates (Blitzcrank 30% HP / Camille+Vi periodic / Volibear
+within-strike / Yasuo full-Flow) NOT modeled - the magnitude is gate-independent
+(Evelynn-P/Kayn-form precedent). EXCLUDED (documented): spell shields (Nocturne
+W / Sivir E), damage-stored barriers (Sett W Grit / Mordekaiser W / TahmKench E),
+shield re-grants (Galio R / Yuumi R), shield-strips (Blitzcrank R / Rell Q),
+shield-verb-but-no-grant (weapon-flavor / damage-reduction / amp / vamp). +31 tests
+test_passive_shield_overrides_item260.py. ENGINE 1.89.0 -> 1.90.0. DS :8893
+restarted -> 1.90.0; RC NOT restarted - DS engine + tests + Share + docs only.)
+
 1.89.0 (item 258 / gap-plan Phase D - authored the C2 AA-empower amortized values
 in _ability_amp_overrides.py, default-OFF byte-identical. The 5 base="aa" AmpEntry
 champs (Caitlyn W / Fiora E / Jayce W f1 / Sivir W / Nidalee Q f1) carried
