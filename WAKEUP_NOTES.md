@@ -4,6 +4,22 @@
 
 ---
 
+# 2026-06-02 - live-watch (ranked SR Ashe + ARAM Mayhem Kai'Sa): PGR game-end refetch fix (a0bacd7) + on-demand capture confirmed BSOD-clean
+
+Operator queued ranked SR (warmed up with an ARAM Mayhem Kai'Sa first), authorized the live UI watch + screen captures as a BSOD test.
+
+SHIPPED a0bacd7 (web/js/main.js, ADR-008 auto-served, no restart): PGR (last-match view) refetches on game-end. Root: applyView L615 was the SOLE caller of fetchAndRenderLastMatch(); sitting on the PGR page through a game left it stale (backend /api/last-match was serving the correct row the whole time - id 1807 Kai'Sa ARAM grade B). Fix re-fires once on the gameStarted in-progress -> null edge + one 10s ingest-lag retry, guarded on _VIEW.current==="last-match". node --check OK, asset hash bbf4f6e2d5.
+
+CAPTURE / BSOD: on-demand Windows-MCP Screenshot (Legion-local; gamepc MCP :8892 is DOWN post-1PC boot-gap) grabbed twice mid-game (loading 0:00 + in-lane 4:47), NO BSOD. The on-demand capture path is BSOD-clean. Continuous DXGI screen-agent stays DISABLED.
+
+LIVE-WATCH HEALTHY: dashboard ACTIVE MATCH render == /api/state every tick (SR Ashe, kda 2/1/2 by lvl 6, coach Seraphine-ally-aware "rotate with Seraphine only if 2+ enemies bot", drake-timed, "CC saturation 94% -> Xerath" from the DS cc-pressure ecosystem). Build chooser POPULATES for Ashe SR + Caitlyn/Jinx SR -> the earlier Kai'Sa-ARAM "not populated" was NOT a global bug (likely a game-start render race; Kai'Sa ARAM data IS served, 3 paths).
+
+DEFERRED (data-only, no restart; post-game / next session): (1) Kai'Sa ARAM build rebuild - item-167 coverage-gap auto-seed: ap-hybrid path thin (4 items, AD items mislabeled under "AP Hybrid") + bruiser-trinity key lies (no Trinity Force in it). (2) Ashe SR only 2 paths, one is sr-enchanter/Aery (enchanter build on an ADC) - thin vs Caitlyn/Jinx 3 ADC paths.
+
+Don't-redo: PGR refetch SHIPPED (a0bacd7) - do NOT re-investigate; build chooser is NOT globally broken (renders SR + ARAM); gamepc MCP :8892 down is expected post-1PC (use Windows-MCP Screenshot for Legion-local captures).
+
+---
+
 # 2026-06-02 - item 262: DS thread apply_passive_mitigation into the BRUISER EHP scorer (symmetric completion of item 261), default-OFF byte-identical (ENGINE 1.91.0 -> 1.92.0; DS restarted 1.92.0 + live-verified; RC not restarted - DS engine + tests + Share + docs only)
 
 Operator "start next" -> item 261 NEXT(1). Item 261 wired the effects-text DAMAGE-REDUCTION layer (apply_passive_mitigation) into the TANK scorer (compute_ehp + rank_items_by_ehp + /ehp + /rank-tank); the BRUISER scorer (compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser) was mitigation-blind.
@@ -39,24 +55,3 @@ LIVE :8893 (POST /ehp + /rank-tank, restarted 1.91.0): Kassadin magical_ehp 2315
 Don't-redo: (a) DR is NOT an ability block - injects NO synthetic block + does NOT go through abilities.load; pure compute_ehp denominator modifier; do NOT route through _select_kind_blocks. (b) mult divides the denominator (0.90 = 10% DR -> EHP x1.111); default OFF -> mults 1.0 -> byte-identical; do NOT flip default-on without live validation. (c) the 4 actives amortized by _ACTIVE_DR_PROB=0.3 (operator-tunable midpoint, NOT exact). (d) Kassadin P is the SOLE permanent (prob 1.0). (e) KSante All Out 75% R-form-gated OMITTED (Kayn-R precedent); base 30% seeded. (f) Irelia W level_scaled; +AP omitted (no AP ctx on this EHP seam). (g) EXCLUDED classes are documented NEGATIVES - do NOT re-pitch. (h) VAMP + MANA-restore SCANNED + REJECTED - do NOT re-pitch. (i) DS restart PowerShell taskkill /F /PID + schtasks (NEVER Stop-Process).
 
 NEXT (live/operator-gated - the clean headless DS effects-text SURVIVABILITY triad is COMPLETE: heal throughput + shield throughput + DR denominator): (1) thread apply_passive_mitigation into compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser (BRUISER EHP scorer mitigation-aware; symmetric completion mirroring item 237 -> 236; headless-buildable, byte-identical default). (2) Phase D live flag-flips (apply_passive_mitigation 5 + apply_passive_shield 10 + apply_passive_damage 28 + apply_passive_heal 24 + amp/tenacity/mode/ammo/aoe) each re-ranks + needs a real game + tune the 4 active-DR midpoints live.
-
----
-
-
-# 2026-06-02 - item 260: DS GAP-2 effects-text-only SHIELD registry + 10 SEEDED, default-OFF byte-identical (ENGINE 1.89.0 -> 1.90.0; DS restarted 1.90.0; RC not restarted - DS engine + tests + Share + docs only)
-
-Operator "start the next DS schema lift and exhaust it then /done". Verified-first: the ledger "effects-text lane exhausted" (items 255-258) was HEAL/DAMAGE-only - the override registries inject attribute_kind="heal"/"damage" but NEVER shields, while the consumer ability_hps._eval_heal_shield_block already scores the 56 snapshot shield blocks (kind-agnostic) + compute_ability_hps already sums _select_kind_blocks(form,"shield") into total_shield_per_sec. Effects-text-only shields (no shield block parsed) = the genuinely-next clean headless lift.
-
-FINDING (roster scan all 171 champs, shield/absorb-verb forms with NO attribute_kind=="shield" block = 38 matches): the seedable self-shield set is exactly 10.
-
-SCHEMA LIFT (NEW module _passive_shield_overrides.py, sibling of heal/damage; ZERO consumer change): PassiveShieldEntry (linear_terms + cadence + note + attribute + level_scaled + bilinear_terms=()) + _PASSIVE_SHIELD_OVERRIDES + to_shield_block (builds DamageBlock attribute_kind="shield"). AbilitiesSnapshot.load(apply_passive_shield=False) flag + _apply_passive_shield_overrides (gate: NO existing shield block + registered entry). ONE additive unit "% maximum mana" -> caster_max_mp in ability_hps._HEAL_UNIT_TO_CTX (ctx attr already existed; no snapshot block uses a mana unit -> default byte-identical).
-
-SEEDED (10, default-OFF, exact 16.11.1): Malphite P (10% maxHP) / Camille P (20% maxHP) / Vi P (12% maxHP) / Rakan P (30:225 + 95% AP) / Shen P (47:120 + 13% bonusHP) / Yasuo P (125:600 Flow) / Blitzcrank P (35% maxMANA, sole mana shield) / Skarner W (8% maxHP) / Volibear E (14% maxHP + 75% AP) / Viktor Q (40:115 + 18% AP, level_scaled). EXCLUDED: spell shields (Nocturne W / Sivir E) / damage-stored barriers (Sett W Grit / Mordekaiser W / TahmKench E grey-health) / re-grants (Galio R / Yuumi R) / strips (Blitzcrank R / Rell Q) / verb-but-no-grant.
-
-LIVE in-process (compute_ability_hps apply_passive_shield=True): Malphite P L11 0 off / 157.76 on (= 10% maxHP exact); Blitzcrank P 216.3 (= 35% maxMP exact, mana shield works); Viktor Q level-scaled L11 84.118 / L18 115.0; Skarner W 127.62 (= 8% maxHP); Janna E snapshot shield OFF==ON 2.443 (gate skips); all default false byte-identical.
-
-+31 tests test_passive_shield_overrides_item260.py. ENGINE 1.89.0 -> 1.90.0 + 41 test-pin syncs + CHANGELOG prepend + Share re-sync (262 files, --check clean + authored 04/05/CHANGELOG semantic updates) + living docs (DAEMON_SLAYER/README/BRIEF/ARCHITECTURE 1.90.0/5962). DS suite 5931 -> 5962 (+31, 0 failed); phase8 70/70 post-restart; ruff clean; added-diff 0 non-ASCII. Commit 0a3383b pushed 0d503f5..0a3383b; CI green run 26794150158; gist auto-synced 1.90.0.
-
-Don't-redo: (a) the consumer was already shield-complete - the lift adds ONLY the effects-text override half; do NOT touch the consumer. (b) gate is "no existing shield block" (Janna/Lulu/Karma snapshot shielders byte-identical flag-on); a spell-slot shield (Skarner W / Volibear E / Viktor Q) is admitted because it has a DAMAGE block not a shield block -> adding a shield block never touches the damage blocks so compute_ability_dps is unaffected. (c) "% maximum mana" is the SOLE mana shield (Blitzcrank); caster_max_mp already existed; default byte-identical - do NOT re-pitch a mana ctx field. (d) every seeded shield is a CASTER stat (resolves at the default; NOT target-relative) - resolve_target_relative changes no shield. (e) Viktor Q is level_scaled (indexes by level not Q rank); other 9 flat or P-slot (rank==level-1). (f) the 10 are the EXHAUSTIVE clean self-shield set at 16.11.1; EXCLUDED classes are documented NEGATIVES. (g) DS restart PowerShell taskkill /F /PID + schtasks (NEVER Stop-Process).
-
-NEXT (all live/operator-gated - the clean headless DS effects-text lane is now GENUINELY EXHAUSTED for heal + damage + shield): Phase D live flag-flips (apply_passive_shield 10 forms + apply_passive_damage 28 + apply_passive_heal 24 + apply_ability_amps + apply_build_tenacity/score_by=cc_blended + apply_mode_modifiers + gate_ammo + aoe_targets_hit) each re-ranks + needs a real game; the on-event shield cadence (passive-P -> a fight clock) is a future consumer's job.
