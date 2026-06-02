@@ -1331,6 +1331,34 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.99.0 (GAP-2 RESIST-STAT grant PER-STACK UNBOUNDED lift, item 272 - the last
+cleanly headless-buildable resist-grant exclusion class. A self bonus-armor grant
+that scales LINEARLY with a slow game-long accumulator (Thresh souls) with NO
+cap, so unlike the BOUNDED per-stack cases (Garen W cap 30/30, Graves E cap 8
+stacks, Wukong P cap 5 - all seeded "at the cap" as the steady state) it cannot
+be capped; it needs an assumed steady-state count. NEW per-stack seam on
+PassiveResistEntry: per_stack_armor / per_stack_mr * assumed_stacks
+(_ASSUMED_SOUL_COUNT 25, the item-249 assumed_stacks convention carried to the
+EHP seam) summed alongside the flat-add (264/267) + percent (268) halves in
+resist_grants; default 0.0 -> flat/percent/bounded-at-cap entries unchanged. NO
+new EHP threading (compute_ehp already calls resist_grants). SEEDED 1 (default-OFF
+byte-identical to 1.98.0): Thresh P Damnation (1 bonus armor per soul, ARMOR ONLY
+- the +1 AP per soul is offensive, not a resist; no MR; UNBOUNDED accumulator
+seeded at the assumed steady-state soul count 25 -> 25 bonus armor at the
+midpoint; permanent prob 1.0; Thresh's innate "armor does not increase through
+growth (per level)" makes souls his ONLY armor scaling, so the grant is load-
+bearing for his EHP). EXHAUSTIVE roster scan (per-stack + armor/MR co-occurrence):
+Thresh P is the SOLE per-stack-UNBOUNDED self-resist grant - every other per-stack
+resist is BOUNDED (Garen W / Graves E / Wukong P combat stacks / Jax R on-hit,
+already seeded or omitted). The clean headless effects-text RESIST-grant lane is
+now FULLY EXHAUSTED across all 6 source modes (flat 264 + rank-scaled-block 267 +
+percent-of-resist 268 + unlabeled-multi-stat-block 270 + form-occupancy 271 +
+per-stack-unbounded 272); the 2 remaining resist exclusions each need a DIFFERENT
+seam and stay documented NEGATIVES: Anivia P resurrection non-combat state,
+Orianna E ball-attached (rides an ally not the caster). Default
+apply_passive_resist=False byte-identical. +19 tests
+test_passive_resist_per_stack_item272.py.)
+
 1.98.0 (GAP-2 RESIST-STAT grant FORM-OCCUPANCY-gated lift, item 271 - the last
 clean headless resist-grant exclusion class. A self bonus armor / MR grant that
 exists ONLY in one stance of a 2-form toggle; the other stance carries ZERO of

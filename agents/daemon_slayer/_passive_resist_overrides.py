@@ -98,13 +98,20 @@ resist grant). TWO source modes:
     self flat-resist grant (Cannon-stance Jayce R only shreds the TARGET; Kled
     forms are HP not resist; Elise/Nidalee/Gnar/Shyvana/Swain forms grant no flat
     resist).
+  - PER-STACK UNBOUNDED value (item 272): a flat per-stack coefficient times a
+    slow game-long accumulator with NO cap, so unlike the BOUNDED per-stack cases
+    (Garen W cap 30 / Graves E cap 8 / Wukong P cap 5, all seeded "at the cap")
+    it cannot be capped - it needs an assumed steady-state count. ``per_stack_*``
+    + ``assumed_stacks`` (``_ASSUMED_SOUL_COUNT`` 25, the item-249 convention on
+    the EHP seam). Thresh P (1 bonus armor per soul, ARMOR ONLY; +1 AP per soul is
+    offensive). EXHAUSTIVE roster scan (per-stack + armor/MR co-occurrence): the
+    SOLE per-stack-UNBOUNDED self-resist grant - every other per-stack resist is
+    BOUNDED (Garen W / Graves E / Wukong P combat stacks / Jax R on-hit, already
+    seeded or omitted).
 Documented EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
   - RESURRECTION / non-combat STATE (the grant applies only while the champion
     cannot act - a revive-egg, not a stat she fights with): Anivia P
     (-40:20 by level while under resurrection).
-  - PER-STACK UNBOUNDED slow-accumulator (souls / similar - needs an
-    assumed-stack-count midpoint that swings wildly by game length, less clean
-    than the item-249 combat-stack convention): Thresh P (1 bonus armor per soul).
   - BALL-ATTACHED / ally-targeted grant (the grant rides a unit that is usually
     NOT the caster): Orianna E (the Ball grants resists to its attached unit).
   - ARMOR-PEN / SIZE / ATTACK-SPEED-only (not a resist grant): Darius E /
@@ -134,6 +141,19 @@ _ACTIVE_RESIST_PROB = 0.3
 # field (no new schema field - hand-authoring resolves the form gate, the
 # item-270 convention). Parallel to ``_ACTIVE_RESIST_PROB``.
 _FORM_OCCUPANCY_PROB = 0.5
+
+# Operator-tunable midpoint for a PER-STACK UNBOUNDED resist grant (item 272):
+# the resist scales LINEARLY with a slow game-long accumulator that has NO cap
+# (Thresh souls), so unlike the BOUNDED per-stack cases (Garen W cap 30 / Graves
+# E cap 8 / Wukong P cap 5) it cannot be "seeded at the cap" - it needs an
+# assumed steady-state stack count. 25 souls = a typical mid-to-late-game count
+# for a support Thresh (souls never reset; Thresh's innate ARMOR DOES NOT GROW
+# per level, so souls ARE his armor scaling). The per-soul coefficient is EXACT;
+# only the count is the assumption (the item-249 ``assumed_stacks`` convention).
+# Documented + conservative; Phase D feeds the real live soul count from the
+# scoreboard / Live Client without re-authoring. Parallel to
+# ``_ACTIVE_RESIST_PROB`` / ``_FORM_OCCUPANCY_PROB``.
+_ASSUMED_SOUL_COUNT = 25.0
 
 
 @dataclass(frozen=True)
@@ -177,6 +197,16 @@ class PassiveResistEntry:
     attribute: str = "Passive Resist"
     level_scaled: bool = False
     rank_scaled: bool = False
+    # item 272 (per-stack UNBOUNDED mode): bonus armor / MR equal to a flat
+    # per-stack coefficient times ``assumed_stacks`` (a slow game-long accumulator
+    # with no cap, e.g. Thresh souls). The coefficient is EXACT; only the count is
+    # the steady-state assumption (the item-249 ``assumed_stacks`` convention,
+    # mirrored on the EHP seam). Resolves as ``per_stack_* * assumed_stacks``,
+    # summed alongside the flat-add + percent halves. Default 0.0 -> a flat /
+    # percent / bounded-at-cap entry contributes nothing here.
+    per_stack_armor: float = 0.0
+    per_stack_mr: float = 0.0
+    assumed_stacks: float = 0.0
 
 
 # (champion_id, key, form_index) -> PassiveResistEntry. Keyed for parity with the
@@ -500,6 +530,25 @@ _PASSIVE_RESIST_OVERRIDES: dict[tuple[str, str, int], PassiveResistEntry] = {
         attribute="Transform Mercury Hammer",
         level_scaled=True,
     ),
+    # Thresh P Damnation (form_index 0, item 272): "Soul: For each stack, Thresh
+    # gains 1 ability power and 1 bonus armor." PER-STACK UNBOUNDED - the soul
+    # count is a slow game-long accumulator with NO cap, so unlike the BOUNDED
+    # per-stack cases (Garen W cap 30/30, Graves E cap 8 stacks, Wukong P cap 5)
+    # this cannot be seeded "at the cap" - it needs an assumed steady-state soul
+    # count (_ASSUMED_SOUL_COUNT 25, the item-249 assumed_stacks convention on the
+    # EHP seam). ARMOR ONLY (the +1 AP per soul is offensive, not a resist; no MR).
+    # PERMANENT (souls are never lost), prob 1.0. Thresh's innate "armor does not
+    # increase through growth (per level)" makes souls his ONLY armor scaling, so
+    # the grant is load-bearing for his EHP. per_stack_armor 1.0 * assumed_stacks
+    # 25 = 25 bonus armor at the midpoint (Phase D feeds the live soul count).
+    ("Thresh", "P", 0): PassiveResistEntry(
+        per_stack_armor=1.0,
+        per_stack_mr=0.0,
+        assumed_stacks=_ASSUMED_SOUL_COUNT,
+        conditional_probability=1.0,
+        note="Damnation: 1 bonus armor per soul (ARMOR ONLY, +1 AP per soul is offensive); UNBOUNDED accumulator seeded at the assumed steady-state soul count (25); permanent; per_stack",
+        attribute="Damnation",
+    ),
 }
 
 __all__ = [
@@ -508,6 +557,7 @@ __all__ = [
     "resist_grants",
     "_ACTIVE_RESIST_PROB",
     "_FORM_OCCUPANCY_PROB",
+    "_ASSUMED_SOUL_COUNT",
 ]
 
 
@@ -571,6 +621,9 @@ def resist_grants(
       - the PERCENT-OF-RESIST half (item 268): ``(pct(level)/100) * resist * prob``
         where ``resist`` is ``total_armor`` / ``total_mr`` for ``pct_base="total"``
         or the build BONUS (``max(0, total - base)``) for ``pct_base="bonus"``.
+      - the PER-STACK UNBOUNDED half (item 272): ``per_stack_* * assumed_stacks *
+        prob`` (Thresh souls - a flat coefficient times the assumed steady-state
+        count; default 0.0 leaves flat/percent entries unchanged).
 
     The resolved build resists (``total_*`` / ``base_*``) are keyword-only with
     0.0 defaults so a legacy positional call (the item 264/267 tests) returns the
@@ -622,4 +675,9 @@ def resist_grants(
             )
             bonus_armor += (pa / 100.0) * res_a * prob
             bonus_mr += (pm / 100.0) * res_m * prob
+        # item 272: per-stack UNBOUNDED half (flat coefficient * assumed count).
+        if entry.per_stack_armor or entry.per_stack_mr:
+            n = float(entry.assumed_stacks)
+            bonus_armor += float(entry.per_stack_armor) * n * prob
+            bonus_mr += float(entry.per_stack_mr) * n * prob
     return bonus_armor, bonus_mr
