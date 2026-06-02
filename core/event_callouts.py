@@ -91,6 +91,13 @@ _SPIKE_ITEM_LINES: dict[int, str] = {
     3: "3-item spike - your peak mid-game",
 }
 
+# Recall-affordability: a back-timing callout fires only when current gold has
+# reached the cost of the NEXT item in the build order. gold >= cost is a hard
+# fact (not a prediction), so this is a correct-by-construction directive - the
+# next item + its cost are passed in by the caller (which reads the precomputed
+# build-order tables + item catalog), keeping this module pure.
+_RECALL_KIND = "recall"
+
 # Modes that have neutral map objectives. Only Summoner's Rift.
 _OBJECTIVE_MODES: frozenset[str] = frozenset({"sr"})
 
@@ -265,6 +272,37 @@ def _item_spike_callouts(item_count: int) -> list[dict]:
     return out
 
 
+def recall_callout(
+    gold: object,
+    next_item_name: object,
+    next_item_cost: object,
+) -> Optional[dict]:
+    """Return a 'back now' callout when current gold can complete the next item.
+
+    Pure + fail-soft. Returns the active recall callout dict only when gold is at
+    or above the next item's cost (the affordable, actionable case); otherwise
+    None - a not-yet-affordable state is the lead-projection's "farm" read, not a
+    recall directive. Any non-numeric / missing / non-positive input -> None
+    (never raises).
+    """
+    if not isinstance(next_item_name, str) or not next_item_name.strip():
+        return None
+    if isinstance(gold, bool) or isinstance(next_item_cost, bool):
+        return None
+    if not isinstance(gold, (int, float)) or not isinstance(next_item_cost, (int, float)):
+        return None
+    if next_item_cost <= 0:
+        return None
+    if gold < next_item_cost:
+        return None
+    return {
+        "tag": _RECALL_KIND,
+        "line": f"Back now - afford {next_item_name.strip()}",
+        "eta_s": 0.0,
+        "kind": _RECALL_KIND,
+    }
+
+
 def _sort_key(c: dict) -> tuple[int, float]:
     """Sort callouts active-first, then by ascending ETA, None last.
 
@@ -289,6 +327,9 @@ def next_callouts(
     item_count: int,
     *,
     max_n: int = 3,
+    gold: object = None,
+    next_item_name: object = None,
+    next_item_cost: object = None,
 ) -> list[dict]:
     """Return up to ``max_n`` upcoming/active milestone callouts.
 
@@ -300,6 +341,11 @@ def next_callouts(
         level: champion level (1-18).
         item_count: number of completed items owned (len(items)).
         max_n: cap on returned list length.
+        gold: current gold on-hand (for the recall-affordability callout).
+        next_item_name: display name of the next item in the build order.
+        next_item_cost: total gold cost of that next item. When gold, name and
+            cost are all present and gold >= cost, an active "back now" recall
+            callout is emitted (correct-by-construction; see recall_callout).
 
     Returns:
         list of dicts ``{tag, line, eta_s, kind}`` where:
@@ -332,6 +378,10 @@ def next_callouts(
         callouts.extend(_objective_callouts(gt))
     callouts.extend(_level_spike_callouts(lvl))
     callouts.extend(_item_spike_callouts(items))
+
+    recall = recall_callout(gold, next_item_name, next_item_cost)
+    if recall is not None:
+        callouts.append(recall)
 
     callouts.sort(key=_sort_key)
 

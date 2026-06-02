@@ -36,7 +36,9 @@ the cache clock is fine.
 """
 from __future__ import annotations
 
+import json
 import time
+from pathlib import Path
 
 from core.coach_choices import (
     parse_choices,
@@ -46,6 +48,88 @@ from core.coach_choices import (
 from core.event_callouts import next_callouts
 from core.laning_verdicts import laning_choices
 from core.lead_projection import project_lead
+
+_DS_DATA = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
+
+# Build-order + item-cost data is loaded lazily once and memoised. WHY here and
+# not in core.event_callouts: that module is pure (no file reads); the recall
+# callout needs the precomputed build-order tables + item catalog, so the
+# impure lookup lives in this dashboard-layer resolver and is passed in.
+_BUILD_ORDERS_CACHE: dict[str, dict] = {}
+_ITEM_COST_CACHE: dict[str, tuple[str, int]] = {}
+# Build-order bucket used for the recall directive. The recall callout is a
+# back-TIMING signal ("you can afford your next core item"), not the comp-
+# optimal item pick, so the balanced order is the honest default.
+_RECALL_BUCKET = "balanced"
+
+
+def _current_patch() -> str:
+    try:
+        return (_DS_DATA / "current.txt").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def _load_build_orders(mode_lower: str) -> dict:
+    """champ -> bucket -> [item_id_str]. Memoised per mode; {} fail-soft."""
+    if mode_lower in _BUILD_ORDERS_CACHE:
+        return _BUILD_ORDERS_CACHE[mode_lower]
+    out: dict = {}
+    patch = _current_patch()
+    if patch:
+        path = _DS_DATA / patch / f"build_orders_{mode_lower}.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            out = raw.get("build_orders") or {}
+        except (OSError, ValueError):
+            out = {}
+    _BUILD_ORDERS_CACHE[mode_lower] = out
+    return out
+
+
+def _load_item_costs() -> dict[str, tuple[str, int]]:
+    """item_id_str -> (display_name, total_gold). Memoised; {} fail-soft."""
+    if _ITEM_COST_CACHE:
+        return _ITEM_COST_CACHE
+    patch = _current_patch()
+    if patch:
+        path = _DS_DATA / patch / "items.json"
+        try:
+            data = (json.loads(path.read_text(encoding="utf-8")).get("data") or {})
+            for iid, it in data.items():
+                if not isinstance(it, dict):
+                    continue
+                gold = it.get("gold")
+                total = gold.get("total") if isinstance(gold, dict) else None
+                if isinstance(total, (int, float)) and not isinstance(total, bool):
+                    _ITEM_COST_CACHE[str(iid)] = (str(it.get("name") or ""), int(total))
+        except (OSError, ValueError):
+            pass
+    return _ITEM_COST_CACHE
+
+
+def _next_build_item(champ: object, mode_lower: str, owned_count: int):
+    """Return (name, cost) of the next item in champ's build order, or None.
+
+    Reads the balanced build order for ``champ`` and indexes at ``owned_count``
+    (the next un-bought core item). Fail-soft: unknown champ / finished build /
+    missing cost -> None."""
+    if not isinstance(champ, str) or not champ.strip():
+        return None
+    orders = _load_build_orders(mode_lower)
+    champ_orders = orders.get(champ.strip())
+    if not isinstance(champ_orders, dict):
+        return None
+    order = champ_orders.get(_RECALL_BUCKET)
+    if not isinstance(order, list):
+        order = next((v for v in champ_orders.values() if isinstance(v, list)), None)
+    if not order or not (0 <= owned_count < len(order)):
+        return None
+    costs = _load_item_costs()
+    entry = costs.get(str(order[owned_count]))
+    if not entry or not entry[0]:
+        return None
+    return entry
 
 # ---------------------------------------------------------------------------
 # Mode mapping. The dashboard mode_key is lower-case (sr / aram / arena / tft /
@@ -233,7 +317,14 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
         lvl = 1
     items = gs.get("items")
     item_count = len(items) if isinstance(items, list) else 0
-    callouts = next_callouts(lower, gt, lvl, item_count, max_n=3)
+    gold = gs.get("gold")
+    nxt = _next_build_item(gs.get("my_champion"), lower, item_count)
+    next_name = nxt[0] if nxt else None
+    next_cost = nxt[1] if nxt else None
+    callouts = next_callouts(
+        lower, gt, lvl, item_count, max_n=3,
+        gold=gold, next_item_name=next_name, next_item_cost=next_cost,
+    )
 
     # lead_projection (pure diff).
     lead = project_lead(gs, mode=upper)
