@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.94.0 (Lane A - 1v1 head-to-head matchup engine + /v2/matchup route. NEW module
+matchup.py with compute_matchup(snapshot, champ_a_id, champ_b_id, level_a, level_b,
+item_ids_a, item_ids_b, mode, hp_a_pct, hp_b_pct, sequence_a, sequence_b) ->
+MatchupResult (frozen dataclass + to_dict). The deterministic substitute for an
+LLM's "who wins this trade" laning judgment, so live coaching can migrate the
+trade question off Claude Haiku. Pure + deterministic - composes ONLY the existing
+pure scorers (no LLM, no network, purely additive: a new module + a new route,
+changing no existing scorer's output). Composition: (1) resolve each champion's
+defensive stats (armor / MR / max HP / bonus HP) via build_champion the SAME way
+compute_ehp does, bonus_hp = max(0, hp - base_hp); (2) fire each side's burst combo
+into the other's resolved defences - compute_burst_damage already mitigates against
+target_armor / target_mr so total_burst_damage IS post-mitigation into the target,
+no re-applied armor; (3) effective HP = max HP * the current-HP-pct assumption;
+(4) pct_*_removed = capped fraction of the target's effective HP removed by one
+combo; (5) net_swing = pct_b_removed - pct_a_removed, the who-wins scalar in
+[-1, 1] (positive = A favored); (6) mana gate each side's full combo via
+compute_mana_bounded_combo over the EXACT sequence the burst scored (manaless /
+energy champs never gate); (7) verdict from operator-tunable module constants
+_ALL_IN_KILL_THRESHOLD=1.0 / _TRADE_MARGIN=0.10 / _EVEN_BAND=0.05 -> one of all_in
+(A kills B with a full combo + survives) / back_off (A is the one who dies, or
+swing firmly negative) / trade (swing firmly positive) / even. NEW /v2/matchup POST
+route (mirrors /v2/fight-report; champ_a / champ_b required, level_a / level_b /
+item_ids_a / item_ids_b / mode / hp_a_pct / hp_b_pct optional). Property invariants:
+mirror -> net_swing 0 + even; symmetry -> swap(A,B) negates net_swing exactly;
+level + item advantage -> net_swing > 0; net_swing monotone non-decreasing in
+level_a. +tests test_matchup_lane_a.py.)
+
 1.93.0 (item 264 - GAP-2 effects-text RESIST-STAT grant registry + 6 seeded,
 default-OFF byte-identical. The FOURTH survivability axis, sibling of the
 effects-text HEAL (items 250-254) + SHIELD (item 260) + DAMAGE-REDUCTION (items
