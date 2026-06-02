@@ -43235,6 +43235,243 @@
         }
       }
     },
+    "Zaahen": {
+      "default_per_mode": {
+        "aram": "aram-collapsed",
+        "sr": "sr-collapsed",
+        "arena": "arena-collapsed"
+      },
+      "variants": {
+        "sr-collapsed": {
+          "label": "Builds for Zaahen",
+          "modes": [
+            "sr"
+          ],
+          "runes": {
+            "keystone": "Electrocute",
+            "primary": "Domination",
+            "secondary": "Sorcery"
+          },
+          "summoners": [
+            4,
+            14
+          ],
+          "items": [
+            "Doran's Shield",
+            "Mercury's Treads",
+            "Doran's Blade",
+            "Doran's Ring",
+            "Cull",
+            "Doran's Bow"
+          ],
+          "_collapsed": true,
+          "build_paths": [
+            {
+              "key": "ap-burst",
+              "label": "Burst",
+              "items": [
+                "Doran's Shield",
+                "Mercury's Treads",
+                "Doran's Blade",
+                "Doran's Ring",
+                "Cull",
+                "Doran's Bow"
+              ],
+              "runes": {
+                "keystone": "Electrocute",
+                "primary": "Domination",
+                "secondary": "Sorcery"
+              },
+              "summoners": [
+                4,
+                14
+              ],
+              "_source_variant_key": "ap-burst",
+              "_is_primary": true
+            },
+            {
+              "key": "auto-sr-primary-bruiser",
+              "label": "Bruiser",
+              "items": [
+                "Blade of The Ruined King",
+                "Mercury's Treads",
+                "Heartsteel",
+                "Trinity Force",
+                "Runaan's Hurricane",
+                "Sterak's Gage"
+              ],
+              "runes": {
+                "keystone": "Conqueror",
+                "primary": "Precision",
+                "secondary": "Resolve"
+              },
+              "summoners": [
+                4,
+                12
+              ],
+              "_archetype": "bruiser",
+              "_source_variant_key": "auto-sr-primary-bruiser"
+            }
+          ]
+        },
+        "aram-collapsed": {
+          "label": "Builds for Zaahen",
+          "modes": [
+            "aram"
+          ],
+          "runes": {
+            "keystone": "Electrocute",
+            "primary": "Domination",
+            "secondary": "Sorcery"
+          },
+          "summoners": [
+            4,
+            32
+          ],
+          "items": [
+            "Doran's Shield",
+            "Mercury's Treads",
+            "Doran's Blade",
+            "Doran's Ring",
+            "Doran's Bow"
+          ],
+          "_collapsed": true,
+          "build_paths": [
+            {
+              "key": "ap-burst",
+              "label": "Burst",
+              "items": [
+                "Doran's Shield",
+                "Mercury's Treads",
+                "Doran's Blade",
+                "Doran's Ring",
+                "Doran's Bow"
+              ],
+              "runes": {
+                "keystone": "Electrocute",
+                "primary": "Domination",
+                "secondary": "Sorcery"
+              },
+              "summoners": [
+                4,
+                32
+              ],
+              "_source_variant_key": "ap-burst",
+              "_is_primary": true
+            },
+            {
+              "key": "ap-poke",
+              "label": "AP Poke",
+              "items": [
+                "Liandry's Torment",
+                "Sorcerer's Shoes",
+                "Shadowflame",
+                "Rabadon's Deathcap",
+                "Void Staff",
+                "Morellonomicon"
+              ],
+              "runes": {
+                "keystone": "Arcane Comet",
+                "primary": "Sorcery",
+                "secondary": "Inspiration"
+              },
+              "summoners": [
+                4,
+                32
+              ],
+              "_source_variant_key": "ap-poke"
+            },
+            {
+              "key": "aram-bruiser",
+              "label": "Bruiser",
+              "items": [
+                "Void Immolation",
+                "Plated Steelcaps",
+                "Heartsteel",
+                "Trinity Force",
+                "Stormrazor"
+              ],
+              "runes": {
+                "keystone": "Conqueror",
+                "primary": "Precision",
+                "secondary": "Resolve"
+              },
+              "summoners": [
+                4,
+                32
+              ],
+              "_source_variant_key": "aram-bruiser"
+            }
+          ]
+        },
+        "arena-collapsed": {
+          "label": "Builds for Zaahen",
+          "modes": [
+            "arena"
+          ],
+          "runes": {
+            "keystone": "Conqueror",
+            "primary": "Precision",
+            "secondary": "Resolve"
+          },
+          "summoners": [
+            4,
+            7
+          ],
+          "items": [
+            "Void Immolation",
+            "Heartsteel",
+            "Divine Sunderer",
+            "Hamstringer"
+          ],
+          "_collapsed": true,
+          "build_paths": [
+            {
+              "key": "arena-bruiser",
+              "label": "Bruiser",
+              "items": [
+                "Void Immolation",
+                "Heartsteel",
+                "Divine Sunderer",
+                "Hamstringer"
+              ],
+              "runes": {
+                "keystone": "Conqueror",
+                "primary": "Precision",
+                "secondary": "Resolve"
+              },
+              "summoners": [
+                4,
+                7
+              ],
+              "_source_variant_key": "arena-bruiser",
+              "_is_primary": true
+            },
+            {
+              "key": "auto-arena-flavor-carry",
+              "label": "Carry (flav)",
+              "items": [
+                "Essence Reaver",
+                "Statikk Shiv",
+                "Heartsteel",
+                "Hamstringer"
+              ],
+              "runes": {
+                "keystone": "Lethal Tempo",
+                "primary": "Precision",
+                "secondary": "Domination"
+              },
+              "summoners": [
+                4,
+                7
+              ],
+              "_archetype": "carry",
+              "_source_variant_key": "auto-arena-flavor-carry"
+            }
+          ]
+        }
+      }
+    },
     "Zac": {
       "default_per_mode": {
         "aram": "aram-collapsed",

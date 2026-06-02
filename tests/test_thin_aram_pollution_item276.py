@@ -2,7 +2,7 @@
 
 Covers:
   - TARGET 1: 17 thin bruiser/assassin ARAM secondary paths rebuilt to 6 items
-  - TARGET 2: Zaahen junk entry removed
+  - Zaahen (a real champion) PRESERVED - not removed
   - Idempotency of the hotfix tool
   - No unique-passive-family clashes in rebuilt paths
   - ASCII hygiene
@@ -83,23 +83,22 @@ _ASSASSIN_CHAMPS = ["Akali", "Ekko", "Elise", "Fizz", "Katarina", "Shaco"]
 _ALL_THIN_CHAMPS = _BRUISER_CHAMPS + _ASSASSIN_CHAMPS
 
 
-class ZaahenRemovedTests(unittest.TestCase):
-    """TARGET 2: Zaahen entry must be absent after hotfix."""
+class ZaahenPreservedTests(unittest.TestCase):
+    """Zaahen is a REAL champion (The Unsundered, key 904, 16.11.1) - its loadout
+    entry must be PRESERVED. Removing a real champion's entry would leave RC with
+    no build for it; the all-Doran's placeholder is a separate autogen-stub fix."""
 
     def setUp(self) -> None:
         self.data = _load()
 
-    def test_zaahen_not_in_champions(self) -> None:
+    def test_zaahen_present_in_champions(self) -> None:
         champs = self.data.get("champions", {})
-        self.assertNotIn("Zaahen", champs, "Zaahen junk fixture must be removed")
+        self.assertIn("Zaahen", champs, "Zaahen is a real champion - do not remove")
 
-    def test_champion_count_decreased_by_one(self) -> None:
-        # Baseline was 172 (with Zaahen); after removal it should be 171.
+    def test_champion_count_unchanged(self) -> None:
         champs = self.data.get("champions", {})
-        # We can't know the exact pre-patch count but we know Zaahen is a real
-        # DDragon champion (key 904) whose loadout was junk. Check it's gone.
-        self.assertEqual(len(champs), 171,
-                         "Expected 171 champions after Zaahen junk removal")
+        self.assertEqual(len(champs), 172,
+                         "Expected 172 champions (Zaahen preserved)")
 
 
 class ThinPathsRebuiltTests(unittest.TestCase):
