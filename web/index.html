@@ -44,6 +44,7 @@
         <button type="button" class="view-menu-item" data-view="replay"      role="menuitem">Replay</button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item" data-view="user-builds" role="menuitem">User Builds</button>
+        <button type="button" class="view-menu-item" data-view="build-insights" role="menuitem">Build Insights</button>
         <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item view-menu-clear" data-view="auto" role="menuitem">↻ Auto (clear manual)</button>
@@ -1359,6 +1360,24 @@
             </div>
           </section>
         </div>
+      </div>
+    </section>
+
+    <!-- Build Insights (item 273, coachless.gg lift). Sortable item-WPA
+         table consuming GET /api/item-wpa. The panel build_insights.js
+         fills #bi-table-mount. -->
+    <section id="view-build-insights" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>BUILD INSIGHTS</h2>
+        <span class="view-section-sub">Selection-bias-corrected item performance over your match history</span>
+      </div>
+      <div class="view-section-body">
+        <div class="bi-controls">
+          <label for="bi-min-n">Min buys</label>
+          <input type="number" id="bi-min-n" min="1" step="1" value="20" />
+        </div>
+        <p class="bi-caption">Selection-bias-corrected item performance over your match history (Win Rate minus Expected WP). Descriptive personal-corpus lens, not a meta winrate - trust rows by the sample bar.</p>
+        <div id="bi-table-mount"></div>
       </div>
     </section>
 
