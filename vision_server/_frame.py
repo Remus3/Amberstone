@@ -44,7 +44,7 @@ _latest_frame: dict = {"b64": None, "ts": 0.0, "size": 0, "source": None,
                        "event_meta": None}
 _frames_by_source: dict = {}
 
-# ── 1-PC self-heal config (ADR-011) ─────────────────────────────────────────
+# -- 1-PC self-heal config (ADR-011) -----------------------------------------
 # Mirrors vision_server/_relay.py. A single one-shot GDI BitBlt grab is the
 # fallback; it is NOT the continuous DXGI/bettercam loop that crashed Game-PC
 # (feedback_gamepc_screen_capture_bsod) - that loop stays permanently retired.
