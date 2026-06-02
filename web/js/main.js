@@ -521,6 +521,21 @@ import { _settingsRefresh, renderSpendGates, _diagFetchAndRender, _diagWireOnce,
               || phase === "WaitingForStats" || phase === "TerminatedInError"
               || phase === "Lobby")) {
         _VIEW.gameStarted = null;
+        // PGR (last-match view) otherwise only refetches on view-navigation
+        // (applyView L615 is its sole caller). If the operator sat on the
+        // PGR page through the game it kept showing the prior match. Re-fire
+        // the fetch once on this game-end edge (fires exactly once: the
+        // sticky is now null) + one delayed retry to cover the LCU
+        // end-of-game ingest lag, so the just-played match surfaces without
+        // a manual reload. Guarded on still being on the last-match view.
+        if (_VIEW.current === "last-match") {
+          try { fetchAndRenderLastMatch(); } catch (_) {}
+          try {
+            setTimeout(function () {
+              if (_VIEW.current === "last-match") fetchAndRenderLastMatch();
+            }, 10000);
+          } catch (_) {}
+        }
       }
       // s171.8: dodge handling - ChampSelect → Lobby/Matchmaking/etc.
       // means user backed out before game start. Clear the sticky guard
