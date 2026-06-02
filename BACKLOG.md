@@ -38,6 +38,7 @@ _2026-05-21 sweep: aramAbilityHaste + augment formula evaluator + item-AH lane +
 
 ## Reliability / hardening
 
+- **Pre-release name-scrub** _(operator-authorized standing prerequisite, 2026-06-02; plan in `docs/PRE_RELEASE_NAME_SCRUB.md`)._ BEFORE any public release / open-source: scrub all third-party competitor/tool names + outreach/peer/private references from BOTH file content AND full-repo commit-message history (force-push PRE-AUTHORIZED for that pass), keeping the public data sources the pipeline credits (Riot Data Dragon / CommunityDragon / Meraki / LoL wiki). One competitor tool's name is already scrubbed from current file content (this session); the rest is DEFERRED to the release/open-source trigger (timing TBD). Do NOT execute the broad scrub or the history rewrite before that trigger.
 - **`/api/analyze` streaming response**: current 30s timeout fine for ARAM (sub-second); may need SSE if full-mode analyses scale.
 
 ## Speculative
