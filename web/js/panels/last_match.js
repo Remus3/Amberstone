@@ -39,6 +39,12 @@ import { fetchAndRenderPhases, clearPhases } from './post_game_phases.js';
 // Item 275 PGR S2: "your build, graded by your career" - career item-WPA
 // + skill-WPA chips on this match's actual loadout.
 import { renderPgrBuildWpa } from './pgr_build_wpa.js';
+// PGR reframe S3: win-prob "phases that mattered" graph (inline SVG of the
+// team win-probability curve over game time). Consumes /api/post-game-wpa.
+import { renderPgrWinprob, clearWinprob } from './pgr_winprob.js';
+// PGR reframe S4: lane / role comparison (operator vs same-role enemy,
+// final stats). Consumes the /api/last-match roster already in hand.
+import { renderPgrLaneCompare } from './pgr_lane_compare.js';
 
 // Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
 // set; Arena (CHERRY) spell ids are not in this map and fall back to a
@@ -425,6 +431,9 @@ function renderLastMatch(data) {
   // the hero - career item-WPA + skill-WPA chips on this match's loadout.
   // Fail-soft: hides itself if the corpus / routes are unavailable.
   try { renderPgrBuildWpa(data); } catch (_e) { /* PGR never errors on the strip */ }
+  // PGR reframe S4: lane / role comparison renders from the same
+  // /api/last-match roster. Fail-soft: hides for ARAM / Arena / no opponent.
+  try { renderPgrLaneCompare(data); } catch (_e) { /* PGR never errors on lane compare */ }
   _setChart(enriched);
   _setTimeline(enriched);
   _setPhases(m, enriched);
@@ -1151,14 +1160,23 @@ function _setPhases(m, enriched) {
     operatorTeam = m.tracked_side;
   } else if (enriched && (enriched.tracked_side === 100 || enriched.tracked_side === 200)) {
     operatorTeam = enriched.tracked_side;
+  } else if (enriched && (enriched.team_id === 100 || enriched.team_id === 200)) {
+    // The live /api/last-match payload carries tracked_side=null but
+    // enriched.team_id IS the operator's side (corroborated by the is_me
+    // participant). Fall back to it so the ally/enemy mapping is correct.
+    operatorTeam = enriched.team_id;
   }
   // Skip non-SR modes - the WPA model is trained on SR timelines.
   const mode = (m && m.mode) || "";
   if (mode && !/CLASSIC|SR|RANKED|DRAFT|NORMAL/i.test(mode)) {
     clearPhases();
+    try { clearWinprob(); } catch (_e) { /* PGR never errors on the graph */ }
     return;
   }
   fetchAndRenderPhases(matchId, operatorTeam);
+  // PGR reframe S3: win-prob graph fetches the same /api/post-game-wpa
+  // (its own cache/mock path) and draws the curve. Fail-soft.
+  try { renderPgrWinprob(matchId, operatorTeam); } catch (_e) { /* PGR never errors on the graph */ }
 }
 
 function _setQuickReview(qr) {

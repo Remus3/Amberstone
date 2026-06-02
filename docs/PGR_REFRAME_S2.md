@@ -60,14 +60,31 @@ and bought Item X (career +3.1pp)".
 
 ## Staging
 
-- S2 (next session): hero band + build strip wiring (compose `/api/last-match`
-  + `/api/post-game-rubric` + item-WPA + skill-WPA chips), CSS, a single-match
-  mock fixture at `web/data/ui_mock/pgr_s2.json`, the 5-phase UI-audit ritual.
-- S3: win-prob "phases that mattered" graph panel (consume `/api/post-game-wpa`),
-  swing-event annotations.
-- S4: lane/role comparison panel (operator vs lane opponent from frames).
+- S2 SHIPPED (item 275, `77c3cc3`): hero band 0-100 (`_setHeroScore`) +
+  phases-that-mattered cards (`post_game_phases.js`) were already present from
+  s220; the genuinely-missing piece was the "your build, graded by your career"
+  WPA strip - `web/js/panels/pgr_build_wpa.js` composing career item-WPA +
+  skill-WPA chips on the reviewed match's loadout, mounted under the hero.
+- S3 SHIPPED: win-prob "phases that mattered" GRAPH -
+  `web/js/panels/pgr_winprob.js` draws an inline-SVG team win-probability curve
+  over game time (50% baseline, ally/enemy area shade, the top swing phases as
+  annotated dots with mm:ss + signed-pp tooltips) from `/api/post-game-wpa`.
+  team100 win-prob is mirrored to the operator's perspective via
+  `enriched.team_id` (tracked_side is null in the live payload). Mounts in the
+  AI Analysis tab next to the phases cards; fail-soft hidden on event modes /
+  no timeline. `?ui_mock=1` -> `web/data/ui_mock/pgr_winprob.json`.
+- S4 SHIPPED: lane / role COMPARISON - `web/js/panels/pgr_lane_compare.js`
+  pairs the operator to the same-role enemy by Riot participant-slot convention
+  (pid i <-> i +/- 5; the payload has NO `team_position`) and compares FINAL
+  gold / cs / damage / kill-participation as head-to-head split bars. @N
+  (gold@10 / cs@10) is DEFERRED honestly - the payload's `timeline.series` is a
+  team-aggregate diff, not per-participant, so there is no per-player frame to
+  source @N from (noted in the panel js comment). Mode-aware: hides for ARAM /
+  Arena (no lane pairing). Mounts in the Build tab; `?ui_mock=1` ->
+  `web/data/ui_mock/pgr_lane_compare.json`.
 - S5: polish, responsive, ARAM/Arena variants (augments instead of runes for
-  Arena), per-page audit each.
+  Arena), a real per-player @N gold/cs comparison if the route grows a
+  per-participant timeline series, per-page audit each.
 
 ## Open decisions for S2 (operator-gated, surface at S2 start)
 
