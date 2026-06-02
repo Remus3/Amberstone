@@ -1,12 +1,12 @@
 {
   "name": "rc-shell",
-  "version": "0.1.0",
-  "description": "Riot Commander Electron Phase 1 companion shell - a thin frameless always-on-top window that loads RC_ORIGIN (the dashboard). Vanguard-safe: loads a URL, nothing else.",
+  "version": "0.2.0",
+  "description": "Riot Commander Electron companion shell (Phase 1) + in-game overlay (Phase 2/3): a frameless always-on-top window loading RC_ORIGIN, surface-switching companion <-> transparent overlay by mode_key with a global hotkey toggle. Vanguard-safe: DWM compositor window only, no capture / memory / injection.",
   "private": true,
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/config.test.js test/store.test.js"
+    "test": "node --test test/config.test.js test/store.test.js test/overlay_state.test.js"
   },
   "engines": {
     "node": ">=18"
