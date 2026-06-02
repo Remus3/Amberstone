@@ -2766,10 +2766,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
-                "Berserker's Greaves",
                 "Yun Tal Wildarrows",
-                "Infinity Edge"
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -5410,10 +5412,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
+                "Yun Tal Wildarrows",
                 "Berserker's Greaves",
-                "Statikk Shiv",
-                "Yun Tal Wildarrows"
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "The Collector"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -6323,21 +6327,25 @@
             14
           ],
           "items": [
-            "Bloodthirster",
-            "Mercury's Treads",
-            "Hextech Gunblade",
-            "Lord Dominik's Regards"
+            "Trinity Force",
+            "Berserker's Greaves",
+            "Infinity Edge",
+            "Rapid Firecannon",
+            "Lord Dominik's Regards",
+            "Yun Tal Wildarrows"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-hybrid",
-              "label": "AP Hybrid",
+              "key": "ad",
+              "label": "AD",
               "items": [
-                "Bloodthirster",
-                "Mercury's Treads",
-                "Hextech Gunblade",
-                "Lord Dominik's Regards"
+                "Trinity Force",
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Yun Tal Wildarrows"
               ],
               "runes": {
                 "keystone": "First Strike",
@@ -6348,7 +6356,7 @@
                 4,
                 14
               ],
-              "_source_variant_key": "ap-hybrid",
+              "_source_variant_key": "ad",
               "_is_primary": true
             },
             {
@@ -6391,10 +6399,12 @@
             32
           ],
           "items": [
-            "Bloodthirster",
-            "Mercury's Treads",
-            "Hextech Gunblade",
-            "Lord Dominik's Regards"
+            "Nashor's Tooth",
+            "Sorcerer's Shoes",
+            "Lich Bane",
+            "Rabadon's Deathcap",
+            "Shadowflame",
+            "Hextech Gunblade"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -6402,10 +6412,12 @@
               "key": "ap-hybrid",
               "label": "AP Hybrid",
               "items": [
-                "Bloodthirster",
-                "Mercury's Treads",
-                "Hextech Gunblade",
-                "Lord Dominik's Regards"
+                "Nashor's Tooth",
+                "Sorcerer's Shoes",
+                "Lich Bane",
+                "Rabadon's Deathcap",
+                "Shadowflame",
+                "Hextech Gunblade"
               ],
               "runes": {
                 "keystone": "First Strike",
@@ -7467,10 +7479,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
+                "Yun Tal Wildarrows",
                 "Berserker's Greaves",
                 "Infinity Edge",
-                "Yun Tal Wildarrows"
+                "Bloodthirster",
+                "Lord Dominik's Regards",
+                "The Collector"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -7878,25 +7892,25 @@
             11
           ],
           "items": [
-            "Blade of The Ruined King",
-            "Mercury's Treads",
-            "Heartsteel",
-            "Trinity Force",
-            "Sterak's Gage",
-            "Runaan's Hurricane"
+            "Hextech Rocketbelt",
+            "Sorcerer's Shoes",
+            "Shadowflame",
+            "Rabadon's Deathcap",
+            "Zhonya's Hourglass",
+            "Void Staff"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-jg-bruiser",
-              "label": "AP JG Brsr",
+              "key": "ap",
+              "label": "AP",
               "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Heartsteel",
-                "Trinity Force",
-                "Sterak's Gage",
-                "Runaan's Hurricane"
+                "Hextech Rocketbelt",
+                "Sorcerer's Shoes",
+                "Shadowflame",
+                "Rabadon's Deathcap",
+                "Zhonya's Hourglass",
+                "Void Staff"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -7907,7 +7921,7 @@
                 4,
                 11
               ],
-              "_source_variant_key": "ap-jg-bruiser",
+              "_source_variant_key": "ap",
               "_is_primary": true
             },
             {
@@ -10553,25 +10567,25 @@
             11
           ],
           "items": [
-            "Blade of The Ruined King",
+            "Riftmaker",
             "Mercury's Treads",
-            "Heartsteel",
-            "Trinity Force",
-            "Sterak's Gage",
-            "Runaan's Hurricane"
+            "Liandry's Torment",
+            "Rabadon's Deathcap",
+            "Cosmic Drive",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-jg-bruiser",
-              "label": "AP JG Brsr",
+              "key": "ap",
+              "label": "AP",
               "items": [
-                "Blade of The Ruined King",
+                "Riftmaker",
                 "Mercury's Treads",
-                "Heartsteel",
-                "Trinity Force",
-                "Sterak's Gage",
-                "Runaan's Hurricane"
+                "Liandry's Torment",
+                "Rabadon's Deathcap",
+                "Cosmic Drive",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Aftershock",
@@ -10582,7 +10596,7 @@
                 4,
                 11
               ],
-              "_source_variant_key": "ap-jg-bruiser",
+              "_source_variant_key": "ap",
               "_is_primary": true
             },
             {
@@ -11073,25 +11087,25 @@
             12
           ],
           "items": [
-            "Blade of The Ruined King",
-            "Mercury's Treads",
-            "Runaan's Hurricane",
-            "Trinity Force",
-            "Bloodthirster",
-            "Yun Tal Wildarrows"
+            "Riftmaker",
+            "Sorcerer's Shoes",
+            "Nashor's Tooth",
+            "Rabadon's Deathcap",
+            "Void Staff",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-bruiser",
-              "label": "AP Bruiser",
+              "key": "ap",
+              "label": "AP",
               "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Runaan's Hurricane",
-                "Trinity Force",
-                "Bloodthirster",
-                "Yun Tal Wildarrows"
+                "Riftmaker",
+                "Sorcerer's Shoes",
+                "Nashor's Tooth",
+                "Rabadon's Deathcap",
+                "Void Staff",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -11102,7 +11116,7 @@
                 4,
                 12
               ],
-              "_source_variant_key": "ap-bruiser",
+              "_source_variant_key": "ap",
               "_is_primary": true
             },
             {
@@ -11144,12 +11158,12 @@
             32
           ],
           "items": [
-            "Blade of The Ruined King",
-            "Mercury's Treads",
-            "Runaan's Hurricane",
-            "Trinity Force",
-            "Bloodthirster",
-            "Yun Tal Wildarrows"
+            "Riftmaker",
+            "Sorcerer's Shoes",
+            "Nashor's Tooth",
+            "Rabadon's Deathcap",
+            "Cosmic Drive",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -11157,12 +11171,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Runaan's Hurricane",
-                "Trinity Force",
-                "Bloodthirster",
-                "Yun Tal Wildarrows"
+                "Riftmaker",
+                "Sorcerer's Shoes",
+                "Nashor's Tooth",
+                "Rabadon's Deathcap",
+                "Cosmic Drive",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -14002,13 +14016,15 @@
               "_is_primary": true
             },
             {
-              "key": "sr-mage",
-              "label": "Mage",
+              "key": "lethality",
+              "label": "Lethality",
               "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Axiom Arc",
-                "Rabadon's Deathcap"
+                "Youmuu's Ghostblade",
+                "Berserker's Greaves",
+                "Opportunity",
+                "The Collector",
+                "Serylda's Grudge",
+                "Edge of Night"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -14019,7 +14035,7 @@
                 4,
                 14
               ],
-              "_source_variant_key": "sr-mage"
+              "_source_variant_key": "lethality"
             }
           ]
         },
@@ -15158,10 +15174,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
-                "Berserker's Greaves",
                 "Yun Tal Wildarrows",
-                "Infinity Edge"
+                "Berserker's Greaves",
+                "Runaan's Hurricane",
+                "Infinity Edge",
+                "Lord Dominik's Regards",
+                "Rapid Firecannon"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -17161,12 +17179,12 @@
             11
           ],
           "items": [
-            "Essence Reaver",
-            "Mercury's Treads",
-            "Lord Dominik's Regards",
-            "Infinity Edge",
-            "Bastionbreaker",
-            "Umbral Glaive"
+            "Youmuu's Ghostblade",
+            "Plated Steelcaps",
+            "Opportunity",
+            "Edge of Night",
+            "Serylda's Grudge",
+            "The Collector"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -17174,12 +17192,12 @@
               "key": "lethality",
               "label": "Lethality",
               "items": [
-                "Essence Reaver",
-                "Mercury's Treads",
-                "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Bastionbreaker",
-                "Umbral Glaive"
+                "Youmuu's Ghostblade",
+                "Plated Steelcaps",
+                "Opportunity",
+                "Edge of Night",
+                "Serylda's Grudge",
+                "The Collector"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -17192,28 +17210,6 @@
               ],
               "_source_variant_key": "lethality",
               "_is_primary": true
-            },
-            {
-              "key": "sr-mage",
-              "label": "Mage",
-              "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Axiom Arc",
-                "Bloodthirster"
-              ],
-              "runes": {
-                "keystone": "Arcane Comet",
-                "primary": "Sorcery",
-                "secondary": "Inspiration"
-              },
-              "summoners": [
-                4,
-                14
-              ],
-              "_source_variant_key": "sr-mage"
             }
           ]
         },
@@ -21981,10 +21977,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
-                "Berserker's Greaves",
                 "Yun Tal Wildarrows",
-                "Infinity Edge"
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "The Collector"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -22134,12 +22132,12 @@
             12
           ],
           "items": [
-            "Cruelty",
+            "Riftmaker",
             "Mercury's Treads",
-            "Heartsteel",
-            "Sunfire Aegis",
-            "Sterak's Gage",
-            "Warmog's Armor"
+            "Liandry's Torment",
+            "Rabadon's Deathcap",
+            "Spirit Visage",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -22147,12 +22145,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Cruelty",
+                "Riftmaker",
                 "Mercury's Treads",
-                "Heartsteel",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Warmog's Armor"
+                "Liandry's Torment",
+                "Rabadon's Deathcap",
+                "Spirit Visage",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -22205,11 +22203,12 @@
             32
           ],
           "items": [
-            "Heartsteel",
+            "Riftmaker",
             "Mercury's Treads",
-            "Sunfire Aegis",
-            "Sterak's Gage",
-            "Warmog's Armor"
+            "Liandry's Torment",
+            "Rabadon's Deathcap",
+            "Spirit Visage",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -22217,11 +22216,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Heartsteel",
+                "Riftmaker",
                 "Mercury's Treads",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Warmog's Armor"
+                "Liandry's Torment",
+                "Rabadon's Deathcap",
+                "Spirit Visage",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -26634,12 +26634,12 @@
             14
           ],
           "items": [
-            "Lord Dominik's Regards",
-            "Mercury's Treads",
-            "Bastionbreaker",
-            "Umbral Glaive",
-            "Sundered Sky",
-            "Axiom Arc"
+            "Youmuu's Ghostblade",
+            "Plated Steelcaps",
+            "Opportunity",
+            "Edge of Night",
+            "Serylda's Grudge",
+            "The Collector"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -26647,12 +26647,12 @@
               "key": "lethality",
               "label": "Lethality",
               "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Sundered Sky",
-                "Axiom Arc"
+                "Youmuu's Ghostblade",
+                "Plated Steelcaps",
+                "Opportunity",
+                "Edge of Night",
+                "Serylda's Grudge",
+                "The Collector"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -26665,28 +26665,6 @@
               ],
               "_source_variant_key": "lethality",
               "_is_primary": true
-            },
-            {
-              "key": "sr-mage",
-              "label": "Mage",
-              "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Axiom Arc",
-                "Bloodthirster"
-              ],
-              "runes": {
-                "keystone": "Arcane Comet",
-                "primary": "Sorcery",
-                "secondary": "Inspiration"
-              },
-              "summoners": [
-                4,
-                14
-              ],
-              "_source_variant_key": "sr-mage"
             }
           ]
         },
@@ -26995,10 +26973,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
+                "Yun Tal Wildarrows",
                 "Berserker's Greaves",
                 "Infinity Edge",
-                "Yun Tal Wildarrows"
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "The Collector"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -29291,12 +29271,12 @@
             12
           ],
           "items": [
-            "Trinity Force",
+            "Liandry's Torment",
             "Mercury's Treads",
-            "Heartsteel",
-            "Sterak's Gage",
-            "Sunfire Aegis",
-            "Flesheater"
+            "Riftmaker",
+            "Rabadon's Deathcap",
+            "Cosmic Drive",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -29304,12 +29284,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Trinity Force",
+                "Liandry's Torment",
                 "Mercury's Treads",
-                "Heartsteel",
-                "Sterak's Gage",
-                "Sunfire Aegis",
-                "Flesheater"
+                "Riftmaker",
+                "Rabadon's Deathcap",
+                "Cosmic Drive",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -29362,11 +29342,12 @@
             32
           ],
           "items": [
-            "Trinity Force",
+            "Liandry's Torment",
             "Mercury's Treads",
-            "Heartsteel",
-            "Sterak's Gage",
-            "Sunfire Aegis"
+            "Riftmaker",
+            "Rabadon's Deathcap",
+            "Cosmic Drive",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -29374,11 +29355,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Trinity Force",
+                "Liandry's Torment",
                 "Mercury's Treads",
-                "Heartsteel",
-                "Sterak's Gage",
-                "Sunfire Aegis"
+                "Riftmaker",
+                "Rabadon's Deathcap",
+                "Cosmic Drive",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -29549,25 +29531,25 @@
             12
           ],
           "items": [
-            "Heartsteel",
-            "Mercury's Treads",
-            "Trinity Force",
-            "Sunfire Aegis",
-            "Sterak's Gage",
-            "Flesheater"
+            "Archangel's Staff",
+            "Sorcerer's Shoes",
+            "Riftmaker",
+            "Rabadon's Deathcap",
+            "Void Staff",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-bruiser",
-              "label": "AP Bruiser",
+              "key": "ap",
+              "label": "AP",
               "items": [
-                "Heartsteel",
-                "Mercury's Treads",
-                "Trinity Force",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Flesheater"
+                "Archangel's Staff",
+                "Sorcerer's Shoes",
+                "Riftmaker",
+                "Rabadon's Deathcap",
+                "Void Staff",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Phase Rush",
@@ -29578,7 +29560,7 @@
                 4,
                 12
               ],
-              "_source_variant_key": "ap-bruiser",
+              "_source_variant_key": "ap",
               "_is_primary": true
             },
             {
@@ -29643,23 +29625,25 @@
             32
           ],
           "items": [
-            "Heartsteel",
-            "Mercury's Treads",
-            "Trinity Force",
-            "Sunfire Aegis",
-            "Sterak's Gage"
+            "Archangel's Staff",
+            "Sorcerer's Shoes",
+            "Riftmaker",
+            "Rabadon's Deathcap",
+            "Void Staff",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-bruiser",
-              "label": "AP Bruiser",
+              "key": "ap",
+              "label": "AP",
               "items": [
-                "Heartsteel",
-                "Mercury's Treads",
-                "Trinity Force",
-                "Sunfire Aegis",
-                "Sterak's Gage"
+                "Archangel's Staff",
+                "Sorcerer's Shoes",
+                "Riftmaker",
+                "Rabadon's Deathcap",
+                "Void Staff",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Phase Rush",
@@ -29670,7 +29654,7 @@
                 4,
                 32
               ],
-              "_source_variant_key": "ap-bruiser",
+              "_source_variant_key": "ap",
               "_is_primary": true
             },
             {
@@ -33040,13 +33024,15 @@
               "_is_primary": true
             },
             {
-              "key": "sr-mage",
-              "label": "Mage",
+              "key": "adc-crit",
+              "label": "Crit",
               "items": [
-                "Bloodthirster",
-                "Mercury's Treads",
+                "Yun Tal Wildarrows",
+                "Berserker's Greaves",
                 "Infinity Edge",
-                "Lord Dominik's Regards"
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Arcane Comet",
@@ -33057,7 +33043,7 @@
                 4,
                 14
               ],
-              "_source_variant_key": "sr-mage"
+              "_source_variant_key": "adc-crit"
             }
           ]
         },
@@ -33797,12 +33783,12 @@
             14
           ],
           "items": [
-            "Heartsteel",
-            "Mercury's Treads",
-            "Trinity Force",
-            "Sunfire Aegis",
-            "Sterak's Gage",
-            "Warmog's Armor"
+            "Liandry's Torment",
+            "Sorcerer's Shoes",
+            "Riftmaker",
+            "Rabadon's Deathcap",
+            "Spirit Visage",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -33810,12 +33796,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Heartsteel",
-                "Mercury's Treads",
-                "Trinity Force",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Warmog's Armor"
+                "Liandry's Torment",
+                "Sorcerer's Shoes",
+                "Riftmaker",
+                "Rabadon's Deathcap",
+                "Spirit Visage",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -33891,12 +33877,12 @@
             32
           ],
           "items": [
-            "Heartsteel",
-            "Mercury's Treads",
-            "Trinity Force",
-            "Sunfire Aegis",
-            "Sterak's Gage",
-            "Warmog's Armor"
+            "Liandry's Torment",
+            "Sorcerer's Shoes",
+            "Riftmaker",
+            "Rabadon's Deathcap",
+            "Spirit Visage",
+            "Zhonya's Hourglass"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -33904,12 +33890,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Heartsteel",
-                "Mercury's Treads",
-                "Trinity Force",
-                "Sunfire Aegis",
-                "Sterak's Gage",
-                "Warmog's Armor"
+                "Liandry's Torment",
+                "Sorcerer's Shoes",
+                "Riftmaker",
+                "Rabadon's Deathcap",
+                "Spirit Visage",
+                "Zhonya's Hourglass"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -34084,12 +34070,12 @@
             14
           ],
           "items": [
-            "Warmog's Armor",
+            "Riftmaker",
             "Mercury's Treads",
-            "Sterak's Gage",
-            "Jak'Sho, The Protean",
-            "Spirit Visage",
-            "Kaenic Rookern"
+            "Cosmic Drive",
+            "Rabadon's Deathcap",
+            "Zhonya's Hourglass",
+            "Void Staff"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -34097,12 +34083,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Warmog's Armor",
+                "Riftmaker",
                 "Mercury's Treads",
-                "Sterak's Gage",
-                "Jak'Sho, The Protean",
-                "Spirit Visage",
-                "Kaenic Rookern"
+                "Cosmic Drive",
+                "Rabadon's Deathcap",
+                "Zhonya's Hourglass",
+                "Void Staff"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -34178,12 +34164,12 @@
             32
           ],
           "items": [
-            "Warmog's Armor",
+            "Riftmaker",
             "Mercury's Treads",
-            "Sterak's Gage",
-            "Jak'Sho, The Protean",
-            "Spirit Visage",
-            "Kaenic Rookern"
+            "Cosmic Drive",
+            "Rabadon's Deathcap",
+            "Zhonya's Hourglass",
+            "Void Staff"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -34191,12 +34177,12 @@
               "key": "ap-bruiser",
               "label": "AP Bruiser",
               "items": [
-                "Warmog's Armor",
+                "Riftmaker",
                 "Mercury's Treads",
-                "Sterak's Gage",
-                "Jak'Sho, The Protean",
-                "Spirit Visage",
-                "Kaenic Rookern"
+                "Cosmic Drive",
+                "Rabadon's Deathcap",
+                "Zhonya's Hourglass",
+                "Void Staff"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -35137,12 +35123,12 @@
             14
           ],
           "items": [
-            "Essence Reaver",
-            "Mercury's Treads",
-            "Lord Dominik's Regards",
-            "Bastionbreaker",
-            "Umbral Glaive",
-            "Infinity Edge"
+            "Youmuu's Ghostblade",
+            "Plated Steelcaps",
+            "Opportunity",
+            "Edge of Night",
+            "Serylda's Grudge",
+            "The Collector"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -35150,12 +35136,12 @@
               "key": "lethality",
               "label": "Lethality",
               "items": [
-                "Essence Reaver",
-                "Mercury's Treads",
-                "Lord Dominik's Regards",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Infinity Edge"
+                "Youmuu's Ghostblade",
+                "Plated Steelcaps",
+                "Opportunity",
+                "Edge of Night",
+                "Serylda's Grudge",
+                "The Collector"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -35168,28 +35154,6 @@
               ],
               "_source_variant_key": "lethality",
               "_is_primary": true
-            },
-            {
-              "key": "sr-mage",
-              "label": "Mage",
-              "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Axiom Arc",
-                "Bloodthirster"
-              ],
-              "runes": {
-                "keystone": "Arcane Comet",
-                "primary": "Sorcery",
-                "secondary": "Inspiration"
-              },
-              "summoners": [
-                4,
-                14
-              ],
-              "_source_variant_key": "sr-mage"
             }
           ]
         },
@@ -37361,10 +37325,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
+                "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Yun Tal Wildarrows",
-                "Infinity Edge"
+                "Runaan's Hurricane",
+                "Infinity Edge",
+                "Lord Dominik's Regards",
+                "Yun Tal Wildarrows"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -38158,10 +38124,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
-                "Berserker's Greaves",
                 "Yun Tal Wildarrows",
-                "Infinity Edge"
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -41237,10 +41205,12 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Stormrazor",
+                "Yun Tal Wildarrows",
                 "Berserker's Greaves",
                 "Infinity Edge",
-                "Yun Tal Wildarrows"
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -43765,12 +43735,12 @@
             14
           ],
           "items": [
-            "Lord Dominik's Regards",
-            "Mercury's Treads",
-            "Bastionbreaker",
-            "Umbral Glaive",
-            "Sundered Sky",
-            "Axiom Arc"
+            "Youmuu's Ghostblade",
+            "Plated Steelcaps",
+            "Opportunity",
+            "Edge of Night",
+            "Serylda's Grudge",
+            "The Collector"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -43778,12 +43748,12 @@
               "key": "lethality",
               "label": "Lethality",
               "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Sundered Sky",
-                "Axiom Arc"
+                "Youmuu's Ghostblade",
+                "Plated Steelcaps",
+                "Opportunity",
+                "Edge of Night",
+                "Serylda's Grudge",
+                "The Collector"
               ],
               "runes": {
                 "keystone": "Electrocute",
@@ -43796,28 +43766,6 @@
               ],
               "_source_variant_key": "lethality",
               "_is_primary": true
-            },
-            {
-              "key": "sr-mage",
-              "label": "Mage",
-              "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Bastionbreaker",
-                "Umbral Glaive",
-                "Axiom Arc",
-                "Bloodthirster"
-              ],
-              "runes": {
-                "keystone": "Arcane Comet",
-                "primary": "Sorcery",
-                "secondary": "Inspiration"
-              },
-              "summoners": [
-                4,
-                14
-              ],
-              "_source_variant_key": "sr-mage"
             }
           ]
         },
