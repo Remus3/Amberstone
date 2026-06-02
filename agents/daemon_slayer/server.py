@@ -543,6 +543,7 @@ def _route_hybrid(body: dict) -> dict:
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
     apply_build_tenacity = _opt_bool(body, "apply_build_tenacity", False)
+    apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -555,6 +556,7 @@ def _route_hybrid(body: dict) -> dict:
             include_conditional=include_conditional,
             apply_mode_modifiers=apply_mode_modifiers,
             apply_build_tenacity=apply_build_tenacity,
+            apply_passive_mitigation=apply_passive_mitigation,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -611,6 +613,7 @@ def _route_rank_bruiser(body: dict) -> dict:
         _opt_bool(body, "apply_build_tenacity", False)
         if "apply_build_tenacity" in body else None
     )
+    apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -629,6 +632,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             include_conditional=include_conditional,
             apply_mode_modifiers=apply_mode_modifiers,
             apply_build_tenacity=apply_build_tenacity,
+            apply_passive_mitigation=apply_passive_mitigation,
             score_by=score_by,
             alpha=alpha, beta=beta,
         )
