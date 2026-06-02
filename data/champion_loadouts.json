@@ -5380,10 +5380,12 @@
             32
           ],
           "items": [
-            "Lord Dominik's Regards",
-            "Mercury's Treads",
-            "Runaan's Hurricane",
-            "Infinity Edge"
+            "Youmuu's Ghostblade",
+            "Berserker's Greaves",
+            "Opportunity",
+            "The Collector",
+            "Serylda's Grudge",
+            "Edge of Night"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -5391,10 +5393,12 @@
               "key": "lethality-poke",
               "label": "Leth Poke",
               "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Runaan's Hurricane",
-                "Infinity Edge"
+                "Youmuu's Ghostblade",
+                "Berserker's Greaves",
+                "Opportunity",
+                "The Collector",
+                "Serylda's Grudge",
+                "Edge of Night"
               ],
               "runes": {
                 "keystone": "Fleet Footwork",
@@ -14335,8 +14339,10 @@
             32
           ],
           "items": [
-            "Blade of The Ruined King",
+            "Yun Tal Wildarrows",
             "Berserker's Greaves",
+            "Infinity Edge",
+            "Rapid Firecannon",
             "Lord Dominik's Regards",
             "Runaan's Hurricane"
           ],
@@ -14346,8 +14352,10 @@
               "key": "adc-crit",
               "label": "Crit",
               "items": [
-                "Blade of The Ruined King",
+                "Yun Tal Wildarrows",
                 "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
                 "Lord Dominik's Regards",
                 "Runaan's Hurricane"
               ],
@@ -19889,7 +19897,7 @@
             },
             {
               "key": "on-hit",
-              "label": "On-Hit",
+              "label": "AP On-Hit",
               "items": [
                 "Wit's End",
                 "Berserker's Greaves",
@@ -35710,7 +35718,7 @@
           "build_paths": [
             {
               "key": "on-hit",
-              "label": "On-Hit",
+              "label": "AP On-Hit",
               "items": [
                 "Nashor's Tooth",
                 "Berserker's Greaves",
@@ -38070,10 +38078,12 @@
             32
           ],
           "items": [
-            "Lord Dominik's Regards",
-            "Mercury's Treads",
-            "Blade of The Ruined King",
-            "Runaan's Hurricane"
+            "Youmuu's Ghostblade",
+            "Berserker's Greaves",
+            "Opportunity",
+            "The Collector",
+            "Serylda's Grudge",
+            "Edge of Night"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -38081,10 +38091,12 @@
               "key": "lethality",
               "label": "Lethality",
               "items": [
-                "Lord Dominik's Regards",
-                "Mercury's Treads",
-                "Blade of The Ruined King",
-                "Runaan's Hurricane"
+                "Youmuu's Ghostblade",
+                "Berserker's Greaves",
+                "Opportunity",
+                "The Collector",
+                "Serylda's Grudge",
+                "Edge of Night"
               ],
               "runes": {
                 "keystone": "Fleet Footwork",
@@ -44016,10 +44028,12 @@
             32
           ],
           "items": [
-            "Heartsteel",
+            "Blade of The Ruined King",
             "Berserker's Greaves",
+            "Statikk Shiv",
+            "Rapid Firecannon",
             "Lord Dominik's Regards",
-            "Voltaic Cyclosword"
+            "Phantom Dancer"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -44027,10 +44041,12 @@
               "key": "on-hit",
               "label": "On-Hit",
               "items": [
-                "Heartsteel",
+                "Blade of The Ruined King",
                 "Berserker's Greaves",
+                "Statikk Shiv",
+                "Rapid Firecannon",
                 "Lord Dominik's Regards",
-                "Voltaic Cyclosword"
+                "Phantom Dancer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
