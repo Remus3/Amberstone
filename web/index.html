@@ -502,6 +502,12 @@
       </div>
       <div class="panel-body">
         <div class="action" id="rn-action">-</div>
+        <!-- Deterministic macro LEAD pill (item 265 W3E). Computed
+             server-side with ZERO LLM and shipped in state.lead_projection;
+             web/js/panels/callouts.js paints a one-line macro read here
+             with a state-colored accent. Hidden when lead_projection is
+             empty. -->
+        <div id="rn-lead" hidden></div>
         <div class="immediate" id="rn-immediate">awaiting coach output...</div>
         <!-- A/B tutoring choices (item 119). When state.coach.choices is
              non-empty, web/js/panels/coach_choices.js paints 2-3 chip
@@ -509,6 +515,12 @@
              stream below is unchanged. Click logs to decisions_log.jsonl
              via /api/coach-choice. -->
         <div id="rn-choices" hidden></div>
+        <!-- Deterministic objective/spike CALLOUTS (item 265 W3E). Pure
+             server-side table (state.callouts); web/js/panels/callouts.js
+             paints up to 3 compact rows here, each with an ETA chip
+             ("NOW" when active, "Mm:Ss" when upcoming). Hidden when
+             callouts is empty. -->
+        <div id="rn-callouts" hidden></div>
         <div class="kv">
           <span>Watch</span><span id="rn-risk">-</span>
         </div>
