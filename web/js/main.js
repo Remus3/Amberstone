@@ -21,6 +21,7 @@ import { idempotentRender, makeSig } from './lib/idempotent_render.js';
 // ── Panel modules ─────────────────────────────────────────────────────────
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
 import { renderCoachChoices } from './panels/coach_choices.js';
+import { renderCallouts, renderLead } from './panels/callouts.js';
 import { startPersonalContextPolling } from './panels/personal_context.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
@@ -1213,6 +1214,8 @@ import { _settingsRefresh, renderSpendGates, _diagFetchAndRender, _diagWireOnce,
     renderHeader(p);
     renderRightNow(p);
     renderCoachChoices(state.latest || p);
+    renderLead(state.latest || p);
+    renderCallouts(state.latest || p);
     renderNext(p);
     renderItemBuild(p);
     renderAugmentReco(p);
