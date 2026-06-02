@@ -51,6 +51,24 @@ NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` 
 
 ---
 
+# 2026-06-02 - item 262: DS thread apply_passive_mitigation into the BRUISER EHP scorer (symmetric completion of item 261), default-OFF byte-identical (ENGINE 1.91.0 -> 1.92.0; DS restarted 1.92.0 + live-verified; RC not restarted - DS engine + tests + Share + docs only)
+
+Operator "start next" -> item 261 NEXT(1). Item 261 wired the effects-text DAMAGE-REDUCTION layer (apply_passive_mitigation) into the TANK scorer (compute_ehp + rank_items_by_ehp + /ehp + /rank-tank); the BRUISER scorer (compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser) was mitigation-blind.
+
+SHIPPED (additive flag threading ONLY - NO new HybridResult/EhpResult fields, NO registry change, NO new module): compute_hybrid +apply_passive_mitigation=False (threaded to its compute_ehp call). rank_items_by_hybrid +apply_passive_mitigation=False (threaded to BOTH the baseline + each scored compute_ehp call). /hybrid + /rank-bruiser routes parse _opt_bool(body,"apply_passive_mitigation",False) + thread it. +14 tests test_bruiser_mitigation_item262.py.
+
+KEY FINDING (honest framing): mitigation is a CHAMPION passive (build-INDEPENDENT) so it folds into the EHP denominator DIRECTLY (raises blended_ehp even with NO enemies, UNLIKE tenacity which only touches cc_blended_ehp via enemy CC). It scales baseline AND every candidate's EHP denominator by the SAME constant -> the ratio-based hybrid_delta_pct sort key (delta_ehp / baseline_ehp) is INVARIANT under that uniform scale -> flag-on does NOT re-rank rank_items_by_hybrid; it makes the per-row hybrid_score + cc_blended_ehp scalars DR-accurate. Mirrors item 261's tank rank_items_by_ehp (a champ passive cannot differentiate one candidate from another the way the build-dependent tenacity term does).
+
+LIVE :8893 (restarted 1.92.0): /hybrid KSante off hybrid_score 1966.81 / on 2157.38 (ehp 3853.78 -> 4234.93 = x1/0.91 EXACT, 30% DR amortized at prob 0.3 -> mit 0.91 all 3); Garen (no entry) flag-on byte-identical 1598.02; /rank-bruiser KSante flag-on top1 Heartsteel hybrid_score 3136.7 (DR-boosted scalar, order unchanged); ALL default apply_passive_mitigation=False byte-identical.
+
+ENGINE 1.91.0 -> 1.92.0 + 46 test-pin syncs + CHANGELOG prepend + Share re-sync (265 files, --check clean + authored 04/05 semantic) + living docs (DAEMON_SLAYER/README/BRIEF/ARCHITECTURE/CLAUDE 1.92.0/6013). DS suite 5999 -> 6013 (+14, 0 failed); ruff clean; added-diff 0 non-ASCII.
+
+Don't-redo: (a) mitigation is a CHAMPION passive uniform denominator scale -> flag-on does NOT re-rank the ratio-based hybrid_delta_pct sort (makes per-row scalars accurate) - CORRECT not a bug; only the build-dependent tenacity term can re-rank. (b) UNLIKE tenacity (cc_blended-only), DR folds into blended_ehp DIRECTLY -> raises hybrid_score with NO enemies. (c) default false = all 3 mults 1.0 = byte-identical; do NOT flip default-on without live validation (Phase D). (d) no new fields/module - pure flag threading through the existing compute_ehp seam item 261 built. (e) COMPLETES the EHP-bearing scorer pair: tank ds.ehp + bruiser ds.hybrid both mitigation-aware; the other 4 scorers (carry/mage/assassin/enchanter) score DPS/burst/HPS not EHP so a DR denominator does not apply - mitigation lane is scorer-COMPLETE (mirrors item 237 completing the cc_blended/tenacity arc). (f) DS restart PowerShell taskkill /F /PID + schtasks (NEVER Stop-Process).
+
+NEXT (live/operator-gated = Phase D, all flag-flips): Phase D live flag-flips (apply_passive_mitigation 5 forms x2 scorers + apply_passive_shield 10 + apply_passive_damage 28 + apply_passive_heal 24 + amp/tenacity/mode/ammo/aoe) each re-ranks + needs a real game + tune the 4 active-DR midpoints (_ACTIVE_DR_PROB=0.3) live. The clean headless DS effects-text SURVIVABILITY triad (heal throughput + shield throughput + DR denominator) + its scorer wiring are now COMPLETE across both EHP-bearing scorers.
+
+---
+
 
 # 2026-06-02 - item 260: DS GAP-2 effects-text-only SHIELD registry + 10 SEEDED, default-OFF byte-identical (ENGINE 1.89.0 -> 1.90.0; DS restarted 1.90.0; RC not restarted - DS engine + tests + Share + docs only)
 
