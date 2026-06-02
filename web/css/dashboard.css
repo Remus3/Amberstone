@@ -45,6 +45,8 @@
 @import './panels/spike_markers.css';
 @import './panels/last_match.css';
 @import './panels/pgr_build_wpa.css';
+@import './panels/pgr_winprob.css';
+@import './panels/pgr_lane_compare.css';
 @import './panels/replay_events.css';
 @import './panels/coach_choices.css';
 @import './panels/callouts.css';

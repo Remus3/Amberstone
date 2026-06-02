@@ -1363,21 +1363,32 @@
       </div>
     </section>
 
-    <!-- Build Insights (item 273, competitor-WPA lift). Sortable item-WPA
-         table consuming GET /api/item-wpa. The panel build_insights.js
-         fills #bi-table-mount. -->
+    <!-- Build Insights (item 273 item-WPA + item 275 skill-WPA tab,
+         competitor-WPA lift). Two tabs: Items consumes GET /api/item-wpa
+         (#bi-table-mount), Skills consumes GET /api/skill-wpa
+         (#bi-skill-table-mount). build_insights.js fills both. -->
     <section id="view-build-insights" class="view-section" hidden>
       <div class="view-section-head">
         <h2>BUILD INSIGHTS</h2>
-        <span class="view-section-sub">Selection-bias-corrected item performance over your match history</span>
+        <span class="view-section-sub">Selection-bias-corrected item + skill performance over your match history</span>
       </div>
       <div class="view-section-body">
+        <div class="bi-tabs" id="bi-tabs" role="tablist">
+          <button type="button" class="bi-tab is-active" data-bi-tab="items" role="tab" aria-selected="true">Items</button>
+          <button type="button" class="bi-tab" data-bi-tab="skills" role="tab" aria-selected="false">Skills</button>
+        </div>
         <div class="bi-controls">
           <label for="bi-min-n">Min buys</label>
           <input type="number" id="bi-min-n" min="1" step="1" value="20" />
         </div>
-        <p class="bi-caption">Selection-bias-corrected item performance over your match history (Win Rate minus Expected WP). Descriptive personal-corpus lens, not a meta winrate - trust rows by the sample bar.</p>
-        <div id="bi-table-mount"></div>
+        <div class="bi-tab-pane" data-bi-pane="items">
+          <p class="bi-caption">Selection-bias-corrected item performance over your match history (Win Rate minus Expected WP). Descriptive personal-corpus lens, not a meta winrate - trust rows by the sample bar.</p>
+          <div id="bi-table-mount"></div>
+        </div>
+        <div class="bi-tab-pane" data-bi-pane="skills" hidden>
+          <p class="bi-skill-caption">Skill-max performance: the win-rate residual for each champion's first-maxed basic (Q/W/E; the ult is excluded - it has no max-order decision). Skills are a WEAKER signal than items, so shrink + min_n are load-bearing - trust rows by the sample bar, not the raw number.</p>
+          <div id="bi-skill-table-mount"></div>
+        </div>
       </div>
     </section>
 
@@ -1770,6 +1781,12 @@
             <div class="lm-pending" id="lm-tc-pending" data-dummy-data="last-match-team">
               Team roster pending - auto-ingests on EndOfGame; or Refresh-from-Riot button (v2) on the page header.
             </div>
+            <!-- PGR reframe S4 (docs/PGR_REFRAME_S2.md): lane / role
+                 comparison - operator vs the same-role enemy (final
+                 gold / cs / damage / kill-part). Rendered by
+                 pgr_lane_compare.js from the /api/last-match roster.
+                 Mode-aware: hides for ARAM / Arena (no lane pairing). -->
+            <div id="pgr-lane-compare-mount" hidden></div>
           </div>
 
           <!-- GRAPH tab - team-aggregate bars + per-minute differential
@@ -1808,6 +1825,13 @@
               <ol class="lm-wpa-list" id="lm-wpa-list"></ol>
               <div class="lm-wpa-foot" id="lm-wpa-foot"></div>
             </div>
+            <!-- PGR reframe S3 (docs/PGR_REFRAME_S2.md): win-prob "phases
+                 that mattered" GRAPH - an inline-SVG team win-probability
+                 curve over game time with the swing events as dots. The
+                 cards above list the top phases; this draws the curve.
+                 Rendered by pgr_winprob.js from GET /api/post-game-wpa.
+                 Fail-soft hidden when ok=false / no timeline (event modes). -->
+            <div id="pgr-winprob-mount" hidden></div>
             <div class="lm-tab-panel-hint">hover any row for the data behind it</div>
             <div class="lm-qr-cols">
               <div class="lm-qr-col lm-qr-col-right">
