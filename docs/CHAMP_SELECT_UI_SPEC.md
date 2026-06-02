@@ -27,11 +27,14 @@ HORIZONTALLY - items in a single row (icon + name/delta), wrap as needed - not
 the vertical numbered list. Keep the `save + push to client` button + no-double
 chip. File: `build_order.js`, `build_order.css` (flex-row `.bo-slots`).
 
-## 3. SR BUILD CHOOSER - cards-left + nested rune panel + per-category push (THE BULK) [DEFERRED]
-DEFERRED to its own LIVE slice next session (operator decision 2026-05-31): the
-per-category LCU push cannot be verified without a live champ-select, and the
-operator is mode=client now. Parts 1/2/4/5/6 ship this session; part 3 lands when
-a real champ-select can verify the push. Spec below is final + ready to build.
+## 3. SR BUILD CHOOSER - cards-left + nested rune panel + per-category push (THE BULK) [SHIPPED 2026-06-01, item 240 part-3 - LIVE PUSH VERIFICATION STILL OWED]
+SHIPPED 2026-06-01 (item 240 part-3): build + mock-render + unit tests landed.
+3a-3e implemented in web/js/panels/champ_select.js + champ_select_view.css. The
+per-category LCU push wiring is in place (apply route push_runes/push_items/
+push_summoners gating + set_summoner_spell for spells) but a LIVE champ-select
+push has NOT been verified (operator was mode=client). Live verification of the
+[PUSH] button + the 3 auto-push checkboxes against a real LCU rune page + item
+shop + summoner-spell slots is still owed. Spec below is the as-built contract.
 
 3a. Layout: build-variant cards move LEFT; add a nested panel to their right
     showing the RUNE choices that pair with each build card. Two columns inside

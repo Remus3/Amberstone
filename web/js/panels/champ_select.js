@@ -864,11 +864,34 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   const buildsTitle = mode === "aram" ? "ARAM build chooser"
                     : mode === "arena" ? "Arena build chooser"
                     : "SR build chooser";
+  // Item 240 part-3 (3d): header control on the chooser title - one
+  // small [PUSH] button + 3 inline checkboxes (Runes / Spells / Build),
+  // right-aligned to the title. Checkbox states are GLOBAL + persisted;
+  // default first-run all-unchecked (opt-in). The state is read live so
+  // the boxes render checked on a re-render after the operator marked
+  // them in a prior champ-select.
+  const _pushFlags = _csvGetPushFlags();
+  const _pushCtrlHtml = `
+      <div class="csv-builds-push-ctrl">
+        <button type="button" class="csv-builds-push-btn" id="csv-builds-push-btn"
+                title="Push all checked categories to the client now">PUSH</button>
+        ${_CSV_PUSH_CATS.map((cat) => {
+          const label = cat.charAt(0).toUpperCase() + cat.slice(1);
+          return `<label class="csv-builds-push-cat">
+            <input type="checkbox" class="csv-builds-push-cb" data-push-cat="${cat}"${_pushFlags[cat] ? " checked" : ""}>
+            <span>${label}</span>
+          </label>`;
+        }).join("")}
+      </div>`;
+  const _savedSel = _csvSavedSelection(myName);
   const buildsHtml = `
     <div class="csv-builds" data-champion="${myName || ""}" data-mode="${mode || "sr"}">
-      <div class="csv-builds-title">${buildsTitle}</div>
+      <div class="csv-builds-head">
+        <div class="csv-builds-title">${buildsTitle}</div>
+        ${_pushCtrlHtml}
+      </div>
       <div class="csv-builds-body" id="csv-builds-body">
-        ${_csvBuildVariantRowsHtml(variants, _csvSavedChoice(myName))}
+        ${_csvBuildVariantRowsHtml(variants, _savedSel.variantKey, _savedSel.runeKey)}
       </div>
     </div>`;
   // Build Order (2026-05-17, plan S6b option B): contextual DS-backed
@@ -1790,6 +1813,65 @@ function _csvSaveChoice(champion, variantKey) {
   catch (_) {}
 }
 
+// Item 240 part-3 (3c, 2026-06-01): the SR build chooser now persists
+// BOTH a build choice AND a rune choice per champion so the operator
+// is not re-choosing the rune every champ-select. The build choice
+// stays in `rc-ingame-build-<champ>` (a plain variant/path string)
+// because item_build.js's _ibSavedChoice reads that exact key to pre-
+// select the in-game item-shop row - changing its FORMAT would break
+// that cross-panel pre-select. The rune choice lives in a SEPARATE
+// sibling key `rc-cs-rune-<champ>` so the {variantKey, runeKey} pair
+// is reconstructable while existing variant-only entries keep working
+// untouched (back-compat: a champ with no rune key just returns "").
+function _csvRuneStorageKey(champion) { return "rc-cs-rune-" + (champion || ""); }
+function _csvSavedRuneChoice(champion) {
+  try { return localStorage.getItem(_csvRuneStorageKey(champion)) || ""; }
+  catch (_) { return ""; }
+}
+function _csvSaveRuneChoice(champion, runeKey) {
+  try { localStorage.setItem(_csvRuneStorageKey(champion), runeKey); }
+  catch (_) {}
+}
+// Convenience accessor returning the persisted {variantKey, runeKey}
+// pair. variantKey may be the legacy plain form or the item-178
+// "<variant>:<path-key>" colon form; both are preserved verbatim.
+function _csvSavedSelection(champion) {
+  return {
+    variantKey: _csvSavedChoice(champion),
+    runeKey:    _csvSavedRuneChoice(champion),
+  };
+}
+
+// Item 240 part-3 (3d, 2026-06-01): per-category auto-push checkbox
+// state for the SR-build-chooser header control. GLOBAL (not per-
+// champion) so the operator's "always push my runes" intent rides
+// across champ-selects. DEFAULT first-run = ALL UNCHECKED (opt-in -
+// nothing auto-pushes until the operator marks a category). Stored as
+// a 3-key JSON blob; missing/corrupt -> all-off.
+const _CSV_PUSH_CATS = ["runes", "spells", "build"];
+function _csvPushFlagsStorageKey() { return "rc-cs-push-flags"; }
+function _csvGetPushFlags() {
+  const off = { runes: false, spells: false, build: false };
+  try {
+    const raw = localStorage.getItem(_csvPushFlagsStorageKey());
+    if (!raw) return off;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return off;
+    return {
+      runes:  !!parsed.runes,
+      spells: !!parsed.spells,
+      build:  !!parsed.build,
+    };
+  } catch (_) { return off; }
+}
+function _csvSetPushFlag(cat, on) {
+  if (_CSV_PUSH_CATS.indexOf(cat) < 0) return;
+  const flags = _csvGetPushFlags();
+  flags[cat] = !!on;
+  try { localStorage.setItem(_csvPushFlagsStorageKey(), JSON.stringify(flags)); }
+  catch (_) {}
+}
+
 // --- Phase 3 (s176, 2026-05-12) - archetype scorer picker ---------------
 //
 // Six canonical archetypes; carry/bruiser/tank have real scorers today
@@ -1939,6 +2021,94 @@ function _csvMaybePushBuildsToLCU(champion, mode, variants) {
     });
   } catch (_) {}
   try { lcuCmd({ cmd: "apply_item_sets_batch", sets }); } catch (_) {}
+}
+
+// Item 240 part-3 (3e, 2026-06-01): resolve the currently-active build
+// card for this champion+mode so the per-category push helpers know
+// which variant/path to push. Reads the persisted selection (sticky)
+// and falls back to the first variant / its primary path. Returns
+// {variant, composedKey, summoners} where composedKey is the
+// "<variant>:<path-key>" colon form when the variant carries
+// build_paths (so the resolver overlays the active path's items/runes),
+// else the bare variant key.
+function _csvActiveBuildSelection(champion, mode, variants) {
+  if (!Array.isArray(variants) || !variants.length) return null;
+  const saved = _csvSavedChoice(champion);
+  const savedVariant = saved ? saved.split(":")[0] : "";
+  let v = variants.find((x) => x && x.key === savedVariant) || variants[0];
+  if (!v || !v.key || v.key === "empty") return null;
+  const paths = Array.isArray(v.build_paths) ? v.build_paths : [];
+  let composedKey = v.key;
+  if (paths.length) {
+    let pathKey = "";
+    if (saved && saved.startsWith(v.key + ":")) {
+      pathKey = saved.slice(v.key.length + 1);
+    }
+    if (!pathKey) {
+      const primaryPath = paths.find((p) => p && p._is_primary);
+      pathKey = (primaryPath && primaryPath.key) || (paths[0] && paths[0].key) || "";
+    }
+    if (pathKey) composedKey = `${v.key}:${pathKey}`;
+  }
+  const summoners = Array.isArray(v.summoners) ? v.summoners.slice(0, 2) : [];
+  return { variant: v, composedKey, summoners };
+}
+
+// Item 240 part-3 (3e): push a SINGLE category to the LCU for the
+// currently-active build card. The header-control checkbox auto-push
+// (uncheck->check + subsequent in-category selection changes while
+// checked) and the manual [PUSH] button both funnel through here.
+//   - "build"  -> apply_item_sets_batch route (push_items only) via the
+//                 colon-form variant key so the resolver overlays the
+//                 active path's item set.
+//   - "runes"  -> apply route (push_runes only); colon-form picks the
+//                 active card's per-path keystone/primary/secondary.
+//   - "spells" -> set_summoner_spell x2 (D + F) from the active
+//                 variant's summoner pair (matches the strip's verb).
+function _csvPushCategory(champion, mode, cat, variants) {
+  if (!champion || _CSV_PUSH_CATS.indexOf(cat) < 0) return;
+  const sel = _csvActiveBuildSelection(champion, mode, variants);
+  if (!sel) return;
+  if (cat === "build") {
+    _csvApplyLoadout(champion, sel.composedKey, mode, null, null, null,
+      { push_runes: false, push_items: true, push_summoners: false });
+  } else if (cat === "runes") {
+    // 3b: the rune selection is INDEPENDENT of the active build card.
+    // If the operator has a sticky rune choice that matches a DIFFERENT
+    // build path's keystone, push THAT path's composed key so the
+    // resolver overlays the selected rune (not the active card's rune).
+    // Falls back to the active card's composed key when no sticky rune
+    // (or it matches the active card already).
+    const savedRuneKey = _csvSavedRuneChoice(champion);
+    let runeComposedKey = sel.composedKey;
+    if (savedRuneKey) {
+      const paths = Array.isArray(sel.variant.build_paths)
+        ? sel.variant.build_paths : [];
+      const runePath = paths.find((p) =>
+        p && String((p.keystone) || sel.variant.keystone || "") === savedRuneKey);
+      if (runePath && runePath.key) {
+        runeComposedKey = `${sel.variant.key}:${runePath.key}`;
+      }
+    }
+    _csvApplyLoadout(champion, runeComposedKey, mode, null, null, null,
+      { push_runes: true, push_items: false, push_summoners: false });
+  } else if (cat === "spells") {
+    const pair = sel.summoners;
+    const d = pair[0] | 0;
+    const f = pair[1] | 0;
+    if (d) { try { lcuCmd({ cmd: "set_summoner_spell", slot: 1, spellId: d }); } catch (_) {} }
+    if (f && f !== d) { try { lcuCmd({ cmd: "set_summoner_spell", slot: 2, spellId: f }); } catch (_) {} }
+  }
+}
+
+// Item 240 part-3 (3e): push ALL currently-checked categories now (the
+// [PUSH] button's manual force-push). Reads the global push flags + the
+// active selection; a no-op when no category is checked.
+function _csvPushCheckedCategories(champion, mode, variants) {
+  const flags = _csvGetPushFlags();
+  _CSV_PUSH_CATS.forEach((cat) => {
+    if (flags[cat]) _csvPushCategory(champion, mode, cat, variants);
+  });
 }
 
 // Operator (2026-05-23): summoner spell strip. Mode-keyed list - SR
@@ -2375,16 +2545,97 @@ function _csvBuildPathRowHtml(variantKey, path, isActive, ver) {
   const label = path.label || path.key || "Variant";
   const archAttr = path._archetype ? ` data-arch="${path._archetype}"` : "";
   const primaryAttr = path._is_primary ? ' data-primary="1"' : "";
+  // Item 240 part-3 (3b): carry the card's keystone so a path-row click
+  // can re-point the rune panel's amber (recommended) marker to it. The
+  // path's keystone falls back to the variant-level keystone (resolver
+  // does the same), supplied by the caller as `path.keystone`.
+  const ksAttr = path.keystone ? ` data-card-keystone="${path.keystone}"` : "";
   return `
     <div class="csv-build-path-row${isActive ? " is-active" : ""}"
          data-variant="${variantKey}"
-         data-path-key="${path.key || ""}"${archAttr}${primaryAttr}>
+         data-path-key="${path.key || ""}"${archAttr}${primaryAttr}${ksAttr}>
       <div class="csv-build-path-label" title="${label}">${label}</div>
       <div class="csv-build-path-items">${items}</div>
     </div>`;
 }
 
-function _csvBuildVariantRowsHtml(variants, savedChoice) {
+// Item 240 part-3 (3a/3b, 2026-06-01): the nested RUNE panel that sits
+// to the RIGHT of the build-path cards inside a collapsed SR variant.
+// Each build path carries its own keystone (per-path runes overlay the
+// variant-level runes - see loadout_resolver.list_variants); we render
+// one rune option per DISTINCT keystone across the paths. Borders:
+//   - GREEN  (.is-selected)    = the operator's sticky rune selection.
+//   - AMBER  (.is-recommended) = the rune RECOMMENDED for the currently-
+//                                active build card, shown ONLY when it
+//                                differs from the sticky selection. When
+//                                the operator is already on the
+//                                recommended rune it is just green (no
+//                                second color) - the is-recommended
+//                                class is withheld in that case.
+// Changing the active build card re-points the amber (recommended)
+// marker but does NOT change the sticky selection (3b): the panel's
+// click handler is the only thing that moves green.
+function _csvRunePanelHtml(variant, recommendedRuneKey, savedRuneKey) {
+  const paths = Array.isArray(variant.build_paths) ? variant.build_paths : [];
+  // Collect distinct (keystone) rune options, preserving first-seen
+  // order. Each option records the keystone name + its tree pair so the
+  // click can persist + (later) push the right page. Skip empties.
+  const seen = Object.create(null);
+  const opts = [];
+  paths.forEach((p) => {
+    const ks = String((p && p.keystone) || variant.keystone || "").trim();
+    if (!ks || seen[ks]) return;
+    seen[ks] = true;
+    opts.push({
+      key:       ks,
+      keystone:  ks,
+      primary:   String((p && p.primary)   || variant.primary   || ""),
+      secondary: String((p && p.secondary) || variant.secondary || ""),
+    });
+  });
+  // Fall back to the variant-level keystone when no path carried one
+  // (defensive - a collapsed variant always has at least the variant
+  // keystone).
+  if (!opts.length && variant.keystone) {
+    opts.push({
+      key:       String(variant.keystone),
+      keystone:  String(variant.keystone),
+      primary:   String(variant.primary || ""),
+      secondary: String(variant.secondary || ""),
+    });
+  }
+  if (!opts.length) {
+    return '<div class="csv-rune-panel"><div class="csv-empty">no rune options</div></div>';
+  }
+  // Whichever option matches the saved rune key is GREEN. The
+  // recommended option is AMBER only when it is NOT the saved one.
+  const onRecommended = !!savedRuneKey && savedRuneKey === recommendedRuneKey;
+  const rows = opts.map((o) => {
+    const isSelected    = !!savedRuneKey && o.key === savedRuneKey;
+    const isRecommended = o.key === recommendedRuneKey && !onRecommended && !isSelected;
+    const icon = _csvKeystoneIcon(o.keystone);
+    const ksHtml = keystoneTooltipHtml(o.keystone);
+    const ttAttr = ksHtml
+      ? ` data-tt-html="${ksHtml.replace(/"/g, "&quot;")}"`
+      : (o.keystone ? ` title="${o.keystone}"` : "");
+    const cls = "csv-rune-opt"
+      + (isSelected ? " is-selected" : "")
+      + (isRecommended ? " is-recommended" : "");
+    return `
+      <div class="${cls}" data-rune-key="${o.keystone}"
+           data-rune-primary="${o.primary}" data-rune-secondary="${o.secondary}"${ttAttr}>
+        ${icon ? `<img class="csv-rune-opt-icon" src="${icon}" onerror="this.style.display='none'" alt="">` : '<span class="csv-rune-opt-icon"></span>'}
+        <span class="csv-rune-opt-name">${o.keystone}</span>
+      </div>`;
+  }).join("");
+  return `
+    <div class="csv-rune-panel">
+      <div class="csv-rune-panel-title">Runes</div>
+      <div class="csv-rune-opt-list">${rows}</div>
+    </div>`;
+}
+
+function _csvBuildVariantRowsHtml(variants, savedChoice, savedRuneKey) {
   if (!variants || !variants.length) {
     return '<div class="csv-empty">no build variants for this champion / mode yet</div>';
   }
@@ -2519,6 +2770,17 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
       const pathRowsHtml = buildPaths.map((p) =>
         _csvBuildPathRowHtml(v.key, p, p.key === activePathKey, ver)
       ).join("");
+      // Item 240 part-3 (3a/3b): the recommended rune is the keystone of
+      // the currently-active build card; the nested rune panel renders
+      // to the RIGHT of the cards. The active path's keystone falls back
+      // to the variant-level keystone (build_paths may not carry per-path
+      // runes - the resolver does the same fallback).
+      const activePath = buildPaths.find((p) => p && p.key === activePathKey)
+        || buildPaths.find((p) => p && p._is_primary)
+        || buildPaths[0] || {};
+      const recommendedRuneKey =
+        String(activePath.keystone || v.keystone || "");
+      const runePanelHtml = _csvRunePanelHtml(v, recommendedRuneKey, savedRuneKey);
       return `
         <div class="csv-build-row csv-build-row-collapsed${idx === selectedIdx ? " selected" : ""}"
              data-variant="${v.key}"
@@ -2526,7 +2788,10 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
           <div class="csv-build-collapsed-head">
             <div class="csv-build-collapsed-title">${v.label}</div>
           </div>
-          <div class="csv-build-path-list">${pathRowsHtml}</div>
+          <div class="csv-build-collapsed-cols">
+            <div class="csv-build-path-list">${pathRowsHtml}</div>
+            ${runePanelHtml}
+          </div>
         </div>`;
     }
 
@@ -2555,18 +2820,28 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
 // (champion, variant, mode) - cleared when the response lands.
 const _CSV_APPLY_INFLIGHT = Object.create(null);
 
-function _csvApplyLoadout(champion, variantKey, mode, overrideSummoners, overrideRunes, overrideItems) {
+function _csvApplyLoadout(champion, variantKey, mode, overrideSummoners, overrideRunes, overrideItems, pushFlags) {
   if (!champion || !variantKey) return;
   // Empty/pending pseudo-rows aren't backed by anything pushable.
   if (variantKey === "empty" || variantKey === "ds-pending") return;
-  const key = `${champion}|${variantKey}|${mode || "sr"}|${(overrideSummoners||[]).join(",")}`;
+  // Item 240 part-3 (3e): optional per-category gate. Default (omitted)
+  // pushes all three so the legacy click + the userbuild path are
+  // unchanged. The header-control auto-push wires pass a single-category
+  // {push_runes|push_items|push_summoners} so a checked "Build" box pushes
+  // ONLY the item set (and the colon-form variant key makes the resolver
+  // overlay the right path), not the runes/spells.
+  const pf = pushFlags || {};
+  const wantRunes = (pf.push_runes !== undefined) ? !!pf.push_runes : true;
+  const wantItems = (pf.push_items !== undefined) ? !!pf.push_items : true;
+  const wantSumm  = (pf.push_summoners !== undefined) ? !!pf.push_summoners : true;
+  const key = `${champion}|${variantKey}|${mode || "sr"}|${(overrideSummoners||[]).join(",")}|${wantRunes ? 1 : 0}${wantItems ? 1 : 0}${wantSumm ? 1 : 0}`;
   if (_CSV_APPLY_INFLIGHT[key]) return;
   _CSV_APPLY_INFLIGHT[key] = true;
   const body = {
     champion, variant: variantKey, mode: mode || "sr",
-    push_runes:     true,
-    push_items:     true,
-    push_summoners: true,
+    push_runes:     wantRunes,
+    push_items:     wantItems,
+    push_summoners: wantSumm,
   };
   if (Array.isArray(overrideSummoners) && overrideSummoners.length === 2) {
     body.override_summoners = overrideSummoners.map((x) => x | 0);
@@ -2604,12 +2879,32 @@ function _csvWireBuildVariants(scope) {
   const champion = wrap ? (wrap.dataset.champion || "") : "";
   const mode     = wrap ? (wrap.dataset.mode || "sr") : "sr";
 
+  // Item 240 part-3 (3a/3b): re-point the rune panel's AMBER
+  // (recommended) marker to the keystone of the now-active build card,
+  // WITHOUT moving the GREEN (selected) marker. Reads the active card's
+  // keystone from its rune option's sibling cards. Called on a path-row
+  // click so the recommended rune tracks the active card live (3b).
+  function _repointRecommendedRune(scopeRoot, recommendedRuneKey) {
+    const savedRuneKey = _csvSavedRuneChoice(champion);
+    const onRecommended = !!savedRuneKey && savedRuneKey === recommendedRuneKey;
+    scopeRoot.querySelectorAll(".csv-rune-opt").forEach((opt) => {
+      const k = opt.dataset.runeKey || "";
+      const isSelected = !!savedRuneKey && k === savedRuneKey;
+      const isRec = k === recommendedRuneKey && !onRecommended && !isSelected;
+      opt.classList.toggle("is-recommended", isRec);
+      // Keep green authoritative on the selected option.
+      opt.classList.toggle("is-selected", isSelected);
+    });
+  }
+
   // Item 178 (2026-05-24): wire path-row clicks inside collapsed variants
   // BEFORE the legacy single-variant click handler so a nested click is
   // handled by the inner row (and stopPropagation prevents the outer
-  // selection toggle). Each path click persists `<variant>:<path-key>`
-  // and fires _csvApplyLoadout with the same form so the resolver
-  // overlays the path's items on the variant.
+  // selection toggle). Each path click persists `<variant>:<path-key>`.
+  // Item 240 part-3 (3e): the BUILD push now fires automatically ONLY
+  // when the "Build" header checkbox is checked (opt-in); the selection
+  // always persists regardless. The rune panel's recommended marker
+  // re-points to the new card's keystone (3b).
   const pathRows = scope.querySelectorAll(".csv-build-path-row");
   pathRows.forEach((prow) => {
     prow.addEventListener("click", (ev) => {
@@ -2626,7 +2921,87 @@ function _csvWireBuildVariants(scope) {
       if (outer) outer.dataset.activePath = pathKey;
       const composed = `${variantKey}:${pathKey}`;
       _csvSaveChoice(champion, composed);
-      _csvApplyLoadout(champion, composed, mode, null, null, null);
+      // 3b: re-point the recommended rune (amber) to this card's
+      // keystone - the active card's keystone falls back to the
+      // variant-level keystone (data-rune-key on the matching opt).
+      const recKey = prow.dataset.cardKeystone || "";
+      const collapsedRoot = outer || scope;
+      if (recKey) _repointRecommendedRune(collapsedRoot, recKey);
+      // 3e: auto-push BUILD only when its category box is checked. When
+      // unchecked the selection persists but fires NO push.
+      const flags = _csvGetPushFlags();
+      if (flags.build) {
+        _csvApplyLoadout(champion, composed, mode, null, null, null,
+          { push_runes: false, push_items: true, push_summoners: false });
+      }
+    });
+  });
+
+  // Item 240 part-3 (3b/3e): rune-option clicks inside the nested rune
+  // panel move the GREEN (selected/sticky) marker + persist the rune
+  // choice per champion. When the "Runes" box is checked the click also
+  // auto-pushes the rune page (3e). Selecting the option that was amber
+  // (recommended) clears the amber (you are now ON the recommended rune
+  // -> just green per 3b).
+  const runeOpts = scope.querySelectorAll(".csv-rune-opt");
+  runeOpts.forEach((opt) => {
+    opt.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const runeKey = opt.dataset.runeKey || "";
+      if (!champion || !runeKey) return;
+      _csvSaveRuneChoice(champion, runeKey);
+      const panel = opt.closest(".csv-rune-panel") || scope;
+      panel.querySelectorAll(".csv-rune-opt").forEach((o) => {
+        const isSel = (o.dataset.runeKey || "") === runeKey;
+        o.classList.toggle("is-selected", isSel);
+        // Clear amber on the now-selected option (3b: on the
+        // recommended rune -> green only, no second color).
+        if (isSel) o.classList.remove("is-recommended");
+      });
+      // 3e: auto-push RUNES only when its category box is checked. The
+      // active build card's composed key drives the resolver overlay so
+      // the pushed page matches the operator's rune selection's card.
+      const flags = _csvGetPushFlags();
+      if (flags.runes) {
+        // cid=1: _csvBuildVariantsFor uses cid ONLY as a "champion is
+        // picked" guard (the body resolves variants by name+mode from
+        // the warm cache); 0 would hit the empty-placeholder early return.
+        const variants = _csvBuildVariantsFor(1, champion, mode, null);
+        _csvPushCategory(champion, mode, "runes", variants);
+      }
+    });
+  });
+
+  // Item 240 part-3 (3d/3e): header control - the [PUSH] button + the 3
+  // category checkboxes. A checkbox going unchecked -> checked persists
+  // the flag AND immediately pushes that category (3e). Unchecking
+  // persists the flag + fires NO push. The [PUSH] button force-pushes
+  // every currently-checked category now.
+  const pushBtn = scope.querySelector("#csv-builds-push-btn");
+  if (pushBtn) {
+    pushBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (!champion) return;
+      const variants = _csvBuildVariantsFor(0, champion, mode, null);
+      _csvPushCheckedCategories(champion, mode, variants);
+    });
+  }
+  scope.querySelectorAll(".csv-builds-push-cb").forEach((cb) => {
+    cb.addEventListener("change", (ev) => {
+      ev.stopPropagation();
+      const cat = cb.dataset.pushCat || "";
+      if (_CSV_PUSH_CATS.indexOf(cat) < 0) return;
+      const on = !!cb.checked;
+      _csvSetPushFlag(cat, on);
+      // Unchecked -> checked: push that category now. Checked -> unchecked:
+      // no push (stops auto-pushing going forward).
+      if (on && champion) {
+        // cid=1: _csvBuildVariantsFor uses cid ONLY as a "champion is
+        // picked" guard (the body resolves variants by name+mode from
+        // the warm cache); 0 would hit the empty-placeholder early return.
+        const variants = _csvBuildVariantsFor(1, champion, mode, null);
+        _csvPushCategory(champion, mode, cat, variants);
+      }
     });
   });
 
