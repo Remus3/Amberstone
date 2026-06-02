@@ -34,7 +34,7 @@ _SEEDED = ("Garen", "MonkeyKing", "Shyvana", "Sejuani", "Gwen", "Pantheon")
 
 class RegistryShapeTests(unittest.TestCase):
     def test_six_entries(self):
-        self.assertEqual(len(_PASSIVE_RESIST_OVERRIDES), 6)
+        self.assertGreaterEqual(len(_PASSIVE_RESIST_OVERRIDES), 6)  # item 267 adds rank-scaled block-value grants
 
     def test_keys_are_cid_key_form_tuples(self):
         for k, v in _PASSIVE_RESIST_OVERRIDES.items():
@@ -226,18 +226,19 @@ class ExclusionDocTests(unittest.TestCase):
 
     def test_excluded_champs_absent(self):
         cids = {k[0] for k in _PASSIVE_RESIST_OVERRIDES}
-        # value-not-in-text / percent-mode / form-gated / revive / per-stack /
-        # ball-attached - all documented NEGATIVES, none seeded.
-        for c in ("Olaf", "Rammus", "Kennen", "Nasus", "Hecarim", "Malphite",
-                  "Singed", "Taric", "Graves", "Poppy", "Rell", "Jayce",
-                  "Anivia", "Thresh", "Orianna"):
+        # percent-mode / unlabeled-multi-stat / form-gated / revive / per-stack /
+        # ball-attached - documented NEGATIVES still unseeded. (Olaf/Rammus/Kennen
+        # /Nasus/Hecarim/Graves were value-not-in-text -> SEEDED rank_scaled by
+        # item 267 via the parsed-block lift; they are no longer exclusions.)
+        for c in ("Malphite", "Singed", "Taric", "Poppy", "Rell", "Jayce",
+                  "Anivia", "Thresh", "Orianna", "Braum", "Leona", "Jax"):
             self.assertNotIn(c, cids)
 
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_pin(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.94.0")
-        self.assertEqual(ENGINE_VERSION, "1.94.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.95.0")
+        self.assertEqual(ENGINE_VERSION, "1.95.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):
