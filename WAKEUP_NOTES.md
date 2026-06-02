@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-02 - item 274: resolve 5 pre-existing local test failures (item 273 carry 4)
+
+Operator "start what is up next" (CAVEMAN ULTRA). mode_key=client (no game), DS 1.99.0 == repo, clean tree, 0 PRs. Only headless-actionable carry = item 273 (4)'s 5 pre-existing local failures (CI does not run them). 1 commit `bf61604`, CI green run 26848418515, NON-engine, no DS/RC restart. RC suite 4644 passed / 0 failed.
+
+- T1/T3 (`test_champ_select_coach` call-shape + `test_pickban_systems_p1l2` pick-safe): local `config/coach_settings.json` `disabled_coaches` has `champ_select` -> `coach_pick` short-circuits to `(champ-select coach disabled)` before the call/api-key paths (CI has no such gitignored config). FIX = hermetic in-test patch of `core.cost_tracker.get_tracker` so `gate_disabled` returns False; added `unittest.mock` import to the pickban test file.
+- T2 (`test_coach_choices_panel_dom`): item 265 W3A moved `core.coach_choices` + `parse_choices` + `synthesize_simple_choices` into `dashboard/_deterministic_coaching.py`; `_state_builder` now calls `compute_deterministic`/`resolve_choices`. FIX = assert wiring at both homes (intent preserved).
+- T4 (`...item213::test_b`): `_ARAM_CARRY["Twitch"]` == Twitch curated `on-hit` set (frozenset dup). FIX = removed the redundant `aram-carry` build_path from `data/champion_loadouts.json` AND dropped Twitch from `tools/hotfix_sibling_pollution_item269._ARAM_CARRY` (no hotfix re-introduction); Twitch keeps on-hit+crit. Sibling `test_loadout_fix_sibling_pollution_item269::test_thin_aram_carry_extended` auto-fixed.
+- T5 (`...item213::test_c`): item 269 L4 removed 4 lethality assassins' polluted sr-mage (fabricating a 2nd build = the pollution trap items 208/213/269 fixed; operator left them 1-path red across 269-273). FIX = documented `_SINGLE_BUILD_OK` allowlist (Kha'Zix/Qiyana/Talon/Zed), still enforcing >=4 items.
+
+Don't-redo: these 5 are CLOSED. T1/T3 are config-environment artifacts not code defects; T2 wiring lives in `_deterministic_coaching.py`; Twitch single carry = on-hit (table omits it on purpose); the 4 assassins are documented single-clean-build. json diff = clean 22-line single-block removal (round-trip byte-identical re-dump). Live-gated carries unchanged (Build Insights visual capture, champ-select brief flip, DS Anivia P/Orianna E, Phase D).
+
 # 2026-06-02 - item 273: 5-slice parallel drain (Arena Mage sweep + the competitor teardown + item-WPA + tft cache + deterministic champ-select brief)
 
 Operator "start next item on lists in parallel + backlog items" (/headless-upgrade, caveman ULTRA). 9 commits `533f6fc..7a1861d`, CI green. NO ENGINE bump (1.99.0 stays, no DS work). RC restarted x2 (pid 11464 -> 20276 item-WPA route -> 2096 champ-select shadow-log). Game-PC MCP :8892 DOWN (visual capture owed). Orchestrator-merge + verifier-gate-before-merge (all 3 code slices CONFIRMed before merge).
