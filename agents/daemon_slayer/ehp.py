@@ -857,8 +857,16 @@ def compute_ehp(
     # ``resist_grants`` by their entry's operator-tunable conditional_probability.
     # The reported EhpResult.armor / .mr stay the RESOLVED build stats (the grant
     # is surfaced separately via passive_resist_armor / passive_resist_mr).
+    # ENGINE 1.96.0 (2026-06-02): item 268 percent-of-resist mode (Malphite W /
+    # Taric W / Poppy W / Rell W / Rammus W %-half) needs the RESOLVED build
+    # resists - the grant is a PERCENT of the champion's own armor / MR, not a flat
+    # add. The flat-add half (item 264/267) ignores these kwargs. total_* exclude
+    # the passive grants (not in base/items) so there is no self-feedback.
     bonus_armor, bonus_mr = resist_grants(
-        resolved.champion_id, level, apply_passive_resist
+        resolved.champion_id, level, apply_passive_resist,
+        total_armor=armor, total_mr=mr,
+        base_armor=float(base.get("armor", 0.0)),
+        base_mr=float(base.get("mr", 0.0)),
     )
     eff_armor = armor + bonus_armor
     eff_mr = mr + bonus_mr
