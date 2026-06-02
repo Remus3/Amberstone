@@ -267,19 +267,23 @@ def build_state() -> dict:
     except Exception:
         summoner_cooldowns = None
 
-    # A/B tutoring choices (item 119): prefer the coach dict's native-emit
-    # `choices` array (when the per-mode prompt has been tuned to return
-    # it); fall back to a conservative synthesizer that derives a single
-    # A/B from the existing action prose. Empty list when nothing
-    # meaningful can be surfaced - the frontend's render path is a no-op
-    # in that case so the prose stream is unchanged.
+    # Haiku-elimination wave 3 (item 265 W3A): deterministic-FIRST coaching.
+    # The DS matchup engine (laning A/B) + the pure callout/lead generators
+    # produce the A/B choices, the objective/spike callouts, and the macro
+    # lead read WITHOUT a Claude call. Falls back to the coach's native
+    # `choices` / the synthesizer only when the deterministic laning path
+    # yields nothing (engine down / no enemy). The existing #rn-choices chip
+    # UI renders coach["choices"] unchanged; the NEW callouts + lead_projection
+    # keys are additive (frontend slice renders them in a later wave).
+    det = {"choices": [], "callouts": [], "lead_projection": {}}
     try:
-        from core.coach_choices import (
-            parse_choices, synthesize_simple_choices, to_jsonable,
+        from dashboard._deterministic_coaching import (
+            compute_deterministic, resolve_choices,
         )
-        _cc_native = parse_choices(coach)
-        coach["choices"] = to_jsonable(_cc_native or synthesize_simple_choices(coach))
+        det = compute_deterministic(coach, lc, mode_key)
+        coach["choices"] = resolve_choices(coach, det)
     except Exception:
+        det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
 
     return {
@@ -309,6 +313,8 @@ def build_state() -> dict:
         "archetype_nudge": archetype_nudge,
         "screen_read": screen_read,
         "summoner_cooldowns": summoner_cooldowns,
+        "callouts": det.get("callouts") or [],
+        "lead_projection": det.get("lead_projection") or {},
     }
 
 
