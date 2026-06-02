@@ -204,6 +204,7 @@ def compute_hybrid(
     include_conditional: bool = False,
     apply_mode_modifiers: bool = False,
     apply_build_tenacity: bool = False,
+    apply_passive_mitigation: bool = False,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
 ) -> HybridResult:
@@ -244,6 +245,20 @@ def compute_hybrid(
     existing consumers of compute_hybrid (ranker baseline, ranker
     per-candidate, direct callers, dashboard) keep byte-identical
     math at the default.
+
+    ENGINE 1.92.0 (item 262): ``apply_passive_mitigation`` threads the
+    item-261 effects-text DAMAGE-REDUCTION layer into the BRUISER EHP
+    scorer (symmetric completion - item 261 wired the TANK ``compute_ehp``
+    + ``rank_items_by_ehp``; this mirrors it for ``compute_hybrid`` +
+    ``rank_items_by_hybrid``). When True it flows to ``compute_ehp`` which
+    folds the per-champion flat-% DR into the three EHP denominators, so a
+    champion with a registered mitigation passive (Kassadin / KSante /
+    Briar / Irelia / Nilah) gets a DR-boosted ``ehp`` + ``cc_blended_ehp``
+    -> a larger ``hybrid_score`` scalar. Default False = all three DR
+    multipliers 1.0 = BYTE-IDENTICAL to 1.91.0. Mitigation is a
+    CHAMPION passive (build-independent) so it scales the EHP denominator
+    uniformly; it raises the displayed scalar but does NOT change the
+    ratio-based ``hybrid_delta_pct`` sort (see ``rank_items_by_hybrid``).
     """
     level = clamp_level(level)
     if alpha is None or beta is None:
@@ -302,6 +317,7 @@ def compute_hybrid(
         enemy_champions=enemy_champions_tuple,
         apply_mode_modifiers=apply_mode_modifiers,
         apply_build_tenacity=apply_build_tenacity,
+        apply_passive_mitigation=apply_passive_mitigation,
         **_ehp_kwargs,
     )
 
@@ -568,6 +584,7 @@ def rank_items_by_hybrid(
     include_conditional: bool = False,
     apply_mode_modifiers: bool = False,
     apply_build_tenacity: Optional[bool] = None,
+    apply_passive_mitigation: bool = False,
     score_by: str = "blended",
     filter_shared_uniques: bool = True,
     alpha: Optional[float] = None,
@@ -586,6 +603,20 @@ def rank_items_by_hybrid(
 
     ``alpha`` / ``beta`` default to ``archetype_weights.json`` lookup;
     callers can override per-call (UI sliders, A/B testing).
+
+    ENGINE 1.92.0 (item 262): ``apply_passive_mitigation`` flows the
+    item-261 effects-text DR layer into every ``compute_ehp`` call
+    (baseline + each candidate) so the displayed ``hybrid_score`` +
+    ``cc_blended_ehp`` row fields are DR-boosted for a champion with a
+    registered mitigation passive. Default False = BYTE-IDENTICAL to
+    1.91.0. NOTE the mitigation is a CHAMPION passive (build-independent),
+    so it scales the EHP denominator uniformly across the baseline AND
+    every candidate; the ratio-based ``hybrid_delta_pct`` sort key
+    (delta_ehp / baseline_ehp) is INVARIANT under that uniform scale ->
+    enabling it does NOT re-rank, it makes the per-row scalars accurate
+    (mirrors item 261's tank ``rank_items_by_ehp`` behavior - a champion
+    passive cannot differentiate one candidate from another the way the
+    build-dependent tenacity term does).
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -662,6 +693,7 @@ def rank_items_by_hybrid(
         enemy_champions=enemy_champions_tuple,
         apply_mode_modifiers=apply_mode_modifiers,
         apply_build_tenacity=apply_tenacity,
+        apply_passive_mitigation=apply_passive_mitigation,
         **_ehp_kwargs_baseline,
     )
     baseline_dps = baseline_dps_result.weighted_dps
@@ -726,6 +758,7 @@ def rank_items_by_hybrid(
                 enemy_champions=enemy_champions_tuple,
                 apply_mode_modifiers=apply_mode_modifiers,
                 apply_build_tenacity=apply_tenacity,
+                apply_passive_mitigation=apply_passive_mitigation,
                 **_ehp_kwargs_scored,
             )
         except (KeyError, ValueError):

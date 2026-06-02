@@ -259,7 +259,7 @@ class EngineVersionUnchangedS232Tests(unittest.TestCase):
         # bump - it is 1.9.0 as of the P1-L23 BRAWL map-legality fix
         # (the Riot stat-growth quadratic fix was 1.5.0)
         # (quadratic per-level base-stat scaling).
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.91.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.92.0")
 
 
 if __name__ == "__main__":
