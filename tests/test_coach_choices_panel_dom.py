@@ -128,11 +128,23 @@ class StateBuilderWiresChoicesTests(unittest.TestCase):
     is the fallback when no native choices arrive."""
 
     def test_state_builder_imports_coach_choices(self):
-        src = (REPO / "dashboard" / "_state_builder.py").read_text(encoding="utf-8")
-        self.assertIn("from core.coach_choices import", src)
-        self.assertIn("parse_choices", src)
-        self.assertIn("synthesize_simple_choices", src)
-        self.assertIn('coach["choices"]', src)
+        # item 265 W3A (deterministic-FIRST coaching) moved the
+        # core.coach_choices wiring out of _state_builder and into
+        # dashboard/_deterministic_coaching.py. _state_builder now calls
+        # compute_deterministic + resolve_choices and still stamps
+        # coach["choices"]; the parse-preferred + synth-fallback
+        # primitives live one indirection deeper in the resolver. Assert
+        # the wiring at BOTH homes so the intent (state-build path stamps
+        # choices via parse>synth) stays pinned after the refactor.
+        sb = (REPO / "dashboard" / "_state_builder.py").read_text(encoding="utf-8")
+        self.assertIn("compute_deterministic", sb)
+        self.assertIn("resolve_choices", sb)
+        self.assertIn('coach["choices"]', sb)
+        det = (REPO / "dashboard" / "_deterministic_coaching.py").read_text(
+            encoding="utf-8")
+        self.assertIn("from core.coach_choices import", det)
+        self.assertIn("parse_choices", det)
+        self.assertIn("synthesize_simple_choices", det)
 
 
 if __name__ == "__main__":
