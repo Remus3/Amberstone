@@ -428,7 +428,8 @@ class TftPbeCoachEngine:
         response = self._client.messages.create(
             model      = self._model,
             max_tokens = self._max_tokens,
-            system     = TFT_PBE_SYSTEM_PROMPT,
+            system     = [{"type": "text", "text": TFT_PBE_SYSTEM_PROMPT,
+                           "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": prompt}],
         )
         # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker. POLLING
