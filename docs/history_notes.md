@@ -51,6 +51,21 @@ NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` 
 
 ---
 
+# 2026-06-02 - item 269: 6-lane /headless-upgrade drain (L1/L4/L5/L7/L8 shipped, L6 OWED)
+
+Operator "start 1 and 4 and 5 and 6 and 7 and 8" off the "what is next" menu. NO ENGINE bump (1.96.0 stays), NO DS restart. RC restarted pid 324 -> 11464 (L1 backend module). 6 commits `366ad92..c9e5d7a` (5 lanes + docs), CI green. Server-side throttle hit the wave-1 worktree agents at 0 tokens (item-266 pattern) -> ran all lanes INLINE serially, direct-to-main.
+
+- L1 `0b47b6e` recall-affordability callout (`core/event_callouts.recall_callout` + `dashboard/_deterministic_coaching` build-order/cost loaders). Haiku-elim correct-by-construction (gold>=cost), consumes Lane B tables. +15t, 100 existing green.
+- L4 `a95ac01` sibling build-pollution sweep (`tools/hotfix_sibling_pollution_item269.py`, 24 champs/31 paths = full item-208->213 sibling class). Data-only ADR-008 no restart. +7t RED->GREEN, guards green.
+- L5 `f0156fe` pickban counter-quality GATE = **NO_SIGNAL** (gold 46.9% / trade 48.4%, both bracket 0.50; inherits the matchup engine W3B coin-flip). +22t.
+- L7 `541788d` Electron overlay Phase 2/3 (`rc-shell/src/overlay_state.js` PURE + transparent overlay window + Alt+Shift hotkeys, Vanguard-safe DWM-only). node:test 55/55.
+- L8 `4815986` Phase 11 ARCHITECTURE topology rewrite + verified 8-file gamepc status map.
+
+Don't-redo: (a) pickban-DB flip is a documented NEGATIVE (NO_SIGNAL) - do NOT flip champ-select onto it. (b) L4 is the COMPREHENSIVE sibling sweep - do NOT re-pitch a narrow 6-champ fix; the 4 assassins' sr-mage was REMOVED not renamed (pre-existing lethality primary); `_score_item_for_archetype` STILL a phantom. (c) L8 archival + vision-frame collapse DEFERRED (nothing dead-safe; DXGI banned). (d) frozen grant NOT used.
+OWED/NEXT (operator-gated): L6 callouts/lead visual capture at a live game (or a RIGHT NOW ui_mock injection at applyState - no mock path exists today); L7 overlay visual launch + Phase 4+; Phase D live flag-flips (item 268); Arena auto-flavor "Mage" mislabel sweep (L4 carry); gamepc archival cleanup slice (L8 carry).
+
+---
+
 # 2026-06-02 - item 268: DS PERCENT-OF-RESIST grant mode + 5 SEEDED (ENGINE 1.96.0), default-OFF byte-identical
 
 Operator: "start the next DS schema lift and exhaust it then /done for /clear". The item 267 (+264) NEXT = the candidate-B PERCENT-OF-RESIST mode (the documented percent-mode EXCLUSION).

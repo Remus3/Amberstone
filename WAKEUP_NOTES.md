@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-02 - item 272: DS per-stack unbounded resist grant (ENGINE 1.99.0)
+
+Operator "start the next DS schema lift and exhaust it then /done for /clear". Seeded the LAST cleanly headless-buildable resist-grant exclusion (per-stack unbounded). 2 commits `73bbb85` feat + docs (pushed). ENGINE 1.98.0 -> 1.99.0. DS :8893 restarted (taskkill pid 16868 + schtasks) -> 1.99.0/16.11.1/172/705, live-verified. RC NOT touched.
+
+- NEW per-stack seam on `PassiveResistEntry`: `per_stack_armor`/`per_stack_mr` * `assumed_stacks` summed in `resist_grants` alongside the flat-add (264/267) + percent (268) halves; default 0.0 -> flat/percent/bounded entries unchanged; NO new EHP threading (compute_ehp already calls resist_grants). NEW `_ASSUMED_SOUL_COUNT=25.0` (item-249 assumed_stacks convention on the EHP seam; Phase D feeds the live soul count).
+- SEEDED 1: Thresh P Damnation `per_stack_armor=1.0`, mr=0 (ARMOR ONLY - the +1 AP per soul is offensive), `assumed_stacks=25`, prob 1.0 permanent -> 25 bonus armor at the midpoint. Thresh's innate "armor does not grow per level" makes souls his ONLY armor scaling, so the grant is load-bearing.
+- EXHAUSTIVE roster scan (per-stack + armor/MR co-occurrence): Thresh P is the SOLE per-stack-UNBOUNDED self-resist grant; every other per-stack resist is BOUNDED + already handled (Garen W cap30 at-cap, Graves E cap8 at-cap, Wukong P cap5 base+combat-omitted, Jax R active on-hit); 3 false positives (Corki/Kled MS/Ornn items).
+- RESIST-grant lane now COMPLETE across all 6 source modes (flat 264 + rank-scaled-block 267 + percent 268 + unlabeled-block 270 + form-occupancy 271 + per-stack-unbounded 272). +19 tests `test_passive_resist_per_stack_item272.py`. DS 6142 -> 6161, 0 failed. ruff clean. Share 278 files --check clean (+ Share/CHANGELOG 1.94->1.99 condensed-range prepend). Live /ehp: Thresh L11 blended 2313.77 off / 2522.89 on, pr_armor 25.0 / pr_mr 0.0, armor 33.0 unchanged (+25 = ~76% of base); Caitlyn off==on byte-identical 2351.6756.
+- Don't-redo: per_stack fields + assumed_stacks is the canonical home for an UNBOUNDED-accumulator resist (coefficient EXACT, only the count is the assumption; do NOT bake count into flat armor, do NOT route a BOUNDED per-stack through it); Thresh is ARMOR ONLY (no MR); Thresh is the SOLE per-stack-unbounded grant (do NOT re-pitch Corki/Kled/Ornn). The 2 remaining exclusions (Anivia P resurrection non-combat / Orianna E ball-attached ally-target) each need a DIFFERENT non-EHP seam - do NOT model as EHP-denominator addends. The clean headless effects-text survivability+resist lane is now EXHAUSTED across both EHP scorers + all 6 resist modes - remaining DS work is Phase D live flag-flips (for Thresh feed the live soul count not the 25 midpoint) + the 2 different-seam exclusions + Phase 11 vision-frame collapse + gamepc archival.
+
+---
+
 # 2026-06-02 - item 271: DS form-occupancy-gated resist grant (ENGINE 1.98.0)
 
 Operator "start the next DS schema lift and exhaust it then /done for /clear". Seeded the LAST clean headless resist-grant exclusion class (form-gated). 1 commit `15b23e6` (pushed `0fec310..15b23e6`). ENGINE 1.97.0 -> 1.98.0. DS :8893 restarted (taskkill pid 4212 + schtasks) -> 1.98.0/16.11.1/172/705, live-verified. RC NOT touched.
@@ -28,18 +40,3 @@ Operator "start the next DS schema lift and exhaust it then /done for /clear". S
 
 Don't-redo: (a) the resist-grant lane is now COMPLETE (flat 264 + rank-block 267 + percent 268 + unlabeled-block 270) - do NOT re-pitch Singed/Braum/Leona/Jax. (b) the 4 remaining resist exclusions each need a DIFFERENT seam: Jayce R form-state midpoint / Anivia P resurrection / Thresh P per-stack / Orianna E ball-attached. (c) percent coefficients deliberately omitted (no ally / bonus-AD seam) - do NOT force-seed. (d) default apply_passive_resist=False byte-identical; flag-on CAN re-rank (non-linear _armor_factor) - Phase D live validation before default-on.
 NEXT (operator-gated): the entire headless effects-text survivability + resist-grant lane is EXHAUSTED across both EHP scorers; remaining DS = Phase D live flag-flips + the 4 different-seam resist exclusions + the deferred Phase 11 vision-frame collapse + gamepc archival.
-
----
-
-# 2026-06-02 - item 269: 6-lane /headless-upgrade drain (L1/L4/L5/L7/L8 shipped, L6 OWED)
-
-Operator "start 1 and 4 and 5 and 6 and 7 and 8" off the "what is next" menu. NO ENGINE bump (1.96.0 stays), NO DS restart. RC restarted pid 324 -> 11464 (L1 backend module). 6 commits `366ad92..c9e5d7a` (5 lanes + docs), CI green. Server-side throttle hit the wave-1 worktree agents at 0 tokens (item-266 pattern) -> ran all lanes INLINE serially, direct-to-main.
-
-- L1 `0b47b6e` recall-affordability callout (`core/event_callouts.recall_callout` + `dashboard/_deterministic_coaching` build-order/cost loaders). Haiku-elim correct-by-construction (gold>=cost), consumes Lane B tables. +15t, 100 existing green.
-- L4 `a95ac01` sibling build-pollution sweep (`tools/hotfix_sibling_pollution_item269.py`, 24 champs/31 paths = full item-208->213 sibling class). Data-only ADR-008 no restart. +7t RED->GREEN, guards green.
-- L5 `f0156fe` pickban counter-quality GATE = **NO_SIGNAL** (gold 46.9% / trade 48.4%, both bracket 0.50; inherits the matchup engine W3B coin-flip). +22t.
-- L7 `541788d` Electron overlay Phase 2/3 (`rc-shell/src/overlay_state.js` PURE + transparent overlay window + Alt+Shift hotkeys, Vanguard-safe DWM-only). node:test 55/55.
-- L8 `4815986` Phase 11 ARCHITECTURE topology rewrite + verified 8-file gamepc status map.
-
-Don't-redo: (a) pickban-DB flip is a documented NEGATIVE (NO_SIGNAL) - do NOT flip champ-select onto it. (b) L4 is the COMPREHENSIVE sibling sweep - do NOT re-pitch a narrow 6-champ fix; the 4 assassins' sr-mage was REMOVED not renamed (pre-existing lethality primary); `_score_item_for_archetype` STILL a phantom. (c) L8 archival + vision-frame collapse DEFERRED (nothing dead-safe; DXGI banned). (d) frozen grant NOT used.
-OWED/NEXT (operator-gated): L6 callouts/lead visual capture at a live game (or a RIGHT NOW ui_mock injection at applyState - no mock path exists today); L7 overlay visual launch + Phase 4+; Phase D live flag-flips (item 268); Arena auto-flavor "Mage" mislabel sweep (L4 carry); gamepc archival cleanup slice (L8 carry).
