@@ -92,6 +92,18 @@ the default ``resolve_target_relative=False`` are both byte-identical. This is
 the LAST named clean headless heal lift - the AS-scaled heal class is the single
 Viego P term (the roster scan found no other heal or shield scaling on AS).
 
+v5 (2026-06-01 item 260 - effects-text-only SHIELD registry, additive, byte-
+identical at the defaults) closes the SHIELD half of this scorer. The 56 snapshot
+shield blocks were already scored (``_select_kind_blocks(form, "shield", ...)``);
+``_passive_shield_overrides`` now injects synthetic ``attribute_kind="shield"``
+blocks for the effects-text-only shields that parse to NO shield block (Malphite
+Granite Shield, Blitzcrank Mana Barrier, Vi/Shen/Rakan/Yasuo P, Skarner W,
+Volibear E, Viktor Q, Camille P). They ride this same evaluator unchanged - the
+only addition is the ``% maximum mana`` -> ``caster_max_mp`` unit in
+``_HEAL_UNIT_TO_CTX`` (Blitzcrank's mana shield; no snapshot block uses a mana
+unit so the default path is byte-identical). Injected by
+``abilities.AbilitiesSnapshot.load(apply_passive_shield=True)``; default OFF.
+
 Deliberate omissions (mirror ``ability_dps``):
 * Multi-block heal/shield forms default to ``block_strategy="first"`` (the
   first heal block + first shield block), matching ``ability_dps``'s
@@ -151,6 +163,11 @@ _HEAL_UNIT_TO_CTX: dict[str, str | None] = {
     "% of maximum health": "caster_max_hp",
     "% bonus health": "caster_bonus_hp",
     "% of his bonus health": "caster_bonus_hp",
+    # item 260 (effects-text-only SHIELD registry): Blitzcrank Mana Barrier is
+    # the sole mana-scaled shield. ``caster_max_mp`` already exists on
+    # AbilityContext; no snapshot heal/shield block uses a mana unit, so this is
+    # byte-identical on the default path.
+    "% maximum mana": "caster_max_mp",
 }
 
 # --- v2 target-relative + caster-missing-HP units (opt-in) -----------------
