@@ -45,7 +45,8 @@ class Snapshot:
     `ts`       - unix time the relay claims its data was current (from wrap.ts).
     `fetched_at` - unix time the cache last attempted a fetch.
     `no_game`  - True iff the most recent fetch saw an authoritative 404 from
-                 the relay (no game running on Game-PC). Distinct from a
+                 the relay (no game running - the vision server's in-process
+                 :2999 self-read also came up empty, ADR-011). Distinct from a
                  transient network error so callers can skip wasteful
                  fallbacks (mirrors game_reader._relay_says_no_game).
     """

@@ -85,7 +85,7 @@ Key: `RC-Supervisor` (logon, Administrator, HIGHEST) · `RC-VisionServer` (start
 
 ## Vision pipeline
 
-Game-PC `gamepc_screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`. Coaches call `modes.shared_vision._capture_screen()` → GET `:8889/latest-frame`. **`_run_vision()` gates on `_fetch_game_data() is not None`** - vision never fires during lobby/idle. Tiered: OCR first, Sonnet escalation for misses. Calibrate `data/vision_regions.json` to expand OCR coverage.
+Game-PC `gamepc_screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`. Coaches call `modes.shared_vision._capture_screen()` → GET `:8889/latest-frame`. **`_run_vision()` gates on `_fetch_game_data() is not None`** - vision never fires during lobby/idle. Tiered: OCR first, Sonnet escalation for misses. Calibrate `data/vision_regions.json` to expand OCR coverage. The sibling Live Client relay (`:8889/upload-liveclient` <- RC-LiveClientRelay agent; `/latest-liveclient` -> poller + `core/liveclient_cache`) self-heals: `vision_server/_relay.get_latest_liveclient()` reads `:2999` in-process when the relayed snapshot is stale + `GAME_HOST` is local, so the relay agent (and Game-PC) is non-integral to DS/RC (1-PC, ADR-011 update 2026-06-02).
 
 ## Mode detection
 

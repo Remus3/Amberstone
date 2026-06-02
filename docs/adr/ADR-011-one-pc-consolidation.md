@@ -61,11 +61,10 @@ League + Vanguard + RC + OBS all run on Legion. Concretely:
   in-process mss - the full in-process vision collapse is deferred.
 
 **Watch for:**
-- The poller reads the :8889 relay cache FIRST and only falls back to direct
-  127.0.0.1:2999 when the relay is UNREACHABLE (not on a relay 404). If the
-  local `gamepc_liveclient_relay` dies, a relay 404 wrongly short-circuits to
-  "no game." Keep RC-LiveClientRelay healthy, or refactor the poller to prefer
-  direct local :2999 (now that it is reachable).
+- The poller reads the :8889 relay cache FIRST and falls back to direct
+  127.0.0.1:2999 only when the relay is UNREACHABLE. The dead-agent
+  short-circuit risk is RESOLVED by the 2026-06-02 self-heal below - the relay
+  endpoint stays fresh in-process even if RC-LiveClientRelay dies.
 - OBS Display Capture is continuous DXGI/WGC capture - the same surface that
   caused the Game-PC game-end 0x50 BSOD (Duet + resolution swap at match end).
   Legion likely lacks that root (no Duet, lock one resolution, League
@@ -74,5 +73,25 @@ League + Vanguard + RC + OBS all run on Legion. Concretely:
   rename to DESKTOP-JKZECV9. `legion-rc` MagicDNS stays canonical for RC and
   the Peer bridge; do not "reconcile" it to the local hostname.
 - Deferred Phase-11 cleanup: Legion<->Game-PC bridge teardown (pending
-  Game-PC's fate), in-process vision collapse, archive of the `gamepc_*.py`
-  originals, ARCHITECTURE topology rewrite.
+  Game-PC's fate), full in-process vision-frame (mss) collapse, archive of the
+  `gamepc_*.py` originals, ARCHITECTURE topology rewrite.
+
+## Update 2026-06-02: relay self-heal (DS & RC are non-integral to Game-PC)
+
+DS was already 1-PC: `agents/daemon_slayer/server.py` binds 127.0.0.1:8893,
+pure compute over `data/daemon_slayer/`, zero Game-PC/network coupling.
+
+The one remaining structural dependency was the :8889 liveclient relay: both
+`game_reader.poller` and `core.liveclient_cache` read it, and it was fed ONLY
+by the RC-LiveClientRelay agent - so a dead agent meant dead coaching (the relay
+was *integral*). Now `vision_server/_relay.get_latest_liveclient()` self-reads
+Riot's :2999 in-process when the relayed snapshot is stale (>2s) and
+`GAME_HOST` is local, throttled to one attempt per 1.5s, fail-soft. A remote
+`RC_GAME_HOST` disables the self-read (Riot's :2999 binds localhost-only on the
+remote box) so the legacy 2-PC agent-push path is preserved.
+
+Result: the RC-LiveClientRelay agent (and thus Game-PC) is now an
+optimization, not a dependency. The Game-PC cross-Claude bridge may remain as a
+comms convenience but is not integral to DS or RC. (Full vision-FRAME collapse
+- dropping the mss frame relay - is still deferred.) Guarded by
+`tests/test_liveclient_self_heal_1pc.py`. RC-VisionServer restarted to pid 476.
