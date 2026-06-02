@@ -73,6 +73,7 @@ def _gather_get() -> list:
                                routes_damage_mix, routes_draft_elo,
                                routes_duo_synergy,
                                routes_health_peer,
+                               routes_item_wpa,
                                routes_lessons,
                                routes_loadout, routes_lobby_aux, routes_metrics,
                                routes_pickban, routes_adaptive_summoners,
@@ -109,6 +110,7 @@ def _gather_get() -> list:
                       + list(routes_draft_elo.GET_ROUTES)
                       + list(routes_duo_synergy.GET_ROUTES)
                       + list(routes_health_peer.GET_ROUTES)
+                      + list(routes_item_wpa.GET_ROUTES)
                       + list(routes_lessons.GET_ROUTES)
                       + list(routes_loadout.GET_ROUTES)
                       + list(routes_lobby_aux.GET_ROUTES)
