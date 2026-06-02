@@ -76,12 +76,19 @@ resist grant). TWO source modes:
     permanent), Rell W form 1 (flat 15% of BONUS armor + MR, Dismounted steady-
     state), Rammus W (30..60% of TOTAL armor + MR, the %-half extending the item
     267 flat entry, 7s active amortized).
+  - unlabeled MULTI-STAT / MULTI-SERIES block (item 270, the last seedable resist
+    EXCLUSION class): a parsed block bundles several stats or two value series with
+    no per-stat label; HAND attribution resolves the FLAT BASE confidently. Singed
+    R (ONE shared series [25,60,95] = AP == armor == MR), Braum W / Leona W / Jax R
+    (a TWO-series block where series[0] varies by rank = the flat base, series[1]
+    is a rank-constant percent coefficient that is OMITTED per its base - Braum
+    36% of ALLY bonus / Leona 20% uncertain / Jax 40%/24% of BONUS AD). The
+    rank-varying flat base armor / MR is seeded (rank_scaled); the percent
+    coefficient + the AP / MS / regen / per-instance-DR / per-hit sub-terms are
+    documented omissions (the item-264 omission boundary). No new schema field -
+    hand-authoring resolves the per-series attribution the item-264 note imagined
+    needing a generic parser for.
 Documented EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
-  - UNLABELED MULTI-STAT / MULTI-TIER block (the [other] blocks carry several
-    series with no name, so the armor/MR value cannot be confidently attributed):
-    Singed R (3 unlabeled [other] series for AP / armor / MR / regen), Braum W
-    (self + ALLY share x base + enhanced flat/% tiers), Leona W (base vs
-    hit-enhanced resist tiers + a % term), Jax R (flat + % bonus-AD stack tiers).
   - FORM-GATED with a GATE-DEPENDENT magnitude (the resist exists ONLY in one
     form; unlike K'Sante All Out / Kayn R where the base is gate-INDEPENDENT, here
     Cannon stance has ZERO of this grant so the base cannot be cleanly seeded -
@@ -382,6 +389,76 @@ _PASSIVE_RESIST_OVERRIDES: dict[tuple[str, str, int], PassiveResistEntry] = {
         conditional_probability=1.0,
         note="True Grit: 32/56/80/104/128 ARMOR-ONLY by E rank at the 8-stack cap ([other] block); seeded at the in-fight steady-state cap; rank_scaled (E priority_3)",
         attribute="True Grit",
+        rank_scaled=True,
+    ),
+    # ----- item 270: UNLABELED MULTI-STAT / MULTI-SERIES block resist set (the
+    # last seedable resist-grant EXCLUSION class from items 264/267/268). These
+    # forms carry a parsed Meraki block that bundles several stats or two value
+    # series with no per-stat label, so item 264 deferred them as "value cannot be
+    # confidently attributed". HAND attribution resolves them cleanly:
+    #   - Singed R "Bonus Stats" is ONE series [25,60,95] shared by AP / armor / MR
+    #     (the canonical Insanity Potion - the same flat number to all three; the
+    #     % MS + the two regen blocks are separate). armor == MR == that series.
+    #   - Braum W / Leona W / Jax R carry a TWO-series block: series[0] VARIES by
+    #     ability rank (the flat base armor / MR) and series[1] is CONSTANT across
+    #     ranks (a percent coefficient). The rank-varying series is seeded as the
+    #     flat base; the constant percent coefficient is OMITTED per its (different)
+    #     base: Braum 36% of the ALLY's bonus resist (cross-champion, no ally seam),
+    #     Leona 20% (attribution uncertain - own-bonus not confirmed), Jax 40%/24%
+    #     of BONUS AD (no bonus-AD ctx on the EHP seam - the item-264 omission
+    #     boundary). The flat base is exact + correct lower-bound.
+    #
+    # Singed R Insanity Potion: armor == MR == [25,60,95] by R rank ("Bonus Stats"
+    # block). 25s active on a 100s cooldown -> amortized at the active midpoint
+    # (uptime ~0.25, the 0.3 convention midpoint). AP + % MS + HP/mana regen
+    # omitted (not resist). rank_scaled (R 6/11/16).
+    ("Singed", "R", 0): PassiveResistEntry(
+        armor=(25.0, 60.0, 95.0),
+        mr=(25.0, 60.0, 95.0),
+        conditional_probability=_ACTIVE_RESIST_PROB,
+        note="Insanity Potion: 25/60/95 armor + MR by R rank (shared Bonus Stats series, == the AP value); 25s active amortized at the midpoint; AP/MS/regen omitted; rank_scaled",
+        attribute="Insanity Potion",
+        rank_scaled=True,
+    ),
+    # Braum W Stand Behind Me: self base armor + MR [20,25,30,35,40] by W rank
+    # ("Self Bonus Armor" / "Self Bonus Magic Resistance" series[0]). The +36% of
+    # the ALLY's bonus resists (series[1], constant 36) is OMITTED (cross-champion,
+    # no ally resist on the EHP seam). Short active grant -> amortized. rank_scaled
+    # (W priority_2).
+    ("Braum", "W", 0): PassiveResistEntry(
+        armor=(20.0, 25.0, 30.0, 35.0, 40.0),
+        mr=(20.0, 25.0, 30.0, 35.0, 40.0),
+        conditional_probability=_ACTIVE_RESIST_PROB,
+        note="Stand Behind Me: 20/25/30/35/40 self armor + MR by W rank (series[0]); +36% of ALLY bonus resist omitted (cross-champion); active amortized at the midpoint; rank_scaled (W priority_2)",
+        attribute="Stand Behind Me",
+        rank_scaled=True,
+    ),
+    # Leona W Eclipse: base armor + MR [20,27.5,35,42.5,50] by W rank ("Bonus
+    # Armor" / "Bonus Magic Resistance" series[0]). The +20% (series[1], constant
+    # 20) is OMITTED (attribution uncertain - own-bonus not confirmed), as is the
+    # separate "Flat Damage Reduction" [8..24] (a per-INSTANCE flat-AMOUNT
+    # reduction, NOT a flat-% DR; the item-261 per-instance exclusion). 3s active
+    # (+3s if it hits) -> amortized. rank_scaled (W priority_2).
+    ("Leona", "W", 0): PassiveResistEntry(
+        armor=(20.0, 27.5, 35.0, 42.5, 50.0),
+        mr=(20.0, 27.5, 35.0, 42.5, 50.0),
+        conditional_probability=_ACTIVE_RESIST_PROB,
+        note="Eclipse: 20/27.5/35/42.5/50 armor + MR by W rank (series[0]); +20% second series + the per-instance flat damage reduction omitted; 3s active amortized at the midpoint; rank_scaled (W priority_2)",
+        attribute="Eclipse",
+        rank_scaled=True,
+    ),
+    # Jax R Grandmaster-at-Arms: base armor [25,50,75] + MR [15,30,45] by R rank
+    # ("Bonus Armor" / "Bonus Magic Resistance" series[0], granted when the active
+    # lantern swing hits a champion). The +40% / +24% of BONUS AD (series[1],
+    # constant) is OMITTED (no bonus-AD ctx on the EHP seam; the item-264 boundary),
+    # as is the "per Champion Hit" extra [20/25/30 armor, 12/15/18 MR] (additional
+    # per-extra-champ). On-hit active -> amortized. rank_scaled (R 6/11/16).
+    ("Jax", "R", 0): PassiveResistEntry(
+        armor=(25.0, 50.0, 75.0),
+        mr=(15.0, 30.0, 45.0),
+        conditional_probability=_ACTIVE_RESIST_PROB,
+        note="Grandmaster-at-Arms: 25/50/75 armor + 15/30/45 MR by R rank (series[0], on active champ-hit); +40%/24% bonus-AD + per-champ-hit extra omitted; active amortized at the midpoint; rank_scaled",
+        attribute="Grandmaster-at-Arms",
         rank_scaled=True,
     ),
 }
