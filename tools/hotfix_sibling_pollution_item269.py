@@ -152,8 +152,10 @@ _ARAM_CARRY = {
                      "Rapid Firecannon", "Lord Dominik's Regards", "The Collector"],
     "Quinn": ["Yun Tal Wildarrows", "Berserker's Greaves", "Infinity Edge",
               "Rapid Firecannon", "Lord Dominik's Regards", "The Collector"],
-    "Twitch": ["Blade of The Ruined King", "Berserker's Greaves", "Runaan's Hurricane",
-               "Infinity Edge", "Lord Dominik's Regards", "Yun Tal Wildarrows"],
+    # Twitch intentionally omitted: its curated on-hit path (BotRK +
+    # Runaan's) already IS its ARAM carry build, so a generic crit-carry
+    # template collided 1:1 with on-hit (item 213 test_b duplicate guard).
+    # Twitch is hand-served by on-hit + crit; no generic aram-carry path.
     "Varus": ["Yun Tal Wildarrows", "Berserker's Greaves", "Infinity Edge",
               "Rapid Firecannon", "Lord Dominik's Regards", "Runaan's Hurricane"],
     "Xayah": ["Yun Tal Wildarrows", "Berserker's Greaves", "Infinity Edge",

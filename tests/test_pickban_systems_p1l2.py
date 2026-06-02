@@ -27,6 +27,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from core import smoothed_rates as S
 from dashboard import routes_pickban as RP
@@ -469,10 +470,20 @@ class CoachPathAgreement(unittest.TestCase):
 
     def test_coach_pick_safe_without_champion_or_key(self):
         from coaches.champ_select_coach import coach_pick
+        # Hermetic spend-gate: the api-key-missing path sits AFTER the
+        # champ_select kill-switch check, so a local
+        # config/coach_settings.json that disables "champ_select" (the
+        # operator's gitignored runtime preference) would short-circuit to
+        # "(champ-select coach disabled)" before the api-key branch. Force
+        # the gate OFF so this safety contract is config-independent; the
+        # no-champion path is checked before the gate and needs no patch.
+        fake_tracker = MagicMock()
+        fake_tracker.gate_disabled.return_value = False
         out = coach_pick({}, "sk-ant-fake")
         self.assertFalse(out["ok"])
         self.assertIn("no champion", out["advice"].lower())
-        out2 = coach_pick({"my_champion": "Ahri"}, None)
+        with patch("core.cost_tracker.get_tracker", return_value=fake_tracker):
+            out2 = coach_pick({"my_champion": "Ahri"}, None)
         self.assertFalse(out2["ok"])
         self.assertIn("api key", out2["advice"].lower())
 
