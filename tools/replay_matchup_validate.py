@@ -97,6 +97,10 @@ class LanePair:
     champ_b: str  # team 200 side
     gold_a: float  # team 100 gold at the chosen frame
     gold_b: float  # team 200 gold at the chosen frame
+    # participant ids (needed for the trade / solo-kill ground truth). Default 0
+    # so the existing positional constructions (gold-only tests) stay valid.
+    pid_a: int = 0
+    pid_b: int = 0
 
 
 @dataclass
@@ -107,8 +111,10 @@ class LevelResult:
     n_decisive: int = 0
     n_agree: int = 0
     n_even: int = 0  # engine called it even (below dead-band) - excluded
-    n_gold_tie: int = 0  # gold was equal at the frame - excluded
+    n_gold_tie: int = 0  # gold was equal at the frame - excluded (gold mode)
     n_engine_none: int = 0  # compute_matchup returned no usable swing - excluded
+    n_no_duel: int = 0  # the lane pair never solo-killed each other (trade mode)
+    n_kill_tie: int = 0  # equal solo-kill counts (trade mode) - excluded
     per_role: Dict[str, Dict[str, int]] = field(default_factory=dict)
 
     def record(self, role: str, agreed: bool) -> None:
@@ -147,6 +153,8 @@ class LevelResult:
                 "even_band": self.n_even,
                 "gold_tie": self.n_gold_tie,
                 "engine_none": self.n_engine_none,
+                "no_duel": self.n_no_duel,
+                "kill_tie": self.n_kill_tie,
             },
             "per_role": per_role_out,
         }
@@ -275,9 +283,79 @@ def extract_lane_pairs(conn: sqlite3.Connection, match_id: str, gold_frame_min: 
                 champ_b=champ_b,
                 gold_a=gold_by_pid[pid_a],
                 gold_b=gold_by_pid[pid_b],
+                pid_a=pid_a,
+                pid_b=pid_b,
             )
         )
     return pairs
+
+
+def extract_kill_counts(
+    conn: sqlite3.Connection,
+    match_id: str,
+    pid_a: int,
+    pid_b: int,
+) -> Dict[str, Tuple[int, int]]:
+    """Count CHAMPION_KILL events between two participants (the trade truth).
+
+    Returns ``{"solo": (a_kills_b, b_kills_a), "any": (a_kills_b, b_kills_a)}``
+    where ``solo`` counts only un-assisted kills (assisting_ids_json empty = a
+    true 1v1 duel outcome) and ``any`` counts every direct A-on-B kill (includes
+    gank-assisted, more samples but noisier). Fail-soft: a DB error or a
+    malformed assists json -> the affected row is skipped, never raises.
+    """
+    try:
+        rows = conn.execute(
+            "SELECT killer_id, victim_id, assisting_ids_json FROM timeline_events "
+            "WHERE match_id = ? AND event_type = 'CHAMPION_KILL' "
+            "AND killer_id IN (?, ?) AND victim_id IN (?, ?)",
+            (match_id, pid_a, pid_b, pid_a, pid_b),
+        ).fetchall()
+    except sqlite3.Error:
+        return {"solo": (0, 0), "any": (0, 0)}
+
+    a_b_any = b_a_any = a_b_solo = b_a_solo = 0
+    for killer, victim, assists_json in rows:
+        if killer is None or victim is None:
+            continue
+        try:
+            killer = int(killer)
+            victim = int(victim)
+        except (TypeError, ValueError):
+            continue
+        is_a_on_b = killer == pid_a and victim == pid_b
+        is_b_on_a = killer == pid_b and victim == pid_a
+        if not (is_a_on_b or is_b_on_a):
+            continue
+        solo = _assists_empty(assists_json)
+        if is_a_on_b:
+            a_b_any += 1
+            if solo:
+                a_b_solo += 1
+        else:
+            b_a_any += 1
+            if solo:
+                b_a_solo += 1
+    return {"solo": (a_b_solo, b_a_solo), "any": (a_b_any, b_a_any)}
+
+
+def _assists_empty(assists_json: object) -> bool:
+    """True when a CHAMPION_KILL had NO assisters (a true 1v1 solo kill).
+
+    The column is a JSON array string; empty/absent/``[]`` means solo. Any parse
+    trouble is treated as NOT solo (conservative - keeps a doubtful kill out of
+    the clean solo bucket). Never raises.
+    """
+    if assists_json is None:
+        return True
+    s = str(assists_json).strip()
+    if s in ("", "[]", "null"):
+        return True
+    try:
+        parsed = json.loads(s)
+    except (ValueError, TypeError):
+        return False
+    return isinstance(parsed, list) and len(parsed) == 0
 
 
 # --------------------------------------------------------------------- engine scoring
@@ -331,6 +409,59 @@ def score_pair(
     engine_favors_a = net_swing > 0.0
     gold_favors_a = pair.gold_a > pair.gold_b
     return ("decisive", engine_favors_a == gold_favors_a)
+
+
+def score_pair_trade(
+    pair: LanePair,
+    level: int,
+    snapshot: object,
+    matchup_fn: Callable,
+    a_kills_b: int,
+    b_kills_a: int,
+    even_band: float = _EVEN_BAND,
+) -> Tuple[str, bool]:
+    """Score one lane pair against the SOLO-KILL (duel) ground truth at one level.
+
+    The engine half is identical to ``score_pair`` (favored = A when net_swing >
+    0). The ground truth is the direct-kill differential between the two laners:
+    the duel "winner" is whoever killed the other more. status:
+      - "engine_none" : compute_matchup gave no usable net_swing
+      - "even"        : |net_swing| below the dead-band
+      - "no_duel"     : the pair never killed each other (no signal)
+      - "kill_tie"    : equal kill counts (no decisive truth)
+      - "decisive"    : a real comparison; ``agreed`` is meaningful
+
+    This is a MORE-DIRECT proxy for the 1v1 trade the chip claims than lane gold,
+    though still noisy (a "solo" kill can be a missed-assist gank, duels are
+    sparse). Fail-soft: a matchup exception maps to "engine_none".
+    """
+    try:
+        result = matchup_fn(
+            snapshot, pair.champ_a, pair.champ_b,
+            level_a=level, level_b=level, mode="SR",
+        )
+    except Exception:
+        return ("engine_none", False)
+    if result is None:
+        return ("engine_none", False)
+    net_swing = getattr(result, "net_swing", None)
+    if net_swing is None:
+        return ("engine_none", False)
+    try:
+        net_swing = float(net_swing)
+    except (TypeError, ValueError):
+        return ("engine_none", False)
+    if abs(net_swing) < even_band:
+        return ("even", False)
+
+    if a_kills_b == 0 and b_kills_a == 0:
+        return ("no_duel", False)
+    if a_kills_b == b_kills_a:
+        return ("kill_tie", False)
+
+    engine_favors_a = net_swing > 0.0
+    duel_favors_a = a_kills_b > b_kills_a
+    return ("decisive", engine_favors_a == duel_favors_a)
 
 
 # ----------------------------------------------------------------------- orchestration
@@ -403,6 +534,110 @@ def run_validation(
     return report
 
 
+def run_trade_validation(
+    db_path: Path,
+    levels: Sequence[int],
+    limit: int,
+    gold_frame_min: int,
+    snapshot: object,
+    matchup_fn: Callable,
+    even_band: float = _EVEN_BAND,
+) -> dict:
+    """Score the engine against the SOLO-KILL duel ground truth (the trade chip).
+
+    Reuses the same SR-match selection + lane pairing as the gold path, but the
+    truth is the direct-kill differential from ``timeline_events``. Produces TWO
+    parallel scorings per level: ``solo`` (un-assisted kills, the cleanest 1v1
+    signal) and ``any`` (all direct kills, more samples / noisier). The pairing
+    still needs the gold frame only to resolve the participant ids cleanly.
+    """
+    conn = sqlite3.connect(str(db_path))
+    try:
+        match_ids = select_sr_match_ids(conn, limit)
+        solo: Dict[int, LevelResult] = {lvl: LevelResult(level=lvl) for lvl in levels}
+        anyk: Dict[int, LevelResult] = {lvl: LevelResult(level=lvl) for lvl in levels}
+
+        n_matches_used = 0
+        n_matches_skipped = 0
+        n_pairs_total = 0
+        n_pairs_with_solo_duel = 0
+        n_pairs_with_any_duel = 0
+
+        for mid in match_ids:
+            try:
+                pairs = extract_lane_pairs(conn, mid, gold_frame_min)
+            except Exception:
+                n_matches_skipped += 1
+                continue
+            if not pairs:
+                n_matches_skipped += 1
+                continue
+            n_matches_used += 1
+            n_pairs_total += len(pairs)
+            for pair in pairs:
+                try:
+                    kc = extract_kill_counts(conn, mid, pair.pid_a, pair.pid_b)
+                except Exception:
+                    kc = {"solo": (0, 0), "any": (0, 0)}
+                a_solo, b_solo = kc["solo"]
+                a_any, b_any = kc["any"]
+                if a_solo or b_solo:
+                    n_pairs_with_solo_duel += 1
+                if a_any or b_any:
+                    n_pairs_with_any_duel += 1
+                for lvl in levels:
+                    _accumulate_trade(solo[lvl], pair, lvl, snapshot, matchup_fn,
+                                      a_solo, b_solo, even_band)
+                    _accumulate_trade(anyk[lvl], pair, lvl, snapshot, matchup_fn,
+                                      a_any, b_any, even_band)
+    finally:
+        conn.close()
+
+    return {
+        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+        "db": str(db_path),
+        "game_mode": _SR_GAME_MODE,
+        "ground_truth": "solo_kill_duel",
+        "even_band": even_band,
+        "limit": limit,
+        "matches_selected": len(match_ids),
+        "matches_used": n_matches_used,
+        "matches_skipped": n_matches_skipped,
+        "pairs_total": n_pairs_total,
+        "pairs_with_solo_duel": n_pairs_with_solo_duel,
+        "pairs_with_any_duel": n_pairs_with_any_duel,
+        "levels_solo": [solo[lvl].to_dict() for lvl in levels],
+        "levels_any": [anyk[lvl].to_dict() for lvl in levels],
+        "interpretation": (
+            "Ground truth = direct-kill differential between the two laners (who "
+            "killed whom). 'solo' counts only un-assisted kills (cleanest 1v1); "
+            "'any' counts all direct kills (more samples, gank noise). agreement "
+            ">0.50 here means the engine predicts the actual DUEL outcome (the "
+            "question the trade chip claims to answer), which gold-at-10min does "
+            "not directly test. Duels are sparse + a 'solo' kill can be a "
+            "missed-assist gank, so still treat as a noisy proxy, not an oracle."
+        ),
+    }
+
+
+def _accumulate_trade(lr: LevelResult, pair: LanePair, level: int, snapshot,
+                      matchup_fn: Callable, a_kills_b: int, b_kills_a: int,
+                      even_band: float) -> None:
+    """Score one (pair, level) into a trade LevelResult bucket."""
+    status, agreed = score_pair_trade(
+        pair, level, snapshot, matchup_fn, a_kills_b, b_kills_a, even_band)
+    if status == "engine_none":
+        lr.n_engine_none += 1
+    elif status == "even":
+        lr.n_even += 1
+    elif status == "no_duel":
+        lr.n_no_duel += 1
+    elif status == "kill_tie":
+        lr.n_kill_tie += 1
+    else:
+        lr.record(pair.lane, agreed)
+
+
 def _fmt_pct(x: Optional[float]) -> str:
     return "  n/a" if x is None else f"{x * 100:5.1f}%"
 
@@ -439,6 +674,37 @@ def print_summary(report: dict) -> None:
         print(f"  level {lv['level']} per-role:")
         for role, slot in lv["per_role"].items():
             print(f"    {role:<8} n={slot['n']:>4}  agree={_fmt_pct(slot['agreement'])}")
+    print("")
+    print("interpretation:")
+    print("  " + report["interpretation"])
+    print("")
+
+
+def print_trade_summary(report: dict) -> None:
+    """Concise human-readable summary for the solo-kill trade report (ASCII)."""
+    print("")
+    print("=== Replay matchup validation - SOLO-KILL TRADE ground truth ===")
+    print(
+        f"db={report['db']}  mode={report['game_mode']}  even_band={report['even_band']}"
+    )
+    print(
+        f"matches: selected={report['matches_selected']} used={report['matches_used']} "
+        f"skipped={report['matches_skipped']}  pairs={report['pairs_total']}  "
+        f"pairs_with_duel solo={report['pairs_with_solo_duel']} any={report['pairs_with_any_duel']}"
+    )
+    for label, key in (("SOLO (1v1)", "levels_solo"), ("ANY (incl gank)", "levels_any")):
+        print("")
+        print(f"  -- {label} --")
+        print(f"  {'level':>5}  {'n':>6}  {'agree':>6}  {'95% Wilson':>16}")
+        print("  " + "-" * 44)
+        for lv in report[key]:
+            ci = ""
+            if lv["wilson_95_lo"] is not None:
+                ci = f"[{lv['wilson_95_lo'] * 100:4.1f}, {lv['wilson_95_hi'] * 100:4.1f}]"
+            print(
+                f"  {lv['level']:>5}  {lv['n_decisive']:>6}  {_fmt_pct(lv['agreement'])}  "
+                f"{ci:>16}"
+            )
     print("")
     print("interpretation:")
     print("  " + report["interpretation"])
@@ -499,6 +765,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Minute of the timeline frame used as lane-gold ground truth. Default %(default)s.",
     )
     ap.add_argument("--out", default=str(_DEFAULT_OUT), help="Output JSON gate artifact path.")
+    ap.add_argument(
+        "--ground-truth",
+        choices=("gold", "trade", "both"),
+        default="both",
+        help="Which ground truth(s) to score against: lane gold at the frame, "
+             "the solo-kill duel differential, or both. Default %(default)s.",
+    )
     args = ap.parse_args(argv)
 
     db_path = Path(args.db)
@@ -512,18 +785,37 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     snapshot = _load_snapshot()
     matchup_fn = _load_matchup_fn()
 
-    report = run_validation(
-        db_path=db_path,
-        levels=levels,
-        limit=args.limit,
-        gold_frame_min=args.gold_frame,
-        snapshot=snapshot,
-        matchup_fn=matchup_fn,
-    )
+    gold_report = None
+    trade_report = None
+    if args.ground_truth in ("gold", "both"):
+        gold_report = run_validation(
+            db_path=db_path, levels=levels, limit=args.limit,
+            gold_frame_min=args.gold_frame, snapshot=snapshot, matchup_fn=matchup_fn,
+        )
+    if args.ground_truth in ("trade", "both"):
+        trade_report = run_trade_validation(
+            db_path=db_path, levels=levels, limit=args.limit,
+            gold_frame_min=args.gold_frame, snapshot=snapshot, matchup_fn=matchup_fn,
+        )
+
+    # The on-disk artifact: a single-mode report keeps the legacy top-level shape;
+    # 'both' nests them under gold/trade with a thin envelope.
+    if gold_report is not None and trade_report is not None:
+        out_report = {
+            "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            "ground_truth": "both",
+            "gold": gold_report,
+            "trade": trade_report,
+        }
+    else:
+        out_report = gold_report if gold_report is not None else trade_report
 
     out_path = Path(args.out)
-    _write_report(report, out_path)
-    print_summary(report)
+    _write_report(out_report, out_path)
+    if gold_report is not None:
+        print_summary(gold_report)
+    if trade_report is not None:
+        print_trade_summary(trade_report)
     print(f"gate artifact written: {out_path}", file=sys.stderr)
     return 0
 
