@@ -162,10 +162,11 @@ class EhpIntegrationTests(unittest.TestCase):
 class ExclusionDocTests(unittest.TestCase):
     def test_remaining_exclusions_absent(self):
         cids = {k[0] for k in _PASSIVE_RESIST_OVERRIDES}
-        # The 3 different-seam NEGATIVES that remain after item 271:
-        # Anivia (resurrection non-combat) / Thresh (per-stack unbounded) /
-        # Orianna (ball-attached, rides an ally not the caster).
-        for c in ("Anivia", "Thresh", "Orianna"):
+        # The 2 different-seam NEGATIVES that remain after item 272 (Thresh was the
+        # per-stack-unbounded exclusion -> SEEDED per_stack by item 272):
+        # Anivia (resurrection non-combat) / Orianna (ball-attached, rides an ally
+        # not the caster).
+        for c in ("Anivia", "Orianna"):
             self.assertNotIn(c, cids)
 
     def test_jayce_no_longer_excluded(self):
@@ -177,8 +178,8 @@ class EngineVersionTests(unittest.TestCase):
     def test_engine_pin(self):
         import agents.daemon_slayer as ds
 
-        self.assertEqual(ds.ENGINE_VERSION, "1.98.0")
-        self.assertEqual(ENGINE_VERSION, "1.98.0")
+        self.assertEqual(ds.ENGINE_VERSION, "1.99.0")
+        self.assertEqual(ENGINE_VERSION, "1.99.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):
