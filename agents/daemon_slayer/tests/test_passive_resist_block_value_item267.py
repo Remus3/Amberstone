@@ -33,7 +33,7 @@ _NEW = ("Olaf", "Nasus", "Kennen", "Hecarim", "Rammus", "Graves")
 
 class RegistryShapeTests(unittest.TestCase):
     def test_total_twelve_entries(self):
-        self.assertEqual(len(_PASSIVE_RESIST_OVERRIDES), 12)
+        self.assertGreaterEqual(len(_PASSIVE_RESIST_OVERRIDES), 12)  # item 268 adds percent-of-resist entries
 
     def test_six_new_champs_present_and_rank_scaled(self):
         by_cid = {k[0]: v for k, v in _PASSIVE_RESIST_OVERRIDES.items()}
@@ -157,7 +157,7 @@ class ComputeEhpIntegrationTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.95.0")
+        self.assertEqual(ENGINE_VERSION, "1.96.0")
 
 
 class AsciiTests(unittest.TestCase):
