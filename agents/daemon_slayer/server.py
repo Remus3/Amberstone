@@ -415,6 +415,7 @@ def _route_ehp(body: dict) -> dict:
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
     include_conditional = _opt_bool(body, "include_conditional", False)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
+    apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -425,6 +426,7 @@ def _route_ehp(body: dict) -> dict:
             enemy_champions=enemies,
             include_conditional=include_conditional,
             apply_mode_modifiers=apply_mode_modifiers,
+            apply_passive_mitigation=apply_passive_mitigation,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -476,6 +478,7 @@ def _route_rank_tank(body: dict) -> dict:
         _opt_bool(body, "apply_build_tenacity", False)
         if "apply_build_tenacity" in body else None
     )
+    apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     try:
         result = rank_items_by_ehp(
             snap,
@@ -493,6 +496,7 @@ def _route_rank_tank(body: dict) -> dict:
             include_conditional=include_conditional,
             score_by=score_by,
             apply_build_tenacity=apply_build_tenacity,
+            apply_passive_mitigation=apply_passive_mitigation,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
