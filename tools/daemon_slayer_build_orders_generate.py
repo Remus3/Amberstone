@@ -185,7 +185,7 @@ def build_order_for_class(
     engine's documented extra); the typical-enemy stat block + boots +
     no-double-unique are the engine's responsibility.
     """
-    ad_share, _ap_share = _COMP_SHARES[comp_class]
+    ad_share, ap_share = _COMP_SHARES[comp_class]
     ds_mode = DS_MODE_BY_KEY.get(mode, "SR")
     try:
         result = plan_build_order(
@@ -199,7 +199,10 @@ def build_order_for_class(
             target_max_hp=_TARGET_MAX_HP,
             target_bonus_hp=_TARGET_BONUS_HP,
             slots=_SLOTS,
-            rank_kwargs={"enemy_ad_share": ad_share},
+            # Both shares must ride together: the engine rejects ad+ap > 1.0,
+            # so passing ad alone leaves ap at its 0.5 default and an ad_heavy
+            # 0.7 + 0.5 = 1.2 over-sum returns an empty plan.
+            rank_kwargs={"enemy_ad_share": ad_share, "enemy_ap_share": ap_share},
             timeout=_TIMEOUT,
         )
     except Exception as exc:  # noqa: BLE001 - one bad cell never sinks the run
