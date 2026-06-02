@@ -17367,8 +17367,8 @@
               "_source_variant_key": "auto-arena-flavor-carry"
             },
             {
-              "key": "auto-arena-secondary-mage",
-              "label": "Mage (sec)",
+              "key": "auto-arena-secondary-bruiser",
+              "label": "Bruiser (sec)",
               "items": [
                 "Bloodthirster",
                 "Ravenous Hydra",
@@ -17385,7 +17385,7 @@
                 4,
                 7
               ],
-              "_archetype": "mage",
+              "_archetype": "bruiser",
               "_source_variant_key": "auto-arena-secondary-mage"
             }
           ]
@@ -26566,8 +26566,8 @@
               "_is_primary": true
             },
             {
-              "key": "auto-arena-flavor-mage",
-              "label": "Mage (flav)",
+              "key": "auto-arena-flavor-bruiser",
+              "label": "Bruiser (flav)",
               "items": [
                 "Manamune",
                 "Bloodthirster",
@@ -26584,7 +26584,7 @@
                 4,
                 7
               ],
-              "_archetype": "mage",
+              "_archetype": "bruiser",
               "_source_variant_key": "auto-arena-flavor-mage"
             },
             {
@@ -26822,8 +26822,8 @@
               "_source_variant_key": "auto-arena-flavor-carry"
             },
             {
-              "key": "auto-arena-secondary-mage",
-              "label": "Mage (sec)",
+              "key": "auto-arena-secondary-bruiser",
+              "label": "Bruiser (sec)",
               "items": [
                 "Twilight's Edge",
                 "Wooglet's Witchcap",
@@ -26840,7 +26840,7 @@
                 4,
                 7
               ],
-              "_archetype": "mage",
+              "_archetype": "bruiser",
               "_source_variant_key": "auto-arena-secondary-mage"
             }
           ]
@@ -30539,8 +30539,8 @@
               "_is_primary": true
             },
             {
-              "key": "auto-arena-flavor-mage",
-              "label": "Mage (flav)",
+              "key": "auto-arena-flavor-bruiser",
+              "label": "Bruiser (flav)",
               "items": [
                 "Twilight's Edge",
                 "Bloodthirster",
@@ -30557,7 +30557,7 @@
                 4,
                 7
               ],
-              "_archetype": "mage",
+              "_archetype": "bruiser",
               "_source_variant_key": "auto-arena-flavor-mage"
             },
             {
@@ -33204,8 +33204,8 @@
               "_source_variant_key": "auto-arena-flavor-assassin"
             },
             {
-              "key": "auto-arena-secondary-mage",
-              "label": "Mage (sec)",
+              "key": "auto-arena-secondary-bruiser",
+              "label": "Bruiser (sec)",
               "items": [
                 "Twilight's Edge",
                 "Wooglet's Witchcap",
@@ -33222,7 +33222,7 @@
                 4,
                 7
               ],
-              "_archetype": "mage",
+              "_archetype": "bruiser",
               "_source_variant_key": "auto-arena-secondary-mage"
             }
           ]
@@ -35311,8 +35311,8 @@
               "_source_variant_key": "auto-arena-flavor-carry"
             },
             {
-              "key": "auto-arena-secondary-mage",
-              "label": "Mage (sec)",
+              "key": "auto-arena-secondary-bruiser",
+              "label": "Bruiser (sec)",
               "items": [
                 "Bloodthirster",
                 "Ravenous Hydra",
@@ -35329,7 +35329,7 @@
                 4,
                 7
               ],
-              "_archetype": "mage",
+              "_archetype": "bruiser",
               "_source_variant_key": "auto-arena-secondary-mage"
             }
           ]
@@ -38231,8 +38231,8 @@
               "_source_variant_key": "auto-arena-flavor-assassin"
             },
             {
-              "key": "auto-arena-secondary-mage",
-              "label": "Mage (sec)",
+              "key": "auto-arena-secondary-bruiser",
+              "label": "Bruiser (sec)",
               "items": [
                 "Twilight's Edge",
                 "Wooglet's Witchcap",
@@ -38249,7 +38249,7 @@
                 4,
                 7
               ],
-              "_archetype": "mage",
+              "_archetype": "bruiser",
               "_source_variant_key": "auto-arena-secondary-mage"
             }
           ]
@@ -43923,8 +43923,8 @@
               "_source_variant_key": "auto-arena-flavor-carry"
             },
             {
-              "key": "auto-arena-secondary-mage",
-              "label": "Mage (sec)",
+              "key": "auto-arena-secondary-bruiser",
+              "label": "Bruiser (sec)",
               "items": [
                 "Bloodthirster",
                 "Ravenous Hydra",
@@ -43941,7 +43941,7 @@
                 4,
                 7
               ],
-              "_archetype": "mage",
+              "_archetype": "bruiser",
               "_source_variant_key": "auto-arena-secondary-mage"
             }
           ]
