@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-06-02 - item 265 (/headless-upgrade, IN PROGRESS): Haiku-elimination FOUNDATIONS (ENGINE 1.94.0)
+
+HEAD `f977c0d` (5 merges + 2 fixes this run). ENGINE 1.93.0 -> 1.94.0, DS :8893 restarted 1.94.0, DS 6045 -> 6056, RC +118 new tests, CI green (run 26804451116), Share re-synced 1.94.0. RC NOT restarted (new core/ modules load on next coach tick).
+
+SHIPPED (PRIMARY north star = zero live Haiku via precomputed DS lookups):
+- Lane A `agents/daemon_slayer/matchup.py` `compute_matchup` -> verdict {all_in,trade,back_off,even} + net_swing; NEW `/v2/matchup`. The deterministic trade-judgment substitute. +13 DS tests.
+- Lane B `tools/daemon_slayer_build_orders_generate.py` -> `data/daemon_slayer/16.11.1/build_orders_{sr,aram,arena}.json` (516/516 cells). FIX: generator must pass BOTH enemy_ad_share + enemy_ap_share (engine rejects sum>1.0; ad_heavy 0.7 was returning empty for 74 champs).
+- Lane C `core/laning_verdicts.py` (matchup->CoachChoice) + Lane E `core/event_callouts.py` + Lane P `core/lead_projection.py`. Pure, fail-soft, NOT wired into coaches yet.
+
+DON'T-REDO: compute_matchup is the trade engine (do not reimplement); build_orders generator passes both shares; the 3 generators are not yet wired live.
+
+NEXT (wave 3 - hit server-side rate-limiting at 0 tokens mid-dispatch, /done fired; REDO next session): W3A wire deterministic choices+callouts+lead into `dashboard/_state_builder.py` (TTL-cached, fail-soft, deterministic-FIRST choices, byte-identical out-of-game) ; W3B replay-validation harness (rewind_history -> matchup verdict agreement = the GATE for flipping a coach off Haiku) ; W3C Pick&Ban targets DB. Then validate-via-replay BEFORE flipping any coach choices off its live Haiku call (section 4b: do NOT flip blind); frontend slice (visual proof + UI-audit) for callouts/lead; overlay Lane D. Synopsis: Desktop/RC_HEADLESS_SYNOPSIS_2026-06-02.md.
+
+---
+
 # 2026-06-02 - item 264: DS GAP-2 effects-text RESIST-STAT grant registry + 6 seeded (ENGINE 1.93.0, DS restarted + live-verified, RC NOT restarted)
 
 Operator "start the next DS schema lift and exhaust it then /done". Pre-flight: clean tree, main, item 263 last shipped, DS 1.92.0. Item 262 declared the survivability TRIAD (heal/shield/DR) scorer-COMPLETE; gap-plan named items + item-257 "LAST named clean headless DS item" all done. Found the genuinely-next clean lift by reading item 261's OWN exclusion list: "RESIST-STAT grant (bonus armor/MR, a DIFFERENT axis than a damage multiplier)" was a documented NEGATIVE = the FOURTH survivability axis, unmodeled.
