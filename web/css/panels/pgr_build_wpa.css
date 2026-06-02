@@ -1,0 +1,110 @@
+/* Post-Game "Your Build, Graded by Your Career" WPA strip (item 275,
+ * PGR reframe S2). Sits under the hero in the last-match view. Career
+ * item-WPA + skill-WPA chips on the reviewed match's actual loadout. */
+
+#pgr-build-wpa-mount[hidden] { display: none; }
+
+.pbw-card {
+  margin: 6px 0 4px;
+  padding: 8px 10px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+
+.pbw-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.pbw-title {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text, #e8eaf0);
+}
+.pbw-sub {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+}
+
+.pbw-item-row,
+.pbw-skill-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.pbw-strip-label {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+  min-width: 64px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pbw-item,
+.pbw-skill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--hit-min, 42px);
+}
+.pbw-item-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+}
+.pbw-skill-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-soft);
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  color: var(--text, #e8eaf0);
+}
+.pbw-skill.is-best .pbw-skill-key {
+  border-color: var(--signal-good, #4ade80);
+  color: var(--signal-good, #4ade80);
+}
+
+/* WPA chip: signed value + 5-seg confidence bar. */
+.pbw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-size: var(--fs-xs, 16px);
+  font-variant-numeric: tabular-nums;
+}
+.pbw-chip-val { font-weight: 700; }
+.pbw-pos .pbw-chip-val,
+.pbw-pos.pbw-chip { color: var(--signal-good, #4ade80); }
+.pbw-neg .pbw-chip-val,
+.pbw-neg.pbw-chip { color: var(--signal-bad, #f87171); }
+.pbw-na {
+  color: var(--text-dim, #8b93a7);
+  font-size: var(--fs-xs, 16px);
+  opacity: 0.6;
+}
+
+.pbw-chip-conf { display: inline-flex; gap: 2px; }
+.pbw-seg {
+  width: 4px;
+  height: 11px;
+  border-radius: 1px;
+  background: var(--border-soft);
+  opacity: 0.4;
+}
+.pbw-seg.is-on.pbw-pos { background: var(--signal-good, #4ade80); opacity: 0.9; }
+.pbw-seg.is-on.pbw-neg { background: var(--signal-bad, #f87171); opacity: 0.9; }
