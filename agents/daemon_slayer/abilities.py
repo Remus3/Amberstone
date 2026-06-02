@@ -45,6 +45,7 @@ from typing import Any, Iterable
 from ._ability_overrides import DAMAGE_TYPE_OVERRIDES, NON_DAMAGE_BLOCKS
 from ._passive_damage_overrides import _PASSIVE_DAMAGE_OVERRIDES, to_damage_block
 from ._passive_heal_overrides import _PASSIVE_HEAL_OVERRIDES, to_heal_block
+from ._passive_shield_overrides import _PASSIVE_SHIELD_OVERRIDES, to_shield_block
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
@@ -331,6 +332,35 @@ def _apply_passive_heal_overrides(cid: str, key: str, form: AbilityForm) -> Abil
     )
 
 
+def _apply_passive_shield_overrides(cid: str, key: str, form: AbilityForm) -> AbilityForm:
+    """Inject the GAP-2 effects-text-only SHIELD block at load time.
+
+    OPT-IN: runs only when ``AbilitiesSnapshot.load`` is called with
+    ``apply_passive_shield=True``. Appends a synthetic ``attribute_kind="shield"``
+    block to a form ONLY when:
+      * the form has NO existing ``attribute_kind == "shield"`` block (so a
+        snapshot shield is never double-counted), AND
+      * ``(cid, key, form.form_index)`` has a registered ``PassiveShieldEntry``.
+
+    The synthetic shield block routes through the existing
+    ``ability_hps._select_kind_blocks`` / ``_eval_heal_shield_block`` machinery
+    (the same evaluator that already scores the 56 snapshot shield blocks).
+    Adding a shield block never touches the form's damage blocks, so
+    ``compute_ability_dps`` is unaffected even with the flag on. Returns ``form``
+    unchanged when the gate is not met. The default (flag OFF) path never calls
+    this. See ``_passive_shield_overrides`` for the registry + the exhaustive
+    scan / documented exclusions.
+    """
+    if any(b.attribute_kind == "shield" for b in form.damage_blocks):
+        return form
+    entry = _PASSIVE_SHIELD_OVERRIDES.get((cid, key, form.form_index))
+    if entry is None:
+        return form
+    return replace(
+        form, damage_blocks=form.damage_blocks + (to_shield_block(entry),),
+    )
+
+
 @dataclass(frozen=True)
 class AbilitiesSnapshot:
     """Versioned snapshot of all champion ability records.
@@ -353,6 +383,7 @@ class AbilitiesSnapshot:
         data_root: Path | None = None,
         apply_passive_damage: bool = False,
         apply_passive_heal: bool = False,
+        apply_passive_shield: bool = False,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -371,6 +402,14 @@ class AbilitiesSnapshot:
         existing heal block (Viego P / Karma W f1 / Kayn R - effects-text-only
         bilinear self-heals) so ``compute_ability_hps`` can score them under
         ``resolve_target_relative``. Default OFF = byte-identical.
+
+        ``apply_passive_shield`` (GAP 2, item 260, default False / OFF) is the
+        SHIELD sibling: when True, ``_apply_passive_shield_overrides`` appends a
+        synthetic ``attribute_kind="shield"`` block to each registered form that
+        has NO existing shield block (Malphite Granite Shield, Blitzcrank Mana
+        Barrier, Vi/Shen/Rakan/Yasuo P, Skarner W, Volibear E, Viktor Q, Camille
+        P - effects-text-only self-shields) so ``compute_ability_hps`` scores
+        them in ``total_shield_per_sec``. Default OFF = byte-identical.
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
@@ -416,6 +455,9 @@ class AbilitiesSnapshot:
                     # GAP 2 effects-text-only HEAL: opt-in, default OFF.
                     if apply_passive_heal:
                         fm = _apply_passive_heal_overrides(cid, key, fm)
+                    # GAP 2 effects-text-only SHIELD: opt-in, default OFF.
+                    if apply_passive_shield:
+                        fm = _apply_passive_shield_overrides(cid, key, fm)
                     built.append(fm)
                 per_key[key] = tuple(built)
             champions[cid] = per_key
