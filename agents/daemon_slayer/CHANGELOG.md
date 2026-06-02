@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.95.0 (GAP-2 RESIST-STAT grant "read the parsed block" lift, item 267 - the
+fifth survivability axis continued. Extends the item-264
+_passive_resist_overrides.py registry with grants whose VALUE is NOT in the
+effects_descriptions prose ("gains bonus armor and bonus magic resistance" with
+no inline number) but lives in a parsed Meraki [other] block indexed by ABILITY
+RANK. NEW PassiveResistEntry.rank_scaled flag (mutually exclusive with
+level_scaled): armor/mr is a per-ability-rank tuple resolved via
+ability_dps.rank_at_level(key, level) - deterministic for ults (R 6/11/16),
+engine-default Q>W>E priority for basics; an unlearned ability grants 0.0
+(function-level import dodges the ability_dps<->ehp cycle). _value_at_level gains
+keyword-only key/rank_scaled (back-compat: existing positional flat/level_scaled
+calls unchanged). SEEDED 6 (default-OFF byte-identical to 1.94.0; flows through
+the existing item-264 resist_grants -> compute_ehp / compute_hybrid wiring, NO
+new EHP threading): Olaf R [10/15/20] PERMANENT (prob 1.0); Nasus R [40/55/70],
+Kennen R [20/40/60], Hecarim W [5/10/15/20/25], Rammus W FLAT [27/32/37/42/47]
+(%-of-total-resist half OMITTED = percent mode) - all cooldown-gated actives
+amortized at _ACTIVE_RESIST_PROB 0.3; Graves E [32/56/80/104/128] ARMOR-ONLY at
+the 8-stack cap (prob 1.0, Garen-W-at-cap convention). EXCLUDED (documented):
+percent-of-own-resist mode (Malphite W, Taric W, Rammus W %-half, Poppy W, Rell
+W); unlabeled multi-stat/multi-tier blocks where the armor/MR value cannot be
+confidently attributed (Singed R 3 unlabeled series, Braum W self+ally
+base/enhanced, Leona W base/hit-enhanced + %, Jax R flat+%AD stacks); ball-
+attached (Orianna E); form-gated (Jayce R Hammer); resurrection (Anivia P). The
+re-rank caveat from item 264 still holds: a flat resist add goes through the
+non-linear _armor_factor so rank_items_by_ehp / _hybrid CAN re-rank flag-ON
+(correct, not a bug); DEFAULT flag-OFF stays byte-identical.)
+
 1.94.0 (Lane A - 1v1 head-to-head matchup engine + /v2/matchup route. NEW module
 matchup.py with compute_matchup(snapshot, champ_a_id, champ_b_id, level_a, level_b,
 item_ids_a, item_ids_b, mode, hp_a_pct, hp_b_pct, sequence_a, sequence_b) ->
