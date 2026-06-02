@@ -2,10 +2,11 @@
 """game_reader.poller - Live Client / LCU / vision-relay IO layer.
 
 Holds the connectivity primitives for `GameReader`:
-  - Relay path: vision server caches Game-PC's localhost Live Client API
-    (Riot's :2999 binds 127.0.0.1 only; we read /latest-liveclient and
-    /latest-lcu off the in-process vision server on Legion :8889).
-  - Direct path: fallback when the relay snapshot is stale or absent.
+  - Relay path: read /latest-liveclient + /latest-lcu off the vision server
+    on Legion :8889. Post-1-PC (ADR-011) the vision server self-heals that
+    cache by reading :2999 in-process, so the RC-LiveClientRelay agent is an
+    optimization, not a dependency - the relay endpoint stays fresh either way.
+  - Direct path: fallback to :2999 (GAME_HOST) when the relay is unreachable.
   - LCU lockfile auth for champ-select reads.
 
 `_PollerMixin` is mixed into `GameReader` (`game_reader.__init__`) - methods
@@ -27,9 +28,10 @@ from core.game_host import GAME_HOST
 
 LIVE_API = f"https://{GAME_HOST}:2999/liveclientdata"
 
-# Relay endpoint: gamepc_liveclient_relay.py on Game-PC pushes the localhost
-# Live Client API JSON to vision server, which caches it. Riot's API binds
-# 127.0.0.1 only and rejects LAN connections, so we read the cached copy.
+# Relay endpoint: the RC-LiveClientRelay agent pushes Riot's localhost Live
+# Client API JSON to the vision server, which caches it. Post-1-PC the vision
+# server also self-reads :2999 in-process to keep this fresh if the agent is
+# down (ADR-011), so this stays the primary read path for all consumers.
 RELAY_URL = "http://127.0.0.1:8889/latest-liveclient"
 # AUDIT (2026-04-22): token resolved via core.vision_token.
 try:
@@ -90,7 +92,8 @@ class _PollerMixin:
                 return None
             return wrap.get("data")
         except urllib.error.HTTPError as e:
-            # 404 from the relay is authoritative: no game running on Game-PC.
+            # 404 from the relay is authoritative: no game running (the vision
+            # server's in-process self-read of :2999 also came up empty).
             # Distinguish this from genuine "relay unreachable" so the caller
             # can skip the direct-API fallback (which times out + spams logs).
             if e.code == 404:
@@ -137,11 +140,11 @@ class _PollerMixin:
             self.is_in_game = True
             self._read_error_count = 0
             return self._process_game(relay_raw)
-        # Relay says authoritatively "no game" - skip the direct API
-        # attempt (Riot's :2999 binds localhost-only on Game-PC and only
-        # times out from Legion). This used to spam ~700 timeout warnings
-        # per day during client mode. Reset error counter too: the relay's
-        # successful 404 isn't a failure to surface.
+        # Relay says authoritatively "no game" - skip the direct API attempt.
+        # (Legacy 2-PC note: Riot's :2999 bound localhost-only on the Game-PC
+        # and timed out from Legion, spamming ~700 warnings/day in client
+        # mode; the relay 404 short-circuit killed that.) Reset the error
+        # counter too: the relay's successful 404 isn't a failure to surface.
         if getattr(self, "_relay_says_no_game", False):
             self.is_in_game = False
             self._read_error_count = 0
