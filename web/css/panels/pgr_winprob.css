@@ -1,0 +1,118 @@
+/* Post-Game win-prob "phases that mattered" graph (PGR reframe S3).
+ * Inline-SVG team win-probability curve over game time, mounted in the
+ * AI Analysis tab of the last-match view next to the phases cards. */
+
+#pgr-winprob-mount[hidden] { display: none; }
+
+.pwp-card {
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+
+.pwp-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.pwp-title {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text, #e8eaf0);
+}
+.pwp-sub {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+}
+
+/* The SVG fills the card width; viewBox preserveAspectRatio="none" lets
+ * it stretch. A fixed height keeps the curve readable at 1920x1080. */
+.pwp-chart {
+  width: 100%;
+}
+.pwp-svg {
+  display: block;
+  width: 100%;
+  height: 180px;
+}
+
+.pwp-axis {
+  stroke: var(--border-soft);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+.pwp-baseline {
+  stroke: var(--signal-dim, #8a8e9c);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.7;
+}
+.pwp-line {
+  fill: none;
+  stroke: var(--signal-info, #8a8cf0);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.pwp-area {
+  opacity: 0.16;
+  stroke: none;
+}
+.pwp-area-ally {
+  fill: var(--signal-good, #6ec977);
+}
+.pwp-area-enemy {
+  fill: var(--signal-bad, #ff5050);
+}
+
+/* Swing-event dots: green for a swing in our favour, red against. */
+.pwp-dot {
+  stroke: var(--canvas, #14161c);
+  stroke-width: 1.5;
+  cursor: help;
+}
+.pwp-dot-pos { fill: var(--signal-good, #6ec977); }
+.pwp-dot-neg { fill: var(--signal-bad, #ff5050); }
+.pwp-dot-zero { fill: var(--signal-dim, #8a8e9c); }
+
+.pwp-ylab,
+.pwp-xlab {
+  fill: var(--text-dim, #8b93a7);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.pwp-xlab-end { text-anchor: end; }
+
+.pwp-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: var(--fs-xs, 16px);
+}
+.pwp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pwp-legend-item::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.pwp-ally { color: var(--signal-good, #6ec977); }
+.pwp-ally::before { background: var(--signal-good, #6ec977); }
+.pwp-enemy { color: var(--signal-bad, #ff5050); }
+.pwp-enemy::before { background: var(--signal-bad, #ff5050); }
+.pwp-legend-hint {
+  color: var(--text-dim, #8b93a7);
+  margin-left: auto;
+}
