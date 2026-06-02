@@ -1,33 +1,41 @@
-/* Build Insights view (item 273, competitor-WPA lift).
+/* Build Insights view (item 273 item-WPA + item 275 skill-WPA tab,
+ * competitor-WPA lift).
  *
- * Consumes the shipped GET /api/item-wpa as a sortable WPA table:
- *   Item (icon + name) | WPA (signed pp + confidence bar) | Buys (n) |
- *   Expected WP (%) | Win Rate (%)
+ * Two tabs share one render engine:
+ *   Items  -> GET /api/item-wpa  (the shipped item table, default tab):
+ *     Item (icon + name) | WPA (signed pp + confidence bar) | Buys (n) |
+ *     Expected WP (%) | Win Rate (%)
+ *   Skills -> GET /api/skill-wpa (the first-maxed basic, ult excluded):
+ *     Champion (icon + name) | Skill (Q/W/E badge) | WPA (signed pp +
+ *     confidence bar) | Games (n) | Expected WP (%) | Win Rate (%)
  *
- * Selection-bias-corrected item performance over the operator's match
- * history (Win Rate minus Expected WP). DESCRIPTIVE personal-corpus
- * lens, not a meta winrate - trust rows by the sample bar.
+ * Both are selection-bias-corrected residuals (Win Rate minus Expected WP)
+ * over the operator's match history - DESCRIPTIVE personal-corpus lenses,
+ * not meta winrates. Skills are a WEAKER signal than items: shrink + min_n
+ * are load-bearing, trust rows by the sample bar. Each route is 5min
+ * TTL-cached server-side; each tab fetches once per tab-switch (+ debounced
+ * min_n re-fetch) and sorts the already-fetched array client-side (no
+ * network on a column-header click).
  *
- * The route already exists + is 5min TTL-cached server-side; this panel
- * fetches once per view-mount (+ debounced min_n re-fetch) and sorts the
- * already-fetched array client-side (no network on a column-header click).
- *
- * ?ui_mock=1 short-circuits to web/data/ui_mock/build_insights.json so
- * #build-insights renders without a populated rewind DB (mirrors the
- * last_match.js _lmMockLoad pattern).
+ * ?ui_mock=1 short-circuits each tab to its fixture under web/data/ui_mock/
+ * (build_insights.json / build_insights_skill.json) so #build-insights
+ * renders without a populated rewind DB (mirrors the last_match.js
+ * _lmMockLoad pattern).
  */
-import { ITEMS } from '../lib/items_index.js';
+import { ITEMS, CHAMPS } from '../lib/items_index.js';
 
-const MOUNT_ID = 'bi-table-mount';
+const ITEM_MOUNT_ID = 'bi-table-mount';
+const SKILL_MOUNT_ID = 'bi-skill-table-mount';
 const DEFAULT_MIN_N = 20;
+
+function _ddragonVersion() {
+  return (ITEMS && ITEMS.version) || '16.10.1';
+}
 
 // Item-icon URL: local DDragon mirror first (matches last_match.js +
 // item_build.js); the onerror handler falls back to the official CDN
 // at the same patch, then hides the broken <img> so the name text
 // remains the legible fallback.
-function _ddragonVersion() {
-  return (ITEMS && ITEMS.version) || '16.10.1';
-}
 function _itemImgTag(iid) {
   if (!iid && iid !== 0) return '';
   const ver = _ddragonVersion();
@@ -37,6 +45,23 @@ function _itemImgTag(iid) {
     `if(this.dataset.cdn){this.style.display='none';}` +
     `else{this.dataset.cdn='1';this.src='${cdnUrl}';}`;
   return `<img class="bi-item-icon" src="${localUrl}" alt="" loading="lazy" onerror="${onErr}">`;
+}
+
+// Champion-square URL: resolve championId -> DDragon slug via CHAMPS.byId
+// (async-hydrated from /data/champions_index.json by items_index.js).
+// Mirrors last_match.js:692-693. When the index is not yet loaded the
+// slug is empty -> name-only render (documented fallback). Same local-then
+// -CDN onerror chain as the item icon.
+function _champImgTag(cid) {
+  const slug = (CHAMPS && CHAMPS.byId && CHAMPS.byId[String(cid)]) || '';
+  if (!slug) return '';
+  const ver = (CHAMPS && CHAMPS.version) || _ddragonVersion();
+  const localUrl = `/data/ddragon/${ver}/img/champion/${slug}.png`;
+  const cdnUrl = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/champion/${slug}.png`;
+  const onErr =
+    `if(this.dataset.cdn){this.style.display='none';}` +
+    `else{this.dataset.cdn='1';this.src='${cdnUrl}';}`;
+  return `<img class="bi-champ-icon" src="${localUrl}" alt="" loading="lazy" onerror="${onErr}">`;
 }
 
 // Confidence bar: how much of the raw wpa survives shrink, in 5 segments.
@@ -63,35 +88,99 @@ function _signedPP(wpa) {
   return sign + pp.toFixed(2);
 }
 
-// --- module state (one view, one table) ----------------------------
+function _confCellHtml(it) {
+  const wpa = (it && it.wpa) || 0;
+  const cls = wpa >= 0 ? 'bi-pos' : 'bi-neg';
+  const filled = _confSegments(it && it.n);
+  let segs = '';
+  for (let i = 0; i < 5; i++) {
+    const on = i < filled ? ' is-on' : '';
+    segs += `<span class="bi-seg ${cls}${on}"></span>`;
+  }
+  return (
+    `<span class="bi-wpa-val ${cls}">${_signedPP(wpa)}</span>` +
+    `<span class="bi-conf" title="sample confidence (${(it && it.n) || 0})">${segs}</span>`
+  );
+}
+
+// --- per-tab state + config -----------------------------------------
+function _mkState() {
+  return {
+    items: [],
+    sortKey: 'wpa',
+    sortDir: 'desc',
+    loaded: false,
+    inFlight: false,
+  };
+}
+
+const _ITEMS_TAB = {
+  key: 'items',
+  mountId: ITEM_MOUNT_ID,
+  endpoint: '/api/item-wpa',
+  mockUrl: '/data/ui_mock/build_insights.json',
+  emptyMsg: 'No item data yet - play a few games',
+  emptyUnit: 'buys per item',
+  headLabel: 'Item',
+  nLabel: 'Buys',
+  rowCells(it) {
+    const iid = it && (it.item_id != null ? it.item_id : '');
+    const name = (it && it.name) || ('Item ' + iid);
+    return (
+      `<td class="bi-c-item"><span class="bi-item">${_itemImgTag(iid)}` +
+      `<span class="bi-item-name">${name}</span></span></td>`
+    );
+  },
+};
+
+const _SKILLS_TAB = {
+  key: 'skills',
+  mountId: SKILL_MOUNT_ID,
+  endpoint: '/api/skill-wpa',
+  mockUrl: '/data/ui_mock/build_insights_skill.json',
+  emptyMsg: 'No skill data yet - play a few games',
+  emptyUnit: 'games per champion skill-max',
+  headLabel: 'Champion',
+  nLabel: 'Games',
+  rowCells(it) {
+    const cid = it && (it.champion_id != null ? it.champion_id : '');
+    const name = (it && it.champion) || ('Champ ' + cid);
+    const skill = (it && it.skill) || '?';
+    return (
+      `<td class="bi-c-champ"><span class="bi-champ">${_champImgTag(cid)}` +
+      `<span class="bi-champ-name">${name}</span></span></td>` +
+      `<td class="bi-c-skill"><span class="bi-skill-badge">${skill}</span></td>`
+    );
+  },
+};
+
 const _ST = {
-  items: [],          // last fetched rows (sorted in place)
+  items: _mkState(),
+  skills: _mkState(),
   minN: DEFAULT_MIN_N,
-  sortKey: 'wpa',     // wpa | n | observed_winrate
-  sortDir: 'desc',    // desc | asc
-  loaded: false,
-  inFlight: false,
+  active: 'items',
   debounceTimer: null,
   wired: false,
 };
+// Mock promises are per-tab so a min_n change can null + re-fetch one.
+const _MOCK = { items: null, skills: null };
 
 function _isMock() {
   return !!(document.body && document.body.dataset.uiMock === '1');
 }
 
-let _mockPromise = null;
-function _mockLoad() {
-  if (_mockPromise) return _mockPromise;
-  _mockPromise = fetch('/data/ui_mock/build_insights.json', { cache: 'no-store' })
+function _mockLoad(tab) {
+  if (_MOCK[tab.key]) return _MOCK[tab.key];
+  _MOCK[tab.key] = fetch(tab.mockUrl, { cache: 'no-store' })
     .then((r) => (r && r.ok ? r.json() : null))
     .catch(() => null);
-  return _mockPromise;
+  return _MOCK[tab.key];
 }
 
-function _sortRows() {
-  const key = _ST.sortKey;
-  const dir = _ST.sortDir === 'asc' ? 1 : -1;
-  _ST.items.sort((a, b) => {
+function _sortRows(st) {
+  const key = st.sortKey;
+  const dir = st.sortDir === 'asc' ? 1 : -1;
+  st.items.sort((a, b) => {
     const av = Number(a && a[key]) || 0;
     const bv = Number(b && b[key]) || 0;
     if (av < bv) return -1 * dir;
@@ -100,82 +189,67 @@ function _sortRows() {
   });
 }
 
-function _arrow(col) {
-  if (_ST.sortKey !== col) return '';
-  return _ST.sortDir === 'asc' ? ' ^' : ' v';
+function _arrow(st, col) {
+  if (st.sortKey !== col) return '';
+  return st.sortDir === 'asc' ? ' ^' : ' v';
 }
 
-function _rowHtml(it) {
-  const iid = it && (it.item_id != null ? it.item_id : '');
-  const name = (it && it.name) || ('Item ' + iid);
-  const wpa = (it && it.wpa) || 0;
-  const cls = wpa >= 0 ? 'bi-pos' : 'bi-neg';
-  const segMax = 5;
-  const filled = _confSegments(it && it.n);
-  let segs = '';
-  for (let i = 0; i < segMax; i++) {
-    const on = i < filled ? ' is-on' : '';
-    segs += `<span class="bi-seg ${cls}${on}"></span>`;
-  }
-  return (
-    `<tr>` +
-    `<td class="bi-c-item"><span class="bi-item">${_itemImgTag(iid)}` +
-    `<span class="bi-item-name">${name}</span></span></td>` +
-    `<td class="bi-c-wpa">` +
-    `<span class="bi-wpa-val ${cls}">${_signedPP(wpa)}</span>` +
-    `<span class="bi-conf" title="sample confidence (${(it && it.n) || 0} buys)">${segs}</span>` +
-    `</td>` +
+function _rowHtml(tab, it) {
+  return `<tr>${tab.rowCells(it)}` +
+    `<td class="bi-c-wpa">${_confCellHtml(it)}</td>` +
     `<td class="bi-c-n">${(it && it.n) || 0}</td>` +
     `<td class="bi-c-exp">${_pct(it && it.expected_winrate)}</td>` +
     `<td class="bi-c-wr">${_pct(it && it.observed_winrate)}</td>` +
-    `</tr>`
-  );
+    `</tr>`;
 }
 
-function _tableHtml() {
-  _sortRows();
+function _tableHtml(tab, st) {
+  _sortRows(st);
   const head =
     `<thead><tr>` +
-    `<th class="bi-c-item">Item</th>` +
-    `<th class="bi-c-wpa bi-sortable" data-sort="wpa" tabindex="0" role="button">WPA${_arrow('wpa')}</th>` +
-    `<th class="bi-c-n bi-sortable" data-sort="n" tabindex="0" role="button">Buys${_arrow('n')}</th>` +
+    `<th class="bi-c-head">${tab.headLabel}</th>` +
+    (tab.key === 'skills' ? `<th class="bi-c-skill">Skill</th>` : '') +
+    `<th class="bi-c-wpa bi-sortable" data-sort="wpa" tabindex="0" role="button">WPA${_arrow(st, 'wpa')}</th>` +
+    `<th class="bi-c-n bi-sortable" data-sort="n" tabindex="0" role="button">${tab.nLabel}${_arrow(st, 'n')}</th>` +
     `<th class="bi-c-exp">Expected WP</th>` +
-    `<th class="bi-c-wr bi-sortable" data-sort="observed_winrate" tabindex="0" role="button">Win Rate${_arrow('observed_winrate')}</th>` +
+    `<th class="bi-c-wr bi-sortable" data-sort="observed_winrate" tabindex="0" role="button">Win Rate${_arrow(st, 'observed_winrate')}</th>` +
     `</tr></thead>`;
-  const body = '<tbody>' + _ST.items.map(_rowHtml).join('') + '</tbody>';
+  const body = '<tbody>' + st.items.map((it) => _rowHtml(tab, it)).join('') + '</tbody>';
   return `<table class="bi-table">${head}${body}</table>`;
 }
 
-function _render() {
-  const mount = document.getElementById(MOUNT_ID);
+function _render(tab) {
+  const st = _ST[tab.key];
+  const mount = document.getElementById(tab.mountId);
   if (!mount) return;
-  if (_ST.inFlight && !_ST.loaded) {
+  if (st.inFlight && !st.loaded) {
     mount.innerHTML = '<div class="bi-empty">loading...</div>';
     return;
   }
-  if (!_ST.items || _ST.items.length === 0) {
+  if (!st.items || st.items.length === 0) {
     mount.innerHTML =
-      '<div class="bi-empty">No item data yet - play a few games (need at least ' +
-      _ST.minN + ' buys per item).</div>';
+      '<div class="bi-empty">' + tab.emptyMsg + ' (need at least ' +
+      _ST.minN + ' ' + tab.emptyUnit + ').</div>';
     return;
   }
-  mount.innerHTML = _tableHtml();
-  _wireHeaders(mount);
+  mount.innerHTML = _tableHtml(tab, st);
+  _wireHeaders(tab, mount);
 }
 
-function _wireHeaders(mount) {
+function _wireHeaders(tab, mount) {
+  const st = _ST[tab.key];
   const ths = mount.querySelectorAll('th.bi-sortable');
   ths.forEach((th) => {
     const handler = () => {
       const key = th.getAttribute('data-sort');
       if (!key) return;
-      if (_ST.sortKey === key) {
-        _ST.sortDir = _ST.sortDir === 'desc' ? 'asc' : 'desc';
+      if (st.sortKey === key) {
+        st.sortDir = st.sortDir === 'desc' ? 'asc' : 'desc';
       } else {
-        _ST.sortKey = key;
-        _ST.sortDir = 'desc';
+        st.sortKey = key;
+        st.sortDir = 'desc';
       }
-      _render();
+      _render(tab);
     };
     th.addEventListener('click', handler);
     th.addEventListener('keydown', (e) => {
@@ -184,31 +258,59 @@ function _wireHeaders(mount) {
   });
 }
 
-function _fetch() {
-  if (_ST.inFlight) return;
-  _ST.inFlight = true;
-  _render();
+function _fetch(tab) {
+  const st = _ST[tab.key];
+  if (st.inFlight) return;
+  st.inFlight = true;
+  _render(tab);
   const finish = (data) => {
-    _ST.inFlight = false;
-    _ST.loaded = true;
-    _ST.items = (data && Array.isArray(data.items)) ? data.items.slice() : [];
-    _render();
+    st.inFlight = false;
+    st.loaded = true;
+    st.items = (data && Array.isArray(data.items)) ? data.items.slice() : [];
+    _render(tab);
   };
   if (_isMock()) {
-    _mockLoad().then((d) => finish(d)).catch(() => finish(null));
+    _mockLoad(tab).then((d) => finish(d)).catch(() => finish(null));
     return;
   }
-  const url = `/api/item-wpa?min_n=${encodeURIComponent(_ST.minN)}`;
+  const url = `${tab.endpoint}?min_n=${encodeURIComponent(_ST.minN)}`;
   fetch(url, { cache: 'no-store' })
     .then((r) => (r && r.ok ? r.json() : null))
     .then((d) => finish(d && d.ok ? d : null))
     .catch(() => finish(null));
 }
 
+function _tabByKey(key) {
+  return key === 'skills' ? _SKILLS_TAB : _ITEMS_TAB;
+}
+
+// Fetch-once-per-tab-switch: only fetch when this tab has not loaded.
+function _ensureFetched(tab) {
+  const st = _ST[tab.key];
+  if (!st.loaded && !st.inFlight) _fetch(tab);
+  else _render(tab);
+}
+
+function _activateTab(key) {
+  _ST.active = key;
+  // Toggle tab-button active state + pane visibility.
+  const btns = document.querySelectorAll('#bi-tabs .bi-tab');
+  btns.forEach((b) => {
+    const on = b.getAttribute('data-bi-tab') === key;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('[data-bi-pane]').forEach((p) => {
+    p.hidden = p.getAttribute('data-bi-pane') !== key;
+  });
+  _ensureFetched(_tabByKey(key));
+}
+
 function _wireControlsOnce() {
   if (_ST.wired) return;
   const inp = document.getElementById('bi-min-n');
-  if (!inp) return;
+  const tabsEl = document.getElementById('bi-tabs');
+  if (!inp || !tabsEl) return;
   _ST.wired = true;
   inp.value = String(_ST.minN);
   inp.addEventListener('input', () => {
@@ -217,9 +319,20 @@ function _wireControlsOnce() {
     _ST.minN = v;
     if (_ST.debounceTimer) clearTimeout(_ST.debounceTimer);
     _ST.debounceTimer = setTimeout(() => {
-      _mockPromise = null; // re-fetch the live route on min_n change
-      _fetch();
+      // min_n changed: invalidate both caches + the loaded flags so the
+      // active tab re-fetches now + the other tab re-fetches on next switch.
+      _MOCK.items = null;
+      _MOCK.skills = null;
+      _ST.items.loaded = false;
+      _ST.skills.loaded = false;
+      _ensureFetched(_tabByKey(_ST.active));
     }, 300);
+  });
+  tabsEl.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('.bi-tab') : null;
+    if (!btn) return;
+    const key = btn.getAttribute('data-bi-tab');
+    if (key && key !== _ST.active) _activateTab(key);
   });
 }
 
@@ -227,13 +340,9 @@ function _wireControlsOnce() {
 export function renderBuildInsights() {
   try {
     _wireControlsOnce();
-    if (!_ST.loaded && !_ST.inFlight) {
-      _fetch();
-    } else {
-      _render();
-    }
+    _ensureFetched(_tabByKey(_ST.active));
   } catch (_e) {
-    const mount = document.getElementById(MOUNT_ID);
+    const mount = document.getElementById(ITEM_MOUNT_ID);
     if (mount) mount.innerHTML = '<div class="bi-empty">unavailable</div>';
   }
 }
@@ -245,4 +354,6 @@ export const __test = {
   _pct,
   _ST,
   _sortRows,
+  _ITEMS_TAB,
+  _SKILLS_TAB,
 };
