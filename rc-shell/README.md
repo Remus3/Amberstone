@@ -104,7 +104,25 @@ Persisted to `<userData>/rc-shell-state.json` (per-OS-user app data). Delete it
 to reset window position/size. A missing or corrupt file is tolerated (the shell
 falls back to defaults, never crashes).
 
-## Roadmap
+## Overlay (Phase 2/3)
 
-This is Phase 1 only. The full plan (state machine + hotkeys, in-game overlay,
-electron-updater, optional Pengu panels) is in `docs/ELECTRON_OVERLAY.md`.
+The shell surface-switches between the companion window (out of a game) and a
+transparent always-on-top in-game overlay, driven by the dashboard `mode_key`
+polled from `RC_ORIGIN/api/state`:
+
+- `src/overlay_state.js` - the PURE (node:testable) state machine: `mode_key` ->
+  companion / overlay, plus the hidden override, the overlay-route URL, and the
+  show/hide actions. No Electron import.
+- `main.js` creates the overlay `BrowserWindow` (transparent, frameless,
+  always-on-top, click-through by default), registers global hotkeys
+  (`Alt+Shift+O` show/hide, `Alt+Shift+A` toggle click-through), and runs the
+  poll loop. Hotkeys use RegisterHotKey under the hood (anti-cheat-safe).
+
+Vanguard-safe: the overlay is a DWM compositor window only - NO DXGI / frame
+capture, NO game-memory reads, NO input injection. The game must run Borderless
+(an exclusive-fullscreen game hides any compositor overlay).
+
+The overlay's compact layout (the `?overlay=1` route) + interactive controls
+(Phase 4) + electron-updater (Phase 5) + optional Pengu panels (Phase 6) are
+still pending - see `docs/ELECTRON_OVERLAY.md`. Visual launch (`npm start`) is
+operator-gated.
