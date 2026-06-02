@@ -2670,26 +2670,48 @@
               "_is_primary": true
             },
             {
-              "key": "sr-enchanter",
-              "label": "Enchanter",
+              "key": "adc-crit",
+              "label": "Crit",
               "items": [
-                "Echoes of Helia",
-                "Mercury's Treads",
-                "Ardent Censer",
-                "Staff of Flowing Water",
-                "Redemption",
-                "Moonstone Renewer"
+                "Yun Tal Wildarrows",
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
               ],
               "runes": {
-                "keystone": "Summon Aery",
-                "primary": "Sorcery",
-                "secondary": "Inspiration"
+                "keystone": "Lethal Tempo",
+                "primary": "Precision",
+                "secondary": "Domination"
               },
               "summoners": [
                 4,
-                3
+                21
               ],
-              "_source_variant_key": "sr-enchanter"
+              "_source_variant_key": "adc-crit"
+            },
+            {
+              "key": "adc-on-hit",
+              "label": "On-Hit",
+              "items": [
+                "Blade of The Ruined King",
+                "Berserker's Greaves",
+                "Runaan's Hurricane",
+                "Wit's End",
+                "Lord Dominik's Regards",
+                "Phantom Dancer"
+              ],
+              "runes": {
+                "keystone": "Lethal Tempo",
+                "primary": "Precision",
+                "secondary": "Domination"
+              },
+              "summoners": [
+                4,
+                21
+              ],
+              "_source_variant_key": "adc-on-hit"
             }
           ]
         },
@@ -14830,65 +14852,24 @@
             "aram"
           ],
           "runes": {
-            "keystone": "Hail of Blades",
-            "primary": "Domination",
-            "secondary": "Sorcery"
+            "keystone": "Lethal Tempo",
+            "primary": "Precision",
+            "secondary": "Resolve"
           },
           "summoners": [
             4,
             32
           ],
           "items": [
-            "Bloodthirster",
-            "Mercury's Treads",
-            "Lord Dominik's Regards",
-            "Axiom Arc"
+            "Blade of The Ruined King",
+            "Berserker's Greaves",
+            "Wit's End",
+            "Guinsoo's Rageblade",
+            "Terminus",
+            "Sterak's Gage"
           ],
           "_collapsed": true,
           "build_paths": [
-            {
-              "key": "ap-hybrid",
-              "label": "AP Hybrid",
-              "items": [
-                "Bloodthirster",
-                "Mercury's Treads",
-                "Lord Dominik's Regards",
-                "Axiom Arc"
-              ],
-              "runes": {
-                "keystone": "Hail of Blades",
-                "primary": "Domination",
-                "secondary": "Sorcery"
-              },
-              "summoners": [
-                4,
-                32
-              ],
-              "_source_variant_key": "ap-hybrid",
-              "_is_primary": true
-            },
-            {
-              "key": "bruiser-trinity",
-              "label": "Trinity",
-              "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Runaan's Hurricane",
-                "Bloodthirster",
-                "Yun Tal Wildarrows",
-                "Lord Dominik's Regards"
-              ],
-              "runes": {
-                "keystone": "Conqueror",
-                "primary": "Precision",
-                "secondary": "Resolve"
-              },
-              "summoners": [
-                4,
-                32
-              ],
-              "_source_variant_key": "bruiser-trinity"
-            },
             {
               "key": "on-hit",
               "label": "On-Hit",
@@ -14909,7 +14890,52 @@
                 4,
                 32
               ],
-              "_source_variant_key": "on-hit"
+              "_source_variant_key": "on-hit",
+              "_is_primary": true
+            },
+            {
+              "key": "ap-burst",
+              "label": "AP",
+              "items": [
+                "Hubris",
+                "Berserker's Greaves",
+                "Nashor's Tooth",
+                "Rabadon's Deathcap",
+                "Void Staff",
+                "Shadowflame"
+              ],
+              "runes": {
+                "keystone": "Electrocute",
+                "primary": "Domination",
+                "secondary": "Sorcery"
+              },
+              "summoners": [
+                4,
+                32
+              ],
+              "_source_variant_key": "ap-burst"
+            },
+            {
+              "key": "adc-crit",
+              "label": "Crit",
+              "items": [
+                "Yun Tal Wildarrows",
+                "Berserker's Greaves",
+                "Infinity Edge",
+                "Rapid Firecannon",
+                "Lord Dominik's Regards",
+                "Runaan's Hurricane"
+              ],
+              "runes": {
+                "keystone": "Press the Attack",
+                "primary": "Precision",
+                "secondary": "Domination"
+              },
+              "summoners": [
+                4,
+                32
+              ],
+              "_source_variant_key": "adc-crit"
             }
           ]
         },
