@@ -58,21 +58,27 @@ on level" (Wukong P 6:10, Pantheon E 5:30). The per-level tuple
 grants leave it False.
 
 EXHAUSTED scan (all 171 champs, forms whose effects_descriptions carry a SELF
-"gains/grants/bonus ... armor / magic resistance" grant): the clean flat /
-level-scaled SELF resist-grant set with a CITABLE value in effects text is
-exactly these 6 (4 permanent + 2 active). Documented EXCLUSIONS (scanned,
-deliberately NOT seeded - with the reason class):
-  - VALUE-NOT-IN-EFFECTS-TEXT (the prose says only "gains bonus armor and bonus
-    magic resistance" with NO number; the value lives ONLY in a parsed leveling /
-    modifier block - a future "read the block" lift could seed these, but the
-    hand-authored registry has no citable value): Olaf R, Rammus W, Kennen R,
-    Nasus R, Hecarim W, Malphite W (also "tripled while Granite Shield active"),
-    Singed R, Taric W (% of his armor), Graves E ("for each stack ... bonus
-    armor").
+resist grant). TWO source modes:
+  - effects-text value (item 264): 6 entries (4 permanent + 2 active) whose
+    armor / MR number is cited directly in the prose.
+  - parsed-block value (item 267, the "read the parsed block" lift): 6 entries
+    whose prose says only "gains bonus armor and bonus magic resistance" with NO
+    inline number, but whose value lives in a parsed Meraki ``[other]`` block
+    indexed by ability rank -> seeded ``rank_scaled``: Olaf R [10/15/20] perm,
+    Nasus R [40/55/70], Kennen R [20/40/60], Hecarim W [5..25], Rammus W FLAT
+    [27..47] (% half omitted), Graves E [32..128] armor-only at-cap.
+Documented EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
   - PERCENT-OF-RESIST multiplier (a multiplier on the resist STAT, not a flat
     add; needs a base-vs-bonus resist split this flat-add seam does not pass - a
-    future percent-mode lift): Poppy W (+12% TOTAL armor + MR, doubled <40% HP),
-    Rell W (15% BONUS armor + MR while Dismounted).
+    future percent-mode lift): Malphite W (% of armor, tripled w/ Granite Shield),
+    Taric W (% of his armor), Rammus W %-total half (flat half IS seeded item
+    267), Poppy W (+12% TOTAL armor + MR, doubled <40% HP), Rell W (15% BONUS
+    armor + MR while Dismounted).
+  - UNLABELED MULTI-STAT / MULTI-TIER block (the [other] blocks carry several
+    series with no name, so the armor/MR value cannot be confidently attributed):
+    Singed R (3 unlabeled [other] series for AP / armor / MR / regen), Braum W
+    (self + ALLY share x base + enhanced flat/% tiers), Leona W (base vs
+    hit-enhanced resist tiers + a % term), Jax R (flat + % bonus-AD stack tiers).
   - FORM-GATED with a GATE-DEPENDENT magnitude (the resist exists ONLY in one
     form; unlike K'Sante All Out / Kayn R where the base is gate-INDEPENDENT, here
     Cannon stance has ZERO of this grant so the base cannot be cleanly seeded -
@@ -117,6 +123,12 @@ class PassiveResistEntry:
 
     ``level_scaled`` (default False) - set True when ``armor`` / ``mr`` is a
     per-level tuple read at champion level (``level-1``), not a flat value.
+
+    ``rank_scaled`` (default False, item 267) - set True when ``armor`` / ``mr``
+    is a per-ABILITY-RANK tuple sourced from a parsed Meraki ``[other]`` block,
+    resolved via ``ability_dps.rank_at_level(key, level)`` (deterministic for
+    ults, engine-default Q>W>E priority for basics; an unlearned ability grants
+    0.0). Mutually exclusive with ``level_scaled``.
     """
 
     armor: float | tuple[float, ...] = 0.0
@@ -125,6 +137,7 @@ class PassiveResistEntry:
     note: str = ""
     attribute: str = "Passive Resist"
     level_scaled: bool = False
+    rank_scaled: bool = False
 
 
 # (champion_id, key, form_index) -> PassiveResistEntry. Keyed for parity with the
@@ -208,6 +221,85 @@ _PASSIVE_RESIST_OVERRIDES: dict[tuple[str, str, int], PassiveResistEntry] = {
         attribute="Aegis Assault",
         level_scaled=True,
     ),
+    # ----- item 267: rank-scaled grants whose VALUE lives in a parsed [other]
+    # block (the effects_descriptions prose says only "gains bonus armor and
+    # bonus magic resistance" with NO inline number). armor/mr are per-ABILITY-
+    # RANK tuples resolved via ability_dps.rank_at_level(key, level) -
+    # deterministic for ults (R 6/11/16), engine-default Q>W>E priority for
+    # basics. Each value cited from the patch-16.11.1 [other] block.
+    #
+    # Olaf R Ragnarok: "Passive: Olaf gains bonus armor and bonus magic
+    # resistance." [other] block [10,15,20] by R rank. PERMANENT passive (the
+    # R's passive half is always on once R is learned), prob 1.0.
+    ("Olaf", "R", 0): PassiveResistEntry(
+        armor=(10.0, 15.0, 20.0),
+        mr=(10.0, 15.0, 20.0),
+        conditional_probability=1.0,
+        note="Ragnarok passive: 10/15/20 armor + MR by R rank ([other] block); permanent once R learned; rank_scaled",
+        attribute="Ragnarok",
+        rank_scaled=True,
+    ),
+    # Nasus R Fury of the Sands: "gaining bonus health, bonus armor, bonus magic
+    # resistance, increased size ...". [other] block [40,55,70] by R rank = the
+    # armor + MR (the [heal] 300/450/600 bonus HP + the % block are separate +
+    # not modeled here). 15s active steroid, cooldown-gated -> amortized.
+    ("Nasus", "R", 0): PassiveResistEntry(
+        armor=(40.0, 55.0, 70.0),
+        mr=(40.0, 55.0, 70.0),
+        conditional_probability=_ACTIVE_RESIST_PROB,
+        note="Fury of the Sands: 40/55/70 armor + MR by R rank ([other] block); 15s active amortized at the midpoint; bonus HP + size omitted; rank_scaled",
+        attribute="Fury of the Sands",
+        rank_scaled=True,
+    ),
+    # Kennen R Slicing Maelstrom: "gaining bonus armor and bonus magic
+    # resistance for the duration." [other] block [20,40,60] by R rank. 3s
+    # active burst, cooldown-gated -> amortized.
+    ("Kennen", "R", 0): PassiveResistEntry(
+        armor=(20.0, 40.0, 60.0),
+        mr=(20.0, 40.0, 60.0),
+        conditional_probability=_ACTIVE_RESIST_PROB,
+        note="Slicing Maelstrom: 20/40/60 armor + MR by R rank ([other] block); 3s active amortized at the midpoint; rank_scaled",
+        attribute="Slicing Maelstrom",
+        rank_scaled=True,
+    ),
+    # Hecarim W Spirit of Dread: "gains bonus armor and bonus magic resistance
+    # and is healed ...". [other] block [5,10,15,20,25] by W rank = the resists
+    # (the [heal] 120:240 is separate). ~4s active, cooldown-gated -> amortized.
+    # W rank resolved at the engine-default Q>W>E priority (W = priority_2).
+    ("Hecarim", "W", 0): PassiveResistEntry(
+        armor=(5.0, 10.0, 15.0, 20.0, 25.0),
+        mr=(5.0, 10.0, 15.0, 20.0, 25.0),
+        conditional_probability=_ACTIVE_RESIST_PROB,
+        note="Spirit of Dread: 5/10/15/20/25 armor + MR by W rank ([other] block); 4s active amortized at the midpoint; heal omitted; rank_scaled (W priority_2)",
+        attribute="Spirit of Dread",
+        rank_scaled=True,
+    ),
+    # Rammus W Defensive Ball Curl: "gaining bonus armor and bonus magic
+    # resistance." TWO [other] series - FLAT [27,32,37,42,47] + a % TOTAL armor/MR
+    # [30:60]. The FLAT half (by W rank) is seeded; the %-of-total half is OMITTED
+    # (a percent-of-resist mode the flat-add seam does not pass - the candidate-B
+    # base-vs-bonus split). 7s active, cooldown-gated -> amortized.
+    ("Rammus", "W", 0): PassiveResistEntry(
+        armor=(27.0, 32.0, 37.0, 42.0, 47.0),
+        mr=(27.0, 32.0, 37.0, 42.0, 47.0),
+        conditional_probability=_ACTIVE_RESIST_PROB,
+        note="Defensive Ball Curl: 27/32/37/42/47 FLAT armor + MR by W rank ([other] block); %-of-total-resist half omitted (percent mode); 7s active amortized; rank_scaled (W priority_2)",
+        attribute="Defensive Ball Curl",
+        rank_scaled=True,
+    ),
+    # Graves E True Grit: "For each stack, Graves gains bonus armor." ARMOR ONLY
+    # (no MR). [other] per-stack [4,7,10,13,16] + the at-cap (8 stacks)
+    # [32,56,80,104,128] by E rank. Seeded at the CAP (the in-fight steady state,
+    # refreshed by Quickdraw casts + attacks; the Garen-W-at-cap convention),
+    # prob 1.0. E rank resolved at the engine-default priority (E = priority_3).
+    ("Graves", "E", 0): PassiveResistEntry(
+        armor=(32.0, 56.0, 80.0, 104.0, 128.0),
+        mr=0.0,
+        conditional_probability=1.0,
+        note="True Grit: 32/56/80/104/128 ARMOR-ONLY by E rank at the 8-stack cap ([other] block); seeded at the in-fight steady-state cap; rank_scaled (E priority_3)",
+        attribute="True Grit",
+        rank_scaled=True,
+    ),
 }
 
 __all__ = [
@@ -218,19 +310,45 @@ __all__ = [
 ]
 
 
-def _value_at_level(val: float | tuple[float, ...], level: int, level_scaled: bool) -> float:
+def _value_at_level(
+    val: float | tuple[float, ...],
+    level: int,
+    level_scaled: bool,
+    *,
+    key: str | None = None,
+    rank_scaled: bool = False,
+) -> float:
     """Resolve a grant value at the champion level.
 
-    A ``level_scaled`` value carries a per-level tuple (``_lerp_per_level``) read
-    at ``level-1`` (clamped to the tuple bounds); a flat value is its float.
+    ``rank_scaled`` (item 267): ``val`` is a per-ABILITY-RANK tuple (the grant
+    value lives in a parsed Meraki ``[other]`` block indexed by ability rank,
+    NOT by champion level). The ability rank is resolved from the champion level
+    via ``ability_dps.rank_at_level(key, level)`` - deterministic for ults
+    (R unlocks 6/11/16), engine-default skill priority (Q>W>E) for basics. An
+    unlearned ability (rank ``-1``) grants 0.0.
+
+    ``level_scaled`` value carries a per-CHAMPION-LEVEL tuple (``_lerp_per_level``)
+    read at ``level-1`` (clamped). A flat value is its float. (``rank_scaled`` and
+    ``level_scaled`` are mutually exclusive; rank is checked first.)
     """
+    if rank_scaled and isinstance(val, (tuple, list)):
+        if not val:
+            return 0.0
+        # Function-level import to dodge the ability_dps <-> ehp module cycle
+        # (same break pattern as items 235/257).
+        from .ability_dps import rank_at_level
+        rank = rank_at_level(str(key or ""), int(level))
+        if rank < 0:
+            return 0.0  # ability not yet learned at this level
+        idx = max(0, min(rank, len(val) - 1))
+        return float(val[idx])
     if level_scaled and isinstance(val, (tuple, list)):
         if not val:
             return 0.0
         idx = max(0, min(int(level) - 1, len(val) - 1))
         return float(val[idx])
     if isinstance(val, (tuple, list)):
-        # Defensive: a tuple on a non-level_scaled entry resolves at its first.
+        # Defensive: a tuple on a non-scaled entry resolves at its first.
         return float(val[0]) if val else 0.0
     return float(val)
 
@@ -258,8 +376,14 @@ def resist_grants(
         if entry_cid != cid:
             continue
         prob = float(entry.conditional_probability)
-        a = _value_at_level(entry.armor, lvl, entry.level_scaled)
-        m = _value_at_level(entry.mr, lvl, entry.level_scaled)
+        a = _value_at_level(
+            entry.armor, lvl, entry.level_scaled,
+            key=_key, rank_scaled=entry.rank_scaled,
+        )
+        m = _value_at_level(
+            entry.mr, lvl, entry.level_scaled,
+            key=_key, rank_scaled=entry.rank_scaled,
+        )
         bonus_armor += a * prob
         bonus_mr += m * prob
     return bonus_armor, bonus_mr
