@@ -51,6 +51,21 @@ NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` 
 
 ---
 
+# 2026-06-02 - item 270: DS unlabeled-multi-stat-block resist grants (ENGINE 1.97.0)
+
+Operator "start the next DS schema lift and exhaust it then /done for /clear". Seeded the LAST resist-grant exclusion class (Singed R / Braum W / Leona W / Jax R). 1 commit `fbb2934` (pushed `ff7ffa6..fbb2934`), CI green run 26831626137. ENGINE 1.96.0 -> 1.97.0. DS :8893 restarted (taskkill pid 15424 + schtasks) -> live-verified. RC NOT touched.
+
+- NO new schema field - hand-attribution + the existing item-267 `rank_scaled` flat-add seam. The item-264 "unlabeled / not confidently attributed" framing was OVER-cautious: series[0] varies by rank = flat base; series[1] rank-constant = a percent coefficient (omitted per its base). Singed R is one shared series [25,60,95]=AP=armor=MR.
+- SEEDED 4 rank_scaled flat-base active-amortized 0.3: Singed R (25/60/95), Braum W (20-40), Leona W (20-50), Jax R (armor 25/50/75 + MR 15/30/45). Percent coefficients omitted: Braum 36%-of-ALLY (cross-champ), Leona 20% (uncertain), Jax 40%/24%-of-bonus-AD (no seam).
+- Exhaustive re-scan: the only other armor/MR blocks are target-SHRED (Evelynn/JarvanIV/Renekton/Rengar/Rumble/Yorick = offensive, NOT self-resist).
+- +15t `test_passive_resist_unlabeled_block_item270.py`; item-264 exclusion-list dropped the 4. DS 6103 -> 6118; 51 test-pin syncs; Share 276 files --check clean; living docs 1.97.0/6118.
+- LIVE /ehp: Singed L16 28.5; Jax L16 armor 22.5 / mr 13.5; Braum L11 9.0; Leona L16 15.0; Caitlyn off==on byte-identical.
+
+Don't-redo: (a) the resist-grant lane is now COMPLETE (flat 264 + rank-block 267 + percent 268 + unlabeled-block 270) - do NOT re-pitch Singed/Braum/Leona/Jax. (b) the 4 remaining resist exclusions each need a DIFFERENT seam: Jayce R form-state midpoint / Anivia P resurrection / Thresh P per-stack / Orianna E ball-attached. (c) percent coefficients deliberately omitted (no ally / bonus-AD seam) - do NOT force-seed. (d) default apply_passive_resist=False byte-identical; flag-on CAN re-rank (non-linear _armor_factor) - Phase D live validation before default-on.
+NEXT (operator-gated): the entire headless effects-text survivability + resist-grant lane is EXHAUSTED across both EHP scorers; remaining DS = Phase D live flag-flips + the 4 different-seam resist exclusions + the deferred Phase 11 vision-frame collapse + gamepc archival.
+
+---
+
 # 2026-06-02 - item 269: 6-lane /headless-upgrade drain (L1/L4/L5/L7/L8 shipped, L6 OWED)
 
 Operator "start 1 and 4 and 5 and 6 and 7 and 8" off the "what is next" menu. NO ENGINE bump (1.96.0 stays), NO DS restart. RC restarted pid 324 -> 11464 (L1 backend module). 6 commits `366ad92..c9e5d7a` (5 lanes + docs), CI green. Server-side throttle hit the wave-1 worktree agents at 0 tokens (item-266 pattern) -> ran all lanes INLINE serially, direct-to-main.
