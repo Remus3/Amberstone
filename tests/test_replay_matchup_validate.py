@@ -32,12 +32,14 @@ class _FakeResult:
     net_swing: float
 
 
-def _make_db(path: Path, matches, participants, frames) -> None:
+def _make_db(path: Path, matches, participants, frames, events=None) -> None:
     """Build a temp db with the columns the harness reads.
 
     matches: list of (match_id, game_mode, has_timeline, game_creation_ts)
     participants: list of (match_id, participant_id, team_id, champion_name, team_position)
     frames: list of (match_id, timestamp_ms, participant_id, total_gold)
+    events: optional list of (match_id, event_type, killer_id, victim_id, assisting_ids_json)
+            for the trade / solo-kill ground truth.
     """
     conn = sqlite3.connect(str(path))
     conn.execute(
@@ -52,9 +54,15 @@ def _make_db(path: Path, matches, participants, frames) -> None:
         "CREATE TABLE timeline_frames (match_id TEXT, timestamp_ms INTEGER, "
         "participant_id INTEGER, total_gold REAL)"
     )
+    conn.execute(
+        "CREATE TABLE timeline_events (match_id TEXT, event_type TEXT, killer_id INTEGER, "
+        "victim_id INTEGER, assisting_ids_json TEXT)"
+    )
     conn.executemany("INSERT INTO matches VALUES (?,?,?,?)", matches)
     conn.executemany("INSERT INTO participants VALUES (?,?,?,?,?)", participants)
     conn.executemany("INSERT INTO timeline_frames VALUES (?,?,?,?)", frames)
+    if events:
+        conn.executemany("INSERT INTO timeline_events VALUES (?,?,?,?,?)", events)
     conn.commit()
     conn.close()
 
@@ -301,6 +309,110 @@ def test_wilson_interval_basic_bounds():
     assert lo is None and hi is None
     lo, hi = rv.wilson_interval(50, 100)
     assert 0.0 <= lo < 0.5 < hi <= 1.0  # interval brackets the 0.5 point estimate
+
+
+# --------------------------------------------------------------- trade ground truth
+def test_extract_kill_counts_solo_and_any(tmp_path):
+    db = tmp_path / "t.db"
+    # pid 1 (A) vs pid 6 (B). 3 kills: A solo-kills B; A gank-kills B (assists);
+    # B solo-kills A. Plus an unrelated kill that must be ignored.
+    events = [
+        ("M1", "CHAMPION_KILL", 1, 6, "[]"),        # A solo kills B
+        ("M1", "CHAMPION_KILL", 1, 6, "[2, 3]"),    # A gank kills B (not solo)
+        ("M1", "CHAMPION_KILL", 6, 1, "[]"),        # B solo kills A
+        ("M1", "CHAMPION_KILL", 1, 7, "[]"),        # unrelated victim - ignore
+    ]
+    _make_db(db, [("M1", "CLASSIC", 1, 1000)], [], [], events)
+    conn = sqlite3.connect(str(db))
+    kc = rv.extract_kill_counts(conn, "M1", pid_a=1, pid_b=6)
+    conn.close()
+    # solo: A killed B once (the gank does not count), B killed A once.
+    assert kc["solo"] == (1, 1)
+    # any: A killed B twice (solo + gank), B killed A once.
+    assert kc["any"] == (2, 1)
+
+
+def test_assists_empty_variants():
+    assert rv._assists_empty(None) is True
+    assert rv._assists_empty("") is True
+    assert rv._assists_empty("[]") is True
+    assert rv._assists_empty("[1]") is False
+    assert rv._assists_empty("[1, 2, 3]") is False
+    assert rv._assists_empty("garbage") is False  # parse fail -> not solo
+
+
+def test_score_pair_trade_decisive_and_no_duel():
+    pair = rv.LanePair("M", "TOP", "Garen", "Darius", 0, 0, pid_a=1, pid_b=6)
+    stub = lambda *a, **k: _FakeResult(net_swing=0.30)  # engine favors A
+    # A out-kills B 2-0 -> duel favors A -> agree.
+    status, agreed = rv.score_pair_trade(pair, 6, None, stub, a_kills_b=2, b_kills_a=0)
+    assert status == "decisive" and agreed is True
+    # engine favors A but B out-kills A -> disagree.
+    status, agreed = rv.score_pair_trade(pair, 6, None, stub, a_kills_b=0, b_kills_a=2)
+    assert status == "decisive" and agreed is False
+    # no kills either way -> no_duel (excluded).
+    status, agreed = rv.score_pair_trade(pair, 6, None, stub, a_kills_b=0, b_kills_a=0)
+    assert status == "no_duel"
+    # equal kills -> kill_tie (excluded).
+    status, agreed = rv.score_pair_trade(pair, 6, None, stub, a_kills_b=1, b_kills_a=1)
+    assert status == "kill_tie"
+
+
+def test_score_pair_trade_even_band_excludes():
+    pair = rv.LanePair("M", "TOP", "Garen", "Darius", 0, 0, pid_a=1, pid_b=6)
+    stub = lambda *a, **k: _FakeResult(net_swing=0.005)  # below dead-band
+    status, agreed = rv.score_pair_trade(pair, 6, None, stub, a_kills_b=2, b_kills_a=0)
+    assert status == "even"
+
+
+def test_run_trade_validation_report_shape_and_math(tmp_path):
+    db = tmp_path / "t.db"
+    # 3 lanes; engine always favors A (net_swing>0). Duel: A wins TOP+MID solo,
+    # B wins BOTTOM solo -> 2 of 3 agree -> solo agreement 0.667.
+    parts, frames = _full_match(
+        "M1",
+        {
+            "TOP": ("Garen", 0, "Darius", 0),
+            "MIDDLE": ("Annie", 0, "Ahri", 0),
+            "BOTTOM": ("Jinx", 0, "Caitlyn", 0),
+        },
+    )
+    # TOP: pid 1 vs 6; MIDDLE: pid 3 vs 8; BOTTOM: pid 4 vs 9 (per _full_match band)
+    events = [
+        ("M1", "CHAMPION_KILL", 1, 6, "[]"),   # TOP: A solo-kills B -> agree
+        ("M1", "CHAMPION_KILL", 3, 8, "[]"),   # MID: A solo-kills B -> agree
+        ("M1", "CHAMPION_KILL", 9, 4, "[]"),   # BOT: B solo-kills A -> disagree
+    ]
+    _make_db(db, [("M1", "CLASSIC", 1, 1000)], parts, frames, events)
+    stub = lambda *a, **k: _FakeResult(net_swing=0.25)  # always favors A
+    report = rv.run_trade_validation(
+        db_path=db, levels=[6], limit=0, gold_frame_min=10, snapshot=None, matchup_fn=stub
+    )
+    for key in ("generated_at", "ground_truth", "levels_solo", "levels_any",
+                "pairs_with_solo_duel", "pairs_with_any_duel", "interpretation"):
+        assert key in report, f"missing trade key {key}"
+    solo = report["levels_solo"][0]
+    assert solo["n_decisive"] == 3
+    assert solo["n_agree"] == 2
+    assert abs(solo["agreement"] - (2.0 / 3.0)) < 1e-9
+    assert report["pairs_with_solo_duel"] == 3
+    # per-role: TOP+MID agree, BOTTOM disagrees.
+    assert solo["per_role"]["TOP"]["agreement"] == 1.0
+    assert solo["per_role"]["BOTTOM"]["agreement"] == 0.0
+
+
+def test_run_trade_validation_no_duel_pairs_excluded(tmp_path):
+    db = tmp_path / "t.db"
+    parts, frames = _full_match("M1", {"TOP": ("Garen", 0, "Darius", 0)})
+    # no events at all -> the one pair never duels -> 0 decisive, 1 no_duel.
+    _make_db(db, [("M1", "CLASSIC", 1, 1000)], parts, frames, [])
+    stub = lambda *a, **k: _FakeResult(net_swing=0.25)
+    report = rv.run_trade_validation(
+        db_path=db, levels=[6], limit=0, gold_frame_min=10, snapshot=None, matchup_fn=stub
+    )
+    solo = report["levels_solo"][0]
+    assert solo["n_decisive"] == 0
+    assert solo["excluded"]["no_duel"] == 1
 
 
 # ----------------------------------------------------------------------- ascii guard
