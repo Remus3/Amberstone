@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "patch": "16.10.1",
+  "queue_id": 420,
+  "min_n": 20,
+  "items": [
+    {"item_id": 3073, "name": "Experimental Hexplate", "n": 107, "observed_winrate": 0.5981, "expected_winrate": 0.5025, "wpa": 0.0956, "wpa_shrunk": 0.0914, "avg_purchase_time_s": 816.0},
+    {"item_id": 6672, "name": "Kraken Slayer", "n": 64, "observed_winrate": 0.5781, "expected_winrate": 0.5089, "wpa": 0.0692, "wpa_shrunk": 0.0642, "avg_purchase_time_s": 742.0},
+    {"item_id": 3031, "name": "Infinity Edge", "n": 88, "observed_winrate": 0.5682, "expected_winrate": 0.5141, "wpa": 0.0541, "wpa_shrunk": 0.0512, "avg_purchase_time_s": 1320.0},
+    {"item_id": 3036, "name": "Lord Dominik's Regards", "n": 41, "observed_winrate": 0.561, "expected_winrate": 0.518, "wpa": 0.043, "wpa_shrunk": 0.0383, "avg_purchase_time_s": 1610.0},
+    {"item_id": 6675, "name": "Navori Quickblades", "n": 22, "observed_winrate": 0.5455, "expected_winrate": 0.5118, "wpa": 0.0337, "wpa_shrunk": 0.0252, "avg_purchase_time_s": 1490.0},
+    {"item_id": 3046, "name": "Phantom Dancer", "n": 33, "observed_winrate": 0.5152, "expected_winrate": 0.5089, "wpa": 0.0063, "wpa_shrunk": 0.0054, "avg_purchase_time_s": 1180.0},
+    {"item_id": 3072, "name": "Bloodthirster", "n": 51, "observed_winrate": 0.5098, "expected_winrate": 0.5066, "wpa": 0.0032, "wpa_shrunk": 0.0029, "avg_purchase_time_s": 1720.0},
+    {"item_id": 3142, "name": "Youmuu's Ghostblade", "n": 26, "observed_winrate": 0.4808, "expected_winrate": 0.5012, "wpa": -0.0204, "wpa_shrunk": -0.0171, "avg_purchase_time_s": 690.0},
+    {"item_id": 6694, "name": "Serylda's Grudge", "n": 47, "observed_winrate": 0.4681, "expected_winrate": 0.51, "wpa": -0.0419, "wpa_shrunk": -0.0379, "avg_purchase_time_s": 1550.0},
+    {"item_id": 3033, "name": "Mortal Reminder", "n": 24, "observed_winrate": 0.4583, "expected_winrate": 0.512, "wpa": -0.0537, "wpa_shrunk": -0.0444, "avg_purchase_time_s": 1640.0},
+    {"item_id": 3814, "name": "Edge of Night", "n": 21, "observed_winrate": 0.4286, "expected_winrate": 0.5042, "wpa": -0.0756, "wpa_shrunk": -0.0566, "avg_purchase_time_s": 1010.0}
+  ],
+  "elapsed_ms": 1490,
+  "cached": true
+}
