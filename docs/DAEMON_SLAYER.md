@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.88.0 - 5911 tests - patch 16.11.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.89.0 - 5931 tests - patch 16.11.1.
 
 ## Engine substrate & registries
 
@@ -85,7 +85,7 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 | `beam.py` | `beam_search_build()` - full-build beam search returning top-N complete builds |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
 | `ult_rates.py` | Per-champion cast-rate lookup. Legacy `get_ult_casts_per_sec` (R-only, reads `ult_cast_rates.json`) preserved for Malignance Hatefog backward compat; `get_spell_casts_per_sec(champion, key, mode)` (Phase 4b, s178) reads `spell_cast_rates.json` for all 4 active spells; both derived from rewind_history.db via `scripts/build_spell_cast_rates.py`; 172 champions × 4 spells × 3 mode buckets |
-| `tests/` | 5911 tests passing |
+| `tests/` | 5931 tests passing |
 
 ## Key data types
 
