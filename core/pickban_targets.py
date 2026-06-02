@@ -20,12 +20,14 @@ WHAT v1 IS (honest scope)
     over-read a single bar.
 
 SHAPE (per champion, DDragon id keys)
-    ``counters``     = the champs that BEAT this champ (the most NEGATIVE
-                       this-vs-B net_swing) - ban candidates / be wary.
-    ``good_against`` = the champs this champ BEATS (the most POSITIVE
-                       this-vs-B net_swing) - favored matchups.
-    Each is a list of ``{"champion": "<id>", "net_swing": <float>}`` sorted
-    strongest-first.
+    ``counters``     = the champs that BEAT this champ - ban candidates / be wary.
+    ``good_against`` = the champs this champ BEATS - favored matchups.
+    Each is a list of ``{"champion": "<id>", "net_swing": <float>, "rel": <float>}``
+    sorted strongest-first by ``rel`` (the DE-BIASED relative-strength score, not
+    raw net_swing). ``rel`` subtracts each candidate's global duel dominance so
+    the lists are per-champ-SPECIFIC counters, not the same handful of globally
+    strong duelists on every champ. ``net_swing`` is the raw this-vs-B value
+    (NEGATIVE when they beat this champ); ``rel`` is the sort key.
 
 FAIL-SOFT
     A missing / unreadable / malformed DB yields ``{}`` and every lookup
