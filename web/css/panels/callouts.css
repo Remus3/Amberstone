@@ -1,0 +1,126 @@
+/* Deterministic objective/spike CALLOUTS + macro LEAD projection.
+ *
+ * Mounts (both inside #right-now):
+ *   #rn-lead     - the macro-read pill. PROMINENT (hero of this slice):
+ *                  full-width, state-colored left accent + tinted fill,
+ *                  larger line. Sits between #rn-action and #rn-immediate.
+ *   #rn-callouts - the compact secondary list (up to 3 rows). Each row =
+ *                  a directive line + a right-aligned ETA chip. Sits below
+ *                  #rn-choices.
+ *
+ * Colors reference the tokens.css semantic palette (--signal-good /
+ * --signal-warn / --signal-bad / --signal-dim / --signal-info) with
+ * literal fallbacks so the panel still reads if tokens.css is late.
+ * Typography uses the v2.1 font tokens (--fs-xs is the 16px floor).
+ */
+
+/* --- Lead projection pill ------------------------------------------------- */
+
+.rc-lead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 10px 14px;
+  border-radius: var(--panel-radius-sm, 10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left-width: 4px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rc-lead[hidden] {
+  display: none;
+}
+
+.rc-lead-line {
+  flex: 1;
+  font-size: var(--fs-md, 22px);
+  font-weight: 600;
+  line-height: 1.25;
+  color: inherit;
+}
+
+.rc-lead-tag {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--signal-dim, #8a8e9c);
+  white-space: nowrap;
+}
+
+/* State accents: ahead=green, behind=amber/red, even=neutral. Both the
+ * left border and a soft fill carry the state so it reads at a glance. */
+.rc-lead-ahead {
+  border-left-color: var(--signal-good, #6ec977);
+  background: var(--signal-good-soft, rgba(110, 201, 119, 0.18));
+}
+.rc-lead-ahead .rc-lead-tag { color: var(--signal-good, #6ec977); }
+
+.rc-lead-behind {
+  border-left-color: var(--signal-bad, #ff5050);
+  background: var(--signal-warn-soft, rgba(241, 176, 74, 0.18));
+}
+.rc-lead-behind .rc-lead-tag { color: var(--signal-warn, #f1b04a); }
+
+.rc-lead-even {
+  border-left-color: var(--signal-dim, #8a8e9c);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* --- Callouts list -------------------------------------------------------- */
+
+#rn-callouts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+#rn-callouts[hidden] {
+  display: none;
+}
+
+.rc-co-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--panel-radius-sm, 10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rc-co-line {
+  flex: 1;
+  font-size: var(--fs-sm, 18px);
+  line-height: 1.2;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-co-eta {
+  font-family: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--signal-dim, #8a8e9c);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Active objective (eta_s <= 0): the ETA chip reads "NOW" and lights up
+ * green so a contestable objective stands out from the upcoming ones. */
+.rc-co-eta.rc-co-now {
+  background: var(--signal-good-soft, rgba(110, 201, 119, 0.18));
+  border-color: var(--signal-good, #6ec977);
+  color: var(--signal-good, #6ec977);
+}
