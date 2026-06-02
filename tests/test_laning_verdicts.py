@@ -8,6 +8,8 @@ so the adapter logic is exercised in isolation.
 from __future__ import annotations
 
 import json
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -118,9 +120,16 @@ class LaningChoicesTests(unittest.TestCase):
     def setUp(self) -> None:
         # Default: matchup returns a trade verdict; tests override per-case.
         self._orig_matchup = lv.matchup
+        # Isolate from the committed build_orders table so the optional 3rd
+        # "Buy X" choice never bleeds in - these tests assert the 2-choice core.
+        self._orig_dir = lv._DS_DATA_DIR
+        self._tmp = tempfile.mkdtemp()
+        lv._DS_DATA_DIR = Path(self._tmp)  # type: ignore[assignment]
 
     def tearDown(self) -> None:
         lv.matchup = self._orig_matchup  # type: ignore[assignment]
+        lv._DS_DATA_DIR = self._orig_dir  # type: ignore[assignment]
+        shutil.rmtree(self._tmp, ignore_errors=True)
 
     def test_mocked_matchup_returns_mapped_choices(self) -> None:
         captured: dict = {}
