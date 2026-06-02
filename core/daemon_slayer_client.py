@@ -1130,3 +1130,42 @@ def dps_for(
     if augments:
         body["augments"] = [str(a) for a in augments if a]
     return _post_json("/dps", body, timeout=timeout)
+
+
+def matchup(
+    champ_a: str,
+    champ_b: str,
+    *,
+    level_a: int = 1,
+    level_b: int = 1,
+    item_ids_a: Optional[Iterable[str]] = None,
+    item_ids_b: Optional[Iterable[str]] = None,
+    mode: str = "SR",
+    hp_a_pct: float = 1.0,
+    hp_b_pct: float = 1.0,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[dict]:
+    """Call POST /v2/matchup and return the raw MatchupResult dict. None on failure.
+
+    Lane A 1v1 head-to-head trade resolution - the deterministic substitute for
+    an LLM "who wins this trade" judgment. Same engine-down semantics as the
+    other ``*_for`` helpers (None = unreachable).
+
+    Result dict carries ``verdict`` (one of all_in / trade / back_off / even),
+    ``net_swing`` (who-wins scalar in [-1, 1], positive = A favored),
+    ``pct_a_removed`` / ``pct_b_removed`` (capped fraction of each side's
+    effective HP removed by one combo), plus the raw damage + mana-gate fields.
+    ``hp_a_pct`` / ``hp_b_pct`` are the current-HP-pct assumption for each side.
+    """
+    body: dict = {
+        "champ_a": champ_a,
+        "champ_b": champ_b,
+        "level_a": int(level_a),
+        "level_b": int(level_b),
+        "item_ids_a": [str(i) for i in (item_ids_a or []) if i],
+        "item_ids_b": [str(i) for i in (item_ids_b or []) if i],
+        "mode": mode,
+        "hp_a_pct": float(hp_a_pct),
+        "hp_b_pct": float(hp_b_pct),
+    }
+    return _post_json("/v2/matchup", body, timeout=timeout)
