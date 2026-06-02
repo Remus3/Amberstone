@@ -1,14 +1,14 @@
-# Competitor Lift Teardown - coachless.gg
+# Competitor Lift Teardown - the competitor site
 
 Date: 2026-06-02
-Target: coachless.gg (site + companion web app; there is NO desktop app - see Finding 0)
+Target: the competitor site (site + companion web app; there is NO desktop app - see Finding 0)
 Method: live browser render (Chrome DevTools MCP) + captured XHR payloads on
-api.coachless.gg, plus xPetu's published WPA thesis / explainer video.
+the competitor API, plus xPetu's published WPA thesis / explainer video.
 All claims below verified against the LIVE network responses, not marketing copy.
 
 ## TL;DR
 
-coachless.gg is ONE WPA (Win Probability Added) stat engine wearing 5 hats
+the competitor site is ONE WPA (Win Probability Added) stat engine wearing 5 hats
 (Builds / Items / Runes / Spells / Review). Its whole pitch: raw winrate is
 selection-biased, so it reports `winrateObserved - winrateExpected` where the
 expected term comes from a calibrated deep-net win-prob model trained on 44M
@@ -25,12 +25,12 @@ without any scrape, riding the WpaModel RC already has.
 ## Finding 0 - There is no "app", and the architecture is a thin SPA over one API
 
 1. WHAT - The BACKLOG item says "the site AND its app". There is no Electron /
-   desktop / overlay app. "coachless.gg" is a single-page web app (React-ish
+   desktop / overlay app. "the competitor site" is a single-page web app (React-ish
    SPA) plus a marketing landing page. The "app" is the in-browser tool.
 2. HOW - Verified live. Every page (`/builds`, `/items`, `/runes`, `/spells`,
-   `/review`, `/leaderboard`) is the same SPA bundle hitting `api.coachless.gg`
+   `/review`, `/leaderboard`) is the same SPA bundle hitting `the competitor API`
    (.NET / nginx 1.24 Ubuntu backend, JWT `Authorization: Bearer` auth) and a
-   static CDN `cdn.coachless.gg` for DDragon mirrors + their own
+   static CDN `cdn.the competitor site` for DDragon mirrors + their own
    `item-base-v2/items-bundled.json` + `rune-translations-v2`. Billing is
    ProfitWell + localized pricing. Telemetry is PostHog (EU). No game-client
    integration, no LCU, no live overlay, no frame capture.
@@ -95,7 +95,7 @@ without any scrape, riding the WpaModel RC already has.
    per `post_game_score._STRONG_EVENT_TYPES`; if item events are absent this
    becomes a rewind-ingest schema lift = bumps to FUTURE).
 6. LIFT - **MED-HIGH if item events are already ingested; FUTURE if they need a
-   rewind-ingest schema lift.** This is the single most on-brand coachless idea
+   rewind-ingest schema lift.** This is the single most on-brand the competitor idea
    for RC (build engine + own data + WPA primitive already present) and the only
    one that clears every CLOSED rule. It is a personal-corpus item-WPA lens, not
    a market tierlist.
@@ -132,10 +132,10 @@ without any scrape, riding the WpaModel RC already has.
    `data/post_game_wpa_model.json`.
 5. EFFORT/RISK - n/a (already have it).
 6. LIFT - **CLOSED (already shipped).** The only deltas worth noting as small
-   future polish, NOT a rebuild: (a) coachless surfaces a per-player
+   future polish, NOT a rebuild: (a) the competitor surfaces a per-player
    contribution attribution (`pContribution`/`lContribution`) on each swing -
    RC's `compute_match_wpa` already returns `actor`/`actor_team`/`victim` per
-   event which is the same idea at event granularity. (b) coachless renders a
+   event which is the same idea at event granularity. (b) the competitor renders a
    continuous WP line; RC returns discrete events - a line-render of the
    frame-by-frame prob is a pure panel-JS polish over data RC already computes.
 
@@ -184,9 +184,9 @@ without any scrape, riding the WpaModel RC already has.
    The path-conditional filters ARE the "mathematical optimization".
 3. HAVE - **Partial / different axis.** RC HAS a build engine
    (`core/build_order.py` + 6 archetype scorers + curated loadouts) that orders
-   items by DS damage/EHP math + a no-double-unique-passive rule. coachless
+   items by DS damage/EHP math + a no-double-unique-passive rule. The competitor
    orders by empirical conditional-WPA. These are complementary: RC = mechanistic
-   "what does this item DO" (deterministic, no data needed); coachless =
+   "what does this item DO" (deterministic, no data needed); the competitor =
    empirical "what correlated with winning given the prefix".
 4. WHERE - If lifted, it is the same engine as Finding 1 (`core/item_wpa.py`)
    with a path-prefix filter param, consumed by the existing build-order UI as a
@@ -194,7 +194,7 @@ without any scrape, riding the WpaModel RC already has.
 5. EFFORT/RISK - Inherits Finding 1's risk (small local-N) PLUS the
    path-conditioning shreds N further (items bought AFTER a specific prefix in
    MY ~2900 games is a tiny cell). Likely too sparse to be useful on a personal
-   corpus; it is exactly where coachless's 44M-game scale is load-bearing.
+   corpus; it is exactly where the competitor's 44M-game scale is load-bearing.
 6. LIFT - **FUTURE (operator-gated) at best, leaning CLOSED.** The
    path-conditional optimizer is the one piece that genuinely needs big-N
    redistributable data; on RC's personal corpus it degrades to noise. Keep RC's
@@ -277,7 +277,7 @@ build it blind.
   pitch RC closed (validated MODELING CEILING; pickban DB = NO_SIGNAL).
 - **Finding 4 - path-conditional WPA build optimizer.** The path-prefix
   conditioning (firstLegendaryId/secondLegendaryId filters) is precisely where
-  coachless's 44M-game scale is load-bearing; on RC's ~2900-game personal corpus
+  the competitor's 44M-game scale is load-bearing; on RC's ~2900-game personal corpus
   the conditioned cells collapse to noise. RC's DS damage/EHP build ordering is
   the better mechanistic answer and needs no data. Keep DS-math primary.
 - **Finding 0 - "the app".** There is no desktop/overlay app to teardown; the
@@ -287,10 +287,10 @@ build it blind.
 
 ## Honest bottom line
 
-coachless.gg is genuinely sharp on ONE idea - decompose winrate into
+the competitor site is genuinely sharp on ONE idea - decompose winrate into
 `expected + WPA` to kill selection bias - and RC already owns the engine that
 makes that decomposition possible (`core/post_game_score.py` WpaModel +
-`rewind_history.db` timelines). But coachless's value is overwhelmingly in the
+`rewind_history.db` timelines). But the competitor's value is overwhelmingly in the
 44M-game model + global winrate substrate, both of which are RC's documented
 CLOSED ceiling. The single transferable nugget is applying RC's existing WPA
 primitive to ITEMS over RC's own match corpus (Finding 1) - and even that is
