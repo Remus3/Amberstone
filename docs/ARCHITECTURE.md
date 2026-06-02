@@ -22,13 +22,18 @@ Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` ag
 
 | From | To | Protocol | Purpose | Cadence |
 |---|---|---|---|---|
-| `gamepc_screen_agent` | `:8889/upload-frame` | HTTP POST (JPEG b64) | Screenshots for vision + OCR | every 2s |
-| `gamepc_liveclient_relay` | `:8889/upload-liveclient` | HTTP POST (JSON) | Live game telemetry | every 1s |
-| `gamepc_lcu_agent` | `:8889/upload-lcu` | HTTP POST (JSON) | Champ-select, queue, lobby state | every 1s |
-| Game-PC `lcu_agent` | `:8889/lcu-cmd-pending` | HTTP GET | Drain queued commands | every 0.5s |
+| `gamepc_screen_agent` | `:8889/upload-frame` | HTTP POST (JPEG b64) | Screenshots for vision + OCR - DISABLED (BSOD class); frames on-demand only | n/a |
+| `gamepc_liveclient_relay` | `:8889/upload-liveclient` | HTTP POST (JSON) | Live game telemetry (Legion-local; self-heals in-process, item 267) | every 1s |
+| `gamepc_lcu_agent` | `:8889/upload-lcu` | HTTP POST (JSON) | Champ-select, queue, lobby state (Legion-local) | every 1s |
+| `lcu_agent` (local) | `:8889/lcu-cmd-pending` | HTTP GET | Drain queued commands | every 0.5s |
 | Dashboard | `:8889/lcu-cmd` | HTTP POST | Queue a command for LCU (accept, bench, runes) | on user action |
 | Browser (Chrome) | `:8888/` | HTTP GET | Dashboard HTML + state polling | every 500ms |
 | Claude sessions | `:8888/api/bridge` | HTTP POST + GET | Cross-Claude activity log | per prompt / daemon poll |
+
+Post-1-PC (ADR-011) all relay agents run Legion-local (not Game-PC); the rows
+above keep the relay shape until the vision-frame in-process collapse lands (see
+the agents section). `gamepc_screen_agent` is DISABLED (continuous DXGI = game-end
+BSOD class); vision frames are captured on-demand only.
 
 ---
 
@@ -145,14 +150,36 @@ Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` ag
 
 ---
 
-## Game-PC agents (`C:\RC-Agent\`)
+## RC agents - `tools/gamepc_*.py` (post-1-PC status, ADR-011)
 
-| File | Role |
-|---|---|
-| `gamepc_screen_agent.py` | 2s JPEG capture → POST `:8889/upload-frame` |
-| `gamepc_liveclient_relay.py` | Live Client API polling → POST `:8889/upload-liveclient` |
-| `gamepc_lcu_agent.py` | LCU auth + champ-select state → POST `:8889/upload-lcu` |
-| `tools/gamepc_bridge_daemon.py` | Zero-cost bridge sentinel → headless `claude --print` |
+Despite the `gamepc_` prefix (a 2-PC-era name), these run LEGION-LOCAL as
+ONLOGON scheduled tasks post-1-PC; the prefix is kept to avoid a churny rename.
+Verified status 2026-06-02 (task state + consumer grep):
+
+| File | Status | Role |
+|---|---|---|
+| `gamepc_lcu_agent.py` | RUNNING (RC-LCUAgent) | LCU auth + champ-select/lobby state + command drain; reads local lockfile |
+| `gamepc_liveclient_relay.py` | RUNNING (RC-LiveClientRelay) | Live Client `:2999` -> `:8889/upload-liveclient`; self-heals in-process when stale + host local (item 267) |
+| `gamepc_hotkey_listener.py` | RUNNING (RC-HotkeyListener) | A/B tutoring-coach choice hotkeys (RegisterHotKey; anti-cheat-safe) |
+| `gamepc_screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - game-end BSOD class (feedback_gamepc_screen_capture_bsod). Kept as the documented BSOD reference + deploy-allowlisted. NEVER re-enable the continuous loop |
+| `gamepc_phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - same BSOD class at the resolution-swap edge (feedback_gamepc_lcu_phase_watcher_bsod). Patched item 209, has a test, deploy-allowlisted; kept as reference |
+| `gamepc_mcp_server.py` | DOWN (`:8892`, no task) | Game-PC MCP tooling; deploy-allowlisted; manual start only if Game-PC is re-used (project_gamepc_mcp_boot_gap) |
+| `gamepc_bridge_daemon.py` | OPTIONAL (Game-PC) | Zero-cost cross-Claude bridge sentinel -> headless `claude --print`. KEPT per item 215; bridge peering only, not in the League/RC pipeline |
+| `gamepc_keybind_listener.py` | OPTIONAL (unscheduled) | ADR-007 Alt+1/2/3 decision-respond keybinds; dashboard banner buttons are the live fallback. A working feature, not dead; safe to archive in a dedicated cleanup |
+
+**Archival DEFERRED (verify-before-declare-broken, item 269 L8):** none of the 8
+is truly dead-zero-consumer-safe - 3 are running, screen_agent + phase_watcher
+are intentional BSOD references (and phase_watcher has a test), mcp_server +
+bridge_daemon + screen_agent + phase_watcher sit in the `routes_static.py`
+Game-PC-deploy allowlist, and keybind_listener is an optional working feature.
+A clean archival would prune the deploy allowlist + relocate the phase_watcher
+test - a dedicated cleanup slice, not a blind move.
+
+**Vision-frame in-process collapse DEFERRED:** dropping the `:8889/upload-frame`
+relay in favor of an in-process screenshot is BLOCKED on the BSOD class -
+continuous DXGI capture is banned (feedback_gamepc_screen_capture_bsod); only an
+on-demand-gated capture is safe, which needs a careful design = separate session.
+The liveclient half already collapses in-process via the relay self-heal (item 267).
 
 ---
 
