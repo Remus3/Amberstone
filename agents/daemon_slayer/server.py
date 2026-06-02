@@ -70,6 +70,7 @@ from .engine import build_champion
 from .fight_report import compute_fight_report
 from .hps import compute_hps, rank_items_by_hps
 from .hybrid import compute_hybrid, rank_items_by_hybrid
+from .matchup import compute_matchup
 from .rank import SORT_KEYS, rank_items
 
 _log = logging.getLogger("daemon_slayer.server")
@@ -1001,6 +1002,41 @@ def _route_fight_report(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_matchup(body: dict) -> dict:
+    """POST /v2/matchup - Lane A 1v1 head-to-head trade resolution.
+
+    Composes the existing pure scorers (burst + build_champion + mana_sim) into a
+    deterministic who-wins-this-trade verdict, the substitute for the LLM laning
+    judgment. Body:
+      * ``champ_a`` / ``champ_b`` (both required)
+      * ``level_a`` / ``level_b`` (default 1 each)
+      * ``item_ids_a`` / ``item_ids_b`` (list or comma string)
+      * ``mode`` (default SR)
+      * ``hp_a_pct`` / ``hp_b_pct`` (current-HP-pct assumption; default 1.0)
+    """
+    snap = _CACHE.get()
+    champ_a = _resolve_champion_id(snap, _required_str(body, "champ_a"))
+    champ_b = _resolve_champion_id(snap, _required_str(body, "champ_b"))
+    level_a = _opt_int(body, "level_a", 1) or 1
+    level_b = _opt_int(body, "level_b", 1) or 1
+    items_a = _coerce_str_list(body.get("item_ids_a"), "item_ids_a")
+    items_b = _coerce_str_list(body.get("item_ids_b"), "item_ids_b")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    hp_a_pct = _opt_float(body, "hp_a_pct", 1.0)
+    hp_b_pct = _opt_float(body, "hp_b_pct", 1.0)
+    try:
+        result = compute_matchup(
+            snap, champ_a, champ_b, level_a, level_b,
+            item_ids_a=items_a, item_ids_b=items_b, mode=mode,
+            hp_a_pct=hp_a_pct, hp_b_pct=hp_b_pct,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_rank_assassin(body: dict) -> dict:
     """POST /rank-assassin - rank items by total-burst-damage delta.
 
@@ -1291,6 +1327,7 @@ _POST_ROUTES = {
     "/hps": _route_hps,
     "/rank-enchanter": _route_rank_enchanter,
     "/v2/fight-report": _route_fight_report,
+    "/v2/matchup": _route_matchup,
 }
 
 # GET routes that need a body merge from query params for the same handler.
