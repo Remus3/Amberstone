@@ -113,6 +113,7 @@ from .effects import ITEM_EFFECTS
 from ._effects_types import ANY, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
 from ._passive_mitigation_overrides import mitigation_multipliers
+from ._passive_resist_overrides import resist_grants
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -535,6 +536,14 @@ class EhpResult:
     passive_mitigation_phys: float = 1.0
     passive_mitigation_mag: float = 1.0
     passive_mitigation_true: float = 1.0
+    # ENGINE 1.93.0 (2026-06-02): GAP-2 effects-text passive RESIST-STAT grants
+    # (bonus armor / MR) added to the armor/MR denominator when
+    # ``apply_passive_resist=True``. Default 0.0 leaves the physical/magical/
+    # blended EHP fields above byte-identical; positive values surface the grant
+    # magnitude (added BEFORE _armor_factor; the reported armor/mr fields stay the
+    # resolved build stats). Same sibling convention as passive_mitigation_*.
+    passive_resist_armor: float = 0.0
+    passive_resist_mr: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -578,6 +587,8 @@ class EhpResult:
             "passive_mitigation_phys": self.passive_mitigation_phys,
             "passive_mitigation_mag": self.passive_mitigation_mag,
             "passive_mitigation_true": self.passive_mitigation_true,
+            "passive_resist_armor": self.passive_resist_armor,
+            "passive_resist_mr": self.passive_resist_mr,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -663,6 +674,7 @@ def compute_ehp(
     apply_mode_modifiers: bool = False,
     apply_build_tenacity: bool = False,
     apply_passive_mitigation: bool = False,
+    apply_passive_resist: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -834,6 +846,23 @@ def compute_ehp(
         resolved.champion_id, level, apply_passive_mitigation
     )
 
+    # ENGINE 1.93.0 (2026-06-02): GAP-2 effects-text passive RESIST-STAT grants.
+    # The FOURTH survivability axis - champion-passive bonus armor / MR (Garen W
+    # Courage, Wukong P, Shyvana P, Sejuani P, Gwen W, Pantheon E) that is NOT in
+    # the resolved stat block (not base per-level, not an item). It raises the
+    # armor/MR DENOMINATOR DIRECTLY (added BEFORE _armor_factor), unlike the DR
+    # registry which multiplies the post-curve denominator. ``apply_passive_resist``
+    # defaults False -> both grants 0.0 -> eff_armor/eff_mr == armor/mr ->
+    # BYTE-IDENTICAL to 1.92.0. Active grants are amortized inside
+    # ``resist_grants`` by their entry's operator-tunable conditional_probability.
+    # The reported EhpResult.armor / .mr stay the RESOLVED build stats (the grant
+    # is surfaced separately via passive_resist_armor / passive_resist_mr).
+    bonus_armor, bonus_mr = resist_grants(
+        resolved.champion_id, level, apply_passive_resist
+    )
+    eff_armor = armor + bonus_armor
+    eff_mr = mr + bonus_mr
+
     # Shields + heal sit at the top of the damage stack: each damage_type
     # sees ``hp + shield_any_amped + shield_<type>_amped + heal_total``
     # effective HP before the armor/MR curve. Shields + heals are NOT
@@ -841,8 +870,8 @@ def compute_ehp(
     # share the same factor as HP. The mit_* DR multiplier divides the
     # whole denominator (it composes multiplicatively with armor/MR, the way
     # League stacks a flat-% reduction on top of the resistance curve).
-    physical_ehp = (hp + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(armor) * safe_mult * mit_phys)
-    magical_ehp = (hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(mr) * safe_mult * mit_mag)
+    physical_ehp = (hp + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys)
+    magical_ehp = (hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
     true_ehp = (hp + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
     enemy_true_share = max(0.0, 1.0 - enemy_ad_share - enemy_ap_share)
@@ -962,6 +991,12 @@ def compute_ehp(
             f"mit_true=x{mit_true:.3f}; active DRs amortized at their "
             f"conditional_probability midpoint)"
         )
+    if apply_passive_resist and (bonus_armor != 0.0 or bonus_mr != 0.0):
+        notes.append(
+            f"passive_resist: effects-text bonus resists added to the armor/MR "
+            f"denominator (+{bonus_armor:.1f} armor, +{bonus_mr:.1f} MR; active "
+            f"grants amortized at their conditional_probability midpoint)"
+        )
 
     return EhpResult(
         champion_id=resolved.champion_id,
@@ -998,6 +1033,8 @@ def compute_ehp(
         passive_mitigation_phys=mit_phys,
         passive_mitigation_mag=mit_mag,
         passive_mitigation_true=mit_true,
+        passive_resist_armor=bonus_armor,
+        passive_resist_mr=bonus_mr,
         stats=dict(stats),
         notes=tuple(notes),
     )
@@ -1165,6 +1202,7 @@ def rank_items_by_ehp(
     score_by: str = "blended",
     apply_build_tenacity: Optional[bool] = None,
     apply_passive_mitigation: bool = False,
+    apply_passive_resist: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1248,6 +1286,7 @@ def rank_items_by_ehp(
         include_conditional=include_conditional,
         apply_build_tenacity=apply_tenacity,
         apply_passive_mitigation=apply_passive_mitigation,
+        apply_passive_resist=apply_passive_resist,
     )
 
     candidates = _filter_candidates(
@@ -1282,6 +1321,7 @@ def rank_items_by_ehp(
                 include_conditional=include_conditional,
                 apply_build_tenacity=apply_tenacity,
                 apply_passive_mitigation=apply_passive_mitigation,
+                apply_passive_resist=apply_passive_resist,
             )
         except (KeyError, ValueError):
             continue
