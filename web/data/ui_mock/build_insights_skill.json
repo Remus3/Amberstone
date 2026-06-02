@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "patch": "16.10.1",
+  "queue_id": 420,
+  "min_n": 20,
+  "model": "trained",
+  "items": [
+    {"champion_id": 888, "champion": "Renata Glasc", "skill_slot": 2, "skill": "W", "n": 28, "observed_winrate": 0.7143, "expected_winrate": 0.5261, "wpa": 0.1882, "wpa_shrunk": 0.1597, "avg_max_time_s": 496.3},
+    {"champion_id": 37, "champion": "Sona", "skill_slot": 2, "skill": "W", "n": 80, "observed_winrate": 0.65, "expected_winrate": 0.4812, "wpa": 0.1688, "wpa_shrunk": 0.1589, "avg_max_time_s": 634.5},
+    {"champion_id": 517, "champion": "Sylas", "skill_slot": 1, "skill": "Q", "n": 23, "observed_winrate": 0.6522, "expected_winrate": 0.4876, "wpa": 0.1645, "wpa_shrunk": 0.1351, "avg_max_time_s": 564.0},
+    {"champion_id": 166, "champion": "Akshan", "skill_slot": 3, "skill": "E", "n": 48, "observed_winrate": 0.6667, "expected_winrate": 0.5208, "wpa": 0.1459, "wpa_shrunk": 0.1321, "avg_max_time_s": 626.4},
+    {"champion_id": 161, "champion": "Vel'Koz", "skill_slot": 1, "skill": "Q", "n": 207, "observed_winrate": 0.57, "expected_winrate": 0.5067, "wpa": 0.0633, "wpa_shrunk": 0.0618, "avg_max_time_s": 457.6},
+    {"champion_id": 17, "champion": "Teemo", "skill_slot": 3, "skill": "E", "n": 22, "observed_winrate": 0.5, "expected_winrate": 0.5031, "wpa": -0.0031, "wpa_shrunk": -0.0023, "avg_max_time_s": 512.0},
+    {"champion_id": 420, "champion": "Illaoi", "skill_slot": 3, "skill": "E", "n": 79, "observed_winrate": 0.3418, "expected_winrate": 0.4579, "wpa": -0.1162, "wpa_shrunk": -0.1093, "avg_max_time_s": 445.0},
+    {"champion_id": 96, "champion": "Kog'Maw", "skill_slot": 3, "skill": "E", "n": 39, "observed_winrate": 0.3846, "expected_winrate": 0.5163, "wpa": -0.1317, "wpa_shrunk": -0.1167, "avg_max_time_s": 453.1},
+    {"champion_id": 42, "champion": "Corki", "skill_slot": 3, "skill": "E", "n": 25, "observed_winrate": 0.4, "expected_winrate": 0.5362, "wpa": -0.1362, "wpa_shrunk": -0.1135, "avg_max_time_s": 478.2}
+  ],
+  "elapsed_ms": 1186,
+  "cached": true
+}
