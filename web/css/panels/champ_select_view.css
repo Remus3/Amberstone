@@ -2284,6 +2284,138 @@
 }
 .csv-build-path-item img { width: 100%; height: 100%; object-fit: cover; }
 
+/* Item 240 part-3 (3a, 2026-06-01): inside a collapsed SR variant, the
+ * build-path cards sit on the LEFT and the nested RUNE panel on the
+ * RIGHT (two columns). The cards column flex-grows; the rune panel is a
+ * fixed-ish right rail. Wraps to single-column on narrow widths so the
+ * My-Pick column never overflows. */
+.csv-build-collapsed-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 8px;
+  align-items: start;
+}
+@media (max-width: 560px) {
+  .csv-build-collapsed-cols { grid-template-columns: 1fr; }
+}
+/* Item 240 part-3 (3a/3b): nested rune panel. Each rune option is a
+ * keystone icon + name pill. Borders carry the selection signal:
+ *   GREEN  (.is-selected)    = operator's sticky rune choice.
+ *   AMBER  (.is-recommended) = rune recommended for the active build
+ *                              card, shown ONLY when it differs from the
+ *                              sticky choice (3b). */
+.csv-rune-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+}
+.csv-rune-panel-title {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0 2px 2px;
+  border-bottom: 1px solid #2a2f37;
+}
+.csv-rune-opt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.csv-rune-opt {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--hit-min, 42px);
+  padding: 3px 5px;
+  background: #1a1d23;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.csv-rune-opt:hover { background: #1a2030; }
+/* GREEN sticky selection (3b). */
+.csv-rune-opt.is-selected {
+  border-color: #4ade80;
+  background: #1a2a20;
+}
+/* AMBER recommended-for-active-card (3b). Withheld when the operator is
+ * already on the recommended rune (then it is just green). */
+.csv-rune-opt.is-recommended {
+  border-color: #fbbf24;
+  background: #2a2415;
+}
+.csv-rune-opt-icon {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #0f1216;
+}
+.csv-rune-opt-name {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 600;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Item 240 part-3 (3d): SR-build-chooser header control - the title on
+ * the LEFT, a [PUSH] button + 3 category checkboxes RIGHT-aligned. The
+ * checkbox typography matches the title (uppercase, --fs-xs). */
+.csv-builds-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.csv-builds-head .csv-builds-title { margin-bottom: 0; }
+.csv-builds-push-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.csv-builds-push-btn {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #c8f2d4;
+  background: #1a2a20;
+  border: 1px solid #4ade80;
+  border-radius: 4px;
+  padding: 4px 10px;
+  min-height: var(--hit-min, 42px);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.csv-builds-push-btn:hover { background: #224a30; border-color: #6ee79a; }
+.csv-builds-push-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs, 16px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+  cursor: pointer;
+  user-select: none;
+}
+.csv-builds-push-cb {
+  width: 16px; height: 16px;
+  accent-color: #4ade80;
+  cursor: pointer;
+}
+
 /* -- Arena duo + augments (replaces MY PICK central pane) ----------- */
 .csv-duo-row {
   display: grid;
