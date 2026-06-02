@@ -1331,6 +1331,43 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.91.0 (item 261 / GAP 2 - effects-text-only DAMAGE-REDUCTION (mitigation)
+registry, default-OFF byte-identical. The survivability-triad SIBLING of the
+effects-text HEAL (items 250-254) + SHIELD (item 260) registries, but for the
+THIRD survivability axis: a flat-% damage-reduction multiplier. Heals + shields
+are survivability THROUGHPUT (feed compute_ability_hps); damage reduction is the
+survivability DENOMINATOR - a "% less damage taken" is strictly multiplicative on
+Effective HP, so it folds into compute_ehp's physical/magical/true EHP
+denominators. NEW _passive_mitigation_overrides.py: PassiveMitigationEntry (terms
+of (pct, damage_type) + conditional_probability + level_scaled) +
+_PASSIVE_MITIGATION_OVERRIDES + mitigation_multipliers(champ, level, apply) ->
+(mit_phys, mit_mag, mit_true). NO synthetic block (DR is not an ability
+attribute_kind; compute_ehp reads only armor/MR - even the DR percents Meraki
+parses into a "modifier" block are uncovered by the EHP consumer). compute_ehp
+gains apply_passive_mitigation=False; when True the three multipliers divide the
+matching denominator (mult < 1.0 = smaller divisor = larger EHP = the correct DR
+direction). Threaded through rank_items_by_ehp + /ehp + /rank-tank (all default-OFF
+byte-identical). +3 EhpResult fields (passive_mitigation_phys/mag/true, default
+1.0). SEEDED 5 (exhaustive of the clean flat-% multiplicative DR set at 16.11.1):
+Kassadin P Void Stone (10% magic, PERMANENT prob 1.0) / Nilah W Jubilant Veil (25%
+magic, active) / KSante W Path Maker (30% all, active; All Out 75% R-form-gated
+omitted) / Briar E Chilling Scream (35% all, active) / Irelia W Defiant Dance
+(physical 40:70 + magic 20:35 based-on-level, active; +AP sub-terms omitted;
+level_scaled). The 4 actives are cooldown-gated bursts amortized by the
+operator-tunable conditional_probability midpoint _ACTIVE_DR_PROB=0.3 (the
+expected fraction of a fight the active is up); the exact percent is shipped, only
+the firing midpoint is the assumption (item-255 convention). EXCLUDED (documented):
+per-instance flat-amount DR (Fizz P / Amumu E / Leona W - hit-count dependent, the
+vamp-class boundary), DR-percent-not-in-effects-text (Alistar R / Gragas W /
+Warwick E / BelVeth E - value only in a modifier block), resist-stat grants (Garen
+W Courage armor/MR), AoE-only (Jax E), immunity-until-hit (Malzahar P Void Shift
+90%), partial-window+modified-value (Master Yi W 70% first 0.5s), dodge/untargetable
+(Zed R / Yone E / Vladimir W), grey-health/Grit (DrMundo W / Sett W / Morde W /
+Rengar W / TahmKench E), offensive damage-falloff (Ezreal R / Xayah Q / Qiyana Q),
+vamp/heal lines. +37 tests test_passive_mitigation_overrides_item261.py. ENGINE
+1.90.0 -> 1.91.0. DS :8893 restarted -> 1.91.0; RC NOT restarted - DS engine +
+tests + Share + docs only.)
+
 1.90.0 (item 260 / GAP 2 - effects-text-only SHIELD registry, default-OFF
 byte-identical. New _passive_shield_overrides.py (sibling of the heal/damage
 registries): a synthetic attribute_kind="shield" block for the self-shields whose
