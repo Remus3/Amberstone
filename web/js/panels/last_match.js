@@ -36,6 +36,9 @@ import { CHAMPS, ITEMS } from '../lib/items_index.js';
 import { itemTooltipHtml, preloadLolDescriptions } from '../lib/lol_descriptions.js';
 // s220 PGR S2: phases-that-mattered (WPA decomposition of the timeline).
 import { fetchAndRenderPhases, clearPhases } from './post_game_phases.js';
+// Item 275 PGR S2: "your build, graded by your career" - career item-WPA
+// + skill-WPA chips on this match's actual loadout.
+import { renderPgrBuildWpa } from './pgr_build_wpa.js';
 
 // Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
 // set; Arena (CHERRY) spell ids are not in this map and fall back to a
@@ -418,6 +421,10 @@ function renderLastMatch(data) {
   // S+/S/A/B/C/D grade for this match from /api/post-game-rubric
   // (sibling to _rosterScores; role-aware vs lobby-relative).
   _setHeroRoleGrade(m);
+  // Item 275 PGR S2: "your build, graded by your career" WPA strip under
+  // the hero - career item-WPA + skill-WPA chips on this match's loadout.
+  // Fail-soft: hides itself if the corpus / routes are unavailable.
+  try { renderPgrBuildWpa(data); } catch (_e) { /* PGR never errors on the strip */ }
   _setChart(enriched);
   _setTimeline(enriched);
   _setPhases(m, enriched);
