@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-06-02 - item 270: DS unlabeled-multi-stat-block resist grants (ENGINE 1.97.0)
+
+Operator "start the next DS schema lift and exhaust it then /done for /clear". Seeded the LAST resist-grant exclusion class (Singed R / Braum W / Leona W / Jax R). 1 commit `fbb2934` (pushed `ff7ffa6..fbb2934`), CI green run 26831626137. ENGINE 1.96.0 -> 1.97.0. DS :8893 restarted (taskkill pid 15424 + schtasks) -> live-verified. RC NOT touched.
+
+- NO new schema field - hand-attribution + the existing item-267 `rank_scaled` flat-add seam. The item-264 "unlabeled / not confidently attributed" framing was OVER-cautious: series[0] varies by rank = flat base; series[1] rank-constant = a percent coefficient (omitted per its base). Singed R is one shared series [25,60,95]=AP=armor=MR.
+- SEEDED 4 rank_scaled flat-base active-amortized 0.3: Singed R (25/60/95), Braum W (20-40), Leona W (20-50), Jax R (armor 25/50/75 + MR 15/30/45). Percent coefficients omitted: Braum 36%-of-ALLY (cross-champ), Leona 20% (uncertain), Jax 40%/24%-of-bonus-AD (no seam).
+- Exhaustive re-scan: the only other armor/MR blocks are target-SHRED (Evelynn/JarvanIV/Renekton/Rengar/Rumble/Yorick = offensive, NOT self-resist).
+- +15t `test_passive_resist_unlabeled_block_item270.py`; item-264 exclusion-list dropped the 4. DS 6103 -> 6118; 51 test-pin syncs; Share 276 files --check clean; living docs 1.97.0/6118.
+- LIVE /ehp: Singed L16 28.5; Jax L16 armor 22.5 / mr 13.5; Braum L11 9.0; Leona L16 15.0; Caitlyn off==on byte-identical.
+
+Don't-redo: (a) the resist-grant lane is now COMPLETE (flat 264 + rank-block 267 + percent 268 + unlabeled-block 270) - do NOT re-pitch Singed/Braum/Leona/Jax. (b) the 4 remaining resist exclusions each need a DIFFERENT seam: Jayce R form-state midpoint / Anivia P resurrection / Thresh P per-stack / Orianna E ball-attached. (c) percent coefficients deliberately omitted (no ally / bonus-AD seam) - do NOT force-seed. (d) default apply_passive_resist=False byte-identical; flag-on CAN re-rank (non-linear _armor_factor) - Phase D live validation before default-on.
+NEXT (operator-gated): the entire headless effects-text survivability + resist-grant lane is EXHAUSTED across both EHP scorers; remaining DS = Phase D live flag-flips + the 4 different-seam resist exclusions + the deferred Phase 11 vision-frame collapse + gamepc archival.
+
+---
+
 # 2026-06-02 - item 269: 6-lane /headless-upgrade drain (L1/L4/L5/L7/L8 shipped, L6 OWED)
 
 Operator "start 1 and 4 and 5 and 6 and 7 and 8" off the "what is next" menu. NO ENGINE bump (1.96.0 stays), NO DS restart. RC restarted pid 324 -> 11464 (L1 backend module). 6 commits `366ad92..c9e5d7a` (5 lanes + docs), CI green. Server-side throttle hit the wave-1 worktree agents at 0 tokens (item-266 pattern) -> ran all lanes INLINE serially, direct-to-main.
@@ -68,20 +83,3 @@ Cost/latency 7-lever sweep CLEAN (L1 16 cache_control / L2 24 _CACHE / L3 tighte
 Don't-redo: (a) matchup engine = NO-signal vs real outcomes - do NOT re-pitch flipping the prose coach onto it; a fidelity lift (item-aware + real-level) is operator-gated + LIKELY A MODELING CEILING (a 1v1 burst+ehp model cannot capture lane macro/ganks/skill). (b) the CALLOUTS + LEAD are correct-by-construction Haiku-elim wins, now wired+rendered - lean on these, NOT the matchup chips. (c) the `compute_deterministic` TTL cache keeps matchup() off the 500ms poll - do NOT remove it. (d) build coaching is ALREADY Haiku-free (curated loadouts + Lane B build_orders); champ_select pickban-DB flip needs a counter-quality validation first - do NOT flip blind. (e) pickban de-bias is in the SORT (sign-filter on real beat, colmean-adjusted rel); entries carry both raw net_swing + rel; `--check` drift guard green; the Share/ mirror MUST be re-synced when a data/daemon_slayer/<patch>/ file changes (ds_share_sync --check is a CI gate - this run's base wave was red until the mirror landed). (f) `ops/runtime/matchup_validation*.json` gate artifacts are gitignored runtime (NOT committed).
 
 OWED (live/operator-gated): W3E callouts+lead VISUAL capture - Game-PC MCP :8892 is DOWN post-1PC, code-side 5-phase UI-audit + 92 tests stand. NEXT (operator-gated): matchup-engine fidelity lift (uncertain payoff) OR pivot Haiku-elim to the non-prediction surfaces (callouts/lead/build-orders already shipped) ; overlay Lane D (Electron Phase 2, needs Game-PC visual) ; champ_select pickban-DB flip after a counter-quality validation. Synopsis: Desktop/RC_HEADLESS_SYNOPSIS_2026-06-02.md.
-
----
-
-# 2026-06-02 - item 265 (/headless-upgrade): Haiku-elimination FOUNDATIONS (ENGINE 1.94.0)
-
-HEAD `f977c0d` (5 merges + 2 fixes this run). ENGINE 1.93.0 -> 1.94.0, DS :8893 restarted 1.94.0, DS 6045 -> 6056, RC +118 new tests, CI green (run 26804451116), Share re-synced 1.94.0. RC NOT restarted (new core/ modules load on next coach tick).
-
-SHIPPED (PRIMARY north star = zero live Haiku via precomputed DS lookups):
-- Lane A `agents/daemon_slayer/matchup.py` `compute_matchup` -> verdict {all_in,trade,back_off,even} + net_swing; NEW `/v2/matchup`. The deterministic trade-judgment substitute. +13 DS tests.
-- Lane B `tools/daemon_slayer_build_orders_generate.py` -> `data/daemon_slayer/16.11.1/build_orders_{sr,aram,arena}.json` (516/516 cells). FIX: generator must pass BOTH enemy_ad_share + enemy_ap_share (engine rejects sum>1.0; ad_heavy 0.7 was returning empty for 74 champs).
-- Lane C `core/laning_verdicts.py` (matchup->CoachChoice) + Lane E `core/event_callouts.py` + Lane P `core/lead_projection.py`. Pure, fail-soft, NOT wired into coaches yet.
-
-DON'T-REDO: compute_matchup is the trade engine (do not reimplement); build_orders generator passes both shares; the 3 generators are not yet wired live.
-
-NEXT (wave 3 - hit server-side rate-limiting at 0 tokens mid-dispatch, /done fired; REDO next session): W3A wire deterministic choices+callouts+lead into `dashboard/_state_builder.py` (TTL-cached, fail-soft, deterministic-FIRST choices, byte-identical out-of-game) ; W3B replay-validation harness (rewind_history -> matchup verdict agreement = the GATE for flipping a coach off Haiku) ; W3C Pick&Ban targets DB. Then validate-via-replay BEFORE flipping any coach choices off its live Haiku call (section 4b: do NOT flip blind); frontend slice (visual proof + UI-audit) for callouts/lead; overlay Lane D. Synopsis: Desktop/RC_HEADLESS_SYNOPSIS_2026-06-02.md.
-
----

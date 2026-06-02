@@ -51,6 +51,23 @@ NEXT SESSION (operator agenda): (1) SHIP the `_is_legal_in_mode` `mode.upper()` 
 
 ---
 
+# 2026-06-02 - item 265 (/headless-upgrade): Haiku-elimination FOUNDATIONS (ENGINE 1.94.0)
+
+HEAD `f977c0d` (5 merges + 2 fixes this run). ENGINE 1.93.0 -> 1.94.0, DS :8893 restarted 1.94.0, DS 6045 -> 6056, RC +118 new tests, CI green (run 26804451116), Share re-synced 1.94.0. RC NOT restarted (new core/ modules load on next coach tick).
+
+SHIPPED (PRIMARY north star = zero live Haiku via precomputed DS lookups):
+- Lane A `agents/daemon_slayer/matchup.py` `compute_matchup` -> verdict {all_in,trade,back_off,even} + net_swing; NEW `/v2/matchup`. The deterministic trade-judgment substitute. +13 DS tests.
+- Lane B `tools/daemon_slayer_build_orders_generate.py` -> `data/daemon_slayer/16.11.1/build_orders_{sr,aram,arena}.json` (516/516 cells). FIX: generator must pass BOTH enemy_ad_share + enemy_ap_share (engine rejects sum>1.0; ad_heavy 0.7 was returning empty for 74 champs).
+- Lane C `core/laning_verdicts.py` (matchup->CoachChoice) + Lane E `core/event_callouts.py` + Lane P `core/lead_projection.py`. Pure, fail-soft, NOT wired into coaches yet.
+
+DON'T-REDO: compute_matchup is the trade engine (do not reimplement); build_orders generator passes both shares; the 3 generators are not yet wired live.
+
+NEXT (wave 3 - hit server-side rate-limiting at 0 tokens mid-dispatch, /done fired; REDO next session): W3A wire deterministic choices+callouts+lead into `dashboard/_state_builder.py` (TTL-cached, fail-soft, deterministic-FIRST choices, byte-identical out-of-game) ; W3B replay-validation harness (rewind_history -> matchup verdict agreement = the GATE for flipping a coach off Haiku) ; W3C Pick&Ban targets DB. Then validate-via-replay BEFORE flipping any coach choices off its live Haiku call (section 4b: do NOT flip blind); frontend slice (visual proof + UI-audit) for callouts/lead; overlay Lane D. Synopsis: Desktop/RC_HEADLESS_SYNOPSIS_2026-06-02.md.
+
+---
+
+---
+
 # 2026-06-02 - item 263: Kai'Sa ARAM rebuild + Ashe SR ADC paths (data-only, RC pid 324 live-verified, no restart)
 
 Operator "start the next open item" -> the LW DEFERRED carry (data-only loadout fix). Pre-flight: clean tree, main, item 262 last shipped, DS clean-headless lane EXHAUSTED (mitigation triad scorer-COMPLETE), remaining DS NEXT is all Phase D (live/operator-gated). So the next headless-buildable open item = the LW deferred loadout rebuild.
@@ -8800,6 +8817,22 @@ CARRY / NEXT (all live/operator-gated): (1) item 259 LCU push verification at a 
 
 ---
 
+# 2026-06-02 - item 264: DS GAP-2 effects-text RESIST-STAT grant registry + 6 seeded (ENGINE 1.93.0, DS restarted + live-verified, RC NOT restarted)
+
+Operator "start the next DS schema lift and exhaust it then /done". Pre-flight: clean tree, main, item 263 last shipped, DS 1.92.0. Item 262 declared the survivability TRIAD (heal/shield/DR) scorer-COMPLETE; gap-plan named items + item-257 "LAST named clean headless DS item" all done. Found the genuinely-next clean lift by reading item 261's OWN exclusion list: "RESIST-STAT grant (bonus armor/MR, a DIFFERENT axis than a damage multiplier)" was a documented NEGATIVE = the FOURTH survivability axis, unmodeled.
+
+SHIPPED `c3ee4a0` (ENGINE 1.92.0 -> 1.93.0): NEW `_passive_resist_overrides.py` (sibling of `_passive_mitigation_overrides.py`) - `PassiveResistEntry` (armor+mr flat-or-per-level + conditional_probability + level_scaled) + `resist_grants(champ, level, apply) -> (bonus_armor, bonus_mr)`. `compute_ehp(apply_passive_resist=False)` adds grants to armor/mr BEFORE `_armor_factor` (NOT a DR multiplier - the resist add RAISES the denominator directly; the two compose). +2 EhpResult fields (reported armor/mr stay the resolved stat; grant surfaced separately) + to_dict + note. Threaded through BOTH EHP-bearing scorers in ONE item: rank_items_by_ehp + /ehp + /rank-tank + compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser.
+
+SEEDED 6 (4 permanent + 2 active, exact 16.11.1): Garen W 30/30 cap, Wukong P 6:10 armor-only level_scaled, Shyvana P 5/5, Sejuani P 10/10 in-combat (prob 1.0); Gwen W 22/22, Pantheon E 5:30 level_scaled (active, amortized `_ACTIVE_RESIST_PROB=0.3`). EXCLUDED documented NEGATIVES: value-not-in-text (Olaf R/Rammus W/Kennen R/Nasus R/Hecarim W/Malphite W/Singed R/Taric W/Graves E), percent-of-resist (Poppy W/Rell W), form-gated gate-dependent (Jayce R Hammer), resurrection (Anivia P), per-stack unbounded (Thresh P), ball-attached (Orianna E).
+
+KEY FINDING (honest, DIFFERS from item 261 DR): a flat resist add goes through the NON-LINEAR `_armor_factor`, so unlike DR (uniform multiplicative scale, rank-INVARIANT) a resist grant is NOT uniform -> the item-rankers CAN re-rank flag-on (armor item worth marginally less to a champ with innate armor). Correct, not a bug.
+
+Verified: DS suite 6013 -> 6043 (+30 = new file, 0 failed); ruff clean; 0 non-ASCII added; +30 tests `test_passive_resist_overrides_item264.py`; Share re-sync 267 files --check clean + authored 04/05/CHANGELOG semantic updates (gist auto-pushed 276 files); DS restarted PowerShell taskkill + schtasks -> /health 1.93.0/16.11.1/172/705; live /ehp Garen off 2483.46 / on 2948.44 (+30 armor/MR, reported armor 74.855, resist_armor 30.0), Caitlyn (no entry) flag-on byte-identical, default OFF byte-identical; CI green run 26800841051. Operator was MID-GAME (ranked SR InProgress) during wrap - RC never restarted (DS engine + tests + Share + docs only).
+
+Don't-redo: resist grant raises the armor/MR denominator DIRECTLY (do NOT route through the DR registry); it DOES re-rank flag-on (correct, non-linear curve); reported EhpResult.armor/.mr stay the resolved build stat; default apply_passive_resist=False byte-identical (do NOT flip default-on without live validation = Phase D); the EXCLUDED classes need NEW schema seams (value-not-in-text = "read the parsed block" lift; Poppy/Rell = percent-of-resist mode). The FOUR survivability axes (heal/shield/DR/resist-grant) are now COMPLETE across both EHP scorers - clean headless effects-text survivability lane EXHAUSTED.
+
+---
+
 ---
 
 # 2026-05-25 (night 3) - item 195 SHIPPED: 7 orphan dead-script deletions (3 tools/arena_phase3 + 4 scripts) + drift guard `tests/test_orphan_scripts_item195.py` + BACKLOG/ROADMAP stale-sweep wave 27 = 0 flips (11 consecutive zero-flip waves 17-27) + cost/latency wave 33 = 33rd consecutive CLEAN since item 134 (2 subagent measurement-error flags verified false-positive per [[feedback_verify_generated_reports]]) (1 commit pushed origin/main; non-engine; non-frozen; no DS restart; no RC restart - file deletions + new test only)
@@ -10409,19 +10442,3 @@ LIVE :8893 (POST /ability-dps): AurelionSol Q apply_ability_amps=false 292.5 / t
 +25 tests test_cross_spell_amp_item257.py. ENGINE 1.87.0 -> 1.88.0 + 41 test-pin syncs + CHANGELOG prepend + Share re-sync (--check clean, 259 files engine 1.88.0) + Share authored-doc semantic update (04 cross-spell shipped-vs-staged moved to section 1, 05 test count 5886->5911 + 171->172 files, CHANGELOG 1.88.0 prepend) + DS restart (PowerShell taskkill /F /PID 12792 + schtasks /Run /TN RC-DaemonSlayer -> /health 1.88.0/16.11.1/172/705). DS suite 5886 -> 5911 (+25, 0 failed); phase8 70/70 post-restart; ruff clean; added-diff 0 non-ASCII.
 
 Don't-redo: (a) CrossSpellAmpEntry + _CROSS_SPELL_AMP_OVERRIDES is the canonical home for ANY amp whose magnitude/gate live on a SOURCE spell but multiply a DIFFERENT TARGET spell; keyed by the TARGET; the consumer resolves SOURCE rank via rank_at_level - do NOT try to key it on the source spell (W f0 has no damage block to scale). (b) reuses _amp_multiplier; _COND_W_FLIGHT 0.4 midpoint matches the staged entry's documented choice. (c) source-rank guard >= 0 is load-bearing (W unleveled = no flight buff = no Q amp -> lvl1 byte-identical) - do NOT remove. (d) no double-count - do NOT add a Q ability-amp entry. (e) _STAGED_AMP_CANDIDATES is now EMPTY - the staged self-amp lane is closed. (f) DS restart PowerShell taskkill /F /PID + schtasks (NEVER Stop-Process). NEXT (all live/operator-gated - the clean headless DS lane is now GENUINELY EXHAUSTED): (1) Phase D live flag-flips (apply_ability_amps incl AurelionSol Q cross-spell + the 5 C2 AA champs once authored; apply_passive_damage 28; apply_passive_heal 24; apply_build_tenacity + score_by=cc_blended; apply_mode_modifiers; gate_ammo; aoe_targets_hit). (2) author the 5 C2 AA-empower amortized values + cadence live. (3) item-240 UI part-3 + #7/#8 sign-off + item-243 NEXT(2) ranked-SR UI watch. The DS gap-plan headless spine (Phases A/B/C/E + all effects-text lifts + C1 + C2x) is COMPLETE.
-
----
-
-# 2026-06-02 - item 264: DS GAP-2 effects-text RESIST-STAT grant registry + 6 seeded (ENGINE 1.93.0, DS restarted + live-verified, RC NOT restarted)
-
-Operator "start the next DS schema lift and exhaust it then /done". Pre-flight: clean tree, main, item 263 last shipped, DS 1.92.0. Item 262 declared the survivability TRIAD (heal/shield/DR) scorer-COMPLETE; gap-plan named items + item-257 "LAST named clean headless DS item" all done. Found the genuinely-next clean lift by reading item 261's OWN exclusion list: "RESIST-STAT grant (bonus armor/MR, a DIFFERENT axis than a damage multiplier)" was a documented NEGATIVE = the FOURTH survivability axis, unmodeled.
-
-SHIPPED `c3ee4a0` (ENGINE 1.92.0 -> 1.93.0): NEW `_passive_resist_overrides.py` (sibling of `_passive_mitigation_overrides.py`) - `PassiveResistEntry` (armor+mr flat-or-per-level + conditional_probability + level_scaled) + `resist_grants(champ, level, apply) -> (bonus_armor, bonus_mr)`. `compute_ehp(apply_passive_resist=False)` adds grants to armor/mr BEFORE `_armor_factor` (NOT a DR multiplier - the resist add RAISES the denominator directly; the two compose). +2 EhpResult fields (reported armor/mr stay the resolved stat; grant surfaced separately) + to_dict + note. Threaded through BOTH EHP-bearing scorers in ONE item: rank_items_by_ehp + /ehp + /rank-tank + compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser.
-
-SEEDED 6 (4 permanent + 2 active, exact 16.11.1): Garen W 30/30 cap, Wukong P 6:10 armor-only level_scaled, Shyvana P 5/5, Sejuani P 10/10 in-combat (prob 1.0); Gwen W 22/22, Pantheon E 5:30 level_scaled (active, amortized `_ACTIVE_RESIST_PROB=0.3`). EXCLUDED documented NEGATIVES: value-not-in-text (Olaf R/Rammus W/Kennen R/Nasus R/Hecarim W/Malphite W/Singed R/Taric W/Graves E), percent-of-resist (Poppy W/Rell W), form-gated gate-dependent (Jayce R Hammer), resurrection (Anivia P), per-stack unbounded (Thresh P), ball-attached (Orianna E).
-
-KEY FINDING (honest, DIFFERS from item 261 DR): a flat resist add goes through the NON-LINEAR `_armor_factor`, so unlike DR (uniform multiplicative scale, rank-INVARIANT) a resist grant is NOT uniform -> the item-rankers CAN re-rank flag-on (armor item worth marginally less to a champ with innate armor). Correct, not a bug.
-
-Verified: DS suite 6013 -> 6043 (+30 = new file, 0 failed); ruff clean; 0 non-ASCII added; +30 tests `test_passive_resist_overrides_item264.py`; Share re-sync 267 files --check clean + authored 04/05/CHANGELOG semantic updates (gist auto-pushed 276 files); DS restarted PowerShell taskkill + schtasks -> /health 1.93.0/16.11.1/172/705; live /ehp Garen off 2483.46 / on 2948.44 (+30 armor/MR, reported armor 74.855, resist_armor 30.0), Caitlyn (no entry) flag-on byte-identical, default OFF byte-identical; CI green run 26800841051. Operator was MID-GAME (ranked SR InProgress) during wrap - RC never restarted (DS engine + tests + Share + docs only).
-
-Don't-redo: resist grant raises the armor/MR denominator DIRECTLY (do NOT route through the DR registry); it DOES re-rank flag-on (correct, non-linear curve); reported EhpResult.armor/.mr stay the resolved build stat; default apply_passive_resist=False byte-identical (do NOT flip default-on without live validation = Phase D); the EXCLUDED classes need NEW schema seams (value-not-in-text = "read the parsed block" lift; Poppy/Rell = percent-of-resist mode). The FOUR survivability axes (heal/shield/DR/resist-grant) are now COMPLETE across both EHP scorers - clean headless effects-text survivability lane EXHAUSTED.
