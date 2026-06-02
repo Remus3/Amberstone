@@ -127,6 +127,34 @@ def brief_via_coach(champ: str, enemies: list, allies: list,
             oldest = sorted(_CACHE.items(), key=lambda x: x[1]["ts"])[:100]
             for k, _ in oldest:
                 _CACHE.pop(k, None)
+        # Haiku-elim 4b (item 273): compute the DETERMINISTIC brief alongside
+        # and shadow-log both for operator validation. Best-effort - this block
+        # can NEVER affect the served brief (still the Haiku result) or raise.
+        try:
+            from dashboard._champ_select_deterministic import brief_deterministic
+            det = brief_deterministic(champ, enemies, allies, role, mode)
+            log_dir = APP_DIR / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            h_runes = brief.get("runes") or {}
+            d_runes = det.get("runes") or {}
+            h_build = brief.get("build") or []
+            d_build = det.get("build") or []
+            row = {
+                "ts": now, "champ": champ, "mode": mode, "role": role,
+                "n_enemies": len(enemies or []), "n_allies": len(allies or []),
+                "haiku_build": h_build, "det_build": d_build,
+                "haiku_runes_keystone": h_runes.get("keystone", ""),
+                "det_runes_keystone": d_runes.get("keystone", ""),
+                "det_ally_notes": det.get("ally_notes") or "",
+                "build_match": h_build == d_build,
+                "keystone_match": (h_runes.get("keystone", "")
+                                   == d_runes.get("keystone", "")),
+            }
+            with (log_dir / "champ_select_brief_shadow.jsonl").open(
+                    "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(row, ensure_ascii=True) + "\n")
+        except Exception as exc:  # never let the shadow-log touch the served brief
+            log.debug("champ-select shadow-log: %s", exc)
         return brief
     except Exception as exc:
         log.warning("brief_via_coach(%s): %s", champ, exc)
