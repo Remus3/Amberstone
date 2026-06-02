@@ -1,4 +1,4 @@
-"""Regression guards for the Build Insights view (item 273, coachless.gg
+"""Regression guards for the Build Insights view (item 273, the competitor site
 lift, docs/COMPETITOR_LIFT_2026-06-02.md section 7b).
 
 The view consumes the shipped GET /api/item-wpa as a sortable WPA table.
