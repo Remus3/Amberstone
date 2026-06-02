@@ -37,6 +37,7 @@ import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } fro
 // ADR-007 (s169) - heartbeat pill self-starts on import (own setInterval).
 import './panels/trigger_pill.js';
 import { _settingsRefresh, renderSpendGates, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
+import { renderBuildInsights } from './panels/build_insights.js';
 
   const WS_HOST = location.hostname || "legion-pc.local";
   const WS_PORT = 8891;
@@ -650,6 +651,7 @@ import { _settingsRefresh, renderSpendGates, _diagFetchAndRender, _diagWireOnce,
         }
       } catch (_) {}
     }
+    if (viewId === "build-insights") { renderBuildInsights(); }
     if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); renderSpendGates(); }
   }
   function _viewUpdateTitleLabel(viewId) {
