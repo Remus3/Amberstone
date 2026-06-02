@@ -1,0 +1,147 @@
+/* Build Insights view (item 273, coachless.gg lift).
+ *
+ * Sortable item-WPA table on the v2.1 token scale. Dark theme matching
+ * the dashboard. The signed WPA column is the hero - green when positive,
+ * red when negative, with a 5-segment sample-confidence bar.
+ */
+
+.bi-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  margin-bottom: var(--space-3, 12px);
+  flex-wrap: wrap;
+}
+.bi-controls label {
+  font-size: var(--fs-sm);
+  color: var(--signal-dim);
+}
+.bi-controls input#bi-min-n {
+  width: 72px;
+  min-height: var(--hit-min);
+  font-size: var(--fs-sm);
+  padding: 0 var(--space-2, 8px);
+  background: #1a1d28;
+  color: #e6e8ef;
+  border: 1px solid #2a2e3c;
+  border-radius: var(--panel-radius-sm, 10px);
+}
+.bi-caption {
+  font-size: var(--fs-xs);
+  color: var(--signal-dim);
+  line-height: 1.4;
+  max-width: 1100px;
+  margin-bottom: var(--space-4, 20px);
+}
+
+.bi-table {
+  width: 100%;
+  max-width: 1200px;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  color: #e6e8ef;
+}
+.bi-table thead th {
+  text-align: left;
+  font-size: var(--fs-xs);
+  color: var(--signal-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-bottom: 2px solid #2a2e3c;
+  white-space: nowrap;
+}
+.bi-table th.bi-sortable {
+  cursor: pointer;
+  min-height: var(--hit-min);
+  user-select: none;
+}
+.bi-table th.bi-sortable:hover {
+  color: #e6e8ef;
+}
+.bi-table th.bi-sortable:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+.bi-table tbody td {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-bottom: 1px solid #21242f;
+  white-space: nowrap;
+}
+.bi-table tbody tr:hover {
+  background: #181b24;
+}
+
+.bi-c-n,
+.bi-c-exp,
+.bi-c-wr {
+  text-align: right;
+}
+.bi-c-n,
+.bi-c-exp,
+.bi-c-wr {
+  font-variant-numeric: tabular-nums;
+}
+
+.bi-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+.bi-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+.bi-item-name {
+  font-size: var(--fs-sm);
+}
+
+/* WPA cell - the hero. Signed pp value + 5-segment confidence bar. */
+.bi-c-wpa {
+  white-space: nowrap;
+}
+.bi-wpa-val {
+  display: inline-block;
+  min-width: 64px;
+  font-size: var(--fs-stat);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.bi-wpa-val.bi-pos {
+  color: var(--signal-good);
+}
+.bi-wpa-val.bi-neg {
+  color: var(--signal-bad);
+}
+
+.bi-conf {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: var(--space-2, 8px);
+  vertical-align: middle;
+}
+.bi-seg {
+  width: 7px;
+  height: 16px;
+  border-radius: 2px;
+  background: #2a2e3c;
+}
+.bi-seg.is-on.bi-pos {
+  background: var(--signal-good);
+}
+.bi-seg.is-on.bi-neg {
+  background: var(--signal-bad);
+}
+
+.bi-empty {
+  font-size: var(--fs-md);
+  color: var(--signal-dim);
+  padding: var(--space-5, 28px);
+  text-align: center;
+}
+
+#view-build-insights [hidden] {
+  display: none;
+}
