@@ -39,6 +39,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -50,6 +51,30 @@ log = logging.getLogger("rc.web_dashboard")
 _REWIND_DB = Path("data") / "rewind_history.db"
 _COUNTERS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "champion_counters.json"
 _DDRAGON_CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_champions.json"
+
+# Cost lever 2: both heavy DB handlers below (pickban-recs + personal-record)
+# resolve the operator puuid and run several JOINs per request, and fire on
+# every draft action (mood / hover / lock). rewind_history.db only changes
+# post-game (the catchup writer), so the result is stable for the life of a
+# draft. Cache it on a 300s TTL keyed by the request params AND the db mtime -
+# any write to the db (a new match) busts every key, so a cache hit can never
+# serve stale data and tests that rebuild the fixture db never collide.
+_PB_CACHE_TTL_S = 300.0
+_PB_CACHE: dict[tuple, tuple[float, dict]] = {}
+_PB_CACHE_LOCK = threading.Lock()
+
+
+def _db_mtime() -> float:
+    try:
+        return _REWIND_DB.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _reset_caches() -> None:
+    """Test hook - drop the pickban / personal-record TTL caches."""
+    with _PB_CACHE_LOCK:
+        _PB_CACHE.clear()
 
 # Module-level lazy index. Re-built on first call after a process
 # restart; operator-edited JSON picks up on next restart_trigger.
@@ -1003,6 +1028,16 @@ def _serve_pickban_recs(h) -> None:
             return
 
         t0 = time.time()
+        cache_key = ("pickban", _db_mtime(), role, queue_ids, mood,
+                     tuple(exclude_ids), tuple(ally_ids), tuple(enemy_ids),
+                     tuple(my_summs), top)
+        with _PB_CACHE_LOCK:
+            _hit = _PB_CACHE.get(cache_key)
+        if _hit and (t0 - _hit[0]) < _PB_CACHE_TTL_S:
+            payload = dict(_hit[1])
+            payload["elapsed_ms"] = int((time.time() - t0) * 1000)
+            h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+            return
         # read-only connection; the catchup script is the only writer and
         # WAL mode means reads don't block its writes.
         conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0)
@@ -1053,7 +1088,7 @@ def _serve_pickban_recs(h) -> None:
         #                         mood, used by the new LIMIT/NEW/SYNERGY
         #                         3-row layouts
         first = picks[0] if picks else None
-        h._send(200, json.dumps({
+        payload = {
             "ok": True,
             "role": role,
             "queue_ids": list(queue_ids),
@@ -1068,7 +1103,10 @@ def _serve_pickban_recs(h) -> None:
             "struggle_ban":   struggle_ban,
             "cleanse_advisory": cleanse_advisory,
             "elapsed_ms": int((time.time() - t0) * 1000),
-        }).encode("utf-8"), "application/json")
+        }
+        with _PB_CACHE_LOCK:
+            _PB_CACHE[cache_key] = (t0, dict(payload))
+        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/champ-select/pickban-recs: %s", exc)
         h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
@@ -1113,6 +1151,15 @@ def _serve_personal_record(h) -> None:
             return
 
         t0 = time.time()
+        cache_key = ("personal", _db_mtime(), champ_id, role,
+                     tuple(ally_ids), tuple(enemy_ids), queue_ids)
+        with _PB_CACHE_LOCK:
+            _hit = _PB_CACHE.get(cache_key)
+        if _hit and (t0 - _hit[0]) < _PB_CACHE_TTL_S:
+            payload = dict(_hit[1])
+            payload["elapsed_ms"] = int((time.time() - t0) * 1000)
+            h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+            return
         conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0)
         try:
             puuid = _resolve_operator_puuid(conn)
@@ -1130,7 +1177,7 @@ def _serve_personal_record(h) -> None:
         finally:
             conn.close()
 
-        h._send(200, json.dumps({
+        payload = {
             "ok": True,
             "queue_ids": list(queue_ids),
             "role": role,
@@ -1138,7 +1185,10 @@ def _serve_personal_record(h) -> None:
             "with_allies": with_allies,
             "vs_enemies": vs_enemies,
             "elapsed_ms": int((time.time() - t0) * 1000),
-        }).encode("utf-8"), "application/json")
+        }
+        with _PB_CACHE_LOCK:
+            _PB_CACHE[cache_key] = (t0, dict(payload))
+        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/champ-select/personal-record: %s", exc)
         h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
