@@ -1,11 +1,11 @@
 ---
-description: Headless autonomous-run skill. Folds in /done /clear /continue /compact /memory /audit /test /iterate /new-tech. Full authority - no user gating (20-day 100% acceptance pattern). Orchestrator pattern - one Claude merges; up to 24 worktree agents in parallel per task. Caveman ULTRA default. Reoriented to find cost/latency savings without degrading the product. Hard-coded with the durable don't-redo set, interrupt protocol, and Desktop synopsis heartbeat.
+description: Headless autonomous-run skill. Folds in /done /clear /continue /compact /memory /audit /test /iterate /new-tech. Full authority - no mid-run user gating (long 100 percent acceptance track record). Orchestrator pattern - one Claude merges; up to 100 worktree agents in parallel per task. Caveman ULTRA default. Reoriented to find cost/latency savings without degrading the product. Hard-coded with the durable don't-redo set, interrupt protocol, and Desktop synopsis heartbeat.
 ---
 
 The operator has authorized a long unattended autonomous run with:
 - Frozen-file edits allowed (this run only; do NOT carry forward).
 - RC-wide test coverage at every stage gate.
-- Up to 24 worktree subagents in parallel per task; orchestrator (this Claude) merges + resolves conflicts.
+- Up to 100 worktree subagents in parallel per task; orchestrator (this Claude) merges + resolves conflicts.
 - Living synopsis maintained atomically on Legion Desktop (one file per run, sections only, no repeat content).
 - Interrupt protocol: any operator intent-to-complete = finish current tasks + /done ritual.
 - Research / cleanroom / lift as needed; expand beyond LoL when warranted (UI/UX inspiration).
@@ -36,7 +36,7 @@ Every phase is one focused vertical slice. After EVERY phase:
 
 ### 3. Orchestrator + parallel agent pattern
 
-- Up to **24 parallel worktree agents per task** via `Agent` tool in a SINGLE message (true concurrency).
+- Up to **100 parallel worktree agents per task** via `Agent` tool in a SINGLE message (true concurrency).
 - Disjoint slices only - each agent owns named files; no two agents touch the same file.
 - Each agent prompt MUST:
   - State the goal + the don't-redo set (so it doesn't re-research closed topics).

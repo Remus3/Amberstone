@@ -48,10 +48,10 @@ Update the three living docs based on what shipped this session. These are surgi
 - Add new `🟡` entries for anything that's now next or in-flight.
 - Do NOT touch items that are already ✅ or haven't been worked on.
 
-**CLAUDE.md - "Active priorities" section only**
-- Mark completed priorities ✅ (with brief note if useful).
-- Update or add `🟡` lines for work that is in-flight or next.
-- Touch ONLY the "Active priorities" block - leave the rest of CLAUDE.md alone.
+**Per-item completion ledger -> `docs/LEDGER.md` (NOT CLAUDE.md)**
+- Append the new item entry at the TOP of the `docs/LEDGER.md` body (newest-first), in the existing entry format.
+- CLAUDE.md "Active priorities" is now a STATIC POINTER - do NOT add item entries to CLAUDE.md (CI size-budgeted < 60KB).
+- In CLAUDE.md touch only the `### Settled` summary or the one-line DS reference when relevant - never the ledger.
 
 **README.md**
 - Update only if something structural changed (new endpoint, new panel, new agent). Light-touch: one bullet or badge line at most.
