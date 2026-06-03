@@ -254,6 +254,11 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
     if isinstance(item_ids, list) and item_ids:
         gs["my_item_ids"] = item_ids
 
+    # Inhibitor-down events come only from the liveclient (SR live events).
+    inhib_events = lc.get("inhib_events")
+    if isinstance(inhib_events, list) and inhib_events:
+        gs["inhib_events"] = inhib_events
+
     return gs
 
 
@@ -281,6 +286,14 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
     item_ids_key = (
         tuple(str(i) for i in raw_ids if i) if isinstance(raw_ids, list) else ()
     )
+    # Inhibitor events change the callouts, so they must change the sig too
+    # (same completeness rule as item ids) - key on the down-times.
+    inhib = gs.get("inhib_events")
+    inhib_key = (
+        tuple(sorted(str(e.get("down_at_s")) for e in inhib
+                     if isinstance(e, dict)))
+        if isinstance(inhib, list) else ()
+    )
     return (
         str(gs.get("my_champion") or ""),
         enemy_key,
@@ -289,6 +302,7 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
         str(mode_key or ""),
         int(gt // 5),
         item_ids_key,
+        inhib_key,
     )
 
 
@@ -333,6 +347,7 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
     callouts = next_callouts(
         lower, gt, lvl, item_count, max_n=3,
         gold=gold, next_item_name=next_name, next_item_cost=next_cost,
+        inhib_events=gs.get("inhib_events"),
     )
 
     # lead_projection (pure diff).

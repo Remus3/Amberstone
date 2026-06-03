@@ -123,6 +123,23 @@ def liveclient_summary() -> dict:
         out["owned_items"] = owned_items
         out["owned_item_ids"] = owned_item_ids
         out["enemy_team"]  = enemy_team
+        # Inhibitor-down events for the respawn-timing callout. Live Client
+        # emits InhibKilled with EventTime (s) + the structure name; we surface
+        # raw {down_at_s, name} and let core.event_callouts compute the 300s
+        # respawn ETA + parse the lane. Isolated try so a malformed events
+        # block degrades to [] without dropping the rest of the summary.
+        inhib_events: list = []
+        try:
+            for ev in (gd.get("events") or {}).get("Events") or []:
+                if not isinstance(ev, dict) or ev.get("EventName") != "InhibKilled":
+                    continue
+                t = ev.get("EventTime")
+                if isinstance(t, (int, float)) and not isinstance(t, bool):
+                    inhib_events.append({"down_at_s": float(t),
+                                         "name": ev.get("InhibKilled")})
+        except Exception:
+            inhib_events = []
+        out["inhib_events"] = inhib_events
         # s184 - surface liveclient's gameId for per-game dedup tokens
         # (archetype-nudge state). Live Client doesn't always expose this
         # at gameData root; fall back to "" so callers detect absence.

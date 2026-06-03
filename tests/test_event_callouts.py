@@ -12,6 +12,8 @@ from __future__ import annotations
 import unittest
 
 from core.event_callouts import (
+    _inhib_lane,
+    inhibitor_callouts,
     milestone_line,
     next_callouts,
 )
@@ -293,6 +295,51 @@ class MilestoneLineTests(unittest.TestCase):
         self.assertEqual(milestone_line("garbage"), "")
         self.assertEqual(milestone_line(None), "")  # type: ignore[arg-type]
         self.assertEqual(milestone_line(42), "")  # type: ignore[arg-type]
+
+
+class InhibitorCalloutTests(unittest.TestCase):
+    """Inhibitor respawn callouts - correct-by-construction 300s timing,
+    no team-side claim so a callout can never be backwards."""
+
+    def test_fresh_inhib_gives_respawn_eta_and_lane(self):
+        # Fell at 600s, now 700s -> respawn 900s -> eta 200s; top lane.
+        out = inhibitor_callouts(
+            [{"down_at_s": 600.0, "name": "Barracks_T2_L1"}], 700.0)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["kind"], "inhibitor")
+        self.assertAlmostEqual(out[0]["eta_s"], 200.0)
+        self.assertIn("top", out[0]["line"])
+
+    def test_respawned_inhib_is_dropped(self):
+        # Fell at 600s, now 950s -> respawn was 900s, already back -> dropped.
+        out = inhibitor_callouts(
+            [{"down_at_s": 600.0, "name": "Barracks_T1_C1"}], 950.0)
+        self.assertEqual(out, [])
+
+    def test_lane_parse_variants(self):
+        self.assertEqual(_inhib_lane("Barracks_T2_L1"), "top")
+        self.assertEqual(_inhib_lane("Barracks_T1_C1"), "mid")
+        self.assertEqual(_inhib_lane("Barracks_T2_R1"), "bot")
+        self.assertEqual(_inhib_lane("weird_name"), "")
+        self.assertEqual(_inhib_lane(None), "")
+
+    def test_unknown_name_is_generic_never_wrong(self):
+        out = inhibitor_callouts([{"down_at_s": 100.0, "name": "???"}], 200.0)
+        self.assertEqual(len(out), 1)
+        self.assertNotIn("(", out[0]["line"])  # no lane parenthetical
+
+    def test_fail_soft_on_bad_input(self):
+        self.assertEqual(inhibitor_callouts(None, 100.0), [])
+        self.assertEqual(inhibitor_callouts("nope", 100.0), [])
+        self.assertEqual(inhibitor_callouts([{"name": "x"}], 100.0), [])
+        self.assertEqual(inhibitor_callouts([42], 100.0), [])
+
+    def test_sr_only_via_next_callouts(self):
+        ev = [{"down_at_s": 600.0, "name": "Barracks_T2_L1"}]
+        sr = next_callouts("sr", 700.0, 6, 1, max_n=99, inhib_events=ev)
+        aram = next_callouts("aram", 700.0, 6, 1, max_n=99, inhib_events=ev)
+        self.assertTrue(any(c["kind"] == "inhibitor" for c in sr))
+        self.assertFalse(any(c["kind"] == "inhibitor" for c in aram))
 
 
 if __name__ == "__main__":
