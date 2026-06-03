@@ -336,6 +336,32 @@ class CacheSigItemIdsTests(unittest.TestCase):
         self.assertIsInstance(sig, tuple)
         self.assertEqual(dc._cache_sig(dict(gs), "sr"), sig)
 
+    def test_each_output_field_changes_sig(self) -> None:
+        # Sig-completeness invariant: changing ANY field that affects the
+        # deterministic output MUST change the signature, or the TTL cache
+        # serves a stale result for a genuinely-new state. This guards the
+        # whole class of "incomplete cache key" bugs (the item-ids miss was
+        # one instance).
+        base = {"my_champion": "Caitlyn", "enemy_comp": ["Ezreal"], "level": 6,
+                "items": ["a", "b"], "my_item_ids": ["3031", "3047"],
+                "game_time_s": 330}
+        base_sig = dc._cache_sig(base, "sr")
+        mutations = [
+            ("my_champion", "Jinx"),
+            ("enemy_comp", ["Lux"]),
+            ("level", 11),
+            ("items", ["a", "b", "c"]),         # item_count change
+            ("my_item_ids", ["3504", "3047"]),  # same count, different ids
+            ("game_time_s", 330 + 6),           # crosses a 5s time bucket
+        ]
+        for field, val in mutations:
+            gs = {**base, field: val}
+            self.assertNotEqual(
+                dc._cache_sig(gs, "sr"), base_sig,
+                f"sig did not change when {field} changed")
+        # mode is the 2nd arg, not a gs field - it must matter too.
+        self.assertNotEqual(dc._cache_sig(base, "aram"), base_sig)
+
 
 class AsciiHygieneTests(unittest.TestCase):
     """The 2 new/edited files must be ASCII-clean in their content."""
