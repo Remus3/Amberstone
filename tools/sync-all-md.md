@@ -2,7 +2,7 @@
 description: Reconcile every Markdown doc in the repo against a single source of canonical facts, fix cross-doc drift, refresh the README in its locked s207 style, flag broken cross-references and orphaned/stale/deprecated .md files. Use when docs have drifted (test counts, ENGINE_VERSION, patch, coverage) or after a run of sessions, before a doc audit, or when the operator asks to "sync all md".
 ---
 
-The operator wants every `.md` in the repo to tell the **same story with the same numbers**. Docs drift: README says one test count, DAEMON_SLAYER.md another, BRIEF.md a third, WAKEUP a fourth. This skill establishes canonical facts ONCE from authoritative sources, propagates them everywhere, refreshes the README in its locked style, and surfaces broken/orphaned docs - without rewriting history.
+The operator wants every `.md` in the repo to tell the **same story with the same numbers**. Docs drift: README says one test count, DAEMON_SLAYER.md another, WAKEUP a third. This skill establishes canonical facts ONCE from authoritative sources, propagates them everywhere, refreshes the README in its locked style, and surfaces broken/orphaned docs - without rewriting history.
 
 This is a **documentation-only** skill. It makes NO code changes, does NOT restart RC, does NOT touch `data/`.
 
@@ -28,7 +28,7 @@ Read these authoritative sources and write the values down. Every doc must match
 | Wider RC test count | `py -m pytest tests/ -q --co 2>$null` → count collected |
 | Purchasable item count | DS `/health` `item_count`, else the `effects.py` registry length (historically 547) |
 | Champion override coverage | recompute from the four registries `agents/daemon_slayer/champion_{max_priority,combo_sequences,form_index,block_index}.json` - count distinct champions and total (champion,key) entries; **drop the `_meta` key before counting** |
-| Match-history rows | `rewind_history.db` row count (sqlite) - BRIEF/memory historically cite ~2,8xx |
+| Match-history rows | `rewind_history.db` row count (sqlite) - memory historically cites ~2,8xx |
 | Latest session + commits | `git -C "C:/Riot Commander" log --oneline -15` + the top block of `WAKEUP_NOTES.md` + the highest-numbered item in `docs/LEDGER.md` |
 
 Produce a **Canonical Facts table** in your working notes. This is the contract for §3-§5. If DS `:8893` is down, derive `ENGINE_VERSION`/items from source files and note "DS offline - values from source, not /health" in the report.
@@ -37,7 +37,7 @@ Produce a **Canonical Facts table** in your working notes. This is the contract 
 
 `Glob **/*.md`. Classify every hit into one bucket (exclude `python-embed/`, `node_modules/`, `.pytest_cache/`, site-packages - third-party):
 
-- **LIVING - sync targets (surgical edits OK):** `README.md`, `CLAUDE.md` (only the one-line DS reference + the `### Settled` summary (the "Active priorities" block is a static pointer - do NOT add items) in "Living docs"/topology header), `ROADMAP.md`, `BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/DAEMON_SLAYER.md`, `docs/OPERATIONS.md`, `docs/BRIDGE.md`, `docs/API.md`, `docs/AGENTS.md`, `BRIEF.md`.
+- **LIVING - sync targets (surgical edits OK):** `README.md`, `CLAUDE.md` (only the one-line DS reference + the `### Settled` summary (the "Active priorities" block is a static pointer - do NOT add items) in "Living docs"/topology header), `ROADMAP.md`, `BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/DAEMON_SLAYER.md`, `docs/OPERATIONS.md`, `docs/BRIDGE.md`, `docs/API.md`, `docs/AGENTS.md`.
 - **APPEND-ONLY - never rewrite, never reflow:** `WAKEUP_NOTES.md` (append + prune via `scripts/wakeup_prune.py` only), `docs/history_notes.md`, everything under `docs/_archive/**`, `docs/adr/**` (ADRs are immutable - add a new ADR, never edit an old one), any dated artifact (`AUDIT_*`, `PHASE_*`, `ARCH-*`, `*_2026-*`), `agents/**/charter.md`, `agents/**/reports/**`, `docs io RC peer/**` (dated cross-Claude artifacts). Per memory `feedback_no_history_rewrite` + `reference_archive_dir`: **only sync the living docs; never rewrite a ledger.**
 - **FROZEN - do not edit (CLAUDE.md hard rule):** `tools/process-bridge-tasks.md`, `tools/diagnose.md`, `tools/caveman.md`, `tools/bridge_watcher_action_prompt.md`, plus anything else on the CLAUDE.md frozen list. Read-only here.
 - **INDEX:** `MEMORY.md` (index of memory files - one line per entry, ≤150 chars, never write memory bodies into it) and the memory `*.md` under `C:/Users/Administrator/.claude/projects/C--Riot-Commander/memory/`.
@@ -48,8 +48,8 @@ Produce a **Canonical Facts table** in your working notes. This is the contract 
 
 For every fact in the §1 table, grep all LIVING docs for stale instances and replace with the canonical value. The usual offenders:
 
-- **Test counts** - README ("N tests"), `docs/DAEMON_SLAYER.md` (status line **and** the `tests/` module-map row - they drift independently), BRIEF.md (resume/interview snippets + RC-Tutor section), CLAUDE.md DS reference line.
-- **`ENGINE_VERSION`** - DAEMON_SLAYER.md status line, CLAUDE.md DS reference line, BRIEF.md RC-Tutor section. (WAKEUP carries it too but is append-only - leave it.)
+- **Test counts** - README ("N tests"), `docs/DAEMON_SLAYER.md` (status line **and** the `tests/` module-map row - they drift independently), CLAUDE.md DS reference line.
+- **`ENGINE_VERSION`** - DAEMON_SLAYER.md status line, CLAUDE.md DS reference line. (WAKEUP carries it too but is append-only - leave it.)
 - **Patch** - DAEMON_SLAYER.md, README ("current League patch" stays prose; don't hard-pin a number in the README unless it already names one).
 - **Champion coverage** - DAEMON_SLAYER.md ("N entries / N champions" + the prose %), README ("about two-thirds of the roster" - keep it as a rounded prose phrase, only correct it if the fraction crossed a boundary).
 - **Item count / match-history count** - wherever cited.
@@ -64,7 +64,7 @@ The README was deliberately rewritten in s207 to a plain-English summary. **Styl
 - Keep the 8-section skeleton: title+tagline → What it does → How it works → Daemon Slayer build engine → Where it runs → Project status → More → License. Don't add sections.
 - **No session changelog, no `sNNN` ids, no commit SHAs, no enumerated "then we added X" history.** README describes the *current* system, not how it got here.
 - Exactly **one** table allowed (the 6-row DS scoring-mode table). Don't add tables.
-- No deep cross-machine/topology specifics, no install steps, no RC-Tutor strategy - those live in CLAUDE.md / BRIEF.md / docs.
+- No deep cross-machine/topology specifics, no install steps, no RC-Tutor strategy - those live in CLAUDE.md / docs.
 - Only the hard numbers update (items / tests / patch / coverage), pulled from §1. Prose stays prose.
 - "More" links must all resolve (§6 verifies).
 
@@ -77,7 +77,6 @@ If the README's structural claims (modes covered, what the engine does, two-mach
 - **BACKLOG.md** - strike (`~~...~~`) anything that shipped this period with the SHA; don't reorder.
 - **docs/ARCHITECTURE.md / OPERATIONS.md / BRIDGE.md / API.md / AGENTS.md** - **structural sync only.** Verify module map / endpoints / ports / task names against the actual code & CLAUDE.md. Update a line only if code changed it. These are not changelogs - don't add session notes.
 - **docs/DAEMON_SLAYER.md** - the highest-drift doc. Reconcile the status line (`ENGINE_VERSION · N tests · items · patch`), the `tests/` module-map row, the "Phase 3 ... implemented today" sentence (all 6 scorers are wired now - verify against CLAUDE.md/code, fix if it still says "three"), and the coverage numbers.
-- **BRIEF.md** - personal portfolio doc, **has a UTF-8 BOM - preserve it**. Keep the resume/interview/casual voice. Reconcile only hard numbers (tests, `ENGINE_VERSION`, item count, match count) to §1; intentionally-rounded casual phrasing stays. Don't sand off the personality.
 - **MEMORY.md** - verify every linked memory file exists and each line is ≤150 chars; if a LIVING doc fact contradicts a memory, the memory is stale → note it in the report (do NOT auto-edit memory bodies here; that's `/consolidate-memory`'s job - just flag).
 - **Lessons** - there is no `LESSONS.md`. The lesson surface is `docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md` (dated, append-only - do NOT rewrite) + the `/process-incoming-lessons` flow + memory `feedback_*` entries. Only check: does the lesson-schema's frontmatter field list still match `core/bridge_envelope.py` and the CLAUDE.md "Memory frontmatter" section? If they diverged, report it - don't edit the dated artifact.
 
@@ -145,4 +144,4 @@ List anything needing a human call (broken-ref resolution, deprecation moves, hi
 - README: enforce the s207 style contract; resist the urge to "polish" beyond fact reconciliation.
 - `commit` arg: stage only the explicit doc files you edited (list them by path), never `git add -A`/`.`. Conventional Commit subject (`docs: sync living docs - <topic>`) with the standard `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>` trailer. Never `--amend`, never force-push, never `--no-verify`.
 - Broken-ref and deprecation decisions are surfaced, not silently applied, unless the operator has a standing preference recorded in memory/CLAUDE.md.
-- Preserve file encodings (BRIEF.md BOM) and line endings. Surgical edits - minimal diff.
+- Preserve file encodings and line endings. Surgical edits - minimal diff.
