@@ -43,7 +43,12 @@ Returns:
         "elapsed_ms":     int,
     }
 
-Cost: one Haiku call (~$0.001). Dashboard MUST debounce.
+Cost: ZERO for the meaningful case. The swap/variant/stay decision is now
+answered deterministically by core.aram_comp_verdict (correct-by-construction
+from champions.json range/damage/frontline/engage/sustain facts) with no LLM
+call (Haiku-elimination PRIMARY north star). The Haiku call survives only as a
+fail-soft fallback for a team too thin to judge (< 3 resolvable champs); it
+adds the "source" key ("deterministic" when the engine answered).
 """
 from __future__ import annotations
 
@@ -123,6 +128,33 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
     if not isinstance(state, dict) or not state.get("my_champion"):
         out["reason"] = "(no champion picked yet)"
         return out
+
+    # Haiku-elimination (PRIMARY north star): the deterministic comp-verdict
+    # engine answers the swap/variant/stay question correct-by-construction from
+    # champions.json facts (range mix / damage type / frontline / engage /
+    # sustain) with ZERO spend. It runs FIRST - before the spend-gate - because
+    # a free verdict has no spend to gate, and serves even when the Anthropic
+    # kill-switch is off. The Haiku call below is now only a fail-soft fallback
+    # for the degenerate case (a team too thin to judge, ok=False).
+    try:
+        from core.aram_comp_verdict import comp_verdict
+        det = comp_verdict(state)
+        if det.get("ok"):
+            out.update({
+                "ok": True,
+                "recommendation": det.get("recommendation") or "stay",
+                "swap_to": det.get("swap_to") or "",
+                "variant_to": det.get("variant_to") or "",
+                "reason": det.get("reason") or "(comp balanced)",
+                "confidence": det.get("confidence") or "medium",
+                "raw": "deterministic",
+                "source": "deterministic",
+                "factors": det.get("factors") or {},
+            })
+            return out
+    except Exception as exc:
+        logger.debug("deterministic comp_verdict failed, falling back: %s", exc)
+
     # Spend-gate: champ-select Anthropic calls off via Settings kill-switch.
     try:
         from core.cost_tracker import get_tracker as _gt
