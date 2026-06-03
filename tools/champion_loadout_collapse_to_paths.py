@@ -278,11 +278,6 @@ def variant_is_mode(v: dict, mode: str) -> bool:
     return mode in variant_modes(v)
 
 
-# Back-compat alias (item 178 callers).
-def variant_is_sr(v: dict) -> bool:
-    return variant_is_mode(v, SR_MODE)
-
-
 def pick_primary_key(variants: dict, default_key: str, mode: str = SR_MODE) -> str:
     """Return the variant_key to treat as ``build_paths[0]`` (primary).
 

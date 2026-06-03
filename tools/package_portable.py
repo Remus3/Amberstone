@@ -57,9 +57,6 @@ def _info(msg: str) -> None:
 def _ok(msg: str) -> None:
     print(f"  OK      {msg}")
 
-def _warn(msg: str) -> None:
-    print(f"  WARN    {msg}")
-
 def _err(msg: str) -> None:
     print(f"  ERROR   {msg}", file=sys.stderr)
 
