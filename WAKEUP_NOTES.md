@@ -4,6 +4,15 @@
 
 ---
 
+# 2026-06-03 - NEXT_SESSION_QUEUE re-run: watchdog flap false-positive FIXED + queue drained-confirmed
+
+Operator re-opened `NEXT_SESSION_QUEUE.md` (queued 2026-05-19) "start this file". Caveman ULTRA. The queue is 2+ weeks drained across items -> 281; Phase 0 tasks 1/2/6/7 have shipped artifacts (pytest_guard docs-skip, ship-batch, RC-CostHealthWatchdog, test-first-autopilot). 1 commit `6bdc3f2` (pushed `d547431..6bdc3f2`). NON-engine, NON-frozen, no RC/DS restart (standalone cron script).
+
+- **Live anomaly RESOLVED (session-start flagged `RC-CostHealthWatchdog last_result=1`):** NOT a script failure - the watchdog returns exit 1 by design on a detected breach/flap. It was a FALSE-POSITIVE `flap`: `detect_flap` counted `>=2` pid changes/hour as a flap, so the item-281 dashboard double-restart (pid 22252->13120->14812, both `alive=true`/`last_reload_ok=true`) tripped it for ~1h. Fix `tools/cost_health_watchdog.py`: `FLAP_PID_CHANGES` 2 -> 3 (the supervisor relaunches a crashed daemon within ~5s, so a genuine crash loop yields far more than 2/hr; 2 clean dev/fix restarts is benign). `alive=false`/`last_reload_ok=false` still flap immediately, count-independent. +2 tests, 1 retargeted (29 pass). Live run after fix: `flap=false`, exit 0 - anomaly cleared; next 15-min scheduled run returns 0.
+- **Queue drained-confirmed (matches item-280 verified finding):** ROADMAP NOW-lane is ~all operator/live-game-gated; the one "(headless)" item (Anivia P / Orianna E DS resist seams) is the item-272 deliberately-EXCLUDED pair ("need a DIFFERENT non-EHP seam, do NOT model as EHP-denominator addends"; resist lane EXHAUSTED across both EHP scorers + all 6 modes) - forcing them = the speculative/degrading lane item-280 warned against. BACKLOG = aspirational/research(mostly CLOSED)/gated/live-blocked. No clean non-gated headless win available. No pending legion bridge tasks (queue 0).
+- **Verification sweep (THIS run):** `tests/` 4906 passed / 1 skip / 71 subtests, exit 0 (+2 = the new watchdog tests). RC pid 14812 alive mode=client last_reload_ok=true. DS :8893 (HTTP) ok engine 1.100.0 patch 16.11.1 172/705. ruff clean, py_compile OK.
+- **Don't-redo:** watchdog `result=1` is normal on a detected breach/flap (exit-1-by-design, not broken); the flap threshold is 3 now. Anivia P / Orianna E stay EXCLUDED from the EHP model (item 272). The Game-PC session-start anomalies (LCU not posting / MCP None / bridge stale 197518s) are EXPECTED - Game-PC is out of the pipeline (ADR-011 1-PC); delegate any Game-PC work to Game-PC Claude.
+
 # 2026-06-03 - dashboard review: phantom active-match + minimap-crop 502 spam FIXED (item 281)
 
 Operator: "review the UI dashboard - visibly missing info + data that surfaces is non-present or not wired 100%." Reviewed LIVE (playwright headless render of :8888 + /api/state probe + 2 read-only wiring-map agents); operator chose scope = kill phantom + stop 502 (Class B deferred). 1 commit `f6a1c52` (pushed `e86222f..f6a1c52`). Non-engine, non-frozen, DS 1.100.0 untouched. RC restarted x2 (pid 22252 -> 13120 -> 14812). Full record = item 281 in `docs/LEDGER.md`.
