@@ -4,6 +4,15 @@
 
 ---
 
+# 2026-06-02 - dashboard dual-stack bind: legion-rc hostname loads page but no live data
+
+Operator: `https://legion-rc:8888` loads the page but shows no live League data; the IP URL works fully. 1 commit (working-tree -> main). NON-engine, NON-frozen. `dashboard/server.py` edit + RC restart (pid 5256 -> 6808 via restart_trigger). DS untouched.
+
+- **Root cause (task's cert hypothesis FALSIFIED via ground truth):** served cert SAN already contains `legion-rc` + tailnet FQDN (NotAfter 2028) - cert was never the issue; a mkcert regen would change nothing. No service worker (only dead `legacy_index.html` references `/manifest.json`); all live fetches relative (`fetch("/api/state")`, `EventSource("/api/state-stream")`) so no hardcoded host. The real cause: `:8888` bound IPv4-only `HOST="0.0.0.0"` but `legion-rc` resolves IPv6-first on clients (link-local `fe80::` FIRST + Tailscale AAAA `fd7a:115c:a1e0::ac38`). The browser's IPv6 connects - incl. the long-lived `/api/state-stream` EventSource that carries live data - hit no listener (`curl -6 legion-rc:8888` = status 000), so the page survived via IPv4 Happy-Eyeballs fallback but the live channel never streamed. A typed IPv4 URL has no IPv6 candidate -> "works fully".
+- **Fix:** `dashboard/server.py` (non-frozen) - `+import socket`; `HOST "0.0.0.0" -> "::"`; NEW `_DualStackMixin` (`address_family=AF_INET6` + `server_bind` sets `IPV6_V6ONLY=0` pre-bind); `_DualProtocolHTTPServer` now `(_DualStackMixin, ThreadingHTTPServer)`; NEW `_DualStackHTTPServer` for the no-TLS fallback. py_compile OK.
+- **Verified (hostname `legion-rc:8888`, was -> now):** `curl -6 /api/state` 000 -> 200 (ip=fe80::2fd6...); `curl -6 /api/state-stream` dead -> streams `data:{"mode_key":"client"...}` (the live channel); `curl -4` 200 -> 200; listen socket `0.0.0.0` -> `::`. +4 tests `tests/test_dashboard_server_dualstack.py` (pins HOST=="::", both servers AF_INET6, real-bind clears V6ONLY) 4/4. ruff clean; phase8_smoke + handler-suppress 84/84.
+- **Don't-redo / carry:** `:8891` supervisor WS stays v4-only + plaintext `ws://` (mixed-content-blocked on HTTPS regardless; drives the cosmetic status pill only, NOT live data) - left as-is. The dual-stack bind is the canonical fix for any IPv6-first-resolving name reaching the dashboard; do NOT re-pitch a cert regen for hostname live-data issues (cert SAN already covers `legion-rc`, validates by name over IPv6 too).
+
 # 2026-06-02 - item 278: DS gaps roadmap sections 2+3 - passive-damage cadence routing consumer + cc-conditional parity (ENGINE 1.100.0)
 
 Operator pointed at `Share/docs/04_GAPS_AND_ROADMAP.md` sections 2+3, "start these two items". 1 commit `4a333f0` (+ docs sync). ENGINE 1.99.0 -> 1.100.0; DS :8893 restarted -> 1.100.0 live-verified; RC NOT restarted (DS engine + tests + Share + docs only).

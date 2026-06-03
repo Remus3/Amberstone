@@ -18,6 +18,7 @@ the dashboard package consumes it anymore.
 from __future__ import annotations
 
 import logging
+import socket
 import threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -25,10 +26,36 @@ from pathlib import Path
 _log = logging.getLogger("rc.web_dashboard")
 
 PORT = 8888
-HOST = "0.0.0.0"
+# Dual-stack bind. `legion-rc` resolves IPv6-first on clients (Tailscale AAAA
+# fd7a:... + link-local fe80::). A v4-only 0.0.0.0 listener left the browser's
+# IPv6 connect attempts - including the long-lived /api/state-stream EventSource
+# that carries live data - failing with no listener, so the hostname "loaded the
+# page but showed no live data" (page survived via IPv4 fallback) while typed
+# IPv4 URLs worked fully. "::" + IPV6_V6ONLY=0 answers both families. (2026-06-02)
+HOST = "::"
 
 
-class _DualProtocolHTTPServer(ThreadingHTTPServer):
+class _DualStackMixin:
+    """Bind AF_INET6 with IPV6_V6ONLY disabled so a single listener accepts both
+    IPv6 and IPv4 (v4-mapped) connections. Must set the sockopt before bind, so
+    we hook server_bind (the socket already exists, unbound, at this point)."""
+
+    address_family = socket.AF_INET6
+
+    def server_bind(self) -> None:
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except (AttributeError, OSError):
+            # Platform without dual-stack support: fall back to v6-only bind.
+            pass
+        super().server_bind()
+
+
+class _DualStackHTTPServer(_DualStackMixin, ThreadingHTTPServer):
+    """Plain (no-TLS) dual-stack fallback used when the mkcert pair is absent."""
+
+
+class _DualProtocolHTTPServer(_DualStackMixin, ThreadingHTTPServer):
     """Accept BOTH plain HTTP and TLS on the same port (2026-04-28
     Game-PC fix). Stdlib wrap_socket() over the listen socket forces every
     accept() into a TLS handshake - a plaintext `http://` request from a
@@ -163,7 +190,7 @@ def start_dashboard(app_dir: Path) -> None:
             srv = None
     if srv is None:
         try:
-            srv = ThreadingHTTPServer((HOST, PORT), handler_class)
+            srv = _DualStackHTTPServer((HOST, PORT), handler_class)
         except OSError as exc:
             _log.warning("Dashboard port %d unavailable: %s", PORT, exc)
             return
