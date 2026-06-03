@@ -433,6 +433,10 @@ def _route_ehp(body: dict) -> dict:
     # champion's INNATE tenacity / CC-immunity ability (Garen W / Olaf R /
     # Malzahar P) feeding the cc_blended discount. Default off -> byte-identical.
     apply_champion_tenacity = _opt_bool(body, "apply_champion_tenacity", False)
+    # ENGINE 1.104.0 (item 292): GAP-2 EIGHTH survivability axis - the champion's
+    # SELF spell-shield / block-one CC ability (Sivir E / Nocturne W / Fiora W /
+    # Morgana E self). Default off -> byte-identical.
+    apply_spell_shield = _opt_bool(body, "apply_spell_shield", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -447,6 +451,7 @@ def _route_ehp(body: dict) -> dict:
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
             apply_champion_tenacity=apply_champion_tenacity,
+            apply_spell_shield=apply_spell_shield,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
             external_revive_multiplier=external_revive_multiplier,
@@ -505,6 +510,10 @@ def _route_rank_tank(body: dict) -> dict:
     apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     apply_passive_revive = _opt_bool(body, "apply_passive_revive", False)
     apply_champion_tenacity = _opt_bool(body, "apply_champion_tenacity", False)
+    # ENGINE 1.104.0 (item 292): GAP-2 EIGHTH survivability axis - the champion's
+    # SELF spell-shield / block-one CC ability (Sivir E / Nocturne W / Fiora W /
+    # Morgana E self). Default off -> byte-identical.
+    apply_spell_shield = _opt_bool(body, "apply_spell_shield", False)
     try:
         result = rank_items_by_ehp(
             snap,
@@ -526,6 +535,7 @@ def _route_rank_tank(body: dict) -> dict:
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
             apply_champion_tenacity=apply_champion_tenacity,
+            apply_spell_shield=apply_spell_shield,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -576,6 +586,10 @@ def _route_hybrid(body: dict) -> dict:
     apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     apply_passive_revive = _opt_bool(body, "apply_passive_revive", False)
     apply_champion_tenacity = _opt_bool(body, "apply_champion_tenacity", False)
+    # ENGINE 1.104.0 (item 292): GAP-2 EIGHTH survivability axis - the champion's
+    # SELF spell-shield / block-one CC ability (Sivir E / Nocturne W / Fiora W /
+    # Morgana E self). Default off -> byte-identical.
+    apply_spell_shield = _opt_bool(body, "apply_spell_shield", False)
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -592,6 +606,7 @@ def _route_hybrid(body: dict) -> dict:
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
             apply_champion_tenacity=apply_champion_tenacity,
+            apply_spell_shield=apply_spell_shield,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -652,6 +667,10 @@ def _route_rank_bruiser(body: dict) -> dict:
     apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     apply_passive_revive = _opt_bool(body, "apply_passive_revive", False)
     apply_champion_tenacity = _opt_bool(body, "apply_champion_tenacity", False)
+    # ENGINE 1.104.0 (item 292): GAP-2 EIGHTH survivability axis - the champion's
+    # SELF spell-shield / block-one CC ability (Sivir E / Nocturne W / Fiora W /
+    # Morgana E self). Default off -> byte-identical.
+    apply_spell_shield = _opt_bool(body, "apply_spell_shield", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -674,6 +693,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
             apply_champion_tenacity=apply_champion_tenacity,
+            apply_spell_shield=apply_spell_shield,
             score_by=score_by,
             alpha=alpha, beta=beta,
         )
