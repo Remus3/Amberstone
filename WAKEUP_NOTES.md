@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-06-03 - headless deep code analysis + refactor/archive (item 284)
+
+Full deep multi-agent code analysis + smoke + refactor/optimize + archive unused. 2 commits `a72fc90` (cache_engine bug) + `cc2091b` (dead-code+archive); CI green (run 26895586173); RC restarted -> pid 7384; DS 1.100.0 untouched. Full record = item 284 in `docs/LEDGER.md`.
+
+- **Method:** 6 parallel READ-ONLY audit agents over disjoint slices (core / dashboard+lcu+app+vision / coaches+tft+modules / tools / agents+ops / scripts+lib) + mechanical never-referenced census. Verdict: mature, well-cached, near-clean codebase (item 283 just swept it). Cost sweep CLEAN; hot routes already TTL-cached; DS snapshot loaded once; ruff clean.
+- **Fixed (A `a72fc90`, TDD):** `modules/cache_engine.bump_confidence` except-branch UnboundLocalError (`conn` out of scope) + false "Bad advice flagged" log on every positive grade; +2 regression tests. Caller feedback.py:97.
+- **Cleanup (B `cc2091b`):** removed 3 zero-ref helpers (variant_is_sr stale alias, 2x _warn copy-paste leftovers); archived ops/_ws_probe.py -> _archive/2026-06-03-headless-deadcode/.
+- **Don't-redo (verified PENDING-not-dead, do NOT re-flag as dead/archive):** core/shaper.py, coaches/replay_coach.py, coaches/champ_pool_recommender.py (staged+tested); core/bridge_envelope.py (Phase 4.2 schema, frozen-blocked wiring); core/daemon_slayer_client.py 5 raw-scalar *_for helpers. A full re-audit of the .py tree finds ~nothing new - codebase clean; remaining items operator-gated.
+- **Deferred:** web/ refactors (Game-PC MCP :8892 down -> no visual proof); tft_live_analysis cache marker (item-283 prompt-restructure, fidelity-gated).
+
 # 2026-06-03 - /headless-upgrade run (item 283): game-pc 1-PC refactor + cost + 3 bug-fixes + inhibitor callout + DS 4-lane verify
 
 /headless-upgrade autonomous run, Caveman ULTRA. 8 commits `3820ffb..df7effb` + this docs-sync; all CI green; RC restarted x4 (-> pid 22252); DS 1.100.0 untouched (verified-correct across 4 lanes, NOT bumped). Full record = item 283 in `docs/LEDGER.md`.
