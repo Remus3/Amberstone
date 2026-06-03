@@ -552,6 +552,17 @@ class EhpResult:
     # = a full-HP revive at the 0.4 midpoint). Same sibling convention as
     # passive_mitigation_* / passive_resist_*.
     passive_revive_mult: float = 1.0
+    # ENGINE 1.102.0 (2026-06-03): GAP-2 SIXTH survivability axis - an
+    # ALLY-TARGETED grant a TEAMMATE confers on THIS champion (the
+    # ``external_resist_*`` / ``external_revive_multiplier`` inputs sourced from
+    # ``_passive_ally_grant_overrides``). Default 0.0 / 0.0 / 1.0 leaves the EHP
+    # fields above byte-identical; positive armor/MR and a > 1.0 multiplier echo
+    # the teammate-conferred resist add (Orianna E / Braum W / Taric W) and ally
+    # revive (Renata W). Distinct from passive_resist_* / passive_revive_mult,
+    # which stay the SELF grants. Same sibling convention as those fields.
+    ally_grant_armor: float = 0.0
+    ally_grant_mr: float = 0.0
+    ally_grant_revive_mult: float = 1.0
 
     def to_dict(self) -> dict:
         return {
@@ -598,6 +609,9 @@ class EhpResult:
             "passive_resist_armor": self.passive_resist_armor,
             "passive_resist_mr": self.passive_resist_mr,
             "passive_revive_mult": self.passive_revive_mult,
+            "ally_grant_armor": self.ally_grant_armor,
+            "ally_grant_mr": self.ally_grant_mr,
+            "ally_grant_revive_mult": self.ally_grant_revive_mult,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -685,6 +699,9 @@ def compute_ehp(
     apply_passive_mitigation: bool = False,
     apply_passive_resist: bool = False,
     apply_passive_revive: bool = False,
+    external_resist_armor: float = 0.0,
+    external_resist_mr: float = 0.0,
+    external_revive_multiplier: float = 1.0,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -878,8 +895,18 @@ def compute_ehp(
         base_armor=float(base.get("armor", 0.0)),
         base_mr=float(base.get("mr", 0.0)),
     )
-    eff_armor = armor + bonus_armor
-    eff_mr = mr + bonus_mr
+    # ENGINE 1.102.0 (2026-06-03): GAP-2 SIXTH survivability axis - an
+    # ALLY-TARGETED resist grant a TEAMMATE confers on THIS champion (Orianna E
+    # ball / Braum W / Taric W tether). The value is sourced by the caller from
+    # ``_passive_ally_grant_overrides.ally_resist_grant`` (the granter-side
+    # registry) and passed in as ``external_resist_armor`` / ``external_resist_mr``
+    # - a GENERIC external add (compute_ehp scores the PROTECTED ally; the grant
+    # rides in from a teammate). Folded into the SAME armor/MR denominator as the
+    # self resist grant. Default 0.0 -> byte-identical to 1.101.0.
+    ext_armor = max(0.0, float(external_resist_armor))
+    ext_mr = max(0.0, float(external_resist_mr))
+    eff_armor = armor + bonus_armor + ext_armor
+    eff_mr = mr + bonus_mr + ext_mr
 
     # Shields + heal sit at the top of the damage stack: each damage_type
     # sees ``hp + shield_any_amped + shield_<type>_amped + heal_total``
@@ -906,9 +933,16 @@ def compute_ehp(
     # to 1.100.0. The long cooldown + must-survive-the-resurrection-window gate is
     # amortized inside ``revive_multiplier`` by the entry's _REVIVE_PROB midpoint.
     revive_mult = revive_multiplier(resolved.champion_id, level, apply_passive_revive)
-    physical_ehp *= revive_mult
-    magical_ehp *= revive_mult
-    true_ehp *= revive_mult
+    # ENGINE 1.102.0 (2026-06-03): GAP-2 ALLY-TARGETED revive (Renata W Bailout) -
+    # a teammate confers a death-triggered second HP pool on THIS champion. The
+    # caller sources it from ``ally_revive_multiplier`` and passes the > 1.0
+    # multiplier as ``external_revive_multiplier`` (composes multiplicatively with
+    # any self revive - two independent second lives). Default 1.0 -> unchanged.
+    ext_revive = max(1.0, float(external_revive_multiplier))
+    combined_revive = revive_mult * ext_revive
+    physical_ehp *= combined_revive
+    magical_ehp *= combined_revive
+    true_ehp *= combined_revive
 
     enemy_true_share = max(0.0, 1.0 - enemy_ad_share - enemy_ap_share)
     blended_ehp = (
@@ -1039,6 +1073,13 @@ def compute_ehp(
             f"into the EHP numerator (x{revive_mult:.3f}; revived HP fraction "
             f"exact, amortized at the _REVIVE_PROB availability+survival midpoint)"
         )
+    if ext_armor != 0.0 or ext_mr != 0.0 or ext_revive != 1.0:
+        notes.append(
+            f"ally_grant: teammate-conferred ally-targeted survivability folded in "
+            f"(+{ext_armor:.1f} armor, +{ext_mr:.1f} MR into the denominator, "
+            f"x{ext_revive:.3f} on the numerator; sourced from "
+            f"_passive_ally_grant_overrides, the sixth survivability axis)"
+        )
 
     return EhpResult(
         champion_id=resolved.champion_id,
@@ -1078,6 +1119,9 @@ def compute_ehp(
         passive_resist_armor=bonus_armor,
         passive_resist_mr=bonus_mr,
         passive_revive_mult=revive_mult,
+        ally_grant_armor=ext_armor,
+        ally_grant_mr=ext_mr,
+        ally_grant_revive_mult=ext_revive,
         stats=dict(stats),
         notes=tuple(notes),
     )
