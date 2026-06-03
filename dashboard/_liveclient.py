@@ -104,6 +104,8 @@ def liveclient_summary() -> dict:
         out["mana_max"] = int(cs.get("resourceMax", 0))
         owned_items: list = []
         enemy_team: list = []
+        enemy_item_ids: list = []
+        ally_item_ids: list = []
         if me_pl:
             s = me_pl.get("scores") or {}
             out["kda"] = f'{s.get("kills",0)}/{s.get("deaths",0)}/{s.get("assists",0)}'
@@ -115,14 +117,27 @@ def liveclient_summary() -> dict:
             # for the operator's own inventory. Same order as owned_items.
             owned_item_ids = [str(it.get("itemID", "")) for it in (me_pl.get("items") or [])]
             my_team = me_pl.get("team")
-            enemy_team = [p.get("championName", "") for p in (d.get("allPlayers") or [])
+            all_players = d.get("allPlayers") or []
+            enemy_team = [p.get("championName", "") for p in all_players
                           if p.get("team") and p.get("team") != my_team]
+            # Per-team item-id pools for the deterministic heal-threat nudge
+            # (core.heal_threat). allPlayers[].items is PUBLIC scoreboard data
+            # for ALL 10 players (unlike gold, which is activePlayer-only), so
+            # scanning enemy sustain + ally anti-heal is a hard live fact.
+            enemy_item_ids = [str(it.get("itemID", "")) for p in all_players
+                              if p.get("team") and p.get("team") != my_team
+                              for it in (p.get("items") or [])]
+            ally_item_ids = [str(it.get("itemID", "")) for p in all_players
+                             if p.get("team") and p.get("team") == my_team
+                             for it in (p.get("items") or [])]
         else:
             owned_item_ids = []
         out["game_mode"] = gd.get("gameMode")
         out["owned_items"] = owned_items
         out["owned_item_ids"] = owned_item_ids
         out["enemy_team"]  = enemy_team
+        out["enemy_item_ids"] = enemy_item_ids
+        out["ally_item_ids"]  = ally_item_ids
         # Inhibitor-down events for the respawn-timing callout. Live Client
         # emits InhibKilled with EventTime (s) + the structure name; we surface
         # raw {down_at_s, name} and let core.event_callouts compute the 300s
