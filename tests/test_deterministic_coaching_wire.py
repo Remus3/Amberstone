@@ -34,6 +34,14 @@ class BuildGameStateTests(unittest.TestCase):
         self.assertEqual(gs["enemy_comp"], ["Garen", "Darius", "Teemo"])
         self.assertEqual(gs["my_champion"], "Aatrox")
 
+    def test_inhib_events_come_from_lc(self) -> None:
+        coach = {"champion": "Caitlyn"}
+        lc = {"enemy_team": ["Ezreal"],
+              "inhib_events": [{"down_at_s": 600.0, "name": "Barracks_T2_L1"}]}
+        gs = dc._build_game_state(coach, lc, "sr")
+        self.assertEqual(gs["inhib_events"],
+                         [{"down_at_s": 600.0, "name": "Barracks_T2_L1"}])
+
     def test_coach_wins_over_lc_for_overlapping_fields(self) -> None:
         # Precedence is coach.get(...) or lc.get(...) for overlapping fields.
         coach = {"champion": "Aatrox", "level": 9, "kda": "5/2/3", "cs": 110}
@@ -361,6 +369,14 @@ class CacheSigItemIdsTests(unittest.TestCase):
                 f"sig did not change when {field} changed")
         # mode is the 2nd arg, not a gs field - it must matter too.
         self.assertNotEqual(dc._cache_sig(base, "aram"), base_sig)
+
+    def test_inhib_events_change_sig(self) -> None:
+        base = {"my_champion": "Caitlyn", "enemy_comp": ["Ezreal"],
+                "level": 11, "game_time_s": 700}
+        with_inhib = {**base,
+                      "inhib_events": [{"down_at_s": 600.0, "name": "x"}]}
+        self.assertNotEqual(dc._cache_sig(with_inhib, "sr"),
+                            dc._cache_sig(base, "sr"))
 
 
 class AsciiHygieneTests(unittest.TestCase):
