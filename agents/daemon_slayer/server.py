@@ -437,6 +437,11 @@ def _route_ehp(body: dict) -> dict:
     # SELF spell-shield / block-one CC ability (Sivir E / Nocturne W / Fiora W /
     # Morgana E self). Default off -> byte-identical.
     apply_spell_shield = _opt_bool(body, "apply_spell_shield", False)
+    # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
+    # SELF guaranteed-survival window (untargetable / stasis / invuln: Tryndamere R
+    # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
+    # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
+    apply_survival_window = _opt_bool(body, "apply_survival_window", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -452,6 +457,7 @@ def _route_ehp(body: dict) -> dict:
             apply_passive_revive=apply_passive_revive,
             apply_champion_tenacity=apply_champion_tenacity,
             apply_spell_shield=apply_spell_shield,
+            apply_survival_window=apply_survival_window,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
             external_revive_multiplier=external_revive_multiplier,
@@ -514,6 +520,11 @@ def _route_rank_tank(body: dict) -> dict:
     # SELF spell-shield / block-one CC ability (Sivir E / Nocturne W / Fiora W /
     # Morgana E self). Default off -> byte-identical.
     apply_spell_shield = _opt_bool(body, "apply_spell_shield", False)
+    # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
+    # SELF guaranteed-survival window (untargetable / stasis / invuln: Tryndamere R
+    # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
+    # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
+    apply_survival_window = _opt_bool(body, "apply_survival_window", False)
     try:
         result = rank_items_by_ehp(
             snap,
@@ -536,6 +547,7 @@ def _route_rank_tank(body: dict) -> dict:
             apply_passive_revive=apply_passive_revive,
             apply_champion_tenacity=apply_champion_tenacity,
             apply_spell_shield=apply_spell_shield,
+            apply_survival_window=apply_survival_window,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -590,6 +602,11 @@ def _route_hybrid(body: dict) -> dict:
     # SELF spell-shield / block-one CC ability (Sivir E / Nocturne W / Fiora W /
     # Morgana E self). Default off -> byte-identical.
     apply_spell_shield = _opt_bool(body, "apply_spell_shield", False)
+    # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
+    # SELF guaranteed-survival window (untargetable / stasis / invuln: Tryndamere R
+    # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
+    # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
+    apply_survival_window = _opt_bool(body, "apply_survival_window", False)
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -607,6 +624,7 @@ def _route_hybrid(body: dict) -> dict:
             apply_passive_revive=apply_passive_revive,
             apply_champion_tenacity=apply_champion_tenacity,
             apply_spell_shield=apply_spell_shield,
+            apply_survival_window=apply_survival_window,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -671,6 +689,11 @@ def _route_rank_bruiser(body: dict) -> dict:
     # SELF spell-shield / block-one CC ability (Sivir E / Nocturne W / Fiora W /
     # Morgana E self). Default off -> byte-identical.
     apply_spell_shield = _opt_bool(body, "apply_spell_shield", False)
+    # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
+    # SELF guaranteed-survival window (untargetable / stasis / invuln: Tryndamere R
+    # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
+    # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
+    apply_survival_window = _opt_bool(body, "apply_survival_window", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -694,6 +717,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_passive_revive=apply_passive_revive,
             apply_champion_tenacity=apply_champion_tenacity,
             apply_spell_shield=apply_spell_shield,
+            apply_survival_window=apply_survival_window,
             score_by=score_by,
             alpha=alpha, beta=beta,
         )
