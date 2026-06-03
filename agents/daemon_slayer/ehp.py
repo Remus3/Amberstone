@@ -116,6 +116,7 @@ from ._passive_mitigation_overrides import mitigation_multipliers
 from ._passive_resist_overrides import resist_grants
 from ._passive_revive_overrides import revive_multiplier
 from ._champion_cc_mitigation_overrides import champion_cc_tenacity_fraction
+from ._champion_spell_shield_overrides import champion_spell_shield_fraction
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -574,6 +575,15 @@ class EhpResult:
     # CC-survival half of the guaranteed-survival family the ally-grant + DR
     # registries excluded.
     champion_tenacity_frac: float = 0.0
+    # ENGINE 1.104.0 (2026-06-03): item 292 EIGHTH survivability axis - the
+    # champion's SELF SPELL-SHIELD / block-one CC ability (Sivir E / Nocturne W /
+    # Fiora W / Morgana E self) as a combined block FRACTION sourced from
+    # ``_champion_spell_shield_overrides`` when ``apply_spell_shield=True``. A
+    # SEPARATE seam from champion_tenacity_frac: a spell-shield negates ONE CC
+    # instance (availability-gated), it does not scale every CC's duration, so the
+    # consumer applies it as its own multiplicative discount AFTER the tenacity
+    # step. Default 0.0 leaves enemy_cc_pressure_s / cc_blended_ehp byte-identical.
+    spell_shield_frac: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -624,6 +634,7 @@ class EhpResult:
             "ally_grant_mr": self.ally_grant_mr,
             "ally_grant_revive_mult": self.ally_grant_revive_mult,
             "champion_tenacity_frac": self.champion_tenacity_frac,
+            "spell_shield_frac": self.spell_shield_frac,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -712,6 +723,7 @@ def compute_ehp(
     apply_passive_resist: bool = False,
     apply_passive_revive: bool = False,
     apply_champion_tenacity: bool = False,
+    apply_spell_shield: bool = False,
     external_resist_armor: float = 0.0,
     external_resist_mr: float = 0.0,
     external_revive_multiplier: float = 1.0,
@@ -987,6 +999,15 @@ def compute_ehp(
         champion_cc_tenacity_fraction(champion_id, level, True)
         if apply_champion_tenacity else 0.0
     )
+    # ENGINE 1.104.0 (item 292): the champion's SELF spell-shield block fraction
+    # (0.0 when the flag is off = byte-identical). Resolved once here so the
+    # EhpResult field is populated even with no enemy comp; a SEPARATE axis from
+    # the tenacity fraction (a single-CC-instance block, not a duration scale) -
+    # applied as its own discount AFTER the tenacity step in the cc block below.
+    spell_shield_frac = (
+        champion_spell_shield_fraction(champion_id, level, True)
+        if apply_spell_shield else 0.0
+    )
     if enemy_champions:
         from .cc_pressure import compute_cc_pressure
 
@@ -1027,6 +1048,13 @@ def compute_ehp(
         ten_frac = 1.0 - ten_remaining
         if ten_frac > 0.0:
             cc_total = effective_cc_duration(cc_total, 1.0 - ten_frac)
+        # ENGINE 1.104.0 (item 292): the SELF spell-shield block-one negation - a
+        # SEPARATE axis from tenacity (a probabilistic single-CC-instance block,
+        # NOT a duration scale), so it is applied as its OWN multiplicative
+        # discount on the post-tenacity pressure rather than on the
+        # effective_cc_duration tenacity seam. Default-off (frac 0.0) = no-op.
+        if apply_spell_shield and spell_shield_frac > 0.0:
+            cc_total *= (1.0 - spell_shield_frac)
         enemy_cc_pressure_s = cc_total
         if enemy_cc_pressure_s > 0:
             cc_pressure_fraction = min(
@@ -1153,6 +1181,7 @@ def compute_ehp(
         ally_grant_mr=ext_mr,
         ally_grant_revive_mult=ext_revive,
         champion_tenacity_frac=champion_tenacity_frac,
+        spell_shield_frac=spell_shield_frac,
         stats=dict(stats),
         notes=tuple(notes),
     )
@@ -1323,6 +1352,7 @@ def rank_items_by_ehp(
     apply_passive_resist: bool = False,
     apply_passive_revive: bool = False,
     apply_champion_tenacity: bool = False,
+    apply_spell_shield: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1409,6 +1439,7 @@ def rank_items_by_ehp(
         apply_passive_resist=apply_passive_resist,
         apply_passive_revive=apply_passive_revive,
         apply_champion_tenacity=apply_champion_tenacity,
+        apply_spell_shield=apply_spell_shield,
     )
 
     candidates = _filter_candidates(
@@ -1446,6 +1477,7 @@ def rank_items_by_ehp(
                 apply_passive_resist=apply_passive_resist,
                 apply_passive_revive=apply_passive_revive,
                 apply_champion_tenacity=apply_champion_tenacity,
+                apply_spell_shield=apply_spell_shield,
             )
         except (KeyError, ValueError):
             continue
