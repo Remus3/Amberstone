@@ -1331,6 +1331,41 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.105.0 (GAP-2 effects-text GUARANTEED-SURVIVAL WINDOW registry, item 293 - the
+NINTH survivability axis and the SECOND EHP-NUMERATOR term, after the item-288
+revive. A SELF window during which the champion cannot be damaged or killed
+(untargetable / stasis / invulnerable) voids ALL incoming damage for its
+duration, so it adds the avoided ``window_s / _FIGHT_WINDOW_S`` damage FRACTION to
+the EHP numerator - the operator-chosen BOUNDED additive model (the revive shape),
+not a divergent uptime model or a consumer-less catalog. This closes the
+"guaranteed-survival window (option 2)" that items 288 / 290 / 292 repeatedly
+flagged as the remaining unmodeled seam ("a cannot-be-hit / cannot-die window =
+infinite EHP for its duration"); the additive fraction keeps it FINITE. NEW
+``agents/daemon_slayer/_passive_survival_window_overrides.py`` (``SurvivalWindowEntry``
++ ``survival_window_multiplier`` + 2 operator-tunable availability midpoints
+``_SURVIVAL_WINDOW_ULT_PROB=0.35`` / ``_SURVIVAL_WINDOW_BASIC_PROB=0.5``). NEW
+``compute_ehp(apply_survival_window=False)`` (default-off byte-identical) folds the
+multiplier into the same numerator step as the revive (``combined_revive *=
+survival_window_mult``) + ``EhpResult.survival_window_mult`` echo field + to_dict;
+threaded through ``rank_items_by_ehp`` / ``compute_hybrid`` / ``rank_items_by_hybrid``
++ the ``/ehp`` ``/rank-tank`` ``/hybrid`` ``/rank-bruiser`` routes. A window voids
+every damage type uniformly, so it is a uniform numerator multiplier (re-ranks
+nothing, like the revive). EXHAUSTIVE 171-champ scan -> 10 self windows: 6 ults
+(Tryndamere R 5s / Kindred R 4s / Taric R 2.5s self / Kayle R 2.5s self / Lissandra
+R 2.5s self / Xayah R 1.5s) + 4 basics (Vladimir W 2s / Elise E Rappel 1.95s / Fizz
+E 0.75s / Mel W 0.75s). Exclusions: cast-bound OFFENSIVE dashes (Zed R / Camille R /
+Master Yi Q / Maokai W / Evelynn R / Galio R / Sion R / Briar R), pets/clones
+(Shaco / Wukong / Azir / Elise W / Caitlyn / Aphelios / Illaoi / Lulu / Kayn W /
+Neeko), post-death frenzy (Sion P / Karthus P / Kog'Maw P - item 288 class),
+revive-domain (Zac P / Zilean R / Kayn P), ally/target/enemy-applied (Kalista R /
+TahmKench R / Urgot R / Poppy R / Bard R), conditional/positional invuln (Xin Zhao R
+/ Pantheon E / Gwen W - resist half already in _passive_resist_overrides), sustained
+attach-state (Yuumi W), windup-only stasis before an escape (Ekko R / Ryze R / Yone
+E). The clean SELF survivability schema-lift lane (heal/shield/DR/resist/revive +
+ally + CC-mitigation + spell-shield + survival-window) is now EXHAUSTED across both
+EHP scorers. NEXT (Phase D, live-gated): flip ``apply_survival_window`` default-on
+after a saner-not-different re-rank; feed a live cooldown clock.)
+
 1.104.0 (GAP-2 effects-text SPELL-SHIELD / block-one CC registry, item 292 - the
 EIGHTH survivability axis and the SECOND that feeds the cc_blended discount rather
 than an EHP numerator/denominator term. Item 290 (1.103.0, the SEVENTH axis)
