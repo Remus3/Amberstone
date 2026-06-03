@@ -64,7 +64,7 @@ already have and proves it with derived tests before a line of impl exists.
   engine_version. If RC core changed: `echo restart > restart_trigger.txt`
   then verify `ops/runtime/health.json` (new pid, alive, last_reload_ok).
 - Sync living docs on the ENGINE bump (CLAUDE.md / docs/DAEMON_SLAYER.md /
-  README / BRIEF: version + test count; do not rewrite dated ledgers).
+  README: version + test count; do not rewrite dated ledgers).
   Append a WAKEUP_NOTES.md hand-off (last 2-3 sessions full, archive older).
   `/done`.
 

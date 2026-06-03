@@ -66,7 +66,7 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
 ## 6. Hand off
 
 - Sync living docs on the ENGINE bump: CLAUDE.md / docs/DAEMON_SLAYER.md /
-  README / any BRIEF - engine version + DS test count. Do not rewrite dated
+  README - engine version + DS test count. Do not rewrite dated
   ledgers; only living docs.
 - Append a WAKEUP_NOTES.md entry (keep last 2-3 sessions at full fidelity,
   archive older to docs/history_notes.md): batch, ENGINE delta, commit hash,
