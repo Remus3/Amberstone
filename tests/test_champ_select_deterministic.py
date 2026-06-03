@@ -212,6 +212,54 @@ class ShadowLogContractTests(unittest.TestCase):
                                     "deterministic module must not call .create")
 
 
+class EnemyItemizationTests(unittest.TestCase):
+    """A correct-by-construction enemy damage-type itemization hint (via
+    core.aram_comp_verdict.compute_factors) is appended to ally_notes when the
+    enemy comp is clearly skewed AD or AP. Shadow-only; the served brief stays
+    Haiku. The hint only fires with >= 3 resolvable enemies and a CLEAR lean
+    (the opposite type entirely absent), so a mixed comp gets nothing."""
+
+    def test_ad_heavy_enemy_yields_armor_hint(self) -> None:
+        out = brief_deterministic(
+            "Lux", ["Garen", "Darius", "Aatrox", "Jhin", "Ashe"],
+            ["Lux", "Ashe", "Malphite"], "MIDDLE", "sr")
+        notes = out["ally_notes"].lower()
+        self.assertIn("armor", notes)
+        self.assertNotIn("magic resist", notes)
+
+    def test_ap_heavy_enemy_yields_mr_hint(self) -> None:
+        out = brief_deterministic(
+            "Caitlyn", ["Ahri", "Lux", "Soraka", "Ziggs", "Brand"],
+            ["Caitlyn", "Malphite"], "BOTTOM", "sr")
+        self.assertIn("magic resist", out["ally_notes"].lower())
+
+    def test_mixed_enemy_yields_no_itemization_hint(self) -> None:
+        out = brief_deterministic(
+            "Lux", ["Garen", "Ahri", "Aatrox", "Lux", "Darius"],
+            ["Lux", "Ashe", "Malphite"], "MIDDLE", "sr")
+        notes = out["ally_notes"].lower()
+        self.assertNotIn("prioritize armor", notes)
+        self.assertNotIn("magic resist", notes)
+
+    def test_few_enemies_yields_no_hint(self) -> None:
+        out = brief_deterministic(
+            "Lux", ["Garen"], ["Lux", "Ashe", "Malphite"], "MIDDLE", "sr")
+        self.assertNotIn("armor", out["ally_notes"].lower())
+
+    def test_empty_enemies_preserves_empty_allies_contract(self) -> None:
+        # No enemies + no allies must still yield exactly "" (item-273 contract).
+        out = brief_deterministic("Caitlyn", [], [], "BOTTOM", "sr")
+        self.assertEqual(out["ally_notes"], "")
+
+    def test_hint_appends_to_existing_ally_note(self) -> None:
+        # AD-heavy enemy + a real ally carry -> both clauses present.
+        out = brief_deterministic(
+            "Lux", ["Garen", "Darius", "Aatrox", "Jhin", "Zed"],
+            ["Lux", "Ashe", "Malphite"], "MIDDLE", "sr")
+        self.assertIn("Ashe", out["ally_notes"])      # ally carry clause kept
+        self.assertIn("armor", out["ally_notes"].lower())  # + itemization clause
+
+
 class AsciiHygieneTests(unittest.TestCase):
     def test_deterministic_module_ascii(self) -> None:
         p = _CS_SRC.parent / "_champ_select_deterministic.py"
