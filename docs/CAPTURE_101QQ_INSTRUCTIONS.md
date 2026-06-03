@@ -5,6 +5,48 @@ counter data. **Updated 2026-06-02 (item 277) - three premises in the
 original recipe were verified WRONG against live probes from Legion; see
 "Verified reality" below before capturing.**
 
+## CAPTURED + characterized (2026-06-02, item 277) - RESOLVED
+
+Operator captured the live URL; the payload was pulled + run through the probe
+from Legion. The hero-rank-double page uses the **faas** variant:
+
+```
+https://faas-6831.native.qq.com/faas/6831/1371/getRankDouble
+  ?championid=&date=<YYYYMMDD>&tier=200
+  &lane1=<lane>&lane2=<lane>&pagesize=200&pageindex=0
+```
+
+- `lane1`/`lane2` are LANE STRINGS (top / jungle / mid / bottom / support),
+  NOT role codes. `championid=` empty -> all champions for that lane pair.
+- Verified reachable from Legion (`code:0 success`), 200 rows per lane pair;
+  top/jungle, mid/jungle, mid/support, bottom/support all return 200.
+- Row schema (list of pair records):
+  `{championid1, championid2, doublewinrate, iwinrate1, iwinrate2,
+    itemp1 (pick%), irank, lane1, lane2}` - `doublewinrate` is the duo synergy
+  signal, `itemp1` the pick rate, `irank` the synergy rank.
+- `championid1/2` are DDragon NUMERIC KEYS 1:1 (498=Xayah, 497=Rakan) -
+  probe matched 59/59, unmatched 0, NO id translation needed. The
+  `101qq_id_map.json` scaffold is therefore just a DDragon key->name map.
+- Cross-checks cleanly to `data/rewind_history.db` (Xayah/Rakan resolved both
+  sides).
+
+The raw payload is gitignored (`data/external/qq_double_*.json`) - it is
+third-party Tencent winrate data, NOT committed (redistributable; see the
+pre-release name-scrub prereq). Re-pull on demand with the curl above + a
+`Referer: https://101.qq.com/` header.
+
+### Wiring is the remaining OPERATOR DECISION
+
+The capability is proven; whether/how to wire it into the
+`core/smoothed_rates.py` pick/ban-synergy lane is still the operator call:
+  (a) one-shot SNAPSHOT - sweep all lane pairs into a DERIVED synergy table
+      (pair -> doublewinrate + pick%), commit the derived aggregate (ages out),
+      blend via `laplace_rate`. Still Tencent-derived data in the repo.
+  (b) LIVE dependency - fetch on demand (standing external CN dep + daily
+      `date`).
+  (c) keep characterized + documented, do not wire (most conservative given
+      the redistributable / pre-release-scrub concern).
+
 ## Verified reality (live-probed from Legion 2026-06-02)
 
 1. **NOT geo-fenced.** From Legion: `101.qq.com` -> HTTP 200, `game.gtimg.cn`
