@@ -65,6 +65,12 @@ _SR_RIFT_HERALD_S = 840.0      # 14:00
 _SR_BARON_S = 1200.0           # 20:00
 _SR_PLATES_FALL_S = 840.0      # 14:00 (turret plating gone)
 _SR_ELDER_NOMINAL_S = 2100.0   # ~35:00 nominal late marker
+_INHIB_RESPAWN_S = 300.0       # 5:00 - inhibitor respawn after it falls
+
+# Live Client inhibitor structure-name lane token -> label. Best-effort: an
+# unrecognized name yields no lane, so the callout stays generic and a naming
+# convention change can never produce a WRONG lane.
+_INHIB_LANE_BY_TOKEN: dict[str, str] = {"L": "top", "C": "mid", "R": "bot"}
 
 _SR_OBJECTIVES: tuple[tuple[str, float, str, Optional[float]], ...] = (
     ("dragon",  _SR_FIRST_DRAGON_S, "Drake spawns 5:00 - set up vision", _SR_DRAGON_CADENCE_S),
@@ -303,6 +309,63 @@ def recall_callout(
     }
 
 
+def _inhib_lane(name: object) -> str:
+    """Parse the lane from a Live Client inhibitor structure name.
+
+    The Live Client InhibKilled event names the structure like
+    ``Barracks_T2_L1`` (team token T1/T2, lane token L1/C1/R1). Returns
+    ``top``/``mid``/``bot`` or ``''`` when the name does not match (fail-soft -
+    a generic callout is correct, a wrong lane is not).
+    """
+    if not isinstance(name, str):
+        return ""
+    for part in name.upper().split("_"):
+        if len(part) == 2 and part[0] in _INHIB_LANE_BY_TOKEN and part[1].isdigit():
+            return _INHIB_LANE_BY_TOKEN[part[0]]
+    return ""
+
+
+def inhibitor_callouts(inhib_events: object, game_time_s: float) -> list[dict]:
+    """Build inhibitor-respawn callouts from InhibKilled events.
+
+    Correct-by-construction: an inhibitor respawns exactly ``_INHIB_RESPAWN_S``
+    after it falls, so the respawn ETA is ``(down_at_s + 300) - game_time_s`` -
+    a hard fact, not a prediction. Each event is ``{down_at_s: float, name:
+    str}`` (name optional; used only to label the lane). Events whose respawn
+    has already passed (eta <= 0) are dropped (the inhibitor is back up; a
+    later re-kill re-surfaces with a fresh future eta). Team side is
+    deliberately NOT claimed - the operator knows which inhibitor fell, the
+    value is the respawn timing, and omitting the side means the callout can
+    never be backwards. Fail-soft: a non-list / bad entry -> ``[]``.
+    """
+    if not isinstance(inhib_events, list):
+        return []
+    try:
+        gt = float(game_time_s)
+    except (TypeError, ValueError):
+        gt = 0.0
+    out: list[dict] = []
+    for ev in inhib_events:
+        if not isinstance(ev, dict):
+            continue
+        try:
+            down_at = float(ev.get("down_at_s"))
+        except (TypeError, ValueError):
+            continue
+        eta = (down_at + _INHIB_RESPAWN_S) - gt
+        if eta <= 0:
+            continue  # already respawned
+        lane = _inhib_lane(ev.get("name"))
+        lane_clause = f" ({lane})" if lane else ""
+        out.append({
+            "tag": f"inhib_{lane or 'lane'}",
+            "line": f"Inhib down{lane_clause} - super minions pushing",
+            "eta_s": round(eta, 1),
+            "kind": "inhibitor",
+        })
+    return out
+
+
 def _sort_key(c: dict) -> tuple[int, float]:
     """Sort callouts active-first, then by ascending ETA, None last.
 
@@ -330,6 +393,7 @@ def next_callouts(
     gold: object = None,
     next_item_name: object = None,
     next_item_cost: object = None,
+    inhib_events: object = None,
 ) -> list[dict]:
     """Return up to ``max_n`` upcoming/active milestone callouts.
 
@@ -346,6 +410,9 @@ def next_callouts(
         next_item_cost: total gold cost of that next item. When gold, name and
             cost are all present and gold >= cost, an active "back now" recall
             callout is emitted (correct-by-construction; see recall_callout).
+        inhib_events: list of ``{down_at_s, name}`` InhibKilled events (SR
+            only). Each still-down inhibitor yields a respawn-timing callout
+            300s after it fell (see inhibitor_callouts).
 
     Returns:
         list of dicts ``{tag, line, eta_s, kind}`` where:
@@ -376,6 +443,8 @@ def next_callouts(
     callouts: list[dict] = []
     if m in _OBJECTIVE_MODES:
         callouts.extend(_objective_callouts(gt))
+        # Inhibitor respawn is SR-only (Howling Abyss has no inhibitors).
+        callouts.extend(inhibitor_callouts(inhib_events, gt))
     callouts.extend(_level_spike_callouts(lvl))
     callouts.extend(_item_spike_callouts(items))
 
