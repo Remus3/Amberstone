@@ -1,0 +1,134 @@
+/* Post-Game descriptive loadout strip (PGR reframe S5). Sits under the
+ * career-WPA strip in the last-match view. Mode-aware: runes + spells for
+ * SR/ARAM, augments + spells for Arena. Descriptive only (no WPA). */
+
+#pgr-loadout-mount[hidden] { display: none; }
+
+.pld-card {
+  margin: 4px 0;
+  padding: 8px 10px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+
+.pld-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.pld-title {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text, #e8eaf0);
+}
+.pld-sub {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+}
+
+.pld-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  min-height: var(--hit-min, 42px);
+}
+.pld-label {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-dim, #8b93a7);
+  min-width: 64px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pld-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pld-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pld-sep {
+  width: 1px;
+  height: 26px;
+  background: var(--border-soft);
+  margin: 0 4px;
+}
+
+/* Rune + summoner-spell icons. */
+.pld-rune,
+.pld-spell {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+  object-fit: contain;
+}
+.pld-rune-key {
+  width: 38px;
+  height: 38px;
+  border-color: var(--signal-good, #4ade80);
+}
+.pld-rune-style {
+  width: 26px;
+  height: 26px;
+  opacity: 0.85;
+}
+.pld-rune-noimg {
+  display: inline-block;
+}
+
+/* Arena augment tiles: icon + name, rarity-tinted border. */
+.pld-augs {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pld-aug {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 4px;
+  border-radius: 8px;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-soft);
+  min-height: var(--hit-min, 42px);
+}
+.pld-aug-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+.pld-aug-name {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text, #e8eaf0);
+  white-space: nowrap;
+}
+.pld-aug[data-rarity="silver"]    { border-color: #c8ccd4; }
+.pld-aug[data-rarity="gold"]      { border-color: #f5c542; }
+.pld-aug[data-rarity="prismatic"] { border-color: #7fd4e8; }
+.pld-aug[data-rarity="bronze"]    { border-color: #cd7f32; }
+
+/* Responsive: stack the label above the icons on narrow viewports so the
+ * augment names never clip the panel edge. */
+@media (max-width: 900px) {
+  .pld-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .pld-label { min-width: 0; }
+  .pld-aug-name { font-size: 13px; }
+}

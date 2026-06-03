@@ -47,6 +47,7 @@
 @import './panels/pgr_build_wpa.css';
 @import './panels/pgr_winprob.css';
 @import './panels/pgr_lane_compare.css';
+@import './panels/pgr_loadout.css';
 @import './panels/replay_events.css';
 @import './panels/coach_choices.css';
 @import './panels/callouts.css';
