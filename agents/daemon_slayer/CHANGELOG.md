@@ -1331,6 +1331,35 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.101.0 (GAP-2 effects-text REVIVE / second-life registry, item 288 - the FIFTH
+survivability axis and the FIRST EHP-NUMERATOR term. Heals/shields are
+throughput, a flat-% DR divides the EHP denominator (1.91.0), a resist-stat grant
+raises the armor/MR denominator (1.93.0-1.99.0); a REVIVE is a different shape - a
+death-triggered SECOND HP POOL. A champion who can come back is worth
+(1 + revived_fraction) of her single-life EHP when the passive is up. This is the
+"DIFFERENT non-EHP-denominator seam" item 272 flagged for Anivia P (its -40:20 egg
+armor/MR stays the item-272 resist-axis EXCLUSION; this models the REVIVE, not the
+egg resist). NEW _passive_revive_overrides.py (PassiveReviveEntry +
+revive_multiplier) + compute_ehp(apply_passive_revive=False) seam that multiplies
+the per-type EHP NUMERATOR by 1 + revived_hp_fraction(level) * _REVIVE_PROB,
+applied BEFORE blended_ehp so the blend + cc_blended inherit it. Default-off
+byte-identical. The revived FRACTION is EXACT from the ability text; only the
+availability+survival midpoint (_REVIVE_PROB 0.4 - long cooldown + must-survive-
+the-resurrection-window) is the assumption (Phase D feeds the live passive-CD +
+egg survival). EXHAUSTIVE roster scan (death-triggered self-revive restoring a
+sustained HP pool): exactly Anivia P Rebirth (restores ALL health, 240s CD ->
+revived_fraction 1.0 -> x1.40) + Zac P Cell Division (10:50% by level, 300s CD,
+bloblet-gated -> level_scaled -> x1.04 L1 to x1.20 L18). DOCUMENTED EXCLUSIONS:
+post-death decaying frenzy w/ no sustained pool (Sion P / Karthus P / KogMaw P),
+ally-targeted revive (Zilean R / Renata W / Akshan W), GA item revive (item-side).
+NUMERATOR multiplier (build-independent, uniform scale) so it does NOT re-rank an
+item-ranker - it makes the per-row EHP scalars accurate. Threaded through both
+EHP-bearing scorers (rank_items_by_ehp + rank_items_by_hybrid) + compute_hybrid +
+the /ehp /rank-tank /hybrid /rank-bruiser routes. Hand pin: Anivia L11 blended
+2011.42 off -> 2815.98 on (x1.40); Zac L11 x1.1341; Caitlyn off==on byte-identical.
++25 tests test_passive_revive_overrides_item288.py. ENGINE 1.100.0 -> 1.101.0. DS
+:8893 restarted -> 1.101.0; RC NOT restarted - DS engine + tests + Share + docs.)
+
 1.100.0 (Passive-damage cadence routing - the compute_dps on_hit -> AA cadence
 consumer, 04_GAPS_AND_ROADMAP section 2 "the gated piece". The passive-damage
 registry tagged every entry with a cadence string that was metadata-only: the

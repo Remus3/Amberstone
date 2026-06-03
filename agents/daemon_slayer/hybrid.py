@@ -206,6 +206,7 @@ def compute_hybrid(
     apply_build_tenacity: bool = False,
     apply_passive_mitigation: bool = False,
     apply_passive_resist: bool = False,
+    apply_passive_revive: bool = False,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
 ) -> HybridResult:
@@ -320,6 +321,7 @@ def compute_hybrid(
         apply_build_tenacity=apply_build_tenacity,
         apply_passive_mitigation=apply_passive_mitigation,
         apply_passive_resist=apply_passive_resist,
+        apply_passive_revive=apply_passive_revive,
         **_ehp_kwargs,
     )
 
@@ -588,6 +590,7 @@ def rank_items_by_hybrid(
     apply_build_tenacity: Optional[bool] = None,
     apply_passive_mitigation: bool = False,
     apply_passive_resist: bool = False,
+    apply_passive_revive: bool = False,
     score_by: str = "blended",
     filter_shared_uniques: bool = True,
     alpha: Optional[float] = None,
@@ -698,6 +701,7 @@ def rank_items_by_hybrid(
         apply_build_tenacity=apply_tenacity,
         apply_passive_mitigation=apply_passive_mitigation,
         apply_passive_resist=apply_passive_resist,
+        apply_passive_revive=apply_passive_revive,
         **_ehp_kwargs_baseline,
     )
     baseline_dps = baseline_dps_result.weighted_dps
@@ -764,6 +768,7 @@ def rank_items_by_hybrid(
                 apply_build_tenacity=apply_tenacity,
                 apply_passive_mitigation=apply_passive_mitigation,
                 apply_passive_resist=apply_passive_resist,
+                apply_passive_revive=apply_passive_revive,
                 **_ehp_kwargs_scored,
             )
         except (KeyError, ValueError):

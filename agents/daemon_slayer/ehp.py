@@ -114,6 +114,7 @@ from ._effects_types import ANY, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
 from ._passive_mitigation_overrides import mitigation_multipliers
 from ._passive_resist_overrides import resist_grants
+from ._passive_revive_overrides import revive_multiplier
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -544,6 +545,13 @@ class EhpResult:
     # resolved build stats). Same sibling convention as passive_mitigation_*.
     passive_resist_armor: float = 0.0
     passive_resist_mr: float = 0.0
+    # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life
+    # multiplier on the EHP NUMERATOR when ``apply_passive_revive=True``. Default
+    # 1.0 (no revive) leaves the physical/magical/true/blended EHP fields above
+    # byte-identical; > 1.0 surfaces the amortized second-life uplift (Anivia 1.40
+    # = a full-HP revive at the 0.4 midpoint). Same sibling convention as
+    # passive_mitigation_* / passive_resist_*.
+    passive_revive_mult: float = 1.0
 
     def to_dict(self) -> dict:
         return {
@@ -589,6 +597,7 @@ class EhpResult:
             "passive_mitigation_true": self.passive_mitigation_true,
             "passive_resist_armor": self.passive_resist_armor,
             "passive_resist_mr": self.passive_resist_mr,
+            "passive_revive_mult": self.passive_revive_mult,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -675,6 +684,7 @@ def compute_ehp(
     apply_build_tenacity: bool = False,
     apply_passive_mitigation: bool = False,
     apply_passive_resist: bool = False,
+    apply_passive_revive: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -882,6 +892,24 @@ def compute_ehp(
     magical_ehp = (hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
     true_ehp = (hp + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
+    # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
+    # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
+    # death-triggered second HP pool (Anivia P Rebirth full-HP revive, Zac P Cell
+    # Division 10:50% revive) is worth (1 + revived_fraction) of the single-life
+    # EHP when the passive is up. The revived HP runs through the SAME armor/MR
+    # curve as the first life, so the second life's EHP is exactly
+    # ``revived_fraction`` of the first's -> a NUMERATOR multiplier on the final
+    # per-type EHP (unlike the DR registry which divides the denominator, or the
+    # resist registry which raises the armor/MR denominator). Applied BEFORE
+    # blended_ehp so the blend (and cc_blended below) inherit it.
+    # ``apply_passive_revive`` defaults False -> multiplier 1.0 -> BYTE-IDENTICAL
+    # to 1.100.0. The long cooldown + must-survive-the-resurrection-window gate is
+    # amortized inside ``revive_multiplier`` by the entry's _REVIVE_PROB midpoint.
+    revive_mult = revive_multiplier(resolved.champion_id, level, apply_passive_revive)
+    physical_ehp *= revive_mult
+    magical_ehp *= revive_mult
+    true_ehp *= revive_mult
+
     enemy_true_share = max(0.0, 1.0 - enemy_ad_share - enemy_ap_share)
     blended_ehp = (
         physical_ehp * enemy_ad_share
@@ -1005,6 +1033,12 @@ def compute_ehp(
             f"denominator (+{bonus_armor:.1f} armor, +{bonus_mr:.1f} MR; active "
             f"grants amortized at their conditional_probability midpoint)"
         )
+    if apply_passive_revive and revive_mult != 1.0:
+        notes.append(
+            f"passive_revive: effects-text death-triggered second life folded "
+            f"into the EHP numerator (x{revive_mult:.3f}; revived HP fraction "
+            f"exact, amortized at the _REVIVE_PROB availability+survival midpoint)"
+        )
 
     return EhpResult(
         champion_id=resolved.champion_id,
@@ -1043,6 +1077,7 @@ def compute_ehp(
         passive_mitigation_true=mit_true,
         passive_resist_armor=bonus_armor,
         passive_resist_mr=bonus_mr,
+        passive_revive_mult=revive_mult,
         stats=dict(stats),
         notes=tuple(notes),
     )
@@ -1211,6 +1246,7 @@ def rank_items_by_ehp(
     apply_build_tenacity: Optional[bool] = None,
     apply_passive_mitigation: bool = False,
     apply_passive_resist: bool = False,
+    apply_passive_revive: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1295,6 +1331,7 @@ def rank_items_by_ehp(
         apply_build_tenacity=apply_tenacity,
         apply_passive_mitigation=apply_passive_mitigation,
         apply_passive_resist=apply_passive_resist,
+        apply_passive_revive=apply_passive_revive,
     )
 
     candidates = _filter_candidates(
@@ -1330,6 +1367,7 @@ def rank_items_by_ehp(
                 apply_build_tenacity=apply_tenacity,
                 apply_passive_mitigation=apply_passive_mitigation,
                 apply_passive_resist=apply_passive_resist,
+                apply_passive_revive=apply_passive_revive,
             )
         except (KeyError, ValueError):
             continue
