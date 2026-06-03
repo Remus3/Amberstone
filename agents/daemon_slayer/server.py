@@ -70,6 +70,7 @@ from .engine import build_champion
 from .fight_report import compute_fight_report
 from .hps import compute_hps, rank_items_by_hps
 from .hybrid import compute_hybrid, rank_items_by_hybrid
+from .cc_output import compute_cc_output
 from .matchup import compute_matchup
 from .rank import SORT_KEYS, rank_items
 
@@ -114,6 +115,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/rank-assassin</td><td>rank items by total-burst-damage delta (Phase 5)</td></tr>
 <tr><td>POST</td><td>/hps</td><td>total healing+shielding+buff throughput for an enchanter build (Phase 6)</td></tr>
 <tr><td>POST</td><td>/rank-enchanter</td><td>rank items by total-throughput delta (Phase 6)</td></tr>
+<tr><td>POST</td><td>/cc-output</td><td>offensive crowd-control (lockdown) score for a champion (item 294)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -1113,6 +1115,28 @@ def _route_matchup(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_cc_output(body: dict) -> dict:
+    """POST /cc-output - offensive crowd-control (lockdown) score for a champion.
+
+    Item 294 (ENGINE 1.106.0): the mirror of the survivability CC axes - how
+    much CC the champion APPLIES to enemies, weighted by CC kind into a single
+    lockdown score. Body:
+      * ``champion`` (required)
+      * ``mode`` (default SR; carried on the result, does not change output)
+    Additive read-only metric: it perturbs no other route.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    try:
+        result = compute_cc_output(champion, mode=mode)
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_rank_assassin(body: dict) -> dict:
     """POST /rank-assassin - rank items by total-burst-damage delta.
 
@@ -1404,6 +1428,7 @@ _POST_ROUTES = {
     "/rank-enchanter": _route_rank_enchanter,
     "/v2/fight-report": _route_fight_report,
     "/v2/matchup": _route_matchup,
+    "/cc-output": _route_cc_output,
 }
 
 # GET routes that need a body merge from query params for the same handler.

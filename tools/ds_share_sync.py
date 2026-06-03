@@ -172,7 +172,14 @@ def _build_expected() -> dict[str, bytes]:
         # cc_conditional.py builders (item 245 A3); it carries dev-context (wave /
         # item numbers) and is not read at runtime (the loader reads the mirrored
         # cc_conditional_registry.json), so it is intentionally not mirrored.
-        if p.name in ("CHANGELOG.md", "CC_CONDITIONAL_NOTES.md") and p.parent == eng:
+        # cc_output_registry_notes.json (item 294) is the same: provenance source
+        # quotes for the cc_output.py CC-kind registry, not read at runtime (the
+        # registry is baked into cc_output.py), so it too is not mirrored.
+        if p.name in (
+            "CHANGELOG.md",
+            "CC_CONDITIONAL_NOTES.md",
+            "cc_output_registry_notes.json",
+        ) and p.parent == eng:
             continue
         if p.name == "__init__.py" and p.parent == eng:
             out[rel] = _CLEAN_INIT.format(version=version).encode("utf-8")
