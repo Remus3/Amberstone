@@ -421,6 +421,14 @@ def _route_ehp(body: dict) -> dict:
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     apply_passive_revive = _opt_bool(body, "apply_passive_revive", False)
+    # ENGINE 1.102.0 (2026-06-03): GAP-2 SIXTH survivability axis - an
+    # ALLY-TARGETED grant a TEAMMATE confers (Orianna E / Braum W / Taric W resist,
+    # Renata W revive). The generic external inputs default to the no-op
+    # 0.0/0.0/1.0 -> byte-identical route response. Source them from
+    # ``_passive_ally_grant_overrides.ally_resist_grant`` / ``ally_revive_multiplier``.
+    external_resist_armor = _opt_float(body, "external_resist_armor", 0.0)
+    external_resist_mr = _opt_float(body, "external_resist_mr", 0.0)
+    external_revive_multiplier = _opt_float(body, "external_revive_multiplier", 1.0)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -434,6 +442,9 @@ def _route_ehp(body: dict) -> dict:
             apply_passive_mitigation=apply_passive_mitigation,
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
+            external_resist_armor=external_resist_armor,
+            external_resist_mr=external_resist_mr,
+            external_revive_multiplier=external_revive_multiplier,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
