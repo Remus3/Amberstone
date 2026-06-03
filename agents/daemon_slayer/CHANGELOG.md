@@ -1331,6 +1331,30 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.100.0 (Passive-damage cadence routing - the compute_dps on_hit -> AA cadence
+consumer, 04_GAPS_AND_ROADMAP section 2 "the gated piece". The passive-damage
+registry tagged every entry with a cadence string that was metadata-only: the
+injected P-form synthetic block is inert in every scorer (compute_ability_dps
+skips the P slot, and compute_dps never read the registry), so
+apply_passive_damage changed no ranking anywhere. NEW: compute_dps gains an
+OPT-IN apply_passive_damage flag (default False = byte-identical) that routes an
+allowlisted every-AA on_hit passive's per-hit bonus onto the auto-attack cadence
+- evaluated through the canonical to_damage_block + _evaluate_block +
+AbilityContext.from_build path, mitigated by the entry's damage type (the shared
+resistance curve the AA already uses, plus the magic-debuff amp for MAGIC),
+folded into per_attack_on_hit_damage AND the steady DPS (per_hit * eff_as) across
+every phase. NEW _AA_ROUTED_ON_HIT_KEYS allowlist + aa_routed_on_hit_entry helper
+in _passive_damage_overrides.py. v1 routes ONLY the verified every-AA entries
+(Warwick Eternal Hunger, Orianna Clockwork Winding) where the per-hit attribution
+is exact; the mark-consume (Lux Illumination), internal-CD (Ziggs Short Fuse),
+and empowered-first-hit (Akali / Kha'Zix) on_hit entries are NOT routed - their
+amortization needs the structured cadence + a live re-rank check and they carry
+forward inert. /dps route gains the apply_passive_damage body param. The
+default-on FLIP stays gated (live "saner not just different" validation). Hand
+pin: Warwick Eternal Hunger 12:46 at L11 = 32.0 magic per hit, +32.0*eff_as DPS.
++19 tests test_passive_damage_aa_cadence.py. ENGINE 1.99.0 -> 1.100.0. DS :8893
+restarted -> 1.100.0; RC NOT restarted - DS engine + tests + Share + docs only.)
+
 1.99.0 (GAP-2 RESIST-STAT grant PER-STACK UNBOUNDED lift, item 272 - the last
 cleanly headless-buildable resist-grant exclusion class. A self bonus-armor grant
 that scales LINEARLY with a slow game-long accumulator (Thresh souls) with NO

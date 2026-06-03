@@ -857,6 +857,28 @@ def get_total_conditional_cc_seconds(
         per-rank tuple).
       * ``rank_index 0..n-1``: select a specific rank.
 
+    RAW BY DESIGN - does NOT apply the coexistence MAX-rule. This
+    helper is a context-free probability-weighted sum over the
+    CONDITIONAL registry alone. It deliberately does NOT know about
+    game mode, does NOT apply build / ARAM tenacity, and does NOT
+    consult the unconditional ``_PER_SPELL_CC_DURATIONS`` registry. So
+    for an entry with ``coexists_with_unconditional=True`` (Hecarim R /
+    Maokai R / Vayne E at the active patch) it still credits the
+    conditional contribution in full, whereas the live consumer credits
+    MAX(same-slot unconditional, conditional) for that slot and never
+    sums both (see ``compute_cc_pressure`` ENGINE 1.55.0 wave-18 MAX
+    rule). The two therefore DIVERGE on coexisting slots by
+    construction: this helper returns the larger (raw conditional)
+    value, and that divergence is intentional, not a bug. A consumer
+    that needs the coexistence-correct, tenacity-aware, mode-aware total
+    must read ``compute_cc_pressure(champion, mode,
+    include_conditional=True).conditional_cc_seconds`` (the
+    authoritative MAX-applied consumer), NOT this helper. This helper
+    stays raw so diagnostic / test fixtures and any future consumer that
+    wants the un-MAX'd conditional ceiling have one context-free
+    primitive. See ``test_cc_conditional_consumer_parity`` for the
+    pinned divergence.
+
     Returns 0.0 for unknown champions / no conditional entries / blank
     champion. Never raises.
     """

@@ -329,6 +329,7 @@ def _route_dps(body: dict) -> dict:
     augments = _coerce_str_list(body.get("augments"), "augments")
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     apply_ability_amps = _opt_bool(body, "apply_ability_amps", False)
+    apply_passive_damage = _opt_bool(body, "apply_passive_damage", False)
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
     try:
@@ -339,7 +340,8 @@ def _route_dps(body: dict) -> dict:
                              target_bonus_hp=target_bonus_hp,
                              phase=phase, augments=augments,
                              apply_mode_modifiers=apply_mode_modifiers,
-                             apply_ability_amps=apply_ability_amps)
+                             apply_ability_amps=apply_ability_amps,
+                             apply_passive_damage=apply_passive_damage)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
