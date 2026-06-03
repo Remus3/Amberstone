@@ -678,8 +678,10 @@ class TftCoachEngine:
         try:
             self._run(state)
         except Exception as exc:
+            # Raw exception goes to the log only - the risk field rendered by
+            # _write_status is user-facing, so degrade to a friendly message.
             logger.error("TFT coach error: %s", exc)
-            self._write_status(f"Coach error: {str(exc)[:60]}")
+            self._write_status("Coaching paused - retrying")
         finally:
             self._lock.release()
 

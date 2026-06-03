@@ -144,7 +144,9 @@ def coach_pick(state: dict, api_key: str | None) -> dict[str, Any]:
             logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
     except Exception as exc:
-        out["advice"] = f"(coach error: {type(exc).__name__})"
+        # Never surface the raw exception (type or message) to the UI - the
+        # advice field is user-facing. Friendly degrade + log the raw error.
+        out["advice"] = "(coaching paused - retrying)"
         logger.warning("champ-select coach: %s", exc)
         return out
 
