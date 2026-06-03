@@ -50,7 +50,6 @@ _DEFAULT_OUTPUT = _DIST_DIR / "installer_staging"
 
 def _info(msg): print(f"  INFO    {msg}")
 def _ok(msg):   print(f"  OK      {msg}")
-def _warn(msg): print(f"  WARN    {msg}")
 def _err(msg):  print(f"  ERROR   {msg}", file=sys.stderr)
 
 
