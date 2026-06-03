@@ -1331,6 +1331,58 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.103.0 (GAP-2 effects-text CHAMPION-INNATE CC-MITIGATION registry, item 290 - the
+SEVENTH survivability axis and the FIRST that is NOT an EHP term at all. The six
+prior axes (heal/shield throughput, a flat-% DR denominator mult 1.91.0, a
+resist-stat denominator add 1.93.0-1.99.0, a revive numerator mult 1.101.0, all
+SELF, plus the ally resist+revive grants 1.102.0) all move Effective HP. THIS axis
+feeds the OTHER survivability lever the engine already models: cc_blended_ehp
+discounts EHP by the enemy CC the caster eats. A champion with an INNATE tenacity /
+CC-IMMUNITY ability eats LESS of that pressure, so her CC-adjusted EHP is discounted
+LESS. The clean CC-survival HALF of the "guaranteed-survival" family the ally-grant
+(item 289) + DR registries flagged as excluded: a tenacity fraction is a finite
+DURATION scale, unlike the damage-immunity half (invuln/stasis = infinite EHP),
+which stays a different unmodeled seam. NEW _champion_cc_mitigation_overrides.py
+(CcMitigationEntry + champion_cc_tenacity_fraction) is the CHAMPION-ability sibling
+of the two tenacity sources cc_blended already credits (_item_tenacity item 236 +
+the ARAM _TENACITY_MAP); combined MULTIPLICATIVELY with the item source on the same
+ehp.effective_cc_duration seam (League tenacity stacks multiplicatively).
+compute_ehp(apply_champion_tenacity=False) seam + EhpResult.champion_tenacity_frac;
+default-off byte-identical, threaded through rank_items_by_ehp / compute_hybrid /
+rank_items_by_hybrid + the /ehp /rank-tank /hybrid /rank-bruiser routes.
+EXHAUSTIVE 171-champ scan -> exactly 3 self entries: Garen W (60% tenacity 0.75s,
+brief-window midpoint), Olaf R (100% CC immunity 3s active, active-ult midpoint),
+Malzahar P (100% CC immunity passive, passive midpoint). Documented exclusions:
+cast-bound dash/channel immunity (Sion R/Warwick R/Pantheon R/Kled R+P/Galio
+R/Briar R - an offensive engage window, not a defensive uptime), spell-shields
+(Fiora W/Morgana E - a binary block-one, the separate spell-shield sub-axis),
+ally-targeted (Milio R - the ally-grant domain), one-time cleanse (Kled P/Alistar R
+- removes current CC once, not a duration tenacity; Alistar R's 45/55/65% DR is the
+_passive_mitigation axis), and the Bard R false positive (epic monsters/turrets are
+the immune TARGETS). +15 tests test_champion_cc_mitigation_item290.py. Live /ehp:
+Olaf vs a heavy-CC comp cc_blended_ehp rises with the flag on; flag-off byte-
+identical. Default-on flip = Phase D, a live re-rank validation.)
+
+1.102.0 (GAP-2 effects-text ALLY-TARGETED survivability grant registry, item 289 -
+the SIXTH survivability axis and the FIRST that scores a DIFFERENT champion than the
+caster. The five SELF axes (heal/shield throughput, DR denominator mult, resist-stat
+denominator add, revive numerator mult) all raise the CASTER's EHP; an ALLY-TARGETED
+grant rides a TEAMMATE - the value the granter confers is added to the PROTECTED
+ALLY's EHP. This is the "the grant rides an ally, not the caster - the Orianna-E
+ball-attached class" the item-264..272 resist registry + the item-288 revive registry
+both flagged. NEW _passive_ally_grant_overrides.py (AllyGrantEntry + ally_resist_grant
++ ally_revive_multiplier + _ALLY_REVIVE_PROB) seeds 4: Orianna E (6/12/18/24/30 ally
+armor+MR by E rank), Braum W (20-40 ally base by W rank), Taric W (6-10% of GRANTER
+total armor, armor only, percent-of-granter mode), Renata W (ally revived to 100% max
+health -> numerator mult). GENERIC consumer seam: compute_ehp(external_resist_armor=,
+external_resist_mr=, external_revive_multiplier=) default 0.0/0.0/1.0 = byte-identical,
+route-reachable on /ehp. EhpResult += ally_grant_armor / _mr / _revive_mult. Exclusions:
+ally shields/heals (=ability_hps), ally invuln/untargetable windows (Taric R/Kindred
+R/Kayle R/Tahm Kench R/etc. - a guaranteed-survival window, NOT a finite EHP mult),
+flat-heal ally revives needing ally max HP (Zilean R/Akshan W deferred to Phase D),
+Ornn P false positive. +28 tests. Auto-pairing (which live ally <- which granter) is
+the Phase D consumer job; this ships the granter-side values + the seam.)
+
 1.101.0 (GAP-2 effects-text REVIVE / second-life registry, item 288 - the FIFTH
 survivability axis and the FIRST EHP-NUMERATOR term. Heals/shields are
 throughput, a flat-% DR divides the EHP denominator (1.91.0), a resist-stat grant
