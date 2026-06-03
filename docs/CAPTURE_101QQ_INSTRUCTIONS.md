@@ -35,17 +35,20 @@ third-party Tencent winrate data, NOT committed (redistributable; see the
 pre-release name-scrub prereq). Re-pull on demand with the curl above + a
 `Referer: https://101.qq.com/` header.
 
-### Wiring is the remaining OPERATOR DECISION
+### Wiring - RESOLVED (item 277): option (b) LIVE dependency SHIPPED
 
-The capability is proven; whether/how to wire it into the
-`core/smoothed_rates.py` pick/ban-synergy lane is still the operator call:
-  (a) one-shot SNAPSHOT - sweep all lane pairs into a DERIVED synergy table
-      (pair -> doublewinrate + pick%), commit the derived aggregate (ages out),
-      blend via `laplace_rate`. Still Tencent-derived data in the repo.
-  (b) LIVE dependency - fetch on demand (standing external CN dep + daily
-      `date`).
-  (c) keep characterized + documented, do not wire (most conservative given
-      the redistributable / pre-release-scrub concern).
+The operator chose the live dependency. NEW `core/synergy_external_source.py`
+`fetch_rows(lane1, lane2, tier)` does the on-demand getRankDouble fetch (6h
+in-memory TTL, tries recent dates, fail-soft -> None). It feeds the EXISTING
+item-199 duo-synergy lane: `core/smoothed_rates_101qq._load_once` now pulls
+live rows FIRST and falls back to the committed static May-25 seed when the
+CN endpoint is unreachable (`source()` reports `live`|`static`). The
+`/api/duo-synergy` route + champ-select bot/sup grid are UNCHANGED (same
+schema). Kill switch: `RC_DUO_SYNERGY_LIVE=0` forces static. The raw payload
+is never written to disk (gitignored); only the committed static seed
+persists. Re-pull is automatic at champ-select.
+
+Not chosen: (a) one-shot snapshot seed; (c) documented-only.
 
 ## Verified reality (live-probed from Legion 2026-06-02)
 
