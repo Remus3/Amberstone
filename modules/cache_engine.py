@@ -169,8 +169,6 @@ class CacheEngine:
             logger.debug("Cache bump key=%s mult=%.2f flag=%s", key[:8], multiplier, flag)
         except Exception as exc:
             logger.warning("bump_confidence failed key=%s: %s", key[:8], exc)
-            conn.execute("DELETE FROM decisions WHERE cache_key=? AND confidence<0.25", (key,))
-        logger.info("Bad advice flagged key=%s", key[:8])
 
     def close(self):
         """No persistent connection to close - WAL connections are per-call."""
