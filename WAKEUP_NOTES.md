@@ -4,6 +4,15 @@
 
 ---
 
+# 2026-06-03 - cost prompt-restructure aram_aug_select / tft_live_analysis CLOSED not-viable (item 286)
+
+"continue next items" -> the last-named headless candidate on the item-283/285 NEXT list. Caveman ULTRA. Verify-first measured it; CLOSED as a dead end + shipped a guard (per item 280: do not force a speculative/degrading lane). 1 commit. Non-engine, non-frozen, DS 1.100.0 untouched, no RC/DS restart. Full record = item 286 in `docs/LEDGER.md`.
+
+- **3 independent blockers (verified):** (1) DECISIVE - Haiku min cacheable prefix = **2048 tok**; measured static portions are far below: `aram_aug_select` 231c ~62 tok, `tft_live_analysis` 2477c ~669 tok, `tft_live_aug_select` 188c ~51 tok -> a `cache_control` marker is inert, even a perfect static-first split caches nothing. (2) `tft_live_analysis` primary path = FROZEN single-string `core.moon_proxy.get_coaching(prompt: str, ...)` -> a system/user split is unreachable without a frozen edit. (3) fidelity-gated on a live game (user->system shifts Haiku positioning).
+- **Shipped (closure):** NEW `tests/test_prompt_cache_floor_item286.py` (2 tests / 3 subtests) - pins the sub-floor fact at a pessimistic 2.0 chars/tok bound (< 4096 chars) + the frozen single-string path; fails LOUDLY if a template grows past floor = the signal caching is finally worth it. Closure comments at all 3 template defs (`coaches/aram_coach.py` + `tft/tft_live_analysis.py` x2). `docs/cost_trace.md` += "Prompt-cache floor (item 286)" subsection (table + blockers).
+- **Verified:** guard 2 pass / 3 subtests + `test_cost_tracker_response_helper.py` 29 pass exit 0; py_compile OK; ruff clean; ASCII-only.
+- **Don't-redo:** the 3 augment/live-analysis Haiku prompts are CLOSED-not-viable for caching - do NOT re-attempt a static/data split or add `cache_control` (structurally sub-floor; TFT primary is frozen moon_proxy). 5th session (273/280/283/284 -> 286) to circle this; the guard ends the churn. cache_control is correct only >2048 tok (tft_pbe 2450 tok is the one live beneficiary; tft_coach's 944-tok marker is itself inert).
+
 # 2026-06-03 - deterministic anti-heal / Grievous-Wounds callout (item 285)
 
 "start next open item" -> the item-283 NEXT competitor-#2 lift (aggregator A 3a heal-threat tracker). Caveman ULTRA. 2 commits `4acf063` (code) + `b79e24f` (docs); pushed; both CI green (runs 26898978607 + 26899064127). RC restarted pid 7384 -> 12432 alive/reload_ok. DS 1.100.0 untouched (non-engine). Full record = item 285 in `docs/LEDGER.md`.

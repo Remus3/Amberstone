@@ -70,6 +70,10 @@ def _is_valid_unit(name):
     if len(b)>1 and b[0]=='x' and b[1].isupper(): return False
     return len(b)>=2 and not (b.isupper() and len(b)>4)
 
+# NOT a cache_control candidate (item 286): static portion ~669 tok < the
+# 2048-tok Haiku cache floor AND the primary path is the FROZEN single-string
+# core.moon_proxy.get_coaching(), so a system/user split is unreachable here.
+# Guard: tests/test_prompt_cache_floor_item286.py.
 _ANALYSIS_PROMPT_TEMPLATE = """\
 You are a Challenger TFT coach giving real-time advice.
 IMPORTANT: Only analyse YOUR board (bench/shop visible at bottom). If spectating, output "SPECTATING" in Comp.
@@ -114,6 +118,8 @@ UnitPlacement: <board units positioned \u2014 "Jinx D7, Vi A1">
 UnitSwap: <"Swap X for Y" or "none">
 """
 
+# NOT a cache_control candidate (item 286): static portion ~51 tok, far below
+# the 2048-tok Haiku cache floor. Guard: tests/test_prompt_cache_floor_item286.py.
 _AUGMENT_SELECT_PROMPT = """\
 Challenger TFT augment selection.
 Stage/Round: {stage_round}  Level: {level}
