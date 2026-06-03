@@ -1,0 +1,2527 @@
+{
+ "item": 294,
+ "engine": "1.106.0",
+ "count": 315,
+ "entries": [
+  {
+   "champion": "Aatrox",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.25,
+   "conditional": true,
+   "source_quote": "Enemies hit within a Sweetspot of the area take 70% bonus damage and also knocked up for 0.25 seconds. (conditional: must hit Sweetspot zone)"
+  },
+  {
+   "champion": "Aatrox",
+   "spell": "W",
+   "cc_kind": "PULL",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "If the tether is not broken by the end of its duration, the target is...pulled to the center of the area. Also applies SLOW for 1.5 seconds unconditionally; pull is conditional on tether not broken."
+  },
+  {
+   "champion": "Ahri",
+   "spell": "E",
+   "cc_kind": "CHARM",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Ahri blows forth a kiss...knocking them down and charming and slowing them by 65% for a duration."
+  },
+  {
+   "champion": "Akali",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "Targets beyond a certain range are also slowed by 50% for 0.5 seconds."
+  },
+  {
+   "champion": "Alistar",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": true,
+   "source_quote": "At 5 stacks, Alistar's next basic attack...stun the target for 1 second. (conditional: requires 5 Trample stacks)"
+  },
+  {
+   "champion": "Alistar",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "Alistar smashes the ground beneath him, dealing magic damage to nearby enemies and stunning and knocking them up simultaneously for 1 second."
+  },
+  {
+   "champion": "Alistar",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "deals them magic damage and knocks them back 700 units over 0.5 seconds while also stunning them for 0.75 seconds. STUN is harder CC (priority: STUN > KNOCKBACK); actual stun duration = 0.75s but registry encodes knockback displacement as 0.5s - reused verbatim per registry rule."
+  },
+  {
+   "champion": "Ambessa",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "spins her twin drakehounds around her to deal physical damage to nearby enemies and slow them by 99% decaying over 1 second."
+  },
+  {
+   "champion": "Ambessa",
+   "spell": "R",
+   "cc_kind": "SUPPRESSION",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "seizes them...suppresses them for 0.75 seconds. Afterwards dealing physical damage and stunning them for 0.4 seconds. (harder CC = SUPPRESSION; secondary STUN 0.4s also follows)"
+  },
+  {
+   "champion": "Amumu",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.4,
+   "conditional": false,
+   "source_quote": "deals magic damage to the first enemy hit, stunning them for 1 second and pulling him to them."
+  },
+  {
+   "champion": "Amumu",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "entangles nearby enemies in bandages, dealing magic damage as well as knocking down and stunning them for 1.5 seconds."
+  },
+  {
+   "champion": "Anivia",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.25,
+   "conditional": true,
+   "source_quote": "Recast: Anivia shatters the ice...stunning them for a duration. (conditional: requires manual recast or reaching max range)"
+  },
+  {
+   "champion": "Anivia",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "slowing them for 1 second, refreshing every 0.5 seconds while they remain inside. At maximum size...slow...instead lasts 1.5 seconds."
+  },
+  {
+   "champion": "Anivia",
+   "spell": "W",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "Anivia summons a wall of ice at the target location perpendicular to her facing, knocking all units away from it, though not through terrain."
+  },
+  {
+   "champion": "Annie",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.75,
+   "conditional": true,
+   "source_quote": "Energized: Annie empowers her next cast of Disintegrate...to stun enemies hit for 1.25 / 1.5 / 1.75 (based on level) seconds. (conditional: requires 4 Pyromania stacks)"
+  },
+  {
+   "champion": "Annie",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "Energized: Annie empowers her next cast of Summon: Tibbers to stun enemies hit for 1.25 / 1.5 / 1.75 (based on level) seconds. (conditional: requires 4 Pyromania stacks; registry encodes 1.5s all ranks as baseline)"
+  },
+  {
+   "champion": "Annie",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 1.75,
+   "conditional": true,
+   "source_quote": "Energized: Annie empowers her next cast of Incinerate...to stun enemies hit for 1.25 / 1.5 / 1.75 (based on level) seconds. (conditional: requires 4 Pyromania stacks)"
+  },
+  {
+   "champion": "Aphelios",
+   "spell": "P",
+   "cc_kind": "SLOW",
+   "duration_s": 2.5,
+   "conditional": false,
+   "source_quote": "Basic attacks with Gravitum slow enemies by 30% for 2.5 seconds, decaying to 10% after 0.7 seconds."
+  },
+  {
+   "champion": "Aphelios",
+   "spell": "Q",
+   "cc_kind": "ROOT",
+   "duration_s": 1.0,
+   "conditional": true,
+   "source_quote": "Gravitum - Active: Aphelios expunges all enemies with Gravitum's slow debuff...rooting them for 1 second. (conditional: requires Gravitum as main weapon + enemies slowed by Gravitum)"
+  },
+  {
+   "champion": "Ashe",
+   "spell": "P",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Ashe's basic attacks and ability hits apply Frost to enemies for 2 seconds, which slows them by 20% : 30% (based on level) for the duration."
+  },
+  {
+   "champion": "Ashe",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "The arrow shatters upon hitting an enemy champion...stunning them for 1 : 3.5 (based on distance traveled) seconds. Registry encodes 1.5s min floor."
+  },
+  {
+   "champion": "Ashe",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "each dealing physical damage to the first enemy hit, and applying Critical Slow to enemy champions hit. (Critical Slow = Frost double-strength 2s duration from Frost Shot passive)"
+  },
+  {
+   "champion": "AurelionSol",
+   "spell": "E",
+   "cc_kind": "PULL",
+   "duration_s": 5.0,
+   "conditional": false,
+   "source_quote": "Enemies in the black hole are dragged inward until they reach the center...lasts for 5 seconds. (also GROUNDs minions/monsters; PULL is harder CC)"
+  },
+  {
+   "champion": "AurelionSol",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 1.75,
+   "conditional": false,
+   "source_quote": "Falling Star: stuns enemies hit for 1 second (base form, unconditional). The Skies Descend (empowered, 75 Stardust gate): knocks up enemies hit for 1 second. STUN (base) > AIRBORNE in priority; base form fires unconditionally. Registry encodes stun 1.25/1.5/1.75."
+  },
+  {
+   "champion": "Aurora",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "The blast deals magic damage to enemies hit and slows them by 80% for 1 second decaying after the first 0.15 seconds."
+  },
+  {
+   "champion": "Aurora",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "shockwave...slow them by 30% for 2 seconds. Border collision also slows enemies by 50% for a duration."
+  },
+  {
+   "champion": "Azir",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "dealing magic damage to all enemies they pass through...and slowing them by 25% for 1 second."
+  },
+  {
+   "champion": "Azir",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "Enemies impacted by the charge are dealt magic damage and knocked away over 1 second to a line 650 units in front of Azir."
+  },
+  {
+   "champion": "Bard",
+   "spell": "P",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": true,
+   "source_quote": "At 5 Chimes, Meeps slow damaged enemies by 25% : 75% (based on number of Chimes) for 1 second. (conditional: requires 5+ Chimes collected)"
+  },
+  {
+   "champion": "Bard",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.8,
+   "conditional": true,
+   "source_quote": "If the bolt hits terrain or a second enemy, it stuns both targets for the same duration. (conditional: requires bolt to hit terrain or second enemy after first target)"
+  },
+  {
+   "champion": "Bard",
+   "spell": "R",
+   "cc_kind": "STASIS",
+   "duration_s": 2.5,
+   "conditional": false,
+   "source_quote": "puts all units within into stasis for 2.5 seconds, as well as stunning all enemy champions, minions, and turrets struck for the same duration."
+  },
+  {
+   "champion": "Belveth",
+   "spell": "W",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "knocks them up for 0.75 seconds, and slows them by 50% for a duration"
+  },
+  {
+   "champion": "Blitzcrank",
+   "spell": "E",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knock up the target for 1 second"
+  },
+  {
+   "champion": "Blitzcrank",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "catches the first enemy hit, dealing them magic damage, stunning them for 0.65 seconds, and pulling them towards Blitzcrank; registry encodes 1.0s pull+stun composite at all ranks"
+  },
+  {
+   "champion": "Blitzcrank",
+   "spell": "R",
+   "cc_kind": "SILENCE",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "deals them magic damage and silences them for 0.5 seconds"
+  },
+  {
+   "champion": "Brand",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "Ablaze Bonus: The target is stunned for 1.5 seconds"
+  },
+  {
+   "champion": "Brand",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 0.25,
+   "conditional": true,
+   "source_quote": "Ablaze Bonus: The target is slowed for 0.25 seconds. This can affect the same enemy more than once."
+  },
+  {
+   "champion": "Braum",
+   "spell": "P",
+   "cc_kind": "STUN",
+   "duration_s": 1.75,
+   "conditional": false,
+   "source_quote": "The fourth stack against a target consumes them all to stun them for 1.25 : 1.75 (based on his level) seconds"
+  },
+  {
+   "champion": "Braum",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slowing them by 70% decaying over 2 seconds"
+  },
+  {
+   "champion": "Braum",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "The first target hit is knocked up for at least 0.6 seconds, increased if they are further away from Braum. All other enemies hit are knocked up for 0.6 seconds. Also creates slow field lasting 4 seconds."
+  },
+  {
+   "champion": "Briar",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "slowing them by 80% for 0.5 seconds. If fully charged, enemies hit are also knocked back; terrain collision adds knock-up 0.5s and stun 1.5s (conditional on full charge and terrain)"
+  },
+  {
+   "champion": "Briar",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 0.85,
+   "conditional": false,
+   "source_quote": "stuns them for 0.85 seconds, and reduces their armor and magic resistance for 5 seconds"
+  },
+  {
+   "champion": "Briar",
+   "spell": "R",
+   "cc_kind": "FEAR",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "fears all non-marked targets for 1.5 seconds, during which they are slowed by 35%"
+  },
+  {
+   "champion": "Caitlyn",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "slows them by 50% for 1 second"
+  },
+  {
+   "champion": "Caitlyn",
+   "spell": "W",
+   "cc_kind": "ROOT",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "The next enemy champion that springs the trap is rooted for 1.5 seconds"
+  },
+  {
+   "champion": "Camille",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "knocking back all nearby enemy champions, though not through terrain, as well as stunning them for 0.75 seconds (conditional: only fires on wall-dive champion collision)"
+  },
+  {
+   "champion": "Camille",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "knocking away all other nearby enemies on impact, though not through terrain"
+  },
+  {
+   "champion": "Camille",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slowed by 80% decaying over 2 seconds"
+  },
+  {
+   "champion": "Cassiopeia",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "Enemies with their facing direction towards her are instead stunned for the same duration (2 seconds); others are slowed by 40%"
+  },
+  {
+   "champion": "Cassiopeia",
+   "spell": "W",
+   "cc_kind": "GROUND",
+   "duration_s": 5.0,
+   "conditional": false,
+   "source_quote": "become grounded and slowed by an amount that decays over the area's duration (clouds last 5 seconds)"
+  },
+  {
+   "champion": "Chogath",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "slowed by an amount that decays over 1.5 seconds"
+  },
+  {
+   "champion": "Chogath",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocking them up for 1 second, and afterwards slowing them by 60% for 1.5 seconds"
+  },
+  {
+   "champion": "Chogath",
+   "spell": "W",
+   "cc_kind": "SILENCE",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Enemy champions and Rift Scuttlers hit are also silenced for a duration"
+  },
+  {
+   "champion": "Darius",
+   "spell": "E",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "pulling enemies hit towards him. Upon arrival, they rebound 150 units off of him, remaining airborne and becoming slowed by 40% for 1 second"
+  },
+  {
+   "champion": "Darius",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "slow the target by 90% for 1 second"
+  },
+  {
+   "champion": "Diana",
+   "spell": "R",
+   "cc_kind": "PULL",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "Diana pulls in all nearby enemies, during which they are revealed, then slows them for 2 seconds"
+  },
+  {
+   "champion": "Draven",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "knocking them aside, though not through terrain, and slowing them for 2 seconds"
+  },
+  {
+   "champion": "DrMundo",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slows them by 40% for 2 seconds"
+  },
+  {
+   "champion": "Ekko",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.75,
+   "conditional": false,
+   "source_quote": "the grenade slows down for 1.75 seconds to gradually expand into a Temporal Sickness field that slows nearby enemies"
+  },
+  {
+   "champion": "Ekko",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 2.25,
+   "conditional": true,
+   "source_quote": "If Ekko enters the sphere within 2 seconds of its creation, it detonates to stun enemies within for 2.25 seconds"
+  },
+  {
+   "champion": "Elise",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 2.3,
+   "conditional": false,
+   "source_quote": "Elise fires a web in the target direction, stunning the first enemy hit for a few seconds"
+  },
+  {
+   "champion": "Evelynn",
+   "spell": "W",
+   "cc_kind": "CHARM",
+   "duration_s": 2.25,
+   "conditional": true,
+   "source_quote": "If the target is cursed for at least 2.5 seconds, the expunge also charms them for a few seconds; Disable Duration 1.25/1.5/1.75/2.0/2.25s; also applies 0.75s slow unconditionally"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "spell": "Q",
+   "cc_kind": "FEAR",
+   "duration_s": 2.25,
+   "conditional": false,
+   "source_quote": "Fiddlesticks launches a crow at the target enemy which arrives after 0.35 seconds, dealing magic damage and fearing them for a duration"
+  },
+  {
+   "champion": "Fiora",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "If Riposte negates at least one hostile immobilizing effect, Fiora stuns the target for the same duration instead; else slowed and crippled by 25% for 2 seconds"
+  },
+  {
+   "champion": "Fizz",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "landing to create a splash that deals magic damage to nearby enemies and slows them for 2 seconds; Trickster recast omits the slow"
+  },
+  {
+   "champion": "Fizz",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": true,
+   "source_quote": "the lure's holder is knocked up for 1 second instead of knocked back; knock-up requires champion intercept of lure in flight; non-intercepted targets receive KNOCKBACK + 2s slow"
+  },
+  {
+   "champion": "Galio",
+   "spell": "E",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "knocks them up for 0.75 seconds as well as reveals them for the same duration; registry encodes 0.5s knock-up duration all ranks"
+  },
+  {
+   "champion": "Galio",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "knocking them back 100 units over 0.75 seconds; landing displacement coded as airborne per registry"
+  },
+  {
+   "champion": "Galio",
+   "spell": "W",
+   "cc_kind": "TAUNT",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "taunts them for 0.5 : 1.5 (based on channel time) seconds; registry encodes 1.0s base (instant-cast floor); full channel yields 1.5s"
+  },
+  {
+   "champion": "Gangplank",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Enemies caught in an explosion are slowed for 2 seconds"
+  },
+  {
+   "champion": "Gangplank",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "Each wave deals magic damage to all enemies within the area and slows them by 30% for 0.5 seconds; Death's Daughter upgrade adds 75% slow for 1 second"
+  },
+  {
+   "champion": "Garen",
+   "spell": "Q",
+   "cc_kind": "SILENCE",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Garen empowers his next basic attack within 4.5 seconds to have an uncancellable windup, lunge at the target, deal bonus physical damage, and silence them for 1.5 seconds"
+  },
+  {
+   "champion": "Gnar",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 0.5,
+   "conditional": true,
+   "source_quote": "Landing on an enemy deals them physical damage and slows them by 80% for 0.5 seconds (Hop; requires landing on an enemy)"
+  },
+  {
+   "champion": "Gnar",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Gnar throws a boomerang in a line in the target direction that deals physical damage to enemies in its path and slows them for 2 seconds; Boomerang Throw and Boulder Toss both slow 2 seconds"
+  },
+  {
+   "champion": "Gnar",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "knocking away nearby enemies up to 590 units; Enemies that collide with terrain are stunned instantly instead of slowed after a delay (STUN is conditional on terrain collision)"
+  },
+  {
+   "champion": "Gnar",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "Gnar slams his arm down in the target direction, dealing physical damage to all enemies struck within the area and stunning them for 1.25 seconds (Mega form Wallop)"
+  },
+  {
+   "champion": "Gragas",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "Gragas charges in the target direction and stops upon colliding with an enemy, dealing magic damage to all nearby enemies, knocking them back, though not through terrain, and stunning them for 1 second"
+  },
+  {
+   "champion": "Gragas",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Recast: Gragas detonates the cask, dealing magic damage to nearby enemies, reduced by 30% against minions, and slowing them for 2 seconds"
+  },
+  {
+   "champion": "Gragas",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.25,
+   "conditional": false,
+   "source_quote": "exploding on impact to deal magic damage to all enemies within the area and knock them back 900 units, though not through terrain, from the epicenter"
+  },
+  {
+   "champion": "Graves",
+   "spell": "W",
+   "cc_kind": "NEARSIGHT",
+   "duration_s": 4.0,
+   "conditional": false,
+   "source_quote": "The canister creates a cloud of smoke for 4 seconds that applies nearsight of outside the area to all enemies within; also applies 50% slow for 0.5 seconds on impact"
+  },
+  {
+   "champion": "Gwen",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Gwen launches a needle in the target direction that deals magic damage to enemies hit and slows them by 60% for 1.5 seconds"
+  },
+  {
+   "champion": "Hecarim",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "Hecarim knocks them back 150 : 350 (based on distance traveled) units, though not through terrain, stuns them for 0.25 seconds; registry encodes knockback displacement 0.75s"
+  },
+  {
+   "champion": "Hecarim",
+   "spell": "R",
+   "cc_kind": "FEAR",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "he fears nearby enemies for 0.75 : 1.5 (based on distance traveled) seconds; registry encodes 1.0s base fear floor across all ranks"
+  },
+  {
+   "champion": "Heimerdinger",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.25,
+   "conditional": true,
+   "source_quote": "Enemies hit at the center of the grenade's impact are also stunned for 1.5 seconds; outer area applies 35% slow for 2 seconds; registry pins 1.25s; stun requires center-of-impact hit"
+  },
+  {
+   "champion": "Hwei",
+   "spell": "E",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Grim Visage (EQ form): knocks them down and fears them for a duration, as well as slows them by 60% for the same duration. AIRBORNE is the hardest CC (priority AIRBORNE > FEAR > SLOW). Secondary: FEAR same duration, SLOW 60% same duration. EW form (ROOT) and EE form (SLOW+PULL) are secondary to EQ per the one-entry-per-spell rule. Disable Duration block: [1, 1.125, 1.25, 1.375, 1.5] seconds."
+  },
+  {
+   "champion": "Illaoi",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "Test of Spirit: When the Spirit is killed or the target leaves tether range, the tether is severed, marking the target as a Vessel for 3 seconds and slowing them by 80% for 1.5 seconds once the tether returns back to them. Conditional on tether being broken or target leaving range. 1.5s all ranks."
+  },
+  {
+   "champion": "Irelia",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.15,
+   "conditional": false,
+   "source_quote": "Flawless Duet: dealing magic damage to all enemies within a line between them and stunning them for 0.75 seconds - registry wave 7 (0.75, 0.85, 0.95, 1.05, 1.15)."
+  },
+  {
+   "champion": "Irelia",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "Vanguard's Edge: blades drop on the ground, knocking all enemy units away from them, though not rendering them airborne. Knockback displacement on initial blade drop, estimated 0.5s following displacement family convention. Secondary: SLOW 90% for 1.5s conditional on passing through the perimeter blades."
+  },
+  {
+   "champion": "Ivern",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Triggerseed: After 2 seconds, the seed explodes to deal magic damage to nearby enemies and slow them for 2 seconds. Unconditional explosion, 2s all ranks."
+  },
+  {
+   "champion": "Ivern",
+   "spell": "Q",
+   "cc_kind": "ROOT",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Rootcaller: dealing magic damage to the first enemy hit and rooting them for a duration. Registry (1.0, 1.25, 1.5, 1.75, 2.0)."
+  },
+  {
+   "champion": "Janna",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "Howling Gale: knocking them up for 0.5 : 1.25 (based on seconds charged) seconds. Registry pins full-charge canonical value (1.0, 1.0, 1.0, 1.0, 1.0)."
+  },
+  {
+   "champion": "Janna",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "Monsoon: Janna unleashes a blast that knocks back all nearby enemies to up to 875 units over 0.5 seconds based on their proximity. Displacement time 0.5s all ranks."
+  },
+  {
+   "champion": "Janna",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Zephyr: sends an air elemental at the target enemy that deals magic damage and slows them for 2 seconds, capped at 99%. Single-target unconditional 2s slow all ranks."
+  },
+  {
+   "champion": "JarvanIV",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "Dragon Strike: If the lance connects with a deployed Demacian Standard, Jarvan IV dashes to its location, knocking up nearby enemies around him and along his path for 0.75 seconds. Conditional on deployed Demacian Standard (E) being present. 0.75s all ranks."
+  },
+  {
+   "champion": "JarvanIV",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.15,
+   "conditional": false,
+   "source_quote": "Cataclysm: creates a circle of impassable terrain that knocks aside enemies within the perimeter over 0.15 seconds, knocking them out of the circle if they are on the outer edge and pulling them in otherwise. Knock-aside displacement on landing, 0.15s travel. Secondary: PULL for inner enemies."
+  },
+  {
+   "champion": "JarvanIV",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Golden Aegis: Jarvan IV slows all nearby enemies for 2 seconds. AOE unconditional slow on activation, 2s all ranks."
+  },
+  {
+   "champion": "Jax",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "Counter Strike recast: deals magic damage to nearby enemies and stuns them for 1 second. Registry (1.0, 1.0, 1.0, 1.0, 1.0)."
+  },
+  {
+   "champion": "Jayce",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "Thundering Blow (hammer form): Jayce roots the target enemy over the cast time, then swings his hammer at them to deal magic damage and knock them back 600 units. Knockback displacement estimated 0.5s following displacement family convention. Secondary: ROOT during cast time (brief, unmeasured)."
+  },
+  {
+   "champion": "Jayce",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "To the Skies! (hammer form): smashes his hammer to the ground to deal physical damage to all enemies within an area and slow them for 2 seconds. AOE slow on landing, 2s all ranks."
+  },
+  {
+   "champion": "Jhin",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Captive Audience: Blooming Lotus Traps slow enemies within the area by 35% for 2 seconds before exploding. Unconditional slow on trap bloom, 2s all ranks."
+  },
+  {
+   "champion": "Jhin",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "Curtain Call: the bullet stops upon hitting an enemy champion, slowing them by 80% for 0.5 seconds. Brief unconditional slow on hit, 0.5s all ranks."
+  },
+  {
+   "champion": "Jhin",
+   "spell": "W",
+   "cc_kind": "ROOT",
+   "duration_s": 1.75,
+   "conditional": true,
+   "source_quote": "Deadly Flourish: Hitting a marked champion roots them for a duration. Conditional on enemy being marked by Lotus Trap or ally damage. Registry (0.75, 1.0, 1.25, 1.5, 1.75). Note: 16.11 tooltip omits per-rank block from prose; registry value used verbatim per existing-registry rule."
+  },
+  {
+   "champion": "Jinx",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Flame Chompers!: Each Chomper explodes on contact with an enemy champion, knocking them down and rooting them for 1.5 seconds. Registry (1.5, 1.5, 1.5, 1.5, 1.5)."
+  },
+  {
+   "champion": "Jinx",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Zap!: Jinx fires a shock blast that deals physical damage to the first enemy it hits and reveals and slows them for 2 seconds. Single-target unconditional 2s slow all ranks."
+  },
+  {
+   "champion": "Kalista",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Rend: Kalista rips all lodged spears from nearby enemies, consuming all of their stacks to deal them physical damage and slow them for 2 seconds. AOE unconditional slow on activation, 2s all ranks."
+  },
+  {
+   "champion": "Kalista",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "Fate's Call: the Oathsworn knocks back all nearby enemies and keeps them airborne for a set duration. Registry (1.0, 1.0, 1.0). Tooltip says duration scales per rank but registry canonical value used verbatim per existing-registry rule."
+  },
+  {
+   "champion": "Karma",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Inner Flame: explodes on the first enemy hit, dealing magic damage to nearby enemies and slowing them by 40% for 1.5 seconds. AOE unconditional 1.5s slow all ranks. Soulflare (Mantra Q) also creates a field slowing enemies within by 50% for 1.5 seconds - same cc_kind and duration."
+  },
+  {
+   "champion": "Karma",
+   "spell": "W",
+   "cc_kind": "ROOT",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "Focused Resolve: If the tether is not broken by the end of its duration, the target is rooted for a duration. Conditional on tether lasting its full 2s duration. Root Duration block: [1.6, 1.7, 1.8, 1.9, 2.0] seconds."
+  },
+  {
+   "champion": "Karthus",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 5.0,
+   "conditional": false,
+   "source_quote": "Wall of Pain: Enemies that touch the wall become slowed for 5 seconds, decaying over the duration. This can affect enemies only once per cast. Unconditional on wall contact, 5s all ranks."
+  },
+  {
+   "champion": "Kassadin",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "slows them for 1 second"
+  },
+  {
+   "champion": "Kayle",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slowed for 2 seconds"
+  },
+  {
+   "champion": "Kayn",
+   "spell": "W",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": true,
+   "source_quote": "Darkin Bonus: Blade's Reach knocks up enemies hit for 1 second. Base/SA form always applies SLOW 90% decaying over 1.5 seconds (harder CC is AIRBORNE but requires Darkin form)"
+  },
+  {
+   "champion": "Kennen",
+   "spell": "P",
+   "cc_kind": "STUN",
+   "duration_s": 1.25,
+   "conditional": true,
+   "source_quote": "The third stack against a target consumes them all to stun them for 1.25 seconds"
+  },
+  {
+   "champion": "Khazix",
+   "spell": "P",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "Unseen Threat: Kha'Zix empowers his next basic attack against an enemy champion to deal bonus magic damage and slow them by 25% for 2 seconds. Requires Unseen Threat proc (enemy must lose sight of Kha'Zix)."
+  },
+  {
+   "champion": "Khazix",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "Evolved Bonus: Void Spike now fires three clusters in a cone, slows by 40% and reveals enemy champions hit for 2 seconds. Requires Evolved Spike Racks evolution."
+  },
+  {
+   "champion": "Kindred",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "slows them by 30% (+ 5% per 100 AP) for 1 second"
+  },
+  {
+   "champion": "Kled",
+   "spell": "Q",
+   "cc_kind": "PULL",
+   "duration_s": 2.5,
+   "conditional": true,
+   "source_quote": "if it is not broken before then, Kled pulls the target 150 units toward him, deals physical damage and slows them for 2.5 seconds. Secondary SLOW 2.5s on same gate. Tether-expiry conditional."
+  },
+  {
+   "champion": "Kled",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "colliding with the first visible enemy champion in their path to deal magic damage, knocking them back 150 units and ending the charge"
+  },
+  {
+   "champion": "KogMaw",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "A field of ooze is created in its wake for 3 seconds, slowing enemies every 0.25 seconds"
+  },
+  {
+   "champion": "KSante",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 0.8,
+   "conditional": true,
+   "source_quote": "Ntofo Strikes empowered (2 stacks): fires a shockwave that pulls them towards him over 0.65 seconds and stuns them for 0.8 seconds. Conditional on 2 Ntofo stacks. Secondary: SLOW 80% for 0.5s unconditional on every Q hit."
+  },
+  {
+   "champion": "KSante",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "All Out: roots for 0.5s, pulls target then stuns 0.3/0.5s on displacement end. Registry encodes composite displacement as KNOCKBACK 0.75s (0.75, 0.75, 0.75). Secondary: ROOT 0.5s + STUN on displacement end."
+  },
+  {
+   "champion": "KSante",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 1.75,
+   "conditional": false,
+   "source_quote": "Path Maker recast: stunning them for 0.5 : 1.75 (based on channel time) seconds. Unconditional on recast or auto-completion; scales from 0.5s at minimum channel to 1.75s at maximum channel. All Out mode removes the stun but that is a self-state modifier, not a target gate. All ranks same scaling."
+  },
+  {
+   "champion": "Leblanc",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "If the tether is not broken by the end of its duration, it fractures to deal magic damage to the target and root them for 1.5 seconds. Tether-expiry conditional."
+  },
+  {
+   "champion": "LeeSin",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 4.0,
+   "conditional": true,
+   "source_quote": "Lee Sin slows nearby enemies marked by Tempest, decaying over 4 seconds. Requires Tempest (E1) to hit first to apply mark."
+  },
+  {
+   "champion": "LeeSin",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "roundhouse kicks them to deal physical damage and knock them back up to 800 units over 0.8 seconds, rendering them airborne for 1 second. Secondary brief ROOT during cast time."
+  },
+  {
+   "champion": "Leona",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "she will dash 225 units behind the last one struck and root them for 0.5 seconds"
+  },
+  {
+   "champion": "Leona",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "empowering her next basic attack to deal bonus magic damage and stun the target for 1 second (registry: 1.25 all ranks)"
+  },
+  {
+   "champion": "Leona",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "stunned for the same duration if they are hit by the epicenter. Outer ring applies SLOW 80% for 1.75s. Registry value 1.5s used per existing-registry rule (tooltip shows 1.75s)."
+  },
+  {
+   "champion": "Lillia",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "slowing them by 40% for 3 seconds"
+  },
+  {
+   "champion": "Lillia",
+   "spell": "R",
+   "cc_kind": "SLEEP",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "they fall asleep for 2 seconds. Requires Dream Dust mark from prior ability hit. Drowsy phase 1.5s precedes sleep."
+  },
+  {
+   "champion": "Lissandra",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "slows enemies hit for 1.5 seconds"
+  },
+  {
+   "champion": "Lissandra",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Enemy Cast: Lissandra freezes the target enemy champion, knocking them down and stunning them for 1.5 seconds. Slow field secondary."
+  },
+  {
+   "champion": "Lissandra",
+   "spell": "W",
+   "cc_kind": "ROOT",
+   "duration_s": 1.65,
+   "conditional": false,
+   "source_quote": "Lissandra freezes nearby enemies, dealing magic damage and rooting them for a duration"
+  },
+  {
+   "champion": "Lulu",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slowing them by 80% decaying over 2 seconds"
+  },
+  {
+   "champion": "Lulu",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocking up nearby enemies for 1 second; also slows nearby enemies for 7 seconds duration"
+  },
+  {
+   "champion": "Lulu",
+   "spell": "W",
+   "cc_kind": "POLYMORPH",
+   "duration_s": 2.25,
+   "conditional": false,
+   "source_quote": "polymorphs them into a harmless critter for a duration, during which their base movement speed is reduced by 60, and disarms them for the same duration"
+  },
+  {
+   "champion": "Lux",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "The slow lingers for 1 second after leaving the area. Enemies hit by Lucent Singularity's detonation are also slowed by the same amount for 1 second"
+  },
+  {
+   "champion": "Lux",
+   "spell": "Q",
+   "cc_kind": "ROOT",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "deals magic damage to the first two enemies hit and roots them for 2 seconds (rank 1); max rank 3 seconds"
+  },
+  {
+   "champion": "Malphite",
+   "spell": "E",
+   "cc_kind": "CRIPPLE",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "crippling them for 3 seconds"
+  },
+  {
+   "champion": "Malphite",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "slows them for 3 seconds"
+  },
+  {
+   "champion": "Malphite",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "deals magic damage to nearby enemies and knocks them up for 1.5 seconds (rank 1); max rank 2 seconds per registry"
+  },
+  {
+   "champion": "Malzahar",
+   "spell": "Q",
+   "cc_kind": "SILENCE",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "enemies between the portals are dealt magic damage and silenced for a duration"
+  },
+  {
+   "champion": "Malzahar",
+   "spell": "R",
+   "cc_kind": "SUPPRESSION",
+   "duration_s": 2.5,
+   "conditional": false,
+   "source_quote": "channels for up to 2.5 seconds, suppressing and revealing the target; initial hit also knocks them down briefly"
+  },
+  {
+   "champion": "Maokai",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slowing them by 45% for 2 seconds"
+  },
+  {
+   "champion": "Maokai",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 0.5,
+   "conditional": true,
+   "source_quote": "Enemies near Maokai are also stunned for 0.5 seconds and knocked back up to 300 units based on their proximity; far enemies receive only the 99% slow for 0.25 seconds; stun requires proximity gate"
+  },
+  {
+   "champion": "Maokai",
+   "spell": "R",
+   "cc_kind": "ROOT",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "roots them for 0.75 : 2.25 (based on distance traveled) seconds; registry canonical max is 2.0"
+  },
+  {
+   "champion": "Maokai",
+   "spell": "W",
+   "cc_kind": "ROOT",
+   "duration_s": 1.4,
+   "conditional": false,
+   "source_quote": "roots them for a duration"
+  },
+  {
+   "champion": "Mel",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 2.25,
+   "conditional": false,
+   "source_quote": "Enemies hit by the orb are dealt magic damage and rooted for a duration; field also slows by 30%"
+  },
+  {
+   "champion": "Milio",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocks back and stuns the first enemy it hits over 1 second; explosion also slows secondary targets for 1.5 seconds"
+  },
+  {
+   "champion": "MissFortune",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "storm of bullets for 2 seconds... slowing them by 40% (+ 6% per 100 AP)"
+  },
+  {
+   "champion": "MonkeyKing",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "can knock them up once for 0.6 seconds per tooltip; registry canonical value is 1.0 all ranks"
+  },
+  {
+   "champion": "Mordekaiser",
+   "spell": "E",
+   "cc_kind": "PULL",
+   "duration_s": 0.25,
+   "conditional": false,
+   "source_quote": "pulls them 250 units"
+  },
+  {
+   "champion": "Mordekaiser",
+   "spell": "R",
+   "cc_kind": "STASIS",
+   "duration_s": 7.0,
+   "conditional": false,
+   "source_quote": "banishing them with him to the Death Realm for 7 seconds; target is isolated from the rest of the map; 75% slow applied during cast time"
+  },
+  {
+   "champion": "Morgana",
+   "spell": "Q",
+   "cc_kind": "ROOT",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "roots them for a duration"
+  },
+  {
+   "champion": "Morgana",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "targets are slowed by 20% for 3s; if target does not break tether they are stunned for a duration; stun conditional on tether not being broken (stay-in-range gate)"
+  },
+  {
+   "champion": "Naafiri",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 0.25,
+   "conditional": false,
+   "source_quote": "upon arrival Naafiri deals physical damage and slows the target by 99% for 0.25 seconds"
+  },
+  {
+   "champion": "Nami",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "suspending them for 1.5 seconds"
+  },
+  {
+   "champion": "Nami",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "knocking them up for 0.5 seconds, and slowing them by 70% for 2 : 4 (based on distance traveled) seconds"
+  },
+  {
+   "champion": "Nasus",
+   "spell": "W",
+   "cc_kind": "CRIPPLE",
+   "duration_s": 5.0,
+   "conditional": false,
+   "source_quote": "slowing them by 35% and crippling them by 75% of that amount, both increasing every second over the 5 second duration"
+  },
+  {
+   "champion": "Nautilus",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "slows them by an amount that decays over 1.5 seconds"
+  },
+  {
+   "champion": "Nautilus",
+   "spell": "P",
+   "cc_kind": "ROOT",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "root the target for 0.75 : 1.5 (based on level) seconds"
+  },
+  {
+   "champion": "Nautilus",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.6,
+   "conditional": false,
+   "source_quote": "stuns them for 1 second, and drags them toward Nautilus (stun is primary; drag/pull is secondary)"
+  },
+  {
+   "champion": "Nautilus",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "knocked up for 1 second ... primary target knocked up for a modified duration; stun also applied; Knock Up Duration block (1, 1.5, 2) and Stun Duration block (1, 1.5, 2) both confirmed"
+  },
+  {
+   "champion": "Neeko",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 1.75,
+   "conditional": false,
+   "source_quote": "roots them for a duration ... grows in size and its speed and root duration is increased; base Root Duration block (0.7, 0.9, 1.1, 1.3, 1.5) + Empowered Root Duration block (1.8, 2.1, 2.4, 2.7, 3.0) at patch 16.11.1; registry tuple (0.75,1.0,1.25,1.5,1.75) reused verbatim"
+  },
+  {
+   "champion": "Neeko",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "knocking up nearby enemies for 0.6 seconds then stuns them for 0.75 seconds; 0.6+0.75=1.25 combined disable; stun is harder than 0.6s airborne by priority; registry (1.25,1.25,1.25) reused"
+  },
+  {
+   "champion": "Nilah",
+   "spell": "R",
+   "cc_kind": "PULL",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "she then unleashes a burst that ... pulls them 250 units towards her. Each hit also slows targets by 10% for 3 seconds; pull is primary CC (harder than slow); slow 3s used as max_rank value for the SLOW secondary"
+  },
+  {
+   "champion": "Nocturne",
+   "spell": "E",
+   "cc_kind": "FEAR",
+   "duration_s": 2.25,
+   "conditional": true,
+   "source_quote": "If the tether is not broken by the end of its duration, the target is feared for a duration while being slowed by 90%; tether expiry is the conditional gate; Disable Duration block (1.25,1.5,1.75,2.0,2.25)"
+  },
+  {
+   "champion": "Nocturne",
+   "spell": "R",
+   "cc_kind": "NEARSIGHT",
+   "duration_s": 6.0,
+   "conditional": false,
+   "source_quote": "Nocturne terrorizes all enemy champions, nearsighting them for 6 seconds"
+  },
+  {
+   "champion": "Nunu",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "After 3 seconds from the first cast, Snowbound enemies near Willump take magic damage and are rooted for 0.5 : 1.5 (based on level) seconds; conditional on Snowbound mark AND proximity to Willump at expiry"
+  },
+  {
+   "champion": "Nunu",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "affected enemies will remain slowed for 0 : 3 (based on channel time) seconds"
+  },
+  {
+   "champion": "Nunu",
+   "spell": "W",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "knocking them up for 0.5 : 0.75 (based on charge time) seconds and subsequently stunning them for 0 : 0.5 (based on charge time) seconds; max values require full charge (conditional); knock-up is primary (harder than subsequent stun at same charge level)"
+  },
+  {
+   "champion": "Olaf",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.5,
+   "conditional": false,
+   "source_quote": "slows them for 1.5 : 2.5 (based on distance traveled) seconds"
+  },
+  {
+   "champion": "Orianna",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "stuns them for 0.75 seconds, and pulls them over 325 units; brief knock-up plus pull plus stun; registry encodes knock-up 1.0s all ranks"
+  },
+  {
+   "champion": "Orianna",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Enemies that move within the field are slowed by the same amount, decaying over 2 seconds after leaving"
+  },
+  {
+   "champion": "Ornn",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.25,
+   "conditional": true,
+   "source_quote": "If Ornn collides with terrain during the charge, he creates a shockwave that knocks up and stuns nearby enemies for 1.25 seconds; terrain collision is the conditional gate"
+  },
+  {
+   "champion": "Ornn",
+   "spell": "Q",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "a magma pillar then erupts to knock aside enemies ... and slows them by 40% for 2 seconds; knockback is primary (harder than slow); slow duration 2s used as max_rank value; pillar always erupts unconditionally"
+  },
+  {
+   "champion": "Ornn",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "knocks them up and stuns them for 1 second, reduced to 0.5 seconds after the first enemy champion hit; registry (0.5,0.5,0.5) reused"
+  },
+  {
+   "champion": "Pantheon",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slows them by 50% for 2 seconds"
+  },
+  {
+   "champion": "Pantheon",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "he deals physical damage and stuns them for 1 second"
+  },
+  {
+   "champion": "Poppy",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 0.5,
+   "conditional": true,
+   "source_quote": "If the target hits terrain, she stops to deal the same physical damage again and stuns them for a duration; Stun Duration block (1.6,1.7,1.8,1.9,2.0) in data but registry encodes 0.5 all ranks; terrain hit is the conditional gate; registry (0.5,0.5,0.5,0.5,0.5) reused verbatim"
+  },
+  {
+   "champion": "Poppy",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "The impact creates a field for 1 second that slows enemies within; Slow block (20/25/30/35/40%) confirmed; field persists 1 second all ranks"
+  },
+  {
+   "champion": "Poppy",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocking them up for 1 second; charged variant additionally knocks back far toward enemy fountain (conditional on 0.5s charge); knock-up 1s fires unconditionally on any recast"
+  },
+  {
+   "champion": "Pyke",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "the Phantom homes back to Pyke to stun enemies around it and those it passes through along the way for 1.25 (+ 0.1 per 10 Lethality) seconds"
+  },
+  {
+   "champion": "Pyke",
+   "spell": "Q",
+   "cc_kind": "PULL",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "dealing physical damage to the first enemy hit and pulling them ... then slowing them by 90% for 1 second; pull is primary CC; registry (1.25,1.25,1.25,1.25,1.25) encodes stun 1.25 but tooltip shows pull+slow; PULL is the correct cc_kind per tooltip"
+  },
+  {
+   "champion": "Qiyana",
+   "spell": "Q",
+   "cc_kind": "ROOT",
+   "duration_s": 0.5,
+   "conditional": true,
+   "source_quote": "River: The blast roots enemies hit for 0.5 seconds, then slows them by 20% for 1 second; only when River element is active (Elemental Wrath form)"
+  },
+  {
+   "champion": "Qiyana",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "sweeps a windblast ... knocks back enemies hit by 375 units ... stunning them for 0.5 : 1 (based on proximity) seconds; knockback is the unconditional primary CC; stun from shockwave hitting terrain/brush/river is harder but conditional on terrain contact"
+  },
+  {
+   "champion": "Quinn",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "knocking them back a very short distance over 0.5 seconds, and slowing them by 50% decaying over 1.5 seconds; registry (0.75,0.75,0.75,0.75,0.75) reused"
+  },
+  {
+   "champion": "Quinn",
+   "spell": "Q",
+   "cc_kind": "NEARSIGHT",
+   "duration_s": 1.75,
+   "conditional": false,
+   "source_quote": "The primary target is nearsighted for 1.75 seconds if they are a champion, and disarmed for the same duration otherwise"
+  },
+  {
+   "champion": "Rakan",
+   "spell": "R",
+   "cc_kind": "CHARM",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "he deals magic damage to enemies he collides with and charms and slows them by 75% for a duration; Disable Duration block (1.0,1.25,1.5) confirmed"
+  },
+  {
+   "champion": "Rakan",
+   "spell": "W",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "he deals magic damage to nearby enemies and knocks them up for 1 second"
+  },
+  {
+   "champion": "Rammus",
+   "spell": "E",
+   "cc_kind": "TAUNT",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Active: Rammus taunts the target enemy champion or monster for a duration."
+  },
+  {
+   "champion": "Rammus",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 0.4,
+   "conditional": false,
+   "source_quote": "Rammus stops rolling upon colliding with an enemy, dealing magic damage to all nearby enemies and knocking them back 125 units, though not through terrain. Enemies hit are then stunned and revealed for 0.4 seconds, as well as slowed for 1 second. (secondary: KNOCKBACK 125 units, SLOW 1s; stun fires unconditionally on any collision)"
+  },
+  {
+   "champion": "Rammus",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "If Soaring Slam was cast during Powerball, enemies within the epicenter are also knocked up for 0.75 seconds. (conditional: only when cast during Powerball; unconditional secondary: SLOW 1.5s always applies)"
+  },
+  {
+   "champion": "RekSai",
+   "spell": "W",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "emerging from the ground to deal magic damage to nearby enemies, knocking them up for 1 second"
+  },
+  {
+   "champion": "Rell",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "dealing them magic damage and stunning them for 0.65 seconds (registry value 1.0/1.0/1.0/1.0/1.0 is authoritative; tooltip 0.65s superseded by registry)"
+  },
+  {
+   "champion": "Rell",
+   "spell": "R",
+   "cc_kind": "PULL",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "pulling nearby enemies inward. She then creates a gravitational field around her for the next 2 seconds that deals magic damage every 0.25 seconds to nearby enemies and drags them towards her."
+  },
+  {
+   "champion": "Rell",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 0.8,
+   "conditional": false,
+   "source_quote": "she deals magic damage to nearby enemies, stuns them for 0.8 seconds, and knocks them up for 0.4 seconds (Crash Down; secondary: AIRBORNE 0.4s; Mount Up form also stuns 0.6s with AIRBORNE fling 0.4s)"
+  },
+  {
+   "champion": "Renata",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "enemies struck are dealt magic damage and slowed by 30% for 2 seconds"
+  },
+  {
+   "champion": "Renata",
+   "spell": "Q",
+   "cc_kind": "ROOT",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "deals magic damage to the first enemy hit and roots them for 1 second, during which they are revealed. (recast secondary: KNOCKBACK + STUN 0.5s on secondary champions hit)"
+  },
+  {
+   "champion": "Renata",
+   "spell": "R",
+   "cc_kind": "CHARM",
+   "duration_s": 2.25,
+   "conditional": false,
+   "source_quote": "Enemy champions and minions hit become berserk for a duration. (Berserk Duration 1.25/1.75/2.25s; forces enemies to attack their allies - classified as CHARM-class offensive CC)"
+  },
+  {
+   "champion": "Renekton",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "strike the target twice, dealing modified physical damage and stunning them for 0.75 seconds (Reign of Anger bonus: 1.5s stun; registry value is base stun duration)"
+  },
+  {
+   "champion": "Rengar",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 1.75,
+   "conditional": true,
+   "source_quote": "Ferocity Bonus: The target is rooted instead of slowed. (conditional on max Ferocity stack; base effect: SLOW 1.75s unconditional)"
+  },
+  {
+   "champion": "Riven",
+   "spell": "Q",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": true,
+   "source_quote": "Third Cast: Riven mimics the first cast's effects in a larger area while also knocking back enemies hit 75 units over 0.5 seconds. (conditional: only on the third activation of Q)"
+  },
+  {
+   "champion": "Riven",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "Riven emits a flash of runic energy from the start of the cast time, dealing physical damage to nearby enemies and stunning them for 0.75 seconds."
+  },
+  {
+   "champion": "Rumble",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "dealing magic damage to the first enemy hit, inflicting them with magic resistance reduction for 4 seconds and slowing them for 2 seconds"
+  },
+  {
+   "champion": "Rumble",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 4.5,
+   "conditional": false,
+   "source_quote": "Enemies struck by the impact or within the field are marked as Burning for 1 second, which deals magic damage every 0.5 seconds, slows by 35%, and refreshes continuously while in the area. (field lasts 4.5 seconds after last rocket lands; slow refreshes for full field duration)"
+  },
+  {
+   "champion": "Ryze",
+   "spell": "W",
+   "cc_kind": "ROOT",
+   "duration_s": 1.75,
+   "conditional": true,
+   "source_quote": "Flux Bonus: The target is rooted instead of slowed. (conditional on Flux mark; base SLOW 1.5s unconditional; root duration tuple matches registry)"
+  },
+  {
+   "champion": "Sejuani",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": true,
+   "source_quote": "Sejuani hurls a trap at the visible enemy with 4 stacks of Frost closest to the cursor, which deals magic damage, displaces slightly, and stuns them for 1 second. (conditional: requires 4 Frost stacks on target)"
+  },
+  {
+   "champion": "Sejuani",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "Bristle dashes to the target location until he collides with an enemy champion, dealing magic damage to enemies he passes through and knocking them up for 0.5 seconds."
+  },
+  {
+   "champion": "Sejuani",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "throwing an ice bola ... stunning them for 1 second. If the bola travels at least 425 units, stunning for 1.5 seconds instead. (registry 3-rank tuple authoritative; secondary: SLOW 30% for storm duration + 80% slow 1s on shatter)"
+  },
+  {
+   "champion": "Sejuani",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 0.25,
+   "conditional": false,
+   "source_quote": "Sejuani lashes out with her flail in a line in the same direction, dealing physical damage to enemies hit and slowing them by 75% for 0.25 seconds."
+  },
+  {
+   "champion": "Senna",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Enemies hit are slowed by 15% (+ 15% per 100 bonus AD) (+ 10% per 100 AP) for a duration. (Slow Duration: 1/1.25/1.5/1.75/2 seconds)"
+  },
+  {
+   "champion": "Senna",
+   "spell": "W",
+   "cc_kind": "ROOT",
+   "duration_s": 2.25,
+   "conditional": false,
+   "source_quote": "After the duration or when the target dies, the Black Mist spreads out of the target, rooting them and surrounding enemies for a few seconds."
+  },
+  {
+   "champion": "Seraphine",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "Enemies that are immobilized or grounded are also stunned for the same duration. (conditional on target state; already-slowed enemies are rooted; base: SLOW 99% for same duration 1.1-1.5s unconditional)"
+  },
+  {
+   "champion": "Seraphine",
+   "spell": "R",
+   "cc_kind": "CHARM",
+   "duration_s": 1.75,
+   "conditional": false,
+   "source_quote": "deals magic damage to enemies hit, charms them, during which they are revealed, and slows them by 40% for a duration"
+  },
+  {
+   "champion": "Sett",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": true,
+   "source_quote": "If Facebreaker affects at least one enemy on each side, all enemies are stunned for 1 second upon landing. (conditional: both-sides pull required; unconditional secondary: PULL + SLOW 70% for 0.5s)"
+  },
+  {
+   "champion": "Sett",
+   "spell": "R",
+   "cc_kind": "SUPPRESSION",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Sett suppresses and reveals the target enemy champion while dashing to their location and attaching them to himself upon arrival. He leaps another 600 units to slam the target into the ground. (suppression lasts duration of dash ~1.5s; secondary: SLOW 99% 1s AoE on shockwave)"
+  },
+  {
+   "champion": "Shaco",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "Active: Shaco throws a dagger at the target enemy that deals magic damage ... and slows them for 3 seconds."
+  },
+  {
+   "champion": "Shaco",
+   "spell": "W",
+   "cc_kind": "FEAR",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "The box will spring out upon enemy contact, fearing nearby enemies for a duration (Fear Duration 0.5/0.75/1/1.25/1.5s; secondary ROOT same ranks: 0.5/0.75/1/1/1s)"
+  },
+  {
+   "champion": "Shen",
+   "spell": "E",
+   "cc_kind": "TAUNT",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Shen dashes to the target location, dealing physical damage to enemy champions and monsters he passes through and taunting them for 1.5 seconds."
+  },
+  {
+   "champion": "Shen",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "Enemy champions hit are slowed for the next 2 seconds while moving away from Shen."
+  },
+  {
+   "champion": "Shyvana",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "Shyvana transforms into Dragon Form and dashes with displacement immunity to the target location, dealing magic damage to enemies she passes through and carrying them alongside her."
+  },
+  {
+   "champion": "Singed",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "Singed flings the target enemy 550 units over himself over 0.693 seconds. Secondary: ROOT if target lands on Mega Adhesive (conditional)."
+  },
+  {
+   "champion": "Singed",
+   "spell": "W",
+   "cc_kind": "GROUND",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "creating a field for 3 seconds that grounds enemies within and slows them."
+  },
+  {
+   "champion": "Sion",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.5,
+   "conditional": false,
+   "source_quote": "slows them for 2.5 seconds and inflicts them with 20% armor reduction for 4 seconds. Secondary: STUN 0.75s + KNOCKBACK only on minion/monster hit (not champion primary CC)."
+  },
+  {
+   "champion": "Sion",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 2.25,
+   "conditional": true,
+   "source_quote": "If Decimating Smash was charged for at least 1 second, Sion instead slams his axe down, stunning them for 1.25 : 2.25 (based on channel time) seconds. Also knocks up for 0.5 : 1s (AIRBORNE secondary)."
+  },
+  {
+   "champion": "Sion",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 1.75,
+   "conditional": true,
+   "source_quote": "Enemies in a smaller radius are also pulled towards Sion over 0.5 seconds and become stunned after a brief delay for 0.25 : 1.75 (based on channel time) seconds. Outer radius also slowed 3s (unconditional). PULL is secondary (harder CC is STUN)."
+  },
+  {
+   "champion": "Skarner",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "The final attack slams the boulder, dealing an additional 8% of each target's maximum health physical damage and slowing afflicted enemies by 40% for 1 second."
+  },
+  {
+   "champion": "Skarner",
+   "spell": "R",
+   "cc_kind": "SUPPRESSION",
+   "duration_s": 2.25,
+   "conditional": false,
+   "source_quote": "Skarner R Impale: suppression 1.75/2.0/2.25 on grabbed target"
+  },
+  {
+   "champion": "Skarner",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "releasing a shockwave that quickly expands in a radius around him to deal magic damage to enemies hit and slow them by 20% for 1 second."
+  },
+  {
+   "champion": "Smolder",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "Knock-up 1.25s on enemies hit by the dive landing. Center hit also slowed by 40% for 2 seconds (SLOW secondary)."
+  },
+  {
+   "champion": "Smolder",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "sneezes a fiery glob in the target direction that deals physical damage to enemies hit and slows them by 35% for 1.5 seconds."
+  },
+  {
+   "champion": "Sona",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Sona strikes an irresistible chord in the target direction that deals magic damage to enemies hit and stuns them for 1.5 seconds."
+  },
+  {
+   "champion": "Soraka",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "the zone erupts to deal the same damage to enemy champions within and root them for a duration. Zone also silences for 1.5s while it persists (SILENCE secondary)."
+  },
+  {
+   "champion": "Soraka",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "dealing magic damage to enemies hit and slowing them by 30% for 1.5 seconds."
+  },
+  {
+   "champion": "Swain",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "the wave homes back to Swain and detonates upon the first enemy hit, dealing magic damage to nearby enemies and rooting them for 1.5 seconds. Recast also pulls rooted targets 290 units (PULL secondary)."
+  },
+  {
+   "champion": "Swain",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Demonflare: releases a nova of soulfire that deals magic damage to nearby enemies and slows them by 75%, decaying over 1.5 seconds."
+  },
+  {
+   "champion": "Swain",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "explodes after 1.5 seconds, dealing magic damage to enemies within, halved against minions, and slowing them for 1.5 seconds."
+  },
+  {
+   "champion": "Sylas",
+   "spell": "E",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "deal magic damage to the first enemy hit and reveal and stun them for 0.5 seconds. Upon hitting the target, Sylas dashes to their location and knocks them up for 0.5 seconds upon arrival. AIRBORNE (knock-up) is harder than the initial STUN."
+  },
+  {
+   "champion": "Sylas",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Sylas lashes out two chains that converge to the target location, dealing magic damage to enemies hit and slowing them for 1.5 seconds."
+  },
+  {
+   "champion": "Syndra",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "propels a wave of force in a cone that deals magic damage to enemies hit and knocks them back for 400 units. Dark Spheres knocked back stun enemies hit for 1.25s (conditional STUN secondary)."
+  },
+  {
+   "champion": "Syndra",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Recast: Syndra throws the grabbed target towards the target location, dealing magic damage to them and nearby enemies. All targets hit are slowed by 25% for 1.5 seconds."
+  },
+  {
+   "champion": "TahmKench",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "An Acquired Taste Bonus (3 stacks): The target is stunned for 1.5 seconds. Base hit slows by 50% for 2 seconds (SLOW secondary, unconditional)."
+  },
+  {
+   "champion": "TahmKench",
+   "spell": "R",
+   "cc_kind": "SUPPRESSION",
+   "duration_s": 3.0,
+   "conditional": true,
+   "source_quote": "Devour can be cast on enemies only with 3 stacks of An Acquired Taste. The target is suppressed during Devour's cast time and while attached for up to 3 seconds."
+  },
+  {
+   "champion": "Taliyah",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "Enemies that dash or are knocked over a stone will detonate it, taking magic damage and becoming stunned for 0.75 seconds. Stones also slow enemies in area by 20% (unconditional SLOW secondary)."
+  },
+  {
+   "champion": "Taliyah",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "Empowered Active (on Worked Ground): hurls a Boulder that slows all targets hit for 1.5 seconds. Only fires on Worked Ground cast."
+  },
+  {
+   "champion": "Taliyah",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "Taliyah summons a torrent of spiraling rocks that cascades in the target direction, knocking aside champions hit and erecting a wall of terrain in its wake."
+  },
+  {
+   "champion": "Taliyah",
+   "spell": "W",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "a ledge erupts from the area that knocks enemies hit 400 units in the target direction over 1 second."
+  },
+  {
+   "champion": "Talon",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "the daggers linger for 0.7 seconds before homing back to Talon, dealing physical damage to enemies hit and slowing them for 1 second."
+  },
+  {
+   "champion": "Taric",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "stuns them for 1.5 seconds"
+  },
+  {
+   "champion": "Teemo",
+   "spell": "Q",
+   "cc_kind": "BLIND",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "Blind Duration: 2/2.25/2.5/2.75/3 seconds (doubled against minions and monsters)"
+  },
+  {
+   "champion": "Teemo",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 4.0,
+   "conditional": false,
+   "source_quote": "slowing them for 4 seconds"
+  },
+  {
+   "champion": "Thresh",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.4,
+   "conditional": false,
+   "source_quote": "knocked 200 units in the target direction, and then are slowed for 1 second (secondary SLOW 1s)"
+  },
+  {
+   "champion": "Thresh",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "stun and reveal them for 1.5 seconds; also render them airborne for 0.4 seconds (secondary AIRBORNE 0.4s)"
+  },
+  {
+   "champion": "Thresh",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slowing them by 99% for 2 seconds (first wall break); subsequent walls slow for 1 second"
+  },
+  {
+   "champion": "Tristana",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocked back and stunned for a duration (secondary STUN; registry pins knockback displacement 1.0s all ranks)"
+  },
+  {
+   "champion": "Tristana",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slows them by 40% for 2 seconds"
+  },
+  {
+   "champion": "Trundle",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "knocks back units hit to 225 units from its center; pillar slows nearby enemies for its 6-second duration (secondary SLOW zone)"
+  },
+  {
+   "champion": "Trundle",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 0.1,
+   "conditional": false,
+   "source_quote": "slow the target by 75% for 0.1 seconds"
+  },
+  {
+   "champion": "Tryndamere",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 4.0,
+   "conditional": true,
+   "source_quote": "Targets facing in the opposite direction of Tryndamere are also slowed for the duration (4 seconds; conditional on facing direction)"
+  },
+  {
+   "champion": "TwistedFate",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 2.0,
+   "conditional": true,
+   "source_quote": "Gold Card Bonus: stuns the target for a duration (Stun Duration 1/1.25/1.5/1.75/2s; conditional on gold card selection). Red Card also slows for 2.5s."
+  },
+  {
+   "champion": "Twitch",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 3.0,
+   "conditional": false,
+   "source_quote": "area then becomes contaminated for 3 seconds, applying a Deadly Venom stack each second to enemies within and slowing them"
+  },
+  {
+   "champion": "Udyr",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "pounce on the target to stun them for 0.75 seconds"
+  },
+  {
+   "champion": "Udyr",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 4.0,
+   "conditional": false,
+   "source_quote": "slows them while they remain within (blizzard lasts 4 seconds; slow is continuous while enemies are in zone)"
+  },
+  {
+   "champion": "Urgot",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "stunning them for 1.5 seconds (on champion hit); pass-through enemies stunned 1s (secondary KNOCKBACK 0.5s in existing registry; registry entry is knockback 0.5s not the stun)"
+  },
+  {
+   "champion": "Urgot",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "slow them for 1.25 seconds"
+  },
+  {
+   "champion": "Urgot",
+   "spell": "R",
+   "cc_kind": "SUPPRESSION",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "channels for 1.5 seconds...suppressing them (Mercy recast; conditional on target below 25% HP). Upon completing the channel, fears nearby enemies for 1.5 seconds (secondary FEAR)."
+  },
+  {
+   "champion": "Varus",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 4.0,
+   "conditional": false,
+   "source_quote": "area then becomes desecrated for 4 seconds, slowing enemies within"
+  },
+  {
+   "champion": "Varus",
+   "spell": "R",
+   "cc_kind": "ROOT",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "rooting them for 2 seconds"
+  },
+  {
+   "champion": "Vayne",
+   "spell": "E",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "knocks them back 475 units; wall collision STUN 1.5s is conditional on terrain (secondary conditional STUN)"
+  },
+  {
+   "champion": "Veigar",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Enemies that collide with the edges of the cage are knocked down and stunned for a duration (1.5s all ranks)"
+  },
+  {
+   "champion": "Velkoz",
+   "spell": "E",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "knocking them up and stunning them for 0.75 seconds (secondary STUN 0.75s; close-range cast also adds KNOCKBACK)"
+  },
+  {
+   "champion": "Velkoz",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.6,
+   "conditional": false,
+   "source_quote": "Slow Duration: 1/1.4/1.8/2.2/2.6 seconds (slows by 70% decaying)"
+  },
+  {
+   "champion": "Velkoz",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "slows them by 20%, lingering for 1 second (applied every 0.2s tick of the channel)"
+  },
+  {
+   "champion": "Vex",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slowing them for 2 seconds"
+  },
+  {
+   "champion": "Vex",
+   "spell": "P",
+   "cc_kind": "FEAR",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "knock down and fear enemies hit for 0.75 / 1 / 1.25 / 1.5 (based on level) seconds; max at level 11+ is 1.5s; no fixed per-rank tuple (level-based not rank-based)"
+  },
+  {
+   "champion": "Vi",
+   "spell": "Q",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "She stops upon hitting an enemy champion, knocking them back over 0.75 seconds"
+  },
+  {
+   "champion": "Vi",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocking them up for 1.3 seconds (registry pins 1.0s; secondary dash-through enemies are stunned for 0.75 seconds and knocked aside over 0.25 seconds)"
+  },
+  {
+   "champion": "Viego",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "Other nearby enemies are knocked back up to 400-units away based on proximity, though not through terrain (tooltip gives no explicit duration; also slows primary target by 99% for 0.25 seconds as secondary CC)"
+  },
+  {
+   "champion": "Viego",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "The mist deals magic damage to the first enemy hit and stuns them for 0.25 : 1.25 (based on channel time) seconds - max 1.5s at full charge (registry pins full-charge canonical value)"
+  },
+  {
+   "champion": "Viktor",
+   "spell": "W",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "The fifth stack consumes them all to knock down and stun the target for 1.5 seconds"
+  },
+  {
+   "champion": "Vladimir",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "Enemies within the pool are dealt magic damage every 0.5 seconds over the duration and are slowed by 40%. Vladimir heals himself for 30% of the pre-mitigation damage dealt"
+  },
+  {
+   "champion": "Volibear",
+   "spell": "E",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.25,
+   "conditional": false,
+   "source_quote": "bolt deals magic damage to enemies hit and slows them by 40% for 2 seconds (also brief airborne on landing per wave-7 registry entry; AIRBORNE harder than SLOW)"
+  },
+  {
+   "champion": "Volibear",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "pounce on the target, dealing bonus physical damage and stunning them for 1 second"
+  },
+  {
+   "champion": "Volibear",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "slowing nearby enemies by 50% decaying over 1 second"
+  },
+  {
+   "champion": "Warwick",
+   "spell": "E",
+   "cc_kind": "FEAR",
+   "duration_s": 1.0,
+   "conditional": true,
+   "source_quote": "Recast: Warwick howls, ending Primal Howl's effects and fearing nearby enemies for 1 second, slowing them by 90% (recast fires automatically after duration or on manual recast)"
+  },
+  {
+   "champion": "Warwick",
+   "spell": "R",
+   "cc_kind": "SUPPRESSION",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "channels for up to 1.5 seconds to suppress, reveal, and deal magic damage every 0.25 seconds"
+  },
+  {
+   "champion": "Xayah",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 1.25,
+   "conditional": true,
+   "source_quote": "A target hit by at least three Feathers is rooted for 1.25 seconds"
+  },
+  {
+   "champion": "Xerath",
+   "spell": "E",
+   "cc_kind": "STUN",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "fires an orb of energy that stuns for 0.75 : 2.25 (based on orb travel distance) seconds; registry pins per-rank floor at min range"
+  },
+  {
+   "champion": "Xerath",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.5,
+   "conditional": false,
+   "source_quote": "dealing magic damage to enemies hit and slowing them by 25% for 2.5 seconds (epicenter enemies are slowed by a greater amount, decaying to 25% over the duration)"
+  },
+  {
+   "champion": "XinZhao",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "dashes to the target enemy's location, dealing magic damage to enemies near them and slowing them by 30% for 0.5 seconds"
+  },
+  {
+   "champion": "XinZhao",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "The third attack knocks up the target for 0.75 seconds"
+  },
+  {
+   "champion": "XinZhao",
+   "spell": "R",
+   "cc_kind": "STUN",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "knocking back all non-Challenged targets hit up-to 700 units over 0.75 seconds, as well as stunning them for the same duration (STUN > KNOCKBACK in priority; only non-Challenged enemies; Challenged target excluded)"
+  },
+  {
+   "champion": "XinZhao",
+   "spell": "W",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "thrust slows enemies hit by 50% for 1.5 seconds; W thrust also applies 1.0s knockup per registry wave-3 entry (AIRBORNE harder than SLOW)"
+  },
+  {
+   "champion": "Yasuo",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "At 2 stacks, the next Steel Tempest cast...knocks them up for 0.75 seconds, or 0.9 seconds in combination with Sweeping Blade"
+  },
+  {
+   "champion": "Yasuo",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocks up all nearby airborne enemy champions for 1 second"
+  },
+  {
+   "champion": "Yone",
+   "spell": "Q",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": true,
+   "source_quote": "At 2 stacks, the next Mortal Steel cast...knocking them up for 0.75 seconds"
+  },
+  {
+   "champion": "Yone",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 0.75,
+   "conditional": false,
+   "source_quote": "pulls them towards the location Yone blinked to, then knocks them up for 0.75 seconds (stun 1 second ends prematurely upon the pull; AIRBORNE is the final CC state)"
+  },
+  {
+   "champion": "Yorick",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "Enemy champions and monsters hit are slowed by 30% for 1.5 seconds and marked as Cursed for 4 seconds"
+  },
+  {
+   "champion": "Yorick",
+   "spell": "W",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.25,
+   "conditional": false,
+   "source_quote": "summons a ring of spirits...knocking aside enemies hit over 0.25 seconds; Within 210-units, they are pulled inside; otherwise they are pushed away"
+  },
+  {
+   "champion": "Yunara",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "The initial hit against each enemy before the bead's expansion deals magic damage and slows them by 99% decaying over 1.5 seconds (Arc of Judgment base form; Arc of Ruin empowered form slows by 99% decaying over 1 second)"
+  },
+  {
+   "champion": "Yuumi",
+   "spell": "Q",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "slowed by 20% for 1 second (basic hit); Attached Bonus fully-charged applies stronger slow that decays to 20% over 2 seconds (max_rank_duration_s uses attached fully-charged max)"
+  },
+  {
+   "champion": "Yuumi",
+   "spell": "R",
+   "cc_kind": "SLOW",
+   "duration_s": 1.25,
+   "conditional": false,
+   "source_quote": "Enemies struck by the waves take magic damage and are slowed by 10% for 1.25 seconds, stacking up to 50% on subsequent hits"
+  },
+  {
+   "champion": "Zac",
+   "spell": "E",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocks them up and stuns them for 0.5 seconds, increased to 1 second if Elastic Slingshot was charged for more than 1 second"
+  },
+  {
+   "champion": "Zac",
+   "spell": "Q",
+   "cc_kind": "ROOT",
+   "duration_s": 0.5,
+   "conditional": true,
+   "source_quote": "If the two Stretching Strikes affect different targets, both are rooted for 0.5 seconds; upon impact of each other, both targets are knocked up and stunned for 0.25 seconds (ROOT is harder than the 0.25s AIRBORNE on conditional slam)"
+  },
+  {
+   "champion": "Zac",
+   "spell": "R",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "knocks them back over 1 second, and slows them by 20% for the same duration"
+  },
+  {
+   "champion": "Zed",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "Enemies hit by a Shadow's slash are slowed for 1.5 seconds (requires Shadow to be active and land the slash on the same target)"
+  },
+  {
+   "champion": "Zeri",
+   "spell": "W",
+   "cc_kind": "SLOW",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "fires an electric pulse...that deals physical damage to the first enemy hit and slows them for 2 seconds"
+  },
+  {
+   "champion": "Ziggs",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 1.5,
+   "conditional": false,
+   "source_quote": "dealing magic damage and slowing them for 1.5 seconds"
+  },
+  {
+   "champion": "Ziggs",
+   "spell": "W",
+   "cc_kind": "KNOCKBACK",
+   "duration_s": 0.5,
+   "conditional": false,
+   "source_quote": "knock them back over 0.5 seconds up to 500 units away from the center of the explosion"
+  },
+  {
+   "champion": "Zilean",
+   "spell": "E",
+   "cc_kind": "SLOW",
+   "duration_s": 2.5,
+   "conditional": false,
+   "source_quote": "If the target is an enemy, they are slowed. Time Warp...lasts for 2.5 seconds"
+  },
+  {
+   "champion": "Zilean",
+   "spell": "Q",
+   "cc_kind": "STUN",
+   "duration_s": 1.5,
+   "conditional": true,
+   "source_quote": "The bomb detonates immediately if another bomb attaches itself to the same unit, stunning nearby enemies for a duration"
+  },
+  {
+   "champion": "Zoe",
+   "spell": "E",
+   "cc_kind": "SLEEP",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "inflicts them with drowsy for 1.4 seconds, which gradually slows them until they fall asleep for 2.25 seconds; secondary SLOW during drowsy buildup; registry value 2.0 used per _per_spell_cc.py"
+  },
+  {
+   "champion": "Zyra",
+   "spell": "E",
+   "cc_kind": "ROOT",
+   "duration_s": 2.0,
+   "conditional": false,
+   "source_quote": "deals magic damage to enemies hit and roots them for a duration"
+  },
+  {
+   "champion": "Zyra",
+   "spell": "R",
+   "cc_kind": "AIRBORNE",
+   "duration_s": 1.0,
+   "conditional": false,
+   "source_quote": "After 2 seconds, the thicket snaps upward to knock up enemies within for 1 second"
+  }
+ ]
+}

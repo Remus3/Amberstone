@@ -1331,6 +1331,36 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.106.0 (Offensive CC-OUTPUT / lockdown scorer, item 294 - the SEVENTH SCORED axis
+and the MIRROR of the survivability CC axes (item 290 champion CC-mitigation / item
+292 spell-shield): those score how much enemy CC a champion SURVIVES, this scores
+how much CC she APPLIES to enemies - her lockdown contribution as a first-class
+offensive-utility metric. The per-spell CC DURATION substrate already existed
+(``_PER_SPELL_CC_DURATIONS``, consumed defensively by ``cc_pressure``); durations
+alone do not encode lockdown VALUE (a 1.5s suppression and a 1.5s slow are not
+equal), so this lift adds the missing schema: a NEW hand-authored per-(champion,
+spell) CC-KIND registry plus a kind -> weight table. NEW
+``agents/daemon_slayer/cc_output.py`` (``CcOutputEntry`` registry + ``_CC_KIND_WEIGHT``
+4-tier table [1.0 hard-disable stun/airborne/charm/fear/taunt/sleep/stasis/polymorph/
+suppression; 0.6 action-restricting root/silence/ground/disarm/blind; 0.5 displacement
+knockback/pull; 0.2 soft slow/nearsight/cripple] + ``_CC_OUTPUT_CONDITIONAL_PROB=0.5``
+availability midpoint + ``compute_cc_output`` -> ``CcOutputResult`` [lockdown_score /
+conditional_lockdown_score / total_lockdown_score / total_cc_seconds]). NEW
+``/cc-output`` route. PURELY ADDITIVE - the new scorer reads no existing scorer and is
+read by none, so every existing route is BYTE-IDENTICAL (the opt-in is the new
+endpoint itself, the section-5 "default inert" contract for a brand-new surface). CC
+durations are reused VERBATIM from ``_PER_SPELL_CC_DURATIONS`` wherever that registry
+carries the spell (108 durations reconciled, single source of truth); slows +
+conditional CC the duration registry deliberately excluded are hand-authored from the
+verbatim patch-16.11 prose. EXHAUSTIVE 171-champ fan-out (12 parallel classify agents +
+12 completeness critics) -> 315 entries / 161 champions / 71 conditional across 18 CC
+kinds. + ``tools/ds_cc_output_build.py`` (reusable validate/reconcile/inject generator)
++ ``cc_output_registry_notes.json`` provenance sidecar (Share-excluded like CHANGELOG /
+CC_CONDITIONAL_NOTES). +21 tests. NEXT (Phase D, live-gated): the auto-pairing consumer
+that credits a champion's lockdown into a team-fight / draft verdict; a
+per-target-tenacity output discount; tune the kind weights + conditional midpoint after
+a live re-rank.)
+
 1.105.0 (GAP-2 effects-text GUARANTEED-SURVIVAL WINDOW registry, item 293 - the
 NINTH survivability axis and the SECOND EHP-NUMERATOR term, after the item-288
 revive. A SELF window during which the champion cannot be damaged or killed
