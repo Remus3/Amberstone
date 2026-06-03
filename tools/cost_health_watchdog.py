@@ -11,7 +11,7 @@ Detects a cost breach (today > 1.5x trailing-median baseline, with an absolute
 floor so an idle day cannot false-positive against a near-zero baseline), a
 per-lane cost escalation (a purpose lane whose mean USD/call >= 2x its
 trailing-baseline cost/call week-over-week - the disk proxy for the
-rc_coach_cost_usd_per_call p95 doubling), or a daemon flap (>=2 pid changes
+rc_coach_cost_usd_per_call p95 doubling), or a daemon flap (>=3 pid changes
 inside the rolling window, or alive=false, or last_reload_ok=false). On any of
 these it CLASSIFIES the hot spend purpose to the Sonnet/Haiku caller file (from
 docs/COST_TRACE.md) and emits a concrete remediation proposal (debounce /
