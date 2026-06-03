@@ -1,92 +1,82 @@
 # Capture 101.qq.com hero-rank-double payload (operator recipe)
 
-One-shot Game-PC step. Item 187 Slice G follow-up; ROADMAP L132. Tencent
-CN-official duo-synergy/counter data lives on the `game.gtimg.cn` CDN
-but the exact URL path resists blind probing; this recipe captures it
-live in champ-select-safe Chrome (never in-game).
+Item 187 Slice G follow-up; ROADMAP L132. Tencent CN-official duo-synergy /
+counter data. **Updated 2026-06-02 (item 277) - three premises in the
+original recipe were verified WRONG against live probes from Legion; see
+"Verified reality" below before capturing.**
 
-## What you are capturing
+## Verified reality (live-probed from Legion 2026-06-02)
 
-The Tencent SPA at `https://101.qq.com/#/hero-rank-double?tier=200`
-fetches static JSON from `game.gtimg.cn/images/lol/act/...` containing
-per-champion-pair winrate / counter / synergy data. We need:
+1. **NOT geo-fenced.** From Legion: `101.qq.com` -> HTTP 200, `game.gtimg.cn`
+   -> HTTP 200, and `game.gtimg.cn/images/lol/act/img/js/heroList/hero_list.js`
+   -> HTTP 200. The "must capture on Game-PC / Legion-side fetch will fail"
+   note was stale. **Capture from Legion's own Chrome** (or fetch the static
+   gtimg files directly with curl).
+2. **The duo data is NOT a static gtimg JSON.** It is a DYNAMIC param'd API.
+   The static gtimg `act/img/js/` tree is only REFERENCE data (champions /
+   items / runes / augments), not the rank-double payload.
+3. **Real endpoints** (from `https://101.qq.com/js/api.js`):
+   - `https://mlol.qt.qq.com/go/mlol_webapis/odp_proxy/get1700_rank_double`
+     `?date=<YYYYMMDD>&championid=<id>&role1=<r>&role2=<r>&pagesize=<n>`
+     `&pageindex=<n>&item=<sortfield>&order=<dir>&ts=<ms>`
+   - `https://faas-6831.native.qq.com/faas/6831/1371/getRankDouble<params>`
+   Both respond from Legion (no geo-fence) but reject missing/bad params with
+   `{"code":603,"message":"..."}`.
 
-1. The resolved URL (so we can re-fetch on demand later).
-2. The JSON payload (so we can analyze its schema offline).
+### Param contract for get1700_rank_double (partially reverse-engineered)
 
-## Recipe
+Sequential validation; verified ACCEPTED: `date` (YYYYMMDD), `championid`,
+`role1`, `role2`, `pagesize`, `pageindex`, `ts`. The two values that still
+need the live capture are the `item` (sort field) + `order` (direction) ENUMS
+- every guessed value returned `"item is wrong"` / `"order is wrong"`, so the
+exact tokens come from the page's sort UI. That is the ONE thing the capture
+below resolves.
 
-1. Open Chrome on Game-PC. Navigate to:
+## Recipe (now a ~1-minute Legion-Chrome task)
+
+1. Open Chrome on Legion. Navigate to:
    `https://101.qq.com/#/hero-rank-double?tier=200`
-2. Press `F12` to open DevTools. Click the **Network** tab.
-3. Click the **XHR** filter (also called **Fetch/XHR** in newer Chrome).
-4. Hard-refresh the page: `Ctrl + Shift + R`.
-5. In the Network list, scan for a request whose URL contains BOTH
-   `game.gtimg.cn/images/lol/` AND the substring `hero-rank-double`.
-   Common shapes seen on similar Tencent endpoints:
-   - `https://game.gtimg.cn/images/lol/act/img/js/hero-rank-double-tier200.js`
-   - `https://game.gtimg.cn/images/lol/act/data/heroRankDouble/tier200.json`
-6. Right-click the matching request -> **Save as** (or **Copy response**
-   to clipboard, then paste into a new file). Save it as something like
-   `C:\Users\you\Downloads\hero-rank-double-tier200.json`.
-7. Copy the full request URL from the Headers tab.
+2. `F12` -> **Network** tab -> **Fetch/XHR** filter.
+3. Hard-refresh (`Ctrl + Shift + R`), pick a champion + the two lane roles,
+   and click a sort column (so the real `item`/`order` values fire).
+4. Find the request to `get1700_rank_double` (or `getRankDouble`).
+5. Right-click -> **Copy** -> **Copy link address** (the full param'd URL),
+   and **Save as** / **Copy response** to a local JSON file.
 
 ## Hand it to the probe script
 
-Once you have the URL + the local JSON file, run:
-
 ```
 py tools/probe_101qq_hero_rank_double.py \
-  --url "<the URL you copied>" \
-  --json "C:\path\to\hero-rank-double-tier200.json" \
+  --url "<the get1700_rank_double URL you copied>" \
+  --json "C:\path\to\rank-double.json" \
   --cross-check-rewind
 ```
 
-The script prints (no network calls):
-
-- URL structure analysis (is it patch-versioned? tier-stratified? region-coded?)
-- JSON schema summary (top-level keys, champion-keying convention)
-- DDragon cross-reference (how many keys match RC's champion set)
-- One sample champion pair vs `data/rewind_history.db` (operator eyeballs alignment)
-
-For the canonical id-map output (used by the live consumer), also run:
+Prints (no network): URL-structure analysis, JSON schema summary, DDragon
+cross-reference, one sample pair vs `data/rewind_history.db`. For the
+canonical id-map:
 
 ```
 py tools/compare_101qq_vs_ddragon.py \
-  --json "C:\path\to\hero-rank-double-tier200.json" \
+  --json "C:\path\to\rank-double.json" \
   --out data/external/101qq_id_map.json
 ```
 
-## Submit findings via the bridge
+Hand-correct unmatched keys in `data/external/101qq_hero_id_map.json`
+(overlaid LAST, your corrections win).
 
-Once the script outputs look clean, post the captured URL + a short
-summary (JSON shape + id-map size + unmatched-key sample) via the
-RC<->Game-PC bridge so Legion can wire the static seed into the
-`core/smoothed_rates.py` pick/ban-synergy lane (consumer (b) in the
-shared-primitive design).
+## Operator decision BEFORE wiring (item 277 flag)
 
-## Hand-correct mismatches without re-capturing
-
-If `compare_101qq_vs_ddragon.py` reports unmatched keys (e.g. Tencent
-spells `MissFortune` as `niuren` or uses a code RC does not recognize),
-create `data/external/101qq_hero_id_map.json` with the corrections:
-
-```json
-{
-  "niuren": "MissFortune",
-  "ezreal_cn_code": "Ezreal"
-}
-```
-
-Re-run `compare_101qq_vs_ddragon.py`; the override is overlaid LAST so
-your hand-corrections always win.
+This is a LIVE param'd CN API, not a one-shot static seed - wiring it into the
+`core/smoothed_rates.py` pick/ban-synergy lane means a standing external
+dependency on a Tencent endpoint (params + a daily `dtstatdate`), plus the
+redistributable-scrape concerns the competitor-teardown already flagged
+(`docs/COMPETITOR_LIFT_2026-06-02.md`). Decide whether to (a) one-shot snapshot
+a tier-200 sweep into a static `data/external/` seed (cleaner, ages out), or
+(b) take the live dependency. Capture one URL first either way - the probe
+characterizes the schema offline before any wiring.
 
 ## Safety notes
 
-- Do NOT run this recipe during an active match. Tencent's SPA is
-  channel-safe in champ-select; in-game it can affect the screen-agent
-  cadence on Game-PC.
-- Do NOT attempt to fetch the URL from Legion. The CDN is geo-fenced;
-  Legion-side fetch will fail. The capture must happen on Game-PC.
-- The probe + compare scripts are stdlib-only and ASCII-clean (per
-  CLAUDE.md hard rule). No new dependencies are added.
+- Do NOT run during an active match (champ-select-safe only).
+- The probe + compare scripts are stdlib-only + ASCII-clean (no new deps).
