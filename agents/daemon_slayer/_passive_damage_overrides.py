@@ -886,3 +886,53 @@ def to_damage_block(entry: PassiveDamageEntry):
         attribute_kind="damage",
         **kwargs,
     )
+
+
+# ---------------------------------------------------------------------------
+# AA-cadence routing allowlist (compute_dps apply_passive_damage seam).
+#
+# The passive-damage registry tags every entry with a ``cadence`` string
+# (on_hit / per_fight / dot) that has been METADATA-ONLY until now: the
+# injected P-form synthetic block is inert in every scorer
+# (``compute_ability_dps`` skips the P slot, and ``compute_dps`` never read
+# the registry), so ``apply_passive_damage=True`` changed no ranking. This
+# allowlist is the seam that finally routes an ``on_hit`` passive's damage
+# onto the AUTO-ATTACK cadence (an empowered basic attack carries the bonus),
+# the consumer 04_GAPS_AND_ROADMAP section 2 names as "the gated piece".
+#
+# v1 routes ONLY the verified every-AA on_hit passives - the bonus lands on
+# every basic attack with no internal cooldown, no mark-consume event, and no
+# empowered-first-hit gate, so the steady-state per-hit attribution is exact:
+#   * Warwick Eternal Hunger  - bonus magic on every basic attack.
+#   * Orianna Clockwork Winding - bonus magic on every on-target basic attack
+#     (the assumed_stacks=1.0 ramp midpoint is already folded into the block).
+# The mark-consume (Lux Illumination), internal-cooldown (Ziggs Short Fuse),
+# and empowered-first-hit (Akali / Kha'Zix) on_hit entries are NOT routed in
+# v1: their cadence is not every-AA, so a correct attribution needs the
+# structured cadence (internal CD / event rate) plus a live re-rank check.
+# They carry forward, inert, exactly as before.
+_AA_ROUTED_ON_HIT_KEYS: frozenset[tuple[str, str, int]] = frozenset(
+    {
+        ("Warwick", "P", 0),
+        ("Orianna", "P", 0),
+    }
+)
+
+
+def aa_routed_on_hit_entry(champion_id: str):
+    """Return ``(key, entry)`` for the champion's AA-routed on_hit passive.
+
+    Returns ``None`` when the champion has no entry on the routing
+    allowlist (so the ``compute_dps`` seam adds nothing - byte-identical
+    for every non-allowlisted champion) or when the entry's cadence is not
+    ``on_hit``. Only the P-slot is consulted in v1.
+    """
+    if not champion_id:
+        return None
+    key = (champion_id, "P", 0)
+    if key not in _AA_ROUTED_ON_HIT_KEYS:
+        return None
+    entry = _PASSIVE_DAMAGE_OVERRIDES.get(key)
+    if entry is None or entry.cadence != "on_hit":
+        return None
+    return key, entry

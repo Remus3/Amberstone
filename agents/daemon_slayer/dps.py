@@ -556,6 +556,7 @@ def compute_dps(
     augments: Optional[Iterable] = None,
     apply_mode_modifiers: bool = False,
     apply_ability_amps: bool = False,
+    apply_passive_damage: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -817,6 +818,59 @@ def compute_dps(
     )
 
     notes = list(resolved.notes)
+
+    # Section-2 cadence routing (04_GAPS_AND_ROADMAP): route an on_hit
+    # passive's damage onto the AUTO-ATTACK cadence. OPT-IN -
+    # apply_passive_damage default False = byte-identical (the seam adds
+    # nothing). When True, the allowlisted every-AA on_hit passive (Warwick
+    # Eternal Hunger / Orianna Clockwork Winding) evaluates its per-hit bonus
+    # through the canonical passive-block path, mitigates it by the entry's
+    # damage type (same resistance curve the AA uses), and adds it to the
+    # per-hit display AND the steady DPS (per_hit * eff_as) across every
+    # phase. This is the consumer the passive-damage registry needed: the
+    # injected P-form block is inert in every other scorer (compute_ability_dps
+    # skips the P slot). The default-on FLIP + the non-every-AA on_hit entries
+    # (mark-consume / internal-CD / empowered-first-hit) stay gated.
+    passive_aa_per_hit = 0.0
+    if apply_passive_damage:
+        from ._passive_damage_overrides import (
+            aa_routed_on_hit_entry,
+            to_damage_block,
+        )
+        from .ability_dps import AbilityContext, _evaluate_block
+        from .ability_dps import rank_at_level as _rank_at_level
+
+        _routed = aa_routed_on_hit_entry(resolved.champion_id)
+        if _routed is not None:
+            _pkey, _pentry = _routed
+            _pblock = to_damage_block(_pentry)
+            _pctx = AbilityContext.from_build(
+                stats=stats,
+                base_stats=resolved.base_stats or {},
+                target_armor=target_armor,
+                target_mr=target_mr,
+                target_max_hp=target_max_hp,
+                target_bonus_hp=target_bonus_hp,
+            )
+            _praw = _evaluate_block(_pblock, _rank_at_level("P", level), _pctx)
+            if _praw > 0.0:
+                if _pentry.damage_type == "PHYSICAL":
+                    _pmit = _armor_factor(target_armor_eff)
+                elif _pentry.damage_type == "TRUE":
+                    _pmit = 1.0
+                else:  # MAGIC - same resistance curve, plus magic-debuff amp
+                    _pmit = _armor_factor(target_mr_eff) * magic_amp
+                passive_aa_per_hit = _praw * _pmit * mode_mult * damage_amp
+                _passive_dps = passive_aa_per_hit * eff_as
+                weighted_dps += _passive_dps
+                phase_dps = {p: v + _passive_dps for p, v in phase_dps.items()}
+                per_attack_on_hit_damage += passive_aa_per_hit
+                notes.append(
+                    f"on_hit passive {_pentry.attribute} routed to AA cadence: "
+                    f"+{passive_aa_per_hit:.1f}/hit ({_pentry.damage_type}), "
+                    f"+{_passive_dps:.1f} DPS (apply_passive_damage)"
+                )
+
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(f"ARAM aramDamageDealt={mode_mult:.2f} on per-hit damage")
     if target_armor_eff != target_armor:
