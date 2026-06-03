@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-02 - RC-wide doc/constraint audit: shrink auto-load footprint (CLAUDE.md 661KB -> 20KB)
+
+Operator: shrink the per-turn auto-loaded footprint repo-wide, single-source constraints, reconcile Share, codify into UNIVERSAL_FILES. 5 read-only audit subagents (conclusions only - never read the 661KB/262KB files inline). 1 refactor commit `63b0fed` (pushed `b0ad84d..63b0fed`) + this docs-sync commit. NON-engine, NON-frozen, no DS/RC restart. Full record = item 279 in `docs/LEDGER.md`.
+
+- **The win:** CLAUDE.md `## Active priorities` ledger (LW + items 150-278, L183-394) relocated VERBATIM to NEW `docs/LEDGER.md` via marker-based byte-surgery. CLAUDE.md 661,330 -> 20,753 B; per-turn auto-load ~165K -> ~9K tokens (-95%). CLAUDE.md has NO `@`-imports; ROADMAP.md was never `@`-imported -> the entire bloat was the inline ledger.
+- **ROADMAP.md** 262,120 -> 62,006 B: 63 shipped moved + 42 open-tails kept verbatim to NEW `docs/ROADMAP_HISTORY.md`; Fleet status + Cross-cutting principles intact.
+- **Writer-redirect (future-proof):** `/done` + `/sync-all-md` (tools/ + .claude/commands/ copies) + CLAUDE.md session-end rule now append per-item entries to `docs/LEDGER.md`, NEVER CLAUDE.md. Dry-run proven + reverted. NEW guards `tests/test_doc_size_budget.py` + `tests/test_constraint_single_source.py` (6/6) fail CI if CLAUDE.md re-bloats >60KB / ROADMAP >80KB / ledger leaks back / headless count drifts.
+- **Constraint drift:** 1 real fix - `tools/headless-upgrade.md` worktree-agent-count 24 -> 100. Operational-doc rule restatements deliberately NOT pointer-ified (operator Q3: degrades read-on-demand self-containedness; the guard test is the enforcement).
+- **Share:** no changes (current/non-duplicating, CI-guarded). **UNIVERSAL_FILES** `3_MASTER.md` +Part 33 (findings) +Part 34 (cross-project doc-hygiene standard). **Peer** remote-only -> propagates via UNIVERSAL_FILES per-machine.
+- **Don't-redo:** per-item ledger lives in `docs/LEDGER.md` now (append newest-first, under the LW block); NEVER add items to CLAUDE.md (size-guard fails). ROADMAP shipped -> `docs/ROADMAP_HISTORY.md`. Do NOT re-pitch pointer-ifying OPERATIONS/ARCHITECTURE restatements. Peer not editable from Legion.
+
 # 2026-06-02 - dashboard dual-stack bind: legion-rc hostname loads page but no live data
 
 Operator: `https://legion-rc:8888` loads the page but shows no live League data; the IP URL works fully. 1 commit (working-tree -> main). NON-engine, NON-frozen. `dashboard/server.py` edit + RC restart (pid 5256 -> 6808 via restart_trigger). DS untouched.
