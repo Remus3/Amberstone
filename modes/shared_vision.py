@@ -43,11 +43,12 @@ _fail_streak = 0
 
 
 def _capture_screen() -> Optional[str]:
-    """Fetch the latest Game-PC screenshot from the local vision-server cache.
+    """Fetch the latest screenshot from the local vision-server cache.
 
-    Post-2026-04-19: RC runs on Legion; the local screen has no League window.
-    The Game-PC agent (`tools/gamepc_screen_agent.py`) pushes frames to
-    `/upload-frame`; this function pulls the latest from `/latest-frame`.
+    Post 1-PC (ADR-011, 2026-05-29): RC runs on a single Legion machine.
+    The screen agent (`tools/gamepc_screen_agent.py`, a 2-PC-era name now
+    running Legion-local) pushes frames to `/upload-frame`; this function
+    pulls the latest from `/latest-frame`.
     """
     global _fail_streak
     try:

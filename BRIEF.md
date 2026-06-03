@@ -8,17 +8,17 @@ League coaching advice online is static - tier lists and guides don't know what 
 
 ## What it does
 - Reads the Riot Live Client API every few seconds and feeds current gold, items, and champion data to Claude Haiku for fast mid-game advice
-- Displays coaching cards on a secondary monitor (iPad-as-display via Duet) in a fullscreen Edge dashboard - visible during play without alt-tabbing
+- Displays coaching cards on a second monitor in a fullscreen browser dashboard - visible during play without alt-tabbing
 - Computes actual DPS math for every purchasable item against the current target before asking the LLM, so item recommendations are grounded in real numbers
 - Screens game screenshots through Claude Sonnet vision for anything the API doesn't expose (scoreboard, draft state)
 - Covers ARAM, Arena, Brawl, Summoner's Rift, and TFT with mode-aware coaches
 
 ## How it works (technical)
 - **Stack:** Python 3.14, Flask (dashboard + DPS engine), asyncio scheduler, Claude Haiku (fast coaching), Claude Sonnet (vision), Tesseract OCR, Tailscale (cross-machine networking), mkcert TLS
-- **Architecture:** Legion PC runs the RC process, a local DPS math service (`:8893`), a vision relay server (`:8889`), and the HTTPS dashboard (`:8888`). Game-PC runs five lightweight agents that capture the screen, poll the Riot API, and forward everything to Legion over Tailscale. The LLM sees pre-computed DPS rankings in the prompt before generating any text.
+- **Architecture:** A single Legion PC runs the RC process, a local DPS math service (`:8893`), an in-process vision server (`:8889`), and the HTTPS dashboard (`:8888`). The screen-capture, Riot-API, and Live-Client relay agents all run Legion-local, reading the game's `:2999` Live Client and LCU endpoints directly (consolidated from a former 2-PC split, ADR-011). The LLM sees pre-computed DPS rankings in the prompt before generating any text.
 - **Non-obvious bits:**
   1. The DPS engine (`agents/daemon_slayer/`) hand-models all 547 purchasable League items - on-hit procs, armor pen, periodic damage, HP scaling - so Haiku sees "Kraken Slayer +340 DPS, 2700g" instead of guessing from patch notes. Getting this to cover the full item catalogue took 63+ batch commits and reverse-engineering Meraki's item passive JSON for cooldown fields. ENGINE_VERSION 1.97.0 (16.11.1).
-  2. The dashboard runs headless on Legion (no GUI process) and is served over mkcert-signed HTTPS. Game-PC's browser trusts the cert without warnings. Atomic JSON writes with retry-on-WinError-5 prevent the browser from reading a half-written file mid-poll.
+  2. The dashboard runs headless on Legion (no GUI process) and is served over mkcert-signed HTTPS, viewed in a local browser that trusts the cert without warnings. Atomic JSON writes with retry-on-WinError-5 prevent the browser from reading a half-written file mid-poll.
 
 ## Status & impact
 - **State:** In active personal use, running every session
@@ -40,7 +40,7 @@ RC Tutor would be the productized variant of this codebase - single-machine inst
 
 - **Strategic options under consideration:** (A) *Niche down hard* - target high-elo climbers and content creators who care about formula transparency; smaller TAM (tens of thousands), higher willingness to pay ($20+/mo possible), lower acquisition cost. (B) *Keep RC personal* - don't productize; optionally open-source Daemon Slayer; 8 months of personal-use value is already realized. (C) *B2B pivot* - license the math engine as a component to existing coaching tools (Aggregator C, Overlay App E, Coaching App Z7) that recommend builds without damage-math grounding. No strategic option has been chosen.
 
-- **Risks watched:** Unit economics first - Backseat AI's shutdown is the clearest signal in the category; the ~70% Daemon Slayer absorption rate (plan estimate, not measured) means real traffic data is needed before assuming it holds. Auto-accept enforcement - Riot pushed Overlay Platform M to remove auto-accept; standalone auto-accept is explicitly gray area; RC Tutor should drop it or make it an off-by-default opt-in with a visible use-at-own-risk warning. Vanguard on a single machine - RC's two-machine architecture sidesteps Vanguard on the AI machine; RC Tutor's single-machine target means Vanguard runs alongside the tool, which is untested on a clean machine. Competitive movement - STATUP/Coaching App Z7/build tool Z18 are active and free; the differentiation window narrows if any of them wire in formula-level math.
+- **Risks watched:** Unit economics first - Backseat AI's shutdown is the clearest signal in the category; the ~70% Daemon Slayer absorption rate (plan estimate, not measured) means real traffic data is needed before assuming it holds. Auto-accept enforcement - Riot pushed Overlay Platform M to remove auto-accept; standalone auto-accept is explicitly gray area; RC Tutor should drop it or make it an off-by-default opt-in with a visible use-at-own-risk warning. Vanguard on a single machine - RC now runs 1-PC (ADR-011) with Vanguard alongside the tool on Legion; the Vanguard-safe constraints are DWM-compositor overlay only, LCU/`:2999` reads with no memory reads or injection, and no continuous DXGI capture loop. RC Tutor's clean-machine install remains untested. Competitive movement - STATUP/Coaching App Z7/build tool Z18 are active and free; the differentiation window narrows if any of them wire in formula-level math.
 ## Ready-to-use snippets
 
 ### Casual ("what have you been up to?")
