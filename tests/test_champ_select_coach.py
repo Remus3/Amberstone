@@ -121,5 +121,33 @@ class CallShapeTests(unittest.TestCase):
         self.assertIn("Ahri", kwargs["messages"][0]["content"])
 
 
+class ErrorDegradeTests(unittest.TestCase):
+    """The advice field is user-facing - an API error must degrade to a
+    friendly message, never leak the raw exception (CLAUDE.md error rule)."""
+
+    def test_api_error_renders_friendly_no_leak(self):
+        fake_client = MagicMock()
+        fake_client.messages.create.side_effect = RuntimeError(
+            "Error code: 429 - rate_limit_error: credit balance exhausted")
+        fake_anthropic = MagicMock()
+        fake_anthropic.Anthropic.return_value = fake_client
+        fake_tracker = MagicMock()
+        fake_tracker.gate_disabled.return_value = False
+
+        with patch.dict("sys.modules", {"anthropic": fake_anthropic}), \
+                patch("core.cost_tracker.get_tracker", return_value=fake_tracker):
+            out = champ_select_coach.coach_pick(
+                {"is_aram": False, "my_champion": "Ahri",
+                 "my_team": ["Yuumi"], "their_team": ["Caitlyn"]},
+                api_key="sk-test",
+            )
+
+        advice = out.get("advice", "")
+        for leak in ("rate_limit", "429", "RuntimeError", "credit", "balance"):
+            self.assertNotIn(leak, advice,
+                             f"raw error token '{leak}' leaked into advice")
+        self.assertIn("paused", advice)  # the friendly degrade marker
+
+
 if __name__ == "__main__":
     unittest.main()
