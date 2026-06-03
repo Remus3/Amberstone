@@ -117,6 +117,7 @@ from ._passive_resist_overrides import resist_grants
 from ._passive_revive_overrides import revive_multiplier
 from ._champion_cc_mitigation_overrides import champion_cc_tenacity_fraction
 from ._champion_spell_shield_overrides import champion_spell_shield_fraction
+from ._passive_survival_window_overrides import survival_window_multiplier
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -584,6 +585,17 @@ class EhpResult:
     # consumer applies it as its own multiplicative discount AFTER the tenacity
     # step. Default 0.0 leaves enemy_cc_pressure_s / cc_blended_ehp byte-identical.
     spell_shield_frac: float = 0.0
+    # ENGINE 1.105.0 (2026-06-03): item 293 NINTH survivability axis + SECOND
+    # EHP-NUMERATOR term (after the item-288 revive) - the champion's SELF
+    # GUARANTEED-SURVIVAL WINDOW (untargetable / stasis / invulnerable: Tryndamere
+    # R / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir
+    # W / Elise E / Fizz E / Mel W) sourced from
+    # ``_passive_survival_window_overrides`` when ``apply_survival_window=True``. A
+    # window voids ALL incoming damage for window_s of the fight -> the avoided
+    # FRACTION multiplies the EHP numerator (1 + window_s/_FIGHT_WINDOW_S * prob).
+    # Default 1.0 (no window) leaves the EHP fields byte-identical; > 1.0 surfaces
+    # the amortized uplift. Same sibling convention as passive_revive_mult.
+    survival_window_mult: float = 1.0
 
     def to_dict(self) -> dict:
         return {
@@ -635,6 +647,7 @@ class EhpResult:
             "ally_grant_revive_mult": self.ally_grant_revive_mult,
             "champion_tenacity_frac": self.champion_tenacity_frac,
             "spell_shield_frac": self.spell_shield_frac,
+            "survival_window_mult": self.survival_window_mult,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -724,6 +737,7 @@ def compute_ehp(
     apply_passive_revive: bool = False,
     apply_champion_tenacity: bool = False,
     apply_spell_shield: bool = False,
+    apply_survival_window: bool = False,
     external_resist_armor: float = 0.0,
     external_resist_mr: float = 0.0,
     external_revive_multiplier: float = 1.0,
@@ -964,7 +978,21 @@ def compute_ehp(
     # multiplier as ``external_revive_multiplier`` (composes multiplicatively with
     # any self revive - two independent second lives). Default 1.0 -> unchanged.
     ext_revive = max(1.0, float(external_revive_multiplier))
-    combined_revive = revive_mult * ext_revive
+    # ENGINE 1.105.0 (item 293): GAP-2 GUARANTEED-SURVIVAL WINDOW - the SECOND
+    # EHP-NUMERATOR term (sibling of the revive). A SELF untargetable / stasis /
+    # invulnerable window (Tryndamere R / Kindred R / Taric R / Kayle R self /
+    # Lissandra R self / Xayah R / Vladimir W / Elise E / Fizz E / Mel W) voids ALL
+    # incoming damage for window_s of the fight, so it adds the avoided
+    # ``window_s / _FIGHT_WINDOW_S`` damage FRACTION (capped, amortized) to the
+    # numerator - the operator-chosen bounded additive model (the revive shape),
+    # not a divergent uptime model. A window voids every damage type uniformly, so
+    # it scales physical/magical/true by the same factor. ``apply_survival_window``
+    # defaults False -> multiplier 1.0 -> BYTE-IDENTICAL to 1.104.0. The cooldown +
+    # defensive-use gate is amortized inside the multiplier by the per-type midpoint.
+    survival_window_mult = survival_window_multiplier(
+        resolved.champion_id, level, apply_survival_window, _FIGHT_WINDOW_S
+    )
+    combined_revive = revive_mult * ext_revive * survival_window_mult
     physical_ehp *= combined_revive
     magical_ehp *= combined_revive
     true_ehp *= combined_revive
@@ -1131,6 +1159,13 @@ def compute_ehp(
             f"into the EHP numerator (x{revive_mult:.3f}; revived HP fraction "
             f"exact, amortized at the _REVIVE_PROB availability+survival midpoint)"
         )
+    if apply_survival_window and survival_window_mult != 1.0:
+        notes.append(
+            f"survival_window: effects-text guaranteed-survival window (untargetable"
+            f"/stasis/invuln) folded into the EHP numerator (x{survival_window_mult:.3f}"
+            f"; window duration exact, avoided fraction window_s/{_FIGHT_WINDOW_S:.0f}s "
+            f"amortized at the availability midpoint)"
+        )
     if ext_armor != 0.0 or ext_mr != 0.0 or ext_revive != 1.0:
         notes.append(
             f"ally_grant: teammate-conferred ally-targeted survivability folded in "
@@ -1182,6 +1217,7 @@ def compute_ehp(
         ally_grant_revive_mult=ext_revive,
         champion_tenacity_frac=champion_tenacity_frac,
         spell_shield_frac=spell_shield_frac,
+        survival_window_mult=survival_window_mult,
         stats=dict(stats),
         notes=tuple(notes),
     )
@@ -1353,6 +1389,7 @@ def rank_items_by_ehp(
     apply_passive_revive: bool = False,
     apply_champion_tenacity: bool = False,
     apply_spell_shield: bool = False,
+    apply_survival_window: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1440,6 +1477,7 @@ def rank_items_by_ehp(
         apply_passive_revive=apply_passive_revive,
         apply_champion_tenacity=apply_champion_tenacity,
         apply_spell_shield=apply_spell_shield,
+        apply_survival_window=apply_survival_window,
     )
 
     candidates = _filter_candidates(
@@ -1478,6 +1516,7 @@ def rank_items_by_ehp(
                 apply_passive_revive=apply_passive_revive,
                 apply_champion_tenacity=apply_champion_tenacity,
                 apply_spell_shield=apply_spell_shield,
+                apply_survival_window=apply_survival_window,
             )
         except (KeyError, ValueError):
             continue
