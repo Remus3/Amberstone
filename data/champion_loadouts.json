@@ -43248,57 +43248,34 @@
             "sr"
           ],
           "runes": {
-            "keystone": "Electrocute",
-            "primary": "Domination",
-            "secondary": "Sorcery"
+            "keystone": "Conqueror",
+            "primary": "Precision",
+            "secondary": "Resolve"
           },
           "summoners": [
             4,
             14
           ],
           "items": [
-            "Doran's Shield",
-            "Mercury's Treads",
-            "Doran's Blade",
-            "Doran's Ring",
-            "Cull",
-            "Doran's Bow"
+            "Sundered Sky",
+            "Plated Steelcaps",
+            "Black Cleaver",
+            "Death's Dance",
+            "Sterak's Gage",
+            "Guardian Angel"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-burst",
-              "label": "Burst",
-              "items": [
-                "Doran's Shield",
-                "Mercury's Treads",
-                "Doran's Blade",
-                "Doran's Ring",
-                "Cull",
-                "Doran's Bow"
-              ],
-              "runes": {
-                "keystone": "Electrocute",
-                "primary": "Domination",
-                "secondary": "Sorcery"
-              },
-              "summoners": [
-                4,
-                14
-              ],
-              "_source_variant_key": "ap-burst",
-              "_is_primary": true
-            },
-            {
-              "key": "auto-sr-primary-bruiser",
+              "key": "sr-bruiser",
               "label": "Bruiser",
               "items": [
-                "Blade of The Ruined King",
-                "Mercury's Treads",
-                "Heartsteel",
-                "Trinity Force",
-                "Runaan's Hurricane",
-                "Sterak's Gage"
+                "Sundered Sky",
+                "Plated Steelcaps",
+                "Black Cleaver",
+                "Death's Dance",
+                "Sterak's Gage",
+                "Guardian Angel"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -43307,10 +43284,33 @@
               },
               "summoners": [
                 4,
-                12
+                14
               ],
-              "_archetype": "bruiser",
-              "_source_variant_key": "auto-sr-primary-bruiser"
+              "_source_variant_key": "sr-bruiser",
+              "_is_primary": true
+            },
+            {
+              "key": "sr-assassin",
+              "label": "Assassin",
+              "items": [
+                "Eclipse",
+                "Mercury's Treads",
+                "Edge of Night",
+                "Serylda's Grudge",
+                "Death's Dance",
+                "Maw of Malmortius"
+              ],
+              "runes": {
+                "keystone": "Electrocute",
+                "primary": "Domination",
+                "secondary": "Precision"
+              },
+              "summoners": [
+                4,
+                14
+              ],
+              "_source_variant_key": "sr-assassin",
+              "_is_primary": false
             }
           ]
         },
@@ -43320,76 +43320,34 @@
             "aram"
           ],
           "runes": {
-            "keystone": "Electrocute",
-            "primary": "Domination",
-            "secondary": "Sorcery"
+            "keystone": "Conqueror",
+            "primary": "Precision",
+            "secondary": "Resolve"
           },
           "summoners": [
             4,
             32
           ],
           "items": [
-            "Doran's Shield",
-            "Mercury's Treads",
-            "Doran's Blade",
-            "Doran's Ring",
-            "Doran's Bow"
+            "Sundered Sky",
+            "Plated Steelcaps",
+            "Black Cleaver",
+            "Death's Dance",
+            "Sterak's Gage",
+            "Spirit Visage"
           ],
           "_collapsed": true,
           "build_paths": [
             {
-              "key": "ap-burst",
-              "label": "Burst",
-              "items": [
-                "Doran's Shield",
-                "Mercury's Treads",
-                "Doran's Blade",
-                "Doran's Ring",
-                "Doran's Bow"
-              ],
-              "runes": {
-                "keystone": "Electrocute",
-                "primary": "Domination",
-                "secondary": "Sorcery"
-              },
-              "summoners": [
-                4,
-                32
-              ],
-              "_source_variant_key": "ap-burst",
-              "_is_primary": true
-            },
-            {
-              "key": "ap-poke",
-              "label": "AP Poke",
-              "items": [
-                "Liandry's Torment",
-                "Sorcerer's Shoes",
-                "Shadowflame",
-                "Rabadon's Deathcap",
-                "Void Staff",
-                "Morellonomicon"
-              ],
-              "runes": {
-                "keystone": "Arcane Comet",
-                "primary": "Sorcery",
-                "secondary": "Inspiration"
-              },
-              "summoners": [
-                4,
-                32
-              ],
-              "_source_variant_key": "ap-poke"
-            },
-            {
               "key": "aram-bruiser",
               "label": "Bruiser",
               "items": [
-                "Void Immolation",
+                "Sundered Sky",
                 "Plated Steelcaps",
-                "Heartsteel",
-                "Trinity Force",
-                "Stormrazor"
+                "Black Cleaver",
+                "Death's Dance",
+                "Sterak's Gage",
+                "Spirit Visage"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -43400,7 +43358,31 @@
                 4,
                 32
               ],
-              "_source_variant_key": "aram-bruiser"
+              "_source_variant_key": "aram-bruiser",
+              "_is_primary": true
+            },
+            {
+              "key": "aram-assassin",
+              "label": "Assassin",
+              "items": [
+                "Eclipse",
+                "Mercury's Treads",
+                "Edge of Night",
+                "Serylda's Grudge",
+                "Death's Dance",
+                "Maw of Malmortius"
+              ],
+              "runes": {
+                "keystone": "Electrocute",
+                "primary": "Domination",
+                "secondary": "Precision"
+              },
+              "summoners": [
+                4,
+                32
+              ],
+              "_source_variant_key": "aram-assassin",
+              "_is_primary": false
             }
           ]
         },
