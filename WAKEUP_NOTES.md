@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-06-03 - DS REVIVE / second-life schema lift - Anivia P + Zac P (item 288, ENGINE 1.101.0)
+
+"start the next DS schema lift and exhaust it then /done for /clear" (3rd use; items 271/272 prior). Caveman ULTRA. 1 commit `742b6ba` (pushed `33bf4f4..742b6ba`) + docs-sync. ENGINE 1.100.0 -> 1.101.0; DS :8893 restarted (taskkill pid 20168 + schtasks) -> 1.101.0 live. RC NOT touched. Full record = item 288 in `docs/LEDGER.md`.
+
+- **Verify-first fork:** the resist-ADDEND lane is genuinely EXHAUSTED (items 272/280/286 verified Anivia P / Orianna E degrade as resist addends). Did NOT force the degrading lane. Framed via AskUserQuestion; operator chose **build Anivia P revive as a NEW EHP-NUMERATOR seam** (the "different seam" item 272 pointed at).
+- **NEW `agents/daemon_slayer/_passive_revive_overrides.py`** (`PassiveReviveEntry` + `revive_multiplier`) + `compute_ehp(apply_passive_revive=False)` - the FIFTH survivability axis + FIRST EHP-NUMERATOR term. A death-triggered SECOND HP POOL = `1 + revived_hp_fraction(level) * _REVIVE_PROB` multiplier on the per-type EHP (applied before blend so blend+cc_blended inherit). Revived FRACTION exact from text; `_REVIVE_PROB=0.4` (availability+survival) is the only assumption.
+- **EXHAUSTIVE scan:** Anivia P Rebirth (full HP, 240s CD -> x1.40) + Zac P Cell Division (10:50% by level, 300s CD -> x1.04 L1 to x1.20 L18). Exclusions: decaying-frenzy non-revives (Sion/Karthus/KogMaw P), ally revives (Zilean R/Renata W/Akshan W), GA item, 6 false positives. Build-independent uniform multiplier -> no item-ranker re-rank.
+- Threaded `rank_items_by_ehp` + `rank_items_by_hybrid` + `compute_hybrid` + `/ehp` `/rank-tank` `/hybrid` `/rank-bruiser`. Live `/ehp`: Anivia L11 2011.42 off -> 2815.98 on (x1.40). +25 tests; DS 6179 -> 6204; ruff clean; 56 pin syncs; Share 282 --check clean.
+- **Don't-redo:** REVIVE = canonical home for a second HP pool (NUMERATOR mult, NOT a resist/DR term; Anivia egg armor/MR stays the item-272 resist exclusion); registry EXHAUSTED (Anivia+Zac only); Sion/Karthus/KogMaw are NON-revives; ally revives + Orianna E need an ally-buff seam. **NEXT (Phase D, live):** flip default-on per champ after a saner-not-different re-rank + feed live passive-CD/egg-survival. Clean headless survivability lane (heal/shield/DR/resist + revive) now EXHAUSTED both EHP scorers.
+
 # 2026-06-03 - watchdog flap-threshold docstring drift FIXED (item 287)
 
 Operator pasted a past session note ("RC-CostHealthWatchdog result=1 anomaly is exit-1-by-design (item 282 don't-redo; flap threshold now 3) - not a new failure, non-blocking") + "correct it". Verify-first: the note is FACTUALLY CORRECT (all 3 claims hold vs ground truth - exit-1 `cost_health_watchdog.py:400`, `FLAP_PID_CHANGES = 3` line 48, item 282 = LEDGER:19). Did NOT fabricate a correction to a right note. 1 commit `0725a7b`. Doc-only, non-engine, non-frozen, no RC/DS restart.
