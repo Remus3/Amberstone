@@ -304,6 +304,39 @@ class BuildStateIntegrationTests(unittest.TestCase):
         self.assertIn("lead_projection", state)
 
 
+class CacheSigItemIdsTests(unittest.TestCase):
+    """item 283: the coarse cache signature must include my_item_ids.
+
+    laning_verdicts.laning_choices passes my_item_ids to matchup() as
+    item_ids_a, so the verdict depends on WHICH items are owned - not just
+    how many. Two states with the same item COUNT but different item IDS
+    must therefore produce DISTINCT signatures, or the 3s TTL cache serves
+    the first state's verdict for the second (wrong coaching on an item swap).
+    """
+
+    def test_distinct_item_ids_same_count_distinct_sig(self) -> None:
+        base = {"my_champion": "Caitlyn", "enemy_comp": ["Ezreal"],
+                "level": 6, "items": ["a", "b"], "game_time_s": 330}
+        gs1 = {**base, "my_item_ids": ["3031", "3047"]}
+        gs2 = {**base, "my_item_ids": ["3504", "3047"]}
+        self.assertNotEqual(dc._cache_sig(gs1, "sr"), dc._cache_sig(gs2, "sr"))
+
+    def test_identical_state_collapses_to_one_sig(self) -> None:
+        # The cache must still HIT for a truly identical state (hit rate kept).
+        base = {"my_champion": "Caitlyn", "enemy_comp": ["Ezreal"],
+                "level": 6, "items": ["a", "b"], "my_item_ids": ["3031", "3047"],
+                "game_time_s": 330}
+        self.assertEqual(dc._cache_sig(dict(base), "sr"),
+                         dc._cache_sig(dict(base), "sr"))
+
+    def test_missing_item_ids_is_fail_soft(self) -> None:
+        # No my_item_ids key -> empty id component, still a stable hashable sig.
+        gs = {"my_champion": "Caitlyn", "enemy_comp": ["Ezreal"], "level": 6}
+        sig = dc._cache_sig(gs, "sr")
+        self.assertIsInstance(sig, tuple)
+        self.assertEqual(dc._cache_sig(dict(gs), "sr"), sig)
+
+
 class AsciiHygieneTests(unittest.TestCase):
     """The 2 new/edited files must be ASCII-clean in their content."""
 
