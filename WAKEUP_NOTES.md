@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-06-03 - deterministic anti-heal / Grievous-Wounds callout (item 285)
+
+"start next open item" -> the item-283 NEXT competitor-#2 lift (aggregator A 3a heal-threat tracker). Caveman ULTRA. 2 commits `4acf063` (code) + `b79e24f` (docs); pushed; both CI green (runs 26898978607 + 26899064127). RC restarted pid 7384 -> 12432 alive/reload_ok. DS 1.100.0 untouched (non-engine). Full record = item 285 in `docs/LEDGER.md`.
+
+- **NEW `core/heal_threat.py`** (pure, no LLM/network/engine, fail-soft): `heal_threat_callout()` fires a standing `kind=heal_threat` callout (eta None) ONLY when enemy fields >=1 curated heavy-sustain champ OR >=2 sustain items, AND no ally owns a Grievous item. Same correct-by-construction Haiku-free family as the item-283 inhibitor callout.
+- **3 verified sets vs items.json 16.11.1:** 21-champ curated set (normalized lowercase-alnum so "Dr. Mundo" matches); heal items {3072,3074,6333,6673,4633,6610,3065,2501,447111}; grievous {3123,3916,3165,3033,6609,3075,3076,3011} - BASE DDragon ids the Live Client reports, NOT the "22"-prefixed catalog aliases. Mode-gated sr/aram/client/game.
+- **Wiring:** `_liveclient.py` extracts per-team `enemy_item_ids` + `ally_item_ids` from `allPlayers[].items` (public scoreboard data, unlike gold); `_deterministic_coaching.py` maps both pools -> game_state, merges nudge into `state.callouts` (2 timed objectives + heal 3rd row), sig-completes the TTL key. Renders through EXISTING callouts.js (no new UI).
+- **+32 tests** (24 unit + 8 wire); full suite 4952 passed/1 skip/71 subtests; ruff clean.
+- **Don't-redo:** curated set intentionally opinionated (champ bar 1 / item bar 2); ids are BASE not "22"-aliases; only ALLY grievous suppresses; nudge omits team-side claim (can never be backwards). **OWED:** in-game visual capture (live SR/ARAM, enemy sustain + no ally anti-heal - same live gate as inhibitor). Competitor #2 of section-7b shipped; #1 (cd_ledger) existed, #7 (inhibitor) = item 283.
+
 # 2026-06-03 - headless deep code analysis + refactor/archive (item 284)
 
 Full deep multi-agent code analysis + smoke + refactor/optimize + archive unused. 2 commits `a72fc90` (cache_engine bug) + `cc2091b` (dead-code+archive); CI green (run 26895586173); RC restarted -> pid 7384; DS 1.100.0 untouched. Full record = item 284 in `docs/LEDGER.md`.
