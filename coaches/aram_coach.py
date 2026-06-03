@@ -281,6 +281,9 @@ DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {event_line}
 """
 
+# NOT a cache_control candidate (item 286): static portion ~62 tok, far below
+# the 2048-tok Haiku prompt-cache floor - a static/data split caches nothing.
+# Guard: tests/test_prompt_cache_floor_item286.py.
 _AUG_SELECT_PROMPT = """\
 ARAM{mayhem} augment select. Challenger coaching.
 Your champion: {champion}  HP: {hp}%
