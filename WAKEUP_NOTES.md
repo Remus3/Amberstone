@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-06-03 - dashboard review: phantom active-match + minimap-crop 502 spam FIXED (item 281)
+
+Operator: "review the UI dashboard - visibly missing info + data that surfaces is non-present or not wired 100%." Reviewed LIVE (playwright headless render of :8888 + /api/state probe + 2 read-only wiring-map agents); operator chose scope = kill phantom + stop 502 (Class B deferred). 1 commit `f6a1c52` (pushed `e86222f..f6a1c52`). Non-engine, non-frozen, DS 1.100.0 untouched. RC restarted x2 (pid 22252 -> 13120 -> 14812). Full record = item 281 in `docs/LEDGER.md`.
+
+- **P0 phantom active-match FIXED:** idle dashboard (LCU Lobby, has_game=false, liveclient={}) auto-promoted to ACTIVE MATCH rendering a 2026-05-23 stale Kai'Sa ARAM payload as a live 14:54 match. Root: `coach.cleared_at` was a NO-OP (0 consumers) + `resolve_mode_key` returns aram off stale `health.aram_mode` + view-router line 118 (`null phase + in-game mode`) promoted with no game. Fix: NEW `dashboard/_state_builder.apply_cleared_at` (honors sentinel, blanks coach when no live game; stale file auto-handled, no backfill) + a `live` (liveclient non-empty) gate in BOTH `web/js/main.js _viewAutoDerive` AND the Python mirror `dashboard/view_router_state.derive_view` (default live=True preserves s209 loading inference).
+- **P1 minimap-crop 502 spam FIXED:** `/api/minimap-crop` 502'd every ~2s (no vision frame producer on 1-PC). Fix: NEW `dashboard/_handler.proxy_error_status` collapses a failed minimap-crop proxy fetch to **204** (missing frame is normal; other paths keep real codes) + JS minimap poll gated on a live game.
+- **Verified LIVE** (a real SR Caitlyn game started mid-fix): active-match shows real data (NOT phantom); `/api/minimap-crop` -> 204; **0 console errors over ~23 poll cycles** (17:13 -> 18:00). +3 tests; full tests/ 4904 passed/1 skip/71 subtests exit 0; ruff clean.
+- **Don't-redo:** phantom + 502 are FIXED + live-verified - do NOT re-investigate. `cleared_at` is functional now (stale aram file auto-handled at serve-time, do NOT hand-edit it). `live` gate default-True is intentional. Root-level `pytest` throws 286 collection errors from a `C:\Riot Commander\Share\src\` repo MIRROR (basename clash) - PRE-EXISTING, use `pytest tests/`.
+- **DEFERRED (Class B, operator scoped out; real half-wired surfaces for a future slice):** ADAPTATION stats-view ~90 `st-*` rows wired in JS (right_now.js renderStats) but no live producer (cs_at_10/csd_at_15/apm/reaction/tilt etc. live only in post-game match_metrics.py); `/api/ward-heat` permanently empty (no WARD_PLACED producer); Home "Tonight's Pick" Good/Bad/Ugly hardcoded dummy (index.html data-dummy-data, TODO s218).
+
 # 2026-06-02 - headless run (item 280): deterministic ARAM comp-verdict engine + enemy-itemization brief hint (Haiku-elim) + cost sweep CLEAN
 
 /headless-upgrade autonomous run. 2 commits `77c3647`/`d68ceff` (pushed `ce4ae27..d68ceff`); CI green; non-engine (DS 1.100.0 untouched, no bounce); RC restarted pid 6808 -> 22252 (Lane-3 dashboard module). Pre-flight cleaned 3 stale locked worktrees. RC suite 4889 passed / 1 skip / 71 subtests, exit 0. Full record = item 280 in `docs/LEDGER.md`.
