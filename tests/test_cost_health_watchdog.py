@@ -72,11 +72,32 @@ class SpendBaselineTests(unittest.TestCase):
 
 
 class FlapTests(unittest.TestCase):
-    def test_two_pid_changes_in_window_is_flap(self):
+    def test_two_pid_changes_in_window_is_not_flap(self):
+        # Two clean restarts in a dev/fix session (both healthy) is benign,
+        # NOT a flap. The supervisor relaunches a crashed daemon within ~5s,
+        # so a real crash loop produces far more than two changes/hour.
         now = time.time()
         prev = {"last_pid": 100, "pid_change_ts": [now - 10]}
         r = chw.detect_flap(prev, {"pid": 200, "alive": True,
                                    "last_reload_ok": True}, now)
+        self.assertFalse(r["flap"])
+        self.assertEqual(r["pid_changes_in_window"], 2)
+
+    def test_three_pid_changes_in_window_is_flap(self):
+        now = time.time()
+        prev = {"last_pid": 100, "pid_change_ts": [now - 20, now - 10]}
+        r = chw.detect_flap(prev, {"pid": 200, "alive": True,
+                                   "last_reload_ok": True}, now)
+        self.assertTrue(r["flap"])
+        self.assertEqual(r["pid_changes_in_window"], 3)
+
+    def test_two_changes_plus_unhealthy_is_flap(self):
+        # The health overrides are count-independent: 2 pid changes (below the
+        # churn threshold) still flap if the daemon is currently sick.
+        now = time.time()
+        prev = {"last_pid": 100, "pid_change_ts": [now - 10]}
+        r = chw.detect_flap(prev, {"pid": 200, "alive": True,
+                                   "last_reload_ok": False}, now)
         self.assertTrue(r["flap"])
         self.assertEqual(r["pid_changes_in_window"], 2)
 
