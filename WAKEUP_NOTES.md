@@ -4,6 +4,14 @@
 
 ---
 
+# 2026-06-03 - watchdog flap-threshold docstring drift FIXED (item 287)
+
+Operator pasted a past session note ("RC-CostHealthWatchdog result=1 anomaly is exit-1-by-design (item 282 don't-redo; flap threshold now 3) - not a new failure, non-blocking") + "correct it". Verify-first: the note is FACTUALLY CORRECT (all 3 claims hold vs ground truth - exit-1 `cost_health_watchdog.py:400`, `FLAP_PID_CHANGES = 3` line 48, item 282 = LEDGER:19). Did NOT fabricate a correction to a right note. 1 commit `0725a7b`. Doc-only, non-engine, non-frozen, no RC/DS restart.
+
+- **Real drift found + fixed:** `tools/cost_health_watchdog.py:14` module-top docstring still narrated ">=2 pid changes" as a flap while the constant is 3. Item 282 bumped 2->3 + updated the constant/inline-comment but missed the top docstring -> `>=2` -> `>=3`.
+- **Left alone (verified NOT drift):** `cost_health_watchdog.py:48` constant comment (says >=3, correct); test:95 "2 pid changes (below the churn threshold)" (correct, 2<3); `LEDGER:19` + `history_notes:9723` "2 -> 3" (immutable history, do NOT touch).
+- **Don't-redo:** the result=1 note IS accurate (watchdog exits 1 by design on breach/flap; threshold 3); the docstring is now consistent. No further watchdog work.
+
 # 2026-06-03 - cost prompt-restructure aram_aug_select / tft_live_analysis CLOSED not-viable (item 286)
 
 "continue next items" -> the last-named headless candidate on the item-283/285 NEXT list. Caveman ULTRA. Verify-first measured it; CLOSED as a dead end + shipped a guard (per item 280: do not force a speculative/degrading lane). 1 commit. Non-engine, non-frozen, DS 1.100.0 untouched, no RC/DS restart. Full record = item 286 in `docs/LEDGER.md`.
