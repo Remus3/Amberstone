@@ -115,6 +115,7 @@ from .engine import build_champion
 from ._passive_mitigation_overrides import mitigation_multipliers
 from ._passive_resist_overrides import resist_grants
 from ._passive_revive_overrides import revive_multiplier
+from ._champion_cc_mitigation_overrides import champion_cc_tenacity_fraction
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -563,6 +564,16 @@ class EhpResult:
     ally_grant_armor: float = 0.0
     ally_grant_mr: float = 0.0
     ally_grant_revive_mult: float = 1.0
+    # ENGINE 1.103.0 (2026-06-03): item 290 SEVENTH survivability axis - the
+    # champion's INNATE tenacity / crowd-control-immunity ABILITY (Garen W / Olaf R
+    # / Malzahar P) as a combined tenacity FRACTION sourced from
+    # ``_champion_cc_mitigation_overrides`` when ``apply_champion_tenacity=True``.
+    # Default 0.0 leaves enemy_cc_pressure_s / cc_blended_ehp byte-identical; a
+    # positive fraction shrank the eaten CC (a larger cc_blended_ehp). Not an EHP
+    # numerator/denominator term - it feeds the cc_blended discount, the clean
+    # CC-survival half of the guaranteed-survival family the ally-grant + DR
+    # registries excluded.
+    champion_tenacity_frac: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -612,6 +623,7 @@ class EhpResult:
             "ally_grant_armor": self.ally_grant_armor,
             "ally_grant_mr": self.ally_grant_mr,
             "ally_grant_revive_mult": self.ally_grant_revive_mult,
+            "champion_tenacity_frac": self.champion_tenacity_frac,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -699,6 +711,7 @@ def compute_ehp(
     apply_passive_mitigation: bool = False,
     apply_passive_resist: bool = False,
     apply_passive_revive: bool = False,
+    apply_champion_tenacity: bool = False,
     external_resist_armor: float = 0.0,
     external_resist_mr: float = 0.0,
     external_revive_multiplier: float = 1.0,
@@ -967,6 +980,13 @@ def compute_ehp(
     enemy_cc_pressure_s = 0.0
     cc_pressure_fraction = 0.0
     cc_blended_ehp = blended_ehp  # identity for the empty enemy_champions case
+    # ENGINE 1.103.0 (item 290): the champion's innate tenacity fraction (0.0 when
+    # the flag is off = byte-identical). Resolved once here so the EhpResult field
+    # is populated even with no enemy comp; consumed in the cc block below.
+    champion_tenacity_frac = (
+        champion_cc_tenacity_fraction(champion_id, level, True)
+        if apply_champion_tenacity else 0.0
+    )
     if enemy_champions:
         from .cc_pressure import compute_cc_pressure
 
@@ -992,11 +1012,21 @@ def compute_ehp(
         # effective_cc_duration tenacity seam (tenacity_mult = 1 - fraction).
         # Default False = the pre-item-236 build-independent discount
         # (byte-identical for every existing enemy_champions caller).
+        # ENGINE 1.103.0 (2026-06-03): item 290 adds the CHAMPION-innate tenacity
+        # source (Garen W / Olaf R / Malzahar P) as the third tenacity credit on
+        # this same seam. League tenacity stacks MULTIPLICATIVELY, so the item and
+        # champion fractions combine as (1 - item_frac) * (1 - champ_frac). Each
+        # flag is independent + default-off; with only apply_build_tenacity on this
+        # is byte-identical to the item-236 single-source path (champ_frac = 0.0).
+        ten_remaining = 1.0
         if apply_build_tenacity:
             from ._item_tenacity import total_item_tenacity
-            ten_frac = total_item_tenacity(item_ids or ())
-            if ten_frac > 0.0:
-                cc_total = effective_cc_duration(cc_total, 1.0 - ten_frac)
+            ten_remaining *= (1.0 - total_item_tenacity(item_ids or ()))
+        if apply_champion_tenacity:
+            ten_remaining *= (1.0 - champion_tenacity_frac)
+        ten_frac = 1.0 - ten_remaining
+        if ten_frac > 0.0:
+            cc_total = effective_cc_duration(cc_total, 1.0 - ten_frac)
         enemy_cc_pressure_s = cc_total
         if enemy_cc_pressure_s > 0:
             cc_pressure_fraction = min(
@@ -1122,6 +1152,7 @@ def compute_ehp(
         ally_grant_armor=ext_armor,
         ally_grant_mr=ext_mr,
         ally_grant_revive_mult=ext_revive,
+        champion_tenacity_frac=champion_tenacity_frac,
         stats=dict(stats),
         notes=tuple(notes),
     )
@@ -1291,6 +1322,7 @@ def rank_items_by_ehp(
     apply_passive_mitigation: bool = False,
     apply_passive_resist: bool = False,
     apply_passive_revive: bool = False,
+    apply_champion_tenacity: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1376,6 +1408,7 @@ def rank_items_by_ehp(
         apply_passive_mitigation=apply_passive_mitigation,
         apply_passive_resist=apply_passive_resist,
         apply_passive_revive=apply_passive_revive,
+        apply_champion_tenacity=apply_champion_tenacity,
     )
 
     candidates = _filter_candidates(
@@ -1412,6 +1445,7 @@ def rank_items_by_ehp(
                 apply_passive_mitigation=apply_passive_mitigation,
                 apply_passive_resist=apply_passive_resist,
                 apply_passive_revive=apply_passive_revive,
+                apply_champion_tenacity=apply_champion_tenacity,
             )
         except (KeyError, ValueError):
             continue

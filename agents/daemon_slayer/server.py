@@ -429,6 +429,10 @@ def _route_ehp(body: dict) -> dict:
     external_resist_armor = _opt_float(body, "external_resist_armor", 0.0)
     external_resist_mr = _opt_float(body, "external_resist_mr", 0.0)
     external_revive_multiplier = _opt_float(body, "external_revive_multiplier", 1.0)
+    # ENGINE 1.103.0 (2026-06-03): GAP-2 SEVENTH survivability axis - the
+    # champion's INNATE tenacity / CC-immunity ability (Garen W / Olaf R /
+    # Malzahar P) feeding the cc_blended discount. Default off -> byte-identical.
+    apply_champion_tenacity = _opt_bool(body, "apply_champion_tenacity", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -442,6 +446,7 @@ def _route_ehp(body: dict) -> dict:
             apply_passive_mitigation=apply_passive_mitigation,
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
+            apply_champion_tenacity=apply_champion_tenacity,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
             external_revive_multiplier=external_revive_multiplier,
@@ -499,6 +504,7 @@ def _route_rank_tank(body: dict) -> dict:
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     apply_passive_revive = _opt_bool(body, "apply_passive_revive", False)
+    apply_champion_tenacity = _opt_bool(body, "apply_champion_tenacity", False)
     try:
         result = rank_items_by_ehp(
             snap,
@@ -519,6 +525,7 @@ def _route_rank_tank(body: dict) -> dict:
             apply_passive_mitigation=apply_passive_mitigation,
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
+            apply_champion_tenacity=apply_champion_tenacity,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -568,6 +575,7 @@ def _route_hybrid(body: dict) -> dict:
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     apply_passive_revive = _opt_bool(body, "apply_passive_revive", False)
+    apply_champion_tenacity = _opt_bool(body, "apply_champion_tenacity", False)
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -583,6 +591,7 @@ def _route_hybrid(body: dict) -> dict:
             apply_passive_mitigation=apply_passive_mitigation,
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
+            apply_champion_tenacity=apply_champion_tenacity,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -642,6 +651,7 @@ def _route_rank_bruiser(body: dict) -> dict:
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
     apply_passive_revive = _opt_bool(body, "apply_passive_revive", False)
+    apply_champion_tenacity = _opt_bool(body, "apply_champion_tenacity", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -663,6 +673,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_passive_mitigation=apply_passive_mitigation,
             apply_passive_resist=apply_passive_resist,
             apply_passive_revive=apply_passive_revive,
+            apply_champion_tenacity=apply_champion_tenacity,
             score_by=score_by,
             alpha=alpha, beta=beta,
         )
