@@ -164,6 +164,33 @@ def _ally_notes(champ: str, allies: list) -> str:
     return f"{names[0]} is on your team - coordinate around their kit."
 
 
+def _enemy_itemization(enemies: list) -> str:
+    """Correct-by-construction itemization hint from the enemy damage-type
+    distribution (core.aram_comp_verdict.compute_factors over champions.json
+    info.attack/magic primary leans). Fires only with >= 3 resolvable enemies
+    AND a CLEAR lean (the opposite primary type entirely absent), so a mixed
+    enemy comp returns "". Returns a capitalized standalone clause or "".
+
+    This is a FACT about the enemy comp (their damage profile), not a
+    prediction - so it needs no live validation; it just surfaces the
+    armor-vs-MR call that is the first itemization decision after the pick."""
+    try:
+        from core.aram_comp_verdict import compute_factors
+        f = compute_factors(enemies or [])
+        if f.get("n", 0) < 3:
+            return ""
+        ad = f.get("ad_count", 0)
+        ap = f.get("ap_count", 0)
+        if ad and not ap:
+            return "Enemy comp is AD-heavy - prioritize armor."
+        if ap and not ad:
+            return "Enemy comp is AP-heavy - prioritize magic resist."
+        return ""
+    except Exception as exc:  # best-effort; never breaks the brief
+        log.debug("enemy_itemization: %s", exc)
+        return ""
+
+
 def brief_deterministic(champ: str, enemies: list, allies: list,
                         role: str, mode: str) -> dict:
     """Compose the champ-select brief WITHOUT a Haiku call. build + runes come
@@ -182,6 +209,9 @@ def brief_deterministic(champ: str, enemies: list, allies: list,
                  if isinstance(it, str) and it][:7]
         runes = _runes_from_cmd(resolved.get("rune_cmd") or {})
         notes = _ally_notes(champ, allies)
+        hint = _enemy_itemization(enemies)
+        if hint:
+            notes = (notes + " " + hint).strip() if notes else hint
         return {"build": build, "runes": runes, "ally_notes": notes}
     except Exception as exc:  # fail-soft: never raise
         log.warning("brief_deterministic(%s): %s", champ, exc)
