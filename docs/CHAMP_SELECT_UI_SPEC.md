@@ -100,7 +100,7 @@ mirror the enemies row classes).
 
 ## Verify
 `?ui_mock=1#champ-select` mock fixture (`web/data/ui_mock/champ_select_sr.json`) +
-Game-PC monitor 1 capture. Then the 5-phase visual-hierarchy audit subagent
+Legion monitor capture. Then the 5-phase visual-hierarchy audit subagent
 (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY); resolve every
 MUST-FIX in the same slice before commit. The per-category LCU push needs a live
 champ-select to fully verify (operator was mode=client); mock covers render.
