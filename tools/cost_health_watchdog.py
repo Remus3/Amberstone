@@ -45,7 +45,14 @@ _COACH_CFG = _APP / "config" / "coach_settings.json"
 BREACH_MULT = 1.5
 FLOOR_ABS_USD = 0.50          # below this, never call it a breach (idle noise)
 FLAP_WINDOW_S = 3600.0        # rolling window for pid-change counting
-FLAP_PID_CHANGES = 2          # >=2 pid changes in window == flap
+FLAP_PID_CHANGES = 3          # >=3 pid changes in window == flap. Two clean
+                              # restarts in a dev/fix session (e.g. a
+                              # restart_trigger.txt double-bounce) is benign;
+                              # the supervisor relaunches a crashed daemon
+                              # within ~5s so a genuine crash loop yields far
+                              # more than two changes/hour. alive=false /
+                              # last_reload_ok=false still flap immediately,
+                              # independent of count.
 VISION_RATE_FLOOR = 3.0       # --remediate will not push below this
 P95_DOUBLE_MULT = 2.0         # per-lane p95-cost >= 2x trailing baseline == signal
 P95_FLOOR_USD = 0.002         # ignore lanes whose p95 is below this (sub-cent noise)
