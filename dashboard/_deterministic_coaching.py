@@ -46,6 +46,7 @@ from core.coach_choices import (
     to_jsonable,
 )
 from core.event_callouts import next_callouts
+from core.heal_threat import heal_threat_callout
 from core.laning_verdicts import laning_choices
 from core.lead_projection import project_lead
 
@@ -259,6 +260,16 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
     if isinstance(inhib_events, list) and inhib_events:
         gs["inhib_events"] = inhib_events
 
+    # Per-team item-id pools (for the heal-threat nudge) come only from the
+    # liveclient scoreboard - the coach dict never carries the other players'
+    # items. Absent / empty -> omitted, heal_threat_callout handles the gap.
+    enemy_item_ids = lc.get("enemy_item_ids")
+    if isinstance(enemy_item_ids, list) and enemy_item_ids:
+        gs["enemy_item_ids"] = enemy_item_ids
+    ally_item_ids = lc.get("ally_item_ids")
+    if isinstance(ally_item_ids, list) and ally_item_ids:
+        gs["ally_item_ids"] = ally_item_ids
+
     return gs
 
 
@@ -294,6 +305,20 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
                      if isinstance(e, dict)))
         if isinstance(inhib, list) else ()
     )
+    # Per-team item pools drive the heal-threat callout, so they must change
+    # the sig too (same sig-completeness rule as item ids / inhib events) - an
+    # enemy completing a sustain item or an ally buying anti-heal must re-compute
+    # instead of serving the stale nudge.
+    enemy_items = gs.get("enemy_item_ids")
+    enemy_items_key = (
+        tuple(sorted(str(i) for i in enemy_items if i))
+        if isinstance(enemy_items, list) else ()
+    )
+    ally_items = gs.get("ally_item_ids")
+    ally_items_key = (
+        tuple(sorted(str(i) for i in ally_items if i))
+        if isinstance(ally_items, list) else ()
+    )
     return (
         str(gs.get("my_champion") or ""),
         enemy_key,
@@ -303,6 +328,8 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
         int(gt // 5),
         item_ids_key,
         inhib_key,
+        enemy_items_key,
+        ally_items_key,
     )
 
 
@@ -349,6 +376,17 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
         gold=gold, next_item_name=next_name, next_item_cost=next_cost,
         inhib_events=gs.get("inhib_events"),
     )
+
+    # Heal-threat / anti-heal nudge (pure set-membership over the live item
+    # pools). Standing advisory (eta_s None) - keep the 2 most-urgent timed
+    # objectives and append it as the 3rd row so it is always visible when it
+    # fires without crowding out an active "Baron NOW".
+    heal = heal_threat_callout(
+        gs.get("enemy_comp"), gs.get("enemy_item_ids"),
+        gs.get("ally_item_ids"), mode=lower,
+    )
+    if heal is not None:
+        callouts = (callouts[:2] if isinstance(callouts, list) else []) + [heal]
 
     # lead_projection (pure diff).
     lead = project_lead(gs, mode=upper)
