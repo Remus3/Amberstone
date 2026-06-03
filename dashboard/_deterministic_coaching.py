@@ -273,6 +273,14 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
         lvl = int(gs.get("level") or 0)
     except (TypeError, ValueError):
         lvl = 0
+    # item_count alone is not enough: laning_verdicts passes my_item_ids to
+    # matchup() (item_ids_a), so the verdict depends on WHICH items are owned,
+    # not just how many. Key on the id tuple so a same-count item swap (sell +
+    # rebuy within the TTL) re-computes instead of serving the stale verdict.
+    raw_ids = gs.get("my_item_ids")
+    item_ids_key = (
+        tuple(str(i) for i in raw_ids if i) if isinstance(raw_ids, list) else ()
+    )
     return (
         str(gs.get("my_champion") or ""),
         enemy_key,
@@ -280,6 +288,7 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
         item_count,
         str(mode_key or ""),
         int(gt // 5),
+        item_ids_key,
     )
 
 
