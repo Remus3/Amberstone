@@ -4,7 +4,7 @@
 #
 # Canonical SAN list - when adding a new identity for Legion (new tailnet
 # rename, additional VPN, second LAN bridge), update $SAN_NAMES below and
-# re-run. Game-PC's existing trust of the mkcert root CA covers any new
+# re-run. Legion's existing trust of the mkcert root CA covers any new
 # leaf as long as the root doesn't rotate.
 #
 # Usage (from project root):
@@ -15,11 +15,11 @@
 # After regen:
 #   1. Restart RC: `echo regen-cert > restart_trigger.txt`
 #   2. Verify SAN: openssl x509 -in ops\tls\rc.pem -noout -ext subjectAltName
-#   3. From Game-PC: iwr https://legion-rc:8888/api/health  (no -SkipCertificateCheck)
+#   3. From Legion: iwr https://legion-rc:8888/api/health  (no -SkipCertificateCheck)
 
 $ErrorActionPreference = 'Stop'
 
-# Canonical SAN list. Mirrors what's already trusted by Game-PC and Peer.
+# Canonical SAN list. Mirrors what's already trusted on Legion (and the Peer bridge peer).
 # Keep DNS names first, then IP addresses. mkcert auto-classifies IPs;
 # explicit ordering here is just for readability.
 $SAN_NAMES = @(
