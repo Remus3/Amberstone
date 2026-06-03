@@ -4,8 +4,10 @@ Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
 
 Both summaries pull from the in-process vision server on Legion
 (`127.0.0.1:8889`), which mirrors the latest LCU + Live Client
-snapshots pushed by the Game-PC agents (`gamepc_lcu_agent.py`,
-`gamepc_liveclient_relay.py`). Each summary is a best-effort cheap
+snapshots pushed by the relay agents (`gamepc_lcu_agent.py`,
+`gamepc_liveclient_relay.py`, 2-PC-era names now running Legion-local;
+the relay self-heals by reading `:2999`/LCU in-process). Each summary
+is a best-effort cheap
 shape used by the dashboard:
 
   lcu_summary()        - champ-select / lobby / queue context

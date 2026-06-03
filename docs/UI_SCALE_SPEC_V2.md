@@ -8,8 +8,8 @@ this spec during its own audit pass.
 
 ## Goal
 
-Bring the dashboard to a comfortable at-a-glance read on Game-PC's 1920x1080
-secondary monitor at OS scaling 100% + Chrome at 100% (no browser zoom, no
+Bring the dashboard to a comfortable at-a-glance read on Legion's 1920x1080
+monitor at OS scaling 100% + Chrome at 100% (no browser zoom, no
 CSS transform: scale, no body { zoom }). All four lazy mechanisms are
 explicitly OFF-LIMITS. The page slider in Settings (`#set-zoom`) is
 removed; `localStorage.rc-zoom` is no longer read OR written; the
@@ -291,7 +291,7 @@ and renders with "(MOCK)" suffix on the label + count chip + hint.
 flips `body.dataset.uiMock` for the page's lifetime (wired in
 `web/js/main.js` boot restorePrefs). This lets headless-Chrome audit
 captures hit the populated mock state without writing to localStorage
-on Game-PC's interactive browser - critical for the per-page sweep
+on the interactive browser - critical for the per-page sweep
 ritual when remote-driving the dashboard via screenshot. The companion
 flag `?ub_form=mock` (also wired to the user-builds view-router branch)
 auto-opens the form pane with the first mock-fixture build pre-loaded
@@ -413,7 +413,7 @@ E. **Card padding `16px`** - the analysis suggested `defaultPadding: 20`.
 2. `web/css/tokens.css` extended additively with v2 tokens (all
    pre-existing tokens retained; new tokens layered).
 3. Settings page refactored against the v2 tokens.
-4. Settings page screenshot from Game-PC monitor 2.
+4. Settings page screenshot from Legion monitor.
 
 Nothing else gets touched. The 15 remaining pages from the operator's
 order are deferred until the spec + Settings render are approved.

@@ -1,14 +1,15 @@
 # UI capture recipes
 
-Per-page operator recipes for Live UI captures (Game-PC monitor 1).
-All routes assume the dashboard is open in Chrome on Game-PC at
+Per-page operator recipes for Live UI captures (Legion monitor).
+All routes assume the dashboard is open in Chrome on Legion at
 `https://legion-rc:8888/` (or `https://192.168.8.230:8888/` LAN fallback).
 
 For mock-data captures (when operator is between games): append
 `?ui_mock=1` to the URL, then add `&mode=<sr|aram|arena>` where the
 page splits per-mode. Hard-reload (Ctrl+Shift+R) to bypass the service
-worker cache. Capture via `mcp__gamepc__capture_monitor` (monitor 1,
-max_width 1280, jpeg q75).
+worker cache. Capture via Legion Windows-MCP `Screenshot` (the gamepc MCP
+`capture_monitor` path is retired post-1PC; pick the dashboard monitor by
+resolution, max_width 1280, jpeg q75).
 
 ## Page #3 - Replay
 

@@ -118,28 +118,19 @@ try {
     Write-Host "  Phase 3 supervisor :8890 NOT responding" -ForegroundColor Yellow
 }
 
-# 11. Check Game-PC screen agent via vision server's latest-frame age
+# 11. Check vision frames via the local vision server's latest-frame
+#     (1-PC, ADR-011: the screen agent runs Legion-local; the retired
+#      Game-PC MCP :8892 probe was removed - it always failed post-consolidation)
 try {
     $r = Invoke-WebRequest -Uri "http://127.0.0.1:8889/latest-frame" -TimeoutSec 3 -UseBasicParsing
     if ($r.StatusCode -eq 200) {
-        Write-Host "  Game-PC screen agent: pushing frames" -ForegroundColor Green
+        Write-Host "  Vision frames: present (Legion-local screen agent)" -ForegroundColor Green
     }
 } catch {
-    Write-Host "  Game-PC screen agent: no frames -- start gamepc_screen_agent.py on Game-PC" -ForegroundColor Yellow
+    Write-Host "  Vision frames: none yet (only populated mid-game)" -ForegroundColor Yellow
 }
 
-# 12. Check Game-PC MCP server :8892
-try {
-    $h = @{ 'Authorization' = 'Bearer 8e8f131e212b329438218eca27372dde' }
-    $r = Invoke-WebRequest -Uri "http://192.168.8.237:8892/health" -Headers $h -TimeoutSec 3 -UseBasicParsing
-    if ($r.StatusCode -eq 200) {
-        Write-Host "  Game-PC MCP server :8892 alive" -ForegroundColor Green
-    }
-} catch {
-    Write-Host "  Game-PC MCP server :8892 NOT reachable -- run C:\RC-Agent\gamepc_boot.ps1 on Game-PC" -ForegroundColor Yellow
-}
-
-# 13. Echo health.json snapshot
+# 12. Echo health.json snapshot
 $healthPath = "C:\Riot Commander\ops\runtime\health.json"
 if (Test-Path $healthPath) {
     try {

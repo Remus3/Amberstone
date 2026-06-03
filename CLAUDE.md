@@ -77,7 +77,7 @@ Keep individual responses under 500 output tokens to avoid API errors. Break lon
 
 ## Web dashboard
 
-`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/bridge/pending`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Game-PC secondary at `https://legion-rc:8888/` - design baseline is **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport ≈ 1920×~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-gamepc`, `riot-commander-peer`).
+`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/bridge/pending`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport ≈ 1920×~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-gamepc`, `riot-commander-peer`).
 
 ## Scheduled tasks (Legion)
 
@@ -85,7 +85,7 @@ Key: `RC-Supervisor` (logon, Administrator, HIGHEST) · `RC-VisionServer` (start
 
 ## Vision pipeline
 
-Game-PC `gamepc_screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`. Coaches call `modes.shared_vision._capture_screen()` → GET `:8889/latest-frame`. **`_run_vision()` gates on `_fetch_game_data() is not None`** - vision never fires during lobby/idle. Tiered: OCR first, Sonnet escalation for misses. Calibrate `data/vision_regions.json` to expand OCR coverage. The sibling Live Client relay (`:8889/upload-liveclient` <- RC-LiveClientRelay agent; `/latest-liveclient` -> poller + `core/liveclient_cache`) self-heals: `vision_server/_relay.get_latest_liveclient()` reads `:2999` in-process when the relayed snapshot is stale + `GAME_HOST` is local, so the relay agent (and Game-PC) is non-integral to DS/RC (1-PC, ADR-011 update 2026-06-02).
+The `gamepc_screen_agent.py` agent (2-PC-era name, now Legion-local) POSTs frames every 2s to `:8889/upload-frame`. Coaches call `modes.shared_vision._capture_screen()` → GET `:8889/latest-frame`. **`_run_vision()` gates on `_fetch_game_data() is not None`** - vision never fires during lobby/idle. Tiered: OCR first, Sonnet escalation for misses. Calibrate `data/vision_regions.json` to expand OCR coverage. The sibling Live Client relay (`:8889/upload-liveclient` <- RC-LiveClientRelay agent; `/latest-liveclient` -> poller + `core/liveclient_cache`) self-heals: `vision_server/_relay.get_latest_liveclient()` reads `:2999` in-process when the relayed snapshot is stale + `GAME_HOST` is local, so the relay agent (and Game-PC) is non-integral to DS/RC (1-PC, ADR-011 update 2026-06-02).
 
 ## Mode detection
 
