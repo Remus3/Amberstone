@@ -40,6 +40,22 @@ from dashboard import _dispatch
 log = logging.getLogger("rc.web_dashboard")
 
 
+def proxy_error_status(path: str, upstream_code: int | None) -> int:
+    """Status the :8888 proxy returns when a supervisor fetch fails.
+
+    item 281: ``/api/minimap-crop`` has no frame to serve whenever the
+    vision producer is idle/down (1-PC with no Game-PC screen agent) - a
+    normal condition, not an error. Forwarding the supervisor's non-2xx made
+    the browser log a 502 console error on every ~2s poll. Collapse it to
+    204 No Content so the panel hides quietly with zero console noise.
+    Every other proxied path forwards the upstream code (or 502 when the
+    supervisor is unreachable) so genuine outages still surface.
+    """
+    if path.startswith("/api/minimap-crop"):
+        return 204
+    return upstream_code if upstream_code is not None else 502
+
+
 # Paths that only the agents supervisor (:8890) implements. :8888 proxies
 # GETs for these so the new dashboard, when accessed via :8888, gets full
 # side-panel data without having to know about port 8890.
@@ -93,6 +109,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
         log.debug(msg)
 
+    def _minimap_no_frame(self) -> None:
+        """Send 204 No Content for a minimap-crop with no frame to serve."""
+        self._send(204, b"", "application/octet-stream")
+
     def _proxy_to_supervisor(self):
         """Forward the current GET to 127.0.0.1:8890 and stream the
         response back. Body is read in full first so we can set a proper
@@ -113,6 +133,9 @@ class Handler(BaseHTTPRequestHandler):
                 ctype = r.headers.get("Content-Type", "application/octet-stream")
                 self._send(r.status, body, ctype)
         except _ue.HTTPError as e:
+            if proxy_error_status(self.path, e.code) == 204:
+                self._minimap_no_frame()
+                return
             # Forward the non-2xx response - 404 from supervisor should
             # still look like 404 to the dashboard, not 500 here.
             try:
@@ -123,6 +146,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(e.code, body, ctype)
         except Exception as exc:
             log.debug("proxy %s: %s", self.path, exc)
+            if proxy_error_status(self.path, None) == 204:
+                self._minimap_no_frame()
+                return
             self._send(502, b'{"error":"supervisor_unreachable"}', "application/json")
 
     def _send(self, code: int, body: bytes, ctype: str, cache_control: str | None = None):
