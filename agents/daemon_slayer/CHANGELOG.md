@@ -1331,6 +1331,32 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.104.0 (GAP-2 effects-text SPELL-SHIELD / block-one CC registry, item 292 - the
+EIGHTH survivability axis and the SECOND that feeds the cc_blended discount rather
+than an EHP numerator/denominator term. Item 290 (1.103.0, the SEVENTH axis)
+modeled a SELF tenacity / CC-immunity ABILITY as a multiplicative DURATION scale on
+every eaten CC and explicitly deferred this sibling sub-axis: a SPELL-SHIELD blocks
+ONE incoming CC INSTANCE entirely (availability-gated by cooldown), it does not
+scale every CC's duration. NEW _champion_spell_shield_overrides.py (SpellShieldEntry
++ champion_spell_shield_fraction) seeds the 4 clean SELF spell-shields (Sivir E /
+Nocturne W reactive 1.5s spell shields, Fiora W 0.75s parry, Morgana E SELF-cast 5s
+CC-immunity shield) amortized at three documented block-AVAILABILITY midpoints
+(_SPELL_SHIELD_REACTIVE_PROB 0.2 / _SPELL_SHIELD_DURATION_PROB 0.25 /
+_SPELL_SHIELD_PARRY_PROB 0.12). The seam stays SEPARATE from item 290's tenacity:
+the block fraction is applied as its OWN multiplicative discount on the
+POST-tenacity pressure (cc_total *= 1 - frac), NOT on the effective_cc_duration
+tenacity seam, under its OWN compute_ehp(apply_spell_shield=False) flag +
+EhpResult.spell_shield_frac echo field. Default-off byte-identical; threaded through
+rank_items_by_ehp / compute_hybrid / rank_items_by_hybrid + the /ehp /rank-tank
+/hybrid /rank-bruiser routes. EXHAUSTIVE 171-champ scan -> exactly these 4 self
+entries; EXCLUSIONS: champion-innate tenacity/immunity (item 290 Garen/Olaf/Malzahar
+P), cast-bound engage immunity (Galio R), area/projectile walls (Yasuo W / Shen W),
+untargetable/invuln/stasis windows (the guaranteed-survival seam, option 2), and the
+Morgana E ALLY cast (ally-grant domain item 289). +18 tests. The default-on flip is
+the Phase D job (a live re-rank). The clean SELF CC-survival lane - tenacity (290) +
+spell-shield (292) - is now EXHAUSTED; the damage-immunity half stays a different
+unmodeled seam.)
+
 1.103.0 (GAP-2 effects-text CHAMPION-INNATE CC-MITIGATION registry, item 290 - the
 SEVENTH survivability axis and the FIRST that is NOT an EHP term at all. The six
 prior axes (heal/shield throughput, a flat-% DR denominator mult 1.91.0, a
