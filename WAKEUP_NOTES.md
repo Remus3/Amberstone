@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-03 - /headless-upgrade run (item 283): game-pc 1-PC refactor + cost + 3 bug-fixes + inhibitor callout + DS 4-lane verify
+
+/headless-upgrade autonomous run, Caveman ULTRA. 8 commits `3820ffb..df7effb` + this docs-sync; all CI green; RC restarted x4 (-> pid 22252); DS 1.100.0 untouched (verified-correct across 4 lanes, NOT bumped). Full record = item 283 in `docs/LEDGER.md`.
+
+- **NEW operator task DONE - game-pc 1-PC refactor (`3820ffb`+`657901c`):** triaged all 189 game-pc files (3 agents). The cross-Claude PEER BRIDGE + topology-agnostic config (game_host/relay self-heal) + gamepc_*.py archival are CORRECT and KEPT; only ~13 stale-2PC-as-current refs fixed (CLAUDE.md viewing/screen-agent, BRIEF.md arch/cert/Vanguard, 3 UI-spec docs capture/viewport, start_claude.ps1 dead :8892 probe removed, 5 live-code docstrings -> Legion-local, retaining the agent filenames). "history edit" grant = edit dated doc artifacts, NOT git history rewrite.
+- **cost (`b2d4200`):** pickban handlers got an mtime-keyed 300s TTL cache (LEVER 2); warm_session charter cache_control'd (LEVER 1). 7 levers swept; LEVER 5 = false positive (charter-exempt vision Sonnet); 3/4/6/7 clean.
+- **bug-hunt (5 verified rounds): 3 real fixes.** `06f64a1` cache-sig keyed item COUNT not IDS -> stale matchup verdict on a same-count swap (laning_verdicts passes my_item_ids to matchup) - fixed + property test `31f5949`. `fdfebfd` 3 raw-error UI leaks (champ_select/tft/replay) -> friendly degrade (error rule) + rubric sub-60s rate. Build-engine/match-ingest/parsing rounds = 0 real (boots-slot + IndexError "HIGH"s were FALSE POSITIVES - slot-2 design + inside the coach try/except).
+- **DS audit: pen/on-hit/crit/AoE-immolate ALL hand-verified CORRECT** (Meraki + multi-scenario match). Engine saturated-correct.
+- **inhibitor callout (`df7effb`, feat, PRIMARY north-star):** deterministic Haiku-free SR inhibitor-respawn callout (300s hard fact, no team-side claim, fail-soft) via core/event_callouts + liveclient InhibKilled extraction + _deterministic_coaching wiring; renders through the EXISTING callouts.js panel (no new UI).
+- **research (`953f840`):** docs/COMPETITOR_LIFT_2026-06-03.md live-overlay teardown; constraint = :2999 emits no cast/item events (enemy-CD = HARD NO); #1 ledger ALREADY BUILT (cd_ledger.js), no dup.
+- **Don't-redo:** game-pc bridge/archival/config correct; DS 4 lanes verified (do NOT re-audit); cache-sig + 3 error-leaks + rubric FIXED; boots-slot "bug" is a false positive; competitor #1 ledger exists.
+- **NEXT (FUTURE/gated):** antiheal callout (competitor #2, LOW-MED + product call); cost prompt-restructure (aram_aug_select/tft_live_analysis static/data split + fidelity validation); inhibitor in-game visual capture OWED (live SR); champ-select brief flip gated on shadow-log; smart-quote retro-sweep left untouched (operator-gated to a separate pass).
+
 # 2026-06-03 - NEXT_SESSION_QUEUE re-run: watchdog flap false-positive FIXED + queue drained-confirmed
 
 Operator re-opened `NEXT_SESSION_QUEUE.md` (queued 2026-05-19) "start this file". Caveman ULTRA. The queue is 2+ weeks drained across items -> 281; Phase 0 tasks 1/2/6/7 have shipped artifacts (pytest_guard docs-skip, ship-batch, RC-CostHealthWatchdog, test-first-autopilot). 1 commit `6bdc3f2` (pushed `d547431..6bdc3f2`). NON-engine, NON-frozen, no RC/DS restart (standalone cron script).
