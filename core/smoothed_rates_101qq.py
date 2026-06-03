@@ -47,7 +47,9 @@ Smoothing notes:
 from __future__ import annotations
 
 import json
+import os
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -64,6 +66,8 @@ _ID_MAP_PATH = _DATA_DIR / "101qq_id_map.json"
 
 _CACHE_LOCK = threading.RLock()
 _LOADED = False
+_LOADED_AT: float = 0.0             # monotonic stamp of last (re)load
+_SOURCE: str = "none"               # "live" | "static" | "none" - which seed won
 _ID_TO_NAME: dict[int, str] = {}
 _NAME_TO_ID: dict[str, int] = {}
 _DUO_RECS: list[dict] = []          # raw records (envelope unwrapped)
@@ -78,6 +82,44 @@ _ITEMP_TO_SAMPLE_SCALE = 1000.0
 
 # Default Laplace alpha (mirrors core.smoothed_rates default).
 _LAPLACE_ALPHA = 1.0
+
+# Live refresh (item 277): pull the duo table from the Tencent getRankDouble
+# endpoint via core.synergy_external_source, falling back to the committed
+# static seed when the CN endpoint is unreachable. The data is daily-refreshed
+# so re-index every few hours. Operator-gated OFF via RC_DUO_SYNERGY_LIVE=0
+# (default ON - the operator chose the live dependency, item 277).
+_LIVE_TTL_S = 6 * 3600.0
+_clock = time.monotonic
+
+
+def _live_enabled() -> bool:
+    return os.environ.get("RC_DUO_SYNERGY_LIVE", "1").strip().lower() not in (
+        "0", "false", "no", "off", "",
+    )
+
+
+def _live_data_rows() -> list | None:
+    """Live raw bottom/support rows from the Tencent endpoint, or None
+    (fail-soft - disabled, unreachable, or empty)."""
+    if not _live_enabled():
+        return None
+    try:
+        from core.synergy_external_source import fetch_rows
+        rows = fetch_rows("bottom", "support", tier=200)
+        return rows or None
+    except Exception:
+        return None
+
+
+def _name_fallback(champ_id: int) -> str:
+    """Resolve a champion numeric key the static id_map does not cover
+    (live rows may include champs added after the May-25 capture). Fail-soft
+    to "" so the row is skipped rather than mis-rendered."""
+    try:
+        from core.archetype_picks import champion_name_by_key
+        return str(champion_name_by_key(champ_id) or "")
+    except Exception:
+        return ""
 
 
 @dataclass(frozen=True)
@@ -146,10 +188,10 @@ def _load_once() -> None:
     Silent on missing files (returns empty cache); the API layer surfaces
     that as "no data" rather than 500.
     """
-    global _LOADED, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
+    global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
     global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
     with _CACHE_LOCK:
-        if _LOADED:
+        if _LOADED and (_clock() - _LOADED_AT) < _LIVE_TTL_S:
             return
         # ID map: numeric-string keys -> DDragon names
         id_to_name: dict[int, str] = {}
@@ -168,13 +210,25 @@ def _load_once() -> None:
         except (OSError, json.JSONDecodeError):
             pass
 
-        # Records: unwrap envelope, normalize fields
+        # Records source (item 277): live Tencent rows first, static seed
+        # fallback. Both are the same row schema; the indexer below is shared.
+        _src = "none"
+        data = _live_data_rows()
+        if data:
+            _src = "live"
+        else:
+            try:
+                raw_env = json.loads(_RECORDS_PATH.read_text(encoding="utf-8"))
+                d = raw_env.get("data") if isinstance(raw_env, dict) else None
+                data = d if isinstance(d, list) else []
+            except (OSError, json.JSONDecodeError):
+                data = []
+            if data:
+                _src = "static"
+
+        # Records: normalize fields (shared indexer over live OR static rows)
         records: list[dict] = []
         try:
-            raw_env = json.loads(_RECORDS_PATH.read_text(encoding="utf-8"))
-            data = raw_env.get("data") if isinstance(raw_env, dict) else None
-            if not isinstance(data, list):
-                data = []
             for rec in data:
                 if not isinstance(rec, dict):
                     continue
@@ -185,8 +239,8 @@ def _load_once() -> None:
                     continue
                 if not (bot_id and sup_id):
                     continue
-                bot_name = id_to_name.get(bot_id, "")
-                sup_name = id_to_name.get(sup_id, "")
+                bot_name = id_to_name.get(bot_id) or _name_fallback(bot_id)
+                sup_name = id_to_name.get(sup_id) or _name_fallback(sup_id)
                 if not (bot_name and sup_name):
                     continue
                 try:
@@ -241,14 +295,24 @@ def _load_once() -> None:
         _BOTS_BY_SUP = bots_by_sup
         _SUPS_BY_BOT = sups_by_bot
         _LOADED = True
+        _LOADED_AT = _clock()
+        _SOURCE = _src
+
+
+def source() -> str:
+    """Which seed the live cache is currently serving: live | static | none."""
+    _load_once()
+    return _SOURCE
 
 
 def _reset_cache() -> None:
     """Test-only: clear cache so the next call re-reads from disk."""
-    global _LOADED, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
+    global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
     global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
     with _CACHE_LOCK:
         _LOADED = False
+        _LOADED_AT = 0.0
+        _SOURCE = "none"
         _ID_TO_NAME = {}
         _NAME_TO_ID = {}
         _DUO_RECS = []

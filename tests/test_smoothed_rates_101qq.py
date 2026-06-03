@@ -21,6 +21,29 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from core import smoothed_rates_101qq as S101  # noqa: E402
 
+import os  # noqa: E402
+
+# item 277: these tests assert the committed STATIC May-25 seed values
+# (exact iranks etc). Pin the live Tencent fetch OFF so they stay
+# deterministic + offline; the live path is covered by
+# test_synergy_external_source.py + test_smoothed_rates_101qq_live.py.
+_PRIOR_LIVE_ENV: str | None = None
+
+
+def setUpModule() -> None:
+    global _PRIOR_LIVE_ENV
+    _PRIOR_LIVE_ENV = os.environ.get("RC_DUO_SYNERGY_LIVE")
+    os.environ["RC_DUO_SYNERGY_LIVE"] = "0"
+    S101._reset_cache()
+
+
+def tearDownModule() -> None:
+    if _PRIOR_LIVE_ENV is None:
+        os.environ.pop("RC_DUO_SYNERGY_LIVE", None)
+    else:
+        os.environ["RC_DUO_SYNERGY_LIVE"] = _PRIOR_LIVE_ENV
+    S101._reset_cache()
+
 
 class CacheLoaderTests(unittest.TestCase):
     def setUp(self):
