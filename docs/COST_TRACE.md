@@ -115,3 +115,31 @@ Tests pin the wire-in at each site (grep-based; see
 `tests/test_cost_tracker_response_helper.py::WiredSitesGrepTests`) so a
 future regression that rips the wire out fails CI before any live cadence
 hits the missing telemetry.
+
+## Prompt-cache floor (item 286) - aram_aug_select / tft_live_analysis CLOSED
+
+The min cacheable prompt prefix for `claude-haiku-4-5-20251001` is **2048
+tokens** (vs 1024 for Sonnet/Opus). A `cache_control` marker on a prefix below
+that floor is INERT - the API does not cache it. The `aram_aug_select` /
+`tft_live_analysis` "static/data split for caching" lane (re-surfaced as NEXT in
+items 273/280/283/284) was measured to a decision in item 286 and CLOSED as
+not-viable. Static portions (placeholders blanked):
+
+| Prompt (purpose) | static chars | ~tok | vs 2048 floor |
+|---|---|---|---|
+| `aram_aug_select` (`_AUG_SELECT_PROMPT`) | 231 | ~62 | far below |
+| `tft_live_analysis` (`_ANALYSIS_PROMPT_TEMPLATE`) | 2477 | ~669 | below |
+| `tft_live_aug_select` (`_AUGMENT_SELECT_PROMPT`) | 188 | ~51 | far below |
+
+Three independent blockers: (1) all static portions are far below the 2048-tok
+floor, so caching yields ZERO benefit even after a perfect static-first split;
+(2) `tft_live_analysis`'s primary call routes through the FROZEN single-string
+`core.moon_proxy.get_coaching(prompt: str, ...)`, so a system/user split is
+unreachable without editing a frozen file; (3) moving instructions user->system
+is fidelity-gated on a live game. Guard: `tests/test_prompt_cache_floor_item286.py`
+(fails loudly if a template later grows past the floor = re-derive + implement).
+
+The `cache_control` pattern is correct ONLY where the static system prompt
+clears 2048 tok: `tft_pbe` (`TFT_PBE_SYSTEM_PROMPT` ~2649c real ~2450 tok) is the
+one live beneficiary; `tft_coach`'s `TFT_SYSTEM_PROMPT` (944 tok) carries a marker
+that is itself sub-floor/inert (forward-marker, left as-is).
