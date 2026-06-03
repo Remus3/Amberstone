@@ -29,7 +29,7 @@ Read these authoritative sources and write the values down. Every doc must match
 | Purchasable item count | DS `/health` `item_count`, else the `effects.py` registry length (historically 547) |
 | Champion override coverage | recompute from the four registries `agents/daemon_slayer/champion_{max_priority,combo_sequences,form_index,block_index}.json` - count distinct champions and total (champion,key) entries; **drop the `_meta` key before counting** |
 | Match-history rows | `rewind_history.db` row count (sqlite) - BRIEF/memory historically cite ~2,8xx |
-| Latest session + commits | `git -C "C:/Riot Commander" log --oneline -15` + the top block of `WAKEUP_NOTES.md` + the highest-numbered item in CLAUDE.md "Active priorities" |
+| Latest session + commits | `git -C "C:/Riot Commander" log --oneline -15` + the top block of `WAKEUP_NOTES.md` + the highest-numbered item in `docs/LEDGER.md` |
 
 Produce a **Canonical Facts table** in your working notes. This is the contract for §3-§5. If DS `:8893` is down, derive `ENGINE_VERSION`/items from source files and note "DS offline - values from source, not /health" in the report.
 
@@ -37,7 +37,7 @@ Produce a **Canonical Facts table** in your working notes. This is the contract 
 
 `Glob **/*.md`. Classify every hit into one bucket (exclude `python-embed/`, `node_modules/`, `.pytest_cache/`, site-packages - third-party):
 
-- **LIVING - sync targets (surgical edits OK):** `README.md`, `CLAUDE.md` (only the "Active priorities" block + the one-line DS reference in "Living docs"/topology header), `ROADMAP.md`, `BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/DAEMON_SLAYER.md`, `docs/OPERATIONS.md`, `docs/BRIDGE.md`, `docs/API.md`, `docs/AGENTS.md`, `BRIEF.md`.
+- **LIVING - sync targets (surgical edits OK):** `README.md`, `CLAUDE.md` (only the one-line DS reference + the `### Settled` summary (the "Active priorities" block is a static pointer - do NOT add items) in "Living docs"/topology header), `ROADMAP.md`, `BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/DAEMON_SLAYER.md`, `docs/OPERATIONS.md`, `docs/BRIDGE.md`, `docs/API.md`, `docs/AGENTS.md`, `BRIEF.md`.
 - **APPEND-ONLY - never rewrite, never reflow:** `WAKEUP_NOTES.md` (append + prune via `scripts/wakeup_prune.py` only), `docs/history_notes.md`, everything under `docs/_archive/**`, `docs/adr/**` (ADRs are immutable - add a new ADR, never edit an old one), any dated artifact (`AUDIT_*`, `PHASE_*`, `ARCH-*`, `*_2026-*`), `agents/**/charter.md`, `agents/**/reports/**`, `docs io RC peer/**` (dated cross-Claude artifacts). Per memory `feedback_no_history_rewrite` + `reference_archive_dir`: **only sync the living docs; never rewrite a ledger.**
 - **FROZEN - do not edit (CLAUDE.md hard rule):** `tools/process-bridge-tasks.md`, `tools/diagnose.md`, `tools/caveman.md`, `tools/bridge_watcher_action_prompt.md`, plus anything else on the CLAUDE.md frozen list. Read-only here.
 - **INDEX:** `MEMORY.md` (index of memory files - one line per entry, ≤150 chars, never write memory bodies into it) and the memory `*.md` under `C:/Users/Administrator/.claude/projects/C--Riot-Commander/memory/`.
@@ -72,7 +72,7 @@ If the README's structural claims (modes covered, what the engine does, two-mach
 
 ### 5. Per-doc congruence pass (LIVING only)
 
-- **CLAUDE.md** - touch ONLY: (a) the "Active priorities" block - flip shipped `🟡`→`✅` with short SHA if WAKEUP/git shows it shipped, add `🟡` for in-flight; (b) the one DS reference line if `ENGINE_VERSION`/items/patch moved. Leave Topology / Paths / Hard rules / everything else alone.
+- **CLAUDE.md** - touch ONLY: (a) the one DS reference line if `ENGINE_VERSION`/items/patch moved; (b) the `### Settled` summary if a decision changed. The "Active priorities" block is now a STATIC POINTER - per-item completion entries go to `docs/LEDGER.md` (newest-first), NEVER into CLAUDE.md (CI size-budgeted < 60KB). Leave Topology / Paths / Hard rules / everything else alone.
 - **ROADMAP.md** - Now+Next ledger. Mark shipped items `✅` + SHA; ensure the top reflects the latest session from §1. Do not delete completed items (history lives elsewhere); do not rewrite older entries.
 - **BACKLOG.md** - strike (`~~...~~`) anything that shipped this period with the SHA; don't reorder.
 - **docs/ARCHITECTURE.md / OPERATIONS.md / BRIDGE.md / API.md / AGENTS.md** - **structural sync only.** Verify module map / endpoints / ports / task names against the actual code & CLAUDE.md. Update a line only if code changed it. These are not changelogs - don't add session notes.
