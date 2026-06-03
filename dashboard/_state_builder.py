@@ -171,6 +171,25 @@ def _active_champion(coach: dict, lc: dict | None, lcu_snapshot: dict | None) ->
     return ""
 
 
+def apply_cleared_at(coach, lc):
+    """Honor an operator force-clear sentinel (``coach.cleared_at``).
+
+    item 281: a force-clear writes ``cleared_at`` into the coaching artifact
+    but historically nothing consumed it, so a stale game kept rendering as
+    a live ACTIVE MATCH whenever ``mode_key`` resolved back to that mode -
+    an 11-day-old ARAM game resurfaced every time the operator sat in an
+    ARAM lobby (``health.aram_mode`` true). When the sentinel is present AND
+    there is no live game to overlay, return an empty payload so /api/state
+    never surfaces a phantom match. A real game overwrites the artifact
+    without the sentinel, so live coaching is unaffected; the ``not lc``
+    guard additionally refuses to hide a live game if a stray sentinel
+    somehow survives.
+    """
+    if isinstance(coach, dict) and coach.get("cleared_at") and not lc:
+        return {}
+    return coach
+
+
 def build_state() -> dict:
     health = read_json("ops/runtime/health.json")
     lcu_snapshot = lcu_summary()
@@ -190,6 +209,9 @@ def build_state() -> dict:
     # (game_time, kda, level, gold, hp, mana, cs) populate immediately.
     # Coach values win when present (e.g. coach computes win_pct from comp).
     lc = liveclient_summary()
+    # item 281: honor a force-clear sentinel BEFORE the overlay so a cleared
+    # artifact can never leak stale game fields into /api/state.
+    coach = apply_cleared_at(coach, lc)
     if lc:
         for k, v in lc.items():
             if coach.get(k) in (None, "", 0):
