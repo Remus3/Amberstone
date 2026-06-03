@@ -498,6 +498,15 @@ import { renderBuildInsights } from './panels/build_insights.js';
   // here, change it there too - both must agree on the same table.
   function _viewAutoDerive(lcu, mode) {
     const phase = lcu && lcu.phase;
+    // item 281: is a real game live? Cross-mode signal = liveclient
+    // non-empty. Mirrors the `live` param in dashboard/view_router_state.py.
+    // Guards a stale in-game mode flag (e.g. health.aram_mode left true while
+    // sitting in an ARAM lobby) from promoting a phantom active-match that
+    // renders an old coach payload as a live 14:54 match. An explicit
+    // GameStart/InProgress phase is itself a live signal (game may be loading
+    // before LiveClient answers), so those paths are not gated on `live`.
+    const _lcLive = (state.latest && state.latest.liveclient) || null;
+    const live = !!(_lcLive && Object.keys(_lcLive).length);
     // s171 post-CS sticky guard: once we've entered ChampSelect, the
     // dashboard should never drop back to home/lobby until the game has
     // cleanly resolved. LCU briefly emits phase=null or stale phase=Lobby
@@ -573,7 +582,8 @@ import { renderBuildInsights } from './panels/build_insights.js';
       return "active-match";
     }
     const inGame = ["sr", "aram", "arena", "brawl", "tft"].includes(mode);
-    if (activeMatchEnabled() && !phase && inGame) {
+    // item 281: require a live game for the null-phase in-game promotion.
+    if (activeMatchEnabled() && !phase && inGame && live) {
       return "active-match";
     }
     // s164: ChampSelect routes to the dedicated full-page view.
@@ -586,7 +596,9 @@ import { renderBuildInsights } from './panels/build_insights.js';
     }
     if (_VIEW.gameStarted === "champ-select") return "champ-select";
     if (phase === "Lobby" || phase === "Matchmaking" || phase === "ReadyCheck") return "lobby";
-    if (mode === "client" || mode === "lobby" || !mode) return "home";
+    // item 281: no live game + a stale in-game mode flag falls back to home,
+    // not the in-game last-match grid (mirror: `or not live` in the Python).
+    if (mode === "client" || mode === "lobby" || !mode || !live) return "home";
     return "last-match";  // in-game default → main panels
   }
   // Should we auto-promote past a manual selection? Only for urgent
@@ -5473,6 +5485,15 @@ import { renderBuildInsights } from './panels/build_insights.js';
   async function refreshMinimap() {
     if (document.hidden) return;
     if (!MINIMAP_MODES.has(state.mode)) {
+      MM.imgWrap.classList.add("hidden");
+      lastMinimapMode = null;
+      return;
+    }
+    // item 281: minimap-crop crops a LIVE game frame; with no game running
+    // the vision server has no frame and every poll 502s (spammed the
+    // console every 2s in an idle ARAM lobby). Gate on a live game.
+    const _lcMM = (state.latest && state.latest.liveclient) || null;
+    if (!_lcMM || !Object.keys(_lcMM).length) {
       MM.imgWrap.classList.add("hidden");
       lastMinimapMode = null;
       return;

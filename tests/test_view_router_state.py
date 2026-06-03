@@ -325,6 +325,55 @@ class UpdateGameStartedTests(unittest.TestCase):
         self.assertEqual(
             update_game_started(None, "in-progress"), "in-progress",
         )
+
+
+class LiveGateTests(unittest.TestCase):
+    """item 281: a stale in-game mode flag must NOT promote an in-game view
+    when there is no live game.
+
+    The phantom-active-match bug: an ARAM lobby resolved mode_key='aram'
+    from a stale ``health.aram_mode``; the LCU snapshot blipped to null
+    between agent pushes; ``derive_view`` then promoted 'active-match' and
+    the grid rendered an 11-day-old coach payload as a live 14:54 match.
+
+    ``live`` (liveclient non-empty) is the cross-mode "a real game is
+    running" signal. It defaults True so existing callers / s209 loading
+    inference are unchanged; the live runtime passes the real value.
+    """
+
+    def test_null_phase_in_game_mode_no_live_goes_home(self):
+        # Stale aram mode + LCU phase blip to null + NO live game -> home,
+        # never the phantom active-match.
+        r = derive_view(None, "aram", None, live=False)
+        self.assertEqual(r.view, "home")
+
+    def test_null_phase_in_game_mode_with_live_is_active_match(self):
+        # Genuine loading / mid-game null blip WITH a live game -> active.
+        r = derive_view(None, "aram", None, live=True)
+        self.assertEqual(r.view, "active-match")
+
+    def test_in_game_mode_no_live_no_phase_is_home_not_last_match(self):
+        # Mode lingers in-game post-clear but no live game + no phase ->
+        # home, not the in-game last-match grid.
+        r = derive_view(None, "sr", None, live=False)
+        self.assertEqual(r.view, "home")
+
+    def test_lobby_phase_in_game_mode_no_live_is_lobby(self):
+        # The common idle case: LCU reports Lobby -> lobby regardless.
+        r = derive_view("Lobby", "aram", None, live=False)
+        self.assertEqual(r.view, "lobby")
+
+    def test_explicit_in_progress_is_active_even_without_live(self):
+        # An explicit in-game phase is itself a live signal (game loading
+        # before liveclient :2999 answers); active-match is correct.
+        r = derive_view("InProgress", "aram", None, live=False)
+        self.assertEqual(r.view, "active-match")
+
+    def test_default_live_true_preserves_s209_inference(self):
+        # Existing callers omit live; default True keeps null-after-CS
+        # sticky inference landing on active-match.
+        r = derive_view(None, "aram", "in-progress")
+        self.assertEqual(r.view, "active-match")
         # s209: null with champ-select sticky infers "in-progress" (was
         # "game-start" pre-s209).
         self.assertEqual(

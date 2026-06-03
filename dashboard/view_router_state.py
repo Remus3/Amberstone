@@ -101,12 +101,23 @@ def derive_view(
     prior_game_started: Optional[str],
     *,
     active_match_enabled: bool = True,
+    live: bool = True,
 ) -> DeriveResult:
     """Pure mirror of `_viewAutoDerive(lcu, mode)` from main.js.
 
     Returns the resolved view ID and the updated sticky-guard value.
     Caller is responsible for persisting the new `game_started` for the
     next tick (the JS version mutates `_VIEW.gameStarted` in place).
+
+    ``live`` (item 281): is a real game running? Cross-mode signal =
+    liveclient non-empty. Defaults True so existing callers and the s209
+    null-after-CS loading inference are unchanged; the runtime passes the
+    real value. Guards the two paths that would otherwise promote an
+    in-game view off a STALE mode flag with no game: the null-phase +
+    in-game-mode promotion, and the in-game-mode catch-all fallthrough.
+    An explicit GameStart/InProgress phase is itself a live signal, so
+    those are NOT gated on ``live`` (the game may be loading before
+    LiveClient :2999 answers).
     """
     game_started = update_game_started(phase, prior_game_started)
 
@@ -115,7 +126,11 @@ def derive_view(
         return DeriveResult("active-match", game_started)
     if active_match_enabled and phase == "InProgress":
         return DeriveResult("active-match", game_started)
-    if active_match_enabled and not phase and mode in IN_GAME_MODES:
+    # item 281: only infer active-match from a null phase + in-game mode
+    # when a game is actually live. Without this, a stale aram/sr mode flag
+    # during an idle lobby (LCU phase blipped to null) promoted a phantom
+    # active-match rendering an old coach payload as a live match.
+    if active_match_enabled and not phase and mode in IN_GAME_MODES and live:
         return DeriveResult("active-match", game_started)
     if phase == "ChampSelect":
         return DeriveResult("champ-select", game_started)
@@ -126,7 +141,10 @@ def derive_view(
         # active_match_enabled=False fallback.
         return DeriveResult("last-match", game_started)
 
-    # Sticky-guard fallbacks during transient null/Lobby blips.
+    # Sticky-guard fallbacks during transient null/Lobby blips. The sticky
+    # is only set via an observed ChampSelect/GameStart/InProgress this
+    # session, so it legitimately carries a real game through a null blip
+    # (liveclient may briefly lag) - not gated on ``live``.
     if game_started == "in-progress":
         return DeriveResult(
             "active-match" if active_match_enabled else "last-match",
@@ -137,7 +155,9 @@ def derive_view(
 
     if phase in _LOBBY_PHASES:
         return DeriveResult("lobby", game_started)
-    if mode in (None, "", "client", "lobby"):
+    # item 281: when no game is live, an in-game mode flag (left stale from
+    # a prior game) must fall back to home, not the in-game last-match grid.
+    if mode in (None, "", "client", "lobby") or not live:
         return DeriveResult("home", game_started)
     return DeriveResult("last-match", game_started)
 
