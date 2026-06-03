@@ -45,6 +45,9 @@ import { renderPgrWinprob, clearWinprob } from './pgr_winprob.js';
 // PGR reframe S4: lane / role comparison (operator vs same-role enemy,
 // final stats). Consumes the /api/last-match roster already in hand.
 import { renderPgrLaneCompare } from './pgr_lane_compare.js';
+// PGR reframe S5: descriptive loadout strip (mode-aware runes/augments +
+// summoner spells). Consumes enriched.runes / arena_augments / spells.
+import { renderPgrLoadout } from './pgr_loadout.js';
 
 // Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
 // set; Arena (CHERRY) spell ids are not in this map and fall back to a
@@ -431,6 +434,9 @@ function renderLastMatch(data) {
   // the hero - career item-WPA + skill-WPA chips on this match's loadout.
   // Fail-soft: hides itself if the corpus / routes are unavailable.
   try { renderPgrBuildWpa(data); } catch (_e) { /* PGR never errors on the strip */ }
+  // PGR reframe S5: descriptive loadout strip (runes/augments + spells).
+  // Fail-soft: hides if the dicts / loadout are unavailable.
+  try { renderPgrLoadout(data); } catch (_e) { /* PGR never errors on the loadout */ }
   // PGR reframe S4: lane / role comparison renders from the same
   // /api/last-match roster. Fail-soft: hides for ARAM / Arena / no opponent.
   try { renderPgrLaneCompare(data); } catch (_e) { /* PGR never errors on lane compare */ }
