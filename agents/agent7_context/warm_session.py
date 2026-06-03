@@ -154,7 +154,11 @@ class WarmAgent7Session:
                 resp = self._client.messages.create(
                     model=self._model,
                     max_tokens=max_tokens,
-                    system=self._charter if self._charter else None,
+                    system=(
+                        [{"type": "text", "text": self._charter,
+                          "cache_control": {"type": "ephemeral"}}]
+                        if self._charter else None
+                    ),
                     messages=self._messages,
                     timeout=30,
                 )
