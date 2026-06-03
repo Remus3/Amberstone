@@ -204,3 +204,7 @@ ops/local_paths.json
 # Operator-curated SR draft builds (Phase 8). Not source - each
 # operator's builds are theirs alone.
 data/daemon_slayer/user_builds.json
+
+# Tencent 101.qq raw scrape payloads - redistributable third-party data, never commit
+data/external/qq_double_raw.json
+data/external/qq_double_*.json
