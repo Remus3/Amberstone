@@ -103,6 +103,23 @@ class BuildGameStateTests(unittest.TestCase):
         self.assertEqual(gs["items"], ["Eclipse", "Plated Steelcaps"])
         self.assertEqual(gs["my_item_ids"], ["6692", "3047"])
 
+    def test_team_item_pools_mapped_from_lc(self) -> None:
+        # enemy_item_ids + ally_item_ids (for the heal-threat nudge) come only
+        # from the liveclient scoreboard.
+        coach = {"champion": "Aatrox"}
+        lc = {"enemy_team": ["Soraka"],
+              "enemy_item_ids": ["3072", "3074"], "ally_item_ids": ["3047"]}
+        gs = dc._build_game_state(coach, lc, "sr")
+        self.assertEqual(gs["enemy_item_ids"], ["3072", "3074"])
+        self.assertEqual(gs["ally_item_ids"], ["3047"])
+
+    def test_empty_team_item_pools_omitted(self) -> None:
+        gs = dc._build_game_state({"champion": "Aatrox"},
+                                  {"enemy_team": ["Teemo"], "enemy_item_ids": []},
+                                  "sr")
+        self.assertNotIn("enemy_item_ids", gs)
+        self.assertNotIn("ally_item_ids", gs)
+
 
 class _FakeChoice:
     """Minimal stand-in that to_jsonable can serialize via .to_dict()."""
@@ -147,6 +164,37 @@ class ComputeDeterministicTests(unittest.TestCase):
         self.assertIn("state", out["lead_projection"])
         self.assertIn("line", out["lead_projection"])
         self.assertEqual(out["lead_projection"]["source_tag"], "lead-proj")
+
+    def test_heal_threat_callout_merged_into_callouts(self) -> None:
+        # Enemy Soraka + no ally anti-heal -> a heal_threat callout rides in
+        # state.callouts (appended after the timed objectives).
+        orig = dc.laning_choices
+        try:
+            dc.laning_choices = lambda gs, mode="SR": []
+            coach = {"champion": "Aatrox", "level": 9, "game_time_s": 330}
+            lc = {"enemy_team": ["Soraka"], "enemy_item_ids": ["3072"],
+                  "ally_item_ids": ["3047"]}
+            out = dc.compute_deterministic(coach, lc, "sr")
+        finally:
+            dc.laning_choices = orig
+        kinds = [c.get("kind") for c in out["callouts"]]
+        self.assertIn("heal_threat", kinds)
+        heal = next(c for c in out["callouts"] if c.get("kind") == "heal_threat")
+        self.assertIn("Soraka", heal["line"])
+        self.assertIsNone(heal["eta_s"])
+
+    def test_heal_threat_suppressed_when_ally_has_antiheal(self) -> None:
+        # Ally owns Morellonomicon (3165) -> no heal_threat callout.
+        orig = dc.laning_choices
+        try:
+            dc.laning_choices = lambda gs, mode="SR": []
+            coach = {"champion": "Aatrox", "level": 9, "game_time_s": 330}
+            lc = {"enemy_team": ["Soraka", "Vladimir"], "ally_item_ids": ["3165"]}
+            out = dc.compute_deterministic(coach, lc, "sr")
+        finally:
+            dc.laning_choices = orig
+        kinds = [c.get("kind") for c in out["callouts"]]
+        self.assertNotIn("heal_threat", kinds)
 
     def test_fail_soft_returns_all_empty(self) -> None:
         # A laning path that raises must degrade to the all-empty result.
@@ -377,6 +425,22 @@ class CacheSigItemIdsTests(unittest.TestCase):
                       "inhib_events": [{"down_at_s": 600.0, "name": "x"}]}
         self.assertNotEqual(dc._cache_sig(with_inhib, "sr"),
                             dc._cache_sig(base, "sr"))
+
+    def test_team_item_pools_change_sig(self) -> None:
+        # The heal-threat nudge depends on the enemy + ally item pools, so a
+        # change in either must change the sig (else a stale nudge is served
+        # after an enemy completes a sustain item / an ally buys anti-heal).
+        base = {"my_champion": "Aatrox", "enemy_comp": ["Soraka"],
+                "level": 11, "game_time_s": 700}
+        base_sig = dc._cache_sig(base, "sr")
+        enemy_added = {**base, "enemy_item_ids": ["3072", "3074"]}
+        ally_added = {**base, "ally_item_ids": ["3165"]}
+        self.assertNotEqual(dc._cache_sig(enemy_added, "sr"), base_sig)
+        self.assertNotEqual(dc._cache_sig(ally_added, "sr"), base_sig)
+        # Order-independent (sorted) but value-sensitive.
+        self.assertEqual(
+            dc._cache_sig({**base, "ally_item_ids": ["3165", "3047"]}, "sr"),
+            dc._cache_sig({**base, "ally_item_ids": ["3047", "3165"]}, "sr"))
 
 
 class AsciiHygieneTests(unittest.TestCase):
