@@ -385,8 +385,13 @@ def compute_role_grade(
 
     kda_value = (kills + assists) / max(1.0, deaths)
     minutes = game_time_s / 60.0
-    cs_per_min = cs / max(1.0, minutes) if minutes > 0 else 0.0
-    damage_per_min = damage / max(1.0, minutes) if minutes > 0 else 0.0
+    # Divide by the true minutes (not a 1.0 floor) so a sub-60s game reports an
+    # honest per-minute rate; minutes <= 0 still short-circuits to 0.0 to avoid
+    # a zero-division. _component_score clamps the normalized value, so a tiny
+    # denominator cannot blow the score up. Identical to the old floor for every
+    # real game (minutes > 1).
+    cs_per_min = cs / minutes if minutes > 0 else 0.0
+    damage_per_min = damage / minutes if minutes > 0 else 0.0
 
     components = {
         "kda": _component_score(role_weights.kda, kda_value, baselines["kda"]),

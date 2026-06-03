@@ -206,7 +206,9 @@ def analyze_match(match_id: str, *, api_key: str | None) -> dict[str, Any]:
             logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
     except Exception as exc:
-        out["summary"] = f"(coach error: {type(exc).__name__})"
+        # summary is user-facing - never leak the exception type/message. Log
+        # the raw error, render a friendly degraded line.
+        out["summary"] = "(coaching unavailable - try again)"
         logger.warning("replay coach: %s", exc)
         return out
     fields = _parse_response(raw)

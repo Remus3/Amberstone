@@ -132,6 +132,26 @@ class ComputeRoleGradeTests(unittest.TestCase):
         self.assertEqual(result["percentile_grade"], "D")
         self.assertIn("components", result)
 
+    def test_sub_minute_game_uses_true_per_minute_rate(self):
+        # Bug-hunt fix: a sub-60s game must divide by the true minutes, not a
+        # 1.0-minute floor. Two sub-minute games with the SAME cs but different
+        # durations therefore get DIFFERENT cs_per_min component scores (the
+        # shorter game has the higher rate). Pre-fix both floored to cs/1.0 and
+        # tied, hiding the difference.
+        short = pgr.compute_role_grade({"cs": 3, "game_time_s": 30}, role="ADC")
+        long_ = pgr.compute_role_grade({"cs": 3, "game_time_s": 50}, role="ADC")
+        self.assertGreater(short["components"]["cs_per_min"],
+                           long_["components"]["cs_per_min"])
+
+    def test_normal_game_score_unchanged_by_rate_fix(self):
+        # The floor removal is byte-identical for any real game (minutes > 1):
+        # cs / max(1.0, m) == cs / m when m > 1. A 22-min game stays in band.
+        result = pgr.compute_role_grade(
+            {"kills": 5, "deaths": 2, "assists": 8, "cs": 160,
+             "game_time_s": 22 * 60}, role="ADC")
+        self.assertGreaterEqual(result["total_score"], 40.0)
+        self.assertLessEqual(result["total_score"], 70.0)
+
     def test_custom_weights_kwarg_overrides_defaults(self):
         # Pass a custom RoleWeights with kda=10 (vs default 2.1).
         custom = pgr.RoleWeights(role="ADC", kda=10.0)
