@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-03 - DS ALLY-TARGETED survivability grant schema lift - Orianna E / Braum W / Taric W + Renata W (item 289, ENGINE 1.102.0)
+
+"start the next DS schema lift and exhaust it then /done for /clear" (4th use; items 271/272/288 prior). Caveman ULTRA. 1 commit `f048ae19` + docs-sync. ENGINE 1.101.0 -> 1.102.0; DS :8893 restarted x2 (taskkill pid 20248 then 1548 + schtasks) -> 1.102.0 live. RC NOT touched. Full record = item 289 in `docs/LEDGER.md`.
+
+- **The SIXTH survivability axis + the FIRST to score a DIFFERENT champion than the caster.** The self lane (heal/shield/DR/resist 264-272 + revive 288) is EXHAUSTED, so the next seam = the explicitly-flagged remaining exclusion (item-288 docstring + Share/docs/04): "the grant rides an ally, not the caster - the Orianna-E ball-attached class". No fork to frame this time (the prior 3 runs exhausted self; ally-target is the documented next).
+- **NEW `agents/daemon_slayer/_passive_ally_grant_overrides.py`** (`AllyGrantEntry` + `ally_resist_grant` + `ally_revive_multiplier` + `_ALLY_REVIVE_PROB=0.3`) - the ally analogs of self resist + self revive. ALLY RESIST raises the PROTECTED ally's armor/MR denominator; ALLY REVIVE multiplies the protected ally's EHP numerator.
+- **GENERIC consumer seam:** `compute_ehp(external_resist_armor=0.0, external_resist_mr=0.0, external_revive_multiplier=1.0)` (default no-op = byte-identical; route-reachable on `/ehp`). The granter-side registry sources the value; the consumer feeds it into the PROTECTED ally's `compute_ehp`. Auto-pairing (which live ally <- which granter) is the Phase D job. EhpResult += `ally_grant_armor` / `_mr` / `_revive_mult` (distinct from the SELF `passive_resist_*` / `passive_revive_mult`).
+- **EXHAUSTIVE scan** (affects=Allies + loose text re-scan): SEEDED 4 = Orianna E (6/12/18/24/30 armor+MR flat), Braum W (20-40 base, +12% omitted, 3s active), Taric W (6-10% of GRANTER total armor, ARMOR ONLY, percent-of-granter), Renata W (100% max HP -> fraction 1.0, burn-gated). Exclusions: ally shields/heals (=ability_hps), ally invuln/untargetable windows (Taric R/Kindred R/Kayle R/TahmKench R/Kalista R/Ryze R/Yuumi W/Zilean R - a binary cannot-die window = infinite EHP, a DIFFERENT seam), flat-heal ally revives needing ally max HP (Zilean R/Akshan W - deferred), Ornn P (false positive item-forge).
+- Live `/ehp`: Caitlyn L18 default phys 4963.53 (byte-identical) -> Orianna +30/+30 + Renata x1.30 phys 7388.20. +28 tests; DS 6204 -> 6232; ruff clean; 59 pin syncs; Share 284 --check clean.
+- **Don't-redo:** ally-target = canonical home for survivability that RIDES A TEAMMATE (scores the PROTECTED ally via the generic `external_*` seam, NOT the granter's self-EHP); ally-resist EXHAUSTED (Orianna/Braum/Taric SOLE granters); Renata SOLE clean-fraction ally revive; invuln/untargetable = a different (guaranteed-survival) seam, do NOT model as EHP; Ornn P false positive. **NEXT (Phase D):** auto-pairing consumer (seam ready) + an ally-DR window seam + live re-rank flip. The ally-targeted RESIST+REVIVE grant axis is EXHAUSTED.
+
 # 2026-06-03 - DS REVIVE / second-life schema lift - Anivia P + Zac P (item 288, ENGINE 1.101.0)
 
 "start the next DS schema lift and exhaust it then /done for /clear" (3rd use; items 271/272 prior). Caveman ULTRA. 1 commit `742b6ba` (pushed `33bf4f4..742b6ba`) + docs-sync. ENGINE 1.100.0 -> 1.101.0; DS :8893 restarted (taskkill pid 20168 + schtasks) -> 1.101.0 live. RC NOT touched. Full record = item 288 in `docs/LEDGER.md`.
