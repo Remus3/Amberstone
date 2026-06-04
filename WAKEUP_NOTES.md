@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-04 - DS WAVE-CLEAR / AoE-shove scorer - 11th scored axis (item 300, ENGINE 1.112.0, 10-channel fan-out)
+
+Operator "go" on the recurring "next DS schema lift, fan out, exhaust, /done" cadence (12th use, 5th explicit multi-agent fan-out after items 294/297/298/299). Caveman ULTRA. ENGINE 1.111.0 -> 1.112.0; DS :8893 restarted (taskkill pid 18736 + Start-ScheduledTask RC-DaemonSlayer) -> 1.112.0 live (verified via /health + GET/POST /waveclear). RC NOT touched (additive). Full record = item 300 in `docs/LEDGER.md`.
+
+- **Axis fork:** scaling (item 299) was the last scored axis + EXHAUSTED. One upfront AskUserQuestion -> operator chose **wave-clear/AoE-shove** over effective-threat-range.
+- **NEW `agents/daemon_slayer/waveclear.py`** (11th scored axis, the FIRST to score throughput vs a wave of MINIONS - every prior axis scores combat vs a champion target; owns the lane-priority / roam-window / objective TEMPO dimension): `compute_waveclear` -> `WaveclearResult`. `_WAVECLEAR_KIND_WEIGHT` 5-tier FULL_AOE 1.0 / AOE_DOT 0.85 / MULTI_HIT 0.6 / CLEAVE_AA 0.5 / SINGLE_TARGET 0.25. `_WAVECLEAR_RANGE_MULT` shove-safety GLOBAL 1.1 / RANGED 1.0 / MELEE 0.7. Each mechanism a 0..1 magnitude (wave share); `waveclear_score`=sum(kind_weight*range_mult*magnitude), conditional at `_WAVECLEAR_CONDITIONAL_PROB`=0.5; `top_kind` label + `ranged_shove` safe-shove flag.
+- **10-channel Workflow fan-out** (10 classify + 10 completeness critics, pipeline, Sonnet, schema-validated, 705k tok / 33 tool uses / 167s) -> 376 entries / 171 champs (FULL roster) / 0 missing / 27 cond / MULTI_HIT 173 / SINGLE_TARGET 94 / FULL_AOE 62 / AOE_DOT 31 / CLEAVE_AA 16 / bands RANGED 196 / MELEE 176 / GLOBAL 4. I wrote engine + tests from the structured output (PROBLEMS=0, no hand-curation). + `tools/ds_waveclear_build.py` (marker-splice generator) + `waveclear_registry_notes.json` (Share-excluded - leaked into Share on first sync, caught via git status, exclusion added + re-synced).
+- **NEW `/waveclear` route** (POST+GET, server.py) - PURELY ADDITIVE, every existing route byte-identical. Live: Zyra 2.12 / Ziggs 1.82 / AurelionSol 1.80 / Heimerdinger 1.77 / Brand 1.41 (top shovers) vs Vayne 0.03 / Warwick 0.03 / Yuumi 0.05 (no AoE).
+- **+28 tests; DS+tools 6659 passed exit 0;** tests/ 4954 passed (1 pre-restart env-fail `test_live_three_profiles` - reads engine_version from live :8893 /health still at 1.111.0 - resolved post DS-restart, re-run 1 passed); ruff clean; Share 301 --check 0; CHANGELOG +1.112.0 both; 65 pin syncs / 57 files (.py only).
+- **Don't-redo:** wave-clear is STANDALONE additive (no route reads it YET); regenerate via `ds_waveclear_build.py` (marker-spliced - do NOT hand-edit the block); the 5 kind weights + 3 range mults + the 0.5 midpoint are Phase-D tunables; GLOBAL band is deliberately rare (4 champs - off-screen artillery), MELEE penalty is the point. **NEXT (Phase D, live-gated):** auto-pairing consumer crediting wave-clear into a lane-priority / "shove and roam" / draft tempo verdict; tune weights + range mults after a live re-rank. The wave-clear/AoE-shove axis is EXHAUSTED across the roster.
+
+---
+
 # 2026-06-04 - DS SCALING / power-curve scorer - 10th scored axis (item 299, ENGINE 1.111.0, 10-channel fan-out)
 
 "start the next DS schema lift with 10 multi-agents fan out different channels and exhaust it then /done for /clear" (11th use, 4th explicit multi-agent fan-out after items 294/297/298). Caveman ULTRA. ENGINE 1.110.0 -> 1.111.0; DS :8893 restarted (taskkill pid 4020 + Start-ScheduledTask RC-DaemonSlayer) -> 1.111.0 live (verified via /health). RC NOT touched (additive). Full record = item 299 in `docs/LEDGER.md`.
@@ -27,16 +40,3 @@
 - **NEW `/sustain` route** (POST+GET, server.py) - PURELY ADDITIVE, every existing route byte-identical. Live: Warwick 11.67 (top) / Aatrox 6.99 / Nasus 1.28 / Karthus 0.
 - **+20 tests; DS+tools 6603 passed exit 0;** tests/ 4954 passed exit 0; ruff clean; Share 297 --check 0; CHANGELOG +1.110.0 both; 62 pin syncs / 53 files (.py only).
 - **Don't-redo:** sustain is STANDALONE additive (no route reads it YET); regenerate via `ds_sustain_build.py` (marker-spliced - do NOT hand-edit the block); the 5 constants + 2 refs (`_REF_FIGHT_DAMAGE` 2000 / `_REF_MAX_HP` 2200) are Phase-D tunables. **NEXT (Phase D, live-gated):** auto-pairing consumer crediting sustain into a dive/attrition/draft verdict; per-target healing-reduction (antiheal) discount; tune weights + refs after a live re-rank. The sustain/vamp-throughput axis is EXHAUSTED across the roster.
-
----
-
-# 2026-06-04 - DS MOBILITY / gap-close / kiting scorer - 8th scored axis (item 297, ENGINE 1.109.0, 10-channel fan-out)
-
-"start the next DS schema lift with 10 multi-agents fan out different channels and exhaust it then /done for /clear" (9th use, 2nd explicit multi-agent fan-out after item 294). Caveman ULTRA. ENGINE 1.108.0 -> 1.109.0; DS :8893 restarted (taskkill pid 17688 + Start-ScheduledTask RC-DaemonSlayer) -> 1.109.0 live. RC NOT touched (additive). Full record = item 297 in `docs/LEDGER.md`.
-
-- **Axis fork:** CC-output (item 294) was the last scored axis + EXHAUSTED. One upfront AskUserQuestion -> operator chose **mobility/kiting** over sustain/vamp-throughput or effective-threat-range.
-- **NEW `agents/daemon_slayer/mobility.py`** (8th scored axis, mirror-less): self-repositioning -> `compute_mobility` -> `MobilityResult`. `_MOBILITY_KIND_WEIGHT` 5-tier BLINK 1.0 / DASH 0.8 / LEAP 0.8 / UNTARGET_REPOSITION 0.7 / MS_STEROID 0.5. Flash-normalised (`_FLASH_UNITS`=400): displacement `min(range,_MAX_DASH_UNITS=1500)/400*charges`; MS `ms_pct*_BASE_MS(330)*dur/400`, dur defaults `_MS_SUSTAINED_WINDOW_S`=3.0 for sustained/toggle buffs. Conditional gated at `_MOBILITY_CONDITIONAL_PROB`=0.5.
-- **10-channel Workflow fan-out** (10 classify + 10 completeness critics, Sonnet, schema-validated, 1.42M tok / 748 tool uses) -> 254 entries / 150 champs / 105 MS / 130 cond. I wrote engine + tests from the structured output; fixed 2 data errors (Singed P ms 6.25 -> 0.30; BelVeth -> Belveth). + `tools/ds_mobility_build.py` (marker-splice generator) + `mobility_registry_notes.json` (Share-excluded).
-- **NEW `/mobility` route** (POST+GET, server.py) - PURELY ADDITIVE, every existing route byte-identical. Live: Aatrox 3.075 / Rammus 7.42 (Powerball tops) / Karthus 0.
-- **+22 tests; DS+tools 6583 passed exit 0;** tests/ 4 prior fails resolved (DS restart + Share sync + ROADMAP prune of shipped 288-293 -> ROADMAP_HISTORY); ruff clean; Share 295 --check 0; CHANGELOG +1.109.0 both.
-- **Don't-redo:** mobility is STANDALONE additive (no route reads it YET); regenerate via `ds_mobility_build.py` (marker-spliced - do NOT hand-edit the block); the 5 constants are Phase-D tunables; the 1500 cap is intentional (globals = map-mobility not kiting). **NEXT (Phase D, live-gated):** auto-pairing consumer crediting mobility into a disengage/kite/draft verdict; per-target tenacity kiting; tune weights + midpoints after a live re-rank. The mobility/kiting axis is EXHAUSTED across the roster.
