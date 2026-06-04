@@ -52,7 +52,10 @@ CLI: default writes `cdragon_ability_ratios.json`; `--drift` adds
 Full `--drift` map (170 champs): **439 of 703 mechanically-comparable blocks
 differ** from the frozen Meraki ratios (62%), plus 377 blocks present only in
 live CDragon and 499 in the hard-fallback tier. (4-champ spot probe
-Lux/Darius/Zac/Jhin: 19/26.) Map: `data/daemon_slayer/<patch>/cdragon_ratio_drift.json`.
+Lux/Darius/Zac/Jhin: 19/26.) Regenerate the full map on demand:
+`python tools/daemon_slayer_cdragon_ratio_extract.py --drift` (the sidecar
+`cdragon_ability_ratios.json` + `cdragon_ratio_drift.json` are generated
+artifacts, NOT committed - keeps the repo lean and the Share mirror clean).
 A blind cutover would therefore shift ~62% of comparable damage numbers and
 break every gold/golden DS test that pins them - hence the staged, reviewed
 approach below.
