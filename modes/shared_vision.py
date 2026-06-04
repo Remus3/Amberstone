@@ -30,9 +30,8 @@ from core.vision_token import get_vision_token as _get_vision_token
 _AUTH_TOKEN    = _get_vision_token()
 _FRAME_TIMEOUT = 3.0
 _FRAME_MAX_AGE_S = 8.0   # warn if cached frame older than this
-_FRAME_HARD_AGE_S = 30.0 # REJECT if older than this - prevents API credit
-                         # waste when Game-PC agent is down (relay still
-                         # serves the last cached frame indefinitely)
+_FRAME_HARD_AGE_S = 90.0 # skip clearly stale frames so a wedged relay does not
+                         # feed minutes-old game state into vision
 
 # AUDIT (2026-04-22): track consecutive failures so we escalate from
 # DEBUG to WARNING after the issue persists - a silent debug-only log
@@ -66,17 +65,16 @@ def _capture_screen() -> Optional[str]:
             return None
         age = max(0.0, time.time() - float(data.get("ts", 0)))
         if age > _FRAME_HARD_AGE_S:
-            # Reject outright - Sonnet would burn credits analyzing a
-            # game state that's 30+ s old. Treat as if the frame doesn't
-            # exist; coach loops should skip the vision tick this turn.
+            # Skip a clearly stale frame; coach loops skip the vision tick
+            # this turn rather than analyze minutes-old game state.
             logger.warning(
-                "latest-frame REJECTED: age=%.1fs > hard cap %.0fs (Game-PC agent down?)",
+                "latest-frame skipped: age=%.1fs > cap %.0fs (relay stalled?)",
                 age, _FRAME_HARD_AGE_S,
             )
             _fail_streak += 1
             return None
         if age > _FRAME_MAX_AGE_S:
-            logger.warning("latest-frame stale: age=%.1fs (Game-PC agent down?)", age)
+            logger.warning("latest-frame stale: age=%.1fs (relay stalled?)", age)
         _fail_streak = 0
         return b64
     except Exception as exc:
@@ -221,17 +219,15 @@ class GameVisionReader:
         # is an HTTPServer module whose import-time `serve_forever()` call
         # blocks (or raises OSError if port 8888 is already bound by the
         # running lan_bridge process) - it was never a functioning client.
-        # AUDIT 2026-04-28 (5.1 + 5.4): gate every vision call on (a) the
-        # daily spend cap and (b) a token-bucket rate limit so a chaotic
-        # teamfight can't spike calls per second.
+        # AUDIT 2026-04-28 (5.4): keep the daily spend cap as the cost
+        # backstop. The per-second token-bucket rate limit is removed so
+        # vision is unrestricted during live gameplay (the coach vision
+        # loop interval already paces calls).
         try:
             from core.cost_tracker import get_tracker as _gt
             _ct = _gt()
             if not _ct.allow_call():
                 logger.warning("Vision call blocked: daily budget exceeded")
-                return None
-            if not _ct.acquire_vision_token():
-                logger.debug("Vision call rate-limited")
                 return None
         except Exception:
             pass
