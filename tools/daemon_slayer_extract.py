@@ -902,6 +902,28 @@ def build_scenarios_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dic
     }
 
 
+def _meraki_content_patch_from_abilities(patch_dir: Path) -> str | None:
+    """Best-effort Meraki CONTENT patch for the manifest provenance.
+
+    The phase-4a abilities extractor records ``meraki_content_patch`` (the
+    newest ``patchLastChanged`` across Meraki's frozen ``latest`` snapshot;
+    DS source-adoption WIN 2) into the sibling ``champion_abilities.json``.
+    Both the Meraki items and the Meraki champion abilities come from the
+    same frozen ``latest`` endpoint, so that same content patch describes
+    the items pulled here. Returns ``None`` when the sibling file is absent
+    or pre-dates WIN 2 (no field) - the manifest must never lie that the
+    content is as fresh as ``fetched_at`` implies.
+    """
+    p = patch_dir / "champion_abilities.json"
+    if not p.exists():
+        return None
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return doc.get("meraki_content_patch")
+
+
 def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
                    patch_dir: Path,
                    perlevel_overlay: dict[str, dict[str, float]] | None = None,
@@ -952,6 +974,7 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "count": mer_items.get("count", 0),
             "fetched_at": mer_items.get("fetched_at"),
             "source": mer_items.get("source", MERAKI_ITEMS_URL),
+            "content_patch": _meraki_content_patch_from_abilities(patch_dir),
         },
         "outputs": {
             "champions": str((patch_dir / "champions.json").relative_to(ROOT)),

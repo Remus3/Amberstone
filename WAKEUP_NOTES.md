@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-06-03 - DS MERAKI CONTENT-FRESHNESS GUARD - source-adoption WIN 2 (item 296, ENGINE 1.108.0)
+
+"start WIN 2 if WIN 1 was finished fully" = Phase 3 of `docs/DS_SOURCE_ADOPTION_PLAN.md`. Caveman ULTRA. ENGINE 1.107.0 -> 1.108.0; DS :8893 restarted (taskkill pid 16684 + schtasks RC-DaemonSlayer) -> 1.108.0 live. RC NOT touched. Full record = item 296 in `docs/LEDGER.md`.
+
+- **WIN 1 completeness verified FIRST** (1.107.0 live, offset 109/default 1/cdragon 12, WIN 1 tests 102 pass, Share --check 0, git clean) - and the fuller cross-dir run CAUGHT a WIN 1 gap: `tests/test_routes_ds_combo.py::test_totals_block` pinned a flat-windup Lux combo `duration_s == 2.0` that WIN 1 shifted to 1.984 (Lux AA windup 0.25 -> 0.234). Confirmed PRE-EXISTING via stashed-HEAD re-run. Fixed durably -> structural clock-end identity `duration_s == last.t + last.cast_time` from the payload (per "prefer computed quantities"). Grep found NO sibling stale duration pins.
+- **Problem:** Meraki `latest` champions endpoint is mutable but its CONTENT is frozen; `fetched_at` LIES about data age. Ground-truth probe: max `patchLastChanged` = **25.15** (plan's "~25.08" was stale). **Fix:** surface the honest signal.
+- **`tools/daemon_slayer_abilities_extract.py`:** NEW `_patch_sort_key` (numeric YY.MM, 25.15 > 25.9) + `_meraki_content_patch` (max patchLastChanged, skip non-dict/missing, None if absent) + pinned `_EXPECTED_MERAKI_CONTENT_PATCH = "25.15"`; guard logs INFO when frozen-at-pin / loud WARNING on drift (re-pin + re-validate ratios + gold tests); stamps `meraki_content_patch` into champion_abilities.json.
+- **Regenerated `16.11.1/champion_abilities.json` (--force, 211s bulk):** content patch 25.15; DATA + COVERAGE **byte-identical to HEAD** (171/927, diff vs `git show HEAD:` = only the new field) - `latest` genuinely frozen, ZERO engine-behavior risk despite champion_abilities being engine-consumed.
+- **`tools/daemon_slayer_extract.py`:** NEW `_meraki_content_patch_from_abilities` -> `build_manifest` `meraki_items.content_patch`; backfilled the live `16.11.1/manifest.json` to 25.15 (Data-Fixes rule).
+- **Gold-pin bullet = verified NO-OP:** `test_gold_efficiency_p1l13` already pins vendored 16.10.1 + derives at runtime; `test_golden_e2e_p1l24` hand-derives from first principles - both already patch-robust (plan's `tools/tests/` path for them was also stale; real `agents/daemon_slayer/tests/`).
+- ENGINE 1.107.0 -> 1.108.0; +12 WIN 2 tests `test_abilities_content_freshness.py`; 61 pin syncs / 53 files (byte-replace, history comment preserved). DS+tools 6526 passed exit 0; `tests/` 4954 passed exit 0 (4 prior fails all resolved); ruff clean; ASCII-only; Share 293 synced --check 0; /health 1.108.0 patch 16.11.1 172/705 live.
+- **Don't-redo:** guard is canonical for Meraki staleness (`_meraki_content_patch` max patchLastChanged, pinned 25.15 - bump IN LOCKSTEP with re-validating ratios + gold tests when WARNING fires); regenerate via extractor (no hand-edit); Meraki `latest` FROZEN at 25.15 (data byte-identical, regen safe); gold/golden tests ALREADY pinned (don't re-pin). **NEXT (explicitly long-term):** re-source ability RATIOS + base damage from DDragon/CDragon (the guard SURFACES staleness, does not cure it). NON-GOAL stays CC-duration sourcing.
+
+---
+
 # 2026-06-03 - DS AA-windup OFFSET TIER - source-adoption WIN 1 (item 295, ENGINE 1.107.0)
 
 "start the next item Win1" = Phase 2 of the DS source-layering adoption plan (`docs/DS_SOURCE_ADOPTION_PLAN.md`). Caveman ULTRA. 2 commits `c517b9a9` (engine + Share) + `040a619c` (docs) pushed; CI green both SHAs. ENGINE 1.106.0 -> 1.107.0; DS :8893 restarted (taskkill pid 5112 + schtasks RC-DaemonSlayer) -> 1.107.0 live. RC NOT touched. Full record = item 295 in `docs/LEDGER.md`.
