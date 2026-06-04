@@ -84,10 +84,10 @@ JPEG_QUALITY = 75
 GAME_MONITOR_HEIGHT = 1080
 DASH_MONITOR_HEIGHT = 1280
 
-# Per [[reference_gamepc_screen_capture_bsod]] memory: on-demand DXGI
-# capture is the BSOD-clean path. NEVER reintroduce the continuous
-# screen-agent loop (the polling agent uses bettercam with explicit
-# release; this watcher reuses that helper module on-demand only).
+# On-demand DXGI capture only. The continuous screen-agent loop is
+# retired in favor of the in-process self-grab relay (1-PC, ADR-011);
+# the polling agent uses bettercam with explicit release and this watcher
+# reuses that helper module on-demand only.
 SUBSCRIBED_TOPICS = (
     "/lol-gameflow/v1/gameflow-phase",
     "/lol-champ-select/v1/session",
@@ -100,9 +100,8 @@ SUBSCRIBED_TOPICS = (
 # Matchmaking / ReadyCheck / EndOfGame / WaitingForStats / None) return
 # None from the classifier - they're either captured via another topic
 # (Lobby), uninteresting for UI audit (Matchmaking / ReadyCheck), or
-# BSOD-risky (WaitingForStats fires at the 1920x1080 -> 1440p resolution
-# swap moment which is the documented Duet+GPU+Vanguard crash chain per
-# [[feedback_gamepc_lcu_phase_watcher_bsod]] + [[feedback_gamepc_screen_capture_bsod]]).
+# unreliable to capture (WaitingForStats fires at the game-end resolution
+# swap, 1920x1080 <-> 1440p, so a DXGI grab there is unreliable).
 # DO NOT re-add WaitingForStats. PGR captures must come from a trigger
 # that fires AFTER the resolution swap settles (e.g. dashboard
 # /api/state debounce), not from the WAMP edge.
@@ -112,9 +111,9 @@ _CAPTURED_GAMEFLOW_PHASES = frozenset({
 
 # Delay (seconds) between the InProgress WAMP edge and the actual capture
 # fire. The Matchmaking -> InProgress transition coincides with the game-
-# start resolution swap (Windows native 1440p -> game 1920x1080) which is
-# the same crash class as the WaitingForStats game-end swap. Sleep past
-# the swap before binding a DXGI surface. Tests monkey-patch to 0.
+# start resolution swap (Windows native 1440p -> game 1920x1080), the same
+# unreliable-capture window as the WaitingForStats game-end swap. Sleep
+# past the swap before binding a DXGI surface. Tests monkey-patch to 0.
 INPROGRESS_CAPTURE_DELAY_S = 15.0
 
 # Cherry: if operator later wants every available[] transition captured
@@ -540,11 +539,10 @@ def handle_event(topic: str, data: object, queue_id: int | None, *,
     topic_short, sub_phase, qid = classified
     if not debouncer.should_fire(topic_short, sub_phase, qid):
         return None
-    # InProgress edge coincides with the game-start resolution swap which
-    # is BSOD-prone (Duet/GPU/Vanguard chain per
-    # [[feedback_gamepc_lcu_phase_watcher_bsod]]). Sleep past the swap
-    # before any DXGI bind. Other phases fire at stable resolutions and
-    # need no delay.
+    # InProgress edge coincides with the game-start resolution swap
+    # (1440p -> game 1920x1080), so a DXGI grab there is unreliable. Sleep
+    # past the swap before any DXGI bind. Other phases fire at stable
+    # resolutions and need no delay.
     if topic_short == "gameflow_phase" and sub_phase == "InProgress":
         time.sleep(INPROGRESS_CAPTURE_DELAY_S)
     captured_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

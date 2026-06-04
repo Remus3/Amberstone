@@ -8,9 +8,9 @@ pill.
 
 Why this is low-risk:
   - NO new screen capture. It reuses modes.shared_vision._capture_screen
-    (read the relay buffer RC already has) - so it does NOT touch the
-    Vanguard-BSOD surface (that was the *continuous* PIL all-screens
-    agent, retired s221; this never captures, it only reads the buffer).
+    (read the relay buffer RC already has) - so it does NOT spin up a
+    capture loop (that was the *continuous* PIL all-screens agent,
+    retired s221; this never captures, it only reads the buffer).
   - NO new Sonnet/cost code. ScreenReadVision subclasses the audited
     GameVisionReader - the moon_proxy -> direct-SDK fallback + the
     cost_tracker daily-cap + token-bucket gating in _extract() apply

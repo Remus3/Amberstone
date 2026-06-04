@@ -3,11 +3,10 @@
 Item 207: implementation of docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md. The
 watcher runs on Game-PC and fires DXGI capture on phase transitions
 (champ-select / Cherry augment / lobby / InProgress). WaitingForStats is
-intentionally EXCLUDED per [[feedback_gamepc_lcu_phase_watcher_bsod]]
-(2026-05-27 item 209): the WaitingForStats edge fires at the game-end
-resolution swap (1920x1080 -> 1440p) which is the documented Duet+GPU+
-Vanguard BSOD chain. PGR captures must be driven by a post-swap trigger,
-not the WAMP edge.
+intentionally EXCLUDED (2026-05-27 item 209): the WaitingForStats edge
+fires at the game-end resolution swap (1920x1080 <-> 1440p), so a DXGI
+grab there is unreliable. PGR captures must be driven by a post-swap
+trigger, not the WAMP edge.
 
 TDD-first per CLAUDE.md. Suite is stdlib-only and stub-driven so it runs
 on any platform (no LCU + no DXGI + no network).
@@ -49,8 +48,8 @@ class ClassifyGameflowPhaseTests(unittest.TestCase):
     captures on transitions to ChampSelect / InProgress.
     Other phases (Lobby / Matchmaking / ReadyCheck / EndOfGame /
     WaitingForStats / None) return None. WaitingForStats is excluded per
-    item 209 BSOD fix (game-end resolution-swap coincides with the WAMP
-    edge).
+    item 209 (the game-end resolution swap coincides with the WAMP edge,
+    so a grab there is unreliable).
     """
 
     @classmethod
@@ -65,11 +64,11 @@ class ClassifyGameflowPhaseTests(unittest.TestCase):
         out = self.mod.classify_gameflow_phase("InProgress", queue_id=1750)
         self.assertEqual(out, ("gameflow_phase", "InProgress", 1750))
 
-    def test_waiting_for_stats_NOT_captured_bsod_fix_item_209(self):
-        # Item 209 (2026-05-27) BSOD fix: WaitingForStats fires at the
-        # game-end resolution swap which is the documented Duet+GPU+
-        # Vanguard crash chain. DO NOT re-add. PGR captures must come
-        # from a post-swap trigger.
+    def test_waiting_for_stats_NOT_captured_item_209(self):
+        # Item 209 (2026-05-27): WaitingForStats fires at the game-end
+        # resolution swap (1920x1080 <-> 1440p), so a DXGI grab there is
+        # unreliable. DO NOT re-add. PGR captures must come from a
+        # post-swap trigger.
         out = self.mod.classify_gameflow_phase("WaitingForStats", queue_id=450)
         self.assertIsNone(out)
 
@@ -80,7 +79,7 @@ class ClassifyGameflowPhaseTests(unittest.TestCase):
         delay = getattr(self.mod, "INPROGRESS_CAPTURE_DELAY_S", None)
         self.assertIsNotNone(delay,
                              "module must expose INPROGRESS_CAPTURE_DELAY_S "
-                             "constant for BSOD-safe InProgress capture")
+                             "constant for swap-safe InProgress capture")
         self.assertGreaterEqual(float(delay), 5.0,
                                 "delay must be >=5s to clear the resolution "
                                 "swap; 15s is the calibrated default")

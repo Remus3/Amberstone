@@ -12,9 +12,8 @@ Deploy on Game-PC (one time):
 Capture backend: DXGI Desktop Duplication via `bettercam`, bound to the
 single real GPU adapter. The legacy PIL ImageGrab(all_screens=True)
 backend was retired 2026-05-16 - it BitBlt'd the whole virtual desktop
-(spanning virtual display adapters) and pagefaulted a display driver
-during the match-end display-mode switch (bugcheck 0x50). See the
-AUDIT note on `capture()`.
+(spanning virtual display adapters) and proved unreliable across the
+match-end display-mode switch. See the AUDIT note on `capture()`.
 
 Bandwidth: ~100-300KB per frame (PNG, optimized) at 0.5 Hz default = ~150KB/s.
 
@@ -127,17 +126,16 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
 
 
 # --- Capture backend: DXGI Desktop Duplication via bettercam ----------------
-# AUDIT 2026-05-16 (BSOD root-cause fix). The previous backend was
+# AUDIT 2026-05-16 (capture-stability fix). The previous backend was
 # PIL ImageGrab.grab(all_screens=True): a GDI BitBlt across the entire
 # VIRTUAL DESKTOP, which on Game-PC spans the real Intel Xe GPU PLUS the
-# Parsec + Duet VIRTUAL display adapters. A BitBlt landing during the
-# fullscreen-game → desktop mode switch at match-end pagefaulted a
-# display driver → bugcheck 0x50 (PAGE_FAULT_IN_NONPAGED_AREA), ~30-50s
-# after every game. bettercam uses DXGI Desktop Duplication bound to the
-# single real adapter (device 0): it never touches the virtual adapters,
-# and on a display-mode change the duplication loses access GRACEFULLY
-# (grab() returns None / raises a recoverable error) - we release and
-# rebuild the camera next cycle instead of faulting a driver.
+# Parsec + secondary VIRTUAL display adapters. A BitBlt landing during the
+# fullscreen-game -> desktop mode switch at match-end was unreliable
+# against those virtual adapters. bettercam uses DXGI Desktop Duplication
+# bound to the single real adapter (device 0): it never touches the
+# virtual adapters, and on a display-mode change the duplication loses
+# access GRACEFULLY (grab() returns None / raises a recoverable error) -
+# we release and rebuild the camera next cycle instead.
 _BETTERCAM: dict = {}          # output_idx -> bettercam camera (created once, reused)
 _BETTERCAM_LASTIMG: dict = {}  # output_idx -> last good PIL image (static-screen fill)
 _BETTERCAM_DISABLED = False    # True only if bettercam import hard-fails
@@ -146,10 +144,11 @@ _BETTERCAM_DISABLED = False    # True only if bettercam import hard-fails
 def _resolve_output_idx(monitor_index: int | None) -> int:
     """Map the agent's monitor index to a DXGI output index on device 0.
     None (legacy 'virtual desktop' / all_screens) is retired - it was the
-    0x50-BSOD trigger - and maps to the primary output with a warning."""
+    unreliable virtual-adapter path - and maps to the primary output with
+    a warning."""
     if monitor_index is None:
         log.warning("virtual-desktop capture (all_screens) retired - it was the "
-                    "0x50-BSOD trigger; using primary output 0 instead")
+                    "unreliable virtual-adapter path; using primary output 0 instead")
         return 0
     return max(0, monitor_index)
 
@@ -167,7 +166,7 @@ def _bettercam_image(output_idx: int):
     """Return a PIL RGB image for the DXGI output, or None on a transient
     miss. A grab failure (mode-change access-loss) releases the camera so
     the next cycle rebuilds it - this graceful loss is what replaces the
-    BSOD-prone virtual-desktop BitBlt."""
+    unreliable virtual-desktop BitBlt."""
     import bettercam
     import numpy as np
     from PIL import Image
@@ -175,7 +174,7 @@ def _bettercam_image(output_idx: int):
         cam = _BETTERCAM.get(output_idx)
         if cam is None:
             # device_idx=0 is the only DXGI adapter (Intel Xe); the
-            # Parsec/Duet virtual adapters are intentionally unreachable.
+            # secondary virtual display adapters are intentionally unreachable.
             # output_color="BGRA" returns the raw native array - bettercam
             # skips its cv2-based colour conversion (no OpenCV dep), we
             # reorder BGRA→RGB below in numpy.
@@ -207,8 +206,8 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
             crop: tuple[int, int, int, int] | None = None) -> tuple[str, str, int, int]:
     """Return (b64, format, width, height) for the chosen monitor via DXGI
     Desktop Duplication (bettercam) on the single real adapter - legacy
-    virtual-desktop / virtual-adapter capture is retired (see the BSOD
-    AUDIT note above).
+    virtual-desktop / virtual-adapter capture is retired (see the capture-
+    stability AUDIT note above).
 
     monitor_index → DXGI output index on device 0 (0 = primary game
     monitor, 1 = secondary). None maps to the primary output.
@@ -230,8 +229,8 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
                          "restore the safe DXGI backend.", e)
     if img is None and _BETTERCAM_DISABLED:
         # Last-resort degraded path: primary monitor ONLY, no all_screens
-        # (does not traverse the Parsec/Duet virtual adapters). Less safe
-        # than DXGI but far safer than the retired virtual-desktop BitBlt.
+        # (does not traverse the secondary virtual display adapters). Less
+        # safe than DXGI but far safer than the retired virtual-desktop BitBlt.
         from PIL import ImageGrab
         img = ImageGrab.grab()
     if img is None:

@@ -206,7 +206,7 @@ changes. Achieved by:
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| Game-end 0x50 BSOD | HIGH historically | Overlay is a DWM compositor window, NOT DXGI capture - it is not the screen-agent crash surface (`feedback_gamepc_screen_capture_bsod`). Do NOT add frame capture to the shell. Keep League Borderless. Hide overlay on the WaitingForStats/resolution-swap edge per `feedback_gamepc_lcu_phase_watcher_bsod`. |
+| Overlay capture surface | LOW | Overlay is a DWM compositor window, NOT DXGI capture - so it does not add a frame-capture surface. Do NOT add frame capture to the shell. Keep League Borderless. Hide overlay on the WaitingForStats/resolution-swap edge. |
 | Vanguard anti-cheat | MEDIUM | RC reads only Live Client :2999 + LCU lockfile (official), no game-memory reads, no input injection into the game. Same bar Overlay App E/aggregator A/Overlay App F clear with transparent overlays. State this explicitly; do not add memory reads. |
 | Exclusive Fullscreen hides overlay | MEDIUM | Borderless is mandatory and already the locked setting. Shell detects fullscreen and shows a "switch to Borderless" hint. |
 | Focus steal mid-fight | MEDIUM | Default PASSIVE click-through; ACTIVE only on explicit hotkey; auto-revert to PASSIVE after N seconds idle. |
@@ -231,7 +231,7 @@ Each phase is its own session(s). Acceptance = the listed proof.
 - **Phase 3 - Overlay window (Surface B, passive).** Transparent always-on-top
   window, `?overlay=1` + `overlay.css` compact layout, click-through, monitor
   pick by resolution. Proof: HUD visible over a Borderless match, clicks pass to
-  game, no BSOD across a full game + game-end.
+  game, stable across a full game + game-end.
 - **Phase 4 - Overlay interactivity (Surface B, active).** ACTIVE mode toggle,
   change-pulse notifications, wire DS weight tweak / A+B coach / build reorder
   controls. Proof: operator changes a DS weight from the overlay mid-match.

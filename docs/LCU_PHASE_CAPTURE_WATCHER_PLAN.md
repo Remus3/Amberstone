@@ -81,7 +81,7 @@ Capture debounce: 1 capture per (topic, sub_phase, queue_id) tuple per gameflow 
 1. WAMP push arrives on watcher.
 2. Watcher classifies into `(topic, sub_phase, queue_id)` tuple.
 3. Debounce gate: skip if already fired this cycle.
-4. Local screenshot via DXGI (single-frame, not the continuous screen agent that BSODs per [[feedback_gamepc_screen_capture_bsod]]).
+4. Local screenshot via DXGI (single-frame, not the continuous screen agent).
 5. POST to `:8889/upload-frame` with extra meta: `{"event": "<topic>", "sub_phase": "<phase>", "queue_id": <int>, "captured_at": "<iso>"}`.
 6. Legion dashboard tags the frame as event-driven; UI audit ritual subagent can subscribe to event-tagged frames specifically.
 7. Optional: write a paired JSON sidecar at `data/event_captures/<topic>_<sub_phase>_<queue_id>_<iso>.json` with the LCU session payload at capture time (separate from the frame's PNG).
@@ -120,7 +120,7 @@ Per public LCU surface: connect to `wss://riot:<password>@127.0.0.1:<port>/` whe
 | LCU restart (lockfile rotated) | watcher re-reads lockfile + reconnects with exponential backoff capped at 30s |
 | Game-PC reboot | scheduled task with at-logon trigger restarts watcher |
 | WSS handshake reject (League not launched) | watcher idles + retries every 10s; no error spam in logs |
-| DXGI capture exception | log + skip the single capture; don't tear down subscription; matches the "screen agent BSODs" boundary [[feedback_gamepc_screen_capture_bsod]] |
+| DXGI capture exception | log + skip the single capture; don't tear down subscription |
 | `:8889/upload-frame` POST fails | retry-with-backoff 3x, drop after; do NOT block on next event |
 
 ## Out-of-scope
@@ -135,7 +135,7 @@ Per public LCU surface: connect to `wss://riot:<password>@127.0.0.1:<port>/` whe
 
 - The watcher runs on Game-PC, not Legion. Capture decisions live where the capture surface lives.
 - WAMP topics are subscribed using the `OnJsonApiEvent_<uri>` form, not the legacy `/messaging` HTTP poll.
-- DXGI on-demand single-frame capture only. NEVER reintroduce the continuous screen-agent (BSOD risk per memory).
+- DXGI on-demand single-frame capture only. Do NOT reintroduce the continuous screen-agent loop in this watcher; it creates + releases per event.
 - Sidecar JSON path is `data/event_captures/<topic>_<sub_phase>_<queue_id>_<iso>.json` - distinct from `data/coaching_data/` so it does NOT leak into coach-prompt context.
 - New file `tools/gamepc_phase_watcher.py`; do NOT fold into `gamepc_lcu_agent.py`.
 

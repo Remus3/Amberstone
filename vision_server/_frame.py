@@ -10,20 +10,16 @@ Split out of moon_vision_server.py during Phase 2.4. Owns:
 - ``get_latest_frame(source)`` - GET /latest-frame[?source=...].
 
 1-PC self-heal (post-2026-05 Legion consolidation, ADR-011): mirrors the
-liveclient relay self-heal (vision_server/_relay.py, item 267). After the
-Game-PC -> Legion consolidation the continuous DXGI screen-agent that pushed
-frames here is DISABLED (it is the permanent BSOD trigger - ADR-011,
-feedback_gamepc_screen_capture_bsod), so nothing feeds the global
-``/latest-frame`` slot. When League runs on this host
-(``core.game_host.GAME_HOST`` local) and the cached frame is stale/missing,
-``get_latest_frame`` grabs ONE frame in-process (a single on-demand GDI BitBlt
-via PIL.ImageGrab - NOT a loop, NOT the continuous DXGI surface) so the relay
-agent becomes an optimization rather than a hard dependency. A remote
-``RC_GAME_HOST`` (legacy 2-PC) disables the self-grab (the agent stays primary;
-a remote box's screen is not capturable here). Self-grabs are throttled so a
-no-game steady state never hammers GDI, and are fail-soft (return the existing
-cache, never raise). This ONLY activates as a fallback when the relay frame is
-already dead.
+liveclient relay self-heal (vision_server/_relay.py, item 267). On 1-PC the
+continuous screen-agent loop is retired in favor of the in-process self-grab
+relay, so the global ``/latest-frame`` slot is fed on demand. When League runs
+on this host (``core.game_host.GAME_HOST`` local) and the cached frame is
+stale/missing, ``get_latest_frame`` grabs ONE frame in-process (a single
+on-demand GDI BitBlt via PIL.ImageGrab) so the relay agent is an optimization
+rather than a hard dependency. A remote ``RC_GAME_HOST`` (legacy 2-PC) disables
+the self-grab (the agent stays primary; a remote box's screen is not capturable
+here). Self-grabs are lightly throttled to avoid redundant back-to-back grabs
+and are fail-soft (return the existing cache, never raise).
 """
 from __future__ import annotations
 
@@ -46,11 +42,11 @@ _frames_by_source: dict = {}
 
 # -- 1-PC self-heal config (ADR-011) -----------------------------------------
 # Mirrors vision_server/_relay.py. A single one-shot GDI BitBlt grab is the
-# fallback; it is NOT the continuous DXGI/bettercam loop that crashed Game-PC
-# (feedback_gamepc_screen_capture_bsod) - that loop stays permanently retired.
+# fallback for the retired continuous screen-agent loop (1-PC, ADR-011). The
+# intervals are tight so vision recording stays fresh during live gameplay.
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
-_SELF_GRAB_STALE_S = 2.0          # serve the cache as-is when fresher than this
-_SELF_GRAB_MIN_INTERVAL_S = 1.5   # min gap between in-process grab attempts
+_SELF_GRAB_STALE_S = 1.0          # serve the cache as-is when fresher than this
+_SELF_GRAB_MIN_INTERVAL_S = 0.5   # min gap between in-process grab attempts
 _SELF_GRAB_MAX_WIDTH = 1280       # downscale to the documented coaching width
 _SELF_GRAB_JPEG_QUALITY = 85      # matches the legacy screen-agent sweet spot
 _self_grab_lock = threading.Lock()
@@ -60,8 +56,8 @@ _last_self_grab_attempt = 0.0
 def _fetch_frame_direct():
     """One in-process screen grab. Returns the cache-shaped frame dict (with a
     base64 JPEG ``b64``) or None on any failure (PIL absent, headless session,
-    grab error). A single GDI BitBlt via PIL.ImageGrab - NOT the continuous
-    DXGI/bettercam surface that is the BSOD trigger. Patchable seam for tests."""
+    grab error). A single GDI BitBlt via PIL.ImageGrab. Patchable seam for
+    tests."""
     try:
         from PIL import ImageGrab
     except Exception:

@@ -1,13 +1,11 @@
 """1-PC self-heal for the vision-frame relay (vision_server/_frame.py).
 
-Mirrors tests/test_liveclient_self_heal_1pc.py. After the Game-PC -> Legion
-consolidation (ADR-011) the continuous DXGI screen-agent that pushed frames to
-:8889/upload-frame is DISABLED (it is the permanent BSOD trigger), so nothing
-feeds the global /latest-frame slot. get_latest_frame() grabs ONE frame
-in-process (a single GDI BitBlt via PIL.ImageGrab - NOT a loop, NOT the
-continuous DXGI surface) when the cache is stale + League is local. This makes
-the RC-LiveClientRelay/screen-agent an optimization rather than a hard
-dependency.
+Mirrors tests/test_liveclient_self_heal_1pc.py. On 1-PC (ADR-011) the
+continuous screen-agent loop is retired in favor of the in-process self-grab
+relay, so the global /latest-frame slot is fed on demand. get_latest_frame()
+grabs ONE frame in-process (a single GDI BitBlt via PIL.ImageGrab) when the
+cache is stale + League is local. This makes the RC-LiveClientRelay/screen-agent
+an optimization rather than a hard dependency.
 
 Contract:
   - a FRESH relayed upload short-circuits the self-grab (zero capture).
