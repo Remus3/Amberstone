@@ -83,6 +83,22 @@ python tools/daemon_slayer_wiki_stats_extract.py   # writes data/daemon_slayer/<
 
 It re-derives the offset windup tier (109 champs via the wiki attack_delay_offset, provenance `wiki_offset`); rerun `python tools/ds_windup_offset_compare.py` to find newly-recoverable champs on a new patch. Do NOT commit a run reporting `_with_cast_measured == 0` (host could not reach the wiki / CDragon).
 
+### Data extractors (full list)
+
+Every pipeline that pulls external data into the repo. The first two run on patch day; the DS sidecars are re-extracted per patch (see the per-patch refresh chain order in `reference_patch_refresh_workflow` / the patch-refresh section above - it documents the canonical command sequence; do not duplicate it here).
+
+| Script | Source | Data piece pulled | Output | Consumed by |
+|---|---|---|---|---|
+| `scripts/data_pipeline.py` | DDragon CDN + Aggregator B (ARAM) | champion meta, item catalog, runes, summoner spells, ARAM tier rankings | `data/meta/ddragon_*.json`, `web/data/{items,champions,spells}_index.json` | dashboard UI, DS data_loader, abilities extractor |
+| `tools/daemon_slayer_extract.py` | DDragon + lolmath.net JS chunks + Meraki bulk + CDragon Arena | champion base stats + lolmath scenarios/skill-orders/aram_modifiers + Arena augments + Meraki item passives | `data/daemon_slayer/<patch>/{champions,items,scenarios,arena_augments,items_meraki,manifest}.json` + `current.txt` | DS engine snapshot, combo sim, scenario scorer |
+| `tools/daemon_slayer_abilities_extract.py` | Meraki bulk champions endpoint | per-champion ability schema: damage blocks w/ typed scaling (AD%/AP%/HP%), cast_time, cooldown[], cost[] | `data/daemon_slayer/<patch>/champion_abilities.json` | DS damage evaluator, ability_dps/hps/burst, CC scorer |
+| `tools/daemon_slayer_wiki_stats_extract.py` | LoL wiki ChampionData (wiki.leagueoflegends.com action=raw) + CDragon character bins | attack_cast_time (AA windup s), attack_total_time, missile_speed, attack_delay_offset, per-mode balance mode_modifiers | `data/daemon_slayer/<patch>/wiki_stats.json` | combo.py AA-windup |
+| `tools/daemon_slayer_cdragon_spell_extract.py` | CDragon character bins (raw.communitydragon.org) | per-spell ammo/recharge, missile speed, coarse CC tags (Stun/Root/Knockup/...), AOE geometry | `data/daemon_slayer/<patch>/cdragon_spell_stats.json` | DATA-ONLY sidecar (no consumer wired yet) |
+| `tools/daemon_slayer_wiki_ability_extract.py` | LoL wiki Template:Data MediaWiki batch query API | per-ability static-cooldown flag, recharge, typed CC booleans, geometry | `data/daemon_slayer/<patch>/wiki_ability_stats.json` | DATA-ONLY sidecar (no consumer wired yet) |
+| `tools/ddragon_mirror_refresh.py` | DDragon bundle JSON + per-asset CloudFront | champion/ability/passive/item/profileicon/map/perk images + bundle JSONs; atomic ETag delta sync | `web/data/ddragon/<patch>/img/*`, `data/meta_build/ddragon/<patch>/*` | dashboard local asset serving (no network mid-match) |
+
+The two DATA-ONLY sidecars (`cdragon_spell_stats`, `wiki_ability_stats`) write per-patch JSON but have no engine consumer wired yet - they are forward-staged for future CC/geometry scorers. `ddragon_mirror_refresh.py` has its own section below (flags + scheduled task).
+
 ---
 
 ## Vision server
