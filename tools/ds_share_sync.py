@@ -175,10 +175,12 @@ def _build_expected() -> dict[str, bytes]:
         # cc_output_registry_notes.json (item 294) is the same: provenance source
         # quotes for the cc_output.py CC-kind registry, not read at runtime (the
         # registry is baked into cc_output.py), so it too is not mirrored.
+        # mobility_registry_notes.json (item 297) is the mobility.py analog.
         if p.name in (
             "CHANGELOG.md",
             "CC_CONDITIONAL_NOTES.md",
             "cc_output_registry_notes.json",
+            "mobility_registry_notes.json",
         ) and p.parent == eng:
             continue
         if p.name == "__init__.py" and p.parent == eng:

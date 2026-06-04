@@ -1331,6 +1331,29 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.109.0 (Mobility / gap-close / kiting scorer - item 297, the EIGHTH scored axis,
+built by a 10-channel roster fan-out. NEW agents/daemon_slayer/mobility.py: a
+per-(champion, spell) self-mobility registry (dashes / blinks / leaps / MS
+steroids / brief untargetable hops) plus a kind -> weight table (BLINK 1.0 /
+DASH 0.8 / LEAP 0.8 / UNTARGET_REPOSITION 0.7 / MS_STEROID 0.5), normalised to
+Flash-units where 1.0 unit = one Flash (_FLASH_UNITS = 400 units of instant
+displacement). compute_mobility() -> MobilityResult with mobility_score
+(unconditional weighted units), conditional_mobility_score (gated moves credited
+at the 0.5 availability midpoint), total_mobility_score, and raw_mobility_units
+(unweighted unconditional). Normalisation rules: a single displacement is capped
+at _MAX_DASH_UNITS (1500, ~one screen) so a global teleport (TwistedFate R /
+Shen R / Pantheon R, 25000-unit literals) does not dwarf the axis; a sustained /
+toggle MS buff with no fixed window (Quinn R / MissFortune Strut / Warwick W) is
+credited over _MS_SUSTAINED_WINDOW_S (3.0s); a multi-charge dash multiplies by
+its cast count. 254 entries / 150 champions (105 MS steroids, 130 conditional).
+NEW /mobility route (POST + GET) in server.py. PURELY ADDITIVE - reads no
+existing scorer and is read by none, so every existing route is byte-identical;
+the new endpoint is the opt-in. + tools/ds_mobility_build.py (reusable validate /
+inject generator + provenance sidecar). +22 tests. NEXT (Phase D): an
+auto-pairing consumer crediting mobility into a live disengage / kite / draft
+verdict; per-target tenacity-aware kiting; tune weights + the cap / window
+midpoints after a live re-rank.)
+
 1.108.0 (Meraki content-freshness guard - DS source-adoption WIN 2, 2026-06-03.
 The Meraki `latest` champions endpoint is mutable but its CONTENT is frozen at a
 past game patch; the snapshot `fetched_at` reflects the FETCH wall-clock and lies
