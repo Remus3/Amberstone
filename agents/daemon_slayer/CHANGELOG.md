@@ -1331,6 +1331,32 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.108.0 (Meraki content-freshness guard - DS source-adoption WIN 2, 2026-06-03.
+The Meraki `latest` champions endpoint is mutable but its CONTENT is frozen at a
+past game patch; the snapshot `fetched_at` reflects the FETCH wall-clock and lies
+about data age. tools/daemon_slayer_abilities_extract.py now surfaces the honest
+signal: _meraki_content_patch() takes the newest per-record `patchLastChanged`
+(YY.MM, numeric-sorted so 25.15 > 25.9) and stamps it as `meraki_content_patch`
+on champion_abilities.json; a pinned _EXPECTED_MERAKI_CONTENT_PATCH = "25.15"
+trips a loud WARNING to re-pin + re-validate ability ratios + gold/golden tests
+when Meraki finally refreshes. tools/daemon_slayer_extract.py propagates that
+content patch into manifest.json meraki_items.content_patch (best-effort read of
+the sibling champion_abilities.json). Regenerated 16.11.1/champion_abilities.json:
+content patch 25.15, DATA + COVERAGE byte-identical to HEAD (171 champs / 927
+forms) - the `latest` content is genuinely frozen, so zero ability-ratio change
+and zero engine-behavior risk; ONLY the provenance field was added. The gold/
+golden DS tests were already patch-pinned (test_gold_efficiency_p1l13 pins the
+vendored 16.10.1 snapshot + derives expected at runtime; test_golden_e2e_p1l24
+hand-derives from first principles vs the loaded snapshot), so WIN 2's gold-pin
+bullet was a verified no-op. +12 freshness/manifest tests. Also fixed a WIN 1
+completion gap caught by the fuller test run: tests/test_routes_ds_combo.py
+test_totals_block hardcoded a flat-windup combo duration of 2.0 for Lux that the
+WIN 1 AA-windup offset tier (1.107.0) shifted to 1.984 (Lux AA windup 0.25 ->
+0.234); replaced the literal with the structural clock-end identity
+(duration_s == last action t + its cast_time) so it is robust to windup drift.
+Long-term re-source of ability ratios from DDragon/CDragon remains future work.
+Plan: docs/DS_SOURCE_ADOPTION_PLAN.md.)
+
 1.107.0 (AA-windup offset tier - DS source-adoption WIN 1, 2026-06-03. The
 wiki_stats sidecar left 110 champions on the flat 0.25s AA-windup default; 109
 are now recovered from the wiki's published attack_delay_offset via the validated

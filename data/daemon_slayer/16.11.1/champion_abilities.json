@@ -1,8 +1,9 @@
 {
   "version": "16.11.1",
-  "fetched_at": "2026-05-27T20:24:50-0500",
+  "fetched_at": "2026-06-03T20:47:08-0500",
   "source": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json",
   "engine_phase": "4a",
+  "meraki_content_patch": "25.15",
   "count": 171,
   "coverage": {
     "total_forms": 927,
@@ -26699,6 +26700,11 @@
             {
               "attribute": "Physical Damage Per Dagger",
               "attribute_kind": "damage",
+              "bonus_ad_pct": [
+                16.0,
+                16.0,
+                16.0
+              ],
               "unparsed_modifiers": [
                 {
                   "values": [
@@ -26712,16 +26718,16 @@
                     "% per 100% bonus attack speed"
                   ]
                 }
-              ],
-              "bonus_ad_pct": [
-                16.0,
-                16.0,
-                16.0
               ]
             },
             {
               "attribute": "Maximum Physical Damage",
               "attribute_kind": "damage",
+              "bonus_ad_pct": [
+                240.0,
+                240.0,
+                240.0
+              ],
               "unparsed_modifiers": [
                 {
                   "values": [
@@ -26735,11 +26741,6 @@
                     "% per 100% bonus attack speed"
                   ]
                 }
-              ],
-              "bonus_ad_pct": [
-                240.0,
-                240.0,
-                240.0
               ]
             },
             {
@@ -32148,6 +32149,11 @@
             {
               "attribute": "Total Physical Damage",
               "attribute_kind": "damage",
+              "base": [
+                330.0,
+                660.0,
+                990.0
+              ],
               "total_ad_pct": [
                 575.0,
                 575.0,
@@ -32171,11 +32177,6 @@
                     "   per 4% critical strike chance"
                   ]
                 }
-              ],
-              "base": [
-                330.0,
-                660.0,
-                990.0
               ]
             },
             {

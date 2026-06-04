@@ -41,7 +41,8 @@
   "meraki_items": {
     "count": 320,
     "fetched_at": "2026-05-27T20:24:40-0500",
-    "source": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
+    "source": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json",
+    "content_patch": "25.15"
   },
   "outputs": {
     "champions": "data\\daemon_slayer\\16.11.1\\champions.json",
