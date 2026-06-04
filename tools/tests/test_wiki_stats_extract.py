@@ -907,6 +907,119 @@ class TestEngineDefaultCast:
         assert rec["attack_cast_time"] == pytest.approx(0.25)
         assert rec["attack_cast_time_src"] == "cdragon"
 
+    def test_merge_fill_offset_tier(self):
+        # offset-derived value fills when wiki + cdragon are both null
+        rec = {}
+        W._merge_fill(rec, "attack_cast_time", None, None, 0.25, offset_val=0.2224)
+        assert rec["attack_cast_time"] == pytest.approx(0.2224)
+        assert rec["attack_cast_time_src"] == "wiki_offset"
+
+    def test_merge_fill_cdragon_beats_offset(self):
+        rec = {}
+        W._merge_fill(rec, "attack_cast_time", None, 0.3, 0.25, offset_val=0.2224)
+        assert rec["attack_cast_time"] == pytest.approx(0.3)
+        assert rec["attack_cast_time_src"] == "cdragon"
+
+    def test_merge_fill_offset_beats_default(self):
+        rec = {}
+        W._merge_fill(rec, "attack_cast_time", None, None, 0.25, offset_val=0.19)
+        assert rec["attack_cast_time"] == pytest.approx(0.19)
+        assert rec["attack_cast_time_src"] == "wiki_offset"
+
+
+# --------------------------------------------------------------------------- offset cast tier (Win 1)
+class TestOffsetCastTier:
+    @pytest.fixture(autouse=True)
+    def _reset_cache(self):
+        W._WIKI_TABLE_CACHE = None
+        yield
+        W._WIKI_TABLE_CACHE = None
+
+    def _common(self, monkeypatch, table):
+        monkeypatch.setattr(W, "_load_champion_ids", lambda p: list(table.keys()))
+        monkeypatch.setattr(W, "_load_display_names", lambda p: {k: k for k in table})
+        monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {k: 175.0 for k in table})
+        monkeypatch.setattr(W, "_load_wiki_table", lambda: table)
+        monkeypatch.setattr(W, "_fetch_field", lambda disp, field, stats_fallback: None)
+        monkeypatch.setattr(W, "_cdragon_scalars", lambda cid, ar: {
+            "attack_cast_time": None, "attack_total_time": None, "missile_speed": None,
+        })
+
+    def test_parse_lua_table_captures_signed_offset(self):
+        # the unsigned _scalar_in_block drops the leading minus; the offset tier
+        # MUST capture a negative attack_delay_offset (most champs are negative).
+        blk = (
+            '["Akali"] = {\n'
+            '  ["id"] = 84,\n'
+            '  ["apiname"] = "Akali",\n'
+            '  ["attack_delay_offset"] = -0.160999998450279,\n'
+            '  ["stats"] = {\n'
+            '    ["as_base"] = 0.625,\n'
+            '  },\n'
+            '}\n'
+        )
+        table = W._parse_lua_table(blk)
+        assert "Akali" in table
+        assert table["Akali"]["attack_delay_offset"] == pytest.approx(-0.161, abs=1e-3)
+        assert table["Akali"]["as_base"] == pytest.approx(0.625)
+
+    def test_offset_recovers_default_fill(self, monkeypatch):
+        # Akali: no wiki/cdragon cast, but offset -0.161 + as_base 0.625 ->
+        # windup = (0.300 - 0.161)/0.625 = 0.2224, provenance wiki_offset.
+        table = {"Akali": {"wiki_name": "Akali", "attack_cast_time": None,
+                           "attack_total_time": None, "missile_speed": None,
+                           "attack_delay_offset": -0.161, "as_base": 0.625,
+                           "mode_modifiers": {}}}
+        self._common(monkeypatch, table)
+        out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False,
+                        source="both", default_cast=True)
+        rec = out["champions"]["Akali"]
+        assert rec["attack_cast_time_src"] == "wiki_offset"
+        assert rec["attack_cast_time"] == pytest.approx((0.300 - 0.161) / 0.625)
+        assert out["_offset_cast_fills"] == 1
+        assert out["_default_cast_fills"] == 0
+        # offset-derived counts as measured (not a flat default)
+        assert out["_with_cast_measured"] == 1
+
+    def test_missing_as_base_falls_to_default(self, monkeypatch):
+        # offset present but no as_base (cannot convert) -> flat default 0.25
+        table = {"X": {"wiki_name": "X", "attack_cast_time": None,
+                       "attack_total_time": None, "missile_speed": None,
+                       "attack_delay_offset": -0.1, "as_base": None,
+                       "mode_modifiers": {}}}
+        self._common(monkeypatch, table)
+        out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False,
+                        source="both", default_cast=True)
+        assert out["champions"]["X"]["attack_cast_time_src"] == "default"
+        assert out["_offset_cast_fills"] == 0
+        assert out["_default_cast_fills"] == 1
+
+    def test_no_offset_falls_to_default(self, monkeypatch):
+        # Alistar: neither cast nor offset -> the lone genuine default fill
+        table = {"Alistar": {"wiki_name": "Alistar", "attack_cast_time": None,
+                             "attack_total_time": None, "missile_speed": None,
+                             "attack_delay_offset": None, "as_base": 0.625,
+                             "mode_modifiers": {}}}
+        self._common(monkeypatch, table)
+        out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False,
+                        source="both", default_cast=True)
+        assert out["champions"]["Alistar"]["attack_cast_time_src"] == "default"
+        assert out["_offset_cast_fills"] == 0
+        assert out["_default_cast_fills"] == 1
+
+    def test_wiki_cast_beats_offset(self, monkeypatch):
+        # an explicit wiki cast present -> wiki wins, offset ignored
+        table = {"Aatrox": {"wiki_name": "Aatrox", "attack_cast_time": 0.3,
+                            "attack_total_time": 1.52, "missile_speed": None,
+                            "attack_delay_offset": -0.1, "as_base": 0.651,
+                            "mode_modifiers": {}}}
+        self._common(monkeypatch, table)
+        out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False,
+                        source="both", default_cast=True)
+        assert out["champions"]["Aatrox"]["attack_cast_time_src"] == "wiki"
+        assert out["_offset_cast_fills"] == 0
+        assert out["_default_cast_fills"] == 0
+
 
 # --------------------------------------------------------------------------- ASCII hygiene
 class TestAsciiHygiene:

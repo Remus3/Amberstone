@@ -1331,6 +1331,26 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.107.0 (AA-windup offset tier - DS source-adoption WIN 1, 2026-06-03. The
+wiki_stats sidecar left 110 champions on the flat 0.25s AA-windup default; 109
+are now recovered from the wiki's published attack_delay_offset via the validated
+formula windup_fraction = 0.300 + attack_delay_offset, stored as seconds at base
+AS: (0.300 + offset) / as_base (combo.py is a FIXED-windup model, no AS curve).
+Fraction validated 4/4 EXACT vs the wiki's own Windup% (Caitlyn/Ashe/Vayne/Jinx).
+``tools/daemon_slayer_wiki_stats_extract.py`` now parses attack_delay_offset +
+as_base from the SAME ChampionData raw block (zero extra network; signed parse -
+the unsigned _scalar_in_block dropped the leading minus most offsets carry) and
+adds a ``wiki_offset`` provenance tier in _merge_fill BETWEEN cdragon and the flat
+default. wiki_stats.json regenerated: _offset_cast_fills 109, _default_cast_fills
+1 (only Alistar has neither an explicit cast time nor an offset), _with_cast_measured
+61 -> 170. Consumers byte-identical: combo.py:317 / data_loader.py:188 already
+prefer any positive sidecar attack_cast_time, so the 109 new per-champ windups flow
+through with no engine-code change. +6 offset-tier tests (extract + overlay).
+Plan: docs/DS_SOURCE_ADOPTION_PLAN.md. Source choice deviates from the plan's
+literal cdragon mAttackDelayCastOffsetPercent to the wiki raw fields, matching the
+validator ds_windup_offset_compare.py ground truth where both offset AND as_base
+are co-located.)
+
 1.106.0 (Offensive CC-OUTPUT / lockdown scorer, item 294 - the SEVENTH SCORED axis
 and the MIRROR of the survivability CC axes (item 290 champion CC-mitigation / item
 292 spell-shield): those score how much enemy CC a champion SURVIVES, this scores
