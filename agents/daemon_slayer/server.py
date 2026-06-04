@@ -77,6 +77,7 @@ from .scaling import compute_scaling
 from .waveclear import compute_waveclear
 from .threatrange import compute_threatrange
 from .zonecontrol import compute_zonecontrol
+from .objdamage import compute_objdamage
 from .matchup import compute_matchup
 from .rank import SORT_KEYS, rank_items
 
@@ -128,6 +129,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/waveclear</td><td>wave-clear / AoE-shove (range-weighted clear score + top kind + ranged-shove flag) for a champion (item 300)</td></tr>
 <tr><td>POST</td><td>/threat-range</td><td>effective threat-range (reach-weighted damage/CC score + top band + artillery flag) for a champion (item 301)</td></tr>
 <tr><td>POST</td><td>/zone-control</td><td>zone-control / area-denial (denial-weighted persistence score + top kind + controls-terrain flag) for a champion (item 302)</td></tr>
+<tr><td>POST</td><td>/objective-damage</td><td>objective / structure-damage (kind-weighted scope-scaled score + top kind + pressures-structures flag) for a champion (item 303)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -1291,6 +1293,32 @@ def _route_zonecontrol(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_objdamage(body: dict) -> dict:
+    """POST /objective-damage - objective / structure-damage for a champion.
+
+    Item 303 (ENGINE 1.115.0): the fourteenth scored axis - how much pressure a
+    champion puts on the map's OBJECTIVES (turrets / structures and epic monsters
+    - drake / baron / herald / grubs). Returns a kind-weighted, scope-scaled
+    ``objdamage_score``, the ``top_kind`` label (the champion's strongest
+    objective tool), and a ``pressures_structures`` flag (can it actually damage
+    towers). Scores the full roster.
+    Body:
+      * ``champion`` (required)
+      * ``mode`` (default SR; carried on the result, does not change output)
+    Additive read-only metric: it perturbs no other route.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    try:
+        result = compute_objdamage(champion, mode=mode)
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_rank_assassin(body: dict) -> dict:
     """POST /rank-assassin - rank items by total-burst-damage delta.
 
@@ -1589,6 +1617,7 @@ _POST_ROUTES = {
     "/waveclear": _route_waveclear,
     "/threat-range": _route_threatrange,
     "/zone-control": _route_zonecontrol,
+    "/objective-damage": _route_objdamage,
 }
 
 # GET routes that need a body merge from query params for the same handler.

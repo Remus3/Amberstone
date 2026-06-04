@@ -1,0 +1,2572 @@
+{
+ "item": 303,
+ "engine": "1.115.0",
+ "count": 285,
+ "entries": [
+  {
+   "champion": "Aatrox",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "melee bruiser with sustained physical damage; no special structure or monster bonus in kit"
+  },
+  {
+   "champion": "Ahri",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "burst mage with low auto-attack DPS; orb abilities are short-range and champion-targeted"
+  },
+  {
+   "champion": "Akali",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "melee assassin; abilities deal AP/AD damage to structures but no special objective bonus"
+  },
+  {
+   "champion": "Akshan",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "marksman with boomerang and rapid-fire auto attacks; solid single-target DPS on structures and monsters"
+  },
+  {
+   "champion": "Alistar",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "tank support with CC-focused kit; low base AD and no offensive objective tools"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "melee fighter/bruiser applying continuous physical damage to structures and monsters"
+  },
+  {
+   "champion": "Amumu",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "AP tank jungler; moderate base magic damage output but no special objective multipliers"
+  },
+  {
+   "champion": "Anivia",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "control mage with slow auto attacks; low base AD DPS applied to structures and monsters"
+  },
+  {
+   "champion": "Anivia",
+   "source": "R",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": true,
+   "source_quote": "Glacial Storm channels persistent AoE magic damage on an area, steadily melting dragons and structures while active"
+  },
+  {
+   "champion": "Annie",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "burst mage with low auto-attack DPS; general single-target presence at objectives"
+  },
+  {
+   "champion": "Annie",
+   "source": "R",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": true,
+   "source_quote": "Tibbers summon attacks structures and monsters autonomously while active after R cast"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "hyper-carry marksman with extremely high attack-speed and weapon-cycling DPS on structures and epic monsters"
+  },
+  {
+   "champion": "Ashe",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "marksman with Ranger's Focus empowered autos granting rapid multi-arrow burst; solid sustained DPS on structures and objectives"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "scaling mage whose stacked star-forging damage applies continuously to objectives"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": true,
+   "source_quote": "Falling Star / The Skies Descend deals massive AoE magic damage that can threaten low-HP epic objectives"
+  },
+  {
+   "champion": "Aurora",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "mage-assassin applying magic damage to objectives; no special structure or monster multipliers"
+  },
+  {
+   "champion": "Azir",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "mage general auto-attack and ability DPS contributed to structures and monsters"
+  },
+  {
+   "champion": "Azir",
+   "source": "W",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.62,
+   "conditional": false,
+   "source_quote": "Sand Soldiers summoned via W attack alongside Azir, dealing magic damage to structures and epic monsters"
+  },
+  {
+   "champion": "Bard",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.17,
+   "conditional": false,
+   "source_quote": "roaming support with very low base AD; chime-empowered autos provide minimal objective DPS"
+  },
+  {
+   "champion": "Belveth",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "void jungler with extremely high attack speed after ability casts; sustained on-hit DPS on structures and monsters"
+  },
+  {
+   "champion": "Belveth",
+   "source": "E",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Royal Maelstrom deals true damage against large monsters and epic objectives, dramatically increasing jungle clear and objective damage"
+  },
+  {
+   "champion": "Blitzcrank",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "tank support with Mana Barrier; base AD autos deal modest objective damage with no special multipliers"
+  },
+  {
+   "champion": "Brand",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": false,
+   "source_quote": "AP mage dealing moderate magic damage to objectives via autos and abilities; Blaze passive does not bonus structures"
+  },
+  {
+   "champion": "Braum",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "melee support with low AD and no damage-amplification tools; general auto-attack DPS applied to a structure"
+  },
+  {
+   "champion": "Briar",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.62,
+   "conditional": false,
+   "source_quote": "AD bruiser jungler with high attack speed and bleed stacking; strong continuous single-target DPS melts structures and epics"
+  },
+  {
+   "champion": "Briar",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Snack Attack - frenzy auto-chain with empowered bite; sustained on-target attack-speed steroid effective on objectives and epics"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "long-range ADC with solid base AD and attack speed; reliable sustained DPS on towers and epics"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": true,
+   "source_quote": "Headshot - every 6th auto (or sooner near traps/nets) is an empowered long-range shot; fires frequently on a stationary objective"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": true,
+   "source_quote": "Ace in the Hole - long-range single-target nuke; can snipe a low-HP epic monster from across the map"
+  },
+  {
+   "champion": "Camille",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "AD fighter with high base AD; consistent sustained physical DPS on structures and epics"
+  },
+  {
+   "champion": "Camille",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": true,
+   "source_quote": "Precision Protocol - second Q cast deals true damage and doubles bonus damage; conditional on double-cast but applies in every objective rotation"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "AP mage with moderate base stats; general auto-attack and ability DPS applied to structures and epics"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "E",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Twin Fang - near-zero-cooldown spam on poisoned target; sustained high-frequency magic damage output on a stationary objective"
+  },
+  {
+   "champion": "Chogath",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "tank with moderate base AD; general single-target DPS applied to structures and epics"
+  },
+  {
+   "champion": "Chogath",
+   "source": "R",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.72,
+   "conditional": true,
+   "source_quote": "Feast - true-damage execute that works on large and epic monsters (drake, baron, herald); permanently stacks HP on kill"
+  },
+  {
+   "champion": "Corki",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "AD mage with strong mixed physical/magic sustained auto-attack DPS; effective against structures and epics"
+  },
+  {
+   "champion": "Corki",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": true,
+   "source_quote": "Special Delivery (Package W) - empowered dash temporarily boosts Corki damage output; conditional on Package availability"
+  },
+  {
+   "champion": "Corki",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": true,
+   "source_quote": "Missile Barrage Big One - stacking high-damage missile; burst can finish a low-HP objective"
+  },
+  {
+   "champion": "Darius",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "high-AD melee fighter with strong base stats; solid sustained auto-attack DPS on structures and epics"
+  },
+  {
+   "champion": "Darius",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Decimate - large AoE physical damage on cooldown; outer blade hit contributes to objective DPS rotation"
+  },
+  {
+   "champion": "Diana",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "AP assassin/fighter with moderate base stats; general DPS applied to structures and epics"
+  },
+  {
+   "champion": "Diana",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Moonsilver Blade - empowered AoE third auto after ability cast; fires every 3 autos at an objective"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "tank/bruiser with growing HP pool and moderate sustained auto-attack DPS applied to structures and epics"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "E",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "Blunt Force Trauma - empowered next auto scaling with max HP; adds bonus physical damage per auto on a structure or epic"
+  },
+  {
+   "champion": "Draven",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "ADC with very high base AD and fast attack speed; exceptional sustained physical DPS on towers and epic monsters"
+  },
+  {
+   "champion": "Draven",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Spinning Axes - empowered physical auto attacks while axes are active; significantly increased damage on structures and epics"
+  },
+  {
+   "champion": "Ekko",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "AP assassin with moderate base stats; general auto-attack and ability DPS applied to structures and epics"
+  },
+  {
+   "champion": "Ekko",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Z-Drive Resonance - third-hit empowered auto with bonus AP damage; conditional on 3-hit accrual, fires on stationary objectives"
+  },
+  {
+   "champion": "Elise",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": false,
+   "source_quote": "AP jungler with moderate base damage; general DPS applied to structures and epics in human/spider form"
+  },
+  {
+   "champion": "Elise",
+   "source": "R",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": true,
+   "source_quote": "Spider Form - summons Spiderlings that autonomously attack nearby targets including structures and epic monsters"
+  },
+  {
+   "champion": "Elise",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Skittering Frenzy (spider W) - greatly increases attack speed for Elise and her Spiderlings; boosts sustained DPS on epics and structures"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "AP assassin with moderate base stats; general DPS applied to structures and epics"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": true,
+   "source_quote": "Last Caress - massive execute-range AP nuke below 30% HP; large burst can finish a low-HP epic monster or structure"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "AD mage with moderate sustained DPS; general auto-attack and Q spam applied to structures and epics"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Trueshot Barrage - global-range high-damage AP nuke; can snipe a low-HP objective from across the map"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "AP support/jungler with low base AD; weak general auto-attack DPS on structures and epics"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Bountiful Harvest - sustained multi-target drain beam; very effective at clearing and securing epic monster camps"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Crowstorm - surprise high-burst AoE nuke on a short-range blink; can burst down a low-HP objective"
+  },
+  {
+   "champion": "Fiora",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "elite duelist with very high base AD and fast attack speed; one of the strongest split-push sustained DPS identities vs structures"
+  },
+  {
+   "champion": "Fiora",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Lunge - near-zero-downtime gap-close dealing physical damage; keeps Fiora in melee range and contributes to DPS rotation on any objective"
+  },
+  {
+   "champion": "Fizz",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": false,
+   "source_quote": "AP assassin with moderate base AD; general DPS applied to structures and epics, not a split-push identity"
+  },
+  {
+   "champion": "Fizz",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Chum the Waters - large AoE shark nuke on impact; can burst down a low-HP objective or contest a Smite"
+  },
+  {
+   "champion": "Galio",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "melee tank mage with low single-target DPS; minimal objective pressure"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "ranged AD carry baseline auto-attack DPS applied to structures and objectives"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "Parrrley fires a shot dealing physical damage; usable on structures and epic monsters"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "MONSTER",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Cannon Barrage rains cannonballs over a wide area dealing magic damage; can zone and pressure epic monster pit from global range but does not directly target structures"
+  },
+  {
+   "champion": "Garen",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "melee fighter baseline auto-attack DPS applied to structures and objectives"
+  },
+  {
+   "champion": "Garen",
+   "source": "E",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "Judgment spins dealing physical damage per second; effective sustained DPS on structures and epic monsters"
+  },
+  {
+   "champion": "Gnar",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "ranged/melee duality champion with moderate auto-attack DPS on objectives"
+  },
+  {
+   "champion": "Gnar",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Hyper (mini form) passively grants bonus attack speed on every third hit; improves objective DPS via consistent empowered autos"
+  },
+  {
+   "champion": "Gragas",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "mage/bruiser with below-average single-target DPS; low objective pressure"
+  },
+  {
+   "champion": "Gragas",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": true,
+   "source_quote": "Explosive Cask launches a cask dealing magic damage on impact; burst nuke usable to contest or pressure objectives"
+  },
+  {
+   "champion": "Graves",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "shotgun auto-attacks deal high physical damage per shot; strong DPS burst on structures and epic monsters"
+  },
+  {
+   "champion": "Graves",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "End of the Line fires a shell dealing physical damage; adds meaningful DPS on structures and objectives"
+  },
+  {
+   "champion": "Graves",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Collateral Damage fires a massive explosive shell dealing heavy physical damage; can snipe low-HP epic monsters or chunk structures from distance"
+  },
+  {
+   "champion": "Gwen",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.44,
+   "conditional": false,
+   "source_quote": "melee AP bruiser with consistent auto-attack and ability-weave DPS on objectives"
+  },
+  {
+   "champion": "Gwen",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Snip Snip! deals magic damage in rapid snips; sustained AoE hits objectives in melee range"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "melee bruiser baseline auto-attack DPS applied to structures and objectives"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "E",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Devastating Charge empowers Hecarim's next attack dealing bonus physical damage; enhances single-hit DPS on structures and objectives"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "ranged mage baseline auto-attack and beam DPS on structures and objectives"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "W",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "H-28G Evolution Turret places autonomous turrets that fire at nearby targets including structures; premier siege identity"
+  },
+  {
+   "champion": "Hwei",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "ranged mage with low single-target DPS; limited objective pressure"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "melee juggernaut baseline auto-attack DPS on structures and objectives"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Harsh Lesson leaps to target dealing bonus tentacle-slam damage; tentacles also strike nearby structures on activation"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "E",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Test of Spirit spawns a vessel and activates nearby tentacles that slam targets including structures when Illaoi uses abilities"
+  },
+  {
+   "champion": "Irelia",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "melee carry with high attack speed and on-hit DPS on structures and objectives"
+  },
+  {
+   "champion": "Irelia",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": true,
+   "source_quote": "Ionian Fervor at max stacks grants significant bonus attack speed; substantially boosts objective DPS when fully stacked near enemies"
+  },
+  {
+   "champion": "Ivern",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "support jungler with very low personal DPS; nearly no objective pressure outside of Daisy"
+  },
+  {
+   "champion": "Ivern",
+   "source": "R",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Daisy! summons a large golem that attacks nearby targets including structures; primary objective tool"
+  },
+  {
+   "champion": "Janna",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "enchanter support with minimal personal DPS; very low objective pressure"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "melee bruiser baseline auto-attack DPS applied to structures and objectives"
+  },
+  {
+   "champion": "Jax",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "melee carry hyper-scaling attack speed identity; extremely high sustained DPS on structures and epic monsters"
+  },
+  {
+   "champion": "Jax",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.82,
+   "conditional": true,
+   "source_quote": "Relentless Assault stacks bonus attack speed with each consecutive hit; empowered auto-attack chain melts objectives at full stacks"
+  },
+  {
+   "champion": "Jayce",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "AD carry / bruiser with high base damage in both forms applied to structures and objectives"
+  },
+  {
+   "champion": "Jayce",
+   "source": "Q",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": true,
+   "source_quote": "Shock Blast in cannon form fires a high-damage energy orb dealing physical damage; amplified through Acceleration Gate for significant burst that can pressure objectives"
+  },
+  {
+   "champion": "Jhin",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "locked-attack-speed marksman with very high AD; auto-attacks deal significant physical damage to structures and objectives"
+  },
+  {
+   "champion": "Jhin",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Whisper fourth shot crits for massively increased damage; empowered auto provides burst DPS on objectives"
+  },
+  {
+   "champion": "Jhin",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "MONSTER",
+   "magnitude": 0.42,
+   "conditional": true,
+   "source_quote": "Curtain Call fires up to four shots at extreme range targeting units; can snipe low-HP epic monsters from safe distance but cannot directly target structures"
+  },
+  {
+   "champion": "Jinx",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "Fishbones rocket auto-attacks deal AoE splash; high attack-speed and on-hit scaling shreds turrets and objectives"
+  },
+  {
+   "champion": "Jinx",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "MONSTER",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Super Mega Death Rocket deals massive long-range damage scaling with target's missing HP - can snipe a low-HP objective"
+  },
+  {
+   "champion": "KSante",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "Tank with low damage output; basic attacks provide minimal objective pressure"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "Evolved autos and high attack speed provide strong sustained DPS to structures and objectives"
+  },
+  {
+   "champion": "Kalista",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Rapid multi-hop auto-attacks accumulate Rend stacks rapidly on structures and objectives"
+  },
+  {
+   "champion": "Kalista",
+   "source": "E",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Rend detonates all accumulated spear stacks for a burst of physical damage - works on structures and epic monsters alike when stacks are high"
+  },
+  {
+   "champion": "Karma",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "Enchanter mage with low base AD and no objective-focused kit; minimal auto-attack DPS to structures"
+  },
+  {
+   "champion": "Karthus",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Lay Waste Q spam provides moderate sustained magic damage applicable to structures and objectives"
+  },
+  {
+   "champion": "Karthus",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "MONSTER",
+   "magnitude": 0.62,
+   "conditional": true,
+   "source_quote": "Requiem deals massive global magic damage to all enemies - iconic smite-contest finisher on low-HP objectives"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "Mage assassin with moderate base AD; limited objective pressure outside of burst patterns"
+  },
+  {
+   "champion": "Katarina",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "Melee assassin with moderate base AD; applies sustained magic damage via Voracity passive resets near objectives"
+  },
+  {
+   "champion": "Kayle",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "Late-game fully-ascended Kayle fires ranged explosive auto-attacks with bonus magic damage; among the highest DPS hypercarries"
+  },
+  {
+   "champion": "Kayle",
+   "source": "E",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Starfire Spellblade empowers next auto to deal bonus magic damage scaling with target's missing HP - applies to structures and monsters each time E is up"
+  },
+  {
+   "champion": "Kayn",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "Shadow Assassin or Rhaast form both provide melee fighter sustained DPS applicable to objectives and structures"
+  },
+  {
+   "champion": "Kayn",
+   "source": "Q",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "Reaping Slash deals bonus damage to monsters; Rhaast form further enhances Q damage vs monsters for strong jungle clear and objective control"
+  },
+  {
+   "champion": "Kennen",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "Ranged mage with moderate attack speed; Mark of the Storm energizes autos but no special objective tools"
+  },
+  {
+   "champion": "Khazix",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": false,
+   "source_quote": "Assassin with moderate AD; isolated-target burst provides limited sustained objective pressure"
+  },
+  {
+   "champion": "Kindred",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "High attack-speed ranged ADC jungler; Dance of Arrows Q procs on-hit repeatedly for strong sustained objective DPS"
+  },
+  {
+   "champion": "Kindred",
+   "source": "W",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "Wolf's Frenzy has Wolf attack independently dealing damage scaling with target's current HP - exceptional vs high-HP epic monsters"
+  },
+  {
+   "champion": "Kled",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "Skirmisher fighter with moderate AD; sustained melee DPS applicable to turrets and objectives when mounted on Skaarl"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Hyper-carry ADC with high attack speed; one of the best sustained DPS dealers in the game at full build"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "W",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "Bio-Arcane Barrage deals bonus magic damage equal to a percent of target's maximum HP on-hit - premier epic monster shredder"
+  },
+  {
+   "champion": "Leblanc",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.16,
+   "conditional": false,
+   "source_quote": "Burst mage assassin with minimal sustained DPS; low base AD and kit built for single-target burst not objective sieging"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Skirmisher jungler with moderate AD and attack speed steroid; early-game fighter sustains decent objective DPS while lead exists"
+  },
+  {
+   "champion": "Leona",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Pure tank support with CC-heavy kit and minimal damage output; negligible contribution to objective or structure DPS"
+  },
+  {
+   "champion": "Lillia",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "mage jungler baseline single-target DPS, moderate auto DPS on structures and monsters"
+  },
+  {
+   "champion": "Lillia",
+   "source": "P",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Dream-Laden Bough applies 5% max HP magic DoT to enemies hit by abilities, capped at 65 per tick against monsters; percent-max-HP scaling applies to large monsters and epics"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "control mage with no special objective tool; low single-target DPS on structures and monsters"
+  },
+  {
+   "champion": "Lucian",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.62,
+   "conditional": false,
+   "source_quote": "high attack-speed marksman with Lightslinger double-shot passive; strong sustained physical DPS on structures and monsters"
+  },
+  {
+   "champion": "Lucian",
+   "source": "R",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": true,
+   "source_quote": "The Culling channels rapidly firing up to 22+ shots in target direction, doubled against minions; high burst-sustained damage that can melt structures or epic monsters; conditional on ult"
+  },
+  {
+   "champion": "Lulu",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "enchanter support; minimal auto-attack DPS on objectives; Pix bolts add modest on-hit damage but overall low objective impact"
+  },
+  {
+   "champion": "Lux",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "control mage with low sustained DPS on structures; no special objective bonus"
+  },
+  {
+   "champion": "Malphite",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "tank with moderate base auto DPS; no special objective tool"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "mage baseline single-target DPS on structures"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "W",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Void Swarm spawns up to 3 Voidlings that autonomously attack nearby enemies and structures; reduced by 50% against epic monsters but still meaningful extra DPS on objectives"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "R",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Nether Grasp opens a Null Zone beneath target that persists for 5 seconds dealing periodic magic damage to enemies within, capped at 120 per tick vs minions and monsters; area denial adds sustained pressure near objectives"
+  },
+  {
+   "champion": "Maokai",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "tank bruiser baseline melee auto DPS on structures and monsters"
+  },
+  {
+   "champion": "Maokai",
+   "source": "Q",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "Bramble Smash deals bonus magic damage to monsters; damage based on target health ratio capped at 9999 against non-champions; percent-health scaling applies on large and epic monsters"
+  },
+  {
+   "champion": "Maokai",
+   "source": "E",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": false,
+   "source_quote": "Sapling Toss throws an autonomous Sapling that chases and explodes near enemies; adds modest objective DPS and can hit structures and monsters"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "hyper-carry with extreme attack speed and Double Strike double-hit passive; top-tier sustained DPS on structures and epic monsters"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "E",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.72,
+   "conditional": true,
+   "source_quote": "Wuju Style grants bonus true damage on basic attacks on-hit; true damage on-hit does not apply to structures but is full-effectiveness on epic monsters and jungle camps"
+  },
+  {
+   "champion": "Mel",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "new mage champion with moderate magic DPS baseline on structures and monsters; no special objective-damage tool"
+  },
+  {
+   "champion": "Milio",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "enchanter support; very low personal DPS on objectives; no special structure or monster tool"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "marksman with strong physical auto DPS on structures; Love Tap bonus does not trigger on buildings but base autos and W attack-speed window apply normally"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Bullet Time channels many waves of bullets in target direction; high total damage can melt a low-HP structure or epic monster from range; conditional on ult"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "fighter with strong physical auto DPS; high attack damage baseline on structures and monsters"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "STRUCTURE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Crushing Blow triggers on structures and wards; empowered attack deals bonus physical damage; armor reduction not applied to structures but the bonus damage is"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "W",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": true,
+   "source_quote": "Warrior Trickster spawns a clone that auto-attacks autonomously for 3.25 seconds; clone adds temporary DPS on monsters and objectives though turret shots instantly kill it"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "R",
+   "kind": "SUSTAINED_DPS",
+   "scope": "MONSTER",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Cyclone spins dealing physical damage every 0.25 seconds to nearby enemies; capped at 200/400/600 per second against monsters; meaningful sustained AoE on epics during spin"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "heavy juggernaut with strong melee physical and magic DPS on structures and objectives; base attacks deal 40% AP bonus magic on-hit"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "P",
+   "kind": "MONSTER_BONUS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": true,
+   "source_quote": "Darkness Rise aura deals 5(+30%AP)(+1-5% max HP) magic damage per second to nearby enemies when active at 3 stacks; max-HP scaling is effective against epic monsters; conditional on 3-stack threshold"
+  },
+  {
+   "champion": "Morgana",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "mage-support with low sustained physical DPS on structures; no special objective auto bonus"
+  },
+  {
+   "champion": "Morgana",
+   "source": "W",
+   "kind": "MONSTER_BONUS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "Tormented Shadow deals 170% damage against monsters; persistent AoE DoT zone over 5 seconds; meaningful bonus DPS on objectives and epics in the area"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "AD assassin with moderate physical auto DPS on structures and monsters"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "P",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "We Are More passively maintains up to 2-5 Packmates based on level that attack nearby targets autonomously; adds persistent summon DPS on objectives"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "W",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": true,
+   "source_quote": "The Call of the Pack temporarily summons 2 additional Packmates beyond the normal cap for 5 seconds; significantly more autonomous summon DPS on structures and monsters during W window"
+  },
+  {
+   "champion": "Nami",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "enchanter support; very low personal DPS on objectives; Tidecaller Blessing E explicitly does not trigger on structures; no special objective tool"
+  },
+  {
+   "champion": "Nasus",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Siphoning Strike stacks scale indefinitely giving Nasus extremely high single-target physical DPS on structures and objectives at high stacks"
+  },
+  {
+   "champion": "Nasus",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "STRUCTURE",
+   "magnitude": 0.82,
+   "conditional": true,
+   "source_quote": "Siphoning Strike triggers on structures and can gain stacks from turret kills; empowered auto deals massive accumulated bonus physical damage to turrets at high stacks; conditional on stacks accrued"
+  },
+  {
+   "champion": "Nasus",
+   "source": "R",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.62,
+   "conditional": true,
+   "source_quote": "Fury of the Sands grants bonus stats, halves Q cooldown, and deals periodic magic AoE damage to nearby enemies; greatly amplifies siege effectiveness for 15 seconds; conditional on ult active"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "tank support identity, low single-target DPS applied to structures and objectives"
+  },
+  {
+   "champion": "Neeko",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "control mage with moderate AP auto-attack and ability DPS on structures and monsters"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "Cougar form high-frequency auto attacks and ability resets deliver sustained DPS"
+  },
+  {
+   "champion": "Nilah",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "melee hypercarry identity - high attack speed and on-hit scaling melts structures and epics"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Duskbringer attack speed steroid and AD identity deliver strong sustained auto-attack DPS"
+  },
+  {
+   "champion": "Nunu",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": false,
+   "source_quote": "tank jungler base DPS on structures and objectives"
+  },
+  {
+   "champion": "Nunu",
+   "source": "Q",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "Consume deals massive true damage to monsters and large minions, executes low-HP epic monsters"
+  },
+  {
+   "champion": "Olaf",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "Berserker Rage passive converts missing HP into bonus attack speed - hyper-carry DPS identity"
+  },
+  {
+   "champion": "Olaf",
+   "source": "E",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Reckless Swing deals true damage, supplementing sustained DPS on structures and objectives"
+  },
+  {
+   "champion": "Orianna",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "control mage with low single-target sustained DPS applied to structures and objectives"
+  },
+  {
+   "champion": "Ornn",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "tank identity with low single-target DPS on structures and objectives"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "ability-based fighter with moderate sustained DPS on structures and objectives"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": true,
+   "source_quote": "Mortal Will empowered autos and abilities boost auto-attack DPS at full stacks"
+  },
+  {
+   "champion": "Poppy",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "tank fighter with moderate auto-attack DPS on structures and objectives"
+  },
+  {
+   "champion": "Poppy",
+   "source": "Q",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "Hammer Shock deals 8% of target maximum HP bonus damage - percent-HP does not apply to structures, amplifies epic monster damage"
+  },
+  {
+   "champion": "Pyke",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "assassin support with low auto-attack DPS on structures and objectives"
+  },
+  {
+   "champion": "Pyke",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "MONSTER",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Death from Below executes targets below an HP threshold - can snipe a low-HP epic monster in a Smite contest"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.27,
+   "conditional": false,
+   "source_quote": "burst assassin with low sustained DPS on structures and objectives"
+  },
+  {
+   "champion": "Quinn",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.62,
+   "conditional": false,
+   "source_quote": "ranged marksman identity with solid auto-attack sustained DPS on structures and objectives"
+  },
+  {
+   "champion": "Quinn",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": true,
+   "source_quote": "Harrier mark on target empowers next auto to deal bonus physical damage"
+  },
+  {
+   "champion": "Rakan",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "enchanter support with minimal single-target DPS on structures and objectives"
+  },
+  {
+   "champion": "Rammus",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "tank jungler with moderate auto-attack DPS boosted by Powerball momentum"
+  },
+  {
+   "champion": "Rammus",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": true,
+   "source_quote": "Soaring Slam and Tremors R deal repeated magic damage in an area that can hit structures and objectives"
+  },
+  {
+   "champion": "RekSai",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "void jungler with high attack speed and AD identity delivering strong sustained auto-attack DPS"
+  },
+  {
+   "champion": "RekSai",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Queen's Wrath unburrowed Q enhances attacks with bonus physical damage adding DPS to objectives"
+  },
+  {
+   "champion": "Rell",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "tank support with minimal auto-attack DPS on structures and objectives"
+  },
+  {
+   "champion": "Renata",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "enchanter support - low auto-attack DPS applied to structures or epics"
+  },
+  {
+   "champion": "Renekton",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "high base AD bruiser with Fury-empowered W autos sustaining structure DPS in melee"
+  },
+  {
+   "champion": "Rengar",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "AD assassin with consistent auto-attack DPS between burst windows"
+  },
+  {
+   "champion": "Rengar",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": true,
+   "source_quote": "Thrill of the Hunt grants an empowered Q that delivers a large single-hit damage spike on target"
+  },
+  {
+   "champion": "Riven",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "AD bruiser with Q-resets and Runic Blade empowered autos generating steady physical DPS on structures"
+  },
+  {
+   "champion": "Riven",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": true,
+   "source_quote": "Wind Slash second-cast deals massive magic damage scaling with target missing HP - executes low-HP objectives"
+  },
+  {
+   "champion": "Rumble",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "AP bruiser applying sustained Q Flamespitter magic DPS at melee range to structures"
+  },
+  {
+   "champion": "Rumble",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.44,
+   "conditional": true,
+   "source_quote": "The Equalizer lays a high-damage flame zone that can secure a low-HP objective from range"
+  },
+  {
+   "champion": "Ryze",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.44,
+   "conditional": false,
+   "source_quote": "AP carry with rapid Q spam and E+W combos sustaining high magic DPS against structures"
+  },
+  {
+   "champion": "Samira",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "high-DPS melee-range ADC with Daredevil Impulse attack-speed steroid and AD scaling melting structures"
+  },
+  {
+   "champion": "Samira",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Inferno Trigger channels rapid-fire shots dealing massive total physical damage - large spike on a structure or epic within melee range"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "CC-focused tank jungler with low base DPS applying minimal auto-attack pressure to structures"
+  },
+  {
+   "champion": "Senna",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "long-range marksman support with Absolution stacking AD applying moderate auto-attack DPS to structures"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "enchanter mage with low auto-attack DPS and Stage Presence passive Echo empowered autos at low frequency"
+  },
+  {
+   "champion": "Sett",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "juggernaut with high base AD and Pit Grit attack-speed passive sustaining strong structure DPS"
+  },
+  {
+   "champion": "Shaco",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "AD assassin with Backstab critical passive generating reliable sustained physical DPS"
+  },
+  {
+   "champion": "Shaco",
+   "source": "W",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "Jack In The Box traps auto-attack nearby enemies including structures and epic monsters"
+  },
+  {
+   "champion": "Shaco",
+   "source": "R",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Hallucinate clone auto-attacks objectives adding hands-free DPS to structures and epics"
+  },
+  {
+   "champion": "Shen",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "tank with Twilight Assault Q drawing spirit blade empowering next 3 autos with bonus magic damage and attack speed - moderate objective DPS for a tank"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "high attack-speed bruiser with Dragon's Descent bonus stats and twin-strike Q sustaining strong structure DPS"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Burnout flame-trail aura deals continuous magic DPS to objectives and monsters standing in range during sustained fights"
+  },
+  {
+   "champion": "Singed",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.36,
+   "conditional": false,
+   "source_quote": "Poison Trail applies continuous AoE magic DoT to structures and epic monsters in melee proximity"
+  },
+  {
+   "champion": "Singed",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "AP bruiser auto-attack baseline DPS applied to structures"
+  },
+  {
+   "champion": "Sion",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "tank with high base AD scaling and W Soul Furnace stacks applying sustained structure DPS"
+  },
+  {
+   "champion": "Sion",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": true,
+   "source_quote": "Unstoppable Onslaught charge deals massive impact damage on contact with a structure or epic monster"
+  },
+  {
+   "champion": "Sivir",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "fleet-footed ADC with high attack speed and On The Hunt steroid sustaining strong structure DPS"
+  },
+  {
+   "champion": "Skarner",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.62,
+   "conditional": false,
+   "source_quote": "juggernaut jungler with high base AD and Q Shattered Earth physical DPS sustained on structures"
+  },
+  {
+   "champion": "Smolder",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "ranged marksman with scaling AD auto-attack DPS against structures and objectives"
+  },
+  {
+   "champion": "Smolder",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Super Scorcher Breath empowered at 225 stacks deals AoE magic damage around target, amplifying objective damage"
+  },
+  {
+   "champion": "Sona",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "low-damage enchanter support; minimal auto-attack DPS against structures and objectives"
+  },
+  {
+   "champion": "Soraka",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "healer support with negligible damage output; baseline auto-attack applies to structures"
+  },
+  {
+   "champion": "Swain",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "control mage with moderate sustained magic DPS applicable to structures and objectives"
+  },
+  {
+   "champion": "Sylas",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "mage fighter with moderate AP-scaling damage applicable to structures and epic monsters"
+  },
+  {
+   "champion": "Sylas",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Petricite Burst empowered AoE auto after each ability increases sustained DPS cadence at objectives"
+  },
+  {
+   "champion": "Syndra",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "control mage with moderate single-target magic DPS from Q orbs applicable to objectives"
+  },
+  {
+   "champion": "Syndra",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.62,
+   "conditional": true,
+   "source_quote": "Unleashed Power hurls all stored Dark Spheres for massive burst, capable of sniping a low-HP objective"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "tank support with low damage output; auto-attacks apply minimal objective DPS"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "mage with moderate AP-scaling single-target DPS applicable to structures and epic monsters"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "Q",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.44,
+   "conditional": false,
+   "source_quote": "Threaded Volley multi-hit rocks deal sustained magic damage, effective against large targets such as structures"
+  },
+  {
+   "champion": "Talon",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": false,
+   "source_quote": "AD assassin with low sustained DPS at objectives due to burst-oriented kit"
+  },
+  {
+   "champion": "Talon",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": true,
+   "source_quote": "Shadow Assault ring of blades deals burst damage on return, can spike damage on an objective"
+  },
+  {
+   "champion": "Taric",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.17,
+   "conditional": false,
+   "source_quote": "enchanter support with near-zero damage output; baseline auto-attack applies to structures only"
+  },
+  {
+   "champion": "Teemo",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "ranged auto-attack DPS with Toxic Shot poison on-hit, sustained damage applicable to objectives"
+  },
+  {
+   "champion": "Teemo",
+   "source": "E",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.44,
+   "conditional": false,
+   "source_quote": "Toxic Shot applies poison stacks on every auto, providing consistent bonus magic DPS against objectives"
+  },
+  {
+   "champion": "Teemo",
+   "source": "R",
+   "kind": "SUMMON_DPS",
+   "scope": "MONSTER",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "Noxious Trap mushrooms placed near objectives poison enemies contesting the objective; does not damage structures"
+  },
+  {
+   "champion": "Thresh",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "tank support with minimal damage output; baseline auto-attack applies to structures"
+  },
+  {
+   "champion": "Tristana",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "high attack-speed marksman with strong auto-attack DPS at structures and objectives"
+  },
+  {
+   "champion": "Tristana",
+   "source": "E",
+   "kind": "STRUCTURE_BONUS",
+   "scope": "STRUCTURE",
+   "magnitude": 0.78,
+   "conditional": true,
+   "source_quote": "Explosive Charge can be stacked on turrets and detonates for bonus damage, specifically accelerating tower destruction"
+  },
+  {
+   "champion": "Trundle",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "AD fighter with strong auto-attack DPS well suited to sustained objective and structure damage"
+  },
+  {
+   "champion": "Trundle",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.82,
+   "conditional": true,
+   "source_quote": "Frozen Domain grants massive attack speed and healing while standing in the zone, dramatically accelerating objective DPS"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "AD fighter with extreme attack speed and crit rate providing hyper-carry sustained DPS against structures and objectives"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "R",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.92,
+   "conditional": true,
+   "source_quote": "Undying Rage prevents death for 5s, enabling uninterrupted high-DPS window against a tower or objective"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "ranged mage with low-moderate auto and spell DPS applicable to structures and objectives"
+  },
+  {
+   "champion": "Twitch",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.84,
+   "conditional": false,
+   "source_quote": "on-hit marksman with high attack speed and poison stacks providing strong sustained DPS at structures and objectives"
+  },
+  {
+   "champion": "Twitch",
+   "source": "R",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.88,
+   "conditional": true,
+   "source_quote": "Spray and Pray greatly extends range and adds bonus AD, creating a high-DPS window ideal for contesting or shredding an objective"
+  },
+  {
+   "champion": "Udyr",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "melee fighter jungler with high sustained attack-speed DPS well suited to shredding structures and epic objectives"
+  },
+  {
+   "champion": "Udyr",
+   "source": "P",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.82,
+   "conditional": true,
+   "source_quote": "Bridge Between empowered stance ability every few casts provides burst DPS windows that compound sustained objective damage"
+  },
+  {
+   "champion": "Urgot",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.62,
+   "conditional": false,
+   "source_quote": "Purge rapid-fire auto attacks shred structures and objectives with sustained physical DPS"
+  },
+  {
+   "champion": "Varus",
+   "source": "W",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Blighted Quiver stacks deal % max HP magic damage on-hit, detonated by abilities - strong epic monster shred"
+  },
+  {
+   "champion": "Varus",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "High attack-speed ADC auto-attack sustained DPS melts structures and objectives"
+  },
+  {
+   "champion": "Vayne",
+   "source": "W",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "Silver Bolts deal true damage equal to % of target's max HP every 3rd hit - premier epic monster shredder"
+  },
+  {
+   "champion": "Vayne",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Ranged ADC sustained auto-attack DPS applies to turrets and objectives"
+  },
+  {
+   "champion": "Veigar",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Low-mobility mage with minimal auto-attack DPS; weak objective pressure baseline"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "Low auto-attack DPS mage; objective pressure relies on ability spam"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "R",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Lifeform Disintegration Ray sustained true-damage beam deals significant single-target DPS to objectives"
+  },
+  {
+   "champion": "Vex",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "Control mage with low auto-attack DPS; minimal direct objective pressure"
+  },
+  {
+   "champion": "Vi",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "Fighter with moderate sustained physical DPS applied to structures and monsters"
+  },
+  {
+   "champion": "Vi",
+   "source": "W",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "Denting Blows stacks deal % max HP physical damage on the 3rd hit - percent-HP on-hit does not affect structures but shreds epic monsters"
+  },
+  {
+   "champion": "Viego",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "AD bruiser with sustained auto-attack DPS and W spellblade empowered autos melting objectives"
+  },
+  {
+   "champion": "Viktor",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.24,
+   "conditional": false,
+   "source_quote": "Mage with low auto-attack DPS; limited sustained objective pressure"
+  },
+  {
+   "champion": "Viktor",
+   "source": "E",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Death Ray laser beam deals significant magic damage to objectives; augmented version fires a follow-up"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "AP bruiser with moderate sustained damage; Q Crimson Rush empowered drain contributes to objective DPS"
+  },
+  {
+   "champion": "Volibear",
+   "source": "R",
+   "kind": "STRUCTURE_BONUS",
+   "scope": "STRUCTURE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Stormbringer dive temporarily disables a tower and reduces its armor and HP - literal structure bonus enabling tower dives"
+  },
+  {
+   "champion": "Volibear",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "AP bruiser with high sustained auto-attack and ability DPS applied to structures and objectives"
+  },
+  {
+   "champion": "Volibear",
+   "source": "W",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Frenzied Maul empowered bite deals bonus magic damage on subsequent application - adds single-target DPS to objectives"
+  },
+  {
+   "champion": "Warwick",
+   "source": "P",
+   "kind": "MONSTER_BONUS",
+   "scope": "MONSTER",
+   "magnitude": 0.68,
+   "conditional": false,
+   "source_quote": "Eternal Hunger passive deals bonus on-hit magic damage scaling with target missing HP - strong in sustained epic monster fights"
+  },
+  {
+   "champion": "Warwick",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Strong jungler with sustained auto-attack DPS and Q healing enabling extended objective fights"
+  },
+  {
+   "champion": "Xayah",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.68,
+   "conditional": false,
+   "source_quote": "ADC with high attack-speed sustained physical DPS applied to turrets and epic objectives"
+  },
+  {
+   "champion": "Xerath",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "Long-range mage with very low auto-attack DPS; minimal direct structure pressure"
+  },
+  {
+   "champion": "Xerath",
+   "source": "R",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": true,
+   "source_quote": "Rite of the Arcane global multi-shot sniper can deliver several large magic damage hits to steal an objective from range"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Attack-speed bruiser jungler with strong sustained physical DPS from Q empowered attacks melting objectives"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "High attack speed fighter with sustained physical DPS and Way of the Wanderer double crit rate melting structures and objectives"
+  },
+  {
+   "champion": "Yone",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.68,
+   "conditional": false,
+   "source_quote": "High attack speed fighter dealing both physical and magic damage; sustained dual-type DPS applied to objectives and structures"
+  },
+  {
+   "champion": "Yorick",
+   "source": "E",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "Mourning Mist spawns Mist Walkers that autonomously attack structures and monsters alongside Yorick"
+  },
+  {
+   "champion": "Yorick",
+   "source": "R",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.82,
+   "conditional": true,
+   "source_quote": "Maiden of the Mist is an autonomous walking structure that attacks and empowers Mist Walkers; primary split-push engine against turrets"
+  },
+  {
+   "champion": "Yorick",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Melee juggernaut with solid auto-attack sustained DPS; P passive spawns ghouls on kills adding to objective damage"
+  },
+  {
+   "champion": "Yunara",
+   "source": "P",
+   "kind": "STRUCTURE_BONUS",
+   "scope": "STRUCTURE",
+   "magnitude": 0.68,
+   "conditional": true,
+   "source_quote": "Celestial Alignment: empowered basic attack periodically deals bonus magic damage to structures - towers lose significant HP per proc"
+  },
+  {
+   "champion": "Yunara",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.48,
+   "conditional": false,
+   "source_quote": "ranged mage-marksman hybrid with consistent auto-attack and ability DPS applied to structures and monsters"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "enchanter support with negligible auto-attack DPS; brings almost no independent objective pressure"
+  },
+  {
+   "champion": "Zac",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.32,
+   "conditional": false,
+   "source_quote": "AP tank jungler with moderate auto-attack DPS; no special structure or monster bonus in kit"
+  },
+  {
+   "champion": "Zed",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "AD physical assassin; solid single-target melee DPS applies to structures and monsters but no bonus objective tool"
+  },
+  {
+   "champion": "Zeri",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "hyper-carry marksman whose Q is her basic attack; high sustained attack-speed DPS melts structures and epics"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "P",
+   "kind": "STRUCTURE_BONUS",
+   "scope": "STRUCTURE",
+   "magnitude": 0.92,
+   "conditional": true,
+   "source_quote": "Short Fuse: every 12s the next auto-attack deals bonus magic damage to structures - towers lose significant HP per empowered hit"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "Q",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "Bouncing Bomb: high-damage long-range nuke that can be aimed at a low dragon or baron to contest a Smite"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "mage with moderate AP auto-attack DPS applied to structures and jungle objectives"
+  },
+  {
+   "champion": "Zilean",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.18,
+   "conditional": false,
+   "source_quote": "utility support with very low DPS auto-attacks; minimal independent objective contribution"
+  },
+  {
+   "champion": "Zoe",
+   "source": "Q",
+   "kind": "BURST_SECURE",
+   "scope": "BOTH",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Paddle Star scales with portal distance for very high single burst; can threaten a low objective from range"
+  },
+  {
+   "champion": "Zoe",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "burst mage with low auto-attack DPS; general single-target damage applies weakly to structures and monsters"
+  },
+  {
+   "champion": "Zyra",
+   "source": "W",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Garden of Thorns places seed pods that Q/E activates into autonomous thorn-plants attacking nearby targets including structures and epics"
+  },
+  {
+   "champion": "Zyra",
+   "source": "R",
+   "kind": "SUMMON_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.38,
+   "conditional": true,
+   "source_quote": "Stranglethorns sprouting plants: ult burst spawns additional plants that continue attacking objectives hands-free"
+  },
+  {
+   "champion": "Zyra",
+   "source": "BASE",
+   "kind": "SUSTAINED_DPS",
+   "scope": "BOTH",
+   "magnitude": 0.28,
+   "conditional": false,
+   "source_quote": "mage support with low personal DPS applied to structures and jungle objectives"
+  }
+ ]
+}
