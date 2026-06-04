@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-04 - DS SUSTAIN / vamp-throughput scorer - 9th scored axis (item 298, ENGINE 1.110.0, 10-channel fan-out)
+
+"start the next DS schema lift with 10 multi-agents fan out different channels and exhaust it then /done for /clear" (10th use, 3rd explicit multi-agent fan-out after items 294/297). Caveman ULTRA. ENGINE 1.109.0 -> 1.110.0; DS :8893 restarted (taskkill pid 12040 + Start-ScheduledTask RC-DaemonSlayer) -> pid 4020 1.110.0 live. RC NOT touched (additive). Full record = item 298 in `docs/LEDGER.md`.
+
+- **Axis fork:** mobility (item 297) was the last scored axis + EXHAUSTED. One upfront AskUserQuestion -> operator chose **sustain/vamp-throughput** over effective-threat-range or wave-clear/AoE-shove.
+- **NEW `agents/daemon_slayer/sustain.py`** (9th scored axis): damage-conversion + regen sustain -> `compute_sustain` -> `SustainResult`. `_SUSTAIN_KIND_WEIGHT` 5-tier OMNIVAMP 1.0 / LIFESTEAL 0.8 / DRAIN 0.8 / SPELLVAMP 0.6 / REGEN 0.4. Effective-HP-normalised (`_SUSTAIN_HP_UNIT`=300): vamp `vamp_pct*_REF_FIGHT_DAMAGE(2000)`; regen `pct_max_hp*_REF_MAX_HP(2200)+flat_hp`. Conditional gated at `_SUSTAIN_CONDITIONAL_PROB`=0.5. Distinct from heal-throughput (`ability_hps` + `_passive_heal_overrides` own flat/ratio ABILITY heals); this axis owns the damage-conversion + self-regen attrition that axis never measured.
+- **10-channel Workflow fan-out** (10 classify + 10 completeness critics, Sonnet, schema-validated, 1.42M tok / 312 tool uses) -> 56 entries / 45 champs / 25 REGEN / 37 cond. I wrote engine + tests from the structured output; curated 2 unbuildable rows (Senna P crit-gated, Pyke P grey-health) + 1 LeeSin W dup + capped Swain R 1.29 -> 0.6. + `tools/ds_sustain_build.py` (marker-splice generator) + `sustain_registry_notes.json` (Share-excluded).
+- **NEW `/sustain` route** (POST+GET, server.py) - PURELY ADDITIVE, every existing route byte-identical. Live: Warwick 11.67 (top) / Aatrox 6.99 / Nasus 1.28 / Karthus 0.
+- **+20 tests; DS+tools 6603 passed exit 0;** tests/ 4954 passed exit 0; ruff clean; Share 297 --check 0; CHANGELOG +1.110.0 both; 62 pin syncs / 53 files (.py only).
+- **Don't-redo:** sustain is STANDALONE additive (no route reads it YET); regenerate via `ds_sustain_build.py` (marker-spliced - do NOT hand-edit the block); the 5 constants + 2 refs (`_REF_FIGHT_DAMAGE` 2000 / `_REF_MAX_HP` 2200) are Phase-D tunables. **NEXT (Phase D, live-gated):** auto-pairing consumer crediting sustain into a dive/attrition/draft verdict; per-target healing-reduction (antiheal) discount; tune weights + refs after a live re-rank. The sustain/vamp-throughput axis is EXHAUSTED across the roster.
+
+---
+
 # 2026-06-04 - DS MOBILITY / gap-close / kiting scorer - 8th scored axis (item 297, ENGINE 1.109.0, 10-channel fan-out)
 
 "start the next DS schema lift with 10 multi-agents fan out different channels and exhaust it then /done for /clear" (9th use, 2nd explicit multi-agent fan-out after item 294). Caveman ULTRA. ENGINE 1.108.0 -> 1.109.0; DS :8893 restarted (taskkill pid 17688 + Start-ScheduledTask RC-DaemonSlayer) -> 1.109.0 live. RC NOT touched (additive). Full record = item 297 in `docs/LEDGER.md`.
@@ -30,18 +43,3 @@ Caveman ULTRA, 8 subagents. WIN 1 + WIN 2 were already shipped (1.107/1.108) at 
 - **pytest.ini (NEW):** `norecursedirs Share python-embed ...` - full-root collection now **11843 tests / 0 errors** (was globally broken via Share basename collisions + vendored python-embed test dirs). SUPERSEDES the `feedback_ds_bump_run_tests_dir` "full-root is broken" workaround - full-root pytest now works.
 - **Co-Authored-By trailer:** stripped from ALL history (git filter-branch, tree-IDENTICAL message-only rewrite) + force-pushed; `.git/hooks/commit-msg` prevents future emission. Operator EXPLICIT permission for history + all files. (NOTE: this rewrote every SHA; the separate name-scrub history rewrite in BACKLOG stays DEFERRED to the release trigger.)
 - **Don't-redo:** BSOD topic is fully purged (0 grep hits) - do not reintroduce the crash framing; the screen-agent retirement is now justified by 1-PC/ADR-011 only. Vision rate-limit removal is intentional (interval paces calls). The CDragon ratio resolver is ADDITIVE - do NOT assume the engine reads it yet; the cutover is a staged DS batch gated on the drift review + gold re-pin.
-
----
-
-# 2026-06-03 - DS MERAKI CONTENT-FRESHNESS GUARD - source-adoption WIN 2 (item 296, ENGINE 1.108.0)
-
-"start WIN 2 if WIN 1 was finished fully" = Phase 3 of `docs/DS_SOURCE_ADOPTION_PLAN.md`. Caveman ULTRA. ENGINE 1.107.0 -> 1.108.0; DS :8893 restarted (taskkill pid 16684 + schtasks RC-DaemonSlayer) -> 1.108.0 live. RC NOT touched. Full record = item 296 in `docs/LEDGER.md`.
-
-- **WIN 1 completeness verified FIRST** (1.107.0 live, offset 109/default 1/cdragon 12, WIN 1 tests 102 pass, Share --check 0, git clean) - and the fuller cross-dir run CAUGHT a WIN 1 gap: `tests/test_routes_ds_combo.py::test_totals_block` pinned a flat-windup Lux combo `duration_s == 2.0` that WIN 1 shifted to 1.984 (Lux AA windup 0.25 -> 0.234). Confirmed PRE-EXISTING via stashed-HEAD re-run. Fixed durably -> structural clock-end identity `duration_s == last.t + last.cast_time` from the payload (per "prefer computed quantities"). Grep found NO sibling stale duration pins.
-- **Problem:** Meraki `latest` champions endpoint is mutable but its CONTENT is frozen; `fetched_at` LIES about data age. Ground-truth probe: max `patchLastChanged` = **25.15** (plan's "~25.08" was stale). **Fix:** surface the honest signal.
-- **`tools/daemon_slayer_abilities_extract.py`:** NEW `_patch_sort_key` (numeric YY.MM, 25.15 > 25.9) + `_meraki_content_patch` (max patchLastChanged, skip non-dict/missing, None if absent) + pinned `_EXPECTED_MERAKI_CONTENT_PATCH = "25.15"`; guard logs INFO when frozen-at-pin / loud WARNING on drift (re-pin + re-validate ratios + gold tests); stamps `meraki_content_patch` into champion_abilities.json.
-- **Regenerated `16.11.1/champion_abilities.json` (--force, 211s bulk):** content patch 25.15; DATA + COVERAGE **byte-identical to HEAD** (171/927, diff vs `git show HEAD:` = only the new field) - `latest` genuinely frozen, ZERO engine-behavior risk despite champion_abilities being engine-consumed.
-- **`tools/daemon_slayer_extract.py`:** NEW `_meraki_content_patch_from_abilities` -> `build_manifest` `meraki_items.content_patch`; backfilled the live `16.11.1/manifest.json` to 25.15 (Data-Fixes rule).
-- **Gold-pin bullet = verified NO-OP:** `test_gold_efficiency_p1l13` already pins vendored 16.10.1 + derives at runtime; `test_golden_e2e_p1l24` hand-derives from first principles - both already patch-robust (plan's `tools/tests/` path for them was also stale; real `agents/daemon_slayer/tests/`).
-- ENGINE 1.107.0 -> 1.108.0; +12 WIN 2 tests `test_abilities_content_freshness.py`; 61 pin syncs / 53 files (byte-replace, history comment preserved). DS+tools 6526 passed exit 0; `tests/` 4954 passed exit 0 (4 prior fails all resolved); ruff clean; ASCII-only; Share 293 synced --check 0; /health 1.108.0 patch 16.11.1 172/705 live.
-- **Don't-redo:** guard is canonical for Meraki staleness (`_meraki_content_patch` max patchLastChanged, pinned 25.15 - bump IN LOCKSTEP with re-validating ratios + gold tests when WARNING fires); regenerate via extractor (no hand-edit); Meraki `latest` FROZEN at 25.15 (data byte-identical, regen safe); gold/golden tests ALREADY pinned (don't re-pin). **NEXT (explicitly long-term):** re-source ability RATIOS + base damage from DDragon/CDragon (the guard SURFACES staleness, does not cure it). NON-GOAL stays CC-duration sourcing.

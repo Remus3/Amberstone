@@ -1331,6 +1331,30 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.110.0 (Sustain / vamp-throughput scorer - item 298, the NINTH scored axis,
+built by a 10-channel roster fan-out. NEW agents/daemon_slayer/sustain.py: a
+per-(champion, spell) damage-conversion + regen sustain registry (lifesteal /
+omnivamp / spellvamp / channelled drains / HP-regen steroids) plus a kind ->
+weight table (OMNIVAMP 1.0 / LIFESTEAL 0.8 / DRAIN 0.8 / SPELLVAMP 0.6 /
+REGEN 0.4), normalised to effective-HP units where 1.0 unit = _SUSTAIN_HP_UNIT
+(300) HP recovered over a fight. A vamp kind returns vamp_pct * _REF_FIGHT_DAMAGE
+(2000) HP; a REGEN steroid returns pct_max_hp * _REF_MAX_HP (2200) + flat_hp.
+compute_sustain() -> SustainResult with sustain_score (unconditional weighted
+units), conditional_sustain_score (gated sources credited at the 0.5 availability
+midpoint), total_sustain_score, and raw_sustain_units (unweighted unconditional).
+Distinct from the healing-throughput axis (ability_hps + _passive_heal_overrides,
+which owns flat / ratio ABILITY heals); this axis owns the damage-conversion +
+self-regen attrition the heal axis never measured. NEW /sustain route (POST+GET).
+PURELY ADDITIVE: reads no scorer, read by none - every existing route is
+byte-identical. EXHAUSTIVE 171-champ Workflow fan-out (10 classify + 10
+completeness critics, Sonnet, schema-validated) -> 56 entries / 45 champs / 25
+REGEN / 37 conditional; engine + tests hand-written from the structured output;
+curated out 2 unbuildable rows (Senna P crit-gated, Pyke P grey-health) + 1
+LeeSin W dup + capped Swain R 1.29 -> 0.6. + tools/ds_sustain_build.py (reusable
+validate / inject generator) + sustain_registry_notes.json provenance sidecar
+(Share-excluded). Live: Warwick 11.67 (top) / Aatrox 6.99 / Nasus 1.28 /
+Karthus 0. The sustain / vamp-throughput axis is EXHAUSTED across the roster.)
+
 1.109.0 (Mobility / gap-close / kiting scorer - item 297, the EIGHTH scored axis,
 built by a 10-channel roster fan-out. NEW agents/daemon_slayer/mobility.py: a
 per-(champion, spell) self-mobility registry (dashes / blinks / leaps / MS
