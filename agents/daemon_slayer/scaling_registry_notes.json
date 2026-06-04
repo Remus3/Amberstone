@@ -1,0 +1,2329 @@
+{
+ "item": 299,
+ "engine": "1.111.0",
+ "count": 258,
+ "entries": [
+  {
+   "champion": "Aatrox",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "World Ender R is an active ult transformation - heal amp, AD bonus, revive window; pressing R is not a stack-gate or target-HP gate, so conditional must be false"
+  },
+  {
+   "champion": "Ahri",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Spirit Rush R grants three dashes enabling burst-assassin patterns at level 6 - a discrete kit transformation that defines her all-in and escape windows"
+  },
+  {
+   "champion": "Akshan",
+   "source": "E",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Heroic Swing E passive bonus crit damage + R fires additional shots per crit chance; full crit build makes him a late hyperscale marksman"
+  },
+  {
+   "champion": "Amumu",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Curse of the Sad Mummy R provides massive AoE root at level 6 that completely transforms his teamfight role from ganker to CC anchor"
+  },
+  {
+   "champion": "Anivia",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Glacial Storm R deals massive slowing AP-ratio AoE damage continuously at full AP build; the dominant late-game scaling mechanism"
+  },
+  {
+   "champion": "Annie",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Tibbers R summons a powerful bear companion at level 6 that fundamentally changes her teamfight threat and zone control"
+  },
+  {
+   "champion": "Ashe",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Enchanted Crystal Arrow R is a global stun projectile at level 6 that transforms her from kiter to long-range engager and is her defining power spike"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "At full stardust and full AP build, Star Surge and Falling Star deal extreme damage with very high AP ratios; stardust amplifies base ratios multiplicatively at max stacks"
+  },
+  {
+   "champion": "Aurora",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Between Worlds R creates a spirit realm portal giving her repositioning and follow-up burst at level 6, transforming her from poke skirmisher to all-in assassin"
+  },
+  {
+   "champion": "Azir",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Emperor's Divide R deploys a soldier wall that knocks back and blocks movement - the Shurima Shuffle combo is a game-defining engage/peel tool at level 6"
+  },
+  {
+   "champion": "Belveth",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Endless Banquet R activates True Form granting bonus max HP, bonus true damage on AAs, and a slow aura - a discrete sustained-combat transformation"
+  },
+  {
+   "champion": "Brand",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "High base Q/W damage and reliable W->Q stun combo create oppressive early lane kill threat that decays as opponents stack magic resist"
+  },
+  {
+   "champion": "Aatrox",
+   "source": "Q",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Darkin Blade Q sweeps dominate laning with strong base damage and short cooldown early"
+  },
+  {
+   "champion": "Ahri",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Mobile burst mage whose Q/W/E ratios require AP items to threaten; no inherent hyperscale"
+  },
+  {
+   "champion": "Akali",
+   "source": "Q",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "High AP and AD ratios across Q/E/R; assassin power multiplies decisively at 2-3 item full build"
+  },
+  {
+   "champion": "Akshan",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Strong early lane bully and roaming pressure via E grapple; decays as opponents build armor/resistances"
+  },
+  {
+   "champion": "Alistar",
+   "source": "W",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "W-Q combo knockup is strongest lane engagement tool; power advantage is front-loaded before items"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Very strong early-mid combat with high base damage; falls off when opponents reach full tank builds"
+  },
+  {
+   "champion": "Amumu",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Tank jungler whose utility and durability gate on tank items; steady mid-to-late presence once built"
+  },
+  {
+   "champion": "Anivia",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "High-mana AP mage requiring significant AP investment before Glacial Storm becomes a teamfight anchor"
+  },
+  {
+   "champion": "Annie",
+   "source": "P",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Stun-on-spellcast P and high base Q damage define oppressive early lane presence and kill threat"
+  },
+  {
+   "champion": "Annie",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "AP ratios on Q/W/R/Tibbers scale acceptably with items but she is not a true hypercarry"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Very weak early, becomes an extreme crit/AS hypercarry at full build; weapon rotations reward item investment maximally"
+  },
+  {
+   "champion": "Ashe",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Utility ADC whose crit scaling and W volley improve with items; solid but not a hypercarry identity"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "Stardust (P) accrues permanently from roaming/kills/objectives and expands Star Surge range/power unboundedly"
+  },
+  {
+   "champion": "Aurora",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "AP skirmisher whose Q/W/E ratios require AP items; moderate scaling without a dominant hyperscale identity"
+  },
+  {
+   "champion": "Azir",
+   "source": "W",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Sand soldiers W deal %AP damage per hit; high cast rate plus full AP build makes Azir a top-tier late hyperscale mage"
+  },
+  {
+   "champion": "Bard",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Chime collection (P) permanently increases movement speed and Q meep damage throughout the entire game with no cap"
+  },
+  {
+   "champion": "Belveth",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Endless Banquet P grants permanent bonus attack speed stacks from champion, large monster, and void coral kills"
+  },
+  {
+   "champion": "Blitzcrank",
+   "source": "Q",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Rocket Grab Q provides massive pick threat early; hook power relative to opponent HP is strongest in laning phase"
+  },
+  {
+   "champion": "Brand",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Blaze passive deals %max-HP magic damage on third stack; scales sharply with AP and enemy HP in late teamfights"
+  },
+  {
+   "champion": "Braum",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Concussive Blows passive CC + shield burst are strongest in the early laning phase; Braum's utility output decays relative to late-game AP threats even with support items"
+  },
+  {
+   "champion": "Briar",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "high base AD + aggressive no-self-peel W form makes her a dominant early lane/jungle bully; baseline damage falls off without continued snowball"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "crit/AS scaling drives her late-game identity via headshots and auto-attack pattern; R is an execute finisher, not the primary hyperscale vehicle - BASE is the correct source for the crit hyperscale row"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "full crit build turns headshot passive + trap-empowered autos into overwhelming ranged DPS; the hyperscale engine is the crit/AS item stack on her passive, not specifically her ult"
+  },
+  {
+   "champion": "Camille",
+   "source": "W",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Tactical Sweep outer cone deals true damage scaling with bonus HP; tank/bruiser item stacking turns her W into a significant late-game true-damage burst on top of her Q pattern"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Aspect of the Serpent grants permanent AP per ability hit (plus bonus on 100/200 stacks); stacks accumulate from level 1 without cap and are the dominant late-game scaling identity, compounding with no-boots AP optimization"
+  },
+  {
+   "champion": "Corki",
+   "source": "W",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "The Package recharges every 150s starting at 4 min, providing a periodic mid-game repositioning + burst spike that partially offsets his late-game falloff"
+  },
+  {
+   "champion": "Diana",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "high AP ratios across Q/W/P passive and full AP build (Nashor's Tooth + Shadowflame line) turn her into a dominant late assassin/bruiser; AP item scaling is the primary late-power engine beyond the level-6 form spike"
+  },
+  {
+   "champion": "Ekko",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Chronobreak rewinds Ekko to a prior position with high-AP-ratio burst + heal on the surrounding area; a discrete ult-activation window that creates a survivability + damage spike not present in his base rotation"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Last Caress deals doubled damage below 30% HP and resets Evelynn to camouflage; the execute threshold + reset cycle is a discrete conditional power burst central to her assassination pattern"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "W Bountiful Harvest and Q Terrify carry very high AP ratios; full AP build (Shadowflame + Rabadon) turns Fiddlesticks into a late-game AoE AP threat even between Crowstorm windows"
+  },
+  {
+   "champion": "Fizz",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "E Playful/Trickster and Q Urchin Strike carry strong AP ratios; 2-3 AP items turn him into a genuine burst threat that outscales a generic ITEM_RELIANT label; AP scaling is the engine, items unlock it"
+  },
+  {
+   "champion": "Briar",
+   "source": "W",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Blood Frenzy + high AD ratios and %max-HP healing scale continuously with AD/AS items; form index W drives her damage profile"
+  },
+  {
+   "champion": "Camille",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "high adaptive-force base stats + Precision Protocol Q true-damage window make her a dominant early duelist; power edge softens into teamfights"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "E",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Twin Fang refunds cost only on poisoned targets; with full AP stacking (no-boots passive trade) E spam becomes an overwhelming sustained-damage hypercarry pattern"
+  },
+  {
+   "champion": "Chogath",
+   "source": "R",
+   "kind": "INFINITE_STACK",
+   "online_stage": "MID",
+   "magnitude": 1.0,
+   "conditional": false,
+   "source_quote": "Feast grants permanent bonus max HP per kill; stacks are unbounded and never decay, making Cho'Gath grow indefinitely across the game"
+  },
+  {
+   "champion": "Corki",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Corki deals mixed magic+physical early burst and maintains lane pressure via Package W spike; power advantage fades without a lead as he is item-reliant without a true hyperscale mechanism"
+  },
+  {
+   "champion": "Darius",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Hemorrhage bleed + Q heal + pull form an oppressive early laning kit with high base damage; falls off sharply in distributed teamfights"
+  },
+  {
+   "champion": "Darius",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Noxian Guillotine resets on kill at rank 3 (level 11-16), enabling pentakill snowball windows that partially restore late relevance"
+  },
+  {
+   "champion": "Diana",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Moonfall at rank 1 is a repositioning tool; at rank 2+ it becomes an AoE pull nuke; the ult rework to an independent dash reset at level 11 is a discrete power-curve inflection"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Maximum Dosage heals up to 20/40/60% max HP over 10s; paired with HP-stack items his effective HP and regen become overwhelming in the late game"
+  },
+  {
+   "champion": "Draven",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "Spinning Axes amplify every auto-attack from level 1 with high base AD; Draven is designed to snowball early or lose relevance; hardest early-game ADC in the roster"
+  },
+  {
+   "champion": "Ekko",
+   "source": "Q",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Timewinder + W shield + R burst all carry strong AP ratios; full AP build turns him into a combo assassin that spikes hard at 2-3 items"
+  },
+  {
+   "champion": "Elise",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Human/spider dual form gives strong pre-6 burst + Cocoon CC for early ganks; base damage does not scale with items and falls off steeply mid/late"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "P",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Demon Shade perma-camouflage plus Allure (W) charm unlock at level 6 and transform her from a weak pre-6 jungler into a threatening AP assassin"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "weak early base stats; needs Sheen/Trinity plus Manamune before dealing meaningful damage; Rising Spell Force stacks are transient not permanent"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Crowstorm blink + AoE fear/drain in a 1.5s channel window is a discrete teamfight identity that turns on at level 6; entire threat profile depends on landing the ult"
+  },
+  {
+   "champion": "Fiora",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Duelist's Dance Vital procs + Lunge Q aggression create strong 1v1 pressure in the early laning phase before tanks build armor"
+  },
+  {
+   "champion": "Fiora",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Grand Challenge reveals all 4 Vitals on one champion; triggering all 4 creates a healing zone and a massive True Damage window - a discrete power burst that scales with item AD"
+  },
+  {
+   "champion": "Fizz",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Chum the Waters shark is a discrete pick/engage tool with high single-target burst AP scaling; the ult landing is the on/off gate for his assassination pattern"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Leap of Faith summons a tentacle per nearby enemy champion; during R she is near-unkillable and deals massive AoE damage - discrete ult-gated teamfight transformation"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "Q",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Parrrley farms Silver Serpents that permanently upgrade barrel health, explosion radius, and slow - unbounded permanent progression that never resets"
+  },
+  {
+   "champion": "Jhin",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Whisper 4th shot always crits for massive bonus AD damage; crit chance converts to bonus AD making full-build Jhin deal enormous 4th-shot burst - fires every 4 AAs unconditionally, not a gate-blocked payoff"
+  },
+  {
+   "champion": "Galio",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Low base damage; needs AP items for damage; utility/tank identity means power ceiling is item-gated"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Trial by Fire + Parrrley Silver Serpents upgrades + barrel crits scale with bonus AD and crit; dominant late-game power"
+  },
+  {
+   "champion": "Garen",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "High base damage on Q/E with short CDs in lane; falls off as enemies build armor and HP growth outpaces Garen damage"
+  },
+  {
+   "champion": "Gnar",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Mini Gnar is a lane bully with high-frequency poke; damage decays as targets build health/resistances"
+  },
+  {
+   "champion": "Gnar",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Mega Gnar transform grants massive HP, CC, and GNAR! ultimate AoE slam; discrete power spike locked behind rage bar"
+  },
+  {
+   "champion": "Gragas",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "AP mage with moderate base ratios; damage output gated by AP items; flat scaling curve"
+  },
+  {
+   "champion": "Graves",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Shotgun point-blank burst and strong early jungle clear; ammo-gated damage frontloads damage into burst windows that degrade as targets space better"
+  },
+  {
+   "champion": "Gwen",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "A Thousand Cuts deals percent-current-HP magic damage on-hit scaling with AP; dominant at full build with stacked AP items"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Strong early gank threat with Devastating Charge and high base damage; falls off as damage doesn't ratio-scale into late without significant investment"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Turret zone control and rocket damage scale directly with AP; weak early dueling, needs items to reach damage potential"
+  },
+  {
+   "champion": "Hwei",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "LATE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Multi-stance AP mage whose diverse spellbook ratios come online with full AP build; late-scaling mage identity"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "High base damage on Tentacle Smash and Harsh Lesson; dominant lane bully that is kited out in late-game teamfights"
+  },
+  {
+   "champion": "Irelia",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Ionian Fervor stacks AS and on-hit damage when hitting champions; at max stacks near full build becomes a dominant duelist"
+  },
+  {
+   "champion": "Ivern",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Enchanter-jungler whose utility and Daisy strength scales with AP items; no independent combat identity"
+  },
+  {
+   "champion": "Janna",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Enchanter support scaling shield/heal strength with AP items; utility throughput gated by gold"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "P",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Martial Cadence percent current HP burst on first hit drives strong early gank pressure; damage impact decays late as HP scaling outpaces the proc"
+  },
+  {
+   "champion": "Jax",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Grandmaster-at-Arms active grants AoE magic damage and bonus armor/MR, enabling Jax to survive and win extended trades; R unlock at 6/11/16 discretely elevates his dueling ceiling"
+  },
+  {
+   "champion": "Jax",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Scales with both AD and AP items; full-build stat-stacking and Relentless Assault on-hit stacks make him a dominant late-game duellist"
+  },
+  {
+   "champion": "Jayce",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Dominant lane bully with high-CD free form-swap Hammer/Cannon that maximizes poke damage in lane; power relative to opponent decays as game scales"
+  },
+  {
+   "champion": "Jinx",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Get Excited passive + crit/AS build scales into dominant late hypercarry; hyperscaling identity is build-driven, not kill-gated"
+  },
+  {
+   "champion": "Kalista",
+   "source": "E",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Rend stacks compound continuously on every AA - always accumulating during combat, not gated behind a threshold"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "P",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Evolve thresholds (100 AS / 100 AD / 130 AP) are discrete build-breakpoint power jumps that transform Q, E, and W mid-to-late"
+  },
+  {
+   "champion": "Karma",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Support Karma needs Moonstone/Shurelya to enchant; damage Karma needs Luden's/Shadowflame - neither path functions without core items"
+  },
+  {
+   "champion": "Karthus",
+   "source": "Q",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Lay Waste is the primary sustained DPS source - spammable low-CD nuke that scales multiplicatively with AP through a full build"
+  },
+  {
+   "champion": "Kayle",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Extremely weak early with melee-only range; Nashor's Tooth and AP items are load-bearing at mid-game transition, not early"
+  },
+  {
+   "champion": "Kindred",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Eternal Hunters: unbounded permanent range/damage growth, but each stack requires completing a specific marked-target hunt"
+  },
+  {
+   "champion": "Khazix",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "R Void Assault grants evolve selections (Q/W/E/R) that are discrete one-time kit transformations boosting isolation burst, AoE, or mobility"
+  },
+  {
+   "champion": "KSante",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Low base damage; needs Sundered Sky / Black Cleaver for damage output; utility tank scales with tankiness items"
+  },
+  {
+   "champion": "KSante",
+   "source": "Q",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Q poke and Q3 knock-up are strongest early lane phase before enemies build resistances"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "W",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "W isolation plasma mark detonation + evolve thresholds; AS/AP hybrid scales hard into late"
+  },
+  {
+   "champion": "Karma",
+   "source": "Q",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Mantra-empowered Q poke is strongest early lane; shield/tether utility doesn't scale into a hypercarry"
+  },
+  {
+   "champion": "Karthus",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Global R nuke and Q DPS both scale multiplicatively with AP items into late-game dominance"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "R Riftwalk CD ramps dramatically at lv6/11/16 - transforms from fragile laner to unkillable hypercarry"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Weak early lane before R online; negative early trajectory offset by extreme late spike"
+  },
+  {
+   "champion": "Katarina",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "R Dagger Shunpo resets compound with AP/lethality; chain resets scale hard into late teamfights"
+  },
+  {
+   "champion": "Katarina",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Strong early dagger combo burst; snowball-dependent early power that peaks before lategame tankiness"
+  },
+  {
+   "champion": "Kayle",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "LATE",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "Level 6/11/16 form transformations (ranged AA, fire waves, permanent ranged) define extreme lategame dominance"
+  },
+  {
+   "champion": "Kayn",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Rhaast / Shadow Assassin form transformation at mid-game is a discrete kit identity shift with distinct late trajectories"
+  },
+  {
+   "champion": "Kennen",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "AP ratios need Zhonya's / Nashor's to deal reliable damage; moderate early bully, peaks with items mid"
+  },
+  {
+   "champion": "Khazix",
+   "source": "Q",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Q isolated target burst is strongest early-mid when enemies lack HP/armor; evolves improve but falls off lategame"
+  },
+  {
+   "champion": "Kled",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Skaarl dismount/remount mechanics and Q/W burst are strongest early-mid; no meaningful lategame hyperscaling"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "W",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "W Bio-Arcane Barrage deals % max HP magic damage on AA - scales exponentially with AS items and AP"
+  },
+  {
+   "champion": "Leblanc",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "QWE combo burst is strongest early-mid when base AP ratios and low base MR converge; squishies become rarer lategame"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Classic early-game jungler - strong lv2-6 dueling and ganking with Q and high base damage that decays hard lategame"
+  },
+  {
+   "champion": "Leona",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "All-in CC chain is strongest early-mid when enemies lack peel/resistances; no damage scaling mechanism for lategame"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "Love Tap passive harass + Q Double Up double-proc; strongest early-game ADC; falls off vs crit hypercarries late"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Bullet Time has high AD+AP ratios per bullet; spikes with lethality or crit build; conditional on channel completing"
+  },
+  {
+   "champion": "Malphite",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Unstoppable Force is a game-changing AoE engage ult; no stack or condition gate - available whenever off cooldown"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "Q",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Alpha Strike has high base damage at early ranks; front-loaded rather than item-dependent; untargetable dodge window"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Highlander grants massive AS boost, CC immunity, and kill-reset; transforms Yi from vulnerable to unstoppable combat threat"
+  },
+  {
+   "champion": "Nasus",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Fury of the Sands grants 300-600 bonus HP, AoE magic damage per second, and enemy armor/MR shred; discrete transformation"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Hounds' Pursuit revives all packmates at full HP and amplifies Naafiri's damage; discrete all-in power window from level 6"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "E",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Malefic Visions is the primary damage engine - DoT that spreads on kill and spawns Voidlings; needs AP to convert into kills"
+  },
+  {
+   "champion": "Lillia",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "AP ratio on Q petal AoE + passive movement speed snowballs item spikes; needs 2-3 items to spike"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Flat-damage mage with moderate ratios; needs AP items to deal relevant damage; moderate base scaling"
+  },
+  {
+   "champion": "Lucian",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "High early burst from passive double-shot; strong level 2-6 lane pressure; scales worse than hypercarry ADCs late"
+  },
+  {
+   "champion": "Lulu",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Enchanter support; utility-focused, polymorph/shield value scales with healer/AP items; no dominant damage trajectory"
+  },
+  {
+   "champion": "Lux",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Long-range burst mage; high AP ratios on E and R but low base damage; item-dependent to one-shot"
+  },
+  {
+   "champion": "Malphite",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Strong armor/HP base scaling for lane trading; falls off as a damage threat late; utility/frontline identity persists via R"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "R",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.62,
+   "conditional": true,
+   "source_quote": "Suppression ult locks one target; needs AP items to convert CC into kill pressure; moderate base ratios"
+  },
+  {
+   "champion": "Maokai",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "High early lane/jungle presence via W sap magic and Q knock-up; becomes pure CC tank late with low damage"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "Meditate DR + E true damage + AS steroid scale exponentially with crit/AS items; classic late-game hypercarry"
+  },
+  {
+   "champion": "Mel",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Reflect passive and AP ratios on burst kit scale with AP items; late-game threat with full AP build"
+  },
+  {
+   "champion": "Milio",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "Enchanter with heals/shields; utility value scales with AP items and cleanse ult; low independent damage"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "High early AD growth and strong level 2-6 all-in with Q/E lane pressure; falls off without strong item spikes"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Cyclone R is a channeled AoE knock-up; defines teamfight windows and jungle gank follow-up from level 6"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Passive AP scaling on all abilities + bonus stats from R prisoner kill; AP+HP item synergy scales extremely hard late"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Realm of Death isolates target and grants stolen stats; a discrete power-window spike from level 6"
+  },
+  {
+   "champion": "Morgana",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "High-AP-ratio W torment and R need significant AP to threaten kills; low base damage but strong utility with any build"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.76,
+   "conditional": false,
+   "source_quote": "Strong early all-in with packmates and bleed; straightforward assassin that falls off late vs tanks without lethality spike"
+  },
+  {
+   "champion": "Nami",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Enchanter support; heal/buff value scales with AP items; no damage identity; utility-capped without items"
+  },
+  {
+   "champion": "Nasus",
+   "source": "Q",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "Siphoning Strike permanently gains +3 (+6 large) stacks per last-hit; no cap; defines infinite late-game 1v1 threat"
+  },
+  {
+   "champion": "Neeko",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Ult-centric burst mage with high AP ratios across Q bounce chains and R (250%+ AP); scales hard into full AP build and outscales mid-to-late; not ITEM_RELIANT flat utility"
+  },
+  {
+   "champion": "Nunu",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.68,
+   "conditional": true,
+   "source_quote": "Absolute Zero channels massive AoE AP damage (250% AP per tick cap); full AP Nunu (Nashor/Liandrys build) is a genuine ratio hypercarry; conditional on landing the channel"
+  },
+  {
+   "champion": "Ornn",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Masterwork item upgrades gate at level 13 (LATE); Ornn empowers his own AND allies' items, making his full late-game power spike one of the strongest in the game - LATE not MID"
+  },
+  {
+   "champion": "Poppy",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "W slam burst trades well early but Poppy is not a hard lane bully like Renekton/Draven; magnitude 0.68 overstates the falloff identity; she transitions into a disruptor tank"
+  },
+  {
+   "champion": "Poppy",
+   "source": "P",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Poppy scales adequately into tank items (Sunfire/Heartsteel); her Steadfast Presence passive rewards health itemisation; core identity is disruptor tank not a hard frontload"
+  },
+  {
+   "champion": "Pyke",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Pyke's lethality base stats + E stun + roam kill-window define an early-dominant identity; kill threats decay as targets build armor/HP and he has no strong late ratio outside execute resets"
+  },
+  {
+   "champion": "Rakan",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "The Quickness unlocks Rakan's team-fight initiation identity at level 6; the MS charm engage spike is a discrete power jump that defines his mid-to-late threat as a playmaker"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "hook-tank engage; needs Heartsteel/tank items to scale durability; kit value is consistent not hyperscale"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "Q",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "spear poke + jungle clear dominant early; falls off hard as targets get resistances and she lacks catch-up"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Cougar form grants dive combo kill-threat; form spike at 6 but does not compensate enough for late falloff"
+  },
+  {
+   "champion": "Nilah",
+   "source": "W",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "W bonus range + E dodge give AS/crit synergy; melee ADC ratio scales excellently with full crit/AS build"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "P",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Umbra Blades passive cleave drives early gank + clear power; base stat bruiser front-loads damage pre-items"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Paranoia global engage spike at 6; defines mid-game threat window and stays potent through late"
+  },
+  {
+   "champion": "Nunu",
+   "source": "Q",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Consume gives Nunu dominant scuttle + smite trades and snowball momentum; lane pressure decays vs tanks"
+  },
+  {
+   "champion": "Olaf",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "massive base AD growth + berserker AS scaling front-loads kill threat; falls off significantly late as targets itemise"
+  },
+  {
+   "champion": "Orianna",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "low base damage; scales smoothly with AP items but no unbounded mechanic; power peaks mid-late with 2-3 items"
+  },
+  {
+   "champion": "Ornn",
+   "source": "P",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "EARLY",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Living Forge provides free component upgrades; builds strength off tank items that others can't upgrade"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Mortal Will stacked spells + Q poke + W stun dominate lane; kit is punishing early but has poor item scaling vs full-build enemies"
+  },
+  {
+   "champion": "Pyke",
+   "source": "R",
+   "kind": "INFINITE_STACK",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Death from Below gold-share resets are unbounded; each reset grants permanent Gold and refreshes ult for another - stacks scale gold indefinitely"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "high burst in short-range combo keys on early base damage; falls off vs tankier targets without true scaling items"
+  },
+  {
+   "champion": "Quinn",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Harrier mark + Blinding Assault blind punish front-load lane bully identity; splits but loses to full-build carries late"
+  },
+  {
+   "champion": "Rakan",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "utility enchanter-engage; scales with support items (Shurelyas / Locket / Redemption) but kit value is consistent, not hyperscale"
+  },
+  {
+   "champion": "Rammus",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Powerball + thorn-tank identity peaks early when enemies lack grievous/penetration; scales armor-reflect but loses damage relevance late"
+  },
+  {
+   "champion": "RekSai",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "unburrowed AD trades + tunnel pressure define early game tempo; kit relies on base numbers that fall off without strong ratio payoffs"
+  },
+  {
+   "champion": "Rell",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.52,
+   "conditional": false,
+   "source_quote": "engage tank support; needs tank items (Heartsteel/Sunfire) to function as frontline; kit power is consistent through game not steeply scaling"
+  },
+  {
+   "champion": "Skarner",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Impale point-and-click suppression at level 6 is the defining power spike; kit centers on this ult-engage turning picks and teamfights"
+  },
+  {
+   "champion": "Skarner",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "reworked kit relies on tank/bruiser itemization to extend the R suppression windows; base stats alone are modest without items"
+  },
+  {
+   "champion": "Rumble",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Danger Zone overheat passive + E (Electro Harpoon) spam at 0.5s CD drives strong early-mid lane harassment that decays once opponents build MR"
+  },
+  {
+   "champion": "Rumble",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Equalizer is a discrete mid-game teamfight spike (available at level 6); locks down zones fight-decisively but Rumble does not hyperscale late with items the way a true ratio carry does"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "tank-utility jungler with low base damage; needs Sunfire/Warmog/tank items to be relevant as a sustained frontline; R alone does not define her full profile"
+  },
+  {
+   "champion": "Singed",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "proxy poison lane identity, high base MS, level 1-6 poison running and fling threat front-load his lane impact; falls off as enemies build Grievous Wounds and kite better"
+  },
+  {
+   "champion": "Renata",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "enchanter support with low base damage; needs Shurelya/Chemtech items to amplify team utility"
+  },
+  {
+   "champion": "Renekton",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "high base AD growth + W empowered stun shreds lanes 1-9; kit loses potency at full build opponents"
+  },
+  {
+   "champion": "Rengar",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Ferocity burst combo strong in early skirmishes; falls off vs tanky late-game frontlines"
+  },
+  {
+   "champion": "Rengar",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "R stealth hunt empowers next combo with guaranteed Ferocity; assassination window gated on ult active"
+  },
+  {
+   "champion": "Riven",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "high base AD ratios on Q/W/E with short CDs; lane dominance peaks before enemies complete armor items"
+  },
+  {
+   "champion": "Ryze",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "mana-AP dual-scaling on all abilities; Seraph's + 3 items make him among the highest DPS in full build"
+  },
+  {
+   "champion": "Samira",
+   "source": "R",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Inferno Trigger requires S-grade style stack; crit/AS full build turns ult into massive multi-hit burst"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Glacial Prison is a fight-decisive CC spike; kit centers on the ult-engage turning teamfights"
+  },
+  {
+   "champion": "Senna",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "soul stacks grant unbounded AD, crit, and range with each kill/assist/wraith collection"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "AP ratios across Q/W/E amplified by ally proximity passive; full AP + enchanter items make her a scaling teamfight presence"
+  },
+  {
+   "champion": "Sett",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "massive base HP regen + W true damage chunk on accumulated Grit peaks in early-mid trades; falls off vs kiting late"
+  },
+  {
+   "champion": "Shaco",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "early invade + Deceive backstab burst + box fear control dominant pre-6; falls off severely without lead"
+  },
+  {
+   "champion": "Shen",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Stand United global teleport + shield at level 6+ is a discrete power jump enabling cross-map 2v1 turns"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Dragon Form grants bonus resistances, enlarged AoE, and empowered abilities; transforms combat profile on activation"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "AP E/R fireballs or on-hit AS builds scale steeply into late with full items in dragon form"
+  },
+  {
+   "champion": "Sion",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Glory in Death grants permanent max HP per minion/champion kill; stacks are unbounded across the whole game"
+  },
+  {
+   "champion": "Sivir",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "crit/AS hypercarry; ricochet W bounces scale with full crit build and IE; On The Hunt R amplifies the late-game spike"
+  },
+  {
+   "champion": "Smolder",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "LATE",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "MMOOOMMMM gains terrain-following at 225 Dragon Practice stacks - a discrete late power threshold that fundamentally upgrades the ult"
+  },
+  {
+   "champion": "Sona",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Crescendo AoE stun defines her teamfight window; ult-gated discrete power spike for engage/disengage"
+  },
+  {
+   "champion": "Sylas",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Hijack borrows opponent ult; when the stolen ability is a game-changing R the power window is a hard spike, gated by both ult and viable target"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Strong early roaming pressure and burst on worked ground; damage contribution and map-control relevance fall off sharply once opponents build MR and the game extends"
+  },
+  {
+   "champion": "Talon",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Shadow Assault cloak + blade-fan burst window is ult-gated; provides a discrete all-in or escape power slot that otherwise does not exist in his kit"
+  },
+  {
+   "champion": "Taric",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Cosmic Radiance grants a 2.5s invulnerability window to Taric and linked ally; the entire champion identity is built around this ult-gated protection spike"
+  },
+  {
+   "champion": "Thresh",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Damnation souls grant +1 AP and +1 armor permanently; meaningful growth but split across offense and defense for a support - magnitude below the 0.9 hypercarry tier"
+  },
+  {
+   "champion": "Tristana",
+   "source": "Q",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Rapid Fire grants 50-110% AS for 5s; the burst-fire window is ult-independent but gated on Q, creating a discrete spike of on-hit and crit output that exceeds her baseline"
+  },
+  {
+   "champion": "Trundle",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Subjugate drains 40% of target's armor and MR over 4s; gated by ult and heavily conditional on a tank/bruiser target, but defines his anti-tank role identity"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Battle Fury stacks in combat up to 35 Fury, granting up to 35% crit chance; the crit synergy is conditional on in-combat stack maintenance and underpins the full-crit build payoff"
+  },
+  {
+   "champion": "Udyr",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "High base stats and strong early jungle clear + gank threat define his early-game identity; without ult he relies on brawling pressure that decays as itemization and kiting mature"
+  },
+  {
+   "champion": "Twitch",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Spray and Pray grants extended range and full-pierce bolts for 8s; the entire teamfight contribution is gated on this ult window - the defining discrete power jump of his kit"
+  },
+  {
+   "champion": "Smolder",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Dragon Practice stacks permanently on ability hits and minion/monster kills, scaling bonus damage on all basic abilities with no stated cap"
+  },
+  {
+   "champion": "Sona",
+   "source": "P",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Accelerando caps at 120 stacks for CDR; support needs AP and CDR items to matter in sustained fights"
+  },
+  {
+   "champion": "Soraka",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Pure enchanter healer; kit utility scales with AP healing items, no standalone hyperscale identity"
+  },
+  {
+   "champion": "Swain",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Ravenous Flock collects Soul Fragments from dying champions, granting permanent max health with no cap"
+  },
+  {
+   "champion": "Swain",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Demonic Ascension toggles a drain-and-AoE form gated by ult; Demonflare burst fires on expiration"
+  },
+  {
+   "champion": "Sylas",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "AP ratios across Q/W/E plus W heal scaling off missing HP make full AP build pay off in late teamfights"
+  },
+  {
+   "champion": "Syndra",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Transcendent splinters (cap 120) grant +15% AP at max and enhance each ability; strong AP ratio scaling with items"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Tank/support needs HP items for E grey-health payoff and bonus-health ratios in P/Q to matter"
+  },
+  {
+   "champion": "Talon",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "High base AD growth and combo burst dominate early-mid; falls off as targets build armor and game extends"
+  },
+  {
+   "champion": "Taric",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Enchanter/tank support; W armor share and Q heals need CDR and armor stacking items to function"
+  },
+  {
+   "champion": "Teemo",
+   "source": "E",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Toxic Shot on-hit scales with AP items; full AP build makes poison and Noxious Trap burst dominate late"
+  },
+  {
+   "champion": "Tristana",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Draw a Bead passive range growth + crit/AS build dominates late; E charge stacks amplified by crit scaling"
+  },
+  {
+   "champion": "Trundle",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Strong healing and brawling stats in early fights; Q/W skirmish power peaks before targets build resistances"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Undying Rage grants minimum health threshold for 5s on a 110-second CD; enables all-in window that defines his kit"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Crit/AS build with Q AD bonus and E crit CD reduction creates a late hypercarry identity around full crit"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Control mage with global R utility; needs AP and mana items; moderate ratios with no infinite or hyperscale mechanic"
+  },
+  {
+   "champion": "Twitch",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "R pierce bolts + crit/AS/on-hit build creates defining late-game hypercarry; Deadly Venom stacks feed E burst"
+  },
+  {
+   "champion": "Varus",
+   "source": "W",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.72,
+   "conditional": true,
+   "source_quote": "Blighted Quiver stacks proc % max HP magic damage on attack; scales hard with AP or AS items once fully stacked"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Organic Deconstruction true-damage proc every 3 ability-hits is his defining carry identity; scales with AP items"
+  },
+  {
+   "champion": "Vi",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Assault and Battery ult-unlock at 6 gives guaranteed single-target lockdown that transforms her gank threat"
+  },
+  {
+   "champion": "Viego",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "R possession borrows slain enemy full kit; magnitude raised to 0.85 as possessing a fed carry is a defining late win condition"
+  },
+  {
+   "champion": "Viktor",
+   "source": "P",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Glorious Evolution hex-core upgrades gate Q/W/E power behind item milestones; discrete kit transformation at each tier"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "P",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Crimson Pact: HP converts to AP and AP to HP; at full AP-tank build his effective stats and Q sustain hyperscale - replacing the imprecise BASE source"
+  },
+  {
+   "champion": "Volibear",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "The Relentless Storm grants massive stat buff, disables nearby turrets, and empowers autos; discrete power jump at level 6 all-in threat"
+  },
+  {
+   "champion": "Xayah",
+   "source": "E",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Bladecaller feather-recall burst scales with crit and AS items; the actual scaling mechanism is E not a generic BASE identity"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Last Breath resets flow, applies armor penetration for team, and gates on airborne ally; conditional discrete power window"
+  },
+  {
+   "champion": "Yone",
+   "source": "E",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Soul Unbound separates soul form for a burst-return window; discrete spike that transforms his all-in pattern at each E cast"
+  },
+  {
+   "champion": "Yorick",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Shepherd of Souls generates Mist Walkers from nearby deaths with no cap; persistent growing army that synergizes with Maiden and scales all game"
+  },
+  {
+   "champion": "Urgot",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "high base damage and W auto-reset give strong lane bully power that falls off vs true late-game carries"
+  },
+  {
+   "champion": "Varus",
+   "source": "Q",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "needs lethality or AP items to convert charged Q into meaningful damage; weak base ratios"
+  },
+  {
+   "champion": "Vayne",
+   "source": "W",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "W percent max-HP true damage scales with AS items; defining hypercarry identity at full build"
+  },
+  {
+   "champion": "Veigar",
+   "source": "P",
+   "kind": "INFINITE_STACK",
+   "online_stage": "EARLY",
+   "magnitude": 1.0,
+   "conditional": false,
+   "source_quote": "Phenomenal Evil grants unbounded AP per ability hit and cage capture; no cap, strongest AP scaling in game"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "high base damage but needs AP items to push true-damage passive and long-range poke to carry weight"
+  },
+  {
+   "champion": "Vex",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "high-ratio burst mage that needs AP items; gloom passive adds reliable cc-synergy but requires build"
+  },
+  {
+   "champion": "Vi",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "strong early burst and gank pressure via Q + R hard-engage; falls off as late-game scales around her"
+  },
+  {
+   "champion": "Viktor",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "augment upgrades gate full kit power; needs AP items before laser/ult reach carry-level output"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "R hemoplague amplifies all damage taken; combined with tank-to-AP conversion (P) creates a discrete power leap at 6 and with AP"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "P converts bonus HP to AP and AP to HP; at full AP-tank build his effective stats and Q sustain hyperscale"
+  },
+  {
+   "champion": "Volibear",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "strong early gank threat and dive power via W bite and R empowerment; mid-late he is a bruiser not a carry"
+  },
+  {
+   "champion": "Warwick",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "dominant early clear and gank threat; natural sustain lets him bully but item-scaling lags behind late hyper carries"
+  },
+  {
+   "champion": "Xayah",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "feather AS/crit build accelerates E recall burst with a full quiver; defining power unlocks at 2-3 crit items"
+  },
+  {
+   "champion": "Xerath",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "immobile artillery with high ratios; fully dependent on AP items to convert long-range poke into carry output"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "dominant level-2/3 gank pressure and early skirmishing; scales poorly into true late-game team fights"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "double crit passive halves crit cost; full crit AS build hits hyperscale breakpoints faster than other carries"
+  },
+  {
+   "champion": "Yone",
+   "source": "BASE",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "double crit passive mirrors Yasuo; mixed physical/magic split (E soul form) and R set up full-build hypercarry"
+  },
+  {
+   "champion": "Yorick",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "R Maiden of the Mist is a persistent powerful ally that dramatically increases split-push and siege threat at 6"
+  },
+  {
+   "champion": "Zac",
+   "source": "Q",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Stretching Strikes deals % max HP magic damage; scales as enemies stack HP"
+  },
+  {
+   "champion": "Zac",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "tank identity; HP and armor items directly amplify blob passive healing, % max HP Q damage, and revive survivability"
+  },
+  {
+   "champion": "Zeri",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Lightning Crash overcharge grants stacking MS and AS on champion hits; discrete ult-gate power window"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "siege/waveclear mage with high early mana costs; not a lane bully - power comes online mid with AP items, not a frontload identity"
+  },
+  {
+   "champion": "Zoe",
+   "source": "E",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Sleepy Trouble Bubble sleep into empowered Q burst enables one-shot pressure at levels 2-3 before targets build MR"
+  },
+  {
+   "champion": "Yunara",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "high base damage and lane-bully kit that loses pressure as targets get resistances"
+  },
+  {
+   "champion": "Yunara",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "ult-gate transforms burst window at level 6 / 11 / 16"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "heal/shield magnitude and adaptive force grant scale tightly with AP items; useless without them"
+  },
+  {
+   "champion": "Zac",
+   "source": "E",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "E deals percent max HP damage, scales better as enemies build HP"
+  },
+  {
+   "champion": "Zed",
+   "source": "BASE",
+   "kind": "EARLY_FRONTLOAD",
+   "online_stage": "EARLY",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "high base AD, low-CD Q poke and W shadow burst peak before tanks itemize armor"
+  },
+  {
+   "champion": "Zeri",
+   "source": "Q",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Q piercing bolt AP/AD ratio + attack-speed synergy explodes at full crit/AS build"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "Q",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Q short-fuse empowered bomb and R ratios reward AP stacking but need 2-3 items to matter"
+  },
+  {
+   "champion": "Zilean",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "bomb/slow utility mage with low base damage; needs AP items for meaningful Q burst"
+  },
+  {
+   "champion": "Zilean",
+   "source": "R",
+   "kind": "FORM_SPIKE",
+   "online_stage": "MID",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "R revive is a discrete ult-gate power jump that defines team-fight impact"
+  },
+  {
+   "champion": "Zoe",
+   "source": "Q",
+   "kind": "RATIO_HYPERSCALE",
+   "online_stage": "LATE",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "charged Paddle Star Q reaches up to ~490% AP ratio; explosively scales with AP items"
+  },
+  {
+   "champion": "Zyra",
+   "source": "BASE",
+   "kind": "ITEM_RELIANT",
+   "online_stage": "MID",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "plant damage and thorn spitter output scale directly with AP; early bases are solid but fall off without items"
+  }
+ ]
+}
