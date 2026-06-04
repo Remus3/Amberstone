@@ -22,7 +22,7 @@ Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` ag
 
 | From | To | Protocol | Purpose | Cadence |
 |---|---|---|---|---|
-| `gamepc_screen_agent` | `:8889/upload-frame` | HTTP POST (JPEG b64) | Screenshots for vision + OCR - DISABLED (continuous-DXGI BSOD class); the frame relay self-heals in-process (single GDI BitBlt fallback, item 276) | n/a |
+| `gamepc_screen_agent` | `:8889/upload-frame` | HTTP POST (JPEG b64) | Screenshots for vision + OCR - retired in favor of the in-process self-grab relay (single GDI BitBlt fallback, item 276) | n/a |
 | `gamepc_liveclient_relay` | `:8889/upload-liveclient` | HTTP POST (JSON) | Live game telemetry (Legion-local; self-heals in-process, item 267) | every 1s |
 | `gamepc_lcu_agent` | `:8889/upload-lcu` | HTTP POST (JSON) | Champ-select, queue, lobby state (Legion-local) | every 1s |
 | `lcu_agent` (local) | `:8889/lcu-cmd-pending` | HTTP GET | Drain queued commands | every 0.5s |
@@ -33,9 +33,9 @@ Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` ag
 Post-1-PC (ADR-011) all relay agents run Legion-local (not Game-PC). Both relay
 halves now self-heal in-process when stale + host local: liveclient reads `:2999`
 (item 267) and the vision-frame relay grabs one frame via a single GDI BitBlt
-(item 276) - so both are non-integral. `gamepc_screen_agent` stays DISABLED
-(continuous DXGI = game-end BSOD class); the self-grab is on-demand only, never a
-loop.
+(item 276) - so both are non-integral. The continuous `gamepc_screen_agent` loop
+is retired in favor of the in-process self-grab relay (1-PC, ADR-011); the
+self-grab is on-demand only, never a loop.
 
 ---
 
@@ -163,15 +163,15 @@ Verified status 2026-06-02 (task state + consumer grep):
 | `gamepc_lcu_agent.py` | RUNNING (RC-LCUAgent) | LCU auth + champ-select/lobby state + command drain; reads local lockfile |
 | `gamepc_liveclient_relay.py` | RUNNING (RC-LiveClientRelay) | Live Client `:2999` -> `:8889/upload-liveclient`; self-heals in-process when stale + host local (item 267) |
 | `gamepc_hotkey_listener.py` | RUNNING (RC-HotkeyListener) | A/B tutoring-coach choice hotkeys (RegisterHotKey; anti-cheat-safe) |
-| `gamepc_screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - game-end BSOD class (feedback_gamepc_screen_capture_bsod). Now non-integral: the frame relay self-grabs in-process (single GDI BitBlt fallback, item 276). Kept as the documented BSOD reference + deploy-allowlisted. NEVER re-enable the continuous loop |
-| `gamepc_phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - same BSOD class at the resolution-swap edge (feedback_gamepc_lcu_phase_watcher_bsod). Patched item 209, has a test, deploy-allowlisted; kept as reference |
+| `gamepc_screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - retired in favor of the in-process self-grab relay (1-PC, ADR-011). Now non-integral: the frame relay self-grabs in-process (single GDI BitBlt fallback, item 276). Deploy-allowlisted |
+| `gamepc_phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - retired with the 1-PC consolidation (ADR-011). Patched item 209, has a test, deploy-allowlisted; kept as reference |
 | `gamepc_mcp_server.py` | DOWN (`:8892`, no task) | Game-PC MCP tooling; deploy-allowlisted; manual start only if Game-PC is re-used (project_gamepc_mcp_boot_gap) |
 | `gamepc_bridge_daemon.py` | OPTIONAL (Game-PC) | Zero-cost cross-Claude bridge sentinel -> headless `claude --print`. KEPT per item 215; bridge peering only, not in the League/RC pipeline |
 | `gamepc_keybind_listener.py` | OPTIONAL (unscheduled) | ADR-007 Alt+1/2/3 decision-respond keybinds; dashboard banner buttons are the live fallback. A working feature, not dead; safe to archive in a dedicated cleanup |
 
 **Archival DEFERRED (verify-before-declare-broken, item 269 L8):** none of the 8
 is truly dead-zero-consumer-safe - 3 are running, screen_agent + phase_watcher
-are intentional BSOD references (and phase_watcher has a test), mcp_server +
+are kept references (and phase_watcher has a test), mcp_server +
 bridge_daemon + screen_agent + phase_watcher sit in the `routes_static.py`
 Game-PC-deploy allowlist, and keybind_listener is an optional working feature.
 A clean archival would prune the deploy allowlist + relocate the phase_watcher
@@ -183,8 +183,7 @@ in-process when the cached frame is stale/missing AND the host is local, so the
 retired `:8889/upload-frame` screen-agent is non-integral (the relay agent only
 pre-warms the cache; if it dies the self-grab keeps the coaches fed). The
 fallback is a single on-demand GDI BitBlt via `PIL.ImageGrab` - NOT the
-continuous DXGI/bettercam loop that is the permanent game-end BSOD class
-(feedback_gamepc_screen_capture_bsod), which stays banned. Throttled 1/1.5s,
+continuous DXGI/bettercam loop, which stays retired (1-PC, ADR-011). Throttled 1/1.5s,
 fail-soft, source-less requests only, disabled on a remote `RC_GAME_HOST`. Live
 in-game validation OWED (no live game to exercise the fallback at ship time).
 

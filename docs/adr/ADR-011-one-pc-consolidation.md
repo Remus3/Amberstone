@@ -38,9 +38,8 @@ League + Vanguard + RC + OBS all run on Legion. Concretely:
    as ONLOGON scheduled tasks (RC-LCUAgent, RC-LiveClientRelay,
    RC-HotkeyListener). Their Game-PC copies are stopped.
 3. **phase_watcher is NOT relocated.** Its DXGI capture on gameflow phase
-   edges is the same crash class as the disabled screen agent
-   (feedback_gamepc_lcu_phase_watcher_bsod / feedback_gamepc_screen_capture_bsod).
-   RC-PhaseWatcher disabled on Game-PC.
+   edges is retired with the continuous screen agent under the 1-PC
+   consolidation. RC-PhaseWatcher disabled on Game-PC.
 4. **OBS records locally on Legion** via Display Capture (WGC), not Game
    Capture (hook injection trips Vanguard). No splitter/capture card.
 
@@ -65,10 +64,8 @@ League + Vanguard + RC + OBS all run on Legion. Concretely:
   127.0.0.1:2999 only when the relay is UNREACHABLE. The dead-agent
   short-circuit risk is RESOLVED by the 2026-06-02 self-heal below - the relay
   endpoint stays fresh in-process even if RC-LiveClientRelay dies.
-- OBS Display Capture is continuous DXGI/WGC capture - the same surface that
-  caused the Game-PC game-end 0x50 BSOD (Duet + resolution swap at match end).
-  Legion likely lacks that root (no Duet, lock one resolution, League
-  Borderless) but watch for match-end BSOD while recording.
+- OBS Display Capture is continuous DXGI/WGC capture. Keep one locked
+  resolution and League Borderless on Legion while recording.
 - Tailscale kept the node name `legion-rc` despite the Windows hostname
   rename to DESKTOP-JKZECV9. `legion-rc` MagicDNS stays canonical for RC and
   the Peer bridge; do not "reconcile" it to the local hostname.
