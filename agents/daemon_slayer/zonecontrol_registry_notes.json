@@ -1,0 +1,889 @@
+{
+ "item": 302,
+ "engine": "1.114.0",
+ "count": 98,
+ "entries": [
+  {
+   "champion": "Anivia",
+   "source": "W",
+   "kind": "TERRAIN",
+   "persistence": "TIMED",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "Crystallize - raises an impassable wall of ice for 5 seconds, physically blocking movement and pathing"
+  },
+  {
+   "champion": "Anivia",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "Glacial Storm - channelled blizzard field that chills and slows enemies for as long as Anivia channels it"
+  },
+  {
+   "champion": "Annie",
+   "source": "R",
+   "kind": "SUMMON",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Summon: Tibbers - deploys Tibbers who persists for ~45s contesting and threatening the area around him with aura damage"
+  },
+  {
+   "champion": "Azir",
+   "source": "W",
+   "kind": "SUMMON",
+   "persistence": "TIMED",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Arise! - summons sand soldiers that persistently attack and zone an area around their position"
+  },
+  {
+   "champion": "Azir",
+   "source": "R",
+   "kind": "TERRAIN",
+   "persistence": "TIMED",
+   "magnitude": 0.88,
+   "conditional": true,
+   "source_quote": "Emperor's Divide - raises a wall of soldiers that blocks movement and displaces enemies, reshaping pathing"
+  },
+  {
+   "champion": "Bard",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "BRIEF",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Tempered Fate - freezes all objects in a large area for 2.5 seconds, creating a contested zone that cannot be safely crossed or fought through"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "W",
+   "kind": "SUMMON",
+   "persistence": "TIMED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Infernum or Crescendum off-hand turret placement contests ground around its fixed position; weapon-loadout dependent"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.72,
+   "conditional": true,
+   "source_quote": "Falling Star / The Skies Descend - creates a large slowing/stunning field on the ground that persists briefly"
+  },
+  {
+   "champion": "Aurora",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Between Worlds - creates a Spirit Realm arena that slows and constrains movement within it for its duration"
+  },
+  {
+   "champion": "Akali",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Twilight Shroud - deploys a ring of smoke that obscures vision and slows enemies who enter, contesting the area"
+  },
+  {
+   "champion": "Ashe",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "BRIEF",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Volley - fires a cone of arrows that slow enemies in the area; brief but creates a denial cone enemies cannot safely advance through"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "W",
+   "kind": "TRAP",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Yordle Snap Trap: places up to 3 armed traps on the ground that root and briefly reveal enemies who step on them; traps persist for 30 seconds and zone enemies from areas or cage them near objectives"
+  },
+  {
+   "champion": "Camille",
+   "source": "R",
+   "kind": "TERRAIN",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Hextech Ultimatum: creates an impassable force field arena around the target that traps them and prevents enemies from entering or leaving the zone"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Miasma: creates a lingering poison cloud that slows and grounds enemies inside it, preventing the use of movement abilities for the duration"
+  },
+  {
+   "champion": "Ekko",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Parallel Convergence: after a delay a time-distortion field appears that slows enemies inside it and stuns those caught when it fully activates, denying the ground for several seconds"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Crowstorm: channels then blinks to location and deals persistent AoE damage in a large radius around Fiddlesticks for the full channel duration, making the entire area lethal to stand in"
+  },
+  {
+   "champion": "Fizz",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Chum the Waters: the traveling shark creates a large slowing field around it as it approaches the landing point, denying ground for the full travel duration; the landing AoE knockup additionally scatters grouped enemies"
+  },
+  {
+   "champion": "Braum",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Glacial Fissure: smashes the ground in a long line knocking up enemies hit, then leaves a lingering crevasse that slows enemies who walk over it for several seconds, persistently denying the ground corridor"
+  },
+  {
+   "champion": "Briar",
+   "source": "R",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Certain Death: fear-marks all visible enemies and pulls them all toward Briar's landing point, forcibly repositioning the entire enemy team and clearing or contesting a zone around impact"
+  },
+  {
+   "champion": "Chogath",
+   "source": "Q",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Rupture: erupts a target ground area after a delay, knocking up and silencing all enemies caught in the zone; forces enemies to evacuate the targeted area on sight or be launched"
+  },
+  {
+   "champion": "Corki",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Valkyrie: Corki dashes and leaves a burning fire trail behind him that deals persistent damage to enemies who stand in it, lingering on the ground for a few seconds"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "E",
+   "kind": "TRAP",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Powder Keg - places explosive barrel on ground; barrel sits until detonated or destroyed, denying movement through the area"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Cannon Barrage - calls sustained cannon fire on a large area for several seconds, making the ground dangerous and forcing repositioning"
+  },
+  {
+   "champion": "Gragas",
+   "source": "R",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Explosive Cask - scatters enemies outward from impact point, clearing and controlling space around the explosion"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "Q",
+   "kind": "SUMMON",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "H-28G Evolution Turret - places autonomous turrets that contest and hold ground, attacking enemies that enter the area"
+  },
+  {
+   "champion": "Hwei",
+   "source": "Q",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Tormented Soil (QE) - leaves a lingering ground zone that damages and slows enemies who remain in the area"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "E",
+   "kind": "SUMMON",
+   "persistence": "TIMED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Test of Spirit - pulls enemy spirit out; spirit location spawns additional tentacles, creating a contested zone around the extracted spirit"
+  },
+  {
+   "champion": "Ivern",
+   "source": "R",
+   "kind": "SUMMON",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Daisy! - summons Daisy the golem who holds and contests space, knocking up enemies in her path and controlling the area around her"
+  },
+  {
+   "champion": "Janna",
+   "source": "R",
+   "kind": "DISPLACE",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Monsoon - channels for up to 3 seconds, continuously knocking back all nearby enemies, clearing and denying the area around Janna for the channel duration"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "R",
+   "kind": "TERRAIN",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Cataclysm - creates an arena of impassable terrain walls trapping enemies inside, physically reshaping pathing for its duration"
+  },
+  {
+   "champion": "Jhin",
+   "source": "E",
+   "kind": "TRAP",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Captive Audience - places a lotus trap on the ground that slows then detonates; sits dormant denying safe passage through the area until triggered or expired"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "P",
+   "kind": "SUMMON",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Prophet of an Elder God - periodically spawns a Tentacle on nearest terrain that persists and attacks enemies commanded by abilities, holding ground around walls"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "R",
+   "kind": "SUMMON",
+   "persistence": "TIMED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Leap of Faith - slams idol spawning one Tentacle per champion hit (up to 6) for 8 seconds; supercharged attack frequency saturates the area with damage"
+  },
+  {
+   "champion": "Irelia",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Vanguard's Edge - blades form a spade-shaped perimeter for 2.5 seconds; enemies crossing for the first time are slowed 90% for 1.5 seconds, functionally sealing the boundary"
+  },
+  {
+   "champion": "Graves",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Smoke Screen - canister creates a smoke cloud for 4 seconds applying persistent nearsight to all enemies within, denying vision and forcing repositioning out of the area"
+  },
+  {
+   "champion": "Jayce",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Lightning Field (melee form) - surrounds Jayce with an electric field for 4 seconds dealing magic damage per second to nearby enemies, contesting melee space"
+  },
+  {
+   "champion": "Jinx",
+   "source": "E",
+   "kind": "TRAP",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Jinx tosses out 3 Chompers that snap shut on the first enemy that walks over them, rooting and dealing damage"
+  },
+  {
+   "champion": "KSante",
+   "source": "R",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "All Out knocks the target enemy champion through terrain into an isolated area behind it, separating them from their team"
+  },
+  {
+   "champion": "Karma",
+   "source": "Q",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Mantra-empowered Q Soulflare leaves a Circle of Soulflare that deals damage and slows all enemies within it after a brief delay"
+  },
+  {
+   "champion": "Karthus",
+   "source": "E",
+   "kind": "FIELD",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Defile: when toggled on, drains mana to deal damage to all nearby enemies each second, creating a persistent damaging aura around Karthus"
+  },
+  {
+   "champion": "Karthus",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Wall of Pain creates a line zone that slows enemies passing through and reduces their magic resistance for several seconds; does not block pathing"
+  },
+  {
+   "champion": "Kennen",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Slicing Maelstrom summons a storm that repeatedly strikes enemies around Kennen for multiple seconds, creating a heavily contested area"
+  },
+  {
+   "champion": "Kindred",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Lamb's Respite marks a circular zone on the ground; no unit inside can die, creating a spatially contested sanctuary/denial area"
+  },
+  {
+   "champion": "Kled",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Chaaaaaaaarge! leaves a trail of fire along the charge path that deals damage and slows enemies who cross it"
+  },
+  {
+   "champion": "Lux",
+   "source": "E",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Lucent Singularity leaves a slowing field on the ground for several seconds before detonation"
+  },
+  {
+   "champion": "Malphite",
+   "source": "R",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Unstoppable Force crashes into an area, knocking up all enemies hit and scattering them from the impact zone"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "W",
+   "kind": "SUMMON",
+   "persistence": "TIMED",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "Void Swarm voidlings weakly contest nearby space but primarily chase a designated target rather than holding ground"
+  },
+  {
+   "champion": "Maokai",
+   "source": "E",
+   "kind": "TRAP",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Sapling Toss plants a sapling that arms after a short delay and explodes when an enemy approaches"
+  },
+  {
+   "champion": "Maokai",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Nature's Grasp sends a slowly advancing root-wave that denies the corridor in front of it for several seconds as it travels"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "R",
+   "kind": "TERRAIN",
+   "persistence": "TIMED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Realm of Death banishes Mordekaiser and his target into an isolated realm, removing both from the main map entirely"
+  },
+  {
+   "champion": "Morgana",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Tormented Shadow creates a lingering damage pool on the ground that burns enemies standing in the area"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Bullet Time channels a barrage of bullets in a cone, creating a sustained zone enemies must exit or be shredded"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "P",
+   "kind": "SUMMON",
+   "persistence": "TIMED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Naafiri commands her packmates - hound units that pursue and contest the area around marked targets"
+  },
+  {
+   "champion": "Nami",
+   "source": "R",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Tidal Wave sends a massive wave that knocks up and displaces all enemies in its path, clearing a wide lane of space"
+  },
+  {
+   "champion": "Milio",
+   "source": "E",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Cozy Campfire places a healing aura zone on the ground that allies stand in, passively contesting and discouraging enemy approach to that area"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Cyclone spins Wukong in a wide area dealing repeated knockups, creating a moving zone enemies cannot safely stand in for the channel duration"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "W",
+   "kind": "TRAP",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Bushwhack: places a trap that reveals and damages enemies who trigger it; sits dormant until sprung or it expires"
+  },
+  {
+   "champion": "Nunu",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.72,
+   "conditional": true,
+   "source_quote": "Absolute Zero: large channelled snowball field that slows and deals heavy damage to all enemies remaining in the zone for the channel duration"
+  },
+  {
+   "champion": "Orianna",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.38,
+   "conditional": false,
+   "source_quote": "Command: Dissonance leaves a lingering AoE field around the ball that slows enemies and speeds allies for several seconds"
+  },
+  {
+   "champion": "Ornn",
+   "source": "R",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Call of the Forge God: a massive ram entity charges across the map twice, knocking up and displacing all enemies in its path; the moving collision clears space but does not create static impassable terrain"
+  },
+  {
+   "champion": "Poppy",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.62,
+   "conditional": false,
+   "source_quote": "Steadfast Presence: creates a zone around herself that passively and actively prevents enemy dashes from completing within the area"
+  },
+  {
+   "champion": "Rammus",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.58,
+   "conditional": true,
+   "source_quote": "Soaring Slam: creates a tremor zone on impact that repeatedly knocks up enemies who remain in the area for several seconds"
+  },
+  {
+   "champion": "RekSai",
+   "source": "E",
+   "kind": "TERRAIN",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "Tunnel: digs a burrowed tunnel entrance/exit on the ground that persists until destroyed; physically alters pathing and map structure at placed locations"
+  },
+  {
+   "champion": "Rell",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.68,
+   "conditional": true,
+   "source_quote": "Magnet Storm: creates a large magnetic vortex around herself that continuously pulls nearby enemies inward, denying escape from the area for the duration"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "Q",
+   "kind": "FIELD",
+   "persistence": "BRIEF",
+   "magnitude": 0.22,
+   "conditional": false,
+   "source_quote": "Duskbringer: Nocturne throws a shadow blade that leaves a lingering Dusk Trail on the path; enemies standing on the trail are slowed and Nocturne gains movement/attack speed while on it"
+  },
+  {
+   "champion": "Rumble",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Equalizer lays a long-duration line of fire zones that slow and damage, denying ground for ~8s"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Glacial Prison blizzard lingers at impact point, slowing enemies in the area for several seconds"
+  },
+  {
+   "champion": "Shaco",
+   "source": "W",
+   "kind": "TRAP",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Jack In The Box sits dormant up to 60s, fears and slows enemies who enter, denying brush and jungle paths"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "E",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Dragon-form Flame Breath leaves a burning flame field on the ground for several seconds"
+  },
+  {
+   "champion": "Singed",
+   "source": "Q",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Poison Trail leaves a lingering poison cloud behind Singed while he runs, denying corridors and jungle paths"
+  },
+  {
+   "champion": "Singed",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Mega Adhesive creates a placed field for 3 seconds that grounds enemies within and slows them, denying movement-ability use in the area"
+  },
+  {
+   "champion": "Smolder",
+   "source": "E",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Smolder breathes a cone of flame that leaves a lingering fire patch on the ground dealing damage over time"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "W",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Seismic Shove displaces enemies in a target direction, clearing space in a short burst - a spatial scatter rather than impassable terrain"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "R",
+   "kind": "TERRAIN",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.92,
+   "conditional": true,
+   "source_quote": "Weaver's Wall raises a massive impassable wall across the map, physically reshaping pathing for its duration"
+  },
+  {
+   "champion": "Teemo",
+   "source": "R",
+   "kind": "TRAP",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.78,
+   "conditional": true,
+   "source_quote": "Noxious Trap places invisible mushrooms that persist on the ground, slowing and poisoning enemies who trigger them"
+  },
+  {
+   "champion": "Trundle",
+   "source": "E",
+   "kind": "TERRAIN",
+   "persistence": "TIMED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Pillar of Ice creates an impassable terrain pillar at the target location for a duration, blocking movement"
+  },
+  {
+   "champion": "Udyr",
+   "source": "Q",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Wingborne Storm creates a lingering storm around Udyr that deals damage in an area, denying close approach"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "Q",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Threaded Volley leaves Worked Ground on the terrain for several seconds; enemies moving through it face reduced rock hits, marking and altering the ground state as a lingering spatial zone"
+  },
+  {
+   "champion": "Swain",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Demonic Ascension creates a persistent draining AoE field around Swain while toggled, pulling and damaging all nearby enemies for the duration, contesting the surrounding ground"
+  },
+  {
+   "champion": "Veigar",
+   "source": "E",
+   "kind": "TERRAIN",
+   "persistence": "TIMED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Event Horizon: pentagon cage of impassable walls that stun enemies crossing the edge and deny a zone for ~3s"
+  },
+  {
+   "champion": "Viktor",
+   "source": "E",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Death Ray: leaves a lingering Aftershock field on the path that damages and slows for ~4s"
+  },
+  {
+   "champion": "Yorick",
+   "source": "W",
+   "kind": "TERRAIN",
+   "persistence": "TIMED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Dark Procession: ring of impassable walls that cages or quarantines a zone for ~4-5s"
+  },
+  {
+   "champion": "Yorick",
+   "source": "R",
+   "kind": "SUMMON",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Eulogy of the Isles: summons the Maiden of the Mist who autonomously pushes and denies a lane"
+  },
+  {
+   "champion": "Xerath",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Rite of the Arcane: repeated barrages onto targeted ground zones, denying area through damage threat"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "LIFE FORM DISINTEGRATION RAY: channelled beam sweeping across ground for ~2.5s, denying approach"
+  },
+  {
+   "champion": "Volibear",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Stormbringer: lightning continues striking in the area around Volibear for the duration after landing"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "R",
+   "kind": "DISPLACE",
+   "persistence": "BRIEF",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Crescent Guard: displaces all non-Challenged enemies out of the area around Xin Zhao, denying a contested zone for ~0.75s"
+  },
+  {
+   "champion": "Viktor",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Gravity Field: placed gravity mine on ground that slows all enemies inside; 3 stacks stuns for 1.5s, persists ~4s"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "W",
+   "kind": "TERRAIN",
+   "persistence": "TIMED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Wind Wall: large impassable wall that blocks all enemy projectiles for ~3.75s, denying a corridor of ground for ranged approach"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "BRIEF",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Sanguine Pool: Vladimir submerges into a ground AoE that slows and damages enemies standing over it for ~2s"
+  },
+  {
+   "champion": "Yunara",
+   "source": "W",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "places a Starfall Lotus on the ground that blooms, dealing damage and slowing enemies in the area"
+  },
+  {
+   "champion": "Yunara",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "calls down a massive celestial lotus that detonates across a large area, creating an extended zone of damage"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "E",
+   "kind": "TRAP",
+   "persistence": "TIMED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "scatters a cluster of mines over an area; mines slow and damage enemies who walk through them until triggered or expired"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "W",
+   "kind": "TRAP",
+   "persistence": "TIMED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Satchel Charge places an armed explosive on the ground that enemies must avoid; the charge sits dormant and denies the area around it until detonated or expired"
+  },
+  {
+   "champion": "Zoe",
+   "source": "E",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Sleepy Trouble Bubble leaves a lingering puddle on the ground where it lands, slowing and threatening to sleep enemies who walk through it"
+  },
+  {
+   "champion": "Zyra",
+   "source": "W",
+   "kind": "SUMMON",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Rampant Growth places a seed that sprouts into an attacking thornspitter plant, contesting and denying the area around it"
+  },
+  {
+   "champion": "Zyra",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "TIMED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Stranglethorns erupts a large thorn zone that knocks up enemies and leaves a briefly lingering area of thorns denying the space"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "R",
+   "kind": "FIELD",
+   "persistence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Final Chapter channels ~3.75s sending 7 repeated waves of magic that root all enemies caught in the wide cone, denying the area in front of Yuumi's host for the channel duration"
+  }
+ ]
+}
