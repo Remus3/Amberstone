@@ -177,12 +177,14 @@ def _build_expected() -> dict[str, bytes]:
         # registry is baked into cc_output.py), so it too is not mirrored.
         # mobility_registry_notes.json (item 297) is the mobility.py analog.
         # sustain_registry_notes.json (item 298) is the sustain.py analog.
+        # scaling_registry_notes.json (item 299) is the scaling.py analog.
         if p.name in (
             "CHANGELOG.md",
             "CC_CONDITIONAL_NOTES.md",
             "cc_output_registry_notes.json",
             "mobility_registry_notes.json",
             "sustain_registry_notes.json",
+            "scaling_registry_notes.json",
         ) and p.parent == eng:
             continue
         if p.name == "__init__.py" and p.parent == eng:

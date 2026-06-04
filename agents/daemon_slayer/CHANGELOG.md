@@ -1331,6 +1331,31 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.111.0 (Scaling / power-curve scorer - item 299, the TENTH scored axis, built
+by a 10-channel roster fan-out. NEW agents/daemon_slayer/scaling.py: a
+per-(champion, source) scaling-mechanism registry plus a kind -> weight table
+(INFINITE_STACK 1.0 / FORM_SPIKE 0.8 / RATIO_HYPERSCALE 0.8 / ITEM_RELIANT 0.5 /
+EARLY_FRONTLOAD 0.4). Each mechanism tags the online_stage it keys on (EARLY /
+MID / LATE - nothing contributes before its stage) and a 0..1 magnitude;
+compute_scaling() folds every online mechanism into an early / mid / late power
+triple using a per-kind ramp (_SCALING_STAGE_RAMP: a stack / ratio / item kind
+RAMPS UP to 1.0 late, a FORM_SPIKE is flat once unlocked, an EARLY_FRONTLOAD
+DECAYS), conditional mechanisms credited at the 0.5 midpoint. scaling_score =
+late_power (higher = stronger end-state); scaling_slope = late_power -
+early_power (signed trajectory: positive scales up, negative falls off). This is
+the only axis that owns the TIME dimension - every other scored axis is a static
+snapshot. NEW /scaling route (POST+GET). PURELY ADDITIVE: reads no scorer, read
+by none - every existing route is byte-identical. EXHAUSTIVE 171-champ Workflow
+fan-out (10 classify + 10 completeness critics, Sonnet, schema-validated) -> 258
+entries / 171 champs (full roster) / 42 conditional / kinds EARLY_FRONTLOAD 68 /
+FORM_SPIKE 62 / RATIO_HYPERSCALE 62 / ITEM_RELIANT 50 / INFINITE_STACK 16; engine
++ tests hand-written from the structured output. + tools/ds_scaling_build.py
+(reusable validate / inject generator) + scaling_registry_notes.json provenance
+sidecar (Share-excluded). Live slope: Vladimir +1.84 / Zac +1.41 / Karthus +1.40
+/ Nasus +1.305 / Kayle +1.01 (scale up) vs Draven -0.29 / Renekton / Pantheon /
+LeeSin / Elise -0.27 (fall off); empty / unknown = 0. The scaling / power-curve
+axis is EXHAUSTED across the roster.)
+
 1.110.0 (Sustain / vamp-throughput scorer - item 298, the NINTH scored axis,
 built by a 10-channel roster fan-out. NEW agents/daemon_slayer/sustain.py: a
 per-(champion, spell) damage-conversion + regen sustain registry (lifesteal /
