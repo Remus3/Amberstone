@@ -1331,6 +1331,34 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.116.0 (Ally-amplification / buff-throughput scorer - item 304, the FIFTEENTH
+scored axis, built by a 10-channel roster fan-out. NEW agents/daemon_slayer/allyamp.py:
+a per-(champion, source) ally-buff-mechanism registry plus a kind -> weight table
+(_ALLYAMP_KIND_WEIGHT: PROTECT 1.0 / SHIELD 0.85 / HEAL 0.75 / STEROID 0.6 /
+HASTE 0.45) and a scope -> mult table (_ALLYAMP_SCOPE_MULT: TEAM 1.0 / DUO 0.8 /
+SINGLE 0.65). compute_allyamp folds every mechanism into a single allyamp_score =
+sum(kind_weight * scope_mult * magnitude), gated mechanisms credited at the 0.5
+conditional midpoint; top_kind labels the strongest ally-buff and saves_ally flags
+any PROTECT mechanism (a hard save - invuln / revive / untargetable / damage-immune
+placed on an ally). It scores how much COMBAT VALUE a champion grants to her ALLIES -
+the shields, heals, steroids, hard-saves, and haste she pumps OUTWARD into her team -
+the buff-throughput dimension the prior fourteen axes never measured (every prior axis
+scores what a champion does to an enemy, to a piece of ground, or to her OWN body; this
+is the mirror of the self-sustain axis pointed at teammates). NEW /ally-amp route
+(POST+GET). Purely ADDITIVE - reads no existing scorer and is read by none, so every
+existing route is byte-identical. Deliberately SPARSE (only champions who grant value
+to allies appear; a selfish carry / assassin scores 0.0), the sustain / zone-control
+shape. 171-champion ten-channel fan-out (10 classify + 10 completeness critics) -> 74
+entries / 43 champs / 30 conditional / kinds SHIELD 19 HEAL 18 HASTE 15 STEROID 14
+PROTECT 8 / scope TEAM 37 SINGLE 31 DUO 6. Live: Taric 1.20 (top, PROTECT invuln) /
+Milio 1.14 / Nami 0.82 / Janna 0.82 / Senna 0.81 / Lulu 0.71 (top ally-buffers) vs
+MasterYi / Zed / Vayne / Darius 0.0 (selfish floor); the 8 saves_ally champs = Taric /
+Kayle / Zilean / Kindred / TahmKench / Shen / Bard / Akshan. + tools/ds_allyamp_build.py
+(marker-splice generator) + allyamp_registry_notes.json provenance sidecar
+(Share-excluded). Phase D - an auto-pairing consumer crediting ally amplification into a
+live teamfight / draft / peel-target verdict - remains. The ally-amplification /
+buff-throughput axis is EXHAUSTED across the roster.)
+
 1.115.0 (Objective / structure-damage scorer - item 303, the FOURTEENTH scored
 axis, built by a 10-channel roster fan-out. NEW agents/daemon_slayer/objdamage.py:
 a per-(champion, source) objective-mechanism registry plus a kind -> weight table

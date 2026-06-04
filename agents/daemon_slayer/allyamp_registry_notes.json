@@ -1,0 +1,673 @@
+{
+ "item": 304,
+ "engine": "1.116.0",
+ "count": 74,
+ "entries": [
+  {
+   "champion": "Alistar",
+   "source": "P",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Triumphant Roar (P): at full charge, heals himself and all nearby allied champions"
+  },
+  {
+   "champion": "Annie",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Molten Shield (E): can target an allied champion, granting a shield plus decaying bonus movement speed"
+  },
+  {
+   "champion": "Akshan",
+   "source": "W",
+   "kind": "PROTECT",
+   "scope": "TEAM",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Going Rogue (W): killing a Scoundrel resurrects all allied champions that Scoundrel had slain"
+  },
+  {
+   "champion": "Bard",
+   "source": "W",
+   "kind": "HEAL",
+   "scope": "SINGLE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Caretaker's Shrine (W): first ally to enter is healed and gains decaying bonus movement speed"
+  },
+  {
+   "champion": "Bard",
+   "source": "E",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Magical Journey (E): terrain portal Bard and allies travel through at 33% increased speed"
+  },
+  {
+   "champion": "Bard",
+   "source": "R",
+   "kind": "PROTECT",
+   "scope": "TEAM",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Tempered Fate (R): places all units hit, including allied champions, into untargetable stasis"
+  },
+  {
+   "champion": "Braum",
+   "source": "W",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Braum W Stand Behind Me: leaps to a target allied champion; the ally gains bonus Armor and Magic Resist for a few seconds"
+  },
+  {
+   "champion": "Fiora",
+   "source": "R",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Fiora R Grand Challenge: if she hits all four Vitals or the target dies, Fiora and her allies in the area are healed over the next few seconds"
+  },
+  {
+   "champion": "Galio",
+   "source": "R",
+   "kind": "SHIELD",
+   "scope": "TEAM",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Galio R Hero's Entrance: designates an ally's position and grants all allies in the landing area a magic shield"
+  },
+  {
+   "champion": "Hwei",
+   "source": "W",
+   "kind": "SHIELD",
+   "scope": "TEAM",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Hwei W Subject: Serenity (Pool of Reflection shields allied champions inside, Fleeting Current grants allies move speed)"
+  },
+  {
+   "champion": "Ivern",
+   "source": "Q",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.3,
+   "conditional": true,
+   "source_quote": "Ivern Q Rootcaller: allies can dash to the target rooted by his vine"
+  },
+  {
+   "champion": "Ivern",
+   "source": "W",
+   "kind": "STEROID",
+   "scope": "TEAM",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Ivern W Brushmaker: Ivern and nearby allies' attacks deal bonus magic damage while in brush"
+  },
+  {
+   "champion": "Ivern",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Ivern E Triggerseed: places a shield on an ally that explodes to slow and damage enemies"
+  },
+  {
+   "champion": "Janna",
+   "source": "P",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Janna Passive Tailwind: Janna's allies gain bonus move speed while moving toward her"
+  },
+  {
+   "champion": "Janna",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Janna E Eye of the Storm: shields an ally champion or turret and increases their attack damage"
+  },
+  {
+   "champion": "Janna",
+   "source": "R",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Janna R Monsoon: soothing winds heal nearby allies over the channel"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "E",
+   "kind": "STEROID",
+   "scope": "TEAM",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Jarvan IV E Demacian Standard: flag grants bonus attack speed to nearby allied champions"
+  },
+  {
+   "champion": "Jayce",
+   "source": "E",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Jayce E Acceleration Gate: increases the move speed of all allied champions who pass through it"
+  },
+  {
+   "champion": "Karma",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Karma E Inspire: shields a target ally and grants them bonus movement speed"
+  },
+  {
+   "champion": "Karma",
+   "source": "R",
+   "kind": "SHIELD",
+   "scope": "TEAM",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Karma R+E Defiance (Mantra-empowered Inspire): AoE shield to the target plus a halved shield and haste to nearby allies"
+  },
+  {
+   "champion": "Kayle",
+   "source": "W",
+   "kind": "HEAL",
+   "scope": "SINGLE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Kayle W Celestial Blessing: heals a target ally and grants both Kayle and the ally bonus movement speed"
+  },
+  {
+   "champion": "Kayle",
+   "source": "R",
+   "kind": "PROTECT",
+   "scope": "SINGLE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Kayle R Divine Judgment: grants a targeted ally invulnerability for the duration"
+  },
+  {
+   "champion": "Kindred",
+   "source": "R",
+   "kind": "PROTECT",
+   "scope": "TEAM",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Kindred R Lamb's Respite: zone preventing all allied units inside from dying, then heals them when it ends"
+  },
+  {
+   "champion": "Kled",
+   "source": "R",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Kled R Chaaaaaaaarge!!: leaves a draft trail granting bonus movement speed to allied champions who follow it"
+  },
+  {
+   "champion": "Lulu",
+   "source": "W",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Lulu W Whimsy (ally cast): grants the target ally bonus attack speed and bonus movement speed"
+  },
+  {
+   "champion": "Lulu",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Lulu E Help, Pix! (ally cast): Pix jumps to an ally and shields them (80-240 +55% AP) and aids their attacks"
+  },
+  {
+   "champion": "Lulu",
+   "source": "R",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Lulu R Wild Growth: enlarges target ally granting bonus health (275-575 +55% AP) and knocking up nearby enemies"
+  },
+  {
+   "champion": "Lux",
+   "source": "W",
+   "kind": "SHIELD",
+   "scope": "DUO",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Lux W Prismatic Barrier: wand passes through allies shielding each (40-100 +40% AP), then re-shields on return"
+  },
+  {
+   "champion": "Milio",
+   "source": "P",
+   "kind": "STEROID",
+   "scope": "TEAM",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Milio P Fired Up!: his abilities enchant allies on touch so their next damage deals bonus magic damage plus a burn"
+  },
+  {
+   "champion": "Milio",
+   "source": "W",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Milio W Cozy Campfire: empowering zone heals allies inside over time and increases their attack range"
+  },
+  {
+   "champion": "Milio",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Milio E Warm Hugs: shields the target ally (45-165 +45% AP) and grants bonus movement speed, 2 charges"
+  },
+  {
+   "champion": "Milio",
+   "source": "R",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Milio R Breath of Life: heals and removes crowd control from nearby allies and grants them tenacity"
+  },
+  {
+   "champion": "Morgana",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Morgana E Black Shield: grants target ally a magic-damage shield (100-320 +70% AP) and crowd-control immunity until broken"
+  },
+  {
+   "champion": "Nami",
+   "source": "P",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Nami P Surging Tides: her abilities grant bonus movement speed to allied champions hit"
+  },
+  {
+   "champion": "Nami",
+   "source": "W",
+   "kind": "HEAL",
+   "scope": "DUO",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Nami W Ebb and Flow: stream bounces between allied and enemy champions, healing allies hit"
+  },
+  {
+   "champion": "Nami",
+   "source": "E",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Nami E Tidecaller's Blessing: empowers an ally's next basic attacks and spells to deal bonus magic damage and slow"
+  },
+  {
+   "champion": "Nami",
+   "source": "R",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Nami R Tidal Wave: allies hit gain double the effect of Surging Tides (amplified bonus movement speed)"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "E",
+   "kind": "HEAL",
+   "scope": "SINGLE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Nidalee E Primal Surge: heals an allied champion and grants them bonus Attack Speed (scales with target missing HP)"
+  },
+  {
+   "champion": "Nilah",
+   "source": "P",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Nilah P Joy Unending: enhances and shares nearby healing and shielding from her allies to nearby allied champions"
+  },
+  {
+   "champion": "Nilah",
+   "source": "W",
+   "kind": "HASTE",
+   "scope": "DUO",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Nilah W Jubilant Veil: allies she touches gain ghosting, Move Speed, magic damage reduction, and attack-dodge"
+  },
+  {
+   "champion": "Nilah",
+   "source": "R",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Nilah R Apotheosis: heals herself and nearby allied champions for a percent of damage dealt to enemy champions"
+  },
+  {
+   "champion": "Nunu",
+   "source": "P",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Nunu P Call of the Freljord: increases the Attack Speed and Move Speed of a nearby ally"
+  },
+  {
+   "champion": "Orianna",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Orianna E Command: Protect: attaches the ball to an ally, shielding them and granting bonus Armor and Magic Resist"
+  },
+  {
+   "champion": "Ornn",
+   "source": "BASE",
+   "kind": "STEROID",
+   "scope": "TEAM",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Ornn Living Forge: upgrades allies' completed items into Masterwork items, granting allies bonus stats"
+  },
+  {
+   "champion": "Pyke",
+   "source": "R",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Pyke R Death from Below: the assisting ally on an executed kill also receives full kill gold"
+  },
+  {
+   "champion": "Rakan",
+   "source": "Q",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Rakan Q Gleaming Quill: on hitting a champion or epic monster, restores Health to himself and nearby allies"
+  },
+  {
+   "champion": "Rakan",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Rakan E Battle Dance: dashes to an allied champion, granting them a Shield"
+  },
+  {
+   "champion": "Rell",
+   "source": "E",
+   "kind": "HASTE",
+   "scope": "DUO",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Rell E Full Tilt: Rell and a target ally gain ramping Move Speed (doubled toward enemies and each other)"
+  },
+  {
+   "champion": "Renata",
+   "source": "W",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Renata W Bailout: grants an ally bonus Attack Speed + Move Speed toward enemies (also delays death once, but death is not prevented without a takedown)"
+  },
+  {
+   "champion": "Renata",
+   "source": "E",
+   "kind": "SHIELD",
+   "scope": "DUO",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Renata E Loyalty Program: a pair of chemtech missiles grant a shield to allies hit for 2.5 seconds"
+  },
+  {
+   "champion": "Senna",
+   "source": "Q",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Senna Q Piercing Darkness: beam restores Health to allied champions it passes through"
+  },
+  {
+   "champion": "Senna",
+   "source": "E",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Senna E Curse of the Black Mist: allies in the mist gain Move Speed, Camouflage, and become unselectable Wraiths"
+  },
+  {
+   "champion": "Senna",
+   "source": "R",
+   "kind": "SHIELD",
+   "scope": "TEAM",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Senna R Dawning Shadow: global beam grants a Shield to allied champions hit in the wider area"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "W",
+   "kind": "SHIELD",
+   "scope": "TEAM",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Seraphine W Surround Sound: shields nearby allies + grants them Move Speed, and heals them if she is already shielded"
+  },
+  {
+   "champion": "Shen",
+   "source": "W",
+   "kind": "PROTECT",
+   "scope": "DUO",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Shen W Spirit's Refuge: zone blocks all basic Attacks against allied champions standing inside it"
+  },
+  {
+   "champion": "Shen",
+   "source": "R",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Shen R Stand United: grants a target allied champion (anywhere on the map) a missing-health-scaling Shield, then teleports to them"
+  },
+  {
+   "champion": "Sivir",
+   "source": "R",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Sivir R On The Hunt: grants nearby allied champions a surge of Move Speed for the duration"
+  },
+  {
+   "champion": "Ryze",
+   "source": "R",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.3,
+   "conditional": true,
+   "source_quote": "Ryze R Realm Warp: opens a portal that teleports allies near it to the marked location (out-of-combat repositioning utility)"
+  },
+  {
+   "champion": "Sona",
+   "source": "Q",
+   "kind": "STEROID",
+   "scope": "TEAM",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Sona Q Hymn of Valor Melody Bonus: Sona and tagged allied champions deal bonus magic damage on their next basic attack"
+  },
+  {
+   "champion": "Sona",
+   "source": "W",
+   "kind": "HEAL",
+   "scope": "SINGLE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Sona W Aria of Perseverance: heals the most wounded nearby allied champion; Melody bonus also shields tagged allies"
+  },
+  {
+   "champion": "Sona",
+   "source": "E",
+   "kind": "HASTE",
+   "scope": "TEAM",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Sona E Song of Celerity Melody Bonus: tagged allied champions gain bonus movement speed"
+  },
+  {
+   "champion": "Soraka",
+   "source": "R",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Soraka R Wish: heals all allied champions globally, increased 50% on targets below 40% health"
+  },
+  {
+   "champion": "Soraka",
+   "source": "W",
+   "kind": "HEAL",
+   "scope": "SINGLE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Soraka W Astral Infusion: heals the target allied champion (also grants Rejuvenation regen under Starcall buff)"
+  },
+  {
+   "champion": "Taric",
+   "source": "R",
+   "kind": "PROTECT",
+   "scope": "TEAM",
+   "magnitude": 0.92,
+   "conditional": true,
+   "source_quote": "Taric R Cosmic Radiance: he and nearby allied champions become invulnerable for 2.5 seconds"
+  },
+  {
+   "champion": "Taric",
+   "source": "W",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Taric W Bastion: shields the target allied champion, tethers and grants them bonus armor, mimicking his abilities to them"
+  },
+  {
+   "champion": "Taric",
+   "source": "Q",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Taric Q Starlight's Touch: heals himself and nearby allied champions per stocked charge"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "R",
+   "kind": "PROTECT",
+   "scope": "SINGLE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Tahm Kench R Devour on ally: swallows an ally rendering them untargetable and displacement-immune, granting a decaying shield"
+  },
+  {
+   "champion": "Thresh",
+   "source": "W",
+   "kind": "SHIELD",
+   "scope": "SINGLE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Thresh W Dark Passage: first allied champion near the lantern is shielded and can dash to Thresh"
+  },
+  {
+   "champion": "Xayah",
+   "source": "W",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Xayah W Deadly Plumage: if Rakan is nearby on cast he is also empowered, gaining bonus attack speed and 30% movement speed"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "W",
+   "kind": "STEROID",
+   "scope": "SINGLE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Yuumi W You and Me!: while Attached, grants the anchored ally adaptive Adaptive Force (AD or AP)"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "E",
+   "kind": "HEAL",
+   "scope": "SINGLE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Yuumi E Zoomies: heals the Attached ally and grants Move Speed, Attack Speed and mana regen"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "R",
+   "kind": "HEAL",
+   "scope": "TEAM",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Yuumi R Final Chapter: each wave heals nearby allied champions"
+  },
+  {
+   "champion": "Zilean",
+   "source": "E",
+   "kind": "HASTE",
+   "scope": "SINGLE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Zilean E Time Warp: grants an allied champion a large Move Speed boost for a short time"
+  },
+  {
+   "champion": "Zilean",
+   "source": "R",
+   "kind": "PROTECT",
+   "scope": "SINGLE",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Zilean R Chronoshift: protective rune on an ally, on lethal damage Stasis then revive and heal"
+  }
+ ]
+}
