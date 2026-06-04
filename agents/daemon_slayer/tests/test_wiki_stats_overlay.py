@@ -142,6 +142,16 @@ class ComboWireTests(unittest.TestCase):
             populated - empty, 0.6 - cb._DEFAULT_AA_WINDUP_S, places=6,
         )
 
+    def test_offset_derived_windup_flows_into_combo(self):
+        # The Win 1 wiki_offset tier produces a plain positive attack_cast_time
+        # ((0.300 + attack_delay_offset)/as_base); to the consumer it is just a
+        # value. Prove an offset-derived (Akali-shape) windup reaches the AA row.
+        windup = round((0.300 + (-0.160999998450279)) / 0.625, 6)  # 0.2224
+        self.assertNotAlmostEqual(windup, cb._DEFAULT_AA_WINDUP_S)
+        snap = _snap_with_wiki({"Caitlyn": {"attack_cast_time": windup}})
+        # combo rounds the per-hit cast_time to 3 places for the report row.
+        self.assertAlmostEqual(self._aa_windup(snap), windup, places=3)
+
     def test_null_overlay_falls_back_to_default(self):
         # A present champ entry with null attack_cast_time keeps the default.
         snap = _snap_with_wiki({"Caitlyn": {"attack_cast_time": None}})

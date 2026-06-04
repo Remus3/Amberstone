@@ -75,6 +75,14 @@ python data_pipeline.py aram_builds
 
 Run from `C:\Riot Commander\scripts\`. Patch releases typically Wednesdays - `RC-PatchRefresh` fires automatically.
 
+DS wiki_stats sidecar (AA windup / missile / mode-modifiers) is re-extracted separately - run from the repo root after a patch bump:
+
+```powershell
+python tools/daemon_slayer_wiki_stats_extract.py   # writes data/daemon_slayer/<patch>/wiki_stats.json
+```
+
+It re-derives the offset windup tier (109 champs via the wiki attack_delay_offset, provenance `wiki_offset`); rerun `python tools/ds_windup_offset_compare.py` to find newly-recoverable champs on a new patch. Do NOT commit a run reporting `_with_cast_measured == 0` (host could not reach the wiki / CDragon).
+
 ---
 
 ## Vision server
