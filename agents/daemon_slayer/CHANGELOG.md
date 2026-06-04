@@ -1331,6 +1331,32 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.112.0 (Wave-clear / AoE-shove scorer - item 300, the ELEVENTH scored axis,
+built by a 10-channel roster fan-out. NEW agents/daemon_slayer/waveclear.py: a
+per-(champion, source) wave-clear-mechanism registry plus a kind -> weight table
+(FULL_AOE 1.0 / AOE_DOT 0.85 / MULTI_HIT 0.6 / CLEAVE_AA 0.5 / SINGLE_TARGET
+0.25) and a range_band -> multiplier table (GLOBAL 1.1 / RANGED 1.0 / MELEE 0.7 -
+a wave cleared from a safe distance shoves more tempo than one needing a walk
+into the minions). Each mechanism carries a 0..1 magnitude (share of the wave it
+removes) and a conditional flag (needs the ult up / a stack / an AoE item);
+compute_waveclear() folds every mechanism into a single waveclear_score = sum of
+kind_weight * range_mult * magnitude (conditional credited at the 0.5 midpoint),
+plus a top_kind label and a ranged_shove safe-shove flag. This axis owns the
+lane-priority / roam-window / objective-setup TEMPO dimension - every prior axis
+scores combat against a champion target; this one scores throughput against a
+wave of minions. NEW /waveclear route (POST+GET). PURELY ADDITIVE: reads no
+scorer, read by none - every existing route is byte-identical. EXHAUSTIVE
+171-champ Workflow fan-out (10 classify + 10 completeness critics, Sonnet,
+schema-validated) -> 376 entries / 171 champs (full roster) / 27 conditional /
+kinds MULTI_HIT 173 / SINGLE_TARGET 94 / FULL_AOE 62 / AOE_DOT 31 / CLEAVE_AA 16
+/ bands RANGED 196 / MELEE 176 / GLOBAL 4; engine + tests hand-written from the
+structured output. + tools/ds_waveclear_build.py (reusable validate / inject
+generator) + waveclear_registry_notes.json provenance sidecar (Share-excluded).
+Live score: Zyra 2.12 / Ziggs 1.82 / AurelionSol 1.80 / Heimerdinger 1.77 /
+Brand 1.41 (top shovers) vs Vayne 0.03 / Warwick 0.03 / Yuumi 0.05 (no AoE,
+last-hit only); empty / unknown = 0. The wave-clear / AoE-shove axis is EXHAUSTED
+across the roster.)
+
 1.111.0 (Scaling / power-curve scorer - item 299, the TENTH scored axis, built
 by a 10-channel roster fan-out. NEW agents/daemon_slayer/scaling.py: a
 per-(champion, source) scaling-mechanism registry plus a kind -> weight table
