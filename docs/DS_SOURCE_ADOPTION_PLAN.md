@@ -1,6 +1,9 @@
 # DS source-layering adoption plan
 
-Status: WIN 1 SHIPPED 2026-06-03 (item 295, ENGINE 1.107.0, commit `c517b9a9`); WIN 2 PLANNED.
+Status: WIN 1 SHIPPED 2026-06-03 (item 295, ENGINE 1.107.0, commit `c517b9a9`); WIN 2 SHIPPED
+2026-06-03 (item 296, ENGINE 1.108.0) - Meraki content-freshness guard (meraki_content_patch=25.15
+surfaced + pinned in champion_abilities.json + manifest; gold-pin bullet was a verified no-op; also
+closed a WIN 1 combo-duration test gap). Long-term DDragon/CDragon ratio re-source remains future.
 Authored 2026-06-03 from a fresh-look source dive
 (full comparison: `Desktop\DS_DATA_SOURCE_COMPARISON_2026-06-03.md`) plus an adoption map of the
 live tree and live validation. Live patch 16.11.1, ENGINE_VERSION 1.106.0. Operator copy:

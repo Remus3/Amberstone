@@ -116,6 +116,17 @@ MERAKI_BULK_URL = (
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 USER_AGENT = "RiotCommander/DaemonSlayer-abilities-extract/1.0"
 
+# DS source-adoption WIN 2 - Meraki content-freshness guard.
+# The Meraki `latest` endpoint is mutable but its CONTENT is frozen at a past
+# game patch; the per-record `patchLastChanged` (YY.MM) is the only honest
+# freshness signal - the snapshot `fetched_at` reflects the FETCH wall-clock,
+# which lies about the data's age. We pin the known content patch here so a
+# future Meraki refresh trips a loud re-pin / re-validate WARNING (the
+# balance-sensitive blast radius is champion_abilities.json ratios + base
+# damage). Bump this in lockstep with re-validating the ability ratios and the
+# gold/golden DS tests when the WARNING fires.
+_EXPECTED_MERAKI_CONTENT_PATCH = "25.15"
+
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
@@ -696,6 +707,42 @@ def _coverage_summary(data: dict[str, dict[str, list[dict]]]) -> dict[str, Any]:
     }
 
 
+# ─── Meraki content-freshness guard (WIN 2) ──────────────────────────────────
+
+def _patch_sort_key(patch: Any) -> tuple[int, int]:
+    """Numeric sort key for a Meraki ``YY.MM`` patch string.
+
+    Lexical ordering is wrong ("25.9" > "25.15" as strings); we split on
+    "." and compare the two integer components. Returns ``(-1, -1)`` for
+    anything that is not a two-part numeric string so unparseable values
+    sort below every real patch.
+    """
+    try:
+        major, minor = str(patch).split(".")[:2]
+        return (int(major), int(minor))
+    except (ValueError, AttributeError, TypeError):
+        return (-1, -1)
+
+
+def _meraki_content_patch(raw: dict[str, Any]) -> str | None:
+    """Newest ``patchLastChanged`` across all Meraki champion records.
+
+    This is the true CONTENT patch of the frozen ``latest`` snapshot - the
+    most recent balance change Meraki captured - independent of the
+    ``fetched_at`` wall-clock (which reflects download time, not data age).
+    Records that are not dicts or that lack the field are skipped; returns
+    ``None`` when no record carries it.
+    """
+    patches = [
+        v["patchLastChanged"]
+        for v in raw.values()
+        if isinstance(v, dict) and v.get("patchLastChanged")
+    ]
+    if not patches:
+        return None
+    return max(patches, key=_patch_sort_key)
+
+
 # ─── Entry point ─────────────────────────────────────────────────────────────
 
 def _resolve_patch(override: str | None) -> str:
@@ -738,6 +785,28 @@ def main() -> int:
         raise RuntimeError(f"expected dict from Meraki bulk, got {type(raw).__name__}")
     log.info("Meraki bulk fetched: %d champions (%.1fs)", len(raw), fetch_elapsed)
 
+    # Content-freshness guard (WIN 2): surface the frozen `latest` content
+    # patch (the honest signal) vs the lying `fetched_at`, and trip loudly if
+    # Meraki refreshed past the pinned expectation.
+    content_patch = _meraki_content_patch(raw)
+    if content_patch is None:
+        log.warning(
+            "Meraki content patch UNKNOWN - no patchLastChanged in any record"
+        )
+    elif content_patch != _EXPECTED_MERAKI_CONTENT_PATCH:
+        log.warning(
+            "Meraki content patch DRIFTED: expected %s, got %s - re-pin "
+            "_EXPECTED_MERAKI_CONTENT_PATCH and re-validate ability ratios + "
+            "gold/golden DS tests (snapshot content reflects %s, target patch %s)",
+            _EXPECTED_MERAKI_CONTENT_PATCH, content_patch, content_patch, patch,
+        )
+    else:
+        log.info(
+            "Meraki content patch %s (frozen 'latest' endpoint; ability ratios "
+            "reflect %s, NOT live target %s)",
+            content_patch, content_patch, patch,
+        )
+
     data_out: dict[str, dict[str, list[dict]]] = {}
     for name, payload in raw.items():
         if not isinstance(payload, dict):
@@ -766,6 +835,7 @@ def main() -> int:
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z") or time.strftime("%Y-%m-%dT%H:%M:%S"),
         "source": MERAKI_BULK_URL,
         "engine_phase": "4a",
+        "meraki_content_patch": content_patch,
         "count": len(data_out),
         "coverage": coverage,
         "data": data_out,
