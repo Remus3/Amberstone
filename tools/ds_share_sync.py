@@ -179,6 +179,7 @@ def _build_expected() -> dict[str, bytes]:
         # sustain_registry_notes.json (item 298) is the sustain.py analog.
         # scaling_registry_notes.json (item 299) is the scaling.py analog.
         # waveclear_registry_notes.json (item 300) is the waveclear.py analog.
+        # threatrange_registry_notes.json (item 301) is the threatrange.py analog.
         if p.name in (
             "CHANGELOG.md",
             "CC_CONDITIONAL_NOTES.md",
@@ -187,6 +188,7 @@ def _build_expected() -> dict[str, bytes]:
             "sustain_registry_notes.json",
             "scaling_registry_notes.json",
             "waveclear_registry_notes.json",
+            "threatrange_registry_notes.json",
         ) and p.parent == eng:
             continue
         if p.name == "__init__.py" and p.parent == eng:
