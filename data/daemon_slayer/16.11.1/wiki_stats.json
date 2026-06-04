@@ -1,7 +1,7 @@
 {
  "_cdragon_cast_fills": 12,
  "_champ_count": 171,
- "_default_cast_fills": 110,
+ "_default_cast_fills": 1,
  "_errors": [],
  "_fields": [
   "attack_cast_time",
@@ -9,11 +9,12 @@
   "missile_speed",
   "mode_modifiers"
  ],
- "_note": "OPTIONAL DS overlay. attack_cast_time = AA windup (s); attack_total_time = full AA cycle (s); missile_speed = ranged AA missile speed (melee null). Each scalar carries a <field>_src provenance: 'wiki' (operator-named source, wins) > 'cdragon' (fills wiki nulls) > 'default' (0.25s = combo.py fallback, for champs neither source overrides; attack_cast_time only) > null. mode_modifiers = per-mode balance changes parsed from the SAME wiki raw module (wiki-sourced only, no _src; {} when a champ has none): aram/urf/nb/ofa/usb store MULTIPLIERS (dmg_dealt 1.05 = +5%), ar (Arena/CHERRY) + swift (Swiftplay) store ADDEND stat-overrides (hp_lvl 17 = +17 hp/level); inner keys stored verbatim, not coerced. Meraki stays authoritative for ratios/CC. A run with _with_cast_measured==0 means the host could not reach either source (edge block) - do NOT commit.",
+ "_note": "OPTIONAL DS overlay. attack_cast_time = AA windup (s); attack_total_time = full AA cycle (s); missile_speed = ranged AA missile speed (melee null). Each scalar carries a <field>_src provenance: 'wiki' (operator-named source, wins) > 'cdragon' (fills wiki nulls) > 'wiki_offset' (windup derived from the wiki attack_delay_offset: (0.300+offset)/as_base, for champs with no explicit cast time; attack_cast_time only) > 'default' (0.25s = combo.py fallback, for champs no source/offset covers; attack_cast_time only) > null. mode_modifiers = per-mode balance changes parsed from the SAME wiki raw module (wiki-sourced only, no _src; {} when a champ has none): aram/urf/nb/ofa/usb store MULTIPLIERS (dmg_dealt 1.05 = +5%), ar (Arena/CHERRY) + swift (Swiftplay) store ADDEND stat-overrides (hp_lvl 17 = +17 hp/level); inner keys stored verbatim, not coerced. Meraki stays authoritative for ratios/CC. A run with _with_cast_measured==0 means the host could not reach either source (edge block) - do NOT commit.",
+ "_offset_cast_fills": 109,
  "_patch": "16.11.1",
  "_source": "wiki.leagueoflegends.com Module:ChampionData/data (action=raw + getter fallback) PRIMARY; CommunityDragon character bins BACKFILL of nulls",
  "_source_mode": "both",
- "_with_cast_measured": 61,
+ "_with_cast_measured": 170,
  "_with_cast_time": 171,
  "_with_missile_speed": 82,
  "_with_mode_modifiers": 170,
@@ -38,8 +39,8 @@
    "wiki_name": "Aatrox"
   },
   "Ahri": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.299401,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1750.0,
@@ -61,8 +62,8 @@
    "wiki_name": "Ahri"
   },
   "Akali": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.2224,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -157,8 +158,8 @@
    "wiki_name": "Ambessa"
   },
   "Amumu": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.317722,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -178,8 +179,8 @@
    "wiki_name": "Amumu"
   },
   "Anivia": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.303951,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1600.0,
@@ -201,8 +202,8 @@
    "wiki_name": "Anivia"
   },
   "Annie": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.320975,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -249,8 +250,8 @@
    "wiki_name": "Aphelios"
   },
   "Ashe": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.33328,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2500.0,
@@ -291,8 +292,8 @@
    "wiki_name": "Aurelion Sol"
   },
   "Aurora": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.300202,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1750.0,
@@ -386,8 +387,8 @@
    "wiki_name": "Bel'Veth"
   },
   "Blitzcrank": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.432,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -412,8 +413,8 @@
    "wiki_name": "Blitzcrank"
   },
   "Brand": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.27533,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -438,8 +439,8 @@
    "wiki_name": "Brand"
   },
   "Braum": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.357143,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -481,8 +482,8 @@
    "wiki_name": "Briar"
   },
   "Caitlyn": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.260034,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2500.0,
@@ -518,8 +519,8 @@
    "wiki_name": "Camille"
   },
   "Cassiopeia": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.296754,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -536,8 +537,8 @@
    "wiki_name": "Cassiopeia"
   },
   "Chogath": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.332827,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -574,8 +575,8 @@
    "wiki_name": "Corki"
   },
   "Darius": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.32,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -597,8 +598,8 @@
    "wiki_name": "Darius"
   },
   "Diana": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.333333,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -615,8 +616,8 @@
    "wiki_name": "Diana"
   },
   "DrMundo": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.239272,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -680,8 +681,8 @@
    "wiki_name": "Ekko"
   },
   "Elise": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.3,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1600.0,
@@ -740,8 +741,8 @@
    "wiki_name": "Evelynn"
   },
   "Ezreal": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.301418,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -758,8 +759,8 @@
    "wiki_name": "Ezreal"
   },
   "Fiddlesticks": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.48,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1750.0,
@@ -813,8 +814,8 @@
    "wiki_name": "Fiora"
   },
   "Fizz": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.308511,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -872,8 +873,8 @@
    "wiki_name": "Gangplank"
   },
   "Garen": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.288,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -893,8 +894,8 @@
    "wiki_name": "Garen"
   },
   "Gnar": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.2336,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -913,8 +914,8 @@
    "wiki_name": "Gnar"
   },
   "Gragas": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.37037,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -927,8 +928,8 @@
    "wiki_name": "Gragas"
   },
   "Graves": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.010526,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 3800.0,
@@ -963,8 +964,8 @@
    "wiki_name": "Gwen"
   },
   "Hecarim": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.373134,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -984,8 +985,8 @@
    "wiki_name": "Hecarim"
   },
   "Heimerdinger": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.303951,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -1066,8 +1067,8 @@
    "wiki_name": "Irelia"
   },
   "Ivern": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.310559,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -1089,8 +1090,8 @@
    "wiki_name": "Ivern"
   },
   "Janna": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.32,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1800.0,
@@ -1109,8 +1110,8 @@
    "wiki_name": "Janna"
   },
   "JarvanIV": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.266626,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1133,8 +1134,8 @@
    "wiki_name": "Jarvan IV"
   },
   "Jax": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.326191,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1163,8 +1164,8 @@
    "wiki_name": "Jax"
   },
   "Jayce": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.144377,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1223,8 +1224,8 @@
    "wiki_name": "Jinx"
   },
   "KSante": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.283884,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1272,8 +1273,8 @@
    "wiki_name": "Kai'Sa"
   },
   "Kalista": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.518732,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2600.0,
@@ -1295,8 +1296,8 @@
    "wiki_name": "Kalista"
   },
   "Karma": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.258333,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -1310,8 +1311,8 @@
    "wiki_name": "Karma"
   },
   "Karthus": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.55,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -1329,8 +1330,8 @@
    "wiki_name": "Karthus"
   },
   "Kassadin": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.234375,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1347,8 +1348,8 @@
    "wiki_name": "Kassadin"
   },
   "Katarina": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.227964,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1418,8 +1419,8 @@
    "wiki_name": "Kayn"
   },
   "Kennen": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.32,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1700.0,
@@ -1441,8 +1442,8 @@
    "wiki_name": "Kennen"
   },
   "Khazix": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.300202,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1458,8 +1459,8 @@
    "wiki_name": "Kha'Zix"
   },
   "Kindred": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.280702,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -1500,8 +1501,8 @@
    "wiki_name": "Kled"
   },
   "KogMaw": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.24996,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1800.0,
@@ -1531,8 +1532,8 @@
    "wiki_name": "Kog'Maw"
   },
   "Leblanc": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.253293,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1700.0,
@@ -1557,8 +1558,8 @@
    "wiki_name": "LeBlanc"
   },
   "LeeSin": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.300019,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1585,8 +1586,8 @@
    "wiki_name": "Lee Sin"
   },
   "Leona": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.366667,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1621,8 +1622,8 @@
    "wiki_name": "Lillia"
   },
   "Lissandra": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.285823,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2200.0,
@@ -1636,8 +1637,8 @@
    "wiki_name": "Lissandra"
   },
   "Lucian": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.23511,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2800.0,
@@ -1657,8 +1658,8 @@
    "wiki_name": "Lucian"
   },
   "Lulu": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.3,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1450.0,
@@ -1672,8 +1673,8 @@
    "wiki_name": "Lulu"
   },
   "Lux": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.233558,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1600.0,
@@ -1695,8 +1696,8 @@
    "wiki_name": "Lux"
   },
   "Malphite": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.339241,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1712,8 +1713,8 @@
    "wiki_name": "Malphite"
   },
   "Malzahar": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.304,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -1734,8 +1735,8 @@
    "wiki_name": "Malzahar"
   },
   "Maokai": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.375,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1764,8 +1765,8 @@
    "wiki_name": "Maokai"
   },
   "MasterYi": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.358984,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1790,8 +1791,8 @@
    "wiki_name": "Master Yi"
   },
   "Mel": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.2496,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1600.0,
@@ -1823,8 +1824,8 @@
    "wiki_name": "Milio"
   },
   "MissFortune": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.22562,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -1846,8 +1847,8 @@
    "wiki_name": "Miss Fortune"
   },
   "MonkeyKing": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.301932,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1893,8 +1894,8 @@
    "wiki_name": "Mordekaiser"
   },
   "Morgana": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.224,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1600.0,
@@ -1934,8 +1935,8 @@
    "wiki_name": "Naafiri"
   },
   "Nami": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.279503,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -1955,8 +1956,8 @@
    "wiki_name": "Nami"
   },
   "Nasus": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.315668,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -1976,8 +1977,8 @@
    "wiki_name": "Nasus"
   },
   "Nautilus": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.433955,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2008,8 +2009,8 @@
    "wiki_name": "Neeko"
   },
   "Nidalee": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.23511,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2500.0,
@@ -2044,8 +2045,8 @@
    "wiki_name": "Nidalee"
   },
   "Nilah": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.315638,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2062,8 +2063,8 @@
    "wiki_name": "Nilah"
   },
   "Nocturne": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.278134,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2085,8 +2086,8 @@
    "wiki_name": "Nocturne"
   },
   "Nunu": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.309738,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2123,8 +2124,8 @@
    "wiki_name": "Nunu & Willump"
   },
   "Olaf": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.325521,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2137,8 +2138,8 @@
    "wiki_name": "Olaf"
   },
   "Orianna": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.266624,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -2175,8 +2176,8 @@
    "wiki_name": "Ornn"
   },
   "Pantheon": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.289229,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2265,8 +2266,8 @@
    "wiki_name": "Qiyana"
   },
   "Quinn": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.262633,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -2306,8 +2307,8 @@
    "wiki_name": "Rakan"
   },
   "Rammus": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.327381,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2391,8 +2392,8 @@
    "wiki_name": "Rell"
   },
   "Renata": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.3008,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1800.0,
@@ -2412,8 +2413,8 @@
    "wiki_name": "Renata Glasc"
   },
   "Renekton": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.266624,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2456,8 +2457,8 @@
    "wiki_name": "Rengar"
   },
   "Riven": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.266667,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2480,8 +2481,8 @@
    "wiki_name": "Riven"
   },
   "Rumble": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.310559,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2495,8 +2496,8 @@
    "wiki_name": "Rumble"
   },
   "Ryze": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.303951,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2400.0,
@@ -2513,8 +2514,8 @@
    "wiki_name": "Ryze"
   },
   "Samira": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.227964,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2800.0,
@@ -2586,8 +2587,8 @@
    "wiki_name": "Senna"
   },
   "Seraphine": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.279522,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1800.0,
@@ -2648,8 +2649,8 @@
    "wiki_name": "Sett"
   },
   "Shaco": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.31917,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2712,8 +2713,8 @@
    "wiki_name": "Shyvana"
   },
   "Singed": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.285714,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2737,8 +2738,8 @@
    "wiki_name": "Singed"
   },
   "Sion": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.366854,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -2762,8 +2763,8 @@
    "wiki_name": "Sion"
   },
   "Sivir": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.192,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1750.0,
@@ -2824,8 +2825,8 @@
    "wiki_name": "Smolder"
   },
   "Sona": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.266803,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -2849,8 +2850,8 @@
    "wiki_name": "Sona"
   },
   "Soraka": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.2992,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1000.0,
@@ -2875,8 +2876,8 @@
    "wiki_name": "Soraka"
   },
   "Swain": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.224,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1800.0,
@@ -2914,8 +2915,8 @@
    "wiki_name": "Sylas"
   },
   "Syndra": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.284954,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1800.0,
@@ -2951,8 +2952,8 @@
    "wiki_name": "Tahm Kench"
   },
   "Taliyah": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.245377,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2100.0,
@@ -2989,8 +2990,8 @@
    "wiki_name": "Talon"
   },
   "Taric": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.288,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3009,8 +3010,8 @@
    "wiki_name": "Taric"
   },
   "Teemo": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.289855,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -3033,8 +3034,8 @@
    "wiki_name": "Teemo"
   },
   "Thresh": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.383333,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 0.0,
@@ -3071,8 +3072,8 @@
    "wiki_name": "Thresh"
   },
   "Tristana": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.22562,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2250.0,
@@ -3090,8 +3091,8 @@
    "wiki_name": "Tristana"
   },
   "Trundle": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.310945,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3120,8 +3121,8 @@
    "wiki_name": "Trundle"
   },
   "Tryndamere": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.283582,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3139,8 +3140,8 @@
    "wiki_name": "Tryndamere"
   },
   "TwistedFate": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.32,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -3153,8 +3154,8 @@
    "wiki_name": "Twisted Fate"
   },
   "Twitch": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.297373,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2500.0,
@@ -3175,8 +3176,8 @@
    "wiki_name": "Twitch"
   },
   "Udyr": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.304615,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3193,8 +3194,8 @@
    "wiki_name": "Udyr"
   },
   "Urgot": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.24,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2500.0,
@@ -3218,8 +3219,8 @@
    "wiki_name": "Urgot"
   },
   "Varus": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.266624,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -3233,8 +3234,8 @@
    "wiki_name": "Varus"
   },
   "Vayne": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.266624,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -3260,8 +3261,8 @@
    "wiki_name": "Vayne"
   },
   "Veigar": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.3055,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -3278,8 +3279,8 @@
    "wiki_name": "Veigar"
   },
   "Velkoz": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.311042,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 0.0,
@@ -3370,8 +3371,8 @@
    "wiki_name": "Viego"
   },
   "Viktor": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.273556,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2300.0,
@@ -3412,8 +3413,8 @@
    "wiki_name": "Vladimir"
   },
   "Volibear": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.48,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3436,8 +3437,8 @@
    "wiki_name": "Volibear"
   },
   "Warwick": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.274295,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3482,8 +3483,8 @@
    "wiki_name": "Xayah"
   },
   "Xerath": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.303951,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 2000.0,
@@ -3527,8 +3528,8 @@
    "wiki_name": "Xin Zhao"
   },
   "Yasuo": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.315638,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3544,8 +3545,8 @@
    "wiki_name": "Yasuo"
   },
   "Yone": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.352,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3665,8 +3666,8 @@
    "wiki_name": "Zac"
   },
   "Zed": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.303525,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": null,
@@ -3701,8 +3702,8 @@
    "wiki_name": "Zeri"
   },
   "Ziggs": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.304878,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -3727,8 +3728,8 @@
    "wiki_name": "Ziggs"
   },
   "Zilean": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.273556,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1500.0,
@@ -3750,8 +3751,8 @@
    "wiki_name": "Zilean"
   },
   "Zoe": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.245377,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1600.0,
@@ -3772,8 +3773,8 @@
    "wiki_name": "Zoe"
   },
   "Zyra": {
-   "attack_cast_time": 0.25,
-   "attack_cast_time_src": "default",
+   "attack_cast_time": 0.214146,
+   "attack_cast_time_src": "wiki_offset",
    "attack_total_time": null,
    "attack_total_time_src": null,
    "missile_speed": 1700.0,

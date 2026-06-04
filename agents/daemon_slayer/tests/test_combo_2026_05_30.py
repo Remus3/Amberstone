@@ -138,10 +138,16 @@ class TimelineTests(unittest.TestCase):
         self.assertAlmostEqual(r.mitigated, 250.0)   # 400 * 100/160
 
     def test_clock_advances_by_cast_time(self):
-        # Q(0.25) -> AA(0.25) -> W(0.25) -> E(0.25) -> R(1.0); R starts at 1.0.
-        ts = [h.t for h in self.r.hits]
-        self.assertEqual(ts, [0.0, 0.25, 0.5, 0.75, 1.0])
-        self.assertAlmostEqual(self.r.duration_s, 2.0)  # 1.0 + R's 1.0
+        # Each action starts at the cumulative cast_time of the actions before
+        # it; the clock advances by each resolved action's own cast_time. AA
+        # windup is the per-champ wiki_stats value (Lux is offset-derived, not
+        # the flat 0.25 default since ENGINE 1.107.0), so assert the RELATION
+        # rather than a pinned absolute timeline.
+        expected_t = 0.0
+        for h in self.r.hits:
+            self.assertAlmostEqual(h.t, expected_t)
+            expected_t += h.cast_time
+        self.assertAlmostEqual(self.r.duration_s, expected_t)
 
     def test_totals_sum_hits(self):
         self.assertAlmostEqual(

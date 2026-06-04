@@ -158,6 +158,12 @@ _CDRAGON_SLUG_OVERRIDES: dict[str, str] = {}
 _FIELD_ATTACK_CAST_TIME = "attack_cast_time"
 _FIELD_ATTACK_TOTAL_TIME = "attack_total_time"
 _FIELD_MISSILE_SPEED = "missile_speed"
+# Wiki-raw source fields for the offset-derived windup tier (Win 1). NOT output
+# scalars - they are parsed from the same ChampionData block (zero extra network)
+# and converted to an attack_cast_time when a champ has no explicit cast time.
+# attack_delay_offset is NEGATIVE for most champs (needs the signed parse).
+_FIELD_ATTACK_DELAY_OFFSET = "attack_delay_offset"
+_FIELD_AS_BASE = "as_base"
 # Per-champion per-mode balance multipliers/addends parsed from the SAME wiki
 # raw module (zero extra network cost). Wiki-only - no cdragon/default fill, so
 # no <field>_src provenance; it is documented as wiki-sourced in the meta _note.
@@ -184,6 +190,15 @@ _SRC_SUFFIX = "_src"
 # + missile_speed get NO default; they stay null when unmeasured.) Disable the
 # tier with --no-default-cast.
 _ENGINE_DEFAULT_CAST_TIME = 0.25
+
+# Windup base for the offset-derived tier (Win 1). The wiki publishes a per-champ
+# attack_delay_offset; real basic-attack windup FRACTION = 0.300 + offset
+# (validated 4/4 EXACT vs the wiki's own published Windup% for Caitlyn/Ashe/
+# Vayne/Jinx). combo.py is a FIXED-windup model (absolute seconds, no AS curve),
+# so it is stored as SECONDS at base AS: (0.300 + offset) / as_base. Recovers a
+# real per-champ windup for the ~109 champs that would otherwise take the flat
+# 0.25 default (only Alistar has neither an explicit cast time nor an offset).
+_WINDUP_OFFSET_BASE = 0.300
 
 # DDragon id -> wiki display-name overrides for champs whose DDragon
 # champion.json ``.name`` does NOT match the wiki page title exactly. Used only
@@ -358,6 +373,17 @@ def _scalar_in_block(blk: str, field: str) -> Optional[float]:
     return _parse_scalar(m.group(1)) if m else None
 
 
+def _signed_scalar_in_block(blk: str, field: str) -> Optional[float]:
+    """Like ``_scalar_in_block`` but captures a leading minus.
+
+    ``attack_delay_offset`` is NEGATIVE for most champs (Akali -0.161, Ahri
+    -0.1); the unsigned ``_scalar_in_block`` regex would silently drop the sign
+    (no match -> None), so the offset tier needs this signed variant.
+    """
+    m = re.search(r'\["' + re.escape(field) + r'"\]\s*=\s*(-?[0-9.]+)', blk)
+    return _parse_scalar(m.group(1)) if m else None
+
+
 # Per-champion balance-modifier mode keys nested INSIDE the ``["stats"]`` block
 # of each champ. aram/urf/nb/ofa/usb store MULTIPLIERS (dmg_dealt 1.05 = +5%);
 # ar (Arena/CHERRY) + swift (Swiftplay) store ADDEND stat-overrides (hp_lvl 17 =
@@ -464,6 +490,10 @@ def _parse_lua_table(raw: str) -> dict[str, dict[str, Any]]:
             _FIELD_ATTACK_CAST_TIME: _scalar_in_block(blk, _FIELD_ATTACK_CAST_TIME),
             _FIELD_ATTACK_TOTAL_TIME: _scalar_in_block(blk, _FIELD_ATTACK_TOTAL_TIME),
             _FIELD_MISSILE_SPEED: _scalar_in_block(blk, _FIELD_MISSILE_SPEED),
+            # offset tier source (Win 1): signed offset + base AS, same block.
+            _FIELD_ATTACK_DELAY_OFFSET: _signed_scalar_in_block(
+                blk, _FIELD_ATTACK_DELAY_OFFSET),
+            _FIELD_AS_BASE: _signed_scalar_in_block(blk, _FIELD_AS_BASE),
             _FIELD_MODE_MODIFIERS: mode_modifiers,
         }
     return out
@@ -574,13 +604,16 @@ def _cdragon_scalars(ddragon_id: str, attack_range: Optional[float]) -> dict[str
 
 
 def _merge_fill(rec: dict[str, Any], field: str, wiki_val: Optional[float],
-                cd_val: Optional[float], default_val: Optional[float] = None) -> None:
+                cd_val: Optional[float], default_val: Optional[float] = None,
+                offset_val: Optional[float] = None) -> None:
     """Set ``rec[field]`` + ``rec[field+'_src']`` per the source-precedence rule.
 
     Precedence: wiki (the operator-named source) wins where non-null; else
-    CDragon fills; else the engine ``default_val`` fills (only attack_cast_time
-    passes one - see ``_ENGINE_DEFAULT_CAST_TIME``); else null. Provenance is
-    "wiki" / "cdragon" / "default" / null respectively.
+    CDragon fills; else the offset-derived windup ``offset_val`` (Win 1: only
+    attack_cast_time passes one - the wiki attack_delay_offset converted to
+    seconds); else the engine ``default_val`` fills (only attack_cast_time passes
+    one - see ``_ENGINE_DEFAULT_CAST_TIME``); else null. Provenance is "wiki" /
+    "cdragon" / "wiki_offset" / "default" / null respectively.
     """
     if wiki_val is not None:
         rec[field] = wiki_val
@@ -588,6 +621,9 @@ def _merge_fill(rec: dict[str, Any], field: str, wiki_val: Optional[float],
     elif cd_val is not None:
         rec[field] = cd_val
         rec[field + _SRC_SUFFIX] = "cdragon"
+    elif offset_val is not None:
+        rec[field] = offset_val
+        rec[field + _SRC_SUFFIX] = "wiki_offset"
     elif default_val is not None:
         rec[field] = default_val
         rec[field + _SRC_SUFFIX] = "default"
@@ -649,6 +685,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     ms_ok = 0
     cd_fill = 0
     default_fill = 0
+    offset_fill = 0
     mode_mod_ok = 0
     errs: list[str] = []
     if table_err:
@@ -687,8 +724,18 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
 
         out_rec: dict[str, Any] = {"wiki_name": wname}
         cast_default = _ENGINE_DEFAULT_CAST_TIME if default_cast else None
+        # Win 1 offset tier: when neither source measures a cast time, derive the
+        # windup from the wiki attack_delay_offset (seconds at base AS). Sits
+        # between cdragon and the flat default in _merge_fill's precedence.
+        w_off = rec.get(_FIELD_ATTACK_DELAY_OFFSET)
+        w_asb = rec.get(_FIELD_AS_BASE)
+        off_cast = (
+            _round6((_WINDUP_OFFSET_BASE + w_off) / w_asb)
+            if (w_off is not None and w_asb) else None
+        )
         _merge_fill(out_rec, _FIELD_ATTACK_CAST_TIME, w_act,
-                    cd.get(_FIELD_ATTACK_CAST_TIME), cast_default)
+                    cd.get(_FIELD_ATTACK_CAST_TIME), cast_default,
+                    offset_val=off_cast)
         _merge_fill(out_rec, _FIELD_ATTACK_TOTAL_TIME, w_tot, cd.get(_FIELD_ATTACK_TOTAL_TIME))
         _merge_fill(out_rec, _FIELD_MISSILE_SPEED, w_ms, cd.get(_FIELD_MISSILE_SPEED))
         # Mode modifiers are wiki-only (parsed from the raw-table entry); no
@@ -703,6 +750,8 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             ms_ok += 1
         if out_rec[_FIELD_ATTACK_CAST_TIME + _SRC_SUFFIX] == "cdragon":
             cd_fill += 1
+        if out_rec[_FIELD_ATTACK_CAST_TIME + _SRC_SUFFIX] == "wiki_offset":
+            offset_fill += 1
         if out_rec[_FIELD_ATTACK_CAST_TIME + _SRC_SUFFIX] == "default":
             default_fill += 1
         if mode_modifiers:
@@ -743,8 +792,11 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             "attack_total_time = full AA cycle (s); missile_speed = ranged AA "
             "missile speed (melee null). Each scalar carries a <field>_src "
             "provenance: 'wiki' (operator-named source, wins) > 'cdragon' (fills "
-            "wiki nulls) > 'default' (0.25s = combo.py fallback, for champs "
-            "neither source overrides; attack_cast_time only) > null. "
+            "wiki nulls) > 'wiki_offset' (windup derived from the wiki "
+            "attack_delay_offset: (0.300+offset)/as_base, for champs with no "
+            "explicit cast time; attack_cast_time only) > 'default' (0.25s = "
+            "combo.py fallback, for champs no source/offset covers; "
+            "attack_cast_time only) > null. "
             "mode_modifiers = per-mode balance changes parsed from the SAME wiki "
             "raw module (wiki-sourced only, no _src; {} when a champ has none): "
             "aram/urf/nb/ofa/usb store MULTIPLIERS (dmg_dealt 1.05 = +5%), ar "
@@ -759,6 +811,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
         "_with_cast_measured": ok - default_fill,
         "_with_missile_speed": ms_ok,
         "_cdragon_cast_fills": cd_fill,
+        "_offset_cast_fills": offset_fill,
         "_default_cast_fills": default_fill,
         "_with_mode_modifiers": mode_mod_ok,
         "_errors": errs,
@@ -795,7 +848,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(
         f"patch={patch} source={args.source} champs={payload['_champ_count']} "
         f"with_cast_time={payload['_with_cast_time']} "
-        f"(measured={payload['_with_cast_measured']} default={payload['_default_cast_fills']}) "
+        f"(measured={payload['_with_cast_measured']} offset={payload['_offset_cast_fills']} "
+        f"default={payload['_default_cast_fills']}) "
         f"with_missile_speed={payload['_with_missile_speed']} "
         f"cdragon_cast_fills={payload['_cdragon_cast_fills']} "
         f"errors={len(payload['_errors'])}"
