@@ -76,6 +76,7 @@ from .sustain import compute_sustain
 from .scaling import compute_scaling
 from .waveclear import compute_waveclear
 from .threatrange import compute_threatrange
+from .zonecontrol import compute_zonecontrol
 from .matchup import compute_matchup
 from .rank import SORT_KEYS, rank_items
 
@@ -126,6 +127,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/scaling</td><td>scaling / power-curve (early/mid/late power + signed slope) for a champion (item 299)</td></tr>
 <tr><td>POST</td><td>/waveclear</td><td>wave-clear / AoE-shove (range-weighted clear score + top kind + ranged-shove flag) for a champion (item 300)</td></tr>
 <tr><td>POST</td><td>/threat-range</td><td>effective threat-range (reach-weighted damage/CC score + top band + artillery flag) for a champion (item 301)</td></tr>
+<tr><td>POST</td><td>/zone-control</td><td>zone-control / area-denial (denial-weighted persistence score + top kind + controls-terrain flag) for a champion (item 302)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -1263,6 +1265,32 @@ def _route_threatrange(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_zonecontrol(body: dict) -> dict:
+    """POST /zone-control - zone-control / area-denial score for a champion.
+
+    Item 302 (ENGINE 1.114.0): the thirteenth scored axis - how much a champion
+    can make a piece of GROUND dangerous, impassable, or contested for a duration
+    (the spatial area-denial dimension). Returns a denial-weighted
+    ``zonecontrol_score``, the ``top_kind`` label (the champion's strongest
+    area-control), and a ``controls_terrain`` flag. The axis is sparse: a pure
+    target-focused champion scores 0.0.
+    Body:
+      * ``champion`` (required)
+      * ``mode`` (default SR; carried on the result, does not change output)
+    Additive read-only metric: it perturbs no other route.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    try:
+        result = compute_zonecontrol(champion, mode=mode)
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_rank_assassin(body: dict) -> dict:
     """POST /rank-assassin - rank items by total-burst-damage delta.
 
@@ -1560,6 +1588,7 @@ _POST_ROUTES = {
     "/scaling": _route_scaling,
     "/waveclear": _route_waveclear,
     "/threat-range": _route_threatrange,
+    "/zone-control": _route_zonecontrol,
 }
 
 # GET routes that need a body merge from query params for the same handler.

@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.114.0 (Zone-control / area-denial scorer - item 302, the THIRTEENTH scored
+axis, built by a 10-channel roster fan-out. NEW agents/daemon_slayer/zonecontrol.py:
+a per-(champion, source) area-denial-mechanism registry plus a kind -> weight
+table (_ZONECONTROL_KIND_WEIGHT: TERRAIN 1.0 / FIELD 0.85 / TRAP 0.7 / SUMMON 0.6
+/ DISPLACE 0.45) and a persistence -> mult table (_ZONECONTROL_PERSISTENCE_MULT:
+SUSTAINED 1.0 / TIMED 0.8 / BRIEF 0.55). compute_zonecontrol folds every mechanism
+into a single zonecontrol_score = sum(kind_weight * persistence_mult * magnitude),
+gated mechanisms credited at the 0.5 conditional midpoint; top_kind labels the
+strongest area-control and controls_terrain flags any TERRAIN mechanism. It scores
+how much a champion can make a piece of GROUND dangerous, impassable, or contested
+for a duration - the spatial area-denial dimension the prior twelve axes never
+measured (they score what a champion does to a target; this scores how it denies
+and reshapes space). NEW /zone-control route (POST+GET). Purely ADDITIVE - reads
+no existing scorer and is read by none, so every existing route is byte-identical.
+The axis is deliberately SPARSE (only champions with real area-denial appear),
+unlike the full-roster threat-range / wave-clear axes. 171-champion ten-channel
+fan-out (10 classify + 10 completeness critics; the critics pruned 25 spurious
+single-target-CC entries) -> 98 entries / 83 champs / 45 conditional / kinds
+TERRAIN 11 FIELD 55 SUMMON 12 TRAP 10 DISPLACE 10 / persistence TIMED 59 SUSTAINED
+26 BRIEF 13. Live: Anivia 1.32 / Illaoi 0.96 / Viktor 0.95 / Karthus 0.86 /
+Taliyah 0.80 (top zoners) vs MasterYi / Zed / Talon / Tryndamere 0.0 (no
+area-denial - the correct sparse answer). + tools/ds_zonecontrol_build.py
+(marker-splice generator) + zonecontrol_registry_notes.json provenance sidecar
+(Share-excluded). Phase D - an auto-pairing consumer crediting zone-control into a
+live teamfight / objective / draft-zoning verdict - remains. The zone-control /
+area-denial axis is EXHAUSTED across the roster.)
+
 1.113.0 (Effective threat-range scorer - item 301, the TWELFTH scored axis,
 built by a 10-channel roster fan-out. NEW agents/daemon_slayer/threatrange.py: a
 per-(champion, source) threatening-mechanism registry plus a band -> weight table
