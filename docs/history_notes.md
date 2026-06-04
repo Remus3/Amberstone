@@ -6,6 +6,20 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-03 - root cleanup + WAKEUP prune-separator bug fix (item 291)
+
+Operator housekeeping pass (triage root files; remove BRIEF.md; archive NEXT_SESSION_QUEUE; verify BACKLOG faithfulness; prune WAKEUP). Docs/cleanup only - NO DS, NO .py authored, no RC/DS restart. Commits `ecee5ea2` (cleanup) + this docs-sync.
+
+- **BRIEF.md REMOVED** -> copied to Desktop/UNIVERSAL_FILES/ (outreach content, keep-out-of-repo) + git rm. Cleaned 8 BRIEF refs from `tools/sync-all-md.md` + `ship-batch.md` + `test-first-autopilot.md` (+ local .claude mirrors). /sync-all-md no longer targets BRIEF.
+- **NEXT_SESSION_QUEUE.md ARCHIVED** -> `docs/_archive/NEXT_SESSION_QUEUE_2026-05-19.md` (drained 2wk ago = item 282; matches the NEXT_SESSION_PLAN_2026-05-1x precedent already there). 0 command edits (all refs are immutable history).
+- **BACKLOG.md** 2 stale entries fixed: antiheal callout DEFERRED -> SHIPPED (item 285, `core/heal_threat.py`); cost prompt-restructure FUTURE -> CLOSED-not-viable (item 286).
+- **20 root files reviewed: ALL load-bearing, KEEP in root.** 8 .py imported as root modules (frozen importers main.py / app/__init__.py / agents/supervisor.py + the frozen rc_dev_runtime watchlist); 7 launchers referenced + portable-bundled (restart.bat = CLAUDE.md hard-fallback; start.bat = primary); 3 build/tool/dep (ruff.toml / requirements.txt / riot-commander.spec) root-by-tooling. None safely movable without a frozen-file-touching refactor.
+- **WAKEUP pruned 21 -> 3** (kept 290/289/288 then this entry; 288 moves on the closing prune). LATENT BUG FIXED: `scripts/wakeup_prune.py` splits sessions on the `---` separator but recent /done appends OMITTED it (21 headings / 3 separators) so the splitter saw ONE mashed blob -> `--check` silently passed and WAKEUP grew unbounded; `docs/history_notes.md` also had a header double-`---` that folded its first session on archive. Fixed by normalizing separators in BOTH files (the tool's own SESSION_RE/render + a content-preservation assertion) + collapsing the double-sep; 18 sessions (items 271-287) archived newest-first to history_notes, 0 deletions. `--check` now exit 0.
+
+- **Don't-redo:** the 20 root files are all live (do NOT re-pitch moving any of them); BRIEF.md now lives at Desktop/UNIVERSAL_FILES/ (out of repo, per keep-outreach-out-of-repo); NEXT_SESSION_QUEUE is archived (drained, do not resurrect). `wakeup_prune` REQUIRES the `---` separator between sessions - a future /done that appends a session WITHOUT it will make `--check` under-count again; always run the prune (it re-normalizes) or harden the appender.
+
+---
+
 # 2026-06-03 - DS CHAMPION-INNATE CC-MITIGATION schema lift - Garen W / Olaf R / Malzahar P (item 290, ENGINE 1.103.0)
 
 "start the next DS schema lift and exhaust it then /done for /clear" (5th use; items 271/272/288/289 prior). Caveman ULTRA. 1 commit `1d695876` + docs-sync. ENGINE 1.102.0 -> 1.103.0; DS :8893 restarted (taskkill pid 22512 + schtasks RC-DaemonSlayer) -> 1.103.0 live. RC NOT touched. Full record = item 290 in `docs/LEDGER.md`.
