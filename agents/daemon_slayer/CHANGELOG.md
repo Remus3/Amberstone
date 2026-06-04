@@ -1331,6 +1331,34 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.115.0 (Objective / structure-damage scorer - item 303, the FOURTEENTH scored
+axis, built by a 10-channel roster fan-out. NEW agents/daemon_slayer/objdamage.py:
+a per-(champion, source) objective-mechanism registry plus a kind -> weight table
+(_OBJDAMAGE_KIND_WEIGHT: STRUCTURE_BONUS 1.0 / MONSTER_BONUS 0.9 / SUSTAINED_DPS
+0.7 / SUMMON_DPS 0.55 / BURST_SECURE 0.45) and a scope -> mult table
+(_OBJDAMAGE_SCOPE_MULT: BOTH 1.0 / MONSTER 0.85 / STRUCTURE 0.85). compute_objdamage
+folds every mechanism into a single objdamage_score = sum(kind_weight * scope_mult
+* magnitude), gated mechanisms credited at the 0.5 conditional midpoint; top_kind
+labels the strongest objective tool and pressures_structures flags any mechanism
+that hits towers (scope BOTH or STRUCTURE). It scores how much pressure a champion
+puts on the map's OBJECTIVES - turrets / structures and epic monsters (drake /
+baron / herald / grubs) - the macro / siege dimension the prior thirteen axes never
+measured (they score combat against a champion or a piece of ground; this scores
+throughput against the objects that win the game). NEW /objective-damage route
+(POST+GET). Purely ADDITIVE - reads no existing scorer and is read by none, so every
+existing route is byte-identical. It scores the FULL roster (every champion carries
+at least one row), the threat-range / wave-clear shape. 171-champion ten-channel
+fan-out (10 classify + 10 completeness critics) -> 285 entries / 171 champs / 66
+conditional / kinds SUSTAINED_DPS 219 BURST_SECURE 28 SUMMON_DPS 18 MONSTER_BONUS 16
+STRUCTURE_BONUS 4 / scope BOTH 258 MONSTER 21 STRUCTURE 6. Live: KogMaw 1.27 /
+Belveth 1.21 / Kindred 1.15 / Volibear 1.15 / Vayne 1.09 (top objective threats) vs
+Soraka / Yuumi / Janna / Braum 0.11 (enchanter floor - general AA DPS only); Ziggs
+top_kind STRUCTURE_BONUS (Short Fuse tower bonus). + tools/ds_objdamage_build.py
+(marker-splice generator) + objdamage_registry_notes.json provenance sidecar
+(Share-excluded). Phase D - an auto-pairing consumer crediting objective damage into
+a live macro / split-push / objective-setup verdict - remains. The objective /
+structure-damage axis is EXHAUSTED across the roster.)
+
 1.114.0 (Zone-control / area-denial scorer - item 302, the THIRTEENTH scored
 axis, built by a 10-channel roster fan-out. NEW agents/daemon_slayer/zonecontrol.py:
 a per-(champion, source) area-denial-mechanism registry plus a kind -> weight
