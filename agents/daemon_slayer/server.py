@@ -75,6 +75,7 @@ from .mobility import compute_mobility
 from .sustain import compute_sustain
 from .scaling import compute_scaling
 from .waveclear import compute_waveclear
+from .threatrange import compute_threatrange
 from .matchup import compute_matchup
 from .rank import SORT_KEYS, rank_items
 
@@ -124,6 +125,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/sustain</td><td>sustain / vamp-throughput (damage-conversion + regen) score for a champion (item 298)</td></tr>
 <tr><td>POST</td><td>/scaling</td><td>scaling / power-curve (early/mid/late power + signed slope) for a champion (item 299)</td></tr>
 <tr><td>POST</td><td>/waveclear</td><td>wave-clear / AoE-shove (range-weighted clear score + top kind + ranged-shove flag) for a champion (item 300)</td></tr>
+<tr><td>POST</td><td>/threat-range</td><td>effective threat-range (reach-weighted damage/CC score + top band + artillery flag) for a champion (item 301)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -1237,6 +1239,30 @@ def _route_waveclear(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_threatrange(body: dict) -> dict:
+    """POST /threat-range - effective threat-range score for a champion.
+
+    Item 301 (ENGINE 1.113.0): the twelfth scored axis - how FAR OUT a champion
+    can deliver meaningful damage or CC (the poke / siege / safe-DPS-distance
+    capability). Returns a reach-weighted ``threatrange_score``, the ``top_band``
+    label (the champion's longest real threat), and an ``is_artillery`` flag.
+    Body:
+      * ``champion`` (required)
+      * ``mode`` (default SR; carried on the result, does not change output)
+    Additive read-only metric: it perturbs no other route.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    try:
+        result = compute_threatrange(champion, mode=mode)
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_rank_assassin(body: dict) -> dict:
     """POST /rank-assassin - rank items by total-burst-damage delta.
 
@@ -1533,6 +1559,7 @@ _POST_ROUTES = {
     "/sustain": _route_sustain,
     "/scaling": _route_scaling,
     "/waveclear": _route_waveclear,
+    "/threat-range": _route_threatrange,
 }
 
 # GET routes that need a body merge from query params for the same handler.
