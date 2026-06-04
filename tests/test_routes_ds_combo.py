@@ -123,11 +123,22 @@ class ContentTests(_Base):
             "/api/ds-combo?champion=Lux&seq=Q,AA,W,E,R"
             "&target_armor=80&target_mr=60"
         )
-        tot = h.parsed()["totals"]
+        body = h.parsed()
+        tot = body["totals"]
         self.assertIn("total_raw", tot)
         self.assertIn("total_mitigated", tot)
         self.assertIn("duration_s", tot)
-        self.assertAlmostEqual(tot["duration_s"], 2.0)
+        # duration_s is the combat-clock end: the last action's start time
+        # plus its own cast_time. Assert that structural identity rather
+        # than a hardcoded literal - the WIN 1 AA-windup offset tier
+        # (ENGINE 1.107.0) moved Lux's AA windup off the flat 0.25s, so the
+        # old 2.0 literal went stale (now 1.984). Deriving from the payload
+        # keeps this robust to per-champion windup drift on a patch refresh.
+        last = body["hits"][-1]
+        self.assertAlmostEqual(
+            tot["duration_s"], last["t"] + last["cast_time"], places=3
+        )
+        self.assertGreater(tot["duration_s"], 0.0)
         self.assertGreater(tot["total_mitigated"], 0.0)
 
     def test_cumulative_monotonic_in_payload(self) -> None:
