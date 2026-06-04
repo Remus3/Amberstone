@@ -1,0 +1,6532 @@
+{
+ "item": 301,
+ "engine": "1.113.0",
+ "count": 725,
+ "entries": [
+  {
+   "champion": "Aatrox",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Aatrox melee auto-attack range 175"
+  },
+  {
+   "champion": "Aatrox",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Aatrox Q three-part sweep, outermost hitbox reaches ~350-500 units; third cast launches forward ~400-500"
+  },
+  {
+   "champion": "Aatrox",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Aatrox Infernal Chains W ground zone ~250 unit radius beneath him, hits slow then root/pull on second hit"
+  },
+  {
+   "champion": "Aatrox",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Aatrox E Umbral Dash ~300 unit gap-close dealing physical damage on arrival, brief attack speed buff"
+  },
+  {
+   "champion": "Aatrox",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Aatrox R World Ender amplifies all damage output and extends Q hitboxes by ~25%; requires ult activation"
+  },
+  {
+   "champion": "Ashe",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Ashe base auto-attack range 600"
+  },
+  {
+   "champion": "Ashe",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Ashe Frost Shot passive slow applies on every auto at 600 range"
+  },
+  {
+   "champion": "Ashe",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Ashe Ranger's Focus Q empowered autos at 600 range with stacking bonus damage"
+  },
+  {
+   "champion": "Ashe",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Ashe Volley W fan of arrows projectile range ~1300 units"
+  },
+  {
+   "champion": "Ashe",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Ashe Enchanted Crystal Arrow infinite range global projectile, stuns on impact; requires ult"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "BASE",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Caitlyn base auto-attack range 650"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Caitlyn Piltover Peacemaker Q range ~1240 units"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Caitlyn Yordle Snap Trap W placement range ~800 units; traps root on step, zoning threat at LONG range"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Caitlyn 90 Caliber Net E fires net ~750 units, knocking self back and slowing target"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Caitlyn Ace in the Hole R ~3000 unit range kill-shot; blockable by interposition; requires ult"
+  },
+  {
+   "champion": "Elise",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Elise Neurotoxin human Q ~625 range nuke, scales with target missing HP"
+  },
+  {
+   "champion": "Elise",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Elise Volatile Spiderling W ~950 range summon that walks to target area; slow travel, avoidable"
+  },
+  {
+   "champion": "Elise",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Elise Cocoon human E stun projectile range ~1075 units"
+  },
+  {
+   "champion": "Elise",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Elise Spider Form R toggles melee spider form enabling Venomous Bite burst and Rappel; requires form toggle"
+  },
+  {
+   "champion": "Gragas",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Gragas melee auto-attack range ~125"
+  },
+  {
+   "champion": "Gragas",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Gragas Barrel Roll Q range ~900 units, detonates after delay or on re-activate"
+  },
+  {
+   "champion": "Gragas",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Gragas Drunken Rage W melee-range empowered auto after self-channel"
+  },
+  {
+   "champion": "Gragas",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Gragas Body Slam E dash ~600 range, stuns on hit"
+  },
+  {
+   "champion": "Gragas",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Gragas Explosive Cask R ~1000 unit throw, knocks all targets away from impact point; requires ult"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Jarvan IV melee auto-attack range ~175"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Jarvan IV Dragon Strike Q line projectile ~770 units dealing physical damage; knockup requires EQ combo"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Jarvan IV Golden Aegis W slow aura ~600 range around self on cast"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Jarvan IV Demacian Standard E flag ~875 range placement; enables Q knockup combo and provides EQ engage threat"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Jarvan IV Cataclysm R ~650 range leap creates arena; traps targets inside for burst combo; requires ult"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Kassadin Null Sphere Q ~650 range projectile silence + magic damage"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Kassadin Nether Blade W melee-range empowered auto restores mana on hit"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Kassadin Force Pulse E ~700 range cone slow; requires 6 nearby spell casts to charge before use"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Kassadin Riftwalk R ~500 range blink, stacks for escalating damage; primary kill-commit tool"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Lee Sin melee auto-attack range 125"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Lee Sin Sonic Wave Q projectile ~1100 range, reveals target; Q2 dashes to them for follow-up burst"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Lee Sin Tempest E ~350 radius AoE reveal; Cripple E2 slow ~600 range"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Lee Sin Dragon's Rage R ~375 range kick launches target into allies for AoE knock-up; requires ult"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Master Yi melee auto range 125; Double Strike passive procs bonus hit every 4th auto"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Master Yi Alpha Strike Q teleports ~600 range to primary target then blinks between up to 4 total; untargetable during cast"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Master Yi Wuju Style E grants bonus true damage on autos at melee range; active/passive modes"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Master Yi Highlander R massively boosts AS and MS, resets on kill; enables melee DPS threat; requires ult"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Nautilus Staggering Blow passive roots target on first hit per enemy, melee range ~175"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Nautilus Dredge Line Q anchor ~1080 range; pulls Nautilus to terrain or enemy to him"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Nautilus Titan's Wrath W shield + thorns AoE damage aura, melee range"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Nautilus Riptide E ~600 range AoE rings expanding around him, slowing enemies hit"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Nautilus Depth Charge R ~825 range target lock; chases dealing knock-up chain to nearby enemies; requires ult"
+  },
+  {
+   "champion": "Poppy",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Poppy melee auto-attack range 125"
+  },
+  {
+   "champion": "Poppy",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Poppy Hammer Shock Q ~430 range slam leaving delayed damage zone"
+  },
+  {
+   "champion": "Poppy",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Poppy Steadfast Presence W ~400 range aura that cancels dashes near her on activation"
+  },
+  {
+   "champion": "Poppy",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Poppy Heroic Charge E ~475 range dash, pins target to wall for stun"
+  },
+  {
+   "champion": "Poppy",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Poppy Keeper's Verdict R charged version launches target ~1200 units away; uncharged is ~500 range knockup; requires ult"
+  },
+  {
+   "champion": "Rengar",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Rengar melee auto-attack range 125"
+  },
+  {
+   "champion": "Rengar",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Rengar Savagery Q empowered auto + bonus attack at melee range; empowered at 4 Ferocity stacks = high burst"
+  },
+  {
+   "champion": "Rengar",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Rengar Battle Roar W ~500 range roar; empowered version briefly fears nearby enemies"
+  },
+  {
+   "champion": "Rengar",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Rengar Bola Strike E ~1000 range thrown bola; empowered version roots target at ~1000 range"
+  },
+  {
+   "champion": "Rengar",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Rengar Thrill of the Hunt R reveals nearest enemy globally; stealth leap from brush ~600 range for kill-commit; requires ult"
+  },
+  {
+   "champion": "Shen",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Shen melee auto-attack range 125"
+  },
+  {
+   "champion": "Shen",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Shen Twilight Assault Q pulls spirit blade ~650 range toward Shen; enemies struck by blade take bonus damage and Shen gains attack speed"
+  },
+  {
+   "champion": "Shen",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Shen Spirit's Refuge W ~250 range zone blocks all auto-attacks for allies inside"
+  },
+  {
+   "champion": "Shen",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Shen Shadow Dash E ~600 range dash taunts all enemies hit for ~1.5s"
+  },
+  {
+   "champion": "Shen",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Shen Stand United R global channel shields targeted ally and Shen teleports to them; requires ult"
+  },
+  {
+   "champion": "Sylas",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Sylas melee auto-attack range ~150"
+  },
+  {
+   "champion": "Sylas",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Sylas Chain Lash Q shoots chains ~775 range; slow zone at tip; center detonation if both chains cross"
+  },
+  {
+   "champion": "Sylas",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Sylas Kingslayer W ~500 range point-and-click burst + self-heal; more damage vs high HP targets"
+  },
+  {
+   "champion": "Sylas",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Sylas Abscond/Abduct E2 whip grab ~775 range pulls Sylas to target"
+  },
+  {
+   "champion": "Sylas",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Sylas Hijack R steals enemy ult; effective range varies by stolen ability; typically cast at ~600-800; requires ult"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Tryndamere melee auto-attack range 125; high crit rate via Fury stack passive"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Tryndamere Bloodlust Q heal + Fury stacks; empowered autos deal bonus damage at melee range"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Tryndamere Mocking Shout W ~850 range AoE slow on all enemies in range; flee-direction enemies take extra damage reduction"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Tryndamere Spinning Slash E ~660 range dash dealing physical damage on path"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Tryndamere Endless Rage R grants 5s invulnerability enabling sustained melee kill-threat; requires ult"
+  },
+  {
+   "champion": "Vi",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Vi melee auto-attack range 125"
+  },
+  {
+   "champion": "Vi",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Vi Vault Breaker Q charge dash ~725 range, knock-back on impact"
+  },
+  {
+   "champion": "Vi",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Vi Denting Blows W passive every 3rd auto shreds armor at melee range ~125"
+  },
+  {
+   "champion": "Vi",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Vi Relentless Force E ~600 range AoE punch through target; procs Denting Blows armor shred"
+  },
+  {
+   "champion": "Vi",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Vi Cease and Desist R ~800 range target lock; unstoppable charge knock-up on arrival; requires ult"
+  },
+  {
+   "champion": "Yone",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Yone melee auto range 175; every 3rd attack deals bonus soul damage"
+  },
+  {
+   "champion": "Yone",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Yone Mortal Steel Q3 launches tornado projectile ~1000 range; Q1/Q2 are ~525 SHORT range slashes"
+  },
+  {
+   "champion": "Yone",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Yone Soul Unbound E dashes ~550 range in spirit form; returns snapping back to body and knocks up enemies at destination"
+  },
+  {
+   "champion": "Yone",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Yone Fate Sealed R ~1000 range sweeping blink pulling all hit toward him with knock-up; requires ult"
+  },
+  {
+   "champion": "Zyra",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Zyra Deadly Spines Q ~800 range ground AoE, damages and sprouts seedlings"
+  },
+  {
+   "champion": "Zyra",
+   "source": "W",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Zyra Garden of Thorns W ~825 range seed placement; passive seed spawn; nearby plants attack enemies"
+  },
+  {
+   "champion": "Zyra",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Zyra Grasping Roots E ~1100 range projectile root on hit"
+  },
+  {
+   "champion": "Zyra",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Zyra Stranglethorns R ~700 range AoE summons plants and knock-up after 2s delay; requires ult"
+  },
+  {
+   "champion": "Ahri",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Ahri base attack range 550"
+  },
+  {
+   "champion": "Ahri",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Orb of Deception missile_cast_record 1100, travels out and returns; ~880 units effective threat range"
+  },
+  {
+   "champion": "Ahri",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Fox-Fire fires bolts at up to 725 range (prioritized target from Ahri location), ~550 non-prioritized; orbit radius 150"
+  },
+  {
+   "champion": "Ahri",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Charm missile_cast_record 1200, ~975 functional range, CC charm (Trait_ImmobilizingCCSpell)"
+  },
+  {
+   "champion": "Ahri",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Spirit Rush 3-dash R delivers burst up close; each dash cast_radius 300, bolts fire at 600 radius; kill threat requires closing to melee"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Aurelion Sol base attack range 550"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Breath of Light channeled beam, missile_cast_record 1500, scales in width with Stardust"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "W",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Astral Flight missile_cast 828, cast_radius 350; fly-over dive deals damage at landing zone, ~800 range travel before divebomb"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Singularity missile_cast_record 1300, pull and slow in zone; radius scales with Stardust (275 base + stardust scaling)"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Falling Star ~1300 range AoE stun; empowered Skies Descend shockwave radius 5000; conditional on ult"
+  },
+  {
+   "champion": "Camille",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Camille base attack range 125"
+  },
+  {
+   "champion": "Camille",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Precision Protocol empowered auto cast_radius 210; 2nd proc deals true damage in melee"
+  },
+  {
+   "champion": "Camille",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Tactical Sweep cone outer radius 650, slow on outer half, missile_cast_record 1750"
+  },
+  {
+   "champion": "Camille",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Hookshot grapple ~800 range (wiki speed 1400), knockback/stun on wall contact (Trait_SwapsIntoImmobilizingCCSpell)"
+  },
+  {
+   "champion": "Camille",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Hextech Ultimatum effect_radius 425 zone; traps target (Trait_ImmobilizingCCSpell); must leap to target; conditional on ult"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Evelynn base attack range 125"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Hate Spike dart missile_cast_record 2400, recast range 550; poke tool at long range"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Allure unit-targeted missile_cast_record 2400, ~1100 functional cast range (Trait_ImmobilizingCCSpell); requires tether to land CC"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "E",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Empowered Whiplash missile_cast_record 902, line_width 200; knocks up (Trait_ImmobilizingCCSpell); base Whiplash ~325 dash-strike"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Last Caress 500 radius AoE behind Evelynn; massive burst execute; conditional on ult"
+  },
+  {
+   "champion": "Graves",
+   "source": "BASE",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Graves base attack range 425; shotgun spread limits effective range"
+  },
+  {
+   "champion": "Graves",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "End of the Line missile_cast_record 902, explosion cone_distance 900, powder trail return burst ~1000 effective range"
+  },
+  {
+   "champion": "Graves",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Smoke Screen missile_cast_record 1650, cast_radius 225; blind zone utility"
+  },
+  {
+   "champion": "Graves",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Collateral Damage missile_cast_record 1400, cast_radius 210; high-damage knockback shell; kill threat at long range"
+  },
+  {
+   "champion": "Jax",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Jax base attack range 125; primary DPS through autos in melee"
+  },
+  {
+   "champion": "Jax",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Leap Strike unit-targeted ~700 range gap-closer (callforhelp=true); missile_cast 0 teleport to target; 700 range qualifies LONG"
+  },
+  {
+   "champion": "Jax",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Empower enhanced auto cast_radius 210 after Q or in melee"
+  },
+  {
+   "champion": "Jax",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Counter Strike stuns all nearby cast_radius 375 (Trait_ImmobilizingCCSpell); in-fight stun"
+  },
+  {
+   "champion": "Jax",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Grandmaster-at-Arms AoE burst cast_radius 250 on activation + passive lightning proc; conditional on ult"
+  },
+  {
+   "champion": "Katarina",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Katarina base attack range 125"
+  },
+  {
+   "champion": "Katarina",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "POKE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Bouncing Blade ~675 cast range (callforhelp=False), dagger bounce radius 450 around primary target"
+  },
+  {
+   "champion": "Katarina",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Shunpo ~700 blink to target/dagger (cast_radius 150 arrival check), applies mark damage; defines engagement range"
+  },
+  {
+   "champion": "Katarina",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Death Lotus effect_radius 550 channel, rapid dagger barrage; primary damage window when in range"
+  },
+  {
+   "champion": "Leona",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Leona base attack range 125"
+  },
+  {
+   "champion": "Leona",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Shield of Daybreak point-blank stun cast_radius 210 (Trait_ImmobilizingCCSpell)"
+  },
+  {
+   "champion": "Leona",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Eclipse effect_radius 450-500 AoE around Leona on activation; melee-range burst + shield"
+  },
+  {
+   "champion": "Leona",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Zenith Blade missile_cast_record 1200, ~875 effective range line; roots last enemy hit (Trait_ImmobilizingCCSpell)"
+  },
+  {
+   "champion": "Leona",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Solar Flare missile_cast_record 20 near-instant, ~1200 cast range; stun at epicenter 175 radius, slow outer 325 radius (Trait_ImmobilizingCCSpell)"
+  },
+  {
+   "champion": "Mel",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Mel base attack range 550"
+  },
+  {
+   "champion": "Mel",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Radiant Volley bolt speed 3800, ~900 cast range, cast_radius 140 explosion; main poke tool"
+  },
+  {
+   "champion": "Mel",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Solar Snare orb missile speed 1100, ~900 range; slows and creates expanding field (radius grows 70->230)"
+  },
+  {
+   "champion": "Mel",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Golden Eclipse reflects all projectiles back; effective threat range tied to enemies shooting at Mel (~550 range)"
+  },
+  {
+   "champion": "Neeko",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "Neeko base attack range 550"
+  },
+  {
+   "champion": "Neeko",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Blooming Burst speed 2000, ~800 cast range, effect_radius 250 chain burst"
+  },
+  {
+   "champion": "Neeko",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Tangle-Barbs missile speed 1300-1500, ~1000 range root (Trait_ImmobilizingCCSpell); empowered = wider 200 width"
+  },
+  {
+   "champion": "Neeko",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Pop Blossom knockup radius 590 centered on Neeko; must be near targets; setup via passive disguise"
+  },
+  {
+   "champion": "Pyke",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Pyke base attack range 150"
+  },
+  {
+   "champion": "Pyke",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Bone Skewer charged harpoon missile width 140, pull range ~1100 (Trait_ImmobilizingCCSpell); quick-release is short poke"
+  },
+  {
+   "champion": "Pyke",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Phantom Undertow dash ~450 leaving phantom that returns stunning in path (Trait_ImmobilizingCCSpell); phantom speed 3000"
+  },
+  {
+   "champion": "Pyke",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Death from Below execute X-mark effect_radius 125 center + arms ~282x100; ~700 range; resets on kill; primary threat"
+  },
+  {
+   "champion": "Riven",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Riven base attack range 125; Runic Blade empowers autos in melee"
+  },
+  {
+   "champion": "Riven",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Broken Wings 3-cast short-range strikes; 3rd cast knockup (Trait_ImmobilizingCCSpell); 3rd cast radius 250, enhanced 300"
+  },
+  {
+   "champion": "Riven",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Ki Burst cast_radius 250-360 stun (Trait_ImmobilizingCCSpell); enhanced 360 during Blade of the Exile"
+  },
+  {
+   "champion": "Riven",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Valor ~325 dash with shield; mobility and melee-range burst extension"
+  },
+  {
+   "champion": "Riven",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Wind Slash missile speed 1600, ~900 range wide arc (18 degree spread); burst threat at long range when ult active"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Shyvana base attack range 150; DPS through auto-attacks in melee"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Emberstrike double-hit next 2 autos, cone height 275; melee DPS amplifier"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Burnout AoE explosion radius 350 around Shyvana on activation; sustained fire damage as she moves"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "E",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Flame Breath fireball missile speed 1600, missile_cast_record 1500, ~950 range; dragon form creates field at target"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Dragon's Descent charge dash ~900 range; knocks enemies aside on landing; conditional on fury"
+  },
+  {
+   "champion": "Syndra",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Syndra base attack range 550"
+  },
+  {
+   "champion": "Syndra",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Dark Sphere missile_cast_record 1750, ~800 cast range, cast_radius 180; primary poke and R setup"
+  },
+  {
+   "champion": "Syndra",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Force of Will missile_cast_record 1450, ~950 range pickup + throw; slam stuns briefly"
+  },
+  {
+   "champion": "Syndra",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Scatter the Weak cone_distance 675, missile_cast_record 902; stuns via spheres (Trait_ImmobilizingCCSpell)"
+  },
+  {
+   "champion": "Syndra",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.95,
+   "conditional": true,
+   "source_quote": "Unleashed Power missile_cast_record 1100, cast_radius 1010; ~875 range point-and-click sphere barrage; primary kill threat"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "TwistedFate base attack range 525; standard ranged auto attacks"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Wild Cards missile_cast_record 1450, 3 cards spread 56 degrees, missile speed 1000; main poke"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Pick a Card Gold Card stun auto at ~525 range, cast_radius 1000 (Trait_ImmobilizingCCSpell); conditional on Gold Card selected"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Stacked Deck bonus damage on 4th auto; applied at standard auto attack range 525; MEDIUM not MELEE (ranged champion)"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Destiny effect_radius Global reveal + Gate blink anywhere on map; creates pick threat globally; conditional on ult"
+  },
+  {
+   "champion": "Viego",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Viego base attack range 200; melee auto attacker"
+  },
+  {
+   "champion": "Viego",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Blade of the Ruined King short dash line cast_radius 210, line_width 70; melee range sustained DPS with drain"
+  },
+  {
+   "champion": "Viego",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Spectral Maw charged ~900 range stun missile (missile speed 1300, Trait_ImmobilizingCCSpell); dash then fires"
+  },
+  {
+   "champion": "Viego",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Harrowed Path camouflage dash ~350 range along terrain (wiki speed 1600 missile spreading wall); repositioning tool"
+  },
+  {
+   "champion": "Viego",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Heartbreaker cast_radius 300 teleport to lowest-HP enemy; knocks aside nearby (Trait_ImmobilizingCCSpell); conditional on ult"
+  },
+  {
+   "champion": "Yorick",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Yorick base attack range 175; melee ghoul-lord DPS"
+  },
+  {
+   "champion": "Yorick",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Last Rites empowered melee strike with ghoul spawn; melee range extended strike"
+  },
+  {
+   "champion": "Yorick",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Dark Procession cast_radius ~225 cage ring, ~600 cast range; traps enemies (Trait_ImmobilizingCCSpell)"
+  },
+  {
+   "champion": "Yorick",
+   "source": "E",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Mourning Mist ~700 range AoE slow zone throw; Ghoul and Maiden focus marked targets; effect_radius 1500 bonus MS range"
+  },
+  {
+   "champion": "Yorick",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Eulogy of the Isles ~600 cast; Maiden of the Mist sieges lane independently; sustained split-push threat"
+  },
+  {
+   "champion": "Akali",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Akali base auto-attack range 125, melee assassin identity"
+  },
+  {
+   "champion": "Akali",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Five Point Strike range 500 cone, damages and slows outer ring"
+  },
+  {
+   "champion": "Akali",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Twilight Shroud range 350, slow applied to enemies exiting the shroud; also enables stealth re-engage"
+  },
+  {
+   "champion": "Akali",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Shuriken Flip range 825 projectile then return dash; meaningful commit damage occurs ~400-500 from target"
+  },
+  {
+   "champion": "Akali",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Perfect Execution two-part dash total ~675 range, primary kill-commit tool requiring ult"
+  },
+  {
+   "champion": "Aurora",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Aurora base auto-attack range 550, standard mage auto range"
+  },
+  {
+   "champion": "Aurora",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Twofold Hex range 650, primary damage poke and mark application"
+  },
+  {
+   "champion": "Aurora",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Aurora's Rite ~450 range AoE pulls enemies inward, displacement CC"
+  },
+  {
+   "champion": "Aurora",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Between Worlds ~775 range dash+realm; detonates for large burst on exit, requires ult"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Cassiopeia base auto range 550; cannot buy boots so close-range sustained threat is relevant identity marker"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Noxious Blast range 850, poisons on hit enabling E spam"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Miasma range 800, AoE grounding and slow zone"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Twin Fang range 700, repeated rapid casts on poisoned targets = primary DPS engine"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Petrifying Gaze range 700 cone, hard stun if facing or slow; requires ult"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Mystic Shot range 1150 skillshot, exceeds 1000-unit ARTILLERY threshold; primary poke and CDR reset"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Essence Flux range 1150, marks target for Q detonation; 1150 range places it in ARTILLERY band"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Arcane Shift blink ~475 range with point-blank shot, repositioning burst tool"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Trueshot Barrage global range, damages everything in path across full map; requires ult"
+  },
+  {
+   "champion": "Gwen",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Gwen base auto-attack range 150, melee juggernaut identity"
+  },
+  {
+   "champion": "Gwen",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Snip Snip! range ~450 extended cone, primary DPS tool with magic snips hitting center"
+  },
+  {
+   "champion": "Gwen",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Hallowed Mist ~450 radius self-anchored zone, grants untargetability inside and defensive stats"
+  },
+  {
+   "champion": "Gwen",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Skip n Slash ~350 dash into empowered auto, gap-close burst tool at SHORT range"
+  },
+  {
+   "champion": "Gwen",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Needlework fires up to 3 needle projectiles at 700 range; slow + burst damage; requires ult charges"
+  },
+  {
+   "champion": "Jayce",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Shock Blast (ranged) range 1050, accelerated to ~1450 through Gate; exceeds 1000-unit ARTILLERY threshold"
+  },
+  {
+   "champion": "Jayce",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Hyper Charge (ranged) ~600 range empowered autos, burst of 3 at full AS; MEDIUM range"
+  },
+  {
+   "champion": "Jayce",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Acceleration Gate placed at ~650 range, speeds Shock Blast and provides vision; cast range MEDIUM"
+  },
+  {
+   "champion": "Jayce",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Hammer form To The Skies range 325 AoE knockup, primary melee engage tool"
+  },
+  {
+   "champion": "Kayle",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Kayle auto range 525 base, extends to 575 at level 6 and 625 at level 11 with AoE splash"
+  },
+  {
+   "champion": "Kayle",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Radiant Blast range 900 skillshot, slows and reduces armor/MR on hit"
+  },
+  {
+   "champion": "Kayle",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Starfire Spellblade empowers autos; at level 11+ autos have 575-625 AoE splash; MEDIUM range"
+  },
+  {
+   "champion": "Kayle",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Divine Judgment explosion range ~575, brief invuln then large AoE burst; explosion is MEDIUM range not LONG"
+  },
+  {
+   "champion": "Lillia",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Blooming Blows range 500 circle AoE, outer ring hits harder; primary sustained poke"
+  },
+  {
+   "champion": "Lillia",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Watch Out Eep! range 300 AoE slam, deals large magic plus true damage burst on center"
+  },
+  {
+   "champion": "Lillia",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Swirlseed range 950 lobbed skillshot AoE, slows hit enemies and applies Dream Dust"
+  },
+  {
+   "champion": "Lillia",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Lilting Lullaby applies sleep to ALL Dream-dusted targets anywhere on map regardless of distance; effectively GLOBAL"
+  },
+  {
+   "champion": "Milio",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Ultra Mega Fire Kick range 1000 bouncing ball, knocks back and burns; borderline ARTILLERY at exactly 1000 range"
+  },
+  {
+   "champion": "Milio",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Cozy Campfire aura ~700 range, extends ally auto-attack range; indirect threat extender"
+  },
+  {
+   "champion": "Milio",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Breath of Life ~700 AoE cleanses CC and heals allies; sustain/anti-CC tool rather than damage CC; requires ult"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Javelin Toss range 1500, damage amplifies beyond 525 units up to 2.5x multiplier; primary long-range threat"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Bushwhack trap placement range 900, roots and reveals enemies who step on trap (~350 trigger radius)"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Aspect of the Cougar; Pounce ~350 dash into Takedown melee burst, massive damage on Hunt-marked target"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Qiyana base auto-attack range 175, melee assassin identity"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Edge of Ixtal range 475 projectile with empowered element effect (root/slow/burn depending on terrain)"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Audacity range 525 dash toward target, primary gap-close and damage tool"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Supreme Display of Talent range 950 shockwave that detonates terrain and objects, AoE stun; requires ult"
+  },
+  {
+   "champion": "Rumble",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Flamespitter range ~450 cone, continuous burn primary damage tool"
+  },
+  {
+   "champion": "Rumble",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Scrap Shield self-shield only; minor slow on immediately nearby enemies ~150 radius, MELEE range"
+  },
+  {
+   "champion": "Rumble",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Electro Harpoon range 850 two-charge slow projectile; 850 places it squarely in LONG band"
+  },
+  {
+   "champion": "Rumble",
+   "source": "R",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "The Equalizer placement range 1700, persistent flaming damage zone with 1400-unit line; LONG by cast range; requires ult"
+  },
+  {
+   "champion": "Singed",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Singed base auto-attack range 125, melee juggernaut identity"
+  },
+  {
+   "champion": "Singed",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Poison Trail AoE cloud left behind, threatens enemies who walk through at ~350 range behind Singed"
+  },
+  {
+   "champion": "Singed",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Mega Adhesive placement range 1000, creates grounding slow zone; LONG band and often missed threat"
+  },
+  {
+   "champion": "Singed",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Fling range 125 melee, launches enemy behind Singed and applies poison; primary CC tool"
+  },
+  {
+   "champion": "Singed",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Insanity Potion buffs all stats and movement speed, amplifies chase threat at short range; requires ult"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "TahmKench base auto-attack range 175, melee tank identity"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Tongue Lash range 800 skillshot, slows and stuns on 3-stack Acquired Taste; 800 range = LONG not MEDIUM"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Devour range ~175 melee, displacement CC swallowing enemy; MELEE range not SHORT"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Abyssal Dive range ~4000+, effectively cross-map repositioning emergence with AoE knockup; requires ult"
+  },
+  {
+   "champion": "Twitch",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Twitch base auto-attack range 550, standard ADC range"
+  },
+  {
+   "champion": "Twitch",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Contaminate detonates Deadly Venom stacks around poisoned targets; must be in auto range ~550 to stack venom first"
+  },
+  {
+   "champion": "Twitch",
+   "source": "R",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Spray and Pray extends auto range to 900 with piercing shots hitting multiple targets; requires ult"
+  },
+  {
+   "champion": "Viktor",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Siphon Power range 600, shields self and empowers next auto; minor poke contribution"
+  },
+  {
+   "champion": "Viktor",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Gravity Field range 800 AoE slow zone leading to stun after 1.5s of stacking; LONG band"
+  },
+  {
+   "champion": "Viktor",
+   "source": "E",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Death Ray range 700 laser beam, primary DPS poke with augmented explosion trail; LONG band"
+  },
+  {
+   "champion": "Viktor",
+   "source": "R",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Chaos Storm range 700 moving AoE vortex with silence and sustained damage; requires ult"
+  },
+  {
+   "champion": "Yunara",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Yunara base auto-attack range ~525, standard mage-support auto range"
+  },
+  {
+   "champion": "Yunara",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Yunara Q skillshot projectile range ~850, primary long-range poke threat"
+  },
+  {
+   "champion": "Yunara",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Yunara W ~600 range AoE slow or zone effect, MEDIUM band"
+  },
+  {
+   "champion": "Yunara",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Yunara R ~800 range large AoE burst, primary team-fight ultimate; requires ult"
+  },
+  {
+   "champion": "Akshan",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Dirty Fighting ricochet auto ~500 range, shoots a bonus round at marked target"
+  },
+  {
+   "champion": "Akshan",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Avengerang boomerang cast range ~1075, hits out and back - ARTILLERY threshold"
+  },
+  {
+   "champion": "Akshan",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Heroic Swing grapple up to 1300 range but damage delivered at hook landing ~SHORT band; primarily mobility"
+  },
+  {
+   "champion": "Akshan",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Comeuppance channels and fires bullets at any visible marked target, effectively global sniping; ult required"
+  },
+  {
+   "champion": "Azir",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Conquering Sands places soldier ~875 range; soldiers attack ~325 from position; total threat ~1200 from Azir"
+  },
+  {
+   "champion": "Azir",
+   "source": "W",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Arise soldiers attack ~325 from their position; W commands all soldiers; effective threat ~700+ from Azir"
+  },
+  {
+   "champion": "Azir",
+   "source": "E",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Shifting Sands dashes to soldier up to ~1100 range, deals damage on pass-through; primarily mobility"
+  },
+  {
+   "champion": "Azir",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Emperor's Divide wall ~600-700 range in front, knockback; primary engage/peel tool; ult required"
+  },
+  {
+   "champion": "Chogath",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Rupture ground-target cast range ~950, knock-up after 0.625s delay"
+  },
+  {
+   "champion": "Chogath",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Feral Scream cone ~650 range, silence for 1.5-3.5s based on rank"
+  },
+  {
+   "champion": "Chogath",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Vorpal Spikes extended AA range ~125 bonus; spikes hit ~625 from Cho base position"
+  },
+  {
+   "champion": "Chogath",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Feast melee range ~80, instant-executes target below HP threshold; ult required"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Terrify target range ~575, applies fear for 1.25-2.5s; doubles as silence near effigy"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Bountiful Harvest drain channel, leash range ~600, deals % max HP per second"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Reap sickle swing ~600 range cone, slows and silences in center"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Crowstorm blinks ~800 to target point then spins AoE ~600 around Fiddlesticks; ult required"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Rampage strike ~350 melee AoE around Hecarim"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Spirit of Dread aura ~525 radius, deals damage and heals Hecarim"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Devastating Charge dash ~450-850 total, knockback delivered at landing; MEDIUM band threat range"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Onslaught of Shadows phantoms charge ~1000 units causing fear ~1s on arrival; ult required"
+  },
+  {
+   "champion": "Jhin",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Jhin base auto-attack range 550, 4th shot crits for bonus damage"
+  },
+  {
+   "champion": "Jhin",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Dancing Grenade range ~550, bounces up to 4 times; damage ramps if it kills"
+  },
+  {
+   "champion": "Jhin",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Deadly Flourish range ~1300, roots enemy hit by Jhin auto or marked by traps"
+  },
+  {
+   "champion": "Jhin",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Captive Audience trap placement ~750 but trap trigger zone ~120; CC delivered in SHORT band"
+  },
+  {
+   "champion": "Jhin",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Curtain Call sniper range ~3500 effectively screen-spanning, 4 shots on rooted or distant targets; ult required"
+  },
+  {
+   "champion": "Kayn",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Reaping Slash dash + slash ~350, primary damage ability in melee band"
+  },
+  {
+   "champion": "Kayn",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Blade's Reach ~600 range line skillshot, slow/knock; MEDIUM not melee at 600 units"
+  },
+  {
+   "champion": "Kayn",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Shadow Step passes through terrain; exits target-side dealing damage at SHORT range on arrival"
+  },
+  {
+   "champion": "Kayn",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Umbral Trespass enters target body at melee range, erupts for massive damage; ult required"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Ice Shard projectile range ~725 with slow, shatters to hit adjacent targets"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Ring of Frost ~450 radius around Lissandra, roots nearby enemies"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Glacial Path claw range ~1050; reactivate to teleport to claw position - engage threat at ARTILLERY range"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Frozen Tomb cast range ~550, hard CC on target or self-stasis; MEDIUM band at 550; ult required"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "MissFortune base auto-attack range 550"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Double Up range ~650, second shot bounces to enemy behind first target for extra damage"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Make it Rain AoE ground cast range ~1000, slows enemies in zone; chip damage"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Bullet Time channel fires waves ~1200 range cone; massive AoE DPS when channeling; ult required"
+  },
+  {
+   "champion": "Nilah",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Nilah base auto-attack range ~175, melee ADC"
+  },
+  {
+   "champion": "Nilah",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Formless Blade whip Q extends auto range to ~450+ briefly; empowered AAs in SHORT band"
+  },
+  {
+   "champion": "Nilah",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Slipstream dash ~700 total but threat delivered at destination, entering SHORT band"
+  },
+  {
+   "champion": "Nilah",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Apotheosis ~500 pull + damage in melee AoE; CC pull delivered at melee range; ult required"
+  },
+  {
+   "champion": "Quinn",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Quinn base auto-attack range 525"
+  },
+  {
+   "champion": "Quinn",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Harrier passive marks target; next auto on marked deals bonus burst damage at auto range ~525"
+  },
+  {
+   "champion": "Quinn",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Blinding Assault projectile range ~1025, blind on primary target; ARTILLERY at 1025"
+  },
+  {
+   "champion": "Quinn",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Vault dash up to ~700 but knock-back CC delivered at target ~200-300 melee range"
+  },
+  {
+   "champion": "Quinn",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Tag Team / Skystrike delivers burst damage at landing destination; SHORT band at point of impact; ult required"
+  },
+  {
+   "champion": "Ryze",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Overload projectile range ~1000, deals significant burst especially at max Flux stacks; ARTILLERY at 1000"
+  },
+  {
+   "champion": "Ryze",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Rune Prison range ~600, roots enemy for 1.5-2.5s; Flux doubles root duration"
+  },
+  {
+   "champion": "Ryze",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Spell Flux range ~600, bounces between nearby enemies; sustained poke in combo"
+  },
+  {
+   "champion": "Ryze",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Realm Warp teleport zone ~3000+ range; massive positional pressure; not damage but creates pick threat; ult required"
+  },
+  {
+   "champion": "Sion",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Decimating Smash full charge ~600 knockup; short charge ~200 range, full charge ~600 with knockup"
+  },
+  {
+   "champion": "Sion",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Soul Furnace shield explodes ~600 radius; MEDIUM band at 600 - not MELEE"
+  },
+  {
+   "champion": "Sion",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Roar of the Slayer ~800 range projectile, slows and shreds armor; also launches minions"
+  },
+  {
+   "champion": "Sion",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Unstoppable Onslaught charges across the map effectively global, knocks up and deals massive damage on impact; ult required"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Threaded Volley projectile range ~1000; first cast on unWorked ground fires 5 rocks; ARTILLERY at 1000"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Seismic Shove ground-target ~900 range, knocks enemy airborne if placed beyond them"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Unraveled Earth ~900 range zone, slow/stun when enemies dash or W knocks into it"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Weaver's Wall creates cross-map wall up to ~3400 range; walls off enemies or blocks escape; ult required"
+  },
+  {
+   "champion": "Udyr",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Udyr base auto-attack range ~175, primary melee fighter"
+  },
+  {
+   "champion": "Udyr",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Wilding Claw claws in ~200 AoE, primary damage tool; lightning bounces from nearby enemies"
+  },
+  {
+   "champion": "Udyr",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Blazing Stampede dash ~250-350 range with brief stun on first target hit; short engage CC"
+  },
+  {
+   "champion": "Udyr",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Wingborne Storm AoE ~350 around Udyr, deals sustained damage and slows nearby enemies"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Transfusion range ~600, instant burst + heal; empowered Q (Crimson Rush) deals more damage"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Sanguine Pool becomes untargetable in place, damages and slows enemies standing on him in melee band"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Tides of Blood AoE ~610 radius around Vladimir, chips nearby enemies; stacks empower Q"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Hemoplague cast range ~700, marks AoE; detonates after 4s for amplified burst + bonus damage; ult required"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Prowling Projectile range ~1150-1200 when unattached; steerable missile - ARTILLERY threshold"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Final Chapter channels waves ~1100 range, each wave roots enemies; 3-7 waves; ARTILLERY at 1100; ult required"
+  },
+  {
+   "champion": "Alistar",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Pulverize AoE knock-up 365 radius centered on Alistar, melee-range"
+  },
+  {
+   "champion": "Alistar",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Headbutt unit-targeted dash cast range ~650, knocks target back 700 units and stuns 0.75s"
+  },
+  {
+   "champion": "Alistar",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Trample 5-stack empowered auto stuns for 1s; requires 5 Trample stacks built up in melee"
+  },
+  {
+   "champion": "Alistar",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Alistar base auto-attack range 125, pure melee"
+  },
+  {
+   "champion": "Bard",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Meep empowered autos fire at Bard's 500 auto range; scale with Chimes collected, relevant sustained threat"
+  },
+  {
+   "champion": "Bard",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Cosmic Binding projectile range ~950, stuns target and second enemy behind it or near terrain"
+  },
+  {
+   "champion": "Bard",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Tempered Fate cast range ~3400, freezes all units in a large AoE for 2.5s; requires ult up"
+  },
+  {
+   "champion": "Bard",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Bard base auto-attack range 500, standard ranged support auto"
+  },
+  {
+   "champion": "Corki",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Hextech Munitions bonus true damage 20% AD on every basic attack at auto range ~550"
+  },
+  {
+   "champion": "Corki",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Phosphorus Bomb cast range 825, AoE magic damage with vision reveal - LONG not ARTILLERY"
+  },
+  {
+   "champion": "Corki",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Valkyrie dash ~600 dropping napalm patches, deals sustained magic damage along path"
+  },
+  {
+   "champion": "Corki",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Gatling Gun frontal cone ~600 range sustained physical damage with armor/MR shred over 4s"
+  },
+  {
+   "champion": "Corki",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Missile Barrage fires every 2s with Big One every 3rd shot, range ~1300 normal / ~1500 Big One"
+  },
+  {
+   "champion": "Corki",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Corki base auto range 550, delivers physical+magic split-damage reliably"
+  },
+  {
+   "champion": "Fiora",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Duelist's Dance Vital true damage triggers in melee; requires hitting the directional Vital marker"
+  },
+  {
+   "champion": "Fiora",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Lunge dash ~400 range two-charge gap-close and stab, primary commit and poke tool"
+  },
+  {
+   "champion": "Fiora",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Riposte fires a line shock ~750 units, stuns if it blocks CC; baseline only slows/cripples 2s"
+  },
+  {
+   "champion": "Fiora",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Bladework empowers next two autos in melee range 150+25 bonus; second auto critically strikes"
+  },
+  {
+   "champion": "Fiora",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Fiora base auto range 150, melee duelist core damage identity"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "H-28G turrets fire range ~525 beams and rockets, sustained zone-denial damage"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Hextech Micro-Rockets range ~1000, 5-rocket fan dealing magic damage to first enemy per rocket"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "CH-2 Electron Storm Grenade range ~925, slows AoE, stuns enemies hit at center for 1.5s"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "UPGRADE!!! empowers next ability; R+W fires 4 rocket waves ~1000 range, R+E bouncing stun grenade"
+  },
+  {
+   "champion": "Jinx",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Switcheroo Fishbones extends auto range to ~700, core sustained DPS in rocket form"
+  },
+  {
+   "champion": "Jinx",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Zap! range ~1450, slows target hit by 60% for 2s - soft CC skillshot at extreme range"
+  },
+  {
+   "champion": "Jinx",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Flame Chompers placement range ~925, each Chomper roots enemy champion on contact for 1.5s"
+  },
+  {
+   "champion": "Jinx",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Super Mega Death Rocket travels globally, deals massive burst damage scaling with distance traveled"
+  },
+  {
+   "champion": "Jinx",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Jinx Pow-Pow auto range ~525 with Rev'd up attack speed stacks, baseline sustained DPS form"
+  },
+  {
+   "champion": "Kennen",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Mark of the Storm stuns on 3rd stack; stun procs within auto/W range ~525-775; requires 3 stacks"
+  },
+  {
+   "champion": "Kennen",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Thundering Shuriken range ~1175, primary long-range poke applying Mark of the Storm"
+  },
+  {
+   "champion": "Kennen",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Electrical Surge active range ~775, requires enemy with Mark of the Storm or inside Slicing Maelstrom"
+  },
+  {
+   "champion": "Kennen",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Lightning Rush movement-speed dash deals damage to enemies passed through; threat at dash-contact range"
+  },
+  {
+   "champion": "Kennen",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Slicing Maelstrom ~550 radius AoE centered on Kennen, stuns + repeated burst in teamfight"
+  },
+  {
+   "champion": "Kennen",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Kennen base auto range ~525, ranged harass identity in lane"
+  },
+  {
+   "champion": "Lucian",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Piercing Light laser range ~900 through target, significant physical damage burst"
+  },
+  {
+   "champion": "Lucian",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Ardent Blaze missile range ~900, cross explosion on hit applying mark; low direct damage"
+  },
+  {
+   "champion": "Lucian",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "The Culling channels ~1400 range firing up to 22+ rapid shots; requires ult up"
+  },
+  {
+   "champion": "Lucian",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Lucian base auto range 500, Lightslinger double-shot on every spell cast is primary DPS engine"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Crushing Blow empowered auto gains ~125 bonus range total ~300, bonus physical damage + armor shred"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Warrior Trickster dashes ~300 to target location leaving clone; primary use is repositioning"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Nimbus Strike unit-targeted dash range ~625, dashes to target dealing AoE magic damage plus clones"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Cyclone 2s AoE spin range ~175, knocks up enemies once per cast; requires ult up"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Wukong base auto range 175, melee fighter core damage identity"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Duskbringer line skillshot range ~1200, deals physical damage and leaves speed/AD trail"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Unspeakable Horror unit-targeted tether range ~425, fears target when tether breaks for duration"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Paranoia global nearsight all enemies then dash-to-target with physical damage on arrival"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Nocturne base auto range 125, melee jungler core DPS identity with Umbra Blades AoE passive"
+  },
+  {
+   "champion": "Rakan",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Gleaming Quill projectile range ~900, poke plus delayed heal on hit - low damage threat"
+  },
+  {
+   "champion": "Rakan",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Grand Entrance dash range ~650 to location, knocks up nearby enemies 1s after arrival"
+  },
+  {
+   "champion": "Rakan",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "The Quickness sprint charms enemies on contact within his movement path; requires ult up"
+  },
+  {
+   "champion": "Rakan",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Rakan base auto range 300, support baseline auto with minimal damage threat"
+  },
+  {
+   "champion": "Samira",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Flair bullet range ~950 in ranged form, primary ranged poke; switches to melee slash if enemy is adjacent"
+  },
+  {
+   "champion": "Samira",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Blade Whirl ~450 radius melee spin over 0.75s, destroys projectiles, double slash physical damage"
+  },
+  {
+   "champion": "Samira",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Wild Rush dashes a fixed distance through target enemy ~300, deals magic damage to enemies passed through"
+  },
+  {
+   "champion": "Samira",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Inferno Trigger requires max Style rank S, fires 10 shots at nearby enemies over 2s in melee radius"
+  },
+  {
+   "champion": "Samira",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Samira base auto range 525, primary sustained DPS platform in ranged form"
+  },
+  {
+   "champion": "Sivir",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Boomerang Blade range ~1275 outward and returns, primary long-range AoE poke tool"
+  },
+  {
+   "champion": "Sivir",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Ricochet bouncing autos ~500 range area bounce, sustained AoE wave-clear DPS"
+  },
+  {
+   "champion": "Sivir",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Sivir base auto range 500, standard ADC sustained DPS identity"
+  },
+  {
+   "champion": "Talon",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Noxian Diplomacy dash up to ~800 but commits to melee; crits at close range, bleed on hit"
+  },
+  {
+   "champion": "Talon",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Rake fan of daggers ~900 outward then return, deals physical damage and slows on both passes"
+  },
+  {
+   "champion": "Talon",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Shadow Assault disperses blades ~350 radius, turns invisible, converges blades back for burst on re-emerge"
+  },
+  {
+   "champion": "Talon",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Talon base auto range 125, melee assassin close-quarters DPS"
+  },
+  {
+   "champion": "Urgot",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Echoing Flames shotgun legs fire in arcs around Urgot on-hit, effective range ~350-490 near melee"
+  },
+  {
+   "champion": "Urgot",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Corrosive Charge range ~800, AoE slow 1.25s + marks target for Purge lock-on"
+  },
+  {
+   "champion": "Urgot",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Purge sustained fire ~490 range at fixed 3.0 attack speed prioritizing marked targets, primary DPS"
+  },
+  {
+   "champion": "Urgot",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Disdain dash ~450 units, stuns enemies on collision 1-1.5s and flings champion hit over Urgot"
+  },
+  {
+   "champion": "Urgot",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Fear Beyond Death chem-drill range ~2500, leashes target and executes below 25% HP; requires ult up"
+  },
+  {
+   "champion": "Urgot",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Urgot base auto range ~500 firing alongside Echoing Flames leg-proc on every attack"
+  },
+  {
+   "champion": "Volibear",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Thundering Smash gains movement speed then pounces on next auto gaining 25 bonus range, stuns 1s on hit"
+  },
+  {
+   "champion": "Volibear",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Frenzied Maul unit-targeted melee bite/slash, bonus damage and self-heal on Wounded targets"
+  },
+  {
+   "champion": "Volibear",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Sky Splitter lightning bolt range ~1500, slows 40% for 2s; stuns enemies at center of strike"
+  },
+  {
+   "champion": "Volibear",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Stormbringer global leap to target location, AoE physical damage + 50% slow + turret disable on landing"
+  },
+  {
+   "champion": "Volibear",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Volibear base auto range 125, melee fighter with Lightning Claws chain proc at 5 stacks"
+  },
+  {
+   "champion": "Zac",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Stretching Strikes arm reach ~550+350 tether, roots and slams two targets together with knock-up"
+  },
+  {
+   "champion": "Zac",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Unstable Matter explodes nearby in melee AoE, deals magic damage capped against non-champions"
+  },
+  {
+   "champion": "Zac",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Elastic Slingshot channel-aim leap max range ~1650, knocks up and stuns 0.5-1s on landing"
+  },
+  {
+   "champion": "Zac",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Let's Bounce 4 bounces each knocking back enemies, effective threat range per bounce ~SHORT; requires ult"
+  },
+  {
+   "champion": "Zac",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Zac base auto range 175, melee tank baseline auto DPS"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Ambessa melee auto-attack range ~125, primary basic attack identity"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Cunning Sweep outer radius 400 (wiki), forward 180-degree spin sweep dealing physical damage"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Sundering Slam overhead ground smash ~300 range, deals physical damage in area"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Lacerate 325 effect radius lunge dash dealing physical damage"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Public Execution targeted dash execute ~475 cast range, grounds on landing, conditional on ult CD"
+  },
+  {
+   "champion": "Belveth",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Bel'Veth melee auto-attack range ~125, rapid multi-directional basic attacks are primary identity"
+  },
+  {
+   "champion": "Belveth",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Void Surge directional dash ~540 range, knocks back and deals physical damage"
+  },
+  {
+   "champion": "Belveth",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Above and Below targeted stomp ~300 range with CC tag in CDragon, knocks up target"
+  },
+  {
+   "champion": "Belveth",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Royal Maelstrom 500 slash radius channel absorbs damage and deals physical damage, melee-range identity"
+  },
+  {
+   "champion": "Belveth",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Endless Banquet true damage transformation; 500 slow/explosion radius on second cast but operates from melee range"
+  },
+  {
+   "champion": "Darius",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Darius melee auto-attack range ~175 with Hemorrhage stacks building over successive hits"
+  },
+  {
+   "champion": "Darius",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Decimate outer radius 460 (wiki/CDragon confirmed), wide-arc spin dealing more damage at blade tip"
+  },
+  {
+   "champion": "Darius",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Apprehend cone_distance 550 per CDragon, pulls all enemies hit toward Darius"
+  },
+  {
+   "champion": "Darius",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Noxian Guillotine targeted true damage execute ~475 cast range, resets on kill"
+  },
+  {
+   "champion": "Fizz",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Urchin Strike targeted dash ~550 range (MEDIUM boundary), passes through target dealing magic damage"
+  },
+  {
+   "champion": "Fizz",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Seastone Trident empowers basic attacks with DoT on-hit, melee-range sustained threat"
+  },
+  {
+   "champion": "Fizz",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Playful/Trickster hop ~400 reposition, second-cast area damage 375 radius (CDragon: 330) on landing"
+  },
+  {
+   "champion": "Fizz",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Chum the Waters fish missile travels ~1300 cast range at speed 1300, giant shark knocks up and slows 300 radius"
+  },
+  {
+   "champion": "Hwei",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "QQ Devastating Fire ~900 speed 2000; QW Gaze of the Abyss ~1050 speed 1700; QE Severing Bolt ~1350 - Q suite peaks at ARTILLERY"
+  },
+  {
+   "champion": "Hwei",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "WQ Pool of Reflection 350 radius zone; WW Fleeting Current movement lane; WE Stirring Lights melee empowered autos - W suite mostly utility/poke"
+  },
+  {
+   "champion": "Hwei",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "EQ Crushing Maw ~750 slow+root; EW Grim Visage ~750 fear speed 1300; EE Molten Fissure slow terrain - E suite CC at ~700-800 range"
+  },
+  {
+   "champion": "Hwei",
+   "source": "R",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Spiraling Despair ~700 cast speed 1400, aura 500 radius applies stacking magic damage + slow over 4s"
+  },
+  {
+   "champion": "KSante",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Ntofo Strikes cast_radius 180 line_width 100 missile 1800 per CDragon; third hit stuns, effectively ~500 range"
+  },
+  {
+   "champion": "KSante",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Path Maker charge dash ~800 range, knocks back and suspends enemies hit at end"
+  },
+  {
+   "champion": "KSante",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Footwork dash cast_radius 600 per CDragon to location/ally, knocks back enemies at destination"
+  },
+  {
+   "champion": "KSante",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "All Out targeted sideswipe ~500, displaces target over terrain entering empowered All Out form"
+  },
+  {
+   "champion": "Khazix",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Unseen Threat passive auto empowered when exiting brush, deals bonus magic damage + slow; conditional on stealth exit"
+  },
+  {
+   "champion": "Khazix",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Taste Their Fear ~325 targeted bite, non-isolated radius 375 per wiki, massive bonus damage vs isolated targets"
+  },
+  {
+   "champion": "Khazix",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Void Spike projectile ~1000 range missile speed 1700, deals physical damage + slows; CDragon width 60"
+  },
+  {
+   "champion": "Khazix",
+   "source": "E",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Leap ~700 range jump landing area damage 300 radius (wiki); evolved extends to ~900"
+  },
+  {
+   "champion": "Lulu",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Pix bolts fire on Lulu's basic attacks, bolt missile speed 900-2600 per wiki, dealing minor magic damage at ~550 range"
+  },
+  {
+   "champion": "Lulu",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Glitterlance dual bolts ~950 range missile speed 1450 (CDragon), slows enemies hit"
+  },
+  {
+   "champion": "Lulu",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Whimsy ~650 cast range missile 2250 per wiki, polymorphs enemy champion (silences + slows) for 1.25-2s"
+  },
+  {
+   "champion": "Lulu",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Wild Growth ~900 cast range on ally, knocks up nearby enemies 400 radius (wiki) on cast"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Darkness Rise passive 375 AoE activates after 3 ability hits, sustained damage aura at melee range"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Obliterate ~650 extended-melee overhead swing, deals more damage vs single target"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Death's Grasp claw range 800 (wiki), pulls enemies toward Mordekaiser at speed 3000"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Realm of Death ~475 targeted pull into death realm stripping stats; cast range ~475 is SHORT, realm radius 1200"
+  },
+  {
+   "champion": "Nunu",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Consume melee-range targeted bite ~125 cast, deals massive damage to monsters/minions"
+  },
+  {
+   "champion": "Nunu",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Biggest Snowball Ever rolls until hitting champion/wall; 500 cast_radius missile 1500 per CDragon, knocks up on contact - effectively unlimited range engage"
+  },
+  {
+   "champion": "Nunu",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Snowball Barrage cast_radius 450 missile 1850 per CDragon (~825 range), roots nearby enemies on final cast"
+  },
+  {
+   "champion": "Nunu",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Absolute Zero 500 radius channel (CDragon cast_radius 500), deals massive magic damage + slows then freezes on completion"
+  },
+  {
+   "champion": "Rammus",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Powerball rolls until enemy contact; 250 impact radius (wiki), effectively unlimited range engagement - LONG threat reach"
+  },
+  {
+   "champion": "Rammus",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Defensive Ball Curl 300 radius (CDragon) thorns damage reflects to attackers while active"
+  },
+  {
+   "champion": "Rammus",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Frenzying Taunt ~325 cast range (CDragon cast_radius 500 conflated; wiki ~325), forces target to attack Rammus 1.2-2s"
+  },
+  {
+   "champion": "Rammus",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Soaring Slam impact radius 400, dash speed 900-2000 per wiki; ~1100 cast range - LONG; longer with Powerball active"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Arctic Assault charge ~700 range (speed 1000 CDragon), knocks up first champion hit"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Winter's Wrath two-part flail ~600 range, second hit applies Frost stacks toward Permafrost freeze"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Permafrost aura 1100 per wiki activates Frost stacks, stuns; requires prior frost application"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Glacial Prison boomerang missile ~1300 range speed 1600 (CDragon), stuns primary + freezes 450 radius"
+  },
+  {
+   "champion": "Skarner",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Shattered Earth ~500 slam creates boulder; 300 attack splash radius (wiki CDragon) on target"
+  },
+  {
+   "champion": "Skarner",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Seismic Bastion radial missile 600-700 range (wiki) speed 1650 per CDragon, small shield + slow on hit"
+  },
+  {
+   "champion": "Skarner",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Ixtal's Impact charge dash ~800 range, grabs first champion hit carrying them along, grounds + silences"
+  },
+  {
+   "champion": "Skarner",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Impale ~650 cast range (MEDIUM), suppresses up to 3 champions for 1.5s dragging them during dash"
+  },
+  {
+   "champion": "Taric",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Taric melee auto ~150 range, Bravado passive empowers next 2 attacks after each ability use"
+  },
+  {
+   "champion": "Taric",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Dazzle ~625 cast range speed 1750 per CDragon, fires delayed stun bolts at all nearby enemies"
+  },
+  {
+   "champion": "Taric",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Cosmic Radiance 2.5s delay invulnerability; GLOBAL range through Bastion tether to ally (wiki: Global pull radius non-SR)"
+  },
+  {
+   "champion": "Varus",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Varus base auto-attack range 575, standard ADC sustained DPS"
+  },
+  {
+   "champion": "Varus",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Piercing Arrow fully charged ~1600 range (missile speed 1900 CDragon), deals heavy physical damage through all targets"
+  },
+  {
+   "champion": "Varus",
+   "source": "E",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Hail of Arrows ~925 cast range, creates slow + Grievous Wounds zone 300 radius"
+  },
+  {
+   "champion": "Varus",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Chain of Corruption ~1200 missile range speed 1500 (CDragon), snares primary target, tendrils spread to nearby champions"
+  },
+  {
+   "champion": "Warwick",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Warwick melee auto ~175 range with Eternal Hunger passive healing on each hit"
+  },
+  {
+   "champion": "Warwick",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Jaws of the Beast cast_radius 600 missile 1500 per CDragon, heals Warwick and deals % max health magic damage"
+  },
+  {
+   "champion": "Warwick",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Primal Howl 375 recast fear radius per wiki/CDragon, briefly fears all nearby enemies away on recast"
+  },
+  {
+   "champion": "Warwick",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Infinite Duress ~3000 charge range with Blood Hunt detection (WW cast_radius 2200 per CDragon), suppresses target 1.5s on arrival"
+  },
+  {
+   "champion": "Zed",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Razor Shuriken ~900 range missile speed 1700 per CDragon, doubled via Living Shadow for massive combo damage"
+  },
+  {
+   "champion": "Zed",
+   "source": "W",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Living Shadow places shadow ~700 range speed 2500, enabling Q/E to be mirrored and swap-in for mobility"
+  },
+  {
+   "champion": "Zed",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Shadow Slash 315 radius spin from Zed (290 from shadows) per CDragon, melee-range AoE"
+  },
+  {
+   "champion": "Zed",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Death Mark ~625 targeted blink to enemy, marks for deferred damage equal to % of damage dealt during duration"
+  },
+  {
+   "champion": "Amumu",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Bandage Toss range 1100 units, stun on hit"
+  },
+  {
+   "champion": "Amumu",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Despair effect radius 350 units, DoT aura around self"
+  },
+  {
+   "champion": "Amumu",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Tantrum effect radius 350 units, AoE around self"
+  },
+  {
+   "champion": "Amumu",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Curse of the Sad Mummy effect_radius_raw 550 units, mass ensnare"
+  },
+  {
+   "champion": "Blitzcrank",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Rocket Grab range 1075 units, pulls target to Blitzcrank"
+  },
+  {
+   "champion": "Blitzcrank",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Power Fist melee empowered auto knockup"
+  },
+  {
+   "champion": "Blitzcrank",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Static Field effect radius 600 units, AoE burst plus silence"
+  },
+  {
+   "champion": "Diana",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Moonsilver Blade AoE radius ~175 units, empowered third strike"
+  },
+  {
+   "champion": "Diana",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Crescent Strike arc projectile range ~900 units, applies Moonlight"
+  },
+  {
+   "champion": "Diana",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Pale Cascade orbit radius ~200 units, spheres detonate on nearby contact"
+  },
+  {
+   "champion": "Diana",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Lunar Rush dash to target within ~400 units, cooldown reset when Moonlight consumed"
+  },
+  {
+   "champion": "Diana",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Moonfall pull radius 475 units, second cast deals burst damage"
+  },
+  {
+   "champion": "Galio",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Colossal Smash AoE radius ~250 units, empowered auto"
+  },
+  {
+   "champion": "Galio",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Winds of War range ~825 units, deals % max HP burst"
+  },
+  {
+   "champion": "Galio",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Shield of Durand taunt radius 175 to 350 units scaled by channel duration, requires channel"
+  },
+  {
+   "champion": "Galio",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Justice Punch ~600 range dash, knockup on first target hit"
+  },
+  {
+   "champion": "Galio",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Hero's Entrance teleports globally to ally, mass knockup on landing effect radius 650 units"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Prophet of an Elder God passive spawns tentacles on nearest terrain, zone control threat"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Tentacle Smash range ~625 units, heavy physical damage"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Harsh Lesson ~325 range lunge auto applies tentacle slam"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Test of Spirit range ~900 units, extracts soul tethered to body via 1900 speed projectile"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Leap of Faith effect radius 500 units, spawns tentacles around all tethered souls"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Icathian Rain fires 6 missiles at nearest targets within ~525 range"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Void Seeker range ~1500 units, charges 2 Plasma stacks on hit"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Kaisa base attack range 525, autos apply Plasma stacks for % missing HP burst"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Killer Instinct global range dash to any Plasma-marked visible enemy"
+  },
+  {
+   "champion": "Kindred",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Dance of Arrows ~340 range dash firing arrows at nearby enemies"
+  },
+  {
+   "champion": "Kindred",
+   "source": "W",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Wolf's Frenzy wolf attacks in 800 radius around W target zone"
+  },
+  {
+   "champion": "Kindred",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Mounting Dread range ~500 units, 3rd hit deals % missing HP burst"
+  },
+  {
+   "champion": "Kindred",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Kindred base attack range 525, sustained auto-attack DPS"
+  },
+  {
+   "champion": "Lux",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Light Binding range 1175 units, roots up to 2 targets"
+  },
+  {
+   "champion": "Lux",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Lucent Singularity range 1100 units, slows then bursts on detonation"
+  },
+  {
+   "champion": "Lux",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Final Spark range 3340 units, cross-map laser detonates Illumination marks"
+  },
+  {
+   "champion": "Morgana",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Dark Binding range 1300 units, 3s root skillshot"
+  },
+  {
+   "champion": "Morgana",
+   "source": "W",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Tormented Shadow placement range ~900 units, 5s AoE DoT ground zone"
+  },
+  {
+   "champion": "Morgana",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Soul Shackles latch-on radius 625 units, 1.5s stun if target stays in range"
+  },
+  {
+   "champion": "Olaf",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Undertow throws axe ~1000 range, slows on hit and can be retrieved"
+  },
+  {
+   "champion": "Olaf",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Reckless Swing ~325 range true damage melee strike"
+  },
+  {
+   "champion": "Olaf",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Olaf melee auto with Berserker Rage AS steroid at low HP, core sustained melee threat"
+  },
+  {
+   "champion": "Olaf",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Ragnarok grants CC immunity and bonus AD enabling unkillable melee sustained DPS"
+  },
+  {
+   "champion": "RekSai",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Prey Seeker burrowed Q range ~1700 units, knock-up on hit, requires burrowed form"
+  },
+  {
+   "champion": "RekSai",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Unburrow knock-up radius 220 units around Rek'Sai when emerging"
+  },
+  {
+   "champion": "RekSai",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Furious Bite melee auto replacement, true damage when Fury is full"
+  },
+  {
+   "champion": "RekSai",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Void Rush global range dash to a marked target dealing burst damage"
+  },
+  {
+   "champion": "Senna",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Piercing Darkness range ~1300 units, line pierces from target damaging enemies"
+  },
+  {
+   "champion": "Senna",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Last Embrace range ~1300 units, 1200 speed skillshot roots target plus nearby enemies"
+  },
+  {
+   "champion": "Senna",
+   "source": "BASE",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Senna base attack range ~600 scaling with Mist stacks, long-range auto sustained poke"
+  },
+  {
+   "champion": "Senna",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Dawning Shadow light wave width 2400 units, cross-map line laser burst"
+  },
+  {
+   "champion": "Smolder",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Super Scorcher Breath ~650 range, empowered fire breath applies DoT at high stacks"
+  },
+  {
+   "champion": "Smolder",
+   "source": "W",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Achooo! range ~900 units, AoE sneeze burst with bounce mechanic"
+  },
+  {
+   "champion": "Smolder",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Smolder base attack range 525, autos gain bounce at 225 Dragon Practice stacks"
+  },
+  {
+   "champion": "Smolder",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "MMOOOMMMM! range ~2500 units, long-range line AoE wave summons Mom for burn"
+  },
+  {
+   "champion": "Teemo",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Blinding Dart range ~680 units, blinds target and applies poison damage"
+  },
+  {
+   "champion": "Teemo",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Toxic Shot passive applies DoT poison on every auto attack, Teemo auto range ~500"
+  },
+  {
+   "champion": "Teemo",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Noxious Trap toss range ~300 units, placed mushroom slows plus poisons on trigger"
+  },
+  {
+   "champion": "Vayne",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Tumble ~300 roll repositions and empowers next auto for bonus physical damage"
+  },
+  {
+   "champion": "Vayne",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Silver Bolts passive % max HP true damage on third consecutive auto, ~550 attack range"
+  },
+  {
+   "champion": "Vayne",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Condemn ~550 range knockback, stuns if target hits terrain"
+  },
+  {
+   "champion": "Vayne",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Final Hour grants stealth on Q and bonus AD enabling aggressive melee dive burst"
+  },
+  {
+   "champion": "Xayah",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Double Daggers range ~1100 units, two projectiles leaving feathers on ground"
+  },
+  {
+   "champion": "Xayah",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Bladecaller feather recall up to ~1100 units, roots all enemies feathers pass through"
+  },
+  {
+   "champion": "Xayah",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Xayah base attack range 525, autos leave feathers enabling E combos"
+  },
+  {
+   "champion": "Xayah",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Featherstorm feather drop area ~1060 units measured, untargetable burst"
+  },
+  {
+   "champion": "Zeri",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Burst Fire auto-attack replacement range ~825 units, chain lightning bolt sustained DPS"
+  },
+  {
+   "champion": "Zeri",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Ultrashock Laser charged range ~1450 units, wall-piercing laser slows on hit"
+  },
+  {
+   "champion": "Zeri",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Lightning Crash nova radius 825 units, AoE burst then empowers Q with chained lightning"
+  },
+  {
+   "champion": "Anivia",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Flash Frost projectile range 1075; stun on recast or max-range detonation is the primary Q function, not an external setup gate"
+  },
+  {
+   "champion": "Anivia",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Crystallize wall cast range 1000; knockback plus terrain block, primary peel and disengage tool"
+  },
+  {
+   "champion": "Anivia",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Frostbite cast range 650; doubles damage when target is chilled by Q or R, making full burst conditional on prior chill"
+  },
+  {
+   "champion": "Anivia",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Glacial Storm center ~625 range; continuous AoE slow and damage while active; ult slot"
+  },
+  {
+   "champion": "Anivia",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "Auto-attack range 600 per champion stats"
+  },
+  {
+   "champion": "Brand",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Sear range 1100; stuns 1.5s only if target has Blaze stack from a prior spell hit"
+  },
+  {
+   "champion": "Brand",
+   "source": "W",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Pillar of Flame cast range 900; large AoE nuke, damage doubled on Ablaze target"
+  },
+  {
+   "champion": "Brand",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Conflagration cast range 575; point-and-click, spreads to nearby Ablaze targets"
+  },
+  {
+   "champion": "Brand",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Pyroclasm initial target range ~750; bounces up to 4 times, primary teamfight nuke; ult slot"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Infected Bonesaw cast range 1000; slows 40% for 2s, costs current HP"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Heart Zapper ~320 AoE toggle around Mundo; deals current HP as magic damage per second to nearby enemies"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Blunt Force Trauma melee enhanced auto; bonus damage scales with max HP"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Auto-attack range 125 melee; juggernaut sustained threat in close quarters"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Parrrley range 625; applies on-hit effects and can last-hit for silver serpents, primary lane harass"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Powder Keg placement range ~950; explodes on Q to slow 30-40% for 2s in area"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Cannon Barrage global AoE; waves slow 30%; Death's Daughter upgrade adds 75% slow 1s; ult slot"
+  },
+  {
+   "champion": "Irelia",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Bladesurge dash range ~600; resets on marked or low-HP target, primary engage and DPS engine"
+  },
+  {
+   "champion": "Irelia",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Flawless Duet dual blades placed up to ~900 apart; stuns 0.75-1.15s along line between blades"
+  },
+  {
+   "champion": "Irelia",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Vanguard's Edge ~1000 range blade fan; fence slow 90% for 1.5s plus initial blade damage; ult slot"
+  },
+  {
+   "champion": "Irelia",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Auto-attack range 200 melee; passive stacks grant attack speed, core DPS delivery"
+  },
+  {
+   "champion": "Kalista",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Pierce spear projectile range ~1200; passes through initial target applying Rend stacks at artillery range"
+  },
+  {
+   "champion": "Kalista",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Rend activates at ~525; rips all lodged spears, primary damage burst plus 2s slow on enough stacks"
+  },
+  {
+   "champion": "Kalista",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Fate's Call oathsworn launch; ally lands with ~1200 effective range from Kalista and knocks back all nearby enemies airborne 1s; ult slot"
+  },
+  {
+   "champion": "Kalista",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Auto-attack range 525; rapidly applies Rend stacks, core sustained DPS identity"
+  },
+  {
+   "champion": "Kled",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Beartrap on a Rope tether range ~825; pulls target 150 units and slows 2.5s if tether completes"
+  },
+  {
+   "champion": "Kled",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Jousting dash range ~700 forward plus return; two-part dash deals physical damage through target"
+  },
+  {
+   "champion": "Kled",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Chaaaaaaaarge charge covers entire map; knocks back first champion hit ~150 units and rallies allies; ult slot"
+  },
+  {
+   "champion": "Kled",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Auto-attack range 125 melee; Skaarl dismount passive adds a second health pool layer"
+  },
+  {
+   "champion": "Malphite",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Seismic Shard range 700; slows target 15-30% for 3s and transfers attack speed to Malphite"
+  },
+  {
+   "champion": "Malphite",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Ground Slam ~400 cone AoE; grants bonus armor and deals splash damage around auto; extends threat to SHORT range"
+  },
+  {
+   "champion": "Malphite",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Unstoppable Force charge range ~1000; knocks up all nearby enemies 1.5-2s on impact; ult slot"
+  },
+  {
+   "champion": "Malphite",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Auto-attack range 125 melee; Granite Shield passive provides free armor buffer"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Darkin Daggers projectile range ~900; two daggers, second empowered on bleed target"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "The Call of the Pack ~500 dash range; Naafiri dashes forward and packmates converge dealing damage"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Eviscerate dash range ~350 forward then return; deals physical damage on exit and on return"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "R",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Hounds' Pursuit ~850 dash range; empowers Naafiri and packmates, primary all-in commit; ult slot"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Auto-attack range 125 melee; packmates deal bonus damage alongside Naafiri autos"
+  },
+  {
+   "champion": "Orianna",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Command Attack sends Ball up to ~825 units from Orianna; deals magic damage along path"
+  },
+  {
+   "champion": "Orianna",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Command Dissonance ~275 AoE around Ball; Ball can be positioned ~825 out, delivering slow 20-40% for 2s"
+  },
+  {
+   "champion": "Orianna",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Command Shockwave ~415 AoE around Ball; Ball can be ~825 out; pulls then knocks up 1s plus 0.75s stun; ult slot"
+  },
+  {
+   "champion": "Orianna",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Auto-attack range 525; mediocre DPS, rarely the primary threat source"
+  },
+  {
+   "champion": "Rell",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Break the Mold steals armor and MR from struck enemies on each auto; melee range 175"
+  },
+  {
+   "champion": "Rell",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Shattering Strike ~600 linear AoE; stuns ~1s and shreds armor and MR on hit"
+  },
+  {
+   "champion": "Rell",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Ferromancy Crash Down dismount ~450 AoE; knocks up 0.4s and stuns ~0.8s in area on landing"
+  },
+  {
+   "champion": "Rell",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Attract and Repel tether ~700; flings tethered enemy on recast for peel or engage"
+  },
+  {
+   "champion": "Rell",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Magnet Storm ~375 AoE pull; drags nearby enemies inward for 2s with repeated damage; ult slot"
+  },
+  {
+   "champion": "Rell",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Auto-attack range 175 melee; low auto damage, primary threat is CC delivery"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "High Note range ~900; AoE magic damage scaling with target missing HP"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Beat Drop range ~1100; slows fresh targets 99% for 1s, stuns 1.1-1.5s already-slowed targets"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Encore range ~1400+; charms enemies hit for 1.75s, extends per ally chain-hit; ult slot"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Auto-attack range 525; passive Stage Presence doubles High Note as empowered auto for extra poke"
+  },
+  {
+   "champion": "Sona",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Hymn of Valor ~800 AoE bolts to two nearest enemies; also powers adjacent ally attack via aura"
+  },
+  {
+   "champion": "Sona",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Crescendo range ~1000 line; stuns all enemies hit for 1.5s, primary threat ability; ult slot"
+  },
+  {
+   "champion": "Sona",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Auto-attack range 550; Power Chord empowered autos add meaningful damage poke or slow"
+  },
+  {
+   "champion": "Thresh",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Death Sentence hook range ~1075; stuns 1.5s plus brief airborne; primary pick threat"
+  },
+  {
+   "champion": "Thresh",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Flay active ~500 range sweep; knocks back or forward plus slows 1s; strong peel and engage tool"
+  },
+  {
+   "champion": "Thresh",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "The Box ~400 walls around target area; slows 99% for 2s on first wall break; zoning cage; ult slot"
+  },
+  {
+   "champion": "Thresh",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Auto-attack range 450; Soul passive stacks grant AP and armor over game"
+  },
+  {
+   "champion": "Veigar",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Baleful Strike range ~950; primary stacking AP tool and safe harass in lane"
+  },
+  {
+   "champion": "Veigar",
+   "source": "W",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Dark Matter AoE cast range ~900; delayed fall delivers massive AoE nuke, devastating inside Event Horizon cage"
+  },
+  {
+   "champion": "Veigar",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Event Horizon cage cast range ~700; stuns 1.5s on wall collision, primary CC tool"
+  },
+  {
+   "champion": "Veigar",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Primordial Burst range ~650; executes enemies below HP threshold, scales with AP stacks; ult slot"
+  },
+  {
+   "champion": "Veigar",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Auto-attack range 550; negligible DPS, threat is purely ability-based"
+  },
+  {
+   "champion": "Xerath",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Arcanopulse channeled line range ~1400; primary sustained poke threat from extreme range"
+  },
+  {
+   "champion": "Xerath",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Eye of Destruction AoE range ~1100; slows 25% for 2.5s at edge, higher slow at center"
+  },
+  {
+   "champion": "Xerath",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Shocking Orb range ~1000; stuns 0.75-2.25s based on travel distance, reaches ARTILLERY threshold"
+  },
+  {
+   "champion": "Xerath",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Rite of the Arcane 5000+ global snipe; up to 5 shots from anywhere on the map; ult slot"
+  },
+  {
+   "champion": "Xerath",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Auto-attack range 525; minimal reliance on autos given extreme artillery kit"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Short Fuse empowered auto range 550; every few seconds auto becomes a bomb dealing bonus magic damage, meaningful poke identity"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Bouncing Bomb direct cast ~850, bounces extend to ~1000+; primary poke and wave-clear tool"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Satchel Charge cast range ~1000; knockback ~500 units from explosion center, also self-escape"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Hexplosive Minefield cast range ~900; slows 25-45% for 1.5s, area denial zone"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Mega Inferno Bomb range 5000+; global AoE nuke, primary execute and teamfight poke from across the map; ult slot"
+  },
+  {
+   "champion": "Annie",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Disintegrate unit-target cast range 625, primary single-target fireball burst"
+  },
+  {
+   "champion": "Annie",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Incinerate cone_distance 600, wide cone AoE magic burst"
+  },
+  {
+   "champion": "Annie",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Summon Tibbers cast range 600 location target, AoE impact on summon; requires ult"
+  },
+  {
+   "champion": "Annie",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Pyromania stun delivered on next Q/W/R cast at that ability's range; requires 4-stack Energized"
+  },
+  {
+   "champion": "Braum",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Winter's Bite missile range ~1000, slow + Concussive Blows mark on first hit"
+  },
+  {
+   "champion": "Braum",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Glacial Fissure line missile range ~1250, knocks up and slows; requires ult"
+  },
+  {
+   "champion": "Braum",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Concussive Blows stun triggered at melee auto range after 4 stacks applied"
+  },
+  {
+   "champion": "Braum",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Unbreakable directional wall ~300 radius point-blank, blocks projectiles for peel in front of Braum"
+  },
+  {
+   "champion": "Draven",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Draven base attack range 550, standard ADC sustained auto DPS"
+  },
+  {
+   "champion": "Draven",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Spinning Axe empowers autos at 550 attack range; massive sustained physical DPS with caught axes"
+  },
+  {
+   "champion": "Draven",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Stand Aside line missile range ~1050, knocks aside and slows enemies hit"
+  },
+  {
+   "champion": "Draven",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Whirling Death global cross-map missile both ways, physical damage to any enemy champion; requires ult"
+  },
+  {
+   "champion": "Garen",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Garen base attack range 175, melee auto-attack sustained DPS"
+  },
+  {
+   "champion": "Garen",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Decisive Strike melee empowered auto ~175 range, silences on hit"
+  },
+  {
+   "champion": "Garen",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Judgment spin radius 325 around Garen, sustained physical AoE DPS"
+  },
+  {
+   "champion": "Garen",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Demacian Justice unit-target cast range ~360, true damage execute; requires ult"
+  },
+  {
+   "champion": "Ivern",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Rootcaller missile range 1175, roots first enemy hit and allows dash follow-up"
+  },
+  {
+   "champion": "Ivern",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Triggerseed shield cast range ~750 on ally, explosion radius 500 slows enemies after 2s"
+  },
+  {
+   "champion": "Ivern",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Daisy! summon cast range ~700, Daisy melee stomps and knocks up nearby enemies; requires ult"
+  },
+  {
+   "champion": "Karma",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Inner Flame missile cast range ~950, AoE burst and 40% slow on first enemy hit"
+  },
+  {
+   "champion": "Karma",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Focused Resolve tether cast range 700, leash tether_radius 825, roots on expiry"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Caustic Spittle missile range ~1175, reduces target armor and MR; minor threat alone"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "W",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Bio-Arcane Barrage bonus attack range 130-210 on top of 500 base, reaching up to 710 at rank 5"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "E",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Void Ooze line missile range ~1200, slows and deals magic damage"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Living Artillery cast range ~1200 per cdragon, stacking global-ish nuke; not truly global"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Icathian Surprise zombie true damage AoE on death at close range, ~500 radius walk-in"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Call of the Void dual portal cast range ~900, silences all enemies caught between portals"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Malefic Visions unit-target cast range 650, spreads on kill for sustained zone DoT"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Nether Grasp unit-target cast range 700, channels full suppress for 2.5s; requires ult"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Void Swarm voidlings spawn and attack nearby enemies in melee; requires prior ability cast stacks"
+  },
+  {
+   "champion": "Nami",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Aqua Prison cast range ~875, bubble suspends on landing for 1.5s"
+  },
+  {
+   "champion": "Nami",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Ebb and Flow unit-target cast range 725, bounces among champions up to 800 bounce radius"
+  },
+  {
+   "champion": "Nami",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Tidal Wave travels ~2750 units at 850 speed, knocks up and slows; requires ult"
+  },
+  {
+   "champion": "Ornn",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Volcanic Rupture fissure cast range ~825, slow plus pillar knockup after delay"
+  },
+  {
+   "champion": "Ornn",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Bellows Breath forward march ~450, cone applies Brittle; final gout primes knockup"
+  },
+  {
+   "champion": "Ornn",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Searing Charge dash ~550, shockwave on terrain collision knocks up; melee engagement tool"
+  },
+  {
+   "champion": "Ornn",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Call of the Forge God element spawns up to 3000 range, redirect knocks up and stuns; requires ult"
+  },
+  {
+   "champion": "Renata",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Handshake missile range ~1100, roots target and can throw them into allies"
+  },
+  {
+   "champion": "Renata",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Loyalty Program converged missile range ~800 cast, slows enemies hit along path"
+  },
+  {
+   "champion": "Renata",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Bailout cast range ~800 on ally; berserked ally menaces nearby enemies on expiry"
+  },
+  {
+   "champion": "Renata",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Hostile Takeover gas cloud travels ~2500 range, berserk enemies attack each other; requires ult"
+  },
+  {
+   "champion": "Renata",
+   "source": "P",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Leverage on-hit magic damage when ally attacks Renata-marked target at auto range ~550"
+  },
+  {
+   "champion": "Sett",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Knuckle Down empowers 2 autos at ~175 base melee range with bonus damage"
+  },
+  {
+   "champion": "Sett",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Haymaker forward blast ~750 range, true damage in center corridor; requires stored Grit"
+  },
+  {
+   "champion": "Sett",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Facebreaker pulls enemies ~490 range on each side, stuns if both sides pulled"
+  },
+  {
+   "champion": "Sett",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "The Show Stopper grabs target ~490 range, leaps and slams to AoE stun; requires ult"
+  },
+  {
+   "champion": "Soraka",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Starcall zone cast range ~800, poke plus slow on hit; grants Rejuvenation for heals"
+  },
+  {
+   "champion": "Soraka",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Equinox zone cast range ~925, silences then roots on expiry"
+  },
+  {
+   "champion": "Soraka",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.3,
+   "conditional": true,
+   "source_quote": "Wish global heal; indirect threat by sustaining allies anywhere on map; requires ult"
+  },
+  {
+   "champion": "Tristana",
+   "source": "BASE",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Draw a Bead passive scales attack range from 550 to 703 at level 18; LONG by mid-game"
+  },
+  {
+   "champion": "Tristana",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Rocket Jump cast range ~900, AoE slow on landing near target location"
+  },
+  {
+   "champion": "Tristana",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Explosive Charge applied at current auto range, bomb detonation 300 radius; scales with stacks"
+  },
+  {
+   "champion": "Tristana",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Buster Shot unit-target cast range ~700, knockback plus stun to surrounding enemies; requires ult"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Plasma Fission primary bolt missile range ~1200, splits to perpendicular missiles on recast"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Void Rift line missile range ~1200, delayed collapse deals repeat magic damage"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Tectonic Disruption cast range ~800, knocks up and stuns enemies hit"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "R",
+   "band": "LONG",
+   "kind": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Life Form Disintegration Ray steerable channel ~800 cast; Researched passive amplifies burst; requires ult"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Three Talon Strike third hit knocks up target at melee 175 range"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Wind Becomes Lightning slash ~275 radius plus thrust line ~600, primary melee-to-medium threat"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Audacious Charge dash range ~1000 to target, slows enemies in 250 radius AoE"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Crescent Guard knockback 500 radius, displaces all non-Challenged targets; requires ult"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "P",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Determination every-3rd-attack on-hit heals Xin Zhao; bonus melee DPS proc"
+  },
+  {
+   "champion": "Zilean",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Time Bomb cast range ~900, stuns if two bombs detonate on the same target"
+  },
+  {
+   "champion": "Zilean",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "POKE",
+   "magnitude": 0.25,
+   "conditional": true,
+   "source_quote": "Rewind resets Q cooldown enabling double-bomb CC combo setup; no direct threat range"
+  },
+  {
+   "champion": "Zilean",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Time Warp cast range ~700, slows an enemy champion for 2.5 seconds"
+  },
+  {
+   "champion": "Zilean",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Chronoshift revive buff cast range ~700 on ally; indirect threat through protected carry; requires ult"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "BASE",
+   "band": "MEDIUM",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Aphelios base auto range 625 with Calibrum (most weapons ~500-600); MEDIUM sustained identity"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Calibrum Q fires Crescendum shot at ~1450 range; conditional on Calibrum being active weapon"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Infernum W Onslaught AoE cone at weapon range ~550; conditional on Infernum being active gun"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Moonlight Vigil fires at ~1300 range, marks enemies for follow-up per equipped gun; conditional on ult"
+  },
+  {
+   "champion": "Briar",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Briar base melee auto range ~175; melee fighter identity"
+  },
+  {
+   "champion": "Briar",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Briar W Blood Frenzy tether and chomps at ~400 range with bleed; primary sustained damage source"
+  },
+  {
+   "champion": "Briar",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Briar E Chompski headbutt dash ~525 range, knockback on contact"
+  },
+  {
+   "champion": "Briar",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Briar R Certain Death global leap to lowest-HP visible enemy, deals heavy AoE damage and AoE fear on landing; conditional on ult"
+  },
+  {
+   "champion": "Ekko",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Ekko Q Z-Drive Resonance boomerang travels ~1050 out and returns, hits twice across the path"
+  },
+  {
+   "champion": "Ekko",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Ekko W Parallel Convergence places stasis circle at ~1575 range; stun requires W+Q combo"
+  },
+  {
+   "champion": "Ekko",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Ekko E Phase Dive dash ~325 that empowers next auto for burst; primary melee-range commit"
+  },
+  {
+   "champion": "Ekko",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Ekko R Chronobreak blinks back to 4s prior position dealing heavy AoE burst; conditional on ult"
+  },
+  {
+   "champion": "Gnar",
+   "source": "BASE",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Gnar mini auto range ~400 (SHORT); mega form melee ~175"
+  },
+  {
+   "champion": "Gnar",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Mini Gnar Q Boomerang Throw travels ~1100 out and returns; primary poke in mini form"
+  },
+  {
+   "champion": "Gnar",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Gnar W Hyper passive return projectile slows at ~1100 range; minor slow on boomerang return hit"
+  },
+  {
+   "champion": "Gnar",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Mini Gnar E Hop ~450 bounce; mega E Crunch dash slow ~300; repositioning and slow"
+  },
+  {
+   "champion": "Gnar",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Mega Gnar R GNAR! AoE knockup ~400 radius around him; conditional on Mega form transformation"
+  },
+  {
+   "champion": "Janna",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Janna Q Howling Gale fully-charged tornado knockup travels ~1700 range"
+  },
+  {
+   "champion": "Janna",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Janna W Zephyr slow projectile at ~550 range; passive grants movement speed"
+  },
+  {
+   "champion": "Janna",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Janna R Monsoon AoE knockback in ~725 radius around her (self-centered cast); conditional on ult cooldown"
+  },
+  {
+   "champion": "Karthus",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Karthus Q Lay Waste detonation at ~875 range; double damage vs single target"
+  },
+  {
+   "champion": "Karthus",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Karthus W Wall of Pain slow/magic pen wall placed at ~1000 range, ~800 wide"
+  },
+  {
+   "champion": "Karthus",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Karthus E Defile AoE drain aura ~400 radius around him; requires melee proximity"
+  },
+  {
+   "champion": "Karthus",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.95,
+   "conditional": true,
+   "source_quote": "Karthus R Requiem global damage to all enemy champions after 3s channel; conditional on ult"
+  },
+  {
+   "champion": "Leblanc",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "LeBlanc Q Sigil of Malice marks at ~700 range and bursts on second-hit proc"
+  },
+  {
+   "champion": "Leblanc",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "LeBlanc W Distortion dash ~600 range dealing damage on landing; return dash resets"
+  },
+  {
+   "champion": "Leblanc",
+   "source": "E",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "LeBlanc E Ethereal Chains tether at ~925 range; roots if target stays tethered 1.5s"
+  },
+  {
+   "champion": "Leblanc",
+   "source": "R",
+   "band": "MEDIUM",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "LeBlanc R Mimic copies last ability at enhanced power; conditional on ult and which ability is mimicked"
+  },
+  {
+   "champion": "Maokai",
+   "source": "Q",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Maokai Q Bramble Smash knockback projectile at ~660 range"
+  },
+  {
+   "champion": "Maokai",
+   "source": "W",
+   "band": "MEDIUM",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Maokai W Twisted Advance dashes to target at ~650 range, roots on arrival"
+  },
+  {
+   "champion": "Maokai",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Maokai E Sapling Toss places sapling at ~1100 range; sapling walks to target and explodes"
+  },
+  {
+   "champion": "Maokai",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "CC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Maokai R Nature's Grasp sends root wave ~3000+ range forward; conditional on ult"
+  },
+  {
+   "champion": "Nasus",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Nasus base melee auto range ~175"
+  },
+  {
+   "champion": "Nasus",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Nasus Q Siphoning Strike stacks-empowered melee strike ~175; conditional on stack count"
+  },
+  {
+   "champion": "Nasus",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Nasus W Wither slow/AS reduction at ~700 range"
+  },
+  {
+   "champion": "Nasus",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Nasus E Spirit Fire AoE ~650 range, damages and reduces armor in area"
+  },
+  {
+   "champion": "Nasus",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Nasus R Fury of the Sands AoE drain aura around him during transform; conditional on ult"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Pantheon Q Comet Spear fully-charged throw range ~1200; uncharged short thrust ~600"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Pantheon W Shield Vault ~300 jump-stun on target; primary short-range stun engage"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Pantheon E Aegis Assault forward cone ~375 repeated strikes while blocking rear"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Pantheon R Grand Starfall glides cross-map to targeted location, deals line damage on landing"
+  },
+  {
+   "champion": "Renekton",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Renekton base melee auto range ~175"
+  },
+  {
+   "champion": "Renekton",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Renekton Q Cull the Meek AoE ~325 around him, heals; Empowered heals more"
+  },
+  {
+   "champion": "Renekton",
+   "source": "W",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Renekton W Ruthless Predator stun combo ~175 range; Empowered version 1.5s stun"
+  },
+  {
+   "champion": "Renekton",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Renekton E Slice and Dice double dash ~450 each segment with damage on return slice"
+  },
+  {
+   "champion": "Renekton",
+   "source": "R",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Renekton R Dominus AoE drain aura around him during transform; conditional on ult"
+  },
+  {
+   "champion": "Shaco",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Shaco Q Deceive blink ~400 range into stealth with empowered backstab crit"
+  },
+  {
+   "champion": "Shaco",
+   "source": "W",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Shaco W Jack in the Box placed at ~900 range; fears nearby enemies when triggered"
+  },
+  {
+   "champion": "Shaco",
+   "source": "E",
+   "band": "MEDIUM",
+   "kind": "POKE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Shaco E Two-Shiv Poison toss at ~625 range; slows and poisons target"
+  },
+  {
+   "champion": "Shaco",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Shaco R Hallucinate creates clone; clone explodes for AoE burst on death; conditional on ult"
+  },
+  {
+   "champion": "Swain",
+   "source": "Q",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Swain Q Death's Hand linear bolt at ~725 range; Empowered version roots"
+  },
+  {
+   "champion": "Swain",
+   "source": "W",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Swain W Vision of Empire slow/pull zone placed at ~3500 range; delayed pull if slow-field hits"
+  },
+  {
+   "champion": "Swain",
+   "source": "E",
+   "band": "LONG",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Swain E Nevermove claw-bolts at ~850 range, snares and pulls grounded enemies back"
+  },
+  {
+   "champion": "Swain",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Swain R Demonic Ascension drain aura ~700 radius around him; conditional on ult active"
+  },
+  {
+   "champion": "Trundle",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Trundle base melee auto range ~175; biting fighter identity"
+  },
+  {
+   "champion": "Trundle",
+   "source": "Q",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Trundle Q Chomp melee bite ~175 range, slows and empowers next auto"
+  },
+  {
+   "champion": "Trundle",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Trundle W Frozen Domain places AoE zone at ~900 range; minor threat but extends effective area"
+  },
+  {
+   "champion": "Trundle",
+   "source": "E",
+   "band": "MELEE",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Trundle E Pillar of Filth placed at ~275 range creating impassable terrain and slow AoE"
+  },
+  {
+   "champion": "Trundle",
+   "source": "R",
+   "band": "LONG",
+   "kind": "CC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Trundle R Subjugate ~700 range, drains target resistances and HP; conditional on ult"
+  },
+  {
+   "champion": "Vex",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "POKE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Vex Q Mistral Bolt wave travels ~1200 range, accelerates mid-flight"
+  },
+  {
+   "champion": "Vex",
+   "source": "W",
+   "band": "SHORT",
+   "kind": "CC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Vex W Personal Space AoE fear burst ~400 radius around her on Gloom-proc trigger"
+  },
+  {
+   "champion": "Vex",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Vex E Looming Darkness shadow projectile ~1150 range, slows and marks on hit"
+  },
+  {
+   "champion": "Vex",
+   "source": "R",
+   "band": "GLOBAL",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Vex R Shadow Surge fires ~2400 initial then resets on kill; can pursue across the full map"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "BASE",
+   "band": "MELEE",
+   "kind": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Yasuo base melee auto range ~175 with passive shield identity"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "Q",
+   "band": "SHORT",
+   "kind": "POKE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Yasuo Q Steel Tempest thrust ~475; third cast launches LONG-range knockup tornado ~1000"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "E",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Yasuo E Sweeping Blade dashes ~475 through a unit, stacks for empowered Q"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "R",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Yasuo R Last Breath blinks to any airborne target within ~1200 range of R cast; conditional on airborne enemy"
+  },
+  {
+   "champion": "Zoe",
+   "source": "Q",
+   "band": "ARTILLERY",
+   "kind": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Zoe Q Paddle Star travels ~800 direct but extends to ~1800+ with bounce redirection"
+  },
+  {
+   "champion": "Zoe",
+   "source": "W",
+   "band": "LONG",
+   "kind": "POKE",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Zoe W Spell Thief picks up dropped summoner/item active to throw ~850; conditional on item drop existing"
+  },
+  {
+   "champion": "Zoe",
+   "source": "E",
+   "band": "ARTILLERY",
+   "kind": "CC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Zoe E Sleepy Trouble Bubble projectile ~1750 range, slows then sleeps on second hit"
+  },
+  {
+   "champion": "Zoe",
+   "source": "R",
+   "band": "SHORT",
+   "kind": "BURST",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Zoe R Portal Jump blinks ~550 for 1s then returns; enables E/Q from extended position; conditional on ult"
+  }
+ ]
+}

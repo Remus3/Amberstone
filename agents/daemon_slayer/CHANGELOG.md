@@ -1331,6 +1331,30 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.113.0 (Effective threat-range scorer - item 301, the TWELFTH scored axis,
+built by a 10-channel roster fan-out. NEW agents/daemon_slayer/threatrange.py: a
+per-(champion, source) threatening-mechanism registry plus a band -> weight table
+(_THREATRANGE_BAND_WEIGHT: GLOBAL 1.1 / ARTILLERY 1.0 / LONG 0.75 / MEDIUM 0.5 /
+SHORT 0.3 / MELEE 0.15) and a kind -> mult table (_THREATRANGE_KIND_MULT: BURST
+1.0 / CC 1.0 / SUSTAINED 0.9 / POKE 0.7). compute_threatrange folds every
+mechanism into a single threatrange_score = sum(band_weight * kind_mult *
+magnitude), gated mechanisms credited at the 0.5 conditional midpoint; top_band
+labels the longest real threat and is_artillery flags any ARTILLERY/GLOBAL reach.
+It scores how FAR OUT a champion threatens damage or CC - the poke / siege /
+safe-DPS-distance dimension the prior eleven axes never measured (they score what
+a champion does in a fight; this scores from how far away it can do it). NEW
+/threat-range route (POST+GET). Purely ADDITIVE - reads no existing scorer and is
+read by none, so every existing route is byte-identical. EXHAUSTIVE 171-champion
+ten-channel fan-out -> 725 entries / 171 champs (full roster) / 185 conditional /
+bands ARTILLERY 71 GLOBAL 33 LONG 191 MEDIUM 159 SHORT 133 MELEE 138 / kinds CC
+261 BURST 191 SUSTAINED 183 POKE 90. Live: Xerath 2.28 / Caitlyn 1.94 / Lux 1.84
+/ Ziggs 1.81 / Velkoz 1.71 (top artillery) vs Garen 0.33 / Udyr 0.51 / MasterYi
+0.60 (melee-only). + tools/ds_threatrange_build.py (marker-splice generator) +
+threatrange_registry_notes.json provenance sidecar (Share-excluded). Phase D - an
+auto-pairing consumer crediting threat-range into a live poke / siege / draft
+verdict - remains. The effective-threat-range axis is EXHAUSTED across the
+roster.)
+
 1.112.0 (Wave-clear / AoE-shove scorer - item 300, the ELEVENTH scored axis,
 built by a 10-channel roster fan-out. NEW agents/daemon_slayer/waveclear.py: a
 per-(champion, source) wave-clear-mechanism registry plus a kind -> weight table
