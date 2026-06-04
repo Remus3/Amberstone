@@ -16,10 +16,6 @@
 # NOT stable across reboots/display changes - re-confirm by RESOLUTION, not
 # index, if displays change again.
 #
-# The recurring game-end 0x50 BSOD is a Riot Vanguard (vgk.sys) kernel fault
-# during the fullscreen->desktop mode switch - NOT a screen-capture problem.
-# Do not chase it here.
-#
 # Claude: opens the Claude Code Desktop app. The exact launch command is
 # resolved on Game-PC and written to C:\RC-Agent\claude_code_app.txt; falls
 # back to the legacy CLI launcher (start_gamepc_claude.ps1) if absent.
@@ -103,13 +99,12 @@ $SCREEN = @(
     '--monitor 0 --channel game-pc-ui --no-primary',
     '--monitor 1 --channel minimap --no-primary --crop 1580,780,1920,1080 --interval 0.2'
 )
-# === ISOLATION TEST 2026-05-16 - screen agents DELIBERATELY NOT LAUNCHED ===
-# Confirming gamepc_screen_agent.py (DXGI capture) is the Vanguard vgk.sys
-# game-end/mid-game BSOD trigger. RC comes up WITHOUT the 3 screen agents;
-# operator plays one match. REVERT this block (restore the foreach launch
-# below) once the test concludes or the real capture-off-during-game fix
-# ships. $SCREEN is left defined above so revert is a one-line uncomment.
-Write-Host '  screen agents SKIPPED - isolation test 2026-05-16 (Vanguard-BSOD trigger check)' -ForegroundColor Yellow
+# === Screen agents NOT launched (1-PC, ADR-011) ===
+# Game-PC is out of the League/RC pipeline (2026-05-29). The continuous
+# screen-agent loop is retired in favor of Legion's in-process self-grab
+# relay, so the 3 screen agents are not started here. $SCREEN is left
+# defined above if a manual relay is ever needed.
+Write-Host '  screen agents not launched - Game-PC out of pipeline (1-PC, ADR-011)' -ForegroundColor Yellow
 # if (Test-AgentRunning 'gamepc_screen_agent.py') {
 #     Write-Host '  screen agents: already running, leaving as-is' -ForegroundColor Green
 # } else {
