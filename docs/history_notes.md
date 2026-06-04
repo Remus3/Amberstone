@@ -1,5 +1,19 @@
 # RC session history archive
 
+## Pruned WAKEUP session (relocated 2026-06-04, item 297 wrap)
+
+# 2026-06-03 - DS AA-windup OFFSET TIER - source-adoption WIN 1 (item 295, ENGINE 1.107.0)
+
+"start the next item Win1" = Phase 2 of the DS source-layering adoption plan (`docs/DS_SOURCE_ADOPTION_PLAN.md`). Caveman ULTRA. 2 commits `c517b9a9` (engine + Share) + `040a619c` (docs) pushed; CI green both SHAs. ENGINE 1.106.0 -> 1.107.0; DS :8893 restarted (taskkill pid 5112 + schtasks RC-DaemonSlayer) -> 1.107.0 live. RC NOT touched. Full record = item 295 in `docs/LEDGER.md`.
+
+- **Problem:** the `wiki_stats` sidecar left 110 champs on the flat 0.25s AA-windup default. **Fix:** recover a real per-champ windup for 109 from the wiki's `attack_delay_offset` - `windup = (0.300 + offset)/as_base` (combo is a FIXED-windup model). Fraction validated 4/4 EXACT vs published Windup% (Caitlyn/Ashe/Vayne/Jinx).
+- **`tools/daemon_slayer_wiki_stats_extract.py`:** NEW `_signed_scalar_in_block` (the unsigned `_scalar_in_block` regex `([0-9.]+)` SILENTLY DROPS the leading minus most offsets carry - the bug TDD caught FIRST); `_parse_lua_table` now also parses `attack_delay_offset` + `as_base` from the SAME ChampionData block (zero extra net); NEW `wiki_offset` provenance tier in `_merge_fill` between cdragon and default; meta `_offset_cast_fills`.
+- **Regenerated `wiki_stats.json`:** offset 109 / default 1 (**only Alistar** - no offset on any source) / measured 61 -> 170 / 0 errors. Ahri 0.299401, Akali 0.2224, Lux 0.233558 EXACT vs the validator `Desktop\UNIVERSAL_FILES\ds_windup_compare.json`. Champion-entry schema byte-unchanged (offset/as_base are intermediate, never stored per-champ).
+- **Consumers byte-identical:** `combo.py:317` + `data_loader.py:188` already prefer any positive sidecar `attack_cast_time` -> the 109 flow with NO engine edit (plan claim verified). +6 offset tests; +61 ENGINE pin syncs / 53 files; `test_combo_2026_05_30::test_clock_advances_by_cast_time` data-fragile absolute-timeline pin REPLACED with the computed cast-time-cumulative invariant (Lux AA now 0.233558). DS 6319 collected / 6317 passed; suite (agents+tools) 6514 passed / 1 skip / 1 xfail exit 0; ruff clean; Share 292 synced --check 0.
+- **DEVIATION (noted):** sourced offset+as_base from the WIKI raw fields, NOT the plan's literal cdragon `mAttackDelayCastOffsetPercent` - both fields are co-located in the wiki block (cdragon's as_base is unspecified) and it matches the `ds_windup_offset_compare.py` validator EXACTLY.
+- **Don't-redo:** offset tier is the canonical recovery (`wiki_offset` prov, `(0.300+offset)/as_base`); regenerate via the extractor (do NOT hand-edit the JSON); `_signed_scalar_in_block` REQUIRED (negatives); Alistar is the LONE default; combo/data_loader need NO change; on a patch bump re-run `python tools/ds_windup_offset_compare.py` for newly-recoverable champs. **Pre-existing debt flagged:** `Share/CHANGELOG.md` was stale at 1.101.0 (1.102-1.106 entries never added - spawned a backfill task). **NEXT:** WIN 2 (separate session) = Meraki `champions.json` ~10mo-stale -> PATCH-keyed content-freshness guard in `tools/daemon_slayer_abilities_extract.py`. NON-GOAL: CC-duration sourcing (owned by `_per_spell_cc.py`).
+
+
 Sessions older than the last 2-3 full sessions are progressively compacted here.
 Current WAKEUP_NOTES.md keeps only the most recent 2-3 sessions.
 Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
