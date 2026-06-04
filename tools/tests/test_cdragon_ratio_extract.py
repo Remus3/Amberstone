@@ -660,6 +660,6 @@ class TestAsciiHygiene:
         except UnicodeEncodeError as e:
             pytest.fail(f"non-ascii byte in extractor: {e}")
         # no smart quotes / en / em dashes specifically
-        for bad in ("–", "—", "‘", "’", "“", "”"):
+        for bad in ("\u2013", "\u2014", "\u2018", "\u2019", "\u201c", "\u201d"):
             assert bad not in data
         assert "daemon_slayer_cdragon_ratio" in R.__file__
