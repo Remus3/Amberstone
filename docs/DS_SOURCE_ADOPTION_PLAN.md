@@ -1,6 +1,7 @@
 # DS source-layering adoption plan
 
-Status: PLANNED (not yet implemented). Authored 2026-06-03 from a fresh-look source dive
+Status: WIN 1 SHIPPED 2026-06-03 (item 295, ENGINE 1.107.0, commit `c517b9a9`); WIN 2 PLANNED.
+Authored 2026-06-03 from a fresh-look source dive
 (full comparison: `Desktop\DS_DATA_SOURCE_COMPARISON_2026-06-03.md`) plus an adoption map of the
 live tree and live validation. Live patch 16.11.1, ENGINE_VERSION 1.106.0. Operator copy:
 `Desktop\todo.md`. Companion prior art: `docs/DS_DATA_SOURCE_SWEEP_2026-05-30.md`.
@@ -33,6 +34,16 @@ level 1). This overstates windup once AS rises but is a strict improvement over 
 champions. If a future engine adds AS scaling, store the FRACTION and divide by current AS at runtime.
 
 ## Files - main tree
+
+### Win 1 (SHIPPED item 295) - IMPLEMENTED NOTE
+
+Sourced the offset + as_base from the WIKI raw `_parse_lua_table` block (signed
+`_signed_scalar_in_block`), NOT cdragon `_parse_cdragon_bin` as the table below
+proposed: both fields are co-located in the same ChampionData block already
+fetched once, and that matches the `ds_windup_offset_compare.py` validator ground
+truth exactly (cdragon has no co-located as_base). Provenance tier is
+`wiki_offset` (between cdragon and the flat default). Result: `_offset_cast_fills`
+109 / `_default_cast_fills` 1 (Alistar) / `_with_cast_measured` 61 -> 170.
 
 ### Win 1 (one DS batch; TDD failing test first)
 
@@ -86,7 +97,7 @@ Hand steps the sync does NOT cover: (1) on a patch refresh, bump `_PATCH` in `to
 ## Sequencing
 
 1. Phase 1 (done): dive + plan + validation + commit (this doc, ROADMAP entry, the validator tool).
-2. Phase 2 (Win 1): TDD offset tier, regenerate sidecar, bump ENGINE 1.107.0, restart DS (:8893 is
+2. Phase 2 (Win 1) - DONE item 295: TDD offset tier, regenerate sidecar, bump ENGINE 1.107.0, restart DS (:8893 is
    not supervisor-watched: `taskkill /F /PID <pid>` then `schtasks /Run /TN RC-DaemonSlayer`), full
    suite, `ds_share_sync.py` (+ `--check`), commit main + Share, verify `/health`.
 3. Phase 3 (Win 2): Meraki freshness guard + manifest content-patch + gold-test pinning.
