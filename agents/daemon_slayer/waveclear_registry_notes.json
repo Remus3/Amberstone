@@ -1,0 +1,3391 @@
+{
+ "item": 300,
+ "engine": "1.112.0",
+ "count": 376,
+ "entries": [
+  {
+   "champion": "Aatrox",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Q Darkin Blade three-swing AoE hits multiple minions per slam"
+  },
+  {
+   "champion": "Ahri",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Q Orb of Deception passes through entire wave twice, reliably clears casters"
+  },
+  {
+   "champion": "Ahri",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "W Fox-Fire three orbiting orbs deal magic damage to nearby minions but coverage is unreliable"
+  },
+  {
+   "champion": "Akali",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Five Point Strike small circular AoE hits a cluster of nearby minions"
+  },
+  {
+   "champion": "Akali",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "E Shuriken Flip single-target dash; negligible wave contribution, last-hit only"
+  },
+  {
+   "champion": "Akshan",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Avengerang boomerang passes through minion line and returns, hitting twice"
+  },
+  {
+   "champion": "Akshan",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": true,
+   "source_quote": "W Going Rogue ricochet AA hits one extra target only while a villain is alive - conditional and negligible"
+  },
+  {
+   "champion": "Alistar",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Pulverize ground AoE knockup around Alistar hits nearby minions in melee range"
+  },
+  {
+   "champion": "Alistar",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Headbutt single-target displacement, no wave AoE - last-hits only"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Cunning Sweep AoE slash hits minions in front during dash sequence"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Repudiation directional block and burst hits minions in a small AoE"
+  },
+  {
+   "champion": "Amumu",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "W Despair persistent toggled aura DoT ticks on all nearby minions each second"
+  },
+  {
+   "champion": "Amumu",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Tantrum active AoE burst around Amumu hits full melee wave cluster"
+  },
+  {
+   "champion": "Anivia",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Flash Frost slow-moving AoE projectile hits minions in a line and detonates for AoE"
+  },
+  {
+   "champion": "Anivia",
+   "source": "R",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "R Glacial Storm persistent ground AoE DoT with slow clears wave over 1-2s; requires ult"
+  },
+  {
+   "champion": "Anivia",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Frostbite fires at a single target only; amplified by chill but does not clear a wave"
+  },
+  {
+   "champion": "Annie",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "W Incinerate cone AoE clears the caster wave in one cast reliably"
+  },
+  {
+   "champion": "Annie",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Disintegrate single-target last-hit tool that refunds mana on kill"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Most weapons are single-target AAs - baseline clear is slow last-hitting"
+  },
+  {
+   "champion": "Aphelios",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Q Infernum weapon cone AoE hits multiple minions per attack; conditional on Infernum being equipped"
+  },
+  {
+   "champion": "Ashe",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "W Volley multi-arrow fan hits several minions in a cone, reliable partial clear"
+  },
+  {
+   "champion": "Ashe",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "Passive Frost Shot single-target slowing AAs, no cleave - base clear is last-hitting"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "Q Breath of Light persistent AoE beam sweeps the whole wave, clears casters reliably"
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Singularity persistent black-hole AoE pulls minions in and deals damage, clears wave over cast duration"
+  },
+  {
+   "champion": "Aurora",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Twofold Hex projectile passes through minions in a line, partial wave hit"
+  },
+  {
+   "champion": "Aurora",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Between Worlds AoE burst on entry and exit hits nearby minions in the zone"
+  },
+  {
+   "champion": "Azir",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "W Arise soldiers attack on command hitting a line of minions; multiple soldiers clear most of wave"
+  },
+  {
+   "champion": "Azir",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Conquering Sands rushes soldiers through minions dealing damage along path"
+  },
+  {
+   "champion": "Bard",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Cosmic Binding passes through minions in a line hitting targets along the path"
+  },
+  {
+   "champion": "Bard",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "No reliable AoE clear tool - mostly single-target last-hitting with AAs"
+  },
+  {
+   "champion": "Belveth",
+   "source": "BASE",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Passive Endless Banquet rapid multi-directional AA cleave spreads through wave naturally"
+  },
+  {
+   "champion": "Belveth",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Void Surge dash in four directions hits minions encountered along each burst path"
+  },
+  {
+   "champion": "Belveth",
+   "source": "R",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "R Endless Banquet true form dramatically increases attack speed cleave throughput; requires ult"
+  },
+  {
+   "champion": "Blitzcrank",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Power Fist single-target empowered AA with knockup; no AoE, clears one minion at a time"
+  },
+  {
+   "champion": "Blitzcrank",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "No AoE wave clear - Blitzcrank is a single-target support; last-hits with AAs only"
+  },
+  {
+   "champion": "Brand",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "W Pillar of Flame ground AoE clears caster wave in one cast, bonus damage on Blaze targets"
+  },
+  {
+   "champion": "Brand",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "E Conflagration spreads Blaze to all nearby minions from one target, adds partial clear contribution"
+  },
+  {
+   "champion": "Brand",
+   "source": "P",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "P Blaze DoT burns each marked minion contributing chip damage over time across the wave"
+  },
+  {
+   "champion": "Braum",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Winter's Bite single projectile - last-hits one minion only"
+  },
+  {
+   "champion": "Briar",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "W Snack Attack rapid bites target one enemy at a time - no AoE, minimal wave clear"
+  },
+  {
+   "champion": "Briar",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Chilling Scream cone burst on release damages and knocks back minions in the cone"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Piltover Peacemaker line AoE pierces through minions in a line"
+  },
+  {
+   "champion": "Caitlyn",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Yordle Snap Trap single trap - negligible wave clear utility"
+  },
+  {
+   "champion": "Camille",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "W Tactical Sweep cone AoE deals damage and slows minions hit in the outer half"
+  },
+  {
+   "champion": "Camille",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Hookshot second kick AoE damages minions in the landing zone"
+  },
+  {
+   "champion": "Camille",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Precision Protocol enhanced AA - single target, no wave clear"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "W Miasma persistent ground poison field damages minions over time"
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "E Twin Fang spam on poisoned minions clears wave efficiently with near-zero CD"
+  },
+  {
+   "champion": "Chogath",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "W Feral Scream cone AoE silences and damages clearing most of caster wave"
+  },
+  {
+   "champion": "Chogath",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Rupture ground AoE knocks up and damages minions in the zone"
+  },
+  {
+   "champion": "Corki",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "W Valkyrie leaves napalm trail dealing AoE damage to minions underneath"
+  },
+  {
+   "champion": "Corki",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Gatling Gun cone rapid-fire damages minions in front over duration"
+  },
+  {
+   "champion": "Corki",
+   "source": "R",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "R Missile Barrage rockets on very short per-charge CD pierce and hit multiple minions; Big One deals extra AoE"
+  },
+  {
+   "champion": "Darius",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Decimate full 360 circle cleave near-clears caster wave; blade deals more damage"
+  },
+  {
+   "champion": "Darius",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Apprehend cone pull hits multiple minions but does little damage"
+  },
+  {
+   "champion": "Diana",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Crescent Strike curved arc hits multiple minions in its path"
+  },
+  {
+   "champion": "Diana",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "W Pale Cascade orbs detonate on nearby minions dealing AoE damage"
+  },
+  {
+   "champion": "Diana",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "R Moonfall pulls nearby minions inward and deals significant AoE damage to all around her"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Infected Bonesaw single projectile - hits one minion, poor wave clear"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "W Burning Agony toggled AoE flame aura around him continuously damages nearby minions"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "E",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Blunt Force Trauma enhanced AAs deal bonus damage for faster last-hitting"
+  },
+  {
+   "champion": "Draven",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Spinning Axe enhances single AA - no AoE, must last-hit individually"
+  },
+  {
+   "champion": "Ekko",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Timewinder boomerang hits minions on the way out and back for double damage"
+  },
+  {
+   "champion": "Ekko",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Parallel Convergence slow field damages minions caught inside over its duration"
+  },
+  {
+   "champion": "Elise",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "W Human form Volatile Spiderling explosion AoE near-clears caster minions on detonation"
+  },
+  {
+   "champion": "Elise",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Neurotoxin/Venomous Bite single-target - no wave clear contribution in either form"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Hate Spike line of spikes hits multiple minions in a row for chip damage"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Allure single-target charm - no wave clear contribution"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Mystic Shot single projectile - stops at first minion hit, no AoE"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "GLOBAL",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "R Trueshot Barrage global line AoE clears most of a wave but on long CD (gated ult)"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "W Bountiful Harvest persistent AoE drain channels on surrounding minions clearing wave"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Reap cone AoE silences and damages minions in front for wave pressure"
+  },
+  {
+   "champion": "Fiora",
+   "source": "E",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "E Bladework second empowered attack cleaves hitting all nearby minions"
+  },
+  {
+   "champion": "Fiora",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "No AoE - pure single-target duelist; must last-hit minions one at a time"
+  },
+  {
+   "champion": "Fizz",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "W Seastone Trident on-hit burn combined with AAs clears wave over short duration"
+  },
+  {
+   "champion": "Fizz",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Playful Trickster slam AoE damages surrounding minions on landing"
+  },
+  {
+   "champion": "Galio",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Q Winds of War ground AoE tornado clears caster wave reliably"
+  },
+  {
+   "champion": "Galio",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Justice Punch dash AoE hit damages minions along the charge path"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Parrrley single-target shot, last-hits for gold stacking"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Powder Keg chain explosion AoE clears most of a wave when Q-detonated"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "R",
+   "kind": "AOE_DOT",
+   "range_band": "GLOBAL",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "R Cannon Barrage global AoE DoT clears waves from anywhere on map; requires ult"
+  },
+  {
+   "champion": "Garen",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Judgment spin AoE rapidly clears the whole wave at melee range"
+  },
+  {
+   "champion": "Garen",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Decisive Strike single-target empowered auto; contributes to last-hitting only"
+  },
+  {
+   "champion": "Gnar",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Boomerang Throw passes through minions in a line (mini form)"
+  },
+  {
+   "champion": "Gnar",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": true,
+   "source_quote": "E Crunch (Mega Gnar only) wide AoE slam; requires Mega form"
+  },
+  {
+   "champion": "Gnar",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "R GNAR! (Mega) large AoE slam clears a full wave cluster; requires ult and Mega form"
+  },
+  {
+   "champion": "Gragas",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Q Barrel Roll AoE explosion clears caster wave on moderate CD"
+  },
+  {
+   "champion": "Gragas",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Body Slam AoE knockback hits minions along the dash path"
+  },
+  {
+   "champion": "Graves",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q End of the Line line AoE plus detonation hits several minions"
+  },
+  {
+   "champion": "Graves",
+   "source": "BASE",
+   "kind": "CLEAVE_AA",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Auto-attack fires a shotgun spread hitting multiple adjacent minions"
+  },
+  {
+   "champion": "Gwen",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Snip Snip! multiple rapid snips in a cone clear several minions"
+  },
+  {
+   "champion": "Gwen",
+   "source": "R",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "R Needlework multi-needle volleys hit multiple minions in a line; requires ult"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "Q",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Rampage AoE spin resets quickly and damages all nearby minions"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "W Spirit of Dread AoE aura damages nearby minions over time"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Devastating Charge long-dash empowered auto deals bonus damage on impact"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "P",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "P H-28G Evolution Turrets provide sustained ranged fire that passively clears waves"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "W Hextech Micro-Rockets fan of rockets hits entire wave front on short CD"
+  },
+  {
+   "champion": "Heimerdinger",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E CH-3X Lightning Grenade AoE stun zone chips minions along the bounce path"
+  },
+  {
+   "champion": "Hwei",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "QQ Devastating Fire large fireball AoE explosion clears caster wave efficiently"
+  },
+  {
+   "champion": "Hwei",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "EQ Currents Edge spinning blades AoE hits multiple minions in the area"
+  },
+  {
+   "champion": "Hwei",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W sub-spells are utility/CC focused; no meaningful wave-clear damage contribution"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Tentacle Smash slams down a tentacle that hits minions in the target area"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "W",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Harsh Lesson empowered auto causes tentacle slam; hits one target but spawns nearby tentacle hits"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "R Leap of Faith spawns many tentacles that repeatedly slam the whole wave; requires ult"
+  },
+  {
+   "champion": "Irelia",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Bladesurge dashes to one target and resets on kill; clears one minion at a time"
+  },
+  {
+   "champion": "Irelia",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Flawless Duet two blades stun minions caught in the line between them"
+  },
+  {
+   "champion": "Irelia",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "R Vanguard's Edge wide AoE blade fan clears most of a wave; requires ult"
+  },
+  {
+   "champion": "Ivern",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "Q Rootcaller single-target root; Ivern cannot attack minions - no direct wave clear"
+  },
+  {
+   "champion": "Janna",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Howling Gale tornado travels through minions dealing damage along the path"
+  },
+  {
+   "champion": "Janna",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Zephyr passive move speed plus single-target slow; no wave-clear damage"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Dragon Strike line AoE knock-up hits all minions in a straight path"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Demacian Standard flag plant enables Q knock-up combo for wave-clear synergy"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Golden Aegis shield with slow; no wave damage contribution"
+  },
+  {
+   "champion": "Jax",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "W Empower empowered single auto with bonus damage; fast clear cadence via resets"
+  },
+  {
+   "champion": "Jax",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Counter Strike release AoE stun hits all nearby minions on activation"
+  },
+  {
+   "champion": "Jax",
+   "source": "R",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "R Grandmaster's Might active AoE slam damages all nearby minions; requires ult active"
+  },
+  {
+   "champion": "Jayce",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Shock Blast cannon form long-range orb deals high AoE damage to minions in path"
+  },
+  {
+   "champion": "Jayce",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "W Lightning Field hammer form persistent AoE electrifies nearby minions for sustained clear"
+  },
+  {
+   "champion": "Jayce",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Thundering Blow hammer form single-target knockback; no AoE wave-clear value"
+  },
+  {
+   "champion": "Jhin",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Dancing Grenade bounces up to 4 times between minions dealing damage per bounce"
+  },
+  {
+   "champion": "Jhin",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "4-shot reload cycle; last bullet crits but still single-target; slow shove only"
+  },
+  {
+   "champion": "Jinx",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Switcheroo Fishbones rockets splash AoE on every auto, clears caster wave reliably"
+  },
+  {
+   "champion": "Jinx",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "W Zap long-range snare hits one target; negligible wave-clear contribution"
+  },
+  {
+   "champion": "KSante",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Ntofo Strikes narrow linear AoE on each hit catches several minions per cast"
+  },
+  {
+   "champion": "KSante",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Path Maker wide-arc channel dash smashes all minions in its rectangle"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Icathian Rain six missiles spread among nearby enemies, partial wave damage"
+  },
+  {
+   "champion": "Kaisa",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Void Seeker single-target projectile; no real wave-clear contribution"
+  },
+  {
+   "champion": "Kalista",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "E Rend rips spears from all nearby targets simultaneously, clears stacked minions efficiently"
+  },
+  {
+   "champion": "Kalista",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Base autos stack spears one minion at a time; slow wave build-up without Rend"
+  },
+  {
+   "champion": "Karma",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.95,
+   "conditional": true,
+   "source_quote": "Mantra-Q Soulflare leaves a large AoE detonation, near-fully clears the wave when Mantra is up"
+  },
+  {
+   "champion": "Karma",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Focused Resolve single tether; no wave-clear utility"
+  },
+  {
+   "champion": "Karthus",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Lay Waste rapid small AoE blasts chip down individual minions; spammed for clear"
+  },
+  {
+   "champion": "Karthus",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "W Wall of Pain slow zone does minor damage over time to minions passing through"
+  },
+  {
+   "champion": "Karthus",
+   "source": "E",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "E Defile persistent AoE damage around Karthus melts nearby minions steadily while toggled"
+  },
+  {
+   "champion": "Karthus",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "GLOBAL",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "R Requiem global nuke hits all enemies including minions; massive wave-clear on ult CD"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "W Nether Blade empowered auto single target; minimal wave contribution"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Force Pulse cone AoE magic damage and slow hitting all minions in front; strong shove tool"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "R",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "R Riftwalk AoE burst around landing point; requires ult and stacks for meaningful clear"
+  },
+  {
+   "champion": "Katarina",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Bouncing Blades bounces to nearby targets applying marks; partial wave chip"
+  },
+  {
+   "champion": "Katarina",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Shunpo dash to target plus surrounding burst hits nearby minions on landing"
+  },
+  {
+   "champion": "Katarina",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "R Death Lotus rapid multi-target channel shreds the wave when ult is available"
+  },
+  {
+   "champion": "Kayle",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Radiant Blast slowing projectile hits one target; minor wave chip"
+  },
+  {
+   "champion": "Kayle",
+   "source": "E",
+   "kind": "CLEAVE_AA",
+   "range_band": "RANGED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "E Starfire Spellblade makes autos ranged and splash AoE from level 6+; reliable wave clear mid-game"
+  },
+  {
+   "champion": "Kayle",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "R Divine Judgment AoE detonation at end of ult channel clears wave when available"
+  },
+  {
+   "champion": "Kayn",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Reaping Slash dash AoE damages nearby minions in a wide arc on landing"
+  },
+  {
+   "champion": "Kayn",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Blade's Reach narrow linear AoE slash hits minions in a line"
+  },
+  {
+   "champion": "Kennen",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "W Electrical Surge active discharge hits marked nearby enemies including minions"
+  },
+  {
+   "champion": "Kennen",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Lightning Rush energized dash through wave applies marks and damage to all minions passed through"
+  },
+  {
+   "champion": "Khazix",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Taste Their Fear high single-target damage but no AoE; last-hit tool only"
+  },
+  {
+   "champion": "Khazix",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "W Void Spike projectile explodes in a line AoE hitting multiple minions"
+  },
+  {
+   "champion": "Khazix",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Leap AoE damage on landing hits minions in a small circle; supplemental clear"
+  },
+  {
+   "champion": "Kindred",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Dance of Arrows dash fires arrows at up to 3 nearby targets; partial wave chip"
+  },
+  {
+   "champion": "Kindred",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Wolf's Frenzy Wolf circles and bites nearby minions repeatedly over duration"
+  },
+  {
+   "champion": "Kled",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Beartrap on a Rope single-target projectile when mounted; no meaningful wave-clear AoE"
+  },
+  {
+   "champion": "Kled",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Jousting charges through minions dealing damage to all hit in a line"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "W Bio-Arcane Barrage extended range empowered autos single-target; no AoE"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Void Ooze line AoE projectile slows and damages all minions in its path"
+  },
+  {
+   "champion": "Leblanc",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Shatter Orb hits primary target and chains to 2-3 nearby enemies; partial wave chip"
+  },
+  {
+   "champion": "Leblanc",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Distortion AoE damage at landing spot hits clustered minions nearby"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Sonic Wave single-target; Lee Sin has limited AoE wave-clear outside E"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Tempest AoE ground slam deals magic damage and slows all nearby minions"
+  },
+  {
+   "champion": "Leona",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Shield of Daybreak single-target stun auto reset; no wave-clear AoE"
+  },
+  {
+   "champion": "Leona",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Eclipse AoE detonation around Leona after 2s damages all nearby minions"
+  },
+  {
+   "champion": "Leona",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Zenith Blade linear AoE projectile hits all minions in a line on cast"
+  },
+  {
+   "champion": "Lillia",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Q Blooming Blow ring AoE damages all nearby minions on bloom"
+  },
+  {
+   "champion": "Lillia",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Watch Out loop AoE deals moderate circular damage, hits grouped minions"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Ice Shard splits into three shards on first hit, piercing multiple minions in line"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Ring of Frost AoE ring around Lissandra herself - melee range, hits nearby minions"
+  },
+  {
+   "champion": "Lucian",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Piercing Light fires a line through minions hitting several in a row"
+  },
+  {
+   "champion": "Lucian",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "W Ardent Blaze single target missile; minimal wave contribution beyond autos"
+  },
+  {
+   "champion": "Lulu",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Glitterlance two bolts arc through multiple minions"
+  },
+  {
+   "champion": "Lulu",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "E Help Pix shields ally and Pix fires bolts - minimal targeted chip, not reliable wave clear"
+  },
+  {
+   "champion": "Lux",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "E Lucent Singularity large-radius AoE detonation clears the caster wave"
+  },
+  {
+   "champion": "Lux",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Light Binding roots two minions in line but limited damage coverage"
+  },
+  {
+   "champion": "Malphite",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Seismic Shard single target projectile; primary tool for last-hitting at range"
+  },
+  {
+   "champion": "Malphite",
+   "source": "W",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Thunderclap empowers next auto with AoE cone hit plus passive armor stacking on autos"
+  },
+  {
+   "champion": "Malphite",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "E Ground Slam cone AoE in front damages all nearby minions and reduces attack speed"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "E",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "E Malefic Visions spreads on kill, clearing wave with chaining DoT"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "W Void Swarm voidlings persist and attack minions in ground AoE zone"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Void Rift creates ground AoE rupture dealing damage to minions standing in zone"
+  },
+  {
+   "champion": "Maokai",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Sapling Toss exploding sapling deals AoE burst in area, helps clear but not full wave"
+  },
+  {
+   "champion": "Maokai",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Bramble Smash AoE knock-back in front damages nearby minions in a cone"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Alpha Strike bounces between up to 4 targets, partial wave clear"
+  },
+  {
+   "champion": "MasterYi",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "E Wuju Style single-target damage boost; no AoE component"
+  },
+  {
+   "champion": "Mel",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q projectile line hits multiple minions in sequence"
+  },
+  {
+   "champion": "Mel",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "W ground AoE field damages all minions standing in the zone"
+  },
+  {
+   "champion": "Milio",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Fuemigo projectile single-target; no reliable wave clear, last-hit tool only"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "E Make It Rain rain AoE slows and damages the whole wave repeatedly"
+  },
+  {
+   "champion": "MissFortune",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Double Up bounces to second target, hits two minions"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Nimbus Strike dashes to target and hits up to two nearby enemies on arrival"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "R Cyclone spinning AoE knocks up and damages all nearby minions - requires ult up"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Crushing Blow enhanced single-target auto; helps last-hit but no AoE"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Q Obliterate wide cone strike hitting multiple minions in front"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "E",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Death's Grasp creates a ground AoE that pulls and damages minions in the area"
+  },
+  {
+   "champion": "Morgana",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "W Tormented Shadow persistent ground AoE DoT melts the entire caster wave"
+  },
+  {
+   "champion": "Morgana",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Dark Binding single target; used to last-hit not shove"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Darkin Daggers fires two daggers in a line hitting minions along the path"
+  },
+  {
+   "champion": "Naafiri",
+   "source": "P",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "P packmates (Siblings of the Darkin Blade) attack alongside Naafiri, adding multi-target damage to waves"
+  },
+  {
+   "champion": "Nami",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Ebb and Flow chain bounces damage between allied and enemy units including minions"
+  },
+  {
+   "champion": "Nami",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Aqua Prison single-target bubble; no meaningful wave clear contribution"
+  },
+  {
+   "champion": "Nasus",
+   "source": "E",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "E Spirit Fire ground AoE reduces armor and deals sustained damage, clearing the caster wave over 5s"
+  },
+  {
+   "champion": "Nasus",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "Q Siphoning Strike single-target empowered auto for stacking; not wave clear"
+  },
+  {
+   "champion": "Nasus",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Wither single-target slow, no AoE; Nasus is a dedicated single-target farmer outside E"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Dredge Line single-target hook, no AoE wave clear"
+  },
+  {
+   "champion": "Nautilus",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Riptide spawns two expanding AoE rings around Nautilus hitting multiple nearby minions"
+  },
+  {
+   "champion": "Neeko",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Blooming Burst targeted AoE explosion that blooms a second time on large-unit hit, hits a cluster of minions"
+  },
+  {
+   "champion": "Neeko",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Shapesplitter third-hit bounces to two nearby targets, moderate multi-minion chip"
+  },
+  {
+   "champion": "Neeko",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Tangle-Barbs long-range root AoE skillshot clears the caster wave reliably"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Javelin Toss single-target spear in human form, no wave clear"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "W Pounce cougar-form leap hits landing zone AoE, gated behind cougar form"
+  },
+  {
+   "champion": "Nilah",
+   "source": "Q",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Formless Blade empowers autos to extend in a whip arc hitting multiple minions in range"
+  },
+  {
+   "champion": "Nilah",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "E Slipstream dash through multiple enemies dealing damage to each minion passed through"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "P",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "P Umbra Blades every few autos cleaves all nearby enemies, incidental wave chip on short timer"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Duskbringer line skillshot passes through all minions in its path dealing damage"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Unspeakable Horror single-target fear tether, no AoE wave contribution"
+  },
+  {
+   "champion": "Nunu",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "Q Consume single-target devour on one minion or monster"
+  },
+  {
+   "champion": "Nunu",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "E Snowball Barrage rapid multi-hit snowball barrage in large AoE around Willump over channel duration, clears most of the wave"
+  },
+  {
+   "champion": "Olaf",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Undertow axe throw passes through all enemies in a line dealing damage and slowing"
+  },
+  {
+   "champion": "Olaf",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Reckless Swing true damage strike on one target, no AoE"
+  },
+  {
+   "champion": "Orianna",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Command Attack ball rolls through minions dealing damage to each it passes through"
+  },
+  {
+   "champion": "Orianna",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "W Command Dissonance AoE burst around the ball hits all nearby minions for solid partial clear"
+  },
+  {
+   "champion": "Ornn",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Volcanic Rupture ground line crack damages multiple minions and spawns a blocking pillar"
+  },
+  {
+   "champion": "Ornn",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Bellows Breath short-range frontal cone AoE fire breath hits multiple nearby minions"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Comet Spear charged fan-of-spears cone hits all minions in a wide frontal arc"
+  },
+  {
+   "champion": "Pantheon",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Aegis Assault sustained frontal cone AoE sweep damages all minions in front repeatedly"
+  },
+  {
+   "champion": "Poppy",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Hammer Shock short AoE line slam and shockwave hits minions directly in front"
+  },
+  {
+   "champion": "Poppy",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Heroic Charge single-target dash and stun, no AoE wave contribution"
+  },
+  {
+   "champion": "Pyke",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Bone Skewer single-target hook or stab, no AoE wave clear"
+  },
+  {
+   "champion": "Pyke",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Phantom Undertow dash leaving a phantom that returns and stuns, damages minions along dash path"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Elemental Wrath line AoE slice hits multiple minions in path, element effects vary but base AoE always present"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Audacity single-target gap-close dash, no meaningful wave AoE"
+  },
+  {
+   "champion": "Quinn",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Blinding Assault sends Valor who deals AoE damage around the primary target on impact"
+  },
+  {
+   "champion": "Quinn",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "no AoE identity - primarily auto-attack focused last-hitting champion"
+  },
+  {
+   "champion": "Rakan",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Gleaming Quill single-target projectile that heals, no wave clear value"
+  },
+  {
+   "champion": "Rakan",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Grand Entrance leap AoE knockup hits all minions in the landing zone"
+  },
+  {
+   "champion": "Rammus",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "W Defensive Ball Curl thorns reflect damage to every melee attacker over time, very slow passive chip"
+  },
+  {
+   "champion": "Rammus",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Frenzying Taunt single-target taunt, no AoE damage component"
+  },
+  {
+   "champion": "Rammus",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "no meaningful AoE clear - primarily single-target auto-attack last-hitter"
+  },
+  {
+   "champion": "RekSai",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Q Queen's Wrath unburrowed three rapid AoE slashes hit all nearby enemies, clears most of the caster wave"
+  },
+  {
+   "champion": "RekSai",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "W burrowed Prey Seeker is a single-target ranged skillshot that reveals, not a wave clear tool"
+  },
+  {
+   "champion": "Rell",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "W Ferromancy mounted charge or dismount AoE hits multiple nearby minions on cast"
+  },
+  {
+   "champion": "Rell",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Attract and Repel magnetic burst damages all nearby enemies around the linked ally"
+  },
+  {
+   "champion": "Rell",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "no reliable wave clear identity - melee support that clears slowly via incidental AoE"
+  },
+  {
+   "champion": "Renata",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Loyalty Program fires two missiles that damage and slow enemies in a line, hitting multiple minions"
+  },
+  {
+   "champion": "Renata",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Handshake grabs one target; no meaningful AoE wave contribution"
+  },
+  {
+   "champion": "Renekton",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Q Cull the Meek deals AoE damage around Renekton hitting all nearby minions and healing"
+  },
+  {
+   "champion": "Renekton",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Slice and Dice dashes through the wave dealing AoE damage to all minions crossed"
+  },
+  {
+   "champion": "Rengar",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Savagery empowers next AA as single-target; primary last-hit tool"
+  },
+  {
+   "champion": "Rengar",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "W Battle Roar is a small AoE burst around Rengar that damages nearby minions, but low damage makes it weak clear"
+  },
+  {
+   "champion": "Riven",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Broken Wings three-hit dash AoE hits multiple minions per cast; all three casts together can clear a wave"
+  },
+  {
+   "champion": "Riven",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Ki Burst stuns and deals AoE damage around Riven, supplementing Q for wave clear"
+  },
+  {
+   "champion": "Rumble",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Flamespitter sustained frontal AoE cone damage clears caster wave in one channel at melee range"
+  },
+  {
+   "champion": "Rumble",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Electro Harpoon is a single-target slow/damage; does not meaningfully contribute to wave shove"
+  },
+  {
+   "champion": "Ryze",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Spell Flux marks all nearby enemies with Flux enabling Q to bounce between all of them; E+Q rotation clears the whole wave rapidly"
+  },
+  {
+   "champion": "Ryze",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Overload bounces between Flux-marked targets; without E setup hits single target but with Flux chains across the wave"
+  },
+  {
+   "champion": "Samira",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Flair in melee range fires a blade wave hitting all enemies in front; ranged form is single-target projectile"
+  },
+  {
+   "champion": "Samira",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "R Inferno Trigger rapid spin AoE clears wave but requires S-rank style build-up (conditional on ult availability)"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "W Winter's Wrath two-hit AoE around Sejuani damages nearby minions on both swings"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Arctic Assault charges in a line with minor AoE but low damage; Sejuani is a slow wave clearer overall"
+  },
+  {
+   "champion": "Senna",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "Q Piercing Darkness hits allies and enemies in a line but Senna intentionally avoids last-hitting most minions for soul stacks"
+  },
+  {
+   "champion": "Senna",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "W Last Embrace root projectile deals damage primarily to the first target hit; not a reliable wave-clear tool"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q High Note deals AoE damage centered on target; double-cast with passive echo near-clears caster wave"
+  },
+  {
+   "champion": "Seraphine",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "E Beat Drop line AoE damages and slows all minions in path, complements Q for full clear"
+  },
+  {
+   "champion": "Sett",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "W Haymaker expels Grit as a wide line AoE hitting all minions in front of Sett for massive damage"
+  },
+  {
+   "champion": "Sett",
+   "source": "Q",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Knuckle Down empowers next two AAs with bonus damage; no AoE but aids sequential last-hitting"
+  },
+  {
+   "champion": "Shaco",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "E Two-Shiv Poison is single-target ranged throw; primary damage tool but no AoE"
+  },
+  {
+   "champion": "Shaco",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "W Jack In The Box placed traps fear and damage minions but require pre-placement setup time (conditional on box setup)"
+  },
+  {
+   "champion": "Shen",
+   "source": "Q",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Twilight Assault pulls spirit blade and empowers next 3 AAs; blade passes through and damages all targets in its path"
+  },
+  {
+   "champion": "Shen",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Shadow Dash dashes through minions dealing damage to all enemies the spirit blade passes through"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "E Flame Breath hits all enemies in a line and in dragon form creates a persistent ground AoE burn"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "Q",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Twin Bite double-AA reset; in dragon form hits all nearby enemies in a cleave pattern"
+  },
+  {
+   "champion": "Shyvana",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "R Dragon's Descent; in dragon form E creates persistent ground AoE burn that clears waves efficiently (conditional on ult/dragon form)"
+  },
+  {
+   "champion": "Singed",
+   "source": "Q",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Q Poison Trail persistent gas trail poisons all minions Singed runs through, clearing the wave over 2-3s"
+  },
+  {
+   "champion": "Sion",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Decimating Smash fully charged AoE knock-up clears the entire caster wave in one cast"
+  },
+  {
+   "champion": "Sion",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "W Soul Furnace shield absorbs damage and explodes for AoE damage around Sion when detonated manually"
+  },
+  {
+   "champion": "Sion",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Roar of the Slayer line skillshot hits multiple minions in a line and slows"
+  },
+  {
+   "champion": "Sivir",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Boomerang Blade line AoE travels out and back, hitting minions twice, clearing most or all of caster wave"
+  },
+  {
+   "champion": "Sivir",
+   "source": "W",
+   "kind": "CLEAVE_AA",
+   "range_band": "RANGED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "W Ricochet bounces AAs to up to 9 targets; combined with Q near-instantly clears the full wave"
+  },
+  {
+   "champion": "Skarner",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Shattered Earth slams the ground in a cone AoE dealing damage to all minions in front of Skarner"
+  },
+  {
+   "champion": "Skarner",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Seismic Bastion emits an AoE pulse around Skarner on cast that damages nearby minions"
+  },
+  {
+   "champion": "Smolder",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Q at 225 stacks gains large AoE explosion that clears caster wave; stack-gated"
+  },
+  {
+   "champion": "Smolder",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Achooo! cone AoE hits several minions in front of him"
+  },
+  {
+   "champion": "Sona",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Hymn of Valor fires two bolts at nearest enemies, hits 1-2 minions"
+  },
+  {
+   "champion": "Sona",
+   "source": "P",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Passive Power Chord empowered auto hits one target; no true wave clear"
+  },
+  {
+   "champion": "Soraka",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Q Starcall ground AoE circle damages all enemies in area; clears casters reliably"
+  },
+  {
+   "champion": "Soraka",
+   "source": "E",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "E Equinox silence zone deals damage over time to all minions standing in it; weak supplemental chip"
+  },
+  {
+   "champion": "Swain",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Death's Hand fires multiple piercing bolts in a line hitting several minions"
+  },
+  {
+   "champion": "Swain",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "W Vision of Empire delayed single-burst ground AoE damages all minions in zone"
+  },
+  {
+   "champion": "Swain",
+   "source": "R",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "R Demonic Ascension persistent drain AoE around Swain damages all nearby minions; ult-gated"
+  },
+  {
+   "champion": "Sylas",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "W Kingslayer single-target damage and heal; no AoE wave clear contribution"
+  },
+  {
+   "champion": "Sylas",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Abscond/Abduct chain slams deal large AoE damage on landing, clearing the caster wave"
+  },
+  {
+   "champion": "Syndra",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Dark Sphere summons a sphere dealing damage to one minion directly"
+  },
+  {
+   "champion": "Syndra",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Force of Will grabs and throws a unit, dealing AoE on landing to nearby enemies"
+  },
+  {
+   "champion": "Syndra",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "E Scatter the Weak pushes all spheres in a cone, hitting multiple minions with proper setup"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Tongue Lash projectile hits one target; no meaningful wave clear"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Abyssal Dive emerges dealing AoE damage around landing zone, hitting nearby minions"
+  },
+  {
+   "champion": "TahmKench",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "No AoE on autos - slow melee last-hits only; concedes shove"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Q Threaded Volley fires 5 stones in a spread on unworked ground, easily clearing a full caster wave"
+  },
+  {
+   "champion": "Taliyah",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Seismic Shove displaces and damages minions in target area but primary use is utility"
+  },
+  {
+   "champion": "Talon",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Noxian Diplomacy single-target empowered auto; no AoE"
+  },
+  {
+   "champion": "Talon",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "W Rake boomerang blade thrown and returned in a cone, hitting several minions on both passes"
+  },
+  {
+   "champion": "Taric",
+   "source": "W",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "W Bastion passive empowers autos but they remain single target; no AoE wave clear"
+  },
+  {
+   "champion": "Taric",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "No AoE - melee auto last-hits only; pure single-target clear"
+  },
+  {
+   "champion": "Teemo",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Toxic Shot applies per-target poison DoT on each auto; clears wave sequentially over sustained fire, not true AoE"
+  },
+  {
+   "champion": "Teemo",
+   "source": "R",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "R Noxious Trap mushroom placed in wave deals ground AoE DoT to all minions passing over; charge-gated"
+  },
+  {
+   "champion": "Thresh",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "E Flay line sweep displaces and damages all minions hit in a line; minimal damage output"
+  },
+  {
+   "champion": "Thresh",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "No meaningful AoE auto - slow melee last-hits only"
+  },
+  {
+   "champion": "Tristana",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Explosive Charge bomb detonates with AoE explosion after 4 autos, clearing the caster wave"
+  },
+  {
+   "champion": "Tristana",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Rocket Jump landing deals AoE damage around the landing zone to all nearby minions"
+  },
+  {
+   "champion": "Trundle",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Chomp single-target empowered bite; no AoE"
+  },
+  {
+   "champion": "Trundle",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "No AoE mechanism - melee last-hits only; slow wave push"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Spinning Slash dash through the wave dealing damage to all enemies along the path"
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Base autos single-target melee; E is the primary shove tool"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q Wild Cards throws three cards in spread, hitting multiple minions along each card's path"
+  },
+  {
+   "champion": "TwistedFate",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "W Blue Card Pick A Card deals AoE damage to all enemies near the target on hit"
+  },
+  {
+   "champion": "Twitch",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "W Venom Cask thrown zone applies Deadly Venom stacks to all minions in the area over time"
+  },
+  {
+   "champion": "Twitch",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "E Contaminate detonates Deadly Venom stacks dealing AoE damage to all poisoned minions simultaneously"
+  },
+  {
+   "champion": "Twitch",
+   "source": "R",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "R Spray and Pray grants extended-range piercing autos that penetrate through the entire wave; ult-gated"
+  },
+  {
+   "champion": "Udyr",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Wilding Claw empowered autos chain lightning between nearby minions, hitting several"
+  },
+  {
+   "champion": "Udyr",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "E Wingborne Storm persistent AoE whirlwind around Udyr damages all nearby minions repeatedly"
+  },
+  {
+   "champion": "Urgot",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "W Purge rapid-fire shotgun legs spray bullets in a wide arc in front, hitting all nearby minions repeatedly over duration"
+  },
+  {
+   "champion": "Urgot",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Disdain grabs and throws one enemy - no meaningful AoE minion damage, effectively single-target interaction"
+  },
+  {
+   "champion": "Varus",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Piercing Arrow long charged line skillshot hits minions in a row, clears some but not full wave"
+  },
+  {
+   "champion": "Varus",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Hail of Arrows AoE ground zone deals damage and applies grievous wounds to minions in area, partial clear"
+  },
+  {
+   "champion": "Vayne",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "Q Tumble repositioning dash into empowered auto - no AoE, last-hits one minion at a time"
+  },
+  {
+   "champion": "Veigar",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "W Dark Matter large circular AoE nuke drops from sky, near-clears caster wave in one cast"
+  },
+  {
+   "champion": "Veigar",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Baleful Strike two-bolt line skillshot passes through minions, hits several in a row for moderate damage"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Plasma Fission line projectile that splits perpendicular on hitting terrain or reactivation, both lines hit minions"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "W Void Rift ground zone deals two waves of damage to minions inside, persistent AoE chips the wave"
+  },
+  {
+   "champion": "Velkoz",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Tectonic Disruption AoE knockup circle hits grouped minions for burst damage"
+  },
+  {
+   "champion": "Vex",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Mistral Bolt wide AoE line projectile that accelerates and widens, hitting all minions in its path - primary wave clear tool"
+  },
+  {
+   "champion": "Vex",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Personal Space AoE burst shield around Vex deals damage and fears all nearby minions in range"
+  },
+  {
+   "champion": "Vi",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Relentless Force chargeable AoE cone smash hits multiple minions in front, partial wave damage"
+  },
+  {
+   "champion": "Vi",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "BASE single-target melee auto-attacks with W Denting Blows passive adding bonus damage on 3rd hit to one target only"
+  },
+  {
+   "champion": "Viego",
+   "source": "Q",
+   "kind": "CLEAVE_AA",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Blade of the Ruined King empowered two-hit auto modifier; second hit deals AoE damage to nearby enemies in the mist"
+  },
+  {
+   "champion": "Viego",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.25,
+   "conditional": false,
+   "source_quote": "E Harrowed Path creates mist trail that empowers autos, speeds up wave presence but minimal direct AoE damage"
+  },
+  {
+   "champion": "Viktor",
+   "source": "E",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "E Death Ray laser beam sweep plus lingering fire AoE trail clears casters and chunks melee minions efficiently"
+  },
+  {
+   "champion": "Viktor",
+   "source": "R",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.95,
+   "conditional": true,
+   "source_quote": "R Chaos Storm moving AoE singularity clears an entire wave when guided through it, gated by ult cooldown"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "MELEE",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Tides of Blood stacked AoE burst hits all nearby minions, near-clears wave at max stacks"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "W Sanguine Pool ground AoE deals damage to minions standing over it while Vladimir is untargetable, partial melee wave chip"
+  },
+  {
+   "champion": "Volibear",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "E Sky Splitter calls lightning AoE at target location, hits minions in zone for decent partial wave damage"
+  },
+  {
+   "champion": "Volibear",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "BASE melee auto-attacker with no cleave - clears one minion at a time outside of E"
+  },
+  {
+   "champion": "Warwick",
+   "source": "BASE",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "BASE no AoE on kit whatsoever - high single-target auto-attack damage last-hits one minion at a time"
+  },
+  {
+   "champion": "Xayah",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "E Bladecaller recalls all planted feathers simultaneously, each feather line hits every minion it passes through - clears wave if feathers are spread"
+  },
+  {
+   "champion": "Xayah",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Q Double Daggers two parallel feather lines pass through minions dealing damage and planting feathers for E followup"
+  },
+  {
+   "champion": "Xerath",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Arcanopulse very long channeled line nuke hits all minions in a row at extreme range"
+  },
+  {
+   "champion": "Xerath",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "W Eye of Destruction large circular AoE ground zone deals burst damage to all minions inside, near-clears caster wave from long range"
+  },
+  {
+   "champion": "Xerath",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.1,
+   "conditional": false,
+   "source_quote": "E Shocking Orb single targeted stun orb - hits only one minion, no AoE wave clear contribution"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Three Talon Strike three rapid enhanced autos, third hit knocks up - hits one target per swing but fast reset speeds clear"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "W Wind Becomes Lightning two-part sweep and thrust in an arc, sweep hits minions in a wide line for partial wave damage"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Q Steel Tempest third-stack tornado fires a line AoE that clears several minions; base Q casts are single-target slashes"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "E",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.15,
+   "conditional": false,
+   "source_quote": "E Sweeping Blade dashes through one minion dealing minor damage, used for repositioning and resetting Q stacks not direct clear"
+  },
+  {
+   "champion": "Yone",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Mortal Steel third-stack tornado launches a line AoE hitting a row of minions; base Q casts are single-target slashes"
+  },
+  {
+   "champion": "Yone",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "W Spirit Cleave wide frontal AoE swing hits all minions in a broad arc in front of Yone, solid partial wave damage"
+  },
+  {
+   "champion": "Yorick",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "MELEE",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Last Rites empowered melee swing on one target, spawns a Mist Walker on minion kill which then joins the wave-eating pack"
+  },
+  {
+   "champion": "Yorick",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "E Mourning Mist lobbed AoE globule deals damage and marks minions in a zone, hits several at once"
+  },
+  {
+   "champion": "Yorick",
+   "source": "P",
+   "kind": "AOE_DOT",
+   "range_band": "MELEE",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "P Shepherd of Souls persistent Mist Walker pack continuously auto-attacks minions alongside Yorick, sustained AoE clear over time"
+  },
+  {
+   "champion": "Yunara",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Q projectile hits multiple targets in a line"
+  },
+  {
+   "champion": "Yunara",
+   "source": "W",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "W ground AoE detonation clears caster wave"
+  },
+  {
+   "champion": "Yuumi",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q Prowling Projectile single-target missile - no AoE wave clear"
+  },
+  {
+   "champion": "Zac",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "Q Stretching Strikes two sequential punches can each hit a minion but low damage and melee"
+  },
+  {
+   "champion": "Zac",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "W Let's Bounce slam hits nearby enemies in melee range"
+  },
+  {
+   "champion": "Zac",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "MELEE",
+   "magnitude": 0.3,
+   "conditional": false,
+   "source_quote": "E Elastic Slingshot landing AoE hits clustered minions but small radius and infrequent use for clear"
+  },
+  {
+   "champion": "Zed",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Q Razor Shuriken line skillshot hits multiple minions in a row but narrow"
+  },
+  {
+   "champion": "Zed",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "W Living Shadow doubles Q shurikens for two parallel lines - more minion coverage but still narrow"
+  },
+  {
+   "champion": "Zeri",
+   "source": "Q",
+   "kind": "SINGLE_TARGET",
+   "range_band": "RANGED",
+   "magnitude": 0.2,
+   "conditional": false,
+   "source_quote": "Q fast AA-replacement hits one target at a time - no reliable AoE"
+  },
+  {
+   "champion": "Zeri",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "W Ultrashock Laser piercing bolt hits minions in a line"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "GLOBAL",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Q Bouncing Bomb large AoE explosion clears caster wave at long range, low CD"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "W",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "W Satchel Charge AoE knockback damages nearby minions but primarily utility"
+  },
+  {
+   "champion": "Ziggs",
+   "source": "E",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "E Hexplosive Minefield mines detonate individually as minions walk through - clears wave over 1-2s, not instant"
+  },
+  {
+   "champion": "Zilean",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Time Bomb double-detonation on nearby target clears caster wave reliably"
+  },
+  {
+   "champion": "Zoe",
+   "source": "Q",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Q Paddle Star arcs along its path damaging minions it passes through"
+  },
+  {
+   "champion": "Zoe",
+   "source": "E",
+   "kind": "MULTI_HIT",
+   "range_band": "RANGED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "E Sleepy Trouble Bubble narrow skillshot can hit minion clusters but setup-dependent and primarily CC"
+  },
+  {
+   "champion": "Zyra",
+   "source": "Q",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Q Deadly Spines ground AoE sprout zone clears caster wave and spawns plants"
+  },
+  {
+   "champion": "Zyra",
+   "source": "W",
+   "kind": "AOE_DOT",
+   "range_band": "RANGED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "W Rampant Growth seeds spawn plants near Q/E that deal ongoing damage to nearby minions"
+  },
+  {
+   "champion": "Zyra",
+   "source": "E",
+   "kind": "FULL_AOE",
+   "range_band": "RANGED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "E Grasping Roots line AoE snares and damages minions while activating nearby plants"
+  }
+ ]
+}
