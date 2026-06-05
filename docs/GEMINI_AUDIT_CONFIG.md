@@ -54,7 +54,9 @@
       .geminiignore; docs/GEMINI_REVIEW_CONSUMPTION.md; RC-GeminiAudit nightly 03:00 (Ready);
       first real review docs/EXTERNAL_REVIEW_2026-06-04.md (gitignored) verified genuine.
 - [ ] STEP D - tone/style/memory artifacts
-- [ ] EXPANDED - in-session/headless research-assistant mode + AHK self-clear primitive (below)
+- [x] EXPANDED - in-session Q/A channel `tools/gemini_ask.ps1` -> `gemini_io/answer_<id>.md`
+      (read-only, validated); AHK self-clear primitive `tools/claude_send.ahk` (AHK v2, target
+      `ahk_exe claude.exe`, DRY-RUN default + window-verify + kill-switch Ctrl+Alt+Q, NOT auto-wired).
 
 ## Expanded scope (operator, 2026-06-04)
 
