@@ -932,47 +932,117 @@ def _parse_csv_ints(raw: str) -> tuple[int, ...]:
     return tuple(out)
 
 
+def _send_json(h, code: int, payload: dict) -> None:
+    """Send a JSON body with the standard content type + encoding."""
+    h._send(code, json.dumps(payload).encode("utf-8"), "application/json")
+
+
+def _send_json_err(h, code: int, msg: str) -> None:
+    """Standard error envelope: {"ok": False, "error": <msg>}."""
+    _send_json(h, code, {"ok": False, "error": msg})
+
+
+def _parse_queue_ids(qs: dict) -> tuple[int, ...] | None:
+    """?queue=420 -> (420,); ?queue=400,420 -> (400, 420); absent/blank ->
+    _DEFAULT_SR_QUEUES. Returns None on a malformed value so the caller can
+    400 - distinguishes bad input from "use the default set"."""
+    queue_raw = (qs.get("queue") or [""])[0]
+    if not queue_raw:
+        return _DEFAULT_SR_QUEUES
+    try:
+        queue_ids = tuple(int(x) for x in queue_raw.split(",") if x.strip())
+    except ValueError:
+        return None
+    return queue_ids or _DEFAULT_SR_QUEUES
+
+
+def _cache_get(h, key: tuple, t0: float) -> bool:
+    """Send a fresh cached payload for ``key`` (refreshing elapsed_ms) and
+    return True on a hit; False when the caller must compute. TTL + db-mtime
+    keying stays identical across both routes."""
+    with _PB_CACHE_LOCK:
+        hit = _PB_CACHE.get(key)
+    if hit and (t0 - hit[0]) < _PB_CACHE_TTL_S:
+        payload = dict(hit[1])
+        payload["elapsed_ms"] = int((time.time() - t0) * 1000)
+        _send_json(h, 200, payload)
+        return True
+    return False
+
+
+def _cache_put(key: tuple, t0: float, payload: dict) -> None:
+    with _PB_CACHE_LOCK:
+        _PB_CACHE[key] = (t0, dict(payload))
+
+
+def _open_ro_with_puuid(h):
+    """Open the read-only rewind connection + resolve the operator puuid.
+    Returns (conn, puuid); on no-operator sends a 503, closes, and returns
+    (None, None). Caller owns conn.close() via try/finally on the hit path.
+    read-only uri mode: the catchup script is the only writer and WAL means
+    reads don't block its writes."""
+    conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0)
+    puuid = _resolve_operator_puuid(conn)
+    if not puuid:
+        conn.close()
+        _send_json_err(h, 503, "no operator puuid in rewind_history.db")
+        return None, None
+    return conn, puuid
+
+
+def _build_pickban_recs(conn, puuid, role, queue_ids, mood,
+                        exclude_ids, ally_ids, top):
+    """Run the mood-aware pick query + the dependent ban / last-in-queue /
+    struggle cascades against an open connection. Returns
+    (picks, bans, last_in_queue, struggle_ban)."""
+    picks = _query_performance(conn, puuid, role, queue_ids, mood,
+                               exclude_ids=exclude_ids, top=top,
+                               ally_ids=ally_ids)
+    # s210 v2 / s214: bans follow the FIRST mood-recommended pick - its
+    # hard counters from champion_counters.json, else the operator's
+    # role-level worst matchups.
+    bans: list[dict] = []
+    if picks and picks[0].get("champName"):
+        bans = _counters_for_champion(picks[0]["champName"])
+    if not bans:
+        bans = _query_bans(conn, puuid, role, queue_ids)
+    # Item 168: 4th pick = most-recent champ in the exact queue, excluding
+    # the already-chosen picks so we don't duplicate.
+    pick_excl = tuple(exclude_ids) + tuple(
+        int(p.get("champId") or 0) for p in picks if p.get("champId"))
+    last_in_queue = _query_last_in_queue(
+        conn, puuid, queue_ids, exclude_ids=pick_excl)
+    # Item 168: 4th ban = personal struggle, excluding bans[].
+    ban_excl = tuple(exclude_ids) + tuple(
+        int(b.get("champId") or 0) for b in bans if b.get("champId"))
+    struggle_ban = _query_struggle_ban(
+        conn, puuid, role, queue_ids, exclude_ids=ban_excl)
+    return picks, bans, last_in_queue, struggle_ban
+
+
 def _serve_pickban_recs(h) -> None:
     try:
         qs = parse_qs(urlparse(h.path).query)
-        role_raw = (qs.get("role") or [""])[0]
-        role = _normalize_role(role_raw)
+        role = _normalize_role((qs.get("role") or [""])[0])
         if not role:
-            h._send(400,
-                    json.dumps({"ok": False, "error": "role required (TOP|JUNGLE|MIDDLE|BOTTOM|UTILITY)"}).encode(),
-                    "application/json")
+            _send_json_err(h, 400, "role required (TOP|JUNGLE|MIDDLE|BOTTOM|UTILITY)")
             return
 
-        # Queue filter: ?queue=420 -> (420,); ?queue=400,420 -> (400, 420);
-        # omitted -> default SR queue set.
-        queue_raw = (qs.get("queue") or [""])[0]
-        if queue_raw:
-            try:
-                queue_ids = tuple(int(x) for x in queue_raw.split(",") if x.strip())
-            except ValueError:
-                h._send(400,
-                        json.dumps({"ok": False, "error": "queue must be comma-separated ints"}).encode(),
-                        "application/json")
-                return
-            if not queue_ids:
-                queue_ids = _DEFAULT_SR_QUEUES
-        else:
-            queue_ids = _DEFAULT_SR_QUEUES
+        queue_ids = _parse_queue_ids(qs)
+        if queue_ids is None:
+            _send_json_err(h, 400, "queue must be comma-separated ints")
+            return
 
         # s209: mood param re-weights the performance row. Unknown moods
-        # fall through to comfort; the dispatcher itself handles thin-data
-        # fallback for limit / new / synergy.
+        # fall through to comfort; the dispatcher handles thin-data fallback.
         mood_raw = (qs.get("mood") or [""])[0].lower().strip()
         mood = mood_raw if mood_raw in _VALID_MOODS else _MOOD_DEFAULT
 
-        # s214: cascade-filter inputs. `exclude` = banned/picked/already-shown
-        # ids to skip; `allies` = locked teammate champion ids (used by the
-        # synergy mood for joint-WR scoring); `top` = number of picks to
-        # return (1..5 clamped). Callers stick to top=1 for the legacy
-        # `comfort` row and top=3 for LIMIT/NEW/SYNERGY rows 1+2+3.
+        # s214: cascade-filter inputs. `exclude` = banned/picked/shown ids;
+        # `allies` = locked teammate ids (synergy joint-WR); `top` = picks to
+        # return (1..5). Item 168: enemies + my_summoners feed the advisory.
         exclude_ids = _parse_csv_ints((qs.get("exclude") or [""])[0])
         ally_ids    = _parse_csv_ints((qs.get("allies")  or [""])[0])
-        # Item 168: enemies + my_summoners for the cleanse advisory.
         enemy_ids   = _parse_csv_ints((qs.get("enemies") or [""])[0])
         my_summs    = _parse_csv_ints((qs.get("my_summoners") or [""])[0])
         try:
@@ -982,95 +1052,47 @@ def _serve_pickban_recs(h) -> None:
         top = max(1, min(5, top_raw))
 
         if not _REWIND_DB.exists():
-            h._send(503,
-                    json.dumps({"ok": False, "error": "rewind_history.db missing"}).encode(),
-                    "application/json")
+            _send_json_err(h, 503, "rewind_history.db missing")
             return
 
         t0 = time.time()
         cache_key = ("pickban", _db_mtime(), role, queue_ids, mood,
                      tuple(exclude_ids), tuple(ally_ids), tuple(enemy_ids),
                      tuple(my_summs), top)
-        with _PB_CACHE_LOCK:
-            _hit = _PB_CACHE.get(cache_key)
-        if _hit and (t0 - _hit[0]) < _PB_CACHE_TTL_S:
-            payload = dict(_hit[1])
-            payload["elapsed_ms"] = int((time.time() - t0) * 1000)
-            h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        if _cache_get(h, cache_key, t0):
             return
-        # read-only connection; the catchup script is the only writer and
-        # WAL mode means reads don't block its writes.
-        conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0)
+        conn, puuid = _open_ro_with_puuid(h)
+        if conn is None:
+            return
         try:
-            puuid = _resolve_operator_puuid(conn)
-            if not puuid:
-                h._send(503,
-                        json.dumps({"ok": False, "error": "no operator puuid in rewind_history.db"}).encode(),
-                        "application/json")
-                return
-            picks = _query_performance(conn, puuid, role, queue_ids, mood,
-                                       exclude_ids=exclude_ids, top=top,
-                                       ally_ids=ally_ids)
-            # s210 v2 / s214: bans follow the FIRST mood-recommended pick.
-            # If the row resolved a champion, look up its hard counters
-            # from data/meta/champion_counters.json. Falls back to the
-            # operator's role-level worst matchups otherwise.
-            bans: list[dict] = []
-            if picks and picks[0].get("champName"):
-                bans = _counters_for_champion(picks[0]["champName"])
-            if not bans:
-                bans = _query_bans(conn, puuid, role, queue_ids)
-            # Item 168: 4th pick = operator's most-recent champ in the
-            # exact queue. Built after the comfort top-3 so picks[0..3]
-            # = role-matching + picks[3] = last-in-queue. Exclude the
-            # already-chosen comfort picks so we don't duplicate.
-            pick_excl = tuple(exclude_ids) + tuple(
-                int(p.get("champId") or 0) for p in picks
-                if p.get("champId"))
-            last_in_queue = _query_last_in_queue(
-                conn, puuid, queue_ids, exclude_ids=pick_excl)
-            # Item 168: 4th ban = personal struggle (highest-loss-rate
-            # at this role, >=2 enc). Exclude any champ already in
-            # bans[] so we don't duplicate the counter recs.
-            ban_excl = tuple(exclude_ids) + tuple(
-                int(b.get("champId") or 0) for b in bans if b.get("champId"))
-            struggle_ban = _query_struggle_ban(
-                conn, puuid, role, queue_ids, exclude_ids=ban_excl)
+            picks, bans, last_in_queue, struggle_ban = _build_pickban_recs(
+                conn, puuid, role, queue_ids, mood, exclude_ids, ally_ids, top)
         finally:
             conn.close()
         # Item 168: cleanse advisory composed outside the DB cursor.
         cleanse_advisory = _compose_cleanse_advisory(enemy_ids, my_summs)
 
-        # s214 response shape:
-        #   `performance` - first pick (back-compat with pre-s214 callers
-        #                   that consumed a single dict)
-        #   `performance_picks` - full list of up to `top` picks for the
-        #                         mood, used by the new LIMIT/NEW/SYNERGY
-        #                         3-row layouts
-        first = picks[0] if picks else None
+        # s214 response: `performance` = first pick (back-compat single
+        # dict); `performance_picks` = full mood list for the 3-row layouts.
         payload = {
             "ok": True,
             "role": role,
             "queue_ids": list(queue_ids),
             "mood": mood,
-            "performance": first,
+            "performance": picks[0] if picks else None,
             "performance_picks": picks,
             "performance_bans": bans,
-            # Item 168: 4-pick + 4-ban + advisory additions. The legacy
-            # fields above stay untouched so pre-item-168 callers don't
-            # break; the panel reads the new fields when present.
+            # Item 168 additions; legacy fields above stay untouched.
             "last_in_queue":  last_in_queue,
             "struggle_ban":   struggle_ban,
             "cleanse_advisory": cleanse_advisory,
             "elapsed_ms": int((time.time() - t0) * 1000),
         }
-        with _PB_CACHE_LOCK:
-            _PB_CACHE[cache_key] = (t0, dict(payload))
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        _cache_put(cache_key, t0, payload)
+        _send_json(h, 200, payload)
     except Exception as exc:
         log.warning("api/champ-select/pickban-recs: %s", exc)
-        h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                "application/json")
+        _send_json_err(h, 500, str(exc)[:200])
 
 
 def _serve_personal_record(h) -> None:
@@ -1093,44 +1115,24 @@ def _serve_personal_record(h) -> None:
         ally_ids = _parse_csv_ints((qs.get("allies") or [""])[0])
         enemy_ids = _parse_csv_ints((qs.get("enemies") or [""])[0])
 
-        queue_raw = (qs.get("queue") or [""])[0]
-        if queue_raw:
-            try:
-                queue_ids = tuple(int(x) for x in queue_raw.split(",") if x.strip())
-            except ValueError:
-                h._send(400,
-                        json.dumps({"ok": False, "error": "queue must be comma-separated ints"}).encode(),
-                        "application/json")
-                return
-            if not queue_ids:
-                queue_ids = _DEFAULT_SR_QUEUES
-        else:
-            queue_ids = _DEFAULT_SR_QUEUES
+        queue_ids = _parse_queue_ids(qs)
+        if queue_ids is None:
+            _send_json_err(h, 400, "queue must be comma-separated ints")
+            return
 
         if not _REWIND_DB.exists():
-            h._send(503,
-                    json.dumps({"ok": False, "error": "rewind_history.db missing"}).encode(),
-                    "application/json")
+            _send_json_err(h, 503, "rewind_history.db missing")
             return
 
         t0 = time.time()
         cache_key = ("personal", _db_mtime(), champ_id, role,
                      tuple(ally_ids), tuple(enemy_ids), queue_ids)
-        with _PB_CACHE_LOCK:
-            _hit = _PB_CACHE.get(cache_key)
-        if _hit and (t0 - _hit[0]) < _PB_CACHE_TTL_S:
-            payload = dict(_hit[1])
-            payload["elapsed_ms"] = int((time.time() - t0) * 1000)
-            h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        if _cache_get(h, cache_key, t0):
             return
-        conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0)
+        conn, puuid = _open_ro_with_puuid(h)
+        if conn is None:
+            return
         try:
-            puuid = _resolve_operator_puuid(conn)
-            if not puuid:
-                h._send(503,
-                        json.dumps({"ok": False, "error": "no operator puuid in rewind_history.db"}).encode(),
-                        "application/json")
-                return
             champ = (_query_champ_record(conn, puuid, champ_id, queue_ids, role)
                      if champ_id else None)
             with_allies = [_query_with_ally(conn, puuid, a, queue_ids)
@@ -1149,13 +1151,11 @@ def _serve_personal_record(h) -> None:
             "vs_enemies": vs_enemies,
             "elapsed_ms": int((time.time() - t0) * 1000),
         }
-        with _PB_CACHE_LOCK:
-            _PB_CACHE[cache_key] = (t0, dict(payload))
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        _cache_put(cache_key, t0, payload)
+        _send_json(h, 200, payload)
     except Exception as exc:
         log.warning("api/champ-select/personal-record: %s", exc)
-        h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                "application/json")
+        _send_json_err(h, 500, str(exc)[:200])
 
 
 # Route table - imported by dashboard/_dispatch.py at module load.
