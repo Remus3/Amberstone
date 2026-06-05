@@ -1331,6 +1331,37 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.117.0 (Anti-tank / %HP-damage + resist-shred scorer - item 308, the SIXTEENTH
+scored axis, built by an 8-channel roster fan-out + 4 completeness critics. NEW
+agents/daemon_slayer/antitank.py: a per-(champion, source, kind) anti-tank-mechanism
+registry plus a kind -> weight table (_ANTITANK_KIND_WEIGHT: MAX_HP 1.0 / SHRED 0.85 /
+CURRENT_HP 0.75 / PERCENT_PEN 0.65) and a cadence -> mult table (_ANTITANK_CADENCE_MULT:
+SUSTAINED 1.0 / PERIODIC 0.8 / BURST 0.65). compute_antitank folds every mechanism into a
+single antitank_score = sum(kind_weight * cadence_mult * magnitude), gated mechanisms
+credited at the 0.5 conditional midpoint; top_kind labels the strongest anti-tank tool and
+shreds_resist flags any SHRED or PERCENT_PEN mechanism (the champion lowers the tank's
+resists for the whole team, not just herself). It scores how well a champion's OWN KIT melts
+a high-HP / high-resist target - the %max-HP / %current-HP damage and the armor/MR shred /
+%pen it brings - the anti-tank dimension the prior fifteen axes never measured (the DPS /
+burst scorers measure raw damage against a fixed dummy; none asks whether the kit cares how
+much health and armor the enemy stacked). Every kind gets stronger the tankier the target;
+pure %-missing-health executes are EXCLUDED as finishers (they do nothing to a full tank). A
+single ability may carry two kinds (Trundle R = %max-HP drain + resist steal; Vi W / Yorick
+E / Sion E = %max-HP + armor shred), so a champion may hold two rows on one slot. NEW
+/anti-tank route (POST+GET). Purely ADDITIVE - reads no existing scorer and is read by none,
+so every existing route is byte-identical. SELECTIVE (only champions whose damage scales
+with enemy health or resists appear; a flat-damage champion scores 0.0), the sustain /
+zone-control / ally-amplification shape. 171-champion fan-out (8 classify + 4 completeness
+critics) -> 102 entries / 78 champs / 38 conditional / kinds MAX_HP 63 SHRED 25 CURRENT_HP 9
+PERCENT_PEN 5 / cadence SUSTAINED 40 PERIODIC 46 BURST 16. Live: Rumble 1.42 (top) / K'Sante
+1.24 / Sion 1.21 / Rell 1.14 / Vi 1.11 / Mordekaiser 1.02 / Trundle 0.99 / Vayne 0.95 /
+Kog'Maw 0.93 (top tank-melters) vs MasterYi / Annie / Talon / Katarina / Lux / Soraka 0.0
+(flat-damage floor); 29 shreds_resist champs, 5 kit-intrinsic PERCENT_PEN. +
+tools/ds_antitank_build.py (marker-splice generator) + antitank_registry_notes.json
+provenance sidecar (Share-excluded). Phase D - an auto-pairing consumer crediting anti-tank
+into a live draft / teamfight / itemization verdict - remains. The anti-tank / %HP-damage
+axis is EXHAUSTED across the roster.)
+
 1.116.0 (Ally-amplification / buff-throughput scorer - item 304, the FIFTEENTH
 scored axis, built by a 10-channel roster fan-out. NEW agents/daemon_slayer/allyamp.py:
 a per-(champion, source) ally-buff-mechanism registry plus a kind -> weight table
