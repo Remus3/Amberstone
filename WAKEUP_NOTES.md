@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-05 - prefer-CDragon default-OFF seam (Gemini-loop cycle 1) + Imperial Mandate AH fix (item 310)
+
+Two threads. (1) Gemini-loop cycle-1 directive (`ops/loop/control/directive.md`): wire the DS engine to prefer mechanical CDragon ability ratios behind a default-off flag. (2) Operator pasted the lolmath "Redymix 26.11" hard-CC/haste-refactor changelog -> compare vs DS, adjust if beneficial. ENGINE UNCHANGED 1.118.0; DS NOT restarted (seam inert + AH value is offline-only). Full record = item 310 in `docs/LEDGER.md`.
+
+- **Prefer-CDragon seam (commit `4b782538`):** `AbilitiesSnapshot.load(prefer_cdragon_ratios=False, cdragon_root=None)` - FIRST engine consumer of the CDragon ratio re-source sidecar. ON -> primary-form damage-block scaling fields re-sourced per-field from `resolution=="mechanical"` blocks, Meraki fall-back per-field/block (and on missing/corrupt sidecar). Block count never changes; transform forms keep Meraki. Mirrors the `apply_passive_*` opt-in pattern. Default OFF = byte-identical. +6 tests `test_cdragon_ratio_preference.py` (TDD RED 5-fail -> GREEN). Advances ROADMAP item 17.
+- **lolmath 26.11 compare:** lolmath = JS SPA consuming DS's `Share/lolmath_ingest` bundle; refactor is consumer-side. hard-CC counting -> DS already has `_per_spell_cc`/`cc_output`/`cc_pressure`/`cc_conditional` + Aftershock (MATCH); per-ability/ult-specific haste (`finalHasteBonuses`/`extraUltimateHaste`) -> DS uses ONE uniform AH, no rune input, ult-haste only in the live overlay = DELIBERATE simplification, NOT a bug, NOT changed.
+- **REAL BUG FOUND + FIXED (commit `560caa63`):** Imperial Mandate base AH stale 20 (16.10.1) -> 15 (16.11.1); Riot dropped base 20->15 + added "+15 AH on immobilizing abilities" conditional. Registry contract = BASE AH only -> 15 correct. Full drift scan: EXACTLY 2 stale (`4005` SR + `324005` ARAM); Arena `224005`=35 correct. +1 regression test.
+- **Share sync (commit `e27156fd`):** re-mirror 314 files (1.118.0, --check 0) + 03_DATA_AND_SOURCES.md freshness (CDragon re-source no longer "planned" - opt-in seam exists). DS suite 6618 passed; root tests/ 4979 passed; ruff/pyc/hygiene-12 green; ASCII-only.
+- **Don't-redo:** seam is default-OFF + inert (no live sidecar generated yet) - do NOT flip default-on without the staged review+gold-repin+ENGINE-bump; do NOT re-pitch per-ability/ult haste as a DS bug; `_item_ability_haste.py` pinned at 16.10.1 with NO working regen tool (docstring's `regen_item_ability_haste.py` absent) - re-scan vs items.json each patch (memory `reference_item_ah_registry_drift`).
+- **NEXT:** generate the live `cdragon_ability_ratios.json` for 16.11.1 -> review `--drift` -> re-pin gold tests -> flip default-on + bump ENGINE + restart DS.
+
+---
+
 # 2026-06-05 - DS extended-dueling / 1v1 scorer - 17th axis (item 309) [10-channel fan-out]
 
 Operator: "start the next DS schema lift with 10 multi-agents fan out different channels and exhaust it then /done for /clear" (17th use, 10th explicit fan-out). Upfront AskUserQuestion -> **extended-dueling/1v1** (longest-standing runner-up across items 297-308) over pick-potential or disengage/self-peel. ENGINE 1.117.0 -> 1.118.0; DS :8893 restarted taskkill pid 5740 -> 1.118.0 live-verified. Full record = item 309 in `docs/LEDGER.md`.
@@ -26,26 +39,3 @@ Operator fired `/headless-upgrade` via the new desktop launcher (no explicit tas
 - **ALSO shipped (commit `7901712a`):** idempotent one-click headless-upgrade desktop launcher (`tools/rc_headless_launcher.ps1` + `install_headless_launcher_shortcut.ps1` -> Desktop `RC Headless.lnk`). Per click: runs RC-GeminiAudit (schtasks /Run) + AHK-sends `/headless-upgrade` into the Claude desktop window, lock-guarded against double-injection (self-heals when claude.exe absent / lock stale). Operator config: Claude via AHK desktop-send, Gemini always-run-now.
 - **Don't-redo:** %-missing-HP executes are excluded by design (do NOT re-add Garen R / Akali R as anti-tank); regenerate the registry via `tools/ds_antitank_build.py` (marker-spliced, do not hand-edit); dual-kind-per-slot is intentional. The anti-tank axis is EXHAUSTED across the roster.
 - **NEXT (Phase D, live-gated):** an auto-pairing consumer crediting anti-tank into a live draft / teamfight / itemization verdict (buy %HP/shred vs an enemy tank line); tune the kind weights + cadence mults after a live re-rank.
-
----
-
-# 2026-06-05 - DS ally-amp Phase D: peel-target live consumer (item 307)
-
-Wired the item-304 ally-amplification axis into its FIRST live consumer. Commit `7066e0c0`. Non-DS / non-engine / non-frozen; RC NOT restarted (route loads on the next between-games restart). Operator: "continue next -> phase D : am playing games ranked SR"; one AskUserQuestion -> **peel-target (live)**.
-
-- **NEW `GET /api/peel-priority`** (`dashboard/routes_peel_priority.py`, additive, single-sided): pairs the live/supplied ally roster vs `compute_allyamp` -> `ranked` + `protect_target` (top buff-throughput ally) + `hard_saves` (PROTECT/`saves_ally` champs) + `verdict`. ABSENT `ally` -> live auto-read; empty -> `no_champions`; no game -> `no_live_roster`. Registered in `_dispatch.py`. + `_liveclient.ally_team` (symmetric to `enemy_team`).
-- **Bug caught + fixed in-slice:** Live Client emits DISPLAY names ("Tahm Kench"); DS registries key canonical ids ("TahmKench") -> silent 0.0 miss; **TahmKench is a PROTECT hard-save**. NEW `core/archetype_picks.canonical_champion_id` (data-driven, ddragon_champions.json) bridges it; `_live_ally_roster` canonicalizes. Memory `reference_liveclient_name_vs_ddragon_id`.
-- **Live re-rank** (in-process, real SR game): Caitlyn + Nautilus/MasterYi/Katarina/Seraphine -> "Peel for Seraphine (SHIELD)"; weights SANE, no tuning.
-- +24 peel tests; ruff + hygiene 12 + 134-slice regression green.
-- **NEXT:** restart RC between games (`echo restart > restart_trigger.txt`) to serve the route; peel chip BLOCKED (Game-PC MCP down -> fixture ritual unavailable); remaining item-304 Phase D variants (team-balance chip, teamfight/draft).
-
----
-
-# 2026-06-05 - lolmath Discord chat digest (DS robustness check; docs-only, no engine change)
-
-Digested a lolmath community chat against RC's Daemon Slayer via a 3-agent fan-out. Commit `a1bb672f` (BACKLOG.md only, CI green). RC NOT touched. Operator was mid-game (SR InProgress) at wrap.
-
-- **2 of 3 lolmath behaviors are STRUCTURALLY ABSENT in RC (do NOT re-investigate):** (1) "marksman preset on a no-autos mage" (Fiddlesticks -> pure-AP degeneration) cannot occur - RC routes mages to `ds.ability` via the DDragon-tag archetype dispatcher (`core/archetype_picks.py`); the carry/dps DPS=0 path is unreachable in prod (only a forced `archetype="carry"` on a mage hits it). (2) "1 R bundles 2 empowered autos" double-count cannot occur - `burst.py:803` sums ability-blocks + AA separately; the AA-empower (`apply_ability_amps`) + on-hit (`apply_passive_damage`) seams are default-off, AA-only, on disjoint champ sets; Udyr in neither.
-- **3rd behavior (target HP% for %HP item procs) is a documented modeling CHOICE, not a bug.** RC models the 3 genuinely-%CURRENT-HP procs - BotRK 3153 (`_effects_data.py:546`), Hellfire Hatchet 4017 (`:2055`), Fulmination 443055 (`:2312`) - at full max-HP (each comment self-documents the `current~=max` steady-state). `CallContext` carries `target_max_hp` but no `target_current_hp_pct`, so the current-HP knob (honored by ability_dps/burst) is half-wired for item procs. Live coach passes a real max_hp (`archetype_dispatch.py:222`) so the over-credit is live but bounded (the /dps + /rank routes default `target_max_hp=0.0` -> procs zeroed unless an HP is supplied).
-- **Logged to BACKLOG** (operator-gated tuning, NOT shipped): thread `target_current_hp_pct` (default 1.0 = byte-identical) into `CallContext` + the 3 current-HP procs; the FLIP (lolmath's 50% fight-average) is the product decision, re-ranks, owes an ENGINE bump. **CRITICAL for the implementer:** do NOT touch Eclipse 6692 / Titanic 3748 / Hullbreaker / Reaper's Toll 443090 - they are genuinely %MAX-HP (an investigating subagent made exactly this Eclipse error; the BACKLOG entry has the full classification).
-- **NEXT:** none required; the BACKLOG entry is the spec if the operator wants the tuning.
