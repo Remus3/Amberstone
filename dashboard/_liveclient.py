@@ -104,6 +104,7 @@ def liveclient_summary() -> dict:
         out["mana_max"] = int(cs.get("resourceMax", 0))
         owned_items: list = []
         enemy_team: list = []
+        ally_team: list = []
         enemy_item_ids: list = []
         ally_item_ids: list = []
         if me_pl:
@@ -120,6 +121,11 @@ def liveclient_summary() -> dict:
             all_players = d.get("allPlayers") or []
             enemy_team = [p.get("championName", "") for p in all_players
                           if p.get("team") and p.get("team") != my_team]
+            # Symmetric ally roster (full same-team champion list, incl the
+            # operator). Consumed by routes_peel_priority (item 304 Phase D),
+            # which drops self for its teammate-only peel verdict.
+            ally_team = [p.get("championName", "") for p in all_players
+                         if p.get("team") and p.get("team") == my_team]
             # Per-team item-id pools for the deterministic heal-threat nudge
             # (core.heal_threat). allPlayers[].items is PUBLIC scoreboard data
             # for ALL 10 players (unlike gold, which is activePlayer-only), so
@@ -136,6 +142,7 @@ def liveclient_summary() -> dict:
         out["owned_items"] = owned_items
         out["owned_item_ids"] = owned_item_ids
         out["enemy_team"]  = enemy_team
+        out["ally_team"]   = ally_team
         out["enemy_item_ids"] = enemy_item_ids
         out["ally_item_ids"]  = ally_item_ids
         # Inhibitor-down events for the respawn-timing callout. Live Client
