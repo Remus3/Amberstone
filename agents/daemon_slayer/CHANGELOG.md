@@ -1331,6 +1331,29 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.118.0 (Extended-dueling / 1v1 sustained-fight scorer - item 309, the SEVENTEENTH
+scored axis, built by a 10-channel roster fan-out + 10 completeness critics. NEW
+agents/daemon_slayer/extendedduel.py: a per-(champion, source, kind) duel-mechanism
+registry plus a kind -> weight table (_EXTENDEDDUEL_KIND_WEIGHT: RAMP 1.0 / RESET 0.85 /
+DUELHEAL 0.75 / ENDURE 0.6) and a cadence -> mult table (_EXTENDEDDUEL_CADENCE_MULT:
+SUSTAINED 1.0 / PERIODIC 0.8 / BURST 0.65). compute_extendedduel folds every mechanism into a
+single duel_score = sum(kind_weight * cadence_mult * magnitude), gated mechanisms credited at
+the 0.5 conditional midpoint; top_kind labels the strongest duel tool and ramps flags any RAMP
+mechanism (the champion gets STRONGER the longer the fight runs - do not commit to a long 1v1
+against her). It scores how well a champion's OWN KIT wins a PROLONGED 1v1 duel past the burst
+window - the RAMP / RESET / DUELHEAL / ENDURE attrition tools it brings - the extended-duel
+dimension the prior sixteen axes never measured (the burst scorer measures front-loaded damage
+and the DPS scorer measures raw output against a fixed dummy; neither answers whether the kit
+WINS the long duel). SELECTIVE but broad axis (most fighters / skirmishers carry an attrition
+tool): 283 entries / 111 champions / 81 conditional / 63 ramping; kinds RAMP 81 / ENDURE 76 /
+DUELHEAL 75 / RESET 51; cadence SUSTAINED 97 / PERIODIC 95 / BURST 91. NEW POST+GET
+/extended-duel route (additive - every existing route byte-identical). Live tank-melters by
+duel power: MasterYi 2.74 / Tryndamere 2.38 / Jax 2.12 / Aatrox 2.11 / Yone 1.66 / Fiora 1.65
+/ Nasus 1.60 / Renekton 1.57 / Warwick 1.55 / Vladimir 1.52 vs LeBlanc / Veigar / Lux / Xerath
+/ Janna / Ziggs / Zoe / Sona / Milio 0.0 (burst / artillery / utility floor). + reusable
+tools/ds_extendedduel_build.py validate/inject generator + extendedduel_registry_notes.json
+provenance sidecar (Share-excluded). Purely additive: reads no existing scorer, read by none.)
+
 1.117.0 (Anti-tank / %HP-damage + resist-shred scorer - item 308, the SIXTEENTH
 scored axis, built by an 8-channel roster fan-out + 4 completeness critics. NEW
 agents/daemon_slayer/antitank.py: a per-(champion, source, kind) anti-tank-mechanism

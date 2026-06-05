@@ -1,4 +1,4 @@
-"""Item 308 (ENGINE 1.117.0) - anti-tank / %HP-damage + resist-shred scorer tests.
+"""Item 308 (ENGINE 1.118.0) - anti-tank / %HP-damage + resist-shred scorer tests.
 
 The sixteenth scored axis alongside DPS / burst / EHP / ability-DPS /
 healing-throughput / offensive CC-output (item 294) / mobility (item 297) /
@@ -274,7 +274,7 @@ class RouteAndVersionTests(unittest.TestCase):
             self.assertIn(path, server._POST_ROUTES)
 
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.117.0")
+        self.assertEqual(ENGINE_VERSION, "1.118.0")
 
 
 if __name__ == "__main__":
