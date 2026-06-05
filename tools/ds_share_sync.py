@@ -183,6 +183,7 @@ def _build_expected() -> dict[str, bytes]:
         # zonecontrol_registry_notes.json (item 302) is the zonecontrol.py analog.
         # objdamage_registry_notes.json (item 303) is the objdamage.py analog.
         # allyamp_registry_notes.json (item 304) is the allyamp.py analog.
+        # antitank_registry_notes.json (item 308) is the antitank.py analog.
         if p.name in (
             "CHANGELOG.md",
             "CC_CONDITIONAL_NOTES.md",
@@ -195,6 +196,7 @@ def _build_expected() -> dict[str, bytes]:
             "zonecontrol_registry_notes.json",
             "objdamage_registry_notes.json",
             "allyamp_registry_notes.json",
+            "antitank_registry_notes.json",
         ) and p.parent == eng:
             continue
         if p.name == "__init__.py" and p.parent == eng:

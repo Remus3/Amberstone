@@ -79,6 +79,7 @@ from .threatrange import compute_threatrange
 from .zonecontrol import compute_zonecontrol
 from .objdamage import compute_objdamage
 from .allyamp import compute_allyamp
+from .antitank import compute_antitank
 from .matchup import compute_matchup
 from .rank import SORT_KEYS, rank_items
 
@@ -132,6 +133,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/zone-control</td><td>zone-control / area-denial (denial-weighted persistence score + top kind + controls-terrain flag) for a champion (item 302)</td></tr>
 <tr><td>POST</td><td>/objective-damage</td><td>objective / structure-damage (kind-weighted scope-scaled score + top kind + pressures-structures flag) for a champion (item 303)</td></tr>
 <tr><td>POST</td><td>/ally-amp</td><td>ally-amplification / buff-throughput (kind-weighted reach-scaled score + top kind + saves-ally flag) for a champion (item 304)</td></tr>
+<tr><td>POST</td><td>/anti-tank</td><td>anti-tank / %HP-damage + resist-shred (kind-weighted cadence-scaled score + top kind + shreds-resist flag) for a champion (item 308)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -1348,6 +1350,34 @@ def _route_allyamp(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_antitank(body: dict) -> dict:
+    """POST /anti-tank - anti-tank / %HP-damage + resist-shred for a champion.
+
+    Item 308 (ENGINE 1.117.0): the sixteenth scored axis - how well a champion's
+    OWN KIT melts a high-HP / high-resist target (the %max-HP / %current-HP damage
+    and the armor/MR shred / %pen it brings; pure %-missing-health executes are
+    excluded as finishers). Returns a kind-weighted, cadence-scaled
+    ``antitank_score``, the ``top_kind`` label (the champion's strongest anti-tank
+    tool), and a ``shreds_resist`` flag (does it lower the tank's resists for the
+    whole team). The axis is selective: a flat-damage champion whose output
+    ignores enemy health and resists scores 0.0.
+    Body:
+      * ``champion`` (required)
+      * ``mode`` (default SR; carried on the result, does not change output)
+    Additive read-only metric: it perturbs no other route.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    try:
+        result = compute_antitank(champion, mode=mode)
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_rank_assassin(body: dict) -> dict:
     """POST /rank-assassin - rank items by total-burst-damage delta.
 
@@ -1648,6 +1678,7 @@ _POST_ROUTES = {
     "/zone-control": _route_zonecontrol,
     "/objective-damage": _route_objdamage,
     "/ally-amp": _route_allyamp,
+    "/anti-tank": _route_antitank,
 }
 
 # GET routes that need a body merge from query params for the same handler.
