@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 from dashboard import routes_pickban
 
 
@@ -927,6 +929,20 @@ class TestPersonalRecordEndToEnd(unittest.TestCase):
         h._send.assert_called_once()
         code, body, ctype = h._send.call_args[0]
         return code, _json.loads(body)
+
+    @pytest.mark.xfail(strict=True,
+                       reason="C2: personal-record silently defaults on bad "
+                              "queue; fix standardizes to a 400 like pickban-recs")
+    def test_bad_queue_returns_400(self):
+        rows = [{"match_id": "a", "puuid": "me", "team_id": 100,
+                 "team_position": "BOTTOM", "champion_id": 67,
+                 "champion_name": "Vayne", "win": 1}]
+        _build_test_db(self.db_path, rows)
+        h = self._make_handler(
+            "/api/champ-select/personal-record?champ=67&queue=abc")
+        routes_pickban._serve_personal_record(h)
+        code = h._send.call_args[0][0]
+        self.assertEqual(code, 400)
 
     def test_full_shape(self):
         rows = []
