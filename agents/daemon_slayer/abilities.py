@@ -74,6 +74,23 @@ _SCALING_FIELDS: tuple[str, ...] = (
     "caster_bonus_ms_pct",
 )
 
+# CDragon mechanical-ratio sidecar (item: prefer-CDragon re-source, default OFF).
+# Produced by ``tools/daemon_slayer_cdragon_ratio_extract.py`` next to the Meraki
+# snapshot: ``data/daemon_slayer/<patch>/cdragon_ability_ratios.json``.
+_CDRAGON_RATIO_SIDECAR = "cdragon_ability_ratios.json"
+
+# Scaling fields the CDragon resolver can emit (subset of ``_SCALING_FIELDS``).
+# Only these are re-sourced when ``prefer_cdragon_ratios=True``; any field the
+# CDragon block left None keeps the Meraki value (per-field fall-back).
+_CDRAGON_RATIO_FIELDS: tuple[str, ...] = (
+    "base",
+    "total_ad_pct",
+    "bonus_ad_pct",
+    "ap_pct",
+    "caster_max_hp_pct",
+    "target_max_hp_pct",
+)
+
 
 class AbilitiesNotFound(FileNotFoundError):
     """Raised when the requested abilities snapshot is missing."""
@@ -361,6 +378,69 @@ def _apply_passive_shield_overrides(cid: str, key: str, form: AbilityForm) -> Ab
     )
 
 
+def _load_cdragon_ratio_sidecar(root: Path, patch: str) -> dict[str, dict[str, list]]:
+    """Read the CDragon mechanical-ratio sidecar for ``patch``; fail-soft to {}.
+
+    The sidecar (``<root>/<patch>/cdragon_ability_ratios.json`` from
+    ``tools/daemon_slayer_cdragon_ratio_extract.py``) re-sources per-ability
+    damage ratios from the LIVE CommunityDragon character bins. A missing /
+    unreadable / malformed sidecar returns ``{}`` so the caller falls back to the
+    Meraki ``champion_abilities.json`` ratios unchanged - the CDragon source is a
+    PREFERENCE, never a hard dependency.
+
+    Returns ``{champion_id: {slot: [block, ...]}}`` where each block is the raw
+    resolver dict (``{name, base, ap_pct, ..., resolution, calc_type}``).
+    """
+    path = root / patch / _CDRAGON_RATIO_SIDECAR
+    if not path.exists():
+        return {}
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return {}
+    champs = doc.get("champions") if isinstance(doc, dict) else None
+    if not isinstance(champs, dict):
+        return {}
+    return champs
+
+
+def _apply_cdragon_ratio_preference(form: AbilityForm, cd_blocks: list) -> AbilityForm:
+    """Re-source ``form``'s damage-block ratios from the CDragon sidecar slot list.
+
+    OPT-IN: runs only when ``AbilitiesSnapshot.load`` is called with
+    ``prefer_cdragon_ratios=True``. Only the ``resolution == "mechanical"`` CDragon
+    blocks are eligible; they are paired POSITIONALLY with the form's
+    ``attribute_kind == "damage"`` blocks. For each pair, every scaling field the
+    CDragon block resolved (a non-empty list in ``_CDRAGON_RATIO_FIELDS``) REPLACES
+    the Meraki field on that block; fields the CDragon block left None keep the
+    Meraki value (per-field fall-back). The damage-block COUNT is never changed (no
+    block is created or dropped) so every downstream consumer sees the same
+    structure with re-sourced magnitudes. Meraki damage blocks with no paired
+    mechanical CDragon block stay verbatim. Returns ``form`` unchanged when no
+    mechanical CDragon block applies (whole-block fall-back to Meraki).
+    """
+    mech = [b for b in cd_blocks if isinstance(b, dict) and b.get("resolution") == "mechanical"]
+    if not mech:
+        return form
+    dmg_idx = [i for i, b in enumerate(form.damage_blocks) if b.attribute_kind == "damage"]
+    if not dmg_idx:
+        return form
+    new_blocks = list(form.damage_blocks)
+    changed = False
+    for cd, idx in zip(mech, dmg_idx):
+        overrides: dict[str, Any] = {}
+        for fld in _CDRAGON_RATIO_FIELDS:
+            v = cd.get(fld)
+            if isinstance(v, list) and v:
+                overrides[fld] = tuple(float(x) for x in v)
+        if overrides:
+            new_blocks[idx] = replace(new_blocks[idx], **overrides)
+            changed = True
+    if not changed:
+        return form
+    return replace(form, damage_blocks=tuple(new_blocks))
+
+
 @dataclass(frozen=True)
 class AbilitiesSnapshot:
     """Versioned snapshot of all champion ability records.
@@ -384,6 +464,8 @@ class AbilitiesSnapshot:
         apply_passive_damage: bool = False,
         apply_passive_heal: bool = False,
         apply_passive_shield: bool = False,
+        prefer_cdragon_ratios: bool = False,
+        cdragon_root: Path | None = None,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -410,6 +492,17 @@ class AbilitiesSnapshot:
         Barrier, Vi/Shen/Rakan/Yasuo P, Skarner W, Volibear E, Viktor Q, Camille
         P - effects-text-only self-shields) so ``compute_ability_hps`` scores
         them in ``total_shield_per_sec``. Default OFF = byte-identical.
+
+        ``prefer_cdragon_ratios`` (default False / OFF) re-sources per-ability
+        damage RATIOS from the live CommunityDragon mechanical sidecar
+        (``cdragon_ability_ratios.json``, ``tools/daemon_slayer_cdragon_ratio_extract.py``)
+        in preference to the frozen Meraki ``champion_abilities.json``. When True,
+        each primary form's damage-block scaling fields are overridden per-field by
+        the matching ``resolution == "mechanical"`` CDragon block; any field /
+        block the resolver could not mechanically resolve falls back to Meraki, as
+        does a missing sidecar. ``cdragon_root`` overrides where the sidecar is read
+        from (defaults to ``data_root``). Default OFF = byte-identical (the sidecar
+        is never read and forms are untouched).
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
@@ -436,6 +529,13 @@ class AbilitiesSnapshot:
                 f"Abilities snapshot {path} missing/empty 'data' container "
                 f"(snapshot {patch}) - corrupt or partially written"
             )
+        # Prefer-CDragon re-source: read the mechanical-ratio sidecar once
+        # (opt-in, default OFF). Empty map = no sidecar -> Meraki stays authoritative.
+        cd_map = (
+            _load_cdragon_ratio_sidecar(Path(cdragon_root) if cdragon_root else root, patch)
+            if prefer_cdragon_ratios
+            else {}
+        )
         champions: dict[str, dict[str, tuple[AbilityForm, ...]]] = {}
         for cid, keymap in data_block.items():
             if not isinstance(keymap, dict):
@@ -458,6 +558,13 @@ class AbilitiesSnapshot:
                     # GAP 2 effects-text-only SHIELD: opt-in, default OFF.
                     if apply_passive_shield:
                         fm = _apply_passive_shield_overrides(cid, key, fm)
+                    # Prefer-CDragon mechanical ratios: opt-in, default OFF.
+                    # Primary form only (the sidecar emits one block list per slot,
+                    # no form_index) - transform forms keep Meraki.
+                    if cd_map and fm.form_index == 0:
+                        cd_slot = (cd_map.get(cid) or {}).get(key)
+                        if cd_slot:
+                            fm = _apply_cdragon_ratio_preference(fm, cd_slot)
                     built.append(fm)
                 per_key[key] = tuple(built)
             champions[cid] = per_key
