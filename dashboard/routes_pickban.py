@@ -864,12 +864,21 @@ def _query_champ_record(conn: sqlite3.Connection, puuid: str, champ_id: int,
     return out
 
 
-def _query_with_ally(conn: sqlite3.Connection, puuid: str, ally_id: int,
-                      queue_ids: tuple[int, ...]) -> dict:
-    """Operator's lifetime record in matches where ``ally_id`` was on
-    their team (A2 - independent of what the operator played). Always
-    returns an entry; ``games`` may be 0 (A5)."""
+def _query_co_participant(conn: sqlite3.Connection, puuid: str, champ_id: int,
+                          queue_ids: tuple[int, ...], *,
+                          same_team: bool,
+                          with_losses: bool = False) -> dict:
+    """Operator's lifetime record in matches where ``champ_id`` shared the
+    board: on the operator's team (``same_team=True``, A2 - any ally,
+    independent of what the operator played) or the opposing team
+    (``same_team=False``, A1 - any enemy, lane-agnostic). Always returns
+    an entry; ``games`` may be 0 (A5). When ``with_losses`` the dict
+    carries a ``losses`` field (ban-side "how often this champ beats me")."""
     placeholders = ",".join("?" * len(queue_ids))
+    if same_team:
+        team_pred = "co.team_id = op.team_id\n              AND co.puuid != op.puuid"
+    else:
+        team_pred = "co.team_id != op.team_id"
     name, games, wins = conn.execute(
         f"""
         SELECT
@@ -883,66 +892,43 @@ def _query_with_ally(conn: sqlite3.Connection, puuid: str, ally_id: int,
             SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
           )
           AND EXISTS (
-            SELECT 1 FROM participants a
-            WHERE a.match_id = op.match_id
-              AND a.team_id = op.team_id
-              AND a.puuid != op.puuid
-              AND a.champion_id = ?
+            SELECT 1 FROM participants co
+            WHERE co.match_id = op.match_id
+              AND {team_pred}
+              AND co.champion_id = ?
           )
         """,
-        (ally_id, puuid, *queue_ids, ally_id),
+        (champ_id, puuid, *queue_ids, champ_id),
     ).fetchone()
     games = int(games or 0)
     wins = int(wins or 0)
-    champ_name = name or _load_champ_id_to_name().get(int(ally_id)) or "?"
-    return {
-        "champId":   int(ally_id),
+    champ_name = name or _load_champ_id_to_name().get(int(champ_id)) or "?"
+    out: dict = {
+        "champId":   int(champ_id),
         "champName": str(champ_name),
         "games":     games,
         "wins":      wins,
         "wr_pct":    int(round(100 * wins / games)) if games else 0,
     }
+    if with_losses:
+        out["losses"] = games - wins
+    return out
+
+
+def _query_with_ally(conn: sqlite3.Connection, puuid: str, ally_id: int,
+                      queue_ids: tuple[int, ...]) -> dict:
+    """Operator's lifetime record in matches where ``ally_id`` was on
+    their team (A2)."""
+    return _query_co_participant(conn, puuid, ally_id, queue_ids,
+                                 same_team=True)
 
 
 def _query_vs_enemy(conn: sqlite3.Connection, puuid: str, enemy_id: int,
                     queue_ids: tuple[int, ...]) -> dict:
-    """Operator's lifetime record in matches where ``enemy_id`` was on
-    the OPPOSING team, any lane (A1). Always returns an entry; ``games``
-    may be 0 (A5). Carries ``losses`` since the ban-side framing is
-    "how often does this champ beat me"."""
-    placeholders = ",".join("?" * len(queue_ids))
-    name, games, wins = conn.execute(
-        f"""
-        SELECT
-          (SELECT champion_name FROM participants
-             WHERE champion_id = ? LIMIT 1) AS champ_name,
-          COUNT(*) AS games,
-          SUM(CASE WHEN op.win=1 THEN 1 ELSE 0 END) AS wins
-        FROM participants op
-        WHERE op.puuid = ?
-          AND op.match_id IN (
-            SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
-          )
-          AND EXISTS (
-            SELECT 1 FROM participants e
-            WHERE e.match_id = op.match_id
-              AND e.team_id != op.team_id
-              AND e.champion_id = ?
-          )
-        """,
-        (enemy_id, puuid, *queue_ids, enemy_id),
-    ).fetchone()
-    games = int(games or 0)
-    wins = int(wins or 0)
-    champ_name = name or _load_champ_id_to_name().get(int(enemy_id)) or "?"
-    return {
-        "champId":   int(enemy_id),
-        "champName": str(champ_name),
-        "games":     games,
-        "wins":      wins,
-        "losses":    games - wins,
-        "wr_pct":    int(round(100 * wins / games)) if games else 0,
-    }
+    """Operator's lifetime record in matches where ``enemy_id`` was on the
+    OPPOSING team, any lane (A1). Carries ``losses`` for the ban framing."""
+    return _query_co_participant(conn, puuid, enemy_id, queue_ids,
+                                 same_team=False, with_losses=True)
 
 
 def _parse_csv_ints(raw: str) -> tuple[int, ...]:
