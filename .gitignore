@@ -208,3 +208,8 @@ data/daemon_slayer/user_builds.json
 # Tencent 101.qq raw scrape payloads - redistributable third-party data, never commit
 data/external/qq_double_raw.json
 data/external/qq_double_*.json
+
+# Gemini auditor (PROVISIONAL) - generated advisory reviews + the IO channel are
+# not source. The runner + prompt + config ARE committed; the nightly output is not.
+docs/EXTERNAL_REVIEW_*.md
+gemini_io/
