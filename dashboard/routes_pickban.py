@@ -609,15 +609,16 @@ def _query_last_in_queue(conn: sqlite3.Connection, puuid: str,
     }
 
 
-def _query_struggle_ban(conn: sqlite3.Connection, puuid: str, role: str,
-                         queue_ids: tuple[int, ...],
-                         exclude_ids: tuple[int, ...] = ()) -> dict | None:
-    """Operator's single highest loss-rate enemy at this role with
-    >=_MIN_GAMES_BAN encounters. The "struggle ban" surfaces the lane
-    matchup the operator personally loses to most often. Excludes any
-    champ already banned. Tied loss-rates broken by more encounters
-    (more reliable), then by champion_id (stable).
-    """
+def _query_loss_matchups(conn: sqlite3.Connection, puuid: str, role: str,
+                         queue_ids: tuple[int, ...], *, limit: int,
+                         exclude_ids: tuple[int, ...] = ()) -> list[dict]:
+    """Shared self-join body for ban recommendations: enemy champions in
+    the operator's role on the opposing team, ranked by the operator's
+    loss rate against them. Filtered to >=_MIN_GAMES_BAN encounters and a
+    >50% loss rate (a matchup the operator wins half-or-more is not a
+    threat). Returns up to ``limit`` rows {champId,name,encounters,losses,
+    pct}, tie-broken by more encounters then champion_id. ``exclude_ids``
+    skips champs already on the board."""
     placeholders = ",".join("?" * len(queue_ids))
     excl_sql, excl_params = _exclude_clause(exclude_ids, "enemy.champion_id")
     cur = conn.execute(
@@ -640,26 +641,41 @@ def _query_struggle_ban(conn: sqlite3.Connection, puuid: str, role: str,
         HAVING encounters >= ?
         ORDER BY (CAST(losses AS REAL) / encounters) DESC,
                  encounters DESC, enemy.champion_id ASC
-        LIMIT 1
+        LIMIT ?
         """,
-        (puuid, role, *queue_ids, *excl_params, _MIN_GAMES_BAN),
+        (puuid, role, *queue_ids, *excl_params, _MIN_GAMES_BAN, limit),
     )
-    row = cur.fetchone()
-    if not row:
+    out: list[dict] = []
+    for champ_id, champ_name, encounters, losses in cur.fetchall():
+        if not encounters:
+            continue
+        pct = int(round(100 * losses / encounters))
+        if pct < 50:
+            continue
+        out.append({
+            "champId":    int(champ_id),
+            "name":       str(champ_name or "?"),
+            "encounters": int(encounters),
+            "losses":     int(losses),
+            "pct":        pct,
+        })
+    return out
+
+
+def _query_struggle_ban(conn: sqlite3.Connection, puuid: str, role: str,
+                         queue_ids: tuple[int, ...],
+                         exclude_ids: tuple[int, ...] = ()) -> dict | None:
+    """Operator's single highest loss-rate enemy at this role with
+    >=_MIN_GAMES_BAN encounters and >50% loss rate - the lane matchup they
+    personally lose to most. Excludes champs already banned. None when no
+    qualifying struggle exists."""
+    rows = _query_loss_matchups(conn, puuid, role, queue_ids,
+                                limit=1, exclude_ids=exclude_ids)
+    if not rows:
         return None
-    champ_id, champ_name, encounters, losses = row
-    pct = int(round(100 * losses / encounters)) if encounters else 0
-    if pct < 50:
-        # Not a real struggle if operator wins half or more.
-        return None
-    return {
-        "champId":    int(champ_id),
-        "name":       str(champ_name or "?"),
-        "encounters": int(encounters),
-        "losses":     int(losses),
-        "pct":        pct,
-        "source":     "struggle",
-    }
+    top = rows[0]
+    top["source"] = "struggle"
+    return top
 
 
 def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
@@ -726,54 +742,10 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
 
 def _query_bans(conn: sqlite3.Connection, puuid: str, role: str,
                 queue_ids: tuple[int, ...]) -> list[dict]:
-    """Top 3 enemy champions in same role the operator has lost to most
-    often. Filters to encounters with at least ``_MIN_GAMES_BAN`` games
-    so a single loss to a one-trick doesn't recommend the ban.
-
-    Self-join on matches: tracked = operator's row, enemy = the role
-    counterpart on the opposing team_id.
-    """
-    placeholders = ",".join("?" * len(queue_ids))
-    cur = conn.execute(
-        f"""
-        SELECT enemy.champion_id, enemy.champion_name,
-               COUNT(*) AS encounters,
-               SUM(CASE WHEN tracked.win=0 THEN 1 ELSE 0 END) AS losses
-        FROM participants tracked
-        JOIN participants enemy
-          ON enemy.match_id = tracked.match_id
-         AND enemy.team_id != tracked.team_id
-         AND enemy.team_position = tracked.team_position
-        WHERE tracked.puuid = ?
-          AND tracked.team_position = ?
-          AND tracked.match_id IN (
-            SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
-          )
-        GROUP BY enemy.champion_id
-        HAVING encounters >= ?
-        ORDER BY (CAST(losses AS REAL) / encounters) DESC, encounters DESC,
-                 enemy.champion_id ASC
-        LIMIT 3
-        """,
-        (puuid, role, *queue_ids, _MIN_GAMES_BAN),
-    )
-    out: list[dict] = []
-    for champ_id, champ_name, encounters, losses in cur.fetchall():
-        if not encounters:
-            continue
-        pct = int(round(100 * losses / encounters))
-        # Only surface matchups where operator actually loses more than
-        # half the time - sub-50% loss rate isn't a ban-worthy threat.
-        if pct < 50:
-            continue
-        out.append({
-            "champId":     int(champ_id),
-            "name":        str(champ_name or "?"),
-            "encounters":  int(encounters),
-            "losses":      int(losses),
-            "pct":         pct,
-        })
-    return out
+    """Top 3 enemy champions in the operator's role they have lost to most
+    often (>=_MIN_GAMES_BAN encounters, >50% loss rate). Self-join: tracked
+    = operator's row, enemy = the role counterpart on the opposing team."""
+    return _query_loss_matchups(conn, puuid, role, queue_ids, limit=3)
 
 
 # --------------------------------------------------------------------
