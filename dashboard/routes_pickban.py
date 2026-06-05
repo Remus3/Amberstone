@@ -283,13 +283,17 @@ def _exclude_clause(exclude_ids: tuple[int, ...],
     return (f"AND {col} NOT IN ({placeholders})", exclude_ids)
 
 
-def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
-                               queue_ids: tuple[int, ...],
-                               exclude_ids: tuple[int, ...] = (),
-                               top: int = 1) -> list[dict]:
-    """Operator's top-N highest-WR champions at this role with
-    >=_MIN_GAMES_PICK games. Ties broken by higher game count (more
-    reliable signal). ``exclude_ids`` skips banned + already-shown ids."""
+def _query_performance_band(conn: sqlite3.Connection, puuid: str, role: str,
+                            queue_ids: tuple[int, ...], *,
+                            having_sql: str, having_params: tuple[int, ...],
+                            reason_suffix: str,
+                            exclude_ids: tuple[int, ...] = (),
+                            top: int = 1) -> list[dict]:
+    """Shared body for the comfort/limit performance moods: operator's
+    top-N highest-WR champions at this role, filtered by a games-count
+    HAVING predicate (``having_sql`` + ``having_params``). Ties broken by
+    higher game count (more reliable signal) then champion_id (stable).
+    ``exclude_ids`` skips banned + already-shown ids."""
     placeholders = ",".join("?" * len(queue_ids))
     excl_sql, excl_params = _exclude_clause(exclude_ids)
     cur = conn.execute(
@@ -305,11 +309,11 @@ def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
           )
           {excl_sql}
         GROUP BY champion_id
-        HAVING games >= ?
+        HAVING {having_sql}
         ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC, champion_id ASC
         LIMIT ?
         """,
-        (puuid, role, *queue_ids, *excl_params, _MIN_GAMES_PICK, top),
+        (puuid, role, *queue_ids, *excl_params, *having_params, top),
     )
     out: list[dict] = []
     for champ_id, champ_name, games, wins in cur.fetchall():
@@ -320,9 +324,21 @@ def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
             "games":     int(games),
             "wins":      int(wins),
             "wr_pct":    wr_pct,
-            "reason":    f"{wr_pct}% WR - {games} games - safe pick",
+            "reason":    f"{wr_pct}% WR - {games} games {reason_suffix}",
         })
     return out
+
+
+def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
+                               queue_ids: tuple[int, ...],
+                               exclude_ids: tuple[int, ...] = (),
+                               top: int = 1) -> list[dict]:
+    """Operator's top-N highest-WR champions at this role with
+    >=_MIN_GAMES_PICK games. ``exclude_ids`` skips banned + already-shown."""
+    return _query_performance_band(
+        conn, puuid, role, queue_ids,
+        having_sql="games >= ?", having_params=(_MIN_GAMES_PICK,),
+        reason_suffix="- safe pick", exclude_ids=exclude_ids, top=top)
 
 
 def _query_performance_limit(conn: sqlite3.Connection, puuid: str, role: str,
@@ -330,43 +346,13 @@ def _query_performance_limit(conn: sqlite3.Connection, puuid: str, role: str,
                              exclude_ids: tuple[int, ...] = (),
                              top: int = 1) -> list[dict]:
     """Operator's best champions in the 1-5 games "developing" band -
-    enough plays to show signal but not enough to be a true main. The
-    intent is "push your range" - surface champs you're trending up on.
-    """
-    placeholders = ",".join("?" * len(queue_ids))
-    excl_sql, excl_params = _exclude_clause(exclude_ids)
-    cur = conn.execute(
-        f"""
-        SELECT champion_id, champion_name,
-               COUNT(*) AS games,
-               SUM(CASE WHEN win=1 THEN 1 ELSE 0 END) AS wins
-        FROM participants
-        WHERE puuid = ?
-          AND team_position = ?
-          AND match_id IN (
-            SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
-          )
-          {excl_sql}
-        GROUP BY champion_id
-        HAVING games BETWEEN ? AND ?
-        ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC, champion_id ASC
-        LIMIT ?
-        """,
-        (puuid, role, *queue_ids, *excl_params,
-         _LIMIT_GAMES_MIN, _LIMIT_GAMES_MAX, top),
-    )
-    out: list[dict] = []
-    for champ_id, champ_name, games, wins in cur.fetchall():
-        wr_pct = int(round(100 * wins / games)) if games else 0
-        out.append({
-            "champId":   int(champ_id),
-            "champName": str(champ_name or "?"),
-            "games":     int(games),
-            "wins":      int(wins),
-            "wr_pct":    wr_pct,
-            "reason":    f"{wr_pct}% WR - {games} games - growth pick (small sample)",
-        })
-    return out
+    enough plays to show signal but not enough to be a true main."""
+    return _query_performance_band(
+        conn, puuid, role, queue_ids,
+        having_sql="games BETWEEN ? AND ?",
+        having_params=(_LIMIT_GAMES_MIN, _LIMIT_GAMES_MAX),
+        reason_suffix="- growth pick (small sample)",
+        exclude_ids=exclude_ids, top=top)
 
 
 def _query_performance_new(conn: sqlite3.Connection, puuid: str, role: str,
