@@ -205,6 +205,13 @@ _DEFAULT_SR_QUEUES = (400, 420, 430, 440, 490)
 _MIN_GAMES_PICK = 3
 _MIN_GAMES_BAN  = 2
 
+# Loss-rate floor for a ban suggestion - below this the operator wins
+# half-or-more of the matchup, so it is not a threat worth banning.
+_BAN_MIN_LOSS_PCT = 50
+
+# Summoner-spell id for Cleanse (D), checked by the CC-cleanse advisory.
+_CLEANSE_SUMMONER_ID = 1
+
 # s209: mood-aware re-ranking modes. The champ-select panel has a 4-button
 # mood toggle that pre-s209 just persisted to sessionStorage with no
 # downstream effect. Each mood reshapes the `performance` query:
@@ -234,6 +241,11 @@ _SYNERGY_WINDOW_DAYS = 60
 # enough to surface signal beyond a single coin-flip game.
 _LIMIT_GAMES_MIN = 1
 _LIMIT_GAMES_MAX = 5
+
+
+def _pct(numerator: int, denominator: int) -> int:
+    """Rounded integer percentage; 0 when the denominator is 0."""
+    return int(round(100 * numerator / denominator)) if denominator else 0
 
 
 def _resolve_operator_puuid(conn: sqlite3.Connection) -> str | None:
@@ -317,7 +329,7 @@ def _query_performance_band(conn: sqlite3.Connection, puuid: str, role: str,
     )
     out: list[dict] = []
     for champ_id, champ_name, games, wins in cur.fetchall():
-        wr_pct = int(round(100 * wins / games)) if games else 0
+        wr_pct = _pct(wins, games)
         out.append({
             "champId":   int(champ_id),
             "champName": str(champ_name or "?"),
@@ -414,7 +426,7 @@ def _rank_by_smoothed_wr(raw_rows, reason_suffix: str, top: int) -> list[dict]:
     for champ_id, champ_name, games, wins in raw_rows:
         games = int(games)
         wins = int(wins)
-        wr_pct = int(round(100 * wins / games)) if games else 0
+        wr_pct = _pct(wins, games)
         smoothed = _sr.laplace_rate(wins, games)
         scored.append((
             smoothed, games, int(champ_id),
@@ -649,8 +661,8 @@ def _query_loss_matchups(conn: sqlite3.Connection, puuid: str, role: str,
     for champ_id, champ_name, encounters, losses in cur.fetchall():
         if not encounters:
             continue
-        pct = int(round(100 * losses / encounters))
-        if pct < 50:
+        pct = _pct(losses, encounters)
+        if pct < _BAN_MIN_LOSS_PCT:
             continue
         out.append({
             "champId":    int(champ_id),
@@ -732,7 +744,7 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
             heavy_cc_champs.append(name)
     if len(heavy_cc_champs) < 3:
         return None
-    has_cleanse = 1 in (my_summoners or ())
+    has_cleanse = _CLEANSE_SUMMONER_ID in (my_summoners or ())
     if has_cleanse:
         return None
     sample = ", ".join(heavy_cc_champs[:3])
@@ -806,7 +818,7 @@ def _query_champ_record(conn: sqlite3.Connection, puuid: str, champ_id: int,
         "champName":   str(champ_name),
         "games":       games,
         "wins":        wins,
-        "wr_pct":      int(round(100 * wins / games)),
+        "wr_pct":      _pct(wins, games),
         "role":        None,
         "role_games":  None,
         "role_wins":   None,
@@ -832,7 +844,7 @@ def _query_champ_record(conn: sqlite3.Connection, puuid: str, champ_id: int,
         out["role"] = role
         out["role_games"] = rg
         out["role_wins"] = rw
-        out["role_wr_pct"] = int(round(100 * rw / rg)) if rg else None
+        out["role_wr_pct"] = _pct(rw, rg) if rg else None
     return out
 
 
@@ -880,7 +892,7 @@ def _query_co_participant(conn: sqlite3.Connection, puuid: str, champ_id: int,
         "champName": str(champ_name),
         "games":     games,
         "wins":      wins,
-        "wr_pct":    int(round(100 * wins / games)) if games else 0,
+        "wr_pct":    _pct(wins, games),
     }
     if with_losses:
         out["losses"] = games - wins
