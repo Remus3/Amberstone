@@ -80,6 +80,7 @@ from .zonecontrol import compute_zonecontrol
 from .objdamage import compute_objdamage
 from .allyamp import compute_allyamp
 from .antitank import compute_antitank
+from .extendedduel import compute_extendedduel
 from .matchup import compute_matchup
 from .rank import SORT_KEYS, rank_items
 
@@ -134,6 +135,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/objective-damage</td><td>objective / structure-damage (kind-weighted scope-scaled score + top kind + pressures-structures flag) for a champion (item 303)</td></tr>
 <tr><td>POST</td><td>/ally-amp</td><td>ally-amplification / buff-throughput (kind-weighted reach-scaled score + top kind + saves-ally flag) for a champion (item 304)</td></tr>
 <tr><td>POST</td><td>/anti-tank</td><td>anti-tank / %HP-damage + resist-shred (kind-weighted cadence-scaled score + top kind + shreds-resist flag) for a champion (item 308)</td></tr>
+<tr><td>POST</td><td>/extended-duel</td><td>extended-dueling / 1v1 sustained-fight (kind-weighted cadence-scaled score + top kind + ramps flag) for a champion (item 309)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -1378,6 +1380,33 @@ def _route_antitank(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_extendedduel(body: dict) -> dict:
+    """POST /extended-duel - extended-dueling / 1v1 sustained-fight for a champion.
+
+    Item 309 (ENGINE 1.118.0): the seventeenth scored axis - how well a champion's
+    OWN KIT wins a PROLONGED 1v1 duel past the initial burst window (the RAMP /
+    RESET / DUELHEAL / ENDURE attrition tools it brings). Returns a kind-weighted,
+    cadence-scaled ``duel_score``, the ``top_kind`` label (the champion's strongest
+    duel tool), and a ``ramps`` flag (does the kit get STRONGER the longer the fight
+    runs - do not commit to a long 1v1 against it). The axis is selective: a burst /
+    artillery / utility champion with no attrition tools scores 0.0.
+    Body:
+      * ``champion`` (required)
+      * ``mode`` (default SR; carried on the result, does not change output)
+    Additive read-only metric: it perturbs no other route.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    try:
+        result = compute_extendedduel(champion, mode=mode)
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_rank_assassin(body: dict) -> dict:
     """POST /rank-assassin - rank items by total-burst-damage delta.
 
@@ -1679,6 +1708,7 @@ _POST_ROUTES = {
     "/objective-damage": _route_objdamage,
     "/ally-amp": _route_allyamp,
     "/anti-tank": _route_antitank,
+    "/extended-duel": _route_extendedduel,
 }
 
 # GET routes that need a body merge from query params for the same handler.

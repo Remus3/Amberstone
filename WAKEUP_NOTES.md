@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-05 - DS extended-dueling / 1v1 scorer - 17th axis (item 309) [10-channel fan-out]
+
+Operator: "start the next DS schema lift with 10 multi-agents fan out different channels and exhaust it then /done for /clear" (17th use, 10th explicit fan-out). Upfront AskUserQuestion -> **extended-dueling/1v1** (longest-standing runner-up across items 297-308) over pick-potential or disengage/self-peel. ENGINE 1.117.0 -> 1.118.0; DS :8893 restarted taskkill pid 5740 -> 1.118.0 live-verified. Full record = item 309 in `docs/LEDGER.md`.
+
+- **NEW `agents/daemon_slayer/extendedduel.py` + `/extended-duel` route (POST+GET).** The SEVENTEENTH scored axis - how well a kit WINS a long 1v1 PAST the burst window (burst = front-loaded, DPS = raw-vs-dummy; neither asks who wins the long fight). COMPOSITE: `duel_score` = sum(kind_weight [RAMP 1.0 / RESET 0.85 / DUELHEAL 0.75 / ENDURE 0.6] * cadence_mult [SUSTAINED 1.0 / PERIODIC 0.8 / BURST 0.65] * magnitude), 0.5 conditional midpoint; `top_kind` + `ramps` flag (any RAMP - gets STRONGER the longer you fight). PURELY ADDITIVE (byte-identical to every existing route). SELECTIVE-but-BROAD (111/171; burst/artillery/utility champs 0.0). **Dual-kind-per-slot** (Aatrox P = RAMP + DUELHEAL; Nasus R = RAMP + DUELHEAL; Renekton fury = RESET + ENDURE).
+- **Fan-out:** 171-champ Workflow (10 classify + 10 critics, Sonnet, 1.05M tok / 247 tool uses / 584s) -> 283 entries / 111 champs / 81 conditional / 63 ramping / kinds RAMP 81 ENDURE 76 DUELHEAL 75 RESET 51. Live: MasterYi 2.74 / Tryndamere 2.38 / Jax 2.12 / Aatrox 2.11 / Yone 1.66 / Fiora 1.65 / Nasus 1.60 top; Leblanc/Veigar/Lux/Xerath/Janna/Sona 0.0. + `tools/ds_extendedduel_build.py` ((champ,source,kind) dedup) + notes sidecar (added to ds_share_sync exclude list).
+- +32 tests `test_extendedduel_item309.py`; DS suite 6611 passed; tests/ live-/health + Share-anchor subset green post-restart; ruff clean; 65 source files ENGINE pin-synced (3 historical antitank refs reverted to 1.117.0 - birth-version convention); Share re-sync 313 files --check 0; CHANGELOG +1.118.0; DAEMON_SLAYER.md header+changelog synced; ROADMAP relocated item 304 -> `docs/ROADMAP_HISTORY.md` (80KB budget).
+- **Don't-redo:** regenerate the registry via `tools/ds_extendedduel_build.py` (marker-spliced, do not hand-edit); DUELHEAL deliberately overlaps item-298 self-sustain (here it is one weighted component of the composite, keep both); 111/171 is correct (a 0.0 burst/utility champ is not a gap); dual-kind-per-slot intentional. The extended-dueling/1v1 axis is EXHAUSTED across the roster.
+- **NEXT (Phase D, live-gated):** an auto-pairing consumer crediting extended-duel into a live matchup / "do not take this lane into a long 1v1" verdict (vs the enemy laner's duel_score + ramps); tune the kind weights + cadence mults after a live re-rank.
+
+---
+
 # 2026-06-05 - DS anti-tank %HP/shred scorer - 16th axis (item 308) [headless-upgrade autonomous run]
 
 Operator fired `/headless-upgrade` via the new desktop launcher (no explicit task); the autonomous run shipped the next DS axis. Commits `56fcb3d3` (axis) + `7901712a` (launcher). ENGINE 1.116.0 -> 1.117.0; DS :8893 restarted taskkill pid 18796 -> 1.117.0 live-verified. Full record = item 308 in `docs/LEDGER.md`.

@@ -1,0 +1,2554 @@
+{
+ "item": 309,
+ "engine": "1.118.0",
+ "count": 283,
+ "entries": [
+  {
+   "champion": "Aatrox",
+   "source": "E",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Umbral Dash passive: Aatrox heals for 16% (+1.1% per 100 bonus health) of non-persistent post-mitigation damage he deals to enemy champions - an always-on lifesteal layer across the entire duel."
+  },
+  {
+   "champion": "Aatrox",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Deathbringer Stance: periodically empowers the next attack to deal bonus max-HP damage; in a prolonged duel the proc fires repeatedly, ramping sustained damage output each cycle."
+  },
+  {
+   "champion": "Aatrox",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Deathbringer Stance heals Aatrox for 100% of the post-mitigation bonus damage dealt on each empowered proc, continuously refilling HP throughout a prolonged exchange."
+  },
+  {
+   "champion": "Aatrox",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "World Ender: grants bonus attack damage and amplifies all self-healing for 10 seconds, dramatically amplifying both the RAMP and DUELHEAL mechanisms while active."
+  },
+  {
+   "champion": "Aatrox",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "World Ender: amplifies Aatrox's healing from all sources by a significant percentage for its duration, turning already strong lifesteal into fight-winning attrition."
+  },
+  {
+   "champion": "Akali",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Assassin's Mark: casting an ability creates a ring; stepping out empowers next AA, cycling the ring continuously through the duel"
+  },
+  {
+   "champion": "Akali",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Perfect Execution: two-stage dash - second cast fires within a 3s window of the first, re-engaging mid-duel"
+  },
+  {
+   "champion": "Akshan",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Dirty Fighting: after landing two consecutive basic attacks Akshan gains a shield, providing a recurring defensive layer while he fights"
+  },
+  {
+   "champion": "Alistar",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Triumphant Roar: heals Alistar and nearby allies after he stuns or knocks up an enemy (3s CD); fires repeatedly whenever his Q/W CC connects in a prolonged duel"
+  },
+  {
+   "champion": "Alistar",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "Unbreakable Will: strips all CC and reduces incoming damage by 55-75% for 7s; a massive defensive window that lets Alistar absorb a full duel exchange at reduced damage"
+  },
+  {
+   "champion": "Ambessa",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Public Execution passive: Ambessa heals for a percentage of post-mitigation damage dealt by her active abilities, providing continuous in-combat lifesteal across her sustained Q-W-E combo loop"
+  },
+  {
+   "champion": "Amumu",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Tantrum: passively reduces incoming physical damage by a flat amount, providing a continuous damage-reduction layer throughout any sustained melee exchange"
+  },
+  {
+   "champion": "Amumu",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Despair: Amumu deals magic damage per second equal to a percentage of nearby enemies' max HP while toggled on; the longer he stays close in a 1v1 the more total damage this racks up, punishing high-health targets"
+  },
+  {
+   "champion": "Anivia",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Rebirth: on taking lethal damage Anivia revives as an egg with hard CC immunity, granting a full second health bar mid-duel before she can be killed a second time"
+  },
+  {
+   "champion": "Aurora",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Spirit Abjuration: every 3 hits on enemies grants a free pounce, enabling repeated re-engagement in a sustained fight"
+  },
+  {
+   "champion": "Aurora",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Spirit Abjuration: for each active Spirit, Aurora is healed for 3-20 (based on level) (+ 2% AP) every second, up to 4x at 4 Spirits"
+  },
+  {
+   "champion": "Belveth",
+   "source": "E",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Royal Maelstrom: while channeling, Belveth gains 20% (+ 100% life steal) life steal and rapidly slashes the lowest-HP enemy, converting rapid on-hit strikes into HP recovery during a defensive channel window"
+  },
+  {
+   "champion": "Belveth",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Royal Maelstrom: Belveth enters a defensive stance gaining damage reduction for 1.5 seconds while continuously slashing, allowing her to tank incoming damage while still dealing damage - a brief but real keep-swinging endurance layer"
+  },
+  {
+   "champion": "Belveth",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Endless Banquet passive: every other basic attack on-hit against the same marked target deals escalating bonus true damage that stacks infinitely (capped at 5 vs epic monsters), so the longer the duel runs the higher her per-attack true damage climbs"
+  },
+  {
+   "champion": "Belveth",
+   "source": "W",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Above and Below: hitting an enemy champion resets the Void Surge dash cooldown of the struck direction, re-enabling her cardinal-dash attack cycle within a sustained 1v1"
+  },
+  {
+   "champion": "Braum",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Unbreakable raises Braum's shield for up to 4 seconds, blocking projectiles entirely from the front and reducing incoming damage by 30-40%; re-usable on a ~14-18s cooldown, providing a recurring frontal damage-reduction window in a sustained 1v1."
+  },
+  {
+   "champion": "Briar",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Hemorrhage stacks deal increasing bleed damage per stack, building continuously as Briar attacks in melee range."
+  },
+  {
+   "champion": "Briar",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Crimson Curse grants Briar lifesteal that scales with her missing HP - the lower she falls the more she heals per hit, providing continuous in-fight recovery throughout the duel."
+  },
+  {
+   "champion": "Briar",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Briar's ult launches her into an uncontrollable berserk state removing all self-directed fear, sustaining full offensive output until the duel ends."
+  },
+  {
+   "champion": "Briar",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "Maul's frenzy state causes Briar to heal for a percentage of damage dealt with every attack, refilling HP throughout the duel."
+  },
+  {
+   "champion": "Briar",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Briar's frenzy grants increasing Attack Speed the longer she remains in combat, ramping her DPS over the extended fight."
+  },
+  {
+   "champion": "Camille",
+   "source": "E",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Hookshot: Camille fires a hookshot to a wall, then can launch to a target location - enabling re-engagement and sustained pressure cycles within a duel."
+  },
+  {
+   "champion": "Camille",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Adaptive Defenses: Camille's next basic attack against a champion grants her a shield based on her maximum health (AD scaling: 20-50% max HP)."
+  },
+  {
+   "champion": "Camille",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Camille is healed for 100% of this additional damage post-mitigation against enemy champions in the outer half of Tactical Sweep."
+  },
+  {
+   "champion": "Cassiopeia",
+   "source": "E",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Twin Fang: cooldown reduces to ~0.75s when target is poisoned, enabling near-continuous re-fire throughout a prolonged duel"
+  },
+  {
+   "champion": "Darius",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Hemorrhage: each ability and auto applies a stack (max 5); at 5 stacks Darius gains Noxian Might granting 30-230 bonus attack damage and instantly applies 5 stacks, making every subsequent hit dramatically harder the longer the duel runs"
+  },
+  {
+   "champion": "Darius",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Decimate: heals Darius for 17-51% of his missing health per enemy champion hit by the blade portion (outer arc), providing a significant mid-duel HP refill when he connects the outer edge"
+  },
+  {
+   "champion": "Darius",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Noxian Guillotine: resets its cooldown on a champion kill and at rank 3 has no cooldown after the 20-second recast window - allowing Darius to re-execute within the same duel if a stacked target dies and a second target enters range"
+  },
+  {
+   "champion": "Diana",
+   "source": "E",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Lunar Rush: grants a free CD reset after casting if Moonlight is on the target; allows Diana to re-dash onto the target repeatedly within the duel when Q-Moonlight is maintained"
+  },
+  {
+   "champion": "Diana",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Moonsilver Blade: every third attack triggers a cleaving empowered strike; provides a periodic auto-enhancement that rewards sustained melee combat exchanges"
+  },
+  {
+   "champion": "Diana",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Pale Cascade: summons 3 orbiting spheres that shield Diana; if all 3 detonate the shield refreshes, providing a renewable defensive layer that can cycle multiple times in a prolonged duel"
+  },
+  {
+   "champion": "Draven",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Spinning Axe empowers Draven's current attack to deal bonus physical damage; catching the rebound immediately re-readies the mark, so Draven can maintain two axes continuously, sustaining elevated per-auto damage output for the full length of a duel."
+  },
+  {
+   "champion": "Draven",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Blood Rush resets its own cooldown whenever Draven catches a Spinning Axe, granting stacking attack speed and movement speed refreshes throughout a prolonged exchange; conditional on successfully catching axes."
+  },
+  {
+   "champion": "DrMundo",
+   "source": "BASE",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Resourceless kit with no mana or energy cost on any ability; can sustain offensive output indefinitely through a long exchange"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Adrenaline Rush: regenerates 0.8% maximum health each second, continuously refilling HP through any prolonged fight"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Maximum Dosage: instantly restores 20% missing health then regenerates up to 20% max health over 10 seconds, reversing attrition mid-duel"
+  },
+  {
+   "champion": "DrMundo",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Heart Zapper: stores a portion of damage taken as gray health; re-casting returns that stored gray health as a direct heal, providing a recurring mid-duel HP recovery on a short cooldown"
+  },
+  {
+   "champion": "Ekko",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Z-Drive Resonance applies a mark on third hit to the same target, dealing bonus damage and briefly slowing, re-cycling burst every few attacks."
+  },
+  {
+   "champion": "Ekko",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Chronobreak rewinds Ekko to his position 4 seconds prior at full health recorded then, fully restoring HP mid-duel and dealing burst damage on arrival."
+  },
+  {
+   "champion": "Ekko",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Chronobreak rewinds Ekko, effectively resetting his ability state and repositioning him to re-open his combo within the same duel."
+  },
+  {
+   "champion": "Ekko",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Parallel Convergence's aftershock grants Ekko a large shield when he enters the zone, providing a defensive layer mid-duel on a moderate cooldown."
+  },
+  {
+   "champion": "Elise",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Spider Queen - Spider Form: Elise's basic attacks heal her for 6/8/10/12 (+8% AP) on-hit while in Spider Form - a continuous lifesteal layer that sustains her through a prolonged melee exchange."
+  },
+  {
+   "champion": "Elise",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Skittering Frenzy (Spider Form): Elise and her Spiderlings gain bonus attack speed for 3 seconds and her attack timer is reset - a short AS steroid that spikes her DPS window in an extended melee."
+  },
+  {
+   "champion": "Evelynn",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "While below 250-590 (based on level) (+ 250% AP) health, Evelynn heals herself for 15-150 (based on level) every second."
+  },
+  {
+   "champion": "Evelynn",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Last Caress deals doubled damage below 30% HP and resets Evelynn to camouflage; the execute threshold plus reset cycle is a discrete conditional power burst central to her duel pattern."
+  },
+  {
+   "champion": "Ezreal",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Rising Spell Force: hitting abilities stacks up to 5 charges of 8% bonus attack speed each, accumulating through the fight"
+  },
+  {
+   "champion": "Ezreal",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Mystic Shot: each hit reduces all of Ezreal's cooldowns by 1.5s, continuously refreshing W, E, and R across a prolonged exchange"
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Bountiful Harvest: Fiddlesticks heals itself for 25/32.5/40/47.5/55% of pre-mitigation damage dealt to champions over the 2s drain channel"
+  },
+  {
+   "champion": "Fiora",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "Duelist's Dance: striking a Vital heals Fiora for 40-115 (based on level) (+0.55 bonus AD) HP"
+  },
+  {
+   "champion": "Fiora",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Duelist's Dance: after striking a Vital a new one appears on a different side; each Vital proc re-energizes her combo cadence within a single duel"
+  },
+  {
+   "champion": "Fiora",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Lunge: cooldown is halved when the strike hits a Vital, reducing effective CD to ~3s in active duel; effectively re-fires the gap-close every Vital proc"
+  },
+  {
+   "champion": "Fiora",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Grand Challenge: if Fiora hits all 4 Vitals or the target dies, a healing zone appears granting her and nearby allies 20-45% of max HP over 2s"
+  },
+  {
+   "champion": "Fiora",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Riposte: Fiora parries all incoming damage and disabling effects for 0.75s then slows or stuns the target; window must be timed correctly"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Trial by Fire: empowered melee strike every few seconds deals bonus true damage and sets the target on fire; re-fires on a short cooldown through the duel"
+  },
+  {
+   "champion": "Gangplank",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Remove Scurvy: consumes an orange to cure all crowd control and restore a chunk of health, providing a mid-duel heal reset"
+  },
+  {
+   "champion": "Garen",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Judgment spins continuously for up to 3 seconds dealing repeated physical hits; Garen can reactivate the spin cycle to maintain output, providing continuous damage pressure that rewards staying in close range over the length of a duel."
+  },
+  {
+   "champion": "Garen",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Decisive Strike refreshes on a short cooldown, empowering Garen's next basic attack with a silence and auto-reset; repeatedly re-applicable within a prolonged duel, each cycle adding a guaranteed silencing strike and re-firing the empowered auto."
+  },
+  {
+   "champion": "Garen",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Courage passively builds bonus armor and magic resistance by farming minions and champions (up to +30 bonus armor, stacking toward a cap); once accrued, these permanent resistance stacks provide an always-on durability layer that makes every duel Garen survives slightly more winnable."
+  },
+  {
+   "champion": "Gnar",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Rage Gene passively builds Rage while Gnar attacks and takes damage; at 100 Rage he transforms into Mega Gnar, massively amplifying his dueling power."
+  },
+  {
+   "champion": "Gnar",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.68,
+   "conditional": true,
+   "source_quote": "Mega Gnar form grants substantially increased base stats (HP, Armor, MR, AD) and a slowing enhanced auto, outlasting opponents during the transformation window."
+  },
+  {
+   "champion": "Gragas",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Happy Hour: periodically, after casting an ability, Gragas heals himself for 5.5% of his maximum health - a meaningful attrition heal that accumulates significantly across a prolonged exchange with repeated ability casts."
+  },
+  {
+   "champion": "Gragas",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Drunken Rage: Gragas channels to gain damage reduction for 2.5 seconds, providing a defensive window that extends his staying power in a sustained 1v1."
+  },
+  {
+   "champion": "Graves",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Quickdraw: Graves dashes and reloads one shell, allowing him to sustain combat pressure and maintain his True Grit armor stacks throughout a prolonged exchange."
+  },
+  {
+   "champion": "Graves",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "True Grit: Graves gains stacking bonus armor (up to 8 stacks) for each shell loaded while in sustained combat, meaning his defensive profile grows the longer the duel continues."
+  },
+  {
+   "champion": "Gwen",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Skip 'n Slash: empowers Gwen's next several attacks with bonus attack speed and magic damage on cast"
+  },
+  {
+   "champion": "Gwen",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.82,
+   "conditional": false,
+   "source_quote": "A Thousand Cuts: on-hit bonus magic damage equal to a percent of max HP, healing Gwen whenever it damages a champion"
+  },
+  {
+   "champion": "Gwen",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Hallowed Mist: creates a zone that enemies outside cannot target Gwen through, granting a defensive endurance window in the duel"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Rampage: each consecutive Rampage hit reduces the next cast's cooldown and cost, building continuous attack cadence that accelerates the longer the fight runs"
+  },
+  {
+   "champion": "Hecarim",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Spirit of Dread: Hecarim is healed for 25% of the post-mitigation damage dealt to enemies within the area from all sources over the 4s window"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "E",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Test of Spirit: extracts an enemy's spirit as a Vessel; Tentacle hits on the Vessel heal Illaoi repeatedly over the 10s vessel window, turning a 1v1 into a sustained attrition win"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Prophet of an Elder God: Illaoi periodically spawns a Tentacle on nearby walls; more Tentacles active = more simultaneous hits as the duel extends"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Leap of Faith: immediately spawns a Tentacle for each nearby enemy champion, massively refreshing the tentacle army mid-duel for an instant power spike"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Harsh Lesson: Illaoi leaps to strike, commanding a nearby Tentacle to slam; each Tentacle hit heals her, sustaining through the duel on a 4s CD"
+  },
+  {
+   "champion": "Irelia",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Ionian Fervor: each nearby enemy champion stacks bonus attack speed and grants physical damage reduction at max stacks, ramping power the longer the duel continues"
+  },
+  {
+   "champion": "Irelia",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Ionian Fervor at max stacks: grants 10% physical and magic damage reduction, providing sustained DR throughout an extended exchange"
+  },
+  {
+   "champion": "Irelia",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Bladesurge: fully resets on killing or assisting a target; within a duel with minions or low-HP targets nearby it re-fires continuously, maintaining high effective DPS"
+  },
+  {
+   "champion": "Irelia",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Defiant Dance: channels to reduce incoming physical damage by up to 90% during the wind-up, then releases for damage; provides a meaningful burst DR window inside a prolonged 1v1"
+  },
+  {
+   "champion": "Jax",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Counter Strike: Jax dodges all basic attacks for up to 2 seconds, then stuns nearby enemies - hard block of the opponent's offensive output within the duel."
+  },
+  {
+   "champion": "Jax",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Relentless Assault: Jax's attack speed increases by 3.5-11.5% per stack, stacking up to 8 times as he strikes, compounding throughout the duel."
+  },
+  {
+   "champion": "Jax",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Grandmaster-at-Arms passive stacks grant bonus armor and magic resistance with each hit; active unleashes AoE magic damage and keeps resistances elevated through the fight."
+  },
+  {
+   "champion": "Jax",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Grandmaster-at-Arms passive grants up to 100/140/180 bonus armor and MR accumulated during the fight, sustaining Jax's defensive profile across a long exchange."
+  },
+  {
+   "champion": "Kaisa",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Second Skin: autos and abilities build Plasma stacks on enemies; at 4 stacks detonates for bonus magic damage scaling with target max HP, rewarding extended auto-trading"
+  },
+  {
+   "champion": "Kalista",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Rend: damage dealt scales directly with the number of Spears embedded in the target; each basic attack embeds another Spear, so DPS compounds the longer the duel runs"
+  },
+  {
+   "champion": "Kassadin",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Void Stone: Kassadin permanently takes 10% reduced magic damage - a sustained minor defensive layer that contributes to his attrition durability against magic-damage duelists."
+  },
+  {
+   "champion": "Kassadin",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Riftwalk: stacks mana cost and damage each successive cast within a short window; in a prolonged 1v1 the repeated resets compound into escalating burst per cast."
+  },
+  {
+   "champion": "Kassadin",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Riftwalk: very short cooldown (1.5s at max rank) allows repeated re-fires within a single duel, effectively re-cycling the combo at a rate no other ability matches."
+  },
+  {
+   "champion": "Katarina",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Voracity: whenever an enemy champion dies within 3 seconds of Katarina damaging them, all basic ability cooldowns are reset, enabling a full second rotation within the duel window."
+  },
+  {
+   "champion": "Katarina",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Voracity: Katarina also recovers 15% of her missing health on enemy champion takedown, providing meaningful HP restoration that extends her staying power mid-duel."
+  },
+  {
+   "champion": "Katarina",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Bouncing Blade leaves a dagger; picking up daggers reduces all ability cooldowns by 78% - enabling rapid re-fire of the full ability sequence within one duel."
+  },
+  {
+   "champion": "Katarina",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Whirling Death: channels spinning blades for 2.5 seconds; cooldown is reduced by 15 seconds on each nearby enemy takedown, enabling re-use within the same duel window."
+  },
+  {
+   "champion": "Kayle",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.88,
+   "conditional": false,
+   "source_quote": "Divine Ascent: stacks attack speed with every ability and AA; at stack thresholds unlocks ranged, then AoE, then flaming ranged AoE attacks"
+  },
+  {
+   "champion": "Kayle",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.72,
+   "conditional": true,
+   "source_quote": "Divine Judgment: renders Kayle (and an ally) invulnerable for 2.5s, providing a full damage-immunity endurance window"
+  },
+  {
+   "champion": "Kayle",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Celestial Blessing: heals Kayle (and an ally) and grants bonus movement speed on cast"
+  },
+  {
+   "champion": "Kayn",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "The Darkin Scythe: Kayn heals for 25% of post-mitigation damage dealt by his abilities (Rhaast form further amplifies this sustain)"
+  },
+  {
+   "champion": "Kayn",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Umbral Trespass (Darkin Bonus): Rhaast heals for 11.25% (+ 7.5% per 100 bonus AD) of the target's maximum health after the recast - massive mid-duel refill gated on Rhaast form"
+  },
+  {
+   "champion": "Kennen",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Lightning Rush: Kennen transforms into a ball of electricity gaining 100% bonus attack speed and energizing his next 5 attacks to each apply a mark of the storm"
+  },
+  {
+   "champion": "Kennen",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Mark of the Storm: at 3 marks the target is stunned for 1-1.5s; Kennen can reapply marks through repeated abilities re-firing his stun within a prolonged duel"
+  },
+  {
+   "champion": "Khazix",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.3,
+   "conditional": true,
+   "source_quote": "Void Spike: heals Kha'Zix if he is within the explosion radius when the spike detonates on an enemy - a minor self-heal available every 9s when he positions himself inside melee range for the burst"
+  },
+  {
+   "champion": "Kindred",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Mark of the Kindred: each stack permanently increases Kindred's damage, making her stronger the more marks she has accumulated heading into any 1v1"
+  },
+  {
+   "champion": "Kindred",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Lamb's Respite: creates a zone where no unit can be reduced below 1 HP, giving Kindred a guaranteed survival window mid-duel to heal up and continue fighting when the zone expires"
+  },
+  {
+   "champion": "Kindred",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Wolf's Frenzy: Wolf independently attacks enemies within the zone, adding consistent bonus damage that continues throughout the duel independent of Lamb's actions"
+  },
+  {
+   "champion": "Kled",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Skaarl the Cowardly Lizard: dismount grants Kled a second effective health bar; remounting restores Skaarl's health, giving effective double HP in a prolonged 1v1"
+  },
+  {
+   "champion": "Kled",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Courage bar fills as Kled fights; reaching 100 Courage triggers a remount that grants full Skaarl HP, rewarding sustained aggression in the duel"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Bio-Arcane Barrage is active for 8 seconds, causing Kog'Maw's basic attacks to deal bonus magic damage equal to a percentage of the target's maximum health on-hit; each auto within the window strips proportional health, turning his attack speed into a sustained health-shred ramp conditional on W being active."
+  },
+  {
+   "champion": "KSante",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Dauntless Instinct: K'Sante's abilities mark enemies and his next basic attack consumes the mark to deal bonus max-HP physical damage (12 + 1-2% per level of target's max health) - a sustained on-hit ramp tied to his 3.5s Q cooldown throughout the duel"
+  },
+  {
+   "champion": "KSante",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "All Out: K'Sante sheds defensive stats but gains 50% bonus armor penetration, a 65% max-HP health threshold, 20% omnivamp, and enhanced ability modifiers - enabling him to outlast a single isolated opponent over a prolonged 1v1 lockdown"
+  },
+  {
+   "champion": "KSante",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "All Out: K'Sante gains 20% omnivamp during the All Out form, converting his sustained enhanced-damage output back into HP recovery throughout the extended duel window"
+  },
+  {
+   "champion": "LeeSin",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Flurry: after casting an ability, Lee Sin's next 2 basic attacks gain bonus attack speed and restore energy, enabling rapid ability re-cycling within a sustained exchange."
+  },
+  {
+   "champion": "LeeSin",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Iron Will: grants lifesteal and spell vamp for 4 seconds, providing meaningful mid-fight healing when activated during an exchange."
+  },
+  {
+   "champion": "LeeSin",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Iron Will also grants armor and magic resist for its duration, providing a short defensive layer that extends Lee Sin's staying power in a 1v1."
+  },
+  {
+   "champion": "Lillia",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Dream-Laden Bough: heals Lillia for 6-90 (based on level) (+ 30% AP) on hit against champions, providing continuous self-healing during the duel"
+  },
+  {
+   "champion": "Lissandra",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Frozen Tomb self-cast: Lissandra enters stasis for 2.5s and heals herself up to 200 + 110% AP total (scaling with missing health), giving a mid-duel survival window on a long cooldown"
+  },
+  {
+   "champion": "Maokai",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Sap Magic passively heals Maokai after nearby spells are cast, restoring a percentage of max HP periodically throughout a prolonged duel."
+  },
+  {
+   "champion": "Maokai",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Twisted Advance roots the target and heals Maokai for a flat amount on arrival, providing in-combat HP restoration during the exchange."
+  },
+  {
+   "champion": "MasterYi",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Wuju Style: active grants bonus true damage on basic attacks for 5 seconds, a strong sustained damage steroid that amplifies every auto in the extended duel."
+  },
+  {
+   "champion": "MasterYi",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Double Strike: every few basic attacks strikes twice; in a sustained duel the proc fires repeatedly, ramping effective DPS the longer Yi stays in melee."
+  },
+  {
+   "champion": "MasterYi",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Alpha Strike: basic attacks on-hit reduce Alpha Strike's current cooldown by 1 second (affected by ability haste), continuously refreshing the ability window across a prolonged duel."
+  },
+  {
+   "champion": "MasterYi",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Highlander: grants large bonus attack speed and movement speed for 7 seconds; the AS component turns a long duel into a runaway attack-speed spiral against a single target."
+  },
+  {
+   "champion": "MasterYi",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Meditate: channels to restore a large amount of HP every 0.5 seconds, increased by up to 100% based on missing health - a powerful mid-duel heal that can turn losing fights."
+  },
+  {
+   "champion": "MasterYi",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Meditate also grants 70% damage reduction for the first 0.5 seconds then a reduced amount for the remaining channel, functioning as a defensive endurance layer during the heal window."
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.62,
+   "conditional": true,
+   "source_quote": "Stone Skin: stacks up to 5 by damaging enemy champions or monsters, each stack grants 5-9 bonus AD and 6-10 bonus armor; stacks in-combat"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Stone Skin at 5 stacks: regenerates 2.1% maximum health every 5 seconds while in combat; requires fully stacked; sustains attrition phase"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.42,
+   "conditional": false,
+   "source_quote": "Crushing Blow: empowered strike reduces target armor by 20% for 3s; re-applicable on 6-8s CD in a prolonged duel, compounding his physical damage output"
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Cyclone: Wukong spins for up to 4s dealing continuous physical damage; during the spin he is largely unstoppable and sustains attacking output in a 1v1"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Darkness Rise: after 3 ability/auto hits on enemies Mordekaiser activates a persistent AoE field dealing 5 (+ 30% AP) (+ 1-5% of target max health) magic damage per second and granting bonus movement speed - a sustained damage ramp aura active for the full duel duration once online"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Realm of Death: banishes the target to a 1v1 death realm for 7 seconds, steals 10% of their core stats (AD, AP, AS, HP, armor, MR), heals Mordekaiser for 10% of their max HP, and removes all external interference - the defining extended-duel environment where his power ramp runs uncontested"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Indestructible: passively stores 45% of damage dealt and 7.5% of damage taken as Potential Shield (up to 30% max health); on recast Mordekaiser consumes the remaining shield to heal himself - providing a periodic mid-duel HP refill on an 8-12s cooldown"
+  },
+  {
+   "champion": "Morgana",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Black Shield: absorbs magic damage and CC; in a 1v1 vs an AP or CC-heavy threat, grants a full spell-immunity window that can negate the opponent's key ability and swing the attrition fight"
+  },
+  {
+   "champion": "Morgana",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Soul Siphon: grants Morgana spellvamp; W (Tormented Shadow) ticking on a nearby enemy in a 1v1 continuously heals her, extending her ability to trade in melee range"
+  },
+  {
+   "champion": "Nasus",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "Siphoning Strike permanently gains +3 damage per kill, compounding over the game so Nasus Q deals escalating true burst that grows unboundedly through the duel window."
+  },
+  {
+   "champion": "Nasus",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Fury of the Sands drains nearby enemies for a percentage of their max HP each second, healing Nasus for the damage dealt, sustaining through the full ult duration."
+  },
+  {
+   "champion": "Nasus",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Fury of the Sands grants Nasus bonus HP, increased size, and additional armor/MR shred on the target, amplifying his offensive and defensive identity for the duel duration."
+  },
+  {
+   "champion": "Nidalee",
+   "source": "E",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Primal Surge (human form): heals Nidalee and grants bonus attack speed on self-cast, usable mid-duel when toggling back to human form"
+  },
+  {
+   "champion": "Nidalee",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Aspect of the Cougar / Pounce: Pounce cooldown resets when Nidalee hits an enemy in cougar form, enabling rapid Pounce-Takedown chains"
+  },
+  {
+   "champion": "Nilah",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Formless Blade: Nilah's basic attacks and empowered Q strikes heal her for 0% : 20% (based on critical strike chance) of post-mitigation damage dealt to champions"
+  },
+  {
+   "champion": "Nilah",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Apotheosis: Nilah heals herself for 20% : 50% (based on critical strike chance) of post-mitigation damage dealt to champions during the whirl"
+  },
+  {
+   "champion": "Nilah",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Jubilant Veil: Nilah becomes ghosted, reduces all incoming magic damage by 25%, and dodges all non-turret basic attacks for the 2.25s active duration"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.62,
+   "conditional": false,
+   "source_quote": "Umbra Blades: every 10 attacks Nocturne's next attack cleaves nearby enemies and heals him for 13-30 HP per enemy hit; fires continuously in a prolonged fight"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Duskbringer: leaves an 8s trail granting Nocturne +15-35 bonus AD while standing on it; in a 1v1 he stays on the trail sustaining the AD bonus continuously"
+  },
+  {
+   "champion": "Nocturne",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.52,
+   "conditional": true,
+   "source_quote": "Shroud of Darkness: Nocturne creates a shield for 1.5s; if it blocks a spell it doubles in power and grants bonus attack speed for 5s; spell shield negates one key ability"
+  },
+  {
+   "champion": "Nunu",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Consume: Willump bites the target enemy champion, healing himself (heal increased by 50% when below 50% max health) - a periodic mid-duel HP refill on an 8-12s cooldown that keeps Nunu fighting through sustained exchanges"
+  },
+  {
+   "champion": "Olaf",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Reckless Swing: deals true damage on roughly 7-11s CD; bypasses all armor and shields to deliver reliable damage that cannot be mitigated by defensive itemisation in a long fight"
+  },
+  {
+   "champion": "Olaf",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Berserker Rage: Olaf gains bonus attack speed as his health decreases, making him progressively more dangerous the lower he gets in a sustained fight"
+  },
+  {
+   "champion": "Olaf",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Ragnarok: makes Olaf immune to all CC while gaining bonus AD and chasing freely; neutralises kite/peel and lets him stay on target through the entire duel"
+  },
+  {
+   "champion": "Olaf",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Tough It Out: grants omnivamp and a shield that scales with missing HP; the lower Olaf's HP the larger the shield, enabling a powerful mid-duel recovery"
+  },
+  {
+   "champion": "Ornn",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Living Forge: Ornn's abilities apply Brittle stacks to enemies; his next basic attack after any ability consumes Brittle to deal bonus percent maximum health physical damage, re-triggerable on each ability cast in the rotation and re-firing the empowered auto within a sustained duel."
+  },
+  {
+   "champion": "Ornn",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Bellows Breath makes Ornn unstoppable and briefly grants bonus armor and magic resistance for the channel duration; this DR and CC-immunity window lets him absorb an opponent's burst without being locked down, conditional on W being available."
+  },
+  {
+   "champion": "Pantheon",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Aegis Assault makes Pantheon invulnerable to damage from the front for the duration, channeling a sustained block window that negates incoming damage mid-duel."
+  },
+  {
+   "champion": "Pantheon",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Mortal Will charges a stack on every ability cast; at 5 stacks the next ability is empowered, cycling an enhanced strike or shield repeatedly throughout a prolonged duel."
+  },
+  {
+   "champion": "Poppy",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Iron Ambassador: buckler shield proc on cooldown grants Poppy a shield equal to 11-20% of her maximum health for 3 seconds, providing a repeated defensive layer across an extended 1v1."
+  },
+  {
+   "champion": "Poppy",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Steadfast Presence passive: Poppy increases her total armor and total magic resistance by 12%, doubled to 24% while below 40% max health - a sustained resist buff that scales her durability as the duel runs long."
+  },
+  {
+   "champion": "Pyke",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Gift of the Drowned Ones: while briefly out of enemy vision Pyke rapidly regenerates HP, giving him a conditional mid-duel recovery window when he can disengage momentarily."
+  },
+  {
+   "champion": "Pyke",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Death from Below: executes an enemy below the threshold and fully resets the cooldown, allowing Pyke to re-enter the duel or chase a surviving target with his full kit available."
+  },
+  {
+   "champion": "Rammus",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Defensive Ball Curl: Rammus gains massive bonus armor and magic resistance and deals thorns damage (15 + 10% armor + 10% MR) to every attacker on-hit - the longer an AD champion auto-attacks him in this state the more damage they reflect back"
+  },
+  {
+   "champion": "RekSai",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Furious Bite: at full fury deals true damage instead of physical damage, providing a full-fury true-damage spike that can fire periodically after refuelling mid-duel"
+  },
+  {
+   "champion": "RekSai",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Fury of the Xer'Sai: burrowing while fury is available heals Rek'Sai, enabling brief mid-duel regeneration windows to extend attrition fights"
+  },
+  {
+   "champion": "Rell",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Break the Mold: each auto-attack against an enemy champion steals a portion of their armor and magic resistance permanently for the rest of the game, building a growing resistance differential the more Rell attacks in the duel"
+  },
+  {
+   "champion": "Renekton",
+   "source": "E",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Slice and Dice grants two consecutive dashes, letting Renekton re-enter or re-position mid-duel and effectively reset his melee range for the next combo cycle."
+  },
+  {
+   "champion": "Renekton",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Reign of Anger passively generates Fury from attacks; at 50+ Fury his next ability gains an empowered effect, feeding a continuous enhanced-ability loop throughout the duel."
+  },
+  {
+   "champion": "Renekton",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Cull the Meek heals Renekton for each enemy hit; the Fury-empowered version heals for triple the amount, providing substantial mid-duel HP restoration on each cast."
+  },
+  {
+   "champion": "Rengar",
+   "source": "BASE",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Ferocity stacks build passively during combat up to 4; reaching 4 empowers the next ability, meaning the longer the duel runs the more empowered casts occur."
+  },
+  {
+   "champion": "Rengar",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Savagery: basic attacks gain 40% attack speed on the two empowered strikes; the empowered Ferocity version fires with massive bonus damage and 50-101% AS for 5 seconds, effectively re-firing the damage combo rapidly within the ferocity generation cycle."
+  },
+  {
+   "champion": "Rengar",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Battle Roar: consumes stored grey health (50% of recent damage taken) to heal Rengar; empowered version heals for significantly more, providing attrition-winning sustain in extended melee."
+  },
+  {
+   "champion": "Rengar",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Battle Roar empowered also cleanses all crowd control; the base cast stores recent damage as grey health providing a defensive cycle that extends his duel longevity."
+  },
+  {
+   "champion": "Riven",
+   "source": "BASE",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Riven is a resourceless champion with no mana cost on any ability, allowing her to cycle her full combo repeatedly throughout the duel without resource exhaustion."
+  },
+  {
+   "champion": "Riven",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Valor: Riven dashes and gains a shield equal to 10-20% of her bonus AD plus base amount - on-demand defensive layer woven repeatedly into the fight."
+  },
+  {
+   "champion": "Riven",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Broken Wings: three dashes that deal increasing damage, each charge resets and can be woven with auto-attacks - the core combo loop that re-fires within a single duel."
+  },
+  {
+   "champion": "Riven",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Blade of the Exile: significantly empowers Riven's AD scaling for its duration, amplifying every subsequent hit and dash within the duel window."
+  },
+  {
+   "champion": "Rumble",
+   "source": "BASE",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Heat-based resourceless kit: abilities build and spend heat rather than mana, letting Rumble fight indefinitely without running dry"
+  },
+  {
+   "champion": "Rumble",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Junkyard Titan: at 50-99 heat (Danger Zone) all abilities are empowered; at 100 heat (Overheat) Rumble gains attack speed and on-hit magic damage"
+  },
+  {
+   "champion": "Rumble",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Scrap Shield: grants Rumble a shield and bonus movement speed on activation, cyclable approximately every 6 seconds throughout a sustained fight"
+  },
+  {
+   "champion": "Ryze",
+   "source": "BASE",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Arcane Mastery combo loop: E applies Flux debuff, Q and W consume it for empowered effects, then E re-applies Flux on a short rotation, creating a continuous combo re-fire cycle within a single duel"
+  },
+  {
+   "champion": "Samira",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Daredevil Impulse: Samira builds Style grade (D through S) by using different attacks in quick succession, each rank up granting bonus movement speed and empowering her damage cadence"
+  },
+  {
+   "champion": "Samira",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.68,
+   "conditional": true,
+   "source_quote": "Inferno Trigger: available only at S-style grade; fires rapidly at all nearby enemies 10 times for 0.25s each; completing the style ramp re-fires her entire damage kit in a single window"
+  },
+  {
+   "champion": "Samira",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Blade Whirl: Samira slashes around her twice over 1s destroying all non-turret missiles that enter the area; negates a full wave of projectile burst mid-duel"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Frost Armor: when taking damage from enemy champions, Sejuani gains slow immunity, cripple immunity, 10 (+ 75% bonus armor) bonus armor, and 10 (+ 75% bonus MR) for 3 seconds refreshing on subsequent hits - a near-permanent defensive layer that keeps her fighting under sustained enemy pressure"
+  },
+  {
+   "champion": "Senna",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Absolution: collecting Mist Wraiths permanently increases Senna's AD, crit, and range; a long-game RAMP that enters any 1v1 with accumulated power but does not compound within the duel itself"
+  },
+  {
+   "champion": "Senna",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Piercing Darkness: fires a beam that damages enemies and heals Senna and allies it passes through; on roughly 8-10s CD in a 1v1 this provides reliable periodic self-sustain to extend the fight"
+  },
+  {
+   "champion": "Senna",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Dawning Shadow: the global heal/shield component restores a significant chunk of HP and shields Senna mid-duel; used when available it provides a one-time recovery burst that can swing a close attrition fight"
+  },
+  {
+   "champion": "Sett",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Pit Grit: Sett regenerates health every 0.5 seconds, scaling sharply with missing health toward a maximum per-tick heal; provides sustained mid-duel attrition recovery that becomes most powerful when Sett is low, conditional on being below his health threshold."
+  },
+  {
+   "champion": "Sett",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Knuckle Down fires two empowered punches on a short cooldown (~12s), granting Sett bonus movement speed toward his target and bonus damage on each punch; re-usable multiple times in a prolonged duel, each cycle re-firing the damage spike."
+  },
+  {
+   "champion": "Sett",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Haymaker converts up to 50% of damage Sett absorbed as Grit into a shield equal to that stored Grit before expelling it; effectively converts raw punishment taken during a sustained exchange into a defensive buffer that reduces net damage, without a gate beyond having taken damage."
+  },
+  {
+   "champion": "Shaco",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.58,
+   "conditional": true,
+   "source_quote": "Hallucinate creates a controllable clone of Shaco; the doppelganger effectively doubles his presence in the duel, providing a second body that absorbs hits and explodes on death, extending his survival window."
+  },
+  {
+   "champion": "Shen",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Ki Barrier: after completing an ability's effects, Shen grants himself a shield; in a sustained duel Shen cycles abilities to repeatedly refresh the shield, absorbing meaningful damage."
+  },
+  {
+   "champion": "Shen",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Twilight Assault: recalls Spirit Blade and empowers the next 3 basic attacks with bonus magic damage and (if blade hit a champion) 50% bonus attack speed - a recurring empowered AA window on roughly a 9-second cooldown that re-fires the damage combo across the duel."
+  },
+  {
+   "champion": "Shen",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Spirit's Refuge: creates a zone that causes Shen to dodge all non-turret basic attacks for 1.75 seconds; negating a burst of auto-attacks extends Shen's 1v1 longevity."
+  },
+  {
+   "champion": "Shyvana",
+   "source": "BASE",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Shyvana generates Fury with basic attacks and abilities; Fury fills faster in extended combat and gates her dragon-form power, making longer fights inherently more favorable for her."
+  },
+  {
+   "champion": "Shyvana",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Dragon's Blood: Shyvana's basic attacks deal bonus magic damage and she gains bonus armor and magic resistance, both permanently scaling with her Fury and dragon slayer stacks."
+  },
+  {
+   "champion": "Shyvana",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Dragon's Descent: Shyvana transforms into a dragon, gaining large bonus HP, empowered E, and enhanced stat profile; Fury depletes during dragon form, making uptime conditional on how long she fought to fill it."
+  },
+  {
+   "champion": "Singed",
+   "source": "Q",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Poison Trail: toggle ability with no mana cost; Singed runs indefinitely dealing continuous poison damage without resource depletion"
+  },
+  {
+   "champion": "Singed",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Insanity Potion: grants a large steroid of AP, armor, MR, attack speed, movement speed, lifesteal, and regen for 25s"
+  },
+  {
+   "champion": "Singed",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Insanity Potion: grants lifesteal and omnivamp in addition to combat stats, healing Singed off his continuous poison trail damage during the duel"
+  },
+  {
+   "champion": "Sion",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Glory in Death: upon taking lethal damage Sion reanimates with 100% life steal and rapidly decaying health, allowing him to continue fighting and potentially kill the opponent even after being downed"
+  },
+  {
+   "champion": "Sion",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Soul Furnace: Sion gains a large shield scaling with bonus health (up to 1000 max) that he can detonate for massive damage, absorbing huge chunks of incoming burst during a duel"
+  },
+  {
+   "champion": "Sivir",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Spell Shield: absorbs one enemy ability and refunds 150 mana; in a 1v1 negates the opponent's single most impactful ability and extends Sivir's resource window"
+  },
+  {
+   "champion": "Skarner",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Threads of Vibration: Skarner's autos and abilities apply Quaking stacks (max 3); enemies at 3 stacks take magic damage equal to 5-9% of their max health over the duration - a sustained ramp that grows with the target's HP pool and maintains itself through his melee combo loop"
+  },
+  {
+   "champion": "Skarner",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Shattered Earth / Upheaval: empowers three consecutive basic attacks with bonus damage, then Upheaval re-fires as a ranged boulder throw - the Q->empowered-autos->Upheaval cycle on a 7-13s cooldown re-fires his full auto-attack combo within a sustained melee duel"
+  },
+  {
+   "champion": "Skarner",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Seismic Bastion: Skarner shields himself for 8% of his maximum health for 2.5 seconds on a 6-10s cooldown - a periodic refreshing defensive layer that lets him absorb burst windows while trading in a sustained 1v1"
+  },
+  {
+   "champion": "Smolder",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Dragon Practice: stacks from abilities and kills permanently upgrade Super Scorcher Breath at 25/125/225 stacks, increasing Q's damage ceiling the more stacks Smolder has accumulated"
+  },
+  {
+   "champion": "Smolder",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Mommomm's Oven: Smolder calls in a large AOE that heals allies (including Smolder) within the zone; provides a one-time mid-duel HP recovery window when available"
+  },
+  {
+   "champion": "Soraka",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.35,
+   "conditional": true,
+   "source_quote": "Starcall: if the stardust returns to Soraka after hitting an enemy champion, she gains Rejuvenation for 2.5 seconds, healing her every 0.5 seconds; provides a repeating self-heal in a 1v1 only if she can consistently land Q and stand in the return zone, conditional on hitting an enemy champion."
+  },
+  {
+   "champion": "Swain",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Ravenous Flock passively accumulates Soul Fragments from enemy champions hit, granting permanent max HP per soul, scaling his dueling bulk the longer he fights."
+  },
+  {
+   "champion": "Swain",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.88,
+   "conditional": true,
+   "source_quote": "Demonic Ascension drains nearby enemies for magic damage each second while healing Swain for the full amount drained, making him nearly unkillable in a prolonged close-range duel."
+  },
+  {
+   "champion": "Swain",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Demonic Ascension grants Swain bonus health and transforms him, increasing his stat profile and drain damage output for the full ult duration."
+  },
+  {
+   "champion": "Sylas",
+   "source": "E",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Abscond/Abduct (E1/E2): dash plus gap-close sequence with separate charges allows Sylas to stay on target and reset positioning within the duel repeatedly."
+  },
+  {
+   "champion": "Sylas",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Petricite Burst: after casting a spell Sylas's next basic attack whirls chains around him for bonus damage; cycling spells continuously resets the empowered auto window, re-firing the combo."
+  },
+  {
+   "champion": "Sylas",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Kingslayer: heals Sylas for a substantial amount scaling by 0-100% based on missing HP; the heal is largest when Sylas is low, making him extremely difficult to finish in a long duel."
+  },
+  {
+   "champion": "TahmKench",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Thick Skin: passive converts a portion of damage received into grey health, acting as a sustained damage buffer; active spends grey health for an additional shield"
+  },
+  {
+   "champion": "Taric",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Bravado: after casting any ability, Taric's next two basic attacks gain 100% bonus attack speed and each reduce the remaining cooldowns of his basic abilities by 1-2 seconds - continuously cycling his ability loop throughout a sustained 1v1 exchange"
+  },
+  {
+   "champion": "Taric",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Starlight's Touch: heals Taric (and nearby allies) for 25 (+ 15% AP) (+ 1% max health) per charge, up to 5 charges stocked via Bravado empowered attacks - a periodic in-combat self-heal that refills his HP as the duel progresses"
+  },
+  {
+   "champion": "Teemo",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Toxic Shot: every auto applies a stacking poison DoT that deals magic damage over 4s and refreshes; sustained poison pressure mounts the longer the duel continues"
+  },
+  {
+   "champion": "Teemo",
+   "source": "Q",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Blinding Dart: blinds the target causing their auto attacks to miss; on roughly 8s CD in a 1v1 this periodically nullifies the opponent's physical damage output, greatly extending Teemo's survival"
+  },
+  {
+   "champion": "Tristana",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Explosive Charge stacks up to 4 times via basic attacks and spells, then detonates for escalating bonus physical damage; re-applicable each cycle on a short cooldown, turning sustained auto-attacks into a repeating damage ramp that re-fires every ~12s throughout a long duel."
+  },
+  {
+   "champion": "Tristana",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Rapid Fire grants Tristana substantially increased attack speed for 7 seconds; during this window her auto-attack cadence rises sharply, compounding with Explosive Charge stacks and on-hit effects to elevate sustained output over the duel window."
+  },
+  {
+   "champion": "Trundle",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.78,
+   "conditional": false,
+   "source_quote": "Chomp bites the target, dealing bonus damage and reducing their AD by a percentage for 4 seconds, stacking offense and anti-offense continuously through repeated casts."
+  },
+  {
+   "champion": "Trundle",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Subjugate steals a percentage of the target's Armor, MR, and HP, continuously transferring stats to Trundle over 4 seconds - the target weakens as Trundle strengthens."
+  },
+  {
+   "champion": "Trundle",
+   "source": "R",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Subjugate heals Trundle for the HP stolen from the target over the drain duration, providing substantial mid-duel recovery while simultaneously weakening the enemy."
+  },
+  {
+   "champion": "Trundle",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Frozen Domain grants Trundle a large Movement Speed and Attack Speed bonus in the icy zone, giving him a sustained attrition advantage for the zone duration."
+  },
+  {
+   "champion": "Trundle",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Frozen Domain also increases Trundle's healing and shielding by a percentage, amplifying any lifesteal and in-fight sustain received during the zone."
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "E",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Spinning Slash: critical strikes on-hit reduce Spinning Slash's current cooldown by 0.75 seconds (1.5 seconds against champions), continuously refreshing his gap-close mobility within a crit-spiraling duel."
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Battle Fury: basic attacks generate Fury (crits and kills generate more); higher Fury raises crit chance up to 50%, and crits also generate more Fury, creating an escalating crit spiral the longer the duel runs."
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Bloodlust passive: Tryndamere gains bonus attack damage that increases further based on his missing health - the lower he gets, the harder he hits, ramping damage output as the duel extends."
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Bloodlust active: consumes all Fury to heal Tryndamere, with the heal scaling with missing health and Fury consumed, allowing a mid-duel reset of HP - a genuine attrition tool."
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.95,
+   "conditional": true,
+   "source_quote": "Undying Rage: Tryndamere cannot be reduced below 1 HP for 5 seconds and instantly gains full Fury on cast; the ultimate extended-duel endurance tool - an invulnerable attack window no burst kit can skip."
+  },
+  {
+   "champion": "Tryndamere",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Undying Rage fills Tryndamere to full Fury on cast, giving immediate 50% crit chance and maximizing Bloodlust heal - compounding both RAMP and DUELHEAL while active."
+  },
+  {
+   "champion": "Twitch",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Deadly Venom: basic attacks stack poison on the target up to 6 times, increasing Contaminate damage per stack throughout the sustained fight"
+  },
+  {
+   "champion": "Twitch",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Ambush: exiting stealth grants stacking bonus attack speed (up to 50% for 5s), ramping Twitch's attack output at the start of the duel"
+  },
+  {
+   "champion": "Udyr",
+   "source": "BASE",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Stance cycling: Udyr continuously rotates between Wilding Claw, Iron Mantle, Blazing Stampede, and Wingborne Storm with overlapping short cooldowns, re-firing each stance's empowered proc in a non-stop loop"
+  },
+  {
+   "champion": "Udyr",
+   "source": "Q",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Wilding Claw: Udyr gains persistent attack speed stacks while in the Wilding Claw stance, ramping his DPS output the longer he stays in the fight attacking"
+  },
+  {
+   "champion": "Udyr",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Iron Mantle Awaken: empowered attacks gain doubled life steal up to 40% at rank 6, providing sustained healing from every auto attack during prolonged exchanges"
+  },
+  {
+   "champion": "Udyr",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Iron Mantle: passively grants a periodic shield that refreshes as Udyr cycles stances, giving him recurring defensive absorption throughout the duel"
+  },
+  {
+   "champion": "Urgot",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Echoing Flames: each leg periodically fires automatically when enemies are nearby dealing physical plus 6% max HP damage; passive leg procs re-fire damage ticks throughout the duel"
+  },
+  {
+   "champion": "Urgot",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Purge: Urgot shields himself and rapidly fires his legs for 4s dealing 60-100 (+0.36 total AD) plus 6% current HP physical damage; sustained % HP dps output that compounds over time"
+  },
+  {
+   "champion": "Urgot",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "Purge: simultaneously grants Urgot a 60-100 HP shield while the mode is active, layering defense onto his sustained offensive pressure"
+  },
+  {
+   "champion": "Varus",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Blighted Quiver passive: basic attacks apply Blight stacks (max 3) on-hit; each stack detonated by abilities deals bonus magic damage per stack equal to 2.5-4% of the target's max health - a per-auto ramp sustained across the exchange as long as Varus can land autos and detonate with abilities"
+  },
+  {
+   "champion": "Vayne",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Tumble: short CD repositioning dash that empowers the next auto attack; refreshes continuously within a duel to stack Silver Bolts and reposition for safety"
+  },
+  {
+   "champion": "Vayne",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "Final Hour: grants bonus AD, empowers Tumble with invisibility and resets its CD, extending and accelerating the Q-Silver Bolts cycle throughout the duel"
+  },
+  {
+   "champion": "Vayne",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Silver Bolts: every third consecutive auto deals bonus true damage equal to a percentage of target's max HP, scaling infinitely with tank itemisation and rewarding extended auto-trading"
+  },
+  {
+   "champion": "Vi",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Blast Shield: periodically, Vi's next ability hit grants her a shield equal to 12% of her maximum health for 3 seconds; the repeated on-hit shield provides sustained defensive layers in a 1v1."
+  },
+  {
+   "champion": "Vi",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Denting Blows: stacks on the same target up to 3 times; at 3 stacks deals bonus % current HP physical damage and grants bonus attack speed - a continuous damage ramp the longer Vi attacks one target."
+  },
+  {
+   "champion": "Viego",
+   "source": "P",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Sovereign's Domination: upon killing an enemy champion, Viego briefly possesses their corpse and restores a portion of his health, effectively resetting the duel from a fresh state."
+  },
+  {
+   "champion": "Viego",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.75,
+   "conditional": true,
+   "source_quote": "Blade of the Ruined King empowered form: healing himself for 135% of the post-mitigation damage dealt while the wraith blade buff is active."
+  },
+  {
+   "champion": "Viktor",
+   "source": "Q",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.35,
+   "conditional": false,
+   "source_quote": "Siphon Power: grants Viktor a shield of 40-115 (based on level) (+ 18% AP) on cast with an approximately 8s cooldown, providing recurring defensive layers in a duel"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Tides of Blood: each cast adds a stack (up to 4) that increases Vladimir's healing from Transfusion and damage output, so the longer the duel runs the more dangerous and self-sustaining he becomes"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Transfusion: Vladimir heals himself on each Q cast; Crimson Rush empowered version heals for substantially more, providing constant mid-fight health regeneration on roughly a 9s effective cadence"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Sanguine Pool: Vladimir becomes untargetable and drains enemies for 4s, healing for 30% of pre-mitigation damage dealt while enemies' attacks pass through him - a decisive mid-duel survival tool"
+  },
+  {
+   "champion": "Vladimir",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Sanguine Pool: Vladimir heals himself for 30% of pre-mitigation damage dealt to enemies within the pool over the 4s duration while untargetable"
+  },
+  {
+   "champion": "Volibear",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.68,
+   "conditional": true,
+   "source_quote": "The Relentless Storm: after 3 attacks on the same target Volibear's attacks deal 75-250 (+0.6 AP) bonus magic damage and generate lightning; sustained within a prolonged single fight"
+  },
+  {
+   "champion": "Volibear",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Stormbringer: Volibear leaps and gains 100-175 bonus HP for 12s on landing; the temporary HP and empowered storm sustain his presence through a prolonged duel window"
+  },
+  {
+   "champion": "Volibear",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.72,
+   "conditional": false,
+   "source_quote": "Frenzied Maul: Volibear mauls the target applying a bleed and healing himself for 150-360 (+0.4 bonus AD) HP on the bite; short cooldown makes this the core sustain engine in a long duel"
+  },
+  {
+   "champion": "Warwick",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Primal Howl: Warwick gains damage reduction for up to 2.5 seconds on an 11-15s cooldown - a periodic defensive window that lets him absorb burst while his healing keeps him alive through extended duel exchanges"
+  },
+  {
+   "champion": "Warwick",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "Eternal Hunger: Warwick deals bonus magic damage on-hit and heals for 100% of that post-mitigation damage; below 50% HP the healing triples - a defining mid-duel sustain that snowballs as Warwick gets low and the fight extends"
+  },
+  {
+   "champion": "Warwick",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Jaws of the Beast: Warwick lunges and bites for percentage of target's max HP magic damage, healing himself for a percentage of all post-mitigation damage dealt by the bite - a major periodic HP injection on a 6-8s cooldown"
+  },
+  {
+   "champion": "Warwick",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Infinite Duress: Warwick leaps and suppresses the target for 1.5 seconds, healing for 100% of all post-mitigation damage dealt during the suppression while applying on-hits 3 times - simultaneously preventing counterplay and refilling his HP bar"
+  },
+  {
+   "champion": "Warwick",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Blood Hunt passive: Warwick gains bonus attack speed (doubled below 25% HP) for 1.25 seconds upon damaging a target below 50% HP, refreshing on subsequent hits - the lower the enemy falls the faster Warwick attacks, compounding his Eternal Hunger healing and on-hit damage simultaneously"
+  },
+  {
+   "champion": "Xayah",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Featherstorm: Xayah becomes briefly untargetable while raining feathers; used in a 1v1 to dodge a key incoming ability or burst window, then re-engaging with feathers already on the ground for an E recall"
+  },
+  {
+   "champion": "Xayah",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Deadly Plumage: grants attack speed and healing on every auto hit for the duration; a concentrated burst steroid that amplifies both damage and sustain during the engagement window"
+  },
+  {
+   "champion": "Xayah",
+   "source": "W",
+   "kind": "DUELHEAL",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Deadly Plumage: heals Xayah for each auto landing during the steroid window, providing mid-duel HP recovery proportional to attack speed"
+  },
+  {
+   "champion": "XinZhao",
+   "source": "E",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Audacious Charge dashes to a target and grants Xin Zhao bonus attack speed for 3 seconds upon landing; immediately accelerates his auto-attack output at the start of or during the duel, synergizing with his passive's every-third-auto heal and Three Talon Strike combo cycling."
+  },
+  {
+   "champion": "XinZhao",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Determination: every third basic attack deals bonus physical damage and heals Xin Zhao for a percentage of his maximum health plus AP; fires continuously throughout a duel with no cooldown or resource gate, providing reliable in-fight sustain that scales with his HP pool."
+  },
+  {
+   "champion": "XinZhao",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Three Talon Strike empowers Xin Zhao's next 3 attacks to deal bonus damage, each hit reducing his other ability cooldowns by 1 second, with the third hit knocking up; the cooldown refund chainable across the duel lets him re-fire Q and other combo abilities more rapidly throughout a prolonged exchange."
+  },
+  {
+   "champion": "Yasuo",
+   "source": "E",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Sweeping Blade has no cooldown between different targets and resets Yasuo's position to an adjacent unit repeatedly, enabling continuous repositioning and re-entry into melee range through the duel."
+  },
+  {
+   "champion": "Yasuo",
+   "source": "P",
+   "kind": "ENDURE",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Way of the Wanderer makes Yasuo resourceless (no mana), allowing unlimited ability casts throughout the duel with no attrition cost; Flow shield charges off movement provide periodic defensive layers."
+  },
+  {
+   "champion": "Yasuo",
+   "source": "R",
+   "kind": "RESET",
+   "cadence": "BURST",
+   "magnitude": 0.62,
+   "conditional": true,
+   "source_quote": "Last Breath can only be cast on airborne targets and resets Yasuo's combo by repositioning him to the target mid-air, re-opening his full Q-E rotation after the knockup."
+  },
+  {
+   "champion": "Yasuo",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.58,
+   "conditional": false,
+   "source_quote": "Wind Wall blocks all projectiles for 4 seconds, providing a one-sided defensive barrier that negates a class of ranged damage during the duel window."
+  },
+  {
+   "champion": "Yone",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Soul Unbound: Yone's body is untargetable for up to 5 seconds while in Spirit Form; on recast, marks on champions deal true damage equal to stored post-mitigation damage - an endurance window that sidesteps lethal damage."
+  },
+  {
+   "champion": "Yone",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Way of the Hunter - Steel and Spirit: Yone's basic attacks alternate swords; every other attack with the Azakana Sword deals 50% AD physical and 50% AD magic damage, a continuous dual-damage output that ramps effective DPS the longer Yone attacks."
+  },
+  {
+   "champion": "Yone",
+   "source": "Q",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Mortal Steel: third consecutive hit consumes 2 Gathering Storm stacks to launch a whirlwind that knocks up; the 3-hit cycle resets continuously through the duel, re-firing the knockup combo every few casts."
+  },
+  {
+   "champion": "Yone",
+   "source": "W",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Spirit Cleave: if it hits an enemy, Yone grants himself a shield (doubled if it hits a champion) for 1.5 seconds - a repeatedly refreshable defensive layer on roughly a 9-second cooldown across the duel."
+  },
+  {
+   "champion": "Yorick",
+   "source": "E",
+   "kind": "ENDURE",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Mourning Mist: marks an enemy, causing all nearby Mist Walkers and the Maiden to rush the target - converts Yorick's ghoul army into sustained focused pressure, keeping him protected while ghouls do work."
+  },
+  {
+   "champion": "Yorick",
+   "source": "P",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Shepherd of Souls: Yorick raises up to 4 Mist Walkers; more ghouls active means more surrounding auto-attack DPS that accumulates throughout a prolonged fight."
+  },
+  {
+   "champion": "Yorick",
+   "source": "Q",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Last Rites: Yorick's empowered AA deals bonus damage and heals him for a portion of the damage dealt, providing consistent mid-duel HP recovery each time the ability comes off cooldown."
+  },
+  {
+   "champion": "Yorick",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Eulogy of the Isles: summons the Maiden of the Mist who attacks alongside Yorick and spawns ghouls on kills, providing persistent supplementary DPS that compounds the longer the duel lasts."
+  },
+  {
+   "champion": "Zac",
+   "source": "P",
+   "kind": "DUELHEAL",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Cell Division: when Zac takes damage chunks of himself fall off; he can pick them up to heal for 4-8% of his maximum health per blob; requires living blobs on the ground"
+  },
+  {
+   "champion": "Zac",
+   "source": "W",
+   "kind": "RAMP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Unstable Matter: on 5s CD Zac explodes his body dealing 4-6% of nearby enemies current HP as magic damage; fires continuously in a prolonged duel compounding % HP pressure"
+  },
+  {
+   "champion": "Zeri",
+   "source": "E",
+   "kind": "RESET",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Spark Surge: Zeri's Q cooldown is reduced by autos and abilities landing; in a sustained fight the continuous Q CD reduction keeps burst fire cycling at a greatly accelerated rate"
+  },
+  {
+   "champion": "Zeri",
+   "source": "R",
+   "kind": "RAMP",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Lightning Crash: Overcharges Zeri with stacking move speed and attack speed charges; each auto landing in the Overcharged state refreshes a charge and empowers burst fire spray"
+  },
+  {
+   "champion": "Zilean",
+   "source": "R",
+   "kind": "ENDURE",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Chronoshift: Zilean can self-cast this to place a revive buff that restores him to partial health if he dies within 5 seconds; functions as a second-life window in a 1v1 duel, conditional on ult availability, allowing him to survive what would otherwise be a killing blow and continue the exchange."
+  }
+ ]
+}
