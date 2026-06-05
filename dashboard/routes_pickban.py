@@ -270,14 +270,17 @@ def _normalize_role(raw: str) -> str | None:
 # --------------------------------------------------------------------
 
 
-def _exclude_clause(exclude_ids: tuple[int, ...]) -> tuple[str, tuple[int, ...]]:
+def _exclude_clause(exclude_ids: tuple[int, ...],
+                    col: str = "champion_id") -> tuple[str, tuple[int, ...]]:
     """Returns (sql_fragment, params). When exclude_ids is empty we emit
     a no-op fragment (`AND 1=1`) so the f-string concatenation stays
-    grammatical regardless of operator filter state."""
+    grammatical regardless of operator filter state. ``col`` qualifies the
+    column so self-join callers pass e.g. "op.champion_id" directly instead
+    of string-replacing the fragment after the fact."""
     if not exclude_ids:
         return ("AND 1=1", ())
     placeholders = ",".join("?" * len(exclude_ids))
-    return (f"AND champion_id NOT IN ({placeholders})", exclude_ids)
+    return (f"AND {col} NOT IN ({placeholders})", exclude_ids)
 
 
 def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
@@ -462,8 +465,8 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
     CS before any ally locks in).
     """
     placeholders = ",".join("?" * len(queue_ids))
-    excl_sql, excl_params = _exclude_clause(exclude_ids)
     if ally_ids:
+        excl_sql, excl_params = _exclude_clause(exclude_ids, "op.champion_id")
         # Joint-with-allies path: count matches where operator played
         # `champion_id` at `role` AND any teammate's champion_id is in
         # ally_ids on the SAME team. Group by candidate; rank by WR.
@@ -479,7 +482,7 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
               AND op.match_id IN (
                 SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
               )
-              {excl_sql.replace("champion_id", "op.champion_id")}
+              {excl_sql}
               AND EXISTS (
                 SELECT 1 FROM participants ally
                 WHERE ally.match_id = op.match_id
@@ -499,6 +502,7 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
             "alongside locked allies - comp fit (smoothed)", top,
         )
     # Recent-form fallback (pre-s214 behavior, kept for empty-allies path).
+    excl_sql, excl_params = _exclude_clause(exclude_ids, "p.champion_id")
     cutoff_ms = int((time.time() - _SYNERGY_WINDOW_DAYS * 86400) * 1000)
     cur = conn.execute(
         f"""
@@ -511,7 +515,7 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
           AND p.team_position = ?
           AND m.queue_id IN ({placeholders})
           AND m.game_creation_ts >= ?
-          {excl_sql.replace("champion_id", "p.champion_id")}
+          {excl_sql}
         GROUP BY p.champion_id
         HAVING games >= 2
         """,
@@ -588,7 +592,7 @@ def _query_last_in_queue(conn: sqlite3.Connection, puuid: str,
     if not queue_ids:
         return None
     placeholders = ",".join("?" * len(queue_ids))
-    excl_sql, excl_params = _exclude_clause(exclude_ids)
+    excl_sql, excl_params = _exclude_clause(exclude_ids, "p.champion_id")
     cur = conn.execute(
         f"""
         SELECT p.champion_id, p.champion_name, p.win,
@@ -597,7 +601,7 @@ def _query_last_in_queue(conn: sqlite3.Connection, puuid: str,
         JOIN matches m ON m.match_id = p.match_id
         WHERE p.puuid = ?
           AND m.queue_id IN ({placeholders})
-          {excl_sql.replace("champion_id", "p.champion_id")}
+          {excl_sql}
         ORDER BY m.game_creation_ts DESC, p.champion_id ASC
         LIMIT 1
         """,
@@ -629,7 +633,7 @@ def _query_struggle_ban(conn: sqlite3.Connection, puuid: str, role: str,
     (more reliable), then by champion_id (stable).
     """
     placeholders = ",".join("?" * len(queue_ids))
-    excl_sql, excl_params = _exclude_clause(exclude_ids)
+    excl_sql, excl_params = _exclude_clause(exclude_ids, "enemy.champion_id")
     cur = conn.execute(
         f"""
         SELECT enemy.champion_id, enemy.champion_name,
@@ -645,7 +649,7 @@ def _query_struggle_ban(conn: sqlite3.Connection, puuid: str, role: str,
           AND tracked.match_id IN (
             SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
           )
-          {excl_sql.replace("champion_id", "enemy.champion_id")}
+          {excl_sql}
         GROUP BY enemy.champion_id
         HAVING encounters >= ?
         ORDER BY (CAST(losses AS REAL) / encounters) DESC,
