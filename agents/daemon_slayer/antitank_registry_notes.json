@@ -1,0 +1,925 @@
+{
+ "item": 308,
+ "engine": "1.117.0",
+ "count": 102,
+ "entries": [
+  {
+   "champion": "Aatrox",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Periodically, Aatrox empowers his next basic attack to ... deal bonus magic damage equal to 4% : 8% (based on level) of the target's maximum health, capped at 100 against monsters."
+  },
+  {
+   "champion": "AurelionSol",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "The beam will deal a burst of bonus magic damage for each full second that it damages the same enemy ... The damage based on the target's health ratio is capped at 300 against monsters. (Passive: Bursts deal bonus magic damage based on the target's maximum health.)"
+  },
+  {
+   "champion": "Aurora",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "The third stack against a target consumes them all to deal bonus magic damage equal to 2.5% (+ 2% per 100 AP) of the target's maximum health, capped at 100 : 270 (based on level) against monsters."
+  },
+  {
+   "champion": "Brand",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Ablaze: While afflicted with Ablaze, the target is dealt magic damage equal to 2% of their maximum health over 4 seconds ... Upon applying 3 stacks ... dealt magic damage equal to 8% : 12% (based on level) (+ 2% per 100 AP) of their maximum health."
+  },
+  {
+   "champion": "Briar",
+   "source": "Q",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "If the target is an enemy, she deals magic damage ... and reduces their armor and magic resistance for 5 seconds. (Resistances Reduction: 10% / 12.5% / 15% / 17.5% / 20%)"
+  },
+  {
+   "champion": "Camille",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Enemies hit by the outer half of the cone take additional physical damage, capped at 300 against monsters. (Outer Cone Bonus Damage target_max_hp_pct 6.0 / 6.5 / 7.0 / 7.5 / 8.0%)"
+  },
+  {
+   "champion": "Camille",
+   "source": "R",
+   "kind": "CURRENT_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "While within the zone, Camille's basic attacks against the target deal bonus magic damage. (Bonus Magic Damage target_current_hp_pct 4 / 6 / 8%)"
+  },
+  {
+   "champion": "Chogath",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Vorpal Spikes empowers next 3 basic attacks ... Enemies struck are dealt magic damage ... target_max_hp_pct 2.5-3.9% ... damage based on the target's health ratio is capped at 200 against monsters"
+  },
+  {
+   "champion": "Corki",
+   "source": "E",
+   "kind": "SHRED",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Gatling Gun sprays bullets ... applying a stack ... stacking up to 4 times. Each stack reduces the target's armor and magic resistance."
+  },
+  {
+   "champion": "DrMundo",
+   "source": "Q",
+   "kind": "CURRENT_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Infected Bonesaw ... deals magic damage to the first enemy hit ... target_current_hp_pct 20.0-30.0"
+  },
+  {
+   "champion": "Elise",
+   "source": "Q",
+   "kind": "CURRENT_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Neurotoxin ... deals magic damage, with the damage based on the target's health ratio being capped against monsters ... target_current_hp_pct 4.0"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Whiplash ... dealing magic damage ... target_max_hp_pct 3.0 (Empowered Whiplash target_max_hp_pct 4.0) ... capped at 450 against monsters"
+  },
+  {
+   "champion": "Evelynn",
+   "source": "W",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Against champions, the expunge also inflicts magic resistance reduction for 4 seconds."
+  },
+  {
+   "champion": "Fiddlesticks",
+   "source": "Q",
+   "kind": "CURRENT_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Terrify ... dealing magic damage ... target_current_hp_pct 4.0-6.0 ... capped at 400 against monsters"
+  },
+  {
+   "champion": "Fiora",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": false,
+   "source_quote": "Dealing damage in the direction of a Vital will trigger it to deal bonus true damage equal to 3% (+ 4% per 100 bonus AD) of target's maximum health"
+  },
+  {
+   "champion": "Galio",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "the gusts form a tornado ... dealing magic damage equal to 2.5% (+ 1% per 100 AP) of target's maximum health every 0.5 seconds [10% over the duration] ... capped at 150 per tick / 600 total against monsters"
+  },
+  {
+   "champion": "Garen",
+   "source": "E",
+   "kind": "SHRED",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Enemy champions hit 6 times by Judgment are inflicted with 25% armor reduction for 6 seconds, with the duration refreshing upon the 7th hit and every 6th hit thereafter."
+  },
+  {
+   "champion": "Gangplank",
+   "source": "E",
+   "kind": "PERCENT_PEN",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Enemies caught in an explosion ... are dealt the triggering attack's damage ... and the damage dealt ignores 40% of the target's armor."
+  },
+  {
+   "champion": "Gnar",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "The third stack against a target consumes them all to deal bonus magic damage ... target_max_hp_pct 6.0-14.0 ... capped at 300 against monsters"
+  },
+  {
+   "champion": "Gragas",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Drunken Rage ... empowers his next basic attack ... deal bonus magic damage to the target and nearby enemies ... target_max_hp_pct 7.0 ... capped at 300 against monsters"
+  },
+  {
+   "champion": "Gwen",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "A Thousand Cuts: Gwen's basic attacks on-hit, the center of Snip Snip!, and Needlework deal bonus magic damage equal to 1% (+ 0.55% per 100 AP) of the target's maximum health."
+  },
+  {
+   "champion": "Hwei",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Devastating Fire (QQ): dealing magic damage to all nearby enemies. The damage based on the target's health ratio is capped at 250 against monsters. (damage_block target_max_hp_pct 3.0-7.0%)"
+  },
+  {
+   "champion": "Illaoi",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Harsh Lesson: The attack deals bonus physical damage ... capped at 300 against non-champions (damage_block Bonus Physical Damage target_max_hp_pct 3.0-5.0%), cd 4s."
+  },
+  {
+   "champion": "Jax",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Counter Strike Recast: Jax deals magic damage to nearby enemies, with the total damage increased by 20% for each attack dodged (damage_block Minimum 3.5% / Maximum 7.0% target_max_hp_pct)."
+  },
+  {
+   "champion": "Jayce",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Thundering Blow: swings his hammer at them to deal magic damage, capped against monsters, and knock them back 600 units (damage_block Magic Damage target_max_hp_pct 8.0-22.0%)."
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "Q",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Dragon Strike: Jarvan IV extends his lance in the target direction, dealing physical damage to enemies hit and inflicting them with armor reduction for 3 seconds."
+  },
+  {
+   "champion": "Jayce",
+   "source": "R",
+   "kind": "SHRED",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Transform Mercury Cannon: empowering his next basic attack to reduce the target's armor and magic resistance by 10% / 15% / 20% / 25% (based on level) for 5 seconds."
+  },
+  {
+   "champion": "KSante",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Dauntless Instinct: basic attacks against marked enemies are empowered to consume the mark on-hit, dealing 12 (+ 1% : 2% (based on level) of target's maximum health) bonus physical damage."
+  },
+  {
+   "champion": "KSante",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Path Maker (damage_block Physical Damage target_max_hp_pct 8.0%; Bonus True Damage target_max_hp_pct up to 6.4%), cd 14-10s."
+  },
+  {
+   "champion": "KSante",
+   "source": "R",
+   "kind": "PERCENT_PEN",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "All Out: In return, he gains bonus attack speed, 50% bonus-armor penetration, and 20% omnivamp ... The percentage bonus armor penetration stacks additively with other sources of percentage armor penetration."
+  },
+  {
+   "champion": "Kalista",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Sentinel - Soul-Marked: If both Kalista's and the Oathsworn's Soul-Mark are applied to the same enemy, the marks are consumed to deal magic damage to the target, capped against non-champions (damage_block Bonus Magic Damage target_max_hp_pct 10-18%)."
+  },
+  {
+   "champion": "Karthus",
+   "source": "W",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Wall of Pain: Enemies that touch the wall are inflicted with 25% magic resistance reduction and become slowed for 5 seconds, decaying over the duration."
+  },
+  {
+   "champion": "Kayle",
+   "source": "Q",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Radiant Blast: targets struck in the area are dealt magic damage, slowed for 2 seconds, and inflicted with 15% reduced armor and magic resistance for 4 seconds."
+  },
+  {
+   "champion": "Kindred",
+   "source": "W",
+   "kind": "CURRENT_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Wolf's attacks deal magic damage ... The damage based on the target's health ratio is capped at 112.5 (+ 15 per mark) against monsters. (target_current_hp_pct 1.5% + 1.5% per mark)"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "Q",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "deals magic damage to the first enemy hit and reduces their armor and magic resistance for 4 seconds (Resistances Reduction 16/20/24/28/32%)"
+  },
+  {
+   "champion": "KogMaw",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.9,
+   "conditional": true,
+   "source_quote": "empowers his basic attacks ... deal bonus magic damage on-hit, capped at 100 against minions and monsters (Bonus Magic Damage target_max_hp_pct 3.0/3.75/4.5/5.25/6.0)"
+  },
+  {
+   "champion": "Lillia",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Lillia's abilities apply Dream Dust to enemies hit, which deals 5% (+ 1.25% per 100 AP) of the target's maximum health total magic damage over 3 seconds, capped at 65 against monsters"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": true,
+   "source_quote": "Darkness Rise: Mordekaiser ... deals 5 (+ 30% AP) (+ 1% : 5% (based on level) of target's maximum health) magic damage every second to nearby enemies"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "E",
+   "kind": "PERCENT_PEN",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Passive: Mordekaiser gains magic penetration (Magic Penetration 5/7.5/10/12.5/15 %)"
+  },
+  {
+   "champion": "Mordekaiser",
+   "source": "R",
+   "kind": "SHRED",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "consumes the target's soul for 7 seconds, healing himself for 10% of their maximum health and reducing their current attack damage, ability power, total attack speed, maximum health, armor, magic resist, and size by 10%, in addition to gaining them for himself"
+  },
+  {
+   "champion": "Nasus",
+   "source": "E",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "The fire then remains for 5 seconds, dealing magic damage each second to enemies within and inflicting them with armor reduction, lingering for 1 second. (Armor Reduction: 30/35/40/45/50% of target's armor)"
+  },
+  {
+   "champion": "Nasus",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "While Nasus is empowered, he deals magic damage every 0.5 seconds to nearby enemies, capped at 240 per second (Magic Damage Per Tick target_max_hp_pct 1.5/2.0/2.5%)"
+  },
+  {
+   "champion": "Nilah",
+   "source": "Q",
+   "kind": "PERCENT_PEN",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Passive: Nilah gains 0% : 33% (based on critical strike chance) armor penetration."
+  },
+  {
+   "champion": "Olaf",
+   "source": "Q",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Enemy champions hit are also inflicted with 20% armor reduction for 4 seconds."
+  },
+  {
+   "champion": "Ornn",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Ornn's and allies' immobilizing effects against Brittle enemies will consume the debuff to deal bonus magic damage equal to 10% : 18% (based on Ornn's level) of the target's maximum health, capped at 250 against monsters"
+  },
+  {
+   "champion": "Ornn",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Over the march he belches fire over a cone in front of him, dealing magic damage ... capped against monsters (Total Magic Damage target_max_hp_pct 12/13/14/15/16%). The final gout of flame ... will apply Brittle for 3 seconds."
+  },
+  {
+   "champion": "Pantheon",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "If the target is within 800 units upon arrival, he deals physical damage and stuns them ... Against minions and monsters, Shield Vault has a minimum damage of 60 and is capped at 200. (Physical Damage target_max_hp_pct 6.0/6.5/7.0/7.5/8.0%)"
+  },
+  {
+   "champion": "Poppy",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Active: Poppy smashes the area in the target direction, dealing physical damage to enemies hit. Against minions and monsters, the damage based on their health ratio is capped. (Physical Damage target_max_hp_pct 9.0% per hit, Total 18.0%)"
+  },
+  {
+   "champion": "Qiyana",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "dealing physical damage to enemies hit, stunning them ... The damage based on the target's health ratio is capped against monsters. (Physical Damage target_max_hp_pct 10.0%)"
+  },
+  {
+   "champion": "RekSai",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "she slashes at the target with her claws, dealing physical damage, and dashes 125 units through them. (Physical Damage base 150/250/350 + 100% bonus AD + target_max_hp_pct 15/20/25%)"
+  },
+  {
+   "champion": "Rell",
+   "source": "P",
+   "kind": "SHRED",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.75,
+   "conditional": false,
+   "source_quote": "Rell's basic attacks and abilities against non-minions reduce the target's armor and magic resistance by 3% for 5 seconds, refreshing on subsequent hits and stacking up to 5 times for a maximum of 15% reduction."
+  },
+  {
+   "champion": "Rell",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Rell's next basic attack or Shattering Strike within 5 seconds creates an explosion that deals bonus magic damage. The damage based on the target's health ratio is capped at 150 : 300 (based on level) against monsters and structures. (Bonus Magic Damage target_max_hp_pct 5.0/5.5/6.0/6.5/7.0%)"
+  },
+  {
+   "champion": "Renata",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "If the enemy was unmarked, the attack also deals bonus magic damage equal to 1% : 2% (based on level) (+ 2% per 100 AP) of the target's maximum health. Allied champions' damaging attacks and abilities against a marked target will consume the mark to deal additional bonus magic damage equal to 1% : 2% ... of the target's maximum health."
+  },
+  {
+   "champion": "Rengar",
+   "source": "R",
+   "kind": "SHRED",
+   "cadence": "BURST",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Rengar's next basic attack within normal attack range against any enemy or with Unseen Predator to the marked enemy deals 100% AD bonus physical damage, then inflicts armor reduction for 4 seconds. (Armor Reduction 15/20/25)"
+  },
+  {
+   "champion": "Rumble",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "empowers his basic attacks to deal 5 : 40 (based on level) (+ 25% AP) (+ 5% of the target's maximum health) bonus magic damage on-hit. The damage based on the target's health ratio is capped at 65 : 150 (based on level) against monsters."
+  },
+  {
+   "champion": "Rumble",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Flamespitter Total Magic Damage ... target_max_hp_pct [6.0..9.2] (Danger Zone enhanced 9.0..13.8); cap based on target's health applies only against monsters."
+  },
+  {
+   "champion": "Rumble",
+   "source": "E",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "shoot a harpoon ... inflicting them with magic resistance reduction for 4 seconds ... These effects stack additively with multiple harpoons ... stacking up to 2 times. (Total MR Reduction 20%..36%, enhanced up to 54%)"
+  },
+  {
+   "champion": "Sejuani",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Innate - Icebreaker: Enemies stunned by Sejuani are marked Frozen ... Sejuani's next basic attack or ability against a Frozen enemy will consume the mark to deal bonus magic damage equal to 10% of their maximum health, capped at 250 against epic monsters."
+  },
+  {
+   "champion": "Senna",
+   "source": "P",
+   "kind": "CURRENT_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": false,
+   "source_quote": "Subsequent hits will collect Mist and deal bonus physical damage equal to 1% : 10% (based on level) of target's current health, rendering the target immune to further Mist infliction for a few seconds."
+  },
+  {
+   "champion": "Sett",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": false,
+   "source_quote": "Knuckle Down Bonus Physical Damage target_max_hp_pct 1% per empowered attack (2% total over the next two basic attacks), capped at 400 total damage of each attack against monsters."
+  },
+  {
+   "champion": "Sett",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": true,
+   "source_quote": "The Show Stopper Physical Damage target_bonus_hp_pct [40.0, 50.0, 60.0] (+120% bonus AD + base) to enemies within the epicenter; shockwave hits beyond take reduced damage scaling target_bonus_hp_pct [10, 12.5, 15]."
+  },
+  {
+   "champion": "Shen",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Twilight Assault Total Magic Damage target_max_hp_pct [6.0..12.0] on the next 3 empowered basic attacks (Increased to [15..21] if the Spirit Blade hit a champion). Against monsters total damage is capped."
+  },
+  {
+   "champion": "Shyvana",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Shyvana's basic attacks against marked enemies are empowered to deal bonus magic damage on-hit equal to 3% (+ 1% per 100 bonus AD) of the target's maximum health, capped at 150 against monsters."
+  },
+  {
+   "champion": "Singed",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Fling Magic Damage target_max_hp_pct [6.0..8.0] (+55% AP). The damage based on the target's health ratio is capped at 300 against minions and monsters (full value vs champions)."
+  },
+  {
+   "champion": "Sion",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Glory in Death (post-death frenzy): Deals bonus physical damage on-hit equal to 10% of the target's maximum health, capped at 75 against non-champions."
+  },
+  {
+   "champion": "Sion",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Soul Furnace Recast: Sion consumes the shield to deal magic damage to nearby enemies ... target_max_hp_pct 14%, capped at 400 against minions and monsters."
+  },
+  {
+   "champion": "Sion",
+   "source": "E",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.55,
+   "conditional": false,
+   "source_quote": "Roar of the Slayer ... deals magic damage to the first enemy hit, slows them ... and inflicts them with 20% armor reduction for 4 seconds."
+  },
+  {
+   "champion": "Skarner",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Threads of Vibration: Enemies afflicted with 3 stacks take magic damage equal to 5% : 9% (based on level) of their maximum health over the duration, capped at 100 : 300 against monsters."
+  },
+  {
+   "champion": "Skarner",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Shattered Earth final attack slams the boulder, dealing an additional 8% of each target's maximum health physical damage (Upheaval block target_max_hp_pct 8.0); capped against monsters, not applied against structures."
+  },
+  {
+   "champion": "Smolder",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.4,
+   "conditional": true,
+   "source_quote": "Tier 3 - 225 stacks: Enemies hit are set on fire ... bonus true damage equal to 2.5% per 100 bonus AD (+ 0.5% per 100 Dragon Practice stacks) of their maximum health over the duration, capped at 300 against monsters."
+  },
+  {
+   "champion": "TahmKench",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Regurgitate Magic Damage target_max_hp_pct 15% to a swallowed enemy (Devour can be cast on enemies only with 3 stacks of An Acquired Taste)."
+  },
+  {
+   "champion": "Trundle",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Total Magic Damage || target_max_hp_pct:20.0 / 25.0 / 30.0 ... Active: Trundle drains the life force out of the target enemy champion, dealing magic damage and healing himself for the same amount."
+  },
+  {
+   "champion": "Trundle",
+   "source": "R",
+   "kind": "SHRED",
+   "cadence": "BURST",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "He also steals 40% of their current armor and magic resistance ... The armor and magic resistance will remain stolen for 4 seconds after the drain has ended."
+  },
+  {
+   "champion": "Udyr",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.8,
+   "conditional": false,
+   "source_quote": "Total Physical Damage || target_max_hp_pct:6.0 / 8.0 / 10.0 / 12.0 / 14.0 / 16.0 ... empowering his next two basic attacks to ... deal bonus physical damage, capped at 15 (+ 100% bonus AD) (+ 50% AP) against monsters."
+  },
+  {
+   "champion": "Varus",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.85,
+   "conditional": false,
+   "source_quote": "Bonus Magic Damage per Stack || target_max_hp_pct:3.0 / 3.5 / 4.0 / 4.5 / 5.0 ... Varus' basic attacks are empowered to deal bonus magic damage and apply a stack of Blight on-hit ... For each stack consumed, the target is dealt bonus magic damage."
+  },
+  {
+   "champion": "Vayne",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.95,
+   "conditional": false,
+   "source_quote": "Bonus True Damage || target_max_hp_pct:6.0 / 7.0 / 8.0 / 9.0 / 10.0 ... The third stack consumes them all to deal bonus true damage, with a minimum threshold."
+  },
+  {
+   "champion": "Vi",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Bonus Physical Damage || target_max_hp_pct:4.0 / 5.0 / 6.0 / 7.0 / 8.0 ... The third stack consumes them all to deal bonus physical damage, capped at 300 against non-champions."
+  },
+  {
+   "champion": "Vi",
+   "source": "W",
+   "kind": "SHRED",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "The third stack consumes them all to deal bonus physical damage ... and inflict 20% armor reduction for 4 seconds."
+  },
+  {
+   "champion": "Viego",
+   "source": "Q",
+   "kind": "CURRENT_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Bonus Physical Damage || target_current_hp_pct:2.0 / 3.0 / 4.0 / 5.0 / 6.0 ... Passive: Viego's basic attacks are empowered to deal bonus physical damage on-hit."
+  },
+  {
+   "champion": "Vladimir",
+   "source": "R",
+   "kind": "SHRED",
+   "cadence": "BURST",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Active: Vladimir spreads a virulent plague at the target location that infects enemies hit for 4 seconds, increasing the damage they take from all sources by 10%."
+  },
+  {
+   "champion": "Volibear",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Magic Damage || target_max_hp_pct:11.0 / 12.0 / 13.0 / 14.0 / 15.0 ... The bolt deals magic damage to enemies hit, capped at 650 against non-champions."
+  },
+  {
+   "champion": "Warwick",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Jaws of the Beast damage_blocks: Magic Damage target_max_hp_pct [6,7,8,9,10] (+120% AD, +100% AP); 'The damage based on the target's health ratio is capped against monsters.' Cooldown 8.0-6.0s."
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "Q",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": false,
+   "source_quote": "Crushing Blow: 'inflict armor reduction for 3 seconds.' damage_blocks Armor Reduction raw_modifiers values [10,15,20,25,30] units '% of target's armor'. Cooldown 8.0-6.0s."
+  },
+  {
+   "champion": "MonkeyKing",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Cyclone damage_blocks: Total Physical Damage target_max_hp_pct [8,12,16] (+275% AD), Maximum Total Physical Damage target_max_hp_pct [16,24,32]; per-tick target_max_hp_pct [1,1.5,2]. 'capped ... per second against monsters.' Cooldown 130/110/90s."
+  },
+  {
+   "champion": "XinZhao",
+   "source": "R",
+   "kind": "CURRENT_HP",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Crescent Guard damage_blocks: Physical Damage base [75,175,275] (+100% AD, +110% AP) target_current_hp_pct [15,15,15]; 'sweeps his spear around him, dealing physical damage to nearby enemies, capped at 600 against monsters.'"
+  },
+  {
+   "champion": "Yasuo",
+   "source": "R",
+   "kind": "PERCENT_PEN",
+   "cadence": "BURST",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Last Breath: 'For the next 15 seconds, the damage dealt by Yasuo's critical strikes ignores 60% of the target's bonus armor.' notes: 'The percentage bonus armor penetration stacks multiplicatively with other sources of percentage armor penetration.'"
+  },
+  {
+   "champion": "Yone",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.68,
+   "conditional": false,
+   "source_quote": "Spirit Cleave damage_blocks: Total Mixed Damage base [10..50] target_max_hp_pct [8,9,10,11,12] (split Physical target_max_hp_pct [4,4.5,5,5.5,6] + Magic [4,4.5,5,5.5,6]); 'maximum threshold ... against monsters.' Cooldown 14s."
+  },
+  {
+   "champion": "Yorick",
+   "source": "E",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Mourning Mist damage_blocks: Magic Damage target_max_hp_pct [6,6.5,7,7.5,8] (+3% per 100 AP); 'dealing magic damage to enemies hit, down to a minimum threshold against minions, and capped against monsters.' Cooldown 12.0-8.0s."
+  },
+  {
+   "champion": "Yorick",
+   "source": "E",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Mourning Mist: 'Cursed: The target is revealed, has reduced armor'. damage_blocks Armor Reduction raw_modifiers values [13,16,19,22,25] units '% of target's armor'. Cooldown 12.0-8.0s."
+  },
+  {
+   "champion": "Zac",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.7,
+   "conditional": false,
+   "source_quote": "Unstable Matter damage_blocks: Magic Damage base [40,50,60,70,80] target_max_hp_pct [4,5,6,7,8]; 'Zac explodes to deal magic damage to nearby enemies, capped against minions and monsters.' Cooldown 5.0s."
+  },
+  {
+   "champion": "Zed",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Contempt for the Weak: 'Zed's basic attacks against targets below 50% maximum health are empowered to deal 6% / 8% / 10% (based on level) of the target's maximum health as bonus magic damage. Against monsters ... capped at 300.'"
+  },
+  {
+   "champion": "Zeri",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.7,
+   "conditional": true,
+   "source_quote": "Living Battery: 'At full charge, Zeri's next attack is empowered to consume all charge to deal 75 : 160 (+ 110% AP) (+ 1% : 11% (based on level) of target's maximum health) magic damage. The damage based on the target's health ratio is capped at 300 against monsters.'"
+  },
+  {
+   "champion": "Zoe",
+   "source": "E",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.5,
+   "conditional": true,
+   "source_quote": "Sleepy Trouble Bubble: 'While the target is asleep, they are inflicted with 30% magic resistance reduction.' Cooldown 16.0-12.0s."
+  },
+  {
+   "champion": "Kled",
+   "source": "W",
+   "kind": "MAX_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Violent Tendencies: ... The fourth attack deals bonus physical damage. Bonus Physical Damage target_max_hp_pct 4.5/5/5.5/6/6.5%"
+  },
+  {
+   "champion": "Urgot",
+   "source": "P",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Urgot's next basic attack on-hit within the arc of a shotgun ... dealing 40% : 100% AD (+ 2% : 6% (based on level) of target's maximum health) physical damage"
+  },
+  {
+   "champion": "JarvanIV",
+   "source": "P",
+   "kind": "CURRENT_HP",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Jarvan IV's basic attacks are empowered to deal bonus physical damage equal to 8% of the target's current health, with a minimum threshold of 20"
+  },
+  {
+   "champion": "Amumu",
+   "source": "P",
+   "kind": "SHRED",
+   "cadence": "SUSTAINED",
+   "magnitude": 0.6,
+   "conditional": false,
+   "source_quote": "Cursed targets receive 10% bonus true damage from all incoming pre-mitigation magic damage."
+  },
+  {
+   "champion": "Brand",
+   "source": "W",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.65,
+   "conditional": true,
+   "source_quote": "Ablaze Bonus: The target takes 25% increased damage."
+  },
+  {
+   "champion": "Renekton",
+   "source": "E",
+   "kind": "SHRED",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": true,
+   "source_quote": "Reign of Anger Bonus: Dice deals bonus physical damage and inflicts armor reduction to enemies hit for 4 seconds."
+  },
+  {
+   "champion": "Maokai",
+   "source": "Q",
+   "kind": "MAX_HP",
+   "cadence": "PERIODIC",
+   "magnitude": 0.45,
+   "conditional": false,
+   "source_quote": "Active: Maokai sends a shockwave in the target direction that deals magic damage... Magic Damage 2/2.5/3/3.5/4% of target's maximum health"
+  },
+  {
+   "champion": "Kled",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.55,
+   "conditional": true,
+   "source_quote": "Chaaaaaaaarge!!! Minimum Magic Damage 4/6/8% / Maximum Magic Damage 12/18/24% of target's maximum health"
+  },
+  {
+   "champion": "Malzahar",
+   "source": "R",
+   "kind": "MAX_HP",
+   "cadence": "BURST",
+   "magnitude": 0.6,
+   "conditional": true,
+   "source_quote": "Nether Grasp Total Magic Damage 10/15/20% of target's maximum health (Per Tick 1/1.5/2%) over the suppression channel"
+  }
+ ]
+}

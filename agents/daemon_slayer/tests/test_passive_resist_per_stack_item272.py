@@ -164,8 +164,8 @@ class AsciiHygieneTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_pin(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.116.0")
-        self.assertEqual(ENGINE_VERSION, "1.116.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.117.0")
+        self.assertEqual(ENGINE_VERSION, "1.117.0")
 
 
 if __name__ == "__main__":
