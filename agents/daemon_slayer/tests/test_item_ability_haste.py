@@ -54,6 +54,20 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(_ITEM_ABILITY_HASTE["3115"], 15.0)  # Nashor's Tooth
         self.assertEqual(_ITEM_ABILITY_HASTE["3100"], 10.0)  # Lich Bane
 
+    def test_imperial_mandate_base_ah_is_16_11_1_value(self) -> None:
+        # Patch-drift regression (surfaced cross-checking the lolmath 26.11
+        # hard-CC/haste refactor): Riot dropped Imperial Mandate BASE Ability
+        # Haste 20 -> 15 between 16.10.1 and 16.11.1 and added a SEPARATE
+        # "+15 AH for abilities with Immobilizing effects" CONDITIONAL grant.
+        # This registry's contract is BASE build-time AH only (conditional /
+        # proc grants are excluded), so the correct 16.11.1 value is 15. The
+        # 20 was stale 16.10.1 data. Verified vs
+        # data/daemon_slayer/16.11.1/items.json (4005 + ARAM alias 324005).
+        self.assertEqual(_ITEM_ABILITY_HASTE["4005"], 15.0)   # Imperial Mandate (SR)
+        self.assertEqual(_ITEM_ABILITY_HASTE["324005"], 15.0)  # Imperial Mandate (ARAM)
+        # Arena alias is Arena-boosted (35) and unchanged in 16.11.1 - NOT drift.
+        self.assertEqual(_ITEM_ABILITY_HASTE["224005"], 35.0)  # Imperial Mandate (Arena)
+
     def test_arena_mirror_ids_present(self) -> None:
         # Arena 22-prefix duplicates should be in the registry; their
         # values may diverge from the SR original (Arena often boosts
