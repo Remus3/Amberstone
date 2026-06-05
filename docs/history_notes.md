@@ -53,6 +53,17 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-04 - pickban routes refactor (item 305) + Gemini read-only auditor sub-project (item 306)
+
+Two non-DS slices, both shipped + pushed + CI green; RC NOT restarted (no engine/frozen touch). Full records = items 305 + 306 in `docs/LEDGER.md`.
+
+- **dashboard/routes_pickban.py cleanup (item 305; branch refactor/pickban-routes ff-merged main `6b8cbd7f`).** 8 atomic commits C1-C8. C1+C2 (TDD, xfail-strict): `_serve_personal_record` now 400s on a malformed `?queue=` (parity with pickban-recs - was silently defaulting to the SR queue set). C3-C8 behavior-preserving: `_exclude_clause(col=)` removed `.replace` SQL surgery x4; merged 3 query twins (-> `_query_performance_band` / `_query_co_participant` / `_query_loss_matchups`); `_pct()` + named consts; shared handler scaffold flattened both HTTP handlers C901 12/9 -> <8. 1209->1172 LOC, 53->54 tests, verifier subagent CONFIRMED. Residual C901 (`_compose_cleanse_advisory` 15, `_load_champ_name_to_id` 9) deliberately deferred.
+- **Gemini auditor (item 306, PROVISIONAL; commits `eaa1f0a1` `f3c54906` `14f95e06`).** gemini-cli 0.45.1 / gemini-3-pro-preview (paid) as a headless READ-ONLY critic. `tools/gemini_audit.ps1` (nightly RC-GeminiAudit 03:00 -> `docs/EXTERNAL_REVIEW_<date>.md`, gitignored), `gemini_ask.ps1` (in-session Q/A -> `gemini_io/`), `claude_send.ahk` (AHK v2 self-clear, dry-run default, NOT auto-wired), `GEMINI.md`, `.geminiignore`, `docs/GEMINI_AUDIT_CONFIG.md` + `GEMINI_REVIEW_CONSUMPTION.md`. Read-only via `--approval-mode plan`; Gemini never writes source (the runner captures its stdout). First review verified genuine. Memory: `project_gemini_auditor.md`.
+- **Don't-redo:** pickban is DONE + merged - do NOT re-refactor. Gemini key is a PAID User-scope key (prefix AQ.A); model id is gemini-3-pro-preview (NOT "gemini-3-pro" - 404s); read it via registry not `$env`; free quota is shared with Antigravity. Gemini is PROVISIONAL. D2/D3 copy-paste blocks + AHK "go" wiring are operator-side.
+- **NEXT:** triage the first nightly EXTERNAL_REVIEW (verify-before-trust + TDD-first); optional deferred 2 C901 fns; tune Gemini cadence/scope after a few reviews.
+
+---
+
 # 2026-06-04 - DS ALLY-AMPLIFICATION / buff-throughput scorer - 15th scored axis (item 304, ENGINE 1.116.0, 10-channel fan-out)
 
 "start the next DS schema lift with 10 multi-agents fan out different channels and exhaust it then /done for /clear" (16th use, 9th explicit multi-agent fan-out after items 294/297/298/299/300/301/302/303). Caveman ULTRA. ENGINE 1.115.0 -> 1.116.0; DS :8893 restarted (taskkill pid 5960 + Start-ScheduledTask RC-DaemonSlayer) -> 1.116.0 live (verified via /health + GET/POST /ally-amp; :8893 is plain HTTP). RC NOT touched (additive). Full record = item 304 in `docs/LEDGER.md`.
