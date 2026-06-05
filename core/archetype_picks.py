@@ -99,6 +99,7 @@ _CHAMPS_PATH = _DATA_DIR / "meta" / "ddragon_champions.json"
 # rotates per patch but `cs_archetype_picks.json` is patch-independent.
 _TAGS_CACHE: dict[str, list[str]] | None = None
 _KEY_NAME_CACHE: dict[str, str] | None = None
+_ID_CACHE: dict[str, str] | None = None
 _TAGS_LOCK = threading.Lock()
 
 # Per-process cache for the persisted picks. Reloaded on every write
@@ -184,6 +185,53 @@ def champion_name_by_key(key) -> str:
                 _log.warning("archetype_picks: key->name load failed: %s", exc)
             _KEY_NAME_CACHE = m
         return _KEY_NAME_CACHE.get(str(key), "")
+
+
+def canonical_champion_id(name: str) -> str:
+    """Resolve any champion name-form to its canonical DDragon id.
+
+    Accepts a Live Client display name ("Tahm Kench", "Nunu & Willump",
+    "Wukong"), a canonical DDragon id ("TahmKench", "MonkeyKing"), or an
+    apostrophe / space stripped variant ("KaiSa"); returns the canonical
+    DDragon id ("TahmKench", "MonkeyKing", "Kaisa"). Returns the input
+    unchanged when unknown, so a canonical id passes through and an
+    unresolved name fail-softs to a 0.0 downstream score. Built from
+    ``ddragon_champions.json`` (same loader pattern as
+    ``_load_champion_tags``), cached per process. Used by the live
+    ally-amplification peel consumer (routes_peel_priority) to bridge
+    Live Client display names to the DS engine's canonical-id registries.
+    """
+    if not name:
+        return ""
+    global _ID_CACHE
+    with _TAGS_LOCK:
+        if _ID_CACHE is None:
+            m: dict[str, str] = {}
+            try:
+                raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
+                data = raw.get("data", raw)
+                for entry in data.values():
+                    if not isinstance(entry, dict):
+                        continue
+                    cid = entry.get("id")
+                    if not cid:
+                        continue
+                    for key in (entry.get("name"), entry.get("id")):
+                        if not key:
+                            continue
+                        m[key] = cid
+                        m[key.replace("'", "")] = cid
+                        m[key.replace(" ", "")] = cid
+                        m[key.replace("'", "").replace(" ", "")] = cid
+            except FileNotFoundError:
+                _log.warning(
+                    "archetype_picks: %s missing - canonical_champion_id "
+                    "passthrough", _CHAMPS_PATH,
+                )
+            except Exception as exc:  # noqa: BLE001 - fail-soft resolver
+                _log.warning("archetype_picks: id map load failed: %s", exc)
+            _ID_CACHE = m
+        return _ID_CACHE.get(name, name)
 
 
 def default_for_champion(champion: str) -> tuple[str, str]:
