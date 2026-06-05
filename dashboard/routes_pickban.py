@@ -1138,7 +1138,10 @@ def _serve_personal_record(h) -> None:
             try:
                 queue_ids = tuple(int(x) for x in queue_raw.split(",") if x.strip())
             except ValueError:
-                queue_ids = _DEFAULT_SR_QUEUES
+                h._send(400,
+                        json.dumps({"ok": False, "error": "queue must be comma-separated ints"}).encode(),
+                        "application/json")
+                return
             if not queue_ids:
                 queue_ids = _DEFAULT_SR_QUEUES
         else:
