@@ -1,4 +1,4 @@
-"""Item 302 (ENGINE 1.116.0) - zone-control / area-denial scorer tests.
+"""Item 302 (ENGINE 1.117.0) - zone-control / area-denial scorer tests.
 
 The thirteenth scored axis alongside DPS / burst / EHP / ability-DPS /
 healing-throughput / offensive CC-output (item 294) / mobility (item 297) /
@@ -257,7 +257,7 @@ class RouteAndVersionTests(unittest.TestCase):
             self.assertIn(path, server._POST_ROUTES)
 
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.116.0")
+        self.assertEqual(ENGINE_VERSION, "1.117.0")
 
 
 if __name__ == "__main__":
