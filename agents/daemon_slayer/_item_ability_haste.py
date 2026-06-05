@@ -91,7 +91,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "3430":  15.0,  # Rite Of Ruin
     "3508":  20.0,  # Essence Reaver
     "3802":  10.0,  # Lost Chapter
-    "4005":  20.0,  # Imperial Mandate
+    "4005":  15.0,  # Imperial Mandate (16.11.1: base 20->15; +15 cond. on immobilize excluded)
     "4010":  15.0,  # Bloodletter's Curse
     "4011":  15.0,  # Sword of Blossoming Dawn
     "4016":  25.0,  # Wordless Promise
@@ -221,7 +221,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "323121":  15.0,  # Fimbulwinter
     "323190":  10.0,  # Locket of the Iron Solari
     "323222":  15.0,  # Mikael's Blessing
-    "324005":  20.0,  # Imperial Mandate
+    "324005":  15.0,  # Imperial Mandate (ARAM; 16.11.1 base 20->15)
     "326616":  10.0,  # Staff of Flowing Water
     "326617":  20.0,  # Moonstone Renewer
     "326620":  20.0,  # Echoes of Helia
