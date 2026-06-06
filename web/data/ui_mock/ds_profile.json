@@ -37,6 +37,42 @@
       "tier": "MED",
       "detail": "auto-reliant, slow early shove",
       "ranged_shove": false
+    },
+    {
+      "key": "threatrange",
+      "label": "Range",
+      "score": 7.8,
+      "pct": 78,
+      "tier": "HIGH",
+      "detail": "long-range artillery poke",
+      "is_artillery": true
+    },
+    {
+      "key": "zonecontrol",
+      "label": "Zone",
+      "score": 2.2,
+      "pct": 22,
+      "tier": "LOW",
+      "detail": "no terrain or wall control",
+      "controls_terrain": false
+    },
+    {
+      "key": "objdamage",
+      "label": "Objective",
+      "score": 4.5,
+      "pct": 50,
+      "tier": "MED",
+      "detail": "moderate structure pressure",
+      "pressures_structures": false
+    },
+    {
+      "key": "extendedduel",
+      "label": "Duel",
+      "score": 8.3,
+      "pct": 83,
+      "tier": "HIGH",
+      "detail": "ramps hard in a long duel",
+      "ramps": true
     }
   ],
   "elapsed_ms": 7,
