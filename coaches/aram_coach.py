@@ -842,14 +842,16 @@ class Coach(BaseCoach):
                 )
             # Passthrough for the optional native-emit `choices` JSON array.
             # The model returns a single-line JSON list (per the OUTPUT FORMAT
-            # block); parse_fields stores it as a string. Decode here and
+            # block); parse_fields stores it as a string. We read the decoded
+            # list off the shared validated CoachOutput model (one seam) and
             # write a real Python list into the artifact so the dashboard's
             # state builder picks it up via core.coach_choices.parse_choices.
-            # On any failure: silently swallow and let the synthesizer
-            # fallback in _state_builder cover the tick. The choices field
-            # is OPTIONAL by contract.
-            from core.coach_output import decode_choices
-            _choices_list = decode_choices(flds.get("choices"))
+            # from_fields routes `choices` through the model's before-validator,
+            # which silently swallows malformed/non-list input and returns []
+            # so the synthesizer fallback in _state_builder covers the tick.
+            # The choices field is OPTIONAL by contract.
+            from core.coach_output import CoachOutput
+            _choices_list = CoachOutput.from_fields(flds).choices
 
             cur = load_json(self._out)
             cur.update({
