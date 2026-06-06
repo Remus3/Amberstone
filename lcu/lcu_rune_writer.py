@@ -110,6 +110,34 @@ _SECONDARY_PICKS: dict[str, list[int]] = {
 _SHARDS_SR   = [5005, 5008, 5001]  # Attack Speed | Adaptive Force | Health Scaling
 _SHARDS_ARAM = [5005, 5008, 5001]  # Attack Speed | Adaptive Force | Health Scaling
 
+# Lazy {rune display-name: perk id} map, built from ddragon_runes.json the
+# first time it's needed. Lets a user-curated build override the hardcoded
+# minor-rune defaults below (item 212) without re-listing every id here.
+_PERK_BY_NAME: Optional[dict[str, int]] = None
+
+
+def _perk_by_name() -> dict[str, int]:
+    """Return {rune display-name: id} parsed from data/meta/ddragon_runes.json.
+
+    Cached after the first read. Returns an empty dict if the file is
+    missing or malformed so callers fall back to defaults rather than crash.
+    """
+    global _PERK_BY_NAME
+    if _PERK_BY_NAME is None:
+        m: dict[str, int] = {}
+        try:
+            p = _APP_DIR / "data" / "meta" / "ddragon_runes.json"
+            for tree in json.loads(p.read_text(encoding="utf-8")):
+                for slot in tree.get("slots", []):
+                    for r in slot.get("runes", []):
+                        nm, rid = r.get("name"), r.get("id")
+                        if isinstance(nm, str) and isinstance(rid, int):
+                            m[nm] = rid
+        except Exception as exc:
+            _log.debug("perk-by-name load failed: %s", exc)
+        _PERK_BY_NAME = m
+    return _PERK_BY_NAME
+
 
 # ── Core resolver ─────────────────────────────────────────────────────────
 
@@ -118,12 +146,19 @@ def build_perk_ids(
     primary_tree: str,
     secondary_tree: str,
     is_aram: bool = False,
+    minor_primary: Optional[list[str]] = None,
+    minor_secondary: Optional[list[str]] = None,
 ) -> Optional[list[int]]:
     """
     Resolve (keystone name, primary_tree name, secondary_tree name) → 9-element perk_ids.
     Returns None if keystone or trees are unrecognised.
 
     Layout: [keystone, pri_row1, pri_row2, pri_row3, sec1, sec2, shard1, shard2, shard3]
+
+    minor_primary / minor_secondary (item 212): optional user-chosen rune
+    display-names. When the FULL set resolves (3 primary rows / 2 secondary
+    picks) they override the hardcoded defaults; any miss keeps defaults so a
+    malformed page is never pushed.
     """
     ks_id = _KEYSTONES.get(keystone)
     if not ks_id:
@@ -152,6 +187,19 @@ def build_perk_ids(
     if len(sec_picks) < 2:
         _log.warning("No secondary pick defaults for %r", secondary_tree)
         return None
+
+    # item 212: honor user-chosen minor runes when the full set resolves.
+    # Any unresolved name or wrong count keeps the defaults above so we
+    # never push a malformed page.
+    name_map = _perk_by_name()
+    if minor_primary:
+        mp = [name_map.get(n) for n in minor_primary]
+        if len(mp) == 3 and all(isinstance(x, int) for x in mp):
+            pri_rows = mp
+    if minor_secondary:
+        ms = [name_map.get(n) for n in minor_secondary]
+        if len(ms) == 2 and all(isinstance(x, int) for x in ms):
+            sec_picks = ms
 
     shards = _SHARDS_ARAM if is_aram else _SHARDS_SR
 
