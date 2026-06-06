@@ -38,6 +38,7 @@ Snapshot layout::
 from __future__ import annotations
 
 import json
+from collections import Counter
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Iterable
@@ -404,37 +405,143 @@ def _load_cdragon_ratio_sidecar(root: Path, patch: str) -> dict[str, dict[str, l
     return champs
 
 
+# CDragon AD / HP stat families - a damage block must never carry two fields
+# from one family (that silently double-counts the stat). The matcher routes a
+# CDragon ratio onto whichever same-family field the Meraki block already uses.
+_CDRAGON_AD_FIELDS: tuple[str, ...] = ("total_ad_pct", "bonus_ad_pct")
+_CDRAGON_HP_FIELDS: tuple[str, ...] = ("caster_max_hp_pct", "target_max_hp_pct")
+
+
+def _cdragon_family(field_name: str) -> str:
+    """Collapse a scaling field to its stat FAMILY (AD / HP) or itself."""
+    if field_name in _CDRAGON_AD_FIELDS:
+        return "AD"
+    if field_name in _CDRAGON_HP_FIELDS:
+        return "HP"
+    return field_name
+
+
+def _meraki_block_signature(block: DamageBlock) -> frozenset:
+    """The set of stat FAMILIES a Meraki damage block carries (base + ratios)."""
+    sig: set[str] = set()
+    if block.base is not None:
+        sig.add("base")
+    for fld in _CDRAGON_RATIO_FIELDS:
+        if fld == "base":
+            continue
+        if getattr(block, fld, None) is not None:
+            sig.add(_cdragon_family(fld))
+    return frozenset(sig)
+
+
+def _cdragon_block_signature(cd: dict) -> frozenset:
+    """The set of stat FAMILIES a CDragon mechanical block resolved (non-empty lists)."""
+    sig: set[str] = set()
+    for fld in _CDRAGON_RATIO_FIELDS:
+        v = cd.get(fld)
+        if isinstance(v, list) and v:
+            sig.add("base" if fld == "base" else _cdragon_family(fld))
+    return frozenset(sig)
+
+
+def _apply_cdragon_block(block: DamageBlock, cd: dict) -> DamageBlock:
+    """Re-source one Meraki ``block`` from one matched CDragon block ``cd``.
+
+    Per-field: every scaling field the CDragon block resolved (a non-empty list in
+    ``_CDRAGON_RATIO_FIELDS``) overrides the Meraki value, BUT an AD/HP ratio is
+    ROUTED onto whichever same-family field the Meraki block already carries
+    (CDragon ``total_ad_pct`` onto a Meraki ``bonus_ad_pct``) so the block never
+    ends up with two fields from one family (a silent double-count). The first
+    CDragon field to claim a target wins; a CDragon array longer than the Meraki
+    field it replaces is trimmed to keep per-block rank lengths stable. Fields the
+    CDragon block left None keep the Meraki value (per-field fall-back).
+    """
+    overrides: dict[str, Any] = {}
+    for fld in _CDRAGON_RATIO_FIELDS:
+        v = cd.get(fld)
+        if not (isinstance(v, list) and v):
+            continue
+        if fld == "base":
+            target = "base"
+        elif fld in _CDRAGON_AD_FIELDS:
+            existing = [f for f in _CDRAGON_AD_FIELDS if getattr(block, f) is not None]
+            target = existing[0] if existing else fld
+        elif fld in _CDRAGON_HP_FIELDS:
+            existing = [f for f in _CDRAGON_HP_FIELDS if getattr(block, f) is not None]
+            target = existing[0] if existing else fld
+        else:
+            target = fld
+        if target in overrides:
+            continue  # family already claimed (first CDragon field wins)
+        arr = tuple(float(x) for x in v)
+        cur = getattr(block, target, None)
+        if cur is not None and len(cur) < len(arr):
+            arr = arr[: len(cur)]
+        overrides[target] = arr
+    if not overrides:
+        return block
+    return replace(block, **overrides)
+
+
 def _apply_cdragon_ratio_preference(form: AbilityForm, cd_blocks: list) -> AbilityForm:
     """Re-source ``form``'s damage-block ratios from the CDragon sidecar slot list.
 
     OPT-IN: runs only when ``AbilitiesSnapshot.load`` is called with
-    ``prefer_cdragon_ratios=True``. Only the ``resolution == "mechanical"`` CDragon
-    blocks are eligible; they are paired POSITIONALLY with the form's
-    ``attribute_kind == "damage"`` blocks. For each pair, every scaling field the
-    CDragon block resolved (a non-empty list in ``_CDRAGON_RATIO_FIELDS``) REPLACES
-    the Meraki field on that block; fields the CDragon block left None keep the
-    Meraki value (per-field fall-back). The damage-block COUNT is never changed (no
-    block is created or dropped) so every downstream consumer sees the same
-    structure with re-sourced magnitudes. Meraki damage blocks with no paired
-    mechanical CDragon block stay verbatim. Returns ``form`` unchanged when no
-    mechanical CDragon block applies (whole-block fall-back to Meraki).
+    ``prefer_cdragon_ratios=True``. Only ``resolution == "mechanical"`` CDragon
+    blocks that resolved at least one usable field are eligible.
+
+    The pairing is SEMANTIC, not positional (the old ``zip`` mis-paired multi-block
+    abilities - a transform form's calc landing on the wrong block, or a tooltip
+    aggregate onto a per-instance block - and double-counted AD by appending
+    CDragon ``total_ad_pct`` beside Meraki ``bonus_ad_pct``):
+
+      * A single Meraki damage block + a single mechanical CDragon block pair
+        directly (unambiguous), per-field override.
+      * Otherwise the two block sets are matched by stat-FAMILY signature: the
+        re-source applies ONLY when the multiset of Meraki damage-block signatures
+        equals the multiset of CDragon mechanical-block signatures AND every
+        signature is unique (a clean bijection). Any cardinality mismatch (Meraki
+        tooltip-expanded into more blocks than CDragon resolved) or a repeated
+        signature (two blocks the data cannot tell apart) makes the WHOLE form fall
+        back to Meraki - structure preserved, never mis-paired.
+
+    The damage-block COUNT is never changed and no block ever carries two fields
+    from one stat family. Returns ``form`` unchanged when nothing applies.
     """
-    mech = [b for b in cd_blocks if isinstance(b, dict) and b.get("resolution") == "mechanical"]
+    mech = [
+        b
+        for b in cd_blocks
+        if isinstance(b, dict)
+        and b.get("resolution") == "mechanical"
+        and _cdragon_block_signature(b)
+    ]
     if not mech:
         return form
-    dmg_idx = [i for i, b in enumerate(form.damage_blocks) if b.attribute_kind == "damage"]
+    dmg_idx = [
+        i for i, b in enumerate(form.damage_blocks) if b.attribute_kind == "damage"
+    ]
     if not dmg_idx:
         return form
+
+    pairs: dict[int, dict] = {}
+    if len(dmg_idx) == 1 and len(mech) == 1:
+        pairs[dmg_idx[0]] = mech[0]
+    else:
+        msig = [_meraki_block_signature(form.damage_blocks[i]) for i in dmg_idx]
+        csig = [_cdragon_block_signature(c) for c in mech]
+        m_counts = Counter(msig)
+        if m_counts != Counter(csig) or any(v > 1 for v in m_counts.values()):
+            return form  # ambiguous structure - whole-form fall back to Meraki
+        by_sig = {s: c for s, c in zip(csig, mech)}
+        for i, s in zip(dmg_idx, msig):
+            pairs[i] = by_sig[s]
+
     new_blocks = list(form.damage_blocks)
     changed = False
-    for cd, idx in zip(mech, dmg_idx):
-        overrides: dict[str, Any] = {}
-        for fld in _CDRAGON_RATIO_FIELDS:
-            v = cd.get(fld)
-            if isinstance(v, list) and v:
-                overrides[fld] = tuple(float(x) for x in v)
-        if overrides:
-            new_blocks[idx] = replace(new_blocks[idx], **overrides)
+    for i, cd in pairs.items():
+        replaced = _apply_cdragon_block(new_blocks[i], cd)
+        if replaced is not new_blocks[i]:
+            new_blocks[i] = replaced
             changed = True
     if not changed:
         return form
