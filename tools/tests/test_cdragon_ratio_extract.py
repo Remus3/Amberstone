@@ -781,6 +781,49 @@ class TestFractionalBaseGuard:
         assert b["base"] == [3.0, 4.0, 5.0, 6.0, 7.0]
 
 
+# --------------------------------------------------------------------------- float32-noise snap
+class TestFloatSnap:
+    """CDragon bins store ratios as float32 (0.55 -> 0.550000011920929). The raw
+    ``fraction*100`` then ``round6`` leaks that noise as ``55.000001`` / ``64.999998``
+    which mis-compares byte-for-byte against the clean Meraki ``55.0`` / ``65.0``.
+    The resolver must SNAP emitted base + ratio arrays so float32 noise collapses to
+    the clean authored value while a genuine fractional ratio (67.5) survives."""
+
+    def test_float32_noise_snaps_clean_ratio(self):
+        ms = _mspell(
+            [_dv("APRatio", [0.55000001, 0.60000002, 0.64999998, 0.69999999, 0.75])],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "APRatio",
+                 "__type": "StatByNamedDataValueCalculationPart"}],
+                "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "mechanical"
+        assert b["ap_pct"] == [55.0, 60.0, 65.0, 70.0, 75.0]
+
+    def test_float32_noise_snaps_base(self):
+        ms = _mspell(
+            [_dv("BaseDamage", [129.999995, 130.000004, 130.0, 130.0, 130.0])],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "BaseDamage",
+                 "__type": "NamedDataValueCalculationPart"}],
+                "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["base"] == [130.0, 130.0, 130.0, 130.0, 130.0]
+
+    def test_genuine_fractional_ratio_preserved(self):
+        ms = _mspell(
+            [_dv("APRatio", [0.675] * 5), _dv("APRatio2", [0.825] * 5)],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "APRatio",
+                 "__type": "StatByNamedDataValueCalculationPart"}],
+                "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["ap_pct"] == [67.5] * 5
+
+
 # --------------------------------------------------------------------------- ASCII hygiene (tool source)
 class TestAsciiHygiene:
     def test_source_is_ascii(self):

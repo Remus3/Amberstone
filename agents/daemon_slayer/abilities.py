@@ -571,7 +571,7 @@ class AbilitiesSnapshot:
         apply_passive_damage: bool = False,
         apply_passive_heal: bool = False,
         apply_passive_shield: bool = False,
-        prefer_cdragon_ratios: bool = False,
+        prefer_cdragon_ratios: bool = True,
         cdragon_root: Path | None = None,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).

@@ -241,6 +241,19 @@ def _round6(v: Optional[float]) -> Optional[float]:
     return None if v is None else round(float(v), 6)
 
 
+# CDragon bins store ratios/bases as float32, so a clean authored 0.55 arrives as
+# 0.550000011920929 and ``fraction*100`` then round6 leaks ``55.000001`` (and
+# 64.999998, 129.999995, ...). That noise mis-compares byte-for-byte against the
+# clean Meraki ``55.0`` / ``65.0`` / ``130.0`` and breaks exact-equality golden
+# tests on values that are mechanically IDENTICAL. Snapping emitted values to 4
+# decimals collapses float32 noise (abs error < ~5e-5 for every in-range ratio and
+# for bases up to ~800) while preserving every genuine authored ratio (67.5, 82.5,
+# 12.5, a 0.35 coefficient) - no real ability ratio carries a significant 4th
+# decimal as a percent. Applied only at final block emission (base + percent ratios).
+def _snap(v: float) -> float:
+    return round(float(v), 4)
+
+
 def _data_values_index(mspell: dict[str, Any]) -> dict[str, list[float]]:
     """Map a spell's data-value ``name`` -> its per-rank float array.
 
@@ -612,12 +625,12 @@ def resolve_calc_block(calc_name: str, calc: dict[str, Any],
     ):
         return block  # resolution stays "fallback"
 
-    # success: emit base + percent-scaled ratios
+    # success: emit base + percent-scaled ratios (snapped to kill float32 bin noise)
     block["resolution"] = "mechanical"
     if base_acc is not None:
-        block["base"] = [_round6(x) for x in base_acc]
+        block["base"] = [_snap(x) for x in base_acc]
     for field, arr in ratio_acc.items():
-        block[field] = [_round6(x * 100.0) for x in arr]
+        block[field] = [_snap(x * 100.0) for x in arr]
     return block
 
 

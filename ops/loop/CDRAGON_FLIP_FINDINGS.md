@@ -1,4 +1,10 @@
-# prefer-CDragon flip: INVESTIGATED, NOT FLIPPED (blocked on extractor defects)
+# prefer-CDragon flip: FLIPPED + SHIPPED (ENGINE 1.119.0, 2026-06-06) - see POST-319 section at end
+
+> STATUS UPDATE 2026-06-06: the flip is now LIVE (default ON, ENGINE 1.119.0). The
+> historical deferral analysis below (item 311 / POST-317) is preserved verbatim for
+> provenance; the executed-cutover record is the final "POST-319 FLIP EXECUTED" section.
+
+# prefer-CDragon flip: INVESTIGATED, NOT FLIPPED (blocked on extractor defects) [HISTORICAL]
 
 Cycle outcome: the directive (flip `prefer_cdragon_ratios` default ON + bump ENGINE +
 re-pin golden tests to CDragon values) was investigated and DEFERRED. Flipping ON ships a
@@ -122,3 +128,41 @@ abilities (the ~32 routing/multiplier failures enumerate the candidate set). Re-
 suite; only then should residual failures be genuine balance drifts (Lux Q 65->75 AP) safe to
 re-pin, after which: flip default ON + bump ENGINE + sync docs + restart DS. Until that seam fix
 lands, do NOT flip and do NOT bump ENGINE.
+
+## POST-319 FLIP EXECUTED (2026-06-06): the seam fix landed - flip is now SAFE + SHIPPED
+
+The "real fix" the POST-317 NEXT block called for shipped as item 319 (the semantic
+block-matcher: `_apply_cdragon_ratio_preference` now does a stat-FAMILY-signature bijection
+with whole-form Meraki fall-back on any ambiguous multi-block structure, replacing the
+positional `zip`). This cycle re-fired the flip directive against that matcher and it is now
+SAFE. Hard ground-truth evidence (NOT a blind re-pin):
+
+- Flipped `abilities.py` default True, ran `pytest agents/daemon_slayer/tests/` BEFORE any
+  re-pin: **5 failed / 6693 passed** (item 311 was 79; POST-317 positional-zip was 70; the
+  semantic matcher cut the 70 STRUCTURAL failures to ZERO). The 5 residuals were exactly two
+  classes, both benign:
+  1. FLOAT32 NOISE (NOT a drift): VeigarQ ap `(50, 55.000001, 60.000002, 64.999998, ...)` vs
+     Meraki `(50,55,60,65,70)`; EzrealQ tad `129.999995` vs `130.0`. CDragon bins store ratios
+     as float32, so `fraction*100` then round6 leaks 6th-decimal noise on values that are
+     mechanically IDENTICAL to Meraki.
+  2. GENUINE balance drift: LuxQ golden `366.75 != 349.85` (75% vs 65% AP).
+
+- ROOT-CAUSE FIX for class 1 (TDD): NEW `tools/daemon_slayer_cdragon_ratio_extract._snap`
+  (round-4) snaps emitted base+ratios so float32 noise collapses to the clean authored value
+  while every genuine ratio (67.5/82.5/0.35) survives. Sidecar regenerated live: 171 champs /
+  838 mechanical / 577 fallback / 0 errors. Post-snap VeigarQ/EzrealQ byte-match Meraki -> those
+  two failures vanish with NO ugly re-pin.
+
+- PER-CHAMPION VALIDATION for class 2 (wiki + live bin, cited): LuxQ Light Binding is 75% AP
+  live (Meraki 65% stale); EzrealQ Mystic Shot is 130% AD + 40% AP live (Meraki recorded a stale
+  15% AP); VeigarQ unchanged. CDragon is authoritative for both genuine drifts -> re-pinned only
+  the validated LuxQ golden (`test_golden_e2e_p1l24` 0.65 -> 0.75). The 2 seam tests re-pointed
+  for the new default (explicit `prefer_cdragon_ratios=False` is now the legacy Meraki path).
+
+- SHIPPED: default ON, ENGINE 1.118.0 -> 1.119.0, 64 test-assertion files re-pinned, CHANGELOG
+  prepended, Share mirror + doc anchors synced (`ds_share_sync.py`), DS :8893 restarted -> 1.119.0
+  (pid verified, `/health` engine_version=1.119.0). Final suite: DS `agents/daemon_slayer/tests/`
+  **6699 passed / 1 skip / 1 xfail / 1936 subtests / 0 failed**; root DS-anchor + preview +
+  phase8 live-integration tests green post-restart. The directive's premise held: with the
+  item-319 matcher in place, the only residual changes were one validated balance drift plus
+  float32 denoising - exactly the "safe to re-pin" state the POST-317 NEXT block predicted.
