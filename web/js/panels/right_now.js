@@ -255,6 +255,40 @@ function _levelBreakdowns(xpNeeded) {
   const camps = Math.ceil(xpNeeded / CAMP_XP);
   return { lane, jungle: String(camps) };
 }
+// Post-population pass: most STATS rows have no live producer yet and
+// render the "-" placeholder, painting a wall of empty rows mid-game.
+// After setv() has filled every row, hide any .stats-row whose value is
+// an empty sentinel, then collapse a group whose rows are ALL hidden so
+// no orphan section header (e.g. "LANING PHASE") shows. Scoped strictly
+// to .stats-group rows - never touches .stats-row elsewhere (ward-heat,
+// etc.). Idempotent: only toggles display, no innerHTML rewrites, so a
+// row reappears the tick its value latches (e.g. CS @ 10 at 10:00).
+const _STAT_EMPTY = new Set(["", "-", "- / -"]);
+function _hideEmptyStatRows() {
+  // Pass 1 - per-row toggle, scoped strictly to STATS-group rows.
+  const rows = document.querySelectorAll(".stats-group .stats-row");
+  rows.forEach(row => {
+    const valEl = row.querySelector(".stats-val");
+    const val = valEl ? (valEl.textContent || "").trim() : "";
+    if (_STAT_EMPTY.has(val)) {
+      row.style.display = "none";
+    } else {
+      row.style.display = "";
+    }
+  });
+  // Pass 2 - collapse a group whose rows are ALL hidden so its section
+  // title does not float alone; otherwise restore the title.
+  const groups = document.querySelectorAll(".stats-group");
+  groups.forEach(group => {
+    const groupRows = group.querySelectorAll(".stats-row");
+    let anyVisible = false;
+    groupRows.forEach(row => {
+      if (row.style.display !== "none") anyVisible = true;
+    });
+    const title = group.querySelector(".stats-group-title");
+    if (title) title.style.display = anyVisible ? "" : "none";
+  });
+}
 function renderStats(p) {
   if (!p) return;
   const $ = id => el(id);
@@ -406,6 +440,8 @@ function renderStats(p) {
   setv("st-comp-synergy", p.comp_synergy);
   setv("st-self-judge",   p.self_judgement);
   setv("st-coach-use",    p.coach_interventions);
+  // Final pass - collapse the dash-wall of producerless rows.
+  _hideEmptyStatRows();
 }
 
 function renderRightNow(p) {
