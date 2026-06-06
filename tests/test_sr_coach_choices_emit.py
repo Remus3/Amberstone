@@ -113,35 +113,38 @@ class ParserPassthroughTests(unittest.TestCase):
         # string forever.
         self.assertIn('"choices":      "choices"', self.src)
 
-    def test_handler_json_loads_choices_string(self):
-        # The passthrough MUST decode the parsed string with json.loads.
-        self.assertIn("json.loads(_choices_raw)", self.src)
+    def test_handler_decodes_via_shared_helper(self):
+        # P2.2 tail: the choices JSON decode moved to the shared, validated
+        # core.coach_output.decode_choices (one seam). The SR handler MUST
+        # import + call it on the parsed `choices` field.
+        self.assertIn("from core.coach_output import decode_choices", self.src)
+        self.assertIn("decode_choices(", self.src)
 
-    def test_passthrough_isinstance_list_guard(self):
-        # Only a list is accepted; a stray dict or string MUST drop
-        # to [] without crashing.
-        self.assertIn("isinstance(_parsed, list)", self.src)
+    def test_decode_not_inlined(self):
+        # The old inline json.loads / isinstance block MUST be gone so the
+        # shared helper is the single source of truth for the decode.
+        self.assertNotIn("json.loads(_choices_raw)", self.src)
+        self.assertNotIn("isinstance(_parsed, list)", self.src)
 
-    def test_passthrough_default_empty_list(self):
-        # The default MUST be an empty list (not None) so the artifact
-        # never carries a missing key when nothing is decoded.
-        self.assertIn("_choices_list: list = []", self.src)
+    def test_shared_helper_guards_list_and_default(self):
+        # The list-guard + []-default live (and are tested) in the shared
+        # helper; assert that contract at its home so a change there breaks
+        # loudly.
+        from core.coach_output import decode_choices
+        self.assertEqual(decode_choices(None), [])
+        self.assertEqual(decode_choices('{"not": "a list"}'), [])
 
     def test_passthrough_writes_to_fields_choices(self):
         # SR coach hands off via `current.update(fields)` in _write_fields,
         # so the choices list MUST land in `fields["choices"]` before that
         # update (replacing the raw string parsed earlier).
-        self.assertIn('fields["choices"] = _choices_list', self.src)
+        self.assertIn('fields["choices"] = decode_choices(fields.get("choices"))', self.src)
 
-    def test_passthrough_swallows_decode_errors(self):
-        # Malformed JSON MUST NOT crash the coach tick - the except
-        # clause MUST be present near the json.loads block.
-        idx_load = self.src.index("json.loads(_choices_raw)")
-        idx_except = self.src.index("except Exception:", idx_load)
-        # Must be within ~10 lines of the loads call.
-        excerpt = self.src[idx_load:idx_except]
-        self.assertLess(excerpt.count("\n"), 12,
-                        "except Exception MUST be near the json.loads call")
+    def test_shared_helper_swallows_decode_errors(self):
+        # Malformed JSON MUST NOT crash the tick - the shared helper absorbs
+        # it and returns [].
+        from core.coach_output import decode_choices
+        self.assertEqual(decode_choices('[{"key":"A","label":"unterminated'), [])
 
     def test_choice_schema_matches_coach_choice_dataclass(self):
         # The 5 schema field names in the prompt MUST match the 5 fields

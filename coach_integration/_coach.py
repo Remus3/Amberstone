@@ -545,16 +545,8 @@ class CoachIntegration:
         # On any failure: silently swallow and let the synthesizer
         # fallback in _state_builder cover the tick. The choices field
         # is OPTIONAL by contract.
-        _choices_list: list = []
-        _choices_raw = fields.get("choices", "").strip()
-        if _choices_raw:
-            try:
-                _parsed = json.loads(_choices_raw)
-                if isinstance(_parsed, list):
-                    _choices_list = _parsed
-            except Exception:
-                pass
-        fields["choices"] = _choices_list
+        from core.coach_output import decode_choices
+        fields["choices"] = decode_choices(fields.get("choices"))
 
         # (audit cycle 10) Mirror ARAM/Arena/Brawl pattern: surface
         # champion + ally_spells from _last_state so the dashboard

@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-05 - P2.2 tail: choices decode unified onto shared Pydantic CoachOutput [item 314]
+
+Follow-on to item 313, completing P2.2. Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (byte-identical wire). Full record = item 314 in `docs/LEDGER.md`.
+
+- **Shared model:** NEW `core/coach_output.py` - Pydantic v2 `CoachOutput` + `decode_choices(raw) -> list`. The native-emit `choices` JSON decode was duplicated verbatim in all 4 coaches (aram/arena/brawl `_run_coach` + SR `_write_fields`); now one validated seam. The 4 sites call `decode_choices(fields.get("choices"))`.
+- **Extractors NOT merged (by design):** base `parse_fields` and SR `_parse_response` genuinely diverge (key remapping, multi-line join, different markdown regex, no 220-cap, no positional fallback) and are each golden-mastered/item244-pinned; only the duplicated choices decode was unified.
+- **Tests:** NEW `tests/test_coach_output_p2_2.py` (11 + 11 subtests) parity golden master (decode_choices == old inline block byte-for-byte). Updated the 4 emit tests' `ParserPassthroughTests` source guards to the new wiring + behavioral checks. Item 313's 38 golden masters stayed green.
+- **Verify:** FULL `tests/` 5032 passed / 1 skip / 85 subtests / 0 failed; ruff clean; ASCII-only.
+- **NEXT:** P3.2 (antitank dynamic %HP) + the 6 UNIVERSAL_FILES convention update remain queued. P2.2 COMPLETE.
+
+---
+
 # 2026-06-05 - P2.2 structured-output / Pydantic v2 hardening of the coach parse seam [item 313]
 
 Operator-gated focused session (P2.2, accepted in item 312). Characterization-FIRST per the operator standing rule "rigid tests before swapping the parsing logic so we don't break the live coach pipelines." Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (pure-Python validation swap, byte-identical wire). Full record = item 313 in `docs/LEDGER.md`.
