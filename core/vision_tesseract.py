@@ -27,6 +27,11 @@ _log = logging.getLogger("rc.vision_tesseract")
 _APP_DIR = Path(__file__).parent.parent
 
 _TESSERACT_DEFAULT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# Optional env override for a non-default Tesseract install (portability;
+# refactor-plan P4.2). When set, RC_TESSERACT_CMD is tried before the
+# hardcoded default so a clean-machine / bundled install can point at its own
+# binary with no code edit. Unset -> behavior is unchanged.
+_TESSERACT_ENV = "RC_TESSERACT_CMD"
 _REGIONS_FILE = _APP_DIR / "data" / "vision_regions.json"
 
 # AUDIT 2026-04-28 (proposal 1.6): regions are calibrated against this base
@@ -108,13 +113,32 @@ def reload_regions() -> None:
     _BASE_CACHE = (BASE_W, BASE_H)
 
 
+def _tesseract_candidates() -> list:
+    """Ordered tesseract.exe candidates: the ``RC_TESSERACT_CMD`` env override
+    first (if set), then the hardcoded default install path."""
+    out = []
+    env = os.environ.get(_TESSERACT_ENV)
+    if env:
+        out.append(env)
+    out.append(_TESSERACT_DEFAULT)
+    return out
+
+
 def _ensure_tesseract() -> None:
-    """Pin pytesseract to the default install path if not in PATH."""
+    """Pin pytesseract to a valid tesseract.exe if not already resolvable.
+
+    Resolution order: a cmd already set on pytesseract (PATH) wins; otherwise
+    the first existing candidate from ``_tesseract_candidates`` (env override,
+    then default) is pinned. A non-default install points at its own binary via
+    ``RC_TESSERACT_CMD`` with no code edit (refactor-plan P4.2 portability)."""
     import pytesseract
     cmd = pytesseract.pytesseract.tesseract_cmd
-    if not cmd or not os.path.isfile(cmd):
-        if os.path.isfile(_TESSERACT_DEFAULT):
-            pytesseract.pytesseract.tesseract_cmd = _TESSERACT_DEFAULT
+    if cmd and os.path.isfile(cmd):
+        return
+    for cand in _tesseract_candidates():
+        if cand and os.path.isfile(cand):
+            pytesseract.pytesseract.tesseract_cmd = cand
+            return
 
 
 def _decode_img(img_b64: str):

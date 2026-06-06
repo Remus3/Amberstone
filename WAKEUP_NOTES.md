@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-05 - external refactor-plan triage + P4.2 Tesseract env-config + UNIVERSAL_FILES cleanup [item 312]
+
+Operator handed 3 Desktop review docs (`Claude_Refactor_Plan.md` + `Riot_Commander_Review.md` + `Riot_Commander_Deep_Dive.md` - external AI audits) to read + act on, plus a `Desktop\UNIVERSAL_FILES\` cleanup. Docs kept OUT of repo (`feedback_keep_outreach_out_of_repo` - competitor/strategy/outreach content). Full record = item 312 in `docs/LEDGER.md`.
+
+- **UNIVERSAL_FILES cleaned to the 6 originals:** 19 item-310 lolmath scratch artifacts -> gitignored `_scratch/uf_dump_item310/` (reversible; hard-delete on request); `BRIEF.md` -> `Desktop\` (out of folder + out of repo).
+- **5-phase refactor triaged (proposals = INTENT, verified vs live code):** SHIPPED **P4.2** `RC_TESSERACT_CMD` env override (`core/vision_tesseract.py`, +5 CI-safe tests, byte-identical when unset). REJECTED **P3.1** (amp-DRY already done in `effects.py` - both dps.py/burst.py import it) + **P5.1** (em-dash ban is the settled PS-ParseFile rule). GATED: **P1.2/P1.3/P4.1** (frozen files), **P2.1** FastAPI rewrite, **P5.2** SQLite ledger. ACCEPTED own-session: **P2.2** (live coach parse + partly redundant), **P3.2** (antitank dynamic = design change).
+- **Loop-relaunch (operator Q):** the Gemini director reads repo-only (commits + LEDGER/ROADMAP tails + claude.done + last audit), NEVER the Desktop; it picks ONE bounded item/cycle. To route any accepted item through the loop, pin it in ROADMAP NOW.
+- **NEXT (operator-gated):** P2.2 + P3.2 focused sessions; update the 6 UNIVERSAL_FILES templates to current conventions; frozen-file + big-rewrite phases need explicit approval.
+
+---
+
 # 2026-06-05 - prefer-CDragon flip INVESTIGATED + DEFERRED (Gemini-loop cycle 2) [item 311]
 
 Cycle-2 directive (`ops/loop/control/directive.md`): flip `prefer_cdragon_ratios` default ON + bump ENGINE + re-pin gold tests. **Outcome: NOT flipped - the live sidecar is structurally defective; flipping ships a broken engine.** ENGINE UNCHANGED 1.118.0; seam stays default-OFF; DS NOT restarted; suite GREEN 6618; net code diff ZERO. Full record = item 311 in `docs/LEDGER.md`; detailed evidence `ops/loop/CDRAGON_FLIP_FINDINGS.md`.
