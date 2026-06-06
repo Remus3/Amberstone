@@ -2954,6 +2954,14 @@ import { renderBuildInsights } from './panels/build_insights.js';
           + (modeStr ? ` · ${modeStr}` : "")
           + (pick.grade ? ` · best ${pick.grade}` : "");
       }
+      // item 281: Good/Bad/Ugly tips wired from the this_week aggregate
+      // (_home_pick_tips). Fall back to the "-" sentinel when absent.
+      const good = document.getElementById("home-pick-good");
+      const bad = document.getElementById("home-pick-bad");
+      const ugly = document.getElementById("home-pick-ugly");
+      if (good) good.textContent = (pick.tips && pick.tips.good) ? pick.tips.good : "-";
+      if (bad) bad.textContent = (pick.tips && pick.tips.bad) ? pick.tips.bad : "-";
+      if (ugly) ugly.textContent = (pick.tips && pick.tips.ugly) ? pick.tips.ugly : "-";
     } else {
       pickCard.hidden = true;
     }

@@ -302,11 +302,10 @@
 
     <!-- s218: Tonight's Pick re-laid as 3 horizontal sections.
          Section 1: champion intro (icon + name + meta).
-         Section 2: The Good / The Bad / The Ugly rows. PLACEHOLDER copy
-           pending wire-up to Last Match analysis output.
-           TODO(s218-dummy-data): replace "-" with real strings when
-           the post-match analyzer provides them. Tagged for removal on
-           "I am done with Home page" cleanup.
+         Section 2: The Good / The Bad / The Ugly rows. Wired live from
+           the this_week match-history aggregate via _home_pick_tips
+           (deterministic stats - no Claude/Riot). Empty-state falls back
+           to the "-" sentinel when tips are absent (item 281).
          Section 3: Streak + Open Advisories as sub-header rows
            (replacing the prior pip-style icon buttons). -->
     <div class="home-combo" id="home-combo" hidden>
@@ -320,8 +319,7 @@
               <span class="home-coach-pick-reason" id="home-coach-pick-reason">-</span>
             </div>
           </div>
-          <div class="home-pick-section home-pick-section-2"
-               data-dummy-data="tonights-pick-tips">
+          <div class="home-pick-section home-pick-section-2">
             <div class="home-pick-tip-row">
               <span class="home-pick-tip-label">The Good</span>
               <span class="home-pick-tip-value" id="home-pick-good">-</span>
