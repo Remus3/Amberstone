@@ -130,6 +130,15 @@ class PassiveReviveEntry:
     note: str = ""
     attribute: str = "Passive Revive"
     level_scaled: bool = False
+    # ITEM 316: the resurrection-STATE resist modifier the revive pool fights
+    # through (Anivia Rebirth egg: -40:20 by level bonus armor + MR). Applies ONLY
+    # to the second-life pool during the egg window, NOT to her normal fighting
+    # resists (item 272 correctly EXCLUDED it from the resist-DENOMINATOR axis;
+    # this is the egg's effect on the REVIVE's survival, consumed by compute_ehp's
+    # apply_egg_resist seam). A per-level tuple read at champion level (level-1),
+    # or a flat value; 0.0 (default) leaves a non-egg revive (Zac) unchanged.
+    egg_resist_armor: float | tuple[float, ...] = 0.0
+    egg_resist_mr: float | tuple[float, ...] = 0.0
 
 
 # (champion_id, key, form_index) -> PassiveReviveEntry. Keyed for parity with the
@@ -151,6 +160,8 @@ _PASSIVE_REVIVE_OVERRIDES: dict[tuple[str, str, int], PassiveReviveEntry] = {
         conditional_probability=_REVIVE_PROB,
         note="Rebirth: restores ALL health (full second life) on a 240s cooldown; revived_fraction 1.0; egg armor/MR is the item-272-excluded can't-act state (not modeled here); amortized at the revive midpoint",
         attribute="Rebirth",
+        egg_resist_armor=_lerp_per_level(-40.0, 20.0),
+        egg_resist_mr=_lerp_per_level(-40.0, 20.0),
     ),
     # Zac P Cell Division: "Innate - Cell Division: Periodically, upon taking
     # fatal damage, Zac enters resurrection ... splits into four uncontrollable
@@ -174,6 +185,7 @@ __all__ = [
     "PassiveReviveEntry",
     "_PASSIVE_REVIVE_OVERRIDES",
     "revive_multiplier",
+    "revive_egg_resist",
     "_REVIVE_PROB",
 ]
 
@@ -196,6 +208,43 @@ def _fraction_at_level(
         # Defensive: a tuple on a non-level_scaled entry resolves at its first.
         return float(frac[0]) if frac else 0.0
     return float(frac)
+
+
+def _egg_value_at_level(val: float | tuple[float, ...], level: int) -> float:
+    """Resolve an egg-resist value at champion level (a tuple is per-level, read
+    at ``level-1`` clamped; a flat value is its float)."""
+    if isinstance(val, (tuple, list)):
+        if not val:
+            return 0.0
+        idx = max(0, min(int(level) - 1, len(val) - 1))
+        return float(val[idx])
+    return float(val)
+
+
+def revive_egg_resist(
+    champion_id: str, level: int, apply_egg_resist: bool
+) -> tuple[float, float]:
+    """Return ``(egg_bonus_armor, egg_bonus_mr)`` the champion's REVIVE pool fights
+    through during the resurrection state (Anivia Rebirth egg: -40:20 by level).
+
+    Summed over every revive entry matching ``champion_id``. The deltas are added
+    to the resolved armor/MR ONLY for the second-life portion of EHP (the egg that
+    must survive), reshaping the self-revive numerator by the resist curve. When
+    ``apply_egg_resist`` is False (default) returns ``(0.0, 0.0)`` -> the consumer's
+    egg ratio is 1.0 -> byte-identical. A non-egg revive (Zac) carries 0.0 deltas
+    so it is unchanged even with the flag on.
+    """
+    if not apply_egg_resist:
+        return 0.0, 0.0
+    cid = str(champion_id)
+    lvl = int(level)
+    egg_armor = egg_mr = 0.0
+    for (entry_cid, _key, _form), entry in _PASSIVE_REVIVE_OVERRIDES.items():
+        if entry_cid != cid:
+            continue
+        egg_armor += _egg_value_at_level(entry.egg_resist_armor, lvl)
+        egg_mr += _egg_value_at_level(entry.egg_resist_mr, lvl)
+    return egg_armor, egg_mr
 
 
 def revive_multiplier(
