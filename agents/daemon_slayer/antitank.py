@@ -62,9 +62,14 @@ P3.2 (item 315) schema lift: each ``AntiTankEntry`` may carry optional
 optional ``stats`` (a ``ResolvedStats`` or ``.get`` mapping). When a seeded row
 meets injected stats, its effective magnitude scales by
 ``base + ap * ap_ratio + ad * ad_ratio`` - so a %HP mechanism that genuinely
-carries a caster-stat term (Gwen P, Kog'Maw W) grows with the build, while the
-pure %max-HP rows (ratio 0.0, e.g. Vayne W / Fiora P) stay static and every
-no-stats call is byte-identical to item 308.
+carries a caster-stat term grows with the build, while the pure %max-HP rows
+(ratio 0.0, e.g. Vayne W / Fiora P) stay static and every no-stats call is
+byte-identical to item 308. The seeded set is VERIFIED against
+``champion_abilities.json`` (only rows whose %HP / current-HP block carries a
+"% per 100 AP" or "% per 100 bonus AD" term): AP rows Gwen P / Kog'Maw W /
+Varus W / Malzahar R, bonus-AD rows Vi W / Camille W / Udyr Q (the first real
+AD-path seeds). The per-row slope is a deliberately conservative 0.0004
+reliability term, not a literal in-game damage ratio.
 """
 
 from __future__ import annotations
@@ -133,8 +138,10 @@ class AntiTankEntry:
     ``ap_ratio`` / ``ad_ratio`` (P3.2 item 315) are optional caster-stat
     coefficients: when stats are injected into ``compute_antitank`` the row's
     effective magnitude becomes ``magnitude + ap * ap_ratio + ad * ad_ratio``.
-    Default 0.0 keeps the row STATIC (the item-308 contract) - only the rare rows
-    whose %HP truly carries a caster-stat term are seeded (Gwen P, Kog'Maw W).
+    Default 0.0 keeps the row STATIC (the item-308 contract) - only the rows whose
+    %HP truly carries a caster-stat term are seeded, verified against
+    champion_abilities.json: Gwen P / Kog'Maw W / Varus W / Malzahar R on AP,
+    Vi W / Camille W / Udyr Q on bonus AD.
     """
 
     source: str
@@ -155,8 +162,9 @@ def _effective_magnitude(
     row carries no ratio (the item-308 static path). Otherwise returns the
     operator's formula ``base + ap * ap_ratio + ad * ad_ratio`` where ``ap`` /
     ``ad`` are read from ``stats`` (a ``ResolvedStats`` or any ``.get`` mapping).
-    Only the seeded rows (Gwen P, Kog'Maw W) carry a non-zero ratio, so every
-    other row is byte-identical even when stats are passed.
+    Only the seeded rows carry a non-zero ratio (Gwen P / Kog'Maw W / Varus W /
+    Malzahar R on AP, Vi W / Camille W / Udyr Q on bonus AD), so every other row
+    is byte-identical even when stats are passed.
     """
     base = entry.magnitude
     if stats is None or (entry.ap_ratio == 0.0 and entry.ad_ratio == 0.0):
@@ -233,8 +241,9 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Brand", "W", "SHRED", "PERIODIC", magnitude=0.65, cond=True)
     # Briar
     add("Briar", "Q", "SHRED", "PERIODIC", magnitude=0.7)
-    # Camille
-    add("Camille", "W", "MAX_HP", "PERIODIC", magnitude=0.65)
+    # Camille - W outer-cone %max-HP carries a bonus-AD term (P3.2 expansion:
+    # champion_abilities.json W block "% per 100 bonus AD"); R current-HP is flat.
+    add("Camille", "W", "MAX_HP", "PERIODIC", magnitude=0.65, ad_ratio=0.0004)
     add("Camille", "R", "CURRENT_HP", "SUSTAINED", magnitude=0.6, cond=True)
     # Chogath
     add("Chogath", "E", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True)
@@ -296,8 +305,9 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("KogMaw", "W", "MAX_HP", "SUSTAINED", magnitude=0.9, cond=True, ap_ratio=0.0004)
     # Lillia
     add("Lillia", "P", "MAX_HP", "SUSTAINED", magnitude=0.85)
-    # Malzahar
-    add("Malzahar", "R", "MAX_HP", "BURST", magnitude=0.6, cond=True)
+    # Malzahar - R Nether Grasp %max-HP channel carries an AP term (P3.2
+    # expansion: champion_abilities.json R block "% per 100 AP").
+    add("Malzahar", "R", "MAX_HP", "BURST", magnitude=0.6, cond=True, ap_ratio=0.0004)
     # Maokai
     add("Maokai", "Q", "MAX_HP", "PERIODIC", magnitude=0.45)
     # MonkeyKing
@@ -365,16 +375,19 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Trundle
     add("Trundle", "R", "MAX_HP", "BURST", magnitude=0.8)
     add("Trundle", "R", "SHRED", "BURST", magnitude=0.85)
-    # Udyr
-    add("Udyr", "Q", "MAX_HP", "PERIODIC", magnitude=0.8)
+    # Udyr - Q on-hit %max-HP carries a bonus-AD term (P3.2 expansion:
+    # champion_abilities.json Q block "% per 100 bonus AD").
+    add("Udyr", "Q", "MAX_HP", "PERIODIC", magnitude=0.8, ad_ratio=0.0004)
     # Urgot
     add("Urgot", "P", "MAX_HP", "PERIODIC", magnitude=0.45)
-    # Varus
-    add("Varus", "W", "MAX_HP", "SUSTAINED", magnitude=0.85)
+    # Varus - W Blighted Quiver on-hit %max-HP carries an AP term (P3.2
+    # expansion: champion_abilities.json W block "% per 100 AP"; on-hit AP Varus).
+    add("Varus", "W", "MAX_HP", "SUSTAINED", magnitude=0.85, ap_ratio=0.0004)
     # Vayne
     add("Vayne", "W", "MAX_HP", "SUSTAINED", magnitude=0.95)
-    # Vi
-    add("Vi", "W", "MAX_HP", "SUSTAINED", magnitude=0.6)
+    # Vi - W Denting Blows %max-HP carries a bonus-AD term (P3.2 expansion:
+    # champion_abilities.json W block "% per 100 bonus AD"); the armor SHRED is flat.
+    add("Vi", "W", "MAX_HP", "SUSTAINED", magnitude=0.6, ad_ratio=0.0004)
     add("Vi", "W", "SHRED", "SUSTAINED", magnitude=0.6)
     # Viego
     add("Viego", "Q", "CURRENT_HP", "SUSTAINED", magnitude=0.65)
