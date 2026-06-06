@@ -199,6 +199,8 @@ def format_for_display(
             "keystone":  keystone,
             "primary":   runes.get("primary") or "",
             "secondary": runes.get("secondary") or "",
+            "minor_primary":   list(runes.get("minor_primary") or []),
+            "minor_secondary": list(runes.get("minor_secondary") or []),
         },
         "summoner_spells": spells_pair,
         "item_skeleton":   skel,
