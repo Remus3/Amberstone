@@ -46,6 +46,20 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 REGRESS verdict on A2b = FALSE POSITIVE (verify-only cycle, no
+  source fix; ground truth HEAD 8188baf3). The auditor flagged a botched
+  find/replace that would have turned the leading @import token into a stray
+  test_dashboard_css_panel_imports_parity.py filename fragment in
+  tests/snapshot_panels/test_ds_matchup_panel.py + docs/LEDGER.md +
+  WAKEUP_NOTES.md. GROUND TRUTH: that string exists ONLY in the loop's own
+  control files (ops/loop/control/directive.md + _gemini_in.txt, which quote the
+  bug verbatim) and in untracked _verify_*.txt scratch logs - NEVER in source.
+  test_ds_matchup_panel.py line 47 + web/css/dashboard.css line 42 both carry the
+  correct @import './panels/ds_matchup.css'; the LEDGER / WAKEUP _imports_parity
+  hits are legit prose references to the real bundle-parity guard test, not
+  corruption. Verified live: snapshot_panels + the parity guard 92 passed; FULL
+  RC suite 5186 passed / 1 skip / 0 fail; git diff empty (working tree == HEAD).
+  A2b stands DONE. Director: advance to A3 - there is no regression to fix.
 - 2026-06-06 A2b DONE (commit 0a017dc4): NEW GET /api/ds-matchup +
   champ-select ds_matchup card. Surfaces the EXISTING compute_matchup engine
   via the existing /v2/matchup client wire (core/daemon_slayer_client.matchup);
