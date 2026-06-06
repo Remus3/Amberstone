@@ -172,8 +172,11 @@ def _resolve_user_build(champion: str, variant: str, mode: str,
     secondary = str(runes.get("secondary") or "")
     rune_cmd = None
     if keystone and primary and secondary:
-        perk_ids   = build_perk_ids(keystone, primary, secondary,
-                                    mode_key == "aram")
+        perk_ids   = build_perk_ids(
+            keystone, primary, secondary, mode_key == "aram",
+            minor_primary=[str(x) for x in (runes.get("minor_primary") or []) if x],
+            minor_secondary=[str(x) for x in (runes.get("minor_secondary") or []) if x],
+        )
         primary_id = _TREES.get(primary, 0)
         sub_id     = _TREES.get(secondary, 0)
         if perk_ids and primary_id and sub_id:
