@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-05 - P3.2: antitank.py dynamic %HP scaling via injected ResolvedStats [item 315]
+
+DS engine SCHEMA LIFT, NO ENGINE bump (byte-identical live, ENGINE stays 1.118.0; DS NOT restarted; non-frozen). Operator-accepted design change (item 312 flagged antitank as intentionally STATIC per item 308). Full record = item 315 in `docs/LEDGER.md`.
+
+- **Domain fork (one AskUserQuestion BEFORE coding):** pure %max-HP (Vayne W / Fiora P, the dominant MAX_HP kind) does NOT scale with caster AP/AD in-game; only Kog'Maw W cap / Gwen P bilinear carry a real caster-stat term. Operator chose the per-row coefficient schema lift over a blanket multiplier or a full quantitative rebuild.
+- **Schema lift (`agents/daemon_slayer/antitank.py`):** `AntiTankEntry` gains optional `ap_ratio` / `ad_ratio` (default 0.0, appended at END - positional construction + item-308 `_mechanism_value(e)` single-arg stay valid); `compute_antitank` / `_mechanism_value` take an optional `stats` (a `ResolvedStats` or any `.get("ap"/"ad")` mapping; `ResolvedStats` imported under TYPE_CHECKING - engine.py does not import antitank, cycle-safe); NEW `_effective_magnitude(entry, stats)` = `base + ap*ap_ratio + ad*ad_ratio` when a seeded row meets stats, else base. SEEDED Gwen P (ap_ratio 0.0005) + KogMaw W (ap_ratio 0.0004); AD path proven via a synthetic test entry (no champion mis-seeded).
+- **Additive guarantee:** `stats=None` (the default; the `/anti-tank` route passes no stats and was NOT touched) is byte-identical to item 308, as is any zero-ratio row even WITH stats injected -> NO ENGINE bump, NO downstream caller change, tight blast radius. `AntiTankResult` / `AntiTankSourceEntry` to_dict shapes unchanged (effective magnitude flows into existing `magnitude`/`value`; ratios live only on the registry entry).
+- **TDD characterization-FIRST:** NEW `agents/daemon_slayer/tests/test_antitank_p3_2.py` (+24, RED-before-GREEN) - schema defaults, byte-identical static path, 12 un-seeded champs identical under ap=800/ad=800, seeded Gwen/KogMaw math at pinned AP, synthetic ap/ad/conditional, real-ResolvedStats==dict parity, exactly-2-rows-seeded.
+- **Verify:** py_compile OK; DS-dir `agents/daemon_slayer/tests/` 6644 passed / 1 skip / 1 xfail / 1936 subtests; root `tests/` 5032 passed / 1 skip / 85 subtests / EXIT 0 (UNCHANGED - new tests are in the DS dir, live output byte-identical); ruff clean; `ds_share_sync.py` re-mirrored 315 files (--check 0); ASCII-only. Live: Gwen 0.85->0.95 @200AP / 0.85 @999AD; KogMaw 0.926->0.966 @200AP; Vayne 0.95 byte-identical @800AP/800AD.
+- **NEXT (Phase D, gated):** the scaling is INERT until a caller passes stats - wire a live caster-stat producer into the `/anti-tank` route to ACTIVATE it, THEN bump ENGINE + restart DS (cdragon-seam precedent); seed the remaining caster-stat-scaled %HP rows (per-row scan open). The 6 UNIVERSAL_FILES convention update is still queued.
+
+---
+
 # 2026-06-05 - P2.2 tail: choices decode unified onto shared Pydantic CoachOutput [item 314]
 
 Follow-on to item 313, completing P2.2. Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (byte-identical wire). Full record = item 314 in `docs/LEDGER.md`.
@@ -25,14 +38,3 @@ Operator-gated focused session (P2.2, accepted in item 312). Characterization-FI
 - **Verify:** targeted 212 passed (incl. the 4 emit + frozen tests unmodified); FULL root `tests/` 5020 passed / 1 skip / 74 subtests. The ONLY red was PRE-EXISTING + unrelated (`test_doc_size_budget::test_roadmap_md_under_budget`: ROADMAP 85458>81920B - item 312 skipped the relocate-on-add convention); FIXED here by relocating item 294 + the DS source-layering plan verbatim to `docs/ROADMAP_HISTORY.md`. py_compile OK; ASCII-only.
 - **NEXT:** P2.2 tail (deferred) - migrate base-coach `parse_fields` callers + SR `_parse_response` onto a shared validated model (golden masters now guard it); P3.2 (antitank dynamic %HP) is the queued sibling.
 
----
-
-# 2026-06-05 - external refactor-plan triage + P4.2 Tesseract env-config + UNIVERSAL_FILES cleanup [item 312]
-
-Operator handed 3 Desktop review docs (`Claude_Refactor_Plan.md` + `Riot_Commander_Review.md` + `Riot_Commander_Deep_Dive.md` - external AI audits) to read + act on, plus a `Desktop\UNIVERSAL_FILES\` cleanup. Docs kept OUT of repo (`feedback_keep_outreach_out_of_repo` - competitor/strategy/outreach content). Full record = item 312 in `docs/LEDGER.md`.
-
-- **UNIVERSAL_FILES cleaned to the 6 originals:** 19 item-310 lolmath scratch artifacts -> gitignored `_scratch/uf_dump_item310/` (reversible; hard-delete on request); `BRIEF.md` -> `Desktop\` (out of folder + out of repo).
-- **5-phase refactor triaged (proposals = INTENT, verified vs live code):** SHIPPED **P4.2** `RC_TESSERACT_CMD` env override (`core/vision_tesseract.py`, +5 CI-safe tests, byte-identical when unset). REJECTED **P3.1** (amp-DRY already done in `effects.py` - both dps.py/burst.py import it) + **P5.1** (em-dash ban is the settled PS-ParseFile rule). GATED: **P1.2/P1.3/P4.1** (frozen files), **P2.1** FastAPI rewrite, **P5.2** SQLite ledger. ACCEPTED own-session: **P2.2** (live coach parse + partly redundant), **P3.2** (antitank dynamic = design change).
-- **Loop-relaunch (operator Q):** the Gemini director reads repo-only (commits + LEDGER/ROADMAP tails + claude.done + last audit), NEVER the Desktop; it picks ONE bounded item/cycle. To route any accepted item through the loop, pin it in ROADMAP NOW.
-- **NEXT (operator-gated):** P2.2 + P3.2 focused sessions; update the 6 UNIVERSAL_FILES templates to current conventions; frozen-file + big-rewrite phases need explicit approval.
-- **WRAP (/done):** deleted merged remote branch `origin/refactor/pickban-routes` (0 unique commits, no PR; only `origin/main` left) + stale `Desktop\todo.md` (Win1=item295/Win2=item296 shipped) + `Desktop\BRIEF.md`. Set ROADMAP NEXT-UP block (item-311 cdragon extractor fix is priority 1) + queued 2 NEW items: daily upstream content-drift poll, phone monitor/loop remote-control (Tailscale dashboard already monitors from a phone). Loop STOPPED ("max_cycles 1"); relaunch via `ops/loop/config.json` max_cycles + `launch_loop.ps1`.
