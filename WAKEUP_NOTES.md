@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-05 - loop directive reconcile: both named DS slices already SHIPPED [docs-only]
+
+Loop `ops/loop/control/directive.md` asked to implement "AurelionSol W cross-spell seam" + "conditional-gate for Brand W and Ekko W" via the orchestrator pattern. GROUND-TRUTH PROBE: both already shipped; directive was generated from STALE ROADMAP line 49 prose (written at item 250/251) that still listed them as "remain".
+
+- **Slice A AurelionSol W cross-spell seam = item 257** (commit `c47f04b9`, ENGINE 1.87.0 -> 1.88.0). `_CROSS_SPELL_AMP_OVERRIDES` + `_cross_spell_amp_for` consumed at `agents/daemon_slayer/ability_dps.py:1111`. default-OFF byte-identical.
+- **Slice B conditional-gate = item 255** (commit `db52d355`, ENGINE 1.86.0 -> 1.87.0). Brand P (Blaze max-HP ring, prob 0.5) + Ekko W (Parallel Convergence missing-HP sub-30%, prob 1.0 ctx-gated) in `_passive_damage_overrides.py`. NB directive said "Brand W"; the real conditional-gate damage slot is Brand P (W = plain AoE zone, no gate). default-OFF byte-identical.
+- **No re-implementation.** Re-coding shipped entries would violate the CLAUDE saturation guard + risk duplicate registry rows. Did NOT spawn worktree agents (nothing to implement). Fixed the stale ROADMAP line 49 instead.
+- **Tests:** named-slice files `test_cross_spell_amp_item257.py` + `test_passive_damage_conditional_gate_item255.py` = 45 passed. Full DS dir `agents/daemon_slayer/tests/` = 6644 passed / 1 skip / 1 xfail / 1936 subtests / EXIT 0. NO ENGINE bump, DS NOT restarted.
+- **NEXT:** only Phase D live flag-flips remain for DS-completion - operator-gated, NOT headless (section 4b do-not-flip-blind).
+
+---
+
 # 2026-06-05 - P3.2: antitank.py dynamic %HP scaling via injected ResolvedStats [item 315]
 
 DS engine SCHEMA LIFT, NO ENGINE bump (byte-identical live, ENGINE stays 1.118.0; DS NOT restarted; non-frozen). Operator-accepted design change (item 312 flagged antitank as intentionally STATIC per item 308). Full record = item 315 in `docs/LEDGER.md`.
