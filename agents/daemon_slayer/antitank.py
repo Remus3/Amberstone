@@ -56,11 +56,24 @@ cadence-scaled value; the headline is their sum):
 
 Kinds, cadences and magnitudes are hand-authored from the verbatim patch-16.11
 champion kits by the item-308 roster fan-out.
+
+P3.2 (item 315) schema lift: each ``AntiTankEntry`` may carry optional
+``ap_ratio`` / ``ad_ratio`` coefficients and ``compute_antitank`` accepts an
+optional ``stats`` (a ``ResolvedStats`` or ``.get`` mapping). When a seeded row
+meets injected stats, its effective magnitude scales by
+``base + ap * ap_ratio + ad * ad_ratio`` - so a %HP mechanism that genuinely
+carries a caster-stat term (Gwen P, Kog'Maw W) grows with the build, while the
+pure %max-HP rows (ratio 0.0, e.g. Vayne W / Fiora P) stay static and every
+no-stats call is byte-identical to item 308.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .engine import ResolvedStats
 
 _SOURCE_ORDER = ("P", "Q", "W", "E", "R", "BASE")
 
@@ -116,6 +129,12 @@ class AntiTankEntry:
     ``magnitude`` is the 0..1 strength / reliability with which this one mechanism
     melts a tank. ``conditional`` is True when the mechanism only fires on a gate
     (ult up, charge / stack accrued, a specific target state required).
+
+    ``ap_ratio`` / ``ad_ratio`` (P3.2 item 315) are optional caster-stat
+    coefficients: when stats are injected into ``compute_antitank`` the row's
+    effective magnitude becomes ``magnitude + ap * ap_ratio + ad * ad_ratio``.
+    Default 0.0 keeps the row STATIC (the item-308 contract) - only the rare rows
+    whose %HP truly carries a caster-stat term are seeded (Gwen P, Kog'Maw W).
     """
 
     source: str
@@ -123,19 +142,45 @@ class AntiTankEntry:
     cadence: str
     magnitude: float = 0.0
     conditional: bool = False
+    ap_ratio: float = 0.0
+    ad_ratio: float = 0.0
 
 
-def _mechanism_value(entry: AntiTankEntry) -> float:
+def _effective_magnitude(
+    entry: AntiTankEntry, stats: ResolvedStats | None = None
+) -> float:
+    """Magnitude after optional caster-stat (AP/AD) scaling (P3.2 item 315).
+
+    Returns ``entry.magnitude`` unchanged when no ``stats`` are injected or the
+    row carries no ratio (the item-308 static path). Otherwise returns the
+    operator's formula ``base + ap * ap_ratio + ad * ad_ratio`` where ``ap`` /
+    ``ad`` are read from ``stats`` (a ``ResolvedStats`` or any ``.get`` mapping).
+    Only the seeded rows (Gwen P, Kog'Maw W) carry a non-zero ratio, so every
+    other row is byte-identical even when stats are passed.
+    """
+    base = entry.magnitude
+    if stats is None or (entry.ap_ratio == 0.0 and entry.ad_ratio == 0.0):
+        return base
+    ap = stats.get("ap", 0.0)
+    ad = stats.get("ad", 0.0)
+    return base + ap * entry.ap_ratio + ad * entry.ad_ratio
+
+
+def _mechanism_value(
+    entry: AntiTankEntry, stats: ResolvedStats | None = None
+) -> float:
     """Kind-weighted, cadence-scaled value for one mechanism (0 if unknown).
 
-    Returns ``kind_weight * cadence_mult * magnitude`` (times the conditional
-    midpoint when gated), or ``0.0`` when the kind or cadence is unknown.
+    Returns ``kind_weight * cadence_mult * effective_magnitude`` (times the
+    conditional midpoint when gated), or ``0.0`` when the kind or cadence is
+    unknown. ``effective_magnitude`` applies the optional P3.2 AP/AD scaling
+    (``_effective_magnitude``); with no ``stats`` it is the static magnitude.
     """
     weight = _ANTITANK_KIND_WEIGHT.get(entry.kind, 0.0)
     cadence_mult = _ANTITANK_CADENCE_MULT.get(entry.cadence, 0.0)
     if weight <= 0.0 or cadence_mult <= 0.0:
         return 0.0
-    value = weight * cadence_mult * entry.magnitude
+    value = weight * cadence_mult * _effective_magnitude(entry, stats)
     if entry.conditional:
         value *= _ANTITANK_CONDITIONAL_PROB
     return value
@@ -160,6 +205,8 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
         *,
         magnitude: float,
         cond: bool = False,
+        ap_ratio: float = 0.0,
+        ad_ratio: float = 0.0,
     ) -> None:
         raw.setdefault(champ, []).append(
             AntiTankEntry(
@@ -168,6 +215,8 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
                 cadence=cadence,
                 magnitude=float(magnitude),
                 conditional=bool(cond),
+                ap_ratio=float(ap_ratio),
+                ad_ratio=float(ad_ratio),
             )
         )
 
@@ -212,8 +261,8 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Gnar", "W", "MAX_HP", "SUSTAINED", magnitude=0.65, cond=True)
     # Gragas
     add("Gragas", "W", "MAX_HP", "PERIODIC", magnitude=0.55)
-    # Gwen
-    add("Gwen", "P", "MAX_HP", "SUSTAINED", magnitude=0.85)
+    # Gwen - P magic damage carries an AP-on-%HP term (P3.2 item 315 seed).
+    add("Gwen", "P", "MAX_HP", "SUSTAINED", magnitude=0.85, ap_ratio=0.0005)
     # Hwei
     add("Hwei", "Q", "MAX_HP", "PERIODIC", magnitude=0.55, cond=True)
     # Illaoi
@@ -241,9 +290,10 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Kled
     add("Kled", "W", "MAX_HP", "SUSTAINED", magnitude=0.6, cond=True)
     add("Kled", "R", "MAX_HP", "BURST", magnitude=0.55, cond=True)
-    # KogMaw
+    # KogMaw - W on-hit %max-HP carries an AP term (P3.2 item 315 seed); Q shred
+    # is flat.
     add("KogMaw", "Q", "SHRED", "PERIODIC", magnitude=0.7)
-    add("KogMaw", "W", "MAX_HP", "SUSTAINED", magnitude=0.9, cond=True)
+    add("KogMaw", "W", "MAX_HP", "SUSTAINED", magnitude=0.9, cond=True, ap_ratio=0.0004)
     # Lillia
     add("Lillia", "P", "MAX_HP", "SUSTAINED", magnitude=0.85)
     # Malzahar
@@ -435,7 +485,9 @@ def _source_sort_key(entry: AntiTankEntry) -> tuple[int, str]:
         return (len(_SOURCE_ORDER), entry.source)
 
 
-def compute_antitank(champion: str, mode: str = "SR") -> AntiTankResult:
+def compute_antitank(
+    champion: str, mode: str = "SR", stats: ResolvedStats | None = None
+) -> AntiTankResult:
     """Aggregate a champion's anti-tank mechanisms into a tank-melt score.
 
     Reads ``_ANTITANK_REGISTRY``. Each registered mechanism contributes a
@@ -445,6 +497,13 @@ def compute_antitank(champion: str, mode: str = "SR") -> AntiTankResult:
     contributes. ``mode`` is carried on the result for parity with the other
     scorers but does not change output today (anti-tank kit value is
     map-independent).
+
+    ``stats`` (P3.2 item 315) is an optional caster-stat object (a
+    ``ResolvedStats`` or any ``.get("ap"/"ad")`` mapping). When supplied, a seeded
+    row's effective magnitude scales by ``base + ap * ap_ratio + ad * ad_ratio``
+    (the seeded source's reported ``magnitude`` / ``value`` reflect the scaled
+    figure). ``stats=None`` (the default, and what the /anti-tank route passes) is
+    byte-identical to item 308, as is any row carrying no ratio.
 
     Returns an all-zero ``AntiTankResult`` (empty ``sources``) when the champion
     is blank / None or absent from the (selective) registry; never raises.
@@ -462,7 +521,7 @@ def compute_antitank(champion: str, mode: str = "SR") -> AntiTankResult:
     best_value = -1.0
     has_shred = False
     for entry in sorted(entries, key=_source_sort_key):
-        value = _mechanism_value(entry)
+        value = _mechanism_value(entry, stats)
         total += value
         if value > best_value:
             best_value = value
@@ -476,7 +535,7 @@ def compute_antitank(champion: str, mode: str = "SR") -> AntiTankResult:
                 cadence=entry.cadence,
                 kind_weight=_ANTITANK_KIND_WEIGHT.get(entry.kind, 0.0),
                 cadence_mult=_ANTITANK_CADENCE_MULT.get(entry.cadence, 0.0),
-                magnitude=entry.magnitude,
+                magnitude=_effective_magnitude(entry, stats),
                 conditional=entry.conditional,
                 value=value,
             )
