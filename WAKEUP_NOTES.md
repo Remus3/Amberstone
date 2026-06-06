@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-05 - prefer-CDragon flip INVESTIGATED + DEFERRED (Gemini-loop cycle 2) [item 311]
+
+Cycle-2 directive (`ops/loop/control/directive.md`): flip `prefer_cdragon_ratios` default ON + bump ENGINE + re-pin gold tests. **Outcome: NOT flipped - the live sidecar is structurally defective; flipping ships a broken engine.** ENGINE UNCHANGED 1.118.0; seam stays default-OFF; DS NOT restarted; suite GREEN 6618; net code diff ZERO. Full record = item 311 in `docs/LEDGER.md`; detailed evidence `ops/loop/CDRAGON_FLIP_FINDINGS.md`.
+
+- **Generated** live sidecar+drift (`--drift -v`, 16.11.1): 171 champs, mechanical=916 / fallback=499 / errors=0; drift n_changed=439 / n_only_cdragon=377 / n_meraki_only=233.
+- **Flipped + ran DS suite -> 79 failed / 6540 passed.** Inspected real diffs -> 3 extractor defect classes: (a) SYSTEMIC off-by-one (base align offset1=445 vs offset0=3; CDragon arrays carry a leading rank-0 + trailing rank-6; Aatrox Q base `(-5,10,25,40,55,70,85)` vs `(10,25,40,55,70)`); (b) value EXPLOSIONS (MasterYi Q `SingleCritTotalDamage` total_ad_pct to 21122, pairs positionally onto Alpha Strike); (c) FRACTIONAL-base mis-bucket (Akshan Q base `0.2`). + multi-hit-ult semantic mismatch (MF/Lucian R per-hit vs aggregate). Re-pinning to these = baking garbage; refused (root-cause-fix + verify-before-ship override the literal directive).
+- **Reverted** flip + test (git diff clean), removed broken untracked sidecar+drift JSONs, py_compile OK; **DS suite post-revert 6618 passed / 1 skip / 1 xfail / 1936 subtests** (0 regressions).
+- **Slice B (read-only):** 1 stale anchor `ROADMAP.md:122` (DS glance row `ENGINE 1.63.0 / 4894 tests / 172 champs` vs live `1.118.0 / ~6618 / 171`); 7-lever sweep saturated, 1 marginal (demote `vision_server/_inference.py:272` OCR INFO->DEBUG).
+- **Don't-redo:** do NOT flip default-ON or re-pin gold tests until the EXTRACTOR is fixed - the sidecar is defective (off-by-one + explosions + fractional), not a clean Meraki-staleness win; the consumer seam (`_apply_cdragon_ratio_preference`) is correct.
+- **NEXT (extractor-fix cycle):** `resolve_calc_block` (1) trim leading rank-0 when len>=6 + TDD resolver test; (2) fallback-guard explosion + fractional-base blocks; (3) regen + re-run with flip ON -> remaining fails = genuine drifts (Lux Q 65->75 AP) -> validate per-champ -> re-pin only validated -> flip + bump ENGINE + restart DS.
+
+---
+
 # 2026-06-05 - prefer-CDragon default-OFF seam (Gemini-loop cycle 1) + Imperial Mandate AH fix (item 310)
 
 Two threads. (1) Gemini-loop cycle-1 directive (`ops/loop/control/directive.md`): wire the DS engine to prefer mechanical CDragon ability ratios behind a default-off flag. (2) Operator pasted the lolmath "Redymix 26.11" hard-CC/haste-refactor changelog -> compare vs DS, adjust if beneficial. ENGINE UNCHANGED 1.118.0; DS NOT restarted (seam inert + AH value is offline-only). Full record = item 310 in `docs/LEDGER.md`.
