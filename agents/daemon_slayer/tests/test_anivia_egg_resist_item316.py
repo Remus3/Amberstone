@@ -5,8 +5,9 @@ Rebirth, item 288) must survive the resurrection EGG, which fights through
 MODIFIED resists (-40:20 by level bonus armor + MR). This module adds
 ``egg_resist_armor`` / ``egg_resist_mr`` fields to PassiveReviveEntry, seeds
 the Anivia entry with the per-level tuples, and exposes ``revive_egg_resist``
-which compute_ehp consumes via the new ``apply_egg_resist`` flag (default
-False -> byte-identical to item 288).
+which compute_ehp consumes via the ``apply_egg_resist`` flag. Item 321
+(2026-06-06, ENGINE 1.120.0) flipped that flag default False -> True
+(default-ON cutover); pass False to recover the item-288 scalar path.
 
 The egg resist reshapes the SELF-REVIVE EXTRA (``revive_mult - 1``) per damage
 type; true EHP is unchanged (true damage ignores resists); ally revive +
@@ -107,16 +108,19 @@ class EhpIntegrationTests(unittest.TestCase):
     def _ehp(self, champ, level, **kw):
         return compute_ehp(self.snap, champ, level, item_ids=[], **kw)
 
-    def test_default_byte_identical_to_explicit_false(self):
-        # apply_egg_resist omitted (default False) == explicit False.
-        explicit_off = self._ehp(
-            "Anivia", 11, apply_passive_revive=True, apply_egg_resist=False
+    def test_default_now_matches_explicit_true(self):
+        # ITEM 321 (2026-06-06): apply_egg_resist default flipped False -> True
+        # (egg-resist default-ON cutover, ENGINE 1.120.0). Omitting the flag
+        # now equals explicit True - the egg-state resist reshapes the
+        # self-revive extra by default.
+        explicit_on = self._ehp(
+            "Anivia", 11, apply_passive_revive=True, apply_egg_resist=True
         )
-        default_off = self._ehp("Anivia", 11, apply_passive_revive=True)
-        self.assertEqual(explicit_off.physical_ehp, default_off.physical_ehp)
-        self.assertEqual(explicit_off.magical_ehp, default_off.magical_ehp)
-        self.assertEqual(explicit_off.true_ehp, default_off.true_ehp)
-        self.assertEqual(explicit_off.blended_ehp, default_off.blended_ehp)
+        default_on = self._ehp("Anivia", 11, apply_passive_revive=True)
+        self.assertEqual(explicit_on.physical_ehp, default_on.physical_ehp)
+        self.assertEqual(explicit_on.magical_ehp, default_on.magical_ehp)
+        self.assertEqual(explicit_on.true_ehp, default_on.true_ehp)
+        self.assertEqual(explicit_on.blended_ehp, default_on.blended_ehp)
 
     def test_no_revive_egg_on_is_byte_identical_to_no_revive_egg_off(self):
         # apply_passive_revive False + apply_egg_resist True ->
@@ -210,7 +214,7 @@ class AsciiHygieneTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_pin(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.119.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.120.0")
 
 
 if __name__ == "__main__":
