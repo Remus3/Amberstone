@@ -1,13 +1,14 @@
 # arch: DS champion-profile aggregate backend | section=dashboard | frozen=no
-"""GET /api/ds-profile - a champion "profile" radar over four DS scorers.
+"""GET /api/ds-profile - a champion "profile" radar over eight DS scorers.
 
-Thin, additive, read-only dashboard wire that aggregates four EXISTING pure
-per-champion DS scorers - mobility / sustain / scaling / waveclear - into one
-ordered "profile" for the locked champ. NO engine math change, NO new
-dependency, NO schema lift; every scorer fn is pure, never raises, and returns
-a dataclass with a ``.to_dict()``. This route only reads their headline scalars
-and a couple of guaranteed breakdown fields, then normalises each axis to a
-0-100 percentile against the leaguewide per-axis max.
+Thin, additive, read-only dashboard wire that aggregates eight EXISTING pure
+per-champion DS scorers - mobility / sustain / scaling / waveclear /
+threatrange / zonecontrol / objdamage / extendedduel - into one ordered
+"profile" for the locked champ. NO engine math change, NO new dependency, NO
+schema lift; every scorer fn is pure, never raises, and returns a dataclass
+with a ``.to_dict()``. This route only reads their headline scalars and a
+couple of guaranteed breakdown fields, then normalises each axis to a 0-100
+percentile against the leaguewide per-axis max.
 
 Mirrors the discipline of routes_ds_sweep.py exactly: the same
 StubHandler-compatible ``_send`` contract, the 5-min response cache
@@ -35,13 +36,18 @@ Response shape (ok):
        "tier":"LOW|MED|HIGH","detail":<str>},
       {"key":"sustain", ...},
       {"key":"scaling", ...,"slope":<float r2>,"trajectory":"UP|EVEN|DOWN"},
-      {"key":"waveclear", ...,"ranged_shove":<bool>}
+      {"key":"waveclear", ...,"ranged_shove":<bool>},
+      {"key":"threatrange", ...,"is_artillery":<bool>},
+      {"key":"zonecontrol", ...,"controls_terrain":<bool>},
+      {"key":"objdamage", ...,"pressures_structures":<bool>},
+      {"key":"extendedduel", ...,"ramps":<bool>}
     ],
     "elapsed_ms": <int>,
     "cached": <bool>
   }
 
-  axes is an ORDERED list (mobility, sustain, scaling, waveclear). Each axis:
+  axes is an ORDERED list (mobility, sustain, scaling, waveclear,
+  threatrange, zonecontrol, objdamage, extendedduel). Each axis:
     score = headline scalar rounded to 2.
     pct   = round(min(score / axis_max, 1.0) * 100), where axis_max is the MAX
             headline across ALL registered champions (computed once, lazily,
@@ -50,14 +56,17 @@ Response shape (ok):
     tier  = pct >= 66 HIGH, pct >= 33 MED, else LOW.
     detail= a short, defensively-derived label from GUARANTEED fields only
             (fallback "-"): the dominant spell/source kind for mobility/sustain,
-            a trajectory phrase for scaling, top_kind for waveclear.
+            a trajectory phrase for scaling, top_kind for waveclear, top_band
+            for threatrange, top_kind for zonecontrol/objdamage/extendedduel.
   scaling additionally carries slope (round 2) + trajectory; waveclear carries
-  ranged_shove.
+  ranged_shove. The four added axes each carry one extra bool flag:
+  threatrange is_artillery, zonecontrol controls_terrain, objdamage
+  pressures_structures, extendedduel ramps.
 
 Failure modes (mirror routes_ds_sweep):
   - 400  champion param missing / blank.
   - 200  ok=false reason=no_profile axes=[] when the resolved champion has ZERO
-         entries across ALL four scorers (every headline == 0 AND every result
+         entries across ALL eight scorers (every headline == 0 AND every result
          carries empty spells/sources). Unknown champion lands here.
   - 503  ImportError or any compute Exception (logged; body never leaks the raw
          trace beyond str(exc)[:200]).
@@ -103,6 +112,10 @@ _AXIS_ORDER: tuple[tuple[str, str], ...] = (
     ("sustain", "Sustain"),
     ("scaling", "Scaling"),
     ("waveclear", "Waveclear"),
+    ("threatrange", "Range"),
+    ("zonecontrol", "Zone"),
+    ("objdamage", "Objective"),
+    ("extendedduel", "Duel"),
 )
 
 # Lazy DDragon id->slug map + leaguewide per-axis max. Both re-resolved on first
@@ -174,29 +187,42 @@ def _resolve_champion(raw: str) -> str:
 
 
 def _compute_results(champion: str, mode: str):
-    """Run the four pure scorers once for one champion. Returns a 4-tuple of
-    their result dataclasses (mobility, sustain, scaling, waveclear)."""
+    """Run the eight pure scorers once for one champion. Returns an 8-tuple of
+    their result dataclasses in _AXIS_ORDER sequence (mobility, sustain,
+    scaling, waveclear, threatrange, zonecontrol, objdamage, extendedduel)."""
+    from agents.daemon_slayer.extendedduel import compute_extendedduel
     from agents.daemon_slayer.mobility import compute_mobility
+    from agents.daemon_slayer.objdamage import compute_objdamage
     from agents.daemon_slayer.scaling import compute_scaling
     from agents.daemon_slayer.sustain import compute_sustain
+    from agents.daemon_slayer.threatrange import compute_threatrange
     from agents.daemon_slayer.waveclear import compute_waveclear
+    from agents.daemon_slayer.zonecontrol import compute_zonecontrol
 
     return (
         compute_mobility(champion, mode),
         compute_sustain(champion, mode),
         compute_scaling(champion, mode),
         compute_waveclear(champion, mode),
+        compute_threatrange(champion, mode),
+        compute_zonecontrol(champion, mode),
+        compute_objdamage(champion, mode),
+        compute_extendedduel(champion, mode),
     )
 
 
 def _headlines(results) -> dict[str, float]:
-    """Per-axis headline scalar from the four result dataclasses."""
-    mob, sus, scl, wav = results
+    """Per-axis headline scalar from the eight result dataclasses."""
+    mob, sus, scl, wav, thr, zon, obj, duel = results
     return {
         "mobility": float(mob.total_mobility_score),
         "sustain": float(sus.total_sustain_score),
         "scaling": float(scl.scaling_score),
         "waveclear": float(wav.waveclear_score),
+        "threatrange": float(thr.threatrange_score),
+        "zonecontrol": float(zon.zonecontrol_score),
+        "objdamage": float(obj.objdamage_score),
+        "extendedduel": float(duel.duel_score),
     }
 
 
@@ -273,7 +299,7 @@ def _build_axes(results, maxima: dict[str, float]) -> list[dict]:
     Each axis carries the common (key,label,score,pct,tier,detail) block;
     scaling adds slope+trajectory, waveclear adds ranged_shove.
     """
-    mob, sus, scl, wav = results
+    mob, sus, scl, wav, thr, zon, obj, duel = results
     heads = _headlines(results)
     labels = dict(_AXIS_ORDER)
 
@@ -304,19 +330,37 @@ def _build_axes(results, maxima: dict[str, float]) -> list[dict]:
     waveclear_axis["ranged_shove"] = bool(wav.ranged_shove)
     axes.append(waveclear_axis)
 
+    threatrange_axis = base("threatrange", (thr.top_band or "-").lower())
+    threatrange_axis["is_artillery"] = bool(thr.is_artillery)
+    axes.append(threatrange_axis)
+
+    zonecontrol_axis = base("zonecontrol", (zon.top_kind or "-").lower())
+    zonecontrol_axis["controls_terrain"] = bool(zon.controls_terrain)
+    axes.append(zonecontrol_axis)
+
+    objdamage_axis = base("objdamage", (obj.top_kind or "-").lower())
+    objdamage_axis["pressures_structures"] = bool(obj.pressures_structures)
+    axes.append(objdamage_axis)
+
+    extendedduel_axis = base("extendedduel", (duel.top_kind or "-").lower())
+    extendedduel_axis["ramps"] = bool(duel.ramps)
+    axes.append(extendedduel_axis)
+
     return axes
 
 
 def _is_empty_profile(results) -> bool:
-    """True when the champion has ZERO entries across ALL four scorers - every
+    """True when the champion has ZERO entries across ALL eight scorers - every
     headline is 0 AND every breakdown list is empty. This is the no_profile
     branch (an unknown champion lands here too)."""
-    mob, sus, scl, wav = results
+    mob, sus, scl, wav, thr, zon, obj, duel = results
     heads = _headlines(results)
     if any(v != 0 for v in heads.values()):
         return False
     return (not mob.spells and not sus.spells
-            and not scl.sources and not wav.sources)
+            and not scl.sources and not wav.sources
+            and not thr.sources and not zon.sources
+            and not obj.sources and not duel.sources)
 
 
 def _compute(champion: str, mode: str) -> dict:
