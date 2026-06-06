@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "champ_a": "Vayne",
+  "champ_b": "Caitlyn",
+  "level_a": 6,
+  "level_b": 6,
+  "mode": "SR",
+  "verdict": "trade",
+  "net_swing": 0.12,
+  "swing_pct": 56,
+  "favored": "A",
+  "pct_a_removed": 0.34,
+  "pct_b_removed": 0.46,
+  "dmg_a_to_b": 420.0,
+  "dmg_b_to_a": 310.0,
+  "a_can_full_combo": true,
+  "b_can_full_combo": true,
+  "notes": [
+    "Vayne wins the extended trade once Q condemn lands"
+  ],
+  "elapsed_ms": 3,
+  "cached": false
+}
