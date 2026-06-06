@@ -23,7 +23,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 |----|-------|-------|--------|--------|
 | A1 | DS-surface | DS Profile panel (design + axes batch 1: mobility, sustain, scaling, waveclear). New dashboard/routes_ds_profile.py + web/js/panels/ds_profile.js + CSS + web/data/ui_mock fixtures. Mirror dashboard/routes_ds_sweep.py + web/js/panels/ds_sweep.js. 5-phase UI audit + visual check. | DONE | 8e376858 |
 | A2 | DS-surface | DS Profile axes batch 2: added threat-range, zone-control, objective-damage, extended-duel to the A1 /api/ds-profile surface (4 -> 8 axes) + dsp-flag markers. matchup split to A2b (pairwise, not a single-champ axis). 5-phase audit ship-ready. | DONE | 3f23e18c |
-| A2b | DS-surface | DS Profile matchup readout: surface agents/daemon_slayer/matchup.compute_matchup (already wired at /v2/matchup) as a pairwise lane-matchup card keyed on a selected enemy + levels + items - a DISTINCT surface from the single-champ radar, NOT a 0-100 profile axis. | OPEN | - |
+| A2b | DS-surface | DS Profile matchup readout: surface agents/daemon_slayer/matchup.compute_matchup (already wired at /v2/matchup) as a pairwise lane-matchup card keyed on a selected enemy + levels + items - a DISTINCT surface from the single-champ radar, NOT a 0-100 profile axis. | DONE | 0a017dc4 |
 | A3 | DS-coach | Wire the 2 highest-value axes into coach context: anti-tank build hint (vs high-HP enemies) + scaling power-curve, into modes/* prompts. Shadow-log first, then surface. | OPEN | - |
 | B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | OPEN | - |
 | C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | OPEN | - |
@@ -45,6 +45,30 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Anything in the CLAUDE.md "Settled - do not re-litigate" set.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-06 A2b DONE (commit 0a017dc4): NEW GET /api/ds-matchup +
+  champ-select ds_matchup card. Surfaces the EXISTING compute_matchup engine
+  via the existing /v2/matchup client wire (core/daemon_slayer_client.matchup);
+  thin read-only dashboard route (dashboard/routes_ds_matchup.py mirrors
+  routes_ds_profile: 5-min TTL cache, numeric->slug resolver, fail-soft
+  503/400/no_matchup) + a presentational card (web/js/panels/ds_matchup.js +
+  ds_matchup.css) keyed champ_a=cs.my_champion vs champ_b=first committed enemy.
+  Payload adds swing_pct (0-100, 50=even) + favored (A/B/even) over the raw
+  MatchupResult. Shipped as 2 disjoint verifier-CONFIRMED worktree slices
+  (backend 21/0, frontend 8/0) + 1 UI-audit fix. Full RC suite 5185 passed / 0
+  fail; ruff + node --check clean. Live route probed green (Vayne vs Caitlyn:
+  back_off, favored B, net_swing -0.148; L6 -0.303; numeric 67/51 resolves;
+  missing param 400). 5-phase UI audit: 1 MUST-FIX FIXED (scheduler wiring was
+  dead - card rendered one tick late vs siblings; + regression test), 1
+  SHOULD-FIX FIXED (header overflow guard). VISUAL CAPTURE OWED (carry-forward):
+  Game-PC :8892 MCP down (SessionStart re-confirmed /health None) +
+  Claude_Preview cannot attach self-signed HTTPS :8888 (same A1/A2 blocker).
+- FUTURE (A2b UI audit SHOULD/NICE, deferred): (1) ds_matchup.js _signature
+  omits a_can_full_combo / b_can_full_combo / notes - a payload changing ONLY a
+  combo flag or note text skips the sig-dedup rebuild (stale notes; low odds).
+  (2) NICE: .dsm-swing-end labels lack white-space:nowrap (could wrap at extreme
+  narrow width). (3) NICE: _notesHtml renders the .dsm-cast "full combo" tag
+  immediately before "...lands full combo" (doubled phrase; cosmetic).
 
 - 2026-06-06 A2 DONE (commit 3f23e18c): /api/ds-profile + the panel grew 4 -> 8
   axes (added threatrange/zonecontrol/objdamage/extendedduel from the existing
