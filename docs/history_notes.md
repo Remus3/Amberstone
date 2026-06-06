@@ -53,6 +53,29 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-05 - P2.2 tail: choices decode unified onto shared Pydantic CoachOutput [item 314]
+
+Follow-on to item 313, completing P2.2. Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (byte-identical wire). Full record = item 314 in `docs/LEDGER.md`.
+
+- **Shared model:** NEW `core/coach_output.py` - Pydantic v2 `CoachOutput` + `decode_choices(raw) -> list`. The native-emit `choices` JSON decode was duplicated verbatim in all 4 coaches (aram/arena/brawl `_run_coach` + SR `_write_fields`); now one validated seam. The 4 sites call `decode_choices(fields.get("choices"))`.
+- **Extractors NOT merged (by design):** base `parse_fields` and SR `_parse_response` genuinely diverge (key remapping, multi-line join, different markdown regex, no 220-cap, no positional fallback) and are each golden-mastered/item244-pinned; only the duplicated choices decode was unified.
+- **Tests:** NEW `tests/test_coach_output_p2_2.py` (11 + 11 subtests) parity golden master (decode_choices == old inline block byte-for-byte). Updated the 4 emit tests' `ParserPassthroughTests` source guards to the new wiring + behavioral checks. Item 313's 38 golden masters stayed green.
+- **Verify:** FULL `tests/` 5032 passed / 1 skip / 85 subtests / 0 failed; ruff clean; ASCII-only.
+- **NEXT:** P3.2 (antitank dynamic %HP) + the 6 UNIVERSAL_FILES convention update remain queued. P2.2 COMPLETE.
+
+---
+
+# 2026-06-05 - P2.2 structured-output / Pydantic v2 hardening of the coach parse seam [item 313]
+
+Operator-gated focused session (P2.2, accepted in item 312). Characterization-FIRST per the operator standing rule "rigid tests before swapping the parsing logic so we don't break the live coach pipelines." Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (pure-Python validation swap, byte-identical wire). Full record = item 313 in `docs/LEDGER.md`.
+
+- **Golden masters (no prod change):** `tests/test_parse_fields_characterization_p2_2.py` (25) pins `coaches/_base_coach.parse_fields`/`parse_field` - lowercase-key contract, markdown strip, 220-trunc, positional-fallback threshold + whole-line footgun, choices-JSON passthrough, parse_field case-insensitive/no-strip/no-trunc asymmetry. `tests/test_coach_choices_characterization_p2_2.py` (13) locks the exact `core/coach_choices` wire dict (to_dict/to_jsonable) shape-agnostically so it survives the swap.
+- **Swap:** `core/coach_choices.CoachChoice` `@dataclass(frozen=True)` -> `@pydantic.dataclasses.dataclass(frozen=True)`. Chosen over a literal `BaseModel` AFTER I surfaced the blast radius (a BaseModel breaks 5 existing tests - 4 emit tests call `dataclasses.fields()`, `test_frozen_dataclass` expects `AttributeError` not pydantic `ValidationError` - plus `to_dict`'s `asdict`). The pydantic dataclass stays a TRUE stdlib dataclass -> `fields`/`asdict`/`FrozenInstanceError` all keep working = 0 existing-test edits, wire byte-identical, + construction-time validation gained.
+- **Verify:** targeted 212 passed (incl. the 4 emit + frozen tests unmodified); FULL root `tests/` 5020 passed / 1 skip / 74 subtests. The ONLY red was PRE-EXISTING + unrelated (`test_doc_size_budget::test_roadmap_md_under_budget`: ROADMAP 85458>81920B - item 312 skipped the relocate-on-add convention); FIXED here by relocating item 294 + the DS source-layering plan verbatim to `docs/ROADMAP_HISTORY.md`. py_compile OK; ASCII-only.
+- **NEXT:** P2.2 tail (deferred) - migrate base-coach `parse_fields` callers + SR `_parse_response` onto a shared validated model (golden masters now guard it); P3.2 (antitank dynamic %HP) is the queued sibling.
+
+---
+
 # 2026-06-05 - prefer-CDragon flip INVESTIGATED + DEFERRED (Gemini-loop cycle 2) [item 311]
 
 Cycle-2 directive (`ops/loop/control/directive.md`): flip `prefer_cdragon_ratios` default ON + bump ENGINE + re-pin gold tests. **Outcome: NOT flipped - the live sidecar is structurally defective; flipping ships a broken engine.** ENGINE UNCHANGED 1.118.0; seam stays default-OFF; DS NOT restarted; suite GREEN 6618; net code diff ZERO. Full record = item 311 in `docs/LEDGER.md`; detailed evidence `ops/loop/CDRAGON_FLIP_FINDINGS.md`.
@@ -9399,6 +9422,18 @@ Operator "go" on the recurring "next DS schema lift, fan out, exhaust, /done" ca
 
 ---
 
+# 2026-06-05 - external refactor-plan triage + P4.2 Tesseract env-config + UNIVERSAL_FILES cleanup [item 312]
+
+Operator handed 3 Desktop review docs (`Claude_Refactor_Plan.md` + `Riot_Commander_Review.md` + `Riot_Commander_Deep_Dive.md` - external AI audits) to read + act on, plus a `Desktop\UNIVERSAL_FILES\` cleanup. Docs kept OUT of repo (`feedback_keep_outreach_out_of_repo` - competitor/strategy/outreach content). Full record = item 312 in `docs/LEDGER.md`.
+
+- **UNIVERSAL_FILES cleaned to the 6 originals:** 19 item-310 lolmath scratch artifacts -> gitignored `_scratch/uf_dump_item310/` (reversible; hard-delete on request); `BRIEF.md` -> `Desktop\` (out of folder + out of repo).
+- **5-phase refactor triaged (proposals = INTENT, verified vs live code):** SHIPPED **P4.2** `RC_TESSERACT_CMD` env override (`core/vision_tesseract.py`, +5 CI-safe tests, byte-identical when unset). REJECTED **P3.1** (amp-DRY already done in `effects.py` - both dps.py/burst.py import it) + **P5.1** (em-dash ban is the settled PS-ParseFile rule). GATED: **P1.2/P1.3/P4.1** (frozen files), **P2.1** FastAPI rewrite, **P5.2** SQLite ledger. ACCEPTED own-session: **P2.2** (live coach parse + partly redundant), **P3.2** (antitank dynamic = design change).
+- **Loop-relaunch (operator Q):** the Gemini director reads repo-only (commits + LEDGER/ROADMAP tails + claude.done + last audit), NEVER the Desktop; it picks ONE bounded item/cycle. To route any accepted item through the loop, pin it in ROADMAP NOW.
+- **NEXT (operator-gated):** P2.2 + P3.2 focused sessions; update the 6 UNIVERSAL_FILES templates to current conventions; frozen-file + big-rewrite phases need explicit approval.
+- **WRAP (/done):** deleted merged remote branch `origin/refactor/pickban-routes` (0 unique commits, no PR; only `origin/main` left) + stale `Desktop\todo.md` (Win1=item295/Win2=item296 shipped) + `Desktop\BRIEF.md`. Set ROADMAP NEXT-UP block (item-311 cdragon extractor fix is priority 1) + queued 2 NEW items: daily upstream content-drift poll, phone monitor/loop remote-control (Tailscale dashboard already monitors from a phone). Loop STOPPED ("max_cycles 1"); relaunch via `ops/loop/config.json` max_cycles + `launch_loop.ps1`.
+
+---
+
 ---
 
 # 2026-06-02 - item 263: Kai'Sa ARAM rebuild + Ashe SR ADC paths (data-only, RC pid 324 live-verified, no restart)
@@ -11026,15 +11061,3 @@ LIVE :8893 (POST /ability-dps): AurelionSol Q apply_ability_amps=false 292.5 / t
 +25 tests test_cross_spell_amp_item257.py. ENGINE 1.87.0 -> 1.88.0 + 41 test-pin syncs + CHANGELOG prepend + Share re-sync (--check clean, 259 files engine 1.88.0) + Share authored-doc semantic update (04 cross-spell shipped-vs-staged moved to section 1, 05 test count 5886->5911 + 171->172 files, CHANGELOG 1.88.0 prepend) + DS restart (PowerShell taskkill /F /PID 12792 + schtasks /Run /TN RC-DaemonSlayer -> /health 1.88.0/16.11.1/172/705). DS suite 5886 -> 5911 (+25, 0 failed); phase8 70/70 post-restart; ruff clean; added-diff 0 non-ASCII.
 
 Don't-redo: (a) CrossSpellAmpEntry + _CROSS_SPELL_AMP_OVERRIDES is the canonical home for ANY amp whose magnitude/gate live on a SOURCE spell but multiply a DIFFERENT TARGET spell; keyed by the TARGET; the consumer resolves SOURCE rank via rank_at_level - do NOT try to key it on the source spell (W f0 has no damage block to scale). (b) reuses _amp_multiplier; _COND_W_FLIGHT 0.4 midpoint matches the staged entry's documented choice. (c) source-rank guard >= 0 is load-bearing (W unleveled = no flight buff = no Q amp -> lvl1 byte-identical) - do NOT remove. (d) no double-count - do NOT add a Q ability-amp entry. (e) _STAGED_AMP_CANDIDATES is now EMPTY - the staged self-amp lane is closed. (f) DS restart PowerShell taskkill /F /PID + schtasks (NEVER Stop-Process). NEXT (all live/operator-gated - the clean headless DS lane is now GENUINELY EXHAUSTED): (1) Phase D live flag-flips (apply_ability_amps incl AurelionSol Q cross-spell + the 5 C2 AA champs once authored; apply_passive_damage 28; apply_passive_heal 24; apply_build_tenacity + score_by=cc_blended; apply_mode_modifiers; gate_ammo; aoe_targets_hit). (2) author the 5 C2 AA-empower amortized values + cadence live. (3) item-240 UI part-3 + #7/#8 sign-off + item-243 NEXT(2) ranked-SR UI watch. The DS gap-plan headless spine (Phases A/B/C/E + all effects-text lifts + C1 + C2x) is COMPLETE.
-
----
-
-# 2026-06-05 - external refactor-plan triage + P4.2 Tesseract env-config + UNIVERSAL_FILES cleanup [item 312]
-
-Operator handed 3 Desktop review docs (`Claude_Refactor_Plan.md` + `Riot_Commander_Review.md` + `Riot_Commander_Deep_Dive.md` - external AI audits) to read + act on, plus a `Desktop\UNIVERSAL_FILES\` cleanup. Docs kept OUT of repo (`feedback_keep_outreach_out_of_repo` - competitor/strategy/outreach content). Full record = item 312 in `docs/LEDGER.md`.
-
-- **UNIVERSAL_FILES cleaned to the 6 originals:** 19 item-310 lolmath scratch artifacts -> gitignored `_scratch/uf_dump_item310/` (reversible; hard-delete on request); `BRIEF.md` -> `Desktop\` (out of folder + out of repo).
-- **5-phase refactor triaged (proposals = INTENT, verified vs live code):** SHIPPED **P4.2** `RC_TESSERACT_CMD` env override (`core/vision_tesseract.py`, +5 CI-safe tests, byte-identical when unset). REJECTED **P3.1** (amp-DRY already done in `effects.py` - both dps.py/burst.py import it) + **P5.1** (em-dash ban is the settled PS-ParseFile rule). GATED: **P1.2/P1.3/P4.1** (frozen files), **P2.1** FastAPI rewrite, **P5.2** SQLite ledger. ACCEPTED own-session: **P2.2** (live coach parse + partly redundant), **P3.2** (antitank dynamic = design change).
-- **Loop-relaunch (operator Q):** the Gemini director reads repo-only (commits + LEDGER/ROADMAP tails + claude.done + last audit), NEVER the Desktop; it picks ONE bounded item/cycle. To route any accepted item through the loop, pin it in ROADMAP NOW.
-- **NEXT (operator-gated):** P2.2 + P3.2 focused sessions; update the 6 UNIVERSAL_FILES templates to current conventions; frozen-file + big-rewrite phases need explicit approval.
-- **WRAP (/done):** deleted merged remote branch `origin/refactor/pickban-routes` (0 unique commits, no PR; only `origin/main` left) + stale `Desktop\todo.md` (Win1=item295/Win2=item296 shipped) + `Desktop\BRIEF.md`. Set ROADMAP NEXT-UP block (item-311 cdragon extractor fix is priority 1) + queued 2 NEW items: daily upstream content-drift poll, phone monitor/loop remote-control (Tailscale dashboard already monitors from a phone). Loop STOPPED ("max_cycles 1"); relaunch via `ops/loop/config.json` max_cycles + `launch_loop.ps1`.
