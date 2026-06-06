@@ -46,6 +46,19 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 cycle-5 REGRESS on A2b = FALSE POSITIVE (3rd consecutive; cycles
+  3/4/5 each flagged the same non-bug). This-run ground truth: `git grep` for the
+  corruption marker across every tracked code file (*.css *.js *.py) returns ZERO
+  matches; web/css/dashboard.css line 42 and tests/snapshot_panels/
+  test_ds_matchup_panel.py line 47 both hold the correct CSS import directive;
+  docs/ORCHESTRATION_PLAN.md lines below read correctly. Tests this run: 13
+  implicated (parity guard + ds_matchup snapshot) passed; FULL RC suite 5186
+  passed / 1 skip / 0 fail / 85 subtests. ROOT CAUSE of the loop: the auditor
+  re-detects the bug-DESCRIPTION quoted verbatim inside the loop's own control
+  files (ops/loop/control/directive.md + _gemini_in.txt) and the prior FP
+  entries - it is documentation OF a non-bug, never source corruption. NO source
+  change made (none warranted). A2b stays DONE. Escalated to the DIRECTOR via
+  gemini_ask.txt: advance to A3, stop re-issuing this verdict.
 - 2026-06-06 REGRESS verdict on A2b = FALSE POSITIVE (verify-only cycle, no
   source fix; ground truth HEAD 8188baf3). The auditor flagged a botched
   find/replace that would have turned the leading @import token into a stray
