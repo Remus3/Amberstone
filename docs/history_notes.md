@@ -53,6 +53,19 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-05 - P3.2: antitank.py dynamic %HP scaling via injected ResolvedStats [item 315]
+
+DS engine SCHEMA LIFT, NO ENGINE bump (byte-identical live, ENGINE stays 1.118.0; DS NOT restarted; non-frozen). Operator-accepted design change (item 312 flagged antitank as intentionally STATIC per item 308). Full record = item 315 in `docs/LEDGER.md`.
+
+- **Domain fork (one AskUserQuestion BEFORE coding):** pure %max-HP (Vayne W / Fiora P, the dominant MAX_HP kind) does NOT scale with caster AP/AD in-game; only Kog'Maw W cap / Gwen P bilinear carry a real caster-stat term. Operator chose the per-row coefficient schema lift over a blanket multiplier or a full quantitative rebuild.
+- **Schema lift (`agents/daemon_slayer/antitank.py`):** `AntiTankEntry` gains optional `ap_ratio` / `ad_ratio` (default 0.0, appended at END - positional construction + item-308 `_mechanism_value(e)` single-arg stay valid); `compute_antitank` / `_mechanism_value` take an optional `stats` (a `ResolvedStats` or any `.get("ap"/"ad")` mapping; `ResolvedStats` imported under TYPE_CHECKING - engine.py does not import antitank, cycle-safe); NEW `_effective_magnitude(entry, stats)` = `base + ap*ap_ratio + ad*ad_ratio` when a seeded row meets stats, else base. SEEDED Gwen P (ap_ratio 0.0005) + KogMaw W (ap_ratio 0.0004); AD path proven via a synthetic test entry (no champion mis-seeded).
+- **Additive guarantee:** `stats=None` (the default; the `/anti-tank` route passes no stats and was NOT touched) is byte-identical to item 308, as is any zero-ratio row even WITH stats injected -> NO ENGINE bump, NO downstream caller change, tight blast radius. `AntiTankResult` / `AntiTankSourceEntry` to_dict shapes unchanged (effective magnitude flows into existing `magnitude`/`value`; ratios live only on the registry entry).
+- **TDD characterization-FIRST:** NEW `agents/daemon_slayer/tests/test_antitank_p3_2.py` (+24, RED-before-GREEN) - schema defaults, byte-identical static path, 12 un-seeded champs identical under ap=800/ad=800, seeded Gwen/KogMaw math at pinned AP, synthetic ap/ad/conditional, real-ResolvedStats==dict parity, exactly-2-rows-seeded.
+- **Verify:** py_compile OK; DS-dir `agents/daemon_slayer/tests/` 6644 passed / 1 skip / 1 xfail / 1936 subtests; root `tests/` 5032 passed / 1 skip / 85 subtests / EXIT 0 (UNCHANGED - new tests are in the DS dir, live output byte-identical); ruff clean; `ds_share_sync.py` re-mirrored 315 files (--check 0); ASCII-only. Live: Gwen 0.85->0.95 @200AP / 0.85 @999AD; KogMaw 0.926->0.966 @200AP; Vayne 0.95 byte-identical @800AP/800AD.
+- **NEXT (Phase D, gated):** the scaling is INERT until a caller passes stats - wire a live caster-stat producer into the `/anti-tank` route to ACTIVATE it, THEN bump ENGINE + restart DS (cdragon-seam precedent); seed the remaining caster-stat-scaled %HP rows (per-row scan open). The 6 UNIVERSAL_FILES convention update is still queued.
+
+---
+
 # 2026-06-05 - P2.2 tail: choices decode unified onto shared Pydantic CoachOutput [item 314]
 
 Follow-on to item 313, completing P2.2. Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (byte-identical wire). Full record = item 314 in `docs/LEDGER.md`.
