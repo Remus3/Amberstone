@@ -77,3 +77,48 @@ scorer changes are validated per-champion, not assumed).
   demote `vision_server/_inference.py:272` OCR-results INFO line to DEBUG (2s cadence, low value).
 
 Regenerate evidence: `py tools/daemon_slayer_cdragon_ratio_extract.py --drift -v`
+
+## POST-317 RE-INVESTIGATION (2026-06-06): flip STILL unsafe - positional-pairing block-mismatch
+
+Cycle re-fired the same directive (flip default ON + bump ENGINE 1.119.0 + re-pin). Item 317
+(HEAD `7d7dfa54`) fixed extractor defects 1+2 (off-by-one trim + explosion guard); the drift
+audit confirms both are gone. Re-ran the empirical gate (NOT a blind re-pin):
+
+- `py tools/ds_cdragon_drift_audit.py`: n_changed=433, explosion=0, off_by_one_residue=0,
+  large_divergence=173, rank_shape_mismatch=145, n_suspect=318.
+- Flipped `abilities.py:467` default True + `pytest agents/daemon_slayer/tests/`:
+  **70 failed / 6620 passed** (item 311 was 79; item-317 data fix = -9).
+- Reverted (abilities.py byte-identical to HEAD); post-revert DS suite
+  **6690 passed / 1 skip / 1 xfail / 1936 subtests** = green baseline, 0 regressions.
+
+The 70 failures are NOT Meraki-staleness balance drifts (the directive's premise). They are
+STRUCTURAL block-relationship invariants broken by the consumer seam
+`_apply_cdragon_ratio_preference` (abilities.py:430), which pairs CDragon mechanical blocks with
+engine damage blocks BY POSITION (`zip(mech, dmg_idx)`). CDragon's DataValues block
+decomposition does NOT correspond 1:1 positionally with the engine/Meraki `damage_blocks`
+decomposition for multi-block abilities, so the wrong CDragon block lands on the wrong engine
+block. Concrete diffs (flip ON):
+- Ambessa Q: block1 base 50.0 != 2x block0 (40.0)   [invariant: block1 == 2x block0]
+- Gwen R:    block4 base 540.0 != 9x block0 (50.0)   [invariant: block4 == 9x block0]
+- Udyr R:    block1 base 80.0 != 8x block0 (20.0)    [invariant: block1 == 8x block0]
+
+Re-pinning these would destroy documented in-game multi-hit/escalating-damage relationships and
+bake wrong DPS into the live engine (~32 routing+multiplier tests across
+Ambessa/Gwen/Udyr/Akshan/Kayn/Viktor/Karthus/Nautilus/Irelia/Sion/...). This is the exact class
+item 317 left gated: "Flip remains gated on a positional-pairing audit + per-champ review (Zac
+Q/W wrong-calc class)."
+
+DECISION (auto-picked SAFE path per operator standing rules that OVERRIDE the literal directive:
+root-cause-fix / no-data-corruption / verify-before-ship / better-engine north star; item-311
+precedent): NOT flipped. ENGINE stays 1.118.0. Seam stays default-OFF. DS NOT restarted. Net
+code diff = ZERO.
+
+NEXT (the real fix - a separate gated cycle, NOT a re-pin): replace the positional
+`zip(mech, dmg_idx)` in `_apply_cdragon_ratio_preference` with a STRUCTURE-AWARE pairing that
+overrides a block only when the CDragon block provably corresponds to that engine block (match
+on rank-vector shape + preservation of the block-to-block multiplier relationship, else per-block
+Meraki fall-back). Build a per-champ block-decomposition alignment map for the multi-block
+abilities (the ~32 routing/multiplier failures enumerate the candidate set). Re-run the flip-ON
+suite; only then should residual failures be genuine balance drifts (Lux Q 65->75 AP) safe to
+re-pin, after which: flip default ON + bump ENGINE + sync docs + restart DS. Until that seam fix
+lands, do NOT flip and do NOT bump ENGINE.
