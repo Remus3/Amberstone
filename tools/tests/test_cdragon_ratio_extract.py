@@ -59,8 +59,10 @@ class TestLuxQLike:
     def test_base_and_ap_resolved(self):
         b = _only_block(self._mspell(), "TotalDamage")
         assert b["resolution"] == "mechanical"
-        assert b["base"] == self.BASE
-        assert b["ap_pct"] == [75.0] * 7
+        # CDragon arrays are rank-0..rankN length 7; engine indexes rank N at N-1.
+        # After trim (len>=6), leading rank-0 entry is dropped: index 0 becomes rank 1.
+        assert b["base"] == self.BASE[1:]
+        assert b["ap_pct"] == [75.0] * 6
 
     def test_no_other_ratio_fields(self):
         b = _only_block(self._mspell(), "TotalDamage")
@@ -90,7 +92,9 @@ class TestInlineCoefficient:
         )
         b = _only_block(ms, "TotalDamageTT")
         assert b["resolution"] == "mechanical"
-        assert b["ap_pct"] == [120.0] * 7
+        # BaseDamage is len 7; after trim rank-0: base len 6, rank_len becomes 6.
+        assert b["base"] == [65.0, 115.0, 165.0, 215.0, 265.0, 315.0]
+        assert b["ap_pct"] == [120.0] * 6
 
 
 # --------------------------------------------------------------------------- 3. total-AD (mStat 2)
@@ -533,7 +537,8 @@ class TestResolveBinRatios:
         out = R.resolve_bin_ratios(self._bin(), "lux")
         assert "Q" in out
         q = out["Q"]
-        assert any(b["resolution"] == "mechanical" and b["ap_pct"] == [60.0] * 7
+        # BaseDamage and APRatio are len 7; after trim rank-0 they become len 6.
+        assert any(b["resolution"] == "mechanical" and b["ap_pct"] == [60.0] * 6
                    for b in q)
 
     def test_no_root_returns_empty(self):
@@ -649,6 +654,131 @@ class TestExtract:
         assert "import requests" not in src
         assert "from agents" not in src
         assert "import agents" not in src
+
+
+# --------------------------------------------------------------------------- leading rank-0 trim
+class TestLeadingRankZeroTrim:
+    def test_len7_base_and_ap_trimmed(self):
+        # len-7 DataValues: rank-0 entry stripped; result len 6.
+        ms = _mspell(
+            [_dv("BaseDamage", [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0]),
+             _dv("APRatio", [0.5] * 7)],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "BaseDamage",
+                 "__type": "NamedDataValueCalculationPart"},
+                {"mDataValue": "APRatio",
+                 "__type": "StatByNamedDataValueCalculationPart"},
+            ], "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "mechanical"
+        assert b["base"] == [20.0, 30.0, 40.0, 50.0, 60.0, 70.0]
+        assert b["ap_pct"] == [50.0] * 6
+
+    def test_len6_base_trimmed(self):
+        # len-6 DataValues: rank-0 entry stripped; result len 5.
+        ms = _mspell(
+            [_dv("BaseDamage", [5.0, 10.0, 15.0, 20.0, 25.0, 30.0])],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "BaseDamage",
+                 "__type": "NamedDataValueCalculationPart"},
+            ], "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "mechanical"
+        assert b["base"] == [10.0, 15.0, 20.0, 25.0, 30.0]
+
+    def test_len5_base_unchanged(self):
+        # len-5 DataValues: below trim threshold, no trim applied.
+        ms = _mspell(
+            [_dv("BaseDamage", [10.0, 20.0, 30.0, 40.0, 50.0])],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "BaseDamage",
+                 "__type": "NamedDataValueCalculationPart"},
+            ], "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "mechanical"
+        assert b["base"] == [10.0, 20.0, 30.0, 40.0, 50.0]
+
+
+# --------------------------------------------------------------------------- explosion guard
+class TestExplosionGuard:
+    def test_absurd_ap_ratio_is_fallback(self):
+        # [76.0]*5 as AP ratio fraction -> 7600% - tooltip aggregate, not mechanical.
+        ms = _mspell(
+            [_dv("APRatio", [76.0] * 5)],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "APRatio",
+                 "__type": "StatByNamedDataValueCalculationPart"},
+            ], "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "fallback"
+        assert b["base"] is None
+        for f in R._RATIO_FIELDS:
+            assert b[f] is None
+
+    def test_absurd_base_is_fallback(self):
+        # base value > 5000 is an explosion (tooltip aggregate, not flat damage).
+        ms = _mspell(
+            [_dv("BaseDamage", [6000.0] * 5)],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "BaseDamage",
+                 "__type": "NamedDataValueCalculationPart"},
+            ], "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "fallback"
+        assert b["base"] is None
+
+    def test_normal_base_and_ap_not_caught(self):
+        # base 280 + ap 150% are within the explosion thresholds -> stays mechanical.
+        ms = _mspell(
+            [_dv("BaseDamage", [280.0] * 5), _dv("APRatio", [1.5] * 5)],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "BaseDamage",
+                 "__type": "NamedDataValueCalculationPart"},
+                {"mDataValue": "APRatio",
+                 "__type": "StatByNamedDataValueCalculationPart"},
+            ], "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "mechanical"
+        assert b["base"] == [280.0] * 5
+        assert b["ap_pct"] == pytest.approx([150.0] * 5)
+
+
+# --------------------------------------------------------------------------- fractional-base guard
+class TestFractionalBaseGuard:
+    def test_all_sub_one_base_is_fallback(self):
+        # base [0.03]*5 - every value < 1.0 means a ratio leaked into the base.
+        ms = _mspell(
+            [_dv("BaseDamage", [0.03] * 5)],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "BaseDamage",
+                 "__type": "NamedDataValueCalculationPart"},
+            ], "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "fallback"
+        assert b["base"] is None
+
+    def test_base_with_value_ge_one_not_caught(self):
+        # base [3.0..7.0] has values >= 1.0 -> fractional guard does NOT trigger.
+        ms = _mspell(
+            [_dv("BaseDamage", [3.0, 4.0, 5.0, 6.0, 7.0]),
+             _dv("APRatio", [0.4] * 5)],
+            {"T": {"mFormulaParts": [
+                {"mDataValue": "BaseDamage",
+                 "__type": "NamedDataValueCalculationPart"},
+                {"mDataValue": "APRatio",
+                 "__type": "StatByNamedDataValueCalculationPart"},
+            ], "__type": "GameCalculation"}},
+        )
+        b = _only_block(ms, "T")
+        assert b["resolution"] == "mechanical"
+        assert b["base"] == [3.0, 4.0, 5.0, 6.0, 7.0]
 
 
 # --------------------------------------------------------------------------- ASCII hygiene (tool source)
