@@ -105,11 +105,22 @@ class ParserPassthroughTests(unittest.TestCase):
         self.assertIn('"risk", "choices"', self.src)
 
     def test_handler_decodes_via_shared_helper(self):
-        # P2.2 tail: the choices JSON decode moved to the shared, validated
-        # core.coach_output.decode_choices (one seam). The coach MUST import
-        # + call it on the parsed `choices` field.
-        self.assertIn("from core.coach_output import decode_choices", self.src)
-        self.assertIn("decode_choices(", self.src)
+        # P2.2 tail: the choices JSON decode reads from the shared, validated
+        # core.coach_output.CoachOutput.from_fields model (one seam). The coach
+        # MUST import + build it from the parsed-fields dict.
+        self.assertIn("from core.coach_output import CoachOutput", self.src)
+        self.assertIn("CoachOutput.from_fields(", self.src)
+
+    def test_shared_model_parity_with_decode_helper(self):
+        # The new model seam MUST yield the same list the old helper did, so
+        # the swap is behavior-preserving (CoachOutput.from_fields routes the
+        # `choices` field through the SAME before-validator as decode_choices).
+        from core.coach_output import CoachOutput, decode_choices
+        sample = '[{"key":"A","label":"x"}]'
+        self.assertEqual(
+            CoachOutput.from_fields({"choices": sample}).choices,
+            decode_choices(sample),
+        )
 
     def test_decode_not_inlined(self):
         # The old inline json.loads / isinstance block MUST be gone so the
@@ -153,7 +164,7 @@ class ParserPassthroughTests(unittest.TestCase):
     def test_passthrough_runs_before_current_update(self):
         # The handler MUST decode _choices_list BEFORE current.update
         # so the parsed value is in scope at update time. Order matters.
-        idx_decode = self.src.index("_choices_list = decode_choices(")
+        idx_decode = self.src.index("_choices_list = CoachOutput.from_fields(")
         idx_update = self.src.index("current.update({", idx_decode)
         self.assertLess(
             idx_decode, idx_update,
