@@ -50,7 +50,11 @@ DASHBOARD_CSS = WEB / "css" / "dashboard.css"
 FIXTURE = WEB / "data" / "ui_mock" / "ds_profile.json"
 
 _MOUNT_ID = 'id="csv-sugg-ds-profile"'
-_AXIS_KEYS = ("mobility", "sustain", "scaling", "waveclear")
+_AXIS_KEYS = (
+    "mobility", "sustain", "scaling", "waveclear",
+    "threatrange", "zonecontrol", "objdamage", "extendedduel",
+)
+_FLAG_WORDS = ("artillery", "terrain", "towers", "ramps")
 
 
 def _read(p: Path) -> str:
@@ -119,14 +123,22 @@ class OwnFilesTests(unittest.TestCase):
     def test_css_hidden_rule_present(self) -> None:
         self.assertIn("[hidden]", self.panel_css)
 
-    def test_fixture_is_ok_with_four_axes(self) -> None:
+    def test_fixture_is_ok_with_eight_axes(self) -> None:
         data = json.loads(_read(FIXTURE))
         self.assertTrue(data.get("ok"))
         axes = data.get("axes")
         self.assertIsInstance(axes, list)
-        self.assertEqual(len(axes), 4)
+        self.assertEqual(len(axes), 8)
         keys = [a.get("key") for a in axes]
         self.assertEqual(keys, list(_AXIS_KEYS))
+
+    def test_css_flag_class_present(self) -> None:
+        self.assertIn(".dsp-flag", self.panel_css)
+
+    def test_panel_renders_new_axis_markers(self) -> None:
+        self.assertIn("dsp-flag", self.panel_js)
+        for word in _FLAG_WORDS:
+            self.assertIn(word, self.panel_js)
 
 
 class WiringTests(unittest.TestCase):

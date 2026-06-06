@@ -1,18 +1,29 @@
 // DS-Profile champion panel. Renders the LOCKED champion's DS "profile" as
-// four labelled horizontal bars (Mobility / Sustain / Scaling / Waveclear) -
-// a one-glance read on how the operator's own pick is shaped along the axes
-// the DS engine already scores. Pure presentation over the existing engine;
-// no new compute lives here.
+// EIGHT labelled horizontal bars (Mobility / Sustain / Scaling / Waveclear /
+// Range / Zone / Objective / Duel) - a one-glance read on how the operator's
+// own pick is shaped along the axes the DS engine already scores. Pure
+// presentation over the existing engine; no new compute lives here.
 //
 // Backend wire:
 //   GET /api/ds-profile?champion=<slug-or-numeric>&mode=SR
 //   Response: {
 //     ok, champion, mode,
 //     axes:[{key, label, score, pct, tier, detail,
-//            slope?, trajectory?, ranged_shove?}],
+//            slope?, trajectory?, ranged_shove?,
+//            is_artillery?, controls_terrain?, pressures_structures?,
+//            ramps?}],
 //     elapsed_ms, cached
 //   }
 //   Failure: ok=false (reason "no_profile" for unknown champ) -> panel hides.
+//
+// Per-axis marker tags appended to the detail chip (all share the .dsp-flag
+// look alongside the legacy .dsp-traj / .dsp-shove markers):
+//   scaling     -> trajectory word (up/flat/down) via .dsp-traj
+//   waveclear   -> "ranged" when ranged_shove           via .dsp-shove
+//   threatrange -> "artillery" when is_artillery        via .dsp-flag
+//   zonecontrol -> "terrain" when controls_terrain      via .dsp-flag
+//   objdamage   -> "towers" when pressures_structures   via .dsp-flag
+//   extendedduel-> "ramps" when ramps                   via .dsp-flag
 //
 // The locked champion is read from the champ-select state (cs.my_champion,
 // the operator's own numeric LCU id) and resolved to a DDragon slug via
@@ -137,6 +148,14 @@ function _axisRow(axis) {
     extra = `<span class="dsp-traj">${_esc(_trajWord(axis.trajectory))}</span>`;
   } else if (axis && axis.key === "waveclear" && axis.ranged_shove) {
     extra = `<span class="dsp-shove">ranged</span>`;
+  } else if (axis && axis.key === "threatrange" && axis.is_artillery) {
+    extra = `<span class="dsp-flag">artillery</span>`;
+  } else if (axis && axis.key === "zonecontrol" && axis.controls_terrain) {
+    extra = `<span class="dsp-flag">terrain</span>`;
+  } else if (axis && axis.key === "objdamage" && axis.pressures_structures) {
+    extra = `<span class="dsp-flag">towers</span>`;
+  } else if (axis && axis.key === "extendedduel" && axis.ramps) {
+    extra = `<span class="dsp-flag">ramps</span>`;
   }
 
   return (
