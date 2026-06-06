@@ -114,11 +114,11 @@ class ParserPassthroughTests(unittest.TestCase):
         self.assertIn('"choices":      "choices"', self.src)
 
     def test_handler_decodes_via_shared_helper(self):
-        # P2.2 tail: the choices JSON decode moved to the shared, validated
-        # core.coach_output.decode_choices (one seam). The SR handler MUST
-        # import + call it on the parsed `choices` field.
-        self.assertIn("from core.coach_output import decode_choices", self.src)
-        self.assertIn("decode_choices(", self.src)
+        # P2.2 tail: the choices JSON decode is built through the shared,
+        # validated CoachOutput.from_fields seam (item 313). The SR handler
+        # MUST import the model + call from_fields on the parsed fields dict.
+        self.assertIn("from core.coach_output import CoachOutput", self.src)
+        self.assertIn("CoachOutput.from_fields(", self.src)
 
     def test_decode_not_inlined(self):
         # The old inline json.loads / isinstance block MUST be gone so the
@@ -138,13 +138,23 @@ class ParserPassthroughTests(unittest.TestCase):
         # SR coach hands off via `current.update(fields)` in _write_fields,
         # so the choices list MUST land in `fields["choices"]` before that
         # update (replacing the raw string parsed earlier).
-        self.assertIn('fields["choices"] = decode_choices(fields.get("choices"))', self.src)
+        self.assertIn('fields["choices"] = CoachOutput.from_fields(fields).choices', self.src)
 
     def test_shared_helper_swallows_decode_errors(self):
         # Malformed JSON MUST NOT crash the tick - the shared helper absorbs
         # it and returns [].
         from core.coach_output import decode_choices
         self.assertEqual(decode_choices('[{"key":"A","label":"unterminated'), [])
+
+    def test_from_fields_seam_equals_decode_helper(self):
+        # Parity lock (item 313): building choices through CoachOutput.from_fields
+        # MUST be byte-identical to the old decode_choices helper - same before
+        # validator. This pins the new SR seam against the prior behavior.
+        from core.coach_output import CoachOutput, decode_choices
+        self.assertEqual(
+            CoachOutput.from_fields({"choices": '[{"key":"A","label":"x"}]'}).choices,
+            decode_choices('[{"key":"A","label":"x"}]'),
+        )
 
     def test_choice_schema_matches_coach_choice_dataclass(self):
         # The 5 schema field names in the prompt MUST match the 5 fields
