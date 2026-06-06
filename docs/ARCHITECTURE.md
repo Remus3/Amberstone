@@ -14,7 +14,7 @@ _Living document. Update after topology or module changes. See `docs/_archive/` 
 
 All three in tailnet `tailc150de.ts.net`. Prefer tailnet hostnames for all cross-machine HTTP.
 
-Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` agents below now run on Legion-local (reading local lockfile + Live Client `:2999`); the live readers find the game host via `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The Game-PC relay-agent pattern and the section below are retained until the in-process vision collapse lands.
+Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` agents below now run on Legion-local (reading local lockfile + Live Client `:2999`); the live readers find the game host via `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The in-process vision collapse has LANDED - both relay halves self-heal off `:2999`/GDI in-process (items 267/276), so the relay agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the shared self-healing read path for all consumers (poller + dashboard + `core/liveclient_cache`) and is retained by design - it is NOT a Game-PC dependency. Full relay-agent-task retirement + `gamepc_*` rename/archive is a deferred operator-gated slice, NOT pending engine work: verified NOT-safe to do headless (items 215/276) - no `gamepc_*.py` is zero-consumer (3 running tasks RC-LCUAgent/RC-LiveClientRelay/RC-HotkeyListener + live tests + `routes_static.py` deploy allowlist).
 
 ---
 
