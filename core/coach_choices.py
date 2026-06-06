@@ -29,8 +29,10 @@ Logging the user's selection lives in ``core.decision_detector.record_coach_choi
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from typing import Iterable
+
+import pydantic.dataclasses
 
 
 VALID_CONFIDENCE_BANDS = ("low", "mid", "high")
@@ -39,9 +41,17 @@ _MAX_LABEL_LEN = 80
 _MAX_OUTCOME_LEN = 160
 
 
-@dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(frozen=True)
 class CoachChoice:
-    """One A/B/C choice surfaced by the coach for this tick."""
+    """One A/B/C choice surfaced by the coach for this tick.
+
+    P2.2 (2026-06-05): swapped from a stdlib ``@dataclass`` to Pydantic v2's
+    drop-in ``@pydantic.dataclasses.dataclass`` for construction-time
+    validation. It remains a real stdlib dataclass (``dataclasses.fields`` /
+    ``asdict`` still work, frozen mutation still raises
+    ``FrozenInstanceError``), so the on-the-wire dict via ``to_dict`` /
+    ``to_jsonable`` is byte-identical - guarded by the P2.2 golden master.
+    """
 
     key: str
     label: str
