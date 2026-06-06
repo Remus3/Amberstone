@@ -848,15 +848,8 @@ class Coach(BaseCoach):
             # On any failure: silently swallow and let the synthesizer
             # fallback in _state_builder cover the tick. The choices field
             # is OPTIONAL by contract.
-            _choices_list: list = []
-            _choices_raw = flds.get("choices", "").strip()
-            if _choices_raw:
-                try:
-                    _parsed = json.loads(_choices_raw)
-                    if isinstance(_parsed, list):
-                        _choices_list = _parsed
-                except Exception:
-                    pass
+            from core.coach_output import decode_choices
+            _choices_list = decode_choices(flds.get("choices"))
 
             cur = load_json(self._out)
             cur.update({
