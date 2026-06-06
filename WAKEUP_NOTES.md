@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-06 - loop cycle 5 (run 2026-06-06-01): A1 DS-Profile panel SHIPPED [item 325]
+
+Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A1. Orchestrator-merge: 1 Claude sole-merger + 2 parallel disjoint worktree slices + read-only verifier gate. Commit `8e376858`. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, NOT restarted); RC restarted pid 24164 for the new route.
+
+- **Shipped:** NEW `GET /api/ds-profile` (`dashboard/routes_ds_profile.py` + `_dispatch.py`) aggregating the 4 EXISTING pure scorers (compute_mobility/sustain/scaling/waveclear) into a locked-champ 4-bar champ-select panel (`web/js/panels/ds_profile.js` + `.css` + `web/data/ui_mock/ds_profile.json`). Purely additive; mirrors the ds_sweep competitor-lift pattern (5-min cache, numeric-key->slug, fail-soft 400/200-no_profile/503).
+- **Per-axis bar:** leaguewide-max-% (cached once) + LOW/MED/HIGH tier; scaling -> UP/EVEN/DOWN slope chip; waveclear -> top_kind + ranged_shove. Live Vayne: mob9/sus0/scal41-UP/wave1.
+- **Wiring (orchestrator-owned shared files):** index.html mount `#csv-sugg-ds-profile`, champ_select.js import+scheduler+`dsp:` signature, dashboard.css @import.
+- **Verify:** both slices verifier-CONFIRM; FULL RC suite **5153 passed / 1 skip / 0 fail**; ruff clean; ASCII-clean. 5-phase UI audit **PASS 0 MUST-FIX / 0 SHOULD-FIX / 1 NICE** (`.dsp-detail` overflow guard - cosmetic, ancestor-clipped).
+- **VISUAL CAPTURE OWED** (carry-forward): Claude_Preview can't reach HTTPS self-signed `:8888` + Game-PC `:8892` MCP down (`project_gamepc_mcp_boot_gap`). Code-side audit + live probe + DOM tests stand in.
+- **Don't-redo:** A1 DONE - reads the 4 existing scorers, no engine math; ASCII trajectory words not arrows. **NEXT (A2):** add threat-range/zone-control/objective-damage/extended-duel/matchup axes to the SAME `/api/ds-profile` surface (fns exist: threatrange/zonecontrol/objdamage/extendedduel.py) + re-audit.
+
+---
+
 # 2026-06-05 - loop directive reconcile: both named DS slices already SHIPPED [docs-only]
 
 Loop `ops/loop/control/directive.md` asked to implement "AurelionSol W cross-spell seam" + "conditional-gate for Brand W and Ekko W" via the orchestrator pattern. GROUND-TRUTH PROBE: both already shipped; directive was generated from STALE ROADMAP line 49 prose (written at item 250/251) that still listed them as "remain".
@@ -26,27 +39,3 @@ DS engine SCHEMA LIFT, NO ENGINE bump (byte-identical live, ENGINE stays 1.118.0
 - **TDD characterization-FIRST:** NEW `agents/daemon_slayer/tests/test_antitank_p3_2.py` (+24, RED-before-GREEN) - schema defaults, byte-identical static path, 12 un-seeded champs identical under ap=800/ad=800, seeded Gwen/KogMaw math at pinned AP, synthetic ap/ad/conditional, real-ResolvedStats==dict parity, exactly-2-rows-seeded.
 - **Verify:** py_compile OK; DS-dir `agents/daemon_slayer/tests/` 6644 passed / 1 skip / 1 xfail / 1936 subtests; root `tests/` 5032 passed / 1 skip / 85 subtests / EXIT 0 (UNCHANGED - new tests are in the DS dir, live output byte-identical); ruff clean; `ds_share_sync.py` re-mirrored 315 files (--check 0); ASCII-only. Live: Gwen 0.85->0.95 @200AP / 0.85 @999AD; KogMaw 0.926->0.966 @200AP; Vayne 0.95 byte-identical @800AP/800AD.
 - **NEXT (Phase D, gated):** the scaling is INERT until a caller passes stats - wire a live caster-stat producer into the `/anti-tank` route to ACTIVATE it, THEN bump ENGINE + restart DS (cdragon-seam precedent); seed the remaining caster-stat-scaled %HP rows (per-row scan open). The 6 UNIVERSAL_FILES convention update is still queued.
-
----
-
-# 2026-06-05 - P2.2 tail: choices decode unified onto shared Pydantic CoachOutput [item 314]
-
-Follow-on to item 313, completing P2.2. Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (byte-identical wire). Full record = item 314 in `docs/LEDGER.md`.
-
-- **Shared model:** NEW `core/coach_output.py` - Pydantic v2 `CoachOutput` + `decode_choices(raw) -> list`. The native-emit `choices` JSON decode was duplicated verbatim in all 4 coaches (aram/arena/brawl `_run_coach` + SR `_write_fields`); now one validated seam. The 4 sites call `decode_choices(fields.get("choices"))`.
-- **Extractors NOT merged (by design):** base `parse_fields` and SR `_parse_response` genuinely diverge (key remapping, multi-line join, different markdown regex, no 220-cap, no positional fallback) and are each golden-mastered/item244-pinned; only the duplicated choices decode was unified.
-- **Tests:** NEW `tests/test_coach_output_p2_2.py` (11 + 11 subtests) parity golden master (decode_choices == old inline block byte-for-byte). Updated the 4 emit tests' `ParserPassthroughTests` source guards to the new wiring + behavioral checks. Item 313's 38 golden masters stayed green.
-- **Verify:** FULL `tests/` 5032 passed / 1 skip / 85 subtests / 0 failed; ruff clean; ASCII-only.
-- **NEXT:** P3.2 (antitank dynamic %HP) + the 6 UNIVERSAL_FILES convention update remain queued. P2.2 COMPLETE.
-
----
-
-# 2026-06-05 - P2.2 structured-output / Pydantic v2 hardening of the coach parse seam [item 313]
-
-Operator-gated focused session (P2.2, accepted in item 312). Characterization-FIRST per the operator standing rule "rigid tests before swapping the parsing logic so we don't break the live coach pipelines." Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (pure-Python validation swap, byte-identical wire). Full record = item 313 in `docs/LEDGER.md`.
-
-- **Golden masters (no prod change):** `tests/test_parse_fields_characterization_p2_2.py` (25) pins `coaches/_base_coach.parse_fields`/`parse_field` - lowercase-key contract, markdown strip, 220-trunc, positional-fallback threshold + whole-line footgun, choices-JSON passthrough, parse_field case-insensitive/no-strip/no-trunc asymmetry. `tests/test_coach_choices_characterization_p2_2.py` (13) locks the exact `core/coach_choices` wire dict (to_dict/to_jsonable) shape-agnostically so it survives the swap.
-- **Swap:** `core/coach_choices.CoachChoice` `@dataclass(frozen=True)` -> `@pydantic.dataclasses.dataclass(frozen=True)`. Chosen over a literal `BaseModel` AFTER I surfaced the blast radius (a BaseModel breaks 5 existing tests - 4 emit tests call `dataclasses.fields()`, `test_frozen_dataclass` expects `AttributeError` not pydantic `ValidationError` - plus `to_dict`'s `asdict`). The pydantic dataclass stays a TRUE stdlib dataclass -> `fields`/`asdict`/`FrozenInstanceError` all keep working = 0 existing-test edits, wire byte-identical, + construction-time validation gained.
-- **Verify:** targeted 212 passed (incl. the 4 emit + frozen tests unmodified); FULL root `tests/` 5020 passed / 1 skip / 74 subtests. The ONLY red was PRE-EXISTING + unrelated (`test_doc_size_budget::test_roadmap_md_under_budget`: ROADMAP 85458>81920B - item 312 skipped the relocate-on-add convention); FIXED here by relocating item 294 + the DS source-layering plan verbatim to `docs/ROADMAP_HISTORY.md`. py_compile OK; ASCII-only.
-- **NEXT:** P2.2 tail (deferred) - migrate base-coach `parse_fields` callers + SR `_parse_response` onto a shared validated model (golden masters now guard it); P3.2 (antitank dynamic %HP) is the queued sibling.
-
