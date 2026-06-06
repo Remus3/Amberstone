@@ -1,0 +1,180 @@
+/* DS-Matchup champ-select card. Renders the LOCKED champion vs the FIRST
+ * committed enemy as a verdict chip (all-in / trade / back-off / even) over
+ * a centered swing bar - the operator scans whether the lane trade favors
+ * them at a glance. Mounts inside the Suggestions card during champ-select,
+ * a sibling of the ds-profile + ds-sweep + cooldown-watch cards.
+ *
+ * Uses the semantic tokens from web/css/tokens.css. Verdict tint: all-in
+ * and trade read favorable (success/positive), back-off reads danger, even
+ * reads neutral info - so the verdict colour reinforces the call.
+ *
+ * ASCII only (no em / en dashes, no smart quotes).
+ */
+
+.ds-matchup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-info, #8a8cf0);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+
+.ds-matchup[hidden] {
+  display: none;
+}
+
+/* Header: title | sub (A vs B) | verdict chip, baseline-aligned. */
+.dsm-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.dsm-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dsm-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Verdict chip - pushed to the row end. Tint comes from the modifier
+ * class below. min-height meets the interaction target floor so the chip
+ * reads clearly at the dashboard viewing distance. */
+.dsm-verdict {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-min, 42px);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--panel-radius-sm, 10px);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* all-in + trade read favorable (green), back-off reads danger (red),
+ * even reads neutral (info). */
+.dsm-verdict.dsm-all_in {
+  background: var(--signal-good-soft, rgba(110, 201, 119, 0.18));
+  color: var(--signal-good, #6ec977);
+}
+
+.dsm-verdict.dsm-trade {
+  background: var(--signal-good-soft, rgba(110, 201, 119, 0.18));
+  color: var(--signal-good, #6ec977);
+}
+
+.dsm-verdict.dsm-back_off {
+  background: var(--signal-bad-soft, rgba(255, 80, 80, 0.18));
+  color: var(--signal-bad, #ff5050);
+}
+
+.dsm-verdict.dsm-even {
+  background: rgba(138, 140, 240, 0.18);
+  color: var(--signal-info, #8a8cf0);
+}
+
+/* Swing bar block: track on top, end labels below. */
+.dsm-swing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Fixed-height rounded track - a left-to-right gradient (favors-B red on
+ * the left, favors-A green on the right). The marker is positioned inline
+ * by swing_pct; 50 sits dead center. */
+.dsm-swing-track {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--signal-bad-soft, rgba(255, 80, 80, 0.18)) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    var(--signal-good-soft, rgba(110, 201, 119, 0.18)) 100%
+  );
+  overflow: hidden;
+}
+
+/* Center reference line at the even (50%) mark. */
+.dsm-swing-mid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* The swing marker - a vertical bar at the swing_pct position. Width is
+ * inline (left); centered on its position via the negative margin. */
+.dsm-swing-marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--signal-gold, #f5b87c);
+  box-shadow: 0 0 6px rgba(245, 184, 124, 0.6);
+}
+
+/* End labels under the bar: A short name + pct removed on the left,
+ * pct removed + B short name on the right. */
+.dsm-swing-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.dsm-swing-end {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dsm-swing-pct {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Casts-gate + engine notes - small lines under the swing bar. */
+.dsm-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-1);
+}
+
+.dsm-note {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Full-combo marker tag prefixing a note line. */
+.dsm-cast {
+  display: inline-block;
+  margin-right: var(--space-1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--signal-good, #6ec977);
+}
