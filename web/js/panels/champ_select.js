@@ -823,6 +823,10 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
 
   let extraHtml = "";
   if (mode === "aram") {
+    // Trigger the deterministic comp-verdict fetch on every ARAM render;
+    // it no-ops when already cached / inflight and re-fires the render via
+    // _csvScheduleRender once the verdict lands (folded into the sig).
+    _csvFetchCompVerdict(cs);
     extraHtml = _csvBenchHtml(cs);
   }
   // Phase 3 (s176): trigger an async fetch for the persisted pick so the
@@ -1300,26 +1304,39 @@ function _csvWireLockButton(scope) {
 // Click fires lcu bench_swap which bypasses the 5s client-side cooldown.
 function _csvBenchHtml(cs) {
   const bench = (cs && Array.isArray(cs.bench)) ? cs.bench.slice(0, 10) : [];
+  // Deterministic comp-verdict banner sits at the top of the bench strip
+  // in both the empty and populated branches (it can recommend a STAY or
+  // a VARIANT swap even when the bench is empty).
+  const verdictHtml = _csvCompVerdictHtml();
   if (!bench.length) {
     return `
       <div class="csv-bench">
+        ${verdictHtml}
         <div class="csv-bench-title">Bench</div>
         <div class="csv-bench-empty">no bench champs yet - wait for a teammate to reroll</div>
       </div>`;
   }
+  // When the verdict recommends a swap, highlight the matching bench cell
+  // (case-insensitive alnum-normalized name match against swap_to).
+  const verdict = _CSV_COMPVERDICT.data;
+  const swapTarget = (verdict && verdict.ok && verdict.recommendation === "swap")
+    ? _csvNormChampName(verdict.swap_to) : "";
   const ver = CHAMPS.version || "latest";
   const cells = bench.map((cid) => {
     const nm = _csChampName(cid) || ("cid:" + cid);
     const img = (cid && CHAMPS.byId[String(cid)])
       ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(cid)]}.png" alt="${nm}" onerror="this.style.display='none'">`
       : "?";
+    const isSwap = swapTarget && _csvNormChampName(nm) === swapTarget;
+    const swapCls = isSwap ? " is-verdict-swap" : "";
     return `
-      <div class="csv-bench-cell is-clickable" data-bench-id="${cid}" data-bench-name="${nm}" title="Swap to ${nm}">
+      <div class="csv-bench-cell is-clickable${swapCls}" data-bench-id="${cid}" data-bench-name="${nm}" title="Swap to ${nm}">
         <div class="csv-bench-cell-icon">${img}</div>
       </div>`;
   }).join("");
   return `
     <div class="csv-bench">
+      ${verdictHtml}
       <div class="csv-bench-title">Bench . click to swap</div>
       <div class="csv-bench-row">${cells}</div>
     </div>`;
@@ -1413,6 +1430,10 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   const dskCount = getDsKnobsCacheCount();
   const dsrCount = getDsRelscoreCacheCount();
   const dssCount = getDsStatcheckCacheCount();
+  // ARAM comp-verdict presence stamp - flips 0->1 when the verdict fetch
+  // lands so the idempotent render gate re-fires and the bench banner
+  // (plus the is-verdict-swap cell highlight) draws.
+  const verdictKey = _CSV_COMPVERDICT.data ? "1" : "0";
   return [
     cs.phase || "",
     myCid | 0,
@@ -1426,6 +1447,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
     cs.queue_id | 0,
     mode,
     `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}|dsr:${dsrCount}|dss:${dssCount}`,
+    verdictKey,
   ].join("|");
 }
 
@@ -1553,6 +1575,106 @@ const _CSV_ADAPT_INFLIGHT = Object.create(null);
 // when bans change so the panel stays in sync with the draft.
 const _CSV_BANSUGG_CACHE    = Object.create(null);
 const _CSV_BANSUGG_INFLIGHT = Object.create(null);
+
+// Deterministic ARAM comp-verdict cache. Single-slot (the verdict is a
+// function of my pick + my-team comp + the current bench), not a per-key
+// map - the whole champ-select carries one live verdict at a time. Keyed
+// by `${my_champion}|<my-team ids>|<bench ids>` so a teammate reroll or a
+// fresh bench refetches. Backed by POST /api/aram-comp-verdict (the
+// parallel backend slice); mock mode reads the aram_comp_verdict key from
+// the champ_select_aram.json fixture.
+const _CSV_COMPVERDICT = { key: "", data: null, inflight: false };
+
+function _csvCompVerdictKey(cs) {
+  if (!cs) return "";
+  const teamIds = (cs.my_team || [])
+    .map((p) => (p && p.championId) | 0).join(",");
+  const benchIds = (Array.isArray(cs.bench) ? cs.bench : [])
+    .map((c) => c | 0).join(",");
+  return `${cs.my_champion | 0}|${teamIds}|${benchIds}`;
+}
+
+// Trigger an async fetch for the deterministic ARAM comp-verdict. No-op
+// when already cached for this key or a request is inflight. The render
+// re-fires via _csvScheduleRender once the verdict lands (its presence is
+// folded into _csvComputeSig). Mock mode short-circuits the live POST and
+// reads the fixture, mirroring _csvFetchUserVariants.
+function _csvFetchCompVerdict(cs) {
+  if (!cs) return;
+  const key = _csvCompVerdictKey(cs);
+  if (key === _CSV_COMPVERDICT.key && _CSV_COMPVERDICT.data) return;
+  if (_CSV_COMPVERDICT.inflight) return;
+  const isMock = !!(document && document.body
+    && document.body.dataset.uiMock === "1");
+  if (isMock) {
+    _CSV_COMPVERDICT.inflight = true;
+    fetch("/data/ui_mock/champ_select_aram.json", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((json) => {
+        _CSV_COMPVERDICT.inflight = false;
+        _CSV_COMPVERDICT.data = (json && json.aram_comp_verdict) || null;
+        _CSV_COMPVERDICT.key = key;
+        if (_CSV_COMPVERDICT.data) _csvScheduleRender();
+      })
+      .catch(() => { _CSV_COMPVERDICT.inflight = false; });
+    return;
+  }
+  // Live path: resolve championIds -> display names the engine expects.
+  const myName = _csChampName(cs.my_champion);
+  const team = (cs.my_team || [])
+    .map((p) => _csChampName(p && p.championId)).filter(Boolean);
+  const enemies = (cs.their_team || [])
+    .map((p) => _csChampName(p && p.championId)).filter(Boolean);
+  const bench = (Array.isArray(cs.bench) ? cs.bench : [])
+    .map((c) => _csChampName(c)).filter(Boolean);
+  // The deterministic engine needs >=3 known allies to score a comp.
+  if (team.length < 3) return;
+  _CSV_COMPVERDICT.inflight = true;
+  fetch("/api/aram-comp-verdict", {
+    method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      my_champion: myName, my_team: team,
+      their_team: enemies, bench: bench,
+    }),
+  })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .then((json) => {
+      _CSV_COMPVERDICT.inflight = false;
+      if (json && json.ok) {
+        _CSV_COMPVERDICT.data = json;
+        _CSV_COMPVERDICT.key = key;
+        _csvScheduleRender();
+      }
+    })
+    .catch(() => { _CSV_COMPVERDICT.inflight = false; });
+}
+
+// Normalise a champion name for case-insensitive alnum-only comparison
+// (so "Miss Fortune" matches "MissFortune", "Dr. Mundo" vs "DrMundo").
+function _csvNormChampName(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// Build the comp-verdict banner. Empty string when there's no verdict or
+// the engine declined (ok=false). Server strings are trusted (no HTML
+// injection surface - they're our own engine output).
+function _csvCompVerdictHtml() {
+  const data = _CSV_COMPVERDICT.data;
+  if (!data || !data.ok) return "";
+  const rec = data.recommendation || "stay";
+  let recTxt = "STAY";
+  if (rec === "swap") recTxt = `SWAP -> ${data.swap_to || "?"}`;
+  else if (rec === "variant") recTxt = `VARIANT -> ${data.variant_to || "?"}`;
+  const conf = data.confidence || "low";
+  return `
+    <div class="csv-bench-verdict csv-bench-verdict--${rec}">
+      <span class="csv-bench-verdict-label">COMP VERDICT</span>
+      <span class="csv-bench-verdict-rec">${recTxt}</span>
+      <span class="csv-bench-verdict-conf csv-bench-verdict-conf--${conf}">${conf}</span>
+      <span class="csv-bench-verdict-reason">${data.reason || ""}</span>
+    </div>`;
+}
 
 function _csvBanSuggKey(excludedIds) {
   return (excludedIds || []).slice().sort((a, b) => a - b).join(",");
