@@ -1762,6 +1762,68 @@
   border-color: #4ade80;
   box-shadow: 0 0 0 2px #4ade80;
 }
+/* Deterministic ARAM comp-verdict banner - compact single-row strip above
+ * the bench cells. Subtle bg + small radius so it reads as guidance, not a
+ * blocking alert. Wraps gracefully when the reason text is long. */
+.csv-bench-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: #16191f;
+  border: 1px solid #2a2f37;
+  border-left: 3px solid #60a5fa;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+.csv-bench-verdict--stay {
+  border-left-color: #6a7280;
+}
+.csv-bench-verdict-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.csv-bench-verdict-rec {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: #60a5fa;
+}
+.csv-bench-verdict-conf {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+}
+.csv-bench-verdict-conf--high {
+  color: #4ade80;
+  border-color: #346b46;
+}
+.csv-bench-verdict-conf--medium {
+  color: #fbbf24;
+  border-color: #6b5a1f;
+}
+.csv-bench-verdict-conf--low {
+  color: #9ca3af;
+}
+.csv-bench-verdict-reason {
+  font-size: 13px;
+  color: #9ca3af;
+  flex: 1 1 100%;
+}
+/* The bench cell the verdict recommends swapping to - a clear ring so the
+ * operator's eye lands on it before reading the banner text. */
+.csv-bench-cell.is-verdict-swap {
+  border-color: #4ade80;
+  box-shadow: 0 0 0 2px #4ade80, 0 2px 10px rgba(74, 222, 128, 0.35);
+}
 .csv-bench-cell-icon {
   width: 48px;
   height: 48px;

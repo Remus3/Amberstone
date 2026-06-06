@@ -126,6 +126,25 @@
     },
     "local_cell": 2
   },
+  "aram_comp_verdict": {
+    "ok": true,
+    "recommendation": "swap",
+    "swap_to": "Ashe",
+    "variant_to": "",
+    "reason": "No hard engage - swap to Ashe to start fights.",
+    "confidence": "medium",
+    "factors": {
+      "n": 5,
+      "ranged_count": 4,
+      "melee_count": 1,
+      "ad_count": 2,
+      "ap_count": 2,
+      "hybrid_count": 0,
+      "frontline_count": 1,
+      "engage_count": 0,
+      "sustain_count": 1
+    }
+  },
   "config": {
     "auto_accept": true
   },
