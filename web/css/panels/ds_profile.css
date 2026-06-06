@@ -107,10 +107,12 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* Trajectory (scaling) + ranged-shove (waveclear) markers - small ASCII
- * tags appended after the detail text. */
+/* Trajectory (scaling) + ranged-shove (waveclear) + per-axis flag markers
+ * (artillery / terrain / towers / ramps) - small ASCII tags appended after
+ * the detail text. */
 .dsp-traj,
-.dsp-shove {
+.dsp-shove,
+.dsp-flag {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
