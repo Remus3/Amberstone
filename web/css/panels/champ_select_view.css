@@ -1793,7 +1793,7 @@
   color: #60a5fa;
 }
 .csv-bench-verdict-conf {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1814,7 +1814,7 @@
   color: #9ca3af;
 }
 .csv-bench-verdict-reason {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: #9ca3af;
   flex: 1 1 100%;
 }
