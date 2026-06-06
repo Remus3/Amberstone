@@ -47,6 +47,8 @@
 .dsm-head-sub {
   font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.55);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Verdict chip - pushed to the row end. Tint comes from the modifier
