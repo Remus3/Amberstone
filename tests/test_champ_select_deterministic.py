@@ -1,17 +1,18 @@
-"""Tests for the deterministic champ-select brief substrate (item 273).
+"""Tests for the deterministic champ-select brief (items 273/276/280/283).
 
 `dashboard._champ_select_deterministic.brief_deterministic` composes the
 champ-select brief with ZERO Haiku call, same {build, runes, ally_notes}
-shape + empty-on-error contract as `brief_via_coach`. The served brief STAYS
-the live Haiku result; the shadow-log block in `_champ_select.py` only logs.
-A drift guard pins that the served return value is unchanged so a future edit
-cannot silently flip it to deterministic without removing this test.
+shape + empty-on-error contract as `brief_via_coach`. As of 2026-06-06 the
+shadow-mode was flipped: `brief_via_coach` now DELEGATES to this substrate
+(Haiku eliminated). The contract guards below pin that the flip stays flipped
+- brief_via_coach delegates, and `_champ_select.py` makes no Anthropic call.
 """
 from __future__ import annotations
 
 import ast
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from dashboard._champ_select_deterministic import brief_deterministic
 
@@ -141,58 +142,43 @@ class FailSoftTests(unittest.TestCase):
         self.assertEqual(out, _EMPTY)
 
 
-class ShadowLogContractTests(unittest.TestCase):
-    """Drift guard: the shadow-log block in _champ_select.py must be wrapped
-    in try/except AND brief_via_coach's RETURN value must stay the Haiku brief
-    (not the deterministic one) - so a future edit cannot silently flip the
-    served brief to deterministic without removing this test."""
+class BriefFlipContractTests(unittest.TestCase):
+    """The Haiku brief was flipped to the deterministic substrate
+    (items 273/276/280/283, 2026-06-06). `brief_via_coach` now delegates to
+    `brief_deterministic` with ZERO Anthropic call. These guards pin that the
+    flip stays flipped - no silent revert to a Haiku call, shadow-log, or
+    cost record."""
 
-    def _func(self) -> ast.FunctionDef:
+    def test_brief_via_coach_delegates_to_deterministic(self) -> None:
+        import dashboard._champ_select as CS
+        sentinel = {"build": ["X"], "runes": {"keystone": "K"},
+                    "ally_notes": "n"}
+        with mock.patch.object(CS, "brief_deterministic",
+                               return_value=sentinel) as m:
+            out = CS.brief_via_coach("Caitlyn", ["Garen"],
+                                     ["Caitlyn", "Lux"], "BOTTOM", "sr")
+        m.assert_called_once_with("Caitlyn", ["Garen"],
+                                  ["Caitlyn", "Lux"], "BOTTOM", "sr")
+        self.assertEqual(out, sentinel)
+
+    def test_no_anthropic_import_or_call(self) -> None:
+        # _champ_select.py must make no Anthropic call after the flip.
         tree = ast.parse(_CS_SRC.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef) and node.name == "brief_via_coach":
-                return node
-        self.fail("brief_via_coach not found in _champ_select.py")
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    self.assertNotIn("anthropic", alias.name.lower())
+            if isinstance(node, ast.ImportFrom) and node.module:
+                self.assertNotIn("anthropic", node.module.lower())
+            if isinstance(node, ast.Attribute):
+                self.assertNotEqual(node.attr, "create",
+                                    "champ-select brief must not call .create")
 
-    def test_brief_via_coach_returns_brief_not_det(self) -> None:
-        fn = self._func()
-        returns = [n for n in ast.walk(fn) if isinstance(n, ast.Return)]
-        self.assertTrue(returns, "expected return statements")
-        # No Return may yield the deterministic brief ('det') - the served
-        # value must stay the Haiku brief. Allowed: Name brief/empty, or the
-        # cache-hit Subscript cached["brief"].
-        for r in returns:
-            if isinstance(r.value, ast.Name):
-                self.assertNotEqual(
-                    r.value.id, "det",
-                    "brief_via_coach must not return the deterministic brief")
-                self.assertIn(r.value.id, {"brief", "empty"},
-                              f"unexpected return value {r.value.id!r}")
-            elif isinstance(r.value, ast.Subscript):
-                # the cache-hit fast path: return cached["brief"]
-                self.assertNotIn(
-                    "det", ast.dump(r.value),
-                    "cache return must not reference the deterministic brief")
-            else:
-                self.fail(
-                    "brief_via_coach should only return brief/empty/cached")
-
-    def test_shadow_block_is_wrapped_in_try_except(self) -> None:
-        fn = self._func()
-        tries = [n for n in ast.walk(fn) if isinstance(n, ast.Try)]
-        # find a try block that imports brief_deterministic
-        guarded = False
-        for t in tries:
-            src = ast.dump(t)
-            if "brief_deterministic" in src and t.handlers:
-                guarded = True
-        self.assertTrue(
-            guarded,
-            "shadow-log (brief_deterministic) block must be try/except wrapped")
-
-    def test_shadow_block_writes_shadow_jsonl(self) -> None:
+    def test_no_shadow_log_or_cost_remnants(self) -> None:
         src = _CS_SRC.read_text(encoding="utf-8")
-        self.assertIn("champ_select_brief_shadow.jsonl", src)
+        self.assertNotIn("champ_select_brief_shadow.jsonl", src)
+        self.assertNotIn("record_anthropic_response", src)
+        self.assertNotIn("messages.create", src)
 
     def test_no_anthropic_import_or_call_in_deterministic_module(self) -> None:
         # the module docstring may MENTION Anthropic/Haiku (it explains it has

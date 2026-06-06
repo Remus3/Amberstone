@@ -318,11 +318,6 @@ class WiredSitesGrepTests(unittest.TestCase):
         self.assertIn("record_anthropic_response", src)
         self.assertIn('purpose="replay_coach"', src)
 
-    def test_dashboard_champ_select_wired(self):
-        src = self._read("dashboard/_champ_select.py")
-        self.assertIn("record_anthropic_response", src)
-        self.assertIn('purpose="champ_select_brief"', src)
-
     def test_agent7_warm_session_wired(self):
         src = self._read("agents/agent7_context/warm_session.py")
         self.assertIn("record_anthropic_response", src)
