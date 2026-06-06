@@ -162,6 +162,22 @@ def _serve_champ_select_coach_post(h, payload) -> None:
                 "application/json")
 
 
+def _serve_aram_comp_verdict_post(h, payload) -> None:
+    # Deterministic ZERO-spend ARAM bench verdict (no Anthropic call). Delegates
+    # to core.aram_comp_verdict.comp_verdict and passes its dict through verbatim
+    # ({ok, recommendation, swap_to, variant_to, reason, confidence, factors}).
+    # Body (all optional): {my_champion, my_team, their_team, bench, variants,
+    # current_variant}.
+    try:
+        from core.aram_comp_verdict import comp_verdict
+        verdict = comp_verdict(payload if isinstance(payload, dict) else {})
+        h._send(200, json.dumps(verdict).encode(), "application/json")
+    except Exception as exc:
+        log.warning("api/aram-comp-verdict: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                "application/json")
+
+
 def _serve_coach_toggle_post(h, payload) -> None:
     # AUDIT 2026-04-28 (proposal 2.2): per-mode coach kill-switches.
     # Body: {mode: "aram", disabled: true}
@@ -201,4 +217,5 @@ POST_ROUTES = [
     (equals("/api/speak"),               _serve_speak_post),
     (equals("/api/champ-select-coach"),  _serve_champ_select_coach_post),
     (equals("/api/coach/toggle"),        _serve_coach_toggle_post),
+    (equals("/api/aram-comp-verdict"),   _serve_aram_comp_verdict_post),
 ]
