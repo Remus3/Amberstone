@@ -545,8 +545,12 @@ class CoachIntegration:
         # On any failure: silently swallow and let the synthesizer
         # fallback in _state_builder cover the tick. The choices field
         # is OPTIONAL by contract.
-        from core.coach_output import decode_choices
-        fields["choices"] = decode_choices(fields.get("choices"))
+        # Built through the shared, validated CoachOutput model so the SR
+        # coach shares one decode seam with ARAM/Arena/Brawl; from_fields
+        # preserves all other parsed fields (extra="allow") and only
+        # decodes the choices string - byte-identical to the prior helper.
+        from core.coach_output import CoachOutput
+        fields["choices"] = CoachOutput.from_fields(fields).choices
 
         # (audit cycle 10) Mirror ARAM/Arena/Brawl pattern: surface
         # champion + ally_spells from _last_state so the dashboard
