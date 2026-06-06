@@ -22,7 +22,14 @@ These characterization tests pin: (a) the new schema fields + their 0.0 defaults
 (c) the seeded Gwen P / Kog'Maw W scaling math at pinned AP, (d) the synthetic
 ap/ad/conditional math (registry-independent), (e) a real ResolvedStats injection
 matches a plain-dict injection, (f) the result/source dataclass SHAPE is unchanged
-(no new to_dict keys), (g) exactly two rows are seeded.
+(no new to_dict keys), (g) the seeded set is the verified 7-row AP/AD list.
+
+The data-driven seed expansion (``ExpansionSeedTests``) adds, beyond item 315's
+Gwen P / KogMaw W, the rows whose %HP / current-HP block in
+``champion_abilities.json`` carries a "% per 100 AP/AD" term: Varus W / Malzahar R
+(AP) and Vi W / Camille W / Udyr Q (the first real bonus-AD seeds). Each stays
+byte-identical at stats=None, scales on its own axis only, and the armor-SHRED
+half of Vi W stays flat.
 """
 from __future__ import annotations
 
@@ -195,7 +202,7 @@ class SeededChampionTests(unittest.TestCase):
 
 class AdditiveGuaranteeTests(unittest.TestCase):
     UNSEEDED = (
-        "Vayne", "Fiora", "Trundle", "Rumble", "KSante", "Sion", "Vi",
+        "Vayne", "Fiora", "Trundle", "Rumble", "KSante", "Sion",
         "Mordekaiser", "DrMundo", "Nasus", "Ornn", "Aatrox",
     )
 
@@ -207,6 +214,26 @@ class AdditiveGuaranteeTests(unittest.TestCase):
             static = compute_antitank(champ).antitank_score
             injected = compute_antitank(champ, stats=heavy).antitank_score
             self.assertAlmostEqual(static, injected, places=9, msg=champ)
+
+    def test_all_unseeded_rows_byte_identical_under_heavy_stats(self):
+        # Comprehensive (supersedes the 12-champ sample): EVERY champion that
+        # carries no seeded ratio is byte-identical even under heavy AP+AD.
+        heavy = _rs(ap=800, ad=800)
+        seeded = {
+            champ
+            for champ, entries in _ANTITANK_REGISTRY.items()
+            for e in entries
+            if e.ap_ratio != 0.0 or e.ad_ratio != 0.0
+        }
+        for champ in _ANTITANK_REGISTRY:
+            if champ in seeded:
+                continue
+            self.assertAlmostEqual(
+                compute_antitank(champ, stats=heavy).antitank_score,
+                compute_antitank(champ).antitank_score,
+                places=9,
+                msg=champ,
+            )
 
     def test_static_to_dict_shape_unchanged(self):
         # stats=None to_dict is identical to the no-arg call, and the source dict
@@ -225,14 +252,29 @@ class AdditiveGuaranteeTests(unittest.TestCase):
 
 
 class SeedCoverageTests(unittest.TestCase):
-    def test_exactly_two_rows_seeded(self):
+    def test_seeded_rows_are_the_verified_set(self):
+        # The P3.2 seed set, verified against champion_abilities.json (each row's
+        # %HP / current-HP block carries a "% per 100 AP/AD" term). Item 315 shipped
+        # Gwen P + KogMaw W; the data-driven expansion added Varus W / Malzahar R
+        # (AP) and Vi W / Camille W / Udyr Q (the first real bonus-AD seeds).
         seeded = [
             (champ, e.source)
             for champ, entries in _ANTITANK_REGISTRY.items()
             for e in entries
             if e.ap_ratio != 0.0 or e.ad_ratio != 0.0
         ]
-        self.assertEqual(sorted(seeded), [("Gwen", "P"), ("KogMaw", "W")])
+        self.assertEqual(
+            sorted(seeded),
+            [
+                ("Camille", "W"),
+                ("Gwen", "P"),
+                ("KogMaw", "W"),
+                ("Malzahar", "R"),
+                ("Udyr", "Q"),
+                ("Varus", "W"),
+                ("Vi", "W"),
+            ],
+        )
 
     def test_gwen_p_ratio_value(self):
         e = next(e for e in _ANTITANK_REGISTRY["Gwen"] if e.source == "P")
@@ -243,6 +285,82 @@ class SeedCoverageTests(unittest.TestCase):
         e = next(e for e in _ANTITANK_REGISTRY["KogMaw"] if e.source == "W")
         self.assertEqual(e.ap_ratio, 0.0004)
         self.assertEqual(e.ad_ratio, 0.0)
+
+
+class ExpansionSeedTests(unittest.TestCase):
+    """The data-driven seed expansion beyond item 315's Gwen P / KogMaw W."""
+
+    AP_SEEDS = (("Varus", "W"), ("Malzahar", "R"))
+    AD_SEEDS = (("Vi", "W"), ("Camille", "W"), ("Udyr", "Q"))
+
+    def _seeded_row(self, champ, source):
+        return next(
+            e
+            for e in _ANTITANK_REGISTRY[champ]
+            if e.source == source and (e.ap_ratio != 0.0 or e.ad_ratio != 0.0)
+        )
+
+    def test_new_seeds_static_byte_identical(self):
+        # stats=None and the no-arg call are the EXACT item-308 static value for
+        # every newly-seeded champion (the additive contract, the live route path).
+        for champ, _src in self.AP_SEEDS + self.AD_SEEDS:
+            base = compute_antitank(champ).antitank_score
+            self.assertAlmostEqual(
+                compute_antitank(champ, stats=None).antitank_score,
+                base,
+                places=9,
+                msg=champ,
+            )
+
+    def test_ap_seeds_scale_with_ap_and_ignore_ad(self):
+        for champ, _src in self.AP_SEEDS:
+            static = compute_antitank(champ).antitank_score
+            self.assertGreater(
+                compute_antitank(champ, stats=_rs(ap=200)).antitank_score,
+                static,
+                msg=champ,
+            )
+            self.assertAlmostEqual(
+                compute_antitank(champ, stats=_rs(ad=999)).antitank_score,
+                static,
+                places=9,
+                msg=champ,
+            )
+
+    def test_ad_seeds_scale_with_ad_and_ignore_ap(self):
+        for champ, _src in self.AD_SEEDS:
+            static = compute_antitank(champ).antitank_score
+            self.assertGreater(
+                compute_antitank(champ, stats=_rs(ad=300)).antitank_score,
+                static,
+                msg=champ,
+            )
+            self.assertAlmostEqual(
+                compute_antitank(champ, stats=_rs(ap=999)).antitank_score,
+                static,
+                places=9,
+                msg=champ,
+            )
+
+    def test_new_seed_ratio_values_and_axis(self):
+        # Each new seed carries exactly one conservative 0.0004 slope on the
+        # correct caster-stat axis.
+        for champ, src in self.AP_SEEDS:
+            e = self._seeded_row(champ, src)
+            self.assertEqual((e.ap_ratio, e.ad_ratio), (0.0004, 0.0), f"{champ} {src}")
+        for champ, src in self.AD_SEEDS:
+            e = self._seeded_row(champ, src)
+            self.assertEqual((e.ap_ratio, e.ad_ratio), (0.0, 0.0004), f"{champ} {src}")
+
+    def test_vi_shred_row_stays_flat(self):
+        # Vi carries two W rows - the %max-HP damage is bonus-AD seeded, but the
+        # armor SHRED is a flat reduction and must NOT scale.
+        shred = next(
+            e
+            for e in _ANTITANK_REGISTRY["Vi"]
+            if e.source == "W" and e.kind == "SHRED"
+        )
+        self.assertEqual((shred.ap_ratio, shred.ad_ratio), (0.0, 0.0))
 
 
 if __name__ == "__main__":
