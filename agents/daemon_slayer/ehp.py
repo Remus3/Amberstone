@@ -741,7 +741,7 @@ def compute_ehp(
     external_resist_armor: float = 0.0,
     external_resist_mr: float = 0.0,
     external_revive_multiplier: float = 1.0,
-    apply_egg_resist: bool = False,
+    apply_egg_resist: bool = True,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -999,9 +999,11 @@ def compute_ehp(
     # MODIFIED resists (-40:20 by level bonus armor + MR), NOT her normal fighting
     # resists. Reshape the self-revive extra per damage type by the resist-curve
     # ratio ``_armor_factor(eff)/_armor_factor(eff+egg)``; true EHP ignores resists
-    # so the egg never touches it. ``apply_egg_resist`` defaults False -> deltas
-    # 0.0 -> ratio 1.0 -> ``self_revive_* == revive_mult`` -> BYTE-IDENTICAL to the
-    # prior scalar path. ext_revive (ally revive) + survival_window stay
+    # so the egg never touches it. ITEM 321 (2026-06-06, ENGINE 1.120.0): the
+    # ``apply_egg_resist`` default is now True (default-ON cutover); a caller
+    # passes False to recover the prior scalar path. Non-Anivia / non-revive
+    # callers are unaffected (the egg deltas are 0.0 -> ratio 1.0). ext_revive
+    # (ally revive) + survival_window stay
     # multiplicative on the whole (independent second lives through normal resists).
     egg_armor, egg_mr = revive_egg_resist(
         resolved.champion_id, level, apply_egg_resist

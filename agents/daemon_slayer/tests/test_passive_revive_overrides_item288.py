@@ -127,7 +127,14 @@ class EhpIntegrationTests(unittest.TestCase):
 
     def test_anivia_flag_on_scales_every_axis_uniformly(self):
         off = self._ehp("Anivia", 11, False)
-        on = self._ehp("Anivia", 11, True)
+        # ITEM 321 (ENGINE 1.120.0): apply_egg_resist now defaults True, which
+        # reshapes the physical / magical axes NON-uniformly. This test isolates
+        # the pure revive NUMERATOR property, so pin egg-resist OFF here; the egg
+        # non-uniformity is covered by test_anivia_egg_resist_item316.
+        on = compute_ehp(
+            self.snap, "Anivia", 11, item_ids=[],
+            apply_passive_revive=True, apply_egg_resist=False,
+        )
         mult = 1.0 + _REVIVE_PROB
         # A NUMERATOR multiplier scales physical / magical / true / blended all by
         # the SAME factor (unlike the armor-only resist grant).
@@ -208,8 +215,8 @@ class AsciiHygieneTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_pin(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.119.0")
-        self.assertEqual(ENGINE_VERSION, "1.119.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.120.0")
+        self.assertEqual(ENGINE_VERSION, "1.120.0")
 
 
 if __name__ == "__main__":
