@@ -37,6 +37,7 @@ import {
 import {
   renderDsProfileForChampSelect, getDsProfileCacheCount, setDsProfileScheduler,
 } from './ds_profile.js';
+import { renderDsMatchupForChampSelect } from './ds_matchup.js';
 import {
   fetchDsCombo, getCachedDsCombo, getDsComboCacheCount, parseSeqInput,
   renderDsCombo,
@@ -1070,6 +1071,7 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   renderDsSweepForChampSelect(cs);
   setDsProfileScheduler(_csvScheduleRender);
   renderDsProfileForChampSelect(cs);
+  renderDsMatchupForChampSelect(cs);
   _csvRenderDsCombo(cs);
   { const _dskBlock = document.getElementById("csv-ds-knobs");
     if (_dskBlock) renderDsKnobs(_dskBlock, cs); }
