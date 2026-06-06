@@ -136,6 +136,21 @@ def liveclient_summary() -> dict:
             ally_item_ids = [str(it.get("itemID", "")) for p in all_players
                              if p.get("team") and p.get("team") == my_team
                              for it in (p.get("items") or [])]
+            # Per-player position + creep_score slice consumed by
+            # _adaptation_latch.compute() to derive csd_at_15 (SR only).
+            # is_active flags the operator's own row so the latch can find
+            # the active player's position without a second summoner-name
+            # match. Emitted as a flat list so the latch stays HTTP-agnostic.
+            out["players"] = [
+                {
+                    "position":    p.get("position") or "",
+                    "team":        p.get("team") or "",
+                    "creep_score": int((p.get("scores") or {}).get("creepScore", 0)),
+                    "is_active":   p.get("summonerName") == me_name,
+                }
+                for p in all_players
+                if isinstance(p, dict)
+            ]
         else:
             owned_item_ids = []
         out["game_mode"] = gd.get("gameMode")
