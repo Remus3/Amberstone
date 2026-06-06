@@ -69,6 +69,7 @@ def _gather_get() -> list:
                                routes_peel_priority,
                                routes_cooldown_watch,
                                routes_ds_combo, routes_ds_knobs,
+                               routes_ds_matchup,
                                routes_ds_profile,
                                routes_ds_sweep,
                                routes_ds_relscore, routes_ds_statcheck,
@@ -107,6 +108,7 @@ def _gather_get() -> list:
                       + list(routes_cooldown_watch.GET_ROUTES)
                       + list(routes_ds_combo.GET_ROUTES)
                       + list(routes_ds_knobs.GET_ROUTES)
+                      + list(routes_ds_matchup.GET_ROUTES)
                       + list(routes_ds_profile.GET_ROUTES)
                       + list(routes_ds_sweep.GET_ROUTES)
                       + list(routes_ds_relscore.GET_ROUTES)
