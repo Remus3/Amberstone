@@ -257,7 +257,7 @@ class RouteAndVersionTests(unittest.TestCase):
             self.assertIn(path, server._POST_ROUTES)
 
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.118.0")
+        self.assertEqual(ENGINE_VERSION, "1.119.0")
 
 
 if __name__ == "__main__":

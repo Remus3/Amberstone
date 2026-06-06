@@ -5,13 +5,13 @@ The DS engine's per-ability damage ratios come from the FROZEN Meraki dump
 (``data/daemon_slayer/<patch>/champion_abilities.json``). The
 ``tools/daemon_slayer_cdragon_ratio_extract.py`` sidecar
 (``cdragon_ability_ratios.json``) re-sources those ratios from the LIVE
-CommunityDragon character bins. This wires an OPT-IN
-``AbilitiesSnapshot.load(prefer_cdragon_ratios=True)`` seam that prefers the
-sidecar's ``resolution == "mechanical"`` blocks per-field and falls back to
-Meraki everywhere else.
+CommunityDragon character bins. ``AbilitiesSnapshot.load(prefer_cdragon_ratios=...)`` prefers the sidecar's
+``resolution == "mechanical"`` blocks per-field and falls back to Meraki
+everywhere else.
 
-DEFAULT (flag OFF) stays byte-identical: the seam is gated entirely behind the
-opt-in flag and a missing / fallback sidecar is a no-op.
+The flag now DEFAULTS ON (the cutover): a bare ``load()`` re-sources from the
+CDragon sidecar. ``prefer_cdragon_ratios=False`` forces the legacy Meraki-only
+path, and a missing / fallback sidecar is still a no-op (Meraki authoritative).
 """
 from __future__ import annotations
 
@@ -95,9 +95,21 @@ def _lux_q_block(snap: AbilitiesSnapshot):
     return dmg[0]
 
 
-def test_default_off_uses_meraki(tmp_path: Path) -> None:
+def test_default_now_prefers_cdragon(tmp_path: Path) -> None:
+    # The cutover flipped the default ON: a bare load() re-sources from CDragon.
     _write(tmp_path, with_sidecar=True)
     snap = AbilitiesSnapshot.load(patch=_PATCH, data_root=tmp_path)
+    b = _lux_q_block(snap)
+    assert b.ap_pct == tuple(_CD_AP)
+    assert b.base == tuple(_CD_BASE)
+
+
+def test_explicit_off_uses_meraki(tmp_path: Path) -> None:
+    # prefer_cdragon_ratios=False forces the legacy Meraki-only path.
+    _write(tmp_path, with_sidecar=True)
+    snap = AbilitiesSnapshot.load(
+        patch=_PATCH, data_root=tmp_path, prefer_cdragon_ratios=False
+    )
     b = _lux_q_block(snap)
     assert b.ap_pct == tuple(_MERAKI_AP)
     assert b.base == tuple(_MERAKI_BASE)
