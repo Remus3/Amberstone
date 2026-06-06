@@ -21,7 +21,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
-| A1 | DS-surface | DS Profile panel (design + axes batch 1: mobility, sustain, scaling, waveclear). New dashboard/routes_ds_profile.py + web/js/panels/ds_profile.js + CSS + web/data/ui_mock fixtures. Mirror dashboard/routes_ds_sweep.py + web/js/panels/ds_sweep.js. 5-phase UI audit + visual check. | OPEN | - |
+| A1 | DS-surface | DS Profile panel (design + axes batch 1: mobility, sustain, scaling, waveclear). New dashboard/routes_ds_profile.py + web/js/panels/ds_profile.js + CSS + web/data/ui_mock fixtures. Mirror dashboard/routes_ds_sweep.py + web/js/panels/ds_sweep.js. 5-phase UI audit + visual check. | DONE | (this commit) |
 | A2 | DS-surface | DS Profile axes batch 2: add threat-range, zone-control, objective-damage, extended-duel, matchup to the A1 surface. Re-audit the panel. | OPEN | - |
 | A3 | DS-coach | Wire the 2 highest-value axes into coach context: anti-tank build hint (vs high-HP enemies) + scaling power-curve, into modes/* prompts. Shadow-log first, then surface. | OPEN | - |
 | B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | OPEN | - |
@@ -45,4 +45,16 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
-- (none yet)
+- 2026-06-06 A1 DONE: GET /api/ds-profile + champ-select DS-Profile panel (4 axes
+  mobility/sustain/scaling/waveclear) shipped as 2 disjoint verified slices.
+  5-phase UI audit PASS (0 MUST-FIX, 0 SHOULD-FIX). Live route probed green; full
+  RC suite 5153 passed. VISUAL CAPTURE OWED (carry-forward): Claude_Preview cannot
+  attach to the HTTPS self-signed live :8888, and Game-PC :8892 MCP is down
+  (project_gamepc_mcp_boot_gap). Capture the locked-champ Suggestions card next
+  time a visual path is available.
+- FUTURE (NICE): web/css/panels/ds_profile.css .dsp-detail has no
+  overflow/text-overflow/min-width:0 guard (clipped by ancestor overflow:hidden
+  today - cosmetic only).
+- A2 NEXT: add threat-range / zone-control / objective-damage / extended-duel /
+  matchup axes to the same /api/ds-profile surface (engine fns already exist:
+  threatrange.py / zonecontrol.py / objdamage.py / extendedduel.py).

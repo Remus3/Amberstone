@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "champion": "Vayne",
+  "mode": "SR",
+  "axes": [
+    {
+      "key": "mobility",
+      "label": "Mobility",
+      "score": 2.4,
+      "pct": 25,
+      "tier": "LOW",
+      "detail": "Q tumble only, no gap-close"
+    },
+    {
+      "key": "sustain",
+      "label": "Sustain",
+      "score": 1.8,
+      "pct": 30,
+      "tier": "LOW",
+      "detail": "lifesteal items, no kit heal"
+    },
+    {
+      "key": "scaling",
+      "label": "Scaling",
+      "score": 9.1,
+      "pct": 90,
+      "tier": "HIGH",
+      "detail": "true-dmg W melts tanks late",
+      "slope": 0.42,
+      "trajectory": "UP"
+    },
+    {
+      "key": "waveclear",
+      "label": "Waveclear",
+      "score": 3.6,
+      "pct": 40,
+      "tier": "MED",
+      "detail": "auto-reliant, slow early shove",
+      "ranged_shove": false
+    }
+  ],
+  "elapsed_ms": 7,
+  "cached": false
+}
