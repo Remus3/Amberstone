@@ -53,8 +53,13 @@ def _require_live_sidecar() -> None:
 
 
 def _live_pair():
-    """The current committed snapshot loaded flag-OFF and flag-ON."""
-    off = AbilitiesSnapshot.load()
+    """The current committed snapshot loaded flag-OFF and flag-ON.
+
+    ``prefer_cdragon_ratios`` now defaults ON (the cutover), so the Meraki
+    baseline must be requested EXPLICITLY with the flag forced OFF - a bare
+    ``load()`` would return the CDragon-preferred snapshot and make off==on.
+    """
+    off = AbilitiesSnapshot.load(prefer_cdragon_ratios=False)
     on = AbilitiesSnapshot.load(prefer_cdragon_ratios=True)
     return off, on
 
