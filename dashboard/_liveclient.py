@@ -136,6 +136,26 @@ def liveclient_summary() -> dict:
             ally_item_ids = [str(it.get("itemID", "")) for p in all_players
                              if p.get("team") and p.get("team") == my_team
                              for it in (p.get("items") or [])]
+            # Kill Participation (item 281) - a fully LIVE-derivable STATS
+            # metric. allPlayers[].scores carries kills/assists for ALL 10
+            # players (public scoreboard data, unlike gold), so summing the
+            # active player's team kills + crediting the operator's own
+            # kills+assists is a hard live fact. KP = involvements / team
+            # kills. Emit ONLY when the denominator is > 0 (KP undefined at
+            # 0 team kills) - isolated try so any non-numeric score degrades
+            # to an omitted key, never an exception.
+            try:
+                team_kills = sum(
+                    int((p.get("scores") or {}).get("kills", 0))
+                    for p in all_players
+                    if p.get("team") and p.get("team") == my_team
+                )
+                if team_kills > 0:
+                    involved = int(s.get("kills", 0)) + int(s.get("assists", 0))
+                    pct = round(100 * involved / team_kills)
+                    out["kill_participation_pct"] = f"{pct}%"
+            except Exception:
+                pass
         else:
             owned_item_ids = []
         out["game_mode"] = gd.get("gameMode")
