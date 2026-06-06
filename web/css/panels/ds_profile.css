@@ -1,0 +1,144 @@
+/* DS-Profile champion panel. Renders the LOCKED champion's DS "profile" as
+ * four labelled horizontal bars (Mobility / Sustain / Scaling / Waveclear).
+ * Mounts inside the Suggestions card (.csv-card-suggestions) during
+ * champ-select, a sibling of the cooldown-watch + cc-conditional-pressure +
+ * ds-sweep cards.
+ *
+ * Uses the semantic tokens from web/css/tokens.css. Each bar is tier-tinted:
+ * HIGH reads success/positive, MED neutral info, LOW muted - so the operator
+ * scans which axes their OWN pick is strong vs weak on at a glance.
+ *
+ * ASCII only (no em / en dashes, no smart quotes).
+ */
+
+.ds-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-info, #8a8cf0);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+
+.ds-profile[hidden] {
+  display: none;
+}
+
+.dsp-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.dsp-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dsp-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* One bar row: label | track | value | detail. The grid keeps the four
+ * labels + values column-aligned so the bars read as a single chart. */
+.dsp-row {
+  display: grid;
+  grid-template-columns: 5.5em 1fr 2.2em;
+  grid-template-areas:
+    "label track value"
+    "detail detail detail";
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: 2px;
+}
+
+.dsp-label {
+  grid-area: label;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Fixed-height rounded track - the bar background. Reserves height so a
+ * cold-load cache miss does not jitter the row layout. */
+.dsp-track {
+  grid-area: track;
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+/* The filled portion. Width is set inline (pct); the tier color comes from
+ * the row modifier class below. */
+.dsp-fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--signal-dim, #8a8e9c);
+}
+
+.dsp-val {
+  grid-area: value;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dsp-detail {
+  grid-area: detail;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Trajectory (scaling) + ranged-shove (waveclear) markers - small ASCII
+ * tags appended after the detail text. */
+.dsp-traj,
+.dsp-shove {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Tier tints applied to the fill + value of a row. high = positive/success,
+ * med = info/neutral, low = muted. */
+.dsp-tier-high .dsp-fill {
+  background: var(--signal-good, #6ec977);
+}
+
+.dsp-tier-high .dsp-val {
+  color: var(--signal-good, #6ec977);
+}
+
+.dsp-tier-med .dsp-fill {
+  background: var(--signal-info, #8a8cf0);
+}
+
+.dsp-tier-med .dsp-val {
+  color: var(--signal-info, #8a8cf0);
+}
+
+.dsp-tier-low .dsp-fill {
+  background: var(--signal-dim, #8a8e9c);
+}
+
+.dsp-tier-low .dsp-val {
+  color: var(--signal-dim, #8a8e9c);
+}

@@ -35,6 +35,9 @@ import {
   renderDsSweepForChampSelect, getDsSweepCacheCount, setDsSweepScheduler,
 } from './ds_sweep.js';
 import {
+  renderDsProfileForChampSelect, getDsProfileCacheCount, setDsProfileScheduler,
+} from './ds_profile.js';
+import {
   fetchDsCombo, getCachedDsCombo, getDsComboCacheCount, parseSeqInput,
   renderDsCombo,
 } from './ds_combo.js';
@@ -1065,6 +1068,8 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   _csvRenderCooldownWatch(cs);
   setDsSweepScheduler(_csvScheduleRender);
   renderDsSweepForChampSelect(cs);
+  setDsProfileScheduler(_csvScheduleRender);
+  renderDsProfileForChampSelect(cs);
   _csvRenderDsCombo(cs);
   { const _dskBlock = document.getElementById("csv-ds-knobs");
     if (_dskBlock) renderDsKnobs(_dskBlock, cs); }
@@ -1426,6 +1431,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   const ccCondCount = getCcConditionalPressureCacheCount();
   const cdwCount = getCooldownWatchCacheCount();
   const dswCount = getDsSweepCacheCount();
+  const dspCount = getDsProfileCacheCount();
   const dscCount = getDsComboCacheCount();
   const dskCount = getDsKnobsCacheCount();
   const dsrCount = getDsRelscoreCacheCount();
@@ -1446,7 +1452,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}|dsr:${dsrCount}|dss:${dssCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}|dsr:${dsrCount}|dss:${dssCount}|dsp:${dspCount}`,
     verdictKey,
   ].join("|");
 }
