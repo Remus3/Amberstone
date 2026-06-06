@@ -114,7 +114,7 @@ from ._effects_types import ANY, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
 from ._passive_mitigation_overrides import mitigation_multipliers
 from ._passive_resist_overrides import resist_grants
-from ._passive_revive_overrides import revive_multiplier
+from ._passive_revive_overrides import revive_multiplier, revive_egg_resist
 from ._champion_cc_mitigation_overrides import champion_cc_tenacity_fraction
 from ._champion_spell_shield_overrides import champion_spell_shield_fraction
 from ._passive_survival_window_overrides import survival_window_multiplier
@@ -741,6 +741,7 @@ def compute_ehp(
     external_resist_armor: float = 0.0,
     external_resist_mr: float = 0.0,
     external_revive_multiplier: float = 1.0,
+    apply_egg_resist: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -992,10 +993,34 @@ def compute_ehp(
     survival_window_mult = survival_window_multiplier(
         resolved.champion_id, level, apply_survival_window, _FIGHT_WINDOW_S
     )
-    combined_revive = revive_mult * ext_revive * survival_window_mult
-    physical_ehp *= combined_revive
-    magical_ehp *= combined_revive
-    true_ehp *= combined_revive
+    # ITEM 316 (2026-06-06): Anivia Rebirth EGG-STATE resist seam. The self-revive
+    # EXTRA (``revive_mult - 1``) is the death-triggered second-life pool; for
+    # Anivia that pool must survive the resurrection EGG, which fights through
+    # MODIFIED resists (-40:20 by level bonus armor + MR), NOT her normal fighting
+    # resists. Reshape the self-revive extra per damage type by the resist-curve
+    # ratio ``_armor_factor(eff)/_armor_factor(eff+egg)``; true EHP ignores resists
+    # so the egg never touches it. ``apply_egg_resist`` defaults False -> deltas
+    # 0.0 -> ratio 1.0 -> ``self_revive_* == revive_mult`` -> BYTE-IDENTICAL to the
+    # prior scalar path. ext_revive (ally revive) + survival_window stay
+    # multiplicative on the whole (independent second lives through normal resists).
+    egg_armor, egg_mr = revive_egg_resist(
+        resolved.champion_id, level, apply_egg_resist
+    )
+    revive_extra = max(0.0, revive_mult - 1.0)
+    egg_ratio_phys = (
+        _armor_factor(eff_armor) / _armor_factor(eff_armor + egg_armor)
+        if egg_armor
+        else 1.0
+    )
+    egg_ratio_mag = (
+        _armor_factor(eff_mr) / _armor_factor(eff_mr + egg_mr)
+        if egg_mr
+        else 1.0
+    )
+    common_revive = ext_revive * survival_window_mult
+    physical_ehp *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
+    magical_ehp *= (1.0 + revive_extra * egg_ratio_mag) * common_revive
+    true_ehp *= (1.0 + revive_extra) * common_revive
 
     enemy_true_share = max(0.0, 1.0 - enemy_ad_share - enemy_ap_share)
     blended_ehp = (
