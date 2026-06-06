@@ -22,7 +22,8 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | A1 | DS-surface | DS Profile panel (design + axes batch 1: mobility, sustain, scaling, waveclear). New dashboard/routes_ds_profile.py + web/js/panels/ds_profile.js + CSS + web/data/ui_mock fixtures. Mirror dashboard/routes_ds_sweep.py + web/js/panels/ds_sweep.js. 5-phase UI audit + visual check. | DONE | 8e376858 |
-| A2 | DS-surface | DS Profile axes batch 2: add threat-range, zone-control, objective-damage, extended-duel, matchup to the A1 surface. Re-audit the panel. | OPEN | - |
+| A2 | DS-surface | DS Profile axes batch 2: added threat-range, zone-control, objective-damage, extended-duel to the A1 /api/ds-profile surface (4 -> 8 axes) + dsp-flag markers. matchup split to A2b (pairwise, not a single-champ axis). 5-phase audit ship-ready. | DONE | 3f23e18c |
+| A2b | DS-surface | DS Profile matchup readout: surface agents/daemon_slayer/matchup.compute_matchup (already wired at /v2/matchup) as a pairwise lane-matchup card keyed on a selected enemy + levels + items - a DISTINCT surface from the single-champ radar, NOT a 0-100 profile axis. | OPEN | - |
 | A3 | DS-coach | Wire the 2 highest-value axes into coach context: anti-tank build hint (vs high-HP enemies) + scaling power-curve, into modes/* prompts. Shadow-log first, then surface. | OPEN | - |
 | B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | OPEN | - |
 | C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | OPEN | - |
@@ -45,6 +46,28 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 A2 DONE (commit 3f23e18c): /api/ds-profile + the panel grew 4 -> 8
+  axes (added threatrange/zonecontrol/objdamage/extendedduel from the existing
+  pure scorers; headlines threatrange_score/zonecontrol_score/objdamage_score/
+  duel_score; per-axis bool flag + dsp-flag marker: is_artillery->artillery,
+  controls_terrain->terrain, pressures_structures->towers, ramps->ramps). Shipped
+  as 2 disjoint verified worktree slices (route + panel), each independently
+  re-run before merge. 5-phase UI audit SHIP-READY (0 MUST-FIX, 0 SHOULD-FIX).
+  RC suite 5156 passed / 0 fail; DS suite 6705 passed / 0 fail; ruff clean. Live
+  route probed green (Vayne: objdamage HIGH pressures_structures, extendedduel
+  ramp, threatrange medium, zonecontrol sparse 0). VISUAL CAPTURE OWED
+  (carry-forward): Game-PC :8892 MCP down + Claude_Preview cannot attach the
+  self-signed HTTPS :8888 (same A1 blocker).
+- 2026-06-06 A2b SPLIT: matchup was NOT made a profile axis. compute_matchup is
+  a pairwise 1v1 (needs champ_a + champ_b + per-side level + items + a
+  DataSnapshot) and already has its own surface (/v2/matchup); a single fixed
+  "axis" value for the locked champ would be arbitrary/misleading. Logged as new
+  OPEN session A2b - a dedicated matchup card keyed on a selected enemy.
+- FUTURE (NICE, from A2 5-phase audit): ds_profile.css .dsp-label has no
+  white-space:nowrap guard (9-char "OBJECTIVE" fits 5.5em today, parity with
+  "WAVECLEAR"); .dsp-detail flex has no min-width:0 / flex-wrap (overlaps the A1
+  .dsp-detail overflow NICE); 8 stacked rows is a denser card than 4 - revisit
+  only if the live Suggestions stack reads tall. All cosmetic; deferred.
 - 2026-06-06 A1 DONE: GET /api/ds-profile + champ-select DS-Profile panel (4 axes
   mobility/sustain/scaling/waveclear) shipped as 2 disjoint verified slices.
   5-phase UI audit PASS (0 MUST-FIX, 0 SHOULD-FIX). Live route probed green; full
