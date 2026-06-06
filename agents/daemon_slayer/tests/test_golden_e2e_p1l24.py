@@ -202,10 +202,15 @@ class GoldenCompositionTests(unittest.TestCase):
     def test_C_ap_mage_ability_burst_vs_mr(self) -> None:
         """Lux Q at L16 with Rabadon's - AP amp composes with MR mit.
 
-        Lux maxes Q; at L16 Q is at its 5th rank (base 240, 65% AP).
+        Lux maxes Q; at L16 Q is at its 5th rank (base 240, 75% AP).
         Rabadon's Deathcap (130 AP) amplifies total AP x1.30 -> 169.
-        The composed per-cast pre-mit = 240 + 0.65*169; post-mit
+        The composed per-cast pre-mit = 240 + 0.75*169; post-mit
         applies the shared 100/(100+MR) factor.
+
+        AP ratio re-pinned 0.65 -> 0.75 with the prefer_cdragon_ratios
+        default-ON cutover: the live CommunityDragon 16.11 bin (and the
+        wiki) carry 75% AP for Light Binding; the frozen Meraki dump was
+        stale at 65%. CDragon is authoritative here.
         """
         from agents.daemon_slayer.ability_dps import compute_ability_dps
 
@@ -213,7 +218,7 @@ class GoldenCompositionTests(unittest.TestCase):
         ap_base = 130.0  # Rabadon's flat AP from the snapshot stat block.
         ap_eff = ap_base * 1.30  # Rabadon's Magical Opus multiplier.
         q_base_rank5 = 240.0
-        q_ap_ratio = 0.65
+        q_ap_ratio = 0.75
         raw_q = q_base_rank5 + q_ap_ratio * ap_eff
         mr = 50.0
         post_mit_q = raw_q * _armor_factor(mr)

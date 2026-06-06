@@ -1331,6 +1331,23 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.119.0 (prefer_cdragon_ratios default-ON cutover - the ability damage RATIOS are
+now re-sourced from the LIVE CommunityDragon 16.11 character bins in preference to
+the frozen Meraki champion_abilities.json dump. The item-319 semantic block-matcher
+(_apply_cdragon_ratio_preference: stat-FAMILY-signature bijection with whole-form
+Meraki fall-back on any ambiguous multi-block structure) made the flip structurally
+safe - flip-ON failures fell from 70 (item 311, positional zip) to 0 structural.
+NEW resolver float-snap (tools/daemon_slayer_cdragon_ratio_extract._snap, round-4):
+CDragon bins store ratios as float32 so a clean authored 0.55 arrived as
+0.550000011920929 -> 55.000001, mis-comparing byte-for-byte against Meraki 55.0; the
+snap collapses float32 noise while preserving every genuine authored ratio. Sidecar
+regenerated live: 171 champs / 838 mechanical / 577 fallback / 0 errors. GENUINE
+balance re-pins validated per-champion vs wiki + live bin: Lux Q 65 -> 75% AP, Ezreal
+Q 15 -> 40% AP (both Meraki-stale, CDragon authoritative); Veigar Q float-noise only
+(snaps back to Meraki 50/55/60/65/70). Seam tests re-pointed for the new default
+(explicit prefer_cdragon_ratios=False is the legacy Meraki-only path). DS :8893
+restarted -> 1.119.0; RC NOT restarted - DS engine + sidecar + tests + Share + docs.)
+
 1.118.0 (Extended-dueling / 1v1 sustained-fight scorer - item 309, the SEVENTEENTH
 scored axis, built by a 10-channel roster fan-out + 10 completeness critics. NEW
 agents/daemon_slayer/extendedduel.py: a per-(champion, source, kind) duel-mechanism
