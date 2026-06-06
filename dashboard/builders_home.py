@@ -200,6 +200,34 @@ def _build_home_summary() -> dict:
     return out
 
 
+def _home_pick_tips(pick_row: dict) -> dict:
+    """Deterministic Good/Bad/Ugly one-liners for the Tonight's Pick from
+    the chosen this_week row's real metrics - no Claude, no Riot API.
+
+    Three short 7-bit-ASCII strings: the headline strength (avg KDA over
+    sample), the cost dimension (deaths per game), and a risk/variance
+    flag that prefers a small-sample warning, then a CS sharpening cue,
+    then the grade ceiling.
+    """
+    games = int(pick_row.get("games") or 0)
+    avg_kda = float(pick_row.get("avg_kda") or 0.0)
+    deaths = int(pick_row.get("deaths") or 0)
+    cs_per_min = float(pick_row.get("cs_per_min") or 0.0)
+    best_grade = pick_row.get("best_grade") or "-"
+
+    game_word = "game" if games == 1 else "games"
+    good = f"{avg_kda:.1f} avg KDA over {games} {game_word}"
+    deaths_pg = deaths / max(games, 1)
+    bad = f"{deaths_pg:.1f} deaths per game"
+    if games <= 2:
+        ugly = f"Small sample - {games} {game_word}"
+    elif cs_per_min > 0:
+        ugly = f"{cs_per_min:.1f} CS/min to sharpen"
+    else:
+        ugly = f"Grade ceiling {best_grade}"
+    return {"good": good, "bad": bad, "ugly": ugly}
+
+
 def _home_tonight_pick(this_week: list) -> dict | None:
     """Top of this_week by avg_kda; tie-broken by games-played. The
     coach-prompt-style "play this tonight" suggestion."""
@@ -217,6 +245,7 @@ def _home_tonight_pick(this_week: list) -> dict | None:
         "reason":   f"{pick.get('avg_kda', 0):.1f} KDA over {pick.get('games', 0)} game"
                     + ("s" if (pick.get('games') or 0) != 1 else "")
                     + " this week",
+        "tips":     _home_pick_tips(pick),
     }
 
 
