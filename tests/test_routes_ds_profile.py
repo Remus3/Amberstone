@@ -1,10 +1,11 @@
 """Tests for dashboard/routes_ds_profile.py - DS champion-profile aggregate.
 
 Sibling of test_routes_ds_sweep.py; mirrors its StubHandler pattern. The route
-is a thin read-only aggregate over four EXISTING pure per-champion DS scorers
-(mobility / sustain / scaling / waveclear); these tests pin the HTTP contract:
-param validation, ordered-axes payload shape, per-axis enum fields, numeric
-key resolution, no_profile branch, mode normalization, cache.
+is a thin read-only aggregate over eight EXISTING pure per-champion DS scorers
+(mobility / sustain / scaling / waveclear / threatrange / zonecontrol /
+objdamage / extendedduel); these tests pin the HTTP contract: param
+validation, ordered-axes payload shape, per-axis enum fields, numeric key
+resolution, no_profile branch, mode normalization, cache.
 
 Assertions are STRUCTURAL (types / shape / enums / computed-quantity
 relationships) rather than brittle exact magnitudes - the project rule prefers
@@ -12,8 +13,9 @@ assertions on computed quantities over data-fragile exact comparisons.
 
 Covers:
   * RouteContractTests - missing champion 400, blank 400, json content type.
-  * ContentTests       - ordered 4-axis payload, per-axis keys + enums,
-    scaling slope/trajectory, waveclear ranged_shove, no_profile branch.
+  * ContentTests       - ordered 8-axis payload, per-axis keys + enums,
+    scaling slope/trajectory, waveclear ranged_shove, the four added axes'
+    bool flags, no_profile branch.
   * ParamTests         - numeric champion key -> slug, mode uppercased.
   * CacheTests         - TTL hit (cached flag), mode part of key.
   * AsciiHygieneTests  - no em-dashes / smart quotes in route + test file.
@@ -83,12 +85,15 @@ class ContentTests(_Base):
         for key in ("ok", "champion", "mode", "axes", "elapsed_ms", "cached"):
             self.assertIn(key, body)
 
-    def test_axes_ordered_four(self) -> None:
+    def test_axes_ordered_eight(self) -> None:
         h = _do("/api/ds-profile?champion=Vayne")
         axes = h.parsed()["axes"]
         self.assertIsInstance(axes, list)
-        self.assertEqual([a["key"] for a in axes],
-                         ["mobility", "sustain", "scaling", "waveclear"])
+        self.assertEqual(
+            [a["key"] for a in axes],
+            ["mobility", "sustain", "scaling", "waveclear",
+             "threatrange", "zonecontrol", "objdamage", "extendedduel"],
+        )
 
     def test_each_axis_core_keys(self) -> None:
         h = _do("/api/ds-profile?champion=Vayne")
@@ -121,6 +126,19 @@ class ContentTests(_Base):
         axes = {a["key"]: a for a in _do(
             "/api/ds-profile?champion=Vayne").parsed()["axes"]}
         self.assertIsInstance(axes["waveclear"]["ranged_shove"], bool)
+
+    def test_new_axes_carry_bool_flags(self) -> None:
+        # Each of the four added axes carries exactly one extra bool flag.
+        # Vayne is in the threatrange / objdamage / extendedduel registries
+        # and absent from the sparse zonecontrol registry - so zonecontrol is
+        # pct 0 with controls_terrain False, but the axis is still present.
+        axes = {a["key"]: a for a in _do(
+            "/api/ds-profile?champion=Vayne").parsed()["axes"]}
+        self.assertIsInstance(axes["threatrange"]["is_artillery"], bool)
+        self.assertIsInstance(axes["zonecontrol"]["controls_terrain"], bool)
+        self.assertIsInstance(
+            axes["objdamage"]["pressures_structures"], bool)
+        self.assertIsInstance(axes["extendedduel"]["ramps"], bool)
 
     def test_vayne_scales_up(self) -> None:
         # Vayne is the canonical late hyperscaler (W = RATIO_HYPERSCALE LATE
