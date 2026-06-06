@@ -196,6 +196,13 @@ _RATIO_FIELDS = (
     "target_max_hp_pct",
 )
 
+# Explosion guards: no real ability ratio exceeds ~150%; a tooltip aggregate like
+# Zac R MaxDamageTooltip resolves ap_pct ~7600% (an absurd value). Similarly no
+# single-instance ability base approaches 5000 flat. Values beyond these thresholds
+# are tooltip aggregates or data-shape mismatches - emit as fallback, not mechanical.
+_EXPLOSION_RATIO_PCT = 1000.0  # ratio_acc holds fractions; compare abs(x*100) > threshold
+_EXPLOSION_BASE = 5000.0       # base_acc is absolute flat; compare abs(x) > threshold
+
 # Part ``__type`` values that ALWAYS force the whole block to fall back (level /
 # breakpoint / buff-counter / conditional / cross-ref parts that the percent schema
 # cannot represent). Any unrecognised type also falls back (handled in code).
@@ -263,6 +270,13 @@ def _data_values_index(mspell: dict[str, Any]) -> dict[str, list[float]]:
                     break
                 arr.append(n)
             if ok and name not in out:
+                # CDragon DataValues arrays are rank-0..rankN (length 7 for a
+                # 5-rank basic, length 7 for a 3-rank ult). The engine indexes
+                # rank N at array position N-1. Trimming the leading rank-0
+                # entry makes index 0 == rank 1 - verified vs live Lux/Darius
+                # 16.11.1 bins (Lux Q CDragon[1:6] == Meraki[80..240]).
+                if len(arr) >= 6:
+                    arr = arr[1:]
                 out[name] = arr
     return out
 
@@ -578,6 +592,25 @@ def resolve_calc_block(calc_name: str, calc: dict[str, Any],
                     _add_ratio(field, arr)
     except _Fallback:
         return block  # resolution stays "fallback", no partial emission
+
+    # explosion guard: any ratio fraction * 100 > _EXPLOSION_RATIO_PCT is a tooltip
+    # aggregate, not a mechanical ratio (e.g. Zac R MaxDamageTooltip ap_pct ~7600%).
+    for arr in ratio_acc.values():
+        if any(abs(x * 100.0) > _EXPLOSION_RATIO_PCT for x in arr):
+            return block  # resolution stays "fallback"
+
+    # explosion guard: a base value > _EXPLOSION_BASE is also a tooltip aggregate.
+    if base_acc is not None and any(abs(x) > _EXPLOSION_BASE for x in base_acc):
+        return block  # resolution stays "fallback"
+
+    # fractional-base guard: if EVERY base value satisfies 0 < abs(v) < 1.0 a ratio
+    # leaked into the base slot (e.g. a percent-display block or mis-mapped field).
+    if (
+        base_acc is not None
+        and base_acc
+        and all(0 < abs(v) < 1.0 for v in base_acc)
+    ):
+        return block  # resolution stays "fallback"
 
     # success: emit base + percent-scaled ratios
     block["resolution"] = "mechanical"
