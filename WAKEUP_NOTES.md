@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-05 - P2.2 structured-output / Pydantic v2 hardening of the coach parse seam [item 313]
+
+Operator-gated focused session (P2.2, accepted in item 312). Characterization-FIRST per the operator standing rule "rigid tests before swapping the parsing logic so we don't break the live coach pipelines." Non-engine, non-frozen; DS NOT restarted; RC restart-deferred (pure-Python validation swap, byte-identical wire). Full record = item 313 in `docs/LEDGER.md`.
+
+- **Golden masters (no prod change):** `tests/test_parse_fields_characterization_p2_2.py` (25) pins `coaches/_base_coach.parse_fields`/`parse_field` - lowercase-key contract, markdown strip, 220-trunc, positional-fallback threshold + whole-line footgun, choices-JSON passthrough, parse_field case-insensitive/no-strip/no-trunc asymmetry. `tests/test_coach_choices_characterization_p2_2.py` (13) locks the exact `core/coach_choices` wire dict (to_dict/to_jsonable) shape-agnostically so it survives the swap.
+- **Swap:** `core/coach_choices.CoachChoice` `@dataclass(frozen=True)` -> `@pydantic.dataclasses.dataclass(frozen=True)`. Chosen over a literal `BaseModel` AFTER I surfaced the blast radius (a BaseModel breaks 5 existing tests - 4 emit tests call `dataclasses.fields()`, `test_frozen_dataclass` expects `AttributeError` not pydantic `ValidationError` - plus `to_dict`'s `asdict`). The pydantic dataclass stays a TRUE stdlib dataclass -> `fields`/`asdict`/`FrozenInstanceError` all keep working = 0 existing-test edits, wire byte-identical, + construction-time validation gained.
+- **Verify:** targeted 212 passed (incl. the 4 emit + frozen tests unmodified); FULL root `tests/` 5020 passed / 1 skip / 74 subtests. The ONLY red was PRE-EXISTING + unrelated (`test_doc_size_budget::test_roadmap_md_under_budget`: ROADMAP 85458>81920B - item 312 skipped the relocate-on-add convention); FIXED here by relocating item 294 + the DS source-layering plan verbatim to `docs/ROADMAP_HISTORY.md`. py_compile OK; ASCII-only.
+- **NEXT:** P2.2 tail (deferred) - migrate base-coach `parse_fields` callers + SR `_parse_response` onto a shared validated model (golden masters now guard it); P3.2 (antitank dynamic %HP) is the queued sibling.
+
+---
+
 # 2026-06-05 - external refactor-plan triage + P4.2 Tesseract env-config + UNIVERSAL_FILES cleanup [item 312]
 
 Operator handed 3 Desktop review docs (`Claude_Refactor_Plan.md` + `Riot_Commander_Review.md` + `Riot_Commander_Deep_Dive.md` - external AI audits) to read + act on, plus a `Desktop\UNIVERSAL_FILES\` cleanup. Docs kept OUT of repo (`feedback_keep_outreach_out_of_repo` - competitor/strategy/outreach content). Full record = item 312 in `docs/LEDGER.md`.
