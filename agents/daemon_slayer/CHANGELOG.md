@@ -1331,6 +1331,21 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.120.0 (item 321, 2026-06-06 - survivability seam default-ON cutover. compute_ehp's
+``apply_egg_resist`` flag (item 316, Anivia Rebirth EGG-STATE resist seam) flips
+default False -> True: the death-triggered self-revive EXTRA now reshapes per damage
+type through the resurrection egg's MODIFIED resists (-40 at L1 ramping to +20 at L18)
+by default. Pass ``apply_egg_resist=False`` to recover the prior item-288 scalar path.
+Blast radius is nil for live scoring - no scorer passes ``apply_passive_revive=True``
+today, and the egg deltas are 0.0 for every non-Anivia / non-revive champ (ratio 1.0,
+byte-identical). The COMPANION Orianna E ally-resist seam (item 316 regression lock of
+item-289 ``ally_resist_grant`` -> ``external_resist_armor/mr``) needs NO default flip:
+it is consumer-driven (the granter value is supplied explicitly by the caller and the
+``/ehp`` server route already accepts it), so it is already active wherever a caller
+wires it. Wiring both seams into a live survivability scorer + per-champion validation
+is logged FUTURE. No DS restart-coupled balance change; one seam test re-pointed to the
+new default. DS :8893 must be bounced -> 1.120.0.)
+
 1.119.0 (prefer_cdragon_ratios default-ON cutover - the ability damage RATIOS are
 now re-sourced from the LIVE CommunityDragon 16.11 character bins in preference to
 the frozen Meraki champion_abilities.json dump. The item-319 semantic block-matcher
