@@ -58,6 +58,14 @@ def test_champ_select_imports_and_calls_ds_matchup():
     assert "renderDsMatchupForChampSelect" in src
 
 
+def test_champ_select_wires_ds_matchup_scheduler():
+    # The on-land re-render only fires if the scheduler is wired, exactly like
+    # the ds_sweep / ds_profile siblings. Without this call the card renders one
+    # tick late on a cold cache. Regression-guard the wiring.
+    src = _read(CHAMP_SELECT_JS)
+    assert "setDsMatchupScheduler" in src
+
+
 def test_fixture_is_valid_json_with_expected_keys():
     assert FIXTURE_PATH.exists(), f"fixture missing at {FIXTURE_PATH}"
     data = json.loads(_read(FIXTURE_PATH))
