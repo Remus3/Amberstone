@@ -25,6 +25,7 @@ from pathlib import Path
 from coaches.sr_draft_profile import is_sr_draft_queue
 from core.coaching_payload import validate_coaching_payload
 from core.queue_modes import mode_key_from_queue_id
+from dashboard._adaptation_latch import compute as _latch_compute
 from dashboard._context import APP_DIR, read_json
 from dashboard._cs_retention import apply_cs_retention
 from dashboard._liveclient import lcu_summary, liveclient_summary
@@ -214,6 +215,12 @@ def build_state() -> dict:
     coach = apply_cleared_at(coach, lc)
     if lc:
         for k, v in lc.items():
+            if coach.get(k) in (None, "", 0):
+                coach[k] = v
+        # Merge time-latched STATS metrics (cs_at_10, csd_at_15) into coach.
+        # Coach values win when present; latch fills the blanks only.
+        # The latch module holds game-scoped state across /api/state ticks.
+        for k, v in _latch_compute(lc).items():
             if coach.get(k) in (None, "", 0):
                 coach[k] = v
 
