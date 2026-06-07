@@ -28,7 +28,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | DONE | 48411bfc |
 | C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | DONE | b4bfa05a |
 | C2 | ui-audit | Active Match SR + ARAM + Arena: 5-phase audit + visual validation. | DONE | e81495e0 |
-| C3 | ui-audit | Post Game Review SR + ARAM + Arena: 5-phase audit + visual validation. | OPEN | - |
+| C3 | ui-audit | Post Game Review SR + ARAM + Arena: 5-phase audit + visual validation. | DONE | aa0a5a7e |
 | D1 | lift | DS relative-score bar (Aggregator P lift, BACKLOG.md:21): per-row score_pct fill (delta_dps/top_delta*100). Codeable with fixtures; render-gated on locked champ. | OPEN | - |
 | D2 | lift | draft tool L (the community fork) Elo log-odds draft aggregator (BACKLOG.md:78): clean algorithm reimplement (NO vendor) over pairwise WR from rewind_history.db. | OPEN | - |
 | E1 | research | Per-role grading rubric calibration (BACKLOG.md:100): tune core/post_game_rubric.py weight vectors from public per-role reference data. | OPEN | - |
@@ -46,6 +46,43 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 C3 DONE (item 332, commit aa0a5a7e + docs sync): Post Game Review
+  (last-match) SR + ARAM + Arena 5-phase fixture audit + reproducible visual
+  validation. AUDIT: 3 parallel read-only mode-lens subagents (SR #14 / ARAM #15
+  / Arena #16) ran STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY against
+  last_match.css (~1290) + last_match.js (~1347, incl inline px) + the
+  last_match_<m> fixtures + index.html #view-last-match vs UI_SCALE_SPEC_V2.
+  Typography already on v2.1 tokens (every font-size a --fs-* token except ~5
+  sub-floor labels carrying inline documented operator-exception rationale); 0
+  in-scope MUST-FIX. Sole-merger call: the ARAM/Arena agents flagged the U+00B7
+  meta separator + a "Review ->" tab arrow as ASCII MUST-FIX, but these are
+  PRE-EXISTING (U+00B7 is a convention across 11 panels; last_match.css carries
+  ~972 comment-art non-ASCII bytes) and OUTSIDE the actively-enforced em/en-dash
+  + smart-quote set (all 3 agents verified ZERO U+2013/2014/2018/2019/201C/201D),
+  and CI does not gate them (the C2 suite was green with U+2500 present) ->
+  deferred to the operator-gated repo-wide ASCII sweep (FUTURE), not churned
+  piecemeal. VISUAL: NEW tests/snapshot_panels/test_last_match_view.py renders
+  the full #view-last-match for all 3 modes via the headless mock-server +
+  Playwright at 1920x1080 (drive /?ui_mock=1&mode=<m>#last-match -> _lmMockUrl ->
+  renderLastMatch; wait on #lm-mode-tag != "-"). Asserts per mode: view mounts,
+  hero champion + grade render, mode tag (Ranked Solo / ARAM / ARENA) matches,
+  Arena neutral ARENA pill vs SR VICTORY, no JS errors; screenshots each. NEW
+  web/data/ui_mock/last_match_sr.json (SR Ranked Solo fixture) + an sr branch in
+  _lmMockUrl give PGR-SR the same CI coverage as ARAM/Arena. 6 new tests, ruff +
+  node --check + ASCII clean, verifier CONFIRM 6/0 + full suite 5253/0. Full RC
+  suite 5253 passed / 1 skip / 0 fail / 85 subtests (+6). web/js asset-hash
+  reload (ADR-008), no RC restart; no engine touch -> ENGINE 1.120.0, no DS
+  bounce, no Share sync.
+- FUTURE (C3 audit SHOULD/NICE + deferred ASCII debt): (1) repo-wide
+  operator-gated ASCII sweep of last_match.css/js (~972 + 213 pre-existing
+  non-ASCII: box-drawing/arrow comment art + the U+00B7 meta separator shared by
+  11 panels - main.js/right_now.js/next.js/team_context.js/...). (2)
+  .lm-hero-champ (champion-name role=button deep-link) lacks min-height --hit-min
+  42px (~41px today); add min-height + inline-flex centering (shared hero element
+  -> lands on all 3 PGR modes). (3) Arena _setHero hard-codes the "ARENA" result
+  pill + ignores enriched.subteam_placement - surface the real placement (e.g.
+  "2nd / 6"). (4) Arena _setTeamComp groups all 5 non-operator subteams into one
+  ENEMY block - a subteam-grouped roster reads truer.
 - 2026-06-06 C2 DONE (item 331, commit e81495e0 + docs sync): Active Match
   SR + ARAM + Arena 5-phase fixture audit + reproducible visual validation.
   AUDIT: 3 parallel read-only mode-lens subagents (SR #11 / ARAM #12 /
