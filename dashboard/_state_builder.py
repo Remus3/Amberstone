@@ -310,8 +310,11 @@ def build_state() -> dict:
             compute_deterministic, resolve_choices, shadow_log_det,
         )
         det = compute_deterministic(coach, lc, mode_key)
-        coach["choices"] = resolve_choices(coach, det)
+        # Shadow-log BEFORE resolve_choices overwrites coach["choices"] - the
+        # validation log must capture the NATIVE choices the deterministic flip
+        # discards, not the post-flip result.
         shadow_log_det(coach, lc, det, mode_key)
+        coach["choices"] = resolve_choices(coach, det)
     except Exception:
         det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
