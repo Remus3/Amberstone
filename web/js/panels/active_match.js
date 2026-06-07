@@ -908,10 +908,16 @@ function _threatRow(pl, mode, level) {
 }
 
 function _line(label, value) {
+  // C2 UI-audit (docs/UI_SCALE_SPEC_V2.md): the CALL pane RIGHT NOW /
+  // ACTION / OBJECTIVE / NEXT coach prompts are the dominant readable
+  // content of the in-game view, so the value lands on the --fs-md body
+  // token and the eyebrow label on --fs-xs instead of the old sub-floor
+  // 13px / 10px - the "RIGHT NOW leads" hierarchy needs the prompt to
+  // read at viewing distance.
   const row = document.createElement("div");
-  row.style.cssText = "margin-bottom:10px;font-size:13px;line-height:1.45;";
+  row.style.cssText = "margin-bottom:10px;font-size:var(--fs-md);line-height:1.45;";
   const lbl = document.createElement("span");
-  lbl.style.cssText = "color:var(--text-faint);letter-spacing:0.12em;font-size:10px;font-weight:700;display:block;margin-bottom:2px;";
+  lbl.style.cssText = "color:var(--text-faint);letter-spacing:0.12em;font-size:var(--fs-xs);font-weight:700;display:block;margin-bottom:2px;";
   lbl.textContent = label;
   const val = document.createElement("span");
   val.style.cssText = "color:var(--text);";
@@ -969,7 +975,10 @@ function _dsIcon(r, ownedSet) {
   }
   const dlt = document.createElement("div");
   dlt.textContent = `+${(delta || 0).toFixed(0)}`;
-  dlt.style.cssText = "font-size:11px;font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
+  // C2 UI-audit: the +Ndps gain is the key build signal under each icon;
+  // bumped off the sub-floor 11px to the --fs-xs token (a 2-4 char number
+  // still fits the 48px icon cell).
+  dlt.style.cssText = "font-size:var(--fs-xs);font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
   wrap.appendChild(dlt);
   return wrap;
 }
