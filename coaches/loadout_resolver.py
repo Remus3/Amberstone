@@ -27,7 +27,7 @@ from typing import Optional
 # These are private constants in the frozen lcu_rune_writer, but we
 # need them to translate variant rune names into LCU perk IDs. We're
 # not modifying the file - only importing constants.
-from lcu.lcu_rune_writer import _TREES, build_perk_ids
+from lcu.lcu_rune_writer import _TREES, build_perk_ids, load_rune_rec
 
 _log = logging.getLogger("rc.loadout")
 
@@ -155,6 +155,17 @@ def list_variants(champion: str, mode: str) -> list[dict]:
     defaults = champ.get("default_per_mode") or {}
     default_key = defaults.get(mode_key, "")
 
+    # The rune the lcu_rune_writer.RuneWriter ACTUALLY auto-applies comes from
+    # rune_recommendations_{aram,sr}.json - a separate source from the loadout
+    # build-card keystones above. Surface it per row so the champ-select view
+    # can mark the genuinely-applied keystone as recommended (display ==
+    # applied) instead of the loadout card's own keystone, which can disagree
+    # (Caitlyn: loadout=Press the Attack, auto-applied=Arcane Comet). Same
+    # ARAM/SR routing the writer uses; computed once per champion.
+    _wmode = "ARAM" if mode_key == "aram" else "CLASSIC"
+    _auto = load_rune_rec(champion, _wmode)
+    auto_ks, auto_pri, auto_sec = _auto if _auto else ("", "", "")
+
     def _row(key: str, v: dict, is_default: bool) -> dict:
         runes = v.get("runes") or {}
         items = list(v.get("items") or [])
@@ -207,6 +218,10 @@ def list_variants(champion: str, mode: str) -> list[dict]:
             "item_ids":    _resolve_item_ids(items),
             "build_paths": build_paths_out,
             "_collapsed":  bool(v.get("_collapsed", False)),
+            # The keystone the auto-writer applies (display-match source).
+            "auto_keystone":   auto_ks,
+            "auto_primary":    auto_pri,
+            "auto_secondary":  auto_sec,
         }
 
     out = []

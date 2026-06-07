@@ -2212,6 +2212,7 @@ function _csvPushCategory(champion, mode, cat, variants) {
     // (or it matches the active card already).
     const savedRuneKey = _csvSavedRuneChoice(champion);
     let runeComposedKey = sel.composedKey;
+    let overrideRunes = null;
     if (savedRuneKey) {
       const paths = Array.isArray(sel.variant.build_paths)
         ? sel.variant.build_paths : [];
@@ -2219,9 +2220,21 @@ function _csvPushCategory(champion, mode, cat, variants) {
         p && String((p.keystone) || sel.variant.keystone || "") === savedRuneKey);
       if (runePath && runePath.key) {
         runeComposedKey = `${sel.variant.key}:${runePath.key}`;
+      } else if (savedRuneKey === String(sel.variant.auto_keystone || "")
+                 && sel.variant.auto_primary && sel.variant.auto_secondary) {
+        // The auto-applied keystone (rune_recommendations) is NOT one of the
+        // build-path cards, so the path lookup above misses it. Push it
+        // explicitly via override_runes so the written page matches the
+        // selected (recommended) rune instead of silently falling back to the
+        // active card's keystone.
+        overrideRunes = {
+          keystone:  String(sel.variant.auto_keystone),
+          primary:   String(sel.variant.auto_primary),
+          secondary: String(sel.variant.auto_secondary),
+        };
       }
     }
-    _csvApplyLoadout(champion, runeComposedKey, mode, null, null, null,
+    _csvApplyLoadout(champion, runeComposedKey, mode, null, overrideRunes, null,
       { push_runes: true, push_items: false, push_summoners: false });
   } else if (cat === "spells") {
     const pair = sel.summoners;
@@ -2735,6 +2748,22 @@ function _csvRunePanelHtml(variant, recommendedRuneKey, savedRuneKey) {
       secondary: String(variant.secondary || ""),
     });
   }
+  // Ensure the AUTO-APPLIED keystone (the one lcu_rune_writer actually pushes,
+  // from rune_recommendations - see loadout_resolver auto_keystone) is always
+  // a visible option so it can carry the recommended marker even when it is
+  // not one of the build-card keystones (Caitlyn: auto=Arcane Comet, cards=
+  // PTA/Fleet/Lethal Tempo). This is what makes the panel match what the game
+  // actually receives.
+  const autoKs = String(variant.auto_keystone || "").trim();
+  if (autoKs && !seen[autoKs]) {
+    seen[autoKs] = true;
+    opts.unshift({
+      key:       autoKs,
+      keystone:  autoKs,
+      primary:   String(variant.auto_primary || ""),
+      secondary: String(variant.auto_secondary || ""),
+    });
+  }
   if (!opts.length) {
     return '<div class="csv-rune-panel"><div class="csv-empty">no rune options</div></div>';
   }
@@ -2909,8 +2938,12 @@ function _csvBuildVariantRowsHtml(variants, savedChoice, savedRuneKey) {
       const activePath = buildPaths.find((p) => p && p.key === activePathKey)
         || buildPaths.find((p) => p && p._is_primary)
         || buildPaths[0] || {};
+      // The recommended (amber) rune mirrors what the auto-writer actually
+      // applies (v.auto_keystone, from rune_recommendations) so the panel
+      // matches the game. Falls back to the active build-card keystone when
+      // no auto rec exists for this champion/mode.
       const recommendedRuneKey =
-        String(activePath.keystone || v.keystone || "");
+        String(v.auto_keystone || activePath.keystone || v.keystone || "");
       const runePanelHtml = _csvRunePanelHtml(v, recommendedRuneKey, savedRuneKey);
       return `
         <div class="csv-build-row csv-build-row-collapsed${idx === selectedIdx ? " selected" : ""}"
