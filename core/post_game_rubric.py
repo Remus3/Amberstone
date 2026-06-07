@@ -1,10 +1,27 @@
 """Riot per-role grading rubric.
 
 Calibration reference: https://www.unrankedsmurfs.com/blog/what-is-riot-algorithm-for-determining-s-and-s+-ranks
-The unrankedsmurfs writeup is the single public source for the per-role weight
-vectors Riot uses internally to compute end-of-game S/A/B/C/D letter grades.
-The numbers reproduced below are STARTING calibration values derived from
-that public rubric source.
+The public rubric writeup is the source for the per-role EMPHASIS ORDERING of
+the weight vectors (Riot itself publishes NO exact weights: "The specifics of
+how your grade after a game is calculated are not public"). The writeup states,
+per role, which stats matter most - CS-led for TOP/MID, KP/objective-heaviest
+for JG, vision + strict-KDA + CC for SUP, carry-damage + strict-KDA for ADC.
+
+Two-axis calibration (item 335, 2026-06-06)
+-------------------------------------------
+
+  * WEIGHTS encode the public-source emphasis ordering and each role's vector
+    sums to 5.0, so a median-of-role performance (every axis at baseline ->
+    normalized 1.0) maps to raw_total 5.0, x10 == 50.0, the floor of the B
+    band ("a median game is a B").
+  * BASELINES are the EMPIRICAL real per-role medians from 5957 ranked-SR
+    participant rows in data/rewind_history.db (map 11, CLASSIC, >=15 min):
+    they make "normalized 1.0" mean "the median player for this role". The
+    pre-335 baselines were hand-estimates that scored the median real game a
+    D/C (damage baselines ran 40-80% low, KDA baselines ran high), violating
+    the module's own "median -> ~50 B" intent; the re-anchor fixes that.
+
+The weights remain operator-tunable via the JSON override loader below.
 
 Per-role JSON override loader
 -----------------------------
@@ -47,24 +64,29 @@ WPA scores a per-event delta given the rolling match state. The rubric here
 scores a per-match per-role profile against role-specific baselines. They
 compose; do NOT consolidate.
 
-Role weight rationale (from the public rubric source):
+Role weight rationale (emphasis ordering from the public rubric source;
+every vector sums to 5.0):
 
-  * ADC: 2.1 KDA weight + 0.50 obj-participation weight + 0.85 CS-per-min.
-    Damage-per-minute weighted heavily (carry expectation).
-  * SUP: 2.5 KDA + weighted vision (highest of any role) + 0.10 obj-
-    participation + 0.00 CS-per-min (CS is intentionally NOT scored for
-    support - taking CS is anti-pattern). Damage-per-min weighted low.
-  * JG:  1.8 KDA + 0.70 obj-participation (highest weight - jungle is
-    judged most on objective participation) + 0.40 CS-per-min.
-  * MID: 2.0 KDA + 0.30 obj-participation + 0.85 CS-per-min. Damage-per-min
-    weighted heavily (carry expectation but less than ADC's farm window).
-  * TOP: 1.9 KDA + 0.25 obj-participation + 0.80 CS-per-min. Lowest obj
-    weight (isolated lane expectation).
+  * ADC: kda 1.5 + dpm 1.5 co-dominant (carry: strict KDA + highest damage
+    expectation of any role) + cs 1.1 (important but below TOP/MID) + obj 0.6
+    + vision 0.3.
+  * SUP: vision 1.8 (dominant signal, highest single weight of any
+    role/axis) + kda 1.6 (strictest-KDA role) + obj 1.0 (KP tied-highest
+    with JG) + dpm 0.6 + cs 0.0 (CS intentionally NOT scored - taking CS is
+    a support anti-pattern). CC score is a source-cited SUP signal not yet
+    modeled (no axis) - a documented gap, not an omission.
+  * JG:  obj 1.5 (heaviest weight in the vector - "KP heaviest for junglers")
+    + kda 1.4 + dpm 1.1 + vision 0.6 + cs 0.4 (minimal - jungle farm is not
+    the grade signal).
+  * MID: cs 1.5 (highest emphasis, tied with TOP) + kda 1.4 + dpm 1.2 (carry)
+    + obj 0.5 + vision 0.4.
+  * TOP: cs 1.5 (highest emphasis) + kda 1.4 + dpm 1.0 + obj 0.7 + vision 0.4.
 
-Vision score weight: SUP 1.5 (dominant signal for the role), all other
-roles 0.30 (vision is universally tracked but not a primary role metric).
+Vision score weight: SUP 1.8 (dominant signal for the role), JG 0.6, TOP/MID
+0.4, ADC 0.3 (vision is universally tracked but a secondary lane metric).
 
-Damage-per-min weight: ADC 0.85, MID 0.80, JG 0.55, TOP 0.45, SUP 0.20.
+Damage-per-min weight: ADC 1.5 (primary carry), MID 1.2, JG 1.1, TOP 1.0,
+SUP 0.6.
 """
 from __future__ import annotations
 
@@ -98,50 +120,51 @@ class RoleWeights:
     damage_per_min: float = 0.0
 
 
-# Starting calibration values derived from the public rubric source. See the
-# module docstring for the per-role rationale. Operator-tunable via the JSON
-# override loader (see _OVERRIDES_PATH + _load_weights_overrides below); the
-# defaults below are what ships when no override file is present.
+# Source-ordered weight vectors (item 335). Each role's vector sums to 5.0 so
+# a median-of-role performance maps to total_score 50.0 (the B floor). See the
+# module docstring for the per-role emphasis rationale. Operator-tunable via the
+# JSON override loader (see _OVERRIDES_PATH + _load_weights_overrides below);
+# the defaults below are what ships when no override file is present.
 _DEFAULT_WEIGHTS: dict[str, RoleWeights] = {
     "ADC": RoleWeights(
         role="ADC",
-        kda=2.1,
-        cs_per_min=0.85,
-        obj_participation=0.50,
-        vision_score=0.30,
-        damage_per_min=0.85,
+        kda=1.5,
+        cs_per_min=1.1,
+        obj_participation=0.6,
+        vision_score=0.3,
+        damage_per_min=1.5,
     ),
     "SUP": RoleWeights(
         role="SUP",
-        kda=2.5,
-        cs_per_min=0.00,
-        obj_participation=0.10,
-        vision_score=1.5,
-        damage_per_min=0.20,
+        kda=1.6,
+        cs_per_min=0.0,
+        obj_participation=1.0,
+        vision_score=1.8,
+        damage_per_min=0.6,
     ),
     "JG": RoleWeights(
         role="JG",
-        kda=1.8,
-        cs_per_min=0.40,
-        obj_participation=0.70,
-        vision_score=0.30,
-        damage_per_min=0.55,
+        kda=1.4,
+        cs_per_min=0.4,
+        obj_participation=1.5,
+        vision_score=0.6,
+        damage_per_min=1.1,
     ),
     "MID": RoleWeights(
         role="MID",
-        kda=2.0,
-        cs_per_min=0.85,
-        obj_participation=0.30,
-        vision_score=0.30,
-        damage_per_min=0.80,
+        kda=1.4,
+        cs_per_min=1.5,
+        obj_participation=0.5,
+        vision_score=0.4,
+        damage_per_min=1.2,
     ),
     "TOP": RoleWeights(
         role="TOP",
-        kda=1.9,
-        cs_per_min=0.80,
-        obj_participation=0.25,
-        vision_score=0.30,
-        damage_per_min=0.45,
+        kda=1.4,
+        cs_per_min=1.5,
+        obj_participation=0.7,
+        vision_score=0.4,
+        damage_per_min=1.0,
     ),
 }
 
@@ -242,44 +265,47 @@ def _apply_overrides(
 _DEFAULT_WEIGHTS = _apply_overrides(_DEFAULT_WEIGHTS, _load_weights_overrides())
 
 
-# Per-role baselines (per-game medians at ~32 min). A 1.0-normalized
-# profile maps to a total_score of ~50 (mid-table B grade). A +2x outlier
-# saturates at ~100 (S+). Sourced from public per-role median tables.
+# Per-role baselines = EMPIRICAL real per-role medians (item 335) from 5957
+# ranked-SR participant rows in data/rewind_history.db (map 11, CLASSIC,
+# >=15 min). A 1.0-normalized profile (every axis at the role median) maps to
+# total_score 50.0 (mid-table B grade); a +2x outlier saturates at ~100 (S+).
+# Re-anchored from the pre-335 hand-estimates that scored the median game a
+# D/C (dpm baselines ran 40-80% low; KDA baselines ran high).
 _ROLE_BASELINES: dict[str, dict[str, float]] = {
     "ADC": {
-        "kda": 2.5,
-        "cs_per_min": 7.5,
-        "obj_participation": 0.55,
+        "kda": 2.3,
+        "cs_per_min": 7.15,
+        "obj_participation": 0.15,
         "vision_score": 15.0,
-        "damage_per_min": 600.0,
+        "damage_per_min": 731.0,
     },
     "SUP": {
-        "kda": 3.0,
+        "kda": 2.85,
         "cs_per_min": 1.0,
-        "obj_participation": 0.50,
-        "vision_score": 55.0,
-        "damage_per_min": 180.0,
+        "obj_participation": 0.125,
+        "vision_score": 58.0,
+        "damage_per_min": 330.0,
     },
     "JG": {
-        "kda": 3.0,
-        "cs_per_min": 5.5,
-        "obj_participation": 0.70,
-        "vision_score": 25.0,
-        "damage_per_min": 420.0,
+        "kda": 2.8,
+        "cs_per_min": 6.4,
+        "obj_participation": 0.375,
+        "vision_score": 20.0,
+        "damage_per_min": 602.0,
     },
     "MID": {
-        "kda": 2.8,
-        "cs_per_min": 7.0,
-        "obj_participation": 0.40,
-        "vision_score": 18.0,
-        "damage_per_min": 620.0,
+        "kda": 2.2,
+        "cs_per_min": 6.9,
+        "obj_participation": 0.13,
+        "vision_score": 15.0,
+        "damage_per_min": 756.0,
     },
     "TOP": {
-        "kda": 2.5,
-        "cs_per_min": 6.5,
-        "obj_participation": 0.35,
-        "vision_score": 14.0,
-        "damage_per_min": 480.0,
+        "kda": 1.8,
+        "cs_per_min": 6.75,
+        "obj_participation": 0.15,
+        "vision_score": 15.0,
+        "damage_per_min": 717.0,
     },
 }
 
@@ -411,10 +437,10 @@ def compute_role_grade(
 
     raw_total = sum(components.values())
     # Linear scaling: a 1.0-normalized profile across every axis maps to
-    # ~46-50 (mid B); 2x saturation across every axis approaches 100 (S+).
-    # Multiplier of 10 is the calibration knob - see module docstring.
-    # The sum of default weights per role lands in [4.05, 4.80]; multiplying
-    # by 10 puts a fully-saturated outlier at ~90-96 before the 100 clamp.
+    # exactly 50.0 (the B floor); 2x saturation across every axis reaches 100
+    # (S+). Multiplier of 10 is the calibration knob - see module docstring.
+    # Every role's default weight vector sums to 5.0, so the median game
+    # (each axis at its empirical baseline) lands at raw_total 5.0 -> 50.0.
     total_score = min(100.0, max(0.0, raw_total * 10.0))
 
     return {

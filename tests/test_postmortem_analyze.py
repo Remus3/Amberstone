@@ -710,12 +710,21 @@ def _populate_match_a_objectives(
     db_path: pathlib.Path,
     self_puuid: str,
     ally_puuid: str,
+    ally_extra_dragons: int = 0,
 ) -> None:
     """Stamp objective columns on match_a so iter_role_grades sees a
     non-zero obj_participation_pct.
 
-    Operator owns 1 dragon + 1 first_tower = 2; ally owns 1 dragon = 1.
-    Team total = 3 -> operator share = 2/3 ~ 0.667.
+    Operator owns 1 dragon + 1 first_tower = 2; ally owns
+    1 + ally_extra_dragons dragons. With the default (0) team total = 3,
+    operator share = 2/3 ~ 0.667.
+
+    ally_extra_dragons dilutes the operator's share. The item-335
+    recalibration set the obj baselines to the real per-role medians (MID
+    ~0.13), so the 2x-median clamp saturates the obj axis above ~0.26
+    share; the dilution-monotonicity tests pass a large pad here to keep
+    BOTH the before + after shares in the linear (unsaturated) region
+    where the share delta is observable on the grade.
     """
     conn = sqlite3.connect(str(db_path))
     try:
@@ -725,9 +734,9 @@ def _populate_match_a_objectives(
             (self_puuid,),
         )
         conn.execute(
-            "UPDATE participants SET dragon_kills=1 "
+            "UPDATE participants SET dragon_kills=? "
             "WHERE match_id='NA1_TEST_A' AND puuid=?",
-            (ally_puuid,),
+            (1 + int(ally_extra_dragons), ally_puuid),
         )
         conn.commit()
     finally:
@@ -1009,16 +1018,18 @@ class HeraldEnrichmentWireTests(unittest.TestCase):
             self.db_path,
             self_puuid=self.fixture["self_puuid"],
             ally_puuid="PUUID-ALLY",
+            ally_extra_dragons=20,
         )
-        # Now operator: 2 sql, ally: 1 sql. Team sql total = 3.
+        # Operator: 2 obj; ally: 21 (1 + 20 pad). Team = 23, share ~0.087
+        # (sub-saturation for the MID 0.13 obj baseline; see helper).
         conn = sqlite3.connect(str(self.db_path))
         try:
             sql_only = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
         finally:
             conn.close()
 
-        # Add herald: operator 1, ally 0. Operator 3, team 4, share 0.75
-        # (vs sql-only operator 2, team 3, share ~0.667).
+        # Add herald: operator 1, ally 0. Operator 3, team 24, share ~0.125
+        # (up from ~0.087) - still linear, so the lift is observable.
         _populate_match_a_herald(
             self.db_path,
             self_puuid=self.fixture["self_puuid"],
@@ -1035,11 +1046,13 @@ class HeraldEnrichmentWireTests(unittest.TestCase):
         self.assertGreater(combined["total_score"], sql_only["total_score"])
 
     def test_teammate_herald_lowers_operator_share(self):
-        # SQL: operator 2, ally 1. Team total 3 -> operator share 2/3.
+        # Operator 2; ally 21 (1 + 20 pad). Share ~0.087 (sub-saturation
+        # for the MID 0.13 obj baseline so the dilution is observable).
         _populate_match_a_objectives(
             self.db_path,
             self_puuid=self.fixture["self_puuid"],
             ally_puuid="PUUID-ALLY",
+            ally_extra_dragons=20,
         )
         conn = sqlite3.connect(str(self.db_path))
         try:
@@ -1047,8 +1060,8 @@ class HeraldEnrichmentWireTests(unittest.TestCase):
         finally:
             conn.close()
 
-        # Add herald=1 to ally only. Operator 2, team 4 -> share 0.5
-        # (lower than 0.667 pre-enrichment).
+        # Add herald=1 to ally only. Operator 2, team 24 -> share ~0.083
+        # (lower than ~0.087 pre-enrichment).
         _populate_match_a_herald(
             self.db_path,
             self_puuid=self.fixture["self_puuid"],
@@ -1120,9 +1133,10 @@ class VoidEnrichmentWireTests(unittest.TestCase):
             self.db_path,
             self_puuid=self.fixture["self_puuid"],
             ally_puuid="PUUID-ALLY",
+            ally_extra_dragons=20,
         )
-        # SQL-only baseline: operator 2 sql + 0 blob = 2; ally 1 sql.
-        # Team total = 3, share 0.667.
+        # SQL-only baseline: operator 2 obj; ally 21 (1 + 20 pad).
+        # Team total = 23, share ~0.087 (sub-saturation, MID 0.13 baseline).
         conn = sqlite3.connect(str(self.db_path))
         try:
             sql_only = iter_role_grades(conn, [self.fixture["self_puuid"]])[0]
@@ -1130,7 +1144,7 @@ class VoidEnrichmentWireTests(unittest.TestCase):
             conn.close()
 
         # Add herald=1 + void=2 on operator; ally clean. Operator total
-        # = 2 + 1 + 2 = 5; team = 5 + 1 = 6 -> 0.833 share (up from 0.667).
+        # = 2 + 1 + 2 = 5; team = 26 -> ~0.192 share (up from ~0.087).
         _populate_match_a_objectives_blob(
             self.db_path,
             self_puuid=self.fixture["self_puuid"],
@@ -1146,11 +1160,13 @@ class VoidEnrichmentWireTests(unittest.TestCase):
         self.assertGreater(combined["total_score"], sql_only["total_score"])
 
     def test_teammate_void_lowers_operator_share(self):
-        # SQL: operator 2, ally 1. Team total 3 -> operator share 2/3.
+        # Operator 2; ally 21 (1 + 20 pad). Share ~0.087 (sub-saturation
+        # for the MID 0.13 obj baseline so the dilution is observable).
         _populate_match_a_objectives(
             self.db_path,
             self_puuid=self.fixture["self_puuid"],
             ally_puuid="PUUID-ALLY",
+            ally_extra_dragons=20,
         )
         conn = sqlite3.connect(str(self.db_path))
         try:
@@ -1159,8 +1175,8 @@ class VoidEnrichmentWireTests(unittest.TestCase):
         finally:
             conn.close()
 
-        # Add void=3 to ally only. Operator 2, team 6 -> share 0.333
-        # (down from 0.667 pre-enrichment).
+        # Add void=3 to ally only. Operator 2, team 26 -> share ~0.077
+        # (down from ~0.087 pre-enrichment).
         _populate_match_a_objectives_blob(
             self.db_path,
             self_puuid=self.fixture["self_puuid"],

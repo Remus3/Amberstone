@@ -284,9 +284,9 @@ class TestPostGameRubricRoute(unittest.TestCase):
             resp = self._serve("/api/post-game-rubric?match_id=TEST_M1",
                                db, state)
             payload = json.loads(resp[0][1])
-            # ADC kda weight is 2.1 per the calibration table.
-            self.assertAlmostEqual(payload["weights_used"]["kda"], 2.1)
-            self.assertAlmostEqual(payload["weights_used"]["cs_per_min"], 0.85)
+            # ADC kda + cs weights per the item-335 calibration table.
+            self.assertAlmostEqual(payload["weights_used"]["kda"], 1.5)
+            self.assertAlmostEqual(payload["weights_used"]["cs_per_min"], 1.1)
 
 
 class TestPuuidLoader(unittest.TestCase):
