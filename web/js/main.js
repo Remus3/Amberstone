@@ -560,8 +560,14 @@ import { renderBuildInsights } from './panels/build_insights.js';
     // s209: ChampSelect ended but phase isn't a stable state - must be
     // the gap between CS ending and InProgress firing. Advance sticky
     // straight to "in-progress" so the gap renders active-match (the
-    // loading view used to live here pre-s209).
-    else if (_VIEW.gameStarted === "champ-select" && !phase) {
+    // loading view used to live here pre-s209). Gated on `live`: lcu.phase
+    // is a polled/relayed value that blips null on any agent/relay/poll
+    // failure, which happens frequently DURING champ select - without the
+    // gate a single blip flipped the view to the in-game page (active-match)
+    // ~half the time and could stick there. A genuine CS->game flip is still
+    // caught by the ungated GameStart/InProgress arms below, so this loses no
+    // real promotion.
+    else if (_VIEW.gameStarted === "champ-select" && !phase && live) {
       _VIEW.gameStarted = "in-progress";
     }
     // s209: GameStart routes directly to active-match. The loading
