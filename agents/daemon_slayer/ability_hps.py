@@ -324,6 +324,77 @@ def _eval_heal_shield_block(
     return total, unresolved
 
 
+# --- AOE heal per-target multiplicity registry (item 337, forward-marker) --
+#
+# A forward-marker sibling registry capturing the per-cast TARGET MULTIPLICITY
+# of AOE / per-ally heals - the representative count of allied champions a
+# team-heal lands on in a teamfight. ``compute_ability_hps`` models only the
+# single-target heal amount (``heal_per_cast``) and hardwires the ally count to
+# 1 in ``heal_per_sec``; the ``AbilitySpellHps`` schema has NO field for
+# multiplicity, so the TOTAL throughput of an AOE team-heal (Soraka R, Janna R,
+# Milio R, Seraphine W, Fiora R) is structurally inexpressible today - the flat
+# per-cast scalar can only hold the one-ally amount and discards the team-wide
+# total.
+#
+# NOTHING consumes this registry at ship: ``compute_ability_hps`` does not read
+# it, so ``heal_per_cast`` / ``heal_per_sec`` / ``total_heal_per_sec`` and both
+# ``to_dict`` surfaces are byte-identical and ENGINE_VERSION does NOT bump. This
+# mirrors how the item-336 per-spell CC RANGE registry and the item-130
+# per-spell CC DURATIONS registry shipped forward-marker first. A future
+# EHP-vs-sustain /
+# team-heal-throughput consumer reads ``assumed_targets`` and multiplies
+# ``heal_per_cast`` by it.
+#
+# The ``assumed_targets`` VALUE follows the operator-tunable ``assumed_charges``
+# / ``assumed_stacks`` convention (a representative teamfight ally count), NOT a
+# verbatim data field. What IS verbatim from
+# ``data/daemon_slayer/16.11.1/champion_abilities.json`` (ground-truth probed
+# 2026-06-07) is that each seeded spell is an AOE / per-ally heal:
+#   Soraka R Wish "healing herself and all allied champions"            -> 4.0
+#   Milio R Breath of Life "healing ... nearby allied champions"        -> 4.0
+#   Janna R Monsoon "healing herself and nearby allies every 0.25s"     -> 4.0
+#   Seraphine W Surround Sound "... increased for each ally"            -> 3.0
+#   Fiora R Grand Challenge "heals Fiora and all allies within the area" -> 2.0
+#
+# Schema: _AOE_HEAL_TARGETS[champion_id][spell_key] = assumed_targets (float)
+def _build_aoe_heal_targets() -> dict[str, dict[str, float]]:
+    """Build the AOE-heal target-multiplicity registry via setdefault.
+
+    Returns a fresh dict of champion_id -> spell_key -> assumed_targets.
+    Uses ``setdefault(champ, {})[spell] = float`` so future waves can
+    contribute spells to the same champion without clobbering prior entries
+    (the same builder pattern as ``_build_per_spell_cc_durations``).
+    """
+    registry: dict[str, dict[str, float]] = {}
+    # Soraka R Wish: global team heal ("all allied champions").
+    registry.setdefault("Soraka", {})["R"] = 4.0
+    # Milio R Breath of Life: AOE heal ("nearby allied champions").
+    registry.setdefault("Milio", {})["R"] = 4.0
+    # Janna R Monsoon: AOE channel heal ("nearby allies every 0.25 seconds").
+    registry.setdefault("Janna", {})["R"] = 4.0
+    # Seraphine W Surround Sound: per-ally heal ("increased for each ally").
+    registry.setdefault("Seraphine", {})["W"] = 3.0
+    # Fiora R Grand Challenge: small Victory Zone ("all allies within the area").
+    registry.setdefault("Fiora", {})["R"] = 2.0
+    return registry
+
+
+_AOE_HEAL_TARGETS: dict[str, dict[str, float]] = _build_aoe_heal_targets()
+
+
+def _aoe_heal_targets_for(champion_id: str, spell_key: str) -> float | None:
+    """Return the assumed AOE-heal target count for a champ+spell, or None.
+
+    Forward-marker accessor (no production consumer at ship). Returns the
+    representative teamfight ally count an AOE heal lands on, or ``None`` when
+    the champion+spell is not a registered AOE / per-ally heal.
+    """
+    spells = _AOE_HEAL_TARGETS.get(champion_id)
+    if not spells:
+        return None
+    return spells.get(spell_key)
+
+
 # --- Result types ---------------------------------------------------------
 
 
