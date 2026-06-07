@@ -179,9 +179,12 @@ from ._registries import (  # noqa: F401
 )
 from ._per_spell_cc import (  # noqa: F401
     _PER_SPELL_CC_DURATIONS,
+    _PER_SPELL_CC_RANGE,
     _apply_tenacity_to_cc_tuple,
     _build_per_spell_cc_durations,
+    _build_per_spell_cc_range,
     _per_spell_cc_for,
+    _per_spell_cc_range_for,
 )
 from ._rank_mage import (  # noqa: F401
     AbilityDpsRankResult,

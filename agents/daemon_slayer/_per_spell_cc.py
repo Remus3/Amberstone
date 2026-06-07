@@ -811,3 +811,84 @@ def _apply_tenacity_to_cc_tuple(
     return tuple(
         effective_cc_duration(float(s), float(tenacity_mult)) for s in base_cc
     )
+
+
+# ENGINE schema lift item 336 (2026-06-07): per-spell CC RANGE registry.
+#
+# A NEW sibling registry capturing distance- / travel-scaled CC durations
+# as a ``(min_s, max_s)`` interval - a shape the flat per-rank
+# ``_PER_SPELL_CC_DURATIONS`` tuple structurally CANNOT express. Several
+# single-cast CC spells scale their duration continuously with projectile
+# travel distance (NOT by spell rank); the flat registry can only pin one
+# representative value per rank and discards the ceiling. This registry is
+# the structural home for that (min, max) interval.
+#
+# FORWARD-MARKER / BYTE-IDENTICAL: nothing consumes _PER_SPELL_CC_RANGE at
+# ship - it mirrors how _PER_SPELL_CC_DURATIONS itself shipped EMPTY at
+# ENGINE 1.29.0 (item 130; item 112 STAT_GRANT_CALC_KEYS precedent).
+# compute_cc_pressure / compute_ehp / cooldown_watch / cc_output read ONLY
+# _PER_SPELL_CC_DURATIONS and never this sibling, so live DS output is
+# byte-identical and ENGINE_VERSION does NOT bump. A future EHP-vs-CC /
+# fight-sim consumer can read the worst-case (max-distance) ceiling without
+# corrupting the rank semantics every flat-tuple test pins.
+#
+# Schema:
+#   _PER_SPELL_CC_RANGE[champion_id][spell_key] = (min_s, max_s)
+# where min_s is the instant- / short-throw CC duration and max_s the
+# full-distance ceiling. All values from official Riot tooltips
+# (effects_descriptions) at patch 16.10.1, verbatim
+# "min : max (based on distance traveled)" literals.
+#
+# SCOPE: this slice seeds ONLY the 4 clean "distance traveled" cases. The
+# channel-time variants (Sion Q 1.25:2.25, Galio W, KSante W, Viego W,
+# etc.) share the interval SHAPE but a different scaling input (charge
+# time, not projectile distance) and are a later row-expansion, not part
+# of this lift.
+def _build_per_spell_cc_range() -> dict[str, dict[str, tuple[float, float]]]:
+    """Build the per-spell distance-scaled CC range registry.
+
+    Returns a fresh dict of champion_id -> spell_key -> (min_s, max_s).
+
+    Uses the same ``setdefault(champ, {})[spell] = (min, max)`` builder
+    shape as ``_build_per_spell_cc_durations`` so future waves can add
+    spells to an already-seeded champion without dict-literal clobber.
+    """
+    registry: dict[str, dict[str, tuple[float, float]]] = {}
+    # ----- item 336 seed (2026-06-07): 4 distance-scaled CC intervals -----
+    # Xerath E (Shocking Orb): "stuns them for 0.75 : 2.25 (based on orb
+    # travel distance) seconds". The flat registry pins per-rank
+    # (1.0..2.0) which cannot represent the distance ceiling.
+    registry.setdefault("Xerath", {})["E"] = (0.75, 2.25)
+    # Maokai R (Nature's Grasp): "roots them for 0.75 : 2.25 (based on
+    # distance traveled) seconds". Flat registry R=(1.2, 1.6, 2.0).
+    registry.setdefault("Maokai", {})["R"] = (0.75, 2.25)
+    # Ashe R (Enchanted Crystal Arrow): "stunning them for 1 : 3.5 (based
+    # on distance traveled) seconds". Flat registry R=(1.5, 1.5, 1.5).
+    registry.setdefault("Ashe", {})["R"] = (1.0, 3.5)
+    # Hecarim R (Onslaught of Shadows): "fears nearby enemies for 0.75 :
+    # 1.5 (based on distance traveled) seconds". Flat registry
+    # R=(1.0, 1.0, 1.0).
+    registry.setdefault("Hecarim", {})["R"] = (0.75, 1.5)
+    return registry
+
+
+_PER_SPELL_CC_RANGE: dict[str, dict[str, tuple[float, float]]] = (
+    _build_per_spell_cc_range()
+)
+
+
+def _per_spell_cc_range_for(
+    champion_id: str, spell_key: str,
+) -> tuple[float, float] | None:
+    """Read a champion+spell distance-scaled CC ``(min_s, max_s)`` range.
+
+    Returns ``None`` when the champion is absent, the spell is absent, or
+    the registry carries no range entry for that slot. ``None`` (not an
+    empty tuple) is the explicit "no distance-scaled range" sentinel so a
+    consumer can distinguish "unknown" from a real interval. Forward-
+    marker: nothing consumes this at ship, so a future fight-sim reads the
+    ceiling via this accessor without re-resolving the champion.
+    """
+    champ_entry = _PER_SPELL_CC_RANGE.get(champion_id, {})
+    rng = champ_entry.get(spell_key)
+    return rng if rng is not None else None
