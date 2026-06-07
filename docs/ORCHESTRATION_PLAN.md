@@ -25,7 +25,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | A2 | DS-surface | DS Profile axes batch 2: added threat-range, zone-control, objective-damage, extended-duel to the A1 /api/ds-profile surface (4 -> 8 axes) + dsp-flag markers. matchup split to A2b (pairwise, not a single-champ axis). 5-phase audit ship-ready. | DONE | 3f23e18c |
 | A2b | DS-surface | DS Profile matchup readout: surface agents/daemon_slayer/matchup.compute_matchup (already wired at /v2/matchup) as a pairwise lane-matchup card keyed on a selected enemy + levels + items - a DISTINCT surface from the single-champ radar, NOT a 0-100 profile axis. | DONE | 0a017dc4 |
 | A3 | DS-coach | Wire the 2 highest-value axes into coach context: anti-tank build hint (vs high-HP enemies) + scaling power-curve, into modes/* prompts. Shadow-log first, then surface. | DONE | 52f76059 |
-| B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | OPEN | - |
+| B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | DONE | 48411bfc |
 | C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | OPEN | - |
 | C2 | ui-audit | Active Match SR + ARAM + Arena: 5-phase audit + visual validation. | OPEN | - |
 | C3 | ui-audit | Post Game Review SR + ARAM + Arena: 5-phase audit + visual validation. | OPEN | - |
@@ -46,6 +46,32 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 B1 DONE (item 329; commits b8e7647a slice / 21f6aaf9 merge /
+  48411bfc fix). STALE-PREMISE: the B1 row's "zero live-coach consumer" was
+  wrong - all 3 generators were ALREADY wired live into /api/state by commit
+  679c8928 (Haiku-elim W3A): dashboard/_deterministic_coaching.py
+  (compute_deterministic + resolve_choices, TTL-cached, fail-soft) +
+  _state_builder.py:312-347 ship coach.choices / state.callouts /
+  state.lead_projection, and the panels (callouts.js #rn-lead + #rn-callouts,
+  coach_choices.js #rn-choices) already render them. Verified live: /api/state
+  carried callouts + lead_projection + 3 choices; 153 generator/wire/panel
+  tests green. The one UNSHIPPED B1 clause was "shadow-log validation first":
+  resolve_choices BLIND-FLIPS native -> deterministic choices live (sec-4b
+  do-not-flip-blind) and the DISCARDED native choices were unrecorded, so the
+  flip could not be validated. Shipped NEW core/det_coach_shadow.py (fail-soft
+  jsonl, per-path dedup, mirrors A3 core/ds_coach_shadow) +
+  dashboard._deterministic_coaching.shadow_log_det that records det
+  choices/callouts/lead AND the discarded native choices side-by-side to
+  data/det_coach_shadow.jsonl (gitignored), zero live-output change. 1 worktree
+  slice (verifier CONFIRM 41/0) + 1 LIVE-CAUGHT fix: the first cut logged native
+  AFTER resolve_choices overwrote coach["choices"] (native == det garbage, found
+  via the live jsonl - NOT the worktree gate); reordered shadow_log_det before
+  the overwrite + added a native!=det regression test. Full RC suite 5235 passed
+  / 1 skip / 0 fail (+8). No web/ delta (panels pre-wired) -> no UI-audit. No
+  engine touch -> ENGINE 1.120.0, no DS restart, no Share sync; RC restarted
+  (route reload) pid 27300. NEXT: the jsonl now accrues det-vs-native validation
+  data - a future cycle can analyze it to confirm/tune the live flip before
+  declaring the laning-Haiku surface validated.
 - 2026-06-06 A3 DONE (item 328, commit 52f76059): DS-coach SHADOW-LOG substrate
   shipped (NOT yet surfaced). 3 disjoint verifier-CONFIRMED worktree slices
   (verifier 13/0 + 17/0 + 6/0) + 1 base-coach integration: NEW pure generators
