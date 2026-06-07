@@ -250,6 +250,34 @@ class DataSnapshot:
             return None
         return float(ms)
 
+    def spell_sub_missile_speed(self, champ_id: str, slot: str) -> float | None:
+        """Per-spell SECONDARY / sibling missile speed (units/s) from the CDragon sidecar (item 339).
+
+        Returns the ``missile_sub_record`` float - the speed of a spell's SECOND
+        missile phase (a return boomerang, a recast bolt, a split / follow-up
+        projectile) - for the champ + slot, or None when the sidecar is absent /
+        the spell carries no sibling missile. This is a DISTINCT axis from the
+        item-233 ``spell_missile_speed`` (the resolved PRIMARY): the extractor
+        surfaces ``missile_sub_record`` as the best sibling ``<Ability>/...Missile``
+        record speed, but the resolver only ever consumed it as a
+        placeholder-fallback to FILL the primary, so the sibling's own speed was
+        structurally discarded. At patch 16.11.1, 91 spells carry a numeric value
+        and 52 of those differ from their primary (e.g. Caitlyn R primary 1500 vs
+        return 3200, Jinx W 1200 vs 3300). FORWARD-MARKER: no consumer reads it at
+        ship, so live DS output is byte-identical (ENGINE_VERSION does NOT bump).
+        Same bool / non-numeric guard as ``spell_missile_speed`` (a numeric string
+        is NOT coerced - returns None - matching the primary accessor).
+        """
+        ms = (
+            self.cdragon_spell_stats.get(str(champ_id), {})
+            .get("spells", {})
+            .get(str(slot), {})
+            .get("missile_sub_record")
+        )
+        if isinstance(ms, bool) or not isinstance(ms, (int, float)):
+            return None
+        return float(ms)
+
     def ability_static_cd(self, champ_id: str, ability_name: str) -> str | None:
         """Per-ability static (haste-immune) cooldown from the optional wiki sidecar (item 233).
 
