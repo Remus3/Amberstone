@@ -29,7 +29,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | DONE | b4bfa05a |
 | C2 | ui-audit | Active Match SR + ARAM + Arena: 5-phase audit + visual validation. | DONE | e81495e0 |
 | C3 | ui-audit | Post Game Review SR + ARAM + Arena: 5-phase audit + visual validation. | DONE | aa0a5a7e |
-| D1 | lift | DS relative-score bar (Aggregator P lift, BACKLOG.md:21): per-row score_pct fill (delta_dps/top_delta*100). Codeable with fixtures; render-gated on locked champ. | OPEN | - |
+| D1 | lift | DS relative-score bar (Aggregator P lift, BACKLOG.md:21): per-row score_pct fill (delta_dps/top_delta*100). Codeable with fixtures; render-gated on locked champ. | DONE | ab176543 |
 | D2 | lift | draft tool L (the community fork) Elo log-odds draft aggregator (BACKLOG.md:78): clean algorithm reimplement (NO vendor) over pairwise WR from rewind_history.db. | OPEN | - |
 | E1 | research | Per-role grading rubric calibration (BACKLOG.md:100): tune core/post_game_rubric.py weight vectors from public per-role reference data. | OPEN | - |
 | E2 | research | LCU data.json diff vs the reference catalog (BACKLOG.md:19) for richer endpoints. Log findings only; no live capture. | OPEN | - |
@@ -46,6 +46,28 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 D1 DONE (item 333, commit ab176543): DS relative-score bar.
+  STALE-PREMISE (verify-premise, cycle-3/4 precedent): the feature was ALREADY
+  SHIPPED as item 220 (2026-05-30) - dashboard/routes_ds_relscore.py (GET
+  /api/ds-relscore, score_pct = round(delta_dps/top_delta*100,1), row0=100.0,
+  READ-ONLY auto-resolved target, render-gated) + web/js/panels/ds_relscore.js
+  (#csv-ds-relscore champ-select bar) + a backend route test
+  (test_routes_ds_relscore.py) + a panel-smoke test
+  (test_ds_relscore_panel_dom.py), wired in _dispatch.py + index.html +
+  champ_select.js, LIVE-verified this cycle (Caitlyn SR: 12 rows, Runaan's
+  100.0 -> 62.1). Re-implementing would duplicate item 220, so NO source change.
+  The one open clause = item 220's "LIVE VISUAL CAPTURE owed" (Game-PC :8892
+  down; Claude_Preview cannot attach the self-signed :8888). DISCHARGED
+  CI-durably (the C1/C2/C3 pattern): NEW tests/snapshot_panels/
+  test_ds_relscore_view.py renders the real renderDsRelscore bar into the live
+  #csv-ds-relscore mount (the champ_select fixtures do not lock my_champion, so
+  it drives the panel directly with a synthetic locked champ + a stubbed
+  /api/ds-relscore payload), asserts the .dsr-bar-fill widths track score_pct
+  (row0=100%, non-increasing) + the pct labels, and screenshots the panel.
+  Test-only. 2 new tests, ruff + ASCII clean, verifier CONFIRM + full suite
+  5255/0. Full RC suite 5255 passed / 1 skip / 0 fail / 85 subtests (+2). No
+  source change -> no asset-hash reload, no RC restart; ENGINE 1.120.0, no DS
+  bounce. NEXT OPEN = D2 (draft tool L (the community fork) Elo log-odds draft aggregator).
 - 2026-06-06 C3 DONE (item 332, commit aa0a5a7e + docs sync): Post Game Review
   (last-match) SR + ARAM + Arena 5-phase fixture audit + reproducible visual
   validation. AUDIT: 3 parallel read-only mode-lens subagents (SR #14 / ARAM #15
