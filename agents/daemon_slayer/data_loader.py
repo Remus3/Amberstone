@@ -225,6 +225,36 @@ class DataSnapshot:
             return None
         return ms
 
+    def wiki_attack_total_time(self, champ_id: str) -> float | None:
+        """Per-champ TOTAL auto-attack cycle time (s) from the wiki sidecar (item 345).
+
+        Returns the FULL basic-attack cycle duration - windup PLUS recovery, i.e.
+        ``1 / attackSpeed`` at base - for the champ, or None when the sidecar is
+        absent / the champ has no entry / the value is non-positive. This is a
+        DISTINCT axis from ``wiki_attack_cast_time`` (item 221), which is the
+        WINDUP-only portion (the point in the cycle the projectile / damage
+        commits): the total time governs how OFTEN the auto fires, the cast time
+        governs how long each one locks the champ. The two diverge for every
+        champ that carries the datum (Jhin total 1.6 vs cast 0.25). It was loaded
+        into ``wiki_stats`` alongside ``attack_cast_time`` / ``missile_speed`` /
+        ``mode_modifiers`` but no accessor ever surfaced it (only 61 of the 171
+        champs carry it - a coverage subset, not a melee/ranged split).
+
+        Guard mirrors ``aa_missile_speed`` (item 344): reject bool / non-numeric
+        (a numeric STRING is NOT coerced -> None) and a ``<= 0`` reject so a
+        non-positive sentinel returns None rather than a nonsensical zero-length
+        attack cycle (defensive - the live 16.11.1 data carries no non-positive
+        value). FORWARD-MARKER: no consumer reads it at ship, so live DS output is
+        byte-identical (ENGINE_VERSION does NOT bump).
+        """
+        t = self.wiki_stats.get(str(champ_id), {}).get("attack_total_time")
+        if isinstance(t, bool) or not isinstance(t, (int, float)):
+            return None
+        t = float(t)
+        if t <= 0:
+            return None
+        return t
+
     def spell_ammo(self, champ_id: str, slot: str) -> dict | None:
         """Per-spell ammo (charge) model from the optional CDragon sidecar.
 
