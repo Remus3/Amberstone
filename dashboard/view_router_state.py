@@ -63,12 +63,25 @@ class DeriveResult:
 def update_game_started(
     phase: Optional[str],
     prior: Optional[str],
+    *,
+    live: bool = True,
 ) -> Optional[str]:
     """Advance the sticky `gameStarted` flag per the JS transition table.
 
     s209: GameStart now maps to "in-progress" (was "game-start" pre-s209
     when the loading view existed). CS→null inference also advances to
     "in-progress" rather than the dropped "game-start" tier.
+
+    ``live`` gates ONLY the CS→null inference (see below). ``lcu.phase`` is a
+    polled, relay-forwarded value that reads null/empty on any agent request
+    fail, stale relay push, or empty frontend poll. During champ select those
+    blips are frequent; pre-gate, a single one promoted the sticky to
+    in-progress and flipped the view to the in-game page (active-match) and
+    could stick there until a stable post-game phase. Defaults True so direct
+    callers / the s209 inference are unchanged; the runtime passes the real
+    value. The genuine CS→game flip is still caught by the ungated
+    GameStart/InProgress phase arms, so gating the null-only inference on
+    ``live`` loses no real promotion.
     """
     if phase == "ChampSelect":
         return "champ-select"
@@ -88,8 +101,10 @@ def update_game_started(
 
     # s209 sticky-guard inference: ChampSelect ended but phase not stable -
     # must be the gap between CS ending and InProgress firing. Advance to
-    # "in-progress" so the gap renders active-match.
-    if prior == "champ-select" and not phase:
+    # "in-progress" so the gap renders active-match. Gated on ``live`` so a
+    # transient null-phase blip DURING champ select (no game running) does
+    # not misfire into the in-game view.
+    if prior == "champ-select" and not phase and live:
         return "in-progress"
 
     return prior
@@ -119,7 +134,7 @@ def derive_view(
     those are NOT gated on ``live`` (the game may be loading before
     LiveClient :2999 answers).
     """
-    game_started = update_game_started(phase, prior_game_started)
+    game_started = update_game_started(phase, prior_game_started, live=live)
 
     # s209: GameStart routes to active-match (was "loading" pre-s209).
     if phase == "GameStart" and active_match_enabled:
