@@ -1,0 +1,25 @@
+{
+  "repo_root": "C:\\Riot Commander",
+  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
+  "ceiling_usd": 15.0,
+  "_ceiling_note": "ceiling_usd caps GEMINI spend only (director+auditor calls). Claude/executor spend is UNCAPPED per operator. Gemini ~ cents/cycle so this is effectively a high rail; lower it to bound run length by gemini cost.",
+  "max_cycles": 24,
+  "cycle_deadline_sec": 5400,
+  "poll_sec": 5,
+  "dry_run": false,
+  "ignore_no_progress": false,
+  "clear_each_cycle": true,
+  "session_jsonl": "",
+  "directive_suffix": "Use the orchestrator multi-agent fan-out pattern (parallel worktree subagents for disjoint slices, you are the sole merger, verifier-gate each slice before merge). Update docs/ORCHESTRATION_PLAN.md (session status + sha + findings). Commit with a descriptive message AND push to origin/main, then run the /done ritual (docs/LEDGER.md append, ROADMAP + ORCHESTRATION_PLAN sync).",
+  "claude_window_title": "Claude",
+  "gemini_model": "gemini-3-pro-preview",
+  "gemini_cmd": "gemini",
+  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
+  "gemini_price_per_mtok": {"input": 2.0, "output": 12.0},
+  "price_per_mtok": {
+    "opus":   {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5},
+    "sonnet": {"input": 3.0,  "output": 15.0, "cache_write": 3.75,  "cache_read": 0.3},
+    "haiku":  {"input": 1.0,  "output": 5.0,  "cache_write": 1.25,  "cache_read": 0.1},
+    "default":{"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5}
+  }
+}

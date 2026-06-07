@@ -1,0 +1,269 @@
+#!/usr/bin/env python
+"""gemini-headless-upgrade loop controller (the BRAIN).
+
+Headless. Never touches the GUI. Drives the cycle:
+  gemini-director -> directive.md + gemini.ready -> (AHK types) -> claude.done
+  -> meter budget -> gemini-auditor -> clean:advance | regress:FIX-first -> repeat
+
+IPC = files in control_dir, atomic (tmp + os.replace), plain-text where AHK reads.
+Both gemini and claude are stateless per cycle; continuity lives on disk
+(git history + docs/LEDGER.md + the directive chain). See the Desktop BUILD LOG.
+"""
+import json, os, subprocess, sys, time
+from pathlib import Path
+
+CFG = json.loads(Path(sys.argv[1] if len(sys.argv) > 1 else
+                       r"C:\Riot Commander\ops\loop\config.json").read_text(encoding="utf-8"))
+ROOT = Path(CFG["repo_root"])
+CTL = Path(CFG["control_dir"]); CTL.mkdir(parents=True, exist_ok=True)
+DRY = bool(CFG["dry_run"])
+GEMINI_USD = 0.0  # cumulative estimated Gemini spend - THIS is the capped budget (not Claude)
+
+def log(m):
+    line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {m}"
+    print(line, flush=True)
+    with open(CTL / "controller.log", "a", encoding="utf-8") as f:
+        f.write(line + "\n")
+
+def awrite(path, text):
+    tmp = Path(str(path) + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+def rjson(path, default=None):
+    p = Path(path)
+    if not p.exists():
+        return default
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return default
+
+def stop(reason):
+    awrite(CTL / "STOP", reason)
+    log(f"STOP written: {reason}")
+    sys.exit(0)
+
+# ---- git helpers -------------------------------------------------------
+def git(*args):
+    return subprocess.run(["git", "-C", str(ROOT), *args],
+                          capture_output=True, text=True).stdout.strip()
+
+def head():
+    return git("rev-parse", "HEAD")
+
+def tail(rel, n):
+    p = ROOT / rel
+    if not p.exists():
+        return ""
+    return "\n".join(p.read_text(encoding="utf-8", errors="replace").splitlines()[-n:])
+
+# ---- gemini (read-only, STDIN pipe; mirrors tools/gemini_audit.ps1) ----
+def gemini(prompt_body, instruction):
+    global GEMINI_USD
+    infile = CTL / "_gemini_in.txt"
+    awrite(infile, prompt_body)
+    model = CFG["gemini_model"]
+    inst = instruction.replace("'", "''")
+    ps = ("$ErrorActionPreference='Continue';"
+          "$env:GEMINI_API_KEY=[Environment]::GetEnvironmentVariable('GEMINI_API_KEY','User');"
+          f"Get-Content -Raw '{infile}' | "
+          f"{CFG['gemini_cmd']} -p '{inst}' -m '{model}' --approval-mode plan --skip-trust 2>$null | Out-String")
+    out = ""
+    for tryn in range(1, 4):
+        try:
+            r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+                               capture_output=True, text=True, timeout=300)
+            out = (r.stdout or "").strip()
+        except Exception as e:
+            out = ""
+            log(f"gemini try {tryn} error: {e}")
+        if out:
+            break
+        time.sleep(8 * tryn)
+    gp = CFG.get("gemini_price_per_mtok", {"input": 2.0, "output": 12.0})
+    GEMINI_USD += (len(prompt_body) / 4 * gp["input"] + len(out) / 4 * gp["output"]) / 1_000_000
+    return out
+
+# ---- gemini roles ------------------------------------------------------
+def director(last_done, last_audit):
+    tmpl = (ROOT / "ops/loop/director_prompt.md").read_text(encoding="utf-8")
+    plan = ROOT / "docs/ORCHESTRATION_PLAN.md"
+    plan_txt = plan.read_text(encoding="utf-8", errors="replace") if plan.exists() else "(no plan file)"
+    ctx = (f"\n\n=== ORCHESTRATION PLAN (PRIMARY work source; pick next OPEN session, skip EXCLUDED) ===\n{plan_txt}"
+           f"\n\n=== RECENT COMMITS ===\n{git('log','--oneline','-n','25')}"
+           f"\n\n=== docs/LEDGER.md (tail) ===\n{tail('docs/LEDGER.md', 90)}"
+           f"\n\n=== ROADMAP.md (tail) ===\n{tail('ROADMAP.md', 120)}"
+           f"\n\n=== LAST claude.done ===\n{json.dumps(last_done)}"
+           f"\n\n=== LAST AUDIT (if REGRESS, the directive MUST fix it first) ===\n{last_audit or '(none)'}")
+    ask = CTL / "gemini_ask.txt"
+    if ask.exists():
+        try:
+            q = ask.read_text(encoding="utf-8", errors="replace").strip()
+        except Exception:
+            q = ""
+        if q:
+            ctx += ("\n\n=== EXECUTOR ESCALATION (resolve FIRST; the directive MUST encode this "
+                    "decision + instruct the scaffolding + any ROADMAP/BACKLOG reshape) ===\n" + q)
+        ask.unlink(missing_ok=True)
+    ctx += "\n\n" + CFG.get("directive_suffix", "")
+    return gemini(tmpl + ctx, "Output ONLY the directive markdown for the next cycle. No preamble.")
+
+def auditor(prev_sha, new_sha):
+    if not new_sha or prev_sha == new_sha:
+        return "VERDICT: CLEAN\n(no new commit this cycle)"
+    rng = f"{prev_sha}..{new_sha}"
+    diff = git("diff", rng)
+    if len(diff) > 55000:
+        diff = diff[:55000] + "\n...[truncated]"
+    tmpl = (ROOT / "ops/loop/auditor_prompt.md").read_text(encoding="utf-8")
+    body = f"{tmpl}\n\n=== RANGE {rng} ===\n{git('log','--oneline',rng)}\n\n=== DIFF ===\n{diff}"
+    return gemini(body, "Audit. First line MUST be 'VERDICT: CLEAN' or 'VERDICT: REGRESS', then the reason.")
+
+# ---- budget meter: sum active-session JSONL usage since start_ts -------
+def _price(model, usage):
+    t = CFG["price_per_mtok"]
+    key = next((k for k in ("opus", "sonnet", "haiku") if k in (model or "").lower()), "default")
+    p = t[key]
+    return (usage.get("input_tokens", 0) * p["input"]
+            + usage.get("output_tokens", 0) * p["output"]
+            + usage.get("cache_creation_input_tokens", 0) * p["cache_write"]
+            + usage.get("cache_read_input_tokens", 0) * p["cache_read"]) / 1_000_000
+
+def _iso(ts):
+    try:
+        return time.mktime(time.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S"))
+    except Exception:
+        return 0.0
+
+def session_files():
+    d = Path(CFG["transcript_dir"])
+    pin = CFG.get("session_jsonl")
+    if pin:
+        p = Path(pin)
+        return [p, *list((d / p.stem / "subagents").glob("*.jsonl"))]
+    tops = sorted(d.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not tops:
+        return []
+    active = tops[0]
+    return [active, *list((d / active.stem / "subagents").glob("*.jsonl"))]
+
+def meter(start_ts):
+    spent = 0.0
+    for f in session_files():
+        try:
+            for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+                try:
+                    o = json.loads(line)
+                except Exception:
+                    continue
+                msg = o.get("message", {})
+                usage = msg.get("usage")
+                if not usage:
+                    continue
+                ts = _iso(o.get("timestamp", ""))
+                if ts and ts < start_ts:
+                    continue
+                spent += _price(msg.get("model", ""), usage)
+        except Exception:
+            continue
+    return round(spent, 4)
+
+# ---- main loop ---------------------------------------------------------
+def wait_for(path, deadline_ts):
+    while time.time() < deadline_ts:
+        if (CTL / "STOP").exists():
+            log("external STOP seen"); sys.exit(0)
+        if Path(path).exists():
+            return True
+        time.sleep(CFG["poll_sec"])
+    return False
+
+def wait_gone(path, deadline_ts):
+    while time.time() < deadline_ts:
+        if (CTL / "STOP").exists():
+            log("external STOP seen"); sys.exit(0)
+        if not Path(path).exists():
+            return True
+        time.sleep(CFG["poll_sec"])
+    return False
+
+def main():
+    for f in ("STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt"):
+        (CTL / f).unlink(missing_ok=True)
+    start_ts = time.time()
+    # persistent-session model: pin the session active at launch (the executor being
+    # driven via /clear) so the meter bills it for the whole run, not whatever is newest.
+    if not CFG.get("session_jsonl"):
+        d = Path(CFG["transcript_dir"])
+        tops = sorted(d.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if tops:
+            CFG["session_jsonl"] = str(tops[0])
+            log(f"pinned executor session jsonl: {tops[0].name}")
+    prev_sha = head()
+    last_done, last_audit = {}, ""
+    same_sha_streak = 0
+    log(f"loop start dry_run={DRY} ceiling={CFG['ceiling_usd']} head={prev_sha[:8]}")
+
+    FIXED = CFG.get("fixed_directive")  # fixed-message mode: skip gemini director+auditor entirely
+    for cycle in range(1, CFG["max_cycles"] + 1):
+        if FIXED:
+            body = FIXED
+        else:
+            body = director(last_done, last_audit)
+            if not body or body[:40].upper().find("NO_WORK") >= 0:
+                stop("director returned no work (NO_WORK / empty)")
+        awrite(CTL / "directive.md", body)
+        awrite(CTL / "cycle.txt", str(cycle))
+        clear_line = "/clear\n" if CFG.get("clear_each_cycle", True) else ""
+        if FIXED:
+            # type the literal task line (single line, no embedded newlines) after /clear
+            awrite(CTL / "gemini.ready", f"CYCLE={cycle}\n{clear_line}{body}")
+        else:
+            awrite(CTL / "gemini.ready",
+                   f"CYCLE={cycle}\n{clear_line}"
+                   "/gemini-headless-upgrade and Read the file ops/loop/control/directive.md and fully execute it now. "
+                   "No questions; auto-pick the recommended option and proceed.")
+        log(f"cycle {cycle}: directive written ({len(body)} chars), gemini.ready set")
+
+        # AHK/stub deletes gemini.ready after typing; its disappearance IS the typed signal
+        if not wait_gone(CTL / "gemini.ready", time.time() + 120):
+            stop(f"cycle {cycle}: AHK never typed (gemini.ready not consumed in 120s)")
+        deadline = time.time() + CFG["cycle_deadline_sec"]
+        log(f"cycle {cycle}: typed (ready consumed); deadline in {CFG['cycle_deadline_sec']}s")
+
+        if not wait_for(CTL / "claude.done", deadline):
+            stop(f"cycle {cycle}: claude.done not seen before deadline (hang)")
+        done = rjson(CTL / "claude.done", {})
+        (CTL / "claude.done").unlink(missing_ok=True)
+        last_done = done
+        new_sha = done.get("sha") or head()
+        log(f"cycle {cycle}: claude.done sha={new_sha[:8]} tests={done.get('tests_pass')} regress={done.get('regressions')}")
+
+        claude_info = meter(start_ts)  # informational only - NO cap on Claude (operator directive)
+        awrite(CTL / "budget.json", json.dumps(
+            {"gemini_usd": round(GEMINI_USD, 4), "gemini_ceiling": CFG["ceiling_usd"],
+             "claude_usd_info": claude_info, "cycle": cycle}))
+        log(f"cycle {cycle}: gemini=${round(GEMINI_USD, 4)}/{CFG['ceiling_usd']} "
+            f"claude_info(uncapped)=${claude_info}")
+        if GEMINI_USD >= CFG["ceiling_usd"]:
+            stop(f"gemini budget ceiling hit: ${round(GEMINI_USD, 4)} >= ${CFG['ceiling_usd']}")
+
+        if not CFG.get("ignore_no_progress"):
+            same_sha_streak = same_sha_streak + 1 if new_sha == prev_sha else 0
+            if same_sha_streak >= 2:
+                stop("no progress: same sha 2 cycles")
+
+        verdict = "VERDICT: CLEAN\n(fixed-directive mode: gemini auditor disabled)" if FIXED else auditor(prev_sha, new_sha)
+        if done.get("regressions"):
+            verdict = ("VERDICT: REGRESS\nClaude self-reported it could NOT reach green this "
+                       "cycle (regressions flag). Fix this before any new work.\n\n" + verdict)
+        last_audit = verdict
+        regress = verdict.strip().upper().startswith("VERDICT: REGRESS")
+        log(f"cycle {cycle}: audit -> {'REGRESS' if regress else 'CLEAN'}")
+        prev_sha = new_sha
+
+    stop(f"max_cycles {CFG['max_cycles']} reached")
+
+if __name__ == "__main__":
+    main()

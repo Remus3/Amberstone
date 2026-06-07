@@ -1,0 +1,24 @@
+{
+  "repo_root": "C:\\Riot Commander",
+  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
+  "fixed_directive": "Start the next DS (Daemon Slayer) schema lift. Fan out 10 parallel sub-agents across DIFFERENT effect channels (per-spell CC, cc_conditional, passive_damage, passive_heal, bilinear, per-stack, antitank, survivability resist/shield/DR, cross-spell amp, mode/missile) - each agent scouts one channel for the next schema-lift opportunity. You are the SOLE merger: verifier-gate each slice before merge, write the failing characterization test FIRST (TDD), ship byte-identical / default-OFF (NO blind live-flips, no Phase-D default flips), bump ENGINE_VERSION only if live output changes, full suite green before commit. If no clean headless-safe DS schema lift remains, make NO commit (the no-progress guard stops the loop). Then /done: commit + push origin/main + append docs/LEDGER.md + sync ROADMAP. FINAL STEP (required): py ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>",
+  "ceiling_usd": 999.0,
+  "max_cycles": 10,
+  "cycle_deadline_sec": 5400,
+  "poll_sec": 5,
+  "dry_run": false,
+  "ignore_no_progress": false,
+  "clear_each_cycle": true,
+  "session_jsonl": "",
+  "claude_window_title": "Claude",
+  "gemini_model": "gemini-3-pro-preview",
+  "gemini_cmd": "gemini",
+  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
+  "gemini_price_per_mtok": {"input": 2.0, "output": 12.0},
+  "price_per_mtok": {
+    "opus":   {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5},
+    "sonnet": {"input": 3.0,  "output": 15.0, "cache_write": 3.75,  "cache_read": 0.3},
+    "haiku":  {"input": 1.0,  "output": 5.0,  "cache_write": 1.25,  "cache_read": 0.1},
+    "default":{"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5}
+  }
+}

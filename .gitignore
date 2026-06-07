@@ -215,3 +215,21 @@ data/external/qq_double_*.json
 # not source. The runner + prompt + config ARE committed; the nightly output is not.
 docs/EXTERNAL_REVIEW_*.md
 gemini_io/
+
+# Gemini headless-upgrade loop (ops/loop). Same convention as the auditor:
+# the controller + prompts + configs + AHK bridge ARE committed; the per-run
+# runtime scratch (control/ state dir, *.log) is local-only.
+ops/loop/control/
+ops/loop/*.log
+
+# Transient verify/test scratch dropped at repo root by DS item runs
+# (_verify*.txt, _b1_*.txt, _*_run.txt) + ad-hoc stdout/stderr captures.
+/_*.txt
+/.clone_verify_scaling.txt
+/*_out.log
+/*_err.log
+
+# Agent-6 auditor auto-generated detail reports (nightly/loop output, same
+# not-source category as the gemini reviews above). Curated, descriptively
+# named audits (first-audit, second-audit-full-rc, ...) stay tracked.
+agents/agent6_auditor/reports/*-test-round22-detail.md
