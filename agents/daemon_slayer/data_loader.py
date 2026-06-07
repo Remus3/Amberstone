@@ -195,6 +195,36 @@ class DataSnapshot:
         """
         return self.wiki_stats.get(str(champ_id), {}).get("attack_cast_time")
 
+    def aa_missile_speed(self, champ_id: str) -> float | None:
+        """Per-champ AUTO-ATTACK missile speed (units/s) from the wiki sidecar (item 344).
+
+        Returns the basic-attack projectile travel speed for the champ, or None
+        when the sidecar is absent / the champ has no entry / the value is a
+        non-projectile sentinel. This is a DISTINCT axis from the per-spell
+        cdragon ``spell_missile_speed`` (item 233, slot-keyed off
+        ``cdragon_spell_stats``): the AA missile speed is CHAMP-keyed off
+        ``wiki_stats`` and governs ranged auto-attack hit-delay / kiting windows.
+        It was loaded into ``wiki_stats`` alongside ``attack_cast_time`` /
+        ``mode_modifiers`` but no accessor ever surfaced it.
+
+        The values are a MIX: a real projectile is ~400-4999 (Caitlyn 2500,
+        Jinx 2750), >=5000 is effectively instant / global (Kayle 5000), 0.0 is
+        the no-projectile / non-standard-AA sentinel (Azir / Senna / Thresh /
+        Velkoz / Zeri), and melee champs carry null. Guard delta from
+        ``spell_missile_speed``: same bool / non-numeric reject (a numeric string
+        is NOT coerced), PLUS a ``<= 0`` guard so the 0.0 sentinel returns None
+        rather than a nonsensical zero-speed projectile (mirrors the item-340
+        cone-angle magnitude guard). FORWARD-MARKER: no consumer reads it at
+        ship, so live DS output is byte-identical (ENGINE_VERSION does NOT bump).
+        """
+        ms = self.wiki_stats.get(str(champ_id), {}).get("missile_speed")
+        if isinstance(ms, bool) or not isinstance(ms, (int, float)):
+            return None
+        ms = float(ms)
+        if ms <= 0:
+            return None
+        return ms
+
     def spell_ammo(self, champ_id: str, slot: str) -> dict | None:
         """Per-spell ammo (charge) model from the optional CDragon sidecar.
 
