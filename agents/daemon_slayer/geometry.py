@@ -296,3 +296,60 @@ def spell_cone_distance(
         return distance
     except (TypeError, ValueError, AttributeError):
         return None
+
+
+def spell_cast_radius(
+    snapshot: object,
+    champ_id: str,
+    slot: str,
+) -> float | None:
+    """RADIUS (units) of a circular / point-blank AoE spell, or None.
+
+    Forward-marker accessor (item 342): exposes the CDragon ``cast_radius``
+    geometry datum as a first-class comparable MAGNITUDE - the LAST unlifted
+    geometry magnitude in the sidecar (``line_width`` shipped item 338,
+    ``cone_angle`` item 340, ``cone_distance`` item 341).  ``classify_spell_shape``
+    reads ``cast_radius`` ONLY as the "circle" presence flag (non-null AND not
+    conflated AND not a sentinel) and ``missile._distance_from_geometry`` reads it
+    ONLY as a travel-distance INPUT that it folds into ``dist / speed`` (a travel
+    TIME), so the raw radius - the size of the area a circular spell covers - was
+    structurally discarded.  This accessor lifts that ignored dimension into a
+    queryable magnitude, reading the SAME already-loaded sidecar as
+    ``spell_aoe_multiplier`` / ``spell_cone_distance`` (no data duplication,
+    patch-refresh-safe), and is the circle sibling of the item-340 / 341 cone
+    accessors.
+
+    NOTHING consumes this accessor at ship: ``classify_spell_shape`` /
+    ``spell_aoe_multiplier`` / the cone accessors and every serialized surface are
+    untouched, so live DS output is byte-identical and ENGINE_VERSION does NOT
+    bump (the item-336 / 337 / 338 / 339 / 340 / 341 forward-marker contract).
+
+    Returns the positive ``cast_radius`` float for a circle spell, or None when
+    the spell has no geometry, no ``cast_radius`` (line / cone / point), a
+    non-positive / non-numeric radius, a CDragon placeholder sentinel, or a
+    CONFLATED radius.  This is a TRIPLE guard - the delta from the cone-distance
+    dual-sentinel and the cone-angle ``<= 0``-only guards: ``cast_radius`` rejects
+    via (a) the purpose-built ``cast_radius_conflated`` BOOL FLAG - the live
+    discriminator (192 conflated spells at 16.11.1), (b) the
+    ``_CONFLATED_RADIUS_SENTINELS`` frozenset shared with ``classify_spell_shape``
+    (belt-and-suspenders; 0 non-conflated sentinels live), and (c) the
+    ``<= 0`` / bool guard.  The flag is PRIMARY because CDragon stores a conflated
+    radius WITH the flag set rather than as a bare sentinel, so the flag rejects
+    even a real-looking magnitude.  A None return is the byte-identical fallback
+    (mirrors the defensive idiom of the other accessors in this module).
+    """
+    try:
+        geometry = snapshot.spell_geometry(champ_id, slot)
+        if not geometry:
+            return None
+        radius = geometry.get("cast_radius")
+        if radius is None or isinstance(radius, bool):
+            return None
+        if geometry.get("cast_radius_conflated"):
+            return None
+        radius = float(radius)
+        if radius <= 0 or radius in _CONFLATED_RADIUS_SENTINELS:
+            return None
+        return radius
+    except (TypeError, ValueError, AttributeError):
+        return None
