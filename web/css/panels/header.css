@@ -2363,6 +2363,44 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   white-space: pre-wrap; word-break: break-word;
   max-height: 580px; overflow-y: auto;
 }
+
+/* Headless loop status card (Settings; reads /api/loop-status). Mobile
+   at-a-glance surface for a Gemini-directed loop over Tailscale. */
+.loop-status-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.loop-state-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  font-size: var(--fs-md); color: var(--text);
+}
+.loop-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--text-faint); flex-shrink: 0;
+}
+.loop-dot.running { background: var(--good); box-shadow: 0 0 5px rgba(127,209,154,0.5); }
+.loop-dot.stopped { background: var(--bad); }
+.loop-dot.idle { background: var(--text-faint); }
+.loop-mode {
+  margin-left: auto; font-size: var(--fs-sm); text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-faint);
+}
+.loop-line {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--fs-sm); color: var(--text-dim);
+  word-break: break-word; line-height: 1.4;
+}
+.loop-line code {
+  font-family: "SF Mono", Consolas, monospace; color: var(--text);
+}
+.loop-ok { color: var(--good); }
+.loop-bad { color: var(--bad); font-weight: 800; }
+.loop-log {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: var(--fs-sm); color: var(--text-dim);
+  background: var(--surface-alt); border-radius: 4px;
+  padding: var(--space-2) var(--space-3); margin: var(--space-2) 0 0;
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 220px; overflow-y: auto;
+}
 .mode-pill {
   padding: 5px 14px;
   border: 1px solid transparent;
