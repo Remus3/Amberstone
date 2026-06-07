@@ -31,7 +31,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | C3 | ui-audit | Post Game Review SR + ARAM + Arena: 5-phase audit + visual validation. | DONE | aa0a5a7e |
 | D1 | lift | DS relative-score bar (Aggregator P lift, BACKLOG.md:21): per-row score_pct fill (delta_dps/top_delta*100). Codeable with fixtures; render-gated on locked champ. | DONE | ab176543 |
 | D2 | lift | draft tool L (the community fork) Elo log-odds draft aggregator (BACKLOG.md:78): clean algorithm reimplement (NO vendor) over pairwise WR from rewind_history.db. | DONE | 21bf98ef |
-| E1 | research | Per-role grading rubric calibration (BACKLOG.md:100): tune core/post_game_rubric.py weight vectors from public per-role reference data. | OPEN | - |
+| E1 | research | Per-role grading rubric calibration (BACKLOG.md:100): tune core/post_game_rubric.py weight vectors from public per-role reference data. | DONE | 42780b3d |
 | E2 | research | LCU data.json diff vs the reference catalog (BACKLOG.md:19) for richer endpoints. Log findings only; no live capture. | OPEN | - |
 | E3 | research | Competitor-tool lift secondary sweep, framed by technical substance only (keep third-party names out of repo). Output new NOW/FUTURE/CLOSED candidates into the Findings log. | OPEN | - |
 | F1 | monitoring | Phone monitoring loop-status panel reading ops/loop/control/{cycle.txt,controller.log,claude.done} + last commit (Tailscale-viewable) + daily upstream content-drift poll (tools/upstream_drift_check.py + scheduled task). | OPEN | - |
@@ -46,6 +46,37 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-07 E1 DONE (item 335, commit 42780b3d). NOT a stale premise
+  (unlike D1/D2/B1): core/post_game_rubric.py existed + was LIVE-wired
+  (dashboard/routes_post_game_rubric.py -> web/js/panels/last_match.js hero
+  grade chip) but its weights were hand-estimated "STARTING" values never
+  calibrated against data. GROUND TRUTH: over 5957 ranked-SR participant
+  rows in data/rewind_history.db (map 11 CLASSIC >=15min, real obj via
+  core.obj_participation), the CURRENT rubric scored the MEDIAN game a D for
+  TOP/JG/MID/ADC and C for SUP (scores 33-46) - violating the module's own
+  documented "median 1.0-profile -> ~50 (B)" invariant. Root cause: dpm
+  baselines ran 40-80% low (TOP 480 vs real 717), KDA baselines ran high
+  (TOP 2.50 vs real 1.78), and weight sums (3.70-4.60) fell below the 5.0
+  the x10 multiplier needs for a 50 median. PUBLIC SOURCE (unrankedsmurfs)
+  confirms Riot publishes NO exact weights - only per-role EMPHASIS ordering
+  (CS-led TOP/MID, obj/KP-heaviest JG, vision + strict-KDA + CC SUP,
+  carry-damage ADC). FIX (two grounded axes): (1) _ROLE_BASELINES re-anchored
+  to the empirical real per-role medians; (2) _DEFAULT_WEIGHTS re-ordered to
+  the source emphasis with every role's vector summing to 5.0 (median ->
+  50.0 = B floor). VALIDATED on the same corpus: median now grades B for all
+  5 roles (TOP 51.5 / JG 53.3 / MID 52.0 / ADC 53.5 / SUP 54.6) with a sane
+  S+..D spread. New durable db-independent invariants
+  (CalibrationInvariantTests): per-role weight sum == 5.0 + baseline-profile
+  grades exactly B at 50.0. Blast radius: 1 source + 4 test files; the obj
+  dilution/compose tests (route + postmortem) needed ally-objective padding
+  so the operator share stays below the 2x-median obj clamp (high-share
+  games correctly saturate now that obj baselines are the real ~0.13-0.375
+  medians). verifier CONFIRM from clean state (6 files 197/0; full RC 5257
+  passed / 1 skip / 0 fail; ruff clean; 5 weight sums all 5.0). No engine
+  touch -> ENGINE 1.120.0, no DS bounce, no Share sync; RC restarted (route
+  reload). FUTURE: CC-score is a source-cited SUP signal with no rubric axis
+  yet (documented gap); obj baselines are SR-only (event modes still 0).
+  NEXT OPEN = E2 (LCU data.json diff research).
 - 2026-06-06 D2 DONE (item 334, ship commit 21bf98ef). STALE-PREMISE
   (verify-premise, the D1 + B1 precedent): the draft tool L (the community fork) Elo log-odds draft
   aggregator was ALREADY SHIPPED 2026-05-20. core/draft_elo.py (pure math:
