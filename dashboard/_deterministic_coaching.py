@@ -451,3 +451,30 @@ def resolve_choices(coach: dict, det: dict) -> list[dict]:
         return to_jsonable(native or synthesize_simple_choices(coach))
     except Exception:
         return (det or {}).get("choices") or []
+
+
+def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str) -> None:
+    """Fail-soft B1 validation shadow-log. Records the deterministic surfaces
+    plus the native choices resolve_choices discards, to
+    data/det_coach_shadow.jsonl, alongside live coaching. Never raises and has
+    NO effect on live output. Only fires for a real game (enemy_comp present)."""
+    try:
+        gs = _build_game_state(coach, lc, mode_key)
+        enemy = gs.get("enemy_comp")
+        champ = gs.get("my_champion")
+        if not enemy or not champ:
+            return
+        native = to_jsonable(parse_choices(coach) or [])
+        items = gs.get("items")
+        item_count = len(items) if isinstance(items, list) else 0
+        from core.det_coach_shadow import log_det_coaching  # lazy import
+        log_det_coaching(
+            str(mode_key or ""), str(champ), [str(e) for e in enemy],
+            det=det if isinstance(det, dict) else {},
+            native_choices=native,
+            game_time_s=gs.get("game_time_s"),
+            level=gs.get("level"),
+            item_count=item_count,
+        )
+    except Exception:
+        return

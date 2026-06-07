@@ -307,10 +307,11 @@ def build_state() -> dict:
     det = {"choices": [], "callouts": [], "lead_projection": {}}
     try:
         from dashboard._deterministic_coaching import (
-            compute_deterministic, resolve_choices,
+            compute_deterministic, resolve_choices, shadow_log_det,
         )
         det = compute_deterministic(coach, lc, mode_key)
         coach["choices"] = resolve_choices(coach, det)
+        shadow_log_det(coach, lc, det, mode_key)
     except Exception:
         det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
