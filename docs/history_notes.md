@@ -53,6 +53,19 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-06 - loop cycle 5 (run 2026-06-06-01): A1 DS-Profile panel SHIPPED [item 325]
+
+Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A1. Orchestrator-merge: 1 Claude sole-merger + 2 parallel disjoint worktree slices + read-only verifier gate. Commit `8e376858`. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, NOT restarted); RC restarted pid 24164 for the new route.
+
+- **Shipped:** NEW `GET /api/ds-profile` (`dashboard/routes_ds_profile.py` + `_dispatch.py`) aggregating the 4 EXISTING pure scorers (compute_mobility/sustain/scaling/waveclear) into a locked-champ 4-bar champ-select panel (`web/js/panels/ds_profile.js` + `.css` + `web/data/ui_mock/ds_profile.json`). Purely additive; mirrors the ds_sweep competitor-lift pattern (5-min cache, numeric-key->slug, fail-soft 400/200-no_profile/503).
+- **Per-axis bar:** leaguewide-max-% (cached once) + LOW/MED/HIGH tier; scaling -> UP/EVEN/DOWN slope chip; waveclear -> top_kind + ranged_shove. Live Vayne: mob9/sus0/scal41-UP/wave1.
+- **Wiring (orchestrator-owned shared files):** index.html mount `#csv-sugg-ds-profile`, champ_select.js import+scheduler+`dsp:` signature, dashboard.css @import.
+- **Verify:** both slices verifier-CONFIRM; FULL RC suite **5153 passed / 1 skip / 0 fail**; ruff clean; ASCII-clean. 5-phase UI audit **PASS 0 MUST-FIX / 0 SHOULD-FIX / 1 NICE** (`.dsp-detail` overflow guard - cosmetic, ancestor-clipped).
+- **VISUAL CAPTURE OWED** (carry-forward): Claude_Preview can't reach HTTPS self-signed `:8888` + Game-PC `:8892` MCP down (`project_gamepc_mcp_boot_gap`). Code-side audit + live probe + DOM tests stand in.
+- **Don't-redo:** A1 DONE - reads the 4 existing scorers, no engine math; ASCII trajectory words not arrows. **NEXT (A2):** add threat-range/zone-control/objective-damage/extended-duel/matchup axes to the SAME `/api/ds-profile` surface (fns exist: threatrange/zonecontrol/objdamage/extendedduel.py) + re-audit.
+
+---
+
 # 2026-06-05 - loop directive reconcile: both named DS slices already SHIPPED [docs-only]
 
 Loop `ops/loop/control/directive.md` asked to implement "AurelionSol W cross-spell seam" + "conditional-gate for Brand W and Ekko W" via the orchestrator pattern. GROUND-TRUTH PROBE: both already shipped; directive was generated from STALE ROADMAP line 49 prose (written at item 250/251) that still listed them as "remain".
