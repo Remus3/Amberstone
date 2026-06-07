@@ -278,6 +278,45 @@ class DataSnapshot:
             return None
         return float(ms)
 
+    def spell_cc_tags(self, champ_id: str, slot: str) -> frozenset[str]:
+        """Per-spell CC trait tags from the optional CDragon sidecar (item 343).
+
+        Returns a ``frozenset`` of CDragon CC trait strings for the champ + slot
+        (``"Q"`` / ``"W"`` / ``"E"`` / ``"R"``) - a MACHINE-VERIFIED hard-CC class
+        flag pulled straight from the spell's CDragon bin, the direct sidecar
+        complement to the hand-authored ``_per_spell_cc`` registry. Two trait
+        strings appear at patch 16.11.1: ``"Trait_ImmobilizingCCSpell"`` (174
+        spells - stun / root / knockup / suppress, e.g. Lux Q, Morgana Q, Leona E)
+        and ``"Trait_SwapsIntoImmobilizingCCSpell"`` (12 spells - a form / charge
+        that becomes immobilizing, e.g. Aphelios Q, Gnar W, Ornn R). The list was
+        loaded into ``cdragon_spell_stats`` alongside ``ammo`` / ``geometry`` /
+        ``missile_speed`` for every spell, but no accessor ever surfaced it.
+
+        Returns an EMPTY frozenset (never None, never raises) when the sidecar is
+        absent, has no entry for the champ / slot, or the spell carries no CC tag
+        (slow-only / damage-only spells). The empty-set fallback is the deliberate
+        delta from the float|None sibling accessors: a CC-tag query is a membership
+        test, and an empty list and an absent record both mean "no CC tag", so
+        collapsing both to ``frozenset()`` removes the None-vs-empty sentinel
+        ambiguity - a caller writes ``"Trait_ImmobilizingCCSpell" in
+        snap.spell_cc_tags(champ, slot)`` directly. A bare string is NOT treated as
+        an iterable of chars, and non-string elements are filtered.
+
+        FORWARD-MARKER: nothing reads it at ship, so live DS output is
+        byte-identical (mirrors the item-233 / 339 sibling accessors reading the
+        already-loaded sidecar; no data duplication, patch-refresh-safe) and
+        ENGINE_VERSION does NOT bump.
+        """
+        tags = (
+            self.cdragon_spell_stats.get(str(champ_id), {})
+            .get("spells", {})
+            .get(str(slot), {})
+            .get("cc_tags")
+        )
+        if not isinstance(tags, (list, tuple)):
+            return frozenset()
+        return frozenset(t for t in tags if isinstance(t, str))
+
     def ability_static_cd(self, champ_id: str, ability_name: str) -> str | None:
         """Per-ability static (haste-immune) cooldown from the optional wiki sidecar (item 233).
 
