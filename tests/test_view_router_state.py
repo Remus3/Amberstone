@@ -381,6 +381,55 @@ class LiveGateTests(unittest.TestCase):
         )
 
 
+class ChampSelectNullBlipLiveGateTests(unittest.TestCase):
+    """A transient null/empty LCU phase tick during champ select must NOT
+    promote the sticky guard to in-progress (active-match) when no game is
+    live. ``lcu.phase`` is a polled, relay-forwarded value that reads null on
+    any agent/relay/poll blip; pre-fix, a single such blip flipped the view to
+    the in-game page ~half the time and could stick there. Only a real game
+    signal (live=liveclient non-empty, or an explicit GameStart/InProgress
+    phase) advances past champ-select."""
+
+    def test_cs_then_null_blip_no_live_holds_champ_select(self):
+        # In CS, phase blips to null on one tick, no live game -> stay on CS.
+        r = derive_view(None, "client", "champ-select", live=False)
+        self.assertEqual(r.game_started, "champ-select")
+        self.assertEqual(r.view, "champ-select")
+
+    def test_cs_then_null_blip_with_live_promotes(self):
+        # Genuine CS->game flip: liveclient up -> promote to in-progress.
+        r = derive_view(None, "client", "champ-select", live=True)
+        self.assertEqual(r.game_started, "in-progress")
+        self.assertEqual(r.view, "active-match")
+
+    def test_cs_null_blip_then_champ_select_recovers_no_live(self):
+        # Sequence CS -> null(no live) -> CS must stay champ-select throughout,
+        # never flicker to active-match.
+        r1 = derive_view(None, "client", "champ-select", live=False)
+        self.assertEqual(r1.view, "champ-select")
+        r2 = derive_view("ChampSelect", "client", r1.game_started, live=False)
+        self.assertEqual(r2.view, "champ-select")
+
+    def test_update_game_started_live_gate(self):
+        # Direct: null + champ-select sticky + no live -> stays champ-select.
+        self.assertEqual(
+            update_game_started(None, "champ-select", live=False),
+            "champ-select",
+        )
+        # With live -> in-progress (s209 inference preserved).
+        self.assertEqual(
+            update_game_started(None, "champ-select", live=True),
+            "in-progress",
+        )
+
+    def test_explicit_gamestart_promotes_even_without_live(self):
+        # The genuine flip is still caught by the ungated GameStart path,
+        # so gating the null-inference on live loses no real promotion.
+        r = derive_view("GameStart", "client", "champ-select", live=False)
+        self.assertEqual(r.view, "active-match")
+        self.assertEqual(r.game_started, "in-progress")
+
+
 class DeriveResultDataclassTests(unittest.TestCase):
     """Sanity check the return shape used everywhere."""
 
