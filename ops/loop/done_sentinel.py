@@ -5,7 +5,11 @@ Claude runs this as the LAST action of every loop cycle (the directive's FINAL S
     py ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>
 cycle is read from control/cycle.txt; sha is the live git HEAD.
 """
-import argparse, json, os, subprocess, time
+import argparse
+import json
+import os
+import subprocess
+import time
 from pathlib import Path
 
 ROOT = r"C:\Riot Commander"

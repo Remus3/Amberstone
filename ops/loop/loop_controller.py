@@ -9,7 +9,11 @@ IPC = files in control_dir, atomic (tmp + os.replace), plain-text where AHK read
 Both gemini and claude are stateless per cycle; continuity lives on disk
 (git history + docs/LEDGER.md + the directive chain). See the Desktop BUILD LOG.
 """
-import json, os, subprocess, sys, time
+import json
+import os
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 CFG = json.loads(Path(sys.argv[1] if len(sys.argv) > 1 else

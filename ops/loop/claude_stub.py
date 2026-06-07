@@ -10,7 +10,11 @@ Fault injection for pass 2:
   --hang           never write claude.done (controller must hit deadline -> STOP)
   --delay N        seconds of fake work (default 3)
 """
-import argparse, json, os, subprocess, time
+import argparse
+import json
+import os
+import subprocess
+import time
 from pathlib import Path
 
 ROOT = r"C:\Riot Commander"
