@@ -30,7 +30,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | C2 | ui-audit | Active Match SR + ARAM + Arena: 5-phase audit + visual validation. | DONE | e81495e0 |
 | C3 | ui-audit | Post Game Review SR + ARAM + Arena: 5-phase audit + visual validation. | DONE | aa0a5a7e |
 | D1 | lift | DS relative-score bar (Aggregator P lift, BACKLOG.md:21): per-row score_pct fill (delta_dps/top_delta*100). Codeable with fixtures; render-gated on locked champ. | DONE | ab176543 |
-| D2 | lift | draft tool L (the community fork) Elo log-odds draft aggregator (BACKLOG.md:78): clean algorithm reimplement (NO vendor) over pairwise WR from rewind_history.db. | OPEN | - |
+| D2 | lift | draft tool L (the community fork) Elo log-odds draft aggregator (BACKLOG.md:78): clean algorithm reimplement (NO vendor) over pairwise WR from rewind_history.db. | DONE | 21bf98ef |
 | E1 | research | Per-role grading rubric calibration (BACKLOG.md:100): tune core/post_game_rubric.py weight vectors from public per-role reference data. | OPEN | - |
 | E2 | research | LCU data.json diff vs the reference catalog (BACKLOG.md:19) for richer endpoints. Log findings only; no live capture. | OPEN | - |
 | E3 | research | Competitor-tool lift secondary sweep, framed by technical substance only (keep third-party names out of repo). Output new NOW/FUTURE/CLOSED candidates into the Findings log. | OPEN | - |
@@ -46,6 +46,31 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 D2 DONE (item 334, ship commit 21bf98ef). STALE-PREMISE
+  (verify-premise, the D1 + B1 precedent): the draft tool L (the community fork) Elo log-odds draft
+  aggregator was ALREADY SHIPPED 2026-05-20. core/draft_elo.py (pure math:
+  winrate_to_rating = -400*log10(1/wr-1), rating_to_winrate = 1/(1+10^(-d/400)),
+  team_score = sum(ally champ+pair+matchup) - sum(enemy champ+pair), +
+  top_contributions hover decomposition) + core/draft_elo_db.py
+  (rewind_history.db sqlite priors solo/pair/matchup, read-only mode=ro conn,
+  Laplace-smoothed via core.smoothed_rates per CLAUDE.md #90, NO aggregator D) +
+  dashboard/routes_draft_elo.py (GET /api/draft-elo, 5min TTL) +
+  web/js/panels/draft_elo.js (champ-select chip + n= density + hover-only
+  contribution strip). Ship chain 21bf98ef aggregator + a148f779 frontend chip
+  + daa5a098 / 97ab12e9 per-row contribution hover + 87efa337 ESC. The directive
+  read BACKLOG.md:78 FUTURE entry but missed the (SHIPPED 2026-05-20 ab3f553 +
+  00051f3) reconciliation marker just below it; re-implementing would clobber a
+  live 42-test module, so NO source change. GROUND TRUTH this cycle: live
+  /api/draft-elo (ally 22,67,64,89,412 vs enemy 51,141,238,555,235) -> ok=true
+  with real rewind-db ratings (solo_counts e.g. [33,64] / [35,72]; computed
+  champ/pair/matchup ratings). Coverage already complete - tests/test_draft_elo.py
+  (28) + tests/test_draft_elo_panel_dom.py (14 hover contract) +
+  tests/snapshot_panels/test_draft_elo_panel.py = 42 passed; UNLIKE D1 there is
+  NO owed clause (the snapshot view test already exists). Full RC suite 5255
+  passed / 1 skip / 0 fail / 85 subtests (observed this run, unchanged - zero
+  test delta). No source change -> no asset-hash reload, no RC restart; ENGINE
+  1.120.0, no DS bounce, no Share sync. NEXT OPEN = E1 (per-role grading rubric
+  calibration).
 - 2026-06-06 D1 DONE (item 333, commit ab176543): DS relative-score bar.
   STALE-PREMISE (verify-premise, cycle-3/4 precedent): the feature was ALREADY
   SHIPPED as item 220 (2026-05-30) - dashboard/routes_ds_relscore.py (GET
