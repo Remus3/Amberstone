@@ -189,3 +189,52 @@ def spell_aoe_multiplier(
         return aoe_multiplier(geometry, targets_hit)
     except Exception:
         return 1.0
+
+
+def spell_cone_angle(
+    snapshot: object,
+    champ_id: str,
+    slot: str,
+) -> float | None:
+    """Angular SPREAD (degrees) of a cone spell, or None.
+
+    Forward-marker accessor (item 340): exposes the CDragon ``cone_angle``
+    geometry datum as a first-class comparable MAGNITUDE.  ``classify_spell_shape``
+    reads ``cone_angle`` only as a non-null presence flag (the "cone" shape
+    classifier, ``cone_angle is not None``) and ``missile._distance_from_geometry``
+    reads only ``cone_distance`` / ``cast_radius`` (never the angle), so the
+    numeric spread - which governs ease-of-landing and overlap density, a tight
+    20deg Ashe Volley vs a wide 40deg Cassiopeia Petrifying Gaze - was
+    structurally discarded.  This accessor lifts that ignored dimension into a
+    queryable magnitude, reading the SAME already-loaded sidecar as
+    ``spell_aoe_multiplier`` / ``spell_geometry`` (no data duplication,
+    patch-refresh-safe), and is the cone sibling of the item-338 line-width
+    (``line_width``) accessor.
+
+    NOTHING consumes this accessor at ship: ``classify_spell_shape`` /
+    ``spell_aoe_multiplier`` and every serialized surface are untouched, so live
+    DS output is byte-identical and ENGINE_VERSION does NOT bump (the item-336 /
+    337 / 338 / 339 forward-marker contract).
+
+    Returns the positive ``cone_angle`` float for a cone spell, or None when the
+    spell has no geometry, no ``cone_angle`` (line / circle / point), or a
+    non-positive / non-numeric angle.  The 0.0 sentinel (CDragon fills it for
+    radial-cone spells such as Aurelion Sol Q) returns None via the ``<= 0``
+    guard, while ``classify_spell_shape`` still treats it as a cone (presence is
+    magnitude-blind) - so the lift is byte-identical to classification.  A None
+    return is the byte-identical fallback (mirrors the defensive idiom of the
+    other accessors in this module).
+    """
+    try:
+        geometry = snapshot.spell_geometry(champ_id, slot)
+        if not geometry:
+            return None
+        angle = geometry.get("cone_angle")
+        if angle is None:
+            return None
+        angle = float(angle)
+        if angle <= 0:
+            return None
+        return angle
+    except (TypeError, ValueError, AttributeError):
+        return None
