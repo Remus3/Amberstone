@@ -55,6 +55,14 @@ _AOE_TARGET_CAP: int = 5
 # bin extractor header comment in cdragon_spell_stats.json.
 _CONFLATED_RADIUS_SENTINELS: frozenset[float] = frozenset({210.0, 100.0})
 
+# CDragon fills these boilerplate values for cone_distance when the real cone
+# length is unknown (the 210 / 100 extractor conflation).  At 16.11.1
+# cone_distance=100.0 appears 487 times and 0.0 45 times, versus 23 spells with a
+# real length.  A sentinel is NOT a real cone reach and rejects to None.  Mirrors
+# the value of missile._CONE_DISTANCE_SENTINELS (kept local so this module is a
+# self-contained forward-marker with no cross-module import).
+_CONE_DISTANCE_SENTINELS: frozenset[float] = frozenset({0.0, 100.0})
+
 
 # ---------------------------------------------------------------------------
 # Shape classification
@@ -236,5 +244,55 @@ def spell_cone_angle(
         if angle <= 0:
             return None
         return angle
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+def spell_cone_distance(
+    snapshot: object,
+    champ_id: str,
+    slot: str,
+) -> float | None:
+    """Reach / LENGTH (units) a cone spell projects from the caster, or None.
+
+    Forward-marker accessor (item 341): exposes the CDragon ``cone_distance``
+    geometry datum as a first-class comparable MAGNITUDE.  ``classify_spell_shape``
+    reads ``cone_distance`` only as a non-null presence flag (the "cone" shape
+    classifier, ``cone_distance is not None``) and
+    ``missile._distance_from_geometry`` reads it only as a travel-distance INPUT
+    that it folds into ``dist / speed`` (a travel TIME), so the raw reach - which
+    together with the item-340 angular spread describes the cone footprint (a long
+    narrow cone vs a short wide one) - was structurally discarded.  This accessor
+    lifts that ignored dimension into a queryable magnitude, reading the SAME
+    already-loaded sidecar as ``spell_aoe_multiplier`` / ``spell_geometry`` (no
+    data duplication, patch-refresh-safe), and is the reach sibling of the
+    item-340 cone-angle accessor.
+
+    NOTHING consumes this accessor at ship: ``classify_spell_shape`` /
+    ``spell_aoe_multiplier`` / the cone-angle accessor and every serialized
+    surface are untouched, so live DS output is byte-identical and ENGINE_VERSION
+    does NOT bump (the item-336 / 337 / 338 / 339 / 340 forward-marker contract).
+
+    Returns the positive ``cone_distance`` float for a cone spell, or None when
+    the spell has no geometry, no ``cone_distance`` (line / circle / point), a
+    non-positive / non-numeric reach, or a CDragon placeholder sentinel.  Unlike
+    the cone-angle accessor (whose guard is ``<= 0`` only), ``cone_distance``
+    carries TWO boilerplate sentinels - 0.0 and 100.0 (``_CONE_DISTANCE_SENTINELS``)
+    - that both reject to None.  The 0.0 sentinel still classifies as a cone
+    (presence is magnitude-blind) while this accessor returns None - so the lift
+    is byte-identical to classification.  A None return is the byte-identical
+    fallback (mirrors the defensive idiom of the other accessors in this module).
+    """
+    try:
+        geometry = snapshot.spell_geometry(champ_id, slot)
+        if not geometry:
+            return None
+        distance = geometry.get("cone_distance")
+        if distance is None or isinstance(distance, bool):
+            return None
+        distance = float(distance)
+        if distance <= 0 or distance in _CONE_DISTANCE_SENTINELS:
+            return None
+        return distance
     except (TypeError, ValueError, AttributeError):
         return None
