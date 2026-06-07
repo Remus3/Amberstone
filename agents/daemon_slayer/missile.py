@@ -158,3 +158,48 @@ def spell_travel_time(
         return round(dist / speed, 4)
     except Exception:
         return None
+
+
+def spell_missile_width(
+    snapshot: "DataSnapshot",
+    champ_id: str,
+    slot: str,
+) -> "float | None":
+    """Perpendicular HITBOX WIDTH (units) of a line skillshot, or None.
+
+    Forward-marker accessor (item 338): exposes the CDragon ``line_width``
+    geometry datum as a first-class comparable MAGNITUDE.  ``geometry.py``
+    reads ``line_width`` only as a non-null presence flag (the "line"
+    shape classifier) and ``_distance_from_geometry`` explicitly REJECTS it
+    ("a perpendicular width, not a travel length, so it is never used here"),
+    so the numeric width - which governs ease-of-landing, a narrow 40u
+    Nidalee Q spear vs a wide 100u Xerath Q bolt - was structurally
+    discarded.  This accessor lifts that ignored dimension into a queryable
+    magnitude, reading the SAME already-loaded sidecar as ``spell_travel_time``
+    (no data duplication, patch-refresh-safe).
+
+    NOTHING consumes this accessor at ship: ``is_projectile`` /
+    ``spell_travel_time`` / ``_distance_from_geometry`` and every serialized
+    surface are untouched, so live DS output is byte-identical and
+    ENGINE_VERSION does NOT bump (the item-336 / item-337 forward-marker
+    contract).
+
+    Returns the positive ``line_width`` float for a line skillshot, or None
+    when the spell has no geometry, no ``line_width`` (cone / circle / point),
+    or a non-positive / non-numeric width.  A None return is the
+    byte-identical fallback (mirrors the defensive idiom of the other
+    accessors in this module).
+    """
+    try:
+        geometry = snapshot.spell_geometry(champ_id, slot)
+        if not geometry:
+            return None
+        width = geometry.get("line_width")
+        if width is None:
+            return None
+        width = float(width)
+        if width <= 0:
+            return None
+        return width
+    except (TypeError, ValueError, AttributeError):
+        return None
