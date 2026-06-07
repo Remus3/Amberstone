@@ -26,7 +26,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | A2b | DS-surface | DS Profile matchup readout: surface agents/daemon_slayer/matchup.compute_matchup (already wired at /v2/matchup) as a pairwise lane-matchup card keyed on a selected enemy + levels + items - a DISTINCT surface from the single-champ radar, NOT a 0-100 profile axis. | DONE | 0a017dc4 |
 | A3 | DS-coach | Wire the 2 highest-value axes into coach context: anti-tank build hint (vs high-HP enemies) + scaling power-curve, into modes/* prompts. Shadow-log first, then surface. | DONE | 52f76059 |
 | B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | DONE | 48411bfc |
-| C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | OPEN | - |
+| C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | DONE | b4bfa05a |
 | C2 | ui-audit | Active Match SR + ARAM + Arena: 5-phase audit + visual validation. | OPEN | - |
 | C3 | ui-audit | Post Game Review SR + ARAM + Arena: 5-phase audit + visual validation. | OPEN | - |
 | D1 | lift | DS relative-score bar (Aggregator P lift, BACKLOG.md:21): per-row score_pct fill (delta_dps/top_delta*100). Codeable with fixtures; render-gated on locked champ. | OPEN | - |
@@ -46,6 +46,41 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 C1 DONE (item 330, commit b4bfa05a): Champ-Select ARAM + Arena
+  5-phase fixture audit + reproducible visual validation. AUDIT: 2 parallel
+  read-only subagents (ARAM + Arena), each ran STRUCTURE/TYPOGRAPHY/HIT-TARGETS/
+  ASCII/HIERARCHY against champ_select_view.css (mode blocks ~1659-1995 ARAM /
+  ~2482-2804 Arena + shared base) + champ_select.js + the ui_mock fixtures vs
+  docs/UI_SCALE_SPEC_V2.md. BOTH returned SHIP-READY, 0 MUST-FIX - the CSS was
+  already swept onto v2.1 tokens by prior rounds (s164/s212/s214/s234/s239,
+  items 178/181/202); the sub-floor px that remain (.csv-bench-empty 13,
+  .csv-duo-cell-tag 11, .csv-arena-cell-name 13, .csv-pr-chip 14) all carry the
+  inline "documented operator exception" rationale the spec permits. VISUAL: the
+  C-phase Claude_Preview check A1/A2/A2b kept OWING is now discharged in a
+  CI-durable form - NEW tests/snapshot_panels/test_champ_select_view.py renders
+  the full-page #view-champ-select for both modes through the existing headless
+  mock-server + Playwright harness at the 1920x1080 design baseline (drive path
+  /?ui_mock=1&mode=<m>#champ-select -> _csMockLoad fetches
+  /data/ui_mock/champ_select_<m>.json -> data-cs-mode stamp). Asserts per mode:
+  view mounts, mode-specific structure renders (ARAM 10-cell bench / Arena duo
+  row + augment slots), SR-only Pick & Ban hidden, no JS errors; screenshots the
+  view. Operator-eyeballed both captures: ARAM (Jinx HOVERING + LOCK IN + COMP
+  VERDICT swap->Ashe w/ green bench swap-ring + summspell D/F strip + enemies)
+  and Arena (duo me+Lulu+waiting / Silver-Gold-Prismatic augment slots / 5
+  stacked enemy sub-teams) both read clean at baseline, no horizontal scroll.
+  5 new tests, ruff + py_compile + ASCII clean, verifier subagent CONFIRM 5/0.
+  Full RC suite 5240 passed / 1 skip / 0 fail / 85 subtests (+5). No web/ source
+  delta (audit found nothing to fix) -> no asset-hash reload, no RC restart; no
+  engine touch -> ENGINE 1.120.0, no DS restart, no Share sync.
+- FUTURE (C1 audit SHOULD/NICE, deferred - operator-tuned, do NOT auto-flip):
+  (1) champ_select_view.css:264 .csv-lock-btn min-height 32px < --hit-min 42px -
+  carries an explicit operator prominence-reduction rationale ("round 3"), so a
+  bump would re-litigate that decision; formalize the comment or bump only on
+  operator OK. (2) .csv-bench-cell has no min-width floor (bench cells clear 42px
+  at the 1920 baseline but could dip below it on a narrower-than-baseline window;
+  spec targets 1920 only). (3) Arena enemy .csv-arena-cell 3rd cell is a
+  forward-flex scaffold (live Arena is 2/team) rendering one empty dashed cell
+  per team; drop to a 2-col row only if the 3-cell scaffold is confirmed dead.
 - 2026-06-06 B1 DONE (item 329; commits b8e7647a slice / 21f6aaf9 merge /
   48411bfc fix). STALE-PREMISE: the B1 row's "zero live-coach consumer" was
   wrong - all 3 generators were ALREADY wired live into /api/state by commit
