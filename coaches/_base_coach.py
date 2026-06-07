@@ -427,6 +427,10 @@ class BaseCoach(abc.ABC):
             return
         try:
             self._last_coach = now
+            # A3 (DS-coach): fire-and-forget shadow-log of the deterministic
+            # anti-tank + scaling power-curve hints for this matchup. Pure
+            # substrate accrual - never touches the prompt, UI, or coach output.
+            self._shadow_log_hints(state)
             _mn = self._MODE_NAME.capitalize()
             _state_copy = dict(state)
             try:
@@ -552,6 +556,48 @@ class BaseCoach(abc.ABC):
                 _log.debug("coach_trace append: %s", exc)
         except Exception as exc:
             _log.debug("_record_coach_call swallowed: %s", exc)
+
+    def _shadow_log_hints(self, state: dict) -> None:
+        """Fail-soft shadow-log of the deterministic DS-coach hints (A3).
+
+        Records the anti-tank build hint (vs high-HP enemy comps) and the
+        scaling power-curve for the current matchup to
+        data/ds_coach_hints_shadow.jsonl alongside live coaching, but WITHOUT
+        altering the Haiku prompt or the dashboard. This is the validation
+        substrate (the champ-select Haiku-elimination shadow-log pattern): the
+        deterministic hints accrue against real games so they can be surfaced
+        into coach context later, once validated against the log. Champion
+        name-forms are bridged to canonical DDragon ids (the DS registries key
+        on those). NEVER raises - it runs in the live coach dispatch path.
+        """
+        try:
+            from core.archetype_picks import canonical_champion_id as _canon
+
+            def _cid(raw: str) -> str:
+                try:
+                    return _canon(raw) or raw
+                except Exception:
+                    return raw
+
+            my_champ = _cid(state.get("champion") or "")
+            if not my_champ:
+                return
+            enemies: list = []
+            for e in (state.get("enemies") or []):
+                if not isinstance(e, dict):
+                    continue
+                raw = e.get("name") or e.get("champion") or e.get("championName") or ""
+                if raw:
+                    enemies.append(_cid(raw))
+            game_time_s = state.get("game_seconds")
+            if game_time_s is None:
+                game_time_s = state.get("game_time_s")
+            from core.ds_coach_shadow import log_coach_hints
+            log_coach_hints(
+                self._MODE_NAME, my_champ, enemies, game_time_s=game_time_s
+            )
+        except Exception as exc:
+            _log.debug("_shadow_log_hints swallowed: %s", exc)
 
     # ── Abstract ──────────────────────────────────────────────────────────────
 
