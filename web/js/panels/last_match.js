@@ -347,13 +347,16 @@ function _lmIsMock() {
   return !!(document.body && document.body.dataset.uiMock === "1");
 }
 function _lmMockUrl() {
-  // ?mode=<aram|arena> URL flag picks the matching fixture (mirrors
-  // the _csMockLoad pattern in main.js L3263 from items 165 + 181).
+  // ?mode=<sr|aram|arena> URL flag picks the matching fixture (mirrors
+  // the _csMockLoad pattern in main.js L3263 from items 165 + 181). sr
+  // added C3 (page #14) so the SR Post Game Review has CI-durable
+  // snapshot coverage like aram/arena.
   let url = null;
   try {
     const params = new URLSearchParams(window.location.search || "");
     const m = (params.get("mode") || "").toLowerCase();
-    if (m === "aram")  url = "/data/ui_mock/last_match_aram.json";
+    if (m === "sr")  url = "/data/ui_mock/last_match_sr.json";
+    else if (m === "aram")  url = "/data/ui_mock/last_match_aram.json";
     else if (m === "arena") url = "/data/ui_mock/last_match_arena.json";
   } catch (_) {}
   return url;
@@ -375,11 +378,11 @@ export function fetchAndRenderLastMatch() {
   try { _b = parseInt(localStorage.getItem("rc-pgr-baseline") || "20", 10); } catch (_) {}
   if (isNaN(_b)) _b = 20;
   _b = Math.max(5, Math.min(50, _b));
-  // Item 183: UI scale v2.1 audit ritual short-circuit. When the dev
-  // mock toggle is on AND ?mode=aram|arena is present, render the
+  // Item 183 + C3: UI scale v2.1 audit ritual short-circuit. When the
+  // dev mock toggle is on AND ?mode=sr|aram|arena is present, render the
   // local fixture instead of the live /api/last-match feed - so pages
-  // #15 + #16 PGR ARAM/Arena audit captures stand on authored data
-  // even when the operator's most-recent live match is an SR game.
+  // #14/#15/#16 PGR SR/ARAM/Arena audit captures stand on authored data
+  // even when the operator's most-recent live match differs in mode.
   if (_lmIsMock()) {
     const mockUrl = _lmMockUrl();
     if (mockUrl) {
