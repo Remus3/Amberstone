@@ -24,7 +24,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | A1 | DS-surface | DS Profile panel (design + axes batch 1: mobility, sustain, scaling, waveclear). New dashboard/routes_ds_profile.py + web/js/panels/ds_profile.js + CSS + web/data/ui_mock fixtures. Mirror dashboard/routes_ds_sweep.py + web/js/panels/ds_sweep.js. 5-phase UI audit + visual check. | DONE | 8e376858 |
 | A2 | DS-surface | DS Profile axes batch 2: added threat-range, zone-control, objective-damage, extended-duel to the A1 /api/ds-profile surface (4 -> 8 axes) + dsp-flag markers. matchup split to A2b (pairwise, not a single-champ axis). 5-phase audit ship-ready. | DONE | 3f23e18c |
 | A2b | DS-surface | DS Profile matchup readout: surface agents/daemon_slayer/matchup.compute_matchup (already wired at /v2/matchup) as a pairwise lane-matchup card keyed on a selected enemy + levels + items - a DISTINCT surface from the single-champ radar, NOT a 0-100 profile axis. | DONE | 0a017dc4 |
-| A3 | DS-coach | Wire the 2 highest-value axes into coach context: anti-tank build hint (vs high-HP enemies) + scaling power-curve, into modes/* prompts. Shadow-log first, then surface. | OPEN | - |
+| A3 | DS-coach | Wire the 2 highest-value axes into coach context: anti-tank build hint (vs high-HP enemies) + scaling power-curve, into modes/* prompts. Shadow-log first, then surface. | DONE | 52f76059 |
 | B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | OPEN | - |
 | C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | OPEN | - |
 | C2 | ui-audit | Active Match SR + ARAM + Arena: 5-phase audit + visual validation. | OPEN | - |
@@ -46,6 +46,25 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 A3 DONE (item 328, commit 52f76059): DS-coach SHADOW-LOG substrate
+  shipped (NOT yet surfaced). 3 disjoint verifier-CONFIRMED worktree slices
+  (verifier 13/0 + 17/0 + 6/0) + 1 base-coach integration: NEW pure generators
+  core/ds_antitank_hint.build_antitank_hint (anti-tank build hint vs high-HP
+  enemy comps over compute_antitank + core.archetype_picks tank/bruiser count)
+  and core/ds_scaling_hint.build_scaling_hint (early/mid/late power-curve +
+  outscale/falloff/even verdict over compute_scaling), a fail-soft jsonl writer
+  core/ds_coach_shadow.log_coach_hints (DI-testable, lazy import, never raises),
+  and a fire-and-forget hook BaseCoach._shadow_log_hints in _maybe_coach that
+  canonicalizes champ name-forms and records both hints to
+  data/ds_coach_hints_shadow.jsonl (gitignored) alongside live coaching WITHOUT
+  touching the Haiku prompt / UI / coach output. Full RC suite 5227 passed / 1
+  skip / 0 fail (+41); ruff + py_compile clean; ASCII-only. NO engine file
+  touched -> ENGINE stays 1.120.0, no DS restart, no Share sync. SURFACING into
+  coach context is the deliberate FUTURE step (gated on shadow-log accrual +
+  validation; section-4b do-not-flip-blind, the champ-select Haiku-elim pattern).
+  Calibration note: slice 1 set ANTITANK_STRONG=0.8 (Vayne 0.95 / Fiora 0.90
+  clear lean-in; flat-damage mages at 0.0 -> recommend items) since no champ
+  reaches the spec's 1.2 on a single mechanism.
 - 2026-06-06 cycle-5 REGRESS on A2b = FALSE POSITIVE (3rd consecutive; cycles
   3/4/5 each flagged the same non-bug). This-run ground truth: `git grep` for the
   corruption marker across every tracked code file (*.css *.js *.py) returns ZERO
