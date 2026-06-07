@@ -62,19 +62,74 @@ class DefaultWeightsTests(unittest.TestCase):
         )
 
     def test_adc_kda_weight(self):
-        self.assertEqual(pgr._DEFAULT_WEIGHTS["ADC"].kda, 2.1)
+        # Post-calibration (item 335): ADC KDA + DPM are co-dominant
+        # (1.5 each) - the carry expectation. See the module docstring.
+        self.assertEqual(pgr._DEFAULT_WEIGHTS["ADC"].kda, 1.5)
 
     def test_sup_vision_score_weight(self):
-        # SUP has the dominant vision weight.
-        self.assertEqual(pgr._DEFAULT_WEIGHTS["SUP"].vision_score, 1.5)
+        # SUP has the dominant vision weight (highest single weight of any
+        # role/axis) - the public-source signal for support.
+        self.assertEqual(pgr._DEFAULT_WEIGHTS["SUP"].vision_score, 1.8)
 
     def test_jg_obj_participation_weight(self):
-        # JG is judged most on objective participation.
-        self.assertEqual(pgr._DEFAULT_WEIGHTS["JG"].obj_participation, 0.70)
+        # JG is judged most on objective participation - the heaviest
+        # weight in the JG vector (public source: "KP heaviest for JG").
+        self.assertEqual(pgr._DEFAULT_WEIGHTS["JG"].obj_participation, 1.5)
 
     def test_sup_cs_per_min_weight_is_zero(self):
         # Support CS is intentionally NOT scored (taking CS is anti-pattern).
         self.assertEqual(pgr._DEFAULT_WEIGHTS["SUP"].cs_per_min, 0.0)
+
+
+class CalibrationInvariantTests(unittest.TestCase):
+    """Durable calibration contract (item 335), independent of the live
+    rewind_history.db. Two invariants the recalibration locks in:
+
+      1. Every role's weight vector sums to 5.0, so a median-of-the-role
+         performance (each axis at baseline -> normalized 1.0) maps to
+         raw_total == 5.0, x10 == 50.0, the floor of the B band.
+      2. A profile sitting EXACTLY at the role baselines therefore grades
+         B at total_score 50.0 for every role. This is the empirically-
+         anchored "median game is a B" intent (the baselines are the real
+         per-role SR medians from 5957 games; see the module docstring).
+    """
+
+    def test_every_role_weight_vector_sums_to_five(self):
+        for role, w in pgr._DEFAULT_WEIGHTS.items():
+            total = (w.kda + w.cs_per_min + w.obj_participation
+                     + w.vision_score + w.damage_per_min)
+            self.assertAlmostEqual(
+                total, 5.0, places=6,
+                msg=f"{role} weight vector sums to {total}, expected 5.0",
+            )
+
+    def test_baseline_profile_grades_b_at_fifty(self):
+        # Construct a profile whose every axis sits exactly at the role
+        # baseline; each component normalizes to 1.0 so total == sum(w)*10
+        # == 50.0 and the grade is the B floor.
+        for role, base in pgr._ROLE_BASELINES.items():
+            minutes = 20.0
+            stats = {
+                # kda == (kills + assists) / max(1, deaths); deaths=1 makes
+                # the denominator 1 so kills carries the baseline kda value.
+                "kills": base["kda"],
+                "deaths": 1.0,
+                "assists": 0.0,
+                "cs": base["cs_per_min"] * minutes,
+                "game_time_s": minutes * 60.0,
+                "vision_score": base["vision_score"],
+                "damage_dealt_to_champions": base["damage_per_min"] * minutes,
+                "obj_participation_pct": base["obj_participation"],
+            }
+            result = pgr.compute_role_grade(stats, role=role)
+            self.assertAlmostEqual(
+                result["total_score"], 50.0, places=4,
+                msg=f"{role} baseline profile scored {result['total_score']}",
+            )
+            self.assertEqual(
+                result["percentile_grade"], "B",
+                msg=f"{role} baseline profile graded {result['percentile_grade']}",
+            )
 
 
 class NormalizeRoleTests(unittest.TestCase):
@@ -107,8 +162,9 @@ class ComputeRoleGradeTests(unittest.TestCase):
     """Core scorer behavior."""
 
     def test_solid_adc_profile_lands_in_b_or_a(self):
-        # 5/2/8 KDA, 22 min, 160 CS. KDA=6.5 norm 2.6 clamp 2.0 -> 4.2.
-        # CS/min=7.27 norm 0.97 -> 0.825. raw_total ~ 5.025, x10 ~ 50.25.
+        # 5/2/8 KDA, 22 min, 160 CS (no dmg/vis/obj in stats).
+        # item-335 calibration: kda 1.5 * clamp(6.5/2.3=2.83 -> 2.0) = 3.0;
+        # cs 1.1 * clamp(7.27/7.15=1.017) = 1.12. raw ~ 4.12, x10 ~ 41 (C).
         result = pgr.compute_role_grade(
             {
                 "kills": 5,
@@ -173,8 +229,9 @@ class ComputeRoleGradeTests(unittest.TestCase):
 
     def test_sup_profile_with_vision_component_meaningful(self):
         # 1/4/15 KDA, vision 60, 28 min game. Vision component should
-        # be the dominant signal for SUP. KDA=4.0 norm 1.33 -> comp 3.33.
-        # Vision=60 norm 1.09 -> comp 1.636 (>= 0.5).
+        # be a dominant signal for SUP. item-335: SUP base vis 58, kda
+        # 2.85. KDA=4.0 norm 1.40 -> 1.6*1.40 = 2.24. Vision 60/58 = 1.034
+        # -> 1.8*1.034 = 1.86 (>= 0.5).
         result = pgr.compute_role_grade(
             {
                 "kills": 1,
@@ -238,12 +295,14 @@ class ComputeRoleGradeTests(unittest.TestCase):
 
     def test_perfect_adc_profile_lands_in_s_range(self):
         # 10/0/12 KDA, 30 min, 240 CS, vision 20, obj 0.70, dpm 1200.
-        # KDA 22 -> norm 8.8 -> clamp 2.0 -> comp 4.2.
-        # CS/min 8 -> norm 1.067 -> comp 0.907.
-        # obj 0.70/0.55 = 1.27 -> comp 0.636.
-        # vision 20/15 = 1.33 -> comp 0.4.
-        # dpm 1200 -> norm 2.0 -> comp 1.7.
-        # raw_total ~ 7.843; x10 = 78.43 -> S.
+        # item-335 calibration (ADC base kda 2.3, cs 7.15, obj 0.15,
+        # vis 15, dpm 731):
+        # kda 22 -> clamp 2.0 -> 1.5*2 = 3.0.
+        # cs/min 8 -> 8/7.15 = 1.12 -> 1.1*1.12 = 1.23.
+        # obj 0.70/0.15 -> clamp 2.0 -> 0.6*2 = 1.2.
+        # vision 20/15 = 1.33 -> 0.3*1.33 = 0.4.
+        # dpm 1200/731 = 1.64 -> 1.5*1.64 = 2.46.
+        # raw_total ~ 8.29; x10 = 82.9 -> S.
         result = pgr.compute_role_grade(
             {
                 "kills": 10,
@@ -339,23 +398,24 @@ class NoOverrideFileDefaultPreservationTests(unittest.TestCase):
         )
 
     def test_adc_default_weights_unchanged(self):
-        # Pins the ADC starting calibration. If the override loader silently
-        # changes these (e.g. via a stray file in the test environment),
-        # this fires.
+        # Pins the ADC calibration (item 335). If the override loader
+        # silently changes these (e.g. via a stray file in the test
+        # environment), this fires. Sum == 5.0 (median game -> 50 = B).
         w = pgr._DEFAULT_WEIGHTS["ADC"]
-        self.assertEqual(w.kda, 2.1)
-        self.assertEqual(w.cs_per_min, 0.85)
-        self.assertEqual(w.obj_participation, 0.50)
-        self.assertEqual(w.vision_score, 0.30)
-        self.assertEqual(w.damage_per_min, 0.85)
+        self.assertEqual(w.kda, 1.5)
+        self.assertEqual(w.cs_per_min, 1.1)
+        self.assertEqual(w.obj_participation, 0.6)
+        self.assertEqual(w.vision_score, 0.3)
+        self.assertEqual(w.damage_per_min, 1.5)
 
     def test_sup_default_weights_unchanged(self):
+        # Sum == 5.0; vision dominant, cs == 0 (farming is anti-pattern).
         w = pgr._DEFAULT_WEIGHTS["SUP"]
-        self.assertEqual(w.kda, 2.5)
+        self.assertEqual(w.kda, 1.6)
         self.assertEqual(w.cs_per_min, 0.0)
-        self.assertEqual(w.obj_participation, 0.10)
-        self.assertEqual(w.vision_score, 1.5)
-        self.assertEqual(w.damage_per_min, 0.20)
+        self.assertEqual(w.obj_participation, 1.0)
+        self.assertEqual(w.vision_score, 1.8)
+        self.assertEqual(w.damage_per_min, 0.6)
 
 
 if __name__ == "__main__":
