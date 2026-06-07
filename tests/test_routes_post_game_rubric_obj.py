@@ -343,8 +343,10 @@ class HeraldEnrichmentRouteTests(unittest.TestCase):
             )
 
     def test_teammate_herald_pulls_share_down(self):
-        # Operator owns dragon (=1); teammate gets herald (=1). 6-col
-        # ratio would be 1/1 = 1.0. 7-col ratio = 1/2 = 0.5.
+        # Operator owns 1 dragon; ally owns 6 dragons (dilutes the
+        # operator share into the linear region for the item-335 ADC obj
+        # baseline 0.15, where 2x-median clamp saturates above ~0.30).
+        # 6-col ratio = 1/7 ~ 0.143; +ally herald -> 1/8 = 0.125 (lower).
         with tempfile.TemporaryDirectory() as td:
             db_6col = Path(td) / "no_herald.db"
             db_7col = Path(td) / "with_herald.db"
@@ -353,13 +355,13 @@ class HeraldEnrichmentRouteTests(unittest.TestCase):
             _seed_obj_db(
                 db_6col, match_id="TM",
                 operator_objectives={"dragon_kills": 1},
-                ally_objectives={},
+                ally_objectives={"dragon_kills": 6},
                 operator_herald=0, ally_herald=0,
             )
             _seed_obj_db(
                 db_7col, match_id="TM",
                 operator_objectives={"dragon_kills": 1},
-                ally_objectives={},
+                ally_objectives={"dragon_kills": 6},
                 operator_herald=0, ally_herald=1,
             )
             rpgr._CACHE.clear()
@@ -536,8 +538,10 @@ class VoidEnrichmentRouteTests(unittest.TestCase):
             self.assertGreater(payload["components"]["obj_participation"], 0.0)
 
     def test_teammate_void_pulls_share_down(self):
-        # Operator owns dragon (=1); teammate grabs voidgrubs (=2).
-        # Pre-void: 1/1 = 1.0. Post-void: 1/3 ~ 0.333.
+        # Operator owns 1 dragon; ally owns 6 dragons (dilutes the
+        # operator share into the linear region for the item-335 ADC obj
+        # baseline 0.15). Pre-void: 1/7 ~ 0.143. Post ally void=2:
+        # 1/9 ~ 0.111 (lower).
         with tempfile.TemporaryDirectory() as td:
             db_no_void = Path(td) / "no_void.db"
             db_void = Path(td) / "with_void.db"
@@ -546,13 +550,13 @@ class VoidEnrichmentRouteTests(unittest.TestCase):
             _seed_obj_db(
                 db_no_void, match_id="TV",
                 operator_objectives={"dragon_kills": 1},
-                ally_objectives={},
+                ally_objectives={"dragon_kills": 6},
                 operator_void=0, ally_void=0,
             )
             _seed_obj_db(
                 db_void, match_id="TV",
                 operator_objectives={"dragon_kills": 1},
-                ally_objectives={},
+                ally_objectives={"dragon_kills": 6},
                 operator_void=0, ally_void=2,
             )
             rpgr._CACHE.clear()
