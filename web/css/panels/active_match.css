@@ -1,6 +1,6 @@
 /* Active Match view (s159) - curated mid-game layout that replaces
  * the 5-panel main grid for in-game modes. Three-pane horizontal
- * grid with even widths at the canonical 1920×1080 / 100% scale.
+ * grid with even widths at the canonical 1920x1080 / 100% scale.
  *
  * Step 1 (this commit): scaffold-only styling. Pane heads + empty
  * placeholder bodies. Subsequent steps fill in CALL / BUILD / MAP
@@ -11,7 +11,7 @@
   display: grid;
   /* s160 layout: left column stacks CALL on top of BUILD; right
    * column is the MAP, full-height (spans both rows). Right column
-   * is now ~2× the left so the map gets dominant real estate. The
+   * is now ~2x the left so the map gets dominant real estate. The
    * 1.1fr / 2fr split preserves the *left* column width from s159
    * (when it was the CALL-only column) and folds BUILD into the
    * vertical stack underneath.
