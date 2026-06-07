@@ -1,0 +1,23 @@
+{
+  "repo_root": "C:\\Riot Commander",
+  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
+  "ceiling_usd": 15.0,
+  "max_cycles": 1,
+  "cycle_deadline_sec": 2700,
+  "poll_sec": 5,
+  "dry_run": false,
+  "ignore_no_progress": true,
+  "clear_each_cycle": false,
+  "session_jsonl": "",
+  "directive_suffix": "TEST MODE: the directive MUST instruct Claude to commit locally with a clear message but DO NOT push to origin/main. Keep the change small and bounded.",
+  "claude_window_title": "Claude",
+  "gemini_model": "gemini-3-pro-preview",
+  "gemini_cmd": "gemini",
+  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
+  "price_per_mtok": {
+    "opus":   {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5},
+    "sonnet": {"input": 3.0,  "output": 15.0, "cache_write": 3.75,  "cache_read": 0.3},
+    "haiku":  {"input": 1.0,  "output": 5.0,  "cache_write": 1.25,  "cache_read": 0.1},
+    "default":{"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5}
+  }
+}
