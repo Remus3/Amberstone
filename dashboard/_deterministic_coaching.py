@@ -453,11 +453,17 @@ def resolve_choices(coach: dict, det: dict) -> list[dict]:
         return (det or {}).get("choices") or []
 
 
-def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str) -> None:
+def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str,
+                   *, path=None) -> None:
     """Fail-soft B1 validation shadow-log. Records the deterministic surfaces
     plus the native choices resolve_choices discards, to
     data/det_coach_shadow.jsonl, alongside live coaching. Never raises and has
-    NO effect on live output. Only fires for a real game (enemy_comp present)."""
+    NO effect on live output. Only fires for a real game (enemy_comp present).
+
+    MUST be called BEFORE build_state overwrites coach["choices"] with
+    resolve_choices(): it reads the NATIVE choices via parse_choices(coach), and
+    the whole point of the log is to capture what the deterministic flip
+    discards. ``path`` overrides the jsonl target (test seam)."""
     try:
         gs = _build_game_state(coach, lc, mode_key)
         enemy = gs.get("enemy_comp")
@@ -475,6 +481,7 @@ def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str) -> No
             game_time_s=gs.get("game_time_s"),
             level=gs.get("level"),
             item_count=item_count,
+            path=path,
         )
     except Exception:
         return

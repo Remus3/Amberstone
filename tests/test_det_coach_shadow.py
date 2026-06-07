@@ -148,3 +148,33 @@ def test_failsoft_bad_det_does_not_raise(tmp_path):
     )
     assert rec_str is not None
     assert len(_read_lines(target)) == 2
+
+
+def test_shadow_log_det_captures_native_distinct_from_det(tmp_path):
+    """Integration guard: dashboard.shadow_log_det records the coach's NATIVE
+    choices, NOT the deterministic ones. Protects the build_state ordering -
+    shadow_log_det MUST run before resolve_choices overwrites coach['choices'],
+    else native == det and the validation log is worthless."""
+    from dashboard._deterministic_coaching import shadow_log_det
+
+    target = tmp_path / "det_coach_shadow.jsonl"
+    coach = {
+        "champion": "Lux",
+        "choices": [{"key": "A", "label": "NativeOnly", "source_tag": "aram"}],
+    }
+    lc = {"enemy_team": ["Ahri", "Zed"]}
+    det = {
+        "choices": [{"key": "A", "label": "DetTrade", "source_tag": "ds-matchup"}],
+        "callouts": [],
+        "lead_projection": {"state": "even"},
+    }
+
+    shadow_log_det(coach, lc, det, "aram", path=target)
+
+    row = json.loads(_read_lines(target)[-1])
+    assert row["replaced"] is True
+    assert row["det_choices"][0]["label"] == "DetTrade"
+    assert row["native_choices"][0]["label"] == "NativeOnly"
+    assert row["native_choices"] != row["det_choices"]
+    assert row["my_champion"] == "Lux"
+    assert row["enemy_champions"] == ["Ahri", "Zed"]
