@@ -27,7 +27,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | A3 | DS-coach | Wire the 2 highest-value axes into coach context: anti-tank build hint (vs high-HP enemies) + scaling power-curve, into modes/* prompts. Shadow-log first, then surface. | DONE | 52f76059 |
 | B1 | coach-wire | Wire core/laning_verdicts.py + core/event_callouts.py + core/lead_projection.py (pure generators, zero live-coach consumer) into the live coach dict + callouts.js / right_now.js / next.js. Shadow-log validation first. | DONE | 48411bfc |
 | C1 | ui-audit | Champ-Select ARAM + Champ-Select Arena: 5-phase fixture audit + Claude_Preview visual validation vs /api/state. Per docs/UI_SCALE_SPEC_V2.md. | DONE | b4bfa05a |
-| C2 | ui-audit | Active Match SR + ARAM + Arena: 5-phase audit + visual validation. | OPEN | - |
+| C2 | ui-audit | Active Match SR + ARAM + Arena: 5-phase audit + visual validation. | DONE | e81495e0 |
 | C3 | ui-audit | Post Game Review SR + ARAM + Arena: 5-phase audit + visual validation. | OPEN | - |
 | D1 | lift | DS relative-score bar (Aggregator P lift, BACKLOG.md:21): per-row score_pct fill (delta_dps/top_delta*100). Codeable with fixtures; render-gated on locked champ. | OPEN | - |
 | D2 | lift | draft tool L (the community fork) Elo log-odds draft aggregator (BACKLOG.md:78): clean algorithm reimplement (NO vendor) over pairwise WR from rewind_history.db. | OPEN | - |
@@ -46,6 +46,43 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-06 C2 DONE (item 331, commit e81495e0 + docs sync): Active Match
+  SR + ARAM + Arena 5-phase fixture audit + reproducible visual validation.
+  AUDIT: 3 parallel read-only mode-lens subagents (SR #11 / ARAM #12 /
+  Arena #13) each ran STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY
+  against active_match.css + active_match.js (incl. its inline-style px) +
+  the active_match_<m> fixtures + index.html #view-active-match vs
+  UI_SCALE_SPEC_V2. SPLIT verdict: SR NEEDS-FIX (3 MUST-FIX); ARAM + Arena
+  SHIP-READY. Sole-merger resolution: the SR auditor was right - the
+  active_match.js inline styles carry NO inline rationale (unlike the
+  cd_ledger.css precedent) and the CALL pane is the dominant in-game
+  content. FIXED in-slice: (a) active_match.css 2 non-ASCII U+00D7 (x)
+  signs in comments -> ASCII; (b) active_match.js 3 sub-floor inline
+  font-size px on readable DOM text -> v2.1 tokens (_line value 13 ->
+  --fs-md, _line label 10 -> --fs-xs, _dsIcon delta 11 -> --fs-xs).
+  VISUAL: NEW tests/snapshot_panels/test_active_match_view.py renders the
+  full #view-active-match for all 3 modes through the headless mock-server
+  + Playwright harness at 1920x1080 (drive /?ui_mock=1&mode=<m>#active-match
+  -> _amMockLoad -> renderActiveMatch; wait on #am-sub "phase InProgress").
+  Asserts per mode: view mounts, CALL pane live coach line renders, map
+  mounts with alt "<mode> map", draft-elo chip enabled SR/ARAM + hidden
+  Arena (the 5v5 gate), no JS errors; screenshots each. 7 new tests, ruff
+  + node --check + ASCII clean, verifier CONFIRM 7/0 + full suite 5247/0.
+  Full RC suite 5247 passed / 1 skip / 0 fail / 85 subtests (+7). web/css|js
+  asset-hash reload (ADR-008), no RC restart; no engine touch -> ENGINE
+  1.120.0, no DS bounce, no Share sync. Also relocated the shipped cdragon
+  ROADMAP item 1 -> docs/ROADMAP_HISTORY.md to bring ROADMAP.md back under
+  its 80KB doc-size budget (was 81993 > 81920; pre-existing red latent
+  since the C1 docs-only commit).
+- FUTURE (C2 audit SHOULD/NICE, deferred - do NOT auto-flip): the density-
+  constrained sub-floor micro-labels NOT bumped (kept at px): active_match.js
+  map status 11px + gank band 12px (absolutely-positioned HUD overlays on
+  the map image), _dsIcon/_defIcon OWNED 9px stamps + _defIcon caption 10px
+  + _dsIconFallback 9px tile (inside 44-62px icon cells where >=16px
+  overflows), MIA canvas badge 10px (canvas-rasterized, CSS tokens cannot
+  apply). Document each with an inline operator-exception rationale
+  (cd_ledger.css precedent) or bump on a future dense-overlay pass. Off-grid
+  spacing (am-grid gap 14, pane padding 10/14) is pre-existing, deferred.
 - 2026-06-06 C1 DONE (item 330, commit b4bfa05a): Champ-Select ARAM + Arena
   5-phase fixture audit + reproducible visual validation. AUDIT: 2 parallel
   read-only subagents (ARAM + Arena), each ran STRUCTURE/TYPOGRAPHY/HIT-TARGETS/
