@@ -36,7 +36,7 @@ import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
 // ADR-007 (s169) - heartbeat pill self-starts on import (own setInterval).
 import './panels/trigger_pill.js';
-import { _settingsRefresh, renderSpendGates, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
+import { _settingsRefresh, renderSpendGates, renderLoopStatus, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 import { renderBuildInsights } from './panels/build_insights.js';
 
   const WS_HOST = location.hostname || "legion-pc.local";
@@ -664,7 +664,7 @@ import { renderBuildInsights } from './panels/build_insights.js';
       } catch (_) {}
     }
     if (viewId === "build-insights") { renderBuildInsights(); }
-    if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); renderSpendGates(); }
+    if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); renderSpendGates(); renderLoopStatus(); }
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");

@@ -281,6 +281,81 @@ function _diagWireOnce() {
   });
 }
 
+// ── Headless loop status (2026-06-07) ────────────────────────────
+// Read-only, mobile-friendly surface over /api/loop-status (which reads the
+// ops/loop/control/* files + last commit). Rendered on each Settings show so
+// a Gemini-directed loop is watchable from the phone over Tailscale.
+function renderLoopStatus() {
+  const host = document.getElementById("loop-status-body");
+  if (!host) return;
+  const mk = (tag, cls, txt) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  };
+  fetch("/api/loop-status", { cache: "no-store" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d || !d.ok) {
+        host.innerHTML = '<div class="home-empty">loop status unavailable</div>';
+        return;
+      }
+      host.innerHTML = "";
+      const st = d.state || "idle";
+
+      const stateRow = mk("div", "loop-state-row");
+      stateRow.append(mk("span", "loop-dot " + st));
+      stateRow.append(mk("b", null, st.toUpperCase()));
+      if (d.cycle != null) {
+        stateRow.append(mk("span", "dim",
+          "cycle " + d.cycle + (d.max_cycles ? " / " + d.max_cycles : "")));
+      }
+      if (d.mode) stateRow.append(mk("span", "loop-mode", d.mode));
+      host.append(stateRow);
+
+      if (d.stop_reason) host.append(mk("div", "loop-line dim", "stop: " + d.stop_reason));
+
+      if (d.last_done) {
+        const ld = d.last_done;
+        const row = mk("div", "loop-line");
+        row.append(mk("span", "dim",
+          "last cycle " + (ld.cycle != null ? ld.cycle : "?") + ":"));
+        row.append(mk("code", null, ld.sha || "?"));
+        row.append(mk("span", null,
+          "tests " + (ld.tests_pass != null ? ld.tests_pass : "?")));
+        row.append(mk("span", ld.regressions ? "loop-bad" : "loop-ok",
+          ld.regressions ? "REGRESS" : "clean"));
+        host.append(row);
+      }
+
+      if (d.budget) {
+        const b = d.budget;
+        const num = (v) => (typeof v === "number" ? v : null);
+        const g = num(b.gemini_usd), gc = num(b.gemini_ceiling), c = num(b.claude_usd_info);
+        host.append(mk("div", "loop-line dim",
+          "spend: gemini $" + (g != null ? g.toFixed(2) : "?") +
+          " / $" + (gc != null ? gc.toFixed(0) : "?") +
+          "  -  claude(info) $" + (c != null ? c.toFixed(2) : "?")));
+      }
+
+      if (d.last_commit) {
+        const lc = d.last_commit;
+        const row = mk("div", "loop-line");
+        row.append(mk("code", null, lc.sha || "?"));
+        row.append(mk("span", "dim", lc.subject || ""));
+        host.append(row);
+      }
+
+      if (Array.isArray(d.log_tail) && d.log_tail.length) {
+        host.append(mk("pre", "loop-log", d.log_tail.join("\n")));
+      }
+    })
+    .catch(() => {
+      host.innerHTML = '<div class="home-empty">loop status error</div>';
+    });
+}
+
 // ── Replay scrubber (audit suggestion 2.3, 2026-04-28) ────────────
 // Loads recent matches from /api/replay/matches; clicking one fetches
 // /api/replay/match/<id> and lets the user scrub through per-minute
@@ -523,7 +598,7 @@ function _replayViewWireOnce() {
 }
 
 export {
-  _settingsRefresh, renderSpendGates,
+  _settingsRefresh, renderSpendGates, renderLoopStatus,
   _diagFetchAndRender, _diagWireOnce,
   _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch,
 };
