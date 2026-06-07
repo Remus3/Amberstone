@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-07 - loop cycle 3 (run 2026-06-06): E1 per-role rubric EMPIRICAL CALIBRATION SHIPPED [item 335]
+
+Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session E1 (tune core/post_game_rubric.py weight vectors from public per-role data). Operator interrupted after this cycle -> STOP dropped, loop halted, /done. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share); RC restarted pid 27300 -> 9412 (route reload). Commits `42780b3d` code + `d7ebebbd` docs.
+
+- **NOT a stale premise (breaks the D1/D2/B1 streak):** the rubric existed + was LIVE-wired (routes_post_game_rubric -> last_match.js hero grade chip + postmortem_analyze) but its weights were hand-estimated "STARTING" values. GROUND TRUTH over 5957 ranked-SR rows in data/rewind_history.db (map 11 CLASSIC >=15min, real obj): the median real game graded **D** (TOP/JG/MID/ADC) / **C** (SUP), scores 33-46 - violating the module's own documented "median 1.0-profile -> 50 (B)" invariant. dpm baselines ran 40-80% low (TOP 480 vs real 717), KDA high (TOP 2.50 vs 1.78), weight sums 3.70-4.60 (need 5.0 for the x10 to hit 50).
+- **Fix (2 grounded axes):** `_ROLE_BASELINES` -> empirical real per-role medians; `_DEFAULT_WEIGHTS` -> public-source emphasis ordering (unrankedsmurfs confirms Riot publishes NO exact weights: CS-led TOP/MID, obj/KP-heaviest JG, vision + strict-KDA SUP, carry-damage ADC), every vector now sums to 5.0. Validated on the same corpus: median now grades **B** all roles (TOP 51.5 / JG 53.3 / MID 52.0 / ADC 53.5 / SUP 54.6) with a sane S+..D spread.
+- **Tests:** +2 durable db-independent invariants (`CalibrationInvariantTests`: weight-sum==5.0 + baseline-profile==50/B). Blast radius 1 source + 4 test files (the obj dilution/compose tests pad ally objectives so the operator share stays below the now-realistic 2x-median obj clamp - high-share games correctly saturate). verifier CONFIRM from clean state; FULL RC **5257 passed / 1 skip / 0 fail**; ruff clean; CI green (hygiene + smoke + snapshot).
+- **Don't-redo:** E1 DONE - do NOT revert to hand-estimates or re-pitch "tune the weights" (now source-ordered + sum-5.0 + invariant-locked; the override JSON loader stays for operator tuning). FUTURE: CC-score is a source-cited SUP signal with no rubric axis yet (schema lift); baselines are SR-only (event modes grade vs SR medians). NEXT OPEN = E2 (LCU data.json diff research).
+
+---
+
 # 2026-06-06 - loop cycle 3 (run 2026-06-06-02): A2b DS-Matchup card SHIPPED [item 327]
 
 Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A2b. Orchestrator-merge: 1 Claude sole-merger + 2 parallel disjoint worktree slices + read-only verifier gate. Merges `0a4b0dc0` backend + `3dd1cdcf` frontend + UI-fix `0a017dc4`. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, NOT restarted); RC restarted pid 13060 -> 13948 for the route reload.
@@ -26,15 +37,3 @@ Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A1. Orche
 - **Verify:** both slices verifier-CONFIRM; FULL RC suite **5153 passed / 1 skip / 0 fail**; ruff clean; ASCII-clean. 5-phase UI audit **PASS 0 MUST-FIX / 0 SHOULD-FIX / 1 NICE** (`.dsp-detail` overflow guard - cosmetic, ancestor-clipped).
 - **VISUAL CAPTURE OWED** (carry-forward): Claude_Preview can't reach HTTPS self-signed `:8888` + Game-PC `:8892` MCP down (`project_gamepc_mcp_boot_gap`). Code-side audit + live probe + DOM tests stand in.
 - **Don't-redo:** A1 DONE - reads the 4 existing scorers, no engine math; ASCII trajectory words not arrows. **NEXT (A2):** add threat-range/zone-control/objective-damage/extended-duel/matchup axes to the SAME `/api/ds-profile` surface (fns exist: threatrange/zonecontrol/objdamage/extendedduel.py) + re-audit.
-
----
-
-# 2026-06-05 - loop directive reconcile: both named DS slices already SHIPPED [docs-only]
-
-Loop `ops/loop/control/directive.md` asked to implement "AurelionSol W cross-spell seam" + "conditional-gate for Brand W and Ekko W" via the orchestrator pattern. GROUND-TRUTH PROBE: both already shipped; directive was generated from STALE ROADMAP line 49 prose (written at item 250/251) that still listed them as "remain".
-
-- **Slice A AurelionSol W cross-spell seam = item 257** (commit `c47f04b9`, ENGINE 1.87.0 -> 1.88.0). `_CROSS_SPELL_AMP_OVERRIDES` + `_cross_spell_amp_for` consumed at `agents/daemon_slayer/ability_dps.py:1111`. default-OFF byte-identical.
-- **Slice B conditional-gate = item 255** (commit `db52d355`, ENGINE 1.86.0 -> 1.87.0). Brand P (Blaze max-HP ring, prob 0.5) + Ekko W (Parallel Convergence missing-HP sub-30%, prob 1.0 ctx-gated) in `_passive_damage_overrides.py`. NB directive said "Brand W"; the real conditional-gate damage slot is Brand P (W = plain AoE zone, no gate). default-OFF byte-identical.
-- **No re-implementation.** Re-coding shipped entries would violate the CLAUDE saturation guard + risk duplicate registry rows. Did NOT spawn worktree agents (nothing to implement). Fixed the stale ROADMAP line 49 instead.
-- **Tests:** named-slice files `test_cross_spell_amp_item257.py` + `test_passive_damage_conditional_gate_item255.py` = 45 passed. Full DS dir `agents/daemon_slayer/tests/` = 6644 passed / 1 skip / 1 xfail / 1936 subtests / EXIT 0. NO ENGINE bump, DS NOT restarted.
-- **NEXT:** only Phase D live flag-flips remain for DS-completion - operator-gated, NOT headless (section 4b do-not-flip-blind).
