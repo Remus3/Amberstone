@@ -909,6 +909,77 @@ def capture_state() -> dict:
 
 # -- Command execution -------------------------------------------------------
 
+def _resolve_invitee_summoner_id(rid: str, sid, puuid: str):
+    """Resolve a lobby-invite target to an LCU summonerId.
+
+    Riot removed ``/lol-summoner/v1/summoners/by-name`` in the Riot ID
+    migration - it 404s on current clients - which silently broke every
+    Top 8 / friends-list invite (the dashboard only had a "Name#TAG" to
+    resolve from). Resolution order, most reliable first:
+
+      1. explicit summonerId (caller already had it)
+      2. puuid -> /lol-summoner/v1/summoners-by-puuid-cached/{puuid}
+      3. Name#TAG -> scan /lol-chat/v1/friends (invite targets ARE
+         friends; that resource carries gameName/gameTag/summonerId on
+         current builds) matching gameName#gameTag or the legacy name
+      4. legacy /lol-summoner/v1/summoners/by-name (ancient builds only)
+
+    Returns ``(summoner_id: int | None, how: str)`` where ``how`` names
+    the path that resolved (or the miss) for the result envelope + logs.
+    """
+    try:
+        sid_int = int(sid or 0)
+    except (TypeError, ValueError):
+        sid_int = 0
+    if sid_int > 0:
+        return sid_int, "summoner_id"
+
+    puuid = str(puuid or "").strip()
+    if puuid:
+        looked, _ = lcu_request(
+            "GET", f"/lol-summoner/v1/summoners-by-puuid-cached/{puuid}")
+        if isinstance(looked, dict) and looked.get("summonerId"):
+            return int(looked["summonerId"]), "puuid"
+
+    rid = str(rid or "").strip()
+    if not rid:
+        return None, "no_identifier"
+    want_name, _, want_tag = rid.partition("#")
+    want_name = want_name.strip().lower()
+    want_tag = want_tag.strip().lower()
+
+    friends, _ = lcu_request("GET", "/lol-chat/v1/friends")
+    if isinstance(friends, list):
+        for fr in friends:
+            if not isinstance(fr, dict):
+                continue
+            gn = str(fr.get("gameName") or "").strip().lower()
+            tg = str(fr.get("gameTag") or fr.get("tagLine") or "").strip().lower()
+            legacy = str(fr.get("name") or "").strip().lower()
+            if want_tag and gn:
+                matched = (gn == want_name and tg == want_tag)
+            elif gn:
+                matched = (gn == want_name)
+            else:
+                matched = False
+            if not matched and legacy:
+                matched = (legacy == want_name)
+            if matched and fr.get("summonerId"):
+                return int(fr["summonerId"]), "friends"
+
+    if "#" in rid:
+        nm, _, tg = rid.partition("#")
+        looked, _ = lcu_request(
+            "GET", f"/lol-summoner/v1/summoners/by-name/{nm}-{tg}")
+        if not isinstance(looked, dict):
+            looked, _ = lcu_request(
+                "GET", f"/lol-summoner/v1/summoners/by-name/{nm}")
+        if isinstance(looked, dict) and looked.get("summonerId"):
+            return int(looked["summonerId"]), "by_name"
+
+    return None, "unresolved"
+
+
 def execute_command(cmd: dict) -> dict:
     name = cmd.get("cmd", "")
     if name == "set_config":
@@ -1475,30 +1546,24 @@ def execute_command(cmd: dict) -> dict:
         return {"ok": err is None, "err": err, "party_type": pt}
     if name == "lobby.invite_player":
         # POST a lobby invitation. LCU accepts an array of invitee
-        # descriptors - we send one. The dashboard provides riot_id
-        # ("Name#TAG") which is converted to summoner_id via lookup.
+        # descriptors - we send one. The dashboard provides a riot_id
+        # ("Name#TAG") and/or summoner_id/puuid; resolution lives in
+        # _resolve_invitee_summoner_id because Riot's by-name endpoint is
+        # dead and a friends-scan is the reliable Top 8 / friends path.
         rid = str(cmd.get("riot_id") or "").strip()
-        sid = cmd.get("summoner_id")
-        if not rid and not sid:
-            return {"ok": False, "err": "riot_id or summoner_id required"}
-        if not sid and rid and "#" in rid:
-            name_, _, tag = rid.partition("#")
-            # /lol-summoner/v1/summoners/by-name/<name>#<tag> on newer
-            # builds; older builds use /lol-summoner/v1/summoners/by-name/<name>
-            # without the tag. Try both, prefer the by-name+tag path.
-            looked, _ = lcu_request("GET",
-                f"/lol-summoner/v1/summoners/by-name/{name_}-{tag}")
-            if not isinstance(looked, dict):
-                looked, _ = lcu_request("GET",
-                    f"/lol-summoner/v1/summoners/by-name/{name_}")
-            if isinstance(looked, dict):
-                sid = looked.get("summonerId")
+        sid_in = cmd.get("summoner_id")
+        puuid = str(cmd.get("puuid") or "").strip()
+        if not rid and not sid_in and not puuid:
+            return {"ok": False,
+                    "err": "riot_id, summoner_id or puuid required"}
+        sid, how = _resolve_invitee_summoner_id(rid, sid_in, puuid)
         if not sid:
-            return {"ok": False, "err": f"could not resolve summoner: {rid}"}
+            return {"ok": False,
+                    "err": f"could not resolve summoner: {rid or puuid}"}
         body = [{"toSummonerId": int(sid)}]
         _, err = lcu_request("POST", "/lol-lobby/v2/lobby/invitations", body)
         return {"ok": err is None, "err": err,
-                "riot_id": rid, "summoner_id": sid}
+                "riot_id": rid, "summoner_id": sid, "resolved_via": how}
     if name == "lobby.promote_leader":
         # Hand party leadership to another member. Resolve riot_id (or
         # summoner_id) → member_id by walking the current lobby members
