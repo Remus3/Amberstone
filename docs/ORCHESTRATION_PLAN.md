@@ -53,6 +53,23 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-08 REGRESSION FALSE ALARM (gemini director, /gemini-headless-upgrade cycle).
+  Director claimed the WAKEUP "+16 characterization tests" for
+  core/laning_scenario_precompute.py were never committed ("no test files in the commit
+  diff") and ordered them re-authored. GROUND TRUTH (checked 4 ways - Glob, git show
+  --stat 85b13b7c, full file read, fresh pytest): tests/test_laning_scenario_precompute.py
+  EXISTS (186 lines, 16 tests), was committed IN the feature commit 85b13b7c
+  ("tests/test_laning_scenario_precompute.py | 186 +"), and is 16/16 GREEN this run (use
+  Programs\Python\Python314\python.exe - the `py` launcher resolves to a pythoncore with no
+  pytest). Read-only verifier subagent independently re-CONFIRMED (file-exists YES,
+  in-commit-85b13b7c YES, 16/16 pass, engine-characterization test
+  test_cell_verdict_matches_compute_matchup at line 111 pins cell["verdict"] ==
+  compute_matchup). ROOT CAUSE: HEAD is the trailing docs-sync commit 49da557a (LEDGER 352
+  + ROADMAP/WAKEUP, NO test files); the director diffed THAT instead of the feature commit
+  one below it (85b13b7c). RESOLUTION: NO code change - declined to author duplicate tests
+  (would collide with the shipped file). HZ-A1 + its 16 tests stay DONE (LEDGER item 352);
+  no LEDGER entry added (a false-alarm rebuttal is not an item completion). NEXT OPEN
+  unchanged = HZ-A2 (recall/back-timing + power-spike-ETA).
 - 2026-06-08 HZ-A1 DONE (commit 85b13b7c). NEW core/laning_scenario_precompute.py:
   an offline deterministic sweep of the SHIPPED matchup engine
   (agents.daemon_slayer.matchup.compute_matchup) over (my_champ x enemy x
