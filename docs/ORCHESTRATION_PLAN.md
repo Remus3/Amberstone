@@ -35,6 +35,12 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | E2 | research | LCU data.json diff vs the reference catalog (BACKLOG.md:19) for richer endpoints. Log findings only; no live capture. | DONE | item 348 |
 | E3 | research | Competitor-tool lift secondary sweep, framed by technical substance only (keep third-party names out of repo). Output new NOW/FUTURE/CLOSED candidates into the Findings log. | DONE | item 348 |
 | F1 | monitoring | Phone monitoring loop-status panel reading ops/loop/control/{cycle.txt,controller.log,claude.done} + last commit (Tailscale-viewable) + daily upstream content-drift poll (tools/upstream_drift_check.py + scheduled task). | DONE | 5bc8f02f+d3fcc070 |
+| HZ-A1 | haiku-zero | Lane A laning-scenario precompute (charter 4b PRIMARY). Build core/laning_scenario_precompute.py: for (champ x matchup x level-band x mana-state x cooldown-state) emit trade/all-in/back-off verdicts via agents/daemon_slayer/{scenario_matrix,combo,mana_sim,fight_report}.py + core/laning_verdicts.py. Persist versioned JSON to data/daemon_slayer/laning_scenarios/. Characterization tests vs DS math. BUILD + PERSIST ONLY - the live coach flip is EXCLUDED (needs real-game validation). | OPEN | - |
+| HZ-A2 | haiku-zero | Lane A extension: add recall/back-timing + power-spike-ETA verdicts (gold-income + item-completion driven, reuse core/lead_projection.py) to the HZ-A1 lookup tables. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
+| HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
+| HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
+| HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | OPEN | - |
+| HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | OPEN | - |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -43,9 +49,19 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Champ-select brief Haiku -> deterministic flip - needs live shadow-log accrual + operator OK.
 - Game-PC :8892 visual screenshot captures (MCP down post-1PC). C-phase visual validation uses the Claude_Preview MCP against :8888 instead.
 - Anything in the CLAUDE.md "Settled - do not re-litigate" set.
+- Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-08 RESEED (operator-directed, /gemini-headless-upgrade relaunch). A1-F1 were
+  FULLY CLOSED -> director correctly emitted NO_WORK and self-terminated. Operator chose
+  to refill with the charter 4b PRIMARY north star (drive live Haiku usage to ZERO).
+  Seeded HZ-A1/A2 (Lane A laning-scenario precompute), HZ-B1/B2 (Lane B build-order
+  precompute), HZ-C1 (Lane C deterministic choice-coach, shadow-log), HZ-D1 (Lane D
+  Electron overlay). All scoped BUILD + PERSIST + SHADOW-LOG only; live coach flips stay
+  EXCLUDED (charter "do not flip blind", needs real-game validation). Substrate paths
+  verified present (scenario_matrix/combo/mana_sim/fight_report/rank/build_order/
+  laning_verdicts/lead_projection/coach_output, rc-shell, ELECTRON_OVERLAY.md).
 - 2026-06-07 E2 + E3 + F1 DONE + DS scout EXHAUSTED (item 348; parallel "next open
   items" dispatch). **Fanout A1-F1 now FULLY CLOSED -> NO_WORK; loop self-terminates.**
   No code shipped (research / reconcile only); RC not restarted; ENGINE 1.120.0.
