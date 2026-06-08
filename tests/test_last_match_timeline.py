@@ -15,6 +15,7 @@ from __future__ import annotations
 import unittest
 
 from dashboard.builders import _enrich_match_timeline
+from dashboard.builders_lcu_enrich import _fold_at_n_into_roster
 
 
 def _detail(my_team=100):
@@ -221,6 +222,83 @@ class MatchV5NestingTests(unittest.TestCase):
         }
         out = _enrich_match_timeline(tl, _detail(), 100)
         self.assertEqual(out["series"]["gold"], [0, 500])
+
+
+class AtNSnapshotTests(unittest.TestCase):
+    """PGR S5: per-participant gold@10 / cs@10 snapshot for the lane-
+    comparison panel. The reducer keeps the team-aggregate series AND now
+    surfaces an `at_n` block keyed by participantId, picked from the frame
+    nearest the 10-minute mark (or the last frame in a short game)."""
+
+    def _laning_frames(self):
+        frames = []
+        for minute in range(13):  # 0..12 min
+            pf = {}
+            for pid in range(1, 11):
+                pf[str(pid)] = _pf(pid, gold=pid * 1000 + minute, xp=0,
+                                   minions=minute, jungle=(5 if pid == 3 else 0))
+            frames.append({"timestamp": minute * 60000,
+                           "participantFrames": pf, "events": []})
+        return {"frameInterval": 60000, "frames": frames}
+
+    def test_at_n_picks_ten_minute_frame_per_participant(self):
+        out = _enrich_match_timeline(self._laning_frames(), _detail(), 100)
+        at_n = out["at_n"]
+        self.assertEqual(at_n["target_minute"], 10)
+        self.assertEqual(at_n["minute"], 10)
+        # pid1 @10: gold 1*1000+10=1010, cs=minions(10)
+        self.assertEqual(at_n["by_pid"]["1"], {"gold": 1010, "cs": 10})
+        # pid3 cs folds jungle (5) -> 15
+        self.assertEqual(at_n["by_pid"]["3"], {"gold": 3010, "cs": 15})
+        self.assertEqual(len(at_n["by_pid"]), 10)
+
+    def test_at_n_short_game_uses_last_frame(self):
+        tl = {"frames": [_frame(0, (500, 0, 0), (500, 0, 0)),
+                         _frame(60000, (1000, 0, 5), (900, 0, 4)),
+                         _frame(120000, (1500, 0, 9), (1400, 0, 8))]}
+        out = _enrich_match_timeline(tl, _detail(), 100)
+        at_n = out["at_n"]
+        self.assertEqual(at_n["minute"], 2)            # last frame, game < 10min
+        self.assertEqual(at_n["by_pid"]["1"]["gold"], 1500)
+        self.assertEqual(at_n["by_pid"]["1"]["cs"], 9)
+        self.assertEqual(at_n["by_pid"]["6"]["gold"], 1400)
+
+    def test_at_n_missing_keys_default_zero(self):
+        tl = {"frames": [{"timestamp": 600000, "participantFrames": {
+            "1": {"participantId": 1}}, "events": []}]}
+        out = _enrich_match_timeline(
+            tl, {"participants": [{"participantId": 1, "teamId": 100}]}, 100)
+        self.assertEqual(out["at_n"]["by_pid"]["1"], {"gold": 0, "cs": 0})
+
+
+class FoldAtNIntoRosterTests(unittest.TestCase):
+    """The fold copies the timeline `at_n` snapshot onto each roster entry
+    (gold_at_n / cs_at_n / at_n_minute) so the panel reads it straight off
+    the participant row. No-op when no timeline / at_n is present."""
+
+    def test_fold_sets_at_n_fields_by_participant(self):
+        enriched = {
+            "roster": [{"participant_id": 1}, {"participant_id": 6}],
+            "timeline": {"at_n": {"minute": 10, "target_minute": 10,
+                                  "by_pid": {"1": {"gold": 3500, "cs": 80},
+                                             "6": {"gold": 3000, "cs": 70}}}},
+        }
+        _fold_at_n_into_roster(enriched)
+        by = {p["participant_id"]: p for p in enriched["roster"]}
+        self.assertEqual(by[1]["gold_at_n"], 3500)
+        self.assertEqual(by[1]["cs_at_n"], 80)
+        self.assertEqual(by[1]["at_n_minute"], 10)
+        self.assertEqual(by[6]["gold_at_n"], 3000)
+
+    def test_fold_noop_without_timeline(self):
+        enriched = {"roster": [{"participant_id": 1}]}
+        _fold_at_n_into_roster(enriched)  # must not raise
+        self.assertNotIn("gold_at_n", enriched["roster"][0])
+
+    def test_fold_noop_without_at_n(self):
+        enriched = {"roster": [{"participant_id": 1}], "timeline": {}}
+        _fold_at_n_into_roster(enriched)
+        self.assertNotIn("gold_at_n", enriched["roster"][0])
 
 
 if __name__ == "__main__":
