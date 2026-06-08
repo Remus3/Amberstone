@@ -35,7 +35,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | E2 | research | LCU data.json diff vs the reference catalog (BACKLOG.md:19) for richer endpoints. Log findings only; no live capture. | DONE | item 348 |
 | E3 | research | Competitor-tool lift secondary sweep, framed by technical substance only (keep third-party names out of repo). Output new NOW/FUTURE/CLOSED candidates into the Findings log. | DONE | item 348 |
 | F1 | monitoring | Phone monitoring loop-status panel reading ops/loop/control/{cycle.txt,controller.log,claude.done} + last commit (Tailscale-viewable) + daily upstream content-drift poll (tools/upstream_drift_check.py + scheduled task). | DONE | 5bc8f02f+d3fcc070 |
-| HZ-A1 | haiku-zero | Lane A laning-scenario precompute (charter 4b PRIMARY). Build core/laning_scenario_precompute.py: for (champ x matchup x level-band x mana-state x cooldown-state) emit trade/all-in/back-off verdicts via agents/daemon_slayer/{scenario_matrix,combo,mana_sim,fight_report}.py + core/laning_verdicts.py. Persist versioned JSON to data/daemon_slayer/laning_scenarios/. Characterization tests vs DS math. BUILD + PERSIST ONLY - the live coach flip is EXCLUDED (needs real-game validation). | OPEN | - |
+| HZ-A1 | haiku-zero | Lane A laning-scenario precompute (charter 4b PRIMARY). Build core/laning_scenario_precompute.py: for (champ x matchup x level-band x mana-state x cooldown-state) emit trade/all-in/back-off verdicts via agents/daemon_slayer/{scenario_matrix,combo,mana_sim,fight_report}.py + core/laning_verdicts.py. Persist versioned JSON to data/daemon_slayer/laning_scenarios/. Characterization tests vs DS math. BUILD + PERSIST ONLY - the live coach flip is EXCLUDED (needs real-game validation). | DONE | 85b13b7c |
 | HZ-A2 | haiku-zero | Lane A extension: add recall/back-timing + power-spike-ETA verdicts (gold-income + item-completion driven, reuse core/lead_projection.py) to the HZ-A1 lookup tables. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
@@ -53,6 +53,35 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-08 HZ-A1 DONE (commit 85b13b7c). NEW core/laning_scenario_precompute.py:
+  an offline deterministic sweep of the SHIPPED matchup engine
+  (agents.daemon_slayer.matchup.compute_matchup) over (my_champ x enemy x
+  level-band x mana-state x cooldown-state) -> trade / all_in / back_off / even
+  verdicts; generator + fail-soft reader (load_laning_scenarios + lookup, mtime
+  cache) + CLI; atomic versioned JSON ->
+  data/daemon_slayer/laning_scenarios/<patch>/laning_scenarios_<mode>.json.
+  Dimensions: 4 level-bands (L2/L6/L11/L16) x mana full/low x cd all_up/no_ult.
+  mana-state low = the affordable combo prefix from mana_sim's per-cast cost
+  ledger (manaless -> low==full, flagged); cd no_ult drops R. KEY MODEL FIX
+  caught in build: the enemy is modelled at FULL resources (sequence_b = full
+  rotation) so a same-level full-state mirror is symmetric (even) - the first cut
+  left the enemy on the engine default (with AA, no E) and skewed even the mirror
+  to back_off -0.10. Committed SR seed = 10-champ archetype-diverse SAMPLE (not a
+  tier list), itemless v1, 1600 leaf cells / 667KB; verdict dist even 793 /
+  back_off 696 / trade 111 / all_in 0 (0 all_in is HONEST for itemless - all_in
+  needs full HP removal; it surfaces once an item axis lands, HZ-A2 /
+  build-order precompute). 16 characterization tests pin cells == compute_matchup;
+  verifier CONFIRM on the slice (16/16, 3 files present, ruff + py_compile clean).
+  Full RC suite 5316 passed / 1 skip (the lone "fail" the verifier flagged was the
+  PRE-EXISTING ROADMAP doc-size budget red, FIXED in the same commit by relocating
+  shipped item 344 -> docs/ROADMAP_HISTORY.md: ROADMAP 82898 -> 79228 < 81920). NO
+  engine touch -> ENGINE 1.120.0, no DS bounce, no Share sync; no web/ -> no
+  UI-audit; RC not restarted (no route/asset delta - the table is read by a FUTURE
+  consumer, HZ-C1). BUILD + PERSIST + READ only; live coach flip EXCLUDED (charter
+  4b do-not-flip-blind). DISCOVERED/deferred: ARAM + Arena mode tables are a
+  --mode away (the generator does all 3) but the laning-trade framing is SR;
+  full-roster coverage is a --champions/--enemies expand (172^2 pairs) deferred
+  offline for cost. NEXT OPEN = HZ-A2 (recall/back-timing + power-spike-ETA).
 - 2026-06-08 RESEED (operator-directed, /gemini-headless-upgrade relaunch). A1-F1 were
   FULLY CLOSED -> director correctly emitted NO_WORK and self-terminated. Operator chose
   to refill with the charter 4b PRIMARY north star (drive live Haiku usage to ZERO).

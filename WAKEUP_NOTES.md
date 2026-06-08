@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-08 - HZ-A1 Lane A laning-scenario precompute (Haiku-to-ZERO) [item 352]
+
+gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06-08 ORCHESTRATION_PLAN reseed). Commit 85b13b7c. BUILD + PERSIST + READ only, NO live coach flip (charter 4b do-not-flip-blind).
+
+- **NEW `core/laning_scenario_precompute.py`** precomputes laning `trade`/`all_in`/`back_off`/`even` verdicts over (my_champ x enemy x level-band x mana-state x cd-state) from the SHIPPED `compute_matchup` engine. Generator (`compute_cell`/`generate_table`) + fail-soft mtime-cached reader (`load_laning_scenarios` + `lookup`) + CLI; atomic versioned JSON -> `data/daemon_slayer/laning_scenarios/<patch>/laning_scenarios_<mode>.json`. Dims: 4 bands (L2/L6/L11/L16) x mana full/low x cd all_up/no_ult. mana low = affordable combo prefix from `mana_sim` per-cast cost ledger (manaless -> low==full); cd no_ult drops R.
+- **Model fix (the de-risk probe caught it):** enemy modelled at FULL resources (`sequence_b` = full rotation) so a same-level mirror is symmetric (even); the first cut left the enemy on the engine default (AA, no E) and skewed even the mirror to back_off -0.10.
+- SR seed = 10-champ archetype-diverse SAMPLE (not a tier list), itemless, 1600 cells / 667KB; dist even 793 / back_off 696 / trade 111 / all_in 0 (0 all_in is HONEST for itemless equal-level - needs full HP removal; surfaces with an item axis, HZ-A2). +16 characterization tests (cell == compute_matchup). verifier CONFIRM 16/16.
+- Fixed a PRE-EXISTING red (NOT my slice): ROADMAP.md 82898 > 81920 doc-budget -> relocated shipped item 344 verbatim to ROADMAP_HISTORY (-> 79228). Full RC 5316 passed / 1 skip / 0 fail. ENGINE 1.120.0 untouched, no DS / Share / RC restart, no web -> no UI-audit.
+- **NEXT OPEN = HZ-A2** (recall/back-timing + power-spike-ETA). The table is read by a FUTURE consumer (HZ-C1); validate on a real/replayed game BEFORE any coach flip.
+
+---
+
 # 2026-06-08 - vision :8889 false-alarm probe fix + cdragon hard-tail CLOSED [item 351]
 
 "start the next open items in parallel" -> 2 parallel tracks (vision anomaly + cdragon NEXT-UP #1), both resolved. Commits 7f49499d (fix) + d2ecf125 (docs); CI green both.
@@ -23,14 +35,3 @@
 - **Item 350 (`dc78d5a3`):** RC-GeminiAudit fix (`tools/gemini_audit.ps1`). Bug: `Write-Error` under EAP=Stop masked exit-1-no-log. Fixed: `Fail()` helper (logs + correct exit) + model fallback (gemini-3-pro-preview -> gemini-2.5-flash). External root cause verified: **429** (key VALID - models.list 50 - quota/RPM, Antigravity-shared); self-recovers on reset, NOT code-fixable. Memory `project_gemini_auditor` updated.
 
 Don't-redo: DS forward-marker cadence EXHAUSTED (needs a new extractor key, not another scout fanout). NEXT-UP #3 FULLY SHIPPED (monitor 346 + control 349). RC-GeminiAudit 429 is EXTERNAL - read `logs/gemini_audit.log` FAIL line first. NEXT: remaining open work is all operator-gated (cdragon hard tail = needs calc-graph resolver / 6 UNIVERSAL_FILES / P3.2 Phase-D) or live/product-gated (E2/E3 candidates) - no blind-shippable autonomous item left.
-
----
-
-# 2026-06-07 - champ-select stick + rune display-match (2 front-end fixes) [item 347]
-
-Operator-reported, mid-session: (1) the champ-select dashboard view bounces to the in-game page ~half the time during CS; (2) Caitlyn's champ-select "PTA" rune default is actually Comet in the game. Both display/routing bugs - non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share). RC restarted pid 1128 -> 3340 (route reload, reload_ok=True). CI GREEN both SHAs.
-
-- **Fix 1 (view-router, `7a773ab3`):** the s209 CS->null sticky inference fired on a SINGLE null/empty `lcu.phase` tick in champ select, permanently advancing the sticky guard `champ-select -> in-progress` -> rendered active-match. `lcu.phase` is polled/relay-forwarded -> blips null on any agent/relay/poll miss (frequent mid-CS). Gated the inference on `live` (liveclient non-empty), mirroring item 281; threaded a `live` kwarg through `update_game_started`/`derive_view`. Genuine CS->game flip still promotes via the ungated GameStart/InProgress arms -> no real promotion lost. `web/js/main.js:564` + mirror `dashboard/view_router_state.py:92`. +5 tests (`ChampSelectNullBlipLiveGateTests`).
-- **Fix 2 (rune display-match, `76d7c681`):** champ-select rune panel showed the loadout build-card keystone (Caitlyn SR = Press the Attack) while `lcu_rune_writer.RuneWriter` auto-writes from a SEPARATE source `rune_recommendations` (Arcane Comet). Surfaced the auto-applied keystone into `loadout_resolver.list_variants` (`auto_keystone`/`auto_primary`/`auto_secondary` via the same `load_rune_rec` the writer uses); `champ_select.js` marks IT recommended + injects it as a rune option when not a build-path card + manual rune-push sends `override_runes` for it. Applied behavior UNCHANGED (operator chose to keep Comet). General fix (all champs). +4 tests (`test_loadout_auto_keystone`).
-- **Verify:** view-router 38 + loadout/csv/champ-select 119 + rune-push/DOM 54 passed; ruff + node --check (main.js + champ_select.js) clean; hygiene 3/3. Live: `POST /api/loadout/list` Caitlyn sr returns `auto_keystone=Arcane Comet` beside card `Press the Attack`.
-- **Don't-redo:** both DONE. The CS->null inference is INTENTIONALLY live-gated (do NOT restore single-blip promotion). Display-match is GENERAL - the panel mirrors whatever `rune_recommendations` applies. `rune_recommendations` vs `champion_loadouts` stay two independent rune sources BY DESIGN (operator declined reconciling the data). NEXT (optional): unify the two rune sources; visual-capture the CS panel (Game-PC :8892 MCP down - same blocker).

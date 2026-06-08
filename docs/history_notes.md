@@ -53,6 +53,17 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-07 - champ-select stick + rune display-match (2 front-end fixes) [item 347]
+
+Operator-reported, mid-session: (1) the champ-select dashboard view bounces to the in-game page ~half the time during CS; (2) Caitlyn's champ-select "PTA" rune default is actually Comet in the game. Both display/routing bugs - non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share). RC restarted pid 1128 -> 3340 (route reload, reload_ok=True). CI GREEN both SHAs.
+
+- **Fix 1 (view-router, `7a773ab3`):** the s209 CS->null sticky inference fired on a SINGLE null/empty `lcu.phase` tick in champ select, permanently advancing the sticky guard `champ-select -> in-progress` -> rendered active-match. `lcu.phase` is polled/relay-forwarded -> blips null on any agent/relay/poll miss (frequent mid-CS). Gated the inference on `live` (liveclient non-empty), mirroring item 281; threaded a `live` kwarg through `update_game_started`/`derive_view`. Genuine CS->game flip still promotes via the ungated GameStart/InProgress arms -> no real promotion lost. `web/js/main.js:564` + mirror `dashboard/view_router_state.py:92`. +5 tests (`ChampSelectNullBlipLiveGateTests`).
+- **Fix 2 (rune display-match, `76d7c681`):** champ-select rune panel showed the loadout build-card keystone (Caitlyn SR = Press the Attack) while `lcu_rune_writer.RuneWriter` auto-writes from a SEPARATE source `rune_recommendations` (Arcane Comet). Surfaced the auto-applied keystone into `loadout_resolver.list_variants` (`auto_keystone`/`auto_primary`/`auto_secondary` via the same `load_rune_rec` the writer uses); `champ_select.js` marks IT recommended + injects it as a rune option when not a build-path card + manual rune-push sends `override_runes` for it. Applied behavior UNCHANGED (operator chose to keep Comet). General fix (all champs). +4 tests (`test_loadout_auto_keystone`).
+- **Verify:** view-router 38 + loadout/csv/champ-select 119 + rune-push/DOM 54 passed; ruff + node --check (main.js + champ_select.js) clean; hygiene 3/3. Live: `POST /api/loadout/list` Caitlyn sr returns `auto_keystone=Arcane Comet` beside card `Press the Attack`.
+- **Don't-redo:** both DONE. The CS->null inference is INTENTIONALLY live-gated (do NOT restore single-blip promotion). Display-match is GENERAL - the panel mirrors whatever `rune_recommendations` applies. `rune_recommendations` vs `champion_loadouts` stay two independent rune sources BY DESIGN (operator declined reconciling the data). NEXT (optional): unify the two rune sources; visual-capture the CS panel (Game-PC :8892 MCP down - same blocker).
+
+---
+
 # 2026-06-07 - dashboard loop-status panel (NEXT-UP #3 monitor half) [item 346] + drift-poll stale-premise reconcile
 
 Operator "start what is up next" -> picked the upstream drift-poll (NEXT-UP #2) from a framed menu, but #2 was ALREADY shipped (`d3fcc070`: `tools/upstream_drift_check.py` + 24 tests + live `RC-UpstreamDriftCheck` daily 03:45, last run rc=0) - only the ROADMAP marker was stale -> reconciled to SHIPPED (`3b3ea2e1`). Moved to the next genuine item, #3. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share); RC restarted pid 8708 -> 1128 (route reload).
