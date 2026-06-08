@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-08 - HZ-A2 Lane A economy block: recall/back-timing + power-spike-ETA (Haiku-to-ZERO) [item 353]
+
+gemini-headless-upgrade loop, directive HZ-A2 (cycle 2 off the 2026-06-08 ORCHESTRATION_PLAN). Commit dc5e6293. BUILD + PERSIST only, NO live coach flip (charter 4b do-not-flip-blind).
+
+- **`core/lead_projection.py` new pure primitives** (shared macro-economy authority; `project_lead` untouched): `minutes_for_level` (band<->minute bridge off the existing level benchmark), `gold_income_per_min` + `expected_gold_earned` (GROSS-earned benchmark, ARAM 600 > SR 450, distinct from on-hand `_GOLD_PER_MIN_BENCHMARK`), cumulative-gold `_SPIKE_LADDER` (component 1100 / first_item 3000 / two_item 6200 / three_item 9400) + `SPIKE_COMPLETE`, `next_spike` / `spike_threshold` / `spike_eta_seconds`.
+- **`core/laning_scenario_precompute.py`:** `economy_cell` + `_recall_verdict` compose those into a per-cell `{recall, next_spike, spike_eta_s, gold_at_band}` block on every leaf; schema v1 -> **v2** + economy dimensions stanza.
+- **Design call:** recall is gold/spike + mana driven, NOT trade-verdict driven (a combat read is not an economy one). low-mana mana champ -> recall_now; unspent completed-item gold + no imminent spike -> recall_now; spike within 60s -> back_soon; core complete -> hold.
+- **Orchestration call:** HZ-A2 is a hard LINEAR A->B dep (~120 coupled LOC) so "true-concurrency" worktrees degenerate to sequential + a RED B slice -> ran as sole orchestrator with TDD (31 RED -> green) + the read-only verifier subagent as the pre-commit gate. verifier CONFIRM all 6 claims (76/0 module files; 0 of 1600 leaves missing economy; ruff clean).
+- Regenerated SR seed (1600 cells, v2): recall_now 940 / back_soon 440 / hold 220. +35 tests (lead_projection_economy 19 + laning_scenario_economy 16). Full RC 5352 passed / 1 skip / 85 subtests / 0 fail. ENGINE 1.120.0 untouched, ds_share_sync --check green (laning_scenarios NOT in Share), no DS/RC restart, no web -> no UI-audit. Directive's "clear false-alarm blockers" = no-op (none existed; grep clean).
+- **NEXT OPEN = HZ-B1** (Lane B build-order precompute per champ x mode x enemy-comp). The table is read by a FUTURE consumer (HZ-C1); validate recall-timing on a real/replayed game BEFORE any coach flip.
+
+---
+
 # 2026-06-08 - HZ-A1 Lane A laning-scenario precompute (Haiku-to-ZERO) [item 352]
 
 gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06-08 ORCHESTRATION_PLAN reseed). Commit 85b13b7c. BUILD + PERSIST + READ only, NO live coach flip (charter 4b do-not-flip-blind).
@@ -23,15 +36,3 @@ gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06
 - **Vision :8889 = FALSE ALARM.** Session-start "vision server :8889 not listening" was a probe artifact: server UP (PID 2108 moon_vision_server.py, 0.0.0.0:8889, /health 200). rc_facts `_port_listening` used ONE 0.4s TCP connect; a busy single-threaded accept races it (probed 3 OK / 2 timeout ~405ms). Fix `7f49499d`: retry timeouts (3x1.0s), refused=down-fast; +5 tests test_rc_facts_port_probe.py. Spawned chip task_a647378a = thread the :8889 server (the accept-stall root cause; gated on confirming handlers make no blocking inline model calls).
 - **cdragon hard-tail (NEXT-UP #1) = CLOSED (item 351, `d2ecf125`; scope + drift-check, NO engine change).** 577 fallback blocks: 292 emission-guard (stay fallback) + ~174 live-state (buff-counter/conditional/unknown-stat/resource) = CLOSED-as-Meraki (item-232 class) + 111 by-level. by-level drift-checked = ALIGNED not stale (cdragon champ-level 1..18 vs Meraki spell-rank 1..5 = different axes; auxiliary blocks; primary-damage pairs agree <=~7%) -> DEFERRED to BACKLOG. Operator chose drift-check-first.
 - **Don't-redo:** do NOT re-pitch a calc-graph resolver for the cdragon tail (only remaining cdragon growth needs a NEW extractor key). by-level lift parked in BACKLOG (only if a champ-level-indexed ratio axis is ever needed). Vision server is HEALTHY - rc_facts probe was the bug, not the server (a future :8889 "not listening" anomaly is likely the same race - re-probe /health). NEXT: remaining open work all operator/live-gated (P3.2 Phase-D, 6 UNIVERSAL_FILES, brief/flag flips, visual captures); no blind-shippable autonomous engine item (forward-marker EXHAUSTED item 348).
-
----
-
-# 2026-06-07 - parallel next-items + loop-control half + gemini-audit fix [items 348-350]
-
-"start next open items in parallel" -> 3 parallel tracks; then "continue" x2 -> 2 more items. All pushed (6f904bc7, d4e0cd04, dc78d5a3); CI green through d4e0cd04 (350 = ps1+docs).
-
-- **Item 348 (`6f904bc7`):** orchestration E2/E3/F1 CLOSED + DS forward-marker scout EXHAUSTED. E2 (LCU richer-endpoint diff): top-3 = mastery-by-puuid full-team / match game-timelines / career-stats. E3 (lift sweep): NO new NOW candidate; 5 FUTURE (N1-N5); 3 stale-shipped flagged (anti-heal / inhibitor / per-item-WPA). F1 = stale-premise (both halves pre-shipped). DS scout: the un-taken LIFT_FOUND queue all REJECTED; `wiki_ability_stats` `*_raw` is unparsed wiki markup -> needs a NEW extractor key (memory `reference_ds_forward_marker_exhausted`). Fanout A1-F1 now FULLY CLOSED.
-- **Item 349 (`d4e0cd04`):** loop-status CONTROL half (NEXT-UP #3 tail). NEW `POST /api/loop-control` (stop / resume / set_directive / clear) over `ops/loop/control/*`, atomic + capped + 400-guarded; `loop_controller.py` `consume_directive_override()` one-shot hook + precedence override>FIXED>director + import-safe CFG; `dev.js`/`header.css` Settings control card. +19 tests; full 5296 / 0. 5-phase UI audit ALL PASS (1 ASCII MUST-FIX fixed). RC pid 3340->7144; live curl all 4 actions + 400 OK, control dir restored.
-- **Item 350 (`dc78d5a3`):** RC-GeminiAudit fix (`tools/gemini_audit.ps1`). Bug: `Write-Error` under EAP=Stop masked exit-1-no-log. Fixed: `Fail()` helper (logs + correct exit) + model fallback (gemini-3-pro-preview -> gemini-2.5-flash). External root cause verified: **429** (key VALID - models.list 50 - quota/RPM, Antigravity-shared); self-recovers on reset, NOT code-fixable. Memory `project_gemini_auditor` updated.
-
-Don't-redo: DS forward-marker cadence EXHAUSTED (needs a new extractor key, not another scout fanout). NEXT-UP #3 FULLY SHIPPED (monitor 346 + control 349). RC-GeminiAudit 429 is EXTERNAL - read `logs/gemini_audit.log` FAIL line first. NEXT: remaining open work is all operator-gated (cdragon hard tail = needs calc-graph resolver / 6 UNIVERSAL_FILES / P3.2 Phase-D) or live/product-gated (E2/E3 candidates) - no blind-shippable autonomous item left.
