@@ -285,7 +285,27 @@ function _diagWireOnce() {
 // Read-only, mobile-friendly surface over /api/loop-status (which reads the
 // ops/loop/control/* files + last commit). Rendered on each Settings show so
 // a Gemini-directed loop is watchable from the phone over Tailscale.
-function renderLoopStatus() {
+//
+// CONTROL half (2026-06-07): POST /api/loop-control writes ops/loop/control/*
+// so the loop can be halted / resumed / re-directed from the phone. The helper
+// re-renders the card and echoes the action result into #loop-ctl-msg.
+function _loopControl(action, extra) {
+  fetch("/api/loop-control", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(Object.assign({ action: action }, extra || {})),
+  })
+    .then((r) => (r ? r.json() : null))
+    .then((d) => {
+      const txt = d && d.ok
+        ? action + ": " + (d.detail || "ok")
+        : "error: " + (d && d.error ? d.error : "failed");
+      renderLoopStatus(txt);
+    })
+    .catch(() => renderLoopStatus("request failed"));
+}
+
+function renderLoopStatus(ctlMsg) {
   const host = document.getElementById("loop-status-body");
   if (!host) return;
   const mk = (tag, cls, txt) => {
@@ -350,6 +370,43 @@ function renderLoopStatus() {
       if (Array.isArray(d.log_tail) && d.log_tail.length) {
         host.append(mk("pre", "loop-log", d.log_tail.join("\n")));
       }
+
+      // -- Control row (CONTROL half): stop / resume + one-shot directive
+      // override. Each writes ops/loop/control/* via POST /api/loop-control.
+      const btn = (label, cls, fn) => {
+        const b = mk("button", "loop-btn " + (cls || ""), label);
+        b.type = "button";
+        b.addEventListener("click", fn);
+        return b;
+      };
+      const ctl = mk("div", "loop-controls");
+      if (st === "stopped") {
+        ctl.append(btn("Resume", "loop-btn-resume", () => _loopControl("resume")));
+      } else {
+        ctl.append(btn("Stop loop", "loop-btn-stop",
+          () => _loopControl("stop", { reason: "stopped from dashboard" })));
+      }
+      host.append(ctl);
+
+      const ta = mk("textarea", "loop-ta");
+      ta.id = "loop-directive-input";
+      ta.rows = 3;
+      ta.placeholder = "one-shot directive override for the next cycle...";
+      host.append(ta);
+
+      const dirRow = mk("div", "loop-dir-row");
+      dirRow.append(btn("Queue directive", "loop-btn-dir", () => {
+        const node = document.getElementById("loop-directive-input");
+        const t = node && node.value ? node.value : "";
+        if (t.trim()) _loopControl("set_directive", { text: t });
+      }));
+      dirRow.append(btn("Clear", "loop-btn-clear", () => _loopControl("clear_directive")));
+      host.append(dirRow);
+
+      const msg = mk("div", "loop-ctl-msg");
+      msg.id = "loop-ctl-msg";
+      if (ctlMsg) msg.textContent = ctlMsg;
+      host.append(msg);
     })
     .catch(() => {
       host.innerHTML = '<div class="home-empty">loop status error</div>';
