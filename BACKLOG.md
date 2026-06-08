@@ -34,6 +34,7 @@ _2026-05-21 sweep: aramAbilityHaste + augment formula evaluator + item-AH lane +
 ## Data pipeline
 
 - **TFT vision relay frame dimensions**: lock OCR pipeline to 1920x1080 once validated (pair with NOTE-025 calibration).
+- **cdragon by-level ratio resolver** (DEFERRED from cdragon hard-tail, item 351, 2026-06-07): 111 Meraki-fallback ratio blocks are per-champ-level (1..18) arrays (`ByCharLevelBreakpoints/Interpolation`) the per-rank Meraki schema cannot represent. Drift-checked = ALIGNED not stale (different axis, not a stale value; blocks are auxiliary caps/minion/heal/duration/modifiers, primary-damage pairs agree <=~7%). Only worth doing if a future surface needs a champ-level-indexed ratio axis (NEW engine schema axis + extractor evaluator + consumer branch, ~2 batches). Evidence: prior `docs/_scratch/bylevel_drift_*` (gitignored). NOT a calc-graph resolver - the conditional/buff-counter/target-HP tail is live-state, permanently Meraki (item-232 class).
 
 ## Developer experience
 
