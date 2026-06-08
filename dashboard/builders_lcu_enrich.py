@@ -12,6 +12,11 @@ tests/test_last_match_timeline.py + tests/test_last_match_surrender.py.
 """
 from dashboard._context import log as _log
 
+# PGR S5 lane-comparison @N: the minute the per-participant gold/cs snapshot
+# targets (aggregator G "gold@10 / cs@10"). The frame nearest this mark is used;
+# a sub-10-minute game falls back to its last frame.
+_AT_N_TARGET_MIN = 10
+
 
 def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
     """Parse a full LCU /lol-match-history/v1/games/{gameId} payload into
@@ -239,10 +244,12 @@ def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
     s_gold: list = []
     s_xp: list = []
     s_cs: list = []
+    frame_snaps: list = []   # (ts_ms, {pid_str: {gold, cs}}) for the @N pick
     for idx, fr in enumerate(frames):
         pf = fr.get("participantFrames") or {}
         ally = {"gold": 0, "xp": 0, "cs": 0}
         enemy = {"gold": 0, "xp": 0, "cs": 0}
+        pid_snap: dict = {}
         for raw_pid, pdata in pf.items():
             if not isinstance(pdata, dict):
                 continue
@@ -250,11 +257,14 @@ def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
                 pid = int(pdata.get("participantId") or raw_pid)
             except (TypeError, ValueError):
                 continue
+            gold = int(pdata.get("totalGold") or 0)
+            cs = (int(pdata.get("minionsKilled") or 0)
+                  + int(pdata.get("jungleMinionsKilled") or 0))
             bucket = ally if pid_team.get(pid) == my_tid else enemy
-            bucket["gold"] += int(pdata.get("totalGold") or 0)
+            bucket["gold"] += gold
             bucket["xp"]   += int(pdata.get("xp") or 0)
-            bucket["cs"]   += (int(pdata.get("minionsKilled") or 0)
-                               + int(pdata.get("jungleMinionsKilled") or 0))
+            bucket["cs"]   += cs
+            pid_snap[str(pid)] = {"gold": gold, "cs": cs}
         ts_ms = fr.get("timestamp")
         if ts_ms is None:
             ts_ms = idx * interval
@@ -262,6 +272,21 @@ def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
         s_gold.append(ally["gold"] - enemy["gold"])
         s_xp.append(ally["xp"] - enemy["xp"])
         s_cs.append(ally["cs"] - enemy["cs"])
+        frame_snaps.append((ts_ms, pid_snap))
+
+    # Per-participant @N snapshot: the frame nearest the 10-minute mark
+    # (sub-10-min games fall back to their last frame). by_pid carries the
+    # gold + cs the lane-comparison panel pairs me-vs-opponent on.
+    at_n: dict = {}
+    if frame_snaps:
+        target_ms = _AT_N_TARGET_MIN * 60000
+        chosen_ts, chosen_snap = min(
+            frame_snaps, key=lambda fs: abs((fs[0] or 0) - target_ms))
+        at_n = {
+            "target_minute": _AT_N_TARGET_MIN,
+            "minute": round((chosen_ts or 0) / 60000.0),
+            "by_pid": chosen_snap,
+        }
 
     def _ev_team(ev: dict) -> str:
         try:
@@ -341,8 +366,32 @@ def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
             "xp":   s_xp[-1] if s_xp else 0,
             "cs":   s_cs[-1] if s_cs else 0,
         },
+        "at_n": at_n,
         "events": events,
     }
+
+
+def _fold_at_n_into_roster(enriched: dict) -> None:
+    """Copy the timeline `at_n` per-participant snapshot onto each roster
+    entry as gold_at_n / cs_at_n / at_n_minute, so the lane-comparison
+    panel reads @N straight off the participant row (no re-walk of frames).
+
+    No-op when the timeline or its at_n block is absent (event modes / no
+    per-participant frames). Never raises - PGR must not break over it."""
+    try:
+        at_n = ((enriched.get("timeline") or {}).get("at_n")) or {}
+        by_pid = at_n.get("by_pid") or {}
+        if not by_pid:
+            return
+        minute = at_n.get("minute")
+        for entry in (enriched.get("roster") or []):
+            snap = by_pid.get(str(entry.get("participant_id")))
+            if isinstance(snap, dict):
+                entry["gold_at_n"] = snap.get("gold")
+                entry["cs_at_n"] = snap.get("cs")
+                entry["at_n_minute"] = minute
+    except Exception:  # never break the page over the @N fold
+        return
 
 
 # Match-V5 routing cluster by platform id. Match-V5 (incl. /timeline)
@@ -383,5 +432,6 @@ def _attach_match_timeline(enriched: dict, lcu_detail: dict) -> None:
             timeline, lcu_detail, enriched.get("team_id"))
         if parsed:
             enriched["timeline"] = parsed
+            _fold_at_n_into_roster(enriched)
     except Exception as exc:  # never break the page over a timeline
         _log.warning("_attach_match_timeline: %s", exc)

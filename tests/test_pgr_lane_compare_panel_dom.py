@@ -3,11 +3,11 @@
 
 Operator vs lane opponent (same role slot) - final gold / cs / damage /
 kill-participation. The /api/last-match payload carries no team_position
-field and no per-participant @N timeline (only a team-aggregate diff
-series), so the comparison uses FINAL-game stats and pairs by Riot
-participant-slot convention (participant_id i pairs to i +/- 5 on the
-enemy team). @N (gold@10 / cs@10) is deferred honestly - see the panel
-js comment. Mode-aware: hides for ARAM / Arena (no lane pairing).
+field, but the builder folds a per-participant @N snapshot (gold@10 /
+cs@10, the timeline frame nearest 10 min) onto each roster row, so the
+card leads with a @N head-to-head and pairs by Riot participant-slot
+convention (participant_id i pairs to i +/- 5 on the enemy team); final
+stats back the rest. Mode-aware: hides for ARAM / Arena (no lane pairing).
 
 The panel mounts inside the existing PGR view (Build tab), so this file
 pins the in-view wiring + the panel contract, NOT a view-router rule.
@@ -113,9 +113,11 @@ class JsContractTests(unittest.TestCase):
         # Fail-soft hide for ARAM / Arena (no lane opponent).
         self.assertIn("mode", self.text.lower())
 
-    def test_n_deferred_comment(self) -> None:
-        # The @N-frame deferral must be documented honestly in a comment.
-        self.assertIn("@N", self.text)
+    def test_at_n_row_rendered(self) -> None:
+        # PGR S5: @N (gold@10 / cs@10) is folded onto roster rows and
+        # rendered head-to-head, no longer deferred.
+        self.assertIn("gold_at_n", self.text)
+        self.assertIn("_atNRowsHtml", self.text)
 
     def test_mock_short_circuit_present(self) -> None:
         self.assertIn("dataset.uiMock", self.text)
@@ -164,6 +166,20 @@ class MockFixtureTests(unittest.TestCase):
     def test_mode_is_sr(self) -> None:
         data = json.loads(_read(MOCK))
         self.assertEqual(data["match"].get("mode"), "SR")
+
+    def test_at_n_snapshot_on_me_and_opponent(self) -> None:
+        # S5: me + the paired lane opponent both carry the @N snapshot so
+        # the audit capture renders the gold@10 / cs@10 head-to-head row.
+        data = json.loads(_read(MOCK))
+        roster = data["match"]["enriched"]["roster"]
+        me = next(p for p in roster if p.get("is_me"))
+        pid = me["participant_id"]
+        opp_pid = pid + 5 if pid <= 5 else pid - 5
+        opp = next(p for p in roster if p["participant_id"] == opp_pid)
+        for p in (me, opp):
+            self.assertIsInstance(p.get("gold_at_n"), int)
+            self.assertIsInstance(p.get("cs_at_n"), int)
+            self.assertEqual(p.get("at_n_minute"), 10)
 
 
 class AsciiHygieneTests(unittest.TestCase):
