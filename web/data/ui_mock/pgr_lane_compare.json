@@ -61,7 +61,10 @@
           "cs": 343,
           "gold": 18902,
           "damage_to_champs": 30619,
-          "champ_level": 17
+          "champ_level": 17,
+          "gold_at_n": 6840,
+          "cs_at_n": 95,
+          "at_n_minute": 10
         },
         {
           "participant_id": 5,
@@ -131,7 +134,10 @@
           "cs": 213,
           "gold": 13394,
           "damage_to_champs": 29198,
-          "champ_level": 14
+          "champ_level": 14,
+          "gold_at_n": 5180,
+          "cs_at_n": 58,
+          "at_n_minute": 10
         },
         {
           "participant_id": 10,

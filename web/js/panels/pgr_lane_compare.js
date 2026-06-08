@@ -13,11 +13,12 @@
  * same order; the same-role enemy is the cross-team slot, pid +/- 5), and
  * the comparison uses FINAL-game stats.
  *
- *   @N (gold@10 / cs@10) is DEFERRED honestly: there is no per-participant
- *   timeline frame in this payload to source it from. When the route grows
- *   a per-participant @N series this panel can add a gold@10 / cs@10 row;
- *   until then it shows final stats and says so. Do NOT fabricate @N
- *   numbers from the team-aggregate diff.
+ *   @N (gold@10 / cs@10) is LIVE (PGR S5): the builder now folds a
+ *   per-participant snapshot from the Match-V5 timeline (frame nearest the
+ *   10-minute mark) onto each roster row as gold_at_n / cs_at_n /
+ *   at_n_minute. When present on BOTH me + opponent the card leads with a
+ *   gold@N / cs@N head-to-head row; absent (event modes / pre-timeline
+ *   rows) it degrades to final stats only. Never fabricated.
  *
  * Mode-aware: SR-style modes pair lanes; ARAM / Arena have no role slots,
  * so the panel hides (fail-soft). Mounts inside the PGR view (Build tab).
@@ -135,22 +136,48 @@ function _rowHtml(label, mineRaw, oppRaw, opts) {
   );
 }
 
+/**
+ * @N (gold@10 / cs@10) head-to-head rows from the per-participant timeline
+ * snapshot the builder folds onto each roster row (gold_at_n / cs_at_n /
+ * at_n_minute). Returns { rows, minute } - empty rows when @N is missing on
+ * either side, so the card degrades to final stats only.
+ */
+function _atNRowsHtml(me, opp) {
+  const mg = me.gold_at_n;
+  const og = opp.gold_at_n;
+  if (mg == null || og == null) return { rows: "", minute: null };
+  const minute = me.at_n_minute != null
+    ? me.at_n_minute
+    : (opp.at_n_minute != null ? opp.at_n_minute : 10);
+  const tag = "@" + minute;
+  let rows = _rowHtml("Gold " + tag, mg, og, { thousands: true });
+  if (me.cs_at_n != null && opp.cs_at_n != null) {
+    rows += _rowHtml("CS " + tag, me.cs_at_n, opp.cs_at_n, {});
+  }
+  return { rows, minute };
+}
+
 /** Build the full card markup for a resolved (me, opponent) pair. */
 function _cardHtml(me, opp, roster) {
   const myKda = `${me.kills}/${me.deaths}/${me.assists}`;
   const opKda = `${opp.kills}/${opp.deaths}/${opp.assists}`;
   const myKp = _kpPct(me, roster);
   const opKp = _kpPct(opp, roster);
+  const atN = _atNRowsHtml(me, opp);
   const rows =
+    atN.rows +
     _rowHtml("Gold", me.gold, opp.gold, { thousands: true }) +
     _rowHtml("CS", me.cs, opp.cs, {}) +
     _rowHtml("Damage", me.damage_to_champs, opp.damage_to_champs, { thousands: true }) +
     _rowHtml("Kill part.", myKp, opKp, { suffix: "%" });
+  const sub = atN.minute != null
+    ? `you vs your role opponent . @${atN.minute} laning + final stats`
+    : `you vs your role opponent . final stats`;
   return (
     `<div class="plc-card">` +
     `<div class="plc-head">` +
     `<span class="plc-title">LANE MATCHUP</span>` +
-    `<span class="plc-sub">you vs your role opponent . final stats (gold@10 / cs@10 deferred - no per-player timeline)</span>` +
+    `<span class="plc-sub">${_escHtml(sub)}</span>` +
     `</div>` +
     `<div class="plc-vs">` +
     `<div class="plc-side plc-side-mine">` +
@@ -228,6 +255,7 @@ export const __test = {
   _teamKills,
   _kpPct,
   _rowHtml,
+  _atNRowsHtml,
   _cardHtml,
   _fmtThousands,
   _LANE_MODE_RE,
