@@ -53,6 +53,17 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-07 - loop cycle 3 (run 2026-06-06): E1 per-role rubric EMPIRICAL CALIBRATION SHIPPED [item 335]
+
+Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session E1 (tune core/post_game_rubric.py weight vectors from public per-role data). Operator interrupted after this cycle -> STOP dropped, loop halted, /done. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share); RC restarted pid 27300 -> 9412 (route reload). Commits `42780b3d` code + `d7ebebbd` docs.
+
+- **NOT a stale premise (breaks the D1/D2/B1 streak):** the rubric existed + was LIVE-wired (routes_post_game_rubric -> last_match.js hero grade chip + postmortem_analyze) but its weights were hand-estimated "STARTING" values. GROUND TRUTH over 5957 ranked-SR rows in data/rewind_history.db (map 11 CLASSIC >=15min, real obj): the median real game graded **D** (TOP/JG/MID/ADC) / **C** (SUP), scores 33-46 - violating the module's own documented "median 1.0-profile -> 50 (B)" invariant. dpm baselines ran 40-80% low (TOP 480 vs real 717), KDA high (TOP 2.50 vs 1.78), weight sums 3.70-4.60 (need 5.0 for the x10 to hit 50).
+- **Fix (2 grounded axes):** `_ROLE_BASELINES` -> empirical real per-role medians; `_DEFAULT_WEIGHTS` -> public-source emphasis ordering (unrankedsmurfs confirms Riot publishes NO exact weights: CS-led TOP/MID, obj/KP-heaviest JG, vision + strict-KDA SUP, carry-damage ADC), every vector now sums to 5.0. Validated on the same corpus: median now grades **B** all roles (TOP 51.5 / JG 53.3 / MID 52.0 / ADC 53.5 / SUP 54.6) with a sane S+..D spread.
+- **Tests:** +2 durable db-independent invariants (`CalibrationInvariantTests`: weight-sum==5.0 + baseline-profile==50/B). Blast radius 1 source + 4 test files (the obj dilution/compose tests pad ally objectives so the operator share stays below the now-realistic 2x-median obj clamp - high-share games correctly saturate). verifier CONFIRM from clean state; FULL RC **5257 passed / 1 skip / 0 fail**; ruff clean; CI green (hygiene + smoke + snapshot).
+- **Don't-redo:** E1 DONE - do NOT revert to hand-estimates or re-pitch "tune the weights" (now source-ordered + sum-5.0 + invariant-locked; the override JSON loader stays for operator tuning). FUTURE: CC-score is a source-cited SUP signal with no rubric axis yet (schema lift); baselines are SR-only (event modes grade vs SR medians). NEXT OPEN = E2 (LCU data.json diff research).
+
+---
+
 # 2026-06-06 - loop cycle 3 (run 2026-06-06-02): A2b DS-Matchup card SHIPPED [item 327]
 
 Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A2b. Orchestrator-merge: 1 Claude sole-merger + 2 parallel disjoint worktree slices + read-only verifier gate. Merges `0a4b0dc0` backend + `3dd1cdcf` frontend + UI-fix `0a017dc4`. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, NOT restarted); RC restarted pid 13060 -> 13948 for the route reload.
