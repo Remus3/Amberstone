@@ -82,9 +82,23 @@ and bought Item X (career +3.1pp)".
   source @N from (noted in the panel js comment). Mode-aware: hides for ARAM /
   Arena (no lane pairing). Mounts in the Build tab; `?ui_mock=1` ->
   `web/data/ui_mock/pgr_lane_compare.json`.
-- S5: polish, responsive, ARAM/Arena variants (augments instead of runes for
-  Arena), a real per-player @N gold/cs comparison if the route grows a
-  per-participant timeline series, per-page audit each.
+- S5 augment loadout variant SHIPPED (`web/js/panels/pgr_loadout.js`, wired
+  last_match.js:50/442, mount index.html:1753): mode-aware descriptive loadout
+  strip - SR/ARAM show the rune page, Arena shows the 6 picked augments instead
+  of runes (spec line 85). Descriptive only, no WPA. `?ui_mock=1` fixtures per
+  mode.
+- S5 per-player @N SHIPPED (PGR1, commit c162e5bd): `_enrich_match_timeline`
+  now emits an `at_n` per-participant snapshot (gold + cs from the Match-V5
+  timeline frame nearest 10 min; sub-10-min games fall back to the last frame)
+  and `_fold_at_n_into_roster` copies gold_at_n/cs_at_n/at_n_minute onto each
+  roster row. `pgr_lane_compare.js` leads the card with gold@N / cs@N
+  head-to-head rows when both me + opponent carry the snapshot, degrading to
+  final-stats-only otherwise. The S4 "@N deferred - no per-participant
+  timeline" note is RESOLVED (the team-aggregate series was a reducer choice,
+  not a data gap - the raw frames always had per-participant gold/cs).
+- S5 remaining (minor, FUTURE): responsive polish + a dedicated per-page audit
+  pass. ARAM/Arena lane-compare stays hidden by design (no role slots), so the
+  @N row is SR-shape only.
 
 ## Open decisions for S2 (operator-gated, surface at S2 start)
 
