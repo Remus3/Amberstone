@@ -36,7 +36,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | E3 | research | Competitor-tool lift secondary sweep, framed by technical substance only (keep third-party names out of repo). Output new NOW/FUTURE/CLOSED candidates into the Findings log. | DONE | item 348 |
 | F1 | monitoring | Phone monitoring loop-status panel reading ops/loop/control/{cycle.txt,controller.log,claude.done} + last commit (Tailscale-viewable) + daily upstream content-drift poll (tools/upstream_drift_check.py + scheduled task). | DONE | 5bc8f02f+d3fcc070 |
 | HZ-A1 | haiku-zero | Lane A laning-scenario precompute (charter 4b PRIMARY). Build core/laning_scenario_precompute.py: for (champ x matchup x level-band x mana-state x cooldown-state) emit trade/all-in/back-off verdicts via agents/daemon_slayer/{scenario_matrix,combo,mana_sim,fight_report}.py + core/laning_verdicts.py. Persist versioned JSON to data/daemon_slayer/laning_scenarios/. Characterization tests vs DS math. BUILD + PERSIST ONLY - the live coach flip is EXCLUDED (needs real-game validation). | DONE | 85b13b7c |
-| HZ-A2 | haiku-zero | Lane A extension: add recall/back-timing + power-spike-ETA verdicts (gold-income + item-completion driven, reuse core/lead_projection.py) to the HZ-A1 lookup tables. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
+| HZ-A2 | haiku-zero | Lane A extension: add recall/back-timing + power-spike-ETA verdicts (gold-income + item-completion driven, reuse core/lead_projection.py) to the HZ-A1 lookup tables. Characterization tests. BUILD + PERSIST ONLY. | DONE | dc5e6293 |
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | OPEN | - |
@@ -53,6 +53,43 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-08 HZ-A2 DONE (item 353, commit dc5e6293). Lane A extension: a
+  gold-income + item-completion driven economy block layered onto the HZ-A1
+  laning-scenario cells. NEW pure primitives in core/lead_projection.py (the
+  shared macro-economy authority, project_lead untouched): minutes_for_level (the
+  band<->minute bridge off the existing level benchmark), gold_income_per_min +
+  expected_gold_earned (gross-income benchmark, ARAM 600 > SR 450), a
+  cumulative-gold spike ladder (component 1100 / first_item 3000 / two_item 6200 /
+  three_item 9400 + SPIKE_COMPLETE), next_spike, spike_threshold,
+  spike_eta_seconds. core/laning_scenario_precompute.py: economy_cell +
+  _recall_verdict compose those into a per-cell {recall, next_spike, spike_eta_s,
+  gold_at_band} block threaded into every leaf via _cell_from_result; schema
+  laning_scenarios/v1 -> v2 + an economy dimensions stanza. DESIGN CALL (auto-pick
+  under no-AskUserQuestion): recall is gold/spike + mana driven, NOT trade-verdict
+  driven - the combat verdict is a fight read, not an economy one; the cell-level
+  economy input is the mana state. Rules: low-mana mana champ (manaless excluded)
+  -> recall_now; unspent completed-item gold + no imminent spike -> recall_now;
+  next spike within 60s -> back_soon; core build complete -> hold. ORCHESTRATION
+  CALL: HZ-A2 is a hard LINEAR A->B dependency (the precompute imports the
+  lead_projection primitives) over ~120 coupled LOC, so "true-concurrency"
+  worktree fan-out degenerates to sequential + a guaranteed-red B slice; per the
+  framework's own "engine slice first, then dependents" + auto-pick-safest, ran it
+  as the sole orchestrator with TDD (31 red -> green) and the read-only verifier
+  subagent as the pre-commit ground-truth gate (the integrity-critical part of the
+  pattern). Regenerated SR seed table (1600 cells, v2, 1001402 bytes): recall_now
+  940 / back_soon 440 / hold 220; next_spike component/two_item/three_item/complete
+  across L2/L6/L11/L16 (verifier loaded the JSON + walked all 1600 leaves: 0
+  missing economy). +35 tests (tests/test_lead_projection_economy.py 19,
+  tests/test_laning_scenario_economy.py 16); HZ-A1 schema assertion bumped v1->v2.
+  verifier CONFIRM all 6 claims (76/0 on the 4 module files; full RC suite 5352
+  passed / 1 skip / 85 subtests / 0 fail; ruff clean). BUILD + PERSIST only - the
+  live coach flip stays EXCLUDED (charter 4b do-not-flip-blind). NO engine touch
+  (ENGINE 1.120.0, no DS bounce; ds_share_sync --check green - laning_scenarios is
+  NOT part of the Share package, HZ-A1 precedent); no web/route/asset -> no
+  UI-audit, no RC restart (table read by FUTURE consumer HZ-C1). The directive's
+  "clear false-alarm blockers in ROADMAP/BACKLOG" was a no-op: the HZ-A1 false
+  alarm was resolved last cycle (HEAD 0f32dd81) and never entered ROADMAP/BACKLOG
+  as a blocker (grep clean). NEXT OPEN = HZ-B1 (Lane B build-order precompute).
 - 2026-06-08 REGRESSION FALSE ALARM (gemini director, /gemini-headless-upgrade cycle).
   Director claimed the WAKEUP "+16 characterization tests" for
   core/laning_scenario_precompute.py were never committed ("no test files in the commit
