@@ -53,6 +53,18 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-07 - DS schema lift item 345 (wiki_attack_total_time) + Share CI-drift fix
+
+10-scout channel fanout (8th consecutive forward-marker lift). Picked mode/missile `DataSnapshot.wiki_attack_total_time(champ_id) -> float|None` (`agents/daemon_slayer/data_loader.py`) - surfaces `wiki_stats.attack_total_time` (FULL AA cycle = windup + recovery, i.e. 1/attackSpeed at base; distinct axis from item-221 windup-only `wiki_attack_cast_time`). Forward-marker, byte-identical, ENGINE stays 1.120.0, DS NOT restarted. Commit `38158e1d`.
+
+- **Scouts:** 6 EXHAUSTED (passive_damage/passive_heal/per-stack/antitank/survivability/cross-spell-amp - hand-authored registries NOT loaded into DataSnapshot, or every field already consumed), 1 REJECT (per-spell-CC `missile_cast_record`: merger ground-truth probe found 388/390 == primary `missile_speed` = redundant restatement, CONFIRMS item-344's adjudication), 1 WEAK (cc_conditional aggregate over already-surfaced `durations_s`), 2 LIFT_FOUND (bilinear `passive_bilinear_axes` synthetic-only + DamageBlock-arg = off the champ-keyed pattern; `wiki_attack_total_time` cleanest = pure float|None, same wiki_stats sidecar + data_loader idiom as items 221/344).
+- **Datum:** 61/171 champs carry it, all positive + all distinct-from-cast (Jhin total 1.6 vs cast 0.25 / Draven 1.473 / Belveth 1.01); 110 null = coverage subset (NOT melee/ranged - Belveth+Aatrox melee yet carry it). Guard mirrors aa_missile_speed (bool/non-numeric reject + numeric-string-NOT-coerced + <=0 reject).
+- **Tests:** +33 TDD (`test_wiki_attack_total_time_item345.py`, RED 28 -> GREEN 33). DS-dir 7024 passed (=6991+33, byte-identical proof) / 1 skip / 1 xfail / 1936 subtests; RC tests/ 5257 / 1 skip / 0 fail (unchanged); ruff clean; Share 330 --check 0; verifier 7/7 ALL-PASS (DS-dir re-run fresh). LEDGER item 345 appended; ROADMAP 345 prepended + 343 relocated to ROADMAP_HISTORY.
+- **CI drift fix (commit `12986182`):** first push went RED - the `ds_share_sync --check` guard found 3 Share test mirrors (`test_cone_angle_item340` / `test_cone_distance_item341` / `test_sub_missile_speed_item339`) present in the live tree but NEVER mirrored into Share/src (items 339/340/341 left them untracked; local --check passed because they exist untracked locally, but CI's clean checkout saw the drift). Staged + committed the 3 mirrors -> CI GREEN (run 27102973518: ruff + DS-Share-sync + hygiene + smoke + snapshot all pass).
+- **Don't-redo:** wiki_stats sidecar now FULLY mined for top-level scalar accessors (attack_cast_time 221 / attack_total_time 345 / missile_speed 344 / mode_modifiers 232); remaining keys are `*_src` provenance + `wiki_name` display = not magnitudes. cdragon `missile_cast_record` CONFIRMED redundant (= primary). **LESSON:** when committing a DS item with explicit `git add` paths, ALWAYS also stage the new `Share/src/.../tests/<test>.py` mirror - the CI drift guard checks it (see memory `feedback_ds_commit_share_test_mirror`). NEXT (gated): un-taken bilinear `passive_bilinear_axes` (off-pattern surface), cc_conditional `get_max_conditional_cc_seconds` (weak aggregate), a mode-modifier sub-axis scalar getter (lower-value).
+
+---
+
 # 2026-06-07 - loop cycle 3 (run 2026-06-06): E1 per-role rubric EMPIRICAL CALIBRATION SHIPPED [item 335]
 
 Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session E1 (tune core/post_game_rubric.py weight vectors from public per-role data). Operator interrupted after this cycle -> STOP dropped, loop halted, /done. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share); RC restarted pid 27300 -> 9412 (route reload). Commits `42780b3d` code + `d7ebebbd` docs.
