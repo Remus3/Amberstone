@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-08 - LIFT1 competitor-lift review: RC supersedes both targets [item 354]
+
+gemini-headless-upgrade loop, directive LIFT1 (cycle off the 2026-06-08 ORCHESTRATION_PLAN, ahead of HZ-B). Commit 4b15b031. RESEARCH + TRIAGE only, NO code slice (docs-only).
+
+- **2 heavyweight general-purpose research agents** (depth-per-target, 6-point checklist WHAT/HOW/HAVE-grep-cite/WHERE/EFFORT+RISK/LIFT); every HAVE/WHERE premise re-verified live before publishing. Output `docs/COMPETITOR_LIFT_2026-06-08.md`.
+- **Tool 1 (seb16120 target-vs-opponent "what stat to buy")** = a 100%-client-side manual-entry DEFENSIVE EHP calc (no champ/item data, no network calls). RC SUPERSEDES automatically: `agents/daemon_slayer/ehp.py` (per-type/blended EHP + shields/heals/ARAM/CC/revive layers the competitor lacks) + `core/defensive_picks.py` threat-weighted defensive-ITEM picks + the live `cc_blended_ehp_threat` panel.
+- **Tool 2 (simulator tool R.com + r/simulator tool R)** = a JS combat sim (combo / 1v1 / DPS-TTK / EHP / build-sort / sandbox). RC parity-or-better on EVERY axis via the prior 2026-05-30 calc.gg lift (`combo.py`/`matchup.py`/`dps.py`/`fight_report.py` + `ds_combo.js`/`ds_matchup.js`); the 172-champ engine beats the twins' hand-coded-champ ceiling.
+- **ACT:** NO HIGH-lift+LOW-risk finding -> per the ACT gate (MED/LOW always defer) NO in-run code. **2 FUTURE gaps -> BACKLOG (Coaching depth):** T1-F3 enemy-pen-aware effective resists (`ehp.py compute_ehp` documented Phase-1 omission, enemy pen plumbed via `defensive_picks.py` but feeds only THREAT scores; MED engine schema lift, operator-gated) + T2-F4 rune/keystone in the combo SURFACE (`routes_ds_combo.py` threads no `runes=` param, grep=0; MED route+panel wire-up + Sec-3b UI ritual). Minor deferred: T2-F3 TTK headline, T1-F4 per-stat EHP/gold.
+- Docs-only: DS-dir 7024 passed / RC tests/ 5352 passed, 0 regressions. ENGINE 1.120.0 untouched, no DS/RC restart, no Share, no UI-audit. Competitor tools read-only, no code vendored. ROADMAP 81707/81920 (TIGHT - the NEXT cycle needs a ROADMAP_HISTORY relocation before it can add a shipped line).
+- **NEXT OPEN = the operator UI/UX + bug batch** (LOBBY1 / PGR1 / REPLAY1 / HIST1+HIST2 / CS1-CS3), then HZ-B.
+
+---
+
 # 2026-06-08 - HZ-A2 Lane A economy block: recall/back-timing + power-spike-ETA (Haiku-to-ZERO) [item 353]
 
 gemini-headless-upgrade loop, directive HZ-A2 (cycle 2 off the 2026-06-08 ORCHESTRATION_PLAN). Commit dc5e6293. BUILD + PERSIST only, NO live coach flip (charter 4b do-not-flip-blind).
@@ -26,13 +39,3 @@ gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06
 - SR seed = 10-champ archetype-diverse SAMPLE (not a tier list), itemless, 1600 cells / 667KB; dist even 793 / back_off 696 / trade 111 / all_in 0 (0 all_in is HONEST for itemless equal-level - needs full HP removal; surfaces with an item axis, HZ-A2). +16 characterization tests (cell == compute_matchup). verifier CONFIRM 16/16.
 - Fixed a PRE-EXISTING red (NOT my slice): ROADMAP.md 82898 > 81920 doc-budget -> relocated shipped item 344 verbatim to ROADMAP_HISTORY (-> 79228). Full RC 5316 passed / 1 skip / 0 fail. ENGINE 1.120.0 untouched, no DS / Share / RC restart, no web -> no UI-audit.
 - **NEXT OPEN = HZ-A2** (recall/back-timing + power-spike-ETA). The table is read by a FUTURE consumer (HZ-C1); validate on a real/replayed game BEFORE any coach flip.
-
----
-
-# 2026-06-08 - vision :8889 false-alarm probe fix + cdragon hard-tail CLOSED [item 351]
-
-"start the next open items in parallel" -> 2 parallel tracks (vision anomaly + cdragon NEXT-UP #1), both resolved. Commits 7f49499d (fix) + d2ecf125 (docs); CI green both.
-
-- **Vision :8889 = FALSE ALARM.** Session-start "vision server :8889 not listening" was a probe artifact: server UP (PID 2108 moon_vision_server.py, 0.0.0.0:8889, /health 200). rc_facts `_port_listening` used ONE 0.4s TCP connect; a busy single-threaded accept races it (probed 3 OK / 2 timeout ~405ms). Fix `7f49499d`: retry timeouts (3x1.0s), refused=down-fast; +5 tests test_rc_facts_port_probe.py. Spawned chip task_a647378a = thread the :8889 server (the accept-stall root cause; gated on confirming handlers make no blocking inline model calls).
-- **cdragon hard-tail (NEXT-UP #1) = CLOSED (item 351, `d2ecf125`; scope + drift-check, NO engine change).** 577 fallback blocks: 292 emission-guard (stay fallback) + ~174 live-state (buff-counter/conditional/unknown-stat/resource) = CLOSED-as-Meraki (item-232 class) + 111 by-level. by-level drift-checked = ALIGNED not stale (cdragon champ-level 1..18 vs Meraki spell-rank 1..5 = different axes; auxiliary blocks; primary-damage pairs agree <=~7%) -> DEFERRED to BACKLOG. Operator chose drift-check-first.
-- **Don't-redo:** do NOT re-pitch a calc-graph resolver for the cdragon tail (only remaining cdragon growth needs a NEW extractor key). by-level lift parked in BACKLOG (only if a champ-level-indexed ratio axis is ever needed). Vision server is HEALTHY - rc_facts probe was the bug, not the server (a future :8889 "not listening" anomaly is likely the same race - re-probe /health). NEXT: remaining open work all operator/live-gated (P3.2 Phase-D, 6 UNIVERSAL_FILES, brief/flag flips, visual captures); no blind-shippable autonomous engine item (forward-marker EXHAUSTED item 348).
