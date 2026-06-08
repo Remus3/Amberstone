@@ -2401,6 +2401,29 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   white-space: pre-wrap; word-break: break-word;
   max-height: 220px; overflow-y: auto;
 }
+.loop-controls { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.loop-btn {
+  min-height: 42px; padding: 0 var(--space-3);
+  font-size: var(--fs-sm); font-weight: 700;
+  color: var(--text); background: var(--surface-alt);
+  border: 1px solid var(--text-faint); border-radius: 4px;
+  cursor: pointer;
+}
+.loop-btn:hover { border-color: var(--text-dim); }
+.loop-btn-stop { color: var(--bad); border-color: var(--bad); }
+.loop-btn-resume { color: var(--good); border-color: var(--good); }
+.loop-ta {
+  width: 100%; box-sizing: border-box; margin-top: var(--space-2);
+  padding: var(--space-2); resize: vertical; min-height: 64px;
+  font-family: "SF Mono", Consolas, monospace; font-size: var(--fs-sm);
+  color: var(--text); background: var(--surface-alt);
+  border: 1px solid var(--text-faint); border-radius: 4px;
+}
+.loop-dir-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.loop-ctl-msg {
+  font-size: var(--fs-sm); color: var(--text-dim);
+  min-height: 1.2em; margin-top: var(--space-2);
+}
 .mode-pill {
   padding: 5px 14px;
   border: 1px solid transparent;
