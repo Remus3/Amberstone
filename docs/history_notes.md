@@ -53,6 +53,18 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-07 - parallel next-items + loop-control half + gemini-audit fix [items 348-350]
+
+"start next open items in parallel" -> 3 parallel tracks; then "continue" x2 -> 2 more items. All pushed (6f904bc7, d4e0cd04, dc78d5a3); CI green through d4e0cd04 (350 = ps1+docs).
+
+- **Item 348 (`6f904bc7`):** orchestration E2/E3/F1 CLOSED + DS forward-marker scout EXHAUSTED. E2 (LCU richer-endpoint diff): top-3 = mastery-by-puuid full-team / match game-timelines / career-stats. E3 (lift sweep): NO new NOW candidate; 5 FUTURE (N1-N5); 3 stale-shipped flagged (anti-heal / inhibitor / per-item-WPA). F1 = stale-premise (both halves pre-shipped). DS scout: the un-taken LIFT_FOUND queue all REJECTED; `wiki_ability_stats` `*_raw` is unparsed wiki markup -> needs a NEW extractor key (memory `reference_ds_forward_marker_exhausted`). Fanout A1-F1 now FULLY CLOSED.
+- **Item 349 (`d4e0cd04`):** loop-status CONTROL half (NEXT-UP #3 tail). NEW `POST /api/loop-control` (stop / resume / set_directive / clear) over `ops/loop/control/*`, atomic + capped + 400-guarded; `loop_controller.py` `consume_directive_override()` one-shot hook + precedence override>FIXED>director + import-safe CFG; `dev.js`/`header.css` Settings control card. +19 tests; full 5296 / 0. 5-phase UI audit ALL PASS (1 ASCII MUST-FIX fixed). RC pid 3340->7144; live curl all 4 actions + 400 OK, control dir restored.
+- **Item 350 (`dc78d5a3`):** RC-GeminiAudit fix (`tools/gemini_audit.ps1`). Bug: `Write-Error` under EAP=Stop masked exit-1-no-log. Fixed: `Fail()` helper (logs + correct exit) + model fallback (gemini-3-pro-preview -> gemini-2.5-flash). External root cause verified: **429** (key VALID - models.list 50 - quota/RPM, Antigravity-shared); self-recovers on reset, NOT code-fixable. Memory `project_gemini_auditor` updated.
+
+Don't-redo: DS forward-marker cadence EXHAUSTED (needs a new extractor key, not another scout fanout). NEXT-UP #3 FULLY SHIPPED (monitor 346 + control 349). RC-GeminiAudit 429 is EXTERNAL - read `logs/gemini_audit.log` FAIL line first. NEXT: remaining open work is all operator-gated (cdragon hard tail = needs calc-graph resolver / 6 UNIVERSAL_FILES / P3.2 Phase-D) or live/product-gated (E2/E3 candidates) - no blind-shippable autonomous item left.
+
+---
+
 # 2026-06-07 - champ-select stick + rune display-match (2 front-end fixes) [item 347]
 
 Operator-reported, mid-session: (1) the champ-select dashboard view bounces to the in-game page ~half the time during CS; (2) Caitlyn's champ-select "PTA" rune default is actually Comet in the game. Both display/routing bugs - non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share). RC restarted pid 1128 -> 3340 (route reload, reload_ok=True). CI GREEN both SHAs.
