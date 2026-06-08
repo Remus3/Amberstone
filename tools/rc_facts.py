@@ -65,16 +65,27 @@ def _http_get_status(url: str, headers: dict | None = None) -> int | None:
         return None
 
 
-def _port_listening(port: int, host: str = "127.0.0.1") -> bool:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(0.4)
-    try:
-        s.connect((host, port))
-        return True
-    except OSError:
-        return False
-    finally:
-        s.close()
+def _port_listening(port: int, host: str = "127.0.0.1", attempts: int = 3) -> bool:
+    """TCP-connect probe. A bound port can still time out a fast connect when
+    its accept loop is briefly busy (a single-threaded server mid-request), so a
+    timeout is retried; only a refused connection counts as down immediately.
+
+    Without the retry a busy-but-listening port (e.g. the single-threaded vision
+    server on :8889 mid frame-upload) false-alarms as down.
+    """
+    for _ in range(attempts):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1.0)
+        try:
+            s.connect((host, port))
+            return True
+        except socket.timeout:
+            continue
+        except OSError:
+            return False
+        finally:
+            s.close()
+    return False
 
 
 def _legion_tasks() -> list[dict]:
