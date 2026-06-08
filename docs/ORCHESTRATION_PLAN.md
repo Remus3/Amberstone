@@ -38,7 +38,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-A1 | haiku-zero | Lane A laning-scenario precompute (charter 4b PRIMARY). Build core/laning_scenario_precompute.py: for (champ x matchup x level-band x mana-state x cooldown-state) emit trade/all-in/back-off verdicts via agents/daemon_slayer/{scenario_matrix,combo,mana_sim,fight_report}.py + core/laning_verdicts.py. Persist versioned JSON to data/daemon_slayer/laning_scenarios/. Characterization tests vs DS math. BUILD + PERSIST ONLY - the live coach flip is EXCLUDED (needs real-game validation). | DONE | 85b13b7c |
 | HZ-A2 | haiku-zero | Lane A extension: add recall/back-timing + power-spike-ETA verdicts (gold-income + item-completion driven, reuse core/lead_projection.py) to the HZ-A1 lookup tables. Characterization tests. BUILD + PERSIST ONLY. | DONE | dc5e6293 |
 | LIFT1 | lift | OPERATOR-QUEUED 2026-06-08 (review NEXT, ahead of HZ-B): deep-dive competitor-lift review per headless-upgrade Section 7b (heavyweight general-purpose agent + browser/Firecrawl MCP; 6-point depth checklist per finding WHAT / HOW / HAVE (grep RC + cite file) / WHERE (RC integration point) / EFFORT+RISK / LIFT verdict HIGH-MED-LOW) of 3 tools: (1) https://seb16120.github.io/LoL-Target-Vs-Opponent-What-stat-to-buy/ - target-vs-opponent "what stat to buy" advisor (overlaps DS anti-tank axis A3 core/ds_antitank_hint.py + armor/MR pen build hints + core/damage_mix.py + the HZ-B build-order precompute); (2) https://simulator-tool-r.invalid/ - LoL damage/combat simulator (overlaps the DS engine compute_dps / compute_matchup / fight_report; check for a DS-validation or sim-surface lift); (3) https://www.reddit.com/r/simulator-tool-r/ - community context for #2. Output docs/COMPETITOR_LIFT_<date>.md. ACT: a HIGH-lift that is LOW-risk (presentation over EXISTING DS math, no new dependency/schema lift, testable) ships IN-RUN as its own slice (+Section 3b UI proof if frontend); a HIGH-lift with a new dependency / schema lift / product-direction call -> BACKLOG + issue (FUTURE); MED/LOW always defer. Lift LEGALLY (re-implement in RC's own code, never vendor). Research + triage NOW/FUTURE/CLOSED, do NOT auto-build everything. | DONE | 4b15b031 |
-| LOBBY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (pre-game lobby): "Invite from my top 8 does not work" - inviting a friend from the operator's top-8 list fails. Investigate ROOT CAUSE first (the lobby invite flow: LCU `/lol-lobby/v2/lobby/invitations` + how the dashboard top-8 / friends surface builds the invite payload - summonerId vs puuid form); fix + regression test. LIVE-GATED: final verification needs a real lobby (do code-side + mark live-verification owed if no lobby). | OPEN | - |
+| LOBBY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (pre-game lobby): "Invite from my top 8 does not work" - inviting a friend from the operator's top-8 list fails. Investigate ROOT CAUSE first (the lobby invite flow: LCU `/lol-lobby/v2/lobby/invitations` + how the dashboard top-8 / friends surface builds the invite payload - summonerId vs puuid form); fix + regression test. LIVE-GATED: final verification needs a real lobby (do code-side + mark live-verification owed if no lobby). | DONE | 1f4f4118 |
 | PGR1 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Post Game Review): advance the s220 aggregator-G-style PGR reframe - "what's next" stage. Read the staged s220 plan (S2-S5, the single-match richer layout + 0-100 RC heuristic score over enriched stats, NO Claude/Riot dep - CLAUDE.md Settled) + docs/ROADMAP_HISTORY, pick the next UNSHIPPED stage, ship ONE stage + Section-3b per-page UI-audit + Claude_Preview visual vs /api/state. | OPEN | - |
 | REPLAY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Replay page): match ingestion is not up to date after each game. Investigate the post-game ingest chain (the 90s post-gameEnd Match-V5 fetch + INSERT in `core` rewind live writer [reference_rewind_live_writer] -> rewind_history.db -> the replay/replay-page data source + its cache/refresh); root-cause the staleness (timer not firing? cache TTL? page not re-fetching?). Fix + test. LIVE-GATED final verify. | OPEN | - |
 | HIST1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Session + History pages): clicking a populated match row does NOTHING. Wire the row click. Investigate the session/history panel JS (web/js/panels) - the match rows render but have no click handler (or it no-ops); should open that match's detail (-> HIST2 detached PGR). Fix + DOM test + Section-3b audit. | OPEN | - |
@@ -94,6 +94,30 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
   framed INVESTIGATE-ROOT-CAUSE-FIRST; the executor verifies the premise live before
   fixing (some may be stale-premise, the D1/D2/B1 pattern). Operator can reorder via
   the loop control panel.
+- 2026-06-08 LOBBY1 DONE (commit 1f4f4118). Top 8 / friends invites silently
+  failed ("could not resolve summoner: <rid>"). ROOT CAUSE: lobby.invite_player
+  (tools/gamepc_lcu_agent.py, non-frozen) resolved Name#TAG -> summonerId ONLY via
+  /lol-summoner/v1/summoners/by-name/<name>, which Riot removed in the Riot ID
+  migration (404s on current clients); the Top 8 add-flow (main.js:5003) only
+  captures Name#TAG (no summonerId/puuid) so the dead path was the SOLE route ->
+  100% failure. FIX: new _resolve_invitee_summoner_id layers resolution most-
+  reliable-first - explicit summonerId -> puuid (/summoners-by-puuid-cached) ->
+  scan /lol-chat/v1/friends (invite targets ARE friends; that resource carries
+  gameName/gameTag/summonerId) -> legacy by-name LAST for ancient builds. Handler
+  also accepts puuid + reports resolved_via. TDD: tests/test_lobby_invite_resolution.py
+  (10 pass / 1 live-skip) reproduces the failure + pins resolution order, body
+  shape {[{"toSummonerId":..}]}, and the dashboard allowlist. RC suite 5362 passed /
+  2 skip / 0 fail. ORCHESTRATION CALL (auto-pick under no-AskUserQuestion): one
+  tightly-coupled backend slice (agent + its test), so ran inline as sole
+  orchestrator with the read-only verifier subagent as the pre-commit ground-truth
+  gate (CONFIRM all 6 claims; siblings 46/0/0) rather than degenerate a 2-file
+  coupled fix into worktree fan-out. BACKEND-ONLY (LCU agent) - NO web/route/asset
+  delta, so NO 5-phase UI audit + NO RC restart (and no live lobby to capture).
+  OWED (FUTURE): (1) LIVE end-to-end invite verification needs a real lobby +
+  online friend (RC_LIVE_LOBBY=1 RC_LIVE_INVITE_RID=...); (2) inviting a NON-friend
+  by Riot ID still depends on the dead by-name fallback - a modern alias-lookup
+  (gameName/tagLine -> puuid) is owed but unverifiable offline, so not shipped
+  blind; (3) RC-LCUAgent must reload to pick up the new code for live effect.
 - 2026-06-08 HZ-A2 DONE (item 353, commit dc5e6293). Lane A extension: a
   gold-income + item-completion driven economy block layered onto the HZ-A1
   laning-scenario cells. NEW pure primitives in core/lead_projection.py (the
