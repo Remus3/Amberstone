@@ -313,3 +313,95 @@ def project_lead(game_state: dict, *, mode: str = "SR") -> dict:
         "line": line,
         "source_tag": _SOURCE_TAG,
     }
+
+
+# --------------------------------------------------------------------------- #
+# HZ-A2: gold-income + power-spike model
+# (reused by core.laning_scenario_precompute for recall/back-timing + spike-ETA)
+# --------------------------------------------------------------------------- #
+# Distinct from _GOLD_PER_MIN_BENCHMARK (on-hand, post-buy - the project_lead
+# signal): this is expected GROSS gold EARNED per minute, used to project WHEN a
+# player can afford their next item / power spike. Coarse + operator-tunable.
+# ARAM out-earns SR (no recall downtime, constant minion flow + the ARAM gold
+# passive); unknown modes fall back to the SR rate.
+_GOLD_EARNED_PER_MIN: Dict[str, float] = {"SR": 450.0, "ARAM": 600.0}
+_DEFAULT_GOLD_EARNED_PER_MIN: float = 450.0
+
+# Cumulative-gold power-spike ladder: (label, gold earned). A spike is "reached"
+# once cumulative gross earned gold >= its threshold. Heuristic component /
+# completed-item gold landmarks (a Mythic-tier first item ~3k, two-item ~6.2k,
+# three-item ~9.4k); tunable. SPIKE_COMPLETE caps the ladder.
+_SPIKE_LADDER: tuple = (
+    ("component", 1100.0),
+    ("first_item", 3000.0),
+    ("two_item", 6200.0),
+    ("three_item", 9400.0),
+)
+SPIKE_COMPLETE: str = "complete"
+
+
+def minutes_for_level(level: float) -> float:
+    """Expected game-minute a solo laner reaches ``level`` - the inverse of the
+    project_lead level benchmark (level = _LEVEL_BASE + rate * minutes). Bridges a
+    discrete level band (L2/L6/L11/L16) to a game-time so the gold/spike model and
+    project_lead ride one curve. Fail-soft: a level <= base (or a non-positive
+    rate) -> 0.0 (never negative)."""
+    if _LEVEL_PER_MIN_BENCHMARK <= 0:
+        return 0.0
+    m = (float(level) - _LEVEL_BASE) / _LEVEL_PER_MIN_BENCHMARK
+    return m if m > 0.0 else 0.0
+
+
+def gold_income_per_min(mode: str = "SR") -> float:
+    """Benchmark GROSS gold earned per minute for ``mode`` (SR default; an
+    unknown mode falls back to the SR rate)."""
+    return _GOLD_EARNED_PER_MIN.get(
+        (mode or _DEFAULT_MODE).upper(), _DEFAULT_GOLD_EARNED_PER_MIN
+    )
+
+
+def expected_gold_earned(minutes: float, mode: str = "SR") -> float:
+    """Cumulative gross gold earned by ``minutes`` at the benchmark income rate.
+    Negative minutes clamp to 0.0."""
+    m = float(minutes)
+    if m < 0.0:
+        m = 0.0
+    return gold_income_per_min(mode) * m
+
+
+def spike_ladder() -> list:
+    """Public copy of the cumulative-gold spike ladder as ``[[label, target], ...]``
+    (a list-of-lists so it serializes to JSON cleanly)."""
+    return [[label, float(target)] for label, target in _SPIKE_LADDER]
+
+
+def spike_threshold(label: str) -> float:
+    """Cumulative gold for a named spike ``label`` (0.0 if unknown)."""
+    for lbl, target in _SPIKE_LADDER:
+        if lbl == label:
+            return float(target)
+    return 0.0
+
+
+def next_spike(gold_earned: float) -> tuple:
+    """The first ladder spike not yet reached: ``(label, target_gold)``. Once
+    every ladder entry is reached, returns ``(SPIKE_COMPLETE, last_threshold)``."""
+    g = float(gold_earned)
+    for label, target in _SPIKE_LADDER:
+        if g < target:
+            return label, float(target)
+    return SPIKE_COMPLETE, float(_SPIKE_LADDER[-1][1])
+
+
+def spike_eta_seconds(
+    gold_earned: float, target_gold: float, mode: str = "SR"
+) -> float:
+    """Seconds to earn from ``gold_earned`` up to ``target_gold`` at the benchmark
+    income rate. 0.0 when already at/past the target or the rate is non-positive."""
+    remaining = float(target_gold) - float(gold_earned)
+    if remaining <= 0.0:
+        return 0.0
+    rate_per_min = gold_income_per_min(mode)
+    if rate_per_min <= 0.0:
+        return 0.0
+    return (remaining / rate_per_min) * 60.0
