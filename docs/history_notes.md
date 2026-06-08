@@ -53,6 +53,16 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-08 - vision :8889 false-alarm probe fix + cdragon hard-tail CLOSED [item 351]
+
+"start the next open items in parallel" -> 2 parallel tracks (vision anomaly + cdragon NEXT-UP #1), both resolved. Commits 7f49499d (fix) + d2ecf125 (docs); CI green both.
+
+- **Vision :8889 = FALSE ALARM.** Session-start "vision server :8889 not listening" was a probe artifact: server UP (PID 2108 moon_vision_server.py, 0.0.0.0:8889, /health 200). rc_facts `_port_listening` used ONE 0.4s TCP connect; a busy single-threaded accept races it (probed 3 OK / 2 timeout ~405ms). Fix `7f49499d`: retry timeouts (3x1.0s), refused=down-fast; +5 tests test_rc_facts_port_probe.py. Spawned chip task_a647378a = thread the :8889 server (the accept-stall root cause; gated on confirming handlers make no blocking inline model calls).
+- **cdragon hard-tail (NEXT-UP #1) = CLOSED (item 351, `d2ecf125`; scope + drift-check, NO engine change).** 577 fallback blocks: 292 emission-guard (stay fallback) + ~174 live-state (buff-counter/conditional/unknown-stat/resource) = CLOSED-as-Meraki (item-232 class) + 111 by-level. by-level drift-checked = ALIGNED not stale (cdragon champ-level 1..18 vs Meraki spell-rank 1..5 = different axes; auxiliary blocks; primary-damage pairs agree <=~7%) -> DEFERRED to BACKLOG. Operator chose drift-check-first.
+- **Don't-redo:** do NOT re-pitch a calc-graph resolver for the cdragon tail (only remaining cdragon growth needs a NEW extractor key). by-level lift parked in BACKLOG (only if a champ-level-indexed ratio axis is ever needed). Vision server is HEALTHY - rc_facts probe was the bug, not the server (a future :8889 "not listening" anomaly is likely the same race - re-probe /health). NEXT: remaining open work all operator/live-gated (P3.2 Phase-D, 6 UNIVERSAL_FILES, brief/flag flips, visual captures); no blind-shippable autonomous engine item (forward-marker EXHAUSTED item 348).
+
+---
+
 # 2026-06-07 - parallel next-items + loop-control half + gemini-audit fix [items 348-350]
 
 "start next open items in parallel" -> 3 parallel tracks; then "continue" x2 -> 2 more items. All pushed (6f904bc7, d4e0cd04, dc78d5a3); CI green through d4e0cd04 (350 = ps1+docs).
