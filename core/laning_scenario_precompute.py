@@ -28,8 +28,9 @@ shifts honestly (less burst -> fewer all-ins, more back-offs). The enemy side is
 modelled at the same level + item set AND always at FULL resources + cooldowns
 (``sequence_b`` = the full rotation): we vary only MY state per cell, so a
 same-level mirror at full state is symmetric (net_swing 0 -> even) while a
-restricted MY state reads as a genuine disadvantage. (v1: itemless; an item axis
-is a separate session, HZ-A2 / build-order precompute.)
+restricted MY state reads as a genuine disadvantage. (Itemless; an item axis is a
+separate session, the HZ-B build-order precompute. HZ-A2 adds the gold-income +
+power-spike ``economy`` block, not items.)
 
 WHAT v1 IS (honest scope)
     BUILD + PERSIST + READ only. The live coach flip is EXCLUDED (charter 4b
@@ -45,15 +46,27 @@ SHAPE (per mode, atomic write to data/daemon_slayer/laning_scenarios/<patch>/)::
 
     {
       "version": "<patch>", "generated_at": "<iso>", "mode": "<sr|aram|arena>",
-      "schema": "laning_scenarios/v1",
-      "dimensions": {"level_bands": {...}, "mana_states": [...], "cd_states": [...]},
+      "schema": "laning_scenarios/v2",
+      "dimensions": {"level_bands": {...}, "mana_states": [...], "cd_states": [...],
+                     "economy": {"income_per_min": <float>, "spike_ladder": [...],
+                                 "recall_states": [...], "back_soon_window_s": <float>}},
       "scenarios": {
         "<my_champ>": {"<enemy>": {"<band>": {"<mana>": {"<cd>": {
             "verdict": "...", "net_swing": <float>, "pct_my_removed": <float>,
             "pct_enemy_removed": <float>, "my_can_full_combo": <bool>,
-            "sequence": ["Q", ...], "manaless": <bool>}}}}}
+            "sequence": ["Q", ...], "manaless": <bool>,
+            "economy": {"recall": "recall_now|back_soon|hold",
+                        "next_spike": "component|first_item|two_item|three_item|complete",
+                        "spike_eta_s": <float>, "gold_at_band": <float>}}}}}}
       }
     }
+
+The HZ-A2 ``economy`` block is gold-income + item-completion driven (the gold /
+spike math lives in core.lead_projection): ``gold_at_band`` / ``next_spike`` /
+``spike_eta_s`` are the expected economy at the band's representative minute (the
+project_lead level<->minute curve); ``recall`` is the cell-varying back-timing
+verdict, keyed on the trade verdict + mana / manaless state. BUILD + PERSIST only
+(same charter-4b do-not-flip-blind boundary as the v1 verdict).
 
 FAIL-SOFT (read side)
     A missing / unreadable / malformed table yields ``{}`` and every ``lookup``
@@ -85,6 +98,12 @@ from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.mana_sim import compute_mana_bounded_combo
 from agents.daemon_slayer.matchup import compute_matchup
 
+# HZ-A2: the gold-income + power-spike primitives live in lead_projection (the
+# shared deterministic macro-economy authority); this module composes them into a
+# per-cell recall/back-timing + spike-ETA economy block. Pure import (no cycle:
+# lead_projection imports nothing from core).
+from core import lead_projection as _lead
+
 # Project root: core/ -> C:\Riot Commander\
 _ROOT = Path(__file__).resolve().parent.parent
 _DS_DIR = _ROOT / "data" / "daemon_slayer"
@@ -114,6 +133,15 @@ LOW_MANA_FRACTION: float = 0.35
 VALID_VERDICTS: frozenset[str] = frozenset(
     {"all_in", "trade", "back_off", "even"}
 )
+
+# HZ-A2 recall/back-timing tuning (gold-income + spike driven; the gold/spike
+# math itself lives in core.lead_projection). The next spike within this many
+# seconds reads "back_soon" (hold the wave, plan the back); a resource-starved
+# mana champ backs now once a back is worth the lane time (>= _MIN_BACK_GOLD).
+RECALL_BACK_SOON_WINDOW_S: float = 60.0
+_MIN_BACK_GOLD: float = 500.0
+RECALL_STATES: Tuple[str, ...] = ("recall_now", "back_soon", "hold")
+VALID_RECALLS: frozenset[str] = frozenset(RECALL_STATES)
 
 # Archetype-diverse laner SAMPLE for the committed seed table. NOT a tier list -
 # a neutral spread of damage types + resource types (Garen = manaless bruiser,
@@ -158,6 +186,67 @@ def _round(value: object) -> float:
     if math.isnan(f) or math.isinf(f):
         return 0.0
     return round(f, 4)
+
+
+# --------------------------------------------------------------------------- #
+# HZ-A2 economy verdict (recall/back-timing + power-spike-ETA)
+# --------------------------------------------------------------------------- #
+def _recall_verdict(
+    gold_at_band: float,
+    spike_eta_s: float,
+    mana_state: str,
+    manaless: bool,
+    next_spike_label: str,
+) -> str:
+    """Recall/back-timing verdict for one cell - gold-income + spike driven.
+
+    The trade verdict is a COMBAT read, not an economy one, so it does NOT drive
+    recall; the cell-level economy input is the mana state. Priority:
+      1. A mana champ on its low-mana combo (resource-starved) with a back-worthy
+         gold count backs now to refill + shop. A manaless champ's ``low`` cell is
+         NOT resource-starved (no pool to run dry).
+      2. Core build complete -> no item spike to back for; hold (macro phase).
+      3. The next spike is imminent -> hold the wave, plan the back for it.
+      4. The spike is far but you are already sitting on a completed item's worth
+         of unspent gold -> back now to convert gold into power.
+      5. Otherwise hold and keep farming toward the spike."""
+    if mana_state == "low" and not manaless and gold_at_band >= _MIN_BACK_GOLD:
+        return "recall_now"
+    if next_spike_label == _lead.SPIKE_COMPLETE:
+        return "hold"
+    if spike_eta_s <= RECALL_BACK_SOON_WINDOW_S:
+        return "back_soon"
+    if gold_at_band >= _lead.spike_threshold("first_item"):
+        return "recall_now"
+    return "hold"
+
+
+def economy_cell(
+    band: str,
+    mana_state: str,
+    mode: str = "SR",
+    manaless: bool = False,
+) -> dict:
+    """Gold-income + power-spike economy verdict for one scenario cell (HZ-A2).
+
+    Reuses ``core.lead_projection`` for the band->minute bridge, the gross-income
+    benchmark, and the cumulative-gold spike ladder. Pure + deterministic - no
+    engine, no snapshot, no network. Returns ``{recall, next_spike, spike_eta_s,
+    gold_at_band}``. ``gold_at_band`` / ``next_spike`` / ``spike_eta_s`` are
+    band-constant (the expected economy at the band's representative minute);
+    ``recall`` is the cell-varying field, driven by the mana / manaless state +
+    spike timing (NOT the combat trade verdict)."""
+    minutes = _lead.minutes_for_level(level_for_band(band))
+    gold = _lead.expected_gold_earned(minutes, mode)
+    label, target = _lead.next_spike(gold)
+    eta = _lead.spike_eta_seconds(gold, target, mode)
+    recall = _recall_verdict(gold, eta, mana_state, manaless, label)
+    return {
+        "recall": recall,
+        "next_spike": label,
+        "spike_eta_s": _round(eta),
+        "gold_at_band": _round(gold),
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -252,12 +341,15 @@ def _matchup(
     )
 
 
-def _cell_from_result(result, seq: Sequence[str], manaless: bool) -> dict:
+def _cell_from_result(
+    result, seq: Sequence[str], manaless: bool, economy: Optional[dict] = None
+) -> dict:
     """Shape a MatchupResult into the persisted leaf dict (single source so
     compute_cell + generate_table never drift). ``net_swing`` > 0 = my champ
     favored; ``pct_my_removed`` is the fraction of MY effective HP the enemy
-    combo removes."""
-    return {
+    combo removes. ``economy`` (HZ-A2) is the optional recall/back-timing +
+    power-spike-ETA block; omitted when None for back-compat with v1 callers."""
+    cell = {
         "verdict": str(result.verdict),
         "net_swing": _round(result.net_swing),
         "pct_my_removed": _round(result.pct_a_removed),
@@ -266,6 +358,9 @@ def _cell_from_result(result, seq: Sequence[str], manaless: bool) -> dict:
         "sequence": [str(t) for t in seq],
         "manaless": bool(manaless),
     }
+    if economy is not None:
+        cell["economy"] = economy
+    return cell
 
 
 def compute_cell(
@@ -290,7 +385,8 @@ def compute_cell(
         mode=mode, item_ids=item_ids,
     )
     result = _matchup(snapshot, my_champion, enemy, level, seq, mode, item_ids)
-    return _cell_from_result(result, seq, manaless)
+    economy = economy_cell(band, mana_state, mode=mode, manaless=manaless)
+    return _cell_from_result(result, seq, manaless, economy)
 
 
 def generate_table(
@@ -333,7 +429,12 @@ def generate_table(
                         result = _matchup(
                             snapshot, my, enemy, level, seq, mode, item_ids
                         )
-                        per_cd[cd] = _cell_from_result(result, seq, manaless)
+                        economy = economy_cell(
+                            band, mana, mode=mode, manaless=manaless,
+                        )
+                        per_cd[cd] = _cell_from_result(
+                            result, seq, manaless, economy
+                        )
                     per_mana[mana] = per_cd
                 per_band[band] = per_mana
             per_enemy[enemy] = per_band
@@ -343,11 +444,17 @@ def generate_table(
         "version": resolve_patch(),
         "generated_at": _now_iso(),
         "mode": str(mode).lower(),
-        "schema": "laning_scenarios/v1",
+        "schema": "laning_scenarios/v2",
         "dimensions": {
             "level_bands": {k: LEVEL_BANDS[k] for k in band_keys},
             "mana_states": list(MANA_STATES),
             "cd_states": list(CD_STATES),
+            "economy": {
+                "income_per_min": _lead.gold_income_per_min(mode),
+                "spike_ladder": _lead.spike_ladder(),
+                "recall_states": list(RECALL_STATES),
+                "back_soon_window_s": RECALL_BACK_SOON_WINDOW_S,
+            },
         },
         "scenarios": scenarios,
     }
