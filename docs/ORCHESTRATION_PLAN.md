@@ -32,9 +32,9 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | D1 | lift | DS relative-score bar (Aggregator P lift, BACKLOG.md:21): per-row score_pct fill (delta_dps/top_delta*100). Codeable with fixtures; render-gated on locked champ. | DONE | ab176543 |
 | D2 | lift | draft tool L (the community fork) Elo log-odds draft aggregator (BACKLOG.md:78): clean algorithm reimplement (NO vendor) over pairwise WR from rewind_history.db. | DONE | 21bf98ef |
 | E1 | research | Per-role grading rubric calibration (BACKLOG.md:100): tune core/post_game_rubric.py weight vectors from public per-role reference data. | DONE | 42780b3d |
-| E2 | research | LCU data.json diff vs the reference catalog (BACKLOG.md:19) for richer endpoints. Log findings only; no live capture. | OPEN | - |
-| E3 | research | Competitor-tool lift secondary sweep, framed by technical substance only (keep third-party names out of repo). Output new NOW/FUTURE/CLOSED candidates into the Findings log. | OPEN | - |
-| F1 | monitoring | Phone monitoring loop-status panel reading ops/loop/control/{cycle.txt,controller.log,claude.done} + last commit (Tailscale-viewable) + daily upstream content-drift poll (tools/upstream_drift_check.py + scheduled task). | OPEN | - |
+| E2 | research | LCU data.json diff vs the reference catalog (BACKLOG.md:19) for richer endpoints. Log findings only; no live capture. | DONE | item 348 |
+| E3 | research | Competitor-tool lift secondary sweep, framed by technical substance only (keep third-party names out of repo). Output new NOW/FUTURE/CLOSED candidates into the Findings log. | DONE | item 348 |
+| F1 | monitoring | Phone monitoring loop-status panel reading ops/loop/control/{cycle.txt,controller.log,claude.done} + last commit (Tailscale-viewable) + daily upstream content-drift poll (tools/upstream_drift_check.py + scheduled task). | DONE | 5bc8f02f+d3fcc070 |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -46,6 +46,49 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-07 E2 + E3 + F1 DONE + DS scout EXHAUSTED (item 348; parallel "next open
+  items" dispatch). **Fanout A1-F1 now FULLY CLOSED -> NO_WORK; loop self-terminates.**
+  No code shipped (research / reconcile only); RC not restarted; ENGINE 1.120.0.
+  - **E2** (LCU richer-endpoint diff, research): RC's live `/lol-` surface vs the
+    KebsCS reference catalog (reference-only, NOT vendored). Top-3 actionable richer
+    endpoints, none blocked: (1) mastery-by-puuid FULL-TEAM
+    `/lol-champion-mastery/v1/player/{puuid}/champion-mastery` (RC reads only SELF
+    today, tools/gamepc_lcu_agent.py:454) -> champ-select "ally one-trick / off-role"
+    signal into existing pickban / team-context panels (H); (2) match `game-timelines`
+    + fuller `/games/{gameId}` parse (coaches/lcu_postgame_collector.py:764,
+    dashboard/builders_lcu_enrich.py:17) -> per-frame gold/xp + ITEM_PURCHASED /
+    SKILL_LEVEL_UP for the BACKLOG:24 spell-WPA / skill-order extension + s220 PGR
+    curves (H); (3) career-stats per-champ aggregates for ally comfort (M).
+    BLOCKED / dead-end (do NOT re-pick): augment LCU API (`/lol-cherry/*` absent,
+    ADR-settled); any Arena / Cherry / Mayhem lobby-create payload (zero in corpus,
+    needs live capture).
+  - **E3** (technical-substance lift sweep, no vendor names): NO new NOW-bucket
+    candidate exists (headless-safe lift lane exhausted). 5 new FUTURE candidates
+    (all live / product / min-N gated): per-summspell+keystone WPA residual;
+    recall-affordability / back-timing advisor; live enemy damage-type-split
+    armor/MR chip; objective-tempo x level/recall cross-ref; forward spike-ETA from
+    gold-income. Biggest un-shipped (logged, unbuilt): per-lobby-player threat tags
+    (9x Match-V5 fan-out + product call). 3 STALE-SHIPPED premises to skip (the
+    D1/D2/B1 trap): anti-heal callout (core/heal_threat.py item 285), inhibitor
+    callout (core/event_callouts.py:329), per-item WPA tierlist (item 273) - their
+    "open" verdicts live in DATED COMPETITOR_LIFT docs, left UNEDITED per the
+    dated-artifact rule.
+  - **F1** (monitor panel + drift poll): stale-premise - BOTH halves already shipped
+    (monitor = item 346, 5bc8f02f panel + 3b3ea2e1 reconcile; drift poll = d3fcc070
+    tools/upstream_drift_check.py + RC-UpstreamDriftCheck 03:45). DONE. The control
+    half (Tailscale STOP / directive page) is a separate deferred item, not F1 scope.
+  - **DS forward-marker scout** (item 348, worktree): EXHAUSTED. Entire un-taken
+    LIFT_FOUND queue from items 344/345 REJECTED vs live loaders (cc_conditional
+    get_max_conditional_cc_seconds = already-surfaced + registry-fn; cross-spell-amp
+    / passive_heal / passive_damage candidates = registries NOT loaded into
+    DataSnapshot or engine literals; survivability = off-channel; bilinear =
+    synthetic-only DamageBlock-arg). The 2 mined sidecars (wiki_stats /
+    cdragon_spell_stats) are FULLY mined; the unmined wiki_ability_stats carries no
+    clean scalar (every `*_raw` is unparsed wiki markup `{{fd|0.25}}` /
+    `{{ap|20 to 12}}` / `Varied` / `none`). Confirms items 344/345: further DS
+    magnitude growth needs a NEW extractor key (patch-refresh schema change), NOT
+    another scan. Worktree clean, ENGINE 1.120.0 untouched. Memory
+    `reference_ds_forward_marker_exhausted` written.
 - 2026-06-07 E1 DONE (item 335, commit 42780b3d). NOT a stale premise
   (unlike D1/D2/B1): core/post_game_rubric.py existed + was LIVE-wired
   (dashboard/routes_post_game_rubric.py -> web/js/panels/last_match.js hero
