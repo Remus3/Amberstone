@@ -16,8 +16,9 @@ import sys
 import time
 from pathlib import Path
 
-CFG = json.loads(Path(sys.argv[1] if len(sys.argv) > 1 else
-                       r"C:\Riot Commander\ops\loop\config.json").read_text(encoding="utf-8"))
+_CFG_ARG = (sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].endswith(".json")
+            else r"C:\Riot Commander\ops\loop\config.json")
+CFG = json.loads(Path(_CFG_ARG).read_text(encoding="utf-8"))
 ROOT = Path(CFG["repo_root"])
 CTL = Path(CFG["control_dir"]); CTL.mkdir(parents=True, exist_ok=True)
 DRY = bool(CFG["dry_run"])
@@ -33,6 +34,23 @@ def awrite(path, text):
     tmp = Path(str(path) + ".tmp")
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
+
+def consume_directive_override(ctl=None):
+    """One-shot operator directive override (written by POST /api/loop-control).
+
+    Returns the override text and removes the file so it applies to exactly one
+    cycle, or None when absent / empty. Default-absent => byte-identical loop.
+    """
+    base = Path(ctl) if ctl is not None else CTL
+    p = base / "directive_override.md"
+    if not p.exists():
+        return None
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace").strip()
+    except Exception:
+        text = ""
+    p.unlink(missing_ok=True)
+    return text or None
 
 def rjson(path, default=None):
     p = Path(path)
@@ -211,7 +229,11 @@ def main():
 
     FIXED = CFG.get("fixed_directive")  # fixed-message mode: skip gemini director+auditor entirely
     for cycle in range(1, CFG["max_cycles"] + 1):
-        if FIXED:
+        override = consume_directive_override()
+        if override:
+            body = override
+            log(f"cycle {cycle}: operator directive override applied ({len(body)} chars)")
+        elif FIXED:
             body = FIXED
         else:
             body = director(last_done, last_audit)
