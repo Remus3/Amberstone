@@ -39,7 +39,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-A2 | haiku-zero | Lane A extension: add recall/back-timing + power-spike-ETA verdicts (gold-income + item-completion driven, reuse core/lead_projection.py) to the HZ-A1 lookup tables. Characterization tests. BUILD + PERSIST ONLY. | DONE | dc5e6293 |
 | LIFT1 | lift | OPERATOR-QUEUED 2026-06-08 (review NEXT, ahead of HZ-B): deep-dive competitor-lift review per headless-upgrade Section 7b (heavyweight general-purpose agent + browser/Firecrawl MCP; 6-point depth checklist per finding WHAT / HOW / HAVE (grep RC + cite file) / WHERE (RC integration point) / EFFORT+RISK / LIFT verdict HIGH-MED-LOW) of 3 tools: (1) https://seb16120.github.io/LoL-Target-Vs-Opponent-What-stat-to-buy/ - target-vs-opponent "what stat to buy" advisor (overlaps DS anti-tank axis A3 core/ds_antitank_hint.py + armor/MR pen build hints + core/damage_mix.py + the HZ-B build-order precompute); (2) https://simulator-tool-r.invalid/ - LoL damage/combat simulator (overlaps the DS engine compute_dps / compute_matchup / fight_report; check for a DS-validation or sim-surface lift); (3) https://www.reddit.com/r/simulator-tool-r/ - community context for #2. Output docs/COMPETITOR_LIFT_<date>.md. ACT: a HIGH-lift that is LOW-risk (presentation over EXISTING DS math, no new dependency/schema lift, testable) ships IN-RUN as its own slice (+Section 3b UI proof if frontend); a HIGH-lift with a new dependency / schema lift / product-direction call -> BACKLOG + issue (FUTURE); MED/LOW always defer. Lift LEGALLY (re-implement in RC's own code, never vendor). Research + triage NOW/FUTURE/CLOSED, do NOT auto-build everything. | DONE | 4b15b031 |
 | LOBBY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (pre-game lobby): "Invite from my top 8 does not work" - inviting a friend from the operator's top-8 list fails. Investigate ROOT CAUSE first (the lobby invite flow: LCU `/lol-lobby/v2/lobby/invitations` + how the dashboard top-8 / friends surface builds the invite payload - summonerId vs puuid form); fix + regression test. LIVE-GATED: final verification needs a real lobby (do code-side + mark live-verification owed if no lobby). | DONE | 1f4f4118 |
-| PGR1 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Post Game Review): advance the s220 aggregator-G-style PGR reframe - "what's next" stage. Read the staged s220 plan (S2-S5, the single-match richer layout + 0-100 RC heuristic score over enriched stats, NO Claude/Riot dep - CLAUDE.md Settled) + docs/ROADMAP_HISTORY, pick the next UNSHIPPED stage, ship ONE stage + Section-3b per-page UI-audit + Claude_Preview visual vs /api/state. | OPEN | - |
+| PGR1 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Post Game Review): advance the s220 aggregator-G-style PGR reframe - "what's next" stage. Read the staged s220 plan (S2-S5, the single-match richer layout + 0-100 RC heuristic score over enriched stats, NO Claude/Riot dep - CLAUDE.md Settled) + docs/ROADMAP_HISTORY, pick the next UNSHIPPED stage, ship ONE stage + Section-3b per-page UI-audit + Claude_Preview visual vs /api/state. | DONE | c162e5bd |
 | REPLAY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Replay page): match ingestion is not up to date after each game. Investigate the post-game ingest chain (the 90s post-gameEnd Match-V5 fetch + INSERT in `core` rewind live writer [reference_rewind_live_writer] -> rewind_history.db -> the replay/replay-page data source + its cache/refresh); root-cause the staleness (timer not firing? cache TTL? page not re-fetching?). Fix + test. LIVE-GATED final verify. | OPEN | - |
 | HIST1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Session + History pages): clicking a populated match row does NOTHING. Wire the row click. Investigate the session/history panel JS (web/js/panels) - the match rows render but have no click handler (or it no-ops); should open that match's detail (-> HIST2 detached PGR). Fix + DOM test + Section-3b audit. | OPEN | - |
 | HIST2 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Session + History pages): a clicked match should populate + switch to a DETACHED historical PGR frame showing the PGR info "as if the match had just ended", SEPARATE from the live in-use last-match PGR (with a back action to return). Reuse the PGR/last-match render against a historical match-id source; MUST NOT mutate or clobber the live last-match PGR state. Tests + Section-3b UI-audit + visual. Pairs with HIST1. | OPEN | - |
@@ -94,6 +94,28 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
   framed INVESTIGATE-ROOT-CAUSE-FIRST; the executor verifies the premise live before
   fixing (some may be stale-premise, the D1/D2/B1 pattern). Operator can reorder via
   the loop control panel.
+- 2026-06-08 PGR1 DONE (commit c162e5bd). s220 PGR reframe: shipped the last
+  deferred S5 piece - per-player gold@10 / cs@10 in the lane-comparison card.
+  DISCOVERY: S2/S3/S4 + the S5 Arena-augment loadout variant (pgr_loadout.js)
+  were ALREADY shipped + wired (the PGR_REFRAME_S2.md staging doc was just not
+  synced); the genuine gap was the @N lane head-to-head S4 punted as "no
+  per-participant timeline". GROUND TRUTH: rewind_history.db.timeline_frames
+  (664752 rows) AND the Match-V5 timeline both carry per-participant frames
+  (total_gold + minions_killed + jungle_minions) - the team-aggregate series was
+  a reducer choice, not a data gap. FIX: _enrich_match_timeline emits an `at_n`
+  per-participant snapshot (frame nearest 10 min; sub-10-min -> last frame);
+  _fold_at_n_into_roster copies gold_at_n/cs_at_n/at_n_minute onto each roster
+  row (called from _attach_match_timeline); pgr_lane_compare.js leads with
+  gold@N / cs@N head-to-head rows (reuses _rowHtml grid), degrades to final-only
+  when absent. TDD +6 timeline tests + DOM/fixture flip of the stale "deferred"
+  guard. RC suite 5369 / 2 skip / 0 fail; ruff + node --check clean; 5-phase UI
+  audit PASS (0 MUST-FIX); verifier CONFIRM (the lone REFUTE was a mis-worded
+  ruff claim on my side - .py ruff clean, not a code defect). Backend Python
+  module -> RC restarted (pid 3292, last_reload_ok). VISUAL CAPTURE OWED
+  (carry-forward): Game-PC :8892 MCP down (project_gamepc_mcp_boot_gap) +
+  Claude_Preview can't attach the self-signed HTTPS :8888 - capture the @N row
+  via ?ui_mock=1#last-match next time a visual path is up. S5 residual (FUTURE,
+  minor): responsive polish; ARAM/Arena lane-compare stays hidden by design.
 - 2026-06-08 LOBBY1 DONE (commit 1f4f4118). Top 8 / friends invites silently
   failed ("could not resolve summoner: <rid>"). ROOT CAUSE: lobby.invite_player
   (tools/gamepc_lcu_agent.py, non-frozen) resolved Name#TAG -> summonerId ONLY via
