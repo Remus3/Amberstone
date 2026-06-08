@@ -165,7 +165,7 @@ class EngineCharacterizationTests(unittest.TestCase):
             mode="SR", bands=["L6", "L11"],
         )
         self.assertEqual(payload["mode"], "sr")
-        self.assertEqual(payload["schema"], "laning_scenarios/v1")
+        self.assertEqual(payload["schema"], "laning_scenarios/v2")
         self.assertTrue(payload["version"])
         scen = payload["scenarios"]
         leaves = 0
