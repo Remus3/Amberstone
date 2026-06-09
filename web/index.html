@@ -1869,6 +1869,99 @@
       </div>
     </section>
 
+    <!-- HIST2: DETACHED historical Post Game Review. A clicked match row
+         on the Session / History page routes here with ?match_ts=<ts>.
+         This view is a SEPARATE frame with its own hpgr- prefixed DOM +
+         state (historical_pgr.js) so it NEVER mutates or clobbers the
+         live #view-last-match PGR (the operator's real most-recent game).
+         It reuses the lm-* CSS classes for visual identity but renders a
+         focused core PGR (hero + stats + ally/enemy rosters) from
+         /api/last-match?match_ts=. The BACK button returns to History. -->
+    <section id="view-historical-pgr" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>POST GAME REVIEW <span class="hpgr-tag" id="hpgr-archive-tag">ARCHIVE</span></h2>
+        <span class="view-section-sub" id="hpgr-meta">loading...</span>
+        <button type="button" class="hpgr-back" id="hpgr-back"
+                data-tt="Return to History">&#8592; Back</button>
+      </div>
+      <div class="view-section-body lm-body" id="hpgr-body">
+        <div class="lm-hero" id="hpgr-hero">
+          <div class="lm-hero-identity">
+            <img class="lm-hero-portrait" id="hpgr-portrait" alt="" />
+            <div class="lm-hero-name">
+              <span class="lm-hero-champ" id="hpgr-champion-name">-</span>
+              <span class="lm-hero-mode" id="hpgr-mode-tag">-</span>
+            </div>
+            <div class="lm-hero-kda">
+              <span class="lm-kda-text" id="hpgr-kda-text">-/-/-</span>
+              <span class="lm-kda-ratio" id="hpgr-kda-ratio">-</span>
+            </div>
+            <div class="lm-hero-result" id="hpgr-result-badge" data-result="" hidden>-</div>
+            <div class="lm-hero-grade" id="hpgr-grade-badge" data-grade="">-</div>
+            <div class="lm-hero-score" id="hpgr-hero-score" data-tier="" hidden
+                 data-tt="Match score 0-100 - blend of KDA 30%, damage 28%, gold 16%, CS 12%, vision 8%, tanked 6%, each normalized to the lobby max. RC heuristic.">
+              <span class="lm-hero-score-value" id="hpgr-hero-score-value">-</span>
+              <span class="lm-hero-score-tier" id="hpgr-hero-score-tier">-</span>
+            </div>
+          </div>
+
+          <div class="lm-hero-stats-grid">
+            <div class="lm-hero-stat lm-hero-stat-blank" aria-hidden="true"></div>
+            <div class="lm-hero-stat" data-tt="Vision score - wards placed + wards killed + control wards seen by the team.">
+              <span class="lm-hero-stat-label">Vision</span>
+              <span class="lm-hero-stat-value" id="hpgr-vision">-</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Creep score - minions + monsters killed.">
+              <span class="lm-hero-stat-label">CS</span>
+              <span class="lm-hero-stat-value" id="hpgr-cs">-</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Total damage taken from champions, minions, monsters, towers.">
+              <span class="lm-hero-stat-label">Tanked</span>
+              <span class="lm-hero-stat-value" id="hpgr-tank-dmg">-</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Kill participation - share of team kills you took part in.">
+              <span class="lm-hero-stat-label">KP%</span>
+              <span class="lm-hero-stat-value" id="hpgr-kp">-</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Damage dealt to enemy champions.">
+              <span class="lm-hero-stat-label">Damage</span>
+              <span class="lm-hero-stat-value" id="hpgr-damage">-</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Creep score per minute.">
+              <span class="lm-hero-stat-label">CS/min</span>
+              <span class="lm-hero-stat-value" id="hpgr-cs-per-min">-</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Sustain - healing + shielding contributed to teammates (excludes self-heal).">
+              <span class="lm-hero-stat-label">Sustain</span>
+              <span class="lm-hero-stat-value" id="hpgr-healing">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lm-section">
+          <div class="lm-tc-table lm-row-half" id="hpgr-tc-table" hidden>
+            <div class="lm-tc-group lm-tc-ally" data-side="ally">
+              <div class="lm-tc-group-head">
+                <span class="lm-tc-group-label">ALLY</span>
+                <span class="lm-tc-group-result" id="hpgr-tc-ally-result">-</span>
+              </div>
+              <ul class="lm-tc-list" id="hpgr-tc-ally-list"></ul>
+            </div>
+            <div class="lm-tc-group lm-tc-enemy" data-side="enemy">
+              <div class="lm-tc-group-head">
+                <span class="lm-tc-group-label">ENEMY</span>
+                <span class="lm-tc-group-result" id="hpgr-tc-enemy-result">-</span>
+              </div>
+              <ul class="lm-tc-list" id="hpgr-tc-enemy-list"></ul>
+            </div>
+          </div>
+          <div class="lm-pending" id="hpgr-tc-pending">
+            Team roster unavailable for this match - the LCU detail was not ingested when it was played.
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="view-active-match" class="view-section" hidden>
       <div class="view-section-head">
         <h2>ACTIVE MATCH</h2>

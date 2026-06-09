@@ -36,7 +36,7 @@ export const CADENCE = {
 // useful; ChampSelect now transitions directly to active-match.
 export const VIEW_IDS = [
   "home", "lobby", "champ-select", "active-match", "last-match",
-  "session", "history", "replay",
+  "session", "history", "historical-pgr", "replay",
   "user-builds", "build-insights", "settings", "dev",
 ];
 
@@ -45,7 +45,12 @@ export const VIEW_LABELS = {
   "champ-select": "Champ Select",
   "active-match": "Active Match",
   "last-match": "Post Game Review",
-  "session": "Session", "history": "History", "replay": "Replay",
+  "session": "Session", "history": "History",
+  // HIST2: detached historical PGR (archive of a clicked History/Session
+  // match row). Manual-only - the auto-derive view-router never selects
+  // it; it is reached solely via a row click.
+  "historical-pgr": "Post Game Review (Archive)",
+  "replay": "Replay",
   "user-builds": "User Builds",
   "build-insights": "Build Insights",
   "settings": "Settings",
