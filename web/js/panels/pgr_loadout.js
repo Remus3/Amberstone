@@ -31,7 +31,7 @@ const MOUNT_ID = 'pgr-loadout-mount';
 // Matches main.js _RP_DDRAGON_BASE - the local mirror that carries the
 // perk-images tree. CDN is the onerror fallback (rune icons are unversioned
 // on the CDN: /cdn/img/<perk-images-path>).
-const _RUNE_LOCAL_BASE = '/data/ddragon/16.11.1/img/';
+const _RUNE_LOCAL_BASE = '/data/ddragon/16.12.1/img/';
 const _RUNE_CDN_BASE = 'https://ddragon.leagueoflegends.com/cdn/img/';
 
 // --- module-cached patch-stable dictionaries ------------------------
