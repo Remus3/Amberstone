@@ -109,6 +109,22 @@ The two DATA-ONLY sidecars (`cdragon_spell_stats`, `wiki_ability_stats`) write p
 
 ---
 
+## Git LFS (laning_scenarios artifact)
+
+`data/daemon_slayer/laning_scenarios/**/*.json` is Git-LFS-tracked (`.gitattributes`). The full-roster `laning_scenarios_sr.json` is ~62MB and regenerates per patch; LFS keeps the git pack flat (pointer only). On a FRESH clone you need git-lfs or RC reads a 133-byte pointer and the precomputed laning coach fail-softs to live Haiku.
+
+```
+# one-time per machine after cloning:
+git lfs install --local   # ABORTS "Hook already exists: post-commit" - that is BENIGN
+                          # (filters + pre-push hook still configured). Do NOT --force
+                          # (it clobbers the Share-sync post-commit hook).
+git lfs pull              # materialize the real JSON into the working tree
+```
+
+Regenerate after a patch (the table is patch-pinned): `python -c "import core.laning_scenario_precompute as m; m.main(['--mode','sr','--champions','<csv-of-171-ability-ids>'])"` - the push auto-uploads the new content to LFS. Build tables (`build_orders_*`, `build_order_variants_*`) stay plain git (KB-sized).
+
+---
+
 ## Vision server
 
 ```
