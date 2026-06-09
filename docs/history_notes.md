@@ -53,6 +53,19 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-08 - LIFT1 competitor-lift review: RC supersedes both targets [item 354]
+
+gemini-headless-upgrade loop, directive LIFT1 (cycle off the 2026-06-08 ORCHESTRATION_PLAN, ahead of HZ-B). Commit 4b15b031. RESEARCH + TRIAGE only, NO code slice (docs-only).
+
+- **2 heavyweight general-purpose research agents** (depth-per-target, 6-point checklist WHAT/HOW/HAVE-grep-cite/WHERE/EFFORT+RISK/LIFT); every HAVE/WHERE premise re-verified live before publishing. Output `docs/COMPETITOR_LIFT_2026-06-08.md`.
+- **Tool 1 (seb16120 target-vs-opponent "what stat to buy")** = a 100%-client-side manual-entry DEFENSIVE EHP calc (no champ/item data, no network calls). RC SUPERSEDES automatically: `agents/daemon_slayer/ehp.py` (per-type/blended EHP + shields/heals/ARAM/CC/revive layers the competitor lacks) + `core/defensive_picks.py` threat-weighted defensive-ITEM picks + the live `cc_blended_ehp_threat` panel.
+- **Tool 2 (simulator tool R.com + r/simulator tool R)** = a JS combat sim (combo / 1v1 / DPS-TTK / EHP / build-sort / sandbox). RC parity-or-better on EVERY axis via the prior 2026-05-30 calc.gg lift (`combo.py`/`matchup.py`/`dps.py`/`fight_report.py` + `ds_combo.js`/`ds_matchup.js`); the 172-champ engine beats the twins' hand-coded-champ ceiling.
+- **ACT:** NO HIGH-lift+LOW-risk finding -> per the ACT gate (MED/LOW always defer) NO in-run code. **2 FUTURE gaps -> BACKLOG (Coaching depth):** T1-F3 enemy-pen-aware effective resists (`ehp.py compute_ehp` documented Phase-1 omission, enemy pen plumbed via `defensive_picks.py` but feeds only THREAT scores; MED engine schema lift, operator-gated) + T2-F4 rune/keystone in the combo SURFACE (`routes_ds_combo.py` threads no `runes=` param, grep=0; MED route+panel wire-up + Sec-3b UI ritual). Minor deferred: T2-F3 TTK headline, T1-F4 per-stat EHP/gold.
+- Docs-only: DS-dir 7024 passed / RC tests/ 5352 passed, 0 regressions. ENGINE 1.120.0 untouched, no DS/RC restart, no Share, no UI-audit. Competitor tools read-only, no code vendored. ROADMAP 81707/81920 (TIGHT - the NEXT cycle needs a ROADMAP_HISTORY relocation before it can add a shipped line).
+- **NEXT OPEN = the operator UI/UX + bug batch** (LOBBY1 / PGR1 / REPLAY1 / HIST1+HIST2 / CS1-CS3), then HZ-B.
+
+---
+
 # 2026-06-08 - HZ-A2 Lane A economy block: recall/back-timing + power-spike-ETA (Haiku-to-ZERO) [item 353]
 
 gemini-headless-upgrade loop, directive HZ-A2 (cycle 2 off the 2026-06-08 ORCHESTRATION_PLAN). Commit dc5e6293. BUILD + PERSIST only, NO live coach flip (charter 4b do-not-flip-blind).
