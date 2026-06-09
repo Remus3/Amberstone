@@ -5,7 +5,8 @@ DS relative-score bar VISUAL snapshot coverage (D1, 2026-06-06).
 The DS relative-score bar (competitor lift #3 / Aggregator P lift) shipped
 as item 220: dashboard/routes_ds_relscore.py (GET /api/ds-relscore, per-row
 score_pct = delta_dps/top_delta*100, row0=100.0) + web/js/panels/ds_relscore.js
-(#csv-ds-relscore champ-select panel, render-gated on cs.my_champion). It had
+(#csv-ds-relscore panel, render-gated on cs.my_champion; CS3 2026-06-08 moved
+it from champ-select to the Active Match view). It had
 backend (tests/test_routes_ds_relscore.py) + panel-smoke (tests/
 test_ds_relscore_panel_dom.py) coverage but the item-220 row left a "LIVE
 VISUAL CAPTURE owed (render-gated on locked champ)" - Game-PC :8892 MCP is
@@ -71,10 +72,11 @@ def test_ds_relscore_bar_renders(mock_server, pw_browser):
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
 
-    # #champ-select hash makes #view-champ-select (the panel's host view)
-    # visible so the rendered bar is screenshot-able.
+    # CS3 (2026-06-08): the relscore panel moved off champ-select to the
+    # Active Match view, so #active-match makes #view-active-match (the panel's
+    # new host view) visible and the rendered bar screenshot-able.
     page.goto(
-        mock_server.url + "/?ui_mock=1&mode=sr#champ-select",
+        mock_server.url + "/?ui_mock=1&mode=sr#active-match",
         wait_until="domcontentloaded", timeout=15_000,
     )
 

@@ -14,7 +14,7 @@
 // Otherwise the existing in-game default ("last-match") wins, so
 // nothing changes for users who haven't opted in.
 
-import { ITEMS, CHAMPS } from '../lib/items_index.js';
+import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
@@ -22,6 +22,19 @@ import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_
 import { renderSpikeMarkers, fetchSpikeMarkers, getCachedSpikeMarkers } from './spike_markers.js';
 import { renderWardHeat, fetchWardHeat, getCachedWardHeat } from './ward_heat.js';
 import { renderDraftElo, fetchDraftElo, getCachedDraftElo } from './draft_elo.js';
+// CS3 (2026-06-08): DS combat-analysis cluster relocated off champ-select.
+// These four read the LIVE champion the operator is playing - fed a synthetic
+// champ-select-shaped state (`_amDsSyntheticCs`) built from the live coach
+// payload + liveclient enemy - instead of the locked champ-select pick. The
+// render fns + their backend routes are UNCHANGED from the champ-select wiring.
+import {
+  renderDsSweepForChampSelect, setDsSweepScheduler,
+} from './ds_sweep.js';
+import { renderDsMatchupForChampSelect, setDsMatchupScheduler } from './ds_matchup.js';
+import {
+  fetchDsCombo, getCachedDsCombo, parseSeqInput, renderDsCombo,
+} from './ds_combo.js';
+import { renderDsRelscore } from './ds_relscore.js';
 
 const _AM = {
   sub:        () => document.getElementById("am-sub"),
@@ -376,6 +389,160 @@ export function renderActiveMatch(payload, ctx) {
     });
     attachCooldownLedgerHandlers();
   }
+
+  // CS3 (2026-06-08): DS combat-analysis cluster (DPS scaling / 1v1 fight
+  // model / combo timeline / relative item power) relocated off champ-select.
+  // Feed each its EXISTING champ-select render path a synthetic cs built from
+  // the LIVE champion + the live lane opponent so the panels read the game
+  // the operator is actually playing.
+  _amRenderDsCluster(p, ctx, isLive);
+}
+
+// --- CS3: relocated DS combat-analysis cluster ----------------------
+
+// Build a champ-select-shaped state object from the LIVE active-match data so
+// the moved DS panels (ds_sweep / ds_matchup / ds_combo / ds_relscore) can be
+// fed their unchanged `*ForChampSelect` render paths. `my_champion` is the
+// numeric id of the champion the operator is playing (resolved from the coach
+// payload's slug); `their_team` carries the live lane opponent so the matchup
+// panel has a champ_b; `queue_id` maps the live mode so the relscore panel
+// derives the right DS mode. Returns null when the live champion can't resolve.
+function _amDsSyntheticCs(p, ctx) {
+  const champSlug = (p && p.champion) || "";
+  if (!champSlug) return null;
+  const myId = parseInt(_resolveChampId(champSlug) || "0", 10) || 0;
+  if (myId <= 0) return null;
+  const modeLow = String((ctx && ctx.mode) || "sr").toLowerCase();
+  // Mode -> a representative queue_id the relscore panel's _modeForQueue maps
+  // back to the same DS mode (sr->420, aram->450, arena->1750).
+  const queueId = (modeLow === "aram") ? 450
+                : (modeLow === "arena") ? 1750
+                : 420;
+  // Live lane opponent for the matchup panel: the first enemy champion in the
+  // liveclient (team != the active player's team). Resolved slug -> numeric so
+  // renderDsMatchupForChampSelect's resolveChampNames round-trips it.
+  const theirTeam = [];
+  const lc = (ctx && ctx.liveclient) || null;
+  if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
+    const myTeam = _resolveMyTeam(lc);
+    for (const pl of lc.allPlayers) {
+      if (!pl || typeof pl !== "object") continue;
+      if (myTeam && pl.team === myTeam) continue;
+      const slug = pl.rawChampionName || pl.championName || "";
+      const eid = parseInt(_resolveChampId(slug) || "0", 10) || 0;
+      if (eid > 0) {
+        theirTeam.push({ championId: eid });
+        break;  // matchup uses the FIRST enemy only
+      }
+    }
+  }
+  // Owned items as numeric-id strings for the relscore build context.
+  const owned = [];
+  if (lc && Array.isArray(lc.allPlayers)) {
+    const me = _amActivePlayerEntry(lc);
+    const myItems = (me && Array.isArray(me.items)) ? me.items : [];
+    for (const it of myItems) {
+      if (!it || typeof it !== "object") continue;
+      const iid = it.itemID || it.itemId || 0;
+      if (iid) owned.push(String(iid));
+    }
+  }
+  return {
+    my_champion: myId,
+    my_completed: true,
+    queue_id: queueId,
+    their_team: theirTeam,
+    my_owned_items: owned,
+  };
+}
+
+// Find the active player's own allPlayers entry (for owned-item extraction).
+function _amActivePlayerEntry(lc) {
+  if (!lc || typeof lc !== "object") return null;
+  const ap = lc.activePlayer || {};
+  const me = ap.summonerName || ap.riotIdGameName || "";
+  if (!me) return null;
+  for (const pl of (lc.allPlayers || [])) {
+    if (!pl || typeof pl !== "object") continue;
+    const rid = pl.riotIdGameName || pl.summonerName || "";
+    if (rid === me || me.startsWith(rid + "#") || rid === me.split("#", 1)[0]) {
+      return pl;
+    }
+  }
+  return null;
+}
+
+// Last (p, ctx) the cluster rendered with, so the per-panel fetch on-land
+// schedulers can replay the render once a backend response lands (the live
+// state envelope also re-fires every ~2s, but the scheduler makes the first
+// paint land the moment the fetch resolves instead of one tick late).
+const _AM_DS = { p: null, ctx: null, wiredScheduler: false, comboWired: false };
+
+function _amDsReplay() {
+  if (_AM_DS.p) _amRenderDsCluster(_AM_DS.p, _AM_DS.ctx, true);
+}
+
+function _amRenderDsCluster(p, ctx, isLive) {
+  const sweep    = document.getElementById("csv-sugg-ds-sweep");
+  const matchup  = document.getElementById("csv-sugg-ds-matchup");
+  const combo    = document.getElementById("csv-sugg-ds-combo");
+  const relscore = document.getElementById("csv-ds-relscore");
+  // Between games / pre-live: hide the cluster (no live champion to read).
+  const synthetic = isLive ? _amDsSyntheticCs(p, ctx) : null;
+  if (!synthetic) {
+    [sweep, matchup, combo, relscore].forEach((el) => { if (el) el.hidden = true; });
+    return;
+  }
+  _AM_DS.p = p;
+  _AM_DS.ctx = ctx;
+  // Wire the on-land schedulers once so the sweep / matchup cards repaint the
+  // instant their fetch resolves (idempotent - setters replace the callback).
+  if (!_AM_DS.wiredScheduler) {
+    setDsSweepScheduler(_amDsReplay);
+    setDsMatchupScheduler(_amDsReplay);
+    _AM_DS.wiredScheduler = true;
+  }
+  // Sweep + matchup + relscore drive off the synthetic cs via their unchanged
+  // champ-select render paths (resolve slug, fetch, render the cached payload).
+  if (sweep)    renderDsSweepForChampSelect(synthetic, "csv-sugg-ds-sweep");
+  if (matchup)  renderDsMatchupForChampSelect(synthetic, "csv-sugg-ds-matchup");
+  if (relscore) renderDsRelscore(relscore, synthetic);
+  // Combo needs the slug + a host wrapper (the panel renders the input row
+  // once then leaves the re-fetch cadence to the host).
+  if (combo) _amRenderDsCombo(combo, p, ctx);
+}
+
+// Host wrapper for the action-queue combo panel (relocated from champ_select
+// _csvRenderDsCombo). Reads the LIVE champion slug, parses the live input,
+// fetches the per-hit timeline, repaints. The input listener is wired once so
+// the panel never repaints the input (the operator's caret survives).
+function _amRenderDsCombo(block, p, ctx) {
+  if (!block) return;
+  const champion = (p && p.champion) || "";
+  if (!champion) { block.hidden = true; return; }
+  block.hidden = false;
+  const modeUp = String((ctx && ctx.mode) || "SR").toUpperCase();
+  const input = document.getElementById("csv-sugg-ds-combo-input");
+  if (!input) {
+    // First paint: panel builds the (defaulted) input row. Wire it + replay
+    // so the next pass reads the input value and fetches.
+    renderDsCombo(block, null, { champion });
+    const inp = document.getElementById("csv-sugg-ds-combo-input");
+    if (inp && !_AM_DS.comboWired) {
+      inp.addEventListener("change", () => _amDsReplay());
+      inp.addEventListener("input", () => _amDsReplay());
+      _AM_DS.comboWired = true;
+    }
+    _amDsReplay();
+    return;
+  }
+  const seq = parseSeqInput(input.value);
+  const opts = {
+    champion, level: parseInt((p && p.level) || 0, 10) || 11, items: [],
+    seq, target_armor: 80, target_mr: 60, mode: modeUp,
+  };
+  fetchDsCombo(opts, _amDsReplay);
+  renderDsCombo(block, getCachedDsCombo(opts), { champion });
 }
 
 // --- s171 step 4: map pane ------------------------------------------
