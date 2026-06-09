@@ -574,3 +574,52 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
         )
     except Exception:
         return
+
+
+def shadow_log_precomputed_build(coach: dict, lc: dict | None, mode_key: str,
+                                 *, path=None) -> None:
+    """Fail-soft HZ-C2 validation shadow-log. Records which durability VARIANT
+    the precomputed HZ-B2 table (``core.precomputed_build_coach``) would
+    recommend for this enemy comp - including whether the seed table covered the
+    champion - to data/hz_build_shadow.jsonl, alongside live coaching. Never
+    raises and has NO effect on live output. Fires for a real game (operator
+    champion present); a coverage MISS is recorded too. ``path`` overrides the
+    jsonl target (test seam)."""
+    try:
+        gs = _build_game_state(coach, lc, mode_key)
+        champ = gs.get("my_champion")
+        if not champ:
+            return
+        mk = str(mode_key or "").strip().lower()
+        lower = _MODE_KEY_TO_LOWER.get(mk, "sr")
+
+        from core import precomputed_build_coach as pbc  # lazy import
+        from core.build_order_variants import load_build_order_variants
+        from core.hz_build_shadow import log_precomputed_build
+
+        enemy_comp = [str(e) for e in (gs.get("enemy_comp") or [])]
+        items = gs.get("items")
+        item_count = len(items) if isinstance(items, list) else 0
+
+        lean_tuple = pbc.comp_lean(enemy_comp)
+        lean = lean_tuple[0] if lean_tuple else None
+
+        payload = load_build_order_variants(lower)
+        choices: list = []
+        covered = False
+        if lean is not None:
+            cc = pbc.build_choices(
+                str(champ), enemy_comp, lower,
+                payload=payload, item_costs=_load_item_costs(),
+                owned_count=item_count,
+            )
+            choices = to_jsonable(cc)
+            covered = bool(cc)
+
+        log_precomputed_build(
+            mk, str(champ), enemy_comp, lean=lean,
+            choices=choices, covered=covered, item_count=item_count,
+            game_time_s=gs.get("game_time_s"), path=path,
+        )
+    except Exception:
+        return
