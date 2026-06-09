@@ -485,3 +485,92 @@ def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str,
         )
     except Exception:
         return
+
+
+def _mana_fraction(coach: dict, lc: dict | None) -> float | None:
+    """Best-effort current mana as a 0..1 fraction of the pool, or None.
+
+    Reads a direct ``mana_pct`` / ``mana_fraction`` (0..1, or 0..100 percent)
+    first, else derives ``mana`` / ``max_mana`` (``maxMana``) from the coach or
+    liveclient dict. Returns None when no mana signal is present - the HZ-C1
+    reader then defaults to the full-rotation cell. Fail-soft."""
+    for src in (coach, lc):
+        if not isinstance(src, dict):
+            continue
+        for k in ("mana_pct", "mana_fraction"):
+            v = src.get(k)
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                f = float(v)
+                return f / 100.0 if f > 1.0 else f
+        cur = src.get("mana")
+        mx = src.get("max_mana") or src.get("maxMana")
+        try:
+            if cur is not None and mx:
+                f = float(cur) / float(mx)
+                if 0.0 <= f <= 1.5:
+                    return f
+        except (TypeError, ValueError, ZeroDivisionError):
+            continue
+    return None
+
+
+def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
+                                   *, path=None) -> None:
+    """Fail-soft HZ-C1 validation shadow-log. Records what the PRECOMPUTED
+    laning table (``core.precomputed_laning_coach``) would offer for this game
+    state - including whether the seed table covered the matchup - to
+    data/hz_choice_shadow.jsonl, alongside live coaching. Never raises and has
+    NO effect on live output. Only fires for a real game (operator champion
+    present); a coverage MISS is recorded too (the seed coverage rate on real
+    games is itself the validation signal). ``path`` overrides the jsonl target
+    (test seam)."""
+    try:
+        gs = _build_game_state(coach, lc, mode_key)
+        champ = gs.get("my_champion")
+        if not champ:
+            return
+        mk = str(mode_key or "").strip().lower()
+        lower = _MODE_KEY_TO_LOWER.get(mk, "sr")
+
+        from core import precomputed_laning_coach as plc  # lazy import
+        from core.laning_scenario_precompute import load_laning_scenarios
+        from core.hz_choice_shadow import log_precomputed_choices
+
+        level = gs.get("level")
+        band = plc.band_for_level(level)
+        mana_fraction = _mana_fraction(coach, lc)
+        # Live ult-cooldown is not surfaced to the coach dict today; default to
+        # the all_up baseline (cd_state_for(None)). A future event source can
+        # thread it through here without touching the reader.
+        ult_up = None
+        mana_state = plc.mana_state_for(mana_fraction)
+        cd_state = plc.cd_state_for(ult_up)
+        items = gs.get("items")
+        item_count = len(items) if isinstance(items, list) else 0
+
+        payload = load_laning_scenarios(lower)
+        enemy_comp = gs.get("enemy_comp") or []
+        enemy = plc.resolve_enemy(
+            str(champ), [str(e) for e in enemy_comp], lower, payload=payload,
+        )
+
+        choices: list = []
+        covered = False
+        if enemy:
+            next_item = _next_build_item(champ, lower, item_count)
+            cc = plc.precomputed_choices(
+                str(champ), enemy, level,
+                mana_fraction=mana_fraction, ult_up=ult_up,
+                mode=lower, payload=payload, next_item=next_item,
+            )
+            choices = to_jsonable(cc)
+            covered = bool(cc)
+
+        log_precomputed_choices(
+            mk, str(champ), enemy,
+            choices=choices, band=band, mana_state=mana_state, cd_state=cd_state,
+            covered=covered, game_time_s=gs.get("game_time_s"),
+            level=level, item_count=item_count, path=path,
+        )
+    except Exception:
+        return
