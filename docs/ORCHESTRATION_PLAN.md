@@ -48,7 +48,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | CS3 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Champ Select): the combo timeline / dps scaling / fight model / relative item power panels do NOT need to be seen during champ select -> MOVE them OFF the champ-select page to a more appropriate surface (e.g. an Active-Match / DS / Build view). Relocate placement only - KEEP all data wiring intact (feedback_field_remove_visual_only: this is a move, not a teardown). Tests + Section-3b audit on BOTH the source (champ-select, panels gone) and destination pages. | DONE | d68cddd3 |
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | DONE | 3a129071 |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | DONE | 8d8bc311 |
-| HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | OPEN | - |
+| HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | DONE | 3581afed |
 | HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | OPEN | - |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
@@ -62,6 +62,32 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-09 HZ-C1 STALE-PREMISE -> plan flipped DONE (commit 3581afed, LEDGER
+  item 366). The director flagged it (3581afed may have shipped); VERIFIED true
+  (the D1/D2/B1 stale-shipped trap). HZ-C1's full scope shipped 2026-06-09 01:56
+  in a separate /gemini-headless-upgrade run (run 2026-06-09-01): NEW
+  core/precomputed_laning_coach.py (one HZ-A laning cell -> two grounded A/B
+  CoachChoice, pure static read, no Haiku / no :8893) + core/hz_choice_shadow.py
+  (shadow-log alongside live Haiku, seed-coverage hits/misses) wired into
+  dashboard/_state_builder.py via
+  _deterministic_coaching.shadow_log_precomputed_choices (additive, fail-soft, NO
+  live output change); +48 tests. GROUND TRUTH this cycle: all 6 deliverable files
+  present on disk; the 3 HZ-C1 test files (test_precomputed_laning_coach.py /
+  test_hz_choice_shadow.py / test_hz_c1_wiring.py) 50/50 PASS fresh; LEDGER item
+  366 + ROADMAP line 20 + WAKEUP already synced for the whole HZ-C arc (commits
+  72e5bf0d + 41750fa1) - ONLY this plan's HZ-C1 row (OPEN) + findings were never
+  flipped. NO code change (re-implementing would clobber the live item-366 module
+  + 48 tests). NO new LEDGER item (a stale-premise doc flip is not an item
+  completion - the A2b/HZ-A1 false-alarm precedent below). The rest of the HZ-C
+  arc was DISCOVERED + shipped the same run (NOT plan rows, so the director cannot
+  re-pick them; all ledgered): HZ-C2 build A/B over HZ-B2 (item 367, 5627053b),
+  hz_shadow_report flip-readiness gate (item 368, 1d116194), native coach-signal
+  capture (item 369, 1f702711), full 171-champ SR seed expansion + slim/compact v3
+  schema (item 370, 4202760c; laning JSON now LFS-tracked,
+  reference_git_lfs_laning_artifact). BUILD + PERSIST + SHADOW only; the live coach
+  flip stays EXCLUDED (charter 4b do-not-flip-blind). NEXT OPEN = HZ-D1 (Electron
+  overlay Phase 2+); the gated post-HZ-D path is real-game shadow accrual ->
+  precompute-vs-Haiku agreement (item-369 native capture) -> the coach flip.
 - 2026-06-08 HZ-B2 DONE (commit 8d8bc311) + draft-elo clean-checkout test fix
   (d9347d62, item 363). HZ-B2: anti_tank vs anti_squishy build-order VARIANTS layered
   on HZ-B1 via the DS anti-tank axis (A3, core/ds_antitank_hint). Single coupled engine
