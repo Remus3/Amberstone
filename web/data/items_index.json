@@ -1,5 +1,5 @@
 {
-  "version": "16.11.1",
+  "version": "16.12.1",
   "byName": {
     "boots": "1001",
     "faeriecharm": "1004",
@@ -924,6 +924,7 @@
     "220010": "Prismatic Stat Voucher",
     "220011": "Bravery Voucher",
     "220012": "Shardblade",
+    "220013": "Poro-Snax",
     "221011": "Giant's Belt",
     "221026": "Blasting Wand",
     "221031": "Chain Vest",

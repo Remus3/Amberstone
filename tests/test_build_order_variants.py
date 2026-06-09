@@ -375,8 +375,12 @@ class PatchAndPathTests(unittest.TestCase):
 
     def test_resolve_patch_fallback_on_missing(self):
         from unittest import mock
-        with mock.patch.object(bov, "_CURRENT_TXT", Path("/no/such/current.txt")):
-            self.assertEqual(bov.resolve_patch(), bov._FALLBACK_PATCH)
+        # resolve_patch is imported from build_order_precompute and reads THAT
+        # module's _CURRENT_TXT / _FALLBACK_PATCH - patch the defining module,
+        # not bov's re-exported copies (the latter masked the fallback whenever
+        # the live current.txt happened to equal _FALLBACK_PATCH).
+        with mock.patch.object(bop, "_CURRENT_TXT", Path("/no/such/current.txt")):
+            self.assertEqual(bov.resolve_patch(), bop._FALLBACK_PATCH)
 
     def test_db_path_uses_build_orders_subdir_distinct_file(self):
         p = bov._db_path("sr", "16.11.1")
