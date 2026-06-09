@@ -46,7 +46,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | CS1 | ui-feature | OPERATOR-REPORTED 2026-06-08 (Champ Select): missing the CC-conditional pairing UI elements. Surface the DS cc_conditional pairing data on champ select (the engine has a saturated cc_conditional ecosystem - agents/daemon_slayer cc_conditional registry/accessors). Investigate the existing cc surface + the champ-select panel (web/js/panels/champ_select.js), add the pairing UI + route if needed + test + Section-3b audit + visual. | DONE | 541cd9d3 |
 | CS2 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Champ Select): operator must MANUALLY fix summoner spells - on first champ-select load the client defaults to Flash+Heal or Flash+Teleport at random instead of the intended set (Flash+Teleport). Investigate whether RC can push the correct summoner spells via LCU on champ-select enter (mirror lcu/lcu_rune_writer's auto-push pattern; `/lol-champ-select/v1/session/my-selection` spell1Id/spell2Id) - either ADD a spell auto-push (per-champ/per-mode default) or, if RC already pushes and is wrong, fix the source; if purely client-side + unreachable, document as client-only + close. LIVE-GATED. | DONE | 29cd2788 |
 | CS3 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Champ Select): the combo timeline / dps scaling / fight model / relative item power panels do NOT need to be seen during champ select -> MOVE them OFF the champ-select page to a more appropriate surface (e.g. an Active-Match / DS / Build view). Relocate placement only - KEEP all data wiring intact (feedback_field_remove_visual_only: this is a move, not a teardown). Tests + Section-3b audit on BOTH the source (champ-select, panels gone) and destination pages. | DONE | d68cddd3 |
-| HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
+| HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | DONE | 3a129071 |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | OPEN | - |
 | HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | OPEN | - |
@@ -62,6 +62,29 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-08 HZ-B1 DONE (commit 3a129071; + cc_pairing guard fix 76691def).
+  Lane B build-order precompute per (champ x mode x enemy-comp-archetype). Single
+  coupled engine slice (1 worktree agent + merger ground-truth verify, the HZ-A2
+  precedent). CONFIRMED-NEW-AXIS: the shipped build_orders_{sr,aram,arena}.json
+  (item 265/266) key on a DAMAGE-PROFILE axis (ad/ap/balanced over a CONSTANT enemy
+  stat block), NOT enemy-comp-archetype - HZ-B1 varies the enemy stat SHAPE.
+  TAXONOMY (4 classes re-parameterizing plan_build_order levers): frontline_heavy /
+  burst_heavy / poke / mixed. NEW core/build_order_precompute.py (generator + reader +
+  CLI, HZ-A1 idioms) -> data/daemon_slayer/build_orders/<patch>/ (NEW subdir, the
+  item-265/266 table untouched); 10-champ SR seed x 4 = 40 cells. +23 characterization
+  tests. BUILD + PERSIST only (live coach flip EXCLUDED, charter 4b; read by HZ-C1).
+  MERGER CAUGHT a REAL CS1 regression the subagent dismissed as "pre-existing":
+  agents/daemon_slayer/tests/test_cc_conditional_forward_marker.py::NoConsumerWireTests
+  failed on main - cc_pairing.py (item 359) wired a new cc_conditional consumer without
+  updating the operator-gated forward-marker allowlist. CI MISSED it (CI = py_compile +
+  ruff + Share-check only, NO pytest; the CS1 gate ran tests/ but not the DS-dir suite).
+  Fixed (76691def, cc_pairing -> _ALLOWED_SOURCE_FILES, the operator CS1 request is the
+  gate-crossing) + Share re-synced. The subagent's "tests/ 16 failed + 6 errors" was a
+  worktree-missing-gitignored-data artifact, DISPROVEN: merged-main tests/ 5501 passed /
+  0 fail, DS-dir 7043 / 0, ds_share_sync --check green, ENGINE 1.120.0. PROCESS NOTE: CI
+  does NOT run pytest - the local gate MUST run BOTH tests/ AND agents/daemon_slayer/tests/
+  before declaring green. **NEXT OPEN = HZ-B2** (anti-tank/anti-squishy variants), then
+  HZ-C1 / HZ-D1.
 - 2026-06-08 CS3 DONE (commit d68cddd3). Moved the 4 DS analysis panels OFF
   champ-select to the Active Match view (operator-chosen destination via one framed
   AskUserQuestion). Single coupled UI slice (1 worktree agent + merger verify). MAPPED
