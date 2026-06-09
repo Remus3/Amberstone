@@ -41,10 +41,10 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | LOBBY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (pre-game lobby): "Invite from my top 8 does not work" - inviting a friend from the operator's top-8 list fails. Investigate ROOT CAUSE first (the lobby invite flow: LCU `/lol-lobby/v2/lobby/invitations` + how the dashboard top-8 / friends surface builds the invite payload - summonerId vs puuid form); fix + regression test. LIVE-GATED: final verification needs a real lobby (do code-side + mark live-verification owed if no lobby). | DONE | 1f4f4118 |
 | PGR1 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Post Game Review): advance the s220 aggregator-G-style PGR reframe - "what's next" stage. Read the staged s220 plan (S2-S5, the single-match richer layout + 0-100 RC heuristic score over enriched stats, NO Claude/Riot dep - CLAUDE.md Settled) + docs/ROADMAP_HISTORY, pick the next UNSHIPPED stage, ship ONE stage + Section-3b per-page UI-audit + Claude_Preview visual vs /api/state. | DONE | c162e5bd |
 | REPLAY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Replay page): match ingestion is not up to date after each game. Investigate the post-game ingest chain (the 90s post-gameEnd Match-V5 fetch + INSERT in `core` rewind live writer [reference_rewind_live_writer] -> rewind_history.db -> the replay/replay-page data source + its cache/refresh); root-cause the staleness (timer not firing? cache TTL? page not re-fetching?). Fix + test. LIVE-GATED final verify. | DONE | 647b455e |
-| HIST1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Session + History pages): clicking a populated match row does NOTHING. Wire the row click. Investigate the session/history panel JS (web/js/panels) - the match rows render but have no click handler (or it no-ops); should open that match's detail (-> HIST2 detached PGR). Fix + DOM test + Section-3b audit. | OPEN | - |
-| HIST2 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Session + History pages): a clicked match should populate + switch to a DETACHED historical PGR frame showing the PGR info "as if the match had just ended", SEPARATE from the live in-use last-match PGR (with a back action to return). Reuse the PGR/last-match render against a historical match-id source; MUST NOT mutate or clobber the live last-match PGR state. Tests + Section-3b UI-audit + visual. Pairs with HIST1. | OPEN | - |
-| CS1 | ui-feature | OPERATOR-REPORTED 2026-06-08 (Champ Select): missing the CC-conditional pairing UI elements. Surface the DS cc_conditional pairing data on champ select (the engine has a saturated cc_conditional ecosystem - agents/daemon_slayer cc_conditional registry/accessors). Investigate the existing cc surface + the champ-select panel (web/js/panels/champ_select.js), add the pairing UI + route if needed + test + Section-3b audit + visual. | OPEN | - |
-| CS2 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Champ Select): operator must MANUALLY fix summoner spells - on first champ-select load the client defaults to Flash+Heal or Flash+Teleport at random instead of the intended set (Flash+Teleport). Investigate whether RC can push the correct summoner spells via LCU on champ-select enter (mirror lcu/lcu_rune_writer's auto-push pattern; `/lol-champ-select/v1/session/my-selection` spell1Id/spell2Id) - either ADD a spell auto-push (per-champ/per-mode default) or, if RC already pushes and is wrong, fix the source; if purely client-side + unreachable, document as client-only + close. LIVE-GATED. | OPEN | - |
+| HIST1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Session + History pages): clicking a populated match row does NOTHING. Wire the row click. Investigate the session/history panel JS (web/js/panels) - the match rows render but have no click handler (or it no-ops); should open that match's detail (-> HIST2 detached PGR). Fix + DOM test + Section-3b audit. | DONE | ac404c13 |
+| HIST2 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Session + History pages): a clicked match should populate + switch to a DETACHED historical PGR frame showing the PGR info "as if the match had just ended", SEPARATE from the live in-use last-match PGR (with a back action to return). Reuse the PGR/last-match render against a historical match-id source; MUST NOT mutate or clobber the live last-match PGR state. Tests + Section-3b UI-audit + visual. Pairs with HIST1. | DONE | ac404c13 |
+| CS1 | ui-feature | OPERATOR-REPORTED 2026-06-08 (Champ Select): missing the CC-conditional pairing UI elements. Surface the DS cc_conditional pairing data on champ select (the engine has a saturated cc_conditional ecosystem - agents/daemon_slayer cc_conditional registry/accessors). Investigate the existing cc surface + the champ-select panel (web/js/panels/champ_select.js), add the pairing UI + route if needed + test + Section-3b audit + visual. | DONE | 541cd9d3 |
+| CS2 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Champ Select): operator must MANUALLY fix summoner spells - on first champ-select load the client defaults to Flash+Heal or Flash+Teleport at random instead of the intended set (Flash+Teleport). Investigate whether RC can push the correct summoner spells via LCU on champ-select enter (mirror lcu/lcu_rune_writer's auto-push pattern; `/lol-champ-select/v1/session/my-selection` spell1Id/spell2Id) - either ADD a spell auto-push (per-champ/per-mode default) or, if RC already pushes and is wrong, fix the source; if purely client-side + unreachable, document as client-only + close. LIVE-GATED. | DONE | 29cd2788 |
 | CS3 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Champ Select): the combo timeline / dps scaling / fight model / relative item power panels do NOT need to be seen during champ select -> MOVE them OFF the champ-select page to a more appropriate surface (e.g. an Active-Match / DS / Build view). Relocate placement only - KEEP all data wiring intact (feedback_field_remove_visual_only: this is a move, not a teardown). Tests + Section-3b audit on BOTH the source (champ-select, panels gone) and destination pages. | OPEN | - |
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
@@ -62,6 +62,32 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-08 HIST1+HIST2 + CS1 + CS2 DONE (3 parallel disjoint-file worktree
+  slices, merged + full-suite-verified; commits ac404c13 / 541cd9d3 / 29cd2788).
+  Operator "continue next open items in parallel". The merger cherry-picked the 3
+  worktree branches onto main (web/index.html auto-merged clean - HIST added a new
+  #view-historical-pgr section, CS1 added a champ-select mount div, non-overlapping
+  hunks), then re-ran on the MERGED tree: 99 new+engine tests green + full RC tests/
+  5455 passed / 2 skip / 0 fail (the lone red was the PRE-EXISTING ROADMAP doc-size
+  budget red, untouched by the merge, cleared this commit by trimming the line-22
+  batch entry); ruff + node --check + py_compile clean on every changed file; RC
+  restarted pid 16308 reload_ok. All 3 had REAL premises (NOT the D1/D2/B1 stale-
+  shipped trap). **HIST1+HIST2** (item 358): the Session/History match rows were
+  inert (no click handler) + the PGR builder was latest-only; added match_ts to
+  _build_last_match + ?match_ts= to /api/last-match + a NEW detached
+  #view-historical-pgr (own hpgr- state, the live last-match PGR provably
+  unclobbered). **CS1** (item 359): cc_conditional was saturated but only surfaced
+  as scalars; NEW agents/daemon_slayer/cc_pairing.compute_cc_pairing join + GET
+  /api/cc-pairing + a champ-select pairing panel (which ally enables the picked
+  champ's conditional CC). **CS2** (item 360): the LCU summoner-spell push was gated
+  behind a SUCCESSFUL rune-page write (skipped on the 3-page-cap failure, item 210);
+  made it self-correcting + rune-independent in RuneWriter._poll() (Flash+TP SR /
+  Flash+Snowball ARAM, PATCH only on a live mismatch). OWED (live-gated): CS1
+  champ-select visual capture + CS2 real-champ-select end-to-end Flash+TP correction.
+  CS3 was DEFERRED from this parallel batch (it edits champ_select.js + index.html,
+  the same files CS1 touches -> guaranteed worktree merge conflict; sequence it AFTER
+  CS1 landed). **NEXT OPEN = CS3** (move combo/dps/fight-model/item-power panels OFF
+  champ-select, relocate-only), then HZ-B1.
 - 2026-06-08 LIFT1 DONE (commit 4b15b031, docs/COMPETITOR_LIFT_2026-06-08.md).
   Deep-dive lift review (2 heavyweight agents, 6-point checklist, every HAVE/WHERE
   premise re-verified live) of the seb16120 target-vs-opponent stat advisor +
