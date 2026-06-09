@@ -254,13 +254,18 @@ def _serve_last_match(h) -> None:
     try:
         # s220: optional ?baseline=N (operator-set in Settings; clamped
         # in _build_last_match). Defaults to 20 - pre-s220 behavior.
+        # HIST2: optional ?match_ts="YYYY-MM-DD HH:MM:SS" pins a specific
+        # historical row (History / Session row click -> detached PGR).
+        # Absent -> the live "latest non-TFT row" path is unchanged.
         from urllib.parse import urlparse, parse_qs
         qs = parse_qs(urlparse(h.path).query or "")
         try:
             baseline = int((qs.get("baseline") or ["20"])[0])
         except (TypeError, ValueError):
             baseline = 20
-        h._send(200, json.dumps(_build_last_match(baseline)).encode("utf-8"),
+        match_ts = (qs.get("match_ts") or [None])[0]
+        h._send(200,
+                json.dumps(_build_last_match(baseline, match_ts)).encode("utf-8"),
                 "application/json")
     except Exception as exc:
         log.warning("api/last-match: %s", exc)

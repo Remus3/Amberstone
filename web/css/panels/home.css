@@ -467,6 +467,57 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   to   { background: var(--info-soft); }
 }
 
+/* HIST1: a populated Session / History match row is clickable - it
+ * opens that match's detached historical PGR. Affordance only; the
+ * wiring lives in main.js (_wireMatchRowToHistoricalPgr). */
+.history-match-row-clickable {
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.history-match-row-clickable:hover,
+.history-match-row-clickable:focus-visible {
+  background: var(--info-soft);
+  border-left: 3px solid var(--info);
+  padding-left: 8px;
+  outline: none;
+}
+
+/* HIST2: detached historical PGR view chrome. The body reuses the
+ * lm-* Post Game Review styling (last_match.css); only the header
+ * Back button + ARCHIVE tag are bespoke here. */
+.hpgr-back {
+  margin-left: auto;
+  align-self: center;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.hpgr-back:hover,
+.hpgr-back:focus-visible {
+  background: var(--info-soft);
+  border-color: var(--info);
+  outline: none;
+}
+.hpgr-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+  color: var(--info);
+  background: var(--info-soft);
+  border: 1px solid var(--info);
+  border-radius: 999px;
+}
+
 /* s218 v4: Home-unique Find Match picker. Inherits .lq-mode-menu's
  * surface + column styling; overrides position to render as a fixed
  * centered popover over the Home page (the lobby-view variant uses
