@@ -13,7 +13,7 @@ from core import precomputed_laning_coach as plc
 
 
 # --------------------------------------------------------------------------- #
-# Synthetic HZ-A payload (matches laning_scenarios/v2 leaf shape)
+# Synthetic HZ-A payload (matches laning_scenarios/v3 leaf shape)
 # --------------------------------------------------------------------------- #
 def _cell(verdict, swing, recall, *, my_rm=0.3, en_rm=0.6, spike="first_item",
           gold=1300.0):
@@ -22,13 +22,9 @@ def _cell(verdict, swing, recall, *, my_rm=0.3, en_rm=0.6, spike="first_item",
         "net_swing": swing,
         "pct_my_removed": my_rm,
         "pct_enemy_removed": en_rm,
-        "my_can_full_combo": True,
-        "sequence": ["Q", "W", "E", "R"],
-        "manaless": False,
         "economy": {
             "recall": recall,
             "next_spike": spike,
-            "spike_eta_s": 30.0,
             "gold_at_band": gold,
         },
     }
@@ -36,7 +32,7 @@ def _cell(verdict, swing, recall, *, my_rm=0.3, en_rm=0.6, spike="first_item",
 
 def _payload():
     return {
-        "schema": "laning_scenarios/v2",
+        "schema": "laning_scenarios/v3",
         "scenarios": {
             "Annie": {
                 "Caitlyn": {

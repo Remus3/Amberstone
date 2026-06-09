@@ -27,9 +27,10 @@ class EconomyCellPureTests(unittest.TestCase):
         return lsp.economy_cell(band, mana, mode=mode, manaless=manaless)
 
     def test_economy_cell_keys(self):
+        # Slim v3 drops the intermediate spike_eta_s from the persisted block.
         self.assertEqual(
             set(self._eco()),
-            {"recall", "next_spike", "spike_eta_s", "gold_at_band"},
+            {"recall", "next_spike", "gold_at_band"},
         )
 
     def test_recall_in_valid_set_across_grid(self):
@@ -50,10 +51,6 @@ class EconomyCellPureTests(unittest.TestCase):
         golds = [self._eco(band=b)["gold_at_band"] for b in ("L2", "L6", "L11", "L16")]
         self.assertEqual(golds, sorted(golds))
         self.assertEqual(len(set(golds)), len(golds))
-
-    def test_spike_eta_is_non_negative(self):
-        for band in lsp.LEVEL_BANDS:
-            self.assertGreaterEqual(self._eco(band=band)["spike_eta_s"], 0.0)
 
     def test_next_spike_label_is_valid(self):
         valid = {label for label, _ in lp.spike_ladder()} | {lp.SPIKE_COMPLETE}
@@ -119,13 +116,14 @@ class EconomyIntegrationTests(unittest.TestCase):
         self.assertIn(cell["economy"]["recall"], lsp.VALID_RECALLS)
         # HZ-A1 leaf fields are untouched.
         self.assertIn(cell["verdict"], lsp.VALID_VERDICTS)
-        self.assertIn("sequence", cell)
+        # Slim v3 drops the redundant per-cell sequence array.
+        self.assertNotIn("sequence", cell)
 
-    def test_generate_table_schema_v2_and_economy_dimensions(self):
+    def test_generate_table_schema_v3_and_economy_dimensions(self):
         payload = lsp.generate_table(
             self.snap, ["Garen"], ["Darius"], mode="SR", bands=["L6"]
         )
-        self.assertEqual(payload["schema"], "laning_scenarios/v2")
+        self.assertEqual(payload["schema"], "laning_scenarios/v3")
         eco_dim = payload["dimensions"]["economy"]
         self.assertIn("income_per_min", eco_dim)
         self.assertIn("spike_ladder", eco_dim)

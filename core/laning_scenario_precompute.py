@@ -46,27 +46,30 @@ SHAPE (per mode, atomic write to data/daemon_slayer/laning_scenarios/<patch>/)::
 
     {
       "version": "<patch>", "generated_at": "<iso>", "mode": "<sr|aram|arena>",
-      "schema": "laning_scenarios/v2",
+      "schema": "laning_scenarios/v3",
       "dimensions": {"level_bands": {...}, "mana_states": [...], "cd_states": [...],
                      "economy": {"income_per_min": <float>, "spike_ladder": [...],
                                  "recall_states": [...], "back_soon_window_s": <float>}},
       "scenarios": {
         "<my_champ>": {"<enemy>": {"<band>": {"<mana>": {"<cd>": {
             "verdict": "...", "net_swing": <float>, "pct_my_removed": <float>,
-            "pct_enemy_removed": <float>, "my_can_full_combo": <bool>,
-            "sequence": ["Q", ...], "manaless": <bool>,
+            "pct_enemy_removed": <float>,
             "economy": {"recall": "recall_now|back_soon|hold",
                         "next_spike": "component|first_item|two_item|three_item|complete",
-                        "spike_eta_s": <float>, "gold_at_band": <float>}}}}}}
+                        "gold_at_band": <float>}}}}}}
       }
     }
 
-The HZ-A2 ``economy`` block is gold-income + item-completion driven (the gold /
-spike math lives in core.lead_projection): ``gold_at_band`` / ``next_spike`` /
-``spike_eta_s`` are the expected economy at the band's representative minute (the
-project_lead level<->minute curve); ``recall`` is the cell-varying back-timing
-verdict, keyed on the trade verdict + mana / manaless state. BUILD + PERSIST only
-(same charter-4b do-not-flip-blind boundary as the v1 verdict).
+Slim v3 leaf: only the reader-consumed fields are persisted (the derived
+``my_can_full_combo`` / ``manaless`` / ``sequence`` and the intermediate
+``economy.spike_eta_s`` are dropped) and the table is written COMPACT, halving
+the full-roster (171x171x3-band) artifact. The HZ-A2 ``economy`` block is
+gold-income + item-completion driven (the gold / spike math lives in
+core.lead_projection): ``gold_at_band`` / ``next_spike`` are the expected economy
+at the band's representative minute (the project_lead level<->minute curve);
+``recall`` is the cell-varying back-timing verdict, keyed on the trade verdict +
+mana / manaless state. BUILD + PERSIST only (same charter-4b do-not-flip-blind
+boundary as the v1 verdict).
 
 FAIL-SOFT (read side)
     A missing / unreadable / malformed table yields ``{}`` and every ``lookup``
@@ -82,6 +85,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import os
 import sys
@@ -89,6 +93,8 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
+
+log = logging.getLogger(__name__)
 
 # Bound at module scope so tests can stub them (the tests/test_pickban_targets
 # pattern: mock.patch.object over a tiny roster). Importing these pulls the DS
@@ -117,6 +123,14 @@ _FALLBACK_PATCH = "16.11.1"
 # are the level fed to the engine. L2 = early skirmish, L6 = first ult spike,
 # L11 = 2-item mid, L16 = late-lane / roam.
 LEVEL_BANDS: dict[str, int] = {"L2": 2, "L6": 6, "L11": 11, "L16": 16}
+
+# Bands actually GENERATED into the NxN table. The laning phase is over by
+# ~lvl 14, so L16 (late-lane / roam) is omitted from the sweep to keep the
+# full-roster artifact ~half the size - the reader maps a lvl>=14 game to L16
+# and fail-softs (no precomputed choice) there, which is correct for a laning
+# coach. LEVEL_BANDS stays 4-entry so band_for_level's mapping is unchanged;
+# GEN_BANDS is the subset the generator emits.
+GEN_BANDS: Tuple[str, ...] = ("L2", "L6", "L11")
 
 MANA_STATES: Tuple[str, ...] = ("full", "low")
 CD_STATES: Tuple[str, ...] = ("all_up", "no_ult")
@@ -231,11 +245,12 @@ def economy_cell(
 
     Reuses ``core.lead_projection`` for the band->minute bridge, the gross-income
     benchmark, and the cumulative-gold spike ladder. Pure + deterministic - no
-    engine, no snapshot, no network. Returns ``{recall, next_spike, spike_eta_s,
-    gold_at_band}``. ``gold_at_band`` / ``next_spike`` / ``spike_eta_s`` are
-    band-constant (the expected economy at the band's representative minute);
-    ``recall`` is the cell-varying field, driven by the mana / manaless state +
-    spike timing (NOT the combat trade verdict)."""
+    engine, no snapshot, no network. Returns ``{recall, next_spike,
+    gold_at_band}``. ``gold_at_band`` / ``next_spike`` are band-constant (the
+    expected economy at the band's representative minute); ``recall`` is the
+    cell-varying field, driven by the mana / manaless state + spike timing (NOT
+    the combat trade verdict). ``spike_eta_s`` is computed to drive ``recall``
+    but NOT persisted in the slim leaf (no reader consumes it)."""
     minutes = _lead.minutes_for_level(level_for_band(band))
     gold = _lead.expected_gold_earned(minutes, mode)
     label, target = _lead.next_spike(gold)
@@ -244,7 +259,6 @@ def economy_cell(
     return {
         "recall": recall,
         "next_spike": label,
-        "spike_eta_s": _round(eta),
         "gold_at_band": _round(gold),
     }
 
@@ -341,22 +355,19 @@ def _matchup(
     )
 
 
-def _cell_from_result(
-    result, seq: Sequence[str], manaless: bool, economy: Optional[dict] = None
-) -> dict:
-    """Shape a MatchupResult into the persisted leaf dict (single source so
+def _cell_from_result(result, economy: Optional[dict] = None) -> dict:
+    """Shape a MatchupResult into the persisted SLIM leaf dict (single source so
     compute_cell + generate_table never drift). ``net_swing`` > 0 = my champ
     favored; ``pct_my_removed`` is the fraction of MY effective HP the enemy
-    combo removes. ``economy`` (HZ-A2) is the optional recall/back-timing +
-    power-spike-ETA block; omitted when None for back-compat with v1 callers."""
+    combo removes. ``economy`` (HZ-A2) is the optional recall/back-timing block;
+    omitted when None. Slim v3 persists ONLY the reader-consumed fields - the
+    derived ``my_can_full_combo`` / ``manaless`` / ``sequence`` are dropped to
+    halve the full-roster NxN artifact (no consumer reads them)."""
     cell = {
         "verdict": str(result.verdict),
         "net_swing": _round(result.net_swing),
         "pct_my_removed": _round(result.pct_a_removed),
         "pct_enemy_removed": _round(result.pct_b_removed),
-        "my_can_full_combo": bool(result.a_can_full_combo),
-        "sequence": [str(t) for t in seq],
-        "manaless": bool(manaless),
     }
     if economy is not None:
         cell["economy"] = economy
@@ -386,7 +397,7 @@ def compute_cell(
     )
     result = _matchup(snapshot, my_champion, enemy, level, seq, mode, item_ids)
     economy = economy_cell(band, mana_state, mode=mode, manaless=manaless)
-    return _cell_from_result(result, seq, manaless, economy)
+    return _cell_from_result(result, economy)
 
 
 def generate_table(
@@ -403,7 +414,7 @@ def generate_table(
     mana-states, cd-states). Every leaf is a ``compute_cell`` dict; a champ's
     sequence is memoized across enemies (enemy does not change my rotation).
     """
-    band_keys = list(bands) if bands is not None else list(LEVEL_BANDS.keys())
+    band_keys = list(bands) if bands is not None else list(GEN_BANDS)
     seq_cache: dict[Tuple[str, int, str, str], Tuple[Tuple[str, ...], bool]] = {}
 
     def _seq(champ: str, level: int, mana: str, cd: str) -> Tuple[Tuple[str, ...], bool]:
@@ -415,36 +426,48 @@ def generate_table(
         return seq_cache[key]
 
     scenarios: dict = {}
+    skipped = 0
     for my in champions:
         per_enemy: dict = {}
         for enemy in enemies:
-            per_band: dict = {}
-            for band in band_keys:
-                level = level_for_band(band)
-                per_mana: dict = {}
-                for mana in MANA_STATES:
-                    per_cd: dict = {}
-                    for cd in CD_STATES:
-                        seq, manaless = _seq(my, level, mana, cd)
-                        result = _matchup(
-                            snapshot, my, enemy, level, seq, mode, item_ids
-                        )
-                        economy = economy_cell(
-                            band, mana, mode=mode, manaless=manaless,
-                        )
-                        per_cd[cd] = _cell_from_result(
-                            result, seq, manaless, economy
-                        )
-                    per_mana[mana] = per_cd
-                per_band[band] = per_mana
+            # Per-pair fail-soft: a champion the engine cannot model for some
+            # (band, mana, cd) must not abort a full-roster (171x171) sweep -
+            # drop the offending pair whole (a partial pair is worse than a
+            # missing one; the reader fail-softs uncovered pairs) and continue.
+            try:
+                per_band: dict = {}
+                for band in band_keys:
+                    level = level_for_band(band)
+                    per_mana: dict = {}
+                    for mana in MANA_STATES:
+                        per_cd: dict = {}
+                        for cd in CD_STATES:
+                            seq, manaless = _seq(my, level, mana, cd)
+                            result = _matchup(
+                                snapshot, my, enemy, level, seq, mode, item_ids
+                            )
+                            economy = economy_cell(
+                                band, mana, mode=mode, manaless=manaless,
+                            )
+                            per_cd[cd] = _cell_from_result(result, economy)
+                        per_mana[mana] = per_cd
+                    per_band[band] = per_mana
+            except Exception as exc:  # noqa: BLE001 - one bad pair must not abort
+                skipped += 1
+                log.warning(
+                    "laning gen: skipped pair %s vs %s (%s)", my, enemy, exc
+                )
+                continue
             per_enemy[enemy] = per_band
         scenarios[my] = per_enemy
+    if skipped:
+        log.warning("laning gen: %d (my, enemy) pairs skipped", skipped)
 
     return {
         "version": resolve_patch(),
         "generated_at": _now_iso(),
         "mode": str(mode).lower(),
-        "schema": "laning_scenarios/v2",
+        "schema": "laning_scenarios/v3",
         "dimensions": {
             "level_bands": {k: LEVEL_BANDS[k] for k in band_keys},
             "mana_states": list(MANA_STATES),
@@ -490,8 +513,10 @@ def atomic_write(payload: dict, out_path: Path) -> None:
     """Write ``payload`` to ``out_path`` via tmp + os.replace (atomic).
 
     A reader polling mid-write must never see a partial file (CLAUDE.md hard
-    rule). ASCII-only, sorted keys for a stable diff. Mirrors
-    ``tools/daemon_slayer_build_orders_generate.atomic_write``.
+    rule). ASCII-only, sorted keys for a deterministic byte-stable artifact.
+    COMPACT (no indent, no key/item spaces): the full-roster NxN table is
+    ~468k leaf cells - compact keeps it ~55MB instead of ~290MB pretty, and the
+    blob is machine-read not hand-diffed, so readability is moot.
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_fd, tmp_path = tempfile.mkstemp(
@@ -499,7 +524,10 @@ def atomic_write(payload: dict, out_path: Path) -> None:
     )
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, ensure_ascii=True, indent=2, sort_keys=True)
+            json.dump(
+                payload, fh, ensure_ascii=True,
+                separators=(",", ":"), sort_keys=True,
+            )
             fh.write("\n")
         os.replace(tmp_path, str(out_path))
     except Exception:
@@ -593,7 +621,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--enemies", default="",
                     help="CSV of enemy DDragon ids (default: == --champions).")
     ap.add_argument("--bands", default="",
-                    help="CSV of level-band labels (default: all LEVEL_BANDS).")
+                    help="CSV of level-band labels (default: GEN_BANDS, the "
+                         "laning-phase subset L2/L6/L11; L16 is omitted).")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print per-mode leaf counts without writing.")
     ap.add_argument("--out", default="",
@@ -603,7 +632,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     champions = _parse_csv(args.champions) or list(SEED_CHAMPIONS)
     enemies = _parse_csv(args.enemies) or list(champions)
-    bands = _parse_csv(args.bands) or list(LEVEL_BANDS.keys())
+    bands = _parse_csv(args.bands) or list(GEN_BANDS)
     for band in bands:
         if band not in LEVEL_BANDS:
             print(f"unknown band {band!r} (valid: {list(LEVEL_BANDS)})",
