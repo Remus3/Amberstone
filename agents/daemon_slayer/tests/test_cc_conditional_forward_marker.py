@@ -89,6 +89,14 @@ _ALLOWED_TEST_FILES = {
 _ALLOWED_SOURCE_FILES = {
     "cooldown_watch.py",
     "cc_pressure.py",
+    # item 359 (CS1, 2026-06-08): the operator EXPLICITLY requested the
+    # cc_conditional PAIRING UI on champ select ("surface the DS
+    # cc_conditional pairing data ... registry/accessors") - that request
+    # is the operator-gate crossing. cc_pairing.compute_cc_pairing reads
+    # get_conditional_entries to join which ally enables a champ's
+    # conditional CC. Static-registry read only (no live target-state;
+    # the s232 conditional-target-state arc stays operator-CLOSED).
+    "cc_pairing.py",
 }
 
 
