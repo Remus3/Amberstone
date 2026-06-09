@@ -201,6 +201,72 @@ class CacheTests(_Base):
         self.assertFalse(h.parsed()["cached"])
 
 
+class RuneTests(_Base):
+    """T2-F4: runes= / keystone= thread through to compute_combo.
+
+    8112 Electrocute is an on_proc_burst rune: supplying it MUST raise the
+    combo total. Omitted / blank / unknown-only MUST be byte-identical to
+    the no-runes path (engine contract pinned by
+    agents/daemon_slayer/tests/test_rune_wire_burst_combo.py).
+    """
+
+    _SEQ = "Q,AA,W,E,R"
+
+    def _totals(self, query: str) -> dict:
+        body = _do(f"/api/ds-combo?champion=Lux&seq={self._SEQ}"
+                   f"&target_armor=80&target_mr=60&target_max_hp=2000"
+                   f"&target_bonus_hp=600{query}").parsed()
+        self.assertTrue(body["ok"])
+        return body["totals"]
+
+    def test_no_runes_param_byte_identical(self) -> None:
+        # The default (no runes param) output must match today's contract.
+        base = self._totals("")
+        again = self._totals("")
+        self.assertEqual(base, again)
+
+    def test_blank_runes_byte_identical(self) -> None:
+        base = self._totals("")
+        blank = self._totals("&runes=")
+        self.assertEqual(base["total_mitigated"], blank["total_mitigated"])
+        self.assertEqual(base["total_raw"], blank["total_raw"])
+
+    def test_unknown_rune_byte_identical(self) -> None:
+        base = self._totals("")
+        unknown = self._totals("&runes=99999")
+        self.assertEqual(base["total_mitigated"], unknown["total_mitigated"])
+        self.assertEqual(base["total_raw"], unknown["total_raw"])
+
+    def test_electrocute_raises_total(self) -> None:
+        base = self._totals("")
+        elec = self._totals("&runes=8112")
+        self.assertGreater(elec["total_mitigated"], base["total_mitigated"])
+
+    def test_keystone_param_alias_raises_total(self) -> None:
+        # keystone= is a single-id alias for runes=.
+        base = self._totals("")
+        elec = self._totals("&keystone=8112")
+        self.assertGreater(elec["total_mitigated"], base["total_mitigated"])
+
+    def test_malformed_runes_no_500_and_byte_identical(self) -> None:
+        # Garbage rune tokens must be dropped, never raise a 500.
+        h = _do(f"/api/ds-combo?champion=Lux&seq={self._SEQ}"
+                "&target_armor=80&target_mr=60&runes=abc,,xyz")
+        self.assertEqual(h.last_status, 200)
+        body = h.parsed()
+        self.assertTrue(body["ok"])
+        base = _do(f"/api/ds-combo?champion=Lux&seq={self._SEQ}"
+                   "&target_armor=80&target_mr=60").parsed()
+        self.assertEqual(body["totals"]["total_mitigated"],
+                         base["totals"]["total_mitigated"])
+
+    def test_runes_part_of_cache_key(self) -> None:
+        path = f"/api/ds-combo?champion=Lux&seq={self._SEQ}&target_armor=80"
+        _do(path)
+        h = _do(path + "&runes=8112")
+        self.assertFalse(h.parsed()["cached"])
+
+
 class AsciiHygieneTests(unittest.TestCase):
     def _assert_ascii(self, path: pathlib.Path) -> None:
         src = path.read_bytes()

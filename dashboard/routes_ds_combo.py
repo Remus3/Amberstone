@@ -18,7 +18,7 @@ operator's OWN champion (calc.gg's Action Queue).
 Request shape:
   GET /api/ds-combo?champion=<id>&level=11&items=<id,id,..>
       &seq=Q,AA,W,R&target_armor=80&target_mr=60
-      &target_max_hp=&target_bonus_hp=&mode=SR
+      &target_max_hp=&target_bonus_hp=&mode=SR&runes=8112,8005
 
   champion      : canonical DDragon id ("Lux", "Caitlyn"). REQUIRED.
   seq           : comma-separated action tokens (Q/W/E/R/AA + recast
@@ -31,6 +31,10 @@ Request shape:
   target_max_hp : target max HP (default 0; %-HP scaling blocks).
   target_bonus_hp: target bonus HP (default 0; LDR / giant-slayer amps).
   mode          : SR | ARAM | ... (default SR; only affects mode multiplier).
+  runes         : comma-separated rune ids (default none); fed to the
+                  rune_procs proc/amp layer. Omitted / blank / unknown-only
+                  is byte-identical to the no-runes path.
+  keystone      : single rune id; convenience alias merged into runes.
 
 Response shape:
   {
@@ -125,6 +129,27 @@ def _parse_items(raw: str) -> list[str]:
     return out
 
 
+def _parse_runes(raw: str) -> list[int]:
+    """Split a comma-separated rune-id list into ints; drop garbage.
+
+    Defensive like _parse_items: a non-integer token is silently skipped
+    so a malformed runes= never raises (engine treats unknown / empty ids
+    as a zero contribution; an empty list is byte-identical to no runes).
+    """
+    if not raw:
+        return []
+    out: list[int] = []
+    for part in raw.split(","):
+        s = part.strip()
+        if not s:
+            continue
+        try:
+            out.append(int(s))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 def _parse_level(raw: str) -> int:
     """Parse champion level; clamp to [1, 18]; fall to default on garbage."""
     if not raw:
@@ -157,6 +182,7 @@ def _cache_key(
     target_max_hp: float,
     target_bonus_hp: float,
     mode: str,
+    runes: list[int],
 ) -> tuple:
     return (
         champion,
@@ -168,6 +194,7 @@ def _cache_key(
         round(target_max_hp, 2),
         round(target_bonus_hp, 2),
         mode,
+        tuple(runes),
     )
 
 
@@ -201,6 +228,7 @@ def _compute(
     target_max_hp: float,
     target_bonus_hp: float,
     mode: str,
+    runes: list[int],
 ) -> dict:
     """Build the response payload from scratch (no cache)."""
     from agents.daemon_slayer.combo import compute_combo
@@ -215,6 +243,7 @@ def _compute(
         target_max_hp=target_max_hp,
         target_bonus_hp=target_bonus_hp,
         mode=mode,
+        runes=runes or None,
     )
     hits = [_hit_to_dict(h) for h in result.hits]
     return {
@@ -266,6 +295,12 @@ def _serve_ds_combo(h) -> None:
             (qs.get("target_bonus_hp") or [""])[0].strip()
         )
         mode = (qs.get("mode") or ["SR"])[0].strip() or "SR"
+        # runes= is the canonical comma-separated id list; keystone= is a
+        # convenience single-id alias. Both feed the same rune_procs path;
+        # malformed tokens are dropped (never a 500) and an empty result is
+        # byte-identical to the no-runes default.
+        runes = _parse_runes((qs.get("runes") or [""])[0].strip())
+        runes += _parse_runes((qs.get("keystone") or [""])[0].strip())
 
         if not seq:
             payload = {
@@ -287,7 +322,7 @@ def _serve_ds_combo(h) -> None:
 
         key = _cache_key(
             champion, level, items, seq, target_armor, target_mr,
-            target_max_hp, target_bonus_hp, mode,
+            target_max_hp, target_bonus_hp, mode, runes,
         )
         now = time.time()
         with _CACHE_LOCK:
@@ -303,7 +338,7 @@ def _serve_ds_combo(h) -> None:
         try:
             payload = _compute(
                 champion, level, items, seq, target_armor, target_mr,
-                target_max_hp, target_bonus_hp, mode,
+                target_max_hp, target_bonus_hp, mode, runes,
             )
         except ImportError as exc:
             log.warning("api/ds-combo import: %s", exc)
