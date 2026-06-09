@@ -71,6 +71,27 @@
   border-color: var(--signal-info, #5aa9e6);
 }
 
+/* Keystone/rune selector - peer control to the action-queue input. Mirrors
+   .dscombo-input styling so it does not render as a sub-floor UA-default
+   widget; flex 0 0 auto keeps the input's stretch. */
+.dscombo-keystone {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dscombo-keystone:focus {
+  outline: none;
+  border-color: var(--signal-info, #5aa9e6);
+}
+
 /* Timeline table - a 5-column flex grid (t | action | raw | hit | total). */
 .dscombo-table {
   display: flex;
