@@ -42,6 +42,8 @@ def log_precomputed_choices(
     mana_state: str | None = None,
     cd_state: str | None = None,
     covered: bool = False,
+    native_action: str | None = None,
+    native_choices: list | None = None,
     game_time_s: float | None = None,
     level=None,
     item_count=None,
@@ -57,7 +59,12 @@ def log_precomputed_choices(
     (``covered=False``, ``enemy`` may be None and ``choices`` empty): the
     coverage rate of the seed table on real games is itself a validation
     signal. The gate only requires an operator champion (a real in-game tick);
-    ``enemy`` None is allowed for the coverage-miss record."""
+    ``enemy`` None is allowed for the coverage-miss record.
+
+    ``native_action`` / ``native_choices`` capture the LIVE coach output (the
+    Haiku prose action + its native A/B choices) for the same tick, so the
+    precompute can be compared against what Haiku actually said before any
+    flip - the comparison the do-not-flip-blind gate ultimately needs."""
     try:
         if not my_champion or not isinstance(my_champion, str):
             return None
@@ -97,6 +104,8 @@ def log_precomputed_choices(
             "item_count": item_count,
             "engine_version": ENGINE_VERSION,
             "choices": choice_list,
+            "native_action": native_action,
+            "native_choices": list(native_choices or []),
         }
 
         target.parent.mkdir(parents=True, exist_ok=True)

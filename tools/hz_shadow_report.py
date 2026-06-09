@@ -71,9 +71,17 @@ def load_jsonl(path: Path) -> list[dict]:
 
 
 def _coverage_block(records: list[dict]) -> dict:
-    """Total / covered / rate + per-champion coverage over a record list."""
+    """Total / covered / rate + comparable count + per-champion coverage.
+
+    ``comparable`` counts records that carry the live coach signal (a native
+    action or native A/B choices), i.e. records where the precompute CAN be
+    compared against what Haiku said - the sample size for the eventual
+    precompute-vs-Haiku validation."""
     total = len(records)
     covered = sum(1 for r in records if r.get("covered"))
+    comparable = sum(
+        1 for r in records if r.get("native_choices") or r.get("native_action")
+    )
     by_champ: dict[str, dict] = {}
     for r in records:
         champ = str(r.get("my_champion") or "?")
@@ -85,6 +93,7 @@ def _coverage_block(records: list[dict]) -> dict:
         "total": total,
         "covered": covered,
         "coverage_rate": round(covered / total, 4) if total else 0.0,
+        "comparable": comparable,
         "by_champion": dict(sorted(by_champ.items())),
     }
 
@@ -151,7 +160,8 @@ def _print_human(report: dict) -> None:
     for key in ("laning", "build"):
         sec = report.get(key) or {}
         print(f"[{key}] {sec.get('covered', 0)}/{sec.get('total', 0)} covered "
-              f"(rate {sec.get('coverage_rate', 0.0)})")
+              f"(rate {sec.get('coverage_rate', 0.0)}), "
+              f"{sec.get('comparable', 0)} comparable")
         if key == "laning" and sec.get("by_recommendation"):
             for lbl, n in sec["by_recommendation"].items():
                 print(f"    rec: {lbl} x{n}")
