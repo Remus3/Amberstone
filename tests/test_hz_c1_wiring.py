@@ -15,16 +15,14 @@ def _cell():
     return {
         "verdict": "all_in", "net_swing": 0.25,
         "pct_my_removed": 0.3, "pct_enemy_removed": 0.6,
-        "my_can_full_combo": True, "sequence": ["Q", "W", "E", "R"],
-        "manaless": False,
         "economy": {"recall": "recall_now", "next_spike": "first_item",
-                    "spike_eta_s": 30.0, "gold_at_band": 1300.0},
+                    "gold_at_band": 1300.0},
     }
 
 
 def _payload():
     return {
-        "schema": "laning_scenarios/v2",
+        "schema": "laning_scenarios/v3",
         "scenarios": {"Annie": {"Caitlyn": {"L6": {"full": {"all_up": _cell()}}}}},
     }
 
