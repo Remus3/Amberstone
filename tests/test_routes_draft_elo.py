@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from dashboard import routes_draft_elo
+from tests._draft_elo_fixture import DraftEloFixtureMixin
 
 
 class _RouteHarness:
@@ -49,7 +50,7 @@ class InputValidationTests(unittest.TestCase):
         self.assertEqual(h.sent_status, 400)
 
 
-class HappyPathTests(unittest.TestCase):
+class HappyPathTests(DraftEloFixtureMixin, unittest.TestCase):
     def setUp(self):
         routes_draft_elo._reset_caches()
 
@@ -103,7 +104,7 @@ class HappyPathTests(unittest.TestCase):
         self.assertEqual(payload["queue_ids"], [420])
 
 
-class BreakdownQueryParamTests(unittest.TestCase):
+class BreakdownQueryParamTests(DraftEloFixtureMixin, unittest.TestCase):
     """Tests for the ?breakdown=1 hover-strip query param (2026-05-20
     BACKLOG/ROADMAP 109(b))."""
 

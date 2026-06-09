@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from dashboard import routes_ban_suggest
+from tests._draft_elo_fixture import DraftEloFixtureMixin
 
 
 class _Harness:
@@ -48,7 +49,7 @@ class InputValidationTests(unittest.TestCase):
         self.assertEqual(h.sent_status, 400)
 
 
-class HappyPathTests(unittest.TestCase):
+class HappyPathTests(DraftEloFixtureMixin, unittest.TestCase):
     def setUp(self):
         routes_ban_suggest._reset_caches()
 
