@@ -47,7 +47,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | CS2 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Champ Select): operator must MANUALLY fix summoner spells - on first champ-select load the client defaults to Flash+Heal or Flash+Teleport at random instead of the intended set (Flash+Teleport). Investigate whether RC can push the correct summoner spells via LCU on champ-select enter (mirror lcu/lcu_rune_writer's auto-push pattern; `/lol-champ-select/v1/session/my-selection` spell1Id/spell2Id) - either ADD a spell auto-push (per-champ/per-mode default) or, if RC already pushes and is wrong, fix the source; if purely client-side + unreachable, document as client-only + close. LIVE-GATED. | DONE | 29cd2788 |
 | CS3 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Champ Select): the combo timeline / dps scaling / fight model / relative item power panels do NOT need to be seen during champ select -> MOVE them OFF the champ-select page to a more appropriate surface (e.g. an Active-Match / DS / Build view). Relocate placement only - KEEP all data wiring intact (feedback_field_remove_visual_only: this is a move, not a teardown). Tests + Section-3b audit on BOTH the source (champ-select, panels gone) and destination pages. | DONE | d68cddd3 |
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | DONE | 3a129071 |
-| HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
+| HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | DONE | 8d8bc311 |
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | OPEN | - |
 | HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | OPEN | - |
 
@@ -62,6 +62,27 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-08 HZ-B2 DONE (commit 8d8bc311) + draft-elo clean-checkout test fix
+  (d9347d62, item 363). HZ-B2: anti_tank vs anti_squishy build-order VARIANTS layered
+  on HZ-B1 via the DS anti-tank axis (A3, core/ds_antitank_hint). Single coupled engine
+  slice (1 worktree agent + merger ground-truth verify). DISTINCT from HZ-B1's fixed
+  comp-shape biases: the two durability EXTREMES as a champion-decision pair, each
+  modulated per champ by the A3 anti-tank score (a kit that already shreds -> softer
+  synthetic wall). SIBLING module core/build_order_variants.py (keeps HZ-B1's schema +
+  23 tests byte-identical) -> data/daemon_slayer/build_orders/<patch>/
+  build_order_variants_<mode>.json (10-champ SR seed x 2 = 20 cells). +28 tests. BUILD +
+  PERSIST only. MERGER independently re-probed the agent's "1 pre-existing failure"
+  claim: test_target_state_caller_p1l4.py::test_live_items_path_only_wired_to_ds_preview
+  is a WORKTREE-PATH artifact (the test skips any path containing .claude, so a checkout
+  under .claude/worktrees/ skips the whole tree); it PASSES on main (full tests/ 5529
+  passed / 0 fail). Earlier this turn (operator-flagged) the draft-elo + ban-suggest
+  tests (16 fail + 6 err on a clean checkout) were fixed root-cause (item 363): they
+  depended on the gitignored live rewind_history.db; open_ro now honors an RC_REWIND_DB
+  env override + a self-contained tests/_draft_elo_fixture.py. Memory
+  feedback_clean_checkout_probe written (I had wrongly dismissed the same cluster as a
+  worktree artifact at item 362; the operator was right - reproduce the clean condition
+  before dismissing a fresh-env failure). **NEXT OPEN = HZ-C1** (deterministic A/B
+  choice-coach over HZ-A/HZ-B, shadow-log, no flip), then HZ-D1.
 - 2026-06-08 HZ-B1 DONE (commit 3a129071; + cc_pairing guard fix 76691def).
   Lane B build-order precompute per (champ x mode x enemy-comp-archetype). Single
   coupled engine slice (1 worktree agent + merger ground-truth verify, the HZ-A2
