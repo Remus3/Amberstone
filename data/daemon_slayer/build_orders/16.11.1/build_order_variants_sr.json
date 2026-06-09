@@ -1,0 +1,577 @@
+{
+  "build_orders": {
+    "Ahri": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3089",
+          "3020",
+          "4645",
+          "3041",
+          "4633",
+          "3135"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3135",
+          "3111",
+          "3089",
+          "4645",
+          "3137",
+          "4646"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Annie": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3089",
+          "3020",
+          "4645",
+          "3041",
+          "4633",
+          "3135"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3135",
+          "3111",
+          "3089",
+          "4645",
+          "3137",
+          "4646"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Caitlyn": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3153",
+          "3006",
+          "3085",
+          "3032",
+          "3031",
+          "3036"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3153",
+          "3047",
+          "3036",
+          "3085",
+          "3032",
+          "6694"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Darius": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3078",
+          "3047",
+          "3085",
+          "3153",
+          "2520",
+          "3072"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3153",
+          "3111",
+          "3036",
+          "3085",
+          "3071",
+          "3078"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Ezreal": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3153",
+          "3006",
+          "3085",
+          "3031",
+          "3032",
+          "6696"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3153",
+          "3047",
+          "3036",
+          "3085",
+          "6694",
+          "3032"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Garen": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.2125,
+          "recommend_antitank_items": true,
+          "shreds_resist": true,
+          "top_kind": "SHRED"
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3078",
+          "3047",
+          "3084",
+          "3053",
+          "667112",
+          "3742"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.2125,
+          "recommend_antitank_items": true,
+          "shreds_resist": true,
+          "top_kind": "SHRED"
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2441.8,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 3798.4,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3153",
+          "3111",
+          "3078",
+          "3036",
+          "3084",
+          "3053"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Jax": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.48,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": "MAX_HP"
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3153",
+          "3047",
+          "3085",
+          "3072",
+          "3078",
+          "3053"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.48,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": "MAX_HP"
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2116.8,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 3292.8,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3153",
+          "3111",
+          "3036",
+          "3085",
+          "3071",
+          "3053"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Lux": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3089",
+          "3020",
+          "4645",
+          "3041",
+          "4633",
+          "3135"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3089",
+          "3111",
+          "3135",
+          "4645",
+          "3137",
+          "4646"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Malphite": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3083",
+          "3047",
+          "3053",
+          "6665",
+          "3065",
+          "2504"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3083",
+          "3111",
+          "3053",
+          "3143",
+          "6665",
+          "3065"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Syndra": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3089",
+          "3020",
+          "4645",
+          "3041",
+          "4633",
+          "3135"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3135",
+          "3111",
+          "3089",
+          "4645",
+          "3137",
+          "4646"
+        ],
+        "variant": "anti_tank"
+      }
+    }
+  },
+  "dimensions": {
+    "driven_by": "ds_antitank_hint/A3",
+    "level": 13,
+    "variants": [
+      "anti_tank",
+      "anti_squishy"
+    ]
+  },
+  "engine_version": "1.120.0",
+  "generated_at": "2026-06-09T02:57:10Z",
+  "mode": "sr",
+  "schema": "build_order_variants/v1",
+  "version": "16.11.1"
+}
