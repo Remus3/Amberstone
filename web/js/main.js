@@ -33,6 +33,10 @@ import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
 import { renderScreenRead } from './panels/screen_read.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
+// HIST2: detached historical PGR (archive view for a clicked History /
+// Session match row). Separate DOM + state from last_match.js - never
+// clobbers the live PGR.
+import { wireHistoricalPgrOnce, renderHistoricalPgr } from './panels/historical_pgr.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
 // ADR-007 (s169) - heartbeat pill self-starts on import (own setInterval).
 import './panels/trigger_pill.js';
@@ -648,6 +652,20 @@ import { renderBuildInsights } from './panels/build_insights.js';
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
+    if (viewId === "historical-pgr") {
+      // HIST2: render the detached archive PGR for the match the operator
+      // clicked. The timestamp was stashed by the History / Session row
+      // click (rc-hpgr-match-ts). Consume + clear it so a later plain
+      // navigation to this view (e.g. a stale hash) re-renders the same
+      // match rather than blanking. Falls back to the panel's current ts
+      // (window getter) if the key was already consumed by a prior apply.
+      wireHistoricalPgrOnce();
+      let _hts = null;
+      try { _hts = sessionStorage.getItem("rc-hpgr-match-ts"); } catch (_) {}
+      if (_hts) { try { sessionStorage.removeItem("rc-hpgr-match-ts"); } catch (_) {} }
+      else if (typeof window._hpgrCurrentTs === "function") _hts = window._hpgrCurrentTs();
+      renderHistoricalPgr(_hts || "");
+    }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
     if (viewId === "user-builds") {
       _userBuildsWireOnce();
@@ -1656,6 +1674,9 @@ import { renderBuildInsights } from './panels/build_insights.js';
               `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
               `<span class="dim">${m.kda}</span>` +
               `<span class="dim" style="margin-left:8px">${m.timestamp}</span>`;
+            // HIST1: clicking a Session match row opens its detached
+            // historical PGR (keyed on the row timestamp).
+            _wireMatchRowToHistoricalPgr(li, m.timestamp);
             matchUl.appendChild(li);
           });
           if (!matchUl.children.length) matchUl.innerHTML = '<li class="home-empty">no matches in session</li>';
@@ -1817,9 +1838,38 @@ import { renderBuildInsights } from './panels/build_insights.js';
         `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
         `<span class="dim">${m.kda}</span>` +
         `<span class="dim" style="margin-left:8px">${m.timestamp}</span>`;
+      // HIST1: clicking a History match row opens its detached historical
+      // PGR (keyed on the row timestamp).
+      _wireMatchRowToHistoricalPgr(li, m.timestamp);
       ul.appendChild(li);
     });
     if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no matches in session</li>';
+  }
+
+  // HIST1 + HIST2: route a Session / History match-row click to the
+  // detached historical PGR. Stashes the row timestamp (the natural key -
+  // match_history.db rows have no surfaced integer id on these views) so
+  // the historical-pgr view-activate hook fetches /api/last-match?match_ts=
+  // for exactly that match. Mirrors the Home Recent-5 click pattern but
+  // targets the new archive view instead of History. A row with no
+  // timestamp is left inert (no id to open).
+  function _wireMatchRowToHistoricalPgr(li, ts) {
+    if (!li || !ts) return;
+    li.style.cursor = "pointer";
+    li.classList.add("history-match-row-clickable");
+    li.setAttribute("role", "button");
+    li.setAttribute("tabindex", "0");
+    const open = () => {
+      try { sessionStorage.setItem("rc-hpgr-match-ts", ts); } catch (_) {}
+      if (typeof _viewSaveManual === "function") _viewSaveManual("historical-pgr");
+      try { location.hash = "#historical-pgr"; } catch (_) {}
+      if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
+      else if (typeof applyView === "function") applyView("historical-pgr");
+    };
+    li.addEventListener("click", open);
+    li.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+    });
   }
   function _historyWireOnce() {
     if (_HISTORY._wired) return;
