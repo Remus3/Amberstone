@@ -303,6 +303,30 @@ def load_spell_pair(mode: str, is_aram: bool) -> tuple[int, int]:
         return (_SPELL_FLASH, _SPELL_TELEPORT)
 
 
+# ARAM-family mode strings the LCU lobby / champ-select reports.
+_ARAM_MODE_STRINGS = frozenset(
+    {"ARAM", "KIWI", "ARAM_5V5", "ARAM_MAYHEM", "CLASSIC_ARAM"}
+)
+
+
+def resolve_spell_pair(champion: str, mode: str) -> tuple[int, int]:
+    """Resolve the INTENDED summoner-spell pair for a champ + LCU game mode.
+
+    CS2 (2026-06-08): the operator-facing source of truth is the same
+    spell_prefs.json the RuneWriter already reads via load_spell_pair -
+    sr_mode=teleport (Flash+Teleport) for SR, aram_mode=snowball
+    (Flash+Snowball) for ARAM. This wrapper turns the raw LCU mode
+    string into the is_aram bool load_spell_pair expects, routing
+    KIWI / ARAM Mayhem to the ARAM pair, everything else to SR.
+
+    ``champion`` is accepted for forward-compat (a future per-champ
+    override could key off it) but is not used today - the pair is
+    mode-driven so it stays correct for every champion.
+    """
+    is_aram = (mode or "").upper() in _ARAM_MODE_STRINGS or "ARAM" in (mode or "").upper()
+    return load_spell_pair(mode, is_aram)
+
+
 def save_spell_pref(mode_key: str, value: str) -> None:
     """Write updated spell preference to spell_prefs.json (atomic write)."""
     try:
@@ -408,6 +432,16 @@ class RuneWriter:
         # Get game mode from lobby
         mode = self._detect_game_mode()
 
+        # CS2 (2026-06-08): self-correct summoner spells on EVERY poll, before
+        # the champion-detected early-return below. The client randomises the
+        # spell defaults (Flash+Heal / Flash+Teleport) on champ-select entry;
+        # correcting only once (the old side-effect of a successful rune write)
+        # left the wrong pair stuck if the rune POST failed (3-page account
+        # cap) or the client re-randomised after RC's single push. _sync_spells
+        # is idempotent - it PATCHes only when the live pair differs - so
+        # running it every 2s costs nothing once the spells are right.
+        self._sync_spells(session, mode)
+
         # Find my champion (intent or locked)
         champion_name = self._detect_my_champion(session)
         if not champion_name:
@@ -425,6 +459,43 @@ class RuneWriter:
             self._last_applied_mode = mode
         else:
             _log.warning("RuneWriter: rune write failed for %s/%s", champion_name, mode)
+
+    def _sync_spells(self, session: dict, mode: str) -> bool:
+        """CS2: push the intended summoner-spell pair when it differs.
+
+        Reads the live (spell1Id, spell2Id) for my cell out of the champ-
+        select session, resolves the intended pair for the mode via
+        resolve_spell_pair (spell_prefs.json: Flash+TP for SR, Flash+
+        Snowball for ARAM), and delegates to LcuClient.set_summoner_spells
+        with current_pair set so the PATCH is skipped when already correct.
+
+        Fail-soft: returns False without raising / without an LCU write when
+        the session is missing, my cell can't be found, or the LCU call
+        errors. Returns True when the spells are correct (either already, or
+        after a successful PATCH).
+        """
+        if not session or not isinstance(session, dict):
+            return False
+        try:
+            my_cell = session.get("localPlayerCellId", -1)
+            my_pick = None
+            for player in session.get("myTeam", []) or []:
+                if isinstance(player, dict) and player.get("cellId") == my_cell:
+                    my_pick = player
+                    break
+            if my_pick is None:
+                return False  # my cell not in the session yet - nothing to do
+            try:
+                cur = (int(my_pick.get("spell1Id", 0) or 0),
+                       int(my_pick.get("spell2Id", 0) or 0))
+            except (TypeError, ValueError):
+                cur = (0, 0)
+            want1, want2 = resolve_spell_pair("", mode)
+            return bool(self._lcu.set_summoner_spells(
+                want1, want2, current_pair=cur))
+        except Exception as exc:
+            _log.debug("RuneWriter: _sync_spells: %s", exc)
+            return False
 
     def _detect_game_mode(self) -> str:
         """Detect current game mode from lobby config."""
@@ -509,14 +580,13 @@ class RuneWriter:
 
         success = self._write_page(page_name, pri_id, sec_id, perk_ids)
 
-        # Also apply summoner spells alongside the rune page
-        if success:
-            try:
-                s1, s2 = load_spell_pair(mode, is_aram)
-                self._lcu.set_summoner_spells(s1, s2)
-                _log.info("RuneWriter: spells set %d+%d for %s/%s", s1, s2, champion, mode_tag)
-            except Exception as _se:
-                _log.debug("RuneWriter: spell write: %s", _se)
+        # Summoner spells are owned by _sync_spells (CS2, 2026-06-08), which
+        # runs every _poll BEFORE this rune write and is self-correcting +
+        # idempotent. The previous "push spells iff the rune write succeeded"
+        # side-effect was the CS2 root cause: a failed rune POST (3-page
+        # account cap) skipped the spell push entirely, leaving the client's
+        # randomised Flash+Heal / Flash+TP default in place. No spell write
+        # here anymore - it would be a redundant unconditional double-PATCH.
 
         return success
 
