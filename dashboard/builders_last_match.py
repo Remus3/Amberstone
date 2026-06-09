@@ -352,13 +352,23 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     }
 
 
-def _build_last_match(baseline: int = 20) -> dict:
-    """Latest non-TFT match for the Last Match page.
+def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
+    """Post Game Review payload for the Last Match page.
 
     Source: data/match_history.db (operator-centric - KDA / CS / gold /
     grade / DS picks). rewind_history.db is stale (Dec 2025) so we do
     NOT enrich from Match-V5 here; the v2 Refresh button will trigger
     that path.
+
+    `match_ts` (HIST2): when None (the live default) the newest non-TFT
+    row is returned - byte-identical to pre-HIST2 behavior. When set to a
+    "YYYY-MM-DD HH:MM:SS" timestamp, the row whose timestamp matches
+    EXACTLY is returned instead, so a History / Session match-row click
+    can open that specific match's detached historical PGR. An unknown ts
+    returns found=False (NOT a silent latest fallback - that would render
+    the wrong match under the operator's selection). The Quick Review
+    baseline still excludes the selected row by its id, so the chronic
+    comparison is correct for the historical row too.
 
     Returns:
       {
@@ -377,6 +387,7 @@ def _build_last_match(baseline: int = 20) -> dict:
     except (TypeError, ValueError):
         baseline = 20
     baseline = max(5, min(50, baseline))
+    match_ts = (str(match_ts).strip() or None) if match_ts is not None else None
     out: dict = {"found": False, "match": None, "history_count": 0}
     db_path = _APP_DIR / "data" / "match_history.db"
     conn = _ro_conn(db_path)
@@ -384,13 +395,23 @@ def _build_last_match(baseline: int = 20) -> dict:
         out["error"] = "match_history.db missing"
         return out
     try:
-        cur = conn.execute(
-            "SELECT id, timestamp, mode, champion, grade, kda_str, "
-            "       game_time_s, kills, deaths, assists, cs, cs_per_min, "
-            "       gold, gold_per_min, kp_pct, label, raw_data "
-            "FROM matches WHERE mode != 'TFT' "
-            "ORDER BY timestamp DESC LIMIT 1"
-        )
+        _cols = ("id, timestamp, mode, champion, grade, kda_str, "
+                 "game_time_s, kills, deaths, assists, cs, cs_per_min, "
+                 "gold, gold_per_min, kp_pct, label, raw_data")
+        if match_ts:
+            # HIST2: pin a specific historical row by exact timestamp.
+            # mode != 'TFT' is kept so a TFT row never leaks into the PGR.
+            cur = conn.execute(
+                f"SELECT {_cols} FROM matches "
+                "WHERE mode != 'TFT' AND timestamp = ? "
+                "ORDER BY id DESC LIMIT 1",
+                (match_ts,),
+            )
+        else:
+            cur = conn.execute(
+                f"SELECT {_cols} FROM matches WHERE mode != 'TFT' "
+                "ORDER BY timestamp DESC LIMIT 1"
+            )
         latest = cur.fetchone()
         if not latest:
             return out
