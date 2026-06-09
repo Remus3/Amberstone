@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-09 - HZ-C arc: precomputed A/B choice-coach (laning + build) + validation gate [items 366-369]
+
+`/headless-upgrade` autonomous run (run_id 2026-06-09-01, 1-Claude orchestrator + 3 background cost-audit Explore agents). 5 commits, all CI green, RC restarted 4x (pids 16712 -> 20776 -> 3992). PRIMARY charter-4b Haiku-to-ZERO Lane C, end-to-end. ENGINE 1.120.0 untouched throughout (no DS work), no Share delta (all core/dashboard/tools, not in the Share package).
+
+- **Phase 1 pre-flight:** baseline green (DS 1.120.0 == repo, CI 6/6, 0 PRs). Cleaned 3 stale prior-run worktree DIRS but PRESERVED their branches (unmerged 3-day-old salvage candidates: 9b0a8205 ARAM comp-verdict bench, 1cc7aa84 /api/aram-comp-verdict route, 2873efcd cs_at_10 stats producer). Force-reinit'd the stale ds-matchup manifest (item 327, shipped).
+- **Phase 2 cost sweep = CLEAN (item 366 note).** 3 parallel Explore agents over the 7 levers. Cache/model-tier/route-TTL/bundle-parity all optimal (matches the items-134-177 CLEAN lineage). One agent OVER-FLAGGED adding /api/state etc to the log-spam suppress list - REFUTED vs the pinned `test_handler_log_spam_suppress::test_non_suppressed_path_is_logged` (intentionally keeps /api/state loggable). Only real find = OPERATIONS.md task-table doc-drift (several installed RC-* tasks not in the doc table) - logged as a SHOULD, NOT fixed (verifying all 11 claims is heavy; fold into a future sync-all-md).
+- **HZ-C1 (366) / HZ-C2 (367):** `core/precomputed_laning_coach.py` (laning A/B from the HZ-A cell) + `core/precomputed_build_coach.py` (anti_tank/anti_squishy BUILD A/B from HZ-B2, classified by `aram_comp_verdict.compute_factors` frontline_count). Both PURE static reads (no Haiku, no :8893), shadow-logged via NEW `core/hz_choice_shadow.py` + `core/hz_build_shadow.py` (gitignored jsonl), wired additively + fail-soft into `dashboard/_state_builder.py` after the existing `shadow_log_det`. SHADOW ONLY, NO coach flipped. Validated vs the REAL committed seed tables.
+- **HZ-C report (368) + native-capture (369):** `tools/hz_shadow_report.py` = the flip-readiness gate (coverage + distribution + `comparable` count). Then both shadow writers gained `native_action`+`native_choices` (what live Haiku said) so the precompute can be compared vs Haiku (the comparison the flip ultimately needs; the semantic-agreement metric itself stays FUTURE - free-text vs labeled choice is fuzzy).
+- **KEY FINDING (drives the NEXT):** the report on LIVE logs shows the HZ-C1/C2 wiring FIRES (151 records in minutes) but coverage is **0%** on current activity - the 10-champ seed does not cover real games. So **SEED EXPANSION is the binding constraint** before any coach flip. NOT auto-done this run: a multi-MB static-data commit + the champion-set choice is an operator/repo-policy call (and seed-is-a-sample was a prior scope decision). Tests: +81 across the 7 HZ test files; full RC suite 5610 passed / 2 skip / 0 fail at the final gate.
+- **NEXT OPEN (ROADMAP HZ-* updated):** HZ-C seed-EXPANSION (regenerate HZ-A/HZ-B for a broader champion set via `--champions`) -> accrue real-game shadow data -> agreement analysis -> the live coach FLIP; then HZ-D1 (Electron overlay Phase 2+). Salvage candidates from pre-flight (3 preserved branches incl. cs_at_10 / ARAM comp-verdict bench) remain available. Synopsis: `C:/Users/Administrator/Desktop/RC_HEADLESS_SYNOPSIS_2026-06-09.md`.
+
+---
+
 # 2026-06-08 - LIFT1 competitor-lift review: RC supersedes both targets [item 354]
 
 gemini-headless-upgrade loop, directive LIFT1 (cycle off the 2026-06-08 ORCHESTRATION_PLAN, ahead of HZ-B). Commit 4b15b031. RESEARCH + TRIAGE only, NO code slice (docs-only).
@@ -27,15 +40,3 @@ gemini-headless-upgrade loop, directive HZ-A2 (cycle 2 off the 2026-06-08 ORCHES
 - **Orchestration call:** HZ-A2 is a hard LINEAR A->B dep (~120 coupled LOC) so "true-concurrency" worktrees degenerate to sequential + a RED B slice -> ran as sole orchestrator with TDD (31 RED -> green) + the read-only verifier subagent as the pre-commit gate. verifier CONFIRM all 6 claims (76/0 module files; 0 of 1600 leaves missing economy; ruff clean).
 - Regenerated SR seed (1600 cells, v2): recall_now 940 / back_soon 440 / hold 220. +35 tests (lead_projection_economy 19 + laning_scenario_economy 16). Full RC 5352 passed / 1 skip / 85 subtests / 0 fail. ENGINE 1.120.0 untouched, ds_share_sync --check green (laning_scenarios NOT in Share), no DS/RC restart, no web -> no UI-audit. Directive's "clear false-alarm blockers" = no-op (none existed; grep clean).
 - **NEXT OPEN = HZ-B1** (Lane B build-order precompute per champ x mode x enemy-comp). The table is read by a FUTURE consumer (HZ-C1); validate recall-timing on a real/replayed game BEFORE any coach flip.
-
----
-
-# 2026-06-08 - HZ-A1 Lane A laning-scenario precompute (Haiku-to-ZERO) [item 352]
-
-gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06-08 ORCHESTRATION_PLAN reseed). Commit 85b13b7c. BUILD + PERSIST + READ only, NO live coach flip (charter 4b do-not-flip-blind).
-
-- **NEW `core/laning_scenario_precompute.py`** precomputes laning `trade`/`all_in`/`back_off`/`even` verdicts over (my_champ x enemy x level-band x mana-state x cd-state) from the SHIPPED `compute_matchup` engine. Generator (`compute_cell`/`generate_table`) + fail-soft mtime-cached reader (`load_laning_scenarios` + `lookup`) + CLI; atomic versioned JSON -> `data/daemon_slayer/laning_scenarios/<patch>/laning_scenarios_<mode>.json`. Dims: 4 bands (L2/L6/L11/L16) x mana full/low x cd all_up/no_ult. mana low = affordable combo prefix from `mana_sim` per-cast cost ledger (manaless -> low==full); cd no_ult drops R.
-- **Model fix (the de-risk probe caught it):** enemy modelled at FULL resources (`sequence_b` = full rotation) so a same-level mirror is symmetric (even); the first cut left the enemy on the engine default (AA, no E) and skewed even the mirror to back_off -0.10.
-- SR seed = 10-champ archetype-diverse SAMPLE (not a tier list), itemless, 1600 cells / 667KB; dist even 793 / back_off 696 / trade 111 / all_in 0 (0 all_in is HONEST for itemless equal-level - needs full HP removal; surfaces with an item axis, HZ-A2). +16 characterization tests (cell == compute_matchup). verifier CONFIRM 16/16.
-- Fixed a PRE-EXISTING red (NOT my slice): ROADMAP.md 82898 > 81920 doc-budget -> relocated shipped item 344 verbatim to ROADMAP_HISTORY (-> 79228). Full RC 5316 passed / 1 skip / 0 fail. ENGINE 1.120.0 untouched, no DS / Share / RC restart, no web -> no UI-audit.
-- **NEXT OPEN = HZ-A2** (recall/back-timing + power-spike-ETA). The table is read by a FUTURE consumer (HZ-C1); validate on a real/replayed game BEFORE any coach flip.
