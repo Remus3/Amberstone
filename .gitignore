@@ -47,6 +47,7 @@ data/ds_calibration.jsonl
 data/ds_coach_hints_shadow.jsonl
 data/det_coach_shadow.jsonl
 data/hz_choice_shadow.jsonl
+data/hz_build_shadow.jsonl
 data/placement_heatmap.json
 data/tft_live_data.json
 data/rewind_catchup.state.json

@@ -308,16 +308,18 @@ def build_state() -> dict:
     try:
         from dashboard._deterministic_coaching import (
             compute_deterministic, resolve_choices, shadow_log_det,
-            shadow_log_precomputed_choices,
+            shadow_log_precomputed_choices, shadow_log_precomputed_build,
         )
         det = compute_deterministic(coach, lc, mode_key)
         # Shadow-log BEFORE resolve_choices overwrites coach["choices"] - the
         # validation log must capture the NATIVE choices the deterministic flip
         # discards, not the post-flip result.
         shadow_log_det(coach, lc, det, mode_key)
-        # HZ-C1: also shadow-log what the PRECOMPUTED laning table would offer
+        # HZ-C1/C2: also shadow-log what the PRECOMPUTED laning table (A/B
+        # trade) + HZ-B2 build-variant table (A/B build) would offer
         # (do-not-flip-blind). Fail-soft, additive, NO effect on live output.
         shadow_log_precomputed_choices(coach, lc, mode_key)
+        shadow_log_precomputed_build(coach, lc, mode_key)
         coach["choices"] = resolve_choices(coach, det)
     except Exception:
         det = {"choices": [], "callouts": [], "lead_projection": {}}
