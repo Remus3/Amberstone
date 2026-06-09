@@ -31,6 +31,12 @@ import {
   fetchCooldownWatch, getCachedCooldownWatch,
   getCooldownWatchCacheCount, renderCooldownWatch,
 } from './cooldown_watch.js';
+// CS1 (2026-06-08): ally CC-pairing card. Delimited new block - CS3 will
+// also touch champ_select.js; keep CS1 imports + wiring grouped here.
+import {
+  fetchCcPairing, getCachedCcPairing,
+  getCcPairingCacheCount, renderCcPairing,
+} from './cc_pairing.js';
 import {
   renderDsSweepForChampSelect, getDsSweepCacheCount, setDsSweepScheduler,
 } from './ds_sweep.js';
@@ -1067,6 +1073,11 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // max-rank base cooldown ("watch their hook - 16s"). Joins the CC threat
   // registries to per-rank ability cooldowns from champion_abilities.json.
   _csvRenderCooldownWatch(cs);
+  // CS1 (2026-06-08): ally CC-pairing card. Surfaces, for the operator's
+  // OWN roster, which conditional CC entries a TEAMMATE can set up + the
+  // plausible enablers. Read-only join over the existing cc_conditional
+  // registry. Delimited CS1 block (CS3 will also touch this file).
+  _csvRenderCcPairing(cs);
   setDsSweepScheduler(_csvScheduleRender);
   renderDsSweepForChampSelect(cs);
   setDsProfileScheduler(_csvScheduleRender);
@@ -1432,6 +1443,9 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   // /api/cc-blended-ehp-threat lands.
   const ccBlendedCount = getCcBlendedEhpThreatCacheCount();
   const ccCondCount = getCcConditionalPressureCacheCount();
+  // CS1 (2026-06-08): ally CC-pairing cache state - count keys so the
+  // pairing card re-renders when /api/cc-pairing lands.
+  const ccPairCount = getCcPairingCacheCount();
   const cdwCount = getCooldownWatchCacheCount();
   const dswCount = getDsSweepCacheCount();
   const dspCount = getDsProfileCacheCount();
@@ -1455,7 +1469,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}|dsr:${dsrCount}|dss:${dssCount}|dsp:${dspCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|ccpair:${ccPairCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}|dsr:${dsrCount}|dss:${dssCount}|dsp:${dspCount}`,
     verdictKey,
   ].join("|");
 }
@@ -1860,6 +1874,36 @@ function _csvRenderCooldownWatch(cs) {
   fetchCooldownWatch(enemyNames, _csvScheduleRender);
   const payload = getCachedCooldownWatch(enemyNames);
   renderCooldownWatch(block, payload);
+}
+
+// CS1 (2026-06-08): ally CC-pairing card. Reads the operator's OWN roster
+// (cs.my_team) and renders, per conditional CC entry whose condition a
+// TEAMMATE can set up, the entry + plausible enabler teammates inside the
+// #csv-sugg-cc-pairing block. Mirrors the _csvRenderCooldownWatch shape
+// but on the ALLY side (the cooldown-watch card is the enemy-threat twin).
+// Mode-agnostic (the route + engine take no mode param - the pairing fact
+// is intrinsic to the abilities). Hidden until at least one ally with an
+// ally-enablable conditional CC entry is committed. Delimited CS1 block;
+// CS3 will also touch champ_select.js.
+function _csvRenderCcPairing(cs) {
+  const block = document.getElementById("csv-sugg-cc-pairing");
+  if (!block) return;
+  const allyNumericIds = (cs.my_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (!allyNumericIds.length) {
+    block.hidden = true;
+    return;
+  }
+  const allyNames = resolveChampNames(allyNumericIds);
+  if (!allyNames.length) {
+    // CHAMPS index not yet loaded - keep hidden, resolves next tick.
+    block.hidden = true;
+    return;
+  }
+  fetchCcPairing(allyNames, _csvScheduleRender);
+  const payload = getCachedCcPairing(allyNames);
+  renderCcPairing(block, payload);
 }
 
 let _csvDsComboWired = false;
