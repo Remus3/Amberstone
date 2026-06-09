@@ -128,16 +128,28 @@ def resolve_current_puuid(
     *,
     explicit_puuid: str = "",
     explicit_riot_id: str = "",
+    state_riot_id: str = "",
 ) -> str:
     """Resolve the operator's CURRENT PUUID for Match-V5 calls.
 
     Priority order:
       1) ``--puuid`` flag value.
       2) ``--riot-id NAME#TAG`` looked up via Account-V1.
-      3) DB-derived Riot ID looked up via Account-V1 (and cross-checks the
+      3) The Riot ID persisted in the state sentinel (set by a prior
+         ``--riot-id`` run) via Account-V1 - an authoritative, sticky
+         override that BEATS the DB-majority fallback.
+      4) DB-derived Riot ID looked up via Account-V1 (and cross-checks the
          stale DB PUUID; if it differs, prints a warning).
-      4) Stale DB PUUID as last-resort (likely fails on Match-V5; surfaced
+      5) Stale DB PUUID as last-resort (likely fails on Match-V5; surfaced
          so the user knows what happened).
+
+    Step 3 fixes the 2026-06-08 staleness (REPLAY1): when the operator
+    switched Riot IDs, the DB stayed dominated by the OLD account's rows, so
+    step 4 kept re-resolving the old account and the live writer never
+    ingested the new one. A persisted current Riot ID breaks that
+    self-reinforcing loop - the new account has zero DB rows yet, so it can
+    only be discovered from an explicit/persisted identity, never the
+    majority.
     """
     if explicit_puuid:
         return explicit_puuid
@@ -150,6 +162,16 @@ def resolve_current_puuid(
         if acct is None or not acct.get("puuid"):
             raise SystemExit(f"Account-V1 lookup failed for {explicit_riot_id!r}")
         return acct["puuid"]
+
+    if state_riot_id and "#" in state_riot_id:
+        name, tag = state_riot_id.split("#", 1)
+        acct = riot_api.get_account_by_riot_id(name, tag)
+        if acct is not None and acct.get("puuid"):
+            print(f"Resolved PUUID from persisted Riot ID {state_riot_id} "
+                  f"via Account-V1 (sticky current account)")
+            return acct["puuid"]
+        print(f"  Persisted Riot ID {state_riot_id} failed Account-V1; "
+              f"falling back to DB-derived account")
 
     riot_id = operator_riot_id_from_db(conn)
     if riot_id is not None:
@@ -358,15 +380,21 @@ def main() -> int:
         return 2
 
     conn = open_db()
+    state = load_state()
     puuid = resolve_current_puuid(
         conn,
         explicit_puuid=args.puuid,
         explicit_riot_id=args.riot_id,
+        state_riot_id=str(state.get("riot_id") or ""),
     )
     print(f"Operator PUUID: {puuid[:24]}...")
 
-    state = load_state()
     state["puuid"] = puuid
+    # Persist the explicit current account so it sticks across runs + keeps
+    # the live-writer path anchored to the right account even while the DB
+    # majority still lags a freshly-switched Riot ID (REPLAY1 fix).
+    if args.riot_id and "#" in args.riot_id:
+        state["riot_id"] = args.riot_id
     try:
         legacy = operator_puuid_from_db(conn)
         if legacy and legacy != puuid:
