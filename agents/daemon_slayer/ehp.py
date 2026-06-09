@@ -142,6 +142,92 @@ def _armor_factor(resist: float) -> float:
     return 2.0 - 100.0 / (100.0 - resist)
 
 
+def _clamp_pct(value: float) -> float:
+    """Clamp a percent-fraction input to ``[0.0, 0.99]``.
+
+    T1-F3 (2026-06-09): the enemy-pen pipeline caps every percent term
+    (shred + general %pen) at 0.99 per the lift-doc spec
+    (docs/COMPETITOR_LIFT_2026-06-08.md line 60) so a single source can
+    never fully zero a resist (mirrors League's 99% shred/pen practical
+    ceiling). Negative inputs floor at 0.0 (a percent term cannot heal a
+    resist back upward).
+    """
+    if value <= 0.0:
+        return 0.0
+    if value >= 0.99:
+        return 0.99
+    return value
+
+
+def _effective_resist_after_pen(
+    resist: float,
+    *,
+    shred_pct: float = 0.0,
+    pen_pct: float = 0.0,
+    flat_pen: float = 0.0,
+) -> float:
+    """Apply the enemy-side pen pipeline to one of the tank's resists.
+
+    T1-F3 (BACKLOG MED, docs/COMPETITOR_LIFT_2026-06-08.md lines 59-66) -
+    the OPT-IN enemy-penetration seam for the EHP scorer. Mirrors the
+    DPS-side ``effects.effective_target_armor`` / ``effective_target_mr``
+    convention so the two scorers stay consistent, but takes the already-
+    summed/composed per-axis inputs the ``compute_ehp`` kwargs expose
+    rather than reading an item-effect list (the EHP target is the tank;
+    the pen comes from the ENEMY build, plumbed in as scalars).
+
+    Order (spec, ARMOR side): flat reduction -> % shred (clamped
+    0..0.99) -> general %pen (multiplicative, already composed by the
+    caller into a single fraction) -> lethality / flat pen (subtract
+    LAST, post-%). The MR side is the same shape: %shred -> %pen -> flat
+    magic pen last. There is no flat-reduction kwarg in the T1-F3 intent
+    list, so the flat-reduction step is a no-op here (the seam exposes
+    shred / general-%pen / flat-pen only).
+
+    League's two-rule split (preserved from the DPS helper):
+    * SHRED is a REDUCTION - it CAN drive the resist below zero, and a
+      negative resist amplifies incoming damage via ``_armor_factor``'s
+      ``2 - 100/(100-R)`` branch. (Within this seam shred is a single
+      clamped-0.99 percent, so it never fully crosses zero on its own,
+      but the negative-capable contract is kept for symmetry + a future
+      flat-reduction kwarg.)
+    * PENETRATION (general %pen, then flat pen / lethality) CANNOT push
+      the resist below zero - on an already non-positive post-shred
+      value it is a pure no-op, and the flat-pen tail floors at 0.0.
+
+    NOTE on natural-vs-bonus armor: the lift-doc spec asks to split
+    natural vs bonus armor IF the codebase already tracks bonus armor
+    FOR THE TARGET (so bonus-only pen hits only the bonus portion). The
+    EHP scorer's target (the tank) does NOT carry a first-class bonus-
+    armor field - ``compute_ehp`` resolves total ``armor`` / ``mr`` from
+    the build, and the T1-F3 kwarg list carries no bonus-only-pen input.
+    Per the spec fallback, bonus-only pen is therefore APPROXIMATED
+    against the total resist here; no bonus-armor field is invented. If
+    a bonus-only-pen kwarg is added later, split the resist at the
+    flat-reduction step (after computing total - base from
+    ``build_champion``'s base_stats) before the % terms.
+
+    ``resist`` already-negative returns unchanged (pen / shred is a
+    no-op on negative resist, mirroring the DPS helper). All-zero pen
+    inputs return ``resist`` unchanged (identity), so the default keeps
+    ``compute_ehp`` byte-identical.
+    """
+    shred = _clamp_pct(shred_pct)
+    pen = _clamp_pct(pen_pct)
+    flat = max(0.0, flat_pen)
+    if not (shred or pen or flat):
+        return resist
+    if resist < 0:
+        return resist
+    r = resist * (1.0 - shred)            # % shred (reduction) - can cross 0
+    if r <= 0.0:
+        # Shred alone already reached <= 0 - penetration is a no-op.
+        return r
+    r = r * (1.0 - pen)                   # general % penetration (multiplicative)
+    r = r - flat                          # flat pen + lethality (subtract last)
+    return max(0.0, r)                    # penetration cannot go below zero
+
+
 _RANGED_ATTACKRANGE_THRESHOLD = 250.0
 
 
@@ -742,6 +828,11 @@ def compute_ehp(
     external_resist_mr: float = 0.0,
     external_revive_multiplier: float = 1.0,
     apply_egg_resist: bool = True,
+    enemy_lethality: float = 0.0,
+    enemy_armor_pen_pct: float = 0.0,
+    enemy_shred_pct: float = 0.0,
+    enemy_magic_pen_flat: float = 0.0,
+    enemy_magic_pen_pct: float = 0.0,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -751,8 +842,20 @@ def compute_ehp(
     callers (``core/defensive_picks.py``) derive these shares from the
     threat profile.
 
-    Caster armor/MR come straight from the resolved stat block; no
-    enemy-pen modeling in Phase 1.
+    Caster armor/MR come straight from the resolved stat block. Enemy-pen
+    modeling is OPT-IN as of T1-F3 (2026-06-09): the five ``enemy_*``
+    kwargs (``enemy_lethality`` / ``enemy_armor_pen_pct`` /
+    ``enemy_shred_pct`` / ``enemy_magic_pen_flat`` / ``enemy_magic_pen_pct``)
+    feed ``_effective_resist_after_pen`` BEFORE the ``_armor_factor`` curve.
+    ALL FIVE default to 0.0 -> the pen step is an identity no-op ->
+    BYTE-IDENTICAL to the pre-seam Phase-1 behavior (closes the long-
+    standing ehp.py:30 deliberate omission). ARMOR order: % shred (clamped
+    0..0.99) -> general %pen (multiplicative) -> lethality (flat, subtract
+    LAST). MR order: %pen -> flat magic pen (subtract last). The reported
+    ``EhpResult.armor`` / ``.mr`` stay the RESOLVED build stats; the post-
+    pen value is internal to the EHP math (matching the passive-resist /
+    ally-grant convention). See ``_effective_resist_after_pen`` for the
+    natural-vs-bonus-armor NOTE.
 
     ENGINE 1.33.0 (2026-05-22): ``enemy_champions`` keyword is the
     second engine math consumer of ``compute_cc_pressure`` (closes item
@@ -947,6 +1050,34 @@ def compute_ehp(
     ext_mr = max(0.0, float(external_resist_mr))
     eff_armor = armor + bonus_armor + ext_armor
     eff_mr = mr + bonus_mr + ext_mr
+
+    # T1-F3 (2026-06-09, docs/COMPETITOR_LIFT_2026-06-08.md lines 59-66):
+    # OPT-IN enemy-penetration seam. The five enemy_* kwargs default to 0.0
+    # -> ``_effective_resist_after_pen`` is an identity no-op -> eff_armor /
+    # eff_mr stay exactly the resist sum above -> BYTE-IDENTICAL to the
+    # pre-seam EHP math (closes the ehp.py:30 deliberate Phase-1 omission
+    # "Caster-side enemy pen/reduction ... needs enemy build plumbing"; the
+    # plumbing now arrives as caller-supplied scalars sourced from the enemy
+    # build by core/defensive_picks.py). The pen bites the FULL resolved-
+    # plus-granted resist (the tank's real effective resist is what an enemy
+    # penetrates), so it is applied AFTER the passive/ally resist grants and
+    # BEFORE _armor_factor. ARMOR: % shred -> general %pen -> lethality (flat,
+    # last). MR: %shred (none in the kwarg set) -> %pen -> flat magic pen
+    # last. true_ehp ignores resists so pen never touches it. See the helper
+    # docstring for the natural-vs-bonus-armor NOTE (bonus-only pen is
+    # approximated against total; no bonus-armor field is invented).
+    eff_armor = _effective_resist_after_pen(
+        eff_armor,
+        shred_pct=enemy_shred_pct,
+        pen_pct=enemy_armor_pen_pct,
+        flat_pen=enemy_lethality,
+    )
+    eff_mr = _effective_resist_after_pen(
+        eff_mr,
+        shred_pct=0.0,
+        pen_pct=enemy_magic_pen_pct,
+        flat_pen=enemy_magic_pen_flat,
+    )
 
     # Shields + heal sit at the top of the damage stack: each damage_type
     # sees ``hp + shield_any_amped + shield_<type>_amped + heal_total``
@@ -1199,6 +1330,22 @@ def compute_ehp(
             f"(+{ext_armor:.1f} armor, +{ext_mr:.1f} MR into the denominator, "
             f"x{ext_revive:.3f} on the numerator; sourced from "
             f"_passive_ally_grant_overrides, the sixth survivability axis)"
+        )
+    # T1-F3 (2026-06-09): surface the opt-in enemy-pen step when active. The
+    # reported armor/mr are the resolved build stats; eff_armor / eff_mr above
+    # are the post-pen values the EHP math consumed.
+    if enemy_shred_pct or enemy_armor_pen_pct or enemy_lethality:
+        notes.append(
+            f"enemy_armor_pen: shred={_clamp_pct(enemy_shred_pct) * 100:.0f}% -> "
+            f"pct_pen={_clamp_pct(enemy_armor_pen_pct) * 100:.0f}% -> "
+            f"lethality={max(0.0, enemy_lethality):.0f} flat "
+            f"(armor {armor + bonus_armor + ext_armor:.1f} -> {eff_armor:.1f} effective)"
+        )
+    if enemy_magic_pen_pct or enemy_magic_pen_flat:
+        notes.append(
+            f"enemy_magic_pen: pct_pen={_clamp_pct(enemy_magic_pen_pct) * 100:.0f}% -> "
+            f"flat={max(0.0, enemy_magic_pen_flat):.0f} "
+            f"(MR {mr + bonus_mr + ext_mr:.1f} -> {eff_mr:.1f} effective)"
         )
 
     return EhpResult(
