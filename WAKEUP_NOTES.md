@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-09 - HZ-C seed expansion (full 171 SR) + slim/compact v3 schema + Git LFS migration [item 370]
+
+Operator "start open items in parallel" -> 3 parallel boot-anomaly triage agents + the gated HZ-C seed-expansion headline. 5 commits, CI green. RC NOT restarted (core/ read by the shadow consumer, no live flip). ENGINE 1.120.0 untouched, no Share delta.
+
+- **Parallel triage (no code):** RC-DDragonMirrorRefresh result=2 = transient CDN single-asset fail (non-fatal exit2, mirror current 16.11.1, manual re-run exit0); gamepc :8892 down + bridge stale 8.58d = KNOWN-EXPECTED (Game-PC off by design, ADR-011, ARCHITECTURE.md:168) - no-op. OPERATIONS.md task-table synced (+8 live RC-* tasks, flag stale RC-Bridge-MCP; commit 28a55781).
+- **HZ-C SEED-EXPANSION (item 370, commit 4202760c; operator-gated x3 forks: full-171-SR + slim+compact-commit + trim-to-55-60MB).** laning schema v2 -> **v3**: dropped sequence/my_can_full_combo/manaless/economy.spike_eta_s + compact writer (separators no indent) + new GEN_BANDS L2/L6/L11 (L16 omitted from the sweep, reader fail-softs lvl>=14) + per-pair fail-soft in generate_table. Regen full 171x171 SR (171 ability-backed champs, Zaahen excluded): laning 350892 cells / 65.6MB (was 1600/1.0MB), HZ-B1 build_orders 684, HZ-B2 variants 342. Non-seed champs (Zed/Ambessa/Smolder) now covered; L16 lookup MISS by design. Full RC 5611 passed / 2 skip / 85 subtests.
+- **Git LFS migration (commits 93f76c53 + 5c24814b).** laning_scenarios/**/*.json LFS-tracked GOING-FORWARD (no history rewrite / no force-push, fleet-safe). git pack growth/patch ~62MB -> ~0 (pointer only); content -> LFS storage. Fleet caveat: a no-git-lfs checkout gets a 133B pointer -> RC fail-softs to Haiku; `git lfs install --local` ABORTS benignly on the Share post-commit hook (filters+pre-push still set) - do NOT `--force`. Recorded: memory reference_git_lfs_laning_artifact + OPERATIONS.md "Git LFS" section.
+- **NEXT (gated):** accrue real-game HZ shadow on the expanded seed -> precompute-vs-Haiku agreement analysis (item-369 native_action/native_choices capture is the sample) -> THEN the live coach FLIP (do-not-flip-blind). ARAM/Arena = `--mode all` offline expand (no code change). HZ-D1 Electron overlay Phase 2+. Don't-redo: full-NxN-290MB / gitignore (operator chose slim-commit); L16 omission intentional.
+
+---
+
 # 2026-06-09 - HZ-C arc: precomputed A/B choice-coach (laning + build) + validation gate [items 366-369]
 
 `/headless-upgrade` autonomous run (run_id 2026-06-09-01, 1-Claude orchestrator + 3 background cost-audit Explore agents). 5 commits, all CI green, RC restarted 4x (pids 16712 -> 20776 -> 3992). PRIMARY charter-4b Haiku-to-ZERO Lane C, end-to-end. ENGINE 1.120.0 untouched throughout (no DS work), no Share delta (all core/dashboard/tools, not in the Share package).
@@ -27,16 +38,3 @@ gemini-headless-upgrade loop, directive LIFT1 (cycle off the 2026-06-08 ORCHESTR
 - **ACT:** NO HIGH-lift+LOW-risk finding -> per the ACT gate (MED/LOW always defer) NO in-run code. **2 FUTURE gaps -> BACKLOG (Coaching depth):** T1-F3 enemy-pen-aware effective resists (`ehp.py compute_ehp` documented Phase-1 omission, enemy pen plumbed via `defensive_picks.py` but feeds only THREAT scores; MED engine schema lift, operator-gated) + T2-F4 rune/keystone in the combo SURFACE (`routes_ds_combo.py` threads no `runes=` param, grep=0; MED route+panel wire-up + Sec-3b UI ritual). Minor deferred: T2-F3 TTK headline, T1-F4 per-stat EHP/gold.
 - Docs-only: DS-dir 7024 passed / RC tests/ 5352 passed, 0 regressions. ENGINE 1.120.0 untouched, no DS/RC restart, no Share, no UI-audit. Competitor tools read-only, no code vendored. ROADMAP 81707/81920 (TIGHT - the NEXT cycle needs a ROADMAP_HISTORY relocation before it can add a shipped line).
 - **NEXT OPEN = the operator UI/UX + bug batch** (LOBBY1 / PGR1 / REPLAY1 / HIST1+HIST2 / CS1-CS3), then HZ-B.
-
----
-
-# 2026-06-08 - HZ-A2 Lane A economy block: recall/back-timing + power-spike-ETA (Haiku-to-ZERO) [item 353]
-
-gemini-headless-upgrade loop, directive HZ-A2 (cycle 2 off the 2026-06-08 ORCHESTRATION_PLAN). Commit dc5e6293. BUILD + PERSIST only, NO live coach flip (charter 4b do-not-flip-blind).
-
-- **`core/lead_projection.py` new pure primitives** (shared macro-economy authority; `project_lead` untouched): `minutes_for_level` (band<->minute bridge off the existing level benchmark), `gold_income_per_min` + `expected_gold_earned` (GROSS-earned benchmark, ARAM 600 > SR 450, distinct from on-hand `_GOLD_PER_MIN_BENCHMARK`), cumulative-gold `_SPIKE_LADDER` (component 1100 / first_item 3000 / two_item 6200 / three_item 9400) + `SPIKE_COMPLETE`, `next_spike` / `spike_threshold` / `spike_eta_seconds`.
-- **`core/laning_scenario_precompute.py`:** `economy_cell` + `_recall_verdict` compose those into a per-cell `{recall, next_spike, spike_eta_s, gold_at_band}` block on every leaf; schema v1 -> **v2** + economy dimensions stanza.
-- **Design call:** recall is gold/spike + mana driven, NOT trade-verdict driven (a combat read is not an economy one). low-mana mana champ -> recall_now; unspent completed-item gold + no imminent spike -> recall_now; spike within 60s -> back_soon; core complete -> hold.
-- **Orchestration call:** HZ-A2 is a hard LINEAR A->B dep (~120 coupled LOC) so "true-concurrency" worktrees degenerate to sequential + a RED B slice -> ran as sole orchestrator with TDD (31 RED -> green) + the read-only verifier subagent as the pre-commit gate. verifier CONFIRM all 6 claims (76/0 module files; 0 of 1600 leaves missing economy; ruff clean).
-- Regenerated SR seed (1600 cells, v2): recall_now 940 / back_soon 440 / hold 220. +35 tests (lead_projection_economy 19 + laning_scenario_economy 16). Full RC 5352 passed / 1 skip / 85 subtests / 0 fail. ENGINE 1.120.0 untouched, ds_share_sync --check green (laning_scenarios NOT in Share), no DS/RC restart, no web -> no UI-audit. Directive's "clear false-alarm blockers" = no-op (none existed; grep clean).
-- **NEXT OPEN = HZ-B1** (Lane B build-order precompute per champ x mode x enemy-comp). The table is read by a FUTURE consumer (HZ-C1); validate recall-timing on a real/replayed game BEFORE any coach flip.
