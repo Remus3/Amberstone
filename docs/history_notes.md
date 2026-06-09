@@ -53,6 +53,19 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-08 - HZ-A2 Lane A economy block: recall/back-timing + power-spike-ETA (Haiku-to-ZERO) [item 353]
+
+gemini-headless-upgrade loop, directive HZ-A2 (cycle 2 off the 2026-06-08 ORCHESTRATION_PLAN). Commit dc5e6293. BUILD + PERSIST only, NO live coach flip (charter 4b do-not-flip-blind).
+
+- **`core/lead_projection.py` new pure primitives** (shared macro-economy authority; `project_lead` untouched): `minutes_for_level` (band<->minute bridge off the existing level benchmark), `gold_income_per_min` + `expected_gold_earned` (GROSS-earned benchmark, ARAM 600 > SR 450, distinct from on-hand `_GOLD_PER_MIN_BENCHMARK`), cumulative-gold `_SPIKE_LADDER` (component 1100 / first_item 3000 / two_item 6200 / three_item 9400) + `SPIKE_COMPLETE`, `next_spike` / `spike_threshold` / `spike_eta_seconds`.
+- **`core/laning_scenario_precompute.py`:** `economy_cell` + `_recall_verdict` compose those into a per-cell `{recall, next_spike, spike_eta_s, gold_at_band}` block on every leaf; schema v1 -> **v2** + economy dimensions stanza.
+- **Design call:** recall is gold/spike + mana driven, NOT trade-verdict driven (a combat read is not an economy one). low-mana mana champ -> recall_now; unspent completed-item gold + no imminent spike -> recall_now; spike within 60s -> back_soon; core complete -> hold.
+- **Orchestration call:** HZ-A2 is a hard LINEAR A->B dep (~120 coupled LOC) so "true-concurrency" worktrees degenerate to sequential + a RED B slice -> ran as sole orchestrator with TDD (31 RED -> green) + the read-only verifier subagent as the pre-commit gate. verifier CONFIRM all 6 claims (76/0 module files; 0 of 1600 leaves missing economy; ruff clean).
+- Regenerated SR seed (1600 cells, v2): recall_now 940 / back_soon 440 / hold 220. +35 tests (lead_projection_economy 19 + laning_scenario_economy 16). Full RC 5352 passed / 1 skip / 85 subtests / 0 fail. ENGINE 1.120.0 untouched, ds_share_sync --check green (laning_scenarios NOT in Share), no DS/RC restart, no web -> no UI-audit. Directive's "clear false-alarm blockers" = no-op (none existed; grep clean).
+- **NEXT OPEN = HZ-B1** (Lane B build-order precompute per champ x mode x enemy-comp). The table is read by a FUTURE consumer (HZ-C1); validate recall-timing on a real/replayed game BEFORE any coach flip.
+
+---
+
 # 2026-06-08 - HZ-A1 Lane A laning-scenario precompute (Haiku-to-ZERO) [item 352]
 
 gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06-08 ORCHESTRATION_PLAN reseed). Commit 85b13b7c. BUILD + PERSIST + READ only, NO live coach flip (charter 4b do-not-flip-blind).
