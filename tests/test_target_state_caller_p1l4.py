@@ -185,7 +185,13 @@ class TestCoachFeedsFixedCurveNotEnemyBuild:
         skip_names = {"enemy_aware_stats.py", Path(__file__).name}
         callers = []
         for p in _ROOT.rglob("*.py"):
-            if ".claude" in p.parts or "_archive" in str(p):
+            # Exclusion is RELATIVE to _ROOT: skip vendored .claude/worktree
+            # + _archive copies NESTED under the repo, without nuking the whole
+            # tree when _ROOT itself lives under a .claude/worktrees/<id> path
+            # (absolute p.parts would then match ".claude" for every file and
+            # the caller scan would come back empty).
+            rel_parts = p.relative_to(_ROOT).parts
+            if ".claude" in rel_parts or "_archive" in rel_parts:
                 continue
             if p.name in skip_names:
                 continue
