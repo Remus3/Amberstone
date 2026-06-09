@@ -37,19 +37,16 @@ import {
   fetchCcPairing, getCachedCcPairing,
   getCcPairingCacheCount, renderCcPairing,
 } from './cc_pairing.js';
-import {
-  renderDsSweepForChampSelect, getDsSweepCacheCount, setDsSweepScheduler,
-} from './ds_sweep.js';
+// CS3 (2026-06-08): the DPS-scaling sweep, 1v1 fight-model matchup,
+// action-queue combo timeline, and relative-item-power panels were MOVED to
+// the Active Match view (web/js/panels/active_match.js) - they now read the
+// LIVE champion mid-game instead of the locked champ-select pick. Their
+// imports + render invocations left this file with the move. The profile,
+// engine-knobs, and stat-check panels STAY on champ-select.
 import {
   renderDsProfileForChampSelect, getDsProfileCacheCount, setDsProfileScheduler,
 } from './ds_profile.js';
-import { renderDsMatchupForChampSelect, setDsMatchupScheduler } from './ds_matchup.js';
-import {
-  fetchDsCombo, getCachedDsCombo, getDsComboCacheCount, parseSeqInput,
-  renderDsCombo,
-} from './ds_combo.js';
 import { renderDsKnobs, getDsKnobsCacheCount } from './ds_knobs.js';
-import { renderDsRelscore, getDsRelscoreCacheCount } from './ds_relscore.js';
 import { renderDsStatcheck, getDsStatcheckCacheCount } from './ds_statcheck.js';
 
 // -- LCU command helper (used by champ-select + build chooser) ------
@@ -1078,17 +1075,13 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // plausible enablers. Read-only join over the existing cc_conditional
   // registry. Delimited CS1 block (CS3 will also touch this file).
   _csvRenderCcPairing(cs);
-  setDsSweepScheduler(_csvScheduleRender);
-  renderDsSweepForChampSelect(cs);
+  // CS3 (2026-06-08): ds-sweep / ds-matchup / ds-combo / ds-relscore render
+  // calls moved to active_match.js (they read the live champion mid-game).
+  // ds-profile / ds-knobs / ds-statcheck stay on champ-select for the pick.
   setDsProfileScheduler(_csvScheduleRender);
   renderDsProfileForChampSelect(cs);
-  setDsMatchupScheduler(_csvScheduleRender);
-  renderDsMatchupForChampSelect(cs);
-  _csvRenderDsCombo(cs);
   { const _dskBlock = document.getElementById("csv-ds-knobs");
     if (_dskBlock) renderDsKnobs(_dskBlock, cs); }
-  { const _dsrBlock = document.getElementById("csv-ds-relscore");
-    if (_dsrBlock) renderDsRelscore(_dsrBlock, cs); }
   { const _dssBlock = document.getElementById("csv-ds-statcheck");
     if (_dssBlock) renderDsStatcheck(_dssBlock, cs); }
   // ---- Row 3: pick-order tips (no header label per s213 v3) ----
@@ -1447,11 +1440,11 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   // pairing card re-renders when /api/cc-pairing lands.
   const ccPairCount = getCcPairingCacheCount();
   const cdwCount = getCooldownWatchCacheCount();
-  const dswCount = getDsSweepCacheCount();
+  // CS3 (2026-06-08): ds-sweep / ds-combo / ds-relscore cache counts dropped
+  // from the champ-select sig - those panels render on active-match now. The
+  // profile / knobs / statcheck counts stay (they still render here).
   const dspCount = getDsProfileCacheCount();
-  const dscCount = getDsComboCacheCount();
   const dskCount = getDsKnobsCacheCount();
-  const dsrCount = getDsRelscoreCacheCount();
   const dssCount = getDsStatcheckCacheCount();
   // ARAM comp-verdict presence stamp - flips 0->1 when the verdict fetch
   // lands so the idempotent render gate re-fires and the bench banner
@@ -1469,7 +1462,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|ccpair:${ccPairCount}|cdw:${cdwCount}|dsw:${dswCount}|dsc:${dscCount}|dsk:${dskCount}|dsr:${dsrCount}|dss:${dssCount}|dsp:${dspCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|ccpair:${ccPairCount}|cdw:${cdwCount}|dsk:${dskCount}|dss:${dssCount}|dsp:${dspCount}`,
     verdictKey,
   ].join("|");
 }
@@ -1906,43 +1899,9 @@ function _csvRenderCcPairing(cs) {
   renderCcPairing(block, payload);
 }
 
-let _csvDsComboWired = false;
-// Host wrapper for the action-queue combo panel (competitor lift #2).
-// ds_combo.js renders the input row on first paint then leaves the
-// re-fetch cadence to the host: resolve the LOCKED champion, parse the
-// live input, fetch the per-hit timeline, repaint. The input listener is
-// wired once (the panel never repaints the input, preserving the caret).
-function _csvRenderDsCombo(cs) {
-  const block = document.getElementById("csv-sugg-ds-combo");
-  if (!block) return;
-  const myId = (cs.my_champion | 0) || 0;
-  if (myId <= 0) { block.hidden = true; return; }
-  const names = resolveChampNames([myId]);
-  if (!names.length) { block.hidden = true; return; }
-  block.hidden = false;
-  const champion = names[0];
-  const input = document.getElementById("csv-sugg-ds-combo-input");
-  if (!input) {
-    // First paint: panel builds the (defaulted) input row. Wire it + kick
-    // a re-render so the next tick reads the input value and fetches.
-    renderDsCombo(block, null, { champion });
-    const inp = document.getElementById("csv-sugg-ds-combo-input");
-    if (inp && !_csvDsComboWired) {
-      inp.addEventListener("change", () => _csvScheduleRender());
-      inp.addEventListener("input", () => _csvScheduleRender());
-      _csvDsComboWired = true;
-    }
-    _csvScheduleRender();
-    return;
-  }
-  const seq = parseSeqInput(input.value);
-  const opts = {
-    champion, level: 11, items: [],
-    seq, target_armor: 80, target_mr: 60, mode: "SR",
-  };
-  fetchDsCombo(opts, _csvScheduleRender);
-  renderDsCombo(block, getCachedDsCombo(opts), { champion });
-}
+// CS3 (2026-06-08): the action-queue combo host wrapper moved to
+// active_match.js - the combo timeline reads the live champion mid-game now,
+// not the locked champ-select pick.
 
 function _csvAdaptKey(champion, enemyIds, baseSummoners, role) {
   return [

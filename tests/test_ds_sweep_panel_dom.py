@@ -5,18 +5,20 @@ Backend dashboard/routes_ds_sweep.py + its engine module
 agents/daemon_slayer/dps_sweep.py ship with their own suites
 (tests/test_routes_ds_sweep.py + tests/test_ds_sweep_2026_05_30.py). This
 file pins the frontend wiring that hooks the sparkline card into the
-Suggestions card of champ-select so a future refactor that drops a wire
-reverts the surface to invisible:
+Active Match view so a future refactor that drops a wire reverts the surface
+to invisible:
 
-  - web/index.html declares #csv-sugg-ds-sweep inside
-    .csv-card-suggestions (a sibling of the cooldown-watch + cc-conditional
-    cards).
+  - CS3 (2026-06-08): #csv-sugg-ds-sweep was MOVED from the champ-select
+    Suggestions card to the Active Match BUILD pane (#view-active-match) so it
+    reads the LIVE champion mid-game, not the locked champ-select pick.
+  - web/index.html declares #csv-sugg-ds-sweep inside the active-match BUILD
+    pane (a sibling of the spike-curve + spike-markers + the other relocated
+    DS panels).
   - web/js/panels/ds_sweep.js exports the API contract (fetchDsSweep,
     getCachedDsSweep, getDsSweepCacheCount, renderDsSweep,
     renderDsSweepForChampSelect) and is ASCII-clean.
-  - web/js/panels/champ_select.js imports the panel + calls
-    renderDsSweepForChampSelect + counts cache state in the section
-    signature.
+  - web/js/panels/active_match.js imports the panel + calls
+    renderDsSweepForChampSelect against the live-champion synthetic cs.
   - web/css/panels/ds_sweep.css is @import'd into dashboard.css.
 
 Grep-based smoke checks - cheap, fast, enough to catch a missing wire.
@@ -40,6 +42,7 @@ WEB = ROOT / "web"
 INDEX_HTML = WEB / "index.html"
 PANEL_JS = WEB / "js" / "panels" / "ds_sweep.js"
 CHAMP_SELECT_JS = WEB / "js" / "panels" / "champ_select.js"
+ACTIVE_MATCH_JS = WEB / "js" / "panels" / "active_match.js"
 PANEL_CSS = WEB / "css" / "panels" / "ds_sweep.css"
 DASHBOARD_CSS = WEB / "css" / "dashboard.css"
 
@@ -103,14 +106,15 @@ class OwnFilesTests(unittest.TestCase):
 
 
 class WiringTests(unittest.TestCase):
-    """Orchestrator-owned shared-file wiring. Skips until the orchestrator
-    lands the WIRING SPEC so this agent's branch is green standalone; turns
-    into a live regression guard once the surface is wired."""
+    """Shared-file wiring guard. CS3 (2026-06-08) moved this surface from
+    champ-select to the Active Match view; the assertions now pin the
+    active-match home so a refactor that drops a wire is caught."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.index = _read(INDEX_HTML)
         cls.cs = _read(CHAMP_SELECT_JS)
+        cls.am = _read(ACTIVE_MATCH_JS)
         cls.dashboard_css = _read(DASHBOARD_CSS)
         cls.wired = _MOUNT_ID in cls.index
 
@@ -125,22 +129,33 @@ class WiringTests(unittest.TestCase):
         idx = self.index.index(_MOUNT_ID)
         self.assertIn("hidden", self.index[idx:idx + 200])
 
-    def test_inside_suggestions_card(self) -> None:
-        sugg_open = self.index.index("csv-card-suggestions")
-        chip_at = self.index.index(_MOUNT_ID)
-        self.assertLess(sugg_open, chip_at)
+    def test_inside_active_match_build_pane(self) -> None:
+        # CS3: the mount now sits in the active-match BUILD pane, after the
+        # view-active-match section opener and before the input bar.
+        am_open = self.index.index('id="view-active-match"')
+        mount_at = self.index.index(_MOUNT_ID)
+        next_view = self.index.index('id="activity-strip"')
+        self.assertLess(am_open, mount_at)
+        self.assertLess(mount_at, next_view)
 
-    def test_champ_select_imports_panel(self) -> None:
-        self.assertIn("from './ds_sweep.js'", self.cs)
-        self.assertIn("renderDsSweepForChampSelect", self.cs)
-        self.assertIn("getDsSweepCacheCount", self.cs)
+    def test_not_in_champ_select_anymore(self) -> None:
+        # The mount must be GONE from the champ-select region.
+        cs_open = self.index.index('id="view-champ-select"')
+        cs_close = self.index.index('id="view-session"')
+        cs_region = self.index[cs_open:cs_close]
+        self.assertNotIn(_MOUNT_ID, cs_region)
 
-    def test_champ_select_calls_renderer(self) -> None:
-        self.assertIn("renderDsSweepForChampSelect(cs)", self.cs)
+    def test_active_match_imports_panel(self) -> None:
+        self.assertIn("from './ds_sweep.js'", self.am)
+        self.assertIn("renderDsSweepForChampSelect", self.am)
 
-    def test_section_signature_includes_dsw_cache_count(self) -> None:
-        self.assertIn("getDsSweepCacheCount", self.cs)
-        self.assertIn("dsw:", self.cs)
+    def test_active_match_calls_renderer(self) -> None:
+        self.assertIn("renderDsSweepForChampSelect(synthetic", self.am)
+
+    def test_champ_select_no_longer_imports_sweep(self) -> None:
+        # The sweep panel left champ-select entirely.
+        self.assertNotIn("renderDsSweepForChampSelect", self.cs)
+        self.assertNotIn("getDsSweepCacheCount", self.cs)
 
     def test_dashboard_imports_panel_css(self) -> None:
         self.assertIn("./panels/ds_sweep.css", self.dashboard_css)
