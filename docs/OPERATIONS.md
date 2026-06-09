@@ -52,7 +52,15 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-BridgeWatcher` | At logon | Administrator | Silent bridge poll daemon |
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
-| `RC-Bridge-MCP` | At logon (operator-gated) | Administrator | Local cross-Claude bridge MCP (:8895) |
+| `RC-Bridge-MCP` | STALE - not installed live (verify vs RC-BridgeDaemon) | Administrator | Local cross-Claude bridge MCP (:8895) |
+| `RC-BridgeDaemon` | At logon | Administrator | Zero-cost bridge task sentinel (`tools/legion_bridge_daemon.py`) |
+| `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
+| `RC-GeminiAudit` | Daily | Administrator | Gemini read-only auditor (`tools/gemini_audit.ps1`) |
+| `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/gamepc_hotkey_listener.py`) |
+| `RC-LCUAgent` | At logon | Administrator | LCU relay agent (`tools/gamepc_lcu_agent.py`) |
+| `RC-LiveClientRelay` | At logon | Administrator | Live Client `:2999` relay agent (`tools/gamepc_liveclient_relay.py`) |
+| `RC-PostmortemAnalyze` | Weekly | Administrator | Postmortem analyze + restart (`ops/run_postmortem_with_restart.ps1`) |
+| `RC-UpstreamDriftCheck` | Daily | Administrator | Upstream content-drift detector ddragon/meraki/cdragon (`tools/upstream_drift_check.py`) |
 | `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
 | `RC-RewindCatchup` | Weekly Sunday 04:00 | Administrator | `scripts/rewind_catchup.py` (pull new Match-V5 records into rewind_history.db) |
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
