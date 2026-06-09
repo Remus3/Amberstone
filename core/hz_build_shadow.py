@@ -39,6 +39,8 @@ def log_precomputed_build(
     lean: str | None,
     choices: list | None,
     covered: bool = False,
+    native_action: str | None = None,
+    native_choices: list | None = None,
     item_count=None,
     game_time_s: float | None = None,
     path: Path | None = None,
@@ -50,7 +52,11 @@ def log_precomputed_build(
     skip, or any failure (fail-soft). Never raises - safe on the hot path. A
     coverage MISS (``covered=False``, ``lean`` may be None, ``choices`` empty)
     is recorded too: the seed coverage rate on real games is a validation
-    signal. The gate only requires an operator champion."""
+    signal. The gate only requires an operator champion.
+
+    ``native_action`` / ``native_choices`` capture the LIVE coach output for the
+    same tick so the precompute can be compared against what Haiku actually
+    said before any flip (the do-not-flip-blind comparison)."""
     try:
         if not my_champion or not isinstance(my_champion, str):
             return None
@@ -88,6 +94,8 @@ def log_precomputed_build(
             "game_time_s": game_time_s,
             "engine_version": ENGINE_VERSION,
             "choices": choice_list,
+            "native_action": native_action,
+            "native_choices": list(native_choices or []),
         }
 
         target.parent.mkdir(parents=True, exist_ok=True)

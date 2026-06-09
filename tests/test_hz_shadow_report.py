@@ -55,6 +55,18 @@ def test_build_lean_distribution(tmp_path):
     assert out["by_lean"] == {"anti_squishy": 1, "anti_tank": 1}  # covered only
 
 
+def test_comparable_counts_native_signal(tmp_path):
+    p = tmp_path / "c.jsonl"
+    _write(p, [
+        {"my_champion": "A", "covered": True, "choices": [{"label": "x"}],
+         "native_choices": [{"label": "y"}], "native_action": "do y"},
+        {"my_champion": "B", "covered": True, "choices": [{"label": "x"}],
+         "native_choices": [], "native_action": None},  # no native -> not comparable
+    ])
+    out = rep.summarize_laning(rep.load_jsonl(p))
+    assert out["comparable"] == 1
+
+
 def test_build_report_shape_and_hint_empty(tmp_path):
     r = rep.build_report(tmp_path / "none1.jsonl", tmp_path / "none2.jsonl")
     assert r["schema"] == "hz_shadow_report/v1"

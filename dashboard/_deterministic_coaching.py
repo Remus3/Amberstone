@@ -569,7 +569,10 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
         log_precomputed_choices(
             mk, str(champ), enemy,
             choices=choices, band=band, mana_state=mana_state, cd_state=cd_state,
-            covered=covered, game_time_s=gs.get("game_time_s"),
+            covered=covered,
+            native_action=coach.get("action") if isinstance(coach, dict) else None,
+            native_choices=to_jsonable(parse_choices(coach)),
+            game_time_s=gs.get("game_time_s"),
             level=level, item_count=item_count, path=path,
         )
     except Exception:
@@ -618,8 +621,10 @@ def shadow_log_precomputed_build(coach: dict, lc: dict | None, mode_key: str,
 
         log_precomputed_build(
             mk, str(champ), enemy_comp, lean=lean,
-            choices=choices, covered=covered, item_count=item_count,
-            game_time_s=gs.get("game_time_s"), path=path,
+            choices=choices, covered=covered,
+            native_action=coach.get("action") if isinstance(coach, dict) else None,
+            native_choices=to_jsonable(parse_choices(coach)),
+            item_count=item_count, game_time_s=gs.get("game_time_s"), path=path,
         )
     except Exception:
         return

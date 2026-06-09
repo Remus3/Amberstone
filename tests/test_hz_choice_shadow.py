@@ -35,6 +35,31 @@ def test_writes_covered_record(tmp_path):
     assert r["engine_version"]  # stamped
 
 
+def test_captures_native_coach_signal(tmp_path):
+    p = tmp_path / "shadow.jsonl"
+    rec = hzs.log_precomputed_choices(
+        "sr", "Annie", "Caitlyn",
+        choices=[{"key": "A", "label": "All-in Caitlyn"}],
+        band="L6", mana_state="full", cd_state="all_up", covered=True,
+        native_action="Poke with Q then back off",
+        native_choices=[{"key": "A", "label": "Poke"}],
+        level=6, path=p,
+    )
+    assert rec is not None
+    r = _read(p)[0]
+    assert r["native_action"] == "Poke with Q then back off"
+    assert r["native_choices"] == [{"key": "A", "label": "Poke"}]
+
+
+def test_native_defaults_present_when_absent(tmp_path):
+    p = tmp_path / "shadow.jsonl"
+    hzs.log_precomputed_choices("sr", "Annie", "Caitlyn", choices=[],
+                                covered=False, level=6, path=p)
+    r = _read(p)[0]
+    assert r["native_action"] is None
+    assert r["native_choices"] == []
+
+
 def test_coverage_miss_still_recorded(tmp_path):
     p = tmp_path / "shadow.jsonl"
     rec = hzs.log_precomputed_choices(

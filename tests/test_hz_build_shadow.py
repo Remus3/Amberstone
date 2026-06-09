@@ -35,6 +35,20 @@ def test_writes_covered_record(tmp_path):
     assert r["engine_version"]
 
 
+def test_captures_native_coach_signal(tmp_path):
+    p = tmp_path / "build.jsonl"
+    rec = hbs.log_precomputed_build(
+        "sr", "Ahri", ["Malphite"], lean="anti_tank",
+        choices=[{"key": "A", "label": "Build anti-tank"}], covered=True,
+        native_action="Rush Void Staff vs their tanks",
+        native_choices=[{"key": "A", "label": "Void Staff"}], path=p,
+    )
+    assert rec is not None
+    r = _read(p)[0]
+    assert r["native_action"] == "Rush Void Staff vs their tanks"
+    assert r["native_choices"] == [{"key": "A", "label": "Void Staff"}]
+
+
 def test_coverage_miss_still_recorded(tmp_path):
     p = tmp_path / "build.jsonl"
     rec = hbs.log_precomputed_build(

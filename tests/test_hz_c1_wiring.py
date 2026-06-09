@@ -41,7 +41,8 @@ def _read(path):
 def test_wiring_covered_hit(tmp_path, monkeypatch):
     _patch_loader(monkeypatch)
     p = tmp_path / "hz.jsonl"
-    coach = {"champion": "Annie", "level": 6, "game_time_s": 300.0}
+    coach = {"champion": "Annie", "level": 6, "game_time_s": 300.0,
+             "action": "Trade with Q", "choices": [{"key": "A", "label": "Trade"}]}
     lc = {"enemy_team": ["Zed", "Caitlyn"]}
     dc.shadow_log_precomputed_choices(coach, lc, "sr", path=p)
     rows = _read(p)
@@ -50,6 +51,10 @@ def test_wiring_covered_hit(tmp_path, monkeypatch):
     assert r["my_champion"] == "Annie"
     assert r["enemy"] == "Caitlyn"
     assert r["covered"] is True
+    # native coach signal captured for the precompute-vs-Haiku comparison
+    assert r["native_action"] == "Trade with Q"
+    assert r["native_choices"] == [{"key": "A", "label": "Trade", "expected_outcome": "",
+                                    "confidence": "mid", "source_tag": ""}]
     assert r["band"] == "L6"
     assert r["mana_state"] == "full"
     assert r["cd_state"] == "all_up"
