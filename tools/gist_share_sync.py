@@ -23,11 +23,13 @@ unchanged Share/ produces an unchanged zip -> no spurious gist commit.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
 import sys
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -35,6 +37,11 @@ SHARE_DIR = REPO_ROOT / "Share"
 CLONE_DIR = Path(
     os.environ.get("RC_SHARE_GIST_DIR", r"C:\Users\Administrator\.rc-share-gist")
 )
+# Push-failure visibility (incident 2026-06-03 -> 2026-06-09: a swallowed
+# non-fast-forward rejection left the published gist 45 commits / 6 days stale).
+LOG_DIR = REPO_ROOT / "logs"
+STATUS_PATH = REPO_ROOT / "ops" / "runtime" / "gist_sync_status.json"
+PUSH_FAIL_EXIT = 3
 WIKI_SCRIPTS = (
     "daemon_slayer_wiki_stats_extract.py",
     "daemon_slayer_wiki_ability_extract.py",
@@ -157,6 +164,66 @@ def _git(*args: str) -> subprocess.CompletedProcess:
     )
 
 
+def _append_log(line: str) -> None:
+    """Best-effort append of one line to logs/YYYY-MM-DD.log. Never raises."""
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y-%m-%d")
+        ts = datetime.now().strftime("%H:%M:%S")
+        with (LOG_DIR / f"{stamp}.log").open("a", encoding="utf-8") as fh:
+            fh.write(f"{ts} gist_share_sync {line.rstrip(chr(10))}\n")
+    except OSError:
+        pass
+
+
+def _write_status(ok: bool, detail: str, unpushed: int) -> None:
+    """Atomically record the last push outcome for dashboard / rc_facts to read."""
+    payload = {
+        "ok": ok,
+        "detail": detail,
+        "unpushed_commits": unpushed,
+        "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    try:
+        STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = STATUS_PATH.with_name(STATUS_PATH.name + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        tmp.replace(STATUS_PATH)
+    except OSError:
+        pass
+
+
+def _unpushed_count() -> int:
+    """Local commits not yet on origin/main. Best-effort; 0 on any git error."""
+    try:
+        _git("fetch", "origin")
+        out = _git("rev-list", "--count", "origin/main..HEAD").stdout.strip()
+        return int(out)
+    except (subprocess.CalledProcessError, ValueError):
+        return 0
+
+
+def _do_push(ev: str, patch: str, n: int, url: str) -> int:
+    """Push HEAD to the gist. On failure: log + record status + echo to stderr
+    and return PUSH_FAIL_EXIT (so the caller / hook exits non-zero instead of
+    silently swallowing). Returns 0 on success."""
+    try:
+        _git("push", "origin", "HEAD")
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip() or str(exc)
+        unpushed = _unpushed_count()
+        line = (
+            f"push FAILED (ENGINE {ev}, patch {patch}): {unpushed} local "
+            f"commit(s) unpushed - {url} :: {stderr}"
+        )
+        _append_log(line)
+        _write_status(False, stderr, unpushed)
+        sys.stderr.write(f"gist_share_sync: {line}\n")
+        return PUSH_FAIL_EXIT
+    _write_status(True, "pushed", 0)
+    return 0
+
+
 def _clear_clone() -> None:
     """Remove every tracked top-level entry except .git (gists are flat)."""
     for child in CLONE_DIR.iterdir():
@@ -186,18 +253,31 @@ def sync() -> int:
     status = _git("status", "--porcelain").stdout.strip()
     if not status:
         url = _git("remote", "get-url", "origin").stdout.strip()
+        # Share/ unchanged, but a prior failed push may have left a backlog -
+        # surface it instead of reporting a false all-clear.
+        unpushed = _unpushed_count()
+        _write_status(
+            unpushed == 0,
+            "up to date" if unpushed == 0 else "unpushed backlog",
+            unpushed,
+        )
+        if unpushed:
+            line = f"{unpushed} local commit(s) unpushed (Share unchanged) - {url}"
+            _append_log(line)
+            sys.stderr.write(f"gist_share_sync: {line}\n")
         print(f"gist up to date (no change) - {url}")
-        return 0
+        return 0 if unpushed == 0 else PUSH_FAIL_EXIT
 
     msg = (
         f"sync Share -> gist (ENGINE {ev}, patch {patch}, {n} files)\n\n"
         "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
     )
     _git("commit", "-m", msg)
-    _git("push", "origin", "HEAD")
     url = _git("remote", "get-url", "origin").stdout.strip()
-    print(f"gist synced (ENGINE {ev}, patch {patch}, {n} files) - {url}")
-    return 0
+    rc = _do_push(ev, patch, n, url)
+    if rc == 0:
+        print(f"gist synced (ENGINE {ev}, patch {patch}, {n} files) - {url}")
+    return rc
 
 
 if __name__ == "__main__":
