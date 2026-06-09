@@ -53,6 +53,18 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-08 - HZ-A1 Lane A laning-scenario precompute (Haiku-to-ZERO) [item 352]
+
+gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06-08 ORCHESTRATION_PLAN reseed). Commit 85b13b7c. BUILD + PERSIST + READ only, NO live coach flip (charter 4b do-not-flip-blind).
+
+- **NEW `core/laning_scenario_precompute.py`** precomputes laning `trade`/`all_in`/`back_off`/`even` verdicts over (my_champ x enemy x level-band x mana-state x cd-state) from the SHIPPED `compute_matchup` engine. Generator (`compute_cell`/`generate_table`) + fail-soft mtime-cached reader (`load_laning_scenarios` + `lookup`) + CLI; atomic versioned JSON -> `data/daemon_slayer/laning_scenarios/<patch>/laning_scenarios_<mode>.json`. Dims: 4 bands (L2/L6/L11/L16) x mana full/low x cd all_up/no_ult. mana low = affordable combo prefix from `mana_sim` per-cast cost ledger (manaless -> low==full); cd no_ult drops R.
+- **Model fix (the de-risk probe caught it):** enemy modelled at FULL resources (`sequence_b` = full rotation) so a same-level mirror is symmetric (even); the first cut left the enemy on the engine default (AA, no E) and skewed even the mirror to back_off -0.10.
+- SR seed = 10-champ archetype-diverse SAMPLE (not a tier list), itemless, 1600 cells / 667KB; dist even 793 / back_off 696 / trade 111 / all_in 0 (0 all_in is HONEST for itemless equal-level - needs full HP removal; surfaces with an item axis, HZ-A2). +16 characterization tests (cell == compute_matchup). verifier CONFIRM 16/16.
+- Fixed a PRE-EXISTING red (NOT my slice): ROADMAP.md 82898 > 81920 doc-budget -> relocated shipped item 344 verbatim to ROADMAP_HISTORY (-> 79228). Full RC 5316 passed / 1 skip / 0 fail. ENGINE 1.120.0 untouched, no DS / Share / RC restart, no web -> no UI-audit.
+- **NEXT OPEN = HZ-A2** (recall/back-timing + power-spike-ETA). The table is read by a FUTURE consumer (HZ-C1); validate on a real/replayed game BEFORE any coach flip.
+
+---
+
 # 2026-06-08 - vision :8889 false-alarm probe fix + cdragon hard-tail CLOSED [item 351]
 
 "start the next open items in parallel" -> 2 parallel tracks (vision anomaly + cdragon NEXT-UP #1), both resolved. Commits 7f49499d (fix) + d2ecf125 (docs); CI green both.
