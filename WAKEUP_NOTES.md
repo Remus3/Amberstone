@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-09 - gist mirror staleness: force-push fix + push-failure hardening [item 373]
+
+Operator "the gist does not show correct info for the current DS build - is it truly up to date?" -> NO. The published secret review gist (`gist.github.com/<redacted-gist-id>...`) was 45 commits / 6 days stale (last pushed `8129ed5` 2026-06-03; showed ENGINE 1.108.0 / patch 16.11.1; live build is 1.120.0 / 16.12.1).
+
+- **Root cause:** on 2026-06-03 the operator hand-edited the gist README directly on the remote (2 commits `a76cd91`+`8129ed5`) -> remote diverged +2 -> every `gist_share_sync.py` post-commit-hook `git push` since hit `non-fast-forward` -> `_git` `check=True` raised -> swallowed by the post-commit context -> 45 regenerated commits piled up unpushed, invisibly. Local mirror was correct the whole time; only the publish was blocked.
+- **Fix 1 (ops):** operator chose "force-push lean template now" -> `git push --force origin HEAD:main` on the `~/.rc-share-gist` clone. Published gist now `17ba6ab` ENGINE 1.120.0 / patch 16.12.1, Share.zip 346 files, divergence cleared. Dropped the 2 manual-README commits (reflog-recoverable; the sync regenerates README from `_README_TEMPLATE` by design, so the manual edits were always transient).
+- **Fix 2 (prevent recurrence, commit `e1fc7603`):** `tools/gist_share_sync.py` `_do_push()` catches the push CalledProcessError -> appends git stderr + unpushed count to `logs/YYYY-MM-DD.log`, atomically writes `ops/runtime/gist_sync_status.json` (`ok`/`detail`/`unpushed_commits`/`ts`), echoes stderr, returns non-zero `PUSH_FAIL_EXIT=3`. No-change path surfaces a latent backlog too. +3 tests `tests/test_gist_share_sync.py`. ruff + py_compile + hygiene green; live smoke status `ok=true`/unpushed 0.
+- **Don't-redo:** do NOT hand-edit the gist REMOTE (the sync clobbers README from `_README_TEMPLATE` + diverges the remote). Gist staleness health signal = `ops/runtime/gist_sync_status.json` (gitignored; `unpushed_commits`>0 or `ok=false` == stale mirror).
+
+---
+
 # 2026-06-09 - DS patch refresh 16.11.1 -> 16.12.1 (full chain + ddragon mirror + Share) [item 372]
 
 Operator "do a DS share update". `upstream_drift_check` caught DDragon 16.11.1 -> **16.12.1** (Meraki 25.15 + CDragon UNCHANGED). Operator-gated fork -> chose **Full refresh**. ENGINE 1.120.0 UNCHANGED (patch != engine). DS restarted live 16.12.1. Commit `a93404ec`, CI green (run 27241177720).
@@ -27,14 +38,3 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - **Share sync** (f40f0362): ds_share_sync --check caught ehp.py content drift + the new test MISSING from Share/src; synced 333 files + staged the test mirror in the same commit. The intermediate commit 4be96220 CI went RED on the "DS Share package in sync" guard (Share stale) -> f40f0362 synced it GREEN. Reinforced: a DS source-file change needs ds_share_sync even with NO ENGINE bump (the file is mirrored in Share/src regardless of version).
 - Docs: ROADMAP L21 + BACKLOG L22 + LEDGER item 371 marked shipped (in f40f0362). 2 agent worktrees removed + merged branches deleted.
 - **NEXT (gated):** only LOW T2-F3 (TTK headline) + T1-F4 (per-stat EHP/gold, now unblocked by T1-F3) remain optional. cdragon by-level needs a NEW champ-level schema axis (do NOT re-pitch a calc-graph resolver). Don't-redo: T1-F3 + T2-F4 done.
-
----
-
-# 2026-06-09 - HZ-C seed expansion (full 171 SR) + slim/compact v3 schema + Git LFS migration [item 370]
-
-Operator "start open items in parallel" -> 3 parallel boot-anomaly triage agents + the gated HZ-C seed-expansion headline. 5 commits, CI green. RC NOT restarted (core/ read by the shadow consumer, no live flip). ENGINE 1.120.0 untouched, no Share delta.
-
-- **Parallel triage (no code):** RC-DDragonMirrorRefresh result=2 = transient CDN single-asset fail (non-fatal exit2, mirror current 16.11.1, manual re-run exit0); gamepc :8892 down + bridge stale 8.58d = KNOWN-EXPECTED (Game-PC off by design, ADR-011, ARCHITECTURE.md:168) - no-op. OPERATIONS.md task-table synced (+8 live RC-* tasks, flag stale RC-Bridge-MCP; commit 28a55781).
-- **HZ-C SEED-EXPANSION (item 370, commit 4202760c; operator-gated x3 forks: full-171-SR + slim+compact-commit + trim-to-55-60MB).** laning schema v2 -> **v3**: dropped sequence/my_can_full_combo/manaless/economy.spike_eta_s + compact writer (separators no indent) + new GEN_BANDS L2/L6/L11 (L16 omitted from the sweep, reader fail-softs lvl>=14) + per-pair fail-soft in generate_table. Regen full 171x171 SR (171 ability-backed champs, Zaahen excluded): laning 350892 cells / 65.6MB (was 1600/1.0MB), HZ-B1 build_orders 684, HZ-B2 variants 342. Non-seed champs (Zed/Ambessa/Smolder) now covered; L16 lookup MISS by design. Full RC 5611 passed / 2 skip / 85 subtests.
-- **Git LFS migration (commits 93f76c53 + 5c24814b).** laning_scenarios/**/*.json LFS-tracked GOING-FORWARD (no history rewrite / no force-push, fleet-safe). git pack growth/patch ~62MB -> ~0 (pointer only); content -> LFS storage. Fleet caveat: a no-git-lfs checkout gets a 133B pointer -> RC fail-softs to Haiku; `git lfs install --local` ABORTS benignly on the Share post-commit hook (filters+pre-push still set) - do NOT `--force`. Recorded: memory reference_git_lfs_laning_artifact + OPERATIONS.md "Git LFS" section.
-- **NEXT (gated):** accrue real-game HZ shadow on the expanded seed -> precompute-vs-Haiku agreement analysis (item-369 native_action/native_choices capture is the sample) -> THEN the live coach FLIP (do-not-flip-blind). ARAM/Arena = `--mode all` offline expand (no code change). HZ-D1 Electron overlay Phase 2+. Don't-redo: full-NxN-290MB / gitignore (operator chose slim-commit); L16 omission intentional.
