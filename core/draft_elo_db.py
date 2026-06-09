@@ -37,6 +37,7 @@ expected to cache the result; the route layer has a 5min TTL.
 """
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 from typing import Iterable, Optional
@@ -51,13 +52,29 @@ _REWIND_DB = Path("data") / "rewind_history.db"
 DEFAULT_SR_QUEUES: tuple[int, ...] = (400, 420, 430, 440, 490)
 
 
-def open_ro(db_path: Path = _REWIND_DB) -> sqlite3.Connection:
+def _resolve_db_path() -> Path:
+    """Resolve the rewind DB path at CALL time.
+
+    The ``RC_REWIND_DB`` env override lets tests point ``open_ro`` at a
+    self-contained fixture (data/rewind_history.db is gitignored, so it
+    is absent on a clean checkout / CI) and lets ops repoint the DB
+    without a code edit. Resolving at call time - not as a def-time
+    default arg - is what makes the override take effect.
+    """
+    env = os.environ.get("RC_REWIND_DB")
+    return Path(env) if env else _REWIND_DB
+
+
+def open_ro(db_path: Optional[Path] = None) -> sqlite3.Connection:
     """Open the rewind_history db read-only. Returns a Connection.
 
+    ``db_path`` defaults to ``_resolve_db_path()`` (honors RC_REWIND_DB).
     Read-only via uri=True + mode=ro so no concurrent writer is
     needed. Callers should close the connection; the route layer wraps
     in a try/finally.
     """
+    if db_path is None:
+        db_path = _resolve_db_path()
     uri = f"file:{db_path}?mode=ro"
     return sqlite3.connect(uri, uri=True, isolation_level=None,
                            check_same_thread=False)
