@@ -10,6 +10,7 @@ import sqlite3
 import unittest
 
 from core import draft_elo, draft_elo_db
+from tests._draft_elo_fixture import DraftEloFixture
 
 
 class WinrateRatingRoundTripTests(unittest.TestCase):
@@ -310,15 +311,21 @@ class TopContributionsTests(unittest.TestCase):
 
 
 class DraftEloDbReadOnlyTests(unittest.TestCase):
-    """Live-data smoke tests against rewind_history.db.
+    """Smoke tests against a self-contained rewind_history fixture DB.
 
-    rewind_history.db is read-only; these tests verify the SQL is well-
-    formed and the smoothed rates fall in (0, 1). Specific WR values
-    are NOT pinned (snapshot drifts over time).
+    The fixture (tests/_draft_elo_fixture.py) carries the matches +
+    participants schema + a small deterministic seed, so these tests run
+    without the gitignored live DB. They verify the SQL is well-formed and
+    the smoothed rates fall in (0, 1); specific WR values are NOT pinned.
     """
 
     @classmethod
     def setUpClass(cls):
+        # Self-contained fixture DB (the live rewind_history.db is
+        # gitignored / absent on a clean checkout). open_ro() honors the
+        # RC_REWIND_DB override the fixture sets.
+        cls._fix = DraftEloFixture()
+        cls._fix.start()
         cls.conn = draft_elo_db.open_ro()
 
     @classmethod
@@ -327,6 +334,7 @@ class DraftEloDbReadOnlyTests(unittest.TestCase):
             cls.conn.close()
         except Exception:
             pass
+        cls._fix.stop()
 
     def test_solo_winrate_runs(self):
         wins, games, rate = draft_elo_db.solo_winrate(self.conn, 64)  # Lee Sin
