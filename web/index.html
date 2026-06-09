@@ -1163,17 +1163,16 @@
               <div class="csv-sugg-section cc-pairing"
                    id="csv-sugg-cc-pairing"
                    hidden></div>
-              <!-- 2026-05-30 competitor lifts #2/#3/#1: DS action-queue
-                   combo timeline, target-armor stat-sweep graph, engine-
-                   knobs re-rank strip. Backends routes_ds_combo /
-                   routes_ds_sweep / routes_ds_knobs. Render for the LOCKED
-                   champion (cs.my_champion). Hidden until a champion locks. -->
-              <div class="ds-sweep" id="csv-sugg-ds-sweep" hidden></div>
+              <!-- 2026-05-30 competitor lift #1: engine-knobs re-rank strip.
+                   Backend routes_ds_knobs. Render for the LOCKED champion
+                   (cs.my_champion). Hidden until a champion locks.
+                   CS3 (2026-06-08): the DPS-scaling sweep, 1v1 fight-model
+                   matchup, action-queue combo timeline, and relative-item-
+                   power bars were MOVED to the Active Match view (they read
+                   the LIVE champion mid-game, not the champ-select pick). The
+                   profile bars, engine knobs, and stat-check STAY here. -->
               <div class="ds-profile" id="csv-sugg-ds-profile" hidden></div>
-              <div class="ds-matchup" id="csv-sugg-ds-matchup" hidden></div>
-              <div class="ds-combo" id="csv-sugg-ds-combo" hidden></div>
               <div class="ds-knobs" id="csv-ds-knobs" hidden></div>
-              <div class="ds-relscore" id="csv-ds-relscore" hidden></div>
               <div class="ds-statcheck" id="csv-ds-statcheck" hidden></div>
               <div class="csv-sugg-section csv-sugg-pickorder"
                    id="csv-sugg-pickorder">
@@ -1993,6 +1992,20 @@
                keyed to live level + owned items. Backend routes_spike_markers.
                Live-clock cursor OWED (live-game-only). -->
           <div class="spike-markers" id="am-spike-markers" data-sm-state="init" hidden></div>
+          <!-- CS3 (2026-06-08): DS combat-analysis cluster relocated off
+               champ-select. These four read the LIVE champion the operator is
+               playing (active_match.js feeds a synthetic cs from p.champion +
+               the liveclient enemy), not the locked champ-select pick:
+                 ds-sweep    = DPS scaling vs swept enemy armor
+                 ds-matchup  = 1v1 fight-model verdict vs the lane opponent
+                 ds-combo    = action-queue combo damage timeline
+                 ds-relscore = relative item-power bars
+               Routes (routes_ds_sweep / _matchup / _combo / _relscore) and
+               their render fns are unchanged. Hidden until live data lands. -->
+          <div class="ds-sweep" id="csv-sugg-ds-sweep" hidden></div>
+          <div class="ds-matchup" id="csv-sugg-ds-matchup" hidden></div>
+          <div class="ds-combo" id="csv-sugg-ds-combo" hidden></div>
+          <div class="ds-relscore" id="csv-ds-relscore" hidden></div>
           <div class="am-pane-body" id="am-build-body">
             <div class="am-empty">DS engine ranks + owned items list will render here mid-game.</div>
           </div>
