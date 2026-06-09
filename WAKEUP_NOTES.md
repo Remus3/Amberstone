@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-09 - BACKLOG batch: T1-F3 enemy-pen EHP seam + T2-F4 runes-in-combo surface [item 371]
+
+Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shipped via 2 parallel worktree subagents + supervisor merge/independent-verify. 4 commits, CI GREEN on tip f40f0362. ENGINE 1.120.0 untouched (both default-OFF / additive byte-identical -> no bump).
+
+- **T1-F3** (merge d3cf9643, feat 262eaef0): agents/daemon_slayer/ehp.py compute_ehp +5 opt-in enemy-pen kwargs (lethality / armor_pen_pct / shred_pct / magic_pen_flat / magic_pen_pct) -> new _effective_resist_after_pen() before _armor_factor (armor: %shred -> %pen -> lethality flat last; mr: %pen -> flat last). Default-OFF byte-identical. +15 tests. Bonus-only pen approximated vs total (no bonus-armor field). Flip to a live survivability scorer stays GATED (do-not-flip-blind).
+- **T2-F4** (merge fbf305e3, feat e00e3309, UI-fix 4be96220): dashboard/routes_ds_combo.py runes=/keystone= param threaded to the EXISTING compute_combo(runes=); cache-key fixed (was serving stale cross-rune). web/js/panels/ds_combo.js keystone <select> + .dscombo-keystone CSS (5-phase UI audit PASS, 2 typography/hit-target MUST-FIX resolved same slice). Additive byte-identical default. +7 route tests. RC restarted pid 20680, live /api/ds-combo?runes= verified ok=True.
+- **Share sync** (f40f0362): ds_share_sync --check caught ehp.py content drift + the new test MISSING from Share/src; synced 333 files + staged the test mirror in the same commit. The intermediate commit 4be96220 CI went RED on the "DS Share package in sync" guard (Share stale) -> f40f0362 synced it GREEN. Reinforced: a DS source-file change needs ds_share_sync even with NO ENGINE bump (the file is mirrored in Share/src regardless of version).
+- Docs: ROADMAP L21 + BACKLOG L22 + LEDGER item 371 marked shipped (in f40f0362). 2 agent worktrees removed + merged branches deleted.
+- **NEXT (gated):** only LOW T2-F3 (TTK headline) + T1-F4 (per-stat EHP/gold, now unblocked by T1-F3) remain optional. cdragon by-level needs a NEW champ-level schema axis (do NOT re-pitch a calc-graph resolver). Don't-redo: T1-F3 + T2-F4 done.
+
+---
+
 # 2026-06-09 - HZ-C seed expansion (full 171 SR) + slim/compact v3 schema + Git LFS migration [item 370]
 
 Operator "start open items in parallel" -> 3 parallel boot-anomaly triage agents + the gated HZ-C seed-expansion headline. 5 commits, CI green. RC NOT restarted (core/ read by the shadow consumer, no live flip). ENGINE 1.120.0 untouched, no Share delta.
@@ -25,16 +37,3 @@ Operator "start open items in parallel" -> 3 parallel boot-anomaly triage agents
 - **HZ-C report (368) + native-capture (369):** `tools/hz_shadow_report.py` = the flip-readiness gate (coverage + distribution + `comparable` count). Then both shadow writers gained `native_action`+`native_choices` (what live Haiku said) so the precompute can be compared vs Haiku (the comparison the flip ultimately needs; the semantic-agreement metric itself stays FUTURE - free-text vs labeled choice is fuzzy).
 - **KEY FINDING (drives the NEXT):** the report on LIVE logs shows the HZ-C1/C2 wiring FIRES (151 records in minutes) but coverage is **0%** on current activity - the 10-champ seed does not cover real games. So **SEED EXPANSION is the binding constraint** before any coach flip. NOT auto-done this run: a multi-MB static-data commit + the champion-set choice is an operator/repo-policy call (and seed-is-a-sample was a prior scope decision). Tests: +81 across the 7 HZ test files; full RC suite 5610 passed / 2 skip / 0 fail at the final gate.
 - **NEXT OPEN (ROADMAP HZ-* updated):** HZ-C seed-EXPANSION (regenerate HZ-A/HZ-B for a broader champion set via `--champions`) -> accrue real-game shadow data -> agreement analysis -> the live coach FLIP; then HZ-D1 (Electron overlay Phase 2+). Salvage candidates from pre-flight (3 preserved branches incl. cs_at_10 / ARAM comp-verdict bench) remain available. Synopsis: `C:/Users/Administrator/Desktop/RC_HEADLESS_SYNOPSIS_2026-06-09.md`.
-
----
-
-# 2026-06-08 - LIFT1 competitor-lift review: RC supersedes both targets [item 354]
-
-gemini-headless-upgrade loop, directive LIFT1 (cycle off the 2026-06-08 ORCHESTRATION_PLAN, ahead of HZ-B). Commit 4b15b031. RESEARCH + TRIAGE only, NO code slice (docs-only).
-
-- **2 heavyweight general-purpose research agents** (depth-per-target, 6-point checklist WHAT/HOW/HAVE-grep-cite/WHERE/EFFORT+RISK/LIFT); every HAVE/WHERE premise re-verified live before publishing. Output `docs/COMPETITOR_LIFT_2026-06-08.md`.
-- **Tool 1 (seb16120 target-vs-opponent "what stat to buy")** = a 100%-client-side manual-entry DEFENSIVE EHP calc (no champ/item data, no network calls). RC SUPERSEDES automatically: `agents/daemon_slayer/ehp.py` (per-type/blended EHP + shields/heals/ARAM/CC/revive layers the competitor lacks) + `core/defensive_picks.py` threat-weighted defensive-ITEM picks + the live `cc_blended_ehp_threat` panel.
-- **Tool 2 (simulator tool R.com + r/simulator tool R)** = a JS combat sim (combo / 1v1 / DPS-TTK / EHP / build-sort / sandbox). RC parity-or-better on EVERY axis via the prior 2026-05-30 calc.gg lift (`combo.py`/`matchup.py`/`dps.py`/`fight_report.py` + `ds_combo.js`/`ds_matchup.js`); the 172-champ engine beats the twins' hand-coded-champ ceiling.
-- **ACT:** NO HIGH-lift+LOW-risk finding -> per the ACT gate (MED/LOW always defer) NO in-run code. **2 FUTURE gaps -> BACKLOG (Coaching depth):** T1-F3 enemy-pen-aware effective resists (`ehp.py compute_ehp` documented Phase-1 omission, enemy pen plumbed via `defensive_picks.py` but feeds only THREAT scores; MED engine schema lift, operator-gated) + T2-F4 rune/keystone in the combo SURFACE (`routes_ds_combo.py` threads no `runes=` param, grep=0; MED route+panel wire-up + Sec-3b UI ritual). Minor deferred: T2-F3 TTK headline, T1-F4 per-stat EHP/gold.
-- Docs-only: DS-dir 7024 passed / RC tests/ 5352 passed, 0 regressions. ENGINE 1.120.0 untouched, no DS/RC restart, no Share, no UI-audit. Competitor tools read-only, no code vendored. ROADMAP 81707/81920 (TIGHT - the NEXT cycle needs a ROADMAP_HISTORY relocation before it can add a shipped line).
-- **NEXT OPEN = the operator UI/UX + bug batch** (LOBBY1 / PGR1 / REPLAY1 / HIST1+HIST2 / CS1-CS3), then HZ-B.
