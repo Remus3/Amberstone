@@ -8,22 +8,17 @@
 # (b) the python-embed/ vendored Python 3.14 distribution
 # (c) the _archive/ quarantine of removed code
 # Reference: https://github.com/github-linguist/linguist/blob/master/docs/overrides.md
-
 # (a) Build-refresh scraped HTML - generated artifact, not authored
 data/meta_build/**/*.html         linguist-generated=true
 data/meta_build/**/_*_html/**     linguist-vendored=true
-
 # (b) Vendored Python distro - not our code
 python-embed/**                   linguist-vendored=true
-
 # (c) Archived inert code (e.g. pre-T2 #8 tkinter overlays under
 #     _archive/2026-05-01-audit/) - preserved for reversibility, not active
 _archive/**                       linguist-vendored=true
-
 # (d) Local data caches that occasionally get tracked
 data/icons/**                     linguist-vendored=true
 data/meta/ddragon_*.json          linguist-generated=true
-
 # EOL policy - prevent CR-CR-LF / CRLF corruption of Python sources.
 # core.autocrlf=true on the Windows fleet, combined with tools that
 # re-add an already-CRLF blob, produced doubled-CR line endings in 21
@@ -31,3 +26,4 @@ data/meta/ddragon_*.json          linguist-generated=true
 # keeps .py LF in the repo AND the working tree, overriding autocrlf
 # so the corruption cannot recur fleet-wide.
 *.py text eol=lf
+data/daemon_slayer/laning_scenarios/**/*.json filter=lfs diff=lfs merge=lfs -text
