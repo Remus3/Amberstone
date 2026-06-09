@@ -44,7 +44,7 @@ function _escHtml(s) {
 }
 
 function _ddragonVer() {
-  return (CHAMPS && CHAMPS.version) || "16.11.1";
+  return (CHAMPS && CHAMPS.version) || "16.12.1";
 }
 
 function _champKey(cid) {
