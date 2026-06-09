@@ -123,24 +123,24 @@ class EngineCharacterizationTests(unittest.TestCase):
         self.assertEqual(cell["net_swing"], lsp._round(ref.net_swing))
         self.assertEqual(cell["pct_my_removed"], lsp._round(ref.pct_a_removed))
         self.assertEqual(cell["pct_enemy_removed"], lsp._round(ref.pct_b_removed))
-        self.assertEqual(cell["sequence"], ["Q", "W", "E", "R"])
+        # Slim schema v3: the redundant per-cell sequence array is dropped (it is
+        # derivable from cd_state via combo_sequence); the cell never carries it.
+        self.assertNotIn("sequence", cell)
 
     def test_cell_verdict_in_valid_set(self) -> None:
         cell = lsp.compute_cell(
             self.snap, "Annie", "Ahri", "L11", "full", "all_up", mode="SR"
         )
         self.assertIn(cell["verdict"], lsp.VALID_VERDICTS)
-        self.assertIsInstance(cell["my_can_full_combo"], bool)
+        # Slim v3: the derived my_can_full_combo / manaless are not persisted.
+        self.assertNotIn("my_can_full_combo", cell)
+        self.assertNotIn("manaless", cell)
 
     def test_no_ult_cd_state_drops_r_from_sequence(self) -> None:
-        full = lsp.compute_cell(
-            self.snap, "Annie", "Ahri", "L11", "full", "all_up", mode="SR"
-        )
-        no_ult = lsp.compute_cell(
-            self.snap, "Annie", "Ahri", "L11", "full", "no_ult", mode="SR"
-        )
-        self.assertIn("R", full["sequence"])
-        self.assertNotIn("R", no_ult["sequence"])
+        # The cd_state -> rotation mapping lives in combo_sequence; the slim v3
+        # cell no longer persists the sequence, so assert the function directly.
+        self.assertIn("R", lsp.combo_sequence("all_up"))
+        self.assertNotIn("R", lsp.combo_sequence("no_ult"))
 
     def test_manaless_champ_low_equals_full_sequence(self) -> None:
         seq, manaless = lsp.derive_sequence(
@@ -165,7 +165,7 @@ class EngineCharacterizationTests(unittest.TestCase):
             mode="SR", bands=["L6", "L11"],
         )
         self.assertEqual(payload["mode"], "sr")
-        self.assertEqual(payload["schema"], "laning_scenarios/v2")
+        self.assertEqual(payload["schema"], "laning_scenarios/v3")
         self.assertTrue(payload["version"])
         scen = payload["scenarios"]
         leaves = 0
@@ -175,11 +175,48 @@ class EngineCharacterizationTests(unittest.TestCase):
                     for mana, per_cd in per_mana.items():
                         for cd, cell in per_cd.items():
                             self.assertIn(cell["verdict"], lsp.VALID_VERDICTS)
+                            self.assertNotIn("sequence", cell)
                             leaves += 1
         # 2 champs x 2 enemies x 2 bands x 2 mana x 2 cd = 32 leaf cells.
         self.assertEqual(leaves, 32)
         # ASCII-clean serialization.
         json.dumps(payload, ensure_ascii=True).encode("ascii")
+
+    def test_atomic_write_is_compact_single_line(self) -> None:
+        # Slim NxN: the full-roster table is written compact (no indent) so the
+        # 467k-cell artifact stays ~55MB, not ~290MB. One trailing newline only.
+        payload = lsp.generate_table(
+            self.snap, ["Garen"], ["Darius"], mode="SR", bands=["L6"],
+        )
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "laning_scenarios_sr.json"
+            lsp.atomic_write(payload, out)
+            text = out.read_text(encoding="utf-8")
+        self.assertEqual(text.count("\n"), 1)
+        self.assertNotIn(": ", text)
+        self.assertEqual(json.loads(text)["schema"], "laning_scenarios/v3")
+
+    def test_generate_table_fail_soft_skips_bad_pair(self) -> None:
+        # A champ the engine cannot model must not abort a full-roster sweep;
+        # the offending pair is skipped, the rest of the table still builds.
+        real = lsp._matchup
+
+        def flaky(snapshot, my, enemy, *a, **k):
+            if enemy == "BadGuy":
+                raise RuntimeError("engine blew up")
+            return real(snapshot, my, enemy, *a, **k)
+
+        lsp._matchup = flaky
+        try:
+            payload = lsp.generate_table(
+                self.snap, ["Garen"], ["Darius", "BadGuy"],
+                mode="SR", bands=["L6"],
+            )
+        finally:
+            lsp._matchup = real
+        per_enemy = payload["scenarios"]["Garen"]
+        self.assertIn("Darius", per_enemy)
+        self.assertNotIn("BadGuy", per_enemy)
 
 
 if __name__ == "__main__":
