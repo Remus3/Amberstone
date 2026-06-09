@@ -40,7 +40,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | LIFT1 | lift | OPERATOR-QUEUED 2026-06-08 (review NEXT, ahead of HZ-B): deep-dive competitor-lift review per headless-upgrade Section 7b (heavyweight general-purpose agent + browser/Firecrawl MCP; 6-point depth checklist per finding WHAT / HOW / HAVE (grep RC + cite file) / WHERE (RC integration point) / EFFORT+RISK / LIFT verdict HIGH-MED-LOW) of 3 tools: (1) https://seb16120.github.io/LoL-Target-Vs-Opponent-What-stat-to-buy/ - target-vs-opponent "what stat to buy" advisor (overlaps DS anti-tank axis A3 core/ds_antitank_hint.py + armor/MR pen build hints + core/damage_mix.py + the HZ-B build-order precompute); (2) https://simulator-tool-r.invalid/ - LoL damage/combat simulator (overlaps the DS engine compute_dps / compute_matchup / fight_report; check for a DS-validation or sim-surface lift); (3) https://www.reddit.com/r/simulator-tool-r/ - community context for #2. Output docs/COMPETITOR_LIFT_<date>.md. ACT: a HIGH-lift that is LOW-risk (presentation over EXISTING DS math, no new dependency/schema lift, testable) ships IN-RUN as its own slice (+Section 3b UI proof if frontend); a HIGH-lift with a new dependency / schema lift / product-direction call -> BACKLOG + issue (FUTURE); MED/LOW always defer. Lift LEGALLY (re-implement in RC's own code, never vendor). Research + triage NOW/FUTURE/CLOSED, do NOT auto-build everything. | DONE | 4b15b031 |
 | LOBBY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (pre-game lobby): "Invite from my top 8 does not work" - inviting a friend from the operator's top-8 list fails. Investigate ROOT CAUSE first (the lobby invite flow: LCU `/lol-lobby/v2/lobby/invitations` + how the dashboard top-8 / friends surface builds the invite payload - summonerId vs puuid form); fix + regression test. LIVE-GATED: final verification needs a real lobby (do code-side + mark live-verification owed if no lobby). | DONE | 1f4f4118 |
 | PGR1 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Post Game Review): advance the s220 aggregator-G-style PGR reframe - "what's next" stage. Read the staged s220 plan (S2-S5, the single-match richer layout + 0-100 RC heuristic score over enriched stats, NO Claude/Riot dep - CLAUDE.md Settled) + docs/ROADMAP_HISTORY, pick the next UNSHIPPED stage, ship ONE stage + Section-3b per-page UI-audit + Claude_Preview visual vs /api/state. | DONE | c162e5bd |
-| REPLAY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Replay page): match ingestion is not up to date after each game. Investigate the post-game ingest chain (the 90s post-gameEnd Match-V5 fetch + INSERT in `core` rewind live writer [reference_rewind_live_writer] -> rewind_history.db -> the replay/replay-page data source + its cache/refresh); root-cause the staleness (timer not firing? cache TTL? page not re-fetching?). Fix + test. LIVE-GATED final verify. | OPEN | - |
+| REPLAY1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Replay page): match ingestion is not up to date after each game. Investigate the post-game ingest chain (the 90s post-gameEnd Match-V5 fetch + INSERT in `core` rewind live writer [reference_rewind_live_writer] -> rewind_history.db -> the replay/replay-page data source + its cache/refresh); root-cause the staleness (timer not firing? cache TTL? page not re-fetching?). Fix + test. LIVE-GATED final verify. | DONE | 647b455e |
 | HIST1 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Session + History pages): clicking a populated match row does NOTHING. Wire the row click. Investigate the session/history panel JS (web/js/panels) - the match rows render but have no click handler (or it no-ops); should open that match's detail (-> HIST2 detached PGR). Fix + DOM test + Section-3b audit. | OPEN | - |
 | HIST2 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Session + History pages): a clicked match should populate + switch to a DETACHED historical PGR frame showing the PGR info "as if the match had just ended", SEPARATE from the live in-use last-match PGR (with a back action to return). Reuse the PGR/last-match render against a historical match-id source; MUST NOT mutate or clobber the live last-match PGR state. Tests + Section-3b UI-audit + visual. Pairs with HIST1. | OPEN | - |
 | CS1 | ui-feature | OPERATOR-REPORTED 2026-06-08 (Champ Select): missing the CC-conditional pairing UI elements. Surface the DS cc_conditional pairing data on champ select (the engine has a saturated cc_conditional ecosystem - agents/daemon_slayer cc_conditional registry/accessors). Investigate the existing cc surface + the champ-select panel (web/js/panels/champ_select.js), add the pairing UI + route if needed + test + Section-3b audit + visual. | OPEN | - |
@@ -94,6 +94,31 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
   framed INVESTIGATE-ROOT-CAUSE-FIRST; the executor verifies the premise live before
   fixing (some may be stale-premise, the D1/D2/B1 pattern). Operator can reorder via
   the loop control panel.
+- 2026-06-08 REPLAY1 DONE (commit 647b455e). Replay / rewind ingest froze at
+  2026-05-23 while the operator kept playing. ROOT CAUSE (verified live):
+  scripts/rewind_catchup.py::resolve_current_puuid derived the account from the
+  DB MAJORITY puuid - after the operator switched Riot ID (SamplePlayer#Vayne ->
+  #Trist) the DB stayed dominated by ~2900 old-account rows, so resolution kept
+  re-locking the OLD account + never discovered the new one (the new account has
+  0 rows yet = chicken-and-egg). lib/rewind_live_writer.py read the stale puuid
+  from rewind_catchup.state.json + only saw already-ingested old matches -> every
+  90s post-gameEnd write was a silent already_present no-op. Probed: state puuid
+  -> old Vayne (old URF matches, all in DB); current Trist account had 37
+  un-ingested matches; get_account_by_riot_id("SamplePlayer","Trist") -> the right
+  puuid with recent games. FIX: a persisted `riot_id` in the state sentinel is an
+  authoritative sticky override - resolve_current_puuid resolves it via Account-V1
+  BEFORE the DB-majority fallback (new priority step 3); main() persists
+  args.riot_id. DATA RECOVERY (same fix): ran catchup --riot-id "SamplePlayer#Trist"
+  -> state.json corrected (puuid+riot_id), 37 matches backfilled, rewind DB newest
+  2026-05-23 -> 2026-06-08; live writer now resolves the current account
+  (verified _resolve_latest_puuid). TDD tests/test_rewind_catchup_puuid.py (7)
+  pins the priority order. RC suite 5376 / 2 skip / 0 fail; ruff clean. Backend +
+  data only (no UI - replay page reads the now-fresh DB unchanged); state.json +
+  rewind_history.db are gitignored (not committed). LIVE end-to-end (next-game
+  auto-ingest) OWED. FUTURE (robustness): the live writer still reads puuid from
+  state.json - a future account switch needs one catchup --riot-id run (or wiring
+  the live LCU current-summoner Riot ID into the writer) before auto-ingest
+  resumes; logged not built.
 - 2026-06-08 PGR1 DONE (commit c162e5bd). s220 PGR reframe: shipped the last
   deferred S5 piece - per-player gold@10 / cs@10 in the lane-comparison card.
   DISCOVERY: S2/S3/S4 + the S5 Arena-augment loadout variant (pgr_loadout.js)
