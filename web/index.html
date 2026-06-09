@@ -1152,6 +1152,17 @@
               <div class="csv-sugg-section cooldown-watch"
                    id="csv-sugg-cooldown-watch"
                    hidden></div>
+              <!-- CS1 (2026-06-08): ally CC-pairing card. For the
+                   operator's OWN roster, which conditional CC entries a
+                   TEAMMATE can set up (dual_enemy / debuffed_target /
+                   terrain / traverse) + the plausible enabler teammates.
+                   Read-only join over the existing cc_conditional
+                   registry. Backend: dashboard/routes_cc_pairing.py.
+                   Hidden until at least one ally with an ally-enablable
+                   conditional CC entry is committed. -->
+              <div class="csv-sugg-section cc-pairing"
+                   id="csv-sugg-cc-pairing"
+                   hidden></div>
               <!-- 2026-05-30 competitor lifts #2/#3/#1: DS action-queue
                    combo timeline, target-armor stat-sweep graph, engine-
                    knobs re-rank strip. Backends routes_ds_combo /
