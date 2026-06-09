@@ -8,6 +8,7 @@
 // Backend wire:
 //   GET /api/ds-combo?champion=<id>&level=11&items=<id,..>&seq=Q,AA,W,R
 //       &target_armor=&target_mr=&target_max_hp=&target_bonus_hp=&mode=SR
+//       &runes=<id,..>   (optional; from the keystone selector)
 //   Response: {
 //     ok, champion, champion_name, level, mode, sequence,
 //     hits:[{index, action, ability_key, is_ability, form_name, rank, t,
@@ -49,7 +50,27 @@ function defaultComboFor(champion) {
   return _DEFAULT_COMBOS[champion] || _GENERIC_COMBO;
 }
 
-function _cacheKey(champion, level, items, seq, ta, tm, mode) {
+// Build the <option> list for the keystone selector. The empty-value first
+// option is selected by default so a fresh panel sends no runes param.
+function _keystoneOptionsHtml() {
+  return _KEYSTONE_OPTIONS
+    .map(([id, label]) => `<option value="${id}">${label}</option>`)
+    .join("");
+}
+
+// Keystone / rune options the selector offers. Ids match the backend
+// rune_procs registry (agents/daemon_slayer/rune_procs.py); "" is the
+// no-rune default which keeps the timeline byte-identical to today.
+const _KEYSTONE_OPTIONS = [
+  ["", "no keystone"],
+  ["8005", "Press the Attack"],
+  ["8008", "Lethal Tempo"],
+  ["9923", "Hail of Blades"],
+  ["8112", "Electrocute"],
+  ["8128", "Dark Harvest"],
+];
+
+function _cacheKey(champion, level, items, seq, ta, tm, mode, runes) {
   return [
     champion || "",
     level || 0,
@@ -58,7 +79,22 @@ function _cacheKey(champion, level, items, seq, ta, tm, mode) {
     ta || 0,
     tm || 0,
     mode || "SR",
+    (runes || []).slice().join("."),
   ].join("|");
+}
+
+// Resolve the active rune id list for an opts bag. The host may pass an
+// explicit ``runes`` array; otherwise fall back to the panel's keystone
+// selector value so the picker works without host changes. Always returns
+// a clean int-string array ([] when none picked).
+function _resolveRunes(opts) {
+  if (Array.isArray(opts.runes)) {
+    return opts.runes.map((r) => String(r).trim()).filter((r) => r.length > 0);
+  }
+  if (typeof document === "undefined") return [];
+  const sel = document.querySelector(".dscombo-keystone");
+  const v = sel && sel.value ? String(sel.value).trim() : "";
+  return v ? [v] : [];
 }
 
 // Fetch the timeline for one (champion, level, seq, target) tuple. onLand
@@ -73,7 +109,8 @@ export function fetchDsCombo(opts, onLand) {
   const ta = +opts.target_armor || 0;
   const tm = +opts.target_mr || 0;
   const mode = opts.mode || "SR";
-  const key = _cacheKey(champion, level, items, seq, ta, tm, mode);
+  const runes = _resolveRunes(opts);
+  const key = _cacheKey(champion, level, items, seq, ta, tm, mode, runes);
   const fresh = _COMBO_CACHE[key] && _COMBO_TS[key]
                 && (Date.now() - _COMBO_TS[key]) < _COMBO_TTL_MS;
   if (fresh || _COMBO_INFLIGHT[key]) return;
@@ -87,6 +124,7 @@ export function fetchDsCombo(opts, onLand) {
     mode: mode,
   });
   if (items.length) params.set("items", items.join(","));
+  if (runes.length) params.set("runes", runes.join(","));
   if (+opts.target_max_hp) params.set("target_max_hp", String(+opts.target_max_hp));
   if (+opts.target_bonus_hp) {
     params.set("target_bonus_hp", String(+opts.target_bonus_hp));
@@ -111,6 +149,7 @@ export function getCachedDsCombo(opts) {
     Array.isArray(opts.items) ? opts.items : [],
     Array.isArray(opts.seq) ? opts.seq : [],
     +opts.target_armor || 0, +opts.target_mr || 0, opts.mode || "SR",
+    _resolveRunes(opts),
   );
   return _COMBO_CACHE[key] || null;
 }
@@ -222,11 +261,25 @@ export function renderDsCombo(blockEl, payload, opts) {
       + `<input type="text" class="dscombo-input" id="${sigKey}-input" `
       + `value="${seqStr}" spellcheck="false" `
       + `aria-label="combo action queue" />`
+      + `<select class="dscombo-keystone" id="${sigKey}-keystone" `
+      + `aria-label="keystone rune">`
+      + _keystoneOptionsHtml()
+      + `</select>`
       + `</div>`
       + `<div class="dscombo-table" id="${sigKey}-table"></div>`
     );
     _COMBO_INPUT_DONE[sigKey] = true;
     _COMBO_SIG[sigKey] = null;
+    // Self-wire the keystone select: on change, nudge the action-queue input
+    // so the host's existing re-fetch listener picks up the new rune without
+    // any host-side change. Falls back silently if the input is absent.
+    const ksEl = blockEl.querySelector(".dscombo-keystone");
+    const inEl = blockEl.querySelector(".dscombo-input");
+    if (ksEl && inEl && typeof Event === "function") {
+      ksEl.addEventListener("change", () => {
+        inEl.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
   }
 
   const tableEl = blockEl.querySelector(".dscombo-table");
@@ -271,5 +324,8 @@ export const __test = {
   _rowHtml,
   parseSeqInput,
   defaultComboFor,
+  _resolveRunes,
+  _keystoneOptionsHtml,
+  _KEYSTONE_OPTIONS,
   _COMBO_TTL_MS,
 };
