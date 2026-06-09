@@ -45,7 +45,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HIST2 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Session + History pages): a clicked match should populate + switch to a DETACHED historical PGR frame showing the PGR info "as if the match had just ended", SEPARATE from the live in-use last-match PGR (with a back action to return). Reuse the PGR/last-match render against a historical match-id source; MUST NOT mutate or clobber the live last-match PGR state. Tests + Section-3b UI-audit + visual. Pairs with HIST1. | DONE | ac404c13 |
 | CS1 | ui-feature | OPERATOR-REPORTED 2026-06-08 (Champ Select): missing the CC-conditional pairing UI elements. Surface the DS cc_conditional pairing data on champ select (the engine has a saturated cc_conditional ecosystem - agents/daemon_slayer cc_conditional registry/accessors). Investigate the existing cc surface + the champ-select panel (web/js/panels/champ_select.js), add the pairing UI + route if needed + test + Section-3b audit + visual. | DONE | 541cd9d3 |
 | CS2 | ui-bug | OPERATOR-REPORTED 2026-06-08 (Champ Select): operator must MANUALLY fix summoner spells - on first champ-select load the client defaults to Flash+Heal or Flash+Teleport at random instead of the intended set (Flash+Teleport). Investigate whether RC can push the correct summoner spells via LCU on champ-select enter (mirror lcu/lcu_rune_writer's auto-push pattern; `/lol-champ-select/v1/session/my-selection` spell1Id/spell2Id) - either ADD a spell auto-push (per-champ/per-mode default) or, if RC already pushes and is wrong, fix the source; if purely client-side + unreachable, document as client-only + close. LIVE-GATED. | DONE | 29cd2788 |
-| CS3 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Champ Select): the combo timeline / dps scaling / fight model / relative item power panels do NOT need to be seen during champ select -> MOVE them OFF the champ-select page to a more appropriate surface (e.g. an Active-Match / DS / Build view). Relocate placement only - KEEP all data wiring intact (feedback_field_remove_visual_only: this is a move, not a teardown). Tests + Section-3b audit on BOTH the source (champ-select, panels gone) and destination pages. | OPEN | - |
+| CS3 | ui-ux | OPERATOR-REPORTED 2026-06-08 (Champ Select): the combo timeline / dps scaling / fight model / relative item power panels do NOT need to be seen during champ select -> MOVE them OFF the champ-select page to a more appropriate surface (e.g. an Active-Match / DS / Build view). Relocate placement only - KEEP all data wiring intact (feedback_field_remove_visual_only: this is a move, not a teardown). Tests + Section-3b audit on BOTH the source (champ-select, panels gone) and destination pages. | DONE | d68cddd3 |
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | OPEN | - |
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | OPEN | - |
@@ -62,6 +62,24 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-08 CS3 DONE (commit d68cddd3). Moved the 4 DS analysis panels OFF
+  champ-select to the Active Match view (operator-chosen destination via one framed
+  AskUserQuestion). Single coupled UI slice (1 worktree agent + merger verify). MAPPED
+  by rendered title: combo timeline = csv-sugg-ds-combo, dps scaling = csv-sugg-ds-sweep,
+  fight model = csv-sugg-ds-matchup (the 1v1 verdict, the only fight panel), relative
+  item power = csv-ds-relscore. LEFT on champ-select: ds-profile / ds-knobs / ds-statcheck
+  + the CS1 cc-pairing. RELOCATE not teardown - mounts moved index.html (same ids, routes
+  + render fns UNCHANGED), invocations moved champ_select.js -> active_match.js fed a
+  synthetic champ-select state from the LIVE coach payload (my_champion via the canonical
+  _resolveChampId/CHAMPS.byId, matchup enemy = first liveclient enemy, relscore = owned
+  items), fail-soft hidden with no live data. The merge full-suite gate caught the slice's
+  lone red - a BRITTLE test (test_spike_curve.py::test_active_match_uses_champs_for_id_lookup
+  exact-substring `import { ITEMS, CHAMPS }` broke when CS3 appended _resolveChampId to that
+  destructure); robustified to a regex, intent preserved (CHAMPS.byId guard untouched). Full
+  RC tests/ 5478 passed / 2 skip / 0 fail; ruff + node --check clean; 5-phase audit PASS on
+  BOTH pages. OWED (live-gated): in-game visual capture of the 4 panels populated at once.
+  The operator UI/UX batch (LOBBY1..CS3) is now FULLY SHIPPED. **NEXT OPEN = HZ-B1** (Lane B
+  build-order precompute), then HZ-B2 / HZ-C1 / HZ-D1.
 - 2026-06-08 HIST1+HIST2 + CS1 + CS2 DONE (3 parallel disjoint-file worktree
   slices, merged + full-suite-verified; commits ac404c13 / 541cd9d3 / 29cd2788).
   Operator "continue next open items in parallel". The merger cherry-picked the 3

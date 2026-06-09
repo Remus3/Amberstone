@@ -302,7 +302,14 @@ def test_active_match_uses_champs_for_id_lookup():
     fictional window.CHAMP_INDEX) so the panel resolves champion ids
     consistently with the rest of the dashboard."""
     src = _read(ACTIVE_MATCH_JS)
-    assert "import { ITEMS, CHAMPS }" in src or "import { CHAMPS" in src
+    # CHAMPS must be destructured from items_index.js (any sibling imports /
+    # order ok - CS3 added _resolveChampId to the same statement); never a
+    # fictional window.CHAMP_INDEX.
+    import re
+    assert re.search(
+        r"import\s*\{[^}]*\bCHAMPS\b[^}]*\}\s*from\s*['\"][^'\"]*items_index\.js",
+        src,
+    ), "active_match.js must destructure CHAMPS from items_index.js"
     # The reverse-lookup memo must read from CHAMPS.byId.
     assert "CHAMPS.byId" in src
 
