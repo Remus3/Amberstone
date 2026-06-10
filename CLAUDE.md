@@ -184,8 +184,8 @@ Per-item completion ledger relocated to `docs/LEDGER.md` (append-only, newest-fi
 
 - Open work + NEXT: `ROADMAP.md` + `BACKLOG.md`
 - Recent session fidelity (last 2-3): `WAKEUP_NOTES.md`
-- Per-item completion ledger (item 150 and newer): `docs/LEDGER.md`
-- Deep archive (items 1-149 + pruned wakeups): `docs/history_notes.md`
+- Per-item completion ledger (item 325 and newer): `docs/LEDGER.md`
+- Deep archive (items 1-324 + pruned wakeups): `docs/history_notes.md`
 
 ### Settled - do not re-litigate (items 1-149 relocated verbatim to `docs/history_notes.md` (1-93 on 2026-05-19, 94-149 on 2026-05-23); read that archive for full context before re-opening any line below)
 
@@ -206,4 +206,4 @@ Per-item completion ledger relocated to `docs/LEDGER.md` (append-only, newest-fi
 - **Live DS truth = `data/daemon_slayer/current.txt` + `agents/daemon_slayer/__init__.py` + `/health`** (do not trust ledger recollection of patch/ENGINE). DS coverage %/match-row prose is a DS-batch docs-sync job, never recomputed in a general sync (nested registry schema; a flat count mis-parses) - memory `feedback_ds_coverage_prose_recompute`.
 - **Biggest pending non-engine item: the s220 aggregator-G-style Post Game Review reframe** (UI; operator-decided scope - single-match richer layout, the 0-100 score is an RC heuristic over enriched stats with NO Claude/Riot dependency; staged S2-S5, each its own session plus the per-page UI-audit ritual). Legion 1-PC consolidation is DONE (decided s169, EXECUTED item 215 2026-05-29, ADR-011; RC_GAME_HOST defaults 127.0.0.1) - only deferred tails remain (OBS launch-test live-gated; gamepc_*.py archival verify-confirmed NOT-safe; Phase 11 vision relay full-collapse partly done items 267/276). 101.qq.com duo-synergy is DONE + LIVE-WIRED (item 277): captured + characterized (faas getRankDouble, lane1/lane2 strings, championid 1:1 DDragon, NOT geo-fenced - reachable from Legion), then operator chose the LIVE dependency - NEW `core/synergy_external_source.fetch_rows` feeds the EXISTING item-199 `core/smoothed_rates_101qq` lane (live-first, static May-25 seed fallback, `RC_DUO_SYNERGY_LIVE=0` kill switch); `/api/duo-synergy` route + bot/sup grid unchanged; raw payload gitignored (redistributable). Live open work is tracked in `ROADMAP.md` / `BACKLOG.md`.
 
-Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Per-item ledger (150 and newer): `docs/LEDGER.md`. Deep archive (items 1-149 + pruned wakeups): `docs/history_notes.md`.
+Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Per-item ledger (325 and newer): `docs/LEDGER.md`. Deep archive (items 1-324 + pruned wakeups): `docs/history_notes.md`.
