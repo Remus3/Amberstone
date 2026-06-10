@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "patch": "16.10.1",
+  "queue_id": 420,
+  "min_n": 20,
+  "items": [
+    {"rune_id": 8010, "name": "Conqueror", "icon": "perk-images/Styles/Precision/Conqueror/Conqueror.png", "slot_kind": "keystone", "n": 96, "observed_winrate": 0.5938, "expected_winrate": 0.5012, "wpa": 0.0926, "wpa_shrunk": 0.0880},
+    {"rune_id": 8005, "name": "Press the Attack", "icon": "perk-images/Styles/Precision/PressTheAttack/PressTheAttack.png", "slot_kind": "keystone", "n": 58, "observed_winrate": 0.5690, "expected_winrate": 0.5021, "wpa": 0.0669, "wpa_shrunk": 0.0616},
+    {"rune_id": 8014, "name": "Coup de Grace", "icon": "perk-images/Styles/Precision/CoupDeGrace/CoupDeGrace.png", "slot_kind": "minor", "n": 84, "observed_winrate": 0.5595, "expected_winrate": 0.5039, "wpa": 0.0556, "wpa_shrunk": 0.0525},
+    {"rune_id": 8009, "name": "Presence of Mind", "icon": "perk-images/Styles/Precision/PresenceOfMind/PresenceOfMind.png", "slot_kind": "minor", "n": 47, "observed_winrate": 0.5532, "expected_winrate": 0.5101, "wpa": 0.0431, "wpa_shrunk": 0.0390},
+    {"rune_id": 8112, "name": "Electrocute", "icon": "perk-images/Styles/Domination/Electrocute/Electrocute.png", "slot_kind": "keystone", "n": 31, "observed_winrate": 0.5161, "expected_winrate": 0.5008, "wpa": 0.0153, "wpa_shrunk": 0.0132},
+    {"rune_id": 8126, "name": "Cheap Shot", "icon": "perk-images/Styles/Domination/CheapShot/CheapShot.png", "slot_kind": "minor", "n": 39, "observed_winrate": 0.5128, "expected_winrate": 0.5054, "wpa": 0.0074, "wpa_shrunk": 0.0066},
+    {"rune_id": 8021, "name": "Fleet Footwork", "icon": "perk-images/Styles/Precision/FleetFootwork/FleetFootwork.png", "slot_kind": "keystone", "n": 25, "observed_winrate": 0.4800, "expected_winrate": 0.5029, "wpa": -0.0229, "wpa_shrunk": -0.0191},
+    {"rune_id": 8139, "name": "Taste of Blood", "icon": "perk-images/Styles/Domination/TasteOfBlood/GreenTerror_TasteOfBlood.png", "slot_kind": "minor", "n": 44, "observed_winrate": 0.4773, "expected_winrate": 0.5083, "wpa": -0.0310, "wpa_shrunk": -0.0278},
+    {"rune_id": 8444, "name": "Second Wind", "icon": "perk-images/Styles/Resolve/SecondWind/SecondWind.png", "slot_kind": "minor", "n": 22, "observed_winrate": 0.4545, "expected_winrate": 0.5067, "wpa": -0.0522, "wpa_shrunk": -0.0392},
+    {"rune_id": 8128, "name": "Dark Harvest", "icon": "perk-images/Styles/Domination/DarkHarvest/DarkHarvest.png", "slot_kind": "keystone", "n": 21, "observed_winrate": 0.4286, "expected_winrate": 0.5044, "wpa": -0.0758, "wpa_shrunk": -0.0568}
+  ],
+  "elapsed_ms": 1290,
+  "cached": true
+}
