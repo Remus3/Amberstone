@@ -123,6 +123,41 @@ capture, NO game-memory reads, NO input injection. The game must run Borderless
 (an exclusive-fullscreen game hides any compositor overlay).
 
 The overlay's compact layout (the `?overlay=1` route) + interactive controls
-(Phase 4) + electron-updater (Phase 5) + optional Pengu panels (Phase 6) are
-still pending - see `docs/ELECTRON_OVERLAY.md`. Visual launch (`npm start`) is
-operator-gated.
+(Phase 4) shipped in earlier slices; electron-updater channels (Phase 5) are
+below. Optional Pengu panels (Phase 6) are still pending - see
+`docs/ELECTRON_OVERLAY.md`. Visual launch (`npm start`) is operator-gated.
+
+## Updates (Phase 5)
+
+The shell versions and auto-updates on its own cadence (electron-updater +
+GitHub Releases), decoupled from RC backend pushes - you only rebuild the
+shell when the windowing changes.
+
+Two release channels:
+
+| Channel | Rides                        | Who                  |
+|---------|------------------------------|----------------------|
+| stable  | full GitHub Releases only    | operator daily       |
+| dev     | prerelease + full Releases   | iterating developer  |
+
+Channel precedence: `env RC_SHELL_CHANNEL` > saved state > `stable` (same
+shape as `RC_ORIGIN`). Switch live from the **Shell** menu - the two
+"Update channel" radio items persist the choice and re-check immediately;
+"Check for updates now" forces a check on demand.
+
+Update behavior is deliberately quiet: checks start ~15s after boot and then
+every 4 hours; downloads are automatic; the install happens on natural app
+quit (`autoInstallOnAppQuit`) - the shell NEVER restarts itself mid-session,
+because the operator may be in a game. All update events log to the console
+only (no dialogs, no focus steal).
+
+Updates disable themselves gracefully (a console line, nothing else) when:
+
+- the shell is not packaged (a `npm start` dev launch), or
+- the `electron-updater` package is absent (bare checkout without
+  `npm install`).
+
+WIP / operator-gated: packaging (`npx electron-builder`, see
+`electron-builder.yml`) and publishing GitHub Releases are operator actions -
+no Release exists yet. The repo is private, so a packaged shell needs
+`GH_TOKEN` in its runtime environment for update checks to reach the feed.
