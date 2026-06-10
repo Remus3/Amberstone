@@ -7,7 +7,7 @@ closed a WIN 1 combo-duration test gap). Long-term DDragon/CDragon ratio re-sour
 Authored 2026-06-03 from a fresh-look source dive
 (full comparison: `Desktop\DS_DATA_SOURCE_COMPARISON_2026-06-03.md`) plus an adoption map of the
 live tree and live validation. Live patch 16.11.1, ENGINE_VERSION 1.106.0. Operator copy:
-`Desktop\todo.md`. Companion prior art: `docs/DS_DATA_SOURCE_SWEEP_2026-05-30.md`.
+`Desktop\todo.md`. Companion prior art: `docs/_archive/DS_DATA_SOURCE_SWEEP_2026-05-30.md`.
 
 ## Outcome of the dive
 
@@ -25,7 +25,7 @@ Two actionable wins and one explicit non-goal:
   guard keyed to PATCH (the `fetched_at` timestamp lies over the frozen `latest` endpoint).
 - **NON-GOAL - CC-duration sourcing.** DS already owns CC durations hand-curated in
   `agents/daemon_slayer/_per_spell_cc.py` (108 entries / 89 champs) + `cc_conditional_registry.json`,
-  insulated from Meraki staleness; `docs/DS_DATA_SOURCE_SWEEP_2026-05-30.md` already proved CC-seconds
+  insulated from Meraki staleness; `docs/_archive/DS_DATA_SOURCE_SWEEP_2026-05-30.md` already proved CC-seconds
   are structured on NO machine source. Do not duplicate this. Only CDragon discovery aids (cc_tags /
   missile / ammo) have residual value and are already tracked.
 

@@ -52,7 +52,7 @@
       User scope); read-only enforced by `--approval-mode plan`, workspace via `--skip-trust`;
       tools/gemini_audit.ps1 (stdin-pipe + retry + atomic write) + tools/gemini_audit_prompt.md;
       .geminiignore; docs/GEMINI_REVIEW_CONSUMPTION.md; RC-GeminiAudit nightly 03:00 (Ready);
-      first real review docs/EXTERNAL_REVIEW_2026-06-04.md (gitignored) verified genuine.
+      first real review docs/_archive/EXTERNAL_REVIEW_2026-06-04.md (gitignored) verified genuine.
 - [ ] STEP D - tone/style/memory artifacts
 - [x] EXPANDED - in-session Q/A channel `tools/gemini_ask.ps1` -> `gemini_io/answer_<id>.md`
       (read-only, validated); AHK self-clear primitive `tools/claude_send.ahk` (AHK v2, target
