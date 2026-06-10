@@ -79,6 +79,7 @@ def _gather_get() -> list:
                                routes_health_peer,
                                routes_item_wpa,
                                routes_skill_wpa,
+                               routes_rune_wpa,
                                routes_lessons,
                                routes_loadout, routes_loop_status,
                                routes_lobby_aux, routes_metrics,
@@ -122,6 +123,7 @@ def _gather_get() -> list:
                       + list(routes_health_peer.GET_ROUTES)
                       + list(routes_item_wpa.GET_ROUTES)
                       + list(routes_skill_wpa.GET_ROUTES)
+                      + list(routes_rune_wpa.GET_ROUTES)
                       + list(routes_lessons.GET_ROUTES)
                       + list(routes_loadout.GET_ROUTES)
                       + list(routes_loop_status.GET_ROUTES)
