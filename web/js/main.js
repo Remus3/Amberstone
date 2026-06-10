@@ -54,6 +54,15 @@ import { initOverlayPulse } from './overlay_pulse.js';
   // of this module.
   if (/[?&]overlay=1/.test(location.search)) {
     document.body.dataset.shell = "overlay";
+    // Item-378 tail: panel-set subset rendering. rc-shell's Alt+Shift+C
+    // cycle reloads the overlay window at ?overlay=1&panelset=NAME
+    // (overlay_state.js PANEL_SETS contract: coach / build / threat).
+    // Only a canonical name stamps; absent/unknown keeps the S1 full
+    // compact subset, so the plain overlay URL is backward compatible.
+    const psm = location.search.match(/[?&]panelset=(coach|build|threat)(?:&|$)/);
+    if (psm) {
+      document.body.dataset.panelset = psm[1];
+    }
   }
 
   const WS_HOST = location.hostname || "legion-pc.local";
@@ -6397,6 +6406,13 @@ import { initOverlayPulse } from './overlay_pulse.js';
           // strip got null liveclient.
           state.latest.liveclient = st.liveclient || null;
           state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
+          // Item-378 tail (chip task_8a4ebe04): the W3A deterministic keys
+          // are /api/state TOP-LEVEL siblings too; renderCoachChoices /
+          // renderLead / renderCallouts read them off state.latest, so
+          // without this stamp all three mounts stay permanently dark.
+          state.latest.coach = st.coach || null;
+          state.latest.lead_projection = st.lead_projection || null;
+          state.latest.callouts = st.callouts || null;
           onState({ type: "state", source: "state-http",
                     mode: fileMode, payload: coachPayload });
           // 2026-04-25: cold-start champ-select prep - surface adaptation
@@ -6437,6 +6453,10 @@ import { initOverlayPulse } from './overlay_pulse.js';
           // 2026-05-25 item 201 fix: see HTTP-fallback site above.
           state.latest.liveclient = st.liveclient || null;
           state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
+          // Item-378 tail: see HTTP-fallback site above.
+          state.latest.coach = st.coach || null;
+          state.latest.lead_projection = st.lead_projection || null;
+          state.latest.callouts = st.callouts || null;
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
           if (st.lcu) handleLcuEnvelope(st.lcu);
@@ -6479,6 +6499,10 @@ import { initOverlayPulse } from './overlay_pulse.js';
           if (st) {
             state.latest.liveclient = st.liveclient || null;
             state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
+            // Item-378 tail: see HTTP-fallback site above.
+            state.latest.coach = st.coach || null;
+            state.latest.lead_projection = st.lead_projection || null;
+            state.latest.callouts = st.callouts || null;
           }
           if (st) { renderTeamContext(st); renderArchetypeNudge(st); renderScreenRead(st); }
         }

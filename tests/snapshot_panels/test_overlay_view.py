@@ -228,6 +228,99 @@ def test_no_overlay_param_keeps_normal_shell(mock_server, pw_browser):
     assert not errors, f"JS errors [control]: {errors[:3]}"
 
 
+def _open_overlay_set(pw_browser, mock_server, panelset):
+    return _open_overlay(
+        pw_browser, mock_server,
+        query=f"?ui_mock=1&mode=sr&overlay=1&panelset={panelset}",
+    )
+
+
+def test_panelset_coach_hides_build(mock_server, pw_browser):
+    """panelset=coach: CALL pane + right-now mounts only - BUILD pane off."""
+    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "coach")
+    try:
+        assert page.evaluate("document.body.dataset.panelset") == "coach"
+        assert page.locator("#view-active-match .am-pane-call").is_visible()
+        assert _display(page, ".am-pane-build") == "none", "build pane should hide"
+        assert _display(page, "main") != "none", "mount column must stay"
+        assert page.locator("#rn-lead").count() == 1
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.screenshot(path=str(SCREENSHOTS / "overlay_sr_coach.png"))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [panelset coach]: {errors[:3]}"
+
+
+def test_panelset_build_shows_build_only(mock_server, pw_browser):
+    """panelset=build: BUILD pane only - CALL pane + the right-now mount
+    column are off."""
+    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "build")
+    try:
+        assert page.evaluate("document.body.dataset.panelset") == "build"
+        assert page.locator("#view-active-match .am-pane-build").is_visible()
+        assert _display(page, ".am-pane-call") == "none", "call pane should hide"
+        assert _display(page, "main") == "none", "mount column should hide"
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.screenshot(path=str(SCREENSHOTS / "overlay_sr_build.png"))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [panelset build]: {errors[:3]}"
+
+
+def test_panelset_threat_shows_cds_lead_callouts(mock_server, pw_browser):
+    """panelset=threat: the CDS cooldown ledger + lead/callouts timing
+    surfaces - CALL/BUILD panes and the A+B choice chips are off."""
+    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "threat")
+    try:
+        assert page.evaluate("document.body.dataset.panelset") == "threat"
+        assert _display(page, ".am-pane-cd") != "none", "cd pane must show"
+        assert _display(page, ".am-pane-call") == "none", "call pane should hide"
+        assert _display(page, ".am-pane-build") == "none", "build pane should hide"
+        # Choices are a coach-set surface: even populated they stay off here.
+        page.evaluate(
+            "() => {"
+            "  const ch = document.getElementById('rn-choices');"
+            "  ch.hidden = false;"
+            "  ch.innerHTML = '<button class=\"rc-chip\">A</button>';"
+            "}"
+        )
+        assert _display(page, "#rn-choices") == "none", "choices should hide"
+        # Lead/callouts still displayable (timing surfaces).
+        page.evaluate(
+            "() => {"
+            "  const co = document.getElementById('rn-callouts');"
+            "  co.hidden = false;"
+            "  co.innerHTML = '<div class=\"rc-co-row\">"
+            "<span class=\"rc-co-line\">Drake 0:45</span></div>';"
+            "}"
+        )
+        assert _display(page, "#rn-callouts") != "none", "callouts must show"
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.screenshot(path=str(SCREENSHOTS / "overlay_sr_threat.png"))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [panelset threat]: {errors[:3]}"
+
+
+def test_panelset_unknown_or_absent_keeps_full_subset(mock_server, pw_browser):
+    """Defensive: an unknown panelset never stamps the attribute, so the
+    S1 full compact subset (CALL + BUILD + mounts) renders unchanged; the
+    plain ?overlay=1 URL stays backward compatible."""
+    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "garbage")
+    try:
+        assert page.evaluate("document.body.dataset.panelset || ''") == ""
+        assert page.locator("#view-active-match .am-pane-call").is_visible()
+        assert page.locator("#view-active-match .am-pane-build").is_visible()
+        assert _display(page, "main") != "none"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [panelset unknown]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the
     overlay-route files this slice adds."""
