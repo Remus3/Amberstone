@@ -56,14 +56,17 @@ body[data-shell="overlay"] .view-section:not(#view-active-match) {
 body[data-shell="overlay"] #view-active-match {
   display: block !important;
   order: 1;
-  flex: 0 0 auto;
+  /* 0 1 auto + hidden: when the column would exceed the viewport, the
+   * BUILD tail compresses/clips instead of pushing the time-critical
+   * callouts below the fold (audit MUST-FIX 1). */
+  flex: 0 1 auto;
   width: 460px;
   margin: 8px 8px 0 0;
   padding: 0;
   background: transparent;
   border: none;
   box-shadow: none;
-  overflow: visible;
+  overflow: hidden;
   min-height: 0;
 }
 body[data-shell="overlay"] #view-active-match .view-section-head {
@@ -150,13 +153,29 @@ body[data-shell="overlay"] #right-now .panel-body > * {
 body[data-shell="overlay"] #right-now .panel-body > #rn-lead:not([hidden]),
 body[data-shell="overlay"] #right-now .panel-body > #rn-choices:not([hidden]),
 body[data-shell="overlay"] #right-now .panel-body > #rn-callouts:not([hidden]) {
-  display: block !important;
+  /* flex (not block): the mounts' own base rules restore column/gap
+   * (chips 6px, callout rows 4px) and #rn-lead its row layout
+   * (audit MUST-FIX 2). */
+  display: flex !important;
   margin: 0 0 8px;
   padding: 8px 10px;
   background: rgba(23, 24, 33, 0.86);
   border: 1px solid rgba(46, 48, 64, 0.85);
   border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);
+}
+/* Lead pill state accents survive the overlay chrome override
+ * (audit MUST-FIX 3). */
+body[data-shell="overlay"] #right-now .panel-body > #rn-lead.rc-lead-ahead:not([hidden]) {
+  border-left: 4px solid var(--signal-good);
+}
+body[data-shell="overlay"] #right-now .panel-body > #rn-lead.rc-lead-behind:not([hidden]) {
+  border-left: 4px solid var(--signal-bad);
+}
+/* Chip source pill: 10px base is sub-floor at game distance
+ * (audit MUST-FIX 4). */
+body[data-shell="overlay"] .rc-src {
+  font-size: 13px;
 }
 
 /* 5. Change-pulse hook. overlay_pulse.js adds .ov-pulse to a panel
