@@ -53,6 +53,64 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-10 - gemini loop cycle 1: rc-shell drag region + overlay ACTIVE drag [item 380, HZ-D1 slice 1]
+
+Gemini-headless-upgrade executor cycle (run 2026-06-10-01). Directive minimum = make the frameless companion draggable. Merge `0b2eea62` (slice `bbc8e31e`, 1 worktree agent, verifier-CONFIRMED pre-merge). NO engine, no Share, no RC restart.
+
+- NEW `rc-shell/src/drag_region.js` pure module: `dragRegionCSS()` fixed transparent 24px top strip `-webkit-app-region: drag` + `.rc-shell-no-drag` escape hatch; `dragRegionMountJS()` idempotent IIFE appending to documentElement. Injected by `injectDragRegion(win)` in main.js on `did-finish-load` (insertCSS + executeJavaScript, no-throw) - dashboard untouched.
+- Preload route is a DEAD-END: sandbox:true preloads cannot require local modules. Do not re-try.
+- Overlay gets the same strip: inert while click-through, grabbable when ACTIVE (Alt+Shift+A) = overlay user-movable (Phase 4 control off the existing gate). Overlay position NOT persisted - named next-slice candidate.
+- Gates THIS run: node 85/85 (77 -> 85, TDD red-first); DS 7075p/1sk/1xf/1942st; RC tests/ 5724p/2sk/85st EXIT=0 (file-read summary). `py` launcher resolved to pythoncore-3.14-64 WITHOUT pytest - use the canonical `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe` for suites.
+- OWED: item-379's running shell predates the drag code - relaunch to pick up; live drag-feel + in-game overlay-drag capture.
+
+---
+
+# 2026-06-10 - item-378 overlay tail: ingest regen + panelset rendering + dark-mounts fix + Electron launch [item 379]
+
+Operator queued the 4-part 378 tail; autonomous. Commits `be8a033e` (Share) + `74ba5d31` (overlay/web). NO engine, no RC restart. Full record: docs/LEDGER.md 379.
+
+- **(1) lolmath_ingest regen + guard (`be8a033e`):** subdir restamped 1.108.0/16.11.1 -> 1.120.0/16.12.1 + 13MB dist bundle rebuilt; `ds_share_sync.py` write/--check now cover it (anchors via 2 disjoint token rules + bundle byte-compare; MISSING bundle = skip, it is gitignored `dist/` so CI clean checkouts pass). +9 tests. CRLF gotcha: restamp writer needs `newline=""`. Gist mirror pushed ok.
+- **(2) chip task_8a4ebe04 = REAL bug, FIXED:** /api/state top-level `coach`/`lead_projection`/`callouts` never stamped onto `state.latest` -> renderCoachChoices/renderLead/renderCallouts (fed `state.latest`) dark since W3E, dashboard AND overlay. Stamped at all 3 ingest sites (item-201 pattern); +3 contract tests.
+- **(3) panelset rendering (`74ba5d31`):** `body[data-panelset]` stamp (canonical names only) + overlay.css 4b: coach=CALL+mounts, build=BUILD only, threat=CDS ledger+lead/callouts. UI audit pre-commit: 1 MUST-FIX fixed in-slice (cd_ledger 10/9/11px sub-floor at game distance -> threat-scoped 13px/18px lift) + NICE (collapse suppressed; persisted `cdLedgerCollapsed` ignored - shared-origin localStorage would blank the HUD). +4 Playwright tests, overlay suite 10/10.
+- **(4) Electron launch:** rc-shell node_modules was EMPTY (electron gone; npm start failed) -> `npm install` restored; companion window up rendering live dashboard, WS connected, capture taken; node 77/77. **Shell LEFT RUNNING** - overlay auto-flips on game start (Alt+Shift+O toggle, Alt+Shift+C panelset cycle).
+- Ground truth this run: tests/ `5601 passed / 2 skipped / 0 FAILED EXIT=0` (file, not pipe).
+- **Post-tail (`359a131a`):** operator re-reported the dark-mounts bug with forensics asks -> behavioral SSE characterization test `tests/snapshot_panels/test_deterministic_mounts_sse.py` (real EventSource drive; proven RED on `74ba5d31~1`, GREEN current; snapshot suite 123). FORENSICS: dead since DAY ONE (`ee5323b7` 2026-05-20 - `git -S` shows `74ba5d31` is the first-ever `state.latest.coach` assignment); NOT an item-314 regression; the May decisions_log rows are smoke-test synthetics. Don't re-investigate.
+- Owed next: live-game overlay capture (League client was at PLAY screen); Phase 4 interactive controls; Phase 5.
+
+---
+
+# 2026-06-09 - orchestrated Electron-overlay session: HZ-D1 route + shell P4 + prune + sidequest [item 378]
+
+Operator: continue Electron overlay autonomously, multi-agent orchestrated, self-audit, prune files/branches, no operator gating. 4-agent Workflow (wf_51d1c597) -> merge -> 5-phase UI audit -> verifier -> fix -> push. Commits `b58a1550`/`47b9e5d6`/`c97f5fcc`/`6e8989ec`/`0522ceab`. NO engine, no Share delta, no RC restart.
+
+- **S1 (`b58a1550`):** `?overlay=1` overlay route - `body[data-shell=overlay]` + active-match pin; NEW `web/css/overlay.css` (460px right-dock, transparent page, CALL+BUILD+lead/choices/callouts only) + `web/js/overlay_pulse.js` (one-shot 1.2s edge-glow on content change); asset-hash covers both; +6 snapshot tests.
+- **UI audit:** 4 MUST-FIX fixed in-slice (`0522ceab`): flex 0 1 auto/overflow hidden (1080 clip), mount display:flex (gap restore), rn-lead accent re-assert, .rc-src 13px. 3 NICE deferred (active_match.js 9-10px inline fonts, eyebrow contrast, boot-pulse burst).
+- **S2 (`47b9e5d6`):** rc-shell P4 partial - ACTIVE 20s auto-revert + poll backoff 2-15s + Alt+Shift+C `panelset=` cycle; node 77/77. Dashboard-side panelset rendering = next slice.
+- **S3:** 3 orphan worktree-agent branches DELETED (patch-equivalent to main `9d2e85ea`/`df78b090`/`7e8e47fa`); ROADMAP item-280/281 stale NEXT lines corrected.
+- **Prune (`c97f5fcc`):** 10 dated docs -> `_archive/` + 7 refs rewritten; rc-shell/.pytest_cache deleted.
+- **Verifier catch:** pre-existing `test_ledger_holds_relocated_items` red (LEDGER split-home) - re-scoped; full suite 5706/0 fail fresh.
+- **Sidequest (no naming):** Share core in sync (1.120.0/16.12.1) BUT Share's calculator-ingest subdir pins 1.108.0/16.11.1 + the external site's deployed chunks embed 16.11.1 with no DS markers = bundle offered-not-consumed. OWED: regen ingest bundle at next Share sync; extend `ds_share_sync.py --check` to cover that subdir.
+- **S1 agent flag (chip task_8a4ebe04):** renderLead/renderCallouts/renderCoachChoices read `state.latest` keys (lead_projection/callouts/coach) no ingest path assigns - overlay mounts may stay dark until wired; verify on a live game.
+- Owed next: Electron visual launch (`npm start`) + live-game overlay capture; dashboard panelset rendering; Phase 4 controls; Phase 5.
+
+---
+
+# 2026-06-09 - HZ precompute regen at live patch 16.12.1 (unblock shadow coverage) [item 377]
+
+Operator "start what is up next that is open" -> diagnosed the Haiku-to-ZERO HZ shadow gate. `hz_shadow_report` showed 0/512 laning + 0/475 build covered. ROOT CAUSE: HZ-A/B precompute dirs existed ONLY at 16.11.1 but live patch is 16.12.1 (item 372 patch-refresh deferred the HZ regen; item 374 S4 re-deferred). The patch-keyed reader found no 16.12.1 dir -> every new-game shadow record logged covered=false. Data-only, NO engine, ENGINE 1.120.0 untouched, no Share (HZ tables not Share-mirrored). Commit `cc35d5ed`, CI green (run 27249973771).
+
+- Regenerated all 3 SR tables at 16.12.1 from the full 172-champ roster (`data/daemon_slayer/16.12.1/champions.json` keys; item-370 baseline +1 patch-added champ):
+  - laning_scenarios/16.12.1/laning_scenarios_sr.json  355008 cells / 66MB (LFS)
+  - build_orders/16.12.1/build_orders_sr.json          172 champs / 688 orders
+  - build_orders/16.12.1/build_order_variants_sr.json  344 orders
+- Generators: `core/{laning_scenario_precompute,build_order_precompute,build_order_variants}.py --mode sr --champions <172-csv>`; laning needs `PYTHONPATH=repo` (top-level `agents` import) + 187s for the 172x172x3 sweep.
+- Read path live-verified at 16.12.1: `lookup` + `precomputed_choices` Ahri vs Darius L6 -> back_off / "Recall now".
+- `hz_shadow_report` 0-coverage is HISTORICAL only - `covered` is baked into each record at log time (report line 81 reads the record, never the live table). Accrues covered=true on NEW games now the dir exists.
+- HZ tests 165 passed; ruff/hygiene green; clean tree pushed.
+- Don't-redo: SR HZ precompute now current at 16.12.1; ARAM/Arena `--mode all` expand STILL deferred (item 374 S4); owed = confirm covered=true on the next live SR game.
+
+---
+
 # 2026-06-09 - weekly doc + memory hygiene: LEDGER/WAKEUP/ROADMAP shrink (relocate-only) [item 375]
 
 Side-chat asked why editing LEDGER/ROADMAP got slow -> root cause = file growth (LEDGER append-only hit 1024KB / ~262K tok; Edit rewrites the whole file per mark). Operator "run it now" -> doc/memory-only hygiene. Commit `13151b30` (pushed `d8ff8d6f..13151b30`). No engine/code, no ENGINE bump, no Share.
@@ -9664,6 +9722,18 @@ Operator handed 3 Desktop review docs (`Claude_Refactor_Plan.md` + `Riot_Command
 
 ---
 
+# 2026-06-09 - session-start anomaly triage: DDragon flake-tolerance + rc_facts gamepc demotion + /weekly-hygiene automation [item 376]
+
+Session-start flagged 3 anomalies (operator "your call"): RC-DDragonMirrorRefresh result=2, gamepc :8892 None, gamepc bridge stale ~9d. Ops/tools/docs only - NO engine, NO ENGINE bump, NO Share, no RC restart. 4 commits `3f4dc43f`/`f62b5bc1`/`56052df9`/`9cc5a6ad`.
+
+- **DDragon (`3f4dc43f`+`f62b5bc1`):** result=2 was benign - `--check-changed` HEAD-probes 6792 assets nightly, ANY single transient flake (CDN-edge 404 among ~4966 profileicons) tripped `failed>=1` -> exit 2 (foreground re-run: 6792/6792 skip, fail=0). Fix: `fetch_one` retries a 404 once; NEW `FAIL_RATIO_TOLERANCE=0.005` + `_failures_within_tolerance` shared by `_exit_code_for` (exit 2 only when failed/total>0.5%) AND the index-advance gate (a tolerable flake during a version flip advances `_index.json` same-night). +11 tests (52 total).
+- **rc_facts (`56052df9`):** gamepc out-of-pipeline post-1PC (ADR-011) so MCP-None + bridge-stale are EXPECTED; NEW `RC_GAMEPC_RETIRED` flag (default on, `=0` re-arms) demotes both to annotated info lines via `_gamepc_mcp_anomaly`/`_bridge_peer_anomalies`; Peer + queue-backlog still flag. +9 tests (file had none). Live: Anomalies now shows ONLY the real DDragon result=2 (self-clears tonight 3:30 AM).
+- **/weekly-hygiene (`9cc5a6ad`):** NEW skill `.claude/commands/weekly-hygiene.md` (local/gitignored) + persistent `RC-WeeklyHygiene` task (Sun 04:17) via `tools/weekly_hygiene_run.ps1` (headless `claude -p /weekly-hygiene` sonnet, appends a dated WAKEUP entry so flags surface) + `ops/install_RC_WeeklyHygiene.ps1` (idempotent) + OPERATIONS.md row. CronCreate (7d expiry) + cloud /schedule (no local tree) both unfit. Smoke READY exit 0; NextRun 2026-06-14 04:17.
+- **Memory (no git):** 2 capture-memories gamepc:8892 -> Legion-local (Windows-MCP/computer-use/preview); MEMORY.md 2 index hooks updated.
+- **Don't-redo:** a single-asset DDragon result=2 is benign-tolerated now (a real outage is >0.5% or pins the index); set `RC_GAMEPC_RETIRED=0` if gamepc returns to service; first `RC-WeeklyHygiene` fires Sun 6/14 04:17 (commits relocate-only trims + appends its own WAKEUP entry).
+
+---
+
 ---
 
 # 2026-06-02 - item 263: Kai'Sa ARAM rebuild + Ashe SR ADC paths (data-only, RC pid 324 live-verified, no restart)
@@ -11598,15 +11668,3 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - **Share sync** (f40f0362): ds_share_sync --check caught ehp.py content drift + the new test MISSING from Share/src; synced 333 files + staged the test mirror in the same commit. The intermediate commit 4be96220 CI went RED on the "DS Share package in sync" guard (Share stale) -> f40f0362 synced it GREEN. Reinforced: a DS source-file change needs ds_share_sync even with NO ENGINE bump (the file is mirrored in Share/src regardless of version).
 - Docs: ROADMAP L21 + BACKLOG L22 + LEDGER item 371 marked shipped (in f40f0362). 2 agent worktrees removed + merged branches deleted.
 - **NEXT (gated):** only LOW T2-F3 (TTK headline) + T1-F4 (per-stat EHP/gold, now unblocked by T1-F3) remain optional. cdragon by-level needs a NEW champ-level schema axis (do NOT re-pitch a calc-graph resolver). Don't-redo: T1-F3 + T2-F4 done.
-
----
-
-# 2026-06-09 - session-start anomaly triage: DDragon flake-tolerance + rc_facts gamepc demotion + /weekly-hygiene automation [item 376]
-
-Session-start flagged 3 anomalies (operator "your call"): RC-DDragonMirrorRefresh result=2, gamepc :8892 None, gamepc bridge stale ~9d. Ops/tools/docs only - NO engine, NO ENGINE bump, NO Share, no RC restart. 4 commits `3f4dc43f`/`f62b5bc1`/`56052df9`/`9cc5a6ad`.
-
-- **DDragon (`3f4dc43f`+`f62b5bc1`):** result=2 was benign - `--check-changed` HEAD-probes 6792 assets nightly, ANY single transient flake (CDN-edge 404 among ~4966 profileicons) tripped `failed>=1` -> exit 2 (foreground re-run: 6792/6792 skip, fail=0). Fix: `fetch_one` retries a 404 once; NEW `FAIL_RATIO_TOLERANCE=0.005` + `_failures_within_tolerance` shared by `_exit_code_for` (exit 2 only when failed/total>0.5%) AND the index-advance gate (a tolerable flake during a version flip advances `_index.json` same-night). +11 tests (52 total).
-- **rc_facts (`56052df9`):** gamepc out-of-pipeline post-1PC (ADR-011) so MCP-None + bridge-stale are EXPECTED; NEW `RC_GAMEPC_RETIRED` flag (default on, `=0` re-arms) demotes both to annotated info lines via `_gamepc_mcp_anomaly`/`_bridge_peer_anomalies`; Peer + queue-backlog still flag. +9 tests (file had none). Live: Anomalies now shows ONLY the real DDragon result=2 (self-clears tonight 3:30 AM).
-- **/weekly-hygiene (`9cc5a6ad`):** NEW skill `.claude/commands/weekly-hygiene.md` (local/gitignored) + persistent `RC-WeeklyHygiene` task (Sun 04:17) via `tools/weekly_hygiene_run.ps1` (headless `claude -p /weekly-hygiene` sonnet, appends a dated WAKEUP entry so flags surface) + `ops/install_RC_WeeklyHygiene.ps1` (idempotent) + OPERATIONS.md row. CronCreate (7d expiry) + cloud /schedule (no local tree) both unfit. Smoke READY exit 0; NextRun 2026-06-14 04:17.
-- **Memory (no git):** 2 capture-memories gamepc:8892 -> Legion-local (Windows-MCP/computer-use/preview); MEMORY.md 2 index hooks updated.
-- **Don't-redo:** a single-asset DDragon result=2 is benign-tolerated now (a real outage is >0.5% or pins the index); set `RC_GAMEPC_RETIRED=0` if gamepc returns to service; first `RC-WeeklyHygiene` fires Sun 6/14 04:17 (commits relocate-only trims + appends its own WAKEUP entry).
