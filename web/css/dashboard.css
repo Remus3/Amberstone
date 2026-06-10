@@ -43,6 +43,7 @@
 @import './panels/ds_matchup.css';
 @import './panels/ds_combo.css';
 @import './panels/ds_knobs.css';
+@import './panels/overlay_ds_controls.css';
 @import './panels/ds_relscore.css';
 @import './panels/ds_statcheck.css';
 @import './panels/spike_markers.css';

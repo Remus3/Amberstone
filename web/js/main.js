@@ -32,6 +32,10 @@ import { renderTeamContext } from './panels/team_context.js';
 import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
 import { renderScreenRead } from './panels/screen_read.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
+// HZ-D1 Phase 4: overlay-only DS fight-model pane. Piggybacks every
+// active-match dispatch below; self-gates on body[data-shell="overlay"]
+// so it is a cheap no-op on the 1920 dashboard.
+import { renderOverlayDsControls } from './panels/overlay_ds_controls.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
 // HIST2: detached historical PGR (archive view for a clicked History /
 // Session match row). Separate DOM + state from last_match.js - never
@@ -667,6 +671,9 @@ import { initOverlayPulse } from './overlay_pulse.js';
           liveclient: _amMockData.liveclient || null,
           cooldowns: _amMockData.summoner_cooldowns || null,
         });
+        // HZ-D1 Phase 4: same mock envelope feeds the overlay-only DS
+        // fight-model pane (no-op unless body[data-shell="overlay"]).
+        renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
       } else {
         _amMockLoad();
       }
@@ -1307,6 +1314,9 @@ import { initOverlayPulse } from './overlay_pulse.js';
           liveclient: _amMockData.liveclient || null,
           cooldowns: _amMockData.summoner_cooldowns || null,
         });
+        // HZ-D1 Phase 4: overlay-only DS fight-model pane rides the
+        // same dispatch (self-gated on body[data-shell="overlay"]).
+        renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
       } else {
         _amMockLoad();  // .then re-fires render on landing
         renderActiveMatch({}, { mode: "", lcuPhase: "", liveclient: null, cooldowns: null });
@@ -1326,6 +1336,11 @@ import { initOverlayPulse } from './overlay_pulse.js';
         // by next-up ascending in core/summoner_cooldowns.compute_cooldowns.
         cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
       });
+      // HZ-D1 Phase 4: overlay-only DS fight-model pane. Live envelope
+      // p carries champion/level/items; mode is the rc mode string.
+      // Self-gated on body[data-shell="overlay"] - no-op on the 1920
+      // dashboard.
+      renderOverlayDsControls(p, { mode: state.mode });
     }
     // s164: re-fire champ-select view on every state envelope when it's
     // active. lcu envelopes are one-shot from FakeSocket, so a render
@@ -3507,6 +3522,9 @@ import { initOverlayPulse } from './overlay_pulse.js';
               liveclient: _amMockData.liveclient || null,
               cooldowns: _amMockData.summoner_cooldowns || null,
             });
+            // HZ-D1 Phase 4: keep the overlay DS pane in step with the
+            // mock landing re-fire (no-op outside the overlay shell).
+            renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
           } catch (_) {}
         }
         return _amMockData;
