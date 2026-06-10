@@ -178,6 +178,76 @@ body[data-shell="overlay"] .rc-src {
   font-size: 13px;
 }
 
+/* 4b. Panel-set subsets (item-378 tail; rc-shell overlay_state.js
+ * PANEL_SETS contract). main.js stamps body[data-panelset] only for a
+ * canonical name from ?panelset=; no attribute = the S1 full compact
+ * subset above, so these rules are pure narrowing overrides. The extra
+ * [data-panelset] attribute outranks every base overlay rule of the
+ * same shape.
+ *
+ *   coach  = CALL pane + lead/choices/callouts mounts (BUILD off)
+ *   build  = BUILD pane only (CALL + the mount column off)
+ *   threat = CDS cooldown ledger + lead/callouts timing surfaces
+ *            (CALL/BUILD/choice-chips off)
+ */
+body[data-shell="overlay"][data-panelset="coach"] #view-active-match .am-pane-build {
+  display: none !important;
+}
+body[data-shell="overlay"][data-panelset="build"] #view-active-match .am-pane-call {
+  display: none !important;
+}
+body[data-shell="overlay"][data-panelset="build"] main {
+  display: none !important;
+}
+body[data-shell="overlay"][data-panelset="threat"] #view-active-match .am-pane-call,
+body[data-shell="overlay"][data-panelset="threat"] #view-active-match .am-pane-build {
+  display: none !important;
+}
+/* The CDS ledger pane is hidden by the base subset gate (sec 3); the
+ * threat set re-enables it as its primary surface. */
+body[data-shell="overlay"][data-panelset="threat"] #view-active-match .am-pane-cd {
+  display: block !important;
+}
+body[data-shell="overlay"][data-panelset="threat"] #right-now .panel-body > #rn-choices:not([hidden]) {
+  display: none !important;
+}
+/* Threat-set CDS typography lift (audit MUST-FIX). cd_ledger.css carries
+ * item-184 operator-exception 9-11px densities sized for the 280px
+ * dashboard rail; the overlay rail is 460px and read at game distance,
+ * so the floors bind here: chips/countdowns/initials up to 13px, icon +
+ * sigil boxes 14 -> 18px (sigil glyph 12px). Dashboard values untouched. */
+body[data-shell="overlay"][data-panelset="threat"] .cd-chip {
+  font-size: 13px;
+  min-width: 48px;
+}
+body[data-shell="overlay"][data-panelset="threat"] .cd-chip-icon,
+body[data-shell="overlay"][data-panelset="threat"] .cd-chip-sigil {
+  width: 18px;
+  height: 18px;
+}
+body[data-shell="overlay"][data-panelset="threat"] .cd-chip-sigil {
+  font-size: 12px;
+}
+body[data-shell="overlay"][data-panelset="threat"] .cd-row-initial {
+  font-size: 13px;
+}
+/* The cd head collapse toggle persists via localStorage across the
+ * Alt+Shift+C panel-set reloads - one stray ACTIVE-mode click would
+ * blank the threat set's only active-match surface. Suppress the
+ * affordance in the overlay (audit NICE 2). */
+body[data-shell="overlay"][data-panelset="threat"] #cd-ledger-head {
+  pointer-events: none;
+}
+body[data-shell="overlay"][data-panelset="threat"] #cd-ledger-head .cd-chev {
+  display: none;
+}
+/* The overlay window shares the dashboard's origin (and so its
+ * localStorage): a cdLedgerCollapsed=1 persisted from normal companion
+ * use must not blank the threat HUD - force the body open here. */
+body[data-shell="overlay"][data-panelset="threat"] .am-pane-cd.cd-collapsed .am-pane-body {
+  display: block !important;
+}
+
 /* 5. Change-pulse hook. overlay_pulse.js adds .ov-pulse to a panel
  * container for ~1.2s when its rendered content changes. One-shot
  * box-shadow keyframe (mirrors the tokens.css coach-pulse family) -
