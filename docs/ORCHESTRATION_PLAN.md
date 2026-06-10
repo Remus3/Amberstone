@@ -51,7 +51,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | DONE | 3581afed |
 | HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | DONE | 33dc9b3a |
 | HZ-D2 | haiku-zero | OPERATOR RUN FOCUS 2026-06-10 MINIMUM FIRST DELIVERABLE: make the rc-shell companion sidecar window user-movable/draggable (frameless window has NO drag region today). Add a drag region (-webkit-app-region: drag header strip or equivalent) + persist the user-moved position across restarts; keep click-through/interactive zones working. Tests where applicable (rc-shell test harness). | DONE | 0b2eea62 |
-| HZ-D3 | haiku-zero | Electron overlay continuation per docs/ELECTRON_OVERLAY.md: advance Phase 4 interactive controls (next unshipped control surface) and any remaining Phase 5 stabilization tail on the ?overlay=1 dashboard surface + rc-shell. Vanguard-safe constraints hold (DWM window, NO DXGI capture, Borderless). Headless-safe slices only; leave live-visual-only verification WIP with a note. | OPEN | |
+| HZ-D3 | haiku-zero | Electron overlay continuation per docs/ELECTRON_OVERLAY.md: advance Phase 4 interactive controls (next unshipped control surface) and any remaining Phase 5 stabilization tail on the ?overlay=1 dashboard surface + rc-shell. Vanguard-safe constraints hold (DWM window, NO DXGI capture, Borderless). Headless-safe slices only; leave live-visual-only verification WIP with a note. | DONE | 33dc9b3a |
 | HZ-D4 | haiku-zero | Headless-upgrade charter sweep: one pass of the cost/latency 7-lever sweep (prompt-cache coverage, route TTL, polling cadences, log spam, model tier, task catalog, bundle parity) + the next HZ Haiku-to-ZERO lane increment per ROADMAP (validate-before-flip rule holds; haiku stays interim floor until a precompute is validated vs a real game). Ship only net-positive fixes with green tests, else record CLEAN no-commit with evidence in the Findings log. | OPEN | |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
@@ -65,6 +65,23 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-10 HZ-D3 STALE PREMISE - no unshipped Phase 4 control surface and no
+  Phase 5 tail remain; flipped DONE with NO new code (loop run 2026-06-10,
+  verify-premise-first, the HZ-D2 precedent one row up). Phase 4 spec checklist
+  vs shipped code: ACTIVE toggle + 20s auto-revert (item 269/378) + ACTIVE
+  edge-glow indicator (slice 2, active_indicator.js); change-pulse notifications
+  = web/js/overlay_pulse.js wired at main.js:6217 (initOverlayPulse) + .ov-pulse
+  keyframe overlay.css:269-279 (item 378); DS weight tweak + build reorder =
+  slice 3 #am-pane-ovds 4 knobs + top-5 re-rank over /api/ds-knobs (live-proven
+  armor-300 re-rank); A+B coach = #rn-choices mounts in overlay base + coach
+  panelsets (overlay.css:154, suppressed only in threat:211), coach_choices.js
+  renderer unchanged. Phase 5 list fully closed by slices 3+4 (smoke drift-guard
+  + updater/channels + crash isolation, items 382/383). Ground truth THIS cycle:
+  rc-shell suite fresh 145/145; tests/test_overlay_route_smoke.py fresh 19
+  passed / 9 subtests. Remaining Electron work is all operator/live-gated (NOT
+  headless-safe, NOT HZ-D3 scope): packaging + first GitHub Release + packaged
+  update check, in-match overlay capture (shell relaunch picks up slices 1-4),
+  Phase 6 Pengu (optional, plan EXCLUDED). No regressions, docs-only commit.
 - 2026-06-10 HZ-D2 STALE PREMISE - scope already shipped inside HZ-D1; flipped DONE with
   NO new code (loop run 2026-06-10, verify-premise-first). The row's "frameless window has
   NO drag region today" predates HZ-D1 slices 1+2: companion drag strip = drag_region.js
