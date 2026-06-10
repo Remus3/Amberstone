@@ -53,6 +53,18 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-09 - weekly doc + memory hygiene: LEDGER/WAKEUP/ROADMAP shrink (relocate-only) [item 375]
+
+Side-chat asked why editing LEDGER/ROADMAP got slow -> root cause = file growth (LEDGER append-only hit 1024KB / ~262K tok; Edit rewrites the whole file per mark). Operator "run it now" -> doc/memory-only hygiene. Commit `13151b30` (pushed `d8ff8d6f..13151b30`). No engine/code, no ENGINE bump, no Share.
+
+- **LEDGER 1024KB -> 210KB:** items 149-324 (145 blocks) relocated VERBATIM to `docs/history_notes.md` ("Relocated LEDGER items 149-324" section); kept newest 50 (325-374) live. CLAUDE.md + LEDGER-header pointers flipped to "items 1-324 -> history_notes / item 325+ -> LEDGER". The sub-325 number gap is EXPECTED, not lost.
+- **WAKEUP 11.2 -> 9.2KB:** last 3 sessions (374/373/372); item 371 -> history_notes.
+- **ROADMAP 79.1 -> 56.7KB:** stale "Fleet status at a glance" table (drifted to pid 1108 / ENGINE 1.63.0 / patch 16.11.1; ~20KB cc_conditional wave-0-23 cell dup'd in CHANGELOG.md) replaced with a live-source pointer block.
+- **Memory (outside repo):** deleted dead `project_dashboard_ui_debug_relocation` (TEMP 2026-05-10, Game-PC-capture premise obsoleted by 1-PC ADR-011). Index 104 files / 0 orphans.
+- **Don't-redo:** prune is the standard mechanism; next hygiene re-cuts to newest ~50. DEFERRED: full /sync-all-md (separate skill); 2 stale capture-memories citing gamepc :8892 left intentionally.
+
+---
+
 # 2026-06-09 - parallel-orchestrated batch: LIFT1 tail + rune-WPA tab + current-HP lever [item 374]
 
 Operator "all 4, parallel orchestrated" (picked 4 open `.md` items together). 3 disjoint worktree subagents + a UI-consolidation agent + supervisor merge/independent-verify. Code tip `0139f798`, docs `e954c2cc`, CI GREEN (runs 27245418406 + 27246379832). ENGINE 1.120.0 untouched (all byte-identical/additive -> no bump), Share 335, RC restarted pid 6580, full DS+tests/ suite 12751 passed / 8 skip / 1 xfail / EXIT=0.
