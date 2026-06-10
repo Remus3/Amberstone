@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-10 - gemini loop cycle 1: rc-shell drag region + overlay ACTIVE drag [item 380, HZ-D1 slice 1]
+
+Gemini-headless-upgrade executor cycle (run 2026-06-10-01). Directive minimum = make the frameless companion draggable. Merge `0b2eea62` (slice `bbc8e31e`, 1 worktree agent, verifier-CONFIRMED pre-merge). NO engine, no Share, no RC restart.
+
+- NEW `rc-shell/src/drag_region.js` pure module: `dragRegionCSS()` fixed transparent 24px top strip `-webkit-app-region: drag` + `.rc-shell-no-drag` escape hatch; `dragRegionMountJS()` idempotent IIFE appending to documentElement. Injected by `injectDragRegion(win)` in main.js on `did-finish-load` (insertCSS + executeJavaScript, no-throw) - dashboard untouched.
+- Preload route is a DEAD-END: sandbox:true preloads cannot require local modules. Do not re-try.
+- Overlay gets the same strip: inert while click-through, grabbable when ACTIVE (Alt+Shift+A) = overlay user-movable (Phase 4 control off the existing gate). Overlay position NOT persisted - named next-slice candidate.
+- Gates THIS run: node 85/85 (77 -> 85, TDD red-first); DS 7075p/1sk/1xf/1942st; RC tests/ 5724p/2sk/85st EXIT=0 (file-read summary). `py` launcher resolved to pythoncore-3.14-64 WITHOUT pytest - use the canonical `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe` for suites.
+- OWED: item-379's running shell predates the drag code - relaunch to pick up; live drag-feel + in-game overlay-drag capture.
+
+---
+
 # 2026-06-10 - item-378 overlay tail: ingest regen + panelset rendering + dark-mounts fix + Electron launch [item 379]
 
 Operator queued the 4-part 378 tail; autonomous. Commits `be8a033e` (Share) + `74ba5d31` (overlay/web). NO engine, no RC restart. Full record: docs/LEDGER.md 379.
