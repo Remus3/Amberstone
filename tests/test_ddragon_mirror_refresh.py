@@ -306,6 +306,35 @@ def test_fetch_one_404_marked_failed(tmp_path):
     assert not dest.exists()
 
 
+def test_fetch_one_404_retries_once_then_succeeds(tmp_path):
+    # CDN edge 404s under load can be transient; one retry must recover.
+    a = _mk_asset()
+    dest = tmp_path / "deep" / "out.png"
+    body = b"\x89PNG\r\nrecovered"
+    miss = ddr.HttpResult(404, {}, b"")
+    hit = ddr.HttpResult(200, {"etag": '"r"'}, body)
+    with mock.patch.object(ddr, "http_get", side_effect=[miss, hit]) as mh:
+        status, entry = ddr.fetch_one(a, dest, manifest_entry=None,
+                                      check_changed=False, force=False)
+    assert status == "new"
+    assert dest.exists() and dest.read_bytes() == body
+    assert entry["etag"] == '"r"'
+    assert mh.call_count == 2
+
+
+def test_fetch_one_404_retries_once_then_gives_up(tmp_path):
+    a = _mk_asset()
+    dest = tmp_path / "out.png"
+    miss = ddr.HttpResult(404, {}, b"")
+    with mock.patch.object(ddr, "http_get", side_effect=[miss, miss]) as mh:
+        status, entry = ddr.fetch_one(a, dest, manifest_entry=None,
+                                      check_changed=False, force=False)
+    assert status == "fail_404"
+    assert entry is None
+    assert not dest.exists()
+    assert mh.call_count == 2
+
+
 def test_fetch_one_force_refetches_when_present(tmp_path):
     a = _mk_asset()
     dest = tmp_path / "out.png"
@@ -369,6 +398,41 @@ def test_render_stats_table_lists_each_class():
     assert "item" in out
     assert "TOTAL" in out
     assert "new=2 chg=1 skip=7" in out
+
+
+# ---------------------------------------------------------------------------
+# exit-code tolerance: a handful of transient single-asset flakes across
+# thousands of CDN probes must not trip the nightly cron's last_result canary
+# (item 376 - benign result=2 from one 404 among ~6800 assets).
+
+def _stats(total, failed):
+    s = ddr.PlanStats(total=total)
+    s.failed = failed
+    return s
+
+
+def test_exit_code_zero_when_clean():
+    assert ddr._exit_code_for(_stats(6792, 0)) == 0
+
+
+def test_exit_code_tolerates_small_transient_ratio():
+    # 3 / 6792 = 0.044% <= 0.5% -> tolerated, exit 0.
+    assert ddr._exit_code_for(_stats(6792, 3)) == 0
+
+
+def test_exit_code_two_on_mass_failure():
+    # 10 / 100 = 10% -> genuine partial outage, exit 2.
+    assert ddr._exit_code_for(_stats(100, 10)) == 2
+
+
+def test_exit_code_threshold_boundary_inclusive():
+    # exactly 0.5% (1/200) is tolerated (<=); 1/199 just over is not.
+    assert ddr._exit_code_for(_stats(200, 1)) == 0
+    assert ddr._exit_code_for(_stats(199, 1)) == 2
+
+
+def test_exit_code_zero_total_no_crash():
+    assert ddr._exit_code_for(_stats(0, 0)) == 0
 
 
 # ---------------------------------------------------------------------------
