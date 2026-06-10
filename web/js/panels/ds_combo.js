@@ -173,9 +173,15 @@ function _signature(payload) {
   }
   const hits = Array.isArray(payload.hits) ? payload.hits : [];
   const tot = payload.totals || {};
+  // Fold a ttk marker so a TTK-only change (e.g. a target_max_hp tweak that
+  // leaves the per-hit timeline identical) still repaints the headline.
+  const ttk = payload.ttk || {};
+  const ttkSig = ttk.available
+    ? `@${+ttk.ttk_s || 0}:${+ttk.rotations_to_kill || 0}:${ttk.lethal ? 1 : 0}`
+    : "@na";
   return hits
     .map((h) => `${h.action}:${h.status}:${(+h.cumulative || 0)}`)
-    .join("|") + `#${+tot.total_mitigated || 0}` || "_nohits";
+    .join("|") + `#${+tot.total_mitigated || 0}${ttkSig}` || "_nohits";
 }
 
 function _statusBadge(hit) {
@@ -210,6 +216,36 @@ function _rowHtml(hit) {
   );
 }
 
+// Build the headline time-to-kill line from payload.ttk (T2-F3,
+// docs/COMPETITOR_LIFT_2026-06-08.md lines 114-121). Renders nothing when
+// the TTK is unavailable (no target HP / zero-damage combo) so the foot is
+// unchanged in that case. A lethal one-combo reads "LETHAL"; otherwise it
+// shows seconds-to-kill + whole rotations needed, plus the sustained DPS.
+function _ttkHtml(payload) {
+  const ttk = payload && payload.ttk ? payload.ttk : null;
+  if (!ttk || !ttk.available) return "";
+  const dps = (+ttk.dps || 0).toFixed(0);
+  if (ttk.lethal) {
+    return (
+      `<div class="dscombo-ttk" data-dscombo-lethal="1">`
+      + `<span class="dscombo-ttk-verdict">LETHAL</span>`
+      + `<span class="dscombo-ttk-detail">one combo kills `
+      + `${(+ttk.target_hp || 0).toFixed(0)} HP (${dps} DPS)</span>`
+      + `</div>`
+    );
+  }
+  const secs = (+ttk.ttk_s || 0).toFixed(1);
+  const rot = +ttk.rotations_to_kill || 0;
+  const rotWord = rot === 1 ? "rotation" : "rotations";
+  return (
+    `<div class="dscombo-ttk">`
+    + `<span class="dscombo-ttk-verdict">TTK ${secs}s</span>`
+    + `<span class="dscombo-ttk-detail">${rot} ${rotWord} `
+    + `vs ${(+ttk.target_hp || 0).toFixed(0)} HP (${dps} DPS)</span>`
+    + `</div>`
+  );
+}
+
 function _tableHtml(payload) {
   const hits = Array.isArray(payload.hits) ? payload.hits : [];
   const tot = payload.totals || {};
@@ -234,7 +270,7 @@ function _tableHtml(payload) {
     + `</span>`
     + `</div>`
   );
-  return head + rows + foot;
+  return head + rows + foot + _ttkHtml(payload);
 }
 
 // Render the combo panel into the provided element. ``payload`` is the
@@ -322,6 +358,7 @@ export const __test = {
   _cacheKey,
   _signature,
   _rowHtml,
+  _ttkHtml,
   parseSeqInput,
   defaultComboFor,
   _resolveRunes,
