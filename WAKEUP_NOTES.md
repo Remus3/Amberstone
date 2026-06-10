@@ -4,6 +4,22 @@
 
 ---
 
+# 2026-06-09 - HZ precompute regen at live patch 16.12.1 (unblock shadow coverage) [item 377]
+
+Operator "start what is up next that is open" -> diagnosed the Haiku-to-ZERO HZ shadow gate. `hz_shadow_report` showed 0/512 laning + 0/475 build covered. ROOT CAUSE: HZ-A/B precompute dirs existed ONLY at 16.11.1 but live patch is 16.12.1 (item 372 patch-refresh deferred the HZ regen; item 374 S4 re-deferred). The patch-keyed reader found no 16.12.1 dir -> every new-game shadow record logged covered=false. Data-only, NO engine, ENGINE 1.120.0 untouched, no Share (HZ tables not Share-mirrored). Commit `cc35d5ed`, CI green (run 27249973771).
+
+- Regenerated all 3 SR tables at 16.12.1 from the full 172-champ roster (`data/daemon_slayer/16.12.1/champions.json` keys; item-370 baseline +1 patch-added champ):
+  - laning_scenarios/16.12.1/laning_scenarios_sr.json  355008 cells / 66MB (LFS)
+  - build_orders/16.12.1/build_orders_sr.json          172 champs / 688 orders
+  - build_orders/16.12.1/build_order_variants_sr.json  344 orders
+- Generators: `core/{laning_scenario_precompute,build_order_precompute,build_order_variants}.py --mode sr --champions <172-csv>`; laning needs `PYTHONPATH=repo` (top-level `agents` import) + 187s for the 172x172x3 sweep.
+- Read path live-verified at 16.12.1: `lookup` + `precomputed_choices` Ahri vs Darius L6 -> back_off / "Recall now".
+- `hz_shadow_report` 0-coverage is HISTORICAL only - `covered` is baked into each record at log time (report line 81 reads the record, never the live table). Accrues covered=true on NEW games now the dir exists.
+- HZ tests 165 passed; ruff/hygiene green; clean tree pushed.
+- Don't-redo: SR HZ precompute now current at 16.12.1; ARAM/Arena `--mode all` expand STILL deferred (item 374 S4); owed = confirm covered=true on the next live SR game.
+
+---
+
 # 2026-06-09 - session-start anomaly triage: DDragon flake-tolerance + rc_facts gamepc demotion + /weekly-hygiene automation [item 376]
 
 Session-start flagged 3 anomalies (operator "your call"): RC-DDragonMirrorRefresh result=2, gamepc :8892 None, gamepc bridge stale ~9d. Ops/tools/docs only - NO engine, NO ENGINE bump, NO Share, no RC restart. 4 commits `3f4dc43f`/`f62b5bc1`/`56052df9`/`9cc5a6ad`.
@@ -25,17 +41,3 @@ Side-chat asked why editing LEDGER/ROADMAP got slow -> root cause = file growth 
 - **ROADMAP 79.1 -> 56.7KB:** stale "Fleet status at a glance" table (drifted to pid 1108 / ENGINE 1.63.0 / patch 16.11.1; ~20KB cc_conditional wave-0-23 cell dup'd in CHANGELOG.md) replaced with a live-source pointer block.
 - **Memory (outside repo):** deleted dead `project_dashboard_ui_debug_relocation` (TEMP 2026-05-10, Game-PC-capture premise obsoleted by 1-PC ADR-011). Index 104 files / 0 orphans.
 - **Don't-redo:** prune is the standard mechanism; next hygiene re-cuts to newest ~50. DEFERRED: full /sync-all-md (separate skill); 2 stale capture-memories citing gamepc :8892 left intentionally.
-
----
-
-# 2026-06-09 - parallel-orchestrated batch: LIFT1 tail + rune-WPA tab + current-HP lever [item 374]
-
-Operator "all 4, parallel orchestrated" (picked 4 open `.md` items together). 3 disjoint worktree subagents + a UI-consolidation agent + supervisor merge/independent-verify. Code tip `0139f798`, docs `e954c2cc`, CI GREEN (runs 27245418406 + 27246379832). ENGINE 1.120.0 untouched (all byte-identical/additive -> no bump), Share 335, RC restarted pid 6580, full DS+tests/ suite 12751 passed / 8 skip / 1 xfail / EXIT=0.
-
-- **S1 LIFT1 tail** (merge `7e1ef864`): `agents/daemon_slayer/ehp.py` NEW `ehp_gold_efficiency()` (marginal EHP-per-gold armor vs MR vs HP, rides the item-371 enemy-pen seam, compute-only, NO live surface) + `dashboard/routes_ds_combo.py` additive `ttk` block + `web/js/panels/ds_combo.js` headline. Live `/api/ds-combo?...&seq=Q,W,E,R&target_max_hp=2000&target_armor=40` -> `ttk{available:true, rotations_to_kill:3, ttk_s:4.96}`. HP request param = `target_max_hp` (not `target_hp`).
-- **S3 current-HP lever** (merge `19451ce9`): `target_current_hp_pct=1.0` APPENDED to `CallContext` (after `ult_casts_per_sec`), threaded `compute_dps`, scales ONLY BotRK 3153 / Hellfire 4017 (outer magnitude only) / Fulmination 443055; the %MAX-HP procs (Eclipse 6692, Titanic 3748, Hullbreaker, Azakana, Reaper's Toll 443090, Arena BotRK 223153) LEFT max-HP. Byte-identical default 1.0 -> NO ENGINE bump (item-315). The live-50%-fight-average FLIP stays gated (re-ranks + owes the bump).
-- **S2 rune-WPA** (merge `e4cdcf19`) + **UI fold** (merge `0139f798`): `core/rune_wpa.py` (pre-game earliest-frame baseline, reuses `item_wpa._load_frames` + `smoothed_rates.shrink`, stat shards excluded) + `/api/rune-wpa` + `_dispatch.py` wire; FOLDED as the 3rd `build_insights` `#bi-tabs` tab (DELETED the orphan standalone `rune_wpa.js`/`rune_wpa.css` slice 2 built - the orphan css FAILED `test_every_panel_css_file_is_imported`, the fold resolved it); `ds_combo.css` `.dscombo-ttk` styling; 5-phase UI audit 0 MUST-FIX. Live `/api/rune-wpa` ok:true.
-- **Verify (stale-pipe-aware):** the first background full run's notification said "exit 0" but the FILE said `EXIT=1` (1 FAILED = the orphan-css parity) - read the file, not the pipe. After the UI fold: 12751 passed / EXIT=0. DS :8893 NOT restarted (byte-identical seam, lever + ehp helper unused by any live route, /health stays 1.120.0).
-- **S4 HZ ARAM/Arena `--mode all` expand DEFERRED** (operator decision, per the item-372 deferral): current.txt 16.12.1 vs HZ seed 16.11.1 -> `--mode all` would write a partial/mismatched dir + heavy LFS; waits for a coordinated full HZ regen at one patch or an HZ-shadow flip. Do NOT bolt on a partial ARAM/Arena expand now.
-- **Gemini deep-refactor PINNED ~72h** (resume 2026-06-12): operator parked a 5-area refactor mandate (Gemini = architect, Claude = sole writer). Verified-live before parking: core/ = 101 `.py` files (CONFIRMED), main.py monkey-patch CONFIRMED at `main.py:191-212` (OverlayApp.__init__/._quit, FROZEN -> needs grant), the `.py` dead-code claim caution (tree audited near-clean 2026-06-03 item 284 -> needs `file:line` targets not a re-sweep). Awaiting Gemini's first-area pick + the canonical test-gate command (I count 882 `test_*.py` repo-wide vs the operator's 262 - likely Share/ mirror inflation; pin before leaning on it).
-- **Don't-redo:** LIFT1 tail FULLY closed (item 371 + 374); rune-WPA is the 3rd BI tab (no standalone panel); the current_hp_pct seam exists byte-identical (flip gated, do NOT touch %MAX-HP procs). Visual capture OWED x2 UI surfaces (Game-PC MCP :8892 down). Only summoner-spell-WPA remains in the WPA-extension lane.
