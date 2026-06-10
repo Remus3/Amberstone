@@ -97,6 +97,15 @@ class PanelJsTests(unittest.TestCase):
         self.assertIn("replace(/[^a-z0-9]/g", self.js)
         self.assertIn("CHAMPS", self.js)
 
+    def test_items_resolved_to_ids(self):
+        # The live coach payload carries item NAMES ("Mortal Reminder");
+        # /api/ds-knobs only accepts item IDS (names 503 the route -
+        # probed live 2026-06-10). The panel must bridge via the shared
+        # items_index resolver, passing numeric ids through untouched and
+        # dropping unresolved names.
+        self.assertIn("_resolveItemId", self.js)
+        self.assertIn(r"/^\d+$/", self.js)
+
     def test_mode_map(self):
         for pair in ('sr: "SR"', 'classic: "SR"', 'aram: "ARAM"',
                      'arena: "ARENA"', 'cherry: "ARENA"', 'brawl: "BRAWL"'):
@@ -126,8 +135,15 @@ class CssTests(unittest.TestCase):
 
     def test_base_default_display_none(self):
         # Hard default off on every non-overlay surface; only the overlay
-        # shell rule below re-enables it.
-        self.assertRegex(self.css, r"#am-pane-ovds\s*\{[^}]*display:\s*none")
+        # shell rule below re-enables it. The selector MUST out-rank
+        # active_match.css "#view-active-match .am-pane { display: flex }"
+        # ((0,1,1,0)) - a bare "#am-pane-ovds" ((0,1,0,0)) loses the
+        # cascade and a blank FIGHT MODEL pane leaks onto the normal 1920
+        # dashboard (2026-06-10 UI-audit MUST-FIX 1). Two ids = (0,2,0,0).
+        self.assertRegex(
+            self.css,
+            r"#view-active-match\s+#am-pane-ovds\s*\{[^}]*display:\s*none",
+        )
 
     def test_inputs_meet_hit_target_floor(self):
         self.assertIn("min-height: var(--hit-min", self.css)

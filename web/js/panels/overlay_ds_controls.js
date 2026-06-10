@@ -28,7 +28,7 @@
 // ds_knobs.js patterns.
 
 import { fetchDsKnobs, getCachedDsKnobs } from './ds_knobs.js';
-import { CHAMPS } from '../lib/items_index.js';
+import { CHAMPS, _resolveItemId } from '../lib/items_index.js';
 
 const _OVDS_DEBOUNCE_MS = 350;
 const _OVDS_ROW_CAP = 5;
@@ -115,6 +115,23 @@ function _signature(payload, knobs) {
 function _goldLabel(g) {
   const n = +g || 0;
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
+// The live coach payload carries item NAMES ("Mortal Reminder") while
+// /api/ds-knobs accepts item IDS only (a name in the csv 503s the
+// route - probed live 2026-06-10). Numeric strings pass through; names
+// bridge via the shared items_index resolver; unresolved entries drop
+// (a missing build slot only widens the candidate pool, never errors).
+function _itemIds(raw) {
+  const out = [];
+  for (const entry of (Array.isArray(raw) ? raw : [])) {
+    const s = String(entry || "").trim();
+    if (!s) continue;
+    if (/^\d+$/.test(s)) { out.push(s); continue; }
+    const id = _resolveItemId(s);
+    if (id) out.push(String(id));
+  }
+  return out;
 }
 
 function _rowsHtml(payload) {
@@ -222,8 +239,7 @@ export function renderOverlayDsControls(p, ctx) {
   }
   const mode = _modeForCtx(ctx.mode);
   const level = _clampLevel(p.level);
-  const items = (Array.isArray(p.items) ? p.items : [])
-    .map((x) => String(x)).filter(Boolean);
+  const items = _itemIds(p.items);
   const knobs = _knobsFor(champ);
 
   // Kick a (cached/deduped) fetch with the current knob state; the
@@ -286,4 +302,5 @@ export const __test = {
   _numOrNull,
   _clampLevel,
   _goldLabel,
+  _itemIds,
 };
