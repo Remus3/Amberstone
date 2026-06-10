@@ -49,7 +49,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | DONE | 3a129071 |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | DONE | 8d8bc311 |
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | DONE | 3581afed |
-| HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | OPEN | - |
+| HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | WIP | 0b2eea62 |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -61,6 +61,18 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-10 HZ-D1 slice 1 (loop run 2026-06-10-01, merge 0b2eea62): the
+  frameless companion was never draggable - Phase 1 deferred the drag region to
+  "CSS in the page" and the dashboard never got one. Shipped shell-side instead:
+  NEW pure module rc-shell/src/drag_region.js (CSS + idempotent mount JS),
+  injected by main.js on did-finish-load via webContents.insertCSS +
+  executeJavaScript - no dashboard change, preload stays empty (sandbox:true
+  preloads cannot require local modules, so the preload route is a dead-end).
+  Overlay gets the same injection: inert while click-through, grabbable when
+  ACTIVE = the overlay is now user-movable (a Phase 4 interactive control).
+  Overlay position is NOT persisted yet (companion position is) - candidate for
+  the next D1 slice. Live drag-feel capture OWED (headless run). node 77 -> 85.
 
 - 2026-06-09 HZ-C1 STALE-PREMISE -> plan flipped DONE (commit 3581afed, LEDGER
   item 366). The director flagged it (3581afed may have shipped); VERIFIED true
