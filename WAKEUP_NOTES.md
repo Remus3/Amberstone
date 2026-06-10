@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-06-10 - gemini loop cycle 3: Phase 4 in-overlay DS controls + Phase 5 smoke [item 382, HZ-D1 slice 3]
+
+Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 3). Directive = Phase 4 in-overlay DS controls (weight tweak / build reorder) + dashboard-side web/ slice + UI audit. Merges `85c54ba3` + `141c1333` (2 PARALLEL worktree agents, verifier-CONFIRMED) + audit-fix `bc8c94d3`. NO engine, no Share, no RC restart (ADR-008).
+
+- NEW FIGHT MODEL pane `#am-pane-ovds`: `overlay_ds_controls.js/.css` + overlay.css 4b gates (base+build panelsets; coach/threat narrow it off) + main.js wiring x4 sites; 4 knobs (armor/MR/gold cap/fight len) -> existing GET /api/ds-knobs; top-5 re-ranked rows = build reorder. Zero backend change.
+- Live-probed fix 1: coach payload items are NAMES, /api/ds-knobs 503s on names -> bridge via `items_index._resolveItemId` (numeric passthrough, unresolved drop).
+- Live-probed fix 2 (UI-audit MUST-FIX): cascade leak - `#view-active-match .am-pane {display:flex}` beat bare-id display:none + [hidden]; fixed with two-id selector (0,2,0,0).
+- Phase 5 starter: `tests/test_overlay_route_smoke.py` shell<->web PANEL_SETS drift guard (19 tests + 9 subtests).
+- Proof on LIVE :8888 via Claude_Preview (?ui_mock=1&mode=aram&overlay=1): armor 100->300 re-ranked Runaan's-top -> Void-Immolation-top; normal dashboard computed display:none. RC tests/ 5769 passed / 2 skipped / 94 subtests exit 0; ruff clean; DOM suite 26 (TDD red-first x2).
+- OWED (live-gated): in-match overlay capture with ACTIVE knob interaction (shell relaunch picks up slices 1-3).
+- NEXT in HZ-D1: Phase 5 stabilization tail (electron-updater + channels, crash isolation) or live-capture closeout.
+
+---
+
 # 2026-06-10 - gemini loop cycle 2: rc-shell overlay persistence + ACTIVE indicator [item 381, HZ-D1 slice 2]
 
 Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 2). Directive = overlay position persistence (mirror companion) + advance Phase 4 interactive controls, headless-safe. Merge `8116c6c2` (slice `c9f53543`, 1 worktree agent, verifier-CONFIRMED pre-merge). NO engine, no Share, no RC restart.
