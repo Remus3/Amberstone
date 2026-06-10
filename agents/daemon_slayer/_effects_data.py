@@ -543,7 +543,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             # through the rotation, explicit current_hp_pct field is a
             # future batch. Riot's 100 cap vs minions/monsters is not
             # modeled (champion DPS only).
-            bonus_damage=lambda c: 0.09 * c.target_max_hp,
+            # DS target-current-HP% lever: this IS a current-HP proc, so the
+            # magnitude scales by c.target_current_hp_pct (default 1.0 =
+            # steady-state current==max, byte-identical to pre-lever).
+            bonus_damage=lambda c: 0.09 * c.target_max_hp * c.target_current_hp_pct,
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
@@ -2051,8 +2054,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             name="Char",
             damage_type=PHYSICAL,
             every_n_seconds=15.0,
+            # DS target-current-HP% lever: Char scales off the target's
+            # CURRENT HP, so the outer magnitude carries
+            # c.target_current_hp_pct (default 1.0 = byte-identical). The
+            # inner hd = caster_max_hp - target_max_hp term is a tankiness
+            # comparison (NOT current HP) and stays max-HP based.
             bonus_damage=lambda c: (
-                lambda hd: c.target_max_hp * (
+                lambda hd: c.target_max_hp * c.target_current_hp_pct * (
                     (0.05 + 0.05 * hd / 2000.0)
                     + c.caster_lethality * (0.002 + 0.002 * hd / 2000.0)
                 )
@@ -2309,7 +2317,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             PeriodicProc(
                 name="Dynamo",
                 every_n_attacks=100,
-                bonus_damage=lambda c: 0.13 * c.target_max_hp,
+                # DS target-current-HP% lever: Dynamo hits a % of the
+                # target's CURRENT HP, so the magnitude scales by
+                # c.target_current_hp_pct (default 1.0 = byte-identical).
+                bonus_damage=lambda c: 0.13 * c.target_max_hp * c.target_current_hp_pct,
                 damage_type=MAGICAL,
             ),
         ),
