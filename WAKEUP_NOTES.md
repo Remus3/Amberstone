@@ -1,6 +1,19 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 + item 228 + item 241 + item 242 + item 245 + item 246 + item 247 + item 248 + item 249 + item 250 + 2026-06-01 Share-docs-reconcile (1.86.0) + item 255 + item 256 + item 257 + item 258+259 + item 261 + item 263 + item 264 + items 271-287 (2026-06-03 prune) + 2026-06-03 RC-wide multi-agent (item 299 prune) + item 300 (2026-06-04 wave-clear prune) + item 301 (2026-06-04 threat-range prune) + items 366-369 (2026-06-09 DS-patch-refresh prune) + item 371 (2026-06-09 BACKLOG-batch T1F3/T2F4 prune) archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 + item 228 + item 241 + item 242 + item 245 + item 246 + item 247 + item 248 + item 249 + item 250 + 2026-06-01 Share-docs-reconcile (1.86.0) + item 255 + item 256 + item 257 + item 258+259 + item 261 + item 263 + item 264 + items 271-287 (2026-06-03 prune) + 2026-06-03 RC-wide multi-agent (item 299 prune) + item 300 (2026-06-04 wave-clear prune) + item 301 (2026-06-04 threat-range prune) + items 366-369 (2026-06-09 DS-patch-refresh prune) + item 371 (2026-06-09 BACKLOG-batch T1F3/T2F4 prune) + item 376 (2026-06-10 prune) archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-06-10 - item-378 overlay tail: ingest regen + panelset rendering + dark-mounts fix + Electron launch [item 379]
+
+Operator queued the 4-part 378 tail; autonomous. Commits `be8a033e` (Share) + `74ba5d31` (overlay/web). NO engine, no RC restart. Full record: docs/LEDGER.md 379.
+
+- **(1) lolmath_ingest regen + guard (`be8a033e`):** subdir restamped 1.108.0/16.11.1 -> 1.120.0/16.12.1 + 13MB dist bundle rebuilt; `ds_share_sync.py` write/--check now cover it (anchors via 2 disjoint token rules + bundle byte-compare; MISSING bundle = skip, it is gitignored `dist/` so CI clean checkouts pass). +9 tests. CRLF gotcha: restamp writer needs `newline=""`. Gist mirror pushed ok.
+- **(2) chip task_8a4ebe04 = REAL bug, FIXED:** /api/state top-level `coach`/`lead_projection`/`callouts` never stamped onto `state.latest` -> renderCoachChoices/renderLead/renderCallouts (fed `state.latest`) dark since W3E, dashboard AND overlay. Stamped at all 3 ingest sites (item-201 pattern); +3 contract tests.
+- **(3) panelset rendering (`74ba5d31`):** `body[data-panelset]` stamp (canonical names only) + overlay.css 4b: coach=CALL+mounts, build=BUILD only, threat=CDS ledger+lead/callouts. UI audit pre-commit: 1 MUST-FIX fixed in-slice (cd_ledger 10/9/11px sub-floor at game distance -> threat-scoped 13px/18px lift) + NICE (collapse suppressed; persisted `cdLedgerCollapsed` ignored - shared-origin localStorage would blank the HUD). +4 Playwright tests, overlay suite 10/10.
+- **(4) Electron launch:** rc-shell node_modules was EMPTY (electron gone; npm start failed) -> `npm install` restored; companion window up rendering live dashboard, WS connected, capture taken; node 77/77. **Shell LEFT RUNNING** - overlay auto-flips on game start (Alt+Shift+O toggle, Alt+Shift+C panelset cycle).
+- Ground truth this run: tests/ `5601 passed / 2 skipped / 0 FAILED EXIT=0` (file, not pipe).
+- Owed next: live-game overlay capture (League client was at PLAY screen); Phase 4 interactive controls; Phase 5.
 
 ---
 
@@ -33,15 +46,3 @@ Operator "start what is up next that is open" -> diagnosed the Haiku-to-ZERO HZ 
 - `hz_shadow_report` 0-coverage is HISTORICAL only - `covered` is baked into each record at log time (report line 81 reads the record, never the live table). Accrues covered=true on NEW games now the dir exists.
 - HZ tests 165 passed; ruff/hygiene green; clean tree pushed.
 - Don't-redo: SR HZ precompute now current at 16.12.1; ARAM/Arena `--mode all` expand STILL deferred (item 374 S4); owed = confirm covered=true on the next live SR game.
-
----
-
-# 2026-06-09 - session-start anomaly triage: DDragon flake-tolerance + rc_facts gamepc demotion + /weekly-hygiene automation [item 376]
-
-Session-start flagged 3 anomalies (operator "your call"): RC-DDragonMirrorRefresh result=2, gamepc :8892 None, gamepc bridge stale ~9d. Ops/tools/docs only - NO engine, NO ENGINE bump, NO Share, no RC restart. 4 commits `3f4dc43f`/`f62b5bc1`/`56052df9`/`9cc5a6ad`.
-
-- **DDragon (`3f4dc43f`+`f62b5bc1`):** result=2 was benign - `--check-changed` HEAD-probes 6792 assets nightly, ANY single transient flake (CDN-edge 404 among ~4966 profileicons) tripped `failed>=1` -> exit 2 (foreground re-run: 6792/6792 skip, fail=0). Fix: `fetch_one` retries a 404 once; NEW `FAIL_RATIO_TOLERANCE=0.005` + `_failures_within_tolerance` shared by `_exit_code_for` (exit 2 only when failed/total>0.5%) AND the index-advance gate (a tolerable flake during a version flip advances `_index.json` same-night). +11 tests (52 total).
-- **rc_facts (`56052df9`):** gamepc out-of-pipeline post-1PC (ADR-011) so MCP-None + bridge-stale are EXPECTED; NEW `RC_GAMEPC_RETIRED` flag (default on, `=0` re-arms) demotes both to annotated info lines via `_gamepc_mcp_anomaly`/`_bridge_peer_anomalies`; Peer + queue-backlog still flag. +9 tests (file had none). Live: Anomalies now shows ONLY the real DDragon result=2 (self-clears tonight 3:30 AM).
-- **/weekly-hygiene (`9cc5a6ad`):** NEW skill `.claude/commands/weekly-hygiene.md` (local/gitignored) + persistent `RC-WeeklyHygiene` task (Sun 04:17) via `tools/weekly_hygiene_run.ps1` (headless `claude -p /weekly-hygiene` sonnet, appends a dated WAKEUP entry so flags surface) + `ops/install_RC_WeeklyHygiene.ps1` (idempotent) + OPERATIONS.md row. CronCreate (7d expiry) + cloud /schedule (no local tree) both unfit. Smoke READY exit 0; NextRun 2026-06-14 04:17.
-- **Memory (no git):** 2 capture-memories gamepc:8892 -> Legion-local (Windows-MCP/computer-use/preview); MEMORY.md 2 index hooks updated.
-- **Don't-redo:** a single-asset DDragon result=2 is benign-tolerated now (a real outage is >0.5% or pins the index); set `RC_GAMEPC_RETIRED=0` if gamepc returns to service; first `RC-WeeklyHygiene` fires Sun 6/14 04:17 (commits relocate-only trims + appends its own WAKEUP entry).
