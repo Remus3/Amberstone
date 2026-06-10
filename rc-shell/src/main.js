@@ -25,6 +25,11 @@
 //     panelset=NAME (ov.cyclePanelSet + ov.overlayUrl).
 //   - Drag region: injected -webkit-app-region strip (companion always;
 //     overlay grabbable when ACTIVE) - see ./drag_region.
+//   - Overlay persistence: overlay position + panel set ride the same state
+//     file under one "overlay" key (ov.mergeOverlayPatch keeps the companion
+//     keys intact) so a relaunch restores the HUD where the operator left it.
+//   - ACTIVE indicator: injected glow frame on the overlay page lights while
+//     the overlay is interactive - see ./active_indicator (overlay-only).
 //
 // What it does NOT do (Vanguard-safe; see docs/ELECTRON_OVERLAY.md sections 3.8 + 8):
 //   - No DXGI / frame capture, no game-memory reads, no input injection - ever.
@@ -43,6 +48,7 @@ const cfgmod = require("./config");
 const store = require("./store");
 const ov = require("./overlay_state");
 const drag = require("./drag_region");
+const ind = require("./active_indicator");
 
 // Persistence target: <userData>/rc-shell-state.json. userData is per-app and
 // per-OS-user, so two machines / two users never collide.
@@ -113,6 +119,30 @@ function persistWindowStateNow() {
     sizePreset: prev.sizePreset || cfgmod.DEFAULT_PRESET,
   });
   store.save(statePath(), next);
+}
+
+// Overlay position persists under its own debounce timer so a companion drag
+// and an overlay drag can never cancel each other's pending write. The patch
+// goes through ov.mergeOverlayPatch so the companion's top-level keys survive.
+let overlaySaveTimer = null;
+function persistOverlayState() {
+  if (!overlayWindow || overlayWindow.isDestroyed()) {
+    return;
+  }
+  if (overlaySaveTimer) {
+    clearTimeout(overlaySaveTimer);
+  }
+  overlaySaveTimer = setTimeout(() => {
+    overlaySaveTimer = null;
+    if (!overlayWindow || overlayWindow.isDestroyed()) {
+      return;
+    }
+    const b = overlayWindow.getBounds();
+    store.save(
+      statePath(),
+      ov.mergeOverlayPatch(store.load(statePath(), {}), { x: b.x, y: b.y })
+    );
+  }, 400);
 }
 
 // Apply a named size preset live, resize the window, and persist it.
@@ -205,12 +235,31 @@ function injectDragRegion(win) {
   win.webContents.executeJavaScript(drag.dragRegionMountJS(), true).catch(() => {});
 }
 
+// Inject the Phase 4 ACTIVE glow frame (overlay-only; the companion is always
+// interactive so a cue there would be noise). The set call re-applies the
+// CURRENT click-through state, so a mid-game reload that wipes the page keeps
+// an already-ACTIVE overlay lit instead of silently dropping the cue.
+function injectActiveIndicator(win) {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+  win.webContents.insertCSS(ind.activeIndicatorCSS()).catch(() => {});
+  win.webContents.executeJavaScript(ind.activeIndicatorMountJS(), true).catch(() => {});
+  win.webContents
+    .executeJavaScript(ind.activeIndicatorSetJS(!overlayClickThrough), true)
+    .catch(() => {});
+}
+
 function createWindow() {
   const saved = store.load(statePath(), {});
   const cfg = cfgmod.resolveConfig(saved, process.env);
 
   originHost = cfgmod.originHost(cfg.origin);
   resolvedOrigin = cfg.origin;
+
+  // Restore the overlay panel set before the overlay ever loads. Empty string
+  // (nothing saved / unknown) -> null so the plain overlay=1 URL is kept.
+  panelSet = ov.overlayStateFrom(saved).panelSet || null;
 
   // Resolve the on-screen position. If saved coords exist, clamp them to the
   // display nearest those coords; if not, leave x/y unset so Electron centers.
@@ -286,15 +335,14 @@ function createOverlayWindow() {
     return overlayWindow;
   }
   const primary = screen.getPrimaryDisplay();
-  const area = primary.workArea;
-  const w = ov.OVERLAY_DEFAULTS.width;
-  const h = ov.OVERLAY_DEFAULTS.height;
+  // Saved overlay position (clamped on-screen) wins; first launch docks to
+  // the right edge of the primary work area (ov.resolveOverlayBounds).
+  const bounds = ov.resolveOverlayBounds(store.load(statePath(), {}), primary.workArea);
   overlayWindow = new BrowserWindow({
-    width: w,
-    height: h,
-    // Dock to the right edge of the primary work area by default.
-    x: Math.max(area.x, area.x + area.width - w),
-    y: area.y,
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -326,7 +374,11 @@ function createOverlayWindow() {
   overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet));
   // Inert while click-through (events forward to the game); once the ACTIVE
   // hotkey flips interactivity the same strip makes the overlay user-movable.
-  overlayWindow.webContents.on("did-finish-load", () => injectDragRegion(overlayWindow));
+  overlayWindow.webContents.on("did-finish-load", () => {
+    injectDragRegion(overlayWindow);
+    injectActiveIndicator(overlayWindow);
+  });
+  overlayWindow.on("move", persistOverlayState);
   overlayWindow.on("closed", () => {
     overlayWindow = null;
   });
@@ -337,6 +389,10 @@ function applyClickThrough() {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.setIgnoreMouseEvents(overlayClickThrough, { forward: true });
     overlayWindow.setFocusable(!overlayClickThrough);
+    // The glow tracks ACTIVE/PASSIVE flips live, not just at load time.
+    overlayWindow.webContents
+      .executeJavaScript(ind.activeIndicatorSetJS(!overlayClickThrough), true)
+      .catch(() => {});
   }
 }
 
@@ -502,6 +558,12 @@ function registerHotkeys() {
     });
     globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyCycle, () => {
       panelSet = ov.cyclePanelSet(panelSet);
+      // Persist the choice immediately - a cycle is a deliberate one-shot
+      // action, so no debounce; the next launch lands on the same set.
+      store.save(
+        statePath(),
+        ov.mergeOverlayPatch(store.load(statePath(), {}), { panelSet: panelSet })
+      );
       if (overlayWindow && !overlayWindow.isDestroyed()) {
         overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet));
       }
@@ -565,6 +627,10 @@ if (!gotLock) {
     if (activeRevertTimer) {
       clearTimeout(activeRevertTimer);
       activeRevertTimer = null;
+    }
+    if (overlaySaveTimer) {
+      clearTimeout(overlaySaveTimer);
+      overlaySaveTimer = null;
     }
     activeRevert.cancel();
     globalShortcut.unregisterAll();
