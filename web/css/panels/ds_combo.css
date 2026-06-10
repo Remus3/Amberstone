@@ -236,3 +236,46 @@
   font-weight: 400;
   color: rgba(255, 255, 255, 0.45);
 }
+
+/* Headline time-to-kill banner (T2-F3). Rendered below the foot from
+   payload.ttk: a verdict (LETHAL one-combo, or TTK seconds + rotations)
+   plus a supporting detail line. Neutral / non-lethal reads info-toned to
+   match the card accent; the lethal branch reads as a positive emphasis
+   state (good-tinted) so a guaranteed one-combo kill pops. Display-only,
+   so no --hit-min target floor applies. */
+.dscombo-ttk {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  border-left: 3px solid var(--signal-info, #5aa9e6);
+  background: rgba(138, 140, 240, 0.12);
+}
+
+.dscombo-ttk-verdict {
+  font-size: var(--fs-stat);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: var(--signal-info, #5aa9e6);
+  font-variant-numeric: tabular-nums;
+}
+
+.dscombo-ttk-detail {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.62);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lethal one-combo: positive emphasis - good-toned accent + tint. */
+.dscombo-ttk[data-dscombo-lethal="1"] {
+  border-left-color: var(--signal-good, #6ec977);
+  background: var(--signal-good-soft, rgba(110, 201, 119, 0.18));
+}
+
+.dscombo-ttk[data-dscombo-lethal="1"] .dscombo-ttk-verdict {
+  color: var(--signal-good, #6ec977);
+}
