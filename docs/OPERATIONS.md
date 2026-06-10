@@ -63,6 +63,7 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-UpstreamDriftCheck` | Daily | Administrator | Upstream content-drift detector ddragon/meraki/cdragon (`tools/upstream_drift_check.py`) |
 | `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
 | `RC-RewindCatchup` | Weekly Sunday 04:00 | Administrator | `scripts/rewind_catchup.py` (pull new Match-V5 records into rewind_history.db) |
+| `RC-WeeklyHygiene` | Weekly Sunday 04:17 | Administrator | Unattended `/weekly-hygiene` pass via headless Claude (`tools/weekly_hygiene_run.ps1`; install `ops/install_RC_WeeklyHygiene.ps1`) |
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
 | `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
 | `RC-Phase3-PeriodicAudit` | Scheduled | Administrator | Phase 3 periodic audit |
