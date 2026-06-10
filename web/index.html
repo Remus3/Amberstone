@@ -1380,12 +1380,13 @@
     <section id="view-build-insights" class="view-section" hidden>
       <div class="view-section-head">
         <h2>BUILD INSIGHTS</h2>
-        <span class="view-section-sub">Selection-bias-corrected item + skill performance over your match history</span>
+        <span class="view-section-sub">Selection-bias-corrected item + skill + rune performance over your match history</span>
       </div>
       <div class="view-section-body">
         <div class="bi-tabs" id="bi-tabs" role="tablist">
           <button type="button" class="bi-tab is-active" data-bi-tab="items" role="tab" aria-selected="true">Items</button>
           <button type="button" class="bi-tab" data-bi-tab="skills" role="tab" aria-selected="false">Skills</button>
+          <button type="button" class="bi-tab" data-bi-tab="runes" role="tab" aria-selected="false">Runes</button>
         </div>
         <div class="bi-controls">
           <label for="bi-min-n">Min buys</label>
@@ -1398,6 +1399,10 @@
         <div class="bi-tab-pane" data-bi-pane="skills" hidden>
           <p class="bi-skill-caption">Skill-max performance: the win-rate residual for each champion's first-maxed basic (Q/W/E; the ult is excluded - it has no max-order decision). Skills are a WEAKER signal than items, so shrink + min_n are load-bearing - trust rows by the sample bar, not the raw number.</p>
           <div id="bi-skill-table-mount"></div>
+        </div>
+        <div class="bi-tab-pane" data-bi-pane="runes" hidden>
+          <p class="bi-rune-caption">Rune performance: the win-rate residual for each keystone / minor rune you picked (stat shards excluded). A rune is a pre-game choice, so the baseline is the near-coinflip start frame; the residual is how much that rune correlates with winning beyond the lobby it was picked in. Runes are an even WEAKER per-choice signal than items (a keystone is largely champion-fixed), so shrink + min_n are load-bearing - trust rows by the sample bar.</p>
+          <div id="bi-rune-table-mount"></div>
         </div>
       </div>
     </section>
