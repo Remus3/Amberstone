@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-09 - session-start anomaly triage: DDragon flake-tolerance + rc_facts gamepc demotion + /weekly-hygiene automation [item 376]
+
+Session-start flagged 3 anomalies (operator "your call"): RC-DDragonMirrorRefresh result=2, gamepc :8892 None, gamepc bridge stale ~9d. Ops/tools/docs only - NO engine, NO ENGINE bump, NO Share, no RC restart. 4 commits `3f4dc43f`/`f62b5bc1`/`56052df9`/`9cc5a6ad`.
+
+- **DDragon (`3f4dc43f`+`f62b5bc1`):** result=2 was benign - `--check-changed` HEAD-probes 6792 assets nightly, ANY single transient flake (CDN-edge 404 among ~4966 profileicons) tripped `failed>=1` -> exit 2 (foreground re-run: 6792/6792 skip, fail=0). Fix: `fetch_one` retries a 404 once; NEW `FAIL_RATIO_TOLERANCE=0.005` + `_failures_within_tolerance` shared by `_exit_code_for` (exit 2 only when failed/total>0.5%) AND the index-advance gate (a tolerable flake during a version flip advances `_index.json` same-night). +11 tests (52 total).
+- **rc_facts (`56052df9`):** gamepc out-of-pipeline post-1PC (ADR-011) so MCP-None + bridge-stale are EXPECTED; NEW `RC_GAMEPC_RETIRED` flag (default on, `=0` re-arms) demotes both to annotated info lines via `_gamepc_mcp_anomaly`/`_bridge_peer_anomalies`; Peer + queue-backlog still flag. +9 tests (file had none). Live: Anomalies now shows ONLY the real DDragon result=2 (self-clears tonight 3:30 AM).
+- **/weekly-hygiene (`9cc5a6ad`):** NEW skill `.claude/commands/weekly-hygiene.md` (local/gitignored) + persistent `RC-WeeklyHygiene` task (Sun 04:17) via `tools/weekly_hygiene_run.ps1` (headless `claude -p /weekly-hygiene` sonnet, appends a dated WAKEUP entry so flags surface) + `ops/install_RC_WeeklyHygiene.ps1` (idempotent) + OPERATIONS.md row. CronCreate (7d expiry) + cloud /schedule (no local tree) both unfit. Smoke READY exit 0; NextRun 2026-06-14 04:17.
+- **Memory (no git):** 2 capture-memories gamepc:8892 -> Legion-local (Windows-MCP/computer-use/preview); MEMORY.md 2 index hooks updated.
+- **Don't-redo:** a single-asset DDragon result=2 is benign-tolerated now (a real outage is >0.5% or pins the index); set `RC_GAMEPC_RETIRED=0` if gamepc returns to service; first `RC-WeeklyHygiene` fires Sun 6/14 04:17 (commits relocate-only trims + appends its own WAKEUP entry).
+
+---
+
 # 2026-06-09 - weekly doc + memory hygiene: LEDGER/WAKEUP/ROADMAP shrink (relocate-only) [item 375]
 
 Side-chat asked why editing LEDGER/ROADMAP got slow -> root cause = file growth (LEDGER append-only hit 1024KB / ~262K tok; Edit rewrites the whole file per mark). Operator "run it now" -> doc/memory-only hygiene. Commit `13151b30` (pushed `d8ff8d6f..13151b30`). No engine/code, no ENGINE bump, no Share.
@@ -27,14 +39,3 @@ Operator "all 4, parallel orchestrated" (picked 4 open `.md` items together). 3 
 - **S4 HZ ARAM/Arena `--mode all` expand DEFERRED** (operator decision, per the item-372 deferral): current.txt 16.12.1 vs HZ seed 16.11.1 -> `--mode all` would write a partial/mismatched dir + heavy LFS; waits for a coordinated full HZ regen at one patch or an HZ-shadow flip. Do NOT bolt on a partial ARAM/Arena expand now.
 - **Gemini deep-refactor PINNED ~72h** (resume 2026-06-12): operator parked a 5-area refactor mandate (Gemini = architect, Claude = sole writer). Verified-live before parking: core/ = 101 `.py` files (CONFIRMED), main.py monkey-patch CONFIRMED at `main.py:191-212` (OverlayApp.__init__/._quit, FROZEN -> needs grant), the `.py` dead-code claim caution (tree audited near-clean 2026-06-03 item 284 -> needs `file:line` targets not a re-sweep). Awaiting Gemini's first-area pick + the canonical test-gate command (I count 882 `test_*.py` repo-wide vs the operator's 262 - likely Share/ mirror inflation; pin before leaning on it).
 - **Don't-redo:** LIFT1 tail FULLY closed (item 371 + 374); rune-WPA is the 3rd BI tab (no standalone panel); the current_hp_pct seam exists byte-identical (flip gated, do NOT touch %MAX-HP procs). Visual capture OWED x2 UI surfaces (Game-PC MCP :8892 down). Only summoner-spell-WPA remains in the WPA-extension lane.
-
----
-
-# 2026-06-09 - gist mirror staleness: force-push fix + push-failure hardening [item 373]
-
-Operator "the gist does not show correct info for the current DS build - is it truly up to date?" -> NO. The published secret review gist (`gist.github.com/<redacted-gist-id>...`) was 45 commits / 6 days stale (last pushed `8129ed5` 2026-06-03; showed ENGINE 1.108.0 / patch 16.11.1; live build is 1.120.0 / 16.12.1).
-
-- **Root cause:** on 2026-06-03 the operator hand-edited the gist README directly on the remote (2 commits `a76cd91`+`8129ed5`) -> remote diverged +2 -> every `gist_share_sync.py` post-commit-hook `git push` since hit `non-fast-forward` -> `_git` `check=True` raised -> swallowed by the post-commit context -> 45 regenerated commits piled up unpushed, invisibly. Local mirror was correct the whole time; only the publish was blocked.
-- **Fix 1 (ops):** operator chose "force-push lean template now" -> `git push --force origin HEAD:main` on the `~/.rc-share-gist` clone. Published gist now `17ba6ab` ENGINE 1.120.0 / patch 16.12.1, Share.zip 346 files, divergence cleared. Dropped the 2 manual-README commits (reflog-recoverable; the sync regenerates README from `_README_TEMPLATE` by design, so the manual edits were always transient).
-- **Fix 2 (prevent recurrence, commit `e1fc7603`):** `tools/gist_share_sync.py` `_do_push()` catches the push CalledProcessError -> appends git stderr + unpushed count to `logs/YYYY-MM-DD.log`, atomically writes `ops/runtime/gist_sync_status.json` (`ok`/`detail`/`unpushed_commits`/`ts`), echoes stderr, returns non-zero `PUSH_FAIL_EXIT=3`. No-change path surfaces a latent backlog too. +3 tests `tests/test_gist_share_sync.py`. ruff + py_compile + hygiene green; live smoke status `ok=true`/unpushed 0.
-- **Don't-redo:** do NOT hand-edit the gist REMOTE (the sync clobbers README from `_README_TEMPLATE` + diverges the remote). Gist staleness health signal = `ops/runtime/gist_sync_status.json` (gitignored; `unpushed_commits`>0 or `ok=false` == stale mirror).
