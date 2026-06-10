@@ -53,6 +53,17 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-09 - gist mirror staleness: force-push fix + push-failure hardening [item 373]
+
+Operator "the gist does not show correct info for the current DS build - is it truly up to date?" -> NO. The published secret review gist (`gist.github.com/<redacted-gist-id>...`) was 45 commits / 6 days stale (last pushed `8129ed5` 2026-06-03; showed ENGINE 1.108.0 / patch 16.11.1; live build is 1.120.0 / 16.12.1).
+
+- **Root cause:** on 2026-06-03 the operator hand-edited the gist README directly on the remote (2 commits `a76cd91`+`8129ed5`) -> remote diverged +2 -> every `gist_share_sync.py` post-commit-hook `git push` since hit `non-fast-forward` -> `_git` `check=True` raised -> swallowed by the post-commit context -> 45 regenerated commits piled up unpushed, invisibly. Local mirror was correct the whole time; only the publish was blocked.
+- **Fix 1 (ops):** operator chose "force-push lean template now" -> `git push --force origin HEAD:main` on the `~/.rc-share-gist` clone. Published gist now `17ba6ab` ENGINE 1.120.0 / patch 16.12.1, Share.zip 346 files, divergence cleared. Dropped the 2 manual-README commits (reflog-recoverable; the sync regenerates README from `_README_TEMPLATE` by design, so the manual edits were always transient).
+- **Fix 2 (prevent recurrence, commit `e1fc7603`):** `tools/gist_share_sync.py` `_do_push()` catches the push CalledProcessError -> appends git stderr + unpushed count to `logs/YYYY-MM-DD.log`, atomically writes `ops/runtime/gist_sync_status.json` (`ok`/`detail`/`unpushed_commits`/`ts`), echoes stderr, returns non-zero `PUSH_FAIL_EXIT=3`. No-change path surfaces a latent backlog too. +3 tests `tests/test_gist_share_sync.py`. ruff + py_compile + hygiene green; live smoke status `ok=true`/unpushed 0.
+- **Don't-redo:** do NOT hand-edit the gist REMOTE (the sync clobbers README from `_README_TEMPLATE` + diverges the remote). Gist staleness health signal = `ops/runtime/gist_sync_status.json` (gitignored; `unpushed_commits`>0 or `ok=false` == stale mirror).
+
+---
+
 # 2026-06-09 - DS patch refresh 16.11.1 -> 16.12.1 (full chain + ddragon mirror + Share) [item 372]
 
 Operator "do a DS share update". `upstream_drift_check` caught DDragon 16.11.1 -> **16.12.1** (Meraki 25.15 + CDragon UNCHANGED). Operator-gated fork -> chose **Full refresh**. ENGINE 1.120.0 UNCHANGED (patch != engine). DS restarted live 16.12.1. Commit `a93404ec`, CI green (run 27241177720).
