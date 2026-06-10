@@ -45,6 +45,18 @@ _SSL.check_hostname = False
 _SSL.verify_mode = ssl.CERT_NONE
 
 
+def _parse_retired(val: str | None) -> bool:
+    """Parse the RC_GAMEPC_RETIRED env flag. Unset/empty -> retired (quiet)."""
+    return (val or "1").strip().lower() not in ("0", "false", "no")
+
+
+# Game-PC left the League/RC pipeline at the 1-PC consolidation (2026-05-29,
+# ADR-011). Its MCP :8892 and bridge health publisher are EXPECTED absent/stale,
+# so rc_facts demotes those from anomalies to annotated info lines. Set
+# RC_GAMEPC_RETIRED=0 to re-arm them as anomalies if gamepc returns to service.
+_GAMEPC_RETIRED = _parse_retired(os.environ.get("RC_GAMEPC_RETIRED"))
+
+
 def _http_get_json(url: str, headers: dict | None = None) -> dict | None:
     try:
         req = urllib.request.Request(url, headers=headers or {})
@@ -192,6 +204,36 @@ def _lessons_summary() -> str | None:
     return "\n".join(lines)
 
 
+def _gamepc_mcp_anomaly(mcp_status: int | None, *, retired: bool) -> str | None:
+    """Anomaly string for a non-200 Game-PC MCP probe, or None when ok/expected.
+
+    Post-1PC (ADR-011) Game-PC is out of the pipeline, so a down MCP is the
+    expected steady state and suppressed unless the retired flag is disabled.
+    """
+    if mcp_status == 200 or retired:
+        return None
+    return f"Game-PC: MCP /health returned {mcp_status}"
+
+
+def _bridge_peer_anomalies(peer_name: str, *, watcher_alive: bool, stale: bool,
+                           age_str: str, queue: int, retired: bool) -> list[str]:
+    """Bridge-peer anomaly strings.
+
+    Game-PC's dead/stale publisher is the expected post-1PC steady state and is
+    suppressed when retired; Peer (live peer) and a real queue backlog always
+    flag regardless.
+    """
+    out: list[str] = []
+    expected_down = (peer_name == "gamepc" and retired)
+    if not watcher_alive and not expected_down:
+        out.append(f"Bridge: {peer_name} watcher dead")
+    elif stale and not expected_down:
+        out.append(f"Bridge: {peer_name} health publisher stale ({age_str})")
+    if queue > 10:
+        out.append(f"Bridge: {peer_name} task queue backed up ({queue} tasks)")
+    return out
+
+
 def main() -> int:
     out = []
     out.append("# RC live state (rc_facts.py)\n")
@@ -311,9 +353,12 @@ def main() -> int:
     mcp_status = _http_get_status(
         _GAMEPC_MCP_HEALTH, headers={"Authorization": f"Bearer {_GAMEPC_TOKEN}"}
     )
-    out.append(f"- MCP server :8892: HTTP {mcp_status}")
-    if mcp_status != 200:
-        anomalies.append(f"Game-PC: MCP /health returned {mcp_status}")
+    out.append(f"- MCP server :8892: HTTP {mcp_status}"
+               + (" (expected - gamepc retired post-1PC, ADR-011)"
+                  if mcp_status != 200 and _GAMEPC_RETIRED else ""))
+    mcp_anom = _gamepc_mcp_anomaly(mcp_status, retired=_GAMEPC_RETIRED)
+    if mcp_anom:
+        anomalies.append(mcp_anom)
 
     # ── Cross-Claude bridge ──────────────────────────────────────────────
     out.append("\n## Cross-Claude bridge\n")
@@ -330,16 +375,15 @@ def main() -> int:
         stale = bool(p.get("stale"))
         age_str = f"{int(age_s)}s" if age_s is not None else "?"
         stale_str = " ⚠ STALE" if stale else ""
+        if peer_name == "gamepc" and _GAMEPC_RETIRED and (stale or not w_alive):
+            stale_str += " (expected - gamepc retired post-1PC)"
         out.append(
             f"- {peer_name} bridge daemon: watcher={'alive' if w_alive else '⚠ DEAD'}"
             f" queue={queue} age={age_str}{stale_str}"
         )
-        if not w_alive:
-            anomalies.append(f"Bridge: {peer_name} watcher dead")
-        elif stale:
-            anomalies.append(f"Bridge: {peer_name} health publisher stale ({age_str})")
-        if queue > 10:
-            anomalies.append(f"Bridge: {peer_name} task queue backed up ({queue} tasks)")
+        anomalies.extend(_bridge_peer_anomalies(
+            peer_name, watcher_alive=w_alive, stale=stale, age_str=age_str,
+            queue=queue, retired=_GAMEPC_RETIRED))
 
     # 24h activity from bridge_log (informational only)
     bridge_log = _APP / "ops" / "runtime" / "bridge_log.jsonl"
