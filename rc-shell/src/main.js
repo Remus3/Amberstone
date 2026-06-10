@@ -31,6 +31,12 @@
 //   - ACTIVE indicator: injected glow frame on the overlay page lights while
 //     the overlay is interactive - see ./active_indicator (overlay-only).
 //
+// Phase 5 (stabilization): electron-updater + GitHub Releases, on stable/dev
+// channels (see ./update_channel, the pure channel/plan core). The updater is
+// lazy-loaded so a bare checkout runs identically with updates disabled; all
+// update events are console-only (no dialogs over a live game) and a download
+// installs on natural quit - never quitAndInstall mid-session.
+//
 // What it does NOT do (Vanguard-safe; see docs/ELECTRON_OVERLAY.md sections 3.8 + 8):
 //   - No DXGI / frame capture, no game-memory reads, no input injection - ever.
 //     The overlay is a DWM compositor window only; the hotkey is RegisterHotKey
@@ -49,6 +55,17 @@ const store = require("./store");
 const ov = require("./overlay_state");
 const drag = require("./drag_region");
 const ind = require("./active_indicator");
+const upd = require("./update_channel");
+
+// electron-updater is an OPTIONAL dependency: a bare checkout (no npm install)
+// must run identically, just with updates disabled - no crash, no dialog.
+// checkPlan() turns a null autoUpdater into the "updater-missing" branch.
+let autoUpdater = null;
+try {
+  ({ autoUpdater } = require("electron-updater"));
+} catch (_e) {
+  autoUpdater = null;
+}
 
 // Persistence target: <userData>/rc-shell-state.json. userData is per-app and
 // per-OS-user, so two machines / two users never collide.
@@ -69,6 +86,9 @@ let lastMode = ""; // last mode_key seen by the poll (for hotkey re-apply).
 let panelSet = null; // current overlay panel set; null = plain overlay=1.
 let activeRevertTimer = null; // setTimeout wakeup for the ACTIVE auto-revert.
 const activeRevert = ov.makeActiveRevert({}); // pure deadline state (20s default).
+let updateChannel = upd.DEFAULT_CHANNEL; // stable/dev release channel (Phase 5).
+let updateInitialTimer = null; // one-shot delay before the first update check.
+let updateIntervalTimer = null; // recurring update-check handle.
 
 // Debounced state writer so a drag (many move events) does not hammer the disk.
 let saveTimer = null;
@@ -173,10 +193,77 @@ function toggleAlwaysOnTop() {
   buildMenu(); // refresh the checkbox state
 }
 
-// A minimal application menu: size presets + always-on-top toggle + reload.
-// This is the low-risk preset switcher the spec marks optional. No global
-// hotkeys (those are Phase 2); these are app-menu accelerators only, active
-// while the shell is focused.
+// --- Phase 5: auto-update (electron-updater + GitHub Releases) ----------------
+// The shell versions on its OWN cadence, decoupled from RC backend pushes
+// (docs/ELECTRON_OVERLAY.md section 8). Every update event is console-only -
+// this window runs over a live game, so NO dialogs and NO focus steal. The
+// downloaded update installs on natural quit (autoInstallOnAppQuit); never
+// quitAndInstall mid-session - the operator may be mid-fight.
+function setupAutoUpdater() {
+  const plan = upd.checkPlan({
+    isPackaged: app.isPackaged,
+    updaterPresent: !!autoUpdater,
+  });
+  if (!plan.enabled) {
+    // Dev launch (npm start) or bare checkout - both are normal, not errors.
+    console.log("[rc-shell] updates disabled: " + plan.reason);
+    return;
+  }
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = upd.channelConfig(updateChannel).allowPrerelease;
+  autoUpdater.on("error", (err) => {
+    console.log(
+      "[rc-shell] update error: " + (err && err.message ? err.message : String(err))
+    );
+  });
+  autoUpdater.on("update-available", (info) => {
+    console.log(
+      "[rc-shell] update available: " + (info && info.version ? info.version : "?")
+    );
+  });
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log(
+      "[rc-shell] update downloaded (installs on quit): " +
+        (info && info.version ? info.version : "?")
+    );
+  });
+  updateInitialTimer = setTimeout(() => {
+    updateInitialTimer = null;
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, plan.initialDelayMs);
+  updateIntervalTimer = setInterval(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, plan.intervalMs);
+}
+
+// Switch the release channel from the menu: validate, persist via the merge
+// patch (window/overlay keys survive), re-aim the updater, and check right
+// away - a stable -> dev flip should pick up a waiting prerelease without
+// sitting out the 4-hour interval.
+function setUpdateChannel(ch) {
+  updateChannel = upd.resolveChannel({ updateChannel: ch }, {});
+  store.save(
+    statePath(),
+    upd.mergeChannelPatch(store.load(statePath(), {}), updateChannel)
+  );
+  if (autoUpdater) {
+    autoUpdater.allowPrerelease = upd.channelConfig(updateChannel).allowPrerelease;
+  }
+  const plan = upd.checkPlan({
+    isPackaged: app.isPackaged,
+    updaterPresent: !!autoUpdater,
+  });
+  if (plan.enabled) {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }
+  buildMenu(); // refresh the radio state
+}
+
+// A minimal application menu: size presets + always-on-top toggle + update
+// channel (Phase 5) + reload. This is the low-risk preset switcher the spec
+// marks optional. No global hotkeys (those are Phase 2); these are app-menu
+// accelerators only, active while the shell is focused.
 function buildMenu() {
   const aot = mainWindow && !mainWindow.isDestroyed() ? mainWindow.isAlwaysOnTop() : true;
   const template = [
@@ -204,6 +291,33 @@ function buildMenu() {
           type: "checkbox",
           checked: aot,
           click: () => toggleAlwaysOnTop(),
+        },
+        { type: "separator" },
+        {
+          label: "Update channel: Stable",
+          type: "radio",
+          checked: updateChannel === "stable",
+          click: () => setUpdateChannel("stable"),
+        },
+        {
+          label: "Update channel: Dev",
+          type: "radio",
+          checked: updateChannel === "dev",
+          click: () => setUpdateChannel("dev"),
+        },
+        {
+          label: "Check for updates now",
+          click: () => {
+            const plan = upd.checkPlan({
+              isPackaged: app.isPackaged,
+              updaterPresent: !!autoUpdater,
+            });
+            if (plan.enabled) {
+              autoUpdater.checkForUpdates().catch(() => {});
+            } else {
+              console.log("[rc-shell] updates disabled: " + plan.reason);
+            }
+          },
         },
         { type: "separator" },
         {
@@ -260,6 +374,10 @@ function createWindow() {
   // Restore the overlay panel set before the overlay ever loads. Empty string
   // (nothing saved / unknown) -> null so the plain overlay=1 URL is kept.
   panelSet = ov.overlayStateFrom(saved).panelSet || null;
+
+  // Phase 5: the release channel resolves like the origin - env override
+  // beats saved state beats the stable default.
+  updateChannel = upd.resolveChannel(saved, process.env);
 
   // Resolve the on-screen position. If saved coords exist, clamp them to the
   // display nearest those coords; if not, leave x/y unset so Electron centers.
@@ -609,6 +727,7 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     createWindow();
+    setupAutoUpdater();
     registerHotkeys();
     startPoll();
     app.on("activate", () => {
@@ -631,6 +750,14 @@ if (!gotLock) {
     if (overlaySaveTimer) {
       clearTimeout(overlaySaveTimer);
       overlaySaveTimer = null;
+    }
+    if (updateInitialTimer) {
+      clearTimeout(updateInitialTimer);
+      updateInitialTimer = null;
+    }
+    if (updateIntervalTimer) {
+      clearInterval(updateIntervalTimer);
+      updateIntervalTimer = null;
     }
     activeRevert.cancel();
     globalShortcut.unregisterAll();
