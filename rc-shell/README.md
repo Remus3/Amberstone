@@ -161,3 +161,19 @@ WIP / operator-gated: packaging (`npx electron-builder`, see
 `electron-builder.yml`) and publishing GitHub Releases are operator actions -
 no Release exists yet. The repo is private, so a packaged shell needs
 `GH_TOKEN` in its runtime environment for update checks to reach the feed.
+
+## Crash isolation (Phase 5)
+
+Each window runs its own renderer process, so a page crash is already
+contained - the companion, the overlay, and the game never share fate. On top
+of that, `src/crash_guard.js` (PURE, node:testable) decides what the main
+process does when a renderer dies (`render-process-gone`):
+
+- restartable reasons (`crashed`, `oom`, `abnormal-exit`, `launch-failed`,
+  `integrity-failure`) reload ONLY the dead window;
+- `killed` / `clean-exit` are deliberate terminations - never resurrected;
+- a crash LOOP converges: more than 3 restartable crashes per window within
+  60s flips to give-up (the window hides) instead of strobing a half-dead
+  HUD over a live game. The budget is per-window and rolls off after 60s.
+- an `unresponsive` renderer is logged, never killed (a load hitch recovers
+  on its own).

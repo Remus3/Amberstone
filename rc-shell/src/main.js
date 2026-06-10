@@ -56,6 +56,7 @@ const ov = require("./overlay_state");
 const drag = require("./drag_region");
 const ind = require("./active_indicator");
 const upd = require("./update_channel");
+const cg = require("./crash_guard");
 
 // electron-updater is an OPTIONAL dependency: a bare checkout (no npm install)
 // must run identically, just with updates disabled - no crash, no dialog.
@@ -89,6 +90,7 @@ const activeRevert = ov.makeActiveRevert({}); // pure deadline state (20s defaul
 let updateChannel = upd.DEFAULT_CHANNEL; // stable/dev release channel (Phase 5).
 let updateInitialTimer = null; // one-shot delay before the first update check.
 let updateIntervalTimer = null; // recurring update-check handle.
+const crashGuard = cg.makeCrashGuard({}); // per-window renderer restart budget (Phase 5).
 
 // Debounced state writer so a drag (many move events) does not hammer the disk.
 let saveTimer = null;
@@ -364,6 +366,40 @@ function injectActiveIndicator(win) {
     .catch(() => {});
 }
 
+// --- Phase 5: crash isolation ---------------------------------------------------
+// Each BrowserWindow already runs its own renderer process, so one window's
+// crash never takes the other (or the game) down. What the guard adds is
+// self-healing: a restartable crash reloads ONLY that window, and a crash LOOP
+// converges to give-up (hide) instead of strobing a half-dead window over a
+// live game. killed/clean-exit are deliberate terminations - never resurrected.
+// The budget is keyed per window identity, so it survives an overlay
+// destroy/recreate cycle (a crash-looping page cannot reset its own budget).
+function attachCrashGuard(win, key) {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+  win.webContents.on("render-process-gone", (_event, details) => {
+    const reason = details && details.reason ? details.reason : "";
+    const verdict = crashGuard.record(key, reason);
+    console.log(
+      "[rc-shell] renderer gone (" + key + "): " + reason + " -> " + verdict.action
+    );
+    if (win.isDestroyed()) {
+      return;
+    }
+    if (verdict.action === "restart") {
+      win.webContents.reload();
+    } else if (verdict.action === "give-up") {
+      win.hide();
+    }
+  });
+  win.webContents.on("unresponsive", () => {
+    // Log only - a long GC or load hitch recovers on its own; killing a
+    // merely-slow renderer mid-game would be worse than the hang.
+    console.log("[rc-shell] renderer unresponsive (" + key + ")");
+  });
+}
+
 function createWindow() {
   const saved = store.load(statePath(), {});
   const cfg = cfgmod.resolveConfig(saved, process.env);
@@ -433,6 +469,8 @@ function createWindow() {
   // Re-mount the drag strip on every (re)load - Cmd+R wipes injected DOM.
   mainWindow.webContents.on("did-finish-load", () => injectDragRegion(mainWindow));
 
+  attachCrashGuard(mainWindow, "companion");
+
   mainWindow.on("move", persistWindowState);
   mainWindow.on("resize", persistWindowState);
   mainWindow.on("close", persistWindowStateNow);
@@ -496,6 +534,7 @@ function createOverlayWindow() {
     injectDragRegion(overlayWindow);
     injectActiveIndicator(overlayWindow);
   });
+  attachCrashGuard(overlayWindow, "overlay");
   overlayWindow.on("move", persistOverlayState);
   overlayWindow.on("closed", () => {
     overlayWindow = null;
