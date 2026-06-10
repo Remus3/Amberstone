@@ -552,6 +552,7 @@ def compute_dps(
     target_mr: float = 0.0,
     target_max_hp: float = 0.0,
     target_bonus_hp: float = 0.0,
+    target_current_hp_pct: float = 1.0,
     phase: Optional[str] = None,
     augments: Optional[Iterable] = None,
     apply_mode_modifiers: bool = False,
@@ -574,6 +575,14 @@ def compute_dps(
     target bonus HP. Activates Giant Slayer-style target-conditional
     amps (LDR id 3036). Default 0.0 keeps pre-batch-19 calls
     behaviorally identical (the amp resolves to ×1.0 with no signal).
+
+    ``target_current_hp_pct`` (DS target-current-HP% lever, BACKLOG item):
+    caller-supplied fraction (0.0-1.0) of the target's current HP vs its
+    max HP. Scales ONLY the three genuine %-current-HP item procs (BotRK
+    3153, Hellfire Hatchet 4017, Fulmination 443055) so a caller can model
+    a chunked target; %-max-HP procs (Eclipse, Titanic Hydra, ...) are
+    unaffected. Default 1.0 is an identity multiply - byte-identical to
+    pre-lever output.
     """
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
@@ -757,6 +766,7 @@ def compute_dps(
         caster_bonus_armor=caster_bonus_armor,
         caster_lethality=caster_lethality,
         ult_casts_per_sec=ult_casts_per_sec,
+        target_current_hp_pct=target_current_hp_pct,
     )
 
     # Phase 4 batch 34 (2026-05-04): magic-only target-debuff amp.
