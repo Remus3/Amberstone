@@ -166,6 +166,44 @@
   border-radius: var(--panel-radius-sm, 10px);
 }
 
+/* Rune tab: rune icon + name, and the keystone/minor slot badge. */
+.bi-rune-caption {
+  font-size: var(--fs-xs);
+  color: var(--signal-dim);
+  line-height: 1.4;
+  max-width: 1100px;
+  margin-bottom: var(--space-4, 20px);
+}
+.bi-rune {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+.bi-rune-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+.bi-rune-name {
+  font-size: var(--fs-sm);
+}
+.bi-slot-badge {
+  display: inline-block;
+  min-width: 38px;
+  padding: 2px var(--space-2, 8px);
+  text-align: center;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: #e6e8ef;
+  background: #2a2e3c;
+  border-radius: var(--panel-radius-sm, 10px);
+}
+.bi-slot-keystone {
+  background: var(--accent, #7aa2ff);
+  color: #0f1219;
+}
+
 /* WPA cell - the hero. Signed pp value + 5-segment confidence bar. */
 .bi-c-wpa {
   white-space: nowrap;
