@@ -247,6 +247,24 @@ body[data-shell="overlay"][data-panelset="threat"] #cd-ledger-head .cd-chev {
 body[data-shell="overlay"][data-panelset="threat"] .am-pane-cd.cd-collapsed .am-pane-body {
   display: block !important;
 }
+/* HZ-D1 Phase 4: in-overlay DS fight-model controls (#am-pane-ovds,
+ * renderer overlay_ds_controls.js over /api/ds-knobs). The pane is
+ * display:none on every surface by default (overlay_ds_controls.css);
+ * the overlay shell shows it whenever the renderer has un-hidden it,
+ * so the base compact subset AND the build panelset include it with no
+ * per-set re-enable. GPU-light: plain number inputs + text rows, no
+ * canvas, no animation. */
+body[data-shell="overlay"] #am-pane-ovds:not([hidden]) {
+  display: block !important;
+}
+/* Narrowing gates: the coach + threat sets exclude the fight-model
+ * pane. Same specificity as the unhide rule above (1 id + 2 attrs
+ * each), so source order is what makes the narrowing win - these MUST
+ * stay after it. */
+body[data-shell="overlay"][data-panelset="coach"] #am-pane-ovds,
+body[data-shell="overlay"][data-panelset="threat"] #am-pane-ovds {
+  display: none !important;
+}
 
 /* 5. Change-pulse hook. overlay_pulse.js adds .ov-pulse to a panel
  * container for ~1.2s when its rendered content changes. One-shot
