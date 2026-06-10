@@ -520,14 +520,22 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
     laning table (``core.precomputed_laning_coach``) would offer for this game
     state - including whether the seed table covered the matchup - to
     data/hz_choice_shadow.jsonl, alongside live coaching. Never raises and has
-    NO effect on live output. Only fires for a real game (operator champion
-    present); a coverage MISS is recorded too (the seed coverage rate on real
-    games is itself the validation signal). ``path`` overrides the jsonl target
-    (test seam)."""
+    NO effect on live output. Only fires when the LIVECLIENT champion is
+    present (a real in-game tick) - the coach payload keeps its champion
+    forever after a game ends, so coach-champion presence alone would log a
+    junk row on every idle /api/state tick. A coverage MISS during a live game
+    is recorded too (the seed coverage rate on real games is itself the
+    validation signal). ``path`` overrides the jsonl target (test seam)."""
     try:
         gs = _build_game_state(coach, lc, mode_key)
         champ = gs.get("my_champion")
         if not champ:
+            return
+        # HZ-D4 live-game gate: lc["champion"] is only populated during a
+        # real game (dashboard/_liveclient.py), while the stale coach file
+        # keeps `champion` after the game ends. Without this, every idle
+        # tick logs a junk row (enemy=null, covered=false).
+        if not (isinstance(lc, dict) and lc.get("champion")):
             return
         mk = str(mode_key or "").strip().lower()
         lower = _MODE_KEY_TO_LOWER.get(mk, "sr")
@@ -585,13 +593,20 @@ def shadow_log_precomputed_build(coach: dict, lc: dict | None, mode_key: str,
     the precomputed HZ-B2 table (``core.precomputed_build_coach``) would
     recommend for this enemy comp - including whether the seed table covered the
     champion - to data/hz_build_shadow.jsonl, alongside live coaching. Never
-    raises and has NO effect on live output. Fires for a real game (operator
-    champion present); a coverage MISS is recorded too. ``path`` overrides the
+    raises and has NO effect on live output. Fires only when the LIVECLIENT
+    champion is present (a real in-game tick) - coach-champion presence alone
+    would log a junk row on every idle tick (stale post-game coach file). A
+    coverage MISS during a live game is recorded too. ``path`` overrides the
     jsonl target (test seam)."""
     try:
         gs = _build_game_state(coach, lc, mode_key)
         champ = gs.get("my_champion")
         if not champ:
+            return
+        # HZ-D4 live-game gate - same rationale as
+        # shadow_log_precomputed_choices: only a real in-game liveclient
+        # tick carries lc["champion"].
+        if not (isinstance(lc, dict) and lc.get("champion")):
             return
         mk = str(mode_key or "").strip().lower()
         lower = _MODE_KEY_TO_LOWER.get(mk, "sr")
