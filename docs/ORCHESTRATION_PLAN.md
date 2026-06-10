@@ -52,7 +52,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | DONE | 33dc9b3a |
 | HZ-D2 | haiku-zero | OPERATOR RUN FOCUS 2026-06-10 MINIMUM FIRST DELIVERABLE: make the rc-shell companion sidecar window user-movable/draggable (frameless window has NO drag region today). Add a drag region (-webkit-app-region: drag header strip or equivalent) + persist the user-moved position across restarts; keep click-through/interactive zones working. Tests where applicable (rc-shell test harness). | DONE | 0b2eea62 |
 | HZ-D3 | haiku-zero | Electron overlay continuation per docs/ELECTRON_OVERLAY.md: advance Phase 4 interactive controls (next unshipped control surface) and any remaining Phase 5 stabilization tail on the ?overlay=1 dashboard surface + rc-shell. Vanguard-safe constraints hold (DWM window, NO DXGI capture, Borderless). Headless-safe slices only; leave live-visual-only verification WIP with a note. | DONE | 33dc9b3a |
-| HZ-D4 | haiku-zero | Headless-upgrade charter sweep: one pass of the cost/latency 7-lever sweep (prompt-cache coverage, route TTL, polling cadences, log spam, model tier, task catalog, bundle parity) + the next HZ Haiku-to-ZERO lane increment per ROADMAP (validate-before-flip rule holds; haiku stays interim floor until a precompute is validated vs a real game). Ship only net-positive fixes with green tests, else record CLEAN no-commit with evidence in the Findings log. | OPEN | |
+| HZ-D4 | haiku-zero | Headless-upgrade charter sweep: one pass of the cost/latency 7-lever sweep (prompt-cache coverage, route TTL, polling cadences, log spam, model tier, task catalog, bundle parity) + the next HZ Haiku-to-ZERO lane increment per ROADMAP (validate-before-flip rule holds; haiku stays interim floor until a precompute is validated vs a real game). Ship only net-positive fixes with green tests, else record CLEAN no-commit with evidence in the Findings log. | DONE | d446ea80+b54d040e |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -65,6 +65,40 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-10 HZ-D4 DONE (item 386; merges d446ea80 + b54d040e, 2 PARALLEL worktree
+  agents both verifier-CONFIRMED pre-merge). 7-LEVER SWEEP: 7/7 CLEAN, no net-positive
+  cost fix exists. Levers 1-5+7 scout-verified (all messages.create callers carry
+  cache_control; /api/ds-knobs cached 300s + 350ms client debounce; no sub-500ms network
+  polls; log suppression healthy; all coaching Haiku, vision Sonnet charter-exempt; 44
+  panel CSS == 44 dashboard.css @imports, overlay.css deliberately standalone via
+  index.html link). Lever 6 scout flagged "orphan tasks" - REFUTED by ground truth
+  (verify-before-declare-broken): RC-PatchRefresh -> scripts/data_pipeline.py all,
+  RC-HotkeyListener -> tools/gamepc_hotkey_listener.py, RC-DS-MatchDB-MCP ->
+  tools/start_ds_matchdb_mcp.py, all targets present on disk; installer-not-in-ops/ is
+  not an orphan. HZ INCREMENT root-caused AWAY from the planned table-expand-only: a
+  census of the HZ shadow logs found 100 PERCENT junk rows - 837 choice + 800 build,
+  enemy=null on EVERY row, all idle-tick replays of STALE coach payloads (champ comes
+  from the persistent coach dict; enemy_team only ever exists in a live liveclient), plus
+  290 my_champion=Champ0 rows = every pytest build_state run was appending to the REAL
+  data/ jsonls. The gated flip path (accrue shadow -> agreement -> flip) could NEVER
+  accrue as wired. FIX slice A: live gate lc.get("champion") in BOTH
+  shadow_log_precomputed_* + autouse tests/conftest.py fixture redirecting SHADOW_PATH
+  (hz_choice/hz_build/det_coach) to tmp for every test; +4 gate tests; 3 wiring fixtures
+  updated to live-shaped lc. BACKFILL (Data Fixes rule): both polluted jsonls rotated to
+  _scratch/ (gitignored), accrual restarts clean. Slice B (item-369 tail): hz_shadow_report
+  v2 agreement metric - classify_verdict 5-class keyword matcher + record_agreement +
+  summarize_agreement (per-mode, uncovered_with_native, flip hint cites agreement rate);
+  stale "no native capture yet" docstring fixed; 22 tests. ARAM TABLES (every native
+  capture to date is mode=aram - ARAM is the binding constraint, not dead weight):
+  full-roster 172 laning_scenarios_aram.json 65.75MB LFS + build_orders_aram 688 +
+  build_order_variants_aram 344 at 16.12.1; read-path smoke Kaisa vs Viktor L6 ->
+  back_off + economy block. GOTCHA: the gen CLIs default to the 10-champ SEED - the first
+  run silently produced seed-only tables; full roster needs --champions <172-CSV> (pulled
+  from the SR table's scenarios keys). RC suite 5787/2sk/0f + DS 7075/1sk/1xf both exit 0;
+  RC restarted pid 14160. OPS FINDING: RC-Supervisor task was NOT running - restart_trigger
+  sat unconsumed; schtasks /Run /TN RC-Supervisor restored it (the trigger file is the
+  supervisor's input, not RC's). Flip path now unblocked: play ARAM -> covered=true accrues
+  WITH native capture -> hz_shadow_report agreement gate -> operator flip decision.
 - 2026-06-10 HZ-D3 STALE PREMISE - no unshipped Phase 4 control surface and no
   Phase 5 tail remain; flipped DONE with NO new code (loop run 2026-06-10,
   verify-premise-first, the HZ-D2 precedent one row up). Phase 4 spec checklist
