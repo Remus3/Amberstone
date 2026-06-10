@@ -116,7 +116,7 @@ This is a LIVE param'd CN API, not a one-shot static seed - wiring it into the
 `core/smoothed_rates.py` pick/ban-synergy lane means a standing external
 dependency on a Tencent endpoint (params + a daily `dtstatdate`), plus the
 redistributable-scrape concerns the competitor-teardown already flagged
-(`docs/COMPETITOR_LIFT_2026-06-02.md`). Decide whether to (a) one-shot snapshot
+(`docs/_archive/COMPETITOR_LIFT_2026-06-02.md`). Decide whether to (a) one-shot snapshot
 a tier-200 sweep into a static `data/external/` seed (cleaner, ages out), or
 (b) take the live dependency. Capture one URL first either way - the probe
 characterizes the schema offline before any wiring.
