@@ -49,7 +49,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | DONE | 3a129071 |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | DONE | 8d8bc311 |
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | DONE | 3581afed |
-| HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | WIP | bc8c94d3 |
+| HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | DONE | 33dc9b3a |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -61,6 +61,28 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-10 HZ-D1 slice 4 = Phase 5 stabilization tail SHIPPED, HZ-D1 flipped DONE
+  (loop run 2026-06-10-01 cycle 4, merges 96cf5241 + 544cff59 + integration 33dc9b3a;
+  slice commits c1fde16e + da5c0f9a, 2 PARALLEL worktree agents, both verifier-CONFIRMED
+  pre-merge). Update channels: NEW rc-shell/src/update_channel.js (resolveChannel env
+  RC_SHELL_CHANNEL > saved > stable; channelConfig dev=allowPrerelease; mergeChannelPatch;
+  checkPlan not-packaged/updater-missing/15s-initial+4h-interval) + electron-updater ^6.3.9
+  lazy-required in main.js (bare-checkout + unpackaged = gracefully disabled, console-only
+  events, autoInstallOnAppQuit - NEVER mid-session restart), Shell-menu channel radios +
+  Check-now, electron-builder.yml (nsis, publish github Remus3/riot-commander,
+  generateUpdatesFilesForAllChannels). Crash isolation: NEW rc-shell/src/crash_guard.js
+  (RESTART_REASONS crashed/oom/abnormal-exit/launch-failed/integrity-failure; killed +
+  clean-exit NEVER resurrect; makeCrashGuard per-key rolling budget 3/60s -> give-up hides
+  instead of strobing a half-dead HUD) wired by the merger: attachCrashGuard on BOTH
+  windows (render-process-gone -> reload | hide; unresponsive logs only). package.json
+  0.4.0; node suite 109 -> 145/0 (TDD red-first both slices); npm install restored deps
+  (electron-updater resolvable; bare node require throws inside the getter by design -
+  the try/catch path is load-bearing). RC 5769p/2sk + DS 7075p/1sk/1xf both exit 0.
+  Phases 1-5 are now ALL shipped code-side. REMAINING (not HZ-D1-blocking): Phase 6 Pengu
+  (optional, operator-gated dependency); OWED live: packaging + first GitHub Release +
+  packaged-app update check (operator), in-match overlay capture (shell relaunch picks up
+  slices 1-4).
 
 - 2026-06-10 HZ-D1 slice 3 (loop run 2026-06-10-01 cycle 3, merges 85c54ba3 + 141c1333 +
   audit-fix bc8c94d3): Phase 4 in-overlay DS controls SHIPPED - #am-pane-ovds FIGHT MODEL
