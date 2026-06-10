@@ -14,6 +14,16 @@
 // global hotkey toggle + a /api/state poll that surface-switches companion <->
 // overlay by mode_key (see ./overlay_state, the pure state machine).
 //
+// Phase 4 (partial - shell-side interactivity hardening):
+//   - ACTIVE auto-revert: flipping the overlay interactive (Alt+Shift+A) arms
+//     a 20s countdown back to the passive click-through HUD; any hotkey press
+//     re-arms/cancels it (see ov.makeActiveRevert - the pure deadline state).
+//   - Backend-offline backoff: consecutive /api/state failures back the poll
+//     off exponentially to 15s (ov.nextPollDelay); a success snaps it back.
+//   - Panel-set cycle: Alt+Shift+C rotates the overlay through the PANEL_SETS
+//     (coach -> build -> threat) by reloading the overlay URL with
+//     panelset=NAME (ov.cyclePanelSet + ov.overlayUrl).
+//
 // What it does NOT do (Vanguard-safe; see docs/ELECTRON_OVERLAY.md sections 3.8 + 8):
 //   - No DXGI / frame capture, no game-memory reads, no input injection - ever.
 //     The overlay is a DWM compositor window only; the hotkey is RegisterHotKey
@@ -43,9 +53,13 @@ let originHost = ""; // host:port we trust the self-signed cert for.
 let resolvedOrigin = ""; // the origin resolved at boot (companion + overlay + poll).
 let surfaceHidden = false; // hotkey-driven force-hide override.
 let overlayClickThrough = ov.OVERLAY_DEFAULTS.clickThrough;
-let pollTimer = null;
+let pollTimer = null; // chained setTimeout handle (variable cadence, Phase 4b).
+let pollFailures = 0; // consecutive /api/state failures (drives the backoff).
 let lastSurface = null; // de-dupe redundant show/hide churn.
 let lastMode = ""; // last mode_key seen by the poll (for hotkey re-apply).
+let panelSet = null; // current overlay panel set; null = plain overlay=1.
+let activeRevertTimer = null; // setTimeout wakeup for the ACTIVE auto-revert.
+const activeRevert = ov.makeActiveRevert({}); // pure deadline state (20s default).
 
 // Debounced state writer so a drag (many move events) does not hammer the disk.
 let saveTimer = null;
@@ -291,7 +305,7 @@ function createOverlayWindow() {
     }
     return { action: "deny" };
   });
-  overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin));
+  overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet));
   overlayWindow.on("closed", () => {
     overlayWindow = null;
   });
@@ -303,6 +317,31 @@ function applyClickThrough() {
     overlayWindow.setIgnoreMouseEvents(overlayClickThrough, { forward: true });
     overlayWindow.setFocusable(!overlayClickThrough);
   }
+}
+
+// --- Phase 4a: ACTIVE auto-revert ----------------------------------------------
+// Re-evaluate the auto-revert countdown after any click-through change or any
+// hotkey press. ACTIVE (not click-through) arms a fresh deadline + a setTimeout
+// wakeup; PASSIVE cancels both. The pure activeRevert object is the source of
+// truth - the timeout only acts if the deadline is genuinely due, so a re-arm
+// that raced an in-flight timeout can never cause an early revert.
+function scheduleActiveRevert() {
+  if (activeRevertTimer) {
+    clearTimeout(activeRevertTimer);
+    activeRevertTimer = null;
+  }
+  activeRevert.cancel();
+  if (overlayClickThrough) {
+    return; // PASSIVE - nothing to revert.
+  }
+  activeRevert.arm();
+  activeRevertTimer = setTimeout(() => {
+    activeRevertTimer = null;
+    if (activeRevert.due()) {
+      overlayClickThrough = true; // auto-revert to the passive HUD.
+      applyClickThrough();
+    }
+  }, ov.OVERLAY_DEFAULTS.activeRevertDelayMs);
 }
 
 // Show/hide the two surfaces to match a resolved surface, skipping no-op churn.
@@ -337,15 +376,28 @@ function refreshSurface(modeKey) {
 // Best-effort /api/state poll. The shell's own dashboard is a self-signed
 // localhost/LAN origin, so the poll request alone relaxes TLS for THAT origin
 // (the BrowserWindow cert trust is separately scoped by the app handler). Any
-// failure leaves the last surface untouched - never throws.
-function pollState() {
+// failure leaves the last surface untouched - never throws. Reports the
+// outcome via done(ok) exactly once so the loop can back off (Phase 4b).
+function pollState(done) {
+  let settled = false;
+  const finish = (ok) => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    if (typeof done === "function") {
+      done(ok);
+    }
+  };
   if (!resolvedOrigin) {
+    finish(false);
     return;
   }
   let url;
   try {
     url = new URL("/api/state", resolvedOrigin);
   } catch (_e) {
+    finish(false);
     return;
   }
   const mod = url.protocol === "https:" ? https : http;
@@ -363,40 +415,76 @@ function pollState() {
           try {
             lastMode = ov.normMode(JSON.parse(data).mode_key);
             refreshSurface(lastMode);
+            finish(true);
           } catch (_e) {
-            // leave surface as-is on a parse miss
+            // leave surface as-is on a parse miss; counts as a failure.
+            finish(false);
           }
         });
       }
     );
   } catch (_e) {
+    finish(false);
     return;
   }
-  req.on("error", () => {});
-  req.on("timeout", () => req.destroy());
+  req.on("error", () => finish(false));
+  req.on("timeout", () => {
+    finish(false);
+    req.destroy();
+  });
+  req.on("close", () => finish(false)); // backstop: no response at all.
   req.end();
+}
+
+// Chained-setTimeout poll loop: each completed poll schedules the next at
+// ov.nextPollDelay - base cadence while the backend answers, exponential
+// backoff (capped 15s) while it is offline, snapping back on first success.
+function schedulePoll(delayMs) {
+  if (pollTimer) {
+    clearTimeout(pollTimer);
+  }
+  pollTimer = setTimeout(runPoll, delayMs);
+}
+
+function runPoll() {
+  pollState((ok) => {
+    pollFailures = ok ? 0 : pollFailures + 1;
+    schedulePoll(ov.nextPollDelay(pollFailures, ov.OVERLAY_DEFAULTS.pollMs));
+  });
 }
 
 function startPoll() {
   if (pollTimer) {
-    clearInterval(pollTimer);
+    clearTimeout(pollTimer);
+    pollTimer = null;
   }
-  pollState();
-  pollTimer = setInterval(pollState, ov.OVERLAY_DEFAULTS.pollMs);
+  pollFailures = 0;
+  runPoll();
 }
 
 // Global hotkeys (RegisterHotKey under the hood; anti-cheat-safe). Toggle hides
-// the active surface; Active flips overlay click-through.
+// the active surface; Active flips overlay click-through (with a 20s auto-
+// revert to passive); Cycle rotates the overlay panel set. Every hotkey press
+// re-evaluates the auto-revert countdown (press = the operator is interacting).
 function registerHotkeys() {
   try {
     globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyToggle, () => {
       surfaceHidden = !surfaceHidden;
       lastSurface = null; // force a re-apply
       refreshSurface(lastMode);
+      scheduleActiveRevert();
     });
     globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyActive, () => {
       overlayClickThrough = !overlayClickThrough;
       applyClickThrough();
+      scheduleActiveRevert(); // ACTIVE arms the revert; PASSIVE cancels it.
+    });
+    globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyCycle, () => {
+      panelSet = ov.cyclePanelSet(panelSet);
+      if (overlayWindow && !overlayWindow.isDestroyed()) {
+        overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet));
+      }
+      scheduleActiveRevert();
     });
   } catch (_e) {
     // a busy accelerator is non-fatal; the menu still works.
@@ -450,9 +538,14 @@ if (!gotLock) {
 
   app.on("will-quit", () => {
     if (pollTimer) {
-      clearInterval(pollTimer);
+      clearTimeout(pollTimer);
       pollTimer = null;
     }
+    if (activeRevertTimer) {
+      clearTimeout(activeRevertTimer);
+      activeRevertTimer = null;
+    }
+    activeRevert.cancel();
     globalShortcut.unregisterAll();
   });
 
