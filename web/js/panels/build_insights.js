@@ -1,15 +1,18 @@
-/* Build Insights view (item 273 item-WPA + item 275 skill-WPA tab,
- * competitor-WPA lift).
+/* Build Insights view (item 273 item-WPA + item 275 skill-WPA tab +
+ * rune-WPA tab, competitor-WPA lift).
  *
- * Two tabs share one render engine:
+ * Three tabs share one render engine:
  *   Items  -> GET /api/item-wpa  (the shipped item table, default tab):
  *     Item (icon + name) | WPA (signed pp + confidence bar) | Buys (n) |
  *     Expected WP (%) | Win Rate (%)
  *   Skills -> GET /api/skill-wpa (the first-maxed basic, ult excluded):
  *     Champion (icon + name) | Skill (Q/W/E badge) | WPA (signed pp +
  *     confidence bar) | Games (n) | Expected WP (%) | Win Rate (%)
+ *   Runes  -> GET /api/rune-wpa  (the per-rune pick, stat shards excluded):
+ *     Rune (icon + name) | Slot (keystone/minor badge) | WPA (signed pp +
+ *     confidence bar) | Picks (n) | Expected WP (%) | Win Rate (%)
  *
- * Both are selection-bias-corrected residuals (Win Rate minus Expected WP)
+ * All are selection-bias-corrected residuals (Win Rate minus Expected WP)
  * over the operator's match history - DESCRIPTIVE personal-corpus lenses,
  * not meta winrates. Skills are a WEAKER signal than items: shrink + min_n
  * are load-bearing, trust rows by the sample bar. Each route is 5min
@@ -18,14 +21,15 @@
  * network on a column-header click).
  *
  * ?ui_mock=1 short-circuits each tab to its fixture under web/data/ui_mock/
- * (build_insights.json / build_insights_skill.json) so #build-insights
- * renders without a populated rewind DB (mirrors the last_match.js
- * _lmMockLoad pattern).
+ * (build_insights.json / build_insights_skill.json / rune_wpa.json) so
+ * #build-insights renders without a populated rewind DB (mirrors the
+ * last_match.js _lmMockLoad pattern).
  */
 import { ITEMS, CHAMPS } from '../lib/items_index.js';
 
 const ITEM_MOUNT_ID = 'bi-table-mount';
 const SKILL_MOUNT_ID = 'bi-skill-table-mount';
+const RUNE_MOUNT_ID = 'bi-rune-table-mount';
 const DEFAULT_MIN_N = 20;
 
 function _ddragonVersion() {
@@ -62,6 +66,23 @@ function _champImgTag(cid) {
     `if(this.dataset.cdn){this.style.display='none';}` +
     `else{this.dataset.cdn='1';this.src='${cdnUrl}';}`;
   return `<img class="bi-champ-icon" src="${localUrl}" alt="" loading="lazy" onerror="${onErr}">`;
+}
+
+// Rune-icon URL: the API row carries the DDragon perk-images relative path
+// (e.g. perk-images/Styles/Domination/Electrocute/Electrocute.png). DDragon
+// serves these at cdn/img/<icon>; try the local mirror first, then the
+// official CDN, then hide the broken <img> so the name text remains the
+// legible fallback. perk-images is patch-invariant (no version segment in
+// the relative path itself).
+function _runeImgTag(icon) {
+  if (!icon) return '';
+  const ver = _ddragonVersion();
+  const localUrl = `/data/ddragon/${ver}/img/${icon}`;
+  const cdnUrl = `https://ddragon.leagueoflegends.com/cdn/img/${icon}`;
+  const onErr =
+    `if(this.dataset.cdn){this.style.display='none';}` +
+    `else{this.dataset.cdn='1';this.src='${cdnUrl}';}`;
+  return `<img class="bi-rune-icon" src="${localUrl}" alt="" loading="lazy" onerror="${onErr}">`;
 }
 
 // Confidence bar: how much of the raw wpa survives shrink, in 5 segments.
@@ -141,6 +162,7 @@ const _SKILLS_TAB = {
   emptyMsg: 'No skill data yet - play a few games',
   emptyUnit: 'games per champion skill-max',
   headLabel: 'Champion',
+  extraHead: 'Skill',
   nLabel: 'Games',
   rowCells(it) {
     const cid = it && (it.champion_id != null ? it.champion_id : '');
@@ -154,16 +176,46 @@ const _SKILLS_TAB = {
   },
 };
 
+// Slot-kind badge for a rune row: KEY (keystone) vs MIN (minor).
+function _slotBadgeHtml(it) {
+  const kind = (it && it.slot_kind) || 'minor';
+  const label = kind === 'keystone' ? 'KEY' : 'MIN';
+  return `<span class="bi-slot-badge bi-slot-${kind}" title="${kind}">${label}</span>`;
+}
+
+const _RUNES_TAB = {
+  key: 'runes',
+  mountId: RUNE_MOUNT_ID,
+  endpoint: '/api/rune-wpa',
+  mockUrl: '/data/ui_mock/rune_wpa.json',
+  emptyMsg: 'No rune data yet - play a few games',
+  emptyUnit: 'picks per rune',
+  headLabel: 'Rune',
+  extraHead: 'Slot',
+  nLabel: 'Picks',
+  rowCells(it) {
+    const rid = it && (it.rune_id != null ? it.rune_id : '');
+    const name = (it && it.name) || ('Rune ' + rid);
+    const icon = (it && it.icon) || '';
+    return (
+      `<td class="bi-c-rune"><span class="bi-rune">${_runeImgTag(icon)}` +
+      `<span class="bi-rune-name">${name}</span></span></td>` +
+      `<td class="bi-c-slot">${_slotBadgeHtml(it)}</td>`
+    );
+  },
+};
+
 const _ST = {
   items: _mkState(),
   skills: _mkState(),
+  runes: _mkState(),
   minN: DEFAULT_MIN_N,
   active: 'items',
   debounceTimer: null,
   wired: false,
 };
 // Mock promises are per-tab so a min_n change can null + re-fetch one.
-const _MOCK = { items: null, skills: null };
+const _MOCK = { items: null, skills: null, runes: null };
 
 function _isMock() {
   return !!(document.body && document.body.dataset.uiMock === '1');
@@ -208,7 +260,7 @@ function _tableHtml(tab, st) {
   const head =
     `<thead><tr>` +
     `<th class="bi-c-head">${tab.headLabel}</th>` +
-    (tab.key === 'skills' ? `<th class="bi-c-skill">Skill</th>` : '') +
+    (tab.extraHead ? `<th class="bi-c-extra">${tab.extraHead}</th>` : '') +
     `<th class="bi-c-wpa bi-sortable" data-sort="wpa" tabindex="0" role="button">WPA${_arrow(st, 'wpa')}</th>` +
     `<th class="bi-c-n bi-sortable" data-sort="n" tabindex="0" role="button">${tab.nLabel}${_arrow(st, 'n')}</th>` +
     `<th class="bi-c-exp">Expected WP</th>` +
@@ -281,7 +333,9 @@ function _fetch(tab) {
 }
 
 function _tabByKey(key) {
-  return key === 'skills' ? _SKILLS_TAB : _ITEMS_TAB;
+  if (key === 'skills') return _SKILLS_TAB;
+  if (key === 'runes') return _RUNES_TAB;
+  return _ITEMS_TAB;
 }
 
 // Fetch-once-per-tab-switch: only fetch when this tab has not loaded.
@@ -323,8 +377,10 @@ function _wireControlsOnce() {
       // active tab re-fetches now + the other tab re-fetches on next switch.
       _MOCK.items = null;
       _MOCK.skills = null;
+      _MOCK.runes = null;
       _ST.items.loaded = false;
       _ST.skills.loaded = false;
+      _ST.runes.loaded = false;
       _ensureFetched(_tabByKey(_ST.active));
     }, 300);
   });
@@ -356,4 +412,7 @@ export const __test = {
   _sortRows,
   _ITEMS_TAB,
   _SKILLS_TAB,
+  _RUNES_TAB,
+  _runeImgTag,
+  _slotBadgeHtml,
 };
