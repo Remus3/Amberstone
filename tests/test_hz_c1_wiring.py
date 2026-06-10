@@ -41,7 +41,8 @@ def test_wiring_covered_hit(tmp_path, monkeypatch):
     p = tmp_path / "hz.jsonl"
     coach = {"champion": "Annie", "level": 6, "game_time_s": 300.0,
              "action": "Trade with Q", "choices": [{"key": "A", "label": "Trade"}]}
-    lc = {"enemy_team": ["Zed", "Caitlyn"]}
+    # lc carries champion: the HZ-D4 gate requires a LIVE liveclient tick.
+    lc = {"champion": "Annie", "enemy_team": ["Zed", "Caitlyn"]}
     dc.shadow_log_precomputed_choices(coach, lc, "sr", path=p)
     rows = _read(p)
     assert len(rows) == 1
@@ -64,7 +65,7 @@ def test_wiring_coverage_miss_recorded(tmp_path, monkeypatch):
     _patch_loader(monkeypatch)
     p = tmp_path / "hz.jsonl"
     coach = {"champion": "Yasuo", "level": 6}
-    lc = {"enemy_team": ["Zed", "Caitlyn"]}
+    lc = {"champion": "Yasuo", "enemy_team": ["Zed", "Caitlyn"]}
     dc.shadow_log_precomputed_choices(coach, lc, "sr", path=p)
     rows = _read(p)
     assert len(rows) == 1
@@ -90,6 +91,7 @@ def test_wiring_never_raises(tmp_path, monkeypatch):
     monkeypatch.setattr(lsp, "load_laning_scenarios", _boom)
     p = tmp_path / "hz.jsonl"
     # Should swallow and write nothing (champ present but loader dies).
-    dc.shadow_log_precomputed_choices({"champion": "Annie"},
-                                      {"enemy_team": ["Caitlyn"]}, "sr", path=p)
+    dc.shadow_log_precomputed_choices(
+        {"champion": "Annie"},
+        {"champion": "Annie", "enemy_team": ["Caitlyn"]}, "sr", path=p)
     assert not p.exists()

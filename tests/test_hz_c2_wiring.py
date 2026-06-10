@@ -42,7 +42,9 @@ def test_wiring_covered_hit(tmp_path, monkeypatch):
     _patch(monkeypatch, n=5, front=3)
     p = tmp_path / "b.jsonl"
     coach = {"champion": "Ahri", "game_time_s": 600.0}
-    lc = {"enemy_team": ["Malphite", "Ornn", "Sion"], "owned_items": ["x"]}
+    # lc carries champion: the HZ-D4 gate requires a LIVE liveclient tick.
+    lc = {"champion": "Ahri", "enemy_team": ["Malphite", "Ornn", "Sion"],
+          "owned_items": ["x"]}
     dc.shadow_log_precomputed_build(coach, lc, "sr", path=p)
     rows = _read(p)
     assert len(rows) == 1
@@ -59,7 +61,7 @@ def test_wiring_coverage_miss_recorded(tmp_path, monkeypatch):
     p = tmp_path / "b.jsonl"
     # Yasuo not in the synthetic table -> lean resolves but champ uncovered.
     coach = {"champion": "Yasuo"}
-    lc = {"enemy_team": ["Malphite", "Ornn"]}
+    lc = {"champion": "Yasuo", "enemy_team": ["Malphite", "Ornn"]}
     dc.shadow_log_precomputed_build(coach, lc, "sr", path=p)
     rows = _read(p)
     assert len(rows) == 1
@@ -88,6 +90,7 @@ def test_wiring_never_raises(tmp_path, monkeypatch):
 
     monkeypatch.setattr(bov, "load_build_order_variants", _boom)
     p = tmp_path / "b.jsonl"
-    dc.shadow_log_precomputed_build({"champion": "Ahri"},
-                                    {"enemy_team": ["Malphite"]}, "sr", path=p)
+    dc.shadow_log_precomputed_build(
+        {"champion": "Ahri"},
+        {"champion": "Ahri", "enemy_team": ["Malphite"]}, "sr", path=p)
     assert not p.exists()
