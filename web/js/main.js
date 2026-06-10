@@ -42,6 +42,19 @@ import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } fro
 import './panels/trigger_pill.js';
 import { _settingsRefresh, renderSpendGates, renderLoopStatus, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 import { renderBuildInsights } from './panels/build_insights.js';
+// HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
+import { initOverlayPulse } from './overlay_pulse.js';
+
+  // Overlay shell flag (HZ-D1, docs/ELECTRON_OVERLAY.md sec 6+7).
+  // Stamped FIRST - before the view router boots and before any state
+  // envelope renders - so web/css/overlay.css owns the layout from the
+  // first painted frame. The Electron overlay window is transparent
+  // over the live game; a 1920-grid flash inside it would read as a
+  // glitch, so the stamp cannot wait for the boot IIFE at the bottom
+  // of this module.
+  if (/[?&]overlay=1/.test(location.search)) {
+    document.body.dataset.shell = "overlay";
+  }
 
   const WS_HOST = location.hostname || "legion-pc.local";
   const WS_PORT = 8891;
@@ -802,6 +815,14 @@ import { renderBuildInsights } from './panels/build_insights.js';
   // Also handle the auto-promote banner when manual blocks an urgent
   // auto target.
   function _viewResolveAndApply(latestLcu) {
+    // HZ-D1 overlay shell: the in-game overlay window always pins the
+    // active-match surface. Hash / manual sticky / auto derivation are
+    // all bypassed - the overlay has no nav chrome, so any other view
+    // would strand the HUD on a surface overlay.css hides anyway.
+    if (document.body.dataset.shell === "overlay") {
+      applyView("active-match");
+      return;
+    }
     const lcu = latestLcu || (state.latest && state.latest.lcu) || {};
     const auto = _viewAutoDerive(lcu, state.mode);
     const hashView = _viewFromHash();
@@ -6163,6 +6184,10 @@ import { renderBuildInsights } from './panels/build_insights.js';
   // again on every state envelope (see onState dispatcher).
   _viewWireOnce();
   _viewResolveAndApply();
+  // HZ-D1: wire the overlay change-pulse observers. No-op unless the
+  // shell flag stamped at module top is set (?overlay=1); the mounts
+  // are static HTML so wiring once at boot is sufficient.
+  if (document.body.dataset.shell === "overlay") initOverlayPulse();
   // Map underlay brightness override: ?map-br=0.55&map-sat=0.6
   (function mapFilterOverride() {
     const q = new URLSearchParams(location.search);
