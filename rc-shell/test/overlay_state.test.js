@@ -248,3 +248,136 @@ test("overlayUrl: panelSet normalized (case + whitespace)", () => {
   const out = ov.overlayUrl("https://legion-rc:8888/", "  THREAT ");
   assert.ok(out.includes("panelset=threat"), out);
 });
+
+// --- HZ-D1 slice 2: overlay position + panel-set persistence -----------------
+
+test("overlayStateFrom: extracts x/y/panelSet from the overlay sub-object", () => {
+  const s = ov.overlayStateFrom({ overlay: { x: 12, y: 34, panelSet: "build" } });
+  assert.deepStrictEqual(s, { x: 12, y: 34, panelSet: "build" });
+});
+
+test("overlayStateFrom: garbage-safe (null / arrays / strings / missing)", () => {
+  const garbage = [
+    null,
+    undefined,
+    [],
+    "junk",
+    42,
+    {},
+    { overlay: null },
+    { overlay: [] },
+    { overlay: "junk" },
+  ];
+  for (const g of garbage) {
+    const s = ov.overlayStateFrom(g);
+    assert.deepStrictEqual(s, { x: null, y: null, panelSet: "" }, JSON.stringify(g));
+  }
+});
+
+test("overlayStateFrom: non-numeric / non-finite x/y -> null", () => {
+  assert.deepStrictEqual(ov.overlayStateFrom({ overlay: { x: "5", y: NaN } }), {
+    x: null,
+    y: null,
+    panelSet: "",
+  });
+  assert.deepStrictEqual(ov.overlayStateFrom({ overlay: { x: Infinity, y: 3 } }), {
+    x: null,
+    y: 3,
+    panelSet: "",
+  });
+});
+
+test("overlayStateFrom: panelSet normalized; unknown -> empty string", () => {
+  assert.strictEqual(ov.overlayStateFrom({ overlay: { panelSet: "  THREAT " } }).panelSet, "threat");
+  assert.strictEqual(ov.overlayStateFrom({ overlay: { panelSet: "zzz" } }).panelSet, "");
+  assert.strictEqual(ov.overlayStateFrom({ overlay: { panelSet: 42 } }).panelSet, "");
+});
+
+test("resolveOverlayBounds: no saved coords -> right-edge dock at default size", () => {
+  const area = { x: 0, y: 0, width: 1920, height: 1080 };
+  assert.deepStrictEqual(ov.resolveOverlayBounds({}, area), {
+    x: 1920 - ov.OVERLAY_DEFAULTS.width,
+    y: 0,
+    width: ov.OVERLAY_DEFAULTS.width,
+    height: ov.OVERLAY_DEFAULTS.height,
+  });
+});
+
+test("resolveOverlayBounds: dock respects an offset work area (second display)", () => {
+  const area = { x: 2560, y: 100, width: 1920, height: 1080 };
+  const b = ov.resolveOverlayBounds({}, area);
+  assert.strictEqual(b.x, 2560 + 1920 - ov.OVERLAY_DEFAULTS.width);
+  assert.strictEqual(b.y, 100);
+});
+
+test("resolveOverlayBounds: saved coords inside the work area pass through", () => {
+  const area = { x: 0, y: 0, width: 1920, height: 1080 };
+  const b = ov.resolveOverlayBounds({ overlay: { x: 100, y: 50 } }, area);
+  assert.deepStrictEqual(b, {
+    x: 100,
+    y: 50,
+    width: ov.OVERLAY_DEFAULTS.width,
+    height: ov.OVERLAY_DEFAULTS.height,
+  });
+});
+
+test("resolveOverlayBounds: off-screen saved coords pulled back on-screen", () => {
+  const area = { x: 0, y: 0, width: 1920, height: 1080 };
+  const b = ov.resolveOverlayBounds({ overlay: { x: 5000, y: -300 } }, area);
+  assert.strictEqual(b.x, 1920 - ov.OVERLAY_DEFAULTS.width);
+  assert.strictEqual(b.y, 0);
+});
+
+test("resolveOverlayBounds: partial saved coords (x only) fall back to the dock", () => {
+  const area = { x: 0, y: 0, width: 1920, height: 1080 };
+  const b = ov.resolveOverlayBounds({ overlay: { x: 100 } }, area);
+  assert.strictEqual(b.x, 1920 - ov.OVERLAY_DEFAULTS.width);
+  assert.strictEqual(b.y, 0);
+});
+
+test("resolveOverlayBounds: garbage workArea falls back to 1920x1080", () => {
+  for (const g of [null, undefined, "junk", [], {}]) {
+    const b = ov.resolveOverlayBounds({}, g);
+    assert.strictEqual(b.x, 1920 - ov.OVERLAY_DEFAULTS.width, JSON.stringify(g));
+    assert.strictEqual(b.y, 0, JSON.stringify(g));
+    assert.strictEqual(b.width, ov.OVERLAY_DEFAULTS.width);
+    assert.strictEqual(b.height, ov.OVERLAY_DEFAULTS.height);
+  }
+});
+
+test("mergeOverlayPatch: preserves companion keys, merges the overlay sub-object", () => {
+  const prev = { x: 1, y: 2, width: 520, sizePreset: "standard", overlay: { x: 9 } };
+  const next = ov.mergeOverlayPatch(prev, { y: 7, panelSet: "build" });
+  assert.strictEqual(next.x, 1);
+  assert.strictEqual(next.y, 2);
+  assert.strictEqual(next.width, 520);
+  assert.strictEqual(next.sizePreset, "standard");
+  assert.deepStrictEqual(next.overlay, { x: 9, y: 7, panelSet: "build" });
+});
+
+test("mergeOverlayPatch: never mutates inputs, returns a new object", () => {
+  const prev = { overlay: { x: 9, panelSet: "coach" } };
+  const patch = { x: 1 };
+  const next = ov.mergeOverlayPatch(prev, patch);
+  assert.deepStrictEqual(prev, { overlay: { x: 9, panelSet: "coach" } });
+  assert.deepStrictEqual(patch, { x: 1 });
+  assert.notStrictEqual(next, prev);
+  assert.notStrictEqual(next.overlay, prev.overlay);
+});
+
+test("mergeOverlayPatch: garbage prev -> fresh object carrying just the patch", () => {
+  for (const g of [null, undefined, [], "junk", 42]) {
+    const next = ov.mergeOverlayPatch(g, { panelSet: "build" });
+    assert.deepStrictEqual(next, { overlay: { panelSet: "build" } }, JSON.stringify(g));
+  }
+});
+
+test("mergeOverlayPatch: garbage patch keeps the previous overlay intact", () => {
+  const next = ov.mergeOverlayPatch({ a: 1, overlay: { x: 5 } }, null);
+  assert.deepStrictEqual(next, { a: 1, overlay: { x: 5 } });
+});
+
+test("mergeOverlayPatch: non-object previous overlay is discarded", () => {
+  const next = ov.mergeOverlayPatch({ overlay: "junk" }, { x: 3 });
+  assert.deepStrictEqual(next.overlay, { x: 3 });
+});

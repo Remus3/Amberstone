@@ -21,6 +21,9 @@
 
 "use strict";
 
+// Pure sibling (clampPosition) - still no electron anywhere in this module.
+const cfg = require("./config");
+
 const SURFACES = Object.freeze({
   COMPANION: "companion",
   OVERLAY: "overlay",
@@ -181,6 +184,78 @@ function windowActions(surface) {
   }
 }
 
+// --- HZ-D1 slice 2: overlay position + panel-set persistence -----------------
+// The overlay rides the SAME state file as the companion, under one "overlay"
+// sub-object, so the two surfaces can never clobber each other's keys. These
+// helpers are the pure read/merge halves; main.js owns the store I/O.
+
+// A usable work-area rectangle no matter what the caller hands us. The
+// 1920x1080 fallback matches the fleet's design baseline so a garbage display
+// probe still yields a sane right-edge dock.
+function normWorkArea(workArea) {
+  const a = workArea && typeof workArea === "object" ? workArea : {};
+  return {
+    x: Number.isFinite(a.x) ? a.x : 0,
+    y: Number.isFinite(a.y) ? a.y : 0,
+    width: Number.isFinite(a.width) && a.width > 0 ? a.width : 1920,
+    height: Number.isFinite(a.height) && a.height > 0 ? a.height : 1080,
+  };
+}
+
+// Defensively read the overlay sub-object out of a saved state blob. The file
+// is hand-editable and survives schema drift, so every field is validated:
+// x/y must be finite numbers (else null = "not yet positioned"); panelSet is
+// normalized to a PANEL_SETS member (else "" = plain overlay=1). Never throws.
+function overlayStateFrom(saved) {
+  const s = saved && typeof saved === "object" ? saved : {};
+  const o = s.overlay && typeof s.overlay === "object" ? s.overlay : {};
+  return {
+    x: typeof o.x === "number" && Number.isFinite(o.x) ? o.x : null,
+    y: typeof o.y === "number" && Number.isFinite(o.y) ? o.y : null,
+    panelSet: normPanelSet(o.panelSet),
+  };
+}
+
+// Where the overlay window goes at create time. Size is always the fixed
+// OVERLAY_DEFAULTS box (the overlay is not resizable). Saved coords win but
+// are clamped on-screen - a display that shrank or vanished since the save
+// must not strand the HUD off-screen; no saved coords -> right-edge dock.
+function resolveOverlayBounds(saved, workArea) {
+  const area = normWorkArea(workArea);
+  const w = OVERLAY_DEFAULTS.width;
+  const h = OVERLAY_DEFAULTS.height;
+  const o = overlayStateFrom(saved);
+  if (o.x !== null && o.y !== null) {
+    const clamped = cfg.clampPosition({ x: o.x, y: o.y, width: w, height: h }, area);
+    if (clamped.x !== null && clamped.y !== null) {
+      return { x: clamped.x, y: clamped.y, width: w, height: h };
+    }
+  }
+  return {
+    x: Math.max(area.x, area.x + area.width - w),
+    y: area.y,
+    width: w,
+    height: h,
+  };
+}
+
+// Merge an overlay patch into a full saved-state blob WITHOUT touching the
+// companion's top-level keys - this is what main.js hands to store.save so a
+// move of one surface can never wipe the other's persisted state. Returns a
+// new object; never mutates either input; garbage prev starts fresh.
+function mergeOverlayPatch(prevState, patch) {
+  const prev =
+    prevState && typeof prevState === "object" && !Array.isArray(prevState)
+      ? prevState
+      : {};
+  const prevOverlay =
+    prev.overlay && typeof prev.overlay === "object" && !Array.isArray(prev.overlay)
+      ? prev.overlay
+      : {};
+  const p = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
+  return Object.assign({}, prev, { overlay: Object.assign({}, prevOverlay, p) });
+}
+
 module.exports = {
   SURFACES,
   GAME_MODES,
@@ -194,4 +269,7 @@ module.exports = {
   cyclePanelSet,
   makeActiveRevert,
   nextPollDelay,
+  overlayStateFrom,
+  resolveOverlayBounds,
+  mergeOverlayPatch,
 };
