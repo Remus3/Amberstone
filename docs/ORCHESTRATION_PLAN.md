@@ -49,7 +49,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-B1 | haiku-zero | Lane B build-order precompute. Build core/build_order_precompute.py: optimal build orders per (champ x mode x enemy-comp-archetype) from Meraki aram_modifiers + agents/daemon_slayer/rank.py + core/build_order.py + curated loadouts. Persist to data/daemon_slayer/build_orders/. Characterization tests. BUILD + PERSIST ONLY. | DONE | 3a129071 |
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | DONE | 8d8bc311 |
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | DONE | 3581afed |
-| HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | WIP | 0b2eea62 |
+| HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | WIP | 8116c6c2 |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -62,6 +62,19 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-10 HZ-D1 slice 2 (loop run 2026-06-10-01 cycle 2, merge 8116c6c2): overlay
+  position/panelset persistence + Phase 4 ACTIVE indicator. NEW pure helpers in
+  overlay_state.js (overlayStateFrom / resolveOverlayBounds / mergeOverlayPatch -
+  rc-shell-state.json gains an "overlay" sub-object, companion keys preserved) +
+  NEW active_indicator.js (shell-injected edge-glow, pointer-events:none,
+  html.rc-shell-active class) toggled inside applyClickThrough so the operator can
+  SEE ACTIVE vs PASSIVE incl. the 20s auto-revert. main.js: overlay docks from
+  saved coords (clamped) else right-edge default; 400ms-debounced move persist;
+  panelSet restored at boot + persisted on Alt+Shift+C. node 85 -> 109/0 (TDD 16
+  red first). REMAINING in HZ-D1: Phase 4 in-overlay DS controls (weight tweak /
+  build reorder - needs a dashboard-side web/ slice + UI audit), Phase 5
+  stabilization; OWED live: glow + drag-restore capture in a real match (running
+  shell instance predates slices 1+2; relaunch picks both up).
 - 2026-06-10 HZ-D1 slice 1 (loop run 2026-06-10-01, merge 0b2eea62): the
   frameless companion was never draggable - Phase 1 deferred the drag region to
   "CSS in the page" and the dashboard never got one. Shipped shell-side instead:

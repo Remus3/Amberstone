@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-10 - gemini loop cycle 2: rc-shell overlay persistence + ACTIVE indicator [item 381, HZ-D1 slice 2]
+
+Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 2). Directive = overlay position persistence (mirror companion) + advance Phase 4 interactive controls, headless-safe. Merge `8116c6c2` (slice `c9f53543`, 1 worktree agent, verifier-CONFIRMED pre-merge). NO engine, no Share, no RC restart.
+
+- `rc-shell-state.json` gains `overlay: {x, y, panelSet}`: pure `overlayStateFrom` / `resolveOverlayBounds` (clamp via `config.clampPosition`, right-edge dock default) / non-mutating `mergeOverlayPatch` in `overlay_state.js`; main.js debounced overlay move persist + panelSet restore-at-boot / persist-on-cycle + will-quit timer clear.
+- Phase 4: NEW `rc-shell/src/active_indicator.js` edge-glow (`pointer-events:none`, `html.rc-shell-active`), injected overlay-only on did-finish-load (re-applies current state), toggled in `applyClickThrough()` - operator can now SEE ACTIVE vs PASSIVE incl. the 20s auto-revert.
+- node 85 -> 109/0 (TDD 16 red first); RC tests/ 5724 passed / 2 skipped / 85 subtests exit 0; package.json 0.3.0; DS n/a (zero python touched).
+- OWED (live-gated): in-match glow + drag-restore capture; the running shell instance predates slices 1+2 - one relaunch picks up both.
+- NEXT in HZ-D1: Phase 4 in-overlay DS controls (dashboard-side web/ slice + UI audit) or Phase 5 stabilization.
+
+---
+
 # 2026-06-10 - gemini loop cycle 1: rc-shell drag region + overlay ACTIVE drag [item 380, HZ-D1 slice 1]
 
 Gemini-headless-upgrade executor cycle (run 2026-06-10-01). Directive minimum = make the frameless companion draggable. Merge `0b2eea62` (slice `bbc8e31e`, 1 worktree agent, verifier-CONFIRMED pre-merge). NO engine, no Share, no RC restart.
