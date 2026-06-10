@@ -50,7 +50,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-B2 | haiku-zero | Lane B enemy-comp branch: anti-tank (high-HP comp) vs anti-squishy build-order variants layered on HZ-B1, using the DS anti-tank axis (A3). Characterization tests. BUILD + PERSIST ONLY. | DONE | 8d8bc311 |
 | HZ-C1 | haiku-zero | Lane C deterministic choice-coach generator: read the HZ-A / HZ-B tables and emit core/coach_output.py A/B choices (#rn-immediate chips) for laning trade decisions. SHADOW-LOG alongside the live Haiku coach (log both, do NOT replace). Tests. No live flip. | DONE | 3581afed |
 | HZ-D1 | haiku-zero | Lane D Electron overlay: advance rc-shell/ per docs/ELECTRON_OVERLAY.md - read it, pick the next UNSHIPPED code-side phase (Phase 2+), Vanguard-safe (DWM window, NO DXGI capture, Borderless). Ship the headless-safe slice; leave live-visual-only work WIP with a note. Tests where applicable. | DONE | 33dc9b3a |
-| HZ-D2 | haiku-zero | OPERATOR RUN FOCUS 2026-06-10 MINIMUM FIRST DELIVERABLE: make the rc-shell companion sidecar window user-movable/draggable (frameless window has NO drag region today). Add a drag region (-webkit-app-region: drag header strip or equivalent) + persist the user-moved position across restarts; keep click-through/interactive zones working. Tests where applicable (rc-shell test harness). | OPEN | |
+| HZ-D2 | haiku-zero | OPERATOR RUN FOCUS 2026-06-10 MINIMUM FIRST DELIVERABLE: make the rc-shell companion sidecar window user-movable/draggable (frameless window has NO drag region today). Add a drag region (-webkit-app-region: drag header strip or equivalent) + persist the user-moved position across restarts; keep click-through/interactive zones working. Tests where applicable (rc-shell test harness). | DONE | 0b2eea62 |
 | HZ-D3 | haiku-zero | Electron overlay continuation per docs/ELECTRON_OVERLAY.md: advance Phase 4 interactive controls (next unshipped control surface) and any remaining Phase 5 stabilization tail on the ?overlay=1 dashboard surface + rc-shell. Vanguard-safe constraints hold (DWM window, NO DXGI capture, Borderless). Headless-safe slices only; leave live-visual-only verification WIP with a note. | OPEN | |
 | HZ-D4 | haiku-zero | Headless-upgrade charter sweep: one pass of the cost/latency 7-lever sweep (prompt-cache coverage, route TTL, polling cadences, log spam, model tier, task catalog, bundle parity) + the next HZ Haiku-to-ZERO lane increment per ROADMAP (validate-before-flip rule holds; haiku stays interim floor until a precompute is validated vs a real game). Ship only net-positive fixes with green tests, else record CLEAN no-commit with evidence in the Findings log. | OPEN | |
 
@@ -65,6 +65,15 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-10 HZ-D2 STALE PREMISE - scope already shipped inside HZ-D1; flipped DONE with
+  NO new code (loop run 2026-06-10, verify-premise-first). The row's "frameless window has
+  NO drag region today" predates HZ-D1 slices 1+2: companion drag strip = drag_region.js
+  injected on every did-finish-load (main.js mainWindow handler; merge 0b2eea62 + 95-line
+  test), user-moved position persisted move/resize/close via persistWindowState(+Now) and
+  restored clamped-on-screen at createWindow (Phase 1 + D1), overlay drag-when-ACTIVE +
+  position/panelSet persistence via ov.mergeOverlayPatch (merge 8116c6c2), click-through
+  intact (setIgnoreMouseEvents forward:true + applyClickThrough + ACTIVE glow). rc-shell
+  suite re-run this cycle: 145/145 green. No regressions, docs-only commit.
 - 2026-06-10 HZ-D1 slice 4 = Phase 5 stabilization tail SHIPPED, HZ-D1 flipped DONE
   (loop run 2026-06-10-01 cycle 4, merges 96cf5241 + 544cff59 + integration 33dc9b3a;
   slice commits c1fde16e + da5c0f9a, 2 PARALLEL worktree agents, both verifier-CONFIRMED
