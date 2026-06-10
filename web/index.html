@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander - Phase 3</title>
   <link rel="stylesheet" href="/css/dashboard.css?v=2026051125" />
+  <!-- HZ-D1 overlay shell (docs/ELECTRON_OVERLAY.md sec 6+7): inert
+       until main.js stamps body[data-shell="overlay"] on ?overlay=1.
+       The ?v= query is rewritten at serve time by inject_asset_hash
+       (ADR-008 unified asset hash). -->
+  <link rel="stylesheet" href="/css/overlay.css?v=2026060901" />
 </head>
 <!-- s209 v2: pre-stamp data-view="home" so the cold-load frame between
      DOMContentLoaded and the first health/state/lcu envelope shows the

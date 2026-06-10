@@ -1,0 +1,173 @@
+/* Overlay shell layout (HZ-D1) - docs/ELECTRON_OVERLAY.md sections 6+7.
+ *
+ * Loaded on every page but inert until main.js stamps
+ * body[data-shell="overlay"] (?overlay=1 - the Electron in-game overlay
+ * window, Surface B). The window is transparent and full-screen over the
+ * Borderless game, so:
+ *
+ *   - the page background must stay transparent (the game shows through;
+ *     only the docked panels carry a dark alpha backing);
+ *   - the visible content is a compact single-column dock ~460px wide,
+ *     anchored to the RIGHT edge of the 1920 layout viewport;
+ *   - ONLY the compact panel subset renders: the coach CALL pane +
+ *     BUILD pane from #view-active-match, plus the deterministic
+ *     callouts / lead / A+B-choice mounts from #right-now. The CC-threat
+ *     chip is champ-select-scoped wiring today (champ_select.js builds
+ *     its mount) - not cheap to relocate, deliberately out of this slice;
+ *   - header / nav / footer / every other view is display:none;
+ *   - GPU-light: no blur, no looping animation; canvas/sparkline widgets
+ *     (spike curve, ward heat, DS analysis cluster) are hidden. The only
+ *     motion is the one-shot .ov-pulse edge glow below.
+ *
+ * Reuses the tokens.css scale; no new color literals beyond the
+ * translucent panel backings (base palette colors with alpha).
+ */
+
+/* 1. Page shell - transparent canvas, right-anchored flex column. */
+body[data-shell="overlay"] {
+  background: transparent !important;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+/* 2. Chrome + every non-subset surface off. */
+body[data-shell="overlay"] header,
+body[data-shell="overlay"] footer,
+body[data-shell="overlay"] #home-overlay,
+body[data-shell="overlay"] #lobby-overlay,
+body[data-shell="overlay"] #coach-decisions,
+body[data-shell="overlay"] #activity-strip,
+body[data-shell="overlay"] #input-bar,
+body[data-shell="overlay"] #view-menu,
+body[data-shell="overlay"] #view-banner,
+body[data-shell="overlay"] #digest-popout,
+body[data-shell="overlay"] #task-modal {
+  display: none !important;
+}
+
+/* All other router views. The view router is pinned to active-match in
+ * overlay mode (main.js _viewResolveAndApply), but the hard hide keeps a
+ * stray applyView from ever painting a full-page surface over the game. */
+body[data-shell="overlay"] .view-section:not(#view-active-match) {
+  display: none !important;
+}
+
+/* 3. The dock column, part 1: #view-active-match (CALL + BUILD). */
+body[data-shell="overlay"] #view-active-match {
+  display: block !important;
+  order: 1;
+  flex: 0 0 auto;
+  width: 460px;
+  margin: 8px 8px 0 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+  min-height: 0;
+}
+body[data-shell="overlay"] #view-active-match .view-section-head {
+  display: none !important;
+}
+body[data-shell="overlay"] #view-active-match .am-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+/* Subset gate: MAP + CDS panes stay off the HUD. */
+body[data-shell="overlay"] #view-active-match .am-pane-map,
+body[data-shell="overlay"] #view-active-match .am-pane-cd {
+  display: none !important;
+}
+/* GPU-light: canvas/sparkline + DS analysis widgets off in overlay. */
+body[data-shell="overlay"] #am-spike-curve,
+body[data-shell="overlay"] #am-spike-markers,
+body[data-shell="overlay"] #am-ward-heat,
+body[data-shell="overlay"] .am-pane-build .ds-sweep,
+body[data-shell="overlay"] .am-pane-build .ds-matchup,
+body[data-shell="overlay"] .am-pane-build .ds-combo,
+body[data-shell="overlay"] .am-pane-build .ds-relscore {
+  display: none !important;
+}
+/* Pane chrome at overlay density - translucent dark backing so the text
+ * reads over a bright game scene without blacking out the screen. */
+body[data-shell="overlay"] #view-active-match .am-pane {
+  flex: 0 0 auto;
+  background: rgba(23, 24, 33, 0.86);
+  border: 1px solid rgba(46, 48, 64, 0.85);
+  border-radius: var(--panel-radius-sm);
+  overflow: hidden;
+}
+body[data-shell="overlay"] #view-active-match .am-pane-head {
+  padding: 6px 10px;
+  background: rgba(33, 34, 45, 0.92);
+}
+body[data-shell="overlay"] #view-active-match .am-pane-body {
+  padding: 10px 12px;
+  font-size: var(--fs-sm);
+  overflow-y: hidden;
+}
+
+/* 4. The dock column, part 2: callouts / lead / choices mounts from the
+ * RIGHT NOW panel. Their renderers (callouts.js, coach_choices.js) run
+ * on every state envelope regardless of the active view, so the mounts
+ * stay live without new JS wiring. Everything else inside #right-now
+ * (headline, prose, kv rows, screen-read, personal context) belongs to
+ * the 1920 grid and stays hidden here. */
+body[data-shell="overlay"] main {
+  display: block !important;
+  order: 2;
+  flex: 0 0 auto;
+  width: 460px;
+  margin: 8px 8px 0 0;
+  padding: 0;
+  min-height: 0;
+  overflow: visible;
+}
+body[data-shell="overlay"] main > .panel {
+  display: none !important;
+}
+body[data-shell="overlay"] main > #right-now {
+  display: block !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+body[data-shell="overlay"] #right-now > .panel-head {
+  display: none !important;
+}
+body[data-shell="overlay"] #right-now .panel-body {
+  padding: 0;
+  background: transparent;
+}
+body[data-shell="overlay"] #right-now .panel-body > * {
+  display: none !important;
+}
+body[data-shell="overlay"] #right-now .panel-body > #rn-lead:not([hidden]),
+body[data-shell="overlay"] #right-now .panel-body > #rn-choices:not([hidden]),
+body[data-shell="overlay"] #right-now .panel-body > #rn-callouts:not([hidden]) {
+  display: block !important;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  background: rgba(23, 24, 33, 0.86);
+  border: 1px solid rgba(46, 48, 64, 0.85);
+  border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-sm);
+}
+
+/* 5. Change-pulse hook. overlay_pulse.js adds .ov-pulse to a panel
+ * container for ~1.2s when its rendered content changes. One-shot
+ * box-shadow keyframe (mirrors the tokens.css coach-pulse family) -
+ * cheap on the compositor, no loop, no blur. */
+@keyframes ov-pulse-edge {
+  0%   { box-shadow: 0 0 0 0 rgba(138, 140, 240, 0); }
+  25%  { box-shadow: 0 0 14px 2px rgba(138, 140, 240, 0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(138, 140, 240, 0); }
+}
+body[data-shell="overlay"] .ov-pulse {
+  animation: ov-pulse-edge 1.2s ease-out 1;
+}
