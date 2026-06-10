@@ -87,6 +87,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 import time
 from urllib.parse import parse_qs, urlparse
@@ -198,6 +199,61 @@ def _cache_key(
     )
 
 
+def _compute_ttk(total_mitigated: float, duration_s: float, target_hp: float) -> dict:
+    """T2-F3 headline time-to-kill block (docs/COMPETITOR_LIFT_2026-06-08.md
+    lines 114-121).
+
+    Derives a sustained DPS + time-to-kill / rotations-to-kill headline from
+    the combo's mitigated total against the target's effective HP. PURELY
+    DERIVED over values the route already computes - the ``totals`` block and
+    every other field stay byte-identical; this is an ADDITIVE readout.
+
+    ``target_hp`` is the target's effective HP (the ``target_max_hp`` request
+    param; %-HP scaling already folded into the per-hit mitigated damage by
+    compute_combo). ``total_mitigated`` is one full combo rotation's
+    post-mitigation damage; ``duration_s`` is that rotation's clock length.
+
+    Fields:
+      * ``available``  - True only when target_hp > 0 AND the combo deals
+        damage AND the rotation has a positive duration; otherwise the TTK
+        is undefined and the numeric fields are null (stable shape, no math
+        on a degenerate input).
+      * ``target_hp``  - echo of the effective HP used (0.0 when absent).
+      * ``combo_mitigated`` - one rotation's mitigated damage.
+      * ``dps``        - sustained damage per second (mitigated / duration),
+        the continuous-combat rate simulator tool R reports.
+      * ``rotations_to_kill`` - ceil(target_hp / combo_mitigated): whole
+        combo rotations needed to remove the target's effective HP.
+      * ``ttk_s``      - target_hp / dps: continuous-DPS seconds-to-kill.
+      * ``lethal``     - True when a single rotation removes >= target_hp.
+    """
+    available = (
+        target_hp > 0.0 and total_mitigated > 0.0 and duration_s > 0.0
+    )
+    if not available:
+        return {
+            "available":         False,
+            "target_hp":         round(float(max(0.0, target_hp)), 1),
+            "combo_mitigated":   round(float(max(0.0, total_mitigated)), 1),
+            "dps":               None,
+            "rotations_to_kill": None,
+            "ttk_s":             None,
+            "lethal":            False,
+        }
+    dps = total_mitigated / duration_s
+    rotations = int(math.ceil(target_hp / total_mitigated))
+    ttk_s = target_hp / dps
+    return {
+        "available":         True,
+        "target_hp":         round(float(target_hp), 1),
+        "combo_mitigated":   round(float(total_mitigated), 1),
+        "dps":               round(float(dps), 1),
+        "rotations_to_kill": rotations,
+        "ttk_s":             round(float(ttk_s), 2),
+        "lethal":            total_mitigated >= target_hp,
+    }
+
+
 def _hit_to_dict(hit) -> dict:
     return {
         "index":       int(hit.index),
@@ -259,6 +315,14 @@ def _compute(
             "total_mitigated": round(float(result.total_mitigated), 1),
             "duration_s":      round(float(result.duration_s), 3),
         },
+        # T2-F3: additive headline TTK block derived from totals vs the
+        # target's effective HP (target_max_hp). totals above stay
+        # byte-identical; ttk is purely derived.
+        "ttk": _compute_ttk(
+            float(result.total_mitigated),
+            float(result.duration_s),
+            float(target_max_hp),
+        ),
         "notes":         list(result.notes),
         "count":         len(hits),
     }
@@ -312,6 +376,9 @@ def _serve_ds_combo(h) -> None:
                     "total_raw": 0.0, "total_mitigated": 0.0,
                     "duration_s": 0.0,
                 },
+                # T2-F3: stable shape - an empty sequence deals no damage so
+                # the headline TTK is unavailable.
+                "ttk":        _compute_ttk(0.0, 0.0, target_max_hp),
                 "count":      0,
                 "elapsed_ms": int((time.time() - t0) * 1000),
                 "cached":     False,
