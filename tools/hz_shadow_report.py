@@ -21,11 +21,15 @@ its live Haiku call, the operator needs to know:
 This is a READ-ONLY report (no engine, no network, no write). Fail-soft: a
 missing / empty / malformed log yields a zeroed section, never an exception.
 
-NOTE - the precompute-vs-Haiku AGREEMENT metric (does the deterministic verdict
-match what Haiku said for the same tick) is a documented FUTURE: it needs the
-live coach output captured alongside the precompute in the shadow record, which
-the v1 HZ-C1/C2 records do not yet carry. This report covers coverage +
-distribution, the gates that do not depend on that capture.
+AGREEMENT - precompute-vs-Haiku (does the deterministic verdict match what
+Haiku said for the same tick) is LIVE since item 369 (2026-06-09): shadow
+records now carry the live coach output - ``native_action`` (Haiku prose
+action string, e.g. "TRADE") + ``native_choices`` (Haiku A/B chip dicts) -
+and this report classifies both sides into a coarse verdict (trade / all_in /
+back_off / recall / hold) and scores agreement over covered comparable ticks.
+Records logged BEFORE a precompute table existed are permanently
+covered=false (``covered`` is baked at log time), so agreement accrues on
+NEW live games only.
 
 USAGE
     python tools/hz_shadow_report.py            # human summary, default paths
@@ -108,6 +112,151 @@ def _first_choice_label(rec: dict) -> Optional[str]:
     return None
 
 
+# Ordered verdict keyword table - multi-word phrases FIRST, then single
+# tokens with the more-specific ones ahead of any token they contain as a
+# substring ("back to base" before "base", "disengage" before "engage"),
+# so "back off" never falls into recall and "disengage" never reads all_in.
+# First phrase that hits wins - deterministic by construction.
+_VERDICT_PHRASES: tuple[tuple[str, str], ...] = (
+    ("back to base", "recall"),
+    ("back away", "back_off"),
+    ("fall back", "back_off"),
+    ("play safe", "back_off"),
+    ("back off", "back_off"),
+    ("all in", "all_in"),
+    ("allin", "all_in"),
+    ("backoff", "back_off"),
+    ("disengage", "back_off"),
+    ("engage", "all_in"),
+    ("commit", "all_in"),
+    ("trade", "trade"),
+    ("poke", "trade"),
+    ("harass", "trade"),
+    ("retreat", "back_off"),
+    ("careful", "back_off"),
+    ("recall", "recall"),
+    ("shop", "recall"),
+    ("reset", "recall"),
+    ("base", "recall"),
+    ("hold", "hold"),
+    ("farm", "hold"),
+    ("wait", "hold"),
+    ("sustain", "hold"),
+)
+
+
+def _normalize_verdict_text(text: str) -> str:
+    """Lowercase + map every non-alphanumeric char to a space + collapse runs,
+    so "All-in!" and "ALL IN" both normalize to "all in"."""
+    chars = [ch if ch.isalnum() else " " for ch in text.lower()]
+    return " ".join("".join(chars).split())
+
+
+def classify_verdict(text) -> Optional[str]:
+    """Map free text (a precompute A-label or Haiku prose/chip label) to one
+    coarse verdict: "trade" / "all_in" / "back_off" / "recall" / "hold" -
+    or None when no keyword hits (unclassifiable)."""
+    if not text or not isinstance(text, str):
+        return None
+    norm = _normalize_verdict_text(text)
+    if not norm:
+        return None
+    for phrase, verdict in _VERDICT_PHRASES:
+        if phrase in norm:
+            return verdict
+    return None
+
+
+def _native_choice_label(rec: dict) -> Optional[str]:
+    """The first native (Haiku) A/B chip label from a shadow record, or None."""
+    choices = rec.get("native_choices")
+    if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+        label = choices[0].get("label")
+        if label:
+            return str(label)
+    return None
+
+
+def _has_native_signal(rec: dict) -> bool:
+    """True when the record carries any live coach output (item 369 capture)."""
+    return bool(rec.get("native_choices") or rec.get("native_action"))
+
+
+def _native_verdict(rec: dict) -> Optional[str]:
+    """Classify the native (Haiku) side: prose action first, then the first
+    native A/B chip label as fallback."""
+    verdict = classify_verdict(rec.get("native_action"))
+    if verdict is None:
+        verdict = classify_verdict(_native_choice_label(rec))
+    return verdict
+
+
+def record_agreement(rec: dict) -> Optional[dict]:
+    """Classify both sides of one shadow record.
+
+    precompute = verdict of the recommended (A) choice label, only when the
+    record is covered and carries choices; native = verdict of the Haiku
+    output. Returns {"precompute", "native", "agree"} when BOTH sides
+    classified, else None (record excluded from the agreement sample)."""
+    precompute = None
+    if rec.get("covered"):
+        precompute = classify_verdict(_first_choice_label(rec))
+    native = _native_verdict(rec)
+    if precompute is None or native is None:
+        return None
+    return {"precompute": precompute, "native": native,
+            "agree": precompute == native}
+
+
+def summarize_agreement(records: list[dict]) -> dict:
+    """Precompute-vs-Haiku agreement over the comparable covered sample.
+
+    unclassified_native = covered records with a native signal the classifier
+    could not map; uncovered_with_native = records with a native signal the
+    seed table did not cover (the table-gap denominator)."""
+    comparable = 0
+    agree = 0
+    by_mode: dict[str, dict] = {}
+    by_native: dict[str, dict] = {}
+    unclassified_native = 0
+    uncovered_with_native = 0
+    for rec in records:
+        has_native = _has_native_signal(rec)
+        if has_native and not rec.get("covered"):
+            uncovered_with_native += 1
+        pair = record_agreement(rec)
+        if pair is None:
+            if (has_native and rec.get("covered")
+                    and _native_verdict(rec) is None):
+                unclassified_native += 1
+            continue
+        comparable += 1
+        agreed = bool(pair["agree"])
+        if agreed:
+            agree += 1
+        mode = str(rec.get("mode") or "?")
+        slot = by_mode.setdefault(mode, {"comparable": 0, "agree": 0})
+        slot["comparable"] += 1
+        if agreed:
+            slot["agree"] += 1
+        nslot = by_native.setdefault(pair["native"], {"n": 0, "agree": 0})
+        nslot["n"] += 1
+        if agreed:
+            nslot["agree"] += 1
+    for slot in by_mode.values():
+        slot["rate"] = (round(slot["agree"] / slot["comparable"], 4)
+                        if slot["comparable"] else 0.0)
+    return {
+        "comparable_covered": comparable,
+        "agree": agree,
+        "agreement_rate": round(agree / comparable, 4) if comparable else 0.0,
+        "by_mode": dict(sorted(by_mode.items())),
+        "by_native": dict(sorted(by_native.items())),
+        "unclassified_native": unclassified_native,
+        "uncovered_with_native": uncovered_with_native,
+    }
+
+
 def summarize_laning(records: list[dict]) -> dict:
     """Coverage + band distribution + recommended-A-label histogram (laning)."""
     block = _coverage_block(records)
@@ -132,17 +281,24 @@ def summarize_build(records: list[dict]) -> dict:
 
 def build_report(choice_path: Path, build_path: Path) -> dict:
     """Assemble the full HZ shadow report dict from the two log paths."""
-    laning = summarize_laning(load_jsonl(choice_path))
-    build = summarize_build(load_jsonl(build_path))
+    choice_records = load_jsonl(choice_path)
+    build_records = load_jsonl(build_path)
+    laning = summarize_laning(choice_records)
+    build = summarize_build(build_records)
+    agreement = {
+        "laning": summarize_agreement(choice_records),
+        "build": summarize_agreement(build_records),
+    }
     return {
-        "schema": "hz_shadow_report/v1",
+        "schema": "hz_shadow_report/v2",
         "laning": laning,
         "build": build,
-        "flip_ready_hint": _flip_hint(laning, build),
+        "agreement": agreement,
+        "flip_ready_hint": _flip_hint(laning, build, agreement),
     }
 
 
-def _flip_hint(laning: dict, build: dict) -> str:
+def _flip_hint(laning: dict, build: dict, agreement: Optional[dict] = None) -> str:
     """A coarse human read of flip-readiness. NOT a flip authorization - the
     operator decides; this only flags the obvious not-ready states."""
     lt, bt = laning.get("total", 0), build.get("total", 0)
@@ -153,10 +309,21 @@ def _flip_hint(laning: dict, build: dict) -> str:
     if max(lr, br) < 0.5:
         return ("low seed coverage (<50%) - expand the precompute champion set "
                 "before considering a flip")
+    comparable = 0
+    agreed = 0
+    for sec in (agreement or {}).values():
+        comparable += sec.get("comparable_covered", 0)
+        agreed += sec.get("agree", 0)
+    if comparable > 0:
+        pct = round(100.0 * agreed / comparable)
+        return (f"coverage accruing - agreement {pct}% over {comparable} "
+                "comparable ticks - review distribution before any flip "
+                "(operator gate)")
     return "coverage accruing - review distribution before any flip (operator gate)"
 
 
 def _print_human(report: dict) -> None:
+    agreement = report.get("agreement") or {}
     for key in ("laning", "build"):
         sec = report.get(key) or {}
         print(f"[{key}] {sec.get('covered', 0)}/{sec.get('total', 0)} covered "
@@ -168,6 +335,13 @@ def _print_human(report: dict) -> None:
         if key == "build" and sec.get("by_lean"):
             for lean, n in sec["by_lean"].items():
                 print(f"    lean: {lean} x{n}")
+        agr = agreement.get(key) or {}
+        print(f"    agreement: {agr.get('agree', 0)}/"
+              f"{agr.get('comparable_covered', 0)} "
+              f"({agr.get('agreement_rate', 0.0)}) comparable-covered, "
+              f"{agr.get('uncovered_with_native', 0)} uncovered-with-native")
+        print(f"    native unclassified (covered): "
+              f"{agr.get('unclassified_native', 0)}")
     print(f"hint: {report.get('flip_ready_hint')}")
 
 
