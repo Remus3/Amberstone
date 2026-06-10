@@ -43,6 +43,7 @@ change that forgets to re-sync (src or doc anchors) fails.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import sys
@@ -52,6 +53,7 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[1]
 _SHARE = _REPO / "Share"
 _SRC = _SHARE / "src"
+_INGEST = _SHARE / "lolmath_ingest"
 _PATCH = "16.12.1"
 
 # Authored docs whose mechanical version/patch anchors must track the live
@@ -69,6 +71,24 @@ _DOC_FILES: tuple[str, ...] = (
     "docs/05_AUDIT_AND_REFACTOR.md",
 )
 _SEMVER = r"\d+\.\d+\.\d+"
+
+# Calculator-ingest slice (Share/lolmath_ingest). Its authored files pin the
+# engine version + patch as plain semver tokens, and dist/ carries the one-shot
+# bundle built from the Share/src data snapshot. Both are kept in lock-step by
+# write mode and guarded by --check (item-378 sidequest: the subdir went 12
+# engine minors + 1 patch stale because the check did not cover it). Engine
+# versions are single-leading-digit semvers (1.x.y); data patches are
+# two-plus-digit (16.x.y) - disjoint shapes, so two generic token rules cover
+# every anchor in these files (verified: the only semver-shaped tokens present
+# are the engine + patch pins).
+_INGEST_DOC_FILES: tuple[str, ...] = (
+    "README.md",
+    "INGEST_SPEC.md",
+    "daemon_slayer_bundle.d.ts",
+    "build_bundle.py",
+)
+_INGEST_BUNDLE_REL = "dist/daemon_slayer_bundle.json"
+_INGEST_GENERATED_NOTE = "static one-shot export"
 
 # DS engine tooling copied into the package (extractors + serving + the
 # patch-bump prefilter/inspect scanners). This script is intentionally NOT in
@@ -375,6 +395,110 @@ def _check_doc_anchors() -> int:
     return drift
 
 
+def _ingest_anchor_rules() -> tuple[tuple[str, "re.Pattern[str]", str], ...]:
+    """Version/patch token rules for the lolmath_ingest authored files.
+
+    Engine semvers have a single leading digit (1.x.y); data patches have two
+    or more (16.x.y). The shapes are disjoint, so each rule rewrites exactly
+    its own token kind anywhere in the file.
+    """
+    return (
+        ("ingest engine version",
+         re.compile(r"\b\d\.\d+\.\d+\b"), _engine_version()),
+        ("ingest data patch",
+         re.compile(r"\b\d{2,}\.\d+\.\d+\b"), _PATCH),
+    )
+
+
+def _rewrite_ingest_anchors() -> list[str]:
+    """Write mode: restamp the ingest authored files to live values. Returns
+    the relpaths changed."""
+    rules = _ingest_anchor_rules()
+    changed: list[str] = []
+    for rel in _INGEST_DOC_FILES:
+        p = _INGEST / rel
+        if not p.exists():
+            continue
+        text = p.read_text(encoding="utf-8")
+        new = text
+        for _label, pat, live in rules:
+            new = pat.sub(live, new)
+        if new != text:
+            # newline="" keeps the in-memory \n as LF on disk (the default
+            # translates to CRLF on Windows, tripping the *.py eol=lf guard).
+            p.write_text(new, encoding="utf-8", newline="")
+            changed.append(rel)
+    return changed
+
+
+def _check_ingest_anchors() -> int:
+    """--check: count drifted version/patch tokens in the ingest authored
+    files, each printed as ``file:line``. Returns the drift count."""
+    rules = _ingest_anchor_rules()
+    drift = 0
+    for rel in _INGEST_DOC_FILES:
+        p = _INGEST / rel
+        if not p.exists():
+            continue
+        text = p.read_text(encoding="utf-8")
+        for label, pat, live in rules:
+            for m in pat.finditer(text):
+                if m.group(0) != live:
+                    line = text.count("\n", 0, m.start()) + 1
+                    drift += 1
+                    print(f"  INGEST ANCHOR DRIFT ({label}): "
+                          f"lolmath_ingest/{rel}:{line} has '{m.group(0)}', "
+                          f"live is '{live}'")
+    return drift
+
+
+def _build_expected_bundle() -> bytes:
+    """Replicate build_bundle.py's output for the live engine version + the
+    Share/src data snapshot at ``_PATCH``. Deterministic - the basis for both
+    the rebuild and the --check byte-compare."""
+    snap = _SRC / "data" / "daemon_slayer" / _PATCH
+    sources: dict[str, object] = {}
+    for p in sorted(snap.iterdir() if snap.is_dir() else ()):
+        if p.suffix == ".json":
+            with p.open(encoding="utf-8") as fh:
+                sources[p.stem] = json.load(fh)
+    bundle = {
+        "engine_version": _engine_version(),
+        "patch": _PATCH,
+        "generated_note": _INGEST_GENERATED_NOTE,
+        "sources": sources,
+    }
+    text = json.dumps(bundle, ensure_ascii=False, indent=2, sort_keys=True)
+    return text.encode("utf-8")
+
+
+def _rebuild_ingest_bundle() -> None:
+    """Write mode: rebuild dist/daemon_slayer_bundle.json atomically."""
+    target = _INGEST / _INGEST_BUNDLE_REL
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    tmp.write_bytes(_build_expected_bundle())
+    tmp.replace(target)
+
+
+def _check_ingest_bundle() -> int:
+    """--check: byte-compare the on-disk dist bundle against a rebuild from
+    the live Share/src snapshot. Returns drift count (0 or 1).
+
+    The bundle is a gitignored build artifact (.gitignore ``dist/``), so a
+    clean checkout (CI) has no file - that is a SKIP, not drift; write mode
+    rebuilds it. A present-but-stale bundle is drift."""
+    target = _INGEST / _INGEST_BUNDLE_REL
+    if not target.exists():
+        return 0
+    if target.read_bytes() != _build_expected_bundle():
+        print(f"  INGEST BUNDLE DRIFT: lolmath_ingest/{_INGEST_BUNDLE_REL} "
+              f"differs from a rebuild of the live snapshot (engine "
+              f"{_engine_version()}, patch {_PATCH})")
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Sync the DS Share review package.")
     ap.add_argument("--check", action="store_true",
@@ -385,22 +509,28 @@ def main(argv: list[str] | None = None) -> int:
     version = _engine_version()
 
     if args.check:
-        drift = _check(expected) + _check_doc_anchors()
+        drift = (_check(expected) + _check_doc_anchors()
+                 + _check_ingest_anchors() + _check_ingest_bundle())
         if drift:
             print(f"ds_share_sync: {drift} path(s)/anchor(s) drifted - run "
                   f"`python tools/ds_share_sync.py` and commit Share/.")
             return 1
-        print(f"ds_share_sync: Share/src + doc anchors in sync (engine {version}, "
-              f"{len(expected)} files).")
+        print(f"ds_share_sync: Share/src + doc anchors + lolmath_ingest in "
+              f"sync (engine {version}, {len(expected)} files).")
         return 0
 
     n = _write(expected)
     _stamp_manifest(version, n)
     docs_changed = _rewrite_doc_anchors()
+    ingest_changed = _rewrite_ingest_anchors()
+    _rebuild_ingest_bundle()
     doc_note = (f" + refreshed {len(docs_changed)} doc anchor file(s)"
                 if docs_changed else " + doc anchors already fresh")
+    ing_note = (f" + restamped {len(ingest_changed)} ingest file(s)"
+                if ingest_changed else " + ingest anchors already fresh")
     print(f"ds_share_sync: wrote {n} files to Share/src (engine {version}, "
-          f"patch {_PATCH}) + stamped MANIFEST{doc_note}.")
+          f"patch {_PATCH}) + stamped MANIFEST{doc_note}{ing_note} + rebuilt "
+          f"ingest bundle.")
     return 0
 
 
