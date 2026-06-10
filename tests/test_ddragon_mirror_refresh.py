@@ -435,6 +435,44 @@ def test_exit_code_zero_total_no_crash():
     assert ddr._exit_code_for(_stats(0, 0)) == 0
 
 
+def test_failures_within_tolerance_boundary():
+    assert ddr._failures_within_tolerance(_stats(6792, 3)) is True
+    assert ddr._failures_within_tolerance(_stats(200, 1)) is True
+    assert ddr._failures_within_tolerance(_stats(199, 1)) is False
+    assert ddr._failures_within_tolerance(_stats(10, 0)) is True
+
+
+# ---------------------------------------------------------------------------
+# main() index-write gating shares the tolerance: a version flip must complete
+# same-night despite a tolerable transient flake (item 376 follow-up B).
+
+def _wire_main(monkeypatch, *, latest, cached, stats):
+    monkeypatch.setattr(ddr, "resolve_latest_version", lambda: latest)
+    monkeypatch.setattr(ddr, "read_index", lambda: {"latest_pulled": cached})
+    monkeypatch.setattr(ddr, "run", lambda *a, **k: stats)
+    spy = mock.Mock()
+    monkeypatch.setattr(ddr, "write_index", spy)
+    return spy
+
+
+def test_main_advances_index_on_flip_despite_tolerable_failure(monkeypatch, capsys):
+    s = _stats(6792, 3)
+    s.fetched_new = 10
+    spy = _wire_main(monkeypatch, latest="16.12.1", cached="16.11.1", stats=s)
+    rc = ddr.main(["--check-changed"])
+    assert rc == 0
+    spy.assert_called_once()
+    assert spy.call_args.args[0] == "16.12.1"
+
+
+def test_main_keeps_index_on_flip_with_mass_failure(monkeypatch, capsys):
+    s = _stats(100, 10)
+    spy = _wire_main(monkeypatch, latest="16.12.1", cached="16.11.1", stats=s)
+    rc = ddr.main(["--check-changed"])
+    assert rc == 2
+    spy.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # _http retry-with-backoff (transient errors should not flake the cron)
 
