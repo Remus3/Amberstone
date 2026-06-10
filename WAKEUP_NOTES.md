@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-06-10 - gemini loop: HZ-D4 charter sweep - shadow-pipeline root-cause fix + ARAM tables + agreement metric [item 386]
+
+Gemini-headless-upgrade executor cycle. Directive = HZ-D4 (7-lever cost sweep + next HZ increment). Merges `d446ea80` + `b54d040e` (2 PARALLEL worktree agents, verifier-CONFIRMED). NO engine, no Share, no web/ touch; RC restarted pid 14160.
+
+- 7-lever sweep: 7/7 CLEAN, no commit. Scout's lever-6 "orphan tasks" REFUTED by ground truth (all 3 flagged tasks point at on-disk scripts).
+- ROOT CAUSE found verifying the table-expand premise: ALL 837 choice + 800 build shadow rows junk - enemy=null 100 percent (champ from PERSISTENT stale coach dict; enemy_team only in live liveclient -> idle ticks logged stale replays) + 290 Champ0 rows (pytest build_state runs appended to REAL data/ jsonls). Flip path could never accrue.
+- FIX: live `lc.get("champion")` gate in both shadow_log_precomputed_* + autouse conftest SHADOW_PATH->tmp redirect (hz_choice/hz_build/det_coach); +4 gate tests; polluted jsonls rotated to _scratch/*.pre_item386.jsonl.
+- ARAM tables full-roster 172 (every native capture is mode=aram): laning_aram 65.75MB LFS + build_orders_aram 688 + variants_aram 344 @16.12.1. GOTCHA: gen CLIs default to 10-champ seed; pass --champions <172-CSV from SR table scenarios keys>.
+- hz_shadow_report v2 (item-369 tail): classify_verdict/record_agreement/summarize_agreement, per-mode agreement + uncovered_with_native; flip hint cites agreement rate; +22 tests.
+- Gates: RC 5787p/2sk/94st exit 0; DS 7075p/1sk/1xf exit 0; ruff + ASCII clean.
+- OPS: RC-Supervisor task was NOT running (restart_trigger sat unconsumed); schtasks /Run /TN RC-Supervisor restored; watch it next session.
+- NEXT (gated): play real ARAM -> covered+native rows accrue -> hz_shadow_report agreement gate -> operator flip decision.
+
+---
+
 # 2026-06-10 - gemini loop cycle 4: Phase 5 stabilization tail - HZ-D1 DONE [item 383, HZ-D1 slice 4]
 
 Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 4). Directive = Phase 5 stabilization tail (electron-updater + stable/dev channels, crash isolation). Merges `96cf5241` + `544cff59` (2 PARALLEL worktree agents, verifier-CONFIRMED) + merger integration `33dc9b3a`. NO engine, no Share, no RC restart, no web/ touch (UI audit n/a).
