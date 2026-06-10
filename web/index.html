@@ -2020,6 +2020,16 @@
             <div class="am-empty">DS engine ranks + owned items list will render here mid-game.</div>
           </div>
         </div>
+        <!-- HZ-D1 Phase 4 (2026-06-10): in-overlay DS fight-model
+             controls. Overlay-only surface - the pane ships hidden +
+             display:none everywhere; only body[data-shell="overlay"]
+             (overlay.css section 4b) shows it once
+             overlay_ds_controls.js resolves a canonical champion. The
+             1920 dashboard never renders it. -->
+        <div class="am-pane am-pane-ovds" id="am-pane-ovds" hidden>
+          <div class="am-pane-head">FIGHT MODEL</div>
+          <div class="am-pane-body" id="ovds-body"></div>
+        </div>
         <div class="am-pane am-pane-map">
           <div class="am-pane-head">MAP</div>
           <div class="ward-heat-container" id="am-ward-heat" data-wh-state="init"></div>
