@@ -13,7 +13,14 @@
  * ds_knobs.css alpha values - no new hex literals; the only hexes are
  * the existing tokens.css palette fallbacks. */
 
-#am-pane-ovds {
+/* Two ids = (0,2,0,0): MUST out-rank active_match.css
+ * "#view-active-match .am-pane { display: flex }" ((0,1,1,0)), which
+ * otherwise wins the cascade over both a bare id selector AND the
+ * [hidden] attribute (author display beats the UA rule) - a blank
+ * FIGHT MODEL pane leaked onto the normal 1920 dashboard (2026-06-10
+ * UI-audit MUST-FIX 1). The overlay unhide in overlay.css section 4b
+ * carries !important and still outranks this. */
+#view-active-match #am-pane-ovds {
   display: none;
 }
 
