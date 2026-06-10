@@ -1397,6 +1397,159 @@ def compute_ehp(
     )
 
 
+# --------------------------------------------------- T1-F4 gold efficiency
+
+
+# 16.12 standard per-point gold cost of the three pure defensive stats.
+# Source: League of Legends Wiki "Gold efficiency" reference values
+# (https://wiki.leagueoflegends.com/en-us/Gold_efficiency), the same
+# convention the lift-doc target (seb16120 stat advisor) uses for its
+# "EHP per gold" verdict (docs/COMPETITOR_LIFT_2026-06-08.md lines 68-75):
+# Cloth Armor 300g / 15 armor = 20g per armor; Null-Magic Mantle 450g /
+# 25 MR = 18g per MR; Ruby Crystal 400g / 150 HP = 2.6667g per HP. These
+# are the canonical "raw stat" gold values RC uses ONLY for the per-unit
+# stat verdict; whole-item gold efficiency stays in rank.py.
+_GOLD_PER_ARMOR = 20.0
+_GOLD_PER_MR = 18.0
+_GOLD_PER_HP = 400.0 / 150.0  # 2.6667g per HP
+
+
+def ehp_gold_efficiency(
+    snapshot: DataSnapshot,
+    champion_id: str,
+    level: int,
+    item_ids: Optional[Iterable[str | int]] = None,
+    mode: str = "SR",
+    enemy_ad_share: float = 0.5,
+    enemy_ap_share: float = 0.5,
+    augments: Optional[Iterable] = None,
+    apply_mode_modifiers: bool = False,
+    enemy_lethality: float = 0.0,
+    enemy_armor_pen_pct: float = 0.0,
+    enemy_shred_pct: float = 0.0,
+    enemy_magic_pen_flat: float = 0.0,
+    enemy_magic_pen_pct: float = 0.0,
+) -> dict:
+    """Marginal EHP gained per 1 gold for ARMOR vs MR vs HP.
+
+    T1-F4 (BACKLOG LOW, docs/COMPETITOR_LIFT_2026-06-08.md lines 68-75) -
+    the per-unit-stat gold-efficiency verdict built on the shipped T1-F3
+    enemy-pen seam. Given the champion's CURRENT resolved armor / MR / HP
+    context (the same build + enemy-mix structures ``compute_ehp`` already
+    resolves), this returns how much blended EHP each of +1 armor, +1 MR,
+    and +1 HP buys, the per-gold figure for each (dividing by the 16.12
+    standard ``_GOLD_PER_*`` constants), and a "buy this stat next" verdict
+    so the most gold-efficient defensive stat versus a given enemy AD/AP
+    damage-mix is identifiable.
+
+    PURE COMPUTE-ONLY / ADDITIVE: this helper is wired to NO live surface
+    (a live flip is a gated follow-up - do not flip blind). It calls
+    ``compute_ehp`` and does not mutate it; every existing caller of
+    ``compute_ehp`` stays byte-identical.
+
+    Method (finite-difference over the SHIPPED ``compute_ehp`` seams, so
+    the marginals agree with the scorer's own math):
+
+    * ARMOR / MR marginal - re-evaluate ``compute_ehp`` with the existing
+      ``external_resist_armor`` / ``external_resist_mr`` kwarg bumped by
+      +1. Those kwargs add into ``eff_armor`` / ``eff_mr`` at exactly the
+      point a real +1 of the stat would (BEFORE the T1-F3 pen step), so a
+      lethality-stacked enemy correctly buys you LESS armor EHP (the gap to
+      the un-penned case is the whole point of riding T1-F3). The marginal
+      is ``blended_ehp(stat+1) - blended_ehp(stat)``.
+    * HP marginal - +1 HP scales every per-type EHP numerator
+      proportionally (HP, shields, and heals share the damage-taken
+      factor), so the blended-EHP gain from +1 HP is
+      ``blended_ehp / hp`` (exact for a naked build where every numerator
+      is HP; a faithful proportional approximation once shields/heals are
+      present, consistent with the rest of the scorer's posture). There is
+      no ``external_hp`` kwarg on ``compute_ehp``, so the analytic ratio is
+      used rather than inventing one.
+
+    Enemy-pen kwargs (the five T1-F3 ``enemy_*`` scalars) are forwarded to
+    BOTH the base and the bumped calls so the verdict reflects the enemy's
+    real penetration. All five default to 0.0 -> the un-penned verdict.
+
+    Returns a plain dict (no new dataclass needed for a single derived
+    readout):
+
+      {
+        "champion_id", "champion_name", "level", "mode",
+        "armor", "mr", "hp",                 # resolved current stats
+        "enemy_ad_share", "enemy_ap_share",
+        "ehp_gain_armor", "ehp_gain_mr", "ehp_gain_hp",      # +1 stat -> +EHP
+        "ehp_per_gold_armor", "ehp_per_gold_mr", "ehp_per_gold_hp",
+        "best_stat", "best_ehp_per_gold",    # argmax verdict
+        "second_best_stat", "gap_to_second", # margin over the runner-up
+      }
+    """
+    base = compute_ehp(
+        snapshot, champion_id, level, item_ids=item_ids, mode=mode,
+        enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
+        augments=augments, apply_mode_modifiers=apply_mode_modifiers,
+        enemy_lethality=enemy_lethality,
+        enemy_armor_pen_pct=enemy_armor_pen_pct,
+        enemy_shred_pct=enemy_shred_pct,
+        enemy_magic_pen_flat=enemy_magic_pen_flat,
+        enemy_magic_pen_pct=enemy_magic_pen_pct,
+    )
+
+    def _blended_with(**extra) -> float:
+        return compute_ehp(
+            snapshot, champion_id, level, item_ids=item_ids, mode=mode,
+            enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
+            augments=augments, apply_mode_modifiers=apply_mode_modifiers,
+            enemy_lethality=enemy_lethality,
+            enemy_armor_pen_pct=enemy_armor_pen_pct,
+            enemy_shred_pct=enemy_shred_pct,
+            enemy_magic_pen_flat=enemy_magic_pen_flat,
+            enemy_magic_pen_pct=enemy_magic_pen_pct,
+            **extra,
+        ).blended_ehp
+
+    ehp_gain_armor = max(0.0, _blended_with(external_resist_armor=1.0) - base.blended_ehp)
+    ehp_gain_mr = max(0.0, _blended_with(external_resist_mr=1.0) - base.blended_ehp)
+    # +1 HP scales the numerator proportionally (see docstring). Guard a
+    # pathological zero-HP build (division-safety, mirrors safe_mult).
+    ehp_gain_hp = (base.blended_ehp / base.hp) if base.hp > 0 else 0.0
+
+    per_gold = {
+        "armor": ehp_gain_armor / _GOLD_PER_ARMOR,
+        "mr": ehp_gain_mr / _GOLD_PER_MR,
+        "hp": ehp_gain_hp / _GOLD_PER_HP,
+    }
+    # Stable argmax: ties resolve to the lowest-cost stat first (HP < MR <
+    # armor by gold cost) by ordering the candidate list, then taking the
+    # max by per-gold value.
+    order = ["hp", "mr", "armor"]
+    best_stat = max(order, key=lambda s: per_gold[s])
+    runner = [s for s in order if s != best_stat]
+    second_best_stat = max(runner, key=lambda s: per_gold[s])
+    gap_to_second = per_gold[best_stat] - per_gold[second_best_stat]
+
+    return {
+        "champion_id": base.champion_id,
+        "champion_name": base.champion_name,
+        "level": base.level,
+        "mode": base.mode,
+        "armor": base.armor,
+        "mr": base.mr,
+        "hp": base.hp,
+        "enemy_ad_share": base.enemy_ad_share,
+        "enemy_ap_share": base.enemy_ap_share,
+        "ehp_gain_armor": ehp_gain_armor,
+        "ehp_gain_mr": ehp_gain_mr,
+        "ehp_gain_hp": ehp_gain_hp,
+        "ehp_per_gold_armor": per_gold["armor"],
+        "ehp_per_gold_mr": per_gold["mr"],
+        "ehp_per_gold_hp": per_gold["hp"],
+        "best_stat": best_stat,
+        "best_ehp_per_gold": per_gold[best_stat],
+        "second_best_stat": second_best_stat,
+        "gap_to_second": gap_to_second,
+    }
+
+
 # ----------------------------------------------------------------- ranker
 
 
