@@ -23,6 +23,8 @@
 //   - Panel-set cycle: Alt+Shift+C rotates the overlay through the PANEL_SETS
 //     (coach -> build -> threat) by reloading the overlay URL with
 //     panelset=NAME (ov.cyclePanelSet + ov.overlayUrl).
+//   - Drag region: injected -webkit-app-region strip (companion always;
+//     overlay grabbable when ACTIVE) - see ./drag_region.
 //
 // What it does NOT do (Vanguard-safe; see docs/ELECTRON_OVERLAY.md sections 3.8 + 8):
 //   - No DXGI / frame capture, no game-memory reads, no input injection - ever.
@@ -40,6 +42,7 @@ const { app, BrowserWindow, Menu, screen, shell, globalShortcut } = require("ele
 const cfgmod = require("./config");
 const store = require("./store");
 const ov = require("./overlay_state");
+const drag = require("./drag_region");
 
 // Persistence target: <userData>/rc-shell-state.json. userData is per-app and
 // per-OS-user, so two machines / two users never collide.
@@ -190,6 +193,18 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// Inject the drag-region strip into a window's page. The remote dashboard
+// ships no -webkit-app-region rule of its own, so a frameless window is
+// unmovable without this. Both calls swallow rejection - the frame may be
+// mid-navigation or already gone; a missed strip self-heals on the next load.
+function injectDragRegion(win) {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+  win.webContents.insertCSS(drag.dragRegionCSS()).catch(() => {});
+  win.webContents.executeJavaScript(drag.dragRegionMountJS(), true).catch(() => {});
+}
+
 function createWindow() {
   const saved = store.load(statePath(), {});
   const cfg = cfgmod.resolveConfig(saved, process.env);
@@ -216,7 +231,7 @@ function createWindow() {
   const opts = {
     width: cfg.width,
     height: cfg.height,
-    frame: false, // frameless companion (spec 3.3); drag region is CSS in the page
+    frame: false, // frameless companion (spec 3.3); drag region injected post-load
     alwaysOnTop: cfg.alwaysOnTop,
     backgroundColor: "#0b0e14", // dark fallback while RC_ORIGIN loads
     title: "Riot Commander",
@@ -247,6 +262,9 @@ function createWindow() {
   });
 
   mainWindow.loadURL(cfg.origin);
+
+  // Re-mount the drag strip on every (re)load - Cmd+R wipes injected DOM.
+  mainWindow.webContents.on("did-finish-load", () => injectDragRegion(mainWindow));
 
   mainWindow.on("move", persistWindowState);
   mainWindow.on("resize", persistWindowState);
@@ -306,6 +324,9 @@ function createOverlayWindow() {
     return { action: "deny" };
   });
   overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet));
+  // Inert while click-through (events forward to the game); once the ACTIVE
+  // hotkey flips interactivity the same strip makes the overlay user-movable.
+  overlayWindow.webContents.on("did-finish-load", () => injectDragRegion(overlayWindow));
   overlayWindow.on("closed", () => {
     overlayWindow = null;
   });
