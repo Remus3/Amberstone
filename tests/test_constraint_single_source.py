@@ -38,6 +38,10 @@ def test_claude_active_priorities_is_pointer_not_ledger():
 
 
 def test_ledger_holds_relocated_items():
+    # Split-home layout (2026-06: items 1-324 deep-archived): LEDGER.md keeps
+    # item 325+ and the LW block; history_notes.md holds the older anchors.
     t = _read("docs/LEDGER.md")
-    assert (NL + "278. ") in t and (NL + "150. ") in t and "LW. " in t
+    assert (NL + "325. ") in t and "LW. " in t
     assert len(t) > 100000
+    h = _read("docs/history_notes.md")
+    assert (NL + "278. ") in h and (NL + "150. ") in h
