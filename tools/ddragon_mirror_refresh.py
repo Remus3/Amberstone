@@ -626,20 +626,32 @@ def render_stats_table(stats: PlanStats) -> str:
     return "\n".join(lines)
 
 
+def _failures_within_tolerance(stats: PlanStats) -> bool:
+    """True when the run had no failures, or only a tolerable transient ratio.
+
+    A handful of transient single-asset HEAD/GET flakes across thousands of CDN
+    probes is operationally normal. This predicate is the single source of truth
+    for "was this run effectively clean?" - both the exit code and the index
+    advance gate consume it, so a tolerable flake never blocks a version flip.
+    """
+    if not stats.failed:
+        return True
+    return stats.failed / (stats.total or 1) <= FAIL_RATIO_TOLERANCE
+
+
 def _exit_code_for(stats: PlanStats) -> int:
     """Map run stats to a process exit code.
 
-    A handful of transient single-asset HEAD/GET flakes across thousands of CDN
-    probes is operationally normal and must NOT trip the nightly cron's
-    last_result canary. Exit 2 only when the failure ratio exceeds
-    FAIL_RATIO_TOLERANCE (a genuine partial outage / mass-missing-asset event).
+    Exit 2 only when the failure ratio exceeds FAIL_RATIO_TOLERANCE (a genuine
+    partial outage / mass-missing-asset event); a tolerable transient flake
+    exits 0 so it never trips the nightly cron's last_result canary.
     """
-    if not stats.failed:
-        return 0
-    ratio = stats.failed / (stats.total or 1)
-    if ratio <= FAIL_RATIO_TOLERANCE:
-        logger.warning("tolerating %d/%d transient asset failures (%.3f%% <= %.1f%%)",
-                       stats.failed, stats.total, ratio * 100, FAIL_RATIO_TOLERANCE * 100)
+    if _failures_within_tolerance(stats):
+        if stats.failed:
+            logger.warning("tolerating %d/%d transient asset failures (%.3f%% <= %.1f%%)",
+                           stats.failed, stats.total,
+                           stats.failed / (stats.total or 1) * 100,
+                           FAIL_RATIO_TOLERANCE * 100)
         return 0
     return 2
 
@@ -685,11 +697,13 @@ def main(argv: list[str] | None = None) -> int:
 
     print(render_stats_table(stats))
 
-    if not args.dry_run and stats.failed == 0 and (stats.fetched_new or stats.fetched_changed or cached != latest):
+    if (not args.dry_run and _failures_within_tolerance(stats)
+            and (stats.fetched_new or stats.fetched_changed or cached != latest)):
         write_index(latest, BUNDLE_NAMES)
         logger.info("index updated latest_pulled=%s", latest)
-    elif stats.failed:
-        logger.warning("kept index at %s due to %d failures", cached, stats.failed)
+    elif stats.failed and not _failures_within_tolerance(stats):
+        logger.warning("kept index at %s due to %d/%d failures over tolerance",
+                       cached, stats.failed, stats.total)
 
     return _exit_code_for(stats)
 
