@@ -11598,3 +11598,15 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - **Share sync** (f40f0362): ds_share_sync --check caught ehp.py content drift + the new test MISSING from Share/src; synced 333 files + staged the test mirror in the same commit. The intermediate commit 4be96220 CI went RED on the "DS Share package in sync" guard (Share stale) -> f40f0362 synced it GREEN. Reinforced: a DS source-file change needs ds_share_sync even with NO ENGINE bump (the file is mirrored in Share/src regardless of version).
 - Docs: ROADMAP L21 + BACKLOG L22 + LEDGER item 371 marked shipped (in f40f0362). 2 agent worktrees removed + merged branches deleted.
 - **NEXT (gated):** only LOW T2-F3 (TTK headline) + T1-F4 (per-stat EHP/gold, now unblocked by T1-F3) remain optional. cdragon by-level needs a NEW champ-level schema axis (do NOT re-pitch a calc-graph resolver). Don't-redo: T1-F3 + T2-F4 done.
+
+---
+
+# 2026-06-09 - session-start anomaly triage: DDragon flake-tolerance + rc_facts gamepc demotion + /weekly-hygiene automation [item 376]
+
+Session-start flagged 3 anomalies (operator "your call"): RC-DDragonMirrorRefresh result=2, gamepc :8892 None, gamepc bridge stale ~9d. Ops/tools/docs only - NO engine, NO ENGINE bump, NO Share, no RC restart. 4 commits `3f4dc43f`/`f62b5bc1`/`56052df9`/`9cc5a6ad`.
+
+- **DDragon (`3f4dc43f`+`f62b5bc1`):** result=2 was benign - `--check-changed` HEAD-probes 6792 assets nightly, ANY single transient flake (CDN-edge 404 among ~4966 profileicons) tripped `failed>=1` -> exit 2 (foreground re-run: 6792/6792 skip, fail=0). Fix: `fetch_one` retries a 404 once; NEW `FAIL_RATIO_TOLERANCE=0.005` + `_failures_within_tolerance` shared by `_exit_code_for` (exit 2 only when failed/total>0.5%) AND the index-advance gate (a tolerable flake during a version flip advances `_index.json` same-night). +11 tests (52 total).
+- **rc_facts (`56052df9`):** gamepc out-of-pipeline post-1PC (ADR-011) so MCP-None + bridge-stale are EXPECTED; NEW `RC_GAMEPC_RETIRED` flag (default on, `=0` re-arms) demotes both to annotated info lines via `_gamepc_mcp_anomaly`/`_bridge_peer_anomalies`; Peer + queue-backlog still flag. +9 tests (file had none). Live: Anomalies now shows ONLY the real DDragon result=2 (self-clears tonight 3:30 AM).
+- **/weekly-hygiene (`9cc5a6ad`):** NEW skill `.claude/commands/weekly-hygiene.md` (local/gitignored) + persistent `RC-WeeklyHygiene` task (Sun 04:17) via `tools/weekly_hygiene_run.ps1` (headless `claude -p /weekly-hygiene` sonnet, appends a dated WAKEUP entry so flags surface) + `ops/install_RC_WeeklyHygiene.ps1` (idempotent) + OPERATIONS.md row. CronCreate (7d expiry) + cloud /schedule (no local tree) both unfit. Smoke READY exit 0; NextRun 2026-06-14 04:17.
+- **Memory (no git):** 2 capture-memories gamepc:8892 -> Legion-local (Windows-MCP/computer-use/preview); MEMORY.md 2 index hooks updated.
+- **Don't-redo:** a single-asset DDragon result=2 is benign-tolerated now (a real outage is >0.5% or pins the index); set `RC_GAMEPC_RETIRED=0` if gamepc returns to service; first `RC-WeeklyHygiene` fires Sun 6/14 04:17 (commits relocate-only trims + appends its own WAKEUP entry).
