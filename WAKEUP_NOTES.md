@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-09 - weekly doc + memory hygiene: LEDGER/WAKEUP/ROADMAP shrink (relocate-only) [item 375]
+
+Side-chat asked why editing LEDGER/ROADMAP got slow -> root cause = file growth (LEDGER append-only hit 1024KB / ~262K tok; Edit rewrites the whole file per mark). Operator "run it now" -> doc/memory-only hygiene. Commit `13151b30` (pushed `d8ff8d6f..13151b30`). No engine/code, no ENGINE bump, no Share.
+
+- **LEDGER 1024KB -> 210KB:** items 149-324 (145 blocks) relocated VERBATIM to `docs/history_notes.md` ("Relocated LEDGER items 149-324" section); kept newest 50 (325-374) live. CLAUDE.md + LEDGER-header pointers flipped to "items 1-324 -> history_notes / item 325+ -> LEDGER". The sub-325 number gap is EXPECTED, not lost.
+- **WAKEUP 11.2 -> 9.2KB:** last 3 sessions (374/373/372); item 371 -> history_notes.
+- **ROADMAP 79.1 -> 56.7KB:** stale "Fleet status at a glance" table (drifted to pid 1108 / ENGINE 1.63.0 / patch 16.11.1; ~20KB cc_conditional wave-0-23 cell dup'd in CHANGELOG.md) replaced with a live-source pointer block.
+- **Memory (outside repo):** deleted dead `project_dashboard_ui_debug_relocation` (TEMP 2026-05-10, Game-PC-capture premise obsoleted by 1-PC ADR-011). Index 104 files / 0 orphans.
+- **Don't-redo:** prune is the standard mechanism; next hygiene re-cuts to newest ~50. DEFERRED: full /sync-all-md (separate skill); 2 stale capture-memories citing gamepc :8892 left intentionally.
+
+---
+
 # 2026-06-09 - parallel-orchestrated batch: LIFT1 tail + rune-WPA tab + current-HP lever [item 374]
 
 Operator "all 4, parallel orchestrated" (picked 4 open `.md` items together). 3 disjoint worktree subagents + a UI-consolidation agent + supervisor merge/independent-verify. Code tip `0139f798`, docs `e954c2cc`, CI GREEN (runs 27245418406 + 27246379832). ENGINE 1.120.0 untouched (all byte-identical/additive -> no bump), Share 335, RC restarted pid 6580, full DS+tests/ suite 12751 passed / 8 skip / 1 xfail / EXIT=0.
@@ -26,17 +38,3 @@ Operator "the gist does not show correct info for the current DS build - is it t
 - **Fix 1 (ops):** operator chose "force-push lean template now" -> `git push --force origin HEAD:main` on the `~/.rc-share-gist` clone. Published gist now `17ba6ab` ENGINE 1.120.0 / patch 16.12.1, Share.zip 346 files, divergence cleared. Dropped the 2 manual-README commits (reflog-recoverable; the sync regenerates README from `_README_TEMPLATE` by design, so the manual edits were always transient).
 - **Fix 2 (prevent recurrence, commit `e1fc7603`):** `tools/gist_share_sync.py` `_do_push()` catches the push CalledProcessError -> appends git stderr + unpushed count to `logs/YYYY-MM-DD.log`, atomically writes `ops/runtime/gist_sync_status.json` (`ok`/`detail`/`unpushed_commits`/`ts`), echoes stderr, returns non-zero `PUSH_FAIL_EXIT=3`. No-change path surfaces a latent backlog too. +3 tests `tests/test_gist_share_sync.py`. ruff + py_compile + hygiene green; live smoke status `ok=true`/unpushed 0.
 - **Don't-redo:** do NOT hand-edit the gist REMOTE (the sync clobbers README from `_README_TEMPLATE` + diverges the remote). Gist staleness health signal = `ops/runtime/gist_sync_status.json` (gitignored; `unpushed_commits`>0 or `ok=false` == stale mirror).
-
----
-
-# 2026-06-09 - DS patch refresh 16.11.1 -> 16.12.1 (full chain + ddragon mirror + Share) [item 372]
-
-Operator "do a DS share update". `upstream_drift_check` caught DDragon 16.11.1 -> **16.12.1** (Meraki 25.15 + CDragon UNCHANGED). Operator-gated fork -> chose **Full refresh**. ENGINE 1.120.0 UNCHANGED (patch != engine). DS restarted live 16.12.1. Commit `a93404ec`, CI green (run 27241177720).
-
-- **Chain:** data_pipeline all + daemon_slayer_extract (+ current.txt flip) + abilities_extract (171/927) + ddragon_mirror_refresh (6792 assets). `py` resolves to the WRONG interpreter (pythoncore-3.14, no json5) - **use the explicit `...Python314\python.exe`** for every DS tool.
-- **CDragon has NO 16.12 tree yet** (16.12 404; 16.11==latest byte-identical). So cdragon-derived files (`cdragon_ability_ratios`/`_ratio_drift`/`_spell_stats`) + wiki + 3 hand-curated (enchanter/cherry/mayhem) were **copy-forward**, not re-fetched; build_orders (516x3) + pickban (172) **regenerated** (local). 19-file dir parity.
-- **2 data fixes:** Leblanc `attackdamageperlevel` 0->2.2 (RAW DDragon 16.12.1 bug; the Meraki backfill that corrects it TIMED OUT for Leblanc only). manifest `meraki_items.content_patch` null->25.15 (derived from abilities, but extract writes the manifest before abilities exist on a fresh dir).
-- **Flips (live-header only):** DAEMON_SLAYER.md L5/L11 + ARCHITECTURE.md L194 + routes_dictionary L8 + main.js x6 + pgr_lane_compare/pgr_loadout panels. **`ds_share_sync.py` `_PATCH` 16.11.1->16.12.1** (the Share patch-bump point) -> re-sync 333 files + snapshot swap. **LEFT at 16.11.1 (correct):** the 4 `_FALLBACK_PATCH` + `item_wpa._ITEMS_JSON` (their data/HZ tables live only at 16.11.1; item_wpa test pins it).
-- **fix(test):** `test_build_order_variants::test_resolve_patch_fallback_on_missing` mocked `bov._CURRENT_TXT` but resolve_patch reads `bop._CURRENT_TXT` (imported from build_order_precompute) - latent wrong-symbol mock masked while current.txt==_FALLBACK 16.11.1. Fixed to mock `bop`.
-- **Verify (ground truth, stale-pipe-aware):** DS dir 7058 passed; tests/ 5613 passed / 0 failed (1 failure = the test-mock bug, fixed); gate exit 0; `/health` patch 16.12.1 engine 1.120.0 172/706.
-- **NEXT (gated):** HZ shadow precompute (laning_scenarios 65.6MB / build_orders subdir / variants) NOT regenerated for 16.12.1 - shadow-only + fail-soft + content-identical, separate heavy gated op; regen + the `_FALLBACK_PATCH` bumps wait on a real content patch OR an HZ-shadow flip. Do NOT re-extract cdragon until a 16.12 tree publishes.
