@@ -1,0 +1,116 @@
+/* In-overlay DS fight-model controls (HZ-D1 Phase 4,
+ * docs/ELECTRON_OVERLAY.md). Pane #am-pane-ovds mounts inside the
+ * active-match grid (web/index.html) but is an overlay-only surface:
+ * the hard default below keeps it off EVERY non-overlay page, and only
+ * the body[data-shell="overlay"] chain in overlay.css section 4b
+ * re-enables it (base subset + the build panelset; coach/threat
+ * panelsets narrow it back off).
+ *
+ * Renderer: web/js/panels/overlay_ds_controls.js over GET /api/ds-knobs
+ * (dashboard/routes_ds_knobs.py). Sized for game-distance reading on
+ * the 460px overlay dock: label floor 13px (tokens --fs-xs 16px sits
+ * above it), --hit-min input targets. Input/row chrome reuses the
+ * ds_knobs.css alpha values - no new hex literals; the only hexes are
+ * the existing tokens.css palette fallbacks. */
+
+#am-pane-ovds {
+  display: none;
+}
+
+/* Knob grid: 2x2 so four --hit-min inputs fit the 460px dock without
+ * starving the re-ranked rows list below. */
+.ovds-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 0 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ovds-knob {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ovds-knob > span {
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.60);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ovds-knob > input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: var(--hit-min, 42px);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--panel-radius-sm, 10px);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-sm, 18px);
+  font-variant-numeric: tabular-nums;
+}
+
+.ovds-knob > input:focus {
+  outline: none;
+  border-color: var(--signal-info, #8a8cf0);
+}
+
+.ovds-knob > input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Re-ranked rows: item | +delta dps | gold. This list IS the "build
+ * reorder" surface - it re-sorts as the operator moves the knobs. */
+.ovds-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 6px;
+}
+
+.ovds-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+
+.ovds-row:first-of-type {
+  border-top: none;
+}
+
+.ovds-item {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm, 18px);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.90);
+}
+
+.ovds-delta {
+  flex: 0 0 auto;
+  font-size: var(--fs-sm, 18px);
+  font-weight: 800;
+  color: var(--signal-good, #6ec977);
+}
+
+.ovds-gold {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.ovds-empty {
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 0;
+}
