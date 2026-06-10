@@ -121,6 +121,19 @@ class CallContext:
     # rate is champion-aware without changing the PeriodicProc schema. Default
     # 0.0 → Malignance contributes 0 DPS when champion data is absent (safe).
     ult_casts_per_sec: float = 0.0
+    # DS target-current-HP% scenario lever (BACKLOG item): caller-supplied
+    # fraction (0.0-1.0) of the target's CURRENT HP relative to its max HP.
+    # The three genuine %-current-HP item procs - BotRK 3153 Mist's Edge,
+    # Hellfire Hatchet 4017 Char, Fulmination 443055 Dynamo - multiply their
+    # current-HP magnitude by this factor so a caller can model "target at
+    # 50% HP" instead of the steady-state current==max assumption. Genuine
+    # %-MAX-HP procs (Eclipse 6692, Titanic Hydra 3748, Hullbreaker,
+    # Azakana's Gaze, Reaper's Toll 443090) deliberately do NOT reference
+    # this field - they key off target_max_hp / caster_max_hp. Default 1.0
+    # is an identity multiply: every pre-lever caller and proc stays
+    # byte-identical. Appended at the END per the repo dataclass convention
+    # (a mid-class insert breaks positional construction).
+    target_current_hp_pct: float = 1.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
