@@ -1,0 +1,38 @@
+# rc-shell/electron-builder.yml
+#
+# Minimal packaging + publish config for the Phase 5 stabilization slice
+# (docs/ELECTRON_OVERLAY.md sections 8 + 10). Build with: npx electron-builder
+#
+# Publish target is GitHub Releases on Remus3/riot-commander. The repo is
+# PRIVATE, so a packaged shell needs GH_TOKEN in its environment at runtime
+# for electron-updater to reach the release feed (operator-side concern).
+# Publishing a Release at all is operator-gated - none exists yet; this file
+# only makes the build reproducible when that gate opens.
+#
+# generateUpdatesFilesForAllChannels emits the per-channel latest*.yml feed
+# files so the stable/dev channel split (src/update_channel.js) has a feed
+# to read on both channels.
+
+appId: com.riotcommander.rc-shell
+productName: Riot Commander Shell
+
+directories:
+  output: dist
+
+files:
+  - src/**/*
+  - package.json
+
+win:
+  target: nsis
+
+nsis:
+  oneClick: true
+  perMachine: false
+
+publish:
+  provider: github
+  owner: Remus3
+  repo: riot-commander
+
+generateUpdatesFilesForAllChannels: true
