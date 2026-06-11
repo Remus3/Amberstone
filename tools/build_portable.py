@@ -73,8 +73,8 @@ _ROOT_PY_FILES = [
     "role_profiles.py",
     "coaching_timestamps.py",
     # arch: phase 2.4 (2026-05-09) - vision server entrypoint shim (real code in vision_server/)
-    # Listed here because RC-VisionServer scheduled task and dashboard/server.py
-    # spawn this file by path.
+    # Listed here because dashboard/server.py spawns this file by path
+    # (sole launcher; the RC-VisionServer schtask was removed 2026-06-11).
     "moon_vision_server.py",
 ]
 

@@ -6,7 +6,6 @@ Write-Host "=== Legion ON ==="
 
 # 1. Start AtStartup tasks first (SYSTEM context - infra), then AtLogon tasks (app-level)
 $tasks = @(
-  'RC-VisionServer',
   'RC-Supervisor',
   'RC-BridgeDaemon',
   'RC-BridgeWatcher',

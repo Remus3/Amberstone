@@ -1,0 +1,70 @@
+{
+  "run_id": "deep-audit-cycle5-p2a",
+  "check_ci": true,
+  "slices": [
+    {
+      "id": "p2a-vision-schtask",
+      "claim": "vestigial RC-VisionServer schtask deleted live; docs/scripts/docstrings synced",
+      "claimed_failed": 0,
+      "files": [
+        {
+          "path": "docs/_archive/2026-06-11_RC-VisionServer_schtask_removed.xml",
+          "must_contain": ["moon_vision_server.py"]
+        },
+        {
+          "path": "docs/adr/ADR-003-in-process-vision-server.md",
+          "must_contain": ["Update 2026-06-11"]
+        },
+        {
+          "path": "tools/legion_on.ps1",
+          "must_contain": ["RC-Supervisor"]
+        }
+      ]
+    },
+    {
+      "id": "p2a-resource-manager-shutdown-logging",
+      "claim": "shutdown() suppresses logging-internal emit errors, restores raiseExceptions",
+      "claimed_failed": 0,
+      "files": [
+        {
+          "path": "core/resource_manager.py",
+          "must_contain": ["logging.raiseExceptions = False", "logging.raiseExceptions = _prev_raise"]
+        },
+        {
+          "path": "tests/test_resource_manager_shutdown_logging.py",
+          "must_contain": ["test_shutdown_emits_no_logging_error_noise_on_closed_stream"]
+        }
+      ]
+    },
+    {
+      "id": "p2a-bare-py-ban",
+      "claim": "bare py swept to canonical absolute interpreter on Legion surfaces + guard test",
+      "claimed_failed": 0,
+      "files": [
+        {
+          "path": "tests/test_bare_py_ban.py",
+          "must_contain": ["test_no_bare_py_launcher_on_tracked_surfaces"]
+        },
+        {
+          "path": "docs/OPERATIONS.md",
+          "must_contain": ["Python interpreter"]
+        }
+      ]
+    },
+    {
+      "id": "p2a-js-fallback-centralization",
+      "claim": "22 semver fallback literals -> DDRAGON_FALLBACK_VERSION single const + drift guard",
+      "claimed_failed": 0,
+      "files": [
+        {
+          "path": "web/js/lib/items_index.js",
+          "must_contain": ["DDRAGON_FALLBACK_VERSION"]
+        },
+        {
+          "path": "tests/test_ddragon_path_version_drift.py",
+          "must_contain": ["test_semver_fallback_literals_centralized_in_items_index"]
+        }
+      ]
+    }
+  ]
+}

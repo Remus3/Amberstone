@@ -12,8 +12,7 @@ $tasks = @(
   'RC-BridgeDaemon',
   'RC-BridgeWatcher',
   'RC-Phase3-Supervisor',
-  'RC-DS-MatchDB-MCP',
-  'RC-VisionServer'
+  'RC-DS-MatchDB-MCP'
 )
 foreach ($t in $tasks) {
   $task = Get-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue
