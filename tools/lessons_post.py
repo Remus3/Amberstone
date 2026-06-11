@@ -3,7 +3,7 @@ outcome. Writes the provenance memory, updates MEMORY.md, appends a
 ledger entry, and sends the ack back to the peer.
 
 Usage:
-    py tools/lessons_post.py <lesson_id> --decision applied|queued|discarded \\
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_post.py <lesson_id> --decision applied|queued|discarded \\
         --rationale "<one-line>" [--notes "<receiver notes>"]
 
 Decision semantics (per Phase 1 §4):

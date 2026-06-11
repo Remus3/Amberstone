@@ -55,7 +55,7 @@ sequence - we do NOT reimplement either.
 
 Usage
 -----
-    py tools/daemon_slayer_build_orders_generate.py [--mode sr|aram|arena|all]
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_build_orders_generate.py [--mode sr|aram|arena|all]
         [--champion <name>] [--dry-run] [--out <dir>]
 
 * ``--mode all`` (default) generates for SR + ARAM + Arena.
@@ -302,7 +302,7 @@ def main() -> int:
 
     if not args.dry_run and not dsc.is_engine_up(timeout=1.0):
         print("DS engine at 127.0.0.1:8893 is not responding. Start it via "
-              "`py tools/start_daemon_slayer.py` and re-run (a non-dry run "
+              "`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py` and re-run (a non-dry run "
               "refuses to write tables against a dead engine).", file=sys.stderr)
         return 2
 

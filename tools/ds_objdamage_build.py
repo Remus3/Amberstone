@@ -16,7 +16,7 @@ The objective-damage axis scores the full roster (every champion carries at
 least one row), the threat-range / wave-clear shape.
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
-  py tools/ds_objdamage_build.py <workflow_output.json>
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_objdamage_build.py <workflow_output.json>
 """
 
 from __future__ import annotations

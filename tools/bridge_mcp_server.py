@@ -48,7 +48,7 @@ Tools exposed:
       Operator-facing config gate (never leaks the shared secret).
 
 Run locally:
-  py tools/bridge_mcp_server.py
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_mcp_server.py
   (or via the boot launcher tools/start_bridge_mcp.py)
 
 Schedule at logon for persistence:

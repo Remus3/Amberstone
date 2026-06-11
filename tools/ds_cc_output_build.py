@@ -14,7 +14,7 @@ registry already carries against that registry (single source of truth for the
     CHANGELOG.md / CC_CONDITIONAL_NOTES.md.
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
-  py tools/ds_cc_output_build.py <workflow_output.json>
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_cc_output_build.py <workflow_output.json>
 """
 
 from __future__ import annotations

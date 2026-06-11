@@ -22,14 +22,14 @@ Override via env vars RC_KEY_A / RC_KEY_B / RC_KEY_DISMISS (use `keyboard`
 names - see https://github.com/boppreh/keyboard).
 
 Deploy on Game-PC (one time):
-    1. Install dependency:  py -m pip install keyboard
+    1. Install dependency:  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install keyboard
     2. Copy this file to:   C:\\RC-Agent\\gamepc_keybind_listener.py
-    3. Run:                 py C:\\RC-Agent\\gamepc_keybind_listener.py
+    3. Run:                 C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_keybind_listener.py
 
 Scheduled task (run as user, ONLOGON - same elevation tier as other
 RC-* Game-PC agents):
     schtasks /Create /TN "RC-KeybindListener" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "py C:\\RC-Agent\\gamepc_keybind_listener.py"
+        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_keybind_listener.py"
 
 Note on permissions: the `keyboard` library hooks the Win32 low-level
 keyboard event API. On Windows it works without admin for most users;
@@ -142,7 +142,7 @@ def main() -> int:
     except ImportError:
         sys.stderr.write(
             "ERROR: `keyboard` package not installed.\n"
-            "Install with:  py -m pip install keyboard\n"
+            "Install with:  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install keyboard\n"
         )
         return 2
 

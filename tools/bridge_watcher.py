@@ -20,8 +20,8 @@ slash command. Watcher does NOT post results to the bridge - that
 remains the operator's job (or Phase 2 auto-action's).
 
 Run via:
-  py tools/bridge_watcher.py --node legion          # foreground
-  py tools/bridge_watcher.py --node legion --poll 15
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_watcher.py --node legion          # foreground
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_watcher.py --node legion --poll 15
   pythonw tools/bridge_watcher.py --node legion     # via scheduled task
 
 Stop with: ctrl+C (foreground) or taskkill (scheduled-task pid).
@@ -946,7 +946,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
 def _selftest() -> int:
     """Inline smoke-tests for sliding ring + push throttle.
 
-    Run with: py tools/bridge_watcher.py --selftest
+    Run with: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_watcher.py --selftest
     """
     errs = 0
 

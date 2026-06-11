@@ -4,9 +4,9 @@ Operator-driven; not on a /loop. Run after flipping `cross_project: true`
 on memories you want to share with the peer.
 
 Usage:
-    py tools/lessons_send.py                  # send all eligible-and-new
-    py tools/lessons_send.py --only <basename> # smoke a single memory file
-    py tools/lessons_send.py --dry-run        # alias for tools/lessons_send_dryrun.py
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_send.py                  # send all eligible-and-new
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_send.py --only <basename> # smoke a single memory file
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_send.py --dry-run        # alias for tools/lessons_send_dryrun.py
 
 Reads cross_project + applies_when frontmatter (per Phase 1 §1), builds
 envelopes per §2, dedupes against ops/runtime/lessons_sent.jsonl, then

@@ -4,6 +4,15 @@
 
 ---
 
+# 2026-06-11 - DEEP-AUDIT cycle 6: P2b fixture ruling + bare-py tail + fanout manifest [item 400]
+
+- DS fixture pins: gemini RULED B - 16.9.1 RETIRED (test_effects_expansion repointed to 16.10.1; purchasable-set delta verified EMPTY 466==466; dir git-rm'd 8 files), {16.10.1, 16.11.1} frozen permanent, new pins target 16.11.1. Guard tests/test_ds_fixture_policy.py (2 tests: pair present + 16.9.1 stays gone); policy in docs/DAEMON_SLAYER.md substrate bullet. Full consolidation REJECTED (drift risk ~50 pinned files >> 23 MB).
+- bare-py tail: 8 tools/*.cmd where-py exec blocks -> RC_PY canonical + python fallback (all 15 cmd CRLF-normalized); 192 tokens across 94 files (tools/*.py incl frozen bridge set, scripts, core/benchmarks+prom_metrics, _item_ability_haste, riot-commander.spec, 8 hint tests) -> UNQUOTED forward-slash canonical path. TRAP LOGGED: quoted-backslash form inside Python strings = \U unicode-escape + embedded-quote SyntaxErrors (ruff+py_compile caught; reverted; re-swept). Share/docs -> python spelling; ds_share_sync regen (335 files). Guard allowlist narrowed to gamepc-foreign + by-design quotes; ROADMAP keeps its 2 gamepc historical recipes for the P3 prune.
+- .pytest_cache gitignored-confirmed CLOSED. P2 fanout manifest: ops/audit/P2_FANOUT_MANIFEST.md (1307 files / 399052 LOC, 5 waves, slice protocol, standing finding classes).
+- Gate PROCEED 15187p/0f/7s exit 0 (ops/audit/p2b_truth_gate_report.json; +2 = policy tests). NEXT cycle 7: P2 fanout W1 runtime spine (core/ slices first).
+
+---
+
 # 2026-06-11 - DEEP-AUDIT cycle 5: P2a code-audit seeds x4 [item 399]
 
 - RC-VisionServer schtask root-caused (boot port-race loser vs dashboard/server.py:219 self-heal child; exit-1 anomaly) -> DELETED, XML archived docs/_archive/, 9 touchpoints synced (CLAUDE.md, OPERATIONS row, start_claude.ps1, legion_on/off, docstrings, ADR-003 dated update). Vision :8889 alive untouched.

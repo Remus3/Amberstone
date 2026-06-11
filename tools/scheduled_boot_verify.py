@@ -62,7 +62,7 @@ def main() -> int:
         "body": {
             "issued": started,
             "prompt": (
-                "Reply via py C:/RC-Agent/bridge_post_result.py with hostname + "
+                "Reply via C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:/RC-Agent/bridge_post_result.py with hostname + "
                 "(Get-CimInstance Win32_OperatingSystem).LastBootUpTime as ISO. "
                 "JSON body must be valid (ConvertTo-Json -Compress). No chat output."
             ),

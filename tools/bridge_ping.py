@@ -7,7 +7,7 @@ Preserves the original CLI surface (no flags) and exit-code contract:
     2 = bridge post ok but read-back missed
     3 = bridge ok, vision relay unreachable
 
-Equivalent to: `py tools/bridge_cli.py ping`.
+Equivalent to: `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py ping`.
 """
 import sys
 from pathlib import Path

@@ -3,7 +3,7 @@
 
 Frozen contract (the /process-bridge-tasks skill spec parses this script's
 JSON output by exact shape):
-    py tools/bridge_pull_tasks.py [--target legion|gamepc]
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_pull_tasks.py [--target legion|gamepc]
 
 Output schema preserved:
     {"now": <ts>, "target": "...", "count": N, "tasks": [<envelope>, ...]}
@@ -14,7 +14,7 @@ Side effects preserved:
     - Drops tasks already answered (kind=result with in_reply_to)
     - Sorts oldest-first
 
-Equivalent to: `py tools/bridge_cli.py pull --target ...`.
+Equivalent to: `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py pull --target ...`.
 """
 import sys
 from pathlib import Path

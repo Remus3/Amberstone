@@ -34,12 +34,12 @@ Deploy on Game-PC:
   1. Copy this file to C:\\RC-Agent\\gamepc_mcp_server.py
      (or fetch via curl.exe -sk https://192.168.8.230:8888/agent/gamepc_mcp_server.py
       once the /agent/ allowlist is updated to include this filename.)
-  2. py -m pip install Pillow  (only Pillow needed; everything else stdlib)
+  2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install Pillow  (only Pillow needed; everything else stdlib)
   3. (Optional) set token: $env:RC_MCP_TOKEN = "<long-random-string>"
-  4. Run: py C:\\RC-Agent\\gamepc_mcp_server.py
+  4. Run: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_mcp_server.py
   5. Schedule at logon for persistence:
        schtasks /Create /TN "RC-MCP-Server" /SC ONLOGON /RL HIGHEST /F ^
-         /TR "py C:\\RC-Agent\\gamepc_mcp_server.py"
+         /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_mcp_server.py"
 
 Configure Legion's Claude Code .mcp.json (or settings.json mcpServers):
   {
@@ -260,7 +260,7 @@ def tool_capture_monitor(monitor_index: int = 0, format: str = "jpeg",
     try:
         from PIL import ImageGrab
     except ImportError:
-        return {"error": "Pillow not installed (py -m pip install Pillow)"}
+        return {"error": "Pillow not installed (C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install Pillow)"}
     rects = _enum_monitor_rects()
     if not rects:
         return {"error": "no monitors enumerated"}

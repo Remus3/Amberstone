@@ -2,9 +2,9 @@
 """bridge_heartbeat.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 Long-running entrypoint posting an alive note every 60s:
-    py C:\\Riot Commander\\tools\\bridge_heartbeat.py
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\Riot Commander\\tools\\bridge_heartbeat.py
 
-Equivalent to: `py tools/bridge_cli.py heartbeat`.
+Equivalent to: `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py heartbeat`.
 """
 import logging
 import sys

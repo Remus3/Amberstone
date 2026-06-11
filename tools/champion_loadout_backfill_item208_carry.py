@@ -26,7 +26,7 @@ archetype-legitimate there.
 
 Usage::
 
-    py tools/champion_loadout_backfill_item208_carry.py [--dry-run]
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/champion_loadout_backfill_item208_carry.py [--dry-run]
         [--no-backup]
 """
 from __future__ import annotations

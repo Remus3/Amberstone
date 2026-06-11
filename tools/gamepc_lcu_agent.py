@@ -8,9 +8,9 @@ lock pick, reroll) and executes them via LCU.
 
 Deploy on Game-PC (one time):
   1. Copy this file to C:\\RC-Agent\\
-  2. py -m pip install (none - stdlib only)
-  3. py C:\\RC-Agent\\gamepc_lcu_agent.py
-  4. (optional) schtasks /Create /TN "RC-LCU" /SC ONLOGON /F /RL HIGHEST /TR "py C:\\RC-Agent\\gamepc_lcu_agent.py"
+  2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install (none - stdlib only)
+  3. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_lcu_agent.py
+  4. (optional) schtasks /Create /TN "RC-LCU" /SC ONLOGON /F /RL HIGHEST /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_lcu_agent.py"
 
 Endpoints used on Legion:
   POST http://192.168.8.230:8889/upload-lcu        - push state snapshot

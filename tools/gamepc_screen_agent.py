@@ -6,8 +6,8 @@ frame; coaches read it via /latest-frame and pass to /vision, /ocr, /coach.
 
 Deploy on Game-PC (one time):
     1. Copy this file to C:\\RC-Agent\\gamepc_screen_agent.py
-    2. Install deps:    py -m pip install Pillow bettercam numpy comtypes
-    3. Run:             py C:\\RC-Agent\\gamepc_screen_agent.py --monitor 0
+    2. Install deps:    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install Pillow bettercam numpy comtypes
+    3. Run:             C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_screen_agent.py --monitor 0
 
 Capture backend: DXGI Desktop Duplication via `bettercam`, bound to the
 single real GPU adapter. The legacy PIL ImageGrab(all_screens=True)
@@ -32,16 +32,16 @@ monitor (e.g. the RC dashboard on monitor 1) without clobbering the game
 frame. Fetch the secondary stream via `/latest-frame?source=<channel>`.
 
     # League (primary): monitor 0, primary slot (coaches read this)
-    py gamepc_screen_agent.py --monitor 0 --channel game-pc-league
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe gamepc_screen_agent.py --monitor 0 --channel game-pc-league
 
     # UI debug (secondary): monitor 1, NOT primary, addressable by channel
-    py gamepc_screen_agent.py --monitor 1 --channel game-pc-ui --no-primary
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe gamepc_screen_agent.py --monitor 1 --channel game-pc-ui --no-primary
 
 Scheduled tasks (run as user, ONLOGON):
     schtasks /Create /TN "RC-ScreenAgent-League" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "py C:\\RC-Agent\\gamepc_screen_agent.py --monitor 0 --channel game-pc-league"
+        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_screen_agent.py --monitor 0 --channel game-pc-league"
     schtasks /Create /TN "RC-ScreenAgent-UI" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "py C:\\RC-Agent\\gamepc_screen_agent.py --monitor 1 --channel game-pc-ui --no-primary"
+        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_screen_agent.py --monitor 1 --channel game-pc-ui --no-primary"
 """
 import argparse
 import base64

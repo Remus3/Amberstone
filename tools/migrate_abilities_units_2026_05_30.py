@@ -16,9 +16,9 @@ New units closed this pass:
   "% bonus movement speed"             -> caster_bonus_ms_pct (new field)
 
 Usage:
-    py tools/migrate_abilities_units_2026_05_30.py                 # current.txt patch
-    py tools/migrate_abilities_units_2026_05_30.py --patch 16.10.1
-    py tools/migrate_abilities_units_2026_05_30.py --dry-run
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/migrate_abilities_units_2026_05_30.py                 # current.txt patch
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/migrate_abilities_units_2026_05_30.py --patch 16.10.1
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/migrate_abilities_units_2026_05_30.py --dry-run
 """
 from __future__ import annotations
 

@@ -6884,7 +6884,7 @@ class Batch55DDragonCoverageTests(unittest.TestCase):
         import os
         items_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "..", "data",
-            "daemon_slayer", "16.9.1", "items.json"
+            "daemon_slayer", "16.10.1", "items.json"
         )
         items = json.load(open(items_path))["data"]
         covered = set(ITEM_EFFECTS.keys())

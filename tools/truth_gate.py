@@ -11,14 +11,14 @@ Reconciliation report written atomically to ops/runtime/truth_gate_report.json.
 
 Claims JSON shape:
   {"run_id": "...",
-   "suite_cmd": "py -m pytest -q",            # optional; default full root suite
+   "suite_cmd": "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pytest -q",            # optional; default full root suite
    "check_ci": true,                           # optional; default true
    "slices": [{"id": "S1", "claim": "...",
                "files": [{"path": "rel/or/abs.py", "must_contain": ["snippet"]}],
                "claimed_passed": 1397, "claimed_failed": 0}]}   # counts optional
 
 Usage:
-  py tools/truth_gate.py --claims claims.json [--skip-suite] [--report PATH]
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/truth_gate.py --claims claims.json [--skip-suite] [--report PATH]
 """
 import argparse
 import json

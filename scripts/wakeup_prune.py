@@ -13,10 +13,10 @@ Why this exists:
     it mechanical.
 
 Usage:
-    py scripts/wakeup_prune.py            # prune to default keep=3
-    py scripts/wakeup_prune.py --keep 2   # keep only the last 2 sessions
-    py scripts/wakeup_prune.py --dry-run  # report what would move; no writes
-    py scripts/wakeup_prune.py --check    # exit 1 if more than --keep sessions
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/wakeup_prune.py            # prune to default keep=3
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/wakeup_prune.py --keep 2   # keep only the last 2 sessions
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/wakeup_prune.py --dry-run  # report what would move; no writes
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/wakeup_prune.py --check    # exit 1 if more than --keep sessions
                                           # remain in WAKEUP_NOTES.md
 """
 from __future__ import annotations
@@ -159,7 +159,7 @@ def check(keep: int) -> int:
     if len(sessions) > keep:
         print(
             f"wakeup_prune --check: WAKEUP_NOTES has {len(sessions)} sessions "
-            f"(> keep={keep}); run `py scripts/wakeup_prune.py`",
+            f"(> keep={keep}); run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/wakeup_prune.py`",
             file=sys.stderr,
         )
         return 1
