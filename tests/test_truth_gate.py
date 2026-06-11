@@ -174,3 +174,17 @@ def test_reconcile_report_is_json_serializable():
     rep = reconcile(_claims(), _green_suite(), {"S1": _ok_files()},
                     git_obs={"clean": True, "head": "abc"}, ci_obs={"status": "success"})
     json.dumps(rep)
+
+
+def test_default_suite_cmd_interpreter_has_pytest():
+    """Regression: 'py -m pytest' resolved to a pytest-less interpreter
+    (pythoncore-3.14-64) and zeroed the suite -> blanket REFUSE. The default
+    suite command must point at an interpreter that can import pytest."""
+    import shlex
+    import subprocess
+    from tools import truth_gate
+    exe = shlex.split(truth_gate.DEFAULT_SUITE_CMD.replace("\\", "/"))[0]
+    probe = subprocess.run([exe, "-c", "import pytest"], capture_output=True)
+    assert probe.returncode == 0, (
+        f"DEFAULT_SUITE_CMD interpreter {exe!r} cannot import pytest: "
+        f"{probe.stderr.decode(errors='replace')}")

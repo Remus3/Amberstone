@@ -235,3 +235,5 @@ ops/loop/*.log
 # not-source category as the gemini reviews above). Curated, descriptively
 # named audits (first-audit, second-audit-full-rc, ...) stay tracked.
 agents/agent6_auditor/reports/*-test-round22-detail.md
+ops/audit/p0_inventory_full.csv
+ops/audit/p0_pytest_full.txt
