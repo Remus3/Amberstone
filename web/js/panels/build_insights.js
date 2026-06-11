@@ -1,7 +1,7 @@
 /* Build Insights view (item 273 item-WPA + item 275 skill-WPA tab +
- * rune-WPA tab, competitor-WPA lift).
+ * rune-WPA tab + summoner-spell-WPA tab, competitor-WPA lift).
  *
- * Three tabs share one render engine:
+ * Four tabs share one render engine:
  *   Items  -> GET /api/item-wpa  (the shipped item table, default tab):
  *     Item (icon + name) | WPA (signed pp + confidence bar) | Buys (n) |
  *     Expected WP (%) | Win Rate (%)
@@ -11,6 +11,10 @@
  *   Runes  -> GET /api/rune-wpa  (the per-rune pick, stat shards excluded):
  *     Rune (icon + name) | Slot (keystone/minor badge) | WPA (signed pp +
  *     confidence bar) | Picks (n) | Expected WP (%) | Win Rate (%)
+ *   Spells -> GET /api/summspell-wpa (per spell; each participant row
+ *     contributes its two picks):
+ *     Spell (icon + name) | WPA (signed pp + confidence bar) | Picks (n) |
+ *     Expected WP (%) | Win Rate (%)
  *
  * All are selection-bias-corrected residuals (Win Rate minus Expected WP)
  * over the operator's match history - DESCRIPTIVE personal-corpus lenses,
@@ -21,15 +25,16 @@
  * network on a column-header click).
  *
  * ?ui_mock=1 short-circuits each tab to its fixture under web/data/ui_mock/
- * (build_insights.json / build_insights_skill.json / rune_wpa.json) so
- * #build-insights renders without a populated rewind DB (mirrors the
- * last_match.js _lmMockLoad pattern).
+ * (build_insights.json / build_insights_skill.json / rune_wpa.json /
+ * summspell_wpa.json) so #build-insights renders without a populated
+ * rewind DB (mirrors the last_match.js _lmMockLoad pattern).
  */
 import { ITEMS, CHAMPS } from '../lib/items_index.js';
 
 const ITEM_MOUNT_ID = 'bi-table-mount';
 const SKILL_MOUNT_ID = 'bi-skill-table-mount';
 const RUNE_MOUNT_ID = 'bi-rune-table-mount';
+const SPELL_MOUNT_ID = 'bi-spell-table-mount';
 const DEFAULT_MIN_N = 20;
 
 function _ddragonVersion() {
@@ -83,6 +88,22 @@ function _runeImgTag(icon) {
     `if(this.dataset.cdn){this.style.display='none';}` +
     `else{this.dataset.cdn='1';this.src='${cdnUrl}';}`;
   return `<img class="bi-rune-icon" src="${localUrl}" alt="" loading="lazy" onerror="${onErr}">`;
+}
+
+// Spell-icon URL: the API row carries the DDragon spell id slug (e.g.
+// SummonerFlash). The local mirror serves it at /icons/spells/<slug>.png
+// (routes_static); the onerror handler falls back to the official CDN
+// img/spell/<slug>.png at the current patch, then hides the broken <img>
+// so the name text remains the legible fallback.
+function _spellImgTag(icon) {
+  if (!icon) return '';
+  const ver = _ddragonVersion();
+  const localUrl = `/icons/spells/${icon}.png`;
+  const cdnUrl = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/spell/${icon}.png`;
+  const onErr =
+    `if(this.dataset.cdn){this.style.display='none';}` +
+    `else{this.dataset.cdn='1';this.src='${cdnUrl}';}`;
+  return `<img class="bi-spell-icon" src="${localUrl}" alt="" loading="lazy" onerror="${onErr}">`;
 }
 
 // Confidence bar: how much of the raw wpa survives shrink, in 5 segments.
@@ -205,17 +226,38 @@ const _RUNES_TAB = {
   },
 };
 
+const _SPELLS_TAB = {
+  key: 'spells',
+  mountId: SPELL_MOUNT_ID,
+  endpoint: '/api/summspell-wpa',
+  mockUrl: '/data/ui_mock/summspell_wpa.json',
+  emptyMsg: 'No spell data yet - play a few games',
+  emptyUnit: 'picks per spell',
+  headLabel: 'Spell',
+  nLabel: 'Picks',
+  rowCells(it) {
+    const sid = it && (it.spell_id != null ? it.spell_id : '');
+    const name = (it && it.name) || ('Spell ' + sid);
+    const icon = (it && it.icon) || '';
+    return (
+      `<td class="bi-c-spell"><span class="bi-spell">${_spellImgTag(icon)}` +
+      `<span class="bi-spell-name">${name}</span></span></td>`
+    );
+  },
+};
+
 const _ST = {
   items: _mkState(),
   skills: _mkState(),
   runes: _mkState(),
+  spells: _mkState(),
   minN: DEFAULT_MIN_N,
   active: 'items',
   debounceTimer: null,
   wired: false,
 };
 // Mock promises are per-tab so a min_n change can null + re-fetch one.
-const _MOCK = { items: null, skills: null, runes: null };
+const _MOCK = { items: null, skills: null, runes: null, spells: null };
 
 function _isMock() {
   return !!(document.body && document.body.dataset.uiMock === '1');
@@ -335,6 +377,7 @@ function _fetch(tab) {
 function _tabByKey(key) {
   if (key === 'skills') return _SKILLS_TAB;
   if (key === 'runes') return _RUNES_TAB;
+  if (key === 'spells') return _SPELLS_TAB;
   return _ITEMS_TAB;
 }
 
@@ -378,9 +421,11 @@ function _wireControlsOnce() {
       _MOCK.items = null;
       _MOCK.skills = null;
       _MOCK.runes = null;
+      _MOCK.spells = null;
       _ST.items.loaded = false;
       _ST.skills.loaded = false;
       _ST.runes.loaded = false;
+      _ST.spells.loaded = false;
       _ensureFetched(_tabByKey(_ST.active));
     }, 300);
   });
@@ -413,6 +458,8 @@ export const __test = {
   _ITEMS_TAB,
   _SKILLS_TAB,
   _RUNES_TAB,
+  _SPELLS_TAB,
   _runeImgTag,
   _slotBadgeHtml,
+  _spellImgTag,
 };
