@@ -47,20 +47,25 @@ _LOADOUTS = _ROOT / "data" / "champion_loadouts.json"
 # Dance core (item 276 bruiser core) + Sterak's (lone lifeline) + Guardian Angel.
 # Assassin secondary (Assassin): Eclipse lethality + Edge of Night/Serylda's +
 # Death's Dance + Maw (lone lifeline). Mirrors Kayn jg-bruiser / jg-assassin.
+# Item s8 (2026-06-10): SR rows carry the operator-set 7-entry length
+# (7th = Shojin / Youmuu's per the s8 sweep pool refill); ARAM stays 6.
 _SR_BRUISER = [
     "Sundered Sky", "Plated Steelcaps", "Black Cleaver",
     "Death's Dance", "Sterak's Gage", "Guardian Angel",
+    "Spear of Shojin",
 ]
 _SR_ASSASSIN = [
     "Eclipse", "Mercury's Treads", "Edge of Night",
     "Serylda's Grudge", "Death's Dance", "Maw of Malmortius",
+    "Youmuu's Ghostblade",
 ]
-# ARAM bruiser leans sustain (Spirit Visage over GA); assassin identical AD set.
+# ARAM bruiser leans sustain (Spirit Visage over GA); assassin mirrors the
+# SR AD set minus the s8 7th slot (ARAM target is 6).
 _ARAM_BRUISER = [
     "Sundered Sky", "Plated Steelcaps", "Black Cleaver",
     "Death's Dance", "Sterak's Gage", "Spirit Visage",
 ]
-_ARAM_ASSASSIN = list(_SR_ASSASSIN)
+_ARAM_ASSASSIN = list(_SR_ASSASSIN[:6])
 
 _BRUISER_RUNES = {"keystone": "Conqueror", "primary": "Precision", "secondary": "Resolve"}
 _ASSASSIN_RUNES = {"keystone": "Electrocute", "primary": "Domination", "secondary": "Precision"}

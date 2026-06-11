@@ -35,13 +35,17 @@ _LOADOUTS_PATH = _ROOT / "data" / "champion_loadouts.json"
 _DS_DATA_DIR = _ROOT / "data" / "daemon_slayer"
 
 # Pinned literals on purpose - the guard must not silently follow a
-# drifted constant in the production module.
+# drifted constant in the production module. Divine Sunderer was added
+# deliberately by the item-s8 sweep (2026-06-10): same engine lineage,
+# 7 ranged-carry arena rows (Jhin / Jinx / Nami / Seraphine /
+# Twisted Fate / Ziggs / Zilean).
 RANGED_FLOOR = 350.0
 FLAGGED_ITEMS = frozenset({
     "Trinity Force",
     "Bastionbreaker",
     "Heartsteel",
     "Umbral Glaive",
+    "Divine Sunderer",
 })
 
 # Operator-pinned hand-curations are not generated pollution. Corki's SR
@@ -162,10 +166,10 @@ class CarryRangedGateTests(unittest.TestCase):
         )
 
     @mock.patch("core.daemon_slayer_client.rank_for")
-    def test_ranged_carry_drops_all_four(self, mock_rank) -> None:
+    def test_ranged_carry_drops_all_five(self, mock_rank) -> None:
         mock_rank.return_value = _rows(
             "Trinity Force", "Bastionbreaker", "Heartsteel",
-            "Umbral Glaive", "Infinity Edge",
+            "Umbral Glaive", "Divine Sunderer", "Infinity Edge",
         )
         out = daemon_slayer_client.rank_for_primary_archetype(
             "Tristana", "carry", level=11, item_ids=[],
