@@ -78,6 +78,32 @@ def test_client_mode_tick_writes_nothing(tmp_path, monkeypatch):
     assert not bp.exists()
 
 
+def test_empty_string_champion_writes_nothing(tmp_path, monkeypatch):
+    """lc carries champion="" (loading screen edge) -> falsy gate, NO record."""
+    _patch_loaders(monkeypatch)
+    cp = tmp_path / "choice.jsonl"
+    bp = tmp_path / "build.jsonl"
+    coach = {"champion": "StaleChamp", "level": 18}
+    lc = {"champion": ""}
+    dc.shadow_log_precomputed_choices(coach, lc, "sr", path=cp)
+    dc.shadow_log_precomputed_build(coach, lc, "sr", path=bp)
+    assert not cp.exists()
+    assert not bp.exists()
+
+
+def test_non_dict_lc_writes_nothing(tmp_path, monkeypatch):
+    """Malformed lc (list / str instead of dict) -> isinstance guard, NO record."""
+    _patch_loaders(monkeypatch)
+    cp = tmp_path / "choice.jsonl"
+    bp = tmp_path / "build.jsonl"
+    coach = {"champion": "StaleChamp", "level": 18}
+    for bad_lc in (["champion"], "champion", 7):
+        dc.shadow_log_precomputed_choices(coach, bad_lc, "sr", path=cp)
+        dc.shadow_log_precomputed_build(coach, bad_lc, "sr", path=bp)
+    assert not cp.exists()
+    assert not bp.exists()
+
+
 def test_live_tick_coverage_miss_still_recorded(tmp_path, monkeypatch):
     """Live lc (champion present) -> a record IS written even on a coverage
     miss; the real-game coverage rate is itself the validation signal."""

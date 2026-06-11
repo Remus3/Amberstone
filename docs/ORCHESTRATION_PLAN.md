@@ -65,6 +65,19 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-10 CYCLE-4 REGRESS AUDIT REFUTED by ground truth + gate edge pins added.
+  The cycle-3 audit claimed dashboard/_deterministic_coaching.py changed with no
+  accompanying test and that tests/conftest.py + the gate tests were missing from
+  the commit. FALSE: commit c7922951 (merged via d446ea80, inside the audited
+  range 9ccc64fa..b5533f85) carries the lc.get("champion") gate AND
+  tests/conftest.py (+36) AND tests/test_hz_shadow_live_gate.py (4 tests) in the
+  SAME commit. Root cause of the false REGRESS: the auditor diffed only the tip
+  commit b5533f85 (docs+data only), not the full cycle sha range with merges.
+  Action: re-ran gate+wiring tests fresh (12 passed), then strengthened the gate
+  with 2 edge pins (champion="" loading-screen edge; non-dict lc isinstance
+  guard). RC suite 5789 passed / 2 skipped / 94 subtests, exit 0. No engine, no
+  restart (test-only). LOOP IMPROVEMENT (FUTURE): the auditor should diff the
+  full cycle range (prev done sha..new sha), not the tip commit.
 - 2026-06-10 HZ-D4 DONE (item 386; merges d446ea80 + b54d040e, 2 PARALLEL worktree
   agents both verifier-CONFIRMED pre-merge). 7-LEVER SWEEP: 7/7 CLEAN, no net-positive
   cost fix exists. Levers 1-5+7 scout-verified (all messages.create callers carry
