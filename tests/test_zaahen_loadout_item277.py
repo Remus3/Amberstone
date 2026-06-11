@@ -88,11 +88,14 @@ class CuratedPathsTests(unittest.TestCase):
         labels = [p.get("label") for p in _paths(self.data, "aram-collapsed")]
         self.assertEqual(labels, ["Bruiser", "Assassin"])
 
-    def test_all_curated_paths_have_6_items(self) -> None:
+    def test_all_curated_paths_have_target_len_items(self) -> None:
+        # Item s8 (2026-06-10): operator-set per-mode lengths - SR 7,
+        # ARAM 6 (see tests/test_loadout_sweep_guard_item_s8.py).
+        want = {"sr-collapsed": 7, "aram-collapsed": 6}
         for vk in ("sr-collapsed", "aram-collapsed"):
             for p in _paths(self.data, vk):
-                self.assertEqual(len(p.get("items", [])), 6,
-                                 f"{vk}/{p.get('key')} not 6 items")
+                self.assertEqual(len(p.get("items", [])), want[vk],
+                                 f"{vk}/{p.get('key')} not {want[vk]} items")
 
     def test_ad_identity_not_ap(self) -> None:
         # Fighter/Assassin = AD. Black Cleaver in bruiser, Eclipse in assassin;
