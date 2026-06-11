@@ -20,6 +20,8 @@ and `read_json` directly from `dashboard._context`.
 from __future__ import annotations
 
 import json
+import logging
+import time
 from pathlib import Path
 
 from coaches.sr_draft_profile import is_sr_draft_queue
@@ -31,6 +33,8 @@ from dashboard._cs_retention import apply_cs_retention
 from dashboard._liveclient import lcu_summary, liveclient_summary
 from dashboard.routes_team_context import get_team_context
 
+
+log = logging.getLogger("rc.web_dashboard")
 
 MODE_TO_FILE = {
     "aram":   "data/aram_coaching_data.json",
@@ -191,9 +195,43 @@ def apply_cleared_at(coach, lc):
     return coach
 
 
+# S7 (2026-06-10): per-stage cost breakdown for slow builds. The
+# routes_state wrapper already WARNs on total cost; this names WHICH
+# stage burned it (live games showed 700ms builds with no attribution).
+# Throttled so an SSE loop stuck slow cannot spam the log.
+_SLOW_STAGES_WARN_S = 0.25
+_SLOW_STAGES_THROTTLE_S = 30.0
+_slow_stages_last_warn = 0.0
+
+
+def _warn_slow_stages(stages: list[tuple[str, float]]) -> None:
+    global _slow_stages_last_warn
+    total = sum(s for _, s in stages)
+    if total < _SLOW_STAGES_WARN_S:
+        return
+    now = time.monotonic()
+    if now - _slow_stages_last_warn < _SLOW_STAGES_THROTTLE_S:
+        return
+    _slow_stages_last_warn = now
+    top = sorted(stages, key=lambda x: x[1], reverse=True)[:3]
+    log.warning("state-build stages slow: total=%dms top: %s",
+                int(total * 1000),
+                " ".join(f"{n}={int(s * 1000)}ms" for n, s in top))
+
+
 def build_state() -> dict:
+    _stages: list[tuple[str, float]] = []
+    _t = time.monotonic()
+
+    def _mark(name: str) -> None:
+        nonlocal _t
+        now = time.monotonic()
+        _stages.append((name, now - _t))
+        _t = now
+
     health = read_json("ops/runtime/health.json")
     lcu_snapshot = lcu_summary()
+    _mark("lcu")
     # Hold the last champ_select across the fast no-draft (ARAM /
     # Mayhem / Arena) champ-select → game transition + >5s agent-push
     # staleness. Applied before resolve_mode_key so the s150 pre-flip
@@ -205,11 +243,13 @@ def build_state() -> dict:
     coach_file = MODE_TO_FILE.get(mode_key, "coaching_data.json")
     coach = read_json(coach_file)
     validate_coaching_payload(coach)
+    _mark("coach_file")
 
     # Overlay live API fields onto coach data so the dashboard placeholders
     # (game_time, kda, level, gold, hp, mana, cs) populate immediately.
     # Coach values win when present (e.g. coach computes win_pct from comp).
     lc = liveclient_summary()
+    _mark("liveclient")
     # item 281: honor a force-clear sentinel BEFORE the overlay so a cleared
     # artifact can never leak stale game fields into /api/state.
     coach = apply_cleared_at(coach, lc)
@@ -235,7 +275,9 @@ def build_state() -> dict:
     # coach. Stays None until the Game-PC LCU agent posts to
     # /api/team-context/refresh. Dashboard panel reads coach.team_context
     # and falls back to skeleton rows when fields are empty.
+    _mark("latch_overlay")
     coach["team_context"] = get_team_context()
+    _mark("team_context")
 
     # s182 (2026-05-13) - surface the operator's effective archetype pick
     # for the active champion. Resolves DDragon-tag default + persisted
@@ -269,6 +311,7 @@ def build_state() -> dict:
         )
     except Exception:
         archetype_nudge = {}
+    _mark("archetype")
 
     # s240 - on-demand VLM coach ("SCREEN READ"). Dedicated field,
     # independent of coach.immediate so an operator-triggered read isn't
@@ -295,6 +338,7 @@ def build_state() -> dict:
         summoner_cooldowns = compute_state_cooldowns(lc)
     except Exception:
         summoner_cooldowns = None
+    _mark("cooldowns")
 
     # Haiku-elimination wave 3 (item 265 W3A): deterministic-FIRST coaching.
     # The DS matchup engine (laning A/B) + the pure callout/lead generators
@@ -324,6 +368,8 @@ def build_state() -> dict:
     except Exception:
         det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
+    _mark("deterministic")
+    _warn_slow_stages(_stages)
 
     return {
         "mode_key": mode_key,
