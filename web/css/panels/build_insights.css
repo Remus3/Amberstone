@@ -1,13 +1,13 @@
-/* Build Insights view (item 273 item-WPA + item 275 skill-WPA tab,
- * competitor-WPA lift).
+/* Build Insights view (item 273 item-WPA + item 275 skill-WPA + item 374
+ * rune-WPA + item 389 summoner-spell-WPA tabs, competitor-WPA lift).
  *
- * Two-tab sortable WPA table on the v2.1 token scale. Dark theme matching
+ * Four-tab sortable WPA table on the v2.1 token scale. Dark theme matching
  * the dashboard. The signed WPA column is the hero - green when positive,
  * red when negative, with a 5-segment sample-confidence bar.
  */
 
-/* [ Items | Skills ] tab toggle. Buttons meet the --hit-min fingertip
- * floor; the active tab gets the accent underline. */
+/* [ Items | Skills | Runes | Spells ] tab toggle. Buttons meet the
+ * --hit-min fingertip floor; the active tab gets the accent underline. */
 .bi-tabs {
   display: flex;
   gap: var(--space-2, 8px);
