@@ -1,0 +1,33 @@
+{
+  "run_id": "deep-audit-cycle4-p1c",
+  "check_ci": true,
+  "slices": [
+    {
+      "id": "p1c-log-retention",
+      "claim": "task-log retention shipped + armed live; python-embed KEEP; CLAUDE.md under budget",
+      "claimed_passed": 15180,
+      "claimed_failed": 0,
+      "files": [
+        {
+          "path": "agents/_supervisor_ephemeral.py",
+          "must_contain": [
+            "prune_task_logs",
+            "TASK_LOG_MAX_AGE_DAYS = 7"
+          ]
+        },
+        {
+          "path": "tests/test_agent_task_log_retention.py",
+          "must_contain": [
+            "test_prune_tolerates_locked_file"
+          ]
+        },
+        {
+          "path": "docs/LEDGER.md",
+          "must_contain": [
+            "398."
+          ]
+        }
+      ]
+    }
+  ]
+}

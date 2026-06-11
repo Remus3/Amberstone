@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 from agents._supervisor_common import (
@@ -43,6 +44,33 @@ class EphemeralStubNotWired(RuntimeError):
 
 class EphemeralSpawnFailed(RuntimeError):
     """Raised when claude subprocess exits non-zero or times out."""
+
+
+TASK_LOG_MAX_AGE_DAYS = 7
+
+
+def prune_task_logs(log_root: Path = LOG_ROOT,
+                    max_age_days: float = TASK_LOG_MAX_AGE_DAYS) -> int:
+    """Delete ``task-*.log`` files older than the age cap; return the count.
+
+    Retention for the per-task spawn logs only (item 398): periodic-audit
+    ephemeral spawns write ~235/day and the dir accreted 1848 files with no
+    cap. Rollup ``agent<N>.log`` / supervisor logs are never touched. A file
+    that cannot be deleted (held open by a live spawn) is skipped silently -
+    the next prune gets it.
+    """
+    if not log_root.is_dir():
+        return 0
+    cutoff = time.time() - max_age_days * 86400
+    removed = 0
+    for p in log_root.glob("task-*.log"):
+        try:
+            if p.stat().st_mtime < cutoff:
+                p.unlink()
+                removed += 1
+        except OSError:
+            continue
+    return removed
 
 
 def _format_task_prompt(agent: str, task_id: str, op: str, payload: dict) -> str:
@@ -95,6 +123,7 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     """
     log_path = LOG_ROOT / f"agent{agent}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    prune_task_logs()
     per_task_log = LOG_ROOT / f"task-{task_id}.log"
 
     model = AGENT_MODELS.get(agent)
