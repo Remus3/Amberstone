@@ -204,6 +204,29 @@
   color: #0f1219;
 }
 
+/* Spell tab: summoner-spell icon + name. */
+.bi-spell-caption {
+  font-size: var(--fs-xs);
+  color: var(--signal-dim);
+  line-height: 1.4;
+  max-width: 1100px;
+  margin-bottom: var(--space-4, 20px);
+}
+.bi-spell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+.bi-spell-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+.bi-spell-name {
+  font-size: var(--fs-sm);
+}
+
 /* WPA cell - the hero. Signed pp value + 5-segment confidence bar. */
 .bi-c-wpa {
   white-space: nowrap;
