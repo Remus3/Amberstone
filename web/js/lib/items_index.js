@@ -3,9 +3,16 @@
 // Callers that need to re-render after load should listen to the custom
 // events: "rc:items-ready", "rc:champs-ready", "rc:spells-ready".
 
-export const ITEMS = { ready: false, version: "16.12.1", byName: {}, byId: {} };
+// Pre-hydration DDragon patch fallback - unreachable in practice (the
+// loaders below overwrite .version before consumers render, and a stale
+// guess only 404s into the onerror CDN chain). Single source of truth:
+// tests/test_ddragon_path_version_drift.py bans any other quoted semver
+// literal in web/js, so bump only this line on a patch refresh.
+export const DDRAGON_FALLBACK_VERSION = "16.12.1";
+
+export const ITEMS = { ready: false, version: DDRAGON_FALLBACK_VERSION, byName: {}, byId: {} };
 export const ITEM_COSTS = { ready: false, byId: {} };
-export const CHAMPS = { ready: false, version: "16.12.1", byName: {}, byId: {} };
+export const CHAMPS = { ready: false, version: DDRAGON_FALLBACK_VERSION, byName: {}, byId: {} };
 export const SPELLS = { ready: false, byName: {} };
 
 export const _itemResolveCache = new Map();

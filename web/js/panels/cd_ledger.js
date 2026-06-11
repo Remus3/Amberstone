@@ -30,6 +30,7 @@
 // (string "1" = collapsed). Default = expanded.
 
 import { idempotentRender, makeSig } from '../lib/idempotent_render.js';
+import { DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 
 const _CD = {
   body:   () => document.getElementById("cd-ledger-body"),
@@ -72,7 +73,7 @@ function _fmtCd(cd) {
 // strip mirrors the existing active_match.js threat-row pattern in case
 // a payload includes display-name punctuation.
 function _portraitUrl(champName, version) {
-  const ver = version || "16.10.1";
+  const ver = version || DDRAGON_FALLBACK_VERSION;
   const clean = String(champName || "").replace(/[^a-zA-Z0-9]/g, "");
   if (!clean) return "";
   return `/data/ddragon/${ver}/img/champion/${clean}.png`;
@@ -99,7 +100,7 @@ function _spellIconUrl(spellId, version) {
   if (spellId == null) return "";
   const fname = _SPELL_IMG[spellId];
   if (!fname) return "";
-  const ver = version || "16.10.1";
+  const ver = version || DDRAGON_FALLBACK_VERSION;
   return `/data/ddragon/${ver}/img/spell/${fname}`;
 }
 
@@ -224,11 +225,12 @@ function _ledgerSig(cooldowns) {
 // Public render. parentEl is the container we own; cooldowns is the
 // /api/state.summoner_cooldowns array (null/empty allowed).
 // ctx.liveclient is threaded by the caller so we can resolve champion
-// portraits. ctx.version overrides the DDragon patch (defaults 16.10.1).
+// portraits. ctx.version overrides the DDragon patch (defaults to the
+// shared DDRAGON_FALLBACK_VERSION).
 export function renderCooldownLedger(parentEl, cooldowns, ctx) {
   if (!parentEl) return;
   const ctxLive = (ctx && ctx.liveclient) || null;
-  const version = (ctx && ctx.version) || "16.10.1";
+  const version = (ctx && ctx.version) || DDRAGON_FALLBACK_VERSION;
 
   // Sig dedup - if the cooldowns list hashes identical AND the
   // collapse state hasn't changed since last render, bail out so we

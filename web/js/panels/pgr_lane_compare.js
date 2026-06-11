@@ -24,7 +24,7 @@
  * so the panel hides (fail-soft). Mounts inside the PGR view (Build tab).
  * Idempotent render.
  */
-import { CHAMPS } from "../lib/items_index.js";
+import { CHAMPS, DDRAGON_FALLBACK_VERSION } from "../lib/items_index.js";
 
 const MOUNT_ID = "pgr-lane-compare-mount";
 
@@ -44,7 +44,7 @@ function _escHtml(s) {
 }
 
 function _ddragonVer() {
-  return (CHAMPS && CHAMPS.version) || "16.12.1";
+  return (CHAMPS && CHAMPS.version) || DDRAGON_FALLBACK_VERSION;
 }
 
 function _champKey(cid) {

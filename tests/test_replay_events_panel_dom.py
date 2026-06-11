@@ -147,7 +147,11 @@ class ParticipantJoinConsumptionTests(unittest.TestCase):
 
     def test_panel_imports_champs_for_version(self):
         js = _read(EVENTS_JS)
-        self.assertIn("import { CHAMPS } from '../lib/items_index.js'", js)
+        self.assertIn(
+            "import { CHAMPS, DDRAGON_FALLBACK_VERSION } "
+            "from '../lib/items_index.js'",
+            js,
+        )
 
     def test_panel_renders_portrait_url_with_alphanum_strip(self):
         """Mirrors cd_ledger.js:74-79 alphanum strip - load-bearing
