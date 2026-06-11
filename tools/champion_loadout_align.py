@@ -124,7 +124,24 @@ _SR_TARGET_MR       = 60.0
 _SR_TARGET_MAX_HP   = 2000.0
 _SR_TARGET_BONUS_HP = 600.0
 _SR_LEVEL           = 14
-_SR_SLOTS           = 6
+# Item s8 (2026-06-10): SR builds are 7 entries (6 legendaries + boots;
+# plan_build_order's slots count INCLUDES the injected boots). ARAM /
+# Arena targets live in tools.champion_loadout_invariants.TARGET_LEN.
+from tools.champion_loadout_invariants import TARGET_LEN  # noqa: E402
+
+_SR_SLOTS           = TARGET_LEN["sr"]
+
+_SHAPER = None
+
+
+def _shaper():
+    """Lazy item-213 Cleaner - shapes dedup output back to the exact
+    per-mode length (pool refill + tail trim, boots at index 1)."""
+    global _SHAPER
+    if _SHAPER is None:
+        from tools.champion_loadout_cleanup_pollution_item213 import Cleaner
+        _SHAPER = Cleaner()
+    return _SHAPER
 
 
 def _build_name_to_family_map() -> dict[str, str]:
@@ -267,13 +284,20 @@ def transform_champion(name: str, champ_entry: dict,
                 # Fall back to dedupe if engine couldn't plan.
                 new_items = _dedupe_items(items_orig, fam_map)
                 new_items = _ensure_boots(new_items, arch, name)
+            # Item s8: dedupe/short-plan output refilled + trimmed to
+            # the exact SR length (7 incl boots).
+            new_items = _shaper().enforce_length(name, "sr", arch, new_items)
         elif "aram" in modes:
             arch = _detect_archetype(vk, v)
             new_items = _dedupe_items(items_orig, fam_map)
             new_items = _ensure_boots(new_items, arch, name)
+            new_items = _shaper().enforce_length(name, "aram", arch, new_items)
         elif "arena" in modes:
+            arch = _detect_archetype(vk, v)
             new_items = _dedupe_items(items_orig, fam_map)
-            # No boots in Arena (no shop boots).
+            # No boots in Arena (no shop boots) - enforce_length's
+            # reseat strips any that leaked in.
+            new_items = _shaper().enforce_length(name, "arena", arch, new_items)
         else:
             continue
         if new_items != items_orig:

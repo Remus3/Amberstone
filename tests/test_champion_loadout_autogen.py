@@ -313,14 +313,39 @@ class VariantShapeTests(unittest.TestCase):
         for s in v["summoners"]:
             self.assertIsInstance(s, int)
 
-    def test_items_capped_at_six(self):
-        # Stub returns 3 items; verify cap honored when DS returns >6
+    def test_items_exact_target_len_per_mode(self):
+        # Item s8 (2026-06-10): generation-time length invariant - SR 7
+        # (6 engine picks + boots at index 1), ARAM 6 (5 + boots),
+        # Arena 6 (no boots). Overlong engine returns are tail-trimmed,
+        # short ones padded from the shared item-213 pools.
         with mock.patch.object(
             autogen.dsc, "rank_for_primary_archetype",
             return_value=_fake_rank([f"Item {i}" for i in range(10)]),
         ):
-            v = autogen.build_variant("Aatrox", "bruiser", "sr", level=11)
-        self.assertLessEqual(len(v["items"]), 6)
+            v_sr = autogen.build_variant("Aatrox", "bruiser", "sr", level=11)
+            v_aram = autogen.build_variant("Aatrox", "bruiser", "aram", level=11)
+            v_arena = autogen.build_variant("Aatrox", "bruiser", "arena", level=11)
+        self.assertEqual(len(v_sr["items"]), 7)
+        self.assertEqual(len(v_aram["items"]), 6)
+        self.assertEqual(len(v_arena["items"]), 6)
+
+    def test_sr_items_carry_boots_at_index_1_arena_none(self):
+        # The boots slot is injected at generation time (same Cleaner
+        # reseat the item-s8 sweep uses) so a regen emits canonical rows.
+        boots = {
+            "Berserker's Greaves", "Boots of Swiftness", "Plated Steelcaps",
+            "Mercury's Treads", "Sorcerer's Shoes",
+            "Ionian Boots of Lucidity", "Mobility Boots", "Symbiotic Soles",
+            "Synchronized Souls", "Slightly Magical Footwear",
+        }
+        with mock.patch.object(
+            autogen.dsc, "rank_for_primary_archetype",
+            return_value=_fake_rank([f"Item {i}" for i in range(10)]),
+        ):
+            v_sr = autogen.build_variant("Aatrox", "bruiser", "sr", level=11)
+            v_arena = autogen.build_variant("Aatrox", "bruiser", "arena", level=11)
+        self.assertIn(v_sr["items"][1], boots)
+        self.assertFalse(set(v_arena["items"]) & boots)
 
     def test_modes_is_single_entry_list(self):
         v_sr = autogen.build_variant("Aatrox", "bruiser", "sr", level=11)
