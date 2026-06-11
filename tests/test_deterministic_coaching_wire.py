@@ -21,7 +21,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 
 
 def _reset_cache() -> None:
-    dc._CACHE.clear()
+    dc._reset_caches_for_tests()
 
 
 class BuildGameStateTests(unittest.TestCase):

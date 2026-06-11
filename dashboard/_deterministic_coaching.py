@@ -37,6 +37,7 @@ the cache clock is fine.
 from __future__ import annotations
 
 import json
+import threading
 import time
 from pathlib import Path
 
@@ -161,6 +162,29 @@ _CACHE_MAX = 64
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 
 _EMPTY_RESULT = {"choices": [], "callouts": [], "lead_projection": {}}
+
+# S7 (2026-06-10): the matchup call inside laning_choices costs ~690ms (live
+# stage breakdown: deterministic=692ms of a 706ms build). Paying it inline on
+# every 5s game-time bucket froze /api/state + the SSE tick for that long -
+# the operator's "champ select / dashboard updates slow". Warm-path policy:
+# once ANY result exists for the current (champion, mode), a sig miss returns
+# the last good result immediately and refreshes the cache on a background
+# single-flight thread. Cold start (new game / new champion) stays
+# synchronous so the first real tick is correct, and tests see unchanged
+# single-call behavior.
+_REFRESH_INFLIGHT: set[tuple] = set()
+_REFRESH_LOCK = threading.Lock()
+# (champion, mode_key) -> last computed result for the warm-path fallback.
+_LAST_GOOD: dict[tuple[str, str], dict] = {}
+
+
+def _reset_caches_for_tests() -> None:
+    """Test seam: clear ALL module caches (TTL cache + warm-path last-good +
+    inflight markers) so cases stay hermetic under the warm-path policy."""
+    _CACHE.clear()
+    _LAST_GOOD.clear()
+    with _REFRESH_LOCK:
+        _REFRESH_INFLIGHT.clear()
 
 
 def _first(*vals: object) -> object:
@@ -424,12 +448,53 @@ def compute_deterministic(coach: dict, lc: dict | None, mode_key: str) -> dict:
         hit = _CACHE.get(sig)
         if hit is not None and (now - hit[0]) < _CACHE_TTL_S:
             return hit[1]
-        result = _compute_uncached(gs, mode_key)
-        _CACHE[sig] = (now, result)
-        _evict_if_full()
-        return result
+
+        warm_key = (str(gs.get("my_champion") or ""), str(mode_key or ""))
+        last = _LAST_GOOD.get(warm_key)
+        if last is None:
+            # Cold start for this champion/mode: pay the compute inline so
+            # the first real tick carries a verdict (and single-call tests
+            # keep their synchronous contract).
+            result = _compute_uncached(gs, mode_key)
+            _store_result(sig, warm_key, result)
+            return result
+
+        # Warm path: serve the last good result NOW, refresh in background.
+        _spawn_refresh(sig, warm_key, gs, mode_key)
+        return hit[1] if hit is not None else last
     except Exception:
         return dict(_EMPTY_RESULT)
+
+
+def _store_result(sig: tuple, warm_key: tuple[str, str], result: dict) -> None:
+    _CACHE[sig] = (time.monotonic(), result)
+    _LAST_GOOD[warm_key] = result
+    if len(_LAST_GOOD) > _CACHE_MAX:
+        _LAST_GOOD.pop(next(iter(_LAST_GOOD)), None)
+    _evict_if_full()
+
+
+def _spawn_refresh(sig: tuple, warm_key: tuple[str, str], gs: dict,
+                   mode_key: str) -> None:
+    """Single-flight background recompute. Concurrent /api/state + SSE
+    builders that miss the same sig must not stack matchup calls."""
+    with _REFRESH_LOCK:
+        if sig in _REFRESH_INFLIGHT:
+            return
+        _REFRESH_INFLIGHT.add(sig)
+
+    def _run() -> None:
+        try:
+            result = _compute_uncached(gs, mode_key)
+            _store_result(sig, warm_key, result)
+        except Exception:
+            pass
+        finally:
+            with _REFRESH_LOCK:
+                _REFRESH_INFLIGHT.discard(sig)
+
+    threading.Thread(target=_run, name="det-coach-refresh",
+                     daemon=True).start()
 
 
 def resolve_choices(coach: dict, det: dict) -> list[dict]:
