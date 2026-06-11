@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import socket
 import sys
-from http.server import HTTPServer
+from http.server import ThreadingHTTPServer
 
 from ._config import PORT, _get_client, api_key_present, log
 from ._frame import get_latest_frame, handle_upload_frame
@@ -67,7 +67,16 @@ def main() -> int:
 
     _get_client()
     log.info("Moon Vision Server on 0.0.0.0:%d  python=%s", PORT, sys.executable)
-    s = HTTPServer(("0.0.0.0", PORT), Handler)
+    # ThreadingHTTPServer (S7, 2026-06-10): the plain HTTPServer serialized
+    # EVERY request behind the slowest in-flight handler - an in-process
+    # self-grab (GDI BitBlt + JPEG encode, 100-400ms) or a Sonnet/OCR
+    # inference call would block /latest-lcu, /latest-liveclient and the
+    # LCU command queue for its whole duration, which the operator felt as
+    # slow champ-select updates + slow build/rune pushes. All shared state
+    # in _frame/_relay/_stats was already lock-guarded, so per-request
+    # threads are safe.
+    s = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    s.daemon_threads = True
     try:
         s.serve_forever()
     except KeyboardInterrupt:
