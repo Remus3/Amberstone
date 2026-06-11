@@ -28,7 +28,11 @@ Modes:
   --version <pin>   pin a specific patch version (escape hatch)
 
 Atomic writes throughout (tmp.write_bytes -> os.replace). py_compile clean.
-Fail-loud on bundle JSON corruption. Never auto-deletes a stale version dir.
+Fail-loud on bundle JSON corruption. After a clean (non-dry) run, stale
+``web/data/ddragon/<semver>/`` dirs beyond the retention set (current patch
++ one previous; ``--retain`` / ``--no-prune`` to adjust) are deleted -
+deep-audit item 396 retention; git-tracked bundle archives under
+data/meta_build/ are never pruned.
 """
 from __future__ import annotations
 
@@ -37,6 +41,8 @@ import hashlib
 import json
 import logging
 import os
+import re
+import shutil
 import sys
 import threading
 import time
@@ -600,6 +606,49 @@ def run(version: str, *, dry_run: bool, check_changed: bool, force: bool,
 # ---------------------------------------------------------------------------
 
 
+_SEMVER_DIR = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+RETAIN_VERSIONS = 2  # current patch + one previous
+
+
+def prune_stale_versions(current: str, *, retain: int = RETAIN_VERSIONS,
+                         web_dir: Path = WEB_DIR, dry_run: bool = False) -> list[str]:
+    """Delete stale ``web_dir/<semver>/`` mirror dirs beyond the retention set.
+
+    The retention set is the current patch plus the newest dirs until
+    ``retain`` versions are held. Only semver-named directories directly
+    under ``web_dir`` are candidates - ``_index.json``, perk-image trees and
+    anything else are never touched, and the git-tracked bundle archives
+    under data/meta_build/ are out of scope entirely. Returns the sorted
+    names of removed (or, under ``dry_run``, would-be-removed) dirs.
+    """
+    if not web_dir.is_dir():
+        return []
+    versioned = [d for d in web_dir.iterdir()
+                 if d.is_dir() and _SEMVER_DIR.match(d.name)]
+    versioned.sort(key=lambda d: tuple(int(x) for x in d.name.split(".")),
+                   reverse=True)
+    keep = {current}
+    for d in versioned:
+        if len(keep) >= max(retain, 1):
+            break
+        keep.add(d.name)
+    removed = []
+    for d in versioned:
+        if d.name in keep:
+            continue
+        removed.append(d.name)
+        if not dry_run:
+            # A version entry can be a symlink/junction alias (the live
+            # mirror had 16.9.1 -> 16.8.1); rmtree refuses reparse points,
+            # so unlink the link itself and leave its target alone.
+            if d.is_symlink() or d.is_junction():
+                os.rmdir(d)
+            else:
+                shutil.rmtree(d)
+            logger.info("pruned stale mirror dir %s", d)
+    return sorted(removed)
+
+
 def cmd_check_only(latest: str, cached: str | None) -> int:
     if latest != cached:
         print(f"flip_pending latest={latest} cached={cached!r}")
@@ -670,6 +719,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="pin a specific patch version (default = CDN latest)")
     p.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
                    help=f"parallel asset fetchers (default {DEFAULT_WORKERS})")
+    p.add_argument("--retain", type=int, default=RETAIN_VERSIONS,
+                   help=f"mirror version dirs to keep (default {RETAIN_VERSIONS})")
+    p.add_argument("--no-prune", action="store_true",
+                   help="skip stale version-dir pruning after a clean run")
     p.add_argument("--log-level", default="INFO",
                    choices=("DEBUG", "INFO", "WARNING", "ERROR"))
     args = p.parse_args(argv)
@@ -704,6 +757,11 @@ def main(argv: list[str] | None = None) -> int:
     elif stats.failed and not _failures_within_tolerance(stats):
         logger.warning("kept index at %s due to %d/%d failures over tolerance",
                        cached, stats.failed, stats.total)
+
+    if not args.dry_run and not args.no_prune and _failures_within_tolerance(stats):
+        pruned = prune_stale_versions(latest, retain=args.retain)
+        if pruned:
+            print(f"pruned stale mirror dirs: {', '.join(pruned)}")
 
     return _exit_code_for(stats)
 

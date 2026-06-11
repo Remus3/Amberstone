@@ -1,0 +1,20 @@
+{
+  "run_id": "deep-audit-cycle2-p1a",
+  "check_ci": true,
+  "slices": [
+    {
+      "id": "p1a-mirror-retention",
+      "claim": "ddragon JS patch pins dynamic; mirror prune retention shipped + executed (16.8.1/16.9.1/16.10.1 deleted, 16.11.1+16.12.1 kept); logs gamepc jpgs + >30d removed",
+      "claimed_passed": 15175,
+      "claimed_failed": 0,
+      "files": [
+        {"path": "tools/ddragon_mirror_refresh.py", "must_contain": ["prune_stale_versions", "is_junction", "RETAIN_VERSIONS = 2"]},
+        {"path": "tests/test_ddragon_mirror_prune.py", "must_contain": ["test_prune_unlinks_stale_junction_without_touching_target"]},
+        {"path": "tests/test_ddragon_path_version_drift.py", "must_contain": ["_VERSIONED_DDRAGON_PATH"]},
+        {"path": "web/js/panels/active_match.js", "must_contain": ["_amMapImg", "_AM_MAP_FILE"]},
+        {"path": "web/js/panels/pgr_loadout.js", "must_contain": ["_runeLocalBase"]},
+        {"path": "web/js/main.js", "must_contain": ["(ITEMS && ITEMS.version) || \"16.12.1\""]}
+      ]
+    }
+  ]
+}
