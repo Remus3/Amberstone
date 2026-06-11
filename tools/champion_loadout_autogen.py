@@ -84,6 +84,33 @@ SCHEMA_VERSION = 1
 MODES = ("sr", "aram", "arena")
 DS_MODE_BY_KEY = {"sr": "SR", "aram": "ARAM", "arena": "ARENA"}
 
+# Item s8 (2026-06-10): operator-set exact build lengths (SR 7 / ARAM 6
+# / Arena 6, boots included on SR/ARAM). Generation-time invariant -
+# every emitted variant is shaped through the shared item-213 Cleaner
+# (boots reseat + pool refill + tail trim) so a regen can never write a
+# truncated or overlong row again.
+from tools.champion_loadout_invariants import TARGET_LEN  # noqa: E402
+
+# Engine picks requested per mode = target minus the boots slot the
+# Cleaner injects at index 1 on SR/ARAM (Arena has no shop boots).
+ENGINE_PICKS_BY_MODE = {
+    "sr": TARGET_LEN["sr"] - 1,
+    "aram": TARGET_LEN["aram"] - 1,
+    "arena": TARGET_LEN["arena"],
+}
+
+_SHAPER = None
+
+
+def _shaper():
+    """Lazy singleton of the item-213 Cleaner (loads the item catalog +
+    unique-family map once per process)."""
+    global _SHAPER
+    if _SHAPER is None:
+        from tools.champion_loadout_cleanup_pollution_item213 import Cleaner
+        _SHAPER = Cleaner()
+    return _SHAPER
+
 # Archetype → (keystone, primary tree, secondary tree). Source of truth
 # is also duplicated in ``web/js/panels/champ_select.js`` for the
 # experimental row's runes - keep both in sync if updating.
@@ -183,13 +210,16 @@ def resolve_archetype_triplet(primary: str, secondary: str) -> list[tuple[str, s
 
 
 def fetch_items(champion: str, archetype: str, mode: str, level: int) -> list[str]:
-    """Call DS engine for top-6 items under ``archetype`` at ``level``.
+    """Call DS engine for the per-mode engine-pick count under
+    ``archetype`` at ``level`` (item s8: SR 6 + boots, ARAM 5 + boots,
+    Arena 6 - see ENGINE_PICKS_BY_MODE).
 
     Returns the list of display names (empty list on engine error or
     empty ranking). Caller decides whether to skip generation when
     items is empty.
     """
     ds_mode = DS_MODE_BY_KEY.get(mode, "SR")
+    picks = ENGINE_PICKS_BY_MODE.get(mode, 6)
     try:
         result = dsc.rank_for_primary_archetype(
             champion,
@@ -197,7 +227,9 @@ def fetch_items(champion: str, archetype: str, mode: str, level: int) -> list[st
             level=level,
             item_ids=[],
             mode=ds_mode,
-            top=6,
+            # Over-request so a short tail (engine dedup, carry gate)
+            # still leaves enough names to fill the pick budget.
+            top=picks + 6,
         )
     except Exception as exc:
         print(f"  ! DS error for {champion}/{archetype}/{mode}: {exc}", file=sys.stderr)
@@ -205,7 +237,9 @@ def fetch_items(champion: str, archetype: str, mode: str, level: int) -> list[st
     if not result or not result.get("ranked"):
         return []
     names: list[str] = []
-    for row in result["ranked"][:6]:
+    for row in result["ranked"]:
+        if len(names) >= picks:
+            break
         nm = (row.get("item_name") or "").strip()
         if nm:
             names.append(nm)
@@ -219,10 +253,26 @@ def build_variant(
     *,
     level: int,
 ) -> Optional[dict]:
-    """Construct a single auto variant entry. Returns None on DS miss."""
+    """Construct a single auto variant entry. Returns None on DS miss.
+
+    Item s8 generation-time invariant: the emitted items list is shaped
+    to the exact per-mode length (TARGET_LEN) with boots at index 1 on
+    SR/ARAM - short engine returns are padded from the shared archetype
+    pools, overlong ones tail-trimmed.
+    """
     items = fetch_items(champion, archetype, mode, level)
     if not items:
         return None
+    skip = (
+        dsc.CARRY_RANGED_OFFCLASS_ITEM_NAMES
+        if (
+            archetype == "carry"
+            and dsc.champion_attackrange(champion)
+            >= dsc.CARRY_RANGED_ATTACKRANGE_FLOOR
+        )
+        else frozenset()
+    )
+    items = _shaper().enforce_length(champion, mode, archetype, items, skip)
     return {
         "label":     f"{ARCH_LABEL[archetype]} (auto)",
         "modes":     [mode],

@@ -91,6 +91,10 @@ from core.daemon_slayer_client import (  # noqa: E402
     champion_attackrange,
 )
 
+# Item s8 (2026-06-10): operator-set exact build lengths (SR 7 / ARAM 6
+# / Arena 6). Single source shared with the producers + the sweep guard.
+from tools.champion_loadout_invariants import TARGET_LEN  # noqa: E402
+
 # Operator-pinned carry rows the item-208 gate must skip - hand-fixes
 # are not generated pollution. Corki's SR "ad" path keeps Trinity Force
 # by the item-269 hand-fix (tools/hotfix_sibling_pollution_item269
@@ -160,11 +164,18 @@ _SR_HEAL_KEEP = {"Senna", "Kalista", "Yuumi"}
 _ARAM_SUMMS = [4, 32]
 _ARENA_SUMMS = [4, 7]
 
-# Per-archetype clean backfill pools (item NAME strings). Used only when
-# a path drops below 4 items after stripping. Entries are appended in
-# order, skipping anything already present, off-mode, or that would
-# create a unique-passive clash. The pools are curated from items
-# already heavily used in each mode so backfills stay coherent.
+# Per-archetype clean backfill pools (item NAME strings). Originally
+# used only when a path dropped below 4 items after stripping; the
+# item-s8 length rule (TARGET_LEN: SR 7 / ARAM 6 / Arena 6, see
+# tools/champion_loadout_invariants.py) refills every short row to its
+# exact mode target, so the pools were deepened (item s8, 2026-06-10) -
+# a 6-item row that already holds most of a shallow pool must still be
+# able to reach target without a unique-family clash. Entries are
+# appended in order, skipping anything already present, off-mode, or
+# that would create a unique-passive clash. The pools are curated from
+# items already heavily used in each mode so backfills stay coherent.
+# SR/ARAM gained assassin pools (lethality) - assassin rows previously
+# fell through to the carry pool and could pick up crit items.
 _BACKFILL_SR = {
     "carry": [
         "Infinity Edge",
@@ -173,6 +184,12 @@ _BACKFILL_SR = {
         "Yun Tal Wildarrows",
         "Bloodthirster",
         "Phantom Dancer",
+        "The Collector",
+        "Rapid Firecannon",
+        "Mortal Reminder",
+        "Navori Flickerblade",
+        "Stormrazor",
+        "Wit's End",
     ],
     "mage": [
         "Rabadon's Deathcap",
@@ -180,24 +197,60 @@ _BACKFILL_SR = {
         "Shadowflame",
         "Zhonya's Hourglass",
         "Stormsurge",
+        "Horizon Focus",
+        "Cryptbloom",
+        "Rylai's Crystal Scepter",
+        "Morellonomicon",
+        "Banshee's Veil",
+        "Cosmic Drive",
     ],
     "bruiser": [
         "Sterak's Gage",
         "Death's Dance",
         "Spear of Shojin",
         "Black Cleaver",
+        "Maw of Malmortius",
+        "Hullbreaker",
+        "Titanic Hydra",
+        "Experimental Hexplate",
+        "Ravenous Hydra",
+        "Guardian Angel",
     ],
     "tank": [
         "Sunfire Aegis",
         "Thornmail",
         "Spirit Visage",
         "Kaenic Rookern",
+        "Dead Man's Plate",
+        "Randuin's Omen",
+        "Jak'Sho, The Protean",
+        "Unending Despair",
+        "Frozen Heart",
+        "Force of Nature",
     ],
     "enchanter": [
         "Ardent Censer",
         "Staff of Flowing Water",
         "Redemption",
         "Moonstone Renewer",
+        "Echoes of Helia",
+        "Dawncore",
+        "Mikael's Blessing",
+        "Imperial Mandate",
+        "Shurelya's Battlesong",
+        "Locket of the Iron Solari",
+    ],
+    "assassin": [
+        "Youmuu's Ghostblade",
+        "Edge of Night",
+        "Serylda's Grudge",
+        "Opportunity",
+        "Axiom Arc",
+        "Hubris",
+        "Profane Hydra",
+        "Serpent's Fang",
+        "Voltaic Cyclosword",
+        "Black Cleaver",
     ],
 }
 _BACKFILL_ARAM = {
@@ -208,6 +261,12 @@ _BACKFILL_ARAM = {
         "Yun Tal Wildarrows",
         "Bloodthirster",
         "Phantom Dancer",
+        "The Collector",
+        "Rapid Firecannon",
+        "Mortal Reminder",
+        "Navori Flickerblade",
+        "Stormrazor",
+        "Wit's End",
     ],
     "mage": [
         "Rabadon's Deathcap",
@@ -215,24 +274,59 @@ _BACKFILL_ARAM = {
         "Shadowflame",
         "Zhonya's Hourglass",
         "Cosmic Drive",
+        "Horizon Focus",
+        "Cryptbloom",
+        "Rylai's Crystal Scepter",
+        "Morellonomicon",
+        "Banshee's Veil",
+        "Stormsurge",
     ],
     "bruiser": [
         "Sterak's Gage",
         "Death's Dance",
         "Spear of Shojin",
         "Black Cleaver",
+        "Maw of Malmortius",
+        "Hullbreaker",
+        "Titanic Hydra",
+        "Experimental Hexplate",
+        "Ravenous Hydra",
     ],
     "tank": [
         "Sunfire Aegis",
         "Thornmail",
         "Spirit Visage",
         "Kaenic Rookern",
+        "Dead Man's Plate",
+        "Randuin's Omen",
+        "Jak'Sho, The Protean",
+        "Unending Despair",
+        "Frozen Heart",
+        "Force of Nature",
     ],
     "enchanter": [
         "Ardent Censer",
         "Staff of Flowing Water",
         "Redemption",
         "Moonstone Renewer",
+        "Echoes of Helia",
+        "Dawncore",
+        "Mikael's Blessing",
+        "Imperial Mandate",
+        "Shurelya's Battlesong",
+        "Locket of the Iron Solari",
+    ],
+    "assassin": [
+        "Youmuu's Ghostblade",
+        "Edge of Night",
+        "Serylda's Grudge",
+        "Opportunity",
+        "Axiom Arc",
+        "Hubris",
+        "Profane Hydra",
+        "Serpent's Fang",
+        "Voltaic Cyclosword",
+        "Black Cleaver",
     ],
 }
 # Arena legendaries (map 30 names) per archetype - real meta picks.
@@ -244,6 +338,14 @@ _BACKFILL_ARENA = {
         "Hamstringer",
         "Kraken Slayer",
         "Essence Reaver",
+        "Infinity Edge",
+        "Lord Dominik's Regards",
+        "Phantom Dancer",
+        "Runaan's Hurricane",
+        "The Collector",
+        "Rapid Firecannon",
+        "Navori Flickerblades",
+        "Bloodthirster",
     ],
     "mage": [
         "Wooglet's Witchcap",
@@ -252,6 +354,14 @@ _BACKFILL_ARENA = {
         "Everfrost",
         "Lich Bane",
         "Twilight's Edge",
+        "Rabadon's Deathcap",
+        "Void Staff",
+        "Shadowflame",
+        "Luden's Echo",
+        "Horizon Focus",
+        "Stormsurge",
+        "Cryptbloom",
+        "Rylai's Crystal Scepter",
     ],
     "bruiser": [
         "Void Immolation",
@@ -259,6 +369,15 @@ _BACKFILL_ARENA = {
         "Hamstringer",
         "Divine Sunderer",
         "Warmog's Armor",
+        "Black Cleaver",
+        "Sterak's Gage",
+        "Death's Dance",
+        "Sundered Sky",
+        "Spear of Shojin",
+        "Overlord's Bloodmail",
+        "Titanic Hydra",
+        "Experimental Hexplate",
+        "Maw of Malmortius",
     ],
     "assassin": [
         "Divine Sunderer",
@@ -266,18 +385,45 @@ _BACKFILL_ARENA = {
         "Twilight's Edge",
         "Galeforce",
         "Hamstringer",
+        "Eclipse",
+        "Duskblade of Draktharr",
+        "Edge of Night",
+        "Youmuu's Ghostblade",
+        "Prowler's Claw",
+        "Profane Hydra",
+        "Opportunity",
+        "Serpent's Fang",
+        "The Collector",
     ],
     "tank": [
         "Void Immolation",
         "Warmog's Armor",
         "Shield of Molten Stone",
         "Heartsteel",
+        "Jak'Sho, The Protean",
+        "Sunfire Aegis",
+        "Thornmail",
+        "Kaenic Rookern",
+        "Dead Man's Plate",
+        "Randuin's Omen",
+        "Gargoyle Stoneplate",
+        "Force of Nature",
+        "Spirit Visage",
+        "Unending Despair",
+        "Hollow Radiance",
     ],
     "enchanter": [
         "Ardent Censer",
         "Redemption",
         "Mikael's Blessing",
         "Imperial Mandate",
+        "Staff of Flowing Water",
+        "Moonstone Renewer",
+        "Echoes of Helia",
+        "Dawncore",
+        "Shurelya's Battlesong",
+        "Locket of the Iron Solari",
+        "Knight's Vow",
     ],
 }
 
@@ -375,8 +521,14 @@ class Cleaner:
     def _backfill(
         self, items: list[str], mode: str, archetype: str,
         skip_names: frozenset = frozenset(),
+        target: int | None = None,
     ) -> list[str]:
-        """Append archetype-appropriate items until len>=4, offline."""
+        """Append archetype-appropriate items until len>=target, offline.
+
+        ``target`` defaults to the operator-set per-mode build length
+        (item s8: SR 7 / ARAM 6 / Arena 6)."""
+        if target is None:
+            target = TARGET_LEN[mode]
         pool_map = {
             "sr": _BACKFILL_SR,
             "aram": _BACKFILL_ARAM,
@@ -386,7 +538,7 @@ class Cleaner:
         have = {_norm(i) for i in items}
         fams = self._families_in(items)
         for cand in pool:
-            if len(items) >= 4:
+            if len(items) >= target:
                 break
             if cand in skip_names:
                 continue
@@ -424,7 +576,9 @@ class Cleaner:
             if "enchant" in a or "support" in a:
                 return "enchanter"
             if "assassin" in a:
-                return "assassin" if mode == "arena" else "carry"
+                # Item s8: SR/ARAM gained lethality pools, so assassin
+                # rows no longer fall back to the carry (crit) pool.
+                return "assassin"
             return "carry"
         key = (bp.get("key") or "").lower()
         for token, arch in (
@@ -438,8 +592,6 @@ class Cleaner:
             ("burst", "mage"),
         ):
             if token in key:
-                if arch == "assassin" and mode != "arena":
-                    return "carry"
                 return arch
         return "carry"
 
@@ -494,6 +646,24 @@ class Cleaner:
             return [keep]
         # core item at index 0, boots at index 1, rest after
         return [non_boots[0], keep] + non_boots[1:]
+
+    def enforce_length(
+        self, champ: str, mode: str, archetype: str, items: list[str],
+        skip_names: frozenset = frozenset(),
+    ) -> list[str]:
+        """Item s8 - shape one row to the canonical per-mode form:
+        boots reseated (index 1 on SR/ARAM, none on Arena/bootsless),
+        refilled from the archetype pool to the exact mode target, then
+        tail-trimmed to target. Shared by the autogen producer and the
+        item-s8 sweep so generation and repair cannot disagree."""
+        items = self._reseat_boots(champ, mode, list(items), archetype)
+        if len(items) < TARGET_LEN[mode]:
+            items = self._backfill(
+                items, mode, archetype, skip_names=skip_names,
+            )
+        if len(items) > TARGET_LEN[mode]:
+            items = items[:TARGET_LEN[mode]]
+        return items
 
     def _fix_summoners(
         self, champ: str, mode: str, bp: dict
@@ -551,7 +721,12 @@ class Cleaner:
                     i for i in items
                     if i not in CARRY_RANGED_OFFCLASS_ITEM_NAMES
                 ]
-            if len(items) < 4:
+            # Item s8: enforce the exact per-mode build length (SR 7 /
+            # ARAM 6 / Arena 6). Reseat first so boots sit at index 1,
+            # then refill to target (appends at the tail, never disturbs
+            # the boots slot), then trim overlong rows from the tail.
+            items = self._reseat_boots(champ, mode, items, arch)
+            if len(items) < TARGET_LEN[mode]:
                 items = self._backfill(
                     items, mode, arch,
                     skip_names=(
@@ -559,7 +734,8 @@ class Cleaner:
                         if gate_carry else frozenset()
                     ),
                 )
-            items = self._reseat_boots(champ, mode, items, arch)
+            if len(items) > TARGET_LEN[mode]:
+                items = items[:TARGET_LEN[mode]]
             if len(items) < 4:
                 # still short (rare): drop it; dedup/backfill below ensures
                 # the variant keeps >=2 via sibling paths
