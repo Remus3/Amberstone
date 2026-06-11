@@ -29,7 +29,7 @@
  * summspell_wpa.json) so #build-insights renders without a populated
  * rewind DB (mirrors the last_match.js _lmMockLoad pattern).
  */
-import { ITEMS, CHAMPS } from '../lib/items_index.js';
+import { ITEMS, CHAMPS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 
 const ITEM_MOUNT_ID = 'bi-table-mount';
 const SKILL_MOUNT_ID = 'bi-skill-table-mount';
@@ -38,7 +38,7 @@ const SPELL_MOUNT_ID = 'bi-spell-table-mount';
 const DEFAULT_MIN_N = 20;
 
 function _ddragonVersion() {
-  return (ITEMS && ITEMS.version) || '16.10.1';
+  return (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
 }
 
 // Item-icon URL: local DDragon mirror first (matches last_match.js +
