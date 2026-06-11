@@ -21,17 +21,17 @@
    * pin BUILD to that height and let CALL take the remainder
    * (per user note s160 "give the call panel a solid permanent
    * panel size"). */
-  /* 2026-05-20: added a compact 280px right rail for the CD ledger
-   * panel (web/js/panels/cd_ledger.js). The rail spans both rows so
-   * it shows the full 10-player ledger; collapsing it via the rail
-   * header chevron is a CSS-only toggle (.cd-collapsed hides body).
-   * On narrow viewports (< 1600 CSS px), the rail can be hidden via
-   * localStorage.cdLedgerCollapsed=1 without re-flow. */
-  grid-template-columns: 1.1fr 2fr 280px;
+  /* 2026-06-10 (operator): the CDS right rail is visually retired from
+   * the dashboard layout - the freed width flows into the MAP column.
+   * The pane markup + JS/route/payload wiring stay intact ("remove a
+   * field" is visual-only) because the overlay threat panelset still
+   * renders the ledger as its primary surface (overlay.css re-shows
+   * .am-pane-cd with !important). */
+  grid-template-columns: 1.1fr 2fr;
   grid-template-rows: 1fr 1fr;
   grid-template-areas:
-    "call  map  cd"
-    "build map  cd";
+    "call  map"
+    "build map";
   gap: 14px;
   align-items: stretch;
   /* Match the height behavior of the rest of view-section so the
@@ -43,7 +43,12 @@
 #view-active-match .am-pane-call  { grid-area: call; }
 #view-active-match .am-pane-build { grid-area: build; }
 #view-active-match .am-pane-map   { grid-area: map; }
-#view-active-match .am-pane-cd    { grid-area: cd; }
+/* Visual-only hide (operator 2026-06-10): the CDS pane stays in the DOM
+ * and keeps its render wiring; the overlay threat panelset re-shows it
+ * (display: block !important in overlay.css). The .am-grid hop outranks
+ * cd_ledger.css's same-selector display:flex, which imports after this
+ * file and would otherwise win on order. */
+#view-active-match .am-grid .am-pane-cd { display: none; }
 
 #view-active-match .am-pane {
   display: flex;
@@ -92,6 +97,56 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Base-image miss (no local asset + no live crop frame): keep a visible
+ * box so the status + roster text layers still render (2026-06-10). */
+#view-active-match .am-map-shell.am-map-noimg {
+  min-height: 240px;
+  background: var(--surface, #14141c);
+}
+
+/* Live vision roster (2026-06-10): per-enemy level + alive/dead/MIA
+ * column over the map. ARAM/Mayhem emit no champion coordinates (Live
+ * Client position "NONE"), so this text column IS the truthful
+ * per-enemy signal there - respawn countdowns, zone labels and MIA
+ * ages tick where dots cannot. Pointer-events off: it is a readout,
+ * not a control (no hit-target obligations). */
+#view-active-match .am-map-roster {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  max-width: 46%;
+}
+#view-active-match .am-map-roster .am-mr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+#view-active-match .am-map-roster .am-mr-name { font-weight: 700; }
+#view-active-match .am-map-roster .am-mr-lvl  { color: var(--text-faint); }
+#view-active-match .am-map-roster .am-mr-state {
+  margin-left: auto;
+  letter-spacing: 0.04em;
+  color: var(--signal-good, #6ec977);
+}
+#view-active-match .am-map-roster .am-mr-row[data-state="dead"] .am-mr-state {
+  color: var(--signal-bad, #ff5050);
+  font-weight: 700;
+}
+#view-active-match .am-map-roster .am-mr-row[data-state="mia"] .am-mr-state {
+  color: var(--signal-warn, #f1b04a);
+  font-weight: 700;
 }
 
 /* UX-2 (2026-05-20): per-enemy threat donut. The donut module

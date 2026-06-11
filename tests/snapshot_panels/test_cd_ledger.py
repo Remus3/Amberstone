@@ -159,14 +159,29 @@ def test_index_html_has_mount_point():
     assert "am-pane-cd" in html
 
 
-def test_active_match_grid_includes_cd_area():
-    """The grid-template-areas + columns must allocate space for the cd rail."""
+def test_active_match_grid_hides_cd_rail_visual_only():
+    """Operator 2026-06-10: the CDS rail is visually retired from the
+    dashboard grid (display:none, no cd column/area) but the pane + its
+    wiring stay - the overlay threat panelset re-shows it. This replaces
+    the old 280px-rail allocation contract."""
     css = _read(ROOT / "web" / "css" / "panels" / "active_match.css")
-    # New 280px third column.
-    assert "280px" in css
-    # New cd area in the template.
-    assert " cd" in css
+    # Rail column gone; two-column template remains.
+    assert "280px" not in css
+    assert '"call  map"' in css
+    assert '"build map"' in css
+    # The pane is hidden, not deleted.
     assert "am-pane-cd" in css
+    import re
+    # .am-grid hop outranks cd_ledger.css's same-selector display:flex
+    # (later import order would otherwise win).
+    assert re.search(
+        r"#view-active-match \.am-grid \.am-pane-cd\s*\{[^}]*display:\s*none",
+        css)
+    # Overlay threat panelset keeps its CDS surface.
+    overlay = _read(ROOT / "web" / "css" / "overlay.css")
+    assert re.search(
+        r'\[data-panelset="threat"\] #view-active-match \.am-pane-cd'
+        r"\s*\{[^}]*display:\s*block\s*!important", overlay)
 
 
 def test_active_match_js_dispatches_to_cd_ledger():
