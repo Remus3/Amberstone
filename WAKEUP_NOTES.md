@@ -4,6 +4,23 @@
 
 ---
 
+# 2026-06-10 - operator headless-upgrade round 2026-06-10-02: items 388-393 (6 slices, 9 pushes) + 2 live operator interrupts fixed same-session
+
+Operator: "start any open for live game gating + other items parallel orchestrated to the end". 4 worktree agents + verifier gates on every merge; 2 mid-run operator reports root-caused + shipped while they played.
+
+- item 388: drift probe NONE (16.12.1/25.15 all == sentinel; calc-site chunks unchanged); ARENA HZ tables full-roster `fb66722f` (HZ shadow armed sr+aram+arena; gen CLIs need CANONICAL ids - display names skip 6783 pairs); item-211 orphans 12 -> 7 (chain class, 5 MOVEs + 3 re-stamps; FUTURE --trust-lcu).
+- item 389: summoner-spell WPA = 4th build_insights tab `6585b77a` - WPA lane COMPLETE; UI audit 5/5 PASS; proof _scratch/spells_tab_proof.jpeg.
+- item 390: item-208 carry CLOSED `2784db8f` - range-gate at the REAL chokepoint core/daemon_slayer_client.py:1147 (ROADMAP fn was phantom) + 89-row backfill + guard.
+- item 391 (OPERATOR INTERRUPT "champ select slow"): 3 commits ff4d59d1/69cb9dde/9e90c28d - :8889 single-thread -> ThreadingHTTPServer; stage WARN pinned deterministic=692ms inline matchup per 5s bucket; warm-path async single-flight fix. LIVE PROOF /api/state 3-30ms during a running game (was 700ms). Instrumentation permanent.
+- item 392 (OPERATOR INTERRUPT "active match devoid/wrong/map dead/cds unneeded"): `138d4740` - map text layers render w/o coords (Live Client position = ROLE STRING, never coords - live-proven on :2999); DS rerank got items=null ALL GAME (items_display only) -> _amOwnedItemIds itemID path + gold>=2000 completed-count + canonical id bridges x3 routes; cds rail visual-only hide (wiring + overlay threat re-show kept). Proof _scratch/active_match_reflow_proof.jpeg.
+- item 393 (OPERATOR DIRECTIVE 6-axis sweep): `91b6b847` - 1385 rows, 901 refilled / 42 trimmed / 15 stripped, SR 364x7 / ARAM 512x6 / Arena 509x6 zero exceptions (verifier independent probes), regen invariants + 1549-case guard; 16 ambiguous rows REPORT-ONLY for operator review.
+- ROADMAP stale fixes: item-212 minors STALE-SHIPPED; DS-6-bucket medium entry was drift (wired 231-234); item-208 closed; item-211 residual recorded.
+- OWED live: map roster ticking / DS pill+pips / minimap-crop self-grab fallback on a real game; Electron packaging + in-match overlay capture (carry).
+- DON'T REDO: Live Client position is a role string (no coord dots from :2999 ever); pre-06-10 shadow rows junk; WPA lane closed; 16 ambiguous loadout rows need operator, not a strip.
+- PRACTICE-TOOL note: coach.action/immediate empty in PRACTICETOOL while choices/callouts/lead populate (prose coach dark there; deterministic surfaces carry the page) - characterize-or-accept next session.
+
+---
+
 # 2026-06-10 - gemini loop cycle 4: false REGRESS audit refuted + gate edge pins [item 387]
 
 Gemini-headless-upgrade executor cycle. Directive = FIX-FIRST regression: audit claimed the
@@ -35,15 +52,3 @@ Gemini-headless-upgrade executor cycle. Directive = HZ-D4 (7-lever cost sweep + 
 - Gates: RC 5787p/2sk/94st exit 0; DS 7075p/1sk/1xf exit 0; ruff + ASCII clean.
 - OPS: RC-Supervisor task was NOT running (restart_trigger sat unconsumed); schtasks /Run /TN RC-Supervisor restored; watch it next session.
 - NEXT (gated): play real ARAM -> covered+native rows accrue -> hz_shadow_report agreement gate -> operator flip decision.
-
----
-
-# 2026-06-10 - gemini loop cycle 4: Phase 5 stabilization tail - HZ-D1 DONE [item 383, HZ-D1 slice 4]
-
-Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 4). Directive = Phase 5 stabilization tail (electron-updater + stable/dev channels, crash isolation). Merges `96cf5241` + `544cff59` (2 PARALLEL worktree agents, verifier-CONFIRMED) + merger integration `33dc9b3a`. NO engine, no Share, no RC restart, no web/ touch (UI audit n/a).
-
-- Update channels: NEW pure `rc-shell/src/update_channel.js` (resolveChannel env RC_SHELL_CHANNEL > saved > stable; channelConfig dev=allowPrerelease; mergeChannelPatch; checkPlan 15s initial + 4h interval, not-packaged/updater-missing disable). main.js lazy-requires electron-updater in try/catch - bare-node require THROWS inside the autoUpdater getter (app.getVersion on undefined), so the catch is load-bearing (probed). autoInstallOnAppQuit only, console-only events, Shell-menu channel radios + Check-now. NEW electron-builder.yml (nsis, publish github Remus3/riot-commander, all-channels update files; private repo = GH_TOKEN at runtime).
-- Crash isolation: NEW pure `rc-shell/src/crash_guard.js` (RESTART_REASONS; killed/clean-exit never resurrect; per-key rolling budget 3/60s -> give-up hides, no strobing). Merger wired attachCrashGuard on BOTH windows: render-process-gone -> reload | hide; unresponsive logs only.
-- package.json 0.4.0; npm install restored 258 pkgs (registry reachable). node 109 -> 145/0 (TDD red-first both slices). RC tests/ 5769p/2sk/94st exit 0; DS 7075p/1sk/1xf/1942st exit 0 (canonical Python314 path - bare `py` lacks pytest).
-- HZ-D1 flipped DONE in ORCHESTRATION_PLAN (Electron phases 1-5 all shipped code-side; Phase 6 Pengu optional/operator-gated).
-- OWED (operator): packaging + first GitHub Release + packaged-app update check; in-match overlay capture (one shell relaunch picks up slices 1-4).
