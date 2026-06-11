@@ -163,6 +163,11 @@ def reconcile(claims, suite_obs, file_obs_by_slice, git_obs, ci_obs):
                        "with the discrepancy list as added context")}
 
 
+def load_claims(path):
+    """utf-8-sig tolerates the BOM PowerShell 5.1 Out-File -Encoding utf8 emits."""
+    return json.loads(Path(path).read_text(encoding="utf-8-sig"))
+
+
 def write_report_atomic(report, target):
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -180,7 +185,7 @@ def main(argv=None):
                          "and count-claims will quarantine (debug only)")
     args = ap.parse_args(argv)
 
-    claims = json.loads(Path(args.claims).read_text(encoding="utf-8"))
+    claims = load_claims(args.claims)
     if args.skip_suite:
         suite_obs = {"passed": 0, "failed": 0, "errors": 0, "skipped": 0,
                      "no_tests_ran": False, "exit_code": None,

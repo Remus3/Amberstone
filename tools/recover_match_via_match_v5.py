@@ -111,7 +111,34 @@ def _post_ingest(puuid: str, detail: dict, dashboard: str) -> tuple[int, str]:
         return (exc.code, exc.read().decode())
 
 
-def main() -> int:
+def find_by_champion(match_ids, puuid, champion, fetch):
+    """First (match_id, detail) whose puuid-participant played `champion`
+    (case-insensitive). `fetch` maps match_id -> detail dict or None."""
+    want = (champion or "").strip().lower()
+    for mid in match_ids:
+        d = fetch(mid)
+        if not d:
+            continue
+        info = d.get("info") or {}
+        for p in info.get("participants") or []:
+            if p.get("puuid") != puuid:
+                continue
+            cname = (p.get("championName") or "").strip()
+            if cname.lower() == want:
+                return (mid, d)
+    return None
+
+
+def verify_participant(detail, puuid):
+    """championName the puuid played in `detail`, or None if absent."""
+    info = (detail or {}).get("info") or {}
+    for p in info.get("participants") or []:
+        if p.get("puuid") == puuid:
+            return (p.get("championName") or "").strip() or None
+    return None
+
+
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser()
     ap.add_argument("--row-id", type=int, required=True,
                     help="match_history.db row id whose ingest is missing")
@@ -122,10 +149,21 @@ def main() -> int:
     ap.add_argument("--window-min", type=int, default=30,
                     help="search +/- N minutes of row's db.timestamp "
                          "(default 30)")
+    ap.add_argument("--trust-lcu", default=None, metavar="CHAMP",
+                    help="item-211 chain rows: db.champion is the WRONG "
+                         "(previous game's) champ; match candidates against "
+                         "this LCU-truth champion instead")
+    ap.add_argument("--match-id", default=None, metavar="NA1_...",
+                    help="skip the window search; fetch this Match-V5 id "
+                         "directly (puuid participation still verified)")
     ap.add_argument("--db", type=Path, default=_DB)
     ap.add_argument("--dashboard", default=_DASH,
                     help=f"RC dashboard root (default {_DASH})")
-    args = ap.parse_args()
+    return ap
+
+
+def main() -> int:
+    args = build_parser().parse_args()
 
     ts_str, mode, champion = _row_info(args.db, args.row_id)
     print(f"[row {args.row_id}] ts={ts_str} mode={mode} champion={champion}")
@@ -141,40 +179,36 @@ def main() -> int:
     puuid = acct["puuid"]
     print(f"[account] puuid={puuid[:30]}...")
 
-    row_unix = int(_dt.datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S").timestamp())
-    start = row_unix - args.window_min * 60
-    end = row_unix + args.window_min * 60
-    ids = get_recent_matches(puuid, count=20,
-                             start_time_unix_s=start, end_time_unix_s=end)
-    if not ids:
-        sys.exit(f"no Match-V5 ids in +/- {args.window_min}min of {ts_str}")
-    print(f"[match-v5] {len(ids)} candidate(s): {ids}")
+    if args.match_id:
+        m5 = get_match(args.match_id)
+        if not m5:
+            sys.exit(f"Match-V5 fetch failed for {args.match_id}")
+        played = verify_participant(m5, puuid)
+        if not played:
+            sys.exit(f"puuid not a participant in {args.match_id} - refusing")
+        print(f"[match] explicit {args.match_id}: puuid played {played} "
+              f"(row db.champion={champion}); posting ingest...")
+        mid = args.match_id
+    else:
+        # Chain rows (item 211): the row's db.champion is the PREVIOUS
+        # game's champ, so the strict filter refuses; --trust-lcu supplies
+        # the LCU-truth champion to match instead.
+        want = args.trust_lcu or champion
+        row_unix = int(_dt.datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S").timestamp())
+        start = row_unix - args.window_min * 60
+        end = row_unix + args.window_min * 60
+        ids = get_recent_matches(puuid, count=20,
+                                 start_time_unix_s=start, end_time_unix_s=end)
+        if not ids:
+            sys.exit(f"no Match-V5 ids in +/- {args.window_min}min of {ts_str}")
+        print(f"[match-v5] {len(ids)} candidate(s): {ids}")
 
-    chosen = None
-    for mid in ids:
-        d = get_match(mid)
-        if not d:
-            continue
-        info = d.get("info") or {}
-        for p in info.get("participants") or []:
-            if p.get("puuid") != puuid:
-                continue
-            cname = (p.get("championName") or "").strip()
-            if cname.lower() == (champion or "").strip().lower():
-                chosen = (mid, d)
-                break
-            # Fallback: champion name may have been normalized differently
-            # (e.g. "Wukong" -> "MonkeyKing" in some payloads).
-            if cname and not chosen:
-                # Keep a soft fallback in case strict match fails.
-                pass
-        if chosen:
-            break
-
-    if not chosen:
-        sys.exit(f"no Match-V5 detail matched champion={champion}")
-    mid, m5 = chosen
-    print(f"[match] {mid} matches champion={champion}; posting ingest...")
+        chosen = find_by_champion(ids, puuid, want, get_match)
+        if not chosen:
+            sys.exit(f"no Match-V5 detail matched champion={want}"
+                     + (" (--trust-lcu)" if args.trust_lcu else ""))
+        mid, m5 = chosen
+        print(f"[match] {mid} matches champion={want}; posting ingest...")
 
     detail = _synth_lcu_detail(m5, puuid)
     status, body = _post_ingest(puuid, detail, args.dashboard)
