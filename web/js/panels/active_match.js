@@ -14,7 +14,9 @@
 // Otherwise the existing in-game default ("last-match") wins, so
 // nothing changes for users who haven't opted in.
 
-import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
+import {
+  ITEMS, ITEM_COSTS, CHAMPS, _resolveChampId, _resolveItemId, _splitItemList,
+} from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
@@ -255,6 +257,14 @@ export function renderActiveMatch(payload, ctx) {
     }
   }
 
+  // Operator fix 2026-06-10: owned items resolved ONCE per render and
+  // shared by the DS rerank, the spike pips and the OWNED row. Live
+  // coach payloads never carry a `p.items` array (the field is
+  // `items_display`, display-name string) - the old read left every DS
+  // surface on an empty inventory for the whole game.
+  const lc = (ctx && ctx.liveclient) || null;
+  const ownedIds = _amOwnedItemIds(p, lc);
+
   // Spike-curve sparkline (UX win 2026-05-20). Pulls 5+5 champion ids
   // from the liveclient block, maps the current mode to a backend
   // spike-curve mode, and fetches the per-minute team-power curves
@@ -263,7 +273,7 @@ export function renderActiveMatch(payload, ctx) {
   // refetch. Skips silently in TFT / lobby / pre-game (mode not in
   // _SPK_MODE_MAP or no liveclient).
   _renderSpikeCurveFromCtx(ctx);
-  _renderSpikeMarkersFromCtx(ctx, p);
+  _renderSpikeMarkersFromCtx(ctx, p, ownedIds);
 
   // Ward-Coverage Heat Strip (UX wave 1, 2026-05-20). Pulls a 90s
   // rolling window of inferred ward placements per side x lane. Polls
@@ -288,9 +298,14 @@ export function renderActiveMatch(payload, ctx) {
     const champion = p.champion || "";
     const mode     = (ctx && ctx.mode) ? String(ctx.mode).toUpperCase() : "SR";
     const level    = parseInt(p.level || 0, 10) || 1;
-    const owned    = Array.isArray(p.items) ? p.items : [];
-    const ownedSet = new Set(owned.map((o) => String(o || "").toLowerCase()));
-    const livePicks  = _maybeRefreshDsPicks(champion, mode, level, owned);
+    // ownedIds are numeric-id strings (liveclient itemID first, resolved
+    // items_display names second); the rerank + the engine both speak
+    // ids. The OWNED overlay matches by id OR lowercased name so DS rows
+    // light up regardless of which currency they carry.
+    const ownedNames = _amOwnedItemNames(p, ownedIds);
+    const ownedSet = new Set(ownedIds.map(String));
+    ownedNames.forEach((o) => ownedSet.add(String(o || "").toLowerCase()));
+    const livePicks  = _maybeRefreshDsPicks(champion, mode, level, ownedIds);
     const coachPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
     const picks = (livePicks && livePicks.length) ? livePicks : coachPicks;
     build.innerHTML = "";
@@ -308,8 +323,8 @@ export function renderActiveMatch(payload, ctx) {
       build.appendChild(_line(label, ""));
       build.appendChild(strip);
     }
-    if (owned.length) {
-      build.appendChild(_line("OWNED", owned.join(" - ")));
+    if (ownedNames.length) {
+      build.appendChild(_line("OWNED", ownedNames.join(" - ")));
     }
     // s171.6: defensive-pick row. Renders only when enemy team's
     // threat score crosses the "worth recommending defense" line:
@@ -343,7 +358,6 @@ export function renderActiveMatch(payload, ctx) {
     // team is excluded so we only see enemies). Skips silently when
     // liveclient is missing, when there are no enemy entries, or in
     // shared-vision modes where the operator already has full info.
-    const lc = (ctx && ctx.liveclient) || null;
     if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
       const myTeam = _resolveMyTeam(lc);
       const enemies = lc.allPlayers.filter((pl) => pl && pl.team && pl.team !== myTeam);
@@ -357,7 +371,7 @@ export function renderActiveMatch(payload, ctx) {
       }
     }
 
-    if (!picks.length && !owned.length) {
+    if (!picks.length && !ownedNames.length) {
       // Empty pane shouldn't be blank - surface that we're waiting.
       build.appendChild(_line("DS ENGINE", "waiting for live data..."));
     }
@@ -437,16 +451,7 @@ function _amDsSyntheticCs(p, ctx) {
     }
   }
   // Owned items as numeric-id strings for the relscore build context.
-  const owned = [];
-  if (lc && Array.isArray(lc.allPlayers)) {
-    const me = _amActivePlayerEntry(lc);
-    const myItems = (me && Array.isArray(me.items)) ? me.items : [];
-    for (const it of myItems) {
-      if (!it || typeof it !== "object") continue;
-      const iid = it.itemID || it.itemId || 0;
-      if (iid) owned.push(String(iid));
-    }
-  }
+  const owned = _amOwnedItemIds(p, lc);
   return {
     my_champion: myId,
     my_completed: true,
@@ -470,6 +475,63 @@ function _amActivePlayerEntry(lc) {
     }
   }
   return null;
+}
+
+// Owned-item extraction (operator fix 2026-06-10). Live coach payloads
+// carry `items_display` - a comma-joined display-NAME string - and never
+// a `p.items` array (that field exists only in the ui_mock fixtures, so
+// page audits never caught the dead read). The liveclient block is the
+// id-keyed source of truth (itemID per slot); display names are the
+// fallback currency, resolved through the ITEMS index. slot >= 6
+// (trinket) excluded to match core.enemy_aware_stats's extraction.
+function _amOwnedItemIds(p, lc) {
+  const ids = [];
+  if (lc) {
+    const me = _amActivePlayerEntry(lc);
+    const myItems = (me && Array.isArray(me.items)) ? me.items : [];
+    for (const it of myItems) {
+      if (!it || typeof it !== "object") continue;
+      if (it.slot != null && it.slot >= 6) continue;
+      const iid = it.itemID || it.itemId || 0;
+      if (iid) ids.push(String(iid));
+    }
+    if (ids.length) return ids;
+  }
+  const names = Array.isArray(p && p.items) ? p.items
+    : _splitItemList((p && p.items_display) || "", false);
+  for (const nm of names) {
+    const iid = _resolveItemId(nm);
+    if (iid) ids.push(String(iid));
+  }
+  return ids;
+}
+
+// Display names for the OWNED row: prefer the coach payload's authored
+// names; fall back to id -> name through the ITEMS index.
+function _amOwnedItemNames(p, ownedIds) {
+  if (Array.isArray(p && p.items) && p.items.length) return p.items;
+  const disp = _splitItemList((p && p.items_display) || "", false);
+  if (disp.length) return disp;
+  return (ownedIds || [])
+    .map((id) => (ITEMS.byId && ITEMS.byId[id]) || "")
+    .filter(Boolean);
+}
+
+// Finished-item count for the spike pips. The engine's min(len, 3) proxy
+// counted boots + potions + components as finished legendaries (pips
+// crossed at minute 1) - and with the dead p.items read it counted 0 all
+// game. Completed items are the only ones costing >= 2000g (tier-2 boots
+// cap ~1300, components <= ~1600); unknown costs do not count - a
+// truthful undercount beats fabricated completion.
+const _AM_COMPLETED_GOLD_MIN = 2000;
+function _amCompletedItemCount(ownedIds) {
+  if (!ITEM_COSTS || !ITEM_COSTS.byId) return 0;
+  let n = 0;
+  for (const id of (ownedIds || [])) {
+    const cost = ITEM_COSTS.byId[id];
+    if (typeof cost === "number" && cost >= _AM_COMPLETED_GOLD_MIN) n += 1;
+  }
+  return n;
 }
 
 // Last (p, ctx) the cluster rendered with, so the per-panel fetch on-land
@@ -548,12 +610,15 @@ function _amRenderDsCombo(block, p, ctx) {
 // --- s171 step 4: map pane ------------------------------------------
 
 // Static base image per mode. Falls back to /api/minimap-crop?mode=<x>
-// when the static asset 404s (Arena/Brawl on builds without local
-// asset prefetch).
+// when the static asset 404s. 1-PC (ADR-011, 2026-06-10): the dedicated
+// Game-PC minimap stream is retired, so the static asset is PRIMARY for
+// every mode the local DDragon mirror ships (map30 included); the crop
+// endpoint stays as the onerror fallback - it serves the vision
+// server's self-grab /latest-frame crop when a live frame exists.
 const _AM_MAP_IMG = {
   sr:    "/data/ddragon/16.10.1/img/map/map11.png",
   aram:  "/data/ddragon/16.10.1/img/map/map12.png",
-  arena: "/api/minimap-crop?mode=arena",
+  arena: "/data/ddragon/16.10.1/img/map/map30.png",
   brawl: "/api/minimap-crop?mode=brawl",
 };
 // World-coordinate map sizes. Mirror of main.js's VT_MAP_SIZE so the
@@ -605,9 +670,13 @@ function _renderAmMap(host, mode, payload) {
         img.dataset.fallback = "1";
         img.src = "/api/minimap-crop?mode=" + encodeURIComponent(knownMode);
       } else {
+        // No base image at all (no local asset + no live frame): keep a
+        // visible box so the status + roster text layers still render.
         img.style.display = "none";
+        shell.classList.add("am-map-noimg");
       }
     };
+    img.onload = () => { shell.classList.remove("am-map-noimg"); };
     shell.appendChild(img);
     const canvas = document.createElement("canvas");
     canvas.id = "am-map-overlay";
@@ -615,9 +684,18 @@ function _renderAmMap(host, mode, payload) {
     shell.appendChild(canvas);
     const status = document.createElement("div");
     status.id = "am-map-status";
-    status.style.cssText = "position:absolute;left:8px;top:8px;font-size:11px;color:#9ca3af;background:rgba(0,0,0,0.55);padding:3px 8px;border-radius:4px;letter-spacing:0.4px;text-transform:uppercase;font-weight:700;";
+    status.style.cssText = "position:absolute;left:8px;top:8px;font-size:var(--fs-xs);color:#9ca3af;background:rgba(0,0,0,0.55);padding:3px 8px;border-radius:4px;letter-spacing:0.4px;text-transform:uppercase;font-weight:700;";
     status.textContent = "loading vision...";
     shell.appendChild(status);
+    // Per-enemy vision roster (2026-06-10). ARAM/Mayhem emit no champion
+    // coordinates (Live Client position "NONE"), so this text column IS
+    // the truthful per-enemy signal there: level + zone label for alive
+    // enemies, ticking respawn countdown for dead ones, MIA age where
+    // fog applies. Dots stay coordinate-gated (no fabricated positions).
+    const roster = document.createElement("div");
+    roster.id = "am-map-roster";
+    roster.className = "am-map-roster";
+    shell.appendChild(roster);
     const ganker = document.createElement("div");
     ganker.id = "am-map-gank";
     ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#fff;background:rgba(220,38,38,0.85);font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
@@ -652,10 +730,84 @@ function _amStartMapPolling() {
   _AM_MAP.pollHandle = setInterval(tick, _AM_TICK_MS);
 }
 
+// mm:ss from the vision-state game clock - the visibly-ticking heartbeat
+// in shared-vision modes where no champion coordinates exist.
+function _amClock(t) {
+  const s = Math.max(0, Math.floor(+t || 0));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+// Text layers (status line + per-enemy roster). Deliberately independent
+// of the base image: the old draw bailed on !img.naturalWidth, so a
+// missing map PNG froze the whole panel on "loading vision..." even
+// while /api/vision-state was live and fresh.
+function _amUpdateMapText(vs) {
+  const status = document.getElementById("am-map-status");
+  const roster = document.getElementById("am-map-roster");
+  const enemies = (vs && vs.enemies) || {};
+  const summary = (vs && vs.summary) || {};
+  const gameModeUp = String((vs && vs.game_mode) || "").toUpperCase();
+  const shared = _AM_SHARED_VISION.has(gameModeUp);
+
+  if (status) {
+    const visible = summary.visible_count | 0;
+    const missing = summary.missing_count | 0;
+    const dead    = summary.dead_count | 0;
+    const clock   = (vs && vs.game_time != null)
+      ? _amClock(vs.game_time) + " - " : "";
+    status.textContent = shared
+      ? `${clock}${visible} on bridge - ${dead} dead`
+      : `${clock}${visible} visible - ${missing} MIA - ${dead} dead`;
+  }
+
+  if (roster) {
+    const frag = document.createDocumentFragment();
+    for (const [name, e] of Object.entries(enemies)) {
+      if (!e || typeof e !== "object") continue;
+      const row = document.createElement("div");
+      row.className = "am-mr-row";
+      let stateTxt;
+      if (e.is_dead) {
+        row.dataset.state = "dead";
+        const rs = (e.respawn_in_s != null)
+          ? " " + Math.ceil(e.respawn_in_s) + "s" : "";
+        stateTxt = "DEAD" + rs;
+      } else if (e.visible) {
+        row.dataset.state = "ok";
+        stateTxt = String(e.last_seen_zone || "visible").replace(/_/g, " ");
+      } else {
+        row.dataset.state = "mia";
+        const ms = (e.missing_for_s != null)
+          ? " " + Math.round(e.missing_for_s) + "s" : "";
+        stateTxt = "MIA" + ms;
+      }
+      const nm = document.createElement("span");
+      nm.className = "am-mr-name";
+      nm.textContent = String(name).slice(0, 10);
+      row.appendChild(nm);
+      if (e.level) {
+        const lvl = document.createElement("span");
+        lvl.className = "am-mr-lvl";
+        lvl.textContent = "lv" + e.level;
+        row.appendChild(lvl);
+      }
+      const st = document.createElement("span");
+      st.className = "am-mr-state";
+      st.textContent = stateTxt;
+      row.appendChild(st);
+      frag.appendChild(row);
+    }
+    roster.replaceChildren(frag);
+  }
+}
+
 function _amDrawOverlay(vs) {
+  // Text layers first - they must tick even when the base image is
+  // missing (no local asset + no live crop frame).
+  _amUpdateMapText(vs);
+
   const img    = document.getElementById("am-map-img");
   const canvas = document.getElementById("am-map-overlay");
-  const status = document.getElementById("am-map-status");
   const ganker = document.getElementById("am-map-gank");
   if (!img || !canvas) return;
   if (!img.complete || !img.naturalWidth) return;
@@ -676,21 +828,12 @@ function _amDrawOverlay(vs) {
 
   const enemies = (vs && vs.enemies) || {};
   const enemyList = Object.entries(enemies);
-  const summary = (vs && vs.summary) || {};
   const gameModeUp = String((vs && vs.game_mode) || "").toUpperCase();
   const shared = _AM_SHARED_VISION.has(gameModeUp);
 
-  // Status line - visible/missing/dead summary.
-  if (status) {
-    const visible = summary.visible_count | 0;
-    const missing = summary.missing_count | 0;
-    const dead    = summary.dead_count | 0;
-    status.textContent = shared
-      ? `${visible} on bridge - ${dead} dead`
-      : `${visible} visible - ${missing} MIA - ${dead} dead`;
-  }
-
-  // Shared-vision (ARAM/Brawl-on-bridge): no position data, skip dots.
+  // Shared-vision (ARAM/Mayhem): Live Client emits no positions, so
+  // there are no truthful coordinates to dot - the roster column above
+  // carries the per-enemy state instead.
   if (shared) {
     if (ganker) ganker.style.display = "none";
     return;
@@ -888,7 +1031,10 @@ function _renderSpikeCurveFromCtx(ctx) {
 // Re-fetch: getCachedSpikeMarkers memoizes; the next state tick paints
 // once the cache lands (mirrors _renderSpikeCurveFromCtx). The live
 // game-clock cursor on the strip is OWED (live-game-only visual).
-function _renderSpikeMarkersFromCtx(ctx, p) {
+// Operator fix 2026-06-10: items are the resolved owned-item IDS (the
+// old p.items read was empty live) and the item-pip count is the
+// FINISHED-item count from ITEM_COSTS, not raw inventory length.
+function _renderSpikeMarkersFromCtx(ctx, p, ownedIds) {
   const mount = _AM.spikeMarkers();
   if (!mount) return;
   const modeLow = String((ctx && ctx.mode) || "").toLowerCase();
@@ -905,8 +1051,8 @@ function _renderSpikeMarkersFromCtx(ctx, p) {
   }
   mount.style.display = "";
   mount.dataset.smState = "live";
-  const items = Array.isArray(p.items) ? p.items : [];
-  const itemCount = Math.min(items.length, 3);
+  const items = Array.isArray(ownedIds) ? ownedIds : [];
+  const itemCount = _amCompletedItemCount(items);
   const cached = getCachedSpikeMarkers(champ, level, itemCount, spkMode);
   if (!cached) {
     fetchSpikeMarkers(champ, level, items, spkMode, itemCount, null);
@@ -1114,7 +1260,9 @@ function _dsIcon(r, ownedSet) {
   const id   = r.id   || r.item_id   || 0;
   const delta = (r.delta_dps != null ? r.delta_dps : (r.deltaDps || 0));
   const unit  = scorerUnit(r.scorer);
-  const owned = ownedSet && ownedSet.has(String(name).toLowerCase());
+  // ownedSet carries id strings AND lowercased names (2026-06-10).
+  const owned = ownedSet && (ownedSet.has(String(id))
+                             || ownedSet.has(String(name).toLowerCase()));
   if (id) {
     const ver = (ITEMS && ITEMS.version) || "latest";
     const img = document.createElement("img");
@@ -1159,7 +1307,9 @@ function _defIcon(rec, ownedSet) {
   wrap.style.cssText = "position:relative;width:62px;text-align:center;";
   const name = rec.name || "?";
   const id = rec.item_id || 0;
-  const owned = ownedSet && ownedSet.has(String(name).toLowerCase());
+  // ownedSet carries id strings AND lowercased names (2026-06-10).
+  const owned = ownedSet && (ownedSet.has(String(id))
+                             || ownedSet.has(String(name).toLowerCase()));
   if (id) {
     const ver = (ITEMS && ITEMS.version) || "latest";
     const img = document.createElement("img");
