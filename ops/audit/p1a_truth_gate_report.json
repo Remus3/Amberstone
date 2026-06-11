@@ -1,0 +1,61 @@
+{
+  "run_id": "deep-audit-cycle2-p1a",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15175,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M WAKEUP_NOTES.md",
+      " M docs/LEDGER.md",
+      " M docs/history_notes.md",
+      " M tests/test_active_match_live_fixes.py",
+      " M tools/ddragon_mirror_refresh.py",
+      " M web/js/lib/items_index.js",
+      " M web/js/main.js",
+      " M web/js/panels/active_match.js",
+      " M web/js/panels/pgr_loadout.js",
+      "?? ops/audit/P1_INVENTORY.md",
+      "?? ops/audit/p1a_claims.json",
+      "?? ops/audit/p1a_truth_gate_report.json",
+      "?? tests/test_ddragon_mirror_prune.py",
+      "?? tests/test_ddragon_path_version_drift.py"
+    ],
+    "head": "e15e733f ops(audit): deep-audit cycle 1 P0 baseline (item 395) - verified inventory/tests/health/workmap + truth_gate interpreter pin"
+  },
+  "ci": {
+    "status": "success",
+    "sha": "e15e733fbc21e4538051feb54536da71c741ecaa",
+    "runs": [
+      {
+        "conclusion": "success",
+        "name": "ci",
+        "status": "completed"
+      },
+      {
+        "conclusion": "success",
+        "name": "ci",
+        "status": "completed"
+      }
+    ]
+  },
+  "slices": [
+    {
+      "id": "p1a-mirror-retention",
+      "claim": "ddragon JS patch pins dynamic; mirror prune retention shipped + executed (16.8.1/16.9.1/16.10.1 deleted, 16.11.1+16.12.1 kept); logs gamepc jpgs + >30d removed",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}

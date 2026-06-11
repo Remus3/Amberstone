@@ -217,12 +217,16 @@ class MapPaneTruthfulRenderTests(unittest.TestCase):
         self.assertIn("function _amClock(", self.src)
 
     def test_arena_base_is_static_asset_with_crop_fallback(self) -> None:
-        # Scope to the _AM_MAP_IMG literal (the file has other `arena:`
-        # keys, e.g. _SPK_MODE_MAP).
-        block = self.src.split("_AM_MAP_IMG = {")[1].split("};")[0]
+        # Scope to the _AM_MAP_FILE literal (the file has other `arena:`
+        # keys, e.g. _SPK_MODE_MAP). Item 396 made the patch segment
+        # dynamic (_amMapImg builds /data/ddragon/<ITEMS.version>/img/map/)
+        # so stale mirror dirs can be pruned; arena stays a static asset.
+        block = self.src.split("_AM_MAP_FILE = {")[1].split("};")[0]
         m = re.search(r"arena:\s*\"([^\"]+)\"", block)
         self.assertIsNotNone(m)
-        self.assertIn("/img/map/map30.png", m.group(1))
+        self.assertEqual("map30.png", m.group(1))
+        builder = self.src.split("function _amMapImg(")[1].split("\n}")[0]
+        self.assertIn("/img/map/", builder)
         # The live-crop mode is NOT deleted - it stays the onerror
         # fallback (serves the vision server's 1-PC self-grab crop).
         self.assertIn("/api/minimap-crop?mode=", self.src)

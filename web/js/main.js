@@ -1151,7 +1151,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
           cell.dataset.cdKey = _spellKey(p.champion, sname);
           if (spell) {
             const img = document.createElement("img");
-            img.src = `/data/ddragon/16.12.1/img/spell/${spell.img}`;
+            img.src = `/data/ddragon/${(ITEMS && ITEMS.version) || "16.12.1"}/img/spell/${spell.img}`;
             img.alt = spell.name;
             cell.title = spell.name;
             cell.appendChild(img);
@@ -1997,10 +1997,10 @@ import { initOverlayPulse } from './overlay_pulse.js';
     { id: 32, name: "Snowball", img: "SummonerSnowball.png"},
   ];
   // Rune-page + spell-chooser shared state. _RP_TREES cached lazily from
-  // /api/dictionary/runes on first form-open. Patch path fixed at the
-  // DDragon mirror's current dir (routes_dictionary serves runes for
-  // 16.12.1; the static folder mirrors the same patch in lockstep).
-  const _RP_DDRAGON_BASE = "/data/ddragon/16.12.1/img/";
+  // /api/dictionary/runes on first form-open. Patch path follows the
+  // hydrated items index so the mirror's stale dirs can be pruned;
+  // pre-hydration guesses 404 into the existing onerror CDN chain.
+  const _RP_DDRAGON_BASE = "/data/ddragon/" + ((ITEMS && ITEMS.version) || "16.12.1") + "/img/";
   let   _RP_TREES = null;
   const _RP = {
     primaryTree:    null,  // tree.key e.g. "Domination"

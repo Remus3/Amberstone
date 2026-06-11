@@ -615,12 +615,18 @@ function _amRenderDsCombo(block, p, ctx) {
 // every mode the local DDragon mirror ships (map30 included); the crop
 // endpoint stays as the onerror fallback - it serves the vision
 // server's self-grab /latest-frame crop when a live frame exists.
-const _AM_MAP_IMG = {
-  sr:    "/data/ddragon/16.10.1/img/map/map11.png",
-  aram:  "/data/ddragon/16.10.1/img/map/map12.png",
-  arena: "/data/ddragon/16.10.1/img/map/map30.png",
-  brawl: "/api/minimap-crop?mode=brawl",
+const _AM_MAP_FILE = {
+  sr:    "map11.png",
+  aram:  "map12.png",
+  arena: "map30.png",
+  brawl: null, // no static asset; live crop endpoint only
 };
+
+function _amMapImg(mode) {
+  if (mode === "brawl") return "/api/minimap-crop?mode=brawl";
+  const ver = (ITEMS && ITEMS.version) || "16.12.1";
+  return "/data/ddragon/" + ver + "/img/map/" + _AM_MAP_FILE[mode];
+}
 // World-coordinate map sizes. Mirror of main.js's VT_MAP_SIZE so the
 // canvas projection matches the home-view overlay.
 const _AM_MAP_WORLD = {
@@ -652,7 +658,7 @@ const _AM_MAP = {
 function _renderAmMap(host, mode, payload) {
   // Allowed-mode gate. Arena/Brawl supported but rely on the live
   // minimap-crop endpoint since DDragon doesn't ship 30/33 statically.
-  const knownMode = (mode in _AM_MAP_IMG) ? mode : "sr";
+  const knownMode = (mode in _AM_MAP_FILE) ? mode : "sr";
   if (_AM_MAP.attachedMode !== knownMode) {
     _AM_MAP.attachedMode = knownMode;
     host.innerHTML = "";
@@ -661,7 +667,7 @@ function _renderAmMap(host, mode, payload) {
     shell.style.cssText = "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;";
     const img = document.createElement("img");
     img.id = "am-map-img";
-    img.src = _AM_MAP_IMG[knownMode];
+    img.src = _amMapImg(knownMode);
     img.alt = knownMode + " map";
     img.style.cssText = "max-width:100%;max-height:100%;object-fit:contain;display:block;";
     img.onerror = () => {
