@@ -4,6 +4,25 @@
 
 ---
 
+# 2026-06-10 - gemini loop cycle 4: false REGRESS audit refuted + gate edge pins [item 387]
+
+Gemini-headless-upgrade executor cycle. Directive = FIX-FIRST regression: audit claimed the
+item-386 `lc.get("champion")` gate shipped untested (conftest + gate tests "missing").
+REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
+9ccc64fa..b5533f85) carries gate + tests/conftest.py + tests/test_hz_shadow_live_gate.py
+(4 tests) in the SAME commit. Auditor diffed only tip commit b5533f85 (docs+data only).
+
+- Verified fresh pre-edit: gate+wiring 12 passed at HEAD.
+- Shipped `c5cf8b56`: +2 edge pins in test_hz_shadow_live_gate.py (champion="" loading-screen
+  edge; non-dict lc isinstance guard). Test-only, no engine, no restart.
+- Gates: RC 5789p/2sk/94st exit 0; ruff + hygiene clean; CI run 27315276398 green.
+- LOOP IMPROVEMENT (FUTURE): loop auditor should diff prev-done-sha..new-sha, not the tip
+  commit - tip-only diffing produced this false REGRESS.
+- DON'T REDO: HZ shadow live-gate IS tested (6 tests); do not re-add gate tests.
+- NOTE: RC pid drifted 14160 -> 3336 during cycle (supervisor bounce); alive+reload_ok true.
+
+---
+
 # 2026-06-10 - gemini loop: HZ-D4 charter sweep - shadow-pipeline root-cause fix + ARAM tables + agreement metric [item 386]
 
 Gemini-headless-upgrade executor cycle. Directive = HZ-D4 (7-lever cost sweep + next HZ increment). Merges `d446ea80` + `b54d040e` (2 PARALLEL worktree agents, verifier-CONFIRMED). NO engine, no Share, no web/ touch; RC restarted pid 14160.
@@ -28,29 +47,3 @@ Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 4). Directive = 
 - package.json 0.4.0; npm install restored 258 pkgs (registry reachable). node 109 -> 145/0 (TDD red-first both slices). RC tests/ 5769p/2sk/94st exit 0; DS 7075p/1sk/1xf/1942st exit 0 (canonical Python314 path - bare `py` lacks pytest).
 - HZ-D1 flipped DONE in ORCHESTRATION_PLAN (Electron phases 1-5 all shipped code-side; Phase 6 Pengu optional/operator-gated).
 - OWED (operator): packaging + first GitHub Release + packaged-app update check; in-match overlay capture (one shell relaunch picks up slices 1-4).
-
----
-
-# 2026-06-10 - gemini loop cycle 3: Phase 4 in-overlay DS controls + Phase 5 smoke [item 382, HZ-D1 slice 3]
-
-Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 3). Directive = Phase 4 in-overlay DS controls (weight tweak / build reorder) + dashboard-side web/ slice + UI audit. Merges `85c54ba3` + `141c1333` (2 PARALLEL worktree agents, verifier-CONFIRMED) + audit-fix `bc8c94d3`. NO engine, no Share, no RC restart (ADR-008).
-
-- NEW FIGHT MODEL pane `#am-pane-ovds`: `overlay_ds_controls.js/.css` + overlay.css 4b gates (base+build panelsets; coach/threat narrow it off) + main.js wiring x4 sites; 4 knobs (armor/MR/gold cap/fight len) -> existing GET /api/ds-knobs; top-5 re-ranked rows = build reorder. Zero backend change.
-- Live-probed fix 1: coach payload items are NAMES, /api/ds-knobs 503s on names -> bridge via `items_index._resolveItemId` (numeric passthrough, unresolved drop).
-- Live-probed fix 2 (UI-audit MUST-FIX): cascade leak - `#view-active-match .am-pane {display:flex}` beat bare-id display:none + [hidden]; fixed with two-id selector (0,2,0,0).
-- Phase 5 starter: `tests/test_overlay_route_smoke.py` shell<->web PANEL_SETS drift guard (19 tests + 9 subtests).
-- Proof on LIVE :8888 via Claude_Preview (?ui_mock=1&mode=aram&overlay=1): armor 100->300 re-ranked Runaan's-top -> Void-Immolation-top; normal dashboard computed display:none. RC tests/ 5769 passed / 2 skipped / 94 subtests exit 0; ruff clean; DOM suite 26 (TDD red-first x2).
-- OWED (live-gated): in-match overlay capture with ACTIVE knob interaction (shell relaunch picks up slices 1-3).
-- NEXT in HZ-D1: Phase 5 stabilization tail (electron-updater + channels, crash isolation) or live-capture closeout.
-
----
-
-# 2026-06-10 - gemini loop cycle 2: rc-shell overlay persistence + ACTIVE indicator [item 381, HZ-D1 slice 2]
-
-Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 2). Directive = overlay position persistence (mirror companion) + advance Phase 4 interactive controls, headless-safe. Merge `8116c6c2` (slice `c9f53543`, 1 worktree agent, verifier-CONFIRMED pre-merge). NO engine, no Share, no RC restart.
-
-- `rc-shell-state.json` gains `overlay: {x, y, panelSet}`: pure `overlayStateFrom` / `resolveOverlayBounds` (clamp via `config.clampPosition`, right-edge dock default) / non-mutating `mergeOverlayPatch` in `overlay_state.js`; main.js debounced overlay move persist + panelSet restore-at-boot / persist-on-cycle + will-quit timer clear.
-- Phase 4: NEW `rc-shell/src/active_indicator.js` edge-glow (`pointer-events:none`, `html.rc-shell-active`), injected overlay-only on did-finish-load (re-applies current state), toggled in `applyClickThrough()` - operator can now SEE ACTIVE vs PASSIVE incl. the 20s auto-revert.
-- node 85 -> 109/0 (TDD 16 red first); RC tests/ 5724 passed / 2 skipped / 85 subtests exit 0; package.json 0.3.0; DS n/a (zero python touched).
-- OWED (live-gated): in-match glow + drag-restore capture; the running shell instance predates slices 1+2 - one relaunch picks up both.
-- NEXT in HZ-D1: Phase 4 in-overlay DS controls (dashboard-side web/ slice + UI audit) or Phase 5 stabilization.
