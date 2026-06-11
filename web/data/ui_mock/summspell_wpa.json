@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "patch": "16.10.1",
+  "queue_id": 420,
+  "min_n": 20,
+  "items": [
+    {"spell_id": 6, "name": "Ghost", "icon": "SummonerHaste", "n": 64, "observed_winrate": 0.5781, "expected_winrate": 0.5008, "wpa": 0.0773, "wpa_shrunk": 0.0717},
+    {"spell_id": 14, "name": "Ignite", "icon": "SummonerDot", "n": 122, "observed_winrate": 0.5492, "expected_winrate": 0.5014, "wpa": 0.0478, "wpa_shrunk": 0.0459},
+    {"spell_id": 12, "name": "Teleport", "icon": "SummonerTeleport", "n": 88, "observed_winrate": 0.5341, "expected_winrate": 0.4987, "wpa": 0.0354, "wpa_shrunk": 0.0335},
+    {"spell_id": 4, "name": "Flash", "icon": "SummonerFlash", "n": 412, "observed_winrate": 0.5194, "expected_winrate": 0.5002, "wpa": 0.0192, "wpa_shrunk": 0.019},
+    {"spell_id": 11, "name": "Smite", "icon": "SummonerSmite", "n": 57, "observed_winrate": 0.5088, "expected_winrate": 0.5023, "wpa": 0.0065, "wpa_shrunk": 0.006},
+    {"spell_id": 21, "name": "Barrier", "icon": "SummonerBarrier", "n": 33, "observed_winrate": 0.4848, "expected_winrate": 0.4991, "wpa": -0.0143, "wpa_shrunk": -0.0124},
+    {"spell_id": 7, "name": "Heal", "icon": "SummonerHeal", "n": 71, "observed_winrate": 0.4648, "expected_winrate": 0.5009, "wpa": -0.0361, "wpa_shrunk": -0.0337},
+    {"spell_id": 3, "name": "Exhaust", "icon": "SummonerExhaust", "n": 26, "observed_winrate": 0.4231, "expected_winrate": 0.4978, "wpa": -0.0747, "wpa_shrunk": -0.0627}
+  ],
+  "elapsed_ms": 3,
+  "model": "trained",
+  "cached": false
+}
