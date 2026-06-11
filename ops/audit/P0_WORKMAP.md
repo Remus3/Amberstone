@@ -35,17 +35,24 @@ Every line below is a live-verified P0 observation feeding P1-P8. Sources cited.
 
 ## P2 CODE AUDIT seeds (verified anomalies)
 
-- RC-VisionServer scheduled task last_result=1 (schtasks LIST) while vision serves fine
-  in-process per /api/health/all -> task is vestigial-or-misconfigured duplicate
-  (Task To Run: moon_vision_server.py). Reconcile: disable task or repoint.
-- ResourceManager.shutdown logging raises during pytest teardown (core/resource_manager.py:329
-  "Message: 'ResourceManager.shutdown() complete'" logged-after-close traceback in pytest tail).
+- [RESOLVED cycle 5, item 399] RC-VisionServer scheduled task: confirmed vestigial duplicate
+  (live :8889 = pythonw child spawned by dashboard/server.py self-heal; the schtask's
+  python.exe instance lost the port race -> exit 1 every boot). Task DELETED, XML archived
+  docs/_archive/2026-06-11_RC-VisionServer_schtask_removed.xml; CLAUDE.md / OPERATIONS /
+  start_claude.ps1 / legion_on+off.ps1 / docstrings / ADR-003 synced.
+- [RESOLVED cycle 5, item 399] ResourceManager.shutdown logging-after-close noise: shutdown()
+  now toggles logging.raiseExceptions off for its duration (restored in finally);
+  tests/test_resource_manager_shutdown_logging.py (RED->GREEN).
 - pytest run requires -p no:cacheprovider hygiene? (baseline ran fine; confirm .pytest_cache policy).
-- INTERPRETER DUALITY (found cycle 1): bare `py` resolves to pythoncore-3.14-64 (python-manager
-  install, NO pytest) while the canonical project interpreter is Programs\Python314. truth_gate
-  default suite cmd fixed this cycle (pinned canonical + regression test); P2 must sweep every
-  other `py -m pytest` / bare-`py` call site (hooks, skills, docs, scheduled tasks) and decide a
-  fleet-wide pin (py.ini or absolute paths).
+- [RESOLVED cycle 5, item 399] INTERPRETER DUALITY: gemini ruled OPTION 4 (absolute canonical
+  path everywhere + permanent ban). Swept .claude hooks/skills (live) + docs + ops/loop +
+  core hint strings (297 offenders -> 0); guard tests/test_bare_py_ban.py. DEFERRED tail
+  (allowlisted in-guard, P2 follow-up): Share/** mirror (fix source + ds_share_sync),
+  tools/*.py usage docstrings incl FROZEN bridge tools, tools/*.cmd launchers (these EXECUTE
+  bare py), scripts/*.py, ROADMAP.md, riot-commander.spec, 8 remediation-hint tests.
+- [RESOLVED cycle 5, item 399] stale `|| "16.10.1"` JS fallbacks: 22 literals -> 1
+  DDRAGON_FALLBACK_VERSION const (web/js/lib/items_index.js); drift guard bans scattered
+  semver literals in web/js.
 
 ## P3 PRUNE seeds
 

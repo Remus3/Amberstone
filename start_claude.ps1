@@ -28,19 +28,8 @@ if ($sup) {
     Write-Host "  RC-Supervisor: TASK NOT FOUND -- check Task Scheduler" -ForegroundColor Red
 }
 
-# 2. RC-VisionServer scheduled task
-$vs = Get-ScheduledTask -TaskName "RC-VisionServer" -ErrorAction SilentlyContinue
-if ($vs) {
-    if ($vs.State -ne "Running") {
-        Write-Host "  RC-VisionServer: starting..." -ForegroundColor Yellow
-        Start-ScheduledTask -TaskName "RC-VisionServer"
-        Start-Sleep -Seconds 2
-    } else {
-        Write-Host "  RC-VisionServer: running" -ForegroundColor Green
-    }
-} else {
-    Write-Host "  RC-VisionServer: TASK NOT FOUND -- check Task Scheduler" -ForegroundColor Red
-}
+# 2. Vision server has NO scheduled task (removed 2026-06-11, deep-audit P2):
+#    dashboard/server.py self-heals :8889 in-process; step 7 probes it.
 
 # 3. RC-DaemonSlayer (Daemon Slayer build engine :8893)
 $ds = Get-ScheduledTask -TaskName "RC-DaemonSlayer" -ErrorAction SilentlyContinue
