@@ -131,8 +131,8 @@ to the target peer via `bridge_cli task` (the same chokepoint
 `bridge_post_result.py` uses for non-result envelopes). Operator runs:
 
 ```
-py "C:\Riot Commander\tools\bridge_dispatch_enable_lanes.py" --target gamepc --lanes read
-py "C:\Riot Commander\tools\bridge_dispatch_enable_lanes.py" --target peer --lanes read
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:\Riot Commander\tools\bridge_dispatch_enable_lanes.py" --target gamepc --lanes read
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:\Riot Commander\tools\bridge_dispatch_enable_lanes.py" --target peer --lanes read
 ```
 
 Add `--dry-run` to see the envelope without POSTing. Add `--lanes read,ops`

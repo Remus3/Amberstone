@@ -13,7 +13,7 @@ before any restart -> full pytest suite green -> UI sessions also pass the 5-pha
 fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY) + a
 Claude_Preview visual check vs /api/state -> commit with a descriptive message ->
 push to origin/main -> /done ritual (append docs/LEDGER.md, sync ROADMAP + this
-file) -> py ops/loop/done_sentinel.py. No AskUserQuestion; auto-pick safest option.
+file) -> "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py. No AskUserQuestion; auto-pick safest option.
 
 ASCII only. No em-dashes, en-dashes, or smart quotes.
 

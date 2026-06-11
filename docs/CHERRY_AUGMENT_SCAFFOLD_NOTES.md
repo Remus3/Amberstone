@@ -43,7 +43,7 @@ the in-game augment-pick window.
    shrink to just the verified surface for performance; for now the 4-entry
    chain costs ~50-200ms total on all-fail vs ~10-30ms on first-hit success.
 5. Test the live PATCH chain via the gated suite:
-   `RC_LIVE_ARENA=1 RC_LIVE_AUG_ID=<id> RC_LIVE_AUG_SLOT=0 py -m pytest
+   `RC_LIVE_ARENA=1 RC_LIVE_AUG_ID=<id> RC_LIVE_AUG_SLOT=0 "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest
    tests/test_set_augment_intent_handler.py::LiveAugmentSelectIntegrationTests`.
    The test prints the live endpoint verdict to stdout.
 
@@ -65,7 +65,7 @@ DevTools, or LCU lockfile + curl):
 The handler change at `tools/gamepc_lcu_agent.py:1179` lives on Legion in
 git; the live agent runs on Game-PC at `C:\RC-Agent\gamepc_lcu_agent.py`.
 Redeploy OWED at the operator's next Arena window via the HTTP-pull dance
-per the `reference_gamepc_http_server_redeploy` memory: Legion `py -m
+per the `reference_gamepc_http_server_redeploy` memory: Legion `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m
 http.server 8765 --bind 0.0.0.0 --directory tools`; Game-PC `Invoke-
 WebRequest` to `.new` + sha256-verify + taskkill old pid + atomic
 `Move-Item` + pythonw relaunch. This session did NOT redeploy - the

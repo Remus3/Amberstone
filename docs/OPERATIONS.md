@@ -4,6 +4,23 @@ _Living document. Full ops command set for Legion sessions._
 
 ---
 
+## Python interpreter
+
+Canonical interpreter (the ONLY one with RC's dependency tree installed):
+
+```
+C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe
+```
+
+Bare `py` is BANNED on every Legion runnable/doc surface: PEP 514 resolves it
+to a pymanager runtime (`AppData\Local\Python\pythoncore-3.14-64`) with ZERO
+third-party packages, so a launcher-spelled pytest run silently executes a
+pytest-less interpreter (a past incident zeroed the test suite). Always spell
+the canonical absolute path (quoted) in commands, hooks, docs, and scheduled
+tasks. Guard test: `tests/test_bare_py_ban.py`.
+
+---
+
 ## Quick health check
 
 ```powershell
@@ -48,7 +65,6 @@ schtasks /Run /TN "RC-Supervisor"
 | Task | Trigger | Context | Description |
 |---|---|---|---|
 | `RC-Supervisor` | At logon | Administrator / HIGHEST | Runs `pythonw.exe ops/rc_supervisor.py` |
-| `RC-VisionServer` | At system startup | SYSTEM / HIGHEST | Runs `python.exe moon_vision_server.py` |
 | `RC-BridgeWatcher` | At logon | Administrator | Silent bridge poll daemon |
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
@@ -147,8 +163,8 @@ local Claude / agent: `ds_health`, `ds_rank_items`, `ds_build_order`,
 DS-down and match-DB-missing both degrade to an error dict, never crash.
 
 ```powershell
-py tools\ds_matchdb_mcp_server.py --show-token        # token for client config
-py tools\start_ds_matchdb_mcp.py                       # launch (boot wrapper)
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ds_matchdb_mcp_server.py --show-token        # token for client config
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\start_ds_matchdb_mcp.py                       # launch (boot wrapper)
 curl http://127.0.0.1:8894/health -H "Authorization: Bearer <token>"
 ```
 
@@ -184,8 +200,8 @@ are kept in sync there); dashboard-down degrades to a structured error
 dict, never crashes.
 
 ```powershell
-py tools\bridge_mcp_server.py --show-token             # token for client config
-py tools\start_bridge_mcp.py                            # launch (boot wrapper)
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\bridge_mcp_server.py --show-token             # token for client config
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\start_bridge_mcp.py                            # launch (boot wrapper)
 curl http://127.0.0.1:8895/health -H "Authorization: Bearer <token>"
 ```
 
@@ -219,13 +235,13 @@ so `--check-changed` only re-fetches mid-patch revisions; first cold run on a
 new patch fetches ~6.7k files (~30 MB).
 
 ```powershell
-py tools\ddragon_mirror_refresh.py --check-only       # exit 1 = flip pending
-py tools\ddragon_mirror_refresh.py --dry-run          # plan, no writes
-py tools\ddragon_mirror_refresh.py                    # default - idempotent fetch
-py tools\ddragon_mirror_refresh.py --check-changed    # mid-patch HEAD probe
-py tools\ddragon_mirror_refresh.py --full             # ignore manifest, refetch all
-py tools\ddragon_mirror_refresh.py --version 16.10.1  # pin a version
-py tools\ddragon_mirror_refresh.py --workers 8        # default 8 parallel fetchers
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --check-only       # exit 1 = flip pending
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --dry-run          # plan, no writes
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py                    # default - idempotent fetch
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --check-changed    # mid-patch HEAD probe
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --full             # ignore manifest, refetch all
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --version 16.10.1  # pin a version
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --workers 8        # default 8 parallel fetchers
 ```
 
 Install the daily 03:30 task (elevated PowerShell):
@@ -251,11 +267,11 @@ for each missing match. Idempotent (INSERT OR IGNORE) and resumable via
 Account-V1 by Riot ID (handles PUUID rotation).
 
 ```powershell
-py scripts\rewind_catchup.py                # full catch-up
-py scripts\rewind_catchup.py --dry-run      # list IDs only, no writes
-py scripts\rewind_catchup.py --limit 50     # cap detail fetches
-py scripts\rewind_catchup.py --no-timeline  # skip timeline (faster)
-py scripts\rewind_catchup.py --puuid X      # override operator PUUID
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py                # full catch-up
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --dry-run      # list IDs only, no writes
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --limit 50     # cap detail fetches
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --no-timeline  # skip timeline (faster)
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --puuid X      # override operator PUUID
 ```
 
 Install the weekly Sunday 04:00 task (elevated PowerShell):
@@ -328,15 +344,15 @@ curl -k "https://127.0.0.1:8888/api/lessons/status?refresh=0"  # snapshot only, 
 
 CLI equivalent (also pokes the bridge for any new acks):
 ```
-py tools/lessons_status.py            # JSON
-py tools/lessons_status.py --plain    # tabular per-bucket view
-py tools/lessons_status.py --no-refresh
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/lessons_status.py            # JSON
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/lessons_status.py --plain    # tabular per-bucket view
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/lessons_status.py --no-refresh
 ```
 
 Apply-with-revert wrapper (Claude/operator-driven; the receiver still
 auto-handles only schema-reject + neg-match):
 ```
-py -m core.lessons_revert <lesson_id> --commit-sha <sha> --tests tests/test_x.py
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m core.lessons_revert <lesson_id> --commit-sha <sha> --tests tests/test_x.py
 ```
 On post-apply test failure + commit_sha given: runs `git revert <sha>
 --no-edit` and sends a follow-up `kind=result` ack with
