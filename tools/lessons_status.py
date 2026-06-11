@@ -8,9 +8,9 @@ Runs the ack-watcher refresh (no-op when offline), then prints:
   - newly-acked lesson ids from this refresh
 
 Usage:
-    py tools/lessons_status.py              # refresh + print JSON
-    py tools/lessons_status.py --no-refresh # snapshot only (skip bridge)
-    py tools/lessons_status.py --plain      # human-readable tabular print
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_status.py              # refresh + print JSON
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_status.py --no-refresh # snapshot only (skip bridge)
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_status.py --plain      # human-readable tabular print
 """
 from __future__ import annotations
 

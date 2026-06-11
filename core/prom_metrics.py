@@ -216,7 +216,7 @@ def render_all() -> str:
 # Per-process counters reset across CLI invocations - these accumulate
 # usefully only inside long-running processes (the dashboard, the watcher
 # daemon, anything that imports `core.bridge.send`). For one-shot
-# `py tools/bridge_cli.py task ...` invocations the counts are emitted
+# `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py task ...` invocations the counts are emitted
 # but die with the process. That's by design - no shared state file to
 # coordinate across processes, no metrics daemon.
 class BridgeMetrics:

@@ -1,12 +1,13 @@
 @echo off
 REM tools\run_packaged_smoke.cmd -- packaged artifact smoke harness.
-REM Phase 5 Step 2: uses py launcher with fallback to python.
+REM Pins the canonical interpreter; falls back to python on PATH.
+REM Bare py is banned (resolves to a dep-less pymanager runtime).
 REM Run from any directory.
 setlocal
 cd /d "%~dp0\.."
-where py >nul 2>&1
-if %ERRORLEVEL%==0 (
-    py tools\run_packaged_smoke.py %*
+set "RC_PY=C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+if exist "%RC_PY%" (
+    "%RC_PY%" tools\run_packaged_smoke.py %*
 ) else (
     python tools\run_packaged_smoke.py %*
 )

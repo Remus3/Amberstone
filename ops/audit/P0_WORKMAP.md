@@ -43,13 +43,20 @@ Every line below is a live-verified P0 observation feeding P1-P8. Sources cited.
 - [RESOLVED cycle 5, item 399] ResourceManager.shutdown logging-after-close noise: shutdown()
   now toggles logging.raiseExceptions off for its duration (restored in finally);
   tests/test_resource_manager_shutdown_logging.py (RED->GREEN).
-- pytest run requires -p no:cacheprovider hygiene? (baseline ran fine; confirm .pytest_cache policy).
+- [RESOLVED cycle 6, item 400] .pytest_cache policy: confirmed gitignored (git check-ignore),
+  ~2.6 MB local cache, harmless - no -p no:cacheprovider needed; policy = leave default.
 - [RESOLVED cycle 5, item 399] INTERPRETER DUALITY: gemini ruled OPTION 4 (absolute canonical
   path everywhere + permanent ban). Swept .claude hooks/skills (live) + docs + ops/loop +
-  core hint strings (297 offenders -> 0); guard tests/test_bare_py_ban.py. DEFERRED tail
-  (allowlisted in-guard, P2 follow-up): Share/** mirror (fix source + ds_share_sync),
-  tools/*.py usage docstrings incl FROZEN bridge tools, tools/*.cmd launchers (these EXECUTE
-  bare py), scripts/*.py, ROADMAP.md, riot-commander.spec, 8 remediation-hint tests.
+  core hint strings (297 offenders -> 0); guard tests/test_bare_py_ban.py.
+- [RESOLVED cycle 6, item 400] bare-py DEFERRED TAIL swept: 8 tools/*.cmd where-py exec
+  blocks -> canonical interpreter + python-on-PATH fallback (CRLF-normalized); ~192 docstring/
+  hint tokens across tools/*.py (incl frozen bridge tools, charter-authorized) + scripts/*.py +
+  core/benchmarks + core/prom_metrics + _item_ability_haste + riot-commander.spec + 8
+  remediation-hint tests -> UNQUOTED forward-slash canonical path (the path has no spaces;
+  quoted-backslash form was a Python unicode-escape / embedded-quote syntax trap - caught by
+  ruff+py_compile, reverted, re-swept); Share/docs -> portable `python` spelling; Share/src
+  regenerated via ds_share_sync. Guard allowlist narrowed to gamepc-foreign + by-design quotes
+  (ROADMAP gamepc recipes, P0_WORKMAP, precommit/truth_gate characterization, ops/tls artifact).
 - [RESOLVED cycle 5, item 399] stale `|| "16.10.1"` JS fallbacks: 22 literals -> 1
   DDRAGON_FALLBACK_VERSION const (web/js/lib/items_index.js); drift guard bans scattered
   semver literals in web/js.

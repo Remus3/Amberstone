@@ -14,7 +14,7 @@ or ``flat_hp``), then:
     CHANGELOG.md / mobility_registry_notes.json / cc_output_registry_notes.json.
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
-  py tools/ds_sustain_build.py <workflow_output.json>
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_sustain_build.py <workflow_output.json>
 """
 
 from __future__ import annotations
