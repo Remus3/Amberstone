@@ -91,7 +91,7 @@ below resolves.
 ## Hand it to the probe script
 
 ```
-py tools/probe_101qq_hero_rank_double.py \
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/probe_101qq_hero_rank_double.py \
   --url "<the get1700_rank_double URL you copied>" \
   --json "C:\path\to\rank-double.json" \
   --cross-check-rewind
@@ -102,7 +102,7 @@ cross-reference, one sample pair vs `data/rewind_history.db`. For the
 canonical id-map:
 
 ```
-py tools/compare_101qq_vs_ddragon.py \
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/compare_101qq_vs_ddragon.py \
   --json "C:\path\to\rank-double.json" \
   --out data/external/101qq_id_map.json
 ```

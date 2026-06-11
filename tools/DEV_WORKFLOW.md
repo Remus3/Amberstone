@@ -131,7 +131,7 @@ All wrapper .cmd files use the same pattern:
     cd /d "%~dp0\.."         <- project root from script location
     where py >nul 2>&1       <- test for Windows Py Launcher
     if %ERRORLEVEL%==0 (     <- py.exe found: use it
-        py tools\...py
+        "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\...py
     ) else (
         python tools\...py   <- fallback: python on PATH
     )

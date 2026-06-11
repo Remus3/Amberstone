@@ -15,7 +15,7 @@
 - Q4 Cherry urgency: standard debounce (operator can flip `CHERRY_NO_DEBOUNCE = True` later)
 - Q5 bridge envelope: YES emit `kind=ui_capture` envelope (`source=gamepc`, `target=legion`)
 
-**Live deployment OWED:** Game-PC operator runs `tools/gamepc_phase_watcher_install.ps1` once. Prereqs: `py -m pip install bettercam websocket-client` on Game-PC. First live cycle should land event-tagged frames in vision server `/latest-frame?source=game-pc-event-game` (or `-dashboard`) and JSON sidecars under `data/event_captures/`.
+**Live deployment OWED:** Game-PC operator runs `tools/gamepc_phase_watcher_install.ps1` once. Prereqs: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pip install bettercam websocket-client` on Game-PC. First live cycle should land event-tagged frames in vision server `/latest-frame?source=game-pc-event-game` (or `-dashboard`) and JSON sidecars under `data/event_captures/`.
 
 The original architecture proposal follows below for design-record purposes.
 
@@ -111,7 +111,7 @@ Per public LCU surface: connect to `wss://riot:<password>@127.0.0.1:<port>/` whe
 2. `tests/test_gamepc_phase_watcher.py` unit-tests the classifier with no live LCU (replay fixtures into a fake socket).
 3. Drift guard: any new gameflow phase string surfaced by the fixture must be explicitly classified or the test fails (catches "RiotBlitz" / "Cherry-prefix" / future event-mode strings).
 4. Live smoke: 1 manual cycle through Practice Tool 3140 -> capture sidecar + PNG appears in `data/event_captures/`.
-5. Operator runs `RC_LIVE_WAMP=1 py -m pytest tests/test_gamepc_phase_watcher.py::LiveSmokeTests` once with League running to verify subscription handshake end-to-end.
+5. Operator runs `RC_LIVE_WAMP=1 "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/test_gamepc_phase_watcher.py::LiveSmokeTests` once with League running to verify subscription handshake end-to-end.
 
 ## Failure modes + recovery
 

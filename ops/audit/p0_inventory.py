@@ -1,7 +1,7 @@
-"""P0 baseline full-tree inventory. Writes aggregate MD + full CSV to ops/audit/.
+r"""P0 baseline full-tree inventory. Writes aggregate MD + full CSV to ops/audit/.
 
 Run from repo root:
-    py ops/audit/p0_inventory.py
+    "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/audit/p0_inventory.py
 """
 import csv
 import os
