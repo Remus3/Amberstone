@@ -1,0 +1,68 @@
+{
+  "run_id": "deep-audit-cycle5-p2a",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15185,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M CLAUDE.md",
+      " M core/resource_manager.py",
+      " M docs/LEDGER.md",
+      " M docs/adr/ADR-003-in-process-vision-server.md",
+      " M moon_vision_server.py",
+      " M ops/audit/P0_WORKMAP.md",
+      " M start_claude.ps1",
+      " M tools/build_portable.py",
+      " M tools/install_daemon_slayer_task.ps1",
+      " M tools/legion_off.ps1",
+      " M tools/legion_on.ps1",
+      " M vision_server/__init__.py",
+      "?? ops/audit/p2a_claims.json",
+      "?? tests/test_resource_manager_shutdown_logging.py"
+    ],
+    "head": "3b6679fb merge(audit): P2a slices C+D into main"
+  },
+  "ci": {
+    "status": "no-runs",
+    "sha": "3b6679fb6977d20d0f10c059e6dad6ce2eab6832",
+    "runs": []
+  },
+  "slices": [
+    {
+      "id": "p2a-vision-schtask",
+      "claim": "vestigial RC-VisionServer schtask deleted live; docs/scripts/docstrings synced",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "p2a-resource-manager-shutdown-logging",
+      "claim": "shutdown() suppresses logging-internal emit errors, restores raiseExceptions",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "p2a-bare-py-ban",
+      "claim": "bare py swept to canonical absolute interpreter on Legion surfaces + guard test",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "p2a-js-fallback-centralization",
+      "claim": "22 semver fallback literals -> DDRAGON_FALLBACK_VERSION single const + drift guard",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}

@@ -302,28 +302,37 @@ class ResourceManager:
                 return
             self._shutdown_done = True
 
-        _log.info("ResourceManager.shutdown() - cleaning up %d objects",
-                  len(self._registry))
+        # atexit can invoke this after log handler streams are already closed
+        # (pytest/logging teardown); a failed emit then sprays
+        # "--- Logging error ---" tracebacks via Handler.handleError. Suppress
+        # logging-internal errors for the duration and restore on the way out.
+        _prev_raise = logging.raiseExceptions
+        logging.raiseExceptions = False
+        try:
+            _log.info("ResourceManager.shutdown() - cleaning up %d objects",
+                      len(self._registry))
 
-        # Shut down in reverse order (last registered = first to close)
-        for obj in reversed(self._registry):
-            try:
-                if hasattr(obj, "shutdown"):
-                    obj.shutdown()
-            except Exception as exc:
-                _log.warning("Error shutting down %s: %s", obj, exc)
-
-        # Join tracked daemon threads (give each 2s)
-        for ref in self._threads:
-            t = ref()
-            if t and t.is_alive():
+            # Shut down in reverse order (last registered = first to close)
+            for obj in reversed(self._registry):
                 try:
-                    t.join(timeout=2.0)
-                    if t.is_alive():
-                        _log.warning("Thread %s did not stop cleanly", t.name)
-                except Exception:
-                    pass
+                    if hasattr(obj, "shutdown"):
+                        obj.shutdown()
+                except Exception as exc:
+                    _log.warning("Error shutting down %s: %s", obj, exc)
 
-        # Final GC
-        gc.collect()
-        _log.info("ResourceManager.shutdown() complete")
+            # Join tracked daemon threads (give each 2s)
+            for ref in self._threads:
+                t = ref()
+                if t and t.is_alive():
+                    try:
+                        t.join(timeout=2.0)
+                        if t.is_alive():
+                            _log.warning("Thread %s did not stop cleanly", t.name)
+                    except Exception:
+                        pass
+
+            # Final GC
+            gc.collect()
+            _log.info("ResourceManager.shutdown() complete")
+        finally:
+            logging.raiseExceptions = _prev_raise

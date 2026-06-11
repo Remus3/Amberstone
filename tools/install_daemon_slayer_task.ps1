@@ -4,7 +4,7 @@
 #   powershell -ExecutionPolicy Bypass -File tools\install_daemon_slayer_task.ps1
 #   powershell -ExecutionPolicy Bypass -File tools\install_daemon_slayer_task.ps1 -Start
 #
-# Mirrors the install pattern used by RC-VisionServer + RC-BridgeWatcher:
+# Mirrors the install pattern used by RC-BridgeWatcher:
 # delete-then-create from the XML in ops/, optionally start immediately.
 
 [CmdletBinding()]

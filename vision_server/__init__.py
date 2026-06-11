@@ -11,8 +11,9 @@ LOC) was decomposed into:
   - ``_http``      - BaseHTTPRequestHandler routing
 
 The root ``moon_vision_server.py`` is kept as a thin entrypoint shim because
-``RC-VisionServer`` scheduled task and ``dashboard/server.py`` both spawn the
-server by file path (not Python import).
+``dashboard/server.py`` spawns the server by file path (not Python import)
+when :8889 is not listening - the sole launcher since the ``RC-VisionServer``
+scheduled task was removed (2026-06-11, deep-audit P2).
 """
 from __future__ import annotations
 

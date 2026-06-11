@@ -81,7 +81,7 @@ Keep individual responses under 500 output tokens to avoid API errors. Break lon
 
 ## Scheduled tasks (Legion)
 
-Key: `RC-Supervisor` (logon, Administrator, HIGHEST) · `RC-VisionServer` (startup, SYSTEM, HIGHEST) · `RC-BridgeWatcher` (logon, daemon). Full list + Game-PC tasks: `docs/OPERATIONS.md`.
+Key: `RC-Supervisor` (logon, Administrator, HIGHEST) · `RC-BridgeWatcher` (logon, daemon). Vision has NO scheduled task (removed 2026-06-11, deep-audit P2): `dashboard/server.py` self-heals `:8889` in-process. Full list: `docs/OPERATIONS.md`.
 
 ## Vision pipeline
 
