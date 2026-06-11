@@ -817,6 +817,68 @@ def hps_for(
     return _post_json("/hps", body, timeout=timeout)
 
 
+# Ranged-carry off-class gate (item 208 carry, 2026-06-10). The engine's
+# own DPS-pool filter (agents/daemon_slayer/rank.py, item 213) keys on the
+# Marksman tag plus attackrange >= 500, so ranged carries below that floor
+# (Graves 425) or without the tag still surfaced melee/tank items - the
+# rows that polluted data/champion_loadouts.json carry paths. This is the
+# client-side gate at the shared carry chokepoint: every loadout regen
+# path (tools/champion_loadout_autogen.fetch_items; core.build_order.
+# plan_build_order via tools/champion_loadout_align) and the live coach
+# dispatch flow through the carry branch of rank_for_primary_archetype,
+# so a patch regen cannot reproduce the pollution even against a live
+# engine that predates the pool filter. Range-keyed, never a champion
+# list - melee carries (Nilah 225) and Pantheon's operator-pinned Sup
+# Roam Umbral Glaive (175) are exempt by the same mechanic.
+CARRY_RANGED_ATTACKRANGE_FLOOR: float = 350.0
+
+CARRY_RANGED_OFFCLASS_ITEM_NAMES: frozenset = frozenset({
+    "Trinity Force",
+    "Bastionbreaker",
+    "Heartsteel",
+    "Umbral Glaive",
+})
+
+_DS_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
+_champ_attackrange_index: Optional[dict] = None
+
+
+def _norm_champ_key(s: str) -> str:
+    return "".join(ch for ch in (s or "").lower() if ch.isalnum())
+
+
+def champion_attackrange(champion: str) -> float:
+    """Base attackrange from the local DS champion snapshot, keyed by
+    DDragon id or display name. 0.0 when unresolved - unknown champions
+    fail soft to melee so the carry gate never fires on a champ the
+    snapshot cannot identify."""
+    global _champ_attackrange_index
+    if _champ_attackrange_index is None:
+        index: dict = {}
+        try:
+            patch = (_DS_DATA_DIR / "current.txt").read_text(
+                encoding="utf-8"
+            ).strip()
+            raw = (_DS_DATA_DIR / patch / "champions.json").read_text(
+                encoding="utf-8"
+            )
+            data = json.loads(raw).get("data") or {}
+            for cid, rec in data.items():
+                stats = (rec or {}).get("stats") or {}
+                try:
+                    rng = float(stats.get("attackrange") or 0.0)
+                except (TypeError, ValueError):
+                    continue
+                index[_norm_champ_key(cid)] = rng
+                name = (rec or {}).get("name")
+                if name:
+                    index[_norm_champ_key(str(name))] = rng
+        except (OSError, ValueError):
+            index = {}
+        _champ_attackrange_index = index
+    return float(_champ_attackrange_index.get(_norm_champ_key(champion), 0.0))
+
+
 def rank_for_primary_archetype(
     champion: str,
     archetype: str,
@@ -1080,6 +1142,13 @@ def rank_for_primary_archetype(
     )
     if rows is None:
         return None
+    # Ranged-carry off-class gate (item 208 carry) - see the constants
+    # above for why this lives client-side at the shared carry chokepoint.
+    if champion_attackrange(champion) >= CARRY_RANGED_ATTACKRANGE_FLOOR:
+        rows = [
+            r for r in rows
+            if r.item_name not in CARRY_RANGED_OFFCLASS_ITEM_NAMES
+        ]
     return {
         "ok":        True,
         "scorer":    "dps",
