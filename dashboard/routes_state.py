@@ -63,6 +63,28 @@ log = logging.getLogger("rc.web_dashboard")
 _STATE_CACHE_PAYLOAD: bytes | None = None
 _STATE_CACHE_TS: float = 0.0
 
+# S7 instrumentation (2026-06-10, operator report "champ select updates
+# slow"): a build_state() that creeps past the SSE tick stretches every
+# update the dashboard sees, but nothing logged the cost. One WARN per
+# slow build (rare by construction) names the phase so the next slow
+# champ select self-diagnoses from the log.
+_SLOW_BUILD_WARN_S = 0.25
+
+
+def _timed_build_state() -> dict:
+    t0 = time.monotonic()
+    state = build_state()
+    elapsed = time.monotonic() - t0
+    if elapsed >= _SLOW_BUILD_WARN_S:
+        phase = ""
+        try:
+            phase = (state.get("lcu") or {}).get("phase") or ""
+        except Exception:
+            pass
+        log.warning("state-build slow: %dms phase=%s",
+                    int(elapsed * 1000), phase or "?")
+    return state
+
 
 def _serve_state(h) -> None:
     global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS
@@ -71,7 +93,7 @@ def _serve_state(h) -> None:
         if _STATE_CACHE_PAYLOAD is not None and (now - _STATE_CACHE_TS) < 1.0:
             payload = _STATE_CACHE_PAYLOAD
         else:
-            payload = json.dumps(build_state()).encode("utf-8")
+            payload = json.dumps(_timed_build_state()).encode("utf-8")
             _STATE_CACHE_PAYLOAD = payload
             _STATE_CACHE_TS = now
         h._send(200, payload, "application/json")
@@ -133,7 +155,7 @@ def _serve_state_stream(h) -> None:
 
         while time.time() - start < _SSE_MAX_DURATION_S:
             try:
-                payload = json.dumps(build_state())
+                payload = json.dumps(_timed_build_state())
             except Exception as exc:
                 log.warning("state-stream build: %s", exc)
                 payload = "{}"
