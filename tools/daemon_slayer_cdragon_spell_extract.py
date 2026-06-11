@@ -57,10 +57,10 @@ The DS engine reads the committed sidecar JSON, never the network. No consumer
 wires it yet (DATA-ONLY this session); it is INERT until a consumer opts in.
 
 Run from Legion (or any host that reaches raw.communitydragon.org):
-  py tools/daemon_slayer_cdragon_spell_extract.py             # current.txt patch
-  py tools/daemon_slayer_cdragon_spell_extract.py --patch 16.11.1
-  py tools/daemon_slayer_cdragon_spell_extract.py --limit 4   # smoke a subset
-  py tools/daemon_slayer_cdragon_spell_extract.py --dry-run    # no write
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_cdragon_spell_extract.py             # current.txt patch
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_cdragon_spell_extract.py --patch 16.11.1
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_cdragon_spell_extract.py --limit 4   # smoke a subset
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_cdragon_spell_extract.py --dry-run    # no write
 Then inspect ``_with_*`` / ``_errors`` before trusting it: a run that edge-blocks
 the host records 0 of everything (the fail-soft path), so a sidecar with every
 ``_with_*`` 0 means the host could not reach CDragon - the main() prints a

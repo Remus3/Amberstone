@@ -1,16 +1,15 @@
 @echo off
 REM tools\dev_cli.cmd -- Riot Commander local developer/operator CLI.
 REM Usage: tools\dev_cli.cmd <subcommand> [options]
-REM Phase 3 Step 3: uses py launcher (py.exe) with fallback to python,
-REM eliminating the hardcoded absolute Python path.
+REM Pins the canonical interpreter; falls back to python on PATH.
+REM Bare py is banned (resolves to a dep-less pymanager runtime).
 REM Run from any directory; resolves project root via %~dp0
 setlocal
 cd /d "%~dp0\.."
 
-REM Prefer Windows Py Launcher (py.exe); fall back to python in PATH.
-where py >nul 2>&1
-if %ERRORLEVEL%==0 (
-    py tools\dev_cli.py %*
+set "RC_PY=C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+if exist "%RC_PY%" (
+    "%RC_PY%" tools\dev_cli.py %*
 ) else (
     python tools\dev_cli.py %*
 )

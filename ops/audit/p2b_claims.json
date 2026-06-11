@@ -1,0 +1,33 @@
+{
+  "check_ci": false,
+  "slices": [
+    {
+      "id": "P2B-FIXTURES",
+      "claim": "DS fixture pins consolidated per gemini ruling B: 16.9.1 retired (single consumer repointed to 16.10.1 after empty purchasable-set delta), policy guard added",
+      "files": [
+        {"path": "tests/test_ds_fixture_policy.py", "must_contain": ["FROZEN_FIXTURES = (\"16.10.1\", \"16.11.1\")", "RETIRED_FIXTURES = (\"16.9.1\",)"]},
+        {"path": "agents/daemon_slayer/tests/test_effects_expansion.py", "must_contain": ["\"daemon_slayer\", \"16.10.1\", \"items.json\""]},
+        {"path": "docs/DAEMON_SLAYER.md", "must_contain": ["tests/test_ds_fixture_policy.py"]}
+      ]
+    },
+    {
+      "id": "P2B-BAREPY-TAIL",
+      "claim": "bare-py deferred tail swept: cmd launchers pinned, docstring/hint tokens to unquoted forward-slash canonical path, Share regenerated, allowlist narrowed",
+      "files": [
+        {"path": "tools/dev_cli.cmd", "must_contain": ["set \"RC_PY=C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\""]},
+        {"path": "tools/bootstrap_env_check.cmd", "must_contain": ["if exist \"%RC_PY%\""]},
+        {"path": "tests/test_bare_py_ban.py", "must_contain": ["P2b: deferred tail SWEPT (cycle 6, item 400)"]},
+        {"path": "tools/bridge_pull_tasks.py", "must_contain": ["C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_pull_tasks.py"]},
+        {"path": "Share/src/tools/ds_block_scanner.py", "must_contain": ["C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_block_scanner.py"]}
+      ]
+    },
+    {
+      "id": "P2B-MANIFEST",
+      "claim": "P2 per-file fanout manifest built with wave partition over 1307 files / 399052 LOC",
+      "files": [
+        {"path": "ops/audit/P2_FANOUT_MANIFEST.md", "must_contain": ["1307 files / 399052 LOC", "W1 runtime spine"]},
+        {"path": "ops/audit/P0_WORKMAP.md", "must_contain": ["RESOLVED cycle 6, item 400"]}
+      ]
+    }
+  ]
+}

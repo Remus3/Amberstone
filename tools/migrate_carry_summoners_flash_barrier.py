@@ -31,7 +31,7 @@ Per-champ denylist BOT_DUO_HEAL_KEEP = {"Senna", "Kalista", "Yuumi"}:
 Atomic write only (tmp.write_text + tmp.replace). ASCII content.
 
 Invoke once:
-  py tools/migrate_carry_summoners_flash_barrier.py
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/migrate_carry_summoners_flash_barrier.py
 
 Prints summary: champs_touched, variants_flipped, denylisted_kept.
 """

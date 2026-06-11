@@ -55,29 +55,15 @@ _ALLOWLIST = (
     "tests/test_bare_py_ban.py",  # this guard - carries the banned pattern itself
     "*.log",                     # immutable logs
     "*.jsonl",                   # immutable ledgers
-    # --- P2 deferred classes (swept later; enumerated in the P2 report) ---
-    "Share/**",                  # generated review mirror - fix source then tools/ds_share_sync.py (P3)
-    "tools/*.py",                # CLI usage docstrings/hints incl FROZEN bridge tools - P3 sweep
-    "tools/*.cmd",               # dev wrapper launchers (where-py fallback pattern) - P3 decision
+    # --- P2b: deferred tail SWEPT (cycle 6, item 400); residue below is
+    # gamepc-foreign or quotes the banned pattern by design ---
     "tools/gamepc_phase_watcher_install.ps1",  # retired gamepc surface - P3 prunes
-    "scripts/*.py",              # one-off script usage docstrings - P3 sweep
-    "agents/daemon_slayer/_item_ability_haste.py",  # regen-instruction docstring - P3
-    "core/benchmarks.py",        # regen-instruction docstring - P3
-    "core/prom_metrics.py",      # bridge-CLI reference comment - P3
-    "ROADMAP.md",                # living doc quoting historical Game-PC recipes - P3
+    "ROADMAP.md",                # gamepc-machine historical recipes - P3 gamepc prune removes them
     "ops/audit/P0_WORKMAP.md",   # P0 audit workmap - quotes the banned pattern by design
     "ops/tls/_bridge_msg.txt",   # gamepc-era bridge message artifact (foreign C:/RC-Agent path)
-    "riot-commander.spec",       # pyinstaller build-instruction comments - P3
     "tests/test_precommit_gate.py",   # characterization fixtures - bare py IS the tested input
     "tests/test_truth_gate.py",       # incident-characterization fixture + docstring
-    "tests/test_mojibake_hygiene.py",       # remediation-hint strings - P3
-    "tests/test_smart_quote_hygiene.py",    # remediation-hint strings - P3
-    "tests/test_u2500_hygiene.py",          # remediation-hint strings - P3
-    "tests/test_u2500_candidate_sweep.py",  # remediation-hint strings - P3
-    "tests/test_csv_typography_v21_floor.py",  # remediation-hint string - P3
-    "tests/test_ds_share_doc_anchors.py",   # remediation-hint string - P3
-    "tests/test_ds_share_ingest_sync.py",   # remediation-hint strings - P3
-    "tests/test_loadout_sweep_guard_item_s8.py",  # remediation-hint docstring - P3
+    "_scratch/**",               # untracked scratch; sweep/probe tooling carries the pattern
 )
 
 _BINARY_EXTS = {

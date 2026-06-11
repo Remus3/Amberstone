@@ -8,9 +8,9 @@ JSON to Legion's vision server which caches it for the dashboard / coaches.
 
 Deploy on Game-PC (one time):
   1. Copy this file to C:\\RC-Agent\\
-  2. py -m pip install requests urllib3
-  3. py C:\\RC-Agent\\gamepc_liveclient_relay.py
-  4. (optional task) schtasks /Create /TN "RC-LiveClientRelay" /SC ONLOGON /F /TR "py C:\\RC-Agent\\gamepc_liveclient_relay.py"
+  2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install requests urllib3
+  3. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_liveclient_relay.py
+  4. (optional task) schtasks /Create /TN "RC-LiveClientRelay" /SC ONLOGON /F /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_liveclient_relay.py"
 
 When in champ select / not in game, /liveclientdata returns 404 - relay
 backs off and retries.

@@ -26,10 +26,10 @@ STDLIB-ONLY: argparse / json / pathlib / sqlite3 / re / sys. Zero new
 dependencies. ASCII-clean per CLAUDE.md hard rule.
 
 Usage:
-  py tools/probe_101qq_hero_rank_double.py \
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/probe_101qq_hero_rank_double.py \
     --url "https://game.gtimg.cn/images/lol/act/img/js/hero-rank-double-tier200.js" \
     --json C:/path/to/captured.json
-  py tools/probe_101qq_hero_rank_double.py \
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/probe_101qq_hero_rank_double.py \
     --url ... --json ... --cross-check-rewind
 
 Exit codes:

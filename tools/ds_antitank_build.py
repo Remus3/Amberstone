@@ -17,7 +17,7 @@ or resists appear), so unlike the threat-range / objective-damage builds this to
 does not expect full-roster coverage.
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
-  py tools/ds_antitank_build.py <workflow_output.json>
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_antitank_build.py <workflow_output.json>
 """
 
 from __future__ import annotations

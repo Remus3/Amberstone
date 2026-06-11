@@ -17,7 +17,7 @@ formula already shipped in ``_effective_ability_cd`` (1.23.0).
 
 Regeneration: when DDragon ships a new patch, re-run::
 
-    py tools/regen_item_ability_haste.py <patch> > _item_ability_haste_new.py
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/regen_item_ability_haste.py <patch> > _item_ability_haste_new.py
 
 then diff + replace ``_ITEM_ABILITY_HASTE`` below. The generator parses
 ``<attention>N</attention> Ability Haste`` from the first ``<stats>``

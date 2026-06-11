@@ -36,7 +36,7 @@ Idempotent: a relabeled path is no longer "Mage"-labeled, so a second
 run is a no-op. Atomic write via tmp.write_text + tmp.replace.
 
 Usage:
-    py tools/hotfix_arena_mage_mislabel_item273.py [--dry-run]
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/hotfix_arena_mage_mislabel_item273.py [--dry-run]
 """
 from __future__ import annotations
 

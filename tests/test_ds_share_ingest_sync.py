@@ -24,7 +24,7 @@ class LiveIngestFreshTests(unittest.TestCase):
         self.assertEqual(
             sync._check_ingest_anchors(), 0,
             "lolmath_ingest version/patch anchors drifted - run "
-            "`py tools/ds_share_sync.py` and commit Share/",
+            "`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_share_sync.py` and commit Share/",
         )
 
     def test_live_bundle_matches_expected(self):
@@ -34,7 +34,7 @@ class LiveIngestFreshTests(unittest.TestCase):
         self.assertEqual(
             sync._check_ingest_bundle(), 0,
             "dist/daemon_slayer_bundle.json drifted - run "
-            "`py tools/ds_share_sync.py`",
+            "`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_share_sync.py`",
         )
 
     def test_live_bundle_envelope_pins_live_values(self):

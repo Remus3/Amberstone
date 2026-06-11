@@ -30,7 +30,7 @@ class LiveDocsFreshTests(unittest.TestCase):
         self.assertEqual(
             sync._check_doc_anchors(), 0,
             "authored-doc version/patch anchors drifted - run "
-            "`py tools/ds_share_sync.py` and commit Share/",
+            "`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_share_sync.py` and commit Share/",
         )
 
     def test_every_version_literal_equals_live(self):

@@ -2,9 +2,9 @@
 """bridge_fetch.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 UserPromptSubmit hook entrypoint:
-    py C:\\Riot Commander\\tools\\bridge_fetch.py
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\Riot Commander\\tools\\bridge_fetch.py
 
-Equivalent to: `py tools/bridge_cli.py fetch`.
+Equivalent to: `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py fetch`.
 """
 import sys
 from pathlib import Path
