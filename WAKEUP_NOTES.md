@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-06-11 - DEEP-AUDIT cycle 5: P2a code-audit seeds x4 [item 399]
+
+- RC-VisionServer schtask root-caused (boot port-race loser vs dashboard/server.py:219 self-heal child; exit-1 anomaly) -> DELETED, XML archived docs/_archive/, 9 touchpoints synced (CLAUDE.md, OPERATIONS row, start_claude.ps1, legion_on/off, docstrings, ADR-003 dated update). Vision :8889 alive untouched.
+- resource_manager shutdown(): logging.raiseExceptions toggled off for the drain (finally-restored); kills the "--- Logging error ---" pytest-tail noise. 3 tests RED->GREEN.
+- Bare-py duality: gemini ruled OPTION 4 (absolute canonical path + permanent ban; consult ops/loop/control/_gemini_consult_p2.txt). 297->0 offenders; guard tests/test_bare_py_ban.py; live .claude hooks/skills swept (51 repl). Deferred tail allowlisted + in P0_WORKMAP (Share mirror, tools docstrings, tools/*.cmd, scripts, ROADMAP).
+- web/js: 22 semver fallback literals -> DDRAGON_FALLBACK_VERSION (lib/items_index.js); guard bans scattered semver in web/js.
+- Gate PROCEED 15185p/0f/7s exit 0 (p2a_truth_gate_report.json; +5 = new tests exactly). Octopus merge 3b6679fb. NEXT P2b: per-file audit fanout + DS fixture-pin consolidation + .pytest_cache policy + bare-py deferred tail.
+
+---
+
 # 2026-06-11 - DEEP-AUDIT cycle 4: P1c log retention + KEEP verdicts [item 398]
 
 - logs/agents 1848 task-*.log root-caused to _supervisor_ephemeral.py:98 (no retention, ~235/day). prune_task_logs (7d cap, rollups untouched, fail-soft) on every spawn + 3 tests; backlog cleared; RC-Phase3-Supervisor bounced (stale-code rule) - fresh boot 11:46:34.
@@ -18,19 +28,3 @@
 - git rm data/meta_build/ddragon/16.8.1+16.10.1 (cache archives, zero exec refs); fetch_all in lib/ddragon/fetch.py now auto-prunes beyond current+prev (reuses junction-safe prune_stale_versions; fail-soft). +2 tests.
 - _scratch: 25 unreferenced >14d files deleted (doc-grep gated).
 - NEXT: P1c = python-embed consumer eval + log-proliferation root-cause + CLAUDE.md budget trim; then P2 CODE AUDIT.
-
----
-
-# 2026-06-11 - DEEP-AUDIT cycle 2: P1a mirror retention + dynamic ddragon patch pins [item 396]
-
-Loop controller stalled post-cycle-1 (operator nudged "continue"); reoriented inline per charter.
-
-- web/data/ddragon held 5 patch dirs (~1.7 GB): 16.12.1 current, 16.11.1, 16.10.1 (561 MB, LOAD-BEARING via active_match.js map pin), 16.8.1 + 16.9.1 (junction alias -> 16.8.1).
-- JS fix: every versioned /data/ddragon/<patch>/ literal made dynamic off ITEMS.version - active_match.js _AM_MAP_IMG -> _AM_MAP_FILE + _amMapImg(), main.js :1154 spell img + :2003 _RP_DDRAGON_BASE, pgr_loadout.js _RUNE_LOCAL_BASE -> _runeLocalBase(); items_index.js pre-hydration seeds 16.10.1 -> 16.12.1. NEW drift guard tests/test_ddragon_path_version_drift.py (PATH literals banned; bare version fallbacks allowed - unreachable since ITEMS.version always truthy).
-- tools/ddragon_mirror_refresh.py: NEW prune_stale_versions (retain = current + 1 prev, --retain/--no-prune, junction-safe os.rmdir vs rmtree, only semver dirs under web mirror; meta_build git archives out of scope) wired post-clean-run; docstring "never auto-deletes" updated. 6 tests tests/test_ddragon_mirror_prune.py incl the junction case (live mirror really had one - rmtree refused it mid-prune).
-- Executed: 16.8.1/16.9.1/16.10.1 deleted, 16.11.1+16.12.1 kept. Logs: 18 gamepc-ui jpgs + 99 logs >30d deleted. Tree delta vs P0: -8621 files / -581 MB (ops/audit/P1_INVENTORY.md; P0 baseline file restored untouched).
-- Live verify (chrome-devtools on :8888): map11/12/30 200 on 16.12.1, pruned path 404s into the onerror chain, active_match.js module imports, zero unexpected 4xx resources.
-- Gate round A REFUSED correctly: item-392 pin test_arena_base_is_static_asset_with_crop_fallback still split on the _AM_MAP_IMG literal -> updated to _AM_MAP_FILE + builder, same intent (arena static + crop fallback).
-- P1 remaining (next cycles): tracked old-patch data decision (daemon_slayer 16.9/16.10/16.11 scenarios.json + laning 16.11.1 LFS + meta_build archives - gemini consult), _scratch/_archive triage, python-embed consumer eval, log-proliferation root-cause (1691 files/7d), CLAUDE.md budget trim.
-
----

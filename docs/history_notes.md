@@ -53,6 +53,22 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-11 - DEEP-AUDIT cycle 2: P1a mirror retention + dynamic ddragon patch pins [item 396]
+
+Loop controller stalled post-cycle-1 (operator nudged "continue"); reoriented inline per charter.
+
+- web/data/ddragon held 5 patch dirs (~1.7 GB): 16.12.1 current, 16.11.1, 16.10.1 (561 MB, LOAD-BEARING via active_match.js map pin), 16.8.1 + 16.9.1 (junction alias -> 16.8.1).
+- JS fix: every versioned /data/ddragon/<patch>/ literal made dynamic off ITEMS.version - active_match.js _AM_MAP_IMG -> _AM_MAP_FILE + _amMapImg(), main.js :1154 spell img + :2003 _RP_DDRAGON_BASE, pgr_loadout.js _RUNE_LOCAL_BASE -> _runeLocalBase(); items_index.js pre-hydration seeds 16.10.1 -> 16.12.1. NEW drift guard tests/test_ddragon_path_version_drift.py (PATH literals banned; bare version fallbacks allowed - unreachable since ITEMS.version always truthy).
+- tools/ddragon_mirror_refresh.py: NEW prune_stale_versions (retain = current + 1 prev, --retain/--no-prune, junction-safe os.rmdir vs rmtree, only semver dirs under web mirror; meta_build git archives out of scope) wired post-clean-run; docstring "never auto-deletes" updated. 6 tests tests/test_ddragon_mirror_prune.py incl the junction case (live mirror really had one - rmtree refused it mid-prune).
+- Executed: 16.8.1/16.9.1/16.10.1 deleted, 16.11.1+16.12.1 kept. Logs: 18 gamepc-ui jpgs + 99 logs >30d deleted. Tree delta vs P0: -8621 files / -581 MB (ops/audit/P1_INVENTORY.md; P0 baseline file restored untouched).
+- Live verify (chrome-devtools on :8888): map11/12/30 200 on 16.12.1, pruned path 404s into the onerror chain, active_match.js module imports, zero unexpected 4xx resources.
+- Gate round A REFUSED correctly: item-392 pin test_arena_base_is_static_asset_with_crop_fallback still split on the _AM_MAP_IMG literal -> updated to _AM_MAP_FILE + builder, same intent (arena static + crop fallback).
+- P1 remaining (next cycles): tracked old-patch data decision (daemon_slayer 16.9/16.10/16.11 scenarios.json + laning 16.11.1 LFS + meta_build archives - gemini consult), _scratch/_archive triage, python-embed consumer eval, log-proliferation root-cause (1691 files/7d), CLAUDE.md budget trim.
+
+---
+
+---
+
 # 2026-06-10 - gemini loop: HZ-D4 charter sweep - shadow-pipeline root-cause fix + ARAM tables + agreement metric [item 386]
 
 Gemini-headless-upgrade executor cycle. Directive = HZ-D4 (7-lever cost sweep + next HZ increment). Merges `d446ea80` + `b54d040e` (2 PARALLEL worktree agents, verifier-CONFIRMED). NO engine, no Share, no web/ touch; RC restarted pid 14160.
@@ -79,59 +95,6 @@ Charter cycle (docs/DEEP_AUDIT_CHARTER.md). Gemini's prior "P0 done" synopsis wa
 - RC-VisionServer schtask exits 1 but vision serves in-process fine -> vestigial task, P2 reconcile seed.
 - Desktop synopsis rewritten ASCII/BOM-free, handoff log now sha-stamped (was BOM'd + unstamped).
 - NEXT CYCLE: P1 STRUCTURE per synopsis (relocations, _scratch/.bak scrap triage, web/ PNG mirror + logs retention + python-embed consumer eval, CLAUDE.md context-budget trim).
-
----
-
----
-
-# 2026-06-10 - insights fold-in + drainer hardening [item 394]
-
-Operator fed the /insights report suggestion-by-suggestion; dedup-first per pattern (2 of 4 = already shipped).
-
-- Suggestion 1 (re-verify greens): DUPLICATE of CLAUDE.md Verification Discipline - no-op.
-- Suggestion 2 (API-surface grounding): NEW -> CLAUDE.md Testing Discipline rule `b8c0695b`.
-- Suggestion 3 (truth-gate): NEW `tools/truth_gate.py` + 17 tests `d657c1f6`; live demo PROCEED 15147p/0f/7s CI-green 4/4 CONFIRM; wired verifier.md + both headless skills.
-- Suggestion 4 (drainer): manifest/resume/headless_run.ps1 ALREADY SHIPPED (dedup); NEW = hard pre-commit gates in both skills (UI-audit + drift-guards + truth_gate exit 0 block the push; .claude local). Drain triage: only headless-actionable item was item-211 `--trust-lcu CHAMP` + `--match-id` (RED->GREEN 9 tests); rest of ROADMAP = operator/live-gated; item-210 unify = FROZEN lcu_client.py, deferred.
-- LW block relocated LEDGER-top -> history_notes above item 278 (`160de74e`); LEDGER header append rule fixed.
-- OPERATOR DECISION OWED: item-211 7 residual rows - run --trust-lcu per-row (needs lcu_champ list) or clear-as-junk.
-- Truth-gate EARNED ITS KEEP same session: round 2 REFUSED on the LW relocation breaking `test_constraint_single_source` (1f/15155p) - guard re-pinned to LW-in-history; round 2b PROCEED 15157p/0f. Gate claims now utf-8-sig (PS BOM).
-- precommit_gate was DEAD on this fleet (Bash-only matcher vs CLAUDE_CODE_USE_POWERSHELL_TOOL=1) + wrong-tree root on `git -C` + no py_compile: all fixed, PowerShell matcher added, 25 tests, live exit-2 proofs (glyph + syntax). First real PowerShell-tool commit after this note = harness firing proof.
-- Patch-update SWARM directive encoded in memory reference_patch_refresh_workflow (all upstreams incl lolmath/101.qq/aggregator B + cohorts + merge-arbiter + coverage report).
-- Gotchas: PS5.1 here-string commit messages with embedded double quotes break native arg quoting (`error: unknown option '-'`) - keep messages quote-free; PS5.1 pipes to native exes prepend a UTF-8 BOM (broke truth_gate claims AND precommit_gate stdin).
-- OVERNIGHT HANDOFF: operator directive captured VERBATIM-intent in `docs/DEEP_AUDIT_CHARTER.md` - the standing deep-audit program (P0-P8: full-tree audit/refactor, frozen+history+gist+md-rewrite AUTHORIZED, vanguard/2pc prune, BOM retro-sweep, HZ-to-ZERO completion, Electron overlay to full replace web dashboard, gemini answers scope questions NOT operator). Loop armed: config max_cycles 100, gemini rail 200, directive_suffix -> charter; Desktop RC_DEEP_AUDIT_SYNOPSIS.md seeded; effortLevel xhigh set. NEXT SESSION = audit cycle 1 (P0 baseline). League client + dashboard left OPEN on screen per operator for UI/UX phases.
-
----
-
----
-
-# 2026-06-10 - operator headless-upgrade round 2026-06-10-02: items 388-393 (6 slices, 9 pushes) + 2 live operator interrupts fixed same-session
-
-Operator: "start any open for live game gating + other items parallel orchestrated to the end". 4 worktree agents + verifier gates on every merge; 2 mid-run operator reports root-caused + shipped while they played.
-
-- item 388: drift probe NONE (16.12.1/25.15 all == sentinel; calc-site chunks unchanged); ARENA HZ tables full-roster `fb66722f` (HZ shadow armed sr+aram+arena; gen CLIs need CANONICAL ids - display names skip 6783 pairs); item-211 orphans 12 -> 7 (chain class, 5 MOVEs + 3 re-stamps; FUTURE --trust-lcu).
-- item 389: summoner-spell WPA = 4th build_insights tab `6585b77a` - WPA lane COMPLETE; UI audit 5/5 PASS; proof _scratch/spells_tab_proof.jpeg.
-- item 390: item-208 carry CLOSED `2784db8f` - range-gate at the REAL chokepoint core/daemon_slayer_client.py:1147 (ROADMAP fn was phantom) + 89-row backfill + guard.
-- item 391 (OPERATOR INTERRUPT "champ select slow"): 3 commits ff4d59d1/69cb9dde/9e90c28d - :8889 single-thread -> ThreadingHTTPServer; stage WARN pinned deterministic=692ms inline matchup per 5s bucket; warm-path async single-flight fix. LIVE PROOF /api/state 3-30ms during a running game (was 700ms). Instrumentation permanent.
-- item 392 (OPERATOR INTERRUPT "active match devoid/wrong/map dead/cds unneeded"): `138d4740` - map text layers render w/o coords (Live Client position = ROLE STRING, never coords - live-proven on :2999); DS rerank got items=null ALL GAME (items_display only) -> _amOwnedItemIds itemID path + gold>=2000 completed-count + canonical id bridges x3 routes; cds rail visual-only hide (wiring + overlay threat re-show kept). Proof _scratch/active_match_reflow_proof.jpeg.
-- item 393 (OPERATOR DIRECTIVE 6-axis sweep): `91b6b847` - 1385 rows, 901 refilled / 42 trimmed / 15 stripped, SR 364x7 / ARAM 512x6 / Arena 509x6 zero exceptions (verifier independent probes), regen invariants + 1549-case guard; 16 ambiguous rows REPORT-ONLY for operator review.
-- ROADMAP stale fixes: item-212 minors STALE-SHIPPED; DS-6-bucket medium entry was drift (wired 231-234); item-208 closed; item-211 residual recorded.
-- OWED live: map roster ticking / DS pill+pips / minimap-crop self-grab fallback on a real game; Electron packaging + in-match overlay capture (carry).
-- DON'T REDO: Live Client position is a role string (no coord dots from :2999 ever); pre-06-10 shadow rows junk; WPA lane closed; 16 ambiguous loadout rows need operator, not a strip.
-- PRACTICE-TOOL note: coach.action/immediate empty in PRACTICETOOL while choices/callouts/lead populate (prose coach dark there; deterministic surfaces carry the page) - characterize-or-accept next session.
-
----
-
----
-
-# 2026-06-10 - gemini loop cycle 4: Phase 5 stabilization tail - HZ-D1 DONE [item 383, HZ-D1 slice 4]
-
-Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 4). Directive = Phase 5 stabilization tail (electron-updater + stable/dev channels, crash isolation). Merges `96cf5241` + `544cff59` (2 PARALLEL worktree agents, verifier-CONFIRMED) + merger integration `33dc9b3a`. NO engine, no Share, no RC restart, no web/ touch (UI audit n/a).
-
-- Update channels: NEW pure `rc-shell/src/update_channel.js` (resolveChannel env RC_SHELL_CHANNEL > saved > stable; channelConfig dev=allowPrerelease; mergeChannelPatch; checkPlan 15s initial + 4h interval, not-packaged/updater-missing disable). main.js lazy-requires electron-updater in try/catch - bare-node require THROWS inside the autoUpdater getter (app.getVersion on undefined), so the catch is load-bearing (probed). autoInstallOnAppQuit only, console-only events, Shell-menu channel radios + Check-now. NEW electron-builder.yml (nsis, publish github Remus3/riot-commander, all-channels update files; private repo = GH_TOKEN at runtime).
-- Crash isolation: NEW pure `rc-shell/src/crash_guard.js` (RESTART_REASONS; killed/clean-exit never resurrect; per-key rolling budget 3/60s -> give-up hides, no strobing). Merger wired attachCrashGuard on BOTH windows: render-process-gone -> reload | hide; unresponsive logs only.
-- package.json 0.4.0; npm install restored 258 pkgs (registry reachable). node 109 -> 145/0 (TDD red-first both slices). RC tests/ 5769p/2sk/94st exit 0; DS 7075p/1sk/1xf/1942st exit 0 (canonical Python314 path - bare `py` lacks pytest).
-- HZ-D1 flipped DONE in ORCHESTRATION_PLAN (Electron phases 1-5 all shipped code-side; Phase 6 Pengu optional/operator-gated).
-- OWED (operator): packaging + first GitHub Release + packaged-app update check; in-match overlay capture (one shell relaunch picks up slices 1-4).
 
 ---
 
@@ -9842,6 +9805,78 @@ Session-start flagged 3 anomalies (operator "your call"): RC-DDragonMirrorRefres
 
 ---
 
+# 2026-06-10 - gemini loop cycle 4: false REGRESS audit refuted + gate edge pins [item 387]
+
+Gemini-headless-upgrade executor cycle. Directive = FIX-FIRST regression: audit claimed the
+item-386 `lc.get("champion")` gate shipped untested (conftest + gate tests "missing").
+REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
+9ccc64fa..b5533f85) carries gate + tests/conftest.py + tests/test_hz_shadow_live_gate.py
+(4 tests) in the SAME commit. Auditor diffed only tip commit b5533f85 (docs+data only).
+
+- Verified fresh pre-edit: gate+wiring 12 passed at HEAD.
+- Shipped `c5cf8b56`: +2 edge pins in test_hz_shadow_live_gate.py (champion="" loading-screen
+  edge; non-dict lc isinstance guard). Test-only, no engine, no restart.
+- Gates: RC 5789p/2sk/94st exit 0; ruff + hygiene clean; CI run 27315276398 green.
+- LOOP IMPROVEMENT (FUTURE): loop auditor should diff prev-done-sha..new-sha, not the tip
+  commit - tip-only diffing produced this false REGRESS.
+- DON'T REDO: HZ shadow live-gate IS tested (6 tests); do not re-add gate tests.
+- NOTE: RC pid drifted 14160 -> 3336 during cycle (supervisor bounce); alive+reload_ok true.
+
+---
+
+---
+
+# 2026-06-10 - insights fold-in + drainer hardening [item 394]
+
+Operator fed the /insights report suggestion-by-suggestion; dedup-first per pattern (2 of 4 = already shipped).
+
+- Suggestion 1 (re-verify greens): DUPLICATE of CLAUDE.md Verification Discipline - no-op.
+- Suggestion 2 (API-surface grounding): NEW -> CLAUDE.md Testing Discipline rule `b8c0695b`.
+- Suggestion 3 (truth-gate): NEW `tools/truth_gate.py` + 17 tests `d657c1f6`; live demo PROCEED 15147p/0f/7s CI-green 4/4 CONFIRM; wired verifier.md + both headless skills.
+- Suggestion 4 (drainer): manifest/resume/headless_run.ps1 ALREADY SHIPPED (dedup); NEW = hard pre-commit gates in both skills (UI-audit + drift-guards + truth_gate exit 0 block the push; .claude local). Drain triage: only headless-actionable item was item-211 `--trust-lcu CHAMP` + `--match-id` (RED->GREEN 9 tests); rest of ROADMAP = operator/live-gated; item-210 unify = FROZEN lcu_client.py, deferred.
+- LW block relocated LEDGER-top -> history_notes above item 278 (`160de74e`); LEDGER header append rule fixed.
+- OPERATOR DECISION OWED: item-211 7 residual rows - run --trust-lcu per-row (needs lcu_champ list) or clear-as-junk.
+- Truth-gate EARNED ITS KEEP same session: round 2 REFUSED on the LW relocation breaking `test_constraint_single_source` (1f/15155p) - guard re-pinned to LW-in-history; round 2b PROCEED 15157p/0f. Gate claims now utf-8-sig (PS BOM).
+- precommit_gate was DEAD on this fleet (Bash-only matcher vs CLAUDE_CODE_USE_POWERSHELL_TOOL=1) + wrong-tree root on `git -C` + no py_compile: all fixed, PowerShell matcher added, 25 tests, live exit-2 proofs (glyph + syntax). First real PowerShell-tool commit after this note = harness firing proof.
+- Patch-update SWARM directive encoded in memory reference_patch_refresh_workflow (all upstreams incl lolmath/101.qq/aggregator B + cohorts + merge-arbiter + coverage report).
+- Gotchas: PS5.1 here-string commit messages with embedded double quotes break native arg quoting (`error: unknown option '-'`) - keep messages quote-free; PS5.1 pipes to native exes prepend a UTF-8 BOM (broke truth_gate claims AND precommit_gate stdin).
+- OVERNIGHT HANDOFF: operator directive captured VERBATIM-intent in `docs/DEEP_AUDIT_CHARTER.md` - the standing deep-audit program (P0-P8: full-tree audit/refactor, frozen+history+gist+md-rewrite AUTHORIZED, vanguard/2pc prune, BOM retro-sweep, HZ-to-ZERO completion, Electron overlay to full replace web dashboard, gemini answers scope questions NOT operator). Loop armed: config max_cycles 100, gemini rail 200, directive_suffix -> charter; Desktop RC_DEEP_AUDIT_SYNOPSIS.md seeded; effortLevel xhigh set. NEXT SESSION = audit cycle 1 (P0 baseline). League client + dashboard left OPEN on screen per operator for UI/UX phases.
+
+---
+
+---
+
+# 2026-06-10 - operator headless-upgrade round 2026-06-10-02: items 388-393 (6 slices, 9 pushes) + 2 live operator interrupts fixed same-session
+
+Operator: "start any open for live game gating + other items parallel orchestrated to the end". 4 worktree agents + verifier gates on every merge; 2 mid-run operator reports root-caused + shipped while they played.
+
+- item 388: drift probe NONE (16.12.1/25.15 all == sentinel; calc-site chunks unchanged); ARENA HZ tables full-roster `fb66722f` (HZ shadow armed sr+aram+arena; gen CLIs need CANONICAL ids - display names skip 6783 pairs); item-211 orphans 12 -> 7 (chain class, 5 MOVEs + 3 re-stamps; FUTURE --trust-lcu).
+- item 389: summoner-spell WPA = 4th build_insights tab `6585b77a` - WPA lane COMPLETE; UI audit 5/5 PASS; proof _scratch/spells_tab_proof.jpeg.
+- item 390: item-208 carry CLOSED `2784db8f` - range-gate at the REAL chokepoint core/daemon_slayer_client.py:1147 (ROADMAP fn was phantom) + 89-row backfill + guard.
+- item 391 (OPERATOR INTERRUPT "champ select slow"): 3 commits ff4d59d1/69cb9dde/9e90c28d - :8889 single-thread -> ThreadingHTTPServer; stage WARN pinned deterministic=692ms inline matchup per 5s bucket; warm-path async single-flight fix. LIVE PROOF /api/state 3-30ms during a running game (was 700ms). Instrumentation permanent.
+- item 392 (OPERATOR INTERRUPT "active match devoid/wrong/map dead/cds unneeded"): `138d4740` - map text layers render w/o coords (Live Client position = ROLE STRING, never coords - live-proven on :2999); DS rerank got items=null ALL GAME (items_display only) -> _amOwnedItemIds itemID path + gold>=2000 completed-count + canonical id bridges x3 routes; cds rail visual-only hide (wiring + overlay threat re-show kept). Proof _scratch/active_match_reflow_proof.jpeg.
+- item 393 (OPERATOR DIRECTIVE 6-axis sweep): `91b6b847` - 1385 rows, 901 refilled / 42 trimmed / 15 stripped, SR 364x7 / ARAM 512x6 / Arena 509x6 zero exceptions (verifier independent probes), regen invariants + 1549-case guard; 16 ambiguous rows REPORT-ONLY for operator review.
+- ROADMAP stale fixes: item-212 minors STALE-SHIPPED; DS-6-bucket medium entry was drift (wired 231-234); item-208 closed; item-211 residual recorded.
+- OWED live: map roster ticking / DS pill+pips / minimap-crop self-grab fallback on a real game; Electron packaging + in-match overlay capture (carry).
+- DON'T REDO: Live Client position is a role string (no coord dots from :2999 ever); pre-06-10 shadow rows junk; WPA lane closed; 16 ambiguous loadout rows need operator, not a strip.
+- PRACTICE-TOOL note: coach.action/immediate empty in PRACTICETOOL while choices/callouts/lead populate (prose coach dark there; deterministic surfaces carry the page) - characterize-or-accept next session.
+
+---
+
+---
+
+# 2026-06-10 - gemini loop cycle 4: Phase 5 stabilization tail - HZ-D1 DONE [item 383, HZ-D1 slice 4]
+
+Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 4). Directive = Phase 5 stabilization tail (electron-updater + stable/dev channels, crash isolation). Merges `96cf5241` + `544cff59` (2 PARALLEL worktree agents, verifier-CONFIRMED) + merger integration `33dc9b3a`. NO engine, no Share, no RC restart, no web/ touch (UI audit n/a).
+
+- Update channels: NEW pure `rc-shell/src/update_channel.js` (resolveChannel env RC_SHELL_CHANNEL > saved > stable; channelConfig dev=allowPrerelease; mergeChannelPatch; checkPlan 15s initial + 4h interval, not-packaged/updater-missing disable). main.js lazy-requires electron-updater in try/catch - bare-node require THROWS inside the autoUpdater getter (app.getVersion on undefined), so the catch is load-bearing (probed). autoInstallOnAppQuit only, console-only events, Shell-menu channel radios + Check-now. NEW electron-builder.yml (nsis, publish github Remus3/riot-commander, all-channels update files; private repo = GH_TOKEN at runtime).
+- Crash isolation: NEW pure `rc-shell/src/crash_guard.js` (RESTART_REASONS; killed/clean-exit never resurrect; per-key rolling budget 3/60s -> give-up hides, no strobing). Merger wired attachCrashGuard on BOTH windows: render-process-gone -> reload | hide; unresponsive logs only.
+- package.json 0.4.0; npm install restored 258 pkgs (registry reachable). node 109 -> 145/0 (TDD red-first both slices). RC tests/ 5769p/2sk/94st exit 0; DS 7075p/1sk/1xf/1942st exit 0 (canonical Python314 path - bare `py` lacks pytest).
+- HZ-D1 flipped DONE in ORCHESTRATION_PLAN (Electron phases 1-5 all shipped code-side; Phase 6 Pengu optional/operator-gated).
+- OWED (operator): packaging + first GitHub Release + packaged-app update check; in-match overlay capture (one shell relaunch picks up slices 1-4).
+
+---
+
 ---
 
 # 2026-06-02 - item 263: Kai'Sa ARAM rebuild + Ashe SR ADC paths (data-only, RC pid 324 live-verified, no restart)
@@ -11778,22 +11813,3 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - **Share sync** (f40f0362): ds_share_sync --check caught ehp.py content drift + the new test MISSING from Share/src; synced 333 files + staged the test mirror in the same commit. The intermediate commit 4be96220 CI went RED on the "DS Share package in sync" guard (Share stale) -> f40f0362 synced it GREEN. Reinforced: a DS source-file change needs ds_share_sync even with NO ENGINE bump (the file is mirrored in Share/src regardless of version).
 - Docs: ROADMAP L21 + BACKLOG L22 + LEDGER item 371 marked shipped (in f40f0362). 2 agent worktrees removed + merged branches deleted.
 - **NEXT (gated):** only LOW T2-F3 (TTK headline) + T1-F4 (per-stat EHP/gold, now unblocked by T1-F3) remain optional. cdragon by-level needs a NEW champ-level schema axis (do NOT re-pitch a calc-graph resolver). Don't-redo: T1-F3 + T2-F4 done.
-
----
-
-# 2026-06-10 - gemini loop cycle 4: false REGRESS audit refuted + gate edge pins [item 387]
-
-Gemini-headless-upgrade executor cycle. Directive = FIX-FIRST regression: audit claimed the
-item-386 `lc.get("champion")` gate shipped untested (conftest + gate tests "missing").
-REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
-9ccc64fa..b5533f85) carries gate + tests/conftest.py + tests/test_hz_shadow_live_gate.py
-(4 tests) in the SAME commit. Auditor diffed only tip commit b5533f85 (docs+data only).
-
-- Verified fresh pre-edit: gate+wiring 12 passed at HEAD.
-- Shipped `c5cf8b56`: +2 edge pins in test_hz_shadow_live_gate.py (champion="" loading-screen
-  edge; non-dict lc isinstance guard). Test-only, no engine, no restart.
-- Gates: RC 5789p/2sk/94st exit 0; ruff + hygiene clean; CI run 27315276398 green.
-- LOOP IMPROVEMENT (FUTURE): loop auditor should diff prev-done-sha..new-sha, not the tip
-  commit - tip-only diffing produced this false REGRESS.
-- DON'T REDO: HZ shadow live-gate IS tested (6 tests); do not re-add gate tests.
-- NOTE: RC pid drifted 14160 -> 3336 during cycle (supervisor bounce); alive+reload_ok true.
