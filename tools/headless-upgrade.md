@@ -26,8 +26,8 @@ This skill is the durable record of how to run that loop cleanly. Sections in or
 
 Every phase is one focused vertical slice. After EVERY phase:
 
-1. **Lint locally**: `py -m py_compile <touched>` and `py -m ruff check <touched>` if Python. F541 (f-string no placeholder) is the most common CI killer. Catch before push.
-2. **Test gate**: relevant subset green BEFORE commit. DS engine: `py -m pytest agents/daemon_slayer/tests/ -q`. RC backend: `py -m pytest tests/ --ignore=tests/daemon_slayer -q`. Frontend DOM: `py -m pytest tests/snapshot_panels/ -q`.
+1. **Lint locally**: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <touched>` and `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m ruff check <touched>` if Python. F541 (f-string no placeholder) is the most common CI killer. Catch before push.
+2. **Test gate**: relevant subset green BEFORE commit. DS engine: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest agents/daemon_slayer/tests/ -q`. RC backend: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/ --ignore=tests/daemon_slayer -q`. Frontend DOM: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/snapshot_panels/ -q`.
 3. **Restart-aware**: dashboard route edits -> `echo restart > restart_trigger.txt` + wait ~5s. `_effects_data.py` / engine math -> taskkill+relaunch DS. Asset edits (web/{js,css}/panels/*) -> ADR-008 auto-reload; no RC restart.
 4. **Commit + push**: never `git add -A`; stage by filename. Unstage `_scratch/`. HEREDOC commit ending `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`.
 5. **CI verify**: `gh run list --limit 4` after push. Red = fix BEFORE next phase.

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Final /headless-upgrade step: write control/claude.done atomically.
+r"""Final /headless-upgrade step: write control/claude.done atomically.
 
 Claude runs this as the LAST action of every loop cycle (the directive's FINAL STEP):
-    py ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>
+    "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>
 cycle is read from control/cycle.txt; sha is the live git HEAD.
 """
 import argparse
