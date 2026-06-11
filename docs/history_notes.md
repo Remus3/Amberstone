@@ -68,6 +68,22 @@ Gemini-headless-upgrade executor cycle. Directive = HZ-D4 (7-lever cost sweep + 
 
 ---
 
+# 2026-06-11 - DEEP-AUDIT cycle 1: P0 BASELINE re-derived + verified [item 395]
+
+Charter cycle (docs/DEEP_AUDIT_CHARTER.md). Gemini's prior "P0 done" synopsis was unstamped + wrong (42209 files / 7451 tests claimed; live = 30398 files / 15167 tests) -> ruled STALE, re-derived everything from live probes.
+
+- Baseline shipped to ops/audit/: P0_INVENTORY.md (30398 files / 4350.5 MB; tracked 2896 / 409.3 MB), p0_pytest_baseline.txt, p0_dashboard_reference.jpeg, P0_WORKMAP.md (P1-P8 seeds, cited).
+- Model: claude-fable-5[1m] probe ACCEPTED headless -> set in .claude/settings.json (untracked).
+- truth_gate LIVE CATCH: default `py -m pytest` hit the pytest-less pythoncore-3.14-64 interpreter -> suite zeroed -> blanket REFUSE. Fixed (canonical Programs/Python314 pin + sys.executable fallback, RED->GREEN regression test, 19/19). Gate re-run PROCEED 15168p/0f exit 0 + CI success.
+- INTERPRETER DUALITY is now a P2 seed: sweep every bare-`py` suite invocation (hooks, skills, docs, scheduled tasks); decide fleet pin (py.ini vs absolute).
+- RC-VisionServer schtask exits 1 but vision serves in-process fine -> vestigial task, P2 reconcile seed.
+- Desktop synopsis rewritten ASCII/BOM-free, handoff log now sha-stamped (was BOM'd + unstamped).
+- NEXT CYCLE: P1 STRUCTURE per synopsis (relocations, _scratch/.bak scrap triage, web/ PNG mirror + logs retention + python-embed consumer eval, CLAUDE.md context-budget trim).
+
+---
+
+---
+
 # 2026-06-10 - insights fold-in + drainer hardening [item 394]
 
 Operator fed the /insights report suggestion-by-suggestion; dedup-first per pattern (2 of 4 = already shipped).
