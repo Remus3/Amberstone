@@ -29,7 +29,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REPORT = ROOT / "ops" / "runtime" / "truth_gate_report.json"
-DEFAULT_SUITE_CMD = "py -m pytest -q"
+
+# The bare "py" launcher can resolve to a pytest-less interpreter (e.g. the
+# python-manager pythoncore-3.14-64 install), which zeroes the suite and turns
+# every gate into a blanket REFUSE. Pin the canonical project interpreter;
+# fall back to whichever interpreter is running this script.
+_CANONICAL_PY = Path(r"C:\Users\Administrator\AppData\Local\Programs\Python"
+                     r"\Python314\python.exe")
+SUITE_PY = str(_CANONICAL_PY if _CANONICAL_PY.exists() else Path(sys.executable))
+DEFAULT_SUITE_CMD = f'"{SUITE_PY}" -m pytest -q'
 
 _SUMMARY_TOKEN = re.compile(r"(\d+)\s+(passed|failed|error|errors|skipped|"
                             r"xfailed|xpassed|deselected|warnings?)")

@@ -11723,3 +11723,22 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - **Share sync** (f40f0362): ds_share_sync --check caught ehp.py content drift + the new test MISSING from Share/src; synced 333 files + staged the test mirror in the same commit. The intermediate commit 4be96220 CI went RED on the "DS Share package in sync" guard (Share stale) -> f40f0362 synced it GREEN. Reinforced: a DS source-file change needs ds_share_sync even with NO ENGINE bump (the file is mirrored in Share/src regardless of version).
 - Docs: ROADMAP L21 + BACKLOG L22 + LEDGER item 371 marked shipped (in f40f0362). 2 agent worktrees removed + merged branches deleted.
 - **NEXT (gated):** only LOW T2-F3 (TTK headline) + T1-F4 (per-stat EHP/gold, now unblocked by T1-F3) remain optional. cdragon by-level needs a NEW champ-level schema axis (do NOT re-pitch a calc-graph resolver). Don't-redo: T1-F3 + T2-F4 done.
+
+---
+
+# 2026-06-10 - gemini loop cycle 4: false REGRESS audit refuted + gate edge pins [item 387]
+
+Gemini-headless-upgrade executor cycle. Directive = FIX-FIRST regression: audit claimed the
+item-386 `lc.get("champion")` gate shipped untested (conftest + gate tests "missing").
+REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
+9ccc64fa..b5533f85) carries gate + tests/conftest.py + tests/test_hz_shadow_live_gate.py
+(4 tests) in the SAME commit. Auditor diffed only tip commit b5533f85 (docs+data only).
+
+- Verified fresh pre-edit: gate+wiring 12 passed at HEAD.
+- Shipped `c5cf8b56`: +2 edge pins in test_hz_shadow_live_gate.py (champion="" loading-screen
+  edge; non-dict lc isinstance guard). Test-only, no engine, no restart.
+- Gates: RC 5789p/2sk/94st exit 0; ruff + hygiene clean; CI run 27315276398 green.
+- LOOP IMPROVEMENT (FUTURE): loop auditor should diff prev-done-sha..new-sha, not the tip
+  commit - tip-only diffing produced this false REGRESS.
+- DON'T REDO: HZ shadow live-gate IS tested (6 tests); do not re-add gate tests.
+- NOTE: RC pid drifted 14160 -> 3336 during cycle (supervisor bounce); alive+reload_ok true.

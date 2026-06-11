@@ -1,0 +1,46 @@
+{
+  "run_id": "deep-audit-cycle1-p0",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15168,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M .gitignore",
+      " M tests/test_truth_gate.py",
+      " M tools/truth_gate.py",
+      "?? ops/audit/"
+    ],
+    "head": "22a71c4e docs: wakeup prune to last 3 sessions (item 386 -> history_notes)"
+  },
+  "ci": {
+    "status": "success",
+    "sha": "22a71c4ed45bf5d26261b377b0bca2c0cff0576b",
+    "runs": [
+      {
+        "conclusion": "success",
+        "name": "ci",
+        "status": "completed"
+      }
+    ]
+  },
+  "slices": [
+    {
+      "id": "p0-baseline",
+      "claim": "P0 baseline artifacts exist: inventory, workmap, pytest summary, screenshot; settings model set; truth_gate suite-cmd interpreter fix (+1 regression test)",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}
