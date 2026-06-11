@@ -77,6 +77,30 @@ _CHAMPS_PATH = (
 
 _MAP_FOR_MODE = {"sr": "11", "aram": "12", "arena": "30"}
 
+# Item 208 carry (2026-06-10): the original pass stripped off-class melee
+# only on SR/ARAM via the Marksman-tag >= 525 set, and the Arena carry
+# backfill pool itself seeded Trinity Force + Heartsteel - so a re-run
+# would re-pollute the ranged-ADC carry rows the item-208 backfill
+# recovered. Carry rows are now gated by the same range-keyed mechanic
+# as the live scorer (core.daemon_slayer_client carry branch) so the
+# layers cannot disagree. Bruiser/assassin rows of ranged champs keep
+# melee items - they are archetype-legitimate there.
+from core.daemon_slayer_client import (  # noqa: E402
+    CARRY_RANGED_ATTACKRANGE_FLOOR,
+    CARRY_RANGED_OFFCLASS_ITEM_NAMES,
+    champion_attackrange,
+)
+
+# Operator-pinned carry rows the item-208 gate must skip - hand-fixes
+# are not generated pollution. Corki's SR "ad" path keeps Trinity Force
+# by the item-269 hand-fix (tools/hotfix_sibling_pollution_item269
+# _CORKI; Sheen rides Corki's magic-damage passive) and that state is
+# test-pinned. The item-208 guard test + backfill tool carry the same
+# exemption.
+ITEM208_OPERATOR_PINNED_CARRY_ROWS: frozenset = frozenset({
+    ("Corki", "sr-collapsed", "ad"),
+})
+
 # Joke / anvil / placeholder item NAMES - never a coachable build item.
 _JOKE_NAMES = {
     "golden spatula",
@@ -349,7 +373,8 @@ class Cleaner:
         return out
 
     def _backfill(
-        self, items: list[str], mode: str, archetype: str
+        self, items: list[str], mode: str, archetype: str,
+        skip_names: frozenset = frozenset(),
     ) -> list[str]:
         """Append archetype-appropriate items until len>=4, offline."""
         pool_map = {
@@ -363,6 +388,8 @@ class Cleaner:
         for cand in pool:
             if len(items) >= 4:
                 break
+            if cand in skip_names:
+                continue
             cn = _norm(cand)
             if cn in have:
                 continue
@@ -508,8 +535,30 @@ class Cleaner:
             if not items:
                 continue
             arch = self._detect_archetype(bp, mode)
+            # Item 208 carry: range-gate carry rows on every mode (the
+            # sr/aram strip above is path-archetype-blind and skips arena
+            # by design) and keep the backfill pool from re-seeding the
+            # same four polluters.
+            gate_carry = (
+                arch == "carry"
+                and (champ, vk, str(bp.get("key") or ""))
+                not in ITEM208_OPERATOR_PINNED_CARRY_ROWS
+                and champion_attackrange(champ)
+                >= CARRY_RANGED_ATTACKRANGE_FLOOR
+            )
+            if gate_carry:
+                items = [
+                    i for i in items
+                    if i not in CARRY_RANGED_OFFCLASS_ITEM_NAMES
+                ]
             if len(items) < 4:
-                items = self._backfill(items, mode, arch)
+                items = self._backfill(
+                    items, mode, arch,
+                    skip_names=(
+                        CARRY_RANGED_OFFCLASS_ITEM_NAMES
+                        if gate_carry else frozenset()
+                    ),
+                )
             items = self._reseat_boots(champ, mode, items, arch)
             if len(items) < 4:
                 # still short (rare): drop it; dedup/backfill below ensures

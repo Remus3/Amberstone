@@ -501,9 +501,9 @@
               "label": "Carry (flav)",
               "items": [
                 "Void Immolation",
-                "Trinity Force",
-                "Heartsteel",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -992,7 +992,7 @@
             "Essence Reaver",
             "Kraken Slayer",
             "Hamstringer",
-            "Heartsteel"
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -1003,7 +1003,7 @@
                 "Essence Reaver",
                 "Kraken Slayer",
                 "Hamstringer",
-                "Heartsteel"
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -2074,10 +2074,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Pyromancer's Cloak"
+                "Pyromancer's Cloak",
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -2830,7 +2830,7 @@
             "Essence Reaver",
             "Hamstringer",
             "Kraken Slayer",
-            "Heartsteel"
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -2841,7 +2841,7 @@
                 "Essence Reaver",
                 "Hamstringer",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -3121,10 +3121,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -3381,10 +3381,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -3883,10 +3883,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
                 "Statikk Shiv",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Hamstringer",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -5477,10 +5477,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
             "Hamstringer",
             "Statikk Shiv",
-            "Heartsteel"
+            "Kraken Slayer",
+            "Essence Reaver"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -5488,10 +5488,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Hamstringer",
                 "Statikk Shiv",
-                "Heartsteel"
+                "Kraken Slayer",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -7544,10 +7544,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
             "Hamstringer",
             "Kraken Slayer",
-            "Heartsteel"
+            "Statikk Shiv",
+            "Essence Reaver"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -7555,10 +7555,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Statikk Shiv",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -8121,10 +8121,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
                 "Statikk Shiv",
-                "Heartsteel",
-                "Hamstringer"
+                "Hamstringer",
+                "Kraken Slayer",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -8635,7 +8635,7 @@
             "Essence Reaver",
             "Kraken Slayer",
             "Hamstringer",
-            "Heartsteel"
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -8646,7 +8646,7 @@
                 "Essence Reaver",
                 "Kraken Slayer",
                 "Hamstringer",
-                "Heartsteel"
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -10885,8 +10885,7 @@
                 "Berserker's Greaves",
                 "Runaan's Hurricane",
                 "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Bastionbreaker"
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -11012,7 +11011,7 @@
             "Essence Reaver",
             "Galeforce",
             "Hamstringer",
-            "Heartsteel"
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -11023,7 +11022,7 @@
                 "Essence Reaver",
                 "Galeforce",
                 "Hamstringer",
-                "Heartsteel"
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -12873,10 +12872,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
                 "Statikk Shiv",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Hamstringer",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -13138,10 +13137,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Heartsteel",
                 "Void Immolation",
-                "Trinity Force",
-                "Pyromancer's Cloak"
+                "Pyromancer's Cloak",
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -14113,8 +14112,7 @@
                 "Essence Reaver",
                 "Berserker's Greaves",
                 "Stormrazor",
-                "Infinity Edge",
-                "Heartsteel"
+                "Infinity Edge"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -14167,9 +14165,9 @@
           ],
           "items": [
             "Divine Sunderer",
-            "Heartsteel",
             "Void Immolation",
-            "Statikk Shiv"
+            "Statikk Shiv",
+            "Hamstringer"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -14178,9 +14176,9 @@
               "label": "Carry",
               "items": [
                 "Divine Sunderer",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -14395,7 +14393,6 @@
               "items": [
                 "Void Immolation",
                 "Berserker's Greaves",
-                "Heartsteel",
                 "Stormrazor",
                 "Statikk Shiv"
               ],
@@ -14451,8 +14448,8 @@
           "items": [
             "Void Immolation",
             "Divine Sunderer",
-            "Heartsteel",
-            "Statikk Shiv"
+            "Statikk Shiv",
+            "Hamstringer"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -14462,8 +14459,8 @@
               "items": [
                 "Void Immolation",
                 "Divine Sunderer",
-                "Heartsteel",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -14996,10 +14993,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
             "Kraken Slayer",
             "Hamstringer",
-            "Heartsteel"
+            "Statikk Shiv",
+            "Essence Reaver"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -15007,10 +15004,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Kraken Slayer",
                 "Hamstringer",
-                "Heartsteel"
+                "Statikk Shiv",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -17142,10 +17139,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -17549,9 +17546,8 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
-                "Berserker's Greaves",
                 "Stormrazor",
+                "Berserker's Greaves",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
               ],
@@ -17605,10 +17601,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
             "Hamstringer",
             "Kraken Slayer",
-            "Heartsteel"
+            "Statikk Shiv",
+            "Essence Reaver"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -17616,10 +17612,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Statikk Shiv",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -18092,9 +18088,8 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
-                "Berserker's Greaves",
                 "Stormrazor",
+                "Berserker's Greaves",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -18126,10 +18121,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
             "Hamstringer",
             "Kraken Slayer",
-            "Heartsteel"
+            "Statikk Shiv",
+            "Essence Reaver"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -18137,10 +18132,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Statikk Shiv",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -18421,10 +18416,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Heartsteel",
                 "Void Immolation",
-                "Trinity Force",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19468,10 +19463,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -19662,9 +19657,8 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
-                "Berserker's Greaves",
                 "Stormrazor",
+                "Berserker's Greaves",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
               ],
@@ -19718,10 +19712,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
             "Hamstringer",
             "Kraken Slayer",
-            "Heartsteel"
+            "Statikk Shiv",
+            "Essence Reaver"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -19729,10 +19723,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Statikk Shiv",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -20017,7 +20011,7 @@
                 "Essence Reaver",
                 "Kraken Slayer",
                 "Statikk Shiv",
-                "Heartsteel"
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -20803,10 +20797,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -21836,10 +21830,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Pyromancer's Cloak"
+                "Pyromancer's Cloak",
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -22067,7 +22061,7 @@
             "Essence Reaver",
             "Kraken Slayer",
             "Hamstringer",
-            "Heartsteel"
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -22078,7 +22072,7 @@
                 "Essence Reaver",
                 "Kraken Slayer",
                 "Hamstringer",
-                "Heartsteel"
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -22624,10 +22618,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -23148,8 +23142,8 @@
               "items": [
                 "Divine Sunderer",
                 "Statikk Shiv",
-                "Heartsteel",
-                "Hamstringer"
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -24200,10 +24194,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -27067,7 +27061,7 @@
             "Essence Reaver",
             "Kraken Slayer",
             "Hamstringer",
-            "Heartsteel"
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -27078,7 +27072,7 @@
                 "Essence Reaver",
                 "Kraken Slayer",
                 "Hamstringer",
-                "Heartsteel"
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -28443,10 +28437,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Statikk Shiv",
-                "Hamstringer"
+                "Hamstringer",
+                "Kraken Slayer",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -29786,10 +29780,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Heartsteel",
                 "Void Immolation",
-                "Trinity Force",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -29957,10 +29951,8 @@
               "key": "aram-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
-                "Berserker's Greaves",
                 "Stormrazor",
-                "Heartsteel",
+                "Berserker's Greaves",
                 "Void Immolation",
                 "Statikk Shiv"
               ],
@@ -30014,10 +30006,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
-            "Heartsteel",
             "Void Immolation",
-            "Statikk Shiv"
+            "Statikk Shiv",
+            "Hamstringer",
+            "Kraken Slayer"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -30025,10 +30017,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -30601,7 +30593,7 @@
                 "Statikk Shiv",
                 "Essence Reaver",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -30843,9 +30835,9 @@
               "label": "Carry (flav)",
               "items": [
                 "Divine Sunderer",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -32614,7 +32606,6 @@
               "items": [
                 "Stormrazor",
                 "Berserker's Greaves",
-                "Trinity Force",
                 "Yun Tal Wildarrows",
                 "Kraken Slayer"
               ],
@@ -32670,8 +32661,8 @@
           "items": [
             "Hamstringer",
             "Kraken Slayer",
-            "Trinity Force",
-            "Galeforce"
+            "Galeforce",
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -32681,8 +32672,8 @@
               "items": [
                 "Hamstringer",
                 "Kraken Slayer",
-                "Trinity Force",
-                "Galeforce"
+                "Galeforce",
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -33195,7 +33186,7 @@
             "Essence Reaver",
             "Statikk Shiv",
             "Kraken Slayer",
-            "Heartsteel"
+            "Hamstringer"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -33206,7 +33197,7 @@
                 "Essence Reaver",
                 "Statikk Shiv",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -33492,8 +33483,8 @@
               "items": [
                 "Essence Reaver",
                 "Statikk Shiv",
-                "Heartsteel",
-                "Hamstringer"
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -33756,10 +33747,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
                 "Statikk Shiv",
-                "Heartsteel",
-                "Hamstringer"
+                "Hamstringer",
+                "Kraken Slayer",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -34568,10 +34559,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -36360,7 +36351,7 @@
             "Essence Reaver",
             "Kraken Slayer",
             "Hamstringer",
-            "Heartsteel"
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -36371,7 +36362,7 @@
                 "Essence Reaver",
                 "Kraken Slayer",
                 "Hamstringer",
-                "Heartsteel"
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -37213,9 +37204,9 @@
               "label": "Carry (sec)",
               "items": [
                 "Divine Sunderer",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -37951,10 +37942,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
                 "Statikk Shiv",
-                "Heartsteel",
-                "Hamstringer"
+                "Hamstringer",
+                "Kraken Slayer",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -38203,10 +38194,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
             "Hamstringer",
             "Kraken Slayer",
-            "Heartsteel"
+            "Statikk Shiv",
+            "Essence Reaver"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -38214,10 +38205,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Statikk Shiv",
+                "Essence Reaver"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -38442,10 +38433,10 @@
             7
           ],
           "items": [
-            "Trinity Force",
             "Hamstringer",
             "Kraken Slayer",
-            "Galeforce"
+            "Galeforce",
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -38453,10 +38444,10 @@
               "key": "arena-carry",
               "label": "Carry",
               "items": [
-                "Trinity Force",
                 "Hamstringer",
                 "Kraken Slayer",
-                "Galeforce"
+                "Galeforce",
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -38734,10 +38725,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Heartsteel",
                 "Void Immolation",
-                "Trinity Force",
-                "Pyromancer's Cloak"
+                "Pyromancer's Cloak",
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -39256,10 +39247,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -41287,7 +41278,7 @@
             "Essence Reaver",
             "Hamstringer",
             "Kraken Slayer",
-            "Heartsteel"
+            "Statikk Shiv"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -41298,7 +41289,7 @@
                 "Essence Reaver",
                 "Hamstringer",
                 "Kraken Slayer",
-                "Heartsteel"
+                "Statikk Shiv"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -42897,9 +42888,8 @@
           "items": [
             "Statikk Shiv",
             "Kraken Slayer",
-            "Trinity Force",
-            "Heartsteel",
-            "Void Immolation"
+            "Void Immolation",
+            "Hamstringer"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -42909,9 +42899,8 @@
               "items": [
                 "Statikk Shiv",
                 "Kraken Slayer",
-                "Trinity Force",
-                "Heartsteel",
-                "Void Immolation"
+                "Void Immolation",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -43192,10 +43181,10 @@
               "key": "auto-arena-flavor-carry",
               "label": "Carry (flav)",
               "items": [
-                "Trinity Force",
                 "Void Immolation",
-                "Heartsteel",
-                "Pyromancer's Cloak"
+                "Pyromancer's Cloak",
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -43976,9 +43965,8 @@
             21
           ],
           "items": [
-            "Heartsteel",
-            "Berserker's Greaves",
             "Cruelty",
+            "Berserker's Greaves",
             "Lord Dominik's Regards",
             "Voltaic Cyclosword"
           ],
@@ -43988,9 +43976,8 @@
               "key": "on-hit",
               "label": "On-Hit",
               "items": [
-                "Heartsteel",
-                "Berserker's Greaves",
                 "Cruelty",
+                "Berserker's Greaves",
                 "Lord Dominik's Regards",
                 "Voltaic Cyclosword"
               ],
@@ -44082,7 +44069,6 @@
               "items": [
                 "Void Immolation",
                 "Berserker's Greaves",
-                "Heartsteel",
                 "Stormrazor",
                 "Statikk Shiv"
               ],
@@ -44137,9 +44123,9 @@
           ],
           "items": [
             "Void Immolation",
-            "Heartsteel",
-            "Trinity Force",
-            "Statikk Shiv"
+            "Statikk Shiv",
+            "Hamstringer",
+            "Kraken Slayer"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -44148,9 +44134,9 @@
               "label": "Carry",
               "items": [
                 "Void Immolation",
-                "Heartsteel",
-                "Trinity Force",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -44429,9 +44415,9 @@
               "label": "Carry (flav)",
               "items": [
                 "Divine Sunderer",
-                "Heartsteel",
                 "Void Immolation",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -44695,8 +44681,8 @@
               "items": [
                 "Void Immolation",
                 "Divine Sunderer",
-                "Heartsteel",
-                "Statikk Shiv"
+                "Statikk Shiv",
+                "Hamstringer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -44956,8 +44942,8 @@
               "items": [
                 "Essence Reaver",
                 "Statikk Shiv",
-                "Heartsteel",
-                "Hamstringer"
+                "Hamstringer",
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
