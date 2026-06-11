@@ -830,6 +830,10 @@ def hps_for(
 # engine that predates the pool filter. Range-keyed, never a champion
 # list - melee carries (Nilah 225) and Pantheon's operator-pinned Sup
 # Roam Umbral Glaive (175) are exempt by the same mechanic.
+# Divine Sunderer joined the set in the item-s8 sweep (2026-06-10): the
+# arena Sheen-line melee spellblade was sitting on 7 ranged-carry arena
+# rows (Jhin / Jinx / Nami / Seraphine / Twisted Fate / Ziggs / Zilean)
+# via the same engine lineage the original four came from.
 CARRY_RANGED_ATTACKRANGE_FLOOR: float = 350.0
 
 CARRY_RANGED_OFFCLASS_ITEM_NAMES: frozenset = frozenset({
@@ -837,6 +841,7 @@ CARRY_RANGED_OFFCLASS_ITEM_NAMES: frozenset = frozenset({
     "Bastionbreaker",
     "Heartsteel",
     "Umbral Glaive",
+    "Divine Sunderer",
 })
 
 _DS_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
