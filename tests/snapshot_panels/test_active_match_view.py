@@ -28,6 +28,8 @@ Arena (the _renderDraftEloFromCtx 5v5-only gate - the per-mode structural
 differentiator, mirroring C1's SR-only Pick & Ban hidden check), and no
 unhandled JS errors fire. Screenshots the view for the audit trail.
 """
+import json
+
 import pytest
 from pathlib import Path
 
@@ -119,6 +121,82 @@ def test_active_match_draft_elo_mode_gate(mode, expect_hidden, mock_server, pw_b
         page.close()
         ctx.close()
     assert not errors, f"JS errors [{mode} draft-elo]: {errors[:3]}"
+
+
+# Operator fix 2026-06-10: ARAM/Mayhem emit no champion coordinates
+# (Live Client position "NONE"), so the map pane's live signal is the
+# text layers - a ticking clock in the status line plus a per-enemy
+# roster (zone label / respawn countdown / MIA age / level). Shaped
+# like the real 2026-06-10 game's /api/vision-state (game_mode KIWI,
+# last_seen_zone on_bridge, last_seen_pos null).
+_VS_FIXTURE = {
+    "t_now": 0,
+    "game_time": 754.2,
+    "game_mode": "KIWI",
+    "active_team": "ORDER",
+    "enemies": {
+        "Viktor": {
+            "champion": "Viktor", "summoner_name": "x", "team": "CHAOS",
+            "level": 14, "is_dead": False, "respawn_in_s": None,
+            "visible": True, "missing_for_s": None, "last_seen_pos": None,
+            "last_seen_t": 754.0, "last_seen_zone": "on_bridge",
+        },
+        "Jinx": {
+            "champion": "Jinx", "summoner_name": "y", "team": "CHAOS",
+            "level": 13, "is_dead": True, "respawn_in_s": 21.4,
+            "visible": False, "missing_for_s": None, "last_seen_pos": None,
+            "last_seen_t": 700.0, "last_seen_zone": "on_bridge",
+        },
+    },
+    "summary": {"visible_count": 1, "missing_count": 0, "dead_count": 1,
+                "total": 2},
+}
+
+
+def test_active_match_map_text_ticks_from_vision_state(mock_server, pw_browser):
+    """The map pane's status + roster must render from /api/vision-state
+    alone - WITHOUT the base image (this worktree-style env has no local
+    ddragon mirror, which is exactly the no-image fallback path that used
+    to freeze the panel on 'loading vision...')."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    page.route("**/api/vision-state*", lambda route: route.fulfill(
+        status=200, content_type="application/json",
+        body=json.dumps(_VS_FIXTURE)))
+    page.goto(mock_server.url + "/?ui_mock=1&mode=aram#active-match",
+              wait_until="domcontentloaded", timeout=15_000)
+    try:
+        page.wait_for_function(
+            "document.querySelector('#am-map-status') && "
+            "document.querySelector('#am-map-status')"
+            ".textContent.indexOf('on bridge') >= 0",
+            timeout=10_000,
+        )
+        status = page.locator("#am-map-status").text_content()
+        assert "12:34" in status, f"clock missing from status: {status!r}"
+        assert "1 on bridge - 1 dead" in status, status
+        rows = page.locator("#am-map-roster .am-mr-row")
+        assert rows.count() == 2, "one roster row per enemy"
+        dead = page.locator('#am-map-roster .am-mr-row[data-state="dead"]')
+        assert dead.count() == 1
+        assert "DEAD 22s" in dead.text_content(), (
+            "dead enemy must carry the ceil(respawn_in_s) countdown")
+        alive = page.locator('#am-map-roster .am-mr-row[data-state="ok"]')
+        assert alive.count() == 1
+        assert "on bridge" in alive.text_content(), (
+            "alive enemy must carry the zone label")
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [map text]: {errors[:3]}"
 
 
 def test_no_em_dashes_or_smart_quotes():

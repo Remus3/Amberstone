@@ -349,6 +349,17 @@ def _serve_ds_combo(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
+        # 2026-06-10: the active-match combo host passes the coach
+        # payload's champion verbatim - a Live Client DISPLAY name
+        # ("Tahm Kench"). The combo engine keys canonical DDragon ids;
+        # bridge here so multi-word champs resolve. Canonical ids
+        # (champ-select callers) pass through unchanged.
+        try:
+            from core.archetype_picks import canonical_champion_id
+            champion = canonical_champion_id(champion) or champion
+        except Exception:
+            pass
+
         level = _parse_level((qs.get("level") or [""])[0].strip())
         items = _parse_items((qs.get("items") or [""])[0].strip())
         seq = _parse_seq(seq_raw)
