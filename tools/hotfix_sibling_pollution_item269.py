@@ -46,7 +46,8 @@ _AP = {
     ("Gwen", "sr-collapsed", "ap-bruiser"): (
         "ap", "AP",
         ["Riftmaker", "Sorcerer's Shoes", "Nashor's Tooth",
-         "Rabadon's Deathcap", "Void Staff", "Zhonya's Hourglass"]),
+         "Rabadon's Deathcap", "Void Staff", "Zhonya's Hourglass",
+         "Shadowflame"]),
     ("Gwen", "aram-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Riftmaker", "Sorcerer's Shoes", "Nashor's Tooth",
@@ -54,15 +55,18 @@ _AP = {
     ("Elise", "sr-collapsed", "ap-jg-bruiser"): (
         "ap", "AP",
         ["Hextech Rocketbelt", "Sorcerer's Shoes", "Shadowflame",
-         "Rabadon's Deathcap", "Zhonya's Hourglass", "Void Staff"]),
+         "Rabadon's Deathcap", "Zhonya's Hourglass", "Void Staff",
+         "Stormsurge"]),
     ("Gragas", "sr-collapsed", "ap-jg-bruiser"): (
         "ap", "AP",
         ["Riftmaker", "Mercury's Treads", "Liandry's Torment",
-         "Rabadon's Deathcap", "Cosmic Drive", "Zhonya's Hourglass"]),
+         "Rabadon's Deathcap", "Cosmic Drive", "Zhonya's Hourglass",
+         "Void Staff"]),
     ("Mordekaiser", "sr-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Riftmaker", "Mercury's Treads", "Liandry's Torment",
-         "Rabadon's Deathcap", "Spirit Visage", "Zhonya's Hourglass"]),
+         "Rabadon's Deathcap", "Spirit Visage", "Zhonya's Hourglass",
+         "Sterak's Gage"]),
     ("Mordekaiser", "aram-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Riftmaker", "Mercury's Treads", "Liandry's Torment",
@@ -70,7 +74,8 @@ _AP = {
     ("Rumble", "sr-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Liandry's Torment", "Mercury's Treads", "Riftmaker",
-         "Rabadon's Deathcap", "Cosmic Drive", "Zhonya's Hourglass"]),
+         "Rabadon's Deathcap", "Cosmic Drive", "Zhonya's Hourglass",
+         "Sterak's Gage"]),
     ("Rumble", "aram-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Liandry's Torment", "Mercury's Treads", "Riftmaker",
@@ -78,7 +83,8 @@ _AP = {
     ("Ryze", "sr-collapsed", "ap-bruiser"): (
         "ap", "AP",
         ["Archangel's Staff", "Sorcerer's Shoes", "Riftmaker",
-         "Rabadon's Deathcap", "Void Staff", "Zhonya's Hourglass"]),
+         "Rabadon's Deathcap", "Void Staff", "Zhonya's Hourglass",
+         "Shadowflame"]),
     ("Ryze", "aram-collapsed", "ap-bruiser"): (
         "ap", "AP",
         ["Archangel's Staff", "Sorcerer's Shoes", "Riftmaker",
@@ -86,7 +92,8 @@ _AP = {
     ("Swain", "sr-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Liandry's Torment", "Sorcerer's Shoes", "Riftmaker",
-         "Rabadon's Deathcap", "Spirit Visage", "Zhonya's Hourglass"]),
+         "Rabadon's Deathcap", "Spirit Visage", "Zhonya's Hourglass",
+         "Sterak's Gage"]),
     ("Swain", "aram-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Liandry's Torment", "Sorcerer's Shoes", "Riftmaker",
@@ -94,7 +101,8 @@ _AP = {
     ("Sylas", "sr-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Riftmaker", "Mercury's Treads", "Cosmic Drive",
-         "Rabadon's Deathcap", "Zhonya's Hourglass", "Void Staff"]),
+         "Rabadon's Deathcap", "Zhonya's Hourglass", "Void Staff",
+         "Sterak's Gage"]),
     ("Sylas", "aram-collapsed", "ap-bruiser"): (
         "ap-bruiser", "AP Bruiser",
         ["Riftmaker", "Mercury's Treads", "Cosmic Drive",
@@ -110,11 +118,13 @@ _AD = {
     ("Jhin", "sr-collapsed", "sr-mage"): (
         "lethality", "Lethality",
         ["Youmuu's Ghostblade", "Berserker's Greaves", "Opportunity",
-         "The Collector", "Serylda's Grudge", "Edge of Night"]),
+         "The Collector", "Serylda's Grudge", "Edge of Night",
+         "Axiom Arc"]),
     ("Smolder", "sr-collapsed", "sr-mage"): (
         "adc-crit", "Crit",
         ["Yun Tal Wildarrows", "Berserker's Greaves", "Infinity Edge",
-         "Rapid Firecannon", "Lord Dominik's Regards", "Runaan's Hurricane"]),
+         "Rapid Firecannon", "Lord Dominik's Regards", "Runaan's Hurricane",
+         "Bloodthirster"]),
 }
 
 # Redundant "Mage"-mislabeled paths on AD assassins that already have a clean
@@ -131,7 +141,8 @@ _CORKI = {
     ("Corki", "sr-collapsed", "ap-hybrid"): (
         "ad", "AD",
         ["Trinity Force", "Berserker's Greaves", "Infinity Edge",
-         "Rapid Firecannon", "Lord Dominik's Regards", "Yun Tal Wildarrows"]),
+         "Rapid Firecannon", "Lord Dominik's Regards", "Yun Tal Wildarrows",
+         "Runaan's Hurricane"]),
     ("Corki", "aram-collapsed", "ap-hybrid"): (
         "ap-hybrid", "AP Hybrid",
         ["Nashor's Tooth", "Sorcerer's Shoes", "Lich Bane",
