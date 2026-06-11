@@ -1,0 +1,17 @@
+{
+  "run_id": "deep-audit-cycle3-p1b",
+  "check_ci": true,
+  "slices": [
+    {
+      "id": "p1b-snapshot-retention",
+      "claim": "meta_build/ddragon 16.8.1+16.10.1 git-rm'd; fetch_all auto-retention wired fail-soft; DS fixture dirs exempted per gemini-confirmed deviation",
+      "claimed_passed": 15177,
+      "claimed_failed": 0,
+      "files": [
+        {"path": "lib/ddragon/fetch.py", "must_contain": ["prune_stale_versions", "meta_build cache prune skipped"]},
+        {"path": "tests/test_meta_build_cache_retention.py", "must_contain": ["test_fetch_all_prune_failure_does_not_break_fetch"]},
+        {"path": "docs/LEDGER.md", "must_contain": ["397.", "Tests trump cache cleanup"]}
+      ]
+    }
+  ]
+}
