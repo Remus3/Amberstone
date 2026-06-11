@@ -21,6 +21,8 @@
 //
 // Discipline: pure render, sig-dedup gate, ASCII only.
 
+import { DDRAGON_FALLBACK_VERSION } from "../lib/items_index.js";
+
 const _DE_CACHE = Object.create(null); // cacheKey -> response JSON
 const _DE_INFLIGHT = Object.create(null);
 const _DE_SIG = Object.create(null);
@@ -115,9 +117,9 @@ function _defaultSlugLookup(cid) {
 }
 
 function _defaultVersionLookup() {
-  if (typeof window === "undefined") return "16.10.1";
+  if (typeof window === "undefined") return DDRAGON_FALLBACK_VERSION;
   const CHAMPS = window.CHAMPS || (window.RC && window.RC.CHAMPS) || null;
-  return (CHAMPS && CHAMPS.version) || "16.10.1";
+  return (CHAMPS && CHAMPS.version) || DDRAGON_FALLBACK_VERSION;
 }
 
 // One contribution row in the hover overlay. ``c`` is the

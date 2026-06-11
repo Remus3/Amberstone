@@ -18,7 +18,7 @@
  * the match's items + champion_id change per render. Fail-soft: a missing
  * route / empty corpus hides the strip rather than erroring the PGR.
  */
-import { ITEMS } from '../lib/items_index.js';
+import { ITEMS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 
 const MOUNT_ID = 'pgr-build-wpa-mount';
 
@@ -29,7 +29,7 @@ const _SKIP_ITEM_IDS = new Set([0, 3340, 3363, 3364, 3330]);
 
 // --- icon + format helpers (mirror build_insights.js) ---------------
 function _ddragonVersion() {
-  return (ITEMS && ITEMS.version) || '16.10.1';
+  return (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
 }
 function _itemImgTag(iid) {
   if (!iid && iid !== 0) return '';

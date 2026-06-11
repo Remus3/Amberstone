@@ -22,7 +22,7 @@
  * arbitrary historical match_ts, and are out of scope for the archive
  * view.
  */
-import { CHAMPS, ITEMS } from '../lib/items_index.js';
+import { CHAMPS, ITEMS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 import { itemTooltipHtml, preloadLolDescriptions } from '../lib/lol_descriptions.js';
 
 // Numeric summoner-spell id -> DDragon filename (SR + ARAM common set).
@@ -37,7 +37,7 @@ const SUMMONER_SPELL_BY_ID = {
 };
 
 function _ddragonVersion() {
-  return (ITEMS && ITEMS.version) || "16.10.1";
+  return (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
 }
 
 function _onErrCdnFallback(ver, kind, id) {

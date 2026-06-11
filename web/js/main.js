@@ -15,7 +15,7 @@
 
 import { _to12, el, fmtList, safe, fitText, logLine, isArenaPayload, classifyAction, _opGlyph, _formatRelativeAge } from './lib/helpers.js';
 import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
-import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
+import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
 import { idempotentRender, makeSig } from './lib/idempotent_render.js';
 
 // ── Panel modules ─────────────────────────────────────────────────────────
@@ -1151,7 +1151,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
           cell.dataset.cdKey = _spellKey(p.champion, sname);
           if (spell) {
             const img = document.createElement("img");
-            img.src = `/data/ddragon/${(ITEMS && ITEMS.version) || "16.12.1"}/img/spell/${spell.img}`;
+            img.src = `/data/ddragon/${(ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION}/img/spell/${spell.img}`;
             img.alt = spell.name;
             cell.title = spell.name;
             cell.appendChild(img);
@@ -2000,7 +2000,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
   // /api/dictionary/runes on first form-open. Patch path follows the
   // hydrated items index so the mirror's stale dirs can be pruned;
   // pre-hydration guesses 404 into the existing onerror CDN chain.
-  const _RP_DDRAGON_BASE = "/data/ddragon/" + ((ITEMS && ITEMS.version) || "16.12.1") + "/img/";
+  const _RP_DDRAGON_BASE = "/data/ddragon/" + ((ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION) + "/img/";
   let   _RP_TREES = null;
   const _RP = {
     primaryTree:    null,  // tree.key e.g. "Domination"
@@ -2646,7 +2646,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
       // so display names like "Kai'Sa" / "Wukong" / "Renata Glasc" map to
       // their DDragon file ids ("Kaisa" / "MonkeyKing" / "Renata") instead
       // of trying to load a 404'ing URL-encoded version of the raw name.
-      const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.12.1";
+      const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : DDRAGON_FALLBACK_VERSION;
       const img = document.createElement("img");
       img.className = "home-recent-img";
       img.alt = "";
@@ -3021,7 +3021,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
     const buildCard = document.getElementById("home-coach-build");
     const trends = document.getElementById("home-trends");
     if (!combo || !pickCard || !buildCard) return;
-    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.12.1";
+    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : DDRAGON_FALLBACK_VERSION;
     // Tonight's pick
     if (pick && pick.champion) {
       pickCard.hidden = false;
@@ -3116,7 +3116,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
       if (r.length && r[0].champion) champ = r[0].champion;
     }
     if (!champ) return;
-    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.12.1";
+    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : DDRAGON_FALLBACK_VERSION;
     const motifCid = _resolveChampId(champ) || encodeURIComponent(champ);
     bg.style.backgroundImage =
       `url("/data/ddragon/${ver}/img/champion/${motifCid}.png")`;

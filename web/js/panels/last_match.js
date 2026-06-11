@@ -30,7 +30,7 @@
 // the team-comp row renderer falls back to a numeric id label so it
 // stays informative rather than blank. ITEMS.version drives item
 // icon paths so we stay current with the patch.
-import { CHAMPS, ITEMS } from '../lib/items_index.js';
+import { CHAMPS, ITEMS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 // Item C (s220): rich DDragon item tooltips via the shared app-wide
 // data-tt-html plumbing - same lib champ_select.js uses (s213).
 import { itemTooltipHtml, preloadLolDescriptions } from '../lib/lol_descriptions.js';
@@ -75,7 +75,7 @@ function _ddragonVersion() {
   // Unpinned s219 v3: local mirror auto-refreshes via tools/ddragon_mirror_refresh.py
   // (item 101, RC-DDragonMirrorRefresh daily); ITEMS.version drives all asset
   // URLs. Hardcoded fallback only fires before items_index.json loads.
-  return (ITEMS && ITEMS.version) || "16.10.1";
+  return (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
 }
 
 // onerror chain: try local at current ITEMS.version first; on 404 fall

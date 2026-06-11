@@ -25,7 +25,7 @@
  * Idempotent. Fail-soft: a missing dict / empty loadout hides the card.
  */
 import { sumImg, sumName } from '../lib/summoner_spells.js';
-import { ITEMS } from '../lib/items_index.js';
+import { ITEMS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 
 const MOUNT_ID = 'pgr-loadout-mount';
 
@@ -34,7 +34,7 @@ const MOUNT_ID = 'pgr-loadout-mount';
 // on the CDN: /cdn/img/<perk-images-path>). Patch follows the hydrated
 // items index so stale mirror dirs can be pruned.
 function _runeLocalBase() {
-  return '/data/ddragon/' + ((ITEMS && ITEMS.version) || '16.12.1') + '/img/';
+  return '/data/ddragon/' + ((ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION) + '/img/';
 }
 const _RUNE_CDN_BASE = 'https://ddragon.leagueoflegends.com/cdn/img/';
 

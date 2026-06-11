@@ -21,7 +21,7 @@
  * until _replayLoadMatch resolves to a valid match id.
  */
 
-import { CHAMPS } from '../lib/items_index.js';
+import { CHAMPS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 
 const _LS_INCLUDE_KEY = "rc-replay-events-include";
 
@@ -30,7 +30,7 @@ const _LS_INCLUDE_KEY = "rc-replay-events-include";
 // names (Kai'Sa -> KaiSa, Cho'Gath -> Chogath). CHAMPS.version is
 // async-hydrated from /data/champions_index.json; default 16.10.1.
 function _portraitUrl(champName) {
-  const ver = (CHAMPS && CHAMPS.version) || "16.10.1";
+  const ver = (CHAMPS && CHAMPS.version) || DDRAGON_FALLBACK_VERSION;
   const clean = String(champName || "").replace(/[^a-zA-Z0-9]/g, "");
   if (!clean) return "";
   return `/data/ddragon/${ver}/img/champion/${clean}.png`;

@@ -15,7 +15,8 @@
 // nothing changes for users who haven't opted in.
 
 import {
-  ITEMS, ITEM_COSTS, CHAMPS, _resolveChampId, _resolveItemId, _splitItemList,
+  ITEMS, ITEM_COSTS, CHAMPS, DDRAGON_FALLBACK_VERSION, _resolveChampId,
+  _resolveItemId, _splitItemList,
 } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
@@ -399,7 +400,7 @@ export function renderActiveMatch(payload, ctx) {
     const cooldowns = (ctx && ctx.cooldowns) || null;
     renderCooldownLedger(cdBody, cooldowns, {
       liveclient: (ctx && ctx.liveclient) || null,
-      version:    (ITEMS && ITEMS.version) || "16.10.1",
+      version:    (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION,
     });
     attachCooldownLedgerHandlers();
   }
@@ -624,7 +625,7 @@ const _AM_MAP_FILE = {
 
 function _amMapImg(mode) {
   if (mode === "brawl") return "/api/minimap-crop?mode=brawl";
-  const ver = (ITEMS && ITEMS.version) || "16.12.1";
+  const ver = (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
   return "/data/ddragon/" + ver + "/img/map/" + _AM_MAP_FILE[mode];
 }
 // World-coordinate map sizes. Mirror of main.js's VT_MAP_SIZE so the
@@ -1193,7 +1194,7 @@ function _threatRow(pl, mode, level) {
   portrait.className = "threat-portrait";
   portrait.alt = champ;
   portrait.title = champ;
-  const ver = (ITEMS && ITEMS.version) || "16.10.1";
+  const ver = (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
   // DDragon champion-square id is the championName (no spaces / apostrophes
   // for most; rawChampionName has the canonical id form when present).
   const champId = (pl.rawChampionName || champ).replace(/[^a-zA-Z0-9]/g, "");
