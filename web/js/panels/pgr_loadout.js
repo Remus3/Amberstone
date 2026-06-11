@@ -25,13 +25,17 @@
  * Idempotent. Fail-soft: a missing dict / empty loadout hides the card.
  */
 import { sumImg, sumName } from '../lib/summoner_spells.js';
+import { ITEMS } from '../lib/items_index.js';
 
 const MOUNT_ID = 'pgr-loadout-mount';
 
 // Matches main.js _RP_DDRAGON_BASE - the local mirror that carries the
 // perk-images tree. CDN is the onerror fallback (rune icons are unversioned
-// on the CDN: /cdn/img/<perk-images-path>).
-const _RUNE_LOCAL_BASE = '/data/ddragon/16.12.1/img/';
+// on the CDN: /cdn/img/<perk-images-path>). Patch follows the hydrated
+// items index so stale mirror dirs can be pruned.
+function _runeLocalBase() {
+  return '/data/ddragon/' + ((ITEMS && ITEMS.version) || '16.12.1') + '/img/';
+}
 const _RUNE_CDN_BASE = 'https://ddragon.leagueoflegends.com/cdn/img/';
 
 // --- module-cached patch-stable dictionaries ------------------------
@@ -88,7 +92,7 @@ function _runeIconTag(perkId, runeById, opts) {
   if (!icon) {
     return `<span class="${cls} pld-rune-noimg" title="${_escHtml(name)}"></span>`;
   }
-  const local = _RUNE_LOCAL_BASE + icon;
+  const local = _runeLocalBase() + icon;
   const cdn = _RUNE_CDN_BASE + icon;
   const onErr =
     `if(this.dataset.cdn){this.style.display='none';}` +
