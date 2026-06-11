@@ -64,7 +64,7 @@ jobs:
           # The Share/ external-review package mirrors the live DS engine.
           # --check re-derives the deterministic Share/src mirror and exits 1
           # if it drifts from the live engine - so any DS change that forgot
-          # to re-sync (py tools/ds_share_sync.py) fails here. Pure stdlib.
+          # to re-sync (python tools/ds_share_sync.py) fails here. Pure stdlib.
           python tools/ds_share_sync.py --check
 
       - name: authored-source hygiene
