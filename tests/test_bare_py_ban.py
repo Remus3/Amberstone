@@ -1,0 +1,127 @@
+"""Guard: no bare ``py`` launcher usage on tracked runnable/doc surfaces.
+
+Regression for the deep-audit P2 interpreter pin (gemini-ruled OPTION 4):
+bare ``py`` on Legion resolves via PEP 514 to a pymanager runtime
+(AppData/Local/Python/pythoncore-3.14-64) that has NO third-party packages,
+so a launcher-spelled pytest invocation silently runs a pytest-less
+interpreter (a past incident zeroed the test suite). Runnable and doc
+surfaces must pin the canonical interpreter by absolute path:
+
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe
+
+The allowlist below names the surfaces that may keep historical or
+machine-foreign bare-py text; everything else tracked by git is scanned.
+"""
+import re
+import subprocess
+from fnmatch import fnmatch
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# Bare launcher followed by a runnable argument (module flag, version flag,
+# drive-letter path, repo-relative script path, or any *.py target).
+# The prefix class excludes "." so multi-file commands like
+# "pytest a.py b.py" do not false-positive on the trailing "py" of a
+# previous .py argument (ci.yml multi-file pytest lines are legitimate).
+_BARE_PY = re.compile(
+    r"""(^|[^\w.-])py(\.exe)?\s+(-m\s|-3|["']?[A-Za-z]:|tools[\\/]|scripts[\\/]|ops[\\/]|[\w.\\/-]+\.py\b)"""
+)
+
+_MANDATE = (
+    "bare py resolves to a dep-less pymanager runtime; use the canonical "
+    "absolute interpreter path - see docs/OPERATIONS.md interpreter section"
+)
+
+# fnmatch patterns against posix-style repo-relative paths.
+_ALLOWLIST = (
+    "docs/_archive/**",          # immutable dated artifacts - never swept
+    "docs/history_notes.md",     # deep archive (items 1-324) - history quotes
+    "docs/LEDGER.md",            # append-only per-item ledger - history quotes
+    "docs/ROADMAP_HISTORY.md",   # dated roadmap snapshots - history quotes
+    "agents/agent*/reports/**",    # phase-3 agent task-log artifacts
+    "agents/agent*/proposals/**",  # phase-3 agent proposal artifacts
+    "WAKEUP_NOTES.md",           # rolling session history quotes
+    "docs io RC peer/**",         # Peer machine docs - foreign interpreter universe
+    "tools/wrap-gamepc.md",      # gamepc-machine surface, retired - P3 prunes
+    "tools/done-gamepc.md",      # gamepc-machine surface, retired - P3 prunes
+    "tools/GAMEPC_CLAUDE.md",    # gamepc-machine surface, retired - P3 prunes
+    "tools/process-bridge-tasks.md",  # frozen gamepc-era surface - P3 prunes
+    "tools/BRIDGE_WATCHER_PLAN.md",   # gamepc-machine surface, retired - P3 prunes
+    "tools/BRIDGE_WATCHER_INSTALL_PS1_LANES_DIFF.md",  # gamepc surface - P3 prunes
+    "tools/bridge_watcher_config.json",  # frozen gamepc-era config - P3 prunes
+    "bootstrap_riot_commander_dev.ps1",  # fresh-machine bootstrap; canonical interpreter absent there
+    "ops/loop/control/**",       # loop scratch/control surfaces
+    "tests/test_bare_py_ban.py",  # this guard - carries the banned pattern itself
+    "*.log",                     # immutable logs
+    "*.jsonl",                   # immutable ledgers
+    # --- P2 deferred classes (swept later; enumerated in the P2 report) ---
+    "Share/**",                  # generated review mirror - fix source then tools/ds_share_sync.py (P3)
+    "tools/*.py",                # CLI usage docstrings/hints incl FROZEN bridge tools - P3 sweep
+    "tools/*.cmd",               # dev wrapper launchers (where-py fallback pattern) - P3 decision
+    "tools/gamepc_phase_watcher_install.ps1",  # retired gamepc surface - P3 prunes
+    "scripts/*.py",              # one-off script usage docstrings - P3 sweep
+    "agents/daemon_slayer/_item_ability_haste.py",  # regen-instruction docstring - P3
+    "core/benchmarks.py",        # regen-instruction docstring - P3
+    "core/prom_metrics.py",      # bridge-CLI reference comment - P3
+    "ROADMAP.md",                # living doc quoting historical Game-PC recipes - P3
+    "ops/audit/P0_WORKMAP.md",   # P0 audit workmap - quotes the banned pattern by design
+    "ops/tls/_bridge_msg.txt",   # gamepc-era bridge message artifact (foreign C:/RC-Agent path)
+    "riot-commander.spec",       # pyinstaller build-instruction comments - P3
+    "tests/test_precommit_gate.py",   # characterization fixtures - bare py IS the tested input
+    "tests/test_truth_gate.py",       # incident-characterization fixture + docstring
+    "tests/test_mojibake_hygiene.py",       # remediation-hint strings - P3
+    "tests/test_smart_quote_hygiene.py",    # remediation-hint strings - P3
+    "tests/test_u2500_hygiene.py",          # remediation-hint strings - P3
+    "tests/test_u2500_candidate_sweep.py",  # remediation-hint strings - P3
+    "tests/test_csv_typography_v21_floor.py",  # remediation-hint string - P3
+    "tests/test_ds_share_doc_anchors.py",   # remediation-hint string - P3
+    "tests/test_ds_share_ingest_sync.py",   # remediation-hint strings - P3
+    "tests/test_loadout_sweep_guard_item_s8.py",  # remediation-hint docstring - P3
+)
+
+_BINARY_EXTS = {
+    ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp", ".bmp",
+    ".woff", ".woff2", ".ttf", ".eot", ".otf",
+    ".zip", ".gz", ".7z", ".rar", ".jar",
+    ".exe", ".dll", ".pyd", ".pyc", ".so",
+    ".db", ".sqlite", ".sqlite3", ".bin", ".dat",
+    ".pdf", ".xlsx", ".docx", ".pptx",
+    ".mp3", ".mp4", ".wav", ".ogg", ".webm",
+}
+
+
+def _tracked_files():
+    out = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=_REPO_ROOT, capture_output=True, check=True,
+    ).stdout
+    return [p.decode("utf-8") for p in out.split(b"\0") if p]
+
+
+def _is_allowlisted(rel_posix):
+    return any(fnmatch(rel_posix, pattern) for pattern in _ALLOWLIST)
+
+
+def test_no_bare_py_launcher_on_tracked_surfaces():
+    offenders = []
+    for rel in _tracked_files():
+        if _is_allowlisted(rel):
+            continue
+        if Path(rel).suffix.lower() in _BINARY_EXTS:
+            continue
+        path = _REPO_ROOT / rel
+        if not path.is_file():
+            continue
+        raw = path.read_bytes()
+        if b"\x00" in raw[:8192]:
+            continue  # binary sniff
+        text = raw.decode("utf-8", errors="replace")
+        for i, line in enumerate(text.splitlines(), 1):
+            m = _BARE_PY.search(line)
+            if m:
+                offenders.append(f"{rel}:{i}: {line.strip()[:120]}")
+    assert not offenders, (
+        f"{_MANDATE}\n"
+        f"{len(offenders)} bare-py occurrence(s):\n" + "\n".join(offenders)
+    )

@@ -82,7 +82,7 @@ scorer changes are validated per-champion, not assumed).
   (ADR-008, `dashboard/_static.py:23` - all panels covered). All saturated. One marginal win:
   demote `vision_server/_inference.py:272` OCR-results INFO line to DEBUG (2s cadence, low value).
 
-Regenerate evidence: `py tools/daemon_slayer_cdragon_ratio_extract.py --drift -v`
+Regenerate evidence: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/daemon_slayer_cdragon_ratio_extract.py --drift -v`
 
 ## POST-317 RE-INVESTIGATION (2026-06-06): flip STILL unsafe - positional-pairing block-mismatch
 
@@ -90,7 +90,7 @@ Cycle re-fired the same directive (flip default ON + bump ENGINE 1.119.0 + re-pi
 (HEAD `7d7dfa54`) fixed extractor defects 1+2 (off-by-one trim + explosion guard); the drift
 audit confirms both are gone. Re-ran the empirical gate (NOT a blind re-pin):
 
-- `py tools/ds_cdragon_drift_audit.py`: n_changed=433, explosion=0, off_by_one_residue=0,
+- `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/ds_cdragon_drift_audit.py`: n_changed=433, explosion=0, off_by_one_residue=0,
   large_divergence=173, rank_shape_mismatch=145, n_suspect=318.
 - Flipped `abilities.py:467` default True + `pytest agents/daemon_slayer/tests/`:
   **70 failed / 6620 passed** (item 311 was 79; item-317 data fix = -9).

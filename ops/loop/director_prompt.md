@@ -40,7 +40,7 @@ HARD RULES for the directive you emit:
   then run the /done ritual (append docs/LEDGER.md, sync ROADMAP.md + docs/ORCHESTRATION_PLAN.md),
   before the FINAL STEP, so the auditor has a diff to review.
 - The directive MUST end with this exact FINAL STEP line:
-    FINAL STEP: run  py ops/loop/done_sentinel.py --tests <PASS_COUNT> --regressions <0_or_1>
+    FINAL STEP: run  "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <PASS_COUNT> --regressions <0_or_1>
   where Claude substitutes the real passing-test count and 1 only if it could not get green.
 - ASCII only, no em-dashes or smart quotes. Be terse and concrete. Reference real paths.
 - If there is genuinely no remaining safe work, output the single token: NO_WORK
