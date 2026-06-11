@@ -1,0 +1,60 @@
+{
+  "run_id": "deep-audit-cycle3-p1b",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15177,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M WAKEUP_NOTES.md",
+      "D  data/meta_build/ddragon/16.10.1/champion.json",
+      "D  data/meta_build/ddragon/16.10.1/item.json",
+      "D  data/meta_build/ddragon/16.10.1/profileicon.json",
+      "D  data/meta_build/ddragon/16.10.1/runesReforged.json",
+      "D  data/meta_build/ddragon/16.10.1/summoner.json",
+      "D  data/meta_build/ddragon/16.8.1/champion.json",
+      "D  data/meta_build/ddragon/16.8.1/item.json",
+      "D  data/meta_build/ddragon/16.8.1/runesReforged.json",
+      "D  data/meta_build/ddragon/16.8.1/summoner.json",
+      " M docs/LEDGER.md",
+      " M docs/history_notes.md",
+      " M lib/ddragon/fetch.py",
+      " M tools/compare_101qq_vs_ddragon.py",
+      " M tools/probe_101qq_hero_rank_double.py",
+      "?? ops/audit/p1b_claims.json",
+      "?? ops/audit/p1b_truth_gate_report.json",
+      "?? tests/test_meta_build_cache_retention.py"
+    ],
+    "head": "24ed84e1 feat(audit): deep-audit cycle 2 P1a (item 396) - mirror retention + dynamic ddragon patch pins"
+  },
+  "ci": {
+    "status": "success",
+    "sha": "24ed84e1255f8312e4a4e555721a350f690597fa",
+    "runs": [
+      {
+        "conclusion": "success",
+        "name": "ci",
+        "status": "completed"
+      }
+    ]
+  },
+  "slices": [
+    {
+      "id": "p1b-snapshot-retention",
+      "claim": "meta_build/ddragon 16.8.1+16.10.1 git-rm'd; fetch_all auto-retention wired fail-soft; DS fixture dirs exempted per gemini-confirmed deviation",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}

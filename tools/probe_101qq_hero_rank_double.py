@@ -47,7 +47,32 @@ import sys
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_DDRAGON_CHAMPION_JSON = _REPO_ROOT / "data" / "meta_build" / "ddragon" / "16.10.1" / "champion.json"
+_DDRAGON_CACHE_ROOT = _REPO_ROOT / "data" / "meta_build" / "ddragon"
+_SEMVER_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
+
+
+def _ddragon_champion_json() -> Path:
+    """Newest cached champion.json under data/meta_build/ddragon/.
+
+    Resolved via _index.json latest_pulled first, then the newest semver
+    dir present - the cache keeps only current+previous patches (item 397
+    retention), so a pinned patch dir rotates out from under a literal."""
+    idx = _DDRAGON_CACHE_ROOT / "_index.json"
+    try:
+        ver = json.loads(idx.read_text(encoding="utf-8")).get("latest_pulled", "")
+        p = _DDRAGON_CACHE_ROOT / ver / "champion.json"
+        if ver and p.exists():
+            return p
+    except (OSError, ValueError):
+        pass
+    dirs = [d for d in _DDRAGON_CACHE_ROOT.glob("*")
+            if d.is_dir() and _SEMVER_DIR_RE.match(d.name)]
+    dirs.sort(key=lambda d: tuple(int(x) for x in d.name.split(".")), reverse=True)
+    for d in dirs:
+        p = d / "champion.json"
+        if p.exists():
+            return p
+    return _DDRAGON_CACHE_ROOT / "_absent" / "champion.json"
 _REWIND_DB = _REPO_ROOT / "data" / "rewind_history.db"
 
 # Heuristic patterns we expect to find in a Tencent CDN URL.
@@ -209,9 +234,9 @@ def load_ddragon_keys() -> dict:
     """Return {numeric_id: ddragon_name} from the bundled DDragon
     champion.json. Used to cross-reference whether Tencent's keys map
     cleanly to RC's champion set."""
-    if not _DDRAGON_CHAMPION_JSON.exists():
+    if not _ddragon_champion_json().exists():
         return {}
-    raw = json.loads(_DDRAGON_CHAMPION_JSON.read_text(encoding="utf-8"))
+    raw = json.loads(_ddragon_champion_json().read_text(encoding="utf-8"))
     out: dict = {}
     for name, payload in (raw.get("data") or {}).items():
         key = str(payload.get("key", "")).strip()

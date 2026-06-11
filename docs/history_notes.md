@@ -68,6 +68,26 @@ Gemini-headless-upgrade executor cycle. Directive = HZ-D4 (7-lever cost sweep + 
 
 ---
 
+# 2026-06-10 - insights fold-in + drainer hardening [item 394]
+
+Operator fed the /insights report suggestion-by-suggestion; dedup-first per pattern (2 of 4 = already shipped).
+
+- Suggestion 1 (re-verify greens): DUPLICATE of CLAUDE.md Verification Discipline - no-op.
+- Suggestion 2 (API-surface grounding): NEW -> CLAUDE.md Testing Discipline rule `b8c0695b`.
+- Suggestion 3 (truth-gate): NEW `tools/truth_gate.py` + 17 tests `d657c1f6`; live demo PROCEED 15147p/0f/7s CI-green 4/4 CONFIRM; wired verifier.md + both headless skills.
+- Suggestion 4 (drainer): manifest/resume/headless_run.ps1 ALREADY SHIPPED (dedup); NEW = hard pre-commit gates in both skills (UI-audit + drift-guards + truth_gate exit 0 block the push; .claude local). Drain triage: only headless-actionable item was item-211 `--trust-lcu CHAMP` + `--match-id` (RED->GREEN 9 tests); rest of ROADMAP = operator/live-gated; item-210 unify = FROZEN lcu_client.py, deferred.
+- LW block relocated LEDGER-top -> history_notes above item 278 (`160de74e`); LEDGER header append rule fixed.
+- OPERATOR DECISION OWED: item-211 7 residual rows - run --trust-lcu per-row (needs lcu_champ list) or clear-as-junk.
+- Truth-gate EARNED ITS KEEP same session: round 2 REFUSED on the LW relocation breaking `test_constraint_single_source` (1f/15155p) - guard re-pinned to LW-in-history; round 2b PROCEED 15157p/0f. Gate claims now utf-8-sig (PS BOM).
+- precommit_gate was DEAD on this fleet (Bash-only matcher vs CLAUDE_CODE_USE_POWERSHELL_TOOL=1) + wrong-tree root on `git -C` + no py_compile: all fixed, PowerShell matcher added, 25 tests, live exit-2 proofs (glyph + syntax). First real PowerShell-tool commit after this note = harness firing proof.
+- Patch-update SWARM directive encoded in memory reference_patch_refresh_workflow (all upstreams incl lolmath/101.qq/aggregator B + cohorts + merge-arbiter + coverage report).
+- Gotchas: PS5.1 here-string commit messages with embedded double quotes break native arg quoting (`error: unknown option '-'`) - keep messages quote-free; PS5.1 pipes to native exes prepend a UTF-8 BOM (broke truth_gate claims AND precommit_gate stdin).
+- OVERNIGHT HANDOFF: operator directive captured VERBATIM-intent in `docs/DEEP_AUDIT_CHARTER.md` - the standing deep-audit program (P0-P8: full-tree audit/refactor, frozen+history+gist+md-rewrite AUTHORIZED, vanguard/2pc prune, BOM retro-sweep, HZ-to-ZERO completion, Electron overlay to full replace web dashboard, gemini answers scope questions NOT operator). Loop armed: config max_cycles 100, gemini rail 200, directive_suffix -> charter; Desktop RC_DEEP_AUDIT_SYNOPSIS.md seeded; effortLevel xhigh set. NEXT SESSION = audit cycle 1 (P0 baseline). League client + dashboard left OPEN on screen per operator for UI/UX phases.
+
+---
+
+---
+
 # 2026-06-10 - operator headless-upgrade round 2026-06-10-02: items 388-393 (6 slices, 9 pushes) + 2 live operator interrupts fixed same-session
 
 Operator: "start any open for live game gating + other items parallel orchestrated to the end". 4 worktree agents + verifier gates on every merge; 2 mid-run operator reports root-caused + shipped while they played.

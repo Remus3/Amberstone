@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.http import get_client
+from tools.ddragon_mirror_refresh import prune_stale_versions
 
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 DEFAULT_LOCALE = "en_US"
@@ -142,4 +143,13 @@ def fetch_all(version: str | None = None) -> dict:
             "bundles": ["champion", "item", "runesReforged", "summoner"],
         },
     )
+    # Retention (item 397, gemini-confirmed current+previous window): the
+    # bundle cache otherwise accretes one tracked dir per patch forever.
+    # Prune failure must never break a successful fetch.
+    try:
+        pruned = prune_stale_versions(dd.version, web_dir=CACHE_ROOT)
+        if pruned:
+            logger.info("pruned stale meta_build ddragon cache dirs: %s", pruned)
+    except OSError as exc:
+        logger.warning("meta_build cache prune skipped: %s", exc)
     return {"version": dd.version, "cache_dir": str(dd.cache_dir)}
