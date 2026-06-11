@@ -42,8 +42,11 @@ _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 def _is_commit(command: str) -> bool:
     s = command.strip()
-    # tolerate leading env assignments / `&&` chains by scanning tokens
-    return bool(re.search(r"(^|[;&|]\s*)git\s+(-[^\s]+\s+)*commit\b", s))
+    # tolerate leading env assignments, `&&`/`;` chains, PowerShell `{` blocks,
+    # and global flags with quoted args (git -C "C:\path" commit).
+    return bool(re.search(
+        r"(^|[;&|{(]\s*)git\s+(?:(?:-\S+|\"[^\"]*\"|'[^']*')\s+)*commit\b", s
+    ))
 
 
 def _skippable(path: str) -> bool:
@@ -51,14 +54,32 @@ def _skippable(path: str) -> bool:
     return any(s in p for s in _FROZEN_SKIP)
 
 
-def _git(args: list[str], root: str) -> str:
+def _git(args: list[str], root: str | None) -> str:
     try:
         out = subprocess.run(
-            ["git", *args], cwd=root, capture_output=True, text=True, timeout=20
+            ["git", *args], cwd=root or None, capture_output=True, text=True,
+            timeout=20,
         )
         return out.stdout
     except (OSError, subprocess.SubprocessError):
         return ""
+
+
+_DASH_C = re.compile(r"git\s+-C\s+(\"([^\"]+)\"|'([^']+)'|(\S+))")
+
+
+def _root_from_command(command: str) -> str | None:
+    """Repo dir from `git -C <path> ... commit`, preferring the segment that
+    carries the commit (worktree agents commit via -C into their own tree -
+    resolving the hook's CWD would gate the WRONG repo's staged diff)."""
+    root = None
+    for m in _DASH_C.finditer(command):
+        path = m.group(2) or m.group(3) or m.group(4)
+        tail = command[m.end():]
+        if re.match(r"\s+(?:(?:-\S+|\"[^\"]*\"|'[^']*')\s+)*commit\b", tail):
+            return path
+        root = root or path
+    return root
 
 
 def _staged_added(root: str) -> dict[str, dict]:
@@ -95,8 +116,28 @@ def _glyph_hits(text: str) -> list[str]:
     return sorted({name for ch, name in _BANNED.items() if ch in text})
 
 
+def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
+    """py_compile each staged .py; a syntax error crashes silently under
+    pythonw.exe at runtime (CLAUDE.md hard rule), so block it at commit."""
+    import py_compile
+
+    out: list[str] = []
+    for rel in pyfiles:
+        path = os.path.join(root, rel)
+        try:
+            py_compile.compile(path, doraise=True)
+        except py_compile.PyCompileError as exc:
+            out.append(f"  {rel}  py_compile: {exc.msg.splitlines()[0][:160]}")
+        except OSError:
+            pass
+    return out
+
+
 def main() -> int:
     raw = sys.stdin.read() if not sys.stdin.isatty() else ""
+    # PowerShell 5.1 pipes prepend a UTF-8 BOM; json.loads rejects it and the
+    # raw-string fallback then never regex-matches -> silent pass. Strip it.
+    raw = raw.lstrip("\ufeff").strip()
     command = ""
     try:
         command = (json.loads(raw).get("tool_input") or {}).get("command", "")
@@ -105,7 +146,11 @@ def main() -> int:
     if not _is_commit(command):
         return 0
 
-    root = _git(["rev-parse", "--show-toplevel"], "").strip() or os.getcwd()
+    root = (
+        _root_from_command(command)
+        or _git(["rev-parse", "--show-toplevel"], os.getcwd()).strip()
+        or os.getcwd()
+    )
     staged = _staged_added(root)
     violations: list[str] = []
 
@@ -125,6 +170,7 @@ def main() -> int:
     pyfiles = [
         p for p in staged if p.endswith(".py") and os.path.isfile(os.path.join(root, p))
     ]
+    violations.extend(_compile_errors(pyfiles, root))
     if pyfiles:
         # Use the `py` launcher (not sys.executable): under the hook the running
         # interpreter is a bare pythoncore build with no ruff installed; the
