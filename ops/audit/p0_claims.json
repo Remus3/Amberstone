@@ -1,0 +1,55 @@
+{
+  "run_id": "deep-audit-cycle1-p0",
+  "check_ci": true,
+  "slices": [
+    {
+      "id": "p0-baseline",
+      "claim": "P0 baseline artifacts exist: inventory, workmap, pytest summary, screenshot; settings model set; truth_gate suite-cmd interpreter fix (+1 regression test)",
+      "claimed_passed": 15168,
+      "claimed_failed": 0,
+      "files": [
+        {
+          "path": "ops/audit/P0_INVENTORY.md",
+          "must_contain": [
+            "30398 files",
+            "Git-tracked: 2896"
+          ]
+        },
+        {
+          "path": "ops/audit/P0_WORKMAP.md",
+          "must_contain": [
+            "RC-VisionServer",
+            "1.120.0"
+          ]
+        },
+        {
+          "path": "ops/audit/p0_pytest_baseline.txt",
+          "must_contain": [
+            "15167 passed, 7 skipped, 1 xfailed"
+          ]
+        },
+        {
+          "path": "ops/audit/p0_dashboard_reference.jpeg"
+        },
+        {
+          "path": ".claude/settings.json",
+          "must_contain": [
+            "claude-fable-5[1m]"
+          ]
+        },
+        {
+          "path": "tools/truth_gate.py",
+          "must_contain": [
+            "SUITE_PY"
+          ]
+        },
+        {
+          "path": "tests/test_truth_gate.py",
+          "must_contain": [
+            "test_default_suite_cmd_interpreter_has_pytest"
+          ]
+        }
+      ]
+    }
+  ]
+}

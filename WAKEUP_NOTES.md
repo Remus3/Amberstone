@@ -1,6 +1,20 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 + item 228 + item 241 + item 242 + item 245 + item 246 + item 247 + item 248 + item 249 + item 250 + 2026-06-01 Share-docs-reconcile (1.86.0) + item 255 + item 256 + item 257 + item 258+259 + item 261 + item 263 + item 264 + items 271-287 (2026-06-03 prune) + 2026-06-03 RC-wide multi-agent (item 299 prune) + item 300 (2026-06-04 wave-clear prune) + item 301 (2026-06-04 threat-range prune) + items 366-369 (2026-06-09 DS-patch-refresh prune) + item 371 (2026-06-09 BACKLOG-batch T1F3/T2F4 prune) + item 376 (2026-06-10 prune) archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 + item 228 + item 241 + item 242 + item 245 + item 246 + item 247 + item 248 + item 249 + item 250 + 2026-06-01 Share-docs-reconcile (1.86.0) + item 255 + item 256 + item 257 + item 258+259 + item 261 + item 263 + item 264 + items 271-287 (2026-06-03 prune) + 2026-06-03 RC-wide multi-agent (item 299 prune) + item 300 (2026-06-04 wave-clear prune) + item 301 (2026-06-04 threat-range prune) + items 366-369 (2026-06-09 DS-patch-refresh prune) + item 371 (2026-06-09 BACKLOG-batch T1F3/T2F4 prune) + item 376 (2026-06-10 prune) + item 387 (2026-06-11 prune) archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-06-11 - DEEP-AUDIT cycle 1: P0 BASELINE re-derived + verified [item 395]
+
+Charter cycle (docs/DEEP_AUDIT_CHARTER.md). Gemini's prior "P0 done" synopsis was unstamped + wrong (42209 files / 7451 tests claimed; live = 30398 files / 15167 tests) -> ruled STALE, re-derived everything from live probes.
+
+- Baseline shipped to ops/audit/: P0_INVENTORY.md (30398 files / 4350.5 MB; tracked 2896 / 409.3 MB), p0_pytest_baseline.txt, p0_dashboard_reference.jpeg, P0_WORKMAP.md (P1-P8 seeds, cited).
+- Model: claude-fable-5[1m] probe ACCEPTED headless -> set in .claude/settings.json (untracked).
+- truth_gate LIVE CATCH: default `py -m pytest` hit the pytest-less pythoncore-3.14-64 interpreter -> suite zeroed -> blanket REFUSE. Fixed (canonical Programs/Python314 pin + sys.executable fallback, RED->GREEN regression test, 19/19). Gate re-run PROCEED 15168p/0f exit 0 + CI success.
+- INTERPRETER DUALITY is now a P2 seed: sweep every bare-`py` suite invocation (hooks, skills, docs, scheduled tasks); decide fleet pin (py.ini vs absolute).
+- RC-VisionServer schtask exits 1 but vision serves in-process fine -> vestigial task, P2 reconcile seed.
+- Desktop synopsis rewritten ASCII/BOM-free, handoff log now sha-stamped (was BOM'd + unstamped).
+- NEXT CYCLE: P1 STRUCTURE per synopsis (relocations, _scratch/.bak scrap triage, web/ PNG mirror + logs retention + python-embed consumer eval, CLAUDE.md context-budget trim).
 
 ---
 
@@ -38,20 +52,3 @@ Operator: "start any open for live game gating + other items parallel orchestrat
 - PRACTICE-TOOL note: coach.action/immediate empty in PRACTICETOOL while choices/callouts/lead populate (prose coach dark there; deterministic surfaces carry the page) - characterize-or-accept next session.
 
 ---
-
-# 2026-06-10 - gemini loop cycle 4: false REGRESS audit refuted + gate edge pins [item 387]
-
-Gemini-headless-upgrade executor cycle. Directive = FIX-FIRST regression: audit claimed the
-item-386 `lc.get("champion")` gate shipped untested (conftest + gate tests "missing").
-REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
-9ccc64fa..b5533f85) carries gate + tests/conftest.py + tests/test_hz_shadow_live_gate.py
-(4 tests) in the SAME commit. Auditor diffed only tip commit b5533f85 (docs+data only).
-
-- Verified fresh pre-edit: gate+wiring 12 passed at HEAD.
-- Shipped `c5cf8b56`: +2 edge pins in test_hz_shadow_live_gate.py (champion="" loading-screen
-  edge; non-dict lc isinstance guard). Test-only, no engine, no restart.
-- Gates: RC 5789p/2sk/94st exit 0; ruff + hygiene clean; CI run 27315276398 green.
-- LOOP IMPROVEMENT (FUTURE): loop auditor should diff prev-done-sha..new-sha, not the tip
-  commit - tip-only diffing produced this false REGRESS.
-- DON'T REDO: HZ shadow live-gate IS tested (6 tests); do not re-add gate tests.
-- NOTE: RC pid drifted 14160 -> 3336 during cycle (supervisor bounce); alive+reload_ok true.
