@@ -37,6 +37,61 @@ class TestIsCommit:
     def test_unrelated(self):
         assert not G._is_commit("py -m pytest")
 
+    def test_dash_C_quoted_path(self):
+        # The fleet's standard commit shape (PowerShell tool, repo-root -C).
+        assert G._is_commit('git -C "C:\\Riot Commander" commit -m "x"')
+
+    def test_powershell_if_chain(self):
+        assert G._is_commit(
+            'git -C "C:\\Riot Commander" add f.py; if ($?) { git -C "C:\\Riot Commander" commit -m "y" }'
+        )
+
+    def test_dash_C_quoted_path_push_is_not_commit(self):
+        assert not G._is_commit('git -C "C:\\Riot Commander" push')
+
+
+class TestStdinPayload:
+    def test_bom_prefixed_payload_parses(self, monkeypatch, capsys):
+        # PS 5.1 pipe artifact: BOM before the JSON. main() must still see the
+        # inner command (here: a non-commit, so it exits 0 WITHOUT touching git).
+        import io
+        payload = ('\ufeff'
+                   '{"tool_name":"PowerShell","tool_input":{"command":"Get-ChildItem"}}')
+        monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+        monkeypatch.setattr(G, "_git", lambda *a: (_ for _ in ()).throw(AssertionError("git touched on non-commit")))
+        assert G.main() == 0
+
+
+class TestRootFromCommand:
+    def test_quoted_dash_C(self):
+        assert G._root_from_command(
+            'git -C "C:\\Riot Commander" commit -m "x"'
+        ) == "C:\\Riot Commander"
+
+    def test_unquoted_dash_C(self):
+        assert G._root_from_command("git -C C:/wt/slice1 commit") == "C:/wt/slice1"
+
+    def test_no_dash_C(self):
+        assert G._root_from_command('git commit -m "x"') is None
+
+    def test_chain_takes_commit_segment(self):
+        # -C on the commit segment wins even when earlier segments differ.
+        cmd = 'git -C "C:/main" add f; git -C "C:/wt" commit -m "y"'
+        assert G._root_from_command(cmd) == "C:/wt"
+
+
+class TestCompileErrors:
+    def test_syntax_error_flagged(self, tmp_path):
+        bad = tmp_path / "bad.py"
+        bad.write_text("def f(:\n", encoding="utf-8")
+        out = G._compile_errors(["bad.py"], str(tmp_path))
+        assert len(out) == 1 and "bad.py" in out[0]
+
+    def test_clean_file_passes(self, tmp_path):
+        ok = tmp_path / "ok.py"
+        ok.write_text("x = 1\n", encoding="utf-8")
+        assert G._compile_errors(["ok.py"], str(tmp_path)) == []
+
 
 class TestGlyphHits:
     def test_emdash_detected(self):

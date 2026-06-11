@@ -8,8 +8,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from tools.truth_gate import (
     parse_pytest_summary,
     check_file_claims,
+    load_claims,
     reconcile,
 )
+
+
+def test_load_claims_tolerates_powershell_bom(tmp_path):
+    p = tmp_path / "claims.json"
+    p.write_bytes(b'\xef\xbb\xbf{"run_id": "bom", "slices": []}')
+    assert load_claims(p)["run_id"] == "bom"
 
 
 # --- parse_pytest_summary ---

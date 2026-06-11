@@ -39,9 +39,13 @@ def test_claude_active_priorities_is_pointer_not_ledger():
 
 def test_ledger_holds_relocated_items():
     # Split-home layout (2026-06: items 1-324 deep-archived): LEDGER.md keeps
-    # item 325+ and the LW block; history_notes.md holds the older anchors.
+    # item 325+; history_notes.md holds the older anchors INCLUDING the LW
+    # live-watch block (relocated to its 2026-06-02 chronological slot above
+    # item 278 per operator directive, item 394 / commit 160de74e).
     t = _read("docs/LEDGER.md")
-    assert (NL + "325. ") in t and "LW. " in t
+    assert (NL + "325. ") in t
+    assert (NL + "LW. ") not in t, "LW block belongs in history_notes.md now"
     assert len(t) > 100000
     h = _read("docs/history_notes.md")
     assert (NL + "278. ") in h and (NL + "150. ") in h
+    assert (NL + "LW. ") in h, "LW live-watch block missing from history_notes.md"
