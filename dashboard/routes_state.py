@@ -448,11 +448,17 @@ def _serve_ds_preview_post(h, payload) -> None:
     """
     try:
         from core.daemon_slayer_client import rank_for_primary_archetype
-        from core.archetype_picks import get_archetype_for
+        from core.archetype_picks import canonical_champion_id, get_archetype_for
         champion = str(payload.get("champion") or "").strip()
         if not champion:
             h._send(400, json.dumps({"error": "champion required"}).encode(), "application/json")
             return
+        # 2026-06-10: the active-match panel sends the coach payload's
+        # champion verbatim - a Live Client DISPLAY name ("Tahm Kench").
+        # DS registries key canonical DDragon ids; without the bridge the
+        # rank silently 0.0-misses every multi-word champion. Canonical
+        # ids (champ-select callers) pass through unchanged.
+        champion = canonical_champion_id(champion) or champion
         mode = str(payload.get("mode") or "SR").upper()
         level = int(payload.get("level") or 6)
         level = max(1, min(18, level))
