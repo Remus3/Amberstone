@@ -173,6 +173,17 @@ def _serve_spike_markers(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
+        # 2026-06-10: the active-match panel sends the coach payload's
+        # champion verbatim - a Live Client DISPLAY name ("Tahm Kench").
+        # The DS curve keys canonical DDragon ids, so the dps_at
+        # annotation silently dropped for multi-word champs. Canonical
+        # ids pass through unchanged; the bridge itself fail-softs.
+        try:
+            from core.archetype_picks import canonical_champion_id
+            champion = canonical_champion_id(champion) or champion
+        except Exception:
+            pass
+
         level = _parse_int((qs.get("level") or [""])[0].strip(), 1)
         mode = ((qs.get("mode") or ["SR"])[0].strip() or "SR").upper()
         items = _parse_item_list((qs.get("items") or [""])[0].strip())
