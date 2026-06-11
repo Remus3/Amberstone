@@ -8,7 +8,7 @@ ops/runtime/bridge_inbox_pending.json lookup resolves relative to the
 project root.
 
 Used by the ``RC-Bridge-MCP`` scheduled task. Manual invocation works
-too - ``py tools/start_bridge_mcp.py``. Mirrors
+too - ``C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/start_bridge_mcp.py``. Mirrors
 tools/start_ds_matchdb_mcp.py (same logging + port-preflight contract).
 """
 from __future__ import annotations

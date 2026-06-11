@@ -13,7 +13,7 @@ re-implemented the same SSL/HTTP/state-file boilerplate:
     bridge_post.py          → `bridge_cli post [<source>]`
 
 The original files are kept as ~10-line shims that call into `main([cmd, ...])`
-so cron tasks (`py tools/bridge_pull_tasks.py --target legion`) keep working
+so cron tasks (`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_pull_tasks.py --target legion`) keep working
 without scheduled-task XML edits.
 
 Behavior is preserved exactly - flag names, defaults, exit codes, and JSON

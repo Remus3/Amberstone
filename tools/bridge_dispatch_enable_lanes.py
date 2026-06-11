@@ -22,9 +22,9 @@ ops_request that the peer's process-bridge-tasks skill or its
 bridge_watcher_actions classifier can pick up + execute.
 
 Usage:
-    py tools/bridge_dispatch_enable_lanes.py --target gamepc --lanes read
-    py tools/bridge_dispatch_enable_lanes.py --target peer --lanes read,ops
-    py tools/bridge_dispatch_enable_lanes.py --target gamepc --dry-run
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_dispatch_enable_lanes.py --target gamepc --lanes read
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_dispatch_enable_lanes.py --target peer --lanes read,ops
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_dispatch_enable_lanes.py --target gamepc --dry-run
 """
 from __future__ import annotations
 

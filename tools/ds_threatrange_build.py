@@ -13,7 +13,7 @@ classified entry against ``_THREATRANGE_BAND_WEIGHT`` / ``_THREATRANGE_KIND_MULT
     CHANGELOG.md / waveclear_registry_notes.json.
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
-  py tools/ds_threatrange_build.py <workflow_output.json>
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_threatrange_build.py <workflow_output.json>
 """
 
 from __future__ import annotations

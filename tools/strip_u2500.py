@@ -41,10 +41,10 @@ operator-grantable; bump ONLY with explicit operator authorization for
 a specific path that must never be touched even by accidental grant.
 
 Usage:
-  py tools/strip_u2500.py --allow-frozen ops/rc_supervisor.py,ops/rc_self_monitor.py
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen ops/rc_supervisor.py,ops/rc_self_monitor.py
                           # rewrite the named files in place (atomic),
                           # report per-file pre/post counts
-  py tools/strip_u2500.py --allow-frozen ops/rc_supervisor.py --dry-run
+  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen ops/rc_supervisor.py --dry-run
                           # dry-run: report counts, no writes
 
 Exit codes:

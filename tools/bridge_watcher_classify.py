@@ -190,7 +190,7 @@ def _classify_actionable(envelope: dict, node_config: Optional[dict],
     return ("escalate", f"{fallback_reason} - no auto-action pattern match")
 
 
-# ── Self-test (run via: py tools/bridge_watcher_classify.py) ──────────
+# ── Self-test (run via: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_watcher_classify.py) ──────────
 
 
 def _test() -> None:

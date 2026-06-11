@@ -21,10 +21,10 @@ Operator scope-fork answers (session 2026-05-27):
 
 Deploy on Game-PC (one-time):
   1. Copy this file to C:\\RC-Agent\\
-  2. py -m pip install websocket-client (optional; falls back to
+  2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install websocket-client (optional; falls back to
      periodic re-poll if the WAMP socket import fails - the watcher
      stays alive but degrades to 5s polling cadence)
-  3. py C:\\RC-Agent\\gamepc_phase_watcher.py
+  3. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_phase_watcher.py
   4. Register scheduled task via tools/gamepc_phase_watcher_install.ps1
 """
 from __future__ import annotations
@@ -618,7 +618,7 @@ def _wamp_loop(sidecar_dir: Path) -> None:
         import websocket  # noqa: F401
     except ImportError:
         log.critical("websocket-client missing - install via "
-                     "'py -m pip install websocket-client'; degraded "
+                     "'C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install websocket-client'; degraded "
                      "to no-event mode (polling agent still alive)")
         return
 
