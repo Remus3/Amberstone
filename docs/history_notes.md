@@ -53,6 +53,18 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-10 - gemini loop cycle 4: Phase 5 stabilization tail - HZ-D1 DONE [item 383, HZ-D1 slice 4]
+
+Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 4). Directive = Phase 5 stabilization tail (electron-updater + stable/dev channels, crash isolation). Merges `96cf5241` + `544cff59` (2 PARALLEL worktree agents, verifier-CONFIRMED) + merger integration `33dc9b3a`. NO engine, no Share, no RC restart, no web/ touch (UI audit n/a).
+
+- Update channels: NEW pure `rc-shell/src/update_channel.js` (resolveChannel env RC_SHELL_CHANNEL > saved > stable; channelConfig dev=allowPrerelease; mergeChannelPatch; checkPlan 15s initial + 4h interval, not-packaged/updater-missing disable). main.js lazy-requires electron-updater in try/catch - bare-node require THROWS inside the autoUpdater getter (app.getVersion on undefined), so the catch is load-bearing (probed). autoInstallOnAppQuit only, console-only events, Shell-menu channel radios + Check-now. NEW electron-builder.yml (nsis, publish github Remus3/riot-commander, all-channels update files; private repo = GH_TOKEN at runtime).
+- Crash isolation: NEW pure `rc-shell/src/crash_guard.js` (RESTART_REASONS; killed/clean-exit never resurrect; per-key rolling budget 3/60s -> give-up hides, no strobing). Merger wired attachCrashGuard on BOTH windows: render-process-gone -> reload | hide; unresponsive logs only.
+- package.json 0.4.0; npm install restored 258 pkgs (registry reachable). node 109 -> 145/0 (TDD red-first both slices). RC tests/ 5769p/2sk/94st exit 0; DS 7075p/1sk/1xf/1942st exit 0 (canonical Python314 path - bare `py` lacks pytest).
+- HZ-D1 flipped DONE in ORCHESTRATION_PLAN (Electron phases 1-5 all shipped code-side; Phase 6 Pengu optional/operator-gated).
+- OWED (operator): packaging + first GitHub Release + packaged-app update check; in-match overlay capture (one shell relaunch picks up slices 1-4).
+
+---
+
 # 2026-06-10 - gemini loop cycle 3: Phase 4 in-overlay DS controls + Phase 5 smoke [item 382, HZ-D1 slice 3]
 
 Gemini-headless-upgrade executor cycle (run 2026-06-10-01 cycle 3). Directive = Phase 4 in-overlay DS controls (weight tweak / build reorder) + dashboard-side web/ slice + UI audit. Merges `85c54ba3` + `141c1333` (2 PARALLEL worktree agents, verifier-CONFIRMED) + audit-fix `bc8c94d3`. NO engine, no Share, no RC restart (ADR-008).
