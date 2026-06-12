@@ -131,16 +131,15 @@ from core.ds_antitank_hint import build_antitank_hint
 
 # Project root: core/ -> C:\Riot Commander\
 _ROOT = Path(__file__).resolve().parent.parent
-_DATA_DIR = _ROOT / "data"
-_DS_DIR = _DATA_DIR / "daemon_slayer"
-_CURRENT_TXT = _DS_DIR / "current.txt"
+_DS_DIR = _ROOT / "data" / "daemon_slayer"
+# Patch resolution (current.txt + fallback) is OWNED by the imported
+# build_order_precompute.resolve_patch - no local copies (deep-audit P2
+# W1-C removed the dead _CURRENT_TXT/_FALLBACK_PATCH decoys here; the
+# test suite patches the defining module).
 
 # Shares the HZ-B1 subdir; a DISTINCT filename keeps the two tables apart.
 _OUT_SUBDIR = "build_orders"
 _FILE_PREFIX = "build_order_variants"
-
-# Patch fallback when current.txt is missing (guards a fresh checkout only).
-_FALLBACK_PATCH = "16.11.1"
 
 SCHEMA_VERSION = "build_order_variants/v1"
 

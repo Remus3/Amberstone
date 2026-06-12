@@ -113,7 +113,6 @@ _ROOT = Path(__file__).resolve().parent.parent
 _DATA_DIR = _ROOT / "data"
 _DS_DIR = _DATA_DIR / "daemon_slayer"
 _CURRENT_TXT = _DS_DIR / "current.txt"
-_CHAMPS_PATH = _DATA_DIR / "meta" / "ddragon_champions.json"
 
 # NEW subdir (see module docstring) - keeps the comp-archetype table separate
 # from the item-265/266 flat damage-profile table.
