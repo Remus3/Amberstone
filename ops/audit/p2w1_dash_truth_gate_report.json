@@ -1,0 +1,62 @@
+{
+  "run_id": "p2w1-dash-cycle8",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15360,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M ops/audit/P2_FANOUT_MANIFEST.md",
+      " M ops/audit/P2_FINDINGS.md",
+      "?? ops/audit/p2w1_dash_claims.json",
+      "?? ops/audit/p2w1_dash_truth_gate_report.json"
+    ],
+    "head": "a5d266b3 merge(audit): P2-W1 dashboard slices A-E into main"
+  },
+  "ci": {
+    "status": "skipped"
+  },
+  "slices": [
+    {
+      "id": "A",
+      "claim": "spine/bridge: backslash path-traversal fix via relative_to containment + traversal regression test",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B",
+      "claim": "state pipeline: SSE shares 1s payload cache, screen-read inflight reset on write failure, latch no-raise coercion, error caps",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "C",
+      "claim": "pickban: cleanse advisory import fixed to agents.daemon_slayer, durations_s field, canonical id bridge, generic 500 sweep, bounded caches",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "D",
+      "claim": "DS routes: statcheck outer guard + finite coercion + level clamp, combo mode uppercase, damage_mix snapshot memo, 503 leak fixes",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "E",
+      "claim": "postgame/builders: shared ro_conn no longer closed (evict on error), WPA cache keeps model fields, ward_heat cache bound, loadout id percent-encoded, APP_DIR-anchored paths",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}
