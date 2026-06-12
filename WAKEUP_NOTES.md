@@ -1,6 +1,17 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 + item 228 + item 241 + item 242 + item 245 + item 246 + item 247 + item 248 + item 249 + item 250 + 2026-06-01 Share-docs-reconcile (1.86.0) + item 255 + item 256 + item 257 + item 258+259 + item 261 + item 263 + item 264 + items 271-287 (2026-06-03 prune) + 2026-06-03 RC-wide multi-agent (item 299 prune) + item 300 (2026-06-04 wave-clear prune) + item 301 (2026-06-04 threat-range prune) + items 366-369 (2026-06-09 DS-patch-refresh prune) + item 371 (2026-06-09 BACKLOG-batch T1F3/T2F4 prune) + item 376 (2026-06-10 prune) + item 387 + round 2026-06-10-02 + item 394 + audit-cycles-1-4 (2026-06-11 prunes) archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 + item 228 + item 241 + item 242 + item 245 + item 246 + item 247 + item 248 + item 249 + item 250 + 2026-06-01 Share-docs-reconcile (1.86.0) + item 255 + item 256 + item 257 + item 258+259 + item 261 + item 263 + item 264 + items 271-287 (2026-06-03 prune) + 2026-06-03 RC-wide multi-agent (item 299 prune) + item 300 (2026-06-04 wave-clear prune) + item 301 (2026-06-04 threat-range prune) + items 366-369 (2026-06-09 DS-patch-refresh prune) + item 371 (2026-06-09 BACKLOG-batch T1F3/T2F4 prune) + item 376 (2026-06-10 prune) + item 387 + round 2026-06-10-02 + item 394 + audit-cycles-1-5 (2026-06-11/12 prunes) archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# 2026-06-12 - DEEP-AUDIT cycle 8: P2 W1 dashboard/ per-file fanout, slices A-E [item 402]
+
+- 78 dashboard/*.py / 20629 LOC audited via 5 disjoint worktree slices (A spine/infra/bridge / B state pipeline / C pickban-draft-lobby / D DS routes / E postgame-builders); octopus merge a5d266b3; 75 new tests (tests/test_p2w1_dash_{a..e}.py).
+- 4 HIGH: routes_static backslash path-traversal SOURCE DISCLOSURE (live-proven 200 w/ web_dashboard.py source pre-fix; relative_to containment now); pickban cleanse advisory dead-since-birth (root-package import swallowed; + durations_s field + canonical-id bridge - fires live now); ds_statcheck no outer guard (level=inf dropped connection; isfinite + clamp now); builders_last_match closed the SHARED per-thread ro_conn (2nd same-thread call died; evicts via _DB_CONN_LOCAL.conns.pop, never close).
+- Sweeps: ~35 raw-str(exc) 500 bodies -> generic per error rule (C/D/E); SSE shares the 1s payload cache (was N+1 builds/sec per tab); screen-read _inflight wedge fix; 5 unbounded response caches bounded; combo mode uppercase (lowercase skipped ARAM multiplier); damage_mix snapshot memoized; WPA cache hits keep model fields; 6 modules CWD-relative -> APP_DIR paths; 2 puuid-tiebreak determinism fixes.
+- DEFER appended to ops/audit/P2_FINDINGS.md (slices A-D + E sections); manifest W1 dashboard ticked. Standing cross-cutting candidates: shared TTL-cache eviction helper (14 slice-D caches overwrite-only), _writers.py WinError-5 retry, sequential health probes.
+- Gate round A REFUSE = my claims-file wording (probed `_evict`; real fix = conns.pop) - code verified, claim fixed; round B PROCEED 15360p/0f/7s exit 0 (+75 = new tests exactly). RC restarted healthy.
+- NEXT cycle 9: W1 coaches/ (27 files / 8657 LOC, ~2 slices), then app-set (app/+game_reader/+modes/+lcu/+lib/+vision_server/+coach_integration/+modules 33/8917, app/* + lcu_client frozen-but-open) per P2_FANOUT_MANIFEST.md.
 
 ---
 
@@ -21,12 +32,3 @@
 - .pytest_cache gitignored-confirmed CLOSED. P2 fanout manifest: ops/audit/P2_FANOUT_MANIFEST.md (1307 files / 399052 LOC, 5 waves, slice protocol, standing finding classes).
 - Gate PROCEED 15187p/0f/7s exit 0 (ops/audit/p2b_truth_gate_report.json; +2 = policy tests). NEXT cycle 7: P2 fanout W1 runtime spine (core/ slices first).
 
----
-
-# 2026-06-11 - DEEP-AUDIT cycle 5: P2a code-audit seeds x4 [item 399]
-
-- RC-VisionServer schtask root-caused (boot port-race loser vs dashboard/server.py:219 self-heal child; exit-1 anomaly) -> DELETED, XML archived docs/_archive/, 9 touchpoints synced (CLAUDE.md, OPERATIONS row, start_claude.ps1, legion_on/off, docstrings, ADR-003 dated update). Vision :8889 alive untouched.
-- resource_manager shutdown(): logging.raiseExceptions toggled off for the drain (finally-restored); kills the "--- Logging error ---" pytest-tail noise. 3 tests RED->GREEN.
-- Bare-py duality: gemini ruled OPTION 4 (absolute canonical path + permanent ban; consult ops/loop/control/_gemini_consult_p2.txt). 297->0 offenders; guard tests/test_bare_py_ban.py; live .claude hooks/skills swept (51 repl). Deferred tail allowlisted + in P0_WORKMAP (Share mirror, tools docstrings, tools/*.cmd, scripts, ROADMAP).
-- web/js: 22 semver fallback literals -> DDRAGON_FALLBACK_VERSION (lib/items_index.js); guard bans scattered semver in web/js.
-- Gate PROCEED 15185p/0f/7s exit 0 (p2a_truth_gate_report.json; +5 = new tests exactly). Octopus merge 3b6679fb. NEXT P2b: per-file audit fanout + DS fixture-pin consolidation + .pytest_cache policy + bare-py deferred tail.

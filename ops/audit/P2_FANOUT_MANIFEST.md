@@ -28,7 +28,10 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
 - [x] core/ 103 files / 29531 LOC - DONE cycle 7 (7 slices A-G, merge 6273d655;
       FIX-NOW applied incl 2 security fixes in lessons_receiver; DEFER findings
       in ops/audit/P2_FINDINGS.md)
-- [ ] dashboard/ 78 / 20629 (~4 slices; routes_* are independent)
+- [x] dashboard/ 78 / 20629 - DONE cycle 8 (5 slices A-E, octopus a5d266b3;
+      FIX-NOW incl backslash path-traversal source disclosure in routes_static,
+      dead-since-birth pickban cleanse advisory import, statcheck OverflowError
+      crash, shared ro_conn close poisoning; DEFER in ops/audit/P2_FINDINGS.md)
 - [ ] coaches/ 27 / 8657 (~2 slices)
 - [ ] app/ + game_reader/ + modes/ + lcu/ + lib/ + vision_server/ +
       coach_integration/ + modules/ 33 / 8917 (~2 slices; app/* + lcu_client frozen)

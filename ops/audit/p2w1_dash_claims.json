@@ -1,0 +1,34 @@
+{
+  "run_id": "p2w1-dash-cycle8",
+  "check_ci": false,
+  "slices": [
+    {"id": "A", "claim": "spine/bridge: backslash path-traversal fix via relative_to containment + traversal regression test",
+     "files": [
+       {"path": "dashboard/routes_static.py", "must_contain": ["relative_to"]},
+       {"path": "tests/test_p2w1_dash_a.py", "must_contain": ["test_backslash_traversal_does_not_leak_source"]}
+     ]},
+    {"id": "B", "claim": "state pipeline: SSE shares 1s payload cache, screen-read inflight reset on write failure, latch no-raise coercion, error caps",
+     "files": [
+       {"path": "dashboard/routes_state.py", "must_contain": ["_state_payload_cached"]},
+       {"path": "dashboard/_screen_read.py", "must_contain": ["_inflight"]},
+       {"path": "tests/test_p2w1_dash_b.py", "must_contain": ["test_write_failure_resets_inflight_and_reraises"]}
+     ]},
+    {"id": "C", "claim": "pickban: cleanse advisory import fixed to agents.daemon_slayer, durations_s field, canonical id bridge, generic 500 sweep, bounded caches",
+     "files": [
+       {"path": "dashboard/routes_pickban.py", "must_contain": ["canonical_champion_id", "durations_s"]},
+       {"path": "tests/test_p2w1_dash_c.py", "must_contain": ["test_fires_on_three_heavy_cc_enemies_without_cleanse"]}
+     ]},
+    {"id": "D", "claim": "DS routes: statcheck outer guard + finite coercion + level clamp, combo mode uppercase, damage_mix snapshot memo, 503 leak fixes",
+     "files": [
+       {"path": "dashboard/routes_ds_statcheck.py", "must_contain": ["isfinite"]},
+       {"path": "dashboard/routes_ds_combo.py", "must_contain": ["upper()"]},
+       {"path": "tests/test_p2w1_dash_d.py", "must_contain": ["test_inf_level_does_not_crash_handler"]}
+     ]},
+    {"id": "E", "claim": "postgame/builders: shared ro_conn no longer closed (evict on error), WPA cache keeps model fields, ward_heat cache bound, loadout id percent-encoded, APP_DIR-anchored paths",
+     "files": [
+       {"path": "dashboard/builders_last_match.py", "must_contain": ["no conn.close() here", "_DB_CONN_LOCAL, \"conns\", {}).pop"]},
+       {"path": "dashboard/routes_loadout.py", "must_contain": ["quote("]},
+       {"path": "tests/test_p2w1_dash_e.py", "must_contain": ["test_second_call_same_thread_succeeds"]}
+     ]}
+  ]
+}
