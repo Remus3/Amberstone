@@ -140,9 +140,12 @@ def _serve_personal_context(h) -> None:
     except Exception as exc:  # noqa: BLE001 - generic 500 wrapper
         log.warning("api/personal-context: %s", exc)
         try:
+            # Raw exception text stays in the log only.
             h._send(
                 500,
-                json.dumps({"ok": False, "error": str(exc)[:200]}).encode("utf-8"),
+                json.dumps({"ok": False,
+                            "error": "internal error - see logs"})
+                .encode("utf-8"),
                 "application/json",
             )
         except Exception:

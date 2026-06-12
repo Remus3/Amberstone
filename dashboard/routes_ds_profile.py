@@ -68,8 +68,8 @@ Failure modes (mirror routes_ds_sweep):
   - 200  ok=false reason=no_profile axes=[] when the resolved champion has ZERO
          entries across ALL eight scorers (every headline == 0 AND every result
          carries empty spells/sources). Unknown champion lands here.
-  - 503  ImportError or any compute Exception (logged; body never leaks the raw
-         trace beyond str(exc)[:200]).
+  - 503  ImportError or any compute Exception (raw text logged; body carries
+         a generic degraded-mode message, never the raw trace).
 
 5-min TTL in-process cache keyed (champion, mode). cached flag + elapsed_ms on
 every 200. _reset_caches() clears the response cache (the leaguewide axis-max
@@ -427,10 +427,12 @@ def _serve_ds_profile(h) -> None:
             }).encode("utf-8"), "application/json")
             return
         except Exception as exc:
+            # Raw exception text stays in the log; the UI gets the same
+            # generic degraded-mode message as the sibling routes.
             log.warning("api/ds-profile compute: %s", exc)
             h._send(503, json.dumps({
                 "ok": False,
-                "error": str(exc)[:200],
+                "error": "DS engine compute failed",
             }).encode("utf-8"), "application/json")
             return
 

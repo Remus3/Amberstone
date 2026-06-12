@@ -128,7 +128,7 @@ def _parse_level(raw: str) -> int:
         return _DEFAULT_LEVEL
     try:
         lv = int(float(raw))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return _DEFAULT_LEVEL
     return max(1, min(18, lv))
 

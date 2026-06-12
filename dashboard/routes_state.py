@@ -14,7 +14,6 @@ import os
 import threading
 import time
 import urllib.request
-from urllib.parse import parse_qs, urlparse
 
 from dashboard._bridge_log import gamepc_result_age_s
 from dashboard._context import APP_DIR, read_json
@@ -86,16 +85,31 @@ def _timed_build_state() -> dict:
     return state
 
 
-def _serve_state(h) -> None:
+def _state_payload_cached() -> bytes:
+    """Serialized /api/state payload behind the shared 1.0s TTL cache.
+
+    Cycle-8 audit (slice B): previously only _serve_state used the TTL
+    cache while every SSE subscriber re-ran a full build_state() per 1s
+    tick - N tabs duplicated the LCU/liveclient round-trips + the
+    deterministic compute N times per second. Both paths share this
+    helper now; the SSE tick (1.0s) equals the TTL so freshness is
+    unchanged. Unlocked on purpose: a concurrent rebuild is benign
+    (last-write-wins, both payloads valid) and cheaper than serializing
+    the hot path. Raises on build failure - callers keep their own
+    degradation (500 for /api/state, "{}" event for SSE)."""
     global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS
+    now = time.time()
+    if _STATE_CACHE_PAYLOAD is not None and (now - _STATE_CACHE_TS) < 1.0:
+        return _STATE_CACHE_PAYLOAD
+    payload = json.dumps(_timed_build_state()).encode("utf-8")
+    _STATE_CACHE_PAYLOAD = payload
+    _STATE_CACHE_TS = now
+    return payload
+
+
+def _serve_state(h) -> None:
     try:
-        now = time.time()
-        if _STATE_CACHE_PAYLOAD is not None and (now - _STATE_CACHE_TS) < 1.0:
-            payload = _STATE_CACHE_PAYLOAD
-        else:
-            payload = json.dumps(_timed_build_state()).encode("utf-8")
-            _STATE_CACHE_PAYLOAD = payload
-            _STATE_CACHE_TS = now
+        payload = _state_payload_cached()
         h._send(200, payload, "application/json")
     except Exception as exc:
         log.warning("api/state: %s", exc)
@@ -154,15 +168,18 @@ def _serve_state_stream(h) -> None:
             return
 
         while time.time() - start < _SSE_MAX_DURATION_S:
+            # Cycle-8 audit (slice B): go through the shared 1.0s TTL
+            # payload cache so N subscribers + the HTTP poller dedupe to
+            # one build_state() per second instead of N+1.
             try:
-                payload = json.dumps(_timed_build_state())
+                payload = _state_payload_cached()
             except Exception as exc:
                 log.warning("state-stream build: %s", exc)
-                payload = "{}"
-            ph = hashlib.md5(payload.encode("utf-8")).digest()
+                payload = b"{}"
+            ph = hashlib.md5(payload).digest()
             now = time.time()
             if ph != last_hash or (now - last_emit) >= _SSE_HEARTBEAT_S:
-                line = ("data: " + payload + "\n\n").encode("utf-8")
+                line = b"data: " + payload + b"\n\n"
                 try:
                     h.wfile.write(line)
                     h.wfile.flush()
@@ -353,7 +370,7 @@ def _serve_ui_version(h) -> None:
         digest = compute_asset_hash()
         h._send(200, json.dumps({"v": digest}).encode(), "application/json")
     except Exception as exc:
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(), "application/json")
 
 
 def _serve_asset_stamp(h) -> None:
@@ -541,7 +558,7 @@ def _serve_ds_preview_post(h, payload) -> None:
         }).encode(), "application/json")
     except Exception as exc:
         log.warning("ds-preview: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(), "application/json")
 
 
 def _resolve_enemy_champions(payload: dict) -> list:
@@ -712,7 +729,7 @@ def _serve_analyze_post(h, payload) -> None:
         h._send(200, body, ctype)
     except Exception as exc:
         log.warning("api/analyze: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
                 "application/json")
 
 
@@ -752,7 +769,7 @@ def _serve_console_error_post(h, payload) -> None:
         )
         h._send(200, b'{"ok":true}', "application/json")
     except Exception as exc:
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
                 "application/json")
 
 
@@ -809,7 +826,7 @@ def _serve_build_order_post(h, payload) -> None:
         h._send(200, json.dumps(out).encode(), "application/json")
     except Exception as exc:
         log.warning("build-order: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
                 "application/json")
 
 

@@ -72,10 +72,14 @@ def _resolve_operator_puuid(conn: sqlite3.Connection) -> str | None:
     """Most-frequent puuid in participants is the operator's. Mirrors
     routes_pickban._resolve_operator_puuid and routes_lobby_aux to keep
     cross-module surface area minimal."""
+    # ``puuid ASC`` tertiary keeps a COUNT(*) tie deterministic across
+    # requests (mirrors routes_pickban._resolve_operator_puuid - without
+    # it SQLite tie order is undefined and "who is the operator" could
+    # flip between calls).
     cur = conn.execute(
         "SELECT puuid FROM participants "
         "WHERE puuid IS NOT NULL AND puuid != '' "
-        "GROUP BY puuid ORDER BY COUNT(*) DESC LIMIT 1"
+        "GROUP BY puuid ORDER BY COUNT(*) DESC, puuid ASC LIMIT 1"
     )
     row = cur.fetchone()
     return row[0] if row else None
@@ -291,8 +295,10 @@ def _serve_personal_vs(h) -> None:
     except Exception as exc:  # noqa: BLE001 - generic 500 wrapper
         log.warning("api/personal-vs: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                    "application/json")
+            # Raw exception text stays in the log only.
+            h._send(500, json.dumps(
+                {"ok": False, "error": "internal error - see logs"}).encode(),
+                "application/json")
         except Exception:
             pass
 

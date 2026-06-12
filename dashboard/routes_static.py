@@ -51,15 +51,27 @@ def _index_matcher(path: str) -> bool:
 
 
 def _serve_web_asset(h) -> None:
-    # Serve static assets from web/. Defense: drop any ".." segment
-    # and reject anything with a null byte.
+    # Serve static assets from web/. Defense: reject any ".." segment or
+    # null byte, then confirm the resolved path is genuinely under web/.
+    # AUDIT 2026-06-12 (P2-W1-dash-A): a backslash ".." (e.g.
+    # /css/..\..\web_dashboard.py) escaped the old "/"-split ".." filter
+    # AND satisfied the str.startswith(web_root) check (a sibling path
+    # like web_dashboard.py string-prefix-matches ".../web"), leaking
+    # source files to non-browser clients. Fix: normalize backslashes in
+    # the ".." filter and replace the prefix check with Path.relative_to,
+    # which also rejects absolute-path injection. Browsers normalize "\"
+    # to "/" so this is non-browser-client hardening (defense in depth).
     rel = h.path.split("?", 1)[0].lstrip("/")
-    if ".." in rel.split("/") or "\x00" in rel:
+    if "\x00" in rel or ".." in rel.replace("\\", "/").split("/"):
         h._send(400, b'{"error":"bad path"}', "application/json"); return
     try:
-        abs_path = (APP_DIR / "web" / rel).resolve()
         web_root = (APP_DIR / "web").resolve()
-        if not str(abs_path).startswith(str(web_root)) or not abs_path.is_file():
+        abs_path = (web_root / rel).resolve()
+        try:
+            abs_path.relative_to(web_root)
+        except ValueError:
+            h._send(404, b'{"error":"not found"}', "application/json"); return
+        if not abs_path.is_file():
             h._send(404, b'{"error":"not found"}', "application/json"); return
         ctype = {
             ".css": "text/css; charset=utf-8",

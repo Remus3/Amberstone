@@ -9,8 +9,11 @@ Payload-boundary slice of the former monolithic `dashboard.builders`
 working without churn. Function bodies are extracted byte-verbatim -
 behavior is pinned by the last-match / quick-review tests.
 """
+import sqlite3
+
 from dashboard._context import (
     APP_DIR as _APP_DIR,
+    DB_CONN_LOCAL as _DB_CONN_LOCAL,
     log as _log,
     ro_conn as _ro_conn,
 )
@@ -491,9 +494,17 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
         out["history_count"] = len(history)
         out["quick_review"] = _compute_quick_review(match_row, history)
 
+    except sqlite3.Error as exc:
+        # Evict the possibly-poisoned per-thread cached conn so the next
+        # call reopens cleanly (mirrors builders.py / builders_home.py).
+        _log.warning("_build_last_match: %s", exc)
+        out["error"] = "internal error - see logs"
+        getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db_path), None)
     except Exception as exc:
         _log.warning("_build_last_match: %s", exc)
-        out["error"] = str(exc)
-    finally:
-        conn.close()
+        # Raw exception text can carry file paths - log it, never render it.
+        out["error"] = "internal error - see logs"
+    # NOTE: no conn.close() here - _ro_conn returns the SHARED per-thread
+    # cached connection (dashboard/_context.py); closing it poisoned the
+    # cache for every later same-thread caller (audit cycle 8 slice E).
     return out
