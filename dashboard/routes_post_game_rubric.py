@@ -42,16 +42,18 @@ import json
 import logging
 import sqlite3
 import time
-from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from core.obj_participation import compute_obj_participation
 from core.post_game_rubric import _DEFAULT_WEIGHTS, _normalize_role, compute_role_grade
+from dashboard._context import APP_DIR as _APP_DIR
 
 log = logging.getLogger("rc.web_dashboard")
 
-_REWIND_DB = Path("data") / "rewind_history.db"
-_STATE_JSON = Path("data") / "rewind_catchup.state.json"
+# Anchored on APP_DIR (not the CWD) so a non-root working directory does
+# not silently 503 - mirrors routes_replay_events (audit cycle 8 slice E).
+_REWIND_DB = _APP_DIR / "data" / "rewind_history.db"
+_STATE_JSON = _APP_DIR / "data" / "rewind_catchup.state.json"
 
 # Cache: {match_id: (timestamp, payload)}
 _CACHE: dict[str, tuple[float, dict]] = {}
@@ -266,8 +268,11 @@ def _serve_post_game_rubric(h) -> None:
     except Exception as exc:  # noqa: BLE001 - generic 500 wrapper
         log.warning("api/post-game-rubric: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                    "application/json")
+            # Raw exception text can leak file paths - log it, never
+            # render it (same policy as dashboard/_handler.do_POST).
+            h._send(500, json.dumps({
+                "ok": False, "error": "internal error - see logs",
+            }).encode(), "application/json")
         except Exception:
             pass
 
