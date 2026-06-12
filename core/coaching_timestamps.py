@@ -48,6 +48,11 @@ def write_coaching_ts(mode: str,
 
     Non-fatal: errors are caught and logged at DEBUG level.
     """
+    # P2-W1-B (2026-06-11): honor the non-fatal contract for non-str modes
+    # too - mode.lower() on None/int raised AttributeError before the try.
+    if not isinstance(mode, str):
+        _log.debug("coaching_ts: non-str mode %r -- skipped", mode)
+        return
     mode_key = mode.lower().strip()
     if mode_key not in _VALID_MODES:
         _log.debug("coaching_ts: unknown mode %r -- skipped", mode_key)

@@ -14,10 +14,12 @@ to Sonnet when the local OCR returns out-of-range or empty.
      supplies the Sonnet path; this module stays free-of dependency on
      anthropic SDK and per-coach prompts.
 
-Wire-up: TFT vision (`tft/tft_vision_reader.py`) is the primary consumer;
-the audit note tracks it as broken post-2026-04-19 migration. Until that
-is restored, this module is unused - kept ready so the routing decision
-is in one place when it goes live.
+Wire-up: LIVE via `modes/shared_vision.py` - the shared vision reader's
+`read_tiered()` routes TIERED_FIELDS through read_or_escalate (Sonnet as
+escalate_fn, DEFAULT_VALIDATORS merged with per-mode overrides). The
+original "unused until TFT vision is restored" note is obsolete - this
+module is on the hot vision path for all mode coaches.
+(Doc refreshed deep-audit P2-W1-E, 2026-06-11.)
 """
 from __future__ import annotations
 

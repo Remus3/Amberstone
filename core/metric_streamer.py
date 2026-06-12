@@ -25,7 +25,7 @@ Cadence rules:
     death, kill) → snapshot with tag
   - `game_end` → final snapshot then close()
 
-WIRE-IN (coach side, not activated automatically):
+WIRE-IN (coach side):
 
     # At coach init:
     from core.metric_streamer import MetricStreamer
@@ -38,9 +38,11 @@ WIRE-IN (coach side, not activated automatically):
     streamer.on_state(coaching_data, events=[...], game_end=True)
     streamer.close()
 
-The wire-in above is INTENTIONALLY left unapplied in the coach modules -
-enable it manually when you're ready to verify against a live match
-without risking the coach crashing on a regression.
+In production the wire-in is owned by `core.live_metrics.stream()` - the
+sr/aram/arena/brawl coaches call it after each coaching write. It is gated
+OFF by default (RC_LIVE_METRICS env or coach_settings.json
+`live_metrics_enabled`) and error-wrapped so a streaming fault can never
+crash the coach.
 """
 from __future__ import annotations
 import threading

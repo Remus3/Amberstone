@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import logging
 import queue
-import threading
 import time
 from typing import Any, Dict, Optional
 

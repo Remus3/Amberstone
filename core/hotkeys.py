@@ -8,6 +8,8 @@ import threading
 import time
 from pathlib import Path
 
+from core.polled_json import atomic_write_json
+
 _log = logging.getLogger("rc.hotkeys")
 _APP_DIR = Path(__file__).parent.parent
 
@@ -94,12 +96,12 @@ def _trigger_force_scan() -> None:
     """Signal all registered coaches to run an immediate forced vision scan."""
     _log.info("Ctrl+Tab: forced scan triggered")
 
-    # Write force-scan marker file (coaches poll this)
+    # Write force-scan marker file (coaches poll this). Atomic write is a
+    # hard rule for polled JSON - the sibling writer dashboard/_writers.py
+    # already goes through the same helper.
     try:
-        ts_file = _APP_DIR / "data" / "force_scan.json"
-        import json
-        import time as _t
-        ts_file.write_text(json.dumps({"force": _t.time()}), encoding="utf-8")
+        atomic_write_json(_APP_DIR / "data" / "force_scan.json",
+                          {"force": time.time()})
     except Exception:
         pass
 

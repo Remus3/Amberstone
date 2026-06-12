@@ -52,21 +52,28 @@ _match_cache_lock = threading.Lock()
 
 
 def _load_champ_index() -> None:
+    # AUDIT 2026-06-11 (deep-audit P2-W1-A): build the index in a local
+    # dict and publish it complete. The previous loop populated the
+    # module dict key-by-key, so a concurrent caller could observe a
+    # truthy-but-partial index and resolve champion names to "?" - and
+    # match_detail() would then cache that bad name in its LRU.
     if _id_to_champ:
         return
     try:
         data = json.loads(_DDR_CHAMPS.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return
+    built: dict[int, str] = {}
+    for slug, entry in (data.get("data") or {}).items():
+        try:
+            cid = int(entry.get("key"))
+        except (TypeError, ValueError):
+            continue
+        built[cid] = entry.get("name") or slug
     with _idx_lock:
         if _id_to_champ:
             return
-        for slug, entry in (data.get("data") or {}).items():
-            try:
-                cid = int(entry.get("key"))
-            except (TypeError, ValueError):
-                continue
-            _id_to_champ[cid] = entry.get("name") or slug
+        _id_to_champ.update(built)
 
 
 def _open() -> Optional[sqlite3.Connection]:

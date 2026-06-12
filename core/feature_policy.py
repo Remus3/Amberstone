@@ -16,7 +16,7 @@ Public API
   get_policy_state() -> dict
     Returns a compact snapshot of the current effective policy for MetricsCache.
     Keys: policy_source_status, policy_last_reload_ts, policy_last_warning,
-          effective_decisions (nested dict of mode → feature → decision).
+          effective_decisions (nested dict of mode -> feature -> decision).
     Never raises. Called from MetricsCache background thread.
 
 Phase 2 Step 2 hot-reload design
@@ -33,7 +33,7 @@ Phase 2 Step 2 hot-reload design
       - If valid: replace active matrix + last-known-good.
       - If invalid: keep last-known-good; record warning + "invalid_reload_retained" status.
   - File disappearance after a valid load: mtime comparison fails (file gone),
-    treated as reload failure → last-known-good retained.
+    treated as reload failure -> last-known-good retained.
   - Scope honesty: hot-reload is "next is_allowed() call sees new decision".
     It is a lazy pull model, not a push/subscribe model.
   - Warnings are last-one-wins (single string field, not a history list).
@@ -52,7 +52,7 @@ from typing import Any, Dict, Optional
 
 _log = logging.getLogger("rc.feature_policy")
 
-# ── Paths ─────────────────────────────────────────────────────────────────
+# -- Paths -----------------------------------------------------------------
 
 _PROJECT_DIR = Path(__file__).parent.parent
 _CONFIG_PATH = _PROJECT_DIR / "config" / "feature_flags.json"
@@ -62,7 +62,7 @@ _DATA_DIR    = _PROJECT_DIR / "data"
 # This matches app.py: DATA_FILE = SCRIPT_DIR / "coaching_data.json"
 _SR_ARTIFACT  = _PROJECT_DIR / "coaching_data.json"
 
-# ── Constants ─────────────────────────────────────────────────────────────
+# -- Constants -------------------------------------------------------------
 
 _VALID_DECISIONS = {"allow", "disabled"}
 _SAFE_DEFAULT    = "allow"
@@ -76,7 +76,7 @@ _KNOWN_FEATURES: Dict[str, set] = {
     "tft":   {"live_coaching", "tft_vision_analysis"},
 }
 
-# ── Neutral placeholder payloads ──────────────────────────────────────────
+# -- Neutral placeholder payloads ------------------------------------------
 
 _SR_DISABLED_PAYLOAD = {
     "mode": "game",
@@ -103,7 +103,7 @@ _TFT_LIVE_DISABLED_PAYLOAD = {
     "traits_active": [], "augments": [],
 }
 
-# ── Policy status values ───────────────────────────────────────────────────
+# -- Policy status values ---------------------------------------------------
 
 _STATUS_DEFAULT              = "default"           # no file; all-allow defaults
 _STATUS_LOADED               = "loaded"            # file parsed and valid
@@ -112,7 +112,7 @@ _STATUS_INVALID_RELOAD       = "invalid_reload_retained"  # bad reload; prior go
 _STATUS_MISSING              = "missing"           # file absent at startup
 
 
-# ── _PolicyCache ──────────────────────────────────────────────────────────
+# -- _PolicyCache ----------------------------------------------------------
 
 class _PolicyCache:
     """
@@ -143,7 +143,7 @@ class _PolicyCache:
         self._last_warning: Optional[str] = None
         self._initial_load()
 
-    # ── Initial load ──────────────────────────────────────────────────────
+    # -- Initial load ------------------------------------------------------
 
     def _initial_load(self) -> None:
         if not self._path.exists():
@@ -163,7 +163,7 @@ class _PolicyCache:
             self._last_warning = f"Initial load failed: {err}"
             _log.error("feature_policy: initial load failed: %s - using safe defaults", err)
 
-    # ── Hot-reload ────────────────────────────────────────────────────────
+    # -- Hot-reload --------------------------------------------------------
 
     def _check_reload(self) -> None:
         """Check mtime and reload if changed. O(1) stat call when unchanged."""
@@ -200,7 +200,7 @@ class _PolicyCache:
             self._last_warning = f"Hot-reload failed: {err} - retaining last-known-good"
             _log.warning("feature_policy: %s", self._last_warning)
 
-    # ── Helpers ───────────────────────────────────────────────────────────
+    # -- Helpers -----------------------------------------------------------
 
     def _get_mtime(self) -> float:
         return self._path.stat().st_mtime
@@ -239,7 +239,7 @@ class _PolicyCache:
                     )
         return raw, None
 
-    # ── Policy state snapshot ─────────────────────────────────────────────
+    # -- Policy state snapshot ---------------------------------------------
 
     def get_policy_state(self) -> Dict[str, Any]:
         """
@@ -286,7 +286,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# ── Module-level cache singleton ──────────────────────────────────────────
+# -- Module-level cache singleton ------------------------------------------
 
 _cache = _PolicyCache(_CONFIG_PATH)
 
@@ -300,7 +300,7 @@ def _reload(path: Optional[Path] = None) -> None:
     _cache = _PolicyCache(path or _CONFIG_PATH)
 
 
-# ── Public API ────────────────────────────────────────────────────────────
+# -- Public API ------------------------------------------------------------
 
 def is_allowed(mode: str, feature: str) -> bool:
     """
@@ -383,15 +383,15 @@ def write_disabled_placeholder(mode: str, feature: Optional[str] = None,
     artifact_root: optional test-only override for the output root directories.
       When None (default): writes to the real production paths (_PROJECT_DIR
       and _DATA_DIR) - production behavior is fully preserved.
-      When set: sr artifact → artifact_root/coaching_data.json;
-                data/* artifacts → artifact_root/data/<name>.
+      When set: sr artifact -> artifact_root/coaching_data.json;
+                data/* artifacts -> artifact_root/data/<name>.
       Tests should always pass artifact_root pointing to a temp directory.
       No runtime code path sets this parameter.
 
     Feature-specific for TFT:
-      mode="tft", feature="live_coaching"       → tft_coaching_data.json only
-      mode="tft", feature="tft_vision_analysis" → tft_live_data.json only
-      mode="tft", feature=None                  → both TFT artifacts
+      mode="tft", feature="live_coaching"       -> tft_coaching_data.json only
+      mode="tft", feature="tft_vision_analysis" -> tft_live_data.json only
+      mode="tft", feature=None                  -> both TFT artifacts
 
     Non-fatal. Does not affect GameEnvelope or worker state authority.
     """

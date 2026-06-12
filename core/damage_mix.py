@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import threading
 import time
+import weakref
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
@@ -89,29 +90,44 @@ class DamageMix:
 # Champion id mapping (numeric key <-> string id)
 # ---------------------------------------------------------------------
 
-_KEY_TO_ID_CACHE: dict[int, dict[int, str]] = {}
+# Entries are (weakref-to-snapshot, mapping). The weakref guards against
+# id() reuse: a freed snapshot's address can be recycled by a NEW snapshot
+# object, which would otherwise be served the OLD map silently.
+_KEY_TO_ID_CACHE: dict[int, tuple[weakref.ref, dict[int, str]]] = {}
 _KEY_CACHE_LOCK = threading.Lock()
 
 
 def _key_to_id_map(snapshot: DataSnapshot) -> dict[int, str]:
     """Build (and cache) the {numeric_key: string_id} map for a snapshot.
 
-    Cached per snapshot-patch so the same snapshot object isn't re-iterated
-    on every request. The cache key is ``id(snapshot)`` which is stable
-    for the singleton snapshot the dashboard holds.
+    Cached per snapshot object so the same snapshot isn't re-iterated on
+    every request. The cache key is ``id(snapshot)``; each entry carries a
+    weakref to the snapshot it was built from and is rebuilt if the id was
+    recycled by a different object (id() reuse after GC). Dead entries are
+    pruned on insert so a snapshot reload (patch refresh) cannot grow the
+    cache unboundedly.
     """
     snap_id = id(snapshot)
     with _KEY_CACHE_LOCK:
         cached = _KEY_TO_ID_CACHE.get(snap_id)
-        if cached is not None:
-            return cached
-        mapping = {}
+        if cached is not None and cached[0]() is snapshot:
+            return cached[1]
+        mapping: dict[int, str] = {}
         for cid, c in snapshot.champions.items():
             try:
                 mapping[int(c["key"])] = cid
             except (KeyError, ValueError, TypeError):
                 continue
-        _KEY_TO_ID_CACHE[snap_id] = mapping
+        # Prune entries whose snapshot has been garbage-collected.
+        dead = [k for k, (ref, _m) in _KEY_TO_ID_CACHE.items() if ref() is None]
+        for k in dead:
+            _KEY_TO_ID_CACHE.pop(k, None)
+        try:
+            _KEY_TO_ID_CACHE[snap_id] = (weakref.ref(snapshot), mapping)
+        except TypeError:
+            # Snapshot type without weakref support (e.g. a slotted test
+            # double): skip caching rather than fail - correctness first.
+            pass
         return mapping
 
 
@@ -212,10 +228,15 @@ def _cache_get(key: tuple) -> Optional[DamageMix]:
 
 
 def _cache_put(key: tuple, mix: DamageMix) -> None:
+    now = time.monotonic()
     with _MIX_LOCK:
-        _MIX_CACHE[key] = _CacheEntry(
-            expires_at=time.monotonic() + CACHE_TTL_S, mix=mix,
-        )
+        # Prune expired entries on insert. _cache_get only evicts the key
+        # it is asked for, so keys that are never re-read (old item builds,
+        # old levels) would otherwise accumulate for the process lifetime.
+        stale = [k for k, e in _MIX_CACHE.items() if e.expires_at < now]
+        for k in stale:
+            _MIX_CACHE.pop(k, None)
+        _MIX_CACHE[key] = _CacheEntry(expires_at=now + CACHE_TTL_S, mix=mix)
 
 
 # ---------------------------------------------------------------------
