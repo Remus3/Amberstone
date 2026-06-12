@@ -239,10 +239,12 @@ def _serve_ds_matchup(h) -> None:
         try:
             payload = _compute(champ_a, champ_b, level_a, level_b, mode)
         except Exception as exc:
+            # Raw exception text stays in the log; the UI gets the same
+            # generic degraded-mode message as the sibling routes.
             log.warning("api/ds-matchup compute: %s", exc)
             h._send(503, json.dumps({
                 "ok": False,
-                "error": str(exc)[:200],
+                "error": "DS engine compute failed",
             }).encode("utf-8"), "application/json")
             return
 

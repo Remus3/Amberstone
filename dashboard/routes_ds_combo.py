@@ -152,23 +152,34 @@ def _parse_runes(raw: str) -> list[int]:
 
 
 def _parse_level(raw: str) -> int:
-    """Parse champion level; clamp to [1, 18]; fall to default on garbage."""
+    """Parse champion level; clamp to [1, 18]; fall to default on garbage.
+
+    OverflowError covers int(float('inf')) - pre-fix it escaped to the
+    outer 500 handler.
+    """
     if not raw:
         return _DEFAULT_LEVEL
     try:
         n = int(float(raw))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return _DEFAULT_LEVEL
     return max(_MIN_LEVEL, min(_MAX_LEVEL, n))
 
 
 def _parse_float(raw: str, default: float = 0.0) -> float:
-    """Parse a non-negative float; fall to default on garbage / negative."""
+    """Parse a non-negative FINITE float; fall to default otherwise.
+
+    inf is rejected too: it previously slipped the >= 0 gate and blew up
+    math.ceil in _compute_ttk (OverflowError -> spurious 503); nan/inf
+    also serialize to non-standard JSON browsers reject.
+    """
     if not raw:
         return default
     try:
         v = float(raw)
     except (TypeError, ValueError):
+        return default
+    if not math.isfinite(v):
         return default
     return v if v >= 0.0 else default
 
@@ -369,7 +380,10 @@ def _serve_ds_combo(h) -> None:
         target_bonus_hp = _parse_float(
             (qs.get("target_bonus_hp") or [""])[0].strip()
         )
-        mode = (qs.get("mode") or ["SR"])[0].strip() or "SR"
+        # Uppercase like every sibling route: the engine compares
+        # mode == "ARAM" case-sensitively (burst.py / dps.py), so a
+        # lowercase mode=aram silently skipped the ARAM multiplier.
+        mode = (qs.get("mode") or ["SR"])[0].strip().upper() or "SR"
         # runes= is the canonical comma-separated id list; keystone= is a
         # convenience single-id alias. Both feed the same rune_procs path;
         # malformed tokens are dropped (never a 500) and an empty result is
