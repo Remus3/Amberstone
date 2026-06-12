@@ -1,5 +1,5 @@
 """
-core/bridge.py - RC↔Peer cross-Claude bridge client + config readers.
+core/bridge.py - RC<->Peer cross-Claude bridge client + config readers.
 
 Mirrors Peer's `core/bridge.py` per docs io RC peer/RC_BRIDGE_CONTRACT.md (v0).
 
@@ -11,7 +11,7 @@ Auth: Authorization: Bearer <shared_secret>
 Config lives in ops/local_paths.json (gitignored, per-host secrets):
     {"bridge_shared_secret": "...", "bridge_remote_url": "https://..."}
 
-Empty/missing → bridge is OFF: send() returns (False, "bridge_not_configured")
+Empty/missing -> bridge is OFF: send() returns (False, "bridge_not_configured")
 and the inbox endpoint (in dashboard/routes_bridge.py) returns 503. Bridge
 is opt-in; nothing happens until both sides set the secret.
 """

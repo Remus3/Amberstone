@@ -44,7 +44,7 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Extract YAML-ish frontmatter as a flat dict + body. Minimal parser
     sufficient for memory-file shapes: scalar `key: value` lines and
     list-valued keys with `  - item` continuations."""
-    m = _FM_RE.match(text.lstrip("﻿"))
+    m = _FM_RE.match(text.lstrip("\ufeff"))
     if not m:
         return ({}, text)
     fm_text, body = m.group(1), m.group(2)
@@ -75,7 +75,7 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
 
 
 def is_eligible(fm: dict, body: str) -> tuple[bool, str]:
-    """Return (eligible, reason). Per §3 of Phase 1 schema."""
+    """Return (eligible, reason). Per section 3 of Phase 1 schema."""
     mtype = fm.get("type")
     if mtype not in ELIGIBLE_TYPES:
         return (False, f"ineligible type ({mtype!r})")
@@ -83,6 +83,10 @@ def is_eligible(fm: dict, body: str) -> tuple[bool, str]:
         return (False, "cross_project flag not set")
     if not fm.get("applies_when"):
         return (False, "missing applies_when")
+    if not fm.get("name"):
+        # build_envelope requires fm["name"]; without this gate a nameless
+        # memory file crashes the whole dry_run/send_now scan with KeyError.
+        return (False, "missing name")
     if body.lstrip().startswith(DO_NOT_SYNC_MARKER):
         return (False, "DO NOT SYNC marker")
     if len(body.encode("utf-8")) > MAX_FULL_MD_BYTES:
@@ -99,7 +103,7 @@ def body_hash(body: str) -> str:
 
 def lesson_id(origin: str, mem_type: str, title: str, bhash: str,
               ts: float | None = None) -> str:
-    """Per §2: lesson-<sha256[:12]>-<unix_ts>. Prefix is deterministic on
+    """Per section 2: lesson-<sha256[:12]>-<unix_ts>. Prefix is deterministic on
     body; ts suffix lets receiver tell re-send (same prefix) from update
     (different prefix)."""
     seed = f"{origin}|{mem_type}|{title}|{bhash}".encode()
@@ -110,9 +114,9 @@ def lesson_id(origin: str, mem_type: str, title: str, bhash: str,
 
 def build_envelope(path: Path, fm: dict, body: str,
                    ts: float | None = None) -> dict:
-    """kind=lesson envelope per §2. `full_md` re-renders the frontmatter
+    """kind=lesson envelope per section 2. `full_md` re-renders the frontmatter
     so the receiver can reconstruct a valid memory file by prepending
-    its own provenance frontmatter (per §4)."""
+    its own provenance frontmatter (per section 4)."""
     bhash = body_hash(body)
     lid = lesson_id(ORIGIN, fm["type"], fm["name"], bhash, ts=ts)
     full_md = f"---\n{_render_fm(fm)}---\n{body}"
