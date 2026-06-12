@@ -54,6 +54,9 @@ _PRESETS_PATH = _PROJECT_ROOT / "data" / "daemon_slayer" / "sr_draft_presets.jso
 # Profile cache: (cache_key -> (ts, profile_envelope))
 _PROFILE_CACHE: dict[tuple, tuple[float, dict[str, Any]]] = {}
 _PROFILE_TTL_S = 60.0
+# Bound the cache (audit P2-W1): TTL alone never evicts, so a long RC
+# run accumulates one entry per distinct champ-select comp forever.
+_PROFILE_CACHE_MAX = 64
 
 # Engine version cache (per-process; engine restarts on version bump).
 _ENGINE_VERSION: Optional[str] = None
@@ -167,8 +170,21 @@ def build_profile(
         "profiles": profiles,
         "notes": notes,
     }
+    if len(_PROFILE_CACHE) >= _PROFILE_CACHE_MAX:
+        _evict_profile_cache(now)
     _PROFILE_CACHE[cache_key] = (now, envelope)
     return envelope
+
+
+def _evict_profile_cache(now: float) -> None:
+    """Drop expired entries; if still at cap, drop oldest-first."""
+    expired = [k for k, (ts, _) in _PROFILE_CACHE.items()
+               if (now - ts) >= _PROFILE_TTL_S]
+    for k in expired:
+        _PROFILE_CACHE.pop(k, None)
+    while len(_PROFILE_CACHE) >= _PROFILE_CACHE_MAX:
+        oldest = min(_PROFILE_CACHE.items(), key=lambda kv: kv[1][0])[0]
+        _PROFILE_CACHE.pop(oldest, None)
 
 
 def clear_cache() -> None:
@@ -223,7 +239,12 @@ def _team_sig(team: Optional[list[dict[str, Any]]]) -> tuple:
         if isinstance(p, dict):
             cid = p.get("championId")
             if cid:
-                ids.append(int(cid))
+                # Tolerate malformed payloads ("garbage", "12.5") -
+                # a bad entry must not crash the whole profile build.
+                try:
+                    ids.append(int(cid))
+                except (TypeError, ValueError):
+                    continue
     return tuple(sorted(ids))
 
 
