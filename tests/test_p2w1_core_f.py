@@ -37,6 +37,34 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _BANNED_CHARS = "\u2013\u2014\u2018\u2019\u201c\u201d"
 
 
+def _run_coro(coro, timeout=10.0):
+    """Run a coroutine on a fresh loop in a dedicated thread.
+
+    asyncio.run() refuses to start when an earlier suite test leaves a
+    running-loop marker on the main thread; a private thread-local loop is
+    immune to that pollution.
+    """
+    box = {}
+
+    def runner():
+        loop = asyncio.new_event_loop()
+        try:
+            box["value"] = loop.run_until_complete(coro)
+        except BaseException as exc:  # re-raised on the caller thread
+            box["error"] = exc
+        finally:
+            loop.close()
+
+    t = threading.Thread(target=runner, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        raise TimeoutError(f"coroutine did not finish within {timeout}s")
+    if "error" in box:
+        raise box["error"]
+    return box.get("value")
+
+
 # ---------------------------------------------------------------------------
 # 1. polled_json - os.replace retry-with-backoff
 # ---------------------------------------------------------------------------
@@ -169,7 +197,7 @@ def test_identify_subscribes_to_no_events():
     identified = json.dumps({"op": 2, "d": {}})
     ws = _StubWs([hello, identified])
 
-    ok = asyncio.run(OBSPublisher()._identify(ws, password=""))
+    ok = _run_coro(OBSPublisher()._identify(ws, password=""))
 
     assert ok is True
     sent = json.loads(ws.sent[0])
@@ -193,7 +221,7 @@ def test_identify_auth_response_still_computed():
     identified = json.dumps({"op": 2, "d": {}})
     ws = _StubWs([hello, identified])
 
-    ok = asyncio.run(OBSPublisher()._identify(ws, password=password))
+    ok = _run_coro(OBSPublisher()._identify(ws, password=password))
 
     assert ok is True
     sent = json.loads(ws.sent[0])
@@ -212,7 +240,7 @@ def test_drain_pending_empties_buffered_messages():
     ws = _StubWs([json.dumps({"op": 7, "d": {"requestId": f"rc-{i}"}})
                   for i in range(5)])
 
-    asyncio.run(OBSPublisher()._drain_pending(ws))
+    _run_coro(OBSPublisher()._drain_pending(ws))
 
     assert ws.incoming == []
 
@@ -224,7 +252,7 @@ def test_drain_pending_tolerates_closed_connection():
         async def recv(self):
             raise ConnectionError("closed")
 
-    asyncio.run(OBSPublisher()._drain_pending(_ClosedWs()))  # must not raise
+    _run_coro(OBSPublisher()._drain_pending(_ClosedWs()))  # must not raise
 
 
 def test_async_loop_wires_the_drain():
