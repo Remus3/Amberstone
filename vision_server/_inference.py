@@ -201,6 +201,10 @@ def handle_coach(body: bytes) -> dict:
 
 
 _TESSERACT_DEFAULT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# P2-W1-app-A subprocess hardening (sibling of the cycle-7 core.vision_tesseract
+# fix this slice missed): pytesseract default timeout=0 waits unbounded, so a
+# hung tesseract.exe blocks this HTTP handler thread forever. Cap every call.
+_OCR_TIMEOUT_S = 10.0
 
 
 def handle_ocr(body: bytes) -> dict:
@@ -239,7 +243,8 @@ def handle_ocr(body: bytes) -> dict:
             t = re.sub(r"[^0-9\-]", "",
                        pytesseract.image_to_string(
                            _pre(crops["stage_round"], 4),
-                           config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789-").strip())
+                           config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789-",
+                           timeout=_OCR_TIMEOUT_S).strip())
             m = re.match(r"^([1-7])-([1-7])$", t)
             if m:
                 s, r2 = int(m.group(1)), int(m.group(2))
@@ -251,7 +256,8 @@ def handle_ocr(body: bytes) -> dict:
         try:
             t = pytesseract.image_to_string(
                 _pre(crops["level"]),
-                config="--oem 3 --psm 7 -c tessedit_char_whitelist=Llv0123456789 ").strip()
+                config="--oem 3 --psm 7 -c tessedit_char_whitelist=Llv0123456789 ",
+                timeout=_OCR_TIMEOUT_S).strip()
             m = re.search(r"\d+", t)
             if m and 1 <= int(m.group()) <= 10:
                 results["level"] = int(m.group())
@@ -262,7 +268,8 @@ def handle_ocr(body: bytes) -> dict:
             t = re.sub(r"[^0-9]", "",
                        pytesseract.image_to_string(
                            _pre(crops["gold"]),
-                           config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789").strip())
+                           config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789",
+                           timeout=_OCR_TIMEOUT_S).strip())
             if t and 0 <= int(t) <= 999:
                 results["gold"] = int(t)
         except _OCR_EXC:
