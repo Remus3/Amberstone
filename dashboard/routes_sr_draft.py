@@ -190,7 +190,9 @@ def _serve_sr_draft_apply_post(h, payload) -> None:
         }).encode(), "application/json")
     except Exception as exc:
         log.warning("api/sr-draft/apply: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        # Raw exception text stays in the log only (was untruncated here).
+        h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
+                "application/json")
 
 
 # ── route table ──────────────────────────────────────────────────────

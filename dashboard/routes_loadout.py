@@ -13,11 +13,15 @@ during start-up).
 import json
 import logging
 import urllib.error
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from dashboard._dispatch import equals, prefix
 
 log = logging.getLogger("rc.web_dashboard")
+
+# Raw exception text can leak file paths - log it, never render it
+# (same policy as dashboard/_handler.do_POST; audit cycle 8 slice E).
+_GENERIC_ERR = "internal error - see logs"
 
 
 # Allowlist for /api/lcu-cmd. Hoisted out of the legacy handler body
@@ -129,7 +133,7 @@ def _serve_loadout_list_post(h, payload) -> None:
         }).encode(), "application/json")
     except Exception as exc:
         log.warning("api/loadout/list: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
 
 # item 213 (2026-05-28): the synthetic auto-build chooser row was
@@ -317,7 +321,7 @@ def _serve_loadout_apply_post(h, payload) -> None:
         }).encode(), "application/json")
     except Exception as exc:
         log.warning("api/loadout/apply: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
 
 def _serve_lcu_cmd_post(h, payload) -> None:
@@ -348,7 +352,7 @@ def _serve_lcu_cmd_post(h, payload) -> None:
         h._send(200, body, "application/json")
     except Exception as exc:
         log.warning("api/lcu-cmd: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
 
 def _serve_lcu_cmd_result_get(h) -> None:
@@ -362,8 +366,11 @@ def _serve_lcu_cmd_result_get(h) -> None:
         rid = (qs.get("id") or [""])[0]
         if not rid:
             h._send(400, b'{"error":"id required"}', "application/json"); return
+        # parse_qs already DECODED rid - re-encode it so a value with
+        # spaces / & / = cannot smuggle params into (or break) the
+        # outbound vision-server URL (audit cycle 8 slice E).
         req = _ur.Request(
-            f"http://127.0.0.1:8889/lcu-cmd-result?id={rid}",
+            f"http://127.0.0.1:8889/lcu-cmd-result?id={quote(rid, safe='')}",
             headers={"X-RC-Token": _VISION_TOKEN},
         )
         try:
@@ -373,7 +380,7 @@ def _serve_lcu_cmd_result_get(h) -> None:
             h._send(e.code, e.read(), "application/json")
     except Exception as exc:
         log.warning("api/lcu-cmd-result: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
 
 # ── route table ──────────────────────────────────────────────────────

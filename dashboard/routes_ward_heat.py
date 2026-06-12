@@ -72,9 +72,12 @@ _WINDOW_MIN_S = 5.0
 _WINDOW_MAX_S = 600.0
 _DEFAULT_WINDOW_S = 90.0
 
-# Cache: (window_s,) -> (cached_at, payload).
+# Cache: (window_s,) -> (cached_at, payload). Size-bounded: window_s is
+# a client-supplied float, so distinct values would otherwise grow the
+# dict without limit (audit cycle 8 slice E).
 _CACHE: dict[tuple[float], tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+_CACHE_MAX = 64
 
 
 def _parse_window(qs: dict) -> tuple[float, str | None]:
@@ -156,13 +159,20 @@ def _serve_ward_heat(h) -> None:
             cacheable.pop("cached", None)
             cacheable.pop("elapsed_ms", None)
             _CACHE[cache_key] = (now, cacheable)
+            if len(_CACHE) > _CACHE_MAX:
+                victims = sorted(_CACHE.items(), key=lambda kv: kv[1][0])[:16]
+                for k, _ in victims:
+                    _CACHE.pop(k, None)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/ward-heat: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]})
-                    .encode("utf-8"), "application/json")
+            # Raw exception text can leak file paths - log it, never
+            # render it (same policy as dashboard/_handler.do_POST).
+            h._send(500, json.dumps({
+                "ok": False, "error": "internal error - see logs",
+            }).encode("utf-8"), "application/json")
         except Exception:
             # Even the error-send failed - swallow so the dispatch loop
             # doesn't take the whole handler down.

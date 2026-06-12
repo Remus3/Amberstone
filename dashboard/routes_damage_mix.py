@@ -45,11 +45,35 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
+
+# DataSnapshot is immutable per patch - load once + reuse across requests
+# (mirrors routes_ds_knobs._get_snapshot). Pre-fix the route re-parsed the
+# full multi-file snapshot from disk on EVERY request.
+_SNAPSHOT = None
+_SNAPSHOT_LOCK = threading.Lock()
+
+
+def _get_snapshot():
+    """Lazy-load + memoize the DS DataSnapshot (current.txt patch)."""
+    global _SNAPSHOT
+    with _SNAPSHOT_LOCK:
+        if _SNAPSHOT is None:
+            from agents.daemon_slayer.data_loader import DataSnapshot
+            _SNAPSHOT = DataSnapshot.load()
+        return _SNAPSHOT
+
+
+def _reset_caches() -> None:
+    """Test-only: clear the memoized snapshot."""
+    global _SNAPSHOT
+    with _SNAPSHOT_LOCK:
+        _SNAPSHOT = None
 
 
 def _bad(h, msg: str) -> None:
@@ -91,10 +115,9 @@ def _serve_damage_mix(h) -> None:
 
         # Lazy import keeps a malformed snapshot from crashing the
         # whole dashboard at boot - same pattern as routes_lessons.
-        from agents.daemon_slayer.data_loader import DataSnapshot
         from core.damage_mix import compute_damage_mix
 
-        snapshot = DataSnapshot.load()
+        snapshot = _get_snapshot()
         try:
             mix, was_cached = compute_damage_mix(
                 snapshot, champ_raw, items, level=level, mode=mode,
@@ -114,8 +137,11 @@ def _serve_damage_mix(h) -> None:
         h._send(200, body, "application/json")
     except Exception as exc:
         log.warning("damage-mix failed: %s", exc, exc_info=True)
-        body = json.dumps({"ok": False, "error": str(exc)[:200]}).encode("utf-8")
-        h._send(500, body, "application/json")
+        try:
+            body = json.dumps({"ok": False, "error": str(exc)[:200]}).encode("utf-8")
+            h._send(500, body, "application/json")
+        except Exception:
+            pass
 
 
 GET_ROUTES = [
