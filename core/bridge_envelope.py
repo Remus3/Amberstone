@@ -1,5 +1,5 @@
 # arch: pydantic v2 schema for the cross-Claude bridge wire envelope | section=core | frozen=no
-"""Pydantic v2 model for the RC↔Peer bridge wire envelope.
+"""Pydantic v2 model for the RC<->Peer bridge wire envelope.
 
 Wire format (POST body to peer /api/bridge/inbox):
     {source, summary, kind?, id?, target?, body?, in_reply_to?,
@@ -21,7 +21,7 @@ log = logging.getLogger("rc.bridge_envelope")
 
 
 class BridgeEnvelope(BaseModel):
-    """Single message envelope for the RC↔Peer cross-Claude bridge."""
+    """Single message envelope for the RC<->Peer cross-Claude bridge."""
     model_config = ConfigDict(extra="allow")
 
     # Required
