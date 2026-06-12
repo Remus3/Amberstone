@@ -50,7 +50,6 @@ import json
 import logging
 import sqlite3
 import time
-from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from core.post_game_score import (
@@ -59,11 +58,14 @@ from core.post_game_score import (
     compute_match_wpa,
     load_model,
 )
+from dashboard._context import APP_DIR as _APP_DIR
 
 log = logging.getLogger("rc.web_dashboard")
 
-_REWIND_DB = Path("data") / "rewind_history.db"
-_MODEL_PATH = Path("data") / "post_game_wpa_model.json"
+# Anchored on APP_DIR (not the CWD) so a non-root working directory does
+# not silently 503 - mirrors routes_replay_events (audit cycle 8 slice E).
+_REWIND_DB = _APP_DIR / "data" / "rewind_history.db"
+_MODEL_PATH = _APP_DIR / "data" / "post_game_wpa_model.json"
 
 # Cache: {(match_id, model_sig): (timestamp, payload)}
 _CACHE: dict[tuple, tuple[float, dict]] = {}
@@ -174,16 +176,22 @@ def _serve_post_game_wpa(h) -> None:
         payload = dict(body)
         payload["model"] = "trained" if model is not None else "fallback"
         payload["model_version"] = WPA_MODEL_VERSION
+        # Cache the enriched payload (model fields included) so a cached
+        # hit serves the same shape as a fresh response; only the
+        # per-request fields (elapsed_ms / cached) are recomputed.
+        _cache_put(cache_key, dict(payload))
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
         payload["cached"] = False
-        _cache_put(cache_key, dict(body))
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:  # noqa: BLE001 - generic 500 wrapper
         log.warning("api/post-game-wpa: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                    "application/json")
+            # Raw exception text can leak file paths - log it, never
+            # render it (same policy as dashboard/_handler.do_POST).
+            h._send(500, json.dumps({
+                "ok": False, "error": "internal error - see logs",
+            }).encode(), "application/json")
         except Exception:
             pass
 

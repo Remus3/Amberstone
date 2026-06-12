@@ -337,8 +337,11 @@ def _serve_replay_events(h) -> None:
     except Exception as exc:  # noqa: BLE001 - generic 500 wrapper
         log.warning("api/replay/events: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                    "application/json")
+            # Raw exception text can leak file paths - log it, never
+            # render it (same policy as dashboard/_handler.do_POST).
+            h._send(500, json.dumps({
+                "ok": False, "error": "internal error - see logs",
+            }).encode(), "application/json")
         except Exception:
             pass
 
