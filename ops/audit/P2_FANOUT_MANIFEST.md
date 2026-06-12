@@ -25,8 +25,9 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
 ## Waves (priority order; tick when a cycle completes a slice set)
 
 ### W1 runtime spine (live product path) - ~15 slices
-- [ ] core/ 103 files / 29531 LOC (~6 slices; includes frozen moon_proxy,
-      game_snapshot, log_setup)
+- [x] core/ 103 files / 29531 LOC - DONE cycle 7 (7 slices A-G, merge 6273d655;
+      FIX-NOW applied incl 2 security fixes in lessons_receiver; DEFER findings
+      in ops/audit/P2_FINDINGS.md)
 - [ ] dashboard/ 78 / 20629 (~4 slices; routes_* are independent)
 - [ ] coaches/ 27 / 8657 (~2 slices)
 - [ ] app/ + game_reader/ + modes/ + lcu/ + lib/ + vision_server/ +

@@ -1,0 +1,44 @@
+{
+  "run_id": "p2w1-core-cycle7",
+  "check_ci": false,
+  "slices": [
+    {"id": "A", "claim": "spine: TFT snapshot copy, legacy token fallback removed, champ-index race, flush requeue",
+     "files": [
+       {"path": "core/game_snapshot.py", "must_contain": ["_snapshot_copy"]},
+       {"path": "core/match_metrics.py", "must_contain": ["_REQUEUE_MAX"]},
+       {"path": "tests/test_p2w1_core_a.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "B", "claim": "coach: coaching_timestamps non-str mode guard, decision_detector ASCII+dead-code, prompt_sanitize docstring",
+     "files": [
+       {"path": "tests/test_p2w1_core_b.py", "must_contain": ["def test_"]},
+       {"path": "core/coaching_timestamps.py", "must_contain": ["isinstance"]}
+     ]},
+    {"id": "C", "claim": "wpa catalogs resolve current.txt dynamically",
+     "files": [
+       {"path": "core/item_wpa.py", "must_contain": ["current.txt"]},
+       {"path": "core/rune_wpa.py", "must_contain": ["latest_pulled"]},
+       {"path": "tests/test_p2w1_core_c.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "D", "claim": "postgame: death_patterns count degrade, synergy cache prune, damage_mix weakref, aftergame logging",
+     "files": [
+       {"path": "core/damage_mix.py", "must_contain": ["weakref"]},
+       {"path": "tests/test_p2w1_core_d.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "E", "claim": "vision: tesseract timeouts, atomic regions write, token docs",
+     "files": [
+       {"path": "core/vision_tesseract.py", "must_contain": ["_TESS_TIMEOUT_S"]},
+       {"path": "tests/test_p2w1_core_e.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "F", "claim": "infra: polled_json retry, hotkeys atomic write, obs drain, cost_tracker safe default, live_metrics lock",
+     "files": [
+       {"path": "core/polled_json.py", "must_contain": ["PermissionError"]},
+       {"path": "core/obs_publisher.py", "must_contain": ["_drain_pending", "eventSubscriptions"]},
+       {"path": "tests/test_p2w1_core_f.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "G", "claim": "bridge/lessons: peer sanitizer, frontmatter injection guard, atomic index writes, sender KeyError",
+     "files": [
+       {"path": "core/lessons_receiver.py", "must_contain": ["_safe_peer", "_fm_scalar"]},
+       {"path": "tests/test_p2w1_core_g.py", "must_contain": ["def test_"]}
+     ]}
+  ]
+}
