@@ -1,0 +1,71 @@
+{
+  "run_id": "p2w1-core-cycle7",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15285,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "?? ops/audit/p2w1_truth_gate_report.json"
+    ],
+    "head": "09184ff3 feat(audit): deep-audit cycle 7 P2 W1 core fanout (item 401) - slices A-G fixes + findings ledger + loop-safe obs tests"
+  },
+  "ci": {
+    "status": "skipped"
+  },
+  "slices": [
+    {
+      "id": "A",
+      "claim": "spine: TFT snapshot copy, legacy token fallback removed, champ-index race, flush requeue",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B",
+      "claim": "coach: coaching_timestamps non-str mode guard, decision_detector ASCII+dead-code, prompt_sanitize docstring",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "C",
+      "claim": "wpa catalogs resolve current.txt dynamically",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "D",
+      "claim": "postgame: death_patterns count degrade, synergy cache prune, damage_mix weakref, aftergame logging",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "E",
+      "claim": "vision: tesseract timeouts, atomic regions write, token docs",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "F",
+      "claim": "infra: polled_json retry, hotkeys atomic write, obs drain, cost_tracker safe default, live_metrics lock",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "G",
+      "claim": "bridge/lessons: peer sanitizer, frontmatter injection guard, atomic index writes, sender KeyError",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}
