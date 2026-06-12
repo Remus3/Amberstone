@@ -170,7 +170,7 @@ def find_neg_match(triggers: Iterable[str]) -> Optional[str]:
 def _ack(lesson_id: str, decision: str, rationale: str,
          memory_path: Optional[str] = None,
          took: bool = False, peer: str = "peer") -> tuple[bool, str]:
-    """POST a kind=result ack to the peer per §5 of the schema."""
+    """POST a kind=result ack to the peer per section 5 of the schema."""
     try:
         from core import bridge
     except Exception as exc:
@@ -243,7 +243,7 @@ def pull() -> PullReport:
             auto_handled.append(entry)
             continue
 
-        # Gate 2: does_not_apply_when (pre-triage filter, per §4)
+        # Gate 2: does_not_apply_when (pre-triage filter, per section 4)
         neg = body.get("does_not_apply_when") or []
         match = find_neg_match(neg) if isinstance(neg, list) else None
         if match:
@@ -279,7 +279,7 @@ _FM_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
 def _strip_origin_frontmatter(full_md: str) -> str:
     """Return the body of the lesson, dropping the origin's frontmatter
     block. Receiver prepends its own provenance frontmatter."""
-    m = _FM_RE.match(full_md.lstrip("﻿"))
+    m = _FM_RE.match(full_md.lstrip("\ufeff"))
     if not m:
         return full_md
     return m.group(2)
@@ -294,9 +294,22 @@ def _short_id(lesson_id: str) -> str:
     return re.sub(r"[^0-9a-z]", "", lesson_id.lower())[-6:] or "000000"
 
 
+def _safe_peer(peer: str) -> str:
+    """Filesystem-safe peer token. The envelope `source` is remote-authored;
+    never let it carry path separators, dots, or newlines into a filename
+    or frontmatter line (path-traversal / injection surface)."""
+    return re.sub(r"[^a-z0-9]", "", (peer or "").lower())[:32] or "peer"
+
+
+def _fm_scalar(value: str) -> str:
+    """Collapse remote-authored text to a single frontmatter-safe line.
+    Newlines in title/description would otherwise inject frontmatter keys."""
+    return " ".join(str(value).split())
+
+
 def _provenance_filename(mem_type: str, peer: str, lesson_id: str) -> str:
     safe_type = re.sub(r"[^a-z]", "", (mem_type or "lesson").lower()) or "lesson"
-    return f"{safe_type}_synced_{peer}_{_short_id(lesson_id)}.md"
+    return f"{safe_type}_synced_{_safe_peer(peer)}_{_short_id(lesson_id)}.md"
 
 
 def _build_memory_file(envelope: dict, decision: str,
@@ -305,25 +318,27 @@ def _build_memory_file(envelope: dict, decision: str,
     (path, frontmatter_name, file_text)."""
     body = envelope.get("body") or {}
     peer = envelope.get("source") or "peer"
+    safe_peer = _safe_peer(peer)
     lesson_id = envelope["id"]
     mem_type = body.get("mem_type") or "reference"
-    title = body.get("title") or lesson_id
-    description = body.get("description") or title
+    safe_type = re.sub(r"[^a-z]", "", mem_type.lower()) or "reference"
+    title = _fm_scalar(body.get("title") or lesson_id)
+    description = _fm_scalar(body.get("description") or title)
     full_md = body.get("full_md") or ""
     origin_body = _strip_origin_frontmatter(full_md)
 
-    fm_name = f"{title} (synced from {peer})"
+    fm_name = f"{title} (synced from {safe_peer})"
     status = DECISION_TO_STATUS[decision]
 
     fm_lines = [
         "---",
         f"name: {fm_name}",
         f"description: {description}",
-        f"type: {mem_type}",
+        f"type: {safe_type}",
         "cross_project: false",
-        f"synced_from: {peer}",
+        f"synced_from: {safe_peer}",
         f"synced_at: {int(time.time())}",
-        f"synced_lesson_id: {lesson_id}",
+        f"synced_lesson_id: {_fm_scalar(lesson_id)}",
         f"status: {status}",
         "---",
         "",
@@ -358,7 +373,11 @@ def _append_to_memory_index(line: str) -> bool:
     if not text.endswith("\n"):
         text += "\n"
     text += line
-    MEMORY_INDEX.write_text(text, encoding="utf-8")
+    # Atomic write (project rule) - an interrupted plain write_text would
+    # truncate the operator's MEMORY.md index.
+    tmp = MEMORY_INDEX.with_suffix(MEMORY_INDEX.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(MEMORY_INDEX)
     return True
 
 
@@ -388,7 +407,10 @@ def post_decision(lesson_id: str, decision: str, rationale: str,
         path, fm_name, text = _build_memory_file(
             envelope, decision, receiver_notes or rationale)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        # Atomic write (project rule): tmp + replace.
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(path)
         memory_path = str(path)
         body = envelope.get("body") or {}
         line = _index_pointer(path.name, fm_name, body.get("description") or fm_name)
