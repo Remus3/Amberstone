@@ -56,11 +56,17 @@ def top_patterns(path: pathlib.Path | None = None) -> list[dict]:
             conf = float(meta.get("confidence", 0.0))
         except (TypeError, ValueError):
             conf = 0.0
+        try:
+            count = int(meta.get("count", 0))
+        except (TypeError, ValueError):
+            # Same fail-soft as rate/confidence: a malformed count (null,
+            # string garbage) degrades to 0 instead of raising.
+            count = 0
         out.append({
             "key": key,
             "label": meta.get("label", key),
             "description": meta.get("description", ""),
-            "count": int(meta.get("count", 0)),
+            "count": count,
             "rate": rate,
             "confidence": conf,
         })
