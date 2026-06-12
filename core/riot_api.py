@@ -671,7 +671,3 @@ __all__ = [
     "reload_api_key",
     "summarize_recent",
 ]
-
-
-# ruff: noqa: F401  (Any import retained for downstream type hints)
-_ = Any  # placate ruff/pyflakes when Any only appears in docstrings
