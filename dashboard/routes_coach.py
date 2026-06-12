@@ -20,6 +20,18 @@ from dashboard._dispatch import equals, prefix
 log = logging.getLogger("rc.web_dashboard")
 
 
+def _limit_param(h, default: int, lo: int = 1, hi: int = 200) -> int:
+    """Clamped ?limit= query param. Cycle-8 audit (slice B): a malformed
+    value (limit=abc) used to ValueError -> 500 the whole endpoint;
+    degrade to the documented default instead."""
+    try:
+        qs = parse_qs(urlparse(h.path).query)
+        limit = int((qs.get("limit") or [str(default)])[0])
+    except (TypeError, ValueError):
+        limit = default
+    return max(lo, min(limit, hi))
+
+
 def _serve_cost(h) -> None:
     # Daily spend ledger from core.cost_tracker. Tile data source.
     try:
@@ -41,9 +53,7 @@ def _serve_coach_trace(h) -> None:
     # Most recent coach calls (prompt + response + tokens). Used by
     # the "why did the coach say that?" dashboard tab.
     try:
-        qs = parse_qs(urlparse(h.path).query)
-        limit = int((qs.get("limit") or ["50"])[0])
-        limit = max(1, min(limit, 200))
+        limit = _limit_param(h, default=50)
         from core.coach_trace import read_recent as _read_recent
         h._send(200, json.dumps({"records": _read_recent(limit)}).encode("utf-8"),
                 "application/json")
@@ -56,9 +66,8 @@ def _serve_coach_trace(h) -> None:
 def _serve_replay_matches(h) -> None:
     # AUDIT 2026-04-28 (suggestion 2.3): replay scrubber match list.
     try:
+        limit = _limit_param(h, default=25)
         qs = parse_qs(urlparse(h.path).query)
-        limit = int((qs.get("limit") or ["25"])[0])
-        limit = max(1, min(limit, 200))
         queue = (qs.get("queue") or [""])[0]
         from core.replay_history import list_matches as _lm
         out = _lm(limit=limit, queue_filter=int(queue) if queue.isdigit() else None)
@@ -140,7 +149,7 @@ def _serve_speak_post(h, payload) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/speak: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
                 "application/json")
 
 
@@ -158,7 +167,7 @@ def _serve_champ_select_coach_post(h, payload) -> None:
         h._send(200, json.dumps(result).encode(), "application/json")
     except Exception as exc:
         log.warning("api/champ-select-coach: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
                 "application/json")
 
 
