@@ -68,6 +68,13 @@ _INDEX_DDL = [
 # inferred_wide≈0.4. These are the ONLY accepted values.
 PROVENANCE_TIERS = ("source_truth", "inferred_tight", "inferred_wide")
 
+# Re-queue ceiling for Recorder.flush failure recovery (deep-audit
+# P2-W1-A, 2026-06-11). A transient DB error re-queues the unwritten
+# rows; this cap (oldest dropped first) bounds memory if the DB stays
+# broken. ~90 metric rows per snapshot x ~50 snapshots per match keeps
+# a full match comfortably under the cap.
+_REQUEUE_MAX = 5000
+
 # Canonical milestone tags - the coach emits one of these at the right
 # moment so post-game tooling can slice the match at well-known phases.
 CANONICAL_MILESTONES = frozenset([
@@ -173,27 +180,45 @@ class Recorder:
             self._buf.append(row)
 
     def flush(self) -> int:
-        """Commit buffered rows. Returns number of rows written."""
+        """Commit buffered rows. Returns number of rows written.
+
+        AUDIT 2026-06-11 (deep-audit P2-W1-A): on a write failure
+        (sqlite "database is locked" class) the rows are re-queued at
+        the FRONT of the buffer instead of being dropped, so the next
+        flush retries them in original order. The exception still
+        propagates (callers - metric_streamer via live_metrics.stream -
+        already contain it). Re-queue is capped at _REQUEUE_MAX rows
+        (oldest dropped) so a permanently failing DB cannot grow the
+        buffer without bound.
+        """
         with self._lock:
             if not self._buf:
                 return 0
             rows, self._buf = self._buf, []
-        conn = sqlite3.connect(DB_PATH)
         try:
-            conn.executemany(
-                """
-                INSERT INTO match_metrics
-                  (match_id, session_id, champion, mode,
-                   metric_key, metric_value, metric_type,
-                   recorded_at_game_time_s, recorded_at_wall_time, milestone_tag,
-                   provenance)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)
-                """,
-                rows,
-            )
-            conn.commit()
-        finally:
-            conn.close()
+            conn = sqlite3.connect(DB_PATH)
+            try:
+                conn.executemany(
+                    """
+                    INSERT INTO match_metrics
+                      (match_id, session_id, champion, mode,
+                       metric_key, metric_value, metric_type,
+                       recorded_at_game_time_s, recorded_at_wall_time, milestone_tag,
+                       provenance)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    rows,
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception:
+            with self._lock:
+                requeued = rows + self._buf
+                if len(requeued) > _REQUEUE_MAX:
+                    requeued = requeued[-_REQUEUE_MAX:]
+                self._buf = requeued
+            raise
         return len(rows)
 
     def buffered(self) -> int:

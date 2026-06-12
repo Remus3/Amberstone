@@ -115,11 +115,23 @@ def _fire_listeners(snap: Snapshot) -> None:
 
 
 def _auth_headers() -> dict:
+    """Resolve the relay auth header via core.vision_token.
+
+    AUDIT 2026-06-11 (deep-audit P2-W1-A): the previous fallback returned
+    the retired hardcoded legacy token, silently un-retiring the constant
+    that vision_token proposal 1.7 (2026-04-28) removed. A running relay
+    server resolves its token through the same raising resolver
+    (vision_server/_config.py), so the legacy constant could never
+    authenticate against a live server anyway - it only masked a broken
+    deploy. On resolver failure we now send an empty token: the request
+    401s, the snapshot fails soft, and the 0.5s poll loop retries.
+    """
     try:
         from core.vision_token import get_vision_token
         return {"X-RC-Token": get_vision_token()}
-    except Exception:
-        return {"X-RC-Token": "8e8f131e212b329438218eca27372dde"}
+    except Exception as exc:
+        _log.debug("liveclient_cache: vision token unresolved: %s", exc)
+        return {"X-RC-Token": ""}
 
 
 def _fetch_once() -> Snapshot:

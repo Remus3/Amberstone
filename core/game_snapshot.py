@@ -603,7 +603,11 @@ class TftSnapshot:
         s.xp_needed    = int(d.get("xp_needed", 0))
         s.xp_remaining = int(d.get("xp_remaining", 0))
         s.tempo_note   = d.get("tempo_note", "")
-        s.raw_state    = d
+        # AUDIT 2026-06-11 (deep-audit P2-W1-A): producer-side defensive
+        # copy - parity with RiftSnapshot/AramSnapshot. The 2026-04-28
+        # copy fix landed on Rift+Aram but missed TFT, leaving raw_state
+        # a live reference to the producer's working dict.
+        s.raw_state    = _snapshot_copy(d)
         return s
 
     def to_dict(self) -> Dict[str, Any]:
