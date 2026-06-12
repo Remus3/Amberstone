@@ -53,6 +53,16 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-11 - DEEP-AUDIT cycle 5: P2a code-audit seeds x4 [item 399]
+
+- RC-VisionServer schtask root-caused (boot port-race loser vs dashboard/server.py:219 self-heal child; exit-1 anomaly) -> DELETED, XML archived docs/_archive/, 9 touchpoints synced (CLAUDE.md, OPERATIONS row, start_claude.ps1, legion_on/off, docstrings, ADR-003 dated update). Vision :8889 alive untouched.
+- resource_manager shutdown(): logging.raiseExceptions toggled off for the drain (finally-restored); kills the "--- Logging error ---" pytest-tail noise. 3 tests RED->GREEN.
+- Bare-py duality: gemini ruled OPTION 4 (absolute canonical path + permanent ban; consult ops/loop/control/_gemini_consult_p2.txt). 297->0 offenders; guard tests/test_bare_py_ban.py; live .claude hooks/skills swept (51 repl). Deferred tail allowlisted + in P0_WORKMAP (Share mirror, tools docstrings, tools/*.cmd, scripts, ROADMAP).
+- web/js: 22 semver fallback literals -> DDRAGON_FALLBACK_VERSION (lib/items_index.js); guard bans scattered semver in web/js.
+- Gate PROCEED 15185p/0f/7s exit 0 (p2a_truth_gate_report.json; +5 = new tests exactly). Octopus merge 3b6679fb. NEXT P2b: per-file audit fanout + DS fixture-pin consolidation + .pytest_cache policy + bare-py deferred tail.
+
+---
+
 # 2026-06-11 - DEEP-AUDIT cycle 4: P1c log retention + KEEP verdicts [item 398]
 
 - logs/agents 1848 task-*.log root-caused to _supervisor_ephemeral.py:98 (no retention, ~235/day). prune_task_logs (7d cap, rollups untouched, fail-soft) on every spawn + 3 tests; backlog cleared; RC-Phase3-Supervisor bounced (stale-code rule) - fresh boot 11:46:34.
