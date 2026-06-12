@@ -160,7 +160,8 @@ def _serve_top8_post(h, payload) -> None:
         _save_top8(sanitized)
     except Exception as exc:
         log.warning("top8 save: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        # Raw exception text stays in the log only (CLAUDE.md error rule).
+        h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
                 "application/json")
         return
     h._send(200, json.dumps({"ok": True, "entries": sanitized}).encode(),
@@ -177,37 +178,21 @@ def _serve_top8_post(h, payload) -> None:
 # (per-game grade + KDA only, no per-participant join); the rewind DB
 # has cleaner stats for the Mains panel.
 
-_DDRAGON_VERSION_DEFAULT = "16.9.1"
-
-
-def _ddragon_version() -> str:
-    """Resolve the patch version DDragon assets are saved under. Pulled
-    from /api/health/all (daemon_slayer.patch) when available; falls
-    back to the last-known patch."""
-    try:
-        import ssl as _ssl
-        import urllib.request as _ur
-        ctx = _ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = _ssl.CERT_NONE
-        with _ur.urlopen("https://127.0.0.1:8888/api/health/all",
-                         timeout=0.5, context=ctx) as r:
-            body = json.loads(r.read())
-        v = ((body.get("daemon_slayer") or {}).get("patch"))
-        if v:
-            return str(v)
-    except Exception:
-        pass
-    return _DDRAGON_VERSION_DEFAULT
+# Cycle-8 audit: the pre-s209 `_ddragon_version()` helper (a self-HTTP
+# probe of /api/health/all with a stale "16.9.1" fallback pin) lost its
+# last caller when the Mains icon path moved to /icons/champions/ and
+# was removed as dead code.
 
 
 def _resolve_operator_puuid(conn: sqlite3.Connection) -> str | None:
     """Most-frequent puuid in participants is the operator's. Mirrors
     routes_pickban._resolve_operator_puuid; kept local to avoid a
     cross-module import."""
+    # ``puuid ASC`` tertiary keeps a COUNT(*) tie deterministic
+    # (mirrors routes_pickban._resolve_operator_puuid).
     cur = conn.execute(
         "SELECT puuid FROM participants "
-        "GROUP BY puuid ORDER BY COUNT(*) DESC LIMIT 1"
+        "GROUP BY puuid ORDER BY COUNT(*) DESC, puuid ASC LIMIT 1"
     )
     row = cur.fetchone()
     return row[0] if row else None
@@ -340,18 +325,27 @@ def _serve_mains_get(h) -> None:
     """GET /api/mains[?puuid=...]. With an explicit puuid, returns
     that user's mains (party-tab use case). Without one, falls back
     to the operator's puuid (most-frequent in participants)."""
-    qs = parse_qs(urlparse(h.path).query)
-    puuid = (qs.get("puuid") or [""])[0].strip()
-    rows = _operator_mains(puuid or None, top_n=8)
-    # Mastery layer is operator-only; party members have their own
-    # mastery via LCU agent but we don't surface it here yet.
-    if not puuid:
-        rows = _mastery_overlay(rows, _read_live_mastery())
-    h._send(200, json.dumps({
-        "ok": True,
-        "puuid": puuid,
-        "main_champs": rows,
-    }).encode(), "application/json")
+    try:
+        qs = parse_qs(urlparse(h.path).query)
+        puuid = (qs.get("puuid") or [""])[0].strip()
+        rows = _operator_mains(puuid or None, top_n=8)
+        # Mastery layer is operator-only; party members have their own
+        # mastery via LCU agent but we don't surface it here yet.
+        if not puuid:
+            rows = _mastery_overlay(rows, _read_live_mastery())
+        h._send(200, json.dumps({
+            "ok": True,
+            "puuid": puuid,
+            "main_champs": rows,
+        }).encode(), "application/json")
+    except Exception as exc:
+        # Cycle-8 audit: this was the only slice handler doing real work
+        # without a wrapper - an unexpected exception escaped do_GET and
+        # reset the connection instead of answering.
+        log.warning("api/mains: %s", exc)
+        h._send(500, json.dumps(
+            {"ok": False, "error": "internal error - see logs"}).encode(),
+            "application/json")
 
 
 # ── route table ──────────────────────────────────────────────────────
