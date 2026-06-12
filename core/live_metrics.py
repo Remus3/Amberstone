@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from pathlib import Path
 
 logger = logging.getLogger("rc.live_metrics")
@@ -49,6 +50,10 @@ _ENV_ENABLED = os.environ.get("RC_LIVE_METRICS", "0") == "1"
 # whenever game_time_s drops by more than this many seconds (a new game reset).
 _NEW_GAME_CLOCK_DROP_S = 30.0
 _synthetic_seq = 0
+# Coach ticks arrive from multiple worker threads; the seq increment is a
+# read-modify-write, so two concurrent mints could otherwise share an id
+# (merging two matches' metric rows under one synthetic match_id).
+_seq_lock = threading.Lock()
 
 # Lazy MetricStreamer import - only attempted when first needed, cached after.
 _MetricStreamer = None
@@ -111,9 +116,11 @@ def _resolve_match_id(holder, cur: dict, state: dict, mode: str) -> str:
     last_gt = getattr(holder, "_lm_last_gt", None)
     session = getattr(holder, "_lm_session", None)
     if session is None or (last_gt is not None and gt + _NEW_GAME_CLOCK_DROP_S < last_gt):
-        _synthetic_seq += 1
+        with _seq_lock:
+            _synthetic_seq += 1
+            seq = _synthetic_seq
         champ = cur.get("champion") or state.get("champion") or "champ"
-        session = f"sess_{mode}_{champ}_{_synthetic_seq}"
+        session = f"sess_{mode}_{champ}_{seq}"
         holder._lm_session = session
     holder._lm_last_gt = gt
     return session
