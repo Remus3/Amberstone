@@ -309,22 +309,48 @@ class CostTracker:
 
     # --- Spend cap (5.4) --------------------------------------------------
 
+    def _budget_usd(self, cfg: Optional[dict] = None) -> float:
+        """Parse the configured daily budget; 0.0 means unlimited.
+
+        A malformed value used to raise ValueError straight out of
+        allow_call()/banner_state(); every caller swallows exceptions, so
+        the cap silently stopped being enforced and /api/cost 500'd.
+        Now it is logged once per call and treated as unlimited (the same
+        effective outcome the swallowed exception produced, made visible).
+        """
+        cfg = cfg if cfg is not None else self._cfg()
+        raw = cfg.get(CFG_DAILY_BUDGET_USD)
+        if not raw:
+            return 0.0
+        try:
+            return max(0.0, float(raw))
+        except (TypeError, ValueError):
+            _log.warning("cost_tracker: malformed %s=%r - treating as "
+                         "unlimited", CFG_DAILY_BUDGET_USD, raw)
+            return 0.0
+
     def allow_call(self) -> bool:
-        budget = self._cfg().get(CFG_DAILY_BUDGET_USD)
-        if not budget or float(budget) <= 0:
+        budget = self._budget_usd()
+        if budget <= 0:
             return True
-        return self.daily_spend().get("total_usd", 0.0) < float(budget)
+        return self.daily_spend().get("total_usd", 0.0) < budget
 
     def banner_state(self) -> str:
         cfg = self._cfg()
-        budget = cfg.get(CFG_DAILY_BUDGET_USD)
-        if not budget or float(budget) <= 0:
+        budget = self._budget_usd(cfg)
+        if budget <= 0:
             return "ok"
         cur = self.daily_spend().get("total_usd", 0.0)
-        warn_frac = float(cfg.get(CFG_WARN_FRAC, DEFAULT_WARN_FRAC))
-        if cur >= float(budget):
+        try:
+            warn_frac = float(cfg.get(CFG_WARN_FRAC, DEFAULT_WARN_FRAC))
+        except (TypeError, ValueError):
+            _log.warning("cost_tracker: malformed %s=%r - using default %.2f",
+                         CFG_WARN_FRAC, cfg.get(CFG_WARN_FRAC),
+                         DEFAULT_WARN_FRAC)
+            warn_frac = DEFAULT_WARN_FRAC
+        if cur >= budget:
             return "over"
-        if cur >= float(budget) * warn_frac:
+        if cur >= budget * warn_frac:
             return "warn"
         return "ok"
 
