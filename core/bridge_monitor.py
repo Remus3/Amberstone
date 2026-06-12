@@ -55,7 +55,7 @@ class BridgeMonitor:
         self._recent: deque = deque(maxlen=_RECENT_CAP)
         self._hydrate()
 
-    # ── Lifecycle ─────────────────────────────────────────────────────────
+    # -- Lifecycle ---------------------------------------------------------
 
     def start_background(self) -> None:
         """Launch the poller. Prefers AppLoop, falls back to daemon thread."""
@@ -89,7 +89,7 @@ class BridgeMonitor:
                 _log.debug("bridge_monitor task cancel failed on stop: %s", e)
             self._task = None
 
-    # ── State ─────────────────────────────────────────────────────────────
+    # -- State -------------------------------------------------------------
 
     def state(self) -> dict:
         with self._lock:
@@ -142,7 +142,7 @@ class BridgeMonitor:
         except Exception as exc:
             _log.debug("bridge_monitor state write failed: %s", exc)
 
-    # ── Poll loop ─────────────────────────────────────────────────────────
+    # -- Poll loop ---------------------------------------------------------
 
     def _loop(self) -> None:
         while not self._stop.is_set():
