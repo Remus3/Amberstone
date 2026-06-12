@@ -55,6 +55,7 @@ items where relevant. Don't fabricate details not in the data."""
 def _load_match(match_id: str) -> dict[str, Any] | None:
     if not _REWIND_DB.exists():
         return None
+    conn = None
     try:
         conn = sqlite3.connect(_REWIND_DB)
         conn.row_factory = sqlite3.Row
@@ -62,7 +63,6 @@ def _load_match(match_id: str) -> dict[str, Any] | None:
             "SELECT * FROM matches WHERE match_id = ?", (match_id,)
         ).fetchone()
         if not m:
-            conn.close()
             return None
         participants = [dict(r) for r in conn.execute(
             "SELECT * FROM participants WHERE match_id = ?", (match_id,)
@@ -71,11 +71,16 @@ def _load_match(match_id: str) -> dict[str, Any] | None:
             "SELECT * FROM timeline_events WHERE match_id = ? "
             "ORDER BY timestamp_ms LIMIT 600", (match_id,)
         ).fetchall()]
-        conn.close()
         return {"match": dict(m), "participants": participants, "events": events}
     except Exception as exc:
         logger.warning("rewind read failed match=%s: %s", match_id, exc)
         return None
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 def _format_for_prompt(blob: dict[str, Any]) -> str:

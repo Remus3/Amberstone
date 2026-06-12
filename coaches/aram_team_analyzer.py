@@ -215,7 +215,9 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
             logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
     except Exception as exc:
-        out["reason"] = f"(analyzer error: {type(exc).__name__})"
+        # Never surface raw exception details (type or message) in the
+        # user-facing reason field - friendly degrade + log the raw error.
+        out["reason"] = "(analyzer paused - retrying)"
         logger.warning("aram team analyzer: %s", exc)
         return out
 
