@@ -3,10 +3,11 @@
 Resolution order (first hit wins):
   1. Env var ``RC_VISION_TOKEN``.
   2. File ``config/vision_token.txt`` (first line, stripped).
-  3. Hardcoded legacy default.
 
-The legacy default is kept so existing Game-PC relay agents keep
-authenticating until they're re-deployed with the new resolver.
+There is NO hardcoded fallback (the legacy default was retired by the
+2026-04-28 audit, proposal 1.7): a missing token raises RuntimeError at
+import time so a misconfigured deploy fails loud instead of silently
+authenticating every request with a known constant.
 
 ## Rotation procedure
 
@@ -22,9 +23,7 @@ authenticating until they're re-deployed with the new resolver.
   4. Restart the supervisor on Legion (``echo x > restart_trigger.txt``)
      + restart the Game-PC relay agents.
   5. Verify ``get_vision_token_source()`` on both sides returns
-     ``"env"`` or ``"config"`` - not ``"legacy"``.
-  6. Once both sides confirm non-legacy, retire ``_LEGACY_DEFAULT``
-     below (delete the constant and the last fallback branch).
+     ``"env"`` or ``"config"``.
 
 Inspection: ``python -c "from core.vision_token import debug; debug()"``
 prints the active source + first/last chars of the token so you can
@@ -72,8 +71,8 @@ def get_vision_token() -> str:
 
 
 def get_vision_token_source() -> TokenSource:
-    """Return which source produced the active token: ``env``, ``config``,
-    or ``legacy``. Ops can call this to confirm a rotation took effect
+    """Return which source produced the active token: ``env`` or
+    ``config``. Ops can call this to confirm a rotation took effect
     without logging the token itself."""
     return _resolve()[1]
 

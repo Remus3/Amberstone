@@ -226,52 +226,51 @@ def _load_once() -> None:
             if data:
                 _src = "static"
 
-        # Records: normalize fields (shared indexer over live OR static rows)
+        # Records: normalize fields (shared indexer over live OR static rows).
+        # No try/except wrapper: the loop body does no I/O or JSON parsing
+        # (the old OSError/JSONDecodeError catch here was unreachable) and
+        # per-field coercion failures are handled row-by-row below.
         records: list[dict] = []
-        try:
-            for rec in data:
-                if not isinstance(rec, dict):
-                    continue
-                try:
-                    bot_id = int(rec.get("championid1") or 0)
-                    sup_id = int(rec.get("championid2") or 0)
-                except (TypeError, ValueError):
-                    continue
-                if not (bot_id and sup_id):
-                    continue
-                bot_name = id_to_name.get(bot_id) or _name_fallback(bot_id)
-                sup_name = id_to_name.get(sup_id) or _name_fallback(sup_id)
-                if not (bot_name and sup_name):
-                    continue
-                try:
-                    doublewr = float(rec.get("doublewinrate") or 0.0)
-                    iwr1 = float(rec.get("iwinrate1") or 0.0)
-                    iwr2 = float(rec.get("iwinrate2") or 0.0)
-                    irank = int(rec.get("irank") or 0)
-                except (TypeError, ValueError):
-                    continue
-                itemp = _parse_itemp(rec.get("itemp1"))
-                # Sample-size proxy: itemp1 is play-rate share; scale to
-                # wins-count proxy and Laplace-smooth. doublewr * proxy
-                # = wins, proxy = games, alpha = 1.0.
-                sample = max(0.0, itemp * _ITEMP_TO_SAMPLE_SCALE)
-                wins = doublewr * sample
-                smoothed = _sr.laplace_rate(wins, sample, _LAPLACE_ALPHA)
-                norm = {
-                    "bot": bot_name,
-                    "sup": sup_name,
-                    "bot_id": bot_id,
-                    "sup_id": sup_id,
-                    "doublewinrate": doublewr,
-                    "iwinrate_bot": iwr1,
-                    "iwinrate_sup": iwr2,
-                    "itemp_bot": itemp,
-                    "irank": irank,
-                    "smoothed_rate": smoothed,
-                }
-                records.append(norm)
-        except (OSError, json.JSONDecodeError):
-            pass
+        for rec in data:
+            if not isinstance(rec, dict):
+                continue
+            try:
+                bot_id = int(rec.get("championid1") or 0)
+                sup_id = int(rec.get("championid2") or 0)
+            except (TypeError, ValueError):
+                continue
+            if not (bot_id and sup_id):
+                continue
+            bot_name = id_to_name.get(bot_id) or _name_fallback(bot_id)
+            sup_name = id_to_name.get(sup_id) or _name_fallback(sup_id)
+            if not (bot_name and sup_name):
+                continue
+            try:
+                doublewr = float(rec.get("doublewinrate") or 0.0)
+                iwr1 = float(rec.get("iwinrate1") or 0.0)
+                iwr2 = float(rec.get("iwinrate2") or 0.0)
+                irank = int(rec.get("irank") or 0)
+            except (TypeError, ValueError):
+                continue
+            itemp = _parse_itemp(rec.get("itemp1"))
+            # Sample-size proxy: itemp1 is play-rate share; scale to
+            # wins-count proxy and Laplace-smooth. doublewr * proxy
+            # = wins, proxy = games, alpha = 1.0.
+            sample = max(0.0, itemp * _ITEMP_TO_SAMPLE_SCALE)
+            wins = doublewr * sample
+            smoothed = _sr.laplace_rate(wins, sample, _LAPLACE_ALPHA)
+            records.append({
+                "bot": bot_name,
+                "sup": sup_name,
+                "bot_id": bot_id,
+                "sup_id": sup_id,
+                "doublewinrate": doublewr,
+                "iwinrate_bot": iwr1,
+                "iwinrate_sup": iwr2,
+                "itemp_bot": itemp,
+                "irank": irank,
+                "smoothed_rate": smoothed,
+            })
 
         # Build per-side indices, sorted by smoothed_rate DESC for the
         # "given a locked partner, who pairs best with them" queries.

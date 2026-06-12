@@ -21,10 +21,31 @@ import json
 import logging
 import os
 import threading
+import time
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
 _log = logging.getLogger("rc.polled_json")
+
+# os.replace can transiently raise PermissionError (WinError 5) on Windows
+# when a concurrent reader holds the destination open (share-lock during the
+# read; window is usually <100 ms). These files are polled by design, so the
+# contention is routine. Brief retry-with-backoff clears it - same pattern
+# already applied to ops/rc_supervisor.atomic_write_json (2026-05-02) and
+# core/bridge_monitor._write_atomic; see reference_os_replace_winerror5.
+_REPLACE_RETRY_DELAYS_S = (0.025, 0.05, 0.2)
+
+
+def _replace_with_retry(src: Path, dst: Path) -> None:
+    """os.replace with bounded backoff (~275 ms worst case, then re-raise)."""
+    for i in range(len(_REPLACE_RETRY_DELAYS_S) + 1):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i >= len(_REPLACE_RETRY_DELAYS_S):
+                raise
+            time.sleep(_REPLACE_RETRY_DELAYS_S[i])
 
 
 def atomic_write_json(path: Path, payload: Any, *, indent: int = 2) -> None:
@@ -36,7 +57,7 @@ def atomic_write_json(path: Path, payload: Any, *, indent: int = 2) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=indent, ensure_ascii=False),
                    encoding="utf-8")
-    os.replace(tmp, path)
+    _replace_with_retry(tmp, path)
 
 
 def atomic_write_text(path: Path, content: str) -> None:
@@ -48,7 +69,7 @@ def atomic_write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(content, encoding="utf-8")
-    os.replace(tmp, path)
+    _replace_with_retry(tmp, path)
 
 
 def read_json_dict(path: Path, default: Optional[dict] = None) -> dict:

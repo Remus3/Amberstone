@@ -625,12 +625,10 @@ def compute_match_wpa(
 
     state = MatchState()
     events_out: list[dict] = []
-    last_applied_frame_ts: int = -1
 
     # Helper: refresh state's gold/xp from the most recent frame at or
     # before a timestamp.
     def _refresh_state_at(ts_ms: int) -> None:
-        nonlocal last_applied_frame_ts
         rows = _interpolate_frame_for_event(frames, ts_ms)
         if rows is None:
             return

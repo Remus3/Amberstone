@@ -34,6 +34,15 @@ _TESSERACT_DEFAULT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 _TESSERACT_ENV = "RC_TESSERACT_CMD"
 _REGIONS_FILE = _APP_DIR / "data" / "vision_regions.json"
 
+# Hard ceiling on a single tesseract.exe invocation (deep-audit P2-W1-E,
+# 2026-06-11). pytesseract's default timeout=0 waits on the child process
+# UNBOUNDED; one hung tesseract.exe would pin a read_fast_fields pool
+# thread forever and they accumulate across coach ticks. On expiry
+# pytesseract kills the child and raises RuntimeError, which the existing
+# per-field except paths absorb (field omitted for that tick). Normal OCR
+# is ~50ms; 10s is a generous loaded-box margin, not a tuning knob.
+_TESS_TIMEOUT_S = 10.0
+
 # AUDIT 2026-04-28 (proposal 1.6): regions are calibrated against this base
 # resolution; bboxes scale proportionally for any other detected frame size.
 # Override per-deployment by adding a top-level `_base: [W, H]` entry in
@@ -86,12 +95,13 @@ def _regions() -> dict:
         _REGIONS_CACHE = dict(_DEFAULT_REGIONS)
         _BASE_CACHE = (BASE_W, BASE_H)
         try:
-            _REGIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            _REGIONS_FILE.write_text(
-                json.dumps(_REGIONS_CACHE, indent=2), encoding="utf-8"
-            )
-        except Exception:
-            pass
+            # Atomic tmp+replace (deep-audit P2-W1-E): the file is read by
+            # other threads/processes (reload_regions, calibration tools);
+            # a bare write_text could expose a partial file.
+            from core.polled_json import atomic_write_json
+            atomic_write_json(_REGIONS_FILE, _REGIONS_CACHE)
+        except Exception as exc:
+            _log.debug("vision_regions.json defaults write failed: %s", exc)
     return _REGIONS_CACHE
 
 
@@ -164,6 +174,7 @@ def _ocr_int(img, allowlist: str = "0123456789") -> Optional[int]:
     s = pytesseract.image_to_string(
         _preprocess(img),
         config=f"--oem 3 --psm 7 -c tessedit_char_whitelist={allowlist}",
+        timeout=_TESS_TIMEOUT_S,
     ).strip()
     digits = "".join(ch for ch in s if ch.isdigit())
     return int(digits) if digits else None
@@ -175,6 +186,7 @@ def _ocr_timer(img) -> Optional[str]:
     s = pytesseract.image_to_string(
         _preprocess(img),
         config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789:",
+        timeout=_TESS_TIMEOUT_S,
     ).strip()
     if ":" in s:
         parts = s.split(":")
@@ -191,6 +203,7 @@ def _ocr_kda(img) -> Optional[str]:
     s = pytesseract.image_to_string(
         _preprocess(img),
         config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789/",
+        timeout=_TESS_TIMEOUT_S,
     ).strip()
     parts = [p for p in s.split("/") if p.isdigit()]
     if len(parts) == 3:
@@ -206,6 +219,7 @@ def _ocr_hp_mana(img) -> Optional[int]:
     s = pytesseract.image_to_string(
         _preprocess(img),
         config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789/",
+        timeout=_TESS_TIMEOUT_S,
     ).strip()
     parts = [p for p in s.split("/") if p.isdigit()]
     if parts:
@@ -335,6 +349,7 @@ def _ocr_int_stack(img, channel: Optional[str] = None,
         pp = big.point(lambda p: 255 if p > threshold else 0)
     s = pytesseract.image_to_string(
         pp, config="--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789",
+        timeout=_TESS_TIMEOUT_S,
     ).strip()
     out = []
     for line in s.splitlines():
@@ -358,6 +373,7 @@ def _ocr_colored_int(img, channel: str = "B", threshold: int = 130) -> Optional[
     bw = big.point(lambda p: 255 if p > threshold else 0)
     s = pytesseract.image_to_string(
         bw, config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789",
+        timeout=_TESS_TIMEOUT_S,
     ).strip()
     digits = "".join(ch for ch in s if ch.isdigit())
     return int(digits) if digits else None
@@ -370,6 +386,7 @@ def _ocr_cooldown(img) -> Optional[float]:
     s = pytesseract.image_to_string(
         _preprocess(img),
         config="--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.",
+        timeout=_TESS_TIMEOUT_S,
     ).strip()
     s = s.replace(" ", "")
     if not s or s == "." or all(c == "." for c in s):
@@ -470,6 +487,7 @@ def _parse_field(name: str, crop, hp_known: Optional[int] = None):
         import pytesseract
         s = pytesseract.image_to_string(
             _preprocess(crop), config="--oem 3 --psm 7",
+            timeout=_TESS_TIMEOUT_S,
         ).strip()
         lead = ""
         for ch in s:

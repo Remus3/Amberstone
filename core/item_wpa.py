@@ -62,9 +62,33 @@ from core.smoothed_rates import shrink
 
 log = logging.getLogger("rc.item_wpa")
 
-# Default catalog used to identify completed legendaries. Verified at
-# patch 16.11.1 to yield ~125 SR-legal completed legendaries.
-_ITEMS_JSON = Path("data") / "daemon_slayer" / "16.11.1" / "items.json"
+# Catalog used to identify completed legendaries. The DEFAULT resolves the
+# patch-current snapshot via data/daemon_slayer/current.txt (the canonical
+# DS patch marker) so the catalog tracks live patch bumps; _ITEMS_JSON is
+# the pinned authoring-time fallback (verified at 16.11.1 to yield ~125
+# SR-legal completed legendaries) used only when the marker or the
+# patch-current file is absent (fresh checkout).
+_DS_DIR = Path("data") / "daemon_slayer"
+_ITEMS_JSON = _DS_DIR / "16.11.1" / "items.json"
+
+
+def _default_items_json() -> Path:
+    """Patch-current items catalog path, pinned-snapshot fallback.
+
+    Reads ``current.txt`` and prefers ``<patch>/items.json`` when that file
+    exists; otherwise returns the pinned ``_ITEMS_JSON`` (the pre-fix
+    behavior). Fail-soft: any IO error degrades to the pin (deep-audit P2
+    W1-C - the fixed 16.11.1 pin went stale when the live patch bumped).
+    """
+    try:
+        patch = (_DS_DIR / "current.txt").read_text(encoding="utf-8").strip()
+        if patch:
+            cand = _DS_DIR / patch / "items.json"
+            if cand.is_file():
+                return cand
+    except OSError:
+        pass
+    return _ITEMS_JSON
 
 # Tags that disqualify an item from the "completed legendary" set even if
 # the gold/depth heuristics otherwise pass.
@@ -95,7 +119,7 @@ def load_legendary_ids(items_json: Path | None = None) -> dict[int, str]:
 
     Fail-soft: a missing or unparseable catalog returns ``{}``.
     """
-    path = Path(items_json) if items_json is not None else _ITEMS_JSON
+    path = Path(items_json) if items_json is not None else _default_items_json()
     try:
         with path.open("r", encoding="utf-8") as f:
             raw = json.load(f)

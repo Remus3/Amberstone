@@ -200,6 +200,11 @@ class OBSPublisher:
                         if text and text != self._last_pushed:
                             await self._set_text(ws, source_name, text)
                             self._last_pushed = text
+                        # OBS replies (op=7) to every request even though we
+                        # never await them; drain so the recv queue cannot
+                        # fill up and stall the connection (see
+                        # _drain_pending).
+                        await self._drain_pending(ws)
                         await asyncio.sleep(interval_s)
             except (OSError, asyncio.TimeoutError):
                 # OBS not running, wrong port, or handshake timed out.
@@ -231,7 +236,10 @@ class OBSPublisher:
         if hello.get("op") != 0:
             return False
         d = hello.get("d") or {}
-        identify = {"op": 1, "d": {"rpcVersion": 1}}
+        # eventSubscriptions=0: the publisher only pushes SetInputSettings
+        # and never consumes events. The OBS-WS default (omitted field) is
+        # subscribe-to-ALL, which floods the never-read recv queue.
+        identify = {"op": 1, "d": {"rpcVersion": 1, "eventSubscriptions": 0}}
         auth = d.get("authentication")
         if auth:
             if not password:
@@ -253,6 +261,23 @@ class OBSPublisher:
         except Exception:
             return False
         return idd.get("op") == 2
+
+    async def _drain_pending(self, ws) -> None:
+        """Discard buffered incoming messages (request responses, stray
+        events). `_set_text` is fire-and-forget, but OBS still answers
+        every request with an op=7 RequestResponse; unread messages pile
+        up in the websockets recv queue until backpressure pauses the
+        transport and the keepalive ping times the connection out
+        (connection flap every ~minute of steady pushes). Draining once
+        per tick keeps the queue empty. Never raises - a dead connection
+        surfaces on the next send/recv in the caller."""
+        try:
+            while True:
+                await asyncio.wait_for(ws.recv(), timeout=0.05)
+        except (asyncio.TimeoutError, TimeoutError):
+            return
+        except Exception:
+            return
 
     async def _set_text(self, ws, source_name: str, text: str) -> None:
         """Fire a SetInputSettings request to update the Text source's
