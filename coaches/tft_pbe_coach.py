@@ -12,11 +12,12 @@ Architecture:
 """
 
 import sys
-import json
 import logging
 import threading
 import time
 from pathlib import Path
+
+from coaches._base_coach import safe_write
 
 logger = logging.getLogger("rc.coaches.tft_pbe")
 
@@ -173,6 +174,6 @@ class Coach:
             try:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 if not path.exists():
-                    path.write_text(json.dumps(default, indent=2), encoding="utf-8")
+                    safe_write(path, default)
             except Exception as exc:
                 logger.warning("Could not create PBE data file %s: %s", path, exc)

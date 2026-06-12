@@ -20,6 +20,7 @@ import abc
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import ssl
@@ -61,30 +62,38 @@ def load_json(path: Path) -> dict:
     return {}
 
 
+# Serializes same-process writers (coach thread + vision worker target the
+# same artifact and share one .tmp name; unserialized write_text calls can
+# interleave and corrupt the tmp before replace). Cross-process safety still
+# comes from the atomic replace itself.
+_SAFE_WRITE_LOCK = threading.Lock()
+
+
 def safe_write(path: Path, data: dict) -> None:
     """Atomic JSON write via .tmp -> replace.
     Retries up to 3x on Windows WinError 5 (Defender/lock races).
     """
     tmp = path.with_suffix(".tmp")
-    try:
-        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    except Exception as exc:
-        _log.error("safe_write write %s: %s", path.name, exc)
-        return
-    for attempt in range(3):
+    with _SAFE_WRITE_LOCK:
         try:
-            tmp.replace(path)
-            return
-        except PermissionError:
-            if attempt == 2:
-                _log.warning("safe_write %s: gave up after 3 retries", path.name)
-                try: tmp.unlink(missing_ok=True)
-                except Exception: pass
-            else:
-                import time as _tw; _tw.sleep(0.015 * (2 ** attempt))
+            tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception as exc:
-            _log.error("safe_write %s: %s", path.name, exc)
+            _log.error("safe_write write %s: %s", path.name, exc)
             return
+        for attempt in range(3):
+            try:
+                tmp.replace(path)
+                return
+            except PermissionError:
+                if attempt == 2:
+                    _log.warning("safe_write %s: gave up after 3 retries", path.name)
+                    try: tmp.unlink(missing_ok=True)
+                    except Exception: pass
+                else:
+                    import time as _tw; _tw.sleep(0.015 * (2 ** attempt))
+            except Exception as exc:
+                _log.error("safe_write %s: %s", path.name, exc)
+                return
 
 
 def mirror_live_stats(payload: dict, state: dict) -> None:
@@ -145,6 +154,21 @@ def parse_fields(text: str, keys: list) -> dict:
         for key, line in zip(keys, raw_lines):
             fields[key] = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', line)[:220]
     return fields
+
+
+def finite(v, default: float = 0.0) -> float:
+    """Coerce a Live Client numeric to a finite float.
+
+    json.loads accepts the non-standard NaN/Infinity tokens, and int() on
+    a NaN/inf float raises (ValueError/OverflowError) - which silently
+    killed a whole parse tick. Non-numeric or non-finite input collapses
+    to `default`.
+    """
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return float(default)
+    return f if math.isfinite(f) else float(default)
 
 
 def make_ssl_ctx() -> ssl.SSLContext:
@@ -340,18 +364,31 @@ class BaseCoach(abc.ABC):
     async def _poll_loop(self) -> None:
         while self._running:
             try:
-                raw = self._fetch_game_data()
-                if raw:
-                    state = self._parse_raw_state(raw)
-                    if state:
-                        self._on_state_received(state)
-                        self._last_state = state
-                        self._maybe_coach(state)
+                self._poll_tick()
             except Exception as exc:
                 logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
                     "%s poll: %s", self._MODE_NAME, exc
                 )
             await asyncio.sleep(1.5)
+
+    def _poll_tick(self) -> None:
+        """One synchronous poll iteration (extracted for testability).
+
+        Captures the PREVIOUS poll state before overwriting _last_state so
+        _fast_path_trigger compares against genuinely-prior data. Pre-fix
+        the assignment happened first, making prev identical to state and
+        leaving the hp-drop / new-kill fast path dead (audit cycle 9).
+        """
+        raw = self._fetch_game_data()
+        if not raw:
+            return
+        state = self._parse_raw_state(raw)
+        if not state:
+            return
+        self._on_state_received(state)
+        prev = self._last_state
+        self._last_state = state
+        self._maybe_coach(state, prev)
 
     async def _vision_loop(self) -> None:
         _force_file = _APP_DIR / "data" / "force_scan.json"
@@ -390,7 +427,7 @@ class BaseCoach(abc.ABC):
                 )
             await asyncio.sleep(3.0)
 
-    def _maybe_coach(self, state: dict) -> None:
+    def _maybe_coach(self, state: dict, prev: "dict | None" = None) -> None:
         # AUDIT 2026-04-28 (2.2): per-mode kill switch - toggled from the
         # dashboard ops tab via /api/coach/toggle.
         try:
@@ -407,7 +444,9 @@ class BaseCoach(abc.ABC):
         except Exception:
             pass
         now      = time.time()
-        prev     = self._last_state or {}
+        # prev is supplied by _poll_tick (the state from the PRIOR poll);
+        # fall back to _last_state only for legacy direct callers.
+        prev     = (prev if prev is not None else self._last_state) or {}
         fast     = self._fast_path_trigger(state, prev)
         debounce = now - self._last_coach
 

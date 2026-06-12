@@ -14,18 +14,16 @@ import os
 import sys
 import json
 import logging
-import threading
-import time
 from pathlib import Path
 
 from coaches._base_coach import (
     BaseCoach,
+    finite,
     load_json,
     safe_write,
     mirror_live_stats,
     parse_field,
     parse_fields,
-    read_api_key,
 )
 from core.aram_tenacity_context import (
     aram_tenacity_line,
@@ -921,7 +919,10 @@ class Coach(BaseCoach):
             return
         gs = self._last_state
         choices = vs.get("augment_choices", [])
-        mayhem  = " Mayhem" if "MAYHEM" in gs.get("game_mode", "").upper() else ""
+        # Canonical Mayhem detection - the live value is "KIWI", which the
+        # old '"MAYHEM" in gm' substring check never matched (same bug
+        # fixed in _run_coach 2026-05-03; this path was missed).
+        mayhem  = " Mayhem" if is_mayhem(gs) else ""
         prompt  = _AUG_SELECT_PROMPT.format(
             mayhem   = mayhem,
             champion = gs.get("champion", "?"),
@@ -965,15 +966,15 @@ def _parse_state(raw: dict) -> dict:
     gd    = raw.get("gameData", {})
     all_p = [p for p in (raw.get("allPlayers", []) or []) if isinstance(p, dict)]
 
-    game_time = float(gd.get("gameTime", 0))
+    game_time = finite(gd.get("gameTime", 0))
     game_mode = gd.get("gameMode", "ARAM")
     mins, secs = int(game_time // 60), int(game_time % 60)
 
     stats  = ap.get("championStats", {}) or {}
-    hp     = int(stats.get("currentHealth",  0))
-    hp_max = int(stats.get("maxHealth",      1))
-    mp     = int(stats.get("resourceValue",  0))
-    mp_max = int(stats.get("resourceMax",    1))
+    hp     = int(finite(stats.get("currentHealth",  0)))
+    hp_max = int(finite(stats.get("maxHealth",      1), 1))
+    mp     = int(finite(stats.get("resourceValue",  0)))
+    mp_max = int(finite(stats.get("resourceMax",    1), 1))
 
     my_name = (ap.get("summonerName") or ap.get("riotIdGameName") or "").split("#")[0]
     me = None
@@ -1030,8 +1031,8 @@ def _parse_state(raw: dict) -> dict:
         "champion":      (me or ap).get("championName", "Unknown"),
         "hp_pct":        int(100 * hp / max(hp_max, 1)),
         "mana_pct":      int(100 * mp / max(mp_max, 1)),
-        "gold":          int(ap.get("currentGold", 0)),
-        "level":         ap.get("level", 1),
+        "gold":          int(finite(ap.get("currentGold", 0))),
+        "level":         int(finite(ap.get("level", 1), 1)),
         "kda":           f"{sc.get('kills',0)}/{sc.get('deaths',0)}/{sc.get('assists',0)}",
         "items":         items,
         "my_team":       my_team,

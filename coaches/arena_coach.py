@@ -20,16 +20,15 @@ from pathlib import Path
 
 from coaches._base_coach import (
     BaseCoach,
+    finite,
     load_json,
     safe_write,
     mirror_live_stats,
     parse_field,
     parse_fields,
-    read_api_key,
     fmt_abilities,
 )
 from coaches._arena_item_advisor import recompute_arena_build
-from core import daemon_slayer_client as _ds_client
 from core import live_metrics
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
 from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
@@ -140,6 +139,19 @@ _OUTPUT_KEYS = [
 _AUG_NAME_MAP_CACHE: dict[str, str] | None = None
 
 
+def _patch_dir_key(p: Path) -> tuple:
+    """Numeric sort key for patch snapshot dirs ("16.10.1" > "16.9.1").
+
+    Plain lexicographic reverse sort put 16.9.x ahead of 16.10.x at every
+    .9/.10 minor boundary, selecting a stale arena_augments.json.
+    Non-version dirs (build_orders, laning_scenarios) sort last.
+    """
+    try:
+        return tuple(int(x) for x in p.name.split("."))
+    except ValueError:
+        return (-1,)
+
+
 def _augment_name_map() -> dict[str, str]:
     """Lazy display-name → apiName lookup built from arena_augments.json.
 
@@ -157,7 +169,10 @@ def _augment_name_map() -> dict[str, str]:
     out: dict[str, str] = {}
     try:
         snap_dir = _APP_DIR / "data" / "daemon_slayer"
-        patches = sorted([p for p in snap_dir.iterdir() if p.is_dir()], reverse=True)
+        patches = sorted(
+            [p for p in snap_dir.iterdir() if p.is_dir()],
+            key=_patch_dir_key, reverse=True,
+        )
         for patch_dir in patches:
             f = patch_dir / "arena_augments.json"
             if not f.exists():
@@ -931,12 +946,12 @@ def _parse_arena_state(raw: dict) -> dict:
     all_p  = [p for p in (raw.get("allPlayers", []) or []) if isinstance(p, dict)]
     events = (raw.get("events", {}) or {}).get("Events", [])
 
-    game_time = float(gd.get("gameTime", 0))
+    game_time = finite(gd.get("gameTime", 0))
     game_mode = gd.get("gameMode", "ARENA")
 
     stats  = ap.get("championStats", {}) or {}
-    hp     = int(stats.get("currentHealth", 0))
-    hp_max = int(stats.get("maxHealth", 1))
+    hp     = int(finite(stats.get("currentHealth", 0)))
+    hp_max = int(finite(stats.get("maxHealth", 1), 1))
     hp_pct = int(100 * hp / max(hp_max, 1))
 
     my_name = (ap.get("summonerName") or ap.get("riotIdGameName") or "").split("#")[0]
@@ -998,8 +1013,8 @@ def _parse_arena_state(raw: dict) -> dict:
         "game_seconds":     game_time,
         "champion":         (me or ap).get("championName", "Unknown"),
         "hp_pct":           hp_pct,
-        "gold":             int(ap.get("currentGold", 0)),
-        "level":            ap.get("level", 1),
+        "gold":             int(finite(ap.get("currentGold", 0))),
+        "level":            int(finite(ap.get("level", 1), 1)),
         "kda":              f"{sc.get('kills',0)}/{sc.get('deaths',0)}/{sc.get('assists',0)}",
         "items":            items,
         "wins":             sc.get("kills", 0),

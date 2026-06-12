@@ -20,13 +20,12 @@ Responsibilities that moved to TftWorker:
 Single authoritative TFT coaching path: TftWorker._run().
 """
 
-import json
 import logging
 import sys
-import threading
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from coaches._base_coach import safe_write
 
 logger = logging.getLogger("rc.coaches.tft")
 
@@ -141,8 +140,7 @@ class Coach:
                     live._last_round     = (0, 0)
                 except Exception:
                     pass
-        # Clear data files
-        import json as _j
+        # Clear data files (atomic - the dashboard polls these mid-write)
         for path, default in [
             (self._tft_data_file, {
                 "mode": "tft", "action": "", "board": "", "econ": "",
@@ -159,7 +157,7 @@ class Coach:
             }),
         ]:
             try:
-                path.write_text(_j.dumps(default, indent=2), encoding="utf-8")
+                safe_write(path, default)
             except Exception:
                 pass
         logger.info("TFT state reset - data files cleared")
@@ -211,6 +209,6 @@ class Coach:
             try:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 if not path.exists():
-                    path.write_text(json.dumps(default, indent=2), encoding="utf-8")
+                    safe_write(path, default)
             except Exception as exc:
                 logger.warning("Could not create data file %s: %s", path, exc)
