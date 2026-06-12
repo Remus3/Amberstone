@@ -88,7 +88,14 @@ def _find_opponent_cs(players: Any, active_position: str) -> int | None:
             continue  # same team, skip
         pos = str(p.get("position") or "").strip()
         if pos == active_pos:
-            return int(p.get("creep_score", 0))
+            # Cycle-8 audit (slice B): a malformed creep_score (None /
+            # non-numeric) must not raise - compute() promises no-raise
+            # and is called unwrapped on the /api/state hot path
+            # (_state_builder.py). Unresolvable -> None, key omitted.
+            try:
+                return int(p.get("creep_score", 0))
+            except (TypeError, ValueError):
+                return None
     return None
 
 
