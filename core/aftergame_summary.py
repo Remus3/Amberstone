@@ -35,9 +35,13 @@ Usage:
 """
 from __future__ import annotations
 import json
+import logging
+import re
 import sqlite3
 from pathlib import Path
 from typing import Optional, Any
+
+_log = logging.getLogger("rc.aftergame_summary")
 
 ROOT = Path(__file__).resolve().parent.parent
 METRICS_DB = ROOT / "data" / "match_metrics.db"
@@ -97,7 +101,6 @@ def _metric_values_for_match(match_id: str) -> dict[str, str]:
 
 
 def _first_int(s: str) -> Optional[int]:
-    import re
     m = re.search(r"-?\d+", s or "")
     return int(m.group(0)) if m else None
 
@@ -429,7 +432,11 @@ def write_to_client_coaching_data(summary: dict,
                        encoding="utf-8")
         tmp.replace(target)
         return True
-    except Exception:
+    except Exception as exc:
+        # Fail-soft boundary (caller treats False as "not written") but the
+        # error must not vanish silently - log it for the ops trail.
+        _log.warning("write_to_client_coaching_data failed for %s: %s",
+                     target, exc)
         return False
 
 
