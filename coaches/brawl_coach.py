@@ -19,14 +19,13 @@ from pathlib import Path
 
 from coaches._base_coach import (
     BaseCoach,
+    finite,
     load_json,
     safe_write,
     mirror_live_stats,
     parse_fields,
-    read_api_key,
     fmt_abilities,
 )
-from core import daemon_slayer_client as _ds_client
 from core import live_metrics
 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
 from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
@@ -637,16 +636,16 @@ def _parse_brawl_state(raw: dict) -> dict:
     all_p  = [p for p in (raw.get("allPlayers", []) or []) if isinstance(p, dict)]
     events = (raw.get("events", {}) or {}).get("Events", [])
 
-    game_time = float(gd.get("gameTime", 0))
+    game_time = finite(gd.get("gameTime", 0))
     game_mode = gd.get("gameMode", "NEXUSBLITZ")
     mins = int(game_time // 60)
     secs = int(game_time % 60)
 
     stats  = ap.get("championStats", {}) or {}
-    hp     = int(stats.get("currentHealth", 0))
-    hp_max = int(stats.get("maxHealth",     1))
-    mp     = int(stats.get("resourceValue", 0))
-    mp_max = int(stats.get("resourceMax",   1))
+    hp     = int(finite(stats.get("currentHealth", 0)))
+    hp_max = int(finite(stats.get("maxHealth",     1), 1))
+    mp     = int(finite(stats.get("resourceValue", 0)))
+    mp_max = int(finite(stats.get("resourceMax",   1), 1))
 
     my_name = (ap.get("summonerName") or ap.get("riotIdGameName") or "").split("#")[0]
     me = None
@@ -699,8 +698,8 @@ def _parse_brawl_state(raw: dict) -> dict:
         "champion":      (me or ap).get("championName", "Unknown"),
         "hp_pct":        int(100 * hp / max(hp_max, 1)),
         "mana_pct":      int(100 * mp / max(mp_max, 1)),
-        "gold":          int(ap.get("currentGold", 0)),
-        "level":         ap.get("level", 1),
+        "gold":          int(finite(ap.get("currentGold", 0))),
+        "level":         int(finite(ap.get("level", 1), 1)),
         "kda":           f"{sc.get('kills',0)}/{sc.get('deaths',0)}/{sc.get('assists',0)}",
         "items":         items,
         "ally_comp":     [
