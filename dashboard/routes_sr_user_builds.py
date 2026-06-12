@@ -48,7 +48,9 @@ def _serve_user_builds_get(h) -> None:
         }).encode(), "application/json")
     except Exception as exc:
         log.warning("api/sr-draft/user-builds GET: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        # Raw exception text stays in the log only (was untruncated here).
+        h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
+                "application/json")
 
 
 def _serve_user_builds_post(h, payload) -> None:
@@ -113,7 +115,9 @@ def _serve_user_builds_post(h, payload) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/sr-draft/user-builds POST: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        # Raw exception text stays in the log only (was untruncated here).
+        h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
+                "application/json")
 
 
 # ── route table ──────────────────────────────────────────────────────

@@ -98,6 +98,17 @@ def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()) + "Z"
 
 
+def _as_int(value: Any, default: int = 0) -> int:
+    """Best-effort int coercion. Cycle-8 audit: a non-numeric queue_id /
+    team_id in the (authed) refresh body used to raise ValueError out of
+    the handler - the dispatcher has no catch-all, so the caller saw a
+    connection reset instead of the documented soft-fail."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _update_entry(team: str, puuid: str, **fields: Any) -> None:
     """Mutate a single entry in the live cache by team + puuid.
 
@@ -151,7 +162,7 @@ def _skeleton_entry(slot: dict, blank_names: bool = False) -> dict:
     return {
         "puuid":             str(slot.get("puuid") or ""),
         "summoner_name":     name,
-        "team_id":           int(slot.get("team_id") or 0),
+        "team_id":           _as_int(slot.get("team_id") or 0),
         "locked_champion":   str(slot.get("locked_champion") or ""),
         "rank":              "",
         "mastery_on_locked": 0,
@@ -390,7 +401,7 @@ def _serve_refresh_post(h, body) -> None:
                 "application/json")
         return
 
-    queue_id = int(body.get("queue_id") or 0)
+    queue_id = _as_int(body.get("queue_id") or 0)
     blank_names = queue_id in _RANKED_BLANK_QUEUES
     allies: list = []
     enemies: list = []

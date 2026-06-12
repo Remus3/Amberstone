@@ -83,6 +83,21 @@ _MAX_TOP_N = 4
 # Cache: tuple key -> (cached_at, payload).
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# Cycle-8 audit: keys embed free-form hover/lock name strings from the
+# query, so the dict could grow without bound across a long uptime
+# (entries were never evicted - TTL only gates serving). Cap+drop-oldest.
+_CACHE_MAX = 256
+_CACHE_EVICT = 64
+
+
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, payload)
+        if len(_CACHE) > _CACHE_MAX:
+            victims = sorted(_CACHE.items(),
+                             key=lambda kv: kv[1][0])[:_CACHE_EVICT]
+            for k, _ in victims:
+                _CACHE.pop(k, None)
 
 # Laning tips file (operator-tunable).
 _TIPS_PATH = Path(__file__).resolve().parent.parent / "data" / "laning_tips_duo.json"
@@ -338,18 +353,19 @@ def _serve_duo_synergy(h) -> None:
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
 
-        with _CACHE_LOCK:
-            cacheable = dict(payload)
-            cacheable.pop("cached", None)
-            cacheable.pop("elapsed_ms", None)
-            _CACHE[cache_key] = (now, cacheable)
+        cacheable = dict(payload)
+        cacheable.pop("cached", None)
+        cacheable.pop("elapsed_ms", None)
+        _cache_put(cache_key, now, cacheable)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/duo-synergy: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]})
-                    .encode("utf-8"), "application/json")
+            # Raw exception text stays in the log only.
+            h._send(500, json.dumps(
+                {"ok": False, "error": "internal error - see logs"})
+                .encode("utf-8"), "application/json")
         except Exception:
             pass
 
