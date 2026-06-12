@@ -1,0 +1,45 @@
+{
+  "run_id": "p2w1-coach-cycle9",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15393,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M docs/LEDGER.md",
+      " M ops/audit/P2_FANOUT_MANIFEST.md",
+      " M ops/audit/P2_FINDINGS.md",
+      "?? ops/audit/p2w1_coach_claims.json",
+      "?? ops/audit/p2w1_coach_truth_gate_report.json"
+    ],
+    "head": "6350c6d1 merge(audit): P2-W1 coaches slices A-B into main"
+  },
+  "ci": {
+    "status": "skipped"
+  },
+  "slices": [
+    {
+      "id": "A",
+      "claim": "mode coaches + base: fast-path prev-state capture fix (_poll_tick passes prev before overwrite), finite() coercion of Live Client numerics, serialized shared-tmp atomic writes, KIWI mayhem tag via is_mayhem, numeric patch-dir sort, friendly analyzer error, TFT atomic safe_write",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B",
+      "claim": "adaptation-hint + builders: profile cache bounded w/ eviction, non-finite matchup/duration guards (no nan% in hint text), ddragon transient-failure no longer cached for process lifetime, deepcopy on list_for, int queue-id mode normalize",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}

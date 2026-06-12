@@ -1,0 +1,26 @@
+{
+  "run_id": "p2w1-coach-cycle9",
+  "check_ci": false,
+  "slices": [
+    {
+      "id": "A",
+      "claim": "mode coaches + base: fast-path prev-state capture fix (_poll_tick passes prev before overwrite), finite() coercion of Live Client numerics, serialized shared-tmp atomic writes, KIWI mayhem tag via is_mayhem, numeric patch-dir sort, friendly analyzer error, TFT atomic safe_write",
+      "files": [
+        {"path": "coaches/_base_coach.py", "must_contain": ["_poll_tick", "finite"]},
+        {"path": "coaches/aram_coach.py", "must_contain": ["is_mayhem"]},
+        {"path": "coaches/arena_coach.py", "must_contain": ["_patch_dir_key"]},
+        {"path": "tests/test_p2w1_coach_a.py", "must_contain": ["test_fast_path_fires_on_hp_drop_between_polls", "test_aram_augment_select_tags_mayhem_for_kiwi", "test_augment_name_map_prefers_numerically_newest_patch"]}
+      ]
+    },
+    {
+      "id": "B",
+      "claim": "adaptation-hint + builders: profile cache bounded w/ eviction, non-finite matchup/duration guards (no nan% in hint text), ddragon transient-failure no longer cached for process lifetime, deepcopy on list_for, int queue-id mode normalize",
+      "files": [
+        {"path": "coaches/sr_draft_profile.py", "must_contain": ["64"]},
+        {"path": "coaches/adaptation_hint_champion.py", "must_contain": ["isfinite"]},
+        {"path": "coaches/adaptation_hint_temporal.py", "must_contain": ["OverflowError"]},
+        {"path": "tests/test_p2w1_coach_b.py", "must_contain": ["test_profile_cache_bounded", "test_items_cache_not_poisoned_by_transient_failure", "test_format_hint_line_no_nan_text"]}
+      ]
+    }
+  ]
+}
