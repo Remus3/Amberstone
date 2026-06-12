@@ -32,7 +32,10 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       FIX-NOW incl backslash path-traversal source disclosure in routes_static,
       dead-since-birth pickban cleanse advisory import, statcheck OverflowError
       crash, shared ro_conn close poisoning; DEFER in ops/audit/P2_FINDINGS.md)
-- [ ] coaches/ 27 / 8657 (~2 slices)
+- [x] coaches/ 27 / 8657 - DONE cycle 9 (2 slices A-B, merge 6350c6d1; FIX-NOW
+      incl base-coach fast-path prev-state bug (compared state to itself since
+      ARCH-002), NaN/inf Live Client coercion, KIWI mayhem-tag fix, numeric
+      patch-dir sort, ddragon cache-poisoning fix; DEFER in ops/audit/P2_FINDINGS.md)
 - [ ] app/ + game_reader/ + modes/ + lcu/ + lib/ + vision_server/ +
       coach_integration/ + modules/ 33 / 8917 (~2 slices; app/* + lcu_client frozen)
 
