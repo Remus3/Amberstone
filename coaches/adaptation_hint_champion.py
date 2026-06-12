@@ -10,6 +10,7 @@ behavior is pinned by the test_adaptation_hint + test_round* suites.
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
 from typing import Iterable
 
@@ -106,7 +107,10 @@ def for_champion(champion: str, mode: str) -> dict:
                 except (json.JSONDecodeError, TypeError):
                     continue
                 delta = float(mj.get("delta") or 0.0)
-                if abs(delta) < _MIN_ABSOLUTE_DELTA:
+                # NaN passes the abs() gate below (NaN < x is False) and
+                # would surface as "nan%" in coach hint text - exclude
+                # any non-finite modifier outright.
+                if not math.isfinite(delta) or abs(delta) < _MIN_ABSOLUTE_DELTA:
                     continue
                 entry = {
                     "opponent": m["opponent_signature"],
@@ -155,7 +159,10 @@ def matchup_delta(champion: str, mode: str, opponent: str) -> float | None:
         mj = json.loads(row["modifier_json"] or "{}")
     except (json.JSONDecodeError, TypeError):
         return None
-    return float(mj.get("delta") or 0.0)
+    delta = float(mj.get("delta") or 0.0)
+    # Treat a non-finite stored delta as no-data rather than returning
+    # NaN/inf into coach math.
+    return delta if math.isfinite(delta) else None
 
 
 def format_hint_line(

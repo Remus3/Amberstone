@@ -48,6 +48,7 @@ API:
 """
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
@@ -79,8 +80,9 @@ def list_for(champion: str) -> list[dict[str, Any]]:
         return []
     store = _load()
     builds = (store.get("champions") or {}).get(champion) or []
-    # Defensive copy so callers can't mutate the cache.
-    return [dict(b) for b in builds if isinstance(b, dict)]
+    # Deep defensive copy so callers can't mutate the cache - a shallow
+    # dict() still aliases the nested runes dict + items list.
+    return [copy.deepcopy(b) for b in builds if isinstance(b, dict)]
 
 
 def add(champion: str, build: dict[str, Any]) -> str:
