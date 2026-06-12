@@ -55,10 +55,47 @@ from core.smoothed_rates import shrink
 log = logging.getLogger("rc.summoner_spell_wpa")
 
 # DDragon summoner-spell catalog for spell-id -> display name + icon slug.
-# Verified at patch 16.11.1; ids/names are stable across recent patches.
-_SUMMONER_JSON = (
-    Path("data") / "meta_build" / "ddragon" / "16.11.1" / "summoner.json"
-)
+# The DEFAULT resolves the patch-current bundle via _index.json
+# ``latest_pulled`` (the marker lib.ddragon.fetch maintains);
+# _SUMMONER_JSON is the pinned authoring-time fallback (verified at
+# 16.11.1; ids/names are stable across recent patches). The dynamic
+# resolve is load-bearing: the bundle cache keeps only a current+previous
+# window (item 397 prune), so a fixed pin goes stale on the next patch and
+# VANISHES one patch later, silently emptying the spell-WPA panel
+# (deep-audit P2 W1-C). Mirrors core.rune_wpa.
+_DDRAGON_DIR = Path("data") / "meta_build" / "ddragon"
+_SUMMONER_JSON = _DDRAGON_DIR / "16.11.1" / "summoner.json"
+
+
+def _latest_pulled_version() -> str:
+    """The bundle version ``lib.ddragon.fetch`` recorded as current in
+    ``_index.json`` (``latest_pulled``). "" when absent/malformed."""
+    try:
+        doc = json.loads(
+            (_DDRAGON_DIR / "_index.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return ""
+    ver = doc.get("latest_pulled") if isinstance(doc, dict) else ""
+    return str(ver or "").strip()
+
+
+def _default_summoner_json() -> Path:
+    """Patch-current summoner catalog path, pinned-snapshot fallback.
+
+    Prefers ``<latest_pulled>/summoner.json`` when that file exists;
+    otherwise the pinned ``_SUMMONER_JSON`` (the pre-fix behavior).
+    Fail-soft: any IO error degrades to the pin.
+    """
+    ver = _latest_pulled_version()
+    if ver:
+        try:
+            cand = _DDRAGON_DIR / ver / "summoner.json"
+            if cand.is_file():
+                return cand
+        except OSError:
+            pass
+    return _SUMMONER_JSON
 
 # Shrink constant; same rationale as item_wpa / skill_wpa / rune_wpa
 # (personal corpus).
@@ -75,7 +112,10 @@ def load_spell_catalog(
 
     Fail-soft: a missing or unparseable catalog returns ``{}``.
     """
-    path = Path(summoner_json) if summoner_json is not None else _SUMMONER_JSON
+    path = (
+        Path(summoner_json) if summoner_json is not None
+        else _default_summoner_json()
+    )
     try:
         with path.open("r", encoding="utf-8") as f:
             raw = json.load(f)
