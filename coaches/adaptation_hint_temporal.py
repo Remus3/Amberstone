@@ -205,7 +205,13 @@ def duration_analysis(
                     tuple(params),
                 )
                 for r in cur:
-                    dur = int(r["duration_sec"])
+                    # Guard non-finite / junk rows (inf REAL raises
+                    # OverflowError, TEXT junk raises ValueError) -
+                    # one corrupt row must not kill the whole analysis.
+                    try:
+                        dur = int(r["duration_sec"])
+                    except (TypeError, ValueError, OverflowError):
+                        continue
                     tier = _tier_for(dur)
                     if tier is None:
                         continue
