@@ -54,11 +54,47 @@ from core.smoothed_rates import shrink
 
 log = logging.getLogger("rc.rune_wpa")
 
-# DDragon runesReforged catalog for rune-id -> display name. Verified at
-# patch 16.11.1; names are stable across recent patches.
-_RUNES_JSON = (
-    Path("data") / "meta_build" / "ddragon" / "16.11.1" / "runesReforged.json"
-)
+# DDragon runesReforged catalog for rune-id -> display name. The DEFAULT
+# resolves the patch-current bundle via _index.json ``latest_pulled`` (the
+# marker lib.ddragon.fetch maintains); _RUNES_JSON is the pinned
+# authoring-time fallback (verified at 16.11.1; names are stable across
+# recent patches). The dynamic resolve is load-bearing: the bundle cache
+# keeps only a current+previous window (item 397 prune), so a fixed pin
+# goes stale on the next patch and VANISHES one patch later, silently
+# emptying the rune-WPA panel (deep-audit P2 W1-C).
+_DDRAGON_DIR = Path("data") / "meta_build" / "ddragon"
+_RUNES_JSON = _DDRAGON_DIR / "16.11.1" / "runesReforged.json"
+
+
+def _latest_pulled_version() -> str:
+    """The bundle version ``lib.ddragon.fetch`` recorded as current in
+    ``_index.json`` (``latest_pulled``). "" when absent/malformed."""
+    try:
+        doc = json.loads(
+            (_DDRAGON_DIR / "_index.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return ""
+    ver = doc.get("latest_pulled") if isinstance(doc, dict) else ""
+    return str(ver or "").strip()
+
+
+def _default_runes_json() -> Path:
+    """Patch-current runes catalog path, pinned-snapshot fallback.
+
+    Prefers ``<latest_pulled>/runesReforged.json`` when that file exists;
+    otherwise the pinned ``_RUNES_JSON`` (the pre-fix behavior). Fail-soft:
+    any IO error degrades to the pin.
+    """
+    ver = _latest_pulled_version()
+    if ver:
+        try:
+            cand = _DDRAGON_DIR / ver / "runesReforged.json"
+            if cand.is_file():
+                return cand
+        except OSError:
+            pass
+    return _RUNES_JSON
 
 # Shrink constant; same rationale as item_wpa / skill_wpa (personal corpus).
 _SHRINK_K = 5.0
@@ -79,7 +115,7 @@ def load_rune_catalog(
 
     Fail-soft: a missing or unparseable catalog returns ``{}``.
     """
-    path = Path(runes_json) if runes_json is not None else _RUNES_JSON
+    path = Path(runes_json) if runes_json is not None else _default_runes_json()
     try:
         with path.open("r", encoding="utf-8") as f:
             raw = json.load(f)
