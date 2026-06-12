@@ -223,7 +223,11 @@ class FailSoftEnvelopeTests(DuoSynergyBase):
             self.assertEqual(h.last_status, 500)
             body = h.parsed()
             self.assertFalse(body["ok"])
-            self.assertIn("forced for test", body["error"])
+            # Cycle-8 audit: raw exception text no longer leaks into the
+            # envelope (CLAUDE.md error rule) - the body carries a
+            # friendly degraded-mode message and the raw error is logged.
+            self.assertNotIn("forced for test", body["error"])
+            self.assertTrue(body["error"])
         finally:
             RDS._build_payload = original
 
