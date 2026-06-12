@@ -4,6 +4,54 @@ Findings that did NOT meet the FIX-NOW bar (risky/wide/operator-gated). Each car
 file:line, class, severity, evidence. Re-triage when its wave's follow-up slice runs,
 or fold into P3/P6 as marked. FIX-NOW work is in git history, not here.
 
+## W1 coaches/ (cycle 9, slices A-B - mode coaches+base / adaptation+builders; merge 6350c6d1)
+
+### MED
+- coaches/__init__.py:66: load_coach/unload_all have ZERO callers repo-wide -
+  app/_game_lifecycle.py:86-132 (frozen) imports coach modules directly via its
+  own mode table. Whole dynamic-loader path incl _MODE_MAP/_PREFIX_MAP/_is_tft_pbe
+  is dead; the TFT-PBE toggle only works through this dead path - confirm intent
+  before removal. P3 prune decision. [class: dead code]
+- coaches/experimental_builder.py:118: no lock around load-modify-save
+  (record_result vs adapt threads can lose history); _save lacks the WinError-5
+  retry sr_user_builds has. Chooser retired item 213; performance_tracker wraps
+  caller in try/except. [class: thread-safety]
+
+### LOW
+- coaches/aram_coach.py:466: _overlay.get('ai_bar')/'coach_bar' branches dead -
+  self._overlay always {} since tkinter-free. P3 prune. [class: vestige]
+- coaches/_base_coach.py:191: module-level fetch_game_data() (direct :2999
+  reader) zero callers - all coaches use the liveclient_cache instance method.
+  P3 prune. [class: dead code]
+- coaches/brawl_coach.py:513: writes 'immediate' from a parse key absent from
+  all three brawl output key sets (prompts retired Immediate) - always empty.
+  [class: vestigial field]
+- coaches/arena_coach.py:589: comment claims PlayerN placeholder names skipped
+  'by length' but the list-comp implements no filter; harmless, misleading.
+  [class: comment drift]
+- coaches/aram_coach.py:873: items_display re-parsed from rendered prompt text
+  (user.split('Items:')) instead of state['items']; breaks silently if template
+  wording changes. [class: fragile coupling]
+- coaches/adaptation_hint_temporal.py:61: 'with sqlite3.connect()' commits but
+  never closes across temporal/session/champion/aggregates; CPython refcount
+  mitigates; byte-pinned cross-file pattern. [class: sqlite-conn-leak]
+- coaches/adaptation_hint_champion.py:79: float(row['avg_rating']) TypeError if
+  NULL (schema nullable, analyzer always writes) breaks 'never raises' contract;
+  also adaptation_hint_aggregates.py:52. [class: null-crash]
+- coaches/sr_draft_profile.py:279: engine HTTP body/str(exc) into envelope
+  notes; no live UI consumer today (route retired item 186) - scrub before any
+  future UI wiring. [class: raw-error-leak]
+- coaches/adaptation_hint_cli.py:40: --since '-5h' accepted, yields future
+  timestamp / silently empty results. [class: input-validation]
+- coaches/loadout_resolver.py:397: norm_pairs list rebuilt per _resolve_item_ids
+  call. [class: efficiency]
+- coaches/champ_pool_recommender.py:176: int() of champ_kda.json entries
+  uncaught if file corrupt (self-built file). [class: input-validation]
+- coaches/sr_user_builds.py:113: update() patch can blank label; add()
+  validates, update() does not. [class: validation-asymmetry]
+- coaches/experimental_builder.py:312: per-champion history list grows unbounded
+  on disk (prompt uses last 6 only). [class: retention-less growth]
+
 ## W1 dashboard/ (cycle 8, slices A-D - spine/state/pickban/DS; merge a5d266b3)
 
 ### MED
