@@ -47,9 +47,14 @@ Fail-soft contract mirrors the sibling routes:
 from __future__ import annotations
 
 import json
+import logging
+import math
+import threading
 import time
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
+
+log = logging.getLogger("rc.web_dashboard")
 
 # ----------------------------------------------------------------------------
 # lazy engine handles (memoized; populated on first successful import)
@@ -59,6 +64,11 @@ _DPS_FN: Callable[..., Any] | None = None
 
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_TTL_S = 300.0
+_CACHE_LOCK = threading.Lock()
+
+_DEFAULT_LEVEL = 11
+_MIN_LEVEL = 1
+_MAX_LEVEL = 18
 
 
 def _reset_caches() -> None:
@@ -66,7 +76,8 @@ def _reset_caches() -> None:
     global _SNAPSHOT, _DPS_FN
     _SNAPSHOT = None
     _DPS_FN = None
-    _CACHE.clear()
+    with _CACHE_LOCK:
+        _CACHE.clear()
 
 
 def _load_engine() -> tuple[Any, Callable[..., Any]]:
@@ -89,21 +100,48 @@ def _first(qs: dict, key: str) -> str:
 
 
 def _as_float(raw: str) -> float | None:
+    """Parse an optional float; None on blank / garbage / non-finite.
+
+    Non-finite values (nan / inf) are rejected: nan poisons the cache key
+    (nan != nan -> every request recomputes + inserts a fresh entry) and
+    both serialize to non-standard JSON (NaN / Infinity) that browser
+    JSON.parse rejects.
+    """
     if raw == "":
         return None
     try:
-        return float(raw)
+        v = float(raw)
     except (TypeError, ValueError):
         return None
+    return v if math.isfinite(v) else None
 
 
 def _as_int(raw: str) -> int | None:
+    """Parse an optional int; None on blank / garbage / non-finite.
+
+    OverflowError covers int(float('inf')) which previously escaped the
+    handler entirely (no outer try) and dropped the connection.
+    """
     if raw == "":
         return None
     try:
         return int(float(raw))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
+
+
+def _clamp_level(raw: str) -> int:
+    """Parse the champion level; clamp [1, 18]; fall to default 11.
+
+    Mirrors routes_ds_knobs._parse_level. The engine's clamp_level RAISES
+    ValueError on out-of-range input (agents/daemon_slayer/stats.py:126),
+    which the unknown-champion (KeyError, ValueError) handler would then
+    mislabel as "unknown champion" - clamp before the engine sees it.
+    """
+    n = _as_int(raw)
+    if n is None:
+        return _DEFAULT_LEVEL
+    return max(_MIN_LEVEL, min(_MAX_LEVEL, n))
 
 
 def _parse_items(raw: str) -> tuple[str, ...]:
@@ -191,98 +229,113 @@ def _shape_stats(res: Any) -> dict:
 
 
 def _serve_ds_statcheck(handler: Any) -> None:
-    parsed = urlparse(handler.path)
-    qs = parse_qs(parsed.query)
-    champion = _first(qs, "champion")
-    if not champion:
-        _send(handler, 400, {"ok": False, "error": "champion required"})
-        return
-
-    mode = (_first(qs, "mode") or "SR").upper()
-    level = _as_int(_first(qs, "level")) or 11
-    items = _parse_items(_first(qs, "items"))
-    armor = _as_float(_first(qs, "target_armor"))
-    mr = _as_float(_first(qs, "target_mr"))
-    hp = _as_float(_first(qs, "target_hp"))
-    bonus_hp = _as_float(_first(qs, "target_bonus_hp"))
-
-    ckey = (
-        champion.lower(),
-        mode,
-        tuple(sorted(items)),
-        armor,
-        mr,
-        hp,
-        bonus_hp,
-        level,
-    )
-    now = time.monotonic()
-    hit = _CACHE.get(ckey)
-    if hit is not None and (now - hit[0]) < _CACHE_TTL_S:
-        payload = dict(hit[1])
-        payload["cached"] = True
-        _send(handler, 200, payload)
-        return
-
     t0 = time.perf_counter()
     try:
-        snap, dps_fn = _load_engine()
-    except Exception as exc:  # pragma: no cover - import guard
-        _send(handler, 503, {"ok": False, "error": f"engine load failed: {exc}"})
-        return
+        parsed = urlparse(handler.path)
+        qs = parse_qs(parsed.query)
+        champion = _first(qs, "champion")
+        if not champion:
+            _send(handler, 400, {"ok": False, "error": "champion required"})
+            return
 
-    targets = _resolve_targets(mode, level, armor, mr)
-    try:
-        res = dps_fn(
-            snap,
-            champion_id=champion,
-            level=level,
-            item_ids=items,
-            mode=mode,
-            target_armor=targets["armor"],
-            target_mr=targets["mr"],
-            target_max_hp=(hp if hp is not None else 0.0),
-            target_bonus_hp=(bonus_hp if bonus_hp is not None else 0.0),
+        mode = (_first(qs, "mode") or "SR").upper()
+        level = _clamp_level(_first(qs, "level"))
+        items = _parse_items(_first(qs, "items"))
+        armor = _as_float(_first(qs, "target_armor"))
+        mr = _as_float(_first(qs, "target_mr"))
+        hp = _as_float(_first(qs, "target_hp"))
+        bonus_hp = _as_float(_first(qs, "target_bonus_hp"))
+
+        ckey = (
+            champion.lower(),
+            mode,
+            tuple(sorted(items)),
+            armor,
+            mr,
+            hp,
+            bonus_hp,
+            level,
         )
-    except (KeyError, ValueError) as exc:
-        # unknown champion name (engine lookup miss) - fail soft, not 503
-        _send(
-            handler,
-            200,
-            {"ok": False, "error": f"unknown champion: {champion}",
-             "champion": champion, "detail": str(exc)[:120]},
-        )
-        return
+        now = time.monotonic()
+        with _CACHE_LOCK:
+            hit = _CACHE.get(ckey)
+        if hit is not None and (now - hit[0]) < _CACHE_TTL_S:
+            payload = dict(hit[1])
+            payload["cached"] = True
+            payload["elapsed_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
+            _send(handler, 200, payload)
+            return
+
+        try:
+            snap, dps_fn = _load_engine()
+        except Exception as exc:  # pragma: no cover - import guard
+            log.warning("api/ds-statcheck engine load: %s", exc)
+            _send(handler, 503, {"ok": False, "error": "DS engine unavailable"})
+            return
+
+        targets = _resolve_targets(mode, level, armor, mr)
+        try:
+            res = dps_fn(
+                snap,
+                champion_id=champion,
+                level=level,
+                item_ids=items,
+                mode=mode,
+                target_armor=targets["armor"],
+                target_mr=targets["mr"],
+                target_max_hp=(hp if hp is not None else 0.0),
+                target_bonus_hp=(bonus_hp if bonus_hp is not None else 0.0),
+            )
+        except (KeyError, ValueError) as exc:
+            # unknown champion name (engine lookup miss) - fail soft, not 503
+            _send(
+                handler,
+                200,
+                {"ok": False, "error": f"unknown champion: {champion}",
+                 "champion": champion, "detail": str(exc)[:120]},
+            )
+            return
+        except Exception as exc:
+            log.warning("api/ds-statcheck compute: %s", exc)
+            _send(handler, 503, {"ok": False, "error": "DS engine compute failed"})
+            return
+
+        stats = _shape_stats(res)
+        weighted = getattr(res, "weighted_dps", None)
+        payload = {
+            "ok": True,
+            "champion": getattr(res, "champion_name", champion) or champion,
+            "inputs": {
+                "target_armor": targets["armor"],
+                "target_mr": targets["mr"],
+                "target_hp": (hp if hp is not None else 0.0),
+                "target_bonus_hp": (bonus_hp if bonus_hp is not None else 0.0),
+                "level": level,
+                "mode": mode,
+                "items": list(items),
+                "armor_source": targets["armor_source"],
+                "mr_source": targets["mr_source"],
+            },
+            "stats": stats,
+            "dps": (None if weighted is None else round(float(weighted), 2)),
+            "phase": getattr(res, "phase", None),
+            "count": sum(1 for v in stats.values() if v is not None),
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000.0, 2),
+            "cached": False,
+        }
+
+        with _CACHE_LOCK:
+            _CACHE[ckey] = (now, payload)
+        _send(handler, 200, payload)
     except Exception as exc:
-        _send(handler, 503, {"ok": False, "error": f"compute failed: {exc}"})
-        return
-
-    stats = _shape_stats(res)
-    weighted = getattr(res, "weighted_dps", None)
-    payload = {
-        "ok": True,
-        "champion": getattr(res, "champion_name", champion) or champion,
-        "inputs": {
-            "target_armor": targets["armor"],
-            "target_mr": targets["mr"],
-            "target_hp": (hp if hp is not None else 0.0),
-            "target_bonus_hp": (bonus_hp if bonus_hp is not None else 0.0),
-            "level": level,
-            "mode": mode,
-            "items": list(items),
-            "armor_source": targets["armor_source"],
-            "mr_source": targets["mr_source"],
-        },
-        "stats": stats,
-        "dps": (None if weighted is None else round(float(weighted), 2)),
-        "phase": getattr(res, "phase", None),
-        "count": sum(1 for v in stats.values() if v is not None),
-        "elapsed_ms": round((time.perf_counter() - t0) * 1000.0, 2),
-        "cached": False,
-    }
-
-    _CACHE[ckey] = (now, payload)
-    _send(handler, 200, payload)
+        # Outer guard mirrors the sibling routes: a handler exception must
+        # never escape into the HTTP server (pre-fix an OverflowError from
+        # a non-finite query param dropped the connection with no response).
+        log.warning("api/ds-statcheck: %s", exc)
+        try:
+            _send(handler, 500, {"ok": False, "error": "internal error"})
+        except Exception:
+            pass
 
 
 def _send(handler: Any, code: int, body: dict) -> None:

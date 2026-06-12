@@ -103,6 +103,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 import time
 from urllib.parse import parse_qs, urlparse
@@ -147,20 +148,30 @@ def _parse_item_list(raw: str) -> list[str]:
 
 
 def _parse_float(raw: str):
-    """Parse an optional float knob; None when blank / non-numeric."""
+    """Parse an optional float knob; None when blank / non-numeric / non-finite.
+
+    nan/inf are rejected: nan poisons the cache key (nan != nan -> every
+    request recomputes + inserts a fresh entry) and both serialize to
+    non-standard JSON (NaN / Infinity) that browser JSON.parse rejects.
+    """
     if raw is None:
         return None
     s = raw.strip()
     if not s:
         return None
     try:
-        return float(s)
+        v = float(s)
     except (TypeError, ValueError):
         return None
+    return v if math.isfinite(v) else None
 
 
 def _parse_budget(raw: str):
-    """Parse an optional gold cap; None when blank / non-numeric / <=0."""
+    """Parse an optional gold cap; None when blank / non-numeric / <=0.
+
+    OverflowError covers int(float('inf')) - pre-fix budget=inf escaped to
+    the outer 500 handler.
+    """
     if raw is None:
         return None
     s = raw.strip()
@@ -168,7 +179,7 @@ def _parse_budget(raw: str):
         return None
     try:
         b = int(float(s))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     return b if b > 0 else None
 
@@ -179,7 +190,7 @@ def _parse_level(raw: str) -> int:
         return _DEFAULT_LEVEL
     try:
         lv = int(float(raw))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return _DEFAULT_LEVEL
     return max(1, min(18, lv))
 

@@ -488,9 +488,11 @@ def _serve_spike_curve(h) -> None:
         try:
             _load_snapshot()
         except Exception as exc:
+            # Raw exception text stays in the log; the UI gets a generic
+            # degraded-mode message (never the raw error string).
             log.warning("spike-curve: snapshot load failed: %s", exc)
             h._send(503, json.dumps({
-                "ok": False, "error": f"DS snapshot unavailable: {exc}",
+                "ok": False, "error": "DS engine unavailable",
             }).encode(), "application/json")
             return
 
@@ -517,8 +519,11 @@ def _serve_spike_curve(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/spike-curve: %s", exc)
-        h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                "application/json")
+        try:
+            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
+                    "application/json")
+        except Exception:
+            pass
 
 
 # --------------------------------------------------------------------
