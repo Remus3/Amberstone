@@ -19,16 +19,16 @@ Architecture
   detectors, dedupes by decision id, writes the pending list.
 
 V1 ships with one detector: `detect_objective_contest_with_missing` -
-fires when an objective spawns within ~60s and ≥2 enemies are missing.
+fires when an objective spawns within ~60s and >=2 enemies are missing.
 
-2-PC dependency note
---------------------
-Live Client data arrives via the Legion-local relay endpoint
-http://127.0.0.1:8889/latest-liveclient. The relay is fed by the Game-PC
-liveclient agent (TODO: hard 2-PC dependency - if Game-PC goes offline,
-detectors stop firing because the snapshot ages out). Vision state is
-read from data/vision_state.json on Legion (same path). No Game-PC paths
-are referenced from this module.
+Data sources (1-PC, ADR-011)
+----------------------------
+Live Client data arrives via the shared snapshot cache
+(core/liveclient_cache.py), which reads the Legion-local relay at
+http://127.0.0.1:8889/latest-liveclient (self-healing: the relay falls
+back to an in-process :2999 read when the relayed snapshot is stale).
+Vision state is read from data/vision_state.json. If the snapshot ages
+out, detectors stop firing and pending decisions are cleared.
 """
 from __future__ import annotations
 
@@ -105,7 +105,7 @@ _MAX_PER_GAME     = 5
 _MIN_GAP_S        = 30.0
 
 
-# ── Data shape ────────────────────────────────────────────────────────────────
+# -- Data shape ----------------------------------------------------------------
 
 @dataclass
 class Decision:
@@ -130,7 +130,7 @@ class Decision:
         return asdict(self)
 
 
-# ── Detector registry ─────────────────────────────────────────────────────────
+# -- Detector registry ---------------------------------------------------------
 
 DetectorFn = Callable[[dict, dict], Optional[Decision]]
 DECISION_REGISTRY: list[DetectorFn] = []
@@ -142,7 +142,7 @@ def register_detector(fn: DetectorFn) -> DetectorFn:
     return fn
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 # Approximate spawn timings for SR (2026 patch). First-spawn / respawn pairs.
 # Atakhan currently replaces Herald - skipped here pending mode-aware logic.
 
@@ -167,17 +167,19 @@ def _next_objective_spawn(events: list, game_time: float, *,
                 if last_kill_t is None or t > last_kill_t:
                     last_kill_t = t
     if last_kill_t is None:
-        return first_at if game_time < first_at else first_at  # not yet killed
+        # Not yet killed: first_at is the (only) known spawn time, whether
+        # the clock is before it (upcoming) or past it (still up, untaken).
+        return first_at
     return last_kill_t + respawn
 
 
-# ── Detector: objective contest with missing enemies ──────────────────────────
+# -- Detector: objective contest with missing enemies --------------------------
 
 @register_detector
 def detect_objective_contest_with_missing(
     snapshot: dict, vision_state: dict
 ) -> Optional[Decision]:
-    """Trigger when a major objective spawns within ~60s AND ≥2 enemies
+    """Trigger when a major objective spawns within ~60s AND >=2 enemies
     are missing per vision_tracker. Player decides contest vs give."""
     game_data = snapshot.get("gameData") or {}
     game_time = float(game_data.get("gameTime", 0.0))
@@ -245,13 +247,13 @@ def detect_objective_contest_with_missing(
     )
 
 
-# ── Detector: low HP, time to back? ───────────────────────────────────────────
+# -- Detector: low HP, time to back? -------------------------------------------
 
 @register_detector
 def detect_low_hp_backable(
     snapshot: dict, vision_state: dict
 ) -> Optional[Decision]:
-    """Self HP <25% and alive ≥90s past last respawn → back vs push.
+    """Self HP <25% and alive >=90s past last respawn -> back vs push.
 
     ADR-007 tightening (s169): operator complained the 40%/45s threshold
     fired mid-fight when the warning was too late to act on. Bumped HP
@@ -286,7 +288,7 @@ def detect_low_hp_backable(
     if not me or me.get("isDead"):
         return None
 
-    # Walk events for our deaths; require ≥90s alive.
+    # Walk events for our deaths; require >=90s alive.
     events = (snapshot.get("events") or {}).get("Events") or []
     last_death_t = 0.0
     for ev in events:
@@ -317,14 +319,14 @@ def detect_low_hp_backable(
     )
 
 
-# ── Detector: lane roam window (≥2 enemies missing, no objective in window) ──
+# -- Detector: lane roam window (>=2 enemies missing, no objective in window) --
 
 @register_detector
 def detect_lane_roam_window(
     snapshot: dict, vision_state: dict
 ) -> Optional[Decision]:
-    """≥2 enemies missing 12s+ AND no objective contest is the right
-    framing (deferred to detect_objective_contest_with_missing) → the
+    """>=2 enemies missing 12s+ AND no objective contest is the right
+    framing (deferred to detect_objective_contest_with_missing) -> the
     player has a roam-or-push window. Bucketed to 90s windows."""
     game_data = snapshot.get("gameData") or {}
     game_time = float(game_data.get("gameTime", 0.0))
@@ -374,7 +376,7 @@ def detect_lane_roam_window(
     )
 
 
-# ── Detector: post-fight objective opportunity ────────────────────────────────
+# -- Detector: post-fight objective opportunity --------------------------------
 
 @register_detector
 def detect_postfight_objective(
@@ -453,7 +455,7 @@ def detect_postfight_objective(
         id=f"postfight_objective:{int(last_event_t)}",
         type="postfight_objective",
         title=f"+{diff} fight, {obj_name} live - take or cross-map?",
-        subtitle=f"ally kill diff {diff:+d} in last 20s · {obj_name} window open",
+        subtitle=f"ally kill diff {diff:+d} in last 20s - {obj_name} window open",
         options=["take", "cross-map"],
         created_at_unix=time.time(),
         created_at_game_time=game_time,
@@ -462,7 +464,7 @@ def detect_postfight_objective(
     )
 
 
-# ── Detector: jungler gank-likely (ADR-007 s169) ──────────────────────────────
+# -- Detector: jungler gank-likely (ADR-007 s169) ------------------------------
 
 def _enemy_has_smite(p: dict) -> bool:
     """Live Client summonerSpells shape: each spell has displayName, rawName.
@@ -485,9 +487,9 @@ def _is_enemy_jungle_zone(zone: str, enemy_team: str) -> bool:
     matches their team."""
     z = (zone or "").lower()
     t = (enemy_team or "").upper()
-    if t == "ORDER":   # enemy is on Order team → their jungle is blue_
+    if t == "ORDER":   # enemy is on Order team -> their jungle is blue_
         return z.startswith("blue_") and "jungle" in z
-    if t == "CHAOS":   # enemy is on Chaos team → their jungle is red_
+    if t == "CHAOS":   # enemy is on Chaos team -> their jungle is red_
         return z.startswith("red_") and "jungle" in z
     # Unknown team: treat any *_jungle as enemy-side (conservative - won't fire).
     return False
@@ -497,7 +499,7 @@ def _is_enemy_jungle_zone(zone: str, enemy_team: str) -> bool:
 def detect_jungler_gank_likely(
     snapshot: dict, vision_state: dict
 ) -> Optional[Decision]:
-    """ADR-007 s169: enemy jungler missing ≥20s AND last seen outside their
+    """ADR-007 s169: enemy jungler missing >=20s AND last seen outside their
     own jungle quadrant (likely pathing to a lane). Identifies the JG by
     Smite summoner spell. SR only - ARAM has no jungle, Arena/Brawl have
     no Smite.
@@ -590,15 +592,15 @@ def detect_jungler_gank_likely(
     )
 
 
-# ── Detector: throwing-lead (ADR-007 s169) ────────────────────────────────────
+# -- Detector: throwing-lead (ADR-007 s169) ------------------------------------
 
 @register_detector
 def detect_throwing_lead(
     snapshot: dict, vision_state: dict
 ) -> Optional[Decision]:
     """ADR-007 s169: player previously ahead, now losing tempo. Heuristic:
-    self has ≥2 deaths in the last 90s AND the death events were within a
-    cluster (≤45s between first and last). Bucketed to 120s windows.
+    self has >=2 deaths in the last 90s AND the death events were within a
+    cluster (<=45s between first and last). Bucketed to 120s windows.
 
     Stateless: relies only on the events list in `snapshot`. Doesn't need
     a gold-history tracker - death-cluster IS the throwing signal."""
@@ -652,7 +654,7 @@ def detect_throwing_lead(
     )
 
 
-# ── Store ─────────────────────────────────────────────────────────────────────
+# -- Store ---------------------------------------------------------------------
 
 class DecisionStore:
     """Atomic file-backed pending list + append-only history log.
@@ -696,7 +698,6 @@ class DecisionStore:
         fresh_ids = {d.id for d in fresh}
         with _decisions_critical_section():
             current = self.list_pending()
-            cur_by_id = {d["id"]: d for d in current}
             # 1) keep + drop
             kept: list[dict] = []
             for d in current:
@@ -769,7 +770,7 @@ class DecisionStore:
             return entry
 
 
-# ── Loop ──────────────────────────────────────────────────────────────────────
+# -- Loop ----------------------------------------------------------------------
 
 class DecisionLoop:
     """Daemon thread: poll state, run detectors, reconcile pending."""

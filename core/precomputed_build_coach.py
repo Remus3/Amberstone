@@ -42,7 +42,6 @@ _ANTI_TANK_FRONTLINE: int = 2
 
 SOURCE_TAG: str = "ds-precompute-build"
 
-_VARIANTS: Tuple[str, str] = ("anti_tank", "anti_squishy")
 _VARIANT_LABELS: dict[str, str] = {
     "anti_tank": "Build anti-tank",
     "anti_squishy": "Build anti-squishy",
