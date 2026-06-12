@@ -22,6 +22,10 @@ from dashboard._dispatch import equals, prefix
 
 log = logging.getLogger("rc.web_dashboard")
 
+# Raw exception text can leak file paths - log it, never render it
+# (same policy as dashboard/_handler.do_POST; audit cycle 8 slice E).
+_GENERIC_ERR = "internal error - see logs"
+
 
 def _serve_session_summary(h) -> None:
     try:
@@ -29,7 +33,7 @@ def _serve_session_summary(h) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/session/summary: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
                 "application/json")
 
 
@@ -41,7 +45,7 @@ def _serve_history(h) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/history: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
                 "application/json")
 
 
@@ -53,7 +57,7 @@ def _serve_loadouts_all(h) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/loadouts/all: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
                 "application/json")
 
 
@@ -66,7 +70,7 @@ def _serve_home_summary(h) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/home/summary: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
                 "application/json")
 
 

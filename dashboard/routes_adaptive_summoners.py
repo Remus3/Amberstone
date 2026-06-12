@@ -249,8 +249,10 @@ def _serve_adaptive_summoners(h) -> None:
         }).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/champ-select/adaptive-summoners: %s", exc)
-        h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                "application/json")
+        # Raw exception text stays in the log only.
+        h._send(500, json.dumps(
+            {"ok": False, "error": "internal error - see logs"}).encode(),
+            "application/json")
 
 
 # Route table - imported by dashboard/_dispatch.py at module load.
