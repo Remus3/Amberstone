@@ -80,7 +80,11 @@ def _load_items_by_name() -> dict[str, str]:
             if nm:
                 out[_norm(nm)] = str(item_id)
     except Exception as exc:
+        # Do NOT cache on failure - a transient read error (file
+        # mid-write) would otherwise poison resolution for the whole
+        # process lifetime. Next call retries the read.
         _log.warning("ddragon items load failed: %s", exc)
+        return out
     _items_by_name_cache = out
     return out
 
@@ -101,7 +105,10 @@ def _load_champ_id_by_name() -> dict[str, int]:
             except (ValueError, TypeError):
                 pass
     except Exception as exc:
+        # Mirror _load_items_by_name: never poison the cache on a
+        # transient read failure.
         _log.warning("ddragon champs load failed: %s", exc)
+        return out
     _champ_id_by_name_cache = out
     return out
 
@@ -125,8 +132,11 @@ def _load_loadouts() -> dict:
 
 
 def _normalize_mode(mode: str) -> str:
-    """Map LCU/queue mode strings → variant mode keys (aram/sr/arena/tft)."""
-    m = (mode or "").lower()
+    """Map LCU/queue mode strings → variant mode keys (aram/sr/arena/tft).
+
+    Tolerates raw int queue ids (450 / 1700 / ...) - the docstring table
+    below matches them in string form."""
+    m = str(mode or "").lower()
     if "aram" in m or m in ("kiwi", "450", "920"):
         return "aram"
     if "arena" in m or m in ("1700", "1710", "1750"):
