@@ -195,7 +195,11 @@ class FailSoftTests(WardHeatBase):
         self.assertEqual(h.last_status, 500)
         body = h.parsed()
         self.assertFalse(body["ok"])
-        self.assertIn("on fire", body["error"])
+        # Cycle 8 slice E: raw exception text must NOT reach the client
+        # (leak class per dashboard/_handler.do_POST policy); the route
+        # logs the raw error and serves a generic envelope.
+        self.assertNotIn("on fire", body["error"])
+        self.assertEqual(body["error"], "internal error - see logs")
 
 
 class DispatchRegistrationTests(WardHeatBase):

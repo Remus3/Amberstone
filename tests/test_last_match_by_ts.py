@@ -79,6 +79,15 @@ class BuildLastMatchByTsTests(unittest.TestCase):
     def tearDown(self):
         for p in self._patches:
             p.stop()
+        # Cycle 8 slice E: _build_last_match no longer closes the SHARED
+        # per-thread cached ro_conn (closing it poisoned the cache for
+        # later same-thread callers). Evict + close our db's cached conn
+        # here so Windows lets TemporaryDirectory delete the file.
+        from dashboard import _context
+        cached = getattr(_context.DB_CONN_LOCAL, "conns", {}).pop(
+            str(self.app_dir / "data" / "match_history.db"), None)
+        if cached is not None:
+            cached.close()
         self._tmp.cleanup()
 
     def _build(self, **kw):
