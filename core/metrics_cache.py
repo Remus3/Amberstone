@@ -35,7 +35,6 @@ import json
 import asyncio
 import threading
 import time
-from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
