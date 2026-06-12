@@ -56,7 +56,6 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
 
 from core.summoner_cooldowns import SUMMONER_SPELL_NAME, compute_cooldowns
 

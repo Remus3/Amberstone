@@ -166,11 +166,21 @@ def trigger_screen_read() -> bool:
             return False
         _inflight = True
     ts = time.time()
-    _write(_result("pending", requested_ts=ts))
-    threading.Thread(
-        target=_worker, args=(ts,), daemon=True,
-        name="rc-screen-read",
-    ).start()
+    try:
+        _write(_result("pending", requested_ts=ts))
+        threading.Thread(
+            target=_worker, args=(ts,), daemon=True,
+            name="rc-screen-read",
+        ).start()
+    except Exception:
+        # Cycle-8 audit (slice B): if the pending write (os.replace
+        # WinError 5 flake) or the thread spawn raises, the worker that
+        # resets _inflight never runs - without this reset the flag
+        # wedged True forever and every later trigger silently no-opped
+        # until restart. Re-raise so the route 500s + logs.
+        with _inflight_lock:
+            _inflight = False
+        raise
     return True
 
 
