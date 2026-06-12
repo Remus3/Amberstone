@@ -71,6 +71,20 @@ log = logging.getLogger("rc.web_dashboard")
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
+# Cycle-8 audit: entries were never evicted (TTL only gates serving),
+# so long uptimes grew the dict without bound. Cap + drop-oldest.
+_CACHE_MAX = 256
+_CACHE_EVICT = 64
+
+
+def _cache_put(key: tuple, now: float, payload: dict) -> None:
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, payload)
+        if len(_CACHE) > _CACHE_MAX:
+            victims = sorted(_CACHE.items(),
+                             key=lambda kv: kv[1][0])[:_CACHE_EVICT]
+            for k, _ in victims:
+                _CACHE.pop(k, None)
 
 
 def _parse_int_list(raw: str, expected: int) -> tuple[list[int], str | None]:
@@ -289,11 +303,10 @@ def _serve_draft_elo(h) -> None:
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
 
-        with _CACHE_LOCK:
-            cacheable = dict(payload)
-            cacheable.pop("cached", None)
-            cacheable.pop("elapsed_ms", None)
-            _CACHE[key] = (now, cacheable)
+        cacheable = dict(payload)
+        cacheable.pop("cached", None)
+        cacheable.pop("elapsed_ms", None)
+        _cache_put(key, now, cacheable)
 
         if not breakdown:
             payload.pop("top_contributions", None)
@@ -302,8 +315,10 @@ def _serve_draft_elo(h) -> None:
     except Exception as exc:
         log.warning("api/draft-elo: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]})
-                    .encode("utf-8"), "application/json")
+            # Raw exception text stays in the log only.
+            h._send(500, json.dumps(
+                {"ok": False, "error": "internal error - see logs"})
+                .encode("utf-8"), "application/json")
         except Exception:
             pass
 

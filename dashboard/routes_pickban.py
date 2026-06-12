@@ -62,6 +62,12 @@ _DDRAGON_CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" 
 _PB_CACHE_TTL_S = 300.0
 _PB_CACHE: dict[tuple, tuple[float, dict]] = {}
 _PB_CACHE_LOCK = threading.Lock()
+# Cycle-8 audit: every new db mtime (post-game write) re-keys the cache
+# and the dead keys were never evicted, so the dict grew without bound
+# over long uptimes. Cap + drop-oldest keeps it flat (same pattern as
+# routes_personal_vs._cache_put).
+_PB_CACHE_MAX = 256
+_PB_CACHE_EVICT = 64
 
 
 def _db_mtime() -> float:
@@ -704,10 +710,24 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
     if not enemy_cids:
         return None
     try:
-        from agents.daemon_slayer import _PER_SPELL_CC_DURATIONS  # type: ignore
+        # Cycle-8 audit: the registry lives in the _per_spell_cc
+        # submodule (agents/daemon_slayer/_per_spell_cc.py), NOT the
+        # package root - the old package-root import raised ImportError
+        # and the swallow below kept this advisory silently dead.
         from agents.daemon_slayer import cc_conditional as _cc_cond
+        from agents.daemon_slayer._per_spell_cc import (
+            _PER_SPELL_CC_DURATIONS,
+        )
     except Exception:
         return None
+    try:
+        # Registry keys are canonical DDragon ids ("TwistedFate",
+        # "MonkeyKing"); DDragon hands us display names ("Twisted
+        # Fate", "Wukong"). Same bridge routes_peel_priority uses.
+        from core.archetype_picks import canonical_champion_id as _canon
+    except Exception:
+        def _canon(n: str) -> str:
+            return n
     # Reverse champion-id -> name via DDragon dictionary (already
     # loaded as a module-level cache by _load_champ_id_to_name).
     id_to_name = _load_champ_id_to_name()
@@ -717,10 +737,12 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
         name = id_to_name.get(int(cid))
         if not name:
             continue
-        per_spell = _PER_SPELL_CC_DURATIONS.get(name) or {}
+        canon = _canon(name) or name
+        per_spell = (_PER_SPELL_CC_DURATIONS.get(canon)
+                     or _PER_SPELL_CC_DURATIONS.get(name) or {})
         # Conditional entries (from cc_conditional) also count if
         # their CC duration crosses threshold.
-        cond_entries = _cc_cond.get_conditional_entries(name) if hasattr(
+        cond_entries = _cc_cond.get_conditional_entries(canon) if hasattr(
             _cc_cond, "get_conditional_entries") else []
         max_cc = 0.0
         for spell_key, durations in per_spell.items():
@@ -734,8 +756,12 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
             except Exception:
                 continue
         for entry in cond_entries:
+            # ConditionalCcEntry carries per-rank ``durations_s`` (the
+            # old ``duration_seconds`` getattr never existed -> 0.0).
             try:
-                d = float(getattr(entry, "duration_seconds", 0.0) or 0.0)
+                durs = getattr(entry, "durations_s", ()) or ()
+                d = max((float(x) for x in durs if x is not None),
+                        default=0.0)
                 if d > max_cc:
                     max_cc = d
             except Exception:
@@ -973,6 +999,11 @@ def _cache_get(h, key: tuple, t0: float) -> bool:
 def _cache_put(key: tuple, t0: float, payload: dict) -> None:
     with _PB_CACHE_LOCK:
         _PB_CACHE[key] = (t0, dict(payload))
+        if len(_PB_CACHE) > _PB_CACHE_MAX:
+            victims = sorted(_PB_CACHE.items(),
+                             key=lambda kv: kv[1][0])[:_PB_CACHE_EVICT]
+            for k, _ in victims:
+                _PB_CACHE.pop(k, None)
 
 
 def _open_ro_with_puuid(h):
@@ -1092,7 +1123,8 @@ def _serve_pickban_recs(h) -> None:
         _send_json(h, 200, payload)
     except Exception as exc:
         log.warning("api/champ-select/pickban-recs: %s", exc)
-        _send_json_err(h, 500, str(exc)[:200])
+        # Raw exception text stays in the log only (CLAUDE.md error rule).
+        _send_json_err(h, 500, "internal error - see logs")
 
 
 def _serve_personal_record(h) -> None:
@@ -1155,7 +1187,7 @@ def _serve_personal_record(h) -> None:
         _send_json(h, 200, payload)
     except Exception as exc:
         log.warning("api/champ-select/personal-record: %s", exc)
-        _send_json_err(h, 500, str(exc)[:200])
+        _send_json_err(h, 500, "internal error - see logs")
 
 
 # Route table - imported by dashboard/_dispatch.py at module load.
