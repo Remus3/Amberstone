@@ -51,16 +51,18 @@ from __future__ import annotations
 import json
 import logging
 import time
-from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from core.item_wpa import compute_item_wpa
 from core.post_game_score import WpaModel, load_model
+from dashboard._context import APP_DIR as _APP_DIR
 
 log = logging.getLogger("rc.web_dashboard")
 
-_REWIND_DB = Path("data") / "rewind_history.db"
-_MODEL_PATH = Path("data") / "post_game_wpa_model.json"
+# Anchored on APP_DIR (not the CWD) so a non-root working directory does
+# not silently 503 - mirrors routes_replay_events (audit cycle 8 slice E).
+_REWIND_DB = _APP_DIR / "data" / "rewind_history.db"
+_MODEL_PATH = _APP_DIR / "data" / "post_game_wpa_model.json"
 
 # Cache: {(min_n, queue_id, patch, model_sig): (timestamp, payload)}
 _CACHE: dict[tuple, tuple[float, dict]] = {}
@@ -158,17 +160,22 @@ def _serve_item_wpa(h) -> None:
 
         payload = dict(body)
         payload["model"] = "trained" if model is not None else "fallback"
+        # Cache the enriched payload (model field included) so a cached
+        # hit serves the same shape as a fresh response.
+        if body.get("ok"):
+            _cache_put(cache_key, dict(payload))
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
         payload["cached"] = False
-        if body.get("ok"):
-            _cache_put(cache_key, dict(body))
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:  # noqa: BLE001 - generic 500 wrapper
         log.warning("api/item-wpa: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                    "application/json")
+            # Raw exception text can leak file paths - log it, never
+            # render it (same policy as dashboard/_handler.do_POST).
+            h._send(500, json.dumps({
+                "ok": False, "error": "internal error - see logs",
+            }).encode(), "application/json")
         except Exception:
             pass
 

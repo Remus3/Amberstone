@@ -4,6 +4,57 @@ Findings that did NOT meet the FIX-NOW bar (risky/wide/operator-gated). Each car
 file:line, class, severity, evidence. Re-triage when its wave's follow-up slice runs,
 or fold into P3/P6 as marked. FIX-NOW work is in git history, not here.
 
+## W1 dashboard/ (cycle 8, slice E - postgame/WPA/builders)
+
+### LOW
+- dashboard/routes_last_match.py:206-211: _ensure_retry_thread TOCTOU on
+  _INGEST_RETRY_THREAD_STARTED (check-then-set outside the lock); two concurrent
+  first-ingests can start duplicate drain threads. Benign (queue drained under
+  lock, just doubled cadence) + no deterministic failing test possible; fix =
+  flip the flag under _INGEST_RETRY_LOCK. [class: concurrency]
+- dashboard/routes_{post_game_wpa:71,item_wpa:68,rune_wpa:56,skill_wpa:56,
+  summspell_wpa:58,post_game_rubric:59,replay_events:82}: module TTL caches are
+  unlocked dicts; eviction's sorted(_CACHE.items()) can raise RuntimeError if a
+  sibling handler thread mutates mid-iteration -> spurious one-off 500 (caught by
+  wrapper). ward_heat already locks; consistency pass = shared lock helper,
+  cross-file. [class: concurrency]
+- dashboard/builders.py:269-274: _build_diagnostics tails the day log via full
+  read_text + splitlines per request; a full day's log can be tens of MB. Fix =
+  bounded seek-from-end tail. [class: efficiency]
+- dashboard/builders_home.py:186-193 + dashboard/builders.py:249-267: per-request
+  live HTTP probes (vision :8889 timeout=1; Live Client :2999 timeout=2) inside
+  home-summary/diagnostics builders add up to 1-3s latency per poll while those
+  services are down; no negative-result cache. [class: latency]
+- dashboard/builders_last_match.py:448-451: /api/last-match has no response
+  cache; every poll re-parses the 50-120KB raw_data blob + full LCU enrichment +
+  timeline fold. Mild CPU; frontend polls this endpoint. [class: efficiency]
+- dashboard/routes_last_match.py:172: ingest UPDATE uses a per-call write conn
+  (default busy timeout) while performance_tracker + the retry drain thread also
+  write match_history.db; contention timeout-mitigated, not serialized
+  (reference_sqlite_wal_windows_writes). [class: concurrency]
+- dashboard/_context.py:21-28: comment claims ThreadingHTTPServer "recycles
+  worker threads" - stdlib ThreadingMixIn spawns one thread per connection (no
+  pool), so the per-thread conn cache amortizes nothing across requests today.
+  Cache still correct; rationale doc misleading. [class: docs]
+- Non-ASCII glyphs in authored comments/UI strings across slice files
+  (box-drawing headers builders.py:26 / routes_history.py:77 /
+  routes_loadout.py:386; math glyphs builders.py:28,80 /
+  builders_lcu_enrich.py:205; UI-rendered middot/arrow builders.py:145,247 /
+  builders_home.py:183 / builders_last_match.py:91,124,166). Same class cycle 7
+  deferred - operator-gated visible-output sweep. [fold into P3]
+  [class: ascii-hygiene]
+
+### INFO (no action expected)
+- dashboard/routes_summspell_wpa.py:120-125: 200 ok=false (not 503) when rewind
+  db missing is a DOCUMENTED deliberate deviation from siblings (clean-checkout
+  empty-state rendering); leave as-is.
+- dashboard/routes_history.py:84: prefix("/api/history") also matches
+  /api/history-* (legacy startswith port); harmless under first-match-wins.
+- dashboard/builders.py:49: LIMIT interpolation is int()-coerced (no injection);
+  noted for future editors.
+- Slice files carry NO stale 16.x version pins (the cycle 7 core/ WPA-trio
+  class); routes delegate catalog resolution to core modules fixed in cycle 7.
+
 ## W1 core/ (cycle 7, slices A-G, merge 6273d655)
 
 ### MED

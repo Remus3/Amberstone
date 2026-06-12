@@ -42,8 +42,10 @@ from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
 
-# Bound the payload - the LCU detail for one game is typically 50-120 KB.
-_MAX_INGEST_BYTES = 2 * 1024 * 1024  # 2 MB hard cap
+# Payload bound: the LCU detail for one game is typically 50-120 KB; the
+# global POST cap in dashboard/_handler.py (_MAX_POST_BYTES, 1 MiB) is the
+# enforcing layer. (A dead local 2 MB constant that contradicted it was
+# removed in audit cycle 8 slice E.)
 
 # Item 211 row-match knobs - operator-tunable; not currently surfaced in
 # settings. Keep at module scope so tests can monkeypatch without import games.
@@ -269,7 +271,8 @@ def _serve_last_match(h) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/last-match: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        # Raw exception text can leak file paths - log it, never render it.
+        h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
                 "application/json")
 
 
@@ -296,7 +299,8 @@ def _serve_last_match_ingest(h, body) -> None:
         h._send(202, json.dumps(resp).encode(), "application/json")
     except Exception as exc:
         log.warning("api/last-match/ingest: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        # Raw exception text can leak file paths - log it, never render it.
+        h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
                 "application/json")
 
 
