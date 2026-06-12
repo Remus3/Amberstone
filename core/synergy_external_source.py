@@ -152,7 +152,16 @@ def fetch_rows(
     if not rows:
         return None
     with _lock:
-        _cache[ckey] = (_clock(), list(rows))
+        now = _clock()
+        # Prune expired entries on insert: the cache key embeds the lookup
+        # date, so yesterday's keys are never read again and would otherwise
+        # accumulate forever (one unreachable entry per day per lane pair) in
+        # a long-running process. Expired entries can never be served, so the
+        # prune is behavior-preserving.
+        stale = [k for k, (ts, _r) in _cache.items() if (now - ts) >= _TTL_S]
+        for k in stale:
+            _cache.pop(k, None)
+        _cache[ckey] = (now, list(rows))
     return list(rows)
 
 
