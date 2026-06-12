@@ -118,8 +118,10 @@ def _serve_archetype_post(h, payload) -> None:
                 "application/json")
         return
     except Exception as exc:
+        # Raw exception text (may carry file paths from an OSError) stays
+        # in the log; the UI gets a generic degraded-mode message.
         log.warning("cs-archetype-pick save: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(),
+        h._send(500, json.dumps({"error": "save failed - see logs"}).encode(),
                 "application/json")
         return
 
