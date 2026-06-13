@@ -19,6 +19,7 @@ Modes:     ARAM | SR | ARENA | BRAWL | TFT
 import asyncio
 import json
 import logging
+import math
 import sqlite3
 import ssl
 import threading
@@ -279,11 +280,30 @@ def _s(stats: dict, *keys, default=0):
         if v is None:
             v = stats.get(k.lower())
         if v is not None:
+            # Audit cycle 10 (P2-W1-app-B): NaN/inf from a malformed JSON
+            # payload is treated as missing - int(NaN) raises ValueError
+            # (returning the NaN itself pre-fix) and int(inf) raises an
+            # UNCAUGHT OverflowError that sank the whole match save.
+            if isinstance(v, float) and not math.isfinite(v):
+                continue
             try:
                 return int(v)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, OverflowError):
                 return v
     return default
+
+
+def _int(v, default: int = 0) -> int:
+    """Safe int coercion for JSON-boundary numerics (LCU EOG / match
+    history payloads). NaN, +/-inf, None, and non-numeric garbage all
+    fall back to ``default`` instead of raising (audit cycle 10)."""
+    try:
+        f = float(v)
+    except (ValueError, TypeError):
+        return default
+    if not math.isfinite(f):
+        return default
+    return int(f)
 
 def _parse_player(player: dict, team_result: str,
                   team_comp: list, enemy_comp: list,
@@ -305,9 +325,16 @@ def _parse_player(player: dict, team_result: str,
     tag_line   = player.get("tagLine") or player.get("riotIdTagline") or ""
     puuid      = player.get("puuid") or ""
     champ_id   = _s(player, "championId", "champion_id", default=0)
+    # Audit cycle 10 (P2-W1-app-B): the previous one-liner parsed as
+    # `(A or B or C) if isinstance(champion, dict) else ""` - whenever the
+    # "champion" key was absent (match-history-adapted shape and most EOG
+    # shapes) the else-branch discarded championName and every DB row got
+    # an empty champion_name (indexed column - champion queries broke).
+    _champ_obj = player.get("champion")
     champ_name = (player.get("championName") or
                   player.get("champion_name") or
-                  player.get("champion", {}).get("name", "") if isinstance(player.get("champion"), dict) else "" or "")
+                  (_champ_obj.get("name", "") if isinstance(_champ_obj, dict) else "") or
+                  "")
     position   = player.get("selectedPosition") or player.get("teamPosition") or ""
     is_local   = int(bool(player.get("isLocalPlayer") or player.get("is_local_player")))
 
@@ -329,8 +356,8 @@ def _parse_player(player: dict, team_result: str,
     perks = player.get("perks") or {}
     if isinstance(perks, dict):
         perk_ids  = perks.get("perkIds") or perks.get("perk_ids") or []
-        perk_pri  = int(perks.get("perkStyle") or perks.get("perkPrimaryStyle") or 0)
-        perk_sub  = int(perks.get("perkSubStyle") or perks.get("perkSecondaryStyle") or 0)
+        perk_pri  = _int(perks.get("perkStyle") or perks.get("perkPrimaryStyle") or 0)
+        perk_sub  = _int(perks.get("perkSubStyle") or perks.get("perkSecondaryStyle") or 0)
     else:
         perk_ids = []
         perk_pri = perk_sub = 0
@@ -434,8 +461,8 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None
         return
 
     captured_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    game_len    = int(eog.get("gameLength") or eog.get("gameDuration") or 0)
-    map_id      = int(eog.get("mapId") or 0)
+    game_len    = _int(eog.get("gameLength") or eog.get("gameDuration") or 0)
+    map_id      = _int(eog.get("mapId") or 0)
     patch       = str(eog.get("gameVersion") or eog.get("patch") or "")
 
     # Normalise teams structure - LCU EOG uses {"teams": [...]} or flat player list
@@ -453,7 +480,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None
     # Build team comps
     team_champs = {}  # teamId -> [champion names]
     for team in teams:
-        tid = int(team.get("teamId", 100))
+        tid = _int(team.get("teamId", 100), 100)
         champs = [p.get("championName") or p.get("champion", {}).get("name", "?")
                   if isinstance(p.get("champion"), dict) else
                   p.get("championName") or "?"
@@ -481,7 +508,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None
 
             # Insert player rows
             for team in teams:
-                tid     = int(team.get("teamId", 100))
+                tid     = _int(team.get("teamId", 100), 100)
                 win_str = str(team.get("win", "")).lower()
                 result  = "WIN" if win_str in ("win", "1", "true") else "LOSS"
                 players = team.get("players") or []
@@ -534,15 +561,16 @@ def _save_item_events(match_id: str, mode: str,
         ev_type = ev.get("type") or ev.get("eventType") or ""
         if ev_type not in ("ITEM_PURCHASED", "ITEM_SOLD", "ITEM_UNDO", "ITEM_DESTROYED"):
             continue
+        item_id = _int(ev.get("itemId") or 0)
         rows.append((
             match_id,
             tbl.upper(),
             ev.get("participantId") or ev.get("summonerName") or "",
             ev.get("championName") or "",
             ev_type,
-            int(ev.get("itemId") or 0),
-            item_map.get(int(ev.get("itemId") or 0), ""),
-            int((ev.get("timestamp") or 0) // 1000),
+            item_id,
+            item_map.get(item_id, ""),
+            _int(ev.get("timestamp") or 0) // 1000,
         ))
     if not rows:
         return
@@ -806,13 +834,13 @@ class PostgameCollector:
         # Build team win map
         team_wins = {}
         for t in teams_raw:
-            tid = int(t.get("teamId") or 100)
+            tid = _int(t.get("teamId") or 100, 100)
             team_wins[tid] = (str(t.get("win") or "").lower() == "win")
 
         # Group participants by team
         by_team = {}
         for p in participants:
-            tid  = int(p.get("teamId") or 100)
+            tid  = _int(p.get("teamId") or 100, 100)
             pid  = p.get("participantId") or 0
             ident = id_map.get(pid, {})
 
