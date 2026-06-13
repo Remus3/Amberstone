@@ -119,6 +119,7 @@ Documented EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class)
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from ._passive_damage_overrides import _lerp_per_level, _step_per_level
@@ -665,6 +666,16 @@ def resist_grants(
         if entry.armor_pct or entry.mr_pct:
             res_a = float(total_armor) if entry.pct_base == "total" else build_bonus_armor
             res_m = float(total_mr) if entry.pct_base == "total" else build_bonus_mr
+            # P2-W2 slice E: a non-finite resolved resist (a malformed stat:
+            # inf / NaN) would leak through ``(pct/100) * res`` into a bare
+            # ``NaN`` / ``Infinity`` JSON token on the EHP-denominator seam
+            # (the cycle 7-11 dominant class; slice A guarded the dps_sweep
+            # resist axes the same way). Treat a non-finite resist as the no-op
+            # 0.0 - every FINITE-input call stays byte-identical.
+            if not math.isfinite(res_a):
+                res_a = 0.0
+            if not math.isfinite(res_m):
+                res_m = 0.0
             pa = _value_at_level(
                 entry.armor_pct, lvl, entry.level_scaled,
                 key=_key, rank_scaled=entry.rank_scaled,

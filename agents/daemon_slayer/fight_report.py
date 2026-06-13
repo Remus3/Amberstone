@@ -20,6 +20,7 @@ of the report continues. ASCII only (no em/en dash, no smart quotes).
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
 
@@ -121,7 +122,17 @@ class FightReport:
             "target_max_hp": self.target_max_hp,
             "target_bonus_hp": self.target_bonus_hp,
             "resource_type": self.resource_type,
-            "mana_pool": self.mana_pool,
+            # mana_pool is math.inf for a manaless / energy champion (the
+            # ManaBoundedResult "no finite-mana gate" sentinel). json.dumps
+            # with the DEFAULT allow_nan=True (the DS server's encoder,
+            # server.py:1740) would emit a bare ``Infinity`` token here -
+            # invalid JSON that breaks the dashboard's JSON.parse. Coerce a
+            # non-finite pool to JSON-safe None at the serialization boundary;
+            # resource_type still carries "Energy"/"None" so the "no gate"
+            # signal is preserved. The dataclass field stays math.inf.
+            "mana_pool": (
+                self.mana_pool if math.isfinite(self.mana_pool) else None
+            ),
             "mana_regen_per_s": self.mana_regen_per_s,
             "casts_allowed": self.casts_allowed,
             "casts_requested": self.casts_requested,

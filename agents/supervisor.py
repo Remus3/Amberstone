@@ -313,30 +313,42 @@ class Supervisor:
 
     # ---- shutdown ----------------------------------------------------
     async def stop(self) -> None:
-        log.info("supervisor stopping")
-        self._stop.set()
-        if self._decision_loop is not None:
-            try:
-                self._decision_loop.stop()
-            except Exception as e:  # noqa: BLE001
-                log.debug("decision_loop.stop() raised: %s", e)
-            self._decision_loop = None
-        if self._warm_agent7:
-            self._warm_agent7.close()
-        if self._file_ingest:
-            await self._file_ingest.stop()
-        if self._ws:
-            await self._ws.stop()
-        if self._web:
-            self._web.shutdown()
-            self._web.server_close()
-        # Lock metadata + sentinel both go.
-        for p in (LOCKFILE, STATE_DIR / "lockfile.sentinel"):
-            try:
-                p.unlink(missing_ok=True)
-            except OSError:
-                pass
-        log.info("supervisor stopped")
+        # Shutdown emits log lines while daemon threads (web server,
+        # file_ingest, rc.* loggers) may still be tearing down. If the
+        # interpreter has begun closing the rotating-handler stream, a
+        # racing emit otherwise sprays "--- Logging error ---" tracebacks
+        # via Handler.handleError. Suppress logging-internal errors for the
+        # drain and restore on the way out (mirrors core/resource_manager
+        # shutdown - cycle-5 raiseExceptions class).
+        _prev_raise = logging.raiseExceptions
+        logging.raiseExceptions = False
+        try:
+            log.info("supervisor stopping")
+            self._stop.set()
+            if self._decision_loop is not None:
+                try:
+                    self._decision_loop.stop()
+                except Exception as e:  # noqa: BLE001
+                    log.debug("decision_loop.stop() raised: %s", e)
+                self._decision_loop = None
+            if self._warm_agent7:
+                self._warm_agent7.close()
+            if self._file_ingest:
+                await self._file_ingest.stop()
+            if self._ws:
+                await self._ws.stop()
+            if self._web:
+                self._web.shutdown()
+                self._web.server_close()
+            # Lock metadata + sentinel both go.
+            for p in (LOCKFILE, STATE_DIR / "lockfile.sentinel"):
+                try:
+                    p.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            log.info("supervisor stopped")
+        finally:
+            logging.raiseExceptions = _prev_raise
 
     # ---- heartbeat ---------------------------------------------------
     async def _heartbeat_loop(self) -> None:
