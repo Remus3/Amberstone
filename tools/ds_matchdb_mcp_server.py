@@ -81,6 +81,7 @@ import concurrent.futures
 import http.server
 import json
 import logging
+import math
 import os
 import socket
 import sys
@@ -146,6 +147,41 @@ logging.basicConfig(level=logging.INFO,
 log = logging.getLogger("ds-matchdb-mcp")
 
 _START = time.time()
+
+
+# -- Safe JSON serialization ------------------------------------------------
+# DS-scorer output is the payload of ds_rank_items / ds_build_order. A scorer
+# can return a non-finite float (NaN / inf - a 0/0 ratio, an unbounded score),
+# and json.dumps defaults to allow_nan=True, which emits the BARE tokens
+# ``NaN`` / ``Infinity``. Those are invalid JSON for a strict JSON-RPC client
+# and for JS JSON.parse. The dashboard DS routes already guard this with
+# ``math.isfinite(v) else None``; this is the MCP server's equivalent: try the
+# strict path, and only if it trips rewrite non-finite floats to None and
+# re-dump. Finite payloads pay nothing (the strict dump succeeds first try).
+def _finite_only(obj):
+    """Recursively replace non-finite floats with None (containers rebuilt,
+    scalars passed through). Only called on the cold path after a strict dump
+    has already rejected the payload."""
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _finite_only(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_finite_only(v) for v in obj]
+    return obj
+
+
+def _json_dumps_safe(obj, **kwargs) -> str:
+    """json.dumps that never emits a bare NaN / Infinity token.
+
+    Forces allow_nan=False; on the resulting ValueError (a non-finite float is
+    present) it sanitizes those floats to None and re-dumps. ``default`` stays
+    the caller's (e.g. ``default=str``) for non-JSON objects."""
+    kwargs.pop("allow_nan", None)
+    try:
+        return json.dumps(obj, allow_nan=False, **kwargs)
+    except ValueError:
+        return json.dumps(_finite_only(obj), allow_nan=False, **kwargs)
 
 
 # -- Auth token resolution (mirrors gamepc_mcp_server / the screen agent) ----
@@ -558,7 +594,7 @@ def handle_tools_call(params: dict) -> dict:
     # already MCP-shaped - pass them straight through.
     if isinstance(result, dict) and result.get("isError"):
         return result
-    text = json.dumps(result, indent=2, default=str)
+    text = _json_dumps_safe(result, indent=2, default=str)
     return {"content": [{"type": "text", "text": text}]}
 
 
@@ -650,7 +686,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             env["error"] = {"code": code, "message": message}
         else:
             env["result"] = result
-        self._send(200, json.dumps(env, default=str).encode())
+        self._send(200, _json_dumps_safe(env, default=str).encode())
 
 
 def serve_forever(host: str = HOST, port: int = PORT) -> int:

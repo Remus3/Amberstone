@@ -28,4 +28,27 @@ if (Test-Path $seen) { Remove-Item $seen; Write-Host "  [ok] cleared last-seen l
 
 Write-Host ""
 Write-Host "== running bridge_ping =="
-& py (Join-Path $dest 'bridge_ping.py')
+# Resolve a real interpreter rather than the bare-py launcher: on Legion
+# bare `py` resolves via PEP 514 to a dep-less pymanager runtime (documented
+# incident). bridge_ping.py is stdlib-only, but pin the interpreter the
+# daemons use so the validator runs under the same Python.
+$pingScript = Join-Path $dest 'bridge_ping.py'
+$pyExe = ""
+$pyCandidates = @(
+    "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe",
+    "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe",
+    "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+    "C:\Python314\python.exe",
+    "C:\Python313\python.exe"
+)
+foreach ($c in $pyCandidates) {
+    if (Test-Path -LiteralPath $c) { $pyExe = $c; break }
+}
+if (-not $pyExe) {
+    $pyExe = (Get-Command python.exe -ErrorAction SilentlyContinue).Source
+}
+if (-not $pyExe) {
+    Write-Host "  [FAIL] no python.exe found; install Python or run bridge_ping.py manually"
+} else {
+    & $pyExe $pingScript
+}
