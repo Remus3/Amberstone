@@ -45,11 +45,20 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       no frozen edits - all app/* + lcu_client findings were DEFER. DEFER in
       ops/audit/P2_FINDINGS.md). W1 runtime spine COMPLETE.
 
-### W2 DS engine - ~8 slices
-- [ ] agents/daemon_slayer non-test src (engine, scorers, registries, effects
-      facade; ~90 files / ~48k LOC - exact split at wave start)
+### W2 DS engine - ~8 slices  (census at wave start: 68 non-test files / 39127 LOC)
+- [~] agents/daemon_slayer non-test src - HALF-WAVE 1 DONE cycle 11 (item 405,
+      4 slices A/B/C/F, 36 files / ~23.1k LOC of scorer-logic + engine-core/server;
+      47 new tests; FIX-NOW = 8 NaN/inf JSON-token + OverflowError guards across
+      missile/dps_sweep/antitank/ability_hps + server.py 500-handler raw-exc leak
+      fix + float-chokepoint isfinite rejects; no frozen edits - no DS file is
+      frozen; DEFER in ops/audit/P2_FINDINGS.md). REMAINING half-wave 2 (next cycle):
+      D effects-data (_effects_data/_effects_types/effects 3 files / 6310) +
+      E passive-overrides (12 files / 4319) + G remaining mechanics
+      (rune_procs/mana_sim/combo/_rank_mage/matchup/cooldown_watch/augments/
+      augment_formula_eval/geometry/spike_markers/_item_ability_haste/recharge_ledger/
+      modifier_blocks/ult_rates/_item_tenacity/scenario_matrix/fight_report 17 files / 5371).
 - [ ] agents/ supervisor set: supervisor.py + _supervisor_{http,common,ephemeral}.py
-      + _minimap_bbox.py 5 / 2719 (1 slice)
+      + _minimap_bbox.py 5 / 2719 (1 slice; fold into half-wave 2)
 
 ### W3 web surface - ~8 slices
 - [ ] web/js 58 / 27020 (~5 slices; panels are independent)

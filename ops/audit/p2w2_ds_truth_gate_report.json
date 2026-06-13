@@ -1,0 +1,68 @@
+{
+  "run_id": "p2w2-ds-cycle11-hw1",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15464,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M agents/daemon_slayer/ability_hps.py",
+      " M agents/daemon_slayer/antitank.py",
+      " M agents/daemon_slayer/dps_sweep.py",
+      " M agents/daemon_slayer/missile.py",
+      " M agents/daemon_slayer/server.py",
+      "?? ops/audit/p2w2_ds_claims.json",
+      "?? tests/test_p2w2_ds_a.py",
+      "?? tests/test_p2w2_ds_b.py",
+      "?? tests/test_p2w2_ds_c.py",
+      "?? tests/test_p2w2_ds_f.py"
+    ],
+    "head": "03ee51d6 docs: prune WAKEUP_NOTES to last 3 sessions (cycle 7 -> history_notes)"
+  },
+  "ci": {
+    "status": "skipped"
+  },
+  "slices": [
+    {
+      "id": "A-missile-nan",
+      "claim": "missile spell_travel_time finite-guards explicit distance + final product (no Infinity JSON token)",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "A-sweep-nan",
+      "claim": "dps_sweep level + resist axes finite-filter caller values (no OverflowError / NaN SweepPoint)",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-antitank-nan",
+      "claim": "antitank caster-stat path finite-coerces ap/ad + falls back to static base on non-finite scaled magnitude",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "C-ability-hps-nan",
+      "claim": "ability_hps _value_at_rank floors non-finite reads to 0.0 (heal/shield block chokepoint)",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "F-server-error-leak",
+      "claim": "DS server 500 handlers send a generic body (no raw exc leak) + float chokepoints reject non-finite",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}

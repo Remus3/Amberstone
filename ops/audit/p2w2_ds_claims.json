@@ -1,0 +1,41 @@
+{
+  "run_id": "p2w2-ds-cycle11-hw1",
+  "check_ci": false,
+  "slices": [
+    {
+      "id": "A-missile-nan",
+      "claim": "missile spell_travel_time finite-guards explicit distance + final product (no Infinity JSON token)",
+      "files": [
+        {"path": "agents/daemon_slayer/missile.py", "must_contain": ["import math", "if distance is not None and math.isfinite(distance) and distance > 0:", "if not math.isfinite(travel):"]}
+      ]
+    },
+    {
+      "id": "A-sweep-nan",
+      "claim": "dps_sweep level + resist axes finite-filter caller values (no OverflowError / NaN SweepPoint)",
+      "files": [
+        {"path": "agents/daemon_slayer/dps_sweep.py", "must_contain": ["import math", "tuple(int(v) for v in axis_values if math.isfinite(v))", "values = [float(v) for v in axis_values if math.isfinite(v)]"]}
+      ]
+    },
+    {
+      "id": "B-antitank-nan",
+      "claim": "antitank caster-stat path finite-coerces ap/ad + falls back to static base on non-finite scaled magnitude",
+      "files": [
+        {"path": "agents/daemon_slayer/antitank.py", "must_contain": ["def _finite_float(value, default: float = 0.0) -> float:", "ap = _finite_float(stats.get(\"ap\", 0.0))", "return scaled if math.isfinite(scaled) else base"]}
+      ]
+    },
+    {
+      "id": "C-ability-hps-nan",
+      "claim": "ability_hps _value_at_rank floors non-finite reads to 0.0 (heal/shield block chokepoint)",
+      "files": [
+        {"path": "agents/daemon_slayer/ability_hps.py", "must_contain": ["import math", "out = float(values[idx])", "return out if math.isfinite(out) else 0.0"]}
+      ]
+    },
+    {
+      "id": "F-server-error-leak",
+      "claim": "DS server 500 handlers send a generic body (no raw exc leak) + float chokepoints reject non-finite",
+      "files": [
+        {"path": "agents/daemon_slayer/server.py", "must_contain": ["self._send_error(500, \"internal engine error - see daemon_slayer logs\")", "if not math.isfinite(f):"]}
+      ]
+    }
+  ]
+}
