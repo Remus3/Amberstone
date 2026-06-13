@@ -97,6 +97,7 @@ class):
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from ._passive_resist_overrides import _ACTIVE_RESIST_PROB, _value_at_level
@@ -277,6 +278,14 @@ def ally_resist_grant(
         if entry.armor_pct or entry.mr_pct:
             res_a = float(granter_total_armor) if entry.pct_base == "total" else g_bonus_armor
             res_m = float(granter_total_mr) if entry.pct_base == "total" else g_bonus_mr
+            # P2-W2 slice E: a non-finite granter resist (inf / NaN) would leak
+            # through ``(pct/100) * res`` into a bare NaN/Infinity JSON token on
+            # the protected ally's EHP-denominator seam. Treat a non-finite
+            # resist as the no-op 0.0 - finite-input calls stay byte-identical.
+            if not math.isfinite(res_a):
+                res_a = 0.0
+            if not math.isfinite(res_m):
+                res_m = 0.0
             pa = _value_at_level(
                 entry.armor_pct, lvl, entry.level_scaled,
                 key=_key, rank_scaled=entry.rank_scaled,
