@@ -74,11 +74,28 @@ reliability term, not a literal in-game damage ratio.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .engine import ResolvedStats
+
+
+def _finite_float(value, default: float = 0.0) -> float:
+    """Coerce ``value`` to a finite float, falling back to ``default``.
+
+    A degenerate caster-stat mapping can carry ``None`` (TypeError under
+    arithmetic), a NaN, or an inf for ``ap`` / ``ad``. Any of those would poison
+    the effective magnitude - a NaN serializes to a bare ``NaN`` JSON token (which
+    breaks the dashboard's ``JSON.parse``) and a ``None`` raises mid-tick. Guard at
+    the read so the scorer stays fail-soft (standing finding class 1/2).
+    """
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return default
+    return out if math.isfinite(out) else default
 
 _SOURCE_ORDER = ("P", "Q", "W", "E", "R", "BASE")
 
@@ -169,9 +186,10 @@ def _effective_magnitude(
     base = entry.magnitude
     if stats is None or (entry.ap_ratio == 0.0 and entry.ad_ratio == 0.0):
         return base
-    ap = stats.get("ap", 0.0)
-    ad = stats.get("ad", 0.0)
-    return base + ap * entry.ap_ratio + ad * entry.ad_ratio
+    ap = _finite_float(stats.get("ap", 0.0))
+    ad = _finite_float(stats.get("ad", 0.0))
+    scaled = base + ap * entry.ap_ratio + ad * entry.ad_ratio
+    return scaled if math.isfinite(scaled) else base
 
 
 def _mechanism_value(
