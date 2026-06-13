@@ -496,7 +496,6 @@ class TestSpellBlocks:
         assert [b["name"] for b in blocks] == ["ACalc", "ZCalc"]
 
     def test_ascii_output(self):
-        ms = TestLuxQLike().__class__()._mspell() if False else None  # noqa
         ms = _mspell(
             [_dv("BaseDamage", [10.0] * 5), _dv("APRatio", [0.75] * 5)],
             {"T": {"mFormulaParts": [

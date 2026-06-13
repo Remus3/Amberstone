@@ -115,6 +115,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 import time
@@ -334,6 +335,15 @@ def _parse_scalar(s: str) -> Optional[float]:
     wiki ``ChampionData|get`` sometimes returns trailing ``||`` separators on a
     compound get (feasibility doc 1g: "0.30000001192093||"); strip on the first
     ``|`` and take the leading token.
+
+    NON-FINITE GUARD: ``float()`` happily parses "inf" / "nan" / "Infinity".
+    The raw-module path gates those out with a ``[0-9.]+`` regex, but the
+    getter-fallback path (``action=expandtemplates``) feeds arbitrary wikitext
+    here unmasked. A non-finite value would be written into the sidecar and
+    ``json.dumps`` then emits a BARE ``NaN`` / ``Infinity`` token (invalid JSON
+    for strict parsers + JS ``JSON.parse``, and silently re-accepted by our own
+    ``json.loads`` on the next run). Treat a non-finite token as non-numeric so
+    the value falls through to the next fill tier.
     """
     s = (s or "").strip()
     if not s:
@@ -342,9 +352,10 @@ def _parse_scalar(s: str) -> Optional[float]:
     if not s:
         return None
     try:
-        return float(s)
+        v = float(s)
     except (TypeError, ValueError):
         return None
+    return v if math.isfinite(v) else None
 
 
 _BLOCK_OPEN_RE = re.compile(r'\["([^"]+)"\]\s*=\s*\{')

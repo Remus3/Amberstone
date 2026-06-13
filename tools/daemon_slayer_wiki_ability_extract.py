@@ -90,6 +90,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 import time
@@ -347,10 +348,15 @@ def _resolve_recharge(raw: str) -> Optional[Any]:
     fd = _resolve_fd(s)
     if fd is not None:
         return fd
+    # Bare-number fallback: ``float()`` parses "inf" / "nan" / "Infinity" from
+    # verbatim wiki markup; a non-finite value would be written into
+    # recharge_ranks and ``json.dumps`` then emits a BARE NaN/Infinity token
+    # (invalid JSON). Reject non-finite so the caller keeps only recharge_raw.
     try:
-        return float(s)
+        v = float(s)
     except (TypeError, ValueError):
         return None
+    return v if math.isfinite(v) else None
 
 
 def _norm_cc_flag(raw: str) -> Optional[Any]:

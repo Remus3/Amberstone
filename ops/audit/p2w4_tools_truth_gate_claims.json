@@ -1,0 +1,49 @@
+{
+  "run_id": "p2w4-tools-cycle14",
+  "check_ci": false,
+  "slices": [
+    {"id": "A-bridge", "claim": "isfinite-guard on remote-influenced cost in frozen bridge_watcher_actions.py; bare-py fix in bridge_setup.ps1",
+     "files": [
+       {"path": "tools/bridge_watcher_actions.py", "must_contain": ["math.isfinite(cost)"]},
+       {"path": "tools/bridge_setup.ps1", "must_contain": ["python.exe"]},
+       {"path": "tests/test_p2w4_tools_a.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "B-extractors", "claim": "NaN/inf sidecar guards on wiki stats + ability scalar parse",
+     "files": [
+       {"path": "tools/daemon_slayer_wiki_stats_extract.py", "must_contain": ["math.isfinite"]},
+       {"path": "tools/daemon_slayer_wiki_ability_extract.py", "must_contain": ["math.isfinite"]},
+       {"path": "tests/test_p2w4_tools_b.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "C-extractor-tests", "claim": "removed dead vestigial line in cdragon ratio extractor test",
+     "files": [
+       {"path": "tools/tests/test_cdragon_ratio_extract.py", "must_contain": []}
+     ]},
+    {"id": "D-ds-tooling", "claim": "allow_nan-safe JSON dumps in ds_matchdb MCP server; git subprocess timeout in gist_share_sync",
+     "files": [
+       {"path": "tools/ds_matchdb_mcp_server.py", "must_contain": ["_json_dumps_safe"]},
+       {"path": "tools/gist_share_sync.py", "must_contain": ["GIT_TIMEOUT_S"]},
+       {"path": "tests/test_p2w4_tools_d.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "E-loadout", "claim": "dedupe-unique-passive-family guard in the shared loadout shaper",
+     "files": [
+       {"path": "tools/champion_loadout_cleanup_pollution_item213.py", "must_contain": ["_dedupe_unique_families"]},
+       {"path": "tests/test_p2w4_tools_e.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "F-oneshots-verdict", "claim": "verdict-only slice; no code edits", "files": []},
+    {"id": "G-packaging-gates", "claim": "bare-py fix in headless_run.ps1 resume path",
+     "files": [
+       {"path": "tools/headless_run.ps1", "must_contain": ["python.exe"]},
+       {"path": "tests/test_p2w4_tools_g.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "H-utility", "claim": "isfinite coercion of ledger numerics in cost_health_watchdog",
+     "files": [
+       {"path": "tools/cost_health_watchdog.py", "must_contain": ["def _finite", "math.isfinite"]},
+       {"path": "tests/test_p2w4_tools_h.py", "must_contain": ["def test_"]}
+     ]},
+    {"id": "I-gamepc-verdict", "claim": "P3-prune verdict-only slice; no code edits", "files": []},
+    {"id": "X-pytest-guard-test-realign", "claim": "realigned 7 stale test_pytest_guard tests to the item-408 py_compile-only contract (pre-existing red at HEAD; my W4 diff touches neither pytest_guard.py nor its test)",
+     "files": [
+       {"path": "tests/test_pytest_guard.py", "must_contain": ["test_main_code_py_default_compiles_only", "test_main_full_suite_opt_in_runs_pytest"]}
+     ]}
+  ]
+}

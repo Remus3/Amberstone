@@ -20,6 +20,14 @@ $ErrorActionPreference = "Continue"
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
+# Pin the canonical interpreter for the resume-manifest read. Bare `py` on
+# Legion resolves via PEP 514 to a dep-less pymanager runtime (the
+# tests/test_bare_py_ban.py incident class), so slice_orchestrator.py would run
+# under a deps-less interpreter. Fall back to `python` on PATH only if the
+# canonical path is absent (mirrors the tools/*.cmd wrappers).
+$pyC = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+if (-not (Test-Path $pyC)) { $pyC = "python" }
+
 $tools = "Edit,Read,Write,Bash,Grep,Glob,Agent,TaskCreate,TaskUpdate,TaskList"
 
 for ($i = 1; $i -le $MaxAttempts; $i++) {
@@ -28,7 +36,7 @@ for ($i = 1; $i -le $MaxAttempts; $i++) {
     } else {
         $incomplete = ""
         try {
-            $incomplete = (& py "$repo\tools\slice_orchestrator.py" --manifest $Manifest resume) -join " "
+            $incomplete = (& $pyC "$repo\tools\slice_orchestrator.py" --manifest $Manifest resume) -join " "
         } catch {
             $incomplete = ""
         }

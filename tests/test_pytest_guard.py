@@ -1,10 +1,11 @@
 """Tests for tools/pytest_guard.py - the PostToolUse pytest gate.
 
-Pins the gate semantics:
-- docs-only edit (*.md / *.txt / docs/* paths) -> skip pytest, exit 0
-- code edit (*.py / *.js / *.css / etc) -> run pytest, exit 0
-- mixed paths (any one code path) -> run pytest, exit 0
-- empty / unknown payload -> skip pytest, exit 0 (cannot identify code)
+Pins the gate semantics (tiered-verification default since item 408, 2026-06-13):
+- docs-only edit (*.md / *.txt / docs/* paths) -> skip everything, exit 0
+- *.py edit (default) -> py_compile only, NO pytest, exit 0
+- non-python code edit (*.js / *.css / etc, default) -> skip, exit 0
+- RC_FULL_SUITE=1 -> restore the old auto `pytest -x --ff -q` on any code edit
+- empty / unknown payload -> skip, exit 0 (cannot identify code)
 
 Subprocess invocation is monkeypatched so the tests do not actually re-run
 the suite from inside the suite.
@@ -132,23 +133,36 @@ def test_collect_paths_handles_malformed_edits():
 
 
 def test_main_docs_only_md_skips_pytest(captured_run, monkeypatch, capsys):
+    monkeypatch.delenv("RC_FULL_SUITE", raising=False)
     rc = _invoke({"tool_input": {"file_path": "docs/ARCHITECTURE.md"}}, monkeypatch)
     assert rc == 0
     assert captured_run == [], "pytest should NOT run for docs-only edit"
-    assert "suite skipped" in capsys.readouterr().out
+    assert "skipped" in capsys.readouterr().out
 
 
 def test_main_docs_only_txt_skips_pytest(captured_run, monkeypatch, capsys):
+    monkeypatch.delenv("RC_FULL_SUITE", raising=False)
     rc = _invoke({"tool_input": {"file_path": "WAKEUP_NOTES.txt"}}, monkeypatch)
     assert rc == 0
     assert captured_run == []
-    assert "suite skipped" in capsys.readouterr().out
+    assert "skipped" in capsys.readouterr().out
 
 
-def test_main_code_py_runs_pytest(captured_run, monkeypatch):
+def test_main_code_py_default_compiles_only(captured_run, monkeypatch, capsys):
+    # Tiered default (item 408): a .py edit runs py_compile, NOT the suite.
+    monkeypatch.delenv("RC_FULL_SUITE", raising=False)
     rc = _invoke({"tool_input": {"file_path": "core/engine.py"}}, monkeypatch)
     assert rc == 0
-    assert len(captured_run) == 1, "pytest should run exactly once for code edit"
+    assert captured_run == [], "default tiered behavior: no pytest subprocess"
+    assert "py_compile OK" in capsys.readouterr().out
+
+
+def test_main_full_suite_opt_in_runs_pytest(captured_run, monkeypatch):
+    # RC_FULL_SUITE=1 restores the old auto `pytest -x --ff -q` on a code edit.
+    monkeypatch.setenv("RC_FULL_SUITE", "1")
+    rc = _invoke({"tool_input": {"file_path": "core/engine.py"}}, monkeypatch)
+    assert rc == 0
+    assert len(captured_run) == 1, "RC_FULL_SUITE=1 runs the suite exactly once"
     args, _kwargs = captured_run[0]
     cmd = args[0]
     assert "pytest" in cmd
@@ -156,20 +170,25 @@ def test_main_code_py_runs_pytest(captured_run, monkeypatch):
     assert "--ff" in cmd
 
 
-def test_main_code_js_runs_pytest(captured_run, monkeypatch):
+def test_main_code_js_default_skips(captured_run, monkeypatch, capsys):
+    monkeypatch.delenv("RC_FULL_SUITE", raising=False)
     rc = _invoke({"tool_input": {"file_path": "web/js/main.js"}}, monkeypatch)
     assert rc == 0
-    assert len(captured_run) == 1
+    assert captured_run == []
+    assert "non-python code edit" in capsys.readouterr().out
 
 
-def test_main_code_css_runs_pytest(captured_run, monkeypatch):
+def test_main_code_css_default_skips(captured_run, monkeypatch, capsys):
+    monkeypatch.delenv("RC_FULL_SUITE", raising=False)
     rc = _invoke({"tool_input": {"file_path": "web/css/panels/grid.css"}}, monkeypatch)
     assert rc == 0
-    assert len(captured_run) == 1
+    assert captured_run == []
+    assert "non-python code edit" in capsys.readouterr().out
 
 
-def test_main_mixed_paths_one_code_runs_pytest(captured_run, monkeypatch):
-    # one docs + one code -> any code triggers
+def test_main_mixed_paths_default_compiles_py(captured_run, monkeypatch, capsys):
+    # one docs + one code -> default tiered behavior compiles the .py, no suite
+    monkeypatch.delenv("RC_FULL_SUITE", raising=False)
     payload = {
         "tool_input": {
             "file_path": "docs/ARCHITECTURE.md",
@@ -178,7 +197,8 @@ def test_main_mixed_paths_one_code_runs_pytest(captured_run, monkeypatch):
     }
     rc = _invoke(payload, monkeypatch)
     assert rc == 0
-    assert len(captured_run) == 1, "pytest must run when any code path is present"
+    assert captured_run == [], "default tiered behavior: no pytest subprocess"
+    assert "py_compile OK" in capsys.readouterr().out
 
 
 def test_main_empty_payload_skips_pytest(captured_run, monkeypatch, capsys):
@@ -211,6 +231,8 @@ def test_main_invalid_json_stdin_skips(monkeypatch, capsys):
 
 
 def test_main_pytest_output_tail_emitted(monkeypatch, capsys):
+    # The output tail only exists on the RC_FULL_SUITE=1 path.
+    monkeypatch.setenv("RC_FULL_SUITE", "1")
     long_output = "\n".join(f"line {i}" for i in range(50))
     monkeypatch.setattr(
         pytest_guard.subprocess,
@@ -231,6 +253,7 @@ def test_main_pytest_output_tail_emitted(monkeypatch, capsys):
 
 def test_main_pytest_failure_still_exits_zero(monkeypatch):
     # Informational gate: even a red suite must exit 0 (not block the tool).
+    monkeypatch.setenv("RC_FULL_SUITE", "1")
     monkeypatch.setattr(
         pytest_guard.subprocess,
         "run",

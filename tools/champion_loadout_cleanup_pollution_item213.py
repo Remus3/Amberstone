@@ -518,6 +518,26 @@ class Cleaner:
                 out.add(f)
         return out
 
+    def _dedupe_unique_families(self, items: list[str]) -> list[str]:
+        """Drop the second + later items that share a unique-passive
+        family with an earlier item (engine-authoritative no-double-
+        unique rule, e.g. Trinity Force + Essence Reaver = spellblade).
+
+        Mirrors ``tools/champion_loadout_align._dedupe_items`` and uses
+        the same family registry. First occurrence wins so the higher-
+        ranked engine pick survives. Items with no family pass through.
+        """
+        out: list[str] = []
+        seen_fams: set[str] = set()
+        for it in items:
+            f = self.fam.get(_fam_norm(it))
+            if f and f in seen_fams:
+                continue
+            if f:
+                seen_fams.add(f)
+            out.append(it)
+        return out
+
     def _backfill(
         self, items: list[str], mode: str, archetype: str,
         skip_names: frozenset = frozenset(),
@@ -652,11 +672,20 @@ class Cleaner:
         skip_names: frozenset = frozenset(),
     ) -> list[str]:
         """Item s8 - shape one row to the canonical per-mode form:
+        unique-family duplicates dropped (no-double-unique rule),
         boots reseated (index 1 on SR/ARAM, none on Arena/bootsless),
         refilled from the archetype pool to the exact mode target, then
         tail-trimmed to target. Shared by the autogen producer and the
-        item-s8 sweep so generation and repair cannot disagree."""
-        items = self._reseat_boots(champ, mode, list(items), archetype)
+        item-s8 sweep so generation and repair cannot disagree.
+
+        The unique-family dedup is FIRST so a clashing pair the DS flat
+        ranker emitted (Trinity Force + Essence Reaver, both spellblade)
+        is collapsed before reseat/backfill - otherwise an autogen run
+        wrote the clash straight into the curated JSON and broke the
+        no-unique-clash drift guard. align dedupes upstream already; the
+        sweep relies on this step for the same guarantee."""
+        items = self._dedupe_unique_families(list(items))
+        items = self._reseat_boots(champ, mode, items, archetype)
         if len(items) < TARGET_LEN[mode]:
             items = self._backfill(
                 items, mode, archetype, skip_names=skip_names,

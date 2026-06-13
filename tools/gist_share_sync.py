@@ -42,6 +42,12 @@ CLONE_DIR = Path(
 LOG_DIR = REPO_ROOT / "logs"
 STATUS_PATH = REPO_ROOT / "ops" / "runtime" / "gist_sync_status.json"
 PUSH_FAIL_EXIT = 3
+# Bounded ceiling for every git subprocess. This runs from a post-commit hook;
+# a network call (fetch / push) that hangs on a dead remote or a credential
+# prompt would otherwise block the commit indefinitely. Local calls (add /
+# status / commit) return well under this; the ceiling only ever trips on a
+# stuck network op. Override with RC_SHARE_GIST_GIT_TIMEOUT_S.
+GIT_TIMEOUT_S = float(os.environ.get("RC_SHARE_GIST_GIT_TIMEOUT_S", "120"))
 WIKI_SCRIPTS = (
     "daemon_slayer_wiki_stats_extract.py",
     "daemon_slayer_wiki_ability_extract.py",
@@ -161,6 +167,7 @@ def _git(*args: str) -> subprocess.CompletedProcess:
         check=True,
         capture_output=True,
         text=True,
+        timeout=GIT_TIMEOUT_S,
     )
 
 
@@ -199,7 +206,9 @@ def _unpushed_count() -> int:
         _git("fetch", "origin")
         out = _git("rev-list", "--count", "origin/main..HEAD").stdout.strip()
         return int(out)
-    except (subprocess.CalledProcessError, ValueError):
+    except (subprocess.SubprocessError, ValueError):
+        # SubprocessError covers CalledProcessError AND a fetch that hits
+        # GIT_TIMEOUT_S (TimeoutExpired); either way this stays best-effort.
         return 0
 
 
@@ -209,8 +218,16 @@ def _do_push(ev: str, patch: str, n: int, url: str) -> int:
     silently swallowing). Returns 0 on success."""
     try:
         _git("push", "origin", "HEAD")
-    except subprocess.CalledProcessError as exc:
-        stderr = (exc.stderr or "").strip() or str(exc)
+    except subprocess.SubprocessError as exc:
+        # CalledProcessError (rejected push) AND TimeoutExpired (a push that
+        # hangs past GIT_TIMEOUT_S on a dead remote / credential prompt) both
+        # land here, so the push-failure visibility path always runs instead of
+        # the exception escaping uncaught. .stderr may be bytes/None on a
+        # timeout - normalize defensively.
+        raw = getattr(exc, "stderr", None)
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", "replace")
+        stderr = (raw or "").strip() or str(exc)
         unpushed = _unpushed_count()
         line = (
             f"push FAILED (ENGINE {ev}, patch {patch}): {unpushed} local "
