@@ -1,0 +1,38 @@
+{
+  "run_id": "p2w2-ds-cycle12-hw2",
+  "check_ci": false,
+  "slices": [
+    {
+      "id": "D-effects-nonfinite",
+      "claim": "_effects_types resolve_damage + ItemShield/ItemHeal resolve_magnitude floor non-finite magnitude to 0.0 (no bare NaN/Infinity JSON token)",
+      "files": [
+        {"path": "agents/daemon_slayer/_effects_types.py", "must_contain": ["import math", "if not math.isfinite(out):", "if not math.isfinite(total):"]}
+      ]
+    },
+    {
+      "id": "E-resist-nonfinite",
+      "claim": "resist_grants + ally_resist_grant percent-of-resist paths zero out non-finite resolved resist (no NaN/inf EHP-denominator leak)",
+      "files": [
+        {"path": "agents/daemon_slayer/_passive_resist_overrides.py", "must_contain": ["import math", "if not math.isfinite(res_a):", "if not math.isfinite(res_m):"]},
+        {"path": "agents/daemon_slayer/_passive_ally_grant_overrides.py", "must_contain": ["import math", "if not math.isfinite(res_a):", "if not math.isfinite(res_m):"]}
+      ]
+    },
+    {
+      "id": "G-fight-report-inf",
+      "claim": "fight_report.to_dict coerces non-finite mana_pool (inf for manaless champs) to JSON-safe None at the serialization boundary",
+      "files": [
+        {"path": "agents/daemon_slayer/fight_report.py", "must_contain": ["import math", "self.mana_pool if math.isfinite(self.mana_pool) else None"]}
+      ]
+    },
+    {
+      "id": "H-supervisor-error-leak",
+      "claim": "Phase3 supervisor HTTP sends generic 500/502 bodies + allow_nan=False; ephemeral redacts stderr secrets; lockfile write is atomic; stop() silences logging-after-close",
+      "files": [
+        {"path": "agents/_supervisor_http.py", "must_contain": ["def _send_error(self, status: int, public_msg: str, exc: BaseException | None = None) -> None:", "allow_nan=False"]},
+        {"path": "agents/_supervisor_ephemeral.py", "must_contain": ["_redact_secrets(proc.stderr.strip()[:400])"]},
+        {"path": "agents/_supervisor_common.py", "must_contain": ["def _atomic_write_json(target: Path, obj: object) -> None:", "os.replace(tmp, target)"]},
+        {"path": "agents/supervisor.py", "must_contain": ["logging.raiseExceptions = False"]}
+      ]
+    }
+  ]
+}

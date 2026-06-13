@@ -1,0 +1,66 @@
+{
+  "run_id": "p2w2-ds-cycle12-hw2",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15511,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M agents/_supervisor_common.py",
+      " M agents/_supervisor_ephemeral.py",
+      " M agents/_supervisor_http.py",
+      " M agents/daemon_slayer/_effects_types.py",
+      " M agents/daemon_slayer/_passive_ally_grant_overrides.py",
+      " M agents/daemon_slayer/_passive_resist_overrides.py",
+      " M agents/daemon_slayer/fight_report.py",
+      " M agents/supervisor.py",
+      "?? ops/audit/p2w2_ds_hw2_claims.json",
+      "?? ops/audit/p2w2_ds_hw2_truth_gate_report.json",
+      "?? tests/test_p2w2_ds_d.py",
+      "?? tests/test_p2w2_ds_e.py",
+      "?? tests/test_p2w2_ds_g.py",
+      "?? tests/test_p2w2_ds_h.py"
+    ],
+    "head": "05c61cde chore(share): sync DS Share mirror for cycle 11 hw1 edits (item 405)"
+  },
+  "ci": {
+    "status": "skipped"
+  },
+  "slices": [
+    {
+      "id": "D-effects-nonfinite",
+      "claim": "_effects_types resolve_damage + ItemShield/ItemHeal resolve_magnitude floor non-finite magnitude to 0.0 (no bare NaN/Infinity JSON token)",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "E-resist-nonfinite",
+      "claim": "resist_grants + ally_resist_grant percent-of-resist paths zero out non-finite resolved resist (no NaN/inf EHP-denominator leak)",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "G-fight-report-inf",
+      "claim": "fight_report.to_dict coerces non-finite mana_pool (inf for manaless champs) to JSON-safe None at the serialization boundary",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "H-supervisor-error-leak",
+      "claim": "Phase3 supervisor HTTP sends generic 500/502 bodies + allow_nan=False; ephemeral redacts stderr secrets; lockfile write is atomic; stop() silences logging-after-close",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}
