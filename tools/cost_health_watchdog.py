@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 import sys
 import time
@@ -77,6 +78,26 @@ def _read_json(p: Path, default):
         return default
 
 
+def _finite(val, default: float = 0.0) -> float:
+    """Coerce a ledger value to a FINITE float.
+
+    A corrupt spend ledger can carry a non-finite ``total_usd`` / per-lane
+    ``usd`` / ``calls`` (NaN or +/-Infinity - e.g. a divide-by-zero that leaked
+    into the ledger writer). Left unguarded those poison this watchdog two ways:
+    (1) every threshold comparison against a NaN is False, so a corrupt ledger
+    silently DISABLES breach detection; and (2) ``json.dumps`` serializes them as
+    the bare ``NaN`` / ``Infinity`` tokens, which are invalid JSON per RFC 8259 -
+    so the watchdog's own stdout report and persisted state file would break any
+    strict downstream parser (JS ``JSON.parse``, a Go/Rust cron wrapper). Coerce
+    every ledger numeric through here so the math stays sound and the emitted
+    JSON stays strict."""
+    try:
+        f = float(val)
+    except (TypeError, ValueError):
+        return default
+    return f if math.isfinite(f) else default
+
+
 def _atomic_write_json(p: Path, obj) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(p.suffix + ".tmp")
@@ -124,12 +145,12 @@ def probe_bridge(path: Path = _BRIDGE) -> dict:
 def spend_baseline(spend_dir: Path, today: str) -> dict:
     """today_usd, trailing median baseline (prior days > 0, up to 7), breach."""
     today_doc = _read_json(spend_dir / (today + ".json"), {})
-    today_usd = float(today_doc.get("total_usd", 0.0) or 0.0)
+    today_usd = _finite(today_doc.get("total_usd", 0.0) or 0.0)
     prior = []
     for f in sorted(spend_dir.glob("*.json")):
         if f.stem == today:
             continue
-        v = float(_read_json(f, {}).get("total_usd", 0.0) or 0.0)
+        v = _finite(_read_json(f, {}).get("total_usd", 0.0) or 0.0)
         if v > 0:
             prior.append(v)
     prior = prior[-7:]
@@ -175,8 +196,8 @@ def _lane_mean_cost(doc: dict) -> dict:
     calls are skipped (no meaningful per-call cost)."""
     out = {}
     for name, pb in (doc.get("by_purpose") or {}).items():
-        calls = float(pb.get("calls", 0) or 0)
-        usd = float(pb.get("usd", 0.0) or 0.0)
+        calls = _finite(pb.get("calls", 0) or 0)
+        usd = _finite(pb.get("usd", 0.0) or 0.0)
         if calls > 0:
             out[name] = usd / calls
     return out
@@ -198,8 +219,8 @@ def lane_cost_signals(spend_dir: Path, today: str) -> dict:
     today_doc = _read_json(spend_dir / (today + ".json"), {})
     today_means = _lane_mean_cost(today_doc)
     today_calls = {
-        name: float((today_doc.get("by_purpose") or {})
-                    .get(name, {}).get("calls", 0) or 0)
+        name: _finite((today_doc.get("by_purpose") or {})
+                      .get(name, {}).get("calls", 0) or 0)
         for name in today_means
     }
     prior_series: dict = {}
