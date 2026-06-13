@@ -1,0 +1,83 @@
+{
+  "run_id": "p2w1-app-cycle10",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15377,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 47,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "?? ops/audit/p2w1_app_claims.json"
+    ],
+    "head": "d61330b9 merge(audit): P2-W1 app-set slices A-B into main"
+  },
+  "ci": {
+    "status": "skipped"
+  },
+  "slices": [
+    {
+      "id": "A-snapshot-nan",
+      "claim": "snapshot_normalizer NaN/inf boundary coercion via _coerce_num",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "A-vision-ocr-timeout",
+      "claim": "vision_server OCR subprocess timeout + log path anchor",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-sr-prompt-nan",
+      "claim": "SR prompt respawn NaN guard",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-archetype-nan",
+      "claim": "archetype_dispatch delta/gold NaN-inf guards keep DS panel JSON parseable",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-lcu-queue",
+      "claim": "LCU ARAM queue set includes 2400 Mayhem",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-postgame-int",
+      "claim": "postgame _int coercion + champ_name precedence fix",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-rune-writer",
+      "claim": "rune writer cache-poison guard + spell-pref lock + replace retry",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-coach-lock",
+      "claim": "coach reset takes shared writer lock + friendly error",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-rewind-nan",
+      "claim": "rewind_live_writer duration NaN guard + OSError on open_db",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}

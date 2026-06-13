@@ -1,0 +1,70 @@
+{
+  "run_id": "p2w1-app-cycle10",
+  "check_ci": false,
+  "slices": [
+    {
+      "id": "A-snapshot-nan",
+      "claim": "snapshot_normalizer NaN/inf boundary coercion via _coerce_num",
+      "files": [
+        {"path": "game_reader/snapshot_normalizer.py", "must_contain": ["def _coerce_num(value, default=0.0)", "game_time = _coerce_num(game_info.get(\"gameTime\", 0))", "hp = int(_coerce_num(stats.get(\"currentHealth\", 0)))"]}
+      ]
+    },
+    {
+      "id": "A-vision-ocr-timeout",
+      "claim": "vision_server OCR subprocess timeout + log path anchor",
+      "files": [
+        {"path": "vision_server/_inference.py", "must_contain": ["_OCR_TIMEOUT_S = 10.0", "timeout=_OCR_TIMEOUT_S"]},
+        {"path": "vision_server/_config.py", "must_contain": ["_LOG_PATH = Path(__file__).resolve().parent.parent / \"moon_vision_server.log\""]}
+      ]
+    },
+    {
+      "id": "B-sr-prompt-nan",
+      "claim": "SR prompt respawn NaN guard",
+      "files": [
+        {"path": "coach_integration/_sr_prompt.py", "must_contain": ["_r_ok = isinstance(r, (int, float)) and math.isfinite(r)"]}
+      ]
+    },
+    {
+      "id": "B-archetype-nan",
+      "claim": "archetype_dispatch delta/gold NaN-inf guards keep DS panel JSON parseable",
+      "files": [
+        {"path": "coach_integration/archetype_dispatch.py", "must_contain": ["return val if math.isfinite(val) else 0.0", "except (TypeError, ValueError, OverflowError):"]}
+      ]
+    },
+    {
+      "id": "B-lcu-queue",
+      "claim": "LCU ARAM queue set includes 2400 Mayhem",
+      "files": [
+        {"path": "lcu/lcu_client.py", "must_contain": ["if queue_id in (450, 720, 920, 2400):"]}
+      ]
+    },
+    {
+      "id": "B-postgame-int",
+      "claim": "postgame _int coercion + champ_name precedence fix",
+      "files": [
+        {"path": "lcu/lcu_postgame_collector.py", "must_contain": ["def _int(v, default: int = 0) -> int:", "_champ_obj = player.get(\"champion\")"]}
+      ]
+    },
+    {
+      "id": "B-rune-writer",
+      "claim": "rune writer cache-poison guard + spell-pref lock + replace retry",
+      "files": [
+        {"path": "lcu/lcu_rune_writer.py", "must_contain": ["_SPELL_PREFS_LOCK = threading.Lock()", "_log.debug(\"perk-by-name load failed: %s\", exc)\n            return {}"]}
+      ]
+    },
+    {
+      "id": "B-coach-lock",
+      "claim": "coach reset takes shared writer lock + friendly error",
+      "files": [
+        {"path": "coach_integration/_coach.py", "must_contain": ["from core.coaching_data_lock import coaching_data_lock", "self._write_status_field(\"(coach paused - internal error)\")"]}
+      ]
+    },
+    {
+      "id": "B-rewind-nan",
+      "claim": "rewind_live_writer duration NaN guard + OSError on open_db",
+      "files": [
+        {"path": "lib/rewind_live_writer.py", "must_contain": ["except (TypeError, ValueError, OverflowError):", "except (sqlite3.Error, OSError) as exc:"]}
+      ]
+    }
+  ]
+}
