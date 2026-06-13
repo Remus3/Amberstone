@@ -116,7 +116,19 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         return self.rfile.read(length)
 
     def _send_json(self, status: int, obj: Any) -> None:
-        body = json.dumps(obj, default=str).encode("utf-8")
+        # allow_nan=False rejects bare NaN/Infinity tokens (a strict
+        # JSON.parse on the dashboard throws on those). If a handler
+        # accidentally bubbles a non-finite float into the body, fall
+        # back to a generic error envelope rather than emitting an
+        # un-parseable token (cycle 5-11 non-finite-token class).
+        try:
+            body = json.dumps(obj, default=str, allow_nan=False).encode("utf-8")
+        except ValueError:
+            log.error("response body had a non-finite float; sending generic error")
+            status = 500
+            body = json.dumps(
+                {"error": "internal error - see supervisor log"},
+            ).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -124,13 +136,26 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(body)
 
+    def _send_error(self, status: int, public_msg: str, exc: BaseException | None = None) -> None:
+        """Send a generic, user-safe error body and log the raw cause.
+
+        CLAUDE.md Error-Handling rule: never surface a raw exception string
+        (str(exc) / f"...{exc}") in a wire-JSON error field reachable by the
+        dashboard - it can leak internal paths, import details, or secret-
+        shaped traceback fragments. The caller passes a friendly message; the
+        raw ``exc`` (if any) goes to the supervisor log only.
+        """
+        if exc is not None:
+            log.warning("%s: %s", public_msg, exc)
+        self._send_json(status, {"error": public_msg})
+
     def _handle_input(self) -> None:
         t0 = time.monotonic()
         raw = self._read_body()
         try:
             payload = json.loads(raw) if raw else {}
         except json.JSONDecodeError as e:
-            self._send_json(400, {"error": f"bad json: {e}"})
+            self._send_error(400, "malformed JSON body", e)
             return
         text = (payload.get("text") or "").strip()
         if not text:
@@ -173,7 +198,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
                 )
             except Exception as e:          # noqa: BLE001
                 log.exception("ui_feedback parse raised: %s", e)
-                self._send_json(500, {"error": str(e)})
+                self._send_error(500, "coaching paused - retrying")
                 return
             elapsed_ms = (time.monotonic() - t0) * 1000.0
             sup.record_input_latency(elapsed_ms)
@@ -201,7 +226,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             result = parser.parse(text)
         except Exception as e:         # noqa: BLE001
             log.exception("agent7 parse raised: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "coaching paused - retrying")
             return
 
         elapsed_ms = (time.monotonic() - t0) * 1000.0
@@ -260,9 +285,10 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
                 from agents._minimap_bbox import parse_http_override as _parse_bbox
                 bbox = _parse_bbox(bbox_raw)
             except ValueError as ve:
-                self._send_json(
+                self._send_error(
                     400,
-                    {"error": f"bbox must be x1,y1,x2,y2 with r>l,b>t,coords in [0,10000]: {ve}"},
+                    "bbox must be x1,y1,x2,y2 with r>l,b>t,coords in [0,10000]",
+                    ve,
                 )
                 return
         else:
@@ -279,7 +305,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from PIL import Image
             from core.vision_token import get_vision_token
         except ImportError as e:
-            self._send_json(500, {"error": f"missing dependency: {e}"})
+            self._send_error(500, "minimap crop unavailable - missing dependency", e)
             return
 
         tok = get_vision_token()
@@ -323,7 +349,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             with urllib.request.urlopen(req, timeout=2.0) as r:
                 frame = json.loads(r.read())
         except Exception as e:              # noqa: BLE001
-            self._send_json(502, {"error": f"vision server unreachable: {e}"})
+            self._send_error(502, "vision server unreachable", e)
             return
 
         b64 = frame.get("b64") if isinstance(frame, dict) else None
@@ -338,7 +364,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             crop.save(buf, format="PNG", optimize=True)
             body = buf.getvalue()
         except Exception as e:              # noqa: BLE001
-            self._send_json(500, {"error": f"crop failed: {e}"})
+            self._send_error(500, "minimap crop failed", e)
             return
 
         self.send_response(200)
@@ -563,7 +589,8 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         try:
             from coaches.adaptation_hint import insight_card
         except Exception as e:              # noqa: BLE001
-            self._send_json(500, {"error": str(e)})
+            log.exception("insight_card import failed: %s", e)
+            self._send_error(500, "coaching data temporarily unavailable")
             return
         card = insight_card(champion, mode, enemies=enemies)
         self._send_json(200, {
@@ -593,7 +620,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from coaches.adaptation_hint import for_champion, format_hint_line, top_champions
         except Exception as e:               # noqa: BLE001
             log.exception("adaptation helper import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
 
         if champion:
@@ -626,7 +653,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from coaches.adaptation_hint import kda_trends, SUPPORTED_MODES
         except Exception as e:                  # noqa: BLE001
             log.exception("trending helper import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
         if mode:
             self._send_json(200, kda_trends(mode, n=n))
@@ -648,7 +675,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from coaches.adaptation_hint import session_summary, _parse_since
         except Exception as e:                  # noqa: BLE001
             log.exception("session helper import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
         self._send_json(200, session_summary(_parse_since(since_spec)))
 
@@ -672,7 +699,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from coaches.adaptation_hint import session_games, _parse_since
         except Exception as e:                  # noqa: BLE001
             log.exception("session_games import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
         games = session_games(_parse_since(since_spec), limit=limit)
         self._send_json(200, {"since": since_spec, "games": games})
@@ -695,7 +722,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from coaches.adaptation_hint import time_of_day_analysis, _parse_since
         except Exception as e:                  # noqa: BLE001
             log.exception("time_of_day import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
         since = _parse_since(since_spec) if since_spec else None
         self._send_json(200, time_of_day_analysis(
@@ -716,7 +743,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from coaches.adaptation_hint import day_of_week_analysis, _parse_since
         except Exception as e:                  # noqa: BLE001
             log.exception("day_of_week import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
         since = _parse_since(since_spec) if since_spec else None
         self._send_json(200, day_of_week_analysis(
@@ -743,7 +770,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from coaches.adaptation_hint import duration_analysis, _parse_since
         except Exception as e:                  # noqa: BLE001
             log.exception("duration_analysis import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
         since = _parse_since(since_spec) if since_spec else None
         self._send_json(200, duration_analysis(
@@ -770,7 +797,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from coaches.adaptation_hint import coaching_digest, _parse_since
         except Exception as e:                  # noqa: BLE001
             log.exception("coaching_digest import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
         since = _parse_since(since_spec) if since_spec else None
         self._send_json(200, coaching_digest(
@@ -791,7 +818,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from agents.agent5_ui.champion_fallback import current_champion
         except Exception as e:  # noqa: BLE001
             log.exception("champion_fallback import failed: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
         self._send_json(200, current_champion(force_fresh=force))
 
@@ -823,7 +850,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         try:
             body = json.loads(raw) if raw else {}
         except json.JSONDecodeError as e:
-            self._send_json(400, {"error": f"bad json: {e}"})
+            self._send_error(400, "malformed JSON body", e)
             return
 
         op = (body.get("op") or "").strip()
@@ -862,7 +889,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             )
         except Exception as e:       # noqa: BLE001
             log.exception("file_task from HTTP raised: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
 
         self._send_json(200, {
@@ -891,14 +918,14 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             from agents.agent4_coach_mentor import analyze_mode, analyze_all
             result = analyze_mode(mode) if mode else analyze_all()
         except ValueError as e:
-            self._send_json(400, {"error": str(e)})
+            self._send_error(400, "invalid analyze request (check 'mode')", e)
             return
         except FileNotFoundError as e:
-            self._send_json(404, {"error": str(e)})
+            self._send_error(404, "analyze data not found", e)
             return
         except Exception as e:               # noqa: BLE001
             log.exception("analyze raised: %s", e)
-            self._send_json(500, {"error": str(e)})
+            self._send_error(500, "internal error - see supervisor log")
             return
 
         self._send_json(200, result if mode else {"per_mode": result})

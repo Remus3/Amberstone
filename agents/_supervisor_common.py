@@ -223,6 +223,23 @@ log = _build_logger()
 
 # -------- PID lock ----------------------------------------------------
 
+def _atomic_write_json(target: Path, obj: object) -> None:
+    """Write ``obj`` as JSON to ``target`` atomically (CLAUDE.md hard rule).
+
+    The lockfile is polled by the frozen ``_Phase3Watcher`` in
+    ``ops/rc_supervisor.py`` every cycle; a direct ``write_text`` is
+    observable mid-write and a torn read decodes as missing_lockfile,
+    contributing a spurious unhealthy signal toward a false restart. Write
+    to a PID-unique temp in the same dir (so the rename is same-filesystem
+    and never collides with a concurrent reclaiming starter), then
+    ``os.replace`` - atomic on POSIX and Windows.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_name(f"{target.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(obj), encoding="utf-8")
+    os.replace(tmp, target)
+
+
 def _pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
@@ -254,14 +271,11 @@ def acquire_lock() -> bool:
     sentinel = STATE_DIR / "lockfile.sentinel"
 
     def _write_lock_metadata() -> None:
-        LOCKFILE.write_text(
-            json.dumps({
-                "pid": os.getpid(),
-                "started_at": _STARTED_AT,
-                "host": socket.gethostname(),
-            }),
-            encoding="utf-8",
-        )
+        _atomic_write_json(LOCKFILE, {
+            "pid": os.getpid(),
+            "started_at": _STARTED_AT,
+            "host": socket.gethostname(),
+        })
 
     # Try exclusive-create first.
     try:
@@ -345,15 +359,12 @@ def _port_available(host: str, port: int) -> bool:
 def refresh_lock() -> None:
     if not LOCKFILE.exists():
         LOCKFILE.parent.mkdir(parents=True, exist_ok=True)
-    LOCKFILE.write_text(
-        json.dumps({
-            "pid": os.getpid(),
-            "started_at": _STARTED_AT,
-            "heartbeat_at": _iso_now(),
-            "host": socket.gethostname(),
-        }),
-        encoding="utf-8",
-    )
+    _atomic_write_json(LOCKFILE, {
+        "pid": os.getpid(),
+        "started_at": _STARTED_AT,
+        "heartbeat_at": _iso_now(),
+        "host": socket.gethostname(),
+    })
 
 
 # -------- cmdkey check ------------------------------------------------

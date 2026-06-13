@@ -247,11 +247,17 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
         with log_path.open("a", encoding="utf-8") as f:
             f.write(
                 f"{_iso_now()} FAIL agent={agent} task={task_id} exit={proc.returncode} "
-                f"stderr={proc.stderr[:200]!r}\n"
+                f"stderr={_redact_secrets(proc.stderr[:200])!r}\n"
             )
+        # The exception text becomes Scheduler.fail(error=str(e)) -> the
+        # task's ``last_error`` -> the /api/task/<id> wire body. stderr can
+        # carry an ANTHROPIC_API_KEY echo or a secret-shaped traceback
+        # fragment (same threat the per-task log redaction guards), so
+        # redact the embedded stderr here too - never leak it raw to the
+        # dashboard (CLAUDE.md Error-Handling rule).
         raise EphemeralSpawnFailed(
             f"claude exit {proc.returncode} for task {task_id}: "
-            f"{proc.stderr.strip()[:400]}"
+            f"{_redact_secrets(proc.stderr.strip()[:400])}"
         )
 
     # Parse the JSON envelope. Fall back to raw stdout if parse fails -

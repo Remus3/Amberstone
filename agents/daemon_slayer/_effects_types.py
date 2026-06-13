@@ -9,6 +9,7 @@ existing `from .effects import ...` callers stay unchanged.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Callable, Iterable, Union
 
@@ -210,8 +211,19 @@ class PeriodicProc:
         stays invisible.
         """
         if callable(self.bonus_damage):
-            return float(self.bonus_damage(ctx))
-        return float(self.bonus_damage)
+            out = float(self.bonus_damage(ctx))
+        else:
+            out = float(self.bonus_damage)
+        # A proc lambda fed a non-finite CallContext field (e.g.
+        # target_max_hp=inf from a caller / sweep axis through a
+        # %-target-HP proc) would otherwise return inf/nan straight into
+        # _periodic_proc_dps -> DpsResult.weighted_dps -> json.dumps
+        # (default allow_nan=True) -> a bare Infinity/NaN token that
+        # breaks downstream JSON.parse. Drop to 0.0 ("contributes nothing
+        # on degenerate input") - finite values pass through byte-identical.
+        if not math.isfinite(out):
+            return 0.0
+        return out
 
 
 @dataclass(frozen=True)
@@ -305,6 +317,11 @@ class ItemShield:
         )
         if is_ranged and self.ranged_modifier != 1.0:
             total *= self.ranged_modifier
+        # max(0.0, nan) floors to 0.0 by CPython evaluation order, but
+        # max(0.0, inf) == inf would leak a bare Infinity token through
+        # ehp.compute_ehp -> json.dumps. Drop any non-finite magnitude.
+        if not math.isfinite(total):
+            return 0.0
         return max(0.0, float(total))
 
 
@@ -418,6 +435,11 @@ class ItemHeal:
         )
         if is_ranged and self.ranged_modifier != 1.0:
             total *= self.ranged_modifier
+        # max(0.0, nan) floors to 0.0 by CPython evaluation order, but
+        # max(0.0, inf) == inf would leak a bare Infinity token through
+        # ehp.compute_ehp -> json.dumps. Drop any non-finite magnitude.
+        if not math.isfinite(total):
+            return 0.0
         return max(0.0, float(total))
 
 
