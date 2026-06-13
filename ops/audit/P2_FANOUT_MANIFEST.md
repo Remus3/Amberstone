@@ -36,8 +36,14 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       incl base-coach fast-path prev-state bug (compared state to itself since
       ARCH-002), NaN/inf Live Client coercion, KIWI mayhem-tag fix, numeric
       patch-dir sort, ddragon cache-poisoning fix; DEFER in ops/audit/P2_FINDINGS.md)
-- [ ] app/ + game_reader/ + modes/ + lcu/ + lib/ + vision_server/ +
-      coach_integration/ + modules/ 33 / 8917 (~2 slices; app/* + lcu_client frozen)
+- [x] app/ + game_reader/ + modes/ + lcu/ + lib/ + vision_server/ +
+      coach_integration/ + modules/ 33 / 8917 - DONE cycle 10 (2 slices A-B, octopus
+      d61330b9; FIX-NOW incl snapshot_normalizer NaN/inf boundary coercion, postgame
+      champ_name precedence bug (empty indexed column) + _int NaN/OverflowError guards,
+      lcu_client ARAM queue 2400 Mayhem gap, archetype_dispatch NaN delta/gold killing
+      DS panel JSON, rune-writer cache-poison + spell-pref race, OCR subprocess timeout;
+      no frozen edits - all app/* + lcu_client findings were DEFER. DEFER in
+      ops/audit/P2_FINDINGS.md). W1 runtime spine COMPLETE.
 
 ### W2 DS engine - ~8 slices
 - [ ] agents/daemon_slayer non-test src (engine, scorers, registries, effects
