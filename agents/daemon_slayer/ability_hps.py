@@ -112,6 +112,7 @@ Deliberate omissions (mirror ``ability_dps``):
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field, replace
 from typing import Iterable, Optional
@@ -210,16 +211,27 @@ def _is_meta_heal_shield(attribute: str) -> bool:
 
 
 def _value_at_rank(values: list, rank: int) -> float:
-    """Pick the per-rank value, clamping a 1-element list to that value."""
+    """Pick the per-rank value, clamping a 1-element list to that value.
+
+    Non-finite values (NaN / +-inf) are rejected to 0.0 alongside
+    unparseable ones: ``float("nan")`` / ``float("inf")`` do NOT raise, so a
+    malformed scraped ``values`` entry would otherwise propagate a bare
+    ``NaN`` / ``Infinity`` token through ``heal_per_cast`` -> ``heal_per_sec``
+    -> the ``to_dict`` payload, which ``json.dumps`` emits verbatim and the
+    dashboard's ``JSON.parse`` then rejects. The active 16.12.1 snapshot
+    carries no non-finite numerics, so this is a defense-in-depth guard at
+    the single chokepoint every heal/shield block value flows through.
+    """
     if not values:
         return 0.0
     idx = 0 if rank < 0 else rank
     if idx >= len(values):
         idx = len(values) - 1
     try:
-        return float(values[idx])
+        out = float(values[idx])
     except (TypeError, ValueError):
         return 0.0
+    return out if math.isfinite(out) else 0.0
 
 
 def _resolve_extra_units(
