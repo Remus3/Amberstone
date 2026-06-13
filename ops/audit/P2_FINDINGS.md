@@ -428,3 +428,66 @@ future defense-in-depth sweep; not fixed to avoid manufacturing changes with no 
   subprocess.run(timeout=...) and prune_task_logs() still wired (not regressed). _minimap_bbox.py
   is fully hardened (int-coercion rejects inf/nan strings, arity + r>l/b>t ordering + [0,10000]
   clamp; no division/NaN math) - CLEAN, no change.
+
+## P2-W3 web surface (cycle 13, item 407) - DEFER
+
+Dominant FIX-NOW class this wave = XSS: data-controlled strings (LCU/remote player
+names, LLM coach text, OCR text, DDragon/engine names) interpolated raw into innerHTML.
+18 JS files hardened in-slice. The DEFER tail below is MED/LOW/INFO.
+
+### MED
+- web/js/ws_client.js (whole file): unreferenced Phase-3 WS stub - no <script>/import loads
+  it and its DOM ids were removed (main.js:411); if ever loaded the IIFE would throw at L14.
+  Whole-file removal is a P1/P3 STRUCTURAL prune, not an in-slice JS edit.
+- web/js/panels/build_insights.js:82-106: rune/spell `icon` URL embedded raw inside an inline
+  `onerror="this.src='...'"` JS string-literal attribute. Element-content + title are escaped
+  (FIX-NOW done); the onerror sink needs a structural rewrite to the fixed-kind fallback pattern
+  used by historical_pgr - larger than a pixel-neutral escape.
+- web/css/panels/last_match.css (40+ sites) + home.css (7 sites): CSS custom properties
+  referenced but NEVER defined repo-wide (`--ok --accent --grade-s/a/b/c/d/f --surface-2 --warn`
+  with literal fallbacks render the fallback; `--label --clock` have NO fallback -> inherited
+  color). Latent-correctness gap; every fix is pixel-altering -> 5-phase UI-audit ritual, not a
+  code-audit slice.
+- web/css/panels/header.css (35 `!important`) + champ_select_view dead-but-test-pinned selectors:
+  the !important are all documented cascade battles (static-pill / view-router visibility); the
+  "retired-per-comment" csv-pb-* selectors are PINNED by test_csv_typography_v21_floor.py +
+  test_personal_record_dom.py, so deletion needs coordinated test edits. Both DEFER.
+- web/css/panels/next.css:1 (162x U+2500 box-drawing in header comment): the repo treats U+2500
+  as an OPERATOR-GATED sweep (tests/test_u2500_hygiene.py - explicitly NOT folded into em/en-dash
+  hygiene); fix via tools/strip_u2500.py + _ASSERTED_CLEAN, not a freelance per-slice edit.
+
+### LOW
+- main.js:3719 `_encodeTip` escapes only `"` (not <>&) - tip body is server numerics, low risk;
+  widening touches a shared helper. _mcOverallHtml/_mcAveragedHtml interpolate DB-computed
+  numerics/enums into innerHTML (not free-text).
+- main.js (~15 fetch sites) + several panels: command POSTs + low-churn GETs lack
+  `cache: "no-store"`; benign (not output-preserving to change).
+- web/js/panels/right_now.js renderStats: ~90 `setv` rows re-applied every tick with no sig
+  guard - idempotent (textContent, no innerHTML wipe) so wasteful-not-buggy; UI/efficiency pass.
+- web/js/panels/map_state.js:107,576: two module-scope 1s setInterval tickers run regardless of
+  active view (only document.hidden-gated), unlike active_match's dataset.view gate. Fixed count,
+  no leak; efficiency-only.
+- web/js/panels/last_match.js:593-622 `_setEnrichedBuild` + `_setDsPicks`: unreferenced dead code
+  since the s219 v3 BUILD-section removal; harmless, removal is a refactor.
+- last_match.js:173 augment `icon_url` into img `src=` unescaped (server patch-snapshot source,
+  same trust as ITEMS); historical_pgr raw Match-V5 numerics into innerHTML (typed, low risk).
+- web/js JS-E/F: SVG-coord sig keyed `parentEl.id || "_default"` - two id-less mounts could share
+  a sig (all live mounts carry unique ids); draft_elo escaping is defense-only (numeric ids).
+- 5+ panels (replay_events/post_game_phases/pgr_winprob/pgr_loadout/pgr_lane_compare) each
+  redefine a local `_escHtml`/`_esc`; could import the new shared helpers.escHtml (DRY, out of slice).
+- web/css: stub.css is a vestigial orphan stylesheet (zero <link>/route/import repo-wide) - DEFER
+  removal per charter quarantine policy + note. ds_statcheck.css undefined-token cluster
+  (--signal-strong/--signal-mute/--accent/--border-1/--surface-2/--fs-2xs resolve to literals);
+  repeated `.ds-*` card-chrome literals would need a NEW token (out of literal->existing-var scope).
+
+### INFO
+- Repo-wide rendered UI glyphs (arrows, middot, box-drawing in comments, U+00B7/U+2192/U+25CF
+  etc.) are established display glyphs across 10+ panels + comment-only decoration; NONE are the
+  enforced em/en-dash or smart-quote bans (verified zero across all 106 web files). The dedicated
+  P3 tree-wide encoding/smart-quote retro-sweep owns these, not a per-slice freelance churn.
+- dedup_fetch.js clone contract (master gets unread Response, waiters .clone()) is the standard
+  pattern; no confirmed live bug. items_index resolver negative-caches null correctly (not poison).
+- The JS view-panel + supervisor-flagged "high-risk" sinks were already SAFE: active_match /
+  last_match / dev / bridge_pending / screen_read render dynamic strings via createElement +
+  textContent/.title (immune to HTML parse) or a pre-existing local _escHtml; cc_pairing /
+  callouts / pgr_winprob / cd_ledger / ds_matchup already escaped every interpolation.

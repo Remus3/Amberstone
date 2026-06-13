@@ -1,0 +1,62 @@
+{
+  "run_id": "p2w3-web-cycle13",
+  "check_ci": false,
+  "slices": [
+    {
+      "id": "A-main-xss-escape",
+      "claim": "main.js adds a local escapeHtml() and routes LCU player names / Top8 user tags / advisory + session/history rows through it before innerHTML",
+      "files": [
+        {"path": "web/js/main.js", "must_contain": ["function escapeHtml(s) {"]}
+      ]
+    },
+    {
+      "id": "B-champ-select-lib-xss",
+      "claim": "lib/helpers exports a shared escHtml; champ_select escapes the LCU summonerName at both team cells; scorer_units.formatDsDelta guards non-finite delta to avoid +NaNdps",
+      "files": [
+        {"path": "web/js/lib/helpers.js", "must_contain": ["export function escHtml(s) {", ".replace(/'/g, \"&#39;\")"]},
+        {"path": "web/js/panels/champ_select.js", "must_contain": ["escHtml } from '../lib/helpers.js';", "escHtml((c.summonerName || \"\").slice(0, 22))"]},
+        {"path": "web/js/lib/scorer_units.js", "must_contain": ["const num = Number(rawSrc);", "Number.isFinite(num) ? num : 0"]}
+      ]
+    },
+    {
+      "id": "D-ds-build-panels-xss",
+      "claim": "item_build / ds_knobs / overlay_ds_controls / ds_combo / build_insights escape engine + operator-derived names via a local _esc before innerHTML",
+      "files": [
+        {"path": "web/js/panels/item_build.js", "must_contain": ["function _esc(s) {"]},
+        {"path": "web/js/panels/ds_knobs.js", "must_contain": ["function _esc(s) {"]},
+        {"path": "web/js/panels/overlay_ds_controls.js", "must_contain": ["function _esc(s) {"]},
+        {"path": "web/js/panels/ds_combo.js", "must_contain": ["function _esc(s) {"]},
+        {"path": "web/js/panels/build_insights.js", "must_contain": ["function _esc(s) {"]}
+      ]
+    },
+    {
+      "id": "E-pgr-ban-sweep-xss",
+      "claim": "pgr_build_wpa / ban_suggest_toggle / ds_sweep escape data-controlled names into innerHTML + attributes",
+      "files": [
+        {"path": "web/js/panels/pgr_build_wpa.js", "must_contain": ["function _escHtml(s) {"]},
+        {"path": "web/js/panels/ban_suggest_toggle.js", "must_contain": ["function _escHtml(s) {"]},
+        {"path": "web/js/panels/ds_sweep.js", "must_contain": ["function _esc(s) {"]}
+      ]
+    },
+    {
+      "id": "F-coach-augment-leaf-xss",
+      "claim": "coach_choices escapes untrusted LLM choice text; augment_reco / cooldown_watch / ds_relscore escape names; spike_markers numeric-guards labels; team_context escapes img attrs; trigger_pill guards the self-start interval against double-eval",
+      "files": [
+        {"path": "web/js/panels/coach_choices.js", "must_contain": ["function _esc(s) {", "<span class=\"rc-label\">${_esc(label)}</span>"]},
+        {"path": "web/js/panels/augment_reco.js", "must_contain": ["function _esc(s) {"]},
+        {"path": "web/js/panels/spike_markers.js", "must_contain": ["Number.isFinite"]},
+        {"path": "web/js/panels/team_context.js", "must_contain": ["function _escAttr(s) {"]},
+        {"path": "web/js/panels/trigger_pill.js", "must_contain": ["window.__rcTriggerPillStarted"]},
+        {"path": "web/js/panels/cooldown_watch.js", "must_contain": ["function _esc(s) {"]},
+        {"path": "web/js/panels/ds_relscore.js", "must_contain": ["function _esc(s) {"]}
+      ]
+    },
+    {
+      "id": "XSS-regression-test",
+      "claim": "a Playwright + node regression test asserts a crafted state payload renders escaped (never executes, never injects a DOM element) and the escaping primitives are unit-covered",
+      "files": [
+        {"path": "tests/snapshot_panels/test_xss_escaping.py", "must_contain": ["def test_state_payload_never_executes_or_injects", "def test_eschtml_escapes_five_chars_and_passes_benign", "def test_formatdsdelta_guards_non_finite"]}
+      ]
+    }
+  ]
+}
