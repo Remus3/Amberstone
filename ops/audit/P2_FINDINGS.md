@@ -317,3 +317,53 @@ FIX-NOW landed in the merge d61330b9; DEFER below. No frozen-file edits this cyc
 - game_reader/poller.py:137: relay read path returns _process_game(relay_raw) with
   NO try/except, unlike the direct path (183-187). The NaN root-cause fix (slice A)
   covers the known crash; full parity wrap deferred (changes is_in_game control flow).
+
+---
+
+## P2-W2 DS engine half-wave 1 (cycle 11, item 405)
+
+Slices A (dps/ability_dps/burst/hybrid/objdamage/dps_sweep/beam/missile) /
+B (threatrange/waveclear/mobility/extendedduel/zonecontrol/self_shred/antitank/
+allyamp/sustain) / C (ehp/hps/ability_hps/_per_spell_cc/cc_conditional/cc_output/
+cc_pressure/cc_pairing) / F (server/engine/data_loader/_registries/cli/__init__/
+__main__/stats/scaling/rank/abilities). 36 files / ~23.1k LOC. FIX-NOW landed in
+the merge; 47 new tests (tests/test_p2w2_ds_{a,b,c,f}.py 15/16/10/6). No frozen-file
+edits (no agents/daemon_slayer file is on the frozen list). DEFER below.
+
+### LOW
+- agents/daemon_slayer/server.py:1375 (_route_antitank): the live /anti-tank route
+  calls compute_antitank(champion, mode=mode) and never passes stats=, so the entire
+  P3.2 AP/AD build-aware scaling path (ap_ratio/ad_ratio seeds on 7 rows) is exercised
+  only by tests, never on the running dashboard. Slice-B hardening protects it for
+  future wiring; the feature itself is inert on the live surface. Wire a resolved
+  ResolvedStats in, or document as test-only/future.
+- agents/daemon_slayer/cc_conditional.py:526 (ConditionalCcEntry.__post_init__):
+  validates durations_s for negativity (d < 0) but not finiteness; a NaN duration
+  passes (NaN < 0 is False) and would serialize to a bare NaN token via cc_output
+  round(). Source is the REQUIRED hand-authored cc_conditional_registry.json
+  (fail-loud, 0 non-finite today) not the scraped extract, so out of strict need.
+  Add an isfinite check in __post_init__.
+- agents/daemon_slayer/server.py:1786 (_read_json_body): self.rfile.read(length) is
+  unbounded vs _drain_request_body's 65536-chunk loop; a bogus huge Content-Length on
+  a valid route allocates that buffer. Localhost-only trusted single-user bind = low
+  risk. Read in bounded chunks with a max-body cap.
+- agents/daemon_slayer/beam.py:344 (_seed_has_boots): re-scans snapshot.items per beam
+  per depth inside the expansion loop; hoist a per-beam bool alongside (items,dps,gold).
+  Efficiency only.
+- agents/daemon_slayer/data_loader.py:435 (arena_augment): the one-line
+  `... or ... if str(key).isdigit() else ...` ternary is correct (AST-confirmed int(key)
+  only on the digit branch) but hard to read; expand to explicit if/elif. Behavior is
+  value-pinned by tests - pure-churn rewrite, left as-is.
+- agents/daemon_slayer/objdamage.py:743: best_value = -1.0 sentinel - a literal
+  0.0-magnitude entry would beat -1.0, but top_kind is gated on total > 0.0 and every
+  champ has a positive BASE row, so currently benign. Init 0.0 + skip zero-value entries.
+
+### INFO
+- agents/daemon_slayer/server.py:281/304 (_DISPATCH_REVMAP_CACHE keyed by id(snap)):
+  module-level dict would grow if many distinct snapshots existed; the server holds
+  exactly one snapshot for process life, so bounded in practice. Store the revmap on
+  the snapshot or use a single-entry cache.
+- ASCII: 0 banned-set hits (em/en dash, smart quotes) across all 36 files. Pre-existing
+  non-banned glyphs survive in comments/docstrings/format_table console output repo-wide
+  (-> arrow U+2192, x U+00D7, box-draw U+2500, alpha/beta) - NOT in the s244 swept set;
+  converting here would be inconsistent drift, deferred to any future cosmetic sweep.
