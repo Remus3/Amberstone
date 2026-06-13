@@ -53,6 +53,16 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-11 - DEEP-AUDIT cycle 7: P2 W1 core/ per-file fanout, slices A-G [item 401]
+
+- 103 core/*.py / 29531 LOC audited via 7 disjoint worktree slices (A spine / B coach / C build-WPA / D postgame / E archetype-vision / F infra-workers / G bridge-lessons); octopus merge 6273d655 + fix commit 09184ff3; 98 new tests (tests/test_p2w1_core_{a..g}.py).
+- Load-bearing fixes: WPA trio pinned-16.11.1 catalogs -> dynamic current.txt resolution (item-397 auto-prune would have silently emptied all 3 panels next patch); 2 SECURITY fixes in lessons_receiver (remote `source` path traversal out of MEMORY_DIR -> _safe_peer; frontmatter newline injection could spoof cross_project/type -> _fm_scalar); TFT raw_state defensive-copy gap (game_snapshot.py:610 FROZEN edit, charter-auth); tesseract timeout=10s x8 call sites; obs_publisher reply drain + eventSubscriptions=0 (conn flapped ~1/min); polled_json WinError-5 retry; hotkeys force_scan atomic; cost_tracker malformed-budget no longer disables cap; legacy vision-token fallback removed (liveclient_cache).
+- DEFER findings ledger NEW ops/audit/P2_FINDINGS.md (8 MED / ~26 LOW / 5 INFO; incl 13-file legacy-token literal fanout, riot_api_cache no-prune 94.7MB, mode-divergence URF/queue-900). Manifest W1 core ticked.
+- Gate round A REFUSE (4f: new obs tests used asyncio.run; an earlier suite test leaves a main-thread running-loop marker - green in isolation) -> thread-isolated _run_coro; round B PROCEED 15285p/0f/7s exit 0 (+98 = new tests exactly). RC restarted pid 9300 alive reload_ok; 7 worktrees removed. TRAP: new async tests must not use asyncio.run (suite polluter logged as W5 item).
+- NEXT cycle 8: W1 dashboard/ (78 files / 20629 LOC, ~4 slices; routes_* independent) per P2_FANOUT_MANIFEST.md.
+
+---
+
 # 2026-06-11 - DEEP-AUDIT cycle 6: P2b fixture ruling + bare-py tail + fanout manifest [item 400]
 
 - DS fixture pins: gemini RULED B - 16.9.1 RETIRED (test_effects_expansion repointed to 16.10.1; purchasable-set delta verified EMPTY 466==466; dir git-rm'd 8 files), {16.10.1, 16.11.1} frozen permanent, new pins target 16.11.1. Guard tests/test_ds_fixture_policy.py (2 tests: pair present + 16.9.1 stays gone); policy in docs/DAEMON_SLAYER.md substrate bullet. Full consolidation REJECTED (drift risk ~50 pinned files >> 23 MB).
@@ -100,23 +110,6 @@ Loop controller stalled post-cycle-1 (operator nudged "continue"); reoriented in
 - Live verify (chrome-devtools on :8888): map11/12/30 200 on 16.12.1, pruned path 404s into the onerror chain, active_match.js module imports, zero unexpected 4xx resources.
 - Gate round A REFUSED correctly: item-392 pin test_arena_base_is_static_asset_with_crop_fallback still split on the _AM_MAP_IMG literal -> updated to _AM_MAP_FILE + builder, same intent (arena static + crop fallback).
 - P1 remaining (next cycles): tracked old-patch data decision (daemon_slayer 16.9/16.10/16.11 scenarios.json + laning 16.11.1 LFS + meta_build archives - gemini consult), _scratch/_archive triage, python-embed consumer eval, log-proliferation root-cause (1691 files/7d), CLAUDE.md budget trim.
-
----
-
----
-
-# 2026-06-10 - gemini loop: HZ-D4 charter sweep - shadow-pipeline root-cause fix + ARAM tables + agreement metric [item 386]
-
-Gemini-headless-upgrade executor cycle. Directive = HZ-D4 (7-lever cost sweep + next HZ increment). Merges `d446ea80` + `b54d040e` (2 PARALLEL worktree agents, verifier-CONFIRMED). NO engine, no Share, no web/ touch; RC restarted pid 14160.
-
-- 7-lever sweep: 7/7 CLEAN, no commit. Scout's lever-6 "orphan tasks" REFUTED by ground truth (all 3 flagged tasks point at on-disk scripts).
-- ROOT CAUSE found verifying the table-expand premise: ALL 837 choice + 800 build shadow rows junk - enemy=null 100 percent (champ from PERSISTENT stale coach dict; enemy_team only in live liveclient -> idle ticks logged stale replays) + 290 Champ0 rows (pytest build_state runs appended to REAL data/ jsonls). Flip path could never accrue.
-- FIX: live `lc.get("champion")` gate in both shadow_log_precomputed_* + autouse conftest SHADOW_PATH->tmp redirect (hz_choice/hz_build/det_coach); +4 gate tests; polluted jsonls rotated to _scratch/*.pre_item386.jsonl.
-- ARAM tables full-roster 172 (every native capture is mode=aram): laning_aram 65.75MB LFS + build_orders_aram 688 + variants_aram 344 @16.12.1. GOTCHA: gen CLIs default to 10-champ seed; pass --champions <172-CSV from SR table scenarios keys>.
-- hz_shadow_report v2 (item-369 tail): classify_verdict/record_agreement/summarize_agreement, per-mode agreement + uncovered_with_native; flip hint cites agreement rate; +22 tests.
-- Gates: RC 5787p/2sk/94st exit 0; DS 7075p/1sk/1xf exit 0; ruff + ASCII clean.
-- OPS: RC-Supervisor task was NOT running (restart_trigger sat unconsumed); schtasks /Run /TN RC-Supervisor restored; watch it next session.
-- NEXT (gated): play real ARAM -> covered+native rows accrue -> hz_shadow_report agreement gate -> operator flip decision.
 
 ---
 
@@ -9857,6 +9850,23 @@ REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
   commit - tip-only diffing produced this false REGRESS.
 - DON'T REDO: HZ shadow live-gate IS tested (6 tests); do not re-add gate tests.
 - NOTE: RC pid drifted 14160 -> 3336 during cycle (supervisor bounce); alive+reload_ok true.
+
+---
+
+---
+
+# 2026-06-10 - gemini loop: HZ-D4 charter sweep - shadow-pipeline root-cause fix + ARAM tables + agreement metric [item 386]
+
+Gemini-headless-upgrade executor cycle. Directive = HZ-D4 (7-lever cost sweep + next HZ increment). Merges `d446ea80` + `b54d040e` (2 PARALLEL worktree agents, verifier-CONFIRMED). NO engine, no Share, no web/ touch; RC restarted pid 14160.
+
+- 7-lever sweep: 7/7 CLEAN, no commit. Scout's lever-6 "orphan tasks" REFUTED by ground truth (all 3 flagged tasks point at on-disk scripts).
+- ROOT CAUSE found verifying the table-expand premise: ALL 837 choice + 800 build shadow rows junk - enemy=null 100 percent (champ from PERSISTENT stale coach dict; enemy_team only in live liveclient -> idle ticks logged stale replays) + 290 Champ0 rows (pytest build_state runs appended to REAL data/ jsonls). Flip path could never accrue.
+- FIX: live `lc.get("champion")` gate in both shadow_log_precomputed_* + autouse conftest SHADOW_PATH->tmp redirect (hz_choice/hz_build/det_coach); +4 gate tests; polluted jsonls rotated to _scratch/*.pre_item386.jsonl.
+- ARAM tables full-roster 172 (every native capture is mode=aram): laning_aram 65.75MB LFS + build_orders_aram 688 + variants_aram 344 @16.12.1. GOTCHA: gen CLIs default to 10-champ seed; pass --champions <172-CSV from SR table scenarios keys>.
+- hz_shadow_report v2 (item-369 tail): classify_verdict/record_agreement/summarize_agreement, per-mode agreement + uncovered_with_native; flip hint cites agreement rate; +22 tests.
+- Gates: RC 5787p/2sk/94st exit 0; DS 7075p/1sk/1xf exit 0; ruff + ASCII clean.
+- OPS: RC-Supervisor task was NOT running (restart_trigger sat unconsumed); schtasks /Run /TN RC-Supervisor restored; watch it next session.
+- NEXT (gated): play real ARAM -> covered+native rows accrue -> hz_shadow_report agreement gate -> operator flip decision.
 
 ---
 
