@@ -1,0 +1,88 @@
+{
+  "run_id": "p2w3-web-cycle13",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 15514,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 7,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" -m pytest -q",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M ops/audit/P2_FINDINGS.md",
+      " M web/css/panels/build_order.css",
+      " M web/js/lib/helpers.js",
+      " M web/js/lib/scorer_units.js",
+      " M web/js/main.js",
+      " M web/js/panels/augment_reco.js",
+      " M web/js/panels/ban_suggest_toggle.js",
+      " M web/js/panels/build_insights.js",
+      " M web/js/panels/champ_select.js",
+      " M web/js/panels/coach_choices.js",
+      " M web/js/panels/cooldown_watch.js",
+      " M web/js/panels/ds_combo.js",
+      " M web/js/panels/ds_knobs.js",
+      " M web/js/panels/ds_relscore.js",
+      " M web/js/panels/ds_sweep.js",
+      " M web/js/panels/item_build.js",
+      " M web/js/panels/overlay_ds_controls.js",
+      " M web/js/panels/pgr_build_wpa.js",
+      " M web/js/panels/spike_markers.js",
+      " M web/js/panels/team_context.js",
+      " M web/js/panels/trigger_pill.js",
+      "?? ops/audit/p2w3_web_claims.json",
+      "?? ops/audit/p2w3_web_truth_gate_report.json",
+      "?? tests/snapshot_panels/test_xss_escaping.py"
+    ],
+    "head": "2235b0bd chore(share): sync DS Share mirror for cycle 12 hw2 edits (item 406)"
+  },
+  "ci": {
+    "status": "skipped"
+  },
+  "slices": [
+    {
+      "id": "A-main-xss-escape",
+      "claim": "main.js adds a local escapeHtml() and routes LCU player names / Top8 user tags / advisory + session/history rows through it before innerHTML",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "B-champ-select-lib-xss",
+      "claim": "lib/helpers exports a shared escHtml; champ_select escapes the LCU summonerName at both team cells; scorer_units.formatDsDelta guards non-finite delta to avoid +NaNdps",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "D-ds-build-panels-xss",
+      "claim": "item_build / ds_knobs / overlay_ds_controls / ds_combo / build_insights escape engine + operator-derived names via a local _esc before innerHTML",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "E-pgr-ban-sweep-xss",
+      "claim": "pgr_build_wpa / ban_suggest_toggle / ds_sweep escape data-controlled names into innerHTML + attributes",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "F-coach-augment-leaf-xss",
+      "claim": "coach_choices escapes untrusted LLM choice text; augment_reco / cooldown_watch / ds_relscore escape names; spike_markers numeric-guards labels; team_context escapes img attrs; trigger_pill guards the self-start interval against double-eval",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "XSS-regression-test",
+      "claim": "a Playwright + node regression test asserts a crafted state payload renders escaped (never executes, never injects a DOM element) and the escaping primitives are unit-covered",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}

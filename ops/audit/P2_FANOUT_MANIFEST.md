@@ -63,9 +63,17 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       _supervisor_common atomic lockfile write, supervisor.stop logging-after-close
       silence. agents/supervisor.py is NOT frozen (ops/rc_supervisor.py is, untouched).
 
-### W3 web surface - ~8 slices
-- [ ] web/js 58 / 27020 (~5 slices; panels are independent)
-- [ ] web/css 48 / 16635 (~3 slices; tokens.css first)
+### W3 web surface - COMPLETE
+- [x] web/js 58 / 27020 + web/css 48 / 16635 - DONE cycle 13 (item 407, audit commit
+      db7952f2; the WHOLE web surface in one cycle via 10 disjoint parallel slices: 6 JS
+      A-F + 4 CSS G-J). Dominant FIX-NOW = XSS (data-controlled strings into innerHTML
+      unescaped - browser analog of the cycle 7-12 non-finite-JSON-token class); 18 JS
+      files hardened via escapeHtml/escHtml/_esc + scorer_units finite guard + trigger_pill
+      double-eval guard. CSS pixel-neutral net = dead .bo-excl rule removed. 2 over-reaches
+      reverted in-cycle (rendered build_order.js glyphs; bridge_pending #F07E8B which is a
+      guard-pinned brand color). +3 tests tests/snapshot_panels/test_xss_escaping.py
+      (Playwright e2e + 2 node-subprocess primitive tests). No frozen edits (web/* has none),
+      no ENGINE bump, no RC restart (ADR-008 asset-hash). DEFER in ops/audit/P2_FINDINGS.md.
 
 ### W4 operational tooling - ~10 slices
 - [ ] tools/ 164 / 43633 (~8 slices; bridge family frozen-but-open; gamepc_*
