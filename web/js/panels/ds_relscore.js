@@ -102,6 +102,15 @@ function _signature(payload) {
     .join("|") || "_norows";
 }
 
+// HTML-escape backend item names / champ slug before innerHTML
+// interpolation (defense-in-depth at the render boundary).
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function _goldLabel(g) {
   const n = +g || 0;
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
@@ -124,7 +133,7 @@ function _rowsHtml(payload) {
     const label = pct.toFixed(0);
     return (
       `<div class="dsr-row">`
-      + `<span class="dsr-item">${String(r.name || r.item_id || "")}</span>`
+      + `<span class="dsr-item">${_esc(r.name || r.item_id || "")}</span>`
       + `<span class="dsr-bar"><span class="dsr-bar-fill" style="width:${pct}%"></span></span>`
       + `<span class="dsr-pct">${label}</span>`
       + `<span class="dsr-gold">${_goldLabel(r.gold)}g</span>`
@@ -137,7 +146,7 @@ function _shellHtml(champ) {
   return (
     `<div class="dsr-head">`
     + `<span class="dsr-head-title">Relative item power</span>`
-    + `<span class="dsr-head-sub">${String(champ)} DPS delta vs best</span>`
+    + `<span class="dsr-head-sub">${_esc(champ)} DPS delta vs best</span>`
     + `</div>`
     + `<div class="dsr-rows" id="dsr-rows"></div>`
   );

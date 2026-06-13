@@ -67,10 +67,20 @@ function _signature(payload) {
     .join("|") || "_nocards";
 }
 
+// HTML-escape backend champion / spell strings before innerHTML
+// interpolation. They are canonical DDragon slugs + spell names today,
+// but escape defensively at the boundary (mirrors cc_pairing.js _esc).
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 // "1.0s stun" / "1.0s root (if setup)" - the CC descriptor under the row.
 function _ccText(card) {
   const dur = (+card.cc_duration_s || 0).toFixed(1);
-  const kind = card.cc_kind ? String(card.cc_kind) : "lock";
+  const kind = card.cc_kind ? _esc(card.cc_kind) : "lock";
   const base = `${dur}s ${kind}`;
   return card.conditional ? `${base} (if setup)` : base;
 }
@@ -104,10 +114,10 @@ export function renderCooldownWatch(blockEl, payload) {
 
   const rows = cards.map((c) => (
     `<div class="cdw-row"${c.conditional ? ' data-cdw-cond="1"' : ""}>`
-    + `<span class="cdw-slot">${String(c.spell_key || "")}</span>`
+    + `<span class="cdw-slot">${_esc(c.spell_key || "")}</span>`
     + `<span class="cdw-main">`
-    + `<span class="cdw-champ">${String(c.champion || "")}</span>`
-    + `<span class="cdw-spell">${String(c.spell_name || c.spell_key || "")}</span>`
+    + `<span class="cdw-champ">${_esc(c.champion || "")}</span>`
+    + `<span class="cdw-spell">${_esc(c.spell_name || c.spell_key || "")}</span>`
     + `<span class="cdw-cc">${_ccText(c)}</span>`
     + `</span>`
     + `<span class="cdw-cd">${_cdLabel(c)}</span>`

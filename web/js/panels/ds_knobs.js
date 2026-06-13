@@ -143,6 +143,17 @@ function _goldLabel(g) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
+// HTML-escape free-form strings (item / champ names) before innerHTML.
+// Mirrors the local _esc pattern in ds_matchup.js / ds_profile.js.
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function _rowsHtml(payload) {
   const rows = Array.isArray(payload.rows) ? payload.rows : [];
   if (!rows.length) {
@@ -150,7 +161,7 @@ function _rowsHtml(payload) {
   }
   return rows.map((r) => (
     `<div class="dsk-row">`
-    + `<span class="dsk-item">${String(r.name || r.item_id || "")}</span>`
+    + `<span class="dsk-item">${_esc(r.name || r.item_id || "")}</span>`
     + `<span class="dsk-delta">+${Math.round(+r.delta_dps || 0)}</span>`
     + `<span class="dsk-gold">${_goldLabel(r.gold)}g</span>`
     + `</div>`
@@ -169,7 +180,7 @@ function _stripHtml(champ, knobs, resolved) {
   return (
     `<div class="dsk-head">`
     + `<span class="dsk-head-title">Fight model</span>`
-    + `<span class="dsk-head-sub">re-rank ${String(champ)} for a chosen target</span>`
+    + `<span class="dsk-head-sub">re-rank ${_esc(champ)} for a chosen target</span>`
     + `</div>`
     + `<div class="dsk-strip">`
     + `<label class="dsk-knob"><span>Enemy armor</span>`

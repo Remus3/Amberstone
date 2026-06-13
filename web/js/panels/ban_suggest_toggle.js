@@ -34,6 +34,15 @@ const _BS_TTL_MS = 5 * 60 * 1000;          // matches backend cache TTL
 const _BS_MODE_KEY = "rc-cs-bansugg-mode"; // localStorage key
 const _BS_VALID_MODES = ["hurts_them", "helps_us"];
 
+// HTML-escape the champion display name before it lands in innerHTML /
+// attribute context. Champion names carry apostrophes (Kai'Sa, Cho'Gath,
+// Vel'Koz) and the meta name is not a trusted-markup source.
+function _escHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = String(s == null ? "" : s);
+  return div.innerHTML;
+}
+
 function _cacheKey(allyIds, enemyIds, candidateIds, queue) {
   const a = (allyIds || []).slice().sort((x, y) => x - y).join(",");
   const e = (enemyIds || []).slice().sort((x, y) => x - y).join(",");
@@ -205,17 +214,18 @@ export function renderBanSuggestList(listEl, payload, candidatesMeta) {
     const activeStr = (active >= 0 ? "+" : "") + Math.round(active);
     const otherStr  = (other  >= 0 ? "+" : "") + Math.round(other);
     const otherLabel = mode === "hurts_them" ? "helps us" : "hurts them";
+    const safeName = _escHtml(name);
     const iconHtml = icon
-      ? `<img src="${icon}" alt="${name}" onerror="this.style.display='none'">`
+      ? `<img src="${_escHtml(icon)}" alt="${safeName}" onerror="this.style.display='none'">`
       : "";
     return (
       `<div class="bs-row"`
       + ` data-champ-id="${cid}"`
       + ` data-bs-band="${band}"`
       + ` data-bs-conf="${conf}"`
-      + ` title="Click to suggest ban: ${name}">`
+      + ` title="Click to suggest ban: ${safeName}">`
         + `<div class="bs-row-icon">${iconHtml}</div>`
-        + `<div class="bs-row-name">${name}</div>`
+        + `<div class="bs-row-name">${safeName}</div>`
         + `<div class="bs-row-active bs-band-${band}">${activeStr}</div>`
         + `<div class="bs-row-other" title="${otherLabel}">${otherStr}</div>`
         + `<div class="bs-row-sample bs-sample-${conf}"`
