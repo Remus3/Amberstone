@@ -221,10 +221,11 @@ def _do_live_fetch_and_insert(
 
     match_id = ids[0]
 
-    # PK probe before any further HTTP.
+    # PK probe before any further HTTP. OSError covers the mkdir inside
+    # _open_db (audit cycle 10 - never-raises contract).
     try:
         conn = _open_db()
-    except sqlite3.Error as exc:
+    except (sqlite3.Error, OSError) as exc:
         _log.debug("rewind_live_writer open_db error: %s", exc)
         return {"status": "error", "cause": "open_db", "match_id": match_id}
 
@@ -246,7 +247,13 @@ def _do_live_fetch_and_insert(
         return {"status": "no_detail", "match_id": match_id}
 
     info = detail.get("info") or {}
-    duration_s = int(info.get("gameDuration") or 0)
+    # Audit cycle 10 (P2-W1-app-B): Match-V5 JSON boundary - a NaN/inf/
+    # garbage gameDuration must keep the never-raises contract (int(NaN)
+    # raised ValueError into the Timer thread pre-fix).
+    try:
+        duration_s = int(info.get("gameDuration") or 0)
+    except (TypeError, ValueError, OverflowError):
+        duration_s = 0
     if duration_s < MIN_DURATION_S:
         return {
             "status": "short_game",
@@ -262,7 +269,7 @@ def _do_live_fetch_and_insert(
     with _WRITE_LOCK:
         try:
             conn = _open_db()
-        except sqlite3.Error as exc:
+        except (sqlite3.Error, OSError) as exc:
             _log.debug("rewind_live_writer reopen_db error: %s", exc)
             return {
                 "status": "error",
