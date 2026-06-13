@@ -367,3 +367,64 @@ edits (no agents/daemon_slayer file is on the frozen list). DEFER below.
   non-banned glyphs survive in comments/docstrings/format_table console output repo-wide
   (-> arrow U+2192, x U+00D7, box-draw U+2500, alpha/beta) - NOT in the s244 swept set;
   converting here would be inconsistent drift, deferred to any future cosmetic sweep.
+
+## P2-W2 DS engine half-wave 2 (cycle 12, item 406)
+
+Slices D effects-data (3 files) / E passive-overrides (12) / G remaining-mechanics (17)
+/ H Phase3 supervisor set (5). 8 FIX-NOW landed (see LEDGER item 406); below are the
+record-only DEFER + INFO findings. Recurring DEFER class this wave = int(non-finite)
+OverflowError and NaN-passthrough at accessor chokepoints that are NOT reachable via the
+live consumer (the live paths int-validate / clamp before the accessor). Recorded for a
+future defense-in-depth sweep; not fixed to avoid manufacturing changes with no live repro.
+
+### LOW
+- agents/daemon_slayer/_passive_*_overrides.py int(level) raises on non-finite level
+  (_passive_survival_window_overrides.py:325, _passive_resist_overrides.py:647,
+  _passive_mitigation_overrides.py:251, _passive_revive_overrides.py:269,
+  _champion_cc_mitigation_overrides.py:194, _champion_spell_shield_overrides.py:226,
+  _passive_ally_grant_overrides.py:257). NaN level -> ValueError, inf -> OverflowError.
+  NOT reachable via compute_ehp (clamp_level int-validates first); defense-in-depth only.
+- agents/daemon_slayer/spike_markers.py:148-156 (_clamp_level): int(inf) OverflowError
+  not caught by except (TypeError, ValueError). Live route routes_spike_markers._parse_int
+  uses int(str)->ValueError->default, so only a direct programmatic level=inf trips it.
+- agents/daemon_slayer/rune_procs.py:60-69 (_clamp_level): same narrow-except gap reached
+  via _lerp_by_level; upstream consumers (fight_report/burst/combo) pass ints, not reachable.
+- agents/daemon_slayer/geometry.py:243-245 / 350-351 (spell_cone_angle / spell_cast_radius):
+  a NaN datum passes the `<= 0` guard (nan<=0 is False) and returns NaN. Unreachable +
+  unconsumed (item-336..342 forward-marker accessors nothing consumes / never serialized).
+- agents/daemon_slayer/geometry.py:158 (aoe_multiplier): int(targets_hit=inf) OverflowError;
+  internal callers pass 1-5, never inf.
+- agents/_supervisor_http.py:48 do_GET / :96 do_POST: no top-level try/except around handler
+  dispatch; an unexpected raise before headers drops the connection (most handlers self-guard
+  now, so low impact). A single outer guard would harden uniformly.
+- agents/_supervisor_http.py:150 (_handle_input et al): self.server.supervisor accessed with
+  no None-guard; AttributeError raises raw if start_web_server(supervisor=None) is ever used
+  (currently always constructed with a real supervisor).
+- agents/supervisor.py:693 (_on_mode_transition): asyncio.get_event_loop() is deprecation-
+  pathed on 3.14 with no running loop; guarded by .is_running() so benign - modernize to
+  get_running_loop() in a try.
+- dashboard/routes_ds_statcheck.py:342 / routes_ds_sweep.py:349,376 (cross-file, dashboard/):
+  json.dumps default allow_nan=True fleet-wide on DS routes. Slice-D/E/G guards stop the
+  effects/override/fight-report sources; an allow_nan=False (or finite-sanitizer) at the DS
+  route serializers would belt-and-suspenders against any future non-finite source - the same
+  hardening slice H applied to the supervisor _send_json this wave.
+
+### INFO
+- _effects_data.py: 547 entries, zero duplicate dict keys, zero key!=item_id mismatches
+  (AST + runtime verified). Docstring header "16.9.1" vs many "Meraki 16.10.1" per-entry
+  values is benign doc-drift (current.txt is source of truth) - docs-sync, not a code defect.
+- E: all 12 override registries are canonical-DDragon-id keyed (zero dead display-name keys
+  - MonkeyKing/KSante/Renata/JarvanIV/XinZhao/TahmKench/DrMundo all canonical), zero duplicate
+  keys, no shared-mutable returns (accessors return fresh float/tuple/frozen dataclass), and
+  every entry resolves finite across the roster x ranks -1..6 / levels 1..18.
+- G: augment_formula_eval.py is a pure dict-dispatch interpreter (NO eval/ast/compile/exec),
+  division-free, all float() casts guarded - no formula-injection or div-by-zero surface.
+  mana_sim inf mana_pool is the documented "no finite-mana gate" sentinel (pinned by
+  test_mana_sim.py:115); matchup 0-HP div guarded (matchup.py:260-261); scenario_matrix NaN
+  cells are internal-only, never serialized; _item_ability_haste.effective_cooldown floors the
+  denominator at 0.01.
+- H: agents._WebServer is ThreadingTCPServer (daemon_threads=True) - the cycle-7 S7 single-
+  threaded-serialization class does NOT apply. spawn_ephemeral_llm already has
+  subprocess.run(timeout=...) and prune_task_logs() still wired (not regressed). _minimap_bbox.py
+  is fully hardened (int-coercion rejects inf/nan strings, arity + r>l/b>t ordering + [0,10000]
+  clamp; no division/NaN math) - CLEAN, no change.
