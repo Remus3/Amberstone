@@ -40,6 +40,7 @@ fail at the engine's champion lookup anyway.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
@@ -106,9 +107,20 @@ def _row_delta(row: dict, scorer: str) -> float:
     and uses the percentage as its display unit - we read that and scale
     to a single-digit-friendly number.
     """
-    if scorer == "hybrid":
-        return float(row.get("hybrid_delta_pct", 0.0)) * 100.0
-    return float(row.get("delta", row.get("delta_dps", 0.0)))
+    # Audit cycle 10 (P2-W1-app-B): guard the engine-response JSON
+    # boundary. A NaN/inf delta would flow through round() into
+    # daemon_slayer_picks in coaching_data.json, where json.dumps emits
+    # a bare NaN token that the dashboard's JSON.parse rejects (panel
+    # dead). Garbage types (None / non-numeric) degrade one row to 0.0
+    # instead of sinking the whole DS block for the tick.
+    try:
+        if scorer == "hybrid":
+            val = float(row.get("hybrid_delta_pct", 0.0)) * 100.0
+        else:
+            val = float(row.get("delta", row.get("delta_dps", 0.0)))
+    except (TypeError, ValueError):
+        return 0.0
+    return val if math.isfinite(val) else 0.0
 
 
 def _build_picks_str(rows: list[dict], scorer: str) -> str:
@@ -161,11 +173,17 @@ def _build_display_rows(rows: list[dict], scorer: str) -> list[dict]:
     out: list[dict] = []
     for r in rows:
         delta = _row_delta(r, scorer)
+        try:
+            # Same JSON-boundary guard as _row_delta (audit cycle 10):
+            # int(NaN) raises ValueError, int(inf) raises OverflowError.
+            gold = int(r.get("gold", 0) or 0)
+        except (TypeError, ValueError, OverflowError):
+            gold = 0
         out.append({
             "id":        r.get("item_id", ""),
             "name":      r.get("item_name", ""),
             "delta_dps": round(delta, 2),
-            "gold":      int(r.get("gold", 0) or 0),
+            "gold":      gold,
             "delta":     round(delta, 2),
             "scorer":    scorer,
         })

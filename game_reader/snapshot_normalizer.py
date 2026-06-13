@@ -13,6 +13,7 @@ endpoints) resolve through MRO at runtime.
 """
 
 import logging
+import math
 import urllib.parse
 
 from .mode_router import is_tft_mode, tower_count_for, tft_minimal_state
@@ -34,6 +35,23 @@ def _normalize_name(name: str) -> str:
     if not name:
         return ""
     return name.split("#")[0].strip().lower()
+
+
+def _coerce_num(value, default=0.0) -> float:
+    """Coerce a Live Client JSON numeric to a finite float.
+
+    json.loads accepts the NaN / Infinity / -Infinity literals (a CPython
+    extension), so a poisoned value survives the boundary. int(NaN) raises
+    ValueError and int(inf) raises OverflowError - and the primary relay read
+    path (game_reader.poller.read_game) calls _process_game UNWRAPPED, so such
+    an exception crashes the poll tick. Comparisons against NaN also silently
+    misbehave. Return `default` for non-finite or non-numeric input.
+    """
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    return f if math.isfinite(f) else float(default)
 
 
 class _NormalizerMixin:
@@ -119,7 +137,11 @@ class _NormalizerMixin:
         self._first_blood       = False
 
         # Game time
-        game_time = game_info.get("gameTime", 0)
+        # P2-W1-app-A NaN/inf hardening: gameTime crosses the json.loads
+        # boundary, which accepts NaN/Infinity literals. int(NaN) below
+        # (int(game_time // 60)) raises ValueError and int(inf) raises
+        # OverflowError, crashing the unwrapped relay read path. Coerce first.
+        game_time = _coerce_num(game_info.get("gameTime", 0))
         game_mode = game_info.get("gameMode", "CLASSIC")
         mins = int(game_time // 60)
         secs = int(game_time % 60)
@@ -186,15 +208,17 @@ class _NormalizerMixin:
         # ── My stats ─────────────────────────────────────────────────────
         stats = active.get("championStats", {})
         if not isinstance(stats, dict): stats = {}
-        hp = int(stats.get("currentHealth", 0))
-        hp_max = int(stats.get("maxHealth", 1))
-        mp = int(stats.get("resourceValue", 0))
-        mp_max = int(stats.get("resourceMax", 1))
+        # P2-W1-app-A NaN/inf hardening: coerce each Riot float before int()
+        # so a NaN/Infinity championStats value can't crash _process_game.
+        hp = int(_coerce_num(stats.get("currentHealth", 0)))
+        hp_max = int(_coerce_num(stats.get("maxHealth", 1), 1))
+        mp = int(_coerce_num(stats.get("resourceValue", 0)))
+        mp_max = int(_coerce_num(stats.get("resourceMax", 1), 1))
         hp_pct = int(100 * hp / max(hp_max, 1))
         mp_pct = int(100 * mp / max(mp_max, 1))
 
         my_level = active.get("level", me.get("level", 1) if me else 1)
-        my_gold = int(active.get("currentGold", 0))
+        my_gold = int(_coerce_num(active.get("currentGold", 0)))
 
         cs = 0
         kills = deaths = assists = 0

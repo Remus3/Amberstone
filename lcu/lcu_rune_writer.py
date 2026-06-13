@@ -134,7 +134,12 @@ def _perk_by_name() -> dict[str, int]:
                         if isinstance(nm, str) and isinstance(rid, int):
                             m[nm] = rid
         except Exception as exc:
+            # Audit cycle 10 (P2-W1-app-B): do NOT cache the failure -
+            # pre-fix a transient read error pinned an empty map for the
+            # process lifetime (cache-poisoning class), silently dropping
+            # every user-curated minor-rune override from then on.
             _log.debug("perk-by-name load failed: %s", exc)
+            return {}
         _PERK_BY_NAME = m
     return _PERK_BY_NAME
 
@@ -327,18 +332,40 @@ def resolve_spell_pair(champion: str, mode: str) -> tuple[int, int]:
     return load_spell_pair(mode, is_aram)
 
 
+# Audit cycle 10 (P2-W1-app-B): serializes save_spell_pref writers -
+# concurrent calls shared one .tmp name (cycle-9 shared-tmp race class)
+# and a transient os.replace WinError 5 silently dropped the write.
+# Mirrors coaches/_base_coach.safe_write (lock + bounded replace retry).
+_SPELL_PREFS_LOCK = threading.Lock()
+
+
 def save_spell_pref(mode_key: str, value: str) -> None:
     """Write updated spell preference to spell_prefs.json (atomic write)."""
     try:
-        if _SPELL_PREFS_PATH.exists():
-            prefs = json.loads(_SPELL_PREFS_PATH.read_text(encoding='utf-8'))
-        else:
-            prefs = {}
-        prefs[mode_key] = value
-        tmp = _SPELL_PREFS_PATH.with_suffix('.tmp')
-        tmp.write_text(json.dumps(prefs, indent=2, ensure_ascii=False),
-                       encoding='utf-8')
-        tmp.replace(_SPELL_PREFS_PATH)
+        with _SPELL_PREFS_LOCK:
+            if _SPELL_PREFS_PATH.exists():
+                prefs = json.loads(_SPELL_PREFS_PATH.read_text(encoding='utf-8'))
+            else:
+                prefs = {}
+            prefs[mode_key] = value
+            tmp = _SPELL_PREFS_PATH.with_suffix('.tmp')
+            tmp.write_text(json.dumps(prefs, indent=2, ensure_ascii=False),
+                           encoding='utf-8')
+            for attempt in range(3):
+                try:
+                    tmp.replace(_SPELL_PREFS_PATH)
+                    break
+                except PermissionError:
+                    # os.replace transient WinError 5 under concurrent
+                    # read - retry with backoff, give up after 3.
+                    if attempt == 2:
+                        _log.warning("save_spell_pref: replace gave up after 3 tries")
+                        try:
+                            tmp.unlink(missing_ok=True)
+                        except OSError:
+                            pass
+                    else:
+                        time.sleep(0.015 * (2 ** attempt))
     except Exception as exc:
         _log.debug("save_spell_pref: %s", exc)
 
