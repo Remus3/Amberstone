@@ -117,6 +117,17 @@ function _goldLabel(g) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
+// HTML-escape free-form strings (item names) before innerHTML. Mirrors the
+// local _esc pattern in ds_matchup.js / ds_knobs.js.
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // The live coach payload carries item NAMES ("Mortal Reminder") while
 // /api/ds-knobs accepts item IDS only (a name in the csv 503s the
 // route - probed live 2026-06-10). Numeric strings pass through; names
@@ -141,7 +152,7 @@ function _rowsHtml(payload) {
   }
   return rows.slice(0, _OVDS_ROW_CAP).map((r) => (
     `<div class="ovds-row">`
-    + `<span class="ovds-item">${String(r.name || r.item_id || "")}</span>`
+    + `<span class="ovds-item">${_esc(r.name || r.item_id || "")}</span>`
     + `<span class="ovds-delta">+${Math.round(+r.delta_dps || 0)}</span>`
     + `<span class="ovds-gold">${_goldLabel(r.gold)}g</span>`
     + `</div>`

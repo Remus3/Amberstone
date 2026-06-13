@@ -23,6 +23,18 @@ const IB = {
 };
 
 // ITEMS, ITEM_COSTS, CHAMPS, SPELLS + all resolvers imported from lib/items_index.js.
+// HTML-escape free-form strings (item names) before they go into innerHTML.
+// Mirrors the local _esc defensive-escape pattern in ds_matchup.js /
+// ds_profile.js / last_match.js. helpers.safe() trims only, it does NOT
+// escape, so it is not a substitute here.
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 // Re-drive item-build render after async index load (avoids circular dep).
 let _lastItemBuildState = null;
 document.addEventListener("rc:items-ready", () => {
@@ -273,9 +285,11 @@ function renderItemBuild(p) {
   if (IB.dsBlock) {
     if (dsPicks.length) {
       IB.dsPicks.innerHTML = dsPicks.map(r => {
-        const delta = formatDsDelta(r);
-        return `<span class="ds-chip" title="${r.name} · ${delta} · ${r.gold}g">`
-             + `${r.name}<em>${delta}</em></span>`;
+        const delta = formatDsDelta(r);  // numeric + fixed-suffix, injection-safe
+        const nm = _esc(r.name);
+        const gold = Math.round(+r.gold || 0);
+        return `<span class="ds-chip" title="${nm} · ${delta} · ${gold}g">`
+             + `${nm}<em>${delta}</em></span>`;
       }).join('');
       IB.dsBlock.hidden = false;
     } else {
@@ -306,8 +320,11 @@ function renderItemBuild(p) {
         const sig = `${top.name}|${delta}`;
         if (IB.dsPill.dataset.dsSig !== sig) {
           IB.dsPill.dataset.dsSig = sig;
-          IB.dsPill.innerHTML = `${top.name}<em>${delta}</em>`;
+          const nm = _esc(top.name);
+          IB.dsPill.innerHTML = `${nm}<em>${delta}</em>`;
           if (IB.dsPill.dataset.ttHtml) delete IB.dsPill.dataset.ttHtml;
+          // title is a DOM attribute set via property, not innerHTML, so the
+          // browser does not re-parse it as markup - raw name is safe here.
           IB.dsPill.title = `${top.name} · ${delta}` + (top.gold ? ` · ${top.gold}g` : '');
         }
         IB.dsPill.hidden = false;

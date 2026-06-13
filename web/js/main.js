@@ -73,6 +73,23 @@ import { initOverlayPulse } from './overlay_pulse.js';
   const WS_PORT = 8891;
   const WS_URL = `ws://${WS_HOST}:${WS_PORT}/push`;
 
+  // HTML-escape any untrusted string before interpolating into innerHTML
+  // (LCU/match player names, user-typed tags, advisory/coach text). Escapes
+  // the 5 markup-significant chars so a name like '"><img onerror=...>' can
+  // no longer break out of text content or an attribute value. Output is
+  // unchanged for benign content - the browser renders the entities back to
+  // the original glyphs (e.g. Bel'Veth's apostrophe). No escapeHtml lived in
+  // lib/helpers.js, so this is the local copy (DEEP-AUDIT cycle13 JS-A).
+  function escapeHtml(s) {
+    if (s == null) return "";
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   // ── LCU helper (s171 restore) ──────────────────────────────────────
   // ``lcuCmd`` / ``lcuPollResult`` were referenced 22 times in main.js
   // (Find Match / Cancel / Change Lobby Mode / queue switcher / etc.)
@@ -1701,9 +1718,9 @@ import { initOverlayPulse } from './overlay_pulse.js';
           (d.champions || []).forEach((c) => {
             const li = document.createElement("li");
             li.className = "history-match-row";
-            li.innerHTML = `<span style="flex:1">${c.champion}</span>` +
-              `<span class="dim">${c.games}g</span>` +
-              `<span style="margin-left:10px">${c.kda || "-"}</span>`;
+            li.innerHTML = `<span style="flex:1">${escapeHtml(c.champion)}</span>` +
+              `<span class="dim">${escapeHtml(c.games)}g</span>` +
+              `<span style="margin-left:10px">${escapeHtml(c.kda || "-")}</span>`;
             champUl.appendChild(li);
           });
           if (!champUl.children.length) champUl.innerHTML = '<li class="home-empty">no champs in session</li>';
@@ -1716,9 +1733,9 @@ import { initOverlayPulse } from './overlay_pulse.js';
             li.className = "history-match-row";
             const grade = String(m.grade || "-")[0];
             li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
-              `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
-              `<span class="dim">${m.kda}</span>` +
-              `<span class="dim" style="margin-left:8px">${m.timestamp}</span>`;
+              `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
+              `<span class="dim">${escapeHtml(m.kda)}</span>` +
+              `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
             // HIST1: clicking a Session match row opens its detached
             // historical PGR (keyed on the row timestamp).
             _wireMatchRowToHistoricalPgr(li, m.timestamp);
@@ -1770,9 +1787,9 @@ import { initOverlayPulse } from './overlay_pulse.js';
             const li = document.createElement("li");
             li.className = "history-session-row";
             li.dataset.sessionIdx = idx;
-            li.innerHTML = `<span style="flex:1">${s.date}</span>` +
-              `<span class="dim">${s.games}g</span>` +
-              `<span class="dim" style="margin-left:8px">${s.duration_label || ""}</span>`;
+            li.innerHTML = `<span style="flex:1">${escapeHtml(s.date)}</span>` +
+              `<span class="dim">${escapeHtml(s.games)}g</span>` +
+              `<span class="dim" style="margin-left:8px">${escapeHtml(s.duration_label || "")}</span>`;
             li.addEventListener("click", () => {
               _HISTORY.selectedSession = idx;
               ul.querySelectorAll(".history-session-row").forEach((r) => r.classList.remove("active"));
@@ -1880,9 +1897,9 @@ import { initOverlayPulse } from './overlay_pulse.js';
       if (m.timestamp) li.dataset.matchTs = m.timestamp;
       const grade = String(m.grade || "-")[0];
       li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
-        `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
-        `<span class="dim">${m.kda}</span>` +
-        `<span class="dim" style="margin-left:8px">${m.timestamp}</span>`;
+        `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
+        `<span class="dim">${escapeHtml(m.kda)}</span>` +
+        `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
       // HIST1: clicking a History match row opens its detached historical
       // PGR (keyed on the row timestamp).
       _wireMatchRowToHistoricalPgr(li, m.timestamp);
@@ -1950,9 +1967,9 @@ import { initOverlayPulse } from './overlay_pulse.js';
           card.className = "loadout-champ";
           const variants = (c.variants || [])
             .filter((v) => v.key !== "experimental")
-            .map((v) => `<span style="color:var(--text-dim); font-size:11px; margin-right:14px">${v.label} <span style="color:var(--text-faint)">(${v.keystone||"?"})</span></span>`)
+            .map((v) => `<span style="color:var(--text-dim); font-size:11px; margin-right:14px">${escapeHtml(v.label)} <span style="color:var(--text-faint)">(${escapeHtml(v.keystone||"?")})</span></span>`)
             .join("");
-          card.innerHTML = `<div class="loadout-champ-name">${c.champion}</div><div>${variants}</div>`;
+          card.innerHTML = `<div class="loadout-champ-name">${escapeHtml(c.champion)}</div><div>${variants}</div>`;
           list.appendChild(card);
         });
         if (!champs.length) list.innerHTML = '<div class="home-empty">no champions match filter</div>';
@@ -3825,20 +3842,20 @@ import { initOverlayPulse } from './overlay_pulse.js';
       li.innerHTML = (
         '<span class="lv-mc-champ">' +
           '<span class="lv-mc-icon">' +
-            '<img src="' + iconUrl + '" alt="' + (c.name || "") + '" ' +
+            '<img src="' + escapeHtml(iconUrl) + '" alt="' + escapeHtml(c.name || "") + '" ' +
               'onerror="this.style.display=\'none\'" />' +
           '</span>' +
           '<button type="button" class="lv-mc-copy" data-copy-rank="' + rank + '" ' +
                   'title="Copy summary for League chat" aria-label="Copy">' + _LV_ICON_COPY + '</button>' +
         '</span>' +
         '<span class="lv-mc-mastery">' +
-          '<span class="lv-mc-summoner-name">' + (selfName || "-") + '</span>' +
+          '<span class="lv-mc-summoner-name">' + escapeHtml(selfName || "-") + '</span>' +
           '<b class="lv-mc-mastery-level">Mastery ' + (c.mastery_level != null ? c.mastery_level : "-") + '</b>' +
           '<span class="lv-mc-mastery-points">' + _fmtMasteryPoints(c.mastery_points) + '</span>' +
         '</span>' +
         '<span class="lv-mc-recent">' +
-          '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + (result || "-") + '</span>' +
-          '<span class="lv-mc-kda">' + (lm.kda || "-") + '</span>' +
+          '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + escapeHtml(result || "-") + '</span>' +
+          '<span class="lv-mc-kda">' + escapeHtml(lm.kda || "-") + '</span>' +
         '</span>' +
         overallHtml +
         averagedHtml
@@ -4098,7 +4115,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
       };
       const section1 =
         '<span class="lv-party-section-name">' +
-          `<span class="lobby-member-name">${ign}</span>` +
+          `<span class="lobby-member-name">${escapeHtml(ign)}</span>` +
         '</span>' +
         '<span class="lv-party-section-prefs">' +
           prefIcon("Primary", pPrimary, true) + prefIcon("Secondary", pSecondary, false) +
@@ -4147,18 +4164,18 @@ import { initOverlayPulse } from './overlay_pulse.js';
       // Slot 1 - spacer (reserved column for future left-side action)
       actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
       // Slot 2 - copy (always present)
-      actions.push(`<button type="button" class="lv-member-action" data-action="copy" data-ign="${fullIgn}" title="Copy username" aria-label="Copy username">${_LV_ICON_COPY}</button>`);
+      actions.push(`<button type="button" class="lv-member-action" data-action="copy" data-ign="${escapeHtml(fullIgn)}" title="Copy username" aria-label="Copy username">${_LV_ICON_COPY}</button>`);
       // Slot 3 - leader crown OR promote OR spacer
       if (m.is_leader) {
         actions.push(`<span class="lv-member-action lv-member-leader-crown" title="Party leader" aria-label="Party leader">${_LV_ICON_CROWN}</span>`);
       } else if (!isSolo && iAmLeader && !m.is_self) {
-        actions.push(`<button type="button" class="lv-member-action" data-action="promote" data-ign="${fullIgn}" title="Promote to leader" aria-label="Promote to leader">⬆</button>`);
+        actions.push(`<button type="button" class="lv-member-action" data-action="promote" data-ign="${escapeHtml(fullIgn)}" title="Promote to leader" aria-label="Promote to leader">⬆</button>`);
       } else {
         actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
       }
       // Slot 4 - kick / spacer
       if (!isSolo && iAmLeader && !m.is_self && !m.is_leader) {
-        actions.push(`<button type="button" class="lv-member-action" data-action="kick" data-ign="${fullIgn}" title="Kick from party" aria-label="Kick">✕</button>`);
+        actions.push(`<button type="button" class="lv-member-action" data-action="kick" data-ign="${escapeHtml(fullIgn)}" title="Kick from party" aria-label="Kick">✕</button>`);
       } else {
         actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
       }
@@ -4260,19 +4277,19 @@ import { initOverlayPulse } from './overlay_pulse.js';
         li.innerHTML = (
           '<span class="lv-mc-champ">' +
             '<span class="lv-mc-icon">' +
-              `<img src="${iconUrl}" alt="${c.name || ""}" onerror="this.style.display='none'" />` +
+              `<img src="${escapeHtml(iconUrl)}" alt="${escapeHtml(c.name || "")}" onerror="this.style.display='none'" />` +
             '</span>' +
             `<button type="button" class="lv-mc-copy" data-copy-rank="${rank}" ` +
                     'title="Copy summary for League chat" aria-label="Copy">' + _LV_ICON_COPY + '</button>' +
           '</span>' +
           '<span class="lv-mc-mastery">' +
-            `<span class="lv-mc-summoner-name">${playerName}</span>` +
+            `<span class="lv-mc-summoner-name">${escapeHtml(playerName)}</span>` +
             `<b class="lv-mc-mastery-level">Mastery ${c.mastery_level != null ? c.mastery_level : "-"}</b>` +
             `<span class="lv-mc-mastery-points">${_fmtMasteryPoints(c.mastery_points)}</span>` +
           '</span>' +
           '<span class="lv-mc-recent">' +
-            `<span class="lv-mc-result lv-mc-result-${resultLow}">${result || "-"}</span>` +
-            `<span class="lv-mc-kda">${lm.kda || "-"}</span>` +
+            `<span class="lv-mc-result lv-mc-result-${resultLow}">${escapeHtml(result || "-")}</span>` +
+            `<span class="lv-mc-kda">${escapeHtml(lm.kda || "-")}</span>` +
           '</span>' +
           _mcOverallHtml(ov) +
           _mcAveragedHtml(av)
@@ -4976,11 +4993,11 @@ import { initOverlayPulse } from './overlay_pulse.js';
         const dotCls   = isOnline ? "lv-top8-dot-on" : "lv-top8-dot-off";
         const dotTitle = isOnline ? "Online" : "Offline";
         li.innerHTML = (
-          `<span class="lv-top8-cell lv-top8-name" title="${fullId}">${name}</span>` +
+          `<span class="lv-top8-cell lv-top8-name" title="${escapeHtml(fullId)}">${escapeHtml(name)}</span>` +
           `<span class="lv-top8-cell lv-top8-games">${games}</span>` +
           `<span class="lv-top8-cell lv-top8-role">${role}</span>` +
           `<span class="lv-top8-cell lv-top8-rank">${rankCellHtml}</span>` +
-          `<span class="lv-top8-cell lv-top8-tag" data-action="edit-tag" data-idx="${i}" title="Click to edit tag">${tag}</span>` +
+          `<span class="lv-top8-cell lv-top8-tag" data-action="edit-tag" data-idx="${i}" title="Click to edit tag">${escapeHtml(tag)}</span>` +
           `<span class="lv-top8-dot ${dotCls}" title="${dotTitle}"></span>` +
           `<button type="button" class="lv-member-action" data-action="invite" data-idx="${i}" title="Invite to lobby" aria-label="Invite">➕</button>` +
           '<span class="lv-top8-reorder">' +
@@ -5175,17 +5192,17 @@ import { initOverlayPulse } from './overlay_pulse.js';
       const li = document.createElement("li");
       li.className = "lv-fr-row";
       li.innerHTML = (
-        `<span class="lv-fr-name">${ign}</span>` +
-        `<span class="lv-fr-icon">${champIcon ? `<img src="${champIcon}" alt="${champ}" onerror="this.style.display='none'" />` : ""}</span>` +
+        `<span class="lv-fr-name">${escapeHtml(ign)}</span>` +
+        `<span class="lv-fr-icon">${champIcon ? `<img src="${escapeHtml(champIcon)}" alt="${escapeHtml(champ)}" onerror="this.style.display='none'" />` : ""}</span>` +
         `<span class="lv-fr-games">${gamesLbl}</span>` +
         `<span class="lv-fr-role">${role || "-"}</span>` +
         `<span class="lv-fr-rank">${rankHtml}</span>` +
         `<span class="lv-fr-team ${teamCls}" data-tt="${tt}">` +
           `<span class="lv-fr-team-mark">[${teamMark}]</span>` +
-          `<span class="lv-fr-team-kda">${lm.kda || "-"}</span>` +
+          `<span class="lv-fr-team-kda">${escapeHtml(lm.kda || "-")}</span>` +
         `</span>` +
-        `<button type="button" class="lv-fr-copy lv-member-action" data-action="copy" data-ign="${ign}" title="Copy summoner name" aria-label="Copy">${_LV_ICON_COPY}</button>` +
-        `<button type="button" class="lv-fr-invite lv-member-action" data-action="invite" data-ign="${ign}" title="Invite to lobby" aria-label="Invite">➕</button>`
+        `<button type="button" class="lv-fr-copy lv-member-action" data-action="copy" data-ign="${escapeHtml(ign)}" title="Copy summoner name" aria-label="Copy">${_LV_ICON_COPY}</button>` +
+        `<button type="button" class="lv-fr-invite lv-member-action" data-action="invite" data-ign="${escapeHtml(ign)}" title="Invite to lobby" aria-label="Invite">➕</button>`
       );
       ul.appendChild(li);
     });
@@ -5407,7 +5424,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
         ? `<a class="lobby-member-link" href="https://aggregator-b.invalid/lol/profile/na1/${encodeURIComponent(m.summoner_name)}" target="_blank" rel="noopener">aggregator-b ↗</a>`
         : "";
       li.innerHTML =
-        `<div class="lobby-member-name">${m.summoner_name || "Unknown"}${tags.join("")}</div>` +
+        `<div class="lobby-member-name">${escapeHtml(m.summoner_name || "Unknown")}${tags.join("")}</div>` +
         `<div class="lobby-member-meta">${stats.join("")}${lookup}</div>`;
       ul.appendChild(li);
     });
@@ -6061,7 +6078,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
         t.addEventListener("click", () => t.classList.remove("show"));
         document.body.appendChild(t);
       }
-      t.innerHTML = `<b>⚠ ${a.champion || ""} · ${a.mode || ""}</b><p>${a.message || ""}</p><span class="toast-dismiss">tap to dismiss</span>`;
+      t.innerHTML = `<b>⚠ ${escapeHtml(a.champion || "")} · ${escapeHtml(a.mode || "")}</b><p>${escapeHtml(a.message || "")}</p><span class="toast-dismiss">tap to dismiss</span>`;
       t.classList.add("show");
       clearTimeout(t._t);
       t._t = setTimeout(() => t.classList.remove("show"), 8000);

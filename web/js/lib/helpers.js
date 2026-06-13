@@ -39,6 +39,24 @@ export function safe(s) {
   return String(s).trim();
 }
 
+// Escape the five HTML-significant characters so an untrusted string can
+// be safely interpolated into an innerHTML template literal. Use for any
+// value sourced from the live client / LCU / a remote player (e.g.
+// summoner names) before it lands inside an innerHTML build. A plain
+// ASCII string is returned unchanged, so escaping is a no-op for normal
+// inputs and only differs when the source carries < > & " ' (the XSS
+// vector). Prefer element.textContent when building a single text node;
+// this helper is for the template-literal innerHTML sites.
+export function escHtml(s) {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Shrink font-size until content fits the element. ≤0.5ms per call.
 // Idempotent: skips if text + params haven't changed since last call.
 export function fitText(elm, text, { max = 48, min = 16, step = 2, lines = null } = {}) {

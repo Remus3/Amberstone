@@ -28,6 +28,15 @@ const MOUNT_ID = 'pgr-build-wpa-mount';
 const _SKIP_ITEM_IDS = new Set([0, 3340, 3363, 3364, 3330]);
 
 // --- icon + format helpers (mirror build_insights.js) ---------------
+// HTML-escape free-form strings (item name, champion display name) before
+// they land in innerHTML / attribute context. Item names + champion names
+// can carry apostrophes ("Overlord's Bloodmail", Kai'Sa) and are not a
+// trusted-markup source. Mirrors the sibling pgr_loadout.js _escHtml.
+function _escHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = String(s == null ? '' : s);
+  return div.innerHTML;
+}
 function _ddragonVersion() {
   return (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
 }
@@ -116,7 +125,7 @@ function _itemCellHtml(iid, itemById) {
   const name = (row && row.name) || '';
   const chip = row ? _chipHtml(row.wpa, row.n) : '<span class="pbw-chip pbw-na">no data</span>';
   return (
-    `<div class="pbw-item" title="${name}">${_itemImgTag(iid)}${chip}</div>`
+    `<div class="pbw-item" title="${_escHtml(name)}">${_itemImgTag(iid)}${chip}</div>`
   );
 }
 
@@ -156,7 +165,7 @@ function _strH(match, itemById, skillByChamp) {
     `<div class="pbw-card">` +
     `<div class="pbw-head">` +
     `<span class="pbw-title">YOUR BUILD - GRADED BY YOUR CAREER</span>` +
-    `<span class="pbw-sub">${champ ? champ + ' . ' : ''}career WPA over your match history (descriptive, not meta)</span>` +
+    `<span class="pbw-sub">${champ ? _escHtml(champ) + ' . ' : ''}career WPA over your match history (descriptive, not meta)</span>` +
     `</div>` +
     `<div class="pbw-item-row"><span class="pbw-strip-label">Items</span>${itemCells}</div>` +
     skillRow +
