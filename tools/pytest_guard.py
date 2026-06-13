@@ -79,7 +79,7 @@ def _fast_compile(py_files: list) -> int:
 
 
 def main() -> int:
-    raw = sys.stdin.read().lstrip("\\ufeff")
+    raw = sys.stdin.read()
     try:
         payload = json.loads(raw) if raw.strip() else {}
     except (ValueError, TypeError):
