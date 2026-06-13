@@ -280,3 +280,40 @@ or fold into P3/P6 as marked. FIX-NOW work is in git history, not here.
   bridge_monitor _last_seen_ts unlocked write.
 - data/spend unbounded daily files: consciously covered by
   scripts/db_size_monitor.py 50MB threshold.
+
+## P2 W1 app-set (cycle 10, item 404) - app/ game_reader/ modes/ lcu/ coach_integration/ lib/ vision_server/ modules/
+
+Slices A (app+game_reader+modes+vision_server+modules) / B (lcu+coach_integration+lib).
+FIX-NOW landed in the merge d61330b9; DEFER below. No frozen-file edits this cycle
+(all app/* + lcu_client.py findings were DEFER/INFO; FIX-NOW touched non-frozen files only).
+
+### MED
+- vision_server/_frame.py:205: _frames_by_source dict keyed by uploader-supplied
+  source string, never evicted; each slot holds up to a ~7MB b64 frame. Fixed
+  deployment uses 2-3 sources, but a token-authed client cycling source names grows
+  memory unbounded. Bound + LRU is a design change.
+
+### LOW
+- game_reader/poller.py:41: hardcoded RELAY_TOKEN literal as ImportError fallback;
+  except only catches ImportError (NOT the RuntimeError core.vision_token raises when
+  unconfigured) so the literal is partly dead. Part of the known 13-file legacy-token
+  fanout (operator-gated). vision_server/_config.py is CLEAN (no literal, fails loud).
+- vision_server/_relay.py:68: _lcu_cmd_queue appends per dashboard command, drained
+  only by the LCU agent polling /lcu-cmd-pending; if the agent is down it grows
+  unbounded (results dict IS capped at 100). User-rare commands.
+- vision_server/_http.py:206: do_PUT writes moon_monitor.html via bare write_bytes
+  (GET /monitor could read a partial file). Dev/diagnostic surface, manual PUT.
+- vision_server/_http.py:194 + app/_remediation.py:59: {"error": str(e)} raw-exception
+  bodies on the internal localhost :8889 / DevRuntime ops surfaces (not coach UI /
+  dashboard panel) - consistent with RC internal-API style.
+- modules/cache_engine.py:17: phase_bucket(t) has no None guard (hp/mana/obj_window
+  buckets do); make_cache_key passes game_time_s default 0, but an explicit None
+  would TypeError. game_time_s rarely None.
+
+### INFO (P3-prune material - DO NOT prune in P2, record-only per charter)
+- gamepc / 2-PC / RC-LiveClientRelay docstring + comment references:
+  game_reader/poller.py:8, vision_server/_frame.py:14, vision_server/_relay.py:13,
+  modes/shared_vision.py:21,44. P3 PRUNE SWEEP target.
+- game_reader/poller.py:137: relay read path returns _process_game(relay_raw) with
+  NO try/except, unlike the direct path (183-187). The NaN root-cause fix (slice A)
+  covers the known crash; full parity wrap deferred (changes is_in_game control flow).
