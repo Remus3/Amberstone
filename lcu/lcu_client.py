@@ -191,8 +191,10 @@ class LcuClient(_PGMixin):
             # Determine game mode from session
             game_mode = "sr"
             queue_id = session.get("gameData", {}).get("queue", {}).get("id", 0) if "gameData" in session else 0
-            # ARAM queue IDs: 450 (ARAM), 900 (ARURF), etc.
-            if queue_id in (450, 920):  # ARAM and ARAM Mayhem
+            # ARAM-family queue IDs (canonical set: core/queue_modes.py):
+            # 450 ARAM, 720 ARAM Clash, 920 Poro King, 2400 ARAM Mayhem
+            # (item 87: Mayhem reports queueId 2400, NOT 920 - audit c10).
+            if queue_id in (450, 720, 920, 2400):
                 game_mode = "aram"
 
             if champ_name == self._last_locked_champ and game_mode == self._last_locked_mode:
