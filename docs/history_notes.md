@@ -53,6 +53,19 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-13 - DEEP-AUDIT cycle 11: P2 W2 DS-engine fanout, HALF-WAVE 1 slices A/B/C/F [item 405]
+
+- 36 of 68 non-test agents/daemon_slayer files / ~23.1k LOC audited via 4 disjoint PARALLEL slices (no worktrees - disjoint file sets, robust to agent death; A dps/ability_dps/burst/hybrid/objdamage/dps_sweep/beam/missile, B threatrange/waveclear/mobility/extendedduel/zonecontrol/self_shred/antitank/allyamp/sustain, C ehp/hps/ability_hps/_per_spell_cc/cc_conditional/cc_output/cc_pressure/cc_pairing, F server/engine/data_loader/_registries/cli/__init__/__main__/stats/scaling/rank/abilities). commit 8113030a; 47 new tests (tests/test_p2w2_ds_{a,b,c,f}.py 15/16/10/6). First W2 cycle; half-wave 2 (D/E/G + supervisor set) next.
+- NO frozen-file edits - no agents/daemon_slayer file is on the frozen list. NO ENGINE_VERSION bump (defect guards on degenerate input, not a math change).
+- HIGH F server.py x2: do_GET/do_POST 500 handlers interpolated raw `f"internal error: {e}"` into the wire JSON (live-proven leak of a ...API-Key-Claude.txt path) -> generic `_send_error(500, "internal engine error - see daemon_slayer logs")` + _log.exception; float chokepoints _opt_float/_opt_weight/_opt_targets_override accepted non-finite (live POST /dps target_armor=nan -> HTTP 200 + bare NaN token the dashboard JSON.parse rejects) -> `if not math.isfinite(f):` 400 reject; dropped dead `from http import HTTPStatus`.
+- HIGH B antitank.py: P3.2 caster-stat path folded stats.get("ap"/"ad") with no finite guard -> NaN ap = NaN antitank_score (bare token), None = TypeError mid-tick; new _finite_float() + `return scaled if math.isfinite(scaled) else base` static fallback (static paths byte-identical, 64 antitank tests green). NOTE DEFER: the live /anti-tank route never passes stats= so this path is test-only on the dashboard today (P2_FINDINGS LOW).
+- MED: missile spell_travel_time(inf) passed `inf>0` -> bare Infinity (finite-guard distance + product); dps_sweep level int(inf) OverflowError sank the fail-soft sweep into a 500 + resist NaN SweepPoint (both axes finite-filter); ability_hps _value_at_rank let float("nan")/inf through the TypeError/ValueError guard at the heal/shield block chokepoint -> floors non-finite to 0.0.
+- Dominant finding class = non-finite numeric serializing to a bare NaN/Infinity JSON token (invalid JSON, breaks downstream JSON.parse) or int(non-finite) OverflowError killing a fail-soft path - the same class as cycles 7-10 at new boundaries.
+- Gate: truth_gate PROCEED 15464p/0f/0e/7s exit 0 (ops/audit/p2w2_ds_truth_gate_report.json; all 5 must_contain claim-sets reproduced; +47 reconciles c9 15393 + c10 24 + c11 47 = the new tests exactly; cycle-10 gate's 47-skip was live-game gating, now back to 7). DS server :8893 restarted (taskkill + relaunch; not supervisor-watched).
+- NEXT cycle 12: W2 half-wave 2 = D effects-data (_effects_data/_effects_types/effects 3 files / 6310) + E passive-overrides (12 / 4319) + G remaining-mechanics (rune_procs/mana_sim/combo/_rank_mage/matchup/cooldown_watch/augments/augment_formula_eval/geometry/spike_markers/_item_ability_haste/recharge_ledger/modifier_blocks/ult_rates/_item_tenacity/scenario_matrix/fight_report 17 / 5371) + agents/ supervisor set (5 / 2719) per P2_FANOUT_MANIFEST.
+
+---
+
 # 2026-06-12 - DEEP-AUDIT cycle 10: P2 W1 app-set per-file fanout, slices A-B [item 404]
 
 - 33 app-set files / 8917 LOC audited via 2 disjoint worktree slices (A app/+game_reader/+modes/+vision_server/+modules / B lcu/+coach_integration/+lib); octopus merge d61330b9; 24 new tests (tests/test_p2w1_app_{a,b}.py 9+15). W1 RUNTIME SPINE COMPLETE (core+dashboard+coaches+app-set).
