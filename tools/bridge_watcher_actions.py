@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import subprocess
@@ -280,6 +281,15 @@ def _parse_claude_json(stdout: str) -> Tuple[Optional[dict], Optional[float], Op
         try:
             cost = float(envelope.get("total_cost_usd") or envelope.get("cost_usd") or 0.0) or None
         except (TypeError, ValueError):
+            cost = None
+        # json.loads accepts bare Infinity / NaN tokens by default, and the
+        # claude --print envelope is peer-influenced. A non-finite cost would
+        # propagate into state["tokens_used_today_usd"] and then serialize
+        # into bridge_watcher_health.json as a bare Infinity/NaN token (invalid
+        # for strict JSON readers, e.g. browser JSON.parse / /api/health/all).
+        # Drop it to None so accounting treats the call as zero-cost.
+        if cost is not None and not math.isfinite(cost):
+            _log.warning("claude returned non-finite cost %r - treating as 0", cost)
             cost = None
     # Handle is_error envelopes (max-turns exceeded, budget hit, etc.) - surface as error result
     if isinstance(envelope, dict) and envelope.get("is_error"):
