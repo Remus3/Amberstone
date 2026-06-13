@@ -44,9 +44,9 @@ async function _tick() {
   const gameTime = hb && typeof hb.game_time === "number" ? hb.game_time : 0;
 
   // Color tier:
-  //   alive  - last eval <5s   → green
-  //   stale  - last eval 5-15s → amber
-  //   dead   - >15s or never   → grey
+  //   alive  - last eval <5s   -> green
+  //   stale  - last eval 5-15s -> amber
+  //   dead   - >15s or never   -> grey
   let tier;
   if (alive) tier = "alive";
   else if (ageS !== null && ageS < 15) tier = "stale";
@@ -82,6 +82,14 @@ async function _tick() {
 
 function _start() {
   if (!TP.pill) return;
+  // Idempotency guard - if this module is ever evaluated twice (test
+  // harness, hot reload) only one interval may run, mirroring the
+  // coach_choices.js window.__rc* self-bind pattern. ES modules are
+  // singletons in the browser so this is belt-and-suspenders.
+  if (typeof window !== "undefined") {
+    if (window.__rcTriggerPillStarted) return;
+    window.__rcTriggerPillStarted = true;
+  }
   _tick();   // first paint
   setInterval(_tick, TP.intervalMs);
 }

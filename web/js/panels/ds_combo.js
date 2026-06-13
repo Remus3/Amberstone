@@ -184,6 +184,18 @@ function _signature(payload) {
     .join("|") + `#${+tot.total_mitigated || 0}${ttkSig}` || "_nohits";
 }
 
+// HTML-escape free-form strings (action token, form name) before innerHTML.
+// hit.action traces back to the operator's typed action-queue string, so
+// escape it defensively. Mirrors the local _esc pattern in ds_matchup.js.
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function _statusBadge(hit) {
   return hit.status === "on_cooldown" ? "CD" : "";
 }
@@ -192,10 +204,10 @@ function _statusBadge(hit) {
 function _rowHtml(hit) {
   const onCd = hit.status === "on_cooldown";
   const label = hit.is_ability
-    ? `${String(hit.action || "")}`
+    ? _esc(hit.action || "")
     : "AA";
   const name = hit.form_name && hit.form_name !== "Auto"
-    ? String(hit.form_name) : "";
+    ? _esc(hit.form_name) : "";
   const raw = (+hit.raw || 0).toFixed(0);
   const mit = (+hit.mitigated || 0).toFixed(0);
   const cum = (+hit.cumulative || 0).toFixed(0);
@@ -295,7 +307,7 @@ export function renderDsCombo(blockEl, payload, opts) {
       + `</div>`
       + `<div class="dscombo-input-row">`
       + `<input type="text" class="dscombo-input" id="${sigKey}-input" `
-      + `value="${seqStr}" spellcheck="false" `
+      + `value="${_esc(seqStr)}" spellcheck="false" `
       + `aria-label="combo action queue" />`
       + `<select class="dscombo-keystone" id="${sigKey}-keystone" `
       + `aria-label="keystone rune">`

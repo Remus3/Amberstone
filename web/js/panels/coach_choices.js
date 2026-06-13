@@ -46,24 +46,38 @@ function _bandDots(band) {
 // Map chip key A/B/C to the corresponding ALT+digit hotkey 1/2/3.
 const _KEY_TO_DIGIT = { A: "1", B: "2", C: "3" };
 
+// HTML-escape for the LLM-derived choice text (label / expected_outcome /
+// source_tag). parse_choices (core/coach_choices.py) only length-limits
+// these fields - it does NOT escape markup, so the Haiku/Sonnet output is
+// untrusted at this boundary. Escape both the element-content and the
+// attribute interpolations (& < > " all matter in an HTML attribute).
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function _chipHtml(c) {
   const k = (c.key || "?").slice(0, 1).toUpperCase();
   const label = (c.label || "").slice(0, 80);
   const outcome = (c.expected_outcome || "").slice(0, 160);
   const src = (c.source_tag || "").slice(0, 32);
-  const srcPill = src ? `<span class="rc-src">${src}</span>` : "";
+  const confidence = String(c.confidence == null ? "" : c.confidence);
+  const srcPill = src ? `<span class="rc-src">${_esc(src)}</span>` : "";
   const digit = _KEY_TO_DIGIT[k] || "";
   const hotkeyPill = digit
     ? `<span class="rc-hotkey" title="Press Alt+${digit} to pick">Alt+${digit}</span>`
     : "";
   return `
-    <button type="button" class="rc-chip" data-key="${k}" data-label="${label}"
-            data-confidence="${c.confidence}" data-source="${src}"
-            title="${outcome.replace(/"/g, "&quot;")}">
-      <span class="rc-key">${k}</span>
-      <span class="rc-label">${label}</span>
+    <button type="button" class="rc-chip" data-key="${_esc(k)}" data-label="${_esc(label)}"
+            data-confidence="${_esc(confidence)}" data-source="${_esc(src)}"
+            title="${_esc(outcome)}">
+      <span class="rc-key">${_esc(k)}</span>
+      <span class="rc-label">${_esc(label)}</span>
       ${hotkeyPill}
-      ${_bandDots(c.confidence)}
+      ${_bandDots(confidence)}
       ${srcPill}
     </button>`;
 }
@@ -187,6 +201,7 @@ export const _internals = {
   _chipsSignature,
   _bandDots,
   _chipHtml,
+  _esc,
   _gameContextSnapshot,
   _onAltDigitKeydown,
   _activateChip,

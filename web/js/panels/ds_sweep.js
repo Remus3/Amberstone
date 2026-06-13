@@ -114,6 +114,17 @@ function _polylinePoints(points, xFn, yFn) {
   return out.join(" ");
 }
 
+// HTML-escape the champion slug before it lands in the SVG <title> /
+// aria-label attribute. The slug is echoed back from the route; mirror the
+// defensive escaping the sibling ds_profile.js applies to its champion name.
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // X-axis label for the swept variable.
 function _axisLabel(axis) {
   if (axis === "target_mr") return "enemy MR";
@@ -171,7 +182,7 @@ export function renderDsSweep(blockEl, payload) {
   const firstDps = Math.round(+points[0].dps || 0);
   const lastDps = Math.round(+points[points.length - 1].dps || 0);
   const axisName = _axisLabel(axis);
-  const tip = `${champ} DPS vs ${axisName} ${Math.round(xMin)}-${Math.round(xMax)}:`
+  const tip = `${_esc(champ)} DPS vs ${axisName} ${Math.round(xMin)}-${Math.round(xMax)}:`
             + ` ${firstDps} down to ${lastDps}`;
 
   const svg = `
