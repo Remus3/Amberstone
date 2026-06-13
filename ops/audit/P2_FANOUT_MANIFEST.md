@@ -45,20 +45,23 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       no frozen edits - all app/* + lcu_client findings were DEFER. DEFER in
       ops/audit/P2_FINDINGS.md). W1 runtime spine COMPLETE.
 
-### W2 DS engine - ~8 slices  (census at wave start: 68 non-test files / 39127 LOC)
-- [~] agents/daemon_slayer non-test src - HALF-WAVE 1 DONE cycle 11 (item 405,
-      4 slices A/B/C/F, 36 files / ~23.1k LOC of scorer-logic + engine-core/server;
-      47 new tests; FIX-NOW = 8 NaN/inf JSON-token + OverflowError guards across
-      missile/dps_sweep/antitank/ability_hps + server.py 500-handler raw-exc leak
-      fix + float-chokepoint isfinite rejects; no frozen edits - no DS file is
-      frozen; DEFER in ops/audit/P2_FINDINGS.md). REMAINING half-wave 2 (next cycle):
-      D effects-data (_effects_data/_effects_types/effects 3 files / 6310) +
-      E passive-overrides (12 files / 4319) + G remaining mechanics
-      (rune_procs/mana_sim/combo/_rank_mage/matchup/cooldown_watch/augments/
-      augment_formula_eval/geometry/spike_markers/_item_ability_haste/recharge_ledger/
-      modifier_blocks/ult_rates/_item_tenacity/scenario_matrix/fight_report 17 files / 5371).
-- [ ] agents/ supervisor set: supervisor.py + _supervisor_{http,common,ephemeral}.py
-      + _minimap_bbox.py 5 / 2719 (1 slice; fold into half-wave 2)
+### W2 DS engine - COMPLETE  (census at wave start: 68 non-test files / 39127 LOC)
+- [x] agents/daemon_slayer non-test src - COMPLETE across two half-waves.
+      HALF-WAVE 1 cycle 11 (item 405): 4 slices A/B/C/F, 36 files / ~23.1k LOC of
+      scorer-logic + engine-core/server; 47 new tests; FIX-NOW = 8 NaN/inf JSON-token
+      + OverflowError guards across missile/dps_sweep/antitank/ability_hps + server.py
+      500-handler raw-exc leak fix + float-chokepoint isfinite rejects.
+      HALF-WAVE 2 cycle 12 (item 406): 3 slices D effects-data (3 files) / E passive-
+      overrides (12) / G remaining-mechanics (17); 32 of the 47 new tests; FIX-NOW = 6
+      non-finite-JSON-token guards (_effects_types resolve_damage/ItemShield/ItemHeal,
+      _passive_resist/ally_grant resist paths, fight_report inf mana_pool -> null).
+      No frozen edits (no DS file is frozen). DEFER in ops/audit/P2_FINDINGS.md.
+- [x] agents/ supervisor set: supervisor.py + _supervisor_{http,common,ephemeral}.py
+      + _minimap_bbox.py 5 / 2719 - DONE cycle 12 (item 406, slice H, folded into
+      half-wave 2; 12 of the 47 new tests). FIX-NOW = _supervisor_http generic 500/502
+      bodies + allow_nan=False, _supervisor_ephemeral stderr secret redaction,
+      _supervisor_common atomic lockfile write, supervisor.stop logging-after-close
+      silence. agents/supervisor.py is NOT frozen (ops/rc_supervisor.py is, untouched).
 
 ### W3 web surface - ~8 slices
 - [ ] web/js 58 / 27020 (~5 slices; panels are independent)
