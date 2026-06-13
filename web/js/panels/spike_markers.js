@@ -97,6 +97,17 @@ function _signature(payload) {
     .join("|") || "_nomarkers";
 }
 
+// HTML-escape backend label text before innerHTML interpolation
+// (defense-in-depth; the DS spike generator emits ASCII labels today but
+// escape so a future table change can never inject markup here).
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // State word for one marker: crossed | next | future.
 function _state(m) {
   if (m.crossed) return "crossed";
@@ -106,9 +117,10 @@ function _state(m) {
 
 // Short cell glyph for a level marker (the threshold number) or item
 // marker (a filled / hollow pip count surrogate - we show the number).
+// Coerced numeric so a non-finite threshold renders "" not "NaN".
 function _cellLabel(m) {
-  if (m.kind === "level") return `${m.threshold}`;
-  return `${m.threshold}`;
+  const n = Number(m.threshold);
+  return Number.isFinite(n) ? `${n}` : "";
 }
 
 // Render the spike-markers strip into the provided element. payload is
@@ -140,12 +152,14 @@ export function renderSpikeMarkers(blockEl, payload) {
 
   const cell = (m) => {
     const st = _state(m);
-    const dps = (m.dps_at != null)
-      ? `<span class="spm-dps">${Math.round(+m.dps_at)}</span>` : "";
+    const dpsN = Number(m.dps_at);
+    const dps = (m.dps_at != null && Number.isFinite(dpsN))
+      ? `<span class="spm-dps">${Math.round(dpsN)}</span>` : "";
+    const lbl = _esc(m.label || "");
     return (
-      `<div class="spm-cell" data-spm-state="${st}" title="${String(m.label || "")}">`
+      `<div class="spm-cell" data-spm-state="${st}" title="${lbl}">`
       + `<span class="spm-mark">${_cellLabel(m)}</span>`
-      + `<span class="spm-lbl">${String(m.label || "")}</span>`
+      + `<span class="spm-lbl">${lbl}</span>`
       + dps
       + `</div>`
     );
@@ -167,9 +181,11 @@ export function renderSpikeMarkers(blockEl, payload) {
   let nextLine = "";
   if (next) {
     const kindWord = next.kind === "level" ? "level" : "item";
+    const nextThr = Number(next.threshold);
+    const thrStr = Number.isFinite(nextThr) ? `${nextThr}` : "";
     const what = next.kind === "level"
-      ? `level ${next.threshold} (${next.label})`
-      : `${next.label}`;
+      ? `level ${thrStr} (${_esc(next.label)})`
+      : `${_esc(next.label)}`;
     nextLine = (
       `<div class="spm-next">NEXT SPIKE: ${what} - ${kindWord} threshold</div>`
     );

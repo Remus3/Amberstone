@@ -42,6 +42,18 @@ const AR = {
 
 let _lastSig = "";
 
+// HTML-escape augment names + rarity before innerHTML interpolation. The
+// names come from core/augment_external_source.py (external Mayhem prior)
+// + the arena coach payload, not a fixed enum, so escape defensively at
+// this boundary (covers both element content and the title attribute).
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function _hide() {
   if (!AR.block) return;
   if (!AR.block.hidden) AR.block.hidden = true;
@@ -94,15 +106,15 @@ export function renderAugmentReco(p) {
   // genuinely open; otherwise it's the standing recommendation.
   AR.top.innerHTML =
     `<span class="ar-top-cue">${active ? "PICK NOW" : "TOP PICK"}</span>` +
-    `<span class="ar-top-name">${topName}</span>` +
+    `<span class="ar-top-name">${_esc(topName)}</span>` +
     `<span class="ar-top-conf" title="Confidence = blend weight: how much your own history is trusted vs the external Mayhem prior. Low early by design.">conf ${conf}%</span>`;
 
   // Ranked rows - rank, name, score, own/ext WR, synergy, sample size.
   const anySyn = reco.some(r => r.syn);
   AR.list.innerHTML = reco.slice(0, 5).map((r, i) => {
     const rk   = i + 1;
-    const name = r.name || String(r.id || "?");
-    const rar  = (r.rarity || "").toLowerCase();
+    const name = _esc(r.name || String(r.id || "?"));
+    const rar  = _esc((r.rarity || "").toLowerCase());
     const own  = _pct(r.own_wr);
     const exv  = (r.ext_wr == null) ? "-" : _pct(r.ext_wr);
     const synV = anySyn ? _syn(r.syn) : "";

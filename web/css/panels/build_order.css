@@ -173,15 +173,6 @@
   white-space: nowrap;
 }
 
-/* Excluded-family signal - spans the row width under the slot, muted so
- * it informs without competing with the pick itself. */
-.bo-excl {
-  grid-column: 2 / -1;
-  font-size: 12px;
-  color: var(--text-faint, #6b6d7c);
-  font-style: italic;
-}
-
 /* item 213 (2026-05-28): DS-vs-enemy-comp save+push control. Pushes the
  * finalized ordered build to the League client item set via
  * apply_item_sets_batch (distinct set_uid RC-<champ>-<mode>-dsenemycomp).

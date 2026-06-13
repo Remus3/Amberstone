@@ -1,7 +1,7 @@
 // Champ Select panel - full-page view rendered during ChampSelect
 // phase: pick&ban + build chooser + SR Draft Theatre + analyzer.
 // _ib* functions live in item_build.js (avoid circular dep).
-import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
+import { el, safe, fmtList, isArenaPayload, escHtml } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS, _normItemName, _resolveItemId, _resolveChampId } from '../lib/items_index.js';
 import { sumImg, sumName } from '../lib/summoner_spells.js';
@@ -609,8 +609,11 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
     // the summoner name sits immediately to its right.
     const sm = document.createElement("div");
     sm.className = "csv-team-cell-summ";
-    sm.innerHTML = lockHtml +
-      `<span class="csv-team-cell-summ-text">${summ ? summ.slice(0, 22) : ""}</span>`;
+    // summ is an LCU summoner display name (other-player-controlled) -
+      // escape before it lands in innerHTML so a crafted name can't inject
+      // markup (XSS). Escaping is a no-op for normal ASCII names.
+      sm.innerHTML = lockHtml +
+      `<span class="csv-team-cell-summ-text">${summ ? escHtml(summ.slice(0, 22)) : ""}</span>`;
     if (isAllyOther && peerCellId != null) {
       const summText = sm.querySelector(".csv-team-cell-summ-text");
       if (summText) {
@@ -3233,7 +3236,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
       <div class="csv-duo-cell-icon">${img}</div>
       <div class="csv-duo-cell-tag">${isMe ? "ME" : "ALLY"}</div>
       <div class="csv-duo-cell-name">${nm}</div>
-      <div class="csv-duo-cell-summ">${(c.summonerName || "").slice(0, 22) || "-"}</div>
+      <div class="csv-duo-cell-summ">${escHtml((c.summonerName || "").slice(0, 22)) || "-"}</div>
     </div>`;
   };
 

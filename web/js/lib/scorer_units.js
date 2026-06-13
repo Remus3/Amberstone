@@ -30,8 +30,15 @@ export function scorerUnit(scorer) {
 // active-match DS strip, and the next-row Build fallback.
 export function formatDsDelta(row) {
   if (!row) return '+0dps';
-  const raw = (row.delta_dps != null) ? row.delta_dps
+  const rawSrc = (row.delta_dps != null) ? row.delta_dps
             : (row.delta != null)     ? row.delta
             : 0;
+  // Guard against a non-finite / non-numeric delta (malformed engine row,
+  // null, "NaN") so the pill never renders "+NaNdps". Number() coerces a
+  // numeric string normally; non-finite results fall back to 0. Finite
+  // numbers round identically to the prior Math.round(raw), so valid rows
+  // are unchanged.
+  const num = Number(rawSrc);
+  const raw = Number.isFinite(num) ? num : 0;
   return `+${Math.round(raw)}${scorerUnit(row.scorer)}`;
 }

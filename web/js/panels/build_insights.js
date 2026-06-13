@@ -41,6 +41,19 @@ function _ddragonVersion() {
   return (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
 }
 
+// HTML-escape free-form strings (item / champ / rune / spell names, slot
+// kind) before they go into innerHTML. The WPA rows carry names from the
+// rewind DB + DDragon; escape defensively, mirroring the sibling panels'
+// local _esc pattern (ds_matchup.js, last_match.js).
+function _esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Item-icon URL: local DDragon mirror first (matches last_match.js +
 // item_build.js); the onerror handler falls back to the official CDN
 // at the same patch, then hides the broken <img> so the name text
@@ -170,7 +183,7 @@ const _ITEMS_TAB = {
     const name = (it && it.name) || ('Item ' + iid);
     return (
       `<td class="bi-c-item"><span class="bi-item">${_itemImgTag(iid)}` +
-      `<span class="bi-item-name">${name}</span></span></td>`
+      `<span class="bi-item-name">${_esc(name)}</span></span></td>`
     );
   },
 };
@@ -191,8 +204,8 @@ const _SKILLS_TAB = {
     const skill = (it && it.skill) || '?';
     return (
       `<td class="bi-c-champ"><span class="bi-champ">${_champImgTag(cid)}` +
-      `<span class="bi-champ-name">${name}</span></span></td>` +
-      `<td class="bi-c-skill"><span class="bi-skill-badge">${skill}</span></td>`
+      `<span class="bi-champ-name">${_esc(name)}</span></span></td>` +
+      `<td class="bi-c-skill"><span class="bi-skill-badge">${_esc(skill)}</span></td>`
     );
   },
 };
@@ -201,7 +214,8 @@ const _SKILLS_TAB = {
 function _slotBadgeHtml(it) {
   const kind = (it && it.slot_kind) || 'minor';
   const label = kind === 'keystone' ? 'KEY' : 'MIN';
-  return `<span class="bi-slot-badge bi-slot-${kind}" title="${kind}">${label}</span>`;
+  const k = _esc(kind);
+  return `<span class="bi-slot-badge bi-slot-${k}" title="${k}">${label}</span>`;
 }
 
 const _RUNES_TAB = {
@@ -220,7 +234,7 @@ const _RUNES_TAB = {
     const icon = (it && it.icon) || '';
     return (
       `<td class="bi-c-rune"><span class="bi-rune">${_runeImgTag(icon)}` +
-      `<span class="bi-rune-name">${name}</span></span></td>` +
+      `<span class="bi-rune-name">${_esc(name)}</span></span></td>` +
       `<td class="bi-c-slot">${_slotBadgeHtml(it)}</td>`
     );
   },
@@ -241,7 +255,7 @@ const _SPELLS_TAB = {
     const icon = (it && it.icon) || '';
     return (
       `<td class="bi-c-spell"><span class="bi-spell">${_spellImgTag(icon)}` +
-      `<span class="bi-spell-name">${name}</span></span></td>`
+      `<span class="bi-spell-name">${_esc(name)}</span></span></td>`
     );
   },
 };

@@ -11,7 +11,7 @@
 // Render rules:
 // 1. Hidden when lcu.phase !== "ChampSelect" OR coach.team_context is null.
 // 2. Idempotent (sig-on-container) - no flicker on every 500ms /api/state poll.
-// 3. Ranked-queue obfuscation gate: when payload.queue_id ∈ {420, 440},
+// 3. Ranked-queue obfuscation gate: when payload.queue_id in {420, 440},
 //    summoner_name field is force-blanked at the render layer regardless
 //    of what the backend stored. The FU02 ticket calls this out as a
 //    Riot-policy compliance requirement (loading-screen reveal only).
@@ -24,6 +24,17 @@ import { idempotentRender, makeSig } from '../lib/idempotent_render.js';
 // Queue IDs where Riot obfuscates summoner names until loading screen.
 // Match-V5 docs queue list - Ranked Solo (420), Ranked Flex (440).
 const _RANKED_BLANK_QUEUES = new Set([420, 440]);
+
+// Escape a value for safe use inside a double-quoted HTML attribute. The
+// champion name reaches innerHTML via the icon img (src + alt); coerce +
+// escape so a name carrying a quote can never break out of the attribute.
+function _escAttr(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function _champImg(name) {
   if (!name) return "";
@@ -41,7 +52,7 @@ function _renderSlot(entry, blankNames) {
   const icon = document.createElement("div");
   icon.className = "tc-slot-icon" + (champ ? "" : " skel");
   icon.innerHTML = champImg
-    ? `<img src="${champImg}" alt="${champ}" onerror="this.style.display='none'">`
+    ? `<img src="${_escAttr(champImg)}" alt="${_escAttr(champ)}" onerror="this.style.display='none'">`
     : "?";
   wrap.appendChild(icon);
 
@@ -84,7 +95,7 @@ function _renderSlot(entry, blankNames) {
   if (entry.mastery_on_locked > 0) {
     const m = document.createElement("span");
     m.className = "tc-slot-mastery";
-    // Truncate to k for compact display: 287_000 → "287k", 12_400 → "12k".
+    // Truncate to k for compact display: 287_000 -> "287k", 12_400 -> "12k".
     const v = entry.mastery_on_locked;
     m.textContent = (v >= 1000 ? Math.round(v / 1000) + "k" : String(v)) + " m";
     m.title = v.toLocaleString() + " mastery points on " + (champ || "locked champ");
@@ -176,7 +187,7 @@ function renderTeamContext(state) {
 
   block.hidden = false;
   // Sig: ensures we don't repaint on identical poll cycles. partial flag
-  // included so the "partial → final" transition forces a repaint.
+  // included so the "partial -> final" transition forces a repaint.
   const sig = makeSig(
     tc.refreshed_at, tc.partial, tc.queue_id,
     JSON.stringify(tc.allies || []),
