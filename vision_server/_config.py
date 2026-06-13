@@ -17,11 +17,16 @@ import time
 from pathlib import Path
 
 # ── Logger ─────────────────────────────────────────────────────────────────
+# P2-W1-app-A CWD hardening: anchor the log file to the repo root (this
+# module's grandparent dir) instead of the process CWD. dashboard/server.py
+# spawns this server by file path, so a CWD other than the repo root would
+# otherwise scatter moon_vision_server.log to wherever the spawn happened.
+_LOG_PATH = Path(__file__).resolve().parent.parent / "moon_vision_server.log"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler(sys.stdout),
-              logging.FileHandler("moon_vision_server.log", encoding="utf-8")]
+              logging.FileHandler(str(_LOG_PATH), encoding="utf-8")]
 )
 log = logging.getLogger("moon_vision")
 

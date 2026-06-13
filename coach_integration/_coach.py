@@ -107,9 +107,17 @@ class CoachIntegration:
         try:
             blank = self._default_data()
             blank["mode"] = "game"
-            tmp = self.data_file.with_suffix(".tmp")
-            tmp.write_text(json.dumps(blank, indent=2), encoding="utf-8")
-            tmp.replace(self.data_file)
+            # Audit cycle 10 (P2-W1-app-B): take the shared writer lock -
+            # pre-fix this wrote OUTSIDE coaching_data_lock while sharing
+            # the exact .tmp path with _write_fields, so a game-boundary
+            # reset racing a finishing CoachCall thread could interleave
+            # two write_text calls on one tmp file (cycle-9 shared-tmp
+            # corruption class) and clobber the RMW cycle.
+            from core.coaching_data_lock import coaching_data_lock
+            with coaching_data_lock():
+                tmp = self.data_file.with_suffix(".reset.tmp")
+                tmp.write_text(json.dumps(blank, indent=2), encoding="utf-8")
+                tmp.replace(self.data_file)
         except Exception as _e:  # QUAL-002
             import logging as _lg; _lg.getLogger(__name__).debug("blank artifact write: %s", _e)
         logger.info("Coach state reset for new game")
@@ -194,8 +202,11 @@ class CoachIntegration:
         try:
             self._run(game_state)
         except Exception as e:
-            logger.error("Coach error: %s", e)
-            self._write_status_field(f"Coach error: {str(e)[:60]}")
+            # Audit cycle 10 (P2-W1-app-B): never surface raw exception
+            # text in the dashboard status field (CLAUDE.md Error
+            # Handling rule) - log the full detail, render friendly.
+            logger.exception("Coach error: %s", e)
+            self._write_status_field("(coach paused - internal error)")
         finally:
             self._lock.release()
 

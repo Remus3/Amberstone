@@ -2,6 +2,7 @@
 """SR-specific prompt assembly: system prompt, data loaders, _build_user_prompt, WaveTracker."""
 
 import json
+import math
 import time
 import logging
 from collections import deque
@@ -18,6 +19,10 @@ logger = logging.getLogger("coach")
 
 # Points to project root (parent of this package dir).
 _CI_APP_DIR = Path(__file__).parent.parent
+
+# Written by core/vision_tracker; consumed by _vision_tracker_locs.
+# Module-level so tests can monkeypatch it (audit cycle 10).
+_VISION_STATE_PATH = _CI_APP_DIR / "data" / "vision_state.json"
 
 def _load_sr_rune_rec(champion: str) -> str:
     """Load SR rune recommendation string for a champion."""
@@ -250,8 +255,7 @@ def _vision_tracker_locs() -> str:
     spot for ~1s).
     """
     try:
-        from pathlib import Path as _P
-        p = _P(__file__).parent.parent / "data" / "vision_state.json"
+        p = _VISION_STATE_PATH
         if not p.exists():
             return ""
         if (time.time() - p.stat().st_mtime) > 10:
@@ -267,7 +271,11 @@ def _vision_tracker_locs() -> str:
         zone = e.get("last_seen_zone") or "?"
         if e.get("is_dead"):
             r = e.get("respawn_in_s")
-            dead.append(f"{name} ({int(r)}s)" if isinstance(r, (int, float)) else name)
+            # Audit cycle 10: math.isfinite guard - json.loads accepts
+            # NaN/Infinity literals and int(NaN) raised ValueError here,
+            # killing the whole SR prompt build for the tick.
+            _r_ok = isinstance(r, (int, float)) and math.isfinite(r)
+            dead.append(f"{name} ({int(r)}s)" if _r_ok else name)
             continue
         if e.get("visible"):
             visible.append(f"{name} [{zone}]")
