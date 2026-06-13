@@ -39,7 +39,7 @@ _REASON = (
 
 def main() -> int:
     try:
-        raw = sys.stdin.read().lstrip("\\ufeff")
+        raw = sys.stdin.read()
         payload = json.loads(raw) if raw.strip() else {}
         tool = payload.get("tool_name", "")
         if tool in _DENY and not _FLAG.exists():
