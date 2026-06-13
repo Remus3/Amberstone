@@ -39,8 +39,8 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
-from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
@@ -238,9 +238,15 @@ def _opt_float(body: dict, key: str, default: float = 0.0) -> float:
     if v is None or v == "":
         return default
     try:
-        return float(v)
+        f = float(v)
     except (TypeError, ValueError):
         raise _ApiError(400, f"{key}: expected number, got {v!r}")
+    # Reject NaN / +-inf: a non-finite stat input is never legitimate and
+    # json.dumps would emit a bare NaN/Infinity token, which is invalid JSON
+    # that breaks the dashboard's JSON.parse downstream (finding class 1).
+    if not math.isfinite(f):
+        raise _ApiError(400, f"{key}: must be a finite number, got {v!r}")
+    return f
 
 
 def _opt_bool(body: dict, key: str, default: bool = False) -> bool:
@@ -584,9 +590,12 @@ def _opt_weight(body: dict, key: str) -> Optional[float]:
     if key not in body or body[key] in (None, ""):
         return None
     try:
-        return float(body[key])
+        f = float(body[key])
     except (TypeError, ValueError):
         raise _ApiError(400, f"{key}: expected number, got {body[key]!r}")
+    if not math.isfinite(f):
+        raise _ApiError(400, f"{key}: must be a finite number, got {body[key]!r}")
+    return f
 
 
 def _route_hybrid(body: dict) -> dict:
@@ -1490,9 +1499,12 @@ def _opt_targets_override(body: dict) -> Optional[float]:
     if key not in body or body[key] in (None, ""):
         return None
     try:
-        return float(body[key])
+        f = float(body[key])
     except (TypeError, ValueError):
         raise _ApiError(400, f"{key}: expected number, got {body[key]!r}")
+    if not math.isfinite(f):
+        raise _ApiError(400, f"{key}: must be a finite number, got {body[key]!r}")
+    return f
 
 
 def _route_hps(body: dict) -> dict:
@@ -1850,9 +1862,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send_error(404, f"no such route: {path}")
         except _ApiError as e:
             self._send_error(e.status, e.message, e.detail)
-        except Exception as e:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
+            # Never leak the raw exception text into the HTTP body (a stack /
+            # exc string is an information-disclosure + breaks the friendly
+            # degraded-mode contract). The full traceback is logged above.
             _log.exception("unhandled error in GET %s", path)
-            self._send_error(500, f"internal error: {e}")
+            self._send_error(500, "internal engine error - see daemon_slayer logs")
 
     def do_POST(self) -> None:
         url = urlsplit(self.path)
@@ -1876,9 +1891,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(200, payload)
         except _ApiError as e:
             self._send_error(e.status, e.message, e.detail)
-        except Exception as e:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
+            # Never leak the raw exception text into the HTTP body (a stack /
+            # exc string is an information-disclosure + breaks the friendly
+            # degraded-mode contract). The full traceback is logged above.
             _log.exception("unhandled error in POST %s", path)
-            self._send_error(500, f"internal error: {e}")
+            self._send_error(500, "internal engine error - see daemon_slayer logs")
 
 
 # ---------------------------------------------------------------- bootstrap

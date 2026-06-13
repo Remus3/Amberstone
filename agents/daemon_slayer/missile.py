@@ -11,6 +11,7 @@ Speed bands gate the MIX of values honestly:
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -150,12 +151,22 @@ def spell_travel_time(
             return None
         if speed >= _INSTANT_SPEED:
             return 0.0
-        if distance is not None and distance > 0:
+        # Reject a non-finite explicit distance (inf / NaN): math.isfinite
+        # guards the ``distance > 0`` test (inf passes it and would serialize
+        # a bare ``Infinity`` JSON token downstream). A non-finite distance
+        # falls back to geometry / _DEFAULT_DISTANCE.
+        if distance is not None and math.isfinite(distance) and distance > 0:
             dist = float(distance)
         else:
             geo = snapshot.spell_geometry(champ_id, slot)
             dist = _distance_from_geometry(geo) or _DEFAULT_DISTANCE
-        return round(dist / speed, 4)
+        travel = round(dist / speed, 4)
+        # Final guard: a non-finite product (defensive against a non-finite
+        # geometry datum) returns None rather than a bare NaN/Infinity token
+        # that breaks JSON.parse on the consuming route.
+        if not math.isfinite(travel):
+            return None
+        return travel
     except Exception:
         return None
 

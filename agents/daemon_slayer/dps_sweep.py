@@ -43,6 +43,7 @@ Honesty contract:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
@@ -189,8 +190,12 @@ def compute_dps_sweep(
 
     # ----- level axis: delegate to the existing level-swept curve. -----
     if axis == AXIS_LEVEL:
+        # Drop non-finite axis values (inf / NaN): int(inf) raises
+        # OverflowError and int(NaN) raises ValueError, either of which would
+        # sink the whole sweep instead of the documented fail-soft. A finite
+        # filter keeps the sweep honest on a malformed caller-supplied list.
         levels = (
-            tuple(int(v) for v in axis_values)
+            tuple(int(v) for v in axis_values if math.isfinite(v))
             if axis_values is not None
             else None
         )
@@ -221,8 +226,13 @@ def compute_dps_sweep(
         )
 
     # ----- resist axes: hold level fixed, sweep the named target resist. -----
+    # Drop non-finite swept values (inf / NaN): a NaN armor/MR flows through
+    # _armor_factor to a NaN weighted_dps, and the x value itself would
+    # serialize as a bare NaN/Infinity JSON token that breaks JSON.parse on
+    # the consuming chart route. Finite-filter keeps every emitted point
+    # JSON-safe.
     if axis_values is not None:
-        values = [float(v) for v in axis_values]
+        values = [float(v) for v in axis_values if math.isfinite(v)]
     else:
         values = [float(a) for a in range(0, 301, 25)]
 
