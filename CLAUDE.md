@@ -75,6 +75,32 @@ Keep individual responses under 500 output tokens to avoid API errors. Break lon
 - No em-dashes anywhere (repo-wide hard rule, enforced).
 - Watch for em-dashes in PowerShell double-quoted strings - they cause mojibake parse failures.
 
+## Execution Efficiency & Tooling Rules
+
+Operator-agreed 2026-06-13 to cut per-edit + audit wall-clock. Default to fast, direct, text-based tools; scale verification to blast radius. SCOPES "Testing Discipline" + "Verification Discipline" below (those apply at Tier-2). Memory: `feedback_execution_efficiency_rules`.
+
+Text-first (R1-R4) - never default to visual / computer-use for text, code, or state:
+- **R1** Files = Read / Edit / Write / Grep / Glob ONLY. NEVER computer-use / Windows-MCP to read or change a file.
+- **R2** Runtime / dashboard state via `curl -k https://127.0.0.1:8888/api/...` or Read `ops/runtime/health.json`. NEVER screenshot to read a number, version, or STATE.
+- **R3** Visual tools (screenshot / computer-use / Windows-MCP / preview / capture_monitor) ONLY for rendered-pixel / CSS / layout checks with no text equivalent, and live-game capture. The UI-audit ritual + game-monitor are the sanctioned visual uses (`feedback_screenshot_after_ui_changes`).
+- **R4** Prefer built-in tools over Bash / PowerShell. When shell is needed: absolute paths (no `cd`), one compound command over many round-trips.
+
+Tiered verification (R5-R7) - Tier-0/1 do NOT pay the Tier-2 tax (operator-accepted tradeoff):
+- **Tier-0** cosmetic (doc / comment / string / non-runtime constant): Edit + `py_compile` if .py. No suite, no restart.
+- **Tier-1** local logic (one module): `py_compile` + that module's tests only.
+- **Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (DS dir + `tests/`) + DS `:8893` restart + Share mirror.
+- **R5** Classify every change into a tier; run only that tier's verification.
+- **R6** Run the relevant suite ONCE; trust exit code + result file. Re-run only if I edited since, or the pipe demonstrably glitched - not prophylactically.
+- **R7** `verifier` subagent ONLY for parallel-slice / subagent claims or a real stale-pipe event - not my own single-thread edits.
+
+Overhead (R8-R11):
+- **R8** Never re-Read a file I just Edited to confirm (Edit fails loudly).
+- **R9** No subagents / worktrees under ~3 files. Inline.
+- **R10** Batch independent reads / greps in one message.
+- **R11** Skip the screenshot ritual for backend / version / doc changes (scoped to web/* visual changes).
+
+Enforcement (hooks in `.claude/settings.json`): PostToolUse `tools/pytest_guard.py` is py_compile-only by default (no auto full-suite per edit); `RC_FULL_SUITE=1` restores auto-suite for a Tier-2 batch. PreToolUse `tools/text_first_guard.py` denies pure screen-text/state readers (Windows-MCP Scrape, computer-use read_clipboard) with a text-path pointer; escape hatch `ops/runtime/allow_visual.flag`.
+
 ## Web dashboard
 
 `web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/bridge/pending`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport ≈ 1920×~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-gamepc`, `riot-commander-peer`).
@@ -136,7 +162,7 @@ When spawning subagents to generate files (especially tests), require them to ru
 
 ## Testing Discipline
 
-Always run the full test suite after schema changes, engine version bumps, or item-effect additions. Avoid data-fragile cross-item comparison assertions; prefer assertions on computed quantities. When stubbing methods accessed via class, wrap with `@staticmethod` correctly. Before writing any probe or test, grep the codebase to confirm every method, field, and data shape it will use actually exists - cite file:line for each; never scaffold against an assumed API surface (past misses: heal/shield assumed in raw_modifiers, wrong file shapes).
+Always run the full test suite after schema changes, engine version bumps, or item-effect additions. Avoid data-fragile cross-item comparison assertions; prefer assertions on computed quantities. When stubbing methods accessed via class, wrap with `@staticmethod` correctly. Before writing any probe or test, grep the codebase to confirm every method, field, and data shape it will use actually exists - cite file:line for each; never scaffold against an assumed API surface (past misses: heal/shield assumed in raw_modifiers, wrong file shapes). **Tier scope (R5):** "full suite" = Tier-2 (schema / engine / ENGINE_VERSION / item-effect); Tier-0 cosmetic + Tier-1 local-logic edits are exempt - see "Execution Efficiency & Tooling Rules".
 
 ## Error Handling
 
@@ -148,7 +174,7 @@ Before asserting external state - API key validity, account IDs, process/PID met
 
 ## Verification Discipline
 
-Re-verify against ground truth before claiming any task green; the tool pipe can replay stale or out-of-order results (item 238 hit severe stale-tool-result replay - fabricated "1 failed", a non-existent dtype=None, a pre-bump /health, invented filenames). Ground truth when the pipe wedges = `git status` + Edit success/fail + pytest written to a file + a DONE-exit sentinel, NOT raw stdout. Before reporting complete: re-run the relevant suite fresh, confirm every cited test file actually exists on disk (`ls` it), and report the exact pass/fail counts you observed THIS run - never carry a prior or subagent-reported count forward. NEVER trust a subagent's claim about test counts, green CI, or file existence without an independent probe; subagents have cited non-existent test files and used broken commands (wmic, pre-restart cumulative measurements). The `verifier` subagent (`.claude/agents/verifier.md`) exists for exactly this re-check. See `feedback_verify_generated_reports` / `feedback_verify_before_declare_broken`.
+Re-verify against ground truth before claiming any task green; the tool pipe can replay stale or out-of-order results (item 238 hit severe stale-tool-result replay - fabricated "1 failed", a non-existent dtype=None, a pre-bump /health, invented filenames). Ground truth when the pipe wedges = `git status` + Edit success/fail + pytest written to a file + a DONE-exit sentinel, NOT raw stdout. Before reporting complete: re-run the relevant suite fresh, confirm every cited test file actually exists on disk (`ls` it), and report the exact pass/fail counts you observed THIS run - never carry a prior or subagent-reported count forward. NEVER trust a subagent's claim about test counts, green CI, or file existence without an independent probe; subagents have cited non-existent test files and used broken commands (wmic, pre-restart cumulative measurements). The `verifier` subagent (`.claude/agents/verifier.md`) exists for exactly this re-check. See `feedback_verify_generated_reports` / `feedback_verify_before_declare_broken`. **Tier scope (R6-R7):** this re-verify-fresh + verifier mandate applies at Tier-2; Tier-0/1 follow tiered verification (run once, trust exit code unless edited-since or the pipe glitched) - see "Execution Efficiency & Tooling Rules".
 
 ## UI Fixture Ritual
 
