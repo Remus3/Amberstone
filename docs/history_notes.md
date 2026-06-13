@@ -53,6 +53,19 @@ Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
+# 2026-06-12 - DEEP-AUDIT cycle 10: P2 W1 app-set per-file fanout, slices A-B [item 404]
+
+- 33 app-set files / 8917 LOC audited via 2 disjoint worktree slices (A app/+game_reader/+modes/+vision_server/+modules / B lcu/+coach_integration/+lib); octopus merge d61330b9; 24 new tests (tests/test_p2w1_app_{a,b}.py 9+15). W1 RUNTIME SPINE COMPLETE (core+dashboard+coaches+app-set).
+- NO frozen-file edits (app/* + lcu_client.py all landed DEFER/INFO; FIX-NOW touched only non-frozen files).
+- HIGH A: snapshot_normalizer.py (THE Live Client JSON boundary) had no NaN/inf guard - int(game_time//60) + 6 championStats casts raised ValueError/OverflowError, crashing the UNWRAPPED relay branch of poller.read_game -> new _coerce_num() float+isfinite on every numeric read.
+- HIGH B: lcu_postgame _parse_player champ_name one-liner parsed as `(...) if isinstance(champion,dict) else ""` (ternary binds looser than `or`) -> championName DISCARDED whenever the `champion` key was absent (common EOG/match-history shape), every DB row got empty champion_name (indexed col, champion queries broke); + new _int() for NaN/inf/OverflowError across EOG saves (int(inf) was uncaught, sank the match save); archetype_dispatch NaN/inf delta -> bare NaN json.dumps token kills DS panel JSON.parse -> isfinite guard; lcu_client ARAM queue (450,920) missing 2400 Mayhem (item-87) + 720 Clash -> (450,720,920,2400); _sr_prompt int(NaN respawn) killed SR prompt tick.
+- MED: rune_writer _perk_by_name cached {} on transient failure forever (cache-poison, dropped user minor-rune overrides); rune_writer save_spell_pref + coach reset_state shared-.tmp race -> _SPELL_PREFS_LOCK / coaching_data_lock + WinError-5 replace retry; coach _run raw str(e) in dashboard status -> "(coach paused - internal error)"; vision OCR pytesseract x3 no timeout (hung exe blocks :8889 thread) -> timeout=10s; rewind_live_writer int(gameDuration) NaN crash in Timer thread + open_db OSError.
+- Slice-B subagent DIED on its final report (transient claude-fable-5 model-access error after 80 tool-uses) - all 7 file edits + test were COMPLETE on the worktree; reconstructed findings from the diff, re-ran gates green (py_compile/ruff/15 tests), committed f7aed67f. coaching_data_lock confirmed non-reentrant + reset_state(117)/writer(622) mutually-exclusive top-level acquirers (no deadlock).
+- Gate: truth_gate PROCEED 15377p/0f/47s exit 0 (all 9 must_contain claim-sets reproduced; 24 new tests pass in isolation; full-suite skip count floats with live-game gating - not a regression). RC restarted pid 16124 alive reload_ok. 2 worktrees removed.
+- NEXT cycle 11: W2 DS engine (agents/daemon_slayer non-test src ~90 files / ~48k LOC, exact split at wave start) + agents/ supervisor set (5/2719) per P2_FANOUT_MANIFEST.md.
+
+---
+
 # 2026-06-11 - DEEP-AUDIT cycle 7: P2 W1 core/ per-file fanout, slices A-G [item 401]
 
 - 103 core/*.py / 29531 LOC audited via 7 disjoint worktree slices (A spine / B coach / C build-WPA / D postgame / E archetype-vision / F infra-workers / G bridge-lessons); octopus merge 6273d655 + fix commit 09184ff3; 98 new tests (tests/test_p2w1_core_{a..g}.py).
