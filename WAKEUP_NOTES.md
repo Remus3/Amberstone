@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-13 - Execution-efficiency ruleset + tiered-verification hook retune [item 408]
+
+- Operator flagged task wall-clock ballooning (version bump ~20 min, audits ~4h vs ~1h). Meta-analysis -> agreed a strict fast-path ruleset; codified. commit 7c695a69 (no engine, no RC restart).
+- ROOT CAUSE: PostToolUse tools/pytest_guard.py ran the FULL `pytest -x --ff -q` (1300+) after EVERY non-docs Edit/Write. precommit_gate.py cleared (self-gates line 146, never runs the suite).
+- CLAUDE.md new "## Execution Efficiency & Tooling Rules" R1-R11: R1-R3 text-first (Read/Edit/Grep/curl over computer-use/Windows-MCP/screenshots; never screenshot to read a number/version/STATE), R4 built-ins + no cd, R5-R7 tiered verify (Tier-0 cosmetic=edit+py_compile; Tier-1 local=py_compile+module tests; Tier-2 schema/engine/ENGINE_VERSION=full dual suite + DS :8893 restart + Share mirror; run once; verifier only for subagent/stale-pipe), R8-R11 overhead. Scope notes added to Testing/Verification Discipline (now Tier-2).
+- pytest_guard.py REWRITE: py_compile-only default (RC_FULL_SUITE=1 restores auto-suite for a Tier-2 batch). NEW text_first_guard.py PreToolUse denies Windows-MCP Scrape + computer-use read_clipboard (escape hatch ops/runtime/allow_visual.flag); narrow by design - screenshot/capture_monitor stay allowed (UI-audit + game-monitor unaffected). Wired in .claude/settings.json (GITIGNORED - local-only, re-wire after a fresh clone).
+- memory feedback_execution_efficiency_rules.md + MEMORY.md index.
+- Verify: ruff clean + py_compile 0 + hygiene 12p + clean-UTF-8 smokes all correct (PowerShell-pipe BOM was a smoke artifact, not a script defect).
+- DONT-REDO: the per-edit full-suite tax is intentionally gone; text_first_guard = 2 readers only (do not broaden); next session bootstraps with the NEW tiered rules - classify edits into tiers, don't pay the Tier-2 tax on cosmetic/local edits.
+
+---
+
 # 2026-06-13 - DEEP-AUDIT cycle 13: P2 W3 web-surface fanout, ALL web/js + web/css [item 407]
 
 - 106 files (web/js 58/25684 + web/css 48/15849) audited via 10 disjoint PARALLEL slices (no worktrees - disjoint sets, robust to agent death; 6 JS A-F: A main.js solo, B champ_select+all lib/+ws_client+overlay_pulse, C active_match/last_match/map_state/right_now/dev, D item_build/build_insights/historical_pgr/ds_combo/bridge_pending/pgr_winprob/cd_ledger/replay_events/overlay_ds_controls/ds_matchup/ds_knobs/next, E+F the 27 leaf panels; 4 CSS G-J: G tokens.css+header+champ_select_view, H structural, I+J the 33 leaf stylesheets). audit commit db7952f2; +3 tests tests/snapshot_panels/test_xss_escaping.py. **W3 web surface COMPLETE.**
@@ -25,16 +37,3 @@
 - MED E _passive_resist/_passive_ally_grant percent-of-resist paths (item-268 Malphite/Taric/Poppy/Rell/Rammus) zero non-finite res_a/res_m (EHP-denominator leak); MED H _supervisor_common non-atomic lockfile the FROZEN _Phase3Watcher polls -> _atomic_write_json (tmp+os.replace); LOW H supervisor.stop() logging.raiseExceptions=False drain (cycle-5 class). _minimap_bbox CLEAN.
 - Gate: round A REFUSE 15509p/2f - 2 slice-H stop() tests used asyncio.run(sup.stop()) which dies under the suite's known main-thread loop polluter (cycle-7/item-401, green in isolation) -> thread-isolated _run_coro runner (source fixes untouched, all 4 CONFIRM). Round B truth_gate PROCEED 15511p/0f/0e/7s exit 0 (ops/audit/p2w2_ds_hw2_truth_gate_report.json; +47 = cycle-11 15464 + 47 new exactly). DS :8893 restarted pid 25000 + RC-Phase3-Supervisor bounced pid 16104.
 - NEXT cycle 13: W3 web surface = web/js 58/27020 (~5 slices, panels independent) + web/css 48/16635 (~3 slices, tokens.css first) per P2_FANOUT_MANIFEST.
-
----
-
-# 2026-06-13 - DEEP-AUDIT cycle 11: P2 W2 DS-engine fanout, HALF-WAVE 1 slices A/B/C/F [item 405]
-
-- 36 of 68 non-test agents/daemon_slayer files / ~23.1k LOC audited via 4 disjoint PARALLEL slices (no worktrees - disjoint file sets, robust to agent death; A dps/ability_dps/burst/hybrid/objdamage/dps_sweep/beam/missile, B threatrange/waveclear/mobility/extendedduel/zonecontrol/self_shred/antitank/allyamp/sustain, C ehp/hps/ability_hps/_per_spell_cc/cc_conditional/cc_output/cc_pressure/cc_pairing, F server/engine/data_loader/_registries/cli/__init__/__main__/stats/scaling/rank/abilities). commit 8113030a; 47 new tests (tests/test_p2w2_ds_{a,b,c,f}.py 15/16/10/6). First W2 cycle; half-wave 2 (D/E/G + supervisor set) next.
-- NO frozen-file edits - no agents/daemon_slayer file is on the frozen list. NO ENGINE_VERSION bump (defect guards on degenerate input, not a math change).
-- HIGH F server.py x2: do_GET/do_POST 500 handlers interpolated raw `f"internal error: {e}"` into the wire JSON (live-proven leak of a ...API-Key-Claude.txt path) -> generic `_send_error(500, "internal engine error - see daemon_slayer logs")` + _log.exception; float chokepoints _opt_float/_opt_weight/_opt_targets_override accepted non-finite (live POST /dps target_armor=nan -> HTTP 200 + bare NaN token the dashboard JSON.parse rejects) -> `if not math.isfinite(f):` 400 reject; dropped dead `from http import HTTPStatus`.
-- HIGH B antitank.py: P3.2 caster-stat path folded stats.get("ap"/"ad") with no finite guard -> NaN ap = NaN antitank_score (bare token), None = TypeError mid-tick; new _finite_float() + `return scaled if math.isfinite(scaled) else base` static fallback (static paths byte-identical, 64 antitank tests green). NOTE DEFER: the live /anti-tank route never passes stats= so this path is test-only on the dashboard today (P2_FINDINGS LOW).
-- MED: missile spell_travel_time(inf) passed `inf>0` -> bare Infinity (finite-guard distance + product); dps_sweep level int(inf) OverflowError sank the fail-soft sweep into a 500 + resist NaN SweepPoint (both axes finite-filter); ability_hps _value_at_rank let float("nan")/inf through the TypeError/ValueError guard at the heal/shield block chokepoint -> floors non-finite to 0.0.
-- Dominant finding class = non-finite numeric serializing to a bare NaN/Infinity JSON token (invalid JSON, breaks downstream JSON.parse) or int(non-finite) OverflowError killing a fail-soft path - the same class as cycles 7-10 at new boundaries.
-- Gate: truth_gate PROCEED 15464p/0f/0e/7s exit 0 (ops/audit/p2w2_ds_truth_gate_report.json; all 5 must_contain claim-sets reproduced; +47 reconciles c9 15393 + c10 24 + c11 47 = the new tests exactly; cycle-10 gate's 47-skip was live-game gating, now back to 7). DS server :8893 restarted (taskkill + relaunch; not supervisor-watched).
-- NEXT cycle 12: W2 half-wave 2 = D effects-data (_effects_data/_effects_types/effects 3 files / 6310) + E passive-overrides (12 / 4319) + G remaining-mechanics (rune_procs/mana_sim/combo/_rank_mage/matchup/cooldown_watch/augments/augment_formula_eval/geometry/spike_markers/_item_ability_haste/recharge_ledger/modifier_blocks/ult_rates/_item_tenacity/scenario_matrix/fight_report 17 / 5371) + agents/ supervisor set (5 / 2719) per P2_FANOUT_MANIFEST.
