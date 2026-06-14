@@ -18,8 +18,8 @@ RATINGS_DIR = "data/ratings"
 
 
 def _atomic_write_json(path: Path, data: dict) -> None:
-    """Atomic JSON write - CLAUDE.md §Hard rules. Overlays/dashboard poll
-    mid-write, so the only safe pattern is tmp.write → os.replace.
+    """Atomic JSON write - CLAUDE.md SHard rules. Overlays/dashboard poll
+    mid-write, so the only safe pattern is tmp.write -> os.replace.
     AUDIT C4 (2026-04-22): replaces direct path.write_text usage below."""
     path.parent.mkdir(parents=True, exist_ok=True)
     # allow_nan=False: a stray inf/nan (e.g. a degenerate upstream

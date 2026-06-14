@@ -1,6 +1,6 @@
 """Phase 3 WebSocket relay server.
 
-Two paths served on the same port (§11.5):
+Two paths served on the same port (S11.5):
 
   /ingest  - Game-PC Forwarder connects and streams live-client / LCU JSON
              frames here. Each incoming frame is fanned out to all /push

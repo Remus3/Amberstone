@@ -77,7 +77,7 @@ def _group_sessions(rows: list[dict]) -> list[list[dict]]:
 
     Walks rows newest-first; closes a session when the gap to the
     PREVIOUS (older-than-current-but-newer-in-our-iteration) match is
-    ≥SESSION_GAP_S, where the gap is measured from the older match's
+    >=SESSION_GAP_S, where the gap is measured from the older match's
     end (timestamp + game_time_s) to the newer match's start.
     """
     sessions: list[list[dict]] = []
@@ -150,7 +150,7 @@ def _build_history(scope: str) -> dict:
     """List all sessions in scope. Scopes:
         14d            - last 14 days
         season         - current season (best-effort: last 90d)
-        prior_season   - 90 → 180d ago
+        prior_season   - 90 -> 180d ago
         all            - every match in match_history.db
     """
     from datetime import datetime, timedelta

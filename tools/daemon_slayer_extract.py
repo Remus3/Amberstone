@@ -781,7 +781,7 @@ _CANONICAL_ALIAS_PATH = (
 
 
 def _load_champion_aliases() -> dict[str, str]:
-    """Load the canonical display-name → DDragon-id alias map.
+    """Load the canonical display-name -> DDragon-id alias map.
 
     Source of truth at ``web/data/champion_aliases.json``; the same file is
     fetched at runtime by ``web/js/lib/items_index.js``. Keys are

@@ -1,7 +1,7 @@
 """Phase 4b (s178, 2026-05-12) - Derive per-spell cast rates from rewind_history.db.
 
 Generates ``data/daemon_slayer/spell_cast_rates.json`` carrying median casts/sec
-for each of the 4 active spells (Q/W/E/R) per champion × mode. Phase 4b's
+for each of the 4 active spells (Q/W/E/R) per champion x mode. Phase 4b's
 ``compute_ability_dps()`` reads this to scale per-cast damage into per-spell
 ability DPS - a measured cast rate already encodes mana/cooldown downtime, so
 no separate uptime modeling is needed at the consumer level.
@@ -25,18 +25,18 @@ Schema (output)::
     "global_fallback": {"Q": 0.110, "W": 0.080, "E": 0.060, "R": 0.012},
     "generated_at": "2026-05-12",
     "source": "data/rewind_history.db (NNNN matches, spell[1-4]_casts / game_duration_s)",
-    "note": "Casts/sec - measured median across all observed games per champion × mode."
+    "note": "Casts/sec - measured median across all observed games per champion x mode."
   }
 
-Mode mapping (queue_id → bucket):
-  420, 400, 430, 440, 700 → SR
-  450, 100              → ARAM
-  1700, 1710            → ARENA
-  other                 → not bucketed; rolled into "global" only
+Mode mapping (queue_id -> bucket):
+  420, 400, 430, 440, 700 -> SR
+  450, 100              -> ARAM
+  1700, 1710            -> ARENA
+  other                 -> not bucketed; rolled into "global" only
 
 Sample-size policy:
-  >= 5 samples per champion × mode → real median
-  <  5 samples                    → omit that bucket (consumer falls back to
+  >= 5 samples per champion x mode -> real median
+  <  5 samples                    -> omit that bucket (consumer falls back to
                                     champion's "global" entry, then global_fallback)
 
 Run::

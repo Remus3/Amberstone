@@ -118,7 +118,7 @@ def _dedup_build_vs_owned(item_build: str, items_display: str) -> str:
     completed item. Match is case/space-normalised and substring-both-ways
     so short form ("Zhonya's") catches long form ("Zhonya's Hourglass").
 
-    Arrow separator in item_build is U+2192 "→" per coach prompt convention.
+    Arrow separator in item_build is U+2192 "->" per coach prompt convention.
     """
     if not item_build or not items_display:
         return item_build or ""

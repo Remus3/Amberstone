@@ -7,7 +7,7 @@ Runs autonomously on the supervisor's idle pass per charter.
 Per charter scope:
 
   * **Autonomous writes allowed** - ``adaptation_buckets`` rows,
-    ``matchup_modifiers`` rows (both already in the §9 schema); files
+    ``matchup_modifiers`` rows (both already in the S9 schema); files
     under ``data/meta_build/curated/``.
   * **Propose-and-queue only** - coach prompts, coach Python, decision
     heuristics, panel templates.
@@ -16,8 +16,8 @@ This module does not touch any propose-only surface. It reads ``matches``
 (required) and ``match_events`` (optional) and writes only to
 ``adaptation_buckets`` / ``matchup_modifiers`` via atomic UPSERT.
 
-Axis: per-champion × per-mode. Matchup modifiers activate at
-``MATCHUP_ACTIVATE_THRESHOLD`` samples (spec §8). Below threshold the
+Axis: per-champion x per-mode. Matchup modifiers activate at
+``MATCHUP_ACTIVATE_THRESHOLD`` samples (spec S8). Below threshold the
 modifier row exists but ``activated=0``.
 """
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Round 21 - win-signal reconciler (postgame_stats.db → mode DB)."""
+"""Round 21 - win-signal reconciler (postgame_stats.db -> mode DB)."""
 from __future__ import annotations
 
 import sqlite3

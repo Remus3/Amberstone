@@ -3,16 +3,16 @@
 
 ARAM (450) / ARAM Mayhem (KIWI, 2400) / Arena (1750) have no ban/pick
 draft - champ-select is a short bench / reroll / augment window that
-flips ChampSelect → GameStart → InProgress in well under the dashboard
+flips ChampSelect -> GameStart -> InProgress in well under the dashboard
 snapshot path's latency budget:
 
-    gamepc_lcu_agent.py (Legion-local)  ──1s push──▶  Legion vision cache
-    Legion lcu_summary()  ──drops the WHOLE snapshot if >5s stale──▶
+    gamepc_lcu_agent.py (Legion-local)  --1s push-->  Legion vision cache
+    Legion lcu_summary()  --drops the WHOLE snapshot if >5s stale-->
     dashboard/_state_builder.build_state()
 
 The operator repeatedly saw the champ-select bench / quick-swap view
 blank for these modes: by the time the dashboard polled, the fresh
-snapshot's ``champ_select`` was already gone (game started → the LCU
+snapshot's ``champ_select`` was already gone (game started -> the LCU
 ``/lol-champ-select/v1/session`` 404s; or the agent push went briefly
 >5s stale so ``lcu_summary()`` returned ``{}``).
 
@@ -27,7 +27,7 @@ InProgress the phase-driven view router (s208/s209) governs which view
 shows - that path is closed separately by the agent ``cs_debug``
 breadcrumb's live evidence.
 
-Pure function over an injected clock + module cache → deterministic
+Pure function over an injected clock + module cache -> deterministic
 and unit-testable. Wired into ``build_state()`` immediately after
 ``lcu_summary()`` so the s150 pre-flip mode also benefits.
 """
@@ -75,11 +75,11 @@ def apply_cs_retention(
     now: Optional[float] = None,
 ) -> Optional[dict]:
     """Return a snapshot with ``champ_select`` re-spliced if it was lost
-    during the transient no-draft champ-select → game transition.
+    during the transient no-draft champ-select -> game transition.
 
-    - Fresh non-empty ``champ_select`` present → cache it, pass the
+    - Fresh non-empty ``champ_select`` present -> cache it, pass the
       input through unchanged.
-    - No fresh ``champ_select`` → re-splice the cached one (marked
+    - No fresh ``champ_select`` -> re-splice the cached one (marked
       ``_retained: True``) when within the retention window and the
       fresh phase isn't an explicit pre/post-game phase; otherwise
       clear the cache and pass through unchanged.

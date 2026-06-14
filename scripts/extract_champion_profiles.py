@@ -1,5 +1,5 @@
 """
-One-shot extractor: champion_profiles.py → data/champion_profiles/<Name>.json
+One-shot extractor: champion_profiles.py -> data/champion_profiles/<Name>.json
 Run once, then champion_profiles.py becomes the thin loader.
 """
 import json

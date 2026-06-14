@@ -158,7 +158,7 @@ def test_effective_mode_trusts_health_when_in_game() -> None:
 
     Once LiveClient :2999 fires, that's authoritative - don't downgrade
     to LCU-derived "champ_select" if LCU briefly disagrees during the
-    GameStart → InProgress transition.
+    GameStart -> InProgress transition.
     """
     from agents.agent2_backend.file_ingest import FileIngest
     assert FileIngest._compute_effective_mode({"mode": "game"}, "ChampSelect") == "game"
@@ -166,7 +166,7 @@ def test_effective_mode_trusts_health_when_in_game() -> None:
 
 
 def test_effective_mode_lcu_overlay_when_health_client() -> None:
-    """Legion can't see Game-PC's LCU lockfile → health.mode='client'
+    """Legion can't see Game-PC's LCU lockfile -> health.mode='client'
     through the entire CS+loading window. LCU phase fills the gap so
     the supervisor's warm-Agent-7 prime hook fires on time."""
     from agents.agent2_backend.file_ingest import FileIngest

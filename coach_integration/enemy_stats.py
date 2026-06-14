@@ -121,7 +121,7 @@ def compute_enemy_stats(
             ``level`` and ``enemy_levels`` are both None.
         level: Operator's current champion level. When supplied alongside
             no ``enemy_levels``, assumed roughly equal to average enemy
-            level (true in laning, ±1 mid-game; off by 2-3 in stomps).
+            level (true in laning, +/-1 mid-game; off by 2-3 in stomps).
         bonus_hp_override: When set, replaces the heuristic-derived
             bonus_hp. Coaches' existing `_estimate_target_bonus_hp`
             (item-aware, walks enemy item displayNames) is more accurate

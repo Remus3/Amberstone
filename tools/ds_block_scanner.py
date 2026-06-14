@@ -39,7 +39,7 @@ ARMOR, MR, HP = 80.0, 30.0, 2000.0
 
 
 def _rank_for_level(key: str, level: int) -> int:
-    """Same level→rank heuristic the engine uses for display only."""
+    """Same level->rank heuristic the engine uses for display only."""
     if key == "R":
         return min(2, max(0, (level - 6) // 5)) if level >= 6 else 0
     return min(4, max(0, (level - 1) // 2))

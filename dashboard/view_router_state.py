@@ -9,8 +9,8 @@ should agree on the same transition table.
 The state machine has two layers:
 
 1. **Sticky guard** (`gameStarted`): tracks the highest game-state observed
-   this session. ChampSelect → champ-select → in-progress → None. Rides
-   through transient LCU phase=null/Lobby blips during the CS→game flip.
+   this session. ChampSelect -> champ-select -> in-progress -> None. Rides
+   through transient LCU phase=null/Lobby blips during the CS->game flip.
    Cleared on stable post-game phases.
 2. **View derivation**: maps (phase, mode, gameStarted, feature flags) to
    one of `VIEW_IDS` per the precedence rules in `_viewAutoDerive`.
@@ -20,8 +20,8 @@ s209 changes:
   to `active-match` (games load too fast for a dedicated loading screen
   to be useful; active-match renders its own waiting state).
 - Dropped the `game-start` sticky tier. GameStart sets sticky directly
-  to `in-progress`; CS→null inference advances to `in-progress` as well,
-  so the CS-end → InProgress gap renders active-match.
+  to `in-progress`; CS->null inference advances to `in-progress` as well,
+  so the CS-end -> InProgress gap renders active-match.
 """
 from __future__ import annotations
 
@@ -69,17 +69,17 @@ def update_game_started(
     """Advance the sticky `gameStarted` flag per the JS transition table.
 
     s209: GameStart now maps to "in-progress" (was "game-start" pre-s209
-    when the loading view existed). CS→null inference also advances to
+    when the loading view existed). CS->null inference also advances to
     "in-progress" rather than the dropped "game-start" tier.
 
-    ``live`` gates ONLY the CS→null inference (see below). ``lcu.phase`` is a
+    ``live`` gates ONLY the CS->null inference (see below). ``lcu.phase`` is a
     polled, relay-forwarded value that reads null/empty on any agent request
     fail, stale relay push, or empty frontend poll. During champ select those
     blips are frequent; pre-gate, a single one promoted the sticky to
     in-progress and flipped the view to the in-game page (active-match) and
     could stick there until a stable post-game phase. Defaults True so direct
     callers / the s209 inference are unchanged; the runtime passes the real
-    value. The genuine CS→game flip is still caught by the ungated
+    value. The genuine CS->game flip is still caught by the ungated
     GameStart/InProgress phase arms, so gating the null-only inference on
     ``live`` loses no real promotion.
     """

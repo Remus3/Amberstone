@@ -155,7 +155,7 @@ def build_perk_ids(
     minor_secondary: Optional[list[str]] = None,
 ) -> Optional[list[int]]:
     """
-    Resolve (keystone name, primary_tree name, secondary_tree name) → 9-element perk_ids.
+    Resolve (keystone name, primary_tree name, secondary_tree name) -> 9-element perk_ids.
     Returns None if keystone or trees are unrecognised.
 
     Layout: [keystone, pri_row1, pri_row2, pri_row3, sec1, sec2, shard1, shard2, shard3]

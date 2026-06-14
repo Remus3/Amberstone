@@ -6,11 +6,11 @@ Owns the GameEnvelope (single source of truth for current game state envelope)
 and the win-probability calculation.
 
 OverlayApp delegates:
-    _init_envelope()           → self.state.init()
-    get_snapshot()             → self.state.get_snapshot()
-    _update_envelope() body    → self.state.set_envelope() + OverlayApp derives mode flags
-    _process_game_state direct → self.state.envelope.mode / self.state.set_envelope()
-    _calc_win_pct()            → StateAuthority.calc_win_pct()
+    _init_envelope()           -> self.state.init()
+    get_snapshot()             -> self.state.get_snapshot()
+    _update_envelope() body    -> self.state.set_envelope() + OverlayApp derives mode flags
+    _process_game_state direct -> self.state.envelope.mode / self.state.set_envelope()
+    _calc_win_pct()            -> StateAuthority.calc_win_pct()
 """
 import copy
 import logging

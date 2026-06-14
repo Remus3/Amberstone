@@ -43,7 +43,7 @@ _NAME_TO_ID: dict[str, int] | None = None
 
 
 def _load_name_to_id() -> dict[str, int]:
-    """Build display-name → numeric-id index. Stores apostrophe + space
+    """Build display-name -> numeric-id index. Stores apostrophe + space
     variants under the same id so 'Kai'Sa' and 'KaiSa' both resolve."""
     global _NAME_TO_ID
     if _NAME_TO_ID is not None:

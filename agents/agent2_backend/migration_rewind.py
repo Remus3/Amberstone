@@ -7,7 +7,7 @@ slice of timeline_events) and splits them by queue into the new mode DBs,
 stamping ``source='rewind_migration'`` on every row.
 
 Re-runnability: per-mode ``_migration_state`` table tracks
-``(source='rewind_migration', source_ref=<rewind match_id>) → local_match_id``.
+``(source='rewind_migration', source_ref=<rewind match_id>) -> local_match_id``.
 Second run is a no-op on already-migrated matches.
 
 Usage:

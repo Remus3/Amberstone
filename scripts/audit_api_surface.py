@@ -1,6 +1,6 @@
 """
 scripts/audit_api_surface.py
-────────────────────────────
+----------------------------
 Greps the codebase for every Riot-adjacent HTTP endpoint we touch (LCU,
 Riot Web API, LiveClient) and emits a tabular CSV/Markdown report.
 

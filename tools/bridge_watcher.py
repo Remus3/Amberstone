@@ -1,7 +1,7 @@
 # arch: bridge watcher daemon - classify -> action loop | section=bridge | frozen=no
 """bridge_watcher.py - silent cross-Claude bridge poller (MVP).
 
-Phase 0 per BRIDGE_WATCHER_PLAN.md §11:
+Phase 0 per BRIDGE_WATCHER_PLAN.md S11:
   - Polls /api/bridge every 15s (configurable)
   - Classifies each new envelope via bridge_watcher_classify.classify()
   - Escalates work to ops/runtime/bridge_inbox_pending.json
@@ -368,7 +368,7 @@ def _expire_old_pending(pending: dict, now: float) -> int:
 def _expire_stale_claims(pending: dict, now: float, claim_ttl_s: float = 60.0) -> int:
     """Reset claimed_by/claimed_at on entries claimed >claim_ttl_s ago.
 
-    Mirrors §8 claim-lock spec: a worker that crashes shouldn't permanently
+    Mirrors S8 claim-lock spec: a worker that crashes shouldn't permanently
     block an entry; claims auto-expire after 60s so /process-bridge-tasks
     can re-pick it up.
     """

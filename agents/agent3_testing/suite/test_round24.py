@@ -21,7 +21,7 @@ def _seed_matches(db: Path, rows: list[tuple[int, int, int]], champ: str = "Ahri
 
 
 def test_recent_kda_surfaces_when_sample_sufficient(tmp_path: Path, monkeypatch) -> None:
-    """A champion with ≥5 matches + KDA gets a recent_kda block."""
+    """A champion with >=5 matches + KDA gets a recent_kda block."""
     from agents.agent4_coach_mentor.analyzer import analyze_mode
     import agents.agent4_coach_mentor.analyzer as analyzer_mod
     import agents.agent2_backend.db_schema as dbs

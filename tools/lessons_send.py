@@ -8,8 +8,8 @@ Usage:
     C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_send.py --only <basename> # smoke a single memory file
     C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_send.py --dry-run        # alias for tools/lessons_send_dryrun.py
 
-Reads cross_project + applies_when frontmatter (per Phase 1 §1), builds
-envelopes per §2, dedupes against ops/runtime/lessons_sent.jsonl, then
+Reads cross_project + applies_when frontmatter (per Phase 1 S1), builds
+envelopes per S2, dedupes against ops/runtime/lessons_sent.jsonl, then
 POSTs each via core.bridge.send(). On success the ledger row carries
 `ack_received: False` until the peer's kind=result reply lands - track
 that via the ack-watcher (TBD) or by grepping bridge log for

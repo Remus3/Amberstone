@@ -2,11 +2,11 @@
 core/augment_external_source.py - external Mayhem/Arena augment win-rate prior.
 
 Cold-start substrate for the augment recommender (CLAUDE.md #88, plan
-`Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md` §4, Option B).
+`Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md` S4, Option B).
 
 RC's own ingested augment history is extremely sparse (Task-1 audit
 2026-05-17: 13 Mayhem matches, ~48 tracked-player augment-instances over a
-~199-augment pool → per-augment n_own ≈ 0-2). The recommender therefore
+~199-augment pool -> per-augment n_own ~ 0-2). The recommender therefore
 bootstraps from an external per-augment marginal win-rate prior and blends
 toward own-history as ingest grows (`w = n_own/(n_own+K)`).
 
@@ -23,10 +23,10 @@ num_win_games, pick_rate, tier, augment_stage_stats:[per-round], ...}}, ...],
 that maps 1:1 to Riot augment ids (== `playerAugment{i}` ints in
 `lcu_match_detail`, == `cherry-augments.json` `id`).
 
-Caching contract (§4): patch-pinned snapshot alongside `arena_augments.json`
+Caching contract (S4): patch-pinned snapshot alongside `arena_augments.json`
 at ``data/daemon_slayer/<rc_patch>/<mode>_augment_stats.json``. Refresh
-trigger = patch flip (a new patch dir simply has no file → fetch). Network
-failure degrades to the last cached snapshot; nothing cached → an empty
+trigger = patch flip (a new patch dir simply has no file -> fetch). Network
+failure degrades to the last cached snapshot; nothing cached -> an empty
 table (the recommender then falls back to the LLM prompt path). This module
 never raises into its callers except via the explicit `refresh_cache`
 ``force`` path.
@@ -139,7 +139,7 @@ def _cache_path(mode: str, patch: str) -> Path:
 
 
 def _http_get(url: str, timeout_s: float):
-    """One-shot HTTPS GET → parsed JSON (dict or list). Encapsulated so
+    """One-shot HTTPS GET -> parsed JSON (dict or list). Encapsulated so
     tests can monkey-patch this rather than urllib internals (riot_api
     pattern). Raises AugmentSourceError on any failure."""
     req = urllib.request.Request(
@@ -171,9 +171,9 @@ def _http_get_json(url: str, timeout_s: float) -> dict:
 
 
 def _normalize(mode: str, rc_patch: str, raw: dict) -> dict:
-    """External payload → on-disk snapshot schema. Tolerant of missing
+    """External payload -> on-disk snapshot schema. Tolerant of missing
     sub-fields; an augment row with no usable win_rate is dropped (so the
-    recommender's "unknown → no external prior" path is exercised)."""
+    recommender's "unknown -> no external prior" path is exercised)."""
     rows = raw.get("data")
     if not isinstance(rows, list):
         raise AugmentSourceError("payload.data is not a list")
@@ -247,7 +247,7 @@ def refresh_cache(
     """Ensure a snapshot exists for the current RC patch and return its
     table. Patch-pinned: if the file already exists for this patch and
     ``force`` is False, no network call is made (refresh trigger = patch
-    flip per §4). With ``force=True`` a failed fetch raises
+    flip per S4). With ``force=True`` a failed fetch raises
     AugmentSourceError; without it, fetch failure degrades to the last
     cached snapshot (any patch) or an empty table."""
     if mode not in _ENDPOINTS:
@@ -366,7 +366,7 @@ def _norm_name(s: str) -> str:
 
 @dataclass(frozen=True)
 class AugmentMetaTable:
-    """Immutable id→metadata + a normalized name→id reverse index."""
+    """Immutable id->metadata + a normalized name->id reverse index."""
 
     rc_patch: str = ""
     fetched_at: str = ""
@@ -401,7 +401,7 @@ class AugmentMetaTable:
         return row.get("icon") if row else None
 
     def resolve_id(self, display_name: str) -> Optional[int]:
-        """Reverse OCR display name → numeric augment id (normalized
+        """Reverse OCR display name -> numeric augment id (normalized
         match), or None if unrecognized."""
         if not display_name:
             return None
@@ -413,7 +413,7 @@ def _arena_augments_path(patch: str) -> Path:
 
 
 def _build_meta(rc_patch: str, cherry: list) -> dict:
-    """cherry-augments.json list → snapshot. Reconciles secondary names
+    """cherry-augments.json list -> snapshot. Reconciles secondary names
     from RC's existing arena_augments.json (apiName + name) so OCR strings
     in either vocabulary resolve. cherry-augments.json `id` is canonical;
     arena_augments.json only *adds* alias names, never overrides id."""
@@ -497,7 +497,7 @@ def refresh_meta_cache(
     *, force: bool = False, timeout_s: float = _HTTP_TIMEOUT_S
 ) -> AugmentMetaTable:
     """Patch-pinned cherry-augments.json cache. Same contract as
-    `refresh_cache`: file present for current patch + not `force` → no
+    `refresh_cache`: file present for current patch + not `force` -> no
     network; fetch failure raises only when `force`, else degrades to the
     last cached snapshot or an empty table."""
     patch = _current_patch()

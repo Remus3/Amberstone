@@ -30,7 +30,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
     Audit L4: deny dotfiles and common secret filenames so a misplaced
     ``.env`` in ``web/`` never reaches the wire, even inside the LAN.
 
-    Added 2026-04-22: ``POST /api/input`` → Agent 7 NL parser. The parser
+    Added 2026-04-22: ``POST /api/input`` -> Agent 7 NL parser. The parser
     files any resulting task via Agent 1's scheduler and returns the
     parse result as JSON.
     """
@@ -265,7 +265,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         """GET /api/minimap-crop?mode=sr - fetches the latest Game-PC frame
         from the vision server, crops the minimap region, returns PNG.
 
-        Mode-specific bboxes are empirically calibrated for 1920×1080
+        Mode-specific bboxes are empirically calibrated for 1920x1080
         windowed-borderless. Override via query string
         ``?bbox=x1,y1,x2,y2`` for debugging.
 
@@ -639,7 +639,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
 
         Returns the hot/cold KDA streaks for ``mode`` via
         ``coaches.adaptation_hint.kda_trends``. Without ``mode``, returns
-        a map of mode → trends so the dashboard can pick without a
+        a map of mode -> trends so the dashboard can pick without a
         round-trip per mode.
         """
         from urllib.parse import urlparse, parse_qs
@@ -808,7 +808,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         """GET /api/locked-champion[?fresh=1]
 
         Best-effort champion identification when the live-client
-        pipeline isn't producing data. Tries LCU → match_db → recent
+        pipeline isn't producing data. Tries LCU -> match_db -> recent
         user-notes. Cached 10s by default; ``?fresh=1`` forces re-probe.
         """
         from urllib.parse import urlparse, parse_qs

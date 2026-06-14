@@ -1,18 +1,18 @@
 """rebuild_sim_fixtures.py - emit the canonical 26-fixture set for dev preview.
 
 Categories (per user spec 2026-04-25):
-  SR              · 3 (early / mid / late)
-  ARAM            · 3 (early / mid / late)
-  ARAM Mayhem     · 3 (early / mid / late)
-  Arena           · 3 (early / mid / late)
-  Brawl           · 3 (early / mid / late)
-  TFT             · 3 (early / mid / late)
-  Aftergame       · 2 (victory / defeat)
-  Session digest  · 2 (cold streak / hot streak)
-  Client idle     · 1 (no game, no champ select)
-  Client champ-select Ranked SR        · 1
-  Client champ-select ARAM Mayhem      · 1
-  Client loading-screen (transition)   · 1
+  SR              * 3 (early / mid / late)
+  ARAM            * 3 (early / mid / late)
+  ARAM Mayhem     * 3 (early / mid / late)
+  Arena           * 3 (early / mid / late)
+  Brawl           * 3 (early / mid / late)
+  TFT             * 3 (early / mid / late)
+  Aftergame       * 2 (victory / defeat)
+  Session digest  * 2 (cold streak / hot streak)
+  Client idle     * 1 (no game, no champ select)
+  Client champ-select Ranked SR        * 1
+  Client champ-select ARAM Mayhem      * 1
+  Client loading-screen (transition)   * 1
 
 Existing fixture files are LEFT IN PLACE - this script only writes the 26
 canonical files + manifest.json. Old files (sr_clash_brawl, sr_jungle_gank,

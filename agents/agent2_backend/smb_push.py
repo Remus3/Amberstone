@@ -1,17 +1,17 @@
-"""Cross-machine SMB push - the only path from Legion → Game-PC for file writes.
+"""Cross-machine SMB push - the only path from Legion -> Game-PC for file writes.
 
-Every Legion→Game-PC file op goes through ``push()``. Anything else bypasses
+Every Legion->Game-PC file op goes through ``push()``. Anything else bypasses
 Agent 0's evaluator and is a bug.
 
-Contract (§11.4, §7):
+Contract (S11.4, S7):
   * Share: ``\\\\192.168.8.237\\RCClient\\`` (persistent cmdkey-stored creds).
   * Writable zones: ``forwarder\\``, ``web\\``. Anything else is rejected.
-  * Atomic write: local → ``<remote>.tmp`` → ``os.replace`` over UNC.
+  * Atomic write: local -> ``<remote>.tmp`` -> ``os.replace`` over UNC.
   * Backup: existing remote file copied to
     ``\\\\192.168.8.237\\RCClient\\backup\\<YYYYMMDD-HHMMSS>-<label>\\<basename>``
     before the overwrite lands.
   * Verify: SHA-256 of uploaded bytes == SHA-256 of local source.
-  * Log: every push → ``logs/agents/agent2.log`` with SEND/ERROR prefixes.
+  * Log: every push -> ``logs/agents/agent2.log`` with SEND/ERROR prefixes.
   * Fail-closed: if the share is unreachable, raise ``SmbUnavailable`` so the
     scheduler can retry the task.
 

@@ -2,30 +2,30 @@
 core/augment_recommender.py - data-driven Mayhem/Arena augment ranking.
 
 CLAUDE.md #88 / plan `Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md`.
-The augment-OCR → coach path is already live (item 86): vision reads *which
+The augment-OCR -> coach path is already live (item 86): vision reads *which
 augments are offered*; this module decides *which to take* by historical
 win-rate, conditioned on the augments already taken this game.
 
-Algorithm - re-implemented from the plan's math spec (§4/§5), NOT vendored
-from `ReformedDoge/Mayhem-Doctor` (no LICENSE - algorithm only, §7):
+Algorithm - re-implemented from the plan's math spec (S4/S5), NOT vendored
+from `ReformedDoge/Mayhem-Doctor` (no LICENSE - algorithm only, S7):
 
-  • Per-augment own win-rate, Laplace/Beta-smoothed toward 0.5:
-        own_wr(a) = (wins[a] + α) / (games[a] + 2α)
-  • External per-augment marginal prior (Task 2, Overlay App E Mayhem data).
-  • §4 blend (Option B external-seed):
-        score₀(a) = w·own_wr(a) + (1−w)·ext_wr(a),  w = n_own/(n_own+K)
-    Zero own games ⇒ w=0 ⇒ 100 % external prior; shifts to own history
-    smoothly as ingest grows (Task-1 reality: n_own ≈ 0-2 today).
-  • Pairwise co-occurrence synergy (own-history only - the external source
+  * Per-augment own win-rate, Laplace/Beta-smoothed toward 0.5:
+        own_wr(a) = (wins[a] + alpha) / (games[a] + 2alpha)
+  * External per-augment marginal prior (Task 2, Overlay App E Mayhem data).
+  * S4 blend (Option B external-seed):
+        score_0(a) = w*own_wr(a) + (1-w)*ext_wr(a),  w = n_own/(n_own+K)
+    Zero own games => w=0 => 100 % external prior; shifts to own history
+    smoothly as ingest grows (Task-1 reality: n_own ~ 0-2 today).
+  * Pairwise co-occurrence synergy (own-history only - the external source
     has no augment-pair data), shrunk by its own sample count:
-        syn(a) = mean_{p∈picked} [ m/(m+K) · (pair_wr(a,p) − own_wr(a)) ]
+        syn(a) = mean_{pinpicked} [ m/(m+K) * (pair_wr(a,p) - own_wr(a)) ]
     Conditioning on the already-picked set === the plan's "greedy synergy".
-  • Final: score(a) = score₀(a) + λ·syn(a).
+  * Final: score(a) = score_0(a) + lambda*syn(a).
 
-Confidence surfaced for §6 is the blend weight w (how much own-history is
+Confidence surfaced for S6 is the blend weight w (how much own-history is
 trusted). Never raises into callers; with neither own nor external data the
 result is a neutral 0.5 ranking at confidence 0, so the coach keeps its LLM
-augment prompt as the primary signal (§5: parallel, not fallback).
+augment prompt as the primary signal (S5: parallel, not fallback).
 """
 from __future__ import annotations
 
@@ -212,7 +212,7 @@ def _lcu_row_count(path: Path) -> int:
     """Cheap freshness signal: how many rows carry an lcu_match_detail.
     The main db file's (mtime,size) can lag under WAL and a small INSERT
     may not change the page count, so the row count is the reliable cache
-    key - a newly-ingested game must invalidate the scan (§4 blend depends
+    key - a newly-ingested game must invalidate the scan (S4 blend depends
     on own-history growing)."""
     if not path.exists():
         return -1

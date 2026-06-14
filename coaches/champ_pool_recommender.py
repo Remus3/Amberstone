@@ -54,7 +54,7 @@ _cache_lock = threading.Lock()
 
 
 def _load_champ_index() -> None:
-    """Populate name ↔ id maps from DDragon champion data."""
+    """Populate name <-> id maps from DDragon champion data."""
     global _name_to_id, _id_to_name
     if _name_to_id:
         return
@@ -140,7 +140,7 @@ def _games_on_champ(c: sqlite3.Connection, puuid: str, champ_id: int) -> list[di
 
 def _load_materialized_kda() -> Optional[dict]:
     """AUDIT 2026-04-29: load champ_kda.json if mtime changed. The file
-    is keyed champ_id-as-string → {games, kills, deaths, assists}."""
+    is keyed champ_id-as-string -> {games, kills, deaths, assists}."""
     global _kda_materialized, _kda_mtime
     if not _KDA_FILE.exists():
         return None
@@ -223,7 +223,7 @@ def _comp_overlap(comp_csv: str, target: set[str]) -> int:
 
 
 def _score(win_pct: float, games: int) -> float:
-    """Confidence-weighted win pct. games=0 → 0; games≥30 → ~win_pct."""
+    """Confidence-weighted win pct. games=0 -> 0; games>=30 -> ~win_pct."""
     if games <= 0:
         return 0.0
     weight = games / (games + 8.0)        # asymptote at 1.0; ~50% weight at 8 games
@@ -237,7 +237,7 @@ def recommend(my_pool: Iterable[str],
     """Score each champion in `my_pool` against the recorded performance
     vs `enemy_comp`. Returns rows sorted by `score` (desc).
 
-    Empty rewind history → returns []."""
+    Empty rewind history -> returns []."""
     _load_champ_index()
     c = _open()
     if c is None:

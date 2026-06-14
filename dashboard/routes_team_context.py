@@ -2,12 +2,12 @@
 """Team-context routes for the FU02 champ-select 5+5 enrichment panel.
 
 Wire shape:
-  POST /api/team-context/refresh  ← Game-PC LCU agent on ChampSelect
+  POST /api/team-context/refresh  <- Game-PC LCU agent on ChampSelect
                                     transition. Body is the 10-player
                                     roster + queue_id. Bearer-auth via
                                     cross-Claude bridge token (same
                                     posture as routes_health_peer).
-  GET  /api/team-context           ← Dashboard poll. No auth (loopback /
+  GET  /api/team-context           <- Dashboard poll. No auth (loopback /
                                     Tailnet-only, served by HTTPS dashboard).
 
 Storage: in-memory dict guarded by a Lock - single-process. The cache
@@ -17,9 +17,9 @@ desired lifetime for a per-game enrichment payload.
 Soft-fail invariants:
   - GET on cold cache returns `{"team_context": null}` (empty object,
     HTTP 200). Dashboard treats null as "not in champ-select".
-  - POST with malformed body → 400; partial bodies (some fields missing)
+  - POST with malformed body -> 400; partial bodies (some fields missing)
     are stored as-is, schema validation is the caller's responsibility.
-  - Auth failure → 401, no payload mutation.
+  - Auth failure -> 401, no payload mutation.
 
 Fan-out (FU02 main):
   After the skeleton roster is stored, the POST handler dispatches a
@@ -219,7 +219,7 @@ def _enrich_priority_1(entry: dict, locked_champion_id: Optional[int]) -> None:
 
 
 def _enrich_priority_2(entry: dict) -> None:
-    """Priority-2 fan-out: recent-matches → mains / winrate / W/L streak."""
+    """Priority-2 fan-out: recent-matches -> mains / winrate / W/L streak."""
     from core import riot_api
 
     puuid = entry.get("puuid") or ""
@@ -248,7 +248,7 @@ _CHAMP_NAME_TO_ID_CACHE: Optional[dict] = None
 
 
 def _champ_name_to_id(name: str) -> Optional[int]:
-    """Resolve champion display name → Riot champion ID. Returns None
+    """Resolve champion display name -> Riot champion ID. Returns None
     on any miss; caller skips the mastery call."""
     global _CHAMP_NAME_TO_ID_CACHE
     if not name:
@@ -448,7 +448,7 @@ def _serve_get(h) -> None:
     """GET /api/team-context - dashboard poll.
 
     Returns `{"team_context": <obj|null>, "age_s": <float>}`. Age is
-    computed from the last successful refresh; null cache → age=null.
+    computed from the last successful refresh; null cache -> age=null.
     """
     with _LOCK:
         cache = _CACHE

@@ -8,18 +8,18 @@ themselves when they need build/rune/matchup hints.
 Data flow per run:
 
     DDragon version + champion roster
-        │
-        ▼
+        |
+        v
     For each (champion, mode):
-        SiteDScraper.fetch_champion(champ, mode) ───┐
-        UggScraper.fetch_champion(champ, mode)       ────┤───► merge
-                                                         │
-        Agent 4 curated JSON (if present)         ───────┘
-        │
-        ▼
+        SiteDScraper.fetch_champion(champ, mode) ---+
+        UggScraper.fetch_champion(champ, mode)       ----+---> merge
+                                                         |
+        Agent 4 curated JSON (if present)         -------+
+        |
+        v
     Aggregated build bundle per champ+mode
-        │
-        ▼
+        |
+        v
     data/coach_cache/<mode>.json    (atomic-written)
 
 Respects:

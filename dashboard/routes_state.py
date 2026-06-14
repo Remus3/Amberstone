@@ -45,7 +45,7 @@ _PEER_HEALTH_ALERT_S = 1800
 
 def _peer_health_status(age_s: float) -> str:
     """Graded peer health-publisher status from heartbeat age (seconds).
-    <=WARN green · <=ALERT yellow · >ALERT red. Pure - unit-tested."""
+    <=WARN green * <=ALERT yellow * >ALERT red. Pure - unit-tested."""
     if age_s <= _PEER_HEALTH_WARN_S:
         return "green"
     if age_s <= _PEER_HEALTH_ALERT_S:

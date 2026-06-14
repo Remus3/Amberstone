@@ -6,7 +6,7 @@ already-COVERED champions that are NOT yet in that champion's registry
 entry but still carry a multi-damage-block ability whose later filtered
 block out-evaluates block 0.
 
-For every covered champion × key-not-in-registry, runs the same
+For every covered champion x key-not-in-registry, runs the same
 ground-truth A/B `compute_ability_dps` the scanner uses, at BOTH full HP
 and 40% HP (the second pass catches missing/current-HP execute blocks
 that are a no-op at full HP - the Kindred-E class). Emits only keys

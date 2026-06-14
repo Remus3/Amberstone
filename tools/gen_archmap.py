@@ -145,7 +145,7 @@ def _collect_phase_markers() -> list[tuple[str, str, str, int, str]]:
 
 
 def _date_to_int(date_str: str) -> int:
-    """ISO date YYYY-MM-DD → integer for sorting."""
+    """ISO date YYYY-MM-DD -> integer for sorting."""
     y, m, d = date_str.split("-")
     return int(y) * 10000 + int(m) * 100 + int(d)
 

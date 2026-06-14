@@ -4,7 +4,7 @@ with game-time + milestone tagging.
 
 Purpose (per project memory queue items #6 and #9):
   - Post-game analysis: replay the metric trajectory by game_time_s
-    ("you were +8 CSD at 10, −4 at 15 - what happened?").
+    ("you were +8 CSD at 10, -4 at 15 - what happened?").
   - Post-session aggregation: AVG/stddev across matches in a session.
   - Coach-guidance comparison: vs your baseline, vs rank-tier benchmarks.
 

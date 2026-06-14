@@ -1,17 +1,17 @@
 """Agent 1 - Lead: the single writer of ``agents/state/task_queue.jsonl``.
 
-Responsibilities (§7, §11.7):
+Responsibilities (S7, S11.7):
 
   * In-memory priority queue of :class:`QueueTask`.
   * Append-only JSONL persistence of every status transition.
   * Recovery on startup: replay the JSONL and reconstruct in-memory state.
   * Gate policy:
-      - Hard gates (categories 1, 7, 8) → ``needs_explicit_approval``.
+      - Hard gates (categories 1, 7, 8) -> ``needs_explicit_approval``.
         Caller (supervisor UI) must approve before the task becomes dispatchable.
-      - Soft gate via Agent 0 (category 5, cross-machine) → ``agent0_review``.
+      - Soft gate via Agent 0 (category 5, cross-machine) -> ``agent0_review``.
         Agent 0 accepts or rejects autonomously.
-      - Ungated (2, 3, 4, 6) → straight to ``ready``.
-  * User-override flag bypasses Agent 0 rejection (§7).
+      - Ungated (2, 3, 4, 6) -> straight to ``ready``.
+  * User-override flag bypasses Agent 0 rejection (S7).
   * Dispatch: the scheduler exposes ``next_ready()`` - the supervisor pulls
     the highest-priority ready task and invokes the right substrate.
 """

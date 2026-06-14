@@ -450,7 +450,7 @@ def _classify_attribute(attribute: str) -> str:
 
 
 def _build_damage_block(leveling: dict) -> dict:
-    """Normalize one Meraki ``leveling`` entry → a damage_block record."""
+    """Normalize one Meraki ``leveling`` entry -> a damage_block record."""
     attribute = leveling.get("attribute") or ""
     kind = _classify_attribute(attribute)
     modifiers = leveling.get("modifiers") or []

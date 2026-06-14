@@ -203,7 +203,7 @@ def _serve_decision_choice_post(h, payload) -> None:
 
 
 def _serve_decisions_heartbeat(h) -> None:
-    """ADR-007 (s169): GET /api/decisions/heartbeat → loop liveness snapshot.
+    """ADR-007 (s169): GET /api/decisions/heartbeat -> loop liveness snapshot.
 
     File-backed read of data/decisions_heartbeat.json (written by the
     DecisionLoop in the Phase 3 supervisor process). The dashboard
@@ -223,7 +223,7 @@ def _serve_decisions_respond_active_post(h, payload) -> None:
     """ADR-007 (s169): POST /api/decisions/respond_active
     Body: {choice_index: 0|1, dismiss?: bool, note?: str}
 
-    Resolves the FIRST pending decision by mapping `choice_index` →
+    Resolves the FIRST pending decision by mapping `choice_index` ->
     `options[choice_index]` (or "skip" when dismiss=true). Intended for
     the Game-PC keybind listener - single endpoint that doesn't require
     the caller to know which decision is currently pending or which

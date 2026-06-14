@@ -209,7 +209,7 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
     virtual-desktop / virtual-adapter capture is retired (see the capture-
     stability AUDIT note above).
 
-    monitor_index → DXGI output index on device 0 (0 = primary game
+    monitor_index -> DXGI output index on device 0 (0 = primary game
     monitor, 1 = secondary). None maps to the primary output.
 
     crop: optional (left, top, right, bottom) bbox in output-local coords

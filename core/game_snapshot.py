@@ -74,7 +74,7 @@ ALL_MODES = (MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL)
 def mode_from_game_mode_string(game_mode: str) -> str:
     """
     Derive the canonical mode string from a Riot game_mode string.
-    Used by app.py when transitioning from client → in-game.
+    Used by app.py when transitioning from client -> in-game.
 
     Returns one of: MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL.
     Defaults to MODE_SR for any unrecognised value.

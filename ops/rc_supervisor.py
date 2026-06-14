@@ -481,7 +481,7 @@ class _Phase3Watcher:
         """Newest mtime across the Phase-3 import chain: every ``*.py``
         under the watched package dirs plus the explicit cross-package
         files. Returns None if nothing is found / all stats fail (caller
-        treats None as 'cannot determine' → skip, never false-restart)."""
+        treats None as 'cannot determine' -> skip, never false-restart)."""
         newest: Optional[float] = None
         try:
             for rel in self._WATCHED_CODE_FILES:
