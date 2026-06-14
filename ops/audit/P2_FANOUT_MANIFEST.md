@@ -84,8 +84,16 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       ARCHIVE + 3 gamepc_* live-RENAME + 5 gamepc_* DEAD-ARCHIVE). Also realigned 7 stale
       test_pytest_guard tests (pre-existing red at HEAD from item 408). Gate PROCEED 15558p/0f/7s.
       DEFER in ops/audit/P2_FINDINGS.md (W4 section).
-- [ ] scripts/ + ops/ + rc-shell/ + tft/ + (root) + riot-commander.spec
-      114 / 24433 (~2-3 slices) - NEXT cycle 15 (W4 half-wave 2)
+- [x] scripts/ + ops/ + rc-shell/ + tft/ + (root) + riot-commander.spec
+      117 / 24527 - DONE cycle 15 (item 410, audit commit 7015e566; 8 disjoint parallel slices
+      A-H: A ops-spine / B ops-phase3+loop / C ops-installers-xml / D scripts-data-pipeline /
+      E scripts-extractors / F tft / G rc-shell-electron / H root-surface). FIX-NOW (9) = the
+      non-finite-JSON-token class (rc_state_validator float(hp), data_pipeline winrate-tier,
+      champion_drift_alerts median, performance_tracker allow_nan) + loop-controller subprocess
+      timeouts + run_deploy_test bare-py + tft raw-API-error-leak + tft OCR timeout + wakeup_prune
+      separator re-split + spec .svg-icon drop. 0 frozen edits (rc_supervisor/rc_dev_runtime/main.py/
+      RC-BridgeWatcher.xml clean). G Electron posture PASS. Gate tests/ 7885p/0f/0e/2s exit 0 (+43).
+      DEFER in ops/audit/P2_FINDINGS.md (W4-hw2). **W4 operational tooling COMPLETE.**
 
 ### W5 test corpus (lighter lens: assertion correctness, fixture pins, dead tests)
 - [ ] tests/ 359 / 81155 (~6 slices, grep-driven: data-fragile assertions,
