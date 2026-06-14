@@ -219,7 +219,7 @@ class BeamSearchConstraintTests(unittest.TestCase):
                 )
 
     def test_only_item_ids_restricts_search_pool(self) -> None:
-        # Only IE + Stormrazor + Berserker's allowed → all builds drawn from these 3.
+        # Only IE + Stormrazor + Berserker's allowed -> all builds drawn from these 3.
         whitelist = ["3031", "6673", "3006"]
         r = beam_search_build(
             self.snap, "Aatrox", level=11, mode="SR", target_armor=80,

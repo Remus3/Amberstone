@@ -3,9 +3,9 @@
 Tests the ``champion_form_index.json`` registry loader plus its integration
 with ``compute_ability_dps`` / ``rank_items_by_ability_dps`` and
 ``compute_burst_damage`` / ``rank_items_by_burst``. The override table
-maps Nidalee Q/W/E → 1 (cougar), Elise Q → 1 (Venomous Bite), Jayce Q → 1
-(cannon Shock Blast), Hwei Q/W/E → first damage-bearing form, LeeSin
-Q → 1 (Resonating Strike).
+maps Nidalee Q/W/E -> 1 (cougar), Elise Q -> 1 (Venomous Bite), Jayce Q -> 1
+(cannon Shock Blast), Hwei Q/W/E -> first damage-bearing form, LeeSin
+Q -> 1 (Resonating Strike).
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── registry shape ──────────────────────────────────────────────────────────
+# --- registry shape ----------------------------------------------------------
 
 
 class RegistryShapeTests(unittest.TestCase):
@@ -83,7 +83,7 @@ class RegistryShapeTests(unittest.TestCase):
                     self.assertGreaterEqual(value, 0)
 
 
-# ─── loader / cache ──────────────────────────────────────────────────────────
+# --- loader / cache ----------------------------------------------------------
 
 
 class LoaderCacheTests(unittest.TestCase):
@@ -102,7 +102,7 @@ class LoaderCacheTests(unittest.TestCase):
         self.assertIsNot(a, b)
 
 
-# ─── get_form_index_for ──────────────────────────────────────────────────────
+# --- get_form_index_for ------------------------------------------------------
 
 
 class GetFormIndexForTests(unittest.TestCase):
@@ -128,7 +128,7 @@ class GetFormIndexForTests(unittest.TestCase):
             self.assertEqual(k, k.upper())
 
 
-# ─── _resolve_form_index_overrides ───────────────────────────────────────────
+# --- _resolve_form_index_overrides -------------------------------------------
 
 
 class ResolveFormIndexTests(unittest.TestCase):
@@ -158,7 +158,7 @@ class ResolveFormIndexTests(unittest.TestCase):
         self.assertEqual(mapping, {"Q": 1})
 
 
-# ─── integration: compute_ability_dps ───────────────────────────────────────
+# --- integration: compute_ability_dps ---------------------------------------
 
 
 class ComputeAbilityDpsFormIndexTests(unittest.TestCase):
@@ -185,7 +185,7 @@ class ComputeAbilityDpsFormIndexTests(unittest.TestCase):
             self.snap, "Nidalee", level=11, mode="SR", target_mr=30.0,
             form_index_overrides={"Q": 0},
         )
-        # Operator's Q=0 wins; W/E come from registry (Nidalee → both 1).
+        # Operator's Q=0 wins; W/E come from registry (Nidalee -> both 1).
         self.assertEqual(r.form_index_source, "override")
         self.assertEqual(r.form_index_resolved, {"Q": 0, "W": 1, "E": 1})
 
@@ -210,7 +210,7 @@ class ComputeAbilityDpsFormIndexTests(unittest.TestCase):
         self.assertEqual(non_r_dps, 0.0)
 
 
-# ─── integration: compute_burst_damage ──────────────────────────────────────
+# --- integration: compute_burst_damage --------------------------------------
 
 
 class ComputeBurstFormIndexTests(unittest.TestCase):
@@ -241,7 +241,7 @@ class ComputeBurstFormIndexTests(unittest.TestCase):
         self.assertEqual(r.form_index_resolved, {"Q": 1, "W": 1, "E": 1, "R": 0})
 
 
-# ─── ranker propagation ─────────────────────────────────────────────────────
+# --- ranker propagation -----------------------------------------------------
 
 
 class RankerFormIndexTests(unittest.TestCase):
@@ -274,7 +274,7 @@ class RankerFormIndexTests(unittest.TestCase):
         self.assertEqual(r.form_index_resolved, {})
 
 
-# ─── to_dict serialization ───────────────────────────────────────────────────
+# --- to_dict serialization ---------------------------------------------------
 
 
 class ToDictSerializationTests(unittest.TestCase):
@@ -316,7 +316,7 @@ class ToDictSerializationTests(unittest.TestCase):
         self.assertEqual(d["form_index_source"], "champion")
 
 
-# ─── server route surfaces source ────────────────────────────────────────────
+# --- server route surfaces source --------------------------------------------
 
 
 class ServerRouteSourceTests(unittest.TestCase):

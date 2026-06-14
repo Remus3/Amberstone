@@ -3,7 +3,7 @@
 Tests the ``champion_max_priority.json`` registry loader plus its
 integration with ``compute_ability_dps`` / ``rank_items_by_ability_dps``
 and ``compute_burst_damage`` / ``rank_items_by_burst``. The override
-table assigns Cassiopeia → E-Q-W, Kayle → E-Q-W, TwistedFate → W-Q-E,
+table assigns Cassiopeia -> E-Q-W, Kayle -> E-Q-W, TwistedFate -> W-Q-E,
 etc.; verifying both the canonical-priority overrides and the
 ``max_priority_source`` provenance field that every scorer threads
 through their result.
@@ -40,7 +40,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── registry shape ──────────────────────────────────────────────────────────
+# --- registry shape ----------------------------------------------------------
 
 
 class RegistryShapeTests(unittest.TestCase):
@@ -79,7 +79,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(tuple(overrides["Kassadin"]), ("E", "Q", "W"))
 
 
-# ─── loader / cache ──────────────────────────────────────────────────────────
+# --- loader / cache ----------------------------------------------------------
 
 
 class LoaderCacheTests(unittest.TestCase):
@@ -103,7 +103,7 @@ class LoaderCacheTests(unittest.TestCase):
         self.assertEqual(DEFAULT_MAX_PRIORITY, tuple(table["default"]))
 
 
-# ─── get_max_priority_for ────────────────────────────────────────────────────
+# --- get_max_priority_for ----------------------------------------------------
 
 
 class GetMaxPriorityForTests(unittest.TestCase):
@@ -128,7 +128,7 @@ class GetMaxPriorityForTests(unittest.TestCase):
         self.assertTrue(all(k.isupper() for k in priority))
 
 
-# ─── _resolve_max_priority ───────────────────────────────────────────────────
+# --- _resolve_max_priority ---------------------------------------------------
 
 
 class ResolveMaxPriorityTests(unittest.TestCase):
@@ -160,7 +160,7 @@ class ResolveMaxPriorityTests(unittest.TestCase):
             _resolve_max_priority("Veigar", ("Q", "W"))
 
 
-# ─── rank_at_level reflects priority ─────────────────────────────────────────
+# --- rank_at_level reflects priority -----------------------------------------
 
 
 class RankAtLevelOverrideTests(unittest.TestCase):
@@ -180,7 +180,7 @@ class RankAtLevelOverrideTests(unittest.TestCase):
         self.assertEqual(rank_at_level("W", 9, max_priority=priority), 0)
 
 
-# ─── integration: compute_ability_dps ───────────────────────────────────────
+# --- integration: compute_ability_dps ---------------------------------------
 
 
 class ComputeAbilityDpsOverrideTests(unittest.TestCase):
@@ -221,7 +221,7 @@ class ComputeAbilityDpsOverrideTests(unittest.TestCase):
             self.snap, "Cassiopeia", level=9, mode="SR", target_mr=30.0,
             max_priority=("Q", "W", "E"),
         )
-        # Override picks E first → E rank 4 → Twin Fang contributes more.
+        # Override picks E first -> E rank 4 -> Twin Fang contributes more.
         self.assertGreater(
             with_override.total_ability_dps,
             without_override.total_ability_dps,
@@ -229,7 +229,7 @@ class ComputeAbilityDpsOverrideTests(unittest.TestCase):
         )
 
 
-# ─── integration: compute_burst_damage ──────────────────────────────────────
+# --- integration: compute_burst_damage --------------------------------------
 
 
 class ComputeBurstOverrideTests(unittest.TestCase):
@@ -248,7 +248,7 @@ class ComputeBurstOverrideTests(unittest.TestCase):
         r = compute_burst_damage(
             self.snap, "Akali", level=11, mode="SR", target_mr=30.0, target_max_hp=2000.0,
         )
-        # Akali → E-Q-W (Shuriken Flip primary)
+        # Akali -> E-Q-W (Shuriken Flip primary)
         self.assertEqual(r.max_priority, ("E", "Q", "W"))
         self.assertEqual(r.max_priority_source, "champion")
 
@@ -261,7 +261,7 @@ class ComputeBurstOverrideTests(unittest.TestCase):
         self.assertEqual(r.max_priority_source, "override")
 
 
-# ─── integration: rankers carry source ──────────────────────────────────────
+# --- integration: rankers carry source --------------------------------------
 
 
 class RankerSourcePropagationTests(unittest.TestCase):
@@ -300,7 +300,7 @@ class RankerSourcePropagationTests(unittest.TestCase):
         self.assertEqual(r.max_priority_source, "champion")
 
 
-# ─── to_dict round-trip ──────────────────────────────────────────────────────
+# --- to_dict round-trip ------------------------------------------------------
 
 
 class ToDictSerializationTests(unittest.TestCase):
@@ -343,7 +343,7 @@ class ToDictSerializationTests(unittest.TestCase):
         self.assertEqual(d["max_priority_source"], "champion")
 
 
-# ─── server route surfaces source ────────────────────────────────────────────
+# --- server route surfaces source --------------------------------------------
 
 
 class ServerRouteSourceTests(unittest.TestCase):

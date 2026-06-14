@@ -2,8 +2,8 @@
 
 Tests the ``champion_combo_sequences.json`` registry loader plus its
 integration with ``compute_burst_damage`` and ``rank_items_by_burst``.
-The override table assigns Zed → Q-W-E-R-Q2-AA (shadow Q double),
-Yone → Q-Q2-Q3-AA-E-W-R (chain knockup), Akali → Q-AA-E-R-Q2-AA-R2
+The override table assigns Zed -> Q-W-E-R-Q2-AA (shadow Q double),
+Yone -> Q-Q2-Q3-AA-E-W-R (chain knockup), Akali -> Q-AA-E-R-Q2-AA-R2
 (R recast), etc. Verifies the canonical-combo overrides and the
 ``combo_sequence_source`` provenance field that the burst scorer
 threads through its result.
@@ -35,7 +35,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── registry shape ──────────────────────────────────────────────────────────
+# --- registry shape ----------------------------------------------------------
 
 
 class RegistryShapeTests(unittest.TestCase):
@@ -89,7 +89,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertNotIn("LeBlanc", champions)
 
 
-# ─── loader / cache ──────────────────────────────────────────────────────────
+# --- loader / cache ----------------------------------------------------------
 
 
 class LoaderCacheTests(unittest.TestCase):
@@ -108,7 +108,7 @@ class LoaderCacheTests(unittest.TestCase):
         self.assertIsNot(a, b)
 
 
-# ─── get_combo_for ───────────────────────────────────────────────────────────
+# --- get_combo_for -----------------------------------------------------------
 
 
 class GetComboForTests(unittest.TestCase):
@@ -134,7 +134,7 @@ class GetComboForTests(unittest.TestCase):
         self.assertIn("R2", akali)
 
 
-# ─── _resolve_combo_sequence ─────────────────────────────────────────────────
+# --- _resolve_combo_sequence -------------------------------------------------
 
 
 class ResolveComboSequenceTests(unittest.TestCase):
@@ -162,7 +162,7 @@ class ResolveComboSequenceTests(unittest.TestCase):
             _resolve_combo_sequence("Zed", [])
 
 
-# ─── integration: compute_burst_damage ──────────────────────────────────────
+# --- integration: compute_burst_damage --------------------------------------
 
 
 class ComputeBurstOverrideTests(unittest.TestCase):
@@ -218,7 +218,7 @@ class ComputeBurstOverrideTests(unittest.TestCase):
         self.assertEqual(len(q_casts), 3)
 
 
-# ─── integration: rank_items_by_burst ───────────────────────────────────────
+# --- integration: rank_items_by_burst ---------------------------------------
 
 
 class RankByBurstOverrideTests(unittest.TestCase):
@@ -267,7 +267,7 @@ class RankByBurstOverrideTests(unittest.TestCase):
         )
 
 
-# ─── to_dict serialization ───────────────────────────────────────────────────
+# --- to_dict serialization ---------------------------------------------------
 
 
 class ToDictSerializationTests(unittest.TestCase):
@@ -293,7 +293,7 @@ class ToDictSerializationTests(unittest.TestCase):
         self.assertIn("R2", d["combo_sequence"])
 
 
-# ─── server route surfaces source ────────────────────────────────────────────
+# --- server route surfaces source --------------------------------------------
 
 
 class ServerRouteSourceTests(unittest.TestCase):

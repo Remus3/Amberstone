@@ -40,7 +40,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── _lightshield_strike_per_proc_damage helper ──────────────────────────────
+# --- _lightshield_strike_per_proc_damage helper ------------------------------
 
 
 class LightshieldHelperTests(unittest.TestCase):
@@ -153,7 +153,7 @@ class LightshieldHelperTests(unittest.TestCase):
         self.assertEqual(ls_name2, "Sundered Sky")
 
 
-# ─── DpsResult new fields ────────────────────────────────────────────────────
+# --- DpsResult new fields ----------------------------------------------------
 
 
 class DpsResultLightshieldFieldsTests(unittest.TestCase):
@@ -214,7 +214,7 @@ class DpsResultLightshieldFieldsTests(unittest.TestCase):
         )
 
 
-# ─── Burst combo integration ─────────────────────────────────────────────────
+# --- Burst combo integration -------------------------------------------------
 
 
 class BurstLightshieldIntegrationTests(unittest.TestCase):
@@ -262,7 +262,7 @@ class BurstLightshieldIntegrationTests(unittest.TestCase):
         self.assertEqual(r.lightshield_strike_procs, 1)
 
     def test_pure_aa_combo_zero_procs(self) -> None:
-        """No ability cast → Lightshield Strike never armed."""
+        """No ability cast -> Lightshield Strike never armed."""
         r = compute_burst_damage(
             self.snap, "Aatrox", level=11,
             item_ids=[SUNDERED_SKY],
@@ -275,7 +275,7 @@ class BurstLightshieldIntegrationTests(unittest.TestCase):
         self.assertEqual(r.lightshield_strike_item_name, "Sundered Sky")
 
     def test_no_aa_combo_zero_procs(self) -> None:
-        """Pure ability combo with no AAs → can't fire."""
+        """Pure ability combo with no AAs -> can't fire."""
         r = compute_burst_damage(
             self.snap, "Aatrox", level=11,
             item_ids=[SUNDERED_SKY],
@@ -285,7 +285,7 @@ class BurstLightshieldIntegrationTests(unittest.TestCase):
         self.assertEqual(r.lightshield_strike_procs, 0)
 
     def test_aa_before_spell_no_proc(self) -> None:
-        """AA before any spell-cast → not armed; only the post-spell AA
+        """AA before any spell-cast -> not armed; only the post-spell AA
         fires."""
         r = compute_burst_damage(
             self.snap, "Aatrox", level=11,
@@ -410,7 +410,7 @@ class BurstLightshieldIntegrationTests(unittest.TestCase):
         )
 
 
-# ─── server route exposes new BurstResult fields ─────────────────────────────
+# --- server route exposes new BurstResult fields -----------------------------
 
 
 class ServerBurstRouteLightshieldTests(unittest.TestCase):

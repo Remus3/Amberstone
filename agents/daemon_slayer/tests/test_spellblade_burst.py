@@ -43,7 +43,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── _spellblade_per_proc_damage helper ──────────────────────────────────────
+# --- _spellblade_per_proc_damage helper --------------------------------------
 
 
 class SpellbladeHelperTests(unittest.TestCase):
@@ -88,7 +88,7 @@ class SpellbladeHelperTests(unittest.TestCase):
 
     def test_trinity_force_returns_physical_proc(self) -> None:
         effects = collect_effects([TRINITY_FORCE])
-        # TF: 2.0 × base_ad physical, no armor → raw 120, factor 1.0 → 120.
+        # TF: 2.0 x base_ad physical, no armor -> raw 120, factor 1.0 -> 120.
         dmg, name = _spellblade_per_proc_damage(
             effects, 0.0, 0.0, 1.0, self._ctx(),
         )
@@ -97,7 +97,7 @@ class SpellbladeHelperTests(unittest.TestCase):
 
     def test_trinity_force_armor_mitigation(self) -> None:
         effects = collect_effects([TRINITY_FORCE])
-        # With 100 armor: factor 0.5; 120 × 0.5 = 60.
+        # With 100 armor: factor 0.5; 120 x 0.5 = 60.
         dmg, _ = _spellblade_per_proc_damage(
             effects, 100.0, 0.0, 1.0, self._ctx(),
         )
@@ -116,7 +116,7 @@ class SpellbladeHelperTests(unittest.TestCase):
 
     def test_lich_bane_magic_amp_applies(self) -> None:
         effects = collect_effects([LICH_BANE])
-        # Without amp: 95 × 1.0 (no MR). With magic_amp=1.20: 95 × 1.20.
+        # Without amp: 95 x 1.0 (no MR). With magic_amp=1.20: 95 x 1.20.
         dmg_base, _ = _spellblade_per_proc_damage(
             effects, 0.0, 0.0, 1.0, self._ctx(ap=100.0),
         )
@@ -164,7 +164,7 @@ class SpellbladeHelperTests(unittest.TestCase):
             effects_tf_first, 0.0, 100.0, 1.0, self._ctx(ap=100.0),
         )
         self.assertEqual(name, "Trinity Force")
-        # 2.0 × 60 = 120, physical, no armor, no MR effect.
+        # 2.0 x 60 = 120, physical, no armor, no MR effect.
         self.assertAlmostEqual(dmg, 120.0, places=1)
 
         # Reverse order: Lich Bane wins, magical, MR matters.
@@ -178,7 +178,7 @@ class SpellbladeHelperTests(unittest.TestCase):
         self.assertAlmostEqual(dmg2, 85.0, places=1)
 
 
-# ─── DpsResult new fields ────────────────────────────────────────────────────
+# --- DpsResult new fields ----------------------------------------------------
 
 
 class DpsResultSpellbladeFieldsTests(unittest.TestCase):
@@ -233,7 +233,7 @@ class DpsResultSpellbladeFieldsTests(unittest.TestCase):
         self.assertEqual(d["spellblade_item_name"], r.spellblade_item_name)
 
 
-# ─── Burst combo integration ─────────────────────────────────────────────────
+# --- Burst combo integration -------------------------------------------------
 
 
 class BurstSpellbladeIntegrationTests(unittest.TestCase):
@@ -277,7 +277,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
             combo_sequence=("Q", "AA", "W", "AA"),
         )
         self.assertEqual(r.spellblade_procs, 2)
-        # Total Spellblade damage ~= 2× per-proc.
+        # Total Spellblade damage ~= 2x per-proc.
         # We can verify the partition: cumulative ~= sum of per-row Spellblade.
         per_aa_added = sum(
             c.final_damage for c in r.per_cast if c.token == "AA"
@@ -296,7 +296,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
         self.assertEqual(r.spellblade_procs, 1)
 
     def test_aa_before_spell_no_proc(self) -> None:
-        """AA before any spell-cast → no Spellblade. The first AA isn't
+        """AA before any spell-cast -> no Spellblade. The first AA isn't
         armed; the second AA fires once because Q armed it."""
         r = compute_burst_damage(
             self.snap, "Akali", level=11,
@@ -307,7 +307,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
         self.assertEqual(r.spellblade_procs, 1)
 
     def test_no_aa_in_combo_zero_procs(self) -> None:
-        """Pure ability combo (no AA tokens) → Spellblade can't fire."""
+        """Pure ability combo (no AA tokens) -> Spellblade can't fire."""
         r = compute_burst_damage(
             self.snap, "Akali", level=11,
             item_ids=[TRINITY_FORCE],
@@ -320,7 +320,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
         self.assertEqual(r.spellblade_item_name, "Trinity Force")
 
     def test_only_aa_combo_zero_procs(self) -> None:
-        """Pure AA combo (no ability tokens) → Spellblade never armed."""
+        """Pure AA combo (no ability tokens) -> Spellblade never armed."""
         r = compute_burst_damage(
             self.snap, "Akali", level=11,
             item_ids=[TRINITY_FORCE],
@@ -397,7 +397,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
         self.assertGreater(r.spellblade_procs, 0)
 
     def test_dedup_keeps_one_spellblade(self) -> None:
-        """Two Spellblade items in the build → only first-seen wins (via
+        """Two Spellblade items in the build -> only first-seen wins (via
         collect_effects). Spellblade fires once, not twice per AA."""
         r = compute_burst_damage(
             self.snap, "Akali", level=11,
@@ -462,11 +462,11 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
             item_ids=[TRINITY_FORCE],
             target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
         )
-        # combo: Q-W-E-R-Q2-AA → arms via spells, fires on the 1 AA.
+        # combo: Q-W-E-R-Q2-AA -> arms via spells, fires on the 1 AA.
         self.assertEqual(r.spellblade_procs, 1)
 
 
-# ─── server route exposes new BurstResult fields ─────────────────────────────
+# --- server route exposes new BurstResult fields -----------------------------
 
 
 class ServerBurstRouteSpellbladeTests(unittest.TestCase):

@@ -24,7 +24,7 @@ assassin-archetype champs genuinely NOT in it (Shaco/Ekko - Fizz +
 Katarina ARE curated) have no such mechanic the default Q-W-E-AA-R-AA
 misses - a valid negative result, no additions.
 
-ENGINE_VERSION 0.98.0 → 0.99.0 pinned.
+ENGINE_VERSION 0.98.0 -> 0.99.0 pinned.
 """
 from __future__ import annotations
 
@@ -182,7 +182,7 @@ class CombosAdequateNegativeResultTests(unittest.TestCase):
             .read_text(encoding="utf-8")
         )["champions"]
         # Shaco / Ekko are assassin-archetype but have NO reset/shadow/
-        # chain mechanic the default Q-W-E-AA-R-AA misses → correctly
+        # chain mechanic the default Q-W-E-AA-R-AA misses -> correctly
         # absent (s227 negative result). Fizz/Katarina ARE curated (15).
         for champ in ("Shaco", "Ekko"):
             self.assertNotIn(champ, reg)
