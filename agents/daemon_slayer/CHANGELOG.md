@@ -1331,6 +1331,21 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.121.0 (item 414, 2026-06-14 - SUSTAIN contract-gap closure. Closes the
+test_wireable_sims_p1l3 strict-xfail: lifesteal/spellvamp/omnivamp resolve as wireable
+stats but had no explicitly-named effective-EHP sustain output. The EHP scorer already
+folds the lifesteal heal pool into blended_ehp (ENGINE 1.28.0); this slice NAMES the
+sustain-inclusive quantity via a SIBLING layer (the cc_blended_ehp pattern - blended_ehp /
+physical_ehp / magical_ehp / true_ehp stay byte-identical) and consumes the previously-
+unconsumed spellvamp / omnivamp stats. New EhpResult fields: effective_ehp_with_sustain
+(blended EHP incl the full vamp pool), ehp_without_sustain (vamp heal stripped = raw EHP),
+sustain_ehp_delta, heal_spellvamp / heal_omnivamp, + a "sustain" to_dict block + a
+format_table row. The vamp heals reuse the lifesteal AA-throughput proxy (_vamp_heal_pool
+generalises _lifesteal_heal); spellvamp / omnivamp resolve to 0 on every current build (no
+SR item grants them - VampStatResolutionEdge), so effective_ehp_with_sustain == blended_ehp
+today and diverges only when such an item lands. Additive / byte-identical at default; DS
+:8893 bounced -> 1.121.0.)
+
 1.120.0 (item 321, 2026-06-06 - survivability seam default-ON cutover. compute_ehp's
 ``apply_egg_resist`` flag (item 316, Anivia Rebirth EGG-STATE resist seam) flips
 default False -> True: the death-triggered self-revive EXTRA now reshapes per damage

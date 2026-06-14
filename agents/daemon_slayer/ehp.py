@@ -450,35 +450,59 @@ def _total_heal_amp(item_ids: Iterable[str]) -> float:
     return factor
 
 
+def _vamp_heal_pool(
+    vamp_pct: float,
+    ad: float,
+    attack_speed: float,
+    fight_window_s: float = _FIGHT_WINDOW_S,
+) -> float:
+    """Convert a vamp fraction (lifesteal / spellvamp / omnivamp) into a
+    per-fight heal magnitude off the representative AA-damage throughput.
+
+    ENGINE 1.28.0 (2026-05-21) shipped this for lifesteal; ENGINE 1.121.0
+    (2026-06-14) generalises the SAME formula to the spellvamp / omnivamp
+    stats so every vamp kind the stat schema resolves feeds the EHP sustain
+    term (closes the ``test_wireable_sims_p1l3`` CONTRACT-GAP: vamp stats
+    resolved but never converted to an effective-survivability output).
+
+    Formula: ``vamp_pct * ad * attack_speed * fight_window_s`` - the AA
+    damage dealt over the window times the vamp fraction returned as HP.
+    PRE-mitigation approximation (vamp heals on post-armor damage in-game,
+    but the EHP scorer is the wielder's EHP and does not model enemy armor;
+    bounded ~30-40% over-credit vs a 60-90 armor target, consistent with the
+    scorer's enemy-state-agnostic posture). Exact for lifesteal and for the
+    AA share of omnivamp; a documented LOWER-BOUND proxy for spellvamp (which
+    heals off ABILITY damage the enemy-agnostic EHP scorer does not model)
+    and for omnivamp's ability share.
+
+    All inputs clamped at 0; non-positive window returns 0.
+    """
+    if fight_window_s <= 0:
+        return 0.0
+    raw = (
+        max(0.0, vamp_pct)
+        * max(0.0, ad)
+        * max(0.0, attack_speed)
+        * fight_window_s
+    )
+    return max(0.0, raw)
+
+
 def _lifesteal_heal(
     lifesteal_pct: float,
     ad: float,
     attack_speed: float,
     fight_window_s: float = _FIGHT_WINDOW_S,
 ) -> float:
-    """Convert lifesteal stat into per-fight heal magnitude.
+    """Lifesteal stat -> per-fight heal magnitude (ENGINE 1.28.0).
 
-    ENGINE 1.28.0 (2026-05-21): pre-amp lifesteal heal pool for the
-    EHP scorer. Formula:
-    ``lifesteal_pct * ad * attack_speed * fight_window_s``. This is a
-    PRE-mitigation approximation - lifesteal in-game heals on post-
-    armor damage, but the EHP scorer doesn't model enemy armor (it's
-    the wielder's EHP, not the enemy's). The over-credit is bounded
-    (~30-40% against a 60-90 armor target) and consistent with the
-    rest of the EHP scorer's enemy-state-agnostic posture (no enemy
-    pen modeling either - Phase 1 deliberate omission).
-
-    All inputs clamped at 0; negative result floored at 0.
+    Thin back-compatible wrapper over the generalised ``_vamp_heal_pool``
+    (ENGINE 1.121.0). Kept as a named entry point because the Phase-6 heal
+    tests and the ``compute_ehp`` lifesteal site import it directly. See
+    ``_vamp_heal_pool`` for the formula + the pre-mitigation-approximation
+    rationale.
     """
-    if fight_window_s <= 0:
-        return 0.0
-    raw = (
-        max(0.0, lifesteal_pct)
-        * max(0.0, ad)
-        * max(0.0, attack_speed)
-        * fight_window_s
-    )
-    return max(0.0, raw)
+    return _vamp_heal_pool(lifesteal_pct, ad, attack_speed, fight_window_s)
 
 
 def effective_cc_duration(base_cc_s: float, tenacity_mult: float) -> float:
@@ -682,6 +706,32 @@ class EhpResult:
     # Default 1.0 (no window) leaves the EHP fields byte-identical; > 1.0 surfaces
     # the amortized uplift. Same sibling convention as passive_revive_mult.
     survival_window_mult: float = 1.0
+    # ENGINE 1.121.0 (2026-06-14): SUSTAIN contract-gap closure. An explicitly
+    # named effective-survivability term that folds the damage-conversion VAMP
+    # heal (lifesteal + spellvamp + omnivamp) into the EHP, closing the
+    # test_wireable_sims_p1l3 CONTRACT-GAP (vamp stats resolved but never named
+    # as an effective-EHP output). SIBLING layer (the cc_blended_ehp pattern):
+    # blended_ehp / physical_ehp / magical_ehp / true_ehp above are
+    # BYTE-IDENTICAL - they already include the lifesteal heal pool (heal_total)
+    # since ENGINE 1.28.0; these fields NAME the sustain-inclusive quantity and
+    # add the previously-unconsumed spellvamp / omnivamp share.
+    #   * ``ehp_without_sustain`` - blended EHP with the VAMP heal stripped
+    #     (item-passive heals + shields kept) = the "raw" EHP the contract
+    #     compares against.
+    #   * ``effective_ehp_with_sustain`` - blended EHP including the FULL vamp
+    #     pool. == blended_ehp on every current build (no SR item resolves
+    #     spellvamp / omnivamp - pinned by VampStatResolutionEdge); > blended_ehp
+    #     once such an item exists.
+    #   * ``sustain_ehp_delta`` = effective_ehp_with_sustain - ehp_without_sustain
+    #     (the EHP the vamp sustain is worth this fight).
+    #   * ``heal_spellvamp`` / ``heal_omnivamp`` - the pre-amp spellvamp /
+    #     omnivamp heal magnitudes (0.0 on current builds), heal_lifesteal
+    #     siblings.
+    effective_ehp_with_sustain: float = 0.0
+    ehp_without_sustain: float = 0.0
+    sustain_ehp_delta: float = 0.0
+    heal_spellvamp: float = 0.0
+    heal_omnivamp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -734,6 +784,19 @@ class EhpResult:
             "champion_tenacity_frac": self.champion_tenacity_frac,
             "spell_shield_frac": self.spell_shield_frac,
             "survival_window_mult": self.survival_window_mult,
+            "effective_ehp_with_sustain": self.effective_ehp_with_sustain,
+            "ehp_without_sustain": self.ehp_without_sustain,
+            "sustain_ehp_delta": self.sustain_ehp_delta,
+            "heal_spellvamp": self.heal_spellvamp,
+            "heal_omnivamp": self.heal_omnivamp,
+            "sustain": {
+                "effective_ehp_with_sustain": self.effective_ehp_with_sustain,
+                "ehp_without_sustain": self.ehp_without_sustain,
+                "sustain_ehp_delta": self.sustain_ehp_delta,
+                "heal_lifesteal": self.heal_lifesteal,
+                "heal_spellvamp": self.heal_spellvamp,
+                "heal_omnivamp": self.heal_omnivamp,
+            },
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -792,6 +855,12 @@ class EhpResult:
                 heal_bits.append(f"amp=x{self.heal_amp_mult:.3f}")
             heal_bits.append(f"total={self.heal_total:.0f}")
             rows.append("  heal_hp       " + "  ".join(heal_bits))
+        if self.sustain_ehp_delta > 0:
+            rows.append(
+                f"  sustain       effective_ehp={self.effective_ehp_with_sustain:.0f}"
+                f"  raw_ehp={self.ehp_without_sustain:.0f}"
+                f"  delta=+{self.sustain_ehp_delta:.0f} (vamp)"
+            )
         if self.enemy_cc_pressure_s > 0:
             rows.append(
                 f"  cc_pressure   total_s={self.enemy_cc_pressure_s:.1f}  "
@@ -1162,6 +1231,49 @@ def compute_ehp(
         + true_ehp * enemy_true_share
     )
 
+    # ENGINE 1.121.0 (2026-06-14): SUSTAIN contract-gap closure. A SIBLING
+    # effective-survivability term (the cc_blended_ehp pattern) that NAMES the
+    # vamp-inclusive EHP and folds in the previously-unconsumed spellvamp /
+    # omnivamp stats. blended_ehp above is UNTOUCHED (byte-identical): it
+    # already carries the lifesteal heal pool (heal_total) since ENGINE 1.28.0.
+    # _blend_with_heal recomputes the blend for an arbitrary heal scalar using
+    # the SAME locals as the main math (shields, eff resists, mode, mit, revive
+    # / egg / window numerator mults), so _blend_with_heal(heal_total) is
+    # exactly blended_ehp (guard-tested). The vamp heals reuse the lifesteal
+    # AA-throughput proxy (_vamp_heal_pool); spellvamp / omnivamp resolve to 0
+    # on every current build (no SR item grants them - VampStatResolutionEdge),
+    # so effective_ehp_with_sustain == blended_ehp today and diverges only when
+    # such an item lands.
+    def _blend_with_heal(heal_scalar: float) -> float:
+        p = (hp + shield_any_amped + shield_phys_amped + heal_scalar) / (
+            _armor_factor(eff_armor) * safe_mult * mit_phys
+        )
+        m = (hp + shield_any_amped + shield_mag_amped + heal_scalar) / (
+            _armor_factor(eff_mr) * safe_mult * mit_mag
+        )
+        t = (hp + shield_any_amped + shield_true_amped + heal_scalar) / (
+            safe_mult * mit_true
+        )
+        p *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
+        m *= (1.0 + revive_extra * egg_ratio_mag) * common_revive
+        t *= (1.0 + revive_extra) * common_revive
+        return (
+            p * enemy_ad_share + m * enemy_ap_share + t * enemy_true_share
+        )
+
+    ad_stat = float(stats.get("ad", 0.0))
+    as_stat = float(stats.get("as", 0.0))
+    heal_spellvamp = _vamp_heal_pool(
+        float(stats.get("spellvamp", 0.0)), ad_stat, as_stat
+    )
+    heal_omnivamp = _vamp_heal_pool(
+        float(stats.get("omnivamp", 0.0)), ad_stat, as_stat
+    )
+    vamp_extra_amped = (heal_spellvamp + heal_omnivamp) * heal_amp_mult
+    effective_ehp_with_sustain = _blend_with_heal(heal_total + vamp_extra_amped)
+    ehp_without_sustain = _blend_with_heal(heal_item_total * heal_amp_mult)
+    sustain_ehp_delta = effective_ehp_with_sustain - ehp_without_sustain
+
     # ENGINE 1.33.0 (2026-05-22): EHP-vs-CC blended scorer. Second
     # engine math consumer of ``compute_cc_pressure`` (the first was
     # the coach-prompt-side ``core/enemy_cc_threat_context.py`` per
@@ -1392,6 +1504,11 @@ def compute_ehp(
         champion_tenacity_frac=champion_tenacity_frac,
         spell_shield_frac=spell_shield_frac,
         survival_window_mult=survival_window_mult,
+        effective_ehp_with_sustain=effective_ehp_with_sustain,
+        ehp_without_sustain=ehp_without_sustain,
+        sustain_ehp_delta=sustain_ehp_delta,
+        heal_spellvamp=heal_spellvamp,
+        heal_omnivamp=heal_omnivamp,
         stats=dict(stats),
         notes=tuple(notes),
     )
