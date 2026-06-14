@@ -96,9 +96,18 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       DEFER in ops/audit/P2_FINDINGS.md (W4-hw2). **W4 operational tooling COMPLETE.**
 
 ### W5 test corpus (lighter lens: assertion correctness, fixture pins, dead tests)
-- [ ] tests/ 359 / 81155 (~6 slices, grep-driven: data-fragile assertions,
-      stale pins, skipped/xfail rot)
-- [ ] agents/daemon_slayer/tests ~200 files / ~81k LOC (~6 slices, same lens)
+- [x] tests/ 396 / 89039 - DONE cycle 16 (item 411, audit commit 32487046; 6 disjoint
+      parallel slices A-F, no worktrees). Census grew vs the cycle-6 manifest snapshot
+      (359/81155 -> 396/89039). Outcome: corpus mature + CLEAN - ZERO product bugs
+      surfaced, ZERO new tests. Sole FIX-NOW class = non-ASCII glyph cleanup in
+      comments/docstrings/dividers (47 test files swept to ASCII; em/en-dash + smart
+      quotes were already ZERO - all hits were decorative arrows/box-draw/etc that
+      strip_em_dashes.py left, now swept under charter auth 6). 2 justified non-ASCII
+      files remain: aram-coach item_build wire arrows (production U+2192, DEFER to a
+      production ASCII slice) + wakeup_prune 3 U+2705 PIN-emoji fixtures (load-bearing).
+      No product/DS/frozen edit, no ENGINE bump. Gate 7885p/2s exit 0 + truth_gate
+      PROCEED. DEFER in ops/audit/P2_FINDINGS.md (W5 section).
+- [ ] agents/daemon_slayer/tests ~222 files / ~81k LOC (~6 slices, same lens) - cycle 17
 
 ## Standing finding classes (from cycles 1-6, watch for siblings)
 
