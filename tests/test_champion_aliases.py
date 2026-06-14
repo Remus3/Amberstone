@@ -1,7 +1,7 @@
 """Regression guard for the canonical champion-alias unification (s173 #3).
 
 The JSON at ``web/data/champion_aliases.json`` is the single source of truth
-for display-name → DDragon-id rename overrides. It is consumed by:
+for display-name -> DDragon-id rename overrides. It is consumed by:
   - ``web/js/lib/items_index.js`` (runtime, async fetch)
   - ``tools/daemon_slayer_extract.py`` (build-time, sync read)
 
@@ -29,7 +29,7 @@ def test_canonical_aliases_file_exists():
 
 
 def test_canonical_aliases_content():
-    """The JSON must be a flat dict matching the expected key→value map.
+    """The JSON must be a flat dict matching the expected key->value map.
 
     Keys MUST be lowercase-ASCII alphanumeric so JS and Python normalizers
     both produce identical lookup keys.

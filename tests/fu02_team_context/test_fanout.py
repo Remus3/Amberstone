@@ -10,7 +10,7 @@ Covers (RC_TICKET_FU02 acceptance #5 + #6 + #9):
   - Ranked queue (420/440) gate: summoner_name is blanked at the
     storage layer regardless of what LCU posted.
   - Soft-fail: a Riot API None response must not break other entries
-    or the partial→complete transition.
+    or the partial->complete transition.
   - Default dispatcher refuses to spawn when API key isn't configured
     (skeleton-only mode).
 """
@@ -50,7 +50,7 @@ class _BaseFanoutCase(unittest.TestCase):
 
     def setUp(self):
         RTC._clear()
-        # Bridge auth → 200 path.
+        # Bridge auth -> 200 path.
         self._is_cfg = mock.patch.object(
             RTC._bridge, "is_configured", return_value=True)
         self._secret = mock.patch.object(
@@ -61,7 +61,7 @@ class _BaseFanoutCase(unittest.TestCase):
         RA._reset_bucket_for_tests()
         self._tmp = tempfile.TemporaryDirectory()
         RIC._reset_for_tests(db_path=Path(self._tmp.name) / "riot_cache.db")
-        # Force riot_api.is_configured() → True without touching the
+        # Force riot_api.is_configured() -> True without touching the
         # real key file. The fan-out helpers themselves are mocked, so
         # this is just the gate in _default_dispatch_fanout.
         self._orig_key_cache = RA._KEY_CACHE
@@ -127,7 +127,7 @@ class TestDispatcherWiring(_BaseFanoutCase):
 
 
 class TestRankedNameBlanking(_BaseFanoutCase):
-    """Acceptance #5: queue_id 420/440 → summoner_name blanked at storage."""
+    """Acceptance #5: queue_id 420/440 -> summoner_name blanked at storage."""
 
     def test_solo_queue_blanks_names(self):
         with mock.patch.object(RTC, "_FANOUT_DISPATCHER", lambda *_a: None):
@@ -212,7 +212,7 @@ class TestFanoutWorker(_BaseFanoutCase):
         for entry in cache["allies"] + cache["enemies"]:
             self.assertEqual(entry["rank"], "GOLD II 12 LP")
             self.assertEqual(entry["mastery_on_locked"], 41_500)
-        # Worker drained → partial flips False.
+        # Worker drained -> partial flips False.
         self.assertFalse(cache["partial"])
 
     def test_priority_2_populates_mains_winrate_streak(self):
@@ -281,7 +281,7 @@ class TestFanoutWorker(_BaseFanoutCase):
             RTC._fanout_worker(allies, enemies, queue_id=400)
         cache = RTC.get_team_context()
         assert cache is not None
-        # Unranked → rank stays "" (skeleton); pick_solo_rank returns None.
+        # Unranked -> rank stays "" (skeleton); pick_solo_rank returns None.
         for entry in cache["allies"]:
             self.assertEqual(entry["rank"], "")
 
@@ -290,7 +290,7 @@ class TestDefaultDispatchGate(_BaseFanoutCase):
     """`_default_dispatch_fanout` must skip when the API key is missing."""
 
     def test_no_key_skips_thread_spawn(self):
-        # Override is_configured() → False; thread must not spawn.
+        # Override is_configured() -> False; thread must not spawn.
         with mock.patch.object(RA, "is_configured", return_value=False):
             with mock.patch.object(threading, "Thread") as TStub:
                 RTC._default_dispatch_fanout([], [], 400)
@@ -305,7 +305,7 @@ class TestDefaultDispatchGate(_BaseFanoutCase):
                                return_value=RA._HttpResp(200, b"[]", {})):
             RTC._default_dispatch_fanout([], [], 400)
             # Snapshot the worker, then wait briefly for it to drain
-            # (empty roster → loop body skipped → _mark_complete →
+            # (empty roster -> loop body skipped -> _mark_complete ->
             # exit). 1s is generous.
             t = RTC._WORKER
         self.assertIsNotNone(t)
@@ -351,7 +351,7 @@ class TestUpdateEntryAtomicity(_BaseFanoutCase):
         self.assertEqual(p2["rank"], "")     # untouched
 
     def test_update_unknown_puuid_silent(self):
-        # Unknown PUUID → no-op, no exception, cache unchanged shape.
+        # Unknown PUUID -> no-op, no exception, cache unchanged shape.
         RTC._update_entry("allies", "P-NOPE", rank="X")
         cache = RTC.get_team_context()
         assert cache is not None

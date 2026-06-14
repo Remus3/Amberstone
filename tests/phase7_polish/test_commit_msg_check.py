@@ -36,7 +36,7 @@ class TestValidate(unittest.TestCase):
         ok, _ = CM.validate(subject)
         self.assertFalse(ok, f"expected reject for {subject!r}")
 
-    # ── Real-shapes from `git log` ────────────────────────────────────────────
+    # -- Real-shapes from `git log` --------------------------------------------
 
     def test_recent_commits_accepted(self):
         for subj in [
@@ -62,7 +62,7 @@ class TestValidate(unittest.TestCase):
         self._ok("feat(api)!: drop /v0 endpoints")
         self._ok("refactor!: rewrite scheduler")
 
-    # ── Auto-generated subjects (skipped, not parsed) ────────────────────────
+    # -- Auto-generated subjects (skipped, not parsed) ------------------------
 
     def test_merge_commits_pass_through(self):
         self._ok("Merge branch 'main' into feature/x")
@@ -73,7 +73,7 @@ class TestValidate(unittest.TestCase):
     def test_fixup_pass_through(self):
         self._ok("fixup! feat(arch): foo")
 
-    # ── Rejections ───────────────────────────────────────────────────────────
+    # -- Rejections -----------------------------------------------------------
 
     def test_empty_subject_rejected(self):
         self._bad("")

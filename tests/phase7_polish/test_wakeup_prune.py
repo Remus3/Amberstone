@@ -2,7 +2,7 @@
 tests/phase7_polish/test_wakeup_prune.py
 Phase 7 - auto-prune helper for WAKEUP_NOTES.md.
 
-Verifies the parse → render round-trip is byte-stable, and that pruning
+Verifies the parse -> render round-trip is byte-stable, and that pruning
 moves the correct session blocks newest-first into the archive.
 """
 import importlib.util
@@ -29,7 +29,7 @@ def _load_module():
 WP = _load_module()
 
 
-# ── Synthetic fixtures ────────────────────────────────────────────────────────
+# -- Synthetic fixtures --------------------------------------------------------
 
 HEADER = (
     "# WAKEUP_NOTES - RC hand-off ledger\n"
@@ -55,7 +55,7 @@ def _doc(sessions: list[str]) -> str:
     return HEADER + "\n---\n\n" + "\n---\n\n".join(body_parts)
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 class TestSplit(unittest.TestCase):
     def test_three_sessions_split_cleanly(self):
@@ -150,7 +150,7 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
         import shutil
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    # ── regex ────────────────────────────────────────────────────────────
+    # -- regex ------------------------------------------------------------
     def test_session_re_matches_dated_headings(self):
         for h in (
             "# 2026-05-17 (late) - KEYSTONE champ-select",
@@ -170,7 +170,7 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
             WP.SESSION_RE.match(
                 "# ✅ RESOLVED 2026-05-17 - champ-select wrong"))
 
-    # ── split ────────────────────────────────────────────────────────────
+    # -- split ------------------------------------------------------------
     def test_leading_pin_folds_into_header_not_sessions(self):
         text = _doc([
             self.PIN,
@@ -193,7 +193,7 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
         header, sessions = WP.split_sessions(original)
         self.assertEqual(WP.render(header, sessions).strip(), original.strip())
 
-    # ── prune ────────────────────────────────────────────────────────────
+    # -- prune ------------------------------------------------------------
     def test_prune_keeps_newest_dated_archives_oldest_pin_retained(self):
         WP.WAKEUP.write_text(_doc([
             self.PIN,
@@ -224,7 +224,7 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
 
     def test_prune_does_not_crash_on_pin_in_move_slice(self):
         # The original crash: a non-session block in the move slice hitting
-        # SESSION_RE.search(b).group(0) → AttributeError.
+        # SESSION_RE.search(b).group(0) -> AttributeError.
         WP.WAKEUP.write_text(_doc([
             self.PIN,
             self._dated("2026-05-17", "(late) - a"),

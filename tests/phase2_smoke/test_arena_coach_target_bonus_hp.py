@@ -27,7 +27,7 @@ class _StubCoach:
 
 
 class EstimateTargetBonusHpCurveTests(unittest.TestCase):
-    """Pin the round → estimated_bonus_hp curve."""
+    """Pin the round -> estimated_bonus_hp curve."""
 
     def test_round_zero_returns_zero(self) -> None:
         # Pre-game / state gap.
@@ -78,7 +78,7 @@ class EstimateTargetBonusHpCurveTests(unittest.TestCase):
 class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
     """Phase 4 batch 19 wire-in (s73) - primary path: item-summed HP.
 
-    When teams[] carries enemy items, the estimator resolves names →
+    When teams[] carries enemy items, the estimator resolves names ->
     DDragon HP and uses MAX across alive opponents. Heuristic only
     fires when no enemy items are visible. Verified against the live
     DDragon snapshot via ``daemon_slayer_resolver``.
@@ -116,7 +116,7 @@ class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
 
     def test_single_opp_with_items_uses_item_sum(self) -> None:
         # One alive enemy with Heartsteel (900 HP) + Riftmaker (350 HP)
-        # → expects 1250. Round count is 5 (heuristic would say 667),
+        # -> expects 1250. Round count is 5 (heuristic would say 667),
         # so item path winning proves the priority.
         c = _StubCoach(5)
         teams = [

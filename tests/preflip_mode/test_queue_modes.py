@@ -27,7 +27,7 @@ class TestModeKeyFromQueueId(unittest.TestCase):
     def test_aram_mayhem_kiwi_queue_returns_aram(self):
         # ARAM Mayhem (KIWI gameMode) reports queueId 2400 - confirmed
         # s220 from the operator's stashed post-game LCU match payload.
-        # Pre-fix this was unmapped → mode_key stayed "client" → the
+        # Pre-fix this was unmapped -> mode_key stayed "client" -> the
         # champ-select bench / quick-swap UI never rendered for Mayhem.
         self.assertEqual(mode_key_from_queue_id(2400), "aram")
         self.assertEqual(mode_key_from_queue_id("2400"), "aram")

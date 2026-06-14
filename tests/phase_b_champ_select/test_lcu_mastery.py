@@ -1,8 +1,8 @@
 """Priority 8 (2026-05-10) - LCU mastery cache + capture_state plumbing.
 
 Validates the new gamepc_lcu_agent path:
-  /lol-summoner/v1/current-summoner → summonerId (cached once, surfaced for downstream)
-  /lol-champion-mastery/v1/local-player/champion-mastery → mastery map
+  /lol-summoner/v1/current-summoner -> summonerId (cached once, surfaced for downstream)
+  /lol-champion-mastery/v1/local-player/champion-mastery -> mastery map
 
 The transformed payload lives at ``state["lcu"]["mastery"]`` once the agent
 sees a session-relevant phase (Lobby / ChampSelect / GameStart / InProgress
@@ -24,7 +24,7 @@ import gamepc_lcu_agent as agent  # noqa: E402
 
 
 def _patch_lcu(responses: dict[tuple[str, str], object]):
-    """Return a side-effect that maps (method, path) → response.
+    """Return a side-effect that maps (method, path) -> response.
 
     ``responses[(method, path)]`` is either:
       * a (payload, err) tuple - returned directly
@@ -144,7 +144,7 @@ class TestMasteryFetch(unittest.TestCase):
             agent._maybe_refresh_mastery()
             agent._mastery_cache["fetched_at"] -= (agent.MASTERY_TTL_S + 1)
             agent._maybe_refresh_mastery()
-        # summoner cached → 1 call; mastery refetched → 2 calls. Total 3.
+        # summoner cached -> 1 call; mastery refetched -> 2 calls. Total 3.
         self.assertEqual(m.call_count, 3)
 
     def test_returns_none_on_unexpected_payload_shape(self) -> None:
@@ -166,7 +166,7 @@ class TestCaptureStatePlumbing(unittest.TestCase):
 
     def setUp(self) -> None:
         agent._reset_mastery_cache_for_tests()
-        # capture_state() short-circuits on ensure_lcu_conn → True, then
+        # capture_state() short-circuits on ensure_lcu_conn -> True, then
         # walks the phase branches. We stub both with mock.
         self._ensure_patch = mock.patch.object(
             agent, "ensure_lcu_conn", return_value=True,

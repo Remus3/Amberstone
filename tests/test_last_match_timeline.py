@@ -4,7 +4,7 @@ dashboard/builders.py.
 The parser turns a Riot Match-V5 timeline payload (which nests frames
 under ``info``; a flat top-level ``frames`` list is also accepted) into
 the per-minute gold/XP/CS differential series + objective ribbon the
-Post Game Review "Timeline" tab renders. Diffs are ally_total −
+Post Game Review "Timeline" tab renders. Diffs are ally_total -
 enemy_total (positive = operator's team ahead).
 
 Synthetic-only - no DB, no live Riot API. The numbers are hand-chosen
@@ -80,14 +80,14 @@ class SeriesAggregationTests(unittest.TestCase):
             _frame(60000, (1000, 0, 0), (900, 0, 0)),
         ]}
         out = _enrich_match_timeline(tl, _detail(), 200)
-        # ally is now team 200 → diff = 5*(900-1000) = -500
+        # ally is now team 200 -> diff = 5*(900-1000) = -500
         self.assertEqual(out["series"]["gold"], [0, -500])
 
     def test_unknown_my_team_falls_back_to_first_seen(self):
         tl = {"frames": [_frame(0, (500, 0, 0), (500, 0, 0)),
                          _frame(60000, (1000, 0, 0), (900, 0, 0))]}
         out = _enrich_match_timeline(tl, _detail(), 999)
-        # teams_seen sorted → [100, 200]; fallback ally=100
+        # teams_seen sorted -> [100, 200]; fallback ally=100
         self.assertEqual(out["series"]["gold"], [0, 500])
 
 
@@ -122,11 +122,11 @@ class EventRibbonTests(unittest.TestCase):
         evs = self._run()["events"]
         kinds = [(e["kind"], e["clock"], e["team"]) for e in evs]
         self.assertEqual(kinds, [
-            ("first_blood", "0:45",  "ally"),    # killerId 1 → team 100 (mine)
-            ("dragon",      "10:00", "ally"),    # killerId 2 → team 100
-            ("tower",       "18:20", "ally"),    # teamId 200 LOST it → ally took
-            ("baron",       "20:00", "enemy"),   # killerTeamId 200 → enemy
-            ("inhibitor",   "21:40", "enemy"),   # killerId 8 → team 200
+            ("first_blood", "0:45",  "ally"),    # killerId 1 -> team 100 (mine)
+            ("dragon",      "10:00", "ally"),    # killerId 2 -> team 100
+            ("tower",       "18:20", "ally"),    # teamId 200 LOST it -> ally took
+            ("baron",       "20:00", "enemy"),   # killerTeamId 200 -> enemy
+            ("inhibitor",   "21:40", "enemy"),   # killerId 8 -> team 200
         ])
 
     def test_dragon_subtype_label(self):
@@ -171,7 +171,7 @@ class GuardTests(unittest.TestCase):
             {"timestamp": 0, "participantFrames": {
                 "1": _pf(1, 500, 0, 0),
                 "2": "not-a-dict",          # skipped, no raise
-                "x": {"totalGold": "junk"},  # bad pid resolves, gold→0
+                "x": {"totalGold": "junk"},  # bad pid resolves, gold->0
             }, "events": ["not-a-dict", {"type": "CHAMPION_KILL",
                                           "timestamp": 1000, "killerId": 1}]},
             {"timestamp": 60000, "participantFrames": {

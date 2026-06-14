@@ -1,9 +1,9 @@
 """s170 (2026-05-11) - LCU lobby members forwarder + lobby field expansion.
 
 Validates the new gamepc_lcu_agent path that forwards:
-  /lol-lobby/v2/lobby → state["lobby"].members[], local_member, is_leader,
+  /lol-lobby/v2/lobby -> state["lobby"].members[], local_member, is_leader,
                        party_type, queue_name
-  /lol-matchmaking/v1/search → state["lobby"].search_state
+  /lol-matchmaking/v1/search -> state["lobby"].search_state
 
 The dashboard's view-lobby panel (_lobbyViewRefresh + _renderTop8 in
 web/js/main.js) consumes these fields; before s170 they ran on placeholders.
@@ -22,7 +22,7 @@ import gamepc_lcu_agent as agent  # noqa: E402
 
 
 def _patch_lcu(responses):
-    """Map (method, path) → response. Same helper pattern as
+    """Map (method, path) -> response. Same helper pattern as
     test_lcu_mastery.py - unknown paths return (None, "unmocked").
     """
     def side(method, path, body=None):
@@ -58,7 +58,7 @@ class TestLocalSummonerIdMatching(unittest.TestCase):
     def test_no_local_id_falls_back_to_islocalmember(self):
         raw = {"summonerId": 12345, "isLocalMember": True,
                "gameName": "Me", "tagLine": "NA1"}
-        # local_summoner_id=None → use LCU field.
+        # local_summoner_id=None -> use LCU field.
         m = agent._slim_lobby_member(raw, local_summoner_id=None)
         self.assertTrue(m["is_self"])
 
@@ -242,7 +242,7 @@ class TestDeriveSearchState(unittest.TestCase):
         self.assertEqual(agent._derive_search_state("ChampSelect", None), "Idle")
 
     def test_ignores_garbage_payload(self):
-        # Non-dict / unexpected shape → fall back to phase mapping.
+        # Non-dict / unexpected shape -> fall back to phase mapping.
         self.assertEqual(agent._derive_search_state("Lobby", "garbage"), "Idle")
         self.assertEqual(agent._derive_search_state("Matchmaking", []), "Searching")
 

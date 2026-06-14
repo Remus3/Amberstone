@@ -1,0 +1,99 @@
+{
+  "run_id": "p2w5-tests-c16",
+  "verdict": "PROCEED",
+  "suite": {
+    "passed": 7885,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 2,
+    "no_tests_ran": false,
+    "exit_code": 0,
+    "cmd": "\"C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe\" -m pytest tests/ -q -p no:cacheprovider",
+    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+  },
+  "git": {
+    "clean": false,
+    "dirty_files": [
+      "M tests/audit7_h01/test_h01_bridge_health_alarm.py",
+      " M tests/conftest.py",
+      " M tests/fu01_minimap/test_minimap_bbox.py",
+      " M tests/fu02_team_context/test_fanout.py",
+      " M tests/fu02_team_context/test_lcu_agent_refresh.py",
+      " M tests/fu02_team_context/test_riot_api.py",
+      " M tests/fu02_team_context/test_riot_api_cache.py",
+      " M tests/phase2_smoke/test_aram_coach_target_bonus_hp.py",
+      " M tests/phase2_smoke/test_arena_augment_hud.py",
+      " M tests/phase2_smoke/test_arena_coach_target_bonus_hp.py",
+      " M tests/phase2_smoke/test_brawl_coach_target_bonus_hp.py",
+      " M tests/phase2_smoke/test_coach_state_parsing.py",
+      " M tests/phase2_smoke/test_daemon_slayer_resolver_modes.py",
+      " M tests/phase2_smoke/test_disabled_placeholders.py",
+      " M tests/phase2_smoke/test_feature_policy.py",
+      " M tests/phase2_smoke/test_metrics_cache.py",
+      " M tests/phase2_smoke/test_perf_tracker_ds_snapshot.py",
+      " M tests/phase7_polish/test_commit_msg_check.py",
+      " M tests/phase7_polish/test_start_daemon_slayer_logging.py",
+      " M tests/phase7_polish/test_wakeup_prune.py",
+      " M tests/phase8_smoke/test_sr_draft_profile_engine.py",
+      " M tests/phase_b_champ_select/test_lcu_agent_phase_b.py",
+      " M tests/phase_b_champ_select/test_lcu_lobby_members.py",
+      " M tests/phase_b_champ_select/test_lcu_mastery.py",
+      " M tests/preflip_mode/test_queue_modes.py",
+      " M tests/snapshot_panels/test_panel_snapshots.py",
+      " M tests/snapshot_regressions/test_app_authority.py",
+      " M tests/snapshot_regressions/test_snapshot_authority.py",
+      " M tests/test_archetype_mismatch.py",
+      " M tests/test_archetype_picks.py",
+      " M tests/test_augment_external_source.py",
+      " M tests/test_augment_recommender.py",
+      " M tests/test_build_order.py",
+      " M tests/test_build_order_no_double_guard.py",
+      " M tests/test_champion_aliases.py",
+      " M tests/test_champion_loadout_autogen.py",
+      " M tests/test_cs_retention.py",
+      " M tests/test_decision_detector_adr007.py",
+      " M tests/test_enemy_stats.py",
+      " M tests/test_frozen_files_sync.py",
+      " M tests/test_last_match_surrender.py",
+      " M tests/test_last_match_timeline.py",
+      " M tests/test_mode_flap_deferral_dom.py",
+      " M tests/test_p2w1_app_a.py",
+      " M tests/test_routes_pickban.py",
+      " M tests/test_routes_replay_events.py",
+      " M tests/test_state_builder_archetype_nudge.py",
+      " M tests/test_view_router_state.py",
+      "?? ops/audit/p2w5_partition.py",
+      "?? ops/audit/p2w5_pytest.txt",
+      "?? ops/audit/p2w5_slices.json",
+      "?? ops/audit/p2w5_sweep_sliceA.py",
+      "?? ops/audit/p2w5_truth_gate_claims.json"
+    ],
+    "head": "e06a68a1 docs: mark spec-hiddenimports DEFER shipped (5669d682) + WAKEUP follow-up"
+  },
+  "ci": {
+    "status": "skipped"
+  },
+  "slices": [
+    {
+      "id": "W5-suite",
+      "claim": "Cycle 16 P2-W5 test-corpus sweep: full tests/ suite green, byte-identical count to the cycle-15 baseline (cosmetic ASCII-only edits, no logic/count change).",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "W5-defer-preserved",
+      "claim": "The 2 load-bearing non-ASCII files were NOT gutted: aram-coach U+2192 item_build wire strings and wakeup_prune SESSION_RE PIN-emoji fixtures survive.",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    },
+    {
+      "id": "W5-swept",
+      "claim": "Decorative glyphs converted to ASCII across the corpus (sample: arrow -> ASCII in last_match_timeline).",
+      "verdict": "CONFIRM",
+      "discrepancies": []
+    }
+  ],
+  "quarantined": [],
+  "global_discrepancies": [],
+  "action": "commit allowed"
+}

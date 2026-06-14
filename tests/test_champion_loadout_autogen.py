@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-# Project root: tests/ → C:\Riot Commander\
+# Project root: tests/ -> C:\Riot Commander\
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -81,7 +81,7 @@ class SummonersForTests(unittest.TestCase):
         self.assertEqual(autogen.summoners_for("sr", "enchanter"), [4, 3])
 
     def test_unknown_archetype_falls_back_to_flash_ignite(self):
-        # Defensive: unknown arch → mid-default 4+14
+        # Defensive: unknown arch -> mid-default 4+14
         self.assertEqual(autogen.summoners_for("sr", "xyz"), [4, 14])
 
 
@@ -93,7 +93,7 @@ class ResolveArchetypeTripletTests(unittest.TestCase):
         self.assertEqual(slots, ["primary", "secondary", "flavor"])
         self.assertEqual(archs[0], "bruiser")
         self.assertEqual(archs[1], "tank")
-        # Flavor for bruiser primary → carry per heuristic
+        # Flavor for bruiser primary -> carry per heuristic
         self.assertEqual(archs[2], "carry")
 
     def test_primary_equals_secondary_picks_alternate_secondary(self):
@@ -104,8 +104,8 @@ class ResolveArchetypeTripletTests(unittest.TestCase):
 
     def test_flavor_avoids_collision(self):
         # If heuristic would pick something already in triplet, cascade.
-        # bruiser primary, carry secondary → heuristic flavor would be carry
-        # (collision) → must pick something else.
+        # bruiser primary, carry secondary -> heuristic flavor would be carry
+        # (collision) -> must pick something else.
         triplet = autogen.resolve_archetype_triplet("bruiser", "carry")
         archs = [a for _, a in triplet]
         self.assertEqual(len(set(archs)), 3)
@@ -116,7 +116,7 @@ class ResolveArchetypeTripletTests(unittest.TestCase):
 
     def test_enchanter_flavor_is_mage(self):
         triplet = autogen.resolve_archetype_triplet("enchanter", "mage")
-        # heuristic third is mage but secondary is mage → cascade to next
+        # heuristic third is mage but secondary is mage -> cascade to next
         archs = [a for _, a in triplet]
         self.assertEqual(len(set(archs)), 3)
         self.assertEqual(archs[0], "enchanter")
@@ -213,7 +213,7 @@ class GenerateForChampionTests(unittest.TestCase):
         self.assertIn("bruiser", new_vars)  # curated preserved
 
     def test_modes_isolated(self):
-        # SR curated saturated, ARAM empty → only ARAM gets auto entries
+        # SR curated saturated, ARAM empty -> only ARAM gets auto entries
         curated = {
             f"v{i}": {"label": f"v{i}", "modes": ["sr"], "runes": {},
                       "summoners": [4, 12], "items": ["X"]}
@@ -238,14 +238,14 @@ class GenerateForChampionTests(unittest.TestCase):
             _new_vars, stats = autogen.generate_for_champion(
                 "Aatrox", curated, modes=("sr", "aram"), level=11,
             )
-        # 1 counted in BOTH sr and aram → 2 auto each
+        # 1 counted in BOTH sr and aram -> 2 auto each
         self.assertEqual(stats["sr"]["curated"], 1)
         self.assertEqual(stats["sr"]["auto"], 2)
         self.assertEqual(stats["aram"]["curated"], 1)
         self.assertEqual(stats["aram"]["auto"], 2)
 
     def test_ds_engine_miss_marks_unfilled(self):
-        # DS returns None (engine down) → all 3 slots unfilled
+        # DS returns None (engine down) -> all 3 slots unfilled
         with mock.patch.object(autogen.dsc, "rank_for_primary_archetype",
                                return_value=None):
             new_vars, stats = autogen.generate_for_champion(
@@ -378,7 +378,7 @@ class EnsureDefaultPerModeTests(unittest.TestCase):
         self.assertEqual(entry["default_per_mode"]["sr"], "custom-bruiser")
 
     def test_no_default_when_auto_primary_missing(self):
-        # DS engine returned nothing for primary → no auto-primary key →
+        # DS engine returned nothing for primary -> no auto-primary key ->
         # don't fabricate a broken default pointer.
         entry = {"variants": {"auto-sr-secondary-tank": {"modes": ["sr"]}}}
         autogen.ensure_default_per_mode(entry, "sr", "bruiser")

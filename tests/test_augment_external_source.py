@@ -2,7 +2,7 @@
 tests/test_augment_external_source.py - CLAUDE #88 Task 2 + 3.
 
 Covers the external Mayhem win-rate prior fetch/parse/cache/degrade and
-the cherry-augments.json metadata cache + OCR-name→id reconciliation.
+the cherry-augments.json metadata cache + OCR-name->id reconciliation.
 HTTP is monkey-patched (`_http_get` / `_http_get_json` are encapsulated
 for exactly this - riot_api pattern); the cache dir is redirected to a
 temp tree so no real network or repo writes happen.
@@ -125,7 +125,7 @@ class RefreshAndDegradeTests(_TmpCacheMixin):
         self.assertTrue(t.has_data)
         self.assertEqual(t.count, 2)
         self.assertTrue((self._root / "tp" / "mayhem_augment_stats.json").exists())
-        # second call with file present + not force → no network (boom proves it)
+        # second call with file present + not force -> no network (boom proves it)
         with mock.patch.object(X, "_http_get_json", mock.Mock(side_effect=AssertionError)):
             t2 = X.refresh_cache("mayhem", force=False)
         self.assertEqual(t2.count, 2)
@@ -197,7 +197,7 @@ class MetaTests(_TmpCacheMixin):
     def test_get_augment_meta_never_raises(self):
         with mock.patch.object(X, "_http_get",
                                mock.Mock(side_effect=X.AugmentSourceError("x"))):
-            m = X.get_augment_meta()      # no cache, outage → empty, no raise
+            m = X.get_augment_meta()      # no cache, outage -> empty, no raise
         self.assertFalse(m.has_data)
 
 

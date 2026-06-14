@@ -1,8 +1,8 @@
 """
 tests/test_augment_recommender.py - CLAUDE #88 Task 4 + 5.
 
-Recommender math (Laplace / n/(n+K) shrinkage / greedy synergy), the §4
-external blend at its three regimes (w=0 / mid / w→1), own-history scan
+Recommender math (Laplace / n/(n+K) shrinkage / greedy synergy), the section 4
+external blend at its three regimes (w=0 / mid / w->1), own-history scan
 from a synthetic match_history.db (win derivation, tracked-puuid resolve,
 KIWI/CHERRY mode filter), and the arena_coach integration helper. No
 network: external prior + meta are stubbed.
@@ -129,7 +129,7 @@ class SmoothingMathTests(unittest.TestCase):
         h = R.OwnHistory(mode="mayhem", games={5: 4}, wins={5: 1})
         # (1 + 1) / (4 + 2*1) = 2/6
         self.assertAlmostEqual(R._own_wr(h, 5, 1.0), 2 / 6)
-        # unseen → (0+1)/(0+2) = 0.5 neutral
+        # unseen -> (0+1)/(0+2) = 0.5 neutral
         self.assertAlmostEqual(R._own_wr(h, 999, 1.0), 0.5)
 
     def test_pair_wr(self):
@@ -141,7 +141,7 @@ class SmoothingMathTests(unittest.TestCase):
 
 
 class BlendRegimeTests(unittest.TestCase):
-    """§4 blend at w=0, mid, w→1."""
+    """section 4 blend at w=0, mid, w->1."""
 
     def tearDown(self):
         R.reset_cache()
@@ -157,7 +157,7 @@ class BlendRegimeTests(unittest.TestCase):
                                stage=stage, db_path=p)
 
     def test_w_zero_is_pure_external(self):
-        # n_own=0 → w=0 → score == ext_wr, confidence 0
+        # n_own=0 -> w=0 -> score == ext_wr, confidence 0
         res = self._run([], [1088], priors=_priors({"1088": 0.70}))
         s = res.top
         self.assertEqual(s.n_own, 0)
@@ -167,8 +167,8 @@ class BlendRegimeTests(unittest.TestCase):
         self.assertTrue(res.used_external)
 
     def test_w_mid_blends(self):
-        # games[1088]=5 all wins → own_wr=(5+1)/(5+2)=6/7; ext=0.5;
-        # w=5/(5+5)=0.5 → base = 0.5*6/7 + 0.5*0.5
+        # games[1088]=5 all wins -> own_wr=(5+1)/(5+2)=6/7; ext=0.5;
+        # w=5/(5+5)=0.5 -> base = 0.5*6/7 + 0.5*0.5
         rows = [([1088], True, "KIWI", 2400)] * 5
         res = self._run(rows, [1088], priors=_priors({"1088": 0.50}))
         s = res.top
@@ -182,7 +182,7 @@ class BlendRegimeTests(unittest.TestCase):
         res = self._run(rows, [1088], priors=_priors({"1088": 0.10}))
         s = res.top
         self.assertGreater(s.blend_w, 0.9)            # 50/55
-        # heavily own (≈ (50+1)/(50+2)=0.98), barely pulled by ext 0.10
+        # heavily own (~ (50+1)/(50+2)=0.98), barely pulled by ext 0.10
         self.assertGreater(s.score, 0.88)
 
     def test_unknown_only_neutral_conf_zero(self):
@@ -208,8 +208,8 @@ class SynergyTests(unittest.TestCase):
 
     def test_greedy_synergy_shrunk_and_signed(self):
         # A(=100) in 4 games: 2 with P(=200) both won, 2 solo both lost.
-        #   games[A]=4 wins[A]=2 → own_wr(A)=(2+1)/(4+2)=0.5
-        #   pair(A,P): m=2 wins=2 → pair_wr=(2+1)/(2+2)=0.75
+        #   games[A]=4 wins[A]=2 -> own_wr(A)=(2+1)/(4+2)=0.5
+        #   pair(A,P): m=2 wins=2 -> pair_wr=(2+1)/(2+2)=0.75
         #   shrink = 2/(2+5)=0.285714 ; contrib = shrink*(0.75-0.5)
         rows = [
             ([100, 200], True,  "KIWI", 2400),
@@ -224,7 +224,7 @@ class SynergyTests(unittest.TestCase):
                                lambda: _meta({"A": 100})):
             res = R.recommend([100], [200], mode="mayhem", db_path=p)
         s = res.top
-        self.assertAlmostEqual(s.base, 0.5)            # no ext → own-only
+        self.assertAlmostEqual(s.base, 0.5)            # no ext -> own-only
         expected_syn = (2 / 7) * (0.75 - 0.5)
         self.assertAlmostEqual(s.synergy, expected_syn)
         self.assertAlmostEqual(s.score, 0.5 + expected_syn)
@@ -249,7 +249,7 @@ class RecommendContractTests(unittest.TestCase):
         self.assertIsNone(res.top)
 
     def test_stable_tiebreak_on_input_order(self):
-        # all unknown → all score 0.5 → order preserved
+        # all unknown -> all score 0.5 -> order preserved
         with mock.patch.object(R._ext, "get_priors", lambda m: _priors({})), \
              mock.patch.object(R._ext, "get_augment_meta", lambda: _meta({})):
             res = R.recommend([5, 9, 2], [], mode="mayhem",

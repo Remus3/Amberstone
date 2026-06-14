@@ -101,7 +101,7 @@ class TestLevelDerivation(unittest.TestCase):
         self.assertAlmostEqual(s.armor, 75.0, places=0)
 
     def test_enemy_levels_overrides_level_arg(self):
-        # enemy_levels supplied → averaged + used directly.
+        # enemy_levels supplied -> averaged + used directly.
         s = compute_enemy_stats("sr", level=1, enemy_levels=[11, 11, 11, 11, 11])
         self.assertEqual(s.armor, 95.0)  # SR @ lvl 11
 
@@ -124,7 +124,7 @@ class TestLevelDerivation(unittest.TestCase):
 
 class TestBonusHpOverride(unittest.TestCase):
     def test_override_replaces_heuristic_value(self):
-        # Without override: bonus_hp ≈ max_hp - 600 base.
+        # Without override: bonus_hp ~ max_hp - 600 base.
         s_default = compute_enemy_stats("sr", level=11)
         # With override: take exactly the override value.
         s_override = compute_enemy_stats("sr", level=11, bonus_hp_override=1500.0)
@@ -162,13 +162,13 @@ class TestCaps(unittest.TestCase):
         self.assertGreaterEqual(s.bonus_hp, 0)
 
     def test_level_clamped_to_18(self):
-        # Garbage level 99 → treated as 18.
+        # Garbage level 99 -> treated as 18.
         s_high  = compute_enemy_stats("sr", level=99)
         s_cap   = compute_enemy_stats("sr", level=18)
         self.assertEqual(s_high.armor, s_cap.armor)
 
     def test_level_clamped_to_1(self):
-        # Negative / zero level → treated as 1.
+        # Negative / zero level -> treated as 1.
         s_zero = compute_enemy_stats("sr", level=0)
         s_one  = compute_enemy_stats("sr", level=1)
         self.assertEqual(s_zero.armor, s_one.armor)
