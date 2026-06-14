@@ -46,7 +46,7 @@ _log = logging.getLogger("rc.augment_recommender")
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DB_PATH = _PROJECT_ROOT / "data" / "match_history.db"
 
-# Mode → (gameMode, queueId set) for filtering lcu_match_detail.
+# Mode -> (gameMode, queueId set) for filtering lcu_match_detail.
 _MODE_FILTERS = {
     "mayhem": ("KIWI", {2400}),
     "arena": ("CHERRY", {1700, 1710, 1750}),
@@ -192,7 +192,7 @@ def _scan_own_history(mode: str, db_path: Path) -> OwnHistory:
         for a in augs:
             games[a] = games.get(a, 0) + 1
             wins[a] = wins.get(a, 0) + won
-        for a, b in combinations(augs, 2):  # augs already sorted → a<b
+        for a, b in combinations(augs, 2):  # augs already sorted -> a<b
             pair_games[(a, b)] = pair_games.get((a, b), 0) + 1
             pair_wins[(a, b)] = pair_wins.get((a, b), 0) + won
 

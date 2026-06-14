@@ -1,4 +1,4 @@
-# arch: raw JSON → snapshot dataclass | section=vision | frozen=yes
+# arch: raw JSON -> snapshot dataclass | section=vision | frozen=yes
 """
 core/game_snapshot.py
 Phase 1 Step 3 - Mode-aware state envelope and payload types.

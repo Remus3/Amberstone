@@ -42,8 +42,8 @@ _id_to_champ: dict[int, str] = {}
 _idx_lock = threading.Lock()
 
 # AUDIT 2026-04-29 (item 8): LRU cache for match_detail(). Matches are
-# immutable once recorded - no invalidation needed. 8 entries × ~75 KB
-# JSON ≈ 600 KB RAM. Returning to a previously-viewed match is now ~0
+# immutable once recorded - no invalidation needed. 8 entries x ~75 KB
+# JSON ~ 600 KB RAM. Returning to a previously-viewed match is now ~0
 # ms instead of 7 ms warm / 100 ms cold-after-idle.
 import collections as _collections
 _MATCH_DETAIL_CACHE: "_collections.OrderedDict[str, dict]" = _collections.OrderedDict()

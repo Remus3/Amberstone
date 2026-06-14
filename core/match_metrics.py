@@ -64,8 +64,8 @@ _INDEX_DDL = [
 ]
 
 # Valid provenance tiers (see feedback_metric_provenance_tagging memory).
-# Coach weighting guidance: source_truth=1.0, inferred_tight≈0.75,
-# inferred_wide≈0.4. These are the ONLY accepted values.
+# Coach weighting guidance: source_truth=1.0, inferred_tight~0.75,
+# inferred_wide~0.4. These are the ONLY accepted values.
 PROVENANCE_TIERS = ("source_truth", "inferred_tight", "inferred_wide")
 
 # Re-queue ceiling for Recorder.flush failure recovery (deep-audit
@@ -169,7 +169,7 @@ class Recorder:
         callers deriving values with math should pass 'inferred_tight'
         (small-margin) or 'inferred_wide' (notable uncertainty)."""
         if provenance not in PROVENANCE_TIERS:
-            provenance = "inferred_wide"  # unknown tier → treat as widest
+            provenance = "inferred_wide"  # unknown tier -> treat as widest
         wall = datetime.now(timezone.utc).isoformat()
         row = (
             match_id, session_id, champion, mode,
@@ -225,8 +225,8 @@ class Recorder:
         with self._lock:
             return len(self._buf)
 
-    # ─── Payload snapshot helper ───────────────────────────────────────
-    # Map from state-payload key → (recorder metric_key, metric_type).
+    # --- Payload snapshot helper ---------------------------------------
+    # Map from state-payload key -> (recorder metric_key, metric_type).
     # When the coach writes coaching_data.json, a caller can invoke
     # record_state_snapshot(payload, match_id=..., game_time_s=...) to
     # emit every tracked field to match_metrics in one call. Keys absent

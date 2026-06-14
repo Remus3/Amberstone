@@ -118,7 +118,7 @@ class Coach:
             if hasattr(self._engine, "_last_call"): self._engine._last_call = 0
             self._engine.submit(self._last_data)
 
-    # ── Poll loop ─────────────────────────────────────────────────────────────
+    # -- Poll loop -------------------------------------------------------------
 
     def _poll_loop(self):
         _last_sr = (0, 0)
@@ -156,7 +156,7 @@ class Coach:
         state["is_boon_round"] = round_key == BOON_ROUND
         state["tempo_note"]  = TEMPO_MILESTONES.get(stage_round_str, "")
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
+    # -- Helpers ---------------------------------------------------------------
 
     def _ensure_data_files(self):
         for path, default in [

@@ -39,8 +39,8 @@ try:
     RELAY_TOKEN = _get_vision_token()
 except ImportError:
     RELAY_TOKEN = "8e8f131e212b329438218eca27372dde"
-RELAY_MAX_AGE_S = 12.0  # treat older snapshots as stale → fall through to direct
-                        # 2026-04-26: bumped from 5.0 → 12.0. Relay polls every 1s
+RELAY_MAX_AGE_S = 12.0  # treat older snapshots as stale -> fall through to direct
+                        # 2026-04-26: bumped from 5.0 -> 12.0. Relay polls every 1s
 LCU_RELAY_URL     = "http://127.0.0.1:8889/latest-lcu"
 LCU_RELAY_MAX_AGE = 20.0  # LCU agent posts every 1s; 20s is a generous staleness guard
                         # but network jitter + Game-PC contention during teamfights
@@ -133,7 +133,7 @@ class _PollerMixin:
 
     def read_game(self):
         """Full game state read. Returns dict or None if game not active."""
-        # Relay path (Game-PC pushes localhost API → vision server cache)
+        # Relay path (Game-PC pushes localhost API -> vision server cache)
         relay_raw = self._try_relay()
         if isinstance(relay_raw, dict):
             self.raw = relay_raw

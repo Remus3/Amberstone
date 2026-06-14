@@ -137,7 +137,7 @@ from dashboard._champ_select import (  # noqa: E402, F401
 
 
 
-# ── Cross-Claude bridge ─────────────────────────────────────────────────
+# -- Cross-Claude bridge -------------------------------------------------
 
 # Tier 2 helper-shake (2026-05-01): the bridge log moved to
 

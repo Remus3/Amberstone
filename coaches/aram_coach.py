@@ -138,8 +138,8 @@ def _dedup_build_vs_owned(item_build: str, items_display: str) -> str:
                                   for p in peer_set)
             if owned_in_class:
                 banned_peers.update(_norm(p) for p in peer_set)
-    # AUDIT 2026-04-26: Haiku now returns items COMMA-separated (not "→");
-    # splitting only on "→" produced a single 6-item blob whose normalised
+    # AUDIT 2026-04-26: Haiku now returns items COMMA-separated (not "->");
+    # splitting only on "->" produced a single 6-item blob whose normalised
     # form contained every owned item as a substring, so the dedup
     # nuked the entire build. Split on BOTH separators so individual
     # items get matched correctly.
@@ -160,7 +160,7 @@ if str(_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_APP_DIR))
 
 
-# ── Challenger system prompt ───────────────────────────────────────────────────
+# -- Challenger system prompt ---------------------------------------------------
 _SYSTEM = """\
 You are a Challenger-level ARAM{mayhem_tag} coach on Howling Abyss.
 
@@ -326,7 +326,7 @@ Rules:
 """
 
 
-# ── Rune recommendation loader ─────────────────────────────────────────────────
+# -- Rune recommendation loader -------------------------------------------------
 
 def _load_rune_rec(champion: str, mode: str = "aram") -> str:
     """Load recommended rune string for a champion from meta_build JSON."""
@@ -396,9 +396,9 @@ def _fmt_abilities(abilities: dict) -> str:
     return " | ".join(parts) or "unknown"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Coach class
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 class Coach(BaseCoach):
     """ARAM / ARAM Mayhem coach. Inherits full lifecycle from BaseCoach."""
@@ -407,8 +407,8 @@ class Coach(BaseCoach):
     _MODE_NAME     = "aram"
     _DATA_FILENAME = "aram_coaching_data.json"
 
-    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 15→25 /
-    # DEBOUNCE 8→12 to cut API call rate ~33%.
+    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 15->25 /
+    # DEBOUNCE 8->12 to cut API call rate ~33%.
     # Dynamic debounce: _DEBOUNCE_S is reactive (state change detected);
     # _STABLE_DEBOUNCE_S applies when no kill/item/level/hp change detected.
     _VISION_INTERVAL    = 25.0
@@ -512,7 +512,7 @@ class Coach(BaseCoach):
             # (2026-04-25) Always-on champion + self-spell write - pulls
             # from self._last_state (live-client snapshot, refreshed every
             # 1.5s by _base_coach._poll_loop), so the dashboard's header
-            # self-spells pill flips D/F → Flash/Heal as soon as the
+            # self-spells pill flips D/F -> Flash/Heal as soon as the
             # vision tick fires (~every 8-12s on this mode), not gated
             # on the slower coach-Haiku-API tick. Same envelope shape as
             # the API tick path; harmless if pre-existing keys differ.
@@ -537,7 +537,7 @@ class Coach(BaseCoach):
         except Exception as exc:
             logger.debug("ARAM vision run: %s", exc)
 
-    # ── Target-bonus-HP estimator (s74 - Phase 4 batch 19 wire-in) ──────────
+    # -- Target-bonus-HP estimator (s74 - Phase 4 batch 19 wire-in) ----------
 
     def _estimate_target_bonus_hp(self, state: dict | None = None) -> float:
         """Estimate enemy bonus HP from items. ARAM port of arena_coach's
@@ -816,7 +816,7 @@ class Coach(BaseCoach):
             # ARAM has no recall - the word "fountain" in Action/Immediate
             # is misleading unless the user has the "Cheater" augment.
             # Strip "FOUNTAIN" from Action label and rewrite Immediate
-            # references to "fountain" → "respawn" so the coach never
+            # references to "fountain" -> "respawn" so the coach never
             # tells the user to leave lane to base.
             _augs = (state.get("augments") or [])
             _aug_str = ", ".join(_augs) if isinstance(_augs, list) else str(_augs)
@@ -881,7 +881,7 @@ class Coach(BaseCoach):
                 "item_extra":    flds.get("item extra", ""),
                 # Per-item coach reasons - keyed by item name so the UI
                 # can show "why this next" on the Recommended tile hover
-                # (opts.reasons → tile.title in renderItemTiles).
+                # (opts.reasons -> tile.title in renderItemTiles).
                 "item_build_reasons": _parse_item_reasons(flds.get("item reasons", "")),
             })
             mirror_live_stats(cur, state)
@@ -894,7 +894,7 @@ class Coach(BaseCoach):
 
             safe_write(self._out, cur)
 
-            # ── Live metric streaming (feature-flagged) ──────────────
+            # -- Live metric streaming (feature-flagged) --------------
             # Shared gate + per-match streamer dispatch in core.live_metrics
             # (env RC_LIVE_METRICS=1 OR config live_metrics_enabled). Decides
             # internally whether this tick crosses a milestone + emits 60s
@@ -957,9 +957,9 @@ class Coach(BaseCoach):
             logger.error("ARAM aug select: %s", exc)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # State parser
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 def _parse_state(raw: dict) -> dict:
     ap    = raw.get("activePlayer", {})

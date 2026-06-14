@@ -51,7 +51,7 @@ def _nearest_frame(conn, match_id: str, participant_id: int, target_ms: int):
     """Return the timeline_frames row closest to target_ms for this
     participant. None if no frames exist near the target."""
     # Frames are minute-granular (typically 60000ms intervals). Find the
-    # one within ±90s of target.
+    # one within +/-90s of target.
     row = conn.execute("""
         SELECT timestamp_ms, current_gold, total_gold, xp, level,
                minions_killed, jungle_minions, total_dmg_done, total_dmg_taken,
@@ -123,7 +123,7 @@ def retrofill_match(src_conn, match: dict) -> int:
     # Common kwargs for every record() call on this match
     base = dict(match_id=mid, session_id=None, champion=champ, mode=mode)
 
-    # ─── Final-state metrics (milestone=game_end) ──────────────────
+    # --- Final-state metrics (milestone=game_end) ------------------
     def rec(key, value, mtype="text", milestone="game_end", game_time_s=None):
         recorder.record(
             **base, key=key, value=value, metric_type=mtype,
@@ -195,7 +195,7 @@ def retrofill_match(src_conn, match: dict) -> int:
     if p.get("rune_primary_style"):
         rec("rune_primary_style", str(p["rune_primary_style"]), "numeric")
 
-    # ─── 10-minute snapshot ────────────────────────────────────────
+    # --- 10-minute snapshot ----------------------------------------
     f10 = _nearest_frame(src_conn, mid, pid, 600_000)
     if f10:
         (ts, cg, tg, xp, lvl, cs, jg, dmg, dmg_t, px, py, cc) = f10
@@ -212,7 +212,7 @@ def retrofill_match(src_conn, match: dict) -> int:
                         metric_type="numeric", game_time_s=ts // 1000,
                         milestone_tag="10min_mark")
 
-    # ─── 15-minute snapshot ────────────────────────────────────────
+    # --- 15-minute snapshot ----------------------------------------
     f15 = _nearest_frame(src_conn, mid, pid, 900_000)
     if f15:
         (ts, cg, tg, xp, lvl, cs, jg, dmg, dmg_t, px, py, cc) = f15
@@ -223,7 +223,7 @@ def retrofill_match(src_conn, match: dict) -> int:
                         metric_type="numeric", game_time_s=ts // 1000,
                         milestone_tag="15min_mark")
 
-    # ─── First blood / first tower timestamps ──────────────────────
+    # --- First blood / first tower timestamps ----------------------
     fb = src_conn.execute(
         "SELECT timestamp_ms, killer_id, victim_id FROM timeline_events "
         "WHERE match_id=? AND event_type='CHAMPION_KILL' "

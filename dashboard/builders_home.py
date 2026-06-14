@@ -192,7 +192,7 @@ def _build_home_summary() -> dict:
     except Exception:
         out["services"].append({"name": "Vision", "ok": False, "detail": "down"})
 
-    # ── V3 home extras (2026-04-30): tonight_pick, last_build, trends, streaks ──
+    # -- V3 home extras (2026-04-30): tonight_pick, last_build, trends, streaks --
     out["tonight_pick"] = _home_tonight_pick(out["this_week"])
     out["last_build"]   = _home_last_build()
     out["trends"]       = _home_trends_14d(db_path)

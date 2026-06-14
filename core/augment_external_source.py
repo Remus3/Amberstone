@@ -259,7 +259,7 @@ def refresh_cache(
         snap = read_json_dict(path)
         if snap.get("augments"):
             return _table_from_snapshot(mode, snap)
-        # present-but-corrupt → fall through to re-fetch
+        # present-but-corrupt -> fall through to re-fetch
 
     try:
         raw = _http_get_json(_ENDPOINTS[mode], timeout_s)
@@ -335,15 +335,15 @@ def get_priors(mode: str = "mayhem", *, force_refresh: bool = False) -> AugmentP
     return table
 
 
-# ── augment metadata (id → name / rarity / icon) ────────────────────────
+# -- augment metadata (id -> name / rarity / icon) ------------------------
 #
 # CommunityDragon mirror of the static LCU asset
 # `/lol-game-data/assets/v1/cherry-augments.json` - authoritative
-# id→{nameTRA, rarity, icon} for the whole Cherry/Mayhem augment universe
+# id->{nameTRA, rarity, icon} for the whole Cherry/Mayhem augment universe
 # (568 entries; rarity as kSilver/kGold/kPrismatic/kEventChoice/kBronze).
 # Complements RC's existing per-patch `arena_augments.json` (220 entries,
 # carries `desc` + an int rarity). Used to reconcile a vision-OCR'd
-# display name → numeric id, which then keys both the external WR prior
+# display name -> numeric id, which then keys both the external WR prior
 # (Task 2) and own-history (`playerAugment{i}` ints).
 
 CHERRY_AUGMENTS_URL = (

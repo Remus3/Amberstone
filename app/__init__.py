@@ -142,7 +142,7 @@ class OverlayApp:
         self._init_envelope()
         self._apply_mode(self.mode)
 
-    # ── Envelope stubs (Phase 2) ───────────────────────────────────────────────
+    # -- Envelope stubs (Phase 2) -----------------------------------------------
 
     def _init_envelope(self) -> None:
         self.state.init()
@@ -159,7 +159,7 @@ class OverlayApp:
         _log.debug("envelope: mode=%s tft=%s aram=%s arena=%s brawl=%s",
                    mode, self._tft_mode, self._aram_mode, self._arena_mode, self._brawl_mode)
 
-    # ── Overlay stubs (post-T2 #6: dashboard-only) ───────────────────────────
+    # -- Overlay stubs (post-T2 #6: dashboard-only) ---------------------------
 
     def _build_windows(self):
         self.overlays.build_windows()
@@ -176,12 +176,12 @@ class OverlayApp:
     def _update_content(self):
         self.overlays.update_content()
 
-    # ── Health stubs (Phase 1) ────────────────────────────────────────────────
+    # -- Health stubs (Phase 1) ------------------------------------------------
 
     def get_health_state(self) -> dict:
         return self.health.get_health_state()
 
-    # ── Remediation stubs (Phase 1) ───────────────────────────────────────────
+    # -- Remediation stubs (Phase 1) -------------------------------------------
 
     def restart_game_poll(self) -> dict:
         return self.remediate.restart_game_poll()
@@ -198,7 +198,7 @@ class OverlayApp:
     def rebuild_panel_game_rbot(self) -> dict:
         return self.remediate.rebuild_panel("game_rbot")
 
-    # ── Lifecycle stubs (Phase 4) ─────────────────────────────────────────────
+    # -- Lifecycle stubs (Phase 4) ---------------------------------------------
 
     def _on_game_start(self, canon_mode: str) -> None:
         self.lifecycle.on_game_start(canon_mode)
@@ -230,13 +230,13 @@ class OverlayApp:
     def _apply_auto_fields(self, state):
         self.lifecycle.apply_auto_fields(state)
 
-    # ── Win-pct stub (Phase 2) ────────────────────────────────────────────────
+    # -- Win-pct stub (Phase 2) ------------------------------------------------
 
     @staticmethod
     def _calc_win_pct(state):
         return StateAuthority.calc_win_pct(state)
 
-    # ── Data file / poll ──────────────────────────────────────────────────────
+    # -- Data file / poll ------------------------------------------------------
 
     def _init_data_file(self):
         pg = ""
@@ -277,7 +277,7 @@ class OverlayApp:
 
     def _toggle_auto(self): self._auto_mode = not self._auto_mode
 
-    # ── Process lifecycle ─────────────────────────────────────────────────────
+    # -- Process lifecycle -----------------------------------------------------
 
     def shutdown(self):
         # AUDIT P-rc-frozen-app-init-swallow (2026-04-22): log shutdown

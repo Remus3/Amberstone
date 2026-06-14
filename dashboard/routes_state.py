@@ -364,7 +364,7 @@ def _serve_ui_version(h) -> None:
     # excluded js/main.js + js/panels/* + css/panels/*, which meant
     # edits to ESM panel modules and per-panel CSS never triggered
     # the auto-reload - operator's browser served stale champ_select.js
-    # through the entire s164 → s171.7 window.
+    # through the entire s164 -> s171.7 window.
     try:
         from dashboard._static import compute_asset_hash
         digest = compute_asset_hash()
@@ -389,7 +389,7 @@ def _serve_asset_stamp(h) -> None:
         h._send(200, b'{"mtime":0}', "application/json")
 
 
-# ── POST handlers (slice 2C-7a) ──────────────────────────────────────
+# -- POST handlers (slice 2C-7a) --------------------------------------
 
 
 def _serve_input_post(h, payload) -> None:
@@ -830,7 +830,7 @@ def _serve_build_order_post(h, payload) -> None:
                 "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 # The /api/ui-version handler uses prefix() because the legacy do_GET
 # used `startswith`.

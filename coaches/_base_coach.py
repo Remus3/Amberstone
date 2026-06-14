@@ -35,9 +35,9 @@ _log = logging.getLogger("rc.coaches.base")
 _APP_DIR = Path(__file__).parent.parent
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 1 - Utility functions
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 def read_api_key(app_dir: Path = _APP_DIR) -> str:
     """Load Anthropic API key from file or environment."""
@@ -214,9 +214,9 @@ def fetch_game_data(ssl_ctx: "ssl.SSLContext | None" = None) -> "dict | None":
         return None
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 2 - BaseCoach ABC
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 def fmt_abilities(abilities: dict) -> str:
     """Format ability cooldown dict for Haiku prompt.
@@ -273,7 +273,7 @@ class BaseCoach(abc.ABC):
         _fast_path_trigger(state, prev) -> bool  custom debounce bypass
     """
 
-    # ── Class attrs (override in subclass) ────────────────────────────────────
+    # -- Class attrs (override in subclass) ------------------------------------
     GAME_MODES:            tuple = ()
     _MODE_NAME:            str   = "base"
     _DATA_FILENAME:        str   = ""
@@ -282,7 +282,7 @@ class BaseCoach(abc.ABC):
     _FAST_PATH_MIN_S:      float = 5.0
     _HP_DROP_THRESHOLD:    float = 20.0
 
-    # ── Lifecycle ─────────────────────────────────────────────────────────────
+    # -- Lifecycle -------------------------------------------------------------
 
     def __init__(self, data_file, debug: bool = False):
         self._data_file         = Path(data_file)
@@ -359,7 +359,7 @@ class BaseCoach(abc.ABC):
             "%s Coach shutdown", self._MODE_NAME.capitalize()
         )
 
-    # ── Loops ─────────────────────────────────────────────────────────────────
+    # -- Loops -----------------------------------------------------------------
 
     async def _poll_loop(self) -> None:
         while self._running:
@@ -520,7 +520,7 @@ class BaseCoach(abc.ABC):
             return None
         return snap.data
 
-    # ── Hooks (override as needed) ────────────────────────────────────────────
+    # -- Hooks (override as needed) --------------------------------------------
 
     def _init_extra(self) -> None:
         """Called in __init__ before threads start. Override for mode state."""
@@ -638,7 +638,7 @@ class BaseCoach(abc.ABC):
         except Exception as exc:
             _log.debug("_shadow_log_hints swallowed: %s", exc)
 
-    # ── Abstract ──────────────────────────────────────────────────────────────
+    # -- Abstract --------------------------------------------------------------
 
     @abc.abstractmethod
     def _blank_artifact_data(self) -> dict:

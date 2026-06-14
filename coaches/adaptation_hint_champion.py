@@ -228,7 +228,7 @@ def format_hint_line(
             continue
         sign = "+" if c["delta"] >= 0 else ""
         seg = f"vs {c['opponent']} {sign}{c['delta']*100:.0f}% (n={c['sample']})"
-        # Matchup KDA delta - only surface if meaningful (|Δ| ≥ 0.3).
+        # Matchup KDA delta - only surface if meaningful (|delta| >= 0.3).
         if "kda_delta" in c and abs(c["kda_delta"]) >= 0.3:
             ksign = "+" if c["kda_delta"] >= 0 else ""
             seg += f" KDA {c['kda_ratio']} ({ksign}{c['kda_delta']})"

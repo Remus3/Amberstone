@@ -66,7 +66,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
         # sections still fire on operator-side stats.
         return out
 
-    # ── First-objective losses (works in SR + ARAM) ────────────────────
+    # -- First-objective losses (works in SR + ARAM) --------------------
     if opp.get("first_blood") and not me.get("first_blood"):
         out.append({
             "text": "Lost first blood",
@@ -83,7 +83,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                      "death timer + freeze break."),
         })
 
-    # ── Tower differential (SR only - ARAM has its own framing below) ─
+    # -- Tower differential (SR only - ARAM has its own framing below) -
     my_towers  = int(me.get("tower_kills") or 0)
     opp_towers = int(opp.get("tower_kills") or 0)
     if is_sr and opp_towers - my_towers >= 4:
@@ -97,7 +97,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
         })
 
     if is_sr:
-        # ── Dragon control + soul ─────────────────────────────────────
+        # -- Dragon control + soul -------------------------------------
         my_drag  = int(me.get("dragon_kills") or 0)
         opp_drag = int(opp.get("dragon_kills") or 0)
         if opp_drag >= 4 and not me.get("win"):
@@ -116,7 +116,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                          f"enabled the call."),
             })
 
-        # ── Baron giveaway ────────────────────────────────────────────
+        # -- Baron giveaway --------------------------------------------
         my_baron  = int(me.get("baron_kills") or 0)
         opp_baron = int(opp.get("baron_kills") or 0)
         if opp_baron > 0 and my_baron == 0:
@@ -128,7 +128,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                          f"the pit fight in the deep Review."),
             })
 
-        # ── Rift Herald ───────────────────────────────────────────────
+        # -- Rift Herald -----------------------------------------------
         my_herald  = int(me.get("rift_herald_kills") or 0)
         opp_herald = int(opp.get("rift_herald_kills") or 0)
         if opp_herald > 0 and my_herald == 0:
@@ -151,7 +151,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                          f"vs siege champions."),
             })
 
-    # ── Roster aggregates (works in any 5v5 mode) ─────────────────────
+    # -- Roster aggregates (works in any 5v5 mode) ---------------------
     roster = enriched.get("roster") or []
     if roster:
         my_side  = [r for r in roster if r.get("team_id") == my_tid]
@@ -181,7 +181,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                              f"objective trades."),
                 })
 
-    # ── Operator-side proxies (always fire if applicable) ─────────────
+    # -- Operator-side proxies (always fire if applicable) -------------
     if op_d >= 10:
         out.append({
             "text": f"Death count cost the team ({op_d} deaths)",
@@ -237,7 +237,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
 
     cur_kda = _kda(k, d, a)
 
-    # ── right: this-match positives ─────────────────────────────────────
+    # -- right: this-match positives -------------------------------------
     if grade in ("S", "A"):
         right.append({
             "text": f"Top-tier performance ({grade})",
@@ -276,7 +276,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
                    "CS/min≥8, KP≥70%, or 10+ kills with ≤5 deaths).",
         })
 
-    # ── wrong_team: team-level issues this match ────────────────────────
+    # -- wrong_team: team-level issues this match ------------------------
     # If LCU enrichment is present, surface real team-level signals
     # (objectives lost, comp asymmetry, gold deficit). Falls back to
     # operator-side proxies (death spike + sub-1 KDA) when enrichment
@@ -306,7 +306,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
                        f"likely net-negative for the team.",
             })
 
-    # ── my_chronic: repeated patterns across history ────────────────────
+    # -- my_chronic: repeated patterns across history --------------------
     if history:
         deaths_hist = sorted(int(r.get("deaths") or 0) for r in history)
         median_d = deaths_hist[len(deaths_hist) // 2] if deaths_hist else 0
@@ -383,7 +383,7 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
     """
     import json
     # s220: baseline window is operator-configurable from the Settings
-    # page (localStorage rc-pgr-baseline → ?baseline= query param).
+    # page (localStorage rc-pgr-baseline -> ?baseline= query param).
     # Clamp to a sane range; default 20 preserves pre-s220 behavior.
     try:
         baseline = int(baseline)

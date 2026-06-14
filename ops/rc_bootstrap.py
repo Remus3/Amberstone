@@ -54,7 +54,7 @@ def _start(exe: str, args: list[str], tag: str) -> int | None:
         return None
 
 
-# ── Run on import/reload ──────────────────────────────────────────────────
+# -- Run on import/reload --------------------------------------------------
 
 _results = {}
 

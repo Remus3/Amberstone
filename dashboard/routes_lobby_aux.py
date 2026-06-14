@@ -69,7 +69,7 @@ _REWIND_DB = _DATA_DIR / "rewind_history.db"
 _TOP8_MAX = 8
 
 
-# ── Top 8 storage ────────────────────────────────────────────────────
+# -- Top 8 storage ----------------------------------------------------
 
 def _load_top8() -> list:
     try:
@@ -168,7 +168,7 @@ def _serve_top8_post(h, payload) -> None:
             "application/json")
 
 
-# ── Mains data ───────────────────────────────────────────────────────
+# -- Mains data -------------------------------------------------------
 
 # Canonical source: rewind_history.db.participants - populated by
 # scripts/rewind_catchup.py (s167) from Match-V5. The operator's puuid
@@ -227,7 +227,7 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
         champ, games, wins, losses, ks, ds, as_, cs, vs, dmg, played_s = r
         wins, losses = wins or 0, losses or 0
         played_min = max(1, (played_s or 0) / 60)
-        # Last match for this champ - join participants→matches.
+        # Last match for this champ - join participants->matches.
         cur.execute("""
             SELECT p.win, p.kills, p.deaths, p.assists, m.game_creation_ts
             FROM participants p
@@ -348,7 +348,7 @@ def _serve_mains_get(h) -> None:
             "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 GET_ROUTES = [
     (equals("/api/top8"),  _serve_top8_get),

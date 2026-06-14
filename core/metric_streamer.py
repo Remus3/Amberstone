@@ -49,7 +49,7 @@ import threading
 from typing import Optional
 from core.match_metrics import recorder
 
-# Game-time thresholds → milestone tag.
+# Game-time thresholds -> milestone tag.
 _LEVEL_MILESTONES = {
     6:  "l6_spike",
     11: "l11_spike",
@@ -100,7 +100,7 @@ class MetricStreamer:
         self._milestones_fired: set[str] = set()  # one-shot per match
         self._last_level: int = 0
 
-    # ─────────── public API ───────────────────────────────────────────
+    # ----------- public API -------------------------------------------
 
     def on_state(self, payload: dict, *,
                  events: Optional[list[str]] = None,
@@ -178,7 +178,7 @@ class MetricStreamer:
         with self._lock:
             return recorder.flush()
 
-    # ─────────── internals ────────────────────────────────────────────
+    # ----------- internals --------------------------------------------
 
     def _snapshot(self, payload: dict, game_time_s: int, tag: Optional[str]) -> int:
         """Buffer one snapshot. Caller holds the lock. Returns rows buffered."""

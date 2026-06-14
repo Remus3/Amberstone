@@ -50,7 +50,7 @@ class BaseCoachWorker:
         self.pulse_ts: float = 0.0
         self.last_success_ts: float = 0.0
 
-    # ── Public lifecycle ──────────────────────────────────────────────────
+    # -- Public lifecycle --------------------------------------------------
 
     def start(self) -> None:
         """Spawn a fresh worker thread. Always increments generation; an
@@ -88,7 +88,7 @@ class BaseCoachWorker:
     def is_alive(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
 
-    # ── HealthMonitor-facing pulse view ──────────────────────────────────
+    # -- HealthMonitor-facing pulse view ----------------------------------
 
     def health_pulse(self) -> Dict[str, Any]:
         """A consistent shape for HealthMonitor consumption across mode
@@ -100,7 +100,7 @@ class BaseCoachWorker:
             "last_success_ts":  self.last_success_ts,
         }
 
-    # ── Subclass hook ────────────────────────────────────────────────────
+    # -- Subclass hook ----------------------------------------------------
 
     def _run(self, my_gen: int) -> None:  # pragma: no cover - abstract
         raise NotImplementedError("BaseCoachWorker subclasses must implement _run")

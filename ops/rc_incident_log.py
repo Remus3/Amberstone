@@ -33,7 +33,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-# ── Constants ────────────────────────────────────────────────────────────────
+# -- Constants ----------------------------------------------------------------
 
 SEVERITIES = ("DEBUG", "INFO", "WARN", "ERROR", "CRITICAL")
 SUBSYSTEMS  = ("app", "supervisor", "monitor", "validator", "deploy", "coach", "tft", "lcu")
@@ -109,7 +109,7 @@ class IncidentLog:
             self._run_id     = run_id     or ""
             self._session_id = session_id or ""
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    # -- Public API ------------------------------------------------------------
 
     def record(
         self,
@@ -180,7 +180,7 @@ class IncidentLog:
         with self._lock:
             return self._purge_old_locked()
 
-    # ── Internal (call only while holding self._lock) ──────────────────────────
+    # -- Internal (call only while holding self._lock) --------------------------
 
     def _append_line_locked(self, entry: Dict[str, Any]) -> None:
         """Append one JSON line to the log file. Caller must hold self._lock."""

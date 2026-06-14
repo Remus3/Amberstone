@@ -70,7 +70,7 @@ class GameLifecycleManager:
     def __init__(self, app: "OverlayApp") -> None:  # type: ignore[name-defined]
         self.app = app
 
-    # ── Game start / end ─────────────────────────────────────────────────────
+    # -- Game start / end -----------------------------------------------------
 
     def on_game_start(self, canon_mode: str) -> None:
         app = self.app
@@ -250,7 +250,7 @@ class GameLifecycleManager:
         try: app._update_envelope(MODE_CLIENT, ClientSnapshot())
         except Exception: pass
 
-    # ── Worker start / drain ─────────────────────────────────────────────────
+    # -- Worker start / drain -------------------------------------------------
 
     def start_game_poll(self) -> None:
         app = self.app
@@ -323,7 +323,7 @@ class GameLifecycleManager:
             pass
         return os.environ.get("ANTHROPIC_API_KEY", "")
 
-    # ── State processing ─────────────────────────────────────────────────────
+    # -- State processing -----------------------------------------------------
 
     def _process_worker_result(self, result) -> None:
         """Apply a WorkerResult from SrAramWorker to the authoritative GameEnvelope."""
@@ -492,7 +492,7 @@ class GameLifecycleManager:
         if changed:
             app._update_content()
 
-    # ── Public delegation API (called via OverlayApp stubs) ──────────────────
+    # -- Public delegation API (called via OverlayApp stubs) ------------------
 
     def try_read_api_key(self) -> str:
         return self._try_read_api_key()

@@ -154,11 +154,11 @@ GENERIC_PROFILE = (
 
 
 
-# ── Game Sense vocabulary ─────────────────────────────────────────────────
+# -- Game Sense vocabulary -------------------------------------------------
 # Approved 12-word vocabulary for the aftergame GAME SENSE panel. Early / Mid /
 # Late game phases each receive one descriptor drawn from this list. The
 # dashboard renders these in the adaptation panel (client mode) and persists
-# them to match_metrics with metric_key ∈ {game_sense_early, _mid, _late}
+# them to match_metrics with metric_key in {game_sense_early, _mid, _late}
 # under milestone_tag='game_end'. Valence colors in the UI map accordingly.
 GAME_SENSE_VOCAB: dict[str, dict[str, str]] = {
     # Negative (coral)

@@ -23,9 +23,9 @@ from dashboard._context import (
 )
 
 
-# ── Session / History / Loadouts / Diagnostics endpoints (2026-04-26) ──
+# -- Session / History / Loadouts / Diagnostics endpoints (2026-04-26) --
 # Shared helper: groups match_history.db rows into sessions where each
-# session is a run of consecutive matches with no ≥SESSION_GAP_S gap
+# session is a run of consecutive matches with no >=SESSION_GAP_S gap
 # between them. Sessions span midnight; Riot client restarts (which
 # manifest as nothing in the DB) are NOT a boundary on their own -
 # only the gap rule decides.

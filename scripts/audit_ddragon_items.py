@@ -138,7 +138,7 @@ def main(download: bool = False) -> int:
     print(f"Currently on disk: {sum(1 for _ in item_dir.glob('*.png'))} icons")
     print()
 
-    # 1) Fixture names → ids
+    # 1) Fixture names -> ids
     fix_names = collect_from_fixtures()
     print(f"[fixtures] {len(fix_names)} unique item names")
     fix_unresolved: list[str] = []

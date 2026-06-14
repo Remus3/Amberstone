@@ -29,7 +29,7 @@ class Handler(BaseHTTPRequestHandler):
     def _auth(self) -> bool:
         return self.headers.get(AUTH_HEADER, "") == AUTH_TOKEN
 
-    # ── GET ────────────────────────────────────────────────────────────────
+    # -- GET ----------------------------------------------------------------
     def do_GET(self) -> None:
         # Public: health, stats, monitor page
         if self.path == "/health":
@@ -154,7 +154,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._j(404, {"error": "unknown"})
 
-    # ── POST ───────────────────────────────────────────────────────────────
+    # -- POST ---------------------------------------------------------------
     def do_POST(self) -> None:
         if not self._auth():
             self._j(401, {"error": "unauthorized"})
@@ -193,7 +193,7 @@ class Handler(BaseHTTPRequestHandler):
             log.error("%s: %s", self.path, e)
             self._j(500, {"error": str(e)})
 
-    # ── PUT ────────────────────────────────────────────────────────────────
+    # -- PUT ----------------------------------------------------------------
     def do_PUT(self) -> None:
         if not self._auth():
             self._j(401, {"error": "unauthorized"})
@@ -221,7 +221,7 @@ class Handler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
-    # ── Helpers ────────────────────────────────────────────────────────────
+    # -- Helpers ------------------------------------------------------------
     def _query_source(self) -> str | None:
         q = self.path.split("?", 1)[1] if "?" in self.path else ""
         for kv in q.split("&"):

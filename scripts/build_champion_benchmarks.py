@@ -51,7 +51,7 @@ METRICS_DB = ROOT / "data" / "match_metrics.db"
 OUT = ROOT / "data" / "coach_reference" / "champion_benchmarks.json"
 
 # Metrics whose first integer token is the numeric signal (e.g.
-# "68% · 20/33 team" → 68; "82 CS · +10 vs Ezreal" → 82). For these we
+# "68% * 20/33 team" -> 68; "82 CS * +10 vs Ezreal" -> 82). For these we
 # compute percentile distributions across matches.
 NUMERIC_METRICS = {
     "kill_participation_pct",

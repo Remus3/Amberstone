@@ -139,7 +139,7 @@ def handle_vision(body: bytes) -> dict:
     except Exception:
         pass
     # AUDIT 2026-04-29 (gap C): crop stitched dual-monitor frame to the
-    # primary 1920×1080 region before sending. Halves Sonnet input area.
+    # primary 1920x1080 region before sending. Halves Sonnet input area.
     img_send, media_type = _crop_to_primary(img)
     t0 = time.time()
     try:

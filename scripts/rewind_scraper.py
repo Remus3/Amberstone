@@ -28,7 +28,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# ── Config ─────────────────────────────────────────────────────────────────────
+# -- Config ---------------------------------------------------------------------
 ROOT     = Path(__file__).parent.parent
 DB_PATH  = ROOT / "data" / "rewind_history.db"
 CACHE_DIR = ROOT / "data" / "rewind_cache"
@@ -47,7 +47,7 @@ HDR = {
     "Accept":     "application/json,*/*",
 }
 
-# ── HTTP ───────────────────────────────────────────────────────────────────────
+# -- HTTP -----------------------------------------------------------------------
 
 def fetch_json(url: str, retries: int = MAX_RETRIES) -> dict | list | None:
     """Fetch JSON from URL with retry/backoff. Returns None on persistent failure."""
@@ -76,7 +76,7 @@ def fetch_json(url: str, retries: int = MAX_RETRIES) -> dict | list | None:
     return None
 
 
-# ── Database schema ────────────────────────────────────────────────────────────
+# -- Database schema ------------------------------------------------------------
 
 SCHEMA = """
 -- Core game metadata (one row per match)
@@ -346,7 +346,7 @@ CREATE INDEX IF NOT EXISTS idx_events_participant ON timeline_events(participant
 """
 
 
-# ── Parsers ─────────────────────────────────────────────────────────────────────
+# -- Parsers ---------------------------------------------------------------------
 
 def parse_participant(p: dict, match_id: str) -> dict:
     perks = p.get("perks", {})
@@ -596,7 +596,7 @@ def parse_event(ev: dict, match_id: str) -> dict:
     }
 
 
-# ── DB helpers ─────────────────────────────────────────────────────────────────
+# -- DB helpers -----------------------------------------------------------------
 
 def insert_rows(conn: sqlite3.Connection, table: str, rows: list[dict]):
     if not rows:
@@ -616,7 +616,7 @@ def get_conn() -> sqlite3.Connection:
     return conn
 
 
-# ── Main scraper ───────────────────────────────────────────────────────────────
+# -- Main scraper ---------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser()
@@ -637,7 +637,7 @@ def main():
     import urllib.parse
     enc_user = urllib.parse.quote(USERNAME)
 
-    # ── 1. Fetch or load history list ──────────────────────────────────────────
+    # -- 1. Fetch or load history list ------------------------------------------
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     hist_cache = CACHE_DIR / "history.json"
     if hist_cache.exists() and hist_cache.stat().st_size > 1_000_000:
@@ -664,13 +664,13 @@ def main():
         print("Timeline: DISABLED (--no-timeline flag)")
     print()
 
-    # ── 2. Determine already-scraped matches ──────────────────────────────────
+    # -- 2. Determine already-scraped matches ----------------------------------
     existing = set()
     for row in conn.execute("SELECT match_id FROM matches"):
         existing.add(row[0])
     print(f"Already in DB: {len(existing)} matches")
 
-    # ── 3. Iterate and scrape ─────────────────────────────────────────────────
+    # -- 3. Iterate and scrape -------------------------------------------------
     done = skip = error = 0
     t0   = time.time()
 
@@ -817,7 +817,7 @@ def main():
         conn.commit()
         done += 1
 
-    # ── Summary ───────────────────────────────────────────────────────────────
+    # -- Summary ---------------------------------------------------------------
     elapsed = time.time() - t0
     print()
     print(f"=== Done in {elapsed/60:.1f} min ===")

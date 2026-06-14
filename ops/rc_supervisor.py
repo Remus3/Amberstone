@@ -364,7 +364,7 @@ class _Phase3Watcher:
     # WS health). When the process is otherwise healthy but its
     # `started_at` predates the newest mtime in its import chain, restart
     # it via the SAME cooldown + CircuitBreaker + schtasks path. The
-    # grace margin absorbs the import→lockfile-write gap + clock skew.
+    # grace margin absorbs the import->lockfile-write gap + clock skew.
     # Self-limiting: the restarted process's started_at moves past the
     # mtimes (one restart per deploy); the budget bounds any pathology.
     _STALE_CODE_GRACE_S = 5.0

@@ -22,7 +22,7 @@ _log = logging.getLogger("rc.lcu.runes")
 
 _APP_DIR = Path(__file__).parent.parent
 
-# ── Rune ID constants (from ddragon_runes.json) ────────────────────────────
+# -- Rune ID constants (from ddragon_runes.json) ----------------------------
 
 # Tree IDs
 _TREES = {
@@ -33,7 +33,7 @@ _TREES = {
     "Resolve":     8400,
 }
 
-# Keystone → ID
+# Keystone -> ID
 _KEYSTONES = {
     # Precision
     "Press the Attack": 8005,
@@ -67,8 +67,8 @@ _PRIMARY_ROWS: dict[str, dict[str, list[int]]] = {
         # Row2: Legend:Alacrity(9104) / Legend:Haste(9105) / Legend:Bloodline(9103)
         # Row3: Coup de Grace(8014) / Cut Down(8017) / Last Stand(8299)
         "_default":       [9111, 9104, 8014],   # Triumph + Alacrity + CdG
-        "Conqueror":      [9111, 9104, 8014],   # Conqueror → Triumph+Alacrity+CdG
-        "Fleet Footwork": [8009, 9104, 8014],   # FoF → PoM+Alacrity+CdG
+        "Conqueror":      [9111, 9104, 8014],   # Conqueror -> Triumph+Alacrity+CdG
+        "Fleet Footwork": [8009, 9104, 8014],   # FoF -> PoM+Alacrity+CdG
     },
     "Domination": {
         # Row1: Cheap Shot(8126) / Taste of Blood(8139) / Sudden Impact(8143)
@@ -144,7 +144,7 @@ def _perk_by_name() -> dict[str, int]:
     return _PERK_BY_NAME
 
 
-# ── Core resolver ─────────────────────────────────────────────────────────
+# -- Core resolver ---------------------------------------------------------
 
 def build_perk_ids(
     keystone: str,
@@ -266,7 +266,7 @@ def build_champ_id_map() -> dict[int, str]:
 
 
 
-# ── Summoner spell preference reader ──────────────────────────────────────
+# -- Summoner spell preference reader --------------------------------------
 
 # ARAM spell IDs
 _SPELL_FLASH    = 4
@@ -370,9 +370,9 @@ def save_spell_pref(mode_key: str, value: str) -> None:
         _log.debug("save_spell_pref: %s", exc)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # RuneWriter
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 class RuneWriter:
     """

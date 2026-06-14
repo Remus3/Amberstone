@@ -71,7 +71,7 @@ _CACHE: Optional[dict[str, Any]] = None
 _CACHE_MTIME: Optional[int] = None
 
 
-# ── Public API ───────────────────────────────────────────────────────
+# -- Public API -------------------------------------------------------
 
 
 def list_for(champion: str) -> list[dict[str, Any]]:
@@ -227,7 +227,7 @@ def clear_cache() -> None:
         _CACHE_MTIME = None
 
 
-# ── Internals ────────────────────────────────────────────────────────
+# -- Internals --------------------------------------------------------
 
 
 def _gen_id() -> str:

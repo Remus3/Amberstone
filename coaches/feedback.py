@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger("rc.coaches.feedback")
 
-# Grade → confidence multiplier. F is handled separately via flag_bad().
+# Grade -> confidence multiplier. F is handled separately via flag_bad().
 _GRADE_MULT = {
     "S": 1.5,
     "A": 1.2,

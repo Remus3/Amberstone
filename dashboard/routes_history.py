@@ -74,7 +74,7 @@ def _serve_home_summary(h) -> None:
                 "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 # /api/history and /api/loadouts/all use prefix() because the legacy
 # do_GET used `startswith`. /api/session/summary and /api/home/summary

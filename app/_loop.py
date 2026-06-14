@@ -55,7 +55,7 @@ class AppLoop:
         global _INSTANCE
         _INSTANCE = self
 
-    # ── Public API ───────────────────────────────────────────────────────────
+    # -- Public API -----------------------------------------------------------
 
     def schedule(self, ms: int, fn: Callable[[], Any]) -> None:
         """
@@ -97,7 +97,7 @@ class AppLoop:
         except RuntimeError:
             pass
 
-    # ── Internals ────────────────────────────────────────────────────────────
+    # -- Internals ------------------------------------------------------------
 
     @staticmethod
     def _safe_call(fn: Callable[[], Any]) -> None:

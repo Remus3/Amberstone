@@ -211,7 +211,7 @@ class GameVisionReader:
     def last(self) -> dict:
         return self._last
 
-    # ── Private ───────────────────────────────────────────────────────────
+    # -- Private -----------------------------------------------------------
 
     def _extract(self, img_b64: str) -> Optional[dict]:
         # AUDIT-OPUS BUG-5 fix: route vision through core.moon_proxy.MoonProxy

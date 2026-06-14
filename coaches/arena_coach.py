@@ -44,7 +44,7 @@ _APP_DIR = Path(__file__).parent.parent
 if str(_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_APP_DIR))
 
-# ── System prompt ─────────────────────────────────────────────────────────────
+# -- System prompt -------------------------------------------------------------
 _SYSTEM_PROMPT = """\
 You are a Challenger-level Arena 2v2v2v2 coach. Rotating opponents, no waves, HP carries between rounds.
 
@@ -203,7 +203,7 @@ def _resolve_augment_apiname(display: str) -> str | None:
     return _augment_name_map().get(key)
 
 
-# ── data-driven augment ranking (CLAUDE #88) ──────────────────────────────────
+# -- data-driven augment ranking (CLAUDE #88) ----------------------------------
 # Parallel to the Haiku augment pick, not a fallback: vision-OCR says *what's
 # offered*, the recommender says *which to take* by historical win-rate
 # (own match history blended toward an external Mayhem prior - Option B).
@@ -281,9 +281,9 @@ def _augment_recommendation(gs: dict, choices: list, picked_apinames: list) -> d
         return {}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Coach class
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 
 def _load_arena_build_note(champion: str) -> str:
@@ -326,8 +326,8 @@ class Coach(BaseCoach):
     _DATA_FILENAME = "arena_coaching_data.json"
 
     # Tunable overrides - Arena is faster-paced, shorter debounce.
-    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 12→20 / DEBOUNCE
-    # 4→8 / FAST_PATH 1.5→3.0 to halve API call rate. Pre-bump rates were
+    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 12->20 / DEBOUNCE
+    # 4->8 / FAST_PATH 1.5->3.0 to halve API call rate. Pre-bump rates were
     # firing ~450 coach calls per 30-min arena game; new rates ~225 calls.
     _VISION_INTERVAL   = 20.0
     _DEBOUNCE_S        = 8.0
@@ -335,7 +335,7 @@ class Coach(BaseCoach):
     _FAST_PATH_MIN_S   = 3.0
     _HP_DROP_THRESHOLD = 10.0
 
-    # ── BaseCoach hooks ───────────────────────────────────────────────────────
+    # -- BaseCoach hooks -------------------------------------------------------
 
     def _init_extra(self) -> None:
         """Arena-specific state: stateful round counter + picked augments."""
@@ -383,7 +383,7 @@ class Coach(BaseCoach):
             self._last_round = self._event_round_count  # advance tracker
         return new_round or hp_drop
 
-    # ── BaseCoach abstract implementations ────────────────────────────────────
+    # -- BaseCoach abstract implementations ------------------------------------
 
     def _blank_artifact_data(self) -> dict:
         return {
@@ -396,7 +396,7 @@ class Coach(BaseCoach):
     def _parse_raw_state(self, raw: dict) -> dict:
         return _parse_arena_state(raw)
 
-    # ── Round tracker ─────────────────────────────────────────────────────────
+    # -- Round tracker ---------------------------------------------------------
 
     def _update_round_from_events(self, state: dict) -> str:
         """
@@ -410,7 +410,7 @@ class Coach(BaseCoach):
             self._last_event_count  = new_count
         return f"~{max(self._event_round_count, 1)}"
 
-    # ── Target-bonus-HP estimator (Phase 4 batch 19 wire-in) ─────────────────
+    # -- Target-bonus-HP estimator (Phase 4 batch 19 wire-in) -----------------
 
     def _estimate_target_bonus_hp(self, state: dict | None = None) -> float:
         """Estimate enemy bonus HP from items, falling back to round count.
@@ -442,7 +442,7 @@ class Coach(BaseCoach):
             and not t.get("is_dead")
         ]
         if any(opp_items):
-            # Resolve names → ids → bonus HP per opponent; max wins.
+            # Resolve names -> ids -> bonus HP per opponent; max wins.
             # s74: pin mode='arena' so the alias-ID path is intentional,
             # not riding on the byName setdefault first-seen-wins quirk.
             from core import daemon_slayer_resolver as _ds_res
@@ -457,14 +457,14 @@ class Coach(BaseCoach):
             if best > 0:
                 return min(1500.0, best)
 
-        # Fallback: round-based heuristic. Linear ramp rounds 2..10 →
-        # 167..1500, capped thereafter; 0 for round ≤ 1 (pre-game).
+        # Fallback: round-based heuristic. Linear ramp rounds 2..10 ->
+        # 167..1500, capped thereafter; 0 for round <= 1 (pre-game).
         round_count = max(0, int(self._event_round_count))
         if round_count <= 1:
             return 0.0
         return min(1500.0, max(0.0, (round_count - 1) * 1500.0 / 9.0))
 
-    # ── Vision ────────────────────────────────────────────────────────────────
+    # -- Vision ----------------------------------------------------------------
 
     def _run_vision(self) -> None:
         if self._fetch_game_data() is None:
@@ -492,7 +492,7 @@ class Coach(BaseCoach):
         except Exception as exc:
             logger.debug("Arena vision run: %s", exc)
 
-    # ── Coach ─────────────────────────────────────────────────────────────────
+    # -- Coach -----------------------------------------------------------------
 
     def _run_coach(self, state: dict) -> None:
         try:
@@ -785,7 +785,7 @@ class Coach(BaseCoach):
             safe_write(self._out, current)
         except Exception as exc:
             logger.error("Arena augment select: %s", exc)
-            # The recommender is a parallel signal (§5) - persist it even
+            # The recommender is a parallel signal (S5) - persist it even
             # when the Haiku call fails, so the data-driven ranking still
             # surfaces during an LLM outage.
             if reco_fields:
@@ -881,7 +881,7 @@ class Coach(BaseCoach):
             logger.error("Arena anvil: %s", exc)
 
 
-# ── Vision reader ─────────────────────────────────────────────────────────────
+# -- Vision reader -------------------------------------------------------------
 
 class ArenaVisionReader:
     PROMPT = """\
@@ -938,7 +938,7 @@ Rules:
         return self._reader.read_tiered()
 
 
-# ── Arena game state parser ───────────────────────────────────────────────────
+# -- Arena game state parser ---------------------------------------------------
 
 def _parse_arena_state(raw: dict) -> dict:
     ap     = raw.get("activePlayer", {})

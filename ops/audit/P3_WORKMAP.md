@@ -9,6 +9,32 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 19 (item 415): SAFE-BULK ASCII glyph sweep slice A (comment-token only)
+
+- NEW tools/p3_ascii_sweep.py - tokenize-based transformer; rewrites decorative
+  glyphs to ASCII INSIDE Python COMMENT tokens ONLY (provable zero-behavior: a
+  comment is never emitted, asserted, or parsed). STRING-token glyphs untouched
+  -> auto-protects every load-bearing emitted/regex-matched arrow (dps.py note,
+  aram_coach item_build wire-split stay; confirmed aram_coach STRING 76 intact,
+  dps.py untouched). Conservative GLYPH_MAP; an unmapped comment glyph is left
+  as-is (1: U+2705 in scripts/wakeup_prune.py - emoji, P8 territory).
+- 16277 substitutions / 108 .py rewritten / 310 scanned. Trees: core dashboard
+  lcu app vision_server coach_integration coaches tft modes modules game_reader
+  scripts ops + root .py (composition_advisor/role_profiles/item_advisor/
+  performance_tracker/web_dashboard/main). EXCLUDED (own cycles): agents/**,
+  agents/daemon_slayer/** + Share/** (DS load-bearing), web/** (UI-gated/non-py),
+  tools/** (next slice), _archive/**, tests.
+- 13 FROZEN files swept comment-only (charter line 11 deep-audit frozen auth +
+  cycle-18 precedent): app/{__init__,_loop,_game_lifecycle,_health_monitor,
+  _remediation,_state_authority}.py, core/{game_snapshot,log_setup,moon_proxy}.py,
+  dashboard/routes_bridge.py, lcu/lcu_client.py, ops/{rc_dev_runtime,rc_supervisor}.py.
+- Gate: py_compile 108/108 OK; tests/ suite 7887p/2s/109sub exit 0 (BYTE-IDENTICAL
+  to the cycle-18 baseline). DS-dir NOT re-run (0 DS-engine/Share file touched ->
+  DS behavior provably identical). NO ENGINE bump, NO DS :8893 restart, NO live
+  RC restart (comment-only, Tier-0 by R5; suite run as tool-bug ground-truth).
+
+---
+
 ## DONE - cycle 18 (item 413): encoding sub-track slice 1 (safe, self-contained)
 
 - BOM retro-sweep: stripped 4 non-protective UTF-8 BOMs (ops/rc_supervisor.py
@@ -41,14 +67,18 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 ## REMAINING P3 (future cycles) - the ~400-file ASCII glyph sweep + 2 semantic prunes
 
 ### A. SAFE-BULK ASCII glyph sweep (parallelizable, c16/c17 treatment)
-Dominant class = U+2500 box-draw dividers in `#`/`//`/`/*` comments + decorative
-U+00D7/U+2248/U+00B7/U+2192 in comments. Trees (non-test, non-DS-engine, non-web-render):
-core/ dashboard/ lcu/ ops/ tools/ agents/(non-test) app/ scripts/ tft/ vision_server/
-coach_integration/ game_reader/ modes/ modules/ config/ root .py (composition_advisor,
-role_profiles, item_advisor, web_dashboard, performance_tracker). ~per-file balanced
-ASCII swap; gate = py_compile + full dual suite (these are runtime modules, Tier-1/2).
-Slice with tools/p3_ascii_census.py output; verify each U+2500 is comment-context
-(not a print-banner string a test asserts on) before swap.
+TOOL = tools/p3_ascii_sweep.py (comment-token-only, provable-safe; cycle 19).
+- A1 DONE cycle 19: the core RC runtime + product trees (108 .py). See above.
+- A2 REMAINING: `tools/**` (53 files / 9767 - many .py box-draw banners; mind
+  the frozen bridge_* set, charter-authorized but bound a slice), `agents/`
+  NON-test source (agent0-7 + supervisor), and the `agents/agent3_testing/**` +
+  `tests/**` test corpus (comment-only is safe there too - run p3_ascii_sweep on
+  them, gate = the owning suite).
+- A3 REMAINING (NOT comment-only - needs string/docstring judgement): the
+  STRING-token + module-docstring box-draw banners p3_ascii_sweep intentionally
+  skips. Some are print-banners a test may assert on -> per-hit verify, suite-gate.
+Run order: A2 first (mechanical, same tool), A3 last (judgement). web/ .js/.css
+glyphs are NOT python-tokenizable -> handled in B3 (UI-audit-gated), not here.
 
 ### B. LOAD-BEARING-COORDINATED (DEFER - engine+test+resync together, NOT a sed)
 1. DS-engine agents/daemon_slayer/*.py (20 files, 2036 non-ASCII) + Share/src mirror

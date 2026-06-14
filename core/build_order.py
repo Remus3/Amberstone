@@ -65,7 +65,7 @@ logger = logging.getLogger("rc.core.build_order")
 # Full build is 6 item slots in every mode RC coaches for.
 DEFAULT_SLOTS = 6
 
-# Scorer → human unit, mirrors archetype_dispatch._UNIT_SUFFIX. Kept as a
+# Scorer -> human unit, mirrors archetype_dispatch._UNIT_SUFFIX. Kept as a
 # tiny independent copy on purpose: this module must not import the coach
 # layer (coaches import *this*), and the table is a stable 6-row constant,
 # not drift-prone engine data.
@@ -108,7 +108,7 @@ _BOOTS_NAMES: dict[str, str] = {
     "3117": "Mobility Boots",
     "3158": "Ionian Boots of Lucidity",
 }
-# Archetype/scorer → default boots family (fallback when enemy AD/AP
+# Archetype/scorer -> default boots family (fallback when enemy AD/AP
 # split is balanced). Carry/dps/marksman -> Berserker's; mage/burst ->
 # Sorcerer's; tank/ehp/bruiser -> Steelcaps; assassin -> Mobility;
 # enchanter/hps/ability -> Ionian.
