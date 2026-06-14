@@ -29,7 +29,7 @@ def _insert(db: Path, champ: str, win: int | None, k: int | None, d: int | None,
         conn.commit()
 
 
-# ── session_games ordering + shape ──────────────────────────────────
+# -- session_games ordering + shape ----------------------------------
 
 def test_session_games_returns_chronological_order(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import session_games
@@ -43,7 +43,7 @@ def test_session_games_returns_chronological_order(tmp_path: Path, monkeypatch) 
             (now - timedelta(hours=3)).isoformat())
     rows = session_games((now - timedelta(hours=24)).isoformat())
     assert len(rows) == 3
-    # Oldest-first: Jinx 5h ago → Vladimir 3h ago → Ahri 2h ago.
+    # Oldest-first: Jinx 5h ago -> Vladimir 3h ago -> Ahri 2h ago.
     assert [r["champion"] for r in rows] == ["Jinx", "Vladimir", "Ahri"]
 
 
@@ -114,7 +114,7 @@ def test_session_games_survives_missing_db(tmp_path: Path, monkeypatch) -> None:
     assert len(rows) == 1
 
 
-# ── CLI --games ─────────────────────────────────────────────────────
+# -- CLI --games -----------------------------------------------------
 
 def test_cli_games_text(tmp_path: Path, monkeypatch, capsys) -> None:
     from coaches.adaptation_hint import main
@@ -131,7 +131,7 @@ def test_cli_games_text(tmp_path: Path, monkeypatch, capsys) -> None:
     assert "Ahri" in out
     assert "Jinx" in out
     assert "W" in out and "L" in out
-    # Order is chronological → Jinx appears before Ahri.
+    # Order is chronological -> Jinx appears before Ahri.
     assert out.index("Jinx") < out.index("Ahri")
 
 
@@ -168,7 +168,7 @@ def test_cli_text_empty_games(tmp_path: Path, monkeypatch, capsys) -> None:
     assert "(no games)" in capsys.readouterr().out
 
 
-# ── supervisor endpoint registration ────────────────────────────────
+# -- supervisor endpoint registration --------------------------------
 
 def test_supervisor_registers_session_games_route() -> None:
     # s243: handler split byte-verbatim into _supervisor_http.py

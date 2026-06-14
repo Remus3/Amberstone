@@ -57,8 +57,8 @@ from ctypes import wintypes
 
 LEGION_URL = "http://192.168.8.230:8889/upload-frame"
 
-# AUDIT (2026-04-22): self-contained token resolver - env var →
-# local config file → hardcoded fallback. The Game-PC has no access to
+# AUDIT (2026-04-22): self-contained token resolver - env var ->
+# local config file -> hardcoded fallback. The Game-PC has no access to
 # core.vision_token, so we re-implement the same order in 6 lines.
 import os as _os_tok
 from pathlib import Path as _Path_tok
@@ -84,10 +84,10 @@ USE_JPEG       = True         # JPEG = 5-10x smaller than PNG; PNG = lossless
 JPEG_QUALITY   = 85           # 80-90 is the sweet spot for vision
 MAX_WIDTH      = None         # set e.g. 1280 to downscale; None = native
 # AUDIT 2026-04-29 (gap D): default to monitor 0 instead of virtual
-# desktop. The full 3840×1280 stitched capture is ~14.7 MB raw and
+# desktop. The full 3840x1280 stitched capture is ~14.7 MB raw and
 # Win32 BitBlt on it stalls every ~2 min under fullscreen-game
 # compositor pressure (audit observed 4-5 s spikes). Monitor 0 is
-# 1920×1080 = 4× smaller, no stalls. Use `--monitor` flag explicitly
+# 1920x1080 = 4x smaller, no stalls. Use `--monitor` flag explicitly
 # to override (or `-1` / pass --all-monitors via env to opt back into
 # the old virtual-desktop behaviour).
 MONITOR_INDEX  = 0            # was None; primary monitor only by default
@@ -177,7 +177,7 @@ def _bettercam_image(output_idx: int):
             # secondary virtual display adapters are intentionally unreachable.
             # output_color="BGRA" returns the raw native array - bettercam
             # skips its cv2-based colour conversion (no OpenCV dep), we
-            # reorder BGRA→RGB below in numpy.
+            # reorder BGRA->RGB below in numpy.
             cam = bettercam.create(device_idx=0, output_idx=output_idx,
                                    output_color="BGRA")
             _BETTERCAM[output_idx] = cam

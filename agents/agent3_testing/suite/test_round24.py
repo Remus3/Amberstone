@@ -128,7 +128,7 @@ def test_for_champion_exposes_recent_kda(tmp_path: Path, monkeypatch) -> None:
     assert data["recent_kda"]["delta_ratio"] == 4.8
 
 
-# ── dashboard surface ─────────────────────────────────────────────
+# -- dashboard surface ---------------------------------------------
 
 def test_dashboard_has_kda_row() -> None:
     """HTML should expose adapt-kda element for the renderer to target."""

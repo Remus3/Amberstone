@@ -26,7 +26,7 @@ _log = logging.getLogger("rc.minimap_bbox")
 _APP_DIR = Path(__file__).parent.parent
 _REGIONS_FILE = _APP_DIR / "data" / "vision_regions.json"
 
-# 1920×1080 windowed-borderless defaults. Arena has no minimap.
+# 1920x1080 windowed-borderless defaults. Arena has no minimap.
 _HARDCODED_FALLBACK: dict[str, tuple[int, int, int, int]] = {
     "sr":    (1565, 735, 1905, 1075),
     "aram":  (1565, 735, 1905, 1075),

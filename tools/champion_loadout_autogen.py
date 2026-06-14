@@ -69,7 +69,7 @@ import time
 from pathlib import Path
 from typing import Iterable, Optional
 
-# Project root: tools/ → C:\Riot Commander\
+# Project root: tools/ -> C:\Riot Commander\
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
@@ -111,7 +111,7 @@ def _shaper():
         _SHAPER = Cleaner()
     return _SHAPER
 
-# Archetype → (keystone, primary tree, secondary tree). Source of truth
+# Archetype -> (keystone, primary tree, secondary tree). Source of truth
 # is also duplicated in ``web/js/panels/champ_select.js`` for the
 # experimental row's runes - keep both in sync if updating.
 ARCH_RUNES: dict[str, dict[str, str]] = {

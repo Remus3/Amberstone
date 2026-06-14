@@ -277,9 +277,9 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         mode = (qs.get("mode") or ["sr"])[0].lower()
         bbox_raw = (qs.get("bbox") or [""])[0]
 
-        # Bbox resolution order: ?bbox= override → persisted calibration in
-        # data/vision_regions.json (`_minimap_<mode>` key) → hardcoded
-        # 1920×1080 fallback. Arena has no minimap - falls through to 404.
+        # Bbox resolution order: ?bbox= override -> persisted calibration in
+        # data/vision_regions.json (`_minimap_<mode>` key) -> hardcoded
+        # 1920x1080 fallback. Arena has no minimap - falls through to 404.
         if bbox_raw:
             try:
                 from agents._minimap_bbox import parse_http_override as _parse_bbox

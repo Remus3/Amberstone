@@ -48,7 +48,7 @@ from core.coaching_payload import (  # noqa: E402
 
 OUTPUT = ROOT / "web" / "js" / "lib" / "state_schema.js"
 
-# Manual field-type overrides: model name → {field name → JSDoc type string}.
+# Manual field-type overrides: model name -> {field name -> JSDoc type string}.
 # Use when the Python annotation is looser than what JS callers actually need.
 _OVERRIDES: dict[str, dict[str, str]] = {
     "StateResponse": {

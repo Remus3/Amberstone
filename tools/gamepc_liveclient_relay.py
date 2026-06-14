@@ -28,7 +28,7 @@ LIVE_URLS = [
 ]
 LEGION_URL = "http://192.168.8.230:8889/upload-liveclient"
 
-# AUDIT (2026-04-22): token resolver - env → config file → fallback.
+# AUDIT (2026-04-22): token resolver - env -> config file -> fallback.
 import os as _os_tok
 from pathlib import Path as _Path_tok
 def _resolve_auth_token() -> str:

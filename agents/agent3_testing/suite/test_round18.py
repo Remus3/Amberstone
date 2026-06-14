@@ -11,7 +11,7 @@ import pytest
 from agents.agent1_lead import Scheduler, TaskStatus
 
 
-# ── Frozen-file guardrail ───────────────────────────────────────────
+# -- Frozen-file guardrail -------------------------------------------
 
 def test_frozen_file_in_payload_gates_to_approval(tmp_path: Path) -> None:
     s = Scheduler(queue_log=tmp_path / "q.jsonl")
@@ -83,7 +83,7 @@ def test_frozen_file_with_backslashes(tmp_path: Path) -> None:
     assert "app/_health_monitor.py" in t.payload.get("_frozen_file_hits", [])
 
 
-# ── insight_card helper ─────────────────────────────────────────────
+# -- insight_card helper ---------------------------------------------
 
 @pytest.fixture()
 def seeded_ahri(tmp_path: Path, monkeypatch):
@@ -104,7 +104,7 @@ def seeded_ahri(tmp_path: Path, monkeypatch):
         for stmt in SCHEMA_STATEMENTS:
             conn.execute(stmt)
         now = datetime.now(timezone.utc).isoformat()
-        # 9 matches: 5 wins against Xerath (→ matchup), 4 losses against Morgana
+        # 9 matches: 5 wins against Xerath (-> matchup), 4 losses against Morgana
         for i, (win, enemy) in enumerate([
             (1, "Xerath"), (1, "Xerath"), (1, "Xerath"),
             (1, "Xerath"), (1, "Xerath"),
@@ -156,7 +156,7 @@ def test_insight_card_includes_champion_and_wr(seeded_ahri: Path) -> None:
 def test_insight_card_surfaces_first_leg_signal(seeded_ahri: Path) -> None:
     from coaches.adaptation_hint import insight_card
     card = insight_card("Ahri", "aram")
-    # Won 5/5 games with Riftmaker as first leg → +44% delta → "rush Riftmaker"
+    # Won 5/5 games with Riftmaker as first leg -> +44% delta -> "rush Riftmaker"
     assert "Riftmaker" in card
     assert "rush" in card
 

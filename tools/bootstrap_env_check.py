@@ -43,7 +43,7 @@ _INFO  = "  INFO  "
 
 _issues: list = []
 
-# ── Staged-bundle detection ───────────────────────────────────────────────────
+# -- Staged-bundle detection ---------------------------------------------------
 # When running from inside a staged distribution bundle (dist/portable_staging/
 # or equivalent), dev-only tooling that was intentionally not deployed should
 # not cause readiness failures.  We detect a staged bundle by the presence of
@@ -107,7 +107,7 @@ def main() -> int:
     print("Riot Commander -- Bootstrap Environment Check")
     print("=" * 64)
 
-    # ── Project root ──────────────────────────────────────────────────────
+    # -- Project root ------------------------------------------------------
     print("\n[Project Root]")
     _ok("project root", str(_PROJECT_ROOT))
     cwd = Path.cwd()
@@ -117,7 +117,7 @@ def main() -> int:
         _warn("cwd differs from project root",
               f"cwd={cwd}  project_root={_PROJECT_ROOT}")
 
-    # ── Python ────────────────────────────────────────────────────────────
+    # -- Python ------------------------------------------------------------
     print("\n[Python]")
     py = sys.executable
     if py and Path(py).exists():
@@ -134,7 +134,7 @@ def main() -> int:
     else:
         _ok("python version >= 3.9")
 
-    # ── Git ───────────────────────────────────────────────────────────────
+    # -- Git ---------------------------------------------------------------
     print("\n[Git]")
     git = shutil.which("git")
     if git:
@@ -143,7 +143,7 @@ def main() -> int:
         _warn("git not found in PATH",
               "snapshot and rollback-last commands will not work")
 
-    # ── Launcher scripts ──────────────────────────────────────────────────
+    # -- Launcher scripts --------------------------------------------------
     print("\n[Launcher Scripts]")
     launchers = [
         ("start.bat",        "primary launcher (API key + pythonw main.py)"),
@@ -157,7 +157,7 @@ def main() -> int:
         else:
             _miss(name, desc)
 
-    # ── Dev tools ─────────────────────────────────────────────────────────
+    # -- Dev tools ---------------------------------------------------------
     print("\n[Dev Tools]")
     # In a staged bundle, dev-only harness tools are intentionally omitted.
     # Their absence must NOT count as a launch/install readiness failure.
@@ -184,7 +184,7 @@ def main() -> int:
         else:
             _miss(name, desc)
 
-    # ── Required config files ─────────────────────────────────────────────
+    # -- Required config files ---------------------------------------------
     print("\n[Config Files]")
     configs = [
         ("API-Key-Claude.txt",          "Anthropic API key (required for coaching)"),
@@ -201,7 +201,7 @@ def main() -> int:
             label = "REQUIRED" if "API-Key" in name else "config"
             _miss(f"{name}  [{label}]", desc)
 
-    # ── Embedded Python runtime (Option B) ──────────────────────────────────
+    # -- Embedded Python runtime (Option B) ----------------------------------
     print("\n[Embedded Python Runtime (Option B)]")
     embed_py  = _PROJECT_ROOT / "python-embed" / "python.exe"
     embed_pyw = _PROJECT_ROOT / "python-embed" / "pythonw.exe"
@@ -225,7 +225,7 @@ def main() -> int:
     else:
         _info("python-embed/ not found -- Option A (PATH Python) in use")
 
-    # ── pythonw.exe availability (required for GUI launch) ──────────────────
+    # -- pythonw.exe availability (required for GUI launch) ------------------
     print("\n[GUI Launcher (pythonw.exe)]")
     if embed_present:
         # Option B: use embedded pythonw.exe for launch
@@ -253,7 +253,7 @@ def main() -> int:
         except Exception as exc:
             _err("API key file unreadable", str(exc))
 
-    # ── Install / setup readiness ─────────────────────────────────────────────
+    # -- Install / setup readiness ---------------------------------------------
     print("\n[Install / Setup Readiness]")
     if embed_present:
         _ok("embedded runtime present -- packages pre-installed",
@@ -280,7 +280,7 @@ def main() -> int:
             _err("python NOT found on PATH",
                  "Option A: install.bat calls python directly; will fail without it")
 
-    # ── Frozen ops stack -- PATH python advisory ──────────────────────────────
+    # -- Frozen ops stack -- PATH python advisory ------------------------------
     # ops/rc_league_watcher.ps1 and ops/run_self_healing_watchdog.ps1 call
     # python by bare name (PATH). These are Phase 0 FROZEN -- cannot be changed.
     # Under Option B this is advisory only; normal launch does not need PATH python.
@@ -299,7 +299,7 @@ def main() -> int:
             _err("python NOT found on PATH",
                  "required: install.bat and frozen ops/.ps1 scripts depend on PATH python")
 
-    # ── Packaging readiness ────────────────────────────────────────────────
+    # -- Packaging readiness ------------------------------------------------
     print("\n[Packaging Readiness]")
     # Launchers that must be root-relative for portable distribution
     portable_launchers = [
@@ -344,7 +344,7 @@ def main() -> int:
         else:
             _warn(f"{rel}/ missing", f"{note} -- will be created at first run")
 
-    # ── Writable directories ──────────────────────────────────────────────
+    # -- Writable directories ----------------------------------------------
     print("\n[Writable Directories]")
     writable_dirs = [
         (_PROJECT_ROOT / "audit",       "audit/ (proof bundles, baseline outputs)"),
@@ -361,7 +361,7 @@ def main() -> int:
     except Exception as exc:
         _err("system temp dir not usable", str(exc))
 
-    # ── Summary ───────────────────────────────────────────────────────────
+    # -- Summary -----------------------------------------------------------
     print("\n" + "=" * 64)
     if not _issues:
         print("Bootstrap check: ALL PASS")

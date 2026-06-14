@@ -41,7 +41,7 @@ import urllib.error
 import urllib.request
 from ctypes import wintypes
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# -- Config --------------------------------------------------------------------
 LEGION_BASE   = "https://192.168.8.230:8888"
 DECISIONS_URL = f"{LEGION_BASE}/api/decisions"
 POLL_S        = 2.0
@@ -56,7 +56,7 @@ _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE
 
 
-# ── Decision cache ────────────────────────────────────────────────────────────
+# -- Decision cache ------------------------------------------------------------
 class DecisionCache:
     """Thread-safe latest-pending cache. Worker refreshes; hotkey reads."""
 
@@ -99,7 +99,7 @@ def _refresh_loop(cache: DecisionCache, stop: threading.Event) -> None:
         stop.wait(POLL_S)
 
 
-# ── POST a choice ─────────────────────────────────────────────────────────────
+# -- POST a choice -------------------------------------------------------------
 def post_choice(decision_id: str, choice: str) -> bool:
     url = f"{LEGION_BASE}/api/decisions/{decision_id}"
     body = json.dumps({"choice": choice, "note": "via hotkey"}).encode()
@@ -137,7 +137,7 @@ def handle_hotkey(cache: DecisionCache, slot: int) -> None:
     post_choice(d["id"], str(choice))
 
 
-# ── Win32 RegisterHotKey loop ─────────────────────────────────────────────────
+# -- Win32 RegisterHotKey loop -------------------------------------------------
 _user32 = ctypes.WinDLL("user32", use_last_error=True)
 _MOD_CONTROL  = 0x0002
 _MOD_SHIFT    = 0x0004

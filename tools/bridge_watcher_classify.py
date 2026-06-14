@@ -104,7 +104,7 @@ def classify(envelope: dict, *, node: str,
     return ("escalate", f"unknown kind={kind!r} - escalate by default")
 
 
-# ── Phase 2 helpers ─────────────────────────────────────────────────────
+# -- Phase 2 helpers -----------------------------------------------------
 
 
 _WRITE_VERBS = frozenset({
@@ -190,7 +190,7 @@ def _classify_actionable(envelope: dict, node_config: Optional[dict],
     return ("escalate", f"{fallback_reason} - no auto-action pattern match")
 
 
-# ── Self-test (run via: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_watcher_classify.py) ──────────
+# -- Self-test (run via: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_watcher_classify.py) ----------
 
 
 def _test() -> None:
@@ -231,17 +231,17 @@ def _test() -> None:
           "body": {"prompt": "edit main.py to add new mode"}},
          "legion", {"node_config": legion_cfg, "auto_action_enabled": True},
          "escalate"),
-        # frozen-file READ (no verb) → falls through to no-pattern → escalate
+        # frozen-file READ (no verb) -> falls through to no-pattern -> escalate
         ({"source": "peer", "kind": "task", "target": "legion", "id": "p2-4",
           "body": {"prompt": "show me main.py last 20 lines"}},
          "legion", {"node_config": legion_cfg, "auto_action_enabled": True},
          "escalate"),  # no pattern match (would need "show .* main.py" pattern)
-        # No pattern match → escalate
+        # No pattern match -> escalate
         ({"source": "peer", "kind": "task", "target": "legion", "id": "p2-5",
           "body": {"prompt": "deploy to prod"}},
          "legion", {"node_config": legion_cfg, "auto_action_enabled": True},
          "escalate"),
-        # auto-action disabled but pattern would match → escalate (gate works)
+        # auto-action disabled but pattern would match -> escalate (gate works)
         ({"source": "peer", "kind": "task", "target": "legion", "id": "p2-6",
           "body": {"prompt": "tail today's log"}},
          "legion", {"node_config": legion_cfg, "auto_action_enabled": False},

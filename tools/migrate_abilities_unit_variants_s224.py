@@ -33,7 +33,7 @@ from tools.migrate_abilities_nested_hp_s223 import (  # noqa: E402
 )
 
 # Audited from the post-s223 snapshot with the 8 s224 _UNIT_TO_FIELD
-# additions active. Drift here means Meraki changed → abort, no write.
+# additions active. Drift here means Meraki changed -> abort, no write.
 _EXPECTED_CHAMPS = {
     "Ambessa", "Braum", "Briar", "Fiddlesticks", "Gnar", "Gwen",
     "Maokai", "Sejuani", "Skarner", "TahmKench", "Trundle", "Varus",

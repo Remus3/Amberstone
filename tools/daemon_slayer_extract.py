@@ -94,7 +94,7 @@ logging.basicConfig(
 log = logging.getLogger("daemon_slayer_extract")
 
 
-# ─── HTTP helpers ─────────────────────────────────────────────────────────────
+# --- HTTP helpers -------------------------------------------------------------
 
 def _fetch_text(url: str, timeout: int = 30) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -120,9 +120,9 @@ def _atomic_write_text(path: Path, content: str) -> None:
     tmp.replace(path)
 
 
-# ─── Chunk discovery ─────────────────────────────────────────────────────────
+# --- Chunk discovery ---------------------------------------------------------
 
-_CHUNK_BODIES: dict[str, str] = {}  # url → body (populated by discover_chunks)
+_CHUNK_BODIES: dict[str, str] = {}  # url -> body (populated by discover_chunks)
 
 
 def fetch_chunk(url: str) -> str:
@@ -206,7 +206,7 @@ def discover_chunks(scenario_override: str | None = None,
     return s_url, d_url
 
 
-# ─── Module slicing within the Turbopack chunk ────────────────────────────────
+# --- Module slicing within the Turbopack chunk --------------------------------
 
 def _walk_balanced(text: str, open_pos: int) -> int:
     """Return the index of the matching closing delimiter, or -1."""
@@ -299,7 +299,7 @@ def _extract_use_strict_factory_body(chunk: str) -> str:
     return chunk[body_open + 1:body_close]
 
 
-# ─── Top-level binding extraction & parsing ─────────────────────────────────
+# --- Top-level binding extraction & parsing ---------------------------------
 
 @dataclass
 class TopLevelBinding:
@@ -361,7 +361,7 @@ def _walk_top_level_bindings(body: str) -> list[TopLevelBinding]:
 
 # Substitution table: convert lolmath JS-isms into JSON5-parseable form.
 _SUBS_PRECOMPILED = [
-    # Enum constants of the form `<X>.<Y>.<Z>` → leaf as a string literal.
+    # Enum constants of the form `<X>.<Y>.<Z>` -> leaf as a string literal.
     (re.compile(r"\bA\.ChampionKey\.([A-Za-z_$][\w$]*)"), r'"\1"'),
     (re.compile(r"\bk\.DamageType\.([A-Za-z_$][\w$]*)"), r'"\1"'),
     (re.compile(r"\bk\.TargetType\.([A-Za-z_$][\w$]*)"), r'"\1"'),
@@ -373,11 +373,11 @@ _SUBS_PRECOMPILED = [
     # `<id>("P")`, `<id>("Q")`, etc. Replace with null; cooldown table is sourced separately.
     (re.compile(r'\b[A-Za-z_$][\w$]*\("[PQWER]"\)'), "null"),
     # Computed keys like `[j.calibrumBasic]:` or `[ny.ZaahenAbilities.Q2]:`
-    # → keep the trailing leaf segment as a quoted string key.
+    # -> keep the trailing leaf segment as a quoted string key.
     (re.compile(r"\[[A-Za-z_$][\w$.]*\.([A-Za-z_$][\w$]*)\]\s*:"), r'"\1":'),
     # Numeric object keys - JSON5 requires them to be quoted.
     (re.compile(r"([{,])\s*(\d+)\s*:"), r'\1"\2":'),
-    # Surviving dotted member references in *value* positions → null.
+    # Surviving dotted member references in *value* positions -> null.
     # Limited to value contexts (after `:` `,` or `[`) so we don't corrupt
     # member-access on parsed-data identifiers.
     (re.compile(r"(?<=[:,\[])\s*[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+"), " null"),
@@ -475,7 +475,7 @@ def _parse_top_level(bindings: list[TopLevelBinding]) -> dict[str, Any]:
     return name_to_parsed
 
 
-# ─── Lolmath chunk → structured records ──────────────────────────────────────
+# --- Lolmath chunk -> structured records --------------------------------------
 
 @dataclass
 class LolmathExtract:
@@ -484,13 +484,13 @@ class LolmathExtract:
     roles: dict[str, list[str]]
     ratings: dict[str, dict[str, Any]]
     lane_positions: list[str]
-    scenarios: dict[str, list[dict]]   # championKey → list of scenario records
+    scenarios: dict[str, list[dict]]   # championKey -> list of scenario records
     chunk_url: str
     chunk_bytes: int
     # Sourced from the data chunk (Phase 1.5):
-    aram_modifiers: dict[str, dict[str, float]]      # DDragon-id → modifier dict
-    damage_distribution: dict[str, dict[str, float]]  # DDragon-id → {physical, magical, trued}
-    skill_orders: dict[str, list[str]]                # DDragon-id → ["Q","E","W",...]
+    aram_modifiers: dict[str, dict[str, float]]      # DDragon-id -> modifier dict
+    damage_distribution: dict[str, dict[str, float]]  # DDragon-id -> {physical, magical, trued}
+    skill_orders: dict[str, list[str]]                # DDragon-id -> ["Q","E","W",...]
     data_chunk_url: str
     data_chunk_bytes: int
 
@@ -572,7 +572,7 @@ def extract_from_chunk(chunk: str, chunk_url: str) -> LolmathExtract:
     )
 
 
-# ─── Phase 1.5: data chunk extraction ────────────────────────────────────────
+# --- Phase 1.5: data chunk extraction ----------------------------------------
 
 def extract_data_chunk(chunk: str, chunk_url: str) -> dict[str, Any]:
     """Pull the three Phase 1.5 datasets from the data chunk.
@@ -607,13 +607,13 @@ def extract_data_chunk(chunk: str, chunk_url: str) -> dict[str, Any]:
     }
 
 
-# ─── DDragon ─────────────────────────────────────────────────────────────────
+# --- DDragon -----------------------------------------------------------------
 
 @dataclass
 class DDragonSnapshot:
     version: str
-    champions: dict[str, dict]   # championId (e.g. "Aatrox") → DDragon champion record
-    items: dict[str, dict]       # itemId-string → DDragon item record
+    champions: dict[str, dict]   # championId (e.g. "Aatrox") -> DDragon champion record
+    items: dict[str, dict]       # itemId-string -> DDragon item record
 
 
 def fetch_ddragon() -> DDragonSnapshot:
@@ -629,7 +629,7 @@ def fetch_ddragon() -> DDragonSnapshot:
     )
 
 
-# ─── Meraki perlevel backfill (Phase 1.5) ────────────────────────────────────
+# --- Meraki perlevel backfill (Phase 1.5) ------------------------------------
 
 # DDragon's bulk and per-champion endpoints both ship `attackdamageperlevel: 0`
 # for every champion as of patch 16.x - Riot stopped exporting AD growth even
@@ -677,7 +677,7 @@ def fetch_meraki_perlevel_overlay(ddragon_ids: set[str]) -> dict[str, dict[str, 
     return overlay
 
 
-# ─── Meraki items (Phase 4 batch 20) ─────────────────────────────────────────
+# --- Meraki items (Phase 4 batch 20) -----------------------------------------
 
 # DDragon item ``description`` strips numeric coefficients from passive prose
 # (Hullbreaker Skipper "consumes all stacks to deal bonus physical damage" -
@@ -730,7 +730,7 @@ def fetch_meraki_items() -> dict:
     }
 
 
-# ─── Arena augments (Phase 6) ────────────────────────────────────────────────
+# --- Arena augments (Phase 6) ------------------------------------------------
 
 # cdragon's arena dump has 219 augments across 4 rarities:
 #   0 = Silver, 1 = Gold, 2 = Prismatic, 4 = Hero (GoH = Guardian of Heaven)
@@ -773,7 +773,7 @@ def fetch_arena_augments() -> dict:
     }
 
 
-# ─── Emission ────────────────────────────────────────────────────────────────
+# --- Emission ----------------------------------------------------------------
 
 _CANONICAL_ALIAS_PATH = (
     Path(__file__).parent.parent / "web" / "data" / "champion_aliases.json"
@@ -804,7 +804,7 @@ def _championkey_to_ddragon_id(key: str, ddragon_ids: set[str]) -> str | None:
         return None
     # Canonical alias keys are lowercase-alphanumeric (matches the JS
     # resolver); normalize the lolmath camelCase key the same way before
-    # lookup so "nunuWillump" → "nunuwillump" finds the canonical entry.
+    # lookup so "nunuWillump" -> "nunuwillump" finds the canonical entry.
     norm_key = re.sub(r"[^a-z0-9]", "", key.lower())
     if norm_key in _LOLMATH_TO_DDRAGON_ALIAS:
         cand = _LOLMATH_TO_DDRAGON_ALIAS[norm_key]
@@ -986,7 +986,7 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
     }
 
 
-# ─── Entry point ─────────────────────────────────────────────────────────────
+# --- Entry point -------------------------------------------------------------
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Daemon Slayer Phase 1 data extractor.")

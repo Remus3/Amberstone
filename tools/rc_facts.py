@@ -241,7 +241,7 @@ def main() -> int:
 
     anomalies: list[str] = []
 
-    # ── Legion ──────────────────────────────────────────────────────────
+    # -- Legion ----------------------------------------------------------
     out.append("## Legion (legion-rc · 100.70.22.55 · 192.168.8.230)\n")
     health = {}
     try:
@@ -323,7 +323,7 @@ def main() -> int:
         if not ds_alive or ds_status != "ok":
             anomalies.append(f"Legion: DS server not healthy (status={ds_status})")
 
-    # ── Game-PC ─────────────────────────────────────────────────────────
+    # -- Game-PC ---------------------------------------------------------
     out.append("\n## Game-PC (gamepc-rc · 100.95.66.128 · 192.168.8.237)\n")
 
     # LCU agent freshness via Legion's /api/state
@@ -360,7 +360,7 @@ def main() -> int:
     if mcp_anom:
         anomalies.append(mcp_anom)
 
-    # ── Cross-Claude bridge ──────────────────────────────────────────────
+    # -- Cross-Claude bridge ----------------------------------------------
     out.append("\n## Cross-Claude bridge\n")
 
     # Peer daemon health probed via /api/health/all peers block
@@ -407,13 +407,13 @@ def main() -> int:
             parts = ", ".join(f"{v} {k}s" for k, v in sorted(activity.items()))
             out.append(f"- Activity 24h: {parts}")
 
-    # ── Lessons summary (last 24h) ──────────────────────────────────────
+    # -- Lessons summary (last 24h) --------------------------------------
     lessons_block = _lessons_summary()
     if lessons_block:
         out.append("")
         out.append(lessons_block)
 
-    # ── Anomaly summary first if any ────────────────────────────────────
+    # -- Anomaly summary first if any ------------------------------------
     if anomalies:
         head = "## ⚠ Anomalies\n\n" + "\n".join(f"- {a}" for a in anomalies) + "\n\n"
         sys.stdout.write(head)

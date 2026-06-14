@@ -28,12 +28,12 @@ DB_DIR = _PROJECT_ROOT / "data" / "db"
 
 SOURCE_TAG = "live-phase3"
 
-# game_mode string → Phase 3 mode DB filename. Case-insensitive match.
+# game_mode string -> Phase 3 mode DB filename. Case-insensitive match.
 # Mirrors the queue_id mapping from migration_rewind but keyed by the
 # live coaching JSON's ``game_mode`` field (set by game_reader /
 # coach_integration).
 GAME_MODE_TO_DB = {
-    "CLASSIC": "sr_ranked",      # default SR → ranked; draft vs ranked
+    "CLASSIC": "sr_ranked",      # default SR -> ranked; draft vs ranked
     "RANKED_SOLO": "sr_ranked",  #   can't be disambiguated from live data
     "RANKED_FLEX": "sr_ranked",
     "DRAFT": "sr_draft",

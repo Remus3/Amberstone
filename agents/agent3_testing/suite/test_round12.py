@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 
-# ── Input latency rollup ─────────────────────────────────────────────
+# -- Input latency rollup ---------------------------------------------
 
 def test_latency_stats_empty_returns_none_fields() -> None:
     from agents.supervisor import Supervisor
@@ -53,7 +53,7 @@ def test_latency_stats_single_sample() -> None:
     assert s["p95_ms"] == 123.4
 
 
-# ── File-ingest mode-transition callback ────────────────────────────
+# -- File-ingest mode-transition callback ----------------------------
 
 @pytest.mark.timeout(10)
 def test_mode_transition_fires_on_health_change(tmp_path: Path) -> None:
@@ -151,7 +151,7 @@ def test_mode_transition_callback_exception_swallowed(tmp_path: Path) -> None:
     # If we reach here without propagating, the swallow worked.
 
 
-# ── s171.8: LCU-phase overlay for effective mode ────────────────────
+# -- s171.8: LCU-phase overlay for effective mode --------------------
 
 def test_effective_mode_trusts_health_when_in_game() -> None:
     """LiveClient-confirmed in-game (health.mode='game') wins over LCU.
@@ -183,5 +183,5 @@ def test_effective_mode_falls_back_to_health_when_lcu_unknown() -> None:
     assert fn({"mode": "client"}, None) == "client"
     assert fn({"mode": "client"}, "Lobby") == "client"
     assert fn({"mode": "client"}, "EndOfGame") == "client"
-    # Empty health.mode → None (matches existing transition behavior).
+    # Empty health.mode -> None (matches existing transition behavior).
     assert fn({}, None) is None

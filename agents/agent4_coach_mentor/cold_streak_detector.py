@@ -35,7 +35,7 @@ logger = logging.getLogger("agent4.cold_streak")
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 COOLDOWN_FILE = _PROJECT_ROOT / "data" / "cold_advisories.json"
 
-COLD_DELTA_FLOOR = 1.0     # |recent − baseline| ≥ 1.0 KDA points
+COLD_DELTA_FLOOR = 1.0     # |recent - baseline| >= 1.0 KDA points
 COLD_SAMPLE_FLOOR = 10     # need a full last-10 window
 COOLDOWN_HOURS = 24
 

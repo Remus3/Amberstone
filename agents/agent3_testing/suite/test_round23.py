@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 
-# ── schema migration ────────────────────────────────────────────────
+# -- schema migration ------------------------------------------------
 
 def _make_old_mode_db(path: Path) -> None:
     """Build a matches table *without* kills/deaths/assists columns,
@@ -82,7 +82,7 @@ def test_init_all_includes_kda_natively(tmp_path: Path, monkeypatch) -> None:
     assert {"kills", "deaths", "assists"} <= cols
 
 
-# ── game_ingest parses live-coach kda string ────────────────────────
+# -- game_ingest parses live-coach kda string ------------------------
 
 def test_parse_kda_string() -> None:
     from agents.agent2_backend.game_ingest import _parse_kda
@@ -147,7 +147,7 @@ def test_game_ingest_without_kda_leaves_nulls(tmp_path: Path, monkeypatch) -> No
     assert row == (None, None, None)
 
 
-# ── backfill from rewind ────────────────────────────────────────────
+# -- backfill from rewind --------------------------------------------
 
 def _build_fake_rewind(path: Path, entries: list[tuple[str, int, int, int]]) -> None:
     """Minimal rewind schema - just what backfill reads."""
@@ -209,7 +209,7 @@ def test_backfill_updates_null_rows(tmp_path: Path, monkeypatch) -> None:
         ).fetchone()
     assert row == (7, 2, 11)
 
-    # Re-running should be a no-op (no candidates → 0 updates).
+    # Re-running should be a no-op (no candidates -> 0 updates).
     again = bk.backfill_all()
     assert again["per_mode"]["aram"]["updated"] == 0
     assert again["per_mode"]["aram"]["candidates"] == 0
@@ -294,7 +294,7 @@ def test_backfill_skips_already_populated(tmp_path: Path, monkeypatch) -> None:
     assert row == (99, 99, 99)
 
 
-# ── analyzer avg_kda ────────────────────────────────────────────────
+# -- analyzer avg_kda ------------------------------------------------
 
 def test_analyzer_computes_avg_kda(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.analyzer import analyze_mode
@@ -380,7 +380,7 @@ def test_analyzer_ignores_null_kda_rows(tmp_path: Path, monkeypatch) -> None:
     assert aj["avg_kda"]["k"] == 10.0
 
 
-# ── adaptation_hint surfaces KDA ────────────────────────────────────
+# -- adaptation_hint surfaces KDA ------------------------------------
 
 def test_hint_line_includes_kda(tmp_path: Path, monkeypatch) -> None:
     from coaches import adaptation_hint

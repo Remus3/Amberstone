@@ -36,14 +36,14 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-# ── Constants ──────────────────────────────────────────────────────────────
+# -- Constants --------------------------------------------------------------
 
 WARMUP   = 5     # warmup iterations (discarded)
 REPS     = 100   # measurement iterations per benchmark
 REPS_IO  = 50    # reps for I/O-bound benchmarks (file reads/writes)
 WORKER_STOP_TIMEOUT = 4.0  # seconds
 
-# ── CLI / test-hook: --fail-section <name> ─────────────────────────────────
+# -- CLI / test-hook: --fail-section <name> ---------------------------------
 # Forces one named section to raise, proving nonzero-exit behavior.
 # Test-only; no runtime code path sets this.
 
@@ -53,7 +53,7 @@ for _i, _arg in enumerate(sys.argv[1:]):
         _FORCE_FAIL_SECTION = sys.argv[_i + 2]
         break
 
-# ── Stat helpers ───────────────────────────────────────────────────────────
+# -- Stat helpers -----------------------------------------------------------
 
 def _stats(samples):
     n = len(samples)
@@ -84,7 +84,7 @@ def _bench(label, fn, reps=REPS, warmup=WARMUP):
           f"p95={st['p95_us']:>8.1f}us  max={st['max_us']:>8.1f}us")
     return label, st
 
-# ── Fakes (same stubs as smoke harness) ───────────────────────────────────
+# -- Fakes (same stubs as smoke harness) -----------------------------------
 
 class _FakeReader:
     def __init__(self, states):
@@ -126,13 +126,13 @@ class _FakeProxy:
     def set_interval(self, s): pass
     def notify_scan_scheduled(self, t): pass
 
-# ── Fixtures ───────────────────────────────────────────────────────────────
+# -- Fixtures ---------------------------------------------------------------
 
 from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, TFT_STATE
 
 SR_CLASSIC = dict(SR_STATE, game_mode="CLASSIC")
 
-# ── Section A: feature_policy ──────────────────────────────────────────────
+# -- Section A: feature_policy ----------------------------------------------
 
 def _bench_feature_policy(td: Path):
     import core.feature_policy as fp
@@ -173,7 +173,7 @@ def _bench_feature_policy(td: Path):
     fp._reload()
     return results
 
-# ── Section B: MetricsCache ────────────────────────────────────────────────
+# -- Section B: MetricsCache ------------------------------------------------
 
 def _bench_metrics_cache(td: Path):
     import core.feature_policy as fp
@@ -221,7 +221,7 @@ def _bench_metrics_cache(td: Path):
     results.append(_bench("MetricsCache._read_policy_state() only", _pol_only))
     return results
 
-# ── Section C: snapshot translation ───────────────────────────────────────
+# -- Section C: snapshot translation ---------------------------------------
 
 def _bench_snapshots():
     from game_reader import GameReader
@@ -241,7 +241,7 @@ def _bench_snapshots():
                            lambda: GameEnvelope.client()))
     return results
 
-# ── Section D: disabled placeholder writes ─────────────────────────────────
+# -- Section D: disabled placeholder writes ---------------------------------
 
 def _bench_placeholders(td: Path):
     from core.feature_policy import write_disabled_placeholder
@@ -269,7 +269,7 @@ def _bench_placeholders(td: Path):
                            reps=REPS_IO, warmup=3))
     return results
 
-# ── Section E: worker contract timing ─────────────────────────────────────
+# -- Section E: worker contract timing -------------------------------------
 
 def _bench_workers():
     from core.sr_aram_worker import SrAramWorker
@@ -350,7 +350,7 @@ def _bench_workers():
 
     return results_raw
 
-# ── Main ───────────────────────────────────────────────────────────────────
+# -- Main -------------------------------------------------------------------
 
 def main() -> int:
     import platform

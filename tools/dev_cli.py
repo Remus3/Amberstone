@@ -68,7 +68,7 @@ def _find_python() -> str:
 
 _PYTHON = _find_python()
 
-# ── Helpers ────────────────────────────────────────────────────────────────
+# -- Helpers ----------------------------------------------------------------
 
 def _run(args, *, cwd=None, capture=False):
     """Run a subprocess. Returns CompletedProcess. Never raises on nonzero."""
@@ -98,7 +98,7 @@ def _warn(msg): print(f"  WARN    {msg}")
 def _miss(msg): print(f"  MISSING {msg}")
 def _info(msg): print(f"          {msg}")
 
-# ── Subcommands ────────────────────────────────────────────────────────────
+# -- Subcommands ------------------------------------------------------------
 
 def cmd_status() -> int:
     """Print environment diagnostics. Read-only, no side effects."""
@@ -318,7 +318,7 @@ def cmd_rollback_last(argv: list[str]) -> int:
     return 0
 
 
-# ── Dispatch ───────────────────────────────────────────────────────────────
+# -- Dispatch ---------------------------------------------------------------
 
 _HELP = """\
 Usage: python tools/dev_cli.py <subcommand> [options]

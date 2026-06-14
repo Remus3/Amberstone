@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 
-# ── HEAD routing ───────────────────────────────────────────────────
+# -- HEAD routing ---------------------------------------------------
 
 @pytest.mark.timeout(30)
 def test_head_on_api_env_returns_200(tmp_path: Path) -> None:
@@ -44,7 +44,7 @@ def test_head_on_api_env_returns_200(tmp_path: Path) -> None:
         assert body == b"" or len(body) == 0
 
 
-# ── first-legendary analyzer ────────────────────────────────────────
+# -- first-legendary analyzer ----------------------------------------
 
 @pytest.fixture()
 def seeded_with_events(tmp_path: Path, monkeypatch):
@@ -74,8 +74,8 @@ def seeded_with_events(tmp_path: Path, monkeypatch):
         now = datetime.now(timezone.utc).isoformat()
 
         # Seed 8 Ahri matches. 5 first-leg itemA (4 wins), 3 first-leg itemB (0 wins).
-        # itemA: 80% wr vs 4/8=50% baseline → +30% delta (qualifies, ≥0.10)
-        # itemB: 0/3 → below sample, excluded. Add a 9th match where itemB is first
+        # itemA: 80% wr vs 4/8=50% baseline -> +30% delta (qualifies, >=0.10)
+        # itemB: 0/3 -> below sample, excluded. Add a 9th match where itemB is first
         #   and we WIN to push sample up (but still itemA dominates).
         matchups = [
             # (win, first_leg, timing_sec)
@@ -127,8 +127,8 @@ def test_first_legendary_uses_earliest_legendary_not_boots(seeded_with_events: P
     from agents.agent4_coach_mentor import analyze_mode
     summary = analyze_mode("aram")
     assert summary["matches_scanned"] == 8
-    # itemB has only 3 samples → below threshold, excluded
-    # itemA has 5 samples, 4 wins, baseline 4/8=50% → +30% delta → included
+    # itemB has only 3 samples -> below threshold, excluded
+    # itemA has 5 samples, 4 wins, baseline 4/8=50% -> +30% delta -> included
     assert summary["first_legendary_total"] >= 1
     # Verify it didn't pick boots (item_id 1001) despite boots buying first in every match.
     with sqlite3.connect(seeded_with_events / "aram.db") as conn:

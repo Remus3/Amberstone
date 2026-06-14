@@ -31,7 +31,7 @@ from typing import Optional, Tuple
 _log = logging.getLogger("rc.bridge_watcher.actions")
 
 # Tools that are NEVER allowed in any auto-action invocation. Hard rule per
-# BRIDGE_WATCHER_PLAN.md §7 (Peer strong ask). Even if a node config tries to
+# BRIDGE_WATCHER_PLAN.md S7 (Peer strong ask). Even if a node config tries to
 # include these, the watcher strips them before passing to --allowed-tools.
 _NEVER_ALLOWED = frozenset({"Edit", "Write", "NotebookEdit"})
 
@@ -59,7 +59,7 @@ _INTENT_PROXIMITY = 80
 _DEFAULT_PER_CALL_BUDGET_USD = 0.25
 
 
-# ── Frozen-file intent-verb gate ───────────────────────────────────────
+# -- Frozen-file intent-verb gate ---------------------------------------
 
 
 def _has_frozen_intent(prompt: str, frozen_files: list[str]) -> Optional[str]:
@@ -101,7 +101,7 @@ def _has_frozen_intent(prompt: str, frozen_files: list[str]) -> Optional[str]:
     return None
 
 
-# ── Pattern matching for auto-read / auto-ops classification ───────────
+# -- Pattern matching for auto-read / auto-ops classification -----------
 
 
 def _matches_any_pattern(prompt: str, patterns: list[str]) -> Optional[str]:
@@ -123,7 +123,7 @@ def _matches_any_pattern(prompt: str, patterns: list[str]) -> Optional[str]:
     return None
 
 
-# ── Token cap ───────────────────────────────────────────────────────────
+# -- Token cap -----------------------------------------------------------
 
 
 def is_over_daily_cap(state: dict, cap_usd: float) -> bool:
@@ -144,7 +144,7 @@ def reset_daily_spend_if_new_day(state: dict, *, now_local: Optional[time.struct
         state["tokens_used_today_usd"] = 0.0
 
 
-# ── Body cap + artifact overflow ───────────────────────────────────────
+# -- Body cap + artifact overflow ---------------------------------------
 
 
 def _maybe_offload_body(body: dict, task_id: str, artifacts_dir: Path,
@@ -165,7 +165,7 @@ def _maybe_offload_body(body: dict, task_id: str, artifacts_dir: Path,
     }
 
 
-# ── claude --print invocation ───────────────────────────────────────────
+# -- claude --print invocation -------------------------------------------
 
 
 def _resolve_claude_executable() -> str:
@@ -336,7 +336,7 @@ def _parse_claude_json(stdout: str) -> Tuple[Optional[dict], Optional[float], Op
     return (action, cost, None)
 
 
-# ── Main entry point ───────────────────────────────────────────────────
+# -- Main entry point ---------------------------------------------------
 
 
 def run_action(*, envelope: dict, lane: str, node_config: dict,
@@ -453,7 +453,7 @@ def run_action(*, envelope: dict, lane: str, node_config: dict,
     return (status, body, cost)
 
 
-# ── Self-tests ─────────────────────────────────────────────────────────
+# -- Self-tests ---------------------------------------------------------
 
 
 def _test() -> None:

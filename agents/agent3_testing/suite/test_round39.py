@@ -19,7 +19,7 @@ def _backdate(scheduler, task_id: str, hours_ago: float) -> None:
     t.created_at = backdated.isoformat()
 
 
-# ── threshold ───────────────────────────────────────────────────────
+# -- threshold -------------------------------------------------------
 
 def test_dismisses_tasks_older_than_threshold(tmp_path: Path) -> None:
     from agents.agent4_coach_mentor.advisory_sweeper import sweep_stale
@@ -165,7 +165,7 @@ def test_inspected_counts_scoped_ops_only(tmp_path: Path) -> None:
     assert out["inspected"] == 1
 
 
-# ── supervisor wiring ───────────────────────────────────────────────
+# -- supervisor wiring -----------------------------------------------
 
 def test_supervisor_wires_advisory_sweeper() -> None:
     sup = Path("agents/supervisor.py").read_text(encoding="utf-8")

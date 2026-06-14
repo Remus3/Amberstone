@@ -43,7 +43,7 @@ def _insert_match(db: Path, champ: str, win: int | None,
         conn.commit()
 
 
-# ── digest assembly ─────────────────────────────────────────────────
+# -- digest assembly -------------------------------------------------
 
 def test_digest_picks_up_cold_streak(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import coaching_digest
@@ -85,7 +85,7 @@ def test_digest_hot_streak_capped_lower_than_cold(tmp_path: Path, monkeypatch) -
 def test_digest_includes_worst_hour(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import coaching_digest
     _init(tmp_path, monkeypatch)
-    # 5 wins at 10am, 5 losses at 3am → 3am becomes the slump.
+    # 5 wins at 10am, 5 losses at 3am -> 3am becomes the slump.
     now = datetime.now().astimezone()
     for _ in range(5):
         ts = now.replace(hour=10, minute=0, second=0, microsecond=0).isoformat()
@@ -176,7 +176,7 @@ def test_digest_includes_duration_insight(tmp_path: Path, monkeypatch) -> None:
     assert "bad_duration" in types
 
 
-# ── CLI ─────────────────────────────────────────────────────────────
+# -- CLI -------------------------------------------------------------
 
 def test_cli_digest_json(tmp_path: Path, monkeypatch, capsys) -> None:
     from coaches.adaptation_hint import main
@@ -230,7 +230,7 @@ def test_cli_digest_empty_text(tmp_path: Path, monkeypatch, capsys) -> None:
     assert "no actionable insights" in out
 
 
-# ── supervisor route ────────────────────────────────────────────────
+# -- supervisor route ------------------------------------------------
 
 def test_supervisor_registers_digest_route() -> None:
     # s243: handler split byte-verbatim into _supervisor_http.py

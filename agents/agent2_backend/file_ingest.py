@@ -41,7 +41,7 @@ logger = logging.getLogger("agent2.file_ingest")
 # saw aram_mode/arena_mode/tft_mode/has_game all False during lobby
 # and computed tag="client" every cadence cycle, racing onState's
 # in-game env.mode for the just-completed game ("sr"). Mode pill
-# flapped CLIENT ↔ SR; the last-match panels flickered between in-game
+# flapped CLIENT <-> SR; the last-match panels flickered between in-game
 # and aftergame title sets.
 try:
     from dashboard._liveclient import lcu_summary as _lcu_summary
@@ -72,7 +72,7 @@ WATCHED: tuple[tuple[str, Path, str], ...] = (
 HEALTH_PATH = _PROJECT_ROOT / "ops" / "runtime" / "health.json"
 
 POLL_SEC = 0.5          # matches the existing :8888 dashboard cadence
-MAX_PAYLOAD_BYTES = 128 * 1024   # sanity cap - coaching JSON ≈ 1-2 KB
+MAX_PAYLOAD_BYTES = 128 * 1024   # sanity cap - coaching JSON ~ 1-2 KB
 
 
 class FileIngest:
@@ -172,7 +172,7 @@ class FileIngest:
         await self._ws.broadcast_push(envelope)
 
         # Game-start trigger (charter): health.json.mode transition
-        # client → game/in_progress fires the mode-transition hook.
+        # client -> game/in_progress fires the mode-transition hook.
         #
         # s171.8: on Legion, LCU lockfile isn't visible (it lives on
         # Game-PC), so the main RC writes health.mode="client" through

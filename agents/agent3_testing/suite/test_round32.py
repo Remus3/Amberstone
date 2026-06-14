@@ -47,7 +47,7 @@ def _make_handler(path: str, scheduler, command="GET"):
     return h
 
 
-# ── /api/advisories ─────────────────────────────────────────────────
+# -- /api/advisories -------------------------------------------------
 
 def test_advisories_empty_returns_empty_list(fresh_scheduler) -> None:
     h = _make_handler("/api/advisories", fresh_scheduler)
@@ -146,7 +146,7 @@ def test_advisories_include_completed_opt_in(fresh_scheduler) -> None:
     assert body["advisories"][0]["status"] == "completed"
 
 
-# ── POST /api/task/<id>/dismiss ─────────────────────────────────────
+# -- POST /api/task/<id>/dismiss -------------------------------------
 
 def test_dismiss_completes_task(fresh_scheduler) -> None:
     t = fresh_scheduler.file_task(
@@ -208,7 +208,7 @@ def test_dismiss_malformed_url_rejected(fresh_scheduler) -> None:
     assert status == 400
 
 
-# ── supervisor route registration ───────────────────────────────────
+# -- supervisor route registration -----------------------------------
 
 def test_supervisor_registers_advisory_routes() -> None:
     # s243: the _QuietHandler web layer was split out of supervisor.py
