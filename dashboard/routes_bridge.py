@@ -74,7 +74,7 @@ def _serve_champions(h) -> None:
     h._send(200, json.dumps(_CACHE).encode(), "application/json")
 
 
-# ── POST handlers (slice 2C-7b) ──────────────────────────────────────
+# -- POST handlers (slice 2C-7b) --------------------------------------
 
 
 def _serve_bridge_post(h, payload) -> None:
@@ -155,7 +155,7 @@ def _serve_bridge_status(h) -> None:
                 "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 # /api/bridge accepts query strings (`?since=...&limit=...`) - equals()
 # already handles the `?...` suffix. /api/champions is exact.

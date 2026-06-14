@@ -141,7 +141,7 @@ def _validate_config(
                     f"(expected {field_types[key]}, got {actual_type})"
                 )
 
-    # Check optional key types (wrong type → WARNING not ERROR)
+    # Check optional key types (wrong type -> WARNING not ERROR)
     for key in optional_keys:
         if key in data and key in field_types:
             if not _check_type(data[key], field_types[key]):
@@ -182,8 +182,8 @@ def _validate_rc_config() -> ValidationResult:
             "app_cmd", "health_file", "admin_bridge_enabled",
         ],
         optional_keys=[
-            "heartbeat_interval_s",       # read by main.py → DevRuntime; default 1.0
-            "command_poll_interval_s",    # read by main.py → DevRuntime; default 0.5
+            "heartbeat_interval_s",       # read by main.py -> DevRuntime; default 1.0
+            "command_poll_interval_s",    # read by main.py -> DevRuntime; default 0.5
             "max_heartbeat_age_seconds", "poll_interval_seconds",
             "max_restart_attempts", "restart_window_seconds",
             "restart_cooldown_seconds", "bridge_poll_interval_seconds",

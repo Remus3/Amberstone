@@ -151,8 +151,8 @@ def _serve_ocr(h) -> None:
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
-# ── POST handlers (slice 2C-7b) ──────────────────────────────────────
+# -- route table ------------------------------------------------------
+# -- POST handlers (slice 2C-7b) --------------------------------------
 
 
 def _serve_decision_choice_post(h, payload) -> None:

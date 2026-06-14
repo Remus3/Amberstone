@@ -20,10 +20,10 @@ from typing import Optional
 
 logger = logging.getLogger("rc.tft.ocr")
 
-# ── Tesseract path (not on PATH, point directly) ─────────────────────────────
+# -- Tesseract path (not on PATH, point directly) -----------------------------
 _TESS_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# ── UI regions at 1600x900 ───────────────────────────────────────────────────
+# -- UI regions at 1600x900 ---------------------------------------------------
 # Format: (left, top, right, bottom)
 # Calibrated from TFT Set 17 1600x900. Adjust via calibrate() if needed.
 _REGIONS = {

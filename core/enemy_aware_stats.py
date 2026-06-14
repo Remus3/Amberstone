@@ -137,7 +137,7 @@ def _champ_base_by_level(champ: str, level: int) -> tuple[float, float, float, f
     max_hp = s["hp"] + grown_hp
     return base_armor, base_mr, max_hp, grown_hp
 
-# Module-level cache of id → stats dict. Loaded lazily on first call.
+# Module-level cache of id -> stats dict. Loaded lazily on first call.
 _STAT_INDEX: dict[str, dict] | None = None
 
 

@@ -20,7 +20,7 @@ from typing import Optional
 
 _log = logging.getLogger("rc.lcu.pregame")
 
-# ── Summoner spell IDs ────────────────────────────────────────────────────────
+# -- Summoner spell IDs --------------------------------------------------------
 SPELL = {
     "flash":     4,
     "exhaust":   3,
@@ -40,7 +40,7 @@ SPELL_FLASH_SNOWBALL = (SPELL["flash"], SPELL["snowball"])
 SPELL_FLASH_EXHAUST  = (SPELL["flash"], SPELL["exhaust"])
 
 
-# ── Role-keyed defaults for SR (Phase 8 step 4) ──────────────────────────────
+# -- Role-keyed defaults for SR (Phase 8 step 4) ------------------------------
 # Conservative pairs that match the most common build for each role. The
 # engine generator in `coaches/sr_draft_profile.py` has its own (tunable)
 # table in sr_draft_presets.json; this one is the LCU-layer fallback used
@@ -83,7 +83,7 @@ def _aram_mode(mode: str) -> bool:
     return mode.upper() in ("ARAM", "KIWI", "ARAM_5V5", "ARAM_MAYHEM")
 
 
-# ── LcuPregame mixin / helper ─────────────────────────────────────────────────
+# -- LcuPregame mixin / helper -------------------------------------------------
 
 class LcuPregame:
     """
@@ -92,7 +92,7 @@ class LcuPregame:
     to exist (they do, inherited from LcuClient).
     """
 
-    # ── Champion icon bytes ───────────────────────────────────────────────────
+    # -- Champion icon bytes ---------------------------------------------------
 
     def get_champion_icon_bytes(self, champion_id: int) -> Optional[bytes]:
         """
@@ -121,7 +121,7 @@ class LcuPregame:
             _log.debug("get_champion_icon_bytes(%d): %s", champion_id, exc)
             return None
 
-    # ── Session parsing ───────────────────────────────────────────────────────
+    # -- Session parsing -------------------------------------------------------
 
     def get_my_pick_action(self, session: dict) -> Optional[dict]:
         """
@@ -162,7 +162,7 @@ class LcuPregame:
             return [int(b.get("championId", 0)) for b in bench if b.get("championId")]
         return []
 
-    # ── Actions ───────────────────────────────────────────────────────────────
+    # -- Actions ---------------------------------------------------------------
 
     def pick_champion(self, action_id: int, champion_id: int,
                       completed: bool = True) -> bool:

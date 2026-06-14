@@ -346,7 +346,7 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
         # 2026-05-09: snapshot the engine's last DS pick set into raw_data
         # so the persisted row carries the engine recommendation alongside
         # the actual outcome. Cuts the calibration analysis from a JSONL
-        # join (ds_calibration.jsonl ⨝ matches on champion/mode/~ts) down
+        # join (ds_calibration.jsonl join matches on champion/mode/~ts) down
         # to a single SELECT.
         _ds_picks = _ds_picks_snapshot(script_dir, category)
         _raw = {"coach_action":game_state.get("coach_action",""),

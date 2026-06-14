@@ -51,7 +51,7 @@ _DEFAULT_POLL_S = 0.75
 _SHARED_VISION_MODES = frozenset({"ARAM", "KIWI"})
 
 
-# ── Zone labelling ────────────────────────────────────────────────────────────
+# -- Zone labelling ------------------------------------------------------------
 # League SR map is roughly 14800x14800 game units, origin at Order/Blue base
 # corner. These zone bounds are coarse on purpose - the goal is a human-readable
 # label for prompts ("last seen at mid_river"), not pinpoint accuracy.
@@ -74,7 +74,7 @@ def _sr_zone(x: float, z: float) -> str:
     # Bot lane = low z, high x
     if x > 10000 and z < 4500:
         return "bot_lane"
-    # River (anti-diagonal): x + z ≈ 14800, ± band
+    # River (anti-diagonal): x + z ~ 14800, +/- band
     if abs((x + z) - 14800) < 2400:
         if x < 7400:
             return "top_river"
@@ -99,7 +99,7 @@ def _aggregator_k(x: float, z: float) -> str:
     # bridge maps cleanly to "near my base / mid bridge / near enemy base"
     # but we don't know which side the viewer is on at zone-time, so just
     # report bridge position as a percent of map traversal.
-    pct = max(0, min(100, int((x + z) / 296)))   # 14800/50 ≈ 296
+    pct = max(0, min(100, int((x + z) / 296)))   # 14800/50 ~ 296
     if pct < 25:
         return "blue_side_bridge"
     if pct > 75:
@@ -124,7 +124,7 @@ def _zone_for(mode: str, x: float, z: float) -> str:
     return fn(x, z)
 
 
-# ── Tracker ───────────────────────────────────────────────────────────────────
+# -- Tracker -------------------------------------------------------------------
 
 class VisionTracker:
     """Stateful derivation: ingest Live Client snapshots, emit fog-of-war
@@ -142,7 +142,7 @@ class VisionTracker:
         self._task: Optional[Any] = None  # asyncio.Task / Future
         self._lock = threading.Lock()
 
-    # ── Public API ────────────────────────────────────────────────────────
+    # -- Public API --------------------------------------------------------
 
     def ingest(self, snapshot: dict, t_now: Optional[float] = None) -> None:
         """Process one Live Client snapshot. Updates internal state and
@@ -222,7 +222,7 @@ class VisionTracker:
             except Exception: pass
             self._task = None
 
-    # ── Internals ─────────────────────────────────────────────────────────
+    # -- Internals ---------------------------------------------------------
 
     def _loop(self) -> None:
         while not self._stop.is_set():

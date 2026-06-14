@@ -383,7 +383,7 @@ def _serve_lcu_cmd_result_get(h) -> None:
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 # /api/loadout/list uses prefix() because the legacy do_POST used
 # `startswith("/api/loadout/list")`. /api/loadout/apply must come

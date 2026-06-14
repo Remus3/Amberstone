@@ -25,7 +25,7 @@ from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, date
 
-# Maximum 3 MB per log file, keep 3 backups → 9 MB total ceiling
+# Maximum 3 MB per log file, keep 3 backups -> 9 MB total ceiling
 _MAX_BYTES   = 3 * 1024 * 1024   # 3 MB
 _BACKUP_COUNT = 3
 
@@ -129,7 +129,7 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
         datefmt="%H:%M:%S",
     )
 
-    # ── Daily + size rotating file handler ──────────────────────────────────
+    # -- Daily + size rotating file handler ----------------------------------
     fh = DailyRotatingFileHandler(
         log_dir,
         maxBytes=_MAX_BYTES,
@@ -141,7 +141,7 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
     fh.setFormatter(verbose)
     log_file = Path(fh.baseFilename)
 
-    # ── Console handler (debug mode only) ────────────────────────────────────
+    # -- Console handler (debug mode only) ------------------------------------
     handlers: list = [fh]
     if debug and sys.stderr:
         ch = logging.StreamHandler(sys.stderr)
@@ -149,19 +149,19 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
         ch.setFormatter(fmt)
         handlers.append(ch)
 
-    # ── Root logger ──────────────────────────────────────────────────────────
+    # -- Root logger ----------------------------------------------------------
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
     for h in handlers:
         root.addHandler(h)
 
-    # ── Suppress noisy third-party loggers ───────────────────────────────────
+    # -- Suppress noisy third-party loggers -----------------------------------
     for noisy in ("httpcore", "httpx", "urllib3", "anthropic._base_client"):
         logging.getLogger(noisy).setLevel(
             logging.DEBUG if debug else logging.WARNING
         )
 
-    # ── Fatal crash hook ─────────────────────────────────────────────────────
+    # -- Fatal crash hook -----------------------------------------------------
     _logger = logging.getLogger("rc")
 
     def _fatal(exc_type, exc_val, tb):

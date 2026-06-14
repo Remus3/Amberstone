@@ -5,7 +5,7 @@ Set-agnostic structure: update UNITS / TRAITS / ITEMS dicts each set patch.
 Currently seeded for TFT Set 14 (patch 15.x baseline).
 """
 
-# ── Tier probability tables (standard) ──────────────────────────────────────
+# -- Tier probability tables (standard) --------------------------------------
 # {player_level: {cost: probability}}
 TIER_ODDS = {
     1:  {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
@@ -26,7 +26,7 @@ POOL_SIZES = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
 # Units in pool per cost tier
 UNITS_PER_COST = {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
 
-# ── Econ thresholds ──────────────────────────────────────────────────────────
+# -- Econ thresholds ----------------------------------------------------------
 INTEREST_BRACKETS = [10, 20, 30, 40, 50]   # gold thresholds for interest
 INTEREST_PER_10   = 1                        # +1g per 10g held
 
@@ -40,7 +40,7 @@ XP_TO_LEVEL = {
 # Gold cost to buy XP
 XP_BUY_COST = 4   # 4g = +4 XP
 
-# ── Stage / round structure ──────────────────────────────────────────────────
+# -- Stage / round structure --------------------------------------------------
 # (stage, round): event
 ROUND_EVENTS = {
     (1, 1): "carousel",
@@ -59,7 +59,7 @@ ROUND_EVENTS = {
 }
 PVE_ROUNDS = {(1,3), (2,5), (3,5), (4,5), (5,5), (6,5)}
 
-# ── Key tempo milestones ─────────────────────────────────────────────────────
+# -- Key tempo milestones -----------------------------------------------------
 TEMPO_MILESTONES = {
     "2-1":  "First PvP - roll to 50g if needed for strong 2-star opener",
     "2-5":  "Wolves PvE - save roll-down gold, plan econ after",
@@ -71,7 +71,7 @@ TEMPO_MILESTONES = {
     "6-1":  "Late game - stabilise board, push level 9-10",
 }
 
-# ── Item tier list ───────────────────────────────────────────────────────────
+# -- Item tier list -----------------------------------------------------------
 ITEM_TIERS = {
     "Sunfire Cape":              "S",
     "Rabadon's Deathcap":        "S",

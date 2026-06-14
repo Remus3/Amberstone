@@ -30,13 +30,13 @@ from typing import Any, Optional
 
 _log = logging.getLogger("rc.postgame")
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# -- Paths ---------------------------------------------------------------------
 _ROOT    = Path(__file__).parent.parent
 _DB_PATH = _ROOT / "data" / "postgame_stats.db"
 _DDRAGON_ITEMS = _ROOT / "data" / "meta" / "ddragon_items.json"
 _DDRAGON_RUNES = _ROOT / "data" / "meta" / "ddragon_runes.json"
 
-# ── Game mode normalisation ────────────────────────────────────────────────────
+# -- Game mode normalisation ----------------------------------------------------
 _MODE_MAP = {
     "CLASSIC":    "SR",
     "ARAM":       "ARAM",
@@ -55,7 +55,7 @@ _VALID_MODES = {"SR", "ARAM", "ARENA", "BRAWL", "TFT"}
 def _norm_mode(raw: str) -> str:
     return _MODE_MAP.get(raw.upper(), "SR")
 
-# ── Summoner spell ID → name (DDragon internal names) ─────────────────────────
+# -- Summoner spell ID -> name (DDragon internal names) -------------------------
 _SPELL_ID_MAP = {
     1: "Cleanse", 3: "Exhaust", 4: "Flash", 6: "Ghost",
     7: "Heal", 11: "Smite", 12: "Teleport", 13: "Clarity",
@@ -63,7 +63,7 @@ _SPELL_ID_MAP = {
     39: "Mark (Snowball)", 54: "Placeholder",
 }
 
-# ── Schema - one set of 3 tables per mode ─────────────────────────────────────
+# -- Schema - one set of 3 tables per mode -------------------------------------
 _MODES_SQL = {}
 for _m in _VALID_MODES:
     _tbl = _m.lower()
@@ -198,7 +198,7 @@ for _m in _VALID_MODES:
     );
     """
 
-# ── Lookup helpers ────────────────────────────────────────────────────────────
+# -- Lookup helpers ------------------------------------------------------------
 
 def _load_item_map() -> dict:
     """Returns {item_id(int): item_name(str)} from DDragon items JSON."""
@@ -241,7 +241,7 @@ def _rune_name(rune_id: int) -> str:
     return _RUNE_MAP.get(rune_id, str(rune_id)) if rune_id else ""
 
 
-# ── Database ──────────────────────────────────────────────────────────────────
+# -- Database ------------------------------------------------------------------
 
 _db_lock = threading.Lock()
 
@@ -269,7 +269,7 @@ def _ensure_schema() -> None:
             conn.close()
 
 
-# ── Stat extraction helpers ───────────────────────────────────────────────────
+# -- Stat extraction helpers ---------------------------------------------------
 
 def _s(stats: dict, *keys, default=0):
     """Try multiple field name variants (CAPS + camelCase) and return first found."""
@@ -593,7 +593,7 @@ def _save_item_events(match_id: str, mode: str,
             conn.close()
 
 
-# ── LCU HTTP helper ───────────────────────────────────────────────────────────
+# -- LCU HTTP helper -----------------------------------------------------------
 
 class PostgameCollector:
     """
@@ -634,7 +634,7 @@ class PostgameCollector:
 
         _ensure_schema()
 
-    # ── Public API ──────────────────────────────────────────────────────────
+    # -- Public API ----------------------------------------------------------
 
     def start(self) -> None:
         """Start the background monitoring thread."""
@@ -676,7 +676,7 @@ class PostgameCollector:
         self._trigger.set()
         _log.info("PostgameCollector: triggered for mode=%s", game_mode)
 
-    # ── Internal ────────────────────────────────────────────────────────────
+    # -- Internal ------------------------------------------------------------
 
     def _run(self) -> None:
         """Background loop - waits for trigger, then captures EOG data."""
@@ -886,7 +886,7 @@ class PostgameCollector:
             "teams":       teams_out,
         }
 
-    # ── LCU helpers ─────────────────────────────────────────────────────────
+    # -- LCU helpers ---------------------------------------------------------
 
     def _lcu_get(self, path: str):
         port = getattr(self._lcu, "_port", None)
@@ -926,7 +926,7 @@ class PostgameCollector:
         return None
 
 
-# ── Module-level singleton ─────────────────────────────────────────────────────
+# -- Module-level singleton -----------------------------------------------------
 
 _collector: Optional[PostgameCollector] = None
 

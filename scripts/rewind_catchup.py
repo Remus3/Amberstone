@@ -61,7 +61,7 @@ COLD_START_DAYS = 30
 COLD_START_SECS = COLD_START_DAYS * 86400
 
 
-# ─── DB helpers ───────────────────────────────────────────────────────
+# --- DB helpers -------------------------------------------------------
 
 def open_db() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -193,7 +193,7 @@ def resolve_current_puuid(
     return stale
 
 
-# ─── State sentinel ───────────────────────────────────────────────────
+# --- State sentinel ---------------------------------------------------
 
 def load_state() -> dict:
     if not STATE_PATH.exists():
@@ -210,7 +210,7 @@ def save_state(state: dict) -> None:
     tmp.replace(STATE_PATH)
 
 
-# ─── Riot API → DB writer ─────────────────────────────────────────────
+# --- Riot API -> DB writer ---------------------------------------------
 
 def write_match(
     conn: sqlite3.Connection,
@@ -306,7 +306,7 @@ def write_match(
         insert_rows(conn, "timeline_events", event_rows)
 
 
-# ─── Catch-up loop ────────────────────────────────────────────────────
+# --- Catch-up loop ----------------------------------------------------
 
 def collect_new_match_ids(
     puuid: str,

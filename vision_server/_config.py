@@ -16,7 +16,7 @@ import threading
 import time
 from pathlib import Path
 
-# ── Logger ─────────────────────────────────────────────────────────────────
+# -- Logger -----------------------------------------------------------------
 # P2-W1-app-A CWD hardening: anchor the log file to the repo root (this
 # module's grandparent dir) instead of the process CWD. dashboard/server.py
 # spawns this server by file path, so a CWD other than the repo root would
@@ -30,7 +30,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("moon_vision")
 
-# ── Constants ──────────────────────────────────────────────────────────────
+# -- Constants --------------------------------------------------------------
 PORT         = 8889
 VISION_MODEL = "claude-haiku-4-5-20251001"
 COACH_MODEL  = "claude-haiku-4-5-20251001"
@@ -46,7 +46,7 @@ SYNC_DIR.mkdir(exist_ok=True)
 _START_TIME  = time.time()
 
 
-# ── API key + Anthropic client ─────────────────────────────────────────────
+# -- API key + Anthropic client ---------------------------------------------
 def _load_key() -> str:
     for p in [Path(__file__).parent.parent / "API-Key-Claude.txt",
               Path.home() / "API-Key-Claude.txt",

@@ -172,12 +172,12 @@ def _skeleton_entry(slot: dict, blank_names: bool = False) -> dict:
     }
 
 
-# ── Riot API fan-out ────────────────────────────────────────────────────
+# -- Riot API fan-out ----------------------------------------------------
 
 # Number of recent matches to scan for mains / winrate / streak.
-# Personal-tier ceiling makes 20 the practical max - 10 players × 20
-# matches × ~1 cache-miss per call ≈ 200 calls in a cold cache, well
-# under the 100/2min × full-window budget once paced.
+# Personal-tier ceiling makes 20 the practical max - 10 players x 20
+# matches x ~1 cache-miss per call ~ 200 calls in a cold cache, well
+# under the 100/2min x full-window budget once paced.
 _RECENT_MATCH_DEPTH = 20
 # Max time the fan-out worker spends cumulatively before giving up. Champ
 # select itself runs ~95s including loading screen; the worker exits
@@ -239,7 +239,7 @@ def _enrich_priority_2(entry: dict) -> None:
     )
 
 
-# Map the locked-champion name (LCU payload key) → numeric ID. The LCU
+# Map the locked-champion name (LCU payload key) -> numeric ID. The LCU
 # agent posts `locked_champion` as the champion's display name string;
 # Champion-Mastery-V4 needs the numeric ID. The mapping is loaded from
 # data/ddragon at module-import time and refreshed on miss. Soft-fail -
@@ -306,7 +306,7 @@ def _fanout_worker(allies: list, enemies: list, queue_id: int) -> None:
             log.warning("team-context priority-1 entry failed: %s", exc)
 
     # Priority-2 - recent matches per player. Cold-cache cost is heavy
-    # (each player = 1 list call + ≤20 match-detail calls); the long
+    # (each player = 1 list call + <=20 match-detail calls); the long
     # bucket (100/120s) gates this naturally so we don't have to add
     # explicit sleeps.
     for entry in everyone:

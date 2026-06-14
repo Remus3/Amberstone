@@ -120,7 +120,7 @@ def _serve_user_builds_post(h, payload) -> None:
                 "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 GET_ROUTES = [
     (equals("/api/sr-draft/user-builds"), _serve_user_builds_get),
