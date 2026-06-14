@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-14 - DS EHP SUSTAIN contract-gap closure [item 414]
+
+- ENGINE_VERSION 1.120.0 -> 1.121.0 (commit `9cd3336d`). Closes the test_wireable_sims_p1l3 strict-xfail (lifesteal/spellvamp/omnivamp resolve as stats but had no NAMED effective-EHP output - the cycle-17 engine-owner DEFER). DS :8893 bounced + Share mirror/ingest/doc-anchors re-synced + live /health=1.121.0.
+- Root-cause: EHP ALREADY folds lifesteal into blended_ehp since 1.28.0 (xfail premise partly STALE); real gaps = no NAMED sustain term + spellvamp unconsumed (omnivamp not stat-mapped). Fix = SIBLING layer (cc_blended_ehp pattern), blended_ehp / per-type EHP BYTE-IDENTICAL. New EhpResult fields effective_ehp_with_sustain / ehp_without_sustain / sustain_ehp_delta / heal_spellvamp / heal_omnivamp + a "sustain" to_dict block + format_table row. `_vamp_heal_pool` generalises `_lifesteal_heal` (kept as wrapper).
+- Data reality: NO 16.12.1 item grants spellvamp/omnivamp as a resolved stat -> effective_ehp_with_sustain == blended_ehp on EVERY current build (lifesteal already in blended); divergence is latent. Vamp heal reuses the lifesteal AA-throughput proxy (documented lower-bound for spellvamp's ability basis).
+- TDD: flipped xfail -> passing regression + refreshed the stale VampStatResolutionEdge/module docstrings; NEW test_ehp_sustain_contract.py (18 tests). Bump tax: surgical byte-level sweep of `ENGINE_VERSION, "1.120.0"` (72 occ / 64 files; the comma-quote form spares historical docstrings); CHANGELOG prepended; ds_share_sync 336 files.
+- Gate (fresh, both suites exit 0): DS-dir 7095p/1s/1942sub (was 7075p/1s/1xf); tests/ 7887p/2s/109sub (the 7 bump-propagation failures - ingest/doc-anchor/live-:8893 - fixed by sync + bounce). ruff clean; --check in-sync.
+- Ops gotcha: first :8893 restart silently FAILED - Bash `taskkill /F /PID` + `schtasks /End`//Run MSYS-path-mangled (`/F` `/Run` -> `C:/Program Files/Git/...`), old 1.120.0 pid survived; use PowerShell taskkill + Start-ScheduledTask for :8893. Cleaned 2 mangled root junk txt (use forward slashes in Bash redirects).
+- DON'T-REDO: sibling-layer stays (do NOT fold spellvamp/omnivamp into heal_total/blended_ehp - breaks byte-identity + 16.x pins); effective==blended on current builds is CORRECT; `_lifesteal_heal` stays as wrapper. FUTURE (not owed): upgrade the spellvamp proxy if an ability-damage throughput lands in EHP; wire effective_ehp_with_sustain into a live attrition/dive coach (sustain.py item-298 kit axis is separate + still un-wired).
+
+---
+
 # 2026-06-14 - DEEP-AUDIT cycle 18: P3 PRUNE SWEEPS - encoding sub-track slice 1 [item 413]
 
 - P2 CODE AUDIT COMPLETE (W1-W5, cycles 5-17); P3 STARTED. Safe self-contained encoding slice; 9 files touched, ALL encoding-only (0 logic/assertion change). NO ENGINE bump, NO DS :8893 restart, NO live RC restart.
