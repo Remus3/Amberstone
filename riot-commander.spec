@@ -141,14 +141,12 @@ hiddenimports = [
     "coaches.experimental_builder",
     "coaches.loadout_resolver",
     "coaches.champ_pool_recommender",
-    # Dashboard sub-modules - imported by string in dashboard/_dispatch.py.
-    "dashboard.routes_state",
-    "dashboard.routes_history",
-    "dashboard.routes_diag",
-    "dashboard.routes_coach",
-    "dashboard.routes_loadout",
-    "dashboard.routes_bridge",
-    "dashboard.routes_static",
+    # Dashboard route sub-modules (dashboard/routes_*.py) are imported by
+    # string name in dashboard/_dispatch.py and siblings - PyInstaller's
+    # static analysis misses every one. They are appended dynamically just
+    # below this list (glob of dashboard/routes_*.py) so the set stays
+    # correct as routes are added or removed. This replaced a stale
+    # hand-list of 7 of ~54 modules (P2-W4 hw2 slice H follow-up).
     # OBS publisher pulls websockets lazily; pre-declare.
     "websockets",
     "websockets.exceptions",
@@ -162,6 +160,16 @@ hiddenimports = [
     # PIL - Tk-finder hook is the usual missing piece on Windows.
     "PIL._tkinter_finder",
 ]
+
+# Append every dashboard route module by globbing the files on disk. Using a
+# glob-of-files (not a grep of dispatch references) guarantees we only declare
+# modules that actually exist, so a route deleted upstream never leaves a
+# dangling hidden import - and a route added upstream is picked up with no spec
+# edit. dashboard/_dispatch.py imports these via importlib by string name.
+_dash_dir = ROOT / "dashboard"
+hiddenimports += sorted(
+    f"dashboard.{p.stem}" for p in _dash_dir.glob("routes_*.py")
+)
 
 
 # ── Excludes - submodules we don't ship to keep the bundle smaller. ────
