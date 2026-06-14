@@ -19,7 +19,10 @@ Usage:
   python tools/p3_ascii_census.py            # full bucketed census
   python tools/p3_ascii_census.py --bom      # BOM + ps1-risk report only
 """
-import subprocess, os, collections, sys
+import collections
+import os
+import subprocess
+import sys
 
 ROOT = r"C:\Riot Commander"
 AUTH_EXT = {'.py', '.js', '.css', '.md', '.ps1', '.txt', '.xml', '.bat', '.cmd'}
@@ -73,7 +76,7 @@ def main():
             txt = raw.decode('utf-8')
         except UnicodeDecodeError:
             txt = raw.decode('utf-8', 'replace')
-        cps = collections.Counter('U+%04X' % ord(c) for c in txt if ord(c) > 127)
+        cps = collections.Counter(f'U+{ord(c):04X}' for c in txt if ord(c) > 127)
         if ext == '.ps1':
             ps1_bom[rel] = raw[:3] == b'\xef\xbb\xbf'
             if cps:
