@@ -630,7 +630,7 @@ polluter / ASCII / non-hermetic writes). Outcome: the corpus is mature + clean. 
 surfaced, so ZERO new tests added (unlike W1-W4 which added regression tests per product fix). The
 ONLY FIX-NOW class was non-ASCII glyph cleanup in comments/docstrings/dividers (47 test files swept
 to ASCII: U+2192 arrow -> ->, U+2500 box-draw -> -, U+2194 -> <->, U+00D7 -> x, U+2248 -> ~,
-U+2265 -> >=, U+2212 -> -, U+00A7 -> section, U+ACE4 Korean -> 곤 source-escape). This is the
+U+2265 -> >=, U+2212 -> -, U+00A7 -> section, U+ACE4 Korean -> \\uace4 source-escape). This is the
 test-corpus arm of the coordinated ASCII-in-output pass already logged under W4-hw2 (prints/docstrings
 in scripts/ops/tft + the production wire arrow below still pending a P3 production-side slice). NO
 em-dash/en-dash/smart-quote was found anywhere (those were already swept) - all hits were decorative
