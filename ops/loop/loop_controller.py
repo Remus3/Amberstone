@@ -68,8 +68,17 @@ def stop(reason):
 
 # ---- git helpers -------------------------------------------------------
 def git(*args):
-    return subprocess.run(["git", "-C", str(ROOT), *args],
-                          capture_output=True, text=True).stdout.strip()
+    # Bound every git call: the headless loop has NO deadline around these
+    # synchronous reads (wait_for/wait_gone only cover the AHK handshake), so a
+    # wedged git (stale index.lock, hung hook) would strand the unattended run.
+    # Degrade a timeout / failure to "" - callers already tolerate empty
+    # (prev_sha[:8] of "" is "", auditor guards `if not new_sha`).
+    try:
+        return subprocess.run(["git", "-C", str(ROOT), *args],
+                              capture_output=True, text=True, timeout=30).stdout.strip()
+    except (subprocess.SubprocessError, OSError) as e:
+        log(f"git {args[0] if args else ''} failed: {e}")
+        return ""
 
 def head():
     return git("rev-parse", "HEAD")

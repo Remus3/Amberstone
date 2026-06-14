@@ -25,6 +25,7 @@ Logs to logs/data_pipeline.log
 """
 
 import json
+import math
 import sys
 import time
 import logging
@@ -108,6 +109,37 @@ def _download_icon(url: str, dest: Path, label: str = "") -> bool:
     except Exception as e:
         log.warning("  icon failed %s: %s", url, e)
         return False
+
+
+def _wr_to_tier(raw, thresholds: list[tuple[float, str]]) -> str | None:
+    """Map a Aggregator B winrate cell to a tier letter. Pure + fail-soft.
+
+    Returns the tier string (highest threshold met, else "D") or ``None``
+    when the cell cannot be trusted - in which case the caller SKIPS that
+    champion rather than fabricating a tier. Two faults this guards:
+
+      * non-finite winrate (NaN / inf): every ``wr >= threshold`` check is
+        False for NaN, so the inline version silently tagged the LOWEST
+        tier "D". A non-finite winrate is no data, not a floor result.
+      * non-numeric cell: coercion fails -> ``None`` so one malformed row
+        skips only itself instead of raising mid-loop and aborting tier
+        extraction for every remaining champion.
+
+    Accepts both fraction (0.54) and percent (54.0) encodings; a value
+    below 1.0 is read as a fraction and scaled to percent.
+    """
+    try:
+        wr = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(wr):
+        return None
+    if wr < 1.0:
+        wr *= 100.0
+    for threshold, letter in thresholds:
+        if wr >= threshold:
+            return letter
+    return "D"
 
 
 # ── Commands ──────────────────────────────────────────────────────────────────
@@ -555,11 +587,9 @@ def cmd_aram_builds(force: bool = False) -> bool:
             if not isinstance(entry, list) or len(entry) < 4: continue
             champ_id   = str(entry[0])
             champ_name = ddragon_champs.get(champ_id, "")
-            wr = float(entry[3]) * 100 if float(entry[3]) < 1 else float(entry[3])
             if not champ_name: continue
-            tier = "D"
-            for threshold, letter in WR_THRESHOLDS:
-                if wr >= threshold: tier = letter; break
+            tier = _wr_to_tier(entry[3], WR_THRESHOLDS)
+            if tier is None: continue  # non-numeric / non-finite cell - skip, never floor-tag
             tier_data[champ_name] = tier
 
         if tier_data:

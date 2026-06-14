@@ -212,7 +212,11 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(ROOT / "web" / "icon.svg") if (ROOT / "web" / "icon.svg").exists() else None,
+    # PyInstaller on Windows requires a .ico for the EXE icon and hard-fails
+    # the build on an .svg (web/icon.svg is the dashboard favicon, not an
+    # ICO). Ship the default PyInstaller icon until a real rc.ico exists.
+    # (P2-W4 hw2 slice H: was icon=str(ROOT/"web"/"icon.svg") - build-breaker.)
+    icon=str(ROOT / "web" / "rc.ico") if (ROOT / "web" / "rc.ico").exists() else None,
 )
 
 coll = COLLECT(

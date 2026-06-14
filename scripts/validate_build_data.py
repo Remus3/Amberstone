@@ -170,7 +170,7 @@ def main() -> None:
                     total_violations += 1
 
     if total_violations == 0:
-        print("  ✓ clean - no cross-mode contamination")
+        print("  OK - clean - no cross-mode contamination")
         sys.exit(0)
     else:
         print(f"\n{total_violations} violation(s) - fix before merging into canonical build files")
