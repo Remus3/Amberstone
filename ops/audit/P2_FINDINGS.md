@@ -574,8 +574,9 @@ names, LLM coach text, OCR text, DDragon/engine names) interpolated raw into inn
   (engine-read build files) - should be tmp+replace like patch_champion.save_builds. One-shot s33
   merge, not a polled hot path.
 - riot-commander.spec hiddenimports omits ~47 dashboard route modules (dynamic imports) - a packaged
-  PyInstaller build would crash on first route load. Packaging infra not yet built (opt-in); spawned
-  follow-up task. (.svg EXE icon FIXED in-slice.)
+  PyInstaller build would crash on first route load. SHIPPED 5669d682: replaced the stale 7-of-54
+  hand-list with a build-time glob of dashboard/routes_*.py (self-maintaining, file-existence-guaranteed;
+  54 modules now declared). (.svg EXE icon FIXED in-slice.)
 
 ### LOW (W4-hw2)
 - ops/rc_file_bridge.py:349,355 _tail_file/_grep_file read any absolute path the request names, no
