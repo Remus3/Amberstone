@@ -123,7 +123,7 @@ Live status is intentionally NOT duplicated here - a static table goes stale (th
 
 - Processes, pids, listeners, scheduled tasks: `python tools/rc_facts.py` + `ops/runtime/health.json`
 - All-node health rollup: `GET /api/health/all` (dashboard `:8888`)
-- Daemon Slayer engine / patch / coverage: `GET :8893/health` + `data/daemon_slayer/current.txt` (ENGINE 1.120.0 / patch 16.12.1 as of 2026-06-09); DS feature + cc_conditional wave history lives in `agents/daemon_slayer/CHANGELOG.md` + `docs/DAEMON_SLAYER.md` (was inlined here as a ~20KB table cell - removed, not lost).
+- Daemon Slayer engine / patch / coverage: `GET :8893/health` + `data/daemon_slayer/current.txt` (ENGINE 1.121.0 / patch 16.12.1 as of 2026-06-14); DS feature + cc_conditional wave history lives in `agents/daemon_slayer/CHANGELOG.md` + `docs/DAEMON_SLAYER.md` (was inlined here as a ~20KB table cell - removed, not lost).
 - TFT: Set 17 patch 17.3
 
 ---
