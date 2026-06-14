@@ -15,6 +15,18 @@
 
 ---
 
+# 2026-06-14 - DEEP-AUDIT cycle 16: P2 W5 test corpus tests/ (6 slices) [item 411]
+
+- 396 tests/ files / 89039 LOC audited via 6 disjoint PARALLEL slices A-F (no worktrees; LPT-balanced ~14.8k LOC each via ops/audit/p2w5_partition.py). audit commit 32487046; +0 tests (the lighter test-corpus lens found ZERO product bugs - unlike W1-W4 which add a regression test per product fix). NO ENGINE bump + NO DS :8893 restart + NO live RC restart (0 product/DS/frozen edits).
+- Sole FIX-NOW class = non-ASCII glyph cleanup in comments/docstrings/dividers: 47 test files swept to ASCII (U+2192 -> ->, U+2500 box-draw -> -, U+2194 -> <->, U+00D7 -> x, U+2248 -> ~, U+2265 -> >=, U+2212 -> -, U+00A7 -> section, U+ACE4 Korean -> \\uace4 source-escape). em/en-dash + smart quotes were ZERO everywhere (already swept); every hit was a decorative or load-bearing NON-banned glyph that strip_em_dashes.py deliberately left. Charter auth 6 (full encoding retro-sweep) IS the operator grant the test_u2500_hygiene.py SCOPE NOTE asks for (U+2500 is NOT globally banned; that guard asserts only on 2 frozen ops/ files + archived/data, untouched).
+- Slice A read the ASCII lens narrowly (em/en-dash + smart-quote only) -> deferred its 6 decorative files as INFO + made 0 edits (genuinely CLEAN otherwise); B/C/D/E/F converted the same class. Supervisor swept slice-A's 6 files + the decorative part of test_wakeup_prune.py post-merge (ops/audit/p2w5_sweep_sliceA.py) for corpus consistency. Net: decorative non-ASCII = ZERO across tests/ except 2 JUSTIFIED files.
+- 2 load-bearing non-ASCII files KEPT (DEFER): (1) tests/phase2_smoke/test_aram_coach_item_class_peers.py 11x U+2192 inside item_build STRING args - production coaches/aram_coach.py splits on the literal arrow ("Arrow separator in item_build is U+2192 per coach prompt convention"); slice D PROVED load-bearing (converting broke 8 tests -> reverted pristine). Real production non-ASCII wire convention = MED DEFER to a P3/P4 production-side ASCII slice (touches coach + Haiku prompt + every peer test). (2) tests/phase7_polish/test_wakeup_prune.py 3x U+2705 in PIN fixture strings ("# U+2705 RESOLVED ..." that SESSION_RE-rejection tests assert on); decorative U+2500/U+2192 in that file WERE swept.
+- Every edited test file is a balanced 1:1 ASCII swap (git numstat net 0 lines/file); no logic/assertion/count change. The +732 net diff lines are entirely the NEW ops/audit/p2w5_* harness artifacts (partition/sweep/slices.json/pytest.txt/claims/report).
+- Gate: full tests/ suite 7885p/0f/2s + 109 subtests, 254.00s exit 0 (byte-identical to the cycle-15 baseline - cosmetic edits, no count change), independently re-run by truth_gate. truth_gate PROCEED (ops/audit/p2w5_truth_gate_report.json; 3/3 claim-sets, suite re-run fresh + 2 DEFER files preserved + 1 swept token; no discrepancies). DS-dir NOT re-run (no DS file - R5/R6, blast radius all in tests/). DEFER -> ops/audit/P2_FINDINGS.md (W5 section).
+- DONT-REDO: the 47-file ASCII sweep + slice-A/wakeup_prune supervisor sweep stay (do NOT revert to glyphs); the 2 load-bearing files stay non-ASCII BY DESIGN (do NOT sweep aram-coach arrows or wakeup_prune emoji in a test-only pass - the aram-coach arrow is a PRODUCTION wire convention, ASCII-ifying needs the coordinated coach+prompt+tests slice); intentional data-fragile drift-detectors stay (test_daemon_slayer_resolver_hp.py item-HP pins, == 172 roster-conformance guards). NEXT cycle 17: W5 half 2 = agents/daemon_slayer/tests ~222 files / ~81k LOC (~6 slices, same lighter lens). After W5 -> P3 PRUNE SWEEPS (vanguard/CV + 2-PC/gamepc + BOM/smart-quote retro; the production ASCII-output pass + aram-coach arrow fold in here).
+
+---
+
 # 2026-06-03 - RC-WIDE: BSOD purge + vision unrestrict + DS ability-ratio re-source + Share/docs (multi-agent)
 
 Caveman ULTRA, 8 subagents. WIN 1 + WIN 2 were already shipped (1.107/1.108) at session start; this session is the operator's follow-on RC-wide directive. RC NOT restarted (no ENGINE bump - the DS work is additive tooling). 3 content commits + this WAKEUP, then a history-wide co-author-trailer strip + force-push (operator EXPLICIT permission). Canonical suite (tools+DS+tests/) GREEN 11514 passed / 2 skip / 1 xfail exit 0.
@@ -31,6 +43,8 @@ Caveman ULTRA, 8 subagents. WIN 1 + WIN 2 were already shipped (1.107/1.108) at 
 
 ## Pruned WAKEUP session (relocated 2026-06-04, item 298 wrap)
 
+---
+
 # 2026-06-03 - DS MERAKI CONTENT-FRESHNESS GUARD - source-adoption WIN 2 (item 296, ENGINE 1.108.0)
 
 "start WIN 2 if WIN 1 was finished fully" = Phase 3 of `docs/DS_SOURCE_ADOPTION_PLAN.md`. Caveman ULTRA. ENGINE 1.107.0 -> 1.108.0; DS :8893 restarted (taskkill pid 16684 + schtasks RC-DaemonSlayer) -> 1.108.0 live. RC NOT touched. Full record = item 296 in `docs/LEDGER.md`.
@@ -43,26 +57,6 @@ Caveman ULTRA, 8 subagents. WIN 1 + WIN 2 were already shipped (1.107/1.108) at 
 - **Gold-pin bullet = verified NO-OP:** `test_gold_efficiency_p1l13` already pins vendored 16.10.1 + derives at runtime; `test_golden_e2e_p1l24` hand-derives from first principles - both already patch-robust (plan's `tools/tests/` path for them was also stale; real `agents/daemon_slayer/tests/`).
 - ENGINE 1.107.0 -> 1.108.0; +12 WIN 2 tests `test_abilities_content_freshness.py`; 61 pin syncs / 53 files (byte-replace, history comment preserved). DS+tools 6526 passed exit 0; `tests/` 4954 passed exit 0 (4 prior fails all resolved); ruff clean; ASCII-only; Share 293 synced --check 0; /health 1.108.0 patch 16.11.1 172/705 live.
 - **Don't-redo:** guard is canonical for Meraki staleness (`_meraki_content_patch` max patchLastChanged, pinned 25.15 - bump IN LOCKSTEP with re-validating ratios + gold tests when WARNING fires); regenerate via extractor (no hand-edit); Meraki `latest` FROZEN at 25.15 (data byte-identical, regen safe); gold/golden tests ALREADY pinned (don't re-pin). **NEXT (explicitly long-term):** re-source ability RATIOS + base damage from DDragon/CDragon (the guard SURFACES staleness, does not cure it). NON-GOAL stays CC-duration sourcing.
-
----
-
-## Pruned WAKEUP session (relocated 2026-06-04, item 297 wrap)
-
-# 2026-06-03 - DS AA-windup OFFSET TIER - source-adoption WIN 1 (item 295, ENGINE 1.107.0)
-
-"start the next item Win1" = Phase 2 of the DS source-layering adoption plan (`docs/DS_SOURCE_ADOPTION_PLAN.md`). Caveman ULTRA. 2 commits `c517b9a9` (engine + Share) + `040a619c` (docs) pushed; CI green both SHAs. ENGINE 1.106.0 -> 1.107.0; DS :8893 restarted (taskkill pid 5112 + schtasks RC-DaemonSlayer) -> 1.107.0 live. RC NOT touched. Full record = item 295 in `docs/LEDGER.md`.
-
-- **Problem:** the `wiki_stats` sidecar left 110 champs on the flat 0.25s AA-windup default. **Fix:** recover a real per-champ windup for 109 from the wiki's `attack_delay_offset` - `windup = (0.300 + offset)/as_base` (combo is a FIXED-windup model). Fraction validated 4/4 EXACT vs published Windup% (Caitlyn/Ashe/Vayne/Jinx).
-- **`tools/daemon_slayer_wiki_stats_extract.py`:** NEW `_signed_scalar_in_block` (the unsigned `_scalar_in_block` regex `([0-9.]+)` SILENTLY DROPS the leading minus most offsets carry - the bug TDD caught FIRST); `_parse_lua_table` now also parses `attack_delay_offset` + `as_base` from the SAME ChampionData block (zero extra net); NEW `wiki_offset` provenance tier in `_merge_fill` between cdragon and default; meta `_offset_cast_fills`.
-- **Regenerated `wiki_stats.json`:** offset 109 / default 1 (**only Alistar** - no offset on any source) / measured 61 -> 170 / 0 errors. Ahri 0.299401, Akali 0.2224, Lux 0.233558 EXACT vs the validator `Desktop\UNIVERSAL_FILES\ds_windup_compare.json`. Champion-entry schema byte-unchanged (offset/as_base are intermediate, never stored per-champ).
-- **Consumers byte-identical:** `combo.py:317` + `data_loader.py:188` already prefer any positive sidecar `attack_cast_time` -> the 109 flow with NO engine edit (plan claim verified). +6 offset tests; +61 ENGINE pin syncs / 53 files; `test_combo_2026_05_30::test_clock_advances_by_cast_time` data-fragile absolute-timeline pin REPLACED with the computed cast-time-cumulative invariant (Lux AA now 0.233558). DS 6319 collected / 6317 passed; suite (agents+tools) 6514 passed / 1 skip / 1 xfail exit 0; ruff clean; Share 292 synced --check 0.
-- **DEVIATION (noted):** sourced offset+as_base from the WIKI raw fields, NOT the plan's literal cdragon `mAttackDelayCastOffsetPercent` - both fields are co-located in the wiki block (cdragon's as_base is unspecified) and it matches the `ds_windup_offset_compare.py` validator EXACTLY.
-- **Don't-redo:** offset tier is the canonical recovery (`wiki_offset` prov, `(0.300+offset)/as_base`); regenerate via the extractor (do NOT hand-edit the JSON); `_signed_scalar_in_block` REQUIRED (negatives); Alistar is the LONE default; combo/data_loader need NO change; on a patch bump re-run `python tools/ds_windup_offset_compare.py` for newly-recoverable champs. **Pre-existing debt flagged:** `Share/CHANGELOG.md` was stale at 1.101.0 (1.102-1.106 entries never added - spawned a backfill task). **NEXT:** WIN 2 (separate session) = Meraki `champions.json` ~10mo-stale -> PATCH-keyed content-freshness guard in `tools/daemon_slayer_abilities_extract.py`. NON-GOAL: CC-duration sourcing (owned by `_per_spell_cc.py`).
-
-
-Sessions older than the last 2-3 full sessions are progressively compacted here.
-Current WAKEUP_NOTES.md keeps only the most recent 2-3 sessions.
-Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
@@ -937,6 +931,8 @@ Don't-redo: (a) DR is NOT an ability block - injects NO synthetic block + does N
 
 NEXT (live/operator-gated - the clean headless DS effects-text SURVIVABILITY triad is COMPLETE: heal throughput + shield throughput + DR denominator): (1) thread apply_passive_mitigation into compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser (BRUISER EHP scorer mitigation-aware; symmetric completion mirroring item 237 -> 236; headless-buildable, byte-identical default). (2) Phase D live flag-flips (apply_passive_mitigation 5 + apply_passive_shield 10 + apply_passive_damage 28 + apply_passive_heal 24 + amp/tenacity/mode/ammo/aoe) each re-ranks + needs a real game + tune the 4 active-DR midpoints live.
 
+---
+
 # 2026-06-01 - item 244: rank mode case-insensitivity + champ-select archetype resolver + coach markdown strip + live SR-ranked watch (2 commits fb8f67f + 25b0be3; CI green; NON-engine, ENGINE 1.76.0 unchanged; no DS restart; RC pid 13544 healthy)
 
 Operator: "start next item on wakeup_notes for SR Ranked queue" (item 243 NEXT(1)), then live champ-select/in-game/post-game watch (NEXT(2)), then /done + "do all 3" (fix the 3 backlog flags I surfaced).
@@ -945,6 +941,8 @@ Operator: "start next item on wakeup_notes for SR Ranked queue" (item 243 NEXT(1
 - LIVE WATCH (item-211 + item-243 surfaces verified clean on a real ranked SR Caitlyn game): build chooser populated 3 paths + userbuild, DS-vs-enemy-comp 0 junk, summoners [4,21] Flash+Barrier; post-game ingest row 1805 Caitlyn SR game_id=5572690426 detail=True (no misattribution); live-metrics live_5572690426 15 rows 3 milestones (SR keys by real live_<gameId>; ARAM uses synthetic sess_<mode>_<champ>_N).
 - Don't-redo: rank.py mode.upper() is byte-identical for uppercase (production) callers; do NOT bump ENGINE for it. F3 is settled (after-game summary file, not stale - do not delete/re-flag). `MODE_TO_FILE['sr']` reads repo-ROOT `coaching_data.json` (fresh), `data/coaching_data.json` is the separate after-game client summary.
 - NEXT carry: live `/rank?mode=aram` :8893 echo deferred (needs DS restart; in-process test already proves the route code path filters). item 243 NEXT(2) watch ongoing; NEXT(3) item 240/241 SR champ-select part-3 + DS Phase C/D still owed.
+
+---
 
 # 2026-06-01 - CI hygiene gate + RC_LIVE_METRICS wire-all + ARAM Mayhem live test (relay-token + build-chooser + Golden-Spatula fixes) (item 243; 6 commits ca8be3f..770012f; all CI green; ENGINE 1.75.0->1.76.0; DS restarted 1.76.0; RC restarted pid->13544)
 
@@ -1004,6 +1002,7 @@ Verified: DS suite 6079 -> 6103 (+24 test_passive_resist_percent_item268.py, 0 f
 
 Don't-redo: (a) `armor_pct`/`mr_pct`+`pct_base` is the canonical home for a % of own resist; "total"(base+build) vs "bonus"(delta); multiplies the resolved build resist passed from compute_ehp (no feedback) - do NOT route a percent through the flat-add fields. (b) resist kwargs are keyword-only 0.0-default so a positional call returns flat-only (item-264/267 tests + Rammus flat-half pin survive unedited) - do NOT make them positional. (c) Rell = % of BONUS -> 0 itemless (correct); Malphite/Taric/Poppy/Rammus = % of TOTAL. (d) flat+percent on one entry SUM (Rammus) - do NOT split keys. (e) default apply_passive_resist=False byte-identical; flag-on CAN re-rank (non-linear _armor_factor, correct) - do NOT flip default-on without live validation (Phase D). (f) percent-of-resist class EXHAUSTED - the remaining exclusions each need a DIFFERENT seam. (g) /ehp reads `items` NOT `item_ids`. (h) DS restart PowerShell taskkill /F /PID + schtasks (NEVER Stop-Process). NEXT (operator-gated): clean headless effects-text survivability lane now FULLY EXHAUSTED (heal/shield/DR throughput + resist-grant flat + rank-scaled-block + percent-of-resist all COMPLETE x2 EHP scorers); Phase D live flag-flips; unlabeled-multi-stat-block resist set (Singed/Braum/Leona/Jax) needs confident per-series attribution (future seam); Phase 11 vision-frame collapse + gamepc_*.py archive.
 
+---
 
 # 2026-06-02 - item 267 + 1-PC re-orient: DS rank-scaled RESIST-grant "read the parsed block" lift (ENGINE 1.95.0) + vision-relay :2999 self-heal
 
@@ -1017,6 +1016,7 @@ Verified: DS suite 6043 -> 6079 (+36, 0 failed); +30 tests test_passive_resist_b
 
 Don't-redo: (a) rank_scaled is the canonical home for a resist grant whose value is in a parsed block indexed by ability rank; resolve via rank_at_level(key,level) - do NOT hardcode level breakpoints. (b) default apply_passive_resist=False byte-identical (item-264 flag); do NOT flip default-on without live validation (Phase D); flag-on CAN re-rank the item-rankers (non-linear _armor_factor; correct, not a bug = item-264 finding). (c) the DEFERRED set needs the percent-of-resist mode (candidate B: Malphite/Taric/Poppy/Rell + Rammus %-half = base-vs-bonus split) OR confident block attribution (Singed/Braum/Leona/Jax unlabeled multi-stat) - do NOT force-seed with guessed attribution. (d) Part-1: the vision-server self-heal chokepoint already decouples BOTH relay consumers - do NOT re-pitch inverting the poller; the full vision-FRAME (mss) collapse stays deferred. (e) DS restart = PowerShell taskkill /F /PID + schtasks (Git-Bash mangles /F; NEVER Stop-Process). NEXT (operator-gated): candidate-B percent-of-resist mode (needs base-vs-bonus resist split); Phase D live flag-flips; full vision-frame in-process collapse + archive gamepc_*.py + ARCHITECTURE topology rewrite (Phase 11 deferred).
 
+---
 
 # 2026-06-02 - item 266 (/headless-upgrade RUN 2): Haiku-elim WAVE 3 wired+validated+rendered + GATE FINDING (no ENGINE bump, no restart)
 
@@ -1255,6 +1255,8 @@ Dont-redo: the gate MUST invoke ruff via ["py","-m","ruff",...] NOT sys.executab
 
 NEXT: hook activates at next session start if Claude Code did not hot-reload settings.json this session (the gate's own commit this session is clean either way). The report's aspirational items (self-healing /headless-upgrade with checkpoint+resume, swarm pre-merge lint/test/drift gates, continuous roadmap-drain agent) were NOT built - horizon ideas, operator-gated.
 
+---
+
 # 2026-05-31 - item 238: DS null-damage-type ability correction registry (validated vs sibling-project a peer maintainer/Redymix scraper-refactor chat) (ENGINE 1.73.0 -> 1.74.0; HEAD de1cd3b; pushed 9bd3da2..de1cd3b; DS :8893 restarted serves 1.74.0; RC NOT restarted)
 
 Operator: "validate DS against [chat]" then "get them implemented". AskUserQuestion -> Gap-3-first-staged + probability-gated midpoints (Gaps 1+2 deferred to own sessions). Chat critique: null-damageType abilities (Caitlyn W) lose mitigation; "modifiers arent considered"; mixed-damage attribution. Verdict: RC already Meraki-dynamic on ability damage + MORE robust on the null-dtype drop (keeps by block-kind, not damage_type, so KEEPS 27 abilities their tool zeroes); 2 shared gaps remain.
@@ -1264,6 +1266,8 @@ Shipped (commit 4df07ee + docs de1cd3b): NEW agents/daemon_slayer/_ability_overr
 Dont-redo: overrides at LOAD time (do not re-patch per-consumer); the 13 unactioned null-dtype forms are MAGIC-default-correct; engine MIXED=50/50 armor/MR (do not set magic+true abilities to MIXED); phantom flip is inert "other" (honest fix = extractor _classify_attribute + re-extract, deferred). HARNESS: severe stale-tool-result replay this session - trust git status + Edit success/fail + pytest-to-file + DONE-exit sentinels, NOT raw stdout, when the pipe wedges.
 
 NEXT (operator-gated, staged): Gap 1 = modifier-amp application (15 damage_amp_self blocks ALWAYS-ON vs CONDITIONAL w/ prob-gated midpoints; item 235 deferred on purpose; own ENGINE bump + re-rank validation). Gap 2 = effects-text-only passive damage (~118 TIER-1 forms parse=no_damage with formula in effects_descriptions: Caitlyn Headshot, Ziggs Short Fuse, KogMaw, Aatrox, Gangplank -> hand-authored _PASSIVE_DAMAGE_OVERRIDES, NOT a text-parser). Both re-rank; validate saner-not-just-different.
+
+---
 
 # 2026-05-31 - item 237: DS bruiser cc_blended ranking + build-tenacity (symmetric completion of item 236); cc_blended/tenacity arc COMPLETE; clean headless DS engine-wiring lane EXHAUSTED (ENGINE 1.72.0 -> 1.73.0; HEAD c24f44f; pushed 834ae02..c24f44f; CI green run 26716822332; DS :8893 restarted serves 1.73.0; RC NOT restarted)
 
@@ -1284,6 +1288,8 @@ EXHAUSTION DECLARED (honest, per item-237 prompt (b)): the cc_blended/tenacity a
   (4) Marginal/manufactured-only (rejected per "keep it real and grounded"): naming Riot-fixed formula constants in _effects_data.py; a /tenacity diagnostic route; a tenacity-monotonicity scenario_matrix invariant. NOT worth shipping.
 Loop intentionally STOPPED here (no further ScheduleWakeup) rather than manufacture low-value work - the operator's exhaustion off-ramp.
 
+---
+
 # 2026-05-31 - item 236: DS opt-in cc_blended-EHP ranking mode + item-tenacity layer (ENGINE 1.71.0 -> 1.72.0; HEAD 587771e; pushed a7c3444..587771e; CI green run 26716346206; DS :8893 restarted serves 1.72.0; RC NOT restarted)
 
 Operator headless continuation (fresh context after item-235 ScheduleWakeup; item-235 ledger NEXT(2)). Pre-flight clean: HEAD a7c3444 / 0 PRs / CI green / 0 worktrees / ENGINE 1.71.0 in sync.
@@ -1299,6 +1305,8 @@ ENGINE 1.71.0 -> 1.72.0 + 33 test-pin sync. Verified: DS 5573 -> 5587; RC 4091 (
 Don't-redo: (a) DEFAULT score_by="blended" + apply_build_tenacity OFF = BYTE-IDENTICAL (full DS suite unchanged); do NOT flip score_by default. (b) cc_blended discount is build-independent WITHOUT the tenacity term - the score_by="cc_blended" mode is meaningless unless apply_build_tenacity is ON (that is why it defaults ON for cc_blended via the None tri-state); do NOT ship a cc_blended sort without the tenacity term (it would be an inert no-op, the trap item 235 avoided). (c) tenacity re-ranks ONLY vs non-saturating CC comps (6s cap) - this is correct, NOT a bug. (d) `_item_tenacity.py` is description-parsed (DDragon strips the stat); the 3 EXCLUDED ids (Anathema's enemy-debuff / Silvermere active / Elixir consumable) are NOT self-passive tenacity - do NOT add them. (e) include_conditional + enemy_champions re-added to rank_items_by_ehp ARE now live consumers (the cc_blended path), unlike item 235's revert - that revert was correct for the BLENDED ranker; this is the cc_blended ranker. (f) DS restart PowerShell taskkill; NEVER Stop-Process.
 
 NEXT (operator-gated / live-validation): (1) thread apply_build_tenacity into compute_hybrid + rank_items_by_hybrid + /hybrid + /rank-bruiser so the BRUISER cc_blended scorer is tenacity-aware too (symmetric completion - the tank scorer is now tenacity-aware, the bruiser one is not; same mechanic, headless-buildable, byte-id default). (2) live-game validation to flip any of the now-route-reachable opt-in flags default-on (item-235 carry). (3) assassin keystone auto-enable in /rank-assassin (product decision). After (1) the cc_blended/tenacity arc is COMPLETE + the clean headless DS lane is exhausted (remainder = live-validation + product decisions).
+
+---
 
 # 2026-05-31 - item 235: DS self-audit wiring + parameterize pass - route the 6 dead opt-in scoring flags + wire enemies/cc_blended + DRY haste helper + /modifier-summary (ENGINE 1.70.0 -> 1.71.0; HEAD 17f9556; pushed a37d075..17f9556; CI green run 26715736115; DS :8893 restarted serves 1.71.0; RC NOT restarted)
 
@@ -1318,6 +1326,8 @@ Don't-redo: (a) all 6 flags + enemies OPT-IN/DEFAULT byte-identical; do NOT flip
 
 NEXT (operator-gated / live-validation): (1) the 6 flags are now ROUTE-REACHABLE so the operator can exercise them live to gather the data needed to flip any default-on (the item-234 NEXT(1) is now UNBLOCKED - the validation path exists). (2) optional cc_blended-EHP RANKING mode for rank_items_by_ehp (score on cc_blended not blended) is a real future feature - would re-rank tanks vs heavy-CC comps; needs a sort-key/result-field add + operator sign-off. (3) auto-enable assassin keystone in /rank-assassin (item-230 carry, product decision). (4) the headless DS engine-wiring lane is now genuinely thin - remaining surface is live-validation-gated flag-flips + product decisions.
 
+---
+
 # 2026-05-31 - item 234: DS mana_sim opt-in ability-haste/CDR model + static-CD honest no-consumer verdict; ALL 6 sidecar buckets RESOLVED (ENGINE 1.69.0 -> 1.70.0; HEAD e898114; pushed 65f1bda..e898114; DS :8893 restarted serves 1.70.0; RC NOT restarted)
 
 Operator headless continuation (fresh context after item-233 ScheduleWakeup). Pre-flight clean: HEAD 65f1bda / 0 PRs / CI all green / 0 worktrees / ENGINE 1.69.0 in sync.
@@ -1333,6 +1343,8 @@ ENGINE 1.69.0 -> 1.70.0 + 33 test-pin sync. Verified: DS 5543 -> 5550; RC 4161 (
 Don't-redo: (a) ability-haste CDR REUSES total_item_ability_haste + Riot base_cd/(1+AH/100); do NOT rebuild AH aggregation (DDragon stats strip AbilityHaste). (b) haste binds only on cooldown-REPEATING sequences (single-cast combos cast-time-bound) - correct, not a bug. (c) static-CD HONEST no-consumer (QWER 3 abilities w/ mislabel); do NOT wire it to gate haste-immunity. (d) apply_ability_haste OPT-IN default-OFF byte-identical; do NOT flip without live validation. (e) ALL 6 buckets RESOLVED (5 wired + static-CD honest-no-consumer + cc_tags operator-CLOSED) - sidecar lane COMPLETE. (f) DS restart PowerShell taskkill; NEVER Stop-Process.
 
 NEXT (operator-gated / data-blocked - clean headless DS lane EXHAUSTED): (1) flip the 4 opt-in flags (gate_ammo/apply_mode_modifiers/aoe_targets_hit/apply_ability_haste) after LIVE-GAME validation - each re-ranks, NOT headless. (2) auto-enable assassin keystone in /rank-assassin (operator sign-off - product decision). (3) missile combo-clock delay IF a real per-spell cast-RANGE source lands. (4) more per_attack runes (registry saturated). cc_tags operator-CLOSED.
+
+---
 
 # 2026-05-31 - item 233: DS missile travel-time bucket + rune target_hp tags + burst role + static-CD accessor, all OPT-IN/additive/byte-identical (ENGINE 1.68.0 -> 1.69.0; HEAD f71605f; pushed 96e20bf..f71605f; DS :8893 restarted serves 1.69.0; RC NOT restarted)
 
@@ -1352,6 +1364,8 @@ Don't-redo: (a) cone_distance=100/0 are CDragon PLACEHOLDER SENTINELS - missile.
 
 NEXT (operator-gated): (1) static-CD consumer needs a live ability-haste model first. (2) flip the 3 default-on flips after live validation. (3) missile combo-clock delay IF a real per-spell cast-range source lands. (4) auto-enable assassin keystone in /rank-assassin. (5) more per_attack runes if a proc-signature fits. cc_tags operator-CLOSED.
 
+---
+
 # 2026-05-31 - item 232: DS 3 sidecar buckets (geometry/recharge/mode_modifiers) + rune proc-signature LIFT, all OPT-IN/byte-identical (ENGINE 1.67.0 -> 1.68.0; HEAD d944154; pushed ce3aa6e..d944154; DS :8893 restarted serves 1.68.0; RC NOT restarted)
 
 Operator headless run: "continue DS: geometry (no consumer) / recharge (time-step ledger) / mode_modifiers (inactive modes); rune per_attack proc-signature lift; cc_tags operator-CLOSED. self-audit every wire + parameterize. lift everything." Pre-flight clean: HEAD ce3aa6e / 0 PRs / CI green / 5 stale worktrees cleaned. 3 read-only Explore scoping agents (data layer + rune model + consumers).
@@ -1369,6 +1383,8 @@ Verified: DS 5335 -> 5484; RC 4161 (engine sig back-compat); phase8 70/70 post-r
 Don't-redo: (a) all 4 buckets+lift OPT-IN default = BYTE-IDENTICAL; do NOT flip defaults-on without live validation (apply_mode_modifiers re-ranks Arena + urf/ofa/usb/nb; aoe_targets_hit>1 re-scales AoE; caster_hp_pct<0.6 amps Last Stand). (b) Slice G mis-based - canonical spell_geometry lives in foundation 67ca7b1 data_loader NOT G's branch. (c) Last Stand/Absolute Focus/Gathering Storm now SHIPPED with HONEST gates (byte-id default) - item 231 anti-inflation reasoning HONORED by defaults, lift makes gates EXPRESSIBLE; 8139(heal)+8446(tower) stay excluded. (d) ARAM keeps legacy lolmath; wiki mode_modifier is source ONLY for non-ARAM (no double-count). (e) recharge_ledger cdragon ammo recharge primary (wiki recharge is a MIX of charge-regen + cooldown mislabels). (f) Arena=wiki "ar" is ADDEND mode not mult; per-level so byte-id at level 1. (g) DS restart needs PowerShell taskkill (Bash mangles /F); NEVER Stop-Process.
 
 NEXT (operator-gated): (1) 2 owed buckets - missile (missile_speed + geometry -> travel-time combo delay) + static-CD (wiki_ability_stats static; needs name-bridge + haste model, thin). cc_tags operator-CLOSED. (2) flip apply_mode_modifiers/gate_ammo/aoe_targets_hit defaults-on after live validation. (3) thread role from attackrange into burst rune calls (ranged Lethal Tempo). (4) auto-enable assassin keystone in /rank-assassin. (5) target_hp gate context for Cut Down/Coup de Grace.
+
+---
 
 # 2026-05-31 - item 231: DS sidecar ammo-bucket wire + rune per_attack well-dry verdict + BACKLOG L16 closure (ENGINE 1.66.0 -> 1.67.0; HEAD 6e672e9; pushed 61367a7..6e672e9; DS :8893 restarted serves 1.67.0)
 
@@ -1837,6 +1853,8 @@ Operator triggered "starting ranked sr - monitor UI and game, fix as needed -> s
 - 13 typography sub-floor sites on champ select Page #8 (lines 769, 787, 1179, 1264, 1386, 1413, 1456, 1483, 1500, 1708, 1717, 1745, 2456) - bump to `var(--fs-xs)`. Operator-gated.
 - Live in-game chip verification owed at next coach tick (mode_key was `client` throughout end of session).
 - All item 200 carries unchanged (LCU agent redeploy / etc).
+
+---
 
 # 2026-05-26 - item 200 SHIPPED (archived to docs/history_notes.md per keep-last-3 rule)
 
@@ -2468,7 +2486,7 @@ Operator "in parallel" 7 slices selected from operator-gated decision-owed lane.
 (k) Frozen-file grant NOT used this session.
 (l) DS engine cumulative test count now 4712 / cumulative subtests 1774.
 
-
+---
 
 # 2026-05-25 (late afternoon) - item 186 SHIPPED: dead-endpoint cleanup (11 routes) + dedup duplicate-fetch cache + housekeeping wave 27 CLEAN + Slice E U+2500 stale-carry confirmed + Slice G cc_conditional wave 20 saturation (2 merges + 1 RC restart pushed origin/main `9aea56a..077ee64`; non-engine; non-frozen; no DS engine bump; no DS restart; RC :8888 restarted via restart_trigger.txt pid 12612 -> 10352 for route module reload)
 
@@ -2861,6 +2879,9 @@ Operator: "start #89 live verification (ROADMAP L24): Practice Tool + ARAM Mayhe
 - All item 179 carries unchanged: RC-PostmortemAnalyze first scheduled run today 2026-05-25 04:15, DD Defy deferred, live ARAM/SR smoke pending, calibrations operator-gated, UI/UX live-game audit owed, Legion 1-PC consolidation operator-gated, cc_conditional wave 20+ schema-blocked, v2.1 audit pages 9/10/11/12/13/14/15/16 owed, frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-22 - item 150 4-slice parallel housekeeping drain (cc_conditional wave 8 CLEAN + BACKLOG stale-sweep wave 12 + cost/latency CLEAN wave 15 + living docs catchup post-148) SHIPPED (3 commits + 1 merge `bc12982` `60c3aab` `28caf50`, pushed; non-engine; non-frozen; no ENGINE bump; no DS restart; no RC restart - all docs-only)
 
 Operator "continue what is left as open items in parallel commit + push & /done for /clear, use as many agents as needed" -> 4 worktree agents dispatched concurrent. 16th consecutive run using orchestrator-merge template items 134-150.
@@ -3109,6 +3130,8 @@ Operator triggered "in parallel : start all open items in Operator-gated, decisi
 - (h) v2.1 audit pages 9/10 Champ Select ARAM/Arena -> 11/12/13 Active Match SR/ARAM/Arena -> 14/15/16 PGR SR/ARAM/Arena (8 remaining; this session framing again non-UI).
 - (i) Frozen-file grant NOT used this session.
 
+---
+
 # 2026-05-24 - item 176 SHIPPED: operator-gated parallel drain #11 (cc_conditional wave 18 FULL schema lift `coexists_with_unconditional` + Maokai R + Briar R ENGINE 1.55.0 + U+2500 box-drawing sweep on rc_supervisor.py + rc_self_monitor.py via frozen grant 542 -> 0 + BACKLOG/ROADMAP stale-sweep wave 20 CLEAN + cost/latency CLEAN wave 24) (4 commits + 2 merges `c066a8a` (Slice A merge `f5d3ac0`) + `0079f09` (Slice B merge `5a3430e`) + `2fb350f` (docs) pushed origin/main `face325..HEAD`; ENGINE 1.54.0 -> 1.55.0; DS :8893 killed pid 5168 + relaunched via schtasks -> serves 1.55.0; RC :8888 unchanged pid 5800 mode=client - DS engine + tools + tests + frozen byte-edits + docs only)
 
 Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 29th consecutive run using orchestrator-merge pattern (items 134-176). 3 worktree/investigative agents dispatched concurrent. AskUserQuestion 3-question scope fork pinned per [[feedback_scope_decision_cadence]]: (Q1) cc_conditional wave 18 FULL schema lift (operator picked FULL not Skip not Maokai-only); (Q2) 542 U+2500 box-drawing chars Grant + sweep (operator flipped from item 175's Skip verdict); (Q3) Housekeeping triple Full (Recommended). Pre-flight: 0 open PRs, all 5 CI runs green since item 175, 1 stale remote branch (worktree-agent-a4b1d99b2dc268fe4 = item 175 Slice A) confirmed fully merged via empty `git log origin/main..origin/<branch>` diff -> deleted via `git push origin --delete`. 19 local worktrees harness-locked (parent owns lifecycle, left in place per pattern).
@@ -3175,6 +3198,9 @@ Operator triggered "in parallel : start all open items in Operator-gated, decisi
 - (i) Slice C FLAG: today's `logs/2026-05-24.log` rotated/stopped at 17:51 while current RC pid 5800 started at 20:23:23 - log destination may have moved; worth verifying log file path in a separate audit pass (informational, non-blocking).
 
 ---
+
+---
+
 # 2026-05-24 - item 175 SHIPPED: operator-gated parallel drain #10 (cc_conditional wave 17 COND_TRAVERSE tag schema lift + Taliyah E ENGINE 1.54.0 + BACKLOG stale-sweep wave 19 CLEAN + cost/latency CLEAN wave 23) (3 commits + 1 merge `3fa56a1` (merge) + `a8847f1` (docs) pushed origin/main `92fb056..a8847f1`; ENGINE 1.53.0 -> 1.54.0; DS :8893 restarted pid 12264 -> serves 1.54.0; RC :8888 unchanged pid 5800 mode=client - DS engine + docs only)
 
 Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 28th consecutive run using orchestrator-merge pattern (items 134-175). 3 worktree/investigative agents dispatched concurrent. AskUserQuestion 3-question scope fork pinned per [[feedback_scope_decision_cadence]]: (Q1) cc_conditional wave 17 small lift COND_TRAVERSE + Taliyah E only (Recommended); (Q2) 542 residual U+2500 box-drawing chars Skip - intentional docstring tree-drawing (Recommended); (Q3) Housekeeping triple Full (Recommended). Pre-flight: 0 open PRs, all 5 CI runs green since item 174, 1 stale remote branch (worktree-agent-ad9b284de92b11e8b = item 174 slice A) confirmed fully merged via empty `git log origin/main..origin/<branch>` diff -> deleted via `git push origin --delete`. 17 local worktrees harness-locked (parent owns lifecycle, left in place per pattern).
@@ -3230,6 +3256,9 @@ Operator triggered "in parallel : start all open items in Operator-gated, decisi
 - (i) Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-24 - item 174 SHIPPED: operator-gated parallel drain #9 (cc_conditional wave 16 ENGINE 1.53.0 + BACKLOG stale-sweep wave 18 + L31 round 6 SATURATED + cost/latency CLEAN wave 22 + RC test pin fix for wave 16) (4 commits + 1 merge `9e16584` `45955fc` `66dda6d` `2ac7147` pushed origin/main `9c1cb22..2ac7147`; ENGINE 1.52.0 -> 1.53.0; DS :8893 restarted pid 14312 -> serves 1.53.0; RC :8888 unchanged pid 5800 - DS engine + docs + 1 RC test fix only)
 
 Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 27th consecutive run using orchestrator-merge pattern (items 134-174). 3 worktree agents dispatched concurrent. No question-fork (carries clearly enumerated in item 173 (a)-(i)). Pre-flight: 0 open PRs, all CI green since item 172, 2 stale remote worktree branches (a515+ae88) confirmed fully merged via empty diff vs origin/main -> deleted.
@@ -3293,6 +3322,9 @@ Operator triggered "in parallel : start all open items in Operator-gated, decisi
 - (i) Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-24 - item 173 SHIPPED: operator-gated parallel drain #8 (cc_conditional wave 15 ENGINE 1.52.0 + L31 type annotations round 5 + cost/latency CLEAN wave 21 + BACKLOG stale-sweep wave 17) (3 commits + 2 merges pushed origin/main; ENGINE 1.51.0 -> 1.52.0; DS :8893 restarted pid 13492 -> serves 1.52.0; RC :8888 unchanged pid 5800 - DS engine + docs only)
 
 Operator triggered "in parallel : start all open items in Operator-gated, decision owed : when completed do commit + push and /done for /clear". 26th consecutive run using orchestrator-merge pattern (items 134-173). 3 worktree agents dispatched concurrent. No question-fork (operator framed scope; carries clearly enumerated in item 172 (a)-(i)). Pre-flight: 0 open PRs, 3 green CI runs since item 172 ruff fix, 13 stale locked worktrees (harness-owned).
@@ -3349,6 +3381,9 @@ Operator triggered "in parallel : start all open items in Operator-gated, decisi
 - (i) Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-24 - item 172 SHIPPED: operator-gated parallel drain #7 (cc_conditional wave 14 Meraki cast_time schema lift ENGINE 1.51.0 + L31 type annotations round 4 + cost/latency CLEAN wave 20 + RC restart applies item 171 log-suppress fix + item 167 tooling ruff fix unblocks CI) (4 commits + 2 merges `9766872` `b5b0ec3` `9a6e697` `528ce82` pushed origin/main `dbf55e6..528ce82`; ENGINE 1.50.0 -> 1.51.0; DS :8893 restarted pid 14632 -> serves 1.51.0; RC :8888 restarted pid 12220 -> 5800 via `restart_trigger.txt` to apply item 171 `_SUPPRESS_LOG_PATHS` query-string fix in production)
 
 Operator triggered "check github for ci checks and branch merge or deletes. then continue next operator gated passes in parallel". **CI was red 10 consecutive runs since item 170** on 3 ruff UP034 errors in `tools/champion_loadout_align.py:342` + `tools/champion_loadout_handcurate.py:315,316` (introduced item 167; items 170+171 deferred as "pre-existing"). Fixed via `py -m ruff check --fix` (3 paren removals). 2 stale remote worktree branches deleted. Then 3 parallel agents (orchestrator-merge pattern items 134-172 = 25 consecutive runs).
@@ -3497,6 +3532,9 @@ Operator triggered the "in parallel: start all open items in Operator-gated, dec
 - Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-24 - item 169 SHIPPED: SR carry summoner default Flash+Heal -> Flash+Barrier + page #8 audit re-run + PostmortemAnalyze verification (1 feature commit `102886c` merged `1d83f96` + 1 docs sync `969b337` pushed origin/main `12c604b..969b337`; non-frozen; no DS restart; no RC restart - data-only + dashboard route docstring sync via ADR-008 auto-serve)
 
 Operator triggered the "in parallel: start all open items in Operator-gated, decision owed" drain with a specific ADC summoner-spell fix spec. Orchestrator-merge pattern items 134-156 streak extended to 22 consecutive runs.
@@ -3528,6 +3566,9 @@ Operator triggered the "in parallel: start all open items in Operator-gated, dec
 - v2.1 audit pages 9/10 Champ Select ARAM/Arena -> 11/12/13 Active Match SR/ARAM/Arena -> 14/15/16 PGR SR/ARAM/Arena (8 remaining in audit order).
 
 ---
+
+---
+
 # 2026-05-24 - items 165b-168 SHIPPED: ARAM bench 10-cell + loadout roster + SR DS-align + P&B 3-panel + archetype preview (4 feature commits `15bafed` `dbcf9f2` `1750425` `81925a6` pushed origin/main `3b3f9d8..81925a6`; non-frozen; RC pid 14464 -> 12220 via schtasks /Run /TN RC-Supervisor; ADR-008 asset hash auto-served all UI edits)
 
 Four operator-directed asks executed end-to-end.
@@ -3558,6 +3599,9 @@ Four operator-directed asks executed end-to-end.
 - DD Defy / Live ARAM/SR smoke / calibrations / cc_conditional wave 9+ / 542 U+2500 chars / Legion 1-PC consolidation - all operator-gated carries.
 
 ---
+
+---
+
 # 2026-05-23 - item 165 ARAM bench-swap + summoner-spell D/F slot rotation SHIPPED (commit `1fa39de`, pushed origin/main `02fef4b..1fa39de`; non-frozen; agent redeployed Game-PC; no DS restart; no RC restart - ADR-008 asset-hash auto-served)
 
 Operator-reported 4 live champ-select bugs, all fixed end-to-end:
@@ -3594,6 +3638,9 @@ Operator-reported 4 live champ-select bugs, all fixed end-to-end:
 - Game-PC RC-LCU task re-enable decision pending (operator must opt back in or keep manual launch).
 
 ---
+
+---
+
 # 2026-05-23 - items 163-164 page #8 Champ Select SR rounds 1-3 + boots-engine + LCU multi-itemset push SHIPPED (5 commits `15a2202` `562e992` `42e0c96` `0554ce7` `3d02d94` `fba6b72`, pushed origin/main `8c54682..fba6b72`; non-frozen; DS engine extended via core/build_order.py non-frozen; no DS restart needed since engine_version unchanged; RC :8888 ADR-008 asset-hash auto-served throughout)
 
 Item 158's v2.1 audit order continued: page #4 History visual proof closed (item 162 carry-forward (b)) + page #7 Pre-Game Lobby SHIPPED + page #8 Champ Select SR end-to-end + 3 rounds of operator-driven deltas + boots-engine injection.
@@ -3646,6 +3693,9 @@ Item 158's v2.1 audit order continued: page #4 History visual proof closed (item
 - DD Defy / Live ARAM-SR smoke / calibrations / cc_conditional wave 12+ deferred / 542 U+2500 chars / Legion 1-PC consolidation - all operator-gated.
 
 ---
+
+---
+
 # 2026-05-23 - items 159-162 UI scale v2.1 pages #3 Replay + #4 History + #5 Session + #6 Home SHIPPED (6 commits `0d77e05` `69249f0` `6d55f63` `d677daf` `b3e14c1` `84b99a8`, pushed origin/main `2dfe8ac..84b99a8`; non-engine; non-frozen; no DS restart; no RC restart - ADR-008 asset-hash auto-served throughout)
 
 Item 158's 16-page v2.1 audit order continued. 4 consecutive pages migrated end-to-end (CSS to v2.1 tokens + per-page mock fixture at `web/data/ui_mock/<page>.json` + dev-toggle mock-fetch branch consulting `body.dataset.uiMock`). 7-step audit ritual GREEN on all 4 pages; visual proof captured on Game-PC monitor 1 except page #4 History (operator entered ARAM Mayhem mid-edit -> dashboard auto-routed away).
@@ -3673,6 +3723,9 @@ Item 158's 16-page v2.1 audit order continued. 4 consecutive pages migrated end-
 - 10 remaining pages in v2.1 order: #7 Pre-Game Lobby -> #8/9/10 Champ Select SR/ARAM/Arena -> #11/12/13 Active Match SR/ARAM/Arena -> #14/15/16 PGR SR/ARAM/Arena.
 
 ---
+
+---
+
 # 2026-05-23 - item 158 UI scale v2.1 page #2 User Builds + rune-page builder + spell chooser SHIPPED (2 commits `a82d8f3` `5452e9e`, pushed origin/main `dffea08..5452e9e`; non-engine; non-frozen; no DS restart; RC pid drifted 7356 -> 14464 mid-session via supervisor auto-relaunch picking up coaches/sr_user_builds.py edit - reload_ok=True)
 
 Operator-driven continuation of item 157's 16-page UI scale v2.1 audit order. Page #2 (User Builds) shipped end-to-end + mid-round augmentation: form pane gained a tabbed 5-tree rune-page builder + 11-icon summoner-spell chooser.
@@ -3719,6 +3772,9 @@ Operator-driven continuation of item 157's 16-page UI scale v2.1 audit order. Pa
 (e) DD Defy heal-on-takedown STILL deferred. Live ARAM/SR smoke STILL pending. Calibrations operator-gated. cc_conditional wave 12+ 2 deferred candidates. 542 residual U+2500 box-drawing chars operator-gated. Legion 1-PC consolidation operator-gated.
 
 ---
+
+---
+
 # 2026-05-23 - item 157 UI scale v2.1 - per-element ~44% bump (25% + 15%) + zoom feature retired - Settings worked example SHIPPED (1 commit `09eddeb`, pushed origin/main `1d5ef99..09eddeb`; non-engine; non-frozen; no DS restart; no RC restart - asset-hash auto-reload per ADR-008)
 
 Operator triggered global UI density refactor across 16 pages (Settings -> User Builds -> Replay -> History -> Session -> Home -> Pre-Game Lobby -> Champ Select SR/ARAM/Arena -> Active Match SR/ARAM/Arena -> Post Game Review SR/ARAM/Arena). One framed AskUserQuestion 4-question scope fork pinned per [[feedback_scope_decision_cadence]]: (Q1) Spec doc + tokens.css draft + Settings rendered preview reviewed together (Recommended); (Q2) Density modes - single Comfortable/Broadcast target now, multi-mode primitive deferred (Recommended); (Q3) Page order - operator's verbatim list (Recommended); (Q4) Dummy data - dev-only Settings toggle default OFF.
@@ -3761,6 +3817,9 @@ Operator triggered global UI density refactor across 16 pages (Settings -> User 
 (l) **NEW carry from item 157**: 583 hardcoded font-size declarations across 29 CSS files will be swept incrementally per page-audit pass; no bulk sweep authorized.
 
 ---
+
+---
+
 # 2026-05-23 - item 156 operator-gated decision-owed parallel drain #4: rc_supervisor FROZEN mojibake byte-repair + Variant B em-dash mojibake closure + cc_conditional wave 11 Sion R + Gnar W form 1 + housekeeping triple SHIPPED (4 commits + 3 merges + docs sync follow-up, pushed origin/main; ENGINE 1.47.0 -> 1.48.0; DS :8893 restarted serves 1.48.0; RC :8888 unchanged)
 
 Operator triggered fourth consecutive "in parallel : start all open items in Operator-gated, decision owed" drain. AskUserQuestion 4-question scope fork pinned: (Q1) rc_supervisor.py 1368 mojibake byte-repair Grant + repair; (Q2) cc_conditional wave 11 Full pass (Recommended); (Q3) DD Defy Defer (Recommended); (Q4) Add housekeeping CLEAN slices explicitly. 3 worktree agents dispatched concurrent (orchestrator pattern items 134-155 extended to 21 consecutive runs).
@@ -3809,6 +3868,9 @@ Operator triggered fourth consecutive "in parallel : start all open items in Ope
 **Carries forward:** (a) Item 155 carries ALL unchanged EXCEPT (a)-relaxed: rc_supervisor.py mojibake byte-repair NO LONGER operator-gated (DONE this session). (b) RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15. (c) DD Defy heal-on-takedown STILL deferred. (d) Live ARAM/SR smoke STILL pending. (e) Calibrations STILL operator-gated. (f) UI/UX live-game audit owed. (g) DS conditional arc operator-CLOSED (s232). (h) Legion 1-PC consolidation STILL operator-gated. (i) cc_conditional wave 12+ has 2 deferred candidates (Jayce E + Singed E) needing further schema lifts. (j) 542 residual U+2500 box-drawing chars carry forward as operator-gated separate sweep. (k) Operator-gated decision-owed lane EXHAUSTED for actionable headless items at item 156 ship time. Frozen-file grant USED for ops/rc_supervisor.py; NOT used for any other frozen file.
 
 ---
+
+---
+
 # 2026-05-23 - item 155 operator-gated decision-owed parallel drain #3: mojibake byte-repair + frozen smart-quote sweep + L31 round 3 lcu/+coach_integration/+agents/ SHIPPED (3 commits + 3 merges, pushed origin/main `22a56bd`; non-engine; no DS restart; RC :8888 unchanged - non-frozen + frozen-grant scoped)
 
 Operator triggered third consecutive "in parallel : start all open items in Operator-gated, decision owed" drain. AskUserQuestion 4-question scope fork pinned: (Q1) Mojibake UTF-8 byte-repair on 4 flagged files Repair (Recommended); (Q2) Frozen smart-quote sweep Grant + sweep 3 trivial only - rc_supervisor NOT granted (Recommended); (Q3) L31 round 3 All three surfaces lcu/+coach_integration/+agents/ (Recommended); (Q4) cc_conditional wave 11 Skip / defer (Recommended - no clear candidate). 3 worktree agents dispatched concurrent (orchestrator pattern items 134-154 extended to 20 consecutive runs).
@@ -3849,6 +3911,9 @@ Operator triggered third consecutive "in parallel : start all open items in Oper
 **Carries forward:** (a) Item 154 carries ALL unchanged EXCEPT (a)-relaxed: mojibake byte-repair on 3 non-frozen files NO LONGER operator-gated (DONE this session); 3 trivial frozen-file smart-quote sweeps NO LONGER operator-gated (DONE); L31 extension to lcu/+coach_integration/+agents/ NO LONGER operator-gated (DONE). (b) RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15 - verify LastTaskResult=0 next session. (c) DD Defy heal-on-takedown STILL deferred. (d) Live ARAM/SR smoke STILL pending. (e) Calibrations STILL operator-gated. (f) UI/UX live-game audit ritual owed once operator plays a real game. (g) DS conditional arc operator-CLOSED (s232). (h) Legion 1-PC consolidation (s169 option B) STILL operator-gated. (i) **STILL CARRY**: `ops/rc_supervisor.py` 1368 mojibake U+201D byte-repair pass (FROZEN - needs explicit grant for that specific file beyond this session's grant). (j) cc_conditional wave 11+ should consume sidecar registry shape directly - skipped this session per no-clear-candidate verdict. (k) Operator-gated decision-owed lane EXHAUSTED for actionable headless items at item 155 ship time (remaining carries are all live-gated, hardware-migration, or frozen-rc_supervisor-only). Frozen-file grant USED this session for 3 trivial files; NOT used for rc_supervisor.
 
 ---
+
+---
+
 # 2026-05-23 - item 154 operator-gated decision-owed parallel drain #2: cc_conditional wave 10 sidecar registry schema lift + smart-quote retro-sweep + L31 extension dashboard/+core/+tft/ SHIPPED (3 commits + 2 merges, pushed origin/main `df50ca9`; ENGINE 1.46.0 -> 1.47.0; DS :8893 restarted serves 1.47.0; RC :8888 unchanged)
 
 Operator triggered "review github branches and close or merge as needed, then in parallel : start all open items in Operator-gated, decision owed". 5 stale remote worktree branches + wave9-cc-conditional-schema-lift all confirmed fully merged into main via `git log origin/main..origin/<branch>` empty diff; deleted via `git push origin --delete` x5. No open PRs. AskUserQuestion 4-question scope fork pinned: (Q1) cc_conditional wave 10 full pass (Recommended); (Q2) Smart-quote retro-sweep (Recommended); (Q3) L31 extension all three surfaces dashboard/+core/+tft/ (Recommended); (Q4) DD Defy SKIP (Recommended - still deferred). 3 worktree agents dispatched concurrent (orchestrator pattern items 134-153 extended to 19 consecutive runs).
@@ -3896,6 +3961,9 @@ Operator triggered "review github branches and close or merge as needed, then in
 **Carries forward:** (a) Item 153 carries ALL unchanged EXCEPT (a)-relaxed: cc_conditional wave 10 is NO LONGER operator-gated (DONE this session); smart-quote retro-sweep is NO LONGER operator-gated (DONE - drift guard test now locks invariant going forward); BACKLOG L31 extension to dashboard/+core/+tft/ is NO LONGER operator-gated (DONE). (b) RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15 - verify LastTaskResult=0 next session. (c) DD Defy heal-on-takedown STILL deferred. (d) Live ARAM/SR smoke STILL pending. (e) Calibrations STILL operator-gated. (f) UI/UX live-game audit ritual owed once operator plays a real game. (g) DS conditional arc operator-CLOSED (s232). (h) Legion 1-PC consolidation (s169 option B) STILL operator-gated. (i) **NEW carry**: 4 mojibake-tainted files (`ops/rc_self_monitor.py` + `ops/rc_state_validator.py` + `tft/tft_coach_engine.py`) need separate UTF-8 byte-repair pass (operator-gated). (j) **NEW carry**: 4 frozen files with smart quotes (`ops/rc_supervisor.py` + `ops/rc_dev_runtime.py` + `core/moon_proxy.py` + `core/log_setup.py`) need explicit frozen-file grant before sweep (operator-gated). (k) **NEW carry**: L31 extension to `lcu/` + `coach_integration/` + `agents/` surfaces (operator-gated separately - this session closed dashboard/+core/+tft/). (l) Wave 11+ cc_conditional should consume sidecar registry shape directly. Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-23 - operator-gated decision-owed parallel drain: Meraki schema lift + cc_conditional wave 9 + BACKLOG L14 closure + minimap-crop log suppression + type hints on public coach API SHIPPED (4 commits + 2 merges, pushed origin/main `100c9c9`; ENGINE 1.45.0 -> 1.46.0; DS :8893 restarted serves 1.46.0; RC :8888 unchanged)
 
 Operator "in parallel : start all open items in Operator-gated, decision owed" -> AskUserQuestion 4-question scope fork pinned: (Q1) Meraki extractor schema lift FULL + cc_conditional wave 9 (Recommended); (Q2) BACKLOG L14(a) kills->takedowns Option B keep 9-col additive (Recommended); (Q3) minimap-crop log suppression (Recommended; smart-quote sweep + .mcp.json wiring SKIPPED); (Q4) BACKLOG L31 type hints + ruff on public coach API. 4 worktree agents dispatched concurrent (orchestrator pattern items 134-151 extended to 18 consecutive runs).
@@ -3930,6 +3998,9 @@ Operator "in parallel : start all open items in Operator-gated, decision owed" -
 **Carries forward:** (a) Item 152 carries ALL unchanged EXCEPT Meraki schema lift is NO LONGER operator-gated (DONE this session). (b) RC-PostmortemAnalyze first scheduled run TOMORROW 2026-05-24 04:15 - verify LastTaskResult=0 next session. (c) DD Defy heal-on-takedown STILL deferred. (d) Live ARAM/SR smoke STILL pending. (e) Calibrations STILL operator-gated. (f) BACKLOG L14 NOW CLOSED. (g) BACKLOG L31 type hints NOW CLOSED for public coach API; dashboard/+core/+tft/ still open separately. (h) UI/UX live-game audit owed. (i) Smart-quote retro-sweep STILL operator-gated (skipped this session). (j) DS conditional arc operator-CLOSED (s232). (k) Legion 1-PC consolidation (s169 option B) STILL operator-gated. (l) Wave 10+ cc_conditional should consume `effects_descriptions` field directly - the schema lift this session is the durable substrate for description-text mechanic capture. Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-23 - living-docs cleanup pass: archive completed items + list open/pending (1 commit pending; docs-only; no DS restart; no RC restart; no ENGINE bump)
 
 Operator "cleanup the .md's of completed items if not necessary to be present for future use & list to me all items that are still open or pending operator". Pure housekeeping pass per session-workflow last-3 rule.
@@ -3957,6 +4028,9 @@ Operator "cleanup the .md's of completed items if not necessary to be present fo
 **Carries forward:** ALL item 150/151/152 carries-forward unchanged (RC-PostmortemAnalyze 2026-05-24 04:15 first run = verify LastTaskResult=0 NEXT SESSION, the immediate-tomorrow check; DD Defy deferred; live ARAM/SR smoke pending; Meraki extractor schema lift operator-gated for cc_conditional wave 9+; BACKLOG L14 (a) kills -> takedowns flip operator-gated; UI/UX live-game audit owed; calibrations operator-gated; Slice C MINOR PROPOSAL `/api/minimap-crop` to `_SUPPRESS_LOG_PATHS` operator-gated). Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-23 - cost-trace gap C closure: wire 11 untracked messages.create + construction-layer shim SHIPPED (1 commit `7ad4056`, pushed; CI green 1m23s; non-engine; non-frozen; no DS/RC restart)
 
 Operator triggered docs/cost_trace.md "Recommended follow-ups (not auto-applied; tracked here)" -> AskUserQuestion-picked "Both: wire 11 sites + add construction-layer shim (Recommended)" -> full vertical slice executed end-to-end.
@@ -3978,6 +4052,9 @@ Operator triggered docs/cost_trace.md "Recommended follow-ups (not auto-applied;
 **Carries forward:** Item 151 carries-forward (a)-(k) ALL unchanged (Meraki parse-strip standing constraint, schema lift operator-gated, RC-PostmortemAnalyze first scheduled run 2026-05-24 04:15 = verify LastTaskResult=0 next session, DD Defy deferred, live ARAM/SR smoke pending, calibrations operator-gated, BACKLOG L14 kills->takedowns flip operator-gated, UI/UX live-game audit owed, Slice C MINOR PROPOSAL `/api/minimap-crop` to `_SUPPRESS_LOG_PATHS` operator-gated, wave 9+ should target REJECT carries without Meraki schema lift). Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-23 - item 151 4-slice parallel housekeeping drain (cc_conditional wave 8 SHIPPED + BACKLOG stale-sweep wave 13 CLEAN + cost/latency CLEAN wave 16 + living docs sync post-wave-8) SHIPPED (2 commits + 1 merge `656c4f5` `d2711ba`, pushed; ENGINE 1.44.0 -> 1.45.0; non-frozen; DS :8893 restarted serves 1.45.0; RC :8888 unchanged - DS engine + docs only)
 
 Operator "continue what is left as open items in parallel commit + push & /done for /clear, use as many agents as needed" -> 17th consecutive run using orchestrator-merge template (items 134-150 streak extended). 4 worktree agents dispatched concurrent.
@@ -4139,6 +4216,9 @@ Operator `/headless-upgrade` 3rd long-run of the day authorized with frozen-file
 **Carries forward:** (a) cc_blended_ehp has 3 consumers (engine math + coach prompt + DS scorer); next surface is a DASHBOARD UI consumer operator-gated. (b) DD Defy heal-on-takedown STILL deferred. (c) Live ARAM/SR smoke STILL pending - operator must play a real game with one of 80 registered CC champs. (d) RC-PostmortemAnalyze first cron 2026-05-24 04:15 - verify LastTaskResult=0 next session. (e) Calibration constants operator-gated. (f) Conditional CC + 9 wave-5 dict-collision schema lifts operator-gated. (g) UI/UX live-game audit ritual owed. Frozen-file grant NOT used (3 agents routed around frozen list).
 
 ---
+
+---
+
 # 2026-05-22 - item 138 3-slice parallel drain (cc_blended_ehp coach prompt consumer + _PER_SPELL_CC_DURATIONS wave 4 + ROADMAP/BACKLOG stale-sweep) SHIPPED (3 worktree agents + 3 merge commits, pushed; ENGINE 1.33.0 -> 1.34.0; non-frozen; RC :8888 restarted clean pid 7540 -> 12864 last_reload_ok=True; DS :8893 restarted serves 1.34.0)
 
 Operator `/headless-upgrade` 2nd long-run of the day authorized with frozen-file grant + parallel orchestrator. 3 worktree agents dispatched concurrent on item 137 carry (a) coach-prompt half + adjacent registry expansion + stale-sweep. All 3 merged + green + pushed. RC suite **3097 -> 3140 / 67 subtests / 0 failed** (+43 Slice A); DS suite **3232 -> 3269 / 1 skipped / 1 xfailed / 1666 subtests passed** (+37 Slice B).
@@ -4216,6 +4296,9 @@ Operator `/headless-upgrade` long-run authorized with frozen-file grant + parall
 Frozen-file grant authorized this run but NOT used - all 3 agents routed entirely around the frozen list. Grant does NOT carry forward.
 
 ---
+
+---
+
 # 2026-05-22 - item 136 3-slice parallel drain (_PER_SPELL_CC_DURATIONS first ENGINE consumer + RC coach prompt wire + ROADMAP stale-sweep) SHIPPED (3 worktree agents + 3 merge commits, pushed; ENGINE 1.31.0 -> 1.32.0; non-frozen; RC :8888 unchanged pid 7540; DS :8893 restarted serves 1.32.0)
 
 Operator `/headless-upgrade` long-run authorized with frozen-file grant + parallel orchestrator. 3 worktree agents dispatched concurrent on item 135 carry (h) - the open seam from the registry seed. All 3 merged + green + pushed. RC suite **3046 -> 3096 / 67 subtests / 0 failed** (+50 from Slice B); DS suite **3120 -> 3164 / 1 skipped / 1 xfailed / 1666 subtests passed** (+44 from Slice A).
@@ -4256,6 +4339,9 @@ Operator `/headless-upgrade` long-run authorized with frozen-file grant + parall
 Frozen-file grant authorized this run but NOT used - all 3 agents routed entirely around the frozen list. Grant does NOT carry forward.
 
 ---
+
+---
+
 # 2026-05-22 - item 135 2-slice parallel drain (voidMonsterKill enrichment + _PER_SPELL_CC_DURATIONS wave 2) SHIPPED (2 worktree agents + 2 merge commits, pushed; ENGINE 1.30.0 -> 1.31.0; non-frozen; RC restarted clean pid 12492 -> 7540 last_reload_ok=True; DS :8893 restarted serves 1.31.0)
 
 Operator "continue wakeup_notes and backlog with multi agents in parallel - commit and push for a /done and /clear - notify when done". 2 worktree agents dispatched parallel on 2 disjoint slices composing on item 134 carries (g) + (h). Both merged + green + pushed. RC suite **3004 -> 3046 / 67 subtests / 0 failed** (+42 from Slice A); DS suite **3080 -> 3120 / 1 skipped / 1 xfailed / 1666 subtests passed** (+40 from Slice B).
@@ -4293,6 +4379,9 @@ Operator "continue wakeup_notes and backlog with multi agents in parallel - comm
 Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-21 - item 134 2-slice parallel drain (herald_takedowns enrichment + _PER_SPELL_CC_DURATIONS registry seed) SHIPPED (2 worktree agents + 2 merge commits, pushed; ENGINE 1.29.0 -> 1.30.0; non-frozen; RC restarted clean pid 5220 -> 12492 last_reload_ok=True; DS :8893 restarted serves 1.30.0)
 
 Operator "continue wakeup_notes and backlog with multi agents in parallel - commit and push for a /done and /clear - notify when done". 2 worktree agents dispatched parallel on 2 disjoint slices composing on item 133 (Slice A) + item 130 carry (b) (Slice B). Both merged + green + pushed. RC suite **2964 -> 3004 / 67 subtests / 0 failed** (+40 from herald+adjacent); DS suite **3028 -> 3080 / 1 skipped / 1 xfailed / 1666 subtests passed** (+52 from registry seed).
@@ -4329,6 +4418,9 @@ Operator "continue wakeup_notes and backlog with multi agents in parallel - comm
 Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-21 - item 133 2-slice parallel drain (obj_participation enrichment + JSON override loader for post_game_rubric weights) SHIPPED (2 worktree agents + 2 merge commits, pushed; non-engine; non-frozen; RC restarted clean pid 11420 -> 5220 last_reload_ok=True; no DS restart; no ENGINE bump)
 
 Operator "continue wakeup_notes and backlog with multi agents in parallel - commit and push for a /done and /clear - notify when done". 3 worktree agents dispatched parallel; 2 shipped + merged + pushed (A + B), 3rd (Slice C BACKLOG/ROADMAP stale-sweep per `feedback_backlog_path_stale_check`) reported sweep-clean / 0 entries flipped / no commit owed - the 2026-05-21 sweep in item 132 Slice B had already caught every genuinely-stale entry; that is a valid outcome per the agent's verification methodology (grep-checked every non-shipped BACKLOG/ROADMAP entry against live source - 0 false positives).
@@ -4363,6 +4455,9 @@ RC suite **2897 -> 2964 / 67 subtests / 0 failed** (+67: A=41 + B=38 net of over
 Frozen-file grant NOT used this session.
 
 ---
+
+---
+
 # 2026-05-21 - item 132 3-slice parallel drain SHIPPED (3 worktree agents + 3 merge commits `cdb0006` `79a956b` `bc055c2`, pushed; non-engine; non-frozen; RC restarted clean pid 8960 -> 11420 last_reload_ok=True; no DS restart; no ENGINE bump)
 
 Operator "continue wakeup_notes and backlog with multi agents in parallel - commit and push for a /done and /clear - notify when done". 3 worktree agents dispatched parallel on 3 disjoint slices composing on item 131 Slice A `core/post_game_rubric.py` (which had ZERO live consumers at session start). All 3 merged + green + pushed. RC suite **2811 -> 2897 / 67 subtests / 0 failed** (+86: A=29, C=56, +1 indirect).
@@ -4376,6 +4471,9 @@ Operator "continue wakeup_notes and backlog with multi agents in parallel - comm
 Don't-redo / Carries-forward: per CLAUDE.md item 132 (full fidelity preserved there).
 
 ---
+
+---
+
 # 2026-05-21 - Phase 6.5 3-slice parallel drain SHIPPED (3 commits + 3 merges; ENGINE 1.28.0 -> 1.29.0)
 
 Operator "continue with the wakeup_notes, multi agent parallel runs". 3 worktree agents dispatched in parallel on the 3 Phase-6.5 carries-forward from item 129 (DD takedown-rate deferred per don't-redo). All 3 merged + green + pushed. DS :8893 restarted via taskkill PID 7540 + schtasks /Run RC-DaemonSlayer; /health returns engine_version=1.29.0. RC not restarted (DS engine slice).
@@ -4405,6 +4503,8 @@ Operator "continue with the wakeup_notes, multi agent parallel runs". 3 worktree
 - (c) Live ARAM/SR smoke STILL pending (operator must play a real game to verify Phase 6 + 6.5 healing/shielding reflects in EHP rankings live).
 - (d) RC-PostmortemAnalyze first cron 2026-05-24 04:15 - verify LastTaskResult=0 next session.
 - (e) `_MISSING_HP_SHARE_FOR_HEALS = 0.5` may calibrate (operator can tune if real-game data suggests a different mid-fight share).
+
+---
 
 # 2026-05-21 - EHP Phase 6 healing throughput SHIPPED (1 commit `5018e9f`; ENGINE 1.27.0 -> 1.28.0)
 
@@ -4678,6 +4778,9 @@ Relocated out of CLAUDE.md to cut ~230 KB off every-turn context (operator-appro
 41. ✅ **s184.1 - Archetype-mismatch chip renderer** (2026-05-13, `912efe1`). Closes carried-forward item (a) from s184: dashboard JS chip near `#ds-pill` that surfaces the first-purchase mismatch nudge. New `web/js/panels/archetype_nudge_chip.js` (~95 LOC) exports `renderArchetypeNudge(state)` - reads `state.archetype_nudge`, phase-gates to `"fired"` (pending/no_mismatch/dismissed all collapse to hidden), sig-guards against 2s-poll DOM thrash. Internal `_dismiss(champion)` POSTs `/api/archetype-nudge/dismiss` then locally hides; X-button click handler wired once at module load. Compact display `⚠ {Primary}? · {firstItem}` with full message + expected top-3 items in `title` tooltip. New `#archetype-nudge-chip` + `#archetype-nudge-chip-text` + `#archetype-nudge-chip-x` elements in `web/index.html` header-row-2, immediately after `#ds-pill`, `hidden` by default with `role="status"`. New `.archetype-nudge-chip` rule in `web/css/panels/map_state.css` (yellow `--warn-soft` bg + `--warn` outline + 16px font); mode-gating mirrors `.ds-pill` exactly (collapsed in `body[data-mode="client"]` / `body[data-mode="tft"]` / `body:not([data-mode])`); `[hidden]` respected via `display: none !important`. `web/js/main.js` gains the panel import + 3 callsites mirroring `renderTeamContext(st)` count exactly (SSE handler / HTTP fallback / LCU poller - all three top-level state-consumers). Tests: 15 new in `tests/test_archetype_nudge_chip_dom.py` (unittest.TestCase-based grep regression guard - IndexHtmlTests 5 / PanelJsTests 4 / MainJsWiringTests 2 / CssTests 4) → 1013 wider RC suite (was 1009 in s184 wrap). **No RC supervisor restart required** - unified asset-hash (s171.8 ADR-008 `compute_asset_hash` walks `web/{js,css}/panels/*`) auto-reloaded the new files on pid 1360; cache-bust hash flipped on first `/api/ui-version` poll after commit. Live-verified end-to-end on Legion :8888: (a) `GET /` returns chip + text span + dismiss button + hidden attr; (b) `GET /api/state` returns `archetype_nudge: {}` (empty since no game); (c) panel JS module serves 3799 bytes with `export function renderArchetypeNudge` + `/api/archetype-nudge/dismiss` path; (d) main.js serves with 3 callsites; (e) CSS rule present; (f) dismiss endpoint round-trips happy/400-missing/400-non-dict; (g) Game-PC monitor 0 dashboard Home overlay (CLIENT mode) shows chip correctly hidden by data-mode rule - no visual regression. **Carried forward:** (a) live-game chip lifecycle validation (pending → fired → dismissed) pending next CS pop + game start; (b) `_TOP_N_THRESHOLD = 15` calibration knob retune once real games yield fired nudges; (c) per-game-session token edge case for older Riot LCU builds; (d) calibration analysis additive - `nudge_history` rows to `core/ds_calibration` for retroactive threshold tuning.
 
 ---
+
+---
+
 # 2026-05-18 - s245: #6 local DS + match-DB MCP server (`f585933`, pushed)
 
 Operator picked "#6 local DS+matchDB MCP" from the s244-NEXT autonomous-safe fork (over operator-gated effects.py / live-game-gated s220 PGR). Full vertical slice, end-to-end.
@@ -9255,6 +9358,8 @@ Math sanity-check: Rabadon's +130 AP × 1.30 amp = 169 effective AP. Veigar Q ra
 
 ## s180 (2026-05-13 - Phase 5 assassin burst-window scorer)
 
+---
+
 # s180 wrap - 2026-05-13 (Phase 5 assassin burst-window scorer - single commit pending)
 
 **Operator instruction:** "continue ds" - following s179's Phase 4c, ship the next phase per [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
@@ -9649,6 +9754,8 @@ Don't-redo: (a) cc_conditional_registry.json IS the registry source now; add new
 
 NEXT (DS_GAP_COMPLETION_PLAN headless spine; each Phase-C sub-item = own ENGINE bump + DS restart, ships default-OFF byte-identical, flag-flip is Phase D/live): C1 Sion Q + Hwei Q f2 block-index routing (gated under apply_ability_amps; _STAGED_AMP_CANDIDATES in _ability_amp_overrides.py - each form's "Maximum ..." block already models full charge so ROUTE the block-index via _registries.py block-index resolver, do NOT add a double-counting amp; Hwei Q f2 also needs a missing-HP coeff = Gap-2 schema ext) / C2 AA-empower seam in compute_dps (the 5 base="aa" entries inert in ability_dps) / C3 author 8 exotic passives default-OFF in _passive_damage_overrides.py. Then Phase D (live flag-flips) + Phase E (Share re-sync) + item-240 UI part-3 + #7/#8 sign-off + item-243 NEXT(2) ranked-SR UI watch (live).
 
+---
+
 # 2026-06-01 - item 246: DS gap-plan Phase C1 - staged-amp block-index routing Hwei Q f2 + Sion Q resolved-pre-seam (commit 24ea243; pushed 83dcc92..24ea243; ENGINE 1.76.0 -> 1.77.0; DS restarted 1.77.0; RC not restarted - DS engine + tests + Share + docs only; default-OFF byte-identical)
 
 Operator: "start next item ... commit + push and /done and /clear then start /headless-upgrade". Next item = item-245 NEXT C1 from docs/DS_GAP_COMPLETION_PLAN.md.
@@ -9670,6 +9777,8 @@ NEXT (gap-plan headless spine; each = own ENGINE bump + DS restart, default-OFF 
 
 <!-- archived from WAKEUP_NOTES.md 2026-06-01 (item 252 wrap): items 247-249 -->
 
+---
+
 # 2026-06-01 - item 249: DS GAP-2 PER-STACK passive damage schema lift + 3 SEEDED + 1 UPGRADE, default-OFF byte-identical (ENGINE 1.80.0 -> 1.81.0; DS restarted 1.81.0; RC not restarted - DS engine + tests + Share + docs only)
 
 Operator "start the next DS schema lift and exhaust it then /done". Next staged passive category from item 248 = the per-stack ramp (Kai'Sa P, named NEXT(3)).
@@ -9687,6 +9796,8 @@ ENGINE 1.80.0 -> 1.81.0 + 35 test-pin syncs + CHANGELOG prepend + Share re-sync 
 Don't-redo: (a) PerStackTerm + assumed_stacks is the canonical home for ANY linear-per-stack damage term; per_stack coefficients EXACT, only assumed_stacks is the documented operator-tunable midpoint - do NOT bake the count into base/ap (loses the Phase-D live-stack seam). (b) to_damage_block FOLDS at build time (no DamageBlock/ctx/evaluator change); do NOT add a ctx.assumed_stacks eval-time path without a real live-stack consumer. (c) the 4 assumed_stacks (Kai'Sa 2.0 / Darius 3.0 / Twitch 3.0 / Orianna 1.0) are documented ramp-midpoints - Phase-D tunes them. (d) Kai'Sa 5th-stack-consume (15% + 6%/100 AP MISSING HP) OMITTED: conditional + missing-HP inert at full-HP ctx (Ekko-W precedent). (e) Twitch breakpoints even-fifths ESTIMATE (Zed/Caitlyn precedent). (f) Sona P seeded for Power Chord NOT per-stack - do NOT re-pitch. (g) DS restart PowerShell taskkill + schtasks (NEVER Stop-Process).
 
 NEXT (gap-plan, operator-gated / live = Phase D): (1) flag-flips (apply_passive_damage now 10 P + 6 C3 + 4 bilinear + 3 per-stack + Orianna upgrade = 23 forms; tune the 4 per-stack assumed_stacks live) / apply_ability_amps / build_tenacity+cc_blended / mode_modifiers / gate_ammo / aoe_targets_hit. (2) author the 5 C2 AA-empower values + cadence live. (3) remaining STAGED slices: Brand P + Ekko W (conditional fire-probability + low-HP ctx = a conditional-gate schema lift, operator deferred to Phase-D) / Karma W f1 + Viego P (bilinear HEALS = need an effects-text-only HEAL registry feeding compute_ability_hps). (4) AurelionSol W cross-spell seam (own session). (5) item-240 UI part-3 + #7/#8 + item-243 NEXT(2) ranked-SR UI watch.
+
+---
 
 # 2026-06-01 - item 248: DS GAP-2 bilinear AP-on-HP passive schema lift + 4 SEEDED passives, default-OFF byte-identical (ENGINE 1.79.0 -> 1.80.0; DS restarted 1.80.0; RC not restarted - DS engine + tests + Share + docs only)
 
@@ -9889,6 +10000,49 @@ REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
   commit - tip-only diffing produced this false REGRESS.
 - DON'T REDO: HZ shadow live-gate IS tested (6 tests); do not re-add gate tests.
 - NOTE: RC pid drifted 14160 -> 3336 during cycle (supervisor bounce); alive+reload_ok true.
+
+---
+
+# 2026-06-13 - DEEP-AUDIT cycle 13: P2 W3 web-surface fanout, ALL web/js + web/css [item 407]
+
+- 106 files (web/js 58/25684 + web/css 48/15849) audited via 10 disjoint PARALLEL slices (no worktrees - disjoint sets, robust to agent death; 6 JS A-F: A main.js solo, B champ_select+all lib/+ws_client+overlay_pulse, C active_match/last_match/map_state/right_now/dev, D item_build/build_insights/historical_pgr/ds_combo/bridge_pending/pgr_winprob/cd_ledger/replay_events/overlay_ds_controls/ds_matchup/ds_knobs/next, E+F the 27 leaf panels; 4 CSS G-J: G tokens.css+header+champ_select_view, H structural, I+J the 33 leaf stylesheets). audit commit db7952f2; +3 tests tests/snapshot_panels/test_xss_escaping.py. **W3 web surface COMPLETE.**
+- NO frozen edits (web/* has none). NO ENGINE bump + NO RC restart (ADR-008 asset-hash auto-reload; new test is test-only).
+- Dominant FIX-NOW class = XSS: data-controlled strings into innerHTML unescaped (browser analog of the cycle 7-12 non-finite-JSON-token class). 18 JS files hardened: A main.js new escapeHtml + ~14 sites (LCU lobby/party player names + data-ign attrs, Top8 user_tag, advisory toast, mastery icon src, session/history rows, loadout); B shared helpers.escHtml export + champ_select LCU summonerName x2 + scorer_units.formatDsDelta finite guard (+0dps not +NaNdps); D item_build/ds_knobs/overlay_ds_controls/ds_combo/build_insights _esc; E pgr_build_wpa/ban_suggest_toggle/ds_sweep escape names/attrs; F coach_choices LLM-text _esc (core/coach_choices.py only length-limits) + augment_reco/cooldown_watch/ds_relscore + spike_markers numeric guards + team_context img-attr + trigger_pill double-eval interval guard. C made NO edits (dev.js loop-log/git-commit + bridge peer strings already textContent-safe).
+- CSS pixel-neutral: net = build_order.css dead .bo-excl removed (grep-confirmed). 2 over-reaches REVERTED: JS-E rendered build_order.js glyphs (arrow/middot/check -> ASCII = visual change, NOT the dash rule); CSS-H bridge_pending #F07E8B->var(--bad) (test_brand_salmon_preserved pins the literal as deliberate brand color off --signal-bad).
+- Gate round A REFUSE 15512p/2f - (a) my bridge_pending salmon-guard regression (reverted) + (b) test_supervisor_starts_and_binds_ports = PRE-EXISTING W5 env-coupled flake (live RC-Phase3-Supervisor pid 16104 held :8890/:8891 + no agents/state/lockfile, so the test's spawned supervisor couldn't bind/heartbeat; web-diff-independent, proven by freeing ports -> passes 1.12s). Round B truth_gate PROCEED 15514p/0f/0e/7s exit 0 (ops/audit/p2w3_web_truth_gate_report.json; 6/6 claim-sets CONFIRM; +3 = cycle-12 15511 + 3). RC-Phase3-Supervisor restarted (schtasks /Run) + health re-verified.
+- NEXT cycle 14: W4 operational tooling = tools/ 164/43633 (~8 slices, bridge frozen-but-open + gamepc_* P3-prune verdicts) + scripts/ops/rc-shell/tft/root/spec 114/24433 (~2-3 slices) per P2_FANOUT_MANIFEST.
+
+---
+
+# 2026-06-13 - Execution-efficiency ruleset + tiered-verification hook retune [item 408] (pruned from WAKEUP 2026-06-14, cycle-16 last-3 rule)
+
+- Operator flagged task wall-clock ballooning (version bump ~20 min, audits ~4h vs ~1h). Meta-analysis -> agreed a strict fast-path ruleset; codified. commit 7c695a69 (no engine, no RC restart).
+- ROOT CAUSE: PostToolUse tools/pytest_guard.py ran the FULL `pytest -x --ff -q` (1300+) after EVERY non-docs Edit/Write. precommit_gate.py cleared (self-gates line 146, never runs the suite).
+- CLAUDE.md new "## Execution Efficiency & Tooling Rules" R1-R11: R1-R3 text-first (Read/Edit/Grep/curl over computer-use/Windows-MCP/screenshots; never screenshot to read a number/version/STATE), R4 built-ins + no cd, R5-R7 tiered verify (Tier-0 cosmetic=edit+py_compile; Tier-1 local=py_compile+module tests; Tier-2 schema/engine/ENGINE_VERSION=full dual suite + DS :8893 restart + Share mirror; run once; verifier only for subagent/stale-pipe), R8-R11 overhead. Scope notes added to Testing/Verification Discipline (now Tier-2).
+- pytest_guard.py REWRITE: py_compile-only default (RC_FULL_SUITE=1 restores auto-suite for a Tier-2 batch). NEW text_first_guard.py PreToolUse denies Windows-MCP Scrape + computer-use read_clipboard (escape hatch ops/runtime/allow_visual.flag); narrow by design - screenshot/capture_monitor stay allowed (UI-audit + game-monitor unaffected). Wired in .claude/settings.json (GITIGNORED - local-only, re-wire after a fresh clone).
+- memory feedback_execution_efficiency_rules.md + MEMORY.md index.
+- Verify: ruff clean + py_compile 0 + hygiene 12p + clean-UTF-8 smokes all correct (PowerShell-pipe BOM was a smoke artifact, not a script defect).
+- DONT-REDO: the per-edit full-suite tax is intentionally gone; text_first_guard = 2 readers only (do not broaden); next session bootstraps with the NEW tiered rules - classify edits into tiers, don't pay the Tier-2 tax on cosmetic/local edits.
+
+---
+
+## Pruned WAKEUP session (relocated 2026-06-04, item 297 wrap)
+
+# 2026-06-03 - DS AA-windup OFFSET TIER - source-adoption WIN 1 (item 295, ENGINE 1.107.0)
+
+"start the next item Win1" = Phase 2 of the DS source-layering adoption plan (`docs/DS_SOURCE_ADOPTION_PLAN.md`). Caveman ULTRA. 2 commits `c517b9a9` (engine + Share) + `040a619c` (docs) pushed; CI green both SHAs. ENGINE 1.106.0 -> 1.107.0; DS :8893 restarted (taskkill pid 5112 + schtasks RC-DaemonSlayer) -> 1.107.0 live. RC NOT touched. Full record = item 295 in `docs/LEDGER.md`.
+
+- **Problem:** the `wiki_stats` sidecar left 110 champs on the flat 0.25s AA-windup default. **Fix:** recover a real per-champ windup for 109 from the wiki's `attack_delay_offset` - `windup = (0.300 + offset)/as_base` (combo is a FIXED-windup model). Fraction validated 4/4 EXACT vs published Windup% (Caitlyn/Ashe/Vayne/Jinx).
+- **`tools/daemon_slayer_wiki_stats_extract.py`:** NEW `_signed_scalar_in_block` (the unsigned `_scalar_in_block` regex `([0-9.]+)` SILENTLY DROPS the leading minus most offsets carry - the bug TDD caught FIRST); `_parse_lua_table` now also parses `attack_delay_offset` + `as_base` from the SAME ChampionData block (zero extra net); NEW `wiki_offset` provenance tier in `_merge_fill` between cdragon and default; meta `_offset_cast_fills`.
+- **Regenerated `wiki_stats.json`:** offset 109 / default 1 (**only Alistar** - no offset on any source) / measured 61 -> 170 / 0 errors. Ahri 0.299401, Akali 0.2224, Lux 0.233558 EXACT vs the validator `Desktop\UNIVERSAL_FILES\ds_windup_compare.json`. Champion-entry schema byte-unchanged (offset/as_base are intermediate, never stored per-champ).
+- **Consumers byte-identical:** `combo.py:317` + `data_loader.py:188` already prefer any positive sidecar `attack_cast_time` -> the 109 flow with NO engine edit (plan claim verified). +6 offset tests; +61 ENGINE pin syncs / 53 files; `test_combo_2026_05_30::test_clock_advances_by_cast_time` data-fragile absolute-timeline pin REPLACED with the computed cast-time-cumulative invariant (Lux AA now 0.233558). DS 6319 collected / 6317 passed; suite (agents+tools) 6514 passed / 1 skip / 1 xfail exit 0; ruff clean; Share 292 synced --check 0.
+- **DEVIATION (noted):** sourced offset+as_base from the WIKI raw fields, NOT the plan's literal cdragon `mAttackDelayCastOffsetPercent` - both fields are co-located in the wiki block (cdragon's as_base is unspecified) and it matches the `ds_windup_offset_compare.py` validator EXACTLY.
+- **Don't-redo:** offset tier is the canonical recovery (`wiki_offset` prov, `(0.300+offset)/as_base`); regenerate via the extractor (do NOT hand-edit the JSON); `_signed_scalar_in_block` REQUIRED (negatives); Alistar is the LONE default; combo/data_loader need NO change; on a patch bump re-run `python tools/ds_windup_offset_compare.py` for newly-recoverable champs. **Pre-existing debt flagged:** `Share/CHANGELOG.md` was stale at 1.101.0 (1.102-1.106 entries never added - spawned a backfill task). **NEXT:** WIN 2 (separate session) = Meraki `champions.json` ~10mo-stale -> PATCH-keyed content-freshness guard in `tools/daemon_slayer_abilities_extract.py`. NON-GOAL: CC-duration sourcing (owned by `_per_spell_cc.py`).
+
+
+Sessions older than the last 2-3 full sessions are progressively compacted here.
+Current WAKEUP_NOTES.md keeps only the most recent 2-3 sessions.
+Compaction rule: 3+ sessions old -> 1-2 line summary entry below.
 
 ---
 
@@ -11898,29 +12052,6 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - **Share sync** (f40f0362): ds_share_sync --check caught ehp.py content drift + the new test MISSING from Share/src; synced 333 files + staged the test mirror in the same commit. The intermediate commit 4be96220 CI went RED on the "DS Share package in sync" guard (Share stale) -> f40f0362 synced it GREEN. Reinforced: a DS source-file change needs ds_share_sync even with NO ENGINE bump (the file is mirrored in Share/src regardless of version).
 - Docs: ROADMAP L21 + BACKLOG L22 + LEDGER item 371 marked shipped (in f40f0362). 2 agent worktrees removed + merged branches deleted.
 - **NEXT (gated):** only LOW T2-F3 (TTK headline) + T1-F4 (per-stat EHP/gold, now unblocked by T1-F3) remain optional. cdragon by-level needs a NEW champ-level schema axis (do NOT re-pitch a calc-graph resolver). Don't-redo: T1-F3 + T2-F4 done.
-
----
-
-# 2026-06-13 - DEEP-AUDIT cycle 13: P2 W3 web-surface fanout, ALL web/js + web/css [item 407]
-
-- 106 files (web/js 58/25684 + web/css 48/15849) audited via 10 disjoint PARALLEL slices (no worktrees - disjoint sets, robust to agent death; 6 JS A-F: A main.js solo, B champ_select+all lib/+ws_client+overlay_pulse, C active_match/last_match/map_state/right_now/dev, D item_build/build_insights/historical_pgr/ds_combo/bridge_pending/pgr_winprob/cd_ledger/replay_events/overlay_ds_controls/ds_matchup/ds_knobs/next, E+F the 27 leaf panels; 4 CSS G-J: G tokens.css+header+champ_select_view, H structural, I+J the 33 leaf stylesheets). audit commit db7952f2; +3 tests tests/snapshot_panels/test_xss_escaping.py. **W3 web surface COMPLETE.**
-- NO frozen edits (web/* has none). NO ENGINE bump + NO RC restart (ADR-008 asset-hash auto-reload; new test is test-only).
-- Dominant FIX-NOW class = XSS: data-controlled strings into innerHTML unescaped (browser analog of the cycle 7-12 non-finite-JSON-token class). 18 JS files hardened: A main.js new escapeHtml + ~14 sites (LCU lobby/party player names + data-ign attrs, Top8 user_tag, advisory toast, mastery icon src, session/history rows, loadout); B shared helpers.escHtml export + champ_select LCU summonerName x2 + scorer_units.formatDsDelta finite guard (+0dps not +NaNdps); D item_build/ds_knobs/overlay_ds_controls/ds_combo/build_insights _esc; E pgr_build_wpa/ban_suggest_toggle/ds_sweep escape names/attrs; F coach_choices LLM-text _esc (core/coach_choices.py only length-limits) + augment_reco/cooldown_watch/ds_relscore + spike_markers numeric guards + team_context img-attr + trigger_pill double-eval interval guard. C made NO edits (dev.js loop-log/git-commit + bridge peer strings already textContent-safe).
-- CSS pixel-neutral: net = build_order.css dead .bo-excl removed (grep-confirmed). 2 over-reaches REVERTED: JS-E rendered build_order.js glyphs (arrow/middot/check -> ASCII = visual change, NOT the dash rule); CSS-H bridge_pending #F07E8B->var(--bad) (test_brand_salmon_preserved pins the literal as deliberate brand color off --signal-bad).
-- Gate round A REFUSE 15512p/2f - (a) my bridge_pending salmon-guard regression (reverted) + (b) test_supervisor_starts_and_binds_ports = PRE-EXISTING W5 env-coupled flake (live RC-Phase3-Supervisor pid 16104 held :8890/:8891 + no agents/state/lockfile, so the test's spawned supervisor couldn't bind/heartbeat; web-diff-independent, proven by freeing ports -> passes 1.12s). Round B truth_gate PROCEED 15514p/0f/0e/7s exit 0 (ops/audit/p2w3_web_truth_gate_report.json; 6/6 claim-sets CONFIRM; +3 = cycle-12 15511 + 3). RC-Phase3-Supervisor restarted (schtasks /Run) + health re-verified.
-- NEXT cycle 14: W4 operational tooling = tools/ 164/43633 (~8 slices, bridge frozen-but-open + gamepc_* P3-prune verdicts) + scripts/ops/rc-shell/tft/root/spec 114/24433 (~2-3 slices) per P2_FANOUT_MANIFEST.
-
----
-
-# 2026-06-13 - Execution-efficiency ruleset + tiered-verification hook retune [item 408] (pruned from WAKEUP 2026-06-14, cycle-16 last-3 rule)
-
-- Operator flagged task wall-clock ballooning (version bump ~20 min, audits ~4h vs ~1h). Meta-analysis -> agreed a strict fast-path ruleset; codified. commit 7c695a69 (no engine, no RC restart).
-- ROOT CAUSE: PostToolUse tools/pytest_guard.py ran the FULL `pytest -x --ff -q` (1300+) after EVERY non-docs Edit/Write. precommit_gate.py cleared (self-gates line 146, never runs the suite).
-- CLAUDE.md new "## Execution Efficiency & Tooling Rules" R1-R11: R1-R3 text-first (Read/Edit/Grep/curl over computer-use/Windows-MCP/screenshots; never screenshot to read a number/version/STATE), R4 built-ins + no cd, R5-R7 tiered verify (Tier-0 cosmetic=edit+py_compile; Tier-1 local=py_compile+module tests; Tier-2 schema/engine/ENGINE_VERSION=full dual suite + DS :8893 restart + Share mirror; run once; verifier only for subagent/stale-pipe), R8-R11 overhead. Scope notes added to Testing/Verification Discipline (now Tier-2).
-- pytest_guard.py REWRITE: py_compile-only default (RC_FULL_SUITE=1 restores auto-suite for a Tier-2 batch). NEW text_first_guard.py PreToolUse denies Windows-MCP Scrape + computer-use read_clipboard (escape hatch ops/runtime/allow_visual.flag); narrow by design - screenshot/capture_monitor stay allowed (UI-audit + game-monitor unaffected). Wired in .claude/settings.json (GITIGNORED - local-only, re-wire after a fresh clone).
-- memory feedback_execution_efficiency_rules.md + MEMORY.md index.
-- Verify: ruff clean + py_compile 0 + hygiene 12p + clean-UTF-8 smokes all correct (PowerShell-pipe BOM was a smoke artifact, not a script defect).
-- DONT-REDO: the per-edit full-suite tax is intentionally gone; text_first_guard = 2 readers only (do not broaden); next session bootstraps with the NEW tiered rules - classify edits into tiers, don't pay the Tier-2 tax on cosmetic/local edits.
 
 ---
 
