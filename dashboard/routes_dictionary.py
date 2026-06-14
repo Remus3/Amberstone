@@ -46,7 +46,7 @@ def _serve_runes(h) -> None: _serve_file(h, _RUNES_PATH)
 
 
 # s213 v2: compact champion-tag map for the enemies panel's 2-piece
-# identifier (e.g., Thresh → ["CC", "TANK"]). Built from DDragon's
+# identifier (e.g., Thresh -> ["CC", "TANK"]). Built from DDragon's
 # info.attack/magic/defense + tags array + our hardcoded CC and burst
 # sets. The frontend uses this to render comp-aware tags + a role
 # confidence percentage on each enemy cell.

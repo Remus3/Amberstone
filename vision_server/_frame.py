@@ -128,8 +128,8 @@ def _maybe_self_grab() -> dict | None:
         return dict(_latest_frame)
 
 
-# 2026-04-27 audit: cap b64 payload at ~7 MB (≈5 MB decoded). Typical frames
-# are ~150 KB; anything 50× that is either a 4K screenshot we don't want to
+# 2026-04-27 audit: cap b64 payload at ~7 MB (~5 MB decoded). Typical frames
+# are ~150 KB; anything 50x that is either a 4K screenshot we don't want to
 # cache or a misbehaving uploader. Without this, a stray 100 MB upload would
 # OOM the server before magic-byte validation runs.
 _MAX_FRAME_B64 = 7_000_000

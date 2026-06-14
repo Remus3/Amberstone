@@ -16,7 +16,7 @@ from champion_profiles import (
     HYBRID_CHAMPS, SUSTAIN_CHAMPS, MANA_CHAMPS,
 )
 
-# ── Item property maps ─────────────────────────────────────────────────────────
+# -- Item property maps ---------------------------------------------------------
 
 # Items that provide MR - buying these vs AD-heavy team is inefficient
 MR_ITEMS = {
@@ -70,7 +70,7 @@ ARAM_STRONG = {
 }
 
 
-# ── Damage profile ─────────────────────────────────────────────────────────────
+# -- Damage profile -------------------------------------------------------------
 
 def enemy_damage_profile(enemy_champs: list) -> dict:
     """
@@ -114,7 +114,7 @@ def enemy_damage_profile(enemy_champs: list) -> dict:
     }
 
 
-# ── Item validation ────────────────────────────────────────────────────────────
+# -- Item validation ------------------------------------------------------------
 
 def validate_item(item_name: str, champion: str,
                   enemy_champs: list, ally_champs: list,
@@ -132,7 +132,7 @@ def validate_item(item_name: str, champion: str,
     item_lower = item_name.lower()
     is_aram  = "ARAM" in game_mode
 
-    # ── Mana items on non-mana champion ────────────────────────────────
+    # -- Mana items on non-mana champion --------------------------------
     if any(m.lower() in item_lower for m in MANA_ITEMS):
         needs_mana = champ_data.get("mana", True)  # default True if unknown
         if not needs_mana:
@@ -141,7 +141,7 @@ def validate_item(item_name: str, champion: str,
                 f"Replace with a stat-efficient alternative."
             )
 
-    # ── Heavy MR vs AD-heavy team ───────────────────────────────────────
+    # -- Heavy MR vs AD-heavy team ---------------------------------------
     if any(m.lower() in item_lower for m in MR_ITEMS):
         if ad_pct >= 0.75:
             return False, (
@@ -149,7 +149,7 @@ def validate_item(item_name: str, champion: str,
                 f"Build armor (Thornmail, Randuin's, Frozen Heart) instead."
             )
 
-    # ── Heavy armor vs AP-heavy team ────────────────────────────────────
+    # -- Heavy armor vs AP-heavy team ------------------------------------
     if any(m.lower() in item_lower for m in ARMOR_ITEMS) and item_name not in ("Warmog's Armor",):
         if ap_pct >= 0.75:
             return False, (
@@ -157,7 +157,7 @@ def validate_item(item_name: str, champion: str,
                 f"Build MR (Banshee's, Force of Nature, Spirit Visage) instead."
             )
 
-    # ── Collector/lethality vs tanks ────────────────────────────────────
+    # -- Collector/lethality vs tanks ------------------------------------
     if any(m.lower() in item_lower for m in LETHALITY_ITEMS):
         if tanks >= 3:
             return False, (
@@ -165,10 +165,10 @@ def validate_item(item_name: str, champion: str,
                 f"Build Last Whisper, Black Cleaver, or Void Staff for % armor penetration instead."
             )
 
-    # ── No Grievous Wounds vs heavy healing ─────────────────────────────
+    # -- No Grievous Wounds vs heavy healing -----------------------------
     # (Not a flag but a reminder - handled in suggestions)
 
-    # ── ARAM: mana items double-check ──────────────────────────────────
+    # -- ARAM: mana items double-check ----------------------------------
     if is_aram and any(m.lower() in item_lower for m in {"Tear of the Goddess", "Manamune", "Archangel's Staff"}):
         needs_mana = champ_data.get("mana", True)
         if not needs_mana:
@@ -180,7 +180,7 @@ def validate_item(item_name: str, champion: str,
     return True, ""
 
 
-# ── Item suggestions ────────────────────────────────────────────────────────────
+# -- Item suggestions ------------------------------------------------------------
 
 def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
                   current_items: list, gold: int,
@@ -205,7 +205,7 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
 
     suggestions = []
 
-    # ── Grievous Wounds ─────────────────────────────────────────────────
+    # -- Grievous Wounds -------------------------------------------------
     if has_sustain and not has_gw:
         if dmg in ("ad", "hybrid"):
             suggestions.append(("Mortal Reminder",
@@ -214,7 +214,7 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
             suggestions.append(("Shadowflame",
                 f"Enemy has {profile['sustain_count']} healing champions - Grievous Wounds is mandatory"))
 
-    # ── Anti-tank items ─────────────────────────────────────────────────
+    # -- Anti-tank items -------------------------------------------------
     if tanks >= 2:
         if dmg in ("ad", "hybrid") and not any("lord" in i or "mortal" in i or "black cleaver" in i
                                                  for i in owned_lower):
@@ -224,7 +224,7 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
             suggestions.append(("Void Staff",
                 f"{tanks} tanks in enemy comp - % magic penetration is required"))
 
-    # ── Defensive items based on enemy damage type ──────────────────────
+    # -- Defensive items based on enemy damage type ----------------------
     if ap_pct >= 0.6 and role not in ("marksman", "assassin"):
         if not any(m.lower() in owned_lower for m in ("banshee", "spirit visage", "force of nature")):
             if champ_data.get("sustain"):
@@ -244,7 +244,7 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
                 suggestions.append(("Frozen Heart",
                     f"Reduces nearby attack speed vs {ad_pct:.0%} AD team"))
 
-    # ── ARAM-specific extras ────────────────────────────────────────────
+    # -- ARAM-specific extras --------------------------------------------
     if is_aram:
         if not any("warmog" in i for i in owned_lower) and role == "tank":
             suggestions.append(("Warmog's Armor",
@@ -257,7 +257,7 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
     return suggestions[:4]  # top 4 suggestions
 
 
-# ── Full composition context string ────────────────────────────────────────────
+# -- Full composition context string --------------------------------------------
 
 def comp_context_str(champion: str, current_items: list,
                      enemy_champs: list, ally_champs: list,

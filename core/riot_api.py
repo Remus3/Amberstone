@@ -49,7 +49,7 @@ from core.riot_api_cache import get_cache
 
 log = logging.getLogger("rc.riot_api")
 
-# ── key resolver ────────────────────────────────────────────────────────
+# -- key resolver --------------------------------------------------------
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _API_KEY_FILE = _PROJECT_ROOT / "API-Key-Riot.txt"
@@ -109,7 +109,7 @@ def reload_api_key() -> None:
         _KEY_WARNED_MISSING = False
 
 
-# ── dual-bucket rate limiter ────────────────────────────────────────────
+# -- dual-bucket rate limiter --------------------------------------------
 
 class DualBucket:
     """Token-bucket dual-window limiter.
@@ -195,7 +195,7 @@ def _reset_bucket_for_tests() -> None:
                          long_n=100, long_window_s=120.0)
 
 
-# ── Prom metrics ────────────────────────────────────────────────────────
+# -- Prom metrics --------------------------------------------------------
 
 _M_CALLS_TOTAL = Counter(
     "rc_riot_api_calls_total",
@@ -223,7 +223,7 @@ def _bump_metric(endpoint: str, outcome: str) -> None:
         pass
 
 
-# ── HTTP transport ──────────────────────────────────────────────────────
+# -- HTTP transport ------------------------------------------------------
 
 _HTTP_TIMEOUT_S = 4.0
 
@@ -265,7 +265,7 @@ def _http_get(url: str, api_key: str, timeout_s: float = _HTTP_TIMEOUT_S) -> _Ht
         return _HttpResp(int(exc.code), body, dict(exc.headers or {}))
 
 
-# ── shared call wrapper ─────────────────────────────────────────────────
+# -- shared call wrapper -------------------------------------------------
 
 def _call(
     endpoint_label: str,
@@ -329,7 +329,7 @@ def _call(
     return None
 
 
-# ── endpoint wrappers ───────────────────────────────────────────────────
+# -- endpoint wrappers ---------------------------------------------------
 
 def get_account_by_riot_id(
     name: str,
@@ -515,9 +515,9 @@ def get_champion_mastery(
     return data
 
 
-# ── high-level helpers used by the team-context fan-out ─────────────────
+# -- high-level helpers used by the team-context fan-out -----------------
 
-# Mapping from Riot tier name → ordinal for sorting / formatting.
+# Mapping from Riot tier name -> ordinal for sorting / formatting.
 _TIER_ORDER = (
     "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD",
     "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER",
@@ -644,7 +644,7 @@ def summarize_recent(
     return out
 
 
-# ── public surface for tests / introspection ────────────────────────────
+# -- public surface for tests / introspection ----------------------------
 
 def bucket_snapshot() -> dict:
     """Read-only view of the rate-limit bucket (for /metrics + tests)."""

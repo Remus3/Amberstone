@@ -225,7 +225,7 @@ class FileBridge:
         except Exception:
             pass
 
-    # ── Logging ───────────────────────────────────────────────────────────────
+    # -- Logging ---------------------------------------------------------------
 
     def log(self, line: str) -> None:
         try:
@@ -234,7 +234,7 @@ class FileBridge:
         except Exception:
             pass
 
-    # ── Main loop ─────────────────────────────────────────────────────────────
+    # -- Main loop -------------------------------------------------------------
 
     def run(self) -> None:
         self.log(f"FileBridge started pid={os.getpid()} "
@@ -321,7 +321,7 @@ class FileBridge:
             elif kind == "read_incident_summary":
                 result.update(self._read_incident_summary())
 
-            # ── Admin-only (disabled by default) ─────────────────────────
+            # -- Admin-only (disabled by default) -------------------------
             elif kind == "run_powershell":
                 if not self.admin_bridge_enabled:
                     result["error"] = (
@@ -344,7 +344,7 @@ class FileBridge:
             pass
         path.unlink(missing_ok=True)
 
-    # ── Request handlers ──────────────────────────────────────────────────────
+    # -- Request handlers ------------------------------------------------------
 
     def _tail_file(self, req: Dict[str, Any]) -> Dict[str, Any]:
         path  = Path(str(req["path"])).resolve()
@@ -378,7 +378,7 @@ class FileBridge:
         return {"ok": completed.returncode == 0, "processes": rows[:200]}
 
     def _get_clipboard(self) -> Dict[str, Any]:
-        # Try native (win32clipboard → tkinter) first
+        # Try native (win32clipboard -> tkinter) first
         text = _get_clipboard_native()
         if text is not None:
             return {"ok": True, "text": text}
@@ -398,7 +398,7 @@ class FileBridge:
 
     def _set_clipboard(self, req: Dict[str, Any]) -> Dict[str, Any]:
         text = str(req.get("text") or "")
-        # Try native first (win32clipboard → tkinter)
+        # Try native first (win32clipboard -> tkinter)
         if _set_clipboard_native(text):
             return {"ok": True}
         # Fallback to PowerShell
@@ -472,7 +472,7 @@ class FileBridge:
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
-    # ── Admin-only ────────────────────────────────────────────────────────────
+    # -- Admin-only ------------------------------------------------------------
 
     def _run_powershell(self, req: Dict[str, Any]) -> Dict[str, Any]:
         command         = str(req["command"])
@@ -493,7 +493,7 @@ class FileBridge:
             "stderr":     completed.stderr[-4000:],
         }
 
-    # ── Retention cleanup ─────────────────────────────────────────────────────
+    # -- Retention cleanup -----------------------------------------------------
 
     def _maybe_cleanup(self) -> None:
         now = time.monotonic()
@@ -552,7 +552,7 @@ class FileBridge:
             self.log(f"cleanup: removed {removed} stale result/command file(s)")
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# -- Entry point ---------------------------------------------------------------
 
 def main() -> int:
     parser = argparse.ArgumentParser()

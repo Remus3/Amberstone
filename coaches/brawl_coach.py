@@ -42,7 +42,7 @@ if str(_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_APP_DIR))
 
 
-# ── System prompts ────────────────────────────────────────────────────────────
+# -- System prompts ------------------------------------------------------------
 
 _NB_SYSTEM_PROMPT = """\
 You are a Challenger Nexus Blitz coach. Two lanes, jungle, rotating random events.
@@ -155,9 +155,9 @@ _URF_OUTPUT_KEYS = ["action", "fight rule", "wave", "reset / item", "objective",
 _OFA_OUTPUT_KEYS = ["action", "fight rule", "wave", "reset / item", "objective", "risk", "choices"]
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Coach class
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 
 def _load_brawl_build_note(champion: str, mode: str = "") -> str:
@@ -200,15 +200,15 @@ class Coach(BaseCoach):
     _DATA_FILENAME = "brawl_coaching_data.json"
 
     # Brawl is faster - tighter debounce, lower HP threshold.
-    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 12→18 /
-    # DEBOUNCE 3.5→7 / FAST_PATH 1.5→3 to halve the API call rate.
+    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 12->18 /
+    # DEBOUNCE 3.5->7 / FAST_PATH 1.5->3 to halve the API call rate.
     _VISION_INTERVAL   = 18.0
     _DEBOUNCE_S        = 7.0
     _STABLE_DEBOUNCE_S = 20.0
     _FAST_PATH_MIN_S   = 3.0
     _HP_DROP_THRESHOLD = 10.0
 
-    # ── BaseCoach hooks ───────────────────────────────────────────────────────
+    # -- BaseCoach hooks -------------------------------------------------------
 
     def _on_state_received(self, state: dict) -> None:
         """Dynamic debounce: relax polling rate when game state is stable."""
@@ -224,7 +224,7 @@ class Coach(BaseCoach):
                 type(self)._DEBOUNCE_S if changed else self._STABLE_DEBOUNCE_S
             )
 
-    # ── BaseCoach abstract implementations ────────────────────────────────────
+    # -- BaseCoach abstract implementations ------------------------------------
 
     def _blank_artifact_data(self) -> dict:
         return {
@@ -238,7 +238,7 @@ class Coach(BaseCoach):
     def _parse_raw_state(self, raw: dict) -> dict:
         return _parse_brawl_state(raw)
 
-    # ── Vision ────────────────────────────────────────────────────────────────
+    # -- Vision ----------------------------------------------------------------
 
     def _run_vision(self) -> None:
         if self._fetch_game_data() is None:
@@ -269,7 +269,7 @@ class Coach(BaseCoach):
         except Exception as exc:
             logger.debug("Brawl vision run: %s", exc)
 
-    # ── Daemon Slayer mode routing (s75) ────────────────────────────────────
+    # -- Daemon Slayer mode routing (s75) ------------------------------------
     #
     # Brawl coach is the umbrella for several quick-play modes (BRAWL,
     # NEXUSBLITZ, URF/ULTBOOK, ONEFORALL/GAMEMODEX). Only "BRAWL" is on
@@ -287,7 +287,7 @@ class Coach(BaseCoach):
     def _ds_engine_mode(game_mode_upper: str) -> str:
         return "BRAWL" if "BRAWL" in (game_mode_upper or "") else "SR"
 
-    # ── Target-bonus-HP estimator (s75 - Phase 4 batch 19 wire-in) ──────────
+    # -- Target-bonus-HP estimator (s75 - Phase 4 batch 19 wire-in) ----------
 
     def _estimate_target_bonus_hp(self, state: dict | None = None) -> float:
         """Estimate enemy bonus HP from items. Brawl port of aram_coach's
@@ -322,7 +322,7 @@ class Coach(BaseCoach):
                 best = hp
         return min(1500.0, best) if best > 0 else 0.0
 
-    # ── Coach ─────────────────────────────────────────────────────────────────
+    # -- Coach -----------------------------------------------------------------
 
     def _run_coach(self, state: dict) -> None:
         try:
@@ -548,7 +548,7 @@ class Coach(BaseCoach):
             logger.error("Brawl coach: %s", exc)
 
 
-# ── Vision reader ─────────────────────────────────────────────────────────────
+# -- Vision reader -------------------------------------------------------------
 
 class BrawlVisionReader:
     _NB_PROMPT = """\
@@ -628,7 +628,7 @@ Return ONLY JSON.
         return self._reader.read_tiered()
 
 
-# ── Brawl game state parser ───────────────────────────────────────────────────
+# -- Brawl game state parser ---------------------------------------------------
 
 def _parse_brawl_state(raw: dict) -> dict:
     ap     = raw.get("activePlayer", {})

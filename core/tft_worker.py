@@ -44,7 +44,7 @@ _log = logging.getLogger("rc.tft_worker")
 POLL_INTERVAL_S: float = 1.5
 
 
-# ── TftWorkerResult ───────────────────────────────────────────────────────────
+# -- TftWorkerResult -----------------------------------------------------------
 
 class TftWorkerResult:
     """
@@ -72,7 +72,7 @@ class TftWorkerResult:
         self.last_success = last_success
 
 
-# ── TftWorker ─────────────────────────────────────────────────────────────────
+# -- TftWorker -----------------------------------------------------------------
 
 class TftWorker(BaseCoachWorker):
     """
@@ -128,7 +128,7 @@ class TftWorker(BaseCoachWorker):
         # Invariant: _ai_bar is always applied to _live whenever both exist.
         self._ai_bar: Any = None
 
-    # ── Public lifecycle API (start/stop/join/restart/is_alive on base) ──
+    # -- Public lifecycle API (start/stop/join/restart/is_alive on base) --
 
     def shutdown(self) -> None:
         """
@@ -140,7 +140,7 @@ class TftWorker(BaseCoachWorker):
             self._thread.join(timeout=3.0)
         self._teardown_components()
 
-    # ── Internal ─────────────────────────────────────────────────────────────
+    # -- Internal -------------------------------------------------------------
 
     def _init_components(self) -> bool:
         """
@@ -265,7 +265,7 @@ class TftWorker(BaseCoachWorker):
         _last_sr     = (0, 0)
 
         while not self._stop_event.is_set():
-            # ── Pre-read generation check ──────────────────────────────────
+            # -- Pre-read generation check ----------------------------------
             if my_gen != self._generation:
                 _log.debug("TftWorker gen=%d superseded - exiting", my_gen)
                 return
@@ -275,7 +275,7 @@ class TftWorker(BaseCoachWorker):
             try:
                 state = self._reader.read()
 
-                # ── Post-read generation check ─────────────────────────────
+                # -- Post-read generation check -----------------------------
                 if my_gen != self._generation:
                     _log.debug("TftWorker gen=%d superseded post-read", my_gen)
                     return
@@ -284,7 +284,7 @@ class TftWorker(BaseCoachWorker):
                     self.last_success_ts = time.monotonic()
                     was_in_game = True
 
-                    # ── Coaching orchestration ─────────────────────────────
+                    # -- Coaching orchestration -----------------------------
                     # Submit to TftCoachEngine (text coaching)
                     # Phase 1 Step 7: gated by feature_policy tft.live_coaching.
                     if self._engine is not None:

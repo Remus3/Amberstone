@@ -46,7 +46,7 @@ class EnemyStats:
 # pace, NOT theoretical maximums - DS uses these as "good enough"
 # rerank targets, not as a damage-prediction ground truth.
 #
-# SR: classic 5v5, gradual scaling. Armor anchors at lvl 11 → 95
+# SR: classic 5v5, gradual scaling. Armor anchors at lvl 11 -> 95
 # (matches the prior ``target_armor=80`` ballpark and the SR draft
 # preset table at coaches/sr_draft_profile.py:71).
 # ARAM: faster gold + healing reduction. Items come ~30% faster.
@@ -67,7 +67,7 @@ _MAX_HP_CAP  = 4500.0
 _BONUS_HP_FLOOR = 0.0
 _BONUS_HP_CAP   = 3500.0
 
-# Champion base HP averages ~600 (varies 540 Karthus → 690 Mundo).
+# Champion base HP averages ~600 (varies 540 Karthus -> 690 Mundo).
 # ``bonus_hp = max_hp - base_hp`` is the engine-relevant signal because
 # items like Giant Slayer / Bork scale by bonus HP, not max.
 _CHAMP_BASE_HP_AVG = 600.0

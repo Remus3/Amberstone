@@ -348,7 +348,7 @@ def compute_nudge_payload(
         # return the cached decision verbatim.
         if existing and existing.get("session_token") == session_token:
             return dict(existing)
-        # Stale entry (different session) → fall through to re-evaluate.
+        # Stale entry (different session) -> fall through to re-evaluate.
 
     # Resolve item name for the message + payload. liveclient owned_items
     # is a list of display names parallel to owned_item_ids; if absent,

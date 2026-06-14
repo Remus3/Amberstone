@@ -55,7 +55,7 @@ _lock = threading.Lock()
 _cache: dict[str, str] = {}
 _cache_mtime: float = 0.0
 
-# Item HP lookup cache. Keyed by item id (str) → FlatHPPoolMod (float).
+# Item HP lookup cache. Keyed by item id (str) -> FlatHPPoolMod (float).
 # Populated lazily from the patch-current DDragon items.json. mtime gate
 # refreshes on patch bump.
 _hp_lock = threading.Lock()
@@ -63,8 +63,8 @@ _hp_cache: dict[str, float] = {}
 _hp_cache_mtime: float = 0.0
 _hp_cache_patch: str = ""
 
-# s74 - mode-aware byName cache. Keyed by mode short name → normalized-name
-# → item id. Populated in the same pass as ``_hp_cache`` (one load of the
+# s74 - mode-aware byName cache. Keyed by mode short name -> normalized-name
+# -> item id. Populated in the same pass as ``_hp_cache`` (one load of the
 # patch-current DDragon items.json builds both). Map IDs from DDragon's
 # ``maps`` field per item.
 _MODE_TO_DDRAGON_MAP_ID: dict[str, str] = {
@@ -147,7 +147,7 @@ def resolve_many(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
 # all 7+ together. Without this filter, /rank rejects the call once the
 # user buys their 5th component+trinket combo with
 #   "current_item_ids has 6 items; slot_count=6 leaves no room for a new item"
-# and the SR coach silently drops daemon_slayer_picks → dashboard #ds-pill
+# and the SR coach silently drops daemon_slayer_picks -> dashboard #ds-pill
 # stays hidden mid-game.
 NON_INVENTORY_IDS = frozenset({
     # Trinkets (yellow/blue/red row, 1 slot reserved separately by client)

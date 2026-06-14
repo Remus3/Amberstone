@@ -42,7 +42,7 @@ def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
-# ── Safe-reload allowlist (Item 9) ────────────────────────────────────────────
+# -- Safe-reload allowlist (Item 9) --------------------------------------------
 #
 # SAFE_RELOAD: data/config modules with no live widget instances.
 #   Re-importing these is safe because no running object holds a reference
@@ -135,7 +135,7 @@ class DevRuntime:
     def register_reload_callback(self, name: str, callback: Callable[..., Any]) -> None:
         self._callbacks[name] = callback
 
-    # ── Start / Stop ──────────────────────────────────────────────────────────
+    # -- Start / Stop ----------------------------------------------------------
 
     def start(self) -> None:
         """
@@ -208,7 +208,7 @@ class DevRuntime:
         except Exception:
             pass
 
-    # ── Health payload ────────────────────────────────────────────────────────
+    # -- Health payload --------------------------------------------------------
 
     def _build_health_payload(self) -> Dict[str, Any]:
         """
@@ -272,7 +272,7 @@ class DevRuntime:
 
         return payload
 
-    # ── Heartbeat loop ────────────────────────────────────────────────────────
+    # -- Heartbeat loop --------------------------------------------------------
 
     def _heartbeat_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -286,7 +286,7 @@ class DevRuntime:
                 )
             self._stop_event.wait(self.heartbeat_interval)
 
-    # ── Command loop ──────────────────────────────────────────────────────────
+    # -- Command loop ----------------------------------------------------------
 
     def _command_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -392,7 +392,7 @@ class DevRuntime:
             elif kind == "rollback_last_known_good":
                 result.update(self._do_rollback_request(payload))
 
-            # ── Admin-only commands (disabled by default) ─────────────────
+            # -- Admin-only commands (disabled by default) -----------------
             elif kind in ("shell", "start_process"):
                 if not self.admin_bridge_enabled:
                     result["error"] = (
@@ -431,7 +431,7 @@ class DevRuntime:
         self._write_result_for_path(path, result)
         path.unlink(missing_ok=True)
 
-    # ── Monitor control ───────────────────────────────────────────────────────
+    # -- Monitor control -------------------------------------------------------
 
     def _handle_monitor_control(
         self, action: str, payload: Dict[str, Any]
@@ -488,7 +488,7 @@ class DevRuntime:
 
         return {"ok": False, "error": f"unknown monitor_control action: {action!r}"}
 
-    # ── Controlled restart / rollback (for self-monitor) ──────────────────────
+    # -- Controlled restart / rollback (for self-monitor) ----------------------
 
     def _do_controlled_restart(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         req_id   = f"devruntime-restart-{int(time.time())}"
@@ -514,7 +514,7 @@ class DevRuntime:
         })
         return {"ok": True, "request_id": req_id}
 
-    # ── Internal helpers ──────────────────────────────────────────────────────
+    # -- Internal helpers ------------------------------------------------------
 
     def _write_result_for_path(
         self, command_path: Path, result: Dict[str, Any]
@@ -589,7 +589,7 @@ class DevRuntime:
         self._last_reload_error = None
         return {"ok": True, "callback": name, "result": value}
 
-    # ── Admin-only methods (disabled unless admin_bridge_enabled) ─────────────
+    # -- Admin-only methods (disabled unless admin_bridge_enabled) -------------
 
     def _run_shell(self, command: str, timeout: float = 15.0) -> Dict[str, Any]:
         if not command:

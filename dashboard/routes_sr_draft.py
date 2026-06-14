@@ -195,7 +195,7 @@ def _serve_sr_draft_apply_post(h, payload) -> None:
                 "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 GET_ROUTES: list = []
 

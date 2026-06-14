@@ -54,7 +54,7 @@ _log = logging.getLogger("rc.defensive_picks")
 
 _CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_champions.json"
 
-# Module-level cache: champion-name → {tags, attack, magic, defense, difficulty}.
+# Module-level cache: champion-name -> {tags, attack, magic, defense, difficulty}.
 _CHAMP_INFO: dict[str, dict] | None = None
 
 
@@ -83,8 +83,8 @@ def _load_champ_info() -> dict[str, dict]:
             for key in (entry.get("name"), entry.get("id")):
                 if not key: continue
                 out[key] = slim
-                out[key.replace("'", "")] = slim          # Kai'Sa → KaiSa
-                out[key.replace(" ", "")] = slim          # Miss Fortune → MissFortune
+                out[key.replace("'", "")] = slim          # Kai'Sa -> KaiSa
+                out[key.replace(" ", "")] = slim          # Miss Fortune -> MissFortune
                 out[key.replace("'", "").replace(" ", "")] = slim
     except FileNotFoundError:
         _log.warning("defensive_picks: %s missing - using empty index", _CHAMPS_PATH)
@@ -109,7 +109,7 @@ _KNOWN_BURSTERS = {
 }
 
 # Curated defensive item catalog. Each entry: id, name, category,
-# stats summary, reason template. Categories drive the threat→item
+# stats summary, reason template. Categories drive the threat->item
 # match. SR-tier 4-digit ids - the catalog file (ddragon_items.json)
 # has both these AND the 6-digit ARAM variants under the same names.
 _DEFENSIVE_ITEMS = [
@@ -272,7 +272,7 @@ def recommend_defensive_items(threat: dict,
         cat = item["category"]
         tags = set(item.get("tags") or [])
         score = 0.0
-        # Match threat → category
+        # Match threat -> category
         if cat == "armor":
             score += ad * 1.0
             if tank >= 5: score += 1.0    # bonus when enemies stack HP
@@ -327,7 +327,7 @@ def _threat_to_damage_shares(threat: dict) -> tuple[float, float]:
     ap = float(threat.get("ap_threat") or 0)
     total = ad + ap
     if total <= 0:
-        return 0.5, 0.5  # No info → balanced
+        return 0.5, 0.5  # No info -> balanced
     ad_share = ad / total
     ap_share = ap / total
     if ad >= 6 and ap >= 6:
@@ -392,7 +392,7 @@ def recommend_defensive_items_via_ehp(
         level=int(my_level),
         item_ids=[],  # Baseline = naked. ``my_owned_items`` filtering happens
                       # via the catalog whitelist above; passing the IDs would
-                      # require a name→ID reverse map this module doesn't have.
+                      # require a name->ID reverse map this module doesn't have.
                       # For Phase 1 the absolute delta from naked is the
                       # comparable scoring signal across all whitelisted picks.
         mode=str(my_mode),

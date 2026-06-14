@@ -188,7 +188,7 @@ class MetricsCache:
         self._thread: Optional[threading.Thread] = None
         self._task: Optional[Any] = None  # asyncio.Task / Future
 
-    # ── Public API ──────────────────────────────────────────────────────────
+    # -- Public API ----------------------------------------------------------
 
     def start(self) -> None:
         """Start the background refresh loop.  No-op if already running.
@@ -273,7 +273,7 @@ class MetricsCache:
             copy.policy_tft_vision_analysis = self._summary.policy_tft_vision_analysis
         return copy
 
-    # ── Background loop ─────────────────────────────────────────────────────
+    # -- Background loop -----------------------------------------------------
 
     def _loop(self) -> None:
         """Background thread fallback: refresh on interval until stop().
@@ -309,7 +309,7 @@ class MetricsCache:
         with self._lock:
             self._summary = new
 
-    # ── File readers (each is independently fault-tolerant) ─────────────────
+    # -- File readers (each is independently fault-tolerant) -----------------
 
     def _load_json(self, rel_path: str) -> Optional[Dict[str, Any]]:
         """Load a JSON file relative to runtime_dir. Returns None on any error."""

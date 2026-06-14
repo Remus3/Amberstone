@@ -91,7 +91,7 @@ _FALLBACK_PRESETS: dict[str, Any] = {
 }
 
 
-# ── Public API ───────────────────────────────────────────────────────
+# -- Public API -------------------------------------------------------
 
 
 def is_sr_draft_queue(queue_id: Optional[int]) -> bool:
@@ -214,7 +214,7 @@ def _engine_version() -> Optional[str]:
     return None
 
 
-# ── Internals ────────────────────────────────────────────────────────
+# -- Internals --------------------------------------------------------
 
 
 def _normalize_role(role: Optional[str]) -> Optional[str]:

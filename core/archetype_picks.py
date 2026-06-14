@@ -52,7 +52,7 @@ from typing import Optional
 
 _log = logging.getLogger("rc.archetype_picks")
 
-# Canonical archetype names. Order matters: UI renders left→right in
+# Canonical archetype names. Order matters: UI renders left->right in
 # this order. Keep stable - localStorage + the persisted JSON file key
 # off these strings.
 ARCHETYPES: tuple[str, ...] = (
@@ -61,14 +61,14 @@ ARCHETYPES: tuple[str, ...] = (
 ARCHETYPE_SET = frozenset(ARCHETYPES)
 
 # Archetypes with a real scorer wired today. s209 flipped to all 6 after
-# verifying Phases 4-6 shipped (s179 mage→ds.ability, s180 assassin→ds.burst,
-# s181 enchanter→ds.hps per CLAUDE.md priorities 34-36). The dispatcher
+# verifying Phases 4-6 shipped (s179 mage->ds.ability, s180 assassin->ds.burst,
+# s181 enchanter->ds.hps per CLAUDE.md priorities 34-36). The dispatcher
 # routes each archetype to its dedicated scorer; none fall back to ds.dps.
 IMPLEMENTED_SCORERS: frozenset[str] = frozenset({
     "carry", "bruiser", "tank", "mage", "assassin", "enchanter",
 })
 
-# DDragon tag → archetype mapping. Lowercase comparison; unknown tags
+# DDragon tag -> archetype mapping. Lowercase comparison; unknown tags
 # fall through to carry as the safest default (still gives operator
 # something to look at).
 _TAG_TO_ARCHETYPE: dict[str, str] = {

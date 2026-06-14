@@ -1130,7 +1130,7 @@ def rank_for_primary_archetype(
             "fell_back": False,
         }
 
-    # carry / anything else → fall through to ds.dps.
+    # carry / anything else -> fall through to ds.dps.
     # Post-Phase-6 (s181): all 6 archetypes have their own scorer; this
     # path handles only the catch-all (empty string, unknown labels).
     fell_back = False

@@ -94,7 +94,7 @@ class RiotApiCache:
             conn.executescript(_SCHEMA)
             self._initialized = True
 
-    # ── immutable cache (Match-V5 details/timeline, Account-V1) ─────────
+    # -- immutable cache (Match-V5 details/timeline, Account-V1) ---------
 
     def get_immutable(self, key: str) -> Optional[dict]:
         try:
@@ -139,7 +139,7 @@ class RiotApiCache:
             log.warning("cache.set_immutable(%s) failed: %s", key, exc)
             return False
 
-    # ── TTL cache (League-V4, Champion-Mastery-V4) ───────────────────────
+    # -- TTL cache (League-V4, Champion-Mastery-V4) -----------------------
 
     def get_ttl(self, key: str) -> Optional[dict]:
         try:
@@ -186,7 +186,7 @@ class RiotApiCache:
             log.warning("cache.set_ttl(%s) failed: %s", key, exc)
             return False
 
-    # ── housekeeping ─────────────────────────────────────────────────────
+    # -- housekeeping -----------------------------------------------------
 
     def purge_expired_ttl(self) -> int:
         """Drop expired TTL rows. Returns count purged. Best-effort -
@@ -228,7 +228,7 @@ class RiotApiCache:
             return {"immutable_rows": 0, "ttl_live_rows": 0}
 
 
-# ── module-level singleton ──────────────────────────────────────────────
+# -- module-level singleton ----------------------------------------------
 
 _SINGLETON: Optional[RiotApiCache] = None
 _SINGLETON_LOCK = threading.Lock()

@@ -59,7 +59,7 @@ _ANTI_HEAL = (
 # the swap is universally favorable (same damage type, similar power
 # curve) are listed here. Missing entries = no substitution attempted.
 _HEAL_SUBSTITUTIONS = {
-    # AD anti-armor → AD anti-armor + antiheal. Free upgrade for any
+    # AD anti-armor -> AD anti-armor + antiheal. Free upgrade for any
     # champ whose build calls for LDR but is heading into a
     # heal-dominant lobby (Caitlyn et al).
     "Lord Dominik's Regards": "Mortal Reminder",
@@ -215,7 +215,7 @@ def recompute_arena_build(
     tank_count = sum(1 for c in opps if _is_tank(c, tags))
     healer_count = sum(1 for c in opps if _is_healer(c))
 
-    # Anti-tank: 2+ tanks → push first matching anti-tank item to front
+    # Anti-tank: 2+ tanks -> push first matching anti-tank item to front
     # (if not already in top 2). Skipped silently if no match.
     if tank_count >= 2:
         _push_to_front(
@@ -224,7 +224,7 @@ def recompute_arena_build(
             max_pos=2,
         )
 
-    # Anti-heal: 2+ heavy-heal opponents → push antiheal item to front.
+    # Anti-heal: 2+ heavy-heal opponents -> push antiheal item to front.
     # If the build lacks any antiheal entirely (e.g. Caitlyn's curated
     # full_build has Lord Dominik's but no Mortal Reminder), try a
     # one-for-one substitution from _HEAL_SUBSTITUTIONS first so the
