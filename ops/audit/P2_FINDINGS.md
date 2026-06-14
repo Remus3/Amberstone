@@ -659,3 +659,40 @@ encoding retro-sweep) is the operator grant the test_u2500_hygiene.py SCOPE NOTE
   test_daemon_slayer_resolver_hp.py pins long-stable item HP literals as a deliberate DDragon-rebalance
   drift detector; test_item_wpa.py documents "Do NOT pin exact numbers"; champion-roster conformance
   guards assert == 172 (live champ count, bumps with a new champ). All correct as-is.
+
+## W5 test corpus agents/daemon_slayer/tests (cycle 17, 6 disjoint slices A-F; audit + sweep, no product/DS edit)
+
+Same lighter test-corpus lens as W5 half 1. 222 files / 86705 LOC. Outcome matches half 1: the DS
+test corpus is mature + clean. ZERO product bugs surfaced -> ZERO new tests. The ONLY FIX-NOW class
+was non-ASCII glyph cleanup in comments/docstrings/dividers: 39 files swept to ASCII (U+2500 box-draw
+-> -, U+2192 arrow -> ->, U+00D7 -> x, U+2248 -> ~, U+2265 -> >=, U+2260 -> !=, U+2212 -> -, U+00B1
+-> +/-, U+00B7 middot -> * (multiply context), U+221E -> inf, U+03B1 -> alpha, U+03B2 -> beta,
+U+21D2 -> =>, U+226B -> >>). em-dash/en-dash/smart-quote count was ZERO at wave start (already swept)
+- all hits were decorative or load-bearing NON-banned glyphs strip_em_dashes.py deliberately left;
+charter auth 6 (full encoding retro-sweep) + auth 7 is the grant. Every edited file is a balanced
+in-line ASCII swap (git numstat net 0 lines/file); no logic/assertion/count change. Post-sweep fresh
+census = exactly 1 remaining non-ASCII file (the load-bearing DEFER below); 0 banned glyphs.
+
+### MED (production-side, own slice - NOT a test-corpus fix)
+- agents/daemon_slayer/tests/test_effects_expansion.py:3892 retains 1x U+2192 inside
+  re.search("effective target armor [\\d.]+\\s*->\\s*([\\d.]+)", n): the DS engine (agents/daemon_slayer/
+  dps.py) EMITS a literal U+2192 in its "effective target armor X -> Y" note strings, and this regex
+  matches that live output. PROVEN load-bearing by slice A (converting it makes eff_armor() return None
+  -> assertIsNotNone(eff_lvl1) fails in the Lvl/Pen tests). dps.py is the production source. This is the
+  DS-engine analog of the W5-half-1 aram-coach item_build arrow - same MED DEFER: fold into a coordinated
+  P3/P4 production-side ASCII-output slice (change dps.py's emitted arrow + this regex together), NOT a
+  test-only pass. An in-file comment (3889-3891) already documents the load-bearing reason.
+
+### INFO (W5 half 2)
+- Pervasive historical ENGINE_VERSION narrative in docstrings + method names (e.g.
+  test_engine_version_at_1_41_0 / "pins 1.41.0" / "wave-6 ship state (1.37.0)") across many files while
+  the actual ASSERTION correctly pins live 1.120.0 (or uses a drift-tolerant assertGreaterEqual floor).
+  Correct asserts, stale PROSE only - the established repo orchestrator-bump convention, not a defect.
+  A P8 docs-sweep job, NOT a test-corpus fix (and out of the no-history-rewrite + ASCII-mandate scope).
+- INTENTIONAL drift-detector pins kept by design (NOT findings): == 172/171 roster-conformance, == 150/
+  725/258 coverage-count guards, FROZEN {16.10.1, 16.11.1} DataSnapshot fixture pins, item-HP literals.
+- skip/xfail census = all legit, no rot: conditional skips (DS-server-unavailable guards, data-conditional
+  skipTest, _require_live_sidecar) + 1 strict xfail (test_wireable_sims_p1l3.py:901, a deliberate Phase-1
+  lifesteal/spellvamp sustain contract-gap flagged for the engine owner).
+- 0 asyncio.run polluters; 0 non-hermetic writes (every .write_text targets tmp_path/TemporaryDirectory;
+  real data/ paths are read-only sources). Corpus is correctly hermetic.
