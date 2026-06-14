@@ -622,3 +622,40 @@ names, LLM coach text, OCR text, DDragon/engine names) interpolated raw into inn
   ops/phase3_setup/phase3_summary SMB 192.168.8.237 + game_pc topology; ops/phase3_install +
   install_RC_LegionBridgeDaemon gamepc comments; tft_vision_reader/tft_ocr_reader Game-PC frame
   comments (accurate post-1PC relay-path notes, not stale wiring).
+
+## W5 test corpus tests/ (cycle 16, 6 disjoint slices A-F; audit + sweep, no product/DS edit)
+
+Lighter test-corpus lens (data-fragile asserts / stale pins / dead-skip-xfail rot / asyncio.run
+polluter / ASCII / non-hermetic writes). Outcome: the corpus is mature + clean. ZERO product bugs
+surfaced, so ZERO new tests added (unlike W1-W4 which added regression tests per product fix). The
+ONLY FIX-NOW class was non-ASCII glyph cleanup in comments/docstrings/dividers (47 test files swept
+to ASCII: U+2192 arrow -> ->, U+2500 box-draw -> -, U+2194 -> <->, U+00D7 -> x, U+2248 -> ~,
+U+2265 -> >=, U+2212 -> -, U+00A7 -> section, U+ACE4 Korean -> 곤 source-escape). This is the
+test-corpus arm of the coordinated ASCII-in-output pass already logged under W4-hw2 (prints/docstrings
+in scripts/ops/tft + the production wire arrow below still pending a P3 production-side slice). NO
+em-dash/en-dash/smart-quote was found anywhere (those were already swept) - all hits were decorative
+or load-bearing non-banned glyphs that strip_em_dashes.py deliberately left; charter auth 6 (full
+encoding retro-sweep) is the operator grant the test_u2500_hygiene.py SCOPE NOTE asks for.
+
+### MED (production-side, own slice - NOT a test-corpus fix)
+- coaches/aram_coach.py item_build wire convention uses a LITERAL U+2192 separator
+  ("Boots -> Item" built/split on the raw arrow; documented "Arrow separator in item_build is U+2192
+  per coach prompt convention"). PROVEN load-bearing: converting the 11 arrows in
+  tests/phase2_smoke/test_aram_coach_item_class_peers.py (slice D) broke 8 tests -> reverted to
+  pristine. This is a real production non-ASCII data convention; ASCII-ifying it touches the coach +
+  the Haiku coach-prompt format + every peer test = a coordinated production slice (fold into a P3/P4
+  ASCII-output pass, NOT this test-corpus wave). test file left with its 11 arrows by design.
+
+### INFO (W5)
+- tests/phase7_polish/test_wakeup_prune.py retains exactly 3 U+2705 (white-check) bytes after the
+  decorative sweep - they are LOAD-BEARING PIN fixture data ("# U+2705 RESOLVED ..." lines that
+  test_session_re_does_not_match_pin / test_leading_pin_folds_into_header assert SESSION_RE rejects).
+  Intentionally NOT swept; the file's decorative U+2500 dividers + 2 U+2192 WERE swept.
+- Slice A initially read the ASCII lens narrowly (em/en-dash + smart-quote only) and deferred its 6
+  decorative-glyph files as INFO; supervisor swept them post-merge (ops/audit/p2w5_sweep_sliceA.py)
+  for corpus consistency, leaving the 2 load-bearing files above as the ONLY remaining non-ASCII in
+  tests/. Net: decorative non-ASCII is now ZERO across the corpus except those 2 justified files.
+- Several files carry INTENTIONAL data-fragile asserts kept by design (NOT findings):
+  test_daemon_slayer_resolver_hp.py pins long-stable item HP literals as a deliberate DDragon-rebalance
+  drift detector; test_item_wpa.py documents "Do NOT pin exact numbers"; champion-roster conformance
+  guards assert == 172 (live champ count, bumps with a new champ). All correct as-is.
