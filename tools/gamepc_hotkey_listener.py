@@ -8,8 +8,8 @@ patterns the way `pynput`/`keyboard` low-level hooks tend to).
 When a hotkey fires:
   1. The most recently created pending decision is fetched from the
      local cache (refreshed every 2 s in a worker thread).
-  2. Ctrl+Shift+1 → POST the FIRST option in `options`.
-     Ctrl+Shift+2 → POST the SECOND option.
+  2. Ctrl+Shift+1 -> POST the FIRST option in `options`.
+     Ctrl+Shift+2 -> POST the SECOND option.
   3. If no pending decision: silent no-op (no crash, no toast).
 
 This lets the player answer a coach decision without alt-tabbing out
@@ -123,7 +123,7 @@ def post_choice(decision_id: str, choice: str) -> bool:
 
 
 def handle_hotkey(cache: DecisionCache, slot: int) -> None:
-    """slot=1 → first option; slot=2 → second option."""
+    """slot=1 -> first option; slot=2 -> second option."""
     d = cache.topmost()
     if d is None:
         log.info("hotkey slot=%d but no pending decision", slot)

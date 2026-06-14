@@ -207,8 +207,8 @@ def _pick_game_sense(metrics: dict, meta: dict) -> dict:
 
 def _pick_what_went(metrics: dict, meta: dict) -> tuple[list[str], list[str]]:
     """Return (what_went_good, what_went_bad) - each list of 2-5 bullets.
-    Rule: top quartile hits vs personal benchmark → positives; bottom
-    quartile → negatives. If no benchmark data, fall back to hard
+    Rule: top quartile hits vs personal benchmark -> positives; bottom
+    quartile -> negatives. If no benchmark data, fall back to hard
     thresholds."""
     champ = meta.get("champion") or ""
     mode  = meta.get("mode") or ""

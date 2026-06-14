@@ -55,7 +55,7 @@ def test_champ_select_skips_prime_if_already_warm() -> None:
 
 @pytest.mark.timeout(5)
 def test_game_end_from_champ_select_does_not_prime_again() -> None:
-    """champ_select → client transition should NOT prime (we prime on
+    """champ_select -> client transition should NOT prime (we prime on
     entry to champ_select, not exit)."""
     from agents.supervisor import Supervisor
     sup = Supervisor()
@@ -70,7 +70,7 @@ def test_game_end_from_champ_select_does_not_prime_again() -> None:
 
 @pytest.mark.timeout(5)
 def test_game_start_still_primes_after_champ_select() -> None:
-    """champ_select → game should trigger game-start prime path, not
+    """champ_select -> game should trigger game-start prime path, not
     champ-select path."""
     from agents.supervisor import Supervisor
     sup = Supervisor()

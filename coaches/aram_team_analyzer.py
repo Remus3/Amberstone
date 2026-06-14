@@ -23,11 +23,11 @@ Public API:
         "current_variant": "support-enchanter",  # currently-applied variant key
         "variants": [                            # all variants available for this mode
             {"key": "support-enchanter", "label": "Enchanter Support",
-             "summary": "Summon Aery/Sorcery → Imperial Mandate, Ardent, Mikael's"},
+             "summary": "Summon Aery/Sorcery -> Imperial Mandate, Ardent, Mikael's"},
             {"key": "ap-burst",          "label": "AP Burst",
-             "summary": "Arcane Comet/Sorcery → Luden's, Shadowflame, Rabadon's"},
+             "summary": "Arcane Comet/Sorcery -> Luden's, Shadowflame, Rabadon's"},
             {"key": "on-hit",            "label": "On-Hit Bruiser",
-             "summary": "Lethal Tempo/Precision → Wit's End, Nashor's, Guinsoo's"},
+             "summary": "Lethal Tempo/Precision -> Wit's End, Nashor's, Guinsoo's"},
         ]
     }
 

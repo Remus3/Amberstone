@@ -2,7 +2,7 @@
 
 Run from: C:\\Riot Commander\\
 Creates:
-  - agents/ tree (see §4)
+  - agents/ tree (see S4)
   - lib/ tree
   - web/ tree
   - data/db/, data/meta_build/scraped/{aggregator D,ugg}, data/meta_build/curated/, data/coach_cache/

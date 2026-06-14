@@ -7,8 +7,8 @@ The DDragon dictionary files live at data/meta/ddragon_items.json +
 data/meta/ddragon_runes.json (project root) - these are version-pinned
 to whatever patch the daemon_slayer pipeline is on (currently 16.12.1).
 
-GET /api/dictionary/items → ddragon_items.json (item.json from DDragon)
-GET /api/dictionary/runes → ddragon_runes.json (runesReforged.json)
+GET /api/dictionary/items -> ddragon_items.json (item.json from DDragon)
+GET /api/dictionary/runes -> ddragon_runes.json (runesReforged.json)
 
 Both responses are unchanged from disk so the client can use them
 verbatim. Long-lived Cache-Control since DDragon dumps don't change

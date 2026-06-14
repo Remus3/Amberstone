@@ -1,6 +1,6 @@
 """File-watcher ingest - bridges the existing RC coaching JSON files
 into the Phase 3 /push WebSocket stream while the Game-PC Forwarder is
-still deferred (§12 of the spec).
+still deferred (S12 of the spec).
 
 The supervisor owns one ``FileIngest`` instance. It polls a small set of
 known files every ``POLL_SEC`` seconds; when an mtime advances it reads,

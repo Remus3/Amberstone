@@ -116,7 +116,7 @@ class GameVisionReader:
     (or subclass) and call read_tiered() instead of read().  OCR runs
     first via core.vision_routing.read_or_escalate; Sonnet fires only for
     fields OCR couldn't validate.  Fields with no region entry in
-    vision_regions.json will always miss OCR → escalate to Sonnet, so the
+    vision_regions.json will always miss OCR -> escalate to Sonnet, so the
     system degrades gracefully when calibration is incomplete.
     """
 

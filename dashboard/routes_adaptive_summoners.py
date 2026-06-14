@@ -12,11 +12,11 @@ locked-in enemy comp. The decision tree is deliberately small:
   - Flash always stays primary (slot D = id 4) - only edge case is jungle
     on Smite-required queues, but the LCU rejects no-Smite picks so we
     keep Flash on as a safety net.
-  - Secondary swaps to **Cleanse** (id 1) when ≥2 hard-CC enemies are
+  - Secondary swaps to **Cleanse** (id 1) when >=2 hard-CC enemies are
     locked AND the operator is BOT/MID/ADC-style role. Cleanse breaks
     the long-form CC that Heal can't outlast (Morgana root, Ashe arrow,
     Thresh hook chain, etc.).
-  - Secondary swaps to **Barrier** (id 21) when burst_threat ≥ 6
+  - Secondary swaps to **Barrier** (id 21) when burst_threat >= 6
     (assassin-heavy comp) and operator is a squishy back-line role.
     Barrier mitigates the one-shot window Heal can't.
   - Otherwise the secondary stays at the variant's stored value (usually
@@ -175,7 +175,7 @@ def _compute_threat(enemy_names: list[str]) -> dict:
 
 
 def _recommend(base: list[int], role: str, threat: dict) -> dict:
-    """Decision tree → (summoners, swap_to_name, reason). When no swap
+    """Decision tree -> (summoners, swap_to_name, reason). When no swap
     fires, returns the base pair with swap_to=None.
 
     base : the variant's stored summoner pair (often [4, 21] = Flash+Barrier

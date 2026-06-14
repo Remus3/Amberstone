@@ -6,7 +6,7 @@ recommendation derived from:
 
   - the curated `full_build` for this champion in aram_champion_builds.json
   - already-owned items (substring dedup, same idiom as ARAM coach)
-  - alive opponents' tank/healer counts → anti-tank + anti-heal pivots
+  - alive opponents' tank/healer counts -> anti-tank + anti-heal pivots
 
 No Haiku call - pure rule-based, runs every coach tick. Defaults
 chosen for s33 (operator-confirmed): healer threshold 2+, finished
@@ -113,7 +113,7 @@ def _resolve_build_path(champion: str) -> tuple[list[str], str]:
 
 
 def _load_tags() -> dict[str, list[str]]:
-    """Build a name→tags map from DDragon. Uses display name (with
+    """Build a name->tags map from DDragon. Uses display name (with
     apostrophes) as key, matching the championName values arena state
     emits in `teams[*].name`."""
     global _tags_cache

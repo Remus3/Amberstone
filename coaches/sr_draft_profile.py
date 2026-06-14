@@ -2,7 +2,7 @@
 
 Phase 8 step 1 (thin slice, 2026-05-04): stub envelope + queue gate.
 Phase 8 step 2 (2026-05-04): engine-backed body - calls Daemon Slayer
-`/beam` 3× with primary / alt-playstyle / experimental presets and
+`/beam` 3x with primary / alt-playstyle / experimental presets and
 maps each to the canonical profile shape consumed by P8-5's UI.
 
 `build_profile(champion, role, my_team, their_team, queue_id)` is the
@@ -115,7 +115,7 @@ def build_profile(
 ) -> dict[str, Any]:
     """Return the 3-build profile envelope for an SR champ-select pick.
 
-    Calls Daemon Slayer `/beam` 3× (primary / alt / experimental) and
+    Calls Daemon Slayer `/beam` 3x (primary / alt / experimental) and
     maps each to a profile dict. On engine error, returns the empty
     envelope with a `notes` entry.
 
@@ -313,7 +313,7 @@ def _profile_from_beam(
     beam_resp: dict[str, Any],
     presets: dict[str, Any],
 ) -> Optional[dict[str, Any]]:
-    """Map a beam response → a profile dict in the canonical shape."""
+    """Map a beam response -> a profile dict in the canonical shape."""
     ranked = beam_resp.get("ranked")
     if not isinstance(ranked, list) or not ranked:
         return None

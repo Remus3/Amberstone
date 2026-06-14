@@ -4,13 +4,13 @@
 Phase 6 of RC_FUTUREPROOFING_PLAN consolidates seven scripts that each
 re-implemented the same SSL/HTTP/state-file boilerplate:
 
-    bridge_task.py          → `bridge_cli task ...`
-    bridge_post_result.py   → `bridge_cli post-result ...`
-    bridge_pull_tasks.py    → `bridge_cli pull ...`
-    bridge_fetch.py         → `bridge_cli fetch`
-    bridge_ping.py          → `bridge_cli ping`
-    bridge_heartbeat.py     → `bridge_cli heartbeat`
-    bridge_post.py          → `bridge_cli post [<source>]`
+    bridge_task.py          -> `bridge_cli task ...`
+    bridge_post_result.py   -> `bridge_cli post-result ...`
+    bridge_pull_tasks.py    -> `bridge_cli pull ...`
+    bridge_fetch.py         -> `bridge_cli fetch`
+    bridge_ping.py          -> `bridge_cli ping`
+    bridge_heartbeat.py     -> `bridge_cli heartbeat`
+    bridge_post.py          -> `bridge_cli post [<source>]`
 
 The original files are kept as ~10-line shims that call into `main([cmd, ...])`
 so cron tasks (`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_pull_tasks.py --target legion`) keep working

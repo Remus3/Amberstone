@@ -1,6 +1,6 @@
 """bridge_watcher_classify.py - pure classification for bridge envelopes.
 
-Phase 0 + Phase 2 per BRIDGE_WATCHER_PLAN.md §5:
+Phase 0 + Phase 2 per BRIDGE_WATCHER_PLAN.md S5:
   - escalate   : operator should drain via /process-bridge-tasks
   - ack-only   : log it, do nothing else
   - reject     : malformed; drop with reason

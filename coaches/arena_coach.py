@@ -9,7 +9,7 @@ Vision fires every 12s (Sonnet): augment choices, item anvil, round phase.
 Writes: data/arena_coaching_data.json
 
 ARCH-002 (full) - 2026-04-18
-Also fixes: _parse_fields called without keys (silent TypeError → no coaching output)
+Also fixes: _parse_fields called without keys (silent TypeError -> no coaching output)
 """
 
 import os
@@ -153,11 +153,11 @@ def _patch_dir_key(p: Path) -> tuple:
 
 
 def _augment_name_map() -> dict[str, str]:
-    """Lazy display-name → apiName lookup built from arena_augments.json.
+    """Lazy display-name -> apiName lookup built from arena_augments.json.
 
     Keys are lowercased + whitespace-stripped display names; values are the
-    cdragon apiName (e.g. ``"the brutalizer"`` → ``"TheBrutalizer"``).
-    apiName→apiName self-mapping is also installed so a Haiku response that
+    cdragon apiName (e.g. ``"the brutalizer"`` -> ``"TheBrutalizer"``).
+    apiName->apiName self-mapping is also installed so a Haiku response that
     happens to return the apiName resolves cleanly.
 
     Returns ``{}`` if the snapshot is missing - caller treats that as
@@ -212,7 +212,7 @@ _RECO_MODE_BY_GAMEMODE = {"KIWI": "mayhem", "CHERRY": "arena", "ARENA": "arena"}
 
 
 def _reco_mode_for(game_mode) -> str:
-    """Liveclient gameData.gameMode → recommender mode. Default mayhem:
+    """Liveclient gameData.gameMode -> recommender mode. Default mayhem:
     that is the proven OCR path + the only mode with own-history/external
     data today (Task-1 audit 2026-05-17)."""
     return _RECO_MODE_BY_GAMEMODE.get(str(game_mode or "").upper(), "mayhem")
@@ -424,7 +424,7 @@ class Coach(BaseCoach):
         targets" - the engine should escalate the recommendation when
         ANY enemy is tanky, not when the average is.
 
-        Fallback path (s72): linear ramp 0→1500 across rounds 2..10
+        Fallback path (s72): linear ramp 0->1500 across rounds 2..10
         when no enemy items are visible (early game, vision gap, or
         pre-game state). Curve saturates at LDR's 1500 HP cap so
         precision stops mattering past round 10.

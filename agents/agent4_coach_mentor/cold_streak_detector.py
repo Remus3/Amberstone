@@ -2,8 +2,8 @@
 
 After each analyze pass completes, scan ``kda_trends`` for every mode.
 For any champion whose last-10 KDA has tanked meaningfully relative to
-the all-time baseline (``|delta_ratio| ≥ COLD_DELTA_FLOOR`` and sample
-size ≥ ``COLD_SAMPLE_FLOOR``), file a ``cold-streak-advisory`` task so
+the all-time baseline (``|delta_ratio| >= COLD_DELTA_FLOOR`` and sample
+size >= ``COLD_SAMPLE_FLOOR``), file a ``cold-streak-advisory`` task so
 the user sees it in the dashboard queue/activity feed.
 
 **No LLM dispatch** - these are notifications, not audits. Owner agent
@@ -45,7 +45,7 @@ def _now_iso() -> str:
 
 
 def _load_cooldowns() -> dict[str, str]:
-    """Load the mode:champion → last_filed_iso map. Returns {} on any
+    """Load the mode:champion -> last_filed_iso map. Returns {} on any
     parse error so a corrupt file doesn't block fresh advisories."""
     if not COOLDOWN_FILE.exists():
         return {}
@@ -60,7 +60,7 @@ def _load_cooldowns() -> dict[str, str]:
 
 
 def _save_cooldowns(cooldowns: dict[str, str]) -> None:
-    """Atomic write: tmp → replace. Per CLAUDE.md hard rule."""
+    """Atomic write: tmp -> replace. Per CLAUDE.md hard rule."""
     COOLDOWN_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp = COOLDOWN_FILE.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(cooldowns, indent=2), encoding="utf-8")

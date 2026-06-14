@@ -10,7 +10,7 @@ compatible with Peer's bare-list response format as well as the RC dict format).
 State files (alongside this script, default: <repo>/tools/):
     peer_bridge_daemon_health.json  - last poll status, invocation count
     peer_bridge_daemon.lock         - held while claude --print is running
-    peer_bridge_daemon.log          - rotating log (1 MB × 2)
+    peer_bridge_daemon.log          - rotating log (1 MB x 2)
 
 Scheduled / boot setup:
     python3 tools/peer_bridge_daemon.py   # foreground, ctrl-c to stop

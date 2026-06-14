@@ -1,6 +1,6 @@
 """Phase 3 supervisor - the single process that owns everything on Legion-PC.
 
-Per §10 responsibilities:
+Per S10 responsibilities:
 
   * Start the WS relay server on 0.0.0.0:8891.
   * Start the web UI HTTP server on 0.0.0.0:8890 (serves ``web/``).
@@ -366,9 +366,9 @@ class Supervisor:
         subscriber disconnects - a page reload reconnects within a few
         seconds and the warm conversation context survives that.
 
-        No subscribers + no warm session → no-op.
-        Subscribers present → keep alive.
-        Zero subscribers for more than the grace period → warm.close().
+        No subscribers + no warm session -> no-op.
+        Subscribers present -> keep alive.
+        Zero subscribers for more than the grace period -> warm.close().
         """
         zero_since: float | None = None
         try:
@@ -645,9 +645,9 @@ class Supervisor:
         transitions between client and game.
 
         Two actions wired:
-          * **game-start** (non-game → game): prime the warm Agent 7
+          * **game-start** (non-game -> game): prime the warm Agent 7
             session so the user's first /api/input is fast.
-          * **game-end** (game → non-game): schedule an auto-run of the
+          * **game-end** (game -> non-game): schedule an auto-run of the
             analyzer after IDLE_ANALYZE_SEC so adaptation_buckets and
             matchup_modifiers incorporate the most-recent match. Per
             Agent 4 charter: "runs at system idle (not in-game, not in

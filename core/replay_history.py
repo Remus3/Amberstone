@@ -19,7 +19,7 @@ Items at minute T are computed by folding ITEM_PURCHASED / ITEM_SOLD /
 ITEM_DESTROYED / ITEM_UNDO events with timestamp <= T*60000. UNDO
 reverses the most-recent matching purchase.
 
-DDragon item id → name resolution is deferred to the dashboard JS which
+DDragon item id -> name resolution is deferred to the dashboard JS which
 already has web/data/items_index.json loaded.
 """
 from __future__ import annotations

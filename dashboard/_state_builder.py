@@ -129,7 +129,7 @@ def apply_preflip_mirror(health: dict, mode_key: str, preflip_active: bool) -> d
 def _active_champion(coach: dict, lc: dict | None, lcu_snapshot: dict | None) -> str:
     """Resolve the operator's currently-active champion across signals.
 
-    Priority order (most → least authoritative):
+    Priority order (most -> least authoritative):
       1. ``liveclient.champion`` - in-game, derived from LiveClient
          ``allPlayers[]`` matched on summoner name. Single source of truth
          once the game is running.

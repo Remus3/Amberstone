@@ -23,7 +23,7 @@ Design notes:
   one. Module-level dict cache - restart-wipes by design, matches
   ``rewind_history.db`` ephemerality for in-game state.
 
-* **Dispatcher-driven, not hardcoded.** No item → archetype affinity
+* **Dispatcher-driven, not hardcoded.** No item -> archetype affinity
   table. Mismatch = "first completed item not in top-15 of
   ``rank_for_primary_archetype(champion, primary, top=15)``". This means
   the bar adapts to per-champion meta - Veigar players bench AP items in

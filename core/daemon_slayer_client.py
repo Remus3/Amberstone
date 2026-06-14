@@ -5,7 +5,7 @@ that fails silently when the server isn't up - the engine is opt-in
 infrastructure, never load-bearing. Timeouts are tight (250 ms connect,
 500 ms read) so a slow engine can't stall a coach loop.
 
-Owners of name→id resolution: see ``core.daemon_slayer_resolver``. This
+Owners of name->id resolution: see ``core.daemon_slayer_resolver``. This
 module operates purely on item IDs (string).
 """
 from __future__ import annotations
@@ -223,7 +223,7 @@ def rank_tank_for(
     Phase 1 (s174, 2026-05-12) - Tank EHP scorer. Same engine-down semantics as
     ``rank_for`` (None = unreachable, [] = nothing to recommend).
 
-    ``enemy_ad_share`` / ``enemy_ap_share`` are floats in [0,1] summing to ≤ 1.0;
+    ``enemy_ad_share`` / ``enemy_ap_share`` are floats in [0,1] summing to <= 1.0;
     remainder is true-damage share. Defaults to 50/50 as a "no info" baseline.
 
     ``only_item_ids`` is the integration point for ``core/defensive_picks.py``
@@ -441,7 +441,7 @@ def rank_mage_for(
     target_current_hp_pct damage blocks (Eve R, Garen R thresholds).
 
     ``max_priority`` is a 3-tuple of ability keys describing max order
-    (default Q→W→E server-side); ``block_strategy`` is first|sum|max for
+    (default Q->W->E server-side); ``block_strategy`` is first|sum|max for
     multi-block abilities; ``form_index`` is a per-key form override
     dict for multi-form abilities (Aphelios, Jayce).
     """
@@ -761,7 +761,7 @@ def rank_enchanter_for(
     to recommend).
 
     ``targets_per_proc_override`` replaces the per-item curated targets count
-    for ALL items in the build (Arena 2v2 → override=1).
+    for ALL items in the build (Arena 2v2 -> override=1).
     ``enchanter_only`` restricts the candidate pool to the curated enchanter
     registry (default True).
     """

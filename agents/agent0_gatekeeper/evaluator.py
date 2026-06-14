@@ -1,12 +1,12 @@
 """Agent 0 - Gatekeeper. Evaluates cross-machine tasks against the six
-criteria from §7 and returns an accept/reject Decision.
+criteria from S7 and returns an accept/reject Decision.
 
 Agent 0 is **not** a security boundary against the user. Direct user orders
 bypass this evaluator (Agent 1 applies that override before invoking us).
 
-Rejection dispositions (§7 hybrid d):
-  * reasons 1, 2, 3, 6  → ``dead_letter_immediately``
-  * reasons 4, 5        → ``auto_retry_once_then_dead_letter``
+Rejection dispositions (S7 hybrid d):
+  * reasons 1, 2, 3, 6  -> ``dead_letter_immediately``
+  * reasons 4, 5        -> ``auto_retry_once_then_dead_letter``
 
 The caller (Agent 1) is responsible for applying the disposition.
 """
@@ -68,7 +68,7 @@ class Decision:
 
 
 class _RepeatWindow:
-    """Rolling-window repeat detector - signature → list[timestamps]."""
+    """Rolling-window repeat detector - signature -> list[timestamps]."""
 
     def __init__(self, window_sec: float = 60.0, max_in_window: int = 3) -> None:
         self.window = window_sec

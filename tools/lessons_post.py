@@ -6,7 +6,7 @@ Usage:
     C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/lessons_post.py <lesson_id> --decision applied|queued|discarded \\
         --rationale "<one-line>" [--notes "<receiver notes>"]
 
-Decision semantics (per Phase 1 §4):
+Decision semantics (per Phase 1 S4):
   applied    - tooling/infra/config pattern; provenance memory written
                with status: applied; appears in MEMORY.md immediately.
   queued     - discipline / process / architecture-adjacent; provenance

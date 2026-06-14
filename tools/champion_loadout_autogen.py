@@ -11,7 +11,7 @@ Policy
 ------
 **Hand-curated wins.** For each (champion, mode), the script counts
 existing variants whose ``modes[]`` includes the target mode. If the
-count is ≥ 3, no auto entries are generated for that slot - the
+count is >= 3, no auto entries are generated for that slot - the
 operator's curated decisions stay untouched. If the count is < 3,
 auto-* entries fill the gap. Auto entries can refresh on re-run
 (items shift as DS engine evolves); curated entries are never
@@ -25,13 +25,13 @@ Three variants per (champion, mode):
 
 The complementary archetype follows the same pattern the experimental
 row's keystone mapping does (see _CSV_EXPERIMENTAL_RUNES in
-``web/js/panels/champ_select.js``): bruiser→carry alt, tank→bruiser
-alt, carry→assassin alt, mage→assassin alt, etc.
+``web/js/panels/champ_select.js``): bruiser->carry alt, tank->bruiser
+alt, carry->assassin alt, mage->assassin alt, etc.
 
 Per-archetype defaults
 ----------------------
 * ``runes``     - mirrors ``_CSV_EXPERIMENTAL_RUNES`` from champ_select.js
-                  (canonical archetype → keystone+trees consensus).
+                  (canonical archetype -> keystone+trees consensus).
 * ``summoners`` - SR is archetype-keyed (tanks/bruisers Flash+TP,
                   carries Flash+Heal, mages/assassins Flash+Ignite,
                   enchanters Flash+Exhaust). ARAM always Flash+Mark.
@@ -312,7 +312,7 @@ def generate_for_champion(
     preserved, auto entries added/refreshed to fill each mode to 3
     visible rows. Auto entries from prior runs are refreshed (items
     may have shifted as DS engine evolved); auto entries for modes
-    that already have ≥3 curated are dropped.
+    that already have >=3 curated are dropped.
 
     ``stats_per_mode`` reports per-mode counts: curated, auto_kept,
     auto_added, slots_unfilled.

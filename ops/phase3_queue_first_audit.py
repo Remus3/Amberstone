@@ -1,4 +1,4 @@
-"""Queue the post-setup first task: agent6-full-audit-pass (§11.14).
+"""Queue the post-setup first task: agent6-full-audit-pass (S11.14).
 
 Priority 0 (highest - lowest number wins heap order) and flagged as
 ``blocks_all_subsequent`` so Agent 1's future dispatch logic can refuse to

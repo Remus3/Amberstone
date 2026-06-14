@@ -25,7 +25,7 @@ Format:
 }
 
 Only numeric-parseable metrics contribute to percentiles. Text metrics
-(like "Composed", "L6 hit · L11 pending") are counted for frequency but
+(like "Composed", "L6 hit * L11 pending") are counted for frequency but
 not averaged. We keep text-metric frequency maps so the coach can say
 "your most common Game Sense early rating is Composed (58% of games)".
 """

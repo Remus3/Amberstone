@@ -3,7 +3,7 @@
 Replaces the per-request ephemeral ``claude`` subprocess invocation for
 ``/api/input`` traffic when the user is actively at the UI. Typical
 round-trip drops from ~6s (subprocess + cold Claude) to ~1s (direct
-SDK + warm context cache), and cost drops ~6× for short prompts.
+SDK + warm context cache), and cost drops ~6x for short prompts.
 
 Lifecycle (per Agent 7 charter):
   * **Warm starts** on first ``send()`` call (lazy).

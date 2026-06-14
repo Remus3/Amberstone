@@ -485,8 +485,8 @@ def boots_phase(level, gold, owned_count, owned_items=None,
     - consider_sell: 6 items + boots filled, level 16+, late game - selling
                      boots for a 6th legendary often increases survivability
                      or DPS more
-    - sell_for_quest: lane quest is complete → invisible "quest boots" are
-                      active → bought boots are now redundant. Sell them
+    - sell_for_quest: lane quest is complete -> invisible "quest boots" are
+                      active -> bought boots are now redundant. Sell them
                       anytime; even before full build this frees a slot
                       for a damage/defensive item without losing movement.
 

@@ -13,7 +13,7 @@ Public API:
 Design rules:
     - Fire-and-forget: PowerShell process is spawned with no stdin,
       detached, output discarded. We never block the caller.
-    - Dedup: same text within 60 seconds → silenced.
+    - Dedup: same text within 60 seconds -> silenced.
     - Rate limit: minimum 4 s between utterances regardless of dedup.
     - Length cap: 200 chars to keep utterances short.
     - Safe to call when voice is unavailable (e.g., headless Wine env).

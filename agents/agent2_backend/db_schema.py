@@ -3,7 +3,7 @@
 Creates (idempotent) five physical SQLite files under ``data/db/``:
   sr_draft.db, sr_ranked.db, aram.db, arena.db, brawl.db
 
-Schema identical across all five (see §9 of the spec). Physical separation
+Schema identical across all five (see S9 of the spec). Physical separation
 makes mode bleed impossible by design.
 
 Idempotency: ``CREATE TABLE IF NOT EXISTS`` + ``CREATE INDEX IF NOT EXISTS``.

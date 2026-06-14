@@ -1,4 +1,4 @@
-"""Phase 3 build completion summary (§15).
+"""Phase 3 build completion summary (S15).
 
 Generates a reproducible status snapshot of everything built in this
 setup pass. Prints to stdout; does not modify anything.

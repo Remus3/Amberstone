@@ -17,8 +17,8 @@ the only consumers are champ-select team-context fan-out + post-game
 timeline review.
 
 Soft-fail invariants:
-  - Missing API key file → log WARNING once, every fn returns None.
-  - Network/HTTP error → log WARNING, return None.
+  - Missing API key file -> log WARNING once, every fn returns None.
+  - Network/HTTP error -> log WARNING, return None.
   - Cache layer is the source of truth for repeat lookups; this module
     is a fetch-and-store wrapper.
   - The rate limiter shares state across all endpoints (bucket exhaustion
@@ -528,7 +528,7 @@ def format_rank_entry(entry: dict) -> str:
     """Render a League-V4 entry into the dashboard string format.
 
     Example: {"tier":"PLATINUM","rank":"IV","leaguePoints":47,...}
-             → "PLATINUM IV 47 LP"
+             -> "PLATINUM IV 47 LP"
     """
     if not isinstance(entry, dict):
         return ""
@@ -586,7 +586,7 @@ def summarize_recent(
     immutably. Re-running this for the same PUUID after the first
     cold-fill is O(N) cache reads with no API calls.
 
-    Soft-fail: missing data → counted as zero contribution; the result
+    Soft-fail: missing data -> counted as zero contribution; the result
     keys always exist with sensible defaults so the dashboard renderer
     can blindly splat them into the entry.
     """

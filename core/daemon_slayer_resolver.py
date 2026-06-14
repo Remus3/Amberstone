@@ -1,4 +1,4 @@
-"""Item name → ID resolver for Daemon Slayer wire-in.
+"""Item name -> ID resolver for Daemon Slayer wire-in.
 
 Coach loops carry item NAMES (display strings: ``"Infinity Edge"``,
 ``"Berserker's Greaves"``); the engine speaks IDs. ``web/data/items_index.json``
@@ -16,7 +16,7 @@ patch-current DDragon ``items.json``. Coach-side estimators
 opponent's items to feed the engine's Giant Slayer amp deterministically.
 
 s74 (2026-05-04) - mode-aware lookup. ``items_index.json``'s ``byName``
-picks the 22XXXX-prefixed Arena alias (e.g. ``Heartsteel`` → ``223084``)
+picks the 22XXXX-prefixed Arena alias (e.g. ``Heartsteel`` -> ``223084``)
 because of a ``setdefault`` first-seen-wins quirk during pipeline build
 (see ``reference_items_index_alias_ids``). For Arena coach this is
 silently correct; for SR / ARAM / Brawl coaches it would return Arena HP

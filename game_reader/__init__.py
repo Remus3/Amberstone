@@ -11,7 +11,7 @@ LCU API (client/champ select): https://{RC_GAME_HOST}:{port}/
 
 Phase 2.2 split (was 1474-line monolith):
   poller.py             - Live Client / LCU / vision-relay IO
-  snapshot_normalizer.py - raw JSON → coaching state dict + derived fields
+  snapshot_normalizer.py - raw JSON -> coaching state dict + derived fields
   mode_router.py        - TFT detection + mode-keyed helpers
 
 Public surface preserved:
@@ -53,7 +53,7 @@ class GameReader(_PollerMixin, _NormalizerMixin):
     Method resolution order: poller methods (relay/HTTP/LCU/champ_select)
     sit before normalizer methods so `read_game` can invoke
     `self._process_game` via MRO into `_NormalizerMixin`. Cross-mixin
-    calls (e.g. `_read_my_runes` → `self._get`) resolve symmetrically.
+    calls (e.g. `_read_my_runes` -> `self._get`) resolve symmetrically.
     """
 
     def __init__(self):

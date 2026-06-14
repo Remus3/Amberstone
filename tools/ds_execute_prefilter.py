@@ -4,7 +4,7 @@ MISSES.
 
 That scanner requires every shared scaling field to scale by ONE
 constant k. The execute archetype is two SAME-shape damage blocks where
-the amp is concentrated in a target-HP coefficient (Kindred E: 5% →
+the amp is concentrated in a target-HP coefficient (Kindred E: 5% ->
 7.5% missing-HP, base unchanged) - different per-field ratios, so the
 constant-k scanner rejects it.
 

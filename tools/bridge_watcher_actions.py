@@ -4,12 +4,12 @@ Spawns headless `claude --print` with restricted tool allowlist + system prompt.
 Captures structured JSON output. Returns a tagged result the watcher uses to
 decide whether to post a result OR demote to the escalation lane.
 
-Hard rules (per BRIDGE_WATCHER_PLAN.md §7):
+Hard rules (per BRIDGE_WATCHER_PLAN.md S7):
   - Edit + Write tools are NEVER in the allowlist (MVP through Phase 2).
   - Frozen-file intent-verb gate runs BEFORE invoking claude --print.
   - 16 KB body cap; overflow writes to <data_dir>/bridge_action_artifacts/<task_id>.json.
   - Per-call --max-budget-usd hard cap (from per-node config).
-  - Daily $/USD cap tracked in state file; over-cap → escalate.
+  - Daily $/USD cap tracked in state file; over-cap -> escalate.
 
 Import-safe: pure functions + one dispatch entry point. The watcher is
 responsible for calling `run_action(envelope, lane, node_config, ...)` only
@@ -67,14 +67,14 @@ def _has_frozen_intent(prompt: str, frozen_files: list[str]) -> Optional[str]:
 
     Strategy: for each frozen file path in the list, check if the prompt
     mentions it (case-insensitive substring match on the basename and full
-    path). If yes, scan a window of ±_INTENT_PROXIMITY chars around the
-    mention for any write verb. Hit → escalate.
+    path). If yes, scan a window of +/-_INTENT_PROXIMITY chars around the
+    mention for any write verb. Hit -> escalate.
 
     Examples:
-      "explain main.py last error"               → no intent (read)
-      "edit main.py line 42"                     → INTENT (edit verb near path)
-      "show me what's wrong with app/__init__"   → no intent (no verb)
-      "rewrite the auth in core/log_setup.py"    → INTENT
+      "explain main.py last error"               -> no intent (read)
+      "edit main.py line 42"                     -> INTENT (edit verb near path)
+      "show me what's wrong with app/__init__"   -> no intent (no verb)
+      "rewrite the auth in core/log_setup.py"    -> INTENT
     """
     if not prompt or not frozen_files:
         return None

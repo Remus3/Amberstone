@@ -5,8 +5,8 @@ in a sqlite ledger. Two read paths the watcher uses:
 
   1. lookup_recent_match(prompt, lane) - exact-or-similar prompt seen recently?
      Returns the cached outcome so the watcher can short-circuit:
-       - recent OK match  → return cached body, $0 cost, 0ms latency
-       - recent ERR match → escalate (don't burn tokens repeating a failure)
+       - recent OK match  -> return cached body, $0 cost, 0ms latency
+       - recent ERR match -> escalate (don't burn tokens repeating a failure)
 
   2. pattern_stats(pattern, since_ts) - success rate for one classifier pattern.
      Watcher emits this in heartbeat so operator can spot weak patterns to
@@ -159,12 +159,12 @@ def lookup_recent_match(*, db_path: Path, prompt: str, lane: str,
     Returns dict {match_type, similarity, rowid, status, summary, cost_usd,
     latency_s, hours_ago, original_task_id} OR None.
 
-    `match_type` ∈ {"exact_id", "high_sim", "moderate_sim", None}.
+    `match_type` in {"exact_id", "high_sim", "moderate_sim", None}.
     Caller decides what to do per match_type:
-      - exact_id  → already processed this task; skip
-      - high_sim  → recent same-prompt success; return cached as auto-action OK,
+      - exact_id  -> already processed this task; skip
+      - high_sim  -> recent same-prompt success; return cached as auto-action OK,
                     or recent same-prompt failure; escalate without re-spawning
-      - moderate_sim → just surface as context; still spawn
+      - moderate_sim -> just surface as context; still spawn
     """
     if not prompt:
         return None

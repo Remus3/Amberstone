@@ -134,7 +134,7 @@ def for_champion(champion: str, mode: str) -> dict:
 
 def matchup_delta(champion: str, mode: str, opponent: str) -> float | None:
     """Return the ``delta`` (observed_wr - baseline_wr) for a specific
-    (champion × opponent × mode) matchup, or None if not activated /
+    (champion x opponent x mode) matchup, or None if not activated /
     below sample threshold. Cheap single-row lookup."""
     db = _db(mode)
     if db is None:
@@ -275,10 +275,10 @@ def insight_card(
     """Compact copy-to-clipboard summary - one line, bounded.
 
     Returns "" when no champion data. Format:
-      "Tristana ARAM 72% wr (n=61) ↑ · rush Statikk Shiv (+19%) ·
+      "Tristana ARAM 72% wr (n=61) ^ * rush Statikk Shiv (+19%) *
        vs Morgana -52% (n=5)"
 
-    Always ends after cutting at a ``·`` boundary so the card never
+    Always ends after cutting at a ``*`` boundary so the card never
     ends mid-phrase. ``max_chars`` defaults to 240 - long enough for
     two lines on iPad, short enough for a Discord paste.
     """

@@ -29,7 +29,7 @@ any future consumer.
     "push_summoners": true                  # default true
   }
 
-  → 200 {
+  -> 200 {
        "ok": true,
        "champion": "Tristana", "key": "primary", "label": "Primary",
        "queued": ["apply_runes", "apply_item_set", "set_summoners"],
@@ -84,7 +84,7 @@ def _build_item_set(champion: str, key: str, item_ids: list) -> dict:
 
 
 def _build_rune_cmd(champion: str, key: str, runes: dict) -> "dict | None":
-    """Translate a profile's runes dict → `apply_runes` LCU command.
+    """Translate a profile's runes dict -> `apply_runes` LCU command.
 
     Returns None when the keystone or trees aren't recognised by the
     frozen `lcu.lcu_rune_writer.build_perk_ids` resolver - in that case

@@ -340,7 +340,7 @@ def _home_trends_14d(db_path) -> dict:
 
 def _home_streaks(db_path) -> dict:
     """Active streak signals derived from match_history.db:
-      - play_days: consecutive recent days (counting back from today) with ≥1 game
+      - play_days: consecutive recent days (counting back from today) with >=1 game
       - good_grades: consecutive most-recent matches at S/A grade
     Both reset when the chain breaks."""
     from datetime import datetime, timedelta
