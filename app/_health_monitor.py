@@ -34,7 +34,7 @@ class HealthMonitor:
         self._lock = threading.Lock()
         self._ts   = time.monotonic()
 
-    # ── Public lifecycle ──────────────────────────────────────────────────────
+    # -- Public lifecycle ------------------------------------------------------
 
     def start(self) -> None:
         """Kick off the pulse loop. Call once after the scheduler is ready."""
@@ -74,9 +74,9 @@ class HealthMonitor:
             "arena_mode":                 app._arena_mode,
             "has_game":                   app._was_in_game,
             # Subsystem health
-            "ui_loop_alive":              ui_age < 6.0,       # 3× 2s pulse interval
+            "ui_loop_alive":              ui_age < 6.0,       # 3x 2s pulse interval
             "ui_pulse_age_s":             round(ui_age, 1),
-            "game_poll_worker_alive":     worker_age < 12.0,  # 4× 3s max backoff
+            "game_poll_worker_alive":     worker_age < 12.0,  # 4x 3s max backoff
             "game_poll_worker_age_s":     (round(worker_age, 1) if w_pulse else None),
             "game_poll_last_success_at":  (w_last or None),
             "overlay_visible":            app._overlay_visible,

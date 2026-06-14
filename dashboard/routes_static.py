@@ -246,7 +246,7 @@ def _serve_agent_file(h) -> None:
         h._send(500, b"agent_read_failed", "text/plain")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 GET_ROUTES = [
     (_index_matcher,                            _serve_index),

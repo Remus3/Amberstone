@@ -28,7 +28,7 @@ SIM_DIR = ROOT / "data" / "sim"
 SIM_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# ── Position presets (normalized 0..1, top-left origin) ────────────────────
+# -- Position presets (normalized 0..1, top-left origin) --------------------
 # SR - full Summoner's Rift coords; allies on blue side (bottom-left).
 _SR_ALLY_POSITIONS = {
     "early": {  # laning phase - everyone roughly on lane
@@ -117,7 +117,7 @@ _MAYHEM_ENEMY_POSITIONS = {
 }
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────
+# -- Helpers ----------------------------------------------------------------
 def _health(mode: str, *, has_game: bool = True,
             aram=False, arena=False, brawl=False, tft=False) -> dict:
     p = {"pid": 99999, "alive": True, "has_game": has_game,
@@ -141,7 +141,7 @@ def _write(name: str, fixture: dict) -> None:
     atomic_write_json(out, fixture)
 
 
-# ── SR (3) ─────────────────────────────────────────────────────────────────
+# -- SR (3) -----------------------------------------------------------------
 FIXTURES = {}
 
 FIXTURES["sr_early"] = {
@@ -251,7 +251,7 @@ FIXTURES["sr_late"] = {
 }
 
 
-# ── ARAM regular (3) ───────────────────────────────────────────────────────
+# -- ARAM regular (3) -------------------------------------------------------
 def _aram_state(payload):
     return _state("aram", "aram_coaching_data.json", payload)
 
@@ -347,7 +347,7 @@ FIXTURES["aram_late"] = {
 }
 
 
-# ── ARAM Mayhem (3) ────────────────────────────────────────────────────────
+# -- ARAM Mayhem (3) --------------------------------------------------------
 FIXTURES["aram_mayhem_early"] = {
     "meta": {"name": "aram_mayhem_early", "label": "ARAM Mayhem · early · 3:20 augment 1",
              "mode": "aram",
@@ -445,7 +445,7 @@ FIXTURES["aram_mayhem_late"] = {
 }
 
 
-# ── Arena (3) ──────────────────────────────────────────────────────────────
+# -- Arena (3) --------------------------------------------------------------
 def _arena_state(payload):
     return _state("arena", "arena_coaching_data.json", payload)
 
@@ -544,7 +544,7 @@ FIXTURES["arena_late"] = {
 }
 
 
-# ── Brawl (3) ──────────────────────────────────────────────────────────────
+# -- Brawl (3) --------------------------------------------------------------
 def _brawl_state(payload):
     return _state("brawl", "brawl_coaching_data.json", payload)
 
@@ -634,7 +634,7 @@ FIXTURES["brawl_late"] = {
 }
 
 
-# ── TFT (3) ────────────────────────────────────────────────────────────────
+# -- TFT (3) ----------------------------------------------------------------
 def _tft_state(payload):
     return _state("tft", "tft_coaching_data.json", payload)
 
@@ -715,7 +715,7 @@ FIXTURES["tft_late"] = {
 }
 
 
-# ── Aftergame (2) - preserve existing structure ───────────────────────────
+# -- Aftergame (2) - preserve existing structure ---------------------------
 # Both already exist on disk with rich content; copy them to the new
 # canonical names and update their `meta.name` so the manifest entry
 # matches the file name.
@@ -728,7 +728,7 @@ for old in ("aftergame_victory", "aftergame_defeat"):
         FIXTURES[old] = d
 
 
-# ── Session digest (2) - cold streak + hot streak ─────────────────────────
+# -- Session digest (2) - cold streak + hot streak -------------------------
 def _digest_state(streak_kind: str, **overrides) -> dict:
     base = {
         "game_time": "", "kda": "", "champion": "Ahri",
@@ -812,7 +812,7 @@ FIXTURES["session_hot_streak"] = {
 }
 
 
-# ── Client (4) ─────────────────────────────────────────────────────────────
+# -- Client (4) -------------------------------------------------------------
 FIXTURES["client_idle"] = {
     "meta": {"name": "client_idle", "label": "Client · idle (no game / no champ select)",
              "mode": "client",
@@ -923,7 +923,7 @@ FIXTURES["client_loading_screen"] = {
 }
 
 
-# ── Manifest ───────────────────────────────────────────────────────────────
+# -- Manifest ---------------------------------------------------------------
 MANIFEST_ORDER = [
     # SR
     ("sr_early",  "SR · early · 4:30 laning",                       "sr",
@@ -997,10 +997,10 @@ manifest = {
 }
 
 
-# ── Position attachment (2026-04-25): inject `positions` + `my_team`
+# -- Position attachment (2026-04-25): inject `positions` + `my_team`
 # into the in-game fixtures so the minimap canvas renders dots without
 # "waiting on positions". Single source of truth for the per-stage
-# preset → fixture mapping. ─────────────────────────────────────────
+# preset -> fixture mapping. -----------------------------------------
 _POSITION_INJECTIONS = {
     # SR - Ahri's team (ORDER / blue side)
     "sr_early": ("ORDER", _SR_ALLY_POSITIONS["early"], _SR_ENEMY_POSITIONS["early"]),
@@ -1017,7 +1017,7 @@ _POSITION_INJECTIONS = {
 }
 
 
-# ── Emit ───────────────────────────────────────────────────────────────────
+# -- Emit -------------------------------------------------------------------
 def main() -> int:
     written = 0
     for name, fixture in FIXTURES.items():

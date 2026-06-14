@@ -48,7 +48,7 @@ def build_heatmap(ratings_dir: Path = _RATINGS_DIR) -> dict:
     into a frequency map per unit per board cell.
     Returns the heatmap dict (also suitable for direct JSON dump).
     """
-    # unit → cell → count
+    # unit -> cell -> count
     freq: dict = defaultdict(lambda: defaultdict(int))
     games_seen = 0
     per_unit_games: dict = defaultdict(int)

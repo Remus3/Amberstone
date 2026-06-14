@@ -25,7 +25,7 @@ class _ForbidExtra(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-# ── /api/state ─────────────────────────────────────────────────────────
+# -- /api/state ---------------------------------------------------------
 
 class HealthBlock(_AllowExtra):
     alive: Optional[bool] = None
@@ -46,7 +46,7 @@ class StateResponse(_AllowExtra):
     lcu: Optional[dict[str, Any]] = None
 
 
-# ── /api/health ─────────────────────────────────────────────────────────
+# -- /api/health ---------------------------------------------------------
 
 class HealthResponse(_AllowExtra):
     alive: Optional[bool] = None
@@ -75,20 +75,20 @@ class HealthAllResponse(_AllowExtra):
     rc_version: str = ""
 
 
-# ── POST /api/input ──────────────────────────────────────────────────────
+# -- POST /api/input ------------------------------------------------------
 
 class InputRequest(_ForbidExtra):
     text: str
 
 
-# ── POST /api/command ────────────────────────────────────────────────────
+# -- POST /api/command ----------------------------------------------------
 
 class CommandRequest(_ForbidExtra):
     """Valid commands: "force_vision" | "refresh" | "clear_pregame"."""
     command: str
 
 
-# ── POST /api/ds-preview ─────────────────────────────────────────────────
+# -- POST /api/ds-preview -------------------------------------------------
 
 class DsPreviewRequest(_AllowExtra):
     champion: str
@@ -114,7 +114,7 @@ class DsPreviewResponse(_AllowExtra):
     error: str = ""
 
 
-# ── POST /api/build-order ────────────────────────────────────────────────
+# -- POST /api/build-order ------------------------------------------------
 
 class BuildOrderRequest(_AllowExtra):
     champion: str
@@ -125,7 +125,7 @@ class BuildOrderRequest(_AllowExtra):
     slots: int = 6                 # full build = 6 item slots
 
 
-# ── POST /api/archetype-nudge/dismiss ────────────────────────────────────
+# -- POST /api/archetype-nudge/dismiss ------------------------------------
 
 class ArchetypeNudgeDismissRequest(_ForbidExtra):
     """s184 - operator clicked the chip's X. Server is idempotent."""
@@ -147,7 +147,7 @@ class ArchetypeNudgePayload(_AllowExtra):
     session_token: str = ""
 
 
-# ── POST /api/bridge/inbox ────────────────────────────────────────────────
+# -- POST /api/bridge/inbox ------------------------------------------------
 
 class BridgeInboxRequest(_AllowExtra):
     """Cross-Claude bridge envelope received at /api/bridge/inbox."""
@@ -160,14 +160,14 @@ class BridgeInboxRequest(_AllowExtra):
     in_reply_to: Optional[str] = None
 
 
-# ── POST /api/speak ───────────────────────────────────────────────────────
+# -- POST /api/speak -------------------------------------------------------
 
 class SpeakRequest(_AllowExtra):
     text: str
     voice: str = ""
 
 
-# ── POST /api/team-context/refresh ────────────────────────────────────────
+# -- POST /api/team-context/refresh ----------------------------------------
 
 class TeamContextRosterSlot(_AllowExtra):
     """One row of the 10-player champ-select roster posted by the
@@ -189,7 +189,7 @@ class TeamContextRefreshRequest(_AllowExtra):
     roster: list[TeamContextRosterSlot] = []
 
 
-# ── Common ───────────────────────────────────────────────────────────────
+# -- Common ---------------------------------------------------------------
 
 class OkResponse(_ForbidExtra):
     ok: bool = True

@@ -41,10 +41,10 @@ from typing import Optional
 # the explicit-phase clear below fires long before this in practice.
 RETENTION_TTL_S = 120.0
 
-# LCU gameflow-phase values that mean "we are NOT in the champ-select →
+# LCU gameflow-phase values that mean "we are NOT in the champ-select ->
 # game transition": either pre-champ-select (operator dodged / next
 # queue popped) or post-game. Any of these with no fresh champ_select
-# means the retained snapshot is stale → drop it.
+# means the retained snapshot is stale -> drop it.
 #
 # NB: the literal string ``"None"`` (gameflow-phase serializes the
 # no-flow state to that) is a clear signal; a Python ``None`` phase

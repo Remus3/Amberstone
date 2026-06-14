@@ -72,8 +72,8 @@ _CLEANSE_ELIGIBLE_ROLES: frozenset[str] = frozenset({
 })
 
 # Score thresholds - these get tuned as we collect real-game data.
-_CC_SWAP_THRESHOLD    = 4.0   # 0-10 scale; 4 ≈ 2 hard-CC on a 5-team
-_BURST_SWAP_THRESHOLD = 6.0   # 0-10 scale; 6 ≈ assassin-heavy comp
+_CC_SWAP_THRESHOLD    = 4.0   # 0-10 scale; 4 ~ 2 hard-CC on a 5-team
+_BURST_SWAP_THRESHOLD = 6.0   # 0-10 scale; 6 ~ assassin-heavy comp
 
 
 # Riot summoner spell IDs we recommend swapping to. Mirror of the JS
@@ -108,7 +108,7 @@ def _parse_int_csv(raw: str) -> list[int]:
     return out
 
 
-# Module-level lazy cache: champion-id (int) → display name (str).
+# Module-level lazy cache: champion-id (int) -> display name (str).
 # Built from data/meta/ddragon_champions.json on first call. The
 # threat-profile classifier in core.defensive_picks already loads the
 # same file with apostrophe-and-space variants under the same keys, so

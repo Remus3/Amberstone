@@ -24,7 +24,7 @@ class RemediationService:
     def __init__(self, app: "OverlayApp") -> None:  # type: ignore[name-defined]
         self.app = app
 
-    # ── Restart poll worker ───────────────────────────────────────────────────
+    # -- Restart poll worker ---------------------------------------------------
 
     def restart_game_poll(self) -> dict:
         """
@@ -64,7 +64,7 @@ class RemediationService:
         except queue.Empty:
             return {"ok": False, "error": "restart_game_poll timeout"}
 
-    # ── Rebuild panel (no-op since T2 #6) ─────────────────────────────────────
+    # -- Rebuild panel (no-op since T2 #6) -------------------------------------
 
     def rebuild_panel(self, key: str) -> dict:
         return {"ok": True, "detail": f"rebuild_panel({key!r}) no-op (T2 #6: dashboard-only)"}

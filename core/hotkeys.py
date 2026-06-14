@@ -13,7 +13,7 @@ from core.polled_json import atomic_write_json
 _log = logging.getLogger("rc.hotkeys")
 _APP_DIR = Path(__file__).parent.parent
 
-# ── State ────────────────────────────────────────────────────────────────────
+# -- State --------------------------------------------------------------------
 _coaches: list = []       # registered coach objects (have set_force_scan / set_scanning)
 _running = False
 _thread: threading.Thread | None = None
@@ -49,7 +49,7 @@ def stop() -> None:
     _running = False
 
 
-# ── Listener ─────────────────────────────────────────────────────────────────
+# -- Listener -----------------------------------------------------------------
 def _listen_loop() -> None:
     """
     Uses Win32 GetAsyncKeyState to detect Ctrl+Tab without requiring

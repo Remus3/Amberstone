@@ -32,7 +32,7 @@ class StateAuthority:
         from core.game_snapshot import GameEnvelope
         self.envelope: "GameEnvelope" = GameEnvelope.client()
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    # -- Public API ------------------------------------------------------------
 
     def init(self) -> None:
         """Reset to client-mode envelope. Called once at app start."""
@@ -65,7 +65,7 @@ class StateAuthority:
         from core.game_snapshot import GameEnvelope
         self.envelope = GameEnvelope(mode=mode, payload=payload)
 
-    # ── Pure win-probability estimate ─────────────────────────────────────────
+    # -- Pure win-probability estimate -----------------------------------------
 
     @staticmethod
     def calc_win_pct(state: dict) -> float:

@@ -90,7 +90,7 @@ class LcuClient(_PGMixin):
                 json.JSONDecodeError, UnicodeDecodeError, ValueError):
             return None
 
-    # ═══ Auto-Accept ═══════════════════════════════════════════════════════════
+    # === Auto-Accept ===========================================================
 
     def accept_queue(self):
         return self._request("POST", "/lol-matchmaking/v1/ready-check/accept")
@@ -224,7 +224,7 @@ class LcuClient(_PGMixin):
             pass
         return ""
 
-    # ═══ ARAM Champion Select ══════════════════════════════════════════════════
+    # === ARAM Champion Select ==================================================
 
     def get_champ_select(self):
         return self._request("GET", "/lol-champ-select/v1/session")
@@ -238,7 +238,7 @@ class LcuClient(_PGMixin):
             return [c.get("championId") for c in session["benchChampions"] if isinstance(c, dict)]
         return []
 
-    # ═══ TFT Team Planner ══════════════════════════════════════════════════════
+    # === TFT Team Planner ======================================================
 
     def import_team_code(self, code):
         return self._request("POST", "/lol-tft-team-planner/v1/team/import", {"code": code})
@@ -249,7 +249,7 @@ class LcuClient(_PGMixin):
     def set_team(self, champions):
         return self._request("PUT", "/lol-tft-team-planner/v1/team/local", {"champions": champions})
 
-    # ═══ Rune Pages (AUDIT-PHASE-2-API-001) ════════════════════════════════════
+    # === Rune Pages (AUDIT-PHASE-2-API-001) ====================================
 
     def get_current_rune_page(self) -> "dict | None":
         """
@@ -331,7 +331,7 @@ class LcuClient(_PGMixin):
         return summary.strip()
 
 
-    # ═══ Rune Page Write (auto-apply recommended page) ═════════════════════════
+    # === Rune Page Write (auto-apply recommended page) =========================
 
     # Default perk ID configs for common ADC setups.
     # Format: (keystone_name, primary_tree, secondary_tree) -> {primaryStyleId, subStyleId, selectedPerkIds}

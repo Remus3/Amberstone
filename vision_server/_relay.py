@@ -31,7 +31,7 @@ from core.game_host import GAME_HOST
 
 from ._stats import _record, _stats, _stats_lock
 
-# ── LCU relay ──────────────────────────────────────────────────────────────
+# -- LCU relay --------------------------------------------------------------
 _lcu_lock = threading.Lock()
 _lcu_state: dict = {"data": None, "ts": 0.0}
 _lcu_cmd_lock = threading.Lock()
@@ -94,7 +94,7 @@ def lcu_get_result(cmd_id: int) -> dict | None:
         return _lcu_cmd_results.get(cmd_id)
 
 
-# ── Live Client API relay ──────────────────────────────────────────────────
+# -- Live Client API relay --------------------------------------------------
 _liveclient_lock = threading.Lock()
 _liveclient: dict = {"data": None, "ts": 0.0, "size": 0}
 

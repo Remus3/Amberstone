@@ -44,14 +44,14 @@ from core.base_worker import BaseCoachWorker
 
 _log = logging.getLogger("rc.worker")
 
-# ── Poll timing constants (shared with app.py) ─────────────────────────────
+# -- Poll timing constants (shared with app.py) -----------------------------
 POLL_INTERVAL_S:   float = 1.5    # nominal poll cadence between reads
 BACKOFF_MIN_S:     float = POLL_INTERVAL_S
 BACKOFF_MAX_S:     float = 8.0    # max backoff on None / exception
 NONE_STREAK_END:   int   = 5      # None reads before declaring game ended
 
 
-# ── WorkerResult ──────────────────────────────────────────────────────────
+# -- WorkerResult ----------------------------------------------------------
 
 class WorkerResult:
     __slots__ = (
@@ -80,7 +80,7 @@ class WorkerResult:
         self.last_success = last_success
 
 
-# ── SrAramWorker ──────────────────────────────────────────────────────────
+# -- SrAramWorker ----------------------------------------------------------
 
 class SrAramWorker(BaseCoachWorker):
     # AUDIT 2026-04-28 (proposal 1.4): lifecycle (start/stop/join/restart/

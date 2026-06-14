@@ -1,4 +1,4 @@
-# arch: raw liveclient JSON → coaching state dict + derived fields | section=vision | frozen=no
+# arch: raw liveclient JSON -> coaching state dict + derived fields | section=vision | frozen=no
 """game_reader.snapshot_normalizer - turns Riot Live Client JSON into the
 coaching state dict consumed by the dashboard and per-mode coaches.
 
@@ -147,19 +147,19 @@ class _NormalizerMixin:
         secs = int(game_time % 60)
         time_str = f"{mins}:{secs:02d}"
 
-        # ── TFT early exit - return minimal state so overlay detects TFT mode
+        # -- TFT early exit - return minimal state so overlay detects TFT mode
         if is_tft_mode(game_mode):
             return tft_minimal_state(game_mode, active, game_info, events,
                                      time_str, game_time)
 
-        # ── Detect GameEnd event - return None immediately so the overlay
-        # exits game mode without waiting for the 30-second grace period ──────
+        # -- Detect GameEnd event - return None immediately so the overlay
+        # exits game mode without waiting for the 30-second grace period ------
         for ev in events:
             if isinstance(ev, dict) and ev.get("EventName") == "GameEnd":
                 _log.info("GameEnd event detected - signalling game over")
                 return None
 
-        # ── Robust player name matching ──────────────────────────────────
+        # -- Robust player name matching ----------------------------------
         # activePlayer may use riotIdGameName, riotIdPlusTagLine, or summonerName.
         # allPlayers may have slightly different format. Normalize before comparing.
         my_name_candidates = set()
@@ -181,7 +181,7 @@ class _NormalizerMixin:
             if me:
                 break
 
-        # ── Fallback: if name match fails, use activePlayer champion name
+        # -- Fallback: if name match fails, use activePlayer champion name
         # to find ourselves in the player list
         if me is None:
             active_champ = active.get("championName", "")
@@ -192,7 +192,7 @@ class _NormalizerMixin:
                         my_team = p.get("team", "ORDER")
                         break
 
-        # ── Champion name: prefer allPlayers (most reliable) ────────────
+        # -- Champion name: prefer allPlayers (most reliable) ------------
         my_champ = ""
         if me:
             my_champ = me.get("championName", "")
@@ -201,11 +201,11 @@ class _NormalizerMixin:
         if not my_champ:
             my_champ = "Unknown"
 
-        # ── Split teams ──────────────────────────────────────────────────
+        # -- Split teams --------------------------------------------------
         allies = [p for p in all_players if p.get("team") == my_team]
         enemies = [p for p in all_players if p.get("team") != my_team]
 
-        # ── My stats ─────────────────────────────────────────────────────
+        # -- My stats -----------------------------------------------------
         stats = active.get("championStats", {})
         if not isinstance(stats, dict): stats = {}
         # P2-W1-app-A NaN/inf hardening: coerce each Riot float before int()
@@ -236,7 +236,7 @@ class _NormalizerMixin:
                         for it in raw_items
                         if isinstance(it, dict) and it.get("displayName")]
 
-        # ── Lane quest boots detection ─────────────────────────────────────
+        # -- Lane quest boots detection -------------------------------------
         ADVANCED_BOOTS = {
             "berserker's greaves", "plated steelcaps", "mercury's treads",
             "sorcerer's shoes", "boots of swiftness", "ionian boots of lucidity",
@@ -263,7 +263,7 @@ class _NormalizerMixin:
             summ_d = ss_d.get("displayName", "") if isinstance(ss_d, dict) else ""
             summ_f = ss_f.get("displayName", "") if isinstance(ss_f, dict) else ""
 
-        # ── Enemy details ─────────────────────────────────────────────────
+        # -- Enemy details -------------------------------------------------
         enemy_details = []
         dead_enemies = []
         alive_enemies = []
@@ -281,7 +281,7 @@ class _NormalizerMixin:
             else:
                 alive_enemies.append(f"{ename} lv{elevel}")
 
-        # ── Ally details (exclude self) ───────────────────────────────────
+        # -- Ally details (exclude self) -----------------------------------
         ally_details = []
         for a in allies:
             if me and a.get("championName") == me.get("championName"):
@@ -295,12 +295,12 @@ class _NormalizerMixin:
             tag = " [DEAD]" if dead else ""
             ally_details.append(f"{aname} lv{alevel} {akda}{tag}")
 
-        # ── Team comps ────────────────────────────────────────────────────
+        # -- Team comps ----------------------------------------------------
         ally_comp = [a.get("championName", "?") for a in allies
                      if a.get("championName") != my_champ]
         enemy_comp = [e.get("championName", "?") for e in enemies]
 
-        # ── Objectives ────────────────────────────────────────────────────
+        # -- Objectives ----------------------------------------------------
         objectives = self._calc_objectives(events, game_time, dead_enemies)
         obj_timers_dict = self._calc_obj_dict(events, game_time)
         # Tower state from event counters (populated by _calc_objectives)
@@ -317,13 +317,13 @@ class _NormalizerMixin:
             my_tower_hp_str    = f"{_cha_up}/{_max_t}" + (" INHIBS:"+str(_inh) if _inh else "")
             enemy_tower_hp_str = f"{_ord_up}/{_max_t}"
 
-        # ── Enemy location tracking ───────────────────────────────────────
+        # -- Enemy location tracking ---------------------------------------
         my_pos = me.get("position", {}) if me else {}
         if not isinstance(my_pos, dict): my_pos = {}
         self._update_enemy_tracking(enemies, game_time)
         enemy_locs = self._derive_enemy_locations(enemies, game_time, my_pos)
 
-        # ── Enriched coaching context ─────────────────────────────────────
+        # -- Enriched coaching context -------------------------------------
         def _safe_kills(players):
             total = 0
             for p in players:
@@ -370,7 +370,7 @@ class _NormalizerMixin:
             _log.debug("_enemy_lane_details failed: %s", exc)
             enemy_lane_str = ""
 
-        # ── Derived overlay fields ────────────────────────────────────────
+        # -- Derived overlay fields ----------------------------------------
         risk_lines = self._derive_risk(me, allies, enemies, game_time)
         map_lines  = self._derive_map(allies, enemies, game_time)
 

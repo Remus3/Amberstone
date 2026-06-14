@@ -233,7 +233,7 @@ def build_state() -> dict:
     lcu_snapshot = lcu_summary()
     _mark("lcu")
     # Hold the last champ_select across the fast no-draft (ARAM /
-    # Mayhem / Arena) champ-select → game transition + >5s agent-push
+    # Mayhem / Arena) champ-select -> game transition + >5s agent-push
     # staleness. Applied before resolve_mode_key so the s150 pre-flip
     # mode survives the transient loss too.
     lcu_snapshot = apply_cs_retention(lcu_snapshot)

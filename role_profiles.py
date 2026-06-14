@@ -12,7 +12,7 @@ Covers:
   - ARAM itemization by damage type / comp
 """
 
-# ── Mid Lane Mages ─────────────────────────────────────────────────────────────
+# -- Mid Lane Mages -------------------------------------------------------------
 MID_MAGE_PROFILES = {
     "Ahri": (
         "Mid Ahri. Roam threat: E charm enables free kill in side lanes. "
@@ -62,7 +62,7 @@ MID_MAGE_PROFILES = {
     ),
 }
 
-# ── Bot Lane APC (Mage ADC) ────────────────────────────────────────────────────
+# -- Bot Lane APC (Mage ADC) ----------------------------------------------------
 APC_BOT_PROFILES = {
     "Seraphine": (
         "Bot APC Seraphine. Note passive echoes nearby ally casts. "
@@ -106,7 +106,7 @@ APC_BOT_PROFILES = {
     ),
 }
 
-# ── Bot Lane Tank / Engage Supports ───────────────────────────────────────────
+# -- Bot Lane Tank / Engage Supports -------------------------------------------
 TANK_SUPPORT_PROFILES = {
     "Nautilus": (
         "Support Nautilus. Q hook pulls self to wall or champion. "
@@ -149,7 +149,7 @@ TANK_SUPPORT_PROFILES = {
     ),
 }
 
-# ── Bot Lane Enchanter Supports ────────────────────────────────────────────────
+# -- Bot Lane Enchanter Supports ------------------------------------------------
 ENCHANTER_SUPPORT_PROFILES = {
     "Lulu": (
         "Support Lulu. W polymorph is the hardest ADC-peel ability in the game. "
@@ -203,7 +203,7 @@ ENCHANTER_SUPPORT_PROFILES = {
     ),
 }
 
-# ── Vayne Top Lane (special case) ─────────────────────────────────────────────
+# -- Vayne Top Lane (special case) ---------------------------------------------
 VAYNE_TOP_PROFILE = """
 Vayne Top. High-risk high-reward matchup pick. Wins vs tanks late; loses vs most early.
 
@@ -238,7 +238,7 @@ REGAINING MOMENTUM WITH ALLIES:
 POWER SPIKES: BotRK (survivable), BotRK+PD (duel anyone), BotRK+PD+IE (win game).
 """
 
-# ── ARAM Itemization Guide (comp-aware) ────────────────────────────────────────
+# -- ARAM Itemization Guide (comp-aware) ----------------------------------------
 
 ARAM_ITEM_RULES = """
 ARAM ITEMIZATION RULES:

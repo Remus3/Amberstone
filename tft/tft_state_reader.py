@@ -20,7 +20,7 @@ logger = logging.getLogger("rc.tft.reader")
 TFT_API = f"https://{GAME_HOST}:2999/liveclientdata/allgamedata"
 _TIME_TO_ROUND = [
     # Set 17 Space Gods Double Up - calibrated from 3 confirmed live data points:
-    # t=32s→1-2, t=348s→2-5, t≈1002s→4-6, t=1879s→7-4
+    # t=32s->1-2, t=348s->2-5, t~1002s->4-6, t=1879s->7-4
     # Fit: ~51 seconds per round on average
     (0,   1, 1), (32,  1, 2), (82,  1, 3),
     (144, 2, 1), (195, 2, 2), (246, 2, 3), (297, 2, 4), (348, 2, 5), (399, 2, 6),
@@ -158,7 +158,7 @@ class TftStateReader:
         rk=(stage,rnd);re_=ROUND_EVENTS.get(rk,"pvp");sr=f"{stage}-{rnd}"
         is_god = rk in GOD_ROUNDS
         variant=TftStateReader.detect_variant(gd or {})
-        # ── OCR override: cross-validated against time-table ────────────────
+        # -- OCR override: cross-validated against time-table ----------------
         ocr = self._ocr_data()
         if ocr.get("stage_round"):
             try:
@@ -199,7 +199,7 @@ class TftStateReader:
         # OCR HP stored in cache but merged at coach layer (vision HP preferred over OCR)
         # Store raw OCR hp in state for fallback
         ocr_hp = ocr.get("hp")
-        # ─────────────────────────────────────────────────────────────────
+        # -----------------------------------------------------------------
         return {"game_mode":gd.get("gameMode","TFT"),"game_time_s":gt,"level":lv,"gold":gold,
             "health":0 if me.get("isDead") else (
                 int(float(me.get("health") or me.get("tftHP") or 0))

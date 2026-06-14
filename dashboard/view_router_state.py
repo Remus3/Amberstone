@@ -91,7 +91,7 @@ def update_game_started(
         return "in-progress"
 
     if phase in _STICKY_CLEAR_PHASES:
-        # In-progress → stable post-game: clear sticky.
+        # In-progress -> stable post-game: clear sticky.
         if prior == "in-progress" and phase in _POSTGAME_PHASES:
             return None
         # ChampSelect dodge: user backed out, clear sticky.

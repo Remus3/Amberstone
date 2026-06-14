@@ -36,7 +36,7 @@ from dashboard._context import APP_DIR
 _log = logging.getLogger("rc.web_dashboard")
 
 _bridge_lock = threading.Lock()
-# 2026-05-02 (s31): bumped maxlen 100 → 500. The in-memory deque is what
+# 2026-05-02 (s31): bumped maxlen 100 -> 500. The in-memory deque is what
 # /api/bridge GET reads; tasks/results can fall out within ~30 min when
 # legion chat replies post 1 kind=note per response via the Stop hook.
 # Peer's bridge_pull_tasks misses kind=task lookups when this window is

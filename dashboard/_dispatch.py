@@ -39,7 +39,7 @@ from dashboard.api_schema import (
 
 log = logging.getLogger("rc.dispatch")
 
-# ── matcher factories ────────────────────────────────────────────────
+# -- matcher factories ------------------------------------------------
 
 def equals(path: str) -> Callable[[str], bool]:
     """Match exactly `path`, or `path?...` (path with a query string)."""
@@ -51,7 +51,7 @@ def prefix(p: str) -> Callable[[str], bool]:
     return lambda x: x.startswith(p)
 
 
-# ── registry (cached so each request doesn't rebuild the list) ───────
+# -- registry (cached so each request doesn't rebuild the list) -------
 
 _GET_CACHE: list | None = None
 _POST_CACHE: list | None = None
@@ -200,7 +200,7 @@ def dispatch_get(handler: BaseHTTPRequestHandler) -> bool:
     return False
 
 
-# ── soft-warn POST body validation ───────────────────────────────────
+# -- soft-warn POST body validation -----------------------------------
 
 # Path -> pydantic Request model. Only paths listed here are validated;
 # unmapped paths pass through silently (no false-warning noise on

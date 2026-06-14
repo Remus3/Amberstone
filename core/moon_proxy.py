@@ -42,7 +42,7 @@ class MoonProxy:
         self._last_check  = 0.0
         self._fail_count  = 0
 
-    # ── Availability ──────────────────────────────────────────────────────────
+    # -- Availability ----------------------------------------------------------
 
     def is_available(self) -> bool:
         with self._lock:
@@ -77,7 +77,7 @@ class MoonProxy:
                 self._available = False
                 self._last_check = time.monotonic()  # will re-check after TTL
 
-    # ── Vision ────────────────────────────────────────────────────────────────
+    # -- Vision ----------------------------------------------------------------
 
     def extract_vision(self, img_b64: str, model: str = "") -> Optional[dict]:
         """Send base64 PNG to Moon-PC /vision. Returns parsed game-state dict or None."""
@@ -135,7 +135,7 @@ class MoonProxy:
             self._mark_failed()
             return None
 
-    # ── Coach ─────────────────────────────────────────────────────────────────
+    # -- Coach -----------------------------------------------------------------
 
     def get_coaching(self, prompt: str, context: str = "", model: str = "") -> Optional[str]:
         """Send coaching prompt to Moon-PC /coach. Returns response text or None."""
@@ -170,7 +170,7 @@ class MoonProxy:
             self._mark_failed()
             return None
 
-    # ── OCR ───────────────────────────────────────────────────────────────────
+    # -- OCR -------------------------------------------------------------------
 
     def ocr_crops(self, crops_b64: dict) -> Optional[dict]:
         """Send crop dict to Moon-PC /ocr. Returns {stage_round, level, gold, hp} or None."""
@@ -193,7 +193,7 @@ class MoonProxy:
             log.debug("Moon OCR: %s", e)
             return None
 
-    # ── Status ────────────────────────────────────────────────────────────────
+    # -- Status ----------------------------------------------------------------
 
     def status(self) -> dict:
         return {

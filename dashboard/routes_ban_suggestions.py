@@ -65,8 +65,8 @@ def _load_name_to_id() -> dict[str, int]:
             except (TypeError, ValueError):
                 continue
             out[name] = cid
-            out[name.replace("'", "")] = cid           # Kai'Sa → KaiSa
-            out[name.replace(" ", "")] = cid           # Miss Fortune → MissFortune
+            out[name.replace("'", "")] = cid           # Kai'Sa -> KaiSa
+            out[name.replace(" ", "")] = cid           # Miss Fortune -> MissFortune
             out[name.replace("'", "").replace(" ", "")] = cid
             if slug:
                 out[slug] = cid                        # DDragon slug ("KaiSa")
@@ -130,7 +130,7 @@ def _serve_ban_suggestions(h) -> None:
             if cid in excluded:
                 continue
             # Use the DDragon slug for the icon URL - name_to_id includes
-            # slug→cid mappings, so reverse-find via the icon path is
+            # slug->cid mappings, so reverse-find via the icon path is
             # safest by always sanitizing the display name.
             slug = name.replace(" ", "").replace("'", "").replace(".", "")
             suggestions.append({

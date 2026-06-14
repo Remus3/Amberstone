@@ -46,7 +46,7 @@ def _load_sr_rune_rec(champion: str) -> str:
         return ""
 
 
-# ── Summoner's Rift system prompt ─────────────────────────────────────────────
+# -- Summoner's Rift system prompt ---------------------------------------------
 
 SR_SYSTEM_PROMPT = """\
 You are coaching a challenger-level ADC in Summoner's Rift. Skip all basics. \
@@ -448,7 +448,7 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     return "\n".join(lines)
 
 
-# ── Wave state inference from CS delta ────────────────────────────────────────
+# -- Wave state inference from CS delta ----------------------------------------
 
 
 class WaveTracker:
@@ -488,6 +488,6 @@ class WaveTracker:
         return "neutral"
 
 
-# ── Main integration class ─────────────────────────────────────────────────────
+# -- Main integration class -----------------------------------------------------
 
 

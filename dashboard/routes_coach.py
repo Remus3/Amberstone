@@ -132,7 +132,7 @@ def _serve_coach_state(h) -> None:
                 "application/json")
 
 
-# ── POST handlers (slice 2C-7c) ──────────────────────────────────────
+# -- POST handlers (slice 2C-7c) --------------------------------------
 
 
 def _serve_speak_post(h, payload) -> None:
@@ -208,7 +208,7 @@ def _serve_coach_toggle_post(h, payload) -> None:
                 "application/json")
 
 
-# ── route table ──────────────────────────────────────────────────────
+# -- route table ------------------------------------------------------
 
 # Ordering: more-specific paths first. /api/replay/match/ uses prefix()
 # for the trailing match_id; everything else is exact (with optional

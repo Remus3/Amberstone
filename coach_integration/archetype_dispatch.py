@@ -47,7 +47,7 @@ from typing import Iterable, Optional
 logger = logging.getLogger("rc.coach_integration.archetype_dispatch")
 
 
-# Scorer → display unit suffix. Used in the picks_str format like
+# Scorer -> display unit suffix. Used in the picks_str format like
 # "Stormrazor(+54dps,3500g) > Kraken Slayer(+48dps,3300g)" - operator
 # reads the unit + sees the scorer label in the prefix.
 _UNIT_SUFFIX: dict[str, str] = {
@@ -59,7 +59,7 @@ _UNIT_SUFFIX: dict[str, str] = {
     "hps":     "hps",
 }
 
-# Scorer → display label for the LLM prompt prefix:
+# Scorer -> display label for the LLM prompt prefix:
 # "DS top items (DPS ranked, own-items-accounted): ..."
 #                ^^^ this slot
 _DISPLAY_LABEL: dict[str, str] = {

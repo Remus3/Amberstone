@@ -111,13 +111,13 @@ class Coach:
         self.reset_state()
         logger.info("TFT Coach facade created (runtime loop in TftWorker)")
 
-    # ── Worker wiring ─────────────────────────────────────────────────────────
+    # -- Worker wiring ---------------------------------------------------------
 
     def set_worker(self, worker: "TftWorker") -> None:
         """Wire the TftWorker after it is created by app.py."""
         self._worker = worker
 
-    # ── Legacy API (kept for compatibility) ───────────────────────────────────
+    # -- Legacy API (kept for compatibility) -----------------------------------
 
     def submit_state(self, state: dict) -> None:
         """No-op: TftWorker owns coaching submission."""

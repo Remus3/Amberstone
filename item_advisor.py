@@ -447,7 +447,7 @@ def is_redundant(item_name, owned_items):
             # Recipe-component upgrade is always allowed.
             if owned in parts_lc:
                 continue
-            # upgrade_chain groups list items in component → finished order.
+            # upgrade_chain groups list items in component -> finished order.
             # A candidate later in the chain than the owned item is an upgrade.
             if group.get("upgrade_chain"):
                 owned_idx = group["items"].index(owned)
@@ -458,10 +458,10 @@ def is_redundant(item_name, owned_items):
 
 
 # =========================================================================
-# BOOTS LIFECYCLE  (early buy → mid upgrade → endgame sell-for-X)
+# BOOTS LIFECYCLE  (early buy -> mid upgrade -> endgame sell-for-X)
 # =========================================================================
 
-# Boot upgrades (post 14.x). Maps base boots → upgrade name.
+# Boot upgrades (post 14.x). Maps base boots -> upgrade name.
 _BOOT_UPGRADES = {
     "Berserker's Greaves":     "Symbiotic Soles",
     "Plated Steelcaps":        "Crimson Lucidity",

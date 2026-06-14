@@ -57,7 +57,7 @@ DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 VERSIONS_URL = f"{DDRAGON_BASE}/api/versions.json"
 
 
-# ── Utilities ─────────────────────────────────────────────────────────────────
+# -- Utilities -----------------------------------------------------------------
 
 def _fetch_json(url: str, timeout: int = 15) -> dict | list:
     req = urllib.request.Request(url, headers={"User-Agent": "RiotCommander/3.0"})
@@ -142,7 +142,7 @@ def _wr_to_tier(raw, thresholds: list[tuple[float, str]]) -> str | None:
     return "D"
 
 
-# ── Commands ──────────────────────────────────────────────────────────────────
+# -- Commands ------------------------------------------------------------------
 
 def cmd_items_index(force: bool = False) -> bool:
     """Regenerate web/data/items_index.json from data/meta/ddragon_items.json.
@@ -648,7 +648,7 @@ def cmd_all():
     return ok
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# -- Entry point ---------------------------------------------------------------
 
 COMMANDS = {
     "ddragon":         cmd_ddragon,

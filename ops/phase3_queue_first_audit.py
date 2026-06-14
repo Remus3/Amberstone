@@ -33,7 +33,7 @@ def main() -> int:
         op=AUDIT_OP,
         owner_agent="6",                     # Opus 4.7 per AGENT_MODELS
         priority=0,                          # highest
-        categories=[],                        # ungated (agent 6 is category 6 - ungated in §7)
+        categories=[],                        # ungated (agent 6 is category 6 - ungated in S7)
         payload={
             "scope": "full-phase3-repo-audit",
             "target_paths": [

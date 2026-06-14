@@ -5,7 +5,7 @@ round structure (Realm of the Gods replaces carousel).
 Last updated: patch 17.3 (2026-05-13) - Morgana cost drop, Anima/Stargazer reworks, Primordian nerfed.
 """
 
-# ── Tier probability tables (standard Set 17) ───────────────────────────────
+# -- Tier probability tables (standard Set 17) -------------------------------
 TIER_ODDS = {
     1:  {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
     2:  {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
@@ -21,7 +21,7 @@ TIER_ODDS = {
 
 POOL_SIZES = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
 
-# ── Stage / round structure - Set 17 "Realm of the Gods" ────────────────────
+# -- Stage / round structure - Set 17 "Realm of the Gods" --------------------
 # Carousel rounds (X-1 for stages 2+) are GONE.
 # Replaced by God selection at mid-stage: 2-4, 3-4, 4-4
 # Stage 4-7: God Boon (alignment reward)
@@ -43,7 +43,7 @@ PVE_ROUNDS = {(1, 3), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5)}
 GOD_ROUNDS = {(2, 4), (3, 4), (4, 4)}
 BOON_ROUND = (4, 7)
 
-# ── Gods and their offering strategies ───────────────────────────────────────
+# -- Gods and their offering strategies ---------------------------------------
 GODS = {
     "Ahri":        {"type": "econ",    "boon": "2 gold, 2 XP, 2 rerolls per round",
                     "strategy": "Best for fast leveling and flexible econ. Strong for Double Up where one partner fast-9s."},
@@ -65,7 +65,7 @@ GODS = {
                     "strategy": "Positioning-dependent. Strong with Stargazer. In Double Up, coordinate hex placement."},
 }
 
-# ── Key tempo milestones (Set 17) ────────────────────────────────────────────
+# -- Key tempo milestones (Set 17) --------------------------------------------
 TEMPO_MILESTONES = {
     "2-1":  "First PvP round. Establish early board, look for 2-star 1-costs.",
     "2-4":  "REALM OF THE GODS: Choose god offering. Pick based on comp direction.",
@@ -80,7 +80,7 @@ TEMPO_MILESTONES = {
     "6-1":  "Late game. Stabilize, push for top 2.",
 }
 
-# ── Set 17 traits ─────────────────────────────────────────────────────────────
+# -- Set 17 traits -------------------------------------------------------------
 ORIGINS = {
     "Anima":       {"breakpoints": [2, 4, 6], "type": "loss-streak", "note": "Gain Tech on loss, prototype Anima Weapons at 100 Tech. 17.3: (6) loot after EVERY combat (was: wins only)."},
     "Arbiter":     {"breakpoints": [2, 4], "type": "utility", "note": "Subscribe to divine law, choose effect for Arbiters"},
@@ -122,17 +122,17 @@ CLASSES = {
     "Sniper":      {"breakpoints": [2, 4], "note": "Increased damage from range"},
 }
 
-# ── Champions by cost ─────────────────────────────────────────────────────────
+# -- Champions by cost ---------------------------------------------------------
 CHAMPIONS = {
     1: ["Nasus", "Poppy", "Briar", "Caitlyn", "Leona", "Veigar", "Aatrox"],
     2: ["Cho'Gath", "Rek'Sai", "Teemo", "Twisted Fate", "Gnar", "Meepsie", "Nami", "Zoe"],
     3: ["Diana", "Fizz", "Gwen", "Jinx", "Milio", "Urgot", "LeBlanc", "Corki", "Rammus"],
     4: ["Aurelion Sol", "The Mighty Mech", "Bel'Veth", "Lissandra", "Kai'Sa",
-        "Karma", "Mordekaiser", "Akali", "Kindred", "Maokai", "Morgana"],  # Morgana moved 5→4 in 17.3
+        "Karma", "Mordekaiser", "Akali", "Kindred", "Maokai", "Morgana"],  # Morgana moved 5->4 in 17.3
     5: ["Jhin", "Fiora", "Shen", "Graves", "Blitzcrank", "Bard", "Sona"],
 }
 
-# ── PBE meta comps (updated 2026-04-07) ──────────────────────────────────────
+# -- PBE meta comps (updated 2026-04-07) --------------------------------------
 META_COMPS = {
     # 17.3 meta: AP late-game stronger (Sol/Karma/LeBlanc/Sona buffed). Primordian dead. Morgana now 4-cost.
     "S": [
@@ -153,12 +153,12 @@ META_COMPS = {
         {"name": "Psionic",          "carry": "Master Yi",    "core": "Psionic 4, Fateweaver 2; Yi omnivamp nerfed 17.3"},
     ],
     "B": [
-        # Primordian NOVA: Apex Primordian gutted 17.3 (AS 0.9→0.6, armor/MR 150→60). Avoid.
+        # Primordian NOVA: Apex Primordian gutted 17.3 (AS 0.9->0.6, armor/MR 150->60). Avoid.
         {"name": "Primordian NOVA",  "carry": "Kindred",      "core": "AVOID 17.3: Apex Primordian nerfed to the ground"},
     ],
 }
 
-# ── Encounters (returned in patch 17.2) ──────────────────────────────────────
+# -- Encounters (returned in patch 17.2) --------------------------------------
 # Opening Encounters appear at early-game stages and modify conditions for all players.
 ENCOUNTERS = {
     # Returning from Set 16 (16 total)
@@ -184,7 +184,7 @@ ENCOUNTERS = {
     "Cheaper Levels":      {"type": "leveling",  "note": "-2 XP per level; enables fast-9 comps"},
 }
 
-# ── God Blessings (new mechanic in patch 17.2) ────────────────────────────────
+# -- God Blessings (new mechanic in patch 17.2) --------------------------------
 # When aligned with a god 2+ times, choose between 2-3 Blessing options instead
 # of a fixed boon. Blessings provide powerful, character-specific bonuses.
 GOD_BLESSINGS = {
@@ -215,7 +215,7 @@ GOD_BLESSINGS = {
     ],
 }
 
-# ── Double Up specific data ──────────────────────────────────────────────────
+# -- Double Up specific data --------------------------------------------------
 DOUBLE_UP_GOD_STRATEGY = {
     "split_econ":    "One partner takes Ahri (econ), other takes Kayle (items). Both scale differently.",
     "both_units":    "Both take Varus for unit generation. Flood boards with stars.",
@@ -231,7 +231,7 @@ DOUBLE_UP_UNIT_SEND_PRIORITY = [
     "Component holder if partner needs specific item",
 ]
 
-# ── Item tier list (Set 17) ──────────────────────────────────────────────────
+# -- Item tier list (Set 17) --------------------------------------------------
 ITEM_TIERS = {
     "Rabadon's Deathcap":        "S",
     "Guinsoo's Rageblade":       "S",

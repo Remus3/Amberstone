@@ -114,7 +114,7 @@ def liveclient_summary() -> dict:
             out["champion"] = me_pl.get("championName")
             owned_items = [it.get("displayName", "") for it in (me_pl.get("items") or [])]
             # s184 - parallel item-id list so server-side consumers
-            # (archetype_mismatch nudge) don't need a name → id resolver
+            # (archetype_mismatch nudge) don't need a name -> id resolver
             # for the operator's own inventory. Same order as owned_items.
             owned_item_ids = [str(it.get("itemID", "")) for it in (me_pl.get("items") or [])]
             my_team = me_pl.get("team")

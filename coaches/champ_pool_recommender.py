@@ -40,11 +40,11 @@ _REWIND_DB    = _PROJECT_ROOT / "data" / "rewind_history.db"
 _DDR_CHAMPS   = _PROJECT_ROOT / "data" / "meta" / "ddragon_champions.json"
 # AUDIT 2026-04-29: pre-aggregated KDA file produced by
 # scripts/build_champ_kda.py. When fresh, _kda_for reads from this
-# instead of folding 2.5M timeline_events live (~10s cold) → ~50 ms
+# instead of folding 2.5M timeline_events live (~10s cold) -> ~50 ms
 # warm-DB lookup. Missing / stale file falls through to live SQL.
 _KDA_FILE = _PROJECT_ROOT / "data" / "coach_reference" / "champ_kda.json"
 
-# Lazy-loaded user puuid + champion-name → id map.
+# Lazy-loaded user puuid + champion-name -> id map.
 _user_puuid: Optional[str] = None
 _name_to_id: dict[str, int] = {}
 _id_to_name: dict[int, str] = {}

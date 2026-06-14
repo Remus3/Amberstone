@@ -1,4 +1,4 @@
-# arch: queue/map → mode-key routing + TFT early-exit | section=vision | frozen=no
+# arch: queue/map -> mode-key routing + TFT early-exit | section=vision | frozen=no
 """game_reader.mode_router - TFT detection + mode-keyed helpers.
 
 Module-level functions (not a mixin) - called from
