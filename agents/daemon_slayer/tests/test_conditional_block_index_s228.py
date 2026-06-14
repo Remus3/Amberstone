@@ -9,7 +9,7 @@ plumbing into the ranking call) is a follow-up session.
 
 Schema lift: ``block_index`` value type widens from ``int | list[int]``
 (s207) to ALSO ``dict[str, int | list[int]]`` - a conditional mapping a
-target-state condition → block. ``"default"`` is REQUIRED and is the
+target-state condition -> block. ``"default"`` is REQUIRED and is the
 operator-commits / canonical-amped branch (the ranking assumption - same
 model s191 established). Every other key must be in the CLOSED vocabulary
 ``_BLOCK_INDEX_CONDITIONS`` and selects a *downgrade* (never more optimistic
@@ -33,7 +33,7 @@ Engine surface:
 
 Flagship seeds (3) - all CONVERSIONS of already-shipped unconditional
 entries, so Part 1 is provably no-op vs s204/s204/s223:
-  * Zoe     E = {"default": 2, "target_no_setup": 0}   (sleep 2× - s204 E:2)
+  * Zoe     E = {"default": 2, "target_no_setup": 0}   (sleep 2x - s204 E:2)
   * Evelynn Q = {"default": 5, "target_no_setup": 0}   (charm triple-spike
                 total - s204 Q:5; sibling R:1 preserved)
   * Kindred E = {"default": 1, "target_full_hp": 0} (7.5%-vs-5% missing-HP
@@ -92,7 +92,7 @@ def _ctx() -> AbilityContext:
     )
 
 
-# ─── closed condition vocabulary ─────────────────────────────────────────────
+# --- closed condition vocabulary ---------------------------------------------
 
 
 class BlockIndexConditionVocabTests(unittest.TestCase):
@@ -112,7 +112,7 @@ class BlockIndexConditionVocabTests(unittest.TestCase):
         self.assertNotIn(_BLOCK_INDEX_DEFAULT_KEY, _BLOCK_INDEX_CONDITIONS)
 
 
-# ─── _normalize_block_index_value - conditional dict ─────────────────────────
+# --- _normalize_block_index_value - conditional dict -------------------------
 
 
 class NormalizeConditionalTests(unittest.TestCase):
@@ -185,7 +185,7 @@ class NormalizeConditionalTests(unittest.TestCase):
             _normalize_block_index_value({"default": "0", "target_no_setup": 1})
 
 
-# ─── _select_blocks - Part-1 dict resolution (default branch only) ───────────
+# --- _select_blocks - Part-1 dict resolution (default branch only) -----------
 
 
 class SelectBlocksConditionalTests(unittest.TestCase):
@@ -229,7 +229,7 @@ class SelectBlocksConditionalTests(unittest.TestCase):
         self.assertEqual(self._sel([0, 2]), 125.0)
 
 
-# ─── _resolve_block_index_overrides - conditional merge ──────────────────────
+# --- _resolve_block_index_overrides - conditional merge ----------------------
 
 
 class ResolveConditionalMergeTests(unittest.TestCase):
@@ -266,7 +266,7 @@ class ResolveConditionalMergeTests(unittest.TestCase):
         self.assertEqual(source, "override")
 
 
-# ─── registry seed entries (3 flagship conversions) ──────────────────────────
+# --- registry seed entries (3 flagship conversions) --------------------------
 
 
 class RegistrySeedEntriesS228Tests(unittest.TestCase):
@@ -312,7 +312,7 @@ class RegistrySeedEntriesS228Tests(unittest.TestCase):
         self.assertIsInstance(kin["E"], dict)
 
 
-# ─── compute_ability_dps - Part-1 zero-regression invariant ──────────────────
+# --- compute_ability_dps - Part-1 zero-regression invariant ------------------
 
 
 class AbilityDpsPart1InvariantTests(unittest.TestCase):
@@ -343,7 +343,7 @@ class AbilityDpsPart1InvariantTests(unittest.TestCase):
         )
 
     def test_zoe_E_default_is_2x_block_0(self) -> None:
-        # Verified vs Meraki 16.10.1: DMGIDX[2] = exactly 2× DMGIDX[0].
+        # Verified vs Meraki 16.10.1: DMGIDX[2] = exactly 2x DMGIDX[0].
         reg, _ = self._spell("Zoe", "E")
         b0, _ = self._spell("Zoe", "E", block_index_overrides={"E": 0})
         self.assertAlmostEqual(
@@ -400,7 +400,7 @@ class AbilityDpsPart1InvariantTests(unittest.TestCase):
         self.assertEqual(out.block_index_resolved["E"], {"default": 2, "target_no_setup": 0})
 
 
-# ─── compute_burst_damage - conditional resolves in the combo walker ─────────
+# --- compute_burst_damage - conditional resolves in the combo walker ---------
 
 
 class BurstConditionalTests(unittest.TestCase):
@@ -435,12 +435,12 @@ class BurstConditionalTests(unittest.TestCase):
         self.assertAlmostEqual(reg, forced, places=6)
 
 
-# ─── server _parse_block_index - conditional decoder (pure unit) ─────────────
+# --- server _parse_block_index - conditional decoder (pure unit) -------------
 
 
 class ParseBlockIndexConditionalTests(unittest.TestCase):
     """The body decoder accepts well-formed conditional objects and skips
-    malformed ones defensively (untrusted input → registry fallback, no
+    malformed ones defensively (untrusted input -> registry fallback, no
     500). int / list decoding unchanged."""
 
     def test_int_and_list_unchanged(self) -> None:
@@ -462,7 +462,7 @@ class ParseBlockIndexConditionalTests(unittest.TestCase):
         self.assertEqual(out, {"R": {"default": [1, 3], "target_full_hp": 0}})
 
     def test_missing_default_skipped(self) -> None:
-        # Skipped entry → empty map (engine falls back to registry).
+        # Skipped entry -> empty map (engine falls back to registry).
         self.assertEqual(
             _parse_block_index({"block_index": {"E": {"target_no_setup": 0}}}), {}
         )
@@ -492,7 +492,7 @@ class ParseBlockIndexConditionalTests(unittest.TestCase):
         self.assertIsNone(_parse_block_index({}))
 
 
-# ─── backward-compat: pre-s228 int / list entries unchanged ──────────────────
+# --- backward-compat: pre-s228 int / list entries unchanged ------------------
 
 
 class BackwardCompatPreS228Tests(unittest.TestCase):
@@ -549,7 +549,7 @@ class BackwardCompatPreS228Tests(unittest.TestCase):
         )
 
 
-# ─── live server route (skips if DS server down) ─────────────────────────────
+# --- live server route (skips if DS server down) -----------------------------
 
 
 class ServerRouteConditionalS228Tests(unittest.TestCase):
@@ -594,7 +594,7 @@ class ServerRouteConditionalS228Tests(unittest.TestCase):
         )
 
     def test_malformed_conditional_falls_back_to_registry(self) -> None:
-        # Missing "default" → decoder skips → engine uses registry (E:2).
+        # Missing "default" -> decoder skips -> engine uses registry (E:2).
         s_bad = self._spell("Zoe", "E", block_index={"E": {"target_no_setup": 0}})
         s_reg = self._spell("Zoe", "E")
         self.assertAlmostEqual(
@@ -602,7 +602,7 @@ class ServerRouteConditionalS228Tests(unittest.TestCase):
         )
 
 
-# ─── ENGINE_VERSION pin ──────────────────────────────────────────────────────
+# --- ENGINE_VERSION pin ------------------------------------------------------
 
 
 class EngineVersionS228Tests(unittest.TestCase):

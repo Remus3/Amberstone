@@ -243,7 +243,7 @@ class RankRouteTests(ServerLifecycleTests):
         self.assertGreater(len(body["ranked"]), 0)
 
     def test_rank_full_build_returns_422(self) -> None:
-        # 6 items already + slots default 6 → no room → ValueError → 422
+        # 6 items already + slots default 6 -> no room -> ValueError -> 422
         status, body = _post_json(self.base + "/rank",
                                   {"champion": "Aatrox", "level": 11,
                                    "items": ["3006", "3072", "3031",
@@ -307,7 +307,7 @@ class EhpRouteTests(ServerLifecycleTests):
             "champion": "Malphite", "level": 11,
             "enemy_ad_share": 0.7, "enemy_ap_share": 0.7,
         })
-        # share sum > 1.0 → engine raises ValueError → 422
+        # share sum > 1.0 -> engine raises ValueError -> 422
         self.assertEqual(status, 422)
 
 
@@ -358,7 +358,7 @@ class HybridRouteTests(ServerLifecycleTests):
             "champion": "JarvanIV", "level": 11,
             "enemy_ad_share": 0.8, "enemy_ap_share": 0.8,
         })
-        # share sum > 1.0 → engine raises ValueError → 422
+        # share sum > 1.0 -> engine raises ValueError -> 422
         self.assertEqual(status, 422)
 
 
@@ -375,14 +375,14 @@ class RoutingTests(ServerLifecycleTests):
 
 
 class ChampionIdResolutionTests(ServerLifecycleTests):
-    """s156: server-side display-name → DDragon-id fallback.
+    """s156: server-side display-name -> DDragon-id fallback.
     Regression target - RC's coaches feed champion as the display name
     ('Kai'Sa', 'Wukong', 'Renata Glasc') from coaching_data.json. Before
-    this fix, /rank returned 404 → daemon_slayer_picks never written →
+    this fix, /rank returned 404 -> daemon_slayer_picks never written ->
     dashboard #ds-pill stayed hidden mid-game ('ds not loaded at all')."""
 
     def test_apostrophe_display_name_resolves(self) -> None:
-        # Kai'Sa → DDragon ID 'Kaisa'. Apostrophe family covers
+        # Kai'Sa -> DDragon ID 'Kaisa'. Apostrophe family covers
         # K'Sante, Rek'Sai, Cho'Gath, Kha'Zix, Vel'Koz, Kog'Maw, Bel'Veth.
         status, body = _post_json(self.base + "/rank",
                                   {"champion": "Kai'Sa", "level": 11,
@@ -392,7 +392,7 @@ class ChampionIdResolutionTests(ServerLifecycleTests):
         self.assertEqual(body["champion_name"], "Kai'Sa")
 
     def test_renamed_id_resolves_via_display(self) -> None:
-        # Wukong → MonkeyKing (DDragon-side rename).
+        # Wukong -> MonkeyKing (DDragon-side rename).
         status, body = _post_json(self.base + "/rank",
                                   {"champion": "Wukong", "level": 11,
                                    "mode": "SR", "top": 1})
@@ -400,7 +400,7 @@ class ChampionIdResolutionTests(ServerLifecycleTests):
         self.assertEqual(body["champion_id"], "MonkeyKing")
 
     def test_space_display_name_resolves(self) -> None:
-        # 'Renata Glasc' → 'Renata'.
+        # 'Renata Glasc' -> 'Renata'.
         status, body = _post_json(self.base + "/rank",
                                   {"champion": "Renata Glasc", "level": 11,
                                    "mode": "SR", "top": 1})
@@ -434,7 +434,7 @@ class ChampionIdResolutionTests(ServerLifecycleTests):
 
     def test_unknown_still_404s(self) -> None:
         # Resolver returns the input unchanged when no match - engine
-        # then raises the canonical KeyError → 404. No silent successes.
+        # then raises the canonical KeyError -> 404. No silent successes.
         status, body = _post_json(self.base + "/rank",
                                   {"champion": "Notarealchamp", "level": 1,
                                    "mode": "SR", "top": 1})

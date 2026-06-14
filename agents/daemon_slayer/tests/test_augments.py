@@ -20,7 +20,7 @@ class AugmentDataLayerTests(unittest.TestCase):
 
     def test_augments_loaded_from_snapshot(self) -> None:
         # Phase 6 ships 219 cdragon arena augments at the time of writing;
-        # tolerate ±20 on either side as cdragon "latest" rotates.
+        # tolerate +/-20 on either side as cdragon "latest" rotates.
         n = len(self.snap.arena_augments_by_id)
         self.assertGreaterEqual(n, 200)
         self.assertEqual(n, len(self.snap.arena_augments_by_api))
@@ -295,7 +295,7 @@ class AugmentsThroughDpsAndRankTests(unittest.TestCase):
             augments=["TheBrutalizer"], top_n=3,
         )
         # First-rank delta should be measured off the augmented baseline,
-        # not the bare one - i.e. delta + aug_baseline ≈ first pick's
+        # not the bare one - i.e. delta + aug_baseline ~ first pick's
         # absolute new_dps. (Allow small float wobble from candidate filter.)
         top = result.ranked[0]
         self.assertAlmostEqual(top.new_dps, aug_baseline.weighted_dps + top.delta_dps,

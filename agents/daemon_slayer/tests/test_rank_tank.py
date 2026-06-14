@@ -23,7 +23,7 @@ class RankByEhpBasicsTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_malphite_lvl_11_top_pick_includes_armor_item(self) -> None:
-        # Malphite + AD-heavy enemy → top picks should include a known
+        # Malphite + AD-heavy enemy -> top picks should include a known
         # armor item. Hardcoded ID set is the 16.9.1 floor; future patches
         # may shuffle order but at least ONE of these should land top-5.
         r = rank_items_by_ehp(

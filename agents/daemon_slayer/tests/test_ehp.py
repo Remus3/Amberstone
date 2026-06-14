@@ -1,7 +1,7 @@
 """Phase 1 (s174, 2026-05-12) - Tank EHP scorer tests.
 
 Mirrors ``test_dps`` shape: load the 16.9.1 snapshot once, exercise
-``compute_ehp`` across champions × items × modes. EHP math is
+``compute_ehp`` across champions x items x modes. EHP math is
 closed-form so tests pin exact values where possible; comparative tests
 use ratios so future patch HP rescaling doesn't redden CI.
 """
@@ -33,11 +33,11 @@ class ArmorFactorTests(unittest.TestCase):
         self.assertAlmostEqual(_armor_factor(200.0), 1.0 / 3.0)
 
     def test_negative_resist_uses_inverted_formula(self) -> None:
-        # -100 armor: 2 - 100/(100 - (-100)) = 2 - 0.5 = 1.5 → take 150% damage
+        # -100 armor: 2 - 100/(100 - (-100)) = 2 - 0.5 = 1.5 -> take 150% damage
         self.assertAlmostEqual(_armor_factor(-100.0), 1.5)
 
     def test_negative_resist_does_not_exceed_2x(self) -> None:
-        # Asymptote at -∞ → 2.0 (200% damage). Never explodes.
+        # Asymptote at -inf -> 2.0 (200% damage). Never explodes.
         self.assertLess(_armor_factor(-1000.0), 2.0)
         self.assertGreater(_armor_factor(-1000.0), 1.9)
 
@@ -65,13 +65,13 @@ class ComputeEhpBasicsTests(unittest.TestCase):
         self.assertAlmostEqual(r.mr, resolved.stats["mr"], places=4)
 
     def test_true_ehp_equals_hp_in_sr_mode(self) -> None:
-        # SR mode_multiplier=1.0 → true_ehp == hp exactly (no resists apply
+        # SR mode_multiplier=1.0 -> true_ehp == hp exactly (no resists apply
         # to true damage).
         r = compute_ehp(self.snap, "Aatrox", level=11)
         self.assertAlmostEqual(r.true_ehp, r.hp, places=4)
 
     def test_blended_pure_true_share_equals_hp(self) -> None:
-        # ad_share=0 + ap_share=0 → 100% true damage → blended_ehp == hp.
+        # ad_share=0 + ap_share=0 -> 100% true damage -> blended_ehp == hp.
         r = compute_ehp(self.snap, "Aatrox", level=11,
                         enemy_ad_share=0.0, enemy_ap_share=0.0)
         self.assertAlmostEqual(r.blended_ehp, r.hp, places=4)
@@ -132,11 +132,11 @@ class ItemContributionTests(unittest.TestCase):
         physical_delta = with_fon.physical_ehp - naked.physical_ehp
         magical_delta = with_fon.magical_ehp - naked.magical_ehp
         self.assertGreater(magical_delta, physical_delta)
-        # And materially so - at least 1.5× the physical lift.
+        # And materially so - at least 1.5x the physical lift.
         self.assertGreater(magical_delta, physical_delta * 1.5)
 
     def test_pure_ap_enemy_doesnt_value_armor(self) -> None:
-        # ap_share=1.0 → blended_ehp tracks magical_ehp only; adding armor
+        # ap_share=1.0 -> blended_ehp tracks magical_ehp only; adding armor
         # items should leave blended_ehp ALMOST unchanged (small Jak'Sho-like
         # cross-amps aside, plain Chain Vest = +40 armor, 0 MR, 0 HP).
         naked = compute_ehp(self.snap, "Malphite", level=11,
@@ -147,8 +147,8 @@ class ItemContributionTests(unittest.TestCase):
         self.assertAlmostEqual(with_armor.blended_ehp, naked.blended_ehp, places=2)
 
     def test_pure_ad_enemy_doesnt_value_mr(self) -> None:
-        # ad_share=1.0 → blended_ehp tracks physical_ehp only. Null-Magic
-        # Mantle adds 25 MR + 0 armor + 0 HP → no physical_ehp shift.
+        # ad_share=1.0 -> blended_ehp tracks physical_ehp only. Null-Magic
+        # Mantle adds 25 MR + 0 armor + 0 HP -> no physical_ehp shift.
         naked = compute_ehp(self.snap, "Malphite", level=11,
                             enemy_ad_share=1.0, enemy_ap_share=0.0)
         with_mr = compute_ehp(self.snap, "Malphite", level=11,
@@ -213,7 +213,7 @@ class ARAMModeTests(unittest.TestCase):
         self.assertAlmostEqual(r.mode_multiplier, 1.0)
 
     def test_aram_modifier_at_1_equals_sr(self) -> None:
-        # Aatrox has aramDamageTaken=1.0 → ARAM EHP == SR EHP (modulo any
+        # Aatrox has aramDamageTaken=1.0 -> ARAM EHP == SR EHP (modulo any
         # ARAM AS changes that affect bonus AS, which don't touch EHP).
         sr = compute_ehp(self.snap, "Aatrox", level=11, mode="SR")
         aram = compute_ehp(self.snap, "Aatrox", level=11, mode="ARAM")
@@ -352,7 +352,7 @@ class ConsistencyTests(unittest.TestCase):
         self.assertEqual(r_none.item_ids, r_empty.item_ids)
 
     def test_blended_ehp_monotone_in_resists_when_relevant(self) -> None:
-        # Pure-AD enemy: adding more armor → strictly higher blended_ehp.
+        # Pure-AD enemy: adding more armor -> strictly higher blended_ehp.
         zero = compute_ehp(self.snap, "Malphite", level=11,
                            enemy_ad_share=1.0, enemy_ap_share=0.0)
         one = compute_ehp(self.snap, "Malphite", level=11,

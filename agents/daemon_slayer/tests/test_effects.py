@@ -72,7 +72,7 @@ class InfinityEdgeCritDamageTests(unittest.TestCase):
         self.assertAlmostEqual(ITEM_EFFECTS["3031"].crit_damage_bonus, 0.30)
 
     def test_ie_dps_uses_bumped_crit_bonus(self) -> None:
-        # Aatrox lvl 1 + IE: AD goes 60→135, crit goes 0→25%, crit_bonus 0.75→1.05.
+        # Aatrox lvl 1 + IE: AD goes 60->135, crit goes 0->25%, crit_bonus 0.75->1.05.
         # Compare against the DPS we'd compute by hand with the bumped factor.
         ie = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3031"])
         ad = ie.stats["ad"]
@@ -114,7 +114,7 @@ class KrakenSlayerProcTests(unittest.TestCase):
         armored = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["6672"], target_armor=100.0
         )
-        # 100 armor → factor 0.5. Both base auto + Kraken proc share the factor,
+        # 100 armor -> factor 0.5. Both base auto + Kraken proc share the factor,
         # so the ratio should be ~0.5.
         self.assertAlmostEqual(
             armored.weighted_dps / soft.weighted_dps, 0.5, places=2
@@ -187,7 +187,7 @@ class DefensiveOnlyItemTests(unittest.TestCase):
 
     def test_bt_dps_matches_stat_block_only(self) -> None:
         # Bloodthirster: +80 AD, +15% lifesteal. No conditional DPS effect.
-        # DPS should be exactly the AD bump (60→140) factor of naked DPS.
+        # DPS should be exactly the AD bump (60->140) factor of naked DPS.
         naked = compute_dps(self.snap, "Aatrox", level=1)
         bt = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3072"])
         self.assertAlmostEqual(
@@ -208,7 +208,7 @@ class UnmodeledItemRegressionTests(unittest.TestCase):
         # the AS bump from its stat block.
         naked = compute_dps(self.snap, "Aatrox", level=1)
         zerks = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3006"])
-        # AS bonus 35% → adjust the basicTime portion of each rotation. Verify
+        # AS bonus 35% -> adjust the basicTime portion of each rotation. Verify
         # via the avg_attack_dmg path (no crit bonus, no proc).
         self.assertAlmostEqual(zerks.avg_attack_dmg, naked.avg_attack_dmg, places=2)
         # And crit_bonus surfaced via avg should still equal default.
