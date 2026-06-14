@@ -9,16 +9,28 @@ STRING-token glyphs are left untouched this slice - that auto-protects every
 load-bearing emitted/regex-matched arrow (DS-engine dps.py note, aram_coach
 item_build wire-split) which lives in a string, not a comment.
 
-Usage:
-  p3_ascii_sweep.py --dry-run <path...>     # report, no write
-  p3_ascii_sweep.py --apply   <path...>     # rewrite in place (LF preserved)
-  p3_ascii_sweep.py --unmapped <path...>    # list comment glyphs with NO mapping
+Slice A3a (cycle 21) adds an opt-in DOCSTRING mode: the same GLYPH_MAP applied
+inside module / function / class docstring STRING tokens (located via AST, so
+only true docstrings - never an f-string, never a split-on/regex-matched code
+string). A docstring is not emitted to coach output, not split-on, not
+regex-matched by production; its only consumers are argparse --help (cosmetic)
+and a handful of tests that assertIn() ASCII substrings (immune to a decorative
+glyph swap). Same provable-safe class as comments, suite-gated.
 
-Only glyphs in GLYPH_MAP are touched; an unmapped comment glyph is reported and
-left as-is (conservative - never guess a substitution).
+Usage:
+  p3_ascii_sweep.py --dry-run  <path...>    # comment report, no write
+  p3_ascii_sweep.py --apply    <path...>    # rewrite comment glyphs (LF preserved)
+  p3_ascii_sweep.py --unmapped <path...>    # list comment glyphs with NO mapping
+  p3_ascii_sweep.py --doc-dry  <path...>    # docstring report, no write
+  p3_ascii_sweep.py --doc-apply <path...>   # rewrite docstring glyphs (LF preserved)
+  p3_ascii_sweep.py --doc-unmapped <path...> # list docstring glyphs with NO mapping
+
+Only glyphs in GLYPH_MAP are touched; an unmapped glyph is reported and left
+as-is (conservative - never guess a substitution).
 """
 from __future__ import annotations
 
+import ast
 import sys
 import tokenize
 from pathlib import Path
@@ -53,6 +65,43 @@ def _is_ascii(s: str) -> bool:
     return all(ord(c) < 128 for c in s)
 
 
+def _apply_map(s: str):
+    """Map every GLYPH_MAP glyph in s to ASCII. Returns (out, changed, unmapped)."""
+    out = []
+    changed = 0
+    unmapped = set()
+    for ch in s:
+        if ord(ch) < 128:
+            out.append(ch)
+        elif ch in GLYPH_MAP:
+            out.append(GLYPH_MAP[ch])
+            changed += 1
+        else:
+            out.append(ch)
+            unmapped.add(ch)
+    return "".join(out), changed, unmapped
+
+
+def _docstring_spans(path: Path):
+    """Return set of (start_row, end_row) for module/func/class docstrings."""
+    tree = ast.parse(path.read_bytes().decode("utf-8"))
+    spans = set()
+
+    def _doc(node):
+        body = getattr(node, "body", None)
+        if body and isinstance(body[0], ast.Expr) and isinstance(
+            body[0].value, ast.Constant
+        ) and isinstance(body[0].value.value, str):
+            c = body[0].value
+            spans.add((c.lineno, c.end_lineno or c.lineno))
+
+    _doc(tree)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            _doc(node)
+    return spans
+
+
 def _comment_spans(path: Path):
     """Return list of (row, start_col) for every COMMENT token in a .py file."""
     spans = []
@@ -82,19 +131,64 @@ def sweep_file(path: Path, apply: bool):
         comment = line[col:]
         if _is_ascii(comment):
             continue
-        out = []
-        for ch in comment:
-            if ord(ch) < 128:
-                out.append(ch)
-            elif ch in GLYPH_MAP:
-                out.append(GLYPH_MAP[ch])
-                changed += 1
-            else:
-                out.append(ch)
-                unmapped.add(ch)
-        lines[row - 1] = line[:col] + "".join(out)
+        out, n, um = _apply_map(comment)
+        changed += n
+        unmapped |= um
+        lines[row - 1] = line[:col] + out
     if apply and changed:
         path.write_bytes("\n".join(lines).encode("utf-8"))
+    return changed, unmapped
+
+
+def sweep_file_docstrings(path: Path, apply: bool):
+    """Returns (changed_count, unmapped_set). Docstring STRING-token glyphs only.
+
+    Splices by absolute char offset (a docstring token may span many rows);
+    replacements applied right-to-left so earlier offsets stay valid.
+    """
+    raw = path.read_bytes()
+    text = raw.decode("utf-8")
+    if _is_ascii(text):
+        return 0, set()
+    try:
+        spans = _docstring_spans(path)
+    except (SyntaxError, ValueError) as exc:
+        print(f"  AST-FAIL {path}: {exc}", file=sys.stderr)
+        return 0, set()
+    if not spans:
+        return 0, set()
+    lines = text.split("\n")
+    offs = [0]
+    for ln in lines:
+        offs.append(offs[-1] + len(ln) + 1)  # +1 for the split '\n'
+    edits = []
+    changed = 0
+    unmapped = set()
+    try:
+        toks = list(tokenize.tokenize(path.open("rb").readline))
+    except (tokenize.TokenError, IndentationError, SyntaxError) as exc:
+        print(f"  TOKENIZE-FAIL {path}: {exc}", file=sys.stderr)
+        return 0, set()
+    for tok in toks:
+        if tok.type != tokenize.STRING:
+            continue
+        srow, scol = tok.start
+        erow, ecol = tok.end
+        if not any(a <= srow and erow <= b for a, b in spans):
+            continue
+        if _is_ascii(tok.string):
+            continue
+        out, n, um = _apply_map(tok.string)
+        if n:
+            abs_s = offs[srow - 1] + scol
+            abs_e = offs[erow - 1] + ecol
+            edits.append((abs_s, abs_e, out))
+            changed += n
+            unmapped |= um
+    if apply and edits:
+        for abs_s, abs_e, out in sorted(edits, reverse=True):
+            text = text[:abs_s] + out + text[abs_e:]
+        path.write_bytes(text.encode("utf-8"))
     return changed, unmapped
 
 
@@ -107,26 +201,33 @@ def _iter_targets(paths):
             yield pp
 
 
+DOC_MODES = ("--doc-dry", "--doc-apply", "--doc-unmapped")
+
+
 def main(argv):
     mode = argv[0] if argv else "--dry-run"
+    doc = mode in DOC_MODES
+    apply = mode in ("--apply", "--doc-apply")
+    fn = sweep_file_docstrings if doc else sweep_file
+    label = "docstring" if doc else "comment"
     targets = list(_iter_targets(argv[1:]))
     total = 0
     all_unmapped = {}
     for t in targets:
         try:
-            changed, unmapped = sweep_file(t, apply=(mode == "--apply"))
+            changed, unmapped = fn(t, apply=apply)
         except Exception as exc:  # noqa: BLE001
             print(f"  ERR {t}: {exc}", file=sys.stderr)
             continue
         if changed:
             total += changed
-            verb = "WROTE" if mode == "--apply" else "would-change"
+            verb = "WROTE" if apply else "would-change"
             print(f"  {verb} {changed:5d}  {t.as_posix()}")
         for ch in unmapped:
             all_unmapped.setdefault(ch, []).append(t.as_posix())
-    print(f"\nTOTAL comment-glyph substitutions: {total} across {len(targets)} files")
+    print(f"\nTOTAL {label}-glyph substitutions: {total} across {len(targets)} files")
     if all_unmapped:
-        print("\nUNMAPPED comment glyphs (left as-is):")
+        print(f"\nUNMAPPED {label} glyphs (left as-is):")
         for ch, files in sorted(all_unmapped.items()):
             print(f"  U+{ord(ch):04X} {ch!r}  in {len(files)} file(s): {files[0]}")
     return 0

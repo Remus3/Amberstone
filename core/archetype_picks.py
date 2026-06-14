@@ -19,10 +19,10 @@ to the right scorer.
 
 This module owns three things:
 
-1. **DDragon-tag → archetype mapping** so a hovered champion produces a
+1. **DDragon-tag -> archetype mapping** so a hovered champion produces a
    sensible default before the operator touches anything. Lulu tags
-   ``["Support", "Mage"]`` → primary=enchanter, secondary=mage. Yasuo
-   tags ``["Fighter", "Assassin"]`` → primary=bruiser, secondary=assassin.
+   ``["Support", "Mage"]`` -> primary=enchanter, secondary=mage. Yasuo
+   tags ``["Fighter", "Assassin"]`` -> primary=bruiser, secondary=assassin.
 
 2. **Per-champion pick persistence** in
    ``data/cs_archetype_picks.json``. Server-side single source of truth;
@@ -119,10 +119,10 @@ def tag_to_archetype(tag: str) -> str:
 
 
 def _load_champion_tags() -> dict[str, list[str]]:
-    """Build champion-id → tags map from ``ddragon_champions.json``.
+    """Build champion-id -> tags map from ``ddragon_champions.json``.
 
     Keys are DDragon IDs (``"Aatrox"``, ``"MonkeyKing"``) plus display
-    names (``"Wukong"``) plus stripped variants (``"Kai'Sa"`` → also
+    names (``"Wukong"``) plus stripped variants (``"Kai'Sa"`` -> also
     ``"KaiSa"``). Mirror of ``core.defensive_picks._load_champ_info`` so
     callers passing a display name from coaching_data.json resolve cleanly.
     """
@@ -239,8 +239,8 @@ def default_for_champion(champion: str) -> tuple[str, str]:
 
     ``primary`` comes from ``tags[0]``; ``secondary`` from ``tags[1]``
     if present and distinct, else from the next-most-likely archetype
-    by simple heuristic (Fighter → Tank, Mage → Assassin, etc.).
-    Unknown champion → ``("carry", "bruiser")``.
+    by simple heuristic (Fighter -> Tank, Mage -> Assassin, etc.).
+    Unknown champion -> ``("carry", "bruiser")``.
     """
     if not champion:
         return ("carry", "bruiser")

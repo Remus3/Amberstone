@@ -6,7 +6,7 @@ Resolution order (highest precedence first):
      not this module).
   2. Persisted user calibration in `data/vision_regions.json` under
      `_minimap_<mode>` keys (4-int [l, t, r, b] arrays).
-  3. Hardcoded fallback (1920×1080 windowed-borderless defaults).
+  3. Hardcoded fallback (1920x1080 windowed-borderless defaults).
 
 The hardcoded fallback matches what shipped before this resolver existed -
 correct for the operator's primary setup but brittle to HUD-scale changes,
@@ -90,7 +90,7 @@ def parse_http_override(raw: str) -> tuple[int, int, int, int]:
 def resolve(mode: str) -> Optional[tuple[int, int, int, int]]:
     """Resolve a minimap bbox for the given mode.
 
-    Order: persisted → hardcoded fallback. Returns None when the mode is
+    Order: persisted -> hardcoded fallback. Returns None when the mode is
     unsupported (e.g. arena) - the caller should map that to HTTP 404.
 
     Caller-side `?bbox=` overrides are NOT consulted here; the HTTP route

@@ -12,7 +12,7 @@ No POST handlers at MVP - operator dismisses by draining via
 /process-bridge-tasks (which posts results, after which the watcher
 naturally won't re-escalate the same task_id).
 
-Per BRIDGE_WATCHER_PLAN.md §8.
+Per BRIDGE_WATCHER_PLAN.md S8.
 """
 from __future__ import annotations
 

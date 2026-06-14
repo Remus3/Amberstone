@@ -15,20 +15,20 @@ Design rules:
 - Lazy import of `cache_engine` so this module is cheap to import even
   in environments where the cache DB doesn't exist yet.
 
-Grade → multiplier table (chosen so a long S-streak quickly saturates
+Grade -> multiplier table (chosen so a long S-streak quickly saturates
 confidence at 1.0, while a B/C run is roughly stable):
 
-    S  → 1.5  (capped at 1.0)
-    A  → 1.2
-    B  → 1.0  (no-op - neutral grade keeps things steady)
-    C  → 0.95 (mild down-weight)
-    D  → 0.8
-    F  → flag_bad (existing path; halves confidence + records feedback row)
+    S  -> 1.5  (capped at 1.0)
+    A  -> 1.2
+    B  -> 1.0  (no-op - neutral grade keeps things steady)
+    C  -> 0.95 (mild down-weight)
+    D  -> 0.8
+    F  -> flag_bad (existing path; halves confidence + records feedback row)
 
 The multipliers are calibrated so:
-- 3 consecutive A grades take a fresh 1.0 entry → still 1.0 (capped)
-- 3 consecutive D grades take 1.0 → 0.512 (still cached, weighted down)
-- 1 F grade takes 1.0 → 0.5 (matches existing flag_bad behavior)
+- 3 consecutive A grades take a fresh 1.0 entry -> still 1.0 (capped)
+- 3 consecutive D grades take 1.0 -> 0.512 (still cached, weighted down)
+- 1 F grade takes 1.0 -> 0.5 (matches existing flag_bad behavior)
 - An S after a streak of D's recovers ~22% per win
 """
 from __future__ import annotations

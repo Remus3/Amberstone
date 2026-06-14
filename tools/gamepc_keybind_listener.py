@@ -14,9 +14,9 @@ buttons keep working without this. The point of the keybinds is to
 preserve game focus.
 
 Default keymap:
-    Left Alt + 1   → choice_index = 0  (decision.options[0])
-    Left Alt + 2   → choice_index = 1  (decision.options[1])
-    Left Alt + 3   → dismiss           ("skip")
+    Left Alt + 1   -> choice_index = 0  (decision.options[0])
+    Left Alt + 2   -> choice_index = 1  (decision.options[1])
+    Left Alt + 3   -> dismiss           ("skip")
 
 Override via env vars RC_KEY_A / RC_KEY_B / RC_KEY_DISMISS (use `keyboard`
 names - see https://github.com/boppreh/keyboard).

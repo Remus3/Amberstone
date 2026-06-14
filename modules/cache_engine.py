@@ -148,9 +148,9 @@ class CacheEngine:
         positive end of the feedback loop. Confidence is clamped to
         [0.0, 1.0]. Used by `coaches/feedback.py` after a graded match.
 
-        S → 1.5  (capped at 1.0)         A → 1.2
-        B → 1.0  (no-op)                  C → 0.95
-        D → 0.8                           F → use flag_bad() instead
+        S -> 1.5  (capped at 1.0)         A -> 1.2
+        B -> 1.0  (no-op)                  C -> 0.95
+        D -> 0.8                           F -> use flag_bad() instead
         """
         if multiplier <= 0 or multiplier == 1.0:
             return  # no-op

@@ -1,6 +1,6 @@
 """
 scripts/prune_synthetic_matches.py
-──────────────────────────────────
+----------------------------------
 One-shot cleanup for synthetic test rows in `data/match_history.db` and
 `data/ds_calibration.jsonl`. Run with --dry-run first to see what would
 be removed; rerun without the flag to commit. Both targets are backed

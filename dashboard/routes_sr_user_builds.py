@@ -1,13 +1,13 @@
 """SR user-curated builds CRUD routes (Phase 8 step 3).
 
   GET    /api/sr-draft/user-builds?champion=Tristana
-       → 200 {"champion": "...", "builds": [...]}
+       -> 200 {"champion": "...", "builds": [...]}
 
   POST   /api/sr-draft/user-builds
        body: {"champion": "Tristana", "build": {label, items, runes, ...}}
-       → 200 {"ok": true, "id": "<8hex>"}
-       → 400 if champion or build.label missing
-       → 422 if engine rejects shape
+       -> 200 {"ok": true, "id": "<8hex>"}
+       -> 400 if champion or build.label missing
+       -> 422 if engine rejects shape
 
   DELETE /api/sr-draft/user-builds?champion=Tristana&id=abc123ef
        (sent as POST with cmd:"delete" since the dashboard handler

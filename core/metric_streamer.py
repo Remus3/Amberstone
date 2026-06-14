@@ -16,14 +16,14 @@ Design:
     the coach's job
 
 Cadence rules:
-  - `0:00 game_start`             → one-shot snapshot on first tick
-  - every 60s of in-game time      → snapshot with milestone_tag=None
+  - `0:00 game_start`             -> one-shot snapshot on first tick
+  - every 60s of in-game time      -> snapshot with milestone_tag=None
                                      (time-series base)
-  - each of 10/15/20/25/30 min_mark → snapshot with the mark tag
-  - l6_spike / l11_spike / l16_spike → snapshot on level transitions
+  - each of 10/15/20/25/30 min_mark -> snapshot with the mark tag
+  - l6_spike / l11_spike / l16_spike -> snapshot on level transitions
   - event-driven (first_blood, first_tower, drake_take, baron_take,
-    death, kill) → snapshot with tag
-  - `game_end` → final snapshot then close()
+    death, kill) -> snapshot with tag
+  - `game_end` -> final snapshot then close()
 
 WIRE-IN (coach side):
 

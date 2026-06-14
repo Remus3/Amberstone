@@ -1,6 +1,6 @@
 """File proposals from the full-RC audit for frozen files.
 
-Frozen per CLAUDE.md §Hard rules:
+Frozen per CLAUDE.md SHard rules:
   main.py, core/log_setup.py, core/moon_proxy.py, lcu/lcu_client.py,
   core/game_snapshot.py, core/rc_dev_runtime.py (actually at ops/rc_dev_runtime.py),
   ops/rc_supervisor.py, app/__init__.py, app/_health_monitor.py,

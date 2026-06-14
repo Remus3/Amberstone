@@ -1,12 +1,12 @@
 """
 scripts/rewind_scraper.py
-─────────────────────────
+-------------------------
 Scrapes match history from rewind.lol for SamplePlayer#Trist (NA).
 
 Data sources (no auth required):
-  History list:  GET /get_data/NA/{username}/history  → 15MB JSON, 2846 matches
-  Match stats:   GET /getmatch/NA/{match_id}/stats    → 145 fields/player
-  Timeline:      GET /getmatch/NA/{match_id}/timeline → frame-by-frame events
+  History list:  GET /get_data/NA/{username}/history  -> 15MB JSON, 2846 matches
+  Match stats:   GET /getmatch/NA/{match_id}/stats    -> 145 fields/player
+  Timeline:      GET /getmatch/NA/{match_id}/timeline -> frame-by-frame events
 
 Output: C:\\Riot Commander\\data\\rewind_history.db  (SEPARATE from postgame_stats.db)
 

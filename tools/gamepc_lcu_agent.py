@@ -1795,7 +1795,7 @@ def _picks_signature(cs: dict) -> tuple:
 
 
 def _build_team_context_body(cs: dict) -> dict:
-    """Translate champ_select snapshot → /api/team-context/refresh body.
+    """Translate champ_select snapshot -> /api/team-context/refresh body.
     Stamps team_id (100=ally side via myTeam, 200=enemy via theirTeam)
     and resolves locked-champion display name via _CHAMP_NAME_CACHE."""
     roster = []

@@ -202,7 +202,7 @@ class Handler(BaseHTTPRequestHandler):
         Rule: if Origin or Referer is present, its hostname must match
         the request's Host header - OR the origin must itself be a local
         loopback address (127.0.0.1 / localhost) coming from a script on
-        the same machine. Absent both headers → allow (script caller).
+        the same machine. Absent both headers -> allow (script caller).
         """
         try:
             origin  = self.headers.get("Origin", "") or ""

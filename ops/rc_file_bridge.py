@@ -49,7 +49,7 @@ def atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
 
 
 def _get_clipboard_native() -> Optional[str]:
-    """Read clipboard via win32clipboard → tkinter → None."""
+    """Read clipboard via win32clipboard -> tkinter -> None."""
     try:
         import win32clipboard  # type: ignore
         win32clipboard.OpenClipboard()
@@ -71,7 +71,7 @@ def _get_clipboard_native() -> Optional[str]:
 
 
 def _set_clipboard_native(text: str) -> bool:
-    """Write clipboard via win32clipboard → tkinter → False."""
+    """Write clipboard via win32clipboard -> tkinter -> False."""
     try:
         import win32clipboard  # type: ignore
         win32clipboard.OpenClipboard()
@@ -250,7 +250,7 @@ class FileBridge:
             time.sleep(self.poll_s)
 
     def _safe_handle(self, path: Path) -> None:
-        """Handle one request file.  Malformed JSON → error result, continue."""
+        """Handle one request file.  Malformed JSON -> error result, continue."""
         req_id = path.stem
         kind   = "unknown"
 

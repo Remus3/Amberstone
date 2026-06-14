@@ -8,7 +8,7 @@ State files (C:\\RC-Agent\\):
     bridge_daemon_health.json  - last poll status, invocation count
     bridge_daemon.lock         - held while claude --print is running
 
-Scheduled task: RC-BridgeDaemon  (at logon, restart-on-failure 3×/1min)
+Scheduled task: RC-BridgeDaemon  (at logon, restart-on-failure 3x/1min)
 """
 from __future__ import annotations
 
