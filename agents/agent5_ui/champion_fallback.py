@@ -92,7 +92,7 @@ def _try_lcu_champ_select() -> str | None:
         if team.get("cellId") == local_cell:
             cid = team.get("championId") or team.get("championPickIntent")
             if cid:
-                # Need id → name. Quick probe: LCU champion summary cache.
+                # Need id -> name. Quick probe: LCU champion summary cache.
                 try:
                     summ = c._request(
                         "GET",

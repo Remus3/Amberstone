@@ -10,7 +10,7 @@ import pytest
 from agents.agent1_lead import Scheduler
 
 
-# ── Scheduler.recent_events ─────────────────────────────────────────
+# -- Scheduler.recent_events -----------------------------------------
 
 def test_recent_events_empty_when_log_missing(tmp_path: Path) -> None:
     s = Scheduler(queue_log=tmp_path / "never-exists.jsonl")
@@ -69,7 +69,7 @@ def test_recent_events_trimmed_fields(tmp_path: Path) -> None:
     )
 
 
-# ── Post-game summary filing ────────────────────────────────────────
+# -- Post-game summary filing ----------------------------------------
 
 def test_post_game_summary_files_task(tmp_path: Path, monkeypatch) -> None:
     """Supervisor._file_post_game_summary reads the newest coaching JSON
@@ -111,7 +111,7 @@ def test_post_game_summary_files_task(tmp_path: Path, monkeypatch) -> None:
     matches = [t for t in ready_and_done if t.op == "game-summary"]
     assert len(matches) == 1
     t = matches[0]
-    # Round 20: owner 4→2 so supervisor runs the deterministic consumer
+    # Round 20: owner 4->2 so supervisor runs the deterministic consumer
     # instead of spawning an LLM.
     assert t.owner_agent == "2"
     assert t.user_override is True

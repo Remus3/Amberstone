@@ -53,7 +53,7 @@ class FakeScheduler:
         return t
 
 
-# ── threshold filtering ─────────────────────────────────────────────
+# -- threshold filtering ---------------------------------------------
 
 def test_fires_on_significant_cold_streak(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.cold_streak_detector import detect_and_file
@@ -99,7 +99,7 @@ def test_ignores_hot_streaks(tmp_path: Path, monkeypatch) -> None:
     assert summary["filed"] == []
 
 
-# ── cooldown ────────────────────────────────────────────────────────
+# -- cooldown --------------------------------------------------------
 
 def test_cooldown_prevents_duplicate_file(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.cold_streak_detector import detect_and_file
@@ -157,7 +157,7 @@ def test_cooldown_survives_corrupt_file(tmp_path: Path, monkeypatch) -> None:
     assert len(summary["filed"]) == 1
 
 
-# ── persistence ─────────────────────────────────────────────────────
+# -- persistence -----------------------------------------------------
 
 def test_cooldown_file_written_atomically(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.cold_streak_detector import detect_and_file
@@ -199,7 +199,7 @@ def test_scheduler_failure_doesnt_crash(tmp_path: Path, monkeypatch) -> None:
     assert len(sched.filed) == 1
 
 
-# ── payload shape ───────────────────────────────────────────────────
+# -- payload shape ---------------------------------------------------
 
 def test_payload_carries_context(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.cold_streak_detector import detect_and_file

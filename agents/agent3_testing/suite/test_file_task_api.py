@@ -21,7 +21,7 @@ def _port_open(host: str, port: int, timeout: float = 0.5) -> bool:
         return False
 
 
-# ── /api/file-task (via spawned supervisor) ─────────────────────────
+# -- /api/file-task (via spawned supervisor) -------------------------
 
 @pytest.fixture(scope="module")
 def live_supervisor():
@@ -93,7 +93,7 @@ def test_file_task_endpoint_frozen_file_gates(live_supervisor) -> None:
     assert "main.py" in (data.get("frozen_file_hits") or [])
 
 
-# ── ops/_scheduler_client.py fallback path ─────────────────────────
+# -- ops/_scheduler_client.py fallback path -------------------------
 
 def test_client_fallback_when_supervisor_unreachable(tmp_path: Path, monkeypatch) -> None:
     """Point the client at a dead port so HTTP fails, confirm it falls
@@ -126,7 +126,7 @@ def test_client_fallback_when_supervisor_unreachable(tmp_path: Path, monkeypatch
     assert "fallback-test-op" in text
 
 
-# ── /api/task/<id> detail endpoint ─────────────────────────────────
+# -- /api/task/<id> detail endpoint ---------------------------------
 
 @pytest.mark.timeout(10)
 def test_task_detail_endpoint(live_supervisor) -> None:

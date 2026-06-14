@@ -22,7 +22,7 @@ BASE_PAYLOAD = {
 }
 
 
-# ── _infer_win direct unit ──────────────────────────────────────────
+# -- _infer_win direct unit ------------------------------------------
 
 def test_infer_win_explicit_passthrough() -> None:
     from agents.agent2_backend.game_ingest import _infer_win
@@ -56,7 +56,7 @@ def test_infer_win_from_nested_stats() -> None:
     assert _infer_win({"stats": {"win": True}}) == 1
     assert _infer_win({"stats": {"win": False}}) == 0
     assert _infer_win({"stats": {"win": 1}}) == 1
-    assert _infer_win({"stats": {"win": 42}}) is None  # non-boolean int → ignored
+    assert _infer_win({"stats": {"win": 42}}) is None  # non-boolean int -> ignored
 
 
 def test_infer_win_empty_returns_none() -> None:
@@ -66,7 +66,7 @@ def test_infer_win_empty_returns_none() -> None:
     assert _infer_win({"action": "Unknown"}) is None
 
 
-# ── end-to-end ingest behaviour ─────────────────────────────────────
+# -- end-to-end ingest behaviour -------------------------------------
 
 def test_ingest_stores_win_from_action(tmp_path: Path, monkeypatch) -> None:
     from agents.agent2_backend.game_ingest import ingest_game_summary

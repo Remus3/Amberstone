@@ -71,13 +71,13 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 STATE_DIR = _PROJECT_ROOT / "agents" / "state"
 QUEUE_LOG = STATE_DIR / "task_queue.jsonl"
 
-# §7 hard gates: categories 1 (destructive file ops), 7 (git-adjacent),
+# S7 hard gates: categories 1 (destructive file ops), 7 (git-adjacent),
 # 8 (large file ops). Declared by the task author; we enforce here.
 HARD_GATES = {1, 7, 8}
 SOFT_AGENT0 = {5}  # cross-machine
 
 # Files that must not be modified without explicit user approval. Synced
-# with CLAUDE.md §Hard rules. If a task payload references any of these
+# with CLAUDE.md SHard rules. If a task payload references any of these
 # paths, the scheduler auto-adds category 1 (hard gate) unless the task
 # carries user_override=True. Makes the "charter rule" runtime-enforced
 # rather than just prose.
@@ -423,7 +423,7 @@ class Scheduler:
                     logger.warning(
                         "file_task %s: unknown blocked_by id %r - dropping", op, bid,
                     )
-            # Frozen-file guardrail - scan payload for CLAUDE.md §Hard
+            # Frozen-file guardrail - scan payload for CLAUDE.md SHard
             # rules files. Without user_override, auto-add category 1 so
             # the task lands in NEEDS_APPROVAL rather than READY.
             final_categories = list(categories or [])

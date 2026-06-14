@@ -33,7 +33,7 @@ def seeded_db(tmp_path: Path, monkeypatch) -> Path:
 
         now = datetime.now(timezone.utc).isoformat()
         # Ahri: 6 games, 4 wins (67% wr).
-        # 5 of those games have "Darius" in the enemy comp → activates matchup.
+        # 5 of those games have "Darius" in the enemy comp -> activates matchup.
         for i, win in enumerate([1, 1, 1, 1, 0, 0]):
             enemies = ["Darius", "Jinx", "Garen", "Rakan", "Lux"] if i < 5 else \
                       ["Jinx", "Garen", "Rakan", "Lux", "Fizz"]
@@ -109,7 +109,7 @@ def test_matchup_activates_at_threshold(seeded_db: Path) -> None:
 
     by_opp = {r["opponent_signature"]: dict(r) for r in rows}
 
-    # Ahri vs Darius - 5 samples → activated.
+    # Ahri vs Darius - 5 samples -> activated.
     ahri_darius = by_opp["Darius"]
     assert ahri_darius["sample_count"] == 5
     assert ahri_darius["activated"] == 1
@@ -120,7 +120,7 @@ def test_matchup_activates_at_threshold(seeded_db: Path) -> None:
     assert mj["sample"] == 5
     assert mj["delta"] > 0
 
-    # Ahri vs Fizz - only 1 sample → not activated.
+    # Ahri vs Fizz - only 1 sample -> not activated.
     ahri_fizz = by_opp["Fizz"]
     assert ahri_fizz["sample_count"] == 1
     assert ahri_fizz["activated"] == 0

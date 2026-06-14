@@ -47,7 +47,7 @@ _failures: list[str] = []
 _passes:   list[str] = []
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 def _ok(label: str, detail: str = "") -> None:
     suffix = f"  -- {detail}" if detail else ""
@@ -95,7 +95,7 @@ def _build_archive() -> Path | None:
     return _find_archive()
 
 
-# ── Check suites ──────────────────────────────────────────────────────────────
+# -- Check suites --------------------------------------------------------------
 
 def check_archive_structure(root: Path, entries: set[str]) -> None:
     """A) Archive structure checks."""
@@ -383,7 +383,7 @@ def check_operator_docs(root: Path, tl: str) -> None:
         _info("tools/LAUNCH_STRATEGY.md not in artifact (optional for operator)")
 
 
-# ── Main runner ───────────────────────────────────────────────────────────────
+# -- Main runner ---------------------------------------------------------------
 
 def run(archive_path: Path, keep_temp: bool = False) -> int:
     print("=" * 64)
