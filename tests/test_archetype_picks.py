@@ -1,6 +1,6 @@
 """Phase 3 (s176, 2026-05-12) - core/archetype_picks tests.
 
-Tag → archetype resolver, persistence round-trip, default fallbacks,
+Tag -> archetype resolver, persistence round-trip, default fallbacks,
 validation. Uses tempdir to avoid clobbering the real
 ``data/cs_archetype_picks.json`` during test runs.
 """
@@ -40,8 +40,8 @@ class DefaultForChampionTests(unittest.TestCase):
     a patch retags champions, which is the right signal."""
 
     def test_aatrox_is_bruiser_with_tank_secondary(self):
-        # Aatrox has only ["Fighter"] in 16.9.1 → primary=bruiser,
-        # secondary falls back via _fallback_secondary("bruiser") → tank.
+        # Aatrox has only ["Fighter"] in 16.9.1 -> primary=bruiser,
+        # secondary falls back via _fallback_secondary("bruiser") -> tank.
         primary, secondary = archetype_picks.default_for_champion("Aatrox")
         self.assertEqual(primary, "bruiser")
         self.assertEqual(secondary, "tank")
@@ -63,7 +63,7 @@ class DefaultForChampionTests(unittest.TestCase):
         self.assertEqual(secondary, "mage")
 
     def test_caitlyn_carry_with_bruiser_fallback(self):
-        # Caitlyn tags = ["Marksman"] only → primary=carry,
+        # Caitlyn tags = ["Marksman"] only -> primary=carry,
         # _fallback_secondary("carry") = bruiser.
         primary, secondary = archetype_picks.default_for_champion("Caitlyn")
         self.assertEqual(primary, "carry")
@@ -71,7 +71,7 @@ class DefaultForChampionTests(unittest.TestCase):
 
     def test_monkeyking_ddragon_id_works(self):
         # Server-side champion resolution uses DDragon IDs. MonkeyKing
-        # tags = ["Fighter", "Tank"] → bruiser/tank.
+        # tags = ["Fighter", "Tank"] -> bruiser/tank.
         primary, secondary = archetype_picks.default_for_champion("MonkeyKing")
         self.assertEqual(primary, "bruiser")
         self.assertEqual(secondary, "tank")
@@ -152,20 +152,20 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(loaded["source"], "user_cs")
 
     def test_get_without_pick_returns_default_with_source_default(self):
-        # No pick saved → DDragon default; source=default
+        # No pick saved -> DDragon default; source=default
         entry = archetype_picks.get_archetype_for("Aatrox")
         self.assertEqual(entry["primary"], "bruiser")
         self.assertEqual(entry["source"], "default")
         self.assertNotIn("set_at", entry)
 
     def test_save_resolves_default_secondary(self):
-        # Caller omits secondary → defaults to DDragon-derived value
+        # Caller omits secondary -> defaults to DDragon-derived value
         # (but != primary; otherwise _fallback_secondary).
         entry = archetype_picks.save_archetype_pick(
             "Aatrox", primary="tank",  # explicit, but secondary auto-resolves
         )
         # Aatrox's tags = ["Fighter"], default = bruiser/tank.
-        # save with primary=tank → secondary should be the OTHER default option.
+        # save with primary=tank -> secondary should be the OTHER default option.
         self.assertNotEqual(entry["primary"], entry["secondary"])
 
     def test_save_with_explicit_secondary(self):
@@ -245,7 +245,7 @@ class ConstantsTests(unittest.TestCase):
             archetype_picks.IMPLEMENTED_SCORERS.issubset(set(archetype_picks.ARCHETYPES))
         )
         # s209: all 6 scorers shipped (s174 tank, s175 bruiser, s176 base,
-        # s179 mage→ability, s180 assassin→burst, s181 enchanter→hps).
+        # s179 mage->ability, s180 assassin->burst, s181 enchanter->hps).
         # Dispatcher routes each archetype to its dedicated scorer with no
         # ds.dps fallbacks remaining.
         self.assertEqual(

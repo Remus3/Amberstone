@@ -49,7 +49,7 @@ def _set_token(monkeypatch):
     monkeypatch.setenv("RC_VISION_TOKEN", "p2w1-app-a-test-token")
 
 
-# ── 1. NaN / Infinity coercion at the Live Client boundary ──────────────────
+# -- 1. NaN / Infinity coercion at the Live Client boundary ------------------
 
 
 def _build_reader(monkeypatch):
@@ -130,7 +130,7 @@ def test_process_game_survives_inf_stats(monkeypatch):
     assert math.isfinite(out["game_seconds"])
 
 
-# ── 2. OCR subprocess timeout hardening ─────────────────────────────────────
+# -- 2. OCR subprocess timeout hardening -------------------------------------
 
 
 def test_handle_ocr_every_call_passes_timeout():
@@ -201,7 +201,7 @@ def test_handle_ocr_runtime_passes_timeout_value(monkeypatch):
     assert calls[0]["timeout"] > 0
 
 
-# ── 3. CWD-relative log path anchored ───────────────────────────────────────
+# -- 3. CWD-relative log path anchored ---------------------------------------
 
 
 def test_config_log_path_anchored_not_cwd_relative():
@@ -221,7 +221,7 @@ def test_config_log_path_is_absolute(monkeypatch):
     assert cfg._LOG_PATH.parent == _REPO_ROOT
 
 
-# ── 4. KIWI (ARAM Mayhem) mode-string guard ─────────────────────────────────
+# -- 4. KIWI (ARAM Mayhem) mode-string guard ---------------------------------
 
 
 def test_mode_router_kiwi_maps_to_aram(monkeypatch):

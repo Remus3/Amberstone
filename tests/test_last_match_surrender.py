@@ -6,7 +6,7 @@ The LCU /lol-match-history/v1/games/{gameId} payload already carries
 participant's stats block (same value game-wide). Surfacing-only - no
 new fetch - so the Post Game Review hero can distinguish an FF'd loss
 from a played-out one and badge a remake. Backward-compat: pre-existing
-ingested matches lack the keys → both flags must default False (never
+ingested matches lack the keys -> both flags must default False (never
 KeyError, never None).
 
 Synthetic-only - no DB, no live LCU.

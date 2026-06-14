@@ -27,7 +27,7 @@ from core.decision_detector import (
 )
 
 
-# ── Fixtures ─────────────────────────────────────────────────────────────────
+# -- Fixtures -----------------------------------------------------------------
 
 
 def _smite_spells() -> dict:
@@ -115,11 +115,11 @@ def _vision_state_with_missing_jg(*, missing_for_s: float,
     }
 
 
-# ── detect_low_hp_backable ────────────────────────────────────────────────────
+# -- detect_low_hp_backable ----------------------------------------------------
 
 
 class TestLowHpBackable:
-    """ADR-007 tightening: HP threshold 40%→25%, alive 45s→90s."""
+    """ADR-007 tightening: HP threshold 40%->25%, alive 45s->90s."""
 
     def test_fires_at_20pct_hp_with_120s_alive(self):
         snap = _base_snapshot(
@@ -144,7 +144,7 @@ class TestLowHpBackable:
         assert detect_low_hp_backable(snap, {}) is None
 
     def test_does_not_fire_when_alive_lt_90s(self):
-        """Alive 60s used to be enough (45s threshold); now needs ≥90s."""
+        """Alive 60s used to be enough (45s threshold); now needs >=90s."""
         snap = _base_snapshot(
             game_time=600.0,
             self_hp_pct=0.20,
@@ -163,7 +163,7 @@ class TestLowHpBackable:
         assert detect_low_hp_backable(snap, {}) is None
 
 
-# ── detect_jungler_gank_likely ────────────────────────────────────────────────
+# -- detect_jungler_gank_likely ------------------------------------------------
 
 
 class TestJunglerGankLikely:
@@ -224,8 +224,8 @@ class TestJunglerGankLikely:
         assert detect_jungler_gank_likely(snap, vs) is None
 
     def test_id_bucketed_to_90s_windows(self):
-        # game_time // 90 - 400→4, 440→4, 460→5. Pick 400 + 440 for the
-        # same-bucket assertion, 550 (→6) for new-bucket.
+        # game_time // 90 - 400->4, 440->4, 460->5. Pick 400 + 440 for the
+        # same-bucket assertion, 550 (->6) for new-bucket.
         snap = _base_snapshot(game_time=400.0)
         vs = _vision_state_with_missing_jg(
             missing_for_s=25.0, last_seen_zone="top_river",
@@ -234,14 +234,14 @@ class TestJunglerGankLikely:
         snap["gameData"]["gameTime"] = 440.0    # +40s, same bucket
         d2 = detect_jungler_gank_likely(snap, vs)
         assert d1 is not None and d2 is not None
-        assert d1.id == d2.id   # same bucket → same id (no re-fire)
+        assert d1.id == d2.id   # same bucket -> same id (no re-fire)
 
         snap["gameData"]["gameTime"] = 550.0    # bucket 6, new bucket
         d3 = detect_jungler_gank_likely(snap, vs)
         assert d3 is not None and d3.id != d1.id
 
 
-# ── detect_throwing_lead ──────────────────────────────────────────────────────
+# -- detect_throwing_lead ------------------------------------------------------
 
 
 class TestThrowingLead:
@@ -278,14 +278,14 @@ class TestThrowingLead:
         assert detect_throwing_lead(snap, {}) is None
 
     def test_skips_when_deaths_too_spread(self):
-        # Two deaths but >45s apart → not a cluster.
+        # Two deaths but >45s apart -> not a cluster.
         snap = self._snap_with_my_deaths(
             game_time=600.0, death_times=[510.0, 580.0],
         )
         assert detect_throwing_lead(snap, {}) is None
 
     def test_ignores_old_deaths_outside_90s_window(self):
-        # First death at 480, second at 580 → first is outside the 90s
+        # First death at 480, second at 580 -> first is outside the 90s
         # window from game_time=600 (window_start=510). Should treat as
         # only 1 death in window.
         snap = self._snap_with_my_deaths(
@@ -306,7 +306,7 @@ class TestThrowingLead:
         assert detect_throwing_lead(snap, {}) is None
 
 
-# ── DecisionLoop heartbeat ────────────────────────────────────────────────────
+# -- DecisionLoop heartbeat ----------------------------------------------------
 
 
 class TestHeartbeat:

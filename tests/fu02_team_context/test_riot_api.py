@@ -9,16 +9,16 @@ Covers (from RC_TICKET_FU02 acceptance #2 + #4 + #10):
     - snapshot() returns the currently-tracked counts.
 
   Endpoint wrappers - all six, with mocked _http_get:
-    - get_account_by_riot_id: 200 → returns parsed dict + caches immutable.
+    - get_account_by_riot_id: 200 -> returns parsed dict + caches immutable.
     - get_account_by_riot_id: cache hit short-circuits HTTP.
     - get_recent_matches: 200 list response.
-    - get_recent_matches: empty puuid → None without firing.
+    - get_recent_matches: empty puuid -> None without firing.
     - get_match: immutable cache.
     - get_match_timeline: separate cache key from get_match.
     - get_summoner_rank: 200 list, TTL-cached.
     - get_summoner_rank: empty list (unranked) round-trips via cache.
     - get_champion_mastery: 200 dict, TTL-cached.
-    - get_champion_mastery: missing puuid OR champion_id → None.
+    - get_champion_mastery: missing puuid OR champion_id -> None.
 
   Failure modes:
     - 401 / 403 logs WARNING, returns None.
@@ -182,7 +182,7 @@ class TestEndpointsHappyPath(_ApiKeyTestCase):
                                return_value=_resp(200, fake)) as m:
             out = RA.get_account_by_riot_id("Test", "NA1")
             self.assertEqual(out, fake)
-            # Second call → cache hit, no HTTP.
+            # Second call -> cache hit, no HTTP.
             out2 = RA.get_account_by_riot_id("Test", "NA1")
         self.assertEqual(out2, fake)
         self.assertEqual(m.call_count, 1)
@@ -330,7 +330,7 @@ class TestRenderHelpers(unittest.TestCase):
         self.assertEqual(out, "PLATINUM IV 47 LP")
 
     def test_format_rank_entry_partial(self):
-        # Missing LP → omit; missing division → omit.
+        # Missing LP -> omit; missing division -> omit.
         self.assertEqual(
             RA.format_rank_entry({"tier": "DIAMOND"}),
             "DIAMOND",
@@ -392,9 +392,9 @@ class TestSummarizeRecent(_ApiKeyTestCase):
         self.assertIn("Jax", out["mains"])
         # Top-3 cap.
         self.assertLessEqual(len(out["mains"]), 3)
-        # Wins=indices {0,2,4,6,8,10}=6; losses=6 → wr 0.5
+        # Wins=indices {0,2,4,6,8,10}=6; losses=6 -> wr 0.5
         self.assertAlmostEqual(out["win_rate_recent"], 0.5, places=2)
-        # First 7 matches: win at 0,2,4,6 → 4W, loss at 1,3,5 → 3L
+        # First 7 matches: win at 0,2,4,6 -> 4W, loss at 1,3,5 -> 3L
         self.assertEqual(out["w_l_streak_7"], [4, 3])
 
     def test_empty_inputs_return_skeleton(self):

@@ -9,9 +9,9 @@ Arena alias IDs that the legacy ``items_index.json`` byName surfaces
 mode-keyed lookups against the patch-current snapshot.
 
 HP values flow through correctly when callers pass the right mode:
-- mode='aram'/'sr'/'brawl' → 3084 (Heartsteel SR base, 900 HP)
-- mode='arena'             → 223084 (Heartsteel Arena alias, 700 HP)
-- mode=None                → legacy quirk (whatever items_index byName picks)
+- mode='aram'/'sr'/'brawl' -> 3084 (Heartsteel SR base, 900 HP)
+- mode='arena'             -> 223084 (Heartsteel Arena alias, 700 HP)
+- mode=None                -> legacy quirk (whatever items_index byName picks)
 """
 import sys
 import unittest
@@ -100,7 +100,7 @@ class ResolveManyModeAwareTests(unittest.TestCase):
 
 
 class HpFlowThroughModeAwarePathTests(unittest.TestCase):
-    """End-to-end: resolve in mode → look up HP. Validates the wire-in
+    """End-to-end: resolve in mode -> look up HP. Validates the wire-in
     ARAM coach uses (which is the whole point of s74 - non-Arena modes
     must get base-ID HP values, not alias HP)."""
 
@@ -148,7 +148,7 @@ class ResolveInventoryFiltersTrinketsAndConsumablesTests(unittest.TestCase):
         items = ["Doran's Bow", "Infinity Edge", "Amplifying Tome",
                  "Kraken Slayer", "Recurve Bow", "Farsight Alteration"]
         ids = ds_res.resolve_inventory(items, mode="sr")
-        # Farsight (3363) dropped → 5 inventory items remain.
+        # Farsight (3363) dropped -> 5 inventory items remain.
         self.assertNotIn("3363", ids)
         self.assertEqual(len(ids), 5)
 

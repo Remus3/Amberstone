@@ -37,7 +37,7 @@ class TestDisabledPlaceholders(unittest.TestCase):
     def _read(self, path):
         return json.loads(path.read_text(encoding="utf-8"))
 
-    # ── SR ─────────────────────────────────────────────────────────────────
+    # -- SR -----------------------------------------------------------------
 
     def test_sr_placeholder_production_path_contract(self):
         """SR production artifact path must equal project_root/coaching_data.json."""
@@ -51,7 +51,7 @@ class TestDisabledPlaceholders(unittest.TestCase):
         content = self._read(self._td / "coaching_data.json")
         self.assertEqual(content.get("action"), "COACHING DISABLED")
 
-    # ── ARAM ───────────────────────────────────────────────────────────────
+    # -- ARAM ---------------------------------------------------------------
 
     def test_aram_placeholder_action_field(self):
         write_disabled_placeholder("aram", artifact_root=self._td)
@@ -59,7 +59,7 @@ class TestDisabledPlaceholders(unittest.TestCase):
         self.assertTrue(p.exists())
         self.assertEqual(self._read(p).get("action"), "COACHING DISABLED")
 
-    # ── Arena / Brawl ──────────────────────────────────────────────────────
+    # -- Arena / Brawl ------------------------------------------------------
 
     def test_arena_placeholder_without_client(self):
         """Placeholder written into temp root regardless of _client state."""
@@ -74,7 +74,7 @@ class TestDisabledPlaceholders(unittest.TestCase):
         self.assertTrue(p.exists())
         self.assertEqual(self._read(p).get("action"), "COACHING DISABLED")
 
-    # ── TFT independence ───────────────────────────────────────────────────
+    # -- TFT independence ---------------------------------------------------
 
     def test_tft_live_coaching_writes_only_coaching_artifact(self):
         write_disabled_placeholder("tft", "live_coaching",
@@ -113,7 +113,7 @@ class TestDisabledPlaceholders(unittest.TestCase):
         coaching_path = self._td / "data" / "tft_coaching_data.json"
         self.assertFalse(coaching_path.exists())
 
-    # ── Live artifacts NOT mutated ─────────────────────────────────────────
+    # -- Live artifacts NOT mutated -----------------------------------------
 
     def test_live_sr_artifact_not_mutated(self):
         """write_disabled_placeholder with artifact_root must not touch live paths."""
@@ -134,7 +134,7 @@ class TestDisabledPlaceholders(unittest.TestCase):
         self.assertEqual(pre_mtime, post_mtime,
                          "Live arena_coaching_data.json must not be modified by test")
 
-    # ── Arena/Brawl coach gate ordering (structural) ────────────────────────
+    # -- Arena/Brawl coach gate ordering (structural) ------------------------
 
     def test_arena_gate_before_client_check(self):
         """Policy gate in arena_coach._run_coach() precedes _client check."""

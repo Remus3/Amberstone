@@ -146,7 +146,7 @@ class EveryEngineFamilyCoveredTests(unittest.TestCase):
         for fam in _engine_families():
             self.assertLessEqual(
                 fams.count(fam), 1,
-                f"family {fam!r} appears >1× in the planned order - "
+                f"family {fam!r} appears >1x in the planned order - "
                 f"HARD RULE violated",
             )
         self.assertTrue(res.unique_passive_safe)

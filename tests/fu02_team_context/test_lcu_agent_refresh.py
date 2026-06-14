@@ -1,7 +1,7 @@
-"""FU02 last-mile - Game-PC LCU agent → /api/team-context/refresh wiring.
+"""FU02 last-mile - Game-PC LCU agent -> /api/team-context/refresh wiring.
 
 Pins the contract for the new helpers added to `tools/gamepc_lcu_agent.py`:
-  - bridge-secret resolver (env → bridge_secret.txt → local_paths.json → "")
+  - bridge-secret resolver (env -> bridge_secret.txt -> local_paths.json -> "")
   - _picks_signature edge-detection
   - _build_team_context_body wire-shape translation
   - _champion_name_for fallback behavior
@@ -61,7 +61,7 @@ class TestResolveBridgeSecret(unittest.TestCase):
             with mock.patch.dict(agent._os_tok.environ,
                                  {}, clear=True), \
                  mock.patch.object(agent, "_Path_tok") as fakepath:
-                # _Path_tok(__file__).resolve().parent → our tdp
+                # _Path_tok(__file__).resolve().parent -> our tdp
                 fakepath.return_value.resolve.return_value.parent = tdp
                 # ".../bridge_secret.txt" composes via /; rebuild it from
                 # our real Path so .exists() / .read_text() work.
@@ -365,9 +365,9 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
              mock.patch.object(agent, "_maybe_load_champion_names"), \
              mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(True, "ok")) as m:
-            agent._maybe_refresh_team_context(cs)   # entry → POST
-            agent._maybe_refresh_team_context(cs)   # same cycle → no POST
-            agent._maybe_refresh_team_context(cs)   # again → no POST
+            agent._maybe_refresh_team_context(cs)   # entry -> POST
+            agent._maybe_refresh_team_context(cs)   # same cycle -> no POST
+            agent._maybe_refresh_team_context(cs)   # again -> no POST
         self.assertEqual(m.call_count, 1)
 
     def test_reposts_when_pick_set_changes(self):
@@ -404,7 +404,7 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
              mock.patch.object(agent, "TEAM_CONTEXT_REPOST_S", 999.0):
             agent._maybe_refresh_team_context(cs1)   # entry - POST
             agent._maybe_refresh_team_context(cs2)   # picks changed but
-                                                      # rate-limited → no POST
+                                                      # rate-limited -> no POST
         self.assertEqual(m.call_count, 1)
 
     def test_leave_champselect_resets_state(self):

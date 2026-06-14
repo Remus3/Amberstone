@@ -102,7 +102,7 @@ class EstimateTargetBonusHpTests(unittest.TestCase):
         self.assertEqual(c._estimate_target_bonus_hp(state), 0.0)
 
     def test_brawl_uses_brawl_resolver_mode(self) -> None:
-        # BRAWL game_mode → resolver mode='brawl' → Heartsteel→3084 (900 HP).
+        # BRAWL game_mode -> resolver mode='brawl' -> Heartsteel->3084 (900 HP).
         # Regression pin: if this returns 700, the Arena alias path leaked.
         c = _StubCoach()
         state = {"game_mode": "BRAWL", "enemies": [
@@ -111,7 +111,7 @@ class EstimateTargetBonusHpTests(unittest.TestCase):
         self.assertAlmostEqual(c._estimate_target_bonus_hp(state), 900.0, places=1)
 
     def test_urf_uses_sr_resolver_mode(self) -> None:
-        # URF rides on SR (map 11) → resolver mode='sr' → Heartsteel→3084.
+        # URF rides on SR (map 11) -> resolver mode='sr' -> Heartsteel->3084.
         c = _StubCoach()
         state = {"game_mode": "URF", "enemies": [
             {"name": "Sett", "is_dead": False, "items": ["Heartsteel"]},

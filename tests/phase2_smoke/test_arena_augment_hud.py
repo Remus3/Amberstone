@@ -74,7 +74,7 @@ class ArenaAugmentHudReconcileTests(unittest.TestCase):
     def _read_artifact(self) -> dict:
         return json.loads(self._out.read_text(encoding="utf-8"))
 
-    # ── Happy path: all slots resolve, picks differ from Haiku ────────────
+    # -- Happy path: all slots resolve, picks differ from Haiku --
     def test_override_when_all_resolve_and_differs(self) -> None:
         coach = _StubCoach(self._out, picked=["TheBrutalizer"])
         coach._reconcile_augment_hud({"augment_hud_slots": ["The Brutalizer", "Apex Inventor"]})
@@ -83,7 +83,7 @@ class ArenaAugmentHudReconcileTests(unittest.TestCase):
         self.assertEqual(art["augments_picked"], ["TheBrutalizer", "ApexInventor"])
         self.assertEqual(art["augments_source"], "vision_hud")
 
-    # ── All resolve and matches: source flips, list unchanged ─────────────
+    # -- All resolve and matches: source flips, list unchanged --
     def test_confirm_when_all_resolve_and_matches(self) -> None:
         coach = _StubCoach(self._out, picked=["TheBrutalizer", "CutDown"])
         coach._reconcile_augment_hud({"augment_hud_slots": ["The Brutalizer", "Cut Down"]})
@@ -92,7 +92,7 @@ class ArenaAugmentHudReconcileTests(unittest.TestCase):
         self.assertEqual(art["augments_source"], "vision_hud")
         self.assertEqual(art["augments_picked"], ["TheBrutalizer", "CutDown"])
 
-    # ── Partial resolve: no-op, Haiku list preserved ──────────────────────
+    # -- Partial resolve: no-op, Haiku list preserved --
     def test_partial_resolve_preserves_haiku(self) -> None:
         coach = _StubCoach(self._out, picked=["TheBrutalizer"])
         coach._reconcile_augment_hud(
@@ -103,7 +103,7 @@ class ArenaAugmentHudReconcileTests(unittest.TestCase):
         self.assertEqual(art["augments_source"], "haiku_rec")
         self.assertEqual(art["augments_picked"], ["TheBrutalizer"])
 
-    # ── Empty HUD: no-op ──────────────────────────────────────────────────
+    # -- Empty HUD: no-op --
     def test_empty_hud_is_noop(self) -> None:
         coach = _StubCoach(self._out, picked=["TheBrutalizer"])
         coach._reconcile_augment_hud({"augment_hud_slots": []})
@@ -111,13 +111,13 @@ class ArenaAugmentHudReconcileTests(unittest.TestCase):
         art = self._read_artifact()
         self.assertEqual(art["augments_source"], "haiku_rec")
 
-    # ── Missing field: no-op ──────────────────────────────────────────────
+    # -- Missing field: no-op --
     def test_missing_field_is_noop(self) -> None:
         coach = _StubCoach(self._out, picked=["TheBrutalizer"])
         coach._reconcile_augment_hud({})
         self.assertEqual(coach._picked_augments, ["TheBrutalizer"])
 
-    # ── Dedupe: vision shows duplicate icons; resolved list dedupes ───────
+    # -- Dedupe: vision shows duplicate icons; resolved list dedupes --
     def test_dedupes_within_vision_slots(self) -> None:
         coach = _StubCoach(self._out, picked=[])
         coach._reconcile_augment_hud(
@@ -125,7 +125,7 @@ class ArenaAugmentHudReconcileTests(unittest.TestCase):
         )
         self.assertEqual(coach._picked_augments, ["TheBrutalizer"])
 
-    # ── Player deviation: vision picks differ entirely from Haiku ─────────
+    # -- Player deviation: vision picks differ entirely from Haiku --
     def test_player_deviated_from_haiku(self) -> None:
         coach = _StubCoach(self._out, picked=["CutDown"])
         coach._reconcile_augment_hud({"augment_hud_slots": ["Apex Inventor"]})

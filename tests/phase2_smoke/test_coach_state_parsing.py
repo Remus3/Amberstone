@@ -3,7 +3,7 @@ tests/phase2_smoke/test_coach_state_parsing.py
 Phase 5 - Coach state-parsing smoke harness.
 
 One test class per coach mode. Exercises the state-parsing layer
-(raw → coaching dict) and the SR prompt builder without calling the
+(raw -> coaching dict) and the SR prompt builder without calling the
 Anthropic API. All inputs are deterministic fixture dicts.
 
 Structural contract: each coach's output must carry the minimal set of
@@ -20,7 +20,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, ARENA_STATE, BRAWL_STATE, TFT_STATE
 
-# ── Minimal raw Riot API fixtures (activePlayer + gameData + allPlayers) ──────
+# -- Minimal raw Riot API fixtures (activePlayer + gameData + allPlayers) ------
 # These mirror the shape of /liveclientdata/allgamedata - not the processed
 # game_reader output. The _parse_* functions operate on this raw format.
 
@@ -100,9 +100,9 @@ _BRAWL_RAW = {
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # SR - _build_user_prompt (coach_integration.py)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestSrCoachPromptBuilder(unittest.TestCase):
     """Smoke: _build_user_prompt produces a non-empty, structured string."""
@@ -138,9 +138,9 @@ class TestSrCoachPromptBuilder(unittest.TestCase):
             self.assertIn(wave, out)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # ARAM - aram_coach._parse_state
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestAramCoachParsing(unittest.TestCase):
     """Smoke: _parse_state produces a dict with required keys."""
@@ -188,9 +188,9 @@ class TestAramCoachParsing(unittest.TestCase):
         self.assertIn("Garen", out["enemy_comp"])
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Arena - arena_coach._parse_arena_state
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestArenaCoachParsing(unittest.TestCase):
     """Smoke: _parse_arena_state produces a dict with required keys."""
@@ -229,9 +229,9 @@ class TestArenaCoachParsing(unittest.TestCase):
         self.assertLessEqual(out["hp_pct"], 100)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Brawl - brawl_coach._parse_brawl_state
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestBrawlCoachParsing(unittest.TestCase):
     """Smoke: _parse_brawl_state produces a dict with required keys."""
@@ -270,9 +270,9 @@ class TestBrawlCoachParsing(unittest.TestCase):
         self.assertEqual(out["game_mode"], "NEXUSBLITZ")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # TFT - tft_coach._coach_board_to_placement
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestTftCoachBoardPlacement(unittest.TestCase):
     """Smoke: _coach_board_to_placement returns comma-separated position string."""

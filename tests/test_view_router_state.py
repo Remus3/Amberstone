@@ -6,17 +6,17 @@ mirrors the JS `_viewAutoDerive` function in `web/js/main.js`.
 s209 changes:
 - Loading view retired. GameStart now lands on active-match directly.
 - Sticky-guard "game-start" tier dropped. GameStart sets sticky to
-  "in-progress"; CS→null inference advances to "in-progress" as well.
+  "in-progress"; CS->null inference advances to "in-progress" as well.
 
 Coverage targets:
-- ChampSelect → GameStart → InProgress → EndOfGame → Lobby (clean cycle)
-- ChampSelect → Lobby (dodge - sticky should clear)
-- ChampSelect → null → GameStart (transient null, sticky should hold)
-- ChampSelect → null (extended, no GameStart observed) - sticky-guard
+- ChampSelect -> GameStart -> InProgress -> EndOfGame -> Lobby (clean cycle)
+- ChampSelect -> Lobby (dodge - sticky should clear)
+- ChampSelect -> null -> GameStart (transient null, sticky should hold)
+- ChampSelect -> null (extended, no GameStart observed) - sticky-guard
   inference advances to "in-progress" per s209
-- InProgress → null/None/Lobby - gameStarted stays "in-progress"
-- EndOfGame after in-progress → clears sticky
-- Manual view sticky → auto-derive returns same view + urgent banner
+- InProgress -> null/None/Lobby - gameStarted stays "in-progress"
+- EndOfGame after in-progress -> clears sticky
+- Manual view sticky -> auto-derive returns same view + urgent banner
 """
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ class CleanCycleTests(unittest.TestCase):
             ("Lobby",       "client"),  # pre-queue
             ("ChampSelect", "client"),  # CS opens
             ("ChampSelect", "client"),  # mid-CS tick
-            ("GameStart",   "sr"),      # s209: → active-match (was loading)
+            ("GameStart",   "sr"),      # s209: -> active-match (was loading)
             ("InProgress",  "sr"),      # in-game
             ("InProgress",  "sr"),      # in-game tick
             ("EndOfGame",   "sr"),      # post-game (sticky cleared)
@@ -77,11 +77,11 @@ class CleanCycleTests(unittest.TestCase):
             "lobby",
             "champ-select",
             "champ-select",
-            "active-match",   # s209: GameStart → active-match
+            "active-match",   # s209: GameStart -> active-match
             "active-match",
             "active-match",
             "last-match",  # EndOfGame, sticky cleared, mode still "sr"
-            "lobby",       # phase=Lobby → "lobby"
+            "lobby",       # phase=Lobby -> "lobby"
         ])
         # Sticky cleared after EndOfGame.
         self.assertIsNone(results[6].game_started)
@@ -90,7 +90,7 @@ class CleanCycleTests(unittest.TestCase):
 
 
 class DodgeClearTests(unittest.TestCase):
-    """ChampSelect → Lobby/Matchmaking means the user dodged; clear sticky."""
+    """ChampSelect -> Lobby/Matchmaking means the user dodged; clear sticky."""
 
     def test_cs_to_lobby_clears_sticky(self):
         results = _run([
@@ -121,21 +121,21 @@ class DodgeClearTests(unittest.TestCase):
 
 
 class TransientNullTests(unittest.TestCase):
-    """ChampSelect → null → GameStart: sticky must hold or infer in-progress."""
+    """ChampSelect -> null -> GameStart: sticky must hold or infer in-progress."""
 
     def test_brief_null_with_gamestart_arriving(self):
         # The 'easy' case - null lasts one tick, then GameStart fires.
-        # s209: null after CS infers "in-progress" → active-match.
+        # s209: null after CS infers "in-progress" -> active-match.
         results = _run([
             ("ChampSelect", "client"),
             (None,          "client"),  # transient blip
             ("GameStart",   "client"),
         ])
         self.assertEqual(results[0].game_started, "champ-select")
-        # s209 inference: null after CS advances sticky → in-progress.
+        # s209 inference: null after CS advances sticky -> in-progress.
         self.assertEqual(results[1].game_started, "in-progress")
         self.assertEqual(results[1].view, "active-match")
-        # GameStart → active-match, sticky = in-progress.
+        # GameStart -> active-match, sticky = in-progress.
         self.assertEqual(results[2].view, "active-match")
         self.assertEqual(results[2].game_started, "in-progress")
 
@@ -171,7 +171,7 @@ class TransientNullTests(unittest.TestCase):
 
 
 class InProgressStickyTests(unittest.TestCase):
-    """InProgress → null/Lobby blips must keep sticky on in-progress."""
+    """InProgress -> null/Lobby blips must keep sticky on in-progress."""
 
     def test_in_progress_then_null_holds_sticky(self):
         results = _run([
@@ -183,7 +183,7 @@ class InProgressStickyTests(unittest.TestCase):
         # Sticky should ride through the null blips.
         for r in results:
             self.assertEqual(r.game_started, "in-progress")
-        # Views: explicit InProgress → active-match; null sticky → active-match.
+        # Views: explicit InProgress -> active-match; null sticky -> active-match.
         self.assertEqual([r.view for r in results], ["active-match"] * 4)
 
     def test_in_progress_then_lobby_with_postgame_clears(self):

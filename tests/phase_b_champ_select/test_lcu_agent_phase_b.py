@@ -3,14 +3,14 @@
 Pins the contracts added to `tools/gamepc_lcu_agent.py` for the
 Champ Select view's command flow:
 
-  - _active_round  → derive {type, cell_ids} from session.actions[]
-  - _swap_entries  → slim positionSwaps / pickOrderSwaps for the push
-  - _arena_teams   → distil additionalSubteamData with is_me detection
-  - _local_in_progress_action → walk actions for the local cell's
+  - _active_round  -> derive {type, cell_ids} from session.actions[]
+  - _swap_entries  -> slim positionSwaps / pickOrderSwaps for the push
+  - _arena_teams   -> distil additionalSubteamData with is_me detection
+  - _local_in_progress_action -> walk actions for the local cell's
                                 in-progress ban|pick
 
   - set_ban_intent / set_pick_intent - PATCH local action, completed=false
-  - request_position_swap / request_pick_order_swap - cell_id → swap id
+  - request_position_swap / request_pick_order_swap - cell_id -> swap id
   - set_augment_intent - stub returns explicit "unsupported" error
 
 The agent runs on Game-PC and is stdlib-only; tests import via
@@ -121,7 +121,7 @@ class TestArenaTeams(unittest.TestCase):
         }
         out = agent._arena_teams(sess)
         self.assertEqual(len(out), 3)
-        # Local cell is 2 → subteam 2 is mine
+        # Local cell is 2 -> subteam 2 is mine
         me = next(t for t in out if t["is_me"])
         self.assertEqual(me["id"], 2)
         self.assertEqual(len(me["cells"]), 2)
@@ -415,7 +415,7 @@ class TestSetAugmentIntentStub(unittest.TestCase):
 
 
 class TestAramQueueIdsAntiDrift(unittest.TestCase):
-    """Pin the KNOWN-BUG fix + the agent↔core mirror.
+    """Pin the KNOWN-BUG fix + the agent<->core mirror.
 
     is_aram was ``queue_id in (450, 920)`` - missing 2400 (ARAM
     Mayhem / KIWI) - so the dashboard's _csvDetectMode fell through to

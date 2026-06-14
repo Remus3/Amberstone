@@ -30,12 +30,12 @@ class TestMetricsCacheSummary(unittest.TestCase):
         fp._reload()
         self._td_obj.cleanup()
 
-    # ── Helper ─────────────────────────────────────────────────────────────
+    # -- Helper -------------------------------------------------------------
     def _write(self, filename, data):
         p = self._td / filename
         p.write_text(json.dumps(data), encoding="utf-8")
 
-    # ── Tests ──────────────────────────────────────────────────────────────
+    # -- Tests --------------------------------------------------------------
 
     def test_missing_files_yield_none_not_crash(self):
         """All fields default to None when runtime dir is empty."""

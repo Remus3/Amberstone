@@ -110,7 +110,7 @@ class TestFeaturePolicyHotReload(unittest.TestCase):
         self.assertTrue(is_allowed("sr", "nonexistent_feature"))
 
     def test_missing_file_at_startup_all_allow(self):
-        """Non-existent file at startup → all safe defaults (allow)."""
+        """Non-existent file at startup -> all safe defaults (allow)."""
         missing = Path(self._td.name) / "does_not_exist.json"
         fp._reload(missing)
         self.assertTrue(is_allowed("sr", "live_coaching"))

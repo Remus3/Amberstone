@@ -1,0 +1,29 @@
+{
+  "run_id": "p2w5-tests-c16",
+  "suite_cmd": "\"C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe\" -m pytest tests/ -q -p no:cacheprovider",
+  "check_ci": false,
+  "slices": [
+    {
+      "id": "W5-suite",
+      "claim": "Cycle 16 P2-W5 test-corpus sweep: full tests/ suite green, byte-identical count to the cycle-15 baseline (cosmetic ASCII-only edits, no logic/count change).",
+      "files": [],
+      "claimed_passed": 7885,
+      "claimed_failed": 0
+    },
+    {
+      "id": "W5-defer-preserved",
+      "claim": "The 2 load-bearing non-ASCII files were NOT gutted: aram-coach U+2192 item_build wire strings and wakeup_prune SESSION_RE PIN-emoji fixtures survive.",
+      "files": [
+        {"path": "tests/phase2_smoke/test_aram_coach_item_class_peers.py", "must_contain": ["Shadowflame", "Heartsteel"]},
+        {"path": "tests/phase7_polish/test_wakeup_prune.py", "must_contain": ["SESSION_RE", "RESOLVED"]}
+      ]
+    },
+    {
+      "id": "W5-swept",
+      "claim": "Decorative glyphs converted to ASCII across the corpus (sample: arrow -> ASCII in last_match_timeline).",
+      "files": [
+        {"path": "tests/test_last_match_timeline.py", "must_contain": [" -> "]}
+      ]
+    }
+  ]
+}

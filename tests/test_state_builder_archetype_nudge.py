@@ -64,7 +64,7 @@ class BuildStateStampsNudgeTests(unittest.TestCase):
         ):
             state = _state_builder.build_state()
         self.assertIn("archetype_nudge", state)
-        # No champion + no archetype → empty dict
+        # No champion + no archetype -> empty dict
         self.assertEqual(state["archetype_nudge"], {})
 
     def test_state_carries_fired_nudge(self):
@@ -159,7 +159,7 @@ class BuildStateStampsNudgeTests(unittest.TestCase):
         finally:
             for p in patches:
                 p.stop()
-        # Exception swallowed → empty dict, no crash
+        # Exception swallowed -> empty dict, no crash
         self.assertEqual(state["archetype_nudge"], {})
 
 
