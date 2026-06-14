@@ -9,6 +9,23 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 20 (item 416): SAFE-BULK ASCII glyph sweep slice A2 (tools/ + agents non-DS)
+
+- Ran tools/p3_ascii_sweep.py (cycle-19 transformer) on tools/** + agents/ NON-DS
+  source. 10426 comment-glyph subs / 69 .py (tools/ 7261 of 134 scanned / 27
+  changed; agents non-DS 3165 of 81 scanned). commit `74cca91d`.
+- EXCLUDED: agents/daemon_slayer/** + Share/** (B1, load-bearing). The 2 changed
+  tools/daemon_slayer_*.py are EXTRACTORS, NOT the engine. 3 FROZEN bridge_*.py
+  swept comment-only (actions 314 / classify 71 / history 259; charter frozen-auth
+  + cycle-19 precedent). tests/** = 0 subs (already ASCII-clean comments, no-op).
+  NO UNMAPPED comment glyph in either tree.
+- Gate: py_compile 69/69 OK; token-equivalence proof - every non-COMMENT token
+  byte-identical pre/post across ALL 69 (exhaustive; dominates a suite run for a
+  comment-only edit). Tier-0 by R5/R6: no suite, no DS-dir, no ENGINE bump, no
+  DS :8893 restart, no live RC restart.
+
+---
+
 ## DONE - cycle 19 (item 415): SAFE-BULK ASCII glyph sweep slice A (comment-token only)
 
 - NEW tools/p3_ascii_sweep.py - tokenize-based transformer; rewrites decorative
@@ -69,11 +86,10 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 ### A. SAFE-BULK ASCII glyph sweep (parallelizable, c16/c17 treatment)
 TOOL = tools/p3_ascii_sweep.py (comment-token-only, provable-safe; cycle 19).
 - A1 DONE cycle 19: the core RC runtime + product trees (108 .py). See above.
-- A2 REMAINING: `tools/**` (53 files / 9767 - many .py box-draw banners; mind
-  the frozen bridge_* set, charter-authorized but bound a slice), `agents/`
-  NON-test source (agent0-7 + supervisor), and the `agents/agent3_testing/**` +
-  `tests/**` test corpus (comment-only is safe there too - run p3_ascii_sweep on
-  them, gate = the owning suite).
+- A2 DONE cycle 20 (item 416): `tools/**` (7261 subs / incl 3 frozen bridge_*.py
+  comment-only) + `agents/` NON-DS source incl agent3_testing/** suite (3165 subs)
+  = 10426 / 69 .py, comment-token-only. `tests/**` was 0 subs (already ASCII-clean
+  comments). Gate = token-equivalence proof (no owning-suite run needed). See above.
 - A3 REMAINING (NOT comment-only - needs string/docstring judgement): the
   STRING-token + module-docstring box-draw banners p3_ascii_sweep intentionally
   skips. Some are print-banners a test may assert on -> per-hit verify, suite-gate.
