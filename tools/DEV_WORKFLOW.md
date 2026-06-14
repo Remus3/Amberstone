@@ -1,4 +1,4 @@
-﻿# DEV_WORKFLOW.md (updated -- Step 5.1)
+# DEV_WORKFLOW.md (updated -- Step 5.1)
 # Riot Commander -- Local Developer/Operator Workflow
 
 ---

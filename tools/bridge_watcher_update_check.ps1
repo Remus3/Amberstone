@@ -58,7 +58,7 @@ function Write-Stale([string]$msg) {
     Write-Host "    -- $msg" -ForegroundColor Yellow
 }
 
-# ── 1. Resolve InstallDir + TaskName ──────────────────────────────────
+# -- 1. Resolve InstallDir + TaskName ----------------------------------
 
 if (-not $InstallDir) {
     $candidates = @(
@@ -91,7 +91,7 @@ if ($Restart -and -not $TaskName) {
 }
 if ($Restart) { Write-Step "TaskName   = $TaskName" }
 
-# ── 2. Cert bypass (mkcert root cert not always trusted on peers) ─────
+# -- 2. Cert bypass (mkcert root cert not always trusted on peers) -----
 #
 # PS 5.1 Invoke-WebRequest has a known wart against RC's self-signed
 # dashboard cert ("The underlying connection was closed: An unexpected
@@ -131,7 +131,7 @@ function Fetch-File([string]$url, [string]$dest) {
     }
 }
 
-# ── 3. Fetch manifest ─────────────────────────────────────────────────
+# -- 3. Fetch manifest -------------------------------------------------
 
 $ManifestUrl = "$LegionAgentBase/_watcher_manifest.json"
 Write-Step "Fetch $ManifestUrl"
@@ -148,7 +148,7 @@ if (-not $manifest.files) {
 }
 Write-Ok ("schema_version={0} files={1}" -f $manifest.schema_version, ($manifest.files.PSObject.Properties | Measure-Object).Count)
 
-# ── 4. Hash local + diff ──────────────────────────────────────────────
+# -- 4. Hash local + diff ----------------------------------------------
 
 $Stale  = New-Object System.Collections.Generic.List[string]
 $Missing = New-Object System.Collections.Generic.List[string]
@@ -174,7 +174,7 @@ foreach ($prop in $manifest.files.PSObject.Properties) {
     }
 }
 
-# ── 5. Report ─────────────────────────────────────────────────────────
+# -- 5. Report ---------------------------------------------------------
 
 if ($Errors.Count -gt 0) {
     foreach ($e in $Errors) { Write-Warn $e }
@@ -200,7 +200,7 @@ if (-not $Apply) {
     exit 1
 }
 
-# ── 6. -Apply: re-pull stale + missing ────────────────────────────────
+# -- 6. -Apply: re-pull stale + missing --------------------------------
 
 $ToPull = @($Stale) + @($Missing)
 foreach ($name in $ToPull) {
@@ -218,7 +218,7 @@ foreach ($name in $ToPull) {
     }
 }
 
-# ── 7. Optionally bounce the scheduled task ───────────────────────────
+# -- 7. Optionally bounce the scheduled task ---------------------------
 
 if ($Restart -and $TaskName) {
     Write-Step "Bouncing scheduled task $TaskName"
