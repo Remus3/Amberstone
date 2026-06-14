@@ -56,6 +56,35 @@ ARCHIVE_HEADER = (
 )
 
 
+def _split_on_interior_headings(block: str) -> list[str]:
+    """Split a single SEP-delimited block into one sub-block per session
+    heading it contains.
+
+    A /done append that OMITS the `\\n---\\n\\n` separator before its heading
+    leaves two (or more) sessions glued into one block. Without this re-split
+    split_sessions would count them as one - the documented separator gotcha
+    (memory reference_wakeup_prune_separator_gotcha) that makes --check
+    under-report and lets WAKEUP_NOTES.md grow unbounded. We cut the block at
+    every interior heading-start so each session is counted (and archived)
+    independently. Leading whitespace before the first heading rides with the
+    first sub-block; a block with <= 1 heading is returned unchanged.
+    """
+    # Offsets of each session heading at line-start within the block. The regex
+    # is multiline-anchored, so a heading mid-block matches at its own line.
+    starts = [m.start() for m in SESSION_RE.finditer(block)]
+    if len(starts) <= 1:
+        return [block]
+    # Keep any pre-heading preamble attached to the first sub-block.
+    cut_points = [0] + starts[1:]
+    out: list[str] = []
+    for i, start in enumerate(cut_points):
+        end = cut_points[i + 1] if i + 1 < len(cut_points) else len(block)
+        piece = block[start:end]
+        if piece:
+            out.append(piece)
+    return out
+
+
 def split_sessions(text: str) -> tuple[str, list[str]]:
     """Return (header_block, [session_blocks_newest_first]).
 
@@ -74,7 +103,9 @@ def split_sessions(text: str) -> tuple[str, list[str]]:
     for block in rest:
         if SESSION_RE.match(block.lstrip("\n")):
             seen_session = True
-            sessions.append(block)
+            # A missing separator can glue several sessions into one block;
+            # re-split so each is counted independently.
+            sessions.extend(_split_on_interior_headings(block))
         elif not seen_session:
             # Pinned non-session block(s) that precede the first session
             # (e.g. `# ✅ RESOLVED ... `). These belong with the header so

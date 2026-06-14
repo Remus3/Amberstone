@@ -408,7 +408,7 @@ class SelfMonitor:
 
         #  -  -  Advance ladder unconditionally after each unhealthy tick  -  -  -  -  -  - 
         # health_check is the only "wait and observe" step  -  it does not
-        # advance the ladder on the FIRST failure (we need consecutive_failsâ‰¥2
+        # advance the ladder on the FIRST failure (we need consecutive_fails>=2
         # before escalating past it).  All subsequent steps advance regardless
         # of whether the command was successfully issued.
         if step == "health_check":
