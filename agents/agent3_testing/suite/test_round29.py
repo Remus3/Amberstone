@@ -29,7 +29,7 @@ def _insert(db: Path, champ: str, win: int | None, k: int | None, d: int | None,
         conn.commit()
 
 
-# ── session_summary semantics ───────────────────────────────────────
+# -- session_summary semantics ---------------------------------------
 
 def test_session_summary_filters_by_since(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import session_summary
@@ -59,7 +59,7 @@ def test_session_summary_per_mode_breakdown(tmp_path: Path, monkeypatch) -> None
     data = session_summary((now - timedelta(hours=12)).isoformat())
     assert data["per_mode"]["aram"]["games"] == 2
     assert data["per_mode"]["aram"]["wins"] == 2
-    # (10+8)/2=9 k, (3+5)/2=4 d, (15+12)/2=13.5 a → (9+13.5)/4 = 5.625
+    # (10+8)/2=9 k, (3+5)/2=4 d, (15+12)/2=13.5 a -> (9+13.5)/4 = 5.625
     assert data["per_mode"]["aram"]["kda_ratio"] == 5.62
     assert data["per_mode"]["sr_ranked"]["games"] == 1
     assert data["per_mode"]["sr_ranked"]["losses"] == 1
@@ -111,7 +111,7 @@ def test_session_summary_empty_when_nothing_recent(tmp_path: Path, monkeypatch) 
     assert data["champions"] == []
 
 
-# ── _parse_since helpers ────────────────────────────────────────────
+# -- _parse_since helpers --------------------------------------------
 
 def test_parse_since_today() -> None:
     from coaches.adaptation_hint import _parse_since, _start_of_today_iso
@@ -137,7 +137,7 @@ def test_parse_since_passthrough_iso() -> None:
     assert _parse_since(raw) == raw
 
 
-# ── CLI --session ───────────────────────────────────────────────────
+# -- CLI --session ---------------------------------------------------
 
 def test_cli_session_text(tmp_path: Path, monkeypatch, capsys) -> None:
     from coaches.adaptation_hint import main

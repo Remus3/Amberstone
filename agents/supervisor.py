@@ -255,11 +255,11 @@ class Supervisor:
         await self._ws.start()
 
         # Warm Agent 7 session - lazy, opens on first /api/input call OR
-        # file_ingest's client→game transition trigger below.
+        # file_ingest's client->game transition trigger below.
         self._warm_agent7 = WarmAgent7Session()
 
         # File-watcher ingest: bridges the existing RC coaching JSONs to
-        # the /push stream until the Game-PC Forwarder is deployed (§12).
+        # the /push stream until the Game-PC Forwarder is deployed (S12).
         # Charter: warm starts when game begins - hook the mode transition.
         self._file_ingest = FileIngest(
             self._ws,
@@ -436,7 +436,7 @@ class Supervisor:
                     should_file, rearm = _bridge_pub_should_file(
                         age_s, fired_at.get(node), now_mono)
                     if rearm:
-                        fired_at.pop(node, None)  # recovered → re-arm
+                        fired_at.pop(node, None)  # recovered -> re-arm
                     if not should_file:
                         continue
                     try:
@@ -538,7 +538,7 @@ class Supervisor:
 
             agent = task.owner_agent
             try:
-                # Known deterministic ops bypass the owner-agent →
+                # Known deterministic ops bypass the owner-agent ->
                 # substrate map so they never accidentally spawn an
                 # LLM. Keep this list short and explicit.
                 if task.op in DETERMINISTIC_OPS:
@@ -697,7 +697,7 @@ class Supervisor:
             self._cancel_pending_auto_analyze("game started")
             return
 
-        # game-end: schedule auto-analyze on game→non-game transitions
+        # game-end: schedule auto-analyze on game->non-game transitions
         # AND file a post-game summary note so the dashboard's activity
         # ticker shows something visible as soon as the match ends.
         if prev_norm in ("game", "in_progress") and new_norm not in ("game", "in_progress"):

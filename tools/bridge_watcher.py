@@ -1,4 +1,4 @@
-# arch: bridge watcher daemon - classify → action loop | section=bridge | frozen=no
+# arch: bridge watcher daemon - classify -> action loop | section=bridge | frozen=no
 """bridge_watcher.py - silent cross-Claude bridge poller (MVP).
 
 Phase 0 per BRIDGE_WATCHER_PLAN.md §11:
@@ -156,7 +156,7 @@ _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE
 
-# ── Atomic-write helper (mirrors core.bridge_monitor's WinError-5 retry) ──
+# -- Atomic-write helper (mirrors core.bridge_monitor's WinError-5 retry) --
 
 
 def _atomic_write_json(path: Path, payload: dict) -> None:
@@ -193,7 +193,7 @@ def _read_json(path: Path, default: dict) -> dict:
         return dict(default)
 
 
-# ── Sliding 24h event ring ────────────────────────────────────────────
+# -- Sliding 24h event ring --------------------------------------------
 # Persisted in _STATE_PATH under "event_ring_24h" so counts survive
 # watcher restarts (unlike *_since_boot which reset on restart).
 
@@ -293,7 +293,7 @@ def _send_push_notification(summary: str, source: str, node: str,
     return True
 
 
-# ── PID lock ──────────────────────────────────────────────────────────
+# -- PID lock ----------------------------------------------------------
 
 
 def _pid_lock_acquire(node: str) -> None:
@@ -325,7 +325,7 @@ def _pid_lock_release() -> None:
         pass
 
 
-# ── Bridge fetch ──────────────────────────────────────────────────────
+# -- Bridge fetch ------------------------------------------------------
 
 
 def _fetch_since(since_ts: float, bridge_url: str) -> list[dict]:
@@ -345,7 +345,7 @@ def _fetch_since(since_ts: float, bridge_url: str) -> list[dict]:
     return [m for m in msgs if isinstance(m, dict)]
 
 
-# ── Pending queue (escalations) ───────────────────────────────────────
+# -- Pending queue (escalations) ---------------------------------------
 
 
 def _envelope_dedupe_key(envelope: dict) -> str:
@@ -426,7 +426,7 @@ def _add_to_pending(envelope: dict, reason: str) -> bool:
     return True
 
 
-# ── State (last seen ts) ──────────────────────────────────────────────
+# -- State (last seen ts) ----------------------------------------------
 
 
 def _load_state() -> dict:
@@ -444,7 +444,7 @@ def _save_state(state: dict) -> None:
     _atomic_write_json(_STATE_PATH, state)
 
 
-# ── Heartbeat ─────────────────────────────────────────────────────────
+# -- Heartbeat ---------------------------------------------------------
 
 
 def _write_heartbeat(stats: dict) -> None:
@@ -501,7 +501,7 @@ def _write_heartbeat(stats: dict) -> None:
         _log.warning("heartbeat write failed: %s", exc)
 
 
-# ── Artifact rotation ─────────────────────────────────────────────────
+# -- Artifact rotation -------------------------------------------------
 
 
 def _should_remove_artifact(age_s: float, task_id: str, processed_ids: set) -> bool:
@@ -540,7 +540,7 @@ def _rotate_artifacts(state: dict, processed_ids: set, now: float) -> int:
     return removed
 
 
-# ── Result posting (Phase 2 auto-action result → bridge_post_result.py) ──
+# -- Result posting (Phase 2 auto-action result -> bridge_post_result.py) --
 
 
 def _post_result_back(envelope: dict, *, res_status: str, body: dict, node: str,
@@ -586,7 +586,7 @@ def _post_result_back(envelope: dict, *, res_status: str, body: dict, node: str,
         _log.warning("bridge_post_result spawn failed: %s", exc)
 
 
-# ── Main loop ─────────────────────────────────────────────────────────
+# -- Main loop ---------------------------------------------------------
 
 
 _STOP = False
@@ -960,7 +960,7 @@ def _selftest() -> int:
 
     now = 2_000_000.0
 
-    # ── ring: aging ──
+    # -- ring: aging --
     s: dict = {}
     _ring_add(s, "escalation", now - _RING_WINDOW_S - 1)  # just outside window
     _ring_add(s, "escalation", now - _RING_WINDOW_S + 1)  # just inside window
@@ -977,14 +977,14 @@ def _selftest() -> int:
         all(e.get("t", 0) >= now - _RING_WINDOW_S
             for e in s.get("event_ring_24h", [])))
 
-    # ── ring: size cap ──
+    # -- ring: size cap --
     s2: dict = {}
     for i in range(_MAX_RING_SIZE + 10):
         _ring_add(s2, "escalation", now + i)
     chk(f"ring: capped at {_MAX_RING_SIZE}",
         len(s2.get("event_ring_24h", [])) == _MAX_RING_SIZE)
 
-    # ── push throttle ──
+    # -- push throttle --
     s3: dict = {}
     chk("push: eligible with empty state",
         _push_eligible(s3, now))
@@ -998,7 +998,7 @@ def _selftest() -> int:
     chk("push: eligible when one send expired",
         _push_eligible(s3, now))
 
-    # ── cadence mode logic ──
+    # -- cadence mode logic --
     base = 15.0
     chk("cadence: auto idle<threshold → base poll",
         (base if 100 <= _AUTO_IDLE_S else _SLEEP_POLL_S) == base)
@@ -1009,7 +1009,7 @@ def _selftest() -> int:
     chk("cadence: _AUTO_IDLE_S is 15 min",
         _AUTO_IDLE_S == 900)
 
-    # ── RC health check ──
+    # -- RC health check --
     import datetime as _dt
     def _iso(offset_s: float) -> str:
         ts = _dt.datetime.fromtimestamp(now - offset_s, tz=_dt.timezone.utc)
@@ -1038,7 +1038,7 @@ def _selftest() -> int:
     chk("rc_health: restarted just after grace (grace+1 s ago) → not degraded",
         not _check_rc_health({**_healthy, "started_at": _iso(_RC_RESTART_GRACE_S + 1)}, now)[0])
 
-    # ── watchdog threshold ──
+    # -- watchdog threshold --
     chk("watchdog: threshold = max(120, poll*3) for active mode (15s)",
         _watchdog_threshold(15.0) == 120.0)
     chk("watchdog: threshold = 900 for sleep mode (300s)",
@@ -1046,7 +1046,7 @@ def _selftest() -> int:
     chk("watchdog: threshold = max(120, 60*3) = 180 for mid poll",
         _watchdog_threshold(60.0) == 180.0)
 
-    # ── artifact rotation predicate ──
+    # -- artifact rotation predicate --
     proc_set = {"task-abc123", "task-def456"}
     chk("rotation: remove old artifact (>7 days)",
         _should_remove_artifact(_ARTIFACT_RETENTION_S + 1, "task-xyz", set()))

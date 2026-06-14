@@ -72,7 +72,7 @@ WARM_UI_CLOSE_GRACE_SEC = 300         # 5 min
 WARM_UI_CHECK_INTERVAL_SEC = 30
 
 # Agent 4 charter: "runs at system idle (not in-game, not in champ
-# select) - ≥2 minutes idle". We auto-schedule an analyzer run this
+# select) - >=2 minutes idle". We auto-schedule an analyzer run this
 # long after a game ends so adaptation_buckets absorb the newest match.
 IDLE_ANALYZE_SEC = 120
 
@@ -120,7 +120,7 @@ _DETERMINISTIC_RECORDKEEPING_OPS = frozenset({
 # peer was fresh at 25s). The watchdog files a deduped Agent-1 triage
 # task on threshold cross.
 _BRIDGE_PUB_PEERS = ("gamepc", "peer")
-_BRIDGE_PUB_ALERT_S = 1800.0            # 30 min silent → escalate
+_BRIDGE_PUB_ALERT_S = 1800.0            # 30 min silent -> escalate
 _BRIDGE_PUB_CHECK_INTERVAL_S = 300.0    # poll cadence (publisher posts ~60s)
 _BRIDGE_PUB_REFILE_COOLDOWN_S = 21600.0  # one task per node per 6h outage
 

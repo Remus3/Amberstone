@@ -25,7 +25,7 @@ def _seed_bucket(db: Path, champ: str, aj: dict) -> None:
         conn.commit()
 
 
-# ── kda_trends hot/cold sort ────────────────────────────────────────
+# -- kda_trends hot/cold sort ----------------------------------------
 
 def test_kda_trends_sorts_hot_and_cold(tmp_path: Path, monkeypatch) -> None:
     from coaches import adaptation_hint
@@ -46,7 +46,7 @@ def test_kda_trends_sorts_hot_and_cold(tmp_path: Path, monkeypatch) -> None:
     })
     _seed_bucket(db, "NoRecent", {
         "avg_kda": {"ratio": 3.0, "sample": 20},
-        # no recent_kda → must be excluded
+        # no recent_kda -> must be excluded
     })
 
     trends = adaptation_hint.kda_trends("aram", n=3)
@@ -92,7 +92,7 @@ def test_kda_trends_missing_mode_returns_empty(tmp_path: Path, monkeypatch) -> N
     assert out == {"mode": "aram", "hot": [], "cold": []}
 
 
-# ── top_champions now carries KDA ───────────────────────────────────
+# -- top_champions now carries KDA -----------------------------------
 
 def test_top_champions_includes_kda(tmp_path: Path, monkeypatch) -> None:
     from coaches import adaptation_hint
@@ -109,7 +109,7 @@ def test_top_champions_includes_kda(tmp_path: Path, monkeypatch) -> None:
     assert c["recent_kda"]["delta_ratio"] == -0.6
 
 
-# ── /api/trending endpoint wiring ───────────────────────────────────
+# -- /api/trending endpoint wiring -----------------------------------
 
 def test_trending_handler_parses_args(tmp_path: Path, monkeypatch) -> None:
     """_handle_trending returns shaped JSON with mode-specific trends."""

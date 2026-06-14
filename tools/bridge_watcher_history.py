@@ -60,7 +60,7 @@ _SIMILARITY_HI = 0.85      # >= this = "same enough to short-circuit"
 _SIMILARITY_LO = 0.65      # >= this = "similar enough to surface as related"
 
 
-# ── Tokenization + similarity ──────────────────────────────────────────
+# -- Tokenization + similarity ------------------------------------------
 
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
@@ -87,7 +87,7 @@ def _similarity(a: str, b: str) -> float:
     return inter / union if union else 0.0
 
 
-# ── DB lifecycle ────────────────────────────────────────────────────────
+# -- DB lifecycle --------------------------------------------------------
 
 
 _CONN_CACHE: dict = {}
@@ -108,7 +108,7 @@ def _conn(db_path: Path) -> sqlite3.Connection:
     return c
 
 
-# ── Write path ──────────────────────────────────────────────────────────
+# -- Write path ----------------------------------------------------------
 
 
 def record_outcome(*, db_path: Path, envelope: dict, lane: str,
@@ -149,7 +149,7 @@ def record_outcome(*, db_path: Path, envelope: dict, lane: str,
         _log.warning("history write failed (non-fatal): %s", exc)
 
 
-# ── Read path: cached-result short-circuit ─────────────────────────────
+# -- Read path: cached-result short-circuit -----------------------------
 
 
 def lookup_recent_match(*, db_path: Path, prompt: str, lane: str,
@@ -211,7 +211,7 @@ def lookup_recent_match(*, db_path: Path, prompt: str, lane: str,
     }
 
 
-# ── Read path: per-pattern stats (for heartbeat / operator surface) ────
+# -- Read path: per-pattern stats (for heartbeat / operator surface) ----
 
 
 def pattern_stats(*, db_path: Path, since_ts: Optional[float] = None,
@@ -273,7 +273,7 @@ def hot_failures(*, db_path: Path, since_ts: Optional[float] = None,
     return [dict(r) for r in rows]
 
 
-# ── Self-test ──────────────────────────────────────────────────────────
+# -- Self-test ----------------------------------------------------------
 
 
 def _test() -> None:

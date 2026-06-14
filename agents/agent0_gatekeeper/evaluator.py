@@ -27,7 +27,7 @@ _DEF_TARGET_ALLOWLIST = _PROJECT_ROOT / "agents" / "agent0_gatekeeper" / "target
 
 logger = logging.getLogger("agent0.evaluator")
 
-# Rejection reason codes map to criterion number in §7.
+# Rejection reason codes map to criterion number in S7.
 REASON_TARGET = 1            # target machine mismatch
 REASON_PAYLOAD = 2           # payload type mismatch
 REASON_DESTINATION = 3       # destination outside allowlist
@@ -104,7 +104,7 @@ class Evaluator:
         )
         self._repeat = _RepeatWindow()
         # game_state_probe is a callable returning str ("NONE", "IN_PROGRESS", etc.).
-        # None → protected-window check is permissive.
+        # None -> protected-window check is permissive.
         self._game_state_probe = game_state_probe
 
     # ----- helpers --------------------------------------------------
@@ -170,7 +170,7 @@ class Evaluator:
 
     def _protected_window_blocks(self, task: Task) -> bool:
         # Only ``tag`` values that contain "restart-forwarder" are sensitive
-        # to game state per §7.4.
+        # to game state per S7.4.
         if not task.tag:
             return False
         if "restart-forwarder" not in task.tag.lower():

@@ -68,7 +68,7 @@ def main() -> int:
     for champ in sorted(asnap.champions):
         if champ in reg:
             continue
-        # only meaningful when the champ has ≥2 damage-bearing spell keys
+        # only meaningful when the champ has >=2 damage-bearing spell keys
         keys = asnap.champions[champ]
         dmg_keys = sum(
             1 for k in ("Q", "W", "E")

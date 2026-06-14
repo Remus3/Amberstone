@@ -90,7 +90,7 @@ def main() -> int:
     envelope = {
         "kind":    "task",
         "id":      task_id,
-        "source":  "gamepc",        # mimic gamepc→legion path; --reply-to gamepc keeps result local
+        "source":  "gamepc",        # mimic gamepc->legion path; --reply-to gamepc keeps result local
         "target":  "legion",
         "summary": "RC /loop verify - echo hostname/pid/ts (auto-issued by RC-VerifyBridgeRoundtrip-Once)",
         "body":    {

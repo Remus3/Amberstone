@@ -35,7 +35,7 @@ REWIND_DB = _PROJECT_ROOT / "data" / "rewind_history.db"
 
 SOURCE_TAG = "rewind_migration"
 
-# Riot queue_id → Phase 3 mode. Unmapped queues are skipped.
+# Riot queue_id -> Phase 3 mode. Unmapped queues are skipped.
 QUEUE_TO_MODE: dict[int, str] = {
     400: "sr_draft",   # Normal Draft
     420: "sr_ranked",  # Ranked Solo/Duo
@@ -57,7 +57,7 @@ QUEUE_TO_MODE: dict[int, str] = {
     1900: "sr_draft",  # URF pick
 }
 
-# arch: phase 3 - rewind timeline_events → match_events migration (coach-decision moments per §9)
+# arch: phase 3 - rewind timeline_events -> match_events migration (coach-decision moments per S9)
 TRACKED_EVENT_TYPES = (
     "CHAMPION_KILL",
     "ITEM_PURCHASED",

@@ -33,7 +33,7 @@ import urllib.request
 from logging.handlers import RotatingFileHandler as _RFH
 from pathlib import Path
 
-# ── Config ────────────────────────────────────────────────────────────────
+# -- Config ----------------------------------------------------------------
 POLL_IDLE_S  = 30    # seconds between polls when empty
 POLL_WORK_S  = 10    # seconds after a batch completes before re-checking
 LOCK_STALE_S = 300   # seconds before a held lock is declared stale
@@ -49,12 +49,12 @@ LOCK_FILE     = SCRIPT_DIR / "peer_bridge_daemon.lock"
 _local = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
 PROCESSED_FILE = Path(_local) / "rc-bridge-tasks-processed.txt"
 
-# ── SSL context (skip cert verify - mirrors bridge_pull_tasks.py) ─────────
+# -- SSL context (skip cert verify - mirrors bridge_pull_tasks.py) ---------
 _SSL = ssl.create_default_context()
 _SSL.check_hostname = False
 _SSL.verify_mode = ssl.CERT_NONE
 
-# ── Logging ───────────────────────────────────────────────────────────────
+# -- Logging ---------------------------------------------------------------
 _fmt  = logging.Formatter("%(asctime)s [peer-bridge-daemon] %(levelname)s %(message)s",
                            datefmt="%H:%M:%S")
 _root = logging.getLogger()
@@ -69,7 +69,7 @@ _root.addHandler(_fh)
 _log  = logging.getLogger("peer_bridge_daemon")
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────
+# -- Helpers ---------------------------------------------------------------
 
 def _resolve_claude() -> str:
     """Find claude CLI binary - checks env override, npm shim, then PATH."""
@@ -185,7 +185,7 @@ def _check_count() -> int:
     return len(tasks)
 
 
-# ── Main loop ─────────────────────────────────────────────────────────────
+# -- Main loop -------------------------------------------------------------
 
 def main() -> None:
     _log.info("starting  pid=%d  target=%s  poll_idle=%ds  bridge=%s",

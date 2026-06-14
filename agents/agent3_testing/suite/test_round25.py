@@ -33,7 +33,7 @@ def _insert_match(
     )
 
 
-# ── matchup KDA aggregation ─────────────────────────────────────────
+# -- matchup KDA aggregation -----------------------------------------
 
 def test_matchup_kda_ratio_and_delta(tmp_path: Path, monkeypatch) -> None:
     """A champion with a clear baseline KDA + a specific enemy she
@@ -44,10 +44,10 @@ def test_matchup_kda_ratio_and_delta(tmp_path: Path, monkeypatch) -> None:
 
     db = tmp_path / "aram.db"
     with sqlite3.connect(db) as conn:
-        # 10 games not vs Zed - strong KDA (10/3/15 → ratio (10+15)/3 = 8.33)
+        # 10 games not vs Zed - strong KDA (10/3/15 -> ratio (10+15)/3 = 8.33)
         for i in range(10):
             _insert_match(conn, "Ahri", ["Garen"], 1, 10, 3, 15, i)
-        # 5 games vs Zed - bad KDA (2/10/3 → ratio (2+3)/10 = 0.5)
+        # 5 games vs Zed - bad KDA (2/10/3 -> ratio (2+3)/10 = 0.5)
         for i in range(5):
             _insert_match(conn, "Ahri", ["Zed"], 0, 2, 10, 3, 100 + i)
         conn.commit()
@@ -64,7 +64,7 @@ def test_matchup_kda_ratio_and_delta(tmp_path: Path, monkeypatch) -> None:
     assert mj["kda_ratio"] == 0.5
     # Baseline: overall Ahri KDA across all 15 rows.
     # (10*10 + 5*2)/15 = 7.33 k, (10*3 + 5*10)/15 = 5.33 d,
-    # (10*15 + 5*3)/15 = 11.0 a → ratio (7.33+11.0)/5.33 ≈ 3.44
+    # (10*15 + 5*3)/15 = 11.0 a -> ratio (7.33+11.0)/5.33 ~ 3.44
     # Delta should be very negative.
     assert mj["kda_delta"] < -2.0
 
@@ -189,7 +189,7 @@ def test_hint_line_skips_tiny_kda_delta(tmp_path: Path, monkeypatch) -> None:
     assert "KDA" not in line
 
 
-# ── insight_card KDA ────────────────────────────────────────────────
+# -- insight_card KDA ------------------------------------------------
 
 def test_insight_card_includes_kda(tmp_path: Path, monkeypatch) -> None:
     from coaches import adaptation_hint

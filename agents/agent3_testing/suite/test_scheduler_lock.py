@@ -35,8 +35,8 @@ for i in range({count}):
 
 @pytest.mark.timeout(90)
 def test_two_processes_no_interleaved_lines(tmp_path: Path) -> None:
-    # 2×50 writes is enough to catch interleaving but survives the
-    # filesystem pressure of the rest of the suite (previous 2×120
+    # 2x50 writes is enough to catch interleaving but survives the
+    # filesystem pressure of the rest of the suite (previous 2x120
     # flaked on Windows under concurrent fixture tmp_path churn).
     count = 50
     # s236: bounded retry. The lock's correctness property is "no

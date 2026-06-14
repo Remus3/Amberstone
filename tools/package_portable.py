@@ -49,7 +49,7 @@ _DEFAULT_OUT_DIR = _PROJECT_ROOT / "dist"
 _ZIP_ROOT_NAME   = "RiotCommander-portable"   # top-level folder inside the ZIP
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 def _info(msg: str) -> None:
     print(f"  INFO    {msg}")
@@ -103,7 +103,7 @@ def _archive_name(version: str) -> str:
     return f"{_ZIP_ROOT_NAME}-{version}.zip"
 
 
-# ── Package ───────────────────────────────────────────────────────────────────
+# -- Package -------------------------------------------------------------------
 
 def package(
     out_dir: Path,
@@ -124,7 +124,7 @@ def package(
     print(f"Dry-run       : {dry}")
     print("=" * 64)
 
-    # ── Step 1: ensure staged bundle ──────────────────────────────────────────
+    # -- Step 1: ensure staged bundle ------------------------------------------
     print("\n[Step 1: Staged bundle]")
     if not dry:
         ok = _run_build(rebuild, python_exe)
@@ -143,7 +143,7 @@ def package(
         _info(f"Staged strategy: {staged_manifest.get('strategy', 'unknown')}")
         _info(f"Staged timestamp: {staged_manifest.get('build_timestamp', 'unknown')}")
 
-    # ── Step 2: collect files ─────────────────────────────────────────────────
+    # -- Step 2: collect files -------------------------------------------------
     print("\n[Step 2: Collect staged files]")
     if not dry:
         all_files = list(_STAGED_DIR.rglob("*"))
@@ -153,7 +153,7 @@ def package(
         file_list = []
         _info("Dry-run: skipping file enumeration")
 
-    # ── Step 3: validate no forbidden files crept in ─────────────────────────
+    # -- Step 3: validate no forbidden files crept in -------------------------
     print("\n[Step 3: Exclusion guard]")
     forbidden_checks = [
         ("API-Key-Claude.txt",      "secret key"),
@@ -191,7 +191,7 @@ def package(
         _err(f"Cannot package: {len(violations)} exclusion violation(s). Re-run build_portable.py.")
         return 1
 
-    # ── Step 4: produce archive ───────────────────────────────────────────────
+    # -- Step 4: produce archive -----------------------------------------------
     print("\n[Step 4: Build ZIP archive]")
     archive_path = out_dir / _archive_name(version)
 
@@ -214,7 +214,7 @@ def package(
         _ok(f"Archive created: {archive_path}")
         _ok(f"Archive size: {zip_size_kb} KB  ({len(file_list)} files)")
 
-    # ── Step 5: write PACKAGE_MANIFEST.json inside the archive ───────────────
+    # -- Step 5: write PACKAGE_MANIFEST.json inside the archive ---------------
     print("\n[Step 5: Package manifest]")
     now_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
     pkg_manifest = {
@@ -289,7 +289,7 @@ def package(
             )
         _ok("PACKAGE_MANIFEST.json written into archive")
 
-    # ── Summary ───────────────────────────────────────────────────────────────
+    # -- Summary ---------------------------------------------------------------
     print("\n" + "=" * 64)
     if dry:
         print("Dry-run complete: would succeed. No output written.")
@@ -301,7 +301,7 @@ def package(
     return 0
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# -- Entry point ---------------------------------------------------------------
 
 def main() -> int:
     parser = argparse.ArgumentParser(

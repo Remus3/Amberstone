@@ -22,7 +22,7 @@ import sys
 import time
 from pathlib import Path
 
-# ── Config ────────────────────────────────────────────────────────────────
+# -- Config ----------------------------------------------------------------
 POLL_IDLE_S  = 30    # seconds between polls when empty
 POLL_WORK_S  = 10    # seconds after a batch completes before re-checking
 LOCK_STALE_S = 300   # seconds before a held lock is declared stale
@@ -33,7 +33,7 @@ PULL_SCRIPT  = SCRIPT_DIR / "bridge_pull_tasks.py"
 HEALTH_FILE  = SCRIPT_DIR / "bridge_daemon_health.json"
 LOCK_FILE    = SCRIPT_DIR / "bridge_daemon.lock"
 
-# ── Logging ───────────────────────────────────────────────────────────────
+# -- Logging ---------------------------------------------------------------
 # Console handler (useful when running foreground; no-op under pythonw.exe)
 _fmt = logging.Formatter("%(asctime)s [bridge-daemon] %(levelname)s %(message)s",
                           datefmt="%H:%M:%S")
@@ -51,7 +51,7 @@ _root.addHandler(_fh)
 _log = logging.getLogger("bridge_daemon")
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────
+# -- Helpers ---------------------------------------------------------------
 
 def _resolve_claude() -> str:
     """Find claude CLI binary (Windows .cmd shim or bare executable)."""
@@ -147,7 +147,7 @@ def _check_count() -> int:
         return 0
 
 
-# ── Main loop ─────────────────────────────────────────────────────────────
+# -- Main loop -------------------------------------------------------------
 
 def main() -> None:
     _log.info("starting  pid=%d  target=%s  poll_idle=%ds",

@@ -49,7 +49,7 @@ class ParseResult:
     used_llm: bool = False
 
 
-# ── rule-based patterns ─────────────────────────────────────────────
+# -- rule-based patterns ---------------------------------------------
 #
 # Each rule returns (ParseResult, tasks_to_file) where tasks_to_file is
 # a list of kwargs dicts for Scheduler.file_task(). The parser actually
@@ -109,7 +109,7 @@ class InputParser:
                 op="user-destructive-request",
                 owner_agent="1",
                 priority=5,
-                categories=[1],   # hard gate → needs_explicit_approval
+                categories=[1],   # hard gate -> needs_explicit_approval
                 payload={"user_text": text, "intent": "destructive"},
             ).id
             return ParseResult(
@@ -188,7 +188,7 @@ class InputParser:
                 intent="restart_rc",
             )
 
-        # Generic note → Agent 4 for later.
+        # Generic note -> Agent 4 for later.
         m = _RE_NOTE.match(text)
         if m:
             body = m.group("body").strip()

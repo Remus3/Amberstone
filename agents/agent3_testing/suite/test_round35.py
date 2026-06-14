@@ -40,7 +40,7 @@ def _on_weekday(target_wd: int, hour: int = 14) -> str:
     return (now - timedelta(days=days_back)).isoformat()
 
 
-# ── bucketing ───────────────────────────────────────────────────────
+# -- bucketing -------------------------------------------------------
 
 def test_bucketing_by_local_weekday(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import day_of_week_analysis
@@ -116,12 +116,12 @@ def test_kda_ratio_per_weekday(tmp_path: Path, monkeypatch) -> None:
     _insert(tmp_path / "aram.db", "Ahri", 1, 10, 5, 15, _on_weekday(2))
     data = day_of_week_analysis(mode="aram", min_games=1)
     wed = next(b for b in data["buckets"] if b["name"] == "Wed")
-    # Mean 10/4/15 → (10+15)/4 = 6.25.
+    # Mean 10/4/15 -> (10+15)/4 = 6.25.
     assert wed["kda_sample"] == 2
     assert wed["kda_ratio"] == 6.25
 
 
-# ── CLI ─────────────────────────────────────────────────────────────
+# -- CLI -------------------------------------------------------------
 
 def test_cli_weekday_json(tmp_path: Path, monkeypatch, capsys) -> None:
     from coaches.adaptation_hint import main
@@ -160,7 +160,7 @@ def test_cli_weekday_cross_mode_default(tmp_path: Path, monkeypatch, capsys) -> 
     assert data["total_games"] == 2
 
 
-# ── supervisor route ────────────────────────────────────────────────
+# -- supervisor route ------------------------------------------------
 
 def test_supervisor_registers_day_of_week_route() -> None:
     # s243: handler split byte-verbatim into _supervisor_http.py

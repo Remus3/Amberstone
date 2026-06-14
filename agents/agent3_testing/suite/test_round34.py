@@ -38,7 +38,7 @@ def _at_local_hour(hour: int, days_ago: int = 0) -> str:
     return dt.isoformat()
 
 
-# ── bucketing ───────────────────────────────────────────────────────
+# -- bucketing -------------------------------------------------------
 
 def test_time_of_day_bucketing_by_local_hour(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import time_of_day_analysis
@@ -134,7 +134,7 @@ def test_since_filter_clips_old_games(tmp_path: Path, monkeypatch) -> None:
 def test_kda_ratio_per_bucket(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import time_of_day_analysis
     _init(tmp_path, monkeypatch)
-    # All at hour 15, two games → mean 10/4/15 → (10+15)/4 = 6.25.
+    # All at hour 15, two games -> mean 10/4/15 -> (10+15)/4 = 6.25.
     _insert(tmp_path / "aram.db", "Ahri", 1, 10, 3, 15, _at_local_hour(15))
     _insert(tmp_path / "aram.db", "Ahri", 1, 10, 5, 15, _at_local_hour(15))
     data = time_of_day_analysis(mode="aram", min_games=1)
@@ -143,7 +143,7 @@ def test_kda_ratio_per_bucket(tmp_path: Path, monkeypatch) -> None:
     assert hour15["kda_ratio"] == 6.25
 
 
-# ── CLI ─────────────────────────────────────────────────────────────
+# -- CLI -------------------------------------------------------------
 
 def test_cli_hourly_json(tmp_path: Path, monkeypatch, capsys) -> None:
     from coaches.adaptation_hint import main
@@ -181,7 +181,7 @@ def test_cli_hourly_cross_mode_default(tmp_path: Path, monkeypatch, capsys) -> N
     assert data["total_games"] == 2
 
 
-# ── supervisor endpoint ─────────────────────────────────────────────
+# -- supervisor endpoint ---------------------------------------------
 
 def test_supervisor_registers_time_of_day_route() -> None:
     # s243: handler split byte-verbatim into _supervisor_http.py

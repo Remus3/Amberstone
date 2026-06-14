@@ -55,7 +55,7 @@ class FakeScheduler:
         return t
 
 
-# ── severity filter ─────────────────────────────────────────────────
+# -- severity filter -------------------------------------------------
 
 def test_files_only_above_severity_floor(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.insight_detector import detect_insights_and_file
@@ -112,7 +112,7 @@ def test_skips_cold_streak_type(tmp_path: Path, monkeypatch) -> None:
     assert out["skipped_type"] >= 1
 
 
-# ── cooldown ────────────────────────────────────────────────────────
+# -- cooldown --------------------------------------------------------
 
 def test_cooldown_prevents_duplicate(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.insight_detector import detect_insights_and_file
@@ -149,7 +149,7 @@ def test_cooldown_expires(tmp_path: Path, monkeypatch) -> None:
     sched = FakeScheduler()
     detect_insights_and_file(sched, modes=("aram",), severity_floor=0.7)
     initial = len(sched.filed)
-    # Zero cooldown → next pass re-fires.
+    # Zero cooldown -> next pass re-fires.
     detect_insights_and_file(sched, modes=("aram",), severity_floor=0.7,
                              cooldown_hours=0)
     assert len(sched.filed) > initial
@@ -183,7 +183,7 @@ def test_cooldown_keys_include_champion(tmp_path: Path, monkeypatch) -> None:
     assert key_jinx != key_ahri
 
 
-# ── payload shape ───────────────────────────────────────────────────
+# -- payload shape ---------------------------------------------------
 
 def test_filed_payload_has_insight_fields(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.insight_detector import detect_insights_and_file
@@ -210,7 +210,7 @@ def test_filed_payload_has_insight_fields(tmp_path: Path, monkeypatch) -> None:
     assert sched.filed[0]["op"] == "coaching-insight-advisory"
 
 
-# ── supervisor /api/advisories surface ──────────────────────────────
+# -- supervisor /api/advisories surface ------------------------------
 
 def test_api_advisories_whitelists_new_op() -> None:
     # s243: _handle_advisories split byte-verbatim into _supervisor_http.py
@@ -221,7 +221,7 @@ def test_api_advisories_whitelists_new_op() -> None:
     assert 'op == "coaching-insight-advisory"' in sup
 
 
-# ── auto-analyze wires the new detector ─────────────────────────────
+# -- auto-analyze wires the new detector -----------------------------
 
 def test_supervisor_wires_insight_detector() -> None:
     sup = Path("agents/supervisor.py").read_text(encoding="utf-8")

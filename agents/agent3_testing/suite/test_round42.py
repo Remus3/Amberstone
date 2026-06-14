@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 
-# ── ui_applier: whitelist + atomic write ────────────────────────────
+# -- ui_applier: whitelist + atomic write ----------------------------
 
 def test_applier_accepts_whitelisted_css(tmp_path: Path, monkeypatch) -> None:
     import agents.agent4_coach_mentor.ui_applier as ui_applier
@@ -175,7 +175,7 @@ def test_applier_validates_all_before_writing_any(tmp_path: Path, monkeypatch) -
     assert css.read_text(encoding="utf-8") == "original"
 
 
-# ── ui_feedback parser: refusal + rules ─────────────────────────────
+# -- ui_feedback parser: refusal + rules -----------------------------
 
 def test_parser_refuses_off_topic(tmp_path: Path) -> None:
     from agents.agent1_lead import Scheduler
@@ -298,7 +298,7 @@ def test_parser_bypass_empty_input(tmp_path: Path) -> None:
     assert r.bypass_dev is True
 
 
-# ── supervisor routing ─────────────────────────────────────────────
+# -- supervisor routing ---------------------------------------------
 
 def test_supervisor_adds_ui_proposal_to_deterministic() -> None:
     sup = Path("agents/supervisor.py").read_text(encoding="utf-8")
