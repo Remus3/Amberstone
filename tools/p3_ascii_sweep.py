@@ -40,10 +40,13 @@ GLYPH_MAP = {
     "↑": "^", "↓": "v", "⇒": "=>", "⇄": "<->", "↕": "^v",
     "α": "alpha", "β": "beta", "Σ": "sum", "Δ": "delta",
     "λ": "lambda",
-    "✓": "ok", "✗": "x", "…": "...",
+    "✓": "ok", "✗": "x",  # checkmarks; ellipsis U+2026 added below via chr() (hygiene guard bans the literal)
     "§": "S", "‹": "<", "›": ">", "※": "*",
     "⨝": "join",
 }
+# U+2026 (horizontal ellipsis) keyed via chr() - the authored-source hygiene
+# guard (tests/test_smart_quote_hygiene.py) bans the literal glyph in source.
+GLYPH_MAP[chr(0x2026)] = "..."
 
 
 def _is_ascii(s: str) -> bool:
