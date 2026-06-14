@@ -2,7 +2,7 @@
 
 `reset_cs_retention_between_tests` - `dashboard._state_builder.build_state()`
 holds a *process-global* last-champ_select across the fast no-draft
-(ARAM / Mayhem / Arena) champ-select → game transition (see
+(ARAM / Mayhem / Arena) champ-select -> game transition (see
 `dashboard/_cs_retention.py`). That persistence is correct in
 production (the dashboard polls at 500ms and the view must survive the
 transient loss) but it bleeds across `build_state()` test calls in a

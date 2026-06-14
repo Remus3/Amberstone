@@ -233,7 +233,7 @@ class TestS214CascadeAndMultiPick(unittest.TestCase):
         self.assertEqual(picks[2]["champName"], "Jinx")
 
     def test_exclude_skips_specific_champs(self):
-        # Vayne 5/5 (100%), Caitlyn 6/8 (75%). Exclude Vayne → only Caitlyn.
+        # Vayne 5/5 (100%), Caitlyn 6/8 (75%). Exclude Vayne -> only Caitlyn.
         rows = []
         for i in range(5):
             rows.append({"match_id": f"v{i}", "puuid": "me",
@@ -338,7 +338,7 @@ class TestS214CascadeAndMultiPick(unittest.TestCase):
                 ally_ids=())
         finally:
             conn.close()
-        # Recent-form path: 3 recent wins → 100% WR, fallback fires.
+        # Recent-form path: 3 recent wins -> 100% WR, fallback fires.
         self.assertTrue(picks)
         self.assertEqual(picks[0]["champName"], "Vayne")
         self.assertEqual(picks[0]["wr_pct"], 100)
@@ -501,10 +501,10 @@ class TestBansQuery(unittest.TestCase):
         ]
 
     def test_top_3_bans_by_loss_rate(self):
-        # vs Nilah (id 895): 3 encounters, 3 losses → 100%
-        # vs Twitch (29): 2/2 losses → 100%
-        # vs Caitlyn (51): 5 encounters, 3 losses → 60%
-        # vs Jinx (222): 10 encounters, 4 losses → 40% - should be filtered (<50%)
+        # vs Nilah (id 895): 3 encounters, 3 losses -> 100%
+        # vs Twitch (29): 2/2 losses -> 100%
+        # vs Caitlyn (51): 5 encounters, 3 losses -> 60%
+        # vs Jinx (222): 10 encounters, 4 losses -> 40% - should be filtered (<50%)
         rows = []
         for i in range(3):
             rows.extend(self._add_match(f"n{i}", 67, 0, 895))  # operator loses to Nilah
@@ -523,7 +523,7 @@ class TestBansQuery(unittest.TestCase):
         self.assertEqual(len(bans), 3)
         # Sorted by loss-rate desc, then encounters desc.
         names = [b["name"] for b in bans]
-        # Nilah + Twitch both 100% loss; Nilah has more encounters → first.
+        # Nilah + Twitch both 100% loss; Nilah has more encounters -> first.
         self.assertEqual(names[0], "C895")  # Nilah
         self.assertEqual(names[1], "C29")   # Twitch
         self.assertEqual(names[2], "C51")   # Caitlyn (60%)
@@ -706,7 +706,7 @@ class TestChampRecordQuery(unittest.TestCase):
         self.assertIsNone(rec["role_wr_pct"])
 
     def test_role_with_zero_role_games(self):
-        # Played only TOP; asking for BOTTOM role split → role_* None but
+        # Played only TOP; asking for BOTTOM role split -> role_* None but
         # all-roles still populated (the headline still shows).
         rows = [{"match_id": f"t{i}", "puuid": "me", "team_position": "TOP",
                  "champion_id": 67, "champion_name": "Vayne", "win": 1}
@@ -851,7 +851,7 @@ class TestVsEnemyQuery(unittest.TestCase):
         ]
 
     def test_counts_opposing_team_any_lane(self):
-        # vs Darius(122): 5 encounters, operator wins 1 → 20% WR.
+        # vs Darius(122): 5 encounters, operator wins 1 -> 20% WR.
         # enemy_pos varies (TOP/JUNGLE) - lane-agnostic per A1.
         rows = []
         for i in range(5):
@@ -872,7 +872,7 @@ class TestVsEnemyQuery(unittest.TestCase):
         self.assertEqual(rec["wr_pct"], 20)
 
     def test_same_team_does_not_count(self):
-        # Darius on operator's OWN team → not a "vs" encounter.
+        # Darius on operator's OWN team -> not a "vs" encounter.
         rows = [
             {"match_id": "a", "puuid": "me", "team_id": 100,
              "team_position": "BOTTOM", "champion_id": 67,

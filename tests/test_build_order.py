@@ -59,7 +59,7 @@ class FakeEngine:
     """Records calls + emulates the engine. ``last_filter`` exposes the
     ``filter_shared_uniques`` the planner actually sent (for the override
     test). ``fail_after`` makes it return None from the Nth call on (for
-    the mid-sequence-engine-death test). ``hard_down`` → always None."""
+    the mid-sequence-engine-death test). ``hard_down`` -> always None."""
 
     def __init__(self, fail_after: int | None = None, hard_down: bool = False):
         self.calls: list[dict] = []
@@ -296,7 +296,7 @@ class EdgeCaseContractTests(unittest.TestCase):
         self.assertIsNone(res)
 
     def test_engine_dies_mid_sequence_truncates_with_note(self):
-        eng = FakeEngine(fail_after=3)   # calls 1,2 ok; 3rd → None
+        eng = FakeEngine(fail_after=3)   # calls 1,2 ok; 3rd -> None
         res = plan_build_order("Ezreal", "carry", level=11,
                                owned_item_ids=[], slots=6, inject_boots=False, rank_fn=eng)
         self.assertIsNotNone(res)
@@ -470,7 +470,7 @@ class DispatchIntegrationTests(unittest.TestCase):
         )
         self.assertIsNotNone(res)
         self.assertIsInstance(res.build_order, BuildOrderResult)
-        # 2-row static mock → planner takes both then stops (picked-id
+        # 2-row static mock -> planner takes both then stops (picked-id
         # filter drains it); flat dispatch + slot calls > 1.
         # 2026-05-23 (item 164b): plan_build_order now injects a boots
         # step at position 2 by default - filter it out of the engine-

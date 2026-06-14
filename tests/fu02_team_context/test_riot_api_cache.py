@@ -63,10 +63,10 @@ class TestImmutableCache(_TempCache):
     def test_round_trip_unicode(self):
         # Riot summoner names can be arbitrary unicode; ensure the
         # JSON encoder isn't breaking on non-ASCII.
-        payload = {"name": "Faker곤", "tag": "KR1"}
-        self.cache.set_immutable("account:v1:KR:Faker곤#KR1", payload)
+        payload = {"name": "Faker\uace4", "tag": "KR1"}
+        self.cache.set_immutable("account:v1:KR:Faker\uace4#KR1", payload)
         self.assertEqual(
-            self.cache.get_immutable("account:v1:KR:Faker곤#KR1"),
+            self.cache.get_immutable("account:v1:KR:Faker\uace4#KR1"),
             payload,
         )
 
@@ -83,7 +83,7 @@ class TestTtlCache(_TempCache):
         )
 
     def test_expired_returns_none(self):
-        # ttl_s=0 → expires_at == now → already expired on first read.
+        # ttl_s=0 -> expires_at == now -> already expired on first read.
         self.cache.set_ttl("ephem", {"v": 1}, ttl_s=0)
         # Tiny sleep so the integer-second clock advances past the boundary.
         time.sleep(1.05)

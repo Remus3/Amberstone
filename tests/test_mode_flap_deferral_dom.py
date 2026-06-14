@@ -1,4 +1,4 @@
-"""Regression guard for the onState→onHealth mode-flap deferral.
+"""Regression guard for the onState->onHealth mode-flap deferral.
 
 Bug (2026-05-17): in any non-game state where build_state preflips
 ``mode_key`` (ARAM/Arena lobby + champ-select) the dashboard received
@@ -6,8 +6,8 @@ two disagreeing mode authorities - onState carrying the correct preflip
 ``mode_key`` (e.g. "aram") and onHealth deriving "client" from a health
 envelope whose preflip mirror wasn't applied (the :8891 file_ingest
 mirror can fail/lag; /api/health is never mirrored). Both write
-``body[data-mode]`` on independent cadences, so it flapped aram↔client
-~1×/sec and every mode-gated header-row-2 pill (ds / augments / trigger
+``body[data-mode]`` on independent cadences, so it flapped aram<->client
+~1x/sec and every mode-gated header-row-2 pill (ds / augments / trigger
 / archetype-nudge), the mode pill, and the panel titles flickered on/off
 on every view (shared header).
 

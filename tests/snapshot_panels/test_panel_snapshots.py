@@ -2,7 +2,7 @@
 tests/snapshot_panels/test_panel_snapshots.py
 Phase 3.3: Playwright panel snapshot tests.
 
-6 fixture states × 4 game panels = 24 screenshots per run.
+6 fixture states x 4 game panels = 24 screenshots per run.
 Screenshots written to tests/snapshot_panels/screenshots/ (gitignored).
 Tests pass when:
   - All 4 panels are visible in the DOM.
@@ -49,7 +49,7 @@ def test_panels(fixture_name, mock_server, pw_browser):
 
     try:
         # /#last-match forces the view router to show the game panels at boot
-        # (without it, the router starts in "home" view → main hidden).
+        # (without it, the router starts in "home" view -> main hidden).
         # domcontentloaded fires after all ES modules execute, so the view
         # router has already applied by the time Playwright resumes.
         #
@@ -230,7 +230,7 @@ def test_augment_reco_panel(fixture_name, mock_server, pw_browser):
 def test_mode_transition(mock_server, pw_browser):
     """Hot-swap the SSE fixture across modes; renderer must not leak DOM state.
 
-    Sequence: lobby → sr → aram → tft → lobby.
+    Sequence: lobby -> sr -> aram -> tft -> lobby.
     Each step reloads the page so the fresh fixture is fetched. We assert
     `body[data-mode]` matches the new mode_key on each step, and no JS
     errors fire during any transition.

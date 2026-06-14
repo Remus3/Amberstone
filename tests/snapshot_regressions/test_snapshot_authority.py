@@ -38,9 +38,9 @@ def _load_golden(name: str) -> dict:
     return json.loads((_GOLDEN_DIR / name).read_text(encoding="utf-8"))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # A. Snapshot translation goldens
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestSnapshotTranslationGoldens(unittest.TestCase):
     """Verify translation helpers produce payloads that match golden fixtures."""
@@ -199,9 +199,9 @@ class TestSnapshotTranslationGoldens(unittest.TestCase):
         self.assertIsInstance(s.raw_state, dict)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # B. Envelope authority and mode transitions
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestEnvelopeModeTransitions(unittest.TestCase):
     """Verify envelope transitions and stale-state cleanup."""
@@ -291,9 +291,9 @@ class TestEnvelopeModeTransitions(unittest.TestCase):
         self.assertEqual(mode_from_game_mode_string(""), MODE_SR)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # C. Derived compatibility surfaces
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestDerivedCompatibilitySurfaces(unittest.TestCase):
     """
@@ -378,9 +378,9 @@ class TestDerivedCompatibilitySurfaces(unittest.TestCase):
         self.assertIsNot(s.raw_state, ARAM_STATE)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # D. Non-TFT raw-dict fallback closure
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestNonTftRawDictFallbackClosure(unittest.TestCase):
     """
@@ -487,9 +487,9 @@ class TestNonTftRawDictFallbackClosure(unittest.TestCase):
         self.assertEqual(s.raw_state, ARAM_STATE)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # E. TFT runtime authority boundary
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestTftRuntimeAuthorityBoundary(unittest.TestCase):
     """

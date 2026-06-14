@@ -24,8 +24,8 @@ from unittest.mock import patch
 from dashboard import routes_replay_events as routes
 
 
-# ── fake handler mirroring the BaseHTTPRequestHandler surface the
-#    route uses (only `path` + `_send`). ────────────────────────────────
+# -- fake handler mirroring the BaseHTTPRequestHandler surface the
+#    route uses (only `path` + `_send`). --------------------------------
 
 class _FakeHandler:
     def __init__(self, path: str):
