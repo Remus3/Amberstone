@@ -25,7 +25,7 @@ from agents.daemon_slayer.hps import (
 )
 
 
-# ─── Formula loader ────────────────────────────────────────────────────
+# --- Formula loader ----------------------------------------------------
 
 
 class EnchanterItemFormulaTests(unittest.TestCase):
@@ -61,9 +61,9 @@ class EnchanterItemFormulaTests(unittest.TestCase):
         })
         # level 1: base only
         self.assertAlmostEqual(f.heal_per_proc_at(1, ap=0.0), 150.0)
-        # level 11: base + 10 × per_level
+        # level 11: base + 10 x per_level
         self.assertAlmostEqual(f.heal_per_proc_at(11, ap=0.0), 150.0 + 117.6)
-        # level 18: base + 17 × per_level (matches doc string)
+        # level 18: base + 17 x per_level (matches doc string)
         self.assertAlmostEqual(f.heal_per_proc_at(18, ap=0.0), 150.0 + 199.92)
 
     def test_heal_per_proc_ap_scaling(self) -> None:
@@ -72,7 +72,7 @@ class EnchanterItemFormulaTests(unittest.TestCase):
             "heal_per_proc_per_level": 1.76,
             "heal_per_proc_ap_scaling": 0.15,
         })
-        # 100 AP → +15
+        # 100 AP -> +15
         self.assertAlmostEqual(f.heal_per_proc_at(1, ap=100.0), 40.0 + 15.0)
 
     def test_shield_per_proc_at(self) -> None:
@@ -135,7 +135,7 @@ class SingletonCacheTests(unittest.TestCase):
         self.assertIsNot(a, b)
 
 
-# ─── ARAM modifier helper ──────────────────────────────────────────────
+# --- ARAM modifier helper ----------------------------------------------
 
 
 class AramHealingModifierTests(unittest.TestCase):
@@ -154,7 +154,7 @@ class AramHealingModifierTests(unittest.TestCase):
         self.assertGreater(v, 0.0)
 
 
-# ─── compute_hps basics ────────────────────────────────────────────────
+# --- compute_hps basics ------------------------------------------------
 
 
 class ComputeHpsBasicsTests(unittest.TestCase):
@@ -251,7 +251,7 @@ class ComputeHpsBasicsTests(unittest.TestCase):
         self.assertGreater(r.shielding_hps_raw, 0.0)
 
 
-# ─── amp pipeline + compounding ────────────────────────────────────────
+# --- amp pipeline + compounding ----------------------------------------
 
 
 class AmpPipelineTests(unittest.TestCase):
@@ -260,19 +260,19 @@ class AmpPipelineTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_amp_multipliers_compound_multiplicatively(self) -> None:
-        """Redemption (+10%) + Mikael (+12%) → product = 1.10 × 1.12 = 1.232."""
+        """Redemption (+10%) + Mikael (+12%) -> product = 1.10 x 1.12 = 1.232."""
         r = compute_hps(
             self.snap, "Soraka", level=11, item_ids=["3107", "3222"]
         )
         self.assertAlmostEqual(r.amp_multiplier, 1.10 * 1.12, places=4)
 
     def test_moonstone_amps_redemption(self) -> None:
-        """Adding Moonstone to Redemption build raises the amped HPS by ×1.30."""
+        """Adding Moonstone to Redemption build raises the amped HPS by x1.30."""
         base = compute_hps(self.snap, "Soraka", level=11, item_ids=["3107"])
         amped = compute_hps(
             self.snap, "Soraka", level=11, item_ids=["3107", "6617"]
         )
-        # raw unchanged, amp grows ×1.30/×1.10 = ×1.30 factor on top.
+        # raw unchanged, amp grows x1.30/x1.10 = x1.30 factor on top.
         self.assertAlmostEqual(amped.healing_hps_raw, base.healing_hps_raw, places=3)
         self.assertAlmostEqual(amped.amp_multiplier, 1.10 * 1.30, places=4)
         self.assertAlmostEqual(
@@ -309,11 +309,11 @@ class AmpPipelineTests(unittest.TestCase):
             self.snap, "Soraka", level=11,
             item_ids=["6617", "3107", "3504"],
         )
-        # raw = Redemption only: 267.6 × 0.00833 × 3 = 6.687
+        # raw = Redemption only: 267.6 x 0.00833 x 3 = 6.687
         self.assertAlmostEqual(r.healing_hps_raw, 267.6 * 0.00833 * 3.0, places=3)
-        # amp = 1.30 (Moonstone) × 1.10 (Redemption) × 1.10 (Ardent) = 1.573
+        # amp = 1.30 (Moonstone) x 1.10 (Redemption) x 1.10 (Ardent) = 1.573
         self.assertAlmostEqual(r.amp_multiplier, 1.30 * 1.10 * 1.10, places=4)
-        # healing_hps = raw × amp
+        # healing_hps = raw x amp
         self.assertAlmostEqual(
             r.healing_hps, r.healing_hps_raw * r.amp_multiplier, places=3
         )
@@ -328,7 +328,7 @@ class AmpPipelineTests(unittest.TestCase):
         )
 
 
-# ─── mode multiplier ───────────────────────────────────────────────────
+# --- mode multiplier ---------------------------------------------------
 
 
 class ModeMultiplierTests(unittest.TestCase):
@@ -429,7 +429,7 @@ class HealShieldSplitModifierTests(unittest.TestCase):
         self.assertEqual(s, 0.85)
 
 
-# ─── targets override ──────────────────────────────────────────────────
+# --- targets override --------------------------------------------------
 
 
 class TargetsOverrideTests(unittest.TestCase):
@@ -444,7 +444,7 @@ class TargetsOverrideTests(unittest.TestCase):
             self.snap, "Soraka", level=11, item_ids=["3107"],
             targets_per_proc_override=1.0,
         )
-        # base: 267.6 × 0.00833 × 3 = 6.69; override: 267.6 × 0.00833 × 1 = 2.23
+        # base: 267.6 x 0.00833 x 3 = 6.69; override: 267.6 x 0.00833 x 1 = 2.23
         self.assertAlmostEqual(override.healing_hps_raw, base.healing_hps_raw / 3.0, places=3)
 
     def test_targets_override_records_in_result(self) -> None:
@@ -458,7 +458,7 @@ class TargetsOverrideTests(unittest.TestCase):
         self.assertIn("targets_per_proc_override", joined)
 
 
-# ─── edge cases ────────────────────────────────────────────────────────
+# --- edge cases --------------------------------------------------------
 
 
 class EdgeCaseTests(unittest.TestCase):
@@ -530,7 +530,7 @@ class HpsItemContributionTests(unittest.TestCase):
         self.assertEqual(d["heal_shield_amp_pct"], 0.30)
 
 
-# ─── server route /hps ─────────────────────────────────────────────────
+# --- server route /hps -------------------------------------------------
 
 
 class HpsRouteTests(unittest.TestCase):
@@ -583,7 +583,7 @@ class HpsRouteTests(unittest.TestCase):
             "targets_per_proc_override": 1.0,
         })
         self.assertEqual(status, 200)
-        # 1 target → 1/3 of default-3 throughput.
+        # 1 target -> 1/3 of default-3 throughput.
         self.assertLess(payload["healing_hps_raw"], 3.0)
 
     def test_post_hps_unknown_champion_404(self) -> None:

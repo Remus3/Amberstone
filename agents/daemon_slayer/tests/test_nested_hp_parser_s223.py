@@ -11,16 +11,16 @@ been silently dropped since Phase 4a.
 
 PART 2 - one new block_index entry: Kindred E=1 ("Enhanced damage below
 threshold", 7.5% missing-HP vs block 0's 5%) - the canonical
-Kindred-E-as-execute case. Monotone ≥ block 0, strictly greater at any
+Kindred-E-as-execute case. Monotone >= block 0, strictly greater at any
 sub-100% target HP, exact no-op at full HP.
 
-PART 3 - the s191→s217 single-int/list registry is provably saturated:
+PART 3 - the s191->s217 single-int/list registry is provably saturated:
 the 47 not-yet-covered champions yielded zero clean candidates (residue
 is single-block kits / block-0-already-max / upstream data gaps). This
 file pins a few representative "stays unmapped" guards so a future
 accidental entry trips a test.
 
-ENGINE_VERSION 0.94.0 → 0.95.0 pinned.
+ENGINE_VERSION 0.94.0 -> 0.95.0 pinned.
 """
 from __future__ import annotations
 
@@ -50,12 +50,12 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── PART 1a - _canonicalize_unit unit tests ─────────────────────────────────
+# --- PART 1a - _canonicalize_unit unit tests ---------------------------------
 
 
 class CanonicalizeUnitTests(unittest.TestCase):
     def test_plain_unit_is_byte_identical(self) -> None:
-        """No "(+" → returned unchanged (zero perturbation of recognized
+        """No "(+" -> returned unchanged (zero perturbation of recognized
         units; the early-return is the regression guarantee)."""
         for u in ("", "% AD", "% bonus AD", "% AP",
                   "% of target's maximum health",
@@ -101,7 +101,7 @@ class CanonicalizeUnitTests(unittest.TestCase):
             self.assertEqual(_UNIT_TO_FIELD[_canonicalize_unit(raw)], field)
 
 
-# ─── PART 1b - _normalize_modifiers integration ──────────────────────────────
+# --- PART 1b - _normalize_modifiers integration ------------------------------
 
 
 class NormalizeModifiersNestedTests(unittest.TestCase):
@@ -133,7 +133,7 @@ class NormalizeModifiersNestedTests(unittest.TestCase):
         self.assertEqual(len(unparsed), 1)
 
 
-# ─── PART 1c - migration applied to the live 16.10.1 snapshot ────────────────
+# --- PART 1c - migration applied to the live 16.10.1 snapshot ----------------
 
 
 class SnapshotMigrationTests(unittest.TestCase):
@@ -196,7 +196,7 @@ class SnapshotMigrationTests(unittest.TestCase):
             self.assertIsNotNone(b.target_missing_hp_pct)
 
 
-# ─── PART 2 - Kindred E registry entry + A/B ─────────────────────────────────
+# --- PART 2 - Kindred E registry entry + A/B ---------------------------------
 
 
 class KindredEEntryTests(unittest.TestCase):
@@ -246,7 +246,7 @@ class KindredEEntryTests(unittest.TestCase):
                                b1.raw_damage_per_cast, places=6)
 
     def test_monotone_in_missing_hp(self) -> None:
-        """More missing HP ⇒ strictly more Kindred E damage (the parser
+        """More missing HP => strictly more Kindred E damage (the parser
         fix made the missing-HP component count at all)."""
         full = self._e(hp_pct=1.0).raw_damage_per_cast
         half = self._e(hp_pct=0.5).raw_damage_per_cast
@@ -255,7 +255,7 @@ class KindredEEntryTests(unittest.TestCase):
         self.assertGreater(low, half)
 
 
-# ─── PART 3 - saturation guards + backward-compat ────────────────────────────
+# --- PART 3 - saturation guards + backward-compat ----------------------------
 
 
 class SaturationAndBackwardCompatTests(unittest.TestCase):

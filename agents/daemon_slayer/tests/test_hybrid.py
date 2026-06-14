@@ -25,7 +25,7 @@ from agents.daemon_slayer.hybrid import (
 
 
 class WeightsTableTests(unittest.TestCase):
-    """The per-champion (α, β) registry."""
+    """The per-champion (alpha, beta) registry."""
 
     def test_default_pair_balanced(self) -> None:
         # Fallback when no override exists.
@@ -45,8 +45,8 @@ class WeightsTableTests(unittest.TestCase):
         self.assertLess(b, 0.4)
 
     def test_monkeyking_uses_ddragon_id_not_display_name(self) -> None:
-        # The table keys MUST be DDragon IDs (display→id resolution is
-        # server-side). Wukong → MonkeyKing.
+        # The table keys MUST be DDragon IDs (display->id resolution is
+        # server-side). Wukong -> MonkeyKing.
         a, b = get_weights_for("MonkeyKing")
         self.assertAlmostEqual(a, 0.60)
         # "Wukong" should NOT be in the table - falls back to default.
@@ -54,14 +54,14 @@ class WeightsTableTests(unittest.TestCase):
         self.assertEqual((a_wukong, b_wukong), (0.5, 0.5))
 
     def test_all_listed_pairs_sum_close_to_one(self) -> None:
-        # By convention α+β=1.0; the table is operator-facing and the
+        # By convention alpha+beta=1.0; the table is operator-facing and the
         # operator should be able to think of (0.65, 0.35) as a 65/35
         # split. Pin the convention.
         table = _load_archetype_weights()
         for cid, pair in (table.get("champions") or {}).items():
             self.assertAlmostEqual(
                 pair[0] + pair[1], 1.0, places=4,
-                msg=f"{cid}: α+β = {pair[0]+pair[1]} (expected 1.0)",
+                msg=f"{cid}: alpha+beta = {pair[0]+pair[1]} (expected 1.0)",
             )
 
     def test_table_has_at_least_15_bruisers(self) -> None:
@@ -92,7 +92,7 @@ class ComputeHybridBasicsTests(unittest.TestCase):
         self.assertAlmostEqual(r_hybrid.ehp, r_ehp.blended_ehp, places=4)
 
     def test_hybrid_score_is_linear_combination(self) -> None:
-        # hybrid_score = α·dps + β·ehp - pin the raw scalar.
+        # hybrid_score = alpha*dps + beta*ehp - pin the raw scalar.
         r = compute_hybrid(self.snap, "JarvanIV", level=11)
         expected = r.alpha * r.dps + r.beta * r.ehp
         self.assertAlmostEqual(r.hybrid_score, expected, places=4)
@@ -136,8 +136,8 @@ class HybridDeltaPctTests(unittest.TestCase):
         self.assertAlmostEqual(score_half_each, 0.5 * score_sum, places=6)
 
     def test_normalized_balance_at_half_each(self) -> None:
-        # When both percentages are equal, score = (α+β)/2 * common_pct.
-        # 25% DPS gain + 25% EHP gain at α=β=0.5 → 0.25.
+        # When both percentages are equal, score = (alpha+beta)/2 * common_pct.
+        # 25% DPS gain + 25% EHP gain at alpha=beta=0.5 -> 0.25.
         s = _hybrid_delta_pct(
             delta_dps=50.0, delta_ehp=625.0,
             baseline_dps=200.0, baseline_ehp=2500.0,
@@ -151,7 +151,7 @@ class HybridDeltaPctTests(unittest.TestCase):
             baseline_dps=200.0, baseline_ehp=2500.0,
             alpha=1.0, beta=0.0,
         )
-        # 50/200 = 0.25 × 1.0 + 0 × β = 0.25 regardless of ehp delta
+        # 50/200 = 0.25 x 1.0 + 0 x beta = 0.25 regardless of ehp delta
         self.assertAlmostEqual(s, 0.25, places=4)
 
     def test_zero_baseline_dps_falls_back_to_zero_pct(self) -> None:
@@ -161,7 +161,7 @@ class HybridDeltaPctTests(unittest.TestCase):
             baseline_dps=0.0, baseline_ehp=2500.0,
             alpha=0.5, beta=0.5,
         )
-        # DPS contribution is 0; EHP delta is 500/2500 × 0.5 = 0.1
+        # DPS contribution is 0; EHP delta is 500/2500 x 0.5 = 0.1
         self.assertAlmostEqual(s, 0.1, places=4)
 
 
@@ -207,11 +207,11 @@ class RankByHybridBasicsTests(unittest.TestCase):
         self.assertEqual(scores, sorted(scores, reverse=True))
 
     def test_high_alpha_prefers_pure_dps_items(self) -> None:
-        # Riven at α=0.9 vs α=0.1 - with α=0.9, pure-AD/AS items
-        # should rank higher than with α=0.1.
+        # Riven at alpha=0.9 vs alpha=0.1 - with alpha=0.9, pure-AD/AS items
+        # should rank higher than with alpha=0.1.
         # Use a constrained whitelist: pure DPS (Infinity Edge 3031)
-        # vs pure tank (Thornmail 3075). At α=0.9 IE should top;
-        # at α=0.1 Thornmail should top (when enemy is AD-heavy so
+        # vs pure tank (Thornmail 3075). At alpha=0.9 IE should top;
+        # at alpha=0.1 Thornmail should top (when enemy is AD-heavy so
         # Thornmail's armor adds meaningful EHP).
         offensive = rank_items_by_hybrid(
             self.snap, "Riven", level=11,
@@ -228,11 +228,11 @@ class RankByHybridBasicsTests(unittest.TestCase):
         if len(offensive.ranked) >= 2 and len(defensive.ranked) >= 2:
             offensive_top = offensive.ranked[0].item_id
             defensive_top = defensive.ranked[0].item_id
-            # The top picks should DIFFER between extreme α values.
+            # The top picks should DIFFER between extreme alpha values.
             self.assertNotEqual(offensive_top, defensive_top)
 
     def test_extreme_alpha_matches_pure_dps_ranker_top(self) -> None:
-        # α=1.0 / β=0 should pick the same top item as the pure-DPS
+        # alpha=1.0 / beta=0 should pick the same top item as the pure-DPS
         # ranker would (within the same whitelist). Use a curated set
         # so the test is stable across patches.
         whitelist = ["3031", "3033", "3036", "3072", "3075", "3110"]
@@ -253,7 +253,7 @@ class RankByHybridBasicsTests(unittest.TestCase):
             )
 
     def test_extreme_beta_matches_pure_ehp_ranker_top(self) -> None:
-        # α=0 / β=1.0 should pick the same top item as the pure-EHP ranker.
+        # alpha=0 / beta=1.0 should pick the same top item as the pure-EHP ranker.
         whitelist = ["3031", "3033", "3036", "3072", "3075", "3110", "4401"]
         from agents.daemon_slayer.ehp import rank_items_by_ehp
         ehp_rank = rank_items_by_ehp(

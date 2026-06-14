@@ -37,7 +37,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── token normalization ─────────────────────────────────────────────────────
+# --- token normalization -----------------------------------------------------
 
 
 class ComboTokenTests(unittest.TestCase):
@@ -119,7 +119,7 @@ class ComboSequenceValidationTests(unittest.TestCase):
         self.assertEqual(norm, ("Q", "AA", "R", "Q2", "AA"))
 
 
-# ─── compute_burst_damage basics ─────────────────────────────────────────────
+# --- compute_burst_damage basics ---------------------------------------------
 
 
 class ComputeBurstDamageBasicsTests(unittest.TestCase):
@@ -184,7 +184,7 @@ class ComputeBurstDamageBasicsTests(unittest.TestCase):
                                  combo_sequence=["Q", "NOTOKEN"])
 
 
-# ─── per-champion scoring sanity ─────────────────────────────────────────────
+# --- per-champion scoring sanity ---------------------------------------------
 
 
 class BurstScoringTests(unittest.TestCase):
@@ -268,7 +268,7 @@ class BurstScoringTests(unittest.TestCase):
         )
 
 
-# ─── amp flow-through ────────────────────────────────────────────────────────
+# --- amp flow-through --------------------------------------------------------
 
 
 class AmpFlowThroughTests(unittest.TestCase):
@@ -321,12 +321,12 @@ class AmpFlowThroughTests(unittest.TestCase):
         )
         zed_lift_pct = (zed_abyssal.total_burst_damage - zed_naked.total_burst_damage) / max(1.0, zed_naked.total_burst_damage)
         diana_lift_pct = (diana_abyssal.total_burst_damage - diana_naked.total_burst_damage) / max(1.0, diana_naked.total_burst_damage)
-        # Diana gets the magic amp ×1.12 multiplicatively + 50 MR for survival.
+        # Diana gets the magic amp x1.12 multiplicatively + 50 MR for survival.
         # Zed gets stats only - much smaller lift.
         self.assertGreater(diana_lift_pct, zed_lift_pct)
 
 
-# ─── mode multiplier ─────────────────────────────────────────────────────────
+# --- mode multiplier ---------------------------------------------------------
 
 
 class ModeMultiplierTests(unittest.TestCase):
@@ -364,7 +364,7 @@ class ModeMultiplierTests(unittest.TestCase):
         self.assertAlmostEqual(ratio, aram.mode_multiplier, places=3)
 
 
-# ─── edge cases ─────────────────────────────────────────────────────────────
+# --- edge cases -------------------------------------------------------------
 
 
 class EdgeCaseTests(unittest.TestCase):
@@ -417,7 +417,7 @@ class EdgeCaseTests(unittest.TestCase):
         self.assertIn("total_burst_damage", out)
 
 
-# ─── server route ────────────────────────────────────────────────────────────
+# --- server route ------------------------------------------------------------
 
 
 class BurstRouteTests(unittest.TestCase):

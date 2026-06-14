@@ -1,0 +1,177 @@
+{
+ "agents/daemon_slayer/tests/test_abilities.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_ability_dps.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_augments.py": [
+  "0x2248",
+  "0xb1"
+ ],
+ "agents/daemon_slayer/tests/test_beam.py": [
+  "0x2192"
+ ],
+ "agents/daemon_slayer/tests/test_block_index_overrides.py": [
+  "0x2192",
+  "0x2260",
+  "0x2265",
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_burst.py": [
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_combo_overrides.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_conditional_block_index_s228.py": [
+  "0x2192",
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_conditional_block_index_s229.py": [
+  "0x2192",
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_conditional_block_index_s230.py": [
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_conditional_block_index_s231.py": [
+  "0x2192",
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_conditional_block_index_s232_saturation.py": [
+  "0x2192",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_cooldown_inheritance.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_dps.py": [
+  "0x2192",
+  "0x2248"
+ ],
+ "agents/daemon_slayer/tests/test_effects.py": [
+  "0x2192"
+ ],
+ "agents/daemon_slayer/tests/test_effects_expansion.py": [
+  "0x2192",
+  "0x2212",
+  "0x2248",
+  "0x2260",
+  "0x2500",
+  "0xb1",
+  "0xb7",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_ehp.py": [
+  "0x2192",
+  "0x221e",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_engine.py": [
+  "0x2192"
+ ],
+ "agents/daemon_slayer/tests/test_form_index_overrides.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_form_index_sweep_s226.py": [
+  "0x2192",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_hps.py": [
+  "0x2192",
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_hybrid.py": [
+  "0x2192",
+  "0x3b1",
+  "0x3b2",
+  "0xb7",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_lightshield_strike_burst.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_max_priority_overrides.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_max_priority_sweep_s227.py": [
+  "0x2192"
+ ],
+ "agents/daemon_slayer/tests/test_nested_hp_parser_s223.py": [
+  "0x2192",
+  "0x21d2",
+  "0x2265",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_on_hit_per_aa.py": [
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_post_parser_sweep_s225.py": [
+  "0x2192",
+  "0x226b",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_rank.py": [
+  "0x2192"
+ ],
+ "agents/daemon_slayer/tests/test_rank_assassin.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_rank_enchanter.py": [
+  "0x2192",
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_rank_mage.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_rank_tank.py": [
+  "0x2192"
+ ],
+ "agents/daemon_slayer/tests/test_server.py": [
+  "0x2192"
+ ],
+ "agents/daemon_slayer/tests/test_spellblade_burst.py": [
+  "0x2192",
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_sum_of_blocks.py": [
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_sum_of_blocks_expansion_s215.py": [
+  "0x2192",
+  "0x2248",
+  "0x2500",
+  "0xd7"
+ ],
+ "agents/daemon_slayer/tests/test_sum_of_blocks_expansion_s217.py": [
+  "0x2192",
+  "0x2500"
+ ],
+ "agents/daemon_slayer/tests/test_unit_variants_s224.py": [
+  "0x2192",
+  "0x2260",
+  "0x226b",
+  "0x2500",
+  "0xb7"
+ ]
+}

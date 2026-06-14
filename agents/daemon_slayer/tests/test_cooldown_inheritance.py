@@ -66,7 +66,7 @@ def _form(name: str, *, cooldown: tuple[float, ...] | None) -> AbilityForm:
     )
 
 
-# ─── _form_cooldown_at_rank - helper unit tests ──────────────────────────────
+# --- _form_cooldown_at_rank - helper unit tests ------------------------------
 
 
 class CooldownHelperBackwardCompatTests(unittest.TestCase):
@@ -140,7 +140,7 @@ class CooldownHelperFallbackTests(unittest.TestCase):
         )
 
 
-# ─── compute_ability_dps integration - 4 affected form-1 entries ─────────────
+# --- compute_ability_dps integration - 4 affected form-1 entries -------------
 
 
 class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
@@ -160,7 +160,7 @@ class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
         return next((s for s in out.per_spell if s.key == key), None)
 
     def test_riven_R_inherits_form0_cooldown(self) -> None:
-        # Riven R form 0 cd=[120, 90, 60]; at lvl 11 R is rank 2 → 90.0.
+        # Riven R form 0 cd=[120, 90, 60]; at lvl 11 R is rank 2 -> 90.0.
         # Pre-s206 returned 60.0 (generic default).
         s = self._spell("Riven", "R", level=11)
         self.assertIsNotNone(s)
@@ -169,7 +169,7 @@ class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
         self.assertEqual(s.cooldown, 90.0)
 
     def test_riven_R_inherits_at_rank_3(self) -> None:
-        # At lvl 16 R is rank 3 → 60.0 (form 0 cd[2]).
+        # At lvl 16 R is rank 3 -> 60.0 (form 0 cd[2]).
         s = self._spell("Riven", "R", level=16)
         self.assertIsNotNone(s)
         self.assertEqual(s.cooldown, 60.0)
@@ -186,7 +186,7 @@ class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
         self.assertIn(s.cooldown, (16.0, 14.5, 13.0, 11.5, 10.0))
 
     def test_aurelionsol_R_inherits_form0_cooldown(self) -> None:
-        # AurelionSol R form 0 cd=[120, 110, 100]; at lvl 11 R is rank 2 → 110.
+        # AurelionSol R form 0 cd=[120, 110, 100]; at lvl 11 R is rank 2 -> 110.
         s = self._spell("AurelionSol", "R", level=11)
         self.assertIsNotNone(s)
         self.assertEqual(s.form_index, 1)
@@ -215,11 +215,11 @@ class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
         s = self._spell("Veigar", "R", level=11)
         self.assertIsNotNone(s)
         self.assertEqual(s.form_index, 0)
-        # Veigar R form 0 cd=[100, 80, 60] at rank 2 → 80.
+        # Veigar R form 0 cd=[100, 80, 60] at rank 2 -> 80.
         self.assertEqual(s.cooldown, 80.0)
 
 
-# ─── compute_burst_damage integration ────────────────────────────────────────
+# --- compute_burst_damage integration ----------------------------------------
 
 
 class BurstCooldownInheritanceTests(unittest.TestCase):
@@ -257,11 +257,11 @@ class BurstCooldownInheritanceTests(unittest.TestCase):
         c = self._r_cast("Veigar", level=11)
         self.assertIsNotNone(c)
         self.assertEqual(c.form_index, 0)
-        # Veigar R form 0 cd=[100, 80, 60] at rank 2 → 80.
+        # Veigar R form 0 cd=[100, 80, 60] at rank 2 -> 80.
         self.assertEqual(c.cooldown, 80.0)
 
 
-# ─── Live server route checks (skipped if DS down) ───────────────────────────
+# --- Live server route checks (skipped if DS down) ---------------------------
 
 
 class ServerRouteCooldownTests(unittest.TestCase):

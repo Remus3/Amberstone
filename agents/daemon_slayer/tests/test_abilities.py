@@ -3,7 +3,7 @@
 Two halves:
 
 * Pure unit tests of the extractor's normalization helpers - synthetic
-  Meraki-shaped dicts, no HTTP. These pin the unit-string → typed-field
+  Meraki-shaped dicts, no HTTP. These pin the unit-string -> typed-field
   map, the damage-vs-modifier classifier, and the parse_status decision
   table so future Meraki schema drift can't silently downgrade coverage.
 * End-to-end loader tests against the live 16.9.1 snapshot - Aatrox/Veigar/
@@ -35,7 +35,7 @@ extract = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(extract)
 
 
-# ─── Extractor unit tests ────────────────────────────────────────────────────
+# --- Extractor unit tests ----------------------------------------------------
 
 class NormalizeDamageTypeTests(unittest.TestCase):
     def test_physical_damage(self) -> None:
@@ -85,7 +85,7 @@ class ValuesTupleTests(unittest.TestCase):
         self.assertIsNone(extract._values_tuple([]))
 
     def test_string_with_percent_sign(self) -> None:
-        # "5%" → 5.0
+        # "5%" -> 5.0
         self.assertEqual(extract._values_tuple(["5%", "10%"]), [5.0, 10.0])
 
     def test_garbage_input_returns_none(self) -> None:
@@ -290,7 +290,7 @@ class BuildFormTests(unittest.TestCase):
 
     def test_parse_status_partial_when_aggregate_block_empty(self) -> None:
         """One typed block + one damage-attribute block with no modifiers
-        (aggregate field) → partial."""
+        (aggregate field) -> partial."""
         payload = {
             "name": "Test",
             "effects": [{
@@ -320,7 +320,7 @@ class BuildFormTests(unittest.TestCase):
         self.assertEqual(form["parse_status"], "unparsed")
 
 
-# ─── Loader tests against the live snapshot ──────────────────────────────────
+# --- Loader tests against the live snapshot ----------------------------------
 
 class SnapshotLoadTests(unittest.TestCase):
     @classmethod
@@ -569,7 +569,7 @@ class CoverageThresholdTests(unittest.TestCase):
         self.assertEqual(total, self.snap.coverage.get("total_forms", 0))
 
 
-# ─── Module-level helpers ────────────────────────────────────────────────────
+# --- Module-level helpers ----------------------------------------------------
 
 class SingletonCacheTests(unittest.TestCase):
     def test_load_default_caches(self) -> None:

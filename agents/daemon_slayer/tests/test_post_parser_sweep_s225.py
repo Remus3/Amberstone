@@ -7,25 +7,25 @@ blocks evaluated ~0 pre-migration now show real ratios) surfaced one
 clean block_index ADD:
 
   Varus W=2 - 'Blighted Quiver'. Block 2 'Bonus Magic Damage at Max
-  Stacks' is exactly 3× block 1's per-Blight-stack value (verified
+  Stacks' is exactly 3x block 1's per-Blight-stack value (verified
   per-rank) = the canonical 3-stack detonation, Varus's standard combo
   (W-passive stacks via AAs/Q, then Q/R detonates). The engine
   defaulted to block 0 'Bonus Magic Damage' (the trivial 6-30 + 35% AP
-  passive on-hit), scoring Varus W at ~7% of reality (live A/B 18→240
-  raw, 13.3×). Pattern D resource-state amp - operator fully controls
+  passive on-hit), scoring Varus W at ~7% of reality (live A/B 18->240
+  raw, 13.3x). Pattern D resource-state amp - operator fully controls
   the 3-stack build (precedent: Twitch E 6-stack s198, Renekton full
-  Fury s197). Block 2 (not block 4 'Maximum...at Max Stacks' = 1.5×
+  Fury s197). Block 2 (not block 4 'Maximum...at Max Stacks' = 1.5x
   block 2) because block 4 entangles Varus R's Blight amplification -
   W's contribution must be scored R-independent (R is its own
-  ability_dps key). Varus → {Q:1, W:2}.
+  ability_dps key). Varus -> {Q:1, W:2}.
 
 Deliberately NOT added (documented in the registry _meta): Fiddlesticks
 Q (s224's current-HP fix already made its engine-default block 0
-correct; the 'Increased' block is a fear-sequence conditional →
+correct; the 'Increased' block is a fear-sequence conditional ->
 conditional-schema-lift bucket), Fizz W (block 0 literally 'Total'),
 LeBlanc R (s197 Mimic data-gap; canonical block not unambiguous).
 
-ENGINE_VERSION 0.96.0 → 0.97.0 pinned.
+ENGINE_VERSION 0.96.0 -> 0.97.0 pinned.
 """
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ class VarusWEntryTests(unittest.TestCase):
         return next(p for p in out.per_spell if p.key == "W")
 
     def test_registry_beats_passive_onhit_block0(self) -> None:
-        """Registry (block 2, 3-stack detonation) ≫ forced block 0 (the
+        """Registry (block 2, 3-stack detonation) >> forced block 0 (the
         18-dmg passive on-hit the engine wrongly defaulted to)."""
         reg = self._w()
         b0 = self._w(forced=0)
@@ -92,7 +92,7 @@ class VarusWEntryTests(unittest.TestCase):
         self.assertGreater(b4, b2)
 
     def test_mechanic_block2_is_3x_block1_per_stack(self) -> None:
-        """The 3-stack invariant: block 2 target_max_hp_pct == 3 × block
+        """The 3-stack invariant: block 2 target_max_hp_pct == 3 x block
         1 per-Blight-stack at every rank. This is the proof that block 2
         is the canonical 'all 3 stacks detonate' value."""
         reset_default_cache()
@@ -133,7 +133,7 @@ class BackwardCompatS225Tests(unittest.TestCase):
         target_no_setup:[0,1] un-amped}, the Terrify double-vs-feared
         mechanic). Fizz W / LeBlanc R remain deliberately absent."""
         fid, _ = get_block_index_for("Fiddlesticks")
-        # s225 deferred-to-conditional-bucket → s230 delivered there.
+        # s225 deferred-to-conditional-bucket -> s230 delivered there.
         self.assertEqual(
             fid.get("Q"), {"default": [2, 3], "target_no_setup": [0, 1]})
         self.assertEqual(fid.get("W"), 3)       # s199, preserved

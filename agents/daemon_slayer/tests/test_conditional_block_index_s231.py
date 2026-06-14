@@ -1,5 +1,5 @@
 """Phase 5.9.31 (s231, 2026-05-16) - pure-data conditional seed-
-expansion, EXECUTE family. Continues the s228→s229→s230 cadence; NO
+expansion, EXECUTE family. Continues the s228->s229->s230 cadence; NO
 vocab change (s227 "don't over-build" - both entries reuse the existing
 ``target_full_hp`` term, extending the s228 Kindred E pattern).
 
@@ -8,22 +8,22 @@ Part-1 no-op (``"default"`` branch == the prior int 1, byte-identical),
 verified per-rank vs Meraki 16.10.1 + live A/B :8893.
 
   * Evelynn R "Last Caress" int 1 -> {"default": 1, "target_full_hp":
-        0} - block 1 = EXACTLY 2.4× block 0 (the bonus-vs-sub-30%-max-HP
+        0} - block 1 = EXACTLY 2.4x block 0 (the bonus-vs-sub-30%-max-HP
         execute). default = the execute block (operator-commits the
         canonical ranking assumption, s191 model - same as Kindred E
         s228); target_full_hp = block 0, the un-amped downgrade when the
         live target is above the execute threshold. Evelynn's s228
         sibling Q {default:5,target_no_setup:0} preserved.
   * KogMaw R "Living Artillery" int 1 -> {"default": 1,
-        "target_full_hp": 0} - block 1 = EXACTLY 2.0× block 0 (the
-        double-damage-vs-low-HP execute; base/bonus_ad/ap all 2×).
+        "target_full_hp": 0} - block 1 = EXACTLY 2.0x block 0 (the
+        double-damage-vs-low-HP execute; base/bonus_ad/ap all 2x).
 
 Both are TWO discrete Meraki damage blocks (a clean amped/un-amped
 pair), NOT one block with a continuous missing-HP coefficient - the
 precise distinction that rejected Bel'Veth R (continuous in-block 25%
 missing-HP, already handled by ``_SCALING_TARGETS``).
 
-Veigar R stays the deferred non-converted exemplar (also a clean 2.0×
+Veigar R stays the deferred non-converted exemplar (also a clean 2.0x
 execute, but the canonical stable-int test fixture - s229 _meta said
 pick non-fixture executes; s231 did exactly that). Akali R/R2 NOT
 touched (s192 token-variant double-count guard).
@@ -54,7 +54,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── vocab unchanged (s227 "don't over-build" - no new condition) ────────────
+# --- vocab unchanged (s227 "don't over-build" - no new condition) ------------
 
 
 class VocabUnchangedS231Tests(unittest.TestCase):
@@ -65,7 +65,7 @@ class VocabUnchangedS231Tests(unittest.TestCase):
         )
 
 
-# ─── registry shape ─────────────────────────────────────────────────────────
+# --- registry shape ---------------------------------------------------------
 
 
 class S231RegistryShapeTests(unittest.TestCase):
@@ -91,7 +91,7 @@ class S231RegistryShapeTests(unittest.TestCase):
         self.assertEqual(len(reg["champions"]), 125)
 
 
-# ─── Part-1 zero-regression (default == prior int 1) + load-bearing ─────────
+# --- Part-1 zero-regression (default == prior int 1) + load-bearing ---------
 
 
 class S231ExecuteConversionTests(unittest.TestCase):
@@ -134,8 +134,8 @@ class S231ExecuteConversionTests(unittest.TestCase):
         self.assertGreater(reg, forced0)
 
     def test_evelynn_R_default_is_2p4x_block_0(self) -> None:
-        # The discrete-pair rigor check: block 1 (default) raw == 2.4×
-        # block 0 every rank (Meraki base 125→300, ap 75→180).
+        # The discrete-pair rigor check: block 1 (default) raw == 2.4x
+        # block 0 every rank (Meraki base 125->300, ap 75->180).
         out1 = compute_burst_damage(
             self.snap, "Evelynn", level=11, mode="SR",
             target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
@@ -183,7 +183,7 @@ class S231ExecuteConversionTests(unittest.TestCase):
                                places=3)
 
 
-# ─── backward-compat: s228/s229/s230 conditionals + deferred ints ───────────
+# --- backward-compat: s228/s229/s230 conditionals + deferred ints -----------
 
 
 class S231BackwardCompatTests(unittest.TestCase):
@@ -210,7 +210,7 @@ class S231BackwardCompatTests(unittest.TestCase):
         self.assertEqual(m["R"], 1)
 
 
-# ─── ENGINE_VERSION pin ──────────────────────────────────────────────────────
+# --- ENGINE_VERSION pin ------------------------------------------------------
 
 
 class EngineVersionS231Tests(unittest.TestCase):

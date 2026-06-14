@@ -20,7 +20,7 @@ from agents.daemon_slayer.hps import (
 )
 
 
-# ─── Ranker basics ─────────────────────────────────────────────────────
+# --- Ranker basics -----------------------------------------------------
 
 
 class RankByHpsBasicsTests(unittest.TestCase):
@@ -70,7 +70,7 @@ class RankByHpsBasicsTests(unittest.TestCase):
             self.assertIsInstance(row, HpsRankedItem)
 
 
-# ─── Scoring sanity ────────────────────────────────────────────────────
+# --- Scoring sanity ----------------------------------------------------
 
 
 class HpsScoringTests(unittest.TestCase):
@@ -117,7 +117,7 @@ class HpsScoringTests(unittest.TestCase):
         levels.
         """
         r = rank_items_by_hps(self.snap, "Soraka", level=11, top_n=8)
-        # Helia should be in top 3 (high delta from its 0.4 proc rate × 50 heal)
+        # Helia should be in top 3 (high delta from its 0.4 proc rate x 50 heal)
         top_3_ids = [row.item_id for row in r.ranked[:3]]
         self.assertIn("6620", top_3_ids)
 
@@ -148,7 +148,7 @@ class HpsScoringTests(unittest.TestCase):
         self.assertGreater(moonstone_row.delta_hps, 0.0)
 
 
-# ─── Filter pipeline ───────────────────────────────────────────────────
+# --- Filter pipeline ---------------------------------------------------
 
 
 class FilterPipelineTests(unittest.TestCase):
@@ -175,7 +175,7 @@ class FilterPipelineTests(unittest.TestCase):
         self.assertEqual(ids, {"3107"})
 
     def test_budget_filters_expensive(self) -> None:
-        """budget=500 → no enchanter terminal items pass (all > 500g)."""
+        """budget=500 -> no enchanter terminal items pass (all > 500g)."""
         r = rank_items_by_hps(
             self.snap, "Soraka", level=11,
             budget=500, top_n=20,
@@ -197,7 +197,7 @@ class FilterPipelineTests(unittest.TestCase):
 
     def test_arena_trinket_stripped(self) -> None:
         """ARENA mode strips the Arcane Sweeper (item_id is in
-        ``strip_arena_trinkets`` logic). Build with trinket → it gets removed
+        ``strip_arena_trinkets`` logic). Build with trinket -> it gets removed
         and surfaced in notes."""
         # 8001 / 8020 are the Arena trinket family; engine drops them.
         # Just verify the call works and notes surface.
@@ -211,7 +211,7 @@ class FilterPipelineTests(unittest.TestCase):
         self.assertIsInstance(r, HpsRankResult)
 
 
-# ─── Validation + serialization ────────────────────────────────────────
+# --- Validation + serialization ----------------------------------------
 
 
 class ValidationAndEdgeTests(unittest.TestCase):
@@ -226,7 +226,7 @@ class ValidationAndEdgeTests(unittest.TestCase):
             )
 
     def test_full_build_raises(self) -> None:
-        """current_item_ids already at slot_count → no room for more."""
+        """current_item_ids already at slot_count -> no room for more."""
         with self.assertRaises(ValueError):
             rank_items_by_hps(
                 self.snap, "Soraka", level=11,
@@ -262,7 +262,7 @@ class SerializationTests(unittest.TestCase):
             self.assertIn("shares_dead_unique", d)
 
 
-# ─── Mode + targets-override pass-through ──────────────────────────────
+# --- Mode + targets-override pass-through ------------------------------
 
 
 class ModeAndOverrideTests(unittest.TestCase):
@@ -294,7 +294,7 @@ class ModeAndOverrideTests(unittest.TestCase):
         self.assertGreater(default.ranked[0].delta_hps, override.ranked[0].delta_hps)
 
 
-# ─── Server route /rank-enchanter ──────────────────────────────────────
+# --- Server route /rank-enchanter --------------------------------------
 
 
 class RankEnchanterRouteTests(unittest.TestCase):
@@ -382,7 +382,7 @@ class RankEnchanterRouteTests(unittest.TestCase):
         self.assertEqual(effs, sorted(effs, reverse=True))
 
     def test_post_targets_override_flows_through(self) -> None:
-        """targets_per_proc_override=1 → Redemption delta drops to 1/3."""
+        """targets_per_proc_override=1 -> Redemption delta drops to 1/3."""
         default = self._post("/rank-enchanter", {
             "champion": "Soraka", "level": 11,
             "only": ["3107"], "top": 1,

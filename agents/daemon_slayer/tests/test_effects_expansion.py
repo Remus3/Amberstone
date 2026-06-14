@@ -2,7 +2,7 @@
 
 Companion to ``test_effects.py`` (thin slice). New coverage:
 * ``CallContext`` resolution for callable ``bonus_damage``.
-* Armor reduction → % pen → flat pen pipeline via ``effective_target_armor``.
+* Armor reduction -> % pen -> flat pen pipeline via ``effective_target_armor``.
 * Black Cleaver, LDR, Mortal Reminder DPS impact.
 * Energized family entries (Statikk Shiv, Rapid Firecannon, Voltaic, Sundered Sky).
 * Scaling proc entries (Wit's End by level, Runaan's by bonus AD, TriForce by base AD).
@@ -74,7 +74,7 @@ class CallContextTests(unittest.TestCase):
 
 
 class EffectiveTargetArmorTests(unittest.TestCase):
-    """Reduction → % pen → flat pen pipeline."""
+    """Reduction -> % pen -> flat pen pipeline."""
 
     def test_no_effects_passthrough(self) -> None:
         self.assertEqual(effective_target_armor(80.0, []), 80.0)
@@ -101,7 +101,7 @@ class EffectiveTargetArmorTests(unittest.TestCase):
         self.assertAlmostEqual(effective_target_armor(100.0, [bc]), 70.0, places=3)
 
     def test_bc_then_ldr_compose(self) -> None:
-        # Reduction first, then % pen. 100 → 70 (BC) → 45.5 (LDR 35%).
+        # Reduction first, then % pen. 100 -> 70 (BC) -> 45.5 (LDR 35%).
         bc = ITEM_EFFECTS["3071"]
         ldr = ITEM_EFFECTS["3036"]
         self.assertAlmostEqual(effective_target_armor(100.0, [bc, ldr]), 45.5, places=3)
@@ -109,9 +109,9 @@ class EffectiveTargetArmorTests(unittest.TestCase):
     def test_floors_at_zero_after_pen(self) -> None:
         bc = ITEM_EFFECTS["3071"]
         ldr = ITEM_EFFECTS["3036"]
-        # 30 → 21 (BC) → 13.65 (LDR). Stays positive.
+        # 30 -> 21 (BC) -> 13.65 (LDR). Stays positive.
         self.assertGreater(effective_target_armor(30.0, [bc, ldr]), 0.0)
-        # Stack flat pen big enough to push below zero → floored.
+        # Stack flat pen big enough to push below zero -> floored.
         from agents.daemon_slayer.effects import ItemEffect
         flat = ItemEffect(item_id="x", name="x", armor_pen_flat=200.0)
         self.assertEqual(effective_target_armor(50.0, [flat]), 0.0)
@@ -189,7 +189,7 @@ class EnergizedFamilyTests(unittest.TestCase):
         self.assertGreater(with_ss.weighted_dps, bare.weighted_dps)
 
     def test_statikk_proc_uses_mr_not_armor(self) -> None:
-        # Magic chain → MR matters, armor doesn't.
+        # Magic chain -> MR matters, armor doesn't.
         no_mr = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3087"])
         with_mr = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3087"], target_mr=100.0,
@@ -233,8 +233,8 @@ class ScalingProcTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_wits_end_scales_with_level(self) -> None:
-        # 15 magic at lvl 1 → 80 at lvl 18. DPS at lvl 11 should exceed lvl 1.
-        # Lvl 11: 15 + 10 * (65/17) ≈ 53 magic per attack.
+        # 15 magic at lvl 1 -> 80 at lvl 18. DPS at lvl 11 should exceed lvl 1.
+        # Lvl 11: 15 + 10 * (65/17) ~ 53 magic per attack.
         l1 = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3091"])
         l11 = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3091"])
         # Lvl-11 DPS includes more attacks per rotation AND more proc damage.
@@ -456,7 +456,7 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
         self.assertGreater(with_nt.weighted_dps, bare.weighted_dps)
 
     def test_nashors_proc_uses_mr(self) -> None:
-        # On-hit magic → MR matters, armor doesn't.
+        # On-hit magic -> MR matters, armor doesn't.
         no_mr = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115"])
         with_mr = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3115"], target_mr=100.0,
@@ -471,7 +471,7 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
         # control - same gold-ish, no AP. Lich Bane companion has AP.
         nt_bt = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115", "3072"])
         nt_lb = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115", "3100"])
-        # nt_lb has 100 extra AP in CallContext → Nashor's proc gains
+        # nt_lb has 100 extra AP in CallContext -> Nashor's proc gains
         # 0.20 * 100 = 20 extra magic per attack. Should beat the AD-only
         # companion's auto-attack contribution.
         self.assertGreater(nt_lb.weighted_dps, nt_bt.weighted_dps)
@@ -495,7 +495,7 @@ class DefensiveOnlyBatch3Tests(unittest.TestCase):
     Note: Riftmaker (4633) was here through batch 13; promoted in
     batch 14 (damage_amp_pct schema, 2026-05-04) - its proc-shape
     assertions live in RiftmakerPromotionTests at the bottom of this
-    file. HP→AP cross-derivation is still separate.
+    file. HP->AP cross-derivation is still separate.
 
     Note: Hextech Gunblade (3146) was here through batch 21; promoted
     in batch 22 (long-CD active modeled as periodic proc, 2026-05-04)
@@ -531,7 +531,7 @@ class DefensiveOnlyBatch3Tests(unittest.TestCase):
 
 
 class EffectiveTargetMrTests(unittest.TestCase):
-    """Phase 4 batch 4 - % magic pen → flat magic pen pipeline."""
+    """Phase 4 batch 4 - % magic pen -> flat magic pen pipeline."""
 
     def test_no_effects_passthrough(self) -> None:
         self.assertEqual(effective_target_mr(60.0, []), 60.0)
@@ -561,13 +561,13 @@ class EffectiveTargetMrTests(unittest.TestCase):
         self.assertAlmostEqual(effective_target_mr(50.0, [sf]), 35.0, places=3)
 
     def test_void_then_sorc_compose(self) -> None:
-        # 100 → 60 (Void 40%) → 48 (Sorc 12 flat).
+        # 100 -> 60 (Void 40%) -> 48 (Sorc 12 flat).
         void = ITEM_EFFECTS["3135"]
         sorc = ITEM_EFFECTS["3020"]
         self.assertAlmostEqual(effective_target_mr(100.0, [void, sorc]), 48.0, places=3)
 
     def test_floors_at_zero(self) -> None:
-        # Stack flat pen big enough to push below zero → floored.
+        # Stack flat pen big enough to push below zero -> floored.
         from agents.daemon_slayer.effects import ItemEffect
         flat = ItemEffect(item_id="x", name="x", magic_pen_flat=200.0)
         self.assertEqual(effective_target_mr(50.0, [flat]), 0.0)
@@ -581,7 +581,7 @@ class MagicPenItemTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_void_staff_raises_dps_via_lich_bane(self) -> None:
-        # Lich Bane proc is magical → MR-sensitive. Vs 100 MR target,
+        # Lich Bane proc is magical -> MR-sensitive. Vs 100 MR target,
         # Void Staff's 40% pen should lift the proc damage.
         no_void = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3100"], target_mr=100.0,
@@ -719,7 +719,7 @@ class TargetHpItemTests(unittest.TestCase):
     """BotRK + Eclipse promoted from defensive_only via target_max_hp.
 
     Both procs scale linearly with target_max_hp - tests assert the
-    monotonicity (more HP → more DPS) and the shape (BotRK every basic,
+    monotonicity (more HP -> more DPS) and the shape (BotRK every basic,
     Eclipse every 2nd basic). Default target_max_hp=0.0 means a caller
     that doesn't supply HP gets the pre-batch DPS exactly, so there's
     a "no regression" assertion too.
@@ -757,7 +757,7 @@ class TargetHpItemTests(unittest.TestCase):
         self.assertGreater(with_botrk.weighted_dps, bare.weighted_dps)
 
     def test_botrk_raises_dps_with_target_max_hp(self) -> None:
-        # Same build, raising target_max_hp from 0 → 1500 should bump
+        # Same build, raising target_max_hp from 0 -> 1500 should bump
         # DPS via the Mist's Edge proc.
         no_hp = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3153"],
@@ -926,8 +926,8 @@ class CasterHpItemTests(unittest.TestCase):
 
     def test_heartsteel_raises_dps_via_caster_max_hp(self) -> None:
         # Heartsteel grants 900 HP itself; with Aatrox base ~1790 lvl 11
-        # max_hp ≈ 2690. Per DDragon 16.9.1 "70 plus 6%": flat 70 +
-        # 0.06*2690 ≈ 231 per ~3.5s ≈ 66 DPS. (Pre-batch-17 the lambda
+        # max_hp ~ 2690. Per DDragon 16.9.1 "70 plus 6%": flat 70 +
+        # 0.06*2690 ~ 231 per ~3.5s ~ 66 DPS. (Pre-batch-17 the lambda
         # added a wrong 90*(level-1)/17 lerp that came from an older
         # patch.) Threshold left at 30 - still well above noise.
         bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
@@ -992,7 +992,7 @@ class CallContextTargetsInRotationTests(unittest.TestCase):
             damage_type=PHYSICAL,
             every_n_attacks=1,
         )
-        # Total AD = 100; n=3 → (3-1) * 0.35 * 100 = 70
+        # Total AD = 100; n=3 -> (3-1) * 0.35 * 100 = 70
         ctx = CallContext(base_ad=60, bonus_ad=40, level=11, targets_in_rotation=3.0)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 70.0, places=3)
 
@@ -1025,12 +1025,12 @@ class CallContextCritChanceTests(unittest.TestCase):
             damage_type=PHYSICAL,
             every_n_seconds=3.0,
         )
-        # 100 base_ad, 60% crit → 125 + 30 = 155.
+        # 100 base_ad, 60% crit -> 125 + 30 = 155.
         ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11, crit_chance=0.60)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 155.0, places=3)
 
     def test_zero_crit_chance_zeros_crit_piece(self) -> None:
-        # No crit → ER falls back to flat 1.25 * base_ad. Pins the
+        # No crit -> ER falls back to flat 1.25 * base_ad. Pins the
         # "pre-batch consumers see no behavior change" invariant.
         proc = PeriodicProc(
             name="spellblade_er",
@@ -1185,7 +1185,7 @@ class StridebreakerCleaveTests(unittest.TestCase):
         # DPS - we compare proc resolution at a fixed CallContext.
         sb = ITEM_EFFECTS["6631"].periodics[0]
         rh = ITEM_EFFECTS["3074"].periodics[0]
-        # n=3, base_ad=100, bonus_ad=50 → cleave hits 2 enemies.
+        # n=3, base_ad=100, bonus_ad=50 -> cleave hits 2 enemies.
         # SB: 2 * 0.40 * 150 = 120; RH: 2 * 0.35 * 150 = 105.
         ctx = CallContext(
             base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=3.0,
@@ -1197,7 +1197,7 @@ class StridebreakerCleaveTests(unittest.TestCase):
         self.assertAlmostEqual(rh_dmg, 105.0, places=3)
 
     def test_stridebreaker_zero_at_targets_one(self) -> None:
-        # Single-target rotation → max(0, 1-1) * coef * AD = 0. Pins the
+        # Single-target rotation -> max(0, 1-1) * coef * AD = 0. Pins the
         # "preserves historic single-target shape" invariant.
         sb = ITEM_EFFECTS["6631"].periodics[0]
         ctx = CallContext(
@@ -1279,7 +1279,7 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
         # proc itself is shape-identical.
         ph = ITEM_EFFECTS["6698"].periodics[0]
         sb = ITEM_EFFECTS["6631"].periodics[0]
-        # n=3, base_ad=100, bonus_ad=50 → 2 * 0.40 * 150 = 120 each.
+        # n=3, base_ad=100, bonus_ad=50 -> 2 * 0.40 * 150 = 120 each.
         ctx = CallContext(
             base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=3.0,
         )
@@ -1302,7 +1302,7 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
         self.assertAlmostEqual(rh.resolve_damage(ctx), 105.0, places=3)
 
     def test_profane_hydra_zero_at_targets_one(self) -> None:
-        # Single-target rotation → max(0, 1-1) * 0.40 * AD = 0. Pins
+        # Single-target rotation -> max(0, 1-1) * 0.40 * AD = 0. Pins
         # the "preserves historic single-target shape" invariant.
         ph = ITEM_EFFECTS["6698"].periodics[0]
         ctx = CallContext(
@@ -1340,15 +1340,15 @@ class EssenceReaverSpellbladeTests(unittest.TestCase):
         self.assertEqual(e.unique_passive_key, "spellblade")
 
     def test_er_proc_zero_crit_is_125_pct_base_ad(self) -> None:
-        # No crit signal → ER falls back to 1.25 * base_ad bonus physical
+        # No crit signal -> ER falls back to 1.25 * base_ad bonus physical
         # (the historic "modeling 125% base AD alone" path). 100 base_ad
-        # → 125 bonus damage per proc.
+        # -> 125 bonus damage per proc.
         proc = ITEM_EFFECTS["3508"].periodics[0]
         ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 125.0, places=3)
 
     def test_er_proc_scales_with_crit_chance(self) -> None:
-        # 80% crit → 1.25 * 100 + 50 * 0.80 = 125 + 40 = 165.
+        # 80% crit -> 1.25 * 100 + 50 * 0.80 = 125 + 40 = 165.
         proc = ITEM_EFFECTS["3508"].periodics[0]
         ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11, crit_chance=0.80)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 165.0, places=3)
@@ -1398,8 +1398,8 @@ class HextechGunbladeTests(unittest.TestCase):
     """Phase 4 batch 22 - Hextech Gunblade (3146) promoted from
     defensive_only.
 
-    Lightning Bolt active is a long-CD targeted nuke: 175→253 (level
-    1→18, linear) + 30% AP magic damage, 40s cooldown. Modeled as a
+    Lightning Bolt active is a long-CD targeted nuke: 175->253 (level
+    1->18, linear) + 30% AP magic damage, 40s cooldown. Modeled as a
     PeriodicProc with ``every_n_seconds=40.0`` - same shape as Sundered
     Sky's 8s Lightshield Strike, just a far longer cadence. The 25%/1.5s
     slow is utility, not damage, and is not modeled. AP scales via
@@ -1423,19 +1423,19 @@ class HextechGunbladeTests(unittest.TestCase):
         self.assertIn("lightning bolt", e.note.lower())
 
     def test_gunblade_proc_level_1_no_ap(self) -> None:
-        # Level 1, 0 AP → 175 flat magic damage per active.
+        # Level 1, 0 AP -> 175 flat magic damage per active.
         proc = ITEM_EFFECTS["3146"].periodics[0]
         ctx = CallContext(base_ad=60.0, bonus_ad=0, level=1)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 175.0, places=3)
 
     def test_gunblade_proc_level_18_no_ap(self) -> None:
-        # Level 18, 0 AP → 253 flat magic damage per active.
+        # Level 18, 0 AP -> 253 flat magic damage per active.
         proc = ITEM_EFFECTS["3146"].periodics[0]
         ctx = CallContext(base_ad=60.0, bonus_ad=0, level=18)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 253.0, places=3)
 
     def test_gunblade_proc_scales_with_ap(self) -> None:
-        # Level 11, 200 AP → 175 + 78/17*10 + 0.30 * 200
+        # Level 11, 200 AP -> 175 + 78/17*10 + 0.30 * 200
         #                = 175 + 45.882... + 60 = 280.882...
         proc = ITEM_EFFECTS["3146"].periodics[0]
         ctx = CallContext(base_ad=60.0, bonus_ad=0, level=11, ap=200.0)
@@ -1443,7 +1443,7 @@ class HextechGunbladeTests(unittest.TestCase):
         self.assertAlmostEqual(proc.resolve_damage(ctx), expected, places=3)
 
     def test_gunblade_level_scaling_is_linear(self) -> None:
-        # Per-level uplift = (253 - 175) / 17 ≈ 4.588 magic damage.
+        # Per-level uplift = (253 - 175) / 17 ~ 4.588 magic damage.
         proc = ITEM_EFFECTS["3146"].periodics[0]
         ctx10 = CallContext(base_ad=60.0, bonus_ad=0, level=10)
         ctx11 = CallContext(base_ad=60.0, bonus_ad=0, level=11)
@@ -1495,7 +1495,7 @@ class IcebornGauntletSpellbladeTests(unittest.TestCase):
         self.assertEqual(e.unique_passive_key, "spellblade")
 
     def test_ibg_proc_is_150_pct_base_ad(self) -> None:
-        # 100 base_ad → 150 bonus damage per proc (1.50 * c.base_ad).
+        # 100 base_ad -> 150 bonus damage per proc (1.50 * c.base_ad).
         proc = ITEM_EFFECTS["6662"].periodics[0]
         ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 150.0, places=3)
@@ -1545,7 +1545,7 @@ class IcebornGauntletSpellbladeTests(unittest.TestCase):
 class MultiProcSchemaTests(unittest.TestCase):
     """Phase 4 batch 8 - `ItemEffect.periodics: tuple[PeriodicProc, ...]`.
 
-    Schema rename from `Optional[PeriodicProc]` → `tuple[..., ...]` lets
+    Schema rename from `Optional[PeriodicProc]` -> `tuple[..., ...]` lets
     a single item carry multiple periodic procs. Titanic Hydra is the
     first multi-proc entry: primary on-hit + cleave-to-others.
     """
@@ -1968,7 +1968,7 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
         delta_solo = tf_only.weighted_dps - bare.weighted_dps
         delta_both = both.weighted_dps - bare.weighted_dps
         # Without dedup, delta_both would be ~delta_solo + LB-spellblade
-        # contribution (~37 dps). With dedup, delta_both ≈ delta_solo.
+        # contribution (~37 dps). With dedup, delta_both ~ delta_solo.
         # Tolerate small deviation from LB stat-block contributions.
         self.assertLess(
             delta_both, delta_solo + 5.0,
@@ -1978,7 +1978,7 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
         self.assertGreater(delta_both, 50.0)
 
     def test_triforce_plus_lich_bane_order_swap_yields_lich_bane_proc(self) -> None:
-        # Order swap → LB spellblade kept (first-seen-wins).
+        # Order swap -> LB spellblade kept (first-seen-wins).
         # LB spellblade scales with AP (50% AP bonus), so it's larger
         # on AP champions. Ahri's base AD is moderate; LB-kept value
         # should be different from TF-kept value (pin order semantics).
@@ -2131,7 +2131,7 @@ class TerminusPromotionTests(unittest.TestCase):
         # smaller than no-pen would give.
         no_target = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3302"])
         armored = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3302"], target_armor=100.0)
-        # 10% pen on 100 armor → effective armor 90; armor factor
+        # 10% pen on 100 armor -> effective armor 90; armor factor
         # 100/(100+90) = 0.526 vs no-pen 100/(100+100) = 0.500.
         # So armored dps with Terminus pen should be slightly higher
         # than the same build without pen would produce. We can't
@@ -2186,7 +2186,7 @@ class RiftmakerPromotionTests(unittest.TestCase):
 
     Void Corruption ramps to 8% bonus damage after 4s in combat. The
     sustained-DPS approximation pins the full-ramp value (same shape
-    as Black Cleaver's 30%-at-5-stacks). HP→AP cross-derivation
+    as Black Cleaver's 30%-at-5-stacks). HP->AP cross-derivation
     landed in batch 15 (RiftmakerHpToApTests below) - these tests
     cover the amp piece in isolation and stay valid because Aatrox
     auto-attacks don't read AP.
@@ -2263,7 +2263,7 @@ class RiftmakerPromotionTests(unittest.TestCase):
 
 
 class TotalBonusApFromHpTests(unittest.TestCase):
-    """Phase 4 batch 15 - additive HP→AP cross-derivation helper."""
+    """Phase 4 batch 15 - additive HP->AP cross-derivation helper."""
 
     def test_no_effects_returns_zero(self) -> None:
         from agents.daemon_slayer.effects import total_bonus_ap_from_hp
@@ -2300,7 +2300,7 @@ class TotalBonusApFromHpTests(unittest.TestCase):
 
 
 class RiftmakerHpToApTests(unittest.TestCase):
-    """Phase 4 batch 15 - Riftmaker Void Infusion HP→AP wiring.
+    """Phase 4 batch 15 - Riftmaker Void Infusion HP->AP wiring.
 
     Validates the cross-derivation appears in DpsResult.notes when
     triggered, the converted AP isn't stored back into resolved.stats
@@ -2340,7 +2340,7 @@ class RiftmakerHpToApTests(unittest.TestCase):
             None,
         )
         self.assertIsNotNone(ap_note,
-            f"missing HP→AP note in result.notes: {result.notes!r}")
+            f"missing HP->AP note in result.notes: {result.notes!r}")
         # Note format: "...+7.0 AP (total AP for procs: ...)"
         self.assertIn("+7.0 AP", ap_note,
             f"expected +7 AP from Riftmaker's 350 HP, got {ap_note!r}")
@@ -2351,7 +2351,7 @@ class RiftmakerHpToApTests(unittest.TestCase):
         result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3031"])
         self.assertFalse(
             any("AP cross-derived" in n for n in result.notes),
-            "build w/o Riftmaker shouldn't surface HP→AP note"
+            "build w/o Riftmaker shouldn't surface HP->AP note"
         )
 
     def test_resolved_stats_ap_unchanged_by_cross_derivation(self) -> None:
@@ -2365,7 +2365,7 @@ class RiftmakerHpToApTests(unittest.TestCase):
 
     def test_riftmaker_plus_heartsteel_compounds_ap(self) -> None:
         # Heartsteel (3084) is 900 HP per DDragon. Riftmaker (350 HP)
-        # + Heartsteel (900 HP) = 1250 bonus HP → 2% = 25 AP cross-
+        # + Heartsteel (900 HP) = 1250 bonus HP -> 2% = 25 AP cross-
         # derived. Plus Riftmaker's 70 AP stat-block = 95 AP visible
         # to AP procs.
         result = compute_dps(self.snap, "Aatrox", level=11,
@@ -2380,16 +2380,16 @@ class RiftmakerHpToApTests(unittest.TestCase):
 
     def test_riftmaker_lifts_lich_bane_proc_via_ap(self) -> None:
         # Lich Bane spellblade scales 0.50 * AP per proc. Aatrox + Lich
-        # Bane: stat AP from Lich Bane = 100, no HP→AP. Aatrox + Lich
+        # Bane: stat AP from Lich Bane = 100, no HP->AP. Aatrox + Lich
         # Bane + Riftmaker: stat AP = 100+70 = 170, plus 2% of (Lich
-        # Bane 0 HP + Riftmaker 350 HP) = 7 AP cross-derived → 177 AP
+        # Bane 0 HP + Riftmaker 350 HP) = 7 AP cross-derived -> 177 AP
         # visible to Lich Bane spellblade. The 7 AP delta lifts each
         # spellblade by 0.50*7 = 3.5 magic dmg (ignoring MR factor).
         # Synthetic test - strip Riftmaker's amp + cross-derivation
-        # to isolate the HP→AP contribution from the amp piece.
+        # to isolate the HP->AP contribution from the amp piece.
         from agents.daemon_slayer import effects as effects_mod
         original = effects_mod.ITEM_EFFECTS["4633"]
-        # No-amp, no-HP→AP variant - only stat block (70 AP, 350 HP, 15 AH).
+        # No-amp, no-HP->AP variant - only stat block (70 AP, 350 HP, 15 AH).
         no_xforms = ItemEffect(
             item_id="4633",
             name="Riftmaker",
@@ -2415,12 +2415,12 @@ class RiftmakerHpToApTests(unittest.TestCase):
         finally:
             effects_mod.ITEM_EFFECTS["4633"] = original
         # Ordering: full > amp_only > base. The delta full - amp_only
-        # is the HP→AP boost on Lich Bane's spellblade procs (after the
+        # is the HP->AP boost on Lich Bane's spellblade procs (after the
         # 8% amp). Should be a small but positive number.
         self.assertGreater(amp_dps, base_dps,
             "amp-only variant should beat no-xforms baseline")
         self.assertGreater(full_dps, amp_dps,
-            "HP→AP wiring should add to amp_only variant via Lich Bane proc")
+            "HP->AP wiring should add to amp_only variant via Lich Bane proc")
 
 
 class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
@@ -2456,7 +2456,7 @@ class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
         self.assertEqual(total_target_bonus_hp_amp_multiplier(effs, 1500.0), 1.0)
 
     def test_ldr_at_half_cap_yields_half_max_pct(self) -> None:
-        # 750 / 1500 = 0.5 → 0.5 * 0.15 = 7.5% amp → ×1.075 multiplier.
+        # 750 / 1500 = 0.5 -> 0.5 * 0.15 = 7.5% amp -> x1.075 multiplier.
         from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
         ldr = ITEM_EFFECTS["3036"]
         self.assertAlmostEqual(
@@ -2464,7 +2464,7 @@ class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
         )
 
     def test_ldr_at_full_cap_yields_max_pct(self) -> None:
-        # 1500 / 1500 = 1.0 → 0.15 amp → ×1.15 multiplier.
+        # 1500 / 1500 = 1.0 -> 0.15 amp -> x1.15 multiplier.
         from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
         ldr = ITEM_EFFECTS["3036"]
         self.assertAlmostEqual(
@@ -2473,7 +2473,7 @@ class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
 
     def test_ldr_above_cap_clamps_to_max_pct(self) -> None:
         # 3000 / 1500 = 2.0, but min(1.0, 2.0) = 1.0 - multiplier stays
-        # at ×1.15. Matches DDragon "maximum damage bonus reached at
+        # at x1.15. Matches DDragon "maximum damage bonus reached at
         # 1500 bonus Health".
         from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
         ldr = ITEM_EFFECTS["3036"]
@@ -2568,7 +2568,7 @@ class LdrGiantSlayerTests(unittest.TestCase):
             msg=f"LDR full-cap amp ratio {ratio:.4f} != 1.15")
 
     def test_amp_lifts_half_at_half_cap(self) -> None:
-        # 750 bonus HP → 7.5% amp → ratio 1.075.
+        # 750 bonus HP -> 7.5% amp -> ratio 1.075.
         bare_target = compute_dps(self.snap, "Aatrox", level=11,
                                   item_ids=["3036"], target_armor=80.0)
         half_target = compute_dps(self.snap, "Aatrox", level=11,
@@ -2598,7 +2598,7 @@ class LdrGiantSlayerTests(unittest.TestCase):
         )
 
     def test_dps_result_carries_target_bonus_hp(self) -> None:
-        # Field plumbed through compute_dps → DpsResult → to_dict so
+        # Field plumbed through compute_dps -> DpsResult -> to_dict so
         # /dps clients can confirm what the engine used.
         result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3036"],
                              target_armor=80.0, target_bonus_hp=1500.0)
@@ -2638,7 +2638,7 @@ class LdrGiantSlayerTests(unittest.TestCase):
         # contribution on top of the already-amped LDR baseline).
         ratio = both_amps / ldr_only
         self.assertAlmostEqual(ratio, 1.08, places=3,
-            msg=f"Riftmaker × LDR amp stacking ratio {ratio:.4f} != 1.08")
+            msg=f"Riftmaker x LDR amp stacking ratio {ratio:.4f} != 1.08")
 
 
 class HullbreakerSkipperTests(unittest.TestCase):
@@ -2647,7 +2647,7 @@ class HullbreakerSkipperTests(unittest.TestCase):
     Promoted from defensive_only using Meraki's bulk items snapshot,
     which carries the numeric formula DDragon strips. Procs every 5th
     basic attack for 120% base AD + 5% caster max HP physical. The
-    "maximum health" token in Meraki's wikitext is unqualified → caster
+    "maximum health" token in Meraki's wikitext is unqualified -> caster
     convention (League standard for item passives without a target
     qualifier; matches Hullbreaker's design intent as an HP-stacker
     side-laner item).
@@ -2778,8 +2778,8 @@ class SteraksEngineWireInTests(unittest.TestCase):
         # Sterak's stat block carries +400 HP only (no AD flat in DDragon)
         # - all the AD comes from the Claws passive (Phase 4 batch 20):
         # 0.45 * leveled_base_ad. For Aatrox at lvl 11, leveled base AD
-        # ≈ 60 + 17*(105-60)/17 * (10/17) ... measured at runtime via
-        # base_stats["ad"]; expect delta ≈ 0.45 * that, which clears
+        # ~ 60 + 17*(105-60)/17 * (10/17) ... measured at runtime via
+        # base_stats["ad"]; expect delta ~ 0.45 * that, which clears
         # 25 AD comfortably and stays under 60 (so a flat-50 stat block
         # creep would surface here too).
         from agents.daemon_slayer.engine import build_champion
@@ -2790,7 +2790,7 @@ class SteraksEngineWireInTests(unittest.TestCase):
         delta = with_st.stats["ad"] - bare.stats["ad"]
         leveled_base = bare.base_stats["ad"]
         expected = 0.45 * leveled_base
-        # ±0.5 AD float-noise tolerance.
+        # +/-0.5 AD float-noise tolerance.
         self.assertAlmostEqual(delta, expected, delta=0.5,
             msg=f"Sterak's AD delta {delta:.2f} != expected {expected:.2f} "
                 f"(0.45 * leveled_base_ad={leveled_base:.2f})")
@@ -2826,7 +2826,7 @@ class SteraksEngineWireInTests(unittest.TestCase):
             msg=f"Bloodthirster delta {bt_delta:.1f} drifted from 80 flat")
 
     def test_sterak_lifts_dps(self) -> None:
-        # End-to-end: more bonus AD → more DPS. Sterak's adds AD + HP
+        # End-to-end: more bonus AD -> more DPS. Sterak's adds AD + HP
         # but no proc; the AD piece (flat + passive) should clearly lift
         # weighted DPS over naked.
         bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
@@ -2882,7 +2882,7 @@ class SeryldasGrudgeTests(unittest.TestCase):
         self.assertEqual(e.target_bonus_hp_amp_cap, 0.0)
 
     def test_seryldas_armor_pipeline_matches_ldr_coefficient(self) -> None:
-        # Both apply 35% armor pen → same effective armor against any
+        # Both apply 35% armor pen -> same effective armor against any
         # positive input. Pins the coefficient parity.
         seryldas = ITEM_EFFECTS["6694"]
         ldr = ITEM_EFFECTS["3036"]
@@ -2913,7 +2913,7 @@ class SeryldasGrudgeTests(unittest.TestCase):
         self.assertIn("65.0", joined)  # 100 * 0.65 = 65 after Serylda pen
 
     def test_seryldas_no_pen_note_vs_zero_armor(self) -> None:
-        # Zero armor → pipeline early-exits. Note absent; DPS still lifts
+        # Zero armor -> pipeline early-exits. Note absent; DPS still lifts
         # via the stat block (45 AD), but the pen layer contributes nothing.
         with_sg = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["6694"], target_armor=0.0,
@@ -2946,14 +2946,14 @@ class TotalCritChanceBonusHelperTests(unittest.TestCase):
         self.assertAlmostEqual(total_crit_chance_bonus([yt], 5000.0), 0.25, places=4)
 
     def test_atma_zero_at_zero_bonus_hp(self) -> None:
-        # HP-scaled with 0 caster_bonus_hp → 0 contribution. Mirrors
+        # HP-scaled with 0 caster_bonus_hp -> 0 contribution. Mirrors
         # batch 19's target_bonus_hp_amp behavior.
         atma = ITEM_EFFECTS["3039"]
         self.assertEqual(total_crit_chance_bonus([atma], 0.0), 0.0)
 
     def test_atma_half_ramp_at_1500(self) -> None:
         atma = ITEM_EFFECTS["3039"]
-        # 1500 / 3000 cap = 0.5 ramp → 0.30 * 0.5 = 0.15.
+        # 1500 / 3000 cap = 0.5 ramp -> 0.30 * 0.5 = 0.15.
         self.assertAlmostEqual(total_crit_chance_bonus([atma], 1500.0), 0.15, places=4)
 
     def test_atma_full_ramp_at_3000(self) -> None:
@@ -2962,7 +2962,7 @@ class TotalCritChanceBonusHelperTests(unittest.TestCase):
 
     def test_atma_caps_past_3000(self) -> None:
         atma = ITEM_EFFECTS["3039"]
-        # 4500 bonus HP > 3000 cap → still 0.30, no over-shoot.
+        # 4500 bonus HP > 3000 cap -> still 0.30, no over-shoot.
         self.assertAlmostEqual(total_crit_chance_bonus([atma], 4500.0), 0.30, places=4)
 
     def test_yun_tal_plus_atma_compose_additively(self) -> None:
@@ -2984,7 +2984,7 @@ class TotalCritChanceBonusHelperTests(unittest.TestCase):
             crit_chance_bonus_max_pct=0.50,
             crit_chance_bonus_per_bonus_hp_cap=1000.0,
         )
-        # 1000 HP → full ramp on big_scaled = 0.50.
+        # 1000 HP -> full ramp on big_scaled = 0.50.
         self.assertAlmostEqual(
             total_crit_chance_bonus([big_flat, big_scaled], 1000.0), 1.10, places=4,
         )
@@ -3039,7 +3039,7 @@ class YunTalWildarrowsTests(unittest.TestCase):
         # block carries 50 AD + 40% AS (DDragon) + 0% base crit.
         with_yt = compute_dps(self.snap, "Caitlyn", level=11, item_ids=["3032"])
         # Crit comes from stats.get("crit") as the raw build crit (not
-        # the boosted total) - same separation as batch 15 HP→AP. The
+        # the boosted total) - same separation as batch 15 HP->AP. The
         # *engine-internal* boosted value flows through procs + display.
         # We verify the boosted note exists rather than checking for
         # mutation of resolved.stats (which should not happen).
@@ -3048,7 +3048,7 @@ class YunTalWildarrowsTests(unittest.TestCase):
 
     def test_yun_tal_boosts_avg_attack_dmg_via_crit(self) -> None:
         # avg_attack_dmg = ad * (1 + crit * crit_bonus) * armor_factor.
-        # Yun Tal lifts crit by 0.25 → avg_attack_dmg should be
+        # Yun Tal lifts crit by 0.25 -> avg_attack_dmg should be
         # measurably higher than what AD alone would deliver.
         # Compare against a synthetic baseline: Caitlyn lvl 11 has 0
         # native crit, so avg_attack_dmg without Yun Tal scales at
@@ -3098,16 +3098,16 @@ class AtmasReckoningCritTests(unittest.TestCase):
         with_atma = compute_dps(self.snap, "Sett", level=11, item_ids=["3039"])
         joined = " ".join(with_atma.notes)
         self.assertIn("crit chance lifted by items", joined)
-        # Sett lvl 11 + just Atma: caster_bonus_hp ≈ 700 (Atma's flat HP).
-        # Big Hands at 700/3000 = 0.233 ramp → 0.30 * 0.233 = 0.07 = 7%.
-        # Note format pins ≈ +7.0% (rounding to one decimal).
+        # Sett lvl 11 + just Atma: caster_bonus_hp ~ 700 (Atma's flat HP).
+        # Big Hands at 700/3000 = 0.233 ramp -> 0.30 * 0.233 = 0.07 = 7%.
+        # Note format pins ~ +7.0% (rounding to one decimal).
         self.assertIn("+7.0%", joined)
 
     def test_atma_scales_with_added_hp_items(self) -> None:
         # Stack Atma + Heartsteel (3084, 800 HP) + Warmog's (3083, 800 HP)
         # - the build's caster_bonus_hp climbs and Big Hands ramps with it.
-        # Build with just Atma: ~700 bonus HP → ~7% Big Hands.
-        # Build with Atma + Heartsteel + Warmog's: ~2300 bonus HP → ~23%.
+        # Build with just Atma: ~700 bonus HP -> ~7% Big Hands.
+        # Build with Atma + Heartsteel + Warmog's: ~2300 bonus HP -> ~23%.
         atma_only = compute_dps(self.snap, "Sett", level=11, item_ids=["3039"])
         atma_stack = compute_dps(
             self.snap, "Sett", level=11, item_ids=["3039", "3084", "3083"],
@@ -3185,7 +3185,7 @@ class ManamuneAweTests(unittest.TestCase):
 
     def test_manamune_lifts_total_ad_on_ezreal(self) -> None:
         # Ezreal lvl 11: base mp = 375 + 70*10 = 1075; with Manamune
-        # adds 500 mana → 1575 total; Awe = 0.02 * 1575 = 31.5 bonus AD
+        # adds 500 mana -> 1575 total; Awe = 0.02 * 1575 = 31.5 bonus AD
         # (folded into ad_flat by build_champion).
         from agents.daemon_slayer.engine import build_champion
         bare = build_champion(self.snap, "Ezreal", level=11)
@@ -3194,7 +3194,7 @@ class ManamuneAweTests(unittest.TestCase):
         # Total AD lift should clear 60 (35 stat + ~25 from Awe at minimum).
         ad_lift = with_manamune.stats["ad"] - bare.stats["ad"]
         self.assertGreater(ad_lift, 60.0)
-        self.assertLess(ad_lift, 80.0)  # ceiling: 35 stat + 31.5 Awe ≈ 66.5
+        self.assertLess(ad_lift, 80.0)  # ceiling: 35 stat + 31.5 Awe ~ 66.5
 
     def test_manamune_lifts_dps_on_ezreal(self) -> None:
         bare = compute_dps(self.snap, "Ezreal", level=11)
@@ -3230,8 +3230,8 @@ class MuramanaShockTests(unittest.TestCase):
         self.assertEqual(ITEM_EFFECTS["3042"].unique_passive_key, "")
 
     def test_muramana_shock_proc_scales_with_caster_max_mp(self) -> None:
-        # 2000 mana → Shock = 0.012 * 2000 = 24.0.
-        # 3000 mana → Shock = 36.0.
+        # 2000 mana -> Shock = 0.012 * 2000 = 24.0.
+        # 3000 mana -> Shock = 36.0.
         proc = ITEM_EFFECTS["3042"].periodics[0]
         ctx_2k = CallContext(base_ad=60, bonus_ad=0, level=11, caster_max_mp=2000.0)
         ctx_3k = CallContext(base_ad=60, bonus_ad=0, level=11, caster_max_mp=3000.0)
@@ -3239,7 +3239,7 @@ class MuramanaShockTests(unittest.TestCase):
         self.assertAlmostEqual(proc.resolve_damage(ctx_3k), 36.0, places=4)
 
     def test_muramana_shock_zero_with_no_mana(self) -> None:
-        # Manaless caster (or pre-batch-27 caller missing the field) →
+        # Manaless caster (or pre-batch-27 caller missing the field) ->
         # Shock contributes zero. Backward-compat invariant.
         proc = ITEM_EFFECTS["3042"].periodics[0]
         ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
@@ -3262,8 +3262,8 @@ class MuramanaShockTests(unittest.TestCase):
         # Awe contribution scales with total mana: Manamune brings 500
         # mana, Muramana brings 1000. On the same Ezreal lvl 11 (base
         # 1075 mana) the AD lift difference is purely from Awe scaling
-        # off the larger mana pool. Manamune Awe = 0.02 * 1575 ≈ 31.5;
-        # Muramana Awe = 0.02 * 2075 ≈ 41.5. Delta ≈ 10 AD.
+        # off the larger mana pool. Manamune Awe = 0.02 * 1575 ~ 31.5;
+        # Muramana Awe = 0.02 * 2075 ~ 41.5. Delta ~ 10 AD.
         from agents.daemon_slayer.engine import build_champion
         manamune_ad = build_champion(
             self.snap, "Ezreal", level=11, item_ids=["3004"],
@@ -3279,7 +3279,7 @@ class MuramanaShockTests(unittest.TestCase):
 class AweEngineWireInTests(unittest.TestCase):
     """Awe (bonus_ad_pct_max_mp) lifts AD in build_champion output.
 
-    Mirror of SteraksEngineWireInTests for the mana → AD path. Pins
+    Mirror of SteraksEngineWireInTests for the mana -> AD path. Pins
     the engine-side wiring: the walk in build_champion folds the
     contribution into item_totals["ad_flat"] BEFORE _combine_items
     applies item AD, so the lifted AD propagates through the rest of
@@ -3299,7 +3299,7 @@ class AweEngineWireInTests(unittest.TestCase):
         # confirm Awe contributes nothing (since no item carries the field).
         from agents.daemon_slayer.engine import build_champion
         bare = build_champion(self.snap, "Aatrox", level=11)
-        # No Manamune/Muramana → no Awe contribution. AD stays at base.
+        # No Manamune/Muramana -> no Awe contribution. AD stays at base.
         self.assertEqual(bare.stats["ad"], bare.base_stats["ad"])
 
     def test_awe_walk_safe_when_no_awe_items(self) -> None:
@@ -3318,9 +3318,9 @@ class AweEngineWireInTests(unittest.TestCase):
         self.assertAlmostEqual(archangel.stats["ad"], bare_ad, places=2)
 
     def test_awe_walk_includes_other_items_mana(self) -> None:
-        # Awe is mana → AD; the walk uses the build's TOTAL max mana
+        # Awe is mana -> AD; the walk uses the build's TOTAL max mana
         # (champion base + ALL items' mana, not just the Awe-carrying
-        # item's mana). So a build with [Manamune, Archangel] → Awe
+        # item's mana). So a build with [Manamune, Archangel] -> Awe
         # picks up 500 (Manamune) + 600 (Archangel) extra mana = +22 AD.
         # Compare against [Manamune] alone where Awe sees 500 extra.
         # The delta surfaces a mana-source-leak bug if the walk only
@@ -3370,9 +3370,9 @@ class ArchangelsAweTests(unittest.TestCase):
         self.assertEqual(ITEM_EFFECTS["3003"].unique_passive_key, "")
 
     def test_archangel_lifts_ap_via_bonus_mana_only(self) -> None:
-        # Ezreal lvl 11: champion base mp ≈ 1075 - must NOT count toward
-        # Archangel's Awe (bonus mana only). Archangel adds 600 mana →
-        # bonus mana = 600 → Awe AP = 0.01 * 600 = 6 AP.
+        # Ezreal lvl 11: champion base mp ~ 1075 - must NOT count toward
+        # Archangel's Awe (bonus mana only). Archangel adds 600 mana ->
+        # bonus mana = 600 -> Awe AP = 0.01 * 600 = 6 AP.
         # If the walk wrongly used max mana (1075 + 600 = 1675), AP
         # contribution would be ~16.75 - this test pins the asymmetry.
         from agents.daemon_slayer.engine import build_champion
@@ -3384,12 +3384,12 @@ class ArchangelsAweTests(unittest.TestCase):
         self.assertGreater(ap_lift, 74.0)
         self.assertLess(ap_lift, 78.0)
         # Strict bound check that catches the "max mana" bug:
-        # if Awe used max mana (1675), lift would be 70 + 16.75 ≈ 86.75.
+        # if Awe used max mana (1675), lift would be 70 + 16.75 ~ 86.75.
         self.assertLess(ap_lift, 80.0)
 
     def test_archangel_walk_uses_total_build_mana(self) -> None:
-        # Add Manamune (500 mana) to the build → Archangel's Awe sees
-        # additional 500 bonus mana → +5 AP from Archangel's contribution.
+        # Add Manamune (500 mana) to the build -> Archangel's Awe sees
+        # additional 500 bonus mana -> +5 AP from Archangel's contribution.
         # Manamune itself doesn't carry bonus_ap_pct_bonus_mp so its 500
         # mana contribution is purely upstream-source for Archangel.
         from agents.daemon_slayer.engine import build_champion
@@ -3512,8 +3512,8 @@ class ArchangelEngineWireInTests(unittest.TestCase):
         # Direct asymmetry assertion: Archangel uses bonus mana
         # (item-contributed only), Manamune uses max mana (champion
         # base + items). On Ezreal lvl 11 (champion base 1075 mp),
-        # Manamune's 500 mana → AD = 0.02 * (1075 + 500) = 31.5;
-        # Archangel's 600 mana → AP = 0.01 * 600 = 6 (NOT 0.01 * 1675 = 16.75).
+        # Manamune's 500 mana -> AD = 0.02 * (1075 + 500) = 31.5;
+        # Archangel's 600 mana -> AP = 0.01 * 600 = 6 (NOT 0.01 * 1675 = 16.75).
         # The ratio of AP-side contribution to AD-side contribution
         # being ~6/31.5 = 0.19 (rather than ~16.75/31.5 = 0.53)
         # surfaces the bonus-vs-max distinction.
@@ -3526,9 +3526,9 @@ class ArchangelEngineWireInTests(unittest.TestCase):
             self.snap, "Ezreal", level=11, item_ids=["3003"],
         ).stats["ap"]
         bare_ap = build_champion(self.snap, "Ezreal", level=11).stats["ap"]
-        # Manamune AD lift includes 35 stat + Awe - Awe ≈ 31.5.
+        # Manamune AD lift includes 35 stat + Awe - Awe ~ 31.5.
         manamune_awe = (manamune_ad - bare_ad) - 35.0  # subtract stat block
-        # Archangel AP lift includes 70 stat + Awe - Awe ≈ 6.
+        # Archangel AP lift includes 70 stat + Awe - Awe ~ 6.
         archangel_awe = (archangel_ap - bare_ap) - 70.0
         # Ratio asserts asymmetry: if Archangel used max mana, ratio
         # would be ~16.75/31.5 = 0.53. With bonus mana, ratio is
@@ -3642,7 +3642,7 @@ class LiandrysSufferingTests(unittest.TestCase):
     def test_liandrys_amp_stacks_with_riftmaker(self) -> None:
         # Both Liandry's (0.06) and Riftmaker (0.08) carry damage_amp_pct.
         # Per batch 14 pin: stacks multiplicatively via League's buff
-        # system. Combined: 1.06 × 1.08 = 1.1448x. Independent: each
+        # system. Combined: 1.06 x 1.08 = 1.1448x. Independent: each
         # alone gives a smaller multiplier. Pin the multiplicative
         # composition by checking notes.
         with_both = compute_dps(
@@ -3771,7 +3771,7 @@ class LethalityScalingTests(unittest.TestCase):
 
     def test_multiple_lethality_items_sum_additively(self) -> None:
         # Two lethality items at lvl 18 (full effective): 18 + 10 = 28
-        # total flat pen → armor 100 → 72.
+        # total flat pen -> armor 100 -> 72.
         e1 = ItemEffect(item_id="a", name="a", lethality=18.0)
         e2 = ItemEffect(item_id="b", name="b", lethality=10.0)
         self.assertAlmostEqual(
@@ -3779,7 +3779,7 @@ class LethalityScalingTests(unittest.TestCase):
         )
 
     def test_lethality_floors_at_zero(self) -> None:
-        # 100 lethality at full effective vs 30 armor → 30 - 100 = -70 floored to 0.
+        # 100 lethality at full effective vs 30 armor -> 30 - 100 = -70 floored to 0.
         e = ItemEffect(item_id="x", name="x", lethality=100.0)
         self.assertEqual(
             effective_target_armor(30.0, [e], level=18), 0.0,
@@ -4088,7 +4088,7 @@ class Batch31DefensiveOnlyCoverageTests(unittest.TestCase):
         self.assertGreaterEqual(count, 40)
 
 
-# ────────────────────────── Phase 4 batch 32 tests ──────────────────────────
+# -------------------------- Phase 4 batch 32 tests --------------------------
 
 class RabadonsApAmpTests(unittest.TestCase):
     """Rabadon's Deathcap ap_amp_pct=0.30 + total_ap_amp_multiplier helper."""
@@ -4535,7 +4535,7 @@ class Batch35LethMissedAndDualPenTests(unittest.TestCase):
     def test_duskblade_pen_pipeline(self) -> None:
         from agents.daemon_slayer.effects import collect_effects, effective_target_armor
         effects = collect_effects(["6691"])
-        # lvl 18: factor = 1.0 → flat pen = 18 * 1.0 = 18
+        # lvl 18: factor = 1.0 -> flat pen = 18 * 1.0 = 18
         eff_armor = effective_target_armor(50.0, effects, level=18)
         self.assertAlmostEqual(eff_armor, 50.0 - 18.0, places=1)
 
@@ -4606,7 +4606,7 @@ class DivineSundererSpellbladeTests(unittest.TestCase):
 
     def test_spellblade_dedup_with_trinity(self) -> None:
         from agents.daemon_slayer.effects import collect_effects
-        # Divine Sunderer first → should win dedup
+        # Divine Sunderer first -> should win dedup
         effects = collect_effects(["6632", "3078"])
         sb_items = [e for e in effects if e.unique_passive_key == "spellblade"]
         self.assertEqual(len(sb_items), 1)
@@ -4696,7 +4696,7 @@ class Batch35DefensiveOnlyTests(unittest.TestCase):
         self.assertGreaterEqual(count, 59)
 
 
-# ────────────────────────── Phase 4 batch 36 tests ──────────────────────────
+# -------------------------- Phase 4 batch 36 tests --------------------------
 
 class Batch36ArenaAndRiteOfRuinTests(unittest.TestCase):
     """Batch 36: Arena item sweep + Rite of Ruin crit."""
@@ -4825,7 +4825,7 @@ class Batch36ArenaAndRiteOfRuinTests(unittest.TestCase):
         self.assertGreaterEqual(count, 65)
 
 
-# ────────────────────────── Phase 4 batch 37 tests ──────────────────────────
+# -------------------------- Phase 4 batch 37 tests --------------------------
 
 class Batch37TrueDamageTests(unittest.TestCase):
     """Batch 37: TRUE damage type + Darksteel Talons / Fulmination / Reaper's Toll."""
@@ -4834,7 +4834,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── TRUE constant present ──
+    # -- TRUE constant present --
 
     def test_true_constant_exported(self) -> None:
         from agents.daemon_slayer.effects import TRUE
@@ -4844,7 +4844,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
         from agents.daemon_slayer.effects import _DAMAGE_TYPES, TRUE
         self.assertIn(TRUE, _DAMAGE_TYPES)
 
-    # ── Darksteel Talons (443054) ──
+    # -- Darksteel Talons (443054) --
 
     def test_darksteel_talons_present(self) -> None:
         eff = ITEM_EFFECTS.get("443054")
@@ -4903,7 +4903,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
                                target_armor=50.0)
         self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
 
-    # ── Fulmination (443055) ──
+    # -- Fulmination (443055) --
 
     def test_fulmination_present(self) -> None:
         eff = ITEM_EFFECTS.get("443055")
@@ -4936,7 +4936,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
         ctx = CallContext(base_ad=0.0, bonus_ad=0.0, level=11, target_max_hp=0.0)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 0.0, places=6)
 
-    # ── Reaper's Toll (443090) ──
+    # -- Reaper's Toll (443090) --
 
     def test_reapers_toll_present(self) -> None:
         eff = ITEM_EFFECTS.get("443090")
@@ -4979,7 +4979,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
         drop_bork = dps_bork_low.weighted_dps - dps_bork_high.weighted_dps
         self.assertLessEqual(drop_true, drop_bork)
 
-    # ── Defensive_only count ──
+    # -- Defensive_only count --
 
     def test_batch37_defensive_only_entries(self) -> None:
         expected = {
@@ -5017,7 +5017,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 156)
 
 
-# ────────────────────────── Phase 4 batch 38 tests ──────────────────────────
+# -------------------------- Phase 4 batch 38 tests --------------------------
 
 class Batch38GiantSlayerSchemaTests(unittest.TestCase):
     """Batch 38: Giant Slayer MAX HP diff amp schema."""
@@ -5026,7 +5026,7 @@ class Batch38GiantSlayerSchemaTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── Helper function ──
+    # -- Helper function --
 
     def test_giant_slayer_multiplier_zero_when_caster_higher(self) -> None:
         from agents.daemon_slayer.effects import total_giant_slayer_multiplier
@@ -5044,14 +5044,14 @@ class Batch38GiantSlayerSchemaTests(unittest.TestCase):
     def test_giant_slayer_partial_1000_hp_diff(self) -> None:
         from agents.daemon_slayer.effects import total_giant_slayer_multiplier
         eff = [ITEM_EFFECTS["4015"]]
-        # 1000 HP diff: 1000/100 * 0.006 = 0.06 → 6% amp → factor 1.06
+        # 1000 HP diff: 1000/100 * 0.006 = 0.06 -> 6% amp -> factor 1.06
         result = total_giant_slayer_multiplier(eff, target_max_hp=3500.0, caster_max_hp=2500.0)
         self.assertAlmostEqual(result, 1.06, places=4)
 
     def test_giant_slayer_capped_at_max(self) -> None:
         from agents.daemon_slayer.effects import total_giant_slayer_multiplier
         eff = [ITEM_EFFECTS["4015"]]
-        # 3000 HP diff: 3000/100 * 0.006 = 0.18 but cap = 0.15 → 1.15
+        # 3000 HP diff: 3000/100 * 0.006 = 0.18 but cap = 0.15 -> 1.15
         result = total_giant_slayer_multiplier(eff, target_max_hp=6000.0, caster_max_hp=3000.0)
         self.assertAlmostEqual(result, 1.15, places=4)
 
@@ -5067,7 +5067,7 @@ class Batch38GiantSlayerSchemaTests(unittest.TestCase):
         result = total_giant_slayer_multiplier([], target_max_hp=5000.0, caster_max_hp=1000.0)
         self.assertAlmostEqual(result, 1.0, places=6)
 
-    # ── Perplexity field update ──
+    # -- Perplexity field update --
 
     def test_perplexity_has_giant_slayer_fields(self) -> None:
         eff = ITEM_EFFECTS.get("4015")
@@ -5105,7 +5105,7 @@ class Batch38ActiveItemTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── Wooglet's Witchcap (228002) ──
+    # -- Wooglet's Witchcap (228002) --
 
     def test_wooglets_ap_amp_pct(self) -> None:
         eff = ITEM_EFFECTS.get("228002")
@@ -5124,7 +5124,7 @@ class Batch38ActiveItemTests(unittest.TestCase):
         factor_both = total_ap_amp_multiplier(effs_both)
         self.assertAlmostEqual(factor_rabadon, 1.30, places=4)
         self.assertAlmostEqual(factor_wooglet, 1.50, places=4)
-        # Multiplicative: 1.30 × 1.50 = 1.95
+        # Multiplicative: 1.30 x 1.50 = 1.95
         self.assertAlmostEqual(factor_both, 1.95, places=4)
 
     def test_wooglets_dps_lift_with_ap_proc_item(self) -> None:
@@ -5136,7 +5136,7 @@ class Batch38ActiveItemTests(unittest.TestCase):
         dps_both = compute_dps(self.snap, "Lux", level=11, item_ids=["3115", "228002"])
         self.assertGreater(dps_both.weighted_dps, dps_nashor.weighted_dps)
 
-    # ── Deathblade (228003) ──
+    # -- Deathblade (228003) --
 
     def test_deathblade_lethality_and_crit_bonus(self) -> None:
         eff = ITEM_EFFECTS.get("228003")
@@ -5166,7 +5166,7 @@ class Batch38ActiveItemTests(unittest.TestCase):
         # Sanity: lethality contribution actually fires (effective < raw).
         self.assertLess(armor_l1, 100.0)
 
-    # ── Obsidian Cleaver (228005) ──
+    # -- Obsidian Cleaver (228005) --
 
     def test_obsidian_cleaver_armor_reduction(self) -> None:
         eff = ITEM_EFFECTS.get("228005")
@@ -5178,7 +5178,7 @@ class Batch38ActiveItemTests(unittest.TestCase):
     def test_obsidian_cleaver_reduces_effective_armor(self) -> None:
         from agents.daemon_slayer.effects import effective_target_armor
         effs = [ITEM_EFFECTS["228005"]]
-        # 100 armor × (1 - 0.35) = 65 effective armor
+        # 100 armor x (1 - 0.35) = 65 effective armor
         eff_armor = effective_target_armor(100.0, effs)
         self.assertAlmostEqual(eff_armor, 65.0, places=2)
 
@@ -5189,7 +5189,7 @@ class Batch38ActiveItemTests(unittest.TestCase):
                                target_armor=150.0)
         self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
 
-    # ── Defensive_only sweep ──
+    # -- Defensive_only sweep --
 
     def test_batch38_defensive_only_entries(self) -> None:
         expected = {
@@ -5234,7 +5234,7 @@ class Batch38ActiveItemTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 176)
 
 
-# ────────────────────────── Phase 4 batch 39 tests ──────────────────────────
+# -------------------------- Phase 4 batch 39 tests --------------------------
 
 class Batch39MRReductionSchemaTests(unittest.TestCase):
     """Batch 39: mr_reduction_pct field + Bloodletter's Curse + Arena re-skins."""
@@ -5243,7 +5243,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── mr_reduction_pct field on ItemEffect ──
+    # -- mr_reduction_pct field on ItemEffect --
 
     def test_bloodletters_curse_mr_reduction(self) -> None:
         eff = ITEM_EFFECTS.get("4010")
@@ -5255,7 +5255,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
     def test_effective_target_mr_with_mr_reduction(self) -> None:
         from agents.daemon_slayer.effects import effective_target_mr
         effs = [ITEM_EFFECTS["4010"]]
-        # 100 MR × (1 - 0.30) = 70 before % pen
+        # 100 MR x (1 - 0.30) = 70 before % pen
         result = effective_target_mr(100.0, effs)
         self.assertAlmostEqual(result, 70.0, places=2)
 
@@ -5263,7 +5263,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
         from agents.daemon_slayer.effects import effective_target_mr
         # Bloodletter's 30% reduction + Void Staff 40% pen
         effs = [ITEM_EFFECTS["4010"], ITEM_EFFECTS["3135"]]
-        # 100 × (1-0.30) = 70; then × (1-0.40) = 42.0
+        # 100 x (1-0.30) = 70; then x (1-0.40) = 42.0
         result = effective_target_mr(100.0, effs)
         self.assertAlmostEqual(result, 42.0, places=2)
 
@@ -5276,7 +5276,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
                                item_ids=["2503", "4010"])
         self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
 
-    # ── Divine Sunderer Arena (446632) ──
+    # -- Divine Sunderer Arena (446632) --
 
     def test_divine_sunderer_arena_shape(self) -> None:
         eff = ITEM_EFFECTS.get("446632")
@@ -5303,7 +5303,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
         effects = collect_effects(["6632", "446632"])
         self.assertEqual(sum(1 for e in effects if e.unique_passive_key == "spellblade"), 1)
 
-    # ── Overlord's Bloodmail Arena (447111) ──
+    # -- Overlord's Bloodmail Arena (447111) --
 
     def test_overlords_bloodmail_arena_bonus_ad_pct(self) -> None:
         eff = ITEM_EFFECTS.get("447111")
@@ -5320,7 +5320,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
         self.assertIsNotNone(sr)
         self.assertGreater(arena.bonus_ad_pct_bonus_hp, sr.bonus_ad_pct_bonus_hp)
 
-    # ── Atma's Reckoning variant (663039) ──
+    # -- Atma's Reckoning variant (663039) --
 
     def test_atmas_663039_same_as_3039(self) -> None:
         eff663 = ITEM_EFFECTS.get("663039")
@@ -5333,7 +5333,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
         self.assertAlmostEqual(eff663.crit_chance_bonus_per_bonus_hp_cap,
                                eff3.crit_chance_bonus_per_bonus_hp_cap, places=1)
 
-    # ── Hextech Gunblade Arena (663146) ──
+    # -- Hextech Gunblade Arena (663146) --
 
     def test_hextech_gunblade_663146_same_formula(self) -> None:
         from agents.daemon_slayer.effects import CallContext
@@ -5346,7 +5346,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
         proc = ITEM_EFFECTS["663146"].periodics[0]
         self.assertAlmostEqual(proc.every_n_seconds, 40.0, places=3)
 
-    # ── Defensive_only sweep ──
+    # -- Defensive_only sweep --
 
     def test_batch39_defensive_only_entries(self) -> None:
         expected = {
@@ -5390,7 +5390,7 @@ class Batch40ComponentAndSweepTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── active promotion field assertions ──────────────────────────────────
+    # -- active promotion field assertions ----------------------------------
 
     def test_last_whisper_armor_pen(self) -> None:
         e = ITEM_EFFECTS.get("3035")
@@ -5436,7 +5436,7 @@ class Batch40ComponentAndSweepTests(unittest.TestCase):
         self.assertIsNotNone(liandrys, "6653 Liandry's Torment missing")
         self.assertAlmostEqual(guise.damage_amp_pct, liandrys.damage_amp_pct)
 
-    # ── Hexdrinker lifeline dedup ──────────────────────────────────────────
+    # -- Hexdrinker lifeline dedup ------------------------------------------
 
     def test_hexdrinker_lifeline_key(self) -> None:
         e = ITEM_EFFECTS.get("3155")
@@ -5444,7 +5444,7 @@ class Batch40ComponentAndSweepTests(unittest.TestCase):
         self.assertEqual(e.unique_passive_key, "lifeline")
         self.assertTrue(e.defensive_only)
 
-    # ── batch 40 defensive_only entries ───────────────────────────────────
+    # -- batch 40 defensive_only entries -----------------------------------
 
     def test_batch40_defensive_only_entries(self) -> None:
         expected = {
@@ -5470,7 +5470,7 @@ class Batch40ComponentAndSweepTests(unittest.TestCase):
                 self.assertTrue(eff.defensive_only, f"{iid} ({name}) should be defensive_only")
                 self.assertEqual(len(eff.periodics), 0)
 
-    # ── running totals ─────────────────────────────────────────────────────
+    # -- running totals -----------------------------------------------------
 
     def test_defensive_only_count_after_batch40(self) -> None:
         count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
@@ -5487,7 +5487,7 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
 
     Key-collision fix: Navori Flickerblade was incorrectly keyed to "6672"
     (Kraken Slayer's DDragon ID) in batch 35, silently overwriting Kraken Slayer.
-    Fixed in this batch: 6672 → Kraken Slayer, 6675 → Navori Flickerblade.
+    Fixed in this batch: 6672 -> Kraken Slayer, 6675 -> Navori Flickerblade.
 
     28 Arena 226xxx items covering the full pool:
       14 active with same schema as SR counterpart.
@@ -5498,7 +5498,7 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── Kraken Slayer / Navori key-collision fix ───────────────────────────
+    # -- Kraken Slayer / Navori key-collision fix ---------------------------
 
     def test_kraken_slayer_restored_at_6672(self) -> None:
         e = ITEM_EFFECTS.get("6672")
@@ -5520,7 +5520,7 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
         n = ITEM_EFFECTS.get("6675")
         self.assertNotEqual(k.name, n.name)
 
-    # ── active Arena mirror field assertions ──────────────────────────────
+    # -- active Arena mirror field assertions ------------------------------
 
     def test_arena_sundered_sky_proc(self) -> None:
         e = ITEM_EFFECTS.get("226610")
@@ -5562,7 +5562,7 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
         self.assertTrue(e.defensive_only)
         self.assertEqual(e.unique_passive_key, "lifeline")
 
-    # ── Arena active items share proc formula with SR counterpart ─────────
+    # -- Arena active items share proc formula with SR counterpart ---------
 
     def test_arena_eclipse_proc_matches_sr(self) -> None:
         """226692 Eclipse Arena proc formula identical to SR 6692."""
@@ -5591,7 +5591,7 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
         arena = ITEM_EFFECTS["226694"]
         self.assertAlmostEqual(sr.armor_pen_pct, arena.armor_pen_pct)
 
-    # ── defensive_only Arena mirrors ──────────────────────────────────────
+    # -- defensive_only Arena mirrors --------------------------------------
 
     def test_batch41_defensive_only_entries(self) -> None:
         expected = {
@@ -5620,15 +5620,15 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
                 self.assertTrue(eff.defensive_only, f"{iid} ({name}) should be defensive_only")
                 self.assertEqual(len(eff.periodics), 0)
 
-    # ── running totals ─────────────────────────────────────────────────────
+    # -- running totals -----------------------------------------------------
 
     def test_defensive_only_count_after_batch41(self) -> None:
         count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
-        # 118 after batch 40 + 14 new − 1 removed stub = 131
+        # 118 after batch 40 + 14 new - 1 removed stub = 131
         self.assertGreaterEqual(count, 131)
 
     def test_total_entry_count_after_batch41(self) -> None:
-        # 206 after batch 40 + 28 new − 1 removed stub = 233
+        # 206 after batch 40 + 28 new - 1 removed stub = 233
         self.assertGreaterEqual(len(ITEM_EFFECTS), 233)
 
 
@@ -5639,7 +5639,7 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── active field assertions ────────────────────────────────────────────
+    # -- active field assertions --------------------------------------------
 
     def test_222502_unending_despair_proc(self) -> None:
         e = ITEM_EFFECTS.get("222502")
@@ -5693,7 +5693,7 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
         self.assertTrue(e.defensive_only)
         self.assertEqual(e.unique_passive_key, "lifeline")
 
-    # ── proc formula matches SR counterpart ───────────────────────────────
+    # -- proc formula matches SR counterpart -------------------------------
 
     def test_222502_proc_matches_sr_2502(self) -> None:
         from agents.daemon_slayer.effects import CallContext
@@ -5702,7 +5702,7 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
         arena_p = ITEM_EFFECTS["222502"].periodics[0]
         self.assertAlmostEqual(sr_p.resolve_damage(ctx), arena_p.resolve_damage(ctx))
 
-    # ── DPS lifts ──────────────────────────────────────────────────────────
+    # -- DPS lifts ----------------------------------------------------------
 
     def test_224633_dps_lift(self) -> None:
         base = compute_dps(self.snap, "Lux", level=11, item_ids=[])
@@ -5714,7 +5714,7 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
         with_mask = compute_dps(self.snap, "Lux", level=11, item_ids=["3115", "328020"])
         self.assertGreater(with_mask.weighted_dps, base.weighted_dps)
 
-    # ── defensive_only spot-checks ────────────────────────────────────────
+    # -- defensive_only spot-checks ----------------------------------------
 
     def test_batch42_defensive_only_entries(self) -> None:
         expected = [
@@ -5731,7 +5731,7 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
                 self.assertTrue(eff.defensive_only, f"{iid} should be defensive_only")
                 self.assertEqual(len(eff.periodics), 0)
 
-    # ── running totals ─────────────────────────────────────────────────────
+    # -- running totals -----------------------------------------------------
 
     def test_defensive_only_count_after_batch42(self) -> None:
         count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
@@ -5750,7 +5750,7 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── active field assertions ────────────────────────────────────────────
+    # -- active field assertions --------------------------------------------
 
     def test_223078_trinity_force_spellblade_key(self) -> None:
         e = ITEM_EFFECTS.get("223078")
@@ -5824,7 +5824,7 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         self.assertIsNotNone(e, "223142 missing")
         self.assertAlmostEqual(e.lethality, 18.0)
 
-    # ── proc formulas match SR counterparts ───────────────────────────────
+    # -- proc formulas match SR counterparts -------------------------------
 
     def test_223078_spellblade_matches_sr_3078(self) -> None:
         from agents.daemon_slayer.effects import CallContext
@@ -5847,7 +5847,7 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         arena_p0 = ITEM_EFFECTS["223748"].periodics[0]
         self.assertAlmostEqual(sr_p0.resolve_damage(ctx), arena_p0.resolve_damage(ctx))
 
-    # ── DPS lifts ──────────────────────────────────────────────────────────
+    # -- DPS lifts ----------------------------------------------------------
 
     def test_223115_nashor_dps_lift(self) -> None:
         base = compute_dps(self.snap, "Lux", level=11, item_ids=[])
@@ -5861,7 +5861,7 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         result = compute_dps(self.snap, "Caitlyn", level=12, item_ids=["223085"])
         self.assertGreater(result.weighted_dps, 0.0)
 
-    # ── defensive_only spot-checks ────────────────────────────────────────
+    # -- defensive_only spot-checks ----------------------------------------
 
     def test_batch43_defensive_only_entries(self) -> None:
         expected = [
@@ -5880,7 +5880,7 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
                 self.assertTrue(eff.defensive_only, f"{iid} should be defensive_only")
                 self.assertEqual(len(eff.periodics), 0)
 
-    # ── running totals ─────────────────────────────────────────────────────
+    # -- running totals -----------------------------------------------------
 
     def test_defensive_only_count_after_batch43(self) -> None:
         count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
@@ -5899,7 +5899,7 @@ class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── proc-bearing components ────────────────────────────────────────────
+    # -- proc-bearing components --------------------------------------------
 
     def test_3057_sheen_spellblade_key(self) -> None:
         e = ITEM_EFFECTS["3057"]
@@ -5977,7 +5977,7 @@ class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
         with_rk = compute_dps(self.snap, "Caitlyn", level=10, item_ids=["6677"])
         self.assertGreater(with_rk.weighted_dps, base.weighted_dps)
 
-    # ── full items with DPS passive ────────────────────────────────────────
+    # -- full items with DPS passive ----------------------------------------
 
     def test_3131_sword_of_divine_lethality(self) -> None:
         e = ITEM_EFFECTS["3131"]
@@ -6007,7 +6007,7 @@ class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
         self.assertIsNotNone(e)
         self.assertFalse(e.defensive_only)
 
-    # ── stats-only items exist and are not defensive_only ─────────────────
+    # -- stats-only items exist and are not defensive_only -----------------
 
     def test_stats_only_items_not_defensive(self) -> None:
         for iid, name in [
@@ -6022,7 +6022,7 @@ class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
                 self.assertIsNotNone(e, f"{iid} missing")
                 self.assertFalse(e.defensive_only, f"{iid} should not be defensive_only")
 
-    # ── count assertions ───────────────────────────────────────────────────
+    # -- count assertions ---------------------------------------------------
 
     def test_batch44_active_count(self) -> None:
         active = [e for e in ITEM_EFFECTS.values() if not e.defensive_only]
@@ -6040,7 +6040,7 @@ class Batch45DefensiveItemsAndBootsTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── defensive full items ───────────────────────────────────────────────
+    # -- defensive full items -----------------------------------------------
 
     def test_defensive_full_items(self) -> None:
         expected_defensive = [
@@ -6054,7 +6054,7 @@ class Batch45DefensiveItemsAndBootsTests(unittest.TestCase):
                 self.assertTrue(e.defensive_only, f"{iid} should be defensive_only")
                 self.assertEqual(len(e.periodics), 0)
 
-    # ── defensive components ───────────────────────────────────────────────
+    # -- defensive components -----------------------------------------------
 
     def test_defensive_components(self) -> None:
         expected = [
@@ -6067,7 +6067,7 @@ class Batch45DefensiveItemsAndBootsTests(unittest.TestCase):
                 self.assertIsNotNone(e, f"{iid} missing")
                 self.assertTrue(e.defensive_only, f"{iid} should be defensive_only")
 
-    # ── boots ─────────────────────────────────────────────────────────────
+    # -- boots -------------------------------------------------------------
 
     def test_berserkers_greaves_not_defensive(self) -> None:
         e = ITEM_EFFECTS["3006"]
@@ -6086,7 +6086,7 @@ class Batch45DefensiveItemsAndBootsTests(unittest.TestCase):
         self.assertFalse(e.defensive_only)
         self.assertEqual(len(e.periodics), 0)
 
-    # ── count assertions ───────────────────────────────────────────────────
+    # -- count assertions ---------------------------------------------------
 
     def test_batch45_defensive_only_count(self) -> None:
         defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
@@ -6104,7 +6104,7 @@ class Batch46Arena226x228x224xAndSRTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── active proc items ─────────────────────────────────────────────────
+    # -- active proc items -------------------------------------------------
 
     def test_226632_divine_sunderer_spellblade_key(self) -> None:
         e = ITEM_EFFECTS["226632"]
@@ -6173,7 +6173,7 @@ class Batch46Arena226x228x224xAndSRTests(unittest.TestCase):
                 self.assertFalse(e.defensive_only)
                 self.assertEqual(len(e.periodics), 0)
 
-    # ── defensive_only items ──────────────────────────────────────────────
+    # -- defensive_only items ----------------------------------------------
 
     def test_batch46_defensive_entries(self) -> None:
         expected = [
@@ -6187,7 +6187,7 @@ class Batch46Arena226x228x224xAndSRTests(unittest.TestCase):
                 self.assertIsNotNone(e, f"{iid} missing")
                 self.assertTrue(e.defensive_only)
 
-    # ── count assertions ──────────────────────────────────────────────────
+    # -- count assertions --------------------------------------------------
 
     def test_batch46_total_count(self) -> None:
         self.assertGreaterEqual(len(ITEM_EFFECTS), 389)
@@ -6200,7 +6200,7 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── active items ──────────────────────────────────────────────────────
+    # -- active items ------------------------------------------------------
 
     def test_223001_evenshroud_damage_amp(self) -> None:
         e = ITEM_EFFECTS["223001"]
@@ -6260,7 +6260,7 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
         sr_dmg = ITEM_EFFECTS["3042"].periodics[0].resolve_damage(ctx)
         self.assertAlmostEqual(aram_dmg, sr_dmg, places=2)
 
-    # ── 221xxx Arena components not defensive_only ────────────────────────
+    # -- 221xxx Arena components not defensive_only ------------------------
 
     def test_221xxx_components_not_defensive(self) -> None:
         for iid in ["221011", "221026", "221043", "221053", "221058"]:
@@ -6277,7 +6277,7 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
                 self.assertIsNotNone(e)
                 self.assertTrue(e.defensive_only)
 
-    # ── defensive_only Arena pool ─────────────────────────────────────────
+    # -- defensive_only Arena pool -----------------------------------------
 
     def test_batch47_defensive_entries(self) -> None:
         expected = [
@@ -6296,7 +6296,7 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
                 self.assertIsNotNone(e, f"{iid} missing")
                 self.assertTrue(e.defensive_only)
 
-    # ── count assertions ──────────────────────────────────────────────────
+    # -- count assertions --------------------------------------------------
 
     def test_batch47_defensive_count(self) -> None:
         defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
@@ -6310,7 +6310,7 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
 class Batch48Core1xxxComponentsTests(unittest.TestCase):
     """Phase 4 batch 48 - 1xxx tier-1 component coverage."""
 
-    # ── Recurve Bow proc ──────────────────────────────────────────────────
+    # -- Recurve Bow proc --------------------------------------------------
 
     def test_recurve_bow_sting_proc(self) -> None:
         e = ITEM_EFFECTS["1043"]
@@ -6323,7 +6323,7 @@ class Batch48Core1xxxComponentsTests(unittest.TestCase):
         self.assertEqual(p.damage_type, PHYSICAL)
         self.assertEqual(p.every_n_attacks, 1)
 
-    # ── stats-only active components ─────────────────────────────────────
+    # -- stats-only active components -------------------------------------
 
     def test_stats_only_active_1xxx(self) -> None:
         for iid in ["1018", "1026", "1036", "1037", "1038", "1042",
@@ -6335,7 +6335,7 @@ class Batch48Core1xxxComponentsTests(unittest.TestCase):
                 self.assertFalse(e.defensive_only)
                 self.assertEqual(len(e.periodics), 0)
 
-    # ── defensive_only 1xxx components ───────────────────────────────────
+    # -- defensive_only 1xxx components -----------------------------------
 
     def test_batch48_defensive_entries(self) -> None:
         for iid in ["1001", "1004", "1006", "1011", "1027", "1028",
@@ -6346,7 +6346,7 @@ class Batch48Core1xxxComponentsTests(unittest.TestCase):
                 self.assertIsNotNone(e, f"{iid} missing")
                 self.assertTrue(e.defensive_only)
 
-    # ── count assertions ──────────────────────────────────────────────────
+    # -- count assertions --------------------------------------------------
 
     def test_batch48_defensive_count(self) -> None:
         defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
@@ -6364,7 +6364,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
         from agents.daemon_slayer.data_loader import DataSnapshot
         cls.snap = DataSnapshot.load()
 
-    # ── Spellslinger's Shoes - dual-pen ──────────────────────────────────
+    # -- Spellslinger's Shoes - dual-pen ----------------------------------
 
     def test_spelllslingers_shoes_dual_pen(self) -> None:
         e = ITEM_EFFECTS["3175"]
@@ -6383,7 +6383,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
         mr_bare = effective_target_mr(50.0, [])
         self.assertLess(mr_with, mr_bare)
 
-    # ── Lethality items ───────────────────────────────────────────────────
+    # -- Lethality items ---------------------------------------------------
 
     def test_hubris_lethality(self) -> None:
         e = ITEM_EFFECTS["126697"]
@@ -6398,7 +6398,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
         self.assertFalse(e.defensive_only)
         self.assertAlmostEqual(e.lethality, 20.0)
 
-    # ── Rite of Ruin crit ────────────────────────────────────────────────
+    # -- Rite of Ruin crit ------------------------------------------------
 
     def test_rite_of_ruin_crit_flat(self) -> None:
         e = ITEM_EFFECTS["123430"]
@@ -6407,7 +6407,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
         self.assertAlmostEqual(e.crit_chance_bonus_flat, 0.25)
         self.assertEqual(len(e.periodics), 0)
 
-    # ── stats-only active items ───────────────────────────────────────────
+    # -- stats-only active items -------------------------------------------
 
     def test_stats_only_active_3xxx_2xxx(self) -> None:
         # 2508 Fated Ashes promoted to active periodic in batch 51
@@ -6419,7 +6419,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
                 self.assertFalse(e.defensive_only)
                 self.assertEqual(len(e.periodics), 0)
 
-    # ── defensive_only boots ─────────────────────────────────────────────
+    # -- defensive_only boots ---------------------------------------------
 
     def test_batch49_defensive_boots(self) -> None:
         for iid in ["3005", "3008", "3010", "3013", "3117", "3168",
@@ -6429,7 +6429,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
                 self.assertIsNotNone(e, f"{iid} missing")
                 self.assertTrue(e.defensive_only)
 
-    # ── defensive_only components ─────────────────────────────────────────
+    # -- defensive_only components -----------------------------------------
 
     def test_batch49_defensive_components(self) -> None:
         for iid in ["3012", "3023", "3066", "3112", "3114",
@@ -6439,7 +6439,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
                 self.assertIsNotNone(e, f"{iid} missing")
                 self.assertTrue(e.defensive_only)
 
-    # ── defensive_only Arena pool ─────────────────────────────────────────
+    # -- defensive_only Arena pool -----------------------------------------
 
     def test_batch49_defensive_arena(self) -> None:
         for iid in ["124011", "223005", "223008", "223009", "223011"]:
@@ -6448,7 +6448,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
                 self.assertIsNotNone(e, f"{iid} missing")
                 self.assertTrue(e.defensive_only)
 
-    # ── count assertions ──────────────────────────────────────────────────
+    # -- count assertions --------------------------------------------------
 
     def test_batch49_defensive_count(self) -> None:
         defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
@@ -6459,14 +6459,14 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 496)
 
 
-# ─────────────────────────────────── batch 50: armor_reduction_flat / mr_reduction_flat
+# ----------------------------------- batch 50: armor_reduction_flat / mr_reduction_flat
 
 
 class FlatArmorShredTests(unittest.TestCase):
     """Batch 50: armor_reduction_flat + mr_reduction_flat pipeline."""
 
     def test_flat_shred_reduces_before_pct_reduction(self) -> None:
-        # 100 armor, 30 flat shred → 70, then 30% BC pct reduction → 49.
+        # 100 armor, 30 flat shred -> 70, then 30% BC pct reduction -> 49.
         flat_shred = ItemEffect(
             item_id="x", name="x", armor_reduction_flat=30.0
         )
@@ -6497,7 +6497,7 @@ class FlatArmorShredTests(unittest.TestCase):
         )
 
     def test_mr_flat_shred_reduces_before_pct(self) -> None:
-        # 80 MR, 30 flat shred → 50, then 30% Bloodletter's pct → 35.
+        # 80 MR, 30 flat shred -> 50, then 30% Bloodletter's pct -> 35.
         mr_flat = ItemEffect(item_id="x", name="x", mr_reduction_flat=30.0)
         bl = ITEM_EFFECTS["4010"]  # mr_reduction_pct=0.30
         result = effective_target_mr(80.0, [mr_flat, bl])
@@ -6524,7 +6524,7 @@ class FlatArmorShredTests(unittest.TestCase):
         self.assertGreater(with_fe.weighted_dps, bare.weighted_dps)
 
 
-# ─────────────────────────────── batch 51: Fated Ashes + missing components
+# ------------------------------- batch 51: Fated Ashes + missing components
 
 
 class Batch51FatedAshesTests(unittest.TestCase):
@@ -6557,7 +6557,7 @@ class Batch51FatedAshesTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 501)
 
 
-# ──────────────────────────── batch 52: Night Harvester + Luden's + BL Curse SR
+# ---------------------------- batch 52: Night Harvester + Luden's + BL Curse SR
 
 
 class Batch52AbilityProcTests(unittest.TestCase):
@@ -6623,7 +6623,7 @@ class Batch52AbilityProcTests(unittest.TestCase):
         self.assertGreater(with_nh.weighted_dps, bare.weighted_dps)
 
 
-# ─────────────────── batch 53: Hamstringer Scour + Stormsurge Squall proc
+# ------------------- batch 53: Hamstringer Scour + Stormsurge Squall proc
 
 
 class Batch53CritBleedAndSquallTests(unittest.TestCase):
@@ -6633,7 +6633,7 @@ class Batch53CritBleedAndSquallTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── Hamstringer (443069) ────────────────────────────────────────────────
+    # -- Hamstringer (443069) ------------------------------------------------
 
     def test_hamstringer_not_defensive_only(self) -> None:
         e = ITEM_EFFECTS["443069"]
@@ -6647,14 +6647,14 @@ class Batch53CritBleedAndSquallTests(unittest.TestCase):
         self.assertEqual(p.every_n_attacks, 1)
 
     def test_hamstringer_scour_zero_without_crit(self) -> None:
-        # crit_chance=0 → expected bleed = 0 regardless of AD/level
+        # crit_chance=0 -> expected bleed = 0 regardless of AD/level
         p = ITEM_EFFECTS["443069"].periodics[0]
         ctx = CallContext(base_ad=100, bonus_ad=50, level=11, crit_chance=0.0)
         self.assertAlmostEqual(p.resolve_damage(ctx), 0.0)
 
     def test_hamstringer_scour_scales_with_crit_and_ad(self) -> None:
         p = ITEM_EFFECTS["443069"].periodics[0]
-        # 100% crit: damage = (20 + 60/17*10) + 0.1875*150 ≈ 55.3 + 28.1 = 83.4
+        # 100% crit: damage = (20 + 60/17*10) + 0.1875*150 ~ 55.3 + 28.1 = 83.4
         ctx = CallContext(base_ad=100, bonus_ad=50, level=11, crit_chance=1.0)
         expected = (20.0 + (60.0 / 17.0) * 10) + 0.1875 * 150.0
         self.assertAlmostEqual(p.resolve_damage(ctx), expected, places=2)
@@ -6677,7 +6677,7 @@ class Batch53CritBleedAndSquallTests(unittest.TestCase):
         )
         self.assertGreater(with_hs.weighted_dps, bare.weighted_dps)
 
-    # ── Stormsurge (4646 SR + 224646 Arena) ────────────────────────────────
+    # -- Stormsurge (4646 SR + 224646 Arena) --------------------------------
 
     def _check_squall(self, iid: str) -> None:
         e = ITEM_EFFECTS[iid]
@@ -6688,7 +6688,7 @@ class Batch53CritBleedAndSquallTests(unittest.TestCase):
         self.assertEqual(p.name, "Squall")
         self.assertEqual(p.damage_type, MAGICAL)
         self.assertAlmostEqual(p.every_n_seconds, 30.0)
-        # AP-scaling: 100 AP → 125 + 10 = 135
+        # AP-scaling: 100 AP -> 125 + 10 = 135
         ctx = CallContext(base_ad=60, bonus_ad=0, level=11, ap=100.0)
         self.assertAlmostEqual(p.resolve_damage(ctx), 135.0)
 
@@ -6699,7 +6699,7 @@ class Batch53CritBleedAndSquallTests(unittest.TestCase):
         self._check_squall("224646")
 
     def test_stormsurge_squall_raises_dps_with_ap(self) -> None:
-        # Pair with Rabadon's (3089) for meaningful AP → Squall fires.
+        # Pair with Rabadon's (3089) for meaningful AP -> Squall fires.
         bare = compute_dps(self.snap, "Lux", level=11, item_ids=["3089"])
         with_ss = compute_dps(
             self.snap, "Lux", level=11, item_ids=["3089", "4646"]
@@ -6713,7 +6713,7 @@ class Batch53CritBleedAndSquallTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 501)
 
 
-# ──────────────────────────────────────── Batch 54: stacked AP + conditional AS
+# ---------------------------------------- Batch 54: stacked AP + conditional AS
 
 
 class Batch54StackedApTests(unittest.TestCase):
@@ -6751,7 +6751,7 @@ class Batch54StackedApTests(unittest.TestCase):
 
     def test_mejais_stacked_ap_amplified_by_rabadon(self) -> None:
         # Rabadon's (3089) + Mejai's: Rabadon's multiplies ALL AP including
-        # the stacked 125 → effective total should exceed either alone.
+        # the stacked 125 -> effective total should exceed either alone.
         rabadon_only = compute_dps(
             self.snap, "Lux", level=11, item_ids=["3115", "3089"]
         )
@@ -6765,8 +6765,8 @@ class Batch54ConditionalAsTests(unittest.TestCase):
     """Yun Tal Flurry conditional AS schema (batch 54).
 
     Flurry: +30% bonus AS for 6s on-champion-attack (30s CD, attack-driven
-    CD reduction). Uptime model at 1.3 attacks/s with 25% crit ≈ 27%.
-    Effective sustained AS bonus = 0.30 × 0.27 ≈ 0.08.
+    CD reduction). Uptime model at 1.3 attacks/s with 25% crit ~ 27%.
+    Effective sustained AS bonus = 0.30 x 0.27 ~ 0.08.
     """
 
     @classmethod
@@ -6805,7 +6805,7 @@ class Batch54SwordOfDivineEvTests(unittest.TestCase):
     """Sword of the Divine (443060) Excoriate EV crit damage bonus (batch 54).
 
     Excoriate grants random bonus crit damage in [0%, 50%]; EV of a uniform
-    distribution = 25% → ``crit_damage_bonus=0.25``.
+    distribution = 25% -> ``crit_damage_bonus=0.25``.
     """
 
     @classmethod
@@ -6905,7 +6905,7 @@ class Batch55DDragonCoverageTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
-# ──────────────────────────── Batch 56: caster HP-scaled multiplicative AP amp
+# ---------------------------- Batch 56: caster HP-scaled multiplicative AP amp
 
 
 class Batch56CasterHpApAmpTests(unittest.TestCase):
@@ -6931,7 +6931,7 @@ class Batch56CasterHpApAmpTests(unittest.TestCase):
 
     def test_444637_raises_dps_vs_naked(self) -> None:
         # Lux with Nashor's Tooth (AP-scaling proc) + Demonic Embrace: at typical
-        # HP (1200+), the amp is 18%+ → meaningful proc DPS gain.
+        # HP (1200+), the amp is 18%+ -> meaningful proc DPS gain.
         bare = compute_dps(self.snap, "Lux", level=11, item_ids=["3115"])
         with_dem = compute_dps(
             self.snap, "Lux", level=11, item_ids=["3115", "444637"]
@@ -6964,7 +6964,7 @@ class Batch57VoidImmolationGoldenSpatulaTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── Void Immolation (223069) ──────────────────────────────────────────
+    # -- Void Immolation (223069) ------------------------------------------
 
     def test_223069_not_defensive_only(self) -> None:
         eff = ITEM_EFFECTS.get("223069")
@@ -7016,7 +7016,7 @@ class Batch57VoidImmolationGoldenSpatulaTests(unittest.TestCase):
             with_sunfire_only.weighted_dps + with_void_only.weighted_dps + 1.0,
         )
 
-    # ── The Golden Spatula (224403) ──────────────────────────────────────
+    # -- The Golden Spatula (224403) --------------------------------------
 
     def test_224403_not_defensive_only(self) -> None:
         eff = ITEM_EFFECTS.get("224403")
@@ -7086,7 +7086,7 @@ class Batch58DarksteelTalonsArmorScalingTests(unittest.TestCase):
         self.assertAlmostEqual(dmg0, 10.0 + 10.0 / 17.0 * 10, places=2)
 
     def test_443054_more_dps_with_more_bonus_armor(self) -> None:
-        # Build with Darksteel Talons + armor items → more bonus armor → higher Gash
+        # Build with Darksteel Talons + armor items -> more bonus armor -> higher Gash
         bare = compute_dps(self.snap, "Malphite", level=11, item_ids=["443054"])
         with_armor = compute_dps(
             self.snap, "Malphite", level=11,
@@ -7168,7 +7168,7 @@ class Batch60RealityFractureVoidmitesTests(unittest.TestCase):
 
     def test_447102_formula_baseline(self) -> None:
         from agents.daemon_slayer.effects import CallContext
-        # base_ad=100, bonus_ad=0, ap=0 → 8*(6+4+0) = 8*10 = 80
+        # base_ad=100, bonus_ad=0, ap=0 -> 8*(6+4+0) = 8*10 = 80
         ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=0.0)
         eff = ITEM_EFFECTS["447102"]
         dmg = eff.periodics[0].bonus_damage(ctx)
@@ -7176,7 +7176,7 @@ class Batch60RealityFractureVoidmitesTests(unittest.TestCase):
 
     def test_447102_formula_with_ap(self) -> None:
         from agents.daemon_slayer.effects import CallContext
-        # 100 total AD, 200 AP → 8*(6+4+16) = 8*26 = 208
+        # 100 total AD, 200 AP -> 8*(6+4+16) = 8*26 = 208
         ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=200.0)
         eff = ITEM_EFFECTS["447102"]
         dmg = eff.periodics[0].bonus_damage(ctx)
@@ -7198,7 +7198,7 @@ class Batch61ZazzakBloodsongTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    # ── Zaz'Zak's Realmspike 3871 ──
+    # -- Zaz'Zak's Realmspike 3871 --
 
     def test_3871_not_defensive_only(self) -> None:
         eff = ITEM_EFFECTS.get("3871")
@@ -7246,7 +7246,7 @@ class Batch61ZazzakBloodsongTests(unittest.TestCase):
         with_zz = compute_dps(self.snap, "Lux", level=11, item_ids=["3871"])
         self.assertGreater(with_zz.weighted_dps, bare.weighted_dps)
 
-    # ── Bloodsong 3877 ──
+    # -- Bloodsong 3877 --
 
     def test_3877_not_defensive_only(self) -> None:
         eff = ITEM_EFFECTS.get("3877")
@@ -7380,7 +7380,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
     """Batch 63 - 3 previously-blocked items promoted using binding-constraint CDs.
 
     * Hellfire Hatchet (4017): Char 15s CD - hp_diff + lethality scaling
-    * Fiendhunter Bolts (2512): Opening Barrage 45s CD - 3×crit-bonus attacks
+    * Fiendhunter Bolts (2512): Opening Barrage 45s CD - 3xcrit-bonus attacks
     * Innervating Locket (447104): Fill the Soul bonus_ap_stacked midpoint
     """
 
@@ -7391,7 +7391,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         from agents.daemon_slayer.data_loader import DataSnapshot
         cls.snap = DataSnapshot.load()
 
-    # ── Hellfire Hatchet ──────────────────────────────────────────────────────
+    # -- Hellfire Hatchet ------------------------------------------------------
 
     def test_hellfire_hatchet_has_char_proc(self) -> None:
         eff = ITEM_EFFECTS.get("4017")
@@ -7404,7 +7404,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         self.assertEqual(eff.unique_passive_key, "hellfire_char")
 
     def test_hellfire_char_formula_zero_hpdiff(self) -> None:
-        # Caster and target same HP → hp_diff=0 → base 5% target_max_hp
+        # Caster and target same HP -> hp_diff=0 -> base 5% target_max_hp
         ctx = CallContext(base_ad=80.0, bonus_ad=20.0, level=12, ap=0.0,
                           caster_max_hp=2000.0, target_max_hp=2000.0,
                           caster_lethality=0.0)
@@ -7412,7 +7412,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         self.assertAlmostEqual(dmg, 2000.0 * 0.05, places=2)
 
     def test_hellfire_char_formula_max_hpdiff(self) -> None:
-        # hp_diff=2000 → 10% target_max_hp + lethality bonus
+        # hp_diff=2000 -> 10% target_max_hp + lethality bonus
         leth = 30.0
         ctx = CallContext(base_ad=80.0, bonus_ad=20.0, level=12, ap=0.0,
                           caster_max_hp=4000.0, target_max_hp=2000.0,
@@ -7422,7 +7422,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         self.assertAlmostEqual(dmg, expected, places=2)
 
     def test_hellfire_char_hpdiff_clamped(self) -> None:
-        # hp_diff > 2000 → clamped to 2000
+        # hp_diff > 2000 -> clamped to 2000
         ctx_big = CallContext(base_ad=80.0, bonus_ad=0.0, level=12, ap=0.0,
                               caster_max_hp=9000.0, target_max_hp=2000.0,
                               caster_lethality=0.0)
@@ -7438,7 +7438,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         with_hh = compute_dps(self.snap, "Zed", level=12, item_ids=["4017"])
         self.assertGreater(with_hh.weighted_dps, bare.weighted_dps)
 
-    # ── Fiendhunter Bolts ────────────────────────────────────────────────────
+    # -- Fiendhunter Bolts ----------------------------------------------------
 
     def test_fiendhunter_bolts_has_opening_barrage(self) -> None:
         eff = ITEM_EFFECTS.get("2512")
@@ -7463,7 +7463,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         with_fb = compute_dps(self.snap, "Jinx", level=10, item_ids=["2512"])
         self.assertGreater(with_fb.weighted_dps, bare.weighted_dps)
 
-    # ── Innervating Locket ───────────────────────────────────────────────────
+    # -- Innervating Locket ---------------------------------------------------
 
     def test_innervating_locket_bonus_ap_stacked(self) -> None:
         eff = ITEM_EFFECTS.get("447104")
@@ -7505,7 +7505,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          overrides - Cassi E poisoned amp, Veigar R execute max,
         #          Anivia E chilled amp, Diana W all-orbs, Brand W CC'd, etc.
         # 0.77.0 = s192 Phase 5.9.5 token-variant block_index for Akali R -
-        #          R1 → block 0 (base + bonus-AD), R2 → block 2 (max-execute
+        #          R1 -> block 0 (base + bonus-AD), R2 -> block 2 (max-execute
         #          missing-HP scaling); walker checks canonical token first
         #          then base key.
         # 0.78.0 = s193 Phase 5.9.6 channeled-ability block_index expansion -
@@ -7516,7 +7516,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.79.0 = s194 Phase 5.9.7 calibration-follow-up block_index expansion -
         #          8 more (champion, key) entries closing s193's deferred list
         #          (Corki W/E, Hecarim W/E, Jayce Q/W, Rell R, DrMundo W).
-        #          Pure data batch; same per-tick → total / min → max amped
+        #          Pure data batch; same per-tick -> total / min -> max amped
         #          pattern; resolver/walker code unchanged.
         # 0.80.0 = s195 Phase 5.9.8 multi-hit/charge/recast block_index expansion -
         #          13 more (champion, key) entries across four sub-patterns:
@@ -7536,7 +7536,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          data batch; no walker/resolver/server code changes.
         # 0.82.0 = s197 Phase 5.9.10 assassin/fighter resource amps + utility
         #          totals - 20 more (champion, key) entries across 18 new
-        #          champions (registry 49 → 67). Pattern A multi-hit/channel/mark
+        #          champions (registry 49 -> 67). Pattern A multi-hit/channel/mark
         #          totals (Aatrox W, Hwei R, LeBlanc Q/E, Lucian R, Mel Q/R,
         #          MonkeyKing R, Naafiri Q/E, MasterYi Q, Smolder W).
         #          Pattern B fully-charged amps (Nunu W, Sion Q, Briar E).
@@ -7548,7 +7548,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.83.0 = s198 Phase 5.9.11 bruiser/jungler/utility/marksman block_index
         #          expansion - 20 more (champion, key) entries (17 new
         #          champions + 2 key extensions on existing Sion and Vladimir;
-        #          XinZhao contributes 2 entries Q+W). Registry 67 → 84
+        #          XinZhao contributes 2 entries Q+W). Registry 67 -> 84
         #          champions. Pattern A multi-hit single-target totals
         #          (Sylas Q, XinZhao Q/W, Zac R, Maokai E, Kayn Q, Sejuani W,
         #          Neeko Q, Nasus E, Nami E, Ornn R, Twitch E). Pattern B
@@ -7561,8 +7561,8 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.84.0 = s199 Phase 5.9.12 - 17 more (champion, key) entries (6 new
         #          champions: Ashe/Shaco/Shen/Swain/Tristana/Xayah + 11 key
         #          extensions on Aatrox/Fiddlesticks/Karthus/Nautilus/Nunu/
-        #          Samira/Sejuani/Talon/Udyr/Viktor/Zac). Registry 84 → 90
-        #          champions, 103 → 120 entries. Six patterns: Pattern A
+        #          Samira/Sejuani/Talon/Udyr/Viktor/Zac). Registry 84 -> 90
+        #          champions, 103 -> 120 entries. Six patterns: Pattern A
         #          multi-hit single-target totals (Ashe Q Ranger's Focus,
         #          Nunu E 3-snowball, Samira W Blade Whirl, Shen Q 3-AA
         #          empowered, Swain Q 5-bolt, Viktor Q + AA, Xayah Q
@@ -7581,12 +7581,12 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (s195 'channel ticks ambiguous' rescued), Lillia Q
         #          Dream Dust AA combo (s199 'uncertain' rescued), Nilah Q
         #          max-stack empowered AA (s199 'uncertain 2-stack'
-        #          rescued). Plus Ambessa E (Lacerate slash+thrust 2×),
-        #          Poppy Q (Hammer Shock out+return 2×). Pattern A multi-
+        #          rescued). Plus Ambessa E (Lacerate slash+thrust 2x),
+        #          Poppy Q (Hammer Shock out+return 2x). Pattern A multi-
         #          hit totals (Ambessa E, Lillia Q, Poppy Q). Pattern B
         #          resource-state amps (Ambessa Q, Ambessa W, Nilah Q).
-        #          Pattern C channel commit (Anivia R). Registry 90 → 91
-        #          champions, 120 → 127 entries. Pure data batch.
+        #          Pattern C channel commit (Anivia R). Registry 90 -> 91
+        #          champions, 120 -> 127 entries. Pure data batch.
         # 0.86.0 = s201 Phase 5.9.14 block_index expansion - 16 more
         #          (champion, key) entries across 13 new champions (Fizz/
         #          Galio/Garen/Graves/Janna/Jhin/Kennen/Taliyah/Teemo/Viego/
@@ -7596,8 +7596,8 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Xerath R, Ziggs E). Pattern B fully-charged amps (Galio
         #          W, Janna Q, Jhin R, Viego Q). Pattern C channel/duration
         #          totals (Fizz R, Garen E, Teemo R). Pattern D resource/
-        #          positional amps (Xerath W, Yasuo E). Registry 91 → 104
-        #          champions, 127 → 143 entries.
+        #          positional amps (Xerath W, Yasuo E). Registry 91 -> 104
+        #          champions, 127 -> 143 entries.
         # 0.87.0 = s202 Phase 5.9.15 block_index expansion - 18 more
         #          (champion, key) entries: 6 truly-new champions
         #          (Gangplank, Gnar, KSante, RekSai, Vayne, Yunara) + 12
@@ -7616,11 +7616,11 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          prior-batch skip rationales: Gnar R + Vayne E + Poppy E
         #          wall-stun (s198/s199 'terrain condition'), Rumble Q
         #          (s199 'heat decays'). 6 deliberate skips: Syndra W (too
-        #          marginal 1.12×), Camille W (needs sum-of-blocks),
+        #          marginal 1.12x), Camille W (needs sum-of-blocks),
         #          Yunara W (initial > total), Smolder E (Meraki ambiguity),
         #          Sona Q (sum-of-blocks), Kayle E (same Phase 4a parser
-        #          limit as s201 Kindred E). Registry 104 → 110 champions,
-        #          143 → 161 entries. Pure data batch.
+        #          limit as s201 Kindred E). Registry 104 -> 110 champions,
+        #          143 -> 161 entries. Pure data batch.
         # 0.88.0 = s203 Phase 5.9.16 block_index expansion - 12 more
         #          (champion, key) entries: 5 truly-new champions
         #          (Blitzcrank, Gwen, Kled, LeeSin, Thresh) + 5 key
@@ -7648,7 +7648,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Vayne W passive). 8 deferred to schema lifts (Katarina
         #          R, Malphite W, Malzahar E/R, Kalista E, Jinx R distance,
         #          Belveth R missing-HP, Riven R form 1, Qiyana Q form).
-        #          Registry 110 → 115 champions, 161 → 173 entries. Pure
+        #          Registry 110 -> 115 champions, 161 -> 173 entries. Pure
         #          data batch.
         # 0.89.0 = s204 Phase 5.9.17 block_index + form_index expansion -
         #          8 new (champion, key) entries (2 truly-new champions
@@ -7668,7 +7668,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          s187, closes s203 carry-forward 'Riven form_index seed
         #          needed'). Riven form 0 has zero damage blocks so no
         #          information loss from routing to form 1. Registry 115
-        #          → 117 champions, 173 → 181 entries. Pure data batch.
+        #          -> 117 champions, 173 -> 181 entries. Pure data batch.
         # 0.90.0 = s205 Phase 5.9.18 form_index + block_index layered
         #          expansion - 4 new (champion, key) block_index entries
         #          (1 new champion Qiyana + 3 key extensions on existing:
@@ -7680,15 +7680,15 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          full-Fury combo = form 1 + block 3 - closes Renekton
         #          Q/W/E full-Fury coverage after s197), (B) multi-hit
         #          single-target totals (Hwei W3 Stirring Lights 3 lights
-        #          converging = block 1 Maximum Magic Damage = 3× block 0),
+        #          converging = block 1 Maximum Magic Damage = 3x block 0),
         #          (C) condition-amp vs target-state (Shaco W Box vs
         #          already-Feared target = block 1 Increased Damage). Third
         #          instance of form_index + block_index NET-damage
         #          composition after s203 LeeSin Q + s204 Riven R + s204
         #          Nidalee Q. Closes s204 carry-forward 'Qiyana Q
         #          form_index seed expansion still pending'. Registry 117
-        #          → 118 champions, 181 → 185 entries on block_index side;
-        #          form_index registry 6 → 9 champions, 10 → 13 entries.
+        #          -> 118 champions, 181 -> 185 entries on block_index side;
+        #          form_index registry 6 -> 9 champions, 10 -> 13 entries.
         #          Pure data batch.
         # 0.91.0 = s206 Phase 5.9.19 cooldown inheritance from form 0 when
         #          non-form-0 has cooldown=None. Closes the s205
@@ -7722,9 +7722,9 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          W=[0,1] (Tactical Sweep base + Outer Cone Bonus on
         #          in-cone target - 2-block sum), Malphite W=[2,3] (active
         #          cast + first empowered AA - 2-block sum), Heimerdinger
-        #          W=[0,1,1,1,1] (Initial + 4× Subsequent rockets focused
+        #          W=[0,1,1,1,1] (Initial + 4x Subsequent rockets focused
         #          on one non-minion - sum with index repetition expresses
-        #          the 4× multiplier elegantly), Katarina R=[1,3] (full
+        #          the 4x multiplier elegantly), Katarina R=[1,3] (full
         #          Death Lotus on single target = max physical + max magic
         #          dagger volleys both summed). Backward-compat: existing
         #          int-valued entries unchanged; single-int callers retain
@@ -7734,16 +7734,16 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (champion, key) entries from s207's queued candidate
         #          list: Thresh E=[1,2] (Maximum Bonus Magic at full Souls
         #          + canonical Magic Damage - extends s203's single-int
-        #          {E:2} entry to a list, first int→list lift since the
+        #          {E:2} entry to a list, first int->list lift since the
         #          s207 seed), Sona Q=[0,1] (active Magic Damage + Power
         #          Chord empowered AA), Kalista E=[0,1,1,1,1] (base Rend
-        #          + 4× additional stacks = 5-stack Rend, same model as
+        #          + 4x additional stacks = 5-stack Rend, same model as
         #          Heimerdinger W rocket-count s207), Malzahar R=[0,2]
         #          (Total Magic suppression channel + Total target-max-HP%
         #          bonus from full-duration Nether Grasp). 4 entries
         #          verified per-rank against Meraki 16.10.1; Per-spell raw
         #          lifts: Kalista E +193% / Malzahar R +150% / Thresh E
-        #          +84% / Sona Q +16%. Registry 121 → 124 champions.
+        #          +84% / Sona Q +16%. Registry 121 -> 124 champions.
         # 0.94.0 = s217 Phase 5.9.22 sum-of-blocks data batch (second).
         #          Closes the s215 carry-forward queue. 2 entries:
         #          Taliyah E=[0,2] (NEW key - Magic Damage initial shard
@@ -7751,7 +7751,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          single-target burst when target steps through Unraveled
         #          Earth), DrMundo W=[1,2] (LIFT from s193's {W: 1} - full
         #          channel drain + recast detonation burst). Per-spell raw
-        #          lifts: Taliyah E +109%, DrMundo W +25%. Registry 124 →
+        #          lifts: Taliyah E +109%, DrMundo W +25%. Registry 124 ->
         #          124 champions (Taliyah gains E key; DrMundo lifted).
         #          Sum-of-blocks bucket queue now exhausted under current
         #          operator-commit framing.
@@ -7765,7 +7765,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          deterministic in-place migration promoted exactly 22
         #          such modifiers across 10 champions (their %HP component
         #          was dropped since Phase 4a). One new entry: Kindred
-        #          E=1 (enhanced-execute 7.5% missing-HP). The s191→s217
+        #          E=1 (enhanced-execute 7.5% missing-HP). The s191->s217
         #          single-int/list registry is now provably saturated (a
         #          5-way parallel scan of all 47 uncovered champions found
         #          zero clean candidates).
@@ -7775,8 +7775,8 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          8-dmg block 0, not the 200-dmg recast nuke). Plus 8
         #          _UNIT_TO_FIELD text-drift health-unit variants
         #          (double-space / "the target's" / caster pronoun+name)
-        #          → migration promoted 32 mods across 13 champions
-        #          (Gwen Q·R / Varus W / Trundle R / Fiddlesticks Q /
+        #          -> migration promoted 32 mods across 13 champions
+        #          (Gwen Q/R / Varus W / Trundle R / Fiddlesticks Q /
         #          Sejuani W / Zac Q / Ambessa Q / ...) whose %HP component
         #          was dropped (Trundle R + Fiddle Q were 0 entirely).
         # 0.97.0 = s225 Phase 5.9.25 post-parser-fix block_index sweep.
@@ -7784,11 +7784,11 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          per-Blight-stack value, the 3-stack detonation = the
         #          standard Varus combo). Engine defaulted to block 0
         #          (18-dmg passive on-hit), scoring W at ~7% of real
-        #          (live A/B 18→240 raw, 13.3x). Found by re-running the
+        #          (live A/B 18->240 raw, 13.3x). Found by re-running the
         #          unmapped-key pre-filter on the post-s224 snapshot.
         # 0.98.0 = s226 Phase 5.9.26 first form_index coverage sweep
         #          since s205. 3 ADDs: Swain R=1 (Demonflare recast vs
-        #          form-0 drain per-tick, A/B 12.5→250), Briar W=1 (form
+        #          form-0 drain per-tick, A/B 12.5->250), Briar W=1 (form
         #          0 'Blood Frenzy' has NO damage block - form 1 'Snack
         #          Attack' is the whole W), Evelynn E=1 (Empowered
         #          Whiplash - Eve's canonical Demon-Shade combo).
@@ -7796,7 +7796,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          universally-established W-first orders the registry
         #          missed: Brand W-E-Q (+18.7%), Fiddlesticks W-E-Q
         #          (+16.4%), Talon W-Q-E (+12.0%). Finding: the numeric
-        #          pre-filter over-flags (≠ real play); max_priority +
+        #          pre-filter over-flags (!= real play); max_priority +
         #          combo_sequence are meta-curated, not numeric-swept.
         # 1.0.0  = s228 Phase 5.9.28 conditional-target-state schema
         #          lift (operator option B, multi-session). Part 1:

@@ -3,7 +3,7 @@ SATURATION PROOF (no registry/engine change; ENGINE stays 1.3.0).
 
 Operator chose "Accept loop complete" after s232's rigorous scan showed
 the autonomous pure-data conditional-seed-expansion vein is exhausted -
-the same conclusion the s223→s227 pure-data registry sweep reached for
+the same conclusion the s223->s227 pure-data registry sweep reached for
 the unconditional registries. This file is the s223-style machine-
 checked saturation guard so no future session re-mines an empty vein,
 and so a future Meraki re-extract that introduces a genuinely-new clean
@@ -51,7 +51,7 @@ from agents.daemon_slayer.ability_dps import (
 )
 from agents.daemon_slayer.data_loader import DataSnapshot
 
-# Every conditional shipped s228→s231 - the terminal set of the
+# Every conditional shipped s228->s231 - the terminal set of the
 # autonomous pure-data conditional vein.
 _SHIPPED_CONDITIONALS = {
     ("Kindred", "E"): {"default": 1, "target_full_hp": 0},      # s228
@@ -134,14 +134,14 @@ class DocumentedExecuteSkipsTests(unittest.TestCase):
 
     def test_varus_W_stays_block2_R_independent(self) -> None:
         # s225: blocks 5/6 are the R-entangled missing-HP Blight amp;
-        # W must score R-independent → mapped to block 2 (max-HP
+        # W must score R-independent -> mapped to block 2 (max-HP
         # 3-stack detonation), NOT a missing-HP conditional.
         m, _ = get_block_index_for("Varus")
         self.assertEqual(m.get("W"), 2)
         self.assertEqual(m.get("Q"), 1)
 
     def test_veigar_R_stays_deferred_int(self) -> None:
-        # Clean 2.0× execute but the canonical stable-int test fixture
+        # Clean 2.0x execute but the canonical stable-int test fixture
         # (s229/s231 deliberately picked non-fixture executes instead).
         m, _ = get_block_index_for("Veigar")
         self.assertEqual(m.get("R"), 1)
@@ -155,7 +155,7 @@ class MissingHpExecuteVeinSaturationGuard(unittest.TestCase):
     FOR - already a conditional, OR engine-default block 0 already
     holds the higher coefficient, OR a documented skip. A NEW unaccounted
     clean execute pair (e.g. from a future Meraki re-extract) trips this
-    test → the signal to revisit the vein.
+    test -> the signal to revisit the vein.
     """
 
     _EXEC_FIELDS = ("target_missing_hp_pct", "target_current_hp_pct")

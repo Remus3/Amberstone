@@ -10,12 +10,12 @@ from:
   Swain R=1   - form 0 'Demonic Ascension' is the 7.5-17.5 drain-channel
                 per-tick; form 1 'Demonflare' is the 150-350 + 50% AP
                 recast nuke (Swain's ult payoff). Same shape as the
-                existing AurelionSol R=1. Live A/B 12.5→250 (20×).
+                existing AurelionSol R=1. Live A/B 12.5->250 (20x).
   Briar W=1   - form 0 'Blood Frenzy' has ZERO damage blocks (it is the
                 AS/MS frenzy-buff cast); form 1 'Snack Attack' is the
                 entire W damage incl. the s224-migrated 9% missing-HP.
   Evelynn E=1 - form 1 'Empowered Whiplash' is Eve's canonical
-                Demon-Shade-opened combo E (1.33× form 0 base, 4% vs 3%
+                Demon-Shade-opened combo E (1.33x form 0 base, 4% vs 3%
                 target max HP). Composes orthogonally with Evelynn's
                 s204 block_index {R:1,Q:5}.
 
@@ -24,7 +24,7 @@ Skips (documented in the registry _meta rationale): Heimerdinger W/E
 (contextual transforms, form 0 is the dominant-uptime default),
 Skarner Q (form 1 Upheaval is boulder-resource-gated).
 
-ENGINE_VERSION 0.97.0 → 0.98.0 pinned.
+ENGINE_VERSION 0.97.0 -> 0.98.0 pinned.
 """
 from __future__ import annotations
 
