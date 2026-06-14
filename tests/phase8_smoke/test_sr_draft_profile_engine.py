@@ -195,12 +195,12 @@ class TestBuildProfileWithStubbedEngine(unittest.TestCase):
         # All flagged as engine.
         for p in out["profiles"]:
             self.assertEqual(p["kind"], "engine")
-        # Order preserved primary→alt→experimental.
+        # Order preserved primary->alt->experimental.
         self.assertEqual([p["key"] for p in out["profiles"]],
                          ["primary", "alt", "experimental"])
 
     def test_engine_unreachable(self):
-        # Simulate URLError → empty profiles + notes entry.
+        # Simulate URLError -> empty profiles + notes entry.
         with mock.patch.object(sr_draft_profile.urllib.request, "urlopen",
                                side_effect=urllib.error.URLError("connection refused")):
             out = build_profile(
@@ -253,7 +253,7 @@ class TestBuildProfileWithStubbedEngine(unittest.TestCase):
                           my_team=[{"championId": 18}], their_team=[], queue_id=420)
             build_profile(champion="Tristana", role="BOTTOM",
                           my_team=[{"championId": 99}], their_team=[], queue_id=420)
-        # Different ally sig → second call hits engine again.
+        # Different ally sig -> second call hits engine again.
         self.assertEqual(call_count["n"], 6)
 
 

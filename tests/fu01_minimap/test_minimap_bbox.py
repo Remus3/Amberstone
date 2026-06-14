@@ -1,11 +1,11 @@
 """FU01 - minimap bbox resolver tests.
 
 Covers `agents._minimap_bbox.resolve()` across:
-  * persisted file missing → hardcoded fallback
-  * persisted file present + malformed shape → hardcoded fallback
-  * persisted file present + valid entry → persisted wins
-  * persisted file present + degenerate bbox (r<=l, b<=t) → fallback
-  * unsupported mode (arena) → None
+  * persisted file missing -> hardcoded fallback
+  * persisted file present + malformed shape -> hardcoded fallback
+  * persisted file present + valid entry -> persisted wins
+  * persisted file present + degenerate bbox (r<=l, b<=t) -> fallback
+  * unsupported mode (arena) -> None
   * tracked support set matches the existing modes (sr / aram / brawl)
 """
 from __future__ import annotations
@@ -49,12 +49,12 @@ class MinimapBboxResolveTests(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmpdir.cleanup()
 
-    # ── supported_modes ───────────────────────────────────────────────────
+    # -- supported_modes ---------------------------------------------------
 
     def test_supported_modes_known_set(self) -> None:
         self.assertEqual(set(mb.supported_modes()), {"sr", "aram", "brawl"})
 
-    # ── resolve: unsupported mode ─────────────────────────────────────────
+    # -- resolve: unsupported mode -----------------------------------------
 
     def test_resolve_arena_returns_none(self) -> None:
         with _RegionsFileSwap(self._regions):
@@ -73,7 +73,7 @@ class MinimapBboxResolveTests(unittest.TestCase):
             # `None` is coerced via `mode or ""` - should not raise.
             self.assertIsNone(mb.resolve(None))  # type: ignore[arg-type]
 
-    # ── resolve: persisted file missing → hardcoded ───────────────────────
+    # -- resolve: persisted file missing -> hardcoded -----------------------
 
     def test_resolve_no_file_uses_fallback(self) -> None:
         # Point to a path that does not exist.
@@ -83,7 +83,7 @@ class MinimapBboxResolveTests(unittest.TestCase):
             self.assertEqual(mb.resolve("aram"), (1565, 735, 1905, 1075))
             self.assertEqual(mb.resolve("brawl"), (1565, 735, 1905, 1075))
 
-    # ── resolve: persisted entries win ────────────────────────────────────
+    # -- resolve: persisted entries win ------------------------------------
 
     def test_resolve_persisted_overrides_fallback(self) -> None:
         self._regions.write_text(
@@ -111,7 +111,7 @@ class MinimapBboxResolveTests(unittest.TestCase):
             self.assertEqual(mb.resolve("aram"),  (1565, 735, 1905, 1075))
             self.assertEqual(mb.resolve("brawl"), (1565, 735, 1905, 1075))
 
-    # ── resolve: malformed persisted entries → fallback ───────────────────
+    # -- resolve: malformed persisted entries -> fallback -------------------
 
     def test_resolve_persisted_wrong_arity_falls_back(self) -> None:
         self._regions.write_text(
@@ -163,7 +163,7 @@ class MinimapBboxResolveTests(unittest.TestCase):
         with _RegionsFileSwap(self._regions):
             self.assertEqual(mb.resolve("sr"), (1565, 735, 1905, 1075))
 
-    # ── load_persisted: direct API ────────────────────────────────────────
+    # -- load_persisted: direct API ----------------------------------------
 
     def test_load_persisted_returns_none_for_unset_mode(self) -> None:
         self._regions.write_text(
@@ -185,14 +185,14 @@ class MinimapBboxResolveTests(unittest.TestCase):
             self.assertEqual(result, (10, 20, 30, 40))
             self.assertTrue(all(isinstance(v, int) for v in result))
 
-    # ── resolve: case insensitivity ───────────────────────────────────────
+    # -- resolve: case insensitivity ---------------------------------------
 
     def test_resolve_mode_is_lowercased(self) -> None:
         with _RegionsFileSwap(self._regions):
             self.assertEqual(mb.resolve("SR"), (1565, 735, 1905, 1075))
             self.assertEqual(mb.resolve("Aram"), (1565, 735, 1905, 1075))
 
-    # ── load_persisted: file-read exceptions are swallowed ────────────────
+    # -- load_persisted: file-read exceptions are swallowed ----------------
 
     def test_load_persisted_read_error_returns_none(self) -> None:
         # File exists per the path check but read_text raises.

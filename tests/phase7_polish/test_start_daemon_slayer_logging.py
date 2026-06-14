@@ -6,7 +6,7 @@ The RC-DaemonSlayer scheduled task runs as SYSTEM; writes under the project
 root can fail there and pythonw.exe has no console, so the old
 `_log_startup` (single target + `except OSError: pass`) lost every startup
 line on a boot-time failure. These tests pin the resilient contract:
-canonical path → ProgramData fallback → stderr echo, never raising.
+canonical path -> ProgramData fallback -> stderr echo, never raising.
 """
 import importlib.util
 import io
@@ -72,7 +72,7 @@ class TestLogStartup(unittest.TestCase):
         import shutil
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    # ── canonical path ───────────────────────────────────────────────────
+    # -- canonical path ---------------------------------------------------
     def test_writes_to_canonical_when_writable(self):
         with _CaptureStderr():
             written = SDS._log_startup("hello world")
@@ -90,7 +90,7 @@ class TestLogStartup(unittest.TestCase):
         self.assertRegex(
             line, r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}  boot msg\n$")
 
-    # ── fallback path ────────────────────────────────────────────────────
+    # -- fallback path ----------------------------------------------------
     def test_falls_back_to_programdata_when_canonical_unwritable(self):
         calls: list[Path] = []
 
@@ -109,7 +109,7 @@ class TestLogStartup(unittest.TestCase):
             "fallback msg",
             SDS._FALLBACK_LOG_FILE.read_text(encoding="utf-8"))
 
-    # ── never silent / never raises ──────────────────────────────────────
+    # -- never silent / never raises --------------------------------------
     def test_returns_none_when_all_targets_fail_and_does_not_raise(self):
         SDS._write_log_line = lambda *a, **k: False
         with _CaptureStderr() as buf:
@@ -161,7 +161,7 @@ class TestWriteLogLineHelper(unittest.TestCase):
             target.read_text(encoding="utf-8"), "line1\nline2\n")
 
     def test_returns_false_on_oserror(self):
-        # Put a file where a parent directory needs to be → mkdir raises.
+        # Put a file where a parent directory needs to be -> mkdir raises.
         blocker = self.tmp / "blocker"
         blocker.write_text("x", encoding="utf-8")
         target = blocker / "nested" / "log.txt"

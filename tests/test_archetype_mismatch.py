@@ -94,7 +94,7 @@ class SessionTokenTests(unittest.TestCase):
         )
 
     def test_falls_back_to_synthetic(self):
-        # game_time_s present → synthetic "Caitlyn@<floor>"
+        # game_time_s present -> synthetic "Caitlyn@<floor>"
         with mock.patch("core.archetype_mismatch.time.time", return_value=1_700_000_000):
             token = am._session_token({"game_time_s": 600}, "Caitlyn")
         self.assertTrue(token.startswith("Caitlyn@"))
@@ -104,7 +104,7 @@ class SessionTokenTests(unittest.TestCase):
         self.assertEqual(am._session_token({}, "Caitlyn"), "")
 
     def test_empty_when_no_game_time_or_id(self):
-        # No game_id AND no game_time_s → can't form a token
+        # No game_id AND no game_time_s -> can't form a token
         self.assertEqual(am._session_token({"level": 5}, "Caitlyn"), "")
 
 
@@ -185,7 +185,7 @@ class ComputeNudgeNoSignalTests(unittest.TestCase):
 
 
 class ComputeNudgePendingTests(unittest.TestCase):
-    """No first completed item yet → ``pending`` phase."""
+    """No first completed item yet -> ``pending`` phase."""
 
     def setUp(self):
         am.reset_nudge_state()
@@ -266,7 +266,7 @@ class ComputeNudgeFiredTests(unittest.TestCase):
         self.assertEqual(first.get("session_token"), second.get("session_token"))
 
     def test_re_evaluates_when_session_changes(self):
-        # Same champion, different game_id → fresh evaluation
+        # Same champion, different game_id -> fresh evaluation
         with mock.patch.object(am, "_evaluate_dispatcher") as mock_eval:
             mock_eval.return_value = (True, ["Warmog's", "Heartsteel"])
             lc1 = self._lc(["3047", "3031"])
@@ -381,7 +381,7 @@ class EvaluateDispatcherTests(unittest.TestCase):
     """The dispatcher caller boundary."""
 
     def test_returns_none_on_exception(self):
-        # Function raises → _evaluate_dispatcher's broad except returns None
+        # Function raises -> _evaluate_dispatcher's broad except returns None
         with mock.patch(
             "core.daemon_slayer_client.rank_for_primary_archetype",
             side_effect=RuntimeError("boom"),

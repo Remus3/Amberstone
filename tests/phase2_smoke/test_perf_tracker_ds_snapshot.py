@@ -6,7 +6,7 @@ s152 - DS pick snapshot persistence into matches.raw_data.
 JSON written by each coach and returns the engine's last DS pick set
 so `save_rating` can fold it into matches.raw_data. The wiring lets
 calibration analysis read engine recommendations directly from
-match_history.db without a JSONL ⨝ on (champion, mode, ~ts).
+match_history.db without a JSONL join on (champion, mode, ~ts).
 """
 import json
 import sys

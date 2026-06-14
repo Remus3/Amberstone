@@ -79,13 +79,13 @@ class BridgePubShouldFileTests(unittest.TestCase):
         self.assertTrue(rearm)
 
     def test_stale_never_filed_files_exactly_once(self):
-        # Proposal "mtime 2000s ago" → queue exactly one task.
+        # Proposal "mtime 2000s ago" -> queue exactly one task.
         should_file, rearm = _bridge_pub_should_file(2000.0, None, 10_000.0)
         self.assertTrue(should_file)
         self.assertFalse(rearm)
 
     def test_second_call_within_cooldown_is_suppressed(self):
-        # Proposal "second consecutive call still 2000s+ ago" → dedup
+        # Proposal "second consecutive call still 2000s+ ago" -> dedup
         # suppresses the second filing.
         prev = 10_000.0
         now = prev + 60.0  # 60s later, well inside the 6h cooldown
@@ -102,13 +102,13 @@ class BridgePubShouldFileTests(unittest.TestCase):
 
     def test_recovery_rearms_so_a_fresh_outage_alarms_again(self):
         # Node had fired; publisher recovered (age back under alert).
-        # rearm=True → loop clears fired_at → next outage files anew.
+        # rearm=True -> loop clears fired_at -> next outage files anew.
         should_file, rearm = _bridge_pub_should_file(120.0, 10_000.0, 11_000.0)
         self.assertFalse(should_file)
         self.assertTrue(rearm)
 
     def test_alert_boundary_inclusive_healthy(self):
-        # age == alert exactly → healthy side (<=), so re-arm not file.
+        # age == alert exactly -> healthy side (<=), so re-arm not file.
         sf, ra = _bridge_pub_should_file(_BRIDGE_PUB_ALERT_S, None, 1.0)
         self.assertFalse(sf)
         self.assertTrue(ra)

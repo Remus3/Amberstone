@@ -24,7 +24,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-# ── Import app symbols (no Tk mainloop started) ───────────────────────────────
+# -- Import app symbols (no Tk mainloop started) -------------------------------
 import app as _app_module
 from app import OverlayApp
 from app._game_lifecycle import GameLifecycleManager
@@ -38,10 +38,10 @@ from core.tft_worker import TftWorkerResult
 from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, TFT_STATE
 
 
-# ── Headless OverlayApp subclass ─────────────────────────────────────────────
+# -- Headless OverlayApp subclass ---------------------------------------------
 
 class _HeadlessApp(OverlayApp):
-    """Subclass that proxies _current_envelope ↔ state.envelope for test compatibility."""
+    """Subclass that proxies _current_envelope <-> state.envelope for test compatibility."""
 
     @property
     def _current_envelope(self):
@@ -53,7 +53,7 @@ class _HeadlessApp(OverlayApp):
             self.state.set_envelope(env.mode, env.payload)
 
 
-# ── Headless OverlayApp factory ───────────────────────────────────────────────
+# -- Headless OverlayApp factory -----------------------------------------------
 
 def _make_headless_app() -> OverlayApp:
     """
@@ -93,7 +93,7 @@ def _make_headless_app() -> OverlayApp:
     return app
 
 
-# ── Minimal rich SR state dict for app-level tests ───────────────────────────
+# -- Minimal rich SR state dict for app-level tests ---------------------------
 # Includes nested structures to verify deep-copy depth.
 
 _RICH_SR_STATE = {
@@ -133,9 +133,9 @@ _RICH_SR_STATE = {
 _RICH_SR_STATE["raw_state"] = dict(_RICH_SR_STATE)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # F. app.get_snapshot() mutation safety
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestAppGetSnapshotMutationSafety(unittest.TestCase):
     """
@@ -253,9 +253,9 @@ class TestAppGetSnapshotMutationSafety(unittest.TestCase):
         self.assertIsNone(snap.payload)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # G. Derived legacy surfaces through _update_envelope
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestDerivedLegacySurfacesThroughApp(unittest.TestCase):
     """
@@ -371,9 +371,9 @@ def GameReader_import():
     return GameReader
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # H. Special-mode game-end resets via app._on_game_end
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestSpecialModeGameEndReset(unittest.TestCase):
     """
@@ -483,9 +483,9 @@ class TestSpecialModeGameEndReset(unittest.TestCase):
         self.assertNotIsInstance(snap.payload, RiftSnapshot)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # I. Non-TFT raw-dict fallback closure at app level
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestAppNonTftRawDictFallbackClosure(unittest.TestCase):
     """
@@ -603,9 +603,9 @@ class TestAppNonTftRawDictFallbackClosure(unittest.TestCase):
         self.assertIs(app._game_state, payload.raw_state)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # J. TFT runtime authority through the app path
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestAppTftRuntimeAuthority(unittest.TestCase):
     """
@@ -747,9 +747,9 @@ class TestAppTftRuntimeAuthority(unittest.TestCase):
         self.assertNotIsInstance(twr.state, TftSnapshot)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # K. Arena/Brawl non-TFT raw-dict fallback closure at app level
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestArenaBrawlFallbackClosure(unittest.TestCase):
     """
@@ -851,9 +851,9 @@ class TestArenaBrawlFallbackClosure(unittest.TestCase):
         self.assertIsInstance(app._current_envelope.payload, RiftSnapshot)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # L. Arena/Brawl special-mode game-end reset
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestArenaBrawlGameEndReset(unittest.TestCase):
     """
@@ -940,9 +940,9 @@ class TestArenaBrawlGameEndReset(unittest.TestCase):
         self.assertFalse(app._aram_mode)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # M. TFT first-entry authority through _process_worker_result() ingress
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 class TestTftFirstEntryWorkerIngress(unittest.TestCase):
     """

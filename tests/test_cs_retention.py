@@ -2,14 +2,14 @@
 
 Pins the contract that the dashboard holds the last non-empty
 champ_select across the fast no-draft (ARAM / ARAM Mayhem / Arena)
-champ-select → game transition, where the Game-PC agent push goes
+champ-select -> game transition, where the Game-PC agent push goes
 briefly stale or the LCU champ-select session 404s the instant the
 game starts. Without retention the operator saw the champ-select
 bench / quick-swap view blank for these modes (no ban/pick draft
 phase to keep the window open long enough for the snapshot path's
 ~5s latency budget).
 
-Pure function over an injected clock + module cache → deterministic.
+Pure function over an injected clock + module cache -> deterministic.
 """
 from __future__ import annotations
 
@@ -121,12 +121,12 @@ class ClearTests(unittest.TestCase):
     def test_string_none_phase_clears_retention(self):
         # gameflow-phase serializes to the literal string "None" when
         # no flow is active - that's a clear signal (distinct from a
-        # Python-None phase which means stale snapshot → retain).
+        # Python-None phase which means stale snapshot -> retain).
         out = apply_cs_retention({"phase": "None"}, now=1002.0)
         self.assertNotIn("champ_select", out)
 
     def test_readycheck_phase_clears_retention(self):
-        # Next queue popped → previous champ-select is stale.
+        # Next queue popped -> previous champ-select is stale.
         out = apply_cs_retention({"phase": "ReadyCheck"}, now=1002.0)
         self.assertNotIn("champ_select", out)
 

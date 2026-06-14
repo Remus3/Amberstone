@@ -1,4 +1,4 @@
-"""Sync test: CLAUDE.md 'Frozen files' ↔ bridge_watcher_config.json legion.escalate_always.
+"""Sync test: CLAUDE.md 'Frozen files' <-> bridge_watcher_config.json legion.escalate_always.
 
 CLAUDE.md is the canonical source of truth for the project's frozen-file list.
 The bridge watcher's `legion.escalate_always` must contain every frozen path,
