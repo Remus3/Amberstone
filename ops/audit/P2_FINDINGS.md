@@ -562,3 +562,62 @@ names, LLM coach text, OCR text, DDragon/engine names) interpolated raw into inn
   phase_watcher_install) + keybind_listener DELETE + Game-PC doc/boot bundle KEEP-historical
   pending operator decommission. KEEP-live: replay_matchup/pickban_validate, recover_match_via_match_v5,
   probe_101qq, compare_101qq, match_monitor, backfill_match_ingest_misattribution.
+
+## W4 half-wave 2 (cycle 15, item 410) - scripts/ops/rc-shell/tft/root/spec
+
+### MED (W4-hw2)
+- scripts/retrofill_match_metrics.py:127-196 every derived metric (kda_ratio/kp_pct/share_pct/
+  td_pct) computed by division but recorder.record() called WITHOUT provenance= -> all default
+  source_truth despite feedback_metric_provenance_tagging (math-derived rows must be inferred_*).
+  Large blast radius (rubric weighting) -> behavior change, deferred.
+- scripts/merge_refresh_builds.py:79,110,153 direct write_text() to {aram,sr,arena}_champion_builds.json
+  (engine-read build files) - should be tmp+replace like patch_champion.save_builds. One-shot s33
+  merge, not a polled hot path.
+- riot-commander.spec hiddenimports omits ~47 dashboard route modules (dynamic imports) - a packaged
+  PyInstaller build would crash on first route load. Packaging infra not yet built (opt-in); spawned
+  follow-up task. (.svg EXE icon FIXED in-slice.)
+
+### LOW (W4-hw2)
+- ops/rc_file_bridge.py:349,355 _tail_file/_grep_file read any absolute path the request names, no
+  project_root confinement (local trusted IPC, bounded). :210,218 PID write non-atomic + inline
+  __import__('json').
+- ops/loop/loop_controller.py:97 gemini PowerShell builds -p '{inst}' with ''-escaping; inst is a
+  hardcoded literal + infile is a controlled const - not a live injection vector (note-only).
+- scripts/retrofill_match_metrics.py:103-112 same SELECT * run twice (description + fetchone) - one
+  redundant DB round-trip per match.
+- scripts/prune_synthetic_matches.py:142-144 dry-run stdout "would drop N" vs summary dropped:0 mismatch.
+- scripts/data_pipeline.py:73-82 tmp-suffix can collide across concurrent writers; :61-70 .replace()
+  no retry-with-backoff on transient WinError 5 (one-shot pipeline, low risk).
+- scripts/fetch_cdragon_pbe.py:22,63 + fetch_external_tft_meta + download_aram_icons raw fetch body
+  write_text() to cache BEFORE validating expected shape - a 200-with-garbage caches a bad file.
+- tft/placement_aggregator.py:88,114 json.dump pct math lacks allow_nan=False (total>=1 structurally
+  when a cell exists -> NaN impossible; defensive only).
+- rc-shell/src/main.js:650 JSON.parse accumulates unbounded response body (bounded by 1500ms timeout
+  + localhost-trusted origin). :111-143 persistWindowState origin-field cosmetic inconsistency.
+- ASCII-in-output (NOT hard-banned dashes/quotes; coordinated pass): scripts audit_ddragon_items /
+  audit_api_surface / download_aram_icons / build_spell_cast_rates (x lands in spell_cast_rates.json
+  note) / build_champion_benchmarks / extract_* use arrows/box-draw/x/check/middot in prints+docstrings;
+  ops/* decorative U+2500 box-draw + U+2192 arrows + U+00A7 section-sign (phase3 docstrings); tft
+  SYSTEM_PROMPT strings carry pre-existing mojibake (->/bullet/>=/quote/star) baked into prompt text;
+  tft_ocr_reader comment banners. The 2 mojibake in rc_state_validator:180 + rc_self_monitor:411
+  (corrupted <=/>=) FIXED in-slice.
+
+### INFO (W4-hw2)
+- bare-py guard (test_bare_py_ban.py) has a SECOND distinct gap (beyond cycle-14 `& py (`): bare
+  `python <script>` (the word) is NOT caught - regex keys on `py(\.exe)?\s+` and `python` has `thon`
+  after. Widening to `python` would false-positive the many intentional `python tools/dev_cli.py` doc
+  lines (LAUNCH_STRATEGY.md) - a policy change outside slice authority. run_deploy_test.bat bare-python
+  FIXED in-slice; launch_new_system.bat:35,39 bare pythonw (legacy chain, sibling-consistent) DEFER.
+- ops/launch_new_system.bat:44 latent bug: run_self_healing_watchdog.ps1 --ConfigPath (double-dash)
+  binds as positional under -File -> Test-Path fails -> exit 1. Legacy chain only (live boots via
+  rc_bootstrap.py). Should be -ConfigPath. P3-prune bucket.
+- ops/RC-DaemonSlayer.xml has NO WorkingDirectory - CORRECT by design (start_daemon_slayer.py:20
+  self-chdir's _PROJECT_ROOT since the task hands over C:\Windows\System32).
+- rc-shell/ Electron security posture PASS: contextIsolation on / nodeIntegration off / sandbox on
+  both windows; preload empty; cert-trust exact-host-only (never global); injection escaping proven
+  (JSON.stringify + normPanelSet). 145/145 node tests. Slice already hardened, 0 FIX-NOW.
+- gamepc/2-PC refs (P3-prune feed, note-only): scripts/{discover_champion_codes,probe_missing_codes,
+  team_planner_sync}.py hardcode 192.168.8.237 LCU base (should be 127.0.0.1/RC_GAME_HOST post-1PC);
+  ops/phase3_setup/phase3_summary SMB 192.168.8.237 + game_pc topology; ops/phase3_install +
+  install_RC_LegionBridgeDaemon gamepc comments; tft_vision_reader/tft_ocr_reader Game-PC frame
+  comments (accurate post-1PC relay-path notes, not stale wiring).

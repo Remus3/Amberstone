@@ -39,6 +39,13 @@ _SCALE = 3
 # How often to try OCR (seconds). Vision already runs every round; OCR runs faster.
 _OCR_INTERVAL = 2.0
 
+# Hard cap (seconds) on a single tesseract child. Without it a stuck/zombie
+# tesseract.exe blocks the background OCR thread (tft_state_reader._ocr_loop)
+# indefinitely - the loop is daemon but never yields fresh round/HP/level/gold.
+# pytesseract passes this to the subprocess and raises RuntimeError on expiry,
+# which the per-call try/except already swallows back to a missing field.
+_OCR_TIMEOUT = 8
+
 
 def _init_tesseract():
     try:
@@ -114,7 +121,7 @@ def _ocr_digits(img, tess) -> str:
     processed = _preprocess(img)
     cfg = "--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789"
     try:
-        text = tess.image_to_string(processed, config=cfg).strip()
+        text = tess.image_to_string(processed, config=cfg, timeout=_OCR_TIMEOUT).strip()
         return re.sub(r"[^0-9]", "", text)
     except Exception as e:
         logger.debug("OCR digits error: %s", e)
@@ -130,7 +137,7 @@ def _ocr_stage_round(img, tess) -> Optional[str]:
     # Allow digits and hyphen only
     cfg = "--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789-"
     try:
-        text = tess.image_to_string(processed, config=cfg).strip()
+        text = tess.image_to_string(processed, config=cfg, timeout=_OCR_TIMEOUT).strip()
         # Normalise: remove spaces, keep digits and hyphen
         text = re.sub(r"[^0-9\-]", "", text)
         # Match X-Y pattern
@@ -161,7 +168,7 @@ def _ocr_level(img, tess) -> Optional[int]:
     processed = _preprocess(img, scale=3)
     cfg = "--oem 3 --psm 7 -c tessedit_char_whitelist=Llv0123456789 "
     try:
-        text = tess.image_to_string(processed, config=cfg).strip()
+        text = tess.image_to_string(processed, config=cfg, timeout=_OCR_TIMEOUT).strip()
         m = re.search(r"\d+", text)
         if m:
             val = int(m.group())
@@ -222,7 +229,8 @@ def _ocr_hp(img, tess) -> Optional[int]:
 
         # Fallback: OCR entire panel, return first valid HP
         full_text = tess.image_to_string(
-            _preprocess(img), config="--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789 "
+            _preprocess(img), config="--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789 ",
+            timeout=_OCR_TIMEOUT,
         ).strip()
         nums = [int(n) for n in re.findall(r"\d+", full_text) if 1 <= int(n) <= 100]
         return nums[0] if nums else None
