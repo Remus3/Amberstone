@@ -1,7 +1,7 @@
 """DS max_priority coverage pre-filter (Phase 5.9.x batch tooling).
 
 `champion_max_priority.json` overrides the spell-max order (default
-Q→W→E) the ds.ability / ds.burst scorers use to resolve per-spell rank
+Q->W->E) the ds.ability / ds.burst scorers use to resolve per-spell rank
 at a given level. Wrong for champions whose primary damage spell is W
 or E (Cassiopeia E, Karthus Q, Leblanc W, ...). Objective oracle: try all
 6 (Q,W,E) orderings, compute total ability_dps at level 11; the order

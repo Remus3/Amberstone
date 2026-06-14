@@ -8,7 +8,7 @@ happens at the route layer.
 
 Storage: `data/daemon_slayer/user_builds.json`. Single JSON file,
 mtime-cached so hand-edits land without RC restart, atomic-written
-(`tmp.write_text → tmp.replace`) per the project default.
+(`tmp.write_text -> tmp.replace`) per the project default.
 
 Schema (per build, keyed under `champions[<DisplayName>]`):
 
@@ -40,11 +40,11 @@ Top-level file shape:
   }
 
 API:
-  list_for(champion)              → list of stored builds (raw shape)
-  add(champion, build)            → str (new id)
-  update(champion, id, patch)     → bool (False if id not found)
-  delete(champion, id)            → bool
-  format_for_display(build, ...)  → dict in engine-profile shape, kind="user"
+  list_for(champion)              -> list of stored builds (raw shape)
+  add(champion, build)            -> str (new id)
+  update(champion, id, patch)     -> bool (False if id not found)
+  delete(champion, id)            -> bool
+  format_for_display(build, ...)  -> dict in engine-profile shape, kind="user"
 """
 from __future__ import annotations
 
@@ -159,7 +159,7 @@ def format_for_display(
     *,
     skeleton_split: Optional[dict[str, list[int]]] = None,
 ) -> Optional[dict[str, Any]]:
-    """Convert a stored build → the same shape as engine-generated profiles
+    """Convert a stored build -> the same shape as engine-generated profiles
     (kind="user"). Returns None on a malformed record so the caller can
     skip without crashing the chooser.
 
@@ -333,7 +333,7 @@ def _load() -> dict[str, Any]:
 
 
 def _save(store: dict[str, Any]) -> None:
-    """Atomic write: tmp.write_text → tmp.replace. Bumps in-memory
+    """Atomic write: tmp.write_text -> tmp.replace. Bumps in-memory
     mtime cache to the post-replace mtime so the next _load() doesn't
     re-parse what we just wrote."""
     global _CACHE, _CACHE_MTIME

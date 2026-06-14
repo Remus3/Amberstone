@@ -4,8 +4,8 @@ Thin reader for data/coach_reference/champion_benchmarks.json.
 Loaded lazily on first access, cached in-memory, reloaded if the underlying
 file mtime changes. Gives the coach a simple API for:
 
-  - `get(champion, mode, metric_key)` → benchmark dict with p25/p50/p75/avg
-  - `rank_value(champion, mode, metric_key, value)` → label for where
+  - `get(champion, mode, metric_key)` -> benchmark dict with p25/p50/p75/avg
+  - `rank_value(champion, mode, metric_key, value)` -> label for where
     `value` sits in the distribution: "below-p25" / "p25-p50" / "p50-p75"
     / "above-p75" / "no-data"
 
@@ -13,7 +13,7 @@ Intended use by coach output code:
 
     from core.benchmarks import rank_value
     tag = rank_value("Tristana", "sr_ranked", "cs_at_10", cs_this_game)
-    # e.g. "above-p75" → coach line: "CS lead at 10 is your top quartile"
+    # e.g. "above-p75" -> coach line: "CS lead at 10 is your top quartile"
 
 Benchmarks are weighted by provenance when built (see
 scripts/build_champion_benchmarks.py) - source_truth rows count full,
@@ -75,9 +75,9 @@ def rank_value(champion: str, mode: str, metric_key: str, value: float) -> str:
     Returns one of:
       - "no-data"     : no benchmark for this champion+mode+metric
       - "below-p25"   : value < p25
-      - "p25-p50"     : p25 ≤ value < p50
-      - "p50-p75"     : p50 ≤ value < p75
-      - "above-p75"   : value ≥ p75
+      - "p25-p50"     : p25 <= value < p50
+      - "p50-p75"     : p50 <= value < p75
+      - "above-p75"   : value >= p75
     """
     b = get(champion, mode, metric_key)
     if not b:

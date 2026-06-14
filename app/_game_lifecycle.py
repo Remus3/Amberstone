@@ -6,16 +6,16 @@ Owns the entire game start/end transition, worker management, state processing,
 and auto-field derivation.  The most complex manager - all game logic lives here.
 
 OverlayApp delegates:
-  _on_game_start()       → self.lifecycle.on_game_start(canon_mode)
-  _on_game_end()         → self.lifecycle.on_game_end()
-  _start_game_poll()     → self.lifecycle.start_game_poll()
-  _game_poll_worker()    → self.lifecycle.game_poll_worker(gen)
-  _drain_game_q()        → self.lifecycle.drain_game_q()
-  _drain_tft_q()         → self.lifecycle.drain_tft_q()
-  _try_read_api_key()    → self.lifecycle.try_read_api_key()
-  _process_worker_result() → self.lifecycle.process_worker_result(result)
-  _process_game_state()  → self.lifecycle.process_game_state(state, ...)
-  _apply_auto_fields()   → self.lifecycle.apply_auto_fields(state)
+  _on_game_start()       -> self.lifecycle.on_game_start(canon_mode)
+  _on_game_end()         -> self.lifecycle.on_game_end()
+  _start_game_poll()     -> self.lifecycle.start_game_poll()
+  _game_poll_worker()    -> self.lifecycle.game_poll_worker(gen)
+  _drain_game_q()        -> self.lifecycle.drain_game_q()
+  _drain_tft_q()         -> self.lifecycle.drain_tft_q()
+  _try_read_api_key()    -> self.lifecycle.try_read_api_key()
+  _process_worker_result() -> self.lifecycle.process_worker_result(result)
+  _process_game_state()  -> self.lifecycle.process_game_state(state, ...)
+  _apply_auto_fields()   -> self.lifecycle.apply_auto_fields(state)
 """
 import json
 import logging
@@ -279,7 +279,7 @@ class GameLifecycleManager:
         app.scheduler.schedule(POLL_GAME_MS, self._drain_game_q)
 
     def _drain_tft_q(self) -> None:
-        """Loop thread: drain TftWorker results → TftSnapshot → envelope."""
+        """Loop thread: drain TftWorker results -> TftSnapshot -> envelope."""
         app = self.app
         try:
             if not app._tft_mode:

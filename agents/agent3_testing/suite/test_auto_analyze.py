@@ -9,7 +9,7 @@ import pytest
 
 @pytest.mark.timeout(10)
 def test_auto_analyze_schedules_then_cancels_on_game_start() -> None:
-    """game→client schedules an analyzer run; a subsequent client→game
+    """game->client schedules an analyzer run; a subsequent client->game
     cancels it before it fires."""
     from agents.supervisor import Supervisor
 
@@ -54,7 +54,7 @@ def test_auto_analyze_fires_after_idle() -> None:
 
 @pytest.mark.timeout(10)
 def test_game_to_game_transition_does_not_cancel_nothing() -> None:
-    """Sanity - transitioning game→in_progress (an intra-game label
+    """Sanity - transitioning game->in_progress (an intra-game label
     change) mustn't error just because there's no pending task."""
     from agents.supervisor import Supervisor
 

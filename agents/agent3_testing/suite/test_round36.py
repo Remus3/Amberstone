@@ -32,8 +32,8 @@ def _insert(db: Path, champ: str, win: int | None, duration_sec: int,
 # -- tier bucketing --------------------------------------------------
 
 def test_tier_boundaries(tmp_path: Path, monkeypatch) -> None:
-    """14:59 → stomp, 15:00 → quick, 24:59 → quick, 25:00 → standard,
-    34:59 → standard, 35:00 → long."""
+    """14:59 -> stomp, 15:00 -> quick, 24:59 -> quick, 25:00 -> standard,
+    34:59 -> standard, 35:00 -> long."""
     from coaches.adaptation_hint import duration_analysis
     _init(tmp_path, monkeypatch)
     for dur in (14 * 60 + 59, 15 * 60, 24 * 60 + 59,

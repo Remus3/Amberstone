@@ -11,11 +11,11 @@ through to ``rank_for()``, so every tick saw the SAME generic enemy
 profile regardless of what the enemy team actually owned.
 
 Pipeline:
-    liveclient relay (Game-PC :2999 → Legion :8889/latest-liveclient)
-      → allPlayers[i].items[].itemID  (per-player live inventory)
-      → this module's stat sum
-      → target_armor / target_mr / target_max_hp / target_bonus_hp
-      → DS server's rank_for / rank_items / compute_dps
+    liveclient relay (Game-PC :2999 -> Legion :8889/latest-liveclient)
+      -> allPlayers[i].items[].itemID  (per-player live inventory)
+      -> this module's stat sum
+      -> target_armor / target_mr / target_max_hp / target_bonus_hp
+      -> DS server's rank_for / rank_items / compute_dps
 
 When the request is from champ-select (no live game), there's no enemy
 inventory to sum - caller falls back to ``compute_enemy_stats(mode,
@@ -24,9 +24,9 @@ scaled curve.
 
 Item stats source: ``data/meta/ddragon_items.json`` (DDragon item
 catalog). The relevant Flat* fields:
-    FlatArmorMod         → armor
-    FlatSpellBlockMod    → magic resist
-    FlatHPPoolMod        → max HP / bonus HP
+    FlatArmorMod         -> armor
+    FlatSpellBlockMod    -> magic resist
+    FlatHPPoolMod        -> max HP / bonus HP
 P1-L4 audit fix (2026-05-19): the original s170 docstring claimed
 "the DS engine adds [base champion stats] separately ... ``target_*``
 params are *additive deltas* on top of the base curve". That rationale
@@ -142,7 +142,7 @@ _STAT_INDEX: dict[str, dict] | None = None
 
 
 def _load_stat_index() -> dict[str, dict]:
-    """Read ddragon_items.json and build id → relevant-stats map.
+    """Read ddragon_items.json and build id -> relevant-stats map.
 
     Returns ``{item_id: {"armor": x, "mr": y, "hp": z}}``.
     Item id keys are stored as strings; both 4-digit SR ids (``"3047"``)

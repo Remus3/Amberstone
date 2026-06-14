@@ -4,9 +4,9 @@ Reads `data/champion_loadouts.json` (single mode-keyed file with per-
 champion variants) and resolves a variant choice to concrete LCU
 payloads ready for the gamepc_lcu_agent command queue:
 
-  - rune perk_ids + tree IDs  → apply_runes command
-  - item ID list              → apply_item_set command
-  - summoner spell IDs        → set_summoners command
+  - rune perk_ids + tree IDs  -> apply_runes command
+  - item ID list              -> apply_item_set command
+  - summoner spell IDs        -> set_summoners command
 
 Variants are scoped per champion. Mode (aram / sr / arena) filters
 which variants are visible - a variant only shows in a mode if that
@@ -132,7 +132,7 @@ def _load_loadouts() -> dict:
 
 
 def _normalize_mode(mode: str) -> str:
-    """Map LCU/queue mode strings → variant mode keys (aram/sr/arena/tft).
+    """Map LCU/queue mode strings -> variant mode keys (aram/sr/arena/tft).
 
     Tolerates raw int queue ids (450 / 1700 / ...) - the docstring table
     below matches them in string form."""
@@ -264,7 +264,7 @@ def default_variant(champion: str, mode: str) -> str:
 
 
 def resolve(champion: str, variant: str, mode: str) -> dict:
-    """Resolve champion+variant+mode → concrete LCU command payloads.
+    """Resolve champion+variant+mode -> concrete LCU command payloads.
 
     Returns:
         {
@@ -395,7 +395,7 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
 def _resolve_item_ids(names: list[str]) -> list[str]:
     """Resolve display names to ddragon item IDs. Drops names that miss
     after both exact-fuzzy AND substring fallback (handles abbreviations
-    like 'Deathcap' → 'Rabadon's Deathcap' that LLMs sometimes produce)."""
+    like 'Deathcap' -> 'Rabadon's Deathcap' that LLMs sometimes produce)."""
     by_name = _load_items_by_name()
     # Build inverted lookup: list of (norm_name, id) tuples for substring search
     norm_pairs = [(n, i) for n, i in by_name.items()]

@@ -1,4 +1,4 @@
-"""Unit tests for Agent 0 evaluator - 6 criteria × pass/fail per §7."""
+"""Unit tests for Agent 0 evaluator - 6 criteria x pass/fail per S7."""
 from __future__ import annotations
 
 import pytest

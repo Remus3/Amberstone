@@ -1,4 +1,4 @@
-"""Live-match → mode DB ingester.
+"""Live-match -> mode DB ingester.
 
 Consumes ``game-summary`` tasks filed by the supervisor on game-end
 transitions and inserts the corresponding row into the right mode DB.

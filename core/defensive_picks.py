@@ -34,7 +34,7 @@ Output:
 Recommendation output:
   [
     {"item_id": 3026, "name": "Guardian Angel", "category": "lifeline",
-     "reason": "revives once after fatal hit · vs Rengar burst",
+     "reason": "revives once after fatal hit * vs Rengar burst",
      "score": 8.5},
     ...
   ]
@@ -59,7 +59,7 @@ _CHAMP_INFO: dict[str, dict] | None = None
 
 
 def _load_champ_info() -> dict[str, dict]:
-    """Build name → info map from ddragon_champions.json. Handles
+    """Build name -> info map from ddragon_champions.json. Handles
     apostrophe variants (Kai'Sa / KaiSa) and spaces (Miss Fortune /
     MissFortune) by storing under both keys."""
     global _CHAMP_INFO
@@ -315,10 +315,10 @@ def recommend_defensive_items(threat: dict,
 # when the engine is unreachable so the dashboard never goes dark.
 
 def _threat_to_damage_shares(threat: dict) -> tuple[float, float]:
-    """Map threat profile → ``(enemy_ad_share, enemy_ap_share)`` floats in [0,1].
+    """Map threat profile -> ``(enemy_ad_share, enemy_ap_share)`` floats in [0,1].
 
     Normalizes ``ad_threat`` (0..10) and ``ap_threat`` (0..10) to shares
-    summing to ≤ 1.0. When both signals are strong (>=6 each) reserves
+    summing to <= 1.0. When both signals are strong (>=6 each) reserves
     ~10% true-damage share - real teams have at least some true damage
     (Talon E, Wukong R, Cho ult, item procs) that the blended_ehp shouldn't
     over-fit to one resist for.
@@ -357,7 +357,7 @@ def recommend_defensive_items_via_ehp(
       * ``threat`` malformed
       * Engine returns no results (champion unknown to DS, etc.)
 
-    Threat → damage-share mapping via :func:`_threat_to_damage_shares`.
+    Threat -> damage-share mapping via :func:`_threat_to_damage_shares`.
     """
     if not isinstance(threat, dict) or not my_champion:
         return recommend_defensive_items(

@@ -8,8 +8,8 @@ heartbeat re-arms via `app.scheduler.schedule(...)` instead of
 `root.after(...)` - the loop name "ui_pulse" stuck since pre-headless.
 
 State transferred from OverlayApp:
-  _ui_pulse_lock  → self._lock
-  _ui_pulse_ts    → self._ts
+  _ui_pulse_lock  -> self._lock
+  _ui_pulse_ts    -> self._ts
 """
 
 import threading
@@ -26,7 +26,7 @@ class HealthMonitor:
         self.health.start()
 
     OverlayApp delegates:
-        get_health_state()  → self.health.get_health_state()
+        get_health_state()  -> self.health.get_health_state()
     """
 
     def __init__(self, app: "OverlayApp") -> None:  # type: ignore[name-defined]

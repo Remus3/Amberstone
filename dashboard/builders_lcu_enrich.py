@@ -195,11 +195,11 @@ def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
     Post Game Review "Timeline" tab renders (s220 Item E, phase 1).
 
     Match-V5 nests the per-minute frames under ``info``; a flat top-level
-    ``frames`` list is also accepted (defensive). Participant→team comes
+    ``frames`` list is also accepted (defensive). Participant->team comes
     from the stashed LCU match detail - Match-V5 timelines only map
-    participantId→puuid, not teamId.
+    participantId->puuid, not teamId.
 
-    All diffs are ally_total − enemy_total, so a positive value means the
+    All diffs are ally_total - enemy_total, so a positive value means the
     operator's team was ahead. Per-frame participant `position` data is
     deliberately NOT parsed here - that's the phase-2 interactive replay
     minimap, which reads the same Match-V5 timeline.

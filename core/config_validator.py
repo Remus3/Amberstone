@@ -326,10 +326,10 @@ def validate_all() -> List[ValidationResult]:
     Run validation for all config files. Returns a list of ValidationResult.
 
     Never raises. Never aborts startup. Logs results at appropriate levels:
-      OK      → INFO
-      WARNING → WARNING
-      ERROR   → ERROR
-      SKIP    → INFO
+      OK      -> INFO
+      WARNING -> WARNING
+      ERROR   -> ERROR
+      SKIP    -> INFO
     """
     validators = [
         _validate_rc_config,

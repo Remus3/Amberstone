@@ -44,7 +44,7 @@ DDR       = ROOT / "data" / "meta" / "ddragon_champions.json"
 
 
 def _champ_name_index() -> dict[int, str]:
-    """champ_id → display-name lookup."""
+    """champ_id -> display-name lookup."""
     if not DDR.exists():
         return {}
     try:

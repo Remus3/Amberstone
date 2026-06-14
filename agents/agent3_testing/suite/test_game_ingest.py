@@ -1,4 +1,4 @@
-"""Round 20 - live-match → mode DB ingester."""
+"""Round 20 - live-match -> mode DB ingester."""
 from __future__ import annotations
 
 import json

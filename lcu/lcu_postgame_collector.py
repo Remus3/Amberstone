@@ -1,6 +1,6 @@
 """
 lcu/lcu_postgame_collector.py
-─────────────────────────────
+-----------------------------
 Captures end-of-game statistics for ALL players (both teams) and stores them
 in a mode-separated SQLite database for later analysis.
 
