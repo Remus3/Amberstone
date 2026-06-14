@@ -2,6 +2,20 @@
 
 ## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
 
+# 2026-06-14 - DEEP-AUDIT cycle 18: P3 PRUNE SWEEPS - encoding sub-track slice 1 [item 413] (relocated 2026-06-14, cycle-20 wrap)
+
+- P2 CODE AUDIT COMPLETE (W1-W5, cycles 5-17); P3 STARTED. Safe self-contained encoding slice; 9 files touched, ALL encoding-only (0 logic/assertion change). NO ENGINE bump, NO DS :8893 restart, NO live RC restart.
+- BOM retro-sweep: stripped 4 non-protective UTF-8 BOMs (ops/rc_supervisor.py[frozen], config/CONFIG_AUTHORITY.md, tools/DEV_WORKFLOW.md, web/css/dashboard.css). KEPT 4 .ps1 BOMs (PROTECTIVE - PS5.1 decodes a BOM'd .ps1 as UTF-8; stripping re-opens the ANSI-decode mojibake hazard) + 3 UTF-16 Task XML (ops/RC-*.xml canonical schtasks export format).
+- em-dash + smart-quote DRIFT CHECK = authored tree PROVEN CLEAN. Every U+2013/U+2014/U+2018/U+2019/U+201C/U+201D hit is upstream data (DDragon/Meraki/wiki JSON), scraped HTML (data/meta_build/_phase3_html), or generated agent6 reports - patch-regenerated, OUT OF SCOPE - EXCEPT the one authored hit ops/RC-BridgeWatcher.xml[frozen] Description em-dash -> fixed to '-' (UTF-16LE byte-preserving, encoding intact).
+- .ps1 LATENT-MOJIBAKE-RISK class CLOSED: the 2 no-BOM .ps1 holding non-ASCII (ops/rc_league_watcher.ps1 237xU+2500+3xU+2192, tools/bridge_watcher_update_check.ps1 264xU+2500) swept to ASCII (100% comment-divider context, 0 load-bearing; PS ParseFile OK both). NEW invariant guard tests/test_ps1_encoding_hygiene.py: no tracked .ps1 may be no-BOM AND non-ASCII (codifies the PS5.1 friction-removal the charter calls out).
+- BUG FIX (census-surfaced): tft/tft_coach_engine.py held cp1252-roundtrip mojibake in EMITTED TFT coach text (9x bullet U+2022, 4x arrow U+2192, 1x >= U+2265, 1x warn U+26A0 - users saw "a-euro-cent" garbage) -> ASCII. NOT caught by test_mojibake_hygiene (guards only the 2 dash-class signatures). File now 100% ASCII.
+- NEW tools/p3_ascii_census.py (durable P3 slicer) + ops/audit/P3_WORKMAP.md (scopes the remaining ~400-file glyph sweep: SAFE-BULK runtime comment-dividers / LOAD-BEARING-COORDINATED DS-engine+Share emit-arrows + aram_coach item_build wire-arrow + web rendered glyphs / DOCS->P8 / gamepc-1791 + vanguard-180 semantic prunes needing gemini scope-consult).
+- Gate: 176 tests green (162 tft-ref+hygiene, 14 guards incl new), py_compile (rc_supervisor+tft_coach_engine) + PS ParseFile OK. DS-dir + full suite NOT re-run (no DS/shared-product file - R5/R6, blast radius nil; rc_supervisor BOM-strip is a byte-prefix-only change Python ignores, running supervisor unaffected).
+- DONT-REDO: the 4 BOM strips stay; the 4 .ps1 BOMs + 3 UTF-16 XML encodings STAY (do NOT strip/convert - protective/canonical); tft_coach_engine + the 2 .ps1 stay ASCII (guard locks it). NEXT cycle 19: P3 SAFE-BULK ASCII glyph sweep (U+2500 comment-dividers across core/dashboard/lcu/ops/tools/agents-nontest/app/scripts/tft/vision_server - parallel slices, py_compile+suite gate, verify comment-context per hit); DS-engine+Share emit-arrow + aram_coach arrow are LOAD-BEARING-COORDINATED (own Tier-2 cycles); gamepc + vanguard semantic prunes need gemini scope-consult. Full map: ops/audit/P3_WORKMAP.md.
+
+
+---
+
 # 2026-06-13 - DEEP-AUDIT cycle 12: P2 W2 DS-engine fanout, HALF-WAVE 2 slices D/E/G/H [item 406] (relocated 2026-06-13, cycle 14 wrap)
 
 - 37 files / ~20k LOC audited via 4 disjoint PARALLEL slices (no worktrees - disjoint sets, robust to agent death; D effects-data _effects_data/_effects_types/effects, E passive-overrides 12 _ability_*/_passive_*/_champion_* registries, G remaining-mechanics rune_procs/mana_sim/combo/_rank_mage/matchup/cooldown_watch/augments/augment_formula_eval/geometry/spike_markers/_item_ability_haste/recharge_ledger/modifier_blocks/ult_rates/_item_tenacity/scenario_matrix/fight_report, H agents/supervisor set supervisor/_supervisor_{http,common,ephemeral}/_minimap_bbox). commit fe06b957; 47 new tests (tests/test_p2w2_ds_{d,e,g,h}.py 19/11/5/12). **W2 DS engine COMPLETE** (hw1 cycle 11 + hw2 here).
