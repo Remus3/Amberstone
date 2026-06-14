@@ -84,7 +84,7 @@ SCHEMA_STATEMENTS = [
       PRIMARY KEY (champion, opponent_signature)
     )
     """,
-    # --- _migration_state (operational, not part of §9 schema) --------
+    # --- _migration_state (operational, not part of S9 schema) --------
     # Tracks which rewind_history.db rows we've ingested so migration
     # can be re-run without duplicating data. source_ref = rewind's
     # original match id / rowid.

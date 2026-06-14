@@ -39,7 +39,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).parent.parent
 _DEFAULT_OUTPUT = _PROJECT_ROOT / "dist" / "portable_staging"
 
-# ── Inclusion rules ───────────────────────────────────────────────────────────
+# -- Inclusion rules -----------------------------------------------------------
 #
 # Strategy: portable staging bundle (current baseline: Option B when python-embed/ present, Option A fallback otherwise)
 #   - All Python source packages
@@ -152,7 +152,7 @@ _NEVER_INCLUDE = {
 }
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 def _info(msg: str) -> None:
     print(f"  INFO    {msg}")
@@ -226,7 +226,7 @@ def _write_gitkeep(path: Path, dry: bool) -> None:
             )
 
 
-# ── Build ─────────────────────────────────────────────────────────────────────
+# -- Build ---------------------------------------------------------------------
 
 def build(output_dir: Path, dry: bool = False) -> int:
     """
@@ -271,7 +271,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
     included_files: list[str] = []
     errors: list[str] = []
 
-    # ── Root .py files ────────────────────────────────────────────────────────
+    # -- Root .py files --------------------------------------------------------
     strategy_label = "Option A -- prerequisite Python on PATH (no embedded runtime)"  # updated below
     print("\n[Root Python files]")
     for name in _ROOT_PY_FILES:
@@ -286,7 +286,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
         else:
             _info(f"optional, not found: {name}")
 
-    # ── Root launcher / setup files ───────────────────────────────────────────
+    # -- Root launcher / setup files -------------------------------------------
     print("\n[Launchers and setup]")
     for name in _ROOT_BAT_FILES:
         src = _PROJECT_ROOT / name
@@ -298,8 +298,8 @@ def build(output_dir: Path, dry: bool = False) -> int:
         else:
             _info(f"optional, not found: {name}")
 
-    # ── Source packages ───────────────────────────────────────────────────────
-    # ── Embedded Python runtime (Option B) ─────────────────────────────────
+    # -- Source packages -------------------------------------------------------
+    # -- Embedded Python runtime (Option B) ---------------------------------
     print("\n[Embedded Python runtime (Option B)]")
     embed_src = _PROJECT_ROOT / _EMBED_PYTHON_DIR
     if embed_src.exists():
@@ -311,7 +311,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
         _warn(f"{_EMBED_PYTHON_DIR}/ not found -- staging as Option A (PATH Python required)")
         strategy_label = "Option A -- prerequisite Python on PATH (no embedded runtime)"
 
-    # ── Source packages ───────────────────────────────────────────────────
+    # -- Source packages ---------------------------------------------------
     print("\n[Source packages]")
     for pkg in _SOURCE_PACKAGES:
         src_dir = _PROJECT_ROOT / pkg
@@ -324,7 +324,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
         else:
             _info(f"{pkg}/  (not found, skipping)")
 
-    # ── Config files ──────────────────────────────────────────────────────────
+    # -- Config files ----------------------------------------------------------
     print("\n[Config files]")
     for rel in _CONFIG_INCLUDES:
         src = _PROJECT_ROOT / rel
@@ -339,7 +339,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
     # ops/rc_config.json lives in ops/ which is already covered by _SOURCE_PACKAGES
     # but also sometimes at config/ -- handled above.
 
-    # ── Operator docs and tooling ─────────────────────────────────────────────
+    # -- Operator docs and tooling ---------------------------------------------
     print("\n[Operator docs and tooling]")
     for rel in _DOC_FILES:
         src = _PROJECT_ROOT / rel
@@ -351,7 +351,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
         else:
             _info(f"optional, not found: {rel}")
 
-    # ── Secret exclusion verification ─────────────────────────────────────────
+    # -- Secret exclusion verification -----------------------------------------
     print("\n[Exclusion verification]")
     secret = output_dir / "API-Key-Claude.txt"
     audit_dir = output_dir / "audit"
@@ -367,7 +367,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
         else:
             _ok(f"{label} correctly excluded")
 
-    # ── Runtime directory placeholders ────────────────────────────────────────
+    # -- Runtime directory placeholders ----------------------------------------
     # Run AFTER exclusion verification so placeholders are never wiped.
     print("\n[Runtime directory placeholders]")
     for rel in _RUNTIME_DIRS:
@@ -376,7 +376,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
         _ok(f"{rel}/  (placeholder)")
         included_files.append(f"{rel}/")
 
-    # ── Prerequisite note file ────────────────────────────────────────────────
+    # -- Prerequisite note file ------------------------------------------------
     print("\n[PREREQUISITES.md]")
     prereq_content_b = """\
 # PREREQUISITES.md
@@ -474,7 +474,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
     _ok("PREREQUISITES.md written")
     included_files.append("PREREQUISITES.md")
 
-    # ── Build manifest ────────────────────────────────────────────────────────
+    # -- Build manifest --------------------------------------------------------
     print("\n[BUILD_MANIFEST.json]")
     manifest = {
         "build_tool":       "tools/build_portable.py",
@@ -532,7 +532,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     _ok(f"BUILD_MANIFEST.json written  ({len(included_files)} files staged)")
 
-    # ── Summary ───────────────────────────────────────────────────────────────
+    # -- Summary ---------------------------------------------------------------
     print("\n" + "=" * 64)
     if errors:
         print(f"Build completed with {len(errors)} warning(s):")
@@ -552,7 +552,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
     return 0
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# -- Entry point ---------------------------------------------------------------
 
 def main() -> int:
     parser = argparse.ArgumentParser(

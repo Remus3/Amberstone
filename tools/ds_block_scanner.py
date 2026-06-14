@@ -60,7 +60,7 @@ def scan(champion: str, snap: DataSnapshot) -> None:
         for form in forms:
             dmg = form.damage_blocks_only()
             if len(dmg) < 2:
-                # single damage block → block 0 is correct, never a candidate
+                # single damage block -> block 0 is correct, never a candidate
                 if dmg:
                     tag = "" if len(dmg) == 1 else " (NO DAMAGE BLOCKS)"
                     print(f"  {key} form{form.form_index} '{form.name}': "

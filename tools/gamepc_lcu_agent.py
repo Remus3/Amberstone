@@ -106,7 +106,7 @@ def _resolve_bridge_secret() -> str:
     return ""
 
 TOKEN  = _resolve_auth_token()
-BRIDGE_SECRET = _resolve_bridge_secret()    # "" → team-context POST skipped
+BRIDGE_SECRET = _resolve_bridge_secret()    # "" -> team-context POST skipped
 INTERVAL      = 1.0   # state-push cadence (slow during in-game; OK)
 AUTO_INTERVAL = 0.5   # ready-check / summoner-override poll cadence
 CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence
@@ -119,7 +119,7 @@ TEAM_CONTEXT_REPOST_S = 3.0
 # core/queue_modes.QUEUE_ID_TO_MODE_KEY (this agent runs standalone on
 # Game-PC and can't import core.*, so it's a hand-kept mirror - keep
 # the two in sync). 2400 = ARAM Mayhem (KIWI gameMode); its absence
-# here is why is_aram was False for Mayhem → the dashboard's
+# here is why is_aram was False for Mayhem -> the dashboard's
 # _csvDetectMode fell through to "sr" and the bench / quick-swap UI
 # never rendered (KNOWN BUG 2026-05-17).
 _ARAM_QUEUE_IDS = frozenset({450, 720, 920, 2400})
@@ -218,7 +218,7 @@ def lcu_request(method: str, path: str, body: dict | None = None) -> tuple[objec
 # endpoint. Legion enriches with rank / games-with-me / online status -
 # the agent is forwarder-only.
 
-# queue_id → human-readable name. Dashboard falls back to ("queue " + id)
+# queue_id -> human-readable name. Dashboard falls back to ("queue " + id)
 # when queue_name is missing, so this map is best-effort. Common queues
 # the operator sees; extend as needed.
 _LOBBY_QUEUE_NAMES = {
@@ -656,8 +656,8 @@ def capture_state() -> dict:
     # during its bench window (the open question: does it ever report
     # "ChampSelect", or flip straight to "InProgress"?). Free - phase
     # is already fetched. Enriched below with the champ-select session
-    # shape when that block runs. Rides the existing 1s push → cached
-    # on Legion's vision server → no Game-PC console / screen capture
+    # shape when that block runs. Rides the existing 1s push -> cached
+    # on Legion's vision server -> no Game-PC console / screen capture
     # needed to root-cause the remaining uncertainty.
     state["cs_debug"] = {"raw_phase": state["phase"], "ts": time.time()}
 
@@ -849,7 +849,7 @@ def capture_state() -> dict:
                 # Swap candidate lists. Mirror trades - slim id/cellId/state
                 # so the dashboard can render the SWAP popup and the
                 # request_position_swap / request_pick_order_swap handlers
-                # below resolve cell_id → swap id without a 2nd LCU GET.
+                # below resolve cell_id -> swap id without a 2nd LCU GET.
                 "position_swaps":   _swap_entries(sess.get("positionSwaps")),
                 "pick_order_swaps": _swap_entries(sess.get("pickOrderSwaps")),
                 # Active round (cells on the clock + pick|ban). Drives the
@@ -1279,7 +1279,7 @@ def execute_command(cmd: dict) -> dict:
         return {"ok": True, "action_id": aid, "championId": cid}
     if name == "request_position_swap":
         # Send a lane-swap offer to the cell. Mirror of trade_request -
-        # resolve cell_id → swap id via session.positionSwaps[]. LCU
+        # resolve cell_id -> swap id via session.positionSwaps[]. LCU
         # returns 204 on success; any other state means the offer is
         # busy / invalid / already-sent on the receiving side.
         cell_id = int(cmd.get("cell_id", -1))
@@ -1513,7 +1513,7 @@ def execute_command(cmd: dict) -> dict:
         r, err = lcu_request("PATCH",
             f"/lol-champ-select/v1/session/actions/{pending_aid}", body)
         return {"ok": err is None, "err": err}
-    # ── Phase B lobby controls (s171) ─────────────────────────────────
+    # -- Phase B lobby controls (s171) ---------------------------------
     if name == "lobby.set_position_prefs":
         # PATCH the local member's role preferences. LCU body shape:
         #   {"firstPreference": "TOP|JUNGLE|MIDDLE|BOTTOM|UTILITY|FILL",
@@ -1566,7 +1566,7 @@ def execute_command(cmd: dict) -> dict:
                 "riot_id": rid, "summoner_id": sid, "resolved_via": how}
     if name == "lobby.promote_leader":
         # Hand party leadership to another member. Resolve riot_id (or
-        # summoner_id) → member_id by walking the current lobby members
+        # summoner_id) -> member_id by walking the current lobby members
         # list. LCU rejects if caller isn't the current leader (400).
         rid = str(cmd.get("riot_id") or "").strip()
         sid = cmd.get("summoner_id")
@@ -1724,7 +1724,7 @@ _dash_ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 _dash_ssl_ctx.check_hostname = False
 _dash_ssl_ctx.verify_mode = ssl.CERT_NONE
 
-# Lazy cache of championId → display name, sourced from LCU's
+# Lazy cache of championId -> display name, sourced from LCU's
 # /lol-game-data/assets/v1/champion-summary.json. Populated once per
 # agent boot. The route's _champ_name_to_id() reverses the lookup via
 # ddragon, so we send Riot's canonical English name here and let the

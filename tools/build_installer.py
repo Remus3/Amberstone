@@ -46,7 +46,7 @@ _DIST_DIR = _PROJECT_ROOT / "dist"
 _DEFAULT_OUTPUT = _DIST_DIR / "installer_staging"
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 def _info(msg): print(f"  INFO    {msg}")
 def _ok(msg):   print(f"  OK      {msg}")
@@ -76,7 +76,7 @@ def _build_archive() -> Path | None:
     return _find_archive()
 
 
-# ── setup.bat content ─────────────────────────────────────────────────────────
+# -- setup.bat content ---------------------------------------------------------
 
 def _setup_bat(archive_name: str) -> str:
     return f"""\
@@ -176,7 +176,7 @@ exit /b 0
 """
 
 
-# ── Build ─────────────────────────────────────────────────────────────────────
+# -- Build ---------------------------------------------------------------------
 
 def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
     print("=" * 64)
@@ -185,7 +185,7 @@ def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
     print(f"Dry-run  : {dry}")
     print("=" * 64)
 
-    # ── Locate archive ────────────────────────────────────────────────────────
+    # -- Locate archive --------------------------------------------------------
     print("\n[Step 1: Locate validated portable archive]")
     if archive_override:
         archive = archive_override
@@ -206,28 +206,28 @@ def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
             _ok(f"Using existing archive: {archive.name}")
     _info(f"Archive size: {archive.stat().st_size / (1024*1024):.1f} MB")
 
-    # ── Create output dir ─────────────────────────────────────────────────────
+    # -- Create output dir -----------------------------------------------------
     print("\n[Step 2: Prepare installer staging directory]")
     if not dry:
         if output_dir.exists():
             shutil.rmtree(str(output_dir))
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Copy archive ──────────────────────────────────────────────────────────
+    # -- Copy archive ----------------------------------------------------------
     print("\n[Step 3: Copy portable archive]")
     dest_archive = output_dir / archive.name
     if not dry:
         shutil.copy2(str(archive), str(dest_archive))
     _ok(f"Archive copied: {archive.name}")
 
-    # ── Write setup.bat ───────────────────────────────────────────────────────
+    # -- Write setup.bat -------------------------------------------------------
     print("\n[Step 4: Write setup.bat]")
     setup_content = _setup_bat(archive.name)
     if not dry:
         (output_dir / "setup.bat").write_text(setup_content, encoding="utf-8")
     _ok("setup.bat written")
 
-    # ── Write INSTALL_README.md ───────────────────────────────────────────────
+    # -- Write INSTALL_README.md -----------------------------------------------
     print("\n[Step 5: Write INSTALL_README.md]")
     readme = f"""\
 # INSTALL_README.md
@@ -298,7 +298,7 @@ def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
         (output_dir / "INSTALL_README.md").write_text(readme, encoding="utf-8")
     _ok("INSTALL_README.md written")
 
-    # ── Write INSTALL_MANIFEST.json ───────────────────────────────────────────
+    # -- Write INSTALL_MANIFEST.json -------------------------------------------
     print("\n[Step 6: Write INSTALL_MANIFEST.json]")
     manifest = {
         "installer_tool":       "tools/build_installer.py",
@@ -335,7 +335,7 @@ def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
         )
     _ok("INSTALL_MANIFEST.json written")
 
-    # ── Summary ───────────────────────────────────────────────────────────────
+    # -- Summary ---------------------------------------------------------------
     print("\n" + "=" * 64)
     if dry:
         print("Dry-run complete: would succeed. No output written.")
@@ -347,7 +347,7 @@ def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
     return 0
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# -- Entry point ---------------------------------------------------------------
 
 def main() -> int:
     p = argparse.ArgumentParser(

@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 
 
-# ── /api/env auto_analyze exposure ──────────────────────────────────
+# -- /api/env auto_analyze exposure ----------------------------------
 
 def test_auto_analyze_stats_idle_default() -> None:
     from agents.supervisor import Supervisor
@@ -57,7 +57,7 @@ def test_auto_analyze_stats_idle_after_run_shows_last_ago() -> None:
     assert stats["last_summary"]["champion_buckets"] == 249
 
 
-# ── 30-day recency bucket ───────────────────────────────────────────
+# -- 30-day recency bucket -------------------------------------------
 
 @pytest.fixture()
 def seeded_recency(tmp_path: Path, monkeypatch):
@@ -157,7 +157,7 @@ def test_recency_30d_absent_when_all_matches_old(tmp_path: Path, monkeypatch) ->
             "SELECT aggregates_json FROM adaptation_buckets WHERE champion='Lux'"
         ).fetchone()
     aj = json.loads(row[0])
-    assert "recency_30d" not in aj     # no in-window matches → absent
+    assert "recency_30d" not in aj     # no in-window matches -> absent
 
 
 def test_hint_line_mentions_30d_when_present(seeded_recency: Path, monkeypatch) -> None:
@@ -167,5 +167,5 @@ def test_hint_line_mentions_30d_when_present(seeded_recency: Path, monkeypatch) 
     monkeypatch.setattr(ah, "DB_DIR", seeded_recency)
     line = ah.format_hint_line("Ahri", "aram")
     assert "30d" in line
-    # Directional arrow: 83% > 56% baseline → ↑
+    # Directional arrow: 83% > 56% baseline -> ^
     assert "↑" in line

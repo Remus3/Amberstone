@@ -39,7 +39,7 @@ DB_DIR = _PROJECT_ROOT / "data" / "db"
 
 from lib.modes import PHASE3_MODES as SUPPORTED_MODES
 
-# Spec §8: matchup modifier activates only at ≥5 games sample size.
+# Spec S8: matchup modifier activates only at >=5 games sample size.
 MATCHUP_ACTIVATE_THRESHOLD = 5
 
 # How many recent matches to track for the "recent" rolling stats.
@@ -227,7 +227,7 @@ class _ChampionStats:
                 "ratio": round(ratio, 2),
                 "sample": self.kda_games,
             }
-            # Rolling last-N (≥5 floor so a single bad game doesn't
+            # Rolling last-N (>=5 floor so a single bad game doesn't
             # overwhelm the signal).
             if len(self.recent_kda_samples) >= 5:
                 rk = sum(s[0] for s in self.recent_kda_samples) / len(self.recent_kda_samples)
@@ -253,7 +253,7 @@ class _Matchup:
     wins: int = 0
     # KDA sums tracked only on rows where both win AND k/d/a are present.
     # Sample can lag behind sample_count (e.g. old rows lack KDA until the
-    # backfill has run). Ratio is surfaced only when kda_sample ≥ 3.
+    # backfill has run). Ratio is surfaced only when kda_sample >= 3.
     kda_sample: int = 0
     kills_sum: int = 0
     deaths_sum: int = 0
@@ -385,7 +385,7 @@ class Analyzer:
                 m.observe(int(row["win"]))
                 m.observe_kda(row_k, row_d, row_a)
 
-        # ---- item-outcome aggregation (per champion × item_id) -----
+        # ---- item-outcome aggregation (per champion x item_id) -----
         #
         # Pull DISTINCT (match_id, item_id) pairs so we count matches, not
         # individual buys (a player might buy the same component 3x in
@@ -450,7 +450,7 @@ class Analyzer:
         # ---- first-legendary-per-match aggregation ----------------
         #
         # For each match: earliest ITEM_PURCHASED whose item_id is a
-        # legendary (gold_total >= ITEM_MIN_GOLD) → "first core item".
+        # legendary (gold_total >= ITEM_MIN_GOLD) -> "first core item".
         # Grouped by (champion, first_legendary_id) with win rate + avg
         # timing. Surfaces as aggregates_json.first_legendary.
         first_leg_rows = conn.execute(
@@ -630,7 +630,7 @@ class Analyzer:
         return summary
 
 
-# ── public helpers used by Agent 1 dispatch payloads ────────────────
+# -- public helpers used by Agent 1 dispatch payloads ----------------
 
 def analyze_mode(mode: str) -> dict:
     return Analyzer(mode).analyze()
@@ -649,7 +649,7 @@ def analyze_all() -> dict[str, dict]:
     return results
 
 
-# ── CLI ─────────────────────────────────────────────────────────────
+# -- CLI -------------------------------------------------------------
 
 def main(argv: Iterable[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Agent 4 analyzer")

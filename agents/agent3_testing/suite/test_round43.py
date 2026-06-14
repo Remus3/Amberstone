@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 
-# ── supervisor _run_deterministic tightening ───────────────────────
+# -- supervisor _run_deterministic tightening -----------------------
 
 def _make_supervisor(tmp_path: Path):
     """Build a Supervisor-like object that has just enough structure
@@ -104,7 +104,7 @@ def test_registered_handler_still_runs(tmp_path: Path, monkeypatch) -> None:
         _restore(monkey)
 
 
-# ── Agent 7 LLM fallback op constraint ──────────────────────────────
+# -- Agent 7 LLM fallback op constraint ------------------------------
 
 def _fake_llm_returning(op: str, reply: str = "ok"):
     """Build a llm_spawn callable that mimics the Haiku CLI envelope."""
@@ -195,7 +195,7 @@ def test_llm_conversational_reply_unchanged(tmp_path: Path) -> None:
     assert r.reply == "hi there" or r.intent in ("fallback_llm", "chitchat")
 
 
-# ── constant-integrity smoke tests ─────────────────────────────────
+# -- constant-integrity smoke tests ---------------------------------
 
 def test_supervisor_allowlist_constants_present() -> None:
     sup = Path("agents/supervisor.py").read_text(encoding="utf-8")

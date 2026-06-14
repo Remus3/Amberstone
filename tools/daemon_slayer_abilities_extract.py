@@ -139,7 +139,7 @@ logging.basicConfig(
 log = logging.getLogger("daemon_slayer_abilities_extract")
 
 
-# ─── Unit → typed-scaling-field map ──────────────────────────────────────────
+# --- Unit -> typed-scaling-field map ------------------------------------------
 
 # Meraki ships modifier values + units; we normalize units to typed field
 # names so Phase 4b's evaluator can resolve per-level damage without a regex
@@ -268,7 +268,7 @@ _NON_DAMAGE_HINTS = re.compile(
 )
 
 
-# ─── HTTP helpers ─────────────────────────────────────────────────────────────
+# --- HTTP helpers -------------------------------------------------------------
 
 def _fetch_text(url: str, timeout: int = 60) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -287,7 +287,7 @@ def _atomic_write_json(path: Path, payload: Any) -> None:
     tmp.replace(path)
 
 
-# ─── Normalization ──────────────────────────────────────────────────────────
+# --- Normalization ----------------------------------------------------------
 
 def _normalize_damage_type(raw: str | None) -> str | None:
     if not raw:
@@ -672,7 +672,7 @@ def _build_champion(name: str, payload: dict) -> dict:
     return out
 
 
-# ─── Coverage ────────────────────────────────────────────────────────────────
+# --- Coverage ----------------------------------------------------------------
 
 def _coverage_summary(data: dict[str, dict[str, list[dict]]]) -> dict[str, Any]:
     """Return per-status counts for the coverage check."""
@@ -707,7 +707,7 @@ def _coverage_summary(data: dict[str, dict[str, list[dict]]]) -> dict[str, Any]:
     }
 
 
-# ─── Meraki content-freshness guard (WIN 2) ──────────────────────────────────
+# --- Meraki content-freshness guard (WIN 2) ----------------------------------
 
 def _patch_sort_key(patch: Any) -> tuple[int, int]:
     """Numeric sort key for a Meraki ``YY.MM`` patch string.
@@ -743,7 +743,7 @@ def _meraki_content_patch(raw: dict[str, Any]) -> str | None:
     return max(patches, key=_patch_sort_key)
 
 
-# ─── Entry point ─────────────────────────────────────────────────────────────
+# --- Entry point -------------------------------------------------------------
 
 def _resolve_patch(override: str | None) -> str:
     if override:

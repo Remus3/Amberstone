@@ -29,7 +29,7 @@ def _insert(db: Path, champ: str, win: int | None, duration_sec: int,
         conn.commit()
 
 
-# ── tier bucketing ──────────────────────────────────────────────────
+# -- tier bucketing --------------------------------------------------
 
 def test_tier_boundaries(tmp_path: Path, monkeypatch) -> None:
     """14:59 → stomp, 15:00 → quick, 24:59 → quick, 25:00 → standard,
@@ -122,7 +122,7 @@ def test_mode_filter(tmp_path: Path, monkeypatch) -> None:
 def test_kda_ratio_per_tier(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import duration_analysis
     _init(tmp_path, monkeypatch)
-    # Two long games: mean 10/4/15 → (10+15)/4 = 6.25.
+    # Two long games: mean 10/4/15 -> (10+15)/4 = 6.25.
     _insert(tmp_path / "aram.db", "Ahri", 1, 3000, 10, 3, 15)
     _insert(tmp_path / "aram.db", "Ahri", 1, 3000, 10, 5, 15)
     data = duration_analysis(mode="aram", min_games=1)
@@ -146,7 +146,7 @@ def test_min_games_flag(tmp_path: Path, monkeypatch) -> None:
     assert data["best"]["tier"] == "standard"
 
 
-# ── CLI ─────────────────────────────────────────────────────────────
+# -- CLI -------------------------------------------------------------
 
 def test_cli_duration_json(tmp_path: Path, monkeypatch, capsys) -> None:
     from coaches.adaptation_hint import main
@@ -197,7 +197,7 @@ def test_cli_duration_cross_mode_default(tmp_path: Path, monkeypatch, capsys) ->
     assert data["total_games"] == 2
 
 
-# ── supervisor route ────────────────────────────────────────────────
+# -- supervisor route ------------------------------------------------
 
 def test_supervisor_registers_duration_route() -> None:
     # s243: handler split byte-verbatim into _supervisor_http.py

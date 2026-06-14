@@ -27,7 +27,7 @@ def L(start: int, end: int, dedent: bool = True) -> str:
 
 os.makedirs(PANELS_DIR, exist_ok=True)
 
-# ── 1. right_now.js ──────────────────────────────────────────────────────────
+# -- 1. right_now.js ----------------------------------------------------------
 RIGHT_NOW_HEADER = """\
 // Right Now panel - immediate coaching actions, game-sense, stats, digest.
 import { el, safe, fmtList, classifyAction, isArenaPayload, logLine, _formatRelativeAge } from '../lib/helpers.js';
@@ -46,7 +46,7 @@ with open(f"{PANELS_DIR}/right_now.js", "w", encoding="utf-8") as f:
     f.write(RIGHT_NOW_HEADER + rn_dom + "\n" + rn_bind + "\n" + rn_funcs + RIGHT_NOW_FOOTER)
 print("✓ right_now.js")
 
-# ── 2. next.js ───────────────────────────────────────────────────────────────
+# -- 2. next.js ---------------------------------------------------------------
 NEXT_HEADER = """\
 // Next panel - wave state, objective row, arena partner info.
 import { el, safe, isArenaPayload } from '../lib/helpers.js';
@@ -66,7 +66,7 @@ with open(f"{PANELS_DIR}/next.js", "w", encoding="utf-8") as f:
     f.write(NEXT_HEADER + nx_dom + "\n" + nx_wave_cmt + nx_wave_fns + "\n" + nx_arena + NEXT_FOOTER)
 print("✓ next.js")
 
-# ── 3. item_build.js ─────────────────────────────────────────────────────────
+# -- 3. item_build.js ---------------------------------------------------------
 ITEM_BUILD_HEADER = """\
 // Item Build panel - owned/recommended tiles, DS picks, in-game build switcher.
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
@@ -91,7 +91,7 @@ with open(f"{PANELS_DIR}/item_build.js", "w", encoding="utf-8") as f:
     f.write(ITEM_BUILD_HEADER + ib_dom + "\n" + ib_funcs + "\n" + ib_ib_funcs + ITEM_BUILD_FOOTER)
 print("✓ item_build.js")
 
-# ── 4. map_state.js ──────────────────────────────────────────────────────────
+# -- 4. map_state.js ----------------------------------------------------------
 MAP_STATE_HEADER = """\
 // Map State panel - minimap canvas, game clock, spell CDs, gold diff,
 // objective countdowns.
@@ -126,7 +126,7 @@ with open(f"{PANELS_DIR}/map_state.js", "w", encoding="utf-8") as f:
     f.write(MAP_STATE_HEADER + mm_dom + "\n" + mm_funcs + "\n" + mm_spell_fns + MAP_STATE_FOOTER)
 print("✓ map_state.js")
 
-# ── 5. champ_select.js ───────────────────────────────────────────────────────
+# -- 5. champ_select.js -------------------------------------------------------
 CHAMP_SELECT_HEADER = """\
 // Champ Select panel - interactive overlay during ChampSelect phase,
 // SR draft build chooser, champ-select analyzer.
@@ -166,7 +166,7 @@ with open(f"{PANELS_DIR}/champ_select.js", "w", encoding="utf-8") as f:
     f.write(CHAMP_SELECT_HEADER + cs_comment + cs_funcs1a + cs_funcs1b + "\n" + cs_panel_fixed + CHAMP_SELECT_FOOTER)
 print("✓ champ_select.js")
 
-# ── 6. bridge_pending.js ─────────────────────────────────────────────────────
+# -- 6. bridge_pending.js -----------------------------------------------------
 BRIDGE_PENDING_HEADER = """\
 // Bridge Pending panel - coach decisions banner, recent coach calls log,
 // bridge task pending display. setIntervals start at module load.
@@ -184,7 +184,7 @@ with open(f"{PANELS_DIR}/bridge_pending.js", "w", encoding="utf-8") as f:
     f.write(BRIDGE_PENDING_HEADER + bp_funcs + BRIDGE_PENDING_FOOTER)
 print("✓ bridge_pending.js")
 
-# ── 7. dev.js ────────────────────────────────────────────────────────────────
+# -- 7. dev.js ----------------------------------------------------------------
 DEV_HEADER = """\
 // Dev panel - settings, diagnostics, dev/sim fixture viewer, replay scrubber.
 import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
@@ -206,7 +206,7 @@ with open(f"{PANELS_DIR}/dev.js", "w", encoding="utf-8") as f:
     f.write(DEV_HEADER + dev_funcs + DEV_FOOTER)
 print("✓ dev.js")
 
-# ── 8. main.js - generate import block addition ──────────────────────────────
+# -- 8. main.js - generate import block addition ------------------------------
 # Print the 7 import lines to prepend after the existing lib imports.
 PANEL_IMPORTS = """
 // ── Panel modules ─────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
 
 print("\nAll 7 panel files written to", PANELS_DIR)
 
-# ── 9. Generate new main.js ─────────────────────────────────────────────────
+# -- 9. Generate new main.js -------------------------------------------------
 # Ranges to REMOVE from main.js (1-indexed, inclusive).
 # Order matters: must be non-overlapping. Listed in ascending order.
 REMOVE_RANGES = [

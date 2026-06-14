@@ -228,7 +228,7 @@ def _cache_key(champ: str, mode: str) -> str:
     return f"{champ.strip().lower().replace(' ', '').replace(chr(39), '')}_{mode}"
 
 
-# ── module-level conveniences used by Agent 1 dispatch payloads ─────
+# -- module-level conveniences used by Agent 1 dispatch payloads -----
 
 def refresh_ddragon() -> dict:
     return PipelineOrchestrator().refresh_ddragon()
@@ -245,7 +245,7 @@ def refresh_all(limit: int | None = None) -> dict[str, dict]:
     return PipelineOrchestrator().refresh_all(limit=limit)
 
 
-# ── CLI ─────────────────────────────────────────────────────────────
+# -- CLI -------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Agent 2 data pipeline")

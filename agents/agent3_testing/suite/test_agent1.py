@@ -112,7 +112,7 @@ def test_compact_keeps_latest_per_task(tmp_path: Path) -> None:
     s1 = Scheduler(queue_log=log, agent0_evaluate=Evaluator().evaluate,
                    compact_interval_s=0)  # disable daemon
     t_done = s1.file_task("done-task", owner_agent="6", priority=10)
-    s1.next_ready()            # filed → dispatched
+    s1.next_ready()            # filed -> dispatched
     s1.complete(t_done.id, result={"ok": True})
     t_open = s1.file_task("open-task", owner_agent="6", priority=20)
     # log now has: filed, dispatched, completed, filed = 4 lines, 2 task_ids
