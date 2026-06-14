@@ -46,15 +46,15 @@ DPS/EHP edges:
   - HP-scaling item in EHP term       -> HpScalingItemEhpEdge
   - time-window DPS = burst+sustain*t -> TimeWindowDpsEdge
 
-BUG FLAGGED in this lane (test-only - parallel subagent owns engine
-edits): see ``ZZZ_FlaggedBugDocs`` at the bottom (xfail-documented so the
-suite stays green).
+CONTRACT-GAP RESOLVED in this lane: the ``ZZZ_ResolvedContractGapDocs``
+class at the bottom held the former strict-xfail (lifesteal/spellvamp/
+omnivamp resolve as stats but had no named effective-EHP output). Closed
+in ENGINE 1.121.0 (2026-06-14) - the xfail is now a passing regression
+test (full coverage in ``test_ehp_sustain_contract.py``).
 """
 
 import math
 import unittest
-
-import pytest
 
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.dps import (
@@ -826,14 +826,17 @@ class TimeWindowDpsEdge(_SnapBase):
 
 
 class VampStatResolutionEdge(_SnapBase):
-    """Lifesteal/spellvamp resolve as STATS only - the scorers have NO
-    damage->sustain (effective healing) conversion. This is a documented,
-    ADR-level Phase 1 omission (see ehp.py module docstring: "Healing
-    throughput (lifesteal, Spirit Visage amp) - fits Phase 6") and the
-    snapshot carries NO omnivamp/spellvamp DDragon stat key at all. These
-    tests pin the ACTUAL contract (stat resolution, vamp does not alter
-    DPS/EHP output) so a future regression that silently starts/stops
-    folding vamp is caught. NOT flagged as a bug - intentional scope.
+    """Lifesteal/spellvamp resolve as STATS; DPS stays vamp-independent.
+
+    The EHP scorer DOES fold the lifesteal heal pool into blended_ehp since
+    ENGINE 1.28.0 (and ENGINE 1.121.0 names it via effective_ehp_with_sustain
+    + consumes spellvamp/omnivamp); the DPS rate, however, never reads vamp
+    (it is sustain, not damage). The snapshot carries NO omnivamp/spellvamp
+    DDragon stat key, so the spellvamp/omnivamp EHP contribution is 0 on every
+    current build (the sustain delta is lifesteal-only today). These tests pin
+    the ACTUAL contract (stat resolution, vamp does not alter DPS output, no
+    vamp item in the snapshot) so a regression is caught. NOT a bug - the data
+    reality the sustain wiring depends on.
     """
 
     def test_bloodthirster_lifesteal_resolves_as_stat_only(self) -> None:
@@ -876,12 +879,11 @@ class VampStatResolutionEdge(_SnapBase):
         self.assertEqual(b.stats.get("spellvamp", 0.0), 0.0)
 
 
-# === BUG FLAGGED (lane is test-only; documented via xfail) =================
+# === CONTRACT-GAP RESOLVED (ENGINE 1.121.0; passing regression) ============
 
 
-class ZZZ_FlaggedBugDocs(_SnapBase):
-    """Documented findings. xfail so the full suite stays green while the
-    parallel engine-owning subagent decides whether to fix.
+class ZZZ_ResolvedContractGapDocs(_SnapBase):
+    """Documented findings from the L3 audit pass.
 
     NOTE: after a careful pass over every wireable input and the DPS/EHP
     edges in this lane, NO incorrect-output engine bug was isolated - the
@@ -889,34 +891,38 @@ class ZZZ_FlaggedBugDocs(_SnapBase):
     share blending, and proc amortization all match the Riot/Meraki
     formulas exactly (verified by the passing derivation tests above).
 
-    The single item below is a CONTRACT-GAP flag, not a math error:
+    The single item below was a CONTRACT-GAP flag (not a math error):
     lifesteal/spellvamp/omnivamp are accepted as wireable stat inputs but
-    never converted to a sustain/effective-EHP output anywhere in the
-    scorer set (dps/ehp/hps/burst). It is documented in ehp.py as a
-    deliberate Phase 1 omission, so it is xfail-flagged (expected gap)
-    rather than asserted-broken. Surfaced for the engine owner to confirm
-    it stays deferred (no action expected this iteration).
+    historically had no explicitly-named sustain/effective-EHP output. The
+    EHP scorer already folds the lifesteal heal pool into blended_ehp since
+    ENGINE 1.28.0; ENGINE 1.121.0 (2026-06-14) CLOSES the gap by surfacing an
+    explicit ``effective_ehp_with_sustain`` term (+ ``ehp_without_sustain`` /
+    ``sustain_ehp_delta`` / a ``sustain`` to_dict block) and consuming the
+    previously-unconsumed spellvamp / omnivamp stats into it. The former
+    strict-xfail is now a passing regression test (full coverage in
+    ``test_ehp_sustain_contract.py``).
     """
 
-    @pytest.mark.xfail(
-        reason="CONTRACT GAP (not a math bug, documented Phase 1 omission): "
-        "lifesteal/spellvamp resolve as stats but no scorer converts "
-        "damage*vamp into sustain or an effective-survivability term. "
-        "ehp.py module docstring explicitly defers this to Phase 6. "
-        "Engine-owner decision only; lane L3 is test-only.",
-        strict=True,
-    )
-    def test_lifesteal_should_feed_an_effective_sustain_term(self) -> None:
-        # If/when sustain is modeled, a Bloodthirster build's effective
-        # survivability vs sustained physical damage should exceed its
-        # raw EHP by (lifesteal * outgoing_dps)/incoming_dps. Today no
-        # such field exists on EhpResult/DpsResult, so this assertion
-        # fails (xfail) - documenting the gap precisely.
+    def test_lifesteal_feeds_an_effective_sustain_term(self) -> None:
+        # ENGINE 1.121.0: a Bloodthirster build's effective survivability
+        # WITH vamp sustain exceeds the vamp-stripped raw EHP by the lifesteal
+        # heal contribution. The named term + a "sustain" to_dict block now
+        # exist on EhpResult.
         e = compute_ehp(self.snap, "Aatrox", level=11, item_ids=["3072"])
-        self.assertTrue(
-            hasattr(e, "effective_ehp_with_sustain")
-            or "sustain" in e.to_dict(),
-            "no sustain/effective-survivability field on EhpResult",
+        self.assertTrue(hasattr(e, "effective_ehp_with_sustain"))
+        self.assertIn("sustain", e.to_dict())
+        # Lifesteal (BT) lifts effective survivability above the raw EHP.
+        self.assertGreater(e.ehp_without_sustain, 0.0)
+        self.assertGreater(e.effective_ehp_with_sustain, e.ehp_without_sustain)
+        # No spellvamp/omnivamp item on SR -> effective == blended_ehp (the
+        # lifesteal heal is already in blended_ehp since ENGINE 1.28.0).
+        self.assertAlmostEqual(
+            e.effective_ehp_with_sustain, e.blended_ehp, places=6
+        )
+        self.assertAlmostEqual(
+            e.sustain_ehp_delta,
+            e.effective_ehp_with_sustain - e.ehp_without_sustain,
+            places=6,
         )
 
 
