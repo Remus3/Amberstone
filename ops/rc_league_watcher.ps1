@@ -4,10 +4,10 @@
 # Runs hidden at Windows startup. No interaction required.
 #
 # When LeagueClient.exe or League of Legends.exe is detected:
-#   → Starts supervisor + file bridge (full Riot Commander stack)
-#   → The supervisor owns the PID lock and starts the app
+#   -> Starts supervisor + file bridge (full Riot Commander stack)
+#   -> The supervisor owns the PID lock and starts the app
 # When all League processes disappear:
-#   → Cleanly stops the full stack
+#   -> Cleanly stops the full stack
 #
 # Phase 0: Deprecated paths
 #   watchdog.ps1              - replaced by rc_self_monitor inside rc_supervisor
@@ -22,7 +22,7 @@ param(
 
 $ErrorActionPreference = "SilentlyContinue"
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# -- Config --------------------------------------------------------------------
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
     $ConfigPath = Join-Path $ScriptDir "rc_config.json"
@@ -47,7 +47,7 @@ $pollInterval    = 4
 # Prevents false stops during client restarts / patch updates
 $gracePeriod     = 12
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 function Write-Log {
     param([string]$Text)
     $stamp = (Get-Date).ToString("s")
@@ -90,7 +90,7 @@ function Start-Stack {
     $bridgeScript     = Join-Path $projectRoot "ops\rc_file_bridge.py"
     $pidLockFile      = Join-Path $runtimeDir  "supervisor.pid"
 
-    # ── Kill deprecated watchdog processes first ──────────────────────────
+    # -- Kill deprecated watchdog processes first --------------------------
     # watchdog.ps1 (old) and run_self_healing_watchdog.ps1 must not run
     # alongside the new supervisor stack - they create duplicate restarts.
     $legacyWatchdogs = @(
@@ -107,7 +107,7 @@ function Start-Stack {
         }
     }
 
-    # ── Check PID lock - don't start supervisor if one is already running ─
+    # -- Check PID lock - don't start supervisor if one is already running -
     if (Test-Path $pidLockFile) {
         $existingPid = $null
         try {
@@ -219,7 +219,7 @@ function Stop-Stack {
     Write-Log "Stack stopped"
 }
 
-# ── Main loop ─────────────────────────────────────────────────────────────────
+# -- Main loop -----------------------------------------------------------------
 Write-Log "League watcher started (PID=$PID) - polling every ${pollInterval}s"
 Write-Log "Watching for: $($leagueProcesses -join ', ')"
 

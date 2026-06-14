@@ -1,4 +1,4 @@
-﻿"""
+"""
 ops/rc_supervisor.py  --  Phase 0 control plane (FROZEN)
 
 Phase 0 is complete and externally signed off. Do not make semantic changes

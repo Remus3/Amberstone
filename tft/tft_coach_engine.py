@@ -35,26 +35,26 @@ FEASIBILITY: Never suggest actions that require gold you don't have. No PvP tips
 
 GOD ALIGNMENT (Set 17 mechanic  -  replaces carousel):
   Stage X-4 = choose between 2 god offerings. Stage 4-7 = God Boon armory. Every offering includes a component.
-  ALIGN RULE: Take same god â‰¥2 times on stages 2/3/4 to unlock their Boon at 4-7.
+  ALIGN RULE: Take same god >=2 times on stages 2/3/4 to unlock their Boon at 4-7.
   
   9 GODS  -  tier and strategy:
   S-TIER BOONS (take these):
-  â€¢ Evelynn (Temptation): Instinct artifact boon. Strong frontline-light boards. Execute + AS burst.
-  â€¢ Yasuo (Abyss): Empowers hexes. Best for comps that want hex positioning (Stargazer, Conduit).
+  - Evelynn (Temptation): Instinct artifact boon. Strong frontline-light boards. Execute + AS burst.
+  - Yasuo (Abyss): Empowers hexes. Best for comps that want hex positioning (Stargazer, Conduit).
   
   A-TIER BOONS:
-  â€¢ Ekko (???): Delayed value  -  delayed components/power. Prioritize when loss-streaking.
-  â€¢ Varus (Love): Offers 3/4/5-cost unit selectors. Best when you need a specific 4-5 cost.
-  â€¢ Soraka (Stars): HP-focused. Soraka's Miracle artifact. Best when HP-pressured or loss-streaking.
+  - Ekko (???): Delayed value  -  delayed components/power. Prioritize when loss-streaking.
+  - Varus (Love): Offers 3/4/5-cost unit selectors. Best when you need a specific 4-5 cost.
+  - Soraka (Stars): HP-focused. Soraka's Miracle artifact. Best when HP-pressured or loss-streaking.
   
   B-TIER BOONS:
-  â€¢ Ahri (Opulence): Gold/econ boons. Good for fast-9 boards. Foxfire artifact for AP carries.
-  â€¢ Aurelion Sol (Wonders): Quest boon  -  complete trait breakpoints for bonus. Risky/conditional.
-  â€¢ Kayle (Exaltation): Extra components. Kayle's Exaltation artifact  -  radiant items after 18s.
-  â€¢ Thresh (???): Pulls bench unit to board. Thresh's Lantern artifact  -  redirects damage.
+  - Ahri (Opulence): Gold/econ boons. Good for fast-9 boards. Foxfire artifact for AP carries.
+  - Aurelion Sol (Wonders): Quest boon  -  complete trait breakpoints for bonus. Risky/conditional.
+  - Kayle (Exaltation): Extra components. Kayle's Exaltation artifact  -  radiant items after 18s.
+  - Thresh (???): Pulls bench unit to board. Thresh's Lantern artifact  -  redirects damage.
   
   OFFERING CHOICE: Take the offering that best fits current streak/board state.
-  Win streak â†' take combat-power offering. Loss streak â†' take econ/delayed-value offering.
+  Win streak -> take combat-power offering. Loss streak -> take econ/delayed-value offering.
   Pengu offering: higher cost units if HP is low (catch-up mechanism).
 
 
@@ -65,7 +65,7 @@ Board: actual unit names + grid positions (tanks A wide, carries D6-7)
 Econ: level/gold timing
 Rolldown: trigger + stagger note
 Items: component names + holder
-God pick: Realm of Gods offering choice (componentâ†'carry; God Boonâ†'best boon for comp)
+God pick: Realm of Gods offering choice (component->carry; God Boon->best boon for comp)
 Placement: anti-flank + Double Up donation/request (required every round)
 Upgrade: pivot trigger
 Risk: single threat (include partner HP if critical)
@@ -277,7 +277,7 @@ def _build_prompt(state: dict) -> str:
         lines.append(f"Players alive: {player_count} ({team_count} teams) | Your HP: {hp_display} | Partner HP: {partner_hp_str}")
         if _partner_hp is not None:
             if int(_partner_hp) < 25:
-                lines.append(f"âš  PARTNER HP CRITICAL ({_partner_hp})  -  donate tank unit immediately")
+                lines.append(f"[!]  PARTNER HP CRITICAL ({_partner_hp})  -  donate tank unit immediately")
             elif int(_partner_hp) < 35:
                 lines.append(f"Partner HP low ({_partner_hp})  -  consider donating frontline unit")
     else:
