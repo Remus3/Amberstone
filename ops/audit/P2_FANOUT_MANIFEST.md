@@ -107,7 +107,15 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       production ASCII slice) + wakeup_prune 3 U+2705 PIN-emoji fixtures (load-bearing).
       No product/DS/frozen edit, no ENGINE bump. Gate 7885p/2s exit 0 + truth_gate
       PROCEED. DEFER in ops/audit/P2_FINDINGS.md (W5 section).
-- [ ] agents/daemon_slayer/tests ~222 files / ~81k LOC (~6 slices, same lens) - cycle 17
+- [x] agents/daemon_slayer/tests 222 / 86705 - DONE cycle 17 (item 412, audit commit 2d49b35b;
+      6 disjoint parallel slices A-F, no worktrees). Outcome matches half 1: corpus mature + CLEAN -
+      ZERO product bugs, ZERO new tests. Sole FIX-NOW = non-ASCII glyph cleanup (39 files swept;
+      em/en-dash + smart quotes ZERO at start - all hits decorative/load-bearing non-banned glyphs,
+      charter auth 6/7). 1 justified non-ASCII remains: test_effects_expansion.py:3892 regex matching
+      dps.py's emitted "armor X -> Y" note (production U+2192, DS-engine analog of the W5h1 aram-coach
+      arrow; DEFER to a P3/P4 production ASCII slice). No product/DS/frozen edit, no ENGINE bump. Gate
+      DS-dir 7075p/1s/1xf/1942 subtests exit 0 BYTE-IDENTICAL to baseline. DEFER in P2_FINDINGS.md
+      (W5 half 2). **W5 TEST CORPUS COMPLETE.** Next P2 wave: none (W1-W5 all done) -> P3 PRUNE SWEEPS.
 
 ## Standing finding classes (from cycles 1-6, watch for siblings)
 
