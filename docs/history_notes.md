@@ -2,6 +2,19 @@
 
 ## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
 
+# 2026-06-13 - DEEP-AUDIT cycle 12: P2 W2 DS-engine fanout, HALF-WAVE 2 slices D/E/G/H [item 406] (relocated 2026-06-13, cycle 14 wrap)
+
+- 37 files / ~20k LOC audited via 4 disjoint PARALLEL slices (no worktrees - disjoint sets, robust to agent death; D effects-data _effects_data/_effects_types/effects, E passive-overrides 12 _ability_*/_passive_*/_champion_* registries, G remaining-mechanics rune_procs/mana_sim/combo/_rank_mage/matchup/cooldown_watch/augments/augment_formula_eval/geometry/spike_markers/_item_ability_haste/recharge_ledger/modifier_blocks/ult_rates/_item_tenacity/scenario_matrix/fight_report, H agents/supervisor set supervisor/_supervisor_{http,common,ephemeral}/_minimap_bbox). commit fe06b957; 47 new tests (tests/test_p2w2_ds_{d,e,g,h}.py 19/11/5/12). **W2 DS engine COMPLETE** (hw1 cycle 11 + hw2 here).
+- NO frozen-file edits - no DS file is frozen; agents/supervisor.py is Phase 3 (NOT frozen; frozen = ops/rc_supervisor.py, untouched). NO ENGINE_VERSION bump (defect guards on degenerate input, not a math change).
+- HIGH D _effects_types.py: resolve_damage (%-target-HP proc lambda chokepoint, e.g. BotRK) leaked raw inf/NaN -> DpsResult.weighted_dps -> routes_ds_statcheck json.dumps allow_nan=True -> bare Infinity token (live-proven); + ItemShield/ItemHeal.resolve_magnitude inf via max(0.0,inf); all 3 now isfinite-floor to 0.0 (928-test effects/ehp regression unchanged).
+- HIGH G fight_report.py: to_dict serialized mana_pool=math.inf (every manaless champ; mana_sim "no finite-mana gate" sentinel pinned by test_mana_sim.py:115) into server.py:1740 json.dumps -> bare Infinity; coerced to JSON null at the boundary (field stays inf, resource_type keeps Energy/None).
+- HIGH H _supervisor_http.py x2: ~16 handler sites sent {"error": str(e)}/f"...{e}" leaking internal paths to the wire (cycle-7/8 class) -> new _send_error generic body + log; _send_json allow_nan=False. _supervisor_ephemeral raw proc.stderr in EphemeralSpawnFailed -> task.last_error -> /api/task wire (API-key echo risk) -> _redact_secrets.
+- MED E _passive_resist/_passive_ally_grant percent-of-resist paths (item-268 Malphite/Taric/Poppy/Rell/Rammus) zero non-finite res_a/res_m (EHP-denominator leak); MED H _supervisor_common non-atomic lockfile the FROZEN _Phase3Watcher polls -> _atomic_write_json (tmp+os.replace); LOW H supervisor.stop() logging.raiseExceptions=False drain (cycle-5 class). _minimap_bbox CLEAN.
+- Gate: round A REFUSE 15509p/2f - 2 slice-H stop() tests used asyncio.run(sup.stop()) which dies under the suite's known main-thread loop polluter (cycle-7/item-401, green in isolation) -> thread-isolated _run_coro runner (source fixes untouched, all 4 CONFIRM). Round B truth_gate PROCEED 15511p/0f/0e/7s exit 0 (ops/audit/p2w2_ds_hw2_truth_gate_report.json; +47 = cycle-11 15464 + 47 new exactly). DS :8893 restarted pid 25000 + RC-Phase3-Supervisor bounced pid 16104.
+- NEXT cycle 13: W3 web surface = web/js 58/27020 (~5 slices, panels independent) + web/css 48/16635 (~3 slices, tokens.css first) per P2_FANOUT_MANIFEST.
+
+---
+
 # 2026-06-03 - RC-WIDE: BSOD purge + vision unrestrict + DS ability-ratio re-source + Share/docs (multi-agent)
 
 Caveman ULTRA, 8 subagents. WIN 1 + WIN 2 were already shipped (1.107/1.108) at session start; this session is the operator's follow-on RC-wide directive. RC NOT restarted (no ENGINE bump - the DS work is additive tooling). 3 content commits + this WAKEUP, then a history-wide co-author-trailer strip + force-push (operator EXPLICIT permission). Canonical suite (tools+DS+tests/) GREEN 11514 passed / 2 skip / 1 xfail exit 0.

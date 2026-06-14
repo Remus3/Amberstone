@@ -491,3 +491,74 @@ names, LLM coach text, OCR text, DDragon/engine names) interpolated raw into inn
   last_match / dev / bridge_pending / screen_read render dynamic strings via createElement +
   textContent/.title (immune to HTML parse) or a pre-existing local _escHtml; cc_pairing /
   callouts / pgr_winprob / cd_ledger / ds_matchup already escaped every interpolation.
+
+## W4 operational tooling - tools/ half-wave 1 (cycle 14, item 409)
+
+### MED
+- tools/rc_facts.py:40 + tools/calibrate_vision.py:25 (+ doc wrap-gamepc.md:19) hardcode the
+  fleet relay bearer token `8e8f131e...` as a source literal (sent Authorization: Bearer).
+  Localhost/tailnet-bound, not a Riot/Anthropic secret, but belongs in config not source -
+  cross-file, operator-gated. Same literal pervasive across ~12-18 files (bridge_mcp/cli too).
+- tools/package_portable.py:81 + build_installer.py:72 + run_packaged_smoke.py:88 spawn the
+  build-chain child (build_portable/package_portable) with NO subprocess timeout - a wedged
+  child build hangs the packaging chain / CI indefinitely (the bootstrap subprocesses in the
+  same files DO have timeouts; only the build-chain spawns lack them).
+- tools/scheduled_boot_verify.py:104 _write() does a direct write_text (not tmp+replace) - a
+  crash mid-write leaves a torn boot-verify jsonl; :34 _OUT_DIR.mkdir() runs at import (raises
+  on import, not in main(), if LOCALAPPDATA unwritable).
+- tools/bridge_watcher.py:162 _atomic_write_json could pass allow_nan=False to harden the
+  health/pending dumps, but the write path only catches OSError (not the ValueError that
+  allow_nan=False raises) - needs ValueError handling FIRST or it crashes the poll loop. The
+  parse-chokepoint fix (bridge_watcher_actions cost guard, applied) already blocks the only
+  remote vector; this is defense-in-depth.
+
+### LOW
+- tools/bridge_mcp_server.py:213-223 _norm_source/_norm_target not URL-encoded before f-string
+  interpolation into the bridge GET querystring (a source containing & could append params).
+  Localhost-only MCP, args from a local agent. Add urllib.parse.quote.
+- tools/daemon_slayer_extract.py:112 + daemon_slayer_abilities_extract.py:286 write
+  ensure_ascii=False (unlike the 4 newer sidecar extractors) - intentional for legit non-ASCII
+  DDragon/Meraki prose, but a non-ASCII char lands in committed data JSON.
+- tools/champion_loadout_autogen.py:415 atomic_write_loadouts writes ensure_ascii=False while
+  every sibling writer uses True - could let a non-ASCII glyph into curated JSON (harmless today).
+- tools/validate_loadouts.py:28 + champion_loadout_invariants.py:112,139 validate-silently-passes
+  on empty input (empty champion_loadouts.json / empty items.json catalog validates as OK).
+- tools/champion_loadout_validate_meta.py:146 MULTIPLE_BOOTS dedup unreachable when first boot
+  is not at index 1 (spent item-200 migration; live data passes; superseded by Cleaner._reseat_boots).
+- tools/ds_cc_conditional_to_json.py:84 + ds_execute_prefilter.py:25 + ds_cond_pair_prefilter.py:21
+  + ds_cond_inspect.py:12 bare open() no encoding=, unclosed - dev one-shot scanners, fail-loud,
+  never imported by runtime.
+- tools/daemon_slayer_build_orders_generate.py:98 + daemon_slayer_pickban_targets_generate.py:102
+  + ds_share_sync.py:11,115 stale _FALLBACK_PATCH / docstring 16.11.1 vs live 16.12.1 (harmless;
+  only guards a missing current.txt on fresh checkout).
+- tools/ds_matchdb_mcp_server.py:167 hardcoded fallback bearer token (documented localhost-only
+  "override in prod"; server binds 127.0.0.1).
+- tools/gemini_audit.ps1:56 + gemini_ask.ps1:27 native gemini CLI calls have retry/backoff
+  bounding attempts but no hard wall-clock cap - a hung CLI stalls the scheduled run.
+- tools/usage-mcp-server.js:105,119 echoes JSON.stringify(API error body) on non-200 - the
+  Anthropic error envelope does NOT contain the key (no secret leak); NaN path already fail-soft.
+- The test_bare_py_ban.py guard regex (_BARE_PY) has a GAP: it does not match the `& py (...)`
+  call-operator form nor `& py "$var\tools\..."` (quoted-variable, no drive-letter) - two .ps1
+  files (bridge_setup, headless_run) slipped through despite the live defect. TIGHTEN the pattern.
+
+### INFO (W4)
+- tools/*.cmd packaging wrappers + the 4 strip_* tools (strip_smart_quotes/strip_em_dashes/
+  strip_u2500/repair_mojibake) audited CLEAN: canonical-interpreter pin, atomic tmp+replace,
+  self-excluded walk, banned glyphs built via chr()/\xNN so they stay 7-bit ASCII. regen_rc_cert.ps1
+  cert handling sound (ErrorActionPreference Stop, no key exposure, leaf-only). truth_gate/
+  precommit_gate/text_first_guard fail-closed/fail-open correctly by design.
+- The 12 ds_*_build.py scorers + the EXHAUSTED block/form/max_priority prefilters are sound
+  retain-for-patch-re-extract tooling (CLAUDE.md Settled) - NOT prune candidates.
+- *-rootca-on-gamepc.cmd (3 cert installers) carry LOW non-ASCII arrows (U+2192) + are Game-PC
+  P3-prune candidates. tools/*.md skill/plan docs (BRIDGE_WATCHER_PLAN, LAUNCH_STRATEGY,
+  PYTHON_BUNDLING_STRATEGY stale wrapper-order, headless-upgrade gamepc ref) -> P8 doc rewrite.
+- P3-prune feed (verdict slices F + I): ARCHIVE 9 dated one-shots (hotfix_sr_adc_loadouts_item167
+  + hotfix_kaisa_aram_ashe_sr_item263 + regen_ranged_marksman_item213 are HAZARD-if-rerun
+  unconditional clobbers - archiving neutralizes; + hotfix_sibling_item269/arena_mage_item273/
+  thin_aram_item275/item276/zaahen_item277 + migrate_carry_summoners) + champion_loadout
+  _backfill_item208_carry + _sweep_item_s8 + migrate_abilities_* (3). gamepc_*: 3 LIVE-on-Legion
+  RENAME (lcu_agent/liveclient_relay/hotkey_listener -> legion_*, Tier-2: 3 tasks + ~8 test
+  imports) + 5 DEAD ARCHIVE (screen_agent/phase_watcher/mcp_server/bridge_daemon/
+  phase_watcher_install) + keybind_listener DELETE + Game-PC doc/boot bundle KEEP-historical
+  pending operator decommission. KEEP-live: replay_matchup/pickban_validate, recover_match_via_match_v5,
+  probe_101qq, compare_101qq, match_monitor, backfill_match_ingest_misattribution.
