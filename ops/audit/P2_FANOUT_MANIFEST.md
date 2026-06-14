@@ -76,10 +76,16 @@ quarantine policy (reference_archive_dir); note-only if grep shows a live import
       no ENGINE bump, no RC restart (ADR-008 asset-hash). DEFER in ops/audit/P2_FINDINGS.md.
 
 ### W4 operational tooling - ~10 slices
-- [ ] tools/ 164 / 43633 (~8 slices; bridge family frozen-but-open; gamepc_*
-      tools get P3-prune verdicts here, not deep audit)
+- [x] tools/ 164 / 43633 - DONE cycle 14 (item 409, audit commit c53480fa; 9 disjoint
+      parallel slices A-I). FIX-NOW (8) = the tools/ non-finite-JSON-token class
+      (bridge_watcher_actions cost / wiki extractors / ds_matchdb MCP / cost_health ledger)
+      + 2 bare-py .ps1 fixes (bridge_setup, headless_run) + loadout unique-family dedup.
+      1 frozen edit: bridge_watcher_actions.py. F + I verdict-only (P3-prune feed: 9 one-shots
+      ARCHIVE + 3 gamepc_* live-RENAME + 5 gamepc_* DEAD-ARCHIVE). Also realigned 7 stale
+      test_pytest_guard tests (pre-existing red at HEAD from item 408). Gate PROCEED 15558p/0f/7s.
+      DEFER in ops/audit/P2_FINDINGS.md (W4 section).
 - [ ] scripts/ + ops/ + rc-shell/ + tft/ + (root) + riot-commander.spec
-      114 / 24433 (~2-3 slices)
+      114 / 24433 (~2-3 slices) - NEXT cycle 15 (W4 half-wave 2)
 
 ### W5 test corpus (lighter lens: assertion correctness, fixture pins, dead tests)
 - [ ] tests/ 359 / 81155 (~6 slices, grep-driven: data-fragile assertions,
