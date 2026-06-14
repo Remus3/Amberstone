@@ -68,14 +68,14 @@ class AatroxDpsBaselineTests(unittest.TestCase):
 
     def test_naked_lvl_1_early_phase(self) -> None:
         # Hand-calc verification for Aatrox lvl 1 naked, early phase:
-        #   AD=60, AS=0.651, crit=0 → avg per-hit = 60
+        #   AD=60, AS=0.651, crit=0 -> avg per-hit = 60
         #   Rotations:
         #     QQQ auto:  basic=1, basicTime=0, duration=3, weight=20
-        #                attacks = 1 → dps = 60/3 = 20.0
+        #                attacks = 1 -> dps = 60/3 = 20.0
         #     Major Harass: basic=2, basicTime=1, duration=6, weight=30
-        #                attacks = 2 + 0.651 = 2.651 → dps = 2.651*60/6 = 26.51
+        #                attacks = 2 + 0.651 = 2.651 -> dps = 2.651*60/6 = 26.51
         #     All-out: basic=2, basicTime=2, duration=7, weight=50
-        #                attacks = 2 + 1.302 = 3.302 → dps = 3.302*60/7 = 28.30
+        #                attacks = 2 + 1.302 = 3.302 -> dps = 3.302*60/7 = 28.30
         #   Weighted: (20*20 + 26.51*30 + 28.30*50) / 100 = 26.10
         r = compute_dps(self.snap, "Aatrox", level=1)
         self.assertEqual(r.phase, "early")
@@ -118,7 +118,7 @@ class ItemImpactTests(unittest.TestCase):
         naked = compute_dps(self.snap, "Aatrox", level=1)
         bt = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3072"])
         self.assertGreater(bt.weighted_dps, naked.weighted_dps)
-        # AD goes from 60 → 140 (factor 7/3); attacks/duration unchanged.
+        # AD goes from 60 -> 140 (factor 7/3); attacks/duration unchanged.
         self.assertAlmostEqual(bt.weighted_dps, naked.weighted_dps * 140 / 60, places=1)
 
     def test_berserkers_raises_dps_via_as(self) -> None:
@@ -129,8 +129,8 @@ class ItemImpactTests(unittest.TestCase):
 
     def test_infinity_edge_raises_dps_via_ad_and_crit(self) -> None:
         # IE 16.9.1: +75 AD, +25% crit, +30% bonus crit damage (Phase 4 effect).
-        # Combines AD bump (60→135) with crit avg factor
-        # (1 + 0.25*(0.75+0.30) = 1.2625). DPS should scale ≈ 135/60 * 1.2625.
+        # Combines AD bump (60->135) with crit avg factor
+        # (1 + 0.25*(0.75+0.30) = 1.2625). DPS should scale ~ 135/60 * 1.2625.
         naked = compute_dps(self.snap, "Aatrox", level=1)
         ie = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3031"])
         self.assertGreater(ie.weighted_dps, naked.weighted_dps)
@@ -142,7 +142,7 @@ class ItemImpactTests(unittest.TestCase):
         )
 
     def test_crit_caps_at_one(self) -> None:
-        # 5x IE = 125% pre-clamp → clamped to 100% in engine. Each IE also
+        # 5x IE = 125% pre-clamp -> clamped to 100% in engine. Each IE also
         # stacks +30% bonus crit damage (effects.ITEM_EFFECTS), so total
         # crit_bonus = 0.75 + 5*0.30 = 2.25.
         r = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3031"] * 5)
@@ -161,7 +161,7 @@ class TargetResistTests(unittest.TestCase):
     def test_target_armor_scales_dps_by_armor_factor(self) -> None:
         bare = compute_dps(self.snap, "Aatrox", level=1)
         armored = compute_dps(self.snap, "Aatrox", level=1, target_armor=100.0)
-        # 100 armor → factor 0.5
+        # 100 armor -> factor 0.5
         self.assertAlmostEqual(armored.weighted_dps, bare.weighted_dps * 0.5, places=2)
 
     def test_negative_armor_amplifies(self) -> None:
@@ -257,7 +257,7 @@ class DpsCurveTests(unittest.TestCase):
         self.assertEqual(phases, ["early", "early", "mid", "late", "late"])
 
     def test_naked_ad_grows_monotonically(self) -> None:
-        # AD per-level is positive for Aatrox; bare build → AD strictly
+        # AD per-level is positive for Aatrox; bare build -> AD strictly
         # increases at each sampled level.
         curve = compute_dps_curve(self.snap, "Aatrox")
         ads = [p.stats["ad"] for p in curve]
@@ -297,7 +297,7 @@ class DpsCurveTests(unittest.TestCase):
     def test_aram_mode_threads_through(self) -> None:
         sr = compute_dps_curve(self.snap, "Aatrox", mode="SR")
         aram = compute_dps_curve(self.snap, "Aatrox", mode="ARAM")
-        # Aatrox aramDamageDealt = 1.05 → each level's DPS is 1.05x of SR.
+        # Aatrox aramDamageDealt = 1.05 -> each level's DPS is 1.05x of SR.
         for s, a in zip(sr, aram):
             self.assertAlmostEqual(a.weighted_dps, s.weighted_dps * 1.05, places=1)
 

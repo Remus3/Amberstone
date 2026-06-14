@@ -22,7 +22,7 @@ Engine surface:
 Seed entries (4):
   * Camille W=[0, 1]      - Tactical Sweep base + Outer Cone Bonus
   * Malphite W=[2, 3]     - active cast + first empowered AA
-  * Heimerdinger W=[0,1,1,1,1] - Initial + 4× Subsequent rockets
+  * Heimerdinger W=[0,1,1,1,1] - Initial + 4x Subsequent rockets
   * Katarina R=[1, 3]     - full Death Lotus single-target totals
 
 Backward-compat: existing single-int entries unchanged; single-int callers
@@ -86,7 +86,7 @@ def _ctx() -> AbilityContext:
     )
 
 
-# ─── _normalize_block_index_value ────────────────────────────────────────────
+# --- _normalize_block_index_value --------------------------------------------
 
 
 class NormalizeBlockIndexValueTests(unittest.TestCase):
@@ -130,7 +130,7 @@ class NormalizeBlockIndexValueTests(unittest.TestCase):
             _normalize_block_index_value(None)
 
 
-# ─── _select_blocks list-path semantics ──────────────────────────────────────
+# --- _select_blocks list-path semantics --------------------------------------
 
 
 class SelectBlocksListTests(unittest.TestCase):
@@ -164,7 +164,7 @@ class SelectBlocksListTests(unittest.TestCase):
         )
 
     def test_list_with_repetition(self) -> None:
-        # [0, 1, 1, 1, 1] = 100 + 4×50 = 300 (Heimerdinger W shape)
+        # [0, 1, 1, 1, 1] = 100 + 4x50 = 300 (Heimerdinger W shape)
         self.assertEqual(
             _select_blocks(self.blocks, 0, self.ctx, "indexed", block_index=[0, 1, 1, 1, 1]),
             300.0,
@@ -198,7 +198,7 @@ class SelectBlocksListTests(unittest.TestCase):
         )
 
 
-# ─── Registry shape - 4 seed entries ─────────────────────────────────────────
+# --- Registry shape - 4 seed entries -----------------------------------------
 
 
 class RegistrySeedEntriesTests(unittest.TestCase):
@@ -229,7 +229,7 @@ class RegistrySeedEntriesTests(unittest.TestCase):
         self.assertEqual(m.get("R"), [1, 3])
 
 
-# ─── _resolve_block_index_overrides preserves list values ────────────────────
+# --- _resolve_block_index_overrides preserves list values --------------------
 
 
 class ResolveBlockIndexListMergeTests(unittest.TestCase):
@@ -261,7 +261,7 @@ class ResolveBlockIndexListMergeTests(unittest.TestCase):
         self.assertEqual(merged.get("Q"), [0, 1])
 
 
-# ─── compute_ability_dps integration - 4 seed entries ────────────────────────
+# --- compute_ability_dps integration - 4 seed entries ------------------------
 
 
 class AbilityDpsSumOfBlocksTests(unittest.TestCase):
@@ -325,7 +325,7 @@ class AbilityDpsSumOfBlocksTests(unittest.TestCase):
         s_sum = self._spell("Heimerdinger", "W")
         s_block0 = self._spell_forced("Heimerdinger", "W", 0)
         s_block1 = self._spell_forced("Heimerdinger", "W", 1)
-        # [0, 1, 1, 1, 1] = block 0 + 4× block 1
+        # [0, 1, 1, 1, 1] = block 0 + 4x block 1
         expected = s_block0.raw_damage_per_cast + 4 * s_block1.raw_damage_per_cast
         self.assertAlmostEqual(s_sum.raw_damage_per_cast, expected, places=4)
 
@@ -347,7 +347,7 @@ class AbilityDpsSumOfBlocksTests(unittest.TestCase):
         )
 
 
-# ─── compute_burst_damage integration ────────────────────────────────────────
+# --- compute_burst_damage integration ----------------------------------------
 
 
 class BurstSumOfBlocksTests(unittest.TestCase):
@@ -385,7 +385,7 @@ class BurstSumOfBlocksTests(unittest.TestCase):
         self.assertGreater(c_sum.raw_damage, c_forced2.raw_damage)
 
 
-# ─── Backward-compat - single-int registry entries unchanged ─────────────────
+# --- Backward-compat - single-int registry entries unchanged -----------------
 
 
 class BackwardCompatIntEntriesTests(unittest.TestCase):
@@ -417,7 +417,7 @@ class BackwardCompatIntEntriesTests(unittest.TestCase):
         self.assertIsInstance(m.get("W"), list)
 
 
-# ─── Live server route checks ────────────────────────────────────────────────
+# --- Live server route checks ------------------------------------------------
 
 
 class ServerRouteSumOfBlocksTests(unittest.TestCase):
@@ -469,7 +469,7 @@ class ServerRouteSumOfBlocksTests(unittest.TestCase):
         self.assertIsNotNone(s)
         # Forced single-block reference for comparison.
         s_single = self._spell("Yasuo", "Q", block_index={"Q": 0})
-        # [0, 0] = block 0 + block 0 = 2× block 0.
+        # [0, 0] = block 0 + block 0 = 2x block 0.
         self.assertAlmostEqual(
             s["raw_damage_per_cast"],
             2 * s_single["raw_damage_per_cast"],

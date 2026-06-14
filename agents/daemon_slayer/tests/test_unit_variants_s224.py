@@ -10,18 +10,18 @@ covered champions not yet in the registry - via a pre-filter over all
   canonical recast nuke (150-250 + 100% AP + 25% missing-HP); the engine
   defaulted to block 0 (6-10 per-takedown true dmg, ~25x under). This
   CORRECTS s223's over-conservative "no entry, already parsed" call -
-  field-parsed ≠ engine-block-selected. Bel'Veth → {E:2, R:1}.
+  field-parsed != engine-block-selected. Bel'Veth -> {E:2, R:1}.
 
   PART 2 (parser, s223-sibling) - `_UNIT_TO_FIELD` was missing a family
   of Meraki text-drift health-unit variants (double-space, "the
   target's", caster pronoun/name forms). 8 keys added; a deterministic
   audit-gated migration promoted exactly 32 modifiers across 13
-  champions (Ambessa Q · Braum Q · Briar W · Fiddlesticks Q · Gnar E ·
-  Gwen Q·R · Maokai Q · Sejuani W · Skarner E · TahmKench R · Trundle R ·
-  Varus W · Zac Q) whose %HP component was silently dropped - Trundle R
+  champions (Ambessa Q - Braum Q - Briar W - Fiddlesticks Q - Gnar E /
+  Gwen Q/R - Maokai Q - Sejuani W - Skarner E - TahmKench R - Trundle R /
+  Varus W - Zac Q) whose %HP component was silently dropped - Trundle R
   and Fiddlesticks Q evaluated to 0 entirely pre-s224.
 
-ENGINE_VERSION 0.95.0 → 0.96.0 pinned.
+ENGINE_VERSION 0.95.0 -> 0.96.0 pinned.
 """
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── PART 2a - _UNIT_TO_FIELD variant additions ──────────────────────────────
+# --- PART 2a - _UNIT_TO_FIELD variant additions ------------------------------
 
 
 class UnitTableVariantTests(unittest.TestCase):
@@ -86,7 +86,7 @@ class UnitTableVariantTests(unittest.TestCase):
                          "caster_max_hp_pct")
 
 
-# ─── PART 2b - migration applied to the live snapshot ────────────────────────
+# --- PART 2b - migration applied to the live snapshot ------------------------
 
 
 class SnapshotMigrationS224Tests(unittest.TestCase):
@@ -139,7 +139,7 @@ class SnapshotMigrationS224Tests(unittest.TestCase):
             )
 
 
-# ─── PART 1 - Bel'Veth R entry + A/B ─────────────────────────────────────────
+# --- PART 1 - Bel'Veth R entry + A/B -----------------------------------------
 
 
 class BelvethREntryTests(unittest.TestCase):
@@ -163,7 +163,7 @@ class BelvethREntryTests(unittest.TestCase):
         return next(p for p in out.per_spell if p.key == "R")
 
     def test_registry_picks_recast_nuke_over_block0(self) -> None:
-        """Registry (block 1, the True Damage recast) ≫ forced block 0
+        """Registry (block 1, the True Damage recast) >> forced block 0
         (the trivial 6-10 per-takedown bonus)."""
         reg = self._r()
         b0 = self._r(forced=0)
@@ -176,7 +176,7 @@ class BelvethREntryTests(unittest.TestCase):
                                places=6)
 
 
-# ─── Backward-compat - s223 + prior entries intact ───────────────────────────
+# --- Backward-compat - s223 + prior entries intact ---------------------------
 
 
 class BackwardCompatS224Tests(unittest.TestCase):

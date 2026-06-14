@@ -29,7 +29,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── basic ranker behavior ───────────────────────────────────────────────────
+# --- basic ranker behavior ---------------------------------------------------
 
 
 class RankByBurstBasicsTests(unittest.TestCase):
@@ -111,7 +111,7 @@ class RankByBurstBasicsTests(unittest.TestCase):
         self.assertIsInstance(r.ranked[0], BurstRankedItem)
 
 
-# ─── scoring behavior ────────────────────────────────────────────────────────
+# --- scoring behavior --------------------------------------------------------
 
 
 class BurstScoringTests(unittest.TestCase):
@@ -189,7 +189,7 @@ class BurstScoringTests(unittest.TestCase):
                 self.assertEqual(ri.burst_per_1k_gold, 0.0)
 
 
-# ─── filter pipeline parity ──────────────────────────────────────────────────
+# --- filter pipeline parity --------------------------------------------------
 
 
 class FilterPipelineTests(unittest.TestCase):
@@ -241,7 +241,7 @@ class FilterPipelineTests(unittest.TestCase):
         )
 
     def test_arena_strips_trinket(self) -> None:
-        # Mode=ARENA + current items contains Arcane Sweeper (3348) →
+        # Mode=ARENA + current items contains Arcane Sweeper (3348) ->
         # should not raise and should report the strip in notes.
         r = rank_items_by_burst(
             self.snap, "Zed", level=11, mode="ARENA",
@@ -286,7 +286,7 @@ class FilterPipelineTests(unittest.TestCase):
             self.assertEqual(ri.dead_unique_key, "spellblade")
 
 
-# ─── validation + edges ─────────────────────────────────────────────────────
+# --- validation + edges -----------------------------------------------------
 
 
 class ValidationAndEdgeTests(unittest.TestCase):
@@ -316,7 +316,7 @@ class ValidationAndEdgeTests(unittest.TestCase):
                                 combo_sequence=["Q", "BOGUS"])
 
 
-# ─── to_dict / format_table ──────────────────────────────────────────────────
+# --- to_dict / format_table --------------------------------------------------
 
 
 class SerializationTests(unittest.TestCase):
@@ -365,7 +365,7 @@ class SerializationTests(unittest.TestCase):
             self.assertIn(k, d)
 
 
-# ─── mode + amp flow-through ─────────────────────────────────────────────────
+# --- mode + amp flow-through -------------------------------------------------
 
 
 class ModeAndAmpFlowTests(unittest.TestCase):
@@ -400,7 +400,7 @@ class ModeAndAmpFlowTests(unittest.TestCase):
         self.assertGreater(rab.baseline_burst, naked.baseline_burst)
 
 
-# ─── server route ────────────────────────────────────────────────────────────
+# --- server route ------------------------------------------------------------
 
 
 class RankAssassinRouteTests(unittest.TestCase):

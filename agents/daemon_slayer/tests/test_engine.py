@@ -39,7 +39,7 @@ class BuildChampionTests(unittest.TestCase):
 
     def test_berserkers_stacks_attack_speed_pct_on_base(self) -> None:
         # Berserker's (3006): +25% AS, +45 MS
-        # Aatrox lvl 1 base AS = 0.651 → +25% bonus → 0.651 * 1.25 = 0.81375
+        # Aatrox lvl 1 base AS = 0.651 -> +25% bonus -> 0.651 * 1.25 = 0.81375
         r = build_champion(self.snap, "Aatrox", level=1, item_ids=["3006"])
         self.assertAlmostEqual(r.stats["as"], 0.651 * 1.25, places=3)
         # MS = base 345 + flat 45 = 390 (no pct)
@@ -55,7 +55,7 @@ class BuildChampionTests(unittest.TestCase):
         # Two IEs would be 50% but you can't actually own two; the cap test
         # simulates what happens if the engine is fed an absurd build.
         r = build_champion(self.snap, "Aatrox", level=1, item_ids=["3031", "3031", "3031", "3031", "3031"])
-        # 5 * 25% = 125% → clamped to 100%
+        # 5 * 25% = 125% -> clamped to 100%
         self.assertEqual(r.stats["crit"], 1.0)
 
     def test_eclipse_ad_adds_to_aatrox(self) -> None:
@@ -102,7 +102,7 @@ class ModeModifierHookTests(unittest.TestCase):
     """
 
     def test_aram_attack_speed_scales_bonus_as_only(self) -> None:
-        # base=0.6, scaled=0.9 → bonus=0.3. With aramAS=1.5 → bonus*1.5=0.45 → 1.05.
+        # base=0.6, scaled=0.9 -> bonus=0.3. With aramAS=1.5 -> bonus*1.5=0.45 -> 1.05.
         scaled = {"as": 0.9}
         raw_base = {"as": 0.6}
         champion = {"lolmath": {"aram_modifiers": {"aramAttackSpeed": 1.5}}}

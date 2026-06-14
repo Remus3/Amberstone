@@ -23,11 +23,11 @@ Two entries:
                             Damage (recast detonation burst). Operator
                             commits to letting Heart Zapper run + manual
                             recast at end. Same in-batch lift pattern
-                            as s215's Thresh.E lift {E: 2} → {E: [1, 2]}.
+                            as s215's Thresh.E lift {E: 2} -> {E: [1, 2]}.
 
 Mirrors the s215 test structure: registry shape assertions + arithmetic
 parity (sum == sum of forced singletons) + strict-greater guards vs
-forced block 0 / single-block A/B. ENGINE_VERSION 0.93.0 → 0.94.0 pinned.
+forced block 0 / single-block A/B. ENGINE_VERSION 0.93.0 -> 0.94.0 pinned.
 Backward-compat: prior s207 + s215 sum-of-blocks entries unchanged.
 
 All 2 entries verified per-rank against the Meraki 16.10.1 snapshot
@@ -60,7 +60,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── Registry shape - 2 new/lifted entries ───────────────────────────────────
+# --- Registry shape - 2 new/lifted entries -----------------------------------
 
 
 class Phase599_22RegistrySeedTests(unittest.TestCase):
@@ -93,7 +93,7 @@ class Phase599_22RegistrySeedTests(unittest.TestCase):
         self.assertEqual(v, [1, 2])
 
 
-# ─── Arithmetic parity - sum == sum of forced singletons ─────────────────────
+# --- Arithmetic parity - sum == sum of forced singletons ---------------------
 
 
 class Phase599_22AbilityDpsTests(unittest.TestCase):
@@ -126,7 +126,7 @@ class Phase599_22AbilityDpsTests(unittest.TestCase):
         )
         return next((s for s in out.per_spell if s.key == key), None)
 
-    # ─── Taliyah E [0, 2] ───────────────────────────────────────────────────
+    # --- Taliyah E [0, 2] ---------------------------------------------------
 
     def test_taliyah_E_sum_exceeds_block_0_alone(self) -> None:
         """Sum strictly exceeds block 0 (initial impact) alone - block 2
@@ -153,7 +153,7 @@ class Phase599_22AbilityDpsTests(unittest.TestCase):
             places=4,
         )
 
-    # ─── DrMundo W [1, 2] ───────────────────────────────────────────────────
+    # --- DrMundo W [1, 2] ---------------------------------------------------
 
     def test_drmundo_W_sum_exceeds_block_1_alone(self) -> None:
         """Sum strictly exceeds block 1 (full channel) alone - block 2
@@ -180,7 +180,7 @@ class Phase599_22AbilityDpsTests(unittest.TestCase):
         )
 
 
-# ─── Backward-compat - s207 + s215 sum-of-blocks entries preserved ───────────
+# --- Backward-compat - s207 + s215 sum-of-blocks entries preserved -----------
 
 
 class Phase599_22BackwardCompatTests(unittest.TestCase):
@@ -229,7 +229,7 @@ class Phase599_22BackwardCompatTests(unittest.TestCase):
         self.assertEqual(src, "default")
 
 
-# ─── ENGINE_VERSION pin ──────────────────────────────────────────────────────
+# --- ENGINE_VERSION pin ------------------------------------------------------
 
 
 class Phase599_22EngineVersionTests(unittest.TestCase):

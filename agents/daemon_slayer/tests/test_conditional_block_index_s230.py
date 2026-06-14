@@ -64,7 +64,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── vocab unchanged (s227 "don't over-build" - no new condition) ────────────
+# --- vocab unchanged (s227 "don't over-build" - no new condition) ------------
 
 
 class VocabUnchangedTests(unittest.TestCase):
@@ -98,7 +98,7 @@ class VocabUnchangedTests(unittest.TestCase):
         self.assertIn("nested conditional", str(cm.exception))
 
 
-# ─── registry shape ─────────────────────────────────────────────────────────
+# --- registry shape ---------------------------------------------------------
 
 
 class S230RegistryShapeTests(unittest.TestCase):
@@ -126,7 +126,7 @@ class S230RegistryShapeTests(unittest.TestCase):
         self.assertEqual(len(reg["champions"]), 125)
 
 
-# ─── Fiddlesticks Q: a REAL improvement (NOT a Part-1 no-op) ─────────────────
+# --- Fiddlesticks Q: a REAL improvement (NOT a Part-1 no-op) -----------------
 
 
 class FiddleQImprovementTests(unittest.TestCase):
@@ -200,7 +200,7 @@ class FiddleQImprovementTests(unittest.TestCase):
             ns.raw_damage_per_cast, amped.raw_damage_per_cast, places=9)
 
 
-# ─── Cassiopeia E: provable Part-1 zero-regression conversion ───────────────
+# --- Cassiopeia E: provable Part-1 zero-regression conversion ---------------
 
 
 class CassiopeiaEConversionTests(unittest.TestCase):
@@ -242,7 +242,7 @@ class CassiopeiaEConversionTests(unittest.TestCase):
         self.assertAlmostEqual(reg.raw_damage_per_cast, 168.0, places=6)
 
 
-# ─── backward-compat: s228 + s229 + pre-s228 entries unchanged ──────────────
+# --- backward-compat: s228 + s229 + pre-s228 entries unchanged --------------
 
 
 class S230BackwardCompatTests(unittest.TestCase):
@@ -280,7 +280,7 @@ class S230BackwardCompatTests(unittest.TestCase):
         self.assertEqual(m["R"], 1)
 
 
-# ─── ENGINE_VERSION pin ──────────────────────────────────────────────────────
+# --- ENGINE_VERSION pin ------------------------------------------------------
 
 
 class EngineVersionS230Tests(unittest.TestCase):

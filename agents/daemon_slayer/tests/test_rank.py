@@ -93,7 +93,7 @@ class CandidateFilterTests(unittest.TestCase):
         self.assertNotIn(ie_id, {i for i, _ in cands})
 
     def test_only_ids_whitelist_is_intersection_with_filter(self) -> None:
-        # Whitelist of [IE, Long Sword] in SR terminal-only mode → only IE survives.
+        # Whitelist of [IE, Long Sword] in SR terminal-only mode -> only IE survives.
         cands = _filter_candidates(
             self.snap, "SR", set(), None, False, only_ids={"3031", "1036"},
         )

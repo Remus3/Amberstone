@@ -31,7 +31,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── DpsResult new field ─────────────────────────────────────────────────────
+# --- DpsResult new field -----------------------------------------------------
 
 
 class DpsResultFieldTests(unittest.TestCase):
@@ -69,7 +69,7 @@ class DpsResultFieldTests(unittest.TestCase):
         self.assertEqual(d["per_attack_on_hit_damage"], r.per_attack_on_hit_damage)
 
 
-# ─── Burst integration ──────────────────────────────────────────────────────
+# --- Burst integration ------------------------------------------------------
 
 
 class BurstOnHitIntegrationTests(unittest.TestCase):
@@ -90,7 +90,7 @@ class BurstOnHitIntegrationTests(unittest.TestCase):
             target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
         )
         # The new build's burst must exceed naked by at least the on-hit
-        # contribution × AA count.
+        # contribution x AA count.
         self.assertGreater(
             with_wits.total_burst_damage,
             naked.total_burst_damage,
@@ -147,7 +147,7 @@ class BurstOnHitIntegrationTests(unittest.TestCase):
         self.assertAlmostEqual(aa_row.final_damage, probe.avg_attack_dmg, places=2)
 
     def test_aa_count_2_scales_on_hit(self) -> None:
-        """A combo with 2 AAs should pick up 2× the on-hit contribution
+        """A combo with 2 AAs should pick up 2x the on-hit contribution
         (each AA fires its own on-hit proc)."""
         r1 = compute_burst_damage(
             self.snap, "Akali", level=11,
@@ -163,11 +163,11 @@ class BurstOnHitIntegrationTests(unittest.TestCase):
         )
         aa1 = sum(c.final_damage for c in r1.per_cast if c.token == "AA")
         aa2 = sum(c.final_damage for c in r2.per_cast if c.token == "AA")
-        # 2 AAs should be ~2× one AA.
+        # 2 AAs should be ~2x one AA.
         self.assertAlmostEqual(aa2, 2.0 * aa1, places=2)
 
 
-# ─── server route exposes new DpsResult field ───────────────────────────────
+# --- server route exposes new DpsResult field -------------------------------
 
 
 class ServerDpsRouteTests(unittest.TestCase):

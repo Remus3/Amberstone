@@ -30,7 +30,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── basic ranker behavior ───────────────────────────────────────────────────
+# --- basic ranker behavior ---------------------------------------------------
 
 
 class RankByAbilityDpsBasicsTests(unittest.TestCase):
@@ -97,7 +97,7 @@ class RankByAbilityDpsBasicsTests(unittest.TestCase):
         self.assertIsInstance(r.ranked[0], AbilityDpsRankedItem)
 
 
-# ─── scoring behavior ────────────────────────────────────────────────────────
+# --- scoring behavior --------------------------------------------------------
 
 
 class AbilityDpsScoringTests(unittest.TestCase):
@@ -159,7 +159,7 @@ class AbilityDpsScoringTests(unittest.TestCase):
                 self.assertEqual(ri.ability_dps_per_1k_gold, 0.0)
 
 
-# ─── filter pipeline parity ──────────────────────────────────────────────────
+# --- filter pipeline parity --------------------------------------------------
 
 
 class FilterPipelineTests(unittest.TestCase):
@@ -168,7 +168,7 @@ class FilterPipelineTests(unittest.TestCase):
         cls.snap = _snap()
 
     def test_already_equipped_item_skipped(self) -> None:
-        # Rabadon's already in inventory → shouldn't reappear in candidates.
+        # Rabadon's already in inventory -> shouldn't reappear in candidates.
         r = rank_items_by_ability_dps(
             self.snap, "Veigar", level=11, mode="SR", target_mr=30.0,
             current_item_ids=["3089"], top_n=50,
@@ -209,7 +209,7 @@ class FilterPipelineTests(unittest.TestCase):
         )
 
     def test_arena_strips_trinket(self) -> None:
-        # Mode=ARENA + current items contains Arcane Sweeper (3348) →
+        # Mode=ARENA + current items contains Arcane Sweeper (3348) ->
         # should not raise (slot count check) and should report the strip.
         r = rank_items_by_ability_dps(
             self.snap, "Veigar", level=11, mode="ARENA", target_mr=30.0,
@@ -256,7 +256,7 @@ class FilterPipelineTests(unittest.TestCase):
             self.assertEqual(ri.dead_unique_key, "spellblade")
 
 
-# ─── validation + edges ─────────────────────────────────────────────────────
+# --- validation + edges -----------------------------------------------------
 
 
 class ValidationAndEdgeTests(unittest.TestCase):
@@ -271,7 +271,7 @@ class ValidationAndEdgeTests(unittest.TestCase):
             )
 
     def test_full_build_raises(self) -> None:
-        # Six items in current build → no room for a 7th.
+        # Six items in current build -> no room for a 7th.
         with self.assertRaises(ValueError):
             rank_items_by_ability_dps(
                 self.snap, "Veigar", level=11,
@@ -292,7 +292,7 @@ class ValidationAndEdgeTests(unittest.TestCase):
             )
 
 
-# ─── to_dict / format_table ──────────────────────────────────────────────────
+# --- to_dict / format_table --------------------------------------------------
 
 
 class SerializationTests(unittest.TestCase):
@@ -337,7 +337,7 @@ class SerializationTests(unittest.TestCase):
             self.assertIn(k, d)
 
 
-# ─── mode + amp flow-through ─────────────────────────────────────────────────
+# --- mode + amp flow-through -------------------------------------------------
 
 
 class ModeAndAmpFlowTests(unittest.TestCase):
@@ -375,7 +375,7 @@ class ModeAndAmpFlowTests(unittest.TestCase):
         )
 
 
-# ─── server route ────────────────────────────────────────────────────────────
+# --- server route ------------------------------------------------------------
 
 
 class RankMageRouteTests(unittest.TestCase):

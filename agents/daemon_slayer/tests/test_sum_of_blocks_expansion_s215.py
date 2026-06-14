@@ -7,19 +7,19 @@ Adds 4 new (champion, key) entries from s207's queued candidate list:
                                           + canonical Magic Damage
   * Sona.Q      = [0, 1]               - active Magic Damage
                                           + Power Chord empowered AA
-  * Kalista.E   = [0, 1, 1, 1, 1]      - base Rend + 4× additional stacks
+  * Kalista.E   = [0, 1, 1, 1, 1]      - base Rend + 4x additional stacks
   * Malzahar.R  = [0, 2]               - Total Magic channel
                                           + Total Max-HP% bonus
 
 Mirrors the s207 test structure: registry shape assertions + arithmetic
 parity (sum == sum of forced singletons) + strict-greater guards vs
-forced block 0/single-block A/B. ENGINE_VERSION 0.92.0 → 0.93.0
+forced block 0/single-block A/B. ENGINE_VERSION 0.92.0 -> 0.93.0
 pinned. Backward-compat: prior s207 seed entries (Camille/Malphite/
 Heimerdinger/Katarina) unchanged and still preserved.
 
 All 4 entries verified per-rank against the Meraki 16.10.1 snapshot
 during s215 implementation:
-  * Thresh E rank 1: block 1 0+0.9×tAD ≈ 63 (at ~70 tAD), block 2 75+70%AP
+  * Thresh E rank 1: block 1 0+0.9xtAD ~ 63 (at ~70 tAD), block 2 75+70%AP
   * Sona   Q rank 5: block 0 190+40%AP, block 1 30 (Sona's AP unparsed)
   * Kalista E rank 2: block 0 15+70%tAD+20%AP, block 1 14+25%tAD+20%AP
   * Malzahar R rank 2: block 0 200+80%AP, block 2 15% target max HP
@@ -47,7 +47,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── Registry shape - 4 new entries ──────────────────────────────────────────
+# --- Registry shape - 4 new entries ------------------------------------------
 
 
 class Phase599_21RegistrySeedTests(unittest.TestCase):
@@ -64,7 +64,7 @@ class Phase599_21RegistrySeedTests(unittest.TestCase):
     def test_thresh_E_is_max_souls_plus_canonical_magic(self) -> None:
         m, src = get_block_index_for("Thresh")
         self.assertEqual(src, "champion")
-        # s215 lifts s203's {E: 2} → {E: [1, 2]}.
+        # s215 lifts s203's {E: 2} -> {E: [1, 2]}.
         self.assertEqual(m.get("E"), [1, 2])
 
     def test_sona_Q_is_active_plus_power_chord(self) -> None:
@@ -84,7 +84,7 @@ class Phase599_21RegistrySeedTests(unittest.TestCase):
         self.assertEqual(m.get("R"), [0, 2])
 
 
-# ─── Arithmetic parity - sum == sum of forced singletons ─────────────────────
+# --- Arithmetic parity - sum == sum of forced singletons ---------------------
 
 
 class Phase599_21AbilityDpsTests(unittest.TestCase):
@@ -118,7 +118,7 @@ class Phase599_21AbilityDpsTests(unittest.TestCase):
         )
         return next((s for s in out.per_spell if s.key == key), None)
 
-    # ─── Thresh E [1, 2] ─────────────────────────────────────────────────────
+    # --- Thresh E [1, 2] -----------------------------------------------------
 
     def test_thresh_E_sum_exceeds_block_2_alone(self) -> None:
         s_sum = self._spell("Thresh", "E")
@@ -137,7 +137,7 @@ class Phase599_21AbilityDpsTests(unittest.TestCase):
             places=4,
         )
 
-    # ─── Sona Q [0, 1] ───────────────────────────────────────────────────────
+    # --- Sona Q [0, 1] -------------------------------------------------------
 
     def test_sona_Q_sum_exceeds_block_0_alone(self) -> None:
         s_sum = self._spell("Sona", "Q")
@@ -156,11 +156,11 @@ class Phase599_21AbilityDpsTests(unittest.TestCase):
             places=4,
         )
 
-    # ─── Kalista E [0, 1, 1, 1, 1] ───────────────────────────────────────────
+    # --- Kalista E [0, 1, 1, 1, 1] -------------------------------------------
 
     def test_kalista_E_sum_is_base_plus_4x_additional(self) -> None:
         """The 5-element list expresses base Rend + 4 additional stacks
-        (5 total stacks). Arithmetic must equal block 0 + 4× block 1."""
+        (5 total stacks). Arithmetic must equal block 0 + 4x block 1."""
         s_sum = self._spell("Kalista", "E")
         s_b0 = self._spell_forced("Kalista", "E", 0)
         s_b1 = self._spell_forced("Kalista", "E", 1)
@@ -173,7 +173,7 @@ class Phase599_21AbilityDpsTests(unittest.TestCase):
         # 5-stack Rend must be strictly more than 0-stack base.
         self.assertGreater(s_sum.raw_damage_per_cast, s_b0.raw_damage_per_cast)
 
-    # ─── Malzahar R [0, 2] ───────────────────────────────────────────────────
+    # --- Malzahar R [0, 2] ---------------------------------------------------
 
     def test_malzahar_R_sum_exceeds_block_0_alone(self) -> None:
         s_sum = self._spell("Malzahar", "R")
@@ -193,7 +193,7 @@ class Phase599_21AbilityDpsTests(unittest.TestCase):
         )
 
 
-# ─── Backward-compat - s207 seed entries preserved ───────────────────────────
+# --- Backward-compat - s207 seed entries preserved ---------------------------
 
 
 class Phase599_21BackwardCompatTests(unittest.TestCase):
@@ -224,7 +224,7 @@ class Phase599_21BackwardCompatTests(unittest.TestCase):
 
     def test_thresh_E_lifted_from_s203_int_to_list(self) -> None:
         """s203 originally set {E: 2}. s215 extends to {E: [1, 2]} to
-        add the max-Souls Maximum Bonus Magic tier. Single-int → list
+        add the max-Souls Maximum Bonus Magic tier. Single-int -> list
         behavior is the first such lift since s207's seed; pin it."""
         m, _ = get_block_index_for("Thresh")
         v = m.get("E")
@@ -240,7 +240,7 @@ class Phase599_21BackwardCompatTests(unittest.TestCase):
         self.assertEqual(src, "default")
 
 
-# ─── ENGINE_VERSION pin ──────────────────────────────────────────────────────
+# --- ENGINE_VERSION pin ------------------------------------------------------
 
 
 class Phase599_21EngineVersionTests(unittest.TestCase):

@@ -37,7 +37,7 @@ from agents.daemon_slayer.ability_dps import (
 from agents.daemon_slayer.data_loader import DataSnapshot
 
 
-# ─── helpers ─────────────────────────────────────────────────────────────────
+# --- helpers -----------------------------------------------------------------
 
 
 def _snap() -> DataSnapshot:
@@ -72,12 +72,12 @@ def _basic_ctx(**overrides) -> AbilityContext:
     return AbilityContext(**base)
 
 
-# ─── rank-at-level table ─────────────────────────────────────────────────────
+# --- rank-at-level table -----------------------------------------------------
 
 
 class RankAtLevelTests(unittest.TestCase):
     def test_q_priority1_table(self) -> None:
-        # Q priority 1: ranked at lvl 1/3/5/7/9 → ranks 0/1/2/3/4
+        # Q priority 1: ranked at lvl 1/3/5/7/9 -> ranks 0/1/2/3/4
         self.assertEqual(rank_at_level("Q", 1), 0)
         self.assertEqual(rank_at_level("Q", 3), 1)
         self.assertEqual(rank_at_level("Q", 5), 2)
@@ -133,7 +133,7 @@ class RankAtLevelTests(unittest.TestCase):
             rank_at_level("Z", 5)
 
 
-# ─── ability context ─────────────────────────────────────────────────────────
+# --- ability context ---------------------------------------------------------
 
 
 class AbilityContextTests(unittest.TestCase):
@@ -187,16 +187,16 @@ class AbilityContextTests(unittest.TestCase):
         self.assertEqual(ctx.caster_bonus_hp, 2200.0)
 
 
-# ─── mitigation factor ───────────────────────────────────────────────────────
+# --- mitigation factor -------------------------------------------------------
 
 
 class MitigationFactorTests(unittest.TestCase):
     def test_physical_uses_armor(self) -> None:
-        # 100 armor → factor 0.5
+        # 100 armor -> factor 0.5
         self.assertAlmostEqual(_mitigation_factor("PHYSICAL", 100, 100), 0.5)
 
     def test_magic_uses_mr(self) -> None:
-        # 100 mr → factor 0.5
+        # 100 mr -> factor 0.5
         self.assertAlmostEqual(_mitigation_factor("MAGIC", 100, 100), 0.5)
         self.assertAlmostEqual(_mitigation_factor("MAGIC", 0, 100), 0.5)
 
@@ -205,7 +205,7 @@ class MitigationFactorTests(unittest.TestCase):
         self.assertEqual(_mitigation_factor("TRUE", -50, -50), 1.0)
 
     def test_mixed_averages_armor_mr(self) -> None:
-        # 100 armor + 0 mr → (0.5 + 1.0) / 2 = 0.75
+        # 100 armor + 0 mr -> (0.5 + 1.0) / 2 = 0.75
         self.assertAlmostEqual(_mitigation_factor("MIXED", 100, 0), 0.75)
 
     def test_negative_armor_uses_inverted_formula(self) -> None:
@@ -217,7 +217,7 @@ class MitigationFactorTests(unittest.TestCase):
         self.assertAlmostEqual(_mitigation_factor(None, 100, 100), 0.5)
 
 
-# ─── block evaluation ────────────────────────────────────────────────────────
+# --- block evaluation --------------------------------------------------------
 
 
 class BlockEvaluationTests(unittest.TestCase):
@@ -259,7 +259,7 @@ class BlockEvaluationTests(unittest.TestCase):
     def test_locked_rank_returns_zero(self) -> None:
         b = DamageBlock(attribute="X", attribute_kind="damage",
                         base=(80.0,), ap_pct=(70.0,))
-        # rank -1 (locked) → 0
+        # rank -1 (locked) -> 0
         self.assertEqual(_evaluate_block(b, -1, _basic_ctx()), 0.0)
 
     def test_select_blocks_first_strategy(self) -> None:
@@ -289,7 +289,7 @@ class BlockEvaluationTests(unittest.TestCase):
             _select_blocks((b,), 0, _basic_ctx(), "average")
 
 
-# ─── primary-scaling classifier ──────────────────────────────────────────────
+# --- primary-scaling classifier ----------------------------------------------
 
 
 class PrimaryScalingTests(unittest.TestCase):
@@ -328,7 +328,7 @@ class PrimaryScalingTests(unittest.TestCase):
         self.assertEqual(_classify_primary_scaling([], forms), "MIXED")
 
 
-# ─── end-to-end compute_ability_dps ─────────────────────────────────────────
+# --- end-to-end compute_ability_dps -----------------------------------------
 
 
 class ComputeAbilityDpsTests(unittest.TestCase):
@@ -355,7 +355,7 @@ class ComputeAbilityDpsTests(unittest.TestCase):
             target_mr=30.0,
         )
         self.assertGreater(with_rabadon.total_ability_dps, base.total_ability_dps)
-        # Rabadon's = 130 AP + 30% amp → roughly 50% more ability DPS at
+        # Rabadon's = 130 AP + 30% amp -> roughly 50% more ability DPS at
         # this level (Q's 70% AP scaling dominates).
         ratio = with_rabadon.total_ability_dps / base.total_ability_dps
         self.assertGreater(ratio, 1.4)
@@ -378,7 +378,7 @@ class ComputeAbilityDpsTests(unittest.TestCase):
         no_ap = compute_ability_dps(self.snap, "Veigar", 11, mode="SR",
                                     target_mr=0.0)
         q_no = next(s for s in no_ap.per_spell if s.key == "Q")
-        # No items → just base 240 (mode_mult=1, target_mr=0 → no
+        # No items -> just base 240 (mode_mult=1, target_mr=0 -> no
         # mitigation). post_mit should be 240.
         self.assertAlmostEqual(q_no.post_mitigation_damage_per_cast, 240.0, places=1)
 
@@ -389,7 +389,7 @@ class ComputeAbilityDpsTests(unittest.TestCase):
                                 target_armor=100.0, target_mr=0.0)
         q = next(s for s in r.per_spell if s.key == "Q")
         self.assertEqual(q.damage_type, "PHYSICAL")
-        # 100 armor → 0.5 mitigation factor, post-mit half of post-mode.
+        # 100 armor -> 0.5 mitigation factor, post-mit half of post-mode.
         self.assertAlmostEqual(
             q.post_mitigation_damage_per_cast,
             q.post_mode_damage_per_cast * 0.5,
@@ -397,7 +397,7 @@ class ComputeAbilityDpsTests(unittest.TestCase):
         )
 
     def test_aatrox_armor_higher_reduces_q_dps(self) -> None:
-        # Higher target armor → lower Aatrox Q DPS.
+        # Higher target armor -> lower Aatrox Q DPS.
         low_armor = compute_ability_dps(self.snap, "Aatrox", 11, mode="SR",
                                         target_armor=30.0, target_mr=0.0)
         high_armor = compute_ability_dps(self.snap, "Aatrox", 11, mode="SR",
@@ -489,7 +489,7 @@ class ComputeAbilityDpsTests(unittest.TestCase):
                                 target_current_hp_pct=1.5)
 
 
-# ─── cast rate integration ───────────────────────────────────────────────────
+# --- cast rate integration ---------------------------------------------------
 
 
 class CastRateIntegrationTests(unittest.TestCase):
@@ -515,7 +515,7 @@ class CastRateIntegrationTests(unittest.TestCase):
         self.assertGreater(q.dps, ult.dps)
 
 
-# ─── server route ────────────────────────────────────────────────────────────
+# --- server route ------------------------------------------------------------
 
 
 class ServerRouteTests(unittest.TestCase):
