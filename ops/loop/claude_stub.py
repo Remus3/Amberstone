@@ -21,8 +21,11 @@ ROOT = r"C:\Riot Commander"
 CTL = Path(ROOT) / "ops" / "loop" / "control"
 
 def head():
-    return subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
-                          capture_output=True, text=True).stdout.strip()
+    try:
+        return subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
+                              capture_output=True, text=True, timeout=30).stdout.strip()
+    except (subprocess.SubprocessError, OSError):
+        return ""
 
 def main():
     ap = argparse.ArgumentParser()

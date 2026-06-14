@@ -16,8 +16,14 @@ ROOT = r"C:\Riot Commander"
 CTL = Path(ROOT) / "ops" / "loop" / "control"
 
 def head():
-    return subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
-                          capture_output=True, text=True).stdout.strip()
+    # Bound the git read: this is Claude's FINAL cycle action, so a wedged git
+    # would hang the executor turn and starve the controller of claude.done.
+    # Degrade to "" - the controller falls back to its own head() read.
+    try:
+        return subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
+                              capture_output=True, text=True, timeout=30).stdout.strip()
+    except (subprocess.SubprocessError, OSError):
+        return ""
 
 def main():
     ap = argparse.ArgumentParser()

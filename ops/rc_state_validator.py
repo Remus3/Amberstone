@@ -105,7 +105,13 @@ class StateValidator:
             live = self._read_json(self._tft_live_file)
             if live:
                 hp = live.get("hp")
-                if hp is not None and not (1 <= float(hp) <= 100):
+                hp_num = _as_finite_float(hp)
+                # Only range-check a finite numeric hp. A non-numeric token
+                # (stale OCR garbage, the "-" no-data sentinel, NaN/inf) must
+                # not raise out of run_once and silently skip the remaining
+                # checks - the SelfMonitor caller swallows the exception AND
+                # _last_run was already advanced, so every tick would no-op.
+                if hp is not None and hp_num is not None and not (1 <= hp_num <= 100):
                     self._mismatch(
                         "tft_hp_out_of_range",
                         f"tft_live_data.hp={hp} (expected 1-100)",
@@ -177,7 +183,7 @@ class StateValidator:
         )
 
     def _ocr_check(self, report: Dict[str, Any]) -> None:
-        """Quick OCR cross-check for stage/round only  -  â‰¤2ms."""
+        """Quick OCR cross-check for stage/round only  -  <=2ms."""
         try:
             reader = _TftOcrReader()
             if not reader.available:
@@ -231,4 +237,18 @@ def _valid_stage_round(sr: str) -> bool:
         return 1 <= s <= 9 and 1 <= r <= 9
     except Exception:
         return False
+
+
+def _as_finite_float(value: Any) -> Optional[float]:
+    """Coerce a probe value to a finite float, or None if it is missing,
+    non-numeric, or non-finite (NaN/inf). Never raises - callers use the
+    None result to skip a numeric plausibility check rather than crash."""
+    if value is None:
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    import math
+    return f if math.isfinite(f) else None
 

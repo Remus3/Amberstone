@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sqlite3
 import sys
 from collections import defaultdict
@@ -69,7 +70,11 @@ def _recent_rows(days: int, champ: str = "") -> list[dict]:
 
 
 def _median(values: list[float]) -> float:
-    vs = sorted(v for v in values if v is not None)
+    # Drop None AND non-finite (inf/nan): SQLite stores IEEE-754 doubles, so a
+    # corrupt/computed metric column can hold inf/nan. A nan in the sort poisons
+    # the midpoint and inf propagates into pct_below -> a bare Infinity/NaN JSON
+    # token in drift_alerts.json (json.dumps does not pass allow_nan=False).
+    vs = sorted(v for v in values if v is not None and math.isfinite(v))
     if not vs:
         return 0.0
     n = len(vs)
@@ -104,10 +109,13 @@ def compute_drifts(*, days: int = DEFAULT_DAYS, min_games: int = DEFAULT_MIN_GAM
             # canonical reference here. Future: per-mode comparison.
             bm_record = ((b.get("sr_ranked") or {}).get(bm_key) or {})
             bm_p50 = bm_record.get("p50")
-            if not bm_p50 or bm_p50 <= 0:
+            # `bm_p50` is read straight from benchmarks JSON - guard non-finite
+            # (a poisoned benchmark file) alongside the <=0 check before dividing.
+            if not bm_p50 or not isinstance(bm_p50, (int, float)) \
+                    or not math.isfinite(bm_p50) or bm_p50 <= 0:
                 continue
             pct_below = (1.0 - recent_p50 / bm_p50) * 100.0
-            if pct_below >= drop_pct:
+            if math.isfinite(pct_below) and pct_below >= drop_pct:
                 alerts.append({
                     "champion":     c,
                     "metric":       bm_key,

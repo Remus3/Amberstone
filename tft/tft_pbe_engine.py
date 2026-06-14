@@ -407,8 +407,14 @@ class TftPbeCoachEngine:
         try:
             self._run(state)
         except Exception as exc:
+            # HARD RULE: never surface a raw API/exception string in a
+            # user-facing panel. risk is rendered by tft_pbe_coach
+            # (coaches/tft_pbe_coach.py renders the risk field), so the raw
+            # str(exc) - which can carry a credit/balance/400/rate-limit body -
+            # must stay in the log only. Degrade to a friendly message.
+            # Mirrors tft_coach_engine._run_safe (sibling, already fixed).
             logger.error("TFT PBE coach error: %s", exc)
-            self._write_status(f"Coach error: {str(exc)[:60]}")
+            self._write_status("Coaching paused - retrying")
         finally:
             self._lock.release()
 

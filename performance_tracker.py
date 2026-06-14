@@ -22,8 +22,15 @@ def _atomic_write_json(path: Path, data: dict) -> None:
     mid-write, so the only safe pattern is tmp.write → os.replace.
     AUDIT C4 (2026-04-22): replaces direct path.write_text usage below."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    # allow_nan=False: a stray inf/nan (e.g. a degenerate upstream
+    # cs_per_min) must raise here BEFORE the tmp file is written, rather
+    # than serialize to the bare ``Infinity`` / ``NaN`` tokens that a
+    # strict JSON reader (the dashboard rating panel) rejects. The caller
+    # wraps this in try/except + warn, so a raise just drops the one bad
+    # rating and leaves the prior valid file intact.  (P2-W4 hw2 slice H)
+    payload = json.dumps(data, indent=2, allow_nan=False)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    tmp.write_text(payload, encoding="utf-8")
     os.replace(tmp, path)
 BENCHMARKS = {"cs_per_min": 8.5, "deaths_per_10": 0.8, "kp_pct": 65, "gold_per_min": 380}
 GRADE_COLORS = {"S": "#FFD700", "A": "#44FF88", "B": "#4A9EFF", "C": "#D0D0E0", "D": "#FFA84A", "F": "#FF4A6A"}
