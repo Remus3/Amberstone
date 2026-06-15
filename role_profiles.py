@@ -35,11 +35,11 @@ MID_MAGE_PROFILES = {
         "Exploit: E through minion line to double-snare bot lane brush."
     ),
     "Viktor": (
-        "Mid Viktor. Evolve Q→E→W. W gravity stuns after 1.5s - drop on group. "
+        "Mid Viktor. Evolve Q->E->W. W gravity stuns after 1.5s - drop on group. "
         "Fully evolved E+R = lane clear machine and fight controller. "
         "Spikes: Luden's (waveclear), Zhonya's (teamfight). "
         "Macro: hard to roam - control mid, scale, group for objectives. "
-        "Exploit: W→Q auto for max DPS in short trades."
+        "Exploit: W->Q auto for max DPS in short trades."
     ),
     "Zed": (
         "Mid Zed. W shadow stays for return dash. R death mark - auto+Q+E then R-back. "
@@ -92,7 +92,7 @@ APC_BOT_PROFILES = {
         "Exploit: E cage from fog of war before enemy can react."
     ),
     "Swain": (
-        "Bot APC Swain. E root→detonate for hard pull onto team. "
+        "Bot APC Swain. E root->detonate for hard pull onto team. "
         "R sustain heals massively - activate mid-fight, not before. "
         "Spikes: Rod of Ages (sustain tank), Rylai's (perma-slow). "
         "Macro: melee range - needs peel support. Value 5v5 grouped fights."
@@ -136,7 +136,7 @@ TANK_SUPPORT_PROFILES = {
         "Itemization: Locket, Zeke's, Warmog's, Mercury Treads."
     ),
     "Alistar": (
-        "Support Alistar. W→Q combo = headbutt then knockup. "
+        "Support Alistar. W->Q combo = headbutt then knockup. "
         "R reduces all damage by 75% - use when dove or when catching someone. "
         "Macro: best in-fight peel. Use R to tank tower dives. "
         "Itemization: Locket, Knight's Vow, Warmog's, Frozen Heart."
@@ -208,32 +208,32 @@ VAYNE_TOP_PROFILE = """
 Vayne Top. High-risk high-reward matchup pick. Wins vs tanks late; loses vs most early.
 
 EARLY GAME (levels 1-9): SURVIVAL ONLY.
-• Do not fight. Do not trade unless you have level + item advantage.
-• Q tumble away from all-ins. Condemn into wall only when 100% safe.
-• CS under tower. Freeze if possible - force enemy to take tower aggro.
-• Back at 1100g minimum (BotRK component + Long Sword).
+- Do not fight. Do not trade unless you have level + item advantage.
+- Q tumble away from all-ins. Condemn into wall only when 100% safe.
+- CS under tower. Freeze if possible - force enemy to take tower aggro.
+- Back at 1100g minimum (BotRK component + Long Sword).
 
 IF BEHIND (losing CS by 20+, or died once):
-• Freeze wave at YOUR tower - let enemy push. They waste time, you CS safely.
-• Ping jungler to avoid your lane - no dive available.
-• Buy BotRK FIRST item regardless - it's your only path back into relevance.
-• Respect the enemy: do not trade until BotRK is complete.
-• Your comeback condition: enemy isolates themselves near a wall. One condemn stun = kill.
-• Do NOT split if your team needs you for dragon/baron. You are weaker early.
+- Freeze wave at YOUR tower - let enemy push. They waste time, you CS safely.
+- Ping jungler to avoid your lane - no dive available.
+- Buy BotRK FIRST item regardless - it's your only path back into relevance.
+- Respect the enemy: do not trade until BotRK is complete.
+- Your comeback condition: enemy isolates themselves near a wall. One condemn stun = kill.
+- Do NOT split if your team needs you for dragon/baron. You are weaker early.
 
 IF VERY BEHIND (died 2+ times, item gap 1 full item):
-• Stop fighting your lane opponent. Farm jungle camps on your side.
-• Ward enemy jungle, look for the jungler to countergank.
-• Target: krugs + raptors on resets if uncontested.
-• Tell team via ping: you are playing for late game.
-• NEVER recall with less than 1100g unless dying.
-• Your recovery timeline: 3 items (BotRK + PD + IE) = you win any 1v1.
+- Stop fighting your lane opponent. Farm jungle camps on your side.
+- Ward enemy jungle, look for the jungler to countergank.
+- Target: krugs + raptors on resets if uncontested.
+- Tell team via ping: you are playing for late game.
+- NEVER recall with less than 1100g unless dying.
+- Your recovery timeline: 3 items (BotRK + PD + IE) = you win any 1v1.
 
 REGAINING MOMENTUM WITH ALLIES:
-• Ask jungler for a gank only AFTER you've set up a wall-condemn angle.
-• Best setup: enemy at T2 tower, you stand between them and their tower escape angle.
-• Coordinate with mid/jg: walk away to bait, then R invis re-engage when they follow.
-• Cross-map value: even when behind, your 3-stack Silver Bolts kills any tank.
+- Ask jungler for a gank only AFTER you've set up a wall-condemn angle.
+- Best setup: enemy at T2 tower, you stand between them and their tower escape angle.
+- Coordinate with mid/jg: walk away to bait, then R invis re-engage when they follow.
+- Cross-map value: even when behind, your 3-stack Silver Bolts kills any tank.
 
 POWER SPIKES: BotRK (survivable), BotRK+PD (duel anyone), BotRK+PD+IE (win game).
 """
@@ -246,35 +246,35 @@ ARAM fights are continuous - survival stats have higher value than in SR.
 Items are discounted ~20% in ARAM. Fights never stop - sustain beats burst timing.
 
 AD/MARKSMAN ARAM (GENERAL):
-• 1st item: Immortal Shieldbow (safety) OR Kraken Slayer (vs tanks)
-• 2nd item: Runaan's Hurricane (AoE) OR Phantom Dancer (mobility/crit)
-• 3rd+: Lord Dominik's (vs armor stacking), Bloodthirster (sustain)
-• Boots: Plated Steelcaps vs heavy AD, Mercury Treads vs heavy AP/CC
-• AVOID: Collector / lethality builds (enemy teams stack HP in ARAM)
+- 1st item: Immortal Shieldbow (safety) OR Kraken Slayer (vs tanks)
+- 2nd item: Runaan's Hurricane (AoE) OR Phantom Dancer (mobility/crit)
+- 3rd+: Lord Dominik's (vs armor stacking), Bloodthirster (sustain)
+- Boots: Plated Steelcaps vs heavy AD, Mercury Treads vs heavy AP/CC
+- AVOID: Collector / lethality builds (enemy teams stack HP in ARAM)
 
 AP/MAGE ARAM (GENERAL):
-• 1st item: Luden's Companion (poke) OR Shadowflame (burst vs shields)
-• 2nd item: Rabadon's Deathcap (if winning) OR Zhonya's (if being focused)
-• 3rd+: Void Staff (vs MR stackers), Rylai's (perma-slow in corridor)
-• AVOID: Tear / Seraph's unless champion NEEDS mana (Ryze, Anivia, Azir)
+- 1st item: Luden's Companion (poke) OR Shadowflame (burst vs shields)
+- 2nd item: Rabadon's Deathcap (if winning) OR Zhonya's (if being focused)
+- 3rd+: Void Staff (vs MR stackers), Rylai's (perma-slow in corridor)
+- AVOID: Tear / Seraph's unless champion NEEDS mana (Ryze, Anivia, Azir)
 
 TANK/FIGHTER ARAM:
-• 1st item: Heartsteel (HP scaling) OR Sunfire Aegis (DPS tank)
-• 2nd item: Warmog's Armor (HP threshold) OR Thornmail (vs healing heavy)
-• 3rd+: Force of Nature (vs AP), Frozen Heart (vs AD auto-attackers)
-• Boots: Plated Steelcaps almost always
+- 1st item: Heartsteel (HP scaling) OR Sunfire Aegis (DPS tank)
+- 2nd item: Warmog's Armor (HP threshold) OR Thornmail (vs healing heavy)
+- 3rd+: Force of Nature (vs AP), Frozen Heart (vs AD auto-attackers)
+- Boots: Plated Steelcaps almost always
 
 SUPPORT/ENCHANTER ARAM:
-• 1st item: Moonstone Renewer (sustained healing) OR Imperial Mandate (poke comp)
-• 2nd item: Ardent Censer (if ally has on-hit/AS), Redemption (AoE healing)
-• 3rd+: Staff of Flowing Water, Mikael's (cleanse for key ally)
+- 1st item: Moonstone Renewer (sustained healing) OR Imperial Mandate (poke comp)
+- 2nd item: Ardent Censer (if ally has on-hit/AS), Redemption (AoE healing)
+- 3rd+: Staff of Flowing Water, Mikael's (cleanse for key ally)
 
 GRIEVOUS WOUNDS PRIORITY:
-• Buy if enemy has 2+ healing champions (Soraka, Warwick, Aatrox, Vladimir, etc.)
-• AD: Mortal Reminder  AP: Shadowflame  Tank: Thornmail
+- Buy if enemy has 2+ healing champions (Soraka, Warwick, Aatrox, Vladimir, etc.)
+- AD: Mortal Reminder  AP: Shadowflame  Tank: Thornmail
 
 % ARMOR/MAGIC PEN:
-• Buy Lord Dominik's / Void Staff if enemy team has 3+ items of armor/MR each
+- Buy Lord Dominik's / Void Staff if enemy team has 3+ items of armor/MR each
 """
 
 def get_role_profile(champion: str, role: str = "bot") -> str:

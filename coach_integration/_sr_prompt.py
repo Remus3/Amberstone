@@ -205,7 +205,7 @@ def _load_sr_build_note(champion: str) -> str:
         recall = entry.get("recall_timing", "")
         vt     = entry.get("vs_tanks", "")
         vh     = entry.get("vs_healing", "")
-        build_str = " → ".join(fb) if fb else ""
+        build_str = " -> ".join(fb) if fb else ""
         result = ""
         if start:    result += f"Start: {start}. "
         if build_str: result += f"Build: {build_str}. "
