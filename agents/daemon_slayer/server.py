@@ -118,7 +118,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/ehp</td><td>caster Effective HP under an enemy damage profile (Phase 1)</td></tr>
 <tr><td>POST</td><td>/rank-tank</td><td>rank items by EHP delta (Phase 1)</td></tr>
 <tr><td>POST</td><td>/hybrid</td><td>bruiser combined DPS+EHP score (Phase 2)</td></tr>
-<tr><td>POST</td><td>/rank-bruiser</td><td>rank items by weighted (α·dps + β·ehp) delta (Phase 2)</td></tr>
+<tr><td>POST</td><td>/rank-bruiser</td><td>rank items by weighted (alpha*dps + beta*ehp) delta (Phase 2)</td></tr>
 <tr><td>POST</td><td>/ability-dps</td><td>per-spell ability DPS for a mage / caster build (Phase 4b)</td></tr>
 <tr><td>POST</td><td>/rank-mage</td><td>rank items by total-ability-DPS delta (Phase 4c)</td></tr>
 <tr><td>POST</td><td>/burst</td><td>single-combo total burst damage for an assassin build (Phase 5)</td></tr>

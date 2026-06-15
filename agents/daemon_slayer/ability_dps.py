@@ -1181,17 +1181,17 @@ def compute_ability_dps(
     n_theoretical = sum(1 for s in per_spell if s.casts_per_sec_source == "theoretical_with_mana_uptime")
     if n_theoretical:
         notes.append(
-            f"{n_theoretical}/4 spells used theoretical 1/cooldown × mana_uptime "
-            f"(no measured rewind data for {resolved.champion_name} × {mode})"
+            f"{n_theoretical}/4 spells used theoretical 1/cooldown x mana_uptime "
+            f"(no measured rewind data for {resolved.champion_name} x {mode})"
         )
     if ap_amp != 1.0:
         notes.append(
-            f"AP amplified ×{ap_amp:.3f} by item amp (effective AP for ability "
+            f"AP amplified x{ap_amp:.3f} by item amp (effective AP for ability "
             f"scaling: {ap_total:.1f})"
         )
     if hp_ap_amp != 1.0:
         notes.append(
-            f"AP HP-scaled amp ×{hp_ap_amp:.3f} (Demonic Embrace at "
+            f"AP HP-scaled amp x{hp_ap_amp:.3f} (Demonic Embrace at "
             f"{ctx.caster_max_hp:.0f} HP)"
         )
     if ap_from_hp > 0:
@@ -1203,22 +1203,22 @@ def compute_ability_dps(
         notes.append(f"Mejai's stacked AP: +{stacked_ap:.0f}")
     if damage_amp != 1.0:
         notes.append(
-            f"build damage amp ×{damage_amp:.3f} "
+            f"build damage amp x{damage_amp:.3f} "
             f"(+{(damage_amp - 1.0) * 100:.1f}% to all ability damage)"
         )
     if magic_amp != 1.0:
         notes.append(
-            f"magic damage amp ×{magic_amp:.3f} on magic-typed spells "
+            f"magic damage amp x{magic_amp:.3f} on magic-typed spells "
             "(Abyssal Mask Unmake)"
         )
     if target_armor_eff != target_armor:
         notes.append(
-            f"effective target armor {target_armor:.1f} → {target_armor_eff:.1f} "
+            f"effective target armor {target_armor:.1f} -> {target_armor_eff:.1f} "
             "after reduction + lethality + % pen"
         )
     if target_mr_eff != target_mr:
         notes.append(
-            f"effective target MR {target_mr:.1f} → {target_mr_eff:.1f} "
+            f"effective target MR {target_mr:.1f} -> {target_mr_eff:.1f} "
             "after flat + % magic pen"
         )
 

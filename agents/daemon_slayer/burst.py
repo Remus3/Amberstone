@@ -401,7 +401,7 @@ class BurstResult:
             f"priority: {'>'.join(self.max_priority)}  "
             f"block: {self.block_strategy}  primary_scaling: {self.primary_scaling}"
         )
-        rows.append(f"combo: {' → '.join(self.combo_sequence)}")
+        rows.append(f"combo: {' -> '.join(self.combo_sequence)}")
         rows.append("")
         rows.append(
             f"  {'step':<6}  {'rank':>4}  {'type':>8}  {'raw':>7}  "
@@ -857,12 +857,12 @@ def compute_burst_damage(
         notes.append(f"ARAM aramDamageDealt={mode_mult:.3f} on per-cast damage")
     if ap_amp != 1.0:
         notes.append(
-            f"AP amplified ×{ap_amp:.3f} by item amp (effective AP for ability "
+            f"AP amplified x{ap_amp:.3f} by item amp (effective AP for ability "
             f"scaling: {ap_total:.1f})"
         )
     if hp_ap_amp != 1.0:
         notes.append(
-            f"AP HP-scaled amp ×{hp_ap_amp:.3f} (Demonic Embrace at "
+            f"AP HP-scaled amp x{hp_ap_amp:.3f} (Demonic Embrace at "
             f"{ctx.caster_max_hp:.0f} HP)"
         )
     if ap_from_hp > 0:
@@ -874,22 +874,22 @@ def compute_burst_damage(
         notes.append(f"Mejai's stacked AP: +{stacked_ap:.0f}")
     if damage_amp != 1.0:
         notes.append(
-            f"build damage amp ×{damage_amp:.3f} "
+            f"build damage amp x{damage_amp:.3f} "
             f"(+{(damage_amp - 1.0) * 100:.1f}% to all ability damage)"
         )
     if magic_amp != 1.0:
         notes.append(
-            f"magic damage amp ×{magic_amp:.3f} on magic-typed spells "
+            f"magic damage amp x{magic_amp:.3f} on magic-typed spells "
             "(Abyssal Mask Unmake)"
         )
     if target_armor_eff != target_armor:
         notes.append(
-            f"effective target armor {target_armor:.1f} → {target_armor_eff:.1f} "
+            f"effective target armor {target_armor:.1f} -> {target_armor_eff:.1f} "
             "after reduction + lethality + % pen"
         )
     if target_mr_eff != target_mr:
         notes.append(
-            f"effective target MR {target_mr:.1f} → {target_mr_eff:.1f} "
+            f"effective target MR {target_mr:.1f} -> {target_mr_eff:.1f} "
             "after flat + % magic pen"
         )
     if aa_total > 0 and combo_norm.count("AA") > 0:
@@ -899,11 +899,11 @@ def compute_burst_damage(
         )
         notes.append(
             f"auto-attack contribution {aa_total:.1f} from "
-            f"{combo_norm.count('AA')} AA × {aa_per_hit:.1f}/hit{breakdown}"
+            f"{combo_norm.count('AA')} AA x {aa_per_hit:.1f}/hit{breakdown}"
         )
     if spellblade_procs_fired > 0:
         notes.append(
-            f"Spellblade ({aa_spellblade_name}) fired {spellblade_procs_fired}× "
+            f"Spellblade ({aa_spellblade_name}) fired {spellblade_procs_fired}x "
             f"in combo for +{spellblade_damage_total:.1f} damage "
             f"(armed by spell-cast, consumed by next AA; "
             f"per-proc {aa_spellblade_per_proc:.1f})"
@@ -920,7 +920,7 @@ def compute_burst_damage(
     if lightshield_procs_fired > 0:
         notes.append(
             f"Lightshield Strike ({aa_lightshield_name}) fired "
-            f"{lightshield_procs_fired}× in combo for "
+            f"{lightshield_procs_fired}x in combo for "
             f"+{lightshield_damage_total:.1f} damage (Sundered Sky 8s "
             "CD - capped at 1 proc per combo; per-proc "
             f"{aa_lightshield_per_proc:.1f})"
@@ -1199,7 +1199,7 @@ class BurstRankResult:
             f"priority: {'>'.join(self.max_priority)}  "
             f"block: {self.block_strategy}  primary_scaling: {self.primary_scaling}"
         )
-        rows.append(f"combo: {' → '.join(self.combo_sequence)}")
+        rows.append(f"combo: {' -> '.join(self.combo_sequence)}")
         budget_label = "unlimited" if self.budget is None else f"{self.budget}"
         rows.append(
             f"budget: {budget_label}  slots: {len(self.current_item_ids)}/{self.slot_count}"
@@ -1404,7 +1404,7 @@ def rank_items_by_burst(
         f"max_priority={'>'.join(resolved_priority)} (source={priority_source})  "
         f"block_strategy={block_strategy}"
     )
-    notes.append(f"combo={' → '.join(combo_norm)} (source={combo_source})")
+    notes.append(f"combo={' -> '.join(combo_norm)} (source={combo_source})")
     notes.append(f"primary_scaling={baseline.primary_scaling}")
     if stripped_trinkets:
         notes.append(

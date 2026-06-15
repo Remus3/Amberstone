@@ -962,7 +962,7 @@ def compute_ehp(
     total_share = enemy_ad_share + enemy_ap_share
     if total_share > 1.0001:  # 1e-4 tolerance for float arithmetic
         raise ValueError(
-            f"enemy_ad_share + enemy_ap_share must be ≤ 1.0, got {total_share}"
+            f"enemy_ad_share + enemy_ap_share must be <= 1.0, got {total_share}"
         )
 
     resolved = build_champion(
