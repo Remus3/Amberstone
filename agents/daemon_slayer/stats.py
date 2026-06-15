@@ -4,7 +4,7 @@ Two extension points are deliberate:
 
 * ``CHAMPION_SCALING_RULES`` - per-stat rule list. Adding a stat means adding
   one ``ScalingRule`` entry; engine.py iterates the list, no engine edit needed.
-* ``ITEM_STAT_KEY_MAP`` - DDragon stat key → ``(canonical_key, kind)``.
+* ``ITEM_STAT_KEY_MAP`` - DDragon stat key -> ``(canonical_key, kind)``.
   ``kind`` is ``"flat"`` or ``"pct"``. Items whose stats live only in description
   text (passive effects, on-hit, conversions) are deliberately absent - that's
   the Phase 4 conditional-effects layer.
@@ -44,7 +44,7 @@ def scaled(base: float, perlevel: float, level: int) -> float:
 
 
 def attack_speed_scaling(base_as: float, perlevel_pct: float, level: int) -> float:
-    """Attack speed: ``base × (1 + perlevel% × (level-1))``.
+    """Attack speed: ``base x (1 + perlevel% x (level-1))``.
 
     DDragon ``attackspeedperlevel`` is expressed as a percentage (e.g. ``2.5``
     means +2.5% bonus AS per level). Item AS bonuses stack into the same

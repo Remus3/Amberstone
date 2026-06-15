@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Iterable
 if TYPE_CHECKING:
     from agents.daemon_slayer.data_loader import DataSnapshot
 
-# ─── Rarity constants (cdragon convention) ───────────────────────────────────
+# --- Rarity constants (cdragon convention) -----------------------------------
 # 0 = Silver, 1 = Gold, 2 = Prismatic, 4 = Hero (apiName starts with "GoH")
 RARITY_SILVER = 0
 RARITY_GOLD = 1
@@ -80,9 +80,9 @@ class Augment:
         )
 
 
-# ─── Stat overlay registry ───────────────────────────────────────────────────
+# --- Stat overlay registry ---------------------------------------------------
 #
-# Each entry: apiName → callable(augment) -> dict[canonical_stat_key, value]
+# Each entry: apiName -> callable(augment) -> dict[canonical_stat_key, value]
 # Canonical stat keys match `agents/daemon_slayer/stats.py` RESOLVED_STAT_ORDER:
 #   "hp", "mp", "hpregen", "mpregen", "armor", "mr", "ad", "ap", "as",
 #   "crit", "lifesteal", "spellvamp", "ms", "attackrange"
@@ -111,7 +111,7 @@ def _v(aug: Augment, key: str, idx: int = 0, default: float = 0.0) -> float:
 #
 # * **AS-bearing augments** (Deft, Chauffeur, DualWield, Quest_AngelofRetribution,
 #   MadScientist) - engine treats item AS as multiplicative on base via
-#   ``_combine_items`` (``base_as × (1 + bonus_pct)``). The augment overlay
+#   ``_combine_items`` (``base_as x (1 + bonus_pct)``). The augment overlay
 #   merges AFTER ``_combine_items`` as a flat add, which is wrong by the
 #   factor of base_as for AS. Needs an ``as_pct``-style overlay channel
 #   before these can land. Tracked for a follow-up pass.

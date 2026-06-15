@@ -16,7 +16,7 @@ Both files are derived from ``rewind_history.db.participants.spell[1-4]_casts
 (new in Phase 4b - supersedes the s145 ad-hoc query).
 
 Fallback chain (both functions):
-  champion+mode → champion global → dataset global_fallback → 0.0
+  champion+mode -> champion global -> dataset global_fallback -> 0.0
 
 Returns 0.0 only when the JSON is missing entirely - safe no-op for any
 proc that multiplies by this value.
@@ -60,7 +60,7 @@ def _load_spells() -> dict:
         try:
             _spell_cache = json.loads(_SPELL_RATE_FILE.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError):
-            # Missing file → all-zero fallback. The function's docstring
+            # Missing file -> all-zero fallback. The function's docstring
             # pins this contract: "Returns 0.0 only when the JSON is
             # missing entirely". Procs that multiply by this value
             # gracefully no-op.
@@ -114,8 +114,8 @@ def get_spell_casts_per_sec(champion_name: str, key: str, mode: str) -> float:
     Phase 4b (s178, 2026-05-12). Sibling of ``get_ult_casts_per_sec`` but
     parameterised over the spell key. Same fallback chain:
 
-      1. champion + mode → return matching rate
-      2. champion's "global" entry → return matching rate
+      1. champion + mode -> return matching rate
+      2. champion's "global" entry -> return matching rate
       3. file-level global_fallback[key]
       4. 0.0 (file missing)
 

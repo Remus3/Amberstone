@@ -16,11 +16,11 @@ For each of the four active spell keys (Q/W/E/R):
    field times its corresponding caster/target stat from the resolved
    build / caller-supplied context.
 3. Apply mode damage multiplier (``aramDamageDealt`` for ARAM).
-4. Apply mitigation factor per damage type: PHYSICAL→target_armor,
-   MAGIC→target_mr, TRUE→none, MIXED→half-half.
+4. Apply mitigation factor per damage type: PHYSICAL->target_armor,
+   MAGIC->target_mr, TRUE->none, MIXED->half-half.
 5. Multiply per-cast damage by measured casts/sec from
    ``cast_rates.get_spell_casts_per_sec``. If the dataset has no entry
-   for this champion × mode, fall back to ``1 / cooldown × mana_uptime``.
+   for this champion x mode, fall back to ``1 / cooldown x mana_uptime``.
 6. Sum per-spell DPS into ``total_ability_dps``.
 
 Block-strategy notes
@@ -610,7 +610,7 @@ def _mana_uptime_factor(
     return max(0.05, regen_per_sec / cost_per_sec_theoretical)
 
 
-# ─── per-spell evaluation ────────────────────────────────────────────────────
+# --- per-spell evaluation ----------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -783,7 +783,7 @@ class AbilityDpsResult:
         return "\n".join(rows)
 
 
-# ─── primary-scaling classifier ──────────────────────────────────────────────
+# --- primary-scaling classifier ----------------------------------------------
 
 
 def _classify_primary_scaling(per_spell: Sequence[AbilitySpellDps],
@@ -823,7 +823,7 @@ def _classify_primary_scaling(per_spell: Sequence[AbilitySpellDps],
     return top
 
 
-# ─── top-level compute ───────────────────────────────────────────────────────
+# --- top-level compute -------------------------------------------------------
 
 
 def compute_ability_dps(
@@ -1264,7 +1264,7 @@ def compute_ability_dps(
     )
 
 
-# ─── helpers for partial / empty results ──────────────────────────────────────
+# --- helpers for partial / empty results --------------------------------------
 
 
 def _zero_spell(key: str, form_name: str, form_index: int,

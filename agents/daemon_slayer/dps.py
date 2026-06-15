@@ -1,6 +1,6 @@
 """Phase 2 step 2 + Phase 4 thin slice - auto-attack DPS with conditionals.
 
-Reads ``snapshot.scenarios(champion_id)`` (early/mid/late phases × rotations
+Reads ``snapshot.scenarios(champion_id)`` (early/mid/late phases x rotations
 with weights, durations, basic-attack counts) and convolves with the
 champion's resolved AD/AS/crit at the requested level + items. Mode hook
 applies ``aram_modifiers.aramDamageDealt`` for ARAM. Target armor uses
@@ -194,7 +194,7 @@ def _select_phase(level: int) -> str:
 
 
 def _armor_factor(armor: float) -> float:
-    """League's armor → physical damage multiplier (also applies to MR/magic).
+    """League's armor -> physical damage multiplier (also applies to MR/magic).
 
     Positive armor: 100 / (100 + armor). Negative: 2 - 100/(100 - armor).
     """
@@ -290,9 +290,9 @@ def _lightshield_strike_per_proc_damage(
     Returns ``(per_proc_damage, item_name)`` - first match wins (Arena
     mirror dedup is informational only; no game mode lets you stack two
     Sundered Skys). Damage applies the standard pipeline:
-    ``resolve_damage(call_ctx)`` → ``_armor_factor`` against the
-    appropriate resist → mode multiplier → type-selective ``magic_amp``
-    (only for MAGIC) → build-wide ``damage_amp``. Empty builds yield
+    ``resolve_damage(call_ctx)`` -> ``_armor_factor`` against the
+    appropriate resist -> mode multiplier -> type-selective ``magic_amp``
+    (only for MAGIC) -> build-wide ``damage_amp``. Empty builds yield
     ``(0.0, "")``.
 
     Phase 5.8 (s190, 2026-05-13): consumed by ``burst.py``'s combo
@@ -574,7 +574,7 @@ def compute_dps(
     ``target_bonus_hp`` (Phase 4 batch 19, 2026-05-04): caller-supplied
     target bonus HP. Activates Giant Slayer-style target-conditional
     amps (LDR id 3036). Default 0.0 keeps pre-batch-19 calls
-    behaviorally identical (the amp resolves to ×1.0 with no signal).
+    behaviorally identical (the amp resolves to x1.0 with no signal).
 
     ``target_current_hp_pct`` (DS target-current-HP% lever, BACKLOG item):
     caller-supplied fraction (0.0-1.0) of the target's current HP vs its
@@ -640,7 +640,7 @@ def compute_dps(
     damage_amp = total_damage_amp_multiplier(item_effects)
     # Phase 4 batch 19 (2026-05-04): target-conditional amp (LDR Giant
     # Slayer). Stacks multiplicatively with damage_amp_pct items per
-    # League's buff-system pin from batch 14. ×1.0 when caller leaves
+    # League's buff-system pin from batch 14. x1.0 when caller leaves
     # target_bonus_hp at 0 OR when no item carries the schema field.
     target_amp = total_target_bonus_hp_amp_multiplier(item_effects, target_bonus_hp)
     damage_amp *= target_amp
@@ -671,7 +671,7 @@ def compute_dps(
     caster_bonus_armor = max(0.0, float(stats.get("armor", 0.0)) - base_armor)
     # Phase 4 batch 59 (2026-05-04): caster raw lethality - sum of all items'
     # lethality values (un-scaled, before level conversion). Required for
-    # Bastionbreaker's Shaped Charge (15 + 0.75 × lethality true damage / 45s).
+    # Bastionbreaker's Shaped Charge (15 + 0.75 x lethality true damage / 45s).
     caster_lethality = sum(e.lethality for e in item_effects)
     # Phase 4 batch 38 (2026-05-04): Giant Slayer target max HP advantage amp.
     # Stacks multiplicatively with damage_amp (same buffer-system doctrine as
@@ -681,7 +681,7 @@ def compute_dps(
     # Phase 4 batch 27 (2026-05-04): caster max mana - needed for Manamune /
     # Muramana's Awe (already folded into ad_flat by build_champion) and
     # Muramana's Shock proc (per-attack 1.2% max mana physical). Manaless
-    # champions and pre-batch-27 builds carry stats["mp"]=0 → 0 contribution.
+    # champions and pre-batch-27 builds carry stats["mp"]=0 -> 0 contribution.
     caster_max_mp = float(stats.get("mp", 0.0))
     # Phase 4 batch 15 (2026-05-04): cross-derived AP from caster bonus
     # HP (Riftmaker's Void Infusion). Added to ap before CallContext
@@ -719,7 +719,7 @@ def compute_dps(
     # flows through both the rotation auto-attack crit calc (via
     # ``stats_for_rotation``) and CallContext.crit_chance (read by ER
     # Spellblade's lambda + future crit-scaling procs). /stats endpoint
-    # output is unchanged - same separation as batch 15's HP→AP cross-
+    # output is unchanged - same separation as batch 15's HP->AP cross-
     # derivation. ``crit_from_effects`` is 0.0 when no item carries
     # either crit_chance_bonus field, so pre-batch-26 builds pass
     # through behaviorally identical.

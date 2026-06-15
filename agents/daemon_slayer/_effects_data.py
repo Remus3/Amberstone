@@ -24,7 +24,7 @@ from ._effects_types import (
 
 # Patch 16.9.1 - refresh on patch bump (extractor manifest is the trigger).
 ITEM_EFFECTS: dict[str, ItemEffect] = {
-    # ─────────────────────────────────────────────── crit / DPS-positive
+    # ----------------------------------------------- crit / DPS-positive
     "3031": ItemEffect(
         item_id="3031",
         name="Infinity Edge",
@@ -126,7 +126,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Immortal Shieldbow: Lifeline (low-HP shield); no DPS contribution",
     ),
 
-    # ── Phase 4 expansion 2026-05-03: energized family + scaling procs ──
+    # -- Phase 4 expansion 2026-05-03: energized family + scaling procs --
 
     "3087": ItemEffect(
         item_id="3087",
@@ -317,7 +317,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Guinsoo's Rageblade: Wrath +30 magic on-hit every AA + Phantom Hit every 3rd attack ~50% bonus AD physical",
     ),
 
-    # ── Phase 4 expansion: armor pen / reduction ──
+    # -- Phase 4 expansion: armor pen / reduction --
 
     "3036": ItemEffect(
         item_id="3036",
@@ -344,7 +344,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # as a new entry (was unmodeled - stats-only via item aggregation prior).
     # DDragon snapshot 16.9.1: "+45 Attack Damage / 35% Armor Penetration /
     # 15 Ability Haste". Same shape as LDR (3036) - % armor pen sits in the
-    # same pipeline layer (reduction → % pen → flat pen). Coefficient 0.35
+    # same pipeline layer (reduction -> % pen -> flat pen). Coefficient 0.35
     # matches LDR; LDR additionally carries Giant Slayer (target_bonus_hp
     # amp); Serylda has Bitter Cold instead, which is a 30% slow on
     # damaging-ability hits to enemies below 50% HP - pure utility, not
@@ -369,7 +369,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Black Cleaver: 30% armor reduction at full 5 stacks (sustained DPS assumption)",
     ),
 
-    # ── Phase 4 expansion: defensive_only entries (proof of coverage) ──
+    # -- Phase 4 expansion: defensive_only entries (proof of coverage) --
 
     "3046": ItemEffect(
         item_id="3046",
@@ -438,7 +438,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # numeric scaling DDragon stripped: "Gain bonus attack damage
         # equal to 45% base AD". This is a stat layer (not a proc) -
         # always-on flat AD added at build time, scales with the
-        # leveled champion base AD (e.g. Sett base AD ~76 at lvl 11 →
+        # leveled champion base AD (e.g. Sett base AD ~76 at lvl 11 ->
         # +34 bonus AD from Sterak's). Engine wires this in
         # ``build_champion`` via the ``bonus_ad_pct_base_ad`` field.
         # The Lifeline shield piece (unique_passive_key="lifeline")
@@ -493,7 +493,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # - every_n_attacks=5 (4 build stacks + 5th attack consumes; same
         #   shape as Kraken Slayer's 3rd-attack proc, just at 5).
         # - bonus_damage = 1.20 * base_ad + 0.05 * caster_max_hp.
-        # - "maximum health" is unqualified in Meraki's text → caster's
+        # - "maximum health" is unqualified in Meraki's text -> caster's
         #   max HP (League convention; Hullbreaker is a side-laner HP-
         #   stacker item, design intent is wielder's HP). Same shape as
         #   Heartsteel's `0.06 * c.caster_max_hp`.
@@ -597,7 +597,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Eclipse: Ever Rising Moon ~6% target max HP every 2 attacks (physical)",
     ),
 
-    # ── Phase 4 expansion 2026-05-04: high-pickrate SR legendaries ──
+    # -- Phase 4 expansion 2026-05-04: high-pickrate SR legendaries --
     # All defensive_only - passives are non-DPS (active utilities, lifeline
     # shields, sustain, damage-storage, ability-CDR stacks). Promote to
     # periodic / armor-pen / amp entries when the relevant Phase 4+ hooks
@@ -651,7 +651,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     #    within 10s deals 125% base AD (+ 0 to 50 based on critical
     #    strike chance, scaling 0.5 damage per 1% crit) bonus physical
     #    damage on-hit and restores mana equal to half that amount."
-    # Crit-chance scaling: 0.5 damage per 1% crit → 50 * crit_chance
+    # Crit-chance scaling: 0.5 damage per 1% crit -> 50 * crit_chance
     # (where crit_chance is 0.0-1.0). At 0% crit ER procs for 1.25 *
     # base_ad; at 100% crit, +50 flat on top. Cooldown 1.5s real, but
     # rotation cadence is ability-cast-frequency-bound - match the
@@ -795,7 +795,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Profane Hydra: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets)",
     ),
 
-    # ── Phase 4 batch 3 (2026-05-04): AP-aware CallContext + spellblade ──
+    # -- Phase 4 batch 3 (2026-05-04): AP-aware CallContext + spellblade --
     # CallContext.ap (added this batch) lets spellblade and AP-on-hit procs
     # promote out of defensive_only. Two items unlock; five AP-stat siblings
     # land here as documented defensive_only because their effects don't
@@ -870,7 +870,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3146",
         name="Hextech Gunblade",
         # Phase 4 batch 22 (2026-05-04): promoted from defensive_only.
-        # Lightning Bolt active deals 175→253 (level 1→18, linear) +
+        # Lightning Bolt active deals 175->253 (level 1->18, linear) +
         # 30% AP magic damage, 40s cooldown. Meraki text:
         #   "175 + (253-175)/17*(x-1) for 20" + 30% AP magic damage.
         # Cooldown sourced from in-game / wiki (Meraki bulk has the
@@ -912,7 +912,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Phase 4 batch 14 (2026-05-04): promoted via damage_amp_pct.
         # Void Corruption ramps to 8% bonus damage after 4s in combat
         # (sustained-DPS approximation pins the full-ramp value).
-        # Phase 4 batch 15 (2026-05-04): Void Infusion HP→AP wired via
+        # Phase 4 batch 15 (2026-05-04): Void Infusion HP->AP wired via
         # ap_per_bonus_hp_pct = 0.02 (always-on passive, not gated by
         # combat - DDragon: "Gain 2% of your bonus Health as Ability
         # Power"). Compounds with Heartsteel / Titanic Hydra HP stacks
@@ -930,7 +930,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Deathfire Grasp: active 15% target max HP - active item, not in auto rotation",
     ),
 
-    # ── Phase 4 batch 4 (2026-05-04): magic pen layer ──
+    # -- Phase 4 batch 4 (2026-05-04): magic pen layer --
     # Symmetric to the armor pen pipeline. Void Staff / Cryptbloom carry
     # % pen; Sorcerer's Shoes / Shadowflame carry flat pen. Shadowflame
     # also has a magic-crit-on-low-HP effect (target HP not modeled in
@@ -962,7 +962,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Shadowflame: 15 flat magic pen + Cinderbloom magic crit <40% HP (low-HP gate not modeled)",
     ),
 
-    # ── Phase 4 batch 6 (2026-05-04): caster HP layer ──
+    # -- Phase 4 batch 6 (2026-05-04): caster HP layer --
     # CallContext.caster_max_hp / caster_bonus_hp (engine-derived from
     # resolved stats) lets caster-HP-scaling procs land. Heartsteel
     # promotes from defensive_only above. Titanic Hydra is a new add.
@@ -1009,7 +1009,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Titanic Hydra: Cleave 1% max HP primary on-hit + 3% max HP to nearby (Meraki 16.10.1 melee values)",
     ),
 
-    # ── Phase 4 batch 7 (2026-05-04): multi-target rotations ──
+    # -- Phase 4 batch 7 (2026-05-04): multi-target rotations --
     # CallContext.targets_in_rotation (engine-derived from each rotation's
     # numberOfTargets) lets cleave-to-others procs land. ~6% of lolmath
     # rotations carry n>1; the other 94% pass n=1.0 unchanged.
@@ -1034,7 +1034,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Ravenous Hydra: Cleave ~35% AD physical to nearby enemies (melee, scales with rotation targets)",
     ),
 
-    # ── Phase 4 batch 9 (2026-05-04): Immolate items ──
+    # -- Phase 4 batch 9 (2026-05-04): Immolate items --
     # Sunfire Aegis (3068) and Hollow Radiance (6664) share the same
     # Immolate aura passive: after taking or dealing damage, deal
     # ~12 + 1.5% bonus HP magic damage per second to nearby enemies for 3s.
@@ -1052,8 +1052,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # own architectural change - out of scope for this batch.
     #
     # Both items pass-through CallContext.targets_in_rotation: at n=1 the
-    # Immolate still ticks for 1× damage (the primary target IS counted).
-    # At n=3 it ticks for 3× damage. This is the AoE-incl-primary idiom
+    # Immolate still ticks for 1x damage (the primary target IS counted).
+    # At n=3 it ticks for 3x damage. This is the AoE-incl-primary idiom
     # pinned in batch 7's tests.
 
     "3068": ItemEffect(
@@ -1096,7 +1096,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # ── Phase 4 batch 26 (2026-05-04): item-effect-contributed crit chance ──
+    # -- Phase 4 batch 26 (2026-05-04): item-effect-contributed crit chance --
     # CallContext.crit_chance was added in batch 21 for Essence Reaver. This
     # batch adds the *production* path - items that themselves contribute to
     # the build's crit chance (Yun Tal at full Wildarrows stacks; Atma's
@@ -1104,7 +1104,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # contribution into the resolved crit at compute_dps time and clamps at
     # 1.0; auto-attack crit + ER spellblade scaling + future crit-readers
     # all see the boosted total. /stats output is unchanged - same
-    # cross-derivation pattern as Riftmaker's HP→AP from batch 15.
+    # cross-derivation pattern as Riftmaker's HP->AP from batch 15.
 
     "3032": ItemEffect(
         item_id="3032",
@@ -1117,9 +1117,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         crit_chance_bonus_flat=0.25,
         # Flurry: on-attacking an enemy champion, +30% AS for 6s (30s CD;
         # attacks reduce CD by 1s, crits by 2s). Phase 4 batch 54
-        # (2026-05-04): uptime model: at 1.3 attacks/s with 25% crit →
+        # (2026-05-04): uptime model: at 1.3 attacks/s with 25% crit ->
         # CD drains 1.625s/s. Cycle = 6s active + 16.2s inactive = 22.2s;
-        # uptime = 6/22.2 ≈ 27%. Effective sustained AS = 0.30 × 0.27 ≈ 0.08.
+        # uptime = 6/22.2 ~ 27%. Effective sustained AS = 0.30 x 0.27 ~ 0.08.
         bonus_as_conditional=0.08,
         note=(
             "Yun Tal Wildarrows: Practice Makes Lethal +25% crit (full stacks); "
@@ -1137,7 +1137,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # batch 19's target_bonus_hp_amp (LDR Giant Slayer) on the caster
         # side. The 700 HP / 20% crit / 10 AH stat block lands via item
         # aggregation; Atma's stats alone don't reach the 3000 cap (700
-        # bonus HP from Atma itself ≈ 0.07 ramp = 7% Big Hands), so
+        # bonus HP from Atma itself ~ 0.07 ramp = 7% Big Hands), so
         # multi-HP-item builds (Heartsteel, Titanic Hydra, Warmog's,
         # Sterak's HP) drive most of the contribution.
         crit_chance_bonus_max_pct=0.30,
@@ -1145,8 +1145,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Atma's Reckoning: Big Hands +1% crit per 100 bonus HP, max 30% at 3000 bonus HP",
     ),
 
-    # ── Phase 4 batch 27 (2026-05-04): Manamune / Muramana family ──
-    # Mana-scaling damage. Awe (2% max mana → bonus AD) is a stat layer
+    # -- Phase 4 batch 27 (2026-05-04): Manamune / Muramana family --
+    # Mana-scaling damage. Awe (2% max mana -> bonus AD) is a stat layer
     # mirroring batch 20's Sterak's bonus_ad_pct_base_ad wiring; Shock
     # (Muramana only - 1.2% max mana per-attack physical) uses the
     # existing periodic schema with a new caster_max_mp CallContext field.
@@ -1205,7 +1205,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # ── Phase 4 batch 28 (2026-05-04): Archangel's Staff / Seraph's Embrace ──
+    # -- Phase 4 batch 28 (2026-05-04): Archangel's Staff / Seraph's Embrace --
     # AP-side Awe twins of the Manamune family (batch 27). Same "Awe" name,
     # but different math - Archangel/Seraph's are keyed off BONUS mana
     # (item-contributed only), while Manamune/Muramana are keyed off MAX
@@ -1222,9 +1222,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Archangel's Staff",
         # Awe: 1% bonus mana as Ability Power. Stat block: 70 AP / 600 mana
         # / 25 AH (DDragon 16.9.1; Meraki passive text confirms 1% bonus
-        # mana). Ezreal lvl 11 + Archangel: champion base mp ≈ 1075 not
-        # counted; bonus mana = 600 → Awe AP = 0.01 * 600 = 6 AP. Stack
-        # mana items to lift further (Manamune adds 500 bonus mana → +5
+        # mana). Ezreal lvl 11 + Archangel: champion base mp ~ 1075 not
+        # counted; bonus mana = 600 -> Awe AP = 0.01 * 600 = 6 AP. Stack
+        # mana items to lift further (Manamune adds 500 bonus mana -> +5
         # AP from Archangel's Awe; Tear of the Goddess builds from this
         # baseline).
         bonus_ap_pct_bonus_mp=0.01,
@@ -1256,7 +1256,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "the shield piece)"
         ),
     ),
-    # ── Phase 4 batch 29 (2026-05-04): coverage batch - defensive_only +
+    # -- Phase 4 batch 29 (2026-05-04): coverage batch - defensive_only +
     # 2 partial promotions (Liandry's Suffering damage amp, Stormsurge
     # flat magic pen). Coverage-completeness; no new schema fields. The
     # 4 defensive_only entries surface "we considered this and decided
@@ -1363,7 +1363,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # ── Phase 4 batch 30 (2026-05-04): lethality plumbing - new entries ──
+    # -- Phase 4 batch 30 (2026-05-04): lethality plumbing - new entries --
     # Axiom Arc and Umbral Glaive were unmodeled prior; now land via the
     # lethality schema alongside the 5 in-place updates above (Hubris,
     # Voltaic, Edge of Night, Youmuu's, Opportunity). All 7 lethality items
@@ -1403,12 +1403,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     ),
 
 
-    # ── Phase 4 batch 31 (2026-05-04): support / ramp item coverage sweep ──
+    # -- Phase 4 batch 31 (2026-05-04): support / ramp item coverage sweep --
     # 21 items. 2 partial promotions (Dead Man's Plate Shipwrecker physical proc;
     # Spectral Cutlass ARAM-only lethality - same schema as batch 30). 19
     # defensive_only entries: support-role items, sustain amplifiers, conditional-
     # or-ability-bound passives that don't fit the basic-auto DPS model.
-    # Defensive_only count: 21 → 40.
+    # Defensive_only count: 21 -> 40.
 
     # --- Dead Man's Plate - Shipwrecker stack-ramp discharge (ENGINE 1.26.0) ---
     # 350 HP + 55 armor + 4% MS stat block. Two passives:
@@ -1459,7 +1459,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # ─── Spectral Cutlass - ARAM-only lethality promotion ───────────────────
+    # --- Spectral Cutlass - ARAM-only lethality promotion -------------------
     # 50 AD + 15 Lethality + 4% MS stat block (ARAM-only, map 12 only).
     # Soul Anchor active (0s listed CD in DDragon): marks current location;
     # returns you there after 4s or on recast. Pure repositioning utility -
@@ -1477,7 +1477,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # ─── Support / enchanter items - defensive_only ──────────────────────────
+    # --- Support / enchanter items - defensive_only --------------------------
     # All entries below have effects that are non-DPS (ally healing/shielding
     # triggers, ally-proc-bound damage, enemy-on-champion-only burst gated by
     # ability casts, MS/AS conditional on ally link, etc.). No direct
@@ -1558,7 +1558,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6657",
         name="Rod of Ages",
         defensive_only=True,
-        # Eternity converts damage taken → mana; mana used → HP. Stacked
+        # Eternity converts damage taken -> mana; mana used -> HP. Stacked
         # passive HP/MP/AP ramping (30 stacks over 6 min). Sustain and
         # scaling, not a DPS proc.
         note="Rod of Ages: Eternity (damage→mana, mana→HP sustain ramp); no DPS contribution",
@@ -1639,7 +1639,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # ── Phase 4 batch 32 (2026-05-04): AP amplification + lethality + new schema ──
+    # -- Phase 4 batch 32 (2026-05-04): AP amplification + lethality + new schema --
     # 7 active promotions (2 new schema fields + 5 reuse existing):
     # Rabadon's Deathcap (ap_amp_pct=0.30), Dusk and Dawn (spellblade),
     # The Collector + Prowler's Claw + Bastionbreaker (lethality),
@@ -1738,7 +1738,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "ability-trigger modeled as sustained per the always-active convention)"
         ),
     ),
-    # ── defensive_only (8) ──
+    # -- defensive_only (8) --
     "3165": ItemEffect(
         item_id="3165",
         name="Morellonomicon",
@@ -1816,7 +1816,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="8010",
         name="Bloodletter's Curse",
         # Phase 4 batch 52 (2026-05-04): promoted. Meraki confirms: "Each stack
-        # inflicts 7.5% magic resistance reduction, stacking up to 4 times → 30%
+        # inflicts 7.5% magic resistance reduction, stacking up to 4 times -> 30%
         # MR reduction at full stacks." Same mechanism as Arena version 4010
         # (both are MR reduction, not magic penetration - note was wrong on "40%
         # magic pen"). Sustained-DPS pins full stacks (4 ability applications;
@@ -1828,7 +1828,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "ability-hit stacks = 30% at full stacks (same as Arena 4010; Meraki confirmed)"
         ),
     ),
-    # ── Phase 4 batch 33 (2026-05-04): ability-burn promos + dual-pen + caster-HP burn ──
+    # -- Phase 4 batch 33 (2026-05-04): ability-burn promos + dual-pen + caster-HP burn --
     # Gambler's Blade (667101): 15 lethality + 15 magic pen flat (dual-pen item).
     # Adaptive Force (55) has a DDragon stats-block gap - not carried as AD or AP in
     # aggregate_item_stats. Contribution modeled via pen only.
@@ -1863,7 +1863,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "caster_bonus_hp = item_totals[hp_flat] proxy same as Titanic/Heartsteel)"
         ),
     ),
-    # ── defensive_only (7) ──
+    # -- defensive_only (7) --
     "4636": ItemEffect(
         item_id="4636",
         name="Night Harvester",
@@ -1871,7 +1871,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # but Arena Meraki (444636) confirms: "125 (+ 15% AP) bonus magic damage,
         # 10s CD per champion." Used for SR, ARAM, and Arena SR-mirrors since
         # all Night Harvester variants share the Soulrend passive with the same
-        # numbers. "Per champion" CD → model as every_n_seconds=10 (worst-case:
+        # numbers. "Per champion" CD -> model as every_n_seconds=10 (worst-case:
         # single-target fight at this cadence; multi-target fights proc more often
         # but every_n_seconds is the minimum floor for any one target).
         periodics=(PeriodicProc(
@@ -1944,7 +1944,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
     # Phase 4 batch 62 (2026-05-04): Cruelty SR (667109) - promoted. Same Watch Them
-    # Fall passive as Arena variant 447109: comet on CC, 6s CD, 50→150+40%AP+4%maxHP.
+    # Fall passive as Arena variant 447109: comet on CC, 6s CD, 50->150+40%AP+4%maxHP.
     # Meraki only has the Arena entry; DDragon description confirms identical passive.
     "667109": ItemEffect(
         item_id="667109",
@@ -1966,7 +1966,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "CC-triggered; 6s CD is the binding constraint."
         ),
     ),
-    # ── Phase 4 batch 35 (2026-05-04): missed-lethality + dual-pen + spellblade + on-hit ──
+    # -- Phase 4 batch 35 (2026-05-04): missed-lethality + dual-pen + spellblade + on-hit --
     # Duskblade of Draktharr (6691): missed from batch-30 lethality sweep.
     # Nightstalker unique-proc (large burst on first attack after stealth) is
     # conditional on vision/stealth mechanics - not sustained, not modeled.
@@ -2022,7 +2022,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
     # Navori Flickerblade (6672): Bring It Down - every 3rd basic attack deals bonus
-    # physical damage on-hit, scaling 120→168 (ranged) over levels 1→13.
+    # physical damage on-hit, scaling 120->168 (ranged) over levels 1->13.
     # Quicken (CDR on crit) is utility-only.
     "6675": ItemEffect(
         item_id="6675",
@@ -2068,7 +2068,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         note="Hellfire Hatchet: Char 15s CD; (5+5*hp_diff/2k)% + lethality*(0.2+0.2*hp_diff/2k)% target maxHP physical/15s",
     ),
-    # ── defensive_only (6) ──
+    # -- defensive_only (6) --
     "6630": ItemEffect(
         item_id="6630",
         name="Goredrinker",
@@ -2122,7 +2122,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "for casters is unclear; deferred"
         ),
     ),
-    # ── Phase 4 batch 36 (2026-05-04): Arena item sweep + Rite of Ruin crit ──
+    # -- Phase 4 batch 36 (2026-05-04): Arena item sweep + Rite of Ruin crit --
     # Detonation Orb (447113): 12 flat magic pen (Detonation Orb stat block).
     # The Bomb stored-damage passive requires ability damage tracking (deferred).
     "447113": ItemEffect(
@@ -2154,7 +2154,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
     # Pyromancer's Cloak (447118): Spark (5s CD) - attack or ability hit burns target
-    # for 100→350 magic over 3s (total burn; Meraki melee value). Modeled as
+    # for 100->350 magic over 3s (total burn; Meraki melee value). Modeled as
     # every_n_seconds=5.0 with total_damage as bonus_damage (same convention as
     # Hextech Gunblade's Lightning Bolt). Cleansing Flame fireball AoE deferred.
     "447118": ItemEffect(
@@ -2174,7 +2174,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Cleansing Flame fireball AoE deferred)"
         ),
     ),
-    # Lightning Rod (447119): Call Lightning - autocast every 16s: 135→230 magic
+    # Lightning Rod (447119): Call Lightning - autocast every 16s: 135->230 magic
     # + 30% bonus AD + 50% AP + 10% target max HP. Fully Automated reduces CD via
     # AH (not modeled; pins at 16s base). Uses level + bonus_ad + ap + target_max_hp -
     # all existing CallContext fields.
@@ -2223,7 +2223,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Salvage the Wreckage ability-chance shield utility-only"
         ),
     ),
-    # ── defensive_only (6) ──
+    # -- defensive_only (6) --
     "447108": ItemEffect(
         item_id="447108",
         name="Runecarver",
@@ -2279,14 +2279,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "(movement utility + dodge mechanic; no DPS contribution)"
         ),
     ),
-    # ── Phase 4 batch 37 (2026-05-04): TRUE damage type + Arena item sweep ──
+    # -- Phase 4 batch 37 (2026-05-04): TRUE damage type + Arena item sweep --
     # TRUE damage bypasses both armor and MR (resist=0.0 in _periodic_proc_dps).
     # Three active promotions; 14 defensive_only entries completing the Arena pool sweep.
 
     # Darksteel Talons (443054): Gash - every basic attack deals
-    # (10→20 pp) + 20% bonus armor true damage (ranged Meraki values;
-    # batch 58 adds caster_bonus_armor scaling). Melee would be 20→40
-    # base + 25% bonus armor; ranged = 10→20 + 20% armor.
+    # (10->20 pp) + 20% bonus armor true damage (ranged Meraki values;
+    # batch 58 adds caster_bonus_armor scaling). Melee would be 20->40
+    # base + 25% bonus armor; ranged = 10->20 + 20% armor.
     "443054": ItemEffect(
         item_id="443054",
         name="Darksteel Talons",
@@ -2350,7 +2350,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Sow on-kill heal utility-only"
         ),
     ),
-    # ── defensive_only (14) ──
+    # -- defensive_only (14) --
     "447101": ItemEffect(
         item_id="447101",
         name="Gambler's Blade",
@@ -2366,7 +2366,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Phase 4 batch 60 (2026-05-04): promoted. Meraki confirms ZZ'Rot passive:
         # "on attack/ability, summon 8 Voidmites (12s CD) that attack the target,
         # each dealing 6 (+ 4% AD) (+ 8% AP) magic damage." 'The target' singular
-        # → all 8 voidmites hit the same target (no targets_in_rotation spread).
+        # -> all 8 voidmites hit the same target (no targets_in_rotation spread).
         # 'your AD' in Meraki = total AD (base + bonus). '12s CD' is the rate
         # limiter; modeled as every_n_seconds=12.0.
         periodics=(PeriodicProc(
@@ -2390,7 +2390,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
     # Innervating Locket (447104): Fill the Soul - 30 ability charges (self + allies
-    # within 800 units) → grants pp|100 to 250 AP at max charge for rest of round.
+    # within 800 units) -> grants pp|100 to 250 AP at max charge for rest of round.
     # No CD; fires once per Arena round. Models as bonus_ap_stacked=175 (midpoint of
     # 100-250 AP across levels 1-18). In Arena, 30 stacks are reliably reached early
     # each round given ally casts; AP applies for most of the round.
@@ -2454,7 +2454,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="447112",
         name="Flesheater",
         # Phase 4 batch 50 (2026-05-04): Arena version. Same "Hack the Meat"
-        # passive as 667112 - 3 armor+MR per hit, 10 stacks → 30 flat each.
+        # passive as 667112 - 3 armor+MR per hit, 10 stacks -> 30 flat each.
         # Arena version adds 20 Ability Haste and 70 AF (vs 55 AF SR).
         armor_reduction_flat=30.0,
         mr_reduction_flat=30.0,
@@ -2514,8 +2514,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # crit instance." Crit-gated rate modeled as expected-value weighting:
         # bonus_damage per attack = crit_chance * (level_scale + 25% of
         # crit-bonus AD). Crit bonus assumed DEFAULT_CRIT_BONUS = 0.75
-        # (175% crit); 25% × 0.75 = 0.1875 AD. Level scale: 20 at lvl 1,
-        # 80 at lvl 18 → slope = 60/17 per level.
+        # (175% crit); 25% x 0.75 = 0.1875 AD. Level scale: 20 at lvl 1,
+        # 80 at lvl 18 -> slope = 60/17 per level.
         periodics=(PeriodicProc(
             name="Scour",
             bonus_damage=lambda c: c.crit_chance * (
@@ -2532,14 +2532,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Meraki 443069 confirmed."
         ),
     ),
-    # ── Phase 4 batch 38 (2026-05-04): Giant Slayer schema + 228xxx/443xxx/SR sweep ──
+    # -- Phase 4 batch 38 (2026-05-04): Giant Slayer schema + 228xxx/443xxx/SR sweep --
     # New schema: giant_slayer_pct_per_100hp + giant_slayer_max_pct (MAX HP diff keyed,
     # distinct from LDR's bonus-HP-keyed target_bonus_hp_amp). Perplexity updated in-place.
     # 3 active promotions; 17 defensive_only entries.
 
     # Wooglet's Witchcap (228002): Magical Opus - increase total AP by 50%.
     # Uses existing ap_amp_pct schema (same as Rabadon's Deathcap 30%). Stacks
-    # multiplicatively via total_ap_amp_multiplier (1.50 × 1.30 if both in build).
+    # multiplicatively via total_ap_amp_multiplier (1.50 x 1.30 if both in build).
     # Time Stop active (Zhonya's invulnerability) is utility-only, not modeled.
     "228002": ItemEffect(
         item_id="228002",
@@ -2580,7 +2580,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Fervor 20 MS utility-only"
         ),
     ),
-    # ── defensive_only (17) ──
+    # -- defensive_only (17) --
     "228001": ItemEffect(
         item_id="228001",
         name="Anathema's Chains",
@@ -2740,7 +2740,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Damage mitigation passive, not DPS; active global targeting utility-only"
         ),
     ),
-    # ── Phase 4 batch 39 (2026-05-04): MR-reduction schema + Arena re-skin sweep ──
+    # -- Phase 4 batch 39 (2026-05-04): MR-reduction schema + Arena re-skin sweep --
     # New field mr_reduction_pct (magic-side Black Cleaver analogue) wired into
     # effective_target_mr before % pen step. 5 active promotions; 7 defensive_only.
 
@@ -2748,7 +2748,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # MR by 7.5% for 6s, stacking up to 4 times = 30% max MR reduction.
     # Modeled at full stacks per sustained-DPS convention (same as Black Cleaver's
     # armor_reduction_pct=0.30 at 5 stacks). Applies before % magic pen in
-    # effective_target_mr - mirrors the armor reduction → % pen → flat pen order.
+    # effective_target_mr - mirrors the armor reduction -> % pen -> flat pen order.
     "4010": ItemEffect(
         item_id="4010",
         name="Bloodletter's Curse",
@@ -2810,7 +2810,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
     # Hextech Gunblade (663146, Arena variant): same Lightning Bolt active as SR 3146
-    # (175→253 by level + 30% AP magic, 40s cooldown). 663xxx is an Arena re-skin.
+    # (175->253 by level + 30% AP magic, 40s cooldown). 663xxx is an Arena re-skin.
     "663146": ItemEffect(
         item_id="663146",
         name="Hextech Gunblade",
@@ -2827,7 +2827,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "(175→253 by level + 30% AP magic, 40s cooldown). 25%/1.5s slow utility-only"
         ),
     ),
-    # ── defensive_only (7) ──
+    # -- defensive_only (7) --
     "444636": ItemEffect(
         item_id="444636",
         name="Night Harvester",
@@ -2847,8 +2847,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Phase 4 batch 56 (2026-05-04): promoted. Sinister Pact: +1.5% AP per 100
         # current HP, capped at 45% (3000 HP). Modeled using caster max HP as a
         # sustained-combat approximation (same convention as BotRK current-HP proc).
-        # A build with 3000 HP reaches the full 45% AP amplification; 2000 HP → 30%.
-        # Distinct from SR 4637 which gives static bonus-HP → bonus AP (additive);
+        # A build with 3000 HP reaches the full 45% AP amplification; 2000 HP -> 30%.
+        # Distinct from SR 4637 which gives static bonus-HP -> bonus AP (additive);
         # this is multiplicative (same layer as Rabadon's), so it stacks with ap_amp_pct.
         ap_amp_pct_per_100_caster_hp=0.015,
         ap_amp_pct_per_100_caster_hp_cap=0.45,
@@ -2905,7 +2905,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "(teammate mechanic). Deferred - conditional AS schema gap"
         ),
     ),
-    # ── Phase 4 batch 40 (2026-05-04): component items + final SR/Arena sweep ──
+    # -- Phase 4 batch 40 (2026-05-04): component items + final SR/Arena sweep --
     # 3 active promotions using existing schemas; ~15 defensive_only entries.
 
     # Last Whisper (3035): 18% armor pen. Component item for LDR / Mortal Reminder /
@@ -2936,7 +2936,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "(pinned at full stacks; same coefficient as Liandry's Torment 3151)"
         ),
     ),
-    # ── defensive_only (15) ──
+    # -- defensive_only (15) --
     "444644": ItemEffect(
         item_id="444644",
         name="Crown of the Shattered Queen",
@@ -3098,13 +3098,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # ── Phase 4 batch 41 (2026-05-04): Arena 226xxx mirrors ──────────────
-    # All 28 missing 226xxx Arena pool items. DDragon maps 226xxx → SR
+    # -- Phase 4 batch 41 (2026-05-04): Arena 226xxx mirrors --------------
+    # All 28 missing 226xxx Arena pool items. DDragon maps 226xxx -> SR
     # counterpart via ID - 220000. Arena pool versions share the same
     # passive-effect coefficients as their SR counterparts unless otherwise
     # noted. 14 active + 14 defensive_only.
 
-    # ── 14 active promotions (same schema as SR counterpart) ──────────────
+    # -- 14 active promotions (same schema as SR counterpart) --------------
 
     "226610": ItemEffect(
         item_id="226610",
@@ -3269,7 +3269,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Opportunity (Arena 226701): same as SR 6701 - 18 lethality",
     ),
 
-    # ── 14 defensive_only Arena mirrors ───────────────────────────────────
+    # -- 14 defensive_only Arena mirrors -----------------------------------
 
     "226333": ItemEffect(
         item_id="226333",
@@ -3384,12 +3384,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Serpent's Fang (Arena 226695): Shield Reaver anti-shield - utility, no DPS contribution",
     ),
 
-    # ── Phase 4 batch 42 (2026-05-04): 222xxx/224xxx Arena + 32xxxx ARAM mirrors ──
+    # -- Phase 4 batch 42 (2026-05-04): 222xxx/224xxx Arena + 32xxxx ARAM mirrors --
     # 35 entries: 10 active + 25 defensive_only.
     # All share the same passive coefficients as their SR counterparts
     # (ID - 220000 for 22xxxx; ID - 320000 for 32xxxx).
 
-    # ── 222xxx Arena mirrors (base 2xxx) ──────────────────────────────────
+    # -- 222xxx Arena mirrors (base 2xxx) ----------------------------------
 
     "222502": ItemEffect(
         item_id="222502",
@@ -3463,7 +3463,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Protoplasm Harness (Arena 222525): Lifeline shield; joins lifeline unique-passive family",
     ),
 
-    # ── 224xxx Arena mirrors (base 4xxx) ──────────────────────────────────
+    # -- 224xxx Arena mirrors (base 4xxx) ----------------------------------
 
     "224004": ItemEffect(
         item_id="224004",
@@ -3522,7 +3522,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Stormsurge (Arena 224646): same as SR 4646 - 15 flat magic pen + Squall 125 (+10% AP) magic / 30s",
     ),
 
-    # ── 32xxxx ARAM mirrors ────────────────────────────────────────────────
+    # -- 32xxxx ARAM mirrors ------------------------------------------------
 
     "323003": ItemEffect(
         item_id="323003",
@@ -3633,11 +3633,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Abyssal Mask (ARAM 328020): same as SR 8020 - Unmake 12% more magic damage to nearby enemies",
     ),
 
-    # ── Phase 4 batch 43 (2026-05-04): 223xxx Arena mirrors (base 3xxx) ──
+    # -- Phase 4 batch 43 (2026-05-04): 223xxx Arena mirrors (base 3xxx) --
     # 58 entries: 33 active + 25 defensive_only.
     # Arena pool 223xxx items (ID - 220000 = SR counterpart 3xxx).
 
-    # ── 33 active 223xxx promotions ───────────────────────────────────────
+    # -- 33 active 223xxx promotions ---------------------------------------
 
     "223003": ItemEffect(
         item_id="223003",
@@ -3995,7 +3995,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Edge of Night (Arena 223814): same as SR 3814 - 15 lethality",
     ),
 
-    # ── 25 defensive_only 223xxx mirrors ─────────────────────────────────
+    # -- 25 defensive_only 223xxx mirrors ---------------------------------
 
     "223026": ItemEffect(
         item_id="223026",
@@ -4178,10 +4178,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Ardent Censer (Arena 223504): Sanctify heal/shield buff - support aura, no self DPS",
     ),
 
-    # ── Phase 4 batch 44 (2026-05-04): DPS components + full items with procs ──
+    # -- Phase 4 batch 44 (2026-05-04): DPS components + full items with procs --
     # 19 items: 5 proc components, 3 full items with DPS passive, 11 stats-only
 
-    # ─── proc-bearing components ───
+    # --- proc-bearing components ---
     "3057": ItemEffect(
         item_id="3057",
         name="Sheen",
@@ -4250,7 +4250,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Rageknife (6677): Wrath 20 magic on-hit (150% on crit - base value modeled)",
     ),
 
-    # ─── full items with DPS passive ───
+    # --- full items with DPS passive ---
     "3131": ItemEffect(
         item_id="3131",
         name="Sword of the Divine",
@@ -4275,7 +4275,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Evenshroud (3001): Coruscation - nearby enemies take 6% more damage; removed patch 13.3 (legacy DDragon entry)",
     ),
 
-    # ─── stats-only active items ───
+    # --- stats-only active items ---
     "3086": ItemEffect(
         item_id="3086",
         name="Zeal",
@@ -4333,10 +4333,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Ironspike Whip (6029): 30 AD + Crescent active only - no passive proc",
     ),
 
-    # ── Phase 4 batch 45 (2026-05-04): Defensive full items + components + boots ──
+    # -- Phase 4 batch 45 (2026-05-04): Defensive full items + components + boots --
     # 21 items: 1 active (Berserker's Greaves AS), 20 defensive_only
 
-    # ─── defensive full items ───
+    # --- defensive full items ---
     "6656": ItemEffect(
         item_id="6656",
         name="Everfrost",
@@ -4386,7 +4386,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Trailblazer (3002): 250 HP + 40 Armor + 4% MS; Pathfinder proc conditional on dash - not modeled",
     ),
 
-    # ─── defensive components ───
+    # --- defensive components ---
     "3067": ItemEffect(
         item_id="3067",
         name="Kindlegem",
@@ -4442,7 +4442,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Catalyst of Aeons (3803): 300 HP + 300 mana - no DPS; upgrades to Everfrost / Rod of Ages",
     ),
 
-    # ─── boots ───
+    # --- boots ---
     "3006": ItemEffect(
         item_id="3006",
         name="Berserker's Greaves",
@@ -4467,10 +4467,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Ionian Boots of Lucidity (3158): 45 MS + AH - no direct DPS contribution",
     ),
 
-    # ── Phase 4 batch 46 (2026-05-04): 226xxx/228xxx/224xxx Arena mirrors + remaining SR ──
+    # -- Phase 4 batch 46 (2026-05-04): 226xxx/228xxx/224xxx Arena mirrors + remaining SR --
     # 22 items: 9 active + 13 defensive_only
 
-    # ─── active items ───
+    # --- active items ---
     "226632": ItemEffect(
         item_id="226632",
         name="Divine Sunderer",
@@ -4544,7 +4544,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Blighting Jewel (4630): 25 AP + 13% magic pen - component for Void Staff family",
     ),
 
-    # ─── defensive_only items ───
+    # --- defensive_only items ---
     "226656": ItemEffect(
         item_id="226656",
         name="Everfrost",
@@ -4624,10 +4624,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Vigilant Wardstone (4643): support/vision - no DPS contribution",
     ),
 
-    # ── Phase 4 batch 47 (2026-05-04): Arena 22xxxx/32xxxx remaining + 221xxx components ──
+    # -- Phase 4 batch 47 (2026-05-04): Arena 22xxxx/32xxxx remaining + 221xxx components --
     # ~42 items: 16 active, 26 defensive_only
 
-    # ─── active: 22xxxx/32xxxx mirrors with DPS procs ───
+    # --- active: 22xxxx/32xxxx mirrors with DPS procs ---
     "223001": ItemEffect(
         item_id="223001",
         name="Evenshroud",
@@ -4702,7 +4702,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Muramana (ARAM 323042): same as SR 3042 - Awe 2% max mana as AD + Shock 1.2% max mana physical on-hit",
     ),
 
-    # ─── active: 221xxx Arena components (stats-only, no proc) ───
+    # --- active: 221xxx Arena components (stats-only, no proc) ---
     "221011": ItemEffect(
         item_id="221011",
         name="Giant's Belt",
@@ -4753,7 +4753,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Cappa Juice (222141): 500g Arena consumable - no DPS contribution",
     ),
 
-    # ─── defensive_only: 22xxxx/32xxxx Arena pool ───
+    # --- defensive_only: 22xxxx/32xxxx Arena pool ---
     "223002": ItemEffect(
         item_id="223002",
         name="Trailblazer",
@@ -4877,7 +4877,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="The Golden Spatula",
         # Phase 4 batch 57 (2026-05-04): promoted. Meraki confirms "Doing Something"
         # passive: permanently burns enemies within 400 units every second for
-        # pp|26 to 43 magic damage (power-progression levels 1→18, slope 1.0/level).
+        # pp|26 to 43 magic damage (power-progression levels 1->18, slope 1.0/level).
         # Uses targets_in_rotation (AoE-incl-primary idiom).
         periodics=(PeriodicProc(
             name="Doing Something",
@@ -4927,10 +4927,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Fimbulwinter (ARAM 323121): same as SR 3121 - shield passive, no DPS proc",
     ),
 
-    # ── Phase 4 batch 48 (2026-05-04): Core 1xxx tier-1 components ──────────
+    # -- Phase 4 batch 48 (2026-05-04): Core 1xxx tier-1 components ----------
     # 29 items: 1 proc component, 14 stats-only active, 14 defensive_only
 
-    # ─── proc-bearing component ───
+    # --- proc-bearing component ---
     "1043": ItemEffect(
         item_id="1043",
         name="Recurve Bow",
@@ -4943,7 +4943,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Recurve Bow (1043): Sting - 15 bonus physical damage on every attack",
     ),
 
-    # ─── stats-only active items ───
+    # --- stats-only active items ---
     "1018": ItemEffect(item_id="1018", name="Cloak of Agility",
         note="Cloak of Agility (1018): 15% crit - stats only"),
     "1026": ItemEffect(item_id="1026", name="Blasting Wand",
@@ -4973,7 +4973,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "1086": ItemEffect(item_id="1086", name="Doran's Bow",
         note="Doran's Bow (1086): 12 AD + AS - no DPS proc"),
 
-    # ─── defensive_only components ───
+    # --- defensive_only components ---
     "1001": ItemEffect(item_id="1001", name="Boots",
         defensive_only=True, note="Boots (1001): 25 flat MS - no DPS contribution"),
     "1004": ItemEffect(item_id="1004", name="Faerie Charm",
@@ -5003,10 +5003,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "1057": ItemEffect(item_id="1057", name="Negatron Cloak",
         defensive_only=True, note="Negatron Cloak (1057): 25 MR - no DPS contribution"),
 
-    # ── Phase 4 batch 49 (2026-05-04): Remaining 3xxx/2xxx + final Arena items ──
+    # -- Phase 4 batch 49 (2026-05-04): Remaining 3xxx/2xxx + final Arena items --
     # ~37 items: 12 active, 25 defensive_only
 
-    # ─── active items with DPS contribution ───
+    # --- active items with DPS contribution ---
     "3175": ItemEffect(
         item_id="3175",
         name="Spellslinger's Shoes",
@@ -5045,7 +5045,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Phase 4 batch 51 (2026-05-04): promoted. DDragon confirms:
         # "Inflame: Damaging Abilities deal 15 bonus magic damage over 3s."
         # Modeled as every_n_seconds=3.0 (sustained approximation: 1 ability
-        # hit per 3s → 5 magic/s). Fated Ashes is a caster component so the
+        # hit per 3s -> 5 magic/s). Fated Ashes is a caster component so the
         # 3s assumption is realistic for mage rotations. Monster bonus (45 vs
         # champions' 15) not modeled - champion-target numbers pinned.
         periodics=(PeriodicProc(
@@ -5085,7 +5085,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Berserker's Greaves (Arena 223006): same as SR 3006 - 25% AS boots; no passive proc",
     ),
 
-    # ─── defensive_only boots ───
+    # --- defensive_only boots ---
     "3005": ItemEffect(item_id="3005", name="Ghostcrawlers",
         defensive_only=True, note="Ghostcrawlers (3005): MS boots - no DPS contribution"),
     "3008": ItemEffect(item_id="3008", name="Gluttonous Greaves",
@@ -5109,7 +5109,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3176": ItemEffect(item_id="3176", name="Forever Forward",
         defensive_only=True, note="Forever Forward (3176): MS boots variant - no DPS contribution"),
 
-    # ─── defensive_only components/misc 3xxx ───
+    # --- defensive_only components/misc 3xxx ---
     "3012": ItemEffect(item_id="3012", name="Chalice of Blessing",
         defensive_only=True, note="Chalice of Blessing (3012): 200 HP + mana regen - no DPS contribution"),
     "3023": ItemEffect(item_id="3023", name="Lifewell Pendant",
@@ -5121,7 +5121,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3114": ItemEffect(item_id="3114", name="Forbidden Idol",
         defensive_only=True, note="Forbidden Idol (3114): mana regen + heal/shield power - no DPS contribution"),
 
-    # ─── defensive_only 2xxx ───
+    # --- defensive_only 2xxx ---
     "2065": ItemEffect(item_id="2065", name="Shurelya's Battlesong",
         defensive_only=True, note="Shurelya's Battlesong (2065): Inspire MS burst aura - support, no self DPS"),
     "2524": ItemEffect(item_id="2524", name="Bandlepipes",
@@ -5131,7 +5131,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "2530": ItemEffect(item_id="2530", name="Diadem of Songs",
         defensive_only=True, note="Diadem of Songs (2530): HP + mana - no DPS proc"),
 
-    # ─── defensive_only Arena remainder ───
+    # --- defensive_only Arena remainder ---
     "124011": ItemEffect(item_id="124011", name="Sword of Blossoming Dawn",
         defensive_only=True, note="Sword of Blossoming Dawn (ARAM 124011): 45 AP + 200 HP + heal/shield power - support/enchanter"),
     "223005": ItemEffect(item_id="223005", name="Ghostcrawlers",
@@ -5143,7 +5143,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223011": ItemEffect(item_id="223011", name="Chemtech Putrifier",
         defensive_only=True, note="Chemtech Putrifier (Arena 223011): support Grievous Wounds item - no self DPS"),
 
-    # ─── batch 51: missing purchasable components (defensive_only) ───────────
+    # --- batch 51: missing purchasable components (defensive_only) -----------
     # Phase 4 batch 51 (2026-05-04): pure-stat components with no DPS passive.
     # All DDragon descriptions are stat-only (no proc, no passive text).
     "2019": ItemEffect(
@@ -5183,7 +5183,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # ── Phase 4 batch 55 (2026-05-04): remaining DDragon purchasable items ──
+    # -- Phase 4 batch 55 (2026-05-04): remaining DDragon purchasable items --
     # Completes DDragon purchasable coverage. All entries are defensive_only -
     # no DPS-relevant passives confirmed from DDragon or Meraki bulk.
 

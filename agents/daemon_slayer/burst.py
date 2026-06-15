@@ -2,7 +2,7 @@
 
 Sibling of ``ability_dps.py``. ``compute_burst_damage()`` returns the
 caster's total damage dealt during a single combo rotation
-(``Q→W→E→AA→R→AA`` by default - operator-overridable via
+(``Q->W->E->AA->R->AA`` by default - operator-overridable via
 ``combo_sequence``). ``rank_items_by_burst()`` drives the
 ``/rank-assassin`` route - same candidate-filtering pipeline as the
 DPS / EHP / hybrid / ability scorers, but each candidate is scored by
@@ -40,16 +40,16 @@ Phase 5 deliberate omissions (Phase 5.5 / future):
   buffer; not a meaningful burst constraint.
 * On-attack periodic procs (Wit's End, Sundered Sky Lightshield Strike,
   BotRK Mist's Edge) - captured in ``avg_attack_dmg`` as ZERO. Phase 5
-  models AA damage as raw post-armor AD × crit, no on-hit procs.
+  models AA damage as raw post-armor AD x crit, no on-hit procs.
   Phase 5.5 adds an inline ``per_attack_proc_damage`` walker.
 * Champion-specific combo templates (Kha'Zix isolation Q bonus, Akali
   R2 after R1, Zed shadow R+Q2) - Phase 5.5 with a per-champion
   combo-template JSON. v1 caller passes ``combo_sequence`` explicitly.
-* Conditional damage amps (Ahri R→Q amp, Zoe E→Q amp) - single
+* Conditional damage amps (Ahri R->Q amp, Zoe E->Q amp) - single
   per-cast scoring with no combo-multiplier; same omission as Phase 4b.
 
 Phase 5 ALSO models the burst window with the SAME amp pipeline as
-Phase 4b - Rabadon's, Liandry's, Demonic Embrace, Riftmaker HP→AP, all
+Phase 4b - Rabadon's, Liandry's, Demonic Embrace, Riftmaker HP->AP, all
 flow through correctly so a Diana or Akali build registers their AP
 amplification.
 """
@@ -228,7 +228,7 @@ def _validate_combo_sequence(sequence: Sequence[str]) -> tuple[str, ...]:
     return tuple(norm)
 
 
-# ─── per-cast result row ─────────────────────────────────────────────────────
+# --- per-cast result row -----------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -254,9 +254,9 @@ class ComboCast:
     cost: float
     damage_type: str | None
     raw_damage: float                   # pre-mode, pre-amps, pre-mit
-    post_mode_damage: float             # × mode_multiplier
-    post_amps_damage: float             # × build_amp × magic_amp
-    final_damage: float                 # × mitigation_factor (contributes to total)
+    post_mode_damage: float             # x mode_multiplier
+    post_amps_damage: float             # x build_amp x magic_amp
+    final_damage: float                 # x mitigation_factor (contributes to total)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
@@ -430,7 +430,7 @@ class BurstResult:
         return "\n".join(rows)
 
 
-# ─── top-level compute ───────────────────────────────────────────────────────
+# --- top-level compute -------------------------------------------------------
 
 
 def compute_burst_damage(
@@ -754,7 +754,7 @@ def compute_burst_damage(
         # block_index override switches to "indexed" strategy for this key;
         # otherwise honor the global block_strategy. Token-canonical lookup
         # (e.g. "R2") wins over base-key lookup (e.g. "R"), so a champion
-        # like Akali can model R1 → block 0 (base) and R2 → block 2
+        # like Akali can model R1 -> block 0 (base) and R2 -> block 2
         # (max-execute scaling) within the same combo.
         if canonical in block_overrides:
             raw = _select_blocks(
@@ -985,7 +985,7 @@ def compute_burst_damage(
     )
 
 
-# ─── helpers for empty / zero results ────────────────────────────────────────
+# --- helpers for empty / zero results ----------------------------------------
 
 
 def _zero_cast(
@@ -1072,7 +1072,7 @@ def _empty_burst(
     )
 
 
-# ─── ranker ──────────────────────────────────────────────────────────────────
+# --- ranker ------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -1136,7 +1136,7 @@ class BurstRankResult:
     form_index_source: str                # "override" | "champion" | "default"
     form_index_resolved: dict[str, int]   # merged map actually used
     block_index_source: str               # "override" | "champion" | "default"
-    block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]"  # merged (champion, key) → block_index map
+    block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]"  # merged (champion, key) -> block_index map
     block_strategy: str
     mode_multiplier: float
     budget: Optional[int]
