@@ -49,7 +49,7 @@ DPS/EHP edges:
 CONTRACT-GAP RESOLVED in this lane: the ``ZZZ_ResolvedContractGapDocs``
 class at the bottom held the former strict-xfail (lifesteal/spellvamp/
 omnivamp resolve as stats but had no named effective-EHP output). Closed
-in ENGINE 1.122.0 (2026-06-14) - the xfail is now a passing regression
+in ENGINE 1.121.0 (2026-06-14) - the xfail is now a passing regression
 test (full coverage in ``test_ehp_sustain_contract.py``).
 """
 
@@ -829,7 +829,7 @@ class VampStatResolutionEdge(_SnapBase):
     """Lifesteal/spellvamp resolve as STATS; DPS stays vamp-independent.
 
     The EHP scorer DOES fold the lifesteal heal pool into blended_ehp since
-    ENGINE 1.28.0 (and ENGINE 1.122.0 names it via effective_ehp_with_sustain
+    ENGINE 1.28.0 (and ENGINE 1.121.0 names it via effective_ehp_with_sustain
     + consumes spellvamp/omnivamp); the DPS rate, however, never reads vamp
     (it is sustain, not damage). The snapshot carries NO omnivamp/spellvamp
     DDragon stat key, so the spellvamp/omnivamp EHP contribution is 0 on every
@@ -879,7 +879,7 @@ class VampStatResolutionEdge(_SnapBase):
         self.assertEqual(b.stats.get("spellvamp", 0.0), 0.0)
 
 
-# === CONTRACT-GAP RESOLVED (ENGINE 1.122.0; passing regression) ============
+# === CONTRACT-GAP RESOLVED (ENGINE 1.121.0; passing regression) ============
 
 
 class ZZZ_ResolvedContractGapDocs(_SnapBase):
@@ -895,7 +895,7 @@ class ZZZ_ResolvedContractGapDocs(_SnapBase):
     lifesteal/spellvamp/omnivamp are accepted as wireable stat inputs but
     historically had no explicitly-named sustain/effective-EHP output. The
     EHP scorer already folds the lifesteal heal pool into blended_ehp since
-    ENGINE 1.28.0; ENGINE 1.122.0 (2026-06-14) CLOSES the gap by surfacing an
+    ENGINE 1.28.0; ENGINE 1.121.0 (2026-06-14) CLOSES the gap by surfacing an
     explicit ``effective_ehp_with_sustain`` term (+ ``ehp_without_sustain`` /
     ``sustain_ehp_delta`` / a ``sustain`` to_dict block) and consuming the
     previously-unconsumed spellvamp / omnivamp stats into it. The former
@@ -904,7 +904,7 @@ class ZZZ_ResolvedContractGapDocs(_SnapBase):
     """
 
     def test_lifesteal_feeds_an_effective_sustain_term(self) -> None:
-        # ENGINE 1.122.0: a Bloodthirster build's effective survivability
+        # ENGINE 1.121.0: a Bloodthirster build's effective survivability
         # WITH vamp sustain exceeds the vamp-stripped raw EHP by the lifesteal
         # heal contribution. The named term + a "sustain" to_dict block now
         # exist on EhpResult.
