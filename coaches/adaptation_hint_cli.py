@@ -61,7 +61,7 @@ def _format_session_text(data: dict) -> str:
     wr = data["win_rate"]
     wr_str = f"{wr*100:.0f}%" if wr is not None else "-"
     lines.append(
-        f"{data['games']} games · {data['wins']}W-{data['losses']}L · wr {wr_str}"
+        f"{data['games']} games | {data['wins']}W-{data['losses']}L | wr {wr_str}"
     )
     if data["avg_kda"]:
         k = data["avg_kda"]
@@ -75,7 +75,7 @@ def _format_session_text(data: dict) -> str:
         kr = slot.get("kda_ratio")
         kseg = f" KDA {kr}" if kr is not None else ""
         lines.append(
-            f"  {mode:<10} {slot['games']}g · {slot['wins']}W-{slot['losses']}L{kseg}"
+            f"  {mode:<10} {slot['games']}g | {slot['wins']}W-{slot['losses']}L{kseg}"
         )
     if data["champions"]:
         lines.append("- champions -")
@@ -85,8 +85,8 @@ def _format_session_text(data: dict) -> str:
             kr = c.get("kda_ratio")
             kseg = f" KDA {kr}" if kr is not None else ""
             lines.append(
-                f"  {c['champion']:<18} {c['games']}g · "
-                f"{c['wins']}W-{c['losses']}L · wr {wr_str}{kseg}"
+                f"  {c['champion']:<18} {c['games']}g | "
+                f"{c['wins']}W-{c['losses']}L | wr {wr_str}{kseg}"
             )
     return "\n".join(lines)
 
@@ -233,7 +233,7 @@ def _format_games_text(rows: list[dict], since_spec: str = "today") -> str:
         # Pull just the time portion for compactness when it's today.
         ts = (r["started_at"] or "")[:16].replace("T", " ")
         win = r.get("win")
-        outcome = "W" if win == 1 else ("L" if win == 0 else "·")
+        outcome = "W" if win == 1 else ("L" if win == 0 else "-")
         kda = r.get("kda")
         kda_str = (
             f"{kda['k']:>2}/{kda['d']:>2}/{kda['a']:>2}"
@@ -259,18 +259,18 @@ def _format_trends_text(data: dict) -> str:
         lines.append("(no recent-window sample yet)")
         return "\n".join(lines)
     if hot:
-        lines.append("↑ HOT:")
+        lines.append("^ HOT:")
         for e in hot:
             lines.append(
                 f"  {e['champion']:<18} baseline {e['baseline_ratio']:.2f}"
-                f" → recent {e['recent_ratio']:.2f}  (+{e['delta']:.2f})"
+                f" -> recent{e['recent_ratio']:.2f}  (+{e['delta']:.2f})"
             )
     if cold:
-        lines.append("↓ COLD:")
+        lines.append("v COLD:")
         for e in cold:
             lines.append(
                 f"  {e['champion']:<18} baseline {e['baseline_ratio']:.2f}"
-                f" → recent {e['recent_ratio']:.2f}  ({e['delta']:+.2f})"
+                f" -> recent{e['recent_ratio']:.2f}  ({e['delta']:+.2f})"
             )
     return "\n".join(lines)
 
