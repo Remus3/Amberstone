@@ -1,0 +1,3273 @@
+{
+ "count": 172,
+ "results": [
+  {
+   "slug": "aatrox",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Serylda's Grudge",
+    "Umbral Glaive",
+    "Profane Hydra",
+    "Death's Dance"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Endless Hunger",
+    "Lord Dominik's Regards",
+    "Spear of Shojin",
+    "Profane Hydra",
+    "Death's Dance"
+   ]
+  },
+  {
+   "slug": "ahri",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Hextech Gunblade"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Hextech Gunblade"
+   ]
+  },
+  {
+   "slug": "akali",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "akshan",
+   "current": [
+    "Blade of The Ruined King",
+    "Gunmetal Greaves",
+    "Guinsoo's Rageblade",
+    "Kraken Slayer",
+    "Lord Dominik's Regards",
+    "The Collector"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "Hubris",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "The Collector"
+   ]
+  },
+  {
+   "slug": "alistar",
+   "current": [
+    "Celestial Opposition",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Hollow Radiance",
+    "Warmog's Armor"
+   ],
+   "ultimate": [
+    "Celestial Opposition",
+    "Heartsteel",
+    "Titanic Hydra",
+    "Liandry's Torment",
+    "Hollow Radiance",
+    "Warmog's Armor"
+   ]
+  },
+  {
+   "slug": "ambessa",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "The Collector",
+    "Profane Hydra",
+    "Lord Dominik's Regards"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Death's Dance",
+    "Endless Hunger",
+    "The Collector",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards"
+   ]
+  },
+  {
+   "slug": "amumu",
+   "current": [
+    "Liandry's Torment",
+    "Gluttonous Greaves",
+    "Locket of the Iron Solari",
+    "Dead Man's Plate",
+    "Protoplasm Harness",
+    "Abyssal Mask"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Warmog's Armor",
+    "Zhonya's Hourglass",
+    "Dead Man's Plate",
+    "Cosmic Drive",
+    "Kaenic Rookern"
+   ]
+  },
+  {
+   "slug": "anivia",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Winter's Approach",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Shadowflame"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Cryptbloom",
+    "Blackfire Torch",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "annie",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Hextech Gunblade",
+    "Blackfire Torch",
+    "Shadowflame"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Hextech Gunblade",
+    "Blackfire Torch",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "aphelios",
+   "current": [
+    "Blade of The Ruined King",
+    "Runaan's Hurricane",
+    "Lord Dominik's Regards",
+    "Phantom Dancer",
+    "The Collector",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Runaan's Hurricane",
+    "Lord Dominik's Regards",
+    "Infinity Edge",
+    "Phantom Dancer",
+    "Gluttonous Greaves"
+   ]
+  },
+  {
+   "slug": "ashe",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves",
+    "Hexoptics C44"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Infinity Edge",
+    "Gluttonous Greaves",
+    "Yun Tal Wildarrows"
+   ]
+  },
+  {
+   "slug": "aurelion-sol",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Cryptbloom",
+    "Blackfire Torch",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Shadowflame",
+    "Cryptbloom",
+    "Blackfire Torch",
+    "Cosmic Drive"
+   ]
+  },
+  {
+   "slug": "aurora",
+   "current": [
+    "Blackfire Torch",
+    "Spellslinger's Shoes",
+    "Actualizer",
+    "Archangel's Staff",
+    "Cryptbloom",
+    "Shadowflame"
+   ],
+   "ultimate": [
+    "Cosmic Drive",
+    "Rabadon's Deathcap",
+    "Actualizer",
+    "Archangel's Staff",
+    "Cryptbloom",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "azir",
+   "current": [
+    "Nashor's Tooth",
+    "Spellslinger's Shoes",
+    "Shadowflame",
+    "Stormsurge",
+    "Rabadon's Deathcap",
+    "Phantom Dancer"
+   ],
+   "ultimate": [
+    "Nashor's Tooth",
+    "Spellslinger's Shoes",
+    "Shadowflame",
+    "Cryptbloom",
+    "Rabadon's Deathcap",
+    "Cosmic Drive"
+   ]
+  },
+  {
+   "slug": "bard",
+   "current": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Winter's Approach",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Cryptbloom",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Stormsurge"
+   ]
+  },
+  {
+   "slug": "bel'veth",
+   "current": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Immortal Shieldbow",
+    "Phantom Dancer"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Bloodthirster",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Yun Tal Wildarrows",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "blitzcrank",
+   "current": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Winter's Approach",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Bloodsong",
+    "Cosmic Drive",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Dead Man's Plate",
+    "Warmog's Armor"
+   ]
+  },
+  {
+   "slug": "brand",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Stormsurge",
+    "Void Staff"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Stormsurge",
+    "Void Staff"
+   ]
+  },
+  {
+   "slug": "braum",
+   "current": [
+    "Celestial Opposition",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Protoplasm Harness",
+    "Liandry's Torment",
+    "Warmog's Armor"
+   ],
+   "ultimate": [
+    "Celestial Opposition",
+    "Dead Man's Plate",
+    "Locket of the Iron Solari",
+    "Protoplasm Harness",
+    "Liandry's Torment",
+    "Warmog's Armor"
+   ]
+  },
+  {
+   "slug": "briar",
+   "current": [
+    "Hubris",
+    "The Collector",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "Lord Dominik's Regards",
+    "Profane Hydra"
+   ],
+   "ultimate": [
+    "Hubris",
+    "The Collector",
+    "Death's Dance",
+    "Endless Hunger",
+    "Lord Dominik's Regards",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "caitlyn",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Infinity Edge",
+    "Blade of The Ruined King"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Yun Tal Wildarrows",
+    "Infinity Edge",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "camille",
+   "current": [
+    "Trinity Force",
+    "Boots of Swiftness",
+    "Profane Hydra",
+    "Manamune",
+    "Winter's Approach",
+    "Lord Dominik's Regards"
+   ],
+   "ultimate": [
+    "Trinity Force",
+    "Hubris",
+    "Profane Hydra",
+    "Bastionbreaker",
+    "Death's Dance",
+    "Lord Dominik's Regards"
+   ]
+  },
+  {
+   "slug": "cassiopeia",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "cho'gath",
+   "current": [
+    "Plated Steelcaps",
+    "Heartsteel",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Kaenic Rookern",
+    "Liandry's Torment"
+   ],
+   "ultimate": [
+    "Cosmic Drive",
+    "Heartsteel",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Kaenic Rookern",
+    "Sterak's Gage"
+   ]
+  },
+  {
+   "slug": "corki",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Axiom Arc",
+    "Umbral Glaive",
+    "Lord Dominik's Regards",
+    "Fiendhunter Bolts"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Axiom Arc",
+    "Umbral Glaive",
+    "Lord Dominik's Regards",
+    "The Collector"
+   ]
+  },
+  {
+   "slug": "darius",
+   "current": [
+    "Black Cleaver",
+    "Gluttonous Greaves",
+    "Spirit Visage",
+    "Endless Hunger",
+    "Death's Dance",
+    "The Collector"
+   ],
+   "ultimate": [
+    "Lord Dominik's Regards",
+    "Guardian Angel",
+    "Spirit Visage",
+    "Endless Hunger",
+    "Death's Dance",
+    "The Collector"
+   ]
+  },
+  {
+   "slug": "diana",
+   "current": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Lich Bane",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Cryptbloom",
+    "Shadowflame",
+    "Cosmic Drive",
+    "Lich Bane",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "dr-mundo",
+   "current": [
+    "Spirit Visage",
+    "Ionian Boots of Lucidity",
+    "Heartsteel",
+    "Warmog's Armor",
+    "Frozen Heart",
+    "Dead Man's Plate"
+   ],
+   "ultimate": [
+    "Spirit Visage",
+    "Sunfire Aegis",
+    "Heartsteel",
+    "Warmog's Armor",
+    "Protoplasm Harness",
+    "Dead Man's Plate"
+   ]
+  },
+  {
+   "slug": "draven",
+   "current": [
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "The Collector",
+    "Rapid Firecannon"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Blade of The Ruined King",
+    "Yun Tal Wildarrows",
+    "The Collector",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "ekko",
+   "current": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Nashor's Tooth"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Void Staff",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Nashor's Tooth"
+   ]
+  },
+  {
+   "slug": "elise",
+   "current": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Lich Bane",
+    "Shadowflame",
+    "Hextech Gunblade"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Rabadon's Deathcap",
+    "Cryptbloom",
+    "Lich Bane",
+    "Shadowflame",
+    "Hextech Gunblade"
+   ]
+  },
+  {
+   "slug": "evelynn",
+   "current": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Lich Bane",
+    "Rabadon's Deathcap",
+    "Shadowflame",
+    "Cosmic Drive"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Riftmaker",
+    "Lich Bane",
+    "Rabadon's Deathcap",
+    "Shadowflame",
+    "Cosmic Drive"
+   ]
+  },
+  {
+   "slug": "ezreal",
+   "current": [
+    "Hubris",
+    "Boots of Swiftness",
+    "Manamune",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "The Collector"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Boots of Swiftness",
+    "Manamune",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Trinity Force"
+   ]
+  },
+  {
+   "slug": "fiddlesticks",
+   "current": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Shadowflame",
+    "Cosmic Drive",
+    "Liandry's Torment",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Rabadon's Deathcap",
+    "Shadowflame",
+    "Cosmic Drive",
+    "Zhonya's Hourglass",
+    "Cryptbloom"
+   ]
+  },
+  {
+   "slug": "fiora",
+   "current": [
+    "Hubris",
+    "Boots of Swiftness",
+    "Profane Hydra",
+    "Umbral Glaive",
+    "Serylda's Grudge",
+    "Death's Dance"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Endless Hunger",
+    "Ravenous Hydra",
+    "Manamune",
+    "Serylda's Grudge",
+    "Death's Dance"
+   ]
+  },
+  {
+   "slug": "fizz",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Hextech Gunblade"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Zhonya's Hourglass"
+   ]
+  },
+  {
+   "slug": "galio",
+   "current": [
+    "Cosmic Drive",
+    "Spellslinger's Shoes",
+    "Winter's Approach",
+    "Archangel's Staff",
+    "Blackfire Torch",
+    "Riftmaker"
+   ],
+   "ultimate": [
+    "Cosmic Drive",
+    "Rabadon's Deathcap",
+    "Winter's Approach",
+    "Archangel's Staff",
+    "Warmog's Armor",
+    "Riftmaker"
+   ]
+  },
+  {
+   "slug": "gangplank",
+   "current": [
+    "Essence Reaver",
+    "Gluttonous Greaves",
+    "Profane Hydra",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Voltaic Cyclosword"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Endless Hunger",
+    "Profane Hydra",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "garen",
+   "current": [
+    "Trinity Force",
+    "Gluttonous Greaves",
+    "Black Cleaver",
+    "Phantom Dancer",
+    "Death's Dance",
+    "Spirit Visage"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Endless Hunger",
+    "Lord Dominik's Regards",
+    "Phantom Dancer",
+    "Death's Dance",
+    "Trinity Force"
+   ]
+  },
+  {
+   "slug": "gnar",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "The Collector",
+    "Bastionbreaker"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Sterak's Gage",
+    "Lord Dominik's Regards",
+    "Dead Man's Plate",
+    "The Collector",
+    "Bastionbreaker"
+   ]
+  },
+  {
+   "slug": "gragas",
+   "current": [
+    "Hextech Rocketbelt",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Winter's Approach",
+    "Stormsurge",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Archangel's Staff",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Cosmic Drive",
+    "Lich Bane",
+    "Cryptbloom"
+   ]
+  },
+  {
+   "slug": "graves",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Axiom Arc",
+    "The Collector"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Endless Hunger",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Bloodthirster",
+    "The Collector"
+   ]
+  },
+  {
+   "slug": "gwen",
+   "current": [
+    "Blade of The Ruined King",
+    "Boots of Swiftness",
+    "Phantom Dancer",
+    "Guinsoo's Rageblade",
+    "Nashor's Tooth",
+    "Riftmaker"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Rabadon's Deathcap",
+    "Dusk and Dawn",
+    "Guinsoo's Rageblade",
+    "Nashor's Tooth",
+    "Riftmaker"
+   ]
+  },
+  {
+   "slug": "hecarim",
+   "current": [
+    "Trinity Force",
+    "Boots of Swiftness",
+    "Umbral Glaive",
+    "Profane Hydra",
+    "Lord Dominik's Regards",
+    "Dead Man's Plate"
+   ],
+   "ultimate": [
+    "Trinity Force",
+    "Hubris",
+    "Umbral Glaive",
+    "Profane Hydra",
+    "Lord Dominik's Regards",
+    "Death's Dance"
+   ]
+  },
+  {
+   "slug": "heimerdinger",
+   "current": [
+    "Stormsurge",
+    "Gluttonous Greaves",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Void Staff",
+    "Liandry's Torment"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Riftmaker",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Void Staff",
+    "Zhonya's Hourglass"
+   ]
+  },
+  {
+   "slug": "hwei",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Cryptbloom",
+    "Archangel's Staff",
+    "Blackfire Torch"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Shadowflame",
+    "Stormsurge",
+    "Cryptbloom",
+    "Archangel's Staff",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "illaoi",
+   "current": [
+    "Dead Man's Plate",
+    "Gluttonous Greaves",
+    "Warmog's Armor",
+    "Overlord's Bloodmail",
+    "Sterak's Gage",
+    "Spirit Visage"
+   ],
+   "ultimate": [
+    "Dead Man's Plate",
+    "Black Cleaver",
+    "Warmog's Armor",
+    "Overlord's Bloodmail",
+    "Sterak's Gage",
+    "Kaenic Rookern"
+   ]
+  },
+  {
+   "slug": "irelia",
+   "current": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "Wit's End",
+    "The Collector",
+    "Guardian Angel",
+    "Mortal Reminder"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Bloodthirster",
+    "Phantom Dancer",
+    "Yun Tal Wildarrows",
+    "Infinity Edge",
+    "Lord Dominik's Regards"
+   ]
+  },
+  {
+   "slug": "ivern",
+   "current": [
+    "Cosmic Drive",
+    "Riftmaker",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Kaenic Rookern",
+    "Mercury's Treads"
+   ],
+   "ultimate": [
+    "Cosmic Drive",
+    "Riftmaker",
+    "Warmog's Armor",
+    "Rabadon's Deathcap",
+    "Kaenic Rookern",
+    "Zhonya's Hourglass"
+   ]
+  },
+  {
+   "slug": "janna",
+   "current": [
+    "Dream Maker",
+    "Ionian Boots of Lucidity",
+    "Staff of Flowing Water",
+    "Blackfire Torch",
+    "Ardent Censer",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Rabadon's Deathcap",
+    "Actualizer",
+    "Blackfire Torch",
+    "Cryptbloom",
+    "Archangel's Staff"
+   ]
+  },
+  {
+   "slug": "jarvan-iv",
+   "current": [
+    "Blade of The Ruined King",
+    "Experimental Hexplate",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Profane Hydra"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Experimental Hexplate",
+    "Death's Dance",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "Ravenous Hydra"
+   ]
+  },
+  {
+   "slug": "jax",
+   "current": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "Trinity Force",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Phantom Dancer"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Hubris",
+    "Bloodthirster",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Phantom Dancer"
+   ]
+  },
+  {
+   "slug": "jayce",
+   "current": [
+    "Umbral Glaive",
+    "Boots of Swiftness",
+    "Voltaic Cyclosword",
+    "Lord Dominik's Regards",
+    "Youmuu's Ghostblade",
+    "The Collector"
+   ],
+   "ultimate": [
+    "Umbral Glaive",
+    "Hubris",
+    "Voltaic Cyclosword",
+    "Lord Dominik's Regards",
+    "Bastionbreaker",
+    "The Collector"
+   ]
+  },
+  {
+   "slug": "jhin",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Fiendhunter Bolts",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Yun Tal Wildarrows",
+    "Gluttonous Greaves"
+   ]
+  },
+  {
+   "slug": "jinx",
+   "current": [
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Gluttonous Greaves",
+    "Phantom Dancer",
+    "The Collector",
+    "Infinity Edge"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Gluttonous Greaves",
+    "Phantom Dancer",
+    "The Collector",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "k'sante",
+   "current": [
+    "Heartsteel",
+    "Boots of Swiftness",
+    "Warmog's Armor",
+    "Sunfire Aegis",
+    "Winter's Approach",
+    "Unending Despair"
+   ],
+   "ultimate": [
+    "Heartsteel",
+    "Dead Man's Plate",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Liandry's Torment",
+    "Unending Despair"
+   ]
+  },
+  {
+   "slug": "kai'sa",
+   "current": [
+    "Blade of The Ruined King",
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Yun Tal Wildarrows",
+    "Gluttonous Greaves"
+   ]
+  },
+  {
+   "slug": "kalista",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Guinsoo's Rageblade",
+    "Phantom Dancer",
+    "Blade of The Ruined King"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Yun Tal Wildarrows",
+    "Infinity Edge",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "karma",
+   "current": [
+    "Dream Maker",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Ardent Censer",
+    "Stormsurge",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Rabadon's Deathcap",
+    "Stormsurge",
+    "Cryptbloom"
+   ]
+  },
+  {
+   "slug": "karthus",
+   "current": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Void Staff"
+   ]
+  },
+  {
+   "slug": "kassadin",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Lich Bane",
+    "Archangel's Staff",
+    "Shadowflame",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Lich Bane",
+    "Archangel's Staff",
+    "Shadowflame",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "katarina",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Lich Bane"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Rabadon's Deathcap",
+    "Shadowflame",
+    "Lich Bane"
+   ]
+  },
+  {
+   "slug": "kayle",
+   "current": [
+    "Hextech Gunblade",
+    "Boots of Swiftness",
+    "Nashor's Tooth",
+    "Dusk and Dawn",
+    "Liandry's Torment",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Hextech Gunblade",
+    "Rabadon's Deathcap",
+    "Nashor's Tooth",
+    "Lich Bane",
+    "Shadowflame",
+    "Cryptbloom"
+   ]
+  },
+  {
+   "slug": "kayn",
+   "current": [
+    "Sundered Sky",
+    "Hubris",
+    "Serylda's Grudge",
+    "Umbral Glaive",
+    "Axiom Arc",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Endless Hunger",
+    "Hubris",
+    "Serylda's Grudge",
+    "Spear of Shojin",
+    "Bastionbreaker",
+    "Death's Dance"
+   ]
+  },
+  {
+   "slug": "kennen",
+   "current": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Zhonya's Hourglass",
+    "Stormsurge",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Void Staff"
+   ]
+  },
+  {
+   "slug": "kha'zix",
+   "current": [
+    "Profane Hydra",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "Axiom Arc",
+    "Serylda's Grudge",
+    "Youmuu's Ghostblade"
+   ],
+   "ultimate": [
+    "Profane Hydra",
+    "Hubris",
+    "Umbral Glaive",
+    "Axiom Arc",
+    "Lord Dominik's Regards",
+    "Bastionbreaker"
+   ]
+  },
+  {
+   "slug": "kindred",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves",
+    "Rapid Firecannon"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Blade of The Ruined King",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "kled",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "The Collector",
+    "Blade of The Ruined King"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Death's Dance",
+    "Lord Dominik's Regards",
+    "Ravenous Hydra",
+    "The Collector",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "kog'maw",
+   "current": [
+    "Guinsoo's Rageblade",
+    "Boots of Swiftness",
+    "Nashor's Tooth",
+    "Stormsurge",
+    "Shadowflame",
+    "Void Staff"
+   ],
+   "ultimate": [
+    "Lich Bane",
+    "Boots of Swiftness",
+    "Nashor's Tooth",
+    "Stormsurge",
+    "Shadowflame",
+    "Cryptbloom"
+   ]
+  },
+  {
+   "slug": "leblanc",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Archangel's Staff"
+   ]
+  },
+  {
+   "slug": "lee-sin",
+   "current": [
+    "Hubris",
+    "Profane Hydra",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Profane Hydra",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Guardian Angel",
+    "Death's Dance"
+   ]
+  },
+  {
+   "slug": "leona",
+   "current": [
+    "Bloodsong",
+    "Boots of Swiftness",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Protoplasm Harness",
+    "Sunfire Aegis"
+   ],
+   "ultimate": [
+    "Bloodsong",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Liandry's Torment",
+    "Heartsteel",
+    "Hollow Radiance"
+   ]
+  },
+  {
+   "slug": "lillia",
+   "current": [
+    "Riftmaker",
+    "Ionian Boots of Lucidity",
+    "Blackfire Torch",
+    "Archangel's Staff",
+    "Winter's Approach",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Riftmaker",
+    "Cosmic Drive",
+    "Blackfire Torch",
+    "Archangel's Staff",
+    "Cryptbloom",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "lissandra",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Stormsurge",
+    "Cryptbloom",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Cryptbloom",
+    "Cosmic Drive"
+   ]
+  },
+  {
+   "slug": "lucian",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Yun Tal Wildarrows",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves"
+   ]
+  },
+  {
+   "slug": "lulu",
+   "current": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Ardent Censer",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Shurelya's Battlesong"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Cryptbloom",
+    "Rabadon's Deathcap",
+    "Stormsurge",
+    "Lich Bane",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "lux",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Shurelya's Battlesong",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ]
+  },
+  {
+   "slug": "malphite",
+   "current": [
+    "Dead Man's Plate",
+    "Liandry's Torment",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Sorcerer's Shoes",
+    "Locket of the Iron Solari"
+   ],
+   "ultimate": [
+    "Dead Man's Plate",
+    "Liandry's Torment",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Titanic Hydra",
+    "Kaenic Rookern"
+   ]
+  },
+  {
+   "slug": "malzahar",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Stormsurge",
+    "Cryptbloom",
+    "Luden's Echo"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Cryptbloom",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "maokai",
+   "current": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Warmog's Armor",
+    "Hollow Radiance"
+   ],
+   "ultimate": [
+    "Bloodsong",
+    "Heartsteel",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Warmog's Armor",
+    "Hollow Radiance"
+   ]
+  },
+  {
+   "slug": "master-yi",
+   "current": [
+    "Blade of The Ruined King",
+    "Guinsoo's Rageblade",
+    "Gluttonous Greaves",
+    "Wit's End",
+    "Terminus",
+    "Ravenous Hydra"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Guinsoo's Rageblade",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Yun Tal Wildarrows",
+    "Ravenous Hydra"
+   ]
+  },
+  {
+   "slug": "mel",
+   "current": [
+    "Blackfire Torch",
+    "Spellslinger's Shoes",
+    "Shadowflame",
+    "Archangel's Staff",
+    "Cryptbloom",
+    "Actualizer"
+   ],
+   "ultimate": [
+    "Blackfire Torch",
+    "Rabadon's Deathcap",
+    "Shadowflame",
+    "Archangel's Staff",
+    "Cryptbloom",
+    "Cosmic Drive"
+   ]
+  },
+  {
+   "slug": "milio",
+   "current": [
+    "Dream Maker",
+    "Ardent Censer",
+    "Dawncore",
+    "Rabadon's Deathcap",
+    "Zhonya's Hourglass",
+    "Banshee's Veil"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Ardent Censer",
+    "Dawncore",
+    "Rabadon's Deathcap",
+    "Zhonya's Hourglass",
+    "Banshee's Veil"
+   ]
+  },
+  {
+   "slug": "miss-fortune",
+   "current": [
+    "Hubris",
+    "Youmuu's Ghostblade",
+    "Lord Dominik's Regards",
+    "Axiom Arc",
+    "The Collector",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Blade of The Ruined King",
+    "The Collector",
+    "Gluttonous Greaves"
+   ]
+  },
+  {
+   "slug": "mordekaiser",
+   "current": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Cosmic Drive",
+    "Zeke's Convergence",
+    "Unending Despair",
+    "Warmog's Armor"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Dead Man's Plate",
+    "Riftmaker",
+    "Force of Nature",
+    "Unending Despair",
+    "Warmog's Armor"
+   ]
+  },
+  {
+   "slug": "morgana",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Void Staff"
+   ]
+  },
+  {
+   "slug": "naafiri",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Profane Hydra",
+    "Umbral Glaive",
+    "Serylda's Grudge",
+    "Voltaic Cyclosword"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Bastionbreaker",
+    "Profane Hydra",
+    "Umbral Glaive",
+    "Lord Dominik's Regards",
+    "Youmuu's Ghostblade"
+   ]
+  },
+  {
+   "slug": "nami",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Void Staff",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Shadowflame",
+    "Lich Bane",
+    "Stormsurge",
+    "Void Staff",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "nasus",
+   "current": [
+    "Essence Reaver",
+    "Ravenous Hydra",
+    "Endless Hunger",
+    "Death's Dance",
+    "Bastionbreaker",
+    "Lord Dominik's Regards"
+   ],
+   "ultimate": [
+    "Essence Reaver",
+    "Ravenous Hydra",
+    "Endless Hunger",
+    "Death's Dance",
+    "Bastionbreaker",
+    "Serylda's Grudge"
+   ]
+  },
+  {
+   "slug": "nautilus",
+   "current": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Protoplasm Harness",
+    "Sunfire Aegis"
+   ],
+   "ultimate": [
+    "Bloodsong",
+    "Warmog's Armor",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Heartsteel",
+    "Hollow Radiance"
+   ]
+  },
+  {
+   "slug": "neeko",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Cryptbloom",
+    "Shadowflame"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Lich Bane",
+    "Rabadon's Deathcap",
+    "Stormsurge",
+    "Void Staff",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "nidalee",
+   "current": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Shadowflame",
+    "Lich Bane",
+    "Rabadon's Deathcap",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Cosmic Drive",
+    "Shadowflame",
+    "Lich Bane",
+    "Rabadon's Deathcap",
+    "Cryptbloom"
+   ]
+  },
+  {
+   "slug": "nilah",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Immortal Shieldbow"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "nocturne",
+   "current": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Blade of The Ruined King",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "nunu-and-willump",
+   "current": [
+    "Cosmic Drive",
+    "Riftmaker",
+    "Warmog's Armor",
+    "Blackfire Torch",
+    "Winter's Approach",
+    "Plated Steelcaps"
+   ],
+   "ultimate": [
+    "Cosmic Drive",
+    "Riftmaker",
+    "Warmog's Armor",
+    "Unending Despair",
+    "Liandry's Torment",
+    "Hollow Radiance"
+   ]
+  },
+  {
+   "slug": "olaf",
+   "current": [
+    "Profane Hydra",
+    "Gluttonous Greaves",
+    "Blade of The Ruined King",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Death's Dance"
+   ],
+   "ultimate": [
+    "Ravenous Hydra",
+    "The Collector",
+    "Blade of The Ruined King",
+    "Yun Tal Wildarrows",
+    "Lord Dominik's Regards",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "orianna",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Cryptbloom",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "ornn",
+   "current": [
+    "Heartsteel",
+    "Plated Steelcaps",
+    "Hollow Radiance",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Liandry's Torment"
+   ],
+   "ultimate": [
+    "Heartsteel",
+    "Titanic Hydra",
+    "Hollow Radiance",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Unending Despair"
+   ]
+  },
+  {
+   "slug": "pantheon",
+   "current": [
+    "Bloodsong",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "Voltaic Cyclosword",
+    "Profane Hydra",
+    "Serylda's Grudge"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Death's Dance",
+    "Hubris",
+    "Voltaic Cyclosword",
+    "Umbral Glaive",
+    "Serylda's Grudge"
+   ]
+  },
+  {
+   "slug": "poppy",
+   "current": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Sunfire Aegis",
+    "Liandry's Torment",
+    "Warmog's Armor"
+   ],
+   "ultimate": [
+    "Bloodsong",
+    "Titanic Hydra",
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Liandry's Torment",
+    "Warmog's Armor"
+   ]
+  },
+  {
+   "slug": "pyke",
+   "current": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Profane Hydra",
+    "Umbral Glaive",
+    "Voltaic Cyclosword",
+    "Axiom Arc"
+   ],
+   "ultimate": [
+    "Bloodsong",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Umbral Glaive",
+    "Voltaic Cyclosword",
+    "Bastionbreaker"
+   ]
+  },
+  {
+   "slug": "qiyana",
+   "current": [
+    "Umbral Glaive",
+    "Swiftmarch",
+    "Voltaic Cyclosword",
+    "Serylda's Grudge",
+    "Profane Hydra",
+    "Youmuu's Ghostblade"
+   ],
+   "ultimate": [
+    "Umbral Glaive",
+    "Hubris",
+    "Voltaic Cyclosword",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Youmuu's Ghostblade"
+   ]
+  },
+  {
+   "slug": "quinn",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Phantom Dancer",
+    "Blade of The Ruined King"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Phantom Dancer",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "rakan",
+   "current": [
+    "Bloodsong",
+    "Gluttonous Greaves",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Shurelya's Battlesong",
+    "Hextech Rocketbelt"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Hextech Gunblade",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Rabadon's Deathcap",
+    "Lich Bane"
+   ]
+  },
+  {
+   "slug": "rammus",
+   "current": [
+    "Hollow Radiance",
+    "Dead Man's Plate",
+    "Warmog's Armor",
+    "Protoplasm Harness",
+    "Thornmail",
+    "Sorcerer's Shoes"
+   ],
+   "ultimate": [
+    "Hollow Radiance",
+    "Dead Man's Plate",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Sterak's Gage",
+    "Titanic Hydra"
+   ]
+  },
+  {
+   "slug": "rek'sai",
+   "current": [
+    "Titanic Hydra",
+    "Dead Man's Plate",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Overlord's Bloodmail",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Titanic Hydra",
+    "Dead Man's Plate",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Overlord's Bloodmail",
+    "Liandry's Torment"
+   ]
+  },
+  {
+   "slug": "rell",
+   "current": [
+    "Bloodsong",
+    "Plated Steelcaps",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Protoplasm Harness",
+    "Hollow Radiance"
+   ],
+   "ultimate": [
+    "Bloodsong",
+    "Dead Man's Plate",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Warmog's Armor",
+    "Hollow Radiance"
+   ]
+  },
+  {
+   "slug": "renata-glasc",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Void Staff",
+    "Shadowflame"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Rabadon's Deathcap",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Void Staff",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "renekton",
+   "current": [
+    "Sundered Sky",
+    "Dead Man's Plate",
+    "Warmog's Armor",
+    "Overlord's Bloodmail",
+    "Sterak's Gage",
+    "Mercury's Treads"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Dead Man's Plate",
+    "Warmog's Armor",
+    "Titanic Hydra",
+    "Sterak's Gage",
+    "Lord Dominik's Regards"
+   ]
+  },
+  {
+   "slug": "rengar",
+   "current": [
+    "Profane Hydra",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Voltaic Cyclosword"
+   ],
+   "ultimate": [
+    "Ravenous Hydra",
+    "Hubris",
+    "Bloodthirster",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "riven",
+   "current": [
+    "Umbral Glaive",
+    "Gluttonous Greaves",
+    "Profane Hydra",
+    "Axiom Arc",
+    "Serylda's Grudge",
+    "Voltaic Cyclosword"
+   ],
+   "ultimate": [
+    "Umbral Glaive",
+    "Hubris",
+    "Profane Hydra",
+    "Axiom Arc",
+    "Lord Dominik's Regards",
+    "Bastionbreaker"
+   ]
+  },
+  {
+   "slug": "rumble",
+   "current": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Hextech Gunblade"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Hextech Gunblade"
+   ]
+  },
+  {
+   "slug": "ryze",
+   "current": [
+    "Blackfire Torch",
+    "Spellslinger's Shoes",
+    "Shadowflame",
+    "Archangel's Staff",
+    "Stormsurge",
+    "Winter's Approach"
+   ],
+   "ultimate": [
+    "Blackfire Torch",
+    "Void Staff",
+    "Shadowflame",
+    "Archangel's Staff",
+    "Stormsurge",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "samira",
+   "current": [
+    "Hubris",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Axiom Arc",
+    "Gluttonous Greaves",
+    "Infinity Edge"
+   ],
+   "ultimate": [
+    "Hubris",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Axiom Arc",
+    "Gluttonous Greaves",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "sejuani",
+   "current": [
+    "Heartsteel",
+    "Warmog's Armor",
+    "Mercury's Treads",
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Unending Despair"
+   ],
+   "ultimate": [
+    "Heartsteel",
+    "Warmog's Armor",
+    "Liandry's Torment",
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Sterak's Gage"
+   ]
+  },
+  {
+   "slug": "senna",
+   "current": [
+    "Bloodsong",
+    "Boots of Swiftness",
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Axiom Arc"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Bastionbreaker",
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Axiom Arc"
+   ]
+  },
+  {
+   "slug": "seraphine",
+   "current": [
+    "Solstice Sleigh",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Shurelya's Battlesong",
+    "Redemption",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Rabadon's Deathcap",
+    "Cryptbloom",
+    "Cosmic Drive",
+    "Lich Bane",
+    "Archangel's Staff"
+   ]
+  },
+  {
+   "slug": "sett",
+   "current": [
+    "Heartsteel",
+    "Warmog's Armor",
+    "Overlord's Bloodmail",
+    "Boots of Swiftness",
+    "Sterak's Gage",
+    "Spear of Shojin"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Warmog's Armor",
+    "Overlord's Bloodmail",
+    "Endless Hunger",
+    "Death's Dance",
+    "Spear of Shojin"
+   ]
+  },
+  {
+   "slug": "shaco",
+   "current": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "The Collector",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "The Collector",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "shen",
+   "current": [
+    "Sunfire Aegis",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Titanic Hydra",
+    "Kaenic Rookern",
+    "Unending Despair"
+   ],
+   "ultimate": [
+    "Sunfire Aegis",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Titanic Hydra",
+    "Kaenic Rookern",
+    "Riftmaker"
+   ]
+  },
+  {
+   "slug": "shyvana",
+   "current": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "Protoplasm Harness",
+    "Spirit Visage",
+    "Death's Dance",
+    "Lord Dominik's Regards"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Infinity Edge",
+    "Endless Hunger",
+    "Bloodthirster",
+    "Death's Dance",
+    "Lord Dominik's Regards"
+   ]
+  },
+  {
+   "slug": "singed",
+   "current": [
+    "Liandry's Torment",
+    "Boots of Swiftness",
+    "Protoplasm Harness",
+    "Warmog's Armor",
+    "Blackfire Torch",
+    "Dead Man's Plate"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Shadowflame",
+    "Cosmic Drive",
+    "Warmog's Armor",
+    "Blackfire Torch",
+    "Dead Man's Plate"
+   ]
+  },
+  {
+   "slug": "sion",
+   "current": [
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Liandry's Torment",
+    "Sterak's Gage"
+   ],
+   "ultimate": [
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Liandry's Torment",
+    "Sterak's Gage"
+   ]
+  },
+  {
+   "slug": "sivir",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Navori Flickerblade",
+    "Blade of The Ruined King"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Infinity Edge",
+    "Yun Tal Wildarrows",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "skarner",
+   "current": [
+    "Heartsteel",
+    "Warmog's Armor",
+    "Mercury's Treads",
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Unending Despair"
+   ],
+   "ultimate": [
+    "Heartsteel",
+    "Warmog's Armor",
+    "Sterak's Gage",
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Overlord's Bloodmail"
+   ]
+  },
+  {
+   "slug": "smolder",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Youmuu's Ghostblade",
+    "Rapid Firecannon"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Infinity Edge",
+    "Death's Dance"
+   ]
+  },
+  {
+   "slug": "sona",
+   "current": [
+    "Dream Maker",
+    "Ionian Boots of Lucidity",
+    "Ardent Censer",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Lich Bane"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Rabadon's Deathcap",
+    "Stormsurge",
+    "Shadowflame",
+    "Cryptbloom",
+    "Lich Bane"
+   ]
+  },
+  {
+   "slug": "soraka",
+   "current": [
+    "Dream Maker",
+    "Ionian Boots of Lucidity",
+    "Ardent Censer",
+    "Redemption",
+    "Dawncore",
+    "Staff of Flowing Water"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Archangel's Staff",
+    "Ardent Censer",
+    "Redemption",
+    "Dawncore",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "swain",
+   "current": [
+    "Solstice Sleigh",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Void Staff",
+    "Shadowflame"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Zhonya's Hourglass",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Cryptbloom",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "sylas",
+   "current": [
+    "Lich Bane",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Shadowflame",
+    "Cryptbloom",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Lich Bane",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Shadowflame",
+    "Stormsurge",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "syndra",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Lich Bane"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Cryptbloom",
+    "Rabadon's Deathcap",
+    "Shadowflame",
+    "Lich Bane"
+   ]
+  },
+  {
+   "slug": "tahm-kench",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Heartsteel",
+    "Warmog's Armor"
+   ],
+   "ultimate": [
+    "Bloodsong",
+    "Riftmaker",
+    "Locket of the Iron Solari",
+    "Cosmic Drive",
+    "Heartsteel",
+    "Warmog's Armor"
+   ]
+  },
+  {
+   "slug": "taliyah",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Archangel's Staff"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Cryptbloom",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "talon",
+   "current": [
+    "Profane Hydra",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "Serylda's Grudge",
+    "Voltaic Cyclosword",
+    "Youmuu's Ghostblade"
+   ],
+   "ultimate": [
+    "Profane Hydra",
+    "Hubris",
+    "Umbral Glaive",
+    "Serylda's Grudge",
+    "Bastionbreaker",
+    "Youmuu's Ghostblade"
+   ]
+  },
+  {
+   "slug": "taric",
+   "current": [
+    "Celestial Opposition",
+    "Boots of Swiftness",
+    "Locket of the Iron Solari",
+    "Sunfire Aegis",
+    "Warmog's Armor",
+    "Heartsteel"
+   ],
+   "ultimate": [
+    "Celestial Opposition",
+    "Titanic Hydra",
+    "Locket of the Iron Solari",
+    "Sunfire Aegis",
+    "Warmog's Armor",
+    "Heartsteel"
+   ]
+  },
+  {
+   "slug": "teemo",
+   "current": [
+    "Luden's Echo",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Void Staff",
+    "Lich Bane"
+   ],
+   "ultimate": [
+    "Rabadon's Deathcap",
+    "Stormsurge",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Void Staff",
+    "Lich Bane"
+   ]
+  },
+  {
+   "slug": "thresh",
+   "current": [
+    "Solstice Sleigh",
+    "Sorcerer's Shoes",
+    "Locket of the Iron Solari",
+    "Protoplasm Harness",
+    "Liandry's Torment",
+    "Dead Man's Plate"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Kaenic Rookern",
+    "Locket of the Iron Solari",
+    "Warmog's Armor",
+    "Liandry's Torment",
+    "Dead Man's Plate"
+   ]
+  },
+  {
+   "slug": "tristana",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Blade of The Ruined King",
+    "Rapid Firecannon"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Blade of The Ruined King",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "trundle",
+   "current": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Death's Dance",
+    "Spirit Visage"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Ravenous Hydra",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Death's Dance",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "tryndamere",
+   "current": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Profane Hydra"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Bloodthirster",
+    "Lord Dominik's Regards",
+    "Ravenous Hydra",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "twisted-fate",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Hextech Gunblade",
+    "Lich Bane",
+    "Shadowflame"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Hextech Gunblade",
+    "Lich Bane",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "twitch",
+   "current": [
+    "Hextech Gunblade",
+    "Runaan's Hurricane",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "Phantom Dancer",
+    "The Collector"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Runaan's Hurricane",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "Yun Tal Wildarrows",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "udyr",
+   "current": [
+    "Hextech Rocketbelt",
+    "Plated Steelcaps",
+    "Hextech Gunblade",
+    "Zeke's Convergence",
+    "Liandry's Torment",
+    "Locket of the Iron Solari"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Yun Tal Wildarrows",
+    "Endless Hunger",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Death's Dance"
+   ]
+  },
+  {
+   "slug": "urgot",
+   "current": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "Lord Dominik's Regards",
+    "Youmuu's Ghostblade",
+    "Guardian Angel"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Lord Dominik's Regards",
+    "Sterak's Gage",
+    "Overlord's Bloodmail"
+   ]
+  },
+  {
+   "slug": "varus",
+   "current": [
+    "Boots of Swiftness",
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Blade of The Ruined King"
+   ],
+   "ultimate": [
+    "Boots of Swiftness",
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Yun Tal Wildarrows",
+    "Blade of The Ruined King"
+   ]
+  },
+  {
+   "slug": "vayne",
+   "current": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "Guinsoo's Rageblade",
+    "Gluttonous Greaves",
+    "Wit's End",
+    "Lord Dominik's Regards"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "Yun Tal Wildarrows",
+    "Lord Dominik's Regards"
+   ]
+  },
+  {
+   "slug": "veigar",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Actualizer"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Liandry's Torment"
+   ]
+  },
+  {
+   "slug": "vel'koz",
+   "current": [
+    "Solstice Sleigh",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Void Staff",
+    "Blackfire Torch"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Void Staff",
+    "Blackfire Torch"
+   ]
+  },
+  {
+   "slug": "vex",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Luden's Echo"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "vi",
+   "current": [
+    "Blade of The Ruined King",
+    "Ravenous Hydra",
+    "The Collector",
+    "Bloodthirster",
+    "Lord Dominik's Regards",
+    "Infinity Edge"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Ravenous Hydra",
+    "The Collector",
+    "Bloodthirster",
+    "Lord Dominik's Regards",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "viego",
+   "current": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "Profane Hydra",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Ravenous Hydra",
+    "Lord Dominik's Regards",
+    "Blade of The Ruined King",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "viktor",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Lich Bane",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Void Staff",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Zhonya's Hourglass",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "vladimir",
+   "current": [
+    "Cosmic Drive",
+    "Immortal Path",
+    "Riftmaker",
+    "Rabadon's Deathcap",
+    "Spirit Visage",
+    "Cryptbloom"
+   ],
+   "ultimate": [
+    "Cosmic Drive",
+    "Zhonya's Hourglass",
+    "Riftmaker",
+    "Rabadon's Deathcap",
+    "Spirit Visage",
+    "Cryptbloom"
+   ]
+  },
+  {
+   "slug": "volibear",
+   "current": [
+    "Titanic Hydra",
+    "Hollow Radiance",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Overlord's Bloodmail",
+    "Unending Despair"
+   ],
+   "ultimate": [
+    "Titanic Hydra",
+    "Hollow Radiance",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Overlord's Bloodmail",
+    "Black Cleaver"
+   ]
+  },
+  {
+   "slug": "warwick",
+   "current": [
+    "Blade of The Ruined King",
+    "Ravenous Hydra",
+    "Death's Dance",
+    "Spirit Visage",
+    "Guardian Angel",
+    "Lord Dominik's Regards"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Ravenous Hydra",
+    "Death's Dance",
+    "Spirit Visage",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards"
+   ]
+  },
+  {
+   "slug": "wukong",
+   "current": [
+    "Sundered Sky",
+    "Titanic Hydra",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Overlord's Bloodmail",
+    "Ionian Boots of Lucidity"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Titanic Hydra",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Sterak's Gage",
+    "Lord Dominik's Regards"
+   ]
+  },
+  {
+   "slug": "xayah",
+   "current": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Infinity Edge",
+    "Gluttonous Greaves"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Yun Tal Wildarrows",
+    "Infinity Edge",
+    "Gluttonous Greaves"
+   ]
+  },
+  {
+   "slug": "xerath",
+   "current": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Luden's Echo"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "xin-zhao",
+   "current": [
+    "Hextech Gunblade",
+    "Rabadon's Deathcap",
+    "Spirit Visage",
+    "Nashor's Tooth",
+    "Zhonya's Hourglass",
+    "Guinsoo's Rageblade"
+   ],
+   "ultimate": [
+    "Dusk and Dawn",
+    "Rabadon's Deathcap",
+    "Spirit Visage",
+    "Nashor's Tooth",
+    "Zhonya's Hourglass",
+    "Guinsoo's Rageblade"
+   ]
+  },
+  {
+   "slug": "yasuo",
+   "current": [
+    "Blade of The Ruined King",
+    "Immortal Path",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Guardian Angel"
+   ],
+   "ultimate": [
+    "Blade of The Ruined King",
+    "Hubris",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Ravenous Hydra",
+    "Death's Dance"
+   ]
+  },
+  {
+   "slug": "yone",
+   "current": [
+    "Blade of The Ruined King",
+    "Immortal Path",
+    "The Collector",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Ravenous Hydra"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Mercurial Scimitar",
+    "Blade of The Ruined King",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Ravenous Hydra"
+   ]
+  },
+  {
+   "slug": "yorick",
+   "current": [
+    "Titanic Hydra",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Heartsteel",
+    "Boots of Swiftness"
+   ],
+   "ultimate": [
+    "Titanic Hydra",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Heartsteel",
+    "Overlord's Bloodmail"
+   ]
+  },
+  {
+   "slug": "yunara",
+   "current": [
+    "Kraken Slayer",
+    "Phantom Dancer",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Rapid Firecannon"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Phantom Dancer",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Yun Tal Wildarrows"
+   ]
+  },
+  {
+   "slug": "yuumi",
+   "current": [
+    "Dream Maker",
+    "Luden's Echo",
+    "Blackfire Torch",
+    "Liandry's Torment",
+    "Cryptbloom",
+    "Rabadon's Deathcap"
+   ],
+   "ultimate": [
+    "Dream Maker",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Liandry's Torment",
+    "Cryptbloom",
+    "Rabadon's Deathcap"
+   ]
+  },
+  {
+   "slug": "zaahen",
+   "current": [
+    "Trinity Force",
+    "Ionian Boots of Lucidity",
+    "Winter's Approach",
+    "Manamune",
+    "Frozen Heart",
+    "Spirit Visage"
+   ],
+   "ultimate": [
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Endless Hunger",
+    "Blade of The Ruined King",
+    "Death's Dance",
+    "Trinity Force"
+   ]
+  },
+  {
+   "slug": "zac",
+   "current": [
+    "Warmog's Armor",
+    "Sunfire Aegis",
+    "Spirit Visage",
+    "Gluttonous Greaves",
+    "Liandry's Torment",
+    "Protoplasm Harness"
+   ],
+   "ultimate": [
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Spirit Visage",
+    "Dead Man's Plate",
+    "Liandry's Torment",
+    "Heartsteel"
+   ]
+  },
+  {
+   "slug": "zed",
+   "current": [
+    "Umbral Glaive",
+    "Swiftmarch",
+    "Voltaic Cyclosword",
+    "Serylda's Grudge",
+    "Profane Hydra",
+    "Bastionbreaker"
+   ],
+   "ultimate": [
+    "Umbral Glaive",
+    "Hubris",
+    "Youmuu's Ghostblade",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Bastionbreaker"
+   ]
+  },
+  {
+   "slug": "zeri",
+   "current": [
+    "The Collector",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Gluttonous Greaves",
+    "Hubris",
+    "Immortal Shieldbow"
+   ],
+   "ultimate": [
+    "The Collector",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Gluttonous Greaves",
+    "Hubris",
+    "Infinity Edge"
+   ]
+  },
+  {
+   "slug": "ziggs",
+   "current": [
+    "Liandry's Torment",
+    "Boots of Swiftness",
+    "Stormsurge",
+    "Shadowflame",
+    "Void Staff",
+    "Lich Bane"
+   ],
+   "ultimate": [
+    "Liandry's Torment",
+    "Boots of Swiftness",
+    "Stormsurge",
+    "Shadowflame",
+    "Void Staff",
+    "Lich Bane"
+   ]
+  },
+  {
+   "slug": "zilean",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Hextech Gunblade",
+    "Blackfire Torch",
+    "Shadowflame"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Cryptbloom",
+    "Liandry's Torment",
+    "Hextech Gunblade",
+    "Blackfire Torch",
+    "Shadowflame"
+   ]
+  },
+  {
+   "slug": "zoe",
+   "current": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Luden's Echo",
+    "Shadowflame",
+    "Lich Bane"
+   ],
+   "ultimate": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Rabadon's Deathcap",
+    "Shadowflame",
+    "Lich Bane"
+   ]
+  },
+  {
+   "slug": "zyra",
+   "current": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Void Staff",
+    "Stormsurge"
+   ],
+   "ultimate": [
+    "Solstice Sleigh",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Cosmic Drive",
+    "Void Staff",
+    "Stormsurge"
+   ]
+  }
+ ]
+}
