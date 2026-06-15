@@ -194,7 +194,7 @@ class TftLiveAnalysis:
             prev_stage=self._last_round[0]; new_stage=sr[0]
             if prev_stage > 2 and new_stage <= 2 and sr != (0,0):
                 self._known_augments=[]; self._last_placement=""
-                logger.info("New game detected (stage %s→%s) - augments cleared",self._last_round,sr)
+                logger.info("New game detected (stage %s->%s) - augments cleared",self._last_round,sr)
             self._last_round=sr; self._round_start_time=time.time()
             self._scanned_planning=False; self._scanned_mid=False
     def notify_coach_state(self, state: dict) -> None: self._coach_state=state

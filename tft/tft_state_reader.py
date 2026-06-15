@@ -42,7 +42,7 @@ def _log_round_calibration(t, stage, rnd):
     global _last_logged_sr
     sr = f"{stage}-{rnd}"
     if sr != _last_logged_sr:
-        logger.debug("Round calibration: t=%.1fs → %s", t, sr)
+        logger.debug("Round calibration: t=%.1fs -> %s", t, sr)
         _last_logged_sr = sr
 
 class TftStateReader:

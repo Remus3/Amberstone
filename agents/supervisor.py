@@ -656,7 +656,7 @@ class Supervisor:
 
         Safe: ping/analyzer failures are logged and swallowed.
         """
-        log.info("mode transition: %s → %s", prev, new)
+        log.info("mode transition: %s -> %s", prev, new)
         new_norm = (new or "").lower()
         prev_norm = (prev or "").lower()
 
