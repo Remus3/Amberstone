@@ -9,6 +9,26 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 29 (item 426): A3b-2 sub-slice - adaptation_hint coach-emit glyphs -> ASCII (18 lines / 2 files, Tier-1)
+
+- First A3b-2 (non-DS load-bearing code-string) sub-slice. `coaches/adaptation_hint_{champion,cli}.py`:
+  U+2191/U+2193 trend arrows -> `^`/`v`, U+2192 HOT/COLD -> `->`, the flat/unknown marker
+  U+00B7 -> `-` (repo no-data sentinel), and the U+00B7 SEPARATOR -> `" | "` (the `" | ".join`,
+  the line-342 `insight_card` `rsplit` trim boundary, and the 4 cli table separators, all in lockstep).
+  commit `04dbc6a4`.
+- Per-hit override (NOT the GLYPH_MAP default `*`): `insight_card` is a clipboard/Discord-paste card
+  where `*text*` renders italic, so the separator is `" | "` not `*`. Also fixed a pre-existing doc/code
+  drift (the docstring already said a `*` boundary while the code rsplit on the middot - both now `" | "`).
+- Blast radius = exactly 2 files (repo-wide grep: the sole glyph-splitting consumer is
+  `adaptation_hint_champion.py:342`; no test asserts the glyphs; `_supervisor_http` serves the card as
+  opaque text). The pre-existing `str | None` type-hint + `today|24h` help pipes left untouched.
+- Gate (Tier-1, coach-emit local logic, no engine/schema/Share/ENGINE): py_compile 2/2; both modules
+  ZERO non-ASCII; ruff clean; owning suite (`test_p2w1_coach_b` format_hint_line + `test_round18`
+  insight_card max_chars-trim + `test_coach_prompt_format_safe`) 30 passed; NEW guard
+  `tests/test_adaptation_hint_ascii_item426.py` (2) green. No DS suite/restart/Share; no live RC restart.
+
+---
+
 ## DONE - cycle 24 (item 420): DS-engine ASCII sweep slice B1b - string-token + JSON _meta glyphs (750 subs / 13 files + Share re-sync)
 
 - Completes the DS-engine ASCII retro-sweep B1a began. B1a swept comment+docstring
@@ -212,8 +232,8 @@ TOOL = tools/p3_ascii_sweep.py (comment-token + docstring-token + log/print-stri
     next / dragon_state values = the SAME wire arrow scripts/audit_ddragon_items.py:86
     re.split consumes; change fixtures + splitter together.
   - role_profiles.py: U+2022 emitted laning bullets + U+2192 combo arrows (emitted text).
-  - coaches/adaptation_hint_{champion,cli}.py: emitted U+2191 / U+2193 / U+00B7 direction
-    glyphs that adaptation_hint_champion.py:341-342 rsplit on the U+00B7 separator.
+  - coaches/adaptation_hint_{champion,cli}.py: DONE cycle 29 (item 426) - arrows/marker -> ^/v/-,
+    separator + the line-342 rsplit boundary -> " | " (Discord-safe, not GLYPH_MAP "*"). See above.
   - tft/tft_pbe_{engine,data}.py notes + tft/tft_vision_reader.py Sonnet vision-prompt
     U+2550 banners (LLM prompt content - a byte change = a model-input change).
   - coach_integration/{_profiles,_sr_prompt}.py: SR-prompt mechanics text + the U+2192
