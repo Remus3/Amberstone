@@ -2130,7 +2130,7 @@ def _maybe_ingest_last_match(state: dict) -> None:
         _post_match_ingest_state["last_game_id_ingested"] = gid
         _save_ingest_state()  # persist for crash-recovery on next boot
         print(f"[last-match-ingest] shipped gameId={gid} "
-              f"(transition {prior!r} → EndOfGame)", flush=True)
+              f"(transition {prior!r} -> EndOfGame)", flush=True)
     else:
         print(f"[last-match-ingest] POST failed: {status} "
               f"(gameId={gid}; will retry next cycle)", flush=True)

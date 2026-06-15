@@ -44,7 +44,7 @@ rn_funcs   = L(598, 1066) # renderWhatWent ... renderRightNow
 
 with open(f"{PANELS_DIR}/right_now.js", "w", encoding="utf-8") as f:
     f.write(RIGHT_NOW_HEADER + rn_dom + "\n" + rn_bind + "\n" + rn_funcs + RIGHT_NOW_FOOTER)
-print("✓ right_now.js")
+print("ok right_now.js")
 
 # -- 2. next.js ---------------------------------------------------------------
 NEXT_HEADER = """\
@@ -64,7 +64,7 @@ nx_arena     = L(1493, 1540) # CAITLYN_PARTNER_COMBOS + arena helpers
 
 with open(f"{PANELS_DIR}/next.js", "w", encoding="utf-8") as f:
     f.write(NEXT_HEADER + nx_dom + "\n" + nx_wave_cmt + nx_wave_fns + "\n" + nx_arena + NEXT_FOOTER)
-print("✓ next.js")
+print("ok next.js")
 
 # -- 3. item_build.js ---------------------------------------------------------
 ITEM_BUILD_HEADER = """\
@@ -89,7 +89,7 @@ ib_ib_funcs = L(3270, 3419)  # _ibSetStatus ... _ibMaybeRenderBuilds (extracted 
 
 with open(f"{PANELS_DIR}/item_build.js", "w", encoding="utf-8") as f:
     f.write(ITEM_BUILD_HEADER + ib_dom + "\n" + ib_funcs + "\n" + ib_ib_funcs + ITEM_BUILD_FOOTER)
-print("✓ item_build.js")
+print("ok item_build.js")
 
 # -- 4. map_state.js ----------------------------------------------------------
 MAP_STATE_HEADER = """\
@@ -124,7 +124,7 @@ mm_spell_fns  = L(2644, 2675) # state.spellCds comment + _spellKey ... _currentS
 # is harmless (second wins, same value).
 with open(f"{PANELS_DIR}/map_state.js", "w", encoding="utf-8") as f:
     f.write(MAP_STATE_HEADER + mm_dom + "\n" + mm_funcs + "\n" + mm_spell_fns + MAP_STATE_FOOTER)
-print("✓ map_state.js")
+print("ok map_state.js")
 
 # -- 5. champ_select.js -------------------------------------------------------
 CHAMP_SELECT_HEADER = """\
@@ -164,7 +164,7 @@ cs_panel_fixed = cs_panel.replace(
 
 with open(f"{PANELS_DIR}/champ_select.js", "w", encoding="utf-8") as f:
     f.write(CHAMP_SELECT_HEADER + cs_comment + cs_funcs1a + cs_funcs1b + "\n" + cs_panel_fixed + CHAMP_SELECT_FOOTER)
-print("✓ champ_select.js")
+print("ok champ_select.js")
 
 # -- 6. bridge_pending.js -----------------------------------------------------
 BRIDGE_PENDING_HEADER = """\
@@ -182,7 +182,7 @@ bp_funcs = L(6500, 6829)  # COACH_DECISIONS ... pollBridgePending + setInterval
 
 with open(f"{PANELS_DIR}/bridge_pending.js", "w", encoding="utf-8") as f:
     f.write(BRIDGE_PENDING_HEADER + bp_funcs + BRIDGE_PENDING_FOOTER)
-print("✓ bridge_pending.js")
+print("ok bridge_pending.js")
 
 # -- 7. dev.js ----------------------------------------------------------------
 DEV_HEADER = """\
@@ -204,7 +204,7 @@ dev_funcs = L(4499, 4944)  # _settingsRefresh ... _replayViewWireOnce
 
 with open(f"{PANELS_DIR}/dev.js", "w", encoding="utf-8") as f:
     f.write(DEV_HEADER + dev_funcs + DEV_FOOTER)
-print("✓ dev.js")
+print("ok dev.js")
 
 # -- 8. main.js - generate import block addition ------------------------------
 # Print the 7 import lines to prepend after the existing lib imports.
@@ -270,5 +270,5 @@ with open(SRC, "w", encoding="utf-8") as f:
 
 orig_lines = len(raw)
 new_line_count = new_main.count("\n") + 1
-print(f"✓ main.js: {orig_lines} → {new_line_count} lines ({orig_lines - new_line_count} removed)")
+print(f"ok main.js: {orig_lines} -> {new_line_count} lines ({orig_lines - new_line_count} removed)")
 print(f"  Backup: {SRC}.bak")

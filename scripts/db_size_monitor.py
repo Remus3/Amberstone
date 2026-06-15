@@ -148,7 +148,7 @@ def main() -> int:
                 print(f"  {b['label']:<28} {_fmt(b['bytes'])} > {_fmt(b['threshold'])} (over by {_fmt(b['over_by'])})")
         else:
             print()
-            print("✓ all sizes under threshold.")
+            print("ok all sizes under threshold.")
 
     return 1 if breaches else 0
 

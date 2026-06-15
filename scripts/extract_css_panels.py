@@ -94,7 +94,7 @@ def main(check: bool = False) -> int:
 
     new_dashboard = file_header + "\n" + imports + "\n"
     SRC.write_text(new_dashboard, encoding="utf-8")
-    print(f"  rewrote dashboard.css → @import router ({len(new_dashboard.splitlines())} lines)")
+    print(f"  rewrote dashboard.css -> @import router ({len(new_dashboard.splitlines())} lines)")
 
     return 0
 

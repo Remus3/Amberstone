@@ -122,4 +122,4 @@ def update_heatmap() -> int:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     n = update_heatmap()
-    print(f"Heatmap built from {n} TFT games → {_HEATMAP_FILE}")
+    print(f"Heatmap built from {n} TFT games -> {_HEATMAP_FILE}")

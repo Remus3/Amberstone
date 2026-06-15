@@ -87,15 +87,15 @@ def apply_grade(grade: str, last_state: Optional[dict],
     try:
         if g == "F":
             cache.flag_bad(last_state)
-            _log.info("feedback: grade F → flag_bad applied to last state")
+            _log.info("feedback: grade F -> flag_bad applied to last state")
         else:
             mult = _GRADE_MULT[g]
             if mult == 1.0:
                 # B grade - explicitly skip the write (no-op multiplier)
-                _log.debug("feedback: grade B (mult=1.0) → no-op")
+                _log.debug("feedback: grade B (mult=1.0) -> no-op")
                 return True
             cache.bump_confidence(last_state, mult, flag=f"grade_{g}")
-            _log.info("feedback: grade %s → confidence × %.2f applied", g, mult)
+            _log.info("feedback: grade %s -> confidence x %.2f applied", g, mult)
         return True
     except Exception as exc:
         _log.debug("apply_grade: cache update failed: %s", exc)

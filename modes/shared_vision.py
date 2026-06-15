@@ -81,7 +81,7 @@ def _capture_screen() -> Optional[str]:
         _fail_streak += 1
         if _fail_streak >= _FRAME_FAIL_WARN_STREAK:
             logger.warning(
-                "latest-frame fetch failed %d× in a row: %s "
+                "latest-frame fetch failed %dx in a row: %s "
                 "(Game-PC agent or vision server likely down)",
                 _fail_streak, exc,
             )

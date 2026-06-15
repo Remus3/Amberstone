@@ -93,7 +93,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     _atomic_write_json(path, snap)
-    print(f"\n✓ wrote {path}")
+    print(f"\nok wrote {path}")
     print("  coverage:", json.dumps(snap["coverage"]["status_counts"]))
     return 0
 
