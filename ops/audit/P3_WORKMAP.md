@@ -9,6 +9,35 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 30 (item 427): A3b-2 sub-slice - dashboard/summary cluster glyphs -> ASCII (3 files, Tier-1)
+
+- The user-facing last-match / defensive-picks / aftergame-summary readable-math +
+  middot-separator glyphs. `dashboard/builders_last_match.py` (8 lines: U+2212 minus ->
+  `-`, U+00D7 mult -> `x`, U+2264/U+2265 -> `<=`/`>=`, U+00B1 -> `+/-`), `core/defensive_picks.py`
+  (L118 clause middot -> ` - `, L237 `" * ".join` separator -> `" | "`), `core/aftergame_summary.py`
+  (L326 + L343 `" * ".join` separators -> `" | "`, L343 `{n}x {w}` mult -> `x`).
+- Per-hit separator overrides (NOT the GLYPH_MAP default `*` = multiply): the three `.join()`
+  middots are LIST separators, not products -> ` | ` (L237 bits carry `/` + `()`; L326 bullets
+  carry their own ` - `, so `|` stays unambiguous); the L118 two-word clause -> ` - ` (house style).
+- DEFERRED to P8 (by design, cycle-22 precedent): `aftergame_summary.py:406` keeps the win/loss
+  status pair U+2713 `ok`-check + U+26A0 warn (the warn glyph is unmapped in GLYPH_MAP). A matched
+  status-emoji pair = a P8 readability decision, not a mechanical glyph swap. So builders/defensive
+  go 100% ASCII; aftergame retains exactly those 2 markers (guard-pinned).
+- Blast radius proof (per-hit, NOT a sed): repo-wide the ONLY split/regex consumers of any of these
+  glyph classes are `aram_coach.py:147` + `audit_ddragon_items.py:86`, both on U+2192 `->` (the B2
+  wire-arrow, a SEPARATE slice) - neither touches this cluster. The cluster middots/math are
+  `.join()`-only / display-only. The workmap "snapshot-fixture-backed" flag was a conservative
+  over-flag: grep found the cluster's strings in ZERO test asserts, and the glyph-bearing snapshot
+  fixtures (`tests/snapshot_panels/fixtures/sr.json`) carry only INPUT coaching glyphs (wave/map),
+  not cluster output - snapshot suite passes unchanged, no fixture regen.
+- Gate (Tier-1, local-logic, no engine/schema/Share/ENGINE/DS-restart/live-RC-restart): py_compile
+  3/3; builders+defensive 0 non-ASCII, aftergame residual == exactly [U+26A0, U+2713]; ruff clean;
+  owning suite (test_last_match_by_ts + test_p2w1_core_d + test_p2w1_dash_e + snapshot_panels
+  last_match/active_match/panel_snapshots) 55 passed / 15 subtests; NEW guard
+  `tests/test_last_match_ascii_item427.py` 3 green.
+
+---
+
 ## DONE - cycle 29 (item 426): A3b-2 sub-slice - adaptation_hint coach-emit glyphs -> ASCII (18 lines / 2 files, Tier-1)
 
 - First A3b-2 (non-DS load-bearing code-string) sub-slice. `coaches/adaptation_hint_{champion,cli}.py`:
@@ -239,8 +268,10 @@ TOOL = tools/p3_ascii_sweep.py (comment-token + docstring-token + log/print-stri
   - coach_integration/{_profiles,_sr_prompt}.py: SR-prompt mechanics text + the U+2192
     build-string join.
   - dashboard/builders_last_match.py + core/{defensive_picks,aftergame_summary}.py:
-    user-facing dashboard/summary U+2212 / U+00D7 / U+2264 / U+2265 / U+00B7 text
-    (snapshot-fixture-backed - touching it shifts tests/snapshot_panels/fixtures/*.json).
+    DONE cycle 30 (item 427) - readable-math (U+2212/U+00D7/U+2264/U+2265/U+00B1) + the 3 middot
+    `.join` separators -> ASCII (` | ` / ` - `, per-hit not GLYPH_MAP `*`). builders+defensive 100%
+    ASCII; aftergame keeps the U+2713/U+26A0 win/loss status pair -> P8. The "snapshot-fixture-backed"
+    flag was an over-flag (cluster strings in 0 test asserts; sr.json glyphs are input not output). See above.
   - NEVER touch: tools/p3_ascii_sweep.py + ops/audit/p2w5_sweep_sliceA.py GLYPH_MAP keys.
 Run order: A3b-2 last (judgement). web/ .js/.css glyphs are NOT python-tokenizable
 -> handled in B3 (UI-audit-gated), not here.

@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 30: P3 A3b-2 sub-slice - dashboard/summary cluster glyphs -> ASCII [item 427]
+
+- Second A3b-2 sub-slice off the cycle-24 list. `dashboard/builders_last_match.py` + `core/{defensive_picks,aftergame_summary}.py` (commit `c55f47da`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
+- builders: 8 readable-math glyphs (U+2212->`-`, U+00D7->`x`, U+2264/U+2265->`<=`/`>=`, U+00B1->`+/-`) in PGR-tip prose. defensive_picks + aftergame_summary: the three `" * ".join()` middot LIST separators -> `" | "` (NOT GLYPH_MAP `*` = multiply; per-hit, items carry `/`,`()`,` - `), L118 clause middot -> ` - `, L343 `{n}x {w}` count -> `x`.
+- DEFERRED to P8 (cycle-22 precedent): aftergame_summary.py:406 keeps the win/loss status pair U+2713 check + U+26A0 warn (warn unmapped in GLYPH_MAP). builders+defensive 100% ASCII; aftergame residual == exactly [U+26A0, U+2713], guard-pinned.
+- Blast-radius proof (per-hit, NOT a sed): the ONLY split/regex consumers of any of these glyph classes repo-wide = aram_coach.py:147 + audit_ddragon_items.py:86, both on U+2192 (the B2 wire-arrow, separate slice) - neither touches this cluster. Workmap "snapshot-fixture-backed" flag was an OVER-FLAG: cluster strings in 0 test asserts; sr.json glyphs are INPUT (wave/map) not output -> snapshot suite passes, no fixture regen.
+- Gate (Tier-1): py_compile 3/3; ruff clean; builders+defensive 0 non-ASCII; owning suite (test_last_match_by_ts + test_p2w1_core_d + test_p2w1_dash_e + snapshot_panels last_match/active_match/panel_snapshots) 55 passed / 15 subtests; NEW guard tests/test_last_match_ascii_item427.py (3) green.
+- DONT-REDO: this cluster is ASCII-COMPLETE + guard-locked (aftergame's 2 status markers are the only intended residual -> P8). NEXT A3b-2 = aram/brawl/arena coach prompt banners + item_build wire-arrow B2 (11 peer tests), rebuild_sim_fixtures golden arrows, role_profiles bullets, tft_pbe_*/tft_vision_reader LLM prompts, coach_integration/{_profiles,_sr_prompt}. Map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 29: P3 A3b-2 sub-slice - adaptation_hint coach-emit glyphs -> ASCII [item 426]
 
 - First A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 NEXT list. `coaches/adaptation_hint_{champion,cli}.py` (commit `04dbc6a4`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
@@ -22,33 +33,3 @@
 - G2 held ~flat: the axis fix correctly pulled the AP-damage champs (Diana/Gwen/Teemo/Rumble/Lillia/Mordekaiser/KogMaw/Gragas/Nidalee/Elise) OUT of G1; matching SPECIFIC items needs the design tracks, not an axis flip. G4 boots don't move the metric (overlap subtracts BOOTS by design in gen_md.py).
 - G2 residual = 3 buckets, all downstream of already-routed tracks (per-champ build dumps): A role-item-vs-glass-cannon (Janna/Sona/Alistar... DS utility/heal/shield, lolmath raw AP) -> G6/by-design; B AD scorer-valuation (Aatrox/Fiora/Nasus/Darius/Jhin lethality+kill-state passives) -> G5-residual; C AP DoT (Anivia/Swain/Lissandra Liandry's/Blackfire burn vs DS burst) -> G5-residual.
 - DONT-REDO: G2 is NOT a fixable bug (premise confirmed); do NOT re-measure as a fix target or re-pitch a low-overlap "fix" - the residual is the design-level scorer/runes/cost class. G1/G2/G4/G5 = the bounded-slice set, all DONE/CLOSED. NEXT P6 = G3 runes / G6 cost-model / G7 harness + G5 scorer-valuation residual = Gemini-consult first (no bounded slice remains).
-
----
-
-# 2026-06-15 - DEEP-AUDIT cycle 27: P6 LOLMATH PARITY G5 item-pool gaps CLOSED (no pool gap) [item 424]
-
-- G5 premise FALSIFIED root-cause-first: there is NO DS item-pool gap. Tier-0 diagnosis only - NO ENGINE bump, NO build_orders regen, NO DS :8893 restart, NO Share re-sync (5 doc/probe files, 0 source/engine/data change).
-- DS candidate pool = `agents/daemon_slayer/rank.py::_filter_candidates` over ALL 706 items.json (purchasable + terminal `into` empty + map-legal + budget + 2-item deny-set); NO per-archetype whitelist. REAL SR pool gaps = 0/48 audited - every lolmath-favored item resolves to a canonical map11 id and is a live candidate. (Probe v1 false-flagged 42 via the 6-digit `22..` Arena ALIAS ids map11=False - `reference_items_index_alias_ids`; v2 collects ALL ids/name, canonical short id is in-pool.)
-- Live-engine proof at ENGINE 1.123.0 (not the stale 1.120.0 snapshot): every "missing" item is IN the ranking, just below top-6 - Talon Umbral #7 / Hubris #13 / Profane #33; Lux Liandry's #23 / Blackfire #16; Jhin Collector #12. DS recommends only ~60 distinct items / 172 champs x 4 comps. The breadth gap is SCORER VALUATION (item passives needing kill-state: Hubris/Collector/Death's Dance; AP DoT burn vs single-rotation `ability` model: Liandry's/Blackfire; lethality-vs-sustained tradeoff in `burst`), NOT pool membership. Lethality pen itself is modeled (V14.1 1:1, `effects.py:326`).
-- Durable probes: `ops/audit/lolmath_ds_sweep/g5_pool_probe.py` + `g5_live_rank_probe.py`. Updated `ops/audit/P6_LOLMATH_PARITY.md` G5 -> CLOSED + `ROADMAP.md` P6 line + LEDGER 424.
-- DONT-REDO: do NOT re-pitch a per-archetype pool whitelist or a "missing-item" pool addition (pool is complete, probe-proven). The scorer-valuation residual is G3/G6-class design -> Gemini-consult. NEXT P6 = G2 re-measure (after G1/G4); G3 runes / G6 cost-model / G7 harness + G5 residual = Gemini-consult first.
-
----
-
-# 2026-06-15 - DEEP-AUDIT cycle 26: P6 LOLMATH PARITY G4 boots-pool refresh [item 423]
-
-- Boots-pool refresh to the 16.12.1 SR-only tier-3 boots. The lolmath-vs-DS sweep flagged DS emitting legacy tier-2 (Mercury's x140 / Berserker's x30) while lolmath uses the upgraded boots. Probed item.json (NOT assumed): 16.12.1 has 7 SR-only tier-3 upgrades (each `into` map11=True / map12=False / map30=False) + Mobility Boots (3117) and Symbiotic Soles (3010) are inStore=False (out of store).
-- Fix `core/build_order._select_boots` (commit `22a508e7`): SR-gated `_BOOTS_SR_UPGRADE` upgrades the resolved tier-2 family to its tier-3 form on SR (map 11); ARAM (12) + Arena (30) keep tier-2 (no tier-3 there); assassin default off the out-of-store Mobility Boots -> Ionian -> Crimson Lucidity. tier-3 ids/names added for ownership detection. All 3 generators route through `plan_build_order`, so the fix reaches all 9 tables.
-- No engine MATH change: the DS ranker is byte-identical + never imports `core/build_order`; the AH/tenacity registries (3171=20AH / 3173=30%ten) + `items.json` already carried the tier-3 ids. ENGINE 1.122.0 -> 1.123.0 (QUOTED-literal-only bump, avoided the item-422 bare-string regress).
-- Gate (Tier-2): `tests/test_build_order_boots.py` rewritten 29; DS-dir 7095p/1s/1942sub; tests/ 7943p/2s/109sub; all 9 tables regenerated + verified (SR tier-3, ARAM/Arena tier-2, 0 Mobility); DS :8893 + live RC (pid 1736 -> 8024) restarted -> 1.123.0; Share --check in-sync (336). docs `77e5ed20`; CI 27558021669 GREEN. Durable regen helper `ops/audit/p6g4_regen.py`.
-- DONT-REDO: G4 boots refresh DONE. NEXT P6 = G5 item-pool gaps (pairs w/ G1+G4 - right axis needs right pool: lethality / AP-on-hit / current items per archetype), then G2 re-measure; G3 runes / G6 cost-model / G7 harness = Gemini-consult first. DEFERRED follow-up: Arena should use the 22xxxx boots mirror (3xxx are map30=False) - pre-existing, out of G4 SR scope.
-
----
-
-# 2026-06-14 - DEEP-AUDIT cycle 24: P3 DS-engine ASCII sweep slice B1b [item 420]
-
-- Completes the DS-engine ASCII retro-sweep B1a began. B1a swept comment+docstring tokens; B1b sweeps the residual STRING-token glyphs: 76 across 9 .py (_effects_data/burst/dps/ability_dps/hybrid/server/beam/ehp/rank - emit-notes / f-string display / server HTML help) + 674 in the 4 registry JSONs' _meta description/rationale fields (champion_block_index 651 / form_index 11 / archetype_weights 9 / max_priority 3; glyph-free outside _meta, no test asserts on it). 750 subs / 13 files. DS tree now 100% ASCII except CHANGELOG.md (.md, Share-excluded -> P8). commit `d8f7f93c`.
-- Per-hit judgement (the workmap-flagged load-bearing class, NOT a sed): sole structural consumer tree-wide = tests/test_effects_expansion.py:3892 (re.search on the "armor X -> Y" emit-note), regex + stale comment updated in lockstep. Production DS never split/regex these (combo `' -> '.join` is join-only; dashboard renders DS notes as opaque passthrough). The non-DS aram_coach wire-arrow + phase2/snapshot `->` are a SEPARATE slice (B2/A3b-2), untouched. Mappings = cycle 19-23 GLYPH_MAP (-> x / <= alpha beta *) with ONE override: beam.py:142 item-name separator U+00B7 -> " / " (separator not multiply); server.py's 2 U+00B7 ARE multiply (alpha*dps + beta*ehp) so stay "*".
-- Gate (Tier-2, DS tree + Share): NEW durable ops/audit/p3c24_b1b_sweep.py (transform) + p3c24_token_equiv.py PROOF PASS 9/9 (every NON-string token byte-identical to HEAD = engine logic untouched; every changed string token == transform(HEAD-token)); py_compile 9/9; JSON parse 4/4; DS-dir 7095p/1s/1942sub exit 0 (byte-identical count to B1a, regex passes); tests/ 7887p/2s/109sub exit 0; ds_share_sync rewrote Share/src (336 files) + --check in-sync. NO ENGINE bump (computed output byte-identical, proven). An accidental operator REBOOT mid-slice restarted RC-DaemonSlayer -> live :8893 already serves ASCII notes (re-probed 1.121.0 / 16.12.1 / 172 champs healthy); NO manual DS restart, NO live RC restart.
-- DONT-REDO: B1b string+JSON sweep DONE + idempotent (re-run = 0). DS-engine tree ASCII-COMPLETE for code+data; only CHANGELOG.md (.md) remains -> P8. NEXT cycle 25 = A3b-2 non-DS load-bearing code-strings (aram/brawl/arena coach prompt banners + item_build wire-arrow B2 coordinated coach+Haiku-prompt+11 peer tests, rebuild_sim_fixtures golden arrows, role_profiles bullets, adaptation_hint emit+rsplit, tft LLM prompts, coach_integration, builders_last_match/defensive_picks/aftergame_summary dashboard text); then B3 web glyphs (UI-audit-gated). Full map: ops/audit/P3_WORKMAP.md.
-
