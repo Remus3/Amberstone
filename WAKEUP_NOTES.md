@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-06-14 - DEEP-AUDIT cycle 22: P3 SAFE-BULK ASCII glyph sweep slice A3b-1 [item 418]
+
+- Extended tools/p3_ascii_sweep.py with a durable --log-apply mode (+ --log-dry/--log-unmapped): same conservative GLYPH_MAP applied to glyphs inside string-literal args of a logging call (log/logger/_log.{debug,info,warning,error,critical,exception}) or print(), AST-scoped via char-offset splice. Diagnostic log/console output = closest string-class to a comment (never asserted on by a glyph - the only tests holding these glyphs are the deferred aram peer suite + snapshot fixtures, neither logs; never split-on; never an LLM prompt). commit `e3124286`.
+- 42 tool subs / 22 .py + 1 hand-fix (extract_panels.py:273 -> the CPython 3.14 / PEP-701 f-string post-interpolation col_offset shift silently MISSES a glyph in a literal segment AFTER a {..}; documented as a tool LIMITATION - a clean miss not a mis-splice, the residual re-scan is the net). 43 ASCII conversions total.
+- EXCLUDED: agents/daemon_slayer (0 log hits) + Share + the 3 Share-mirrored tools/daemon_slayer_{extract,abilities_extract}.py + ds_max_priority_prefilter.py (defer to B1 / ds_share_sync); the 2 sweep-tool GLYPH_MAP literals (p3_ascii_sweep / ops/audit/p2w5_sweep_sliceA) never touched. RESIDUAL by design: 3x U+26A0 warn-emoji (unmapped, P8) + 2x runtime em-dash emitted by `U+2014` ASCII-escapes in tft_live_analysis (the SOURCE bytes are 7-bit ASCII, out of P3 byte-scope).
+- Gate (Tier-1, suite-gated since strings change - NOT the comment/docstring token-equivalence class): py_compile 22/22 + tool OK; tests/ 7887p/2s/109sub exit 0 BYTE-IDENTICAL to baseline; glyph-swap PROOF (HEAD vs working difflib) 43 hunks all GLYPH_MAP / 0 unexpected; idempotent (--log-dry re-run = 0). NO ENGINE bump, NO DS :8893 restart, NO live RC restart.
+- DONT-REDO: A3b-1 log/print-string sweep DONE + idempotent. NEXT cycle 23 = A3b-2 = the genuinely LOAD-BEARING code-string glyphs (per-hit, NOT mechanical): coach prompt banners + item_build wire-arrow aram/brawl/arena (overlaps B2), role_profiles emitted bullets, scripts/rebuild_sim_fixtures golden fixtures (the wire arrow that audit_ddragon_items re.split + aram_coach split on), adaptation_hint_* (emit + rsplit " . "), tft_pbe_*/tft_vision_reader LLM prompts, extract_panels generated-JS (B3), coach_integration prompts, builders_last_match/defensive_picks/aftergame_summary user-facing dashboard text. Coordinated coach/prompt/splitter/fixture/peer-test edits, NOT a sweep. Full map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-14 - DEEP-AUDIT cycle 21: P3 SAFE-BULK ASCII glyph sweep slice A3a [item 417]
 
 - Extended tools/p3_ascii_sweep.py with an opt-in --doc-apply mode: same conservative GLYPH_MAP applied inside module/func/class DOCSTRING STRING tokens (located via AST - never an f-string, never a split-on/regex-matched code string). Docstrings are not emitted to coach output, not split-on, not regex-matched by production; only consumers = argparse --help (cosmetic) + 2 __doc__ tests that assertIn() ASCII substrings (immune; neither target module is in the changed set). Same provable-safe class as the cycle-19/20 comment-token sweep. commit `74e3b659`.
@@ -23,14 +33,4 @@
 
 ---
 
-# 2026-06-14 - DEEP-AUDIT cycle 19: P3 SAFE-BULK ASCII glyph sweep slice A1 [item 415]
-
-- NEW tools/p3_ascii_sweep.py (durable P3 transformer): tokenize-based, rewrites decorative glyphs to ASCII INSIDE Python COMMENT tokens ONLY. A comment is never emitted/asserted/parsed -> provable zero-behavior (mechanical cycle-16/17 balanced-swap). STRING-token glyphs left untouched, which auto-protects EVERY load-bearing emitted/regex-matched arrow (confirmed: aram_coach.py STRING 76 arrows intact, dps.py untouched). Conservative GLYPH_MAP (box-draw/math/arrow/greek); an UNMAPPED comment glyph is left as-is (only 1 across scope: U+2705 scripts/wakeup_prune.py, emoji -> P8). commit `5e74ed48`.
-- 16277 substitutions / 108 .py rewritten / 310 scanned. Trees: core dashboard lcu app vision_server coach_integration coaches tft modes modules game_reader scripts ops + root .py (composition_advisor/role_profiles/item_advisor/performance_tracker/web_dashboard/main). EXCLUDED (own cycles): agents/** + agents/daemon_slayer + Share (DS load-bearing), web/** (UI-gated, non-py-tokenizable), tools/** (= slice A2 next), _archive, tests.
-- 13 FROZEN files swept comment-only (charter line 11 deep-audit frozen auth + cycle-18 precedent): app/{__init__,_loop,_game_lifecycle,_health_monitor,_remediation,_state_authority}.py, core/{game_snapshot,log_setup,moon_proxy}.py, dashboard/routes_bridge.py, lcu/lcu_client.py, ops/{rc_dev_runtime,rc_supervisor}.py.
-- Gate: py_compile 108/108 OK; tests/ suite 7887p/2s/109sub exit 0 (282s) BYTE-IDENTICAL to the cycle-18/item-414 tests/ baseline. Post-apply tokenize re-census proved COMMENT glyphs -> 0 in every target + STRING preserved. DS-dir NOT re-run (0 DS-engine/Share file touched -> DS provably identical, R5/R6). NO ENGINE bump, NO DS :8893 restart, NO live RC restart (Tier-0 comment-only; suite run only as tool-bug ground-truth).
-- DONT-REDO: the comment-token sweep stays; do NOT extend the tool to STRING tokens blindly (that re-opens the load-bearing-arrow hazard - that is slice A3, per-hit judgement + suite-gate). NEXT cycle 20: P3 slice A2 = run the SAME tool on tools/** (53 files/9767; mind the frozen bridge_* set) + agents/ non-test source + the agents/agent3_testing + tests/ corpus (comment-only safe, gate = owning suite). Then A3 (STRING/docstring banners, judgement). DS-engine emit-arrows + aram_coach arrow + web glyphs remain LOAD-BEARING-COORDINATED (B1-B3, own Tier-2 cycles). Full map: ops/audit/P3_WORKMAP.md.
-
----
-
-(item 414 - DS EHP SUSTAIN contract-gap closure, ENGINE 1.121.0 - relocated to docs/history_notes.md cycle-21 wrap)
+(item 415 - DEEP-AUDIT cycle 19 P3 slice A1 comment-token sweep, + item 414 DS EHP SUSTAIN ENGINE 1.121.0 - both relocated to docs/history_notes.md cycle-22 wrap)
