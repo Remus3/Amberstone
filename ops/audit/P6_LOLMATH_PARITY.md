@@ -69,11 +69,41 @@ Swiftness, Sorcerer's Shoes); DS still uses legacy (Mercury's Treads x140, Berse
 Audit the DS boots pool vs live `item.json` upgraded-boots tags; refresh the pool. Mechanical,
 good early win. Validate the upgraded-boot ids exist on map 11 / current patch.
 
-### G5 - item pool gaps
+### G5 - item pool gaps - CLOSED 2026-06-15 (item 424; NO pool gap; premise falsified)
 
-lolmath freely uses lethality (Hubris, Serylda's, Umbral, Collector), AP on-hit (Nashor's,
-Riftmaker, Guinsoo's), current mythic-less items. Audit DS per-archetype pools for missing
-entries vs live `item.json`. Per-archetype, per-mode. Pairs with G1 (right axis needs right pool).
+ORIGINAL HYPOTHESIS: lolmath freely uses lethality (Hubris, Serylda's, Umbral, Collector),
+AP on-hit (Nashor's, Riftmaker, Guinsoo's), current mythic-less items; DS's per-archetype
+pool is missing entries. AUDIT RESULT: false - there is NO pool-membership gap.
+
+Root-cause diagnosis (durable probes `lolmath_ds_sweep/g5_pool_probe.py` +
+`g5_live_rank_probe.py`, re-run any cycle; verified live at ENGINE 1.123.0 / patch 16.12.1):
+
+1. DS's candidate pool is `rank._filter_candidates` over ALL of items.json (706 items),
+   gated only by: purchasable + gold.total>0, terminal (`into` empty), map-legal, budget,
+   plus a 2-item non-coachable deny-set. There is NO per-archetype / per-stat pool whitelist.
+   So every terminal purchasable map-legal item is already a candidate for every scorer.
+2. Of 48 lolmath-favored items audited, REAL SR pool gaps = 0. All resolve to a canonical
+   map11-legal id and pass the candidate gates. (v1 of the probe falsely flagged 42 as
+   out-of-pool by indexing the 6-digit "22.."/"12.." Arena ALIAS ids, which are map11=False;
+   see memory `reference_items_index_alias_ids`. The canonical short id is in-pool.)
+3. Live-engine confirmation: every "missing" item appears IN the ranked list, just below the
+   top-6 (Talon burst: Umbral #7 / Serylda's #10 / Youmuu's #12 / Hubris #13 / Profane #33;
+   Lux ability: Blackfire #16 / Liandry's #23; Jhin dps: Collector #12 / Hubris #22).
+4. DS recommends only ~60 distinct items across 172 champs x 4 comps; lolmath uses a far
+   broader set. The breadth difference is SCORER VALUATION, not pool membership: the combat
+   models undervalue (a) item PASSIVES that need kill/takedown state a static scorer lacks
+   (Hubris snowball AD, The Collector execute, Death's Dance bleed/heal, Spear of Shojin
+   ability-amp); (b) AP damage-OVER-TIME burn vs the single-rotation `ability` model
+   (Liandry's Torment, Blackfire Torch); (c) the lethality-vs-sustained tradeoff inside the
+   `burst` scorer (an assassin like Talon gets a sustained BORK/ER/IE build). Lethality
+   itself IS modeled correctly (V14.1 1:1 flat pen, `effects.py:326`) - the gap is passive
+   value + DoT + combat-philosophy, not ignored penetration.
+
+CONCLUSION: do NOT add items to a pool (there is no pool to fix; a forced "fix" is churn +
+regression risk). The residual is a scorer combat-model track in the SAME class as G3 (runes)
+and G6 (cost model) - design-level, Gemini-consult before building, NOT a bounded slice.
+Re-routed to the G3/G6 Gemini-consult queue. No ENGINE bump, no build_orders regen, no
+DS restart this cycle (Tier-0 diagnosis).
 
 ### G6 - gold-efficiency / cost model (161/172 champs ultimate != normal)
 
