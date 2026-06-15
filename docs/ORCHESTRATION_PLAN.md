@@ -66,6 +66,17 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-15 P6-G1 REGRESS FIXED (cycle 2, commit `e6ab8db3`): gemini's cycle-1 audit correctly
+  caught (and I ground-truth-verified) that item 421's ENGINE bump used a blind byte-replace of
+  the BARE string "1.121.0" -> "1.122.0", corrupting 10 HISTORICAL "shipped in ENGINE 1.121.0"
+  refs (the 2026-06-14 SUSTAIN contract-gap closure) in ehp.py (x4) + test_ehp_sustain_contract.py
+  (x1) + test_wireable_sims_p1l3.py (x5). Reverted those 10 lines to 1.121.0 in the SOURCE files
+  (Share re-synced); the 27 live assertEqual(ENGINE_VERSION,"1.122.0") pins + __init__ constant +
+  the EngineVersionCurrentTests doc-pin (line 35, tracks the LIVE version) correctly KEEP 1.122.0.
+  Swept ALL 38 non-assertEqual 1.122.0 lines (not just the 2 gemini named); post-fix 0 historical
+  1.122.0 remain. DS suite 7095 passed, 17 Share tests passed, --check in sync. LESSON: an ENGINE
+  bump must target the QUOTED assertion literal / ENGINE_VERSION-symbol lines, never the bare
+  version string (historical changelog comments share the literal).
 - 2026-06-15 P6-G1 NEW WORK SURFACED (FUTURE, -> BACKLOG): 6 champions are AP-dominant
   kits (Amumu 0.77 / Galio 0.93 / Nunu 0.88 / Singed 0.91 / TahmKench 0.75 / Blitzcrank
   0.61 magical) but resolve to the axis-neutral `tank` archetype, so G1's axis correction
