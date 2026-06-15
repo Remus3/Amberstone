@@ -9,6 +9,32 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 22 (item 418): SAFE-BULK ASCII glyph sweep slice A3b-1 (log/print-string-token-only)
+
+- Carved the provably-safe subset off the load-bearing A3b remainder via per-hit
+  AST classification. NEW durable `--log-apply` mode in tools/p3_ascii_sweep.py
+  (+ `--log-dry` / `--log-unmapped`): GLYPH_MAP applied to glyphs inside string
+  args of a logging call (log/logger/_log.{debug,info,warning,error,critical,
+  exception}) or print(), AST-located + char-offset spliced. Log/console output =
+  closest string-class to a comment (never asserted on by a glyph - the only tests
+  holding these glyphs are the deferred aram peer suite + 2 snapshot fixtures,
+  neither logs; never split-on; never an LLM prompt). commit `e3124286`.
+- 42 tool subs / 22 .py + 1 hand-fix = 43. TOOL LIMITATION found: CPython 3.14 /
+  PEP-701 shifts the col_offset of an f-string literal segment AFTER an
+  interpolation -> a glyph there is silently MISSED (clean miss, never a mis-splice;
+  extract_panels.py:273 hand-fixed; docstring note + re-scan workflow added).
+- EXCLUDED: agents/daemon_slayer (0 log hits), Share, the 3 Share-mirrored
+  tools/daemon_slayer_{extract,abilities_extract}.py + ds_max_priority_prefilter.py
+  (-> B1 / ds_share_sync), and the 2 sweep-tool GLYPH_MAP literals (never touch).
+  RESIDUAL by design: 3x U+26A0 warn-emoji (unmapped, P8) + 2x runtime em-dash from
+  ASCII-escapes in tft_live_analysis (ASCII source, out of P3 byte-scope).
+- Gate (Tier-1, suite-gated - strings change, NOT the token-equivalence class):
+  py_compile 22/22 + tool OK; tests/ 7887p/2s/109sub exit 0 BYTE-IDENTICAL to
+  baseline; glyph-swap PROOF (HEAD vs working difflib) 43 hunks all GLYPH_MAP /
+  0 unexpected; idempotent. DS-dir not re-run (0 DS/Share file touched).
+
+---
+
 ## DONE - cycle 21 (item 417): SAFE-BULK ASCII glyph sweep slice A3a (docstring-token-only)
 
 - Extended tools/p3_ascii_sweep.py with an opt-in --doc-apply mode: same
@@ -108,7 +134,7 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 ## REMAINING P3 (future cycles) - the ~400-file ASCII glyph sweep + 2 semantic prunes
 
 ### A. SAFE-BULK ASCII glyph sweep (parallelizable, c16/c17 treatment)
-TOOL = tools/p3_ascii_sweep.py (comment-token + docstring-token modes, provable-safe; cycles 19/21).
+TOOL = tools/p3_ascii_sweep.py (comment-token + docstring-token + log/print-string modes, provable-safe; cycles 19/21/22).
 - A1 DONE cycle 19: the core RC runtime + product trees (108 .py). See above.
 - A2 DONE cycle 20 (item 416): `tools/**` + `agents/` NON-DS source = 10426 / 69
   .py, comment-token-only. `tests/**` was 0 subs. Gate = token-equivalence proof.
@@ -117,12 +143,31 @@ TOOL = tools/p3_ascii_sweep.py (comment-token + docstring-token modes, provable-
   __doc__ consumers = argparse --help cosmetic + 2 ASCII-substring tests, immune).
   576 subs / 120 .py + 1 hand-fix (U+2080 score-zero -> score_0). Gate =
   token-equivalence proof (non-doc byte-identical) + py_compile. See above.
-- A3b REMAINING (NOT mechanical - per-hit judgement, suite-gate): the 861
-  CODE-STRING box-draw/arrow glyphs across 48 files the tool skips. Includes the
-  LOAD-BEARING coach arrows (aram/brawl/arena_coach split on the literal arrow ->
-  overlaps B2), role_profiles emitted bullets, and the p3_ascii_sweep GLYPH_MAP
-  keys (the tool's own data - must NOT touch). Per-hit verify + owning-suite gate.
-Run order: A3b last (judgement). web/ .js/.css glyphs are NOT python-tokenizable
+- A3b-1 DONE cycle 22 (item 418): the log/print-string-arg subset (the provably-safe
+  diagnostic-string class) via the new --log-apply AST mode. 42 tool subs / 22 .py +
+  1 hand-fix. Gate = suite baseline-identical + glyph-swap proof. See above.
+- A3b-2 REMAINING (NOT mechanical - per-hit judgement, owning-suite gate, several
+  overlap section B): the rest of the CODE-STRING glyphs - the genuinely LOAD-BEARING
+  ones the diagnostic-string carve-out left behind:
+  - aram/brawl/arena_coach.py: the U+2550 prompt-section banners + U+2192 decision
+    arrows INSIDE the Haiku prompt AND the item_build wire-arrow that aram_coach:147
+    re.split on the U+2192 char keys -> B2 coordinated (coach + Haiku-prompt + the 11
+    tests/phase2_smoke/test_aram_coach_item_class_peers.py peers).
+  - scripts/rebuild_sim_fixtures.py: the U+2192 / U+00B7 in GOLDEN fixture item_build /
+    next / dragon_state values = the SAME wire arrow scripts/audit_ddragon_items.py:86
+    re.split consumes; change fixtures + splitter together.
+  - role_profiles.py: U+2022 emitted laning bullets + U+2192 combo arrows (emitted text).
+  - coaches/adaptation_hint_{champion,cli}.py: emitted U+2191 / U+2193 / U+00B7 direction
+    glyphs that adaptation_hint_champion.py:341-342 rsplit on the U+00B7 separator.
+  - tft/tft_pbe_{engine,data}.py notes + tft/tft_vision_reader.py Sonnet vision-prompt
+    U+2550 banners (LLM prompt content - a byte change = a model-input change).
+  - coach_integration/{_profiles,_sr_prompt}.py: SR-prompt mechanics text + the U+2192
+    build-string join.
+  - dashboard/builders_last_match.py + core/{defensive_picks,aftergame_summary}.py:
+    user-facing dashboard/summary U+2212 / U+00D7 / U+2264 / U+2265 / U+00B7 text
+    (snapshot-fixture-backed - touching it shifts tests/snapshot_panels/fixtures/*.json).
+  - NEVER touch: tools/p3_ascii_sweep.py + ops/audit/p2w5_sweep_sliceA.py GLYPH_MAP keys.
+Run order: A3b-2 last (judgement). web/ .js/.css glyphs are NOT python-tokenizable
 -> handled in B3 (UI-audit-gated), not here.
 
 ### B. LOAD-BEARING-COORDINATED (DEFER - engine+test+resync together, NOT a sed)
