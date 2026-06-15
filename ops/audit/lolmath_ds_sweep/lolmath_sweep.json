@@ -1,0 +1,5467 @@
+{
+ "patch_label": "26.12",
+ "count": 172,
+ "results": [
+  {
+   "slug": "aatrox",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Serylda's Grudge",
+    "Umbral Glaive",
+    "Profane Hydra",
+    "Death's Dance"
+   ],
+   "enemies": [
+    "Aatrox",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Bone Plating",
+    "Revitalize",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.7 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "ahri",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Hextech Gunblade"
+   ],
+   "enemies": [
+    "Ahri",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Taste of Blood",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Manaflow Band",
+    "Transcendence",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "akali",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap"
+   ],
+   "enemies": [
+    "Akali",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Second Wind",
+    "Overgrowth",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.25 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "akshan",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Gunmetal Greaves",
+    "Guinsoo's Rageblade",
+    "Kraken Slayer",
+    "Lord Dominik's Regards",
+    "The Collector"
+   ],
+   "enemies": [
+    "Akshan",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Presence of Mind",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Bone Plating",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "alistar",
+   "status": "ok",
+   "build_order": [
+    "Celestial Opposition",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Hollow Radiance",
+    "Warmog's Armor"
+   ],
+   "enemies": [
+    "Alistar",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Font of Life",
+    "Bone Plating",
+    "Unflinching",
+    "Hextech Flashtraption",
+    "Cosmic Insight",
+    "CDRScaling",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "ambessa",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "The Collector",
+    "Profane Hydra",
+    "Lord Dominik's Regards"
+   ],
+   "enemies": [
+    "Ambessa",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "amumu",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Gluttonous Greaves",
+    "Dead Man's Plate",
+    "Abyssal Mask",
+    "Warmog's Armor"
+   ],
+   "enemies": [
+    "Amumu",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Cheap Shot",
+    "Ultimate Hunter",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "anivia",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Winter's Approach",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Anivia",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Cheap Shot",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Presence of Mind",
+    "Coup de Grace",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "annie",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Hextech Gunblade",
+    "Blackfire Torch",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Annie",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Cheap Shot",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Axiom Arcanist",
+    "Absolute Focus",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.36 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "aphelios",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Runaan's Hurricane",
+    "Lord Dominik's Regards",
+    "Phantom Dancer",
+    "The Collector",
+    "Gluttonous Greaves",
+    "Experimental Hexplate"
+   ],
+   "enemies": [
+    "Aphelios",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Absorb Life",
+    "Legend: Bloodline",
+    "Cut Down",
+    "Absolute Focus",
+    "Gathering Storm",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "ashe",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves",
+    "Hexoptics C44",
+    "Bloodthirster"
+   ],
+   "enemies": [
+    "Ashe",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Alacrity",
+    "Cut Down",
+    "Biscuit Delivery",
+    "Approach Velocity",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "aurelion-sol",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Cryptbloom",
+    "Winter's Approach"
+   ],
+   "enemies": [
+    "Aurelion Sol",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Absolute Focus",
+    "Scorch",
+    "Bone Plating",
+    "Overgrowth",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.4 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "aurora",
+   "status": "ok",
+   "build_order": [
+    "Blackfire Torch",
+    "Spellslinger's Shoes",
+    "Actualizer",
+    "Archangel's Staff",
+    "Cryptbloom",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Aurora",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Taste of Blood",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Manaflow Band",
+    "Transcendence",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.4 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "azir",
+   "status": "ok",
+   "build_order": [
+    "Nashor's Tooth",
+    "Spellslinger's Shoes",
+    "Shadowflame",
+    "Stormsurge",
+    "Rabadon's Deathcap",
+    "Phantom Dancer"
+   ],
+   "enemies": [
+    "Azir",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Alacrity",
+    "Cut Down",
+    "Manaflow Band",
+    "Gathering Storm",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "bard",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Winter's Approach",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Bard",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Cheap Shot",
+    "Deep Ward",
+    "Treasure Hunter",
+    "Magical Footwear",
+    "Jack Of All Trades",
+    "AttackSpeed",
+    "MovementSpeed",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.8 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "bel'veth",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Immortal Shieldbow",
+    "Phantom Dancer"
+   ],
+   "enemies": [
+    "Bel'Veth",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "blitzcrank",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Winter's Approach",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Blitzcrank",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Glacial Augment",
+    "Hextech Flashtraption",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "Nimbus Cloak",
+    "Celerity",
+    "CDRScaling",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "brand",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Stormsurge",
+    "Void Staff"
+   ],
+   "enemies": [
+    "Brand",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Dark Harvest",
+    "Taste of Blood",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Manaflow Band",
+    "Scorch",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "braum",
+   "status": "ok",
+   "build_order": [
+    "Celestial Opposition",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Protoplasm Harness",
+    "Liandry's Torment",
+    "Warmog's Armor"
+   ],
+   "enemies": [
+    "Braum",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Guardian",
+    "Font of Life",
+    "Bone Plating",
+    "Unflinching",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "briar",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "The Collector",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Umbral Glaive"
+   ],
+   "enemies": [
+    "Briar",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Sudden Impact",
+    "Treasure Hunter",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "caitlyn",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Infinity Edge",
+    "Blade of The Ruined King",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Caitlyn",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Coup de Grace",
+    "Absolute Focus",
+    "Gathering Storm",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "camille",
+   "status": "partial",
+   "build_order": [
+    "Hubris",
+    "Boots of Swiftness",
+    "Profane Hydra",
+    "Manamune"
+   ],
+   "enemies": [
+    "Camille",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Shield Bash",
+    "Bone Plating",
+    "Unflinching",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "cassiopeia",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Rabadon's Deathcap"
+   ],
+   "enemies": [
+    "Cassiopeia",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Presence of Mind",
+    "Legend: Haste",
+    "Last Stand",
+    "Manaflow Band",
+    "Transcendence",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "cho'gath",
+   "status": "ok",
+   "build_order": [
+    "Plated Steelcaps",
+    "Heartsteel",
+    "Warmog's Armor",
+    "Dead Man's Plate",
+    "Kaenic Rookern",
+    "Liandry's Torment"
+   ],
+   "enemies": [
+    "Cho'Gath",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Hail of Blades",
+    "Cheap Shot",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Axiom Arcanist",
+    "Celerity",
+    "AdaptiveForce",
+    "MovementSpeed",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "corki",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Axiom Arc",
+    "Umbral Glaive",
+    "Lord Dominik's Regards",
+    "Fiendhunter Bolts",
+    "Bastionbreaker"
+   ],
+   "enemies": [
+    "Corki",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Presence of Mind",
+    "Legend: Alacrity",
+    "Cut Down",
+    "Cash Back",
+    "Triple Tonic",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.35 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "darius",
+   "status": "ok",
+   "build_order": [
+    "Black Cleaver",
+    "Gluttonous Greaves",
+    "Spirit Visage",
+    "Endless Hunger",
+    "Death's Dance",
+    "The Collector"
+   ],
+   "enemies": [
+    "Darius",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Axiom Arcanist",
+    "Celerity",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.9 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "diana",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Lich Bane"
+   ],
+   "enemies": [
+    "Diana",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.35 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "dr-mundo",
+   "status": "ok",
+   "build_order": [
+    "Spirit Visage",
+    "Ionian Boots of Lucidity",
+    "Heartsteel",
+    "Warmog's Armor",
+    "Frozen Heart",
+    "Dead Man's Plate"
+   ],
+   "enemies": [
+    "Dr. Mundo",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Fleet Footwork",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Approach Velocity",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.5 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "draven",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "The Collector",
+    "Rapid Firecannon",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Draven",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Alacrity",
+    "Cut Down",
+    "Cash Back",
+    "Triple Tonic",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "ekko",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Nashor's Tooth"
+   ],
+   "enemies": [
+    "Ekko",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Hail of Blades",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Absolute Focus",
+    "Gathering Storm",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "elise",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Lich Bane",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Elise",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Dark Harvest",
+    "Cheap Shot",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Triumph",
+    "Coup de Grace",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.5 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "evelynn",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Lich Bane",
+    "Rabadon's Deathcap",
+    "Shadowflame",
+    "Cosmic Drive"
+   ],
+   "enemies": [
+    "Evelynn",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Absolute Focus",
+    "Gathering Storm",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "ezreal",
+   "status": "partial",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Manamune",
+    "Lord Dominik's Regards"
+   ],
+   "enemies": [
+    "Ezreal",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "fiddlesticks",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Shadowflame",
+    "Cosmic Drive",
+    "Liandry's Torment"
+   ],
+   "enemies": [
+    "Fiddlesticks",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Cheap Shot",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Axiom Arcanist",
+    "Transcendence",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "fiora",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Boots of Swiftness",
+    "Profane Hydra",
+    "Umbral Glaive",
+    "Serylda's Grudge",
+    "Death's Dance"
+   ],
+   "enemies": [
+    "Fiora",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Bone Plating",
+    "Unflinching",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.6 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "fizz",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Lich Bane",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Hextech Gunblade"
+   ],
+   "enemies": [
+    "Fizz",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Transcendence",
+    "Scorch",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.35 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "galio",
+   "status": "ok",
+   "build_order": [
+    "Cosmic Drive",
+    "Spellslinger's Shoes",
+    "Winter's Approach",
+    "Archangel's Staff",
+    "Blackfire Torch"
+   ],
+   "enemies": [
+    "Galio",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Stormraider's Surge",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Second Wind",
+    "Unflinching",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.8 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "gangplank",
+   "status": "ok",
+   "build_order": [
+    "Essence Reaver",
+    "Gluttonous Greaves",
+    "Profane Hydra",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Voltaic Cyclosword"
+   ],
+   "enemies": [
+    "Gangplank",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "First Strike",
+    "Cash Back",
+    "Triple Tonic",
+    "Cosmic Insight",
+    "Legend: Haste",
+    "Cut Down",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "garen",
+   "status": "ok",
+   "build_order": [
+    "Trinity Force",
+    "Gluttonous Greaves",
+    "Black Cleaver",
+    "Phantom Dancer",
+    "Death's Dance",
+    "Endless Hunger"
+   ],
+   "enemies": [
+    "Garen",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Axiom Arcanist",
+    "Celerity",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.9 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "gnar",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "The Collector",
+    "Bastionbreaker"
+   ],
+   "enemies": [
+    "Gnar",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Fleet Footwork",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Bone Plating",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.6 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "gragas",
+   "status": "partial",
+   "build_order": [
+    "Hextech Rocketbelt",
+    "Sorcerer's Shoes",
+    "Winter's Approach",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Gragas",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Stormraider's Surge",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.8 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "graves",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Axiom Arc",
+    "The Collector"
+   ],
+   "enemies": [
+    "Graves",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Dark Harvest",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Triumph",
+    "Legend: Alacrity",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "gwen",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Kraken Slayer"
+   ],
+   "enemies": [
+    "Gwen",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Presence of Mind",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Bone Plating",
+    "Unflinching",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "hecarim",
+   "status": "ok",
+   "build_order": [
+    "Umbral Glaive",
+    "Boots of Swiftness",
+    "Profane Hydra",
+    "Voltaic Cyclosword",
+    "Lord Dominik's Regards"
+   ],
+   "enemies": [
+    "Hecarim",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Stormraider's Surge",
+    "Nimbus Cloak",
+    "Celerity",
+    "Waterwalking",
+    "Triumph",
+    "Legend: Haste",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.75 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "heimerdinger",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Gluttonous Greaves",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Void Staff",
+    "Liandry's Torment"
+   ],
+   "enemies": [
+    "Heimerdinger",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Presence of Mind",
+    "Legend: Haste",
+    "Cut Down",
+    "Absolute Focus",
+    "Gathering Storm",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "hwei",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Cryptbloom",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Hwei",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Legend: Haste",
+    "Cut Down",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.4 : 0.9 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / m"
+  },
+  {
+   "slug": "illaoi",
+   "status": "ok",
+   "build_order": [
+    "Dead Man's Plate",
+    "Gluttonous Greaves",
+    "Warmog's Armor",
+    "Overlord's Bloodmail",
+    "Sterak's Gage"
+   ],
+   "enemies": [
+    "Illaoi",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Demolish",
+    "Bone Plating",
+    "Overgrowth",
+    "Presence of Mind",
+    "Last Stand",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "irelia",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Phantom Dancer",
+    "Guardian Angel"
+   ],
+   "enemies": [
+    "Irelia",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Biscuit Delivery",
+    "Jack Of All Trades",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "ivern",
+   "status": "ok",
+   "build_order": [
+    "Cosmic Drive",
+    "Plated Steelcaps",
+    "Locket of the Iron Solari",
+    "Archangel's Staff",
+    "Winter's Approach"
+   ],
+   "enemies": [
+    "Ivern",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Nimbus Cloak",
+    "Transcendence",
+    "Waterwalking",
+    "Cash Back",
+    "Cosmic Insight",
+    "CDRScaling",
+    "MovementSpeed",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "janna",
+   "status": "ok",
+   "build_order": [
+    "Dream Maker",
+    "Ionian Boots of Lucidity",
+    "Staff of Flowing Water",
+    "Blackfire Torch",
+    "Ardent Censer",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Janna",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Celerity",
+    "Gathering Storm",
+    "Font of Life",
+    "Revitalize",
+    "AdaptiveForce",
+    "MovementSpeed",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "jarvan-iv",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Experimental Hexplate",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards"
+   ],
+   "enemies": [
+    "Jarvan IV",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "jax",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Boots of Swiftness",
+    "Winter's Approach",
+    "Manamune",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Jax",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Bone Plating",
+    "Unflinching",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.75 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "jayce",
+   "status": "ok",
+   "build_order": [
+    "Umbral Glaive",
+    "Boots of Swiftness",
+    "Voltaic Cyclosword",
+    "Lord Dominik's Regards",
+    "Youmuu's Ghostblade",
+    "The Collector"
+   ],
+   "enemies": [
+    "Jayce",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Presence of Mind",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "jhin",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Fiendhunter Bolts",
+    "Gluttonous Greaves",
+    "Axiom Arc"
+   ],
+   "enemies": [
+    "Jhin",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Fleet Footwork",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Coup de Grace",
+    "Celerity",
+    "Gathering Storm",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "jinx",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Gluttonous Greaves",
+    "Phantom Dancer",
+    "The Collector",
+    "Infinity Edge",
+    "Youmuu's Ghostblade"
+   ],
+   "enemies": [
+    "Jinx",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Coup de Grace",
+    "Absolute Focus",
+    "Gathering Storm",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "k'sante",
+   "status": "ok",
+   "build_order": [
+    "Heartsteel",
+    "Boots of Swiftness",
+    "Warmog's Armor",
+    "Sunfire Aegis",
+    "Winter's Approach",
+    "Unending Despair"
+   ],
+   "enemies": [
+    "K'Sante",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Shield Bash",
+    "Second Wind",
+    "Overgrowth",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.8 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "kai'sa",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector"
+   ],
+   "enemies": [
+    "Kai'Sa",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.35 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "kalista",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Guinsoo's Rageblade",
+    "Phantom Dancer",
+    "Blade of The Ruined King",
+    "Runaan's Hurricane"
+   ],
+   "enemies": [
+    "Kalista",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Sudden Impact",
+    "Treasure Hunter",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "karma",
+   "status": "ok",
+   "build_order": [
+    "Dream Maker",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Ardent Censer",
+    "Stormsurge",
+    "Cryptbloom"
+   ],
+   "enemies": [
+    "Karma",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Gathering Storm",
+    "Font of Life",
+    "Revitalize",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "karthus",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ],
+   "enemies": [
+    "Karthus",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Dark Harvest",
+    "Cheap Shot",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Presence of Mind",
+    "Last Stand",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.25 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "kassadin",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Lich Bane",
+    "Archangel's Staff",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Kassadin",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Second Wind",
+    "Overgrowth",
+    "AdaptiveForce",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.9 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / "
+  },
+  {
+   "slug": "katarina",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Lich Bane"
+   ],
+   "enemies": [
+    "Katarina",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Triumph",
+    "Coup de Grace",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "kayle",
+   "status": "ok",
+   "build_order": [
+    "Lich Bane",
+    "Nashor's Tooth",
+    "Gluttonous Greaves",
+    "Liandry's Torment",
+    "Cryptbloom"
+   ],
+   "enemies": [
+    "Kayle",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Absorb Life",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Celerity",
+    "Gathering Storm",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.4 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "kayn",
+   "status": "ok",
+   "build_order": [
+    "Sundered Sky",
+    "Hubris",
+    "Serylda's Grudge",
+    "Umbral Glaive",
+    "Axiom Arc",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Kayn",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Dark Harvest",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "kennen",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ],
+   "enemies": [
+    "Kennen",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Taste of Blood",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Absolute Focus",
+    "Scorch",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "kha'zix",
+   "status": "ok",
+   "build_order": [
+    "Profane Hydra",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "Axiom Arc",
+    "Serylda's Grudge",
+    "Youmuu's Ghostblade"
+   ],
+   "enemies": [
+    "Kha'Zix",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Dark Harvest",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Triumph",
+    "Coup de Grace",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.4 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "kindred",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves",
+    "Rapid Firecannon"
+   ],
+   "enemies": [
+    "Kindred",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Sudden Impact",
+    "Treasure Hunter",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "kled",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "The Collector",
+    "Blade of The Ruined King"
+   ],
+   "enemies": [
+    "Kled",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Demolish",
+    "Bone Plating",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.9 : 0.7 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / m"
+  },
+  {
+   "slug": "kog'maw",
+   "status": "ok",
+   "build_order": [
+    "Guinsoo's Rageblade",
+    "Phantom Dancer",
+    "Blade of The Ruined King",
+    "Boots of Swiftness",
+    "Nashor's Tooth"
+   ],
+   "enemies": [
+    "Kog'Maw",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Bloodline",
+    "Last Stand",
+    "Conditioning",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "leblanc",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Liandry's Torment",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "LeBlanc",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Transcendence",
+    "Gathering Storm",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "lee-sin",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Profane Hydra",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Lee Sin",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.8 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "leona",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Boots of Swiftness",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Protoplasm Harness",
+    "Sunfire Aegis"
+   ],
+   "enemies": [
+    "Leona",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Font of Life",
+    "Bone Plating",
+    "Unflinching",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "CDRScaling",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "lillia",
+   "status": "partial",
+   "build_order": [
+    "Riftmaker",
+    "Blackfire Torch",
+    "Winter's Approach",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Lillia",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.6 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "lissandra",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Stormsurge",
+    "Cryptbloom",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Lissandra",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Cheap Shot",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Manaflow Band",
+    "Transcendence",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "lucian",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves",
+    "Infinity Edge"
+   ],
+   "enemies": [
+    "Lucian",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "lulu",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Ardent Censer",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Shurelya's Battlesong"
+   ],
+   "enemies": [
+    "Lulu",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Bone Plating",
+    "Revitalize",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "lux",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Shurelya's Battlesong",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ],
+   "enemies": [
+    "Lux",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Cheap Shot",
+    "Ultimate Hunter",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "malphite",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Gluttonous Greaves",
+    "Dead Man's Plate",
+    "Hollow Radiance",
+    "Locket of the Iron Solari"
+   ],
+   "enemies": [
+    "Malphite",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Second Wind",
+    "Overgrowth",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "malzahar",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Blackfire Torch",
+    "Stormsurge",
+    "Cryptbloom",
+    "Luden's Echo"
+   ],
+   "enemies": [
+    "Malzahar",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Gathering Storm",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.35 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "maokai",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Warmog's Armor",
+    "Hollow Radiance"
+   ],
+   "enemies": [
+    "Maokai",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Font of Life",
+    "Bone Plating",
+    "Unflinching",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "master-yi",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Guinsoo's Rageblade",
+    "Yun Tal Wildarrows",
+    "Lord Dominik's Regards",
+    "Profane Hydra"
+   ],
+   "enemies": [
+    "Master Yi",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "mel",
+   "status": "partial",
+   "build_order": [
+    "Blackfire Torch",
+    "Spellslinger's Shoes",
+    "Luden's Echo",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Mel",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Presence of Mind",
+    "Coup de Grace",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "milio",
+   "status": "ok",
+   "build_order": [
+    "Dream Maker",
+    "Ardent Censer",
+    "Dawncore",
+    "Rabadon's Deathcap",
+    "Zhonya's Hourglass",
+    "Banshee's Veil"
+   ],
+   "enemies": [
+    "Milio",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Bone Plating",
+    "Revitalize",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "miss-fortune",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Axiom Arc",
+    "Phantom Dancer",
+    "Gluttonous Greaves",
+    "Infinity Edge"
+   ],
+   "enemies": [
+    "Miss Fortune",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "First Strike",
+    "Cash Back",
+    "Biscuit Delivery",
+    "Jack Of All Trades",
+    "Manaflow Band",
+    "Gathering Storm",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "mordekaiser",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Sorcerer's Shoes",
+    "Zeke's Convergence",
+    "Protoplasm Harness",
+    "Unending Despair"
+   ],
+   "enemies": [
+    "Mordekaiser",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Bone Plating",
+    "Revitalize",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.55 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "morgana",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Blackfire Torch",
+    "Cryptbloom"
+   ],
+   "enemies": [
+    "Morgana",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Cheap Shot",
+    "Ultimate Hunter",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "naafiri",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Profane Hydra",
+    "Umbral Glaive",
+    "Serylda's Grudge",
+    "Voltaic Cyclosword"
+   ],
+   "enemies": [
+    "Naafiri",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.4 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "nami",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Void Staff",
+    "Rabadon's Deathcap"
+   ],
+   "enemies": [
+    "Nami",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Bone Plating",
+    "Revitalize",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "nasus",
+   "status": "ok",
+   "build_order": [
+    "Essence Reaver",
+    "Ravenous Hydra",
+    "Endless Hunger",
+    "Death's Dance",
+    "Bastionbreaker",
+    "Lord Dominik's Regards"
+   ],
+   "enemies": [
+    "Nasus",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Fleet Footwork",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Second Wind",
+    "Unflinching",
+    "CDRScaling",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "nautilus",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Protoplasm Harness",
+    "Sunfire Aegis"
+   ],
+   "enemies": [
+    "Nautilus",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Shield Bash",
+    "Bone Plating",
+    "Unflinching",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "CDRScaling",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "neeko",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Cryptbloom",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Neeko",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "nidalee",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Shadowflame",
+    "Lich Bane",
+    "Rabadon's Deathcap"
+   ],
+   "enemies": [
+    "Nidalee",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Dark Harvest",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Transcendence",
+    "Waterwalking",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "nilah",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Infinity Edge",
+    "Blade of The Ruined King"
+   ],
+   "enemies": [
+    "Nilah",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Cash Back",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.6 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "nocturne",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Nocturne",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "nunu-and-willump",
+   "status": "partial",
+   "build_order": [
+    "Riftmaker",
+    "Blackfire Torch",
+    "Winter's Approach",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Nunu & Willump",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Stormraider's Surge",
+    "Nimbus Cloak",
+    "Celerity",
+    "Waterwalking",
+    "Triumph",
+    "Legend: Haste",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "olaf",
+   "status": "ok",
+   "build_order": [
+    "Profane Hydra",
+    "Gluttonous Greaves",
+    "Blade of The Ruined King",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Death's Dance"
+   ],
+   "enemies": [
+    "Olaf",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Biscuit Delivery",
+    "Approach Velocity",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "orianna",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Orianna",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Stormraider's Surge",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Presence of Mind",
+    "Legend: Haste",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "ornn",
+   "status": "ok",
+   "build_order": [
+    "Dead Man's Plate",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Heartsteel",
+    "Mercury's Treads",
+    "Unending Despair"
+   ],
+   "enemies": [
+    "Ornn",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Demolish",
+    "Bone Plating",
+    "Overgrowth",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "pantheon",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "Locket of the Iron Solari",
+    "Voltaic Cyclosword",
+    "Serylda's Grudge"
+   ],
+   "enemies": [
+    "Pantheon",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Triumph",
+    "Legend: Haste",
+    "Coup de Grace",
+    "Cheap Shot",
+    "Relentless Hunter",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.6 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "poppy",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Boots of Swiftness",
+    "Locket of the Iron Solari",
+    "Sunfire Aegis",
+    "Liandry's Torment",
+    "Warmog's Armor"
+   ],
+   "enemies": [
+    "Poppy",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Font of Life",
+    "Bone Plating",
+    "Unflinching",
+    "Hextech Flashtraption",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "pyke",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Ionian Boots of Lucidity",
+    "Profane Hydra",
+    "Umbral Glaive",
+    "Voltaic Cyclosword",
+    "Axiom Arc"
+   ],
+   "enemies": [
+    "Pyke",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Hail of Blades",
+    "Cheap Shot",
+    "Sixth Sense",
+    "Ultimate Hunter",
+    "Bone Plating",
+    "Unflinching",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "qiyana",
+   "status": "ok",
+   "build_order": [
+    "Umbral Glaive",
+    "Swiftmarch",
+    "Voltaic Cyclosword",
+    "Serylda's Grudge",
+    "Profane Hydra",
+    "Youmuu's Ghostblade"
+   ],
+   "enemies": [
+    "Qiyana",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Presence of Mind",
+    "Last Stand",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "quinn",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Phantom Dancer",
+    "Blade of The Ruined King"
+   ],
+   "enemies": [
+    "Quinn",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Absolute Focus",
+    "Gathering Storm",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "rakan",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Gluttonous Greaves",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Shurelya's Battlesong",
+    "Hextech Rocketbelt"
+   ],
+   "enemies": [
+    "Rakan",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Guardian",
+    "Font of Life",
+    "Bone Plating",
+    "Unflinching",
+    "Sixth Sense",
+    "Ultimate Hunter",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.7 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "rammus",
+   "status": "ok",
+   "build_order": [
+    "Hollow Radiance",
+    "Dead Man's Plate",
+    "Protoplasm Harness",
+    "Mercury's Treads",
+    "Thornmail"
+   ],
+   "enemies": [
+    "Rammus",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Font of Life",
+    "Conditioning",
+    "Unflinching",
+    "Triumph",
+    "Legend: Alacrity",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "rek'sai",
+   "status": "ok",
+   "build_order": [
+    "Heartsteel",
+    "Warmog's Armor",
+    "Overlord's Bloodmail",
+    "Dead Man's Plate",
+    "Hollow Radiance"
+   ],
+   "enemies": [
+    "Rek'Sai",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "rell",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Plated Steelcaps",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Protoplasm Harness",
+    "Hollow Radiance"
+   ],
+   "enemies": [
+    "Rell",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Shield Bash",
+    "Bone Plating",
+    "Unflinching",
+    "Hextech Flashtraption",
+    "Cosmic Insight",
+    "CDRScaling",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "renata-glasc",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Void Staff",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Renata Glasc",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Guardian",
+    "Shield Bash",
+    "Bone Plating",
+    "Unflinching",
+    "Sixth Sense",
+    "Relentless Hunter",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.5 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "renekton",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Mercury's Treads",
+    "Dead Man's Plate",
+    "Sterak's Gage",
+    "Warmog's Armor"
+   ],
+   "enemies": [
+    "Renekton",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Bone Plating",
+    "Unflinching",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "rengar",
+   "status": "ok",
+   "build_order": [
+    "Profane Hydra",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Voltaic Cyclosword"
+   ],
+   "enemies": [
+    "Rengar",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "First Strike",
+    "Cash Back",
+    "Triple Tonic",
+    "Cosmic Insight",
+    "Sudden Impact",
+    "Ultimate Hunter",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.35 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "riven",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Profane Hydra",
+    "Serylda's Grudge",
+    "Umbral Glaive",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Riven",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Cash Back",
+    "Jack Of All Trades",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "rumble",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Gluttonous Greaves",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch"
+   ],
+   "enemies": [
+    "Rumble",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Nimbus Cloak",
+    "Absolute Focus",
+    "Scorch",
+    "Bone Plating",
+    "Unflinching",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.35 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "ryze",
+   "status": "ok",
+   "build_order": [
+    "Blackfire Torch",
+    "Spellslinger's Shoes",
+    "Shadowflame",
+    "Archangel's Staff",
+    "Stormsurge"
+   ],
+   "enemies": [
+    "Ryze",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Stormraider's Surge",
+    "Manaflow Band",
+    "Transcendence",
+    "Gathering Storm",
+    "Bone Plating",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "samira",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Axiom Arc",
+    "Gluttonous Greaves",
+    "Infinity Edge",
+    "Umbral Glaive"
+   ],
+   "enemies": [
+    "Samira",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Bloodline",
+    "Last Stand",
+    "Taste of Blood",
+    "Treasure Hunter",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.6 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "sejuani",
+   "status": "ok",
+   "build_order": [
+    "Protoplasm Harness",
+    "Warmog's Armor",
+    "Mercury's Treads",
+    "Dead Man's Plate",
+    "Hollow Radiance"
+   ],
+   "enemies": [
+    "Sejuani",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Font of Life",
+    "Conditioning",
+    "Overgrowth",
+    "Triumph",
+    "Legend: Alacrity",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "senna",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Boots of Swiftness",
+    "Hubris",
+    "Lord Dominik's Regards",
+    "Umbral Glaive",
+    "Axiom Arc"
+   ],
+   "enemies": [
+    "Senna",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Fleet Footwork",
+    "Presence of Mind",
+    "Legend: Alacrity",
+    "Cut Down",
+    "Bone Plating",
+    "Revitalize",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "seraphine",
+   "status": "ok",
+   "build_order": [
+    "Solstice Sleigh",
+    "Ionian Boots of Lucidity",
+    "Locket of the Iron Solari",
+    "Shurelya's Battlesong",
+    "Redemption",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Seraphine",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Gathering Storm",
+    "Font of Life",
+    "Revitalize",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "sett",
+   "status": "ok",
+   "build_order": [
+    "Heartsteel",
+    "Warmog's Armor",
+    "Overlord's Bloodmail",
+    "Boots of Swiftness",
+    "Sterak's Gage"
+   ],
+   "enemies": [
+    "Sett",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Second Wind",
+    "Unflinching",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.9 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "shaco",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "The Collector",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Shaco",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Hail of Blades",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "shen",
+   "status": "ok",
+   "build_order": [
+    "Sunfire Aegis",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Titanic Hydra",
+    "Kaenic Rookern",
+    "Unending Despair"
+   ],
+   "enemies": [
+    "Shen",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Shield Bash",
+    "Second Wind",
+    "Overgrowth",
+    "Biscuit Delivery",
+    "Approach Velocity",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "shyvana",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "Protoplasm Harness",
+    "Spirit Visage",
+    "Death's Dance"
+   ],
+   "enemies": [
+    "Shyvana",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.65 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "singed",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Boots of Swiftness",
+    "Protoplasm Harness",
+    "Locket of the Iron Solari",
+    "Blackfire Torch"
+   ],
+   "enemies": [
+    "Singed",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Nimbus Cloak",
+    "Celerity",
+    "AdaptiveForce",
+    "MovementSpeed",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.9 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "sion",
+   "status": "ok",
+   "build_order": [
+    "Plated Steelcaps",
+    "Hollow Radiance",
+    "Dead Man's Plate",
+    "Liandry's Torment",
+    "Sterak's Gage"
+   ],
+   "enemies": [
+    "Sion",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Demolish",
+    "Conditioning",
+    "Overgrowth",
+    "Cash Back",
+    "Approach Velocity",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.8 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "sivir",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Navori Flickerblade",
+    "Blade of The Ruined King",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Sivir",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Cut Down",
+    "Cash Back",
+    "Triple Tonic",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "skarner",
+   "status": "ok",
+   "build_order": [
+    "Heartsteel",
+    "Warmog's Armor",
+    "Boots of Swiftness",
+    "Dead Man's Plate",
+    "Hollow Radiance"
+   ],
+   "enemies": [
+    "Skarner",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Shield Bash",
+    "Conditioning",
+    "Overgrowth",
+    "Magical Footwear",
+    "Approach Velocity",
+    "CDRScaling",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "smolder",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Youmuu's Ghostblade"
+   ],
+   "enemies": [
+    "Smolder",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Fleet Footwork",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Cut Down",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.4 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "sona",
+   "status": "ok",
+   "build_order": [
+    "Dream Maker",
+    "Ionian Boots of Lucidity",
+    "Ardent Censer",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Lich Bane"
+   ],
+   "enemies": [
+    "Sona",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Gathering Storm",
+    "Conditioning",
+    "Revitalize",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "soraka",
+   "status": "ok",
+   "build_order": [
+    "Dream Maker",
+    "Ionian Boots of Lucidity",
+    "Ardent Censer",
+    "Redemption",
+    "Dawncore",
+    "Staff of Flowing Water"
+   ],
+   "enemies": [
+    "Soraka",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Bone Plating",
+    "Revitalize",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "swain",
+   "status": "ok",
+   "build_order": [
+    "Solstice Sleigh",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Void Staff",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Swain",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Presence of Mind",
+    "Legend: Haste",
+    "Last Stand",
+    "Conditioning",
+    "Overgrowth",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "sylas",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Actualizer",
+    "Archangel's Staff",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Sylas",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Presence of Mind",
+    "Legend: Haste",
+    "Last Stand",
+    "Second Wind",
+    "Unflinching",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "syndra",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Blackfire Torch",
+    "Shadowflame",
+    "Lich Bane"
+   ],
+   "enemies": [
+    "Syndra",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "First Strike",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "Manaflow Band",
+    "Transcendence",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "tahm-kench",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Locket of the Iron Solari",
+    "Liandry's Torment",
+    "Heartsteel",
+    "Warmog's Armor"
+   ],
+   "enemies": [
+    "Tahm Kench",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Shield Bash",
+    "Second Wind",
+    "Unflinching",
+    "Triumph",
+    "Legend: Alacrity",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "taliyah",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Archangel's Staff"
+   ],
+   "enemies": [
+    "Taliyah",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Stormraider's Surge",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Presence of Mind",
+    "Legend: Haste",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "talon",
+   "status": "ok",
+   "build_order": [
+    "Profane Hydra",
+    "Gluttonous Greaves",
+    "Umbral Glaive",
+    "Serylda's Grudge",
+    "Voltaic Cyclosword",
+    "Youmuu's Ghostblade"
+   ],
+   "enemies": [
+    "Talon",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "taric",
+   "status": "ok",
+   "build_order": [
+    "Celestial Opposition",
+    "Boots of Swiftness",
+    "Locket of the Iron Solari",
+    "Sunfire Aegis",
+    "Warmog's Armor",
+    "Heartsteel"
+   ],
+   "enemies": [
+    "Taric",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Glacial Augment",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "Conditioning",
+    "Revitalize",
+    "AttackSpeed",
+    "HealthPlus",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "teemo",
+   "status": "ok",
+   "build_order": [
+    "Luden's Echo",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Void Staff",
+    "Lich Bane"
+   ],
+   "enemies": [
+    "Teemo",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Bone Plating",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "thresh",
+   "status": "ok",
+   "build_order": [
+    "Solstice Sleigh",
+    "Sorcerer's Shoes",
+    "Locket of the Iron Solari",
+    "Protoplasm Harness",
+    "Liandry's Torment",
+    "Dead Man's Plate"
+   ],
+   "enemies": [
+    "Thresh",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Font of Life",
+    "Bone Plating",
+    "Unflinching",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "tristana",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Blade of The Ruined King",
+    "Rapid Firecannon",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Tristana",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Cut Down",
+    "Cash Back",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "trundle",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Death's Dance"
+   ],
+   "enemies": [
+    "Trundle",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Approach Velocity",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.8 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "tryndamere",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "Gluttonous Greaves",
+    "Lord Dominik's Regards",
+    "Umbral Glaive"
+   ],
+   "enemies": [
+    "Tryndamere",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Hail of Blades",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Treasure Hunter",
+    "Legend: Alacrity",
+    "Last Stand",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "twisted-fate",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Hextech Gunblade",
+    "Lich Bane",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Twisted Fate",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Celerity",
+    "Scorch",
+    "Bone Plating",
+    "Unflinching",
+    "AttackSpeed",
+    "MovementSpeed",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "twitch",
+   "status": "ok",
+   "build_order": [
+    "Hextech Gunblade",
+    "Runaan's Hurricane",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "Phantom Dancer",
+    "The Collector",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Twitch",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Cut Down",
+    "Axiom Arcanist",
+    "Gathering Storm",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "udyr",
+   "status": "ok",
+   "build_order": [
+    "Trinity Force",
+    "Ionian Boots of Lucidity",
+    "Black Cleaver",
+    "Immortal Shieldbow",
+    "Phantom Dancer"
+   ],
+   "enemies": [
+    "Udyr",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Magical Footwear",
+    "Approach Velocity",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "urgot",
+   "status": "partial",
+   "build_order": [
+    "Hubris",
+    "Gluttonous Greaves",
+    "Black Cleaver",
+    "Manamune"
+   ],
+   "enemies": [
+    "Urgot",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Press the Attack",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Bone Plating",
+    "Overgrowth",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.8 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "varus",
+   "status": "ok",
+   "build_order": [
+    "Boots of Swiftness",
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Blade of The Ruined King",
+    "Rapid Firecannon"
+   ],
+   "enemies": [
+    "Varus",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Cash Back",
+    "Triple Tonic",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "vayne",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "Guinsoo's Rageblade",
+    "Gluttonous Greaves",
+    "Wit's End",
+    "Lord Dominik's Regards"
+   ],
+   "enemies": [
+    "Vayne",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Conditioning",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.6 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "veigar",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Hextech Gunblade",
+    "Shadowflame",
+    "Rabadon's Deathcap",
+    "Actualizer"
+   ],
+   "enemies": [
+    "Veigar",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "First Strike",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "Cosmic Insight",
+    "Manaflow Band",
+    "Transcendence",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "vel'koz",
+   "status": "ok",
+   "build_order": [
+    "Solstice Sleigh",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Stormsurge",
+    "Void Staff",
+    "Blackfire Torch"
+   ],
+   "enemies": [
+    "Vel'Koz",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Cheap Shot",
+    "Ultimate Hunter",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "vex",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Luden's Echo"
+   ],
+   "enemies": [
+    "Vex",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Taste of Blood",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Manaflow Band",
+    "Transcendence",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "vi",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "Profane Hydra",
+    "The Collector",
+    "Lord Dominik's Regards"
+   ],
+   "enemies": [
+    "Vi",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "viego",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Phantom Dancer",
+    "Profane Hydra",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Viego",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.6 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "viktor",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Lich Bane",
+    "Rabadon's Deathcap"
+   ],
+   "enemies": [
+    "Viktor",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Shield Bash",
+    "Bone Plating",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "vladimir",
+   "status": "ok",
+   "build_order": [
+    "Cosmic Drive",
+    "Immortal Path",
+    "Riftmaker",
+    "Rabadon's Deathcap",
+    "Spirit Visage",
+    "Cryptbloom"
+   ],
+   "enemies": [
+    "Vladimir",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Nimbus Cloak",
+    "Transcendence",
+    "Scorch",
+    "Legend: Haste",
+    "Last Stand",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.75 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "volibear",
+   "status": "ok",
+   "build_order": [
+    "Titanic Hydra",
+    "Hollow Radiance",
+    "Warmog's Armor",
+    "Heartsteel",
+    "Plated Steelcaps"
+   ],
+   "enemies": [
+    "Volibear",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Haste",
+    "Last Stand",
+    "Demolish",
+    "Revitalize",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "warwick",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Gluttonous Greaves",
+    "Titanic Hydra",
+    "Hollow Radiance",
+    "Death's Dance"
+   ],
+   "enemies": [
+    "Warwick",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Celerity",
+    "Waterwalking",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "wukong",
+   "status": "ok",
+   "build_order": [
+    "Sundered Sky",
+    "Titanic Hydra",
+    "Warmog's Armor",
+    "Hollow Radiance",
+    "Plated Steelcaps",
+    "Overlord's Bloodmail"
+   ],
+   "enemies": [
+    "Wukong",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "xayah",
+   "status": "ok",
+   "build_order": [
+    "Hubris",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Infinity Edge",
+    "Gluttonous Greaves",
+    "Blade of The Ruined King"
+   ],
+   "enemies": [
+    "Xayah",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "xerath",
+   "status": "ok",
+   "build_order": [
+    "Liandry's Torment",
+    "Spellslinger's Shoes",
+    "Stormsurge",
+    "Shadowflame",
+    "Blackfire Torch",
+    "Luden's Echo"
+   ],
+   "enemies": [
+    "Xerath",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Presence of Mind",
+    "Coup de Grace",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "xin-zhao",
+   "status": "ok",
+   "build_order": [
+    "Hextech Gunblade",
+    "Rabadon's Deathcap",
+    "Spirit Visage",
+    "Nashor's Tooth",
+    "Zhonya's Hourglass",
+    "Guinsoo's Rageblade"
+   ],
+   "enemies": [
+    "Xin Zhao",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Alacrity",
+    "Coup de Grace",
+    "Magical Footwear",
+    "Cosmic Insight",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.85 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "yasuo",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Immortal Path",
+    "The Collector",
+    "Lord Dominik's Regards",
+    "Profane Hydra",
+    "Guardian Angel"
+   ],
+   "enemies": [
+    "Yasuo",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Absorb Life",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Second Wind",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.75 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "yone",
+   "status": "ok",
+   "build_order": [
+    "Blade of The Ruined King",
+    "Immortal Path",
+    "The Collector",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Ravenous Hydra"
+   ],
+   "enemies": [
+    "Yone",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Absorb Life",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Second Wind",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.75 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "yorick",
+   "status": "ok",
+   "build_order": [
+    "Titanic Hydra",
+    "Plated Steelcaps",
+    "Hollow Radiance",
+    "Warmog's Armor",
+    "Heartsteel"
+   ],
+   "enemies": [
+    "Yorick",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Grasp of the Undying",
+    "Demolish",
+    "Bone Plating",
+    "Overgrowth",
+    "Presence of Mind",
+    "Legend: Bloodline",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.8 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "yunara",
+   "status": "ok",
+   "build_order": [
+    "Kraken Slayer",
+    "Phantom Dancer",
+    "Blade of The Ruined King",
+    "Lord Dominik's Regards",
+    "The Collector",
+    "Rapid Firecannon",
+    "Gluttonous Greaves"
+   ],
+   "enemies": [
+    "Yunara",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Cut Down",
+    "Cash Back",
+    "Biscuit Delivery",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.35 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "yuumi",
+   "status": "ok",
+   "build_order": [
+    "Dream Maker",
+    "Luden's Echo",
+    "Blackfire Torch",
+    "Liandry's Torment",
+    "Cryptbloom",
+    "Rabadon's Deathcap"
+   ],
+   "enemies": [
+    "Yuumi",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Font of Life",
+    "Revitalize",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / magic"
+  },
+  {
+   "slug": "zaahen",
+   "status": "partial",
+   "build_order": [
+    "Trinity Force",
+    "Ionian Boots of Lucidity",
+    "Winter's Approach",
+    "Manamune"
+   ],
+   "enemies": [
+    "Zaahen",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Conqueror",
+    "Triumph",
+    "Legend: Haste",
+    "Coup de Grace",
+    "Bone Plating",
+    "Revitalize",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthScaling"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.95 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "zac",
+   "status": "ok",
+   "build_order": [
+    "Warmog's Armor",
+    "Sunfire Aegis",
+    "Spirit Visage",
+    "Gluttonous Greaves",
+    "Liandry's Torment",
+    "Protoplasm Harness"
+   ],
+   "enemies": [
+    "Zac",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Aftershock",
+    "Font of Life",
+    "Conditioning",
+    "Revitalize",
+    "Triumph",
+    "Legend: Haste",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 0.7 : 1 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "zed",
+   "status": "ok",
+   "build_order": [
+    "Umbral Glaive",
+    "Swiftmarch",
+    "Voltaic Cyclosword",
+    "Serylda's Grudge",
+    "Profane Hydra",
+    "Bastionbreaker"
+   ],
+   "enemies": [
+    "Zed",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Taste of Blood",
+    "Grisly Mementos",
+    "Ultimate Hunter",
+    "Transcendence",
+    "Scorch",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "zeri",
+   "status": "ok",
+   "build_order": [
+    "The Collector",
+    "Phantom Dancer",
+    "Lord Dominik's Regards",
+    "Infinity Edge",
+    "Gluttonous Greaves",
+    "Umbral Glaive"
+   ],
+   "enemies": [
+    "Zeri",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Lethal Tempo",
+    "Triumph",
+    "Legend: Alacrity",
+    "Last Stand",
+    "Conditioning",
+    "Overgrowth",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "ziggs",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Shadowflame",
+    "Cryptbloom",
+    "Lich Bane"
+   ],
+   "enemies": [
+    "Ziggs",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Magical Footwear",
+    "Biscuit Delivery",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "zilean",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Hextech Gunblade",
+    "Blackfire Torch",
+    "Shadowflame"
+   ],
+   "enemies": [
+    "Zilean",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Summon Aery",
+    "Manaflow Band",
+    "Transcendence",
+    "Waterwalking",
+    "Cheap Shot",
+    "Relentless Hunter",
+    "CDRScaling",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.45 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / ma"
+  },
+  {
+   "slug": "zoe",
+   "status": "ok",
+   "build_order": [
+    "Stormsurge",
+    "Spellslinger's Shoes",
+    "Liandry's Torment",
+    "Luden's Echo",
+    "Shadowflame",
+    "Lich Bane"
+   ],
+   "enemies": [
+    "Zoe",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Electrocute",
+    "Sudden Impact",
+    "Grisly Mementos",
+    "Relentless Hunter",
+    "Nimbus Cloak",
+    "Transcendence",
+    "AttackSpeed",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  },
+  {
+   "slug": "zyra",
+   "status": "ok",
+   "build_order": [
+    "Bloodsong",
+    "Sorcerer's Shoes",
+    "Liandry's Torment",
+    "Locket of the Iron Solari",
+    "Void Staff",
+    "Stormsurge"
+   ],
+   "enemies": [
+    "Zyra",
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+   ],
+   "runes": [
+    "Arcane Comet",
+    "Manaflow Band",
+    "Transcendence",
+    "Scorch",
+    "Taste of Blood",
+    "Relentless Hunter",
+    "AdaptiveForce",
+    "AdaptiveForce",
+    "HealthPlus"
+   ],
+   "nyi": "Not Yet Implemented: Infernal Cinder (map objective), Dragon Soul buffs on Summoner's Rift, Dynamic Levels for Self and Enemy Items, Dynamic Grievous Wounds, Dynamic Tenacity Proficiency, Accurate Tower Damage Scenarios. Stat Preference The preference of stats for your champion. 1 : 0.3 : 1 BUILD WARNINGS Runes Role Damage Composition Average estimated share of enemy damage by type (physical / mag"
+  }
+ ]
+}
