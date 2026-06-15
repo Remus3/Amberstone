@@ -4,6 +4,15 @@
 
 ---
 
+# 2026-06-14 - DEEP-AUDIT cycle 24: P3 DS-engine ASCII sweep slice B1b [item 420]
+
+- Completes the DS-engine ASCII retro-sweep B1a began. B1a swept comment+docstring tokens; B1b sweeps the residual STRING-token glyphs: 76 across 9 .py (_effects_data/burst/dps/ability_dps/hybrid/server/beam/ehp/rank - emit-notes / f-string display / server HTML help) + 674 in the 4 registry JSONs' _meta description/rationale fields (champion_block_index 651 / form_index 11 / archetype_weights 9 / max_priority 3; glyph-free outside _meta, no test asserts on it). 750 subs / 13 files. DS tree now 100% ASCII except CHANGELOG.md (.md, Share-excluded -> P8). commit `d8f7f93c`.
+- Per-hit judgement (the workmap-flagged load-bearing class, NOT a sed): sole structural consumer tree-wide = tests/test_effects_expansion.py:3892 (re.search on the "armor X -> Y" emit-note), regex + stale comment updated in lockstep. Production DS never split/regex these (combo `' -> '.join` is join-only; dashboard renders DS notes as opaque passthrough). The non-DS aram_coach wire-arrow + phase2/snapshot `->` are a SEPARATE slice (B2/A3b-2), untouched. Mappings = cycle 19-23 GLYPH_MAP (-> x / <= alpha beta *) with ONE override: beam.py:142 item-name separator U+00B7 -> " / " (separator not multiply); server.py's 2 U+00B7 ARE multiply (alpha*dps + beta*ehp) so stay "*".
+- Gate (Tier-2, DS tree + Share): NEW durable ops/audit/p3c24_b1b_sweep.py (transform) + p3c24_token_equiv.py PROOF PASS 9/9 (every NON-string token byte-identical to HEAD = engine logic untouched; every changed string token == transform(HEAD-token)); py_compile 9/9; JSON parse 4/4; DS-dir 7095p/1s/1942sub exit 0 (byte-identical count to B1a, regex passes); tests/ 7887p/2s/109sub exit 0; ds_share_sync rewrote Share/src (336 files) + --check in-sync. NO ENGINE bump (computed output byte-identical, proven). An accidental operator REBOOT mid-slice restarted RC-DaemonSlayer -> live :8893 already serves ASCII notes (re-probed 1.121.0 / 16.12.1 / 172 champs healthy); NO manual DS restart, NO live RC restart.
+- DONT-REDO: B1b string+JSON sweep DONE + idempotent (re-run = 0). DS-engine tree ASCII-COMPLETE for code+data; only CHANGELOG.md (.md) remains -> P8. NEXT cycle 25 = A3b-2 non-DS load-bearing code-strings (aram/brawl/arena coach prompt banners + item_build wire-arrow B2 coordinated coach+Haiku-prompt+11 peer tests, rebuild_sim_fixtures golden arrows, role_profiles bullets, adaptation_hint emit+rsplit, tft LLM prompts, coach_integration, builders_last_match/defensive_picks/aftergame_summary dashboard text); then B3 web glyphs (UI-audit-gated). Full map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-14 - DEEP-AUDIT cycle 23: P3 DS-engine ASCII sweep slice B1a [item 419]
 
 - First P3 touch of the DS-engine tree (the last tree the cycle 19-22 safe-sweep excluded as B1 LOAD-BEARING-COORDINATED). Carved the provable-safe comment+docstring subset off the load-bearing emit-arrow remainder via the EXISTING tools/p3_ascii_sweep.py --apply (COMMENT) + --doc-apply (DOCSTRING) over agents/daemon_slayer/*.py (top-level engine; tests/ already swept c17). commit `3b468861`.
@@ -24,14 +33,4 @@
 
 ---
 
-# 2026-06-14 - DEEP-AUDIT cycle 21: P3 SAFE-BULK ASCII glyph sweep slice A3a [item 417]
-
-- Extended tools/p3_ascii_sweep.py with an opt-in --doc-apply mode: same conservative GLYPH_MAP applied inside module/func/class DOCSTRING STRING tokens (located via AST - never an f-string, never a split-on/regex-matched code string). Docstrings are not emitted to coach output, not split-on, not regex-matched by production; only consumers = argparse --help (cosmetic) + 2 __doc__ tests that assertIn() ASCII substrings (immune; neither target module is in the changed set). Same provable-safe class as the cycle-19/20 comment-token sweep. commit `74e3b659`.
-- 576 docstring-glyph subs / 120 .py across core dashboard lcu app vision_server coach_integration coaches tft modes modules game_reader scripts ops agents(non-DS) tools + root .py. EXCLUDED (own cycles): agents/daemon_slayer + Share (B1 load-bearing emit-arrows), web (B3 UI-gated), tests, _archive. The 861 code-string glyphs (incl the load-bearing coach arrows aram/brawl/arena + the GLYPH_MAP literal in the tool itself) are slice A3b - DEFERRED, per-hit judgement.
-- GLYPH_MAP stays conservative (operator call: rejected a generic subscript-digit range). The lone unmapped docstring glyph - U+2080 score-zero in core/augment_recommender.py math spec - hand-fixed to ASCII score_0. 0 residual non-ASCII in any swept docstring.
-- Gate (Tier-0, dominates a suite run for a docstring-only edit per R5/R6): py_compile 120/120 OK; token-equivalence PROOF - every NON-docstring token byte-identical to HEAD + identical type-sequence across ALL 120 (no code moved), every docstring token ASCII post-sweep. NO suite, NO DS-dir, NO ENGINE bump, NO DS :8893 restart, NO live RC restart.
-- DONT-REDO: A3a docstring sweep DONE + idempotent (re-run = 0). NEXT cycle 22: P3 slice A3b = the code-string box-draw/arrow glyphs the tool skips (861 / 48 files) - NOT mechanical: includes the LOAD-BEARING coach arrows (B2: aram/brawl/arena_coach split on the literal arrow) + role_profiles emitted bullets + the p3_ascii_sweep GLYPH_MAP keys (must NOT touch). Per-hit judgement, suite-gate. Then B1 DS-engine + Share (Tier-2), B3 web (UI-audit). Full map: ops/audit/P3_WORKMAP.md.
-
----
-
-(item 416 - DEEP-AUDIT cycle 20 P3 slice A2 comment-token sweep, + item 415 - DEEP-AUDIT cycle 19 P3 slice A1 comment-token sweep, + item 414 DS EHP SUSTAIN ENGINE 1.121.0 - all relocated to docs/history_notes.md cycle-23/22 wrap)
+(item 417 - DEEP-AUDIT cycle 21 P3 slice A3a docstring sweep, + item 416 - cycle 20 P3 slice A2 comment-token sweep, + item 415 - cycle 19 P3 slice A1 comment-token sweep, + item 414 DS EHP SUSTAIN ENGINE 1.121.0 - all relocated to docs/history_notes.md cycle-22/23/24 wraps)
