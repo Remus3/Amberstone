@@ -55,6 +55,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-D4 | haiku-zero | Headless-upgrade charter sweep: one pass of the cost/latency 7-lever sweep (prompt-cache coverage, route TTL, polling cadences, log spam, model tier, task catalog, bundle parity) + the next HZ Haiku-to-ZERO lane increment per ROADMAP (validate-before-flip rule holds; haiku stays interim floor until a precompute is validated vs a real game). Ship only net-positive fixes with green tests, else record CLEAN no-commit with evidence in the Findings log. | DONE | d446ea80+b54d040e |
 | P6-G1 | ds-engine | P6 LOLMATH BUILD-ENGINE PARITY G1 (correctness, HIGHEST): DS built the WRONG damage axis - core/archetype_picks resolved the scorer archetype from the DDragon CLASS tag (role), ignoring the kit's lolmath.damage_distribution, so AP kits (Gwen/Teemo/Rumble/Diana) built crit/AD and AD assassin Pyke built AP enchanter. Fix re-bases the DEFAULT archetype onto the kit axis (below operator picks); tank axis-neutral. 18 default-source champs re-based (11 sweep-named + 7 AP assassins the sweep missed: Akali/Ekko/Evelynn/Fizz/Kassadin/Katarina/LeBlanc + Pyke AP->AD). All 9 build_orders tables regenerated (flat+HZ-B1+HZ-B2, sr/aram/arena) at ENGINE 1.121.0 -> 1.122.0; DS :8893 restarted; Share re-synced. Per-champ tests (29) + table-axis parity (18); DS 7095 + RC suites green. NOT flipped (kit axis sides with DS or axis-neutral): XinZhao/Taric + 6 tank-archetype AP kits (-> BACKLOG role call). archetype_mismatch.py was a red herring (UI nudge). | DONE | 1d7da921 |
 | P6-G4 | core/build_order | P6 LOLMATH BUILD-ENGINE PARITY G4 (boots-pool refresh, low-risk): DS emitted only legacy tier-2 boots (Mercury's x140 / Berserker's x30 in the sweep) while lolmath uses the 16.12.1 SR-only tier-3 upgrades. core/build_order._select_boots now upgrades the resolved tier-2 family to its tier-3 form on SR (map 11) via the new _BOOTS_SR_UPGRADE map (each DDragon into verified map11-only); ARAM (12) + Arena (30) keep tier-2 (no tier-3 there); assassin default moved off the out-of-store Mobility Boots (3117) to Ionian -> Crimson Lucidity. No engine MATH change (ranker byte-identical, never imports core/build_order; the AH/tenacity registries + items.json already carried the tier-3 ids). All 9 build_orders tables regenerated at ENGINE 1.122.0 -> 1.123.0; DS :8893 restarted; Share re-synced (336). 9/9 tables verified (SR tier-3, ARAM/Arena tier-2, 0 Mobility); boots test 29; DS-dir 7095 + RC 7943 green. Deferred: Arena should use the 22xxxx boots mirror (3xxx are map30=False). | DONE | a58a1f10 |
+| P6-G5 | ds-engine | P6 LOLMATH PARITY G5 (item-pool gaps) - CLOSED as NO pool gap, premise falsified (Tier-0 diagnosis; NO ENGINE bump / regen / DS restart / Share sync). DS has no per-archetype pool whitelist - rank.py::_filter_candidates iterates ALL 706 items.json (purchasable + terminal + map-legal + budget + 2-item deny). Of 48 lolmath-favored items, REAL SR pool gaps = 0; every one resolves to a canonical map11 id and ranks just below top-6 live @ ENGINE 1.123.0 (Talon Umbral #7 / Hubris #13 / Profane #33; Lux Liandry's #23; Jhin Collector #12). DS recommends ~60 distinct items / 172 champs - the breadth gap is SCORER VALUATION (item passives needing kill-state, AP DoT burn vs single-rotation ability model, lethality-vs-sustained in burst), NOT pool membership (lethality pen modeled, effects.py:326). Durable probes ops/audit/lolmath_ds_sweep/g5_{pool,live_rank}_probe.py. Re-routed to the G3/G6 Gemini-consult track. | CLOSED | (docs) |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -66,6 +67,26 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-15 P6-G5 CLOSED as NO POOL GAP (cycle 27, item 424, Tier-0 diagnosis - docs/probes only,
+  no ENGINE bump / regen / DS restart / Share sync). The sweep's G5 hypothesis ("DS per-archetype
+  pool is missing lethality / AP-on-hit / mythic-less items vs item.json") is FALSE. Root-caused via
+  durable probes (ops/audit/lolmath_ds_sweep/g5_pool_probe.py + g5_live_rank_probe.py), verified LIVE
+  at ENGINE 1.123.0: (1) DS has NO per-archetype pool whitelist - the candidate set is
+  rank.py::_filter_candidates over ALL 706 items.json (purchasable + terminal `into`-empty +
+  map-legal + budget + a 2-item deny-set). (2) Of 48 lolmath-favored items, REAL SR pool gaps = 0 -
+  all resolve to a canonical map11 id and are live candidates (probe v1 false-flagged 42 via the
+  6-digit 22../12.. Arena ALIAS ids map11=False; v2 collects ALL ids/name -> canonical short id is
+  in-pool; memory reference_items_index_alias_ids). (3) Every "missing" item is IN the live ranking
+  just below top-6 (Talon: Umbral #7 / Hubris #13 / Profane #33; Lux: Liandry's #23; Jhin:
+  Collector #12). DS recommends only ~60 distinct items / 172 champs x 4 comps - the breadth gap is
+  SCORER VALUATION (item passives needing kill/takedown state: Hubris/Collector/Death's Dance; AP
+  damage-over-time burn vs the single-rotation `ability` model: Liandry's/Blackfire; lethality-vs-
+  sustained tradeoff in `burst`), NOT pool membership; lethality pen itself is modeled (V14.1 1:1,
+  effects.py:326). Decision: do NOT add items to a pool (none missing; a forced fix = churn +
+  regression risk). Residual scorer-valuation work is design-level (G3/G6 class) -> Gemini-consult.
+  NEXT P6 = G2 re-measure (after G1/G4); G3 runes / G6 cost-model / G7 harness + G5 residual =
+  Gemini-consult first (G6 likely by-design CLOSED).
 
 - 2026-06-15 P6-G1 REGRESS FIXED (cycle 2, commit `e6ab8db3`): gemini's cycle-1 audit correctly
   caught (and I ground-truth-verified) that item 421's ENGINE bump used a blind byte-replace of
