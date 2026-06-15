@@ -1331,6 +1331,20 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.122.0 (P6 lolmath build-engine parity G1, 2026-06-15 - kit-damage-axis archetype
+correction. DDragon class tags encode ROLE, not the AD-vs-AP axis a kit scales on, so
+core/archetype_picks resolved AP-scaling kits to an AD scorer (Fighter -> bruiser on Gwen
+0.70 magical; Marksman -> carry on Teemo 0.81 magical) and an AD assassin to the AP
+enchanter scorer (Pyke 0.76 physical) - the build engine then built the WRONG damage axis.
+The DEFAULT archetype is now re-based against champions.json lolmath.damage_distribution
+(the ground-truth axis), below any operator pick. 18 default-source champions re-base
+(11 named by the lolmath-vs-DS sweep + 7 AP assassins it missed - Akali / Ekko / Evelynn /
+Fizz / Kassadin / Katarina / Leblanc - plus Pyke AP->AD). Tank kits (axis-neutral) and the
+lolmath-only quirks where the kit axis already agrees with DS (XinZhao AD, Taric AP) are
+deliberately NOT flipped. No engine MATH change: the scorer code is byte-identical; this
+re-selects WHICH scorer a tag default reads, so all build_orders tables (flat + HZ-B1 +
+HZ-B2 variants, sr / aram / arena) were regenerated. DS :8893 bounced -> 1.122.0.)
+
 1.121.0 (item 414, 2026-06-14 - SUSTAIN contract-gap closure. Closes the
 test_wireable_sims_p1l3 strict-xfail: lifesteal/spellvamp/omnivamp resolve as wireable
 stats but had no explicitly-named effective-EHP sustain output. The EHP scorer already

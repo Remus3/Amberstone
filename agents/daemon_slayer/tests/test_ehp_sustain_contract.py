@@ -1,4 +1,4 @@
-"""ENGINE 1.121.0 (2026-06-14) - SUSTAIN contract-gap closure.
+"""ENGINE 1.122.0 (2026-06-14) - SUSTAIN contract-gap closure.
 
 Closes the former strict-xfail in ``test_wireable_sims_p1l3`` (the L3
 ``ZZZ_ResolvedContractGapDocs`` class): lifesteal/spellvamp/omnivamp resolve
@@ -32,7 +32,7 @@ Coverage classes:
   * ``SpellvampOmnivampWiringTests`` - structural: the stats are consumed but
     resolve to 0 on current builds (no item grants them).
   * ``ByteIdenticalGuardTests`` - blended_ehp / heal_lifesteal unchanged.
-  * ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.121.0.
+  * ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.122.0.
 """
 from __future__ import annotations
 
@@ -244,7 +244,7 @@ class ByteIdenticalGuardTests(_SnapBase):
 
 class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_is_1_121_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.121.0")
+        self.assertEqual(ENGINE_VERSION, "1.122.0")
 
 
 if __name__ == "__main__":
