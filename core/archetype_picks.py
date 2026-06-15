@@ -108,6 +108,141 @@ _PICKS_CACHE: dict[str, dict] | None = None
 _PICKS_LOCK = threading.Lock()
 
 
+# --------------------------------------------------------------------------- #
+# Damage-axis correction (P6 lolmath build-engine parity)
+# --------------------------------------------------------------------------- #
+# DDragon class tags encode a champion's ROLE, not the AD-vs-AP axis its kit
+# actually scales on, so ``tag_to_archetype`` sent AP-scaling kits to an AD
+# scorer: a "Fighter" tag -> bruiser (AD items) on Gwen (0.70 magical), a
+# "Marksman" tag -> carry (crit AD) on Teemo (0.81 magical), a "Support" tag ->
+# enchanter (AP heal/shield) on Pyke (0.76 physical). The DS build engine then
+# built the wrong damage axis. We re-base the DEFAULT archetype against the
+# kit's measured split (champions.json ``lolmath.damage_distribution``, the
+# ground-truth axis). Operator picks (source != default) are never touched -
+# this corrects only the DDragon-tag default, below an explicit pick.
+#
+# Each damage archetype itemizes one axis; ``tank`` is axis-neutral (resist/HP)
+# and is never corrected - a tank kit that deals magic damage still wants
+# durability, not a glass-cannon AP pivot (a role decision, not an axis bug).
+_ARCHETYPE_AXIS: dict[str, Optional[str]] = {
+    "carry": "ad", "bruiser": "ad", "assassin": "ad",
+    "mage": "ap", "enchanter": "ap", "tank": None,
+}
+# The canonical damage archetype to correct an AP kit into. For an AD kit we
+# prefer the champion's own secondary class tag when it is already AD (e.g.
+# Pyke Support+Assassin -> assassin), else fall back to carry.
+_AP_AXIS_ARCHETYPE = "mage"
+_AD_AXIS_FALLBACK = "carry"
+# A kit axis is only decisive when the dominant share clears both gates; a
+# genuine hybrid (~0.50/0.45) stays None so we never flip it on noise.
+_AXIS_DOMINANT_MIN = 0.55
+_AXIS_MARGIN_MIN = 0.20
+
+_DS_DIR = _DATA_DIR / "daemon_slayer"
+# champion-key (+ stripped variants) -> "ad" | "ap"; built from the active
+# patch's champions.json, cached per process. None until first load.
+_DAMAGE_AXIS_CACHE: Optional[dict[str, str]] = None
+_AXIS_LOCK = threading.Lock()
+
+
+def _axis_from_distribution(dd: dict) -> Optional[str]:
+    """Return ``"ad"`` / ``"ap"`` for a decisive damage split, else ``None``."""
+    try:
+        mag = float(dd.get("magical") or 0.0)
+        phys = float(dd.get("physical") or 0.0)
+    except (TypeError, ValueError):
+        return None
+    dom, oth, label = (mag, phys, "ap") if mag >= phys else (phys, mag, "ad")
+    if dom >= _AXIS_DOMINANT_MIN and (dom - oth) >= _AXIS_MARGIN_MIN:
+        return label
+    return None
+
+
+def _resolve_ds_patch() -> Optional[str]:
+    """Active DS patch from ``data/daemon_slayer/current.txt`` (or ``None``)."""
+    try:
+        txt = (_DS_DIR / "current.txt").read_text(encoding="utf-8").strip()
+        return txt or None
+    except Exception:  # noqa: BLE001 - missing file -> no axis data
+        return None
+
+
+def _load_damage_axes() -> dict[str, str]:
+    """Build champion-key -> kit damage axis from the patch champions.json.
+
+    Keys mirror ``_load_champion_tags`` (display name, DDragon id, apostrophe /
+    space stripped variants) so a caller passing either form resolves.
+    Fail-soft to ``{}`` (no correction) on any read/parse error.
+    """
+    global _DAMAGE_AXIS_CACHE
+    with _AXIS_LOCK:
+        if _DAMAGE_AXIS_CACHE is not None:
+            return _DAMAGE_AXIS_CACHE
+        out: dict[str, str] = {}
+        patch = _resolve_ds_patch()
+        if patch:
+            path = _DS_DIR / patch / "champions.json"
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                data = raw.get("data", raw)
+                for entry in data.values():
+                    if not isinstance(entry, dict):
+                        continue
+                    dd = (entry.get("lolmath") or {}).get("damage_distribution") or {}
+                    axis = _axis_from_distribution(dd)
+                    if not axis:
+                        continue
+                    for key in (entry.get("name"), entry.get("id")):
+                        if not key:
+                            continue
+                        out[key] = axis
+                        out[key.replace("'", "")] = axis
+                        out[key.replace(" ", "")] = axis
+                        out[key.replace("'", "").replace(" ", "")] = axis
+            except FileNotFoundError:
+                _log.warning("archetype_picks: %s missing - no axis correction", path)
+            except Exception as exc:  # noqa: BLE001 - fail-soft, defaults stay tag-based
+                _log.warning("archetype_picks: damage-axis load failed: %s", exc)
+        _DAMAGE_AXIS_CACHE = out
+        return out
+
+
+def kit_damage_axis(champion: str) -> Optional[str]:
+    """Return the champion's decisive kit damage axis (``"ad"`` / ``"ap"``) or
+    ``None`` when unknown / a genuine hybrid. Public for tests + diagnostics."""
+    if not champion:
+        return None
+    return _load_damage_axes().get(champion)
+
+
+def _invalidate_axis_cache() -> None:
+    """Drop the axis cache so the next read re-pulls (patch refresh / tests)."""
+    global _DAMAGE_AXIS_CACHE
+    with _AXIS_LOCK:
+        _DAMAGE_AXIS_CACHE = None
+
+
+def axis_correct_archetype(champion: str, primary: str, tags: list[str]) -> str:
+    """Return ``primary`` re-based onto the kit damage axis, or unchanged.
+
+    Only a damage archetype on the OPPOSITE axis to a decisive kit is
+    corrected; tank (axis-neutral), unknown kits, and already-aligned
+    archetypes pass through untouched.
+    """
+    kit = kit_damage_axis(champion)
+    cur = _ARCHETYPE_AXIS.get(primary)
+    if not kit or cur is None or cur == kit:
+        return primary
+    if kit == "ap":
+        return _AP_AXIS_ARCHETYPE
+    # kit == "ad": prefer an already-AD secondary class tag, else carry.
+    if len(tags) >= 2:
+        sec = tag_to_archetype(tags[1])
+        if _ARCHETYPE_AXIS.get(sec) == "ad":
+            return sec
+    return _AD_AXIS_FALLBACK
+
+
 def tag_to_archetype(tag: str) -> str:
     """Map a single DDragon tag to the canonical archetype name.
 
@@ -255,6 +390,13 @@ def default_for_champion(champion: str) -> tuple[str, str]:
             secondary = _fallback_secondary(primary)
     else:
         secondary = _fallback_secondary(primary)
+    # P6: re-base the tag default onto the kit damage axis when they conflict
+    # (e.g. Fighter-tagged Gwen scales AP). Surface the role-based archetype as
+    # the alt-view so the operator can flip back in one tap.
+    corrected = axis_correct_archetype(champion, primary, tags)
+    if corrected != primary:
+        secondary = primary
+        primary = corrected
     return (primary, secondary)
 
 

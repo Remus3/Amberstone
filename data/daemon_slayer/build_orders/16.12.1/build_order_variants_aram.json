@@ -132,11 +132,11 @@
         },
         "order": [
           "228002",
-          "3117",
+          "3020",
           "3089",
-          "3100",
           "4645",
-          "4646"
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -162,8 +162,8 @@
           "3111",
           "3135",
           "3089",
-          "3100",
-          "3137"
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -616,14 +616,14 @@
         "variant": "anti_tank"
       }
     },
-    "AurelionSol": {
+    "Aurelion Sol": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.7,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -647,18 +647,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.7,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 1849.5,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 2877.0,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
@@ -840,7 +840,7 @@
         "variant": "anti_tank"
       }
     },
-    "Belveth": {
+    "Bel'Veth": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -1288,14 +1288,14 @@
         "variant": "anti_tank"
       }
     },
-    "Chogath": {
+    "Cho'Gath": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.35,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -1319,18 +1319,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.35,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2274.8,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 3538.5,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
@@ -1475,12 +1475,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "223069",
-          "3047",
-          "3084",
-          "3053",
-          "3153",
-          "3085"
+          "228002",
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -1502,24 +1502,24 @@
           "target_mr": 130.0
         },
         "order": [
-          "3153",
+          "228002",
           "3111",
-          "223069",
-          "3036",
-          "3053",
-          "3084"
+          "3135",
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
     },
-    "DrMundo": {
+    "Dr. Mundo": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.42,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "CURRENT_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -1543,18 +1543,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.42,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "CURRENT_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2189.7,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 3406.2,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
@@ -1644,11 +1644,11 @@
         },
         "order": [
           "228002",
-          "3117",
+          "3020",
           "3089",
-          "3100",
           "4645",
-          "4646"
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -1672,10 +1672,10 @@
         "order": [
           "228002",
           "3111",
-          "3089",
           "3135",
-          "3100",
-          "3137"
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -1699,12 +1699,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "3078",
-          "3117",
           "228002",
-          "3153",
-          "3085",
-          "3179"
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -1726,12 +1726,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "3153",
+          "228002",
           "3111",
-          "3036",
-          "3508",
-          "3085",
-          "6694"
+          "3135",
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -1756,11 +1756,11 @@
         },
         "order": [
           "228002",
-          "3117",
+          "3020",
           "3089",
-          "3100",
           "4645",
-          "4646"
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -1784,10 +1784,10 @@
         "order": [
           "228002",
           "3111",
-          "3135",
           "3089",
-          "3100",
-          "3137"
+          "3135",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -1980,11 +1980,11 @@
         },
         "order": [
           "228002",
-          "3117",
+          "3020",
           "3089",
-          "3100",
           "4645",
-          "4646"
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -2010,8 +2010,8 @@
           "3111",
           "3089",
           "3135",
-          "3100",
-          "3137"
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -2259,12 +2259,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "223069",
-          "3047",
-          "3084",
-          "3053",
-          "3078",
-          "3085"
+          "228002",
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -2286,12 +2286,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "3084",
-          "3053",
-          "3083",
-          "3036"
+          "3135",
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -2319,7 +2319,7 @@
           "3006",
           "3085",
           "3031",
-          "3179",
+          "3508",
           "3036"
         ],
         "variant": "anti_squishy"
@@ -2371,12 +2371,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "223069",
-          "3047",
-          "3084",
-          "3053",
-          "3085",
-          "2501"
+          "228002",
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -2398,12 +2398,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "3084",
-          "3053",
-          "3153",
-          "3036"
+          "3135",
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -2800,14 +2800,14 @@
         "variant": "anti_tank"
       }
     },
-    "JarvanIV": {
+    "Jarvan IV": {
       "anti_squishy": {
         "antitank": {
-          "lean_in": true,
-          "my_antitank_score": 0.858,
-          "recommend_antitank_items": false,
-          "shreds_resist": true,
-          "top_kind": "CURRENT_HP"
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -2830,28 +2830,28 @@
       },
       "anti_tank": {
         "antitank": {
-          "lean_in": true,
-          "my_antitank_score": 0.858,
-          "recommend_antitank_items": false,
-          "shreds_resist": true,
-          "top_kind": "CURRENT_HP"
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 1657.5,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 2578.4,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
-          "223069",
-          "3111",
           "3153",
-          "3084",
-          "3053",
-          "3036"
+          "3111",
+          "223069",
+          "3036",
+          "3085",
+          "3053"
         ],
         "variant": "anti_tank"
       }
@@ -3080,14 +3080,14 @@
         "variant": "anti_tank"
       }
     },
-    "KSante": {
+    "K'Sante": {
       "anti_squishy": {
         "antitank": {
-          "lean_in": true,
-          "my_antitank_score": 1.2362,
-          "recommend_antitank_items": false,
-          "shreds_resist": true,
-          "top_kind": "MAX_HP"
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -3110,19 +3110,19 @@
       },
       "anti_tank": {
         "antitank": {
-          "lean_in": true,
-          "my_antitank_score": 1.2362,
-          "recommend_antitank_items": false,
-          "shreds_resist": true,
-          "top_kind": "MAX_HP"
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 1485.0,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 2310.0,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
@@ -3136,7 +3136,7 @@
         "variant": "anti_tank"
       }
     },
-    "Kaisa": {
+    "Kai'Sa": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3380,11 +3380,11 @@
         },
         "order": [
           "228002",
-          "3117",
+          "3020",
           "3089",
           "4645",
-          "4646",
-          "3100"
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -3410,8 +3410,8 @@
           "3111",
           "3135",
           "3089",
-          "3100",
-          "3137"
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -3436,11 +3436,11 @@
         },
         "order": [
           "228002",
-          "3117",
+          "3020",
           "3089",
-          "3100",
           "4645",
-          "4646"
+          "4633",
+          "3137"
         ],
         "variant": "anti_squishy"
       },
@@ -3464,10 +3464,10 @@
         "order": [
           "228002",
           "3111",
-          "3089",
           "3135",
-          "3100",
-          "3137"
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -3640,7 +3640,7 @@
         "variant": "anti_tank"
       }
     },
-    "Khazix": {
+    "Kha'Zix": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3808,63 +3808,7 @@
         "variant": "anti_tank"
       }
     },
-    "KogMaw": {
-      "anti_squishy": {
-        "antitank": {
-          "lean_in": true,
-          "my_antitank_score": 0.926,
-          "recommend_antitank_items": false,
-          "shreds_resist": true,
-          "top_kind": "SHRED"
-        },
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 35.0,
-          "target_bonus_hp": 300.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 1500.0,
-          "target_mr": 30.0
-        },
-        "order": [
-          "3153",
-          "3006",
-          "3085",
-          "3032",
-          "3031",
-          "6672"
-        ],
-        "variant": "anti_squishy"
-      },
-      "anti_tank": {
-        "antitank": {
-          "lean_in": true,
-          "my_antitank_score": 0.926,
-          "recommend_antitank_items": false,
-          "shreds_resist": true,
-          "top_kind": "SHRED"
-        },
-        "bias": {
-          "enemy_ad_share": 0.6,
-          "enemy_ap_share": 0.4,
-          "target_armor": 200.0,
-          "target_bonus_hp": 1574.9,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2449.9,
-          "target_mr": 130.0
-        },
-        "order": [
-          "3153",
-          "3047",
-          "3036",
-          "3085",
-          "3032",
-          "6694"
-        ],
-        "variant": "anti_tank"
-      }
-    },
-    "Leblanc": {
+    "Kog'Maw": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3884,11 +3828,11 @@
         },
         "order": [
           "228002",
-          "3117",
+          "3020",
           "3089",
           "4645",
-          "4646",
-          "3100"
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -3920,7 +3864,63 @@
         "variant": "anti_tank"
       }
     },
-    "LeeSin": {
+    "LeBlanc": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "228002",
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "3135"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "228002",
+          "3111",
+          "3135",
+          "3089",
+          "3137",
+          "4645"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "Lee Sin": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -4051,12 +4051,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "223069",
-          "3047",
-          "3084",
-          "3053",
-          "3078",
-          "3083"
+          "228002",
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -4078,12 +4078,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "3084",
-          "3053",
-          "3083",
-          "2502"
+          "3135",
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -4224,7 +4224,7 @@
           "3085",
           "3031",
           "3032",
-          "3179"
+          "6696"
         ],
         "variant": "anti_squishy"
       },
@@ -4480,7 +4480,7 @@
         "variant": "anti_tank"
       }
     },
-    "MasterYi": {
+    "Master Yi": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -4648,7 +4648,7 @@
         "variant": "anti_tank"
       }
     },
-    "MissFortune": {
+    "Miss Fortune": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -4667,12 +4667,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
-          "3117",
-          "3100",
-          "3089",
-          "4645",
-          "4646"
+          "3153",
+          "3006",
+          "3085",
+          "6672",
+          "3032",
+          "3031"
         ],
         "variant": "anti_squishy"
       },
@@ -4694,68 +4694,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
-          "3111",
-          "3100",
-          "3089",
-          "3135",
-          "3036"
-        ],
-        "variant": "anti_tank"
-      }
-    },
-    "MonkeyKing": {
-      "anti_squishy": {
-        "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.6695,
-          "recommend_antitank_items": true,
-          "shreds_resist": true,
-          "top_kind": "SHRED"
-        },
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 35.0,
-          "target_bonus_hp": 300.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 1500.0,
-          "target_mr": 30.0
-        },
-        "order": [
-          "223069",
-          "3047",
-          "3084",
-          "3078",
-          "3053",
-          "3085"
-        ],
-        "variant": "anti_squishy"
-      },
-      "anti_tank": {
-        "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.6695,
-          "recommend_antitank_items": true,
-          "shreds_resist": true,
-          "top_kind": "SHRED"
-        },
-        "bias": {
-          "enemy_ad_share": 0.6,
-          "enemy_ap_share": 0.4,
-          "target_armor": 200.0,
-          "target_bonus_hp": 1886.6,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2934.6,
-          "target_mr": 130.0
-        },
-        "order": [
-          "223069",
-          "3111",
           "3153",
-          "3084",
+          "3047",
           "3036",
-          "3053"
+          "3085",
+          "3032",
+          "6694"
         ],
         "variant": "anti_tank"
       }
@@ -4779,12 +4723,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "223069",
-          "3047",
-          "3084",
-          "3053",
-          "3083",
-          "3748"
+          "228002",
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -4806,12 +4750,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "3084",
-          "3053",
-          "3083",
-          "3065"
+          "3135",
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -5172,11 +5116,11 @@
         },
         "order": [
           "228002",
-          "3117",
-          "3100",
+          "3020",
           "3089",
           "4645",
-          "4646"
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -5200,10 +5144,10 @@
         "order": [
           "228002",
           "3111",
-          "3100",
           "3135",
           "3089",
-          "3137"
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -5320,7 +5264,7 @@
         "variant": "anti_tank"
       }
     },
-    "Nunu": {
+    "Nunu & Willump": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -5675,12 +5619,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "6620",
-          "3158",
-          "3504",
-          "6616",
-          "3107",
-          "6617"
+          "6610",
+          "3117",
+          "3179",
+          "6696",
+          "3508",
+          "3031"
         ],
         "variant": "anti_squishy"
       },
@@ -5702,12 +5646,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "6620",
+          "3153",
           "3111",
-          "3504",
-          "6616",
-          "3107",
-          "6617"
+          "3036",
+          "6694",
+          "6610",
+          "3033"
         ],
         "variant": "anti_tank"
       }
@@ -5936,14 +5880,14 @@
         "variant": "anti_tank"
       }
     },
-    "RekSai": {
+    "Rek'Sai": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.26,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -5967,24 +5911,24 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.26,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2384.1,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 3708.6,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
-          "223069",
-          "3111",
           "3153",
+          "3111",
+          "223069",
           "3084",
           "3053",
           "3036"
@@ -6048,14 +5992,14 @@
         "variant": "anti_tank"
       }
     },
-    "Renata": {
+    "Renata Glasc": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.55,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -6079,18 +6023,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.55,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2031.7,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 3160.5,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
@@ -6291,12 +6235,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "223069",
-          "3047",
-          "3084",
-          "3053",
-          "3078",
-          "3083"
+          "228002",
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -6318,12 +6262,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "3084",
-          "3053",
-          "3083",
-          "2502"
+          "3135",
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -7392,14 +7336,14 @@
         "variant": "anti_tank"
       }
     },
-    "TahmKench": {
+    "Tahm Kench": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.195,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -7423,18 +7367,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.195,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "MAX_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2463.1,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 3831.4,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
@@ -7635,12 +7579,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "3153",
-          "3006",
-          "3085",
-          "6672",
-          "3032",
-          "3031"
+          "228002",
+          "3020",
+          "3089",
+          "4645",
+          "4633",
+          "3135"
         ],
         "variant": "anti_squishy"
       },
@@ -7662,12 +7606,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "3153",
-          "3047",
-          "3036",
-          "3085",
-          "6694",
-          "3032"
+          "228002",
+          "3111",
+          "3135",
+          "3089",
+          "3137",
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -7896,7 +7840,7 @@
         "variant": "anti_tank"
       }
     },
-    "TwistedFate": {
+    "Twisted Fate": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -8288,7 +8232,7 @@
         "variant": "anti_tank"
       }
     },
-    "Velkoz": {
+    "Vel'Koz": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -8736,6 +8680,62 @@
         "variant": "anti_tank"
       }
     },
+    "Wukong": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "223069",
+          "3047",
+          "3084",
+          "3078",
+          "3053",
+          "3085"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3153",
+          "3111",
+          "223069",
+          "3036",
+          "3084",
+          "3053"
+        ],
+        "variant": "anti_tank"
+      }
+    },
     "Xayah": {
       "anti_squishy": {
         "antitank": {
@@ -8848,14 +8848,14 @@
         "variant": "anti_tank"
       }
     },
-    "XinZhao": {
+    "Xin Zhao": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.1463,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "CURRENT_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -8879,18 +8879,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.1463,
+          "my_antitank_score": 0.0,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": "CURRENT_HP"
+          "top_kind": ""
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2522.2,
+          "target_bonus_hp": 2700.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 3923.5,
+          "target_max_hp": 4200.0,
           "target_mr": 130.0
         },
         "order": [
@@ -9641,8 +9641,8 @@
       "anti_squishy"
     ]
   },
-  "engine_version": "1.120.0",
-  "generated_at": "2026-06-10T23:00:30Z",
+  "engine_version": "1.122.0",
+  "generated_at": "2026-06-15T07:09:22Z",
   "mode": "aram",
   "schema": "build_order_variants/v1",
   "version": "16.12.1"
