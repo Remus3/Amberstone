@@ -2,6 +2,14 @@
 
 ## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
 
+# 2026-06-14 - DEEP-AUDIT cycle 19: P3 SAFE-BULK ASCII glyph sweep slice A1 [item 415] (relocated 2026-06-14, cycle-22 wrap)
+
+- NEW tools/p3_ascii_sweep.py (durable P3 transformer): tokenize-based, rewrites decorative glyphs to ASCII INSIDE Python COMMENT tokens ONLY. A comment is never emitted/asserted/parsed -> provable zero-behavior (mechanical cycle-16/17 balanced-swap). STRING-token glyphs left untouched, which auto-protects EVERY load-bearing emitted/regex-matched arrow (confirmed: aram_coach.py STRING 76 arrows intact, dps.py untouched). Conservative GLYPH_MAP (box-draw/math/arrow/greek); an UNMAPPED comment glyph is left as-is (only 1 across scope: U+2705 scripts/wakeup_prune.py, emoji -> P8). commit `5e74ed48`.
+- 16277 substitutions / 108 .py rewritten / 310 scanned. Trees: core dashboard lcu app vision_server coach_integration coaches tft modes modules game_reader scripts ops + root .py (composition_advisor/role_profiles/item_advisor/performance_tracker/web_dashboard/main). EXCLUDED (own cycles): agents/** + agents/daemon_slayer + Share (DS load-bearing), web/** (UI-gated, non-py-tokenizable), tools/** (= slice A2 next), _archive, tests.
+- 13 FROZEN files swept comment-only (charter line 11 deep-audit frozen auth + cycle-18 precedent): app/{__init__,_loop,_game_lifecycle,_health_monitor,_remediation,_state_authority}.py, core/{game_snapshot,log_setup,moon_proxy}.py, dashboard/routes_bridge.py, lcu/lcu_client.py, ops/{rc_dev_runtime,rc_supervisor}.py.
+- Gate: py_compile 108/108 OK; tests/ suite 7887p/2s/109sub exit 0 (282s) BYTE-IDENTICAL to the cycle-18/item-414 tests/ baseline. Post-apply tokenize re-census proved COMMENT glyphs -> 0 in every target + STRING preserved. DS-dir NOT re-run (0 DS-engine/Share file touched -> DS provably identical, R5/R6). NO ENGINE bump, NO DS :8893 restart, NO live RC restart (Tier-0 comment-only; suite run only as tool-bug ground-truth).
+- DONT-REDO: the comment-token sweep stays; do NOT extend the tool to STRING tokens blindly (that re-opens the load-bearing-arrow hazard - that is slice A3, per-hit judgement + suite-gate). [cycle 20 = A2 tools/+agents-nonDS DONE; cycle 21 = A3a docstrings DONE; cycle 22 = A3b-1 log/print-strings DONE.] Full map: ops/audit/P3_WORKMAP.md.
+
 # 2026-06-14 - DS EHP SUSTAIN contract-gap closure [item 414] (relocated 2026-06-14, cycle-21 wrap)
 
 - ENGINE_VERSION 1.120.0 -> 1.121.0 (commit `9cd3336d`). Closes the test_wireable_sims_p1l3 strict-xfail (lifesteal/spellvamp/omnivamp resolve as stats but had no NAMED effective-EHP output - the cycle-17 engine-owner DEFER). DS :8893 bounced + Share mirror/ingest/doc-anchors re-synced + live /health=1.121.0.
