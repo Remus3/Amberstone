@@ -88,7 +88,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
     opp_towers = int(opp.get("tower_kills") or 0)
     if is_sr and opp_towers - my_towers >= 4:
         out.append({
-            "text": f"Tower diff −{opp_towers - my_towers} (lost {opp_towers}-{my_towers})",
+            "text": f"Tower diff -{opp_towers - my_towers} (lost {opp_towers}-{my_towers})",
             "why":  (f"Enemy took {opp_towers} towers to your {my_towers} - "
                      f"map pressure was lopsided. Each tower is ~430g + "
                      f"vision real estate. Re-watching mid-game roams in "
@@ -121,7 +121,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
         opp_baron = int(opp.get("baron_kills") or 0)
         if opp_baron > 0 and my_baron == 0:
             out.append({
-                "text": f"Gave up Baron(s) ×{opp_baron}",
+                "text": f"Gave up Baron(s) x{opp_baron}",
                 "why":  (f"Enemy took {opp_baron} Baron Nashor with zero "
                          f"answer from your team. Baron buff fuels minion "
                          f"empowerment + sieges; review vision setup before "
@@ -165,7 +165,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                 out.append({
                     "text": f"Team kill deficit ({my_k}-{opp_k})",
                     "why":  (f"Enemy outscored your team {opp_k} kills to "
-                             f"{my_k} (1.5×+ ratio with a 10+ gap). Each "
+                             f"{my_k} (1.5x+ ratio with a 10+ gap). Each "
                              f"team-fight you took was net-losing - review "
                              f"engage timings + comp synergy."),
                 })
@@ -173,7 +173,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
             opp_gold = sum(int(r.get("gold") or 0) for r in opp_side)
             if opp_gold - my_gold >= 8000:
                 out.append({
-                    "text": f"Gold deficit −{(opp_gold - my_gold)//1000}k",
+                    "text": f"Gold deficit -{(opp_gold - my_gold)//1000}k",
                     "why":  (f"Enemy ended {opp_gold - my_gold}g ahead "
                              f"({(opp_gold/1000):.1f}k vs {(my_gold/1000):.1f}k). "
                              f"That's roughly an extra completed mythic + "
@@ -265,15 +265,15 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     if k >= 10 and d <= 5:
         right.append({
             "text": f"Carry-tier kill output ({k} kills, {d} deaths)",
-            "why": "10+ kills with ≤5 deaths is a snowball signal - you "
+            "why": "10+ kills with <=5 deaths is a snowball signal - you "
                    "converted leads without giving them back.",
         })
 
     if not right:
         right.append({
             "text": "No standout positives this match",
-            "why": "None of the v1 thresholds tripped (S/A grade, KDA≥3, "
-                   "CS/min≥8, KP≥70%, or 10+ kills with ≤5 deaths).",
+            "why": "None of the v1 thresholds tripped (S/A grade, KDA>=3, "
+                   "CS/min>=8, KP>=70%, or 10+ kills with <=5 deaths).",
         })
 
     # -- wrong_team: team-level issues this match ------------------------
@@ -345,7 +345,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
         my_chronic.append({
             "text": "No chronic pattern detected (yet)",
             "why": "Not enough recent matches to compute baselines, or this "
-                   "match's stats are within ±1 SD of your medians.",
+                   "match's stats are within +/-1 SD of your medians.",
         })
 
     return {
