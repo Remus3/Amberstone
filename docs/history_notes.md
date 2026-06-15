@@ -2,6 +2,13 @@
 
 ## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
 
+# 2026-06-14 - DEEP-AUDIT cycle 20: P3 SAFE-BULK ASCII glyph sweep slice A2 [item 416] (relocated 2026-06-14, cycle-23 wrap)
+
+- Ran tools/p3_ascii_sweep.py (cycle-19 transformer, comment-token-only) on the A2 scope: tools/** + agents/ NON-DS source. 10426 comment-glyph subs / 69 .py rewritten. tools/ 7261 (134 scanned, 27 changed); agents non-DS 3165 (81 scanned). commit `74cca91d`.
+- EXCLUDED (own B1 Tier-2 cycle): agents/daemon_slayer/** + Share/** (DS load-bearing emit-arrows). The 2 changed tools/daemon_slayer_*.py are EXTRACTORS (in-scope tooling), NOT the engine. 3 FROZEN bridge_*.py swept comment-only (bridge_watcher_actions 314 / bridge_watcher_classify 71 / bridge_watcher_history 259; charter deep-audit frozen-auth + cycle-19 precedent). tests/** = 0 subs (comments already ASCII-clean). NO UNMAPPED comment glyph across either tree.
+- Gate: py_compile 69/69 OK; token-equivalence PROOF - for all 69 files every non-COMMENT token byte-identical pre/post (tokenize old=git-show-HEAD vs new working, EOL-normalized, compare (type,string) minus COMMENT). Exhaustive, strictly dominates a suite run for a comment-only edit -> per R5/R6 Tier-0 = py_compile only, NO suite, NO DS-dir, NO ENGINE bump, NO DS :8893 restart, NO live RC restart. CRLF files (agents/_supervisor_common.py) committed LF-normalized, diff balanced +/- (no churn).
+- DONT-REDO: A2 comment-token sweep DONE + idempotent (re-run = 0). [cycle 21 = A3a docstrings DONE; cycle 22 = A3b-1 log/print-strings DONE; cycle 23 = B1a DS-engine comment+docstring DONE.] Full map: ops/audit/P3_WORKMAP.md.
+
 # 2026-06-14 - DEEP-AUDIT cycle 19: P3 SAFE-BULK ASCII glyph sweep slice A1 [item 415] (relocated 2026-06-14, cycle-22 wrap)
 
 - NEW tools/p3_ascii_sweep.py (durable P3 transformer): tokenize-based, rewrites decorative glyphs to ASCII INSIDE Python COMMENT tokens ONLY. A comment is never emitted/asserted/parsed -> provable zero-behavior (mechanical cycle-16/17 balanced-swap). STRING-token glyphs left untouched, which auto-protects EVERY load-bearing emitted/regex-matched arrow (confirmed: aram_coach.py STRING 76 arrows intact, dps.py untouched). Conservative GLYPH_MAP (box-draw/math/arrow/greek); an UNMAPPED comment glyph is left as-is (only 1 across scope: U+2705 scripts/wakeup_prune.py, emoji -> P8). commit `5e74ed48`.
