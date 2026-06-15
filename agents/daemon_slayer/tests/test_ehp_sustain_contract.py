@@ -1,4 +1,4 @@
-"""ENGINE 1.122.0 (2026-06-14) - SUSTAIN contract-gap closure.
+"""ENGINE 1.121.0 (2026-06-14) - SUSTAIN contract-gap closure.
 
 Closes the former strict-xfail in ``test_wireable_sims_p1l3`` (the L3
 ``ZZZ_ResolvedContractGapDocs`` class): lifesteal/spellvamp/omnivamp resolve

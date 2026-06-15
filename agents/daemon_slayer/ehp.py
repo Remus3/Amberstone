@@ -459,7 +459,7 @@ def _vamp_heal_pool(
     """Convert a vamp fraction (lifesteal / spellvamp / omnivamp) into a
     per-fight heal magnitude off the representative AA-damage throughput.
 
-    ENGINE 1.28.0 (2026-05-21) shipped this for lifesteal; ENGINE 1.122.0
+    ENGINE 1.28.0 (2026-05-21) shipped this for lifesteal; ENGINE 1.121.0
     (2026-06-14) generalises the SAME formula to the spellvamp / omnivamp
     stats so every vamp kind the stat schema resolves feeds the EHP sustain
     term (closes the ``test_wireable_sims_p1l3`` CONTRACT-GAP: vamp stats
@@ -497,7 +497,7 @@ def _lifesteal_heal(
     """Lifesteal stat -> per-fight heal magnitude (ENGINE 1.28.0).
 
     Thin back-compatible wrapper over the generalised ``_vamp_heal_pool``
-    (ENGINE 1.122.0). Kept as a named entry point because the Phase-6 heal
+    (ENGINE 1.121.0). Kept as a named entry point because the Phase-6 heal
     tests and the ``compute_ehp`` lifesteal site import it directly. See
     ``_vamp_heal_pool`` for the formula + the pre-mitigation-approximation
     rationale.
@@ -706,7 +706,7 @@ class EhpResult:
     # Default 1.0 (no window) leaves the EHP fields byte-identical; > 1.0 surfaces
     # the amortized uplift. Same sibling convention as passive_revive_mult.
     survival_window_mult: float = 1.0
-    # ENGINE 1.122.0 (2026-06-14): SUSTAIN contract-gap closure. An explicitly
+    # ENGINE 1.121.0 (2026-06-14): SUSTAIN contract-gap closure. An explicitly
     # named effective-survivability term that folds the damage-conversion VAMP
     # heal (lifesteal + spellvamp + omnivamp) into the EHP, closing the
     # test_wireable_sims_p1l3 CONTRACT-GAP (vamp stats resolved but never named
@@ -1231,7 +1231,7 @@ def compute_ehp(
         + true_ehp * enemy_true_share
     )
 
-    # ENGINE 1.122.0 (2026-06-14): SUSTAIN contract-gap closure. A SIBLING
+    # ENGINE 1.121.0 (2026-06-14): SUSTAIN contract-gap closure. A SIBLING
     # effective-survivability term (the cc_blended_ehp pattern) that NAMES the
     # vamp-inclusive EHP and folds in the previously-unconsumed spellvamp /
     # omnivamp stats. blended_ehp above is UNTOUCHED (byte-identical): it
