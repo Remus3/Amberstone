@@ -1331,6 +1331,20 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.123.0 (P6 lolmath build-engine parity G4, 2026-06-15 - boots-pool refresh to the
+16.12.1 tier-3 boots. DDragon 16.12.1 added Summoner's-Rift-only tier-3 upgraded boots
+(Spellslinger's Shoes / Gunmetal Greaves / Armored Advance / Chainlaced Crushers /
+Crimson Lucidity / Swiftmarch / Immortal Path) and pulled Mobility Boots + Symbiotic Soles
+from the store; the DS build planner still emitted only legacy tier-2 boots (Mercury's
+Treads / Berserker's Greaves), diverging from the lolmath oracle. core/build_order now
+upgrades the selected tier-2 family to its tier-3 form on SR (map 11) via _BOOTS_SR_UPGRADE
+- ARAM (map 12) and Arena (map 30) have NO tier-3 form and keep tier-2 - and the assassin
+default moves off the out-of-store Mobility Boots to Ionian -> Crimson Lucidity. No engine
+MATH change: the ranker is byte-identical and never imports core/build_order; this re-selects
+the synthetic boots slot, so all build_orders tables (flat + HZ-B1 + HZ-B2 variants,
+sr / aram / arena) were regenerated. DS :8893 bounced -> 1.123.0. Deferred: Arena should use
+the 22xxxx boots mirror (3xxx are map30=False) - logged for a follow-up slice.)
+
 1.122.0 (P6 lolmath build-engine parity G1, 2026-06-15 - kit-damage-axis archetype
 correction. DDragon class tags encode ROLE, not the AD-vs-AP axis a kit scales on, so
 core/archetype_picks resolved AP-scaling kits to an AD scorer (Fighter -> bruiser on Gwen

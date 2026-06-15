@@ -5344,7 +5344,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "3508",
-          "3117",
+          "3158",
           "3031",
           "3036",
           "3179",
@@ -7066,7 +7066,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "3153",
-          "3117",
+          "3158",
           "3179",
           "3036",
           "3031",
@@ -8214,7 +8214,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "6610",
-          "3117",
+          "3158",
           "3179",
           "3036",
           "6696",
@@ -8296,7 +8296,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "3179",
-          "3117",
+          "3158",
           "3036",
           "6696",
           "6610",
@@ -8952,7 +8952,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "3153",
-          "3117",
+          "3158",
           "228002",
           "3100",
           "3089",
@@ -9690,7 +9690,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "228002",
-          "3117",
+          "3158",
           "3100",
           "3089",
           "4645",
@@ -10920,7 +10920,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "3508",
-          "3117",
+          "3158",
           "3031",
           "3036",
           "3179",
@@ -13626,7 +13626,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "3179",
-          "3117",
+          "3158",
           "6696",
           "3036",
           "6610",
@@ -14114,8 +14114,8 @@
     ],
     "level": 11
   },
-  "engine_version": "1.122.0",
-  "generated_at": "2026-06-15T07:06:08Z",
+  "engine_version": "1.123.0",
+  "generated_at": "2026-06-15T14:53:55Z",
   "mode": "aram",
   "schema": "build_order_precompute/v1",
   "version": "16.12.1"
