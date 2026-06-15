@@ -87,16 +87,32 @@ _UNIT_SUFFIX: dict[str, str] = {
 # no-double rule isn't affected). Boots slot lands at position 2 (after
 # the first big item) - matches typical SR timing.
 #
-# Boots-family IDs (DDragon 16.10.1; verified via items.json):
+# Boots-family IDs (DDragon 16.12.1; verified via data/meta_build/ddragon/
+# 16.12.1/item.json). Holds the tier-2 base boots (purchasable + the
+# rune-granted Symbiotic Soles) AND the SR-only tier-3 upgrades, so the
+# owned-boots ownership scan recognizes whichever form a player already
+# holds. (G4 boots-pool refresh, 2026-06-15 - lolmath-parity sweep.)
 _BOOTS_IDS: frozenset = frozenset({
+    # tier-2 base (map 11 + 12). 3117/3010 are no longer in-store but stay
+    # for ownership detection of a legacy / rune-granted hold.
     "3006",   # Berserker's Greaves
     "3009",   # Boots of Swiftness
-    "3010",   # Symbiotic Soles (rune-granted, also a Mythic-boot family)
+    "3010",   # Symbiotic Soles (rune-granted)
     "3020",   # Sorcerer's Shoes
     "3047",   # Plated Steelcaps
     "3111",   # Mercury's Treads
-    "3117",   # Mobility Boots
+    "3117",   # Mobility Boots (removed from store 16.x - detect-only)
     "3158",   # Ionian Boots of Lucidity
+    # tier-3 upgrades (SR / map 11 only - no ARAM (12) / Arena (30) form)
+    "3013",   # Synchronized Souls (<- Symbiotic Soles)
+    "3168",   # Immortal Path (<- Gluttonous Greaves)
+    "3170",   # Swiftmarch (<- Boots of Swiftness)
+    "3171",   # Crimson Lucidity (<- Ionian Boots)
+    "3172",   # Gunmetal Greaves (<- Berserker's Greaves)
+    "3173",   # Chainlaced Crushers (<- Mercury's Treads)
+    "3174",   # Armored Advance (<- Plated Steelcaps)
+    "3175",   # Spellslinger's Shoes (<- Sorcerer's Shoes)
+    "3176",   # Forever Forward (<- Synchronized Souls)
 })
 _BOOTS_NAMES: dict[str, str] = {
     "3006": "Berserker's Greaves",
@@ -107,11 +123,39 @@ _BOOTS_NAMES: dict[str, str] = {
     "3111": "Mercury's Treads",
     "3117": "Mobility Boots",
     "3158": "Ionian Boots of Lucidity",
+    "3013": "Synchronized Souls",
+    "3168": "Immortal Path",
+    "3170": "Swiftmarch",
+    "3171": "Crimson Lucidity",
+    "3172": "Gunmetal Greaves",
+    "3173": "Chainlaced Crushers",
+    "3174": "Armored Advance",
+    "3175": "Spellslinger's Shoes",
+    "3176": "Forever Forward",
 }
-# Archetype/scorer -> default boots family (fallback when enemy AD/AP
-# split is balanced). Carry/dps/marksman -> Berserker's; mage/burst ->
-# Sorcerer's; tank/ehp/bruiser -> Steelcaps; assassin -> Mobility;
-# enchanter/hps/ability -> Ionian.
+# SR-only tier-2 -> tier-3 boots upgrade (DDragon 16.12.1 `into`, each
+# verified map11=True / map12=False / map30=False). The build_orders table
+# is the END-STATE 6-item build, so on Summoner's Rift it shows the
+# upgraded boot a player finishes on (matches the lolmath parity oracle);
+# ARAM (map 12) and Arena (map 30) have NO tier-3 upgrade and keep the
+# tier-2 boot. Mobility Boots (3117) has no upgrade and is out of store,
+# so it is no longer a selection target (assassin default moved to Ionian).
+_BOOTS_SR_UPGRADE: dict[str, str] = {
+    "3006": "3172",  # Berserker's Greaves -> Gunmetal Greaves
+    "3008": "3168",  # Gluttonous Greaves  -> Immortal Path
+    "3009": "3170",  # Boots of Swiftness  -> Swiftmarch
+    "3010": "3013",  # Symbiotic Soles     -> Synchronized Souls
+    "3020": "3175",  # Sorcerer's Shoes    -> Spellslinger's Shoes
+    "3047": "3174",  # Plated Steelcaps    -> Armored Advance
+    "3111": "3173",  # Mercury's Treads    -> Chainlaced Crushers
+    "3158": "3171",  # Ionian Boots        -> Crimson Lucidity
+}
+# Mode strings treated as Summoner's Rift for the tier-3 boots upgrade.
+_SR_MODES: frozenset = frozenset({"SR", "CLASSIC"})
+# Archetype/scorer -> default tier-2 boots family (fallback when enemy
+# AD/AP split is balanced); _select_boots upgrades to the tier-3 form on
+# SR. Carry/dps/marksman -> Berserker's; mage/burst -> Sorcerer's;
+# tank/ehp/bruiser -> Steelcaps; assassin/enchanter/hps/ability -> Ionian.
 _DEFAULT_BOOTS_BY_ARCHETYPE: dict[str, str] = {
     "carry":     "3006",
     "marksman":  "3006",
@@ -123,7 +167,8 @@ _DEFAULT_BOOTS_BY_ARCHETYPE: dict[str, str] = {
     "hybrid":    "3047",
     "mage":      "3020",
     "burst":     "3020",
-    "assassin":  "3117",
+    "assassin":  "3158",   # was 3117 Mobility (out of store 16.x);
+                           # Ionian -> Crimson Lucidity on SR (CDR for resets)
     "enchanter": "3158",
     "support":   "3158",
     "hps":       "3158",
@@ -143,11 +188,12 @@ def _select_boots(
     archetype: str,
     target_armor: float,
     target_mr: float,
+    mode: str = "SR",
 ) -> tuple[str, str]:
     """Pick the appropriate boots family given the operator's archetype +
     enemy AD/AP comp signal. Returns ``(item_id, item_name)``.
 
-    Decision order:
+    Decision order (resolves a tier-2 family, then upgrades on SR):
       1. Strong AP/CC pressure (``target_mr >= 60``) -> Mercury's Treads
          (MR + tenacity). Exception: dps/carry/marksman archetypes keep
          Berserker's even vs heavy AP since the AS loss hurts more than
@@ -156,16 +202,24 @@ def _select_boots(
          (armor). Exception: mage/burst/enchanter/hps keep their default
          since CDR/penetration outweighs armor against caster threats.
       3. Default: archetype map (carry -> Berserker, mage -> Sorcerer,
-         tank -> Steelcaps, assassin -> Mobility, enchanter -> Ionian).
+         tank -> Steelcaps, assassin/enchanter -> Ionian).
+
+    On Summoner's Rift (``mode`` in :data:`_SR_MODES`) the resolved tier-2
+    family is upgraded to its tier-3 boot via :data:`_BOOTS_SR_UPGRADE`
+    (the end-state form the build finishes on). ARAM (map 12) and Arena
+    (map 30) have no tier-3 upgrade and keep the tier-2 boot.
     """
     arch = (archetype or "carry").strip().lower() or "carry"
     is_dps_axis = arch in ("dps", "carry", "marksman", "adc")
     is_caster_axis = arch in ("mage", "burst", "enchanter", "hps", "ability", "support")
     if target_mr >= 60.0 and not is_dps_axis:
-        return ("3111", _BOOTS_NAMES["3111"])
-    if target_armor >= 100.0 and not is_caster_axis:
-        return ("3047", _BOOTS_NAMES["3047"])
-    iid = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
+        iid = "3111"
+    elif target_armor >= 100.0 and not is_caster_axis:
+        iid = "3047"
+    else:
+        iid = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
+    if str(mode).strip().upper() in _SR_MODES:
+        iid = _BOOTS_SR_UPGRADE.get(iid, iid)
     return (iid, _BOOTS_NAMES.get(iid, "Boots"))
 
 
@@ -386,6 +440,7 @@ def plan_build_order(
             arch,
             float(target_armor),
             float(target_mr),
+            mode=str(mode),
         )
 
     # next_slot tracks the 1-based slot for the NEXT entry appended to
