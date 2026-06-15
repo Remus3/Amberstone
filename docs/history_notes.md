@@ -48,6 +48,35 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 27: P6 LOLMATH PARITY G5 item-pool gaps CLOSED (no pool gap) [item 424]
+
+- G5 premise FALSIFIED root-cause-first: there is NO DS item-pool gap. Tier-0 diagnosis only - NO ENGINE bump, NO build_orders regen, NO DS :8893 restart, NO Share re-sync (5 doc/probe files, 0 source/engine/data change).
+- DS candidate pool = `agents/daemon_slayer/rank.py::_filter_candidates` over ALL 706 items.json (purchasable + terminal `into` empty + map-legal + budget + 2-item deny-set); NO per-archetype whitelist. REAL SR pool gaps = 0/48 audited - every lolmath-favored item resolves to a canonical map11 id and is a live candidate. (Probe v1 false-flagged 42 via the 6-digit `22..` Arena ALIAS ids map11=False - `reference_items_index_alias_ids`; v2 collects ALL ids/name, canonical short id is in-pool.)
+- Live-engine proof at ENGINE 1.123.0 (not the stale 1.120.0 snapshot): every "missing" item is IN the ranking, just below top-6 - Talon Umbral #7 / Hubris #13 / Profane #33; Lux Liandry's #23 / Blackfire #16; Jhin Collector #12. DS recommends only ~60 distinct items / 172 champs x 4 comps. The breadth gap is SCORER VALUATION (item passives needing kill-state: Hubris/Collector/Death's Dance; AP DoT burn vs single-rotation `ability` model: Liandry's/Blackfire; lethality-vs-sustained tradeoff in `burst`), NOT pool membership. Lethality pen itself is modeled (V14.1 1:1, `effects.py:326`).
+- Durable probes: `ops/audit/lolmath_ds_sweep/g5_pool_probe.py` + `g5_live_rank_probe.py`. Updated `ops/audit/P6_LOLMATH_PARITY.md` G5 -> CLOSED + `ROADMAP.md` P6 line + LEDGER 424.
+- DONT-REDO: do NOT re-pitch a per-archetype pool whitelist or a "missing-item" pool addition (pool is complete, probe-proven). The scorer-valuation residual is G3/G6-class design -> Gemini-consult. NEXT P6 = G2 re-measure (after G1/G4); G3 runes / G6 cost-model / G7 harness + G5 residual = Gemini-consult first.
+
+---
+
+# 2026-06-15 - DEEP-AUDIT cycle 26: P6 LOLMATH PARITY G4 boots-pool refresh [item 423]
+
+- Boots-pool refresh to the 16.12.1 SR-only tier-3 boots. The lolmath-vs-DS sweep flagged DS emitting legacy tier-2 (Mercury's x140 / Berserker's x30) while lolmath uses the upgraded boots. Probed item.json (NOT assumed): 16.12.1 has 7 SR-only tier-3 upgrades (each `into` map11=True / map12=False / map30=False) + Mobility Boots (3117) and Symbiotic Soles (3010) are inStore=False (out of store).
+- Fix `core/build_order._select_boots` (commit `22a508e7`): SR-gated `_BOOTS_SR_UPGRADE` upgrades the resolved tier-2 family to its tier-3 form on SR (map 11); ARAM (12) + Arena (30) keep tier-2 (no tier-3 there); assassin default off the out-of-store Mobility Boots -> Ionian -> Crimson Lucidity. tier-3 ids/names added for ownership detection. All 3 generators route through `plan_build_order`, so the fix reaches all 9 tables.
+- No engine MATH change: the DS ranker is byte-identical + never imports `core/build_order`; the AH/tenacity registries (3171=20AH / 3173=30%ten) + `items.json` already carried the tier-3 ids. ENGINE 1.122.0 -> 1.123.0 (QUOTED-literal-only bump, avoided the item-422 bare-string regress).
+- Gate (Tier-2): `tests/test_build_order_boots.py` rewritten 29; DS-dir 7095p/1s/1942sub; tests/ 7943p/2s/109sub; all 9 tables regenerated + verified (SR tier-3, ARAM/Arena tier-2, 0 Mobility); DS :8893 + live RC (pid 1736 -> 8024) restarted -> 1.123.0; Share --check in-sync (336). docs `77e5ed20`; CI 27558021669 GREEN. Durable regen helper `ops/audit/p6g4_regen.py`.
+- DONT-REDO: G4 boots refresh DONE. NEXT P6 = G5 item-pool gaps (pairs w/ G1+G4 - right axis needs right pool: lethality / AP-on-hit / current items per archetype), then G2 re-measure; G3 runes / G6 cost-model / G7 harness = Gemini-consult first. DEFERRED follow-up: Arena should use the 22xxxx boots mirror (3xxx are map30=False) - pre-existing, out of G4 SR scope.
+
+---
+
+# 2026-06-14 - DEEP-AUDIT cycle 24: P3 DS-engine ASCII sweep slice B1b [item 420]
+
+- Completes the DS-engine ASCII retro-sweep B1a began. B1a swept comment+docstring tokens; B1b sweeps the residual STRING-token glyphs: 76 across 9 .py (_effects_data/burst/dps/ability_dps/hybrid/server/beam/ehp/rank - emit-notes / f-string display / server HTML help) + 674 in the 4 registry JSONs' _meta description/rationale fields (champion_block_index 651 / form_index 11 / archetype_weights 9 / max_priority 3; glyph-free outside _meta, no test asserts on it). 750 subs / 13 files. DS tree now 100% ASCII except CHANGELOG.md (.md, Share-excluded -> P8). commit `d8f7f93c`.
+- Per-hit judgement (the workmap-flagged load-bearing class, NOT a sed): sole structural consumer tree-wide = tests/test_effects_expansion.py:3892 (re.search on the "armor X -> Y" emit-note), regex + stale comment updated in lockstep. Production DS never split/regex these (combo `' -> '.join` is join-only; dashboard renders DS notes as opaque passthrough). The non-DS aram_coach wire-arrow + phase2/snapshot `->` are a SEPARATE slice (B2/A3b-2), untouched. Mappings = cycle 19-23 GLYPH_MAP (-> x / <= alpha beta *) with ONE override: beam.py:142 item-name separator U+00B7 -> " / " (separator not multiply); server.py's 2 U+00B7 ARE multiply (alpha*dps + beta*ehp) so stay "*".
+- Gate (Tier-2, DS tree + Share): NEW durable ops/audit/p3c24_b1b_sweep.py (transform) + p3c24_token_equiv.py PROOF PASS 9/9 (every NON-string token byte-identical to HEAD = engine logic untouched; every changed string token == transform(HEAD-token)); py_compile 9/9; JSON parse 4/4; DS-dir 7095p/1s/1942sub exit 0 (byte-identical count to B1a, regex passes); tests/ 7887p/2s/109sub exit 0; ds_share_sync rewrote Share/src (336 files) + --check in-sync. NO ENGINE bump (computed output byte-identical, proven). An accidental operator REBOOT mid-slice restarted RC-DaemonSlayer -> live :8893 already serves ASCII notes (re-probed 1.121.0 / 16.12.1 / 172 champs healthy); NO manual DS restart, NO live RC restart.
+- DONT-REDO: B1b string+JSON sweep DONE + idempotent (re-run = 0). DS-engine tree ASCII-COMPLETE for code+data; only CHANGELOG.md (.md) remains -> P8. NEXT cycle 25 = A3b-2 non-DS load-bearing code-strings (aram/brawl/arena coach prompt banners + item_build wire-arrow B2 coordinated coach+Haiku-prompt+11 peer tests, rebuild_sim_fixtures golden arrows, role_profiles bullets, adaptation_hint emit+rsplit, tft LLM prompts, coach_integration, builders_last_match/defensive_picks/aftergame_summary dashboard text); then B3 web glyphs (UI-audit-gated). Full map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-14 - DEEP-AUDIT cycle 22: P3 SAFE-BULK ASCII glyph sweep slice A3b-1 [item 418]
 
 - Extended tools/p3_ascii_sweep.py with a durable --log-apply mode (+ --log-dry/--log-unmapped): same conservative GLYPH_MAP applied to glyphs inside string-literal args of a logging call (log/logger/_log.{debug,info,warning,error,critical,exception}) or print(), AST-scoped via char-offset splice. Diagnostic log/console output = closest string-class to a comment (never asserted on by a glyph - the only tests holding these glyphs are the deferred aram peer suite + snapshot fixtures, neither logs; never split-on; never an LLM prompt). commit `e3124286`.
@@ -56,10 +85,6 @@
 - Gate (Tier-1, suite-gated since strings change - NOT the comment/docstring token-equivalence class): py_compile 22/22 + tool OK; tests/ 7887p/2s/109sub exit 0 BYTE-IDENTICAL to baseline; glyph-swap PROOF (HEAD vs working difflib) 43 hunks all GLYPH_MAP / 0 unexpected; idempotent (--log-dry re-run = 0). NO ENGINE bump, NO DS :8893 restart, NO live RC restart.
 - DONT-REDO: A3b-1 log/print-string sweep DONE + idempotent. NEXT cycle 23 = A3b-2 = the genuinely LOAD-BEARING code-string glyphs (per-hit, NOT mechanical): coach prompt banners + item_build wire-arrow aram/brawl/arena (overlaps B2), role_profiles emitted bullets, scripts/rebuild_sim_fixtures golden fixtures (the wire arrow that audit_ddragon_items re.split + aram_coach split on), adaptation_hint_* (emit + rsplit " . "), tft_pbe_*/tft_vision_reader LLM prompts, extract_panels generated-JS (B3), coach_integration prompts, builders_last_match/defensive_picks/aftergame_summary user-facing dashboard text. Coordinated coach/prompt/splitter/fixture/peer-test edits, NOT a sweep. Full map: ops/audit/P3_WORKMAP.md.
 - /done caught + fixed a PRE-EXISTING CI red (red since item 416/417): cycles 19/20/21 swept 6 Share-mirrored DS tools' comments/docstrings (daemon_slayer_extract/abilities_extract, ds_block_scanner, ds_execute_prefilter, ds_max_priority_prefilter, ds_unmapped_key_prefilter) WITHOUT re-running ds_share_sync -> the CI-only `--check` drift guard went red. Fix: re-synced Share/src (336 files, engine 1.121.0) + restamped MANIFEST, commit `b558b12b`; CI run 27521040171 GREEN. LESSON: a comment/docstring sweep over tools/ that hits a Share-mirrored daemon_slayer_*/ds_* file STILL drifts Share even though it is ASCII-only - run ds_share_sync before push (this is why cycle 22 deliberately EXCLUDED those mirrored extractors). NOTE: `scripts/wakeup_prune.py --keep 3` re-SORTS the entire docs/history_notes.md (4871-line churn, 0 content lost) - SKIPPED per no-history-rewrite; WAKEUP already holds exactly 3 sessions.
-
----
-
-(item 417 - DEEP-AUDIT cycle 21 P3 slice A3a docstring sweep, + item 416 - cycle 20 P3 slice A2 comment-token sweep, + item 415 - cycle 19 P3 slice A1 comment-token sweep, + item 414 DS EHP SUSTAIN ENGINE 1.121.0 - all relocated to docs/history_notes.md cycle-22/23/24 wraps)
 
 ---
 
@@ -9011,6 +9036,10 @@ REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
 - memory feedback_execution_efficiency_rules.md + MEMORY.md index.
 - Verify: ruff clean + py_compile 0 + hygiene 12p + clean-UTF-8 smokes all correct (PowerShell-pipe BOM was a smoke artifact, not a script defect).
 - DONT-REDO: the per-edit full-suite tax is intentionally gone; text_first_guard = 2 readers only (do not broaden); next session bootstraps with the NEW tiered rules - classify edits into tiers, don't pay the Tier-2 tax on cosmetic/local edits.
+
+---
+
+(item 417 - DEEP-AUDIT cycle 21 P3 slice A3a docstring sweep, + item 416 - cycle 20 P3 slice A2 comment-token sweep, + item 415 - cycle 19 P3 slice A1 comment-token sweep, + item 414 DS EHP SUSTAIN ENGINE 1.121.0 - all relocated to docs/history_notes.md cycle-22/23/24 wraps)
 
 ---
 
