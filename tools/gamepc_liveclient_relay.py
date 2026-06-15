@@ -113,7 +113,7 @@ def upload(data: bytes) -> None:
 
 
 def loop() -> None:
-    print(f"liveclient relay → {LEGION_URL} every {INTERVAL}s")
+    print(f"liveclient relay -> {LEGION_URL} every {INTERVAL}s")
     while True:
         t0 = time.time()
         try:

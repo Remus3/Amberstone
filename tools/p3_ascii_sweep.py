@@ -82,6 +82,92 @@ def _apply_map(s: str):
     return "".join(out), changed, unmapped
 
 
+LOG_ATTRS = {"debug", "info", "warning", "warn", "error", "critical", "exception"}
+LOG_ROOTS = {"log", "logger", "logging", "_log", "_logger", "LOG", "LOGGER", "_LOG"}
+
+
+def _attr_root_name(node):
+    while isinstance(node, ast.Attribute):
+        node = node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def _is_log_or_print_call(call):
+    """True iff call is print(...) or <log-root>.<level>(...). Diagnostic-only."""
+    f = call.func
+    if isinstance(f, ast.Name) and f.id == "print":
+        return True
+    if isinstance(f, ast.Attribute) and f.attr in LOG_ATTRS:
+        return _attr_root_name(f.value) in LOG_ROOTS
+    return False
+
+
+def _logstr_node_spans(path: Path):
+    """Abs (start,end) char offsets of every str-Constant inside a log/print call.
+
+    Walks each target call and collects every string Constant descendant.
+    Diagnostic log/console output is the closest string-class to a comment:
+    never asserted on by a glyph (the only tests holding these glyphs are the
+    deferred aram peer suite + the snapshot fixtures, neither of which logs),
+    never split-on, never an LLM prompt.
+
+    LIMITATION (CPython 3.14 / PEP 701): an f-string literal SEGMENT that follows
+    an interpolation reports a shifted col_offset, so a glyph there is silently
+    MISSED (never mis-spliced - the wrong slice maps to a no-op; py_compile and a
+    residual re-scan both stay clean). Always re-scan with --log-dry after a
+    --log-apply and hand-fix any residual in a post-interpolation f-string segment.
+    """
+    text = path.read_bytes().decode("utf-8")
+    tree = ast.parse(text)
+    lines = text.split("\n")
+    offs = [0]
+    for ln in lines:
+        offs.append(offs[-1] + len(ln) + 1)
+    spans = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and _is_log_or_print_call(node):
+            for sub in ast.walk(node):
+                if isinstance(sub, ast.Constant) and isinstance(sub.value, str):
+                    if sub.end_lineno is None:
+                        continue
+                    abs_s = offs[sub.lineno - 1] + sub.col_offset
+                    abs_e = offs[sub.end_lineno - 1] + sub.end_col_offset
+                    spans.append((abs_s, abs_e))
+    return text, spans
+
+
+def sweep_file_logstrings(path: Path, apply: bool):
+    """Returns (changed_count, unmapped_set). Glyphs in log/print str-args only."""
+    raw = path.read_bytes()
+    text = raw.decode("utf-8")
+    if _is_ascii(text):
+        return 0, set()
+    try:
+        text, spans = _logstr_node_spans(path)
+    except (SyntaxError, ValueError) as exc:
+        print(f"  AST-FAIL {path}: {exc}", file=sys.stderr)
+        return 0, set()
+    if not spans:
+        return 0, set()
+    edits = []
+    changed = 0
+    unmapped = set()
+    for abs_s, abs_e in spans:
+        seg = text[abs_s:abs_e]
+        if _is_ascii(seg):
+            continue
+        out, n, um = _apply_map(seg)
+        if n:
+            edits.append((abs_s, abs_e, out))
+            changed += n
+            unmapped |= um
+    if apply and edits:
+        for abs_s, abs_e, out in sorted(edits, reverse=True):
+            text = text[:abs_s] + out + text[abs_e:]
+        path.write_bytes(text.encode("utf-8"))
+    return changed, unmapped
+
+
 def _docstring_spans(path: Path):
     """Return set of (start_row, end_row) for module/func/class docstrings."""
     tree = ast.parse(path.read_bytes().decode("utf-8"))
@@ -202,14 +288,20 @@ def _iter_targets(paths):
 
 
 DOC_MODES = ("--doc-dry", "--doc-apply", "--doc-unmapped")
+LOG_MODES = ("--log-dry", "--log-apply", "--log-unmapped")
 
 
 def main(argv):
     mode = argv[0] if argv else "--dry-run"
     doc = mode in DOC_MODES
-    apply = mode in ("--apply", "--doc-apply")
-    fn = sweep_file_docstrings if doc else sweep_file
-    label = "docstring" if doc else "comment"
+    logm = mode in LOG_MODES
+    apply = mode in ("--apply", "--doc-apply", "--log-apply")
+    if logm:
+        fn, label = sweep_file_logstrings, "log/print-string"
+    elif doc:
+        fn, label = sweep_file_docstrings, "docstring"
+    else:
+        fn, label = sweep_file, "comment"
     targets = list(_iter_targets(argv[1:]))
     total = 0
     all_unmapped = {}

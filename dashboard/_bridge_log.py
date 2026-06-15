@@ -104,7 +104,7 @@ def bridge_maybe_rotate(force: bool = False) -> None:
         tmp = BRIDGE_LOG_PATH.with_suffix(".jsonl.tmp")
         tmp.write_text("\n".join(keep) + "\n", encoding="utf-8")
         tmp.replace(BRIDGE_LOG_PATH)
-        _log.info("bridge log rotated: %d → %d lines",
+        _log.info("bridge log rotated: %d -> %d lines",
                   len(lines), len(keep))
     except OSError as exc:
         _log.debug("bridge rotate failed: %s", exc)

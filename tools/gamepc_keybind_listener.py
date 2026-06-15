@@ -103,7 +103,7 @@ def _post_respond(*, choice_index: int | None = None,
     try:
         with urllib.request.urlopen(req, context=_SSL_CTX, timeout=3) as r:
             payload = r.read()
-        _log.info("posted choice (idx=%s dismiss=%s) → %s",
+        _log.info("posted choice (idx=%s dismiss=%s) -> %s",
                   choice_index, dismiss, payload.decode("utf-8")[:120])
     except urllib.error.HTTPError as exc:
         # 404 is the common case: no decision is pending. Treat as info,

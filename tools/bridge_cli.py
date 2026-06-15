@@ -233,7 +233,7 @@ def cmd_post_result(args: argparse.Namespace) -> int:
             _mark_processed(args.task_id)
         _record_post("result", "peer")
         print(json.dumps({"posted": True, "task_id": args.task_id,
-                          "route": "core.bridge.send→peer",
+                          "route": "core.bridge.send->peer",
                           "detail": detail}, indent=2))
         return 0
 
@@ -253,7 +253,7 @@ def cmd_post_result(args: argparse.Namespace) -> int:
     if not args.no_mark:
         _mark_processed(args.task_id)
     print(json.dumps({"posted": True, "task_id": args.task_id,
-                      "route": "post→legion-rc", "ts": ack.get("ts")},
+                      "route": "post->legion-rc", "ts": ack.get("ts")},
                      indent=2))
     return 0
 
