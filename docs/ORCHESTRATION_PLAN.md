@@ -53,6 +53,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-D2 | haiku-zero | OPERATOR RUN FOCUS 2026-06-10 MINIMUM FIRST DELIVERABLE: make the rc-shell companion sidecar window user-movable/draggable (frameless window has NO drag region today). Add a drag region (-webkit-app-region: drag header strip or equivalent) + persist the user-moved position across restarts; keep click-through/interactive zones working. Tests where applicable (rc-shell test harness). | DONE | 0b2eea62 |
 | HZ-D3 | haiku-zero | Electron overlay continuation per docs/ELECTRON_OVERLAY.md: advance Phase 4 interactive controls (next unshipped control surface) and any remaining Phase 5 stabilization tail on the ?overlay=1 dashboard surface + rc-shell. Vanguard-safe constraints hold (DWM window, NO DXGI capture, Borderless). Headless-safe slices only; leave live-visual-only verification WIP with a note. | DONE | 33dc9b3a |
 | HZ-D4 | haiku-zero | Headless-upgrade charter sweep: one pass of the cost/latency 7-lever sweep (prompt-cache coverage, route TTL, polling cadences, log spam, model tier, task catalog, bundle parity) + the next HZ Haiku-to-ZERO lane increment per ROADMAP (validate-before-flip rule holds; haiku stays interim floor until a precompute is validated vs a real game). Ship only net-positive fixes with green tests, else record CLEAN no-commit with evidence in the Findings log. | DONE | d446ea80+b54d040e |
+| P6-G1 | ds-engine | P6 LOLMATH BUILD-ENGINE PARITY G1 (correctness, HIGHEST): DS built the WRONG damage axis - core/archetype_picks resolved the scorer archetype from the DDragon CLASS tag (role), ignoring the kit's lolmath.damage_distribution, so AP kits (Gwen/Teemo/Rumble/Diana) built crit/AD and AD assassin Pyke built AP enchanter. Fix re-bases the DEFAULT archetype onto the kit axis (below operator picks); tank axis-neutral. 18 default-source champs re-based (11 sweep-named + 7 AP assassins the sweep missed: Akali/Ekko/Evelynn/Fizz/Kassadin/Katarina/LeBlanc + Pyke AP->AD). All 9 build_orders tables regenerated (flat+HZ-B1+HZ-B2, sr/aram/arena) at ENGINE 1.121.0 -> 1.122.0; DS :8893 restarted; Share re-synced. Per-champ tests (29) + table-axis parity (18); DS 7095 + RC suites green. NOT flipped (kit axis sides with DS or axis-neutral): XinZhao/Taric + 6 tank-archetype AP kits (-> BACKLOG role call). archetype_mismatch.py was a red herring (UI nudge). | DONE | 1d7da921 |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -65,6 +66,16 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-15 P6-G1 NEW WORK SURFACED (FUTURE, -> BACKLOG): 6 champions are AP-dominant
+  kits (Amumu 0.77 / Galio 0.93 / Nunu 0.88 / Singed 0.91 / TahmKench 0.75 / Blitzcrank
+  0.61 magical) but resolve to the axis-neutral `tank` archetype, so G1's axis correction
+  left them as tanks (tank kits want durability, not a glass-AP pivot). The lolmath sweep
+  flagged them as "DS != AP" but converting a tank to a mage is a ROLE reassignment / split
+  (jungle-tank vs AP-mid Amumu), a product-direction call - NOT an axis-correctness bug.
+  Deferred: needs an operator decision on whether RC should offer a per-champ AP-mode for
+  these (a secondary-archetype surface), not a blind default flip. Also confirmed: G1's rule
+  is data-driven (champions.json), so future champs/patches self-correct - no champ list to
+  maintain.
 - 2026-06-10 CYCLE-4 REGRESS AUDIT REFUTED by ground truth + gate edge pins added.
   The cycle-3 audit claimed dashboard/_deterministic_coaching.py changed with no
   accompanying test and that tests/conftest.py + the gate tests were missing from
