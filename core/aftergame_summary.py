@@ -323,7 +323,7 @@ def _pick_advice(metrics: dict, meta: dict, goods: list[str], bads: list[str]) -
     return {
         "advice_headline": headline,
         "advice_objective": objective,
-        "key_points_review": " · ".join(key_points),
+        "key_points_review": " | ".join(key_points),
         "clips_review": clips_review,
     }
 
@@ -340,7 +340,7 @@ def _game_sense_trend(champ: str, mode: str, phase: str) -> str:
     ordered = sorted(freq.items(), key=lambda kv: -kv[1])
     top = ordered[:4]
     total = sum(freq.values())
-    return " · ".join(f"{n}× {w}" for w, n in top) + f" (of {total})"
+    return " | ".join(f"{n}x {w}" for w, n in top) + f" (of {total})"
 
 
 def _pick_digest(meta: dict, metrics: dict) -> dict:

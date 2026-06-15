@@ -115,7 +115,7 @@ _KNOWN_BURSTERS = {
 _DEFENSIVE_ITEMS = [
     # ARMOR / vs AD
     {"id": "3047", "name": "Plated Steelcaps", "category": "armor",
-     "tags": ["boots"], "reason": "+25 armor + 10% basic-attack DR · cheap"},
+     "tags": ["boots"], "reason": "+25 armor + 10% basic-attack DR - cheap"},
     {"id": "3143", "name": "Randuin's Omen", "category": "armor",
      "tags": ["aoe-slow"], "reason": "75 armor + 300 HP + active slow vs ADCs"},
     {"id": "3110", "name": "Frozen Heart", "category": "armor",
@@ -234,7 +234,7 @@ def compute_threat_profile(enemy_champions: list, enemy_items: list | None = Non
     if ap_threat >= 6: bits.append(f"AP-heavy ({ap_threat:.0f}/10)")
     if burst_threat >= 4: bits.append(f"burst threat ({burst_threat:.0f}/10)")
     if tank_pressure >= 4: bits.append(f"tank pressure ({tank_pressure:.0f}/10)")
-    summary = " · ".join(bits) or f"balanced (AD {ad_threat:.0f} / AP {ap_threat:.0f})"
+    summary = " | ".join(bits) or f"balanced (AD {ad_threat:.0f} / AP {ap_threat:.0f})"
 
     return {
         "ad_threat":     round(ad_threat, 1),
