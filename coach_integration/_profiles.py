@@ -12,7 +12,7 @@ except Exception:
 
 CHAMPION_PROFILES = {
     "Jinx": (
-        "Jinx. Mechanics: flip Pow-Pow→Fishbones at objectives/grouped fights; "
+        "Jinx. Mechanics: flip Pow-Pow->Fishbones at objectives/grouped fights; "
         "passive reset = free second kill - always find the follow-up target. "
         "Spikes: Yun Tal (1 item), Runaan's (2-item AoE), IE (3-item crit cap). "
         "Positioning: absolute max range, front-to-back always. "
@@ -114,7 +114,7 @@ CHAMPION_PROFILES = {
         "Exploit: empowered Q auto after ability crits at 60%+ crit for burst window."
     ),
     "Samira": (
-        "Samira. Mechanics: Style rank D→S requires alternating melee/ranged combos and using ally CC. "
+        "Samira. Mechanics: Style rank D->S requires alternating melee/ranged combos and using ally CC. "
         "R (Inferno Trigger) only unlocks at S rank - time it after building rank in a fight. "
         "Daredevil Impulse passive dashes through/over enemies on autos. "
         "Spikes: The Collector (25% crit), Navori (25% crit), ISB (75% before IE). "
