@@ -218,7 +218,7 @@ def reset_block_index_cache() -> None:
 # (operator sign-off: option B, the multi-session lift; Part 1 = schema +
 # validator + resolver + flagship seeds, Part 2 = live liveclient
 # HP%/CC plumbing). A block_index value may now ALSO be a conditional
-# dict mapping a target-state condition → int|list[int]. ``"default"`` is
+# dict mapping a target-state condition -> int|list[int]. ``"default"`` is
 # the REQUIRED operator-commits / canonical-amped branch (the ranking
 # assumption - same model s191 established for "assume the amped
 # condition is met"). Every other key is a positive live-target-state
@@ -229,7 +229,7 @@ def reset_block_index_cache() -> None:
 # ``_BLOCK_STRATEGIES``): an unknown condition key is a registry typo and
 # MUST fail loudly here, never silently no-op.
 _BLOCK_INDEX_DEFAULT_KEY = "default"
-# Phase 5.9.29 (s229, 2026-05-16): generalized ``target_no_cc`` →
+# Phase 5.9.29 (s229, 2026-05-16): generalized ``target_no_cc`` ->
 # ``target_no_setup``. s228 scoped the non-HP condition to its CC-family
 # flagships (Zoe sleep / Evelynn charm), but the seed-expansion candidates
 # (Anivia E vs *Chilled*, Brand W vs *ablaze*, Cassiopeia E vs *poisoned*,
@@ -237,14 +237,14 @@ _BLOCK_INDEX_DEFAULT_KEY = "default"
 # debuff *type*: the operator's own ability applied an amp-enabling target
 # state; the amped block is the operator-commits/canonical assumption, the
 # downgrade is when that state is absent. Naming it after "CC" was a
-# false narrowing - 5+ concrete uses → the honest general term.
+# false narrowing - 5+ concrete uses -> the honest general term.
 _BLOCK_INDEX_CONDITIONS: frozenset[str] = frozenset({
-    "target_full_hp",    # live target above the execute/low-HP threshold →
+    "target_full_hp",    # live target above the execute/low-HP threshold ->
                           # pick the non-execute block (Kindred E 5% vs 7.5%
                           # missing-HP, Veigar/Morgana-class HP-threshold amps)
     "target_no_setup",   # the operator's amp-enabling target state - CC /
                           # sleep / charm / chill / ablaze / poison / mark -
-                          # is NOT present → pick the un-amped block (Zoe E
+                          # is NOT present -> pick the un-amped block (Zoe E
                           # sleep, Evelynn Q charm, Anivia E chill, Brand W
                           # ablaze). Type-agnostic by design.
 })
@@ -259,7 +259,7 @@ def _normalize_block_index_value(
     Phase 5.9.20 (s207): int (single block) or list[int] (sum-of-blocks
     - Camille W / Malphite W / Heimerdinger W / Katarina R).
     Phase 5.9.28 (s228): also a conditional ``dict`` mapping a
-    target-state condition → int|list[int]. The dict MUST contain a
+    target-state condition -> int|list[int]. The dict MUST contain a
     ``"default"`` key; every other key MUST be in
     ``_BLOCK_INDEX_CONDITIONS``; nested values are themselves normalized
     to int|list[int] (one level only - no nested conditional dicts).

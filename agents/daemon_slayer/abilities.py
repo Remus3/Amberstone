@@ -747,7 +747,7 @@ class AbilitiesSnapshot:
         return counts
 
 
-# ─── Singleton-style helpers (mirrors ult_rates.py pattern) ──────────────────
+# --- Singleton-style helpers (mirrors ult_rates.py pattern) ------------------
 
 _cache: AbilitiesSnapshot | None = None
 
