@@ -4,6 +4,15 @@
 
 ---
 
+# 2026-06-14 - DEEP-AUDIT cycle 23: P3 DS-engine ASCII sweep slice B1a [item 419]
+
+- First P3 touch of the DS-engine tree (the last tree the cycle 19-22 safe-sweep excluded as B1 LOAD-BEARING-COORDINATED). Carved the provable-safe comment+docstring subset off the load-bearing emit-arrow remainder via the EXISTING tools/p3_ascii_sweep.py --apply (COMMENT) + --doc-apply (DOCSTRING) over agents/daemon_slayer/*.py (top-level engine; tests/ already swept c17). commit `3b468861`.
+- 1649 comment + 65 docstring glyph subs / 19 .py, 0 unmapped (U+2500 `# --- ... ---` dividers dominate). String tokens untouched BY CONSTRUCTION -> dps.py "armor X -> Y" emit-note + the test_effects_expansion.py:3892 regex preserved; DS-engine residual non-ASCII 2036 -> 322 (all string-token emit-arrows, deferred B1b). stats.py latent-CRLF -> LF (reference_repo_eol_crlf_guard; git status hid it via eol=lf). Share mirror re-synced (ds_share_sync 19 files + --check in-sync).
+- Gate (Tier-2, DS tree + Share): NEW durable ops/audit/p3c23_token_equiv.py PROOF PASS 19/19 (every non-comment/non-docstring token incl all STRING literals byte-identical to HEAD); py_compile 19/19; DS-dir 7095p/1s/1942sub exit 0 BYTE-IDENTICAL pre/post. NO ENGINE bump (committed+live :8893 both 1.121.0 - synopsis P0 1.120.0 was STALE, re-probed live over HTTP; :8893 is plain HTTP not HTTPS), NO DS restart, NO live RC restart. CI 27523209366 GREEN.
+- DONT-REDO: B1a DONE + idempotent; do NOT re-run on the 19; do NOT extend comment/doc modes to the residual 322 STRING glyphs (load-bearing emit-arrows). NEXT cycle 24 = B1b DS-engine emitted-arrow slice (dps.py emit + test_effects_expansion regex + ds_share_sync together, Tier-2 full DS suite + :8893 restart) OR A3b-2 non-DS load-bearing code-strings (coach prompts/wire-arrow B2, role_profiles, rebuild_sim_fixtures, adaptation_hint, tft LLM prompts, coach_integration, dashboard text). Full map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-14 - DEEP-AUDIT cycle 22: P3 SAFE-BULK ASCII glyph sweep slice A3b-1 [item 418]
 
 - Extended tools/p3_ascii_sweep.py with a durable --log-apply mode (+ --log-dry/--log-unmapped): same conservative GLYPH_MAP applied to glyphs inside string-literal args of a logging call (log/logger/_log.{debug,info,warning,error,critical,exception}) or print(), AST-scoped via char-offset splice. Diagnostic log/console output = closest string-class to a comment (never asserted on by a glyph - the only tests holding these glyphs are the deferred aram peer suite + snapshot fixtures, neither logs; never split-on; never an LLM prompt). commit `e3124286`.
@@ -25,13 +34,4 @@
 
 ---
 
-# 2026-06-14 - DEEP-AUDIT cycle 20: P3 SAFE-BULK ASCII glyph sweep slice A2 [item 416]
-
-- Ran tools/p3_ascii_sweep.py (cycle-19 transformer, comment-token-only) on the A2 scope: tools/** + agents/ NON-DS source. 10426 comment-glyph subs / 69 .py rewritten. tools/ 7261 (134 scanned, 27 changed); agents non-DS 3165 (81 scanned). commit `74cca91d`.
-- EXCLUDED (own B1 Tier-2 cycle): agents/daemon_slayer/** + Share/** (DS load-bearing emit-arrows). The 2 changed tools/daemon_slayer_*.py are EXTRACTORS (in-scope tooling), NOT the engine. 3 FROZEN bridge_*.py swept comment-only (bridge_watcher_actions 314 / bridge_watcher_classify 71 / bridge_watcher_history 259; charter deep-audit frozen-auth + cycle-19 precedent). tests/** = 0 subs (comments already ASCII-clean). NO UNMAPPED comment glyph across either tree.
-- Gate: py_compile 69/69 OK; token-equivalence PROOF - for all 69 files every non-COMMENT token byte-identical pre/post (tokenize old=git-show-HEAD vs new working, EOL-normalized, compare (type,string) minus COMMENT). Exhaustive, strictly dominates a suite run for a comment-only edit -> per R5/R6 Tier-0 = py_compile only, NO suite, NO DS-dir, NO ENGINE bump, NO DS :8893 restart, NO live RC restart. CRLF files (agents/_supervisor_common.py) committed LF-normalized, diff balanced +/- (no churn).
-- DONT-REDO: A2 comment-token sweep DONE + idempotent (re-run = 0). NEXT cycle 21: P3 slice A3 = the STRING-token + module-docstring box-draw/arrow banners the tool intentionally skips (NOT comment-only -> per-hit judgement, suite-gate; some are print-banners a test may assert). Then B1 DS-engine agents/daemon_slayer/*.py + Share emit-arrows (LOAD-BEARING-COORDINATED, own Tier-2: full DS suite + Share re-sync + DS :8893 restart), B2 aram_coach item_build arrow, B3 web glyphs (UI-audit-gated). Full map: ops/audit/P3_WORKMAP.md.
-
----
-
-(item 415 - DEEP-AUDIT cycle 19 P3 slice A1 comment-token sweep, + item 414 DS EHP SUSTAIN ENGINE 1.121.0 - both relocated to docs/history_notes.md cycle-22 wrap)
+(item 416 - DEEP-AUDIT cycle 20 P3 slice A2 comment-token sweep, + item 415 - DEEP-AUDIT cycle 19 P3 slice A1 comment-token sweep, + item 414 DS EHP SUSTAIN ENGINE 1.121.0 - all relocated to docs/history_notes.md cycle-23/22 wrap)
