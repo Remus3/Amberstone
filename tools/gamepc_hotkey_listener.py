@@ -112,13 +112,13 @@ def post_choice(decision_id: str, choice: str) -> bool:
             req, timeout=HTTP_TIMEOUT, context=_SSL_CTX
         ) as r:
             ok = (200 <= r.status < 300)
-            log.info("POST %s choice=%s → %d", decision_id, choice, r.status)
+            log.info("POST %s choice=%s -> %d", decision_id, choice, r.status)
             return ok
     except urllib.error.HTTPError as exc:
-        log.warning("POST %s choice=%s → HTTP %s", decision_id, choice, exc.code)
+        log.warning("POST %s choice=%s -> HTTP %s", decision_id, choice, exc.code)
         return False
     except Exception as exc:
-        log.warning("POST %s choice=%s → %s", decision_id, choice, exc)
+        log.warning("POST %s choice=%s -> %s", decision_id, choice, exc)
         return False
 
 

@@ -92,7 +92,7 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
         # PNG. Sonnet sees the same content either way.
         cropped.save(buf, format="JPEG", quality=85, optimize=True)
         out = base64.b64encode(buf.getvalue()).decode("ascii")
-        log.debug("Vision crop: %dx%d → %dx%d (%d → %d KB)",
+        log.debug("Vision crop: %dx%d -> %dx%d (%d -> %d KB)",
                   w, h, cropped.width, cropped.height,
                   len(raw) // 1024, len(buf.getvalue()) // 1024)
         return out, "image/jpeg"

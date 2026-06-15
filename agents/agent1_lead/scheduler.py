@@ -309,7 +309,7 @@ class Scheduler:
                         f.write(new_content)
                         f.flush()
                         logger.info(
-                            "task_queue.jsonl compact: %d → %d lines",
+                            "task_queue.jsonl compact: %d -> %d lines",
                             non_empty, len(latest),
                         )
                         return (non_empty, len(latest))

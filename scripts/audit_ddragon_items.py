@@ -154,7 +154,7 @@ def main(download: bool = False) -> int:
         for n in fix_unresolved:
             print(f"    - {n}")
     else:
-        print("  ✓ all fixture names resolve")
+        print("  ok all fixture names resolve")
 
     # 2) History DB ids (directly numeric)
     db_ids = collect_from_db()
@@ -177,12 +177,12 @@ def main(download: bool = False) -> int:
         if len(missing) > 30:
             print(f"    ... and {len(missing) - 30} more")
     else:
-        print("  ✓ every id we care about has a png on disk")
+        print("  ok every id we care about has a png on disk")
 
     # 4) Optional download - tries DDragon then CommunityDragon fallback.
     if download and missing:
         print()
-        print(f"Downloading {len(missing)} missing icons (DDragon → CommunityDragon fallback)...")
+        print(f"Downloading {len(missing)} missing icons (DDragon -> CommunityDragon fallback)...")
         ok_dd = ok_cd = 0
         for iid in missing:
             dest = item_dir / f"{iid}.png"
@@ -198,7 +198,7 @@ def main(download: bool = False) -> int:
             for iid in still_missing[:10]:
                 print(f"    - {iid}")
         else:
-            print("  ✓ all pulled")
+            print("  ok all pulled")
 
     # Exit 0 if nothing missing, 1 otherwise (so CI-style use is possible)
     return 0 if not missing and not fix_unresolved else 1

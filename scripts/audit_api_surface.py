@@ -229,14 +229,14 @@ def main() -> int:
         out = Path(args.md)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(md, encoding="utf-8")
-        print(f"Wrote markdown report → {out}", file=sys.stderr)
+        print(f"Wrote markdown report -> {out}", file=sys.stderr)
     else:
         sys.stdout.write(md + "\n")
 
     if args.csv:
         out = Path(args.csv)
         write_csv(rows, out)
-        print(f"Wrote CSV → {out} ({len(rows)} rows)", file=sys.stderr)
+        print(f"Wrote CSV -> {out} ({len(rows)} rows)", file=sys.stderr)
 
     return 0
 

@@ -88,7 +88,7 @@ def prune_match_db(dry_run: bool) -> dict:
     bak = backup_path(MATCH_DB, "prune-synthetic")
     if bak.exists():
         bak = bak.with_suffix(bak.suffix + f"-{int(time.time())}")
-    print(f"  Backing up → {bak.name}")
+    print(f"  Backing up -> {bak.name}")
     # close before copy so WAL state is consistent
     conn.close()
     shutil.copy2(MATCH_DB, bak)
@@ -106,7 +106,7 @@ def prune_match_db(dry_run: bool) -> dict:
     n_after = cur.fetchone()[0]
     conn.close()
     deleted = n_total - n_after
-    print(f"  Deleted: {deleted} rows ({n_total} → {n_after})")
+    print(f"  Deleted: {deleted} rows ({n_total} -> {n_after})")
     return {"named": n_named, "empty_zero": n_empty_zero, "deleted": deleted}
 
 
@@ -146,7 +146,7 @@ def prune_ds_calibration(dry_run: bool) -> dict:
     bak = backup_path(DS_JSONL, "prune-synthetic")
     if bak.exists():
         bak = bak.with_suffix(bak.suffix + f"-{int(time.time())}")
-    print(f"  Backing up → {bak.name}")
+    print(f"  Backing up -> {bak.name}")
     shutil.copy2(DS_JSONL, bak)
     tmp = DS_JSONL.with_suffix(".tmp")
     tmp.write_text("\n".join(keep) + ("\n" if keep else ""), encoding="utf-8")
