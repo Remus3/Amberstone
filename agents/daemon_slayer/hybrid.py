@@ -163,7 +163,7 @@ class HybridResult:
         else:
             rows.append("items: (none)")
         rows.append(
-            f"weights: α={self.alpha:.2f}  β={self.beta:.2f}  "
+            f"weights: alpha={self.alpha:.2f}  beta={self.beta:.2f}  "
             f"(source: {self.alpha_source})"
         )
         rows.append(
@@ -342,7 +342,7 @@ def compute_hybrid(
 
     notes: list[str] = []
     notes.append(
-        f"α={alpha_resolved:.2f} / β={beta_resolved:.2f} ({alpha_source})"
+        f"alpha={alpha_resolved:.2f} / beta={beta_resolved:.2f} ({alpha_source})"
     )
     if enemy_champions_tuple and ehp_result.enemy_cc_pressure_s > 0.0:
         notes.append(
@@ -506,7 +506,7 @@ class HybridRankResult:
         else:
             rows.append("current items: (none)")
         rows.append(
-            f"weights: α={self.alpha:.2f}  β={self.beta:.2f}  "
+            f"weights: alpha={self.alpha:.2f}  beta={self.beta:.2f}  "
             f"(source: {self.alpha_source})"
         )
         rows.append(
@@ -843,7 +843,7 @@ def rank_items_by_hybrid(
 
     notes: list[str] = []
     notes.append(
-        f"weights α={alpha_resolved:.2f} / β={beta_resolved:.2f} ({alpha_source})"
+        f"weights alpha={alpha_resolved:.2f} / beta={beta_resolved:.2f} ({alpha_source})"
     )
     if score_by == "cc_blended":
         notes.append(

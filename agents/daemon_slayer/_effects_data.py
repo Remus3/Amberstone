@@ -888,7 +888,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=40.0,
         ),),
-        note="Hextech Gunblade: Lightning Bolt 175→253 + 30% AP magic, 40s CD (slow not modeled)",
+        note="Hextech Gunblade: Lightning Bolt 175->253 + 30% AP magic, 40s CD (slow not modeled)",
     ),
     "6655": ItemEffect(
         item_id="6655",
@@ -921,7 +921,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # (DPS engine doesn't track healing).
         damage_amp_pct=0.08,
         ap_per_bonus_hp_pct=0.02,
-        note="Riftmaker: Void Corruption ~8% damage amp at full ramp + Void Infusion 2% bonus HP → AP (always on)",
+        note="Riftmaker: Void Corruption ~8% damage amp at full ramp + Void Infusion 2% bonus HP -> AP (always on)",
     ),
     "3128": ItemEffect(
         item_id="3128",
@@ -1531,7 +1531,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True,
         # Soul Siphon: damage dealt generates Soul Charges used for target
         # healing pulses. Converts DPS into sustain - not a damage amplifier.
-        note="Echoes of Helia: Soul Siphon (damage → Soul Charges → heal pulses); no DPS contribution",
+        note="Echoes of Helia: Soul Siphon (damage -> Soul Charges -> heal pulses); no DPS contribution",
     ),
     "6617": ItemEffect(
         item_id="6617",
@@ -1561,7 +1561,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Eternity converts damage taken -> mana; mana used -> HP. Stacked
         # passive HP/MP/AP ramping (30 stacks over 6 min). Sustain and
         # scaling, not a DPS proc.
-        note="Rod of Ages: Eternity (damage→mana, mana→HP sustain ramp); no DPS contribution",
+        note="Rod of Ages: Eternity (damage->mana, mana->HP sustain ramp); no DPS contribution",
     ),
     "3119": ItemEffect(
         item_id="3119",
@@ -1705,7 +1705,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_seconds=45.0,
         ),),
         note=(
-            "Bastionbreaker: 22 Lethality + Shaped Charge 15 + 0.75 × lethality "
+            "Bastionbreaker: 22 Lethality + Shaped Charge 15 + 0.75 x lethality "
             "true damage every 45s (Meraki CD; ranged values; Sabotage takedown utility-only)"
         ),
     ),
@@ -1824,7 +1824,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # application is the only difference vs Arena version which is any-hit.
         mr_reduction_pct=0.30,
         note=(
-            "Bloodletter's Curse (SR 8010): Vile Decay 7.5% MR reduction × 4 "
+            "Bloodletter's Curse (SR 8010): Vile Decay 7.5% MR reduction x 4 "
             "ability-hit stacks = 30% at full stacks (same as Arena 4010; Meraki confirmed)"
         ),
     ),
@@ -1896,7 +1896,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_seconds=45.0,
             bonus_damage=lambda c: 3.0 * (c.base_ad + c.bonus_ad) * 0.70,
         ),),
-        note="Fiendhunter Bolts: Opening Barrage 45s CD; 3 guaranteed crits = 3×(base_ad+bonus_ad)×0.70 physical/45s",
+        note="Fiendhunter Bolts: Opening Barrage 45s CD; 3 guaranteed crits = 3x(base_ad+bonus_ad)x0.70 physical/45s",
     ),
     "663060": ItemEffect(
         item_id="663060",
@@ -1961,7 +1961,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         note=(
             "Cruelty (SR 667109): Watch Them Fall - comet on immobilize/ground, "
-            "50→150 + 40% AP + 4% caster max HP magic, 6s CD (Meraki 447109 confirms "
+            "50->150 + 40% AP + 4% caster max HP magic, 6s CD (Meraki 447109 confirms "
             "identical passive; DDragon 667109 description matches). "
             "CC-triggered; 6s CD is the binding constraint."
         ),
@@ -1995,7 +1995,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note=(
             "Perplexity: 22% armor pen + 30% magic pen (dual-pen). "
             "Giant Slayer 0-15% damage amp based on (target_max_hp - caster_max_hp) "
-            "÷ 100 × 0.6%, capped at 15% (2500 HP diff = cap). "
+            "/ 100 x 0.6%, capped at 15% (2500 HP diff = cap). "
             "Key: MAX HP diff, not bonus HP - distinct from LDR Giant Slayer schema"
         ),
     ),
@@ -2036,8 +2036,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             ),
         ),
         note=(
-            "Navori Flickerblade: Bring It Down 120→168 bonus physical every 3rd attack "
-            "(ranged scaling 120 + 4 × (level-1), capped at 168 at level 13+; "
+            "Navori Flickerblade: Bring It Down 120->168 bonus physical every 3rd attack "
+            "(ranged scaling 120 + 4 x (level-1), capped at 168 at level 13+; "
             "Quicken CDR-on-crit utility-only)"
         ),
     ),
@@ -2169,7 +2169,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             ),
         ),
         note=(
-            "Pyromancer's Cloak: Spark 100→350 magic burn over 3s every 5s "
+            "Pyromancer's Cloak: Spark 100->350 magic burn over 3s every 5s "
             "(melee Meraki value; total burn modeled as single proc per event; "
             "Cleansing Flame fireball AoE deferred)"
         ),
@@ -2195,7 +2195,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             ),
         ),
         note=(
-            "Lightning Rod: Call Lightning 135→230 + 30% bonus AD + 50% AP + 10% target max HP "
+            "Lightning Rod: Call Lightning 135->230 + 30% bonus AD + 50% AP + 10% target max HP "
             "magic every 16s (base CD; Fully Automated AH reduction not modeled, "
             "pins at 16s conservative value)"
         ),
@@ -2302,7 +2302,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             ),
         ),
         note=(
-            "Darksteel Talons: Gash every basic attack (10→20 level-scaled) + 20% bonus armor "
+            "Darksteel Talons: Gash every basic attack (10->20 level-scaled) + 20% bonus armor "
             "true damage (ranged Meraki values; Batch 58 - caster_bonus_armor fully wired)"
         ),
     ),
@@ -2436,7 +2436,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         note=(
             "Cruelty (Arena 447109): Watch Them Fall - comet on immobilize/ground, "
-            "50→150 + 40% AP + 4% caster max HP magic, 6s CD (Meraki confirmed). "
+            "50->150 + 40% AP + 4% caster max HP magic, 6s CD (Meraki confirmed). "
             "AoE via targets_in_rotation; CC-triggered proc at item-CD floor."
         ),
     ),
@@ -2528,7 +2528,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note=(
             "Hamstringer: Scour - crit strikes inflict 2s physical bleed "
             "(20-80 by level) + 25% of crit-bonus AD; modeled as "
-            "expected-value × crit_chance per attack (DEFAULT_CRIT_BONUS=0.75). "
+            "expected-value x crit_chance per attack (DEFAULT_CRIT_BONUS=0.75). "
             "Meraki 443069 confirmed."
         ),
     ),
@@ -2575,7 +2575,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Obsidian Cleaver",
         armor_reduction_pct=0.35,
         note=(
-            "Obsidian Cleaver: Carve 7% armor reduction per stack × 5 stacks = 35% max "
+            "Obsidian Cleaver: Carve 7% armor reduction per stack x 5 stacks = 35% max "
             "(same armor_reduction_pct layer as Black Cleaver, modeled at full stacks). "
             "Fervor 20 MS utility-only"
         ),
@@ -2754,7 +2754,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Bloodletter's Curse",
         mr_reduction_pct=0.30,
         note=(
-            "Bloodletter's Curse: Vile Decay 7.5% MR reduction × 4 stacks = 30% max "
+            "Bloodletter's Curse: Vile Decay 7.5% MR reduction x 4 stacks = 30% max "
             "(modeled at full stacks; same layer as armor_reduction_pct but for MR). "
             "Applied before magic_pen_pct in effective_target_mr pipeline"
         ),
@@ -2791,7 +2791,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Overlord's Bloodmail",
         bonus_ad_pct_bonus_hp=0.03,
         note=(
-            "Overlord's Bloodmail (Arena 447111): Tyranny 3% bonus HP → bonus AD "
+            "Overlord's Bloodmail (Arena 447111): Tyranny 3% bonus HP -> bonus AD "
             "(Arena variant; SR 2501 has 2.5%). "
             "Retribution up-to-17.5% AD based on missing HP deferred (dynamic)"
         ),
@@ -2824,7 +2824,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
         note=(
             "Hextech Gunblade (663146 Arena variant): Lightning Bolt same formula as SR 3146 "
-            "(175→253 by level + 30% AP magic, 40s cooldown). 25%/1.5s slow utility-only"
+            "(175->253 by level + 30% AP magic, 40s cooldown). 25%/1.5s slow utility-only"
         ),
     ),
     # -- defensive_only (7) --
@@ -2932,7 +2932,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Haunting Guise",
         damage_amp_pct=0.06,
         note=(
-            "Haunting Guise: Madness 2%/s bonus damage × 3s = 6% max amp "
+            "Haunting Guise: Madness 2%/s bonus damage x 3s = 6% max amp "
             "(pinned at full stacks; same coefficient as Liandry's Torment 3151)"
         ),
     ),
@@ -3041,7 +3041,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Rabadon's amplification both see the stacked total via compute_dps.
         bonus_ap_stacked=125.0,
         note=(
-            "Mejai's Soulstealer: Glory +125 stacked AP (25 stacks × 5 AP; "
+            "Mejai's Soulstealer: Glory +125 stacked AP (25 stacks x 5 AP; "
             "full-stacks pin - same sustained-peak convention as Black Cleaver)"
         ),
     ),
@@ -3500,7 +3500,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Riftmaker",
         damage_amp_pct=0.08,
         ap_per_bonus_hp_pct=0.02,
-        note="Riftmaker (Arena 224633): same as SR 4633 - Void Corruption 8% damage amp + 2% bonus HP → AP",
+        note="Riftmaker (Arena 224633): same as SR 4633 - Void Corruption 8% damage amp + 2% bonus HP -> AP",
     ),
     "224645": ItemEffect(
         item_id="224645",
@@ -3720,7 +3720,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223071",
         name="Black Cleaver",
         armor_reduction_pct=0.30,
-        note="Black Cleaver (Arena 223071): same as SR 3071 - Carve 30% armor reduction (6×5%, pinned full stacks)",
+        note="Black Cleaver (Arena 223071): same as SR 3071 - Carve 30% armor reduction (6x5%, pinned full stacks)",
     ),
     "223074": ItemEffect(
         item_id="223074",
@@ -3894,7 +3894,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=40.0,
         ),),
-        note="Hextech Gunblade (Arena 223146): same as SR 3146 - Lightning Bolt 175→253+30% AP magic, 40s CD",
+        note="Hextech Gunblade (Arena 223146): same as SR 3146 - Lightning Bolt 175->253+30% AP magic, 40s CD",
     ),
     "223153": ItemEffect(
         item_id="223153",
@@ -4886,7 +4886,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_seconds=1.0,
         ),),
         note=(
-            "The Golden Spatula (Arena 224403): Doing Something - burn 26→43 "
+            "The Golden Spatula (Arena 224403): Doing Something - burn 26->43 "
             "magic damage/s to nearby enemies (level-scaled pp; Meraki confirmed)"
         ),
     ),

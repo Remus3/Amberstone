@@ -698,7 +698,7 @@ def rank_items(
 
     notes: list[str] = []
     if mode in MODE_MAP_ID:
-        notes.append(f"mode={mode} → maps id {MODE_MAP_ID[mode]}")
+        notes.append(f"mode={mode} -> maps id {MODE_MAP_ID[mode]}")
     else:
         notes.append(f"mode={mode} not in MODE_MAP_ID - no per-mode item filter applied")
     if stripped_trinkets:
