@@ -178,7 +178,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "228002",
-          "3117",
+          "3020",
           "447104",
           "444637",
           "223089",
@@ -202,7 +202,7 @@
           "447104",
           "444637",
           "223089",
-          "223100"
+          "223135"
         ]
       },
       "mixed": {
@@ -222,7 +222,7 @@
           "447104",
           "444637",
           "223089",
-          "223100"
+          "447112"
         ]
       },
       "poke": {
@@ -242,7 +242,7 @@
           "447104",
           "444637",
           "223089",
-          "223100"
+          "223135"
         ]
       }
     },
@@ -902,7 +902,7 @@
         ]
       }
     },
-    "AurelionSol": {
+    "Aurelion Sol": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -1230,7 +1230,7 @@
         ]
       }
     },
-    "Belveth": {
+    "Bel'Veth": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -1886,7 +1886,7 @@
         ]
       }
     },
-    "Chogath": {
+    "Cho'Gath": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -2145,12 +2145,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "224403",
-          "3047",
-          "223069",
-          "223085",
-          "223153",
-          "223072"
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "frontline_heavy": {
@@ -2165,12 +2165,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "223153",
+          "228002",
           "3111",
-          "223069",
-          "224403",
-          "223085",
-          "223036"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       },
       "mixed": {
@@ -2185,12 +2185,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223153",
+          "228002",
           "3111",
-          "223069",
-          "224403",
-          "223085",
-          "223036"
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -2205,16 +2205,16 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "224403",
-          "223085",
-          "223153",
-          "223072"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       }
     },
-    "DrMundo": {
+    "Dr. Mundo": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -2392,171 +2392,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "228002",
-          "3117",
-          "447104",
-          "444637",
-          "223100",
-          "223089"
-        ]
-      },
-      "frontline_heavy": {
-        "bias": {
-          "enemy_ad_share": 0.6,
-          "enemy_ap_share": 0.4,
-          "target_armor": 110.0,
-          "target_bonus_hp": 1800.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 3200.0,
-          "target_mr": 80.0
-        },
-        "comp_archetype": "frontline_heavy",
-        "order": [
-          "228002",
-          "3111",
-          "447104",
-          "444637",
-          "223100",
-          "223089"
-        ]
-      },
-      "mixed": {
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 80.0,
-          "target_bonus_hp": 1000.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2400.0,
-          "target_mr": 60.0
-        },
-        "comp_archetype": "mixed",
-        "order": [
-          "228002",
-          "3111",
-          "447104",
-          "444637",
-          "223100",
-          "223089"
-        ]
-      },
-      "poke": {
-        "bias": {
-          "enemy_ad_share": 0.4,
-          "enemy_ap_share": 0.6,
-          "target_armor": 60.0,
-          "target_bonus_hp": 650.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2100.0,
-          "target_mr": 70.0
-        },
-        "comp_archetype": "poke",
-        "order": [
-          "228002",
-          "3111",
-          "447104",
-          "444637",
-          "223100",
-          "223089"
-        ]
-      }
-    },
-    "Elise": {
-      "burst_heavy": {
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 50.0,
-          "target_bonus_hp": 500.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 1900.0,
-          "target_mr": 40.0
-        },
-        "comp_archetype": "burst_heavy",
-        "order": [
-          "446632",
-          "3117",
-          "223153",
-          "223085",
-          "224403",
-          "223036"
-        ]
-      },
-      "frontline_heavy": {
-        "bias": {
-          "enemy_ad_share": 0.6,
-          "enemy_ap_share": 0.4,
-          "target_armor": 110.0,
-          "target_bonus_hp": 1800.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 3200.0,
-          "target_mr": 80.0
-        },
-        "comp_archetype": "frontline_heavy",
-        "order": [
-          "223153",
-          "3111",
-          "223036",
-          "446632",
-          "223085",
-          "224403"
-        ]
-      },
-      "mixed": {
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 80.0,
-          "target_bonus_hp": 1000.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2400.0,
-          "target_mr": 60.0
-        },
-        "comp_archetype": "mixed",
-        "order": [
-          "446632",
-          "3111",
-          "223153",
-          "223036",
-          "223085",
-          "224403"
-        ]
-      },
-      "poke": {
-        "bias": {
-          "enemy_ad_share": 0.4,
-          "enemy_ap_share": 0.6,
-          "target_armor": 60.0,
-          "target_bonus_hp": 650.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2100.0,
-          "target_mr": 70.0
-        },
-        "comp_archetype": "poke",
-        "order": [
-          "446632",
-          "3111",
-          "223153",
-          "223036",
-          "223085",
-          "226693"
-        ]
-      }
-    },
-    "Evelynn": {
-      "burst_heavy": {
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 50.0,
-          "target_bonus_hp": 500.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 1900.0,
-          "target_mr": 40.0
-        },
-        "comp_archetype": "burst_heavy",
-        "order": [
-          "228002",
-          "3117",
+          "3020",
           "447104",
           "444637",
           "223089",
@@ -2600,7 +2436,7 @@
           "447104",
           "444637",
           "223089",
-          "223100"
+          "447112"
         ]
       },
       "poke": {
@@ -2620,7 +2456,171 @@
           "447104",
           "444637",
           "223089",
-          "223100"
+          "223135"
+        ]
+      }
+    },
+    "Elise": {
+      "burst_heavy": {
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 50.0,
+          "target_bonus_hp": 500.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1900.0,
+          "target_mr": 40.0
+        },
+        "comp_archetype": "burst_heavy",
+        "order": [
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "447112",
+          "223089"
+        ]
+      },
+      "frontline_heavy": {
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 110.0,
+          "target_bonus_hp": 1800.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 3200.0,
+          "target_mr": 80.0
+        },
+        "comp_archetype": "frontline_heavy",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "223135"
+        ]
+      },
+      "mixed": {
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 80.0,
+          "target_bonus_hp": 1000.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 2400.0,
+          "target_mr": 60.0
+        },
+        "comp_archetype": "mixed",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
+        ]
+      },
+      "poke": {
+        "bias": {
+          "enemy_ad_share": 0.4,
+          "enemy_ap_share": 0.6,
+          "target_armor": 60.0,
+          "target_bonus_hp": 650.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 2100.0,
+          "target_mr": 70.0
+        },
+        "comp_archetype": "poke",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "223135"
+        ]
+      }
+    },
+    "Evelynn": {
+      "burst_heavy": {
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 50.0,
+          "target_bonus_hp": 500.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1900.0,
+          "target_mr": 40.0
+        },
+        "comp_archetype": "burst_heavy",
+        "order": [
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
+        ]
+      },
+      "frontline_heavy": {
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 110.0,
+          "target_bonus_hp": 1800.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 3200.0,
+          "target_mr": 80.0
+        },
+        "comp_archetype": "frontline_heavy",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "223135"
+        ]
+      },
+      "mixed": {
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 80.0,
+          "target_bonus_hp": 1000.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 2400.0,
+          "target_mr": 60.0
+        },
+        "comp_archetype": "mixed",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
+        ]
+      },
+      "poke": {
+        "bias": {
+          "enemy_ad_share": 0.4,
+          "enemy_ap_share": 0.6,
+          "target_armor": 60.0,
+          "target_bonus_hp": 650.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 2100.0,
+          "target_mr": 70.0
+        },
+        "comp_archetype": "poke",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       }
     },
@@ -2884,11 +2884,11 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "228002",
-          "3117",
+          "3020",
           "447104",
           "444637",
-          "223100",
-          "223089"
+          "223089",
+          "447112"
         ]
       },
       "frontline_heavy": {
@@ -2907,8 +2907,8 @@
           "3111",
           "447104",
           "444637",
-          "223100",
-          "223089"
+          "223089",
+          "223135"
         ]
       },
       "mixed": {
@@ -2927,8 +2927,8 @@
           "3111",
           "447104",
           "444637",
-          "223100",
-          "223089"
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -2947,8 +2947,8 @@
           "3111",
           "447104",
           "444637",
-          "223100",
-          "223089"
+          "223089",
+          "223135"
         ]
       }
     },
@@ -3293,12 +3293,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "223069",
-          "3047",
-          "224403",
-          "223084",
-          "446632",
-          "223085"
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "frontline_heavy": {
@@ -3313,12 +3313,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "224403",
-          "223153",
-          "223036",
-          "223085"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       },
       "mixed": {
@@ -3333,12 +3333,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "224403",
-          "223084",
-          "443083",
-          "223153"
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -3353,12 +3353,12 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "224403",
-          "223084",
-          "446632",
-          "223085"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       }
     },
@@ -3457,12 +3457,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "224403",
-          "3047",
-          "223069",
-          "223085",
-          "223153",
-          "443069"
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "447112",
+          "223089"
         ]
       },
       "frontline_heavy": {
@@ -3477,12 +3477,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "223153",
+          "228002",
           "3111",
-          "223069",
-          "224403",
-          "223085",
-          "223036"
+          "4015",
+          "447104",
+          "444637",
+          "223089"
         ]
       },
       "mixed": {
@@ -3497,12 +3497,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "224403",
-          "223085",
-          "223153",
-          "223036"
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -3517,12 +3517,12 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "224403",
-          "223085",
-          "223153",
-          "443069"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       }
     },
@@ -4100,7 +4100,7 @@
         ]
       }
     },
-    "JarvanIV": {
+    "Jarvan IV": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -4510,7 +4510,7 @@
         ]
       }
     },
-    "KSante": {
+    "K'Sante": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -4592,7 +4592,7 @@
         ]
       }
     },
-    "Kaisa": {
+    "Kai'Sa": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -4934,7 +4934,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "228002",
-          "3117",
+          "3020",
           "447104",
           "444637",
           "223089",
@@ -5016,11 +5016,11 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "228002",
-          "3117",
+          "3020",
           "447104",
           "444637",
-          "223089",
-          "223100"
+          "447112",
+          "223089"
         ]
       },
       "frontline_heavy": {
@@ -5040,7 +5040,7 @@
           "447104",
           "444637",
           "223089",
-          "223100"
+          "4010"
         ]
       },
       "mixed": {
@@ -5059,8 +5059,8 @@
           "3111",
           "447104",
           "444637",
-          "223089",
-          "223100"
+          "447112",
+          "223089"
         ]
       },
       "poke": {
@@ -5080,7 +5080,7 @@
           "447104",
           "444637",
           "223089",
-          "223100"
+          "447112"
         ]
       }
     },
@@ -5330,7 +5330,7 @@
         ]
       }
     },
-    "Khazix": {
+    "Kha'Zix": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -5576,89 +5576,7 @@
         ]
       }
     },
-    "KogMaw": {
-      "burst_heavy": {
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 50.0,
-          "target_bonus_hp": 500.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 1900.0,
-          "target_mr": 40.0
-        },
-        "comp_archetype": "burst_heavy",
-        "order": [
-          "224403",
-          "3006",
-          "223085",
-          "443069",
-          "223031",
-          "443081"
-        ]
-      },
-      "frontline_heavy": {
-        "bias": {
-          "enemy_ad_share": 0.6,
-          "enemy_ap_share": 0.4,
-          "target_armor": 110.0,
-          "target_bonus_hp": 1800.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 3200.0,
-          "target_mr": 80.0
-        },
-        "comp_archetype": "frontline_heavy",
-        "order": [
-          "223153",
-          "3047",
-          "224403",
-          "223085",
-          "223036",
-          "443069"
-        ]
-      },
-      "mixed": {
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 80.0,
-          "target_bonus_hp": 1000.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2400.0,
-          "target_mr": 60.0
-        },
-        "comp_archetype": "mixed",
-        "order": [
-          "223153",
-          "3006",
-          "224403",
-          "223085",
-          "223036",
-          "443069"
-        ]
-      },
-      "poke": {
-        "bias": {
-          "enemy_ad_share": 0.4,
-          "enemy_ap_share": 0.6,
-          "target_armor": 60.0,
-          "target_bonus_hp": 650.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2100.0,
-          "target_mr": 70.0
-        },
-        "comp_archetype": "poke",
-        "order": [
-          "223153",
-          "3006",
-          "224403",
-          "223085",
-          "443069",
-          "223036"
-        ]
-      }
-    },
-    "Leblanc": {
+    "Kog'Maw": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -5672,7 +5590,7 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "228002",
-          "3117",
+          "3020",
           "447104",
           "444637",
           "223089",
@@ -5740,7 +5658,89 @@
         ]
       }
     },
-    "LeeSin": {
+    "LeBlanc": {
+      "burst_heavy": {
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 50.0,
+          "target_bonus_hp": 500.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1900.0,
+          "target_mr": 40.0
+        },
+        "comp_archetype": "burst_heavy",
+        "order": [
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
+        ]
+      },
+      "frontline_heavy": {
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 110.0,
+          "target_bonus_hp": 1800.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 3200.0,
+          "target_mr": 80.0
+        },
+        "comp_archetype": "frontline_heavy",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "223135"
+        ]
+      },
+      "mixed": {
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 80.0,
+          "target_bonus_hp": 1000.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 2400.0,
+          "target_mr": 60.0
+        },
+        "comp_archetype": "mixed",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
+        ]
+      },
+      "poke": {
+        "bias": {
+          "enemy_ad_share": 0.4,
+          "enemy_ap_share": 0.6,
+          "target_armor": 60.0,
+          "target_bonus_hp": 650.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 2100.0,
+          "target_mr": 70.0
+        },
+        "comp_archetype": "poke",
+        "order": [
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "223135"
+        ]
+      }
+    },
+    "Lee Sin": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -5917,12 +5917,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "223069",
-          "3047",
-          "223084",
-          "443083",
-          "446632",
-          "447119"
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "frontline_heavy": {
@@ -5937,12 +5937,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "223084",
-          "443083",
-          "447119",
-          "224403"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       },
       "mixed": {
@@ -5957,12 +5957,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "223084",
-          "443083",
-          "447119",
-          "224403"
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -5977,12 +5977,12 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "223084",
-          "443083",
-          "446632",
-          "447119"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       }
     },
@@ -6560,7 +6560,7 @@
         ]
       }
     },
-    "MasterYi": {
+    "Master Yi": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -6806,7 +6806,7 @@
         ]
       }
     },
-    "MissFortune": {
+    "Miss Fortune": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -6819,12 +6819,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "228002",
-          "3117",
-          "223100",
-          "447104",
-          "444637",
-          "223089"
+          "224403",
+          "3006",
+          "223085",
+          "443069",
+          "223031",
+          "443081"
         ]
       },
       "frontline_heavy": {
@@ -6839,94 +6839,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "228002",
-          "3111",
-          "223100",
-          "447104",
-          "444637",
-          "223089"
-        ]
-      },
-      "mixed": {
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 80.0,
-          "target_bonus_hp": 1000.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2400.0,
-          "target_mr": 60.0
-        },
-        "comp_archetype": "mixed",
-        "order": [
-          "228002",
-          "3111",
-          "223100",
-          "447104",
-          "444637",
-          "223089"
-        ]
-      },
-      "poke": {
-        "bias": {
-          "enemy_ad_share": 0.4,
-          "enemy_ap_share": 0.6,
-          "target_armor": 60.0,
-          "target_bonus_hp": 650.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 2100.0,
-          "target_mr": 70.0
-        },
-        "comp_archetype": "poke",
-        "order": [
-          "228002",
-          "3111",
-          "223100",
-          "447104",
-          "444637",
-          "223089"
-        ]
-      }
-    },
-    "MonkeyKing": {
-      "burst_heavy": {
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 50.0,
-          "target_bonus_hp": 500.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 1900.0,
-          "target_mr": 40.0
-        },
-        "comp_archetype": "burst_heavy",
-        "order": [
-          "223069",
+          "223153",
           "3047",
           "224403",
           "223085",
-          "446632",
-          "447111"
-        ]
-      },
-      "frontline_heavy": {
-        "bias": {
-          "enemy_ad_share": 0.6,
-          "enemy_ap_share": 0.4,
-          "target_armor": 110.0,
-          "target_bonus_hp": 1800.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 3200.0,
-          "target_mr": 80.0
-        },
-        "comp_archetype": "frontline_heavy",
-        "order": [
-          "223153",
-          "3111",
-          "223069",
-          "224403",
           "223036",
-          "223085"
+          "443069"
         ]
       },
       "mixed": {
@@ -6941,12 +6859,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223069",
-          "3111",
-          "224403",
           "223153",
+          "3006",
+          "224403",
           "223085",
-          "223036"
+          "223036",
+          "443069"
         ]
       },
       "poke": {
@@ -6961,12 +6879,12 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223069",
-          "3111",
+          "223153",
+          "3006",
           "224403",
           "223085",
-          "223153",
-          "223072"
+          "443069",
+          "223036"
         ]
       }
     },
@@ -6983,12 +6901,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "223069",
-          "3047",
-          "223084",
-          "224403",
-          "443083",
-          "446632"
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "frontline_heavy": {
@@ -7003,12 +6921,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "223084",
-          "224403",
-          "443083",
-          "447119"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       },
       "mixed": {
@@ -7023,12 +6941,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "223084",
-          "224403",
-          "443083",
-          "447119"
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -7043,12 +6961,12 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "223084",
-          "224403",
-          "443083",
-          "446632"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       }
     },
@@ -7558,10 +7476,10 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "228002",
-          "3117",
-          "224403",
-          "223100",
+          "3020",
+          "447104",
           "444637",
+          "223089",
           "447112"
         ]
       },
@@ -7579,10 +7497,10 @@
         "order": [
           "228002",
           "3111",
-          "224403",
-          "223100",
+          "447104",
           "444637",
-          "447104"
+          "223089",
+          "223135"
         ]
       },
       "mixed": {
@@ -7599,10 +7517,10 @@
         "order": [
           "228002",
           "3111",
-          "224403",
-          "223100",
+          "447104",
           "444637",
-          "447104"
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -7619,10 +7537,10 @@
         "order": [
           "228002",
           "3111",
-          "224403",
-          "223100",
+          "447104",
           "444637",
-          "447104"
+          "223089",
+          "223135"
         ]
       }
     },
@@ -7790,7 +7708,7 @@
         ]
       }
     },
-    "Nunu": {
+    "Nunu & Willump": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -8295,12 +8213,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "223107",
-          "3158",
-          "223109",
-          "223190",
-          "223222",
-          "223504"
+          "446632",
+          "3117",
+          "226610",
+          "226693",
+          "223036",
+          "224004"
         ]
       },
       "frontline_heavy": {
@@ -8315,12 +8233,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "223107",
+          "223153",
           "3111",
-          "223109",
-          "223190",
-          "223222",
-          "223504"
+          "223036",
+          "446632",
+          "226694",
+          "226693"
         ]
       },
       "mixed": {
@@ -8335,12 +8253,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223107",
+          "446632",
           "3111",
-          "223109",
-          "223190",
-          "223222",
-          "223504"
+          "223036",
+          "226610",
+          "226693",
+          "223142"
         ]
       },
       "poke": {
@@ -8355,12 +8273,12 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223107",
+          "446632",
           "3111",
-          "223109",
-          "223190",
-          "223222",
-          "223504"
+          "223036",
+          "226693",
+          "226610",
+          "223142"
         ]
       }
     },
@@ -8692,7 +8610,7 @@
         ]
       }
     },
-    "RekSai": {
+    "Rek'Sai": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -8856,7 +8774,7 @@
         ]
       }
     },
-    "Renata": {
+    "Renata Glasc": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -9197,12 +9115,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "223069",
-          "3047",
-          "224403",
-          "223084",
-          "443083",
-          "446632"
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "frontline_heavy": {
@@ -9217,12 +9135,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "223153",
-          "224403",
-          "223084",
-          "223036"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       },
       "mixed": {
@@ -9237,12 +9155,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "224403",
-          "223084",
-          "443083",
-          "447119"
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -9257,12 +9175,12 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223069",
+          "228002",
           "3111",
-          "223084",
-          "224403",
-          "443083",
-          "446632"
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       }
     },
@@ -10824,7 +10742,7 @@
         ]
       }
     },
-    "TahmKench": {
+    "Tahm Kench": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -11165,12 +11083,12 @@
         },
         "comp_archetype": "burst_heavy",
         "order": [
-          "223153",
-          "3006",
-          "224403",
-          "223085",
-          "443069",
-          "223031"
+          "228002",
+          "3020",
+          "447104",
+          "444637",
+          "447112",
+          "223089"
         ]
       },
       "frontline_heavy": {
@@ -11185,12 +11103,12 @@
         },
         "comp_archetype": "frontline_heavy",
         "order": [
-          "223153",
-          "3047",
-          "224403",
-          "223085",
-          "223036",
-          "443069"
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "223135"
         ]
       },
       "mixed": {
@@ -11205,12 +11123,12 @@
         },
         "comp_archetype": "mixed",
         "order": [
-          "223153",
-          "3006",
-          "224403",
-          "223085",
-          "223036",
-          "443069"
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       },
       "poke": {
@@ -11225,12 +11143,12 @@
         },
         "comp_archetype": "poke",
         "order": [
-          "223153",
-          "3006",
-          "224403",
-          "223085",
-          "443069",
-          "223036"
+          "228002",
+          "3111",
+          "447104",
+          "444637",
+          "223089",
+          "447112"
         ]
       }
     },
@@ -11562,7 +11480,7 @@
         ]
       }
     },
-    "TwistedFate": {
+    "Twisted Fate": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -12136,7 +12054,7 @@
         ]
       }
     },
-    "Velkoz": {
+    "Vel'Koz": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -12792,6 +12710,88 @@
         ]
       }
     },
+    "Wukong": {
+      "burst_heavy": {
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 50.0,
+          "target_bonus_hp": 500.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1900.0,
+          "target_mr": 40.0
+        },
+        "comp_archetype": "burst_heavy",
+        "order": [
+          "223069",
+          "3047",
+          "224403",
+          "223085",
+          "446632",
+          "447111"
+        ]
+      },
+      "frontline_heavy": {
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 110.0,
+          "target_bonus_hp": 1800.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 3200.0,
+          "target_mr": 80.0
+        },
+        "comp_archetype": "frontline_heavy",
+        "order": [
+          "223153",
+          "3111",
+          "223069",
+          "224403",
+          "223036",
+          "223085"
+        ]
+      },
+      "mixed": {
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 80.0,
+          "target_bonus_hp": 1000.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 2400.0,
+          "target_mr": 60.0
+        },
+        "comp_archetype": "mixed",
+        "order": [
+          "223069",
+          "3111",
+          "224403",
+          "223153",
+          "223085",
+          "223036"
+        ]
+      },
+      "poke": {
+        "bias": {
+          "enemy_ad_share": 0.4,
+          "enemy_ap_share": 0.6,
+          "target_armor": 60.0,
+          "target_bonus_hp": 650.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 2100.0,
+          "target_mr": 70.0
+        },
+        "comp_archetype": "poke",
+        "order": [
+          "223069",
+          "3111",
+          "224403",
+          "223085",
+          "223153",
+          "223072"
+        ]
+      }
+    },
     "Xayah": {
       "burst_heavy": {
         "bias": {
@@ -12956,7 +12956,7 @@
         ]
       }
     },
-    "XinZhao": {
+    "Xin Zhao": {
       "burst_heavy": {
         "bias": {
           "enemy_ad_share": 0.5,
@@ -14114,8 +14114,8 @@
     ],
     "level": 11
   },
-  "engine_version": "1.120.0",
-  "generated_at": "2026-06-11T01:06:45Z",
+  "engine_version": "1.122.0",
+  "generated_at": "2026-06-15T07:07:50Z",
   "mode": "arena",
   "schema": "build_order_precompute/v1",
   "version": "16.12.1"
