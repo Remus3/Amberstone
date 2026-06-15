@@ -130,7 +130,7 @@ from .stats import clamp_level
 
 
 def _armor_factor(resist: float) -> float:
-    """League's resist → damage-taken multiplier. Mirrors ``dps._armor_factor``.
+    """League's resist -> damage-taken multiplier. Mirrors ``dps._armor_factor``.
 
     Positive resist: ``100 / (100 + resist)``.
     Negative resist (shred): ``2 - 100/(100 - resist)``. Inlined here rather

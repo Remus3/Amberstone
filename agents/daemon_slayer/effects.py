@@ -92,7 +92,7 @@ def total_bonus_ap_from_hp(effects: Iterable[ItemEffect], caster_bonus_hp: float
     """Cross-derived AP from caster bonus HP (Phase 4 batch 15).
 
     Sums ``ap_per_bonus_hp_pct * caster_bonus_hp`` across the build.
-    Riftmaker's Void Infusion (2% bonus HP → AP) is the first user;
+    Riftmaker's Void Infusion (2% bonus HP -> AP) is the first user;
     additive across multiple cross-derivation items if any land later
     (sums commute, no buff-system multiplicative subtlety here - each
     item's contribution is its own independent stat add).
@@ -125,8 +125,8 @@ def total_crit_chance_bonus(
       AND ``crit_chance_bonus_per_bonus_hp_cap`` are positive AND
       ``caster_bonus_hp`` is positive. Otherwise the linear ramp would
       either divide by zero or contribute negative values - defensive.
-      Atma's Reckoning is the canonical example: max=0.30, cap=3000 →
-      ramp = min(1.0, caster_bonus_hp / 3000) → 0.0 at 0 bonus HP, 0.15
+      Atma's Reckoning is the canonical example: max=0.30, cap=3000 ->
+      ramp = min(1.0, caster_bonus_hp / 3000) -> 0.0 at 0 bonus HP, 0.15
       at 1500, 0.30 at 3000+, capped past the threshold.
 
     Returns 0.0 when no item carries either field (pre-batch-26 builds
@@ -148,7 +148,7 @@ def total_damage_amp_multiplier(effects: Iterable[ItemEffect]) -> float:
     """Multiplicative damage-amp factor across the build (Phase 4 batch 14).
 
     League stacks combat-state damage amplifiers via the buff system -
-    Riftmaker's 8% × Conqueror's 8% = 1.08 * 1.08 = 1.1664x, not 1.16x.
+    Riftmaker's 8% x Conqueror's 8% = 1.08 * 1.08 = 1.1664x, not 1.16x.
     Returns 1.0 when no item carries an amp (pre-batch-14 baseline) so
     every existing rotation calculation passes through unchanged.
 
@@ -305,8 +305,8 @@ def total_conditional_as(effects: Iterable[ItemEffect]) -> float:
     """Sum conditional bonus AS from uptime-weighted passives (batch 54).
 
     Yun Tal Wildarrows Flurry: 30% AS for 6s on-champion-attack (30s CD,
-    attack-driven CD reduction). Sustained uptime ≈ 27% at typical ADC AS
-    with 25% crit → effective contribution = 0.30 × 0.27 ≈ 0.08 bonus AS.
+    attack-driven CD reduction). Sustained uptime ~ 27% at typical ADC AS
+    with 25% crit -> effective contribution = 0.30 x 0.27 ~ 0.08 bonus AS.
     Added to stats_for_rotation["as"] in compute_dps so attack counts in
     each rotation reflect the conditional boost. Returns 0.0 when no item
     carries the field.
@@ -319,7 +319,7 @@ def effective_target_armor(
     effects: Iterable[ItemEffect],
     level: int | None = None,
 ) -> float:
-    """Apply armor reduction → % pen → flat pen pipeline.
+    """Apply armor reduction -> % pen -> flat pen pipeline.
 
     Mirrors League's order: ``armor_reduction_flat`` then
     ``armor_reduction_pct`` (Black Cleaver stacks) reduce target armor
@@ -420,7 +420,7 @@ def effective_target_armor(
 
 
 def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> float:
-    """Apply MR reduction → % magic pen → flat magic pen pipeline.
+    """Apply MR reduction -> % magic pen -> flat magic pen pipeline.
 
     Mirrors League's order on the magic side: ``mr_reduction_flat``
     then ``mr_reduction_pct`` (Bloodletter's Curse Vile Decay -

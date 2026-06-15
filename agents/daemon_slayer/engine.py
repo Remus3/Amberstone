@@ -136,7 +136,7 @@ def _scale_champion_base(
     level: int,
     mode_addends: dict[str, dict[str, float]] | None = None,
 ) -> tuple[dict[str, float], dict[str, float]]:
-    """Return ``(scaled, raw_base)`` where scaled is canonical-key → value at level
+    """Return ``(scaled, raw_base)`` where scaled is canonical-key -> value at level
     and raw_base preserves the unscaled base values needed for AS combine math.
 
     ``mode_addends`` (item 232, default None -> byte-identical) adds the ar/swift
@@ -179,8 +179,8 @@ def _combine_items(
     Special cases (because in-game math differs from the default):
 
     * **AS**: items add into the bonus_pct sum that multiplies the BASE AS,
-      alongside the per-level bonus. Engine recomputes from base × (1 + Σpct).
-    * **MS**: ``(base + flat) × (1 + pct)`` - standard, matches default.
+      alongside the per-level bonus. Engine recomputes from base x (1 + sumpct).
+    * **MS**: ``(base + flat) x (1 + pct)`` - standard, matches default.
     * **Crit**: capped at 1.0 (100%) post-stack.
     """
     out = dict(scaled)
@@ -194,7 +194,7 @@ def _combine_items(
     bonus_as_from_items = item_totals.get("as_pct", 0.0)
     out["as"] = base_as * (1 + bonus_as_from_levels + bonus_as_from_items)
 
-    # MS: explicit (base + flat) × (1 + pct).
+    # MS: explicit (base + flat) x (1 + pct).
     ms_flat = item_totals.get("ms_flat", 0.0)
     ms_pct = item_totals.get("ms_pct", 0.0)
     out["ms"] = (raw_base.get("ms", 0.0) + ms_flat) * (1 + ms_pct)
@@ -355,7 +355,7 @@ def build_champion(
     # keyed off mana instead of base AD. Walked AFTER aggregate_item_stats
     # produces ``item_totals["mp_flat"]`` so the items' own mana pools
     # (Manamune 500, Muramana 1000) are included in the conversion base.
-    # Awe is mana → AD one-way - no feedback loop, no need to iterate to a
+    # Awe is mana -> AD one-way - no feedback loop, no need to iterate to a
     # fixed point. Manaless champions (energy users) have ``scaled["mp"]``
     # = 0; if their build also has no item mp_flat the Awe contribution
     # resolves to 0, so the walk is safe to run unconditionally.
@@ -397,7 +397,7 @@ def build_champion(
     # HP, the correct value - champion per-level HP is BASE HP, not bonus HP.
     # Walked AFTER aggregate_item_stats produces item_totals["hp_flat"] so
     # Overlord's own 550 HP is included in the conversion base.
-    # One-way, no feedback loop (HP → AD only). Same wiring pattern as the
+    # One-way, no feedback loop (HP -> AD only). Same wiring pattern as the
     # Sterak's (bonus_ad_pct_base_ad, batch 20) and Manamune (bonus_ad_pct_max_mp,
     # batch 27) walks above.
     bonus_hp_from_items = item_totals.get("hp_flat", 0.0)
