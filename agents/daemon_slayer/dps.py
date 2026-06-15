@@ -885,30 +885,30 @@ def compute_dps(
         notes.append(f"ARAM aramDamageDealt={mode_mult:.2f} on per-hit damage")
     if target_armor_eff != target_armor:
         notes.append(
-            f"effective target armor {target_armor:.1f} → {target_armor_eff:.1f}"
+            f"effective target armor {target_armor:.1f} -> {target_armor_eff:.1f}"
             " after reduction + pen"
         )
     if target_mr_eff != target_mr:
         notes.append(
-            f"effective target MR {target_mr:.1f} → {target_mr_eff:.1f}"
+            f"effective target MR {target_mr:.1f} -> {target_mr_eff:.1f}"
             " after magic pen"
         )
     if damage_amp != 1.0:
         notes.append(
-            f"build damage amp ×{damage_amp:.4f} "
+            f"build damage amp x{damage_amp:.4f} "
             f"(+{(damage_amp - 1.0) * 100:.2f}% to all damage)"
         )
     if target_amp != 1.0:
         notes.append(
-            f"target-conditional amp ×{target_amp:.4f} "
+            f"target-conditional amp x{target_amp:.4f} "
             f"(target_bonus_hp={target_bonus_hp:.0f}, "
             f"+{(target_amp - 1.0) * 100:.2f}% folded into build amp)"
         )
     if giant_slayer_amp != 1.0:
         hp_diff = max(0.0, target_max_hp - caster_max_hp)
         notes.append(
-            f"Giant Slayer HP-advantage amp ×{giant_slayer_amp:.4f} "
-            f"(target {target_max_hp:.0f} - caster {caster_max_hp:.0f} = {hp_diff:.0f} HP diff → "
+            f"Giant Slayer HP-advantage amp x{giant_slayer_amp:.4f} "
+            f"(target {target_max_hp:.0f} - caster {caster_max_hp:.0f} = {hp_diff:.0f} HP diff -> "
             f"+{(giant_slayer_amp - 1.0) * 100:.2f}% all damage)"
         )
     if ap_from_hp > 0:
@@ -923,7 +923,7 @@ def compute_dps(
         )
     if hp_ap_amp != 1.0:
         notes.append(
-            f"caster HP-scaled AP amp ×{hp_ap_amp:.4f} "
+            f"caster HP-scaled AP amp x{hp_ap_amp:.4f} "
             f"(Demonic Embrace Sinister Pact at {caster_max_hp:.0f} HP; "
             f"total AP for procs: {ap:.1f})"
         )
@@ -933,12 +933,12 @@ def compute_dps(
         )
     if ap_amp != 1.0:
         notes.append(
-            f"AP amplified ×{ap_amp:.4f} by Rabadon's Deathcap "
+            f"AP amplified x{ap_amp:.4f} by Rabadon's Deathcap "
             f"(effective AP for procs: {ap:.1f})"
         )
     if magic_amp != 1.0:
         notes.append(
-            f"magic damage amp ×{magic_amp:.4f} (Abyssal Mask Unmake "
+            f"magic damage amp x{magic_amp:.4f} (Abyssal Mask Unmake "
             f"+{(magic_amp - 1.0) * 100:.0f}% magic damage to target)"
         )
     if crit_from_effects > 0:
@@ -949,7 +949,7 @@ def compute_dps(
         # contribution and the post-clamp final to make the cap visible.
         notes.append(
             f"crit chance lifted by items: +{crit_from_effects * 100:.1f}% "
-            f"(raw {raw_crit * 100:.1f}% + items → effective {crit_total * 100:.1f}%)"
+            f"(raw {raw_crit * 100:.1f}% + items -> effective {crit_total * 100:.1f}%)"
         )
     if spellblade_per_proc > 0:
         notes.append(

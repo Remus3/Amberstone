@@ -3886,10 +3886,10 @@ class LethalityEngineWireInTests(unittest.TestCase):
         import re
         def eff_armor(r):
             for n in r.notes:
-                # Engine emits the U+2192 RIGHTWARDS ARROW glyph here
-                # (pre-existing across dps.py / ability_dps.py / burst.py);
-                # flagged for the operator-gated ASCII retro-sweep.
-                m = re.search("effective target armor [\\d.]+\\s*→\\s*([\\d.]+)", n)
+                # Engine emits an ASCII "->" arrow here across dps.py /
+                # ability_dps.py / burst.py (DEEP-AUDIT P3 cycle 24 / item 420
+                # B1b converted the former U+2192 glyph to ASCII).
+                m = re.search("effective target armor [\\d.]+\\s*->\\s*([\\d.]+)", n)
                 if m:
                     return float(m.group(1))
             return None
