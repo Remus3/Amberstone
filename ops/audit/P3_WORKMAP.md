@@ -9,6 +9,30 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 21 (item 417): SAFE-BULK ASCII glyph sweep slice A3a (docstring-token-only)
+
+- Extended tools/p3_ascii_sweep.py with an opt-in --doc-apply mode: same
+  conservative GLYPH_MAP applied inside module/func/class DOCSTRING STRING tokens
+  (located via AST - never an f-string, never a split-on/regex-matched code
+  string). Docstrings are not emitted to coach output, not split-on, not
+  regex-matched by production; only consumers = argparse --help (cosmetic) + 2
+  __doc__ tests that assertIn() ASCII substrings (immune; neither target module
+  is in the changed set). Same provable-safe class as the comment-token sweep.
+  commit `74e3b659`.
+- 576 docstring-glyph subs / 120 .py (core dashboard lcu app vision_server
+  coach_integration coaches tft modes modules game_reader scripts ops agents
+  non-DS tools + root .py). EXCLUDED: agents/daemon_slayer + Share (B1), web
+  (B3), tests, _archive. GLYPH_MAP stays conservative (operator rejected a
+  generic subscript-digit range); the lone unmapped docstring glyph - U+2080
+  score-zero in core/augment_recommender.py - hand-fixed to ASCII score_0.
+  0 residual non-ASCII in any swept docstring.
+- Gate (Tier-0): py_compile 120/120 OK; token-equivalence proof - every
+  NON-docstring token byte-identical to HEAD + identical type-sequence across
+  ALL 120 (no code moved), every docstring token ASCII post-sweep. No suite,
+  no DS-dir, no ENGINE bump, no DS :8893 restart, no live RC restart.
+
+---
+
 ## DONE - cycle 20 (item 416): SAFE-BULK ASCII glyph sweep slice A2 (tools/ + agents non-DS)
 
 - Ran tools/p3_ascii_sweep.py (cycle-19 transformer) on tools/** + agents/ NON-DS
@@ -84,17 +108,22 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 ## REMAINING P3 (future cycles) - the ~400-file ASCII glyph sweep + 2 semantic prunes
 
 ### A. SAFE-BULK ASCII glyph sweep (parallelizable, c16/c17 treatment)
-TOOL = tools/p3_ascii_sweep.py (comment-token-only, provable-safe; cycle 19).
+TOOL = tools/p3_ascii_sweep.py (comment-token + docstring-token modes, provable-safe; cycles 19/21).
 - A1 DONE cycle 19: the core RC runtime + product trees (108 .py). See above.
-- A2 DONE cycle 20 (item 416): `tools/**` (7261 subs / incl 3 frozen bridge_*.py
-  comment-only) + `agents/` NON-DS source incl agent3_testing/** suite (3165 subs)
-  = 10426 / 69 .py, comment-token-only. `tests/**` was 0 subs (already ASCII-clean
-  comments). Gate = token-equivalence proof (no owning-suite run needed). See above.
-- A3 REMAINING (NOT comment-only - needs string/docstring judgement): the
-  STRING-token + module-docstring box-draw banners p3_ascii_sweep intentionally
-  skips. Some are print-banners a test may assert on -> per-hit verify, suite-gate.
-Run order: A2 first (mechanical, same tool), A3 last (judgement). web/ .js/.css
-glyphs are NOT python-tokenizable -> handled in B3 (UI-audit-gated), not here.
+- A2 DONE cycle 20 (item 416): `tools/**` + `agents/` NON-DS source = 10426 / 69
+  .py, comment-token-only. `tests/**` was 0 subs. Gate = token-equivalence proof.
+- A3a DONE cycle 21 (item 417): module/func/class DOCSTRING glyphs via the new
+  --doc-apply AST mode (provable-safe: docstrings not emitted/split/regex-matched;
+  __doc__ consumers = argparse --help cosmetic + 2 ASCII-substring tests, immune).
+  576 subs / 120 .py + 1 hand-fix (U+2080 score-zero -> score_0). Gate =
+  token-equivalence proof (non-doc byte-identical) + py_compile. See above.
+- A3b REMAINING (NOT mechanical - per-hit judgement, suite-gate): the 861
+  CODE-STRING box-draw/arrow glyphs across 48 files the tool skips. Includes the
+  LOAD-BEARING coach arrows (aram/brawl/arena_coach split on the literal arrow ->
+  overlaps B2), role_profiles emitted bullets, and the p3_ascii_sweep GLYPH_MAP
+  keys (the tool's own data - must NOT touch). Per-hit verify + owning-suite gate.
+Run order: A3b last (judgement). web/ .js/.css glyphs are NOT python-tokenizable
+-> handled in B3 (UI-audit-gated), not here.
 
 ### B. LOAD-BEARING-COORDINATED (DEFER - engine+test+resync together, NOT a sed)
 1. DS-engine agents/daemon_slayer/*.py (20 files, 2036 non-ASCII) + Share/src mirror
