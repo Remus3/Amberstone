@@ -2,6 +2,14 @@
 
 ## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
 
+# 2026-06-14 - DEEP-AUDIT cycle 21: P3 SAFE-BULK ASCII glyph sweep slice A3a [item 417] (relocated 2026-06-15, cycle-24 wrap)
+
+- Extended tools/p3_ascii_sweep.py with an opt-in --doc-apply mode: same conservative GLYPH_MAP applied inside module/func/class DOCSTRING STRING tokens (located via AST - never an f-string, never a split-on/regex-matched code string). Docstrings are not emitted to coach output, not split-on, not regex-matched by production; only consumers = argparse --help (cosmetic) + 2 __doc__ tests that assertIn() ASCII substrings (immune; neither target module is in the changed set). Same provable-safe class as the cycle-19/20 comment-token sweep. commit `74e3b659`.
+- 576 docstring-glyph subs / 120 .py across core dashboard lcu app vision_server coach_integration coaches tft modes modules game_reader scripts ops agents(non-DS) tools + root .py. EXCLUDED (own cycles): agents/daemon_slayer + Share (B1 load-bearing emit-arrows), web (B3 UI-gated), tests, _archive. The 861 code-string glyphs (incl the load-bearing coach arrows aram/brawl/arena + the GLYPH_MAP literal in the tool itself) are slice A3b - DEFERRED, per-hit judgement.
+- GLYPH_MAP stays conservative (operator call: rejected a generic subscript-digit range). The lone unmapped docstring glyph - U+2080 score-zero in core/augment_recommender.py math spec - hand-fixed to ASCII score_0. 0 residual non-ASCII in any swept docstring.
+- Gate (Tier-0, dominates a suite run for a docstring-only edit per R5/R6): py_compile 120/120 OK; token-equivalence PROOF - every NON-docstring token byte-identical to HEAD + identical type-sequence across ALL 120 (no code moved), every docstring token ASCII post-sweep. NO suite, NO DS-dir, NO ENGINE bump, NO DS :8893 restart, NO live RC restart.
+- DONT-REDO: A3a docstring sweep DONE + idempotent (re-run = 0). [cycle 22 = A3b-1 log/print-strings DONE; cycle 23 = B1a DS-engine comment+docstring DONE; cycle 24 = B1b DS-engine string+JSON DONE.] Full map: ops/audit/P3_WORKMAP.md.
+
 # 2026-06-14 - DEEP-AUDIT cycle 20: P3 SAFE-BULK ASCII glyph sweep slice A2 [item 416] (relocated 2026-06-14, cycle-23 wrap)
 
 - Ran tools/p3_ascii_sweep.py (cycle-19 transformer, comment-token-only) on the A2 scope: tools/** + agents/ NON-DS source. 10426 comment-glyph subs / 69 .py rewritten. tools/ 7261 (134 scanned, 27 changed); agents non-DS 3165 (81 scanned). commit `74cca91d`.
