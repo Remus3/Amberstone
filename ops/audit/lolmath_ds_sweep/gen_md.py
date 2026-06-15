@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pair lolmath (normal + ultimate) vs DS build_orders, emit Desktop gap-analysis MD."""
-import json, collections
+import collections
+import json
 
 ROOT = r"C:/Riot Commander"
 PATCH = "16.12.1"
