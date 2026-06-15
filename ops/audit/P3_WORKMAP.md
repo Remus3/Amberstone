@@ -9,6 +9,33 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 23 (item 419): DS-engine ASCII sweep slice B1a - comment+docstring-token-only (1714 subs / 19 .py + Share re-sync)
+
+- First P3 touch of the DS-engine tree (agents/daemon_slayer/*.py) - the last tree
+  the cycle 19-22 safe-sweep excluded as B1 LOAD-BEARING-COORDINATED. Carved the
+  provable-safe comment+docstring subset off the load-bearing emit-arrow remainder
+  by reusing the EXISTING tools/p3_ascii_sweep.py --apply (COMMENT) + --doc-apply
+  (DOCSTRING) over agents/daemon_slayer/*.py (top-level engine via bash non-recursive
+  glob - NOT the c17-swept tests/ subdir). commit `3b468861`.
+- 1649 comment + 65 docstring glyph subs / 19 .py, 0 unmapped (U+2500 box-draw
+  `# --- ... ---` section dividers dominate; arrows/math/greek all in GLYPH_MAP).
+  String-token glyphs untouched BY CONSTRUCTION -> every emitted/regex-matched arrow
+  preserved (dps.py "armor X -> Y" note + test_effects_expansion.py:3892 regex intact).
+  DS-engine residual non-ASCII 2036 -> 322 (all string-token: U+2192 124 + U+00D7 169
+  + greek/middot; -> B1b). stats.py latent-CRLF -> LF (reference_repo_eol_crlf_guard,
+  git status hid it via .gitattributes eol=lf).
+- Share mirror re-synced (tools/ds_share_sync.py rewrote 19 Share/src mirror files +
+  restamped MANIFEST; --check in-sync).
+- Gate (Tier-2, DS tree + Share): NEW durable ops/audit/p3c23_token_equiv.py PROOF
+  PASS 19/19 (for each file every token that is NOT comment + NOT docstring, incl every
+  NON-docstring STRING literal = the emit-arrows, byte-identical (type,string) to
+  `git show HEAD:f`); py_compile 19/19; DS-dir suite 7095p/1s/1942sub exit 0
+  BYTE-IDENTICAL pre/post (p3c23_ds_{baseline,postedit}.txt). NO ENGINE bump
+  (committed + live :8893 both 1.121.0 - synopsis P0 1.120.0 was STALE, re-probed
+  live over HTTP), NO DS restart, NO live RC restart. CI run 27523209366 GREEN.
+
+---
+
 ## DONE - cycle 22 (item 418): SAFE-BULK ASCII glyph sweep slice A3b-1 (log/print-string-token-only)
 
 - Carved the provably-safe subset off the load-bearing A3b remainder via per-hit
@@ -171,10 +198,15 @@ Run order: A3b-2 last (judgement). web/ .js/.css glyphs are NOT python-tokenizab
 -> handled in B3 (UI-audit-gated), not here.
 
 ### B. LOAD-BEARING-COORDINATED (DEFER - engine+test+resync together, NOT a sed)
-1. DS-engine agents/daemon_slayer/*.py (20 files, 2036 non-ASCII) + Share/src mirror
-   (26 files, 2769): U+2192 arrows EMITTED into output that tests regex-match
-   (c17 DEFER test_effects_expansion.py:3892 <- dps.py "armor X -> Y" note). Coordinated
-   engine-emit + regex + test slice; Tier-2 full DS suite + Share re-sync + DS :8893 restart.
+1. DS-engine agents/daemon_slayer/*.py + Share/src mirror.
+   - B1a DONE cycle 23 (item 419): the comment+docstring-token subset (provable-safe,
+     reused p3_ascii_sweep --apply/--doc-apply). 1649 comment + 65 docstring subs / 19
+     .py + Share re-sync; token-equiv PROOF 19/19 + DS suite byte-identical. DS-engine
+     non-ASCII 2036 -> 322 (all string-token). See above.
+   - B1b REMAINING: the residual 322 STRING-token EMIT-arrows (U+2192 124 + U+00D7 169
+     + greek/middot/etc). U+2192 arrows EMITTED into output that tests regex-match
+     (c17 DEFER test_effects_expansion.py:3892 <- dps.py "armor X -> Y" note). Coordinated
+     engine-emit + regex + test slice; Tier-2 full DS suite + Share re-sync + DS :8893 restart.
 2. coaches/aram_coach.py 28xU+2192: the item_build wire-convention arrow (c16 DEFER) -
    production coach splits on the LITERAL arrow; needs coordinated coach + Haiku-prompt +
    11 peer tests (tests/phase2_smoke/test_aram_coach_item_class_peers.py).
